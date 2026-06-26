@@ -61,7 +61,6 @@ def _menu_item(s, root):
 
 def nav(depth=0):
     root = rel(depth)
-    services_menu = "".join(_menu_item(s, root) for s in NAV_SERVICES)
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
@@ -69,33 +68,14 @@ def nav(depth=0):
       <span class="brand-word">BARTA<small>Window Washing</small></span>
     </a>
     <ul class="nav-links">
-      <li class="nav-item">
-        <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Services {icon('chevron')}</button>
-        <div class="nav-menu" role="menu">{services_menu}</div>
-      </li>
+      <li><a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a></li>
+      <li><a href="{root}about.html">About Us</a></li>
+      <li><a href="{root}residential.html">Our Services</a></li>
       <li><a href="{root}service-plans.html">Plans</a></li>
-      <li><a href="{root}commercial.html">Commercial</a></li>
-      <li><a href="{root}service-areas.html">Service Areas</a></li>
-      <li><a href="{root}gallery.html">Gallery</a></li>
       <li><a href="{root}reviews.html">Reviews</a></li>
-      <li class="nav-item">
-        <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">More {icon('chevron')}</button>
-        <div class="nav-menu" role="menu" style="min-width:380px">
-          <a href="{root}about.html"><span class="mi-icon">{icon('heart')}</span><span><span class="mi-title">About Us</span><span class="mi-desc">Our story &amp; values</span></span></a>
-          <a href="{root}team.html"><span class="mi-icon">{icon('users')}</span><span><span class="mi-title">Meet the Team</span><span class="mi-desc">The crew behind the shine</span></span></a>
-          <a href="{root}why-choose-us.html"><span class="mi-icon">{icon('award')}</span><span><span class="mi-title">Why Choose Us</span><span class="mi-desc">What sets us apart</span></span></a>
-          <a href="{root}residential.html"><span class="mi-icon">{icon('home')}</span><span><span class="mi-title">Residential</span><span class="mi-desc">Home services</span></span></a>
-          <a href="{root}blog.html"><span class="mi-icon">{icon('clipboard')}</span><span><span class="mi-title">Blog</span><span class="mi-desc">Tips &amp; guides</span></span></a>
-          <a href="{root}faqs.html"><span class="mi-icon">{icon('check-circle')}</span><span><span class="mi-title">FAQs</span><span class="mi-desc">Common questions</span></span></a>
-          <a href="{root}financing.html"><span class="mi-icon">{icon('dollar')}</span><span><span class="mi-title">Financing</span><span class="mi-desc">Flexible payment</span></span></a>
-          <a href="{root}careers.html"><span class="mi-icon">{icon('thumbs')}</span><span><span class="mi-title">Careers</span><span class="mi-desc">Join the team</span></span></a>
-        </div>
-      </li>
-      <li><a href="{root}contact.html">Contact</a></li>
     </ul>
     <div class="nav-cta">
-      <a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
-      <a class="btn" href="{root}request-quote.html">Free Quote</a>
+      <a class="btn" href="{root}request-quote.html">Get a Quote</a>
       <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">{icon('menu')}</button>
     </div>
   </nav>
