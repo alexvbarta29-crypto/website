@@ -61,7 +61,6 @@ def _menu_item(s, root):
 
 def nav(depth=0):
     root = rel(depth)
-    services_menu = "".join(_menu_item(s, root) for s in NAV_SERVICES)
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
@@ -72,9 +71,9 @@ def nav(depth=0):
       <li><a href="{root}about.html">About Us</a></li>
       <li class="nav-item">
         <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
-        <div class="nav-menu" role="menu">
-          {services_menu}
-          <a class="nav-menu-all" href="{root}residential.html"><span class="mi-icon">{icon('arrow')}</span><span><span class="mi-title">View all services</span><span class="mi-desc">Everything your home's exterior needs</span></span></a>
+        <div class="nav-menu nav-menu-simple" role="menu">
+          {"".join(f'<a href="{root}services/{s["slug"]}.html">{s["name"]}</a>' for s in NAV_SERVICES)}
+          <a class="nav-menu-all" href="{root}residential.html">View all services {icon('arrow')}</a>
         </div>
       </li>
       <li><a href="{root}service-plans.html">Plans</a></li>

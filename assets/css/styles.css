@@ -150,15 +150,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   max-width: var(--container); margin-inline: auto;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   height: var(--nav-h); padding: 0 14px 0 22px;
-  background: rgba(255,255,255,.72);
+  background: rgba(255,255,255,.92);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border: 1px solid rgba(255,255,255,.6);
+  border: 1px solid rgba(255,255,255,.7);
   border-radius: var(--r-pill);
-  box-shadow: var(--sh-glass);
+  box-shadow: 0 8px 30px rgba(14,14,18,.18);
   transition: box-shadow .4s var(--ease), background .4s var(--ease);
 }
 .nav-wrap.scrolled { padding-top: 8px; padding-bottom: 8px; }
-.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.16); background: rgba(255,255,255,.85); }
+.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.2); background: rgba(255,255,255,.97); }
 .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-head); font-weight: 800; font-size: 1.18rem; letter-spacing: -.02em; color: var(--navy-800); }
 .brand-logo { height: 40px; width: auto; display: block; }
 .footer .brand-logo { height: 44px; }
@@ -592,8 +592,18 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .nav-menu-all { grid-column: 1 / -1; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 14px !important; }
 .nav-menu-all .mi-icon { background: var(--grad-brand); color: #fff; }
 
-/* Full-bleed photo hero (DirtyMint-style) */
-.hero-photo-full { position: relative; min-height: clamp(580px, 82vh, 800px); display: flex; align-items: center; padding-top: calc(var(--nav-h) + 48px); padding-bottom: clamp(48px, 7vw, 88px); overflow: hidden; }
+/* Simple service dropdown — plain list, no icons/descriptions */
+.nav-menu-simple { display: block; grid-template-columns: none; min-width: 244px; padding: 10px; }
+.nav-menu-simple a { display: block; padding: 10px 14px; border-radius: var(--r-md); font-weight: 600; font-size: .95rem; color: var(--slate-700); }
+.nav-menu-simple a:hover { background: rgba(251,77,61,.08); color: var(--navy-800); }
+.nav-menu-simple .nav-menu-all { display: flex; align-items: center; gap: 7px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--blue-600); font-weight: 700; }
+.nav-menu-simple .nav-menu-all svg { width: 15px; height: 15px; }
+
+/* Full-bleed photo hero (DirtyMint-style) — content anchored bottom-left */
+.hero-photo-full { position: relative; min-height: clamp(640px, 90vh, 880px); display: flex; align-items: flex-end; padding-top: calc(var(--nav-h) + 56px); padding-bottom: clamp(48px, 6vw, 80px); overflow: hidden; }
+.hero-photo-full .hero-content h1 { font-size: clamp(2.9rem, 6.4vw, 5.2rem); line-height: 1.0; margin-top: 18px; }
+.hero-photo-full .hero-content .lead { margin-top: 22px; max-width: 600px; }
+.hero-photo-full .hero-actions { margin-top: 30px; }
 .hero-photo-full .hero-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; z-index: -2; }
 .hero-photo-full .hero-overlay { position: absolute; inset: 0; z-index: -1; background:
   linear-gradient(96deg, rgba(8,8,10,.88) 0%, rgba(8,8,10,.66) 38%, rgba(8,8,10,.18) 70%, rgba(8,8,10,.04) 100%),

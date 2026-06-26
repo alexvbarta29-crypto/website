@@ -115,13 +115,7 @@ def build_home():
         <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing across the western Twin Cities — done by a local, family-owned team you can trust.</p>
         <div class="hero-actions">
           <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
-          <a class="btn btn-lg btn-light" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
         </div>
-        <ul class="hero-trust">
-          <li>{icon('shield')} Licensed &amp; insured</li>
-          <li>{icon('home')} Family owned since {BIZ['founded']}</li>
-          <li>{icon('check-circle')} 100% satisfaction guarantee</li>
-        </ul>
       </div>
     </div>
   </section>
