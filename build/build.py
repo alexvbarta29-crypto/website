@@ -110,7 +110,7 @@ def build_home():
     <div class="hero-overlay"></div>
     <div class="container">
       <div class="hero-content reveal in">
-        <div class="hero-rating">{stars_row()}<span>{BIZ['rating']}/5 from {BIZ['review_count']}+ happy neighbors</span></div>
+        {C.google_badge(depth)}
         <h1>Clearer windows.<br>Brighter <em>home.</em></h1>
         <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing across the western Twin Cities — done by a local, family-owned team you can trust.</p>
         <div class="hero-actions">
@@ -864,7 +864,7 @@ def build_reviews():
     </div>
   </div></section>
   <section><div class="container">{C.reviews_block(REVIEWS_WIDGET, cards, depth)}
-    <div class="center mt-4"><a class="btn" href="{BIZ['google']}">Read &amp; leave a Google review {icon('arrow')}</a></div>
+    <div class="center mt-4">{C.google_badge(depth, light=True)}</div>
   </div></section>
   {C.cta_band(depth, heading="Join hundreds of happy homeowners", text="Experience the Barta difference for yourself. Get your free quote today.")}
 </main>"""
