@@ -36,15 +36,15 @@
   --grad-sky: linear-gradient(180deg, #f7f7f8 0%, #ffffff 100%);
   --grad-glass: linear-gradient(135deg, rgba(255,255,255,.85), rgba(255,255,255,.6));
 
-  /* Typography */
-  --font-head: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Typography — Cabinet Grotesk (display) + General Sans (body) */
+  --font-head: "Cabinet Grotesk", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "General Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  /* Radius */
-  --r-sm: 10px;
-  --r-md: 16px;
-  --r-lg: 24px;
-  --r-xl: 32px;
+  /* Radius — softer, friendlier */
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 28px;
+  --r-xl: 38px;
   --r-pill: 999px;
 
   /* Shadows */
@@ -89,13 +89,13 @@ ul { list-style: none; padding: 0; }
 :focus-visible { outline: 3px solid var(--sky-400); outline-offset: 3px; border-radius: 4px; }
 
 /* ---------- Typography ---------- */
-h1, h2, h3, h4 { font-family: var(--font-head); line-height: 1.12; letter-spacing: -.02em; color: var(--ink); font-weight: 800; }
-h1 { font-size: clamp(2.3rem, 5.2vw, 4rem); }
-h2 { font-size: clamp(1.8rem, 3.6vw, 2.85rem); }
-h3 { font-size: clamp(1.25rem, 2vw, 1.6rem); }
-h4 { font-size: 1.12rem; font-weight: 700; }
+h1, h2, h3, h4 { font-family: var(--font-head); line-height: 1.06; letter-spacing: -.018em; color: var(--ink); font-weight: 800; }
+h1 { font-size: clamp(2.6rem, 5.8vw, 4.6rem); font-weight: 900; line-height: 1.02; }
+h2 { font-size: clamp(2rem, 3.9vw, 3.1rem); }
+h3 { font-size: clamp(1.3rem, 2vw, 1.65rem); }
+h4 { font-size: 1.14rem; font-weight: 700; }
 p { color: var(--slate-700); }
-.lead { font-size: clamp(1.06rem, 1.6vw, 1.28rem); color: var(--slate-500); line-height: 1.6; }
+.lead { font-size: clamp(1.1rem, 1.7vw, 1.34rem); color: var(--slate-500); line-height: 1.55; }
 .eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--font-head); font-weight: 700; font-size: .82rem;

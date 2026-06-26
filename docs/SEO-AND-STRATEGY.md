@@ -172,10 +172,16 @@ palette — change them once in `:root` (assets/css/styles.css) to re-tune site-
 
 ## 7. Typography
 
-- **Headings:** *Plus Jakarta Sans* (600–800), tight letter-spacing — modern, premium, geometric.
-- **Body:** *Inter* (400–700) — highly legible at all sizes.
-- Fluid type scale via `clamp()` (H1 ≈ 2.3–4rem). Body 16–17px, line-height 1.65.
-- System-font fallbacks (`-apple-system`, etc.) keep the Apple-inspired feel if web fonts are slow.
+A premium, modern pairing (DirtyMint-style design language) served from Fontshare:
+
+- **Headings:** *Cabinet Grotesk* (800–900) — bold, characterful display grotesk; big and friendly.
+- **Body / UI:** *General Sans* (400–700) — clean geometric-humanist sans, highly legible.
+- Loaded via `https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700`
+- Fluid type scale via `clamp()` (H1 ≈ 2.6–4.6rem, weight 900). Softer corner radii (cards 28px,
+  panels 38px) for the rounded, premium feel.
+- Fallback chain keeps *Plus Jakarta Sans* / system fonts if the web fonts are slow, so text always
+  renders cleanly. To self-host instead (no third-party CDN), download the woff2 files from Fontshare
+  into `assets/fonts/` and add `@font-face` rules — see README.
 
 ---
 
