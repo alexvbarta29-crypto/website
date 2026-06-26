@@ -9,7 +9,8 @@ nothing builds trust for a home-service brand faster than authentic, well-lit jo
 | File | Used for | Replace with |
 | --- | --- | --- |
 | `favicon.svg` | Browser tab / PWA icon | On-brand: coral // mark on black. Swap for your exact icon if desired |
-| `logo.svg` | Standalone logo (email sigs, docs) | The // mark + BARTA wordmark. Drop in your original vector to be pixel-perfect |
+| `<img width="2250" height="1888" alt="Gemini_Generated_Image_5g73vp5g73vp5g73" src="https://github.com/user-attachments/assets/78c7872b-ffae-4cf2-867a-01369069323c" />
+` | Standalone logo (email sigs, docs) | The // mark + BARTA wordmark. Drop in your original vector to be pixel-perfect |
 | `og-cover.svg` | Social share preview | On-brand black + coral card. Optionally export a 1200×630 `og-cover.jpg` photo version |
 
 > **Brand note:** the nav/footer logo is rendered as crisp inline SVG (the coral **//** mark +
