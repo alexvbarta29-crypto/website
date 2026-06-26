@@ -261,6 +261,28 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="No-obligation, sa
   </div>
 </div>"""
 
+_IMG_CARD_DARKS = [
+    "linear-gradient(155deg,#23232b 0%,#0c0c10 100%)",
+    "linear-gradient(155deg,#2c1d1a 0%,#110c0c 100%)",
+    "linear-gradient(155deg,#1a1a22 0%,#0a0a0e 100%)",
+    "linear-gradient(155deg,#322019 0%,#130d0b 100%)",
+    "linear-gradient(155deg,#202028 0%,#0b0b0f 100%)",
+    "linear-gradient(155deg,#2a1c22 0%,#110c0f 100%)",
+]
+
+def service_image_card(s, depth=0, idx=0):
+    """DirtyMint-style large image card with overlaid title (no photo needed —
+    uses a branded dark gradient + faint service icon; swap in a real photo via
+    the .img-card-bg background-image when available)."""
+    root = rel(depth)
+    dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
+    bg = f"radial-gradient(75% 60% at 72% 12%, rgba(251,77,61,.32), transparent 62%), {dark}"
+    return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}">'
+            f'<span class="img-card-bg" style="background-image:{bg}"></span>'
+            f'<span class="img-card-watermark">{icon(s["icon"])}</span>'
+            f'<span class="img-card-arrow">{icon("arrow")}</span>'
+            f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
+
 def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
     return f'<div class="badges">{items}</div>'

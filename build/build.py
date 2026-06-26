@@ -47,14 +47,7 @@ def stars_row():
 # ===========================================================================
 def build_home():
     depth = 0
-    svc_cards = ""
-    for i, s in enumerate(SERVICES):
-        svc_cards += f"""<a class="card svc-card reveal" data-delay="{i%4}" href="services/{s['slug']}.html">
-      <span class="ic">{icon(s['icon'])}</span>
-      <h3>{s['name']}</h3>
-      <p>{s['short']}</p>
-      <span class="more">Learn more {icon('arrow')}</span>
-    </a>"""
+    svc_cards = "".join(C.service_image_card(s, depth, i) for i, s in enumerate(SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     areas_html = "".join(
@@ -118,11 +111,11 @@ def build_home():
       <div class="hero-grid">
         <div class="reveal in">
           <div class="hero-rating">{stars_row()}<span>{BIZ['rating']}/5 from {BIZ['review_count']}+ happy neighbors</span></div>
-          <h1>The clearest view in <em>Delano</em> starts here.</h1>
-          <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing for homes and businesses across the western Twin Cities — done by a local, family-owned team you can trust.</p>
+          <h1>Clearer windows.<br>Brighter <em>home.</em></h1>
+          <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing across the western Twin Cities — done by a local, family-owned team you can trust.</p>
           <div class="hero-actions">
-            <a class="btn btn-lg" href="#quote-form">Get Your Free Quote {icon('arrow')}</a>
-            <a class="btn btn-lg btn-light" href="tel:{BIZ['phone_href']}">{icon('phone')} Call {BIZ['phone_display']}</a>
+            <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
+            <a class="btn btn-lg btn-light" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
           </div>
           <ul class="hero-trust">
             <li>{icon('shield')} Licensed &amp; insured</li>
@@ -130,7 +123,12 @@ def build_home():
             <li>{icon('check-circle')} 100% satisfaction guarantee</li>
           </ul>
         </div>
-        <div class="reveal in" data-delay="1">{C.lead_form(depth, heading="Get Your Free Quote", sub="Same-day pricing. No obligation. Takes 60 seconds.", compact=True)}</div>
+        <div class="hero-photo reveal in" data-delay="1">
+          <span class="imgph" style="position:absolute;inset:0" role="img" aria-label="A freshly cleaned Delano home with spotless windows — add your hero photo here">
+            <span class="ph-label">{icon('image')}<br>Your hero photo here</span>
+          </span>
+          <span class="photo-badge">{icon('star')} {BIZ['rating']}★ · {BIZ['review_count']}+ reviews</span>
+        </div>
       </div>
     </div>
   </section>
@@ -138,6 +136,25 @@ def build_home():
   <!-- TRUST STRIP -->
   <section class="section-tight bg-mist">
     <div class="container">{C.trust_badges()}</div>
+  </section>
+
+  <!-- INSTANT QUOTE BAND -->
+  <section class="section-tight">
+    <div class="container">
+      <div class="quote-band">
+        <div class="reveal">
+          <span class="eyebrow" style="color:#ff9b86">Free instant quote</span>
+          <h2 class="mt-1">Get your free quote in 60 seconds</h2>
+          <p>Tell us about your home and we'll send clear, upfront pricing — usually the same day, with no obligation.</p>
+          <ul class="hero-trust mt-3">
+            <li>{icon('check-circle')} Same-day pricing</li>
+            <li>{icon('check-circle')} No obligation</li>
+            <li>{icon('check-circle')} 100% satisfaction guarantee</li>
+          </ul>
+        </div>
+        <div class="reveal" data-delay="1">{C.lead_form(depth, heading="Get Your Free Quote", sub="Same-day pricing. No obligation. Takes 60 seconds.", compact=True)}</div>
+      </div>
+    </div>
   </section>
 
   <!-- VALUE PROP -->
@@ -661,10 +678,7 @@ def build_commercial():
 # ===========================================================================
 def build_residential():
     depth = 0
-    svc_cards = "".join(
-        f"""<a class="card svc-card reveal" data-delay="{i%4}" href="services/{s['slug']}.html">
-        <span class="ic">{icon(s['icon'])}</span><h3>{s['name']}</h3><p>{s['short']}</p>
-        <span class="more">Learn more {icon('arrow')}</span></a>""" for i, s in enumerate(SERVICES))
+    svc_cards = "".join(C.service_image_card(s, depth, i) for i, s in enumerate(SERVICES))
     html, body = interior_head(
         title=f"Residential Exterior Cleaning Services | {BIZ['name']} Delano, MN",
         desc="Complete residential exterior cleaning in Delano & the western metro — windows, gutters, pressure washing, house & roof washing, and more. Family-owned, insured & guaranteed.",

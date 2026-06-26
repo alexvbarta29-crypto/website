@@ -125,8 +125,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .btn {
   --btn-bg: var(--grad-brand);
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  font-family: var(--font-head); font-weight: 700; font-size: 1rem;
-  padding: 15px 28px; border-radius: var(--r-pill); border: 0;
+  font-family: var(--font-head); font-weight: 800; font-size: .94rem;
+  text-transform: uppercase; letter-spacing: .045em;
+  padding: 16px 30px; border-radius: var(--r-pill); border: 0;
   color: #fff; background: var(--btn-bg); background-size: 140% 140%;
   box-shadow: var(--sh-glow); transition: transform .35s var(--ease-out), box-shadow .35s var(--ease-out), background-position .6s var(--ease);
   white-space: nowrap; line-height: 1;
@@ -196,9 +197,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .nav-menu .mi-desc { font-size: .78rem; color: var(--slate-500); line-height: 1.35; margin-top: 2px; }
 
 .nav-cta { display: flex; align-items: center; gap: 8px; }
-.nav-phone { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-head); font-weight: 700; color: var(--navy-800); font-size: .94rem; padding: 9px 14px; border-radius: var(--r-pill); }
-.nav-phone:hover { background: rgba(251,77,61,.08); }
-.nav-phone svg { width: 16px; height: 16px; color: var(--green); }
+.nav-phone { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-head); font-weight: 800; color: var(--navy-800); font-size: .9rem; padding: 11px 18px; border-radius: var(--r-pill); border: 1.5px solid var(--line); background: #fff; transition: border-color .25s, box-shadow .25s; }
+.nav-phone:hover { border-color: var(--blue-600); box-shadow: var(--sh-sm); }
+.nav-phone svg { width: 16px; height: 16px; color: var(--blue-600); }
 .nav-toggle { display: none; width: 46px; height: 46px; border-radius: var(--r-pill); border: 0; background: rgba(251,77,61,.08); place-items: center; }
 .nav-toggle svg { width: 22px; height: 22px; color: var(--navy-800); }
 
@@ -532,4 +533,48 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .stats, .cols-4, .gallery, .area-grid { grid-template-columns: 1fr; }
   .nav { padding-left: 16px; }
   .brand small { display: none; }
+}
+
+/* =====================================================================
+   DirtyMint-style layout components (coral/black brand)
+   ===================================================================== */
+
+/* Hero: big overlaid headline + photo, no oversize overflow */
+.hero h1 { font-size: clamp(2.4rem, 4.6vw, 4rem); line-height: 1.03; }
+.hero-photo { position: relative; border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--sh-lg); aspect-ratio: 4 / 3.6; }
+.hero-photo .imgph { width: 100%; height: 100%; }
+.hero-photo .photo-badge { position: absolute; left: 18px; bottom: 18px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-radius: var(--r-pill); box-shadow: var(--sh-md); font-family: var(--font-head); font-weight: 800; font-size: .82rem; color: var(--navy-800); }
+.hero-photo .photo-badge svg { width: 18px; height: 18px; color: var(--blue-600); }
+
+/* Quote band (replaces hero-embedded form) */
+.quote-band { background: var(--grad-deep); border-radius: var(--r-xl); padding: clamp(26px, 4vw, 44px); display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(28px, 4vw, 52px); align-items: center; position: relative; overflow: hidden; }
+.quote-band::after { content: ""; position: absolute; inset: 0; background: radial-gradient(50% 60% at 85% 15%, rgba(251,77,61,.28), transparent 60%); }
+.quote-band > * { position: relative; z-index: 1; }
+.quote-band h2 { color: #fff; }
+.quote-band p { color: rgba(255,255,255,.8); margin-top: 14px; }
+@media (max-width: 860px) { .quote-band { grid-template-columns: 1fr; } }
+
+/* Image service cards (DirtyMint signature) */
+.img-card { position: relative; display: block; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 4 / 5; box-shadow: var(--sh-md); isolation: isolate; transition: box-shadow .4s var(--ease-out), transform .4s var(--ease-out); }
+.img-card:hover { box-shadow: var(--sh-lg); transform: translateY(-4px); }
+.img-card-bg { position: absolute; inset: 0; z-index: -2; background-size: cover; background-position: center; transition: transform .7s var(--ease-out); }
+.img-card:hover .img-card-bg { transform: scale(1.07); }
+.img-card::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8,8,10,.04) 0%, rgba(8,8,10,.12) 38%, rgba(8,8,10,.85) 100%); }
+.img-card-watermark { position: absolute; inset: 0; z-index: -1; display: grid; place-items: center; color: rgba(255,255,255,.10); }
+.img-card-watermark svg { width: 46%; height: 46%; }
+.img-card-arrow { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(255,255,255,.18); backdrop-filter: blur(6px); display: grid; place-items: center; color: #fff; transition: background .3s var(--ease), transform .3s var(--ease); }
+.img-card:hover .img-card-arrow { background: var(--blue-600); transform: rotate(45deg); }
+.img-card-arrow svg { width: 20px; height: 20px; }
+.img-card-body { position: absolute; inset: auto 0 0 0; padding: 22px 22px 24px; color: #fff; }
+.img-card-body h3 { color: #fff; font-size: 1.4rem; line-height: 1.1; }
+.img-card-body p { color: rgba(255,255,255,.82); font-size: .9rem; margin-top: 7px; }
+
+/* Pricing: uppercase coral plan name (DirtyMint feel) */
+.plan h3 { text-transform: uppercase; letter-spacing: .02em; color: var(--blue-600); }
+
+/* Uppercase chips for hero rating */
+.hero-rating span { letter-spacing: .01em; }
+
+@media (max-width: 760px) {
+  .img-card { aspect-ratio: 3 / 3.4; }
 }
