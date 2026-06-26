@@ -299,6 +299,18 @@ def review_card(text, name, place, initials, delay=0):
   <div class="who"><span class="avatar">{initials}</span><span><b>{name}</b><span>{place}</span></span></div>
 </div>"""
 
+def reviews_block(widget_embed, fallback_cards, depth=0):
+    """Render the live Google reviews widget when configured, else the curated
+    fallback cards. Either way it sits inside a `.grid cols-3` container on the
+    caller's page, so we only swap the inner content."""
+    if widget_embed and widget_embed.strip():
+        root = rel(depth)
+        return f"""<div class="reviews-embed reveal" data-google-reviews>
+{widget_embed}
+  <p class="center mt-3"><a class="btn btn-ghost" href="{BIZ['google']}">{icon('star')} See all reviews on Google {icon('arrow')}</a></p>
+</div>"""
+    return f'<div class="grid cols-3">{fallback_cards}</div>'
+
 def faq_block(items):
     rows = ""
     for q, a in items:

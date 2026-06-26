@@ -92,6 +92,10 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 2. **Wire up the forms** — `assets/js/main.js` currently captures leads to the console. Point the
    `form[data-lead]` submit handler at your CRM / email service (e.g. a form endpoint, Netlify
    Forms, or an API).
+3. **Live Google reviews (optional)** — paste a review-widget embed code into
+   `config/google-reviews-embed.html` and rebuild to auto-render your real Google reviews on the
+   homepage and Reviews page. Until then, curated reviews show as a fallback. Full instructions are
+   inside that file.
 3. **Confirm business details** — phone, email, address, hours, and review counts live in
    `build/sitedata.py` (`BIZ`). Update and rebuild.
 4. **Set the real domain** in `BIZ["domain"]` so canonical/OG/sitemap URLs are correct.

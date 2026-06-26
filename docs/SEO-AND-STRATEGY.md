@@ -206,6 +206,16 @@ blue with aqua/blue radial glows.
 - **Friction reducers:** "60 seconds", "no obligation", "same-day pricing", reminder opt-in checked
   by default, success state with a fallback click-to-call.
 - **Social proof near decisions:** reviews appear on service, area, landing, and home pages.
+
+### Live Google reviews
+
+The site supports **auto-updating Google reviews** via a drop-in widget. Paste your provider's
+embed code (Featurable, Trustindex, Elfsight, EmbedSocial — all Google-approved and free-tier
+friendly) into `config/google-reviews-embed.html`, then run `python3 build/build.py`. Your live
+reviews render on the **homepage reviews section** and the **Reviews page**; until then, the curated
+written reviews show automatically as a fallback (no empty section). Curated highlight cards remain
+on service/area/landing pages to protect page speed. Note: Google's own API caps at 5 reviews per
+location, which is why a widget (full review set, auto-refresh, compliant caching) is recommended.
 - **Risk reversal:** explicit 100% satisfaction guarantee, plus per-service guarantee lines on
   landing pages.
 - **Recurring revenue:** membership teaser on the homepage funnels to the plans page; plan-info

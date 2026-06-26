@@ -16,6 +16,20 @@ import schema as S
 
 PAGES = []  # (relpath, slug, lastmod, priority) for sitemap
 
+def load_reviews_widget():
+    """Return the Google reviews embed code if the owner has pasted one,
+    else '' so pages fall back to curated review cards."""
+    import re
+    p = os.path.join(ROOT, "config", "google-reviews-embed.html")
+    if not os.path.exists(p):
+        return ""
+    raw = open(p, encoding="utf-8").read()
+    # Ignore the instructional HTML comment(s) — only real markup counts.
+    stripped = re.sub(r"<!--.*?-->", "", raw, flags=re.S).strip()
+    return raw if stripped else ""
+
+REVIEWS_WIDGET = load_reviews_widget()
+
 def write(relpath, html, slug=None, priority="0.7"):
     path = os.path.join(ROOT, relpath)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -209,7 +223,7 @@ def build_home():
         <h2>{BIZ['rating']}★ from {BIZ['review_count']}+ reviews</h2>
         <p>We're proud to be one of the highest-rated exterior cleaning companies in the western metro. Here's what local homeowners say.</p>
       </div>
-      <div class="grid cols-3">{reviews_html}</div>
+      {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
       <div class="center mt-4"><a class="btn btn-ghost" href="reviews.html">Read more reviews {icon('arrow')}</a></div>
     </div>
   </section>
@@ -835,7 +849,7 @@ def build_reviews():
       <div class="stat reveal" data-delay="3"><div class="num" data-count="9400" data-suffix="+">9,400+</div><div class="label">Happy customers</div></div>
     </div>
   </div></section>
-  <section><div class="container"><div class="grid cols-3">{cards}</div>
+  <section><div class="container">{C.reviews_block(REVIEWS_WIDGET, cards, depth)}
     <div class="center mt-4"><a class="btn" href="{BIZ['google']}">Read &amp; leave a Google review {icon('arrow')}</a></div>
   </div></section>
   {C.cta_band(depth, heading="Join hundreds of happy homeowners", text="Experience the Barta difference for yourself. Get your free quote today.")}

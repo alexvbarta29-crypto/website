@@ -338,6 +338,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .review-card .who b { font-family: var(--font-head); font-size: .96rem; display: block; color: var(--navy-800); }
 .review-card .who span { font-size: .82rem; color: var(--slate-500); }
 
+/* Google reviews widget container */
+.reviews-embed { min-height: 220px; }
+.reviews-embed > p { margin-top: 28px; }
+
 /* ---------- Pricing / Plans ---------- */
 .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-items: stretch; }
 .plan { position: relative; background: #fff; border: 1.5px solid var(--line); border-radius: var(--r-xl); padding: 32px; box-shadow: var(--sh-sm); display: flex; flex-direction: column; transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
