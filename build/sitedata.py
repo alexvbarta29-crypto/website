@@ -37,6 +37,7 @@ SERVICES = [
         "slug": "window-cleaning",
         "name": "Window Cleaning",
         "icon": "window",
+        "image": "assets/img/window-cleaning-main.jpg",
         "short": "Streak-free, spot-free glass inside and out using pure-water and traditional methods.",
         "hero_sub": "Crystal-clear, streak-free windows that flood your home with light — inside, outside, screens, sills, and tracks.",
         "kw": "window cleaning Delano MN",

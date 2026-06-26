@@ -24,6 +24,21 @@ nothing builds trust for a home-service brand faster than authentic, well-lit jo
 > **Before/after tip:** shoot from a tripod or fixed spot so the "before" and "after" line up
 > perfectly when the slider moves. Same framing, same lighting, same crop.
 
+## Wired content photos (drop these in to go live)
+
+These exact filenames are already referenced on the site. Add the file and it appears
+automatically — until then, a branded placeholder shows in its place (no broken images).
+
+| File | Appears on | Suggested shot |
+| --- | --- | --- |
+| `hero-home.jpg` | Homepage hero | A bright, freshly cleaned home with spotless windows (landscape) |
+| `team-barta.jpg` | About page | The team / owner, friendly and professional |
+| `service-van.jpg` | About page ("Look for the Barta van") | Your branded BWW service van |
+| `window-cleaning-main.jpg` | Window Cleaning page | A tech cleaning a window, sun-lit glass |
+| `commercial-building-cleaning.jpg` | Commercial page | Crew cleaning a commercial storefront/building |
+
+Recommended: export as JPG (or WebP) ~1600px wide, landscape, under ~250 KB.
+
 ## The `.imgph` placeholders
 
 Throughout the HTML you'll see `<div class="imgph" …>` blocks with descriptive labels (e.g.

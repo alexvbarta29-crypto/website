@@ -124,9 +124,10 @@ def build_home():
           </ul>
         </div>
         <div class="hero-photo reveal in" data-delay="1">
-          <span class="imgph" style="position:absolute;inset:0" role="img" aria-label="A freshly cleaned Delano home with spotless windows — add your hero photo here">
+          <span class="imgph" style="position:absolute;inset:0" aria-hidden="true">
             <span class="ph-label">{icon('image')}<br>Your hero photo here</span>
           </span>
+          <img src="assets/img/hero-home.jpg" alt="A freshly cleaned Delano, MN home with spotless, streak-free windows" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1" onerror="this.remove()">
           <span class="photo-badge">{icon('star')} {BIZ['rating']}★ · {BIZ['review_count']}+ reviews</span>
         </div>
       </div>
@@ -370,7 +371,7 @@ def build_service(svc):
   <section>
     <div class="container">
       <div class="split reverse">
-        <div class="reveal">{C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
+        <div class="reveal">{C.photo(svc['image'], svc['name'] + " by Barta — professional crew at work in the Twin Cities", ratio="5/4", depth=depth) if svc.get('image') else C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
         <div class="reveal">
           <span class="eyebrow">What's included</span>
           <h2 class="mt-1">Every {svc['name'].lower()} includes</h2>
@@ -635,7 +636,7 @@ def build_commercial():
           <p>Your building is the first impression every customer, tenant, and partner forms about your business. Streaked windows and grimy entrances quietly cost you — clean ones quietly win. Barta delivers dependable, scheduled commercial cleaning that keeps your property looking its absolute best, without you having to manage it.</p>
           <p>We work around your hours, carry full liability and workers' comp coverage, and assign a single account contact so service is effortless. One vendor, every exterior need, zero hassle.</p>
         </div>
-        <div class="reveal">{C.imgph("Commercial storefront window cleaning", ratio="5/4")}</div>
+        <div class="reveal">{C.photo("assets/img/commercial-building-cleaning.jpg", "Barta crew cleaning a commercial building in the Twin Cities metro", ratio="5/4", depth=depth)}</div>
       </div>
     </div>
   </section>
@@ -793,9 +794,22 @@ def build_about():
       <p>That promise hasn't changed. We've grown to a full team serving homes and businesses across Wright, Hennepin, and Carver counties, and added gutter cleaning, pressure washing, house and roof soft washing, and holiday lighting along the way. But every job still gets the same care it did on day one — because our name is on it.</p>
       <p>When you call Barta, you're not getting a call center or a rotating cast of subcontractors. You're getting a local, family-owned team that genuinely cares whether your home looks its best.</p>
     </div>
-    <div class="reveal">{C.imgph("The Barta family team in Delano", ratio="5/4")}</div>
+    <div class="reveal">{C.photo("assets/img/team-barta.jpg", "The Barta Window Washing team in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
-  <section class="bg-mist"><div class="container">
+  <section class="bg-mist"><div class="container"><div class="split reverse">
+    <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
+    <div class="reveal">
+      <span class="eyebrow">On the road near you</span>
+      <h2 class="mt-1">Look for the Barta van</h2>
+      <p>Our clearly branded, fully stocked service vans are a familiar sight across Delano and the western metro. When one pulls into your driveway, you'll know exactly who's arriving — a uniformed, insured, local crew that treats your home like its own.</p>
+      <ul class="checklist mt-2">
+        <li>{icon('check-circle')} Uniformed, background-checked technicians</li>
+        <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
+        <li>{icon('check-circle')} Licensed &amp; insured on every visit</li>
+      </ul>
+    </div>
+  </div></div></section>
+  <section><div class="container">
     <div class="section-head center"><span class="eyebrow">What we stand for</span><h2>Our values</h2></div>
     <div class="grid cols-2">{val_html}</div>
   </div></section>

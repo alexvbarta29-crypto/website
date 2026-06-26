@@ -342,6 +342,16 @@ def faq_block(items):
 def imgph(label, ratio="16/10", depth=0, extra_class=""):
     return f'<div class="imgph {extra_class}" style="aspect-ratio:{ratio}" role="img" aria-label="{label}"><span class="ph-label">{icon("image")}<br>{label}</span></div>'
 
+def photo(src, alt, ratio="5/4", depth=0, cls=""):
+    """Real <img> layered over the gradient placeholder. If the file is missing
+    (e.g. not uploaded yet) the img hides itself and the placeholder shows —
+    no broken-image icons, graceful before and after the photo exists."""
+    root = rel(depth)
+    return (f'<div class="photo {cls}" style="aspect-ratio:{ratio}" role="img" aria-label="{alt}">'
+            f'<span class="imgph" aria-hidden="true"><span class="ph-label">{icon("image")}<br>{alt}</span></span>'
+            f'<img src="{root}{src}" alt="{alt}" loading="lazy" decoding="async" '
+            f'onerror="this.remove()"></div>')
+
 def crumbs(items, depth=0):
     """items = [(label, href_or_None), ...]"""
     parts = []

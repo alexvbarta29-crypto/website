@@ -578,3 +578,9 @@ html.js .reveal.in { opacity: 1; transform: none; }
 @media (max-width: 760px) {
   .img-card { aspect-ratio: 3 / 3.4; }
 }
+
+/* Real photo with graceful placeholder fallback */
+.photo { position: relative; border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--sh-lg); }
+.photo .imgph { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; }
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+.hero-photo .photo { box-shadow: none; border-radius: 0; height: 100%; }
