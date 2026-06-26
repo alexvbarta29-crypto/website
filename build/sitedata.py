@@ -213,6 +213,7 @@ SERVICES = [
         "slug": "screen-cleaning",
         "name": "Screen Cleaning",
         "icon": "screen",
+        "image": "assets/img/screen-cleaning-main.jpg",
         "short": "Hand-washed window and patio screens that breathe better and look brand new.",
         "hero_sub": "Dingy screens dull your view and your windows. We hand-wash every screen for a clear, fresh finish.",
         "kw": "window screen cleaning Delano MN",
