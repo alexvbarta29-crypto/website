@@ -64,8 +64,7 @@ def nav(depth=0):
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
-      <span class="brand-mark">{icon('slashes')}</span>
-      <span class="brand-word">BARTA<small>Window Washing</small></span>
+      <img class="brand-logo" src="{root}assets/img/logo-barta.svg" alt="{BIZ['name']}" width="190" height="34">
     </a>
     <ul class="nav-links">
       <li><a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a></li>
@@ -85,7 +84,7 @@ def nav(depth=0):
   <div class="drawer-scrim"></div>
   <div class="drawer-panel">
     <div class="drawer-head">
-      <a class="brand" href="{root}index.html"><span class="brand-mark">{icon('slashes')}</span><span class="brand-word">BARTA</span></a>
+      <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-barta.svg" alt="{BIZ['name']}" width="170" height="30"></a>
       <button class="drawer-close" aria-label="Close menu">{icon('x')}</button>
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
@@ -131,7 +130,7 @@ def footer(depth=0):
   <div class="container">
     <div class="footer-top">
       <div class="footer-about">
-        <a class="brand" href="{root}index.html"><span class="brand-mark">{icon('slashes')}</span><span class="brand-word">BARTA<small>Window Washing</small></span></a>
+        <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-barta-white.svg" alt="{BIZ['name']}" width="190" height="34"></a>
         <p>{BIZ['tagline']}. Family-owned, fully insured exterior cleaning for homes and businesses across the western Twin Cities metro.</p>
         <ul class="footer-contact">
           <li>{icon('pin')}<span>{BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</span></li>

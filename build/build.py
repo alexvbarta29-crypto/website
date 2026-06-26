@@ -1449,6 +1449,16 @@ def build_images():
             '<text x="152" y="132" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="9" fill="#67676f">WINDOW WASHING</text></svg>')
     write_asset("assets/img/logo.svg", logo)
 
+    # Header logo lockup matching the official Barta mark (coral // + bold BARTA).
+    # Black wordmark for light backgrounds (nav/drawer); white for dark (footer).
+    def _logo(text_fill):
+        return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 548 120" width="548" height="120">'
+                '<g fill="#fb4d3d"><path d="M44 16 H84 L46 104 H6 Z"/><path d="M104 16 H144 L106 104 H66 Z"/></g>'
+                f'<text x="166" y="93" font-family="\'Arial Black\',\'Helvetica Neue\',Arial,sans-serif" '
+                f'font-size="92" font-weight="900" letter-spacing="0" fill="{text_fill}">BARTA</text></svg>')
+    write_asset("assets/img/logo-barta.svg", _logo("#16161b"))
+    write_asset("assets/img/logo-barta-white.svg", _logo("#ffffff"))
+
     # OG cover — black with coral // mark + wordmark
     og = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">'
           '<rect width="1200" height="630" fill="#111116"/>'

@@ -160,6 +160,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .nav-wrap.scrolled { padding-top: 8px; padding-bottom: 8px; }
 .nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.16); background: rgba(255,255,255,.85); }
 .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-head); font-weight: 800; font-size: 1.18rem; letter-spacing: -.02em; color: var(--navy-800); }
+.brand-logo { height: 32px; width: auto; display: block; }
+.footer .brand-logo { height: 30px; }
+.drawer-head .brand-logo { height: 28px; }
 .brand { gap: 12px; font-size: 1.32rem; }
 .brand-mark { width: 42px; height: 30px; flex: none; display: grid; place-items: center; color: var(--blue-600); }
 .brand-mark svg { width: 42px; height: 30px; }
