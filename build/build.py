@@ -308,7 +308,7 @@ def build_service(svc):
       {C.crumbs([("Home", "../index.html"), ("Services", "../residential.html"), (svc['name'], None)])}
       <div class="hero-grid">
         <div>
-          <span class="eyebrow" style="color:#aee0ff">{svc['name']}</span>
+          <span class="eyebrow" style="color:#ff9b86">{svc['name']}</span>
           <h1 class="mt-1">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
           <p class="lead">{svc['hero_sub']}</p>
           <div class="phero-actions">
@@ -465,7 +465,7 @@ def build_plans():
     <div class="container">
       {C.crumbs([("Home", "index.html"), ("Service Plans", None)])}
       <div style="max-width:760px">
-        <span class="eyebrow" style="color:#aee0ff">Barta Care Memberships</span>
+        <span class="eyebrow" style="color:#ff9b86">Barta Care Memberships</span>
         <h1 class="mt-1">A spotless home, on autopilot</h1>
         <p class="lead">Stop scheduling, stop remembering, stop climbing ladders. Our maintenance memberships keep your windows, gutters, and exterior effortlessly clean all year — with priority scheduling, member-only pricing, and free inspections.</p>
         <div class="phero-actions">
@@ -555,7 +555,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
       {crumbs}
       <div class="hero-grid">
         <div>
-          <span class="eyebrow" style="color:#aee0ff">{eyebrow}</span>
+          <span class="eyebrow" style="color:#ff9b86">{eyebrow}</span>
           <h1 class="mt-1">{h1}</h1>
           <p class="lead">{lead}</p>
           <div class="phero-actions">
@@ -573,7 +573,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
     <div class="container">
       {crumbs}
       <div style="max-width:760px">
-        <span class="eyebrow" style="color:#aee0ff">{eyebrow}</span>
+        <span class="eyebrow" style="color:#ff9b86">{eyebrow}</span>
         <h1 class="mt-1">{h1}</h1>
         <p class="lead">{lead}</p>
       </div>
@@ -972,7 +972,7 @@ def build_area(a):
     {C.crumbs([("Home", "../index.html"), ("Service Areas", "../service-areas.html"), (a['city'], None)])}
     <div class="hero-grid">
       <div>
-        <span class="eyebrow" style="color:#aee0ff">Serving {a['city']}, MN{homebase}</span>
+        <span class="eyebrow" style="color:#ff9b86">Serving {a['city']}, MN{homebase}</span>
         <h1 class="mt-1">Premium exterior cleaning in {a['city']}</h1>
         <p class="lead">Spotless windows, clear gutters, and a fresh-washed exterior for {a['city']} homes and businesses — from a local, family-owned team that treats your property like its own.</p>
         <div class="phero-actions">
@@ -1245,7 +1245,7 @@ def build_post(p, idx):
   <section class="phero"><div class="container">
     {C.crumbs([("Home", "../index.html"), ("Blog", "../blog.html"), (p['cat'], None)])}
     <div style="max-width:760px">
-      <span class="eyebrow" style="color:#aee0ff">{p['cat']} · {p['read']} read</span>
+      <span class="eyebrow" style="color:#ff9b86">{p['cat']} · {p['read']} read</span>
       <h1 class="mt-1">{p['title']}</h1>
       <p class="lead">{p['excerpt']}</p>
     </div>
@@ -1353,7 +1353,7 @@ def build_landing(L):
 
   <section class="bg-deep"><div class="container">
     <div class="cta-band" style="background:transparent;padding:0">
-      <span class="eyebrow" style="color:#aee0ff;justify-content:center">Our promise to you</span>
+      <span class="eyebrow" style="color:#ff9b86;justify-content:center">Our promise to you</span>
       <h2 class="mt-1">{L['guarantee']}</h2>
       <p>Backed by our 100% satisfaction guarantee. If you're not thrilled, we make it right — free.</p>
     </div>
@@ -1386,44 +1386,50 @@ def gradient_svg(stops, w=800, h=500):
 def build_images():
     # Before/after placeholder pairs — "before" muted/grimy, "after" bright/clean.
     pairs = {
-        "ba1": ("#6b6f63", "#8a8f80", "Window — before", "#1f6fd6", "#18b6c9", "Window — after"),
-        "ba2": ("#7a7264", "#938b7c", "Siding — before", "#2e85e6", "#4fb6f0", "Siding — after"),
-        "ba3": ("#5f6660", "#7d847d", "Roof — before", "#155a8a", "#1f6fd6", "Roof — after"),
+        "ba1": ("#6b6f63", "#8a8f80", "Window — before", "Window — after"),
+        "ba2": ("#7a7264", "#938b7c", "Siding — before", "Siding — after"),
+        "ba3": ("#5f6660", "#7d847d", "Roof — before", "Roof — after"),
     }
-    for name, (b1, b2, blabel, a1, a2, alabel) in pairs.items():
+    for name, (b1, b2, blabel, alabel) in pairs.items():
         before = gradient_svg(
             f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{b1}"/><stop offset="1" stop-color="{b2}"/></linearGradient>'
             f'<filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.28"/></feComponentTransfer></filter></defs>'
             f'<rect width="800" height="500" fill="url(#g)"/><rect width="800" height="500" filter="url(#n)" opacity="0.5"/>'
             f'<g opacity="0.3" stroke="#3a3a30" stroke-width="3"><path d="M0 120 H800 M0 250 H800 M0 380 H800 M260 0 V500 M530 0 V500"/></g>'
             f'<text x="40" y="460" font-family="sans-serif" font-size="26" fill="#ffffff" opacity="0.85">{blabel}</text>')
+        # "after" = clean, bright glass with a subtle coral sky accent
         after = gradient_svg(
-            f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{a1}"/><stop offset="1" stop-color="{a2}"/></linearGradient></defs>'
-            f'<rect width="800" height="500" fill="url(#g)"/>'
-            f'<g opacity="0.18" stroke="#ffffff" stroke-width="2"><path d="M0 120 H800 M0 250 H800 M0 380 H800 M260 0 V500 M530 0 V500"/></g>'
+            f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f3"/><stop offset="1" stop-color="#ffffff"/></linearGradient>'
+            f'<radialGradient id="s" cx="0.8" cy="0.18" r="0.5"><stop offset="0" stop-color="#ffd9d0"/><stop offset="1" stop-color="#ffd9d0" stop-opacity="0"/></radialGradient></defs>'
+            f'<rect width="800" height="500" fill="url(#g)"/><rect width="800" height="500" fill="url(#s)"/>'
+            f'<g opacity="0.22" stroke="#9aa0a8" stroke-width="2"><path d="M0 120 H800 M0 250 H800 M0 380 H800 M260 0 V500 M530 0 V500"/></g>'
             f'<g opacity="0.5" fill="#ffffff"><circle cx="640" cy="110" r="60"/><circle cx="690" cy="80" r="26"/></g>'
-            f'<text x="40" y="460" font-family="sans-serif" font-size="26" fill="#ffffff">{alabel}</text>')
+            f'<text x="40" y="460" font-family="sans-serif" font-size="26" fill="#16161b">{alabel}</text>')
         write_asset(f"assets/img/{name}-before.svg", before)
         write_asset(f"assets/img/{name}-after.svg", after)
 
-    # Favicon
+    # Favicon — black rounded square with the coral // mark
     favicon = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-               '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f6fd6"/><stop offset="1" stop-color="#18b6c9"/></linearGradient></defs>'
-               '<rect width="64" height="64" rx="16" fill="url(#g)"/>'
-               '<g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><rect x="18" y="16" width="28" height="28" rx="3"/><path d="M32 16v28M18 30h28"/></g>'
-               '<path d="M44 50l4 4 8-8" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+               '<rect width="64" height="64" rx="15" fill="#111116"/>'
+               '<g fill="#fb4d3d"><path d="M27 14 H38 L27 50 H16 Z"/><path d="M46 14 H57 L46 50 H35 Z"/></g></svg>')
     write_asset("assets/img/favicon.svg", favicon)
 
-    # OG cover
+    # Standalone logo lockup (coral // + BARTA wordmark) for email sigs, etc.
+    logo = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" width="520" height="150">'
+            '<g fill="#fb4d3d"><path d="M40 25 H72 L36 125 H4 Z"/><path d="M96 25 H128 L92 125 H60 Z"/></g>'
+            '<text x="150" y="103" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="2" fill="#16161b">BARTA</text>'
+            '<text x="152" y="132" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="9" fill="#67676f">WINDOW WASHING</text></svg>')
+    write_asset("assets/img/logo.svg", logo)
+
+    # OG cover — black with coral // mark + wordmark
     og = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">'
-          '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b2a4a"/><stop offset="0.6" stop-color="#103a63"/><stop offset="1" stop-color="#155a8a"/></linearGradient></defs>'
-          '<rect width="1200" height="630" fill="url(#g)"/>'
-          '<circle cx="980" cy="120" r="220" fill="#18b6c9" opacity="0.25"/><circle cx="120" cy="560" r="200" fill="#2e85e6" opacity="0.3"/>'
-          '<rect x="80" y="120" width="56" height="56" rx="14" fill="#18b6c9"/>'
-          '<text x="160" y="160" font-family="sans-serif" font-size="34" font-weight="700" fill="#aee0ff">BARTA WINDOW WASHING</text>'
-          '<text x="80" y="330" font-family="sans-serif" font-size="76" font-weight="800" fill="#ffffff">The clearest view</text>'
-          '<text x="80" y="420" font-family="sans-serif" font-size="76" font-weight="800" fill="#ffffff">in Delano starts here.</text>'
-          '<text x="80" y="500" font-family="sans-serif" font-size="32" fill="#cfe6ff">Premium exterior cleaning · 4.9★ · Licensed &amp; insured</text></svg>')
+          '<rect width="1200" height="630" fill="#111116"/>'
+          '<circle cx="1010" cy="110" r="240" fill="#fb4d3d" opacity="0.20"/><circle cx="120" cy="560" r="210" fill="#ff6a3d" opacity="0.16"/>'
+          '<g fill="#fb4d3d"><path d="M84 118 H120 L82 232 H46 Z"/><path d="M146 118 H182 L144 232 H108 Z"/></g>'
+          '<text x="210" y="210" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="6" fill="#ff9b86">BARTA WINDOW WASHING</text>'
+          '<text x="80" y="380" font-family="Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">The clearest view</text>'
+          '<text x="80" y="470" font-family="Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">in Delano starts here.</text>'
+          '<text x="80" y="548" font-family="Arial, sans-serif" font-size="31" fill="#c9c9cf">Premium exterior cleaning · 4.9★ · Licensed &amp; insured</text></svg>')
     write_asset("assets/img/og-cover.svg", og)
 
 def write_asset(relpath, content):

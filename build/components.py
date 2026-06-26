@@ -28,7 +28,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <meta name="description" content="{desc}">
 {'<meta name="keywords" content="' + primary_kw + '">' if primary_kw else ''}
 <link rel="canonical" href="{canonical}">
-<meta name="theme-color" content="#0b2a4a">
+<meta name="theme-color" content="#16161b">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <!-- Open Graph / social -->
 <meta property="og:type" content="{og_type}">
@@ -65,8 +65,8 @@ def nav(depth=0):
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
-      <span class="brand-mark">{icon('window')}</span>
-      <span>Barta<small>Window Washing</small></span>
+      <span class="brand-mark">{icon('slashes')}</span>
+      <span class="brand-word">BARTA<small>Window Washing</small></span>
     </a>
     <ul class="nav-links">
       <li class="nav-item">
@@ -105,7 +105,7 @@ def nav(depth=0):
   <div class="drawer-scrim"></div>
   <div class="drawer-panel">
     <div class="drawer-head">
-      <a class="brand" href="{root}index.html"><span class="brand-mark">{icon('window')}</span><span>Barta</span></a>
+      <a class="brand" href="{root}index.html"><span class="brand-mark">{icon('slashes')}</span><span class="brand-word">BARTA</span></a>
       <button class="drawer-close" aria-label="Close menu">{icon('x')}</button>
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
@@ -151,7 +151,7 @@ def footer(depth=0):
   <div class="container">
     <div class="footer-top">
       <div class="footer-about">
-        <a class="brand" href="{root}index.html"><span class="brand-mark">{icon('window')}</span><span>Barta<small>Window Washing</small></span></a>
+        <a class="brand" href="{root}index.html"><span class="brand-mark">{icon('slashes')}</span><span class="brand-word">BARTA<small>Window Washing</small></span></a>
         <p>{BIZ['tagline']}. Family-owned, fully insured exterior cleaning for homes and businesses across the western Twin Cities metro.</p>
         <ul class="footer-contact">
           <li>{icon('pin')}<span>{BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</span></li>
@@ -282,7 +282,7 @@ def cta_band(depth=0, heading="Ready for windows that wow?",
              primary=("Get Your Free Quote", "request-quote.html")):
     root = rel(depth)
     return f"""<section><div class="container"><div class="cta-band reveal">
-  <span class="eyebrow" style="color:#aee0ff;justify-content:center">Let's get started</span>
+  <span class="eyebrow" style="color:#ff9b86;justify-content:center">Let's get started</span>
   <h2 class="mt-1">{heading}</h2>
   <p>{text}</p>
   <div class="cta-actions">

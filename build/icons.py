@@ -7,6 +7,7 @@ def _svg(inner, fill=False):
     return f'<svg {attrs}>{inner}</svg>'
 
 ICONS = {
+    "slashes": '<svg viewBox="0 0 132 100" fill="currentColor" aria-hidden="true"><path d="M42 5 H68 L34 95 H8 Z"/><path d="M88 5 H114 L80 95 H54 Z"/></svg>',
     "window": _svg('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M3 12h18"/>'),
     "gutter": _svg('<path d="M3 7h18l-1.5 6.5a3 3 0 0 1-3 2.3H7.5a3 3 0 0 1-3-2.3L3 7Z"/><path d="M9 16v3M15 16v3"/>'),
     "pressure": _svg('<path d="M14 4h3v3M21 3l-6 6M11 13a4 4 0 1 1-5.6 5.6A4 4 0 0 1 11 13Z"/><path d="M9.5 14.5 13 11"/>'),

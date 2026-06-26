@@ -144,24 +144,29 @@ keep the team page authentic, and publish a steady cadence of helpful local blog
 
 ## 6. Color palette
 
-| Token | Hex | Use |
+Built from the Barta logo: the coral **//** mark, heavy black wordmark, and white. Bold, premium,
+and unmistakably on-brand.
+
+| Token (CSS var) | Hex | Use |
 | --- | --- | --- |
-| Navy 900 | `#08203b` | Footer, deepest backgrounds |
-| Navy 800 | `#0b2a4a` | Headings on light, deep gradients |
-| Blue 600 | `#1f6fd6` | Primary brand / links / icons |
-| Blue 500 | `#2e85e6` | Gradient mid |
-| Sky 400 | `#4fb6f0` | Focus rings, accents |
-| Aqua 400 | `#18b6c9` | Secondary brand (gradient end) |
-| Aqua 300 | `#5fd3df` | Hero glow, highlights |
+| Coral (`--blue-600`) | `#fb4d3d` | **Primary brand** — CTAs, links, icons, the // mark |
+| Coral light (`--blue-500`) | `#ff5e43` | Gradient mid |
+| Coral-orange (`--aqua-400`) | `#ff6a3d` | Gradient end |
+| Light coral (`--sky-400`) | `#ff8a73` | Focus rings |
+| Pale coral (`--aqua-300`) | `#ffb3a3` | Accents/eyebrows on dark |
+| Near-black (`--navy-900`) | `#0a0a0c` | Footer, deepest backgrounds |
+| Ink (`--navy-800` / `--ink`) | `#16161b` / `#121215` | Headings, dark sections, wordmark |
+| Charcoal (`--navy-700`) | `#24242b` | Dark gradient top |
 | Gold | `#ffb400` | Star ratings |
-| Green | `#1fb673` | Success, checkmarks, guarantees |
-| Ink | `#0d1b2a` | Body headings |
-| Slate 700/500 | `#33445a` / `#5a6b80` | Body / muted text |
-| Mist | `#f4f8fc` | Section backgrounds |
+| Green | `#18b673` | Success state, guarantee checkmarks |
+| Slate 700/500 | `#3b3b42` / `#67676f` | Body / muted text |
+| Line / Mist | `#ececee` / `#f7f7f8` | Borders / section backgrounds |
 | White | `#ffffff` | Cards, base |
 
-Signature gradient: **`135deg, #1f6fd6 → #18b6c9`** (water/clarity). Deep hero gradient layers navy →
-blue with aqua/blue radial glows.
+Signature gradient: **`135deg, #fb4d3d → #ff6a3d`** (coral). Dark sections use a near-black gradient
+(`#1b1b21 → #08080a`) with soft coral radial glows. The logo mark, favicon, and social card all use
+coral-on-black. Variable names are inherited from the prior theme but the values are the brand
+palette — change them once in `:root` (assets/css/styles.css) to re-tune site-wide.
 
 ---
 
