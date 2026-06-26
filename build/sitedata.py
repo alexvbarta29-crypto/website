@@ -288,6 +288,22 @@ SERVICES = [
 ]
 
 # ---------------------------------------------------------------------------
+# Header "Our Services" dropdown — exact list as offered, mapped to pages.
+# (label, target page relative to site root)
+# ---------------------------------------------------------------------------
+DROPDOWN_SERVICES = [
+    ("Exterior Window Cleaning", "services/window-cleaning.html"),
+    ("Interior Window Cleaning", "services/window-cleaning.html"),
+    ("Screen Cleaning Services", "services/screen-cleaning.html"),
+    ("Track Detailing", "services/window-cleaning.html"),
+    ("Solar Panel Cleaning", "services/solar-panel-cleaning.html"),
+    ("Gutter Cleaning", "services/gutter-cleaning.html"),
+    ("Soft Washing", "services/soft-washing.html"),
+    ("Pressure Washing", "services/pressure-washing.html"),
+    ("Christmas Light Installation", "services/christmas-light-installation.html"),
+]
+
+# ---------------------------------------------------------------------------
 # Service areas — each drives a local landing page
 # ---------------------------------------------------------------------------
 AREAS = [

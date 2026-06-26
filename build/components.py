@@ -1,6 +1,6 @@
 """Reusable HTML partials and section builders."""
 import json
-from sitedata import BIZ, SERVICES, AREAS, BADGES
+from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES
 from icons import icon
 
 # Navigation grouping for mega-menu
@@ -72,7 +72,7 @@ def nav(depth=0):
       <li class="nav-item">
         <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
         <div class="nav-menu nav-menu-simple" role="menu">
-          {"".join(f'<a href="{root}services/{s["slug"]}.html">{s["name"]}</a>' for s in NAV_SERVICES)}
+          {"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
           <a class="nav-menu-all" href="{root}residential.html">View all services {icon('arrow')}</a>
         </div>
       </li>
@@ -95,8 +95,8 @@ def nav(depth=0):
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
       <a href="{root}index.html">Home</a>
-      <details class="drawer-group"><summary>Services {icon('chevron')}</summary>
-        <div class="sub">{"".join(f'<a href="{root}services/{s["slug"]}.html">{s["name"]}</a>' for s in SERVICES)}</div>
+      <details class="drawer-group"><summary>Our Services {icon('chevron')}</summary>
+        <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
       </details>
       <a href="{root}service-plans.html">Service Plans</a>
       <a href="{root}commercial.html">Commercial</a>
