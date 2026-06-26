@@ -9,17 +9,16 @@ nothing builds trust for a home-service brand faster than authentic, well-lit jo
 | File | Used for | Replace with |
 | --- | --- | --- |
 | `favicon.svg` | Browser tab / PWA icon | On-brand: coral // mark on black. Swap for your exact icon if desired |
-| `<img width="915" height="768" alt="Artboard 4" src="https://github.com/user-attachments/assets/9b1f0ba4-36f0-4dfc-ae3d-44b8f1ec981a" />
-` | Standalone logo (email sigs, docs) | The // mark + BARTA wordmark. Drop in your original vector to be pixel-perfect |
+| `logo.svg` | Standalone logo (email sigs, docs) | The // mark + BARTA wordmark. Drop in your original vector to be pixel-perfect |
 | `og-cover.svg` | Social share preview | On-brand black + coral card. Optionally export a 1200×630 `og-cover.jpg` photo version |
+| `ba1-before.svg` / `ba1-after.svg` | Window before/after slider | Real window job, same camera angle |
+| `ba2-before.svg` / `ba2-after.svg` | House/siding before/after | Real soft-wash job, same angle |
+| `ba3-before.svg` / `ba3-after.svg` | Roof before/after | Real roof job, same angle |
 
 > **Brand note:** the nav/footer logo is rendered as crisp inline SVG (the coral **//** mark +
 > "BARTA" wordmark) so it scales perfectly and stays editable. If you want the wordmark to match your
 > logo's exact typeface, drop your original logo file here and we can swap the nav to use it as an
 > `<img>` instead.
-| `ba1-before.svg` / `ba1-after.svg` | Window before/after slider | Real window job, same camera angle |
-| `ba2-before.svg` / `ba2-after.svg` | House/siding before/after | Real soft-wash job, same angle |
-| `ba3-before.svg` / `ba3-after.svg` | Roof before/after | Real roof job, same angle |
 
 > **Before/after tip:** shoot from a tripod or fixed spot so the "before" and "after" line up
 > perfectly when the slider moves. Same framing, same lighting, same crop.
