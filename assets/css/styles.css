@@ -160,9 +160,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .nav-wrap.scrolled { padding-top: 8px; padding-bottom: 8px; }
 .nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.16); background: rgba(255,255,255,.85); }
 .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-head); font-weight: 800; font-size: 1.18rem; letter-spacing: -.02em; color: var(--navy-800); }
-.brand-logo { height: 32px; width: auto; display: block; }
-.footer .brand-logo { height: 30px; }
-.drawer-head .brand-logo { height: 28px; }
+.brand-logo { height: 40px; width: auto; display: block; }
+.footer .brand-logo { height: 44px; }
+.drawer-head .brand-logo { height: 34px; }
 .brand { gap: 12px; font-size: 1.32rem; }
 .brand-mark { width: 42px; height: 30px; flex: none; display: grid; place-items: center; color: var(--blue-600); }
 .brand-mark svg { width: 42px; height: 30px; }
@@ -170,7 +170,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .brand small { display: block; font-family: var(--font-head); font-weight: 700; font-size: .58rem; letter-spacing: .22em; text-transform: uppercase; color: var(--slate-500); line-height: 1; margin-top: 4px; }
 .footer .brand small { color: rgba(255,255,255,.6); }
 
-.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-links { display: flex; align-items: center; flex: 1; justify-content: center; gap: clamp(6px, 1.6vw, 26px); }
 .nav-links > li > a, .nav-trigger {
   display: inline-flex; align-items: center; gap: 5px;
   font-weight: 600; font-size: .94rem; color: var(--slate-700);
@@ -587,3 +587,19 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .photo .imgph { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; }
 .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
 .hero-photo .photo { box-shadow: none; border-radius: 0; height: 100%; }
+
+/* "View all services" row in the Our Services mega-menu */
+.nav-menu-all { grid-column: 1 / -1; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 14px !important; }
+.nav-menu-all .mi-icon { background: var(--grad-brand); color: #fff; }
+
+/* Full-bleed photo hero (DirtyMint-style) */
+.hero-photo-full { position: relative; min-height: clamp(580px, 82vh, 800px); display: flex; align-items: center; padding-top: calc(var(--nav-h) + 48px); padding-bottom: clamp(48px, 7vw, 88px); overflow: hidden; }
+.hero-photo-full .hero-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; z-index: -2; }
+.hero-photo-full .hero-overlay { position: absolute; inset: 0; z-index: -1; background:
+  linear-gradient(96deg, rgba(8,8,10,.88) 0%, rgba(8,8,10,.66) 38%, rgba(8,8,10,.18) 70%, rgba(8,8,10,.04) 100%),
+  linear-gradient(0deg, rgba(8,8,10,.5) 0%, transparent 42%); }
+.hero-photo-full .hero-content { max-width: 660px; position: relative; }
+@media (max-width: 760px) {
+  .hero-photo-full .hero-bg-img { object-position: 68% center; }
+  .hero-photo-full .hero-overlay { background: linear-gradient(180deg, rgba(8,8,10,.55), rgba(8,8,10,.82)); }
+}

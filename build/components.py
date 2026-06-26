@@ -61,15 +61,22 @@ def _menu_item(s, root):
 
 def nav(depth=0):
     root = rel(depth)
+    services_menu = "".join(_menu_item(s, root) for s in NAV_SERVICES)
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
-      <img class="brand-logo" src="{root}assets/img/logo-barta.svg" alt="{BIZ['name']}" width="190" height="34">
+      <img class="brand-logo" src="{root}assets/img/logo-bww.png" alt="{BIZ['name']}" width="148" height="40">
     </a>
     <ul class="nav-links">
       <li><a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a></li>
       <li><a href="{root}about.html">About Us</a></li>
-      <li><a href="{root}residential.html">Our Services</a></li>
+      <li class="nav-item">
+        <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
+        <div class="nav-menu" role="menu">
+          {services_menu}
+          <a class="nav-menu-all" href="{root}residential.html"><span class="mi-icon">{icon('arrow')}</span><span><span class="mi-title">View all services</span><span class="mi-desc">Everything your home's exterior needs</span></span></a>
+        </div>
+      </li>
       <li><a href="{root}service-plans.html">Plans</a></li>
       <li><a href="{root}reviews.html">Reviews</a></li>
     </ul>
@@ -84,7 +91,7 @@ def nav(depth=0):
   <div class="drawer-scrim"></div>
   <div class="drawer-panel">
     <div class="drawer-head">
-      <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-barta.svg" alt="{BIZ['name']}" width="170" height="30"></a>
+      <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-bww.png" alt="{BIZ['name']}" width="150" height="32"></a>
       <button class="drawer-close" aria-label="Close menu">{icon('x')}</button>
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
@@ -130,7 +137,7 @@ def footer(depth=0):
   <div class="container">
     <div class="footer-top">
       <div class="footer-about">
-        <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-barta-white.svg" alt="{BIZ['name']}" width="190" height="34"></a>
+        <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-bww-white.png" alt="{BIZ['name']}" width="160" height="44"></a>
         <p>{BIZ['tagline']}. Family-owned, fully insured exterior cleaning for homes and businesses across the western Twin Cities metro.</p>
         <ul class="footer-contact">
           <li>{icon('pin')}<span>{BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</span></li>

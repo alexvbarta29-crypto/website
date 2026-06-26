@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+
+# stray root uploads (processed into assets/img/)
+*.JPG
+/Artboard*.png

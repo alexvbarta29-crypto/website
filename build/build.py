@@ -105,31 +105,23 @@ def build_home():
     html += f"""
 <main id="main">
   <!-- HERO -->
-  <section class="hero">
-    <div class="hero-bg"></div>
+  <section class="hero hero-photo-full">
+    <img class="hero-bg-img" src="assets/img/hero-home.jpg" alt="Barta Window Washing technician with the branded BWW service van in the Delano, MN area" width="1920" height="1442" fetchpriority="high" decoding="async">
+    <div class="hero-overlay"></div>
     <div class="container">
-      <div class="hero-grid">
-        <div class="reveal in">
-          <div class="hero-rating">{stars_row()}<span>{BIZ['rating']}/5 from {BIZ['review_count']}+ happy neighbors</span></div>
-          <h1>Clearer windows.<br>Brighter <em>home.</em></h1>
-          <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing across the western Twin Cities — done by a local, family-owned team you can trust.</p>
-          <div class="hero-actions">
-            <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
-            <a class="btn btn-lg btn-light" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
-          </div>
-          <ul class="hero-trust">
-            <li>{icon('shield')} Licensed &amp; insured</li>
-            <li>{icon('home')} Family owned since {BIZ['founded']}</li>
-            <li>{icon('check-circle')} 100% satisfaction guarantee</li>
-          </ul>
+      <div class="hero-content reveal in">
+        <div class="hero-rating">{stars_row()}<span>{BIZ['rating']}/5 from {BIZ['review_count']}+ happy neighbors</span></div>
+        <h1>Clearer windows.<br>Brighter <em>home.</em></h1>
+        <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing across the western Twin Cities — done by a local, family-owned team you can trust.</p>
+        <div class="hero-actions">
+          <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
+          <a class="btn btn-lg btn-light" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
         </div>
-        <div class="hero-photo reveal in" data-delay="1">
-          <span class="imgph" style="position:absolute;inset:0" aria-hidden="true">
-            <span class="ph-label">{icon('image')}<br>Your hero photo here</span>
-          </span>
-          <img src="assets/img/hero-home.jpg" alt="A freshly cleaned Delano, MN home with spotless, streak-free windows" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1" onerror="this.remove()">
-          <span class="photo-badge">{icon('star')} {BIZ['rating']}★ · {BIZ['review_count']}+ reviews</span>
-        </div>
+        <ul class="hero-trust">
+          <li>{icon('shield')} Licensed &amp; insured</li>
+          <li>{icon('home')} Family owned since {BIZ['founded']}</li>
+          <li>{icon('check-circle')} 100% satisfaction guarantee</li>
+        </ul>
       </div>
     </div>
   </section>
