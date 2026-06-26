@@ -1,0 +1,19 @@
+# Netlify deploy config — the site is plain static files at the repo root.
+# Connect this repo in the Netlify dashboard (or run `netlify deploy`) and
+# it will publish with no build step required.
+
+[build]
+  publish = "."
+  # The HTML is pre-generated and committed, so no build command is needed.
+  # To regenerate during deploy instead, uncomment the next line:
+  # command = "python3 build/build.py"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
