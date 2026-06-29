@@ -106,7 +106,7 @@ def build_home():
 <main id="main">
   <!-- HERO -->
   <section class="hero hero-photo-full">
-    <img class="hero-bg-img" src="assets/img/hero-home.jpg" alt="Barta Window Washing technician with the branded BWW service van in the Delano, MN area" width="1920" height="1442" fetchpriority="high" decoding="async">
+    <img class="hero-bg-img" src="assets/img/hero-home.jpg" alt="The branded Barta Window Washing (BWW) service van in the Delano, MN area" width="1920" height="1442" fetchpriority="high" decoding="async">
     <div class="hero-overlay"></div>
     <div class="container">
       <div class="hero-content reveal in">
