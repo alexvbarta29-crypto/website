@@ -245,7 +245,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .hero-rating .stars svg { width: 16px; height: 16px; }
 .hero-rating span { color: #fff; font-size: .86rem; font-weight: 600; }
 .hero h1 { color: #fff; }
-.hero h1 em { font-style: normal; background: linear-gradient(120deg, #ff7a63, #ffd9d0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero h1 em { font-style: normal; background: none; -webkit-background-clip: border-box; background-clip: border-box; color: #ff5640; -webkit-text-fill-color: #ff5640; }
 .hero .lead { color: rgba(255,255,255,.82); margin-top: 20px; max-width: 540px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
 .hero-trust { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 34px; }
@@ -601,7 +601,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .nav-menu-simple .nav-menu-all svg { width: 15px; height: 15px; }
 
 /* Full-bleed photo hero (DirtyMint-style) — content anchored bottom-left */
-.hero-photo-full { position: relative; min-height: clamp(640px, 90vh, 880px); display: flex; align-items: flex-end; padding-top: calc(var(--nav-h) + 56px); padding-bottom: clamp(48px, 6vw, 80px); overflow: hidden; }
+.hero-photo-full { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: flex-end; padding-top: calc(var(--nav-h) + 56px); padding-bottom: clamp(48px, 6vw, 80px); overflow: hidden; }
 .hero-photo-full .hero-content h1 { font-size: clamp(2.9rem, 6.4vw, 5.2rem); line-height: 1.0; margin-top: 18px; }
 .hero-photo-full .hero-content .lead { margin-top: 22px; max-width: 600px; }
 .hero-photo-full .hero-actions { margin-top: 30px; }
