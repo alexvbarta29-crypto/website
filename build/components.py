@@ -64,7 +64,7 @@ def nav(depth=0):
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
-      <img class="brand-logo" src="{root}assets/img/logo-bww-white.png" alt="{BIZ['name']}" width="148" height="40">
+      <img class="brand-logo" src="{root}assets/img/logo-bww.png" alt="{BIZ['name']}" width="148" height="40">
     </a>
     <ul class="nav-links">
       <li><a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a></li>
