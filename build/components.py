@@ -3,6 +3,10 @@ import json
 from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES
 from icons import icon
 
+# Cache-busting version for static assets (set at build time from file hashes).
+# Keeps CSS/JS from being served stale by the browser/CDN after a change.
+ASSET_VER = "1"
+
 # Navigation grouping for mega-menu
 NAV_SERVICES = SERVICES  # all 10 services appear in the Services mega menu
 
@@ -45,7 +49,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
 <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="{root}assets/css/styles.css">
+<link rel="stylesheet" href="{root}assets/css/styles.css?v={ASSET_VER}">
 <link rel="icon" href="{root}assets/img/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="{root}site.webmanifest">
 {schema_blocks}</head>
@@ -187,7 +191,7 @@ def footer(depth=0):
 def page_end(depth=0):
     return f"""{sticky_cta(depth)}
 {footer(depth)}
-<script src="{rel(depth)}assets/js/main.js" defer></script>
+<script src="{rel(depth)}assets/js/main.js?v={ASSET_VER}" defer></script>
 </body>
 </html>"""
 

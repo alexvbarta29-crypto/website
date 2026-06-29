@@ -1482,7 +1482,20 @@ def build_meta_files():
 # ===========================================================================
 # MAIN
 # ===========================================================================
+def _asset_version():
+    """Short hash of the CSS+JS so their URLs change whenever they do."""
+    import hashlib
+    h = hashlib.md5()
+    for rel in ("assets/css/styles.css", "assets/js/main.js"):
+        try:
+            with open(os.path.join(ROOT, rel), "rb") as f:
+                h.update(f.read())
+        except FileNotFoundError:
+            pass
+    return h.hexdigest()[:8]
+
 def main():
+    C.ASSET_VER = _asset_version()
     build_home()
     for s in SERVICES:
         build_service(s)
