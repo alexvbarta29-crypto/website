@@ -272,13 +272,22 @@ def service_image_card(s, depth=0, idx=0):
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
 
+def _slugify(s):
+    out = "".join(c if c.isalnum() else "-" for c in s.lower())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-")
+
 def picture_card(item, depth=0, idx=0):
     """Homepage 'Our Services' picture box: title always shown, description
-    revealed on hover. Uses a branded gradient + faint icon (swap in a real
-    photo later via the .img-card-bg background-image)."""
+    revealed on hover. Uses a real photo if present (assets/img/svc-<name>.jpg),
+    otherwise falls back to a branded gradient + faint icon."""
     root = rel(depth)
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
-    bg = f"radial-gradient(75% 60% at 72% 12%, rgba(251,77,61,.30), transparent 62%), {dark}"
+    img = item.get("img") or ("assets/img/svc-" + _slugify(item["label"]) + ".jpg")
+    # photo layer on top (covers when present); gradient shows through if missing
+    bg = (f"url('{root}{img}'), "
+          f"radial-gradient(75% 60% at 72% 12%, rgba(251,77,61,.30), transparent 62%), {dark}")
     feat = " featured" if item.get("featured") else ""
     return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{item["target"]}" aria-label="{item["label"]}">'
             f'<span class="img-card-bg" style="background-image:{bg}"></span>'
