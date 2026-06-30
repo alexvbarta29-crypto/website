@@ -308,7 +308,7 @@ HOME_SERVICES = [
     {"label": "Exterior Window Cleaning", "target": "services/window-cleaning.html", "icon": "window", "featured": True,
      "desc": "Streak-free exterior glass that makes your whole home shine."},
     {"label": "Interior Window Cleaning", "target": "services/window-cleaning.html", "icon": "window", "featured": True,
-     "desc": "Spotless interior glass, sills, and tracks for brighter rooms."},
+     "desc": "Spotless interior glass for brighter, sun-filled rooms."},
     {"label": "Screen Cleaning Services", "target": "services/screen-cleaning.html", "icon": "screen",
      "desc": "Hand-washed screens for clearer views and better airflow."},
     {"label": "Track Detailing", "target": "services/window-cleaning.html", "icon": "wrench",
