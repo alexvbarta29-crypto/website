@@ -303,6 +303,30 @@ DROPDOWN_SERVICES = [
     ("Christmas Light Installation", "services/christmas-light-installation.html"),
 ]
 
+# Homepage "Our Services" picture-box grid (first two are featured/large).
+HOME_SERVICES = [
+    {"label": "Exterior Window Cleaning", "target": "services/window-cleaning.html", "icon": "window", "featured": True,
+     "desc": "Streak-free exterior glass that makes your whole home shine."},
+    {"label": "Interior Window Cleaning", "target": "services/window-cleaning.html", "icon": "window", "featured": True,
+     "desc": "Spotless interior glass, sills, and tracks for brighter rooms."},
+    {"label": "Screen Cleaning Services", "target": "services/screen-cleaning.html", "icon": "screen",
+     "desc": "Hand-washed screens for clearer views and better airflow."},
+    {"label": "Track Detailing", "target": "services/window-cleaning.html", "icon": "wrench",
+     "desc": "Deep-cleaned window tracks and sills, free of built-up grime."},
+    {"label": "Solar Panel Cleaning", "target": "services/solar-panel-cleaning.html", "icon": "solar",
+     "desc": "Restore lost output with safe, spot-free panel cleaning."},
+    {"label": "Gutter Cleaning", "target": "services/gutter-cleaning.html", "icon": "gutter",
+     "desc": "Hand-cleared gutters and flushed downspouts that protect your home."},
+    {"label": "Soft Washing", "target": "services/soft-washing.html", "icon": "soft",
+     "desc": "Gentle, low-pressure cleaning that kills algae and mildew."},
+    {"label": "Pressure Washing", "target": "services/pressure-washing.html", "icon": "pressure",
+     "desc": "Restore driveways, patios, and walkways to like-new."},
+    {"label": "Commercial Cleaning", "target": "commercial.html", "icon": "building",
+     "desc": "Reliable, scheduled exterior cleaning for your business."},
+    {"label": "Christmas Light Installation", "target": "services/christmas-light-installation.html", "icon": "lights",
+     "desc": "Custom holiday lighting — we design, hang, maintain, and take it down."},
+]
+
 # ---------------------------------------------------------------------------
 # Service areas — each drives a local landing page
 # ---------------------------------------------------------------------------

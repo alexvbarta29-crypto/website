@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, PLANS, REVIEWS, TEAM, POSTS, FAQS
+from sitedata import BIZ, SERVICES, AREAS, PLANS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES
 from icons import icon
 import components as C
 import schema as S
@@ -47,7 +47,7 @@ def stars_row():
 # ===========================================================================
 def build_home():
     depth = 0
-    svc_cards = "".join(C.service_image_card(s, depth, i) for i, s in enumerate(SERVICES))
+    svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     areas_html = "".join(
@@ -120,52 +120,16 @@ def build_home():
     </div>
   </section>
 
-  <!-- TRUST STRIP -->
-  <section class="section-tight bg-mist">
-    <div class="container">{C.trust_badges()}</div>
-  </section>
-
-  <!-- INSTANT QUOTE BAND -->
-  <section class="section-tight">
-    <div class="container">
-      <div class="quote-band">
-        <div class="reveal">
-          <span class="eyebrow" style="color:#ff9b86">Free instant quote</span>
-          <h2 class="mt-1">Get your free quote in 60 seconds</h2>
-          <p>Tell us about your home and we'll send clear, upfront pricing — usually the same day, with no obligation.</p>
-          <ul class="hero-trust mt-3">
-            <li>{icon('check-circle')} Same-day pricing</li>
-            <li>{icon('check-circle')} No obligation</li>
-            <li>{icon('check-circle')} 100% satisfaction guarantee</li>
-          </ul>
-        </div>
-        <div class="reveal" data-delay="1">{C.lead_form(depth, heading="Get Your Free Quote", sub="Same-day pricing. No obligation. Takes 60 seconds.", compact=True)}</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- VALUE PROP -->
+  <!-- SERVICES (straight after hero) -->
   <section>
     <div class="container">
       <div class="section-head center">
-        <span class="eyebrow">Why homeowners choose Barta</span>
-        <h2>Exterior cleaning that actually feels premium</h2>
-        <p>From the first quote to the final walkthrough, every detail is handled by professionals who care. Here's what that looks like.</p>
+        <span class="eyebrow" style="justify-content:center">Services</span>
+        <h2>Our Services</h2>
+        <p>Hover any service to learn more — then tap to see the full details.</p>
       </div>
-      <div class="grid cols-3">{why_html}</div>
-    </div>
-  </section>
-
-  <!-- SERVICES -->
-  <section class="bg-grad-sky">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Our services</span>
-        <h2>One trusted team for your entire exterior</h2>
-        <p>Windows, gutters, siding, roofs, and more — professionally cleaned and maintained, so your home always looks its best.</p>
-      </div>
-      <div class="grid cols-3">{svc_cards}</div>
-      <div class="center mt-4"><a class="btn" href="residential.html">Explore residential services {icon('arrow')}</a></div>
+      <div class="svc-grid">{svc_cards}</div>
+      <div class="center mt-4"><a class="btn" href="residential.html">Explore all services {icon('arrow')}</a></div>
     </div>
   </section>
 

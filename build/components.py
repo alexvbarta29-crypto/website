@@ -1,6 +1,6 @@
 """Reusable HTML partials and section builders."""
 import json
-from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES
+from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES
 from icons import icon
 
 # Cache-busting version for static assets (set at build time from file hashes).
@@ -271,6 +271,20 @@ def service_image_card(s, depth=0, idx=0):
             f'<span class="img-card-watermark">{icon(s["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
+
+def picture_card(item, depth=0, idx=0):
+    """Homepage 'Our Services' picture box: title always shown, description
+    revealed on hover. Uses a branded gradient + faint icon (swap in a real
+    photo later via the .img-card-bg background-image)."""
+    root = rel(depth)
+    dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
+    bg = f"radial-gradient(75% 60% at 72% 12%, rgba(251,77,61,.30), transparent 62%), {dark}"
+    feat = " featured" if item.get("featured") else ""
+    return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{item["target"]}" aria-label="{item["label"]}">'
+            f'<span class="img-card-bg" style="background-image:{bg}"></span>'
+            f'<span class="img-card-watermark">{icon(item["icon"])}</span>'
+            f'<span class="img-card-arrow">{icon("arrow")}</span>'
+            f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
 
 def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
