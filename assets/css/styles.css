@@ -245,7 +245,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .hero-rating .stars svg { width: 16px; height: 16px; }
 .hero-rating span { color: #fff; font-size: .86rem; font-weight: 600; }
 .hero h1 { color: #fff; }
-.hero h1 em { font-style: normal; background: none; -webkit-background-clip: border-box; background-clip: border-box; color: #ff5640; -webkit-text-fill-color: #ff5640; }
+.hero h1 em { font-style: normal; background: none; -webkit-background-clip: border-box; background-clip: border-box; color: #fff; -webkit-text-fill-color: #fff; }
 .hero .lead { color: rgba(255,255,255,.82); margin-top: 20px; max-width: 540px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
 .hero-trust { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 34px; }
