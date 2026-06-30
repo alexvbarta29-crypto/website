@@ -111,8 +111,8 @@ def build_home():
     <div class="container">
       <div class="hero-content reveal in">
         {C.google_badge(depth)}
-        <h1>Minnesota's <em>trusted</em> exterior cleaning professionals.</h1>
-        <p class="lead">Brighter views. Spotless results. Quality and care in every job.</p>
+        <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
+        <p class="lead">Minnesota's trusted exterior cleaning professionals. Brighter views. Spotless results. Satisfaction guaranteed.</p>
         <div class="hero-actions">
           <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
         </div>
