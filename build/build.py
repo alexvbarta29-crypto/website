@@ -89,6 +89,24 @@ def build_home():
         <a class="btn {'btn' if p['featured'] else 'btn-ghost'} btn-block" href="service-plans.html">View plan</a>
       </div>"""
 
+    # Recurring-plan savings cards ("Save money with every service")
+    promo_plans = [
+        ("Monthly", "150", True), ("Quarterly", "100", True), ("Biannual", "50", False),
+    ]
+    promo_feats = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
+    promo_cards = ""
+    for i, (name, amt, included) in enumerate(promo_plans):
+        cls = "yes" if included else "no"
+        mark = icon("check-circle") if included else icon("x")
+        feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in promo_feats)
+        promo_cards += f"""<div class="promo-card reveal" data-delay="{i}">
+        <h3 class="promo-name">{name}</h3>
+        <div class="promo-price">${amt} <small>OFF</small></div>
+        <div class="promo-per">Per Cleaning</div>
+        <ul class="promo-feats">{feats}</ul>
+        <a class="btn btn-block" href="request-quote.html">Get Your Instant Quote</a>
+      </div>"""
+
     ba_html = "".join(
         f'<div class="reveal" data-delay="{i}">{C.ba_slider(depth=depth, name=n)}</div>'
         for i, n in enumerate(["ba1", "ba2", "ba3"]))
@@ -131,6 +149,19 @@ def build_home():
     </div>
   </section>
 
+  <!-- PLANS / SAVINGS -->
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">Membership Savings</span>
+        <h2>Save money with every service</h2>
+        <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
+      </div>
+      <div class="promo-grid">{promo_cards}</div>
+      <div class="center mt-4"><a class="btn btn-ghost" href="service-plans.html">See full plan details {icon('arrow')}</a></div>
+    </div>
+  </section>
+
   <!-- STATS -->
   <section class="bg-deep">
     <div class="container">
@@ -165,19 +196,6 @@ def build_home():
       </div>
       <div class="grid cols-3">{ba_html}</div>
       <div class="center mt-4"><a class="btn btn-ghost" href="gallery.html">View the full gallery {icon('arrow')}</a></div>
-    </div>
-  </section>
-
-  <!-- MEMBERSHIP -->
-  <section>
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Service plans</span>
-        <h2>Never think about it again</h2>
-        <p>Join a recurring maintenance plan and keep your home effortlessly spotless year-round — at member-only pricing with priority scheduling.</p>
-      </div>
-      <div class="plans">{plan_teaser}</div>
-      <div class="center mt-4"><a class="btn" href="service-plans.html">Compare all plans {icon('arrow')}</a></div>
     </div>
   </section>
 

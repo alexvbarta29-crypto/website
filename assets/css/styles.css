@@ -643,3 +643,20 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .google-badge--light { background: #fff; border: 1px solid var(--line); box-shadow: var(--sh-sm); }
 .google-badge--light:hover { background: #fff; box-shadow: var(--sh-md); }
 .google-badge--light .gb-text { color: var(--navy-800); }
+
+/* "Save money with every service" promo plan cards */
+.promo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-items: stretch; }
+.promo-card { background: #fff; border: 1.5px solid var(--line); border-radius: var(--r-xl); padding: 34px 30px; box-shadow: var(--sh-sm); display: flex; flex-direction: column; text-align: center; transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
+.promo-card:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); }
+.promo-name { text-transform: uppercase; letter-spacing: .1em; color: var(--blue-600); font-size: 1.05rem; }
+.promo-price { font-family: var(--font-head); font-weight: 900; font-size: clamp(2.6rem, 5vw, 3.6rem); color: var(--navy-800); letter-spacing: -.02em; line-height: 1; margin-top: 12px; }
+.promo-price small { font-size: .42em; font-weight: 800; letter-spacing: .02em; vertical-align: 0.28em; margin-left: 2px; }
+.promo-per { text-transform: uppercase; letter-spacing: .14em; font-weight: 700; font-size: .8rem; color: var(--slate-500); margin-top: 6px; }
+.promo-feats { display: grid; gap: 14px; margin: 28px 0; text-align: left; }
+.promo-feats li { display: flex; gap: 11px; align-items: center; font-size: .98rem; color: var(--slate-700); }
+.promo-feats li svg { width: 21px; height: 21px; flex: none; }
+.promo-feats li.yes svg { color: var(--green); }
+.promo-feats li.no { color: var(--slate-400); }
+.promo-feats li.no svg { color: #e26068; }
+.promo-card .btn { margin-top: auto; }
+@media (max-width: 880px) { .promo-grid { grid-template-columns: 1fr; max-width: 420px; margin-inline: auto; } }
