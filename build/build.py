@@ -126,10 +126,8 @@ def build_home():
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Services</span>
         <h2>Our Services</h2>
-        <p>Hover any service to learn more — then tap to see the full details.</p>
       </div>
       <div class="svc-grid">{svc_cards}</div>
-      <div class="center mt-4"><a class="btn" href="residential.html">Explore all services {icon('arrow')}</a></div>
     </div>
   </section>
 

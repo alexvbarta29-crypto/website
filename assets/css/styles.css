@@ -186,9 +186,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Dropdown mega menu */
 .nav-menu {
   position: absolute; top: calc(100% + 16px); left: 50%; transform: translateX(-50%) translateY(10px);
-  min-width: 540px; padding: 14px; background: rgba(255,255,255,.7);
+  min-width: 540px; padding: 14px; background: rgba(255,255,255,.97);
   backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255,255,255,.55); border-radius: var(--r-lg); box-shadow: var(--sh-lg);
+  border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-lg);
   display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
   opacity: 0; visibility: hidden; transition: opacity .3s var(--ease), transform .3s var(--ease-out), visibility .3s;
 }
