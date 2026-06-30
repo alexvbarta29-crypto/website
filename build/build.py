@@ -111,7 +111,7 @@ def build_home():
     <div class="container">
       <div class="hero-content reveal in">
         {C.google_badge(depth)}
-        <h1>Clearer windows.<br>Brighter <em>home.</em></h1>
+        <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
         <p class="lead">Premium window cleaning, gutter cleaning, pressure washing, and house washing across the western Twin Cities — done by a local, family-owned team you can trust.</p>
         <div class="hero-actions">
           <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
