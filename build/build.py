@@ -57,8 +57,8 @@ def build_home():
     process_steps = [
         ("01", "Mop", "assets/img/svc-exterior-window-cleaning.jpg",
          "We apply an eco-friendly cleaning solution and work every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen off the glass.", None),
-        ("02", "Scrub", None,
-         "For stubborn silicone, putty overspray, and grime the T-bar won't touch, we hand-scrub with industrial-grade abrasive pads — safe on glass, tough on residue.", "sparkle"),
+        ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
+         "For stubborn silicone, putty overspray, and grime the T-bar won't touch, we hand-scrub with industrial-grade abrasive pads — safe on glass, tough on residue.", None),
         ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
          "A professional-grade squeegee removes every drop, leaving streak-free glass with zero spotting.", None),
         ("04", "Detail", "assets/img/svc-track-detailing.jpg",
