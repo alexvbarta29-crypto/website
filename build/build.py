@@ -1265,6 +1265,30 @@ def build_post(p, idx):
             ("Don't forget the extensions", "Make sure downspout extensions carry water at least four to six feet away from your foundation. Water pooling at the base of your home is a leading cause of basement leaks and foundation issues."),
             ("Let us handle it", "Fall gutter cleaning means ladders, heights, and a mess to haul away. Our crew clears everything by hand, flushes every downspout, bags the debris, and gives you a free inspection report — usually in a single visit."),
         ],
+        "hard-water-stains-windows": [
+            ("What's actually causing the haze", "Hard water stains come from minerals — mostly calcium and magnesium — left behind when water evaporates off glass. In Minnesota, the two biggest sources are sprinkler overspray hitting windows all summer and rain mixing with minerals in siding or hard water runoff. The water evaporates; the minerals stay, bonding to the glass surface."),
+            ("Why regular cleaning doesn't fix it", "A squeegee and glass cleaner remove dirt and grime, but they can't dissolve mineral deposits that have already bonded to the surface. If your windows still look cloudy or spotted right after a normal cleaning, what you're seeing is mineral buildup, not dirt — it needs a different approach entirely."),
+            ("What actually removes it", "Professional restoration uses mineral-dissolving compounds and technique matched to how heavy the buildup is. Light-to-moderate staining usually lifts in one treatment. Years of untreated buildup can etch the glass itself, which limits how much clarity comes back — an honest inspection before starting tells you which situation you're in."),
+            ("Preventing it from coming back", "If sprinklers are the cause, the simplest fix is redirecting the head so it doesn't hit the glass. For homes where hard water exposure is unavoidable, a protective glass coating applied after restoration makes it harder for new deposits to bond, so spots wipe away more easily going forward."),
+        ],
+        "winter-prep-checklist-minnesota": [
+            ("Gutters first", "Ice dams form when melting snow refreezes in clogged gutters and backs up under your shingles. Clearing gutters and confirming downspouts drain freely before the first hard freeze is the single most effective thing you can do to prevent winter roof leaks."),
+            ("Check your roof while you still can", "Once snow sticks around, a real roof inspection isn't practical until spring. Look now for missing or lifted shingles, and note any black streaking — algae left untreated all winter has months to keep spreading before you can address it."),
+            ("Wash the exterior before the salt season", "Road salt spray, sand, and winter grime are much easier to rinse off siding that's already clean than to remove once it's baked on by repeated freeze-thaw cycles. A fall house wash also removes summer's algae growth before it has all winter to set in."),
+            ("Windows and screens", "Store or clean screens before winter rather than leaving them dusty in the frame — pollen and grime left all season are harder to remove in spring. If storm windows or interior glass show hard-water spotting from summer sprinklers, treating it now means a clearer view all winter."),
+        ],
+        "spring-exterior-cleaning-checklist": [
+            ("Start with gutters and the roofline", "Winter is hard on gutters — ice, debris, and heavy snow can loosen hangers or leave leaves frozen in place since fall. Clear them first and confirm downspouts flow freely before you tackle anything else, since a clogged system undoes work done lower down the house."),
+            ("Wash off the winter grime", "Salt spray, sand, and months of grime dull siding more than most homeowners realize until it's washed. A soft wash in spring also catches algae and mildew that started growing over winter before it spreads further with warmer, wetter weather."),
+            ("Driveways and walkways", "Salt stains, tracked-in sand, and de-icer residue build up on concrete all winter. Pressure washing driveways, walkways, and steps in spring removes it before it has all summer to embed further, and it's the fastest visible curb-appeal improvement most homes can make."),
+            ("Windows last", "Clean windows and screens after the rest of the exterior work is done — otherwise overspray and dust from washing siding or the driveway just lands back on freshly cleaned glass. This is also when hard-water spots from a full season of sprinklers tend to be most visible."),
+        ],
+        "window-cleaning-mistakes-to-avoid": [
+            ("Cleaning in direct sunlight", "Glass cleaner dries almost instantly in direct sun, leaving streaks behind before you can wipe it off evenly. Professionals work in shade or on overcast days for exactly this reason — it has nothing to do with the product and everything to do with timing."),
+            ("Paper towels and newspaper", "Both leave behind lint or ink residue and don't absorb water evenly, which is what causes streaking. A microfiber cloth or a proper squeegee pulls water off in one clean pass instead of smearing it around the glass."),
+            ("Dish soap as glass cleaner", "Dish soap is formulated to cut grease, not to rinse cleanly off glass — it often leaves a filmy residue that actually attracts dust faster afterward. A dedicated glass cleaner or a vinegar-water solution rinses clean without that buildup."),
+            ("Ignoring the frames, sills, and tracks", "Spotless glass next to a dirty track or grime-lined sill still looks unfinished, and dirt sitting in the track eventually works its way back onto the glass anyway. Wiping down the whole frame, not just the pane, is what makes a cleaning job actually look complete."),
+        ],
     }
     paras = body_paras.get(p["slug"], [("Coming soon", "Full article content goes here.")])
     article = "".join(f"<h2>{h}</h2><p>{txt}</p>" for h, txt in paras)

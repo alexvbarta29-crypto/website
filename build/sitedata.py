@@ -545,6 +545,38 @@ POSTS = [
         "read": "5 min",
         "cat": "Gutter Cleaning",
     },
+    {
+        "slug": "hard-water-stains-windows",
+        "title": "Hard Water Stains on Windows: Why They Happen and How to Fix Them",
+        "excerpt": "Sprinkler overspray and Minnesota's mineral-heavy water leave a cloudy film ordinary cleaning can't remove. Here's what actually works.",
+        "date": "2026-06-08",
+        "read": "5 min",
+        "cat": "Window Cleaning",
+    },
+    {
+        "slug": "winter-prep-checklist-minnesota",
+        "title": "The Minnesota Homeowner's Fall & Winter Exterior Prep Checklist",
+        "excerpt": "From gutters to siding, here's what to check before the first hard freeze so your home comes through winter without surprises.",
+        "date": "2026-06-22",
+        "read": "6 min",
+        "cat": "Seasonal Maintenance",
+    },
+    {
+        "slug": "spring-exterior-cleaning-checklist",
+        "title": "The Spring Exterior Cleaning Checklist for Minnesota Homes",
+        "excerpt": "Salt, sand, and a long winter leave every exterior surface needing attention. Here's the order we recommend tackling it in.",
+        "date": "2026-06-15",
+        "read": "5 min",
+        "cat": "Seasonal Maintenance",
+    },
+    {
+        "slug": "window-cleaning-mistakes-to-avoid",
+        "title": "5 Window Cleaning Mistakes That Actually Make Windows Look Worse",
+        "excerpt": "Paper towels, dish soap, and cleaning in direct sun are all common habits that work against you. Here's what to do instead.",
+        "date": "2026-06-01",
+        "read": "4 min",
+        "cat": "Window Cleaning",
+    },
 ]
 
 # ---------------------------------------------------------------------------
