@@ -536,7 +536,11 @@ def build_plans():
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
                   crumb_label=None, primary_kw="", cta_form=False, svc_default=None):
-    schema = schema or BASE_SCHEMA
+    schema = list(schema or BASE_SCHEMA)
+    schema.append(S.breadcrumb([
+        ("Home", BIZ["domain"] + "/"),
+        (crumb_label or h1, BIZ["domain"] + "/" + slug),
+    ]))
     html = C.head(title=title, desc=desc, slug=slug, depth=depth, schema=schema, primary_kw=primary_kw)
     html += C.nav(depth)
     crumbs = C.crumbs([("Home", C.rel(depth) + "index.html"), (crumb_label or h1, None)])
@@ -834,13 +838,17 @@ def build_team():
 def build_reviews():
     depth = 0
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
-    schema = BASE_SCHEMA
+    has_widget = bool(REVIEWS_WIDGET_PAGE and REVIEWS_WIDGET_PAGE.strip())
+    # Only embed Review structured data when the matching curated cards are
+    # the actual visible content (not hidden behind the 3rd-party widget) —
+    # keeps markup honest and avoids a Google manual-action risk.
+    schema = [S.local_business(reviews=None if has_widget else REVIEWS), S.organization(), S.website()]
     html = C.head(
         title=f"Reviews & Testimonials | {BIZ['name']} — {BIZ['rating']}★ in Delano, MN",
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
         slug="reviews.html", depth=depth, schema=schema, primary_kw="Barta Window Washing reviews Delano MN")
     html += C.nav(depth)
-    if REVIEWS_WIDGET_PAGE and REVIEWS_WIDGET_PAGE.strip():
+    if has_widget:
         reviews_content = f'<div class="reviews-embed reveal" data-google-reviews>{REVIEWS_WIDGET_PAGE}</div>'
     else:
         reviews_content = f'<div class="grid cols-3">{cards}</div>'
@@ -1075,7 +1083,7 @@ def build_financing():
 # ===========================================================================
 def build_contact():
     depth = 0
-    schema = BASE_SCHEMA
+    schema = BASE_SCHEMA + [S.contact_page()]
     html, body = interior_head(
         title=f"Contact {BIZ['name']} | Free Quotes in Delano, MN",
         desc=f"Get in touch with Barta Window Washing. Call {BIZ['phone_display']}, email us, or request a free quote online. Serving Delano & the western Twin Cities, {BIZ['hours']}.",
@@ -1099,6 +1107,19 @@ def build_contact():
     </div>
     <div class="reveal">{C.lead_form(depth, heading="Send us a message", sub="Fill this out and we'll reply quickly — usually the same day.", submit="Send Message")}</div>
   </div></div></section>
+  <section class="section-tight bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">Find us</span>
+        <h2>Serving {BIZ['city']} &amp; the western metro</h2>
+      </div>
+      <div class="map-embed reveal">
+        <iframe src="https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z=11&output=embed"
+          width="100%" height="100%" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+          title="Map of {BIZ['name']} service area centered on {BIZ['city']}, {BIZ['state']}"></iframe>
+      </div>
+    </div>
+  </section>
   {C.cta_band(depth)}
 </main>"""
     html += C.page_end(depth)
@@ -1476,7 +1497,31 @@ def _asset_version():
             pass
     return h.hexdigest()[:8]
 
+def minify_assets():
+    """Produce minified styles.min.css / main.min.js for production (via
+    clean-css-cli / terser, fetched on demand with npx). Falls back to a
+    plain copy of the source file if Node/npx isn't available, so the build
+    never fails just because minifiers couldn't run."""
+    import subprocess, shutil
+    css_src = os.path.join(ROOT, "assets/css/styles.css")
+    css_out = os.path.join(ROOT, "assets/css/styles.min.css")
+    js_src = os.path.join(ROOT, "assets/js/main.js")
+    js_out = os.path.join(ROOT, "assets/js/main.min.js")
+    try:
+        subprocess.run(["npx", "--yes", "clean-css-cli", "-o", css_out, css_src],
+                        check=True, capture_output=True, timeout=90)
+    except Exception as e:
+        print(f"  (css minify skipped: {e}; using unminified copy)")
+        shutil.copyfile(css_src, css_out)
+    try:
+        subprocess.run(["npx", "--yes", "terser", js_src, "-c", "-m", "-o", js_out],
+                        check=True, capture_output=True, timeout=90)
+    except Exception as e:
+        print(f"  (js minify skipped: {e}; using unminified copy)")
+        shutil.copyfile(js_src, js_out)
+
 def main():
+    minify_assets()
     C.ASSET_VER = _asset_version()
     build_home()
     for s in SERVICES:

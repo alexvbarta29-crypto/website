@@ -1,8 +1,13 @@
 """JSON-LD schema builders for SEO."""
 from sitedata import BIZ, AREAS
 
-def local_business():
-    return {
+def local_business(reviews=None):
+    """reviews: optional list of (text, name, location, initials) tuples
+    (as in sitedata.REVIEWS) to embed as Review nodes. Only pass this on
+    the page where those exact curated cards are actually rendered, so
+    structured data matches visible content — never on pages using the
+    3rd-party widget instead."""
+    biz = {
         "@context": "https://schema.org",
         "@type": "HomeAndConstructionBusiness",
         "@id": BIZ["domain"] + "/#business",
@@ -39,6 +44,14 @@ def local_business():
         },
         "makesOffer": {"@type": "Offer", "name": "Free Exterior Cleaning Quote", "price": "0", "priceCurrency": "USD"},
     }
+    if reviews:
+        biz["review"] = [{
+            "@type": "Review",
+            "reviewRating": {"@type": "Rating", "ratingValue": "5", "bestRating": "5"},
+            "author": {"@type": "Person", "name": name},
+            "reviewBody": _strip(text),
+        } for text, name, location, initials in reviews]
+    return biz
 
 def organization():
     return {
@@ -83,6 +96,16 @@ def faq_schema(items):
             "@type": "Question", "name": _strip(q),
             "acceptedAnswer": {"@type": "Answer", "text": _strip(a)},
         } for q, a in items],
+    }
+
+def contact_page():
+    return {
+        "@context": "https://schema.org",
+        "@type": "ContactPage",
+        "@id": BIZ["domain"] + "/contact.html#contactpage",
+        "url": BIZ["domain"] + "/contact.html",
+        "name": f"Contact {BIZ['name']}",
+        "about": {"@id": BIZ["domain"] + "/#business"},
     }
 
 def breadcrumb(items):

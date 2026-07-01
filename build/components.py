@@ -44,12 +44,15 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{title}">
 <meta name="twitter:description" content="{desc}">
+<meta name="twitter:image" content="{BIZ['domain']}/assets/img/og-cover.svg">
 <!-- Fonts — Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<link rel="preconnect" href="https://cdn.trustindex.io">
+<link rel="dns-prefetch" href="https://cdn.trustindex.io">
 <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="{root}assets/css/styles.css?v={ASSET_VER}">
+<link rel="stylesheet" href="{root}assets/css/styles.min.css?v={ASSET_VER}">
 <link rel="icon" href="{root}assets/img/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="{root}site.webmanifest">
 {schema_blocks}</head>
@@ -192,7 +195,7 @@ def footer(depth=0):
 def page_end(depth=0):
     return f"""{sticky_cta(depth)}
 {footer(depth)}
-<script src="{rel(depth)}assets/js/main.js?v={ASSET_VER}" defer></script>
+<script src="{rel(depth)}assets/js/main.min.js?v={ASSET_VER}" defer></script>
 </body>
 </html>"""
 
@@ -260,15 +263,25 @@ _IMG_CARD_DARKS = [
     "linear-gradient(155deg,#2a1c22 0%,#110c0f 100%)",
 ]
 
+# A few SERVICES entries use different wording than their matching photo's
+# filename (e.g. "Window Cleaning" vs. svc-exterior-window-cleaning.jpg).
+# Services with no dedicated photo yet are left out — they fall back to the
+# branded gradient + icon rather than showing a mismatched/duplicate photo.
+_SERVICE_IMG_OVERRIDES = {
+    "Window Cleaning": "assets/img/svc-exterior-window-cleaning.jpg",
+    "Screen Cleaning": "assets/img/svc-screen-cleaning-services.jpg",
+}
+
 def service_image_card(s, depth=0, idx=0):
-    """DirtyMint-style large image card with overlaid title (no photo needed —
-    uses a branded dark gradient + faint service icon; swap in a real photo via
-    the .img-card-bg background-image when available)."""
+    """DirtyMint-style large image card with overlaid title. Uses the same
+    real service photo as the homepage grid when present on disk, falling
+    back to a branded dark gradient + faint service icon otherwise."""
     root = rel(depth)
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
-    bg = f"radial-gradient(75% 60% at 72% 12%, rgba(251,77,61,.32), transparent 62%), {dark}"
-    return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}">'
-            f'<span class="img-card-bg" style="background-image:{bg}"></span>'
+    img = _SERVICE_IMG_OVERRIDES.get(s["name"]) or ("assets/img/svc-" + _slugify(s["name"]) + ".jpg")
+    alt = f"{s['name']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
+    return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}" style="background:{dark}">'
+            f'<img class="img-card-bg" src="{root}{img}" alt="{alt}" loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()">'
             f'<span class="img-card-watermark">{icon(s["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
@@ -286,12 +299,10 @@ def picture_card(item, depth=0, idx=0):
     root = rel(depth)
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
     img = item.get("img") or ("assets/img/svc-" + _slugify(item["label"]) + ".jpg")
-    # photo layer on top (covers when present); gradient shows through if missing
-    bg = (f"url('{root}{img}'), "
-          f"radial-gradient(75% 60% at 72% 12%, rgba(251,77,61,.30), transparent 62%), {dark}")
+    alt = f"{item['label']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
     feat = " featured" if item.get("featured") else ""
-    return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{item["target"]}" aria-label="{item["label"]}">'
-            f'<span class="img-card-bg" style="background-image:{bg}"></span>'
+    return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{item["target"]}" aria-label="{item["label"]}" style="background:{dark}">'
+            f'<img class="img-card-bg" src="{root}{img}" alt="{alt}" loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()">'
             f'<span class="img-card-watermark">{icon(item["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
@@ -304,7 +315,7 @@ def process_slider(steps, depth=0):
     root = rel(depth)
     slides = "".join(
         f'<div class="process-slide{" active" if i == 0 else ""}">'
-        + (f'<div class="process-photo" style="background-image:url(\'{root}{img}\')"></div>'
+        + (f'<div class="process-photo"><img src="{root}{img}" alt="{title} step of the Barta Window Washing cleaning process in {BIZ["city"]}, {BIZ["state"]}" loading="lazy" decoding="async" width="600" height="700"></div>'
            if img else
            f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>')
         + f'<div class="process-info"><span class="process-num">{num}</span>'
