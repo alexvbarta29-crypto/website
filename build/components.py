@@ -296,19 +296,23 @@ def picture_card(item, depth=0, idx=0):
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
 
 def process_slider(steps, depth=0):
-    """Step slideshow (e.g. Scrub / Squeegee / Detail): photo on the left,
-    numbered description panel on the right, with nav dots + progress line."""
+    """Step slideshow (e.g. Mop / Scrub / Squeegee / Detail): photo on the
+    left, numbered description panel on the right, with nav dots + progress
+    line. Steps without a real photo yet (img=None) get a branded gradient
+    tile with a watermark icon instead."""
     root = rel(depth)
     slides = "".join(
         f'<div class="process-slide{" active" if i == 0 else ""}">'
-        f'<div class="process-photo" style="background-image:url(\'{root}{img}\')"></div>'
-        f'<div class="process-info"><span class="process-num">{num}</span>'
+        + (f'<div class="process-photo" style="background-image:url(\'{root}{img}\')"></div>'
+           if img else
+           f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>')
+        + f'<div class="process-info"><span class="process-num">{num}</span>'
         f'<h3>{title}</h3><p>{desc}</p></div></div>'
-        for i, (num, title, img, desc) in enumerate(steps))
+        for i, (num, title, img, desc, fic) in enumerate(steps))
     dots = "".join(
-        (f'<span class="process-line{" filled" if i > 0 else ""}"></span>' if i > 0 else "")
+        (f'<span class="process-line"></span>' if i > 0 else "")
         + f'<button type="button" class="process-dot{" active" if i == 0 else ""}" data-i="{i}" aria-label="Step {i+1}: {title}">{i+1}</button>'
-        for i, (num, title, img, desc) in enumerate(steps))
+        for i, (num, title, img, desc, fic) in enumerate(steps))
     return f"""<div class="process-slider reveal">
     <div class="process-track">
       {slides}

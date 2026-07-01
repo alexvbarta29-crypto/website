@@ -55,12 +55,14 @@ def build_home():
         for i, a in enumerate(AREAS))
 
     process_steps = [
-        ("01", "Scrub", "assets/img/svc-exterior-window-cleaning.jpg",
-         "We apply an eco-friendly cleaning solution and work every pane with soft-bristle brushes to lift dirt, pollen, and grime."),
-        ("02", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
-         "A professional-grade squeegee removes every drop, leaving streak-free glass with zero spotting."),
-        ("03", "Detail", "assets/img/svc-track-detailing.jpg",
-         "We finish by hand-detailing sills, tracks, and frames — the details other companies skip."),
+        ("01", "Mop", "assets/img/svc-exterior-window-cleaning.jpg",
+         "We apply an eco-friendly cleaning solution and work every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen off the glass.", None),
+        ("02", "Scrub", None,
+         "For stubborn silicone, putty overspray, and grime the T-bar won't touch, we hand-scrub with 0000 steel wool — safe on glass, tough on residue.", "sparkle"),
+        ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
+         "A professional-grade squeegee removes every drop, leaving streak-free glass with zero spotting.", None),
+        ("04", "Detail", "assets/img/svc-track-detailing.jpg",
+         "We finish by hand-detailing sills, tracks, and frames — the details other companies skip.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
 
@@ -181,8 +183,8 @@ def build_home():
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">How it works</span>
-        <h2>Our 3-step process</h2>
-        <p>Every job follows the same disciplined routine — scrub, squeegee, detail — for a streak-free finish, every time.</p>
+        <h2>Our 4-step process</h2>
+        <p>Every job follows the same disciplined routine — mop, scrub, squeegee, detail — for a streak-free finish, every time.</p>
       </div>
       {process_slider_html}
     </div>
