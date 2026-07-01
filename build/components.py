@@ -151,6 +151,7 @@ def footer(depth=0):
         <div class="footer-social">
           <a href="{BIZ['facebook']}" aria-label="Facebook">{icon('facebook')}</a>
           <a href="{BIZ['instagram']}" aria-label="Instagram">{icon('instagram')}</a>
+          <a href="{BIZ['tiktok']}" aria-label="TikTok">{icon('tiktok')}</a>
           <a href="{BIZ['google']}" aria-label="Google Business Profile">{icon('pin')}</a>
         </div>
       </div>

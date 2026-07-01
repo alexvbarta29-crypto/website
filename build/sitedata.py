@@ -26,6 +26,7 @@ BIZ = {
     "domain": "https://www.bartawindowwashing.com",
     "facebook": "https://www.facebook.com/bartawindowwashing",
     "instagram": "https://www.instagram.com/bartawindowwashing",
+    "tiktok": "https://www.tiktok.com/@bartawindowwashing",
     "google": "https://www.google.com/search?q=bartawindowwashing#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
 }
 

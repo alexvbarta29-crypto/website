@@ -499,6 +499,12 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .footer-social a { width: 40px; height: 40px; border-radius: var(--r-pill); background: rgba(255,255,255,.08); display: grid; place-items: center; }
 .footer-social a:hover { background: var(--grad-brand); }
 .footer-social svg { width: 19px; height: 19px; }
+
+/* Homepage "Follow along" social row */
+.follow-socials { display: flex; align-items: center; justify-content: center; gap: clamp(28px, 6vw, 64px); margin-top: 8px; }
+.follow-socials a { color: var(--blue-600); transition: transform .25s ease, color .25s ease; }
+.follow-socials a:hover { color: var(--ink); transform: translateY(-4px); }
+.follow-socials svg { width: clamp(40px, 6vw, 56px); height: clamp(40px, 6vw, 56px); }
 .footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding-top: 26px; font-size: .85rem; color: rgba(255,255,255,.55); }
 .footer-bottom .links { display: flex; flex-wrap: wrap; gap: 18px; }
 

@@ -202,7 +202,21 @@ def build_home():
         <p>Real results from real Barta jobs. Slide each image to see the transformation.</p>
       </div>
       <div class="grid cols-3">{ba_html}</div>
-      <div class="center mt-4"><a class="btn btn-ghost" href="gallery.html">View the full gallery {icon('arrow')}</a></div>
+    </div>
+  </section>
+
+  <!-- FOLLOW ALONG -->
+  <section>
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">Follow along</span>
+        <h2>Follow along with us</h2>
+      </div>
+      <div class="follow-socials reveal">
+        <a href="{BIZ['facebook']}" aria-label="Facebook" target="_blank" rel="noopener">{icon('facebook')}</a>
+        <a href="{BIZ['instagram']}" aria-label="Instagram" target="_blank" rel="noopener">{icon('instagram')}</a>
+        <a href="{BIZ['tiktok']}" aria-label="TikTok" target="_blank" rel="noopener">{icon('tiktok')}</a>
+      </div>
     </div>
   </section>
 
