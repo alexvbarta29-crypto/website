@@ -113,7 +113,7 @@ def build_home():
         <div class="promo-price">${amt} <small>OFF</small></div>
         <div class="promo-per">Per Cleaning</div>
         <ul class="promo-feats">{feats}</ul>
-        <a class="btn btn-block" href="request-quote.html">Get Your Instant Quote</a>
+        <a class="btn btn-block" href="request-quote.html">Get Your Free Quote</a>
       </div>"""
 
     ba_html = "".join(

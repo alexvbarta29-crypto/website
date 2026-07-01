@@ -320,7 +320,7 @@ def process_slider(steps, depth=0):
       <button type="button" class="process-arrow next" aria-label="Next step">{icon('arrow')}</button>
     </div>
     <div class="process-dots">{dots}</div>
-    <div class="center mt-4"><a class="btn" href="{root}request-quote.html">Get Your Instant Quote</a></div>
+    <div class="center mt-4"><a class="btn" href="{root}request-quote.html">Get Your Free Quote</a></div>
   </div>"""
 
 def trust_badges():
