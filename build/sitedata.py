@@ -344,6 +344,16 @@ AREAS = [
     {"slug": "medina", "city": "Medina", "neighborhoods": ["Hamel", "Independence Beach border", "Loretto border"], "note": ""},
     {"slug": "corcoran", "city": "Corcoran", "neighborhoods": ["Hackamore", "Rush Creek", "Pioneer"], "note": ""},
     {"slug": "watertown", "city": "Watertown", "neighborhoods": ["Downtown Watertown", "Mayer border", "Crow River"], "note": ""},
+    {"slug": "orono", "city": "Orono", "neighborhoods": ["Crystal Bay", "Navarre", "Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "montrose", "city": "Montrose", "neighborhoods": ["Downtown Montrose", "South Fork Crow River"], "note": ""},
+    {"slug": "st-michael", "city": "St. Michael", "neighborhoods": ["Downtown St. Michael", "River Pointe", "STMA area"], "note": ""},
+    {"slug": "albertville", "city": "Albertville", "neighborhoods": ["Near the Outlets", "Jamestown border"], "note": ""},
+    {"slug": "hanover", "city": "Hanover", "neighborhoods": ["Downtown Hanover", "Crow River"], "note": ""},
+    {"slug": "howard-lake", "city": "Howard Lake", "neighborhoods": ["Howard Lake shoreline", "Downtown Howard Lake"], "note": ""},
+    {"slug": "loretto", "city": "Loretto", "neighborhoods": ["Downtown Loretto", "Pioneer Trail area"], "note": ""},
+    {"slug": "independence", "city": "Independence", "neighborhoods": ["Lake Independence", "Lake Sarah"], "note": ""},
+    {"slug": "maple-plain", "city": "Maple Plain", "neighborhoods": ["Downtown Maple Plain", "Baker Park area"], "note": ""},
+    {"slug": "long-lake", "city": "Long Lake", "neighborhoods": ["Long Lake shoreline", "Downtown Long Lake"], "note": ""},
 ]
 
 # ---------------------------------------------------------------------------
