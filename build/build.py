@@ -172,12 +172,7 @@ def build_home():
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      <div class="reviews-topbar reveal">
-        {C.google_badge(depth, light=True)}
-        <a class="review-share" href="{BIZ['google']}" target="_blank" rel="noopener">{C.GOOGLE_G} Share your review</a>
-      </div>
       {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
-      <div class="center mt-4"><a class="btn btn-ghost" href="reviews.html">Read all reviews {icon('arrow')}</a></div>
     </div>
   </section>
 
