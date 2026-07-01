@@ -62,7 +62,7 @@ def build_home():
         ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
          "A professional-grade squeegee removes every drop, leaving streak-free glass with zero spotting.", None),
         ("04", "Detail", "assets/img/svc-detail-frame.jpg",
-         "We finish by hand-detailing sills, tracks, and frames — the details other companies skip.", None),
+         "Most companies stop at the glass. We finish every job by hand-detailing the glass, frames, and sills — the details other companies skip, so your windows look flawless up close, not just from the curb.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
 

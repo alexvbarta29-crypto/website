@@ -108,7 +108,7 @@
     window.addEventListener("pointerup", endDrag);
   });
 
-  /* ---- Process slider (Scrub / Squeegee / Detail) ---- */
+  /* ---- Process slider (Mop / Scrub / Squeegee / Detail) ---- */
   $$(".process-slider").forEach((slider) => {
     const slides = $$(".process-slide", slider);
     const dots = $$(".process-dot", slider);
@@ -119,7 +119,10 @@
     const show = (n) => {
       i = (n + slides.length) % slides.length;
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
-      dots.forEach((d, idx) => d.classList.toggle("active", idx === i));
+      dots.forEach((d, idx) => {
+        d.classList.toggle("active", idx === i);
+        d.classList.toggle("filled", idx <= i);
+      });
       lines.forEach((l, idx) => l.classList.toggle("filled", idx < i));
     };
     const restart = () => {

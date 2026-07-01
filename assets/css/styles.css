@@ -320,7 +320,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Process slider (Scrub / Squeegee / Detail) */
 .process-slider { position: relative; }
 .process-track { position: relative; height: 420px; }
-.process-slide { position: absolute; inset: 0; height: 100%; display: flex; align-items: stretch; gap: 28px; padding: 20px; border-radius: var(--r-lg); background: var(--grad-deep); box-shadow: var(--sh-lg); opacity: 0; visibility: hidden; transition: opacity .5s ease; }
+.process-slide { position: absolute; inset: 0; height: 100%; display: flex; align-items: stretch; gap: 28px; padding: 20px; border-radius: var(--r-lg); background: var(--grad-deep); box-shadow: var(--sh-lg); opacity: 0; visibility: hidden; transition: opacity 1.1s ease; }
 .process-slide.active { opacity: 1; visibility: visible; }
 .process-photo { flex: 0 0 42%; border-radius: var(--r-md); background-size: cover; background-position: center; min-height: 280px; }
 .process-photo-fallback { background: radial-gradient(75% 60% at 70% 20%, rgba(251,77,61,.35), transparent 60%), linear-gradient(160deg, #232329, #0d0d10); display: grid; place-items: center; }
@@ -335,10 +335,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-arrow.prev { left: -18px; transform: translateY(-50%) rotate(180deg); }
 .process-arrow.next { right: -18px; }
 .process-dots { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 28px; }
-.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: all .25s ease; flex: 0 0 auto; }
-.process-dot.active { border-color: transparent; background: var(--grad-brand); color: #fff; box-shadow: var(--sh-glow); }
+.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: all .5s ease; flex: 0 0 auto; }
+.process-dot.filled { border-color: transparent; background: var(--grad-brand); color: #fff; }
+.process-dot.active { box-shadow: var(--sh-glow); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
-.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform .4s ease; }
+.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform .8s ease; }
 .process-line.filled::after { transform: scaleX(1); }
 @media (max-width: 780px) {
   .process-track { height: 560px; }
