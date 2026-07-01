@@ -16,11 +16,11 @@ import schema as S
 
 PAGES = []  # (relpath, slug, lastmod, priority) for sitemap
 
-def load_reviews_widget():
+def load_reviews_widget(filename="google-reviews-embed.html"):
     """Return the Google reviews embed code if the owner has pasted one,
     else '' so pages fall back to curated review cards."""
     import re
-    p = os.path.join(ROOT, "config", "google-reviews-embed.html")
+    p = os.path.join(ROOT, "config", filename)
     if not os.path.exists(p):
         return ""
     raw = open(p, encoding="utf-8").read()
@@ -28,7 +28,10 @@ def load_reviews_widget():
     stripped = re.sub(r"<!--.*?-->", "", raw, flags=re.S).strip()
     return raw if stripped else ""
 
-REVIEWS_WIDGET = load_reviews_widget()
+# Homepage teaser uses one widget; the standalone Reviews page uses another
+# (e.g. a compact carousel on the homepage vs. a full grid on reviews.html).
+REVIEWS_WIDGET = load_reviews_widget("google-reviews-embed.html")
+REVIEWS_WIDGET_PAGE = load_reviews_widget("google-reviews-embed-reviews-page.html") or REVIEWS_WIDGET
 
 def write(relpath, html, slug=None, priority="0.7"):
     path = os.path.join(ROOT, relpath)
@@ -823,8 +826,8 @@ def build_reviews():
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
         slug="reviews.html", depth=depth, schema=schema, primary_kw="Barta Window Washing reviews Delano MN")
     html += C.nav(depth)
-    if REVIEWS_WIDGET and REVIEWS_WIDGET.strip():
-        reviews_content = f'<div class="reviews-embed reveal" data-google-reviews>{REVIEWS_WIDGET}</div>'
+    if REVIEWS_WIDGET_PAGE and REVIEWS_WIDGET_PAGE.strip():
+        reviews_content = f'<div class="reviews-embed reveal" data-google-reviews>{REVIEWS_WIDGET_PAGE}</div>'
     else:
         reviews_content = f'<div class="grid cols-3">{cards}</div>'
     html += f"""<main id="main">

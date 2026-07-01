@@ -162,7 +162,11 @@
       <div class="reviews-embed reveal" data-google-reviews>
 <!--
   ===========================================================================
-  GOOGLE REVIEWS WIDGET — paste your embed code below this comment block.
+  GOOGLE REVIEWS WIDGET — HOMEPAGE — paste your embed code below this block.
+
+  This widget shows on the homepage's "Neighbors are saying" teaser.
+  The standalone Reviews page (reviews.html) uses a separate widget —
+  edit config/google-reviews-embed-reviews-page.html for that one.
   ===========================================================================
 
   HOW TO GET YOUR EMBED CODE (one-time, ~5 minutes):
@@ -184,9 +188,8 @@
   4. PASTE it below this comment, replacing the placeholder line.
 
   5. Rebuild the site:   python3 build/build.py
-     Your live Google reviews will now render on the Reviews page and the
-     homepage reviews section. Until you paste code here, the site shows the
-     curated written reviews automatically (no broken/empty section).
+     Until you paste code here, the homepage falls back to the curated
+     written reviews automatically (no broken/empty section).
 
   NOTE: keep the embed code lightweight and enable the provider's
   "lazy load" option if available, to protect page speed / Core Web Vitals.
@@ -194,7 +197,7 @@
 -->
 
 <!-- PASTE YOUR GOOGLE REVIEWS WIDGET EMBED CODE BELOW THIS LINE -->
-<script defer async src='https://cdn.trustindex.io/loader.js?110086f759705992a866c37e8a0'></script>
+<script defer async src='https://cdn.trustindex.io/loader.js?f013c797518a5802255651fa8cf'></script>
 
   <p class="center mt-3"><a class="btn btn-ghost" href="https://www.google.com/search?q=bartawindowwashing#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9L12 3Z"/></svg> See all reviews on Google <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
 </div>
