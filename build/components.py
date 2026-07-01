@@ -329,7 +329,7 @@ def trust_badges():
 
 # Slots with real photos on disk (assets/img/{name}-before.jpg / -after.jpg)
 # instead of the auto-generated placeholder SVGs.
-BA_REAL_PHOTOS = {"ba1": "window", "ba2": "siding"}
+BA_REAL_PHOTOS = {"ba1": "window", "ba2": "siding", "ba3": "gutter"}
 
 def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
     root = rel(depth)
