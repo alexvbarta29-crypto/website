@@ -49,7 +49,7 @@ def build_home():
     depth = 0
     svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
-    reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
+    reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
     areas_html = "".join(
         f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{icon("pin")} {a["city"]}</a>'
         for i, a in enumerate(AREAS))
@@ -120,7 +120,7 @@ def build_home():
 
     html = C.head(
         title=f"{BIZ['name']} | Premium Window Cleaning & Exterior Care in Delano, MN",
-        desc="Delano's top-rated window cleaning, gutter cleaning, pressure washing & house washing company. Licensed, insured, family-owned. 4.9★ from 327+ reviews. Get your free quote today!",
+        desc="Delano's top-rated window cleaning, gutter cleaning, pressure washing & house washing company. Licensed, insured, family-owned. 5.0★ from 100+ reviews. Get your free quote today!",
         slug="index.html", depth=depth, schema=schema, primary_kw="window cleaning Delano MN",
         canonical=BIZ["domain"] + "/")
     html += C.nav(depth)
@@ -165,13 +165,29 @@ def build_home():
     </div>
   </section>
 
+  <!-- REVIEWS (Google) -->
+  <section>
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">See what your</span>
+        <h2>Neighbors are saying</h2>
+      </div>
+      <div class="reviews-topbar reveal">
+        {C.google_badge(depth, light=True)}
+        <a class="review-share" href="{BIZ['google']}" target="_blank" rel="noopener">{C.GOOGLE_G} Share your review</a>
+      </div>
+      {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      <div class="center mt-4"><a class="btn btn-ghost" href="reviews.html">Read all reviews {icon('arrow')}</a></div>
+    </div>
+  </section>
+
   <!-- STATS -->
   <section class="bg-deep">
     <div class="container">
       <div class="stats">
         <div class="stat reveal"><div class="num" data-count="12" data-suffix="+">12+</div><div class="label">Years serving Delano</div></div>
         <div class="stat reveal" data-delay="1"><div class="num" data-count="9400" data-suffix="+">9,400+</div><div class="label">Homes &amp; businesses cleaned</div></div>
-        <div class="stat reveal" data-delay="2"><div class="num" data-count="4.9">4.9</div><div class="label">Average star rating</div></div>
+        <div class="stat reveal" data-delay="2"><div class="num" data-count="5.0">5.0</div><div class="label">Average star rating</div></div>
         <div class="stat reveal" data-delay="3"><div class="num" data-count="100" data-suffix="%">100%</div><div class="label">Satisfaction guarantee</div></div>
       </div>
     </div>
@@ -199,19 +215,6 @@ def build_home():
       </div>
       <div class="grid cols-3">{ba_html}</div>
       <div class="center mt-4"><a class="btn btn-ghost" href="gallery.html">View the full gallery {icon('arrow')}</a></div>
-    </div>
-  </section>
-
-  <!-- REVIEWS -->
-  <section class="bg-grad-sky">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Loved by your neighbors</span>
-        <h2>{BIZ['rating']}★ from {BIZ['review_count']}+ reviews</h2>
-        <p>We're proud to be one of the highest-rated exterior cleaning companies in the western metro. Here's what local homeowners say.</p>
-      </div>
-      {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
-      <div class="center mt-4"><a class="btn btn-ghost" href="reviews.html">Read more reviews {icon('arrow')}</a></div>
     </div>
   </section>
 
@@ -710,7 +713,7 @@ def build_why():
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     html, body = interior_head(
         title=f"Why Choose Barta Window Washing | Delano, MN's Top-Rated Cleaners",
-        desc="Discover why Delano-area homeowners choose Barta Window Washing: licensed & insured, family-owned, detail-obsessed, eco-safe methods, and a 100% satisfaction guarantee. 4.9★ rated.",
+        desc="Discover why Delano-area homeowners choose Barta Window Washing: licensed & insured, family-owned, detail-obsessed, eco-safe methods, and a 100% satisfaction guarantee. 5.0★ rated.",
         slug="why-choose-us.html", eyebrow="Why Choose Us",
         h1="The most trusted name in Minnesota exterior cleaning",
         lead="Anyone can squeegee a window. We've built our reputation on the things that actually matter — trust, detail, safety, and results you can count on, every single time.",
@@ -723,7 +726,7 @@ def build_why():
     <div class="stats">
       <div class="stat reveal"><div class="num" data-count="12" data-suffix="+">12+</div><div class="label">Years in business</div></div>
       <div class="stat reveal" data-delay="1"><div class="num" data-count="9400" data-suffix="+">9,400+</div><div class="label">Jobs completed</div></div>
-      <div class="stat reveal" data-delay="2"><div class="num" data-count="327" data-suffix="+">327+</div><div class="label">5-star reviews</div></div>
+      <div class="stat reveal" data-delay="2"><div class="num" data-count="100" data-suffix="+">100+</div><div class="label">5-star reviews</div></div>
       <div class="stat reveal" data-delay="3"><div class="num" data-count="98" data-suffix="%">98%</div><div class="label">Would refer a friend</div></div>
     </div>
   </div></section>
@@ -832,7 +835,7 @@ def build_reviews():
     schema = BASE_SCHEMA
     html, body = interior_head(
         title=f"Reviews & Testimonials | {BIZ['name']} — {BIZ['rating']}★ in Delano, MN",
-        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 4.9★ for window cleaning, gutters, pressure washing & more.",
+        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
         slug="reviews.html", eyebrow="Reviews", schema=schema,
         h1=f"{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors",
         lead="We've earned our reputation one spotless home at a time. Here's what real customers across the western metro have to say about working with Barta.",
@@ -840,8 +843,8 @@ def build_reviews():
     html += f"""<main id="main">{body}
   <section class="section-tight bg-mist"><div class="container">
     <div class="stats stats-light">
-      <div class="stat reveal"><div class="num" data-count="4.9">4.9</div><div class="label">Average rating</div></div>
-      <div class="stat reveal" data-delay="1"><div class="num" data-count="327" data-suffix="+">327+</div><div class="label">Verified reviews</div></div>
+      <div class="stat reveal"><div class="num" data-count="5.0">5.0</div><div class="label">Average rating</div></div>
+      <div class="stat reveal" data-delay="1"><div class="num" data-count="100" data-suffix="+">100+</div><div class="label">Verified reviews</div></div>
       <div class="stat reveal" data-delay="2"><div class="num" data-count="98" data-suffix="%">98%</div><div class="label">Five-star ratings</div></div>
       <div class="stat reveal" data-delay="3"><div class="num" data-count="9400" data-suffix="+">9,400+</div><div class="label">Happy customers</div></div>
     </div>
@@ -1436,7 +1439,7 @@ def build_images():
           '<text x="210" y="210" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="6" fill="#ff9b86">BARTA WINDOW WASHING</text>'
           '<text x="80" y="380" font-family="Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">The clearest view</text>'
           '<text x="80" y="470" font-family="Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">in Delano starts here.</text>'
-          '<text x="80" y="548" font-family="Arial, sans-serif" font-size="31" fill="#c9c9cf">Premium exterior cleaning · 4.9★ · Licensed &amp; insured</text></svg>')
+          '<text x="80" y="548" font-family="Arial, sans-serif" font-size="31" fill="#c9c9cf">Premium exterior cleaning · 5.0★ · Licensed &amp; insured</text></svg>')
     write_asset("assets/img/og-cover.svg", og)
 
 def write_asset(relpath, content):

@@ -6,3 +6,6 @@ __pycache__/
 # stray root uploads (processed into assets/img/)
 *.JPG
 /Artboard*.png
+
+# temp preview files
+__tmp*.html

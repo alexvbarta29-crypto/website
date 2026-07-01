@@ -662,3 +662,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .promo-feats li.no svg { color: #e26068; }
 .promo-card .btn { margin-top: auto; }
 @media (max-width: 880px) { .promo-grid { grid-template-columns: 1fr; max-width: 420px; margin-inline: auto; } }
+
+/* Reviews section top bar (rating badge + Share your review) */
+.reviews-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 20px; margin-bottom: clamp(30px, 4vw, 48px); }
+.review-share { display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px; border-radius: var(--r-pill); background: var(--navy-800); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .92rem; box-shadow: var(--sh-md); transition: transform .3s var(--ease-out), box-shadow .3s; }
+.review-share:hover { transform: translateY(-2px); box-shadow: var(--sh-lg); color: #fff; }
+.review-share svg { width: 18px; height: 18px; }
+@media (max-width: 560px) { .reviews-topbar { flex-direction: column; gap: 14px; } }
