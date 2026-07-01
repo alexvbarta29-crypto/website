@@ -127,7 +127,7 @@
     };
     const restart = () => {
       if (timer) clearInterval(timer);
-      if (!reduce && slides.length > 1) timer = setInterval(() => show(i + 1), 10000);
+      if (!reduce && slides.length > 1) timer = setInterval(() => show(i + 1), 20000);
     };
     dots.forEach((d, idx) => d.addEventListener("click", () => { show(idx); restart(); }));
     if (prev) prev.addEventListener("click", () => { show(i - 1); restart(); });

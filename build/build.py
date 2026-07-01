@@ -58,7 +58,7 @@ def build_home():
         ("01", "Mop", "assets/img/svc-mop-window.jpg",
          "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
         ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
-         "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup — hard water spots, silicone, putty overspray — that a simple wash won't touch, without ever scratching the glass.", None),
+         "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup — silicone, putty overspray, baked-on bug residue — that a simple wash won't touch, without ever scratching the glass.", None),
         ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
          "Then we squeegee the window from edge to edge, pulling every last drop of water and solution off the glass so nothing is left behind to dry into streaks or spots.", None),
         ("04", "Detail", "assets/img/svc-detail-frame.jpg",
