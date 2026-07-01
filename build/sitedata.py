@@ -8,23 +8,24 @@ Single source of truth for NAP, services, areas, plans, icons, and HTML partials
 # ---------------------------------------------------------------------------
 BIZ = {
     "name": "Barta Window Washing",
+    "legal_name": "Barta Window Washing Services",
     "short": "Barta",
     "tagline": "Delano's Premium Exterior Cleaning Company",
-    "phone_display": "(763) 555-0142",
-    "phone_href": "+17635550142",
-    "email": "hello@bartawindowwashing.com",
-    "street": "1 Bridge Avenue",
+    "phone_display": "(763) 314-3400",
+    "phone_href": "+17633143400",
+    "email": "office@bartawindowwashing.com",
+    "street": "320 3rd St S",
     "city": "Delano",
     "state": "MN",
     "zip": "55328",
     "lat": "45.0419",
     "lng": "-93.7891",
-    "hours": "Mon–Sat 7:00am – 7:00pm",
-    "founded": "2014",
+    "hours": "Mon–Fri 8am–7pm, Sat 8am–5pm, Sun Closed",
+    "founded": "2024",
     "rating": "5.0",
     "review_count": "100",
     "domain": "https://www.bartawindowwashing.com",
-    "facebook": "https://www.facebook.com/bartawindowwashing",
+    "facebook": "https://www.facebook.com/p/Barta-Window-Washing-Services-61558622544052/",
     "instagram": "https://www.instagram.com/bartawindowwashing",
     "tiktok": "https://www.tiktok.com/@bartawindowwashing",
     "google": "https://www.google.com/search?q=bartawindowwashing#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
@@ -65,7 +66,7 @@ SERVICES = [
             ("Squeegee", "A professional-grade squeegee pulls every drop off the glass edge to edge, so nothing is left to dry into streaks or spots."),
             ("Hand-detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
         ],
-        "why_barta": "Barta has been washing windows in and around Delano since 2014. We're licensed, fully insured, and every visit is backed by a 100% satisfaction guarantee — if a pane isn't right, call within 48 hours and we'll come back and re-clean it at no charge. Our crews use pure-water poles for second-story glass so you don't have ladders in your landscaping, and we treat every home the way we'd want ours treated.",
+        "why_barta": "Barta Window Washing is co-owned and personally operated by Alex and Jacob Barta, right here in Delano. We're licensed, fully insured, and every visit is backed by a 100% satisfaction guarantee — if a pane isn't right, call within 48 hours and we'll come back and re-clean it at no charge. We use pure-water poles for second-story glass so you don't have ladders in your landscaping, and we treat every home the way we'd want our own treated.",
     },
     {
         "slug": "gutter-cleaning",
@@ -97,7 +98,7 @@ SERVICES = [
             ("Flush &amp; test downspouts", "Each downspout gets flushed with water to confirm it drains freely all the way to ground level — a clogged downspout is the #1 cause of repeat gutter problems."),
             ("Bag it and haul it away", "All debris is bagged on-site and taken with us. You're never left with piles to clean up in your yard."),
         ],
-        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and we've been dealing with them locally since 2014. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
+        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and as local co-owners, Alex and Jacob Barta deal with them firsthand on every job. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
     },
     {
         "slug": "pressure-washing",
@@ -129,7 +130,7 @@ SERVICES = [
             ("Surface-cleaner pass", "A flat surface cleaner attachment gives driveways and patios an even, stripe-free finish instead of the uneven fan-spray marks a wand alone leaves behind."),
             ("Rinse &amp; inspect", "We rinse away loosened grime and walk the finished surface with you, flagging anything — like a stain that needs a second treatment — before we call it done."),
         ],
-        "why_barta": "We've been pressure washing driveways, patios, and walkways around Delano since 2014, and we know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter. Our crews are trained on which pressure and nozzle to use on which surface, so you get a like-new result without the etching or gouging that an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
+        "why_barta": "We know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter, and as the co-owners doing the work ourselves, we're careful about which pressure and nozzle to use on which surface — so you get a like-new result without the etching or gouging an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
     },
     {
         "slug": "house-washing",
@@ -161,7 +162,7 @@ SERVICES = [
             ("Gentle rinse", "We rinse everything clean at a pressure that's safe for vinyl, fiber-cement, stucco, or painted surfaces — no etching, no forced water behind siding panels."),
             ("Final walk-around", "We walk the exterior with you afterward to confirm every side, corner, and eave looks the way it should."),
         ],
-        "why_barta": "Since 2014 we've been washing homes throughout the Delano area, and we've seen what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
+        "why_barta": "As local co-owners washing homes throughout the Delano area, Alex and Jacob know what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
     },
     {
         "slug": "soft-washing",
@@ -193,7 +194,7 @@ SERVICES = [
             ("Let it dwell", "Soft washing isn't instant — the solution needs dwell time to kill growth at the root, which is why results last so much longer than a quick pressure rinse."),
             ("Gentle rinse", "A low-pressure rinse clears away the dissolved growth without stripping paint, etching stucco, or lifting shingles."),
         ],
-        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how we've cleaned delicate surfaces around Delano since 2014. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
+        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how co-owners Alex and Jacob Barta clean every delicate surface around Delano. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
     },
     {
         "slug": "roof-cleaning",
@@ -225,7 +226,7 @@ SERVICES = [
             ("Soft-wash application", "An ARMA-recommended, algae-killing solution is applied at low pressure — we never walk on shingles with a pressure wand or blast granules loose."),
             ("Low-pressure rinse", "A gentle rinse clears dissolved algae, moss, and lichen without stripping the protective granules that give shingles their lifespan."),
         ],
-        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and we've been treating black streaks and moss on roofs around Delano since 2014. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
+        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and co-owners Alex and Jacob personally treat every black-streak and moss job around Delano. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
     },
     {
         "slug": "solar-panel-cleaning",
@@ -257,7 +258,7 @@ SERVICES = [
             ("Soft-tool cleaning", "Non-abrasive tools clear stuck-on grime without scratching the glass or the anti-reflective coating that keeps panels efficient."),
             ("Spot-free finish", "Because the water is purified, panels air-dry completely spot-free — no streaks left to block sunlight."),
         ],
-        "why_barta": "A layer of dust and pollen can cost you 15–25% of your solar output without ever being obvious from the ground — we've been helping Delano-area homeowners recover that lost production since 2014. We only use pure water and soft tools, because scratched glass or a damaged coating costs you far more than the wash saves. Fully insured for roof and ground-mount access, and backed by our satisfaction guarantee.",
+        "why_barta": "A layer of dust and pollen can cost you 15–25% of your solar output without ever being obvious from the ground — co-owners Alex and Jacob Barta help Delano-area homeowners recover that lost production. We only use pure water and soft tools, because scratched glass or a damaged coating costs you far more than the wash saves. Fully insured for roof and ground-mount access, and backed by our satisfaction guarantee.",
     },
     {
         "slug": "screen-cleaning",
@@ -290,7 +291,7 @@ SERVICES = [
             ("Rinse &amp; dry frames", "Frames get rinsed and dried alongside the mesh, since grime builds up in the corners as much as the screen itself."),
             ("Reinstall &amp; inspect", "We reinstall each screen in its labeled opening and flag any tears, bent frames, or damage we notice along the way."),
         ],
-        "why_barta": "Screens are the last thing most companies think about and the first thing we do right — since 2014 we've hand-washed every screen we touch instead of just brushing off the front. It's a small detail that makes a real difference in how much light and airflow actually gets through. Usually bundled with window cleaning at no extra hassle, and backed by our satisfaction guarantee.",
+        "why_barta": "Screens are the last thing most companies think about and the first thing we do right — we hand-wash every screen we touch instead of just brushing off the front. It's a small detail that makes a real difference in how much light and airflow actually gets through. Usually bundled with window cleaning at no extra hassle, and backed by our satisfaction guarantee.",
     },
     {
         "slug": "hard-water-stain-removal",
@@ -322,7 +323,7 @@ SERVICES = [
             ("Multi-stage treatment", "Heavy deposits often need more than one pass — we work in stages rather than over-scrubbing glass in one aggressive attempt."),
             ("Optional protective coating", "For glass prone to sprinkler overspray, we can apply a coating afterward that helps new deposits release more easily."),
         ],
-        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and we've been restoring glass around Delano since 2014. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
+        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and co-owners Alex and Jacob Barta personally restore glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
     },
     {
         "slug": "christmas-light-installation",
@@ -354,7 +355,7 @@ SERVICES = [
             ("In-season maintenance", "If a strand goes out mid-season, we come back and fix it free — you shouldn't have to climb a frozen ladder to swap a bulb."),
             ("Takedown &amp; storage", "When the season ends, we take everything down, and can store your lights until it's time to do it all again next year."),
         ],
-        "why_barta": "We've been designing and installing holiday lighting for Delano-area homes since 2014, so we know how to plan a display that actually matches your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
+        "why_barta": "Co-owners Alex and Jacob Barta personally design and install every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
     },
 ]
 
@@ -402,28 +403,52 @@ HOME_SERVICES = [
 # Service areas — each drives a local landing page
 # ---------------------------------------------------------------------------
 AREAS = [
+    # Primary service area
     {"slug": "delano", "city": "Delano", "neighborhoods": ["Downtown Delano", "Lake Ridge", "Crow River", "Bartholomew"], "note": "our home base"},
-    {"slug": "maple-grove", "city": "Maple Grove", "neighborhoods": ["Rush Creek", "Fish Lake", "Weaver Lake", "Arbor Lakes"], "note": ""},
-    {"slug": "plymouth", "city": "Plymouth", "neighborhoods": ["Bass Lake", "Medicine Lake", "Greenwood", "Kingsview"], "note": ""},
-    {"slug": "wayzata", "city": "Wayzata", "neighborhoods": ["Ferndale", "Holdridge", "Lake Effect", "Downtown Wayzata"], "note": ""},
-    {"slug": "minnetonka", "city": "Minnetonka", "neighborhoods": ["Glen Lake", "Deephaven border", "Opus", "Groveland"], "note": ""},
-    {"slug": "buffalo", "city": "Buffalo", "neighborhoods": ["Buffalo Lake", "Sturges Park", "Montrose border", "Griffing"], "note": ""},
-    {"slug": "rockford", "city": "Rockford", "neighborhoods": ["River Edge", "Greenfield border", "Rockford Township"], "note": ""},
-    {"slug": "waconia", "city": "Waconia", "neighborhoods": ["Lake Waconia", "Downtown Waconia", "Coney Island"], "note": ""},
-    {"slug": "chanhassen", "city": "Chanhassen", "neighborhoods": ["Lake Minnewashta", "Lotus Lake", "Longacres"], "note": ""},
+    {"slug": "buffalo", "city": "Buffalo", "neighborhoods": ["Buffalo Lake", "Sturges Park", "Griffing"], "note": ""},
     {"slug": "medina", "city": "Medina", "neighborhoods": ["Hamel", "Independence Beach border", "Loretto border"], "note": ""},
-    {"slug": "corcoran", "city": "Corcoran", "neighborhoods": ["Hackamore", "Rush Creek", "Pioneer"], "note": ""},
-    {"slug": "watertown", "city": "Watertown", "neighborhoods": ["Downtown Watertown", "Mayer border", "Crow River"], "note": ""},
-    {"slug": "orono", "city": "Orono", "neighborhoods": ["Crystal Bay", "Navarre", "Lake Minnetonka shoreline"], "note": ""},
-    {"slug": "montrose", "city": "Montrose", "neighborhoods": ["Downtown Montrose", "South Fork Crow River"], "note": ""},
+    {"slug": "mound", "city": "Mound", "neighborhoods": ["Lake Minnetonka shoreline", "Downtown Mound"], "note": ""},
+    {"slug": "plymouth", "city": "Plymouth", "neighborhoods": ["Bass Lake", "Medicine Lake", "Plymouth Creek", "Kingsview"], "note": ""},
     {"slug": "st-michael", "city": "St. Michael", "neighborhoods": ["Downtown St. Michael", "River Pointe", "STMA area"], "note": ""},
-    {"slug": "albertville", "city": "Albertville", "neighborhoods": ["Near the Outlets", "Jamestown border"], "note": ""},
+    # Additional service area
+    {"slug": "chanhassen", "city": "Chanhassen", "neighborhoods": ["Lake Minnewashta", "Lotus Lake", "Longacres"], "note": ""},
+    {"slug": "corcoran", "city": "Corcoran", "neighborhoods": ["Hackamore", "Rush Creek", "Pioneer"], "note": ""},
+    {"slug": "deephaven", "city": "Deephaven", "neighborhoods": ["Lake Minnetonka shoreline", "Cottagewood"], "note": ""},
+    {"slug": "eden-prairie", "city": "Eden Prairie", "neighborhoods": ["Downtown Eden Prairie", "Eden Prairie Center area"], "note": ""},
+    {"slug": "excelsior", "city": "Excelsior", "neighborhoods": ["Downtown Excelsior", "Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "golden-valley", "city": "Golden Valley", "neighborhoods": ["Downtown Golden Valley", "Theodore Wirth Park area"], "note": ""},
+    {"slug": "greenfield", "city": "Greenfield", "neighborhoods": ["Rural Greenfield", "Rockford border"], "note": ""},
+    {"slug": "greenwood", "city": "Greenwood", "neighborhoods": ["Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "hamel", "city": "Hamel", "neighborhoods": ["Downtown Hamel", "Medina area"], "note": ""},
     {"slug": "hanover", "city": "Hanover", "neighborhoods": ["Downtown Hanover", "Crow River"], "note": ""},
-    {"slug": "howard-lake", "city": "Howard Lake", "neighborhoods": ["Howard Lake shoreline", "Downtown Howard Lake"], "note": ""},
-    {"slug": "loretto", "city": "Loretto", "neighborhoods": ["Downtown Loretto", "Pioneer Trail area"], "note": ""},
     {"slug": "independence", "city": "Independence", "neighborhoods": ["Lake Independence", "Lake Sarah"], "note": ""},
-    {"slug": "maple-plain", "city": "Maple Plain", "neighborhoods": ["Downtown Maple Plain", "Baker Park area"], "note": ""},
     {"slug": "long-lake", "city": "Long Lake", "neighborhoods": ["Long Lake shoreline", "Downtown Long Lake"], "note": ""},
+    {"slug": "loretto", "city": "Loretto", "neighborhoods": ["Downtown Loretto", "Pioneer Trail area"], "note": ""},
+    {"slug": "maple-grove", "city": "Maple Grove", "neighborhoods": ["Rush Creek", "Fish Lake", "Weaver Lake", "Arbor Lakes"], "note": ""},
+    {"slug": "maple-plain", "city": "Maple Plain", "neighborhoods": ["Downtown Maple Plain", "Baker Park area"], "note": ""},
+    {"slug": "minnetonka", "city": "Minnetonka", "neighborhoods": ["Glen Lake", "Opus", "Groveland"], "note": ""},
+    {"slug": "minnetonka-beach", "city": "Minnetonka Beach", "neighborhoods": ["Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "minnetrista", "city": "Minnetrista", "neighborhoods": ["Halsted Bay area", "Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "montrose", "city": "Montrose", "neighborhoods": ["Downtown Montrose", "South Fork Crow River"], "note": ""},
+    {"slug": "orono", "city": "Orono", "neighborhoods": ["Crystal Bay", "Navarre", "Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "rockford", "city": "Rockford", "neighborhoods": ["River Edge", "Rockford Township"], "note": ""},
+    {"slug": "rogers", "city": "Rogers", "neighborhoods": ["Downtown Rogers"], "note": ""},
+    {"slug": "spring-park", "city": "Spring Park", "neighborhoods": ["Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "st-bonifacius", "city": "St. Bonifacius", "neighborhoods": ["Downtown St. Bonifacius", "Lake Minnetonka area"], "note": ""},
+    {"slug": "tonka-bay", "city": "Tonka Bay", "neighborhoods": ["Lake Minnetonka shoreline"], "note": ""},
+    {"slug": "victoria", "city": "Victoria", "neighborhoods": ["Downtown Victoria", "Lake Bavaria area"], "note": ""},
+    {"slug": "waverly", "city": "Waverly", "neighborhoods": ["Downtown Waverly", "Waverly Lake"], "note": ""},
+    {"slug": "wayzata", "city": "Wayzata", "neighborhoods": ["Ferndale", "Holdridge", "Downtown Wayzata"], "note": ""},
+    {"slug": "winsted", "city": "Winsted", "neighborhoods": ["Downtown Winsted", "Winsted Lake"], "note": ""},
+    {"slug": "woodland", "city": "Woodland", "neighborhoods": ["Lake Minnetonka shoreline"], "note": ""},
+]
+
+# ZIP codes served — shown on the Service Areas hub page for local SEO.
+ZIP_CODES = [
+    "55305", "55311", "55317", "55328", "55331", "55340", "55341", "55343",
+    "55344", "55345", "55346", "55347", "55356", "55357", "55359", "55363",
+    "55364", "55369", "55373", "55374", "55375", "55376", "55384", "55386",
+    "55390", "55391", "55416", "55422", "55427", "55446", "55447",
 ]
 
 # ---------------------------------------------------------------------------
@@ -501,12 +526,8 @@ REVIEWS = [
 # Team
 # ---------------------------------------------------------------------------
 TEAM = [
-    ("Ryan Barta", "Founder &amp; Owner", "RB", "Born and raised in Delano, Ryan started Barta with one ladder and a promise: treat every home like his own. He still personally reviews quality on major jobs."),
-    ("Megan Barta", "Operations &amp; Client Care", "MB", "Megan makes scheduling effortless and is the friendly voice behind every quote, reminder, and follow-up. Your experience is her job."),
-    ("Carlos Reyes", "Lead Technician", "CR", "Ten years in exterior cleaning and our resident soft-wash expert. Carlos trains every new crew member on safety and detail."),
-    ("Sam Whitfield", "Crew Lead", "SW", "Detail-obsessed and ladder-certified, Sam leads our residential window and gutter teams across the western metro."),
-    ("Aisha Nemec", "Crew Lead", "AN", "Aisha runs our house and roof soft-wash crew and is known for landscaping protection that leaves yards spotless."),
-    ("Derek Olson", "Holiday Lighting Designer", "DO", "Off-season window pro, on-season lighting artist. Derek designs the displays that light up the neighborhood."),
+    ("Alex Barta", "Co-Owner", "AB", "Alex co-owns and personally works every job, making sure it's finished to the same standard he'd expect at his own home."),
+    ("Jacob Barta", "Co-Owner", "JB", "Jacob co-owns Barta Window Washing and is hands-on in the field, with a focus on the small details that make a finished job actually look finished."),
 ]
 
 # ---------------------------------------------------------------------------

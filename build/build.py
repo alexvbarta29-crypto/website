@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, PLANS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES
+from sitedata import BIZ, SERVICES, AREAS, PLANS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES
 from icons import icon
 import components as C
 import schema as S
@@ -226,7 +226,7 @@ def build_home():
       <div class="section-head center">
         <span class="eyebrow">Areas we serve</span>
         <h2>Proudly cleaning the western Twin Cities</h2>
-        <p>Based in Delano and serving homeowners and businesses across Wright, Hennepin, and Carver counties.</p>
+        <p>Based in Delano and serving homeowners and businesses across the western Twin Cities metro.</p>
       </div>
       <div class="area-grid">{areas_html}</div>
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">See all service areas {icon('arrow')}</a></div>
@@ -753,10 +753,10 @@ def build_why():
   </div></section>
   <section class="bg-deep"><div class="container">
     <div class="stats">
-      <div class="stat reveal"><div class="num" data-count="12" data-suffix="+">12+</div><div class="label">Years in business</div></div>
-      <div class="stat reveal" data-delay="1"><div class="num" data-count="9400" data-suffix="+">9,400+</div><div class="label">Jobs completed</div></div>
-      <div class="stat reveal" data-delay="2"><div class="num" data-count="100" data-suffix="+">100+</div><div class="label">5-star reviews</div></div>
-      <div class="stat reveal" data-delay="3"><div class="num" data-count="98" data-suffix="%">98%</div><div class="label">Would refer a friend</div></div>
+      <div class="stat reveal"><div class="num" data-count="{BIZ['rating']}">{BIZ['rating']}</div><div class="label">Average rating</div></div>
+      <div class="stat reveal" data-delay="1"><div class="num" data-count="{BIZ['review_count']}" data-suffix="+">{BIZ['review_count']}+</div><div class="label">5-star reviews</div></div>
+      <div class="stat reveal" data-delay="2"><div class="num" data-count="100" data-suffix="%">100%</div><div class="label">Owner-operated, every job</div></div>
+      <div class="stat reveal" data-delay="3"><div class="num" style="font-size:clamp(1.5rem,2.6vw,2.1rem)">Insured</div><div class="label">Full coverage on every visit</div></div>
     </div>
   </div></section>
   <section><div class="container">
@@ -781,30 +781,30 @@ def build_about():
                        for i, (ic, t, d) in enumerate(values))
     html, body = interior_head(
         title=f"About {BIZ['name']} | Family-Owned Exterior Cleaning in Delano, MN",
-        desc="Barta Window Washing is a family-owned, Delano-based exterior cleaning company founded in 2014. Learn our story, our values, and our commitment to your home.",
+        desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story, our values, and our commitment to your home.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
-        lead=f"Founded in {BIZ['founded']}, Barta Window Washing has grown from a single ladder into the western metro's most trusted exterior cleaning team — without ever losing the personal touch that started it all.",
+        lead=f"Founded in {BIZ['founded']} and co-owned by Alex and Jacob Barta, we're a hands-on, local exterior cleaning team — the owners themselves are on the job, not a call center or a rotating cast of subcontractors.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="split">
     <div class="prose reveal">
       <span class="eyebrow">Our story</span>
-      <h2 class="mt-1">It started with one promise</h2>
-      <p>Ryan Barta grew up in Delano and started this company with a single goal: give local homeowners a window cleaner they could actually trust — one who showed up on time, sweated the details, and stood behind the work.</p>
-      <p>That promise hasn't changed. We've grown to a full team serving homes and businesses across Wright, Hennepin, and Carver counties, and added gutter cleaning, pressure washing, house and roof soft washing, and holiday lighting along the way. But every job still gets the same care it did on day one — because our name is on it.</p>
-      <p>When you call Barta, you're not getting a call center or a rotating cast of subcontractors. You're getting a local, family-owned team that genuinely cares whether your home looks its best.</p>
+      <h2 class="mt-1">Owner-operated, from day one</h2>
+      <p>Barta Window Washing Services is co-owned by brothers Alex and Jacob Barta, based right here in Delano. We started the company in {BIZ['founded']} with a simple goal: give local homeowners an exterior cleaning team they can actually trust — one that shows up on time, sweats the details, and stands behind the work.</p>
+      <p>Because we're co-owners working the jobs ourselves, every project gets our direct attention — not a subcontractor's. We offer window cleaning, gutter cleaning, pressure washing, house and roof soft washing, and holiday lighting installation across Delano and the western Twin Cities metro.</p>
+      <p>When you call Barta, you're talking to the people who actually do the work — and whose name is on every result.</p>
     </div>
-    <div class="reveal">{C.photo("assets/img/team-barta.jpg", "The Barta Window Washing team in Delano, MN", ratio="5/4", depth=depth)}</div>
+    <div class="reveal">{C.photo("assets/img/team-barta.jpg", "Alex and Jacob Barta, co-owners of Barta Window Washing, in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
   <section class="bg-mist"><div class="container"><div class="split reverse">
     <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
     <div class="reveal">
       <span class="eyebrow">On the road near you</span>
       <h2 class="mt-1">Look for the Barta van</h2>
-      <p>Our clearly branded, fully stocked service vans are a familiar sight across Delano and the western metro. When one pulls into your driveway, you'll know exactly who's arriving — a uniformed, insured, local crew that treats your home like its own.</p>
+      <p>Our clearly branded, fully stocked service van is a familiar sight across Delano and the western metro. When it pulls into your driveway, you'll know exactly who's arriving — the owners themselves, treating your home like their own.</p>
       <ul class="checklist mt-2">
-        <li>{icon('check-circle')} Uniformed, background-checked technicians</li>
+        <li>{icon('check-circle')} Co-owners on the job, not subcontractors</li>
         <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
         <li>{icon('check-circle')} Licensed &amp; insured on every visit</li>
       </ul>
@@ -815,9 +815,9 @@ def build_about():
     <div class="grid cols-2">{val_html}</div>
   </div></section>
   <section><div class="container"><div class="section-head center">
-    <span class="eyebrow">The people</span><h2>Meet the team behind the shine</h2>
-    <p>Get to know the friendly, hard-working crew who make your home sparkle.</p>
-    <a class="btn mt-3" href="team.html">Meet the team {icon('arrow')}</a>
+    <span class="eyebrow">The people</span><h2>Meet the owners</h2>
+    <p>Get to know Alex and Jacob — the co-owners who personally handle your job.</p>
+    <a class="btn mt-3" href="team.html">Meet the owners {icon('arrow')}</a>
   </div></div></section>
   {C.cta_band(depth)}
 </main>"""
@@ -837,17 +837,17 @@ def build_team():
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
     html, body = interior_head(
-        title=f"Meet the Team | {BIZ['name']} Delano, MN",
-        desc="Meet the friendly, professional, background-checked team behind Barta Window Washing — the people who make Delano-area homes and businesses shine.",
-        slug="team.html", eyebrow="Meet the Team",
-        h1="The crew behind the clean",
-        lead="Friendly faces, serious skills. Every Barta team member is trained, background-checked, and genuinely proud of the work they do for your home.",
-        depth=depth, crumb_label="Meet the Team", primary_kw="Barta Window Washing team Delano")
+        title=f"Meet the Owners | {BIZ['name']} Delano, MN",
+        desc="Meet Alex and Jacob Barta, the co-owners behind Barta Window Washing — the two people who personally show up and do the work on your home.",
+        slug="team.html", eyebrow="Meet the Owners",
+        h1="The owners behind the clean",
+        lead="Barta Window Washing is owner-operated — Alex and Jacob Barta personally handle the work, so the people you talk to are the same people who show up at your home.",
+        depth=depth, crumb_label="Meet the Owners", primary_kw="Barta Window Washing owners Delano")
     html += f"""<main id="main">{body}
-  <section><div class="container"><div class="grid cols-3">{cards}</div></div></section>
+  <section><div class="container"><div class="grid cols-2">{cards}</div></div></section>
   <section class="bg-mist"><div class="container"><div class="section-head center">
-    <span class="eyebrow">Join us</span><h2>Want to be part of the team?</h2>
-    <p>We're always looking for detail-oriented, friendly people who take pride in their work.</p>
+    <span class="eyebrow">Growing</span><h2>Looking to join us down the road?</h2>
+    <p>We're a small, owner-operated team today, but we'd love to hear from detail-oriented, reliable people for future openings.</p>
     <a class="btn mt-3" href="careers.html">See open positions {icon('arrow')}</a>
   </div></div></section>
   {C.cta_band(depth)}
@@ -949,14 +949,22 @@ def build_service_areas():
         for i, a in enumerate(AREAS))
     html, body = interior_head(
         title=f"Service Areas | {BIZ['name']} — Delano & Western Twin Cities, MN",
-        desc="Barta Window Washing proudly serves Delano, Maple Grove, Plymouth, Wayzata, Minnetonka, Buffalo, Waconia & more across the western Twin Cities metro. Find your city.",
+        desc="Barta Window Washing proudly serves Delano, Buffalo, Medina, Mound, Plymouth, St. Michael & more across the western Twin Cities metro. Find your city.",
         slug="service-areas.html", eyebrow="Service Areas",
         h1="Proudly serving the western Twin Cities",
-        lead="Based in Delano and serving homeowners and businesses across Wright, Hennepin, and Carver counties. Find your community below.",
+        lead="Based in Delano and serving homeowners and businesses across the western Twin Cities metro. Find your community below.",
         depth=depth, crumb_label="Service Areas", primary_kw="window cleaning service areas Twin Cities MN")
+    zip_html = "".join(f'<span class="pill" style="background:var(--mist-2);border:0;margin:4px">{z}</span>' for z in ZIP_CODES)
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="grid cols-3">{cards}</div>
     <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too — <a href="contact.html" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
+  </div></section>
+  <section class="bg-mist"><div class="container">
+    <div class="section-head center">
+      <span class="eyebrow" style="justify-content:center">Coverage</span>
+      <h2>ZIP codes we service</h2>
+    </div>
+    <div class="center" style="max-width:820px;margin-inline:auto">{zip_html}</div>
   </div></section>
   {C.cta_band(depth)}
 </main>"""
@@ -1112,7 +1120,7 @@ def build_contact():
         desc=f"Get in touch with Barta Window Washing. Call {BIZ['phone_display']}, email us, or request a free quote online. Serving Delano & the western Twin Cities, {BIZ['hours']}.",
         slug="contact.html", eyebrow="Contact", schema=schema,
         h1="Let's talk about your home",
-        lead="Questions, quotes, or scheduling — we're here to help and happy to hear from you. Reach out and a friendly local team member will get right back to you.",
+        lead="Questions, quotes, or scheduling — we're here to help and happy to hear from you. Reach out and one of the owners will get right back to you personally.",
         depth=depth, crumb_label="Contact", primary_kw="contact window cleaning Delano MN")
     info = f"""<div class="card" style="display:grid;gap:18px">
       <a class="feature" href="tel:{BIZ['phone_href']}"><span class="ic">{icon('phone')}</span><div><h4>Call or text</h4><p>{BIZ['phone_display']}</p></div></a>

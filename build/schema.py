@@ -12,6 +12,7 @@ def local_business(reviews=None):
         "@type": "HomeAndConstructionBusiness",
         "@id": BIZ["domain"] + "/#business",
         "name": BIZ["name"],
+        "legalName": BIZ["legal_name"],
         "description": "Premium residential and commercial exterior cleaning — window cleaning, gutter cleaning, pressure washing, house & roof soft washing, and holiday lighting in Delano, MN and the western Twin Cities metro.",
         "url": BIZ["domain"],
         "telephone": BIZ["phone_display"],
@@ -29,11 +30,18 @@ def local_business(reviews=None):
             "addressCountry": "US",
         },
         "geo": {"@type": "GeoCoordinates", "latitude": BIZ["lat"], "longitude": BIZ["lng"]},
-        "openingHoursSpecification": [{
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-            "opens": "07:00", "closes": "19:00",
-        }],
+        "openingHoursSpecification": [
+            {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                "opens": "08:00", "closes": "19:00",
+            },
+            {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": ["Saturday"],
+                "opens": "08:00", "closes": "17:00",
+            },
+        ],
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
         "sameAs": [BIZ["facebook"], BIZ["instagram"], BIZ["google"]],
         "aggregateRating": {
