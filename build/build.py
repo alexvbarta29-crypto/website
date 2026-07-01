@@ -829,7 +829,7 @@ def build_reviews():
         reviews_content = f'<div class="grid cols-3">{cards}</div>'
     html += f"""<main id="main">
   <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors — {BIZ['name']} Reviews</h1>
-  <section class="section-tight"><div class="container">{reviews_content}</div></section>
+  <section class="section-tight" style="padding-top:calc(var(--nav-h) + 40px)"><div class="container">{reviews_content}</div></section>
 </main>"""
     html += C.page_end(depth)
     write("reviews.html", html, slug="reviews.html", priority="0.7")
