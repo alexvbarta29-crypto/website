@@ -91,15 +91,19 @@ def build_home():
 
     # Recurring-plan savings cards ("Save money with every service")
     promo_plans = [
-        ("Monthly", "150", True), ("Quarterly", "100", True), ("Biannual", "50", False),
+        ("Monthly", "150", True, False),
+        ("Quarterly", "100", True, True),
+        ("Biannual", "50", False, False),
     ]
     promo_feats = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
     promo_cards = ""
-    for i, (name, amt, included) in enumerate(promo_plans):
+    for i, (name, amt, included, popular) in enumerate(promo_plans):
         cls = "yes" if included else "no"
         mark = icon("check-circle") if included else icon("x")
         feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in promo_feats)
-        promo_cards += f"""<div class="promo-card reveal" data-delay="{i}">
+        pop_cls = " popular" if popular else ""
+        badge = '<span class="promo-badge">Most Popular</span>' if popular else ""
+        promo_cards += f"""<div class="promo-card{pop_cls} reveal" data-delay="{i}">{badge}
         <h3 class="promo-name">{name}</h3>
         <div class="promo-price">${amt} <small>OFF</small></div>
         <div class="promo-per">Per Cleaning</div>
