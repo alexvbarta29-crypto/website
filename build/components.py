@@ -296,13 +296,13 @@ def picture_card(item, depth=0, idx=0):
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
 
 def process_slider(steps, depth=0):
-    """Full-photo step slideshow (e.g. Scrub / Squeegee / Detail) with
-    numbered nav dots + progress line and prev/next arrows."""
+    """Step slideshow (e.g. Scrub / Squeegee / Detail): photo on the left,
+    numbered description panel on the right, with nav dots + progress line."""
     root = rel(depth)
     slides = "".join(
-        f'<div class="process-slide{" active" if i == 0 else ""}" '
-        f'style="background-image:linear-gradient(0deg, rgba(10,10,12,.9) 0%, rgba(10,10,12,.45) 45%, rgba(10,10,12,.05) 75%), url(\'{root}{img}\')">'
-        f'<div class="process-copy"><span class="process-num">{num}</span>'
+        f'<div class="process-slide{" active" if i == 0 else ""}">'
+        f'<div class="process-photo" style="background-image:url(\'{root}{img}\')"></div>'
+        f'<div class="process-info"><span class="process-num">{num}</span>'
         f'<h3>{title}</h3><p>{desc}</p></div></div>'
         for i, (num, title, img, desc) in enumerate(steps))
     dots = "".join(
@@ -316,6 +316,7 @@ def process_slider(steps, depth=0):
       <button type="button" class="process-arrow next" aria-label="Next step">{icon('arrow')}</button>
     </div>
     <div class="process-dots">{dots}</div>
+    <div class="center mt-4"><a class="btn" href="{root}request-quote.html">Get Your Instant Quote</a></div>
   </div>"""
 
 def trust_badges():
