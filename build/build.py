@@ -56,13 +56,13 @@ def build_home():
 
     process_steps = [
         ("01", "Mop", "assets/img/svc-mop-window.jpg",
-         "We apply an eco-friendly cleaning solution and work every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen off the glass.", None),
+         "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
         ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
-         "For stubborn silicone, putty overspray, and grime the T-bar won't touch, we hand-scrub with industrial-grade abrasive pads — safe on glass, tough on residue.", None),
+         "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup — hard water spots, silicone, putty overspray — that a simple wash won't touch, without ever scratching the glass.", None),
         ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
-         "A professional-grade squeegee removes every drop, leaving streak-free glass with zero spotting.", None),
+         "Then we squeegee the window from edge to edge, pulling every last drop of water and solution off the glass so nothing is left behind to dry into streaks or spots.", None),
         ("04", "Detail", "assets/img/svc-detail-frame.jpg",
-         "Most companies stop at the glass. We finish every job by hand-detailing the glass, frames, and sills — the details other companies skip, so your windows look flawless up close, not just from the curb.", None),
+         "Finally, we hand-detail the glass, frames, and sills — wiping down every edge and corner so the window looks brand new, not just clean, before we move on to the next one.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
 
