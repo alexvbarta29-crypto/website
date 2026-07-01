@@ -158,7 +158,6 @@ def build_home():
         <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
       </div>
       <div class="promo-grid">{promo_cards}</div>
-      <div class="center mt-4"><a class="btn btn-ghost" href="service-plans.html">See full plan details {icon('arrow')}</a></div>
     </div>
   </section>
 
