@@ -3,6 +3,10 @@
    Premium, Apple-inspired UI. Mobile-first. Accessible.
    ===================================================================== */
 
+/* <picture> wrappers (WebP + JPG fallback) shouldn't affect layout —
+   the inner <img> keeps all of its original positioning/sizing rules. */
+picture { display: contents; }
+
 /* ---------- Design Tokens ---------- */
 :root {
   /* Brand palette — Barta coral + black + white

@@ -14,6 +14,21 @@ def rel(depth):
     """Return path prefix to site root given folder depth (0 = root)."""
     return "../" * depth
 
+def _webp(src):
+    """Swap a .jpg/.jpeg path for its .webp sibling (generated at build time
+    by build.generate_webp_versions() for every real photo)."""
+    return src.rsplit(".", 1)[0] + ".webp" if src.lower().endswith((".jpg", ".jpeg")) else src
+
+def picture(root, src, alt, img_class="", extra_attrs=""):
+    """<picture> with a WebP source (smaller, modern) + the original JPG as
+    the universally-supported <img> fallback. Pass any extra img attributes
+    (loading, decoding, width, height, onerror...) as a raw string."""
+    webp = _webp(src)
+    if webp == src:
+        return f'<img class="{img_class}" src="{root}{src}" alt="{alt}" {extra_attrs}>'
+    return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
+            f'<img class="{img_class}" src="{root}{src}" alt="{alt}" {extra_attrs}></picture>')
+
 def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None):
     """<head> block with full SEO + social + JSON-LD."""
     root = rel(depth)
@@ -280,8 +295,10 @@ def service_image_card(s, depth=0, idx=0):
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
     img = _SERVICE_IMG_OVERRIDES.get(s["name"]) or ("assets/img/svc-" + _slugify(s["name"]) + ".jpg")
     alt = f"{s['name']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
+    img_tag = picture(root, img, alt, img_class="img-card-bg",
+                       extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')
     return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}" style="background:{dark}">'
-            f'<img class="img-card-bg" src="{root}{img}" alt="{alt}" loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()">'
+            f'{img_tag}'
             f'<span class="img-card-watermark">{icon(s["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
@@ -301,8 +318,10 @@ def picture_card(item, depth=0, idx=0):
     img = item.get("img") or ("assets/img/svc-" + _slugify(item["label"]) + ".jpg")
     alt = f"{item['label']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
     feat = " featured" if item.get("featured") else ""
+    img_tag = picture(root, img, alt, img_class="img-card-bg",
+                       extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')
     return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{item["target"]}" aria-label="{item["label"]}" style="background:{dark}">'
-            f'<img class="img-card-bg" src="{root}{img}" alt="{alt}" loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()">'
+            f'{img_tag}'
             f'<span class="img-card-watermark">{icon(item["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
@@ -313,14 +332,19 @@ def process_slider(steps, depth=0):
     line. Steps without a real photo yet (img=None) get a branded gradient
     tile with a watermark icon instead."""
     root = rel(depth)
-    slides = "".join(
-        f'<div class="process-slide{" active" if i == 0 else ""}">'
-        + (f'<div class="process-photo"><img src="{root}{img}" alt="{title} step of the Barta Window Washing cleaning process in {BIZ["city"]}, {BIZ["state"]}" loading="lazy" decoding="async" width="600" height="700"></div>'
-           if img else
-           f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>')
-        + f'<div class="process-info"><span class="process-num">{num}</span>'
-        f'<h3>{title}</h3><p>{desc}</p></div></div>'
-        for i, (num, title, img, desc, fic) in enumerate(steps))
+
+    photo_attrs = 'loading="lazy" decoding="async" width="600" height="700"'
+
+    def _slide(i, num, title, img, desc, fic):
+        if img:
+            alt = f"{title} step of the Barta Window Washing cleaning process in {BIZ['city']}, {BIZ['state']}"
+            photo_html = f'<div class="process-photo">{picture(root, img, alt, extra_attrs=photo_attrs)}</div>'
+        else:
+            photo_html = f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>'
+        return (f'<div class="process-slide{" active" if i == 0 else ""}">{photo_html}'
+                f'<div class="process-info"><span class="process-num">{num}</span><h3>{title}</h3><p>{desc}</p></div></div>')
+
+    slides = "".join(_slide(i, num, title, img, desc, fic) for i, (num, title, img, desc, fic) in enumerate(steps))
     dots = "".join(
         (f'<span class="process-line"></span>' if i > 0 else "")
         + f'<button type="button" class="process-dot{" active" if i == 0 else ""}" data-i="{i}" aria-label="Step {i+1}: {title}">{i+1}</button>'
@@ -350,9 +374,12 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
         before_src, after_src = f"ba-{slug}-before.jpg", f"ba-{slug}-after.jpg"
     else:
         before_src, after_src = f"{name}-before.svg", f"{name}-after.svg"
+    ba_attrs = 'loading="lazy" width="800" height="500"'
+    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning — visible dirt, algae, and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs)
+    after_img = picture(root, f"assets/img/{after_src}", "After Barta professional cleaning — bright, spotless, like-new surface", img_class="ba-img ba-after", extra_attrs=ba_attrs)
     return f"""<div class="ba" role="group" aria-label="Before and after comparison slider">
-  <img class="ba-img ba-before" src="{root}assets/img/{before_src}" alt="Before professional cleaning — visible dirt, algae, and water spots" loading="lazy" width="800" height="500">
-  <img class="ba-img ba-after" src="{root}assets/img/{after_src}" alt="After Barta professional cleaning — bright, spotless, like-new surface" loading="lazy" width="800" height="500">
+  {before_img}
+  {after_img}
   <span class="ba-label before">{label_before}</span>
   <span class="ba-label after">{label_after}</span>
   <span class="ba-handle"></span>
@@ -423,10 +450,10 @@ def photo(src, alt, ratio="5/4", depth=0, cls=""):
     (e.g. not uploaded yet) the img hides itself and the placeholder shows —
     no broken-image icons, graceful before and after the photo exists."""
     root = rel(depth)
+    img_tag = picture(root, src, alt, extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"')
     return (f'<div class="photo {cls}" style="aspect-ratio:{ratio}" role="img" aria-label="{alt}">'
             f'<span class="imgph" aria-hidden="true"><span class="ph-label">{icon("image")}<br>{alt}</span></span>'
-            f'<img src="{root}{src}" alt="{alt}" loading="lazy" decoding="async" '
-            f'onerror="this.remove()"></div>')
+            f'{img_tag}</div>')
 
 def crumbs(items, depth=0):
     """items = [(label, href_or_None), ...]"""

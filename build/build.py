@@ -133,7 +133,7 @@ def build_home():
 <main id="main">
   <!-- HERO -->
   <section class="hero hero-photo-full">
-    <img class="hero-bg-img" src="assets/img/hero-home.jpg" alt="The branded Barta Window Washing (BWW) service van in the Delano, MN area" width="1920" height="1442" fetchpriority="high" decoding="async">
+    {C.picture("", "assets/img/hero-home.jpg", "The branded Barta Window Washing (BWW) service van in the Delano, MN area", img_class="hero-bg-img", extra_attrs='width="1920" height="1442" fetchpriority="high" decoding="async"')}
     <div class="hero-overlay"></div>
     <div class="container">
       <div class="hero-content reveal in">
@@ -1520,7 +1520,27 @@ def minify_assets():
         print(f"  (js minify skipped: {e}; using unminified copy)")
         shutil.copyfile(js_src, js_out)
 
+def generate_webp_versions():
+    """Generate a .webp sibling for every real photo (assets/img/*.jpg), used
+    by components.picture() as the modern-format <picture> source. Skips any
+    jpg whose webp is already newer (fast no-op on repeat builds)."""
+    import glob
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  (Pillow not available — skipping WebP generation)")
+        return
+    for jpg in glob.glob(os.path.join(ROOT, "assets/img/*.jpg")):
+        webp = jpg.rsplit(".", 1)[0] + ".webp"
+        if os.path.exists(webp) and os.path.getmtime(webp) >= os.path.getmtime(jpg):
+            continue
+        try:
+            Image.open(jpg).convert("RGB").save(webp, "WEBP", quality=80, method=6)
+        except Exception as e:
+            print(f"  (webp skipped for {os.path.basename(jpg)}: {e})")
+
 def main():
+    generate_webp_versions()
     minify_assets()
     C.ASSET_VER = _asset_version()
     build_home()
