@@ -327,11 +327,20 @@ def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
     return f'<div class="badges">{items}</div>'
 
+# Slots with real photos on disk (assets/img/{name}-before.jpg / -after.jpg)
+# instead of the auto-generated placeholder SVGs.
+BA_REAL_PHOTOS = {"ba2": "siding"}
+
 def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
     root = rel(depth)
+    if name in BA_REAL_PHOTOS:
+        slug = BA_REAL_PHOTOS[name]
+        before_src, after_src = f"ba-{slug}-before.jpg", f"ba-{slug}-after.jpg"
+    else:
+        before_src, after_src = f"{name}-before.svg", f"{name}-after.svg"
     return f"""<div class="ba" role="group" aria-label="Before and after comparison slider">
-  <img class="ba-img ba-before" src="{root}assets/img/{name}-before.svg" alt="Before professional cleaning — visible dirt, algae, and water spots" loading="lazy" width="800" height="500">
-  <img class="ba-img ba-after" src="{root}assets/img/{name}-after.svg" alt="After Barta professional cleaning — bright, spotless, like-new surface" loading="lazy" width="800" height="500">
+  <img class="ba-img ba-before" src="{root}assets/img/{before_src}" alt="Before professional cleaning — visible dirt, algae, and water spots" loading="lazy" width="800" height="500">
+  <img class="ba-img ba-after" src="{root}assets/img/{after_src}" alt="After Barta professional cleaning — bright, spotless, like-new surface" loading="lazy" width="800" height="500">
   <span class="ba-label before">{label_before}</span>
   <span class="ba-label after">{label_after}</span>
   <span class="ba-handle"></span>

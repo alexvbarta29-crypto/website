@@ -1376,6 +1376,8 @@ def build_images():
         "ba3": ("#5f6660", "#7d847d", "Roof — before", "Roof — after"),
     }
     for name, (b1, b2, blabel, alabel) in pairs.items():
+        if name in C.BA_REAL_PHOTOS:
+            continue  # real photo on disk — don't overwrite with a placeholder
         before = gradient_svg(
             f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{b1}"/><stop offset="1" stop-color="{b2}"/></linearGradient>'
             f'<filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.28"/></feComponentTransfer></filter></defs>'
