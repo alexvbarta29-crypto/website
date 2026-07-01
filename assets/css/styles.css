@@ -483,6 +483,28 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .map-embed { aspect-ratio: 21/9; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); }
 @media (max-width: 640px) { .map-embed { aspect-ratio: 4/3; } }
 
+/* Service-area map + expandable city accordion (Proudly Serving section) */
+.areas-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: start; }
+.areas-map-grid .map-embed { aspect-ratio: 4/3; position: sticky; top: calc(var(--nav-h) + 20px); }
+.areas-group + .areas-group { margin-top: 28px; }
+.areas-group h3 { font-family: var(--font-head); font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; color: var(--blue-600); margin-bottom: 12px; }
+.area-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: start; }
+@media (max-width: 560px) { .area-list { grid-template-columns: 1fr; } }
+.area-list details { background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; transition: box-shadow .3s; }
+.area-list details[open] { box-shadow: var(--sh-sm); }
+.area-list summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 18px; font-family: var(--font-head); font-weight: 700; color: var(--navy-800); cursor: pointer; list-style: none; }
+.area-list summary::-webkit-details-marker { display: none; }
+.area-list summary .chev { width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--slate-400); transition: transform .3s var(--ease); }
+.area-list details[open] summary .chev { transform: rotate(180deg); color: var(--blue-600); }
+.area-list summary .chev svg { width: 16px; height: 16px; }
+.area-list .area-body { padding: 0 18px 16px; font-size: .92rem; color: var(--slate-500); }
+.area-list .area-body a { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--blue-600); font-weight: 600; }
+.area-list .area-body a svg { width: 15px; height: 15px; flex: none; }
+@media (max-width: 860px) {
+  .areas-map-grid { grid-template-columns: 1fr; }
+  .areas-map-grid .map-embed { position: static; }
+}
+
 /* Image placeholder (graceful when no photo present) */
 .imgph { background: var(--grad-deep); position: relative; display: grid; place-items: center; color: rgba(255,255,255,.8); overflow: hidden; }
 .imgph::after { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 60% at 70% 20%, rgba(255,106,61,.3), transparent 60%), radial-gradient(50% 50% at 20% 90%, rgba(251,77,61,.32), transparent 60%); }

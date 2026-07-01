@@ -941,12 +941,18 @@ def build_faqs():
 # ===========================================================================
 def build_service_areas():
     depth = 0
-    cards = "".join(
-        f"""<a class="card reveal" data-delay="{i%4}" href="areas/{a['slug']}.html" style="display:flex;align-items:center;gap:14px">
-        <span class="ic" style="width:48px;height:48px;border-radius:14px;background:var(--grad-brand);color:#fff;display:grid;place-items:center;flex:none">{icon('pin')}</span>
-        <span><span style="font-family:var(--font-head);font-weight:700;color:var(--navy-800);display:block">{a['city']}, MN</span>
-        <span style="font-size:.85rem;color:var(--slate-500)">Window, gutter &amp; exterior cleaning</span></span></a>"""
-        for i, a in enumerate(AREAS))
+
+    def area_row(a):
+        nbhds = ", ".join(a["neighborhoods"])
+        return f"""<details class="reveal">
+        <summary>{a['city']}, MN <span class="chev">{icon('chevron')}</span></summary>
+        <div class="area-body"><p>{nbhds}</p><a href="areas/{a['slug']}.html">View services in {a['city']} {icon('arrow')}</a></div>
+      </details>"""
+
+    primary_html = "".join(area_row(a) for a in AREAS if a["tier"] == "primary")
+    extended_html = "".join(area_row(a) for a in AREAS if a["tier"] == "extended")
+    map_src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z=10&output=embed"
+
     html, body = interior_head(
         title=f"Service Areas | {BIZ['name']} — Delano & Western Twin Cities, MN",
         desc="Barta Window Washing proudly serves Delano, Buffalo, Medina, Mound, Plymouth, St. Michael & more across the western Twin Cities metro. Find your city.",
@@ -956,7 +962,22 @@ def build_service_areas():
         depth=depth, crumb_label="Service Areas", primary_kw="window cleaning service areas Twin Cities MN")
     zip_html = "".join(f'<span class="pill" style="background:var(--mist-2);border:0;margin:4px">{z}</span>' for z in ZIP_CODES)
     html += f"""<main id="main">{body}
-  <section><div class="container"><div class="grid cols-3">{cards}</div>
+  <section><div class="container">
+    <div class="areas-map-grid">
+      <div class="map-embed reveal">
+        <iframe src="{map_src}" width="100%" height="100%" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map of the Barta Window Washing service area"></iframe>
+      </div>
+      <div class="reveal">
+        <div class="areas-group">
+          <h3>Primary Service Area</h3>
+          <div class="area-list">{primary_html}</div>
+        </div>
+        <div class="areas-group">
+          <h3>Extended Service Area</h3>
+          <div class="area-list">{extended_html}</div>
+        </div>
+      </div>
+    </div>
     <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too — <a href="contact.html" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
   </div></section>
   <section class="bg-mist"><div class="container">
