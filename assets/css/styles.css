@@ -317,13 +317,29 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .stats-light .stat .num { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .stats-light .stat .label { color: var(--slate-500); }
 
-/* Steps */
-.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; counter-reset: step; }
-.step { position: relative; padding: 30px 24px; background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-sm); }
-.step .n { counter-increment: step; font-family: var(--font-head); font-weight: 800; font-size: 1rem; width: 42px; height: 42px; border-radius: var(--r-pill); background: var(--grad-brand); color: #fff; display: grid; place-items: center; box-shadow: var(--sh-glow); }
-.step .n::before { content: "0" counter(step); }
-.step h4 { margin-top: 18px; font-family: var(--font-head); }
-.step p { margin-top: 8px; font-size: .94rem; }
+/* Process slider (Scrub / Squeegee / Detail) */
+.process-slider { position: relative; }
+.process-track { position: relative; aspect-ratio: 16/8; min-height: 320px; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); background: var(--navy-900); }
+.process-slide { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; visibility: hidden; transition: opacity .5s ease; display: flex; align-items: flex-end; }
+.process-slide.active { opacity: 1; visibility: visible; }
+.process-copy { position: relative; z-index: 1; padding: clamp(24px, 4vw, 48px); max-width: 560px; }
+.process-num { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--r-pill); background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 1.2rem; box-shadow: var(--sh-glow); }
+.process-copy h3 { margin-top: 16px; font-size: clamp(1.6rem, 3vw, 2.3rem); color: #fff; }
+.process-copy p { margin-top: 10px; max-width: 460px; font-size: 1rem; color: rgba(255,255,255,.82); }
+.process-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(255,255,255,.92); border: none; color: var(--ink); display: grid; place-items: center; cursor: pointer; z-index: 2; transition: background .2s ease; }
+.process-arrow:hover { background: #fff; }
+.process-arrow.prev { left: 16px; transform: translateY(-50%) rotate(180deg); }
+.process-arrow.next { right: 16px; }
+.process-dots { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 28px; }
+.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: all .25s ease; flex: 0 0 auto; }
+.process-dot.active { border-color: transparent; background: var(--grad-brand); color: #fff; box-shadow: var(--sh-glow); }
+.process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform .4s ease; }
+.process-line.filled::after { transform: scaleX(1); }
+@media (max-width: 640px) {
+  .process-line { width: 28px; }
+  .process-arrow { width: 38px; height: 38px; }
+}
 
 /* ---------- Before / After Slider ---------- */
 .ba { position: relative; aspect-ratio: 16/10; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); user-select: none; touch-action: pan-y; }

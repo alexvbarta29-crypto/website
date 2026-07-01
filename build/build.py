@@ -54,15 +54,15 @@ def build_home():
         f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{icon("pin")} {a["city"]}</a>'
         for i, a in enumerate(AREAS))
 
-    steps = [
-        ("Request your free quote", "Tell us about your home online or by phone. Most quotes are returned the same day — many without an on-site visit."),
-        ("Pick a time that works", "Choose a date and arrival window. We confirm by text and send a friendly reminder before we arrive."),
-        ("We make it shine", "Our uniformed, insured crew arrives on time, protects your property, and details every surface to perfection."),
-        ("Love it, guaranteed", "We walk the results with you. Not thrilled? We make it right — backed by our 100% Satisfaction Guarantee."),
+    process_steps = [
+        ("01", "Scrub", "assets/img/svc-exterior-window-cleaning.jpg",
+         "We apply an eco-friendly cleaning solution and work every pane with soft-bristle brushes to lift dirt, pollen, and grime."),
+        ("02", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
+         "A professional-grade squeegee removes every drop, leaving streak-free glass with zero spotting."),
+        ("03", "Detail", "assets/img/svc-track-detailing.jpg",
+         "We finish by hand-detailing sills, tracks, and frames — the details other companies skip."),
     ]
-    steps_html = "".join(
-        f'<div class="step reveal" data-delay="{i%4}"><span class="n"></span><h4>{t}</h4><p>{d}</p></div>'
-        for i, (t, d) in enumerate(steps))
+    process_slider_html = C.process_slider(process_steps, depth)
 
     why = [
         ("shield", "Licensed &amp; fully insured", "Comprehensive liability and workers' comp coverage on every job. Your home and our team are always protected."),
@@ -181,10 +181,10 @@ def build_home():
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">How it works</span>
-        <h2>A spotless home in four easy steps</h2>
-        <p>We make professional exterior cleaning effortless — so you can skip the ladder and enjoy the results.</p>
+        <h2>Our 3-step process</h2>
+        <p>Every job follows the same disciplined routine — scrub, squeegee, detail — for a streak-free finish, every time.</p>
       </div>
-      <div class="steps">{steps_html}</div>
+      {process_slider_html}
     </div>
   </section>
 

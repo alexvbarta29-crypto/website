@@ -295,6 +295,29 @@ def picture_card(item, depth=0, idx=0):
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
 
+def process_slider(steps, depth=0):
+    """Full-photo step slideshow (e.g. Scrub / Squeegee / Detail) with
+    numbered nav dots + progress line and prev/next arrows."""
+    root = rel(depth)
+    slides = "".join(
+        f'<div class="process-slide{" active" if i == 0 else ""}" '
+        f'style="background-image:linear-gradient(0deg, rgba(10,10,12,.9) 0%, rgba(10,10,12,.45) 45%, rgba(10,10,12,.05) 75%), url(\'{root}{img}\')">'
+        f'<div class="process-copy"><span class="process-num">{num}</span>'
+        f'<h3>{title}</h3><p>{desc}</p></div></div>'
+        for i, (num, title, img, desc) in enumerate(steps))
+    dots = "".join(
+        (f'<span class="process-line{" filled" if i > 0 else ""}"></span>' if i > 0 else "")
+        + f'<button type="button" class="process-dot{" active" if i == 0 else ""}" data-i="{i}" aria-label="Step {i+1}: {title}">{i+1}</button>'
+        for i, (num, title, img, desc) in enumerate(steps))
+    return f"""<div class="process-slider reveal">
+    <div class="process-track">
+      {slides}
+      <button type="button" class="process-arrow prev" aria-label="Previous step">{icon('arrow')}</button>
+      <button type="button" class="process-arrow next" aria-label="Next step">{icon('arrow')}</button>
+    </div>
+    <div class="process-dots">{dots}</div>
+  </div>"""
+
 def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
     return f'<div class="badges">{items}</div>'

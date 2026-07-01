@@ -108,6 +108,31 @@
     window.addEventListener("pointerup", endDrag);
   });
 
+  /* ---- Process slider (Scrub / Squeegee / Detail) ---- */
+  $$(".process-slider").forEach((slider) => {
+    const slides = $$(".process-slide", slider);
+    const dots = $$(".process-dot", slider);
+    const lines = $$(".process-line", slider);
+    const prev = $(".process-arrow.prev", slider);
+    const next = $(".process-arrow.next", slider);
+    let i = 0, timer = null;
+    const show = (n) => {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+      dots.forEach((d, idx) => d.classList.toggle("active", idx === i));
+      lines.forEach((l, idx) => l.classList.toggle("filled", idx < i));
+    };
+    const restart = () => {
+      if (timer) clearInterval(timer);
+      if (!reduce && slides.length > 1) timer = setInterval(() => show(i + 1), 5000);
+    };
+    dots.forEach((d, idx) => d.addEventListener("click", () => { show(idx); restart(); }));
+    if (prev) prev.addEventListener("click", () => { show(i - 1); restart(); });
+    if (next) next.addEventListener("click", () => { show(i + 1); restart(); });
+    show(0);
+    restart();
+  });
+
   /* ---- Lead form (demo handler) ---- */
   $$("form[data-lead]").forEach((form) => {
     form.addEventListener("submit", (e) => {
