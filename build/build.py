@@ -818,26 +818,18 @@ def build_reviews():
     depth = 0
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
     schema = BASE_SCHEMA
-    html, body = interior_head(
+    html = C.head(
         title=f"Reviews & Testimonials | {BIZ['name']} — {BIZ['rating']}★ in Delano, MN",
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
-        slug="reviews.html", eyebrow="Reviews", schema=schema,
-        h1=f"{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors",
-        lead="We've earned our reputation one spotless home at a time. Here's what real customers across the western metro have to say about working with Barta.",
-        depth=depth, crumb_label="Reviews", primary_kw="Barta Window Washing reviews Delano MN")
-    html += f"""<main id="main">{body}
-  <section class="section-tight bg-mist"><div class="container">
-    <div class="stats stats-light">
-      <div class="stat reveal"><div class="num" data-count="5.0">5.0</div><div class="label">Average rating</div></div>
-      <div class="stat reveal" data-delay="1"><div class="num" data-count="100" data-suffix="+">100+</div><div class="label">Verified reviews</div></div>
-      <div class="stat reveal" data-delay="2"><div class="num" data-count="98" data-suffix="%">98%</div><div class="label">Five-star ratings</div></div>
-      <div class="stat reveal" data-delay="3"><div class="num" data-count="9400" data-suffix="+">9,400+</div><div class="label">Happy customers</div></div>
-    </div>
-  </div></section>
-  <section><div class="container">{C.reviews_block(REVIEWS_WIDGET, cards, depth)}
-    <div class="center mt-4">{C.google_badge(depth, light=True)}</div>
-  </div></section>
-  {C.cta_band(depth, heading="Join hundreds of happy homeowners", text="Experience the Barta difference for yourself. Get your free quote today.")}
+        slug="reviews.html", depth=depth, schema=schema, primary_kw="Barta Window Washing reviews Delano MN")
+    html += C.nav(depth)
+    if REVIEWS_WIDGET and REVIEWS_WIDGET.strip():
+        reviews_content = f'<div class="reviews-embed reveal" data-google-reviews>{REVIEWS_WIDGET}</div>'
+    else:
+        reviews_content = f'<div class="grid cols-3">{cards}</div>'
+    html += f"""<main id="main">
+  <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors — {BIZ['name']} Reviews</h1>
+  <section class="section-tight"><div class="container">{reviews_content}</div></section>
 </main>"""
     html += C.page_end(depth)
     write("reviews.html", html, slug="reviews.html", priority="0.7")

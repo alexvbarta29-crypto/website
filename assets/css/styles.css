@@ -116,6 +116,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .bg-deep p, .bg-deep .lead { color: rgba(255,255,255,.78); }
 .bg-deep h1, .bg-deep h2, .bg-deep h3 { color: #fff; }
 .center { text-align: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .section-head { max-width: 720px; margin-inline: auto; margin-bottom: clamp(36px, 5vw, 60px); }
 .section-head.center { text-align: center; }
 .section-head h2 { margin-top: 12px; }
