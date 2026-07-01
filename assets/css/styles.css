@@ -312,6 +312,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .feature .ic svg { width: 24px; height: 24px; }
 .feature h4 { font-family: var(--font-head); font-size: 1.12rem; }
 .feature p { font-size: .95rem; margin-top: 6px; }
+.feature .ic.num { font-family: var(--font-head); font-weight: 800; font-size: 1.2rem; }
+.process-steps { display: grid; gap: 24px; }
 
 /* Stat counters */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }

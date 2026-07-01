@@ -59,6 +59,13 @@ SERVICES = [
             "Full cleanup — we leave your home tidier than we found it",
         ],
         "process_note": "Most homes are completed in 2–4 hours with a two-person crew.",
+        "process": [
+            ("Mop &amp; pre-treat", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen before anything else touches the glass."),
+            ("Detail scrub", "Silicone overspray, painter's tape residue, and baked-on grime that the T-bar can't lift gets hand-scrubbed with industrial-grade abrasive pads — safe on glass, tough on the stuff a simple wash leaves behind."),
+            ("Squeegee", "A professional-grade squeegee pulls every drop off the glass edge to edge, so nothing is left to dry into streaks or spots."),
+            ("Hand-detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
+        ],
+        "why_barta": "Barta has been washing windows in and around Delano since 2014. We're licensed, fully insured, and every visit is backed by a 100% satisfaction guarantee — if a pane isn't right, call within 48 hours and we'll come back and re-clean it at no charge. Our crews use pure-water poles for second-story glass so you don't have ladders in your landscaping, and we treat every home the way we'd want ours treated.",
     },
     {
         "slug": "gutter-cleaning",
@@ -84,6 +91,13 @@ SERVICES = [
             "Photo report of anything that needs attention",
         ],
         "process_note": "Ask about gutter guards and recurring plans to keep them clear year-round.",
+        "process": [
+            ("Inspect from the ground", "Before we ever touch a ladder, we walk the property and check for obvious sagging, loose hangers, or downspout blockages so we know what to expect."),
+            ("Hand-clear every gutter", "We climb up and physically remove leaves, seeds, and shingle grit by hand rather than blowing debris onto your landscaping or roof."),
+            ("Flush &amp; test downspouts", "Each downspout gets flushed with water to confirm it drains freely all the way to ground level — a clogged downspout is the #1 cause of repeat gutter problems."),
+            ("Bag it and haul it away", "All debris is bagged on-site and taken with us. You're never left with piles to clean up in your yard."),
+        ],
+        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and we've been dealing with them locally since 2014. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
     },
     {
         "slug": "pressure-washing",
@@ -109,6 +123,13 @@ SERVICES = [
             "Optional sealing recommendations to protect your investment",
         ],
         "process_note": "Pair with house washing for a complete exterior refresh and bundle savings.",
+        "process": [
+            ("Clear &amp; pre-treat", "We clear the surface of loose debris and apply a pre-treatment to oil stains, rust spots, or heavy organic staining so the pressure washer isn't fighting an uphill battle."),
+            ("Match pressure to the surface", "Concrete, pavers, brick, and wood all handle pressure differently — we dial in the right PSI and nozzle for each so you get clean results without etching or gouging."),
+            ("Surface-cleaner pass", "A flat surface cleaner attachment gives driveways and patios an even, stripe-free finish instead of the uneven fan-spray marks a wand alone leaves behind."),
+            ("Rinse &amp; inspect", "We rinse away loosened grime and walk the finished surface with you, flagging anything — like a stain that needs a second treatment — before we call it done."),
+        ],
+        "why_barta": "We've been pressure washing driveways, patios, and walkways around Delano since 2014, and we know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter. Our crews are trained on which pressure and nozzle to use on which surface, so you get a like-new result without the etching or gouging that an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
     },
     {
         "slug": "house-washing",
@@ -134,6 +155,13 @@ SERVICES = [
             "Pre-wash plant protection and post-wash rinse",
         ],
         "process_note": "Most homes are washed in a single visit with no disruption to your day.",
+        "process": [
+            ("Protect landscaping", "We pre-wet plants and shrubs near the house and cover anything sensitive before a drop of solution goes near your siding."),
+            ("Apply soft-wash solution", "A biodegradable, algae-killing solution is applied at low pressure across siding, soffits, fascia, and trim — enough dwell time to actually kill growth at the root, not just rinse it off the surface."),
+            ("Gentle rinse", "We rinse everything clean at a pressure that's safe for vinyl, fiber-cement, stucco, or painted surfaces — no etching, no forced water behind siding panels."),
+            ("Final walk-around", "We walk the exterior with you afterward to confirm every side, corner, and eave looks the way it should."),
+        ],
+        "why_barta": "Since 2014 we've been washing homes throughout the Delano area, and we've seen what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
     },
     {
         "slug": "soft-washing",
@@ -159,6 +187,13 @@ SERVICES = [
             "Long-lasting results that resist regrowth",
         ],
         "process_note": "The trusted method for any surface that high pressure could damage.",
+        "process": [
+            ("Identify the growth", "Algae, mold, mildew, and lichen all respond to different treatments — we identify what's actually growing before choosing a solution."),
+            ("Apply low-pressure solution", "A biodegradable cleaning solution matched to the surface and the organism is applied at low pressure, then given time to actually work."),
+            ("Let it dwell", "Soft washing isn't instant — the solution needs dwell time to kill growth at the root, which is why results last so much longer than a quick pressure rinse."),
+            ("Gentle rinse", "A low-pressure rinse clears away the dissolved growth without stripping paint, etching stucco, or lifting shingles."),
+        ],
+        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how we've cleaned delicate surfaces around Delano since 2014. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
     },
     {
         "slug": "roof-cleaning",
@@ -184,6 +219,13 @@ SERVICES = [
             "Optional zinc/copper strip recommendations to slow regrowth",
         ],
         "process_note": "Roof work is quoted on-site after a free, no-obligation inspection.",
+        "process": [
+            ("Free on-site inspection", "We look at the streaking pattern, shingle condition, and roof access before quoting — every roof is different."),
+            ("Protect gutters &amp; landscaping", "Gutters, downspouts, and plants below the roofline are protected before any solution goes down."),
+            ("Soft-wash application", "An ARMA-recommended, algae-killing solution is applied at low pressure — we never walk on shingles with a pressure wand or blast granules loose."),
+            ("Low-pressure rinse", "A gentle rinse clears dissolved algae, moss, and lichen without stripping the protective granules that give shingles their lifespan."),
+        ],
+        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and we've been treating black streaks and moss on roofs around Delano since 2014. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
     },
     {
         "slug": "solar-panel-cleaning",
@@ -209,6 +251,13 @@ SERVICES = [
             "Recommended cleaning schedule for your system",
         ],
         "process_note": "Ask about seasonal cleaning plans to keep production at its peak.",
+        "process": [
+            ("Safety &amp; access check", "Our insured technicians assess safe roof or ground-mount access before anything else — panel cleaning isn't worth a shortcut."),
+            ("Pure-water rinse", "Deionized, pure water lifts dust, pollen, and bird droppings without leaving mineral spots behind when it dries — a real problem with regular tap water."),
+            ("Soft-tool cleaning", "Non-abrasive tools clear stuck-on grime without scratching the glass or the anti-reflective coating that keeps panels efficient."),
+            ("Spot-free finish", "Because the water is purified, panels air-dry completely spot-free — no streaks left to block sunlight."),
+        ],
+        "why_barta": "A layer of dust and pollen can cost you 15–25% of your solar output without ever being obvious from the ground — we've been helping Delano-area homeowners recover that lost production since 2014. We only use pure water and soft tools, because scratched glass or a damaged coating costs you far more than the wash saves. Fully insured for roof and ground-mount access, and backed by our satisfaction guarantee.",
     },
     {
         "slug": "screen-cleaning",
@@ -235,6 +284,13 @@ SERVICES = [
             "Add-on to any window cleaning service",
         ],
         "process_note": "Screen cleaning is included with most window cleaning packages.",
+        "process": [
+            ("Remove &amp; label", "Every screen is removed and labeled by window and opening, so each one goes back exactly where it came from — no mismatched fits."),
+            ("Hand-wash the mesh", "Screens are hand-washed to clear pollen, dust, and cobwebs out of the mesh instead of just knocking surface dust off the front."),
+            ("Rinse &amp; dry frames", "Frames get rinsed and dried alongside the mesh, since grime builds up in the corners as much as the screen itself."),
+            ("Reinstall &amp; inspect", "We reinstall each screen in its labeled opening and flag any tears, bent frames, or damage we notice along the way."),
+        ],
+        "why_barta": "Screens are the last thing most companies think about and the first thing we do right — since 2014 we've hand-washed every screen we touch instead of just brushing off the front. It's a small detail that makes a real difference in how much light and airflow actually gets through. Usually bundled with window cleaning at no extra hassle, and backed by our satisfaction guarantee.",
     },
     {
         "slug": "hard-water-stain-removal",
@@ -260,6 +316,13 @@ SERVICES = [
             "Prevention tips to keep glass clearer",
         ],
         "process_note": "Severity varies — we provide an honest assessment before any work begins.",
+        "process": [
+            ("Assess the damage", "We check whether the haze is surface mineral buildup or if the glass itself has been etched — the two need different approaches, and etching has real limits on what can be recovered."),
+            ("Apply restoration compound", "A professional mineral-dissolving compound is worked into the affected glass to break down the bonded deposits."),
+            ("Multi-stage treatment", "Heavy deposits often need more than one pass — we work in stages rather than over-scrubbing glass in one aggressive attempt."),
+            ("Optional protective coating", "For glass prone to sprinkler overspray, we can apply a coating afterward that helps new deposits release more easily."),
+        ],
+        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and we've been restoring glass around Delano since 2014. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
     },
     {
         "slug": "christmas-light-installation",
@@ -285,6 +348,13 @@ SERVICES = [
             "Optional storage of lights between seasons",
         ],
         "process_note": "Books up fast — reserve your install in early fall for best availability.",
+        "process": [
+            ("Free design consultation", "We walk your property and put together a lighting plan for your rooflines, trees, and walkways — tailored to your home, not a generic template."),
+            ("Professional installation", "Commercial-grade LED lights go up using the right clips and fasteners for your roof and siding — nothing stapled or taped that damages your home."),
+            ("In-season maintenance", "If a strand goes out mid-season, we come back and fix it free — you shouldn't have to climb a frozen ladder to swap a bulb."),
+            ("Takedown &amp; storage", "When the season ends, we take everything down, and can store your lights until it's time to do it all again next year."),
+        ],
+        "why_barta": "We've been designing and installing holiday lighting for Delano-area homes since 2014, so we know how to plan a display that actually matches your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
     },
 ]
 

@@ -260,6 +260,9 @@ def build_service(svc):
     benefits_html = "".join(
         f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon("check")}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
         for i, (t, d) in enumerate(svc["benefits"]))
+    process_html = "".join(
+        f'<div class="feature reveal" data-delay="{i%3}"><span class="ic num">{i+1}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
+        for i, (t, d) in enumerate(svc.get("process", [])))
     includes_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc["includes"])
     related = [x for x in SERVICES if x["slug"] != svc["slug"]][:3]
     related_html = "".join(
@@ -352,6 +355,26 @@ def build_service(svc):
           <ul class="checklist mt-2">{includes_html}</ul>
           <a class="btn mt-3" href="#quote-form">Get my free quote {icon('arrow')}</a>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow">How it works</span>
+        <h2>Our {svc['name'].lower()} process</h2>
+      </div>
+      <div class="process-steps">{process_html}</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="prose reveal" style="max-width:760px;margin-inline:auto;text-align:center">
+        <span class="eyebrow" style="justify-content:center">Why choose Barta</span>
+        <h2 class="mt-1">Delano's trusted choice for {svc['name'].lower()}</h2>
+        <p class="mt-2">{svc.get('why_barta', '')}</p>
       </div>
     </div>
   </section>
