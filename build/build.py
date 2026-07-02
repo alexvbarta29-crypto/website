@@ -225,9 +225,10 @@ def build_home():
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">Areas we serve</span>
-        <h2>Proudly cleaning the western Twin Cities</h2>
-        <p>Based in Delano and serving homeowners and businesses across the western Twin Cities metro.</p>
+        <h2>Proudly cleaning Delano &amp; the western Twin Cities</h2>
+        <p>Delano is our home base — from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
       </div>
+      <div style="margin-bottom:32px">{C.gmap_embed(f"Map of the {BIZ['name']} service area, centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}</div>
       <div class="area-grid">{areas_html}</div>
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">See all service areas {icon('arrow')}</a></div>
     </div>
@@ -951,7 +952,6 @@ def build_service_areas():
 
     primary_html = "".join(area_row(a) for a in AREAS if a["tier"] == "primary")
     extended_html = "".join(area_row(a) for a in AREAS if a["tier"] == "extended")
-    map_src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z=10&output=embed"
 
     html, body = interior_head(
         title=f"Service Areas | {BIZ['name']} — Delano & Western Twin Cities, MN",
@@ -964,9 +964,7 @@ def build_service_areas():
     html += f"""<main id="main">{body}
   <section><div class="container">
     <div class="areas-map-grid">
-      <div class="map-embed reveal">
-        <iframe src="{map_src}" width="100%" height="100%" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map of the Barta Window Washing service area"></iframe>
-      </div>
+      {C.gmap_embed(f"Map of the {BIZ['name']} service area, centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}
       <div class="reveal">
         <div class="areas-group">
           <h3>Primary Service Area</h3>
@@ -1165,11 +1163,7 @@ def build_contact():
         <span class="eyebrow" style="justify-content:center">Find us</span>
         <h2>Serving {BIZ['city']} &amp; the western metro</h2>
       </div>
-      <div class="map-embed reveal">
-        <iframe src="https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z=11&output=embed"
-          width="100%" height="100%" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-          title="Map of {BIZ['name']} service area centered on {BIZ['city']}, {BIZ['state']}"></iframe>
-      </div>
+      {C.gmap_embed(f"Map of {BIZ['name']} service area centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}
     </div>
   </section>
   {C.cta_band(depth)}

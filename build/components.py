@@ -442,6 +442,20 @@ def faq_block(items):
         rows += f"""<details><summary>{q}<span class="pm">{icon('plus')}</span></summary><div class="ans">{a}</div></details>"""
     return f'<div class="faq">{rows}</div>'
 
+def gmap_embed(title, label="Delano, MN — Service Hub", zoom=11, cls=""):
+    """Responsive, lazy-loaded Google Maps embed (no API key required) with a
+    branded static-style fallback shown until the iframe finishes loading —
+    so a slow/blocked embed never leaves a blank box, and the map never
+    delays anything else on the page (native loading="lazy" + deferred
+    network request until the iframe is actually built)."""
+    src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
+    return f"""<div class="map-embed {cls}" data-map-embed>
+    <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{label}</span></div>
+    <iframe src="{src}" title="{title}" aria-label="{title}" width="100%" height="100%"
+      style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+      onload="this.previousElementSibling.style.display='none'"></iframe>
+  </div>"""
+
 def imgph(label, ratio="16/10", depth=0, extra_class=""):
     return f'<div class="imgph {extra_class}" style="aspect-ratio:{ratio}" role="img" aria-label="{label}"><span class="ph-label">{icon("image")}<br>{label}</span></div>'
 
