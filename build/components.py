@@ -1,5 +1,6 @@
 """Reusable HTML partials and section builders."""
 import json
+from urllib.parse import quote_plus
 from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES
 from icons import icon
 
@@ -94,7 +95,7 @@ def nav(depth=0):
       <li class="nav-item">
         <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
         <div class="nav-menu nav-menu-simple" role="menu">
-          {"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
+          {"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
           <a class="nav-menu-all" href="{root}residential.html">View all services {icon('arrow')}</a>
         </div>
       </li>
@@ -118,7 +119,7 @@ def nav(depth=0):
     <nav class="drawer-nav" aria-label="Mobile">
       <a href="{root}index.html">Home</a>
       <details class="drawer-group"><summary>Our Services {icon('chevron')}</summary>
-        <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
+        <div class="sub">{"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
       </details>
       <a href="{root}service-plans.html">Service Plans</a>
       <a href="{root}commercial.html">Commercial</a>
@@ -217,15 +218,66 @@ def page_end(depth=0):
 # ---------------------------------------------------------------------------
 # Reusable section builders
 # ---------------------------------------------------------------------------
-def lead_form(depth=0, heading="Request Your Free Quote", sub="No-obligation, same-day pricing. Takes 60 seconds.",
+# Recurring-plan promo cards (Biannual left, Quarterly center/popular,
+# Monthly right). Each card sends the visitor to the quote form with the
+# chosen plan pre-attached via ?plan=.
+PROMO_PLANS = [
+    ("Biannual", "biannual", "50", False, False),
+    ("Quarterly", "quarterly", "100", True, True),
+    ("Monthly", "monthly", "150", True, False),
+]
+PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
+
+def promo_plan_cards(depth=0):
+    root = rel(depth)
+    cards = ""
+    for i, (name, slug, amt, included, popular) in enumerate(PROMO_PLANS):
+        cls = "yes" if included else "no"
+        mark = icon("check-circle") if included else icon("x")
+        feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in PROMO_FEATS)
+        pop_cls = " popular" if popular else ""
+        badge = '<span class="promo-badge">Most Popular</span>' if popular else ""
+        cards += f"""<div class="promo-card{pop_cls} reveal" data-delay="{i}">{badge}
+        <h3 class="promo-name">{name}</h3>
+        <div class="promo-price">${amt} <small>OFF</small></div>
+        <div class="promo-per">Per Cleaning</div>
+        <ul class="promo-feats">{feats}</ul>
+        <a class="btn btn-block" href="{root}get-quote.html?plan={slug}">Choose {name}</a>
+      </div>"""
+    return cards
+
+# Maps service-page slugs to their closest homepage-service checkbox slug,
+# so svc_default works whether callers pass either kind of identifier.
+SERVICE_SLUG_TO_LABEL = {
+    "window-cleaning": "exterior-window-cleaning",
+    "gutter-cleaning": "gutter-cleaning",
+    "pressure-washing": "pressure-washing",
+    "house-washing": "soft-washing",
+    "soft-washing": "soft-washing",
+    "roof-cleaning": "soft-washing",
+    "solar-panel-cleaning": "solar-panel-cleaning",
+    "screen-cleaning": "screen-cleaning-services",
+    "hard-water-stain-removal": "exterior-window-cleaning",
+    "christmas-light-installation": "christmas-light-installation",
+}
+
+def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligation, and zero pressure.",
               submit="Get My Free Quote", svc_default=None, compact=False):
-    """Full lead-capture form per spec."""
-    svc_options = '<option value="" selected disabled>Select a service…</option>'
-    for s in SERVICES:
-        sel = " selected" if svc_default == s["slug"] else ""
-        svc_options += f'<option value="{s["name"]}"{sel}>{s["name"]}</option>'
-    svc_options += '<option value="Multiple Services">Multiple Services</option>'
-    svc_options += '<option value="Service Plan / Membership">Service Plan / Membership</option>'
+    """Full lead-capture form. Services are multi-select checkboxes matching
+    the 10 homepage service boxes. svc_default: label-slug (or list of them)
+    to pre-check; a ?svc= query param on the page URL overrides via JS."""
+    if svc_default is None:
+        defaults = []
+    elif isinstance(svc_default, str):
+        defaults = [svc_default]
+    else:
+        defaults = list(svc_default)
+    # accept service-page slugs too (window-cleaning → exterior-window-cleaning …)
+    defaults = [SERVICE_SLUG_TO_LABEL.get(d, d) for d in defaults]
+    svc_boxes = "".join(
+        f'<label class="check svc-check"><input type="checkbox" name="services" value="{item["label"]}" '
+        f'data-svc="{_slugify(item["label"])}"> {item["label"]}</label>'
+        for item in HOME_SERVICES)
     extra_fields = "" if compact else f"""
     <div class="form-row">
       <div class="field"><label for="lf-date">Preferred date</label><input type="date" id="lf-date" name="preferred_date"></div>
@@ -247,15 +299,22 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="No-obligation, sa
   <h3>{heading}</h3>
   <p class="form-note">{sub}</p>
   <form class="form mt-2" data-lead novalidate>
+    <input type="hidden" name="plan" data-plan-field value="">
     <div class="form-row">
       <div class="field"><label for="lf-name">Full name</label><input type="text" id="lf-name" name="name" autocomplete="name" required placeholder="Jane Doe"></div>
-      <div class="field"><label for="lf-phone">Phone</label><input type="tel" id="lf-phone" name="phone" autocomplete="tel" required placeholder="(763) 555-0142"></div>
+      <div class="field"><label for="lf-phone">Phone</label><input type="tel" id="lf-phone" name="phone" autocomplete="tel" required inputmode="tel" data-validate-phone placeholder="(763) 314-3400"></div>
     </div>
     <div class="form-row">
       <div class="field"><label for="lf-email">Email</label><input type="email" id="lf-email" name="email" autocomplete="email" required placeholder="you@email.com"></div>
-      <div class="field"><label for="lf-address">Service address</label><input type="text" id="lf-address" name="address" autocomplete="street-address" placeholder="123 Main St, Delano"></div>
+      <div class="field addr-field"><label for="lf-address">Service address</label>
+        <input type="text" id="lf-address" name="address" autocomplete="off" required data-address-input placeholder="Start typing your address…">
+        <input type="hidden" name="address_verified" data-address-verified value="no">
+        <ul class="addr-suggestions" data-address-list hidden></ul>
+      </div>
     </div>
-    <div class="field"><label for="lf-service">Service requested</label><select id="lf-service" name="service" required>{svc_options}</select></div>{extra_fields}
+    <fieldset class="field svc-fieldset"><legend>Services requested <span class="form-note" style="font-weight:400">(select all that apply)</span></legend>
+      <div class="svc-checks" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
+    </fieldset>{extra_fields}
     <label class="check"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
     <label class="check"><input type="checkbox" name="plan_info"> I'm interested in info about recurring maintenance plans.</label>
     <button type="submit" class="btn btn-lg btn-block">{submit} {icon('arrow')}</button>
@@ -264,7 +323,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="No-obligation, sa
   <div class="form-success">
     {icon('check-circle')}
     <h3>Thank you! Your request is in.</h3>
-    <p>A friendly Barta team member will reach out shortly — usually within a few hours during business hours — with your free, no-obligation quote.</p>
+    <p>One of the owners will reach out with your free, no-obligation quote.</p>
     <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or call us now: {BIZ['phone_display']}</a>
   </div>
 </div>"""
@@ -320,7 +379,9 @@ def picture_card(item, depth=0, idx=0):
     feat = " featured" if item.get("featured") else ""
     img_tag = picture(root, img, alt, img_class="img-card-bg",
                        extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')
-    return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{item["target"]}" aria-label="{item["label"]}" style="background:{dark}">'
+    # service links carry ?svc= so the target page's quote form pre-checks this service
+    href = item["target"] + (f'?svc={_slugify(item["label"])}' if item["target"].startswith("services/") else "")
+    return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{href}" aria-label="{item["label"]}" style="background:{dark}">'
             f'{img_tag}'
             f'<span class="img-card-watermark">{icon(item["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
@@ -442,19 +503,31 @@ def faq_block(items):
         rows += f"""<details><summary>{q}<span class="pm">{icon('plus')}</span></summary><div class="ans">{a}</div></details>"""
     return f'<div class="faq">{rows}</div>'
 
-def gmap_embed(title, label="Delano, MN — Service Hub", zoom=11, cls=""):
-    """Responsive, lazy-loaded Google Maps embed (no API key required) with a
-    branded static-style fallback shown until the iframe finishes loading —
-    so a slow/blocked embed never leaves a blank box, and the map never
-    delays anything else on the page (native loading="lazy" + deferred
-    network request until the iframe is actually built)."""
+# Rough perimeter of the service area (lat,lng), Buffalo → around Lake
+# Minnetonka → Winsted and back. Drawn as a coral border overlay on the map.
+SERVICE_AREA_BORDER = ("45.172,-93.875 45.210,-93.665 45.189,-93.552 45.073,-93.456 "
+                       "44.985,-93.349 44.921,-93.468 44.855,-93.471 44.858,-93.662 "
+                       "44.906,-93.747 44.964,-94.047 45.067,-94.018 45.065,-93.911")
+
+def gmap_embed(title, label="Delano, MN — Service Hub", zoom=10, cls=""):
+    """Responsive, lazy-loaded Google Maps embed (no API key required),
+    centered on Delano with its marker as the hub. A coral border outlining
+    the service area is drawn over the map by main.js (Web Mercator math, so
+    it stays aligned at any container size). The whole widget is a link that
+    opens the business on Google Maps. A light placeholder panel shows until
+    the iframe finishes loading, so a slow embed never leaves a blank box."""
     src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
-    return f"""<div class="map-embed {cls}" data-map-embed>
+    gmaps_link = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(f"{BIZ['name']} {BIZ['city']} {BIZ['state']}")
+    return f"""<a class="map-embed {cls}" data-map-embed data-map-overlay data-zoom="{zoom}"
+    data-center="{BIZ['lat']},{BIZ['lng']}" data-border="{SERVICE_AREA_BORDER}"
+    href="{gmaps_link}" target="_blank" rel="noopener"
+    aria-label="{title} — opens Google Maps in a new tab">
     <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{label}</span></div>
-    <iframe src="{src}" title="{title}" aria-label="{title}" width="100%" height="100%"
+    <iframe src="{src}" title="{title}" width="100%" height="100%" tabindex="-1"
       style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
       onload="this.previousElementSibling.style.display='none'"></iframe>
-  </div>"""
+    <span class="map-open-hint">{icon('pin')} Open in Google Maps</span>
+  </a>"""
 
 def imgph(label, ratio="16/10", depth=0, extra_class=""):
     return f'<div class="imgph {extra_class}" style="aspect-ratio:{ratio}" role="img" aria-label="{label}"><span class="ph-label">{icon("image")}<br>{label}</span></div>'

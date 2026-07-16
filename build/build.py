@@ -95,26 +95,7 @@ def build_home():
       </div>"""
 
     # Recurring-plan savings cards ("Save money with every service")
-    promo_plans = [
-        ("Monthly", "150", True, False),
-        ("Quarterly", "100", True, True),
-        ("Biannual", "50", False, False),
-    ]
-    promo_feats = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
-    promo_cards = ""
-    for i, (name, amt, included, popular) in enumerate(promo_plans):
-        cls = "yes" if included else "no"
-        mark = icon("check-circle") if included else icon("x")
-        feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in promo_feats)
-        pop_cls = " popular" if popular else ""
-        badge = '<span class="promo-badge">Most Popular</span>' if popular else ""
-        promo_cards += f"""<div class="promo-card{pop_cls} reveal" data-delay="{i}">{badge}
-        <h3 class="promo-name">{name}</h3>
-        <div class="promo-price">${amt} <small>OFF</small></div>
-        <div class="promo-per">Per Cleaning</div>
-        <ul class="promo-feats">{feats}</ul>
-        <a class="btn btn-block" href="request-quote.html">Get Your Free Quote</a>
-      </div>"""
+    promo_cards = C.promo_plan_cards(depth)
 
     ba_html = "".join(
         f'<div class="reveal" data-delay="{i}">{C.ba_slider(depth=depth, name=n)}</div>'
@@ -275,7 +256,7 @@ def build_service(svc):
 
     svc_faqs = [
         (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
-         f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price — often the same day."),
+         f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
         (f"How often should I schedule {svc['name'].lower()}?",
          f"For most Minnesota homes we recommend {svc['name'].lower()} once or twice per year, though it varies by your home and surroundings. Our membership plans bundle it on the ideal schedule at a member discount — so it's handled automatically."),
         ("Are you licensed and insured?",
@@ -302,22 +283,19 @@ def build_service(svc):
   <section class="phero">
     <div class="container">
       {C.crumbs([("Home", "../index.html"), ("Services", "../residential.html"), (svc['name'], None)])}
-      <div class="hero-grid">
-        <div>
-          <span class="eyebrow" style="color:#ff9b86">{svc['name']}</span>
-          <h1 class="mt-1">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
-          <p class="lead">{svc['hero_sub']}</p>
-          <div class="phero-actions">
-            <a class="btn btn-lg btn-light" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
-            <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
-          </div>
-          <ul class="hero-trust">
-            <li>{icon('shield')} Licensed &amp; insured</li>
-            <li>{icon('check-circle')} Satisfaction guaranteed</li>
-            <li>{icon('star')} {BIZ['rating']}★ rated</li>
-          </ul>
+      <div style="max-width:760px">
+        <span class="eyebrow" style="color:#ff9b86">{svc['name']}</span>
+        <h1 class="mt-1">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
+        <p class="lead">{svc['hero_sub']}</p>
+        <div class="phero-actions">
+          <a class="btn btn-lg btn-light" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
+          <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
         </div>
-        <div>{C.lead_form(depth, heading=f"Free {svc['name']} Quote", svc_default=svc['slug'], compact=True)}</div>
+        <ul class="hero-trust">
+          <li>{icon('shield')} Licensed &amp; insured</li>
+          <li>{icon('check-circle')} Satisfaction guaranteed</li>
+          <li>{icon('star')} {BIZ['rating']}★ rated</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -330,8 +308,9 @@ def build_service(svc):
           <h2 class="mt-1">Professional {svc['name'].lower()}, done right</h2>
           <p>{svc['intro']}</p>
           <p><strong>{svc['process_note']}</strong></p>
+          <a class="btn mt-3" href="#quote-form">Get my free quote {icon('arrow')}</a>
         </div>
-        <div class="reveal">{C.ba_slider(depth=depth, name="ba1")}</div>
+        <div class="reveal">{C.photo(svc['image'], svc['name'] + " by Barta — professional crew at work in the Twin Cities", ratio="5/4", depth=depth) if svc.get('image') else C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
       </div>
     </div>
   </section>
@@ -349,7 +328,7 @@ def build_service(svc):
   <section>
     <div class="container">
       <div class="split reverse">
-        <div class="reveal">{C.photo(svc['image'], svc['name'] + " by Barta — professional crew at work in the Twin Cities", ratio="5/4", depth=depth) if svc.get('image') else C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
+        <div class="reveal">{C.ba_slider(depth=depth, name="ba1")}</div>
         <div class="reveal">
           <span class="eyebrow">What's included</span>
           <h2 class="mt-1">Every {svc['name'].lower()} includes</h2>
@@ -398,6 +377,13 @@ def build_service(svc):
     <div class="container">
       <div class="section-head center"><span class="eyebrow">Complete your exterior</span><h2>You may also need</h2></div>
       <div class="grid cols-3">{related_html}</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="section-head center"><span class="eyebrow">Free quote</span><h2>Request your {svc['name'].lower()} quote</h2></div>
+      <div style="max-width:640px;margin-inline:auto">{C.lead_form(depth, heading=f"Free {svc['name']} Quote", svc_default=svc['slug'])}</div>
     </div>
   </section>
 
@@ -1155,7 +1141,7 @@ def build_contact():
       <p class="mt-1" style="color:var(--slate-500)">Prefer to talk? Call or text us anytime during business hours — we love hearing from neighbors.</p>
       <div class="mt-3">{info}</div>
     </div>
-    <div class="reveal">{C.lead_form(depth, heading="Send us a message", sub="Fill this out and we'll reply quickly — usually the same day.", submit="Send Message")}</div>
+    <div class="reveal">{C.lead_form(depth, heading="Send us a message", sub="Fill this out and we'll reply as quickly as we can.", submit="Send Message")}</div>
   </div></div></section>
   <section class="section-tight bg-mist">
     <div class="container">
@@ -1175,21 +1161,46 @@ def build_contact():
 # REQUEST A QUOTE
 # ===========================================================================
 def build_quote():
+    """request-quote.html — plan chooser. Visitors pick a savings plan first,
+    then land on get-quote.html with their plan attached."""
+    depth = 0
+    schema = BASE_SCHEMA
+    html, body = interior_head(
+        title=f"Choose Your Plan | {BIZ['name']} Delano, MN",
+        desc="Pick the Barta savings plan that fits your home — Biannual, Quarterly, or Monthly — and get your free, no-obligation exterior cleaning quote.",
+        slug="request-quote.html", eyebrow="Free Quote", schema=schema,
+        h1="First, pick the plan that fits your home",
+        lead="The more often we come, the more you save on every visit. Choose a plan below and we'll put together your free, no-obligation quote.",
+        depth=depth, crumb_label="Request a Quote", cta_form=False, primary_kw="free window cleaning quote Delano MN")
+    html += f"""<main id="main">{body}
+  <section><div class="container">
+    <div class="promo-grid">{C.promo_plan_cards(depth)}</div>
+    <p class="center mt-4" style="color:var(--slate-500)">Just need a one-time cleaning? <a href="get-quote.html" style="color:var(--blue-600);font-weight:600">Request a one-time quote instead</a>.</p>
+  </div></section>
+  {C.cta_band(depth, heading="The clearest view starts with a quote", text="Join hundreds of happy Delano-area homeowners. We can't wait to make your home shine.")}
+</main>"""
+    html += C.page_end(depth)
+    write("request-quote.html", html, slug="request-quote.html", priority="0.9")
+
+def build_get_quote():
+    """get-quote.html — the actual quote form, with the chosen plan carried
+    in via ?plan= (captured to a hidden field and shown as a badge)."""
     depth = 0
     schema = BASE_SCHEMA
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
-        "Free, no-obligation, same-day quotes", "Licensed &amp; fully insured", "100% satisfaction guarantee",
+        "Free, no-obligation quotes", "Licensed &amp; fully insured", "100% satisfaction guarantee",
         "Family-owned &amp; locally trusted", f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Safe, eco-friendly methods"])
     html, body = interior_head(
-        title=f"Request a Free Quote | {BIZ['name']} Delano, MN",
-        desc="Request your free, no-obligation exterior cleaning quote from Barta Window Washing. Same-day pricing for window cleaning, gutters, pressure washing & more. Takes 60 seconds.",
-        slug="request-quote.html", eyebrow="Free Quote", schema=schema,
-        h1="Get your free quote in 60 seconds",
-        lead="Tell us a little about your home and the service you need. We'll get back to you fast — usually the same day — with clear, upfront, no-obligation pricing.",
-        depth=depth, crumb_label="Request a Quote", cta_form=False, primary_kw="free window cleaning quote Delano MN")
+        title=f"Get Your Free Quote | {BIZ['name']} Delano, MN",
+        desc="Tell us about your home and the services you need, and Barta Window Washing will get back to you with clear, upfront, no-obligation pricing.",
+        slug="get-quote.html", eyebrow="Free Quote", schema=schema,
+        h1="Get your free quote",
+        lead="Tell us a little about your home and the services you need, and we'll get back to you with clear, upfront, no-obligation pricing.",
+        depth=depth, crumb_label="Get a Quote", cta_form=False, primary_kw="free exterior cleaning quote Delano MN")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="hero-grid">
     <div class="reveal">
+      <p hidden style="margin-bottom:14px"><span class="pill" style="background:var(--grad-brand);color:#fff;border:0;font-weight:700">Selected: <span data-plan-badge></span></span></p>
       <span class="eyebrow">Why request a quote</span>
       <h2 class="mt-1">No pressure. No surprises.</h2>
       <ul class="checklist mt-2" style="font-size:1.05rem">{trust}</ul>
@@ -1202,7 +1213,7 @@ def build_quote():
   {C.cta_band(depth, heading="The clearest view starts with a quote", text="Join hundreds of happy Delano-area homeowners. We can't wait to make your home shine.")}
 </main>"""
     html += C.page_end(depth)
-    write("request-quote.html", html, slug="request-quote.html", priority="0.9")
+    write("get-quote.html", html, slug="get-quote.html", priority="0.9")
 
 # ===========================================================================
 # PRIVACY (minimal legal)
@@ -1347,7 +1358,7 @@ def build_post(p, idx):
       <div class="card"><h4>Related reading</h4><ul class="mt-2" style="display:grid;gap:12px">{rel_html}</ul></div>
       <div class="card mt-2" style="background:var(--grad-deep);color:#fff">
         <h4 style="color:#fff">Free quote</h4>
-        <p style="color:rgba(255,255,255,.8);margin-top:8px">Same-day pricing, no obligation.</p>
+        <p style="color:rgba(255,255,255,.8);margin-top:8px">Free pricing, no obligation.</p>
         <a class="btn btn-light btn-block mt-2" href="../request-quote.html">Get started {icon('arrow')}</a>
       </div>
     </aside>
@@ -1365,7 +1376,7 @@ LANDING = [
      "kw": "free window cleaning quote Delano MN",
      "guarantee": "Streak-Free Guarantee: if it streaks, we re-clean it free."},
     {"slug": "free-pressure-washing-quote", "svc": "pressure-washing", "h1": "Free Pressure Washing Quote in Delano, MN",
-     "headline": "Restore your driveway, patio &amp; walkways — free quote in 60 seconds",
+     "headline": "Restore your driveway, patio &amp; walkways — get your free quote",
      "kw": "free pressure washing quote Delano MN",
      "guarantee": "Surface-Safe Guarantee: the right pressure for every material, every time."},
     {"slug": "free-gutter-cleaning-estimate", "svc": "gutter-cleaning", "h1": "Free Gutter Cleaning Estimate in Delano, MN",
@@ -1399,7 +1410,7 @@ def build_landing(L):
                        for i, (t, d) in enumerate(benefits))
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     lp_faqs = [
-        ("How fast will I get my quote?", "Most quotes are returned the same day during business hours — often within a couple of hours. Many can be priced without an on-site visit."),
+        ("How does the quote process work?", "Tell us about your home and the services you need, and we'll put together clear, upfront pricing. Many quotes can be priced without an on-site visit."),
         ("Is the quote really free?", "Yes — 100% free and no obligation. We'll give you clear, upfront, all-in pricing with no pressure and no hidden fees."),
         ("Are you licensed and insured?", "Absolutely. Barta is fully licensed and carries liability and workers' comp insurance. Certificate available on request."),
         ("What if I'm not satisfied?", "Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, we make it right — free."),
@@ -1407,7 +1418,7 @@ def build_landing(L):
     schema = BASE_SCHEMA + [S.faq_schema(lp_faqs)]
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
         f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Licensed &amp; fully insured",
-        "Same-day, no-obligation quotes", "100% satisfaction guarantee", "Family-owned &amp; local"])
+        "Free, no-obligation quotes", "100% satisfaction guarantee", "Family-owned &amp; local"])
     html = C.head(title=f"{L['h1']} | {BIZ['name']}",
                   desc=f"{L['headline'].replace('&amp;','&')}. Licensed, insured & guaranteed. Serving Delano & the western Twin Cities. Get your free, no-obligation quote from Barta now!",
                   slug=f"landing/{L['slug']}.html", depth=depth, schema=schema, primary_kw=L["kw"])
@@ -1421,10 +1432,10 @@ def build_landing(L):
       <ul class="hero-trust">
         <li>{icon('shield')} Licensed &amp; insured</li>
         <li>{icon('check-circle')} {L['guarantee'].split(':')[0]}</li>
-        <li>{icon('clock')} Same-day quotes</li>
+        <li>{icon('clock')} Free, easy quotes</li>
       </ul>
     </div>
-    <div>{C.lead_form(depth, heading="Get My Free Quote", sub="Same-day pricing. No obligation. 60 seconds.", svc_default=L['svc'])}</div>
+    <div>{C.lead_form(depth, heading="Get My Free Quote", sub="Free pricing. No obligation.", svc_default=L['svc'])}</div>
   </div></div></section>
 
   <section class="section-tight bg-mist"><div class="container">{C.trust_badges()}</div></section>
@@ -1457,7 +1468,7 @@ def build_landing(L):
     <div class="reveal">{C.faq_block(lp_faqs)}</div>
   </div></div></section>
 
-  {C.cta_band(depth, heading="Claim your free quote today", text="It takes 60 seconds and there's zero obligation. Let's make your property shine.")}
+  {C.cta_band(depth, heading="Claim your free quote today", text="There's zero obligation. Let's make your property shine.")}
 </main>"""
     html += C.page_end(depth)
     write(f"landing/{L['slug']}.html", html, slug=f"landing/{L['slug']}.html", priority="0.8")
@@ -1632,6 +1643,7 @@ def main():
     build_financing()
     build_contact()
     build_quote()
+    build_get_quote()
     build_privacy()
     build_blog()
     for i, p in enumerate(POSTS):

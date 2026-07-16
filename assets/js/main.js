@@ -136,10 +136,129 @@
     restart();
   });
 
+  /* ---- Phone validation: require a real 10-digit US number ---- */
+  $$("input[data-validate-phone]").forEach((input) => {
+    const check = () => {
+      const digits = input.value.replace(/\D/g, "").replace(/^1/, "");
+      input.setCustomValidity(digits.length === 10 ? "" : "Please enter a valid 10-digit phone number.");
+    };
+    input.addEventListener("input", check);
+    check();
+  });
+
+  /* ---- Address autocomplete (OpenStreetMap Nominatim — free, keyless).
+         Suggestions drop down as you type; picking one marks the address
+         verified so every lead carries a real, mappable address. ---- */
+  $$("input[data-address-input]").forEach((input) => {
+    const list = input.parentElement.querySelector("[data-address-list]");
+    const verified = input.parentElement.querySelector("[data-address-verified]");
+    if (!list) return;
+    let timer = null, aborter = null;
+    const close = () => { list.hidden = true; list.innerHTML = ""; };
+    const search = () => {
+      const q = input.value.trim();
+      if (q.length < 4) { close(); return; }
+      if (aborter) aborter.abort();
+      aborter = new AbortController();
+      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&limit=5&countrycodes=us" +
+        "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(q);
+      fetch(url, { signal: aborter.signal, headers: { Accept: "application/json" } })
+        .then((r) => r.json())
+        .then((results) => {
+          list.innerHTML = "";
+          if (!results.length) { close(); return; }
+          results.forEach((r) => {
+            const li = document.createElement("li");
+            li.textContent = r.display_name;
+            li.setAttribute("role", "option");
+            li.addEventListener("mousedown", (e) => {
+              e.preventDefault();
+              input.value = r.display_name;
+              if (verified) verified.value = "yes";
+              close();
+            });
+            list.appendChild(li);
+          });
+          list.hidden = false;
+        })
+        .catch(() => close());
+    };
+    input.addEventListener("input", () => {
+      if (verified) verified.value = "no";
+      clearTimeout(timer);
+      timer = setTimeout(search, 350);
+    });
+    input.addEventListener("blur", () => setTimeout(close, 150));
+  });
+
+  /* ---- Service-area border overlay on Google Map embeds.
+         Web Mercator projection keyed to the embed's center/zoom, so the
+         coral outline stays aligned with the map at any container size. ---- */
+  $$("[data-map-overlay]").forEach((box) => {
+    const zoom = parseFloat(box.dataset.zoom || "10");
+    const [clat, clng] = (box.dataset.center || "").split(",").map(Number);
+    const pts = (box.dataset.border || "").trim().split(/\s+/)
+      .map((p) => p.split(",").map(Number)).filter((p) => p.length === 2);
+    if (!pts.length || isNaN(clat)) return;
+    const world = 256 * Math.pow(2, zoom);
+    const proj = (lat, lng) => {
+      const x = ((lng + 180) / 360) * world;
+      const s = Math.sin((lat * Math.PI) / 180);
+      const y = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * world;
+      return [x, y];
+    };
+    const [cx, cy] = proj(clat, clng);
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "map-area-svg");
+    svg.setAttribute("aria-hidden", "true");
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    svg.appendChild(poly);
+    box.appendChild(svg);
+    const draw = () => {
+      const w = box.clientWidth, h = box.clientHeight;
+      if (!w || !h) return;
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      poly.setAttribute("points", pts.map(([lat, lng]) => {
+        const [x, y] = proj(lat, lng);
+        return `${(w / 2 + (x - cx)).toFixed(1)},${(h / 2 + (y - cy)).toFixed(1)}`;
+      }).join(" "));
+    };
+    draw();
+    if ("ResizeObserver" in window) new ResizeObserver(draw).observe(box);
+    else window.addEventListener("resize", draw);
+  });
+
+  /* ---- Pre-check services: ?svc= param wins, else the page's default ---- */
+  const params = new URLSearchParams(location.search);
+  const svcParam = params.get("svc");
+  $$("[data-service-checks]").forEach((group) => {
+    const wanted = svcParam ? [svcParam] : (group.dataset.defaultSvc || "").split(",").filter(Boolean);
+    group.querySelectorAll("input[data-svc]").forEach((cb) => {
+      if (wanted.includes(cb.dataset.svc)) cb.checked = true;
+    });
+  });
+  const planParam = params.get("plan");
+  if (planParam) {
+    $$("[data-plan-field]").forEach((f) => { f.value = planParam; });
+    const badge = $("[data-plan-badge]");
+    if (badge) {
+      const names = { monthly: "Monthly Plan", quarterly: "Quarterly Plan", biannual: "Biannual Plan" };
+      badge.textContent = names[planParam] || planParam;
+      badge.parentElement.hidden = false;
+    }
+  }
+
   /* ---- Lead form (demo handler) ---- */
   $$("form[data-lead]").forEach((form) => {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
+      const checks = form.querySelectorAll('input[name="services"]');
+      if (checks.length && ![...checks].some((c) => c.checked)) {
+        checks[0].setCustomValidity("Please select at least one service.");
+        form.reportValidity();
+        checks.forEach((c) => c.addEventListener("change", () => checks[0].setCustomValidity(""), { once: true }));
+        return;
+      }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       const success = form.parentElement.querySelector(".form-success");
       form.classList.add("sent");
@@ -147,6 +266,7 @@
       // In production, POST to your CRM / email service here.
       try {
         const data = Object.fromEntries(new FormData(form).entries());
+        data.services = [...form.querySelectorAll('input[name="services"]:checked')].map((c) => c.value);
         console.log("[Barta] Lead captured (demo):", data);
       } catch (err) {}
     });
