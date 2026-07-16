@@ -209,8 +209,10 @@ def build_home():
         <h2>Proudly cleaning Delano &amp; the western Twin Cities</h2>
         <p>Delano is our home base — from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
       </div>
-      <div style="margin-bottom:32px">{C.gmap_embed(f"Map of the {BIZ['name']} service area, centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}</div>
-      <div class="area-grid">{areas_html}</div>
+      <div class="areas-split">
+        {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps — serving {BIZ['city']} and the western Twin Cities", cls="reveal")}
+        <div class="area-grid reveal">{areas_html}</div>
+      </div>
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">See all service areas {icon('arrow')}</a></div>
     </div>
   </section>
@@ -1149,7 +1151,7 @@ def build_contact():
         <span class="eyebrow" style="justify-content:center">Find us</span>
         <h2>Serving {BIZ['city']} &amp; the western metro</h2>
       </div>
-      {C.gmap_embed(f"Map of {BIZ['name']} service area centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}
+      {C.gmap_embed(f"Map of {BIZ['name']} service area centered on {BIZ['city']}, {BIZ['state']}", cls="reveal map-wide")}
     </div>
   </section>
   {C.cta_band(depth)}

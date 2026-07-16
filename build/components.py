@@ -503,23 +503,17 @@ def faq_block(items):
         rows += f"""<details><summary>{q}<span class="pm">{icon('plus')}</span></summary><div class="ans">{a}</div></details>"""
     return f'<div class="faq">{rows}</div>'
 
-# Rough perimeter of the service area (lat,lng), Buffalo → around Lake
-# Minnetonka → Winsted and back. Drawn as a coral border overlay on the map.
-SERVICE_AREA_BORDER = ("45.172,-93.875 45.210,-93.665 45.189,-93.552 45.073,-93.456 "
-                       "44.985,-93.349 44.921,-93.468 44.855,-93.471 44.858,-93.662 "
-                       "44.906,-93.747 44.964,-94.047 45.067,-94.018 45.065,-93.911")
-
-def gmap_embed(title, label="Delano, MN — Service Hub", zoom=10, cls=""):
-    """Responsive, lazy-loaded Google Maps embed (no API key required),
-    centered on Delano with its marker as the hub. A coral border outlining
-    the service area is drawn over the map by main.js (Web Mercator math, so
-    it stays aligned at any container size). The whole widget is a link that
-    opens the business on Google Maps. A light placeholder panel shows until
-    the iframe finishes loading, so a slow embed never leaves a blank box."""
-    src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
-    gmaps_link = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(f"{BIZ['name']} {BIZ['city']} {BIZ['state']}")
-    return f"""<a class="map-embed {cls}" data-map-embed data-map-overlay data-zoom="{zoom}"
-    data-center="{BIZ['lat']},{BIZ['lng']}" data-border="{SERVICE_AREA_BORDER}"
+def gmap_embed(title, label=None, zoom=10, cls=""):
+    """Responsive, lazy-loaded Google Maps embed (no API key required) with
+    the business's own Google pin — the embed searches the listing by name,
+    so the marker reads "Barta Window Washing Services" just like on Google.
+    The whole widget is a link that opens the listing on Google Maps. A light
+    placeholder panel shows until the iframe finishes loading."""
+    label = label or f"{BIZ['legal_name']} — {BIZ['city']}, {BIZ['state']}"
+    biz_query = quote_plus(f"{BIZ['legal_name']} {BIZ['city']} {BIZ['state']}")
+    src = f"https://maps.google.com/maps?q={biz_query}&z={zoom}&output=embed"
+    gmaps_link = "https://www.google.com/maps/search/?api=1&query=" + biz_query
+    return f"""<a class="map-embed {cls}" data-map-embed
     href="{gmaps_link}" target="_blank" rel="noopener"
     aria-label="{title} — opens Google Maps in a new tab">
     <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{label}</span></div>

@@ -492,23 +492,31 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .checklist li { display: flex; gap: 12px; align-items: flex-start; color: var(--slate-700); }
 .checklist svg { width: 22px; height: 22px; color: var(--green); flex: none; margin-top: 1px; }
 
-/* Service-area map embed — white/bright, clickable through to Google Maps */
-.map-embed { position: relative; display: block; aspect-ratio: 21/9; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); background: #fff; border: 1px solid var(--line); cursor: pointer; }
+/* Service-area map embed — white/bright, square, clickable through to Google Maps */
+.map-embed { position: relative; display: block; aspect-ratio: 1/1; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); background: #fff; border: 1px solid var(--line); cursor: pointer; }
+.map-embed.map-wide { aspect-ratio: 21/9; }
 .map-embed iframe { position: relative; z-index: 1; display: block; pointer-events: none; }
 .map-embed .map-fallback { position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; color: var(--slate-700); background: linear-gradient(180deg, #fff 0%, var(--mist) 100%); }
 .map-embed .map-fallback .ph-label { position: relative; font-family: var(--font-head); font-weight: 700; letter-spacing: .02em; text-align: center; padding: 14px; }
 .map-embed .map-fallback svg { width: 28px; height: 28px; margin-bottom: 6px; color: var(--blue-600); }
-.map-embed .map-area-svg { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
-.map-embed .map-area-svg polygon { fill: rgba(251,77,61,.10); stroke: var(--blue-600); stroke-width: 2.5; stroke-linejoin: round; stroke-dasharray: 8 6; }
 .map-open-hint { position: absolute; z-index: 3; right: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; background: #fff; color: var(--ink); font-family: var(--font-head); font-weight: 700; font-size: .82rem; border-radius: var(--r-pill); box-shadow: var(--sh-md); transition: background .25s, color .25s; }
 .map-open-hint svg { width: 15px; height: 15px; color: var(--blue-600); }
 .map-embed:hover .map-open-hint { background: var(--blue-600); color: #fff; }
 .map-embed:hover .map-open-hint svg { color: #fff; }
-@media (max-width: 640px) { .map-embed { aspect-ratio: 4/3; } }
+@media (max-width: 640px) { .map-embed.map-wide { aspect-ratio: 4/3; } }
+
+/* Homepage: square map on the left, city list beside it */
+.areas-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 40px; align-items: start; }
+.areas-split .area-grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 960px) { .areas-split .area-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 760px) {
+  .areas-split { grid-template-columns: 1fr; }
+  .areas-split .area-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* Service-area map + expandable city accordion (Proudly Serving section) */
 .areas-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: start; }
-.areas-map-grid .map-embed { aspect-ratio: 4/3; position: sticky; top: calc(var(--nav-h) + 20px); }
+.areas-map-grid .map-embed { position: sticky; top: calc(var(--nav-h) + 20px); }
 .areas-group + .areas-group { margin-top: 28px; }
 .areas-group h3 { font-family: var(--font-head); font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; color: var(--blue-600); margin-bottom: 12px; }
 .area-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: start; }

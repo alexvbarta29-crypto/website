@@ -191,43 +191,6 @@
     input.addEventListener("blur", () => setTimeout(close, 150));
   });
 
-  /* ---- Service-area border overlay on Google Map embeds.
-         Web Mercator projection keyed to the embed's center/zoom, so the
-         coral outline stays aligned with the map at any container size. ---- */
-  $$("[data-map-overlay]").forEach((box) => {
-    const zoom = parseFloat(box.dataset.zoom || "10");
-    const [clat, clng] = (box.dataset.center || "").split(",").map(Number);
-    const pts = (box.dataset.border || "").trim().split(/\s+/)
-      .map((p) => p.split(",").map(Number)).filter((p) => p.length === 2);
-    if (!pts.length || isNaN(clat)) return;
-    const world = 256 * Math.pow(2, zoom);
-    const proj = (lat, lng) => {
-      const x = ((lng + 180) / 360) * world;
-      const s = Math.sin((lat * Math.PI) / 180);
-      const y = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * world;
-      return [x, y];
-    };
-    const [cx, cy] = proj(clat, clng);
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("class", "map-area-svg");
-    svg.setAttribute("aria-hidden", "true");
-    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    svg.appendChild(poly);
-    box.appendChild(svg);
-    const draw = () => {
-      const w = box.clientWidth, h = box.clientHeight;
-      if (!w || !h) return;
-      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-      poly.setAttribute("points", pts.map(([lat, lng]) => {
-        const [x, y] = proj(lat, lng);
-        return `${(w / 2 + (x - cx)).toFixed(1)},${(h / 2 + (y - cy)).toFixed(1)}`;
-      }).join(" "));
-    };
-    draw();
-    if ("ResizeObserver" in window) new ResizeObserver(draw).observe(box);
-    else window.addEventListener("resize", draw);
-  });
-
   /* ---- Pre-check services: ?svc= param wins, else the page's default ---- */
   const params = new URLSearchParams(location.search);
   const svcParam = params.get("svc");
