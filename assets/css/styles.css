@@ -462,6 +462,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* ---------- Page hero (interior) ---------- */
 .phero { position: relative; padding-top: calc(var(--nav-h) + 64px); padding-bottom: clamp(40px, 6vw, 72px); background: linear-gradient(180deg, var(--mist) 0%, #fff 100%); overflow: hidden; }
+.phero.phero-tight { padding-top: calc(var(--nav-h) + 36px); padding-bottom: 8px; background: #fff; }
 .phero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(50% 60% at 85% 10%, rgba(255,106,61,.07), transparent 60%), radial-gradient(45% 50% at 5% 95%, rgba(251,77,61,.06), transparent 60%); pointer-events: none; }
 .phero .container { position: relative; }
 .phero h1 { color: var(--ink); max-width: 16ch; }

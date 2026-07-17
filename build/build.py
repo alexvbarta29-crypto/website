@@ -282,14 +282,19 @@ def build_service(svc):
     html += C.nav(depth)
     html += f"""
 <main id="main">
-  <section class="phero">
+  <section class="phero phero-tight">
     <div class="container">
       {C.crumbs([("Home", "../index.html"), ("Services", "../residential.html"), (svc['name'], None)])}
+      <span class="eyebrow">{svc['name']}</span>
+      <h1 class="mt-1" style="max-width:none">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="container">
       <div class="split">
         <div class="prose">
-          <span class="eyebrow">{svc['name']}</span>
-          <h1 class="mt-1">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
-          <p class="lead">{svc['hero_sub']}</p>
+          <p class="lead" style="margin-top:0">{svc['hero_sub']}</p>
           <p class="mt-2">{svc['intro']}</p>
           <p><strong>{svc['process_note']}</strong></p>
           <div class="phero-actions">
@@ -308,6 +313,17 @@ def build_service(svc):
   </section>
 
   <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">Membership Savings</span>
+        <h2>Save money with every service</h2>
+        <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
+      </div>
+      <div class="promo-grid">{C.promo_plan_cards(depth)}</div>
+    </div>
+  </section>
+
+  <section>
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">Why Barta</span>
@@ -348,17 +364,6 @@ def build_service(svc):
         <h2 class="mt-1">Delano's trusted choice for {svc['name'].lower()}</h2>
         <p class="mt-2">{svc.get('why_barta', '')}</p>
       </div>
-    </div>
-  </section>
-
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow" style="justify-content:center">Membership Savings</span>
-        <h2>Save money with every service</h2>
-        <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
-      </div>
-      <div class="promo-grid">{C.promo_plan_cards(depth)}</div>
     </div>
   </section>
 
