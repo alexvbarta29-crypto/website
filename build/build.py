@@ -285,34 +285,24 @@ def build_service(svc):
   <section class="phero">
     <div class="container">
       {C.crumbs([("Home", "../index.html"), ("Services", "../residential.html"), (svc['name'], None)])}
-      <div style="max-width:760px">
-        <span class="eyebrow" style="color:#ff9b86">{svc['name']}</span>
-        <h1 class="mt-1">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
-        <p class="lead">{svc['hero_sub']}</p>
-        <div class="phero-actions">
-          <a class="btn btn-lg btn-light" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
-          <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
-        </div>
-        <ul class="hero-trust">
-          <li>{icon('shield')} Licensed &amp; insured</li>
-          <li>{icon('check-circle')} Satisfaction guaranteed</li>
-          <li>{icon('star')} {BIZ['rating']}★ rated</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="container">
       <div class="split">
-        <div class="prose reveal">
-          <span class="eyebrow">Overview</span>
-          <h2 class="mt-1">Professional {svc['name'].lower()}, done right</h2>
-          <p>{svc['intro']}</p>
+        <div class="prose">
+          <span class="eyebrow">{svc['name']}</span>
+          <h1 class="mt-1">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
+          <p class="lead">{svc['hero_sub']}</p>
+          <p class="mt-2">{svc['intro']}</p>
           <p><strong>{svc['process_note']}</strong></p>
-          <a class="btn mt-3" href="#quote-form">Get my free quote {icon('arrow')}</a>
+          <div class="phero-actions">
+            <a class="btn btn-lg" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
+            <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
+          </div>
+          <ul class="hero-trust">
+            <li>{icon('shield')} Licensed &amp; insured</li>
+            <li>{icon('check-circle')} Satisfaction guaranteed</li>
+            <li>{icon('star')} {BIZ['rating']}★ rated</li>
+          </ul>
         </div>
-        <div class="reveal">{C.photo(svc['image'], svc['name'] + " by Barta — professional crew at work in the Twin Cities", ratio="5/4", depth=depth) if svc.get('image') else C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
+        <div>{C.photo(svc['image'], svc['name'] + " by Barta — professional crew at work in the Twin Cities", ratio="5/4", depth=depth) if svc.get('image') else C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
       </div>
     </div>
   </section>
@@ -358,6 +348,17 @@ def build_service(svc):
         <h2 class="mt-1">Delano's trusted choice for {svc['name'].lower()}</h2>
         <p class="mt-2">{svc.get('why_barta', '')}</p>
       </div>
+    </div>
+  </section>
+
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">Membership Savings</span>
+        <h2>Save money with every service</h2>
+        <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
+      </div>
+      <div class="promo-grid">{C.promo_plan_cards(depth)}</div>
     </div>
   </section>
 
@@ -469,12 +470,12 @@ def build_plans():
     <div class="container">
       {C.crumbs([("Home", "index.html"), ("Service Plans", None)])}
       <div style="max-width:760px">
-        <span class="eyebrow" style="color:#ff9b86">Barta Care Memberships</span>
+        <span class="eyebrow">Barta Care Memberships</span>
         <h1 class="mt-1">A spotless home, on autopilot</h1>
         <p class="lead">Stop scheduling, stop remembering, stop climbing ladders. Our maintenance memberships keep your windows, gutters, and exterior effortlessly clean all year — with priority scheduling, member-only pricing, and free inspections.</p>
         <div class="phero-actions">
-          <a class="btn btn-lg btn-light" href="#plans">See the plans {icon('arrow')}</a>
-          <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)" href="tel:{BIZ['phone_href']}">{icon('phone')} Talk to us</a>
+          <a class="btn btn-lg" href="#plans">See the plans {icon('arrow')}</a>
+          <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} Talk to us</a>
         </div>
       </div>
     </div>
@@ -563,12 +564,12 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
       {crumbs}
       <div class="hero-grid">
         <div>
-          <span class="eyebrow" style="color:#ff9b86">{eyebrow}</span>
+          <span class="eyebrow">{eyebrow}</span>
           <h1 class="mt-1">{h1}</h1>
           <p class="lead">{lead}</p>
           <div class="phero-actions">
-            <a class="btn btn-lg btn-light" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
-            <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
+            <a class="btn btn-lg" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
+            <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
           </div>
         </div>
         <div>{C.lead_form(depth, svc_default=svc_default, compact=True)}</div>
@@ -581,7 +582,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
     <div class="container">
       {crumbs}
       <div style="max-width:760px">
-        <span class="eyebrow" style="color:#ff9b86">{eyebrow}</span>
+        <span class="eyebrow">{eyebrow}</span>
         <h1 class="mt-1">{h1}</h1>
         <p class="lead">{lead}</p>
       </div>
@@ -1012,12 +1013,12 @@ def build_area(a):
     {C.crumbs([("Home", "../index.html"), ("Service Areas", "../service-areas.html"), (a['city'], None)])}
     <div class="hero-grid">
       <div>
-        <span class="eyebrow" style="color:#ff9b86">Serving {a['city']}, MN{homebase}</span>
+        <span class="eyebrow">Serving {a['city']}, MN{homebase}</span>
         <h1 class="mt-1">Premium exterior cleaning in {a['city']}</h1>
         <p class="lead">Spotless windows, clear gutters, and a fresh-washed exterior for {a['city']} homes and businesses — from a local, family-owned team that treats your property like its own.</p>
         <div class="phero-actions">
-          <a class="btn btn-lg btn-light" href="#quote-form">Get a Free {a['city']} Quote {icon('arrow')}</a>
-          <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
+          <a class="btn btn-lg" href="#quote-form">Get a Free {a['city']} Quote {icon('arrow')}</a>
+          <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
         </div>
       </div>
       <div>{C.lead_form(depth, heading=f"Free Quote in {a['city']}", compact=True)}</div>
@@ -1343,7 +1344,7 @@ def build_post(p, idx):
   <section class="phero"><div class="container">
     {C.crumbs([("Home", "../index.html"), ("Blog", "../blog.html"), (p['cat'], None)])}
     <div style="max-width:760px">
-      <span class="eyebrow" style="color:#ff9b86">{p['cat']} · {p['read']} read</span>
+      <span class="eyebrow">{p['cat']} · {p['read']} read</span>
       <h1 class="mt-1">{p['title']}</h1>
       <p class="lead">{p['excerpt']}</p>
     </div>
@@ -1428,7 +1429,7 @@ def build_landing(L):
     html += f"""<main id="main">
   <section class="phero"><div class="container"><div class="hero-grid">
     <div>
-      <div class="hero-rating" style="background:rgba(255,255,255,.12)">{stars_row()}<span>{BIZ['rating']}/5 · {BIZ['review_count']}+ reviews</span></div>
+      <div class="hero-rating" style="background:#fff;border:1px solid var(--line);color:var(--slate-700)">{stars_row()}<span>{BIZ['rating']}/5 · {BIZ['review_count']}+ reviews</span></div>
       <h1 class="mt-1">{L['headline']}</h1>
       <p class="lead">Trusted, family-owned exterior cleaning across the western Twin Cities. Get clear, upfront pricing with no pressure and no obligation.</p>
       <ul class="hero-trust">
