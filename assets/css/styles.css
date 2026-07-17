@@ -505,9 +505,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .map-embed:hover .map-open-hint svg { color: #fff; }
 @media (max-width: 640px) { .map-embed.map-wide { aspect-ratio: 4/3; } }
 
-/* Homepage: square map on the left, city list beside it */
+/* Homepage: square map on the left, compact city list beside it */
 .areas-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 40px; align-items: start; }
-.areas-split .area-grid { grid-template-columns: repeat(3, 1fr); }
+.areas-split .area-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.areas-split .area-card { padding: 8px 11px; gap: 7px; font-size: .8rem; font-weight: 600; border-radius: 11px; box-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.areas-split .area-card svg { width: 14px; height: 14px; }
 @media (max-width: 960px) { .areas-split .area-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 760px) {
   .areas-split { grid-template-columns: 1fr; }
