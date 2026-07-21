@@ -453,12 +453,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .gallery figcaption { position: absolute; inset: auto 0 0 0; padding: 26px 16px 14px; background: linear-gradient(transparent, rgba(8,32,59,.78)); color: #fff; font-weight: 600; font-size: .9rem; }
 
 /* ---------- CTA band ---------- */
-.cta-band { position: relative; overflow: hidden; border-radius: var(--r-xl); padding: clamp(40px, 6vw, 72px); background: var(--grad-deep); text-align: center; }
-.cta-band::after { content: ""; position: absolute; inset: 0; background: radial-gradient(50% 60% at 80% 20%, rgba(255,106,61,.28), transparent 60%), radial-gradient(40% 50% at 10% 90%, rgba(251,77,61,.3), transparent 60%); }
+/* Background photo + blue-to-navy fade are set as a stacked inline
+   background-image (gradient over photo) so the band's height can stay
+   content-driven without fighting percentage-height/replaced-element
+   quirks that come with an absolutely-positioned <img>. */
+.cta-band { position: relative; overflow: hidden; border-radius: var(--r-xl); padding: clamp(64px, 11vw, 130px) clamp(24px, 6vw, 64px); background: var(--grad-deep) center/cover; text-align: center; }
 .cta-band > * { position: relative; }
-.cta-band h2 { color: #fff; }
-.cta-band p { color: rgba(255,255,255,.82); max-width: 580px; margin: 16px auto 0; }
-.cta-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 30px; }
+.cta-band h2 { color: #fff; font-size: clamp(2.1rem, 4.4vw, 3.2rem); max-width: 15ch; margin-inline: auto; }
+.cta-band p { color: rgba(255,255,255,.85); max-width: 580px; margin: 16px auto 0; }
+.cta-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 34px; }
 
 /* ---------- Page hero (interior) ---------- */
 .phero { position: relative; padding-top: calc(var(--nav-h) + 64px); padding-bottom: clamp(40px, 6vw, 72px); background: linear-gradient(180deg, var(--mist) 0%, #fff 100%); overflow: hidden; }

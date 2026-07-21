@@ -448,17 +448,20 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
   <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Reveal more of the before or after image">
 </div>"""
 
-def cta_band(depth=0, heading="Ready for windows that wow?",
+def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              text="Join hundreds of Delano-area homeowners who trust Barta for a spotless, stress-free exterior. Get your free quote today.",
-             primary=("Get Your Free Quote", "request-quote.html")):
+             primary=("Get Your Free Quote", "request-quote.html"),
+             image="assets/img/svc-exterior-window-cleaning.jpg"):
     root = rel(depth)
-    return f"""<section><div class="container"><div class="cta-band reveal">
+    bg = (f"linear-gradient(180deg, rgba(8,22,46,.38) 0%, rgba(7,18,40,.66) 45%, rgba(5,13,30,.94) 100%), "
+          f"url('{root}{image}')")
+    return f"""<section><div class="container"><div class="cta-band reveal" style="background-image:{bg};background-position:center,center 30%">
   <span class="eyebrow" style="color:#ff9b86;justify-content:center">Let's get started</span>
   <h2 class="mt-1">{heading}</h2>
   <p>{text}</p>
   <div class="cta-actions">
-    <a class="btn btn-lg btn-light" href="{root}{primary[1]}">{primary[0]} {icon('arrow')}</a>
-    <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.5)" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
+    <a class="btn btn-lg" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
+    <a class="btn btn-lg btn-outline" style="color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.5)" href="{root}{primary[1]}">{primary[0]} {icon('arrow')}</a>
   </div>
 </div></div></section>"""
 
