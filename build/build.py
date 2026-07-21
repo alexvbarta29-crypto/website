@@ -244,9 +244,16 @@ def build_service(svc):
     benefits_html = "".join(
         f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon("check")}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
         for i, (t, d) in enumerate(svc["benefits"]))
-    process_html = "".join(
-        f'<div class="feature reveal" data-delay="{i%3}"><span class="ic num">{i+1}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
-        for i, (t, d) in enumerate(svc.get("process", [])))
+    # Homepage-style process slideshow, fed by this service's own steps.
+    # Window cleaning reuses the same real step photos as the homepage slider;
+    # other services show a branded icon tile for each step.
+    _wc_step_imgs = ["assets/img/svc-mop-window.jpg", "assets/img/svc-hand-scrubbing.jpg",
+                     "assets/img/svc-interior-window-cleaning.jpg", "assets/img/svc-detail-frame.jpg"]
+    slider_steps = []
+    for i, (t, d) in enumerate(svc.get("process", [])):
+        img = _wc_step_imgs[i] if svc["slug"] == "window-cleaning" and i < len(_wc_step_imgs) else None
+        slider_steps.append((f"{i+1:02d}", t, img, d, svc["icon"]))
+    process_html = C.process_slider(slider_steps, depth) if slider_steps else ""
     includes_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc["includes"])
     related = [x for x in SERVICES if x["slug"] != svc["slug"]][:3]
     related_html = "".join(
@@ -254,7 +261,7 @@ def build_service(svc):
         <span class="ic">{icon(r['icon'])}</span><h3>{r['name']}</h3><p>{r['short']}</p>
         <span class="more">Learn more {icon('arrow')}</span></a>"""
         for i, r in enumerate(related))
-    reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
+    reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
 
     svc_faqs = [
         (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
@@ -285,22 +292,17 @@ def build_service(svc):
   <section class="phero phero-tight">
     <div class="container">
       {C.crumbs([("Home", "../index.html"), ("Services", "../residential.html"), (svc['name'], None)])}
-      <span class="eyebrow">{svc['name']}</span>
-      <h1 class="mt-1" style="max-width:none">{svc['name']} in {BIZ['city']} &amp; the Western Metro</h1>
+      <h1 style="max-width:none">{svc['name']}</h1>
     </div>
   </section>
 
-  <section class="section-tight">
+  <section class="section-tight" style="padding-top:24px">
     <div class="container">
-      <div class="split">
+      <div class="split top">
         <div class="prose">
           <p class="lead" style="margin-top:0">{svc['hero_sub']}</p>
           <p class="mt-2">{svc['intro']}</p>
           <p><strong>{svc['process_note']}</strong></p>
-          <div class="phero-actions">
-            <a class="btn btn-lg" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
-            <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
-          </div>
           <ul class="hero-trust">
             <li>{icon('shield')} Licensed &amp; insured</li>
             <li>{icon('check-circle')} Satisfaction guaranteed</li>
@@ -326,6 +328,26 @@ def build_service(svc):
   <section>
     <div class="container">
       <div class="section-head center">
+        <span class="eyebrow">How it works</span>
+        <h2>Our {svc['name'].lower()} process</h2>
+      </div>
+      {process_html}
+    </div>
+  </section>
+
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">See what your</span>
+        <h2>Neighbors are saying</h2>
+      </div>
+      {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="section-head center">
         <span class="eyebrow">Why Barta</span>
         <h2>The benefits you'll notice</h2>
       </div>
@@ -333,7 +355,7 @@ def build_service(svc):
     </div>
   </section>
 
-  <section>
+  <section class="bg-mist">
     <div class="container">
       <div class="split reverse">
         <div class="reveal">{C.ba_slider(depth=depth, name="ba1")}</div>
@@ -341,36 +363,8 @@ def build_service(svc):
           <span class="eyebrow">What's included</span>
           <h2 class="mt-1">Every {svc['name'].lower()} includes</h2>
           <ul class="checklist mt-2">{includes_html}</ul>
-          <a class="btn mt-3" href="#quote-form">Get my free quote {icon('arrow')}</a>
         </div>
       </div>
-    </div>
-  </section>
-
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">How it works</span>
-        <h2>Our {svc['name'].lower()} process</h2>
-      </div>
-      <div class="process-steps">{process_html}</div>
-    </div>
-  </section>
-
-  <section>
-    <div class="container">
-      <div class="prose reveal" style="max-width:760px;margin-inline:auto;text-align:center">
-        <span class="eyebrow" style="justify-content:center">Why choose Barta</span>
-        <h2 class="mt-1">Delano's trusted choice for {svc['name'].lower()}</h2>
-        <p class="mt-2">{svc.get('why_barta', '')}</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="bg-grad-sky">
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Loved locally</span><h2>What customers say</h2></div>
-      <div class="grid cols-3">{reviews_html}</div>
     </div>
   </section>
 
@@ -388,7 +382,7 @@ def build_service(svc):
     </div>
   </section>
 
-  <section>
+  <section id="quote-form-anchor">
     <div class="container">
       <div class="section-head center"><span class="eyebrow">Free quote</span><h2>Request your {svc['name'].lower()} quote</h2></div>
       <div style="max-width:640px;margin-inline:auto">{C.lead_form(depth, heading=f"Free {svc['name']} Quote", svc_default=svc['slug'])}</div>
@@ -632,7 +626,7 @@ def build_commercial():
           <p>Your building is the first impression every customer, tenant, and partner forms about your business. Streaked windows and grimy entrances quietly cost you — clean ones quietly win. Barta delivers dependable, scheduled commercial cleaning that keeps your property looking its absolute best, without you having to manage it.</p>
           <p>We work around your hours, carry full liability and workers' comp coverage, and assign a single account contact so service is effortless. One vendor, every exterior need, zero hassle.</p>
         </div>
-        <div class="reveal">{C.photo("assets/img/commercial-building-cleaning.jpg", "Barta crew cleaning a commercial building in the Twin Cities metro", ratio="5/4", depth=depth)}</div>
+        <div class="reveal">{C.photo("assets/img/svc-commercial-cleaning.jpg", "Barta crew cleaning a commercial building in the Twin Cities metro", ratio="5/4", depth=depth)}</div>
       </div>
     </div>
   </section>
