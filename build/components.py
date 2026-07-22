@@ -378,8 +378,9 @@ def quote_wizard(depth=0, svc_default=None):
         feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in PROMO_FEATS)
         pop_cls = " popular" if popular else ""
         badge = '<span class="promo-badge">Most Popular</span>' if popular else ""
+        checked = " checked" if slug == "quarterly" else ""
         plan_cards += f"""<label class="promo-card select-card{pop_cls}">
-      <input type="radio" name="plan_choice" value="{slug}" required>{badge}
+      <input type="radio" name="plan_choice" value="{slug}" required{checked}>{badge}
       <span class="promo-name">{name}</span>
       <span class="promo-price">${amt} <small>OFF</small></span>
       <span class="promo-per">Per Cleaning</span>
@@ -391,15 +392,24 @@ def quote_wizard(depth=0, svc_default=None):
   <div class="wizard-progress-bar" aria-hidden="true"><div class="wizard-progress-fill" data-wizard-fill></div></div>
   <form class="form wizard-form" data-lead novalidate>
     <div class="wizard-panel" data-panel="0">
-      <h2>Let's start with your info</h2>
-      <p class="form-note">Takes about a minute — no obligation.</p>
+      <h2 class="wizard-hero-title">Let's get to know you!</h2>
       <div class="form-row mt-3">
-        <div class="field"><label for="q-first">First name</label><input type="text" id="q-first" name="first_name" autocomplete="given-name" required placeholder="Jane"></div>
-        <div class="field"><label for="q-last">Last name</label><input type="text" id="q-last" name="last_name" autocomplete="family-name" required placeholder="Doe"></div>
+        <div class="field field-icon">
+          <label for="q-first" class="sr-only">First name</label>{icon('user')}
+          <input type="text" id="q-first" name="first_name" autocomplete="given-name" required placeholder="First name">
+        </div>
+        <div class="field field-icon">
+          <label for="q-last" class="sr-only">Last name</label>{icon('user')}
+          <input type="text" id="q-last" name="last_name" autocomplete="family-name" required placeholder="Last name">
+        </div>
       </div>
-      <div class="form-row">
-        <div class="field"><label for="q-phone">Phone</label><input type="tel" id="q-phone" name="phone" autocomplete="tel" required inputmode="tel" data-validate-phone placeholder="(763) 314-3400"></div>
-        <div class="field"><label for="q-email">Email</label><input type="email" id="q-email" name="email" autocomplete="email" required placeholder="you@email.com"></div>
+      <div class="field field-icon">
+        <label for="q-email" class="sr-only">Email</label>{icon('mail')}
+        <input type="email" id="q-email" name="email" autocomplete="email" required placeholder="Email">
+      </div>
+      <div class="field field-icon">
+        <label for="q-phone" class="sr-only">Phone</label>{icon('phone')}
+        <input type="tel" id="q-phone" name="phone" autocomplete="tel" required inputmode="tel" data-validate-phone placeholder="Phone">
       </div>
       <div class="wizard-actions">
         <span></span>
@@ -418,7 +428,7 @@ def quote_wizard(depth=0, svc_default=None):
     </div>
 
     <div class="wizard-panel wizard-panel-wide" data-panel="2" hidden>
-      <h2 class="center">How often would you like service?</h2>
+      <h2 class="center">Select Your Frequency</h2>
       <p class="form-note center">The more often we come, the more you save.</p>
       <div class="promo-grid mt-3">{plan_cards}</div>
       <div class="wizard-actions">
@@ -428,7 +438,7 @@ def quote_wizard(depth=0, svc_default=None):
     </div>
 
     <div class="wizard-panel" data-panel="3" hidden>
-      <h2>Where should we come?</h2>
+      <h2>You're Almost There!</h2>
       <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
       <div class="field addr-field mt-3"><label for="q-street">Street address</label>
         <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
@@ -451,7 +461,7 @@ def quote_wizard(depth=0, svc_default=None):
     {icon('check-circle')}
     <h2>Thank you! Your request is in.</h2>
     <p>One of the owners will reach out with your free, no-obligation quote.</p>
-    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or call us now: {BIZ['phone_display']}</a>
+    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or Call Us</a>
   </div>
 </div>"""
 
