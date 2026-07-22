@@ -582,7 +582,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .follow-socials a { color: var(--blue-600); transition: transform .25s ease, color .25s ease; }
 .follow-socials a:hover { color: var(--ink); transform: translateY(-4px); }
 .follow-socials svg { width: clamp(40px, 6vw, 56px); height: clamp(40px, 6vw, 56px); }
-.footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding-top: 26px; font-size: .85rem; color: rgba(255,255,255,.55); }
+.footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding-top: 26px; font-size: .85rem; color: rgba(255,255,255,.92); }
+.footer-bottom a { color: rgba(255,255,255,.92); }
+.footer-bottom a:hover { color: #fff; }
 .footer-bottom .links { display: flex; flex-wrap: wrap; gap: 18px; }
 
 /* ---------- Animations ---------- */
