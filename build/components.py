@@ -411,6 +411,12 @@ def quote_wizard(depth=0, svc_default=None):
         <label for="q-phone" class="sr-only">Phone</label>{icon('phone')}
         <input type="tel" id="q-phone" name="phone" autocomplete="tel" required inputmode="tel" data-validate-phone placeholder="Phone">
       </div>
+      <div class="field field-icon">
+        <label for="q-promo" class="sr-only">Promo code (optional)</label>{icon('tag')}
+        <input type="text" id="q-promo" name="promo_code" autocomplete="off" placeholder="Promo code (optional)">
+      </div>
+      <label class="check mt-2"><input type="checkbox" name="reminders" checked> I'd like to receive reminders about scheduling and marketing messages.</label>
+      <p class="form-note wizard-disclaimer">By checking this box, you agree to receive scheduling reminders and promotional messages from {BIZ['name']}. Message frequency varies, message &amp; data rates may apply. Reply STOP to unsubscribe. See our <a href="{root}privacy.html">Privacy Policy</a>.</p>
       <div class="wizard-actions">
         <span></span>
         <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
@@ -460,8 +466,8 @@ def quote_wizard(depth=0, svc_default=None):
   <div class="form-success">
     {icon('check-circle')}
     <h2>Thank you! Your request is in.</h2>
-    <p>One of the owners will reach out with your free, no-obligation quote.</p>
-    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or Call Us</a>
+    <p>Someone will reach out shortly.</p>
+    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">Call Us</a>
   </div>
 </div>"""
 

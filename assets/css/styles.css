@@ -321,6 +321,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .wizard-panel .form-note { font-size: 1rem; }
 .wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 32px; }
 .wizard-address-warning { color: #dc4c3e; }
+.wizard-disclaimer { font-size: .76rem; line-height: 1.5; color: var(--slate-400); margin-top: 10px; }
+.wizard-disclaimer a { color: var(--blue-600); text-decoration: underline; }
 
 /* Bigger, more substantial fields/checkboxes for the standalone quote flow */
 .wizard .field label { font-size: .9rem; }
