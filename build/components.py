@@ -228,7 +228,7 @@ PROMO_PLANS = [
 ]
 PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
 
-def promo_plan_cards(depth=0):
+def promo_plan_cards(depth=0, svc=None):
     root = rel(depth)
     cards = ""
     for i, (name, slug, amt, included, popular) in enumerate(PROMO_PLANS):
@@ -237,14 +237,28 @@ def promo_plan_cards(depth=0):
         feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in PROMO_FEATS)
         pop_cls = " popular" if popular else ""
         badge = '<span class="promo-badge">Most Popular</span>' if popular else ""
+        href = f"{root}get-quote.html?plan={slug}" + (f"&svc={svc}" if svc else "")
         cards += f"""<div class="promo-card{pop_cls} reveal" data-delay="{i}">{badge}
         <h3 class="promo-name">{name}</h3>
         <div class="promo-price">${amt} <small>OFF</small></div>
         <div class="promo-per">Per Cleaning</div>
         <ul class="promo-feats">{feats}</ul>
-        <a class="btn btn-block" href="{root}get-quote.html?plan={slug}">Choose {name}</a>
+        <a class="btn btn-block" href="{href}">Choose {name}</a>
       </div>"""
     return cards
+
+def service_sidebar(current_slug, depth=0):
+    """Sticky side nav listing every service page, for quick jumps between
+    them from a service page's detail section — mirrors the current page."""
+    root = rel(depth)
+    items = ""
+    for s in SERVICES:
+        active = s["slug"] == current_slug
+        marker = '<span class="side-dot"></span>' if active else ""
+        arrow = "" if active else icon("arrow")
+        items += (f'<a class="side-nav-link{" active" if active else ""}" href="{root}services/{s["slug"]}.html">'
+                  f'{marker}<span>{s["name"]}</span>{arrow}</a>')
+    return f'<nav class="service-sidebar" aria-label="Other services">{items}</nav>'
 
 # Maps service-page slugs to their closest homepage-service checkbox slug,
 # so svc_default works whether callers pass either kind of identifier.

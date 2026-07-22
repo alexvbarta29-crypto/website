@@ -490,6 +490,31 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .prose .hero-trust { display: flex; }
 .prose .hero-trust li::before { display: none; }
 .prose .hero-trust li { align-items: center; }
+.prose .checklist li::before { display: none; }
+.prose .checklist svg { color: var(--green); }
+
+/* ---------- Service page: full-bleed photo hero ---------- */
+.svc-hero { position: relative; padding: calc(var(--nav-h) + 76px) 0 76px; text-align: left; }
+.svc-hero .container { position: relative; z-index: 1; }
+.svc-hero h1 { color: #fff; max-width: 18ch; text-shadow: 0 2px 20px rgba(0,0,0,.55), 0 1px 4px rgba(0,0,0,.4); }
+.svc-hero .lead { color: rgba(255,255,255,.92); margin-top: 18px; max-width: 560px; font-weight: 500; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+.svc-hero .hero-actions { margin-top: 30px; }
+@media (max-width: 640px) {
+  .svc-hero { padding: calc(var(--nav-h) + 48px) 0 56px; }
+}
+
+/* ---------- Service page: detail + other-services sidebar ---------- */
+.svc-detail-grid { display: grid; grid-template-columns: 2.15fr 1fr; gap: 56px; align-items: start; }
+.service-sidebar { position: sticky; top: calc(var(--nav-h) + 20px); display: grid; gap: 3px; background: var(--mist); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 10px; }
+.side-nav-link { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-radius: var(--r-md); color: var(--slate-700); font-weight: 600; font-size: .92rem; transition: background .2s, color .2s; }
+.side-nav-link:hover { background: #fff; color: var(--blue-600); }
+.side-nav-link.active { background: #fff; color: var(--ink); box-shadow: var(--sh-sm); }
+.side-nav-link svg { width: 16px; height: 16px; flex: none; margin-left: auto; opacity: .45; }
+.side-dot { width: 8px; height: 8px; border-radius: 3px; background: var(--grad-brand); flex: none; }
+@media (max-width: 860px) {
+  .svc-detail-grid { grid-template-columns: 1fr; }
+  .service-sidebar { position: static; }
+}
 
 /* Split feature */
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; }

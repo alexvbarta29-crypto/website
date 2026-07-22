@@ -241,9 +241,11 @@ def build_home():
 # ===========================================================================
 def build_service(svc):
     depth = 1
+    root = C.rel(depth)
+    checkbox_slug = C.SERVICE_SLUG_TO_LABEL.get(svc["slug"], svc["slug"])
     benefits_html = "".join(
-        f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon("check")}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
-        for i, (t, d) in enumerate(svc["benefits"]))
+        f'<li>{icon("check-circle")} <span><strong>{t}:</strong> {d}</span></li>' for t, d in svc["benefits"])
+    includes_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc["includes"])
     # Homepage-style process slideshow — shown only for exterior/interior window
     # cleaning (the two pages the process actually differs meaningfully for);
     # every other service page skips this section entirely.
@@ -267,13 +269,6 @@ def build_service(svc):
       {C.process_slider(slider_steps, depth)}
     </div>
   </section>"""
-    includes_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc["includes"])
-    related = [x for x in SERVICES if x["slug"] != svc["slug"]][:3]
-    related_html = "".join(
-        f"""<a class="card svc-card reveal" data-delay="{i}" href="{r['slug']}.html">
-        <span class="ic">{icon(r['icon'])}</span><h3>{r['name']}</h3><p>{r['short']}</p>
-        <span class="more">Learn more {icon('arrow')}</span></a>"""
-        for i, r in enumerate(related))
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
 
     svc_faqs = [
@@ -300,45 +295,33 @@ def build_service(svc):
         slug=f"services/{svc['slug']}.html", depth=depth, schema=schema,
         primary_kw=svc["kw"])
     html += C.nav(depth)
+
+    hero_img = svc.get("image") or "assets/img/hero-home.jpg"
+    hero_bg = (f"linear-gradient(180deg, rgba(8,22,46,.35) 0%, rgba(7,18,40,.58) 55%, rgba(5,13,30,.86) 100%), "
+               f"url('{root}{hero_img}')")
+
     html += f"""
 <main id="main">
-  <section class="phero phero-tight">
+  <section class="svc-hero" style="background-image:{hero_bg};background-size:cover,cover;background-position:center,center 30%">
     <div class="container">
-      {C.crumbs([("Home", "../index.html"), ("Services", "../residential.html"), (svc['name'], None)])}
-      <h1 style="max-width:none">{svc['name']}</h1>
-    </div>
-  </section>
-
-  <section class="section-tight" style="padding-top:24px">
-    <div class="container">
-      <div class="split top">
-        <div class="prose">
-          <p class="lead" style="margin-top:0">{svc['hero_sub']}</p>
-          <p class="mt-2">{svc['intro']}</p>
-          {f'<p><strong>{svc["process_note"]}</strong></p>' if svc.get('process_note') else ''}
-          <ul class="hero-trust">
-            <li>{icon('shield')} Licensed &amp; insured</li>
-            <li>{icon('check-circle')} Satisfaction guaranteed</li>
-            <li>{icon('star')} {BIZ['rating']}★ rated</li>
-          </ul>
-        </div>
-        <div>{C.photo(svc['image'], svc['name'] + " by Barta — professional crew at work in the Twin Cities", ratio="5/4", depth=depth) if svc.get('image') else C.imgph(svc['name'] + " — professional crew at work", ratio="5/4")}</div>
+      <h1>{svc['name']}</h1>
+      <p class="lead">{svc['hero_sub']}</p>
+      <div class="hero-actions">
+        <a class="btn btn-lg" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Quote {icon('arrow')}</a>
       </div>
     </div>
   </section>
 
-  <section class="bg-mist">
+  <section class="bg-mist" id="plans">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Membership Savings</span>
         <h2>Save money with every service</h2>
         <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
       </div>
-      <div class="promo-grid">{C.promo_plan_cards(depth)}</div>
+      <div class="promo-grid">{C.promo_plan_cards(depth, svc=checkbox_slug)}</div>
     </div>
   </section>
-
-  {process_section}
 
   <section class="bg-mist">
     <div class="container">
@@ -352,26 +335,21 @@ def build_service(svc):
 
   <section>
     <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Why Barta</span>
-        <h2>The benefits you'll notice</h2>
+      <div class="svc-detail-grid">
+        <div class="prose reveal">
+          <h2 class="mt-0">{svc['name']} at {BIZ['name']}</h2>
+          <p>{svc['intro']}</p>
+          <h3>The benefits you'll notice</h3>
+          <ul class="checklist">{benefits_html}</ul>
+          <h3>What's included</h3>
+          <ul class="checklist">{includes_html}</ul>
+        </div>
+        {C.service_sidebar(svc['slug'], depth)}
       </div>
-      <div class="grid cols-2">{benefits_html}</div>
     </div>
   </section>
 
-  <section class="bg-mist">
-    <div class="container">
-      <div class="split reverse">
-        <div class="reveal">{C.ba_slider(depth=depth, name="ba1")}</div>
-        <div class="reveal">
-          <span class="eyebrow">What's included</span>
-          <h2 class="mt-1">Every {svc['name'].lower()} includes</h2>
-          <ul class="checklist mt-2">{includes_html}</ul>
-        </div>
-      </div>
-    </div>
-  </section>
+  {process_section}
 
   <section>
     <div class="container">
@@ -380,21 +358,7 @@ def build_service(svc):
     </div>
   </section>
 
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Complete your exterior</span><h2>You may also need</h2></div>
-      <div class="grid cols-3">{related_html}</div>
-    </div>
-  </section>
-
-  <section id="quote-form-anchor">
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Free quote</span><h2>Request your {svc['name'].lower()} quote</h2></div>
-      <div style="max-width:640px;margin-inline:auto">{C.lead_form(depth, heading=f"Free {svc['name']} Quote", svc_default=svc['slug'])}</div>
-    </div>
-  </section>
-
-  {C.cta_band(depth, heading=f"Ready for spotless results?", text=f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.")}
+  {C.cta_band(depth, heading=f"Ready for spotless results?", text=f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.", image=hero_img)}
 </main>
 """
     html += C.page_end(depth)
