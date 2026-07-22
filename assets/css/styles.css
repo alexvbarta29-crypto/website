@@ -299,6 +299,43 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .form.sent { display: none; }
 .form-success.show { display: block; }
 
+/* ---------- Quote wizard (multi-step get-quote form) ---------- */
+.wizard-progress { position: relative; display: flex; justify-content: space-between; gap: 4px; }
+.wizard-track { position: absolute; top: 18px; left: 18px; right: 18px; height: 3px; background: var(--line); border-radius: 2px; z-index: 0; }
+.wizard-track-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0; background: var(--grad-brand); border-radius: 2px; transition: width .4s var(--ease); }
+.wizard-step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+.wizard-step .num {
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-head); font-weight: 800; font-size: .92rem;
+  background: #fff; color: var(--slate-400); border: 2px solid var(--line); transition: all .3s var(--ease);
+}
+.wizard-step .label { font-size: .72rem; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: .03em; text-align: center; transition: color .3s var(--ease); }
+.wizard-step.active .num { background: var(--grad-brand); color: #fff; border-color: transparent; box-shadow: var(--sh-glow); }
+.wizard-step.active .label { color: var(--ink); }
+.wizard-step.done .num { background: var(--green); color: #fff; border-color: transparent; }
+.wizard-step.done .label { color: var(--slate-700); }
+@media (max-width: 480px) { .wizard-step .label { display: none; } }
+
+.wizard-panel h3 { font-size: 1.25rem; }
+.wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 22px; }
+.wizard-address-warning { color: #dc4c3e; }
+
+/* Plan-frequency picker cards (radio, single-select) */
+.plan-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.plan-pick {
+  position: relative; display: flex; flex-direction: column; gap: 6px; text-align: center;
+  padding: 18px 14px; border: 2px solid var(--line); border-radius: var(--r-md); cursor: pointer;
+  transition: border-color .25s var(--ease), box-shadow .25s var(--ease);
+}
+.plan-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+.plan-pick:hover { border-color: rgba(251,77,61,.4); }
+.plan-pick:has(input:checked) { border-color: transparent; box-shadow: 0 0 0 2px var(--blue-600), var(--sh-md); background: linear-gradient(#fff,#fff) padding-box, var(--grad-brand) border-box; }
+.plan-pick-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; padding: 5px 12px; border-radius: var(--r-pill); white-space: nowrap; }
+.plan-pick-name { font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; }
+.plan-pick-price { font-size: .82rem; color: var(--slate-500); }
+.plan-pick-price small { display: block; }
+@media (max-width: 640px) { .plan-pick-grid { grid-template-columns: 1fr; } }
+
 /* ---------- Cards / Grids ---------- */
 .grid { display: grid; gap: 24px; }
 .cols-2 { grid-template-columns: repeat(2, 1fr); }

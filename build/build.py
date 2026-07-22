@@ -122,7 +122,7 @@ def build_home():
         <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
         <p class="lead">Minnesota's trusted exterior cleaning professionals. Brighter views. Spotless results. Satisfaction guaranteed.</p>
         <div class="hero-actions">
-          <a class="btn btn-lg" href="request-quote.html">Get Your Free Quote {icon('arrow')}</a>
+          <a class="btn btn-lg" href="get-quote.html">Get Your Free Quote {icon('arrow')}</a>
         </div>
       </div>
     </div>
@@ -381,7 +381,7 @@ def build_plans():
         <div class="price"><span class="amt">${p['monthly']}</span><span class="per">/month</span></div>
         <p class="annual">or ${p['annual']}/year · {p['annual_save']}</p>
         <ul class="incl">{incl}</ul>
-        <a class="btn {btn} btn-block" href="request-quote.html">Join {p['name']} {icon('arrow')}</a>
+        <a class="btn {btn} btn-block" href="get-quote.html">Join {p['name']} {icon('arrow')}</a>
       </div>"""
 
     # comparison rows
@@ -507,7 +507,7 @@ def build_plans():
     </div>
   </section>
 
-  {C.cta_band(depth, heading="Join the easiest home upgrade you'll make", text="Lock in member pricing and never think about exterior cleaning again. Start with a free quote — we'll recommend the perfect plan.", primary=("Become a Member", "request-quote.html"))}
+  {C.cta_band(depth, heading="Join the easiest home upgrade you'll make", text="Lock in member pricing and never think about exterior cleaning again. Start with a free quote — we'll recommend the perfect plan.", primary=("Become a Member", "get-quote.html"))}
 </main>
 """
     html += C.page_end(depth)
@@ -1054,34 +1054,11 @@ def build_contact():
     html += C.page_end(depth)
     write("contact.html", html, slug="contact.html", priority="0.7")
 
-# ===========================================================================
-# REQUEST A QUOTE
-# ===========================================================================
-def build_quote():
-    """request-quote.html — plan chooser. Visitors pick a savings plan first,
-    then land on get-quote.html with their plan attached."""
-    depth = 0
-    schema = BASE_SCHEMA
-    html, body = interior_head(
-        title=f"Choose Your Plan | {BIZ['name']} Delano, MN",
-        desc="Pick the Barta savings plan that fits your home — Biannual, Quarterly, or Monthly — and get your free, no-obligation exterior cleaning quote.",
-        slug="request-quote.html", eyebrow="Free Quote", schema=schema,
-        h1="First, pick the plan that fits your home",
-        lead="The more often we come, the more you save on every visit. Choose a plan below and we'll put together your free, no-obligation quote.",
-        depth=depth, crumb_label="Request a Quote", cta_form=False, primary_kw="free window cleaning quote Delano MN")
-    html += f"""<main id="main">{body}
-  <section><div class="container">
-    <div class="promo-grid">{C.promo_plan_cards(depth)}</div>
-    <p class="center mt-4" style="color:var(--slate-500)">Just need a one-time cleaning? <a href="get-quote.html" style="color:var(--blue-600);font-weight:600">Request a one-time quote instead</a>.</p>
-  </div></section>
-  {C.cta_band(depth, heading="The clearest view starts with a quote", text="Join hundreds of happy Delano-area homeowners. We can't wait to make your home shine.")}
-</main>"""
-    html += C.page_end(depth)
-    write("request-quote.html", html, slug="request-quote.html", priority="0.9")
-
 def build_get_quote():
-    """get-quote.html — the actual quote form, with the chosen plan carried
-    in via ?plan= (captured to a hidden field and shown as a badge)."""
+    """get-quote.html — the 4-step quote wizard (info -> services -> plan
+    frequency -> address). A ?svc= or ?plan= query param from a service
+    page or plan card pre-selects the matching option once the visitor
+    reaches that step."""
     depth = 0
     schema = BASE_SCHEMA
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
@@ -1092,12 +1069,11 @@ def build_get_quote():
         desc="Tell us about your home and the services you need, and Barta Window Washing will get back to you with clear, upfront, no-obligation pricing.",
         slug="get-quote.html", eyebrow="Free Quote", schema=schema,
         h1="Get your free quote",
-        lead="Tell us a little about your home and the services you need, and we'll get back to you with clear, upfront, no-obligation pricing.",
+        lead="A few quick steps and we'll get back to you with clear, upfront, no-obligation pricing.",
         depth=depth, crumb_label="Get a Quote", cta_form=False, primary_kw="free exterior cleaning quote Delano MN")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="hero-grid">
     <div class="reveal">
-      <p hidden style="margin-bottom:14px"><span class="pill" style="background:var(--grad-brand);color:#fff;border:0;font-weight:700">Selected: <span data-plan-badge></span></span></p>
       <span class="eyebrow">Why request a quote</span>
       <h2 class="mt-1">No pressure. No surprises.</h2>
       <ul class="checklist mt-2" style="font-size:1.05rem">{trust}</ul>
@@ -1105,7 +1081,7 @@ def build_get_quote():
         <div class="feature"><span class="ic">{icon('phone')}</span><div><h4>Prefer to call?</h4><p><a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:700">{BIZ['phone_display']}</a> · {BIZ['hours']}</p></div></div>
       </div>
     </div>
-    <div class="reveal">{C.lead_form(depth)}</div>
+    <div class="reveal">{C.quote_wizard(depth)}</div>
   </div></div></section>
   {C.cta_band(depth, heading="The clearest view starts with a quote", text="Join hundreds of happy Delano-area homeowners. We can't wait to make your home shine.")}
 </main>"""
@@ -1248,7 +1224,7 @@ def build_post(p, idx):
       <div class="card mt-4" style="background:var(--mist);border:0">
         <h3 style="font-size:1.25rem">Want it handled for you?</h3>
         <p class="mt-1">Skip the ladder and let Barta take care of it. Get a free, no-obligation quote today.</p>
-        <a class="btn mt-2" href="../request-quote.html">Get my free quote {icon('arrow')}</a>
+        <a class="btn mt-2" href="../get-quote.html">Get my free quote {icon('arrow')}</a>
       </div>
     </article>
     <aside class="reveal">
@@ -1256,7 +1232,7 @@ def build_post(p, idx):
       <div class="card mt-2" style="background:var(--grad-deep);color:#fff">
         <h4 style="color:#fff">Free quote</h4>
         <p style="color:rgba(255,255,255,.8);margin-top:8px">Free pricing, no obligation.</p>
-        <a class="btn btn-light btn-block mt-2" href="../request-quote.html">Get started {icon('arrow')}</a>
+        <a class="btn btn-light btn-block mt-2" href="../get-quote.html">Get started {icon('arrow')}</a>
       </div>
     </aside>
   </div></div></section>
@@ -1538,7 +1514,6 @@ def main():
     build_careers()
     build_financing()
     build_contact()
-    build_quote()
     build_get_quote()
     build_privacy()
     build_blog()

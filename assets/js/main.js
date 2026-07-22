@@ -148,10 +148,18 @@
 
   /* ---- Address autocomplete (OpenStreetMap Nominatim — free, keyless).
          Suggestions drop down as you type; picking one marks the address
-         verified so every lead carries a real, mappable address. ---- */
+         verified so every lead carries a real, mappable address. When the
+         field has sibling city/zip inputs (the quote wizard), the picked
+         suggestion's structured address also fills those in, confirming
+         the town is a real, geocodable place. ---- */
   $$("input[data-address-input]").forEach((input) => {
-    const list = input.parentElement.querySelector("[data-address-list]");
-    const verified = input.parentElement.querySelector("[data-address-verified]");
+    const wrap = input.closest(".field") || input.parentElement;
+    const panel = input.closest(".wizard-panel") || wrap;
+    const list = wrap.querySelector("[data-address-list]");
+    const verified = wrap.querySelector("[data-address-verified]");
+    const cityField = panel.querySelector("[data-address-city]");
+    const zipField = panel.querySelector("[data-address-zip]");
+    const status = panel.querySelector("[data-address-status]");
     if (!list) return;
     let timer = null, aborter = null;
     const close = () => { list.hidden = true; list.innerHTML = ""; };
@@ -160,7 +168,7 @@
       if (q.length < 4) { close(); return; }
       if (aborter) aborter.abort();
       aborter = new AbortController();
-      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&limit=5&countrycodes=us" +
+      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us" +
         "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(q);
       fetch(url, { signal: aborter.signal, headers: { Accept: "application/json" } })
         .then((r) => r.json())
@@ -173,8 +181,13 @@
             li.setAttribute("role", "option");
             li.addEventListener("mousedown", (e) => {
               e.preventDefault();
-              input.value = r.display_name;
+              const addr = r.address || {};
+              const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
+              input.value = road || r.display_name;
+              if (cityField) cityField.value = addr.city || addr.town || addr.village || addr.hamlet || cityField.value;
+              if (zipField) zipField.value = addr.postcode || zipField.value;
               if (verified) verified.value = "yes";
+              if (status) status.hidden = true;
               close();
             });
             list.appendChild(li);
@@ -203,6 +216,7 @@
   const planParam = params.get("plan");
   if (planParam) {
     $$("[data-plan-field]").forEach((f) => { f.value = planParam; });
+    $$(`input[name="plan_choice"][value="${planParam}"]`).forEach((r) => { r.checked = true; });
     const badge = $("[data-plan-badge]");
     if (badge) {
       const names = { monthly: "Monthly Plan", quarterly: "Quarterly Plan", biannual: "Biannual Plan" };
@@ -222,10 +236,22 @@
         checks.forEach((c) => c.addEventListener("change", () => checks[0].setCustomValidity(""), { once: true }));
         return;
       }
+      const addrVerified = form.querySelector("[data-address-verified]");
+      if (addrVerified && addrVerified.value !== "yes") {
+        const status = form.querySelector("[data-address-status]");
+        if (status) status.hidden = false;
+        const addrInput = form.querySelector("[data-address-input]");
+        if (addrInput) addrInput.focus();
+        return;
+      }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       const success = form.parentElement.querySelector(".form-success");
       form.classList.add("sent");
       if (success) { success.classList.add("show"); success.setAttribute("role", "status"); }
+      $$(".wizard-step", form.closest(".wizard") || form).forEach((el) => {
+        el.classList.add("done");
+        el.classList.remove("active");
+      });
       // In production, POST to your CRM / email service here.
       try {
         const data = Object.fromEntries(new FormData(form).entries());
@@ -233,6 +259,63 @@
         console.log("[Barta] Lead captured (demo):", data);
       } catch (err) {}
     });
+  });
+
+  /* ---- Quote wizard: step-by-step reveal with a progress bar ---- */
+  $$(".wizard").forEach((wizard) => {
+    const form = $(".wizard-form", wizard);
+    const panels = $$(".wizard-panel", form);
+    const indicators = $$(".wizard-step", wizard);
+    const fill = $("[data-wizard-fill]", wizard);
+    let step = 0;
+
+    const show = (n, scroll) => {
+      step = Math.max(0, Math.min(n, panels.length - 1));
+      panels.forEach((p, i) => { p.hidden = i !== step; });
+      indicators.forEach((el, i) => {
+        el.classList.toggle("active", i === step);
+        el.classList.toggle("done", i < step);
+      });
+      if (fill) fill.style.width = (step / (indicators.length - 1)) * 100 + "%";
+      if (scroll) wizard.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    const validateStep = () => {
+      const panel = panels[step];
+      const fields = [...panel.querySelectorAll("input, select, textarea")]
+        .filter((el) => el.type !== "hidden" && el.name !== "services");
+      const invalid = fields.find((el) => !el.checkValidity());
+      if (invalid) { invalid.reportValidity(); return false; }
+
+      const svcChecks = panel.querySelectorAll('input[name="services"]');
+      if (svcChecks.length && ![...svcChecks].some((c) => c.checked)) {
+        svcChecks[0].setCustomValidity("Please select at least one service.");
+        svcChecks[0].reportValidity();
+        svcChecks.forEach((c) => c.addEventListener("change", () => svcChecks[0].setCustomValidity(""), { once: true }));
+        return false;
+      }
+      if (svcChecks.length) svcChecks.forEach((c) => c.setCustomValidity(""));
+
+      const addrInput = panel.querySelector("[data-address-input]");
+      if (addrInput) {
+        const verified = panel.querySelector("[data-address-verified]");
+        const status = panel.querySelector("[data-address-status]");
+        if (!verified || verified.value !== "yes") {
+          if (status) status.hidden = false;
+          addrInput.focus();
+          return false;
+        }
+        if (status) status.hidden = true;
+      }
+      return true;
+    };
+
+    $$("[data-wizard-next]", form).forEach((btn) => btn.addEventListener("click", () => {
+      if (validateStep()) show(step + 1, true);
+    }));
+    $$("[data-wizard-back]", form).forEach((btn) => btn.addEventListener("click", () => show(step - 1, true)));
+    indicators.forEach((el, i) => el.addEventListener("click", () => { if (i < step) show(i, true); }));
+    show(0, false);
   });
 
   /* ---- Active nav state ---- */

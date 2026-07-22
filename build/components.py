@@ -102,7 +102,7 @@ def nav(depth=0):
       <li><a href="{root}reviews.html">Reviews</a></li>
     </ul>
     <div class="nav-cta">
-      <a class="btn" href="{root}request-quote.html">Get a Quote</a>
+      <a class="btn" href="{root}get-quote.html">Get a Quote</a>
       <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">{icon('menu')}</button>
     </div>
   </nav>
@@ -136,7 +136,7 @@ def nav(depth=0):
       <a href="{root}contact.html">Contact</a>
     </nav>
     <div class="drawer-foot">
-      <a class="btn btn-block" href="{root}request-quote.html">Get My Free Quote</a>
+      <a class="btn btn-block" href="{root}get-quote.html">Get My Free Quote</a>
       <a class="btn btn-ghost btn-block" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
     </div>
   </div>
@@ -147,7 +147,7 @@ def sticky_cta(depth=0):
     root = rel(depth)
     return f"""<div class="sticky-cta">
   <a class="btn btn-call" href="tel:{BIZ['phone_href']}">{icon('phone')} Call</a>
-  <a class="btn" href="{root}request-quote.html">Free Quote</a>
+  <a class="btn" href="{root}get-quote.html">Free Quote</a>
 </div>"""
 
 def footer(depth=0):
@@ -198,7 +198,7 @@ def footer(depth=0):
     <div class="footer-bottom">
       <span>© <span id="year">2026</span> {BIZ['name']}. All rights reserved. Licensed &amp; insured in Minnesota.</span>
       <div class="links">
-        <a href="{root}request-quote.html">Free Quote</a>
+        <a href="{root}get-quote.html">Free Quote</a>
         <a href="{root}faqs.html">FAQs</a>
         <a href="{root}service-areas.html">Service Areas</a>
         <a href="{root}privacy.html">Privacy</a>
@@ -343,6 +343,117 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
   </div>
 </div>"""
 
+# Services offered in the quote wizard's picker — every homepage service
+# except Christmas Light Installation and Commercial Cleaning, which are
+# booked/quoted through their own dedicated flows.
+WIZARD_SERVICES = [s for s in HOME_SERVICES if s["label"] not in ("Christmas Light Installation", "Commercial Cleaning")]
+
+def quote_wizard(depth=0, svc_default=None):
+    """4-step quote form: info -> services -> plan frequency -> address.
+    Only the active step is visible at a time, with a progress bar up top.
+    A ?svc= or ?plan= query param (from a service page or plan card) is
+    picked up by JS to pre-select the matching step-2/step-3 option."""
+    root = rel(depth)
+    if svc_default is None:
+        defaults = []
+    elif isinstance(svc_default, str):
+        defaults = [svc_default]
+    else:
+        defaults = list(svc_default)
+    defaults = [SERVICE_SLUG_TO_LABEL.get(d, d) for d in defaults]
+
+    svc_boxes = "".join(
+        f'<label class="check svc-check"><input type="checkbox" name="services" value="{item["label"]}" '
+        f'data-svc="{_slugify(item["label"])}"> {item["label"]}</label>'
+        for item in WIZARD_SERVICES)
+
+    plan_cards = ""
+    for name, slug, amt, included, popular in PROMO_PLANS:
+        badge = '<span class="plan-pick-badge">Most Popular</span>' if popular else ""
+        plan_cards += f"""<label class="plan-pick{' popular' if popular else ''}">
+      <input type="radio" name="plan_choice" value="{slug}" required>{badge}
+      <span class="plan-pick-name">{name}</span>
+      <span class="plan-pick-price">${amt} <small>off every cleaning</small></span>
+    </label>"""
+
+    steps = ["Your Info", "Services", "Plan", "Address"]
+    step_html = "".join(
+        f'<div class="wizard-step{" active" if i == 0 else ""}" data-step-indicator="{i}">'
+        f'<span class="num">{i + 1}</span><span class="label">{label}</span></div>'
+        for i, label in enumerate(steps))
+
+    return f"""<div class="hero-card wizard" id="quote-form">
+  <div class="wizard-progress">
+    <div class="wizard-track"><div class="wizard-track-fill" data-wizard-fill></div></div>
+    {step_html}
+  </div>
+  <form class="form wizard-form mt-3" data-lead novalidate>
+    <div class="wizard-panel" data-panel="0">
+      <h3>Let's start with your info</h3>
+      <p class="form-note">Takes about a minute — no obligation.</p>
+      <div class="form-row mt-2">
+        <div class="field"><label for="q-first">First name</label><input type="text" id="q-first" name="first_name" autocomplete="given-name" required placeholder="Jane"></div>
+        <div class="field"><label for="q-last">Last name</label><input type="text" id="q-last" name="last_name" autocomplete="family-name" required placeholder="Doe"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label for="q-phone">Phone</label><input type="tel" id="q-phone" name="phone" autocomplete="tel" required inputmode="tel" data-validate-phone placeholder="(763) 314-3400"></div>
+        <div class="field"><label for="q-email">Email</label><input type="email" id="q-email" name="email" autocomplete="email" required placeholder="you@email.com"></div>
+      </div>
+      <div class="wizard-actions">
+        <span></span>
+        <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-panel="1" hidden>
+      <h3>Which services do you need?</h3>
+      <p class="form-note">Select all that apply.</p>
+      <div class="svc-checks mt-2" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
+        <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-panel="2" hidden>
+      <h3>How often would you like service?</h3>
+      <p class="form-note">The more often we come, the more you save.</p>
+      <div class="plan-pick-grid mt-2">{plan_cards}</div>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
+        <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-panel="3" hidden>
+      <h3>Where should we come?</h3>
+      <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
+      <div class="field addr-field mt-2"><label for="q-street">Street address</label>
+        <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
+        <input type="hidden" name="address_verified" data-address-verified value="no">
+        <ul class="addr-suggestions" data-address-list hidden></ul>
+      </div>
+      <div class="form-row">
+        <div class="field"><label for="q-city">City</label><input type="text" id="q-city" name="address_city" required data-address-city placeholder="Delano"></div>
+        <div class="field"><label for="q-zip">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{{5}}" data-address-zip placeholder="55328"></div>
+      </div>
+      <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
+      <label class="check mt-2"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
+        <button type="submit" class="btn btn-lg btn-block">Get My Free Quote {icon('arrow')}</button>
+      </div>
+      <p class="form-note center mt-1">By submitting, you agree to be contacted about your request. We never sell your info.</p>
+    </div>
+  </form>
+  <div class="form-success">
+    {icon('check-circle')}
+    <h3>Thank you! Your request is in.</h3>
+    <p>One of the owners will reach out with your free, no-obligation quote.</p>
+    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or call us now: {BIZ['phone_display']}</a>
+  </div>
+</div>"""
+
 _IMG_CARD_DARKS = [
     "linear-gradient(155deg,#23232b 0%,#0c0c10 100%)",
     "linear-gradient(155deg,#2c1d1a 0%,#110c0c 100%)",
@@ -423,7 +534,7 @@ def process_slider(steps, depth=0):
       <button type="button" class="process-arrow next" aria-label="Next step">{icon('arrow')}</button>
     </div>
     <div class="process-dots">{dots}</div>
-    <div class="center mt-4"><a class="btn" href="{root}request-quote.html">Get Your Free Quote</a></div>
+    <div class="center mt-4"><a class="btn" href="{root}get-quote.html">Get Your Free Quote</a></div>
   </div>"""
 
 def trust_badges():
@@ -456,7 +567,7 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
 
 def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              text="Join hundreds of Delano-area homeowners who trust Barta for a spotless, stress-free exterior. Get your free quote today.",
-             primary=("Get Your Free Quote", "request-quote.html"),
+             primary=("Get Your Free Quote", "get-quote.html"),
              image="assets/img/svc-exterior-window-cleaning.jpg", image_pos="30%"):
     root = rel(depth)
     bg = (f"linear-gradient(180deg, rgba(8,22,46,.38) 0%, rgba(7,18,40,.66) 45%, rgba(5,13,30,.94) 100%), "
