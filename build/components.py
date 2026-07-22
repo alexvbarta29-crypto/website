@@ -96,7 +96,6 @@ def nav(depth=0):
         <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
         <div class="nav-menu nav-menu-simple" role="menu">
           {"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
-          <a class="nav-menu-all" href="{root}residential.html">View all services {icon('arrow')}</a>
         </div>
       </li>
       <li><a href="{root}service-plans.html">Plans</a></li>
@@ -247,17 +246,17 @@ def promo_plan_cards(depth=0, svc=None):
       </div>"""
     return cards
 
-def service_sidebar(current_slug, depth=0):
-    """Sticky side nav listing every service page, for quick jumps between
-    them from a service page's detail section — mirrors the current page."""
+def service_sidebar(current_target, depth=0):
+    """Sticky side nav listing the same 10 services shown on the homepage,
+    for quick jumps between service pages from the detail section."""
     root = rel(depth)
     items = ""
-    for s in SERVICES:
-        active = s["slug"] == current_slug
+    for item in HOME_SERVICES:
+        active = item["target"] == current_target
         marker = '<span class="side-dot"></span>' if active else ""
         arrow = "" if active else icon("arrow")
-        items += (f'<a class="side-nav-link{" active" if active else ""}" href="{root}services/{s["slug"]}.html">'
-                  f'{marker}<span>{s["name"]}</span>{arrow}</a>')
+        items += (f'<a class="side-nav-link{" active" if active else ""}" href="{root}{item["target"]}">'
+                  f'{marker}<span>{item["label"]}</span>{arrow}</a>')
     return f'<nav class="service-sidebar" aria-label="Other services">{items}</nav>'
 
 # Maps service-page slugs to their closest homepage-service checkbox slug,

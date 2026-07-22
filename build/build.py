@@ -344,7 +344,7 @@ def build_service(svc):
           <h3>What's included</h3>
           <ul class="checklist">{includes_html}</ul>
         </div>
-        {C.service_sidebar(svc['slug'], depth)}
+        {C.service_sidebar(f"services/{svc['slug']}.html", depth)}
       </div>
     </div>
   </section>
