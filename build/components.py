@@ -249,7 +249,6 @@ def promo_plan_cards(depth=0):
 # Maps service-page slugs to their closest homepage-service checkbox slug,
 # so svc_default works whether callers pass either kind of identifier.
 SERVICE_SLUG_TO_LABEL = {
-    "window-cleaning": "exterior-window-cleaning",
     "gutter-cleaning": "gutter-cleaning",
     "pressure-washing": "pressure-washing",
     "house-washing": "soft-washing",
@@ -337,22 +336,13 @@ _IMG_CARD_DARKS = [
     "linear-gradient(155deg,#2a1c22 0%,#110c0f 100%)",
 ]
 
-# A few SERVICES entries use different wording than their matching photo's
-# filename (e.g. "Window Cleaning" vs. svc-exterior-window-cleaning.jpg).
-# Services with no dedicated photo yet are left out — they fall back to the
-# branded gradient + icon rather than showing a mismatched/duplicate photo.
-_SERVICE_IMG_OVERRIDES = {
-    "Window Cleaning": "assets/img/svc-exterior-window-cleaning.jpg",
-    "Screen Cleaning": "assets/img/svc-screen-cleaning-services.jpg",
-}
-
 def service_image_card(s, depth=0, idx=0):
     """DirtyMint-style large image card with overlaid title. Uses the same
     real service photo as the homepage grid when present on disk, falling
     back to a branded dark gradient + faint service icon otherwise."""
     root = rel(depth)
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
-    img = _SERVICE_IMG_OVERRIDES.get(s["name"]) or ("assets/img/svc-" + _slugify(s["name"]) + ".jpg")
+    img = "assets/img/svc-" + _slugify(s["name"]) + ".jpg"
     alt = f"{s['name']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
     img_tag = picture(root, img, alt, img_class="img-card-bg",
                        extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')

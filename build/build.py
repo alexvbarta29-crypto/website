@@ -244,16 +244,29 @@ def build_service(svc):
     benefits_html = "".join(
         f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon("check")}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
         for i, (t, d) in enumerate(svc["benefits"]))
-    # Homepage-style process slideshow, fed by this service's own steps.
-    # Window cleaning reuses the same real step photos as the homepage slider;
-    # other services show a branded icon tile for each step.
+    # Homepage-style process slideshow — shown only for exterior/interior window
+    # cleaning (the two pages the process actually differs meaningfully for);
+    # every other service page skips this section entirely.
     _wc_step_imgs = ["assets/img/svc-mop-window.jpg", "assets/img/svc-hand-scrubbing.jpg",
                      "assets/img/svc-interior-window-cleaning.jpg", "assets/img/svc-detail-frame.jpg"]
+    _has_process = svc["slug"] in ("exterior-window-cleaning", "interior-window-cleaning")
     slider_steps = []
-    for i, (t, d) in enumerate(svc.get("process", [])):
-        img = _wc_step_imgs[i] if svc["slug"] == "window-cleaning" and i < len(_wc_step_imgs) else None
-        slider_steps.append((f"{i+1:02d}", t, img, d, svc["icon"]))
-    process_html = C.process_slider(slider_steps, depth) if slider_steps else ""
+    if _has_process:
+        for i, (t, d) in enumerate(svc.get("process", [])):
+            img = _wc_step_imgs[i] if i < len(_wc_step_imgs) else None
+            slider_steps.append((f"{i+1:02d}", t, img, d, svc["icon"]))
+    process_section = ""
+    if slider_steps:
+        process_section = f"""
+  <section>
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow">How it works</span>
+        <h2>Our {svc['name'].lower()} process</h2>
+      </div>
+      {C.process_slider(slider_steps, depth)}
+    </div>
+  </section>"""
     includes_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc["includes"])
     related = [x for x in SERVICES if x["slug"] != svc["slug"]][:3]
     related_html = "".join(
@@ -325,15 +338,7 @@ def build_service(svc):
     </div>
   </section>
 
-  <section>
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">How it works</span>
-        <h2>Our {svc['name'].lower()} process</h2>
-      </div>
-      {process_html}
-    </div>
-  </section>
+  {process_section}
 
   <section class="bg-mist">
     <div class="container">
@@ -1373,7 +1378,7 @@ def build_post(p, idx):
 # LANDING PAGES (conversion-focused)
 # ===========================================================================
 LANDING = [
-    {"slug": "free-window-cleaning-quote", "svc": "window-cleaning", "h1": "Free Window Cleaning Quote in Delano, MN",
+    {"slug": "free-window-cleaning-quote", "svc": "exterior-window-cleaning", "h1": "Free Window Cleaning Quote in Delano, MN",
      "headline": "Streak-free windows, zero hassle — get your free quote today",
      "kw": "free window cleaning quote Delano MN",
      "guarantee": "Streak-Free Guarantee: if it streaks, we re-clean it free."},
