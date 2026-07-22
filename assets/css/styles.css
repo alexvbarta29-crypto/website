@@ -299,6 +299,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .form.sent { display: none; }
 .form-success.show { display: block; }
 
+/* ---------- Quote flow (bare full-screen wizard page, no nav/footer) ---------- */
+.quote-flow { min-height: 100vh; min-height: 100svh; background: var(--mist); }
+.quote-flow-inner { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: clamp(20px, 4vw, 48px) 20px; }
+.quote-flow-inner .hero-card.wizard { width: 100%; max-width: 640px; }
+
 /* ---------- Quote wizard (multi-step get-quote form) ---------- */
 .wizard-progress { position: relative; display: flex; justify-content: space-between; gap: 4px; }
 .wizard-track { position: absolute; top: 18px; left: 18px; right: 18px; height: 3px; background: var(--line); border-radius: 2px; z-index: 0; }

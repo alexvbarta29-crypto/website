@@ -383,13 +383,14 @@ def quote_wizard(depth=0, svc_default=None):
         for i, label in enumerate(steps))
 
     return f"""<div class="hero-card wizard" id="quote-form">
+  <h1 class="sr-only">Get Your Free Quote</h1>
   <div class="wizard-progress">
     <div class="wizard-track"><div class="wizard-track-fill" data-wizard-fill></div></div>
     {step_html}
   </div>
   <form class="form wizard-form mt-3" data-lead novalidate>
     <div class="wizard-panel" data-panel="0">
-      <h3>Let's start with your info</h3>
+      <h2>Let's start with your info</h2>
       <p class="form-note">Takes about a minute — no obligation.</p>
       <div class="form-row mt-2">
         <div class="field"><label for="q-first">First name</label><input type="text" id="q-first" name="first_name" autocomplete="given-name" required placeholder="Jane"></div>
@@ -406,7 +407,7 @@ def quote_wizard(depth=0, svc_default=None):
     </div>
 
     <div class="wizard-panel" data-panel="1" hidden>
-      <h3>Which services do you need?</h3>
+      <h2>Which services do you need?</h2>
       <p class="form-note">Select all that apply.</p>
       <div class="svc-checks mt-2" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
       <div class="wizard-actions">
@@ -416,7 +417,7 @@ def quote_wizard(depth=0, svc_default=None):
     </div>
 
     <div class="wizard-panel" data-panel="2" hidden>
-      <h3>How often would you like service?</h3>
+      <h2>How often would you like service?</h2>
       <p class="form-note">The more often we come, the more you save.</p>
       <div class="plan-pick-grid mt-2">{plan_cards}</div>
       <div class="wizard-actions">
@@ -426,7 +427,7 @@ def quote_wizard(depth=0, svc_default=None):
     </div>
 
     <div class="wizard-panel" data-panel="3" hidden>
-      <h3>Where should we come?</h3>
+      <h2>Where should we come?</h2>
       <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
       <div class="field addr-field mt-2"><label for="q-street">Street address</label>
         <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
@@ -448,7 +449,7 @@ def quote_wizard(depth=0, svc_default=None):
   </form>
   <div class="form-success">
     {icon('check-circle')}
-    <h3>Thank you! Your request is in.</h3>
+    <h2>Thank you! Your request is in.</h2>
     <p>One of the owners will reach out with your free, no-obligation quote.</p>
     <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or call us now: {BIZ['phone_display']}</a>
   </div>

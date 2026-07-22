@@ -1055,37 +1055,26 @@ def build_contact():
     write("contact.html", html, slug="contact.html", priority="0.7")
 
 def build_get_quote():
-    """get-quote.html — the 4-step quote wizard (info -> services -> plan
-    frequency -> address). A ?svc= or ?plan= query param from a service
-    page or plan card pre-selects the matching option once the visitor
-    reaches that step."""
+    """get-quote.html — a bare, distraction-free full-screen quote wizard.
+    No site nav, no footer, no sidebar content — just one step at a time,
+    each filling the screen, with a slim progress bar as the only chrome."""
     depth = 0
-    schema = BASE_SCHEMA
-    trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
-        "Free, no-obligation quotes", "Licensed &amp; fully insured", "100% satisfaction guarantee",
-        "Family-owned &amp; locally trusted", f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Safe, eco-friendly methods"])
-    html, body = interior_head(
+    root = C.rel(depth)
+    schema = BASE_SCHEMA + [S.breadcrumb([
+        ("Home", BIZ["domain"] + "/"),
+        ("Get a Quote", BIZ["domain"] + "/get-quote.html"),
+    ])]
+    html = C.head(
         title=f"Get Your Free Quote | {BIZ['name']} Delano, MN",
         desc="Tell us about your home and the services you need, and Barta Window Washing will get back to you with clear, upfront, no-obligation pricing.",
-        slug="get-quote.html", eyebrow="Free Quote", schema=schema,
-        h1="Get your free quote",
-        lead="A few quick steps and we'll get back to you with clear, upfront, no-obligation pricing.",
-        depth=depth, crumb_label="Get a Quote", cta_form=False, primary_kw="free exterior cleaning quote Delano MN")
-    html += f"""<main id="main">{body}
-  <section><div class="container"><div class="hero-grid">
-    <div class="reveal">
-      <span class="eyebrow">Why request a quote</span>
-      <h2 class="mt-1">No pressure. No surprises.</h2>
-      <ul class="checklist mt-2" style="font-size:1.05rem">{trust}</ul>
-      <div class="card mt-4" style="background:var(--mist);border:0">
-        <div class="feature"><span class="ic">{icon('phone')}</span><div><h4>Prefer to call?</h4><p><a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:700">{BIZ['phone_display']}</a> · {BIZ['hours']}</p></div></div>
-      </div>
-    </div>
-    <div class="reveal">{C.quote_wizard(depth)}</div>
-  </div></div></section>
-  {C.cta_band(depth, heading="The clearest view starts with a quote", text="Join hundreds of happy Delano-area homeowners. We can't wait to make your home shine.")}
-</main>"""
-    html += C.page_end(depth)
+        slug="get-quote.html", depth=depth, schema=schema,
+        primary_kw="free exterior cleaning quote Delano MN")
+    html += f"""<main id="main" class="quote-flow">
+  <div class="quote-flow-inner">{C.quote_wizard(depth)}</div>
+</main>
+<script src="{root}assets/js/main.min.js?v={C.ASSET_VER}" defer></script>
+</body>
+</html>"""
     write("get-quote.html", html, slug="get-quote.html", priority="0.9")
 
 # ===========================================================================
