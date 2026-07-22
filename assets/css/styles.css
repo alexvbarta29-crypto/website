@@ -566,7 +566,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .footer a:hover { color: #fff; }
 .footer-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 44px; border-bottom: 1px solid rgba(255,255,255,.1); }
 .footer .brand { color: #fff; }
-.footer-about p { margin-top: 16px; font-size: .94rem; max-width: 34ch; }
+.footer-about p { margin-top: 16px; font-size: .94rem; max-width: 34ch; color: #fff; }
 .footer-contact { margin-top: 20px; display: grid; gap: 10px; font-size: .92rem; }
 .footer-contact li { display: flex; gap: 10px; align-items: flex-start; }
 .footer-contact svg { width: 18px; height: 18px; color: var(--aqua-300); flex: none; margin-top: 2px; }
