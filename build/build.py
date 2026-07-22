@@ -1105,6 +1105,37 @@ def build_privacy():
     write("privacy.html", html, slug="privacy.html", priority="0.2")
 
 # ===========================================================================
+# TERMS & CONDITIONS (minimal legal)
+# ===========================================================================
+def build_terms():
+    depth = 0
+    html, body = interior_head(
+        title=f"Terms &amp; Conditions | {BIZ['name']}",
+        desc="Terms and conditions for Barta Window Washing, including our SMS/text messaging communication policy for quotes, scheduling, and marketing.",
+        slug="terms.html", eyebrow="Legal", h1="Terms &amp; Conditions",
+        lead="Please review these terms before requesting a quote or using our services.",
+        depth=depth, crumb_label="Terms")
+    html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
+    <p><em>Last updated: June 2026. This is a starter template — have it reviewed by legal counsel before launch.</em></p>
+    <h2>Agreement to terms</h2>
+    <p>By requesting a quote, scheduling a service, or otherwise using this website, you agree to these terms and conditions.</p>
+    <h2>Services &amp; quotes</h2>
+    <p>Quotes provided through this site are estimates based on the information you provide and are subject to confirmation after an on-site or photo assessment. Final pricing is confirmed before any work begins.</p>
+    <h2>Text messaging (SMS) communications</h2>
+    <p>If you opt in to text messages, {BIZ['name']} may send appointment updates, service notifications, and marketing offers to the phone number you provide. Consent to receive text messages is not a condition of purchasing any service. Message and data rates may apply, and message frequency varies. Reply STOP at any time to unsubscribe, or HELP for help.</p>
+    <h2>Payment</h2>
+    <p>Payment terms are provided at the time of booking or invoicing. Membership plans renew automatically according to the schedule selected at signup unless cancelled.</p>
+    <h2>Limitation of liability</h2>
+    <p>{BIZ['name']} carries liability and workers' compensation insurance and performs services with reasonable care. We are not liable for pre-existing damage or conditions unrelated to the service performed.</p>
+    <h2>Changes to these terms</h2>
+    <p>We may update these terms from time to time. Continued use of our services after changes are posted constitutes acceptance of the updated terms.</p>
+    <h2>Contact</h2>
+    <p>Questions about these terms? Email <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> or call {BIZ['phone_display']}.</p>
+  </div></div></section></main>"""
+    html += C.page_end(depth)
+    write("terms.html", html, slug="terms.html", priority="0.2")
+
+# ===========================================================================
 # BLOG HUB + POSTS
 # ===========================================================================
 def build_blog():
@@ -1505,6 +1536,7 @@ def main():
     build_contact()
     build_get_quote()
     build_privacy()
+    build_terms()
     build_blog()
     for i, p in enumerate(POSTS):
         build_post(p, i)

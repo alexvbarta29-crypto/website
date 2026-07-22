@@ -327,6 +327,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Bigger, more substantial fields/checkboxes for the standalone quote flow */
 .wizard .field label { font-size: .9rem; }
 .wizard .field input, .wizard .field select { padding: 16px 18px; font-size: 1.05rem; }
+/* Consistent breathing room between stacked fields/rows within a step —
+   matches the gap already used between the services cards and the
+   address/city/zip row, so no two fields ever sit flush against
+   each other. */
+.wizard-panel .field + .field,
+.wizard-panel .form-row + .field,
+.wizard-panel .field + .form-row,
+.wizard-panel .form-row + .form-row { margin-top: 16px; }
 
 /* First step: icon-in-field style (person/mail/phone), no visible external
    label — matches the reference layout while keeping an sr-only label for

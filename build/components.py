@@ -202,6 +202,7 @@ def footer(depth=0):
         <a href="{root}faqs.html">FAQs</a>
         <a href="{root}service-areas.html">Service Areas</a>
         <a href="{root}privacy.html">Privacy</a>
+        <a href="{root}terms.html">Terms</a>
       </div>
     </div>
   </div>
@@ -415,8 +416,8 @@ def quote_wizard(depth=0, svc_default=None):
         <label for="q-promo" class="sr-only">Promo code (optional)</label>{icon('tag')}
         <input type="text" id="q-promo" name="promo_code" autocomplete="off" placeholder="Promo code (optional)">
       </div>
-      <label class="check mt-2"><input type="checkbox" name="reminders" checked> I'd like to receive reminders about scheduling and marketing messages.</label>
-      <p class="form-note wizard-disclaimer">By checking this box, you agree to receive scheduling reminders and promotional messages from {BIZ['name']}. Message frequency varies, message &amp; data rates may apply. Reply STOP to unsubscribe. See our <a href="{root}privacy.html">Privacy Policy</a>.</p>
+      <label class="check mt-2"><input type="checkbox" name="reminders" required> I agree to receive text messages from {BIZ['name']}, including appointment updates, service notifications, and marketing offers.</label>
+      <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
       <div class="wizard-actions">
         <span></span>
         <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
