@@ -59,7 +59,6 @@ SERVICES = [
             "Spot treatment for light hard-water and mineral marks",
             "Full cleanup — we leave your property tidier than we found it",
         ],
-        "process_note": "Most homes are completed in 2–4 hours with a two-person crew.",
         "process": [
             ("Mop &amp; pre-treat", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen before anything else touches the glass."),
             ("Detail scrub", "Silicone overspray, painter's tape residue, and baked-on grime that the T-bar can't lift gets hand-scrubbed with industrial-grade abrasive pads — safe on glass, tough on the stuff a simple wash leaves behind."),
@@ -91,7 +90,6 @@ SERVICES = [
             "Screens cleaned from the outside on the same visit",
             "Full cleanup — we leave each room tidier than we found it",
         ],
-        "process_note": "Most homes are completed in 2–4 hours with a two-person crew.",
         "process": [
             ("Mop &amp; pre-treat", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt and dust before anything else touches the glass."),
             ("Detail scrub", "Fingerprints, tape residue, and baked-on grime that the T-bar can't lift gets hand-scrubbed with industrial-grade abrasive pads — safe on glass, tough on the stuff a simple wash leaves behind."),
@@ -203,7 +201,6 @@ SERVICES = [
             "Spider webs, wasp nests, and surface debris removed",
             "Pre-wash plant protection and post-wash rinse",
         ],
-        "process_note": "Most homes are washed in a single visit with no disruption to your day.",
         "why_barta": "As local co-owners washing homes throughout the Delano area, Alex and Jacob know what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
     },
     {

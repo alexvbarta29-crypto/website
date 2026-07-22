@@ -315,7 +315,7 @@ def build_service(svc):
         <div class="prose">
           <p class="lead" style="margin-top:0">{svc['hero_sub']}</p>
           <p class="mt-2">{svc['intro']}</p>
-          <p><strong>{svc['process_note']}</strong></p>
+          {f'<p><strong>{svc["process_note"]}</strong></p>' if svc.get('process_note') else ''}
           <ul class="hero-trust">
             <li>{icon('shield')} Licensed &amp; insured</li>
             <li>{icon('check-circle')} Satisfaction guaranteed</li>
