@@ -28,7 +28,7 @@
 <link rel="dns-prefetch" href="https://cdn.trustindex.io">
 <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="assets/css/styles.min.css?v=e50284ec">
+<link rel="stylesheet" href="assets/css/styles.min.css?v=8caac52d">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="site.webmanifest">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"HomeAndConstructionBusiness","@id":"https://www.bartawindowwashing.com/#business","name":"Barta Window Washing","legalName":"Barta Window Washing Services","description":"Premium residential and commercial exterior cleaning \u2014 window cleaning, gutter cleaning, pressure washing, house & roof soft washing, and holiday lighting in Delano, MN and the western Twin Cities metro.","url":"https://www.bartawindowwashing.com","telephone":"(763) 314-3400","email":"office@bartawindowwashing.com","priceRange":"$$","image":"https://www.bartawindowwashing.com/assets/img/og-cover.svg","logo":"https://www.bartawindowwashing.com/assets/img/favicon.svg","foundingDate":"2024","address":{"@type":"PostalAddress","streetAddress":"320 3rd St S","addressLocality":"Delano","addressRegion":"MN","postalCode":"55328","addressCountry":"US"},"geo":{"@type":"GeoCoordinates","latitude":"45.0419","longitude":"-93.7891"},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"08:00","closes":"19:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":["Saturday"],"opens":"08:00","closes":"17:00"}],"areaServed":[{"@type":"City","name":"Delano, MN"},{"@type":"City","name":"Buffalo, MN"},{"@type":"City","name":"Medina, MN"},{"@type":"City","name":"Mound, MN"},{"@type":"City","name":"Plymouth, MN"},{"@type":"City","name":"St. Michael, MN"},{"@type":"City","name":"Chanhassen, MN"},{"@type":"City","name":"Corcoran, MN"},{"@type":"City","name":"Deephaven, MN"},{"@type":"City","name":"Eden Prairie, MN"},{"@type":"City","name":"Excelsior, MN"},{"@type":"City","name":"Golden Valley, MN"},{"@type":"City","name":"Greenfield, MN"},{"@type":"City","name":"Greenwood, MN"},{"@type":"City","name":"Hamel, MN"},{"@type":"City","name":"Hanover, MN"},{"@type":"City","name":"Independence, MN"},{"@type":"City","name":"Long Lake, MN"},{"@type":"City","name":"Loretto, MN"},{"@type":"City","name":"Maple Grove, MN"},{"@type":"City","name":"Maple Plain, MN"},{"@type":"City","name":"Minnetonka, MN"},{"@type":"City","name":"Minnetonka Beach, MN"},{"@type":"City","name":"Minnetrista, MN"},{"@type":"City","name":"Montrose, MN"},{"@type":"City","name":"Orono, MN"},{"@type":"City","name":"Rockford, MN"},{"@type":"City","name":"Rogers, MN"},{"@type":"City","name":"Spring Park, MN"},{"@type":"City","name":"St. Bonifacius, MN"},{"@type":"City","name":"Tonka Bay, MN"},{"@type":"City","name":"Victoria, MN"},{"@type":"City","name":"Waverly, MN"},{"@type":"City","name":"Wayzata, MN"},{"@type":"City","name":"Winsted, MN"},{"@type":"City","name":"Woodland, MN"}],"sameAs":["https://www.facebook.com/p/Barta-Window-Washing-Services-61558622544052/","https://www.instagram.com/bartawindowwashing","https://www.google.com/search?q=bartawindowwashing#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,"],"aggregateRating":{"@type":"AggregateRating","ratingValue":"5.0","reviewCount":"100","bestRating":"5"},"makesOffer":{"@type":"Offer","name":"Free Exterior Cleaning Quote","price":"0","priceCurrency":"USD"}}</script>
@@ -39,17 +39,14 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <main id="main" class="quote-flow">
-  <div class="quote-flow-inner"><div class="hero-card wizard" id="quote-form">
+  <div class="quote-flow-inner"><div class="wizard" id="quote-form">
   <h1 class="sr-only">Get Your Free Quote</h1>
-  <div class="wizard-progress">
-    <div class="wizard-track"><div class="wizard-track-fill" data-wizard-fill></div></div>
-    <div class="wizard-step active" data-step-indicator="0"><span class="num">1</span><span class="label">Your Info</span></div><div class="wizard-step" data-step-indicator="1"><span class="num">2</span><span class="label">Services</span></div><div class="wizard-step" data-step-indicator="2"><span class="num">3</span><span class="label">Plan</span></div><div class="wizard-step" data-step-indicator="3"><span class="num">4</span><span class="label">Address</span></div>
-  </div>
-  <form class="form wizard-form mt-3" data-lead novalidate>
+  <div class="wizard-progress-bar" aria-hidden="true"><div class="wizard-progress-fill" data-wizard-fill></div></div>
+  <form class="form wizard-form" data-lead novalidate>
     <div class="wizard-panel" data-panel="0">
       <h2>Let's start with your info</h2>
       <p class="form-note">Takes about a minute — no obligation.</p>
-      <div class="form-row mt-2">
+      <div class="form-row mt-3">
         <div class="field"><label for="q-first">First name</label><input type="text" id="q-first" name="first_name" autocomplete="given-name" required placeholder="Jane"></div>
         <div class="field"><label for="q-last">Last name</label><input type="text" id="q-last" name="last_name" autocomplete="family-name" required placeholder="Doe"></div>
       </div>
@@ -66,28 +63,34 @@
     <div class="wizard-panel" data-panel="1" hidden>
       <h2>Which services do you need?</h2>
       <p class="form-note">Select all that apply.</p>
-      <div class="svc-checks mt-2" data-service-checks data-default-svc=""><label class="check svc-check"><input type="checkbox" name="services" value="Exterior Window Cleaning" data-svc="exterior-window-cleaning"> Exterior Window Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Interior Window Cleaning" data-svc="interior-window-cleaning"> Interior Window Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Screen Cleaning Services" data-svc="screen-cleaning-services"> Screen Cleaning Services</label><label class="check svc-check"><input type="checkbox" name="services" value="Track Detailing" data-svc="track-detailing"> Track Detailing</label><label class="check svc-check"><input type="checkbox" name="services" value="Solar Panel Cleaning" data-svc="solar-panel-cleaning"> Solar Panel Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Gutter Cleaning" data-svc="gutter-cleaning"> Gutter Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Soft Washing" data-svc="soft-washing"> Soft Washing</label><label class="check svc-check"><input type="checkbox" name="services" value="Pressure Washing" data-svc="pressure-washing"> Pressure Washing</label></div>
+      <div class="svc-checks mt-3" data-service-checks data-default-svc=""><label class="check svc-check"><input type="checkbox" name="services" value="Exterior Window Cleaning" data-svc="exterior-window-cleaning"> Exterior Window Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Interior Window Cleaning" data-svc="interior-window-cleaning"> Interior Window Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Screen Cleaning Services" data-svc="screen-cleaning-services"> Screen Cleaning Services</label><label class="check svc-check"><input type="checkbox" name="services" value="Track Detailing" data-svc="track-detailing"> Track Detailing</label><label class="check svc-check"><input type="checkbox" name="services" value="Solar Panel Cleaning" data-svc="solar-panel-cleaning"> Solar Panel Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Gutter Cleaning" data-svc="gutter-cleaning"> Gutter Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Soft Washing" data-svc="soft-washing"> Soft Washing</label><label class="check svc-check"><input type="checkbox" name="services" value="Pressure Washing" data-svc="pressure-washing"> Pressure Washing</label></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="button" class="btn btn-lg" data-wizard-next>Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
       </div>
     </div>
 
-    <div class="wizard-panel" data-panel="2" hidden>
-      <h2>How often would you like service?</h2>
-      <p class="form-note">The more often we come, the more you save.</p>
-      <div class="plan-pick-grid mt-2"><label class="plan-pick">
+    <div class="wizard-panel wizard-panel-wide" data-panel="2" hidden>
+      <h2 class="center">How often would you like service?</h2>
+      <p class="form-note center">The more often we come, the more you save.</p>
+      <div class="promo-grid mt-3"><label class="promo-card select-card">
       <input type="radio" name="plan_choice" value="biannual" required>
-      <span class="plan-pick-name">Biannual</span>
-      <span class="plan-pick-price">$50 <small>off every cleaning</small></span>
-    </label><label class="plan-pick popular">
-      <input type="radio" name="plan_choice" value="quarterly" required><span class="plan-pick-badge">Most Popular</span>
-      <span class="plan-pick-name">Quarterly</span>
-      <span class="plan-pick-price">$100 <small>off every cleaning</small></span>
-    </label><label class="plan-pick">
+      <span class="promo-name">Biannual</span>
+      <span class="promo-price">$50 <small>OFF</small></span>
+      <span class="promo-per">Per Cleaning</span>
+      <ul class="promo-feats"><li class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg> Priority Scheduling</li><li class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg> 7-Day Rain Guarantee</li><li class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg> Free Hard Water Removal</li></ul>
+    </label><label class="promo-card select-card popular">
+      <input type="radio" name="plan_choice" value="quarterly" required><span class="promo-badge">Most Popular</span>
+      <span class="promo-name">Quarterly</span>
+      <span class="promo-price">$100 <small>OFF</small></span>
+      <span class="promo-per">Per Cleaning</span>
+      <ul class="promo-feats"><li class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg> Priority Scheduling</li><li class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg> 7-Day Rain Guarantee</li><li class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg> Free Hard Water Removal</li></ul>
+    </label><label class="promo-card select-card">
       <input type="radio" name="plan_choice" value="monthly" required>
-      <span class="plan-pick-name">Monthly</span>
-      <span class="plan-pick-price">$150 <small>off every cleaning</small></span>
+      <span class="promo-name">Monthly</span>
+      <span class="promo-price">$150 <small>OFF</small></span>
+      <span class="promo-per">Per Cleaning</span>
+      <ul class="promo-feats"><li class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg> Priority Scheduling</li><li class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg> 7-Day Rain Guarantee</li><li class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg> Free Hard Water Removal</li></ul>
     </label></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
@@ -98,7 +101,7 @@
     <div class="wizard-panel" data-panel="3" hidden>
       <h2>Where should we come?</h2>
       <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
-      <div class="field addr-field mt-2"><label for="q-street">Street address</label>
+      <div class="field addr-field mt-3"><label for="q-street">Street address</label>
         <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
         <input type="hidden" name="address_verified" data-address-verified value="no">
         <ul class="addr-suggestions" data-address-list hidden></ul>
@@ -108,7 +111,6 @@
         <div class="field"><label for="q-zip">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{5}" data-address-zip placeholder="55328"></div>
       </div>
       <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
-      <label class="check mt-2"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="submit" class="btn btn-lg btn-block">Get My Free Quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -124,6 +126,6 @@
   </div>
 </div></div>
 </main>
-<script src="assets/js/main.min.js?v=e50284ec" defer></script>
+<script src="assets/js/main.min.js?v=8caac52d" defer></script>
 </body>
 </html>

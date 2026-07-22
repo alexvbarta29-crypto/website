@@ -350,9 +350,10 @@ WIZARD_SERVICES = [s for s in HOME_SERVICES if s["label"] not in ("Christmas Lig
 
 def quote_wizard(depth=0, svc_default=None):
     """4-step quote form: info -> services -> plan frequency -> address.
-    Only the active step is visible at a time, with a progress bar up top.
-    A ?svc= or ?plan= query param (from a service page or plan card) is
-    picked up by JS to pre-select the matching step-2/step-3 option."""
+    Each step reads as its own full page (no preview of what's next) with
+    a plain progress bar spanning the top of the screen. A ?svc= or ?plan=
+    query param (from a service page or plan card) is picked up by JS to
+    pre-select the matching step-2/step-3 option."""
     root = rel(depth)
     if svc_default is None:
         defaults = []
@@ -367,32 +368,32 @@ def quote_wizard(depth=0, svc_default=None):
         f'data-svc="{_slugify(item["label"])}"> {item["label"]}</label>'
         for item in WIZARD_SERVICES)
 
+    # Same promo cards shown on the homepage's "Save with our plans" grid,
+    # just made selectable (radio) instead of links, since we're already
+    # on the quote form.
     plan_cards = ""
     for name, slug, amt, included, popular in PROMO_PLANS:
-        badge = '<span class="plan-pick-badge">Most Popular</span>' if popular else ""
-        plan_cards += f"""<label class="plan-pick{' popular' if popular else ''}">
+        cls = "yes" if included else "no"
+        mark = icon("check-circle") if included else icon("x")
+        feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in PROMO_FEATS)
+        pop_cls = " popular" if popular else ""
+        badge = '<span class="promo-badge">Most Popular</span>' if popular else ""
+        plan_cards += f"""<label class="promo-card select-card{pop_cls}">
       <input type="radio" name="plan_choice" value="{slug}" required>{badge}
-      <span class="plan-pick-name">{name}</span>
-      <span class="plan-pick-price">${amt} <small>off every cleaning</small></span>
+      <span class="promo-name">{name}</span>
+      <span class="promo-price">${amt} <small>OFF</small></span>
+      <span class="promo-per">Per Cleaning</span>
+      <ul class="promo-feats">{feats}</ul>
     </label>"""
 
-    steps = ["Your Info", "Services", "Plan", "Address"]
-    step_html = "".join(
-        f'<div class="wizard-step{" active" if i == 0 else ""}" data-step-indicator="{i}">'
-        f'<span class="num">{i + 1}</span><span class="label">{label}</span></div>'
-        for i, label in enumerate(steps))
-
-    return f"""<div class="hero-card wizard" id="quote-form">
+    return f"""<div class="wizard" id="quote-form">
   <h1 class="sr-only">Get Your Free Quote</h1>
-  <div class="wizard-progress">
-    <div class="wizard-track"><div class="wizard-track-fill" data-wizard-fill></div></div>
-    {step_html}
-  </div>
-  <form class="form wizard-form mt-3" data-lead novalidate>
+  <div class="wizard-progress-bar" aria-hidden="true"><div class="wizard-progress-fill" data-wizard-fill></div></div>
+  <form class="form wizard-form" data-lead novalidate>
     <div class="wizard-panel" data-panel="0">
       <h2>Let's start with your info</h2>
       <p class="form-note">Takes about a minute — no obligation.</p>
-      <div class="form-row mt-2">
+      <div class="form-row mt-3">
         <div class="field"><label for="q-first">First name</label><input type="text" id="q-first" name="first_name" autocomplete="given-name" required placeholder="Jane"></div>
         <div class="field"><label for="q-last">Last name</label><input type="text" id="q-last" name="last_name" autocomplete="family-name" required placeholder="Doe"></div>
       </div>
@@ -409,17 +410,17 @@ def quote_wizard(depth=0, svc_default=None):
     <div class="wizard-panel" data-panel="1" hidden>
       <h2>Which services do you need?</h2>
       <p class="form-note">Select all that apply.</p>
-      <div class="svc-checks mt-2" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
+      <div class="svc-checks mt-3" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
       </div>
     </div>
 
-    <div class="wizard-panel" data-panel="2" hidden>
-      <h2>How often would you like service?</h2>
-      <p class="form-note">The more often we come, the more you save.</p>
-      <div class="plan-pick-grid mt-2">{plan_cards}</div>
+    <div class="wizard-panel wizard-panel-wide" data-panel="2" hidden>
+      <h2 class="center">How often would you like service?</h2>
+      <p class="form-note center">The more often we come, the more you save.</p>
+      <div class="promo-grid mt-3">{plan_cards}</div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
@@ -429,7 +430,7 @@ def quote_wizard(depth=0, svc_default=None):
     <div class="wizard-panel" data-panel="3" hidden>
       <h2>Where should we come?</h2>
       <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
-      <div class="field addr-field mt-2"><label for="q-street">Street address</label>
+      <div class="field addr-field mt-3"><label for="q-street">Street address</label>
         <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
         <input type="hidden" name="address_verified" data-address-verified value="no">
         <ul class="addr-suggestions" data-address-list hidden></ul>
@@ -439,7 +440,6 @@ def quote_wizard(depth=0, svc_default=None):
         <div class="field"><label for="q-zip">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{{5}}" data-address-zip placeholder="55328"></div>
       </div>
       <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
-      <label class="check mt-2"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="submit" class="btn btn-lg btn-block">Get My Free Quote {icon('arrow')}</button>

@@ -176,15 +176,18 @@
           list.innerHTML = "";
           if (!results.length) { close(); return; }
           results.forEach((r) => {
+            const addr = r.address || {};
+            const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
+            const cityName = addr.city || addr.town || addr.village || addr.hamlet || "";
+            // Keep suggestions to street, city, state, ZIP — no county/country clutter.
+            const short = [road, cityName, addr.state, addr.postcode].filter(Boolean).join(", ");
             const li = document.createElement("li");
-            li.textContent = r.display_name;
+            li.textContent = short || r.display_name;
             li.setAttribute("role", "option");
             li.addEventListener("mousedown", (e) => {
               e.preventDefault();
-              const addr = r.address || {};
-              const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
               input.value = road || r.display_name;
-              if (cityField) cityField.value = addr.city || addr.town || addr.village || addr.hamlet || cityField.value;
+              if (cityField) cityField.value = cityName || cityField.value;
               if (zipField) zipField.value = addr.postcode || zipField.value;
               if (verified) verified.value = "yes";
               if (status) status.hidden = true;
@@ -248,10 +251,8 @@
       const success = form.parentElement.querySelector(".form-success");
       form.classList.add("sent");
       if (success) { success.classList.add("show"); success.setAttribute("role", "status"); }
-      $$(".wizard-step", form.closest(".wizard") || form).forEach((el) => {
-        el.classList.add("done");
-        el.classList.remove("active");
-      });
+      const wizardFill = $("[data-wizard-fill]", form.closest(".wizard") || form);
+      if (wizardFill) wizardFill.style.width = "100%";
       // In production, POST to your CRM / email service here.
       try {
         const data = Object.fromEntries(new FormData(form).entries());
@@ -261,23 +262,18 @@
     });
   });
 
-  /* ---- Quote wizard: step-by-step reveal with a progress bar ---- */
+  /* ---- Quote wizard: step-by-step reveal with a top progress bar ---- */
   $$(".wizard").forEach((wizard) => {
     const form = $(".wizard-form", wizard);
     const panels = $$(".wizard-panel", form);
-    const indicators = $$(".wizard-step", wizard);
     const fill = $("[data-wizard-fill]", wizard);
     let step = 0;
 
     const show = (n, scroll) => {
       step = Math.max(0, Math.min(n, panels.length - 1));
       panels.forEach((p, i) => { p.hidden = i !== step; });
-      indicators.forEach((el, i) => {
-        el.classList.toggle("active", i === step);
-        el.classList.toggle("done", i < step);
-      });
-      if (fill) fill.style.width = (step / (indicators.length - 1)) * 100 + "%";
-      if (scroll) wizard.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (fill) fill.style.width = (step / (panels.length - 1)) * 100 + "%";
+      if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const validateStep = () => {
@@ -314,7 +310,6 @@
       if (validateStep()) show(step + 1, true);
     }));
     $$("[data-wizard-back]", form).forEach((btn) => btn.addEventListener("click", () => show(step - 1, true)));
-    indicators.forEach((el, i) => el.addEventListener("click", () => { if (i < step) show(i, true); }));
     show(0, false);
   });
 
