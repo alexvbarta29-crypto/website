@@ -98,7 +98,7 @@ def nav(depth=0):
           {"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
         </div>
       </li>
-      <li><a href="{root}service-plans.html">Plans</a></li>
+      <li><a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a></li>
       <li><a href="{root}reviews.html">Reviews</a></li>
     </ul>
     <div class="nav-cta">
@@ -121,7 +121,7 @@ def nav(depth=0):
         <div class="sub">{"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
       </details>
       <a href="{root}service-plans.html">Service Plans</a>
-      <a href="{root}commercial.html">Commercial</a>
+      <a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a>
       <a href="{root}residential.html">Residential</a>
       <a href="{root}service-areas.html">Service Areas</a>
       <a href="{root}gallery.html">Gallery</a>
@@ -247,11 +247,14 @@ def promo_plan_cards(depth=0, svc=None):
     return cards
 
 def service_sidebar(current_target, depth=0):
-    """Sticky side nav listing the same 10 services shown on the homepage,
-    for quick jumps between service pages from the detail section."""
+    """Sticky side nav listing the homepage's residential services, for
+    quick jumps between service pages from the detail section. Commercial
+    Cleaning has its own top-level nav tab, so it's excluded here."""
     root = rel(depth)
     items = ""
     for item in HOME_SERVICES:
+        if item["label"] == "Commercial Cleaning":
+            continue
         active = item["target"] == current_target
         marker = '<span class="side-dot"></span>' if active else ""
         arrow = "" if active else icon("arrow")
@@ -454,11 +457,11 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
 def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              text="Join hundreds of Delano-area homeowners who trust Barta for a spotless, stress-free exterior. Get your free quote today.",
              primary=("Get Your Free Quote", "request-quote.html"),
-             image="assets/img/svc-exterior-window-cleaning.jpg"):
+             image="assets/img/svc-exterior-window-cleaning.jpg", image_pos="30%"):
     root = rel(depth)
     bg = (f"linear-gradient(180deg, rgba(8,22,46,.38) 0%, rgba(7,18,40,.66) 45%, rgba(5,13,30,.94) 100%), "
           f"url('{root}{image}')")
-    return f"""<section><div class="container"><div class="cta-band reveal" style="background-image:{bg};background-position:center,center 30%">
+    return f"""<section><div class="container"><div class="cta-band reveal" style="background-image:{bg};background-position:center,center {image_pos}">
   <span class="eyebrow" style="color:#ff9b86;justify-content:center">Let's get started</span>
   <h2 class="mt-1">{heading}</h2>
   <p>{text}</p>

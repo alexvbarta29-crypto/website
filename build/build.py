@@ -297,12 +297,13 @@ def build_service(svc):
     html += C.nav(depth)
 
     hero_img = svc.get("image") or "assets/img/hero-home.jpg"
+    hero_pos = svc.get("hero_pos", "30%")
     hero_bg = (f"linear-gradient(180deg, rgba(8,22,46,.35) 0%, rgba(7,18,40,.58) 55%, rgba(5,13,30,.86) 100%), "
                f"url('{root}{hero_img}')")
 
     html += f"""
 <main id="main">
-  <section class="svc-hero" style="background-image:{hero_bg};background-size:cover,cover;background-position:center,center 30%">
+  <section class="svc-hero" style="background-image:{hero_bg};background-size:cover,cover;background-position:center,center {hero_pos}">
     <div class="container">
       <h1>{svc['name']}</h1>
       <p class="lead">{svc['hero_sub']}</p>
@@ -358,7 +359,7 @@ def build_service(svc):
     </div>
   </section>
 
-  {C.cta_band(depth, heading=f"Ready for spotless results?", text=f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.", image=hero_img)}
+  {C.cta_band(depth, heading=f"Ready for spotless results?", text=f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.", image=hero_img, image_pos=hero_pos)}
 </main>
 """
     html += C.page_end(depth)
@@ -557,81 +558,6 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
     </div>
   </section>"""
     return html, body
-
-# ===========================================================================
-# COMMERCIAL
-# ===========================================================================
-def build_commercial():
-    depth = 0
-    svc_list = ["Storefront &amp; office window cleaning", "High-rise &amp; multi-story pure-water cleaning",
-                "Pressure washing for lots, walkways &amp; entries", "Building &amp; awning soft washing",
-                "Gutter cleaning &amp; maintenance", "Solar array cleaning", "Recurring scheduled service contracts",
-                "Post-construction cleanup"]
-    industries = [("building", "Office &amp; retail", "Spotless entrances and glass that impress every visitor."),
-                  ("home", "Property management", "One reliable vendor for every building in your portfolio."),
-                  ("tag", "Restaurants &amp; hospitality", "Sparkling storefronts and patios that invite customers in."),
-                  ("wrench", "Industrial &amp; warehouse", "Safe, insured cleaning for large facades and lots."),
-                  ("users", "HOAs &amp; communities", "Coordinated service for shared and common areas."),
-                  ("award", "Medical &amp; professional", "Discreet, scheduled cleaning that meets a higher standard.")]
-    ind_html = "".join(f'<div class="feature reveal" data-delay="{i%3}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
-                       for i, (ic, t, d) in enumerate(industries))
-    incl_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc_list)
-    schema = BASE_SCHEMA
-    html, body = interior_head(
-        title=f"Commercial Window Cleaning & Exterior Services | {BIZ['name']} MN",
-        desc="Reliable commercial window cleaning, pressure washing & building washing for offices, retail, restaurants & property managers across the western Twin Cities. Flexible contracts. Free quote.",
-        slug="commercial.html", eyebrow="Commercial Services",
-        h1="Commercial exterior cleaning your business can rely on",
-        lead="From storefronts to multi-building portfolios, Barta keeps your property polished and professional — with flexible scheduling, full insurance, and a single point of contact.",
-        depth=depth, schema=schema, crumb_label="Commercial", cta_form=True,
-        primary_kw="commercial window cleaning Twin Cities MN")
-    html += f"""<main id="main">{body}
-  <section>
-    <div class="container">
-      <div class="split">
-        <div class="prose reveal">
-          <span class="eyebrow">Built for business</span>
-          <h2 class="mt-1">A polished exterior is silent salesmanship</h2>
-          <p>Your building is the first impression every customer, tenant, and partner forms about your business. Streaked windows and grimy entrances quietly cost you — clean ones quietly win. Barta delivers dependable, scheduled commercial cleaning that keeps your property looking its absolute best, without you having to manage it.</p>
-          <p>We work around your hours, carry full liability and workers' comp coverage, and assign a single account contact so service is effortless. One vendor, every exterior need, zero hassle.</p>
-        </div>
-        <div class="reveal">{C.photo("assets/img/svc-commercial-cleaning.jpg", "Barta crew cleaning a commercial building in the Twin Cities metro", ratio="5/4", depth=depth)}</div>
-      </div>
-    </div>
-  </section>
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Who we serve</span><h2>Trusted across industries</h2></div>
-      <div class="grid cols-3">{ind_html}</div>
-    </div>
-  </section>
-  <section>
-    <div class="container">
-      <div class="split reverse">
-        <div class="reveal">{C.imgph("Commercial building soft washing", ratio="5/4")}</div>
-        <div class="reveal">
-          <span class="eyebrow">Capabilities</span>
-          <h2 class="mt-1">Full-service commercial cleaning</h2>
-          <ul class="checklist mt-2">{incl_html}</ul>
-          <a class="btn mt-3" href="#quote-form">Request a commercial quote {icon('arrow')}</a>
-        </div>
-      </div>
-    </div>
-  </section>
-  <section class="bg-deep">
-    <div class="container">
-      <div class="stats">
-        <div class="stat reveal"><div class="num" data-count="500" data-suffix="+">500+</div><div class="label">Commercial accounts</div></div>
-        <div class="stat reveal" data-delay="1"><div class="num" data-count="100" data-suffix="%">100%</div><div class="label">Insured &amp; bonded</div></div>
-        <div class="stat reveal" data-delay="2"><div class="num" data-count="24" data-suffix="hr">24hr</div><div class="label">Quote turnaround</div></div>
-        <div class="stat reveal" data-delay="3"><div class="num" data-count="1">1</div><div class="label">Dedicated contact</div></div>
-      </div>
-    </div>
-  </section>
-  {C.cta_band(depth, heading="Let's keep your property pristine", text="Request a free commercial quote and we'll build a service plan around your schedule and budget.", primary=("Request a Commercial Quote", "request-quote.html"))}
-</main>"""
-    html += C.page_end(depth)
-    write("commercial.html", html, slug="commercial.html", priority="0.8")
 
 # ===========================================================================
 # RESIDENTIAL
@@ -1358,7 +1284,7 @@ LANDING = [
      "headline": "Make your whole home look new again — free house washing estimate",
      "kw": "house washing estimate Delano MN",
      "guarantee": "Soft-Wash Safe Guarantee: gentle on siding, tough on algae and grime."},
-    {"slug": "commercial-quote", "svc": None, "h1": "Free Commercial Cleaning Quote — Western Twin Cities",
+    {"slug": "commercial-quote", "svc": "commercial-cleaning", "h1": "Free Commercial Cleaning Quote — Western Twin Cities",
      "headline": "Reliable commercial exterior cleaning — request your free quote",
      "kw": "commercial cleaning quote Twin Cities MN",
      "guarantee": "Dependability Guarantee: scheduled, insured, and always on time."},
@@ -1599,7 +1525,6 @@ def main():
     for s in SERVICES:
         build_service(s)
     build_plans()
-    build_commercial()
     build_residential()
     build_why()
     build_about()
