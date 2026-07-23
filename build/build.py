@@ -210,7 +210,7 @@ def build_home():
         <p>Delano is our home base — from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
       </div>
       <div class="areas-split">
-        {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps — serving {BIZ['city']} and the western Twin Cities", cls="reveal")}
+        {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps — serving {BIZ['city']} and the western Twin Cities", cls="reveal map-pin-left")}
         <div class="area-grid reveal">{areas_html}</div>
       </div>
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">See all service areas {icon('arrow')}</a></div>

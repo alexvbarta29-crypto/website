@@ -331,10 +331,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    matches the gap already used between the services cards and the
    address/city/zip row, so no two fields ever sit flush against
    each other. */
-.wizard-panel .field + .field,
-.wizard-panel .form-row + .field,
-.wizard-panel .field + .form-row,
-.wizard-panel .form-row + .form-row { margin-top: 16px; }
+.wizard-panel > .field + .field,
+.wizard-panel > .form-row + .field,
+.wizard-panel > .field + .form-row,
+.wizard-panel > .form-row + .form-row { margin-top: 16px; }
 
 /* First step: icon-in-field style (person/mail/phone), no visible external
    label — matches the reference layout while keeping an sr-only label for
@@ -587,6 +587,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .map-embed { position: relative; display: block; aspect-ratio: 1/1; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); background: #fff; border: 1px solid var(--line); cursor: pointer; }
 .map-embed.map-wide { aspect-ratio: 21/9; }
 .map-embed iframe { position: relative; z-index: 1; display: block; pointer-events: none; }
+/* Shift the map so our pin sits left-of-center, revealing more of the
+   metro area to the east instead of centering the pin in the frame. */
+.map-embed.map-pin-left iframe { position: absolute; top: 0; left: -50%; width: 160%; height: 100%; }
 .map-embed .map-fallback { position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; color: var(--slate-700); background: linear-gradient(180deg, #fff 0%, var(--mist) 100%); }
 .map-embed .map-fallback .ph-label { position: relative; font-family: var(--font-head); font-weight: 700; letter-spacing: .02em; text-align: center; padding: 14px; }
 .map-embed .map-fallback svg { width: 28px; height: 28px; margin-bottom: 6px; color: var(--blue-600); }
