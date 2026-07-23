@@ -1,7 +1,7 @@
 """Reusable HTML partials and section builders."""
 import json
 from urllib.parse import quote_plus
-from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES
+from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS
 from icons import icon
 
 # Cache-busting version for static assets (set at build time from file hashes).
@@ -230,14 +230,9 @@ def page_end(depth=0):
 # ---------------------------------------------------------------------------
 # Recurring-plan promo cards (Biannual left, Quarterly center/popular,
 # Monthly right). Each card sends the visitor to the quote form with the
-# chosen plan pre-attached via ?plan=.
-PROMO_PLANS = [
-    ("Biannual", "biannual", "50", False, False),
-    ("Quarterly", "quarterly", "100", True, True),
-    ("Monthly", "monthly", "150", True, False),
-]
-PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
-
+# chosen plan pre-attached via ?plan=. PROMO_PLANS/PROMO_FEATS live in
+# sitedata.py (the actual source of truth for plans) — see the owner-
+# verification note there before changing these numbers.
 def promo_plan_cards(depth=0, svc=None):
     root = rel(depth)
     cards = ""

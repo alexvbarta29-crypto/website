@@ -88,7 +88,7 @@ SERVICES = [
             ("How often do Minnesota homes need exterior window cleaning?",
              "Most homes benefit from cleaning about twice a year — once in late spring after pollen settles, and again in early fall. Homes near lakes, gravel roads, or heavy tree cover may want a third visit."),
             ("What happens if it rains after service?",
-             "Our streak-free guarantee covers the quality of the clean itself — if you spot a streak we missed, let us know and we'll come back and make it right. Ordinary rain afterward won't leave mineral spotting unless your water supply is unusually hard."),
+             "Rain itself typically does not cause mineral spotting on professionally cleaned glass. If you notice a streak or cleaning issue after service, contact us and we'll inspect it and make it right according to our service guarantee."),
         ],
     },
     {
@@ -776,6 +776,31 @@ PLANS = [
         ],
     },
 ]
+
+# ---------------------------------------------------------------------------
+# Recurring-plan promo cards (Biannual / Quarterly / Monthly) — the compact
+# 3-card widget shown on the homepage, every service page, and the quote
+# wizard's plan step. This is the SINGLE source for that widget: every
+# renderer (components.promo_plan_cards, components.quote_wizard) reads
+# from these two names, so the numbers can't drift out of sync between pages.
+#
+# [OWNER VERIFICATION REQUIRED] — these dollar amounts and perks describe a
+# DIFFERENT plan structure than PLANS above (Clear View/Crystal Plus/
+# Signature Estate, priced per month with 10/15/20% add-on discounts). The
+# two have not been reconciled — a visitor could see "$100 OFF Quarterly"
+# here and "$89/month Crystal Plus" on the Service Plans page for what reads
+# like the same membership. "7-Day Rain Guarantee" and "Free Hard Water
+# Removal" also appear nowhere else in the repo to corroborate them. See
+# docs/OWNER-VERIFICATION.md before launch — nothing here has been altered
+# or reconciled, only centralized and flagged, per that doc's instructions
+# not to invent or guess at a resolution.
+PROMO_PLANS = [
+    # (display name, url slug, "$ off per cleaning", featured-in-comparison, most-popular-badge)
+    ("Biannual", "biannual", "50", False, False),
+    ("Quarterly", "quarterly", "100", True, True),
+    ("Monthly", "monthly", "150", True, False),
+]
+PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
 
 # ---------------------------------------------------------------------------
 # Testimonials

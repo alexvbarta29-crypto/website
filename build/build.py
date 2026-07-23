@@ -62,6 +62,30 @@ def _img_size(relpath, default=(1125, 1500)):
     _IMG_SIZE_CACHE[relpath] = size
     return size
 
+def _hero_picture_html(root, image_path, hero_pos):
+    """Responsive hero <picture>: WebP source + JPG fallback, each with a
+    640w/1200w srcset (see generate_hero_variants()) so a phone downloads the
+    small file and only one image request happens either way — never both a
+    CSS background and an <img>. Falls back to the single full-resolution
+    image (previous behavior) if the responsive variants haven't been
+    generated for some reason, so a missing Pillow install can't break a page."""
+    style = f'style="object-position:50% {hero_pos}"'
+    stem = image_path.rsplit(".", 1)[0]
+    variants_exist = all(
+        os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.{fmt}"))
+        for w in (640, 1200) for fmt in ("webp", "jpg"))
+    if not variants_exist:
+        w, h = _img_size(image_path)
+        return C.picture(root, image_path, "", img_class="svc-hero-img",
+                          extra_attrs=f'width="{w}" height="{h}" fetchpriority="high" decoding="async" {style}')
+    w1200, h1200 = _img_size(f"{stem}-1200w.jpg")
+    return (f'<picture>'
+            f'<source type="image/webp" srcset="{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w" sizes="100vw">'
+            f'<img class="svc-hero-img" src="{root}{stem}-1200w.jpg" '
+            f'srcset="{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w" sizes="100vw" '
+            f'alt="" width="{w1200}" height="{h1200}" fetchpriority="high" decoding="async" {style}>'
+            f'</picture>')
+
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
 
 def stars_row():
@@ -421,13 +445,11 @@ def build_service(svc):
 
     hero_img = svc.get("image") or "assets/img/hero-home.jpg"
     hero_pos = svc.get("hero_pos", "30%")
-    hero_w, hero_h = _img_size(hero_img)
     # Empty alt + aria-hidden wrapper: this photo functions as a background
     # layer behind the H1/lead text (same role the CSS background played
     # before), not standalone content — the adjacent heading already states
     # the service and location, so a screen reader shouldn't announce it twice.
-    hero_picture = C.picture(root, hero_img, "", img_class="svc-hero-img",
-                              extra_attrs=f'width="{hero_w}" height="{hero_h}" fetchpriority="high" decoding="async" style="object-position:50% {hero_pos}"')
+    hero_picture = _hero_picture_html(root, hero_img, hero_pos)
 
     html += f"""
 <main id="main">
@@ -1674,8 +1696,58 @@ def generate_webp_versions():
         except Exception as e:
             print(f"  (webp skipped for {os.path.basename(jpg)}: {e})")
 
+# (max_width, format, quality) — never upscales: target_width = min(max_width,
+# source_width), so a variant wider than its source is just the source
+# re-encoded at that quality, not stretched. Quality tuned empirically so the
+# 1200w WebP lands in ~150-250KB across every current hero photo (heaviest
+# source: svc-mop-window.jpg at ~412KB full-res → ~244KB at 1200w/q40) while
+# staying visually clean under the hero's dark gradient overlay.
+_HERO_VARIANT_SPECS = [(1200, "webp", 40), (1200, "jpg", 50), (640, "webp", 55), (640, "jpg", 60)]
+
+def generate_hero_variants():
+    """Responsive, capped-size derivatives of every service-page hero photo
+    (assets/img/hero-<slug>-{640,1200}w.{webp,jpg}), used via srcset so a
+    phone downloads the small file and a desktop downloads the mid-size one
+    — never the full multi-hundred-KB original. Source JPGs are never
+    modified or replaced; these are new sibling files, skipped once already
+    up to date."""
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  (Pillow not available — skipping hero variant generation)")
+        return
+    hero_paths = {"assets/img/hero-home.jpg"}
+    for s in SERVICES:
+        hero_paths.add(s.get("image") or "assets/img/hero-home.jpg")
+    for rel in sorted(hero_paths):
+        src = os.path.join(ROOT, rel)
+        if not os.path.exists(src):
+            continue
+        stem = rel.rsplit(".", 1)[0]
+        src_mtime = os.path.getmtime(src)
+        base = None
+        for max_w, fmt, quality in _HERO_VARIANT_SPECS:
+            out_rel = f"{stem}-{max_w}w.{fmt}"
+            out_path = os.path.join(ROOT, out_rel)
+            if os.path.exists(out_path) and os.path.getmtime(out_path) >= src_mtime:
+                continue
+            try:
+                if base is None:
+                    base = Image.open(src).convert("RGB")
+                w, h = base.size
+                target_w = min(max_w, w)
+                img = base.resize((target_w, round(h * target_w / w)), Image.LANCZOS) if target_w < w else base
+                save_fmt = "WEBP" if fmt == "webp" else "JPEG"
+                kwargs = {"quality": quality, "optimize": True}
+                if fmt == "webp":
+                    kwargs["method"] = 6
+                img.save(out_path, save_fmt, **kwargs)
+            except Exception as e:
+                print(f"  (hero variant skipped for {out_rel}: {e})")
+
 def main():
     generate_webp_versions()
+    generate_hero_variants()
     minify_assets()
     C.ASSET_VER = _asset_version()
     build_home()
