@@ -279,14 +279,15 @@ def build_service(svc):
     is_xmas = svc["slug"] == "christmas-light-installation"
     xmas_extra = ""
     if is_xmas:
+        _xmas_tone = lambda i: "xmas-red" if i % 2 == 0 else "xmas-green"
         step_items = "".join(
             f'<div class="xmas-step reveal" data-delay="{i%3}">'
-            f'<span class="step-num">{i+1}</span>'
+            f'<span class="step-num {_xmas_tone(i)}">{i+1}</span>'
             f'<h3>{t}</h3><p>{d}</p></div>'
             for i, (t, d) in enumerate(svc.get("experience_steps", [])))
-        benefit_icons = ["sparkle", "bolt", "wrench", "shield"]
+        benefit_icons = ["sparkle", "bolt", "building", "award", "shield", "tag"]
         benefit_items = "".join(
-            f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
+            f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic {_xmas_tone(i)}">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
             f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
         lights_divider = ('<svg class="xmas-lights" viewBox="0 0 1200 50" preserveAspectRatio="none" aria-hidden="true">'
@@ -295,13 +296,14 @@ def build_service(svc):
                            '<circle cx="470" cy="32" r="6" fill="#f5a623"/><circle cx="670" cy="4" r="6" fill="#fb4d3d"/>'
                            '<circle cx="870" cy="32" r="6" fill="#18b673"/><circle cx="1070" cy="4" r="6" fill="#f5a623"/></svg>')
         xmas_extra = f"""
+  <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
     <div class="container">
       {lights_divider}
       <p class="pill" style="margin-inline:auto;width:fit-content;text-align:center">{icon('clock')} {svc['process_note']}</p>
       <div class="section-head center mt-3">
         <span class="eyebrow">How it works</span>
-        <h2>The Barta holiday lighting experience</h2>
+        <h2>The Barta Holiday Lighting Experience</h2>
       </div>
       <div class="xmas-steps">{step_items}</div>
       <div class="xmas-benefits">{benefit_items}</div>
@@ -342,6 +344,7 @@ def build_service(svc):
 <main id="main">
   <section class="svc-hero" style="background-image:{hero_bg};background-size:cover,cover;background-position:center,center {hero_pos}">
     <div class="container">
+      {f'<span class="xmas-hero-badge">{icon("lights")} Now booking for the holidays</span>' if is_xmas else ""}
       <h1>{svc['name']}</h1>
       <p class="lead">{svc['hero_sub']}</p>
       <div class="hero-actions">

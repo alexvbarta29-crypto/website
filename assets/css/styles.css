@@ -374,8 +374,20 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .card:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); border-color: transparent; }
 .step-num { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 1.1rem; box-shadow: var(--sh-glow); }
 
-/* ---------- Christmas Light Installation: lighter, less boxy ---------- */
-.xmas-highlight { background: linear-gradient(180deg, var(--mist) 0%, #fff 65%); }
+/* ---------- Christmas Light Installation: its own festive vibe ---------- */
+:root { --xmas-red: #d63a30; --xmas-green: #1f9e63; }
+.xmas-hero-badge {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 9px 18px;
+  border-radius: var(--r-pill); background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .35);
+  backdrop-filter: blur(4px); color: #fff; font-family: var(--font-head); font-weight: 700;
+  font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+}
+.xmas-hero-badge svg { width: 16px; height: 16px; color: #ffb020; }
+.xmas-candy-stripe { height: 8px; background: repeating-linear-gradient(-45deg, var(--xmas-red) 0 16px, #fff 16px 32px, var(--xmas-green) 32px 48px, #fff 48px 64px); }
+.xmas-highlight { position: relative; background: linear-gradient(180deg, #fff6f2 0%, #fff 75%); }
+.xmas-highlight .eyebrow { color: var(--xmas-green); }
+.xmas-highlight .eyebrow::before { background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green)); }
+.xmas-highlight h2 { color: var(--xmas-red); }
 .xmas-lights { display: block; width: 100%; height: 40px; margin: 0 auto 8px; }
 .xmas-steps { display: flex; gap: 8px; margin-top: 40px; }
 .xmas-step { flex: 1; text-align: center; position: relative; padding: 0 16px; }
@@ -383,14 +395,17 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   content: ""; position: absolute; top: 22px; left: 62%; width: 76%; height: 0;
   border-top: 2px dashed var(--line);
 }
-.xmas-step h3 { margin: 16px 0 6px; font-size: 1.08rem; }
+.xmas-step h3 { margin: 16px 0 6px; font-size: 1.08rem; color: var(--ink); }
 .xmas-step p { color: var(--slate-600); font-size: .95rem; margin: 0; }
-.xmas-benefits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px 40px; margin-top: 56px; }
+.step-num.xmas-red, .xmas-benefit .ic.xmas-red { background: var(--xmas-red); box-shadow: 0 10px 24px -8px rgba(214, 58, 48, .55); }
+.step-num.xmas-green, .xmas-benefit .ic.xmas-green { background: var(--xmas-green); box-shadow: 0 10px 24px -8px rgba(31, 158, 99, .55); }
+.xmas-benefits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px 32px; margin-top: 56px; }
 .xmas-benefit { display: flex; gap: 16px; align-items: flex-start; }
-.xmas-benefit .ic { flex: none; width: 46px; height: 46px; border-radius: 12px; background: var(--grad-brand); color: #fff; display: grid; place-items: center; box-shadow: var(--sh-glow); }
+.xmas-benefit .ic { flex: none; width: 46px; height: 46px; border-radius: 12px; color: #fff; display: grid; place-items: center; box-shadow: var(--sh-glow); }
 .xmas-benefit .ic svg { width: 21px; height: 21px; }
-.xmas-benefit h3 { font-size: 1.03rem; margin-bottom: 4px; }
+.xmas-benefit h3 { font-size: 1.03rem; margin-bottom: 4px; color: var(--ink); }
 .xmas-benefit p { color: var(--slate-600); font-size: .95rem; margin: 0; }
+@media (max-width: 900px) { .xmas-benefits { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 760px) {
   .xmas-steps { flex-direction: column; gap: 26px; }
   .xmas-step:not(:last-child)::after { display: none; }

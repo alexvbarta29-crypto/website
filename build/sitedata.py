@@ -350,10 +350,12 @@ SERVICES = [
         "kw": "Christmas light installation Delano MN",
         "kw2": ["holiday light installation", "Christmas light hanging service", "professional holiday lighting", "outdoor Christmas lights installation"],
         "benefits": [
-            ("Custom design", "A lighting plan tailored to your roofline, trees, and style."),
-            ("Premium commercial-grade lights", "Brighter, more durable bulbs that last season after season."),
-            ("Full-service", "We design, install, maintain, take down, and store."),
-            ("Safe &amp; insured", "No icy ladders, no risk — our insured crew handles it all."),
+            ("Custom-cut strands", "Every strand is measured and cut to your roofline and peaks — no extra lights or cords hanging off your home."),
+            ("Premium commercial-grade LED bulbs", "Bright, energy-efficient LED bulbs built to outlast a Minnesota winter and look sharp season after season."),
+            ("Free takedown &amp; storage", "When the season's over, we take it all down and store it for you — no ladders, no tangled totes in your garage."),
+            ("Clips that last", "Heavy-duty clips grip any roofline, shingle, or gutter without damage — built to hold through the hardest winter months."),
+            ("Proper safety equipment", "Our insured crew climbs so you don't have to — full safety gear every time, so nobody's risking a fall on an icy ladder."),
+            ("Upfront, honest pricing", "Clear pricing before we start — no surprise fees and no pressure, just an honest quote for a beautifully lit home."),
         ],
         "intro": "The magic of a beautifully lit home — without a single trip up a frozen ladder. Barta designs a custom holiday display for your rooflines, walkways, trees, and shrubs, installs premium commercial-grade lighting, and keeps it shining all season. When the holidays end, we take everything down and store it for next year. You enjoy the lights; we handle everything else.",
         "includes": [
@@ -367,9 +369,9 @@ SERVICES = [
         "process_note": "Books up fast — reserve your install in early fall for best availability.",
         "why_barta": "Co-owners Alex and Jacob Barta personally design and install every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
         "experience_steps": [
-            ("Custom Lighting Design", "We measure your rooflines, walkways, and trees, then plan a layout so every strand fits your home perfectly — no sagging, no bare gaps."),
-            ("Professional Install &amp; Maintenance", "Our insured crew installs premium commercial-grade lights safely, and if a strand fails mid-season, we replace it free."),
-            ("Free Takedown &amp; Storage", "When the season ends, we take everything down — and can store your lights for an even easier install next year."),
+            ("Custom-Cut Christmas Lights", "We measure your roofline and peaks, then custom-cut every strand to fit — no extra lights or cords bunched up or hanging loose."),
+            ("Free Takedown &amp; Storage", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year."),
+            ("Come Back Next Year", "Every fall, we reach out to get you back on the schedule, so your lights are up and ready well before the holidays."),
         ],
     },
     {
