@@ -473,6 +473,74 @@ def quote_wizard(depth=0, svc_default=None):
   </div>
 </div>"""
 
+def xmas_quote_modal(depth=0):
+    """Christmas Light Installation gets its own lightweight on-page quote
+    form that opens as a modal overlay right on the service page — no
+    dedicated page, no multi-step wizard. Any "get a quote" link on this
+    page is hijacked by main.js to open it instead of navigating away."""
+    root = rel(depth)
+    return f"""<div class="xmas-modal" id="xmas-quote-modal" hidden>
+  <div class="xmas-modal-scrim" data-xmas-close></div>
+  <div class="xmas-modal-panel" role="dialog" aria-modal="true" aria-labelledby="xmas-modal-title">
+    <button type="button" class="xmas-modal-close" data-xmas-close aria-label="Close">{icon('x')}</button>
+    <div class="xmas-modal-body">
+      <span class="eyebrow" style="justify-content:center">Free Estimate</span>
+      <h2 id="xmas-modal-title" class="center mt-1">Christmas Lights Installation</h2>
+      <p class="form-note center">Fill out the form below and we'll reach out shortly.</p>
+      <form class="form mt-3" data-lead novalidate>
+        <input type="hidden" name="address_state" value="{BIZ['state']}">
+        <h3 class="xmas-modal-section">Contact info</h3>
+        <div class="form-row">
+          <div class="field"><label for="xq-first" class="sr-only">First name</label><input type="text" id="xq-first" name="first_name" autocomplete="given-name" required placeholder="First name"></div>
+          <div class="field"><label for="xq-last" class="sr-only">Last name</label><input type="text" id="xq-last" name="last_name" autocomplete="family-name" required placeholder="Last name"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="xq-email" class="sr-only">Email</label><input type="email" id="xq-email" name="email" autocomplete="email" required placeholder="Email"></div>
+          <div class="field"><label for="xq-phone" class="sr-only">Phone</label><input type="tel" id="xq-phone" name="phone" autocomplete="tel" required inputmode="tel" data-validate-phone placeholder="Cell phone"></div>
+        </div>
+        <h3 class="xmas-modal-section">Property info</h3>
+        <div class="field addr-field"><label for="xq-address" class="sr-only">Address</label>
+          <input type="text" id="xq-address" name="address" autocomplete="off" required data-address-input placeholder="Start typing your address…">
+          <input type="hidden" name="address_verified" data-address-verified value="no">
+          <ul class="addr-suggestions" data-address-list hidden></ul>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="xq-city" class="sr-only">City</label><input type="text" id="xq-city" name="address_city" required data-address-city placeholder="City"></div>
+          <div class="field"><label for="xq-zip" class="sr-only">ZIP code</label><input type="text" id="xq-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{{5}}" data-address-zip placeholder="ZIP code"></div>
+        </div>
+        <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
+        <div class="field"><label for="xq-where">Where on your house do you want lights?</label>
+          <select id="xq-where" name="light_location" required>
+            <option value="" selected disabled>Select one…</option>
+            <option>Roofline only</option>
+            <option>Roofline + trees &amp; bushes</option>
+            <option>Roofline + walkway or driveway</option>
+            <option>Full package (roofline, trees &amp; walkway)</option>
+            <option>Not sure — help me decide</option>
+          </select>
+        </div>
+        <div class="field"><label for="xq-hear">How did you hear about us?</label>
+          <select id="xq-hear" name="referral_source" required>
+            <option value="" selected disabled>Select one…</option>
+            <option>Google Search</option><option>Google Maps / Reviews</option><option>Facebook / Instagram</option>
+            <option>Referral from friend/neighbor</option><option>Saw our crew / vehicle</option><option>Returning customer</option><option>Other</option>
+          </select>
+        </div>
+        <label class="check mt-2"><input type="checkbox" name="reminders" required> I agree to receive text messages from {BIZ['name']}, including appointment updates, service notifications, and marketing offers.</label>
+        <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
+        <button type="submit" class="btn btn-lg btn-block mt-2">Submit {icon('arrow')}</button>
+      </form>
+      <div class="form-success">
+        {icon('check-circle')}
+        <h3>Thank you! Your request is in.</h3>
+        <p>Someone will reach out shortly.</p>
+        <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">Call Us</a>
+        <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
+      </div>
+    </div>
+  </div>
+</div>"""
+
 _IMG_CARD_DARKS = [
     "linear-gradient(155deg,#23232b 0%,#0c0c10 100%)",
     "linear-gradient(155deg,#2c1d1a 0%,#110c0c 100%)",

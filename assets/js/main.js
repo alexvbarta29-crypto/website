@@ -154,7 +154,7 @@
          the town is a real, geocodable place. ---- */
   $$("input[data-address-input]").forEach((input) => {
     const wrap = input.closest(".field") || input.parentElement;
-    const panel = input.closest(".wizard-panel") || wrap;
+    const panel = input.closest(".wizard-panel") || input.closest("form") || wrap;
     const list = wrap.querySelector("[data-address-list]");
     const verified = wrap.querySelector("[data-address-verified]");
     const cityField = panel.querySelector("[data-address-city]");
@@ -312,6 +312,18 @@
     $$("[data-wizard-back]", form).forEach((btn) => btn.addEventListener("click", () => show(step - 1, true)));
     show(0, false);
   });
+
+  /* ---- Christmas Lights: the page's own "get a quote" links open an
+         on-page modal instead of navigating to the general quote flow.
+         No-ops on every other page since the modal simply isn't there. ---- */
+  const xmasModal = $("#xmas-quote-modal");
+  if (xmasModal) {
+    const openXmas = (e) => { if (e) e.preventDefault(); xmasModal.hidden = false; document.body.style.overflow = "hidden"; };
+    const closeXmas = () => { xmasModal.hidden = true; document.body.style.overflow = ""; };
+    $$('a[href*="get-quote.html"]').forEach((a) => a.addEventListener("click", openXmas));
+    $$("[data-xmas-close]", xmasModal).forEach((el) => el.addEventListener("click", closeXmas));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !xmasModal.hidden) closeXmas(); });
+  }
 
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";

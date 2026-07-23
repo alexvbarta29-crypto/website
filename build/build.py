@@ -271,42 +271,40 @@ def build_service(svc):
   </section>"""
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
 
-    # Christmas Light Installation gets a couple of extra highlight sections
-    # (a 3-step "how it works" and an icon benefit grid) right under the hero,
-    # since it's a seasonal, higher-consideration service worth extra framing.
+    # Christmas Light Installation is its own thing: no membership plans (a
+    # seasonal, once-a-year job doesn't have a recurring-visit discount), and
+    # a lighter, more character-driven "how it works" + benefits section —
+    # an inline numbered flow and an icon+text list rather than card grids —
+    # right under the hero.
+    is_xmas = svc["slug"] == "christmas-light-installation"
     xmas_extra = ""
-    if svc["slug"] == "christmas-light-installation":
-        step_cards = "".join(
-            f'<div class="card reveal" data-delay="{i%3}" style="text-align:center">'
+    if is_xmas:
+        step_items = "".join(
+            f'<div class="xmas-step reveal" data-delay="{i%3}">'
             f'<span class="step-num">{i+1}</span>'
-            f'<h3 class="mt-2" style="font-size:1.15rem">{t}</h3><p class="mt-1">{d}</p></div>'
+            f'<h3>{t}</h3><p>{d}</p></div>'
             for i, (t, d) in enumerate(svc.get("experience_steps", [])))
         benefit_icons = ["sparkle", "bolt", "wrench", "shield"]
-        benefit_cards = "".join(
-            f'<div class="card reveal" data-delay="{i%3}"><span class="ic" style="width:54px;height:54px;border-radius:14px;'
-            f'background:var(--grad-brand);color:#fff;display:grid;place-items:center;box-shadow:var(--sh-glow)">'
-            f'{icon(benefit_icons[i % len(benefit_icons)])}</span>'
-            f'<h3 class="mt-2" style="font-size:1.15rem">{t}</h3><p class="mt-1">{d}</p></div>'
+        benefit_items = "".join(
+            f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
+            f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
+        lights_divider = ('<svg class="xmas-lights" viewBox="0 0 1200 50" preserveAspectRatio="none" aria-hidden="true">'
+                           '<path d="M0 15 Q100 45 200 15 T400 15 T600 15 T800 15 T1000 15 T1200 15" fill="none" stroke="var(--line)" stroke-width="2"/>'
+                           '<circle cx="70" cy="32" r="6" fill="#fb4d3d"/><circle cx="270" cy="4" r="6" fill="#18b673"/>'
+                           '<circle cx="470" cy="32" r="6" fill="#f5a623"/><circle cx="670" cy="4" r="6" fill="#fb4d3d"/>'
+                           '<circle cx="870" cy="32" r="6" fill="#18b673"/><circle cx="1070" cy="4" r="6" fill="#f5a623"/></svg>')
         xmas_extra = f"""
-  <section>
+  <section class="xmas-highlight">
     <div class="container">
+      {lights_divider}
       <p class="pill" style="margin-inline:auto;width:fit-content;text-align:center">{icon('clock')} {svc['process_note']}</p>
       <div class="section-head center mt-3">
         <span class="eyebrow">How it works</span>
         <h2>The Barta holiday lighting experience</h2>
       </div>
-      <div class="grid cols-3">{step_cards}</div>
-    </div>
-  </section>
-
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Why homeowners choose us</span>
-        <h2>Built for a stress-free holiday season</h2>
-      </div>
-      <div class="grid cols-2">{benefit_cards}</div>
+      <div class="xmas-steps">{step_items}</div>
+      <div class="xmas-benefits">{benefit_items}</div>
     </div>
   </section>"""
 
@@ -353,7 +351,7 @@ def build_service(svc):
   </section>
   {xmas_extra}
 
-  <section class="bg-mist" id="plans">
+  {"" if is_xmas else f'''<section class="bg-mist" id="plans">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Membership Savings</span>
@@ -362,7 +360,7 @@ def build_service(svc):
       </div>
       <div class="promo-grid">{C.promo_plan_cards(depth, svc=checkbox_slug)}</div>
     </div>
-  </section>
+  </section>'''}
 
   <section class="bg-mist">
     <div class="container">
@@ -401,6 +399,7 @@ def build_service(svc):
 
   {C.cta_band(depth, heading=f"Ready for spotless results?", text=f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.", image=hero_img, image_pos=hero_pos)}
 </main>
+{C.xmas_quote_modal(depth) if is_xmas else ""}
 """
     html += C.page_end(depth)
     write(f"services/{svc['slug']}.html", html, slug=f"services/{svc['slug']}.html", priority="0.9")
