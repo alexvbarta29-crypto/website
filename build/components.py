@@ -30,14 +30,17 @@ def picture(root, src, alt, img_class="", extra_attrs=""):
     return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
             f'<img class="{img_class}" src="{root}{src}" alt="{alt}" {extra_attrs}></picture>')
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None):
-    """<head> block with full SEO + social + JSON-LD."""
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False):
+    """<head> block with full SEO + social + JSON-LD.
+    noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
+    pages that shouldn't compete in search) instead of the default index."""
     root = rel(depth)
     canonical = canonical or (BIZ["domain"] + "/" + slug)
     schema_blocks = ""
     if schema:
         for s in schema:
             schema_blocks += '<script type="application/ld+json">' + json.dumps(s, separators=(",", ":")) + "</script>\n"
+    robots = "noindex, follow" if noindex else "index, follow, max-image-preview:large"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,18 +52,20 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 {'<meta name="keywords" content="' + primary_kw + '">' if primary_kw else ''}
 <link rel="canonical" href="{canonical}">
 <meta name="theme-color" content="#16161b">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="{robots}">
 <!-- Open Graph / social -->
 <meta property="og:type" content="{og_type}">
 <meta property="og:site_name" content="{BIZ['name']}">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{canonical}">
-<meta property="og:image" content="{BIZ['domain']}/assets/img/og-cover.svg">
+<meta property="og:image" content="{BIZ['domain']}/assets/img/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{title}">
 <meta name="twitter:description" content="{desc}">
-<meta name="twitter:image" content="{BIZ['domain']}/assets/img/og-cover.svg">
+<meta name="twitter:image" content="{BIZ['domain']}/assets/img/og-cover.png">
 <!-- Fonts — Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
@@ -95,7 +100,7 @@ def nav(depth=0):
       <li class="nav-item">
         <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
         <div class="nav-menu nav-menu-simple" role="menu">
-          {"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
+          {"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
         </div>
       </li>
       <li><a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a></li>
@@ -118,7 +123,7 @@ def nav(depth=0):
     <nav class="drawer-nav" aria-label="Mobile">
       <a href="{root}index.html">Home</a>
       <details class="drawer-group"><summary>Our Services {icon('chevron')}</summary>
-        <div class="sub">{"".join(f'<a href="{root}{target}?svc={_slugify(label)}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
+        <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
       </details>
       <a href="{root}service-plans.html">Service Plans</a>
       <a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a>
@@ -583,8 +588,7 @@ def picture_card(item, depth=0, idx=0):
     feat = " featured" if item.get("featured") else ""
     img_tag = picture(root, img, alt, img_class="img-card-bg",
                        extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')
-    # service links carry ?svc= so the target page's quote form pre-checks this service
-    href = item["target"] + (f'?svc={_slugify(item["label"])}' if item["target"].startswith("services/") else "")
+    href = item["target"]
     return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{href}" aria-label="{item["label"]}" style="background:{dark}">'
             f'{img_tag}'
             f'<span class="img-card-watermark">{icon(item["icon"])}</span>'
@@ -746,8 +750,9 @@ def photo(src, alt, ratio="5/4", depth=0, cls=""):
             f'<span class="imgph" aria-hidden="true"><span class="ph-label">{icon("image")}<br>{alt}</span></span>'
             f'{img_tag}</div>')
 
-def crumbs(items, depth=0):
-    """items = [(label, href_or_None), ...]"""
+def crumbs(items, depth=0, light=False):
+    """items = [(label, href_or_None), ...]. light=True renders a pale
+    variant for use over a dark photo hero (service/landing page heroes)."""
     parts = []
     for i, (label, href) in enumerate(items):
         if href:
@@ -756,4 +761,5 @@ def crumbs(items, depth=0):
             parts.append(f'<span>{label}</span>')
         if i < len(items) - 1:
             parts.append(icon('chevron'))
-    return '<nav class="crumbs" aria-label="Breadcrumb">' + "".join(parts) + "</nav>"
+    cls = "crumbs crumbs-light" if light else "crumbs"
+    return f'<nav class="{cls}" aria-label="Breadcrumb">' + "".join(parts) + "</nav>"

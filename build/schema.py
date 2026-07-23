@@ -1,12 +1,13 @@
 """JSON-LD schema builders for SEO."""
 from sitedata import BIZ, AREAS
 
-def local_business(reviews=None):
-    """reviews: optional list of (text, name, location, initials) tuples
-    (as in sitedata.REVIEWS) to embed as Review nodes. Only pass this on
-    the page where those exact curated cards are actually rendered, so
-    structured data matches visible content — never on pages using the
-    3rd-party widget instead."""
+def local_business():
+    """Core LocalBusiness node. Deliberately omits aggregateRating/review —
+    self-published review structured data on your own LocalBusiness isn't
+    eligible for Google's review-star rich results anyway, and publishing
+    an unverified rating/count is a real trust and policy risk. Genuine
+    reviews are surfaced on-page via the Google-reviews widget instead
+    (see reviews.html / config/google-reviews-embed*.html)."""
     biz = {
         "@context": "https://schema.org",
         "@type": "HomeAndConstructionBusiness",
@@ -18,7 +19,7 @@ def local_business(reviews=None):
         "telephone": BIZ["phone_display"],
         "email": BIZ["email"],
         "priceRange": "$$",
-        "image": BIZ["domain"] + "/assets/img/og-cover.svg",
+        "image": BIZ["domain"] + "/assets/img/og-cover.png",
         "logo": BIZ["domain"] + "/assets/img/favicon.svg",
         "foundingDate": BIZ["founded"],
         "address": {
@@ -44,21 +45,8 @@ def local_business(reviews=None):
         ],
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
         "sameAs": [BIZ["facebook"], BIZ["instagram"], BIZ["google"]],
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": BIZ["rating"],
-            "reviewCount": BIZ["review_count"],
-            "bestRating": "5",
-        },
         "makesOffer": {"@type": "Offer", "name": "Free Exterior Cleaning Quote", "price": "0", "priceCurrency": "USD"},
     }
-    if reviews:
-        biz["review"] = [{
-            "@type": "Review",
-            "reviewRating": {"@type": "Rating", "ratingValue": "5", "bestRating": "5"},
-            "author": {"@type": "Person", "name": name},
-            "reviewBody": _strip(text),
-        } for text, name, location, initials in reviews]
     return biz
 
 def organization():

@@ -598,6 +598,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .crumbs a { color: var(--slate-500); }
 .crumbs a:hover { color: var(--blue-600); }
 .crumbs svg { width: 14px; height: 14px; opacity: .5; }
+.crumbs-light { color: rgba(255, 255, 255, .65); }
+.crumbs-light a { color: rgba(255, 255, 255, .9); }
+.crumbs-light a:hover { color: #fff; }
+.crumbs-light svg { opacity: .6; }
 
 /* ---------- Prose / content ---------- */
 .prose { max-width: 760px; }

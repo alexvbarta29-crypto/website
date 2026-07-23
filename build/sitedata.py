@@ -347,6 +347,11 @@ SERVICES = [
         "image": "assets/img/svc-christmas-light-installation.jpg",
         "short": "Professional, custom holiday lighting — design, install, maintain, and take down.",
         "hero_sub": "Skip the cold ladder. We design, hang, maintain, and remove premium holiday lighting for you.",
+        # Exact title/meta/H1 per the Dec-2026 SEO pass — this service gets its
+        # own copy instead of the generic "<Service> in <City>, MN" template.
+        "seo_title": f"Christmas Light Installation Delano, MN | {BIZ['short']}",
+        "seo_desc": "Custom Christmas light installation in Delano and the western Twin Cities. Design, installation, maintenance and removal included. Get a quote.",
+        "h1": "Christmas Light Installation in Delano, MN",
         "kw": "Christmas light installation Delano MN",
         "kw2": ["holiday light installation", "Christmas light hanging service", "professional holiday lighting", "outdoor Christmas lights installation"],
         "benefits": [
@@ -372,6 +377,32 @@ SERVICES = [
             ("Custom-Cut Christmas Lights", "We measure your roofline and peaks, then custom-cut every strand to fit — no extra lights or cords bunched up or hanging loose."),
             ("Free Takedown &amp; Storage", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year."),
             ("Come Back Next Year", "Every fall, we reach out to get you back on the schedule, so your lights are up and ready well before the holidays."),
+        ],
+        # Replaces the generic shared service-page FAQ (which talks about
+        # "scheduling twice a year" and "membership plans" — neither applies
+        # to a seasonal install). Every answer is written from copy already
+        # established above (includes/process_note) — nothing new invented.
+        # [OWNER VERIFICATION REQUIRED] exact takedown timing/month, whether
+        # storage is free or a paid add-on, and current license/insurance
+        # details are carried over from existing site copy and should be
+        # confirmed accurate before relying on this page commercially.
+        "faqs": [
+            ("How much does Christmas light installation cost?",
+             "Every home's roofline and layout is different, so there's no fixed price list. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
+            ("Does Barta provide the lights?",
+             "Yes — commercial-grade LED lights and greenery are included in the installation. You don't need to buy or supply anything yourself."),
+            ("What is included with installation?",
+             "A free design consultation, commercial-grade LED lights, professional installation on your roofline, trees, and walkways, in-season maintenance, and post-season takedown. Optional storage between seasons is also available."),
+            ("What happens if a bulb or strand fails?",
+             "Let us know and we'll repair or replace it at no charge during the season as part of our included in-season maintenance."),
+            ("When are the lights taken down?",
+             "We schedule takedown after the holiday season ends. Your installer will confirm the planned takedown window with you."),
+            ("Can Barta store the lights?",
+             "Yes — optional storage between seasons is available, so your lights are organized and ready to go again next year."),
+            ("When should I reserve installation?",
+             "Installation books up quickly each season, so we recommend reserving your spot in early fall for the best availability."),
+            ("What areas do you serve?",
+             "Delano and the western Twin Cities metro — the same service area we cover for all of our exterior cleaning services."),
         ],
     },
     {

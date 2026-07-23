@@ -4,7 +4,7 @@ Barta Window Washing — static site generator.
 Run from repo root:  python3 build/build.py
 Outputs HTML pages, sitemap, robots, manifest, and placeholder imagery.
 """
-import os, sys, datetime
+import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
@@ -38,7 +38,11 @@ def write(relpath, html, slug=None, priority="0.7"):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(html)
-    PAGES.append((relpath, slug if slug is not None else relpath, priority))
+    # Pages whose <meta name="robots"> says noindex (legal/utility pages, PPC
+    # landing pages) are deliberately excluded from the sitemap — a sitemap
+    # entry for a noindexed URL is a direct contradiction search engines flag.
+    if 'name="robots" content="noindex' not in html:
+        PAGES.append((relpath, slug if slug is not None else relpath, priority))
 
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
 
@@ -310,16 +314,33 @@ def build_service(svc):
     </div>
   </section>"""
 
-    svc_faqs = [
-        (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
-         f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
-        (f"How often should I schedule {svc['name'].lower()}?",
-         f"For most Minnesota homes we recommend {svc['name'].lower()} once or twice per year, though it varies by your home and surroundings. Our membership plans bundle it on the ideal schedule at a member discount — so it's handled automatically."),
-        ("Are you licensed and insured?",
-         "Yes — Barta is fully licensed and carries liability and workers' compensation insurance. We provide a certificate on request and treat your property with total care."),
-        ("Do you guarantee your work?",
-         "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call within 48 hours and we'll re-clean it free."),
-    ]
+    # The generic "how often should I schedule this / membership plans bundle
+    # it" FAQ is wrong for services that aren't routine recurring maintenance:
+    # a one-time restoration project, or a contract-based commercial service.
+    # Christmas lights gets a fully custom FAQ set (svc["faqs"]) instead.
+    _frequency_faq_overrides = {
+        "hard-water-stain-removal": (
+            "How often will I need hard water stain removal?",
+            "This is a restoration treatment, not routine maintenance — most homes only need it once to remove existing buildup. If sprinklers or hard water exposure are ongoing, we can also apply a protective coating to help keep new deposits from bonding as easily."),
+        "commercial-cleaning": (
+            "How often should we schedule commercial cleaning?",
+            "It depends on your property, foot traffic, and industry — many commercial clients schedule us on a recurring contract (weekly, monthly, or seasonally) rather than a fixed once- or twice-a-year visit. We'll recommend a schedule after seeing your property."),
+    }
+    if svc.get("faqs"):
+        svc_faqs = svc["faqs"]
+    else:
+        freq_faq = _frequency_faq_overrides.get(svc["slug"], (
+            f"How often should I schedule {svc['name'].lower()}?",
+            f"For most Minnesota homes we recommend {svc['name'].lower()} once or twice per year, though it varies by your home and surroundings. Our membership plans bundle it on the ideal schedule at a member discount — so it's handled automatically."))
+        svc_faqs = [
+            (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
+             f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
+            freq_faq,
+            ("Are you licensed and insured?",
+             "Yes — Barta is fully licensed and carries liability and workers' compensation insurance. We provide a certificate on request and treat your property with total care."),
+            ("Do you guarantee your work?",
+             "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call within 48 hours and we'll re-clean it free."),
+        ]
     breadcrumb = S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
         ("Services", BIZ["domain"] + "/residential.html"),
@@ -329,8 +350,8 @@ def build_service(svc):
 
     kw2 = ", ".join(svc["kw2"])
     html = C.head(
-        title=f"{svc['name']} in {BIZ['city']}, MN | {BIZ['name']}",
-        desc=f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Licensed, insured & guaranteed. Get your free quote from Barta today.",
+        title=svc.get("seo_title") or f"{svc['name']} in {BIZ['city']}, MN | {BIZ['name']}",
+        desc=svc.get("seo_desc") or f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Licensed, insured & guaranteed. Get your free quote from Barta today.",
         slug=f"services/{svc['slug']}.html", depth=depth, schema=schema,
         primary_kw=svc["kw"])
     html += C.nav(depth)
@@ -344,8 +365,9 @@ def build_service(svc):
 <main id="main">
   <section class="svc-hero" style="background-image:{hero_bg};background-size:cover,cover;background-position:center,center {hero_pos}">
     <div class="container">
+      {C.crumbs([("Home", root + "index.html"), ("Services", root + "residential.html"), (svc['name'], None)], light=True)}
       {f'<span class="xmas-hero-badge">{icon("lights")} Now booking for the holidays</span>' if is_xmas else ""}
-      <h1>{svc['name']}</h1>
+      <h1>{svc.get('h1') or svc['name']}</h1>
       <p class="lead">{svc['hero_sub']}</p>
       <div class="hero-actions">
         <a class="btn btn-lg" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Quote {icon('arrow')}</a>
@@ -559,13 +581,13 @@ def build_plans():
 # Generic interior page scaffold
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
-                  crumb_label=None, primary_kw="", cta_form=False, svc_default=None):
+                  crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False):
     schema = list(schema or BASE_SCHEMA)
     schema.append(S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
         (crumb_label or h1, BIZ["domain"] + "/" + slug),
     ]))
-    html = C.head(title=title, desc=desc, slug=slug, depth=depth, schema=schema, primary_kw=primary_kw)
+    html = C.head(title=title, desc=desc, slug=slug, depth=depth, schema=schema, primary_kw=primary_kw, noindex=noindex)
     html += C.nav(depth)
     crumbs = C.crumbs([("Home", C.rel(depth) + "index.html"), (crumb_label or h1, None)])
     if cta_form:
@@ -788,10 +810,7 @@ def build_reviews():
     depth = 0
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
     has_widget = bool(REVIEWS_WIDGET_PAGE and REVIEWS_WIDGET_PAGE.strip())
-    # Only embed Review structured data when the matching curated cards are
-    # the actual visible content (not hidden behind the 3rd-party widget) —
-    # keeps markup honest and avoids a Google manual-action risk.
-    schema = [S.local_business(reviews=None if has_widget else REVIEWS), S.organization(), S.website()]
+    schema = BASE_SCHEMA
     html = C.head(
         title=f"Reviews & Testimonials | {BIZ['name']} — {BIZ['rating']}★ in Delano, MN",
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
@@ -918,6 +937,24 @@ def build_service_areas():
 # ===========================================================================
 # AREA PAGES
 # ===========================================================================
+def _area_region_note(a):
+    """One genuinely differentiating sentence per area, derived only from
+    the real neighborhood data already in AREAS — not invented per-city
+    copy. Groups cities into a couple of real, verifiable local patterns
+    (lake shoreline vs. river town) instead of a single generic sentence
+    with the city name swapped in."""
+    nbhd_text = " ".join(a["neighborhoods"]).lower()
+    if "lake minnetonka" in nbhd_text or "lake" in a["city"].lower():
+        return ("Many homes here sit on or near the water, where lake spray, humidity, and heavier tree "
+                "cover mean faster algae growth on siding and roofs, and more frequent window cleaning "
+                "to keep the lake view clear.")
+    if "crow river" in nbhd_text:
+        return ("As a river-adjacent community, homes here see extra humidity and tree debris near the "
+                "water, which is exactly the kind of algae and grime buildup soft washing is built for.")
+    return ("Like most homes across the western metro, exteriors here deal with Minnesota's full range of "
+            "seasons — spring pollen, summer dust, and winter road spray — which is why most homeowners "
+            "pair window cleaning with a seasonal house wash or gutter cleaning.")
+
 def build_area(a):
     depth = 1
     nbhds = ", ".join(a["neighborhoods"])
@@ -926,6 +963,8 @@ def build_area(a):
         <span class="ic">{icon(s['icon'])}</span><h3>{s['name']}</h3><p>{s['short']}</p>
         <span class="more">Learn more {icon('arrow')}</span></a>""" for i, s in enumerate(SERVICES[:6]))
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
+    nearby = [o for o in AREAS if o["slug"] != a["slug"] and o["tier"] == a["tier"]][:6]
+    nearby_html = "".join(f'<a class="pill" href="{o["slug"]}.html">{o["city"]}, MN</a>' for o in nearby)
     area_faqs = [
         (f"Do you serve all of {a['city']}, MN?",
          f"Yes — we serve the entire {a['city']} area, including {nbhds}. Whether you're in town or just outside it, we'd love to give you a free quote."),
@@ -939,10 +978,10 @@ def build_area(a):
         (a["city"], BIZ["domain"] + "/areas/" + a["slug"] + ".html")])]
     homebase = " — our home base" if a["note"] == "our home base" else ""
     html = C.head(
-        title=f"Window Cleaning & Exterior Services in {a['city']}, MN | {BIZ['name']}",
-        desc=f"Top-rated window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local, licensed & insured. Serving {nbhds}. Get your free quote from Barta!",
+        title=f"Exterior Cleaning Services in {a['city']}, MN | {BIZ['name']}",
+        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local, licensed & insured. Serving {nbhds}. Get your free quote from Barta.",
         slug=f"areas/{a['slug']}.html", depth=depth, schema=schema,
-        primary_kw=f"window cleaning {a['city']} MN")
+        primary_kw=f"exterior cleaning services {a['city']} MN")
     html += C.nav(depth)
     html += f"""<main id="main">
   <section class="phero"><div class="container">
@@ -963,7 +1002,7 @@ def build_area(a):
   <section><div class="container"><div class="prose reveal" style="max-width:820px;margin-inline:auto;text-align:center">
     <span class="eyebrow" style="justify-content:center">Local experts</span>
     <h2 class="mt-1">Your trusted exterior cleaners in {a['city']}</h2>
-    <p>Barta proudly serves homeowners and businesses throughout {a['city']} and the surrounding neighborhoods — including {nbhds}. From Minnesota's pollen-heavy springs to leaf-clogged falls and hard-water spotting in between, we know exactly what local homes need to look their best year-round.</p>
+    <p>Barta proudly serves homeowners and businesses throughout {a['city']} and the surrounding neighborhoods — including {nbhds}. {_area_region_note(a)}</p>
     <p>As a local, family-owned company, we're nearby, responsive, and personally invested in our reputation across {a['city']}. Every job is backed by full insurance and our 100% satisfaction guarantee.</p>
   </div></div></section>
   <section class="bg-mist"><div class="container">
@@ -976,6 +1015,11 @@ def build_area(a):
     <div class="grid cols-3">{reviews_html}</div>
   </div></section>
   <section class="bg-mist"><div class="container">
+    <div class="section-head center"><span class="eyebrow">Nearby</span><h2>Also serving communities near {a['city']}</h2></div>
+    <div class="pills" style="justify-content:center">{nearby_html}</div>
+    <div class="center mt-3"><a class="btn btn-ghost" href="../service-areas.html">See all service areas {icon('arrow')}</a></div>
+  </div></section>
+  <section><div class="container">
     <div class="section-head center"><span class="eyebrow">Questions</span><h2>{a['city']} service FAQs</h2></div>
     {C.faq_block(area_faqs)}
   </div></section>
@@ -1129,7 +1173,7 @@ def build_privacy():
         desc="Privacy policy for Barta Window Washing. Learn how we collect, use, and protect the information you share when requesting a quote or contacting us.",
         slug="privacy.html", eyebrow="Legal", h1="Privacy Policy",
         lead="Your trust matters to us. This policy explains what information we collect and how we use it.",
-        depth=depth, crumb_label="Privacy")
+        depth=depth, crumb_label="Privacy", noindex=True)
     html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
     <p><em>Last updated: June 2026. This is a starter template — have it reviewed by legal counsel before launch.</em></p>
     <h2>Information we collect</h2>
@@ -1156,7 +1200,7 @@ def build_terms():
         desc="Terms and conditions for Barta Window Washing, including our SMS/text messaging communication policy for quotes, scheduling, and marketing.",
         slug="terms.html", eyebrow="Legal", h1="Terms &amp; Conditions",
         lead="Please review these terms before requesting a quote or using our services.",
-        depth=depth, crumb_label="Terms")
+        depth=depth, crumb_label="Terms", noindex=True)
     html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
     <p><em>Last updated: June 2026. This is a starter template — have it reviewed by legal counsel before launch.</em></p>
     <h2>Agreement to terms</h2>
@@ -1268,13 +1312,17 @@ def build_post(p, idx):
         "publisher": {"@id": BIZ["domain"] + "/#org"},
         "description": p["excerpt"], "url": BIZ["domain"] + "/blog/" + p["slug"] + ".html",
         "articleSection": p["cat"],
-    }]
+    }, S.breadcrumb([
+        ("Home", BIZ["domain"] + "/"),
+        ("Blog", BIZ["domain"] + "/blog.html"),
+        (p["title"], BIZ["domain"] + "/blog/" + p["slug"] + ".html"),
+    ])]
     html = C.head(title=f"{p['title']} | {BIZ['name']} Blog", desc=p["excerpt"],
                   slug=f"blog/{p['slug']}.html", depth=depth, schema=schema, og_type="article")
     html += C.nav(depth)
     html += f"""<main id="main">
   <section class="phero"><div class="container">
-    {C.crumbs([("Home", "../index.html"), ("Blog", "../blog.html"), (p['cat'], None)])}
+    {C.crumbs([("Home", "../index.html"), ("Blog", "../blog.html"), (p['title'], None)])}
     <div style="max-width:760px">
       <span class="eyebrow">{p['cat']} · {p['read']} read</span>
       <h1 class="mt-1">{p['title']}</h1>
@@ -1356,7 +1404,7 @@ def build_landing(L):
         "Free, no-obligation quotes", "100% satisfaction guarantee", "Family-owned &amp; local"])
     html = C.head(title=f"{L['h1']} | {BIZ['name']}",
                   desc=f"{L['headline'].replace('&amp;','&')}. Licensed, insured & guaranteed. Serving Delano & the western Twin Cities. Get your free, no-obligation quote from Barta now!",
-                  slug=f"landing/{L['slug']}.html", depth=depth, schema=schema, primary_kw=L["kw"])
+                  slug=f"landing/{L['slug']}.html", depth=depth, schema=schema, primary_kw=L["kw"], noindex=True)
     html += C.nav(depth)
     html += f"""<main id="main">
   <section class="phero"><div class="container"><div class="hero-grid">
@@ -1482,18 +1530,22 @@ def write_asset(relpath, content):
         f.write(content)
 
 def build_meta_files():
-    today = datetime.date.today().isoformat()
     # robots.txt
     write_asset("robots.txt", f"User-agent: *\nAllow: /\n\nSitemap: {BIZ['domain']}/sitemap.xml\n")
     # manifest
     write_asset("site.webmanifest",
         '{"name":"Barta Window Washing","short_name":"Barta","start_url":"/","display":"standalone",'
-        '"background_color":"#ffffff","theme_color":"#0b2a4a","icons":[{"src":"/assets/img/favicon.svg","sizes":"any","type":"image/svg+xml"}]}')
-    # sitemap
+        '"background_color":"#ffffff","theme_color":"#16161b","icons":[{"src":"/assets/img/favicon.svg","sizes":"any","type":"image/svg+xml"}]}')
+    # sitemap — <lastmod> is only included where we actually know a real
+    # modification date (blog posts carry one in sitedata.POSTS); every other
+    # page type has no tracked per-page date, so we omit lastmod rather than
+    # stamp every URL with today's date, which isn't true and isn't useful.
+    post_dates = {f"blog/{p['slug']}.html": p["date"] for p in POSTS}
     urls = ""
     for relpath, slug, priority in PAGES:
         loc = BIZ["domain"] + "/" + (slug if slug else "")
-        urls += f"  <url><loc>{loc}</loc><lastmod>{today}</lastmod><priority>{priority}</priority></url>\n"
+        lastmod_tag = f"<lastmod>{post_dates[slug]}</lastmod>" if slug in post_dates else ""
+        urls += f"  <url><loc>{loc}</loc>{lastmod_tag}<priority>{priority}</priority></url>\n"
     sitemap = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls + '</urlset>\n')
     write_asset("sitemap.xml", sitemap)
