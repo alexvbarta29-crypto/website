@@ -42,13 +42,19 @@ SERVICES = [
         "image": "assets/img/svc-exterior-window-cleaning.jpg",
         "short": "Streak-free exterior glass, screens, sills, and tracks — cleaned without ladders in your flower beds.",
         "hero_sub": "Crystal-clear, streak-free exterior windows using pure-water poles and hand-detailing — no ladders in your landscaping.",
+        "seo_title": "Exterior Window Cleaning Delano, MN | Barta",
+        "seo_desc": "Exterior window cleaning in Delano and the western Twin Cities. Streak-free glass, detailed frames and professional service. Get a free quote.",
+        "h1": "Exterior Window Cleaning in Delano, MN",
         "kw": "exterior window cleaning Delano MN",
         "kw2": ["exterior window cleaning", "professional window washers", "pure-water window cleaning", "streak-free window cleaning"],
         "benefits": [
             ("Streak-free guarantee", "We don't leave until every pane is spotless — or we come back free."),
             ("Pure-water technology", "Deionized water rinses glass cleaner and keeps it clearer, longer."),
             ("Ladder-free upper stories", "Water-fed poles reach second-story glass without ladders in your beds."),
-            ("Hard-water removal", "We treat mineral spots and stains traditional cleaning leaves behind."),
+            # Deliberately not "hard-water removal" — see includes note + FAQ
+            # below: standard cleaning is light spot treatment only, embedded
+            # mineral staining is the separate Hard Water Stain Removal service.
+            ("Light spot treatment", "We treat everyday water spotting and light mineral marks as part of every visit."),
         ],
         "intro": "The outside of your glass takes the brunt of Minnesota's weather — pollen, rain spots, and road grime dull your view from the street and from inside. Barta's exterior window cleaning hand-details every pane, then uses pure-water poles for second-story and hard-to-reach glass, finishing every screen, sill, and track so the whole window looks new.",
         "includes": [
@@ -65,6 +71,25 @@ SERVICES = [
             ("Squeegee", "A professional-grade squeegee pulls every drop off the glass edge to edge, so nothing is left to dry into streaks or spots."),
             ("Hand-detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
         ],
+        # [OWNER VERIFICATION REQUIRED] "licensed and insured" is asserted
+        # elsewhere on the site (footer, why_barta copy) but not restated
+        # here since it isn't confirmed for this pass — see report.
+        "faqs": [
+            ("How is exterior window cleaning priced?",
+             "Pricing depends on your home's size, number of windows, and accessibility. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
+            ("Are screens included?",
+             "Yes — screens are removed, hand-washed, and reinstalled as part of every exterior window cleaning visit."),
+            ("Are frames, sills, and tracks included?",
+             "Yes — exterior sills, tracks, and frames are wiped down on every visit, not just the glass."),
+            ("How do pure-water poles work?",
+             "For second-story and hard-to-reach glass, we use purified, deionized water on extension poles. Because the water carries no minerals, it rinses spot-free without soap and without a ladder in your flower beds."),
+            ("Is hard-water stain removal included?",
+             "Standard cleaning includes spot treatment for everyday water spotting and light mineral marks. Deeper, embedded mineral staining that's bonded to the glass is a separate service — our Hard Water Stain Removal page has details, or ask us for an assessment."),
+            ("How often do Minnesota homes need exterior window cleaning?",
+             "Most homes benefit from cleaning about twice a year — once in late spring after pollen settles, and again in early fall. Homes near lakes, gravel roads, or heavy tree cover may want a third visit."),
+            ("What happens if it rains after service?",
+             "Our streak-free guarantee covers the quality of the clean itself — if you spot a streak we missed, let us know and we'll come back and make it right. Ordinary rain afterward won't leave mineral spotting unless your water supply is unusually hard."),
+        ],
     },
     {
         "slug": "interior-window-cleaning",
@@ -73,6 +98,9 @@ SERVICES = [
         "image": "assets/img/svc-interior-window-cleaning.jpg",
         "short": "Spotless interior glass, sills, and tracks — hand-detailed without disturbing your home.",
         "hero_sub": "Spotless interior glass that floods every room with light — sills, tracks, and frames hand-detailed too.",
+        "seo_title": "Interior Window Cleaning Delano, MN | Barta",
+        "seo_desc": "Interior window cleaning in Delano and the western Twin Cities. Carefully cleaned glass, sills and frames with respect for your home. Get a quote.",
+        "h1": "Interior Window Cleaning in Delano, MN",
         "kw": "interior window cleaning Delano MN",
         "kw2": ["interior window cleaning", "inside window washing", "streak-free interior glass", "residential interior window cleaning"],
         "benefits": [
@@ -96,6 +124,20 @@ SERVICES = [
             ("Squeegee", "A professional-grade squeegee pulls every drop off the glass edge to edge, so nothing is left to dry into streaks or spots."),
             ("Hand-detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
         ],
+        "faqs": [
+            ("How should I prepare for interior window cleaning?",
+             "Clear breakables from windowsills a day or two before your visit and let us know about anything fragile nearby — we bring drop cloths to protect the rest."),
+            ("Will you move furniture or window coverings?",
+             "We move light furniture and blinds as needed to reach the glass, then put everything back. Let us know in advance about anything heavy or delicate you'd rather we handle differently."),
+            ("Are screens, tracks, and sills included?",
+             "Interior sills, tracks, and frames are wiped down on every visit, and screens are cleaned from the outside during the same appointment."),
+            ("What about pets and access to my home?",
+             "We're comfortable around pets, but recommend keeping them in a separate room for everyone's comfort while we work. We'll coordinate access with you ahead of time."),
+            ("What cleaning solutions do you use?",
+             "Professional-grade, streak-free glass cleaner that's safe for use around your family and pets."),
+            ("Can I book interior and exterior cleaning together?",
+             "Yes — most customers book both at once for the full effect, and we're happy to quote them together or separately."),
+        ],
     },
     {
         "slug": "track-detailing",
@@ -105,6 +147,9 @@ SERVICES = [
         "hero_pos": "62%",
         "short": "Deep-cleaned window tracks and sills, free of built-up grime and debris.",
         "hero_sub": "Grimy tracks make even clean windows look neglected. We deep-clean every track and sill by hand.",
+        "seo_title": "Window Track Cleaning Delano, MN | Barta",
+        "seo_desc": "Window track cleaning in Delano and the western Twin Cities. Hand-detailed tracks and sills, cleared of built-up grime. Get a free quote.",
+        "h1": "Window Track Cleaning in Delano, MN",
         "kw": "window track cleaning Delano MN",
         "kw2": ["window track cleaning", "window sill cleaning", "window track detailing service", "deep clean window tracks"],
         "benefits": [
@@ -123,6 +168,16 @@ SERVICES = [
             "Add-on to any window cleaning service",
         ],
         "process_note": "Track detailing is included with most window cleaning packages and can also be booked on its own.",
+        "faqs": [
+            ("What's included in window track cleaning?",
+             "We hand-clean interior and exterior tracks, de-gunk sills, and clear built-up dirt, grit, and debris from every corner and channel."),
+            ("Can I book this without a full window cleaning?",
+             "Yes — track detailing can be booked on its own, though it's included with most window cleaning packages."),
+            ("Will my windows and screens slide easier afterward?",
+             "Yes — clearing built-up grime from the tracks is exactly what makes windows and screens glide smoothly again."),
+            ("Do you treat mildew or staining in the tracks?",
+             "Light mildew or staining in the track is treated where present as part of the service."),
+        ],
     },
     {
         "slug": "gutter-cleaning",
@@ -131,6 +186,9 @@ SERVICES = [
         "image": "assets/img/svc-gutter-cleaning.jpg",
         "short": "Hand-cleared gutters and downspouts that protect your foundation, roof, and siding.",
         "hero_sub": "Clogged gutters cause rot, leaks, and foundation damage. We clear them by hand and flush every downspout.",
+        "seo_title": "Gutter Cleaning Delano, MN | Barta",
+        "seo_desc": "Professional gutter cleaning in Delano and the western Twin Cities. Clear debris and downspouts to help protect your roof and foundation. Get a quote.",
+        "h1": "Gutter Cleaning in Delano, MN",
         "kw": "gutter cleaning Delano MN",
         "kw2": ["gutter cleaning near me", "downspout cleaning", "gutter clearing service", "residential gutter cleaning"],
         "benefits": [
@@ -150,6 +208,20 @@ SERVICES = [
         ],
         "process_note": "Ask about gutter guards and recurring plans to keep them clear year-round.",
         "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and as local co-owners, Alex and Jacob Barta deal with them firsthand on every job. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
+        "faqs": [
+            ("How often should gutters be cleaned?",
+             "Most Minnesota homes need gutters cleared at least twice a year — once in spring and once in fall — though homes with heavy tree cover may need more frequent visits."),
+            ("Do you clear the downspouts too?",
+             "Yes — every downspout is flushed and tested to confirm water flows freely from gutter to ground."),
+            ("What happens to the debris?",
+             "All debris is bagged and hauled away — we never blow it into your yard or leave piles behind."),
+            ("How do you access the roofline?",
+             "Our insured crew accesses your gutters safely with the right equipment, so you don't have to get on a ladder yourself."),
+            ("What are the signs my gutters need cleaning?",
+             "Watch for water spilling over the sides during rain, sagging sections, plants growing in the gutter, or water pooling near your foundation."),
+            ("Should I schedule in spring or fall?",
+             "Fall cleaning clears leaves before winter to help prevent ice dams; spring cleaning clears seeds and winter debris before spring rains. Most homes benefit from both."),
+        ],
     },
     {
         "slug": "pressure-washing",
@@ -158,6 +230,9 @@ SERVICES = [
         "image": "assets/img/svc-pressure-washing.jpg",
         "short": "Restore driveways, patios, walkways, and decks to like-new with controlled high-pressure cleaning.",
         "hero_sub": "Blast away years of dirt, oil, algae, and grime from concrete, pavers, brick, and wood.",
+        "seo_title": "Pressure Washing Delano, MN | Barta",
+        "seo_desc": "Pressure washing in Delano and the western Twin Cities for driveways, patios and walkways. Restore dirty exterior surfaces. Request a free quote.",
+        "h1": "Pressure Washing in Delano, MN",
         "kw": "pressure washing Delano MN",
         "kw2": ["power washing near me", "driveway cleaning", "concrete pressure washing", "patio cleaning service"],
         "benefits": [
@@ -177,6 +252,20 @@ SERVICES = [
         ],
         "process_note": "Pair with house washing for a complete exterior refresh and bundle savings.",
         "why_barta": "We know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter, and as the co-owners doing the work ourselves, we're careful about which pressure and nozzle to use on which surface — so you get a like-new result without the etching or gouging an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
+        "faqs": [
+            ("What surfaces can be pressure washed?",
+             "Concrete driveways, paver patios, sidewalks, pool decks, steps, and retaining walls — durable, hard surfaces built for higher pressure."),
+            ("What's the difference between pressure washing and soft washing?",
+             "Pressure washing uses higher pressure suited to durable hardscapes like concrete and pavers. Delicate surfaces — roofs, stucco, siding, screens — should be soft washed instead, which we also offer."),
+            ("Do you handle concrete, patios, and walkways?",
+             "Yes — these are exactly the surfaces pressure washing is built for, using a flat-surface cleaner for even, stripe-free results."),
+            ("How should I prepare for service?",
+             "Move vehicles, patio furniture, and any items off the surface being cleaned. We'll walk you through anything else specific to your property before we start."),
+            ("Will you protect my property during the wash?",
+             "We adjust pressure and technique to each surface and take care to protect nearby landscaping and structures during the wash."),
+            ("How long does the surface take to dry?",
+             "Most surfaces are dry to the touch within a few hours, though full drying can take up to a day depending on weather and surface type."),
+        ],
     },
     {
         "slug": "house-washing",
@@ -186,6 +275,9 @@ SERVICES = [
         "hero_pos": "58%",
         "short": "Gentle, thorough exterior washing that removes algae, mildew, and dirt from siding.",
         "hero_sub": "A clean exterior makes your whole home look newer. We safely wash siding, soffits, and trim.",
+        "seo_title": "House Washing Delano, MN | Barta",
+        "seo_desc": "Professional house washing in Delano and the western Twin Cities. Safely remove dirt, algae and mildew from exterior siding. Request a free quote.",
+        "h1": "House Washing in Delano, MN",
         "kw": "house washing Delano MN",
         "kw2": ["exterior house washing", "vinyl siding cleaning", "house soft wash", "siding cleaning near me"],
         "benefits": [
@@ -204,6 +296,18 @@ SERVICES = [
             "Pre-wash plant protection and post-wash rinse",
         ],
         "why_barta": "As local co-owners washing homes throughout the Delano area, Alex and Jacob know what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
+        "faqs": [
+            ("What surfaces are included in house washing?",
+             "Vinyl, fiber-cement, stucco, brick, and painted siding, plus soffits, fascia, and trim."),
+            ("Is this the same as pressure washing?",
+             "No — house washing uses low-pressure soft washing, which is safer for siding, paint, and landscaping than high-pressure cleaning."),
+            ("Will it actually kill the algae, not just rinse it away?",
+             "Yes — our solution is formulated to kill algae and mildew at the root, not just rinse the surface, so results last significantly longer than a pressure-only wash."),
+            ("Will it harm my landscaping?",
+             "We apply pre-wash plant protection and a post-wash rinse as part of every job to protect your landscaping."),
+            ("How often should I wash my house?",
+             "Most Minnesota homes benefit from a wash about once a year, though homes with heavy shade or lake-adjacent humidity may want it more often."),
+        ],
     },
     {
         "slug": "soft-washing",
@@ -213,6 +317,9 @@ SERVICES = [
         "hero_pos": "58%",
         "short": "Low-pressure cleaning for delicate surfaces — roofs, stucco, and painted exteriors.",
         "hero_sub": "The safe way to clean roofs and delicate surfaces — low pressure, smart chemistry, lasting results.",
+        "seo_title": "Soft Washing Delano, MN | Barta",
+        "seo_desc": "Soft washing in Delano and the western Twin Cities for roofs, stucco and painted surfaces. Low-pressure cleaning that protects delicate exteriors. Get a quote.",
+        "h1": "Soft Washing in Delano, MN",
         "kw": "soft washing Delano MN",
         "kw2": ["soft wash roof cleaning", "low pressure house wash", "soft washing service", "algae removal soft wash"],
         "benefits": [
@@ -232,6 +339,16 @@ SERVICES = [
         ],
         "process_note": "The trusted method for any surface that high pressure could damage.",
         "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how co-owners Alex and Jacob Barta clean every delicate surface around Delano. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
+        "faqs": [
+            ("What surfaces need soft washing instead of pressure washing?",
+             "Roofs, stucco, EIFS, screens, and painted or delicate surfaces should always be soft washed rather than pressure washed."),
+            ("Will low pressure actually get things clean?",
+             "Yes — soft washing pairs low pressure with solutions that dissolve algae, mold, and mildew at the root, which is more effective on organic growth than pressure alone and keeps surfaces cleaner longer."),
+            ("Is it safe for my landscaping?",
+             "We protect landscaping before washing and rinse thoroughly afterward as part of every job."),
+            ("Will this damage paint or shingles?",
+             "No — that's the point of soft washing. Low pressure means no etched stucco, stripped paint, or lifted shingles, unlike pressure washing on delicate surfaces."),
+        ],
     },
     {
         "slug": "roof-cleaning",
@@ -239,6 +356,9 @@ SERVICES = [
         "icon": "roof",
         "short": "Remove black streaks, moss, and lichen safely with soft washing — no shingle damage.",
         "hero_sub": "Those black streaks are algae eating your shingles. We remove them safely and extend your roof's life.",
+        "seo_title": "Roof Cleaning Delano, MN | Barta",
+        "seo_desc": "Roof cleaning in Delano and the western Twin Cities. Soft-wash removal of black streaks, moss and lichen without damaging shingles. Get a free quote.",
+        "h1": "Roof Cleaning in Delano, MN",
         "kw": "roof cleaning Delano MN",
         "kw2": ["roof moss removal", "black streak removal roof", "soft wash roof cleaning", "shingle cleaning service"],
         "benefits": [
@@ -258,6 +378,18 @@ SERVICES = [
         ],
         "process_note": "Roof work is quoted on-site after a free, no-obligation inspection.",
         "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and co-owners Alex and Jacob personally treat every black-streak and moss job around Delano. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
+        "faqs": [
+            ("What are those black streaks on my roof?",
+             "They're Gloeocapsa magma, an algae that feeds on the limestone in asphalt shingles and spreads in humid Minnesota summers."),
+            ("Will pressure washing my roof void my warranty?",
+             "It can — pressure washing a roof isn't the manufacturer-recommended method and can strip granules and void warranties. We only soft wash roofs."),
+            ("Will soft washing damage my shingles?",
+             "No — soft washing uses low pressure and an algae-killing solution, then a gentle rinse, so there's no blasting or walk-damage to your shingles."),
+            ("How is roof cleaning priced?",
+             "Roof work is quoted on-site after a free, no-obligation inspection, since access and roof condition vary by home."),
+            ("Do you treat moss and lichen too?",
+             "Yes — moss and lichen removal are included along with black-streak algae treatment."),
+        ],
     },
     {
         "slug": "solar-panel-cleaning",
@@ -266,6 +398,9 @@ SERVICES = [
         "image": "assets/img/svc-solar-panel-cleaning.jpg",
         "short": "Dust, pollen, and grime cut solar output — we restore peak efficiency safely.",
         "hero_sub": "Dirty panels can lose 15–25% of their output. We clean them safely to restore your energy savings.",
+        "seo_title": "Solar Panel Cleaning Delano, MN | Barta",
+        "seo_desc": "Solar panel cleaning in Delano and the western Twin Cities. Restore lost energy output with safe, spot-free panel washing. Get a free quote.",
+        "h1": "Solar Panel Cleaning in Delano, MN",
         "kw": "solar panel cleaning Delano MN",
         "kw2": ["solar panel cleaning service", "solar panel washing", "clean solar panels near me", "solar maintenance"],
         "benefits": [
@@ -285,6 +420,21 @@ SERVICES = [
         ],
         "process_note": "Ask about seasonal cleaning plans to keep production at its peak.",
         "why_barta": "A layer of dust and pollen can cost you 15–25% of your solar output without ever being obvious from the ground — co-owners Alex and Jacob Barta help Delano-area homeowners recover that lost production. We only use pure water and soft tools, because scratched glass or a damaged coating costs you far more than the wash saves. Fully insured for roof and ground-mount access, and backed by our satisfaction guarantee.",
+        # [OWNER VERIFICATION REQUIRED] the "15-25% output loss" figure is a
+        # pre-existing site claim (hero_sub/benefits above), not introduced
+        # by this FAQ — flagging since it's a specific, unverified statistic.
+        "faqs": [
+            ("How much output can dirty panels lose?",
+             "Dust, pollen, and grime can cost 15–25% of your panels' output — cleaning restores that lost production."),
+            ("Will cleaning damage my panels or their coating?",
+             "No — we use pure, deionized water and soft, non-abrasive tools designed to protect the glass and anti-reflective coating."),
+            ("Do you clean residential and commercial arrays?",
+             "Yes — we clean both residential rooftop systems and commercial arrays."),
+            ("How often should solar panels be cleaned?",
+             "It depends on your system's location and exposure — we can recommend a cleaning schedule for your specific setup during your quote."),
+            ("Is roof access included and safe?",
+             "Yes — our insured technicians handle roof and ground-mount access safely as part of the service."),
+        ],
     },
     {
         "slug": "screen-cleaning",
@@ -293,6 +443,9 @@ SERVICES = [
         "image": "assets/img/svc-screen-cleaning-services.jpg",
         "short": "Hand-washed window and patio screens that breathe better and look brand new.",
         "hero_sub": "Dingy screens dull your view and your windows. We hand-wash every screen for a clear, fresh finish.",
+        "seo_title": "Screen Cleaning Delano, MN | Barta",
+        "seo_desc": "Screen cleaning in Delano and the western Twin Cities. Hand-washed window and patio screens for clearer views and better airflow. Get a free quote.",
+        "h1": "Screen Cleaning in Delano, MN",
         "kw": "window screen cleaning Delano MN",
         "kw2": ["screen cleaning service", "window screen washing", "patio screen cleaning", "screen repair near me"],
         "benefits": [
@@ -312,6 +465,16 @@ SERVICES = [
         ],
         "process_note": "Screen cleaning is included with most window cleaning packages.",
         "why_barta": "Screens are the last thing most companies think about and the first thing we do right — we hand-wash every screen we touch instead of just brushing off the front. It's a small detail that makes a real difference in how much light and airflow actually gets through. Usually bundled with window cleaning at no extra hassle, and backed by our satisfaction guarantee.",
+        "faqs": [
+            ("Are screens removed or cleaned in place?",
+             "We remove, label, and hand-wash each screen individually, then reinstall it in its original opening — nothing is cleaned in place."),
+            ("Can I book screen cleaning on its own?",
+             "Yes — screen cleaning can be booked as a standalone service or bundled with any window cleaning visit."),
+            ("What if a screen is torn or damaged?",
+             "We flag any tears or damage we notice during cleaning so you know before it becomes a bigger problem — we don't attempt repairs ourselves."),
+            ("Do you clean patio and porch screens too?",
+             "Yes — window screens as well as patio and porch screens are all part of this service."),
+        ],
     },
     {
         "slug": "hard-water-stain-removal",
@@ -320,6 +483,9 @@ SERVICES = [
         "image": "assets/img/svc-hand-scrubbing.jpg",
         "short": "Remove cloudy mineral stains from glass that ordinary cleaning can't touch.",
         "hero_sub": "Sprinkler overspray and mineral buildup etch glass. We safely restore clarity ordinary cleaning can't.",
+        "seo_title": "Hard Water Stain Removal Delano, MN | Barta",
+        "seo_desc": "Hard water stain removal in Delano and the western Twin Cities. Restore cloudy, mineral-stained glass that ordinary cleaning can't fix. Get a quote.",
+        "h1": "Hard Water Stain Removal in Delano, MN",
         "kw": "hard water stain removal Delano MN",
         "kw2": ["hard water stain removal glass", "mineral stain removal windows", "water spot removal", "glass restoration service"],
         "benefits": [
@@ -339,6 +505,16 @@ SERVICES = [
         ],
         "process_note": "Severity varies — we provide an honest assessment before any work begins.",
         "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and co-owners Alex and Jacob Barta personally restore glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
+        "faqs": [
+            ("How is this different from regular window cleaning?",
+             "Regular window cleaning removes ordinary dirt, pollen, and everyday water spotting, including light spot treatment where present. Hard Water Stain Removal is a separate, dedicated process for mineral deposits and etching that have bonded to the glass and that standard cleaning can't dissolve."),
+            ("Can all hard water staining be removed?",
+             "It depends on severity — light-to-moderate buildup usually lifts in one treatment, but years of untreated exposure can etch the glass itself, which limits how much clarity comes back. We give an honest assessment before starting."),
+            ("Will this prevent staining from coming back?",
+             "We can apply an optional protective coating that makes it harder for new deposits to bond, though the most effective prevention is addressing the water source itself — for example, redirecting a sprinkler head."),
+            ("How is pricing determined?",
+             "Severity varies significantly from window to window, so we assess your glass and provide an honest, upfront quote before any work begins."),
+        ],
     },
     {
         "slug": "christmas-light-installation",
@@ -412,6 +588,9 @@ SERVICES = [
         "image": "assets/img/svc-commercial-cleaning.jpg",
         "short": "Reliable, scheduled exterior cleaning for your business — storefronts, offices, and more.",
         "hero_sub": "From storefronts to multi-building portfolios, we keep your property polished and professional — with flexible scheduling, full insurance, and a single point of contact.",
+        "seo_title": "Commercial Exterior Cleaning Delano, MN | Barta",
+        "seo_desc": "Commercial exterior cleaning in Delano and the western Twin Cities. Scheduled window, gutter and pressure washing for your property. Get a quote.",
+        "h1": "Commercial Exterior Cleaning in Delano, MN",
         "kw": "commercial window cleaning Twin Cities MN",
         "kw2": ["commercial window cleaning", "office building cleaning", "retail storefront cleaning", "property management exterior services"],
         "benefits": [
@@ -430,6 +609,19 @@ SERVICES = [
             "Solar array cleaning",
             "Recurring scheduled service contracts",
             "Post-construction cleanup",
+        ],
+        # [OWNER VERIFICATION REQUIRED] "insured & bonded"/"workers' comp" and
+        # the "typically within 24 hours" quote-turnaround figure are
+        # pre-existing site claims (benefits above), not introduced here.
+        "faqs": [
+            ("What services are included for commercial properties?",
+             "Storefront and office window cleaning, high-rise pure-water cleaning, pressure washing, building soft washing, gutter cleaning, and solar array cleaning — scheduled around your business."),
+            ("Can you work outside business hours?",
+             "Yes — we schedule around your hours and your tenants, including evenings and weekends when needed."),
+            ("Do you offer recurring service contracts?",
+             "Yes — recurring scheduled service contracts are available for ongoing maintenance rather than one-off visits."),
+            ("Do you handle multi-building portfolios?",
+             "Yes — from single storefronts to multi-building portfolios, we act as one reliable vendor and point of contact."),
         ],
     },
 ]

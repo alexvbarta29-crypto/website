@@ -45,7 +45,9 @@ def local_business():
         ],
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
         "sameAs": [BIZ["facebook"], BIZ["instagram"], BIZ["google"]],
-        "makesOffer": {"@type": "Offer", "name": "Free Exterior Cleaning Quote", "price": "0", "priceCurrency": "USD"},
+        # Deliberately no "makesOffer": a $0-priced Offer reads as "the
+        # service costs $0," not "quotes are free" — the visible CTAs already
+        # make the free-quote offer clear without a misleading schema price.
     }
     return biz
 
@@ -81,7 +83,9 @@ def service_schema(svc):
         "provider": {"@id": BIZ["domain"] + "/#business"},
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
         "url": BIZ["domain"] + "/services/" + svc["slug"] + ".html",
-        "offers": {"@type": "Offer", "priceCurrency": "USD", "availability": "https://schema.org/InStock"},
+        # Deliberately no "offers" block: there's no real price to publish,
+        # and "availability: InStock" is a product-catalog concept that adds
+        # no accurate signal for a quoted local service.
     }
 
 def faq_schema(items):

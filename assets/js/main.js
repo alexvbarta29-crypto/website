@@ -46,6 +46,41 @@
     reveals.forEach((el) => el.classList.add("in"));
   }
 
+  /* ---- Lazy-load the 3rd-party Google reviews widget (Trustindex) only as
+         its section nears the viewport, so it never delays first paint.
+         The curated cards underneath are real, visible HTML from the start —
+         this only swaps in the live widget once (and never removes the
+         "see all reviews" link, which is static markup either way). ---- */
+  $$("[data-lazy-reviews]").forEach((el) => {
+    const b64 = el.dataset.widgetB64;
+    if (!b64) return;
+    const load = () => {
+      let html;
+      try { html = atob(b64); } catch (err) { return; }
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+      // innerHTML-inserted <script> tags are inert — recreate each one so
+      // the widget's loader actually executes.
+      temp.querySelectorAll("script").forEach((old) => {
+        const s = document.createElement("script");
+        [...old.attributes].forEach((a) => s.setAttribute(a.name, a.value));
+        s.textContent = old.textContent;
+        old.replaceWith(s);
+      });
+      const fallback = el.querySelector("[data-reviews-fallback]");
+      if (fallback) fallback.replaceWith(temp);
+      else el.insertBefore(temp, el.firstChild);
+    };
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((en) => { if (en.isIntersecting) { load(); io.unobserve(en.target); } });
+      }, { rootMargin: "600px 0px" });
+      io.observe(el);
+    } else {
+      load();
+    }
+  });
+
   /* ---- Animated counters ---- */
   const counters = $$("[data-count]");
   const runCount = (el) => {

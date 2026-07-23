@@ -619,7 +619,13 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* ---------- Service page: full-bleed photo hero (fills the screen,
    next section reveals on scroll — same idea as the homepage hero) ---------- */
-.svc-hero { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: calc(var(--nav-h) + 30px) 0 70px; text-align: left; }
+.svc-hero { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: calc(var(--nav-h) + 30px) 0 70px; text-align: left; overflow: hidden; }
+.svc-hero-media { position: absolute; inset: 0; z-index: 0; }
+.svc-hero-img { width: 100%; height: 100%; object-fit: cover; }
+.svc-hero-overlay {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(180deg, rgba(8,22,46,.35) 0%, rgba(7,18,40,.58) 55%, rgba(5,13,30,.86) 100%);
+}
 .svc-hero .container { position: relative; z-index: 1; }
 .svc-hero h1 { color: #fff; max-width: 18ch; font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1.04; text-shadow: 0 2px 20px rgba(0,0,0,.55), 0 1px 4px rgba(0,0,0,.4); }
 .svc-hero .lead { color: rgba(255,255,255,.92); margin-top: 20px; max-width: 560px; font-weight: 500; text-shadow: 0 1px 6px rgba(0,0,0,.6); }

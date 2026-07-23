@@ -44,6 +44,24 @@ def write(relpath, html, slug=None, priority="0.7"):
     if 'name="robots" content="noindex' not in html:
         PAGES.append((relpath, slug if slug is not None else relpath, priority))
 
+_IMG_SIZE_CACHE = {}
+def _img_size(relpath, default=(1125, 1500)):
+    """Real pixel dimensions of an assets/img file, used for the hero <img>'s
+    width/height attributes (correct aspect-ratio hint, no invented numbers).
+    Falls back to a representative default if Pillow isn't available or the
+    file is missing — this should never fail the build."""
+    if relpath in _IMG_SIZE_CACHE:
+        return _IMG_SIZE_CACHE[relpath]
+    size = default
+    try:
+        from PIL import Image
+        with Image.open(os.path.join(ROOT, relpath)) as im:
+            size = im.size
+    except Exception:
+        pass
+    _IMG_SIZE_CACHE[relpath] = size
+    return size
+
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
 
 def stars_row():
@@ -111,8 +129,8 @@ def build_home():
     html = C.head(
         title=f"{BIZ['name']} | Premium Window Cleaning & Exterior Care in Delano, MN",
         desc="Delano's top-rated window cleaning, gutter cleaning, pressure washing & house washing company. Licensed, insured, family-owned. 5.0★ from 100+ reviews. Get your free quote today!",
-        slug="index.html", depth=depth, schema=schema, primary_kw="window cleaning Delano MN",
-        canonical=BIZ["domain"] + "/")
+        slug="index.html", depth=depth, schema=schema,
+        canonical=BIZ["domain"] + "/", uses_reviews_widget=True)
     html += C.nav(depth)
     html += f"""
 <main id="main">
@@ -243,6 +261,51 @@ def build_home():
 # ===========================================================================
 # SERVICE PAGES
 # ===========================================================================
+# Three natural, non-identical service-area write-ups grouped by service
+# family, each linking a genuinely useful subset of real area pages (never
+# a long city/ZIP list) plus the service-areas hub. svc_lower is filled in
+# per page; the area links themselves come from _service_area_links().
+_SERVICE_AREA_TEMPLATES = {
+    "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities — including {a1}, {a2}, {a3}, and {a4}. See our {hub} for the full list of communities we serve.",
+    "wash": "Based in Delano, Barta brings {svc_lower} to homes across the western Twin Cities metro, from {a1} and {a2} to {a3} and {a4}. See our {hub} to check coverage in your community.",
+    "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. Visit our {hub} for the complete list of communities we cover.",
+}
+_SERVICE_AREA_FAMILY = {
+    "exterior-window-cleaning": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
+    "interior-window-cleaning": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
+    "track-detailing": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
+    "screen-cleaning": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
+    "hard-water-stain-removal": ("glass", ("mound", "minnetonka", "medina", "maple-grove")),
+    "gutter-cleaning": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
+    "pressure-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
+    "house-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
+    "soft-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
+    "roof-cleaning": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
+    "solar-panel-cleaning": ("specialty", ("plymouth", "minnetonka", "medina", "mound")),
+    "commercial-cleaning": ("specialty", ("plymouth", "minnetonka", "maple-grove", "medina")),
+    "christmas-light-installation": ("specialty", ("plymouth", "minnetonka", "medina", "mound")),
+}
+_AREA_LABELS = {"plymouth": "Plymouth", "maple-grove": "Maple Grove", "minnetonka": "Minnetonka",
+                "medina": "Medina", "mound": "Mound", "buffalo": "Buffalo", "delano": "Delano"}
+
+def _service_area_section(svc, depth):
+    root = C.rel(depth)
+    family, area_slugs = _SERVICE_AREA_FAMILY.get(svc["slug"], ("specialty", ("plymouth", "maple-grove", "minnetonka", "medina")))
+    links = [f'<a href="{root}areas/{slug}.html">{_AREA_LABELS[slug]}</a>' for slug in area_slugs]
+    hub = f'<a href="{root}service-areas.html">full service-area list</a>'
+    text = _SERVICE_AREA_TEMPLATES[family].format(
+        svc_lower=svc["name"].lower(), a1=links[0], a2=links[1], a3=links[2], a4=links[3], hub=hub)
+    return f"""
+  <section class="bg-mist">
+    <div class="container">
+      <div class="prose" style="max-width:760px;margin-inline:auto;text-align:center">
+        <span class="eyebrow" style="justify-content:center">Where we work</span>
+        <h2 class="mt-1">Serving Delano &amp; the western Twin Cities</h2>
+        <p class="mt-2">{text}</p>
+      </div>
+    </div>
+  </section>"""
+
 def build_service(svc):
     depth = 1
     root = C.rel(depth)
@@ -353,17 +416,24 @@ def build_service(svc):
         title=svc.get("seo_title") or f"{svc['name']} in {BIZ['city']}, MN | {BIZ['name']}",
         desc=svc.get("seo_desc") or f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Licensed, insured & guaranteed. Get your free quote from Barta today.",
         slug=f"services/{svc['slug']}.html", depth=depth, schema=schema,
-        primary_kw=svc["kw"])
+        uses_reviews_widget=True)
     html += C.nav(depth)
 
     hero_img = svc.get("image") or "assets/img/hero-home.jpg"
     hero_pos = svc.get("hero_pos", "30%")
-    hero_bg = (f"linear-gradient(180deg, rgba(8,22,46,.35) 0%, rgba(7,18,40,.58) 55%, rgba(5,13,30,.86) 100%), "
-               f"url('{root}{hero_img}')")
+    hero_w, hero_h = _img_size(hero_img)
+    # Empty alt + aria-hidden wrapper: this photo functions as a background
+    # layer behind the H1/lead text (same role the CSS background played
+    # before), not standalone content — the adjacent heading already states
+    # the service and location, so a screen reader shouldn't announce it twice.
+    hero_picture = C.picture(root, hero_img, "", img_class="svc-hero-img",
+                              extra_attrs=f'width="{hero_w}" height="{hero_h}" fetchpriority="high" decoding="async" style="object-position:50% {hero_pos}"')
 
     html += f"""
 <main id="main">
-  <section class="svc-hero" style="background-image:{hero_bg};background-size:cover,cover;background-position:center,center {hero_pos}">
+  <section class="svc-hero">
+    <div class="svc-hero-media" aria-hidden="true">{hero_picture}</div>
+    <div class="svc-hero-overlay" aria-hidden="true"></div>
     <div class="container">
       {C.crumbs([("Home", root + "index.html"), ("Services", root + "residential.html"), (svc['name'], None)], light=True)}
       {f'<span class="xmas-hero-badge">{icon("lights")} Now booking for the holidays</span>' if is_xmas else ""}
@@ -414,6 +484,7 @@ def build_service(svc):
   </section>
 
   {process_section}
+  {_service_area_section(svc, depth)}
 
   <section>
     <div class="container">
@@ -809,17 +880,13 @@ def build_team():
 def build_reviews():
     depth = 0
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
-    has_widget = bool(REVIEWS_WIDGET_PAGE and REVIEWS_WIDGET_PAGE.strip())
     schema = BASE_SCHEMA
     html = C.head(
         title=f"Reviews & Testimonials | {BIZ['name']} — {BIZ['rating']}★ in Delano, MN",
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
-        slug="reviews.html", depth=depth, schema=schema, primary_kw="Barta Window Washing reviews Delano MN")
+        slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True)
     html += C.nav(depth)
-    if has_widget:
-        reviews_content = f'<div class="reviews-embed reveal" data-google-reviews>{REVIEWS_WIDGET_PAGE}</div>'
-    else:
-        reviews_content = f'<div class="grid cols-3">{cards}</div>'
+    reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth)
     html += f"""<main id="main">
   <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors — {BIZ['name']} Reviews</h1>
   <section class="section-tight" style="padding-top:calc(var(--nav-h) + 40px)"><div class="container">{reviews_content}</div></section>

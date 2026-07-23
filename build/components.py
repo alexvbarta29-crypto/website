@@ -30,10 +30,16 @@ def picture(root, src, alt, img_class="", extra_attrs=""):
     return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
             f'<img class="{img_class}" src="{root}{src}" alt="{alt}" {extra_attrs}></picture>')
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False):
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
-    pages that shouldn't compete in search) instead of the default index."""
+    pages that shouldn't compete in search) instead of the default index.
+    uses_reviews_widget=True adds the Trustindex preconnect — only pages
+    that actually render the widget (home, service pages, reviews.html)
+    should pay for that connection.
+    primary_kw is accepted for callers that still pass it, but is no longer
+    rendered — Google doesn't use <meta name="keywords">, and publishing one
+    telegraphs targeted phrases for no ranking benefit."""
     root = rel(depth)
     canonical = canonical or (BIZ["domain"] + "/" + slug)
     schema_blocks = ""
@@ -41,6 +47,8 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
         for s in schema:
             schema_blocks += '<script type="application/ld+json">' + json.dumps(s, separators=(",", ":")) + "</script>\n"
     robots = "noindex, follow" if noindex else "index, follow, max-image-preview:large"
+    trustindex_preconnect = ('<link rel="preconnect" href="https://cdn.trustindex.io">\n'
+                              '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,7 +57,6 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{desc}">
-{'<meta name="keywords" content="' + primary_kw + '">' if primary_kw else ''}
 <link rel="canonical" href="{canonical}">
 <meta name="theme-color" content="#16161b">
 <meta name="robots" content="{robots}">
@@ -69,9 +76,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <!-- Fonts — Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
-<link rel="preconnect" href="https://cdn.trustindex.io">
-<link rel="dns-prefetch" href="https://cdn.trustindex.io">
-<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
+{trustindex_preconnect}<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="{root}assets/css/styles.min.css?v={ASSET_VER}">
 <link rel="icon" href="{root}assets/img/favicon.svg" type="image/svg+xml">
@@ -697,13 +702,16 @@ def google_badge(depth=0, light=False, text=None):
             f'{stars}<span class="gb-g">{GOOGLE_G}</span><span class="gb-text">{text}</span></a>')
 
 def reviews_block(widget_embed, fallback_cards, depth=0):
-    """Render the live Google reviews widget when configured, else the curated
-    fallback cards. Either way it sits inside a `.grid cols-3` container on the
-    caller's page, so we only swap the inner content."""
+    """Curated review cards render immediately (so the section is never
+    empty and works with no JavaScript at all); the 3rd-party widget embed
+    is base64-stashed in a data attribute and only fetched/executed once
+    its section nears the viewport (see main.js), so it can't delay
+    first paint. The "see all reviews" link is static HTML either way."""
     if widget_embed and widget_embed.strip():
-        root = rel(depth)
-        return f"""<div class="reviews-embed reveal" data-google-reviews>
-{widget_embed}
+        import base64
+        encoded = base64.b64encode(widget_embed.encode("utf-8")).decode("ascii")
+        return f"""<div class="reviews-embed reveal" data-lazy-reviews data-widget-b64="{encoded}">
+  <div class="grid cols-3" data-reviews-fallback>{fallback_cards}</div>
   <p class="center mt-3"><a class="btn btn-ghost" href="{BIZ['google']}">{icon('star')} See all reviews on Google {icon('arrow')}</a></p>
 </div>"""
     return f'<div class="grid cols-3">{fallback_cards}</div>'
