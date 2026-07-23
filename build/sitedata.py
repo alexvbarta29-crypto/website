@@ -366,6 +366,11 @@ SERVICES = [
         ],
         "process_note": "Books up fast — reserve your install in early fall for best availability.",
         "why_barta": "Co-owners Alex and Jacob Barta personally design and install every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
+        "experience_steps": [
+            ("Custom Lighting Design", "We measure your rooflines, walkways, and trees, then plan a layout so every strand fits your home perfectly — no sagging, no bare gaps."),
+            ("Professional Install &amp; Maintenance", "Our insured crew installs premium commercial-grade lights safely, and if a strand fails mid-season, we replace it free."),
+            ("Free Takedown &amp; Storage", "When the season ends, we take everything down — and can store your lights for an even easier install next year."),
+        ],
     },
     {
         "slug": "commercial-cleaning",

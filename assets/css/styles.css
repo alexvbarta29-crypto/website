@@ -372,6 +372,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 .card { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 28px; box-shadow: var(--sh-sm); transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out), border-color .4s; height: 100%; }
 .card:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); border-color: transparent; }
+.step-num { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 1.1rem; box-shadow: var(--sh-glow); }
 
 /* Service card */
 .svc-card { position: relative; display: flex; flex-direction: column; overflow: hidden; }
@@ -692,6 +693,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .pills { display: flex; flex-wrap: wrap; gap: 10px; }
 .pill { padding: 9px 16px; border-radius: var(--r-pill); background: var(--mist); border: 1px solid var(--line); font-size: .88rem; font-weight: 600; color: var(--slate-700); }
 .pill:hover { border-color: var(--blue-500); color: var(--blue-600); }
+.pill svg { display: inline; width: 15px; height: 15px; vertical-align: -2px; margin-right: 4px; color: var(--blue-600); }
 
 /* Area cards */
 .area-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }

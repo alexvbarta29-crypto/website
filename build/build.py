@@ -271,6 +271,45 @@ def build_service(svc):
   </section>"""
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
 
+    # Christmas Light Installation gets a couple of extra highlight sections
+    # (a 3-step "how it works" and an icon benefit grid) right under the hero,
+    # since it's a seasonal, higher-consideration service worth extra framing.
+    xmas_extra = ""
+    if svc["slug"] == "christmas-light-installation":
+        step_cards = "".join(
+            f'<div class="card reveal" data-delay="{i%3}" style="text-align:center">'
+            f'<span class="step-num">{i+1}</span>'
+            f'<h3 class="mt-2" style="font-size:1.15rem">{t}</h3><p class="mt-1">{d}</p></div>'
+            for i, (t, d) in enumerate(svc.get("experience_steps", [])))
+        benefit_icons = ["sparkle", "bolt", "wrench", "shield"]
+        benefit_cards = "".join(
+            f'<div class="card reveal" data-delay="{i%3}"><span class="ic" style="width:54px;height:54px;border-radius:14px;'
+            f'background:var(--grad-brand);color:#fff;display:grid;place-items:center;box-shadow:var(--sh-glow)">'
+            f'{icon(benefit_icons[i % len(benefit_icons)])}</span>'
+            f'<h3 class="mt-2" style="font-size:1.15rem">{t}</h3><p class="mt-1">{d}</p></div>'
+            for i, (t, d) in enumerate(svc["benefits"]))
+        xmas_extra = f"""
+  <section>
+    <div class="container">
+      <p class="pill" style="margin-inline:auto;width:fit-content;text-align:center">{icon('clock')} {svc['process_note']}</p>
+      <div class="section-head center mt-3">
+        <span class="eyebrow">How it works</span>
+        <h2>The Barta holiday lighting experience</h2>
+      </div>
+      <div class="grid cols-3">{step_cards}</div>
+    </div>
+  </section>
+
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow">Why homeowners choose us</span>
+        <h2>Built for a stress-free holiday season</h2>
+      </div>
+      <div class="grid cols-2">{benefit_cards}</div>
+    </div>
+  </section>"""
+
     svc_faqs = [
         (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
          f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
@@ -312,6 +351,7 @@ def build_service(svc):
       </div>
     </div>
   </section>
+  {xmas_extra}
 
   <section class="bg-mist" id="plans">
     <div class="container">
