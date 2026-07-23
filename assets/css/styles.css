@@ -298,6 +298,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .form-success svg { width: 56px; height: 56px; color: var(--green); margin: 0 auto 14px; }
 .form.sent { display: none; }
 .form-success.show { display: block; }
+/* Phone-sized screens can dial straight from the button; anything wider
+   can't place a call, so show the number itself to type/save instead. */
+.call-us-number { display: none; margin-top: 14px; font-size: 1.05rem; }
+.call-us-number a { color: var(--blue-600); font-weight: 700; text-decoration: underline; }
+@media (min-width: 761px) {
+  .call-us-btn { display: none; }
+  .call-us-number { display: block; }
+}
 
 /* ---------- Quote flow (bare full-screen wizard page, no nav/footer) ---------- */
 .quote-flow { min-height: 100vh; min-height: 100svh; background: #fff; }
@@ -589,7 +597,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .map-embed iframe { position: relative; z-index: 1; display: block; pointer-events: none; }
 /* Shift the map so our pin sits left-of-center, revealing more of the
    metro area to the east instead of centering the pin in the frame. */
-.map-embed.map-pin-left iframe { position: absolute; top: 0; left: -50%; width: 160%; height: 100%; }
+.map-embed.map-pin-left iframe { position: absolute; top: 0; left: -60%; width: 170%; height: 100%; }
 .map-embed .map-fallback { position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; color: var(--slate-700); background: linear-gradient(180deg, #fff 0%, var(--mist) 100%); }
 .map-embed .map-fallback .ph-label { position: relative; font-family: var(--font-head); font-weight: 700; letter-spacing: .02em; text-align: center; padding: 14px; }
 .map-embed .map-fallback svg { width: 28px; height: 28px; margin-bottom: 6px; color: var(--blue-600); }

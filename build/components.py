@@ -468,7 +468,8 @@ def quote_wizard(depth=0, svc_default=None):
     {icon('check-circle')}
     <h2>Thank you! Your request is in.</h2>
     <p>Someone will reach out shortly.</p>
-    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">Call Us</a>
+    <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">Call Us</a>
+    <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
   </div>
 </div>"""
 
@@ -643,13 +644,16 @@ def faq_block(items):
 
 def gmap_embed(title, label=None, zoom=10, cls=""):
     """Responsive, lazy-loaded Google Maps embed (no API key required) with
-    the business's own Google pin — the embed searches the listing by name,
-    so the marker reads "Barta Window Washing Services" just like on Google.
-    The whole widget is a link that opens the listing on Google Maps. A light
-    placeholder panel shows until the iframe finishes loading."""
+    the business's own Google pin. The embedded iframe centers on our raw
+    lat/lng (a plain pin, no business-card panel) so the CSS pin-shift trick
+    on `.map-pin-left` reliably works — a business-name `q=` search instead
+    renders Google's place-card layout, which ignores the CSS offset. The
+    whole widget is still a link that opens the real listing (searched by
+    name) on Google Maps. A light placeholder panel shows until the iframe
+    finishes loading."""
     label = label or f"{BIZ['legal_name']} — {BIZ['city']}, {BIZ['state']}"
     biz_query = quote_plus(f"{BIZ['legal_name']} {BIZ['city']} {BIZ['state']}")
-    src = f"https://maps.google.com/maps?q={biz_query}&z={zoom}&output=embed"
+    src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
     gmaps_link = "https://www.google.com/maps/search/?api=1&query=" + biz_query
     return f"""<a class="map-embed {cls}" data-map-embed
     href="{gmaps_link}" target="_blank" rel="noopener"
