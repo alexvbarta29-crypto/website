@@ -62,28 +62,31 @@ def _img_size(relpath, default=(1125, 1500)):
     _IMG_SIZE_CACHE[relpath] = size
     return size
 
-def _hero_picture_html(root, image_path, hero_pos):
+def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img", alt=""):
     """Responsive hero <picture>: WebP source + JPG fallback, each with a
     640w/1200w srcset (see generate_hero_variants()) so a phone downloads the
     small file and only one image request happens either way — never both a
     CSS background and an <img>. Falls back to the single full-resolution
     image (previous behavior) if the responsive variants haven't been
-    generated for some reason, so a missing Pillow install can't break a page."""
-    style = f'style="object-position:50% {hero_pos}"'
+    generated for some reason, so a missing Pillow install can't break a page.
+    hero_pos=None omits the inline object-position style, leaving cropping to
+    the page's own CSS (including any @media override) — used by the
+    homepage hero, whose .hero-bg-img rule already handles this responsively."""
+    style = f'style="object-position:50% {hero_pos}"' if hero_pos else ""
     stem = image_path.rsplit(".", 1)[0]
     variants_exist = all(
         os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.{fmt}"))
         for w in (640, 1200) for fmt in ("webp", "jpg"))
     if not variants_exist:
         w, h = _img_size(image_path)
-        return C.picture(root, image_path, "", img_class="svc-hero-img",
+        return C.picture(root, image_path, alt, img_class=img_class,
                           extra_attrs=f'width="{w}" height="{h}" fetchpriority="high" decoding="async" {style}')
     w1200, h1200 = _img_size(f"{stem}-1200w.jpg")
     return (f'<picture>'
             f'<source type="image/webp" srcset="{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w" sizes="100vw">'
-            f'<img class="svc-hero-img" src="{root}{stem}-1200w.jpg" '
+            f'<img class="{img_class}" src="{root}{stem}-1200w.jpg" '
             f'srcset="{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w" sizes="100vw" '
-            f'alt="" width="{w1200}" height="{h1200}" fetchpriority="high" decoding="async" {style}>'
+            f'alt="{alt}" width="{w1200}" height="{h1200}" fetchpriority="high" decoding="async" {style}>'
             f'</picture>')
 
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
@@ -99,9 +102,13 @@ def build_home():
     svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
+    # Priority cities only (Delano + the 5 other tier="primary" communities) —
+    # the full 36-city list lives on service-areas.html, linked just below;
+    # the homepage grid isn't the place for a long city list.
+    _priority_areas = [a for a in AREAS if a["tier"] == "primary"]
     areas_html = "".join(
         f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{icon("pin")} {a["city"]}</a>'
-        for i, a in enumerate(AREAS))
+        for i, a in enumerate(_priority_areas))
 
     process_steps = [
         ("01", "Mop", "assets/img/svc-mop-window.jpg",
@@ -151,22 +158,24 @@ def build_home():
     schema = BASE_SCHEMA + [S.faq_schema(home_faqs)]
 
     html = C.head(
-        title=f"{BIZ['name']} | Premium Window Cleaning & Exterior Care in Delano, MN",
-        desc="Delano's top-rated window cleaning, gutter cleaning, pressure washing & house washing company. Licensed, insured, family-owned. 5.0★ from 100+ reviews. Get your free quote today!",
+        title="Exterior Cleaning Company in Delano, MN | Barta",
+        desc="Window cleaning, gutter cleaning, pressure washing & house washing in Delano and the western Twin Cities. Licensed, insured, family-owned. Get a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True)
     html += C.nav(depth)
+    hero_picture = _hero_picture_html("", "assets/img/hero-home.jpg", img_class="hero-bg-img",
+                                       alt="The branded Barta Window Washing (BWW) service van in the Delano, MN area")
     html += f"""
 <main id="main">
   <!-- HERO -->
   <section class="hero hero-photo-full">
-    {C.picture("", "assets/img/hero-home.jpg", "The branded Barta Window Washing (BWW) service van in the Delano, MN area", img_class="hero-bg-img", extra_attrs='width="1920" height="1442" fetchpriority="high" decoding="async"')}
+    {hero_picture}
     <div class="hero-overlay"></div>
     <div class="container">
       <div class="hero-content reveal in">
         {C.google_badge(depth)}
-        <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
-        <p class="lead">Minnesota's trusted exterior cleaning professionals. Brighter views. Spotless results. Satisfaction guaranteed.</p>
+        <h1>Professional Exterior Cleaning Services</h1>
+        <p class="lead">Serving Delano and communities throughout the western Twin Cities — window cleaning, gutter cleaning, pressure washing, house washing, and more.</p>
         <div class="hero-actions">
           <a class="btn btn-lg" href="get-quote.html">Get Your Free Quote {icon('arrow')}</a>
         </div>
