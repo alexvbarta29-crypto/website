@@ -102,10 +102,13 @@ def build_home():
     svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
-    # Priority cities only (Delano + the 5 other tier="primary" communities) —
-    # the full 36-city list lives on service-areas.html, linked just below;
-    # the homepage grid isn't the place for a long city list.
-    _priority_areas = [a for a in AREAS if a["tier"] == "primary"]
+    # Curated 12-city homepage grid — the full 36-city list lives on
+    # service-areas.html, linked just below; the homepage grid isn't the
+    # place for the complete list.
+    _HOME_AREA_SLUGS = ["delano", "buffalo", "medina", "mound", "plymouth", "st-michael",
+                         "maple-grove", "minnetonka", "wayzata", "orono", "excelsior", "chanhassen"]
+    _areas_by_slug = {a["slug"]: a for a in AREAS}
+    _priority_areas = [_areas_by_slug[slug] for slug in _HOME_AREA_SLUGS]
     areas_html = "".join(
         f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{icon("pin")} {a["city"]}</a>'
         for i, a in enumerate(_priority_areas))
@@ -158,8 +161,8 @@ def build_home():
     schema = BASE_SCHEMA + [S.faq_schema(home_faqs)]
 
     html = C.head(
-        title="Exterior Cleaning Company in Delano, MN | Barta",
-        desc="Window cleaning, gutter cleaning, pressure washing & house washing in Delano and the western Twin Cities. Licensed, insured, family-owned. Get a free quote.",
+        title="Window & Exterior Cleaning in Delano, MN | Barta",
+        desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True)
     html += C.nav(depth)
@@ -174,6 +177,7 @@ def build_home():
     <div class="container">
       <div class="hero-content reveal in">
         {C.google_badge(depth)}
+        <span class="eyebrow hero-kicker" style="color:#ff9b86;display:flex;margin-top:16px">Dirty Windows? We can fix that.</span>
         <h1>Professional Exterior Cleaning Services</h1>
         <p class="lead">Serving Delano and communities throughout the western Twin Cities — window cleaning, gutter cleaning, pressure washing, house washing, and more.</p>
         <div class="hero-actions">
@@ -234,8 +238,8 @@ def build_home():
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">See the difference</span>
-        <h2>Before &amp; after — drag to reveal</h2>
-        <p>Real results from real Barta jobs. Slide each image to see the transformation.</p>
+        <h2>Before &amp; After Results</h2>
+        <p>Drag the slider to compare the before and after results.</p>
       </div>
       <div class="grid cols-3">{ba_html}</div>
     </div>
@@ -268,7 +272,7 @@ def build_home():
         {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps — serving {BIZ['city']} and the western Twin Cities", cls="reveal map-pin-left")}
         <div class="area-grid reveal">{areas_html}</div>
       </div>
-      <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">See all service areas {icon('arrow')}</a></div>
+      <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">View All Service Areas {icon('arrow')}</a></div>
     </div>
   </section>
 
@@ -285,7 +289,7 @@ def build_home():
     </div>
   </section>
 
-  {C.cta_band(depth)}
+  {C.cta_band(depth, text="Join homeowners across Delano and the western Twin Cities who trust Barta for spotless, stress-free exterior cleaning. Get your free quote today.")}
 </main>
 """
     html += C.page_end(depth)
