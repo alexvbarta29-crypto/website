@@ -197,7 +197,6 @@ def footer(depth=0):
           <li><a href="{root}about.html">About Us</a></li>
           <li><a href="{root}team.html">Meet the Team</a></li>
           <li><a href="{root}why-choose-us.html">Why Choose Us</a></li>
-          <li><a href="{root}service-plans.html">Service Plans</a></li>
           <li><a href="{root}reviews.html">Reviews</a></li>
           <li><a href="{root}gallery.html">Gallery</a></li>
           <li><a href="{root}careers.html">Careers</a></li>
