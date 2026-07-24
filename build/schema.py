@@ -78,7 +78,7 @@ def service_schema(svc):
         "@context": "https://schema.org",
         "@type": "Service",
         "serviceType": svc["name"],
-        "name": svc["name"] + " in " + BIZ["city"] + ", MN",
+        "name": svc.get("schema_name") or (svc["name"] + " in " + BIZ["city"] + ", MN"),
         "description": svc["short"],
         "provider": {"@id": BIZ["domain"] + "/#business"},
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],

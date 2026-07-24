@@ -41,10 +41,14 @@ SERVICES = [
         "icon": "window",
         "image": "assets/img/svc-exterior-window-cleaning.jpg",
         "short": "Streak-free exterior glass, screens, sills, and tracks — cleaned without ladders in your flower beds.",
-        "hero_sub": "Crystal-clear, streak-free exterior windows using pure-water poles and hand-detailing — no ladders in your landscaping.",
+        "hero_sub": "Serving Delano and communities throughout the western Twin Cities.",
         "seo_title": "Exterior Window Cleaning Delano, MN | Barta",
         "seo_desc": "Exterior window cleaning in Delano and the western Twin Cities. Streak-free glass, detailed frames and professional service. Get a free quote.",
-        "h1": "Exterior Window Cleaning in Delano, MN",
+        "h1": "Professional Exterior Window Cleaning",
+        # Service schema "name" — broader territory framing to match the H1;
+        # serviceType/areaServed (schema.py) are untouched, so Delano and
+        # every legitimate surrounding city are still fully represented.
+        "schema_name": "Professional Exterior Window Cleaning",
         "kw": "exterior window cleaning Delano MN",
         "kw2": ["exterior window cleaning", "professional window washers", "pure-water window cleaning", "streak-free window cleaning"],
         "benefits": [
@@ -90,6 +94,7 @@ SERVICES = [
             ("What happens if it rains after service?",
              "Rain itself typically does not cause mineral spotting on professionally cleaned glass. If you notice a streak or cleaning issue after service, contact us and we'll inspect it and make it right according to our service guarantee."),
         ],
+        "cta_text": "Get your free, no-obligation exterior window cleaning quote today and see why homeowners across the western Twin Cities trust Barta.",
     },
     {
         "slug": "interior-window-cleaning",

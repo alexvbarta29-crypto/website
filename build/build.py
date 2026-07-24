@@ -290,7 +290,11 @@ def build_home():
 # a long city/ZIP list) plus the service-areas hub. svc_lower is filled in
 # per page; the area links themselves come from _service_area_links().
 _SERVICE_AREA_TEMPLATES = {
-    "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities — including {a1}, {a2}, {a3}, and {a4}. See our {hub} for the full list of communities we serve.",
+    # "glass" ends on {hub_view_all} rather than "See our {hub} for the full
+    # list..." — that phrasing repeated "full list" twice in a row and read
+    # awkwardly (fixed on the exterior-window-cleaning page; the other four
+    # "glass"-family pages share this same template and get the same fix).
+    "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities — including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
     "wash": "Based in Delano, Barta brings {svc_lower} to homes across the western Twin Cities metro, from {a1} and {a2} to {a3} and {a4}. See our {hub} to check coverage in your community.",
     "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. Visit our {hub} for the complete list of communities we cover.",
 }
@@ -317,8 +321,10 @@ def _service_area_section(svc, depth):
     family, area_slugs = _SERVICE_AREA_FAMILY.get(svc["slug"], ("specialty", ("plymouth", "maple-grove", "minnetonka", "medina")))
     links = [f'<a href="{root}areas/{slug}.html">{_AREA_LABELS[slug]}</a>' for slug in area_slugs]
     hub = f'<a href="{root}service-areas.html">full service-area list</a>'
+    hub_view_all = f'<a href="{root}service-areas.html">View all communities we serve.</a>'
     text = _SERVICE_AREA_TEMPLATES[family].format(
-        svc_lower=svc["name"].lower(), a1=links[0], a2=links[1], a3=links[2], a4=links[3], hub=hub)
+        svc_lower=svc["name"].lower(), a1=links[0], a2=links[1], a3=links[2], a4=links[3],
+        hub=hub, hub_view_all=hub_view_all)
     return f"""
   <section class="bg-mist">
     <div class="container">
@@ -515,7 +521,7 @@ def build_service(svc):
     </div>
   </section>
 
-  {C.cta_band(depth, heading=f"Ready for spotless results?", text=f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.", image=hero_img, image_pos=hero_pos)}
+  {C.cta_band(depth, heading=f"Ready for spotless results?", text=svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why Delano trusts Barta.", image=hero_img, image_pos=hero_pos)}
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
