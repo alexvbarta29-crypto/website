@@ -19,10 +19,13 @@ python3 -m http.server 8000      # then visit http://localhost:8000
 
 ### Rebuilding pages
 
-All HTML is generated from a small Python toolchain (no third-party packages) so every page shares
-one nav, footer, design system, and SEO scaffold. After editing content/data, regenerate:
+All HTML is generated from a small Python toolchain so every page shares one nav, footer, design
+system, and SEO scaffold. The core build needs only the standard library; Pillow (see
+`requirements.txt`) is used for responsive image/WebP generation and degrades gracefully (with a
+console warning) if it isn't installed. After editing content/data, regenerate:
 
 ```bash
+pip install -r requirements.txt   # one-time, for image processing
 python3 build/build.py
 ```
 
@@ -58,7 +61,7 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 │   ├── css/styles.css          # Full design system (tokens, components, responsive)
 │   ├── js/main.js              # Nav, drawer, reveal, counters, before/after, forms
 │   └── img/                    # Favicon, OG cover, before/after placeholders + README
-├── build/                      # Static-site generator (Python, stdlib only)
+├── build/                      # Static-site generator (Python; Pillow optional, see requirements.txt)
 │   ├── sitedata.py             # Single source of truth: NAP, services, areas, plans, reviews…
 │   ├── components.py           # head/SEO, nav, footer, forms, sections
 │   ├── icons.py · schema.py · build.py

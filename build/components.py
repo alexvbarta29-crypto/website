@@ -560,7 +560,11 @@ def service_image_card(s, depth=0, idx=0):
     back to a branded dark gradient + faint service icon otherwise."""
     root = rel(depth)
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
-    img = "assets/img/svc-" + _slugify(s["name"]) + ".jpg"
+    # Use the service's own real photo (SERVICES[]["image"], the same field
+    # its own service page's hero uses) instead of re-guessing a filename
+    # from the service name — the guess doesn't always match an actual file
+    # on disk (e.g. "House Washing" reuses the "soft-washing" photo).
+    img = s.get("image") or "assets/img/hero-home.jpg"
     alt = f"{s['name']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
     img_tag = picture(root, img, alt, img_class="img-card-bg",
                        extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')

@@ -44,21 +44,54 @@ def write(relpath, html, slug=None, priority="0.7"):
     if 'name="robots" content="noindex' not in html:
         PAGES.append((relpath, slug if slug is not None else relpath, priority))
 
+def _jpeg_size(path):
+    """Pure-stdlib JPEG pixel-size reader (scans SOF0/2/etc. markers) — used
+    when Pillow isn't installed so a missing dependency can't silently write
+    a wrong, hardcoded aspect ratio into width/height attributes (that's a
+    real CLS/layout-shift bug, not just a cosmetic one)."""
+    with open(path, "rb") as f:
+        data = f.read()
+    if data[0:2] != b"\xff\xd8":
+        return None
+    i = 2
+    sof_markers = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                   0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+    while i < len(data) - 9:
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in sof_markers:
+            h = (data[i + 5] << 8) + data[i + 6]
+            w = (data[i + 7] << 8) + data[i + 8]
+            return (w, h)
+        seg_len = (data[i + 2] << 8) + data[i + 3]
+        i += 2 + seg_len
+    return None
+
 _IMG_SIZE_CACHE = {}
 def _img_size(relpath, default=(1125, 1500)):
     """Real pixel dimensions of an assets/img file, used for the hero <img>'s
     width/height attributes (correct aspect-ratio hint, no invented numbers).
-    Falls back to a representative default if Pillow isn't available or the
-    file is missing — this should never fail the build."""
+    Tries Pillow first, then a dependency-free JPEG header read, and only
+    falls back to `default` if the file is genuinely missing or unreadable
+    — this should never fail the build, but should also never silently
+    report the wrong aspect ratio for a file that does exist."""
     if relpath in _IMG_SIZE_CACHE:
         return _IMG_SIZE_CACHE[relpath]
+    full = os.path.join(ROOT, relpath)
     size = default
     try:
         from PIL import Image
-        with Image.open(os.path.join(ROOT, relpath)) as im:
+        with Image.open(full) as im:
             size = im.size
     except Exception:
-        pass
+        try:
+            jpeg_size = _jpeg_size(full)
+            if jpeg_size:
+                size = jpeg_size
+        except Exception:
+            pass
     _IMG_SIZE_CACHE[relpath] = size
     return size
 
@@ -1084,7 +1117,11 @@ def build_area(a):
     homebase = " — our home base" if a["note"] == "our home base" else ""
     html = C.head(
         title=f"Exterior Cleaning Services in {a['city']}, MN | {BIZ['name']}",
-        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local, licensed & insured. Serving {nbhds}. Get your free quote from Barta.",
+        # Neighborhood names are already visible on the page itself (hero +
+        # FAQ) — repeating the full list here was pushing every one of the
+        # 36 area-page descriptions past 175-200+ characters, well beyond
+        # what Google renders before truncating in search results.
+        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local, licensed & insured. Get your free quote from Barta.",
         slug=f"areas/{a['slug']}.html", depth=depth, schema=schema,
         primary_kw=f"exterior cleaning services {a['city']} MN")
     html += C.nav(depth)

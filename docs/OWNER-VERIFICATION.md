@@ -11,6 +11,17 @@ concern because it isn't part of the generated site at all — it lives only in 
 
 ---
 
+## Audit history
+
+- **Full sitewide technical/production-readiness audit** (this pass): every claim below was
+  re-checked against the current generated HTML across all 80 pages. All 26 individual claims and
+  the plan-structure conflict are still present, worded the same way, and still unverified — nothing
+  new was discovered, nothing here was resolved. This pass's fixes were purely technical (meta
+  description length, a broken image reference, build-dependency robustness) and did not touch any
+  claim, price, guarantee, or business fact.
+
+---
+
 ## 1. Conflicting plan structures — highest priority
 
 The site currently describes **two different, non-reconciled membership systems**:
