@@ -494,6 +494,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* ---------- Before / After Slider ---------- */
 .ba { position: relative; aspect-ratio: 3/4; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); user-select: none; touch-action: pan-y; }
+/* .ba-range is visually transparent (opacity:0) so its own native focus
+   ring is invisible too — show focus on the container instead so keyboard
+   users can see where they are. */
+.ba:focus-within { outline: 3px solid var(--sky-400); outline-offset: 3px; }
 .ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .ba-after { clip-path: inset(0 0 0 50%); }
 .ba-label { position: absolute; bottom: 14px; padding: 6px 14px; font-size: .76rem; font-weight: 700; font-family: var(--font-head); letter-spacing: .06em; text-transform: uppercase; border-radius: var(--r-pill); backdrop-filter: blur(8px); color: #fff; }

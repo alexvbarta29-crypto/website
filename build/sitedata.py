@@ -865,6 +865,31 @@ FAQS = [
 ]
 
 # ---------------------------------------------------------------------------
+# Real-photo alt text — describes what each photo actually shows, keyed by
+# its asset path. Reused everywhere a photo appears (homepage/residential
+# cards, process-slider steps) so the same real photo always gets the same
+# accurate description instead of a per-use "<Service> in Delano, MN"
+# label that repeats the adjacent heading and states a location the photo
+# itself doesn't show.
+# ---------------------------------------------------------------------------
+IMAGE_ALT = {
+    "assets/img/svc-exterior-window-cleaning.jpg": "Technician using a water-fed pole to clean second-story exterior windows",
+    "assets/img/svc-interior-window-cleaning.jpg": "Technician cleaning interior window glass with a squeegee",
+    "assets/img/svc-track-detailing.jpg": "Technician vacuuming a window track with a wet/dry vacuum",
+    "assets/img/svc-gutter-cleaning.jpg": "Technician clearing a gutter by hand from a ladder",
+    "assets/img/svc-pressure-washing.jpg": "Pressure washing a concrete patio with a surface-cleaner attachment",
+    "assets/img/svc-soft-washing.jpg": "Soft washing a home's exterior siding with low-pressure equipment",
+    "assets/img/svc-solar-panel-cleaning.jpg": "Rooftop solar panels being cleaned with a soft-bristle brush on an extension pole",
+    "assets/img/svc-screen-cleaning-services.jpg": "Technician washing a window screen at a screen-cleaning station",
+    "assets/img/svc-hand-scrubbing.jpg": "Hand-scrubbing a window pane with an abrasive pad",
+    "assets/img/svc-christmas-light-installation.jpg": "Warm white holiday lights installed along a home's roofline at night",
+    "assets/img/svc-commercial-cleaning.jpg": "Technicians cleaning storefront windows on a commercial building",
+    "assets/img/svc-mop-window.jpg": "Applying cleaning solution to a window with a T-bar mop",
+    "assets/img/svc-detail-frame.jpg": "Hand-detailing a window frame with a microfiber cloth",
+    "assets/img/hero-home.jpg": "The branded Barta Window Washing (BWW) service van",
+}
+
+# ---------------------------------------------------------------------------
 # Trust badges
 # ---------------------------------------------------------------------------
 BADGES = [

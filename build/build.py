@@ -1203,6 +1203,53 @@ def build_terms():
     write("terms.html", html, slug="terms.html", priority="0.2")
 
 # ===========================================================================
+# 404 (custom error page)
+# ===========================================================================
+def build_404():
+    """Static hosts (GitHub Pages included) serve this file's bytes for any
+    unmatched URL without changing the address bar, so every relative path
+    the shared nav/footer/CSS normally rely on (built assuming depth=0)
+    would resolve against whatever nested path the visitor actually hit —
+    see the base_href note on components.head(). A <base> tag fixes that
+    for the whole page without duplicating the nav/footer markup here."""
+    depth = 0
+    # Root-relative (no scheme/host) rather than an absolute production URL,
+    # so this still resolves correctly under local/preview testing and any
+    # other root-domain deploy, not just the final production domain — the
+    # only case it doesn't cover is a GitHub Pages *project* page served
+    # from a /reponame/ subpath instead of a domain root. The trailing
+    # "/404.html" (not just "/") matters too: <base> resolves a bare
+    # "#main" fragment against the full base path, so this keeps the
+    # skip-link on this same page instead of sending it to the homepage.
+    base_href = "/404.html"
+    schema = [S.local_business(), S.organization(), S.website()]
+    html = C.head(
+        title=f"Page Not Found | {BIZ['name']}",
+        desc=f"The page you're looking for can't be found. Visit the {BIZ['name']} homepage, browse our services, or request a free quote.",
+        slug="404.html", depth=depth, schema=schema, noindex=True,
+        canonical=BIZ["domain"] + "/404.html", base_href=base_href)
+    html += C.nav(depth)
+    html += f"""
+<main id="main">
+  <section class="phero" style="min-height:56vh;display:flex;align-items:center">
+    <div class="container center">
+      <span class="eyebrow" style="justify-content:center">404</span>
+      <h1 class="mt-1">We can't find that page</h1>
+      <p class="lead" style="max-width:560px;margin-inline:auto">The page you're looking for may have been moved, renamed, or no longer exists. Here are a few places to go instead.</p>
+      <div class="hero-actions" style="justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-lg" href="index.html">Back to Homepage {icon('arrow')}</a>
+        <a class="btn btn-lg btn-ghost" href="residential.html">Browse Services</a>
+        <a class="btn btn-lg btn-ghost" href="service-areas.html">Service Areas</a>
+        <a class="btn btn-lg btn-ghost" href="get-quote.html">Get a Quote</a>
+      </div>
+      <p class="mt-3"><a href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a></p>
+    </div>
+  </section>
+</main>"""
+    html += C.page_end(depth)
+    write("404.html", html, slug="404.html", priority="0.1")
+
+# ===========================================================================
 # BLOG HUB + POSTS
 # ===========================================================================
 def build_blog():
@@ -1408,7 +1455,7 @@ def build_landing(L):
     <div class="reveal"><span class="eyebrow">Why Barta</span><h2 class="mt-1">Benefits you'll notice</h2>
       <div class="mt-3" style="display:grid;gap:22px">{ben_html}</div>
     </div>
-    <div class="reveal">{C.ba_slider(depth=depth, name="ba1")}</div>
+    <div class="reveal">{C.ba_slider(depth=depth, name="ba1", sizes="(max-width: 960px) 100vw, 50vw")}</div>
   </div></div></section>
 
   <section class="bg-deep"><div class="container">
@@ -1597,20 +1644,23 @@ def generate_webp_versions():
 _HERO_VARIANT_SPECS = [(1200, "webp", 40), (1200, "jpg", 50), (640, "webp", 55), (640, "jpg", 60)]
 
 def generate_hero_variants():
-    """Responsive, capped-size derivatives of every service-page hero photo
-    (assets/img/hero-<slug>-{640,1200}w.{webp,jpg}), used via srcset so a
-    phone downloads the small file and a desktop downloads the mid-size one
-    — never the full multi-hundred-KB original. Source JPGs are never
-    modified or replaced; these are new sibling files, skipped once already
-    up to date."""
+    """Responsive, capped-size derivatives of every hero, process-slider, and
+    before/after photo (assets/img/<stem>-{640,1200}w.{webp,jpg}), used via
+    srcset so a phone downloads the small file and a desktop downloads the
+    mid-size one — never the full multi-hundred-KB original. Source JPGs are
+    never modified or replaced; these are new sibling files, skipped once
+    already up to date."""
     try:
         from PIL import Image
     except ImportError:
-        print("  (Pillow not available — skipping hero variant generation)")
+        print("  (Pillow not available — skipping responsive image variant generation)")
         return
-    hero_paths = {"assets/img/hero-home.jpg"}
+    hero_paths = {"assets/img/hero-home.jpg", "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg"}
     for s in SERVICES:
         hero_paths.add(s.get("image") or "assets/img/hero-home.jpg")
+    for name in ("window", "siding", "gutter"):
+        hero_paths.add(f"assets/img/ba-{name}-before.jpg")
+        hero_paths.add(f"assets/img/ba-{name}-after.jpg")
     for rel in sorted(hero_paths):
         src = os.path.join(ROOT, rel)
         if not os.path.exists(src):
@@ -1661,6 +1711,7 @@ def main():
     build_get_quote()
     build_privacy()
     build_terms()
+    build_404()
     build_blog()
     for i, p in enumerate(POSTS):
         build_post(p, i)

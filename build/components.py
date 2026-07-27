@@ -1,7 +1,7 @@
 """Reusable HTML partials and section builders."""
-import json
+import json, os
 from urllib.parse import quote_plus
-from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS
+from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT
 from icons import icon
 
 # Cache-busting version for static assets (set at build time from file hashes).
@@ -10,6 +10,8 @@ ASSET_VER = "1"
 
 # Navigation grouping for mega-menu
 NAV_SERVICES = SERVICES  # all 10 services appear in the Services mega menu
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def rel(depth):
     """Return path prefix to site root given folder depth (0 = root)."""
@@ -20,17 +22,93 @@ def _webp(src):
     by build.generate_webp_versions() for every real photo)."""
     return src.rsplit(".", 1)[0] + ".webp" if src.lower().endswith((".jpg", ".jpeg")) else src
 
-def picture(root, src, alt, img_class="", extra_attrs=""):
-    """<picture> with a WebP source (smaller, modern) + the original JPG as
-    the universally-supported <img> fallback. Pass any extra img attributes
-    (loading, decoding, width, height, onerror...) as a raw string."""
-    webp = _webp(src)
-    if webp == src:
-        return f'<img class="{img_class}" src="{root}{src}" alt="{alt}" {extra_attrs}>'
-    return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
-            f'<img class="{img_class}" src="{root}{src}" alt="{alt}" {extra_attrs}></picture>')
+def _variants_exist(stem):
+    """True if 640w/1200w WebP+JPG derivatives exist for this image stem
+    (see build.generate_hero_variants — the single place that creates them)."""
+    return all(os.path.exists(os.path.join(_ROOT, f"{stem}-{w}w.{fmt}"))
+               for w in (640, 1200) for fmt in ("webp", "jpg"))
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False):
+_SIZE_CACHE = {}
+def _real_size(relpath, default=(1125, 1500)):
+    """Real pixel dimensions of an assets/img file. Tries Pillow first, then
+    a dependency-free JPEG header read, so width/height attributes always
+    match the actual file instead of a guessed placeholder value — the
+    same fallback strategy build.py's _img_size uses, duplicated here in a
+    few lines rather than importing build.py (which itself imports this
+    module, so importing the other way would be circular)."""
+    if relpath in _SIZE_CACHE:
+        return _SIZE_CACHE[relpath]
+    full = os.path.join(_ROOT, relpath)
+    size = default
+    try:
+        from PIL import Image
+        with Image.open(full) as im:
+            size = im.size
+    except Exception:
+        try:
+            with open(full, "rb") as f:
+                data = f.read()
+            if data[:2] == b"\xff\xd8":
+                i = 2
+                sof = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+                while i < len(data) - 9:
+                    if data[i] != 0xFF:
+                        i += 1
+                        continue
+                    marker = data[i + 1]
+                    if marker in sof:
+                        h = (data[i + 5] << 8) + data[i + 6]
+                        w = (data[i + 7] << 8) + data[i + 8]
+                        size = (w, h)
+                        break
+                    seg_len = (data[i + 2] << 8) + data[i + 3]
+                    i += 2 + seg_len
+        except Exception:
+            pass
+    _SIZE_CACHE[relpath] = size
+    return size
+
+def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
+    """<picture> with a WebP source (smaller, modern) + the original JPG as
+    the universally-supported <img> fallback.
+
+    If 640w/1200w responsive variants exist on disk (see
+    build.generate_hero_variants), emits a full srcset/sizes picture so the
+    browser downloads an appropriately-sized file instead of the full
+    original — `sizes` should reflect the image's real rendered width
+    (e.g. "33vw" for a three-column card), defaulting to "100vw" for
+    full-bleed uses. Falls back to a single full-resolution WebP+JPG pair
+    when no variants exist.
+
+    Automatically fills width/height from the real file when the caller
+    hasn't already supplied them (checked via extra_attrs) and the source
+    file exists on disk, so dimensions always match the actual image
+    instead of a guessed value. Pass any extra img attributes (loading,
+    decoding, onerror...) as a raw string."""
+    webp = _webp(src)
+    has_dims = "width=" in extra_attrs
+    full_src = os.path.join(_ROOT, src)
+    dim_attrs = ""
+    if not has_dims and os.path.exists(full_src):
+        w, h = _real_size(src)
+        dim_attrs = f' width="{w}" height="{h}"'
+    if webp == src:
+        return f'<img class="{img_class}" src="{root}{src}"{dim_attrs} alt="{alt}" {extra_attrs}>'
+    stem = src.rsplit(".", 1)[0]
+    if _variants_exist(stem):
+        sizes_val = sizes or "100vw"
+        if not has_dims:
+            w, h = _real_size(f"{stem}-1200w.jpg")
+            dim_attrs = f' width="{w}" height="{h}"'
+        return (f'<picture>'
+                f'<source type="image/webp" srcset="{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w" sizes="{sizes_val}">'
+                f'<img class="{img_class}" src="{root}{stem}-1200w.jpg" '
+                f'srcset="{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w" sizes="{sizes_val}" '
+                f'alt="{alt}"{dim_attrs} {extra_attrs}></picture>')
+    return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
+            f'<img class="{img_class}" src="{root}{src}"{dim_attrs} alt="{alt}" {extra_attrs}></picture>')
+
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
     pages that shouldn't compete in search) instead of the default index.
@@ -39,7 +117,14 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     should pay for that connection.
     primary_kw is accepted for callers that still pass it, but is no longer
     rendered — Google doesn't use <meta name="keywords">, and publishing one
-    telegraphs targeted phrases for no ranking benefit."""
+    telegraphs targeted phrases for no ranking benefit.
+    base_href, when given, renders a <base> tag so every relative URL on
+    the page (nav/footer links, CSS, JS, images — all built assuming
+    depth=0) resolves against the site root instead of whatever nested
+    path the browser is actually showing. Only 404.html needs this: a
+    static host serves 404.html's bytes without changing the visible URL,
+    so a 404 hit under e.g. /services/typo.html would otherwise resolve
+    "index.html" to /services/index.html instead of the real homepage."""
     root = rel(depth)
     canonical = canonical or (BIZ["domain"] + "/" + slug)
     schema_blocks = ""
@@ -49,10 +134,11 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     robots = "noindex, follow" if noindex else "index, follow, max-image-preview:large"
     trustindex_preconnect = ('<link rel="preconnect" href="https://cdn.trustindex.io">\n'
                               '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
+    base_tag = f'<base href="{base_href}">\n' if base_href else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-<script>document.documentElement.className+=" js";</script>
+{base_tag}<script>document.documentElement.className+=" js";</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
@@ -564,9 +650,10 @@ def service_image_card(s, depth=0, idx=0):
     # from the service name — the guess doesn't always match an actual file
     # on disk (e.g. "House Washing" reuses the "soft-washing" photo).
     img = s.get("image") or "assets/img/hero-home.jpg"
-    alt = f"{s['name']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
+    alt = IMAGE_ALT.get(img, f"{s['name']} service photo")
     img_tag = picture(root, img, alt, img_class="img-card-bg",
-                       extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')
+                       extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
+                       sizes="(max-width: 760px) 100vw, 33vw")
     return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}" style="background:{dark}">'
             f'{img_tag}'
             f'<span class="img-card-watermark">{icon(s["icon"])}</span>'
@@ -586,10 +673,16 @@ def picture_card(item, depth=0, idx=0):
     root = rel(depth)
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
     img = item.get("img") or ("assets/img/svc-" + _slugify(item["label"]) + ".jpg")
-    alt = f"{item['label']} in {BIZ['city']}, {BIZ['state']} — Barta Window Washing"
+    alt = IMAGE_ALT.get(img, f"{item['label']} service photo")
     feat = " featured" if item.get("featured") else ""
+    # Featured cards span 2 of 4 columns (desktop) or the full row (tablet/
+    # mobile); non-featured cards are 1 of 4 (desktop), 1 of 2 (tablet), or
+    # full-width (mobile) — see .svc-grid in styles.css.
+    sizes = ("(max-width: 980px) 100vw, 50vw" if item.get("featured")
+             else "(max-width: 560px) 100vw, (max-width: 980px) 50vw, 25vw")
     img_tag = picture(root, img, alt, img_class="img-card-bg",
-                       extra_attrs='loading="lazy" decoding="async" width="800" height="1000" onerror="this.remove()"')
+                       extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
+                       sizes=sizes)
     href = item["target"]
     return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{href}" aria-label="{item["label"]}" style="background:{dark}">'
             f'{img_tag}'
@@ -604,12 +697,15 @@ def process_slider(steps, depth=0):
     tile with a watermark icon instead."""
     root = rel(depth)
 
-    photo_attrs = 'loading="lazy" decoding="async" width="600" height="700"'
+    photo_attrs = 'loading="lazy" decoding="async"'
+    # .process-photo is a fixed-height flex panel at ~42% of the track's
+    # width on desktop and a 200px fixed column on mobile (see styles.css).
+    photo_sizes = "(max-width: 760px) 200px, 42vw"
 
     def _slide(i, num, title, img, desc, fic):
         if img:
-            alt = f"{title} step of the Barta Window Washing cleaning process in {BIZ['city']}, {BIZ['state']}"
-            photo_html = f'<div class="process-photo">{picture(root, img, alt, extra_attrs=photo_attrs)}</div>'
+            alt = IMAGE_ALT.get(img, f"{title} step of the Barta Window Washing cleaning process")
+            photo_html = f'<div class="process-photo">{picture(root, img, alt, extra_attrs=photo_attrs, sizes=photo_sizes)}</div>'
         else:
             photo_html = f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>'
         return (f'<div class="process-slide{" active" if i == 0 else ""}">{photo_html}'
@@ -638,16 +734,19 @@ def trust_badges():
 # instead of the auto-generated placeholder SVGs.
 BA_REAL_PHOTOS = {"ba1": "window", "ba2": "siding", "ba3": "gutter"}
 
-def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1"):
+def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", sizes="(max-width: 760px) 100vw, 33vw"):
+    """`sizes` should match the real column width the .ba container renders
+    at — defaults to the 3-column grid used on the homepage and gallery;
+    pass "(max-width: 960px) 100vw, 50vw" for the 2-column landing-page use."""
     root = rel(depth)
     if name in BA_REAL_PHOTOS:
         slug = BA_REAL_PHOTOS[name]
         before_src, after_src = f"ba-{slug}-before.jpg", f"ba-{slug}-after.jpg"
     else:
         before_src, after_src = f"{name}-before.svg", f"{name}-after.svg"
-    ba_attrs = 'loading="lazy" width="800" height="500"'
-    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning — visible dirt, algae, and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs)
-    after_img = picture(root, f"assets/img/{after_src}", "After Barta professional cleaning — bright, spotless, like-new surface", img_class="ba-img ba-after", extra_attrs=ba_attrs)
+    ba_attrs = 'loading="lazy" decoding="async"'
+    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning — visible dirt, algae, and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs, sizes=sizes)
+    after_img = picture(root, f"assets/img/{after_src}", "After Barta professional cleaning — bright, spotless, like-new surface", img_class="ba-img ba-after", extra_attrs=ba_attrs, sizes=sizes)
     return f"""<div class="ba" role="group" aria-label="Before and after comparison slider">
   {before_img}
   {after_img}
@@ -663,6 +762,15 @@ def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              primary=("Get Your Free Quote", "get-quote.html"),
              image="assets/img/svc-exterior-window-cleaning.jpg", image_pos="30%"):
     root = rel(depth)
+    # Decorative full-bleed backdrop behind an overlay + text — never the
+    # sole carrier of information, so a CSS background (hidden from
+    # assistive tech by default) is correct here. Prefer the pre-generated
+    # 1200w variant over the multi-hundred-KB original when one exists;
+    # CSS background-image has no srcset equivalent, so this is a single
+    # fixed choice rather than a responsive one.
+    _bg_stem = image.rsplit(".", 1)[0]
+    if _variants_exist(_bg_stem):
+        image = f"{_bg_stem}-1200w.jpg"
     bg = (f"linear-gradient(180deg, rgba(8,22,46,.38) 0%, rgba(7,18,40,.66) 45%, rgba(5,13,30,.94) 100%), "
           f"url('{root}{image}')")
     return f"""<section><div class="container"><div class="cta-band reveal" style="background-image:{bg};background-position:center,center {image_pos}">

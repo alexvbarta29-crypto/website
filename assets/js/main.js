@@ -23,9 +23,17 @@
   const scrim = $(".drawer-scrim");
   const toggle = (open) => {
     if (!drawer) return;
+    const wasOpen = drawer.classList.contains("open");
     drawer.classList.toggle("open", open);
     document.body.style.overflow = open ? "hidden" : "";
     if (openBtn) openBtn.setAttribute("aria-expanded", String(open));
+    // Move focus into the dialog when it opens (it's role="dialog"
+    // aria-modal="true"), and back to the toggle button on close, so
+    // keyboard users land somewhere sensible instead of on a hidden panel.
+    // Guarded by wasOpen so e.g. pressing Escape while the drawer is
+    // already closed doesn't yank focus to the hamburger button.
+    if (open && !wasOpen) { if (closeBtn) closeBtn.focus(); }
+    else if (!open && wasOpen) { if (openBtn) openBtn.focus(); }
   };
   if (openBtn) openBtn.addEventListener("click", () => toggle(true));
   if (closeBtn) closeBtn.addEventListener("click", () => toggle(false));
