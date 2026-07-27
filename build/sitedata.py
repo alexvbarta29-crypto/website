@@ -736,81 +736,23 @@ ZIP_CODES = [
 ]
 
 # ---------------------------------------------------------------------------
-# Membership plans
-# ---------------------------------------------------------------------------
-PLANS = [
-    {
-        "name": "Clear View",
-        "tag": "Essential exterior care for a home that always looks its best.",
-        "monthly": "49",
-        "annual": "529",
-        "annual_save": "Save $59 vs monthly",
-        "featured": False,
-        "discount": "10%",
-        "incl": [
-            "2 exterior window cleanings per year",
-            "1 gutter cleaning per year",
-            "10% member discount on all add-on services",
-            "Priority scheduling ahead of non-members",
-            "Annual exterior inspection &amp; photo report",
-            "Automatic seasonal reminders",
-        ],
-    },
-    {
-        "name": "Crystal Plus",
-        "tag": "Our most popular plan — comprehensive, hands-off home maintenance.",
-        "monthly": "89",
-        "annual": "959",
-        "annual_save": "Save $109 vs monthly",
-        "featured": True,
-        "discount": "15%",
-        "incl": [
-            "2 full (in &amp; out) window cleanings per year",
-            "2 gutter cleanings per year (spring &amp; fall)",
-            "1 house soft wash per year",
-            "15% member discount on all add-on services",
-            "Top-priority scheduling &amp; flexible rebooking",
-            "Free annual roof &amp; exterior inspection",
-            "Screen cleaning included with every window visit",
-        ],
-    },
-    {
-        "name": "Signature Estate",
-        "tag": "White-glove, year-round care for larger and luxury homes.",
-        "monthly": "159",
-        "annual": "1,719",
-        "annual_save": "Save $189 vs monthly",
-        "featured": False,
-        "discount": "20%",
-        "incl": [
-            "Quarterly full window cleanings (4 per year)",
-            "2 gutter cleanings + downspout flush per year",
-            "1 house soft wash + 1 pressure wash per year",
-            "Annual roof soft wash assessment",
-            "20% member discount on all add-on services",
-            "Dedicated account manager &amp; first-call priority",
-            "Holiday lighting design consultation included",
-        ],
-    },
-]
-
-# ---------------------------------------------------------------------------
 # Recurring-plan promo cards (Biannual / Quarterly / Monthly) — the compact
 # 3-card widget shown on the homepage, every service page, and the quote
-# wizard's plan step. This is the SINGLE source for that widget: every
-# renderer (components.promo_plan_cards, components.quote_wizard) reads
+# wizard's plan step. This is the SINGLE recurring-plan program on the site:
+# every renderer (components.promo_plan_cards, components.quote_wizard) reads
 # from these two names, so the numbers can't drift out of sync between pages.
 #
-# [OWNER VERIFICATION REQUIRED] — these dollar amounts and perks describe a
-# DIFFERENT plan structure than PLANS above (Clear View/Crystal Plus/
-# Signature Estate, priced per month with 10/15/20% add-on discounts). The
-# two have not been reconciled — a visitor could see "$100 OFF Quarterly"
-# here and "$89/month Crystal Plus" on the Service Plans page for what reads
-# like the same membership. "7-Day Rain Guarantee" and "Free Hard Water
-# Removal" also appear nowhere else in the repo to corroborate them. See
-# docs/OWNER-VERIFICATION.md before launch — nothing here has been altered
-# or reconciled, only centralized and flagged, per that doc's instructions
-# not to invent or guess at a resolution.
+# A prior, unrelated "Clear View / Crystal Plus / Signature Estate" monthly-
+# membership system (formerly `PLANS`, rendered on `service-plans.html`) was
+# created by mistake and has been permanently deleted at the owner's
+# direction — see docs/OWNER-VERIFICATION.md Section 1. This is the only
+# recurring-plan data structure left in the repo.
+#
+# [OWNER VERIFICATION REQUIRED] — the dollar amounts and perks below are
+# still unverified against real business practice (see
+# docs/OWNER-VERIFICATION.md items 1-6). "7-Day Rain Guarantee" and "Free
+# Hard Water Removal" in particular appear nowhere else in the repo to
+# corroborate them.
 PROMO_PLANS = [
     # (display name, url slug, "$ off per cleaning", featured-in-comparison, most-popular-badge)
     ("Biannual", "biannual", "50", False, False),
@@ -825,7 +767,6 @@ PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water R
 REVIEWS = [
     ("The crew was on time, polite, and unbelievably thorough. Our windows haven't looked this clear since the house was built. The before-and-after is honestly shocking.", "Jennifer M.", "Delano, MN", "JM"),
     ("Barta cleaned years of black streaks off our roof and washed the whole house in an afternoon. Neighbors keep asking if we got new siding. Worth every penny.", "David & Karen R.", "Maple Grove, MN", "DR"),
-    ("I'm on the Crystal Plus plan and it's the best home decision we've made. They just show up on schedule and everything stays spotless. Zero hassle.", "Priya S.", "Plymouth, MN", "PS"),
     ("Professional from the quote to the cleanup. They protected our landscaping, explained everything, and the gutters are flowing perfectly again.", "Tom B.", "Wayzata, MN", "TB"),
     ("Booked the holiday lighting package and our house was the talk of the street. Design, install, and takedown all handled — we didn't lift a finger.", "The Hendersons", "Minnetonka, MN", "HH"),
     ("Removed hard water stains from our lakeside windows that two other companies said couldn't be fixed. These folks know what they're doing.", "Mark L.", "Waconia, MN", "ML"),
@@ -920,7 +861,7 @@ FAQS = [
     ("How is pricing determined?", "Pricing is based on the size of your home, number and accessibility of windows or surfaces, and the services you choose. We give clear, upfront, all-in quotes — no hidden fees and no surprises on the invoice."),
     ("Are your cleaning products safe for kids, pets, and plants?", "Yes. We use professional-grade, biodegradable solutions and pre-wet and rinse landscaping on every soft-wash job. Our methods are safe for your family, pets, and yard."),
     ("How far in advance should I book?", "We recommend 1–2 weeks for standard services, and earlier in peak spring and fall seasons. Holiday lighting books up by early fall. Members always get priority scheduling ahead of non-members."),
-    ("Do you offer recurring maintenance plans?", "We do — and they're our most popular option. Our membership plans bundle your essential exterior cleanings at a discount, with priority scheduling, free inspections, and automatic reminders. See our Service Plans page for details."),
+    ("Do you offer recurring maintenance plans?", "We do — and they're our most popular option. Choose a Biannual, Quarterly, or Monthly recurring plan to save on every cleaning, with priority scheduling included on Quarterly and Monthly. Just select a plan when you request your free quote."),
 ]
 
 # ---------------------------------------------------------------------------

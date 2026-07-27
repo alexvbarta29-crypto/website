@@ -23,7 +23,6 @@ Home (/)
 │   └── Christmas Light Install    /services/christmas-light-installation.html
 ├── Residential                    /residential.html
 ├── Commercial                     /commercial.html
-├── Service Plans (Membership)     /service-plans.html
 ├── Service Areas (hub)            /service-areas.html
 │   └── Delano, Maple Grove, Plymouth, Wayzata, Minnetonka, Buffalo, Rockford,
 │       Waconia, Chanhassen, Medina, Corcoran, Watertown   /areas/<city>.html
@@ -78,9 +77,6 @@ local reviews → local FAQ → city-specific CTA.
 **Landing page:** Hero + form above the fold → trust badges → benefits + before/after → guarantee
 band → reviews → "why now" + FAQ → CTA. Minimal nav distractions, conversion-first.
 
-**Service Plans page:** Hero → 3 pricing cards (featured middle) → member perks → full comparison
-table → seasonal maintenance calendar → membership FAQ → CTA.
-
 ---
 
 ## 4. Per-page SEO (titles, meta, keywords, schema)
@@ -96,7 +92,6 @@ H1, structured H2/H3s, internal links, and JSON-LD. Representative targets:
 | Pressure Washing | pressure washing Delano MN | Service, FAQPage, BreadcrumbList |
 | House Washing | house washing Delano MN | Service, FAQPage, BreadcrumbList |
 | Roof Cleaning | roof cleaning Delano MN | Service, FAQPage, BreadcrumbList |
-| Service Plans | window cleaning maintenance plan Delano MN | FAQPage |
 | Commercial | commercial window cleaning Twin Cities MN | LocalBusiness |
 | Reviews | Barta Window Washing reviews Delano MN | AggregateRating (LocalBusiness) |
 | FAQs | window cleaning FAQ Delano MN | FAQPage |

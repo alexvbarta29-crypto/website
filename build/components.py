@@ -130,7 +130,6 @@ def nav(depth=0):
       <details class="drawer-group"><summary>Our Services {icon('chevron')}</summary>
         <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
       </details>
-      <a href="{root}service-plans.html">Service Plans</a>
       <a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a>
       <a href="{root}residential.html">Residential</a>
       <a href="{root}service-areas.html">Service Areas</a>

@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, PLANS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES
+from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES
 from icons import icon
 import components as C
 import schema as S
@@ -169,19 +169,6 @@ def build_home():
     why_html = "".join(
         f'<div class="feature reveal" data-delay="{i%3}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
         for i, (ic, t, d) in enumerate(why))
-
-    plan_teaser = ""
-    for p in PLANS:
-        feat = " featured" if p["featured"] else ""
-        badge = '<span class="plan-badge">Most Popular</span>' if p["featured"] else ""
-        incl = "".join(f'<li>{icon("check")} {x}</li>' for x in p["incl"][:4])
-        plan_teaser += f"""<div class="plan reveal{feat}">{badge}
-        <h3>{p['name']}</h3><p class="tag">{p['tag']}</p>
-        <div class="price"><span class="amt">${p['monthly']}</span><span class="per">/mo</span></div>
-        <p class="annual">or ${p['annual']}/yr · {p['annual_save']}</p>
-        <ul class="incl">{incl}</ul>
-        <a class="btn {'btn' if p['featured'] else 'btn-ghost'} btn-block" href="service-plans.html">View plan</a>
-      </div>"""
 
     # Recurring-plan savings cards ("Save money with every service")
     promo_cards = C.promo_plan_cards(depth)
@@ -572,154 +559,6 @@ def build_service(svc):
     write(f"services/{svc['slug']}.html", html, slug=f"services/{svc['slug']}.html", priority="0.9")
 
 # ===========================================================================
-# SERVICE PLANS
-# ===========================================================================
-def build_plans():
-    depth = 0
-    plans_html = ""
-    for p in PLANS:
-        feat = " featured" if p["featured"] else ""
-        badge = '<span class="plan-badge">Most Popular</span>' if p["featured"] else ""
-        incl = "".join(f'<li>{icon("check")} {x}</li>' for x in p["incl"])
-        btn = "btn" if p["featured"] else "btn-ghost"
-        plans_html += f"""<div class="plan reveal{feat}">{badge}
-        <h3>{p['name']}</h3><p class="tag">{p['tag']}</p>
-        <div class="price"><span class="amt">${p['monthly']}</span><span class="per">/month</span></div>
-        <p class="annual">or ${p['annual']}/year · {p['annual_save']}</p>
-        <ul class="incl">{incl}</ul>
-        <a class="btn {btn} btn-block" href="get-quote.html">Join {p['name']} {icon('arrow')}</a>
-      </div>"""
-
-    # comparison rows
-    rows = [
-        ("Window cleanings / year", "2 (exterior)", "2 (in &amp; out)", "4 (in &amp; out)"),
-        ("Gutter cleanings / year", "1", "2", "2 + flush"),
-        ("House soft wash", "—", "1 / year", "1 / year"),
-        ("Pressure washing", "Add-on", "Add-on", "1 / year"),
-        ("Screen cleaning", "Add-on", "Included", "Included"),
-        ("Member discount", "10%", "15%", "20%"),
-        ("Priority scheduling", "yes", "yes", "yes"),
-        ("Free annual inspection", "yes", "yes", "yes"),
-        ("Automatic reminders", "yes", "yes", "yes"),
-        ("Dedicated account manager", "no", "no", "yes"),
-        ("Holiday lighting consult", "no", "no", "yes"),
-    ]
-    def cell(v):
-        if v == "yes": return f'<span class="yes">{icon("check-circle")}</span>'
-        if v == "no": return f'<span class="no">{icon("x")}</span>'
-        return v
-    table_rows = "".join(
-        f'<tr><td><strong>{r[0]}</strong></td><td>{cell(r[1])}</td><td>{cell(r[2])}</td><td>{cell(r[3])}</td></tr>'
-        for r in rows)
-
-    perks = [
-        ("bolt", "Priority scheduling", "Members jump the line — especially valuable in peak spring and fall."),
-        ("tag", "Exclusive member pricing", "Save 10–20% on every add-on service, all year long."),
-        ("calendar", "Automatic reminders", "We track your schedule and reach out — you never have to remember."),
-        ("clipboard", "Free annual inspections", "We catch small issues (loose gutters, roof algae) before they get expensive."),
-        ("heart", "Locked-in rates", "Your plan price is protected — no surprise seasonal increases."),
-        ("headset", "VIP support", "A friendly, familiar team that already knows your home."),
-    ]
-    perks_html = "".join(
-        f'<div class="feature reveal" data-delay="{i%3}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
-        for i, (ic, t, d) in enumerate(perks))
-
-    plan_faqs = [
-        ("Can I cancel anytime?", "Yes. Our plans are month-to-month with no long-term contract. Cancel anytime with 30 days' notice — no fees, no hassle. Annual plans can be prorated and refunded for unused services."),
-        ("How does scheduling work?", "Once you join, we build your annual maintenance calendar and reach out to confirm each visit ahead of time. You always get priority dates before non-members, and you can reschedule easily."),
-        ("What if I need a service not in my plan?", "No problem — members get their discount (10–20%) on any add-on service, from hard water removal to holiday lighting. Just ask and we'll add it to your visit."),
-        ("Do unused services roll over?", "Plan services are scheduled within your membership year to keep your home consistently maintained. If you need to shift timing, we'll work with you — just give us a heads up."),
-        ("Is there a setup fee?", "None. There are no setup fees, no hidden costs, and no surprises. Your monthly or annual price is exactly what you pay."),
-        ("Can I upgrade or downgrade?", "Anytime. As your needs change, move between Clear View, Crystal Plus, and Signature Estate with a quick call — we'll prorate the difference."),
-    ]
-    schema = BASE_SCHEMA + [S.faq_schema(plan_faqs)]
-
-    html = C.head(
-        title=f"Service Plans & Maintenance Memberships | {BIZ['name']} Delano, MN",
-        desc="Effortless, year-round exterior cleaning with Barta's maintenance memberships. Priority scheduling, member discounts up to 20%, free inspections & automatic reminders. Plans from $49/mo.",
-        slug="service-plans.html", depth=depth, schema=schema, primary_kw="window cleaning maintenance plan Delano MN")
-    html += C.nav(depth)
-    html += f"""
-<main id="main">
-  <section class="phero">
-    <div class="container">
-      {C.crumbs([("Home", "index.html"), ("Service Plans", None)])}
-      <div style="max-width:760px">
-        <span class="eyebrow">Barta Care Memberships</span>
-        <h1 class="mt-1">A spotless home, on autopilot</h1>
-        <p class="lead">Stop scheduling, stop remembering, stop climbing ladders. Our maintenance memberships keep your windows, gutters, and exterior effortlessly clean all year — with priority scheduling, member-only pricing, and free inspections.</p>
-        <div class="phero-actions">
-          <a class="btn btn-lg" href="#plans">See the plans {icon('arrow')}</a>
-          <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} Talk to us</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="plans">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Choose your plan</span>
-        <h2>Memberships built for Minnesota homes</h2>
-        <p>Every plan includes priority scheduling, automatic reminders, a free annual inspection, and our 100% satisfaction guarantee. Pause, change, or cancel anytime.</p>
-      </div>
-      <div class="plans">{plans_html}</div>
-      <p class="center mt-3" style="color:var(--slate-500)">Prices are illustrative examples for an average single-family home and may vary by home size and location. Your exact plan price is confirmed in your free quote.</p>
-    </div>
-  </section>
-
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Member perks</span><h2>Why members love it</h2></div>
-      <div class="grid cols-3">{perks_html}</div>
-    </div>
-  </section>
-
-  <section>
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Side by side</span><h2>Compare every plan</h2></div>
-      <div class="table-scroll">
-        <table class="compare">
-          <thead><tr><th>Feature</th><th>Clear View</th><th>Crystal Plus</th><th>Signature Estate</th></tr></thead>
-          <tbody>{table_rows}</tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section class="bg-grad-sky">
-    <div class="container">
-      <div class="split">
-        <div class="reveal">
-          <span class="eyebrow">Your annual schedule</span>
-          <h2 class="mt-1">Maintenance, perfectly timed</h2>
-          <p>We map your services to Minnesota's seasons so your home looks its best year-round — and we handle the calendar for you.</p>
-          <ul class="checklist mt-2">
-            <li>{icon('check-circle')} <strong>Spring:</strong> exterior windows, gutter clear-out, house soft wash</li>
-            <li>{icon('check-circle')} <strong>Summer:</strong> interior windows, screens, pressure washing</li>
-            <li>{icon('check-circle')} <strong>Fall:</strong> final gutter cleaning, downspout flush, roof check</li>
-            <li>{icon('check-circle')} <strong>Winter:</strong> optional holiday lighting &amp; planning for next year</li>
-          </ul>
-        </div>
-        <div class="reveal">{C.imgph("Seasonal maintenance calendar", ratio="5/4")}</div>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Questions</span><h2>Membership FAQs</h2></div>
-      {C.faq_block(plan_faqs)}
-    </div>
-  </section>
-
-  {C.cta_band(depth, heading="Join the easiest home upgrade you'll make", text="Lock in member pricing and never think about exterior cleaning again. Start with a free quote — we'll recommend the perfect plan.", primary=("Become a Member", "get-quote.html"))}
-</main>
-"""
-    html += C.page_end(depth)
-    write("service-plans.html", html, slug="service-plans.html", priority="0.9")
-
-# ===========================================================================
 # Generic interior page scaffold
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
@@ -797,10 +636,10 @@ def build_residential():
           <ul class="checklist mt-2">
             <li>{icon('check-circle')} One trip, one team, one tidy result</li>
             <li>{icon('check-circle')} Bundle pricing on combined services</li>
-            <li>{icon('check-circle')} Member discounts up to 20% with a plan</li>
+            <li>{icon('check-circle')} Save on every visit with a recurring plan</li>
             <li>{icon('check-circle')} Priority scheduling for recurring clients</li>
           </ul>
-          <a class="btn mt-3" href="service-plans.html">Explore service plans {icon('arrow')}</a>
+          <a class="btn mt-3" href="get-quote.html">See Recurring Plans {icon('arrow')}</a>
         </div>
         <div class="reveal">{C.imgph("Beautiful clean home exterior", ratio="5/4")}</div>
       </div>
@@ -1806,7 +1645,6 @@ def main():
     build_home()
     for s in SERVICES:
         build_service(s)
-    build_plans()
     build_residential()
     build_why()
     build_about()

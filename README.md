@@ -40,7 +40,6 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 ```
 .
 ├── index.html                  # Homepage
-├── service-plans.html          # Membership / recurring plans (comparison table, perks, FAQ)
 ├── commercial.html             # Commercial services
 ├── residential.html            # Residential services hub
 ├── why-choose-us.html · about.html · team.html
