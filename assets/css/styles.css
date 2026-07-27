@@ -837,8 +837,6 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .img-card-bg { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform .7s var(--ease-out); }
 .img-card:hover .img-card-bg { transform: scale(1.07); }
 .img-card::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8,8,10,.04) 0%, rgba(8,8,10,.12) 38%, rgba(8,8,10,.85) 100%); }
-.img-card-watermark { position: absolute; inset: 0; z-index: -1; display: grid; place-items: center; color: rgba(255,255,255,.10); }
-.img-card-watermark svg { width: 46%; height: 46%; }
 .img-card-arrow { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(255,255,255,.18); backdrop-filter: blur(6px); display: grid; place-items: center; color: #fff; transition: background .3s var(--ease), transform .3s var(--ease); }
 .img-card:hover .img-card-arrow { background: var(--blue-600); transform: rotate(45deg); }
 .img-card-arrow svg { width: 20px; height: 20px; }

@@ -656,7 +656,6 @@ def service_image_card(s, depth=0, idx=0):
                        sizes="(max-width: 760px) 100vw, 33vw")
     return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}" style="background:{dark}">'
             f'{img_tag}'
-            f'<span class="img-card-watermark">{icon(s["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
 
@@ -686,7 +685,6 @@ def picture_card(item, depth=0, idx=0):
     href = item["target"]
     return (f'<a class="img-card{feat} reveal" data-delay="{idx%4}" href="{root}{href}" aria-label="{item["label"]}" style="background:{dark}">'
             f'{img_tag}'
-            f'<span class="img-card-watermark">{icon(item["icon"])}</span>'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
 

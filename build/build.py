@@ -104,7 +104,10 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     generated for some reason, so a missing Pillow install can't break a page.
     hero_pos=None omits the inline object-position style, leaving cropping to
     the page's own CSS (including any @media override) — used by the
-    homepage hero, whose .hero-bg-img rule already handles this responsively."""
+    homepage hero, whose .hero-bg-img rule already handles this responsively.
+    Adds a 1920w candidate to the srcset when one exists on disk (currently
+    only the homepage van hero) so a large/high-DPI screen isn't stuck
+    stretching the 1200w file."""
     style = f'style="object-position:50% {hero_pos}"' if hero_pos else ""
     stem = image_path.rsplit(".", 1)[0]
     variants_exist = all(
@@ -114,12 +117,20 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
         w, h = _img_size(image_path)
         return C.picture(root, image_path, alt, img_class=img_class,
                           extra_attrs=f'width="{w}" height="{h}" fetchpriority="high" decoding="async" {style}')
-    w1200, h1200 = _img_size(f"{stem}-1200w.jpg")
+    has_1920 = all(os.path.exists(os.path.join(ROOT, f"{stem}-1920w.{fmt}")) for fmt in ("webp", "jpg"))
+    webp_srcset = f"{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w"
+    jpg_srcset = f"{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w"
+    default_w = "1200w"
+    if has_1920:
+        webp_srcset += f", {root}{stem}-1920w.webp 1920w"
+        jpg_srcset += f", {root}{stem}-1920w.jpg 1920w"
+        default_w = "1920w"
+    w_img, h_img = _img_size(f"{stem}-{default_w}.jpg")
     return (f'<picture>'
-            f'<source type="image/webp" srcset="{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w" sizes="100vw">'
-            f'<img class="{img_class}" src="{root}{stem}-1200w.jpg" '
-            f'srcset="{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w" sizes="100vw" '
-            f'alt="{alt}" width="{w1200}" height="{h1200}" fetchpriority="high" decoding="async" {style}>'
+            f'<source type="image/webp" srcset="{webp_srcset}" sizes="100vw">'
+            f'<img class="{img_class}" src="{root}{stem}-{default_w}.jpg" '
+            f'srcset="{jpg_srcset}" sizes="100vw" '
+            f'alt="{alt}" width="{w_img}" height="{h_img}" fetchpriority="high" decoding="async" {style}>'
             f'</picture>')
 
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
@@ -197,9 +208,8 @@ def build_home():
     <div class="container">
       <div class="hero-content reveal in">
         {C.google_badge(depth)}
-        <span class="eyebrow hero-kicker" style="color:#ff9b86;display:flex;margin-top:16px">Dirty Windows? We can fix that.</span>
-        <h1>Professional Exterior Cleaning Services</h1>
-        <p class="lead">Serving Delano and communities throughout the western Twin Cities — window cleaning, gutter cleaning, pressure washing, house washing, and more.</p>
+        <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
+        <p class="lead">Professional window and exterior cleaning based in Delano and serving communities throughout the western Twin Cities.</p>
         <div class="hero-actions">
           <a class="btn btn-lg" href="get-quote.html">Get Your Free Quote {icon('arrow')}</a>
         </div>
@@ -1643,6 +1653,14 @@ def generate_webp_versions():
 # staying visually clean under the hero's dark gradient overlay.
 _HERO_VARIANT_SPECS = [(1200, "webp", 40), (1200, "jpg", 50), (640, "webp", 55), (640, "jpg", 60)]
 
+# Extra large-desktop/high-DPI tier for the homepage van hero specifically —
+# its source is exactly 1920px wide (no higher-res original exists), so this
+# never upscales; it's a straight re-encode at a higher quality than the
+# 1200w tier so the full-bleed hero stays sharp on large/retina screens
+# instead of the browser stretching the 1200w file to fill the viewport.
+_HERO_1920_SPECS = [(1920, "webp", 50), (1920, "jpg", 62)]
+_HERO_1920_PATHS = {"assets/img/hero-home.jpg"}
+
 def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
     before/after photo (assets/img/<stem>-{640,1200}w.{webp,jpg}), used via
@@ -1668,7 +1686,8 @@ def generate_hero_variants():
         stem = rel.rsplit(".", 1)[0]
         src_mtime = os.path.getmtime(src)
         base = None
-        for max_w, fmt, quality in _HERO_VARIANT_SPECS:
+        specs = _HERO_VARIANT_SPECS + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
+        for max_w, fmt, quality in specs:
             out_rel = f"{stem}-{max_w}w.{fmt}"
             out_path = os.path.join(ROOT, out_rel)
             if os.path.exists(out_path) and os.path.getmtime(out_path) >= src_mtime:
