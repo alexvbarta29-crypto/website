@@ -146,11 +146,16 @@ def build_home():
     svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
-    # Curated 12-city homepage grid — the full 36-city list lives on
-    # service-areas.html, linked just below; the homepage grid isn't the
-    # place for the complete list.
+    # Full community list, ordered priority-first — sized so the grid's
+    # bottom edge lines up with the map beside it (a full square that grows
+    # with viewport width); service-areas.html remains the dedicated,
+    # detail-per-city page this grid links out to.
     _HOME_AREA_SLUGS = ["delano", "buffalo", "medina", "mound", "plymouth", "st-michael",
-                         "maple-grove", "minnetonka", "wayzata", "orono", "excelsior", "chanhassen"]
+                         "maple-grove", "minnetonka", "wayzata", "orono", "excelsior", "chanhassen",
+                         "eden-prairie", "golden-valley", "deephaven", "corcoran", "hamel", "long-lake",
+                         "minnetrista", "victoria", "rogers", "loretto", "maple-plain", "hanover",
+                         "independence", "greenfield", "rockford", "spring-park", "tonka-bay",
+                         "minnetonka-beach"]
     _areas_by_slug = {a["slug"]: a for a in AREAS}
     _priority_areas = [_areas_by_slug[slug] for slug in _HOME_AREA_SLUGS]
     areas_html = "".join(
@@ -891,7 +896,7 @@ def build_service_areas():
         h1="Proudly serving the western Twin Cities",
         lead="Based in Delano and serving homeowners and businesses across the western Twin Cities metro. Find your community below.",
         depth=depth, crumb_label="Service Areas", primary_kw="window cleaning service areas Twin Cities MN")
-    zip_html = "".join(f'<span class="pill" style="background:var(--mist-2);border:0;margin:4px">{z}</span>' for z in ZIP_CODES)
+    zip_html = "".join(f'<span class="pill" style="background:var(--mist-2);border:0">{z}</span>' for z in ZIP_CODES)
     html += f"""<main id="main">{body}
   <section><div class="container">
     <div class="areas-map-grid">
@@ -914,7 +919,7 @@ def build_service_areas():
       <span class="eyebrow" style="justify-content:center">Coverage</span>
       <h2>ZIP codes we service</h2>
     </div>
-    <div class="center" style="max-width:820px;margin-inline:auto">{zip_html}</div>
+    <div class="zip-scroll" style="max-width:820px;margin-inline:auto">{zip_html}</div>
   </div></section>
   {C.cta_band(depth)}
 </main>"""
