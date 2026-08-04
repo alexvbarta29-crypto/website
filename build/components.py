@@ -805,17 +805,25 @@ def google_badge(depth=0, light=False, text=None):
             f'{stars}<span class="gb-g">{GOOGLE_G}</span><span class="gb-text">{text}</span></a>')
 
 def reviews_block(widget_embed, fallback_cards, depth=0):
-    """Curated review cards render immediately (so the section is never
-    empty and works with no JavaScript at all); the 3rd-party widget embed
-    is base64-stashed in a data attribute and only fetched/executed once
-    its section nears the viewport (see main.js), so it can't delay
-    first paint. The "see all reviews" link is static HTML either way."""
+    """Curated review cards render immediately (so the section works with
+    no JavaScript at all) when real quotes are available; the 3rd-party
+    widget embed is base64-stashed in a data attribute and only fetched/
+    executed once its section nears the viewport (see main.js), so it can't
+    delay first paint. The "see all reviews" link is static HTML either way.
+    With no curated cards and no widget configured, we don't fabricate
+    placeholder testimonials — show a Google rating badge/CTA instead."""
     if widget_embed and widget_embed.strip():
         import base64
         encoded = base64.b64encode(widget_embed.encode("utf-8")).decode("ascii")
+        fallback_inner = fallback_cards if fallback_cards.strip() else f'<div class="center">{google_badge()}</div>'
         return f"""<div class="reviews-embed reveal" data-lazy-reviews data-widget-b64="{encoded}">
-  <div class="grid cols-3" data-reviews-fallback>{fallback_cards}</div>
+  <div class="grid cols-3" data-reviews-fallback>{fallback_inner}</div>
   <p class="center mt-3"><a class="btn btn-ghost" href="{BIZ['google']}">{icon('star')} See all reviews on Google {icon('arrow')}</a></p>
+</div>"""
+    if not fallback_cards.strip():
+        return f"""<div class="center reveal">
+  {google_badge()}
+  <p class="mt-3"><a class="btn btn-ghost" href="{BIZ['google']}" target="_blank" rel="noopener">{icon('star')} Read our reviews on Google {icon('arrow')}</a></p>
 </div>"""
     return f'<div class="grid cols-3">{fallback_cards}</div>'
 

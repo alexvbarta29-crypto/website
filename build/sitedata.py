@@ -28,7 +28,7 @@ BIZ = {
     "facebook": "https://www.facebook.com/p/Barta-Window-Washing-Services-61558622544052/",
     "instagram": "https://www.instagram.com/bartawindowwashing",
     "tiktok": "https://www.tiktok.com/@bartawindowwashing",
-    "google": "https://www.google.com/search?q=bartawindowwashing#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
+    "google": "https://www.google.com/search?q=bartawindowwashing&safe=active#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
 }
 
 # ---------------------------------------------------------------------------
@@ -75,9 +75,6 @@ SERVICES = [
             ("Squeegee", "A professional-grade squeegee pulls every drop off the glass edge to edge, so nothing is left to dry into streaks or spots."),
             ("Hand-detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
         ],
-        # [OWNER VERIFICATION REQUIRED] "licensed and insured" is asserted
-        # elsewhere on the site (footer, why_barta copy) but not restated
-        # here since it isn't confirmed for this pass — see report.
         "faqs": [
             ("How is exterior window cleaning priced?",
              "Pricing depends on your home's size, number of windows, and accessibility. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
@@ -214,7 +211,7 @@ SERVICES = [
             "Photo report of anything that needs attention",
         ],
         "process_note": "Ask about gutter guards and recurring plans to keep them clear year-round.",
-        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and as local co-owners, Alex and Jacob Barta deal with them firsthand on every job. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
+        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and co-owner Alex Barta and the crew he leads deal with them firsthand on every job. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
         "faqs": [
             ("How often should gutters be cleaned?",
              "Most Minnesota homes need gutters cleared at least twice a year — once in spring and once in fall — though homes with heavy tree cover may need more frequent visits."),
@@ -259,7 +256,7 @@ SERVICES = [
             "Optional sealing recommendations to protect your investment",
         ],
         "process_note": "Pair with house washing for a complete exterior refresh and bundle savings.",
-        "why_barta": "We know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter, and as the co-owners doing the work ourselves, we're careful about which pressure and nozzle to use on which surface — so you get a like-new result without the etching or gouging an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
+        "why_barta": "We know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter, and co-owner Alex Barta trains every technician on exactly which pressure and nozzle to use on which surface — so you get a like-new result without the etching or gouging an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
         "faqs": [
             ("What surfaces can be pressure washed?",
              "Concrete driveways, paver patios, sidewalks, pool decks, steps, and retaining walls — durable, hard surfaces built for higher pressure."),
@@ -304,7 +301,7 @@ SERVICES = [
             "Spider webs, wasp nests, and surface debris removed",
             "Pre-wash plant protection and post-wash rinse",
         ],
-        "why_barta": "As local co-owners washing homes throughout the Delano area, Alex and Jacob know what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
+        "why_barta": "Co-owner Alex Barta and the crew he leads have washed homes throughout the Delano area long enough to know what happens when someone uses too much pressure on siding — cracked panels, water forced behind trim, stripped paint. Barta only soft-washes: low pressure, the right chemistry for algae and mildew, and a gentle rinse. It's safer for your home and the results last far longer than a pressure-only rinse. Fully insured and backed by our 100% satisfaction guarantee.",
         "faqs": [
             ("What surfaces are included in house washing?",
              "Vinyl, fiber-cement, stucco, brick, and painted siding, plus soffits, fascia, and trim."),
@@ -334,7 +331,7 @@ SERVICES = [
         "kw2": ["soft wash roof cleaning", "low pressure house wash", "soft washing service", "algae removal soft wash"],
         "benefits": [
             ("Damage-free cleaning", "Low pressure means no etched stucco, stripped paint, or lifted shingles."),
-            ("Lasts up to 4–6× longer", "Killing growth at the root keeps surfaces cleaner far longer."),
+            ("Results last for years, not weeks", "Killing algae and mildew at the root — instead of just knocking it off the surface — is why soft-washed surfaces stay clean for years, while a pressure-only rinse can show regrowth within the same season."),
             ("Right chemistry, right surface", "Solutions tuned to each material and the organism we're treating."),
             ("Eco-conscious", "Biodegradable detergents and careful plant protection."),
         ],
@@ -348,7 +345,7 @@ SERVICES = [
             "Long-lasting results that resist regrowth",
         ],
         "process_note": "The trusted method for any surface that high pressure could damage.",
-        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how co-owners Alex and Jacob Barta clean every delicate surface around Delano. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
+        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how co-owner Alex Barta and his crew clean every delicate surface around Delano. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
         "faqs": [
             ("What surfaces need soft washing instead of pressure washing?",
              "Roofs, stucco, EIFS, screens, and painted or delicate surfaces should always be soft washed rather than pressure washed."),
@@ -388,7 +385,7 @@ SERVICES = [
             "Optional zinc/copper strip recommendations to slow regrowth",
         ],
         "process_note": "Roof work is quoted on-site after a free, no-obligation inspection.",
-        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and co-owners Alex and Jacob personally treat every black-streak and moss job around Delano. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
+        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and co-owner Alex Barta personally leads every black-streak and moss job around Delano. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
         "faqs": [
             ("What are those black streaks on my roof?",
              "They're Gloeocapsa magma, an algae that feeds on the limestone in asphalt shingles and spreads in humid Minnesota summers."),
@@ -416,7 +413,7 @@ SERVICES = [
         "kw": "solar panel cleaning Delano MN",
         "kw2": ["solar panel cleaning service", "solar panel washing", "clean solar panels near me", "solar maintenance"],
         "benefits": [
-            ("Recover lost output", "Clean panels can restore 15–25% of lost production."),
+            ("Recover lost output", "Studies on dust and grime buildup show panel output losses of up to 25% before a cleaning."),
             ("Manufacturer-safe methods", "Pure water and soft tools protect panels and coatings."),
             ("Protect your ROI", "Maximize the return on your solar investment."),
             ("Safe, insured access", "Trained, fully insured technicians handle the height."),
@@ -431,13 +428,10 @@ SERVICES = [
             "Recommended cleaning schedule for your system",
         ],
         "process_note": "Ask about seasonal cleaning plans to keep production at its peak.",
-        "why_barta": "A layer of dust and pollen can cost you 15–25% of your solar output without ever being obvious from the ground — co-owners Alex and Jacob Barta help Delano-area homeowners recover that lost production. We only use pure water and soft tools, because scratched glass or a damaged coating costs you far more than the wash saves. Fully insured for roof and ground-mount access, and backed by our satisfaction guarantee.",
-        # [OWNER VERIFICATION REQUIRED] the "15-25% output loss" figure is a
-        # pre-existing site claim (hero_sub/benefits above), not introduced
-        # by this FAQ — flagging since it's a specific, unverified statistic.
+        "why_barta": "A layer of dust and pollen can cost you real solar output without ever being obvious from the ground — research on panel soiling shows losses of up to 25% under moderate dust buildup — and co-owner Alex Barta and the crew he leads help Delano-area homeowners recover that lost production. We only use pure water and soft tools, because scratched glass or a damaged coating costs you far more than the wash saves. Fully insured for roof and ground-mount access, and backed by our satisfaction guarantee.",
         "faqs": [
             ("How much output can dirty panels lose?",
-             "Dust, pollen, and grime can cost 15–25% of your panels' output — cleaning restores that lost production."),
+             "It depends on how much buildup has accumulated, but published research on panel soiling shows output losses of up to 25% under moderate dust and grime — cleaning restores that lost production."),
             ("Will cleaning damage my panels or their coating?",
              "No — we use pure, deionized water and soft, non-abrasive tools designed to protect the glass and anti-reflective coating."),
             ("Do you clean residential and commercial arrays?",
@@ -518,7 +512,7 @@ SERVICES = [
             "Prevention tips to keep glass clearer",
         ],
         "process_note": "Severity varies — we provide an honest assessment before any work begins.",
-        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and co-owners Alex and Jacob Barta personally restore glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
+        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and co-owner Alex Barta and the crew he trains personally restore glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
         "faqs": [
             ("How is this different from regular window cleaning?",
              "Regular window cleaning removes ordinary dirt, pollen, and everyday water spotting, including light spot treatment where present. Hard Water Stain Removal is a separate, dedicated process for mineral deposits and etching that have bonded to the glass and that standard cleaning can't dissolve."),
@@ -563,7 +557,7 @@ SERVICES = [
             "Optional storage of lights between seasons",
         ],
         "process_note": "Books up fast — reserve your install in early fall for best availability.",
-        "why_barta": "Co-owners Alex and Jacob Barta personally design and install every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
+        "why_barta": "Co-owner Jacob Barta personally walks you through your design consultation, and co-owner Alex Barta leads the crew that installs every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
         "experience_steps": [
             ("Custom-Cut Christmas Lights", "We measure your roofline and peaks, then custom-cut every strand to fit — no extra lights or cords bunched up or hanging loose."),
             ("Free Takedown &amp; Storage", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year."),
@@ -573,10 +567,10 @@ SERVICES = [
         # "scheduling twice a year" and "membership plans" — neither applies
         # to a seasonal install). Every answer is written from copy already
         # established above (includes/process_note) — nothing new invented.
-        # [OWNER VERIFICATION REQUIRED] exact takedown timing/month, whether
-        # storage is free or a paid add-on, and current license/insurance
-        # details are carried over from existing site copy and should be
-        # confirmed accurate before relying on this page commercially.
+        # [OWNER VERIFICATION REQUIRED] exact takedown timing/month and
+        # whether storage is free or a paid add-on are carried over from
+        # existing site copy and should be confirmed before relying on this
+        # page commercially. (License/insurance wording confirmed accurate.)
         "faqs": [
             ("How much does Christmas light installation cost?",
              "Every home's roofline and layout is different, so there's no fixed price list. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
@@ -611,11 +605,11 @@ SERVICES = [
         "kw2": ["commercial window cleaning", "office building cleaning", "retail storefront cleaning", "property management exterior services"],
         "benefits": [
             ("One reliable vendor", "Every building, every service, one point of contact."),
-            ("Fully insured &amp; bonded", "Comprehensive liability and workers' comp coverage on every job."),
+            ("Fully licensed &amp; insured", "Comprehensive insurance coverage on every job, for your property and our team."),
             ("Flexible scheduling", "We work around your hours and your tenants, day or night."),
             ("Fast quote turnaround", "Clear, upfront commercial quotes typically within 24 hours."),
         ],
-        "intro": "Your building is the first impression every customer, tenant, and partner forms about your business. Streaked windows and grimy entrances quietly cost you — clean ones quietly win. Barta delivers dependable, scheduled commercial cleaning that keeps your property looking its absolute best, without you having to manage it. We work around your hours, carry full liability and workers' comp coverage, and assign a single account contact so service is effortless.",
+        "intro": "Your building is the first impression every customer, tenant, and partner forms about your business. Streaked windows and grimy entrances quietly cost you — clean ones quietly win. Barta delivers dependable, scheduled commercial cleaning that keeps your property looking its absolute best, without you having to manage it. We work around your hours, carry full insurance coverage, and assign a single account contact so service is effortless.",
         "includes": [
             "Storefront &amp; office window cleaning",
             "High-rise &amp; multi-story pure-water cleaning",
@@ -626,9 +620,10 @@ SERVICES = [
             "Recurring scheduled service contracts",
             "Post-construction cleanup",
         ],
-        # [OWNER VERIFICATION REQUIRED] "insured & bonded"/"workers' comp" and
-        # the "typically within 24 hours" quote-turnaround figure are
-        # pre-existing site claims (benefits above), not introduced here.
+        # [OWNER VERIFICATION REQUIRED] the "typically within 24 hours"
+        # quote-turnaround figure (benefits above) is a pre-existing site
+        # claim, not introduced here. (Licensed/insured wording confirmed;
+        # "bonded" claim removed since it wasn't confirmed.)
         "faqs": [
             ("What services are included for commercial properties?",
              "Storefront and office window cleaning, high-rise pure-water cleaning, pressure washing, building soft washing, gutter cleaning, and solar array cleaning — scheduled around your business."),
@@ -688,12 +683,12 @@ HOME_SERVICES = [
 # ---------------------------------------------------------------------------
 AREAS = [
     # Primary service area
-    {"slug": "delano", "city": "Delano", "neighborhoods": ["Downtown Delano", "Lake Ridge", "Crow River", "Bartholomew"], "note": "our home base", "tier": "primary"},
+    {"slug": "delano", "city": "Delano", "neighborhoods": ["Downtown Delano", "Highland Ridge", "Crow River", "Kings Pointe"], "note": "our home base", "tier": "primary"},
     {"slug": "buffalo", "city": "Buffalo", "neighborhoods": ["Buffalo Lake", "Sturges Park", "Griffing"], "note": "", "tier": "primary"},
     {"slug": "medina", "city": "Medina", "neighborhoods": ["Hamel", "Independence Beach border", "Loretto border"], "note": "", "tier": "primary"},
     {"slug": "mound", "city": "Mound", "neighborhoods": ["Lake Minnetonka shoreline", "Downtown Mound"], "note": "", "tier": "primary"},
     {"slug": "plymouth", "city": "Plymouth", "neighborhoods": ["Bass Lake", "Medicine Lake", "Plymouth Creek", "Kingsview"], "note": "", "tier": "primary"},
-    {"slug": "st-michael", "city": "St. Michael", "neighborhoods": ["Downtown St. Michael", "River Pointe", "STMA area"], "note": "", "tier": "primary"},
+    {"slug": "st-michael", "city": "St. Michael", "neighborhoods": ["Downtown St. Michael", "Riverview Preserve", "STMA area"], "note": "", "tier": "primary"},
     # Additional service area
     {"slug": "chanhassen", "city": "Chanhassen", "neighborhoods": ["Lake Minnewashta", "Lotus Lake", "Longacres"], "note": "", "tier": "extended"},
     {"slug": "corcoran", "city": "Corcoran", "neighborhoods": ["Hackamore", "Rush Creek", "Pioneer"], "note": "", "tier": "extended"},
@@ -715,7 +710,7 @@ AREAS = [
     {"slug": "minnetrista", "city": "Minnetrista", "neighborhoods": ["Halsted Bay area", "Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
     {"slug": "montrose", "city": "Montrose", "neighborhoods": ["Downtown Montrose", "South Fork Crow River"], "note": "", "tier": "extended"},
     {"slug": "orono", "city": "Orono", "neighborhoods": ["Crystal Bay", "Navarre", "Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
-    {"slug": "rockford", "city": "Rockford", "neighborhoods": ["River Edge", "Rockford Township"], "note": "", "tier": "extended"},
+    {"slug": "rockford", "city": "Rockford", "neighborhoods": ["Downtown Rockford", "Rockford Township"], "note": "", "tier": "extended"},
     {"slug": "rogers", "city": "Rogers", "neighborhoods": ["Downtown Rogers"], "note": "", "tier": "extended"},
     {"slug": "spring-park", "city": "Spring Park", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
     {"slug": "st-bonifacius", "city": "St. Bonifacius", "neighborhoods": ["Downtown St. Bonifacius", "Lake Minnetonka area"], "note": "", "tier": "extended"},
@@ -762,22 +757,22 @@ PROMO_PLANS = [
 PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
 
 # ---------------------------------------------------------------------------
-# Testimonials
+# Testimonials — intentionally empty. There is no curated-quote content here;
+# real reviews live on Google (see BIZ["google"]) and render via the
+# REVIEWS_WIDGET embed in build.py when configured. Do not add invented
+# testimonials here — reviews_block() in components.py falls back to a
+# Google-badge CTA when this list is empty, instead of a blank grid.
 # ---------------------------------------------------------------------------
-REVIEWS = [
-    ("The crew was on time, polite, and unbelievably thorough. Our windows haven't looked this clear since the house was built. The before-and-after is honestly shocking.", "Jennifer M.", "Delano, MN", "JM"),
-    ("Barta cleaned years of black streaks off our roof and washed the whole house in an afternoon. Neighbors keep asking if we got new siding. Worth every penny.", "David & Karen R.", "Maple Grove, MN", "DR"),
-    ("Professional from the quote to the cleanup. They protected our landscaping, explained everything, and the gutters are flowing perfectly again.", "Tom B.", "Wayzata, MN", "TB"),
-    ("Booked the holiday lighting package and our house was the talk of the street. Design, install, and takedown all handled — we didn't lift a finger.", "The Hendersons", "Minnetonka, MN", "HH"),
-    ("Removed hard water stains from our lakeside windows that two other companies said couldn't be fixed. These folks know what they're doing.", "Mark L.", "Waconia, MN", "ML"),
-]
+REVIEWS = []
 
 # ---------------------------------------------------------------------------
-# Team
+# Team — Alex and Jacob are brothers who co-founded the company in 2024.
+# Alex leads the field side (technicians and crews, on every job site);
+# Jacob runs the office and sales side (quotes, scheduling, customer contact).
 # ---------------------------------------------------------------------------
 TEAM = [
-    ("Alex Barta", "Co-Owner", "AB", "Alex co-owns and personally works every job, making sure it's finished to the same standard he'd expect at his own home."),
-    ("Jacob Barta", "Co-Owner", "JB", "Jacob co-owns Barta Window Washing and is hands-on in the field, with a focus on the small details that make a finished job actually look finished."),
+    ("Alex Barta", "Co-Owner", "AB", "Alex co-owns Barta Window Washing and leads every technician and crew in the field, personally overseeing each job to the same standard he'd expect at his own home."),
+    ("Jacob Barta", "Co-Owner", "JB", "Jacob co-owns Barta Window Washing and runs the office and sales side — quotes, scheduling, and making sure every customer gets a clear, easy experience from the first call on."),
 ]
 
 # ---------------------------------------------------------------------------
@@ -854,7 +849,7 @@ POSTS = [
 # FAQs (general)
 # ---------------------------------------------------------------------------
 FAQS = [
-    ("Are you licensed and insured?", "Absolutely. Barta Window Washing is fully licensed and carries comprehensive liability and workers' compensation insurance. We're happy to provide a certificate of insurance before any job — your home and our team are both protected."),
+    ("Are you licensed and insured?", "Absolutely. Barta Window Washing is fully licensed and insured. We're happy to provide a certificate of insurance before any job — your home and our team are both protected."),
     ("How do I get a free quote?", "Three easy ways: request a quote online through any form on this site, call us at " + BIZ["phone_display"] + ", or schedule online. Many quotes can be priced without an in-person visit."),
     ("Do I need to be home during the service?", "Not for most exterior work. As long as we have access to the areas being cleaned and any gates are unlocked, you don't need to be home. For interior window cleaning, we'll coordinate a time that works for you."),
     ("What if I'm not satisfied?", "Every Barta service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us within 48 hours and we'll make it right — re-cleaning at no charge. We don't consider a job done until you're thrilled."),
@@ -895,7 +890,7 @@ IMAGE_ALT = {
 BADGES = [
     ("shield", "Licensed &amp; Insured"),
     ("home", "Locally &amp; Family Owned"),
-    ("star", BIZ["rating"] + "★ Rated (" + BIZ["review_count"] + " reviews)"),
+    ("star", BIZ["rating"] + "★ Rated (" + BIZ["review_count"] + "+ reviews)"),
     ("check", "100% Satisfaction Guarantee"),
     ("leaf", "Safe, Eco-Friendly Methods"),
     ("clock", "Since " + BIZ["founded"]),

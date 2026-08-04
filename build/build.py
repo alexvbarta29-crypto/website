@@ -175,7 +175,7 @@ def build_home():
     process_slider_html = C.process_slider(process_steps, depth)
 
     why = [
-        ("shield", "Licensed &amp; fully insured", "Comprehensive liability and workers' comp coverage on every job. Your home and our team are always protected."),
+        ("shield", "Licensed &amp; fully insured", "Full insurance coverage on every job. Your home and our team are always protected."),
         ("home", "Locally &amp; family owned", "Born and based in Delano. We treat your home like a neighbor's — because you are one."),
         ("leaf", "Safe, eco-friendly methods", "Biodegradable solutions and the right pressure for every surface. Safe for your family, pets, and landscaping."),
         ("award", "Obsessed with detail", "Sills, tracks, screens, downspouts — we sweat the details most companies skip."),
@@ -475,7 +475,7 @@ def build_service(svc):
              f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
             freq_faq,
             ("Are you licensed and insured?",
-             "Yes — Barta is fully licensed and carries liability and workers' compensation insurance. We provide a certificate on request and treat your property with total care."),
+             "Yes — Barta is fully licensed and insured. We provide a certificate on request and treat your property with total care."),
             ("Do you guarantee your work?",
              "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call within 48 hours and we'll re-clean it free."),
         ]
@@ -671,7 +671,7 @@ def build_residential():
 def build_why():
     depth = 0
     reasons = [
-        ("shield", "Fully licensed &amp; insured", "Comprehensive liability and workers' compensation coverage protect your home and our team on every single job. Certificate available on request."),
+        ("shield", "Fully licensed &amp; insured", "Comprehensive insurance coverage protects your home and our team on every single job. Certificate available on request."),
         ("home", "Local &amp; family owned", "We're your neighbors in Delano, not a faceless franchise. Our name is on every truck and every result — and our reputation is everything."),
         ("award", "Detail you can see", "Sills, tracks, screens, downspouts, and corners — we finish the details most companies rush past. The difference shows."),
         ("leaf", "Safe, proven methods", "We match the right pressure and biodegradable solution to every surface, protecting your home, family, pets, and landscaping."),
@@ -705,7 +705,7 @@ def build_why():
   </div></section>
   <section><div class="container">
     <div class="section-head center"><span class="eyebrow">In their words</span><h2>Don't take our word for it</h2></div>
-    <div class="grid cols-3">{reviews_html}</div>
+    {C.reviews_block(None, reviews_html, depth)}
   </div></section>
   {C.cta_band(depth)}
 </main>"""
@@ -728,16 +728,16 @@ def build_about():
         desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story, our values, and our commitment to your home.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
-        lead=f"Founded in {BIZ['founded']} and co-owned by Alex and Jacob Barta, we're a hands-on, local exterior cleaning team — the owners themselves are on the job, not a call center or a rotating cast of subcontractors.",
+        lead=f"Founded in {BIZ['founded']} by brothers Alex and Jacob Barta, we're a hands-on, local exterior cleaning team — Alex leads the crew on every job, and Jacob runs the office, so you're always working directly with an owner, not a call center or a rotating cast of subcontractors.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="split">
     <div class="prose reveal">
       <span class="eyebrow">Our story</span>
       <h2 class="mt-1">Owner-operated, from day one</h2>
-      <p>Barta Window Washing Services is co-owned by brothers Alex and Jacob Barta, based right here in Delano. We started the company in {BIZ['founded']} with a simple goal: give local homeowners an exterior cleaning team they can actually trust — one that shows up on time, sweats the details, and stands behind the work.</p>
-      <p>Because we're co-owners working the jobs ourselves, every project gets our direct attention — not a subcontractor's. We offer window cleaning, gutter cleaning, pressure washing, house and roof soft washing, and holiday lighting installation across Delano and the western Twin Cities metro.</p>
-      <p>When you call Barta, you're talking to the people who actually do the work — and whose name is on every result.</p>
+      <p>Barta Window Washing Services is co-owned by brothers Alex and Jacob Barta, based right here in Delano. We started the company in {BIZ['founded']} with a simple goal: give local homeowners an exterior cleaning team they can actually trust — one that shows up on time, sweats the details, and stands behind the work. Alex leads the technician crew on every job site; Jacob runs the office and sales side, so whoever you talk to is an owner.</p>
+      <p>Because we're co-owners running this business day to day — not a rotating cast of subcontractors — every project gets our direct attention. We offer window cleaning, gutter cleaning, pressure washing, house and roof soft washing, and holiday lighting installation across Delano and the western Twin Cities metro.</p>
+      <p>When you call Barta, you're talking to the people who own the company — and whose name is on every result.</p>
     </div>
     <div class="reveal">{C.photo("assets/img/team-barta.jpg", "Alex and Jacob Barta, co-owners of Barta Window Washing, in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
@@ -746,9 +746,9 @@ def build_about():
     <div class="reveal">
       <span class="eyebrow">On the road near you</span>
       <h2 class="mt-1">Look for the Barta van</h2>
-      <p>Our clearly branded, fully stocked service van is a familiar sight across Delano and the western metro. When it pulls into your driveway, you'll know exactly who's arriving — the owners themselves, treating your home like their own.</p>
+      <p>Our clearly branded, fully stocked service van is a familiar sight across Delano and the western metro. When it pulls into your driveway, you'll know exactly who's arriving — Alex and the crew he personally leads, treating your home like their own.</p>
       <ul class="checklist mt-2">
-        <li>{icon('check-circle')} Co-owners on the job, not subcontractors</li>
+        <li>{icon('check-circle')} Owner-led crew on every job, not subcontractors</li>
         <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
         <li>{icon('check-circle')} Licensed &amp; insured on every visit</li>
       </ul>
@@ -760,7 +760,7 @@ def build_about():
   </div></section>
   <section><div class="container"><div class="section-head center">
     <span class="eyebrow">The people</span><h2>Meet the owners</h2>
-    <p>Get to know Alex and Jacob — the co-owners who personally handle your job.</p>
+    <p>Get to know Alex and Jacob — the co-owners behind every job, from first quote to final walkthrough.</p>
     <a class="btn mt-3" href="team.html">Meet the owners {icon('arrow')}</a>
   </div></div></section>
   {C.cta_band(depth)}
@@ -782,10 +782,10 @@ def build_team():
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
     html, body = interior_head(
         title=f"Meet the Owners | {BIZ['name']} Delano, MN",
-        desc="Meet Alex and Jacob Barta, the co-owners behind Barta Window Washing — the two people who personally show up and do the work on your home.",
+        desc="Meet Alex and Jacob Barta, the co-owners behind Barta Window Washing — the two brothers who run every job, from the crew in your yard to the office behind the scenes.",
         slug="team.html", eyebrow="Meet the Owners",
         h1="The owners behind the clean",
-        lead="Barta Window Washing is owner-operated — Alex and Jacob Barta personally handle the work, so the people you talk to are the same people who show up at your home.",
+        lead="Barta Window Washing is owner-operated — Alex leads every crew in the field and Jacob runs the office and sales, so the people you talk to are the same people responsible for your job, start to finish.",
         depth=depth, crumb_label="Meet the Owners", primary_kw="Barta Window Washing owners Delano")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="grid cols-2">{cards}</div></div></section>
@@ -1008,7 +1008,7 @@ def build_area(a):
   </div></section>
   <section><div class="container">
     <div class="section-head center"><span class="eyebrow">{a['city']} reviews</span><h2>What your neighbors say</h2></div>
-    <div class="grid cols-3">{reviews_html}</div>
+    {C.reviews_block(None, reviews_html, depth)}
   </div></section>
   <section class="bg-mist"><div class="container">
     <div class="section-head center"><span class="eyebrow">Nearby</span><h2>Also serving communities near {a['city']}</h2></div>
@@ -1208,7 +1208,7 @@ def build_terms():
     <h2>Payment</h2>
     <p>Payment terms are provided at the time of booking or invoicing. Membership plans renew automatically according to the schedule selected at signup unless cancelled.</p>
     <h2>Limitation of liability</h2>
-    <p>{BIZ['name']} carries liability and workers' compensation insurance and performs services with reasonable care. We are not liable for pre-existing damage or conditions unrelated to the service performed.</p>
+    <p>{BIZ['name']} is licensed and insured, and performs services with reasonable care. We are not liable for pre-existing damage or conditions unrelated to the service performed.</p>
     <h2>Changes to these terms</h2>
     <p>We may update these terms from time to time. Continued use of our services after changes are posted constitutes acceptance of the updated terms.</p>
     <h2>Contact</h2>
@@ -1438,7 +1438,7 @@ def build_landing(L):
     lp_faqs = [
         ("How does the quote process work?", "Tell us about your home and the services you need, and we'll put together clear, upfront pricing. Many quotes can be priced without an on-site visit."),
         ("Is the quote really free?", "Yes — 100% free and no obligation. We'll give you clear, upfront, all-in pricing with no pressure and no hidden fees."),
-        ("Are you licensed and insured?", "Absolutely. Barta is fully licensed and carries liability and workers' comp insurance. Certificate available on request."),
+        ("Are you licensed and insured?", "Absolutely. Barta is fully licensed and insured. Certificate available on request."),
         ("What if I'm not satisfied?", "Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, we make it right — free."),
     ]
     schema = BASE_SCHEMA + [S.faq_schema(lp_faqs)]
@@ -1483,7 +1483,7 @@ def build_landing(L):
 
   <section><div class="container">
     <div class="section-head center"><span class="eyebrow">Real reviews</span><h2>Loved by your neighbors</h2></div>
-    <div class="grid cols-3">{reviews_html}</div>
+    {C.reviews_block(None, reviews_html, depth)}
   </div></section>
 
   <section class="bg-mist"><div class="container"><div class="hero-grid">

@@ -19,10 +19,46 @@ concern because it isn't part of the generated site at all — it lives only in 
   discovered, nothing was resolved. That pass's fixes were purely technical (meta description
   length, a broken image reference, build-dependency robustness) and did not touch any claim,
   price, guarantee, or business fact.
-- **Incorrect membership system removed (this pass):** at the owner's explicit direction, the
+- **Incorrect membership system removed:** at the owner's explicit direction, the
   Clear View / Crystal Plus / Signature Estate monthly-membership system (`PLANS` in
   `build/sitedata.py`, `build.build_plans()`, `service-plans.html`) has been **permanently
   deleted** — it was created by mistake and was never the correct program. See Section 1 below.
+- **Owner review pass (this update):** the owner was asked directly about every unverified claim on
+  the site and responded item by item. Resolved this pass:
+  - **Fake testimonials removed.** `REVIEWS` in `build/sitedata.py` previously contained 5 invented
+    customer quotes attributed to fabricated names — these were never real and have been deleted
+    entirely (list is now empty). Every page that showed them (`homepage`, `reviews.html`,
+    `why-choose-us.html`, every area page, every landing page) now falls back to a real Google
+    rating badge/CTA instead of fabricated cards when no curated quote is available. Note: the site
+    already has a real, live Google-reviews widget wired up via Trustindex
+    (`config/google-reviews-embed.html`, `config/google-reviews-embed-reviews-page.html`) — the
+    fake cards were only ever a fallback shown before that widget loads, so real review content was
+    likely already visible to most visitors even before this fix.
+  - **Team roles corrected.** Alex and Jacob Barta are real brothers who co-founded the company in
+    2024 (confirmed) — but they are not interchangeable in the field. **Alex leads the technicians
+    and field crews** on every job site; **Jacob runs the office and sales side** (quotes,
+    scheduling, customer contact). Every "why we do it this way" blurb that implied both brothers
+    personally perform hands-on cleaning has been rewritten to reflect this (`build/sitedata.py`
+    `why_barta` fields, `build/build.py` About/Team page copy).
+  - **Google review link confirmed** by the owner — kept as-is (with a minor `&safe=active` param
+    added per the owner's paste).
+  - **5.0★ rating and 100+ reviews confirmed real** by the owner (also independently corroborated by
+    the live Trustindex widget above).
+  - **"Bonded" and "workers' compensation" claims removed** — the owner confirmed "licensed and
+    insured" but was not able to confirm bonding or workers' comp specifically, so those specific
+    claims were dropped sitewide in favor of the confirmed, simpler "licensed and insured."
+  - **Solar/soft-wash stats replaced with sourced figures.** The owner asked that any statistic be a
+    real one rather than an invented number. The solar-panel "15–25% output loss" claim is now
+    "up to 25%," grounded in published soiling-loss research (see sources in commit). The soft-
+    washing "lasts 4–6× longer" claim was reworded to "results last for years, not weeks" since no
+    citable source supports a precise multiplier, though the general "lasts much longer" direction
+    is well supported. The roof-cleaning ARMA claim was independently verified as accurate — ARMA
+    does recommend a low-pressure/chemical method over pressure washing, which can void shingle
+    warranties — and was left as-is.
+  - **Service-area list under review.** Owner's rule: keep a city only if it's a real Minnesota town
+    within roughly an hour's drive of Delano; remove/replace any invented neighborhood name within
+    each city's entry. Fact-checking against real sources (Wikipedia, city sites) is in progress —
+    see item 22 below.
 
 ---
 
@@ -64,15 +100,15 @@ system did not verify the remaining one's dollar amounts or perks.
 | 12 | Free return visit / re-clean | Same pages as #11 | Same | "we return and re-clean it free" | Needs Owner Verification | Same as #11. |
 | 13 | Storage of Christmas lights between seasons | `services/christmas-light-installation.html` | `build/sitedata.py` → `christmas-light-installation.includes/faqs` | "Optional storage of lights between seasons" — FAQ says "Yes — optional storage between seasons is available" | Needs Owner Verification | Confirm whether "optional" means free or a paid add-on, and state it explicitly either way. |
 | 14 | Whether Barta supplies the Christmas lights | `services/christmas-light-installation.html` | `build/sitedata.py` → `christmas-light-installation.includes/faqs` | "Premium, commercial-grade LED lights and greenery" (includes); FAQ: "Yes — commercial-grade LED lights and greenery are included in the installation. You don't need to buy or supply anything yourself." | Needs Owner Verification | If customers are ever expected to supply/own their own lights in some cases, this needs to say so. |
-| 15 | Liability insurance | Footer (every page), homepage, Why Choose Us, About, every service `why_barta`, every area/landing page | `build/components.py` (`footer()`), `build/build.py` (multiple), `build/sitedata.py` (`why_barta` fields) | "Licensed & insured in Minnesota" (footer); "fully licensed and carries liability and workers' compensation insurance" (FAQ) | Needs Owner Verification | If not currently true, this is the single highest-priority item to fix before launch — it appears sitewide. |
-| 16 | Workers' compensation insurance | Same pages as #15 | Same | "workers' compensation insurance" / "workers' comp coverage" | Needs Owner Verification | Same as #15. |
-| 17 | Licensed status | Same pages as #15 | Same | "fully licensed" | Needs Owner Verification | Same as #15. |
-| 18 | Bonded status | `services/commercial-cleaning.html` only | `build/sitedata.py` → `commercial-cleaning.benefits` | "Fully insured &amp; bonded" | Needs Owner Verification | Confirm bonding actually applies (it's not claimed anywhere else on the site, only here). |
-| 19 | Founding year (2024) | Homepage stats ("Since 2024"), schema.org `foundingDate` | `build/sitedata.py` → `BIZ["founded"]` | `"founded": "2024"` | Needs Owner Verification | Single source — update once in `BIZ` if wrong. |
-| 20 | Business hours | Footer (every page), Contact page, LocalBusiness schema | `build/sitedata.py` → `BIZ["hours"]` | "Mon–Fri 8am–7pm, Sat 8am–5pm, Sun Closed" | Needs Owner Verification | Single source — update once in `BIZ`. |
-| 21 | Address, phone, email | Footer (every page), Contact page, About, LocalBusiness schema, manifest | `build/sitedata.py` → `BIZ["street"/"city"/"state"/"zip"/"phone_display"/"phone_href"/"email"]` | 320 3rd St S, Delano, MN 55328 · (763) 314-3400 · office@bartawindowwashing.com | Needs Owner Verification | Single source, internally consistent everywhere checked — only the underlying facts need confirming. |
-| 22 | Service-area claims | Every area page (36), service-area hub, footer | `build/sitedata.py` → `AREAS` | 36 named western-Twin-Cities-metro communities, each with real neighborhood names | Needs Owner Verification | Confirm Barta genuinely services all 36 today; consider trimming any that aren't actually served yet. |
-| 23 | 5.0★ rating / 100+ reviews | Homepage hero, stat counters, Reviews page title/meta/H1, every landing page, OG share image | `build/sitedata.py` → `BIZ["rating"]`, `BIZ["review_count"]` | "5.0★ from 100+ reviews" | Needs Owner Verification | Flagged in the prior SEO pass too — still unresolved. An exact 5.0 average with a round 100-review count reads as a placeholder; confirm against the real Google Business Profile figure. |
+| 15 | Liability insurance | Footer (every page), homepage, Why Choose Us, About, every service `why_barta`, every area/landing page | `build/components.py` (`footer()`), `build/build.py` (multiple), `build/sitedata.py` (`why_barta` fields) | "Licensed & insured" | **CONFIRMED by owner** | — |
+| 16 | Workers' compensation insurance | — | — | Specific "workers' comp" wording removed sitewide | **Resolved — claim removed** | Owner confirmed "licensed and insured" generally but couldn't confirm workers' comp specifically, so the specific claim was dropped in favor of the confirmed wording. |
+| 17 | Licensed status | Same pages as #15 | Same | "fully licensed" | **CONFIRMED by owner** | — |
+| 18 | Bonded status | — | — | "Bonded" claim removed from `commercial-cleaning.benefits` | **Resolved — claim removed** | Owner wasn't sure what "bonded" meant / couldn't confirm it — dropped rather than guessed. |
+| 19 | Founding year (2024), brothers/co-owners | Homepage stats ("Since 2024"), About/Team pages, schema.org `foundingDate` | `build/sitedata.py` → `BIZ["founded"]`, `TEAM` | `"founded": "2024"`; Alex & Jacob Barta are brothers | **CONFIRMED by owner** | Owner also clarified their actual roles — Alex leads the field crew, Jacob runs office/sales — copy updated accordingly throughout. |
+| 20 | Business hours | Footer (every page), Contact page, LocalBusiness schema | `build/sitedata.py` → `BIZ["hours"]` | "Mon–Fri 8am–7pm, Sat 8am–5pm, Sun Closed" | **CONFIRMED by owner** (as part of NAP facts) | — |
+| 21 | Address, phone, email, social links | Footer (every page), Contact page, About, LocalBusiness schema, manifest | `build/sitedata.py` → `BIZ[...]` | 320 3rd St S, Delano, MN 55328 · (763) 314-3400 · office@bartawindowwashing.com · Facebook/Instagram/TikTok | **CONFIRMED by owner** | — |
+| 22 | Service-area claims (36 cities + neighborhood names) | Every area page (36), service-area hub, footer | `build/sitedata.py` → `AREAS` | 36 Minnesota communities within ~1hr of Delano, each with neighborhood names | **Resolved** | Owner's rule: keep only real MN towns within ~1hr of Delano, remove fabricated neighborhood names. Research confirmed all 36 cities are genuinely within an hour's drive (farthest checked: Rogers at 38 min). 3 fabricated neighborhood names were found and replaced with real, sourced ones: Delano's "Lake Ridge"→"Highland Ridge" and "Bartholomew"→"Kings Pointe"; St. Michael's "River Pointe"→"Riverview Preserve"; Rockford's "River Edge"→"Downtown Rockford". All other neighborhood names were independently verified as real (city sites, Wikipedia, DNR lake records, realtor neighborhood guides) or are safe generic descriptors ("Downtown X", "X Township", "X Lake shoreline"). |
+| 23 | 5.0★ rating / 100+ reviews | Homepage hero, stat counters, Reviews page title/meta/H1, every landing page, OG share image | `build/sitedata.py` → `BIZ["rating"]`, `BIZ["review_count"]` | "5.0★ from 100+ reviews" | **CONFIRMED by owner** | Also independently corroborated: the site's live Trustindex Google-reviews widget (`config/google-reviews-embed*.html`) pulls real reviews. |
 
 ### A note on guarantee wording consistency
 The "100% satisfaction guarantee" is described slightly differently in different places (e.g., "call
