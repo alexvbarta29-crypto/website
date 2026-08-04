@@ -699,7 +699,7 @@ def build_why():
     <div class="stats">
       <div class="stat reveal"><div class="num" data-count="{BIZ['rating']}">{BIZ['rating']}</div><div class="label">Average rating</div></div>
       <div class="stat reveal" data-delay="1"><div class="num" data-count="{BIZ['review_count']}" data-suffix="+">{BIZ['review_count']}+</div><div class="label">5-star reviews</div></div>
-      <div class="stat reveal" data-delay="2"><div class="num" data-count="100" data-suffix="%">100%</div><div class="label">Owner-operated, every job</div></div>
+      <div class="stat reveal" data-delay="2"><div class="num" data-count="100" data-suffix="%">100%</div><div class="label">Locally owned &amp; operated</div></div>
       <div class="stat reveal" data-delay="3"><div class="num" style="font-size:clamp(1.5rem,2.6vw,2.1rem)">Insured</div><div class="label">Full coverage on every visit</div></div>
     </div>
   </div></section>
@@ -735,7 +735,7 @@ def build_about():
     <div class="prose reveal">
       <span class="eyebrow">Our story</span>
       <h2 class="mt-1">Founded by two brothers</h2>
-      <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex leads the crew on every job site, and Jacob runs the office — so whether you're on the phone with us or watching us pull into your driveway, you're always dealing with an owner.</p>
+      <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex leads our crew of technicians in the field, and Jacob runs the office — building a team that's trained to the same standard the owners started the company on.</p>
     </div>
     <div class="reveal">{C.photo("assets/img/team-barta.jpg", "Alex and Jacob Barta, co-owners of Barta Window Washing, in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
@@ -744,9 +744,9 @@ def build_about():
     <div class="reveal">
       <span class="eyebrow">On the road near you</span>
       <h2 class="mt-1">Look for the Barta van</h2>
-      <p>Our clearly branded, fully stocked service van is a familiar sight across Delano and the western metro. When it pulls into your driveway, you'll know exactly who's arriving — Alex and the crew he personally leads, treating your home like their own.</p>
+      <p>Our clearly branded, fully stocked service van is a familiar sight across Delano and the western metro. When it pulls into your driveway, you'll know exactly who's arriving — a trained member of our crew, held to the standard Alex and Jacob built this company on.</p>
       <ul class="checklist mt-2">
-        <li>{icon('check-circle')} Owner-led crew on every job, not subcontractors</li>
+        <li>{icon('check-circle')} In-house, trained crew — not subcontractors</li>
         <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
         <li>{icon('check-circle')} Licensed &amp; insured on every visit</li>
       </ul>
@@ -758,7 +758,7 @@ def build_about():
   </div></section>
   <section><div class="container"><div class="section-head center">
     <span class="eyebrow">The people</span><h2>Meet the owners</h2>
-    <p>Get to know Alex and Jacob — the co-owners behind every job, from first quote to final walkthrough.</p>
+    <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p>
     <a class="btn mt-3" href="team.html">Meet the owners {icon('arrow')}</a>
   </div></div></section>
   {C.cta_band(depth)}
@@ -780,10 +780,10 @@ def build_team():
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
     html, body = interior_head(
         title=f"Meet the Owners | {BIZ['name']} Delano, MN",
-        desc="Meet Alex and Jacob Barta, the co-owners behind Barta Window Washing — the two brothers who run every job, from the crew in your yard to the office behind the scenes.",
+        desc="Meet Alex and Jacob Barta, the two brothers who founded Barta Window Washing — Alex leads our crew in the field, and Jacob runs the office.",
         slug="team.html", eyebrow="Meet the Owners",
         h1="The owners behind the clean",
-        lead="Barta Window Washing is owner-operated — Alex leads every crew in the field and Jacob runs the office and sales, so the people you talk to are the same people responsible for your job, start to finish.",
+        lead="Barta Window Washing was founded by two brothers — Alex leads our crew in the field, and Jacob runs the office and sales.",
         depth=depth, crumb_label="Meet the Owners", primary_kw="Barta Window Washing owners Delano")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="grid cols-2">{cards}</div></div></section>
@@ -1029,7 +1029,7 @@ def build_contact():
         desc=f"Get in touch with Barta Window Washing. Call {BIZ['phone_display']}, email us, or request a free quote online. Serving Delano & the western Twin Cities, {BIZ['hours']}.",
         slug="contact.html", eyebrow="Contact", schema=schema,
         h1="Let's talk about your home",
-        lead="Questions, quotes, or scheduling — we're here to help and happy to hear from you. Reach out and one of the owners will get right back to you personally.",
+        lead="Questions, quotes, or scheduling — we're here to help and happy to hear from you. Reach out and we'll get right back to you.",
         depth=depth, crumb_label="Contact", primary_kw="contact window cleaning Delano MN")
     info = f"""<div class="card" style="display:grid;gap:18px">
       <a class="feature" href="tel:{BIZ['phone_href']}"><span class="ic">{icon('phone')}</span><div><h4>Call or text</h4><p>{BIZ['phone_display']}</p></div></a>

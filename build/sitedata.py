@@ -211,7 +211,7 @@ SERVICES = [
             "Photo report of anything that needs attention",
         ],
         "process_note": "Ask about gutter guards and recurring plans to keep them clear year-round.",
-        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and co-owner Alex Barta and the crew he leads deal with them firsthand on every job. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
+        "why_barta": "Minnesota's maple seeds, oak leaves, and freeze-thaw cycles are hard on gutters, and our crew — trained and led by co-owner Alex Barta — deals with them firsthand on every job. We hand-clear instead of using a blower, which means we actually see problems — a loose hanger, a seam pulling apart, a downspout backing up — before they turn into fascia rot or a wet basement. Every job is insured and backed by our satisfaction guarantee.",
         "faqs": [
             ("How often should gutters be cleaned?",
              "Most Minnesota homes need gutters cleared at least twice a year — once in spring and once in fall — though homes with heavy tree cover may need more frequent visits."),
@@ -345,7 +345,7 @@ SERVICES = [
             "Long-lasting results that resist regrowth",
         ],
         "process_note": "The trusted method for any surface that high pressure could damage.",
-        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how co-owner Alex Barta and his crew clean every delicate surface around Delano. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
+        "why_barta": "Soft washing is the method roofing and siding manufacturers actually recommend, and it's how our crew — trained by co-owner Alex Barta — cleans every delicate surface around Delano. We match the chemistry to the surface and the organism instead of just turning up the pressure, which is why our results hold up season after season instead of coming back in a few weeks. Insured, guaranteed, and gentle on everything but the grime.",
         "faqs": [
             ("What surfaces need soft washing instead of pressure washing?",
              "Roofs, stucco, EIFS, screens, and painted or delicate surfaces should always be soft washed rather than pressure washed."),
@@ -385,7 +385,7 @@ SERVICES = [
             "Optional zinc/copper strip recommendations to slow regrowth",
         ],
         "process_note": "Roof work is quoted on-site after a free, no-obligation inspection.",
-        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and co-owner Alex Barta personally leads every black-streak and moss job around Delano. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
+        "why_barta": "Pressure washing a roof can void the manufacturer's warranty and strip years off its life — we've never done it, and we won't. Barta uses the soft-wash method the roofing industry itself recommends, and our crew — trained and led by co-owner Alex Barta — handles every black-streak and moss job around Delano. Every inspection is free and honest; if your roof doesn't need cleaning yet, we'll tell you. Insured and guaranteed.",
         "faqs": [
             ("What are those black streaks on my roof?",
              "They're Gloeocapsa magma, an algae that feeds on the limestone in asphalt shingles and spreads in humid Minnesota summers."),
@@ -512,7 +512,7 @@ SERVICES = [
             "Prevention tips to keep glass clearer",
         ],
         "process_note": "Severity varies — we provide an honest assessment before any work begins.",
-        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and co-owner Alex Barta and the crew he trains personally restore glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
+        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and our crew — trained by co-owner Alex Barta — restores glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting — sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
         "faqs": [
             ("How is this different from regular window cleaning?",
              "Regular window cleaning removes ordinary dirt, pollen, and everyday water spotting, including light spot treatment where present. Hard Water Stain Removal is a separate, dedicated process for mineral deposits and etching that have bonded to the glass and that standard cleaning can't dissolve."),
@@ -557,7 +557,7 @@ SERVICES = [
             "Storage of your lights between seasons, included in your price",
         ],
         "process_note": "Books up fast — reserve your install in early fall for best availability.",
-        "why_barta": "Co-owner Jacob Barta personally walks you through your design consultation, and co-owner Alex Barta leads the crew that installs every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
+        "why_barta": "Co-owner Jacob Barta oversees your design consultation, and co-owner Alex Barta leads the crew that installs every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
         "experience_steps": [
             ("Custom-Cut Christmas Lights", "We measure your roofline and peaks, then custom-cut every strand to fit — no extra lights or cords bunched up or hanging loose."),
             ("Takedown &amp; Storage, Included", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year — it's part of your price, not something you add on separately."),
@@ -773,7 +773,7 @@ REVIEWS = []
 # Jacob runs the office and sales side (quotes, scheduling, customer contact).
 # ---------------------------------------------------------------------------
 TEAM = [
-    ("Alex Barta", "Co-Owner", "AB", "Alex co-owns Barta Window Washing and leads every technician and crew in the field, personally overseeing each job to the same standard he'd expect at his own home."),
+    ("Alex Barta", "Co-Owner", "AB", "Alex co-owns Barta Window Washing and leads our technicians and crews in the field, setting the same standard he'd expect at his own home."),
     ("Jacob Barta", "Co-Owner", "JB", "Jacob co-owns Barta Window Washing and runs the office and sales side — quotes, scheduling, and making sure every customer gets a clear, easy experience from the first call on."),
 ]
 
