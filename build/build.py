@@ -477,7 +477,7 @@ def build_service(svc):
             ("Are you licensed and insured?",
              "Yes — Barta is fully licensed and insured. We provide a certificate on request and treat your property with total care."),
             ("Do you guarantee your work?",
-             "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call within 48 hours and we'll re-clean it free."),
+             "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll re-clean it free."),
         ]
     breadcrumb = S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
@@ -676,7 +676,7 @@ def build_why():
         ("award", "Detail you can see", "Sills, tracks, screens, downspouts, and corners — we finish the details most companies rush past. The difference shows."),
         ("leaf", "Safe, proven methods", "We match the right pressure and biodegradable solution to every surface, protecting your home, family, pets, and landscaping."),
         ("clock", "Reliable &amp; on time", "Confirmed arrival windows, text updates, and crews that actually show up when we say. We respect your time."),
-        ("check-circle", "100% satisfaction guarantee", "If you're not thrilled, we make it right — re-cleaning free within 48 hours. No fine print, no hassle."),
+        ("check-circle", "100% satisfaction guarantee", "If you're not thrilled, we make it right — re-cleaning free. No fine print, no hassle."),
         ("star", "Top-rated locally", f"{BIZ['rating']}★ from {BIZ['review_count']}+ verified reviews — among the highest-rated exterior cleaners in the western metro."),
         ("users", "Background-checked crews", "Friendly, uniformed, trained professionals you'll feel comfortable having around your home and family."),
         ("tag", "Honest, upfront pricing", "Clear all-in quotes with no hidden fees, no pressure, and no surprises on the final invoice."),
@@ -792,7 +792,7 @@ def build_team():
   <section class="bg-mist"><div class="container"><div class="section-head center">
     <span class="eyebrow">Growing</span><h2>Looking to join us down the road?</h2>
     <p>We're a small, owner-operated team today, but we'd love to hear from detail-oriented, reliable people for future openings.</p>
-    <a class="btn mt-3" href="careers.html">See open positions {icon('arrow')}</a>
+    <a class="btn mt-3" href="contact.html">Get in touch {icon('arrow')}</a>
   </div></div></section>
   {C.cta_band(depth)}
 </main>"""
@@ -819,39 +819,6 @@ def build_reviews():
     html += C.page_end(depth)
     write("reviews.html", html, slug="reviews.html", priority="0.7")
 
-# ===========================================================================
-# GALLERY
-# ===========================================================================
-def build_gallery():
-    depth = 0
-    ba_html = "".join(f'<div class="reveal" data-delay="{i%3}">{C.ba_slider(depth=depth, name=n)}</div>'
-                      for i, n in enumerate(["ba1", "ba2", "ba3", "ba2", "ba1", "ba3"]))
-    captions = ["Window cleaning — Delano", "House washing — Maple Grove", "Roof soft wash — Plymouth",
-                "Driveway pressure washing — Wayzata", "Gutter cleaning — Buffalo", "Hard water removal — Waconia",
-                "Solar panel cleaning — Medina", "Holiday lighting — Minnetonka", "Commercial storefront — Wayzata"]
-    gal = "".join(f'<figure class="reveal" data-delay="{i%3}">{C.imgph(c, ratio="4/3")}<figcaption>{c}</figcaption></figure>'
-                  for i, c in enumerate(captions))
-    html, body = interior_head(
-        title=f"Before & After Gallery | {BIZ['name']} Delano, MN",
-        desc="Browse real before & after results from Barta Window Washing: window cleaning, house washing, roof cleaning, pressure washing & more across the western Twin Cities.",
-        slug="gallery.html", eyebrow="Gallery",
-        h1="See the Barta difference",
-        lead="Drag the sliders and browse real transformations from homes and businesses across the western metro. Results like these are exactly what we'll bring to your property.",
-        depth=depth, crumb_label="Gallery", primary_kw="window cleaning before after Delano MN")
-    html += f"""<main id="main">{body}
-  <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">Drag to reveal</span><h2>Before &amp; after</h2></div>
-    <div class="grid cols-3">{ba_html}</div>
-  </div></section>
-  <section class="bg-mist"><div class="container">
-    <div class="section-head center"><span class="eyebrow">Recent work</span><h2>Project gallery</h2>
-      <p>Replace these placeholders with your own high-resolution job photos for maximum impact.</p></div>
-    <div class="gallery">{gal}</div>
-  </div></section>
-  {C.cta_band(depth)}
-</main>"""
-    html += C.page_end(depth)
-    write("gallery.html", html, slug="gallery.html", priority="0.7")
 
 # ===========================================================================
 # FAQS
@@ -1023,46 +990,6 @@ def build_area(a):
 </main>"""
     html += C.page_end(depth)
     write(f"areas/{a['slug']}.html", html, slug=f"areas/{a['slug']}.html", priority="0.7")
-
-# ===========================================================================
-# CAREERS
-# ===========================================================================
-def build_careers():
-    depth = 0
-    jobs = [("Exterior Cleaning Technician", "Full-time · Delano, MN", "Join our residential crew cleaning windows, gutters, and exteriors. No experience required — we train. Must be reliable, friendly, and comfortable with ladders and heights."),
-            ("Crew Lead", "Full-time · Western Metro", "Lead a 2–3 person crew, manage quality and safety, and represent Barta to our customers. 2+ years exterior cleaning or trades experience preferred."),
-            ("Seasonal Holiday Lighting Installer", "Seasonal · Sept–Jan", "Help design and install premium holiday lighting displays. Great seasonal income with flexible scheduling. Comfort with heights required.")]
-    job_html = "".join(f"""<div class="card reveal" data-delay="{i}">
-        <h3 style="font-size:1.25rem">{t}</h3>
-        <p style="color:var(--blue-600);font-weight:600;font-family:var(--font-head);margin-top:4px">{meta}</p>
-        <p class="mt-1">{d}</p>
-        <a class="btn btn-ghost mt-3" href="contact.html">Apply now {icon('arrow')}</a></div>""" for i, (t, meta, d) in enumerate(jobs))
-    perks = [("dollar", "Competitive pay", "Above-market wages, performance bonuses, and tips."),
-             ("calendar", "Flexible scheduling", "Full-time, part-time, and seasonal options."),
-             ("users", "Great team culture", "Supportive crew, real training, and room to grow."),
-             ("award", "Advancement", "We promote from within — crew lead and beyond.")]
-    perk_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
-                        for i, (ic, t, d) in enumerate(perks))
-    html, body = interior_head(
-        title=f"Careers | Join the {BIZ['name']} Team in Delano, MN",
-        desc="Join Barta Window Washing — a growing, family-owned exterior cleaning company in Delano, MN. Competitive pay, flexible schedules, training & advancement. Apply today!",
-        slug="careers.html", eyebrow="Careers",
-        h1="Grow with a team that takes pride in its work",
-        lead="We're always looking for friendly, detail-oriented people who want honest work, fair pay, and room to grow. No experience? We'll train the right person.",
-        depth=depth, crumb_label="Careers", primary_kw="window cleaning jobs Delano MN")
-    html += f"""<main id="main">{body}
-  <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">Why work here</span><h2>Perks of the job</h2></div>
-    <div class="grid cols-2" style="max-width:820px;margin-inline:auto">{perk_html}</div>
-  </div></section>
-  <section class="bg-mist"><div class="container">
-    <div class="section-head center"><span class="eyebrow">Open positions</span><h2>Current openings</h2></div>
-    <div class="grid cols-3">{job_html}</div>
-  </div></section>
-  {C.cta_band(depth, heading="Ready to join the crew?", text="Tell us a bit about yourself and we'll be in touch. We can't wait to meet you.", primary=("Apply Today", "contact.html"))}
-</main>"""
-    html += C.page_end(depth)
-    write("careers.html", html, slug="careers.html", priority="0.5")
 
 # ===========================================================================
 # FINANCING
@@ -1724,12 +1651,10 @@ def main():
     build_about()
     build_team()
     build_reviews()
-    build_gallery()
     build_faqs()
     build_service_areas()
     for a in AREAS:
         build_area(a)
-    build_careers()
     build_financing()
     build_contact()
     build_get_quote()

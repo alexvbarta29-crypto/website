@@ -219,7 +219,6 @@ def nav(depth=0):
       <a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a>
       <a href="{root}residential.html">Residential</a>
       <a href="{root}service-areas.html">Service Areas</a>
-      <a href="{root}gallery.html">Gallery</a>
       <a href="{root}reviews.html">Reviews</a>
       <a href="{root}why-choose-us.html">Why Choose Us</a>
       <a href="{root}about.html">About</a>
@@ -227,7 +226,6 @@ def nav(depth=0):
       <a href="{root}blog.html">Blog</a>
       <a href="{root}faqs.html">FAQs</a>
       <a href="{root}financing.html">Financing</a>
-      <a href="{root}careers.html">Careers</a>
       <a href="{root}contact.html">Contact</a>
     </nav>
     <div class="drawer-foot">
@@ -283,8 +281,6 @@ def footer(depth=0):
           <li><a href="{root}team.html">Meet the Team</a></li>
           <li><a href="{root}why-choose-us.html">Why Choose Us</a></li>
           <li><a href="{root}reviews.html">Reviews</a></li>
-          <li><a href="{root}gallery.html">Gallery</a></li>
-          <li><a href="{root}careers.html">Careers</a></li>
           <li><a href="{root}contact.html">Contact</a></li>
         </ul>
       </div>

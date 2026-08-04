@@ -542,7 +542,7 @@ SERVICES = [
         "benefits": [
             ("Custom-cut strands", "Every strand is measured and cut to your roofline and peaks — no extra lights or cords hanging off your home."),
             ("Premium commercial-grade LED bulbs", "Bright, energy-efficient LED bulbs built to outlast a Minnesota winter and look sharp season after season."),
-            ("Free takedown &amp; storage", "When the season's over, we take it all down and store it for you — no ladders, no tangled totes in your garage."),
+            ("Takedown &amp; storage included", "When the season's over, we take it all down and store it for you — built into your price, not an extra add-on."),
             ("Clips that last", "Heavy-duty clips grip any roofline, shingle, or gutter without damage — built to hold through the hardest winter months."),
             ("Proper safety equipment", "Our insured crew climbs so you don't have to — full safety gear every time, so nobody's risking a fall on an icy ladder."),
             ("Upfront, honest pricing", "Clear pricing before we start — no surprise fees and no pressure, just an honest quote for a beautifully lit home."),
@@ -554,36 +554,37 @@ SERVICES = [
             "Professional installation on rooflines, trees, and walkways",
             "In-season maintenance — burnt-out bulbs replaced free",
             "Post-season takedown",
-            "Optional storage of lights between seasons",
+            "Storage of your lights between seasons, included in your price",
         ],
         "process_note": "Books up fast — reserve your install in early fall for best availability.",
         "why_barta": "Co-owner Jacob Barta personally walks you through your design consultation, and co-owner Alex Barta leads the crew that installs every holiday lighting job, so you get a display planned to actually match your roofline instead of looking like an afterthought. Every install is fully insured — no icy ladders, no risk to you — and covered by in-season maintenance, so if a strand fails in January, that's on us to fix, not you.",
         "experience_steps": [
             ("Custom-Cut Christmas Lights", "We measure your roofline and peaks, then custom-cut every strand to fit — no extra lights or cords bunched up or hanging loose."),
-            ("Free Takedown &amp; Storage", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year."),
+            ("Takedown &amp; Storage, Included", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year — it's part of your price, not something you add on separately."),
             ("Come Back Next Year", "Every fall, we reach out to get you back on the schedule, so your lights are up and ready well before the holidays."),
         ],
         # Replaces the generic shared service-page FAQ (which talks about
         # "scheduling twice a year" and "membership plans" — neither applies
         # to a seasonal install). Every answer is written from copy already
         # established above (includes/process_note) — nothing new invented.
-        # [OWNER VERIFICATION REQUIRED] exact takedown timing/month and
-        # whether storage is free or a paid add-on are carried over from
-        # existing site copy and should be confirmed before relying on this
-        # page commercially. (License/insurance wording confirmed accurate.)
+        # [OWNER VERIFICATION REQUIRED] exact takedown timing/month is
+        # carried over from existing site copy and should be confirmed
+        # before relying on this page commercially. (Storage confirmed
+        # included in price, not a separate add-on; license/insurance
+        # wording confirmed accurate.)
         "faqs": [
             ("How much does Christmas light installation cost?",
              "Every home's roofline and layout is different, so there's no fixed price list. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
             ("Does Barta provide the lights?",
              "Yes — commercial-grade LED lights and greenery are included in the installation. You don't need to buy or supply anything yourself."),
             ("What is included with installation?",
-             "A free design consultation, commercial-grade LED lights, professional installation on your roofline, trees, and walkways, in-season maintenance, and post-season takedown. Optional storage between seasons is also available."),
+             "A free design consultation, commercial-grade LED lights, professional installation on your roofline, trees, and walkways, in-season maintenance, and post-season takedown and storage — all included in your price."),
             ("What happens if a bulb or strand fails?",
              "Let us know and we'll repair or replace it at no charge during the season as part of our included in-season maintenance."),
             ("When are the lights taken down?",
              "We schedule takedown after the holiday season ends. Your installer will confirm the planned takedown window with you."),
             ("Can Barta store the lights?",
-             "Yes — optional storage between seasons is available, so your lights are organized and ready to go again next year."),
+             "Yes — storage between seasons is included in your price, not a separate add-on, so your lights are organized and ready to go again next year."),
             ("When should I reserve installation?",
              "Installation books up quickly each season, so we recommend reserving your spot in early fall for the best availability."),
             ("What areas do you serve?",
@@ -716,6 +717,7 @@ AREAS = [
     {"slug": "st-bonifacius", "city": "St. Bonifacius", "neighborhoods": ["Downtown St. Bonifacius", "Lake Minnetonka area"], "note": "", "tier": "extended"},
     {"slug": "tonka-bay", "city": "Tonka Bay", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
     {"slug": "victoria", "city": "Victoria", "neighborhoods": ["Downtown Victoria", "Lake Bavaria area"], "note": "", "tier": "extended"},
+    {"slug": "waconia", "city": "Waconia", "neighborhoods": ["Downtown Waconia", "Lake Waconia shoreline", "Lakeview Terrace"], "note": "", "tier": "extended"},
     {"slug": "waverly", "city": "Waverly", "neighborhoods": ["Downtown Waverly", "Waverly Lake"], "note": "", "tier": "extended"},
     {"slug": "wayzata", "city": "Wayzata", "neighborhoods": ["Ferndale", "Holdridge", "Downtown Wayzata"], "note": "", "tier": "extended"},
     {"slug": "winsted", "city": "Winsted", "neighborhoods": ["Downtown Winsted", "Winsted Lake"], "note": "", "tier": "extended"},
@@ -727,7 +729,7 @@ ZIP_CODES = [
     "55305", "55311", "55317", "55328", "55331", "55340", "55341", "55343",
     "55344", "55345", "55346", "55347", "55356", "55357", "55359", "55363",
     "55364", "55369", "55373", "55374", "55375", "55376", "55384", "55386",
-    "55390", "55391", "55416", "55422", "55427", "55446", "55447",
+    "55387", "55390", "55391", "55416", "55422", "55427", "55446", "55447",
 ]
 
 # ---------------------------------------------------------------------------
@@ -852,10 +854,10 @@ FAQS = [
     ("Are you licensed and insured?", "Absolutely. Barta Window Washing is fully licensed and insured. We're happy to provide a certificate of insurance before any job — your home and our team are both protected."),
     ("How do I get a free quote?", "Three easy ways: request a quote online through any form on this site, call us at " + BIZ["phone_display"] + ", or schedule online. Many quotes can be priced without an in-person visit."),
     ("Do I need to be home during the service?", "Not for most exterior work. As long as we have access to the areas being cleaned and any gates are unlocked, you don't need to be home. For interior window cleaning, we'll coordinate a time that works for you."),
-    ("What if I'm not satisfied?", "Every Barta service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us within 48 hours and we'll make it right — re-cleaning at no charge. We don't consider a job done until you're thrilled."),
+    ("What if I'm not satisfied?", "Every Barta service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll make it right — re-cleaning at no charge. We don't consider a job done until you're thrilled."),
     ("How is pricing determined?", "Pricing is based on the size of your home, number and accessibility of windows or surfaces, and the services you choose. We give clear, upfront, all-in quotes — no hidden fees and no surprises on the invoice."),
     ("Are your cleaning products safe for kids, pets, and plants?", "Yes. We use professional-grade, biodegradable solutions and pre-wet and rinse landscaping on every soft-wash job. Our methods are safe for your family, pets, and yard."),
-    ("How far in advance should I book?", "We recommend 1–2 weeks for standard services, and earlier in peak spring and fall seasons. Holiday lighting books up by early fall. Members always get priority scheduling ahead of non-members."),
+    ("How far in advance should I book?", "It varies — depending on the season and our schedule, we can sometimes get to you the same day, or it may be a week or two out. Holiday lighting books up earliest, so reserve your spot by early fall. Priority-plan members get scheduling preference."),
     ("Do you offer recurring maintenance plans?", "We do — and they're our most popular option. Choose a Biannual, Quarterly, or Monthly recurring plan to save on every cleaning, with priority scheduling included on Quarterly and Monthly. Just select a plan when you request your free quote."),
 ]
 

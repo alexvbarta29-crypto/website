@@ -59,6 +59,32 @@ concern because it isn't part of the generated site at all — it lives only in 
     within roughly an hour's drive of Delano; remove/replace any invented neighborhood name within
     each city's entry. Fact-checking against real sources (Wikipedia, city sites) is in progress —
     see item 22 below.
+- **Second owner review pass (this update):** owner was asked about the remaining open items,
+  plus two pages found to have real problems on inspection. Resolved this pass:
+  - **Gallery page removed entirely.** `gallery.html` was showing 9 empty placeholder boxes
+    captioned with specific fake job locations (including "Waconia," a town not even in the
+    service-area list at the time) under copy claiming "real before & after results" — and had a
+    leftover developer note ("Replace these placeholders...") visibly rendering on the live page.
+    Owner confirmed there are no real job photos yet, so the page, its nav/footer links, and its
+    build function have been deleted rather than left showing fabricated/broken content. Rebuild
+    real photos back in via a new `build_gallery()` when photos exist.
+  - **Careers page removed entirely.** The 3 "current openings" listed weren't actually open.
+    Deleted the page, its nav/footer links, and its build function; `team.html`'s "join us" CTA now
+    points to `contact.html` instead of a dead link.
+  - **Waconia added to the service-area list** (`build/sitedata.py` → `AREAS`, `ZIP_CODES`) — owner
+    confirmed it's a real town they service; independently verified at 31 minutes / 19 miles from
+    Delano (well within the 1-hour rule) with real neighborhood/landmark names sourced from the
+    city's own site (Downtown Waconia, Lake Waconia shoreline, Lakeview Terrace).
+  - **Recurring-plan dollar amounts and perks confirmed real** by the owner — see items 1-6 below,
+    now marked confirmed.
+  - **"Call within 48 hours" guarantee wording removed** — owner confirmed there's no specific
+    guaranteed response-time window. All instances now just say "call us and we'll make it right,"
+    with no time limit stated.
+  - **Christmas light storage clarified** — it's included in the installation price owner quotes,
+    not a separate free perk or paid add-on. Reworded "Free/Optional storage" language throughout
+    `christmas-light-installation` to "storage included in your price."
+  - **Booking lead-time FAQ corrected** — owner said timing varies (same-day to a couple weeks
+    depending on season/schedule), not a fixed "1–2 weeks" recommendation. Wording updated.
 
 ---
 
@@ -86,19 +112,19 @@ system did not verify the remaining one's dollar amounts or perks.
 
 | # | Claim | Pages it appears on | Source file | Current wording | Status | Recommended action if inaccurate |
 |---|---|---|---|---|---|---|
-| 1 | $50 biannual discount | Homepage, all 13 service pages, quote wizard | `build/sitedata.py` → `PROMO_PLANS` | "Biannual … $50 OFF Per Cleaning" | Needs Owner Verification | Update the dollar amount in `PROMO_PLANS`; nowhere else to change. |
-| 2 | $100 quarterly discount | Same as above | `build/sitedata.py` → `PROMO_PLANS` | "Quarterly … $100 OFF Per Cleaning", marked "Most Popular" | Needs Owner Verification | Same as above. |
-| 3 | $150 monthly discount | Same as above | `build/sitedata.py` → `PROMO_PLANS` | "Monthly … $150 OFF Per Cleaning" | Needs Owner Verification | Same as above. |
-| 4 | Priority Scheduling (promo-card perk) | Same as above | `build/sitedata.py` → `PROMO_FEATS` | Listed as included on Quarterly/Monthly, excluded on Biannual | Needs Owner Verification | Confirm the mechanism actually exists / differs by tier. |
-| 5 | "7-Day Rain Guarantee" | Same as above | `build/sitedata.py` → `PROMO_FEATS` | Listed as included on Quarterly/Monthly, excluded on Biannual | Needs Owner Verification | No description of what this guarantee actually does exists anywhere else in the repo. Confirm terms or remove. |
-| 6 | "Free Hard Water Removal" (plan perk) | Same as above | `build/sitedata.py` → `PROMO_FEATS` | Listed as included on Quarterly/Monthly, excluded on Biannual | Needs Owner Verification | **No authoritative definition found in the repo.** Confirm whether this means the light spot-treatment already bundled into standard cleaning, or the full paid Hard Water Stain Removal service given away free to members — these are very different in value and should be worded accordingly. |
+| 1 | $50 biannual discount | Homepage, all 13 service pages, quote wizard | `build/sitedata.py` → `PROMO_PLANS` | "Biannual … $50 OFF Per Cleaning" | **CONFIRMED by owner** | — |
+| 2 | $100 quarterly discount | Same as above | `build/sitedata.py` → `PROMO_PLANS` | "Quarterly … $100 OFF Per Cleaning", marked "Most Popular" | **CONFIRMED by owner** | — |
+| 3 | $150 monthly discount | Same as above | `build/sitedata.py` → `PROMO_PLANS` | "Monthly … $150 OFF Per Cleaning" | **CONFIRMED by owner** | — |
+| 4 | Priority Scheduling (promo-card perk) | Same as above | `build/sitedata.py` → `PROMO_FEATS` | Listed as included on Quarterly/Monthly, excluded on Biannual | **CONFIRMED by owner** | — |
+| 5 | "7-Day Rain Guarantee" | Same as above | `build/sitedata.py` → `PROMO_FEATS` | Listed as included on Quarterly/Monthly, excluded on Biannual | **CONFIRMED by owner** | Owner confirmed the perk is real; the exact terms of what it covers still aren't written down anywhere on the site — worth a dedicated sentence somewhere if customers ask what it means in practice. |
+| 6 | "Free Hard Water Removal" (plan perk) | Same as above | `build/sitedata.py` → `PROMO_FEATS` | Listed as included on Quarterly/Monthly, excluded on Biannual | **CONFIRMED by owner** | Owner confirmed the perk is real; whether it means the light spot-treatment already bundled into standard cleaning vs. the full paid Hard Water Stain Removal service is still not spelled out anywhere — worth clarifying in the perk's own wording. |
 | 7 | Screens included with every exterior cleaning | `services/exterior-window-cleaning.html` | `build/sitedata.py` → `exterior-window-cleaning.includes/faqs` | "Yes — screens are removed, hand-washed, and reinstalled as part of every exterior window cleaning visit." | Needs Owner Verification | Confirm this is universal, not tier/plan-dependent. |
 | 8 | Tracks and sills included with every exterior cleaning | `services/exterior-window-cleaning.html` | Same | "Yes — exterior sills, tracks, and frames are wiped down on every visit, not just the glass." | Needs Owner Verification | Same. |
 | 9 | Light mineral/spot treatment included | `services/exterior-window-cleaning.html` | `build/sitedata.py` → `exterior-window-cleaning.benefits/includes/faqs` | "Light spot treatment" benefit; "Spot treatment for light hard-water and mineral marks" (includes); FAQ distinguishes this from the separate Hard Water Stain Removal service | Needs Owner Verification | Confirm light treatment really is standard/included and not upsold. |
 | 10 | Streak-free guarantee | `services/exterior-window-cleaning.html`, `services/interior-window-cleaning.html` | `build/sitedata.py` → both services' `benefits` | "We don't leave until every pane is spotless — or we come back free." | Needs Owner Verification | Confirm the "come back free" mechanism and any time limit. |
-| 11 | 100% satisfaction guarantee | Homepage, Why Choose Us, About, every area page, every landing page, generic service FAQ | `build/build.py` (multiple call sites), `build/sitedata.py` | "If anything isn't right, call within 48 hours and we'll re-clean it free." (wording varies slightly by page — see note below) | Needs Owner Verification | Confirm the actual window (48 hours vs. no stated limit elsewhere) and standardize wording. |
-| 12 | Free return visit / re-clean | Same pages as #11 | Same | "we return and re-clean it free" | Needs Owner Verification | Same as #11. |
-| 13 | Storage of Christmas lights between seasons | `services/christmas-light-installation.html` | `build/sitedata.py` → `christmas-light-installation.includes/faqs` | "Optional storage of lights between seasons" — FAQ says "Yes — optional storage between seasons is available" | Needs Owner Verification | Confirm whether "optional" means free or a paid add-on, and state it explicitly either way. |
+| 11 | 100% satisfaction guarantee | Homepage, Why Choose Us, About, every area page, every landing page, generic service FAQ | `build/build.py` (multiple call sites), `build/sitedata.py` | "If anything isn't right, call us and we'll re-clean it free" — no time window stated | **Resolved** | Owner confirmed there is **no** guaranteed response-time window — the "within 48 hours" claim was false and has been removed everywhere it appeared. |
+| 12 | Free return visit / re-clean | Same pages as #11 | Same | "we return and re-clean it free" | **CONFIRMED by owner** | — |
+| 13 | Storage of Christmas lights between seasons | `services/christmas-light-installation.html` | `build/sitedata.py` → `christmas-light-installation.includes/faqs` | Storage is included in the quoted installation price, not a separate free perk or paid add-on | **Resolved** | Owner clarified storage is baked into the price — not "optional"/"free" as separately-worded perks. Copy updated throughout the service page. |
 | 14 | Whether Barta supplies the Christmas lights | `services/christmas-light-installation.html` | `build/sitedata.py` → `christmas-light-installation.includes/faqs` | "Premium, commercial-grade LED lights and greenery" (includes); FAQ: "Yes — commercial-grade LED lights and greenery are included in the installation. You don't need to buy or supply anything yourself." | Needs Owner Verification | If customers are ever expected to supply/own their own lights in some cases, this needs to say so. |
 | 15 | Liability insurance | Footer (every page), homepage, Why Choose Us, About, every service `why_barta`, every area/landing page | `build/components.py` (`footer()`), `build/build.py` (multiple), `build/sitedata.py` (`why_barta` fields) | "Licensed & insured" | **CONFIRMED by owner** | — |
 | 16 | Workers' compensation insurance | — | — | Specific "workers' comp" wording removed sitewide | **Resolved — claim removed** | Owner confirmed "licensed and insured" generally but couldn't confirm workers' comp specifically, so the specific claim was dropped in favor of the confirmed wording. |
@@ -110,12 +136,13 @@ system did not verify the remaining one's dollar amounts or perks.
 | 22 | Service-area claims (36 cities + neighborhood names) | Every area page (36), service-area hub, footer | `build/sitedata.py` → `AREAS` | 36 Minnesota communities within ~1hr of Delano, each with neighborhood names | **Resolved** | Owner's rule: keep only real MN towns within ~1hr of Delano, remove fabricated neighborhood names. Research confirmed all 36 cities are genuinely within an hour's drive (farthest checked: Rogers at 38 min). 3 fabricated neighborhood names were found and replaced with real, sourced ones: Delano's "Lake Ridge"→"Highland Ridge" and "Bartholomew"→"Kings Pointe"; St. Michael's "River Pointe"→"Riverview Preserve"; Rockford's "River Edge"→"Downtown Rockford". All other neighborhood names were independently verified as real (city sites, Wikipedia, DNR lake records, realtor neighborhood guides) or are safe generic descriptors ("Downtown X", "X Township", "X Lake shoreline"). |
 | 23 | 5.0★ rating / 100+ reviews | Homepage hero, stat counters, Reviews page title/meta/H1, every landing page, OG share image | `build/sitedata.py` → `BIZ["rating"]`, `BIZ["review_count"]` | "5.0★ from 100+ reviews" | **CONFIRMED by owner** | Also independently corroborated: the site's live Trustindex Google-reviews widget (`config/google-reviews-embed*.html`) pulls real reviews. |
 
-### A note on guarantee wording consistency
-The "100% satisfaction guarantee" is described slightly differently in different places (e.g., "call
-within 48 hours and we'll re-clean it free" vs. "we make it right — free" with no stated window). These
-weren't forced into identical wording this pass because doing so would mean guessing which version is
-authoritative. Once confirmed, all instances should read identically — grep `100% [Ss]atisfaction
-[Gg]uarantee` and `re-clean it free` in `build/build.py` and `build/sitedata.py` to find every instance.
+### Still open (not yet addressed by the owner)
+- Items 7-10 above (screens/tracks/spot-treatment inclusion, the exact "come back free" mechanism
+  behind the streak-free guarantee) remain unconfirmed.
+- The commercial-cleaning "quotes typically within 24 hours" turnaround claim (`build/sitedata.py` →
+  `commercial-cleaning.benefits`) is still unconfirmed.
+- The exact terms of the "7-Day Rain Guarantee" and what "Free Hard Water Removal" actually covers
+  (see the notes on items 5-6) are confirmed to exist but not yet spelled out anywhere.
 
 ---
 
