@@ -728,16 +728,14 @@ def build_about():
         desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story, our values, and our commitment to your home.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
-        lead=f"Founded in {BIZ['founded']} by brothers Alex and Jacob Barta, we're a hands-on, local exterior cleaning team — Alex leads the crew on every job, and Jacob runs the office, so you're always working directly with an owner, not a call center or a rotating cast of subcontractors.",
+        lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN")
     html += f"""<main id="main">{body}
   <section><div class="container"><div class="split">
     <div class="prose reveal">
       <span class="eyebrow">Our story</span>
-      <h2 class="mt-1">Owner-operated, from day one</h2>
-      <p>Barta Window Washing Services is co-owned by brothers Alex and Jacob Barta, based right here in Delano. We started the company in {BIZ['founded']} with a simple goal: give local homeowners an exterior cleaning team they can actually trust — one that shows up on time, sweats the details, and stands behind the work. Alex leads the technician crew on every job site; Jacob runs the office and sales side, so whoever you talk to is an owner.</p>
-      <p>Because we're co-owners running this business day to day — not a rotating cast of subcontractors — every project gets our direct attention. We offer window cleaning, gutter cleaning, pressure washing, house and roof soft washing, and holiday lighting installation across Delano and the western Twin Cities metro.</p>
-      <p>When you call Barta, you're talking to the people who own the company — and whose name is on every result.</p>
+      <h2 class="mt-1">Founded by two brothers</h2>
+      <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex leads the crew on every job site, and Jacob runs the office — so whether you're on the phone with us or watching us pull into your driveway, you're always dealing with an owner.</p>
     </div>
     <div class="reveal">{C.photo("assets/img/team-barta.jpg", "Alex and Jacob Barta, co-owners of Barta Window Washing, in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
