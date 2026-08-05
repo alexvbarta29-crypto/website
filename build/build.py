@@ -475,7 +475,7 @@ def build_service(svc):
              f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
             freq_faq,
             ("Are you insured?",
-             "Yes — Barta is fully insured. We provide a certificate on request and treat your property with total care."),
+             "Yes — Barta is fully insured."),
             ("Do you guarantee your work?",
              "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll re-clean it free."),
         ]
@@ -720,7 +720,7 @@ def build_about():
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
         team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="140" height="140" style="width:140px;height:140px;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 16px;display:block">
+        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="200" height="200" style="width:200px;height:200px;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
         <h3 style="font-size:1.25rem">{name}</h3>
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
@@ -732,15 +732,17 @@ def build_about():
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN")
     html += f"""<main id="main">{body}
-  <section><div class="container"><div class="split">
-    <div class="prose reveal">
-      <span class="eyebrow">Our story</span>
+  <section><div class="container"><div class="prose center reveal" style="max-width:720px;margin-inline:auto;text-align:center">
+      <span class="eyebrow" style="justify-content:center">Our story</span>
       <h2 class="mt-1">Founded by two brothers</h2>
       <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex manages our crew of technicians in the field, and Jacob runs the office — building a team that's trained to the same standard the owners started the company on.</p>
-    </div>
-    <div class="reveal">{C.photo("assets/img/team-barta.jpg", "Alex and Jacob Barta, co-owners of Barta Window Washing, in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
-  <section class="bg-mist"><div class="container"><div class="split reverse">
+  <section class="bg-mist"><div class="container">
+    <div class="section-head center"><span class="eyebrow">The people</span><h2>Meet the owners</h2>
+    <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p></div>
+    <div class="grid cols-2 mt-3">{team_cards}</div>
+  </div></section>
+  <section><div class="container"><div class="split reverse">
     <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
     <div class="reveal">
       <span class="eyebrow">On the road near you</span>
@@ -753,11 +755,6 @@ def build_about():
       </ul>
     </div>
   </div></div></section>
-  <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">The people</span><h2>Meet the owners</h2>
-    <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p></div>
-    <div class="grid cols-2 mt-3">{team_cards}</div>
-  </div></section>
   {C.cta_band(depth)}
 </main>"""
     html += C.page_end(depth)
@@ -894,7 +891,7 @@ def build_area(a):
         (f"How quickly can you get to my home in {a['city']}?",
          f"As a local company, we're often in the {a['city']} area each week and can usually schedule within a few days. Members always get priority. Call or request a quote to check current availability."),
         ("Are you insured to work in my city?",
-         "Absolutely. Barta is fully insured to work throughout the western Twin Cities metro, including " + a["city"] + ". A certificate of insurance is available on request."),
+         "Absolutely. Barta is fully insured to work throughout the western Twin Cities metro, including " + a["city"] + "."),
     ]
     schema = BASE_SCHEMA + [S.faq_schema(area_faqs), S.breadcrumb([
         ("Home", BIZ["domain"] + "/"), ("Service Areas", BIZ["domain"] + "/service-areas.html"),
@@ -1286,7 +1283,7 @@ def build_landing(L):
     lp_faqs = [
         ("How does the quote process work?", "Tell us about your home and the services you need, and we'll put together clear, upfront pricing. Many quotes can be priced without an on-site visit."),
         ("Is the quote really free?", "Yes — 100% free and no obligation. We'll give you clear, upfront, all-in pricing with no pressure and no hidden fees."),
-        ("Are you insured?", "Absolutely. Barta is fully insured. Certificate available on request."),
+        ("Are you insured?", "Absolutely. Barta is fully insured."),
         ("What if I'm not satisfied?", "Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, we make it right — free."),
     ]
     schema = BASE_SCHEMA + [S.faq_schema(lp_faqs)]
@@ -1500,18 +1497,21 @@ def generate_webp_versions():
 
 # (max_width, format, quality) — never upscales: target_width = min(max_width,
 # source_width), so a variant wider than its source is just the source
-# re-encoded at that quality, not stretched. Quality tuned empirically so the
-# 1200w WebP lands in ~150-250KB across every current hero photo (heaviest
-# source: svc-mop-window.jpg at ~412KB full-res → ~244KB at 1200w/q40) while
-# staying visually clean under the hero's dark gradient overlay.
-_HERO_VARIANT_SPECS = [(1200, "webp", 40), (1200, "jpg", 50), (640, "webp", 55), (640, "jpg", 60)]
+# re-encoded at that quality, not stretched. Every current hero/service photo
+# is a ~1100-1126px-wide portrait phone photo, meaning the 1200w tier already
+# sits at native resolution — there's no higher-resolution tier to add for
+# these, so the previous q40/q50 settings were pure compression artifacts,
+# visible as fuzziness on the large full-bleed hero display. Raised quality
+# substantially (owner explicitly prioritized sharpness over the extra file
+# size) while still compressing meaningfully vs. the untouched original.
+_HERO_VARIANT_SPECS = [(1200, "webp", 72), (1200, "jpg", 78), (640, "webp", 72), (640, "jpg", 78)]
 
 # Extra large-desktop/high-DPI tier for the homepage van hero specifically —
 # its source is exactly 1920px wide (no higher-res original exists), so this
 # never upscales; it's a straight re-encode at a higher quality than the
 # 1200w tier so the full-bleed hero stays sharp on large/retina screens
 # instead of the browser stretching the 1200w file to fill the viewport.
-_HERO_1920_SPECS = [(1920, "webp", 50), (1920, "jpg", 62)]
+_HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 _HERO_1920_PATHS = {"assets/img/hero-home.jpg"}
 
 def generate_hero_variants():

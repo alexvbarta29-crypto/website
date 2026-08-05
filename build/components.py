@@ -746,7 +746,7 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", s
 def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              text="Join hundreds of Delano-area homeowners who trust Barta for a spotless, stress-free exterior. Get your free quote today.",
              primary=("Get Your Free Quote", "get-quote.html"),
-             image="assets/img/svc-interior-window-cleaning.jpg", image_pos="8%"):
+             image="assets/img/svc-interior-window-cleaning.jpg", image_pos="35%"):
     root = rel(depth)
     # Decorative full-bleed backdrop behind an overlay + text — never the
     # sole carrier of information, so a CSS background (hidden from
