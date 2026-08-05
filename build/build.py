@@ -1152,6 +1152,60 @@ def build_404():
     html += C.page_end(depth)
     write("404.html", html, slug="404.html", priority="0.1")
 
+def build_instagram_callback():
+    """One-time OAuth redirect target for connecting the Instagram feed
+    (see build/instagram_sync.py). Instagram requires a real HTTPS URL to
+    redirect back to after login; this page just lifts the ?code= param
+    out of the address bar into a copyable box so the owner doesn't have
+    to select it out of a URL by hand. Never linked from anywhere on the
+    site and excluded from the sitemap/search index — it's a setup
+    utility, not a page visitors should ever land on."""
+    depth = 0
+    schema = [S.local_business(), S.organization(), S.website()]
+    html = C.head(
+        title=f"Instagram Connect | {BIZ['name']}",
+        desc="Instagram connection utility page.",
+        slug="instagram-callback.html", depth=depth, schema=schema, noindex=True)
+    html += C.nav(depth)
+    html += f"""
+<main id="main">
+  <section class="phero" style="min-height:56vh;display:flex;align-items:center">
+    <div class="container center" style="max-width:560px">
+      <span class="eyebrow" style="justify-content:center">Setup</span>
+      <h1 class="mt-1">Instagram connection code</h1>
+      <p class="lead" id="ig-status">Waiting for a code in the URL…</p>
+      <div class="field mt-2" style="max-width:480px;margin-inline:auto">
+        <input type="text" id="ig-code" readonly style="text-align:center;font-family:monospace" placeholder="No code found">
+      </div>
+      <button type="button" class="btn mt-2" id="ig-copy">Copy code</button>
+    </div>
+  </section>
+</main>
+<script>
+  (function() {{
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    var input = document.getElementById('ig-code');
+    var status = document.getElementById('ig-status');
+    var copyBtn = document.getElementById('ig-copy');
+    if (code) {{
+      input.value = code;
+      status.textContent = 'Copy this code and send it back.';
+    }} else {{
+      status.textContent = params.get('error_description') || 'No code found in the URL — did the login step fail?';
+      copyBtn.disabled = true;
+    }}
+    copyBtn.addEventListener('click', function() {{
+      input.select();
+      navigator.clipboard.writeText(input.value).then(function() {{
+        copyBtn.textContent = 'Copied!';
+      }});
+    }});
+  }})();
+</script>"""
+    html += C.page_end(depth)
+    write("instagram-callback.html", html, slug="instagram-callback.html", priority="0.0")
+
 # ===========================================================================
 # BLOG HUB + POSTS
 # ===========================================================================
@@ -1632,6 +1686,7 @@ def main():
     build_privacy()
     build_terms()
     build_404()
+    build_instagram_callback()
     build_blog()
     for i, p in enumerate(POSTS):
         build_post(p, i)

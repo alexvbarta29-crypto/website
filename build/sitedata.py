@@ -605,7 +605,7 @@ SERVICES = [
         "slug": "commercial-cleaning",
         "name": "Commercial Cleaning",
         "icon": "building",
-        "hero_pos": "55%",
+        "hero_pos": "42%",
         "image": "assets/img/svc-commercial-cleaning.jpg",
         "short": "Reliable, scheduled exterior cleaning for your business — storefronts, offices, and more.",
         "hero_sub": "Serving Delano and businesses throughout the western Twin Cities — from storefronts to multi-building portfolios, with flexible scheduling and a single point of contact.",
