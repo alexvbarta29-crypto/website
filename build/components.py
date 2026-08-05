@@ -243,7 +243,7 @@ def sticky_cta(depth=0):
 
 def footer(depth=0):
     root = rel(depth)
-    svc_links = "".join(f'<li><a href="{root}services/{s["slug"]}.html">{s["name"]}</a></li>' for s in SERVICES[:8])
+    svc_links = "".join(f'<li><a href="{root}{target}">{label}</a></li>' for label, target in DROPDOWN_SERVICES)
     return f"""<footer class="footer">
   <div class="container">
     <div class="footer-top">
