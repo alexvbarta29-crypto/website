@@ -776,8 +776,8 @@ REVIEWS = []
 # Jacob runs the office and sales side (quotes, scheduling, customer contact).
 # ---------------------------------------------------------------------------
 TEAM = [
-    ("Alex Barta", "Co-Owner", "AB", "Alex co-owns Barta Window Washing and leads our technicians and crews in the field, setting the same standard he'd expect at his own home."),
-    ("Jacob Barta", "Co-Owner", "JB", "Jacob co-owns Barta Window Washing and runs the office and sales side — quotes, scheduling, and making sure every customer gets a clear, easy experience from the first call on."),
+    ("Alex Barta", "Co-Owner", "AB", "assets/img/team-alex.jpg", "Alex co-owns Barta Window Washing and leads our technicians and crews in the field, setting the same standard he'd expect at his own home."),
+    ("Jacob Barta", "Co-Owner", "JB", "assets/img/team-jacob.jpg", "Jacob co-owns Barta Window Washing and runs the office and sales side — quotes, scheduling, and making sure every customer gets a clear, easy experience from the first call on."),
 ]
 
 # ---------------------------------------------------------------------------

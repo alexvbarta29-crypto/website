@@ -724,9 +724,9 @@ def build_about():
     val_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
                        for i, (ic, t, d) in enumerate(values))
     team_cards = ""
-    for i, (name, role, initials, bio) in enumerate(TEAM):
+    for i, (name, role, initials, photo, bio) in enumerate(TEAM):
         team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <div class="avatar" style="width:84px;height:84px;font-size:1.6rem;margin:0 auto 16px;border-radius:24px">{initials}</div>
+        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="140" height="140" style="width:140px;height:140px;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 16px;display:block">
         <h3 style="font-size:1.25rem">{name}</h3>
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
