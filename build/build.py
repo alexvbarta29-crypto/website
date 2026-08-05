@@ -481,6 +481,14 @@ def build_service(svc):
         <h2>The Barta Holiday Lighting Experience</h2>
       </div>
       <div class="xmas-steps">{step_items}</div>
+    </div>
+  </section>
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow">Why homeowners choose us</span>
+        <h2>Built for Minnesota winters</h2>
+      </div>
       <div class="xmas-benefits">{benefit_items}</div>
     </div>
   </section>"""
@@ -611,7 +619,8 @@ def build_service(svc):
 # Generic interior page scaffold
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
-                  crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False, h1_class=""):
+                  crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False, h1_class="",
+                  phero_class=""):
     schema = list(schema or BASE_SCHEMA)
     schema.append(S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
@@ -622,7 +631,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
     crumbs = C.crumbs([("Home", C.rel(depth) + "index.html"), (crumb_label or h1, None)])
     if cta_form:
         body = f"""
-  <section class="phero">
+  <section class="phero {phero_class}">
     <div class="container">
       {crumbs}
       <div class="hero-grid">
@@ -641,7 +650,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
   </section>"""
     else:
         body = f"""
-  <section class="phero">
+  <section class="phero {phero_class}">
     <div class="container">
       {crumbs}
       <div style="max-width:760px">
@@ -754,7 +763,7 @@ def build_about():
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
         team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="260" height="260" style="width:260px;height:260px;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
+        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="360" height="360" style="width:100%;max-width:360px;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
         <h3 style="font-size:1.25rem">{name}</h3>
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
@@ -765,9 +774,9 @@ def build_about():
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
-        h1_class="h1-tight")
+        h1_class="h1-tight", phero_class="phero-tight")
     html += f"""<main id="main">{body}
-  <section><div class="container">
+  <section class="section-tight" style="padding-top:24px"><div class="container">
     <div class="section-head center">
       <span class="eyebrow">Our story</span>
       <h2>Founded by two brothers</h2>
@@ -1546,6 +1555,13 @@ _HERO_VARIANT_SPECS = [(1200, "webp", 72), (1200, "jpg", 78), (640, "webp", 72),
 _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 _HERO_1920_PATHS = {"assets/img/hero-home.jpg"}
 
+# The Christmas Lights hero is a night shot — deep shadows and small bright
+# bulbs are exactly the content JPEG/WebP compress worst, so banding and
+# fuzziness show up there at the standard quality long before other, more
+# evenly-lit daytime photos look rough. Bump it well above the site default.
+_HERO_HIGH_Q_SPECS = [(1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 84), (640, "jpg", 88)]
+_HERO_HIGH_Q_PATHS = {"assets/img/svc-christmas-light-installation.jpg"}
+
 def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
     before/after photo (assets/img/<stem>-{640,1200}w.{webp,jpg}), used via
@@ -1572,7 +1588,8 @@ def generate_hero_variants():
         stem = rel.rsplit(".", 1)[0]
         src_mtime = os.path.getmtime(src)
         base = None
-        specs = _HERO_VARIANT_SPECS + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
+        base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
+        specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
         for max_w, fmt, quality in specs:
             out_rel = f"{stem}-{max_w}w.{fmt}"
             out_path = os.path.join(ROOT, out_rel)

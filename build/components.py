@@ -556,11 +556,18 @@ def xmas_quote_modal(depth=0):
     dedicated page, no multi-step wizard. Any "get a quote" link on this
     page is hijacked by main.js to open it instead of navigating away."""
     root = rel(depth)
+    garland = ('<div class="xmas-modal-garland" aria-hidden="true"><svg viewBox="0 0 600 26" preserveAspectRatio="none">'
+               '<path d="M0 7 Q37 22 75 7 T150 7 T225 7 T300 7 T375 7 T450 7 T525 7 T600 7" fill="none" stroke="var(--line)" stroke-width="2"/>'
+               '<circle class="xmas-bulb" cx="26" cy="15" r="4.5" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="101" cy="3" r="4.5" style="fill:#18b673;color:#18b673"/>'
+               '<circle class="xmas-bulb" cx="176" cy="15" r="4.5" style="fill:#f5c344;color:#f5c344"/><circle class="xmas-bulb" cx="251" cy="3" r="4.5" style="fill:#fb4d3d;color:#fb4d3d"/>'
+               '<circle class="xmas-bulb" cx="326" cy="15" r="4.5" style="fill:#18b673;color:#18b673"/><circle class="xmas-bulb" cx="401" cy="3" r="4.5" style="fill:#f5c344;color:#f5c344"/>'
+               '<circle class="xmas-bulb" cx="476" cy="15" r="4.5" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="551" cy="3" r="4.5" style="fill:#18b673;color:#18b673"/></svg></div>')
     return f"""<div class="xmas-modal" id="xmas-quote-modal" hidden>
   <div class="xmas-modal-scrim" data-xmas-close></div>
   <div class="xmas-modal-panel" role="dialog" aria-modal="true" aria-labelledby="xmas-modal-title">
     <button type="button" class="xmas-modal-close" data-xmas-close aria-label="Close">{icon('x')}</button>
     <div class="xmas-modal-body">
+      {garland}
       <span class="eyebrow" style="justify-content:center">Free Estimate</span>
       <h2 id="xmas-modal-title" class="center mt-1">Christmas Lights Installation</h2>
       <p class="form-note center">Fill out the form below and we'll reach out shortly.</p>
@@ -589,10 +596,9 @@ def xmas_quote_modal(depth=0):
         <div class="field"><label for="xq-where">Where on your house do you want lights?</label>
           <select id="xq-where" name="light_location" required>
             <option value="" selected disabled>Select one…</option>
-            <option>Roofline only</option>
-            <option>Roofline + trees &amp; bushes</option>
-            <option>Roofline + walkway or driveway</option>
-            <option>Full package (roofline, trees &amp; walkway)</option>
+            <option>Front only</option>
+            <option>Front and sides</option>
+            <option>Front, sides, and back</option>
             <option>Not sure — help me decide</option>
           </select>
         </div>
