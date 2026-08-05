@@ -620,7 +620,7 @@ def build_service(svc):
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
                   crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False, h1_class="",
-                  phero_class=""):
+                  phero_class="", hero_extra=""):
     schema = list(schema or BASE_SCHEMA)
     schema.append(S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
@@ -657,6 +657,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
         <span class="eyebrow">{eyebrow}</span>
         <h1 class="mt-1 {h1_class}">{h1}</h1>
         <p class="lead">{lead}</p>
+        {hero_extra}
       </div>
     </div>
   </section>"""
@@ -763,7 +764,7 @@ def build_about():
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
         team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="360" height="360" style="width:100%;max-width:360px;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
+        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="420" height="420" style="width:100%;max-width:420px;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
         <h3 style="font-size:1.25rem">{name}</h3>
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
@@ -774,13 +775,14 @@ def build_about():
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
-        h1_class="h1-tight", phero_class="phero-tight")
+        h1_class="h1-tight", phero_class="phero-tight",
+        hero_extra=f'<a href="#team" class="about-scroll-cue">Meet Alex &amp; Jacob {icon("chevron")}</a>')
     html += f"""<main id="main">{body}
-  <section class="section-tight" style="padding-top:24px"><div class="container">
+  <section class="section-tight" id="team" style="padding-top:24px"><div class="container">
     <div class="section-head center">
       <span class="eyebrow">Our story</span>
       <h2>Founded by two brothers</h2>
-      <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex manages our crew of technicians in the field, and Jacob runs the office — building a team that's trained to the same standard the owners started the company on.</p>
+      <p>Alex manages our crew of technicians in the field, and Jacob runs the office — building a team trained to the same standard the owners started the company on. It's old-school customer service — a phone call gets a real answer and a job gets done right — with the modern polish today's homeowners expect.</p>
     </div>
     <div class="grid cols-2 mt-3">{team_cards}</div>
   </div></section>

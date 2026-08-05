@@ -114,6 +114,7 @@ p { color: var(--slate-700); }
 .container-narrow { max-width: 820px; }
 section { padding-block: clamp(56px, 8vw, 110px); }
 .section-tight { padding-block: clamp(40px, 5vw, 64px); }
+#team { scroll-margin-top: calc(var(--nav-h) + 30px); }
 .bg-mist { background: var(--mist); }
 .bg-grad-sky { background: var(--grad-sky); }
 .bg-deep { background: var(--grad-deep); color: var(--white); }
@@ -650,6 +651,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .phero .hero-trust li { color: var(--slate-700); }
 .phero .hero-trust svg { color: var(--blue-600); }
 .phero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
+.about-scroll-cue { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-family: var(--font-head); font-weight: 700; font-size: .92rem; color: var(--blue-600); }
+.about-scroll-cue svg { width: 16px; height: 16px; animation: aboutCueBounce 1.6s ease-in-out infinite; }
+@keyframes aboutCueBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .about-scroll-cue svg { animation: none; } }
 .crumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--slate-400); margin-bottom: 18px; }
 .crumbs a { color: var(--slate-500); }
 .crumbs a:hover { color: var(--blue-600); }
