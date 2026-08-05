@@ -724,7 +724,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .footer { background: var(--navy-900); color: rgba(255,255,255,.88); padding-block: clamp(48px, 6vw, 76px) 30px; }
 .footer a { color: rgba(255,255,255,.88); transition: color .2s; }
 .footer a:hover { color: #fff; }
-.footer-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 44px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.footer-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px; padding-bottom: 44px; border-bottom: 1px solid rgba(255,255,255,.1); }
 .footer .brand { color: #fff; }
 .footer-about p { margin-top: 16px; font-size: .94rem; max-width: 34ch; color: #fff; }
 .footer-contact { margin-top: 20px; display: grid; gap: 10px; font-size: .92rem; }

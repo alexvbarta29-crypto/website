@@ -1,7 +1,7 @@
 """Reusable HTML partials and section builders."""
 import json, os
 from urllib.parse import quote_plus
-from sitedata import BIZ, SERVICES, AREAS, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT
+from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT
 from icons import icon
 
 # Cache-busting version for static assets (set at build time from file hashes).
@@ -246,7 +246,6 @@ def sticky_cta(depth=0):
 def footer(depth=0):
     root = rel(depth)
     svc_links = "".join(f'<li><a href="{root}services/{s["slug"]}.html">{s["name"]}</a></li>' for s in SERVICES[:8])
-    area_links = "".join(f'<li><a href="{root}areas/{a["slug"]}.html">{a["city"]}, MN</a></li>' for a in AREAS[:8])
     return f"""<footer class="footer">
   <div class="container">
     <div class="footer-top">
@@ -269,10 +268,6 @@ def footer(depth=0):
       <div class="footer-col">
         <h5>Services</h5>
         <ul>{svc_links}</ul>
-      </div>
-      <div class="footer-col">
-        <h5>Service Areas</h5>
-        <ul>{area_links}</ul>
       </div>
       <div class="footer-col">
         <h5>Company</h5>
