@@ -20,7 +20,7 @@ BIZ = {
     "zip": "55328",
     "lat": "45.0419",
     "lng": "-93.7891",
-    "hours": "Mon–Fri 8am–7pm, Sat 8am–5pm, Sun Closed",
+    "hours": "Mon–Fri 8am–6pm, Sat 8am–5pm, Sun Closed",
     "founded": "2024",
     "rating": "5.0",
     "review_count": "100",
@@ -39,6 +39,7 @@ SERVICES = [
         "slug": "exterior-window-cleaning",
         "name": "Exterior Window Cleaning",
         "icon": "window",
+        "hero_pos": "60%",
         "image": "assets/img/svc-exterior-window-cleaning.jpg",
         "short": "Streak-free exterior glass, screens, sills, and tracks — cleaned without ladders in your flower beds.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities.",
@@ -96,6 +97,7 @@ SERVICES = [
         "slug": "interior-window-cleaning",
         "name": "Interior Window Cleaning",
         "icon": "window",
+        "hero_pos": "8%",
         "image": "assets/img/svc-interior-window-cleaning.jpg",
         "short": "Spotless interior glass, sills, and tracks — hand-detailed without disturbing your home.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with spotless, streak-free interior glass.",
@@ -258,7 +260,7 @@ SERVICES = [
             "Optional sealing recommendations to protect your investment",
         ],
         "process_note": "Pair with house washing for a complete exterior refresh and bundle savings.",
-        "why_barta": "We know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter, and co-owner Alex Barta trains every technician on exactly which pressure and nozzle to use on which surface — so you get a like-new result without the etching or gouging an untrained operator can cause. Licensed, insured, and backed by our satisfaction guarantee.",
+        "why_barta": "We know Minnesota concrete takes a beating from salt, sand, and freeze-thaw cycles every winter, and co-owner Alex Barta trains every technician on exactly which pressure and nozzle to use on which surface — so you get a like-new result without the etching or gouging an untrained operator can cause. Insured and backed by our satisfaction guarantee.",
         "faqs": [
             ("What surfaces can be pressure washed?",
              "Concrete driveways, paver patios, sidewalks, pool decks, steps, and retaining walls — durable, hard surfaces built for higher pressure."),
@@ -573,8 +575,10 @@ SERVICES = [
         # [OWNER VERIFICATION REQUIRED] exact takedown timing/month is
         # carried over from existing site copy and should be confirmed
         # before relying on this page commercially. (Storage confirmed
-        # included in price, not a separate add-on; license/insurance
-        # wording confirmed accurate.)
+        # included in price, not a separate add-on; insurance wording
+        # confirmed accurate — owner confirmed there is no such thing as a
+        # window-cleaner's license in Minnesota, so "licensed" claims were
+        # removed sitewide in favor of "insured" only.)
         "faqs": [
             ("How much does Christmas light installation cost?",
              "Every home's roofline and layout is different, so there's no fixed price list. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
@@ -609,7 +613,7 @@ SERVICES = [
         "kw2": ["commercial window cleaning", "office building cleaning", "retail storefront cleaning", "property management exterior services"],
         "benefits": [
             ("One reliable vendor", "Every building, every service, one point of contact."),
-            ("Fully licensed &amp; insured", "Comprehensive insurance coverage on every job, for your property and our team."),
+            ("Fully insured", "Comprehensive insurance coverage on every job, for your property and our team."),
             ("Flexible scheduling", "We work around your hours and your tenants, day or night."),
             ("Fast quote turnaround", "Clear, upfront commercial quotes typically within 24 hours."),
         ],
@@ -626,8 +630,8 @@ SERVICES = [
         ],
         # [OWNER VERIFICATION REQUIRED] the "typically within 24 hours"
         # quote-turnaround figure (benefits above) is a pre-existing site
-        # claim, not introduced here. (Licensed/insured wording confirmed;
-        # "bonded" claim removed since it wasn't confirmed.)
+        # claim, not introduced here. (Insured wording confirmed; "licensed"
+        # and "bonded" claims removed — owner confirmed neither applies.)
         "faqs": [
             ("What services are included for commercial properties?",
              "Storefront and office window cleaning, high-rise pure-water cleaning, pressure washing, building soft washing, gutter cleaning, and solar array cleaning — scheduled around your business."),
@@ -776,8 +780,8 @@ REVIEWS = []
 # Jacob runs the office and sales side (quotes, scheduling, customer contact).
 # ---------------------------------------------------------------------------
 TEAM = [
-    ("Alex Barta", "Co-Owner", "AB", "assets/img/team-alex.jpg", "Alex co-owns Barta Window Washing and leads our technicians and crews in the field, setting the same standard he'd expect at his own home."),
-    ("Jacob Barta", "Co-Owner", "JB", "assets/img/team-jacob.jpg", "Jacob co-owns Barta Window Washing and runs the office and sales side — quotes, scheduling, and making sure every customer gets a clear, easy experience from the first call on."),
+    ("Alex Barta", "Co-Owner", "AB", "assets/img/team-alex.jpg", "Alex is steady and hands-on — the kind of person who'd rather show you than tell you. He manages the crew day to day and holds everyone, himself included, to the standard he'd want at his own home."),
+    ("Jacob Barta", "Co-Owner", "JB", "assets/img/team-jacob.jpg", "Jacob is organized and straightforward — the one who makes sure nothing falls through the cracks. If you've talked to Barta on the phone or gotten a clear answer fast, that's Jacob."),
 ]
 
 # ---------------------------------------------------------------------------
@@ -854,7 +858,7 @@ POSTS = [
 # FAQs (general)
 # ---------------------------------------------------------------------------
 FAQS = [
-    ("Are you licensed and insured?", "Absolutely. Barta Window Washing is fully licensed and insured. We're happy to provide a certificate of insurance before any job — your home and our team are both protected."),
+    ("Are you insured?", "Absolutely. Barta Window Washing is fully insured. We're happy to provide a certificate of insurance before any job — your home and our team are both protected."),
     ("How do I get a free quote?", "Three easy ways: request a quote online through any form on this site, call us at " + BIZ["phone_display"] + ", or schedule online. Many quotes can be priced without an in-person visit."),
     ("Do I need to be home during the service?", "Not for most exterior work. As long as we have access to the areas being cleaned and any gates are unlocked, you don't need to be home. For interior window cleaning, we'll coordinate a time that works for you."),
     ("What if I'm not satisfied?", "Every Barta service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll make it right — re-cleaning at no charge. We don't consider a job done until you're thrilled."),
@@ -893,7 +897,7 @@ IMAGE_ALT = {
 # Trust badges
 # ---------------------------------------------------------------------------
 BADGES = [
-    ("shield", "Licensed &amp; Insured"),
+    ("shield", "Insured"),
     ("home", "Locally &amp; Family Owned"),
     ("star", BIZ["rating"] + "★ Rated (" + BIZ["review_count"] + "+ reviews)"),
     ("check", "100% Satisfaction Guarantee"),

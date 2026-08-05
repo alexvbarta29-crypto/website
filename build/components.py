@@ -225,7 +225,6 @@ def nav(depth=0):
       <a href="{root}blog.html">Blog</a>
       <a href="{root}faqs.html">FAQs</a>
       <a href="{root}financing.html">Financing</a>
-      <a href="{root}contact.html">Contact</a>
     </nav>
     <div class="drawer-foot">
       <a class="btn btn-block" href="{root}get-quote.html">Get My Free Quote</a>
@@ -274,12 +273,12 @@ def footer(depth=0):
           <li><a href="{root}about.html">About Us</a></li>
           <li><a href="{root}why-choose-us.html">Why Choose Us</a></li>
           <li><a href="{root}reviews.html">Reviews</a></li>
-          <li><a href="{root}contact.html">Contact</a></li>
+          <li><a href="{root}get-quote.html">Get a Quote</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© <span id="year">2026</span> {BIZ['name']}. All rights reserved. Licensed &amp; insured in Minnesota.</span>
+      <span>© <span id="year">2026</span> {BIZ['name']}. All rights reserved. Fully insured in Minnesota.</span>
       <div class="links">
         <a href="{root}get-quote.html">Free Quote</a>
         <a href="{root}faqs.html">FAQs</a>
@@ -747,7 +746,7 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", s
 def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              text="Join hundreds of Delano-area homeowners who trust Barta for a spotless, stress-free exterior. Get your free quote today.",
              primary=("Get Your Free Quote", "get-quote.html"),
-             image="assets/img/svc-exterior-window-cleaning.jpg", image_pos="30%"):
+             image="assets/img/svc-interior-window-cleaning.jpg", image_pos="8%"):
     root = rel(depth)
     # Decorative full-bleed backdrop behind an overlay + text — never the
     # sole carrier of information, so a CSS background (hidden from

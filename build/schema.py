@@ -98,16 +98,6 @@ def faq_schema(items):
         } for q, a in items],
     }
 
-def contact_page():
-    return {
-        "@context": "https://schema.org",
-        "@type": "ContactPage",
-        "@id": BIZ["domain"] + "/contact.html#contactpage",
-        "url": BIZ["domain"] + "/contact.html",
-        "name": f"Contact {BIZ['name']}",
-        "about": {"@id": BIZ["domain"] + "/#business"},
-    }
-
 def breadcrumb(items):
     """items = [(name, url), ...]"""
     return {

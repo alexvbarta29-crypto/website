@@ -175,7 +175,7 @@ def build_home():
     process_slider_html = C.process_slider(process_steps, depth)
 
     why = [
-        ("shield", "Licensed &amp; fully insured", "Full insurance coverage on every job. Your home and our team are always protected."),
+        ("shield", "Fully insured", "Full insurance coverage on every job. Your home and our team are always protected."),
         ("home", "Locally &amp; family owned", "Born and based in Delano. We treat your home like a neighbor's — because you are one."),
         ("leaf", "Safe, eco-friendly methods", "Biodegradable solutions and the right pressure for every surface. Safe for your family, pets, and landscaping."),
         ("award", "Obsessed with detail", "Sills, tracks, screens, downspouts — we sweat the details most companies skip."),
@@ -474,8 +474,8 @@ def build_service(svc):
             (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
              f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
             freq_faq,
-            ("Are you licensed and insured?",
-             "Yes — Barta is fully licensed and insured. We provide a certificate on request and treat your property with total care."),
+            ("Are you insured?",
+             "Yes — Barta is fully insured. We provide a certificate on request and treat your property with total care."),
             ("Do you guarantee your work?",
              "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll re-clean it free."),
         ]
@@ -489,7 +489,7 @@ def build_service(svc):
     kw2 = ", ".join(svc["kw2"])
     html = C.head(
         title=svc.get("seo_title") or f"{svc['name']} in {BIZ['city']}, MN | {BIZ['name']}",
-        desc=svc.get("seo_desc") or f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Licensed, insured & guaranteed. Get your free quote from Barta today.",
+        desc=svc.get("seo_desc") or f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Insured & guaranteed. Get your free quote from Barta today.",
         slug=f"services/{svc['slug']}.html", depth=depth, schema=schema,
         uses_reviews_widget=True)
     html += C.nav(depth)
@@ -671,7 +671,7 @@ def build_residential():
 def build_why():
     depth = 0
     reasons = [
-        ("shield", "Fully licensed &amp; insured", "Comprehensive insurance coverage protects your home and our team on every single job. Certificate available on request."),
+        ("shield", "Fully insured", "Comprehensive insurance coverage protects your home and our team on every single job. Certificate available on request."),
         ("home", "Local &amp; family owned", "We're your neighbors in Delano, not a faceless franchise. Our name is on every truck and every result — and our reputation is everything."),
         ("award", "Detail you can see", "Sills, tracks, screens, downspouts, and corners — we finish the details most companies rush past. The difference shows."),
         ("leaf", "Safe, proven methods", "We match the right pressure and biodegradable solution to every surface, protecting your home, family, pets, and landscaping."),
@@ -686,7 +686,7 @@ def build_why():
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     html, body = interior_head(
         title=f"Why Choose Barta Window Washing | Delano, MN's Top-Rated Cleaners",
-        desc="Discover why Delano-area homeowners choose Barta Window Washing: licensed & insured, family-owned, detail-obsessed, eco-safe methods, and a 100% satisfaction guarantee. 5.0★ rated.",
+        desc="Discover why Delano-area homeowners choose Barta Window Washing: fully insured, family-owned, detail-obsessed, eco-safe methods, and a 100% satisfaction guarantee. 5.0★ rated.",
         slug="why-choose-us.html", eyebrow="Why Choose Us",
         h1="The most trusted name in Minnesota exterior cleaning",
         lead="Anyone can squeegee a window. We've built our reputation on the things that actually matter — trust, detail, safety, and results you can count on, every single time.",
@@ -717,12 +717,6 @@ def build_why():
 # ===========================================================================
 def build_about():
     depth = 0
-    values = [("heart", "Treat every home like our own", "If we wouldn't do it on our own house, we won't do it on yours."),
-              ("check-circle", "Do it right, not just fast", "Detail and care come first. Speed is a bonus, never the goal."),
-              ("users", "People over transactions", "We're building relationships and a reputation, one neighbor at a time."),
-              ("leaf", "Respect your home &amp; the planet", "Safe methods, careful protection, and eco-friendly solutions, always.")]
-    val_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
-                       for i, (ic, t, d) in enumerate(values))
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
         team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
@@ -732,7 +726,7 @@ def build_about():
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
     html, body = interior_head(
         title=f"About {BIZ['name']} | Family-Owned Exterior Cleaning in Delano, MN",
-        desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story, our values, and meet the owners.",
+        desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story and meet the owners.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
@@ -742,7 +736,7 @@ def build_about():
     <div class="prose reveal">
       <span class="eyebrow">Our story</span>
       <h2 class="mt-1">Founded by two brothers</h2>
-      <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex leads our crew of technicians in the field, and Jacob runs the office — building a team that's trained to the same standard the owners started the company on.</p>
+      <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex manages our crew of technicians in the field, and Jacob runs the office — building a team that's trained to the same standard the owners started the company on.</p>
     </div>
     <div class="reveal">{C.photo("assets/img/team-barta.jpg", "Alex and Jacob Barta, co-owners of Barta Window Washing, in Delano, MN", ratio="5/4", depth=depth)}</div>
   </div></div></section>
@@ -755,24 +749,15 @@ def build_about():
       <ul class="checklist mt-2">
         <li>{icon('check-circle')} In-house, trained crew — not subcontractors</li>
         <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
-        <li>{icon('check-circle')} Licensed &amp; insured on every visit</li>
+        <li>{icon('check-circle')} Fully insured on every visit</li>
       </ul>
     </div>
   </div></div></section>
-  <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">What we stand for</span><h2>Our values</h2></div>
-    <div class="grid cols-2">{val_html}</div>
-  </div></section>
   <section><div class="container">
     <div class="section-head center"><span class="eyebrow">The people</span><h2>Meet the owners</h2>
     <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p></div>
     <div class="grid cols-2 mt-3">{team_cards}</div>
   </div></section>
-  <section class="bg-mist"><div class="container"><div class="section-head center">
-    <span class="eyebrow">Growing</span><h2>Looking to join us down the road?</h2>
-    <p>We're a small, owner-operated team today, but we'd love to hear from detail-oriented, reliable people for future openings.</p>
-    <a class="btn mt-3" href="contact.html">Get in touch {icon('arrow')}</a>
-  </div></div></section>
   {C.cta_band(depth)}
 </main>"""
     html += C.page_end(depth)
@@ -858,7 +843,7 @@ def build_service_areas():
         </div>
       </div>
     </div>
-    <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too — <a href="contact.html" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
+    <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too — <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
   </div></section>
   <section class="bg-mist"><div class="container">
     <div class="section-head center">
@@ -909,7 +894,7 @@ def build_area(a):
         (f"How quickly can you get to my home in {a['city']}?",
          f"As a local company, we're often in the {a['city']} area each week and can usually schedule within a few days. Members always get priority. Call or request a quote to check current availability."),
         ("Are you insured to work in my city?",
-         "Absolutely. Barta is fully licensed and insured to work throughout the western Twin Cities metro, including " + a["city"] + ". A certificate of insurance is available on request."),
+         "Absolutely. Barta is fully insured to work throughout the western Twin Cities metro, including " + a["city"] + ". A certificate of insurance is available on request."),
     ]
     schema = BASE_SCHEMA + [S.faq_schema(area_faqs), S.breadcrumb([
         ("Home", BIZ["domain"] + "/"), ("Service Areas", BIZ["domain"] + "/service-areas.html"),
@@ -921,7 +906,7 @@ def build_area(a):
         # FAQ) — repeating the full list here was pushing every one of the
         # 36 area-page descriptions past 175-200+ characters, well beyond
         # what Google renders before truncating in search results.
-        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local, licensed & insured. Get your free quote from Barta.",
+        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local & insured. Get your free quote from Barta.",
         slug=f"areas/{a['slug']}.html", depth=depth, schema=schema,
         primary_kw=f"exterior cleaning services {a['city']} MN")
     html += C.nav(depth)
@@ -999,49 +984,6 @@ def build_financing():
     html += C.page_end(depth)
     write("financing.html", html, slug="financing.html", priority="0.4")
 
-# ===========================================================================
-# CONTACT
-# ===========================================================================
-def build_contact():
-    depth = 0
-    schema = BASE_SCHEMA + [S.contact_page()]
-    html, body = interior_head(
-        title=f"Contact {BIZ['name']} | Free Quotes in Delano, MN",
-        desc=f"Get in touch with Barta Window Washing. Call {BIZ['phone_display']}, email us, or request a free quote online. Serving Delano & the western Twin Cities, {BIZ['hours']}.",
-        slug="contact.html", eyebrow="Contact", schema=schema,
-        h1="Let's talk about your home",
-        lead="Questions, quotes, or scheduling — we're here to help and happy to hear from you. Reach out and we'll get right back to you.",
-        depth=depth, crumb_label="Contact", primary_kw="contact window cleaning Delano MN")
-    info = f"""<div class="card" style="display:grid;gap:18px">
-      <a class="feature" href="tel:{BIZ['phone_href']}"><span class="ic">{icon('phone')}</span><div><h4>Call or text</h4><p>{BIZ['phone_display']}</p></div></a>
-      <a class="feature" href="mailto:{BIZ['email']}"><span class="ic">{icon('mail')}</span><div><h4>Email</h4><p>{BIZ['email']}</p></div></a>
-      <div class="feature"><span class="ic">{icon('pin')}</span><div><h4>Service area</h4><p>{BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']} &amp; the western metro</p></div></div>
-      <div class="feature"><span class="ic">{icon('clock')}</span><div><h4>Hours</h4><p>{BIZ['hours']}</p></div></div>
-    </div>"""
-    html += f"""<main id="main">{body}
-  <section><div class="container"><div class="hero-grid">
-    <div class="reveal">
-      <span class="eyebrow">Reach us directly</span>
-      <h2 class="mt-1">Get in touch</h2>
-      <p class="mt-1" style="color:var(--slate-500)">Prefer to talk? Call or text us anytime during business hours — we love hearing from neighbors.</p>
-      <div class="mt-3">{info}</div>
-    </div>
-    <div class="reveal">{C.lead_form(depth, heading="Send us a message", sub="Fill this out and we'll reply as quickly as we can.", submit="Send Message")}</div>
-  </div></div></section>
-  <section class="section-tight bg-mist">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow" style="justify-content:center">Find us</span>
-        <h2>Serving {BIZ['city']} &amp; the western metro</h2>
-      </div>
-      {C.gmap_embed(f"Map of {BIZ['name']} service area centered on {BIZ['city']}, {BIZ['state']}", cls="reveal map-wide")}
-    </div>
-  </section>
-  {C.cta_band(depth)}
-</main>"""
-    html += C.page_end(depth)
-    write("contact.html", html, slug="contact.html", priority="0.7")
-
 def build_get_quote():
     """get-quote.html — a bare, distraction-free full-screen quote wizard.
     No site nav, no footer, no sidebar content — just one step at a time,
@@ -1114,7 +1056,7 @@ def build_terms():
     <h2>Payment</h2>
     <p>Payment terms are provided at the time of booking or invoicing. Membership plans renew automatically according to the schedule selected at signup unless cancelled.</p>
     <h2>Limitation of liability</h2>
-    <p>{BIZ['name']} is licensed and insured, and performs services with reasonable care. We are not liable for pre-existing damage or conditions unrelated to the service performed.</p>
+    <p>{BIZ['name']} is fully insured, and performs services with reasonable care. We are not liable for pre-existing damage or conditions unrelated to the service performed.</p>
     <h2>Changes to these terms</h2>
     <p>We may update these terms from time to time. Continued use of our services after changes are posted constitutes acceptance of the updated terms.</p>
     <h2>Contact</h2>
@@ -1344,15 +1286,15 @@ def build_landing(L):
     lp_faqs = [
         ("How does the quote process work?", "Tell us about your home and the services you need, and we'll put together clear, upfront pricing. Many quotes can be priced without an on-site visit."),
         ("Is the quote really free?", "Yes — 100% free and no obligation. We'll give you clear, upfront, all-in pricing with no pressure and no hidden fees."),
-        ("Are you licensed and insured?", "Absolutely. Barta is fully licensed and insured. Certificate available on request."),
+        ("Are you insured?", "Absolutely. Barta is fully insured. Certificate available on request."),
         ("What if I'm not satisfied?", "Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, we make it right — free."),
     ]
     schema = BASE_SCHEMA + [S.faq_schema(lp_faqs)]
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
-        f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Licensed &amp; fully insured",
+        f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Fully insured",
         "Free, no-obligation quotes", "100% satisfaction guarantee", "Family-owned &amp; local"])
     html = C.head(title=f"{L['h1']} | {BIZ['name']}",
-                  desc=f"{L['headline'].replace('&amp;','&')}. Licensed, insured & guaranteed. Serving Delano & the western Twin Cities. Get your free, no-obligation quote from Barta now!",
+                  desc=f"{L['headline'].replace('&amp;','&')}. Insured & guaranteed. Serving Delano & the western Twin Cities. Get your free, no-obligation quote from Barta now!",
                   slug=f"landing/{L['slug']}.html", depth=depth, schema=schema, primary_kw=L["kw"], noindex=True)
     html += C.nav(depth)
     html += f"""<main id="main">
@@ -1362,7 +1304,7 @@ def build_landing(L):
       <h1 class="mt-1">{L['headline']}</h1>
       <p class="lead">Trusted, family-owned exterior cleaning across the western Twin Cities. Get clear, upfront pricing with no pressure and no obligation.</p>
       <ul class="hero-trust">
-        <li>{icon('shield')} Licensed &amp; insured</li>
+        <li>{icon('shield')} Fully insured</li>
         <li>{icon('check-circle')} {L['guarantee'].split(':')[0]}</li>
         <li>{icon('clock')} Free, easy quotes</li>
       </ul>
@@ -1469,7 +1411,7 @@ def build_images():
           '<text x="210" y="210" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="6" fill="#ff9b86">BARTA WINDOW WASHING</text>'
           '<text x="80" y="380" font-family="Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">The clearest view</text>'
           '<text x="80" y="470" font-family="Arial, sans-serif" font-size="80" font-weight="800" fill="#ffffff">in Delano starts here.</text>'
-          '<text x="80" y="548" font-family="Arial, sans-serif" font-size="31" fill="#c9c9cf">Premium exterior cleaning · 5.0★ · Licensed &amp; insured</text></svg>')
+          '<text x="80" y="548" font-family="Arial, sans-serif" font-size="31" fill="#c9c9cf">Premium exterior cleaning · 5.0★ · Fully insured</text></svg>')
     write_asset("assets/img/og-cover.svg", og)
 
 def write_asset(relpath, content):
@@ -1634,7 +1576,6 @@ def main():
     for a in AREAS:
         build_area(a)
     build_financing()
-    build_contact()
     build_get_quote()
     build_privacy()
     build_terms()
