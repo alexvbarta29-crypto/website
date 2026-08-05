@@ -1523,7 +1523,8 @@ def generate_hero_variants():
     except ImportError:
         print("  (Pillow not available — skipping responsive image variant generation)")
         return
-    hero_paths = {"assets/img/hero-home.jpg", "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg"}
+    hero_paths = {"assets/img/hero-home.jpg", "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg",
+                  "assets/img/svc-cta-squeegee.jpg"}
     for s in SERVICES:
         hero_paths.add(s.get("image") or "assets/img/hero-home.jpg")
     for name in ("window", "siding", "gutter"):

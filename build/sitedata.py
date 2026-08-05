@@ -39,7 +39,7 @@ SERVICES = [
         "slug": "exterior-window-cleaning",
         "name": "Exterior Window Cleaning",
         "icon": "window",
-        "hero_pos": "60%",
+        "hero_pos": "35%",
         "image": "assets/img/svc-exterior-window-cleaning.jpg",
         "short": "Streak-free exterior glass, screens, sills, and tracks — cleaned without ladders in your flower beds.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities.",
@@ -365,6 +365,8 @@ SERVICES = [
         "slug": "roof-cleaning",
         "name": "Roof Cleaning",
         "icon": "roof",
+        "hero_pos": "20%",
+        "image": "assets/img/svc-roof-cleaning.jpg",
         "short": "Remove black streaks, moss, and lichen safely with soft washing — no shingle damage.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with safe, manufacturer-recommended roof cleaning.",
         "seo_title": "Roof Cleaning Delano, MN | Barta",
@@ -879,7 +881,9 @@ FAQS = [
 # itself doesn't show.
 # ---------------------------------------------------------------------------
 IMAGE_ALT = {
-    "assets/img/svc-exterior-window-cleaning.jpg": "Technician using a water-fed pole to clean second-story exterior windows",
+    "assets/img/svc-exterior-window-cleaning.jpg": "Two Barta Window Washing technicians cleaning exterior windows on a home, with screens removed nearby",
+    "assets/img/svc-roof-cleaning.jpg": "A two-story home with technicians cleaning exterior windows near the roofline and gutters",
+    "assets/img/svc-cta-squeegee.jpg": "Close-up of a Barta Window Washing technician squeegeeing an arched window",
     "assets/img/svc-interior-window-cleaning.jpg": "Technician cleaning interior window glass with a squeegee",
     "assets/img/svc-track-detailing.jpg": "Technician vacuuming a window track with a wet/dry vacuum",
     "assets/img/svc-gutter-cleaning.jpg": "Technician clearing a gutter by hand from a ladder",
