@@ -381,6 +381,39 @@ def _service_area_section(svc, depth):
     </div>
   </section>"""
 
+def _xmas_garland_svg():
+    """Draped string-light garland across the top of the Christmas Lights
+    hero — a wavy wire with twinkling colored bulbs, generated rather than
+    hand-plotted so the spacing stays even at any width."""
+    import math
+    colors = ["#fb4d3d", "#18b673", "#f5c344"]
+    n = 15
+    pts = [(i * (1200 / (n - 1)), 18 + 9 * math.sin(i * 0.9)) for i in range(n)]
+    wire = "M" + " ".join(f"{x:.0f} {y:.0f}" for x, y in pts)
+    bulbs = "".join(
+        f'<circle class="xmas-bulb" cx="{x:.0f}" cy="{y:.0f}" r="5.5" style="fill:{colors[i % 3]};color:{colors[i % 3]}"/>'
+        for i, (x, y) in enumerate(pts))
+    return (f'<div class="xmas-garland" aria-hidden="true"><svg viewBox="0 0 1200 36" preserveAspectRatio="none">'
+            f'<path d="{wire}" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>{bulbs}</svg></div>')
+
+_XMAS_SNOW_SEED = [
+    (2, 5, 12.4, -3.1, -18), (7, 4, 9.8, -8.2, 24), (13, 6, 14.1, -1.5, -30),
+    (19, 3, 8.5, -12.0, 15), (24, 5, 11.9, -5.6, -22), (30, 4, 10.4, -9.9, 30),
+    (36, 6, 15.6, -2.4, -12), (42, 3, 8.9, -14.3, 20), (48, 5, 12.8, -6.8, -26),
+    (54, 4, 9.6, -10.5, 10), (60, 6, 14.9, -1.0, -34), (66, 3, 8.2, -13.6, 18),
+    (71, 5, 11.3, -7.4, -16), (77, 4, 10.1, -11.2, 28), (83, 6, 15.2, -3.8, -20),
+    (88, 3, 9.1, -9.0, 24), (93, 5, 12.2, -5.1, -28), (97, 4, 10.8, -12.8, 14),
+]
+
+def _xmas_snow():
+    """A fixed set of falling-snow dots (deterministic so rebuilds never
+    diverge) drifting slowly down over the hero photo."""
+    spans = "".join(
+        f'<span style="left:{left}%;width:{size}px;height:{size}px;'
+        f'animation-duration:{dur}s;animation-delay:{delay}s;--drift:{drift}px"></span>'
+        for left, size, dur, delay, drift in _XMAS_SNOW_SEED)
+    return f'<div class="xmas-snow" aria-hidden="true">{spans}</div>'
+
 def build_service(svc):
     depth = 1
     root = C.rel(depth)
@@ -427,16 +460,16 @@ def build_service(svc):
             f'<span class="step-num {_xmas_tone(i)}">{i+1}</span>'
             f'<h3>{t}</h3><p>{d}</p></div>'
             for i, (t, d) in enumerate(svc.get("experience_steps", [])))
-        benefit_icons = ["sparkle", "bolt", "building", "award", "shield", "tag"]
+        benefit_icons = ["sparkle", "gift", "snowflake", "award", "shield", "star"]
         benefit_items = "".join(
             f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic {_xmas_tone(i)}">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
             f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
         lights_divider = ('<svg class="xmas-lights" viewBox="0 0 1200 50" preserveAspectRatio="none" aria-hidden="true">'
                            '<path d="M0 15 Q100 45 200 15 T400 15 T600 15 T800 15 T1000 15 T1200 15" fill="none" stroke="var(--line)" stroke-width="2"/>'
-                           '<circle cx="70" cy="32" r="6" fill="#fb4d3d"/><circle cx="270" cy="4" r="6" fill="#18b673"/>'
-                           '<circle cx="470" cy="32" r="6" fill="#f5a623"/><circle cx="670" cy="4" r="6" fill="#fb4d3d"/>'
-                           '<circle cx="870" cy="32" r="6" fill="#18b673"/><circle cx="1070" cy="4" r="6" fill="#f5a623"/></svg>')
+                           '<circle class="xmas-bulb" cx="70" cy="32" r="6" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="270" cy="4" r="6" style="fill:#18b673;color:#18b673"/>'
+                           '<circle class="xmas-bulb" cx="470" cy="32" r="6" style="fill:#f5a623;color:#f5a623"/><circle class="xmas-bulb" cx="670" cy="4" r="6" style="fill:#fb4d3d;color:#fb4d3d"/>'
+                           '<circle class="xmas-bulb" cx="870" cy="32" r="6" style="fill:#18b673;color:#18b673"/><circle class="xmas-bulb" cx="1070" cy="4" r="6" style="fill:#f5a623;color:#f5a623"/></svg>')
         xmas_extra = f"""
   <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
@@ -503,10 +536,11 @@ def build_service(svc):
     hero_picture = _hero_picture_html(root, hero_img, hero_pos)
 
     html += f"""
-<main id="main">
-  <section class="svc-hero">
+<main id="main"{' class="xmas-page"' if is_xmas else ""}>
+  <section class="svc-hero{' xmas-hero' if is_xmas else ''}">
     <div class="svc-hero-media" aria-hidden="true">{hero_picture}</div>
     <div class="svc-hero-overlay" aria-hidden="true"></div>
+    {(_xmas_garland_svg() + _xmas_snow()) if is_xmas else ""}
     <div class="container">
       {C.crumbs([("Home", root + "index.html"), ("Services", root + "residential.html"), (svc['name'], None)], light=True)}
       {f'<span class="xmas-hero-badge">{icon("lights")} Now booking for the holidays</span>' if is_xmas else ""}
@@ -577,7 +611,7 @@ def build_service(svc):
 # Generic interior page scaffold
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
-                  crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False):
+                  crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False, h1_class=""):
     schema = list(schema or BASE_SCHEMA)
     schema.append(S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
@@ -594,7 +628,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
       <div class="hero-grid">
         <div>
           <span class="eyebrow">{eyebrow}</span>
-          <h1 class="mt-1">{h1}</h1>
+          <h1 class="mt-1 {h1_class}">{h1}</h1>
           <p class="lead">{lead}</p>
           <div class="phero-actions">
             <a class="btn btn-lg" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
@@ -612,7 +646,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
       {crumbs}
       <div style="max-width:760px">
         <span class="eyebrow">{eyebrow}</span>
-        <h1 class="mt-1">{h1}</h1>
+        <h1 class="mt-1 {h1_class}">{h1}</h1>
         <p class="lead">{lead}</p>
       </div>
     </div>
@@ -730,7 +764,8 @@ def build_about():
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
-        depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN")
+        depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
+        h1_class="h1-tight")
     html += f"""<main id="main">{body}
   <section><div class="container">
     <div class="section-head center">
