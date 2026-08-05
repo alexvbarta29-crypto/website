@@ -186,6 +186,7 @@ SERVICES = [
         "slug": "gutter-cleaning",
         "name": "Gutter Cleaning",
         "icon": "gutter",
+        "hero_pos": "63%",
         "image": "assets/img/svc-gutter-cleaning.jpg",
         "short": "Hand-cleared gutters and downspouts that protect your foundation, roof, and siding.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with hand-cleared gutters and flushed downspouts.",
@@ -231,6 +232,7 @@ SERVICES = [
         "slug": "pressure-washing",
         "name": "Pressure Washing",
         "icon": "pressure",
+        "hero_pos": "16%",
         "image": "assets/img/svc-pressure-washing.jpg",
         "short": "Restore driveways, patios, walkways, and decks to like-new with controlled high-pressure cleaning.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with driveway, patio, and walkway pressure washing.",
@@ -527,6 +529,7 @@ SERVICES = [
     {
         "slug": "christmas-light-installation",
         "name": "Christmas Light Installation",
+        "hero_pos": "48%",
         "icon": "lights",
         "image": "assets/img/svc-christmas-light-installation.jpg",
         "short": "Professional, custom holiday lighting — design, install, maintain, and take down.",

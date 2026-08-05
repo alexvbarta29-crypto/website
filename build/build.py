@@ -723,9 +723,16 @@ def build_about():
               ("leaf", "Respect your home &amp; the planet", "Safe methods, careful protection, and eco-friendly solutions, always.")]
     val_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
                        for i, (ic, t, d) in enumerate(values))
+    team_cards = ""
+    for i, (name, role, initials, bio) in enumerate(TEAM):
+        team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
+        <div class="avatar" style="width:84px;height:84px;font-size:1.6rem;margin:0 auto 16px;border-radius:24px">{initials}</div>
+        <h3 style="font-size:1.25rem">{name}</h3>
+        <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
+        <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
     html, body = interior_head(
         title=f"About {BIZ['name']} | Family-Owned Exterior Cleaning in Delano, MN",
-        desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story, our values, and our commitment to your home.",
+        desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story, our values, and meet the owners.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
@@ -756,37 +763,11 @@ def build_about():
     <div class="section-head center"><span class="eyebrow">What we stand for</span><h2>Our values</h2></div>
     <div class="grid cols-2">{val_html}</div>
   </div></section>
-  <section><div class="container"><div class="section-head center">
-    <span class="eyebrow">The people</span><h2>Meet the owners</h2>
-    <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p>
-    <a class="btn mt-3" href="team.html">Meet the owners {icon('arrow')}</a>
-  </div></div></section>
-  {C.cta_band(depth)}
-</main>"""
-    html += C.page_end(depth)
-    write("about.html", html, slug="about.html", priority="0.7")
-
-# ===========================================================================
-# TEAM
-# ===========================================================================
-def build_team():
-    depth = 0
-    cards = ""
-    for i, (name, role, initials, bio) in enumerate(TEAM):
-        cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <div class="avatar" style="width:84px;height:84px;font-size:1.6rem;margin:0 auto 16px;border-radius:24px">{initials}</div>
-        <h3 style="font-size:1.25rem">{name}</h3>
-        <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
-        <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
-    html, body = interior_head(
-        title=f"Meet the Owners | {BIZ['name']} Delano, MN",
-        desc="Meet Alex and Jacob Barta, the two brothers who founded Barta Window Washing — Alex leads our crew in the field, and Jacob runs the office.",
-        slug="team.html", eyebrow="Meet the Owners",
-        h1="The owners behind the clean",
-        lead="Barta Window Washing was founded by two brothers — Alex leads our crew in the field, and Jacob runs the office and sales.",
-        depth=depth, crumb_label="Meet the Owners", primary_kw="Barta Window Washing owners Delano")
-    html += f"""<main id="main">{body}
-  <section><div class="container"><div class="grid cols-2">{cards}</div></div></section>
+  <section><div class="container">
+    <div class="section-head center"><span class="eyebrow">The people</span><h2>Meet the owners</h2>
+    <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p></div>
+    <div class="grid cols-2 mt-3">{team_cards}</div>
+  </div></section>
   <section class="bg-mist"><div class="container"><div class="section-head center">
     <span class="eyebrow">Growing</span><h2>Looking to join us down the road?</h2>
     <p>We're a small, owner-operated team today, but we'd love to hear from detail-oriented, reliable people for future openings.</p>
@@ -795,7 +776,7 @@ def build_team():
   {C.cta_band(depth)}
 </main>"""
     html += C.page_end(depth)
-    write("team.html", html, slug="team.html", priority="0.6")
+    write("about.html", html, slug="about.html", priority="0.7")
 
 # ===========================================================================
 # REVIEWS
@@ -1647,7 +1628,6 @@ def main():
     build_residential()
     build_why()
     build_about()
-    build_team()
     build_reviews()
     build_faqs()
     build_service_areas()

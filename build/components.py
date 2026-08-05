@@ -222,7 +222,6 @@ def nav(depth=0):
       <a href="{root}reviews.html">Reviews</a>
       <a href="{root}why-choose-us.html">Why Choose Us</a>
       <a href="{root}about.html">About</a>
-      <a href="{root}team.html">Meet the Team</a>
       <a href="{root}blog.html">Blog</a>
       <a href="{root}faqs.html">FAQs</a>
       <a href="{root}financing.html">Financing</a>
@@ -273,7 +272,6 @@ def footer(depth=0):
         <h5>Company</h5>
         <ul>
           <li><a href="{root}about.html">About Us</a></li>
-          <li><a href="{root}team.html">Meet the Team</a></li>
           <li><a href="{root}why-choose-us.html">Why Choose Us</a></li>
           <li><a href="{root}reviews.html">Reviews</a></li>
           <li><a href="{root}contact.html">Contact</a></li>
@@ -760,7 +758,7 @@ def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
     _bg_stem = image.rsplit(".", 1)[0]
     if _variants_exist(_bg_stem):
         image = f"{_bg_stem}-1200w.jpg"
-    bg = (f"linear-gradient(180deg, rgba(8,22,46,.38) 0%, rgba(7,18,40,.66) 45%, rgba(5,13,30,.94) 100%), "
+    bg = (f"linear-gradient(180deg, rgba(8,22,46,.18) 0%, rgba(7,18,40,.32) 45%, rgba(5,13,30,.52) 100%), "
           f"url('{root}{image}')")
     return f"""<section><div class="container"><div class="cta-band reveal" style="background-image:{bg};background-position:center,center {image_pos}">
   <span class="eyebrow" style="color:#ff9b86;justify-content:center">Let's get started</span>
