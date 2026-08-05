@@ -720,7 +720,7 @@ def build_about():
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
         team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="200" height="200" style="width:200px;height:200px;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
+        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="260" height="260" style="width:260px;height:260px;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
         <h3 style="font-size:1.25rem">{name}</h3>
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
@@ -732,24 +732,21 @@ def build_about():
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN")
     html += f"""<main id="main">{body}
-  <section><div class="container"><div class="prose center reveal" style="max-width:720px;margin-inline:auto;text-align:center">
-      <span class="eyebrow" style="justify-content:center">Our story</span>
-      <h2 class="mt-1">Founded by two brothers</h2>
+  <section><div class="container">
+    <div class="section-head center">
+      <span class="eyebrow">Our story</span>
+      <h2>Founded by two brothers</h2>
       <p>Barta Window Washing was founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta, right here in Delano. Alex manages our crew of technicians in the field, and Jacob runs the office — building a team that's trained to the same standard the owners started the company on.</p>
-  </div></div></section>
-  <section class="bg-mist"><div class="container">
-    <div class="section-head center"><span class="eyebrow">The people</span><h2>Meet the owners</h2>
-    <p>Get to know Alex and Jacob — the two brothers who founded Barta Window Washing.</p></div>
+    </div>
     <div class="grid cols-2 mt-3">{team_cards}</div>
   </div></section>
-  <section><div class="container"><div class="split reverse">
+  <section class="bg-mist"><div class="container"><div class="split reverse">
     <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
     <div class="reveal">
       <span class="eyebrow">On the road near you</span>
-      <h2 class="mt-1">Look for the Barta van</h2>
-      <p>Our clearly branded, fully stocked service van is a familiar sight across Delano and the western metro. When it pulls into your driveway, you'll know exactly who's arriving — a trained member of our crew, held to the standard Alex and Jacob built this company on.</p>
+      <h2 class="mt-1">Look for the Barta vans</h2>
+      <p>Our clearly branded, fully stocked service vans are a familiar sight across Delano and the western metro. When one pulls into your driveway, you'll know exactly who's arriving — a trained member of our crew, held to the standard Alex and Jacob built this company on.</p>
       <ul class="checklist mt-2">
-        <li>{icon('check-circle')} In-house, trained crew — not subcontractors</li>
         <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
         <li>{icon('check-circle')} Fully insured on every visit</li>
       </ul>
