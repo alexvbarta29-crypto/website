@@ -174,6 +174,16 @@ system did not verify the remaining one's dollar amounts or perks.
 
 ---
 
+- **Fourth owner review pass (this update):** the owner supplied the founding motivation directly,
+  which had previously been the one gap on the About page — the story could only state *what* the
+  company is, not *why* it exists, because inventing a founding narrative was off the table.
+  Owner's words: the company was started by him and his brother **because they want to raise the
+  standard of the home service industry**, bringing **old-school customer service with a modern edge
+  and feel**. This is now the opening of "Our Story" on `about.html` and the page's meta
+  description. **Sourced from the owner, not written by an SEO pass** — treat it as confirmed.
+
+---
+
 ## Blockers for going live (not claims — things that must be done)
 
 These aren't unverified statements, they're unfinished wiring. Deliberately

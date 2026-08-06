@@ -853,7 +853,7 @@ def build_about():
 
     html, body = interior_head(
         title=seo_title("About Us — Family-Owned in Delano, MN"),
-        desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story and meet the owners.",
+        desc="Two brothers started Barta Window Washing in Delano, MN to raise the standard of home service — old-school customer care with a modern edge.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
@@ -866,8 +866,13 @@ def build_about():
     <div class="section-head center"><h2>Our Story</h2></div>
     <div class="split mt-3">
       <div class="reveal">
-        <p>Barta Window Washing is a family business. Two brothers — Alex and Jacob Barta — started it
-          in {BIZ['founded']} out of {BIZ['city']}, Minnesota, and they still run it themselves today.</p>
+        <p>Two brothers started this company with one goal: to raise the standard of the home
+          service industry. Alex and Jacob Barta founded {BIZ['name']} in {BIZ['founded']} out of
+          {BIZ['city']}, Minnesota, and they still run it themselves today.</p>
+        <p class="mt-2">The idea was to bring back old-school customer service — you call, a real
+          person picks up; you book a job, it gets done right — and give it a modern edge. Branded
+          vans, trained crews, clear quotes, and none of the guesswork people have gotten used to
+          from the trades.</p>
         <p class="mt-2">The split is simple. Alex leads the technicians in the field and holds the crew,
           himself included, to the standard the company was built on. Jacob runs the office — the quotes,
           the scheduling, the phone. Call {BIZ['name']} and you're talking to an owner.</p>
