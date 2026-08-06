@@ -90,6 +90,10 @@ SERVICES = [
              "We recommend four visits a year to keep your windows consistently clean and as well-maintained as possible. At minimum, we recommend twice a year — once in late spring after pollen settles, and again in early fall — to keep things properly maintained."),
             ("What happens if it rains after service?",
              "Don't let the forecast hold you back from booking — rain itself typically doesn't cause mineral spotting on professionally cleaned glass. And with certain plans, every visit is backed by a 7-day rain guarantee, so if weather does cause an issue within a week of your cleaning, just let us know and we'll make it right."),
+            ("Do you offer discounts for recurring service?",
+             "Yes — our Biannual, Quarterly, and Monthly recurring plans all save you money on every cleaning, and Quarterly and Monthly plans add priority scheduling, a 7-day rain guarantee, and free hard-water treatment."),
+            ("Do you guarantee your work?",
+             "Yes — every exterior window cleaning is backed by our 100% Satisfaction Guarantee. If anything isn't right, let us know and we'll come back and make it right, free."),
         ],
     },
     {
@@ -140,6 +144,10 @@ SERVICES = [
              "Just soap and water — it's our tools and technique, not harsh chemicals, that get the streak-free result. Safe for your family and pets."),
             ("Can I book interior and exterior cleaning together?",
              "Yes — and it's what we recommend, since combining both in one visit gives your home the full effect, inside and out."),
+            ("How often should interior window cleaning be scheduled?",
+             "Most homes benefit from interior cleaning about once or twice a year, often paired with your exterior visit — homes with pets, kids, or lots of natural light may want it more often."),
+            ("Do you guarantee your work?",
+             "Yes — every interior window cleaning is backed by our 100% Satisfaction Guarantee. If anything isn't right, let us know and we'll come back and make it right, free."),
         ],
     },
     {
