@@ -281,7 +281,7 @@ def build_home():
   </section>
 
   <!-- FOLLOW ALONG -->
-  <section>
+  <section id="photos">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Follow along</span>
@@ -1108,6 +1108,66 @@ def build_terms():
     write("terms.html", html, slug="terms.html", priority="0.2")
 
 # ===========================================================================
+# SITEMAP (human-readable page — separate from the machine sitemap.xml)
+# ===========================================================================
+def build_sitemap_page():
+    depth = 0
+    html, body = interior_head(
+        title=f"Sitemap | {BIZ['name']}",
+        desc=f"Every page on the {BIZ['name']} website — services, service areas, and blog posts — in one place.",
+        slug="sitemap.html", eyebrow="Site map", h1="Sitemap",
+        lead="Every page on our site, in one place.",
+        depth=depth, crumb_label="Sitemap")
+
+    def _cards(items):
+        # (icon-name, label, href) tuples, reusing the homepage's area-card
+        # pill styling so this page shares the same visual language.
+        return "".join(
+            f'<a class="area-card" href="{root}{href}">{icon(ic)} {label}</a>' for ic, label, href in items)
+
+    root = C.rel(depth)
+    main_pages = [
+        ("house", "Home", "index.html"),
+        ("user", "About Us", "about.html"),
+        ("award", "Why Choose Us", "why-choose-us.html"),
+        ("window", "Residential Services", "residential.html"),
+        ("building", "Commercial Cleaning", "services/commercial-cleaning.html"),
+        ("pin", "Service Areas", "service-areas.html"),
+        ("star", "Reviews", "reviews.html"),
+        ("sparkle", "Blog", "blog.html"),
+        ("clipboard", "FAQs", "faqs.html"),
+        ("dollar", "Financing", "financing.html"),
+        ("calendar", "Get a Quote", "get-quote.html"),
+        ("shield", "Privacy Policy", "privacy.html"),
+        ("clipboard", "Terms &amp; Conditions", "terms.html"),
+    ]
+    service_items = [(s["icon"], s["name"], f"services/{s['slug']}.html") for s in SERVICES]
+    area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in AREAS]
+    post_items = [("sparkle", p["title"], f"blog/{p['slug']}.html") for p in POSTS]
+
+    def _section(title, items):
+        return f"""<div class="section-head"><h2>{title}</h2></div>
+      <div class="area-grid">{_cards(items)}</div>"""
+
+    html += f"""<main id="main">{body}
+  <section><div class="container">
+    {_section("Main pages", main_pages)}
+  </div></section>
+  <section class="bg-mist"><div class="container">
+    {_section("Services", service_items)}
+  </div></section>
+  <section><div class="container">
+    {_section("Service areas", area_items)}
+  </div></section>
+  <section class="bg-mist"><div class="container">
+    {_section("Blog posts", post_items)}
+  </div></section>
+  {C.cta_band(depth)}
+  </main>"""
+    html += C.page_end(depth)
+    write("sitemap.html", html, slug="sitemap.html", priority="0.3")
+
+# ===========================================================================
 # 404 (custom error page)
 # ===========================================================================
 def build_404():
@@ -1695,6 +1755,7 @@ def main():
         build_post(p, i)
     for L in LANDING:
         build_landing(L)
+    build_sitemap_page()
     build_images()
     build_meta_files()
     print(f"✓ Generated {len(PAGES)} pages + assets.")

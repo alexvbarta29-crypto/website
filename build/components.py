@@ -273,7 +273,10 @@ def footer(depth=0):
         <ul>
           <li><a href="{root}about.html">About Us</a></li>
           <li><a href="{root}why-choose-us.html">Why Choose Us</a></li>
-          <li><a href="{root}reviews.html">Reviews</a></li>
+          <li><a href="{root}get-quote.html">Contact</a></li>
+          <li><a href="{root}index.html#photos">Gallery</a></li>
+          <li><a href="{root}reviews.html">Client Testimonials</a></li>
+          <li><a href="{root}blog.html">Blog</a></li>
           <li><a href="{root}get-quote.html">Get a Quote</a></li>
         </ul>
       </div>
@@ -286,6 +289,7 @@ def footer(depth=0):
         <a href="{root}service-areas.html">Service Areas</a>
         <a href="{root}privacy.html">Privacy</a>
         <a href="{root}terms.html">Terms</a>
+        <a href="{root}sitemap.html">Sitemap</a>
       </div>
     </div>
   </div>
