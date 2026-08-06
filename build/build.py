@@ -740,7 +740,13 @@ def build_residential():
 # ===========================================================================
 # GALLERY
 # ===========================================================================
-GALLERY_HERO = "assets/img/svc-exterior-window-cleaning.jpg"
+# Technician squeegeeing the transom above a door, shot from behind — the
+# clearest "this is the work" photo on the site, and one of only three in
+# landscape, so it fills a full-width banner without heavy cropping.
+GALLERY_HERO = "assets/img/svc-cta-squeegee.jpg"
+# The CTA band at the foot of the page normally uses GALLERY_HERO too, so
+# the Gallery gives it a different backdrop — no photo twice on one page.
+GALLERY_CTA_IMAGE = "assets/img/hero-home.jpg"
 
 def build_gallery():
     depth = 0
@@ -760,11 +766,22 @@ def build_gallery():
     html += C.nav(depth)
 
     # Every real photo on the site, not just a curated handful — the more
-    # of the actual work visitors can see, the better.
-    work_photos = list(IMAGE_ALT.items())
-    work_photos.append(("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van"))
+    # of the actual work visitors can see, the better. Anything already shown
+    # elsewhere on this page (the hero, the CTA backdrop) is held back, and a
+    # seen-set guards against the same file arriving from two sources, so no
+    # photo appears twice.
+    already_shown = {GALLERY_HERO, GALLERY_CTA_IMAGE}
+    work_photos, seen = [], set(already_shown)
+    def _add(src, alt):
+        if src in seen:
+            return
+        seen.add(src)
+        work_photos.append((src, alt))
+    for src, alt in IMAGE_ALT.items():
+        _add(src, alt)
+    _add("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van")
     for name, role, _initials, photo, _bio in TEAM:
-        work_photos.append((photo, f"{name}, {role} of {BIZ['name']}"))
+        _add(photo, f"{name}, {role} of {BIZ['name']}")
     root = C.rel(depth)
     def _work_figure(src, alt):
         img_html = C.picture(root, src, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 33vw")
@@ -790,7 +807,9 @@ def build_gallery():
     work_html = "".join(figures)
     work_html += C.gallery_instagram_figures(depth)
 
-    hero_picture = _hero_picture_html(root, GALLERY_HERO, img_class="hero-bg-img",
+    # 34% keeps the technician's head, the squeegee and the arched glass in
+    # frame; the default centre crop pushes his head up behind the nav bar.
+    hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="34%", img_class="hero-bg-img",
                                        alt=IMAGE_ALT.get(GALLERY_HERO, "Barta Window Washing technicians cleaning windows"))
     # One collage, before/after shots included inline with everything else —
     # they used to sit above in their own "Before & after" section of drag
@@ -812,7 +831,7 @@ def build_gallery():
     <div class="gallery">{work_html}</div>
   </div></section>"""
     html += f"""
-  {C.cta_band(depth)}
+  {C.cta_band(depth, image=GALLERY_CTA_IMAGE, image_pos="58%")}
 </main>"""
     html += C.page_end(depth)
     write("gallery.html", html, slug="gallery.html", priority="0.6")
