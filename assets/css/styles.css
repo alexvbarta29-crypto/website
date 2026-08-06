@@ -888,6 +888,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .area-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .area-card { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-sm); font-weight: 600; color: var(--navy-800); transition: transform .3s var(--ease-out), box-shadow .3s; }
 .area-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md); }
+/* Coverage chips for extended-area cities: same card, but not a link,
+   so they must not offer the hover lift that implies one. */
+.area-card--static { cursor: default; }
+.area-card--static:hover { transform: none; box-shadow: var(--sh-sm); }
 .area-card svg { width: 20px; height: 20px; color: var(--blue-600); flex: none; }
 
 /* Skip link */

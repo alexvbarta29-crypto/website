@@ -135,6 +135,16 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
 
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
 
+# Only the six primary-tier cities get their own page. The 31 extended-area
+# communities are still named on service-areas.html (and counted in the
+# coverage copy) but no longer have a page of their own: 37 city pages that
+# were 85-98% identical to each other is the doorway-page pattern Google
+# targets, and consolidating concentrates the ranking signal on the cities
+# the business actually operates out of.
+PRIMARY_AREAS = [a for a in AREAS if a["tier"] == "primary"]
+EXTENDED_AREAS = [a for a in AREAS if a["tier"] != "primary"]
+PRIMARY_SLUGS = {a["slug"] for a in PRIMARY_AREAS}
+
 TITLE_MAX = 60  # Google truncates search-result titles around here
 
 def seo_title(core):
@@ -172,9 +182,12 @@ def build_home():
                          "minnetonka-beach"]
     _areas_by_slug = {a["slug"]: a for a in AREAS}
     _priority_areas = [_areas_by_slug[slug] for slug in _HOME_AREA_SLUGS]
-    areas_html = "".join(
-        f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{icon("pin")} {a["city"]}</a>'
-        for i, a in enumerate(_priority_areas))
+    def _area_chip(a, i):
+        inner = f'{icon("pin")} {a["city"]}'
+        if a["slug"] in PRIMARY_SLUGS:
+            return f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{inner}</a>'
+        return f'<span class="area-card area-card--static reveal" data-delay="{i%4}">{inner}</span>'
+    areas_html = "".join(_area_chip(a, i) for i, a in enumerate(_priority_areas))
 
     process_steps = [
         ("01", "Mop", "assets/img/svc-mop-window.jpg",
@@ -360,25 +373,26 @@ _SERVICE_AREA_TEMPLATES = {
     "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
 }
 _SERVICE_AREA_FAMILY = {
-    "exterior-window-cleaning": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
-    "interior-window-cleaning": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
-    "track-detailing": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
-    "screen-cleaning": ("glass", ("plymouth", "maple-grove", "minnetonka", "medina")),
-    "hard-water-stain-removal": ("glass", ("mound", "minnetonka", "medina", "maple-grove")),
-    "gutter-cleaning": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
-    "pressure-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
-    "house-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
-    "soft-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
-    "solar-panel-cleaning": ("specialty", ("plymouth", "minnetonka", "medina", "mound")),
-    "commercial-cleaning": ("specialty", ("plymouth", "minnetonka", "maple-grove", "medina")),
-    "christmas-light-installation": ("specialty", ("plymouth", "minnetonka", "medina", "mound")),
+    "exterior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
+    "interior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
+    "track-detailing": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
+    "screen-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
+    "hard-water-stain-removal": ("glass", ("mound", "medina", "plymouth", "buffalo")),
+    "gutter-cleaning": ("wash", ("buffalo", "mound", "medina", "delano")),
+    "pressure-washing": ("wash", ("buffalo", "mound", "medina", "delano")),
+    "house-washing": ("wash", ("buffalo", "mound", "medina", "delano")),
+    "soft-washing": ("wash", ("buffalo", "mound", "medina", "delano")),
+    "solar-panel-cleaning": ("specialty", ("plymouth", "medina", "mound", "st-michael")),
+    "commercial-cleaning": ("specialty", ("plymouth", "medina", "st-michael", "mound")),
+    "christmas-light-installation": ("specialty", ("plymouth", "medina", "mound", "st-michael")),
 }
-_AREA_LABELS = {"plymouth": "Plymouth", "maple-grove": "Maple Grove", "minnetonka": "Minnetonka",
-                "medina": "Medina", "mound": "Mound", "buffalo": "Buffalo", "delano": "Delano"}
+# Primary-tier only — these are the cities that still have their own page.
+_AREA_LABELS = {"plymouth": "Plymouth", "medina": "Medina", "mound": "Mound",
+                "buffalo": "Buffalo", "delano": "Delano", "st-michael": "St. Michael"}
 
 def _service_area_section(svc, depth):
     root = C.rel(depth)
-    family, area_slugs = _SERVICE_AREA_FAMILY.get(svc["slug"], ("specialty", ("plymouth", "maple-grove", "minnetonka", "medina")))
+    family, area_slugs = _SERVICE_AREA_FAMILY.get(svc["slug"], ("specialty", ("plymouth", "medina", "mound", "buffalo")))
     links = [f'<a href="{root}areas/{slug}.html">{_AREA_LABELS[slug]}</a>' for slug in area_slugs]
     hub_view_all = f'<a href="{root}service-areas.html">View all communities we serve.</a>'
     text = _SERVICE_AREA_TEMPLATES[family].format(
@@ -887,9 +901,15 @@ def build_service_areas():
 
     def area_row(a):
         nbhds = ", ".join(a["neighborhoods"])
+        # Extended-area cities have no page of their own, so they show the
+        # neighbourhoods and route to the quote form instead of a dead link.
+        if a["slug"] in PRIMARY_SLUGS:
+            cta = f'<a href="areas/{a["slug"]}.html">View services in {a["city"]} {icon("arrow")}</a>'
+        else:
+            cta = f'<a href="get-quote.html">Get a free quote in {a["city"]} {icon("arrow")}</a>'
         return f"""<details class="reveal">
         <summary>{a['city']}, MN <span class="chev">{icon('chevron')}</span></summary>
-        <div class="area-body"><p>{nbhds}</p><a href="areas/{a['slug']}.html">View services in {a['city']} {icon('arrow')}</a></div>
+        <div class="area-body"><p>{nbhds}</p>{cta}</div>
       </details>"""
 
     primary_html = "".join(area_row(a) for a in AREAS if a["tier"] == "primary")
@@ -1233,7 +1253,7 @@ def build_sitemap_page():
         ("clipboard", "Terms &amp; Conditions", "terms.html"),
     ]
     service_items = [(s["icon"], s["name"], f"services/{s['slug']}.html") for s in SERVICES]
-    area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in AREAS]
+    area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in PRIMARY_AREAS]
     post_items = [("sparkle", p["title"], f"blog/{p['slug']}.html") for p in POSTS]
 
     def _section(title, items):
@@ -1876,7 +1896,7 @@ def main():
     build_reviews()
     build_faqs()
     build_service_areas()
-    for a in AREAS:
+    for a in PRIMARY_AREAS:
         build_area(a)
     build_financing()
     build_get_quote()
