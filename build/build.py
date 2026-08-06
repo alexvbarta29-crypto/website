@@ -484,6 +484,7 @@ def build_service(svc):
       <div class="xmas-steps">{step_items}</div>
     </div>
   </section>
+  <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="bg-mist">
     <div class="container">
       <div class="section-head center">
