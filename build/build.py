@@ -609,7 +609,7 @@ def build_service(svc):
     </div>
   </section>
 
-  {C.cta_band(depth, heading=f"Ready for spotless results?", text=svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta.", image=hero_img, image_pos=hero_pos)}
+  {C.cta_band(depth, heading=f"Ready for spotless results?", text=svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta.")}
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
