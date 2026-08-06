@@ -523,7 +523,15 @@ def build_service(svc):
   </section>
   <section>
     <div class="container">
-      <div class="reveal">{C.photo("assets/img/xmas-lights-craftsman-gables.jpg", IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"], ratio="21/9", depth=depth)}</div>
+      <div class="split">
+        <div class="reveal">
+          <span class="eyebrow">Why Barta</span>
+          <h2 class="mt-1">Lights that follow your roofline</h2>
+          <p>{svc['why_barta']}</p>
+          <a class="btn mt-3" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Quote {icon('arrow')}</a>
+        </div>
+        <div class="reveal">{C.photo("assets/img/xmas-lights-craftsman-gables.jpg", IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"], ratio="5/4", depth=depth)}</div>
+      </div>
     </div>
   </section>"""
 
