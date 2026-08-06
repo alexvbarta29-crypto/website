@@ -24,7 +24,10 @@ ICONS = {
     "star": _svg('<path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9L12 3Z"/>', fill=True),
     "leaf": _svg('<path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14Z"/><path d="M5 19c2-4 5-7 9-9"/>'),
     "clock": _svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
-    "phone": _svg('<path d="M5 4h3l1.5 4-2 1.5a12 12 0 0 0 5 5l1.5-2 4 1.5V19a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 1-2Z"/>'),
+    # Deliberately not the classic tilted-handset glyph — that shape reads
+    # bottom-heavy (the big outer curve sits at the bottom). A plain phone
+    # silhouette keeps equal visual weight top to bottom.
+    "phone": _svg('<rect x="7" y="2.4" width="10" height="19.2" rx="2.6"/>'),
     "mail": _svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
     "pin": _svg('<path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>'),
     "arrow": _svg('<path d="M5 12h14M13 6l6 6-6 6"/>'),

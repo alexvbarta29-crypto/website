@@ -637,12 +637,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .badge { display: inline-flex; align-items: center; gap: 9px; padding: 11px 18px; background: #fff; border: 1px solid var(--line); border-radius: var(--r-pill); box-shadow: var(--sh-sm); font-weight: 600; font-size: .9rem; color: var(--navy-800); }
 .badge svg { width: 19px; height: 19px; color: var(--blue-600); }
 
-/* ---------- Gallery ---------- */
-.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.gallery figure { position: relative; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 4/3; box-shadow: var(--sh-sm); }
-.gallery img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease-out); }
-.gallery figure:hover img { transform: scale(1.06); }
-.gallery figcaption { position: absolute; inset: auto 0 0 0; padding: 26px 16px 14px; background: linear-gradient(transparent, rgba(8,32,59,.78)); color: #fff; font-weight: 600; font-size: .9rem; }
+/* ---------- Gallery: masonry (CSS columns), each photo keeps its real
+   aspect ratio instead of being cropped into a fixed box — a collage,
+   not a grid of identical tiles. No captions/overlays, just the photos. */
+.gallery { column-count: 3; column-gap: 14px; }
+.gallery figure { break-inside: avoid; margin: 0 0 14px; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-sm); }
+.gallery figure a { display: block; }
+.gallery img { width: 100%; height: auto; display: block; transition: transform .5s var(--ease-out); }
+.gallery figure:hover img { transform: scale(1.04); }
 
 /* ---------- CTA band ---------- */
 /* Background photo + blue-to-navy fade are set as a stacked inline
@@ -908,16 +910,20 @@ html.js .reveal.in { opacity: 1; transform: none; }
 }
 @media (max-width: 760px) {
   body { font-size: 16px; }
-  .cols-2, .cols-3, .gallery { grid-template-columns: 1fr; }
+  .cols-2, .cols-3 { grid-template-columns: 1fr; }
   .sticky-cta { display: flex; }
   .footer-top { grid-template-columns: 1fr; gap: 28px; }
   .footer-bottom { flex-direction: column; }
   .form-row { grid-template-columns: 1fr; }
   body { padding-bottom: 76px; }
-  .gallery { grid-template-columns: repeat(2, 1fr); }
+  .gallery { column-count: 2; }
+  /* The bottom sticky bar already carries Call + Free Quote on mobile —
+     the top header just needs the logo and the menu toggle. */
+  .nav-cta > a.btn { display: none; }
 }
 @media (max-width: 480px) {
-  .stats, .cols-4, .gallery, .area-grid { grid-template-columns: 1fr; }
+  .stats, .cols-4, .area-grid { grid-template-columns: 1fr; }
+  .gallery { column-count: 1; }
   .nav { padding-left: 16px; }
   .brand small { display: none; }
 }

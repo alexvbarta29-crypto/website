@@ -727,12 +727,22 @@ def build_gallery():
         f'<div class="reveal" data-delay="{i}">{C.ba_slider(depth=depth, name=n)}</div>'
         for i, n in enumerate(["ba1", "ba2", "ba3"]))
 
+    # Every real photo on the site, not just a curated handful — the more
+    # of the actual work visitors can see, the better.
     work_photos = list(IMAGE_ALT.items())
     work_photos.append(("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van"))
+    for name, role, _initials, photo, _bio in TEAM:
+        work_photos.append((photo, f"{name}, {role} of {BIZ['name']}"))
+    _ba_labels = {"window": "window", "siding": "siding", "gutter": "gutter"}
+    for slot, label in _ba_labels.items():
+        for stage in ("before", "after"):
+            path = f"assets/img/ba-{slot}-{stage}.jpg"
+            if os.path.exists(os.path.join(ROOT, path)):
+                work_photos.append((path, f"Real {label} cleaning — {stage}"))
     root = C.rel(depth)
     def _work_figure(src, alt):
         img_html = C.picture(root, src, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 33vw")
-        return f'<figure class="reveal">{img_html}<figcaption>{alt}</figcaption></figure>'
+        return f'<figure class="reveal">{img_html}</figure>'
     work_html = "".join(_work_figure(src, alt) for src, alt in work_photos)
 
     insta_html = C.gallery_instagram_grid(depth)

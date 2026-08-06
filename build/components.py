@@ -826,9 +826,8 @@ def gallery_instagram_grid(depth=0):
                 continue
             alt = caption or f"{BIZ['name']} on Instagram"
             img_html = picture(root, img, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 25vw")
-            cap_html = f"<figcaption>{caption}</figcaption>" if caption else ""
             figures += (f'<figure class="reveal"><a href="{link}" target="_blank" rel="noopener" '
-                        f'aria-label="View this post on Instagram">{img_html}{cap_html}</a></figure>')
+                        f'aria-label="View this post on Instagram">{img_html}</a></figure>')
     if not figures:
         return ""
     return f'<div class="gallery">{figures}</div>'
