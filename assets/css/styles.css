@@ -503,9 +503,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .svc-card:hover .ic { background: var(--grad-brand); color: #fff; }
 .svc-card h3 { font-size: 1.26rem; }
 .svc-card p { margin-top: 9px; font-size: .96rem; }
-.svc-card .more { margin-top: auto; padding-top: 16px; display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-head); font-weight: 700; color: var(--blue-600); font-size: .92rem; }
-.svc-card .more svg { width: 16px; height: 16px; transition: transform .3s var(--ease); }
-.svc-card:hover .more svg { transform: translateX(4px); }
+.more { margin-top: auto; padding-top: 16px; display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-head); font-weight: 700; color: var(--blue-600); font-size: .92rem; }
+.more svg { width: 16px; height: 16px; flex: none; transition: transform .3s var(--ease); }
+.card:hover .more svg { transform: translateX(4px); }
 
 /* Feature / why card */
 .feature { display: flex; gap: 16px; }

@@ -1331,16 +1331,31 @@ def build_instagram_callback():
 # ===========================================================================
 # BLOG HUB + POSTS
 # ===========================================================================
+# Real photo per post (matched to topic) instead of a generic placeholder —
+# reused for both the blog.html card thumbnail and the post's own header.
+_BLOG_PHOTOS = {
+    "how-often-clean-windows-minnesota": "assets/img/svc-exterior-window-cleaning.jpg",
+    "soft-washing-vs-pressure-washing": "assets/img/svc-soft-washing.jpg",
+    "remove-roof-black-streaks": "assets/img/svc-roof-cleaning.jpg",
+    "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
+    "hard-water-stains-windows": "assets/img/svc-hand-scrubbing.jpg",
+    "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
+    "spring-exterior-cleaning-checklist": "assets/img/svc-pressure-washing.jpg",
+    "window-cleaning-mistakes-to-avoid": "assets/img/svc-mop-window.jpg",
+}
+
 def build_blog():
     depth = 0
     cards = ""
     for i, p in enumerate(POSTS):
+        img = _BLOG_PHOTOS.get(p["slug"], "assets/img/hero-home.jpg")
+        alt = IMAGE_ALT.get(img, p["title"])
         cards += f"""<a class="card reveal" data-delay="{i%3}" href="blog/{p['slug']}.html" style="display:flex;flex-direction:column">
-        {C.imgph(p['cat'], ratio="16/9")}
+        {C.photo(img, alt, ratio="16/9", depth=depth)}
         <span class="pill mt-2" style="align-self:flex-start;background:var(--mist-2);border:0;color:var(--blue-600)">{p['cat']}</span>
         <h3 class="mt-1" style="font-size:1.2rem">{p['title']}</h3>
         <p class="mt-1" style="font-size:.95rem">{p['excerpt']}</p>
-        <span class="more" style="margin-top:auto;padding-top:14px;display:inline-flex;gap:7px;color:var(--blue-600);font-weight:700;font-family:var(--font-head)">Read article {icon('arrow')}</span>
+        <span class="more">Read article {icon('arrow')}</span>
         <span style="font-size:.8rem;color:var(--slate-400);margin-top:6px">{p['date']} · {p['read']} read</span></a>"""
     html, body = interior_head(
         title=f"Blog | Exterior Cleaning Tips & Guides | {BIZ['name']}",
@@ -1360,6 +1375,8 @@ def build_post(p, idx):
     depth = 1
     others = [x for x in POSTS if x["slug"] != p["slug"]][:3]
     rel_html = "".join(f'<li><a href="{o["slug"]}.html" style="color:var(--blue-600);font-weight:600">{o["title"]}</a></li>' for o in others)
+    post_img = _BLOG_PHOTOS.get(p["slug"], "assets/img/hero-home.jpg")
+    post_alt = IMAGE_ALT.get(post_img, p["title"])
     body_paras = {
         "how-often-clean-windows-minnesota": [
             ("Why Minnesota windows get dirty faster", "Between spring tree pollen, summer dust and lawn debris, autumn's falling leaves, and winter's salt and ice, Minnesota glass takes a beating every season. Add hard water from sprinklers and a north side that grows algae, and most homes need more frequent cleaning than the national average."),
@@ -1435,6 +1452,9 @@ def build_post(p, idx):
       <h1 class="mt-1">{p['title']}</h1>
       <p class="lead">{p['excerpt']}</p>
     </div>
+  </div></section>
+  <section><div class="container">
+    <div class="reveal" style="max-width:900px;margin-inline:auto">{C.photo(post_img, post_alt, ratio="16/9", depth=depth)}</div>
   </div></section>
   <section><div class="container"><div class="split" style="grid-template-columns:1fr 320px;align-items:start">
     <article class="prose reveal">{article}
