@@ -744,8 +744,7 @@ def build_gallery():
         img_html = C.picture(root, src, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 33vw")
         return f'<figure class="reveal">{img_html}</figure>'
     work_html = "".join(_work_figure(src, alt) for src, alt in work_photos)
-
-    insta_html = C.gallery_instagram_grid(depth)
+    work_html += C.gallery_instagram_figures(depth)
 
     html += f"""<main id="main">{body}
   <section><div class="container">
@@ -753,16 +752,7 @@ def build_gallery():
     <div class="grid cols-3">{ba_html}</div>
   </div></section>
   <section class="bg-mist"><div class="container">
-    <div class="section-head center"><span class="eyebrow">On the job</span><h2>Our work</h2></div>
     <div class="gallery">{work_html}</div>
-  </div></section>"""
-    if insta_html:
-        html += f"""
-  <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">Follow along</span><h2>From Instagram</h2>
-      <p>Tap any photo to see the full post — <a href="{BIZ['instagram']}" target="_blank" rel="noopener">follow us @bartawindowwashing</a> for more.</p>
-    </div>
-    {insta_html}
   </div></section>"""
     html += f"""
   {C.cta_band(depth)}

@@ -275,6 +275,8 @@ def footer(depth=0):
           <li><a href="{root}gallery.html">Gallery</a></li>
           <li><a href="{root}reviews.html">Client Testimonials</a></li>
           <li><a href="{root}blog.html">Blog</a></li>
+          <li><a href="{root}faqs.html">FAQs</a></li>
+          <li><a href="{root}service-areas.html">Service Areas</a></li>
           <li><a href="{root}privacy.html">Privacy Policy</a></li>
           <li><a href="{root}terms.html">Terms &amp; Conditions</a></li>
           <li><a href="{root}sitemap.html">Sitemap</a></li>
@@ -283,14 +285,6 @@ def footer(depth=0):
     </div>
     <div class="footer-bottom">
       <span>© <span id="year">2026</span> {BIZ['name']}. All rights reserved. Fully insured in Minnesota.</span>
-      <div class="links">
-        <a href="{root}get-quote.html">Free Quote</a>
-        <a href="{root}faqs.html">FAQs</a>
-        <a href="{root}service-areas.html">Service Areas</a>
-        <a href="{root}privacy.html">Privacy</a>
-        <a href="{root}terms.html">Terms</a>
-        <a href="{root}sitemap.html">Sitemap</a>
-      </div>
     </div>
   </div>
 </footer>"""
@@ -551,7 +545,7 @@ def quote_wizard(depth=0, svc_default=None):
     {icon('check-circle')}
     <h2>Thank you! Your request is in.</h2>
     <p>Someone will reach out shortly.</p>
-    <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">Call Us</a>
+    <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
     <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
     <p class="mt-2"><a class="back-link" href="{rel(depth)}index.html"><span class="back-link-icon">{icon('arrow')}</span> Back to homepage</a></p>
   </div>
@@ -624,7 +618,7 @@ def xmas_quote_modal(depth=0):
         {icon('check-circle')}
         <h3>Thank you! Your request is in.</h3>
         <p>Someone will reach out shortly.</p>
-        <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">Call Us</a>
+        <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
         <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
         <p class="mt-2"><button type="button" class="link-btn" data-xmas-close>Continue browsing</button></p>
       </div>
@@ -795,13 +789,15 @@ def instagram_carousel(depth=0):
       <button type="button" class="insta-arrow next" aria-label="Scroll right">{icon('chevron')}</button>
     </div>"""
 
-def gallery_instagram_grid(depth=0):
-    """Every real Instagram photo, flattened into a plain grid (not the
-    homepage's horizontal-scroll carousel) for the standalone Gallery page.
-    Each tile links out to the real Instagram post. Reads the same
-    build/instagram_feed.json manifest as instagram_carousel() — see that
-    function's docstring for how it gets populated — and degrades to
-    nothing (not a broken section) if the manifest is missing or empty."""
+def gallery_instagram_figures(depth=0):
+    """Every real Instagram photo as bare <figure> tags (no wrapping .gallery
+    div, no section/heading — the Gallery page drops them straight into its
+    one continuous photo grid alongside every other real photo, not a
+    separate "From Instagram" section). Each tile links out to the real
+    Instagram post. Reads the same build/instagram_feed.json manifest as
+    instagram_carousel() — see that function's docstring for how it gets
+    populated — and returns "" (not a broken section) if the manifest is
+    missing or empty."""
     path = os.path.join(_ROOT, "build", "instagram_feed.json")
     if not os.path.exists(path):
         return ""
@@ -828,9 +824,7 @@ def gallery_instagram_grid(depth=0):
             img_html = picture(root, img, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 25vw")
             figures += (f'<figure class="reveal"><a href="{link}" target="_blank" rel="noopener" '
                         f'aria-label="View this post on Instagram">{img_html}</a></figure>')
-    if not figures:
-        return ""
-    return f'<div class="gallery">{figures}</div>'
+    return figures
 
 def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
