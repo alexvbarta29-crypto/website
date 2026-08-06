@@ -827,7 +827,7 @@ def build_gallery():
       </div>
     </div>
   </section>
-  <section><div class="container">
+  <section style="padding-top:0"><div class="container">
     <div class="gallery">{work_html}</div>
   </div></section>"""
     html += f"""
@@ -913,9 +913,6 @@ def build_about():
         three things.</p>
     </div>
     <ul class="checklist mt-3" style="max-width:760px;margin-inline:auto">{exp_html}</ul>
-    <p class="center mt-3" style="max-width:680px;margin-inline:auto">Ready for an exterior you don't have to
-      think about? Call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a> or
-      <a href="get-quote.html">request a free quote</a> — no obligation, and no pressure either way.</p>
   </div></section>
 
   <section class="section-tight" id="team"><div class="container">
