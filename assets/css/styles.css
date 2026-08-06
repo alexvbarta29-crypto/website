@@ -819,7 +819,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .insta-carousel { position: relative; margin-bottom: 40px; }
 .insta-track {
   display: flex; align-items: stretch; gap: 14px; height: min(58vh, 460px); overflow-x: auto;
-  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; padding: 4px 4px 14px; scrollbar-width: none;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 4px 4px 14px; scrollbar-width: none;
 }
 .insta-track::-webkit-scrollbar { display: none; }
 .insta-card {

@@ -411,7 +411,12 @@
          one card at a time on a fixed interval and bounces back and forth
          at the ends rather than jumping, pauses on hover/touch/drag/
          arrow-click and while a video is playing, and only runs while the
-         row is actually on screen. ---- */
+         row is actually on screen. Uses a self-rescheduling timeout (not
+         setInterval) tied to real scroll activity — not just pointerup —
+         so it never yanks the row out from under a still-settling swipe;
+         a touch fling keeps scrolling well after the finger lifts, and the
+         old fixed 1200ms-after-pointerup resume used to fight that native
+         momentum scroll, which read as the carousel "jumping" mid-browse. */
   $$(".insta-carousel").forEach((carousel) => {
     const track = $(".insta-track", carousel);
     const prev = $(".insta-arrow.prev", carousel);
@@ -423,17 +428,18 @@
 
     const step = () => Math.min(track.clientWidth * 0.8, 420);
     if (prev && next) {
-      prev.addEventListener("click", () => { pauseAuto(); track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }); });
-      next.addEventListener("click", () => { pauseAuto(); track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }); });
+      prev.addEventListener("click", () => { pauseAuto(); resumeAuto(); track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }); });
+      next.addEventListener("click", () => { pauseAuto(); resumeAuto(); track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }); });
     }
 
     const cards = $$(".insta-card", track);
     if (cards.length < 2) return;
 
-    const INTERVAL = 3000; // ms between slides
-    let dir = 1, autoPaused = false, inView = false;
-    const pauseAuto = () => { autoPaused = true; };
-    const resumeAuto = () => { autoPaused = false; };
+    const INTERVAL = 3000; // ms between slides once settled
+    const RESUME_DELAY = 2200; // grace period after the user stops interacting
+    const SCROLL_SETTLE = 400; // how long scrolling must be quiet before we call it "stopped"
+    let dir = 1, inView = false, timer = null, settleTimer = null;
+
     const currentIndex = () => {
       let idx = 0, best = Infinity;
       cards.forEach((c, i) => {
@@ -442,22 +448,30 @@
       });
       return idx;
     };
+    const schedule = (delay) => { clearTimeout(timer); timer = setTimeout(advance, delay); };
+    const pauseAuto = () => clearTimeout(timer);
+    const resumeAuto = () => schedule(RESUME_DELAY);
     const advance = () => {
-      if (autoPaused || !inView || videos.some((v) => !v.paused)) return;
+      if (!inView || videos.some((v) => !v.paused)) { schedule(INTERVAL); return; }
       const max = cards.length - 1;
       let idx = currentIndex() + dir;
       if (idx >= max) { idx = max; dir = -1; }
       else if (idx <= 0) { idx = 0; dir = 1; }
       track.scrollTo({ left: cards[idx].offsetLeft, behavior: reduce ? "auto" : "smooth" });
+      schedule(INTERVAL);
     };
     if (!reduce) {
       track.addEventListener("pointerenter", pauseAuto);
       track.addEventListener("pointerleave", resumeAuto);
       track.addEventListener("pointerdown", pauseAuto);
-      track.addEventListener("pointerup", () => setTimeout(resumeAuto, 1200));
+      track.addEventListener("scroll", () => {
+        pauseAuto();
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(resumeAuto, SCROLL_SETTLE);
+      }, { passive: true });
       new IntersectionObserver((entries) => { inView = entries[0].isIntersecting; },
         { threshold: 0.2 }).observe(track);
-      setInterval(advance, INTERVAL);
+      schedule(INTERVAL);
     }
   });
 
