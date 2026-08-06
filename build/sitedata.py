@@ -41,7 +41,7 @@ SERVICES = [
         "icon": "window",
         "hero_pos": "35%",
         "image": "assets/img/svc-exterior-window-cleaning.jpg",
-        "short": "Streak-free exterior glass, screens, sills, and tracks — cleaned without ladders in your flower beds.",
+        "short": "Streak-free exterior glass, frames, and sills — cleaned without ladders in your flower beds.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities.",
         "seo_title": "Exterior Window Cleaning Delano, MN | Barta",
         "seo_desc": "Exterior window cleaning in Delano and the western Twin Cities. Streak-free glass, detailed frames and professional service. Get a free quote.",
@@ -51,24 +51,22 @@ SERVICES = [
         # every legitimate surrounding city are still fully represented.
         "schema_name": "Professional Exterior Window Cleaning",
         "kw": "exterior window cleaning Delano MN",
-        "kw2": ["exterior window cleaning", "professional window washers", "pure-water window cleaning", "streak-free window cleaning"],
+        "kw2": ["exterior window cleaning", "professional window washers", "water-fed pole window cleaning", "streak-free window cleaning"],
         "benefits": [
             ("Streak-free guarantee", "We don't leave until every pane is spotless — or we come back free."),
-            ("Pure-water technology", "Deionized water rinses glass cleaner and keeps it clearer, longer."),
+            ("Water-fed pole technology", "Purified water rinses glass cleaner and keeps it clearer, longer — no soap residue."),
             ("Ladder-free upper stories", "Water-fed poles reach second-story glass without ladders in your beds."),
-            # Deliberately not "hard-water removal" — see includes note + FAQ
-            # below: standard cleaning is light spot treatment only, embedded
-            # mineral staining is the separate Hard Water Stain Removal service.
-            ("Light spot treatment", "We treat everyday water spotting and light mineral marks as part of every visit."),
+            # Deliberately not "hard-water removal" — standard cleaning doesn't
+            # include spot treatment; see includes note + FAQ below.
+            ("Frames &amp; sills detailed", "We hand-wipe every frame and sill on every visit — the parts most companies skip."),
         ],
-        "intro": "The outside of your glass takes the brunt of Minnesota's weather — pollen, rain spots, and road grime dull your view from the street and from inside. Barta's exterior window cleaning hand-details every pane, then uses pure-water poles for second-story and hard-to-reach glass, finishing every screen, sill, and track so the whole window looks new.",
+        "intro": "The outside of your glass takes the brunt of Minnesota's weather — pollen, rain spots, and road grime dull your view from the street and from inside. Barta's exterior window cleaning hand-details every reachable pane, then switches to water-fed poles for second-story and hard-to-reach glass, finishing with a wipe-down of every sill and frame so the whole window looks new.",
         "includes": [
             "Exterior glass hand-cleaned and squeegeed",
-            "Window screens removed, washed, and reinstalled",
-            "Exterior sills, tracks, and frames wiped down",
-            "Pure-water pole cleaning for second-story and hard-to-reach glass",
-            "Spot treatment for light hard-water and mineral marks",
+            "Exterior sills and frames wiped down",
+            "Water-fed pole cleaning for second-story and hard-to-reach glass",
             "Full cleanup — we leave your property tidier than we found it",
+            "Screens, track cleaning, and hard-water treatment available as add-ons",
         ],
         "process": [
             ("Mop &amp; pre-treat", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen before anything else touches the glass."),
@@ -80,17 +78,17 @@ SERVICES = [
             ("How is exterior window cleaning priced?",
              "Pricing depends on your home's size, number of windows, and accessibility. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
             ("Are screens included?",
-             "Yes — screens are removed, hand-washed, and reinstalled as part of every exterior window cleaning visit."),
-            ("Are frames, sills, and tracks included?",
-             "Yes — exterior sills, tracks, and frames are wiped down on every visit, not just the glass."),
-            ("How do pure-water poles work?",
+             "Screen cleaning is an add-on to exterior window cleaning rather than something included automatically. Just let us know when you request your quote and we'll add screen removal, hand-washing, and reinstallation to your visit."),
+            ("Are frames and sills included?",
+             "Yes — exterior sills and frames are wiped down on every visit, not just the glass. Window track cleaning is a separate add-on service if you'd like those detailed too."),
+            ("How do water-fed poles work?",
              "For second-story and hard-to-reach glass, we use purified, deionized water on extension poles. Because the water carries no minerals, it rinses spot-free without soap and without a ladder in your flower beds."),
             ("Is hard-water stain removal included?",
-             "Standard cleaning includes spot treatment for everyday water spotting and light mineral marks. Deeper, embedded mineral staining that's bonded to the glass is a separate service — our Hard Water Stain Removal page has details, or ask us for an assessment."),
+             "Hard-water spot treatment isn't part of a standard exterior window cleaning — it's included at no charge on certain service plans, or available as an add-on. Deeper, embedded mineral staining that's bonded to the glass is a separate service — our Hard Water Stain Removal page has details, or ask us for an assessment."),
             ("How often do Minnesota homes need exterior window cleaning?",
-             "Most homes benefit from cleaning about twice a year — once in late spring after pollen settles, and again in early fall. Homes near lakes, gravel roads, or heavy tree cover may want a third visit."),
+             "We recommend four visits a year to keep your windows consistently clean and as well-maintained as possible. If that's more than you need, a minimum of twice a year — once in late spring after pollen settles, and again in early fall — will still keep things looking great."),
             ("What happens if it rains after service?",
-             "Rain itself typically does not cause mineral spotting on professionally cleaned glass. If you notice a streak or cleaning issue after service, contact us and we'll inspect it and make it right according to our service guarantee."),
+             "Don't let the forecast hold you back from booking — rain itself typically doesn't cause mineral spotting on professionally cleaned glass. And with certain plans, every visit is backed by a 7-day rain guarantee, so if weather does cause an issue within a week of your cleaning, just let us know and we'll make it right."),
         ],
     },
     {
