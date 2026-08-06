@@ -162,40 +162,66 @@
     const lines = $$(".process-line", slider);
     const prev = $(".process-arrow.prev", slider);
     const next = $(".process-arrow.next", slider);
-    let i = 0, timer = null;
+    const SWEEP_MS = 460; // total travel time for the bar, however many segments move
+    let i = 0, timer = null, liveLine = null;
+    const resetLine = (l) => {
+      l.classList.remove("filled");
+      l.style.setProperty("--line-dur", "0s");
+      l.style.setProperty("--line-delay", "0s");
+      void l.offsetWidth;
+    };
     const show = (n) => {
+      // The segment acting as the live countdown is mid-flight on a 16s
+      // transition. Changing --line-dur doesn't speed up a transition already
+      // running toward the same end value, so drop it back to empty here and
+      // let the sweep below re-drive it at its own pace.
+      if (liveLine) { resetLine(liveLine); liveLine = null; }
+
       i = (n + slides.length) % slides.length;
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
       dots.forEach((d, idx) => {
         d.classList.toggle("active", idx === i);
         d.classList.toggle("filled", idx <= i);
       });
+
+      // Segments move one after another — each starts as the previous ends —
+      // so jumping from step 1 to step 3 reads as a single line travelling the
+      // length of the bar. Previously every segment animated simultaneously,
+      // which looked like separate bars growing side by side. Segments already
+      // full are left untouched so they don't redraw underneath the sweep.
+      const toFill = lines.filter((l, idx) => idx < i && !l.classList.contains("filled"));
+      const toEmpty = lines.filter((l, idx) => idx > i && l.classList.contains("filled"));
+      const fillSeg = toFill.length ? SWEEP_MS / toFill.length : SWEEP_MS;
+      const emptySeg = toEmpty.length ? SWEEP_MS / toEmpty.length : SWEEP_MS;
+
       lines.forEach((l, idx) => {
         if (idx < i) {
-          // A line that was mid-flight on its slow 16s live-timer transition
-          // (skipped past before it finished) has to be reset first — just
-          // changing --line-dur doesn't speed up a transition already in
-          // progress toward the same end value, so it'd keep crawling at
-          // the old pace instead of snapping to full.
-          l.classList.remove("filled");
-          l.style.setProperty("--line-dur", "0s");
-          void l.offsetWidth;
-          requestAnimationFrame(() => {
-            l.style.setProperty("--line-dur", ".4s");
-            requestAnimationFrame(() => l.classList.add("filled"));
-          });
+          const pos = toFill.indexOf(l);
+          if (pos === -1) return; // already full — restarting it would break the sweep
+          l.style.setProperty("--line-dur", `${fillSeg}ms`);
+          l.style.setProperty("--line-delay", `${pos * fillSeg}ms`);
+          requestAnimationFrame(() => l.classList.add("filled"));
         } else if (idx === i && !reduce) {
           // Live timer: reset instantly, then animate to full over one
           // dwell period so the fill lands exactly when the next step shows.
-          l.classList.remove("filled");
-          l.style.setProperty("--line-dur", "0s");
-          void l.offsetWidth;
+          resetLine(l);
+          liveLine = l;
           requestAnimationFrame(() => {
             l.style.setProperty("--line-dur", `${AUTOADVANCE_MS}ms`);
-            requestAnimationFrame(() => l.classList.add("filled"));
+            requestAnimationFrame(() => {
+              // Once it completes on its own it's just a full segment; forget
+              // it's the live one so the next step leaves it alone instead of
+              // blanking and refilling it.
+              l.addEventListener("transitionend", () => { if (liveLine === l) liveLine = null; }, { once: true });
+              l.classList.add("filled");
+            });
           });
         } else {
-          l.style.setProperty("--line-dur", ".4s");
+          // Stepping backwards retracts right-to-left, so that reads as one
+          // line too rather than several segments emptying together.
+          const pos = toEmpty.indexOf(l);
+          l.style.setProperty("--line-dur", `${emptySeg}ms`);
+          l.style.setProperty("--line-delay", pos === -1 ? "0s" : `${(toEmpty.length - 1 - pos) * emptySeg}ms`);
           l.classList.remove("filled");
         }
       });

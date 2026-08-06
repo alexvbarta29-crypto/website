@@ -712,18 +712,24 @@ def build_residential():
 # ===========================================================================
 # GALLERY
 # ===========================================================================
+GALLERY_HERO = "assets/img/svc-exterior-window-cleaning.jpg"
+
 def build_gallery():
     depth = 0
-    html, body = interior_head(
+    # Full-bleed photo header in the homepage's style rather than the standard
+    # interior text hero. Uses the widest real photo on the site (2048px, the
+    # crew actually working) so the full-width banner is a genuine downscale
+    # rather than an upscaled portrait phone shot.
+    schema = list(BASE_SCHEMA)
+    schema.append(S.breadcrumb([
+        ("Home", BIZ["domain"] + "/"),
+        ("Gallery", BIZ["domain"] + "/gallery.html"),
+    ]))
+    html = C.head(
         title=f"Photo Gallery | {BIZ['name']}",
         desc=f"Real before-and-after photos and project pictures from {BIZ['name']}'s window cleaning, gutter cleaning, pressure washing, and more across the western Twin Cities.",
-        slug="gallery.html", eyebrow="Gallery", h1="See the work for yourself",
-        lead="Real photos from real jobs around Delano and the western Twin Cities — no stock photos.",
-        depth=depth, crumb_label="Gallery")
-
-    ba_html = "".join(
-        f'<div class="reveal" data-delay="{i}">{C.ba_slider(depth=depth, name=n)}</div>'
-        for i, n in enumerate(["ba1", "ba2", "ba3"]))
+        slug="gallery.html", depth=depth, schema=schema)
+    html += C.nav(depth)
 
     # Every real photo on the site, not just a curated handful — the more
     # of the actual work visitors can see, the better.
@@ -744,12 +750,25 @@ def build_gallery():
     work_html = "".join(_work_figure(src, alt) for src, alt in work_photos)
     work_html += C.gallery_instagram_figures(depth)
 
-    html += f"""<main id="main">{body}
+    hero_picture = _hero_picture_html(root, GALLERY_HERO, img_class="hero-bg-img",
+                                       alt=IMAGE_ALT.get(GALLERY_HERO, "Barta Window Washing technicians cleaning windows"))
+    # One collage, before/after shots included inline with everything else —
+    # they used to sit above in their own "Before & after" section of drag
+    # sliders, which split the page into two separate galleries.
+    html += f"""<main id="main">
+  <section class="hero hero-photo-full hero-photo-band">
+    {hero_picture}
+    <div class="hero-overlay"></div>
+    <div class="container">
+      <div class="hero-content reveal in">
+        {C.crumbs([("Home", root + "index.html"), ("Gallery", None)], light=True)}
+        {C.google_badge(depth, text=f"{BIZ['review_count']}+ 5-star Google reviews")}
+        <h1 class="mt-1">See the work for <em>yourself.</em></h1>
+        <p class="lead">Real photos from real jobs around {BIZ['city']} and the western Twin Cities — no stock photos.</p>
+      </div>
+    </div>
+  </section>
   <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">Real transformations</span><h2>Before &amp; after</h2></div>
-    <div class="grid cols-3">{ba_html}</div>
-  </div></section>
-  <section class="bg-mist"><div class="container">
     <div class="gallery">{work_html}</div>
   </div></section>"""
     html += f"""
@@ -1754,7 +1773,10 @@ _HERO_VARIANT_SPECS = [(1200, "webp", 72), (1200, "jpg", 78), (640, "webp", 72),
 # 1200w tier so the full-bleed hero stays sharp on large/retina screens
 # instead of the browser stretching the 1200w file to fill the viewport.
 _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
-_HERO_1920_PATHS = {"assets/img/hero-home.jpg"}
+# Both of these render full-bleed edge to edge, and both have sources wider
+# than 1920 (or exactly 1920), so this tier is always a real downscale — it
+# never upscales. GALLERY_HERO is the Gallery page's photo header.
+_HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 
 # Every individual service page's hero photo gets this higher-quality tier —
 # it's the single largest, most-scrutinized image on that page (the proof

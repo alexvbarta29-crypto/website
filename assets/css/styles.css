@@ -541,7 +541,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-dot.filled { border-color: transparent; background: var(--grad-brand); color: #fff; }
 .process-dot.active { box-shadow: var(--sh-glow); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
-.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform var(--line-dur, .8s) linear; }
+/* --line-delay lets main.js stagger the segments so a multi-step jump reads
+   as one line travelling the bar instead of every segment growing at once. */
+.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform var(--line-dur, .8s) linear var(--line-delay, 0s); }
 .process-line.filled::after { transform: scaleX(1); }
 @media (max-width: 780px) {
   .process-track { height: 560px; }
@@ -918,7 +920,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 }
 @media (max-width: 480px) {
   .stats, .cols-4, .area-grid { grid-template-columns: 1fr; }
-  .gallery { column-count: 1; }
+  /* Stays 2-up rather than dropping to a single column: the gallery is one
+     long collage of ~58 photos, and one-per-screen makes it endless. */
+  .gallery { column-count: 2; column-gap: 10px; }
+  .gallery figure { margin-bottom: 10px; }
   .nav { padding-left: 16px; }
   .brand small { display: none; }
 }
@@ -1037,6 +1042,21 @@ html.js .reveal.in { opacity: 1; transform: none; }
      i.e. exactly over the photo it was meant to leave alone. */
   .hero-photo-full .hero-overlay { background: linear-gradient(180deg,
     rgba(8,8,10,.58) 0%, rgba(8,8,10,.5) 30%, rgba(8,8,10,.28) 52%, rgba(8,8,10,.07) 74%, transparent 90%); }
+}
+
+/* Same full-bleed photo header as the homepage hero, but a band instead of
+   a whole viewport — used by the Gallery, where a 100vh header would push
+   every photo it's introducing below the fold. Must stay after
+   .hero-photo-full to win the min-height (equal specificity). Text is
+   centred in the band, so the scrim is even rather than top-weighted. */
+.hero-photo-band { min-height: 62vh; align-items: center; }
+.hero-photo-band .hero-overlay { background: linear-gradient(180deg,
+  rgba(8,8,10,.52) 0%, rgba(8,8,10,.42) 45%, rgba(8,8,10,.5) 100%); }
+.hero-photo-band .hero-content h1 { font-size: clamp(2.5rem, 5.4vw, 4.2rem); }
+@media (max-width: 760px) {
+  .hero-photo-band { min-height: 56vh; }
+  .hero-photo-band .hero-overlay { background: linear-gradient(180deg,
+    rgba(8,8,10,.55) 0%, rgba(8,8,10,.45) 45%, rgba(8,8,10,.55) 100%); }
 }
 
 /* Google review badge (links to Google Business Profile) */
