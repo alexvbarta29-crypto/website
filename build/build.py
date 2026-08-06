@@ -1918,6 +1918,10 @@ def generate_hero_variants():
                   "assets/img/svc-cta-squeegee.jpg"}
     for s in SERVICES:
         hero_paths.add(s.get("image") or "assets/img/hero-home.jpg")
+    # Every curated real photo (IMAGE_ALT is the roster) gets derivatives too,
+    # so a new gallery photo serves a right-sized file instead of its
+    # multi-thousand-pixel original.
+    hero_paths.update(k for k in IMAGE_ALT if k.lower().endswith((".jpg", ".jpeg")))
     for name in ("window", "siding", "gutter"):
         hero_paths.add(f"assets/img/ba-{name}-before.jpg")
         hero_paths.add(f"assets/img/ba-{name}-after.jpg")
