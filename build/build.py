@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES
+from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT
 from icons import icon
 import components as C
 import schema as S
@@ -712,6 +712,55 @@ def build_residential():
     write("residential.html", html, slug="residential.html", priority="0.8")
 
 # ===========================================================================
+# GALLERY
+# ===========================================================================
+def build_gallery():
+    depth = 0
+    html, body = interior_head(
+        title=f"Photo Gallery | {BIZ['name']}",
+        desc=f"Real before-and-after photos and project pictures from {BIZ['name']}'s window cleaning, gutter cleaning, pressure washing, and more across the western Twin Cities.",
+        slug="gallery.html", eyebrow="Gallery", h1="See the work for yourself",
+        lead="Real photos from real jobs around Delano and the western Twin Cities — no stock photos.",
+        depth=depth, crumb_label="Gallery")
+
+    ba_html = "".join(
+        f'<div class="reveal" data-delay="{i}">{C.ba_slider(depth=depth, name=n)}</div>'
+        for i, n in enumerate(["ba1", "ba2", "ba3"]))
+
+    work_photos = list(IMAGE_ALT.items())
+    work_photos.append(("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van"))
+    root = C.rel(depth)
+    def _work_figure(src, alt):
+        img_html = C.picture(root, src, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 33vw")
+        return f'<figure class="reveal">{img_html}<figcaption>{alt}</figcaption></figure>'
+    work_html = "".join(_work_figure(src, alt) for src, alt in work_photos)
+
+    insta_html = C.gallery_instagram_grid(depth)
+
+    html += f"""<main id="main">{body}
+  <section><div class="container">
+    <div class="section-head center"><span class="eyebrow">Real transformations</span><h2>Before &amp; after</h2></div>
+    <div class="grid cols-3">{ba_html}</div>
+  </div></section>
+  <section class="bg-mist"><div class="container">
+    <div class="section-head center"><span class="eyebrow">On the job</span><h2>Our work</h2></div>
+    <div class="gallery">{work_html}</div>
+  </div></section>"""
+    if insta_html:
+        html += f"""
+  <section><div class="container">
+    <div class="section-head center"><span class="eyebrow">Follow along</span><h2>From Instagram</h2>
+      <p>Tap any photo to see the full post — <a href="{BIZ['instagram']}" target="_blank" rel="noopener">follow us @bartawindowwashing</a> for more.</p>
+    </div>
+    {insta_html}
+  </div></section>"""
+    html += f"""
+  {C.cta_band(depth)}
+</main>"""
+    html += C.page_end(depth)
+    write("gallery.html", html, slug="gallery.html", priority="0.6")
+
+# ===========================================================================
 # ABOUT
 # ===========================================================================
 def build_about():
@@ -1082,6 +1131,7 @@ def build_sitemap_page():
     main_pages = [
         ("house", "Home", "index.html"),
         ("user", "About Us", "about.html"),
+        ("image", "Gallery", "gallery.html"),
         ("window", "Residential Services", "residential.html"),
         ("building", "Commercial Cleaning", "services/commercial-cleaning.html"),
         ("pin", "Service Areas", "service-areas.html"),
@@ -1652,6 +1702,12 @@ def generate_hero_variants():
     for name in ("window", "siding", "gutter"):
         hero_paths.add(f"assets/img/ba-{name}-before.jpg")
         hero_paths.add(f"assets/img/ba-{name}-after.jpg")
+    # Instagram-synced photos land as full-size originals (often 1-2MB each,
+    # unresized) — the Gallery page shows every one of them at once, so
+    # without responsive variants that's dozens of megabytes on one page.
+    import glob as _glob
+    for p in _glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")):
+        hero_paths.add(os.path.relpath(p, ROOT).replace(os.sep, "/"))
     for rel in sorted(hero_paths):
         src = os.path.join(ROOT, rel)
         if not os.path.exists(src):
@@ -1689,6 +1745,7 @@ def main():
     for s in SERVICES:
         build_service(s)
     build_residential()
+    build_gallery()
     build_about()
     build_reviews()
     build_faqs()

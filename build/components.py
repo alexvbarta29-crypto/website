@@ -272,7 +272,7 @@ def footer(depth=0):
         <ul>
           <li><a href="{root}about.html">About Us</a></li>
           <li><a href="{root}get-quote.html">Contact</a></li>
-          <li><a href="{root}index.html#photos">Gallery</a></li>
+          <li><a href="{root}gallery.html">Gallery</a></li>
           <li><a href="{root}reviews.html">Client Testimonials</a></li>
           <li><a href="{root}blog.html">Blog</a></li>
           <li><a href="{root}get-quote.html">Get a Quote</a></li>
@@ -792,6 +792,44 @@ def instagram_carousel(depth=0):
       <div class="insta-track">{cards}</div>
       <button type="button" class="insta-arrow next" aria-label="Scroll right">{icon('chevron')}</button>
     </div>"""
+
+def gallery_instagram_grid(depth=0):
+    """Every real Instagram photo, flattened into a plain grid (not the
+    homepage's horizontal-scroll carousel) for the standalone Gallery page.
+    Each tile links out to the real Instagram post. Reads the same
+    build/instagram_feed.json manifest as instagram_carousel() — see that
+    function's docstring for how it gets populated — and degrades to
+    nothing (not a broken section) if the manifest is missing or empty."""
+    path = os.path.join(_ROOT, "build", "instagram_feed.json")
+    if not os.path.exists(path):
+        return ""
+    try:
+        with open(path, encoding="utf-8") as f:
+            posts = json.load(f)
+    except Exception:
+        return ""
+    if not posts:
+        return ""
+    root = rel(depth)
+    figures = ""
+    for p in posts:
+        caption = (p.get("caption") or "").strip().split("\n")[0]
+        if len(caption) > 90:
+            caption = caption[:88].rsplit(" ", 1)[0] + "…"
+        link = p.get("permalink") or BIZ["instagram"]
+        raw_slides = p.get("slides") or [{"image": p.get("image")}]
+        for s in raw_slides:
+            img = s.get("image")
+            if not img or not os.path.exists(os.path.join(_ROOT, img)):
+                continue
+            alt = caption or f"{BIZ['name']} on Instagram"
+            img_html = picture(root, img, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 25vw")
+            cap_html = f"<figcaption>{caption}</figcaption>" if caption else ""
+            figures += (f'<figure class="reveal"><a href="{link}" target="_blank" rel="noopener" '
+                        f'aria-label="View this post on Instagram">{img_html}{cap_html}</a></figure>')
+    if not figures:
+        return ""
+    return f'<div class="gallery">{figures}</div>'
 
 def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
