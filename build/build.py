@@ -828,7 +828,7 @@ def build_gallery():
     # they used to sit above in their own "Before & after" section of drag
     # sliders, which split the page into two separate galleries.
     html += f"""<main id="main">
-  <section class="hero hero-photo-full hero-photo-band">
+  <section class="hero hero-photo-full">
     {hero_picture}
     <div class="hero-overlay"></div>
     <div class="container">
@@ -840,7 +840,7 @@ def build_gallery():
       </div>
     </div>
   </section>
-  <section style="padding-top:0"><div class="container">
+  <section><div class="container">
     <div class="gallery">{work_html}</div>
   </div></section>"""
     html += f"""

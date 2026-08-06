@@ -1081,20 +1081,6 @@ html.js .reveal.in { opacity: 1; transform: none; }
     rgba(8,8,10,.58) 0%, rgba(8,8,10,.5) 30%, rgba(8,8,10,.28) 52%, rgba(8,8,10,.07) 74%, transparent 90%); }
 }
 
-/* Same full-bleed photo header as the homepage hero, but a band instead of
-   a whole viewport — used by the Gallery, where a 100vh header would push
-   every photo it's introducing below the fold. Must stay after
-   .hero-photo-full to win the min-height (equal specificity). Text is
-   centred in the band, so the scrim is even rather than top-weighted. */
-.hero-photo-band { min-height: 62vh; align-items: center; }
-.hero-photo-band .hero-overlay { background: linear-gradient(180deg,
-  rgba(8,8,10,.52) 0%, rgba(8,8,10,.42) 45%, rgba(8,8,10,.5) 100%); }
-.hero-photo-band .hero-content h1 { font-size: clamp(2.5rem, 5.4vw, 4.2rem); }
-@media (max-width: 760px) {
-  .hero-photo-band { min-height: 56vh; }
-  .hero-photo-band .hero-overlay { background: linear-gradient(180deg,
-    rgba(8,8,10,.55) 0%, rgba(8,8,10,.45) 45%, rgba(8,8,10,.55) 100%); }
-}
 
 /* Google review badge (links to Google Business Profile) */
 /* Frosted white, not a dark chip: the badge sits over the hero photo, and
