@@ -54,13 +54,13 @@ SERVICES = [
         "kw2": ["exterior window cleaning", "professional window washers", "water-fed pole window cleaning", "streak-free window cleaning"],
         "benefits": [
             ("Streak-free guarantee", "We don't leave until every pane is spotless — or we come back free."),
-            ("Water-fed pole technology", "Purified water rinses glass cleaner and keeps it clearer, longer — no soap residue."),
-            ("Ladder-free upper stories", "Water-fed poles reach second-story glass without ladders in your beds."),
+            ("Water-fed pole technology", "Purified water rinses glass cleaner and keeps it clearer, longer."),
+            ("Safer upper-story reach", "Water-fed poles mean less ladder work on second-story glass — safer for our crew and your landscaping."),
             # Deliberately not "hard-water removal" — standard cleaning doesn't
             # include spot treatment; see includes note + FAQ below.
             ("Frames &amp; sills detailed", "We hand-wipe every frame and sill on every visit — the parts most companies skip."),
         ],
-        "intro": "The outside of your glass takes the brunt of Minnesota's weather — pollen, rain spots, and road grime dull your view from the street and from inside. Barta's exterior window cleaning hand-details every reachable pane, then switches to water-fed poles for second-story and hard-to-reach glass, finishing with a wipe-down of every sill and frame so the whole window looks new.",
+        "intro": "The outside of your glass takes the brunt of Minnesota's weather — pollen, rain spots, and road grime dull your view from the street and from inside. Barta's exterior window cleaning uses whatever approach fits each window best — hand-detailing, a ladder, or a water-fed pole for second-story and hard-to-reach glass — finishing with a wipe-down of every sill and frame so the whole window looks new.",
         "includes": [
             "Exterior glass hand-cleaned and squeegeed",
             "Exterior sills and frames wiped down",
@@ -69,10 +69,10 @@ SERVICES = [
             "Screens, track cleaning, and hard-water treatment available as add-ons",
         ],
         "process": [
-            ("Mop &amp; pre-treat", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen before anything else touches the glass."),
-            ("Detail scrub", "Silicone overspray, painter's tape residue, and baked-on grime that the T-bar can't lift gets hand-scrubbed with industrial-grade abrasive pads — safe on glass, tough on the stuff a simple wash leaves behind."),
+            ("Mop", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen before anything else touches the glass."),
+            ("Scrub", "Silicone overspray, painter's tape residue, and baked-on grime that the T-bar can't lift gets hand-scrubbed with industrial-grade abrasive pads — safe on glass, tough on the stuff a simple wash leaves behind."),
             ("Squeegee", "A professional-grade squeegee pulls every drop off the glass edge to edge, so nothing is left to dry into streaks or spots."),
-            ("Hand-detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
+            ("Detail", "We finish each window by hand-wiping the glass, frames, and sills — the parts of the job most companies skip — so it looks finished, not just rinsed."),
         ],
         "faqs": [
             ("How is exterior window cleaning priced?",
@@ -82,11 +82,11 @@ SERVICES = [
             ("Are frames and sills included?",
              "Yes — exterior sills and frames are wiped down on every visit, not just the glass. Window track cleaning is a separate add-on service if you'd like those detailed too."),
             ("How do water-fed poles work?",
-             "For second-story and hard-to-reach glass, we use purified, deionized water on extension poles. Because the water carries no minerals, it rinses spot-free without soap and without a ladder in your flower beds."),
+             "For second-story and hard-to-reach glass, we use purified, deionized water on extension poles. Because the water carries no minerals, it rinses spot-free without soap, and it often lets us skip a ladder in your flower beds — though some spots still call for one."),
             ("Is hard-water stain removal included?",
              "Hard-water spot treatment isn't part of a standard exterior window cleaning — it's included at no charge on certain service plans, or available as an add-on. Deeper, embedded mineral staining that's bonded to the glass is a separate service — our Hard Water Stain Removal page has details, or ask us for an assessment."),
             ("How often do Minnesota homes need exterior window cleaning?",
-             "We recommend four visits a year to keep your windows consistently clean and as well-maintained as possible. If that's more than you need, a minimum of twice a year — once in late spring after pollen settles, and again in early fall — will still keep things looking great."),
+             "We recommend four visits a year to keep your windows consistently clean and as well-maintained as possible. At minimum, we recommend twice a year — once in late spring after pollen settles, and again in early fall — to keep things properly maintained."),
             ("What happens if it rains after service?",
              "Don't let the forecast hold you back from booking — rain itself typically doesn't cause mineral spotting on professionally cleaned glass. And with certain plans, every visit is backed by a 7-day rain guarantee, so if weather does cause an issue within a week of your cleaning, just let us know and we'll make it right."),
         ],
