@@ -373,12 +373,13 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !xmasModal.hidden) closeXmas(); });
   }
 
-  /* ---- Instagram carousel: arrow buttons, a slow self-running auto-scroll
+  /* ---- Instagram carousel: arrow buttons, a self-running auto-advance
          when nobody's touching it, and shared video-pausing so scrolling
-         past several video posts doesn't stack up audio. Auto-scroll
-         bounces back and forth at the ends rather than jumping, pauses on
-         hover/touch/drag/arrow-click and while a video is playing, and
-         only runs while the row is actually on screen. ---- */
+         past several video posts doesn't stack up audio. Auto-advance moves
+         one card at a time on a fixed interval and bounces back and forth
+         at the ends rather than jumping, pauses on hover/touch/drag/
+         arrow-click and while a video is playing, and only runs while the
+         row is actually on screen. ---- */
   $$(".insta-carousel").forEach((carousel) => {
     const track = $(".insta-track", carousel);
     const prev = $(".insta-arrow.prev", carousel);
@@ -388,38 +389,34 @@
     const videos = $$(".insta-card-media-el", track).filter((v) => v.tagName === "VIDEO");
     videos.forEach((v) => v.addEventListener("play", () => videos.forEach((o) => { if (o !== v) o.pause(); })));
 
+    const step = () => Math.min(track.clientWidth * 0.8, 420);
     if (prev && next) {
-      const step = () => Math.min(track.clientWidth * 0.8, 420);
       prev.addEventListener("click", () => { pauseAuto(); track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }); });
       next.addEventListener("click", () => { pauseAuto(); track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }); });
     }
 
-    const SPEED = 22; // px/sec — gentle
-    let dir = 1, autoPaused = false, inView = false, last = null, pos = track.scrollLeft;
-    // CSS scroll-snap fights a slow per-frame scrollLeft nudge — the
-    // browser re-snaps to the nearest card every frame, which reads as the
-    // track being stuck. Drop snap only while auto-rotating; restore it the
-    // moment a person takes over, so manual drag/swipe still feels right.
-    const pauseAuto = () => { autoPaused = true; track.classList.remove("insta-auto"); };
-    const resumeAuto = () => { autoPaused = false; last = null; pos = track.scrollLeft; track.classList.add("insta-auto"); };
-    const anyVideoPlaying = () => videos.some((v) => !v.paused);
-    const tick = (t) => {
-      if (last === null) last = t;
-      const dt = (t - last) / 1000;
-      last = t;
-      if (!autoPaused && inView && !anyVideoPlaying()) {
-        const max = track.scrollWidth - track.clientWidth;
-        if (max > 0) {
-          // Track position in a float accumulator — scrollLeft itself reads
-          // back rounded, so nudging from it each frame loses sub-pixel
-          // progress and the scroll appears to freeze.
-          pos += dir * SPEED * dt;
-          if (pos >= max) { pos = max; dir = -1; }
-          if (pos <= 0) { pos = 0; dir = 1; }
-          track.scrollLeft = pos;
-        }
-      }
-      requestAnimationFrame(tick);
+    const cards = $$(".insta-card", track);
+    if (cards.length < 2) return;
+
+    const INTERVAL = 3000; // ms between slides
+    let dir = 1, autoPaused = false, inView = false;
+    const pauseAuto = () => { autoPaused = true; };
+    const resumeAuto = () => { autoPaused = false; };
+    const currentIndex = () => {
+      let idx = 0, best = Infinity;
+      cards.forEach((c, i) => {
+        const d = Math.abs(c.offsetLeft - track.scrollLeft);
+        if (d < best) { best = d; idx = i; }
+      });
+      return idx;
+    };
+    const advance = () => {
+      if (autoPaused || !inView || videos.some((v) => !v.paused)) return;
+      const max = cards.length - 1;
+      let idx = currentIndex() + dir;
+      if (idx >= max) { idx = max; dir = -1; }
+      else if (idx <= 0) { idx = 0; dir = 1; }
+      track.scrollTo({ left: cards[idx].offsetLeft, behavior: reduce ? "auto" : "smooth" });
     };
     if (!reduce) {
       track.addEventListener("pointerenter", pauseAuto);
@@ -428,8 +425,7 @@
       track.addEventListener("pointerup", () => setTimeout(resumeAuto, 1200));
       new IntersectionObserver((entries) => { inView = entries[0].isIntersecting; },
         { threshold: 0.2 }).observe(track);
-      resumeAuto();
-      requestAnimationFrame(tick);
+      setInterval(advance, INTERVAL);
     }
   });
 

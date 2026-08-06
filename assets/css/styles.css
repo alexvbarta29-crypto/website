@@ -810,7 +810,6 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; padding: 4px 4px 14px; scrollbar-width: none;
 }
 .insta-track::-webkit-scrollbar { display: none; }
-.insta-track.insta-auto { scroll-snap-type: none; }
 .insta-card {
   flex: 0 0 auto; height: 100%; scroll-snap-align: start; display: block;
   border-radius: var(--r-lg); overflow: hidden; background: #000; box-shadow: var(--sh-sm);
