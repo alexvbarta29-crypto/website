@@ -418,6 +418,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
     <h3>Thank you! Your request is in.</h3>
     <p>One of the owners will reach out with your free, no-obligation quote.</p>
     <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or call us now: {BIZ['phone_display']}</a>
+    <p class="mt-2"><a class="back-link" href="{rel(depth)}index.html"><span class="back-link-icon">{icon('arrow')}</span> Back to homepage</a></p>
   </div>
 </div>"""
 
@@ -547,6 +548,7 @@ def quote_wizard(depth=0, svc_default=None):
     <p>Someone will reach out shortly.</p>
     <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">Call Us</a>
     <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
+    <p class="mt-2"><a class="back-link" href="{rel(depth)}index.html"><span class="back-link-icon">{icon('arrow')}</span> Back to homepage</a></p>
   </div>
 </div>"""
 
@@ -619,6 +621,7 @@ def xmas_quote_modal(depth=0):
         <p>Someone will reach out shortly.</p>
         <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">Call Us</a>
         <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
+        <p class="mt-2"><button type="button" class="link-btn" data-xmas-close>Continue browsing</button></p>
       </div>
     </div>
   </div>

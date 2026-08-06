@@ -303,6 +303,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    can't place a call, so show the number itself to type/save instead. */
 .call-us-number { display: none; margin-top: 14px; font-size: 1.05rem; }
 .call-us-number a { color: var(--blue-600); font-weight: 700; text-decoration: underline; }
+.back-link, .link-btn { color: var(--blue-600); font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 6px; }
+.link-btn { background: none; border: 0; padding: 0; font-size: inherit; font-family: inherit; cursor: pointer; }
+.back-link-icon { display: inline-flex; transform: rotate(180deg); }
+.back-link-icon svg, .form-success .link-btn svg { width: 16px; height: 16px; margin: 0; color: inherit; }
 @media (min-width: 761px) {
   .call-us-btn { display: none; }
   .call-us-number { display: block; }

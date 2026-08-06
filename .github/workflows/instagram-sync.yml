@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   sync:
@@ -38,12 +39,29 @@ jobs:
         run: python3 build/build.py
 
       - name: Commit and push changes
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Sync Instagram feed [automated]"
-          git push
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Sync Instagram feed [automated]"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A push made with the default token doesn't trigger other workflows
+      # (a GitHub safety default, to stop workflows from re-triggering each
+      # other in a loop) — so deploy.yml's "on: push" wouldn't fire on its
+      # own here. Trigger it explicitly instead, only when something actually
+      # changed.
+      - name: Trigger deploy
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref claude/barta-window-washing-site-f51v9x
 
       # Optional: only runs if you've added a GH_PAT secret (a personal
       # access token scoped to just this repo's Secrets: write permission).
