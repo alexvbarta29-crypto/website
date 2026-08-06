@@ -896,7 +896,6 @@ IMAGE_ALT = {
     "assets/img/svc-hand-scrubbing.jpg": "Hand-scrubbing a window pane with an abrasive pad",
     "assets/img/svc-christmas-light-installation.jpg": "Warm white holiday lights installed along a home's roofline at night",
     "assets/img/xmas-lights-candy-cane.jpg": "Red and white holiday lights installed along a bungalow's roofline at night",
-    "assets/img/xmas-lights-snowy-farmhouse.jpg": "Warm white holiday lights on a two-story home's rooflines and porch over a snowy yard",
     "assets/img/xmas-lights-craftsman-gables.jpg": "White holiday lights tracing the gables of a craftsman-style home above a snow-covered driveway",
     "assets/img/svc-commercial-cleaning.jpg": "Technicians cleaning storefront windows on a commercial building",
     "assets/img/svc-mop-window.jpg": "Applying cleaning solution to a window with a T-bar mop",

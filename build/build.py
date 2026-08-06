@@ -520,6 +520,19 @@ def build_service(svc):
       </div>
       <div class="xmas-benefits">{benefit_items}</div>
     </div>
+  </section>
+  <section>
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow">Our work</span>
+        <h2>Real installs on real homes</h2>
+      </div>
+      <div class="grid cols-2 mt-3">
+        <div class="reveal">{C.photo("assets/img/xmas-lights-candy-cane.jpg", IMAGE_ALT["assets/img/xmas-lights-candy-cane.jpg"], ratio="4/3", depth=depth)}</div>
+        <div class="reveal" data-delay="1">{C.photo("assets/img/xmas-lights-craftsman-gables.jpg", IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"], ratio="4/3", depth=depth)}</div>
+      </div>
+      <div class="center mt-3"><a class="btn btn-ghost" href="{C.rel(depth)}gallery.html">See the full gallery {icon('arrow')}</a></div>
+    </div>
   </section>"""
 
     # The generic "how often should I schedule this / membership plans bundle
