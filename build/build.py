@@ -523,17 +523,18 @@ def build_service(svc):
   </section>
   <section>
     <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">Our work</span>
-        <h2>Real installs on real homes</h2>
-      </div>
-      <div class="grid cols-2 mt-3">
-        <div class="reveal">{C.photo("assets/img/xmas-lights-candy-cane.jpg", IMAGE_ALT["assets/img/xmas-lights-candy-cane.jpg"], ratio="4/3", depth=depth)}</div>
-        <div class="reveal" data-delay="1">{C.photo("assets/img/xmas-lights-craftsman-gables.jpg", IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"], ratio="4/3", depth=depth)}</div>
-      </div>
-      <div class="center mt-3"><a class="btn btn-ghost" href="{C.rel(depth)}gallery.html">See the full gallery {icon('arrow')}</a></div>
+      <div class="reveal">{C.photo("assets/img/xmas-lights-craftsman-gables.jpg", IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"], ratio="21/9", depth=depth)}</div>
     </div>
   </section>"""
+
+    # A photo mid-article breaks up the text-heavy section; only the xmas
+    # page has spare curated photos to use this way.
+    prose_photo = ""
+    if is_xmas:
+        prose_photo = ('<div style="margin:26px 0">'
+                       + C.photo("assets/img/xmas-lights-candy-cane.jpg",
+                                 IMAGE_ALT["assets/img/xmas-lights-candy-cane.jpg"],
+                                 ratio="3/2", depth=depth) + "</div>")
 
     # The generic "how often should I schedule this / membership plans bundle
     # it" FAQ is wrong for services that aren't routine recurring maintenance:
@@ -629,6 +630,7 @@ def build_service(svc):
         <div class="prose reveal">
           <h2 class="mt-0">{svc['name']} at {BIZ['name']}</h2>
           <p>{svc['intro']}</p>
+          {prose_photo}
           <h3>The benefits you'll notice</h3>
           <ul class="checklist">{benefits_html}</ul>
           <h3>What's included</h3>
