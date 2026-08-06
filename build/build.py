@@ -712,53 +712,6 @@ def build_residential():
     write("residential.html", html, slug="residential.html", priority="0.8")
 
 # ===========================================================================
-# WHY CHOOSE US
-# ===========================================================================
-def build_why():
-    depth = 0
-    reasons = [
-        ("shield", "Fully insured", "Comprehensive insurance coverage protects your home and our team on every single job. Certificate available on request."),
-        ("home", "Local &amp; family owned", "We're your neighbors in Delano, not a faceless franchise. Our name is on every truck and every result — and our reputation is everything."),
-        ("award", "Detail you can see", "Sills, tracks, screens, downspouts, and corners — we finish the details most companies rush past. The difference shows."),
-        ("leaf", "Safe, proven methods", "We match the right pressure and biodegradable solution to every surface, protecting your home, family, pets, and landscaping."),
-        ("clock", "Reliable &amp; on time", "Confirmed arrival windows, text updates, and crews that actually show up when we say. We respect your time."),
-        ("check-circle", "100% satisfaction guarantee", "If you're not thrilled, we make it right — re-cleaning free. No fine print, no hassle."),
-        ("star", "Top-rated locally", f"{BIZ['rating']}★ from {BIZ['review_count']}+ verified reviews — among the highest-rated exterior cleaners in the western metro."),
-        ("users", "Background-checked crews", "Friendly, uniformed, trained professionals you'll feel comfortable having around your home and family."),
-        ("tag", "Honest, upfront pricing", "Clear all-in quotes with no hidden fees, no pressure, and no surprises on the final invoice."),
-    ]
-    cards = "".join(f'<div class="card reveal" data-delay="{i%3}"><span class="ic" style="width:54px;height:54px;border-radius:14px;background:var(--grad-brand);color:#fff;display:grid;place-items:center;box-shadow:var(--sh-glow)">{icon(ic)}</span><h3 class="mt-2" style="font-size:1.2rem">{t}</h3><p class="mt-1">{d}</p></div>'
-                    for i, (ic, t, d) in enumerate(reasons))
-    reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
-    html, body = interior_head(
-        title=f"Why Choose Barta Window Washing | Delano, MN's Top-Rated Cleaners",
-        desc="Discover why Delano-area homeowners choose Barta Window Washing: fully insured, family-owned, detail-obsessed, eco-safe methods, and a 100% satisfaction guarantee. 5.0★ rated.",
-        slug="why-choose-us.html", eyebrow="Why Choose Us",
-        h1="The most trusted name in Minnesota exterior cleaning",
-        lead="Anyone can squeegee a window. We've built our reputation on the things that actually matter — trust, detail, safety, and results you can count on, every single time.",
-        depth=depth, crumb_label="Why Choose Us", primary_kw="best window cleaning company Delano MN")
-    html += f"""<main id="main">{body}
-  <section><div class="container">
-    <div class="grid cols-3">{cards}</div>
-  </div></section>
-  <section class="bg-deep"><div class="container">
-    <div class="stats">
-      <div class="stat reveal"><div class="num" data-count="{BIZ['rating']}">{BIZ['rating']}</div><div class="label">Average rating</div></div>
-      <div class="stat reveal" data-delay="1"><div class="num" data-count="{BIZ['review_count']}" data-suffix="+">{BIZ['review_count']}+</div><div class="label">5-star reviews</div></div>
-      <div class="stat reveal" data-delay="2"><div class="num" data-count="100" data-suffix="%">100%</div><div class="label">Locally owned &amp; operated</div></div>
-      <div class="stat reveal" data-delay="3"><div class="num" style="font-size:clamp(1.5rem,2.6vw,2.1rem)">Insured</div><div class="label">Full coverage on every visit</div></div>
-    </div>
-  </div></section>
-  <section><div class="container">
-    <div class="section-head center"><span class="eyebrow">In their words</span><h2>Don't take our word for it</h2></div>
-    {C.reviews_block(None, reviews_html, depth)}
-  </div></section>
-  {C.cta_band(depth)}
-</main>"""
-    html += C.page_end(depth)
-    write("why-choose-us.html", html, slug="why-choose-us.html", priority="0.7")
-
-# ===========================================================================
 # ABOUT
 # ===========================================================================
 def build_about():
@@ -1129,7 +1082,6 @@ def build_sitemap_page():
     main_pages = [
         ("house", "Home", "index.html"),
         ("user", "About Us", "about.html"),
-        ("award", "Why Choose Us", "why-choose-us.html"),
         ("window", "Residential Services", "residential.html"),
         ("building", "Commercial Cleaning", "services/commercial-cleaning.html"),
         ("pin", "Service Areas", "service-areas.html"),
@@ -1737,7 +1689,6 @@ def main():
     for s in SERVICES:
         build_service(s)
     build_residential()
-    build_why()
     build_about()
     build_reviews()
     build_faqs()

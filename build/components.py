@@ -221,7 +221,6 @@ def nav(depth=0):
       <a href="{root}residential.html">Residential</a>
       <a href="{root}service-areas.html">Service Areas</a>
       <a href="{root}reviews.html">Reviews</a>
-      <a href="{root}why-choose-us.html">Why Choose Us</a>
       <a href="{root}about.html">About</a>
       <a href="{root}blog.html">Blog</a>
       <a href="{root}faqs.html">FAQs</a>
@@ -272,7 +271,6 @@ def footer(depth=0):
         <h5>Company</h5>
         <ul>
           <li><a href="{root}about.html">About Us</a></li>
-          <li><a href="{root}why-choose-us.html">Why Choose Us</a></li>
           <li><a href="{root}get-quote.html">Contact</a></li>
           <li><a href="{root}index.html#photos">Gallery</a></li>
           <li><a href="{root}reviews.html">Client Testimonials</a></li>
