@@ -172,8 +172,18 @@
       });
       lines.forEach((l, idx) => {
         if (idx < i) {
-          l.style.setProperty("--line-dur", ".4s");
-          l.classList.add("filled");
+          // A line that was mid-flight on its slow 16s live-timer transition
+          // (skipped past before it finished) has to be reset first — just
+          // changing --line-dur doesn't speed up a transition already in
+          // progress toward the same end value, so it'd keep crawling at
+          // the old pace instead of snapping to full.
+          l.classList.remove("filled");
+          l.style.setProperty("--line-dur", "0s");
+          void l.offsetWidth;
+          requestAnimationFrame(() => {
+            l.style.setProperty("--line-dur", ".4s");
+            requestAnimationFrame(() => l.classList.add("filled"));
+          });
         } else if (idx === i && !reduce) {
           // Live timer: reset instantly, then animate to full over one
           // dwell period so the fill lands exactly when the next step shows.
