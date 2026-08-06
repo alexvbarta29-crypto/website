@@ -1,82 +1,245 @@
 [
   {
     "id": "17908170873275253",
-    "image": "assets/img/instagram/17908170873275253.jpg",
+    "image": "assets/img/instagram/17908170873275253_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17908170873275253_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17908170873275253_1.jpg"
+      }
+    ],
     "caption": "Meet the owners! \n\nAlex and Jacob are the brothers behind the brand. Born and raised in Delano, they are proud to serve the place they call home! \ud83c\uddfa\ud83c\uddf8",
     "permalink": "https://www.instagram.com/p/DbocnrtFFzh/",
-    "timestamp": "2026-08-04T20:42:03+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-08-04T20:42:03+0000"
   },
   {
     "id": "18110294294515814",
-    "image": "assets/img/instagram/18110294294515814.jpg",
+    "image": "assets/img/instagram/18110294294515814_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18110294294515814_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18110294294515814_1.jpg"
+      },
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18110294294515814_2.jpg",
+        "video": "assets/img/instagram/18110294294515814_2.mp4"
+      }
+    ],
     "caption": "Nothing beats a clean home! \ud83c\udfe0\ud83e\ude9f\u2728",
     "permalink": "https://www.instagram.com/p/DblfIYDlFBq/",
-    "timestamp": "2026-08-03T17:06:16+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-08-03T17:06:16+0000"
   },
   {
     "id": "18606051982024491",
-    "image": "assets/img/instagram/18606051982024491.jpg",
+    "image": "assets/img/instagram/18606051982024491_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18606051982024491_0.jpg",
+        "video": "assets/img/instagram/18606051982024491_0.mp4"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18606051982024491_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18606051982024491_2.jpg"
+      },
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18606051982024491_3.jpg",
+        "video": "assets/img/instagram/18606051982024491_3.mp4"
+      }
+    ],
     "caption": "We may be known for our amazing window cleaning, but we also offer a variety of other services! \ud83d\udcaa Check them out on our website! BartaWindowWashing.com",
     "permalink": "https://www.instagram.com/p/DbZBMEkFHlD/",
-    "timestamp": "2026-07-29T20:53:44+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-07-29T20:53:44+0000"
   },
   {
     "id": "17961575196156269",
-    "image": "assets/img/instagram/17961575196156269.jpg",
+    "image": "assets/img/instagram/17961575196156269_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17961575196156269_0.jpg",
+        "video": "assets/img/instagram/17961575196156269_0.mp4"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17961575196156269_1.jpg"
+      },
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17961575196156269_2.jpg",
+        "video": "assets/img/instagram/17961575196156269_2.mp4"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17961575196156269_3.jpg"
+      }
+    ],
     "caption": "Just some highlights from the summer. Can\u2019t wait for the fall season! \ud83c\udf41",
     "permalink": "https://www.instagram.com/p/DbVzALvkWf_/",
-    "timestamp": "2026-07-28T14:52:03+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-07-28T14:52:03+0000"
   },
   {
     "id": "18105187085130700",
-    "image": "assets/img/instagram/18105187085130700.jpg",
+    "image": "assets/img/instagram/18105187085130700_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18105187085130700_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18105187085130700_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18105187085130700_2.jpg"
+      }
+    ],
     "caption": "There\u2019s only one way to clean screens: The XERO Screen Cleaner! \u2728",
     "permalink": "https://www.instagram.com/p/DbT3PhylAet/",
-    "timestamp": "2026-07-27T20:50:37+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-07-27T20:50:37+0000"
   },
   {
     "id": "18143533390535660",
-    "image": "assets/img/instagram/18143533390535660.jpg",
+    "image": "assets/img/instagram/18143533390535660_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18143533390535660_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18143533390535660_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18143533390535660_2.jpg"
+      }
+    ],
     "caption": "Sit back and let BWW take care of it. \ud83c\udf32",
     "permalink": "https://www.instagram.com/p/DbLoZ_wkbi0/",
-    "timestamp": "2026-07-24T16:07:03+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-07-24T16:07:03+0000"
   },
   {
     "id": "18001854047986368",
-    "image": "assets/img/instagram/18001854047986368.jpg",
+    "image": "assets/img/instagram/18001854047986368_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18001854047986368_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18001854047986368_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18001854047986368_2.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18001854047986368_3.jpg"
+      }
+    ],
     "caption": "Ever wonder how we get your windows looking crystal clear? \n\n1\ufe0f\u20e3 Scrub \u2014 We use commercial-grade abrasives to remove built-up dirt, grime, and stuck-on debris.\n\n2\ufe0f\u20e3 Squeegee \u2014 Every pane is professionally squeegeed for a clean, streak-free finish.\n\n3\ufe0f\u20e3 Detail \u2014 We finish by detailing the glass, sills, and frames to make sure everything looks sharp.\n\nIt\u2019s all in the details. Clean windows, done right. \ud83c\udf32",
     "permalink": "https://www.instagram.com/p/DbI66RXkWGR/",
-    "timestamp": "2026-07-23T14:51:02+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-07-23T14:51:02+0000"
   },
   {
     "id": "18144547531542050",
-    "image": "assets/img/instagram/18144547531542050.jpg",
+    "image": "assets/img/instagram/18144547531542050_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18144547531542050_0.jpg"
+      },
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18144547531542050_1.jpg",
+        "video": "assets/img/instagram/18144547531542050_1.mp4"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18144547531542050_2.jpg"
+      }
+    ],
     "caption": "Dirty Windows? We can fix that\ud83c\udf32",
     "permalink": "https://www.instagram.com/p/DbGqMg8FF4X/",
-    "timestamp": "2026-07-22T17:46:29+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-07-22T17:46:29+0000"
   },
   {
     "id": "18461203987113057",
     "image": "assets/img/instagram/18461203987113057.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18461203987113057.jpg",
+        "video": "assets/img/instagram/18461203987113057.mp4"
+      }
+    ],
     "caption": "Happy 250th Birthday from @bartawindowwashing !!\n\nwww.BartaWindowWashing.com\n763-314-3400\n\n#4thofjuly #delano #windowcleaning",
     "permalink": "https://www.instagram.com/reel/DaRfZe-xfOy/",
-    "timestamp": "2026-07-02T02:19:02+0000",
-    "type": "VIDEO"
+    "timestamp": "2026-07-02T02:19:02+0000"
   },
   {
     "id": "17870581794546118",
-    "image": "assets/img/instagram/17870581794546118.jpg",
+    "image": "assets/img/instagram/17870581794546118_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_2.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_3.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_4.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_5.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17870581794546118_6.jpg"
+      }
+    ],
     "caption": "\u2728 Crystal-clear windows make a bigger difference than you think.\n\nAt Barta Window Washing, we take pride in delivering spotless, streak-free windows that let more light into your home and make every view better.\n\nWhether it\u2019s first-story windows, hard-to-reach second-story glass, or routine maintenance, we\u2019ve got you covered.\n\n\ud83d\udccdLocally owned & operated\u2028\ud83d\udca7Pure water window cleaning\u2028\ud83c\udfe1Residential & Commercial\u2028\u2705Fully insured\n\nReady to see the difference?\n\nFirst time customers get $50 OFF!",
     "permalink": "https://www.instagram.com/p/DaBJXDMlIR4/",
-    "timestamp": "2026-06-25T17:51:58+0000",
-    "type": "CAROUSEL_ALBUM"
+    "timestamp": "2026-06-25T17:51:58+0000"
   }
 ]
