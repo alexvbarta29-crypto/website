@@ -156,7 +156,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   max-width: var(--container); margin-inline: auto;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   height: var(--nav-h); padding: 0 14px 0 22px;
-  background: rgba(255,255,255,.78);
+  background: rgba(255,255,255,.6);
   backdrop-filter: saturate(150%) blur(38px); -webkit-backdrop-filter: saturate(150%) blur(38px);
   border: 1px solid rgba(255,255,255,.5);
   border-radius: var(--r-pill);
@@ -164,7 +164,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   transition: box-shadow .4s var(--ease), background .4s var(--ease);
 }
 .nav-wrap.scrolled { padding-top: 8px; padding-bottom: 8px; }
-.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.14); background: rgba(255,255,255,.92); }
+.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.14); background: rgba(255,255,255,.78); }
 .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-head); font-weight: 800; font-size: 1.18rem; letter-spacing: -.02em; color: var(--navy-800); }
 .brand-logo { height: 40px; width: auto; display: block; }
 .footer .brand-logo { height: 44px; }
