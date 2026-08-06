@@ -647,7 +647,7 @@ def service_image_card(s, depth=0, idx=0):
     return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}" style="background:{dark}">'
             f'{img_tag}'
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
-            f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"][:62]}</p></span></a>')
+            f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"]}</p></span></a>')
 
 def _slugify(s):
     out = "".join(c if c.isalnum() else "-" for c in s.lower())

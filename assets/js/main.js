@@ -475,6 +475,28 @@
     }
   });
 
+  /* ---- Service picture cards on touch devices: the card is a link, so a
+         plain tap would navigate before the description ever showed. First
+         tap reveals it (blurring the photo behind it, see .revealed in the
+         CSS), second tap follows the link. Only one card stays open at a
+         time, and tapping anywhere else closes it. Pointer devices are left
+         alone entirely — they reveal on hover and navigate on first click. ---- */
+  if (window.matchMedia("(hover: none)").matches) {
+    const picCards = $$(".img-card");
+    const closeAll = (except) => picCards.forEach((c) => { if (c !== except) c.classList.remove("revealed"); });
+    picCards.forEach((card) => {
+      card.addEventListener("click", (e) => {
+        if (card.classList.contains("revealed")) return; // already open — let the link through
+        e.preventDefault();
+        closeAll(card);
+        card.classList.add("revealed");
+      });
+    });
+    if (picCards.length) {
+      document.addEventListener("click", (e) => { if (!e.target.closest(".img-card")) closeAll(null); });
+    }
+  }
+
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";
   $$(".nav-links a, .drawer-nav a").forEach((a) => {

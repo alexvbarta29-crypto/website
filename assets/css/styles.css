@@ -957,6 +957,20 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .img-card-body p { color: rgba(255,255,255,.9); font-size: .9rem; max-height: 0; margin-top: 0; opacity: 0; transform: translateY(6px); overflow: hidden; transition: max-height .4s var(--ease), opacity .35s var(--ease), transform .4s var(--ease-out), margin-top .4s var(--ease); }
 .img-card:hover .img-card-body p, .img-card:focus-visible .img-card-body p { max-height: 6em; opacity: 1; transform: none; margin-top: 8px; }
 
+/* Touch devices can't hover, so the description has nothing to reveal it —
+   the first tap adds .revealed (see main.js) and the second follows the
+   link. Blurring the photo behind the text is what makes the description
+   readable at this size; the scale bump hides the transparent edges a
+   blur filter would otherwise sample in from outside the image. */
+@media (hover: none) {
+  .img-card-bg { transition: transform .5s var(--ease-out), filter .45s var(--ease); }
+  .img-card.revealed .img-card-bg { filter: blur(9px) saturate(.85); transform: scale(1.14); }
+  .img-card.revealed::after { background: linear-gradient(180deg, rgba(8,8,10,.42) 0%, rgba(8,8,10,.6) 100%); }
+  .img-card.revealed .img-card-body { inset: 0; display: flex; flex-direction: column; justify-content: center; }
+  .img-card.revealed .img-card-body p { max-height: 10em; opacity: 1; transform: none; margin-top: 8px; }
+  .img-card.revealed .img-card-arrow { background: var(--blue-600); transform: rotate(45deg); }
+}
+
 /* "Our Services" grid — first two cards featured (wide) */
 .svc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .svc-grid > .img-card { aspect-ratio: 1 / 1; }
@@ -973,7 +987,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .img-card-body h3 { font-size: 1.02rem; }
   .img-card-arrow { width: 34px; height: 34px; top: 10px; right: 10px; }
   .img-card-arrow svg { width: 16px; height: 16px; }
-  .img-card-body p { max-height: 6em; opacity: 1; transform: none; margin-top: 6px; font-size: .8rem; }
+  .img-card-body p { font-size: .8rem; }
 }
 
 /* Pricing: uppercase coral plan name (DirtyMint feel) */
