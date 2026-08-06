@@ -181,6 +181,12 @@ system did not verify the remaining one's dollar amounts or perks.
   standard of the home service industry**, bringing **old-school customer service with a modern edge
   and feel**. This is now the opening of "Our Story" on `about.html` and the page's meta
   description. **Sourced from the owner, not written by an SEO pass** — treat it as confirmed.
+  Owner then asked that Our Story lead with the problem they set out to fix (their words: the
+  service industry "was terrible") rather than with the company, and that it **not** describe who
+  does which job — the roles are already covered by the team bios lower on the page. The story now
+  opens on the industry's low standards, then the founding, then old-school service with a modern
+  edge. The critical characterisation of the industry is the owner's own stated position, not an
+  invented grievance, and it names no competitor.
 
 ---
 

@@ -866,16 +866,17 @@ def build_about():
     <div class="section-head center"><h2>Our Story</h2></div>
     <div class="split mt-3">
       <div class="reveal">
-        <p>Two brothers started this company with one goal: to raise the standard of the home
-          service industry. Alex and Jacob Barta founded {BIZ['name']} in {BIZ['founded']} out of
-          {BIZ['city']}, Minnesota, and they still run it themselves today.</p>
-        <p class="mt-2">The idea was to bring back old-school customer service — you call, a real
-          person picks up; you book a job, it gets done right — and give it a modern edge. Branded
-          vans, trained crews, clear quotes, and none of the guesswork people have gotten used to
-          from the trades.</p>
-        <p class="mt-2">The split is simple. Alex leads the technicians in the field and holds the crew,
-          himself included, to the standard the company was built on. Jacob runs the office — the quotes,
-          the scheduling, the phone. Call {BIZ['name']} and you're talking to an owner.</p>
+        <p>We started this company because we thought the home service industry could do a whole
+          lot better. Calls that never get returned, pricing you can't pin down, crews that show up
+          whenever it suits them — somewhere along the line that became normal, and homeowners just
+          learned to expect it.</p>
+        <p class="mt-2">We didn't think it should be that way. So in {BIZ['founded']} we started
+          {BIZ['name']} out of {BIZ['city']}, Minnesota — two brothers, one goal: set the standard
+          for what home service is supposed to look like.</p>
+        <p class="mt-2">For us that means old-school customer service with a modern edge. You call and
+          a real person picks up. You get a straight answer on price, and the job gets done right the
+          first time. Around that, the things people expect now — branded vans, trained crews, clear
+          scheduling, and a quote you can request in a couple of minutes.</p>
         <p class="mt-2">From {BIZ['city']} we serve homeowners and businesses across the western Twin Cities:
           window cleaning inside and out, gutters, pressure and soft washing, screens and tracks, and
           holiday lighting through the winter. Every visit is fully insured, and every job is backed by
