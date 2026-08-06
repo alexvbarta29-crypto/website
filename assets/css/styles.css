@@ -650,6 +650,24 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .gallery figure a { display: block; }
 .gallery img { width: 100%; height: auto; display: block; transition: transform .5s var(--ease-out); }
 .gallery figure:hover img { transform: scale(1.04); }
+/* Before/after sliders embedded as collage tiles. Two of the collage's
+   own rules would otherwise break them: `.gallery img { height:auto }`
+   outranks `.ba-img`'s height:100% on specificity and collapses the two
+   layered images, and the hover zoom would scale each half independently
+   and desync the comparison. The wrapper already supplies the tile's
+   radius and shadow, so the slider drops its own. */
+.gallery .gallery-ba .ba { border-radius: 0; box-shadow: none; }
+.gallery .gallery-ba img { width: 100%; height: 100%; }
+.gallery .gallery-ba:hover img { transform: none; }
+@media (max-width: 760px) {
+  /* Collage tiles are ~170px wide on a phone; the full-size labels and
+     knob crowd each other at that width. */
+  .gallery .gallery-ba .ba-label { font-size: .6rem; padding: 4px 9px; bottom: 10px; }
+  .gallery .gallery-ba .ba-label.before { left: 9px; }
+  .gallery .gallery-ba .ba-label.after { right: 9px; }
+  .gallery .gallery-ba .ba-knob { width: 36px; height: 36px; }
+  .gallery .gallery-ba .ba-knob svg { width: 18px; height: 18px; }
+}
 
 /* ---------- CTA band ---------- */
 /* Background photo + blue-to-navy fade are set as a stacked inline

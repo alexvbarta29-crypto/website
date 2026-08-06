@@ -765,17 +765,29 @@ def build_gallery():
     work_photos.append(("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van"))
     for name, role, _initials, photo, _bio in TEAM:
         work_photos.append((photo, f"{name}, {role} of {BIZ['name']}"))
-    _ba_labels = {"window": "window", "siding": "siding", "gutter": "gutter"}
-    for slot, label in _ba_labels.items():
-        for stage in ("before", "after"):
-            path = f"assets/img/ba-{slot}-{stage}.jpg"
-            if os.path.exists(os.path.join(ROOT, path)):
-                work_photos.append((path, f"Real {label} cleaning — {stage}"))
     root = C.rel(depth)
     def _work_figure(src, alt):
         img_html = C.picture(root, src, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 33vw")
         return f'<figure class="reveal">{img_html}</figure>'
-    work_html = "".join(_work_figure(src, alt) for src, alt in work_photos)
+    figures = [_work_figure(src, alt) for src, alt in work_photos]
+
+    # The before/after pairs stay in the collage rather than sitting in their
+    # own section, but as draggable comparison sliders instead of two flat
+    # photos side by side — one tile you scrub through, not a before you have
+    # to mentally pair with an after. sizes matches the collage's real column
+    # width (3 columns, 2 under 760px).
+    ba_tiles = [
+        f'<figure class="gallery-ba reveal">'
+        f'{C.ba_slider(depth=depth, name=n, sizes="(max-width: 760px) 50vw, 33vw")}</figure>'
+        for n in ("ba1", "ba2", "ba3")
+        if os.path.exists(os.path.join(ROOT, f"assets/img/ba-{C.BA_REAL_PHOTOS[n]}-before.jpg"))
+    ]
+    # Spread them through the collage instead of clumping them together.
+    step = max(1, len(figures) // (len(ba_tiles) + 1)) if ba_tiles else 0
+    for i, tile in enumerate(ba_tiles):
+        figures.insert(min(len(figures), step * (i + 1) + i), tile)
+
+    work_html = "".join(figures)
     work_html += C.gallery_instagram_figures(depth)
 
     hero_picture = _hero_picture_html(root, GALLERY_HERO, img_class="hero-bg-img",
