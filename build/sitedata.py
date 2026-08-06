@@ -137,9 +137,9 @@ SERVICES = [
             ("What about pets and access to my home?",
              "We're comfortable around pets, but recommend keeping them in a separate room for everyone's comfort while we work. We'll coordinate access with you ahead of time."),
             ("What cleaning solutions do you use?",
-             "Professional-grade, streak-free glass cleaner that's safe for use around your family and pets."),
+             "Just soap and water — it's our tools and technique, not harsh chemicals, that get the streak-free result. Safe for your family and pets."),
             ("Can I book interior and exterior cleaning together?",
-             "Yes — most customers book both at once for the full effect, and we're happy to quote them together or separately."),
+             "Yes — and it's what we recommend, since combining both in one visit gives your home the full effect, inside and out."),
         ],
     },
     {
