@@ -66,7 +66,8 @@ SERVICES = [
             "Exterior sills and frames wiped down",
             "Water-fed pole cleaning for second-story and hard-to-reach glass",
             "Full cleanup — we leave your property tidier than we found it",
-            "Screens, track cleaning, and hard-water treatment available as add-ons",
+            "Screens, track cleaning, and interior window cleaning available as add-ons",
+            "Hard-water spot treatment available as an add-on, free on certain plans",
         ],
         "process": [
             ("Mop", "We work an eco-friendly cleaning solution into every pane with a T-bar scrubber, lifting loose dirt, dust, and pollen before anything else touches the glass."),

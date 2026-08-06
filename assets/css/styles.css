@@ -538,7 +538,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-dot.filled { border-color: transparent; background: var(--grad-brand); color: #fff; }
 .process-dot.active { box-shadow: var(--sh-glow); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
-.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform .8s ease; }
+.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform var(--line-dur, .8s) linear; }
 .process-line.filled::after { transform: scaleX(1); }
 @media (max-width: 780px) {
   .process-track { height: 560px; }

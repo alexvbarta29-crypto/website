@@ -151,7 +151,11 @@
     window.addEventListener("pointerup", endDrag);
   });
 
-  /* ---- Process slider (Mop / Scrub / Squeegee / Detail) ---- */
+  /* ---- Process slider (Mop / Scrub / Squeegee / Detail) — auto-advances
+         every AUTOADVANCE_MS; the line ahead of the active dot fills in
+         real time over that same span, acting as a live countdown to the
+         next step instead of just snapping over when the step changes. ---- */
+  const AUTOADVANCE_MS = 16000;
   $$(".process-slider").forEach((slider) => {
     const slides = $$(".process-slide", slider);
     const dots = $$(".process-dot", slider);
@@ -166,11 +170,29 @@
         d.classList.toggle("active", idx === i);
         d.classList.toggle("filled", idx <= i);
       });
-      lines.forEach((l, idx) => l.classList.toggle("filled", idx < i));
+      lines.forEach((l, idx) => {
+        if (idx < i) {
+          l.style.setProperty("--line-dur", ".4s");
+          l.classList.add("filled");
+        } else if (idx === i && !reduce) {
+          // Live timer: reset instantly, then animate to full over one
+          // dwell period so the fill lands exactly when the next step shows.
+          l.classList.remove("filled");
+          l.style.setProperty("--line-dur", "0s");
+          void l.offsetWidth;
+          requestAnimationFrame(() => {
+            l.style.setProperty("--line-dur", `${AUTOADVANCE_MS}ms`);
+            requestAnimationFrame(() => l.classList.add("filled"));
+          });
+        } else {
+          l.style.setProperty("--line-dur", ".4s");
+          l.classList.remove("filled");
+        }
+      });
     };
     const restart = () => {
       if (timer) clearInterval(timer);
-      if (!reduce && slides.length > 1) timer = setInterval(() => show(i + 1), 20000);
+      if (!reduce && slides.length > 1) timer = setInterval(() => show(i + 1), AUTOADVANCE_MS);
     };
     dots.forEach((d, idx) => d.addEventListener("click", () => { show(idx); restart(); }));
     if (prev) prev.addEventListener("click", () => { show(i - 1); restart(); });
