@@ -283,11 +283,11 @@ def footer(depth=0):
         </div>
       </div>
       <div class="footer-col">
-        <h5>Services</h5>
+        <h2 class="footer-col-title">Services</h2>
         <ul>{svc_links}</ul>
       </div>
       <div class="footer-col">
-        <h5>Company</h5>
+        <h2 class="footer-col-title">Company</h2>
         <ul>
           <li><a href="{root}about.html">About Us</a></li>
           <li><a href="{root}get-quote.html">Contact</a></li>
@@ -406,7 +406,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
       </select></div>
     <div class="field"><label for="lf-notes">Notes (optional)</label><textarea id="lf-notes" name="notes" placeholder="Tell us about your home, number of windows, or anything special…"></textarea></div>"""
     return f"""<div class="hero-card" id="quote-form">
-  <h3>{heading}</h3>
+  <h2 class="form-card-title">{heading}</h2>
   <p class="form-note">{sub}</p>
   <form class="form mt-2" data-lead novalidate {lead_form_attrs()}>
     <input type="hidden" name="plan" data-plan-field value="">

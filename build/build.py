@@ -135,6 +135,20 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
 
 BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
 
+TITLE_MAX = 60  # Google truncates search-result titles around here
+
+def seo_title(core):
+    """Page <title> kept under TITLE_MAX so search results don't cut it off
+    mid-word. Appends the full brand when it fits and falls back to the short
+    "Barta" form when it doesn't — losing part of the brand name is better
+    than losing the end of the page's actual subject. Only affects <title>;
+    on-page H1s are set separately and are unchanged."""
+    full = f"{core} | {BIZ['name']}"
+    if len(full) <= TITLE_MAX:
+        return full
+    short = f"{core} | Barta"
+    return short if len(short) <= TITLE_MAX else core
+
 def stars_row():
     return '<span class="stars">' + icon('star') * 5 + '</span>'
 
@@ -183,7 +197,7 @@ def build_home():
         ("check-circle", "100% satisfaction guarantee", "If any part of your service isn't perfect, we return and re-clean it free. No hassle, no fine print."),
     ]
     why_html = "".join(
-        f'<div class="feature reveal" data-delay="{i%3}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
+        f'<div class="feature reveal" data-delay="{i%3}"><span class="ic">{icon(ic)}</span><div><h3>{t}</h3><p>{d}</p></div></div>'
         for i, (ic, t, d) in enumerate(why))
 
     # Recurring-plan savings cards ("Save money with every service")
@@ -197,7 +211,7 @@ def build_home():
     schema = BASE_SCHEMA + [S.faq_schema(home_faqs)]
 
     html = C.head(
-        title="Window & Exterior Cleaning in Delano, MN | Barta",
+        title=seo_title("Window &amp; Exterior Cleaning in Delano, MN"),
         desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True)
@@ -670,8 +684,8 @@ def build_residential():
     depth = 0
     svc_cards = "".join(C.service_image_card(s, depth, i) for i, s in enumerate(SERVICES))
     html, body = interior_head(
-        title=f"Residential Exterior Cleaning Services | {BIZ['name']} Delano, MN",
-        desc="Complete residential exterior cleaning in Delano & the western metro — windows, gutters, pressure washing, house washing, and more. Family-owned, insured & guaranteed.",
+        title=seo_title("Residential Exterior Cleaning in Delano, MN"),
+        desc="Residential exterior cleaning in Delano and the western metro — windows, gutters, pressure washing and house washing. Family-owned, insured, guaranteed.",
         slug="residential.html", eyebrow="Residential Services",
         h1="Everything your home's exterior needs, in one trusted team",
         lead="Windows, gutters, siding, walkways, and seasonal lighting — Barta keeps every inch of your home's exterior beautifully maintained, so you can simply enjoy it.",
@@ -726,8 +740,8 @@ def build_gallery():
         ("Gallery", BIZ["domain"] + "/gallery.html"),
     ]))
     html = C.head(
-        title=f"Photo Gallery | {BIZ['name']}",
-        desc=f"Real before-and-after photos and project pictures from {BIZ['name']}'s window cleaning, gutter cleaning, pressure washing, and more across the western Twin Cities.",
+        title=seo_title("Photo Gallery — Real Job Photos"),
+        desc="Real photos from real jobs — window cleaning, gutter cleaning, pressure washing and more across Delano and the western Twin Cities. No stock photos.",
         slug="gallery.html", depth=depth, schema=schema)
     html += C.nav(depth)
 
@@ -790,7 +804,7 @@ def build_about():
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
     html, body = interior_head(
-        title=f"About {BIZ['name']} | Family-Owned Exterior Cleaning in Delano, MN",
+        title=seo_title("About Us — Family-Owned in Delano, MN"),
         desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story and meet the owners.",
         slug="about.html", eyebrow="About Us",
         h1="A Delano family business, built on trust",
@@ -832,7 +846,7 @@ def build_reviews():
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
     schema = BASE_SCHEMA
     html = C.head(
-        title=f"Reviews & Testimonials | {BIZ['name']} — {BIZ['rating']}★ in Delano, MN",
+        title=seo_title(f"Reviews — {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True)
     html += C.nav(depth)
@@ -852,8 +866,8 @@ def build_faqs():
     depth = 0
     schema = BASE_SCHEMA + [S.faq_schema(FAQS)]
     html, body = interior_head(
-        title=f"Frequently Asked Questions | {BIZ['name']} Delano, MN",
-        desc="Answers to common questions about Barta Window Washing — pricing, scheduling, insurance, our guarantee, eco-safe methods, and maintenance plans. Still have questions? Call us.",
+        title=seo_title("Frequently Asked Questions"),
+        desc="Answers about pricing, scheduling, insurance, our satisfaction guarantee, eco-safe methods, and maintenance plans at Barta Window Washing in Delano, MN.",
         slug="faqs.html", eyebrow="FAQs", schema=schema,
         h1="Frequently asked questions",
         lead="Everything you need to know before booking. Don't see your question? Call us — we're happy to help.",
@@ -882,7 +896,7 @@ def build_service_areas():
     extended_html = "".join(area_row(a) for a in AREAS if a["tier"] == "extended")
 
     html, body = interior_head(
-        title=f"Service Areas | {BIZ['name']} — Delano & Western Twin Cities, MN",
+        title=seo_title("Service Areas — Western Twin Cities, MN"),
         desc="Barta Window Washing proudly serves Delano, Buffalo, Medina, Mound, Plymouth, St. Michael & more across the western Twin Cities metro. Find your city.",
         slug="service-areas.html", eyebrow="Service Areas",
         h1="Proudly serving the western Twin Cities",
@@ -895,11 +909,11 @@ def build_service_areas():
       {C.gmap_embed(f"Map of the {BIZ['name']} service area, centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}
       <div class="reveal">
         <div class="areas-group">
-          <h3>Primary Service Area</h3>
+          <h2>Primary Service Area</h2>
           <div class="area-list">{primary_html}</div>
         </div>
         <div class="areas-group">
-          <h3>Extended Service Area</h3>
+          <h2>Extended Service Area</h2>
           <div class="area-list">{extended_html}</div>
         </div>
       </div>
@@ -962,7 +976,7 @@ def build_area(a):
         (a["city"], BIZ["domain"] + "/areas/" + a["slug"] + ".html")])]
     homebase = " — our home base" if a["note"] == "our home base" else ""
     html = C.head(
-        title=f"Exterior Cleaning Services in {a['city']}, MN | {BIZ['name']}",
+        title=seo_title(f"Exterior Cleaning in {a['city']}, MN"),
         # Neighborhood names are already visible on the page itself (hero +
         # FAQ) — repeating the full list here was pushing every one of the
         # 36 area-page descriptions past 175-200+ characters, well beyond
@@ -1025,11 +1039,11 @@ def build_financing():
             ("tag", "Membership budgeting", "Our maintenance plans turn big seasonal bills into a small, predictable monthly amount."),
             ("check-circle", "Simple application", "Quick, no-obligation approval decisions so you can move forward with confidence."),
             ("shield", "No surprises", "Clear terms, transparent pricing, and no hidden fees — ever.")]
-    opt_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
+    opt_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h3>{t}</h3><p>{d}</p></div></div>'
                        for i, (ic, t, d) in enumerate(opts))
     html, body = interior_head(
-        title=f"Financing & Flexible Payment Options | {BIZ['name']} Delano, MN",
-        desc="Flexible payment and financing options make premium exterior cleaning easy to budget. Spread larger projects into monthly payments or join a maintenance plan. Ask Barta how.",
+        title=seo_title("Financing &amp; Flexible Payment Options"),
+        desc="Flexible payment options make exterior cleaning easy to budget. Spread larger projects into monthly payments or join a recurring maintenance plan.",
         slug="financing.html", eyebrow="Financing",
         h1="Premium care that fits your budget",
         lead="A clean, well-maintained home shouldn't have to wait. We offer flexible payment options and budget-friendly maintenance plans so you can get the service you want, on terms that work for you.",
@@ -1056,7 +1070,7 @@ def build_get_quote():
         ("Get a Quote", BIZ["domain"] + "/get-quote.html"),
     ])]
     html = C.head(
-        title=f"Get Your Free Quote | {BIZ['name']} Delano, MN",
+        title=seo_title("Get Your Free Quote — Delano, MN"),
         desc="Tell us about your home and the services you need, and Barta Window Washing will get back to you with clear, upfront, no-obligation pricing.",
         slug="get-quote.html", depth=depth, schema=schema,
         primary_kw="free exterior cleaning quote Delano MN")
@@ -1074,7 +1088,7 @@ def build_get_quote():
 def build_privacy():
     depth = 0
     html, body = interior_head(
-        title=f"Privacy Policy | {BIZ['name']}",
+        title=seo_title("Privacy Policy"),
         desc="Privacy policy for Barta Window Washing. Learn how we collect, use, and protect the information you share when requesting a quote or contacting us.",
         slug="privacy.html", eyebrow="Legal", h1="Privacy Policy",
         lead="Your trust matters to us. This policy explains what information we collect and how we use it.",
@@ -1141,7 +1155,7 @@ def build_privacy():
 def build_terms():
     depth = 0
     html, body = interior_head(
-        title=f"Terms &amp; Conditions | {BIZ['name']}",
+        title=seo_title("Terms &amp; Conditions"),
         desc="Terms and conditions for Barta Window Washing, including scheduling, payment, insurance, and our SMS/text messaging communication policy.",
         slug="terms.html", eyebrow="Legal", h1="Terms &amp; Conditions",
         lead="Please review these terms before requesting a quote or using our services.",
@@ -1190,8 +1204,8 @@ def build_terms():
 def build_sitemap_page():
     depth = 0
     html, body = interior_head(
-        title=f"Sitemap | {BIZ['name']}",
-        desc=f"Every page on the {BIZ['name']} website — services, service areas, and blog posts — in one place.",
+        title=seo_title("Sitemap"),
+        desc=f"Every page on the {BIZ['name']} site in one place — all services, all 37 service-area communities, blog posts, and company information.",
         slug="sitemap.html", eyebrow="Site map", h1="Sitemap",
         lead="Every page on our site, in one place.",
         depth=depth, crumb_label="Sitemap")
@@ -1266,7 +1280,7 @@ def build_404():
     base_href = "/404.html"
     schema = [S.local_business(), S.organization(), S.website()]
     html = C.head(
-        title=f"Page Not Found | {BIZ['name']}",
+        title=seo_title("Page Not Found"),
         desc=f"The page you're looking for can't be found. Visit the {BIZ['name']} homepage, browse our services, or request a free quote.",
         slug="404.html", depth=depth, schema=schema, noindex=True,
         canonical=BIZ["domain"] + "/404.html", base_href=base_href)
@@ -1302,7 +1316,7 @@ def build_instagram_callback():
     depth = 0
     schema = [S.local_business(), S.organization(), S.website()]
     html = C.head(
-        title=f"Instagram Connect | {BIZ['name']}",
+        title=seo_title("Instagram Connect"),
         desc="Instagram connection utility page.",
         slug="instagram-callback.html", depth=depth, schema=schema, noindex=True)
     html += C.nav(depth)
@@ -1369,12 +1383,12 @@ def build_blog():
         cards += f"""<a class="card reveal" data-delay="{i%3}" href="blog/{p['slug']}.html" style="display:flex;flex-direction:column">
         {C.photo(img, alt, ratio="16/9", depth=depth)}
         <span class="pill mt-2" style="align-self:flex-start;background:var(--mist-2);border:0;color:var(--blue-600)">{p['cat']}</span>
-        <h3 class="mt-1" style="font-size:1.2rem">{p['title']}</h3>
+        <h2 class="mt-1" style="font-size:1.2rem">{p['title']}</h2>
         <p class="mt-1" style="font-size:.95rem">{p['excerpt']}</p>
         <span class="more">Read article {icon('arrow')}</span>
         <span style="font-size:.8rem;color:var(--slate-400);margin-top:6px">{p['date']} · {p['read']} read</span></a>"""
     html, body = interior_head(
-        title=f"Blog | Exterior Cleaning Tips & Guides | {BIZ['name']}",
+        title=seo_title("Blog — Exterior Cleaning Tips &amp; Guides"),
         desc="Expert tips on window cleaning, gutter care, house washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
         slug="blog.html", eyebrow="Blog",
         h1="Tips, guides &amp; exterior care advice",
@@ -1451,7 +1465,7 @@ def build_post(p, idx):
         ("Blog", BIZ["domain"] + "/blog.html"),
         (p["title"], BIZ["domain"] + "/blog/" + p["slug"] + ".html"),
     ])]
-    html = C.head(title=f"{p['title']} | {BIZ['name']} Blog", desc=p["excerpt"],
+    html = C.head(title=seo_title(p.get("seo_title") or p["title"]), desc=p["excerpt"],
                   slug=f"blog/{p['slug']}.html", depth=depth, schema=schema, og_type="article")
     html += C.nav(depth)
     html += f"""<main id="main">
@@ -1526,7 +1540,7 @@ def build_landing(L):
         ("Flexible scheduling", "We work around your hours and your tenants."),
         ("Spotless impressions", "Clean glass and entries that win customers."),
     ])
-    ben_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon("check")}</span><div><h4>{t}</h4><p>{d}</p></div></div>'
+    ben_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon("check")}</span><div><h3>{t}</h3><p>{d}</p></div></div>'
                        for i, (t, d) in enumerate(benefits))
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     lp_faqs = [
@@ -1539,7 +1553,7 @@ def build_landing(L):
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
         f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Fully insured",
         "Free, no-obligation quotes", "100% satisfaction guarantee", "Family-owned &amp; local"])
-    html = C.head(title=f"{L['h1']} | {BIZ['name']}",
+    html = C.head(title=seo_title(L.get("seo_title") or L["h1"]),
                   desc=f"{L['headline'].replace('&amp;','&')}. Insured & guaranteed. Serving Delano & the western Twin Cities. Get your free, no-obligation quote from Barta now!",
                   slug=f"landing/{L['slug']}.html", depth=depth, schema=schema, primary_kw=L["kw"], noindex=True)
     html += C.nav(depth)

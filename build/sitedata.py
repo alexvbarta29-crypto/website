@@ -369,7 +369,7 @@ SERVICES = [
         "short": "Low-pressure cleaning for delicate surfaces — stucco, siding, and painted exteriors.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with safe, low-pressure soft washing.",
         "seo_title": "Soft Washing Delano, MN | Barta",
-        "seo_desc": "Soft washing in Delano and the western Twin Cities for stucco, siding, and painted surfaces. Low-pressure cleaning that protects delicate exteriors. Get a quote.",
+        "seo_desc": "Soft washing in Delano and the western Twin Cities for stucco, siding and painted surfaces. Low-pressure cleaning that protects delicate exteriors.",
         "h1": "Professional Soft Washing",
         "schema_name": "Professional Soft Washing",
         "kw": "soft washing Delano MN",
@@ -798,6 +798,7 @@ TEAM = [
 POSTS = [
     {
         "slug": "how-often-clean-windows-minnesota",
+        "seo_title": "How Often to Clean Windows in Minnesota",
         "title": "How Often Should You Clean Your Windows in Minnesota?",
         "excerpt": "Pollen in spring, dust in summer, and ice in winter all take a toll. Here's the realistic cleaning schedule we recommend for Minnesota homes.",
         "date": "2026-05-18",
@@ -806,6 +807,7 @@ POSTS = [
     },
     {
         "slug": "soft-washing-vs-pressure-washing",
+        "seo_title": "Soft Washing vs. Pressure Washing",
         "title": "Soft Washing vs. Pressure Washing: Which Does Your Home Need?",
         "excerpt": "Using the wrong method can damage siding, stucco, and paint. Here's how to tell which approach is right for each surface on your home.",
         "date": "2026-04-29",
@@ -814,14 +816,16 @@ POSTS = [
     },
     {
         "slug": "gutter-cleaning-checklist-fall",
+        "seo_title": "Minnesota Fall Gutter-Cleaning Checklist",
         "title": "The Minnesota Fall Gutter-Cleaning Checklist",
-        "excerpt": "Before the first freeze, run through these steps to protect your foundation, fascia, and roof through winter.",
+        "excerpt": "Before the first freeze, run through these steps to protect your foundation, fascia, and roof through a Minnesota winter — and what to check first.",
         "date": "2026-03-22",
         "read": "5 min",
         "cat": "Gutter Cleaning",
     },
     {
         "slug": "hard-water-stains-windows",
+        "seo_title": "Hard Water Stains on Windows: How to Fix",
         "title": "Hard Water Stains on Windows: Why They Happen and How to Fix Them",
         "excerpt": "Sprinkler overspray and Minnesota's mineral-heavy water leave a cloudy film ordinary cleaning can't remove. Here's what actually works.",
         "date": "2026-06-08",
@@ -830,6 +834,7 @@ POSTS = [
     },
     {
         "slug": "winter-prep-checklist-minnesota",
+        "seo_title": "Minnesota Fall &amp; Winter Prep Checklist",
         "title": "The Minnesota Homeowner's Fall & Winter Exterior Prep Checklist",
         "excerpt": "From gutters to siding, here's what to check before the first hard freeze so your home comes through winter without surprises.",
         "date": "2026-06-22",
@@ -838,6 +843,7 @@ POSTS = [
     },
     {
         "slug": "spring-exterior-cleaning-checklist",
+        "seo_title": "Spring Exterior Cleaning Checklist (MN)",
         "title": "The Spring Exterior Cleaning Checklist for Minnesota Homes",
         "excerpt": "Salt, sand, and a long winter leave every exterior surface needing attention. Here's the order we recommend tackling it in.",
         "date": "2026-06-15",
@@ -846,6 +852,7 @@ POSTS = [
     },
     {
         "slug": "window-cleaning-mistakes-to-avoid",
+        "seo_title": "5 Window Cleaning Mistakes to Avoid",
         "title": "5 Window Cleaning Mistakes That Actually Make Windows Look Worse",
         "excerpt": "Paper towels, dish soap, and cleaning in direct sun are all common habits that work against you. Here's what to do instead.",
         "date": "2026-06-01",
