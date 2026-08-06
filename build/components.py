@@ -718,6 +718,50 @@ def process_slider(steps, depth=0):
     <div class="center mt-4"><a class="btn" href="{root}get-quote.html">Get Your Free Quote</a></div>
   </div>"""
 
+def instagram_carousel(depth=0):
+    """Real Instagram posts, shown right on the page instead of just a link
+    out to the profile. Reads build/instagram_feed.json — written by the
+    "Sync Instagram Feed" GitHub Action (build/instagram_sync.py), which
+    calls the Instagram API and downloads each post's image into
+    assets/img/instagram/. This function itself makes no network calls and
+    just renders nothing if the manifest doesn't exist yet or is empty, so
+    a fresh checkout (before the first sync has ever run) degrades
+    gracefully to no carousel rather than a broken one."""
+    path = os.path.join(_ROOT, "build", "instagram_feed.json")
+    if not os.path.exists(path):
+        return ""
+    try:
+        with open(path, encoding="utf-8") as f:
+            posts = json.load(f)
+    except Exception:
+        return ""
+    if not posts:
+        return ""
+    root = rel(depth)
+    cards = ""
+    for p in posts:
+        caption = (p.get("caption") or "").strip().split("\n")[0]
+        if len(caption) > 110:
+            caption = caption[:108].rsplit(" ", 1)[0] + "…"
+        img = p.get("image")
+        if not img or not os.path.exists(os.path.join(_ROOT, img)):
+            continue
+        alt = caption or f"{BIZ['name']} on Instagram"
+        link = p.get("permalink") or BIZ["instagram"]
+        img_html = picture(root, img, alt, img_class="insta-card-img",
+                            extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 78vw, 320px")
+        cards += (f'<a class="insta-card reveal" href="{link}" target="_blank" rel="noopener" '
+                  f'aria-label="View this post on Instagram">'
+                  f'<div class="insta-card-media">{img_html}<span class="insta-card-badge">{icon("instagram")}</span></div>'
+                  + (f'<p class="insta-card-caption">{caption}</p>' if caption else "") + '</a>')
+    if not cards:
+        return ""
+    return f"""<div class="insta-carousel">
+      <button type="button" class="insta-arrow prev" aria-label="Scroll left">{icon('chevron')}</button>
+      <div class="insta-track">{cards}</div>
+      <button type="button" class="insta-arrow next" aria-label="Scroll right">{icon('chevron')}</button>
+    </div>"""
+
 def trust_badges():
     items = "".join(f'<div class="badge reveal" data-delay="{i%4}">{icon(ic)} {label}</div>' for i, (ic, label) in enumerate(BADGES))
     return f'<div class="badges">{items}</div>'

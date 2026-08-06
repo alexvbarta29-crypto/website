@@ -368,6 +368,18 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !xmasModal.hidden) closeXmas(); });
   }
 
+  /* ---- Instagram carousel arrow buttons (native scroll-snap does the
+         rest — touch/trackpad/mouse-drag already work without JS) ---- */
+  $$(".insta-carousel").forEach((carousel) => {
+    const track = $(".insta-track", carousel);
+    const prev = $(".insta-arrow.prev", carousel);
+    const next = $(".insta-arrow.next", carousel);
+    if (!track || !prev || !next) return;
+    const step = () => Math.min(track.clientWidth * 0.8, 420);
+    prev.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }));
+    next.addEventListener("click", () => track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }));
+  });
+
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";
   $$(".nav-links a, .drawer-nav a").forEach((a) => {

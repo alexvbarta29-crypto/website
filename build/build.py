@@ -287,6 +287,7 @@ def build_home():
         <span class="eyebrow" style="justify-content:center">Follow along</span>
         <h2>Follow along with us</h2>
       </div>
+      {C.instagram_carousel(depth)}
       <div class="follow-socials reveal">
         <a href="{BIZ['facebook']}" aria-label="Facebook" target="_blank" rel="noopener">{icon('facebook')}</a>
         <a href="{BIZ['instagram']}" aria-label="Instagram" target="_blank" rel="noopener">{icon('instagram')}</a>
@@ -1583,7 +1584,8 @@ def generate_webp_versions():
     except ImportError:
         print("  (Pillow not available — skipping WebP generation)")
         return
-    for jpg in glob.glob(os.path.join(ROOT, "assets/img/*.jpg")):
+    jpgs = glob.glob(os.path.join(ROOT, "assets/img/*.jpg")) + glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg"))
+    for jpg in jpgs:
         webp = jpg.rsplit(".", 1)[0] + ".webp"
         if os.path.exists(webp) and os.path.getmtime(webp) >= os.path.getmtime(jpg):
             continue

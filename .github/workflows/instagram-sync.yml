@@ -1,0 +1,63 @@
+name: Sync Instagram Feed
+
+# Pulls the latest posts from Instagram for the homepage carousel and
+# commits the refreshed images/manifest/HTML back to the branch. That push
+# then triggers deploy.yml automatically, same as any other content change.
+on:
+  schedule:
+    - cron: "0 13 * * *" # daily, ~8am Central
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: claude/barta-window-washing-site-f51v9x
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install build dependencies
+        run: pip install -r requirements.txt
+
+      - name: Sync Instagram posts
+        id: sync
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+        run: python3 build/instagram_sync.py
+
+      - name: Rebuild site
+        run: python3 build/build.py
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Sync Instagram feed [automated]"
+          git push
+
+      # Optional: only runs if you've added a GH_PAT secret (a personal
+      # access token scoped to just this repo's Secrets: write permission).
+      # Without it, the refreshed 60-day token from this run is simply not
+      # saved back — INSTAGRAM_ACCESS_TOKEN will need a manual refresh
+      # before it expires. See docs/INSTAGRAM-SETUP.md.
+      - name: Save refreshed token
+        if: steps.sync.outputs.refreshed_token != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            gh secret set INSTAGRAM_ACCESS_TOKEN --body "${{ steps.sync.outputs.refreshed_token }}"
+            echo "Token refreshed and saved."
+          else
+            echo "GH_PAT not set — skipping automatic token save. See docs/INSTAGRAM-SETUP.md."
+          fi
