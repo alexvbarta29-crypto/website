@@ -175,8 +175,12 @@ SERVICES = [
         "faqs": [
             ("What's included in window track cleaning?",
              "We hand-clean interior and exterior tracks, de-gunk sills, and clear built-up dirt, grit, and debris from every corner and channel."),
+            ("How is track detailing priced?",
+             "Pricing depends on the number of windows and how built-up the tracks are. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
             ("Will my windows and screens slide easier afterward?",
              "Yes — clearing built-up grime from the tracks is exactly what makes windows and screens glide smoothly again."),
+            ("How often should window tracks be cleaned?",
+             "Most homes benefit from track detailing about once a year, alongside your regular window cleaning — sliding doors and high-traffic tracks may need it more often."),
         ],
     },
     {
