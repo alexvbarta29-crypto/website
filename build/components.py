@@ -275,7 +275,9 @@ def footer(depth=0):
           <li><a href="{root}gallery.html">Gallery</a></li>
           <li><a href="{root}reviews.html">Client Testimonials</a></li>
           <li><a href="{root}blog.html">Blog</a></li>
-          <li><a href="{root}get-quote.html">Get a Quote</a></li>
+          <li><a href="{root}privacy.html">Privacy Policy</a></li>
+          <li><a href="{root}terms.html">Terms &amp; Conditions</a></li>
+          <li><a href="{root}sitemap.html">Sitemap</a></li>
         </ul>
       </div>
     </div>

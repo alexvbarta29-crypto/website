@@ -1063,48 +1063,106 @@ def build_privacy():
         lead="Your trust matters to us. This policy explains what information we collect and how we use it.",
         depth=depth, crumb_label="Privacy", noindex=True)
     html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
-    <p><em>Last updated: June 2026. This is a starter template — have it reviewed by legal counsel before launch.</em></p>
-    <h2>Information we collect</h2>
-    <p>When you request a quote or contact us, we collect the details you provide — such as your name, phone number, email, service address, and notes about your project. We do not sell your personal information to anyone.</p>
-    <h2>How we use it</h2>
-    <ul><li>To prepare and deliver your quote</li><li>To schedule and perform your service</li><li>To send reminders and follow-ups you opt into</li><li>To improve our services and respond to questions</li></ul>
-    <h2>Communications</h2>
-    <p>If you opt in to reminders or marketing, you can unsubscribe anytime. We only contact you about your requests and services you've shown interest in.</p>
-    <h2>Data security</h2>
-    <p>We take reasonable measures to protect your information and limit access to team members who need it to serve you.</p>
-    <h2>Contact</h2>
-    <p>Questions about this policy? Email <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> or call {BIZ['phone_display']}.</p>
+    <p><em>Effective Date: August 2026</em></p>
+    <h2>1. Introduction</h2>
+    <p>{BIZ['legal_name']} ("{BIZ['short']}," "we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your personal information when you contact us, request a quote, or use our services. By using our services, you agree to the terms of this Privacy Policy.</p>
+    <h2>2. Information we collect</h2>
+    <p>We collect only the information necessary to provide our services and communicate with you effectively. This may include:</p>
+    <ul>
+      <li>Full name</li>
+      <li>Phone number, including consent to receive SMS/text messages</li>
+      <li>Email address</li>
+      <li>Service address or property location</li>
+      <li>Service history and preferences</li>
+    </ul>
+    <p>We do not collect payment card numbers directly. Payments are processed through secure third-party payment processors.</p>
+    <h2>3. How we collect information</h2>
+    <p>We collect information you provide directly to us when you:</p>
+    <ul>
+      <li>Fill out a quote request or contact form on this website</li>
+      <li>Call, text, or email us</li>
+      <li>Schedule or confirm a service appointment</li>
+      <li>Communicate with our team by phone or text</li>
+    </ul>
+    <h2>4. How we use your information</h2>
+    <ul>
+      <li>Schedule and perform services at your property</li>
+      <li>Send appointment reminders, confirmations, and follow-ups by phone, email, or text</li>
+      <li>Respond to your inquiries and provide customer support</li>
+      <li>Send promotional offers or seasonal service reminders, only with your consent</li>
+      <li>Improve our services and business operations</li>
+    </ul>
+    <p>We will never sell your personal information to third parties.</p>
+    <h2>5. SMS / text messaging</h2>
+    <p>By providing your phone number and opting in, you consent to receive text messages from {BIZ['name']} regarding appointment scheduling, service reminders, and updates. Message and data rates may apply, and message frequency varies. You may opt out at any time by replying STOP to any text message, or reply HELP for assistance. We do not share your phone number or SMS opt-in status with third parties for their own marketing purposes.</p>
+    <h2>6. Sharing of information</h2>
+    <p>We do not sell, trade, or rent your personal information. We may share your information only in the following limited circumstances:</p>
+    <ul>
+      <li>With service providers who support our operations, such as scheduling or payment tools, under confidentiality obligations</li>
+      <li>When required by law, regulation, or valid legal process</li>
+      <li>To protect the rights, safety, or property of {BIZ['short']}, our customers, or others</li>
+    </ul>
+    <h2>7. Data retention</h2>
+    <p>We retain your personal information for as long as necessary to provide services to you and to meet our legal and business obligations. You may request deletion of your data at any time by contacting us (see Section 10).</p>
+    <h2>8. Data security</h2>
+    <p>We use reasonable administrative, technical, and physical safeguards to protect your personal information from unauthorized access, use, or disclosure. However, no method of transmission over the internet or electronic storage is completely secure.</p>
+    <h2>9. Your rights</h2>
+    <p>Regardless of where you live, we're glad to help you access, correct, or delete the personal information we hold about you, or opt out of promotional communications, any time you ask. Minnesota residents may also have specific rights under Minnesota law, including the Minnesota Consumer Data Privacy Act, where applicable. To exercise any of these rights, contact us using the information in Section 10.</p>
+    <h2>10. Contact us</h2>
+    <p>If you have questions about this Privacy Policy or wish to exercise your rights, please contact us:</p>
+    <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: {BIZ['phone_display']}<br>Address: {BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</p>
+    <h2>11. Updates to this policy</h2>
+    <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with a revised effective date. Continued use of our services after changes are posted constitutes your acceptance of the updated policy.</p>
+    <p><em>This document is provided for informational purposes and does not constitute legal advice. We recommend having it reviewed by a licensed Minnesota attorney to ensure full compliance with applicable state and federal law.</em></p>
   </div></div></section></main>"""
     html += C.page_end(depth)
     write("privacy.html", html, slug="privacy.html", priority="0.2")
 
 # ===========================================================================
-# TERMS & CONDITIONS (minimal legal)
+# TERMS & CONDITIONS
 # ===========================================================================
 def build_terms():
     depth = 0
     html, body = interior_head(
         title=f"Terms &amp; Conditions | {BIZ['name']}",
-        desc="Terms and conditions for Barta Window Washing, including our SMS/text messaging communication policy for quotes, scheduling, and marketing.",
+        desc="Terms and conditions for Barta Window Washing, including scheduling, payment, insurance, and our SMS/text messaging communication policy.",
         slug="terms.html", eyebrow="Legal", h1="Terms &amp; Conditions",
         lead="Please review these terms before requesting a quote or using our services.",
         depth=depth, crumb_label="Terms", noindex=True)
     html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
-    <p><em>Last updated: June 2026. This is a starter template — have it reviewed by legal counsel before launch.</em></p>
-    <h2>Agreement to terms</h2>
-    <p>By requesting a quote, scheduling a service, or otherwise using this website, you agree to these terms and conditions.</p>
-    <h2>Services &amp; quotes</h2>
-    <p>Quotes provided through this site are estimates based on the information you provide and are subject to confirmation after an on-site or photo assessment. Final pricing is confirmed before any work begins.</p>
-    <h2>Text messaging (SMS) communications</h2>
-    <p>If you opt in to text messages, {BIZ['name']} may send appointment updates, service notifications, and marketing offers to the phone number you provide. Consent to receive text messages is not a condition of purchasing any service. Message and data rates may apply, and message frequency varies. Reply STOP at any time to unsubscribe, or HELP for help.</p>
-    <h2>Payment</h2>
-    <p>Payment terms are provided at the time of booking or invoicing. Membership plans renew automatically according to the schedule selected at signup unless cancelled.</p>
-    <h2>Limitation of liability</h2>
-    <p>{BIZ['name']} is fully insured, and performs services with reasonable care. We are not liable for pre-existing damage or conditions unrelated to the service performed.</p>
-    <h2>Changes to these terms</h2>
-    <p>We may update these terms from time to time. Continued use of our services after changes are posted constitutes acceptance of the updated terms.</p>
-    <h2>Contact</h2>
-    <p>Questions about these terms? Email <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> or call {BIZ['phone_display']}.</p>
+    <p><em>Effective Date: August 2026</em></p>
+    <h2>1. Acceptance of terms</h2>
+    <p>By requesting a quote, scheduling a service, or otherwise using this website or {BIZ['name']}'s services, you ("Customer") agree to be bound by these Terms and Conditions. If you do not agree, please do not use our services.</p>
+    <h2>2. Services</h2>
+    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services — including window cleaning, gutter cleaning, pressure washing, soft washing, roof cleaning, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation — throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
+    <h2>3. Scheduling and cancellations</h2>
+    <p>Appointments can be scheduled by phone, text, email, or through this website. We ask that cancellations or rescheduling requests be made as far in advance as possible. Late cancellations or no-shows may result in a cancellation fee, which will be communicated to you at the time of booking.</p>
+    <h2>4. Access to property</h2>
+    <p>You agree to provide {BIZ['short']} reasonable access to the property on the scheduled service date, including unlocked gates and clear access to the areas being serviced. If access is not available at the time of arrival and no advance notice was given, the appointment may be treated as a late cancellation.</p>
+    <h2>5. Payment</h2>
+    <p>Payment is due upon completion of service unless other arrangements have been made in advance. We accept major debit and credit cards along with other payment methods communicated at the time of booking. Recurring membership plans are billed automatically according to the schedule selected at signup unless cancelled.</p>
+    <h2>6. Satisfaction guarantee</h2>
+    <p>Your satisfaction matters to us. Every service is backed by our 100% Satisfaction Guarantee — if you're not happy with the results, contact us and we'll return to make it right at no additional charge.</p>
+    <h2>7. Limitation of liability</h2>
+    <p>{BIZ['name']} takes reasonable precautions while performing services. However, we are not liable for:</p>
+    <ul>
+      <li>Pre-existing damage to windows, screens, frames, gutters, roofing, siding, or surrounding surfaces</li>
+      <li>Damage caused by windows, frames, or fixtures that are improperly installed, aged, or structurally compromised</li>
+      <li>Incidental or consequential damages arising from our services</li>
+    </ul>
+    <p>Our total liability for any claim arising out of or relating to our services will not exceed the amount paid for the specific service giving rise to the claim.</p>
+    <h2>8. Insurance</h2>
+    <p>{BIZ['name']} is fully insured for our operations. Proof of insurance is available upon request.</p>
+    <h2>9. SMS communications</h2>
+    <p>If you opt in to text messages, {BIZ['name']} may send appointment updates, service notifications, and marketing offers to the phone number you provide. Consent to receive text messages is not a condition of purchasing any service. Message and data rates may apply, and message frequency varies. Reply STOP at any time to unsubscribe, or HELP for help. See our <a href="{C.rel(depth)}privacy.html">Privacy Policy</a> for more on how we handle your information.</p>
+    <h2>10. Governing law</h2>
+    <p>These Terms and Conditions are governed by and construed in accordance with the laws of the State of Minnesota, without regard to its conflict of law provisions. Any disputes arising from these terms or our services are subject to the exclusive jurisdiction of the courts located in Minnesota.</p>
+    <h2>11. Modifications</h2>
+    <p>We may update these Terms and Conditions from time to time. Updated terms will be posted on this page. Continued use of our services after changes are posted constitutes your acceptance of the updated terms.</p>
+    <h2>12. Contact us</h2>
+    <p>If you have questions about these Terms and Conditions, please contact us:</p>
+    <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: {BIZ['phone_display']}<br>Address: {BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</p>
+    <p><em>This document is provided for informational purposes and does not constitute legal advice. We recommend having it reviewed by a licensed Minnesota attorney to ensure full compliance with applicable state and federal law.</em></p>
   </div></div></section></main>"""
     html += C.page_end(depth)
     write("terms.html", html, slug="terms.html", priority="0.2")
@@ -1647,7 +1705,10 @@ def generate_webp_versions():
     except ImportError:
         print("  (Pillow not available — skipping WebP generation)")
         return
-    jpgs = glob.glob(os.path.join(ROOT, "assets/img/*.jpg")) + glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg"))
+    import re
+    insta_jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg"))
+                  if not re.search(r"-(640|1200|1920)w\.jpg$", p)]
+    jpgs = glob.glob(os.path.join(ROOT, "assets/img/*.jpg")) + insta_jpgs
     for jpg in jpgs:
         webp = jpg.rsplit(".", 1)[0] + ".webp"
         if os.path.exists(webp) and os.path.getmtime(webp) >= os.path.getmtime(jpg):
@@ -1705,8 +1766,13 @@ def generate_hero_variants():
     # Instagram-synced photos land as full-size originals (often 1-2MB each,
     # unresized) — the Gallery page shows every one of them at once, so
     # without responsive variants that's dozens of megabytes on one page.
-    import glob as _glob
+    # Excludes already-generated "-640w"/"-1200w" siblings from the glob —
+    # otherwise a second build run treats last run's output as new source
+    # images and resizes them again into "-640w-640w.jpg"-style junk.
+    import glob as _glob, re as _re
     for p in _glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")):
+        if _re.search(r"-(640|1200|1920)w\.jpg$", p):
+            continue
         hero_paths.add(os.path.relpath(p, ROOT).replace(os.sep, "/"))
     for rel in sorted(hero_paths):
         src = os.path.join(ROOT, rel)

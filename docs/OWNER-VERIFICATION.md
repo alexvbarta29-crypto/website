@@ -135,6 +135,8 @@ system did not verify the remaining one's dollar amounts or perks.
 | 21 | Address, phone, email, social links | Footer (every page), Contact page, About, LocalBusiness schema, manifest | `build/sitedata.py` → `BIZ[...]` | 320 3rd St S, Delano, MN 55328 · (763) 314-3400 · office@bartawindowwashing.com · Facebook/Instagram/TikTok | **CONFIRMED by owner** | — |
 | 22 | Service-area claims (36 cities + neighborhood names) | Every area page (36), service-area hub, footer | `build/sitedata.py` → `AREAS` | 36 Minnesota communities within ~1hr of Delano, each with neighborhood names | **Resolved** | Owner's rule: keep only real MN towns within ~1hr of Delano, remove fabricated neighborhood names. Research confirmed all 36 cities are genuinely within an hour's drive (farthest checked: Rogers at 38 min). 3 fabricated neighborhood names were found and replaced with real, sourced ones: Delano's "Lake Ridge"→"Highland Ridge" and "Bartholomew"→"Kings Pointe"; St. Michael's "River Pointe"→"Riverview Preserve"; Rockford's "River Edge"→"Downtown Rockford". All other neighborhood names were independently verified as real (city sites, Wikipedia, DNR lake records, realtor neighborhood guides) or are safe generic descriptors ("Downtown X", "X Township", "X Lake shoreline"). |
 | 23 | 5.0★ rating / 100+ reviews | Homepage hero, stat counters, Reviews page title/meta/H1, every landing page, OG share image | `build/sitedata.py` → `BIZ["rating"]`, `BIZ["review_count"]` | "5.0★ from 100+ reviews" | **CONFIRMED by owner** | Also independently corroborated: the site's live Trustindex Google-reviews widget (`config/google-reviews-embed*.html`) pulls real reviews. |
+| 24 | Late-cancellation/no-show fee | `terms.html` | `build/build.py` → `build_terms()` | "Late cancellations or no-shows may result in a cancellation fee, which will be communicated to you at the time of booking." | Needs Owner Verification | Terms &amp; Conditions was rewritten (owner request, modeled on a competitor's ToS structure) to be a real, comprehensive document instead of a 7-line starter template. This specific clause is standard boilerplate for the industry but wasn't drawn from an existing confirmed Barta policy — confirm whether a cancellation fee is actually charged, and if so on what basis, or remove the clause if it isn't. |
+| 25 | Accepted payment methods | `terms.html` | Same | "We accept major debit and credit cards along with other payment methods communicated at the time of booking." | Needs Owner Verification | Deliberately kept generic (no specific card networks named, unlike the competitor template's "Visa, Mastercard, American Express, and Discover") since the actual accepted methods aren't confirmed anywhere else on the site. Update to name specific methods once confirmed. |
 
 ### Still open (not yet addressed by the owner)
 - Items 7-10 above (screens/tracks/spot-treatment inclusion, the exact "come back free" mechanism
@@ -143,6 +145,10 @@ system did not verify the remaining one's dollar amounts or perks.
   `commercial-cleaning.benefits`) is still unconfirmed.
 - The exact terms of the "7-Day Rain Guarantee" and what "Free Hard Water Removal" actually covers
   (see the notes on items 5-6) are confirmed to exist but not yet spelled out anywhere.
+- Items 24-25 (cancellation fee, accepted payment methods) — new as of the Terms &amp; Conditions
+  rewrite, not yet confirmed. Both `terms.html` and `privacy.html` also still carry the pre-existing
+  "not legal advice — have a licensed attorney review" disclaimer; that recommendation stands
+  regardless of how complete the copy looks now.
 
 ---
 
