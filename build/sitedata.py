@@ -28,7 +28,7 @@ BIZ = {
     "facebook": "https://www.facebook.com/p/Barta-Window-Washing-Services-61558622544052/",
     "instagram": "https://www.instagram.com/bartawindowwashing",
     "tiktok": "https://www.tiktok.com/@bartawindowwashing",
-    "google": "https://www.google.com/search?q=Barta+Window+Washing+Services&rlz=1C1UEAD_enUS1166US1166&oq=barta+window&gs_lcrp=EgZjaHJvbWUqCggAEEUYFhgeGDsyCggAEEUYFhgeGDsyEAgBEC4YrwEYxwEYgAQYjgUyBggCEEUYOTIGCAMQRRg7MgYIBBAjGCcyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg3MTgxajBqN6gCALACAA&sourceid=chrome&ie=UTF-8#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
+    "google": "https://www.google.com/search?q=Barta+Window+Washing+Services#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
 }
 
 # ---------------------------------------------------------------------------
