@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT
+from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS
 from icons import icon
 import components as C
 import schema as S
@@ -821,6 +821,12 @@ def build_gallery():
 # ABOUT
 # ===========================================================================
 def build_about():
+    """About page laid out as Our Story -> The Barta Experience -> The Team.
+    Every claim here is one already confirmed by the owner and used elsewhere
+    on the site (founding year, the brothers' split of duties, the recurring
+    plan discounts, the re-clean guarantee, insured status). Nothing about
+    the founding motivation or company history is invented — see
+    docs/OWNER-VERIFICATION.md."""
     depth = 0
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
@@ -829,6 +835,22 @@ def build_about():
         <h3 style="font-size:1.25rem">{name}</h3>
         <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
         <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
+
+    experience = [
+        ("Recurring plans that actually save money",
+         f"Book on a repeating schedule and every visit is discounted — ${PROMO_PLANS[0][2]} off biannual, "
+         f"${PROMO_PLANS[1][2]} off quarterly, ${PROMO_PLANS[2][2]} off monthly. Quarterly and monthly "
+         "members get priority scheduling on top of it."),
+        ("A guarantee without the fine print",
+         "Every service is backed by our 100% Satisfaction Guarantee. If any part of a job isn't right, "
+         "call us and we come back and re-clean it free. No forms, no argument."),
+        ("Owner-run, and fully insured",
+         "You're dealing with the two people whose name is on the van, not a call center — and every "
+         "visit is covered by full insurance, on a crew trained to the standard Alex and Jacob set."),
+    ]
+    exp_html = "".join(
+        f"<li>{icon('check-circle')}<span><strong>{t}.</strong> {d}</span></li>" for t, d in experience)
+
     html, body = interior_head(
         title=seo_title("About Us — Family-Owned in Delano, MN"),
         desc=f"Barta Window Washing is a co-owned, Delano-based exterior cleaning company founded in {BIZ['founded']}. Learn our story and meet the owners.",
@@ -838,27 +860,46 @@ def build_about():
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
         h1_class="h1-tight", phero_class="phero-tight",
         hero_extra=f'<a href="#team" class="about-scroll-cue">Meet Alex &amp; Jacob {icon("chevron")}</a>')
+
     html += f"""<main id="main">{body}
-  <section class="section-tight" id="team" style="padding-top:24px"><div class="container">
+  <section class="section-tight" style="padding-top:24px"><div class="container">
+    <div class="section-head center"><h2>Our Story</h2></div>
+    <div class="split mt-3">
+      <div class="reveal">
+        <p>Barta Window Washing is a family business. Two brothers — Alex and Jacob Barta — started it
+          in {BIZ['founded']} out of {BIZ['city']}, Minnesota, and they still run it themselves today.</p>
+        <p class="mt-2">The split is simple. Alex leads the technicians in the field and holds the crew,
+          himself included, to the standard the company was built on. Jacob runs the office — the quotes,
+          the scheduling, the phone. Call {BIZ['name']} and you're talking to an owner.</p>
+        <p class="mt-2">From {BIZ['city']} we serve homeowners and businesses across the western Twin Cities:
+          window cleaning inside and out, gutters, pressure and soft washing, screens and tracks, and
+          holiday lighting through the winter. Every visit is fully insured, and every job is backed by
+          our satisfaction guarantee.</p>
+      </div>
+      <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
+    </div>
+  </div></section>
+
+  <section class="bg-mist"><div class="container">
     <div class="section-head center">
-      <span class="eyebrow">Our story</span>
-      <h2>Founded by two brothers</h2>
-      <p>Alex manages our crew of technicians in the field, and Jacob runs the office — building a team trained to the same standard the owners started the company on. It's old-school customer service — a phone call gets a real answer and a job gets done right — with the modern polish today's homeowners expect.</p>
+      <span class="eyebrow" style="justify-content:center">Why homeowners stay with us</span>
+      <h2>The Barta Experience</h2>
+      <p>We'd rather earn a customer for years than a job for a day. In practice, that comes down to
+        three things.</p>
+    </div>
+    <ul class="checklist mt-3" style="max-width:760px;margin-inline:auto">{exp_html}</ul>
+    <p class="center mt-3" style="max-width:680px;margin-inline:auto">Ready for an exterior you don't have to
+      think about? Call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a> or
+      <a href="get-quote.html">request a free quote</a> — no obligation, and no pressure either way.</p>
+  </div></section>
+
+  <section class="section-tight" id="team"><div class="container">
+    <div class="section-head center">
+      <h2>Meet the Team</h2>
+      <p>The brothers behind every job in {BIZ['city']} and the western metro.</p>
     </div>
     <div class="grid cols-2 mt-3">{team_cards}</div>
   </div></section>
-  <section class="bg-mist"><div class="container"><div class="split reverse">
-    <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
-    <div class="reveal">
-      <span class="eyebrow">On the road near you</span>
-      <h2 class="mt-1">Look for the Barta vans</h2>
-      <p>Our clearly branded, fully stocked service vans are a familiar sight across Delano and the western metro. When one pulls into your driveway, you'll know exactly who's arriving — a trained member of our crew, held to the standard Alex and Jacob built this company on.</p>
-      <ul class="checklist mt-2">
-        <li>{icon('check-circle')} Fully stocked with professional-grade equipment</li>
-        <li>{icon('check-circle')} Fully insured on every visit</li>
-      </ul>
-    </div>
-  </div></div></section>
   {C.cta_band(depth)}
 </main>"""
     html += C.page_end(depth)
