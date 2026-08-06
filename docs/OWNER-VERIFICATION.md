@@ -174,6 +174,19 @@ system did not verify the remaining one's dollar amounts or perks.
 
 ---
 
+## Blockers for going live (not claims — things that must be done)
+
+These aren't unverified statements, they're unfinished wiring. Deliberately
+deferred by the owner until launch; listed here so they can't be forgotten.
+
+| # | Blocker | Where | Status |
+|---|---|---|---|
+| A | **Quote forms have no delivery endpoint.** All 45 lead forms POST to `LEAD_FORM["endpoint"]`, which is empty. Until it's set, submitting shows the call-us fallback instead of a confirmation — so no lead is silently lost, but no lead is captured automatically either. Owner uses **Rotor** as their CRM; needs Rotor's inbound-lead/webhook URL, a Zapier/Make catch hook, or a form-to-email service. Must be safe to expose publicly — this is a static site, so a secret API key can't be used without a proxy. | `build/sitedata.py` → `LEAD_FORM`; see `docs/LEAD-FORM-SETUP.md` | **Open — deferred to launch** |
+| B | **Custom domain not connected.** GitHub Pages serves the site at `alexvbarta29-crypto.github.io/website/`, but every canonical URL, `og:url`, `sitemap.xml` entry and schema.org record declares `https://www.bartawindowwashing.com`. Until the domain is attached, search engines are told the real address is somewhere that isn't serving the site, and essentially none of the SEO work can take effect. | GitHub repo → Settings → Pages; a `CNAME` file in the deploy artifact | **Open — deferred to launch** |
+| C | **No analytics of any kind.** No GA4, no Meta pixel, nothing. There's no way to tell whether the site converts, which pages work, or where leads come from. Worth adding before spending on ads or SEO. | — | **Open** |
+
+---
+
 ## How to resolve an item
 
 1. Confirm the fact with the business owner.
