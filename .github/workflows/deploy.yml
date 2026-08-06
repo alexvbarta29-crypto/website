@@ -37,13 +37,22 @@ jobs:
       - name: Regenerate pages (ensures HTML matches source)
         run: python3 build/build.py
 
+      # Uploading the whole repo shipped ~145 MB per deploy — mostly
+      # unreferenced full-size photo originals — and publicly served
+      # internal files (docs/, build/, config/, READMEs). _deploy/ holds
+      # only the site pages plus the assets they actually reference.
+      - name: Assemble deploy artifact
+        run: |
+          python3 build/make_deploy.py
+          du -sh _deploy
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _deploy
 
   deploy:
     needs: build

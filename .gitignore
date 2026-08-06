@@ -9,3 +9,6 @@ __pycache__/
 
 # temp preview files
 __tmp*.html
+
+# assembled deploy artifact (built in CI by build/make_deploy.py)
+_deploy/
