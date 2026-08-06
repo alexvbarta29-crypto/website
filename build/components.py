@@ -1,5 +1,5 @@
 """Reusable HTML partials and section builders."""
-import json, os
+import json, os, base64
 from urllib.parse import quote_plus
 from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT
 from icons import icon
@@ -162,6 +162,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <!-- Fonts — Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<link rel="preconnect" href="https://nominatim.openstreetmap.org">
 {trustindex_preconnect}<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="{root}assets/css/styles.min.css?v={ASSET_VER}">
@@ -725,11 +726,19 @@ def instagram_carousel(depth=0):
     """Real Instagram posts, shown right on the page instead of just a link
     out to the profile. Reads build/instagram_feed.json — written by the
     "Sync Instagram Feed" GitHub Action (build/instagram_sync.py), which
-    calls the Instagram API and downloads each post's image into
+    calls the Instagram API and downloads each post's image (and, for
+    videos and multi-photo carousels, every slide) into
     assets/img/instagram/. This function itself makes no network calls and
     just renders nothing if the manifest doesn't exist yet or is empty, so
     a fresh checkout (before the first sync has ever run) degrades
-    gracefully to no carousel rather than a broken one."""
+    gracefully to no carousel rather than a broken one.
+
+    Clicking a card opens an in-page lightbox (see .insta-lightbox handling
+    in main.js) showing the full, uncropped image or a playable video —
+    each card's slides are attached as a base64 JSON data attribute so a
+    single shared lightbox element can render whichever post was clicked
+    without a separate modal per post. The card itself stays a real link to
+    the Instagram permalink, so it still works with JS disabled."""
     path = os.path.join(_ROOT, "build", "instagram_feed.json")
     if not os.path.exists(path):
         return ""
@@ -743,26 +752,58 @@ def instagram_carousel(depth=0):
     root = rel(depth)
     cards = ""
     for p in posts:
-        caption = (p.get("caption") or "").strip().split("\n")[0]
-        if len(caption) > 110:
-            caption = caption[:108].rsplit(" ", 1)[0] + "…"
+        caption = (p.get("caption") or "").strip()
+        caption_short = caption.split("\n")[0]
+        if len(caption_short) > 110:
+            caption_short = caption_short[:108].rsplit(" ", 1)[0] + "…"
         img = p.get("image")
         if not img or not os.path.exists(os.path.join(_ROOT, img)):
             continue
-        alt = caption or f"{BIZ['name']} on Instagram"
+        # Falls back to a single slide built from the top-level image when
+        # "slides" is absent, so a manifest written by an older version of
+        # instagram_sync.py (no per-slide/video data yet) still renders
+        # instead of the carousel going empty until the next sync.
+        raw_slides = p.get("slides") or [{"image": img, "type": p.get("type")}]
+        slides = [s for s in raw_slides if s.get("image") and os.path.exists(os.path.join(_ROOT, s["image"]))]
+        if not slides:
+            continue
+        alt = caption_short or f"{BIZ['name']} on Instagram"
         link = p.get("permalink") or BIZ["instagram"]
         img_html = picture(root, img, alt, img_class="insta-card-img",
                             extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 78vw, 320px")
+        slides_payload = [{"image": root + s["image"], "video": (root + s["video"]) if s.get("video") else None,
+                            "type": s.get("type")} for s in slides]
+        data_slides = base64.b64encode(json.dumps({
+            "slides": slides_payload, "caption": caption, "permalink": link,
+        }).encode()).decode()
+        badges = ""
+        if len(slides) > 1:
+            badges += f'<span class="insta-card-badge insta-card-layers" aria-hidden="true">{icon("layers")}</span>'
+        if slides[0].get("type") == "VIDEO":
+            badges += f'<span class="insta-card-play" aria-hidden="true">{icon("play")}</span>'
         cards += (f'<a class="insta-card reveal" href="{link}" target="_blank" rel="noopener" '
-                  f'aria-label="View this post on Instagram">'
-                  f'<div class="insta-card-media">{img_html}<span class="insta-card-badge">{icon("instagram")}</span></div>'
-                  + (f'<p class="insta-card-caption">{caption}</p>' if caption else "") + '</a>')
+                  f'data-insta-post data-slides="{data_slides}" aria-label="Open this Instagram post">'
+                  f'<div class="insta-card-media">{img_html}{badges}<span class="insta-card-badge insta-card-ig">{icon("instagram")}</span></div>'
+                  + (f'<p class="insta-card-caption">{caption_short}</p>' if caption_short else "") + '</a>')
     if not cards:
         return ""
     return f"""<div class="insta-carousel">
       <button type="button" class="insta-arrow prev" aria-label="Scroll left">{icon('chevron')}</button>
       <div class="insta-track">{cards}</div>
       <button type="button" class="insta-arrow next" aria-label="Scroll right">{icon('chevron')}</button>
+    </div>
+    <div class="insta-lightbox" id="insta-lightbox" hidden>
+      <div class="insta-lightbox-scrim" data-insta-close></div>
+      <div class="insta-lightbox-panel" role="dialog" aria-modal="true" aria-label="Instagram post">
+        <button type="button" class="insta-lightbox-close" data-insta-close aria-label="Close">{icon('x')}</button>
+        <button type="button" class="insta-lightbox-nav prev" aria-label="Previous photo" hidden>{icon('chevron')}</button>
+        <div class="insta-lightbox-media"></div>
+        <button type="button" class="insta-lightbox-nav next" aria-label="Next photo" hidden>{icon('chevron')}</button>
+        <div class="insta-lightbox-info">
+          <p class="insta-lightbox-caption"></p>
+          <a class="insta-lightbox-link" href="#" target="_blank" rel="noopener">{icon('instagram')} View on Instagram</a>
+        </div>
+      </div>
     </div>"""
 
 def trust_badges():

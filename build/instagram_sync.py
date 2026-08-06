@@ -49,10 +49,41 @@ def fetch_media(token):
     return _get_json(url).get("data", [])
 
 
-def download_image(url, dest):
+def fetch_children(media_id, token):
+    fields = "id,media_type,media_url,thumbnail_url"
+    url = f"{API_BASE}/{media_id}/children?fields={fields}&access_token={token}"
+    try:
+        return _get_json(url).get("data", [])
+    except Exception as e:
+        print(f"  (children fetch skipped for {media_id}: {e})")
+        return []
+
+
+def download_file(url, dest):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as r, open(dest, "wb") as f:
+    with urllib.request.urlopen(req, timeout=60) as r, open(dest, "wb") as f:
         f.write(r.read())
+
+
+def _save_slide(media_type, media_url, thumbnail_url, name):
+    """Downloads one slide's assets (a still image always, plus the actual
+    video file when it's a video) and returns its manifest dict, or None if
+    nothing usable was downloaded."""
+    slide = {"type": media_type}
+    still_url = thumbnail_url if media_type == "VIDEO" else media_url
+    if still_url:
+        try:
+            download_file(still_url, os.path.join(IMG_DIR, f"{name}.jpg"))
+            slide["image"] = f"assets/img/instagram/{name}.jpg"
+        except Exception as e:
+            print(f"  (skipped image for {name}: {e})")
+    if media_type == "VIDEO" and media_url:
+        try:
+            download_file(media_url, os.path.join(IMG_DIR, f"{name}.mp4"))
+            slide["video"] = f"assets/img/instagram/{name}.mp4"
+        except Exception as e:
+            print(f"  (skipped video for {name}: {e})")
+    return slide if slide.get("image") else None
 
 
 def main():
@@ -73,27 +104,31 @@ def main():
     manifest = []
     for item in items[:MAX_POSTS]:
         media_type = item.get("media_type")
-        # Carousel albums and videos don't expose a directly-usable still
-        # image in media_url the same way photos do — thumbnail_url covers
-        # video; a CAROUSEL_ALBUM's cover comes back as its own media_url.
-        img_url = item.get("thumbnail_url") if media_type == "VIDEO" else item.get("media_url")
-        if not img_url:
-            continue
         post_id = item["id"]
-        local_name = f"{post_id}.jpg"
-        local_path = os.path.join(IMG_DIR, local_name)
-        try:
-            download_image(img_url, local_path)
-        except Exception as e:
-            print(f"  (skipped post {post_id}: {e})")
+
+        slides = []
+        if media_type == "CAROUSEL_ALBUM":
+            for i, child in enumerate(fetch_children(post_id, token)):
+                slide = _save_slide(child.get("media_type"), child.get("media_url"),
+                                     child.get("thumbnail_url"), f"{post_id}_{i}")
+                if slide:
+                    slides.append(slide)
+        else:
+            slide = _save_slide(media_type, item.get("media_url"), item.get("thumbnail_url"), post_id)
+            if slide:
+                slides.append(slide)
+
+        if not slides:
             continue
+
         manifest.append({
             "id": post_id,
-            "image": f"assets/img/instagram/{local_name}",
+            "image": slides[0]["image"],
+            "type": media_type,
+            "slides": slides,
             "caption": (item.get("caption") or "").strip(),
             "permalink": item.get("permalink"),
             "timestamp": item.get("timestamp"),
-            "type": media_type,
         })
 
     with open(MANIFEST_PATH, "w", encoding="utf-8") as f:

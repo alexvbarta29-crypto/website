@@ -211,6 +211,11 @@
       if (q.length < 4) { close(); return; }
       if (aborter) aborter.abort();
       aborter = new AbortController();
+      // Immediate feedback so a slow network read doesn't just look frozen —
+      // Nominatim (free, keyless) typically answers in a few hundred ms, but
+      // there's no way to make a public rate-limited API instant.
+      list.innerHTML = '<li class="addr-loading" aria-disabled="true">Searching…</li>';
+      list.hidden = false;
       const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us" +
         "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(q);
       fetch(url, { signal: aborter.signal, headers: { Accept: "application/json" } })
@@ -245,7 +250,7 @@
     input.addEventListener("input", () => {
       if (verified) verified.value = "no";
       clearTimeout(timer);
-      timer = setTimeout(search, 350);
+      timer = setTimeout(search, 220);
     });
     input.addEventListener("blur", () => setTimeout(close, 150));
   });
@@ -379,6 +384,74 @@
     prev.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }));
     next.addEventListener("click", () => track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }));
   });
+
+  /* ---- Instagram lightbox: opens the full, uncropped image (or a
+         playable video) right on the page instead of sending people to
+         Instagram to see it. Each card carries its own slides as a base64
+         JSON data attribute; the single shared lightbox element just
+         re-renders its media/caption/link from whichever card was clicked. ---- */
+  const lightbox = $("#insta-lightbox");
+  if (lightbox) {
+    const mediaEl = $(".insta-lightbox-media", lightbox);
+    const captionEl = $(".insta-lightbox-caption", lightbox);
+    const linkEl = $(".insta-lightbox-link", lightbox);
+    const prevBtn = $(".insta-lightbox-nav.prev", lightbox);
+    const nextBtn = $(".insta-lightbox-nav.next", lightbox);
+    let slides = [];
+    let index = 0;
+
+    const renderSlide = () => {
+      const slide = slides[index];
+      if (!slide) return;
+      mediaEl.innerHTML = slide.video
+        ? `<video src="${slide.video}" controls playsinline poster="${slide.image}"></video>`
+        : `<img src="${slide.image}" alt="">`;
+      const multi = slides.length > 1;
+      prevBtn.hidden = !multi;
+      nextBtn.hidden = !multi;
+    };
+
+    const open = (post) => {
+      slides = post.slides || [];
+      index = 0;
+      captionEl.textContent = post.caption || "";
+      captionEl.hidden = !post.caption;
+      linkEl.href = post.permalink || "#";
+      renderSlide();
+      lightbox.hidden = false;
+      document.body.style.overflow = "hidden";
+    };
+    const close = () => {
+      lightbox.hidden = true;
+      document.body.style.overflow = "";
+      mediaEl.innerHTML = "";
+    };
+    const step = (dir) => {
+      if (!slides.length) return;
+      index = (index + dir + slides.length) % slides.length;
+      renderSlide();
+    };
+
+    $$("[data-insta-post]").forEach((card) => {
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          open(JSON.parse(atob(card.dataset.slides)));
+        } catch (err) {
+          window.open(card.href, "_blank", "noopener");
+        }
+      });
+    });
+    $$("[data-insta-close]", lightbox).forEach((el) => el.addEventListener("click", close));
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+    document.addEventListener("keydown", (e) => {
+      if (lightbox.hidden) return;
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    });
+  }
 
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";
