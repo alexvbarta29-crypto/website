@@ -301,6 +301,16 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .form-success svg { width: 56px; height: 56px; color: var(--green); margin: 0 auto 14px; }
 .form.sent { display: none; }
 .form-success.show { display: block; }
+/* Shown when a submission can't be delivered. Unlike .form-success this
+   leaves the filled-in form on screen, so nothing the visitor typed is lost
+   while they call instead. */
+.form-fallback { margin-top: 18px; padding: 18px 20px; border-radius: var(--r-md); background: rgba(251,77,61,.07); border: 1px solid rgba(251,77,61,.35); }
+.form-fallback p { font-size: .95rem; color: var(--slate-700); }
+.form-fallback-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+/* min-width:0 + wrapping text: .btn is nowrap by default, and a flex item
+   won't shrink below its content, so the long email address would push this
+   row past the screen edge on a phone. */
+.form-fallback-actions .btn { flex: 1 1 200px; min-width: 0; justify-content: center; white-space: normal; overflow-wrap: anywhere; }
 /* Phone-sized screens can dial straight from the button; anything wider
    can't place a call, so show the number itself to type/save instead. */
 .call-us-number { display: none; margin-top: 14px; font-size: 1.05rem; }

@@ -1,8 +1,32 @@
 """Reusable HTML partials and section builders."""
 import json, os
 from urllib.parse import quote_plus
-from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT
+from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT, LEAD_FORM
 from icons import icon
+
+def _esc(s):
+    return str(s).replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
+
+def lead_form_attrs():
+    """Delivery config carried on every <form data-lead>. main.js reads these
+    and posts the submission; with no endpoint set it shows the call-us
+    fallback instead of a success message it can't stand behind."""
+    return (f'data-endpoint="{_esc(LEAD_FORM["endpoint"])}" '
+            f'data-access-key="{_esc(LEAD_FORM["access_key"])}" '
+            f'data-subject="{_esc(LEAD_FORM["subject"])}"')
+
+def lead_form_fallback(depth=0):
+    """Shown when a submission can't be delivered (no endpoint configured, or
+    the request failed). Gives the visitor a way to reach a human rather than
+    a thank-you that goes nowhere."""
+    return f"""<div class="form-fallback" hidden>
+    <p><strong>We couldn't send that automatically.</strong> Please call us or email
+      <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> and we'll get you a quote right away — sorry for the trouble.</p>
+    <div class="form-fallback-actions">
+      <a class="btn" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
+      <a class="btn btn-ghost" href="mailto:{BIZ['email']}">{icon('mail')} Email us</a>
+    </div>
+  </div>"""
 
 # Cache-busting version for static assets (set at build time from file hashes).
 # Keeps CSS/JS from being served stale by the browser/CDN after a change.
@@ -384,7 +408,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
     return f"""<div class="hero-card" id="quote-form">
   <h3>{heading}</h3>
   <p class="form-note">{sub}</p>
-  <form class="form mt-2" data-lead novalidate>
+  <form class="form mt-2" data-lead novalidate {lead_form_attrs()}>
     <input type="hidden" name="plan" data-plan-field value="">
     <div class="form-row">
       <div class="field"><label for="lf-name">Full name</label><input type="text" id="lf-name" name="name" autocomplete="name" required placeholder="Jane Doe"></div>
@@ -406,6 +430,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
     <button type="submit" class="btn btn-lg btn-block">{submit} {icon('arrow')}</button>
     <p class="form-note center">By submitting, you agree to be contacted about your request. We never sell your info.</p>
   </form>
+  {lead_form_fallback(depth)}
   <div class="form-success">
     {icon('check-circle')}
     <h3>Thank you! Your request is in.</h3>
@@ -462,7 +487,7 @@ def quote_wizard(depth=0, svc_default=None):
     return f"""<div class="wizard" id="quote-form">
   <h1 class="sr-only">Get Your Free Quote</h1>
   <div class="wizard-progress-bar" aria-hidden="true"><div class="wizard-progress-fill" data-wizard-fill></div></div>
-  <form class="form wizard-form" data-lead novalidate>
+  <form class="form wizard-form" data-lead novalidate {lead_form_attrs()}>
     <div class="wizard-panel" data-panel="0">
       <h2 class="wizard-hero-title">Let's get to know you!</h2>
       <div class="form-row mt-3">
@@ -535,6 +560,7 @@ def quote_wizard(depth=0, svc_default=None):
       <p class="form-note center mt-1">By submitting, you agree to be contacted about your request. We never sell your info.</p>
     </div>
   </form>
+  {lead_form_fallback(depth)}
   <div class="form-success">
     {icon('check-circle')}
     <h2>Thank you! Your request is in.</h2>
@@ -566,7 +592,7 @@ def xmas_quote_modal(depth=0):
       <span class="eyebrow" style="justify-content:center">Free Estimate</span>
       <h2 id="xmas-modal-title" class="center mt-1">Christmas Lights Installation</h2>
       <p class="form-note center">Fill out the form below and we'll reach out shortly.</p>
-      <form class="form mt-3" data-lead novalidate>
+      <form class="form mt-3" data-lead novalidate {lead_form_attrs()}>
         <input type="hidden" name="address_state" value="{BIZ['state']}">
         <h3 class="xmas-modal-section">Contact info</h3>
         <div class="form-row">
@@ -608,7 +634,8 @@ def xmas_quote_modal(depth=0):
         <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
         <button type="submit" class="btn btn-lg btn-block mt-2">Submit {icon('arrow')}</button>
       </form>
-      <div class="form-success">
+      {lead_form_fallback(depth)}
+  <div class="form-success">
         {icon('check-circle')}
         <h3>Thank you! Your request is in.</h3>
         <p>Someone will reach out shortly.</p>

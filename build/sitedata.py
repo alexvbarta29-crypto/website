@@ -32,6 +32,25 @@ BIZ = {
 }
 
 # ---------------------------------------------------------------------------
+# Where quote-form submissions are delivered.
+#
+# This is a static site with no server of its own, so the browser posts
+# straight to whatever URL is set here. That means the endpoint has to be one
+# that's safe to expose publicly — a CRM/Zapier inbound webhook, or a form
+# service's public submit URL. Never put a secret API key here: everything in
+# this dict is visible in the page source. See docs/LEAD-FORM-SETUP.md.
+#
+# While "endpoint" is empty the forms deliberately do NOT show a success
+# message — they tell the visitor to call instead, because a confirmation we
+# can't honour is worse than no form at all.
+# ---------------------------------------------------------------------------
+LEAD_FORM = {
+    "endpoint": "",     # e.g. Rotor inbound-lead URL, Zapier catch hook, or https://api.web3forms.com/submit
+    "access_key": "",   # only for services that use a public submit key (Web3Forms); leave blank otherwise
+    "subject": "New quote request from bartawindowwashing.com",
+}
+
+# ---------------------------------------------------------------------------
 # Services — each drives a full service page + nav + cards
 # ---------------------------------------------------------------------------
 SERVICES = [

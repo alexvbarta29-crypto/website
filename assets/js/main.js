@@ -354,17 +354,50 @@
         return;
       }
       if (!form.checkValidity()) { form.reportValidity(); return; }
+
       const success = form.parentElement.querySelector(".form-success");
-      form.classList.add("sent");
-      if (success) { success.classList.add("show"); success.setAttribute("role", "status"); }
-      const wizardFill = $("[data-wizard-fill]", form.closest(".wizard") || form);
-      if (wizardFill) wizardFill.style.width = "100%";
-      // In production, POST to your CRM / email service here.
-      try {
-        const data = Object.fromEntries(new FormData(form).entries());
-        data.services = [...form.querySelectorAll('input[name="services"]:checked')].map((c) => c.value);
-        console.log("[Barta] Lead captured (demo):", data);
-      } catch (err) {}
+      const fallback = form.parentElement.querySelector(".form-fallback");
+      const submitBtn = form.querySelector('button[type="submit"]');
+      // innerHTML, not textContent — the label carries an inline arrow icon
+      // that has to survive the "Sending…" swap.
+      const submitLabel = submitBtn ? submitBtn.innerHTML : "";
+      const endpoint = form.dataset.endpoint;
+
+      const showSuccess = () => {
+        form.classList.add("sent");
+        if (success) { success.classList.add("show"); success.setAttribute("role", "status"); }
+        const wizardFill = $("[data-wizard-fill]", form.closest(".wizard") || form);
+        if (wizardFill) wizardFill.style.width = "100%";
+      };
+      // Never claim a submission landed when it didn't — send the visitor to
+      // the phone/email instead, with their answers still on screen.
+      const showFallback = () => {
+        if (fallback) {
+          fallback.hidden = false;
+          fallback.setAttribute("role", "alert");
+          fallback.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+        }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitLabel; }
+      };
+
+      const data = Object.fromEntries(new FormData(form).entries());
+      data.services = [...form.querySelectorAll('input[name="services"]:checked')].map((c) => c.value);
+      data.page = location.pathname;
+      if (form.dataset.subject) data.subject = form.dataset.subject;
+      if (form.dataset.accessKey) data.access_key = form.dataset.accessKey;
+
+      if (!endpoint) { showFallback(); return; }
+
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Sending…"; }
+
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(data),
+      })
+        .then((res) => { if (!res.ok) throw new Error("HTTP " + res.status); return res; })
+        .then(showSuccess)
+        .catch(showFallback);
     });
   });
 
