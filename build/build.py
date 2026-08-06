@@ -1749,12 +1749,17 @@ _HERO_VARIANT_SPECS = [(1200, "webp", 72), (1200, "jpg", 78), (640, "webp", 72),
 _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 _HERO_1920_PATHS = {"assets/img/hero-home.jpg"}
 
-# The Christmas Lights hero is a night shot — deep shadows and small bright
-# bulbs are exactly the content JPEG/WebP compress worst, so banding and
-# fuzziness show up there at the standard quality long before other, more
-# evenly-lit daytime photos look rough. Bump it well above the site default.
+# Every individual service page's hero photo gets this higher-quality tier —
+# it's the single largest, most-scrutinized image on that page (the proof
+# the crew actually does the work), and each page only loads its own one
+# hero, so the extra weight never compounds the way it would on a page
+# showing many photos at once (gallery, Instagram feed). Those stay on the
+# lighter default tier above on purpose. Originally added just for the
+# Christmas Lights night shot, whose deep shadows and small bright bulbs
+# are exactly the content JPEG/WebP compress worst — kept as the top tier
+# and extended to every service hero at the owner's request.
 _HERO_HIGH_Q_SPECS = [(1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 84), (640, "jpg", 88)]
-_HERO_HIGH_Q_PATHS = {"assets/img/svc-christmas-light-installation.jpg"}
+_HERO_HIGH_Q_PATHS = {s["image"] for s in SERVICES if s.get("image")}
 
 def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
