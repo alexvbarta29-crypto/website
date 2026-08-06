@@ -373,24 +373,64 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !xmasModal.hidden) closeXmas(); });
   }
 
-  /* ---- Instagram carousel arrow buttons (native scroll-snap does the
-         rest — touch/trackpad/mouse-drag already work without JS) ---- */
+  /* ---- Instagram carousel: arrow buttons, a slow self-running auto-scroll
+         when nobody's touching it, and shared video-pausing so scrolling
+         past several video posts doesn't stack up audio. Auto-scroll
+         bounces back and forth at the ends rather than jumping, pauses on
+         hover/touch/drag/arrow-click and while a video is playing, and
+         only runs while the row is actually on screen. ---- */
   $$(".insta-carousel").forEach((carousel) => {
     const track = $(".insta-track", carousel);
     const prev = $(".insta-arrow.prev", carousel);
     const next = $(".insta-arrow.next", carousel);
-    if (!track || !prev || !next) return;
-    const step = () => Math.min(track.clientWidth * 0.8, 420);
-    prev.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }));
-    next.addEventListener("click", () => track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }));
-  });
+    if (!track) return;
 
-  /* ---- Instagram videos play in place — pause any others when one starts,
-         so scrolling past several video posts doesn't stack up audio ---- */
-  const instaVideos = $$(".insta-card-media-el[src]");
-  instaVideos.forEach((v) => {
-    if (v.tagName !== "VIDEO") return;
-    v.addEventListener("play", () => instaVideos.forEach((other) => { if (other !== v) other.pause(); }));
+    const videos = $$(".insta-card-media-el", track).filter((v) => v.tagName === "VIDEO");
+    videos.forEach((v) => v.addEventListener("play", () => videos.forEach((o) => { if (o !== v) o.pause(); })));
+
+    if (prev && next) {
+      const step = () => Math.min(track.clientWidth * 0.8, 420);
+      prev.addEventListener("click", () => { pauseAuto(); track.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }); });
+      next.addEventListener("click", () => { pauseAuto(); track.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }); });
+    }
+
+    const SPEED = 22; // px/sec — gentle
+    let dir = 1, autoPaused = false, inView = false, last = null, pos = track.scrollLeft;
+    // CSS scroll-snap fights a slow per-frame scrollLeft nudge — the
+    // browser re-snaps to the nearest card every frame, which reads as the
+    // track being stuck. Drop snap only while auto-rotating; restore it the
+    // moment a person takes over, so manual drag/swipe still feels right.
+    const pauseAuto = () => { autoPaused = true; track.classList.remove("insta-auto"); };
+    const resumeAuto = () => { autoPaused = false; last = null; pos = track.scrollLeft; track.classList.add("insta-auto"); };
+    const anyVideoPlaying = () => videos.some((v) => !v.paused);
+    const tick = (t) => {
+      if (last === null) last = t;
+      const dt = (t - last) / 1000;
+      last = t;
+      if (!autoPaused && inView && !anyVideoPlaying()) {
+        const max = track.scrollWidth - track.clientWidth;
+        if (max > 0) {
+          // Track position in a float accumulator — scrollLeft itself reads
+          // back rounded, so nudging from it each frame loses sub-pixel
+          // progress and the scroll appears to freeze.
+          pos += dir * SPEED * dt;
+          if (pos >= max) { pos = max; dir = -1; }
+          if (pos <= 0) { pos = 0; dir = 1; }
+          track.scrollLeft = pos;
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    if (!reduce) {
+      track.addEventListener("pointerenter", pauseAuto);
+      track.addEventListener("pointerleave", resumeAuto);
+      track.addEventListener("pointerdown", pauseAuto);
+      track.addEventListener("pointerup", () => setTimeout(resumeAuto, 1200));
+      new IntersectionObserver((entries) => { inView = entries[0].isIntersecting; },
+        { threshold: 0.2 }).observe(track);
+      resumeAuto();
+      requestAnimationFrame(tick);
+    }
   });
 
   /* ---- Active nav state ---- */
