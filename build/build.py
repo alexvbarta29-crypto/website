@@ -355,7 +355,6 @@ _SERVICE_AREA_FAMILY = {
     "pressure-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
     "house-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
     "soft-washing": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
-    "roof-cleaning": ("wash", ("buffalo", "mound", "medina", "maple-grove")),
     "solar-panel-cleaning": ("specialty", ("plymouth", "minnetonka", "medina", "mound")),
     "commercial-cleaning": ("specialty", ("plymouth", "minnetonka", "maple-grove", "medina")),
     "christmas-light-installation": ("specialty", ("plymouth", "minnetonka", "medina", "mound")),
@@ -673,10 +672,10 @@ def build_residential():
     svc_cards = "".join(C.service_image_card(s, depth, i) for i, s in enumerate(SERVICES))
     html, body = interior_head(
         title=f"Residential Exterior Cleaning Services | {BIZ['name']} Delano, MN",
-        desc="Complete residential exterior cleaning in Delano & the western metro — windows, gutters, pressure washing, house & roof washing, and more. Family-owned, insured & guaranteed.",
+        desc="Complete residential exterior cleaning in Delano & the western metro — windows, gutters, pressure washing, house washing, and more. Family-owned, insured & guaranteed.",
         slug="residential.html", eyebrow="Residential Services",
         h1="Everything your home's exterior needs, in one trusted team",
-        lead="Windows, gutters, siding, roofs, walkways, and seasonal lighting — Barta keeps every inch of your home's exterior beautifully maintained, so you can simply enjoy it.",
+        lead="Windows, gutters, siding, walkways, and seasonal lighting — Barta keeps every inch of your home's exterior beautifully maintained, so you can simply enjoy it.",
         depth=depth, crumb_label="Residential", cta_form=False,
         primary_kw="residential exterior cleaning Delano MN")
     html += f"""<main id="main">{body}
@@ -1004,7 +1003,7 @@ def build_area(a):
 # ===========================================================================
 def build_financing():
     depth = 0
-    opts = [("money", "Pay over time", "Spread larger projects — like full-home washing or roof cleaning — into easy monthly payments."),
+    opts = [("money", "Pay over time", "Spread larger projects — like full-home washing or gutter cleaning — into easy monthly payments."),
             ("tag", "Membership budgeting", "Our maintenance plans turn big seasonal bills into a small, predictable monthly amount."),
             ("check-circle", "Simple application", "Quick, no-obligation approval decisions so you can move forward with confidence."),
             ("shield", "No surprises", "Clear terms, transparent pricing, and no hidden fees — ever.")]
@@ -1134,7 +1133,7 @@ def build_terms():
     <h2>1. Acceptance of terms</h2>
     <p>By requesting a quote, scheduling a service, or otherwise using this website or {BIZ['name']}'s services, you ("Customer") agree to be bound by these Terms and Conditions. If you do not agree, please do not use our services.</p>
     <h2>2. Services</h2>
-    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services — including window cleaning, gutter cleaning, pressure washing, soft washing, roof cleaning, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation — throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
+    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services — including window cleaning, gutter cleaning, pressure washing, soft washing, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation — throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
     <h2>3. Scheduling and cancellations</h2>
     <p>Appointments can be scheduled by phone, text, email, or through this website. We ask that cancellations or rescheduling requests be made as far in advance as possible. Late cancellations or no-shows may result in a cancellation fee, which will be communicated to you at the time of booking.</p>
     <h2>4. Access to property</h2>
@@ -1336,7 +1335,6 @@ def build_instagram_callback():
 _BLOG_PHOTOS = {
     "how-often-clean-windows-minnesota": "assets/img/svc-exterior-window-cleaning.jpg",
     "soft-washing-vs-pressure-washing": "assets/img/svc-soft-washing.jpg",
-    "remove-roof-black-streaks": "assets/img/svc-roof-cleaning.jpg",
     "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
     "hard-water-stains-windows": "assets/img/svc-hand-scrubbing.jpg",
     "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
@@ -1359,7 +1357,7 @@ def build_blog():
         <span style="font-size:.8rem;color:var(--slate-400);margin-top:6px">{p['date']} · {p['read']} read</span></a>"""
     html, body = interior_head(
         title=f"Blog | Exterior Cleaning Tips & Guides | {BIZ['name']}",
-        desc="Expert tips on window cleaning, gutter care, house & roof washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
+        desc="Expert tips on window cleaning, gutter care, house washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
         slug="blog.html", eyebrow="Blog",
         h1="Tips, guides &amp; exterior care advice",
         lead="Practical, no-nonsense advice from the Barta team to help you protect and beautify your home year-round.",
@@ -1387,14 +1385,8 @@ def build_post(p, idx):
         "soft-washing-vs-pressure-washing": [
             ("They're not the same thing", "Pressure washing uses high-pressure water to physically blast dirt off hard surfaces. Soft washing uses low pressure plus specialized cleaning solutions to dissolve grime and kill organic growth. Using the wrong one can cause real damage."),
             ("When to pressure wash", "Pressure washing shines on durable hardscapes: concrete driveways, paver patios, sidewalks, and pool decks. It removes embedded dirt, oil, and tire marks that solutions alone can't lift — when applied at the right pressure for the surface."),
-            ("When to soft wash", "Roofs, siding, stucco, screens, and painted surfaces should always be soft washed. High pressure can strip paint, etch stucco, lift shingles, and void roofing warranties. Soft washing cleans gently and kills algae at the root, so results last far longer."),
+            ("When to soft wash", "Siding, stucco, screens, and painted surfaces should always be soft washed. High pressure can strip paint, etch stucco, and damage delicate materials. Soft washing cleans gently and kills algae at the root, so results last far longer."),
             ("The bottom line", "A good exterior cleaner uses both — matched to each surface. That's exactly how Barta approaches every home: the right method, the right pressure, the right solution, every time."),
-        ],
-        "remove-roof-black-streaks": [
-            ("What those streaks actually are", "Those dark streaks running down your roof are a blue-green algae called Gloeocapsa magma. It feeds on the limestone filler in asphalt shingles, spreads in humid Minnesota summers, and slowly shortens your roof's life."),
-            ("Why pressure washing makes it worse", "Blasting a roof with high pressure tears off the protective granules, drives water under shingles, and can void your manufacturer warranty. It might look better for a week — then the algae comes back faster."),
-            ("The safe way to remove it", "The industry-recommended method is soft washing: a low-pressure application of algae-killing solution that dissolves the growth at the root, followed by a gentle rinse. Done right, your roof looks new and stays clean far longer."),
-            ("Prevention", "Installing zinc or copper strips near the ridge releases trace metals when it rains, slowing regrowth. We'll assess your roof and recommend the right long-term approach during a free inspection."),
         ],
         "gutter-cleaning-checklist-fall": [
             ("Why fall is critical", "Clogged gutters in winter mean ice dams, overflow, and water pooling against your foundation. Clearing them before the first freeze is one of the cheapest, highest-impact things you can do to protect your home."),

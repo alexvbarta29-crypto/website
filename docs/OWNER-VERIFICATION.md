@@ -85,6 +85,28 @@ concern because it isn't part of the generated site at all — it lives only in 
     `christmas-light-installation` to "storage included in your price."
   - **Booking lead-time FAQ corrected** — owner said timing varies (same-day to a couple weeks
     depending on season/schedule), not a fixed "1–2 weeks" recommendation. Wording updated.
+- **Third owner review pass (this update):** owner stated directly that Barta does not perform
+  roof cleaning/washing. This **supersedes** the note above (line ~55) that the roof-cleaning ARMA
+  claim was "independently verified as accurate" — that verification is now moot since the service
+  itself has been removed, not because the ARMA fact was wrong.
+  - **Roof Cleaning service deleted entirely.** The `roof-cleaning` entry in `SERVICES`
+    (`build/sitedata.py`), the generated `services/roof-cleaning.html` page, and every reference to
+    it (`_SERVICE_AREA_FAMILY` and `SERVICE_SLUG_TO_LABEL` lookup tables, the blog-photo map, the
+    `IMAGE_ALT` entry for its hero image) have been removed. It was already hidden from the main nav
+    and footer before this pass, but the standalone page, its FAQs, and its "we handle every
+    black-streak and moss job" marketing copy were still live and bookable.
+  - **Roof-themed blog post deleted.** "What Those Black Streaks on Your Roof Really Are"
+    (`remove-roof-black-streaks`) was dedicated to promoting the roof-cleaning service and used
+    first-person claims ("We'll assess your roof and recommend the right long-term approach") —
+    deleted along with its generated page rather than left live for a service that no longer exists.
+  - **Roof mentions stripped from Soft Washing and Pressure Washing pages too**, at the owner's
+    explicit direction, even though those are real services — "roofs" had been listed as one of the
+    delicate surfaces soft washing covers. All copy, SEO keywords, and FAQ wording on
+    `services/soft-washing.html` and `services/pressure-washing.html` (`build/sitedata.py`) now says
+    stucco/siding instead of roofs; the related "Soft Washing vs. Pressure Washing" blog post
+    (`build/build.py`) was updated the same way. Roof mentions that describe a genuinely different
+    service — the free visual roof check that comes with gutter cleaning, and roof/array access for
+    solar panel cleaning — were left as-is since neither claims Barta washes/cleans the roof itself.
 
 ---
 

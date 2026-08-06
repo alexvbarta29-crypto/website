@@ -341,7 +341,6 @@ SERVICE_SLUG_TO_LABEL = {
     "pressure-washing": "pressure-washing",
     "house-washing": "soft-washing",
     "soft-washing": "soft-washing",
-    "roof-cleaning": "soft-washing",
     "solar-panel-cleaning": "solar-panel-cleaning",
     "screen-cleaning": "screen-cleaning-services",
     "hard-water-stain-removal": "exterior-window-cleaning",
