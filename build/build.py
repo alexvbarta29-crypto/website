@@ -552,7 +552,6 @@ def build_service(svc):
     {(_xmas_garland_svg() + _xmas_snow()) if is_xmas else ""}
     <div class="container">
       {C.crumbs([("Home", root + "index.html"), ("Services", root + "residential.html"), (svc['name'], None)], light=True)}
-      {f'<span class="xmas-hero-badge">{icon("lights")} Now booking for the holidays</span>' if is_xmas else ""}
       <h1>{svc.get('h1') or svc['name']}</h1>
       <p class="lead">{svc['hero_sub']}</p>
       <div class="hero-actions">
@@ -1718,9 +1717,17 @@ def generate_webp_versions():
         print("  (Pillow not available — skipping WebP generation)")
         return
     import re
-    insta_jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg"))
-                  if not re.search(r"-(640|1200|1920)w\.jpg$", p)]
-    jpgs = glob.glob(os.path.join(ROOT, "assets/img/*.jpg")) + insta_jpgs
+    _is_derived = lambda p: re.search(r"-(640|1200|1920)w\.jpg$", p)
+    insta_jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")) if not _is_derived(p)]
+    # Must exclude the same -640w/-1200w/-1920w derivatives here too — those
+    # are generate_hero_variants()'s output, re-encoded from the true
+    # original at a deliberately chosen quality. Without this filter, this
+    # glob picks them up as if they were source photos and overwrites their
+    # already-correct .webp sibling by re-compressing the *already-resized*
+    # jpg at this function's flat quality=80 — compounding two lossy passes
+    # into one, and permanently masking the mistake because the resulting
+    # fresh mtime then makes generate_hero_variants() skip it as "up to date".
+    jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/*.jpg")) if not _is_derived(p)] + insta_jpgs
     for jpg in jpgs:
         webp = jpg.rsplit(".", 1)[0] + ".webp"
         if os.path.exists(webp) and os.path.getmtime(webp) >= os.path.getmtime(jpg):

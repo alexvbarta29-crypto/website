@@ -422,13 +422,6 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .xmas-bulb, .xmas-snow span { animation: none; }
 }
 
-.xmas-hero-badge {
-  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 9px 18px;
-  border-radius: var(--r-pill); background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .35);
-  backdrop-filter: blur(4px); color: #fff; font-family: var(--font-head); font-weight: 700;
-  font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
-}
-.xmas-hero-badge svg { width: 16px; height: 16px; color: #ffb020; }
 .xmas-candy-stripe { height: 8px; background: repeating-linear-gradient(-45deg, var(--xmas-red) 0 16px, #fff 16px 32px, var(--xmas-green) 32px 48px, #fff 48px 64px); }
 .xmas-highlight { position: relative; background: linear-gradient(180deg, #fff6f2 0%, #fff 75%); }
 .xmas-highlight .eyebrow { color: var(--xmas-green); }
@@ -1027,13 +1020,13 @@ html.js .reveal.in { opacity: 1; transform: none; }
 }
 
 /* Google review badge (links to Google Business Profile) */
-.google-badge { display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: var(--r-pill); background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background .25s var(--ease), transform .25s var(--ease); }
-.google-badge:hover { background: rgba(255,255,255,.18); transform: translateY(-1px); }
+.google-badge { display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: var(--r-pill); background: rgba(8,20,36,.4); border: 1px solid rgba(255,255,255,.4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 10px rgba(0,0,0,.15); transition: background .25s var(--ease), transform .25s var(--ease); }
+.google-badge:hover { background: rgba(8,20,36,.55); transform: translateY(-1px); }
 .google-badge .stars { display: inline-flex; gap: 2px; color: var(--gold); }
-.google-badge .stars svg { width: 16px; height: 16px; }
+.google-badge .stars svg { width: 16px; height: 16px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
 .google-badge .gb-g { display: inline-flex; }
 .google-badge .gb-g svg { width: 18px; height: 18px; display: block; }
-.google-badge .gb-text { color: #fff; font-weight: 600; font-size: .88rem; white-space: nowrap; }
+.google-badge .gb-text { color: #fff; font-weight: 700; font-size: .9rem; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .google-badge--light { background: #fff; border: 1px solid var(--line); box-shadow: var(--sh-sm); }
 .google-badge--light:hover { background: #fff; box-shadow: var(--sh-md); }
 .google-badge--light .gb-text { color: var(--navy-800); }
