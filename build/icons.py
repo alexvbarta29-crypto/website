@@ -24,10 +24,12 @@ ICONS = {
     "star": _svg('<path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9L12 3Z"/>', fill=True),
     "leaf": _svg('<path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14Z"/><path d="M5 19c2-4 5-7 9-9"/>'),
     "clock": _svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
-    # Deliberately not the classic tilted-handset glyph — that shape reads
-    # bottom-heavy (the big outer curve sits at the bottom). A plain phone
-    # silhouette keeps equal visual weight top to bottom.
-    "phone": _svg('<rect x="7" y="2.4" width="10" height="19.2" rx="2.6"/>'),
+    # The classic tilted handset. A previous version used a plain rounded
+    # rectangle here to keep the visual weight even top-to-bottom, but with
+    # no earpiece, screen, or button detail it just read as an empty box
+    # next to "Call Us" — recognizability matters more than balance for the
+    # one glyph whose whole job is to say "phone". Handset it is.
+    "phone": _svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z"/>'),
     "mail": _svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
     "pin": _svg('<path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>'),
     "arrow": _svg('<path d="M5 12h14M13 6l6 6-6 6"/>'),
