@@ -228,15 +228,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .drawer-close { width: 44px; height: 44px; border-radius: var(--r-pill); border: 0; background: var(--mist); display: grid; place-items: center; }
 .drawer-close svg { width: 20px; height: 20px; }
-.drawer-nav { display: flex; flex-direction: column; gap: 2px; }
-.drawer-nav a { padding: 13px 14px; border-radius: var(--r-md); font-weight: 600; color: var(--slate-700); font-size: 1.02rem; }
+.drawer-nav { display: flex; flex-direction: column; gap: 0; }
+.drawer-nav a { padding: 10px 14px; border-radius: var(--r-md); font-weight: 600; color: var(--slate-700); font-size: .96rem; }
 .drawer-nav a:hover { background: var(--mist); color: var(--navy-800); }
-.drawer-group > summary { padding: 13px 14px; border-radius: var(--r-md); font-weight: 700; color: var(--navy-800); font-family: var(--font-head); cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.drawer-group > summary { padding: 10px 14px; border-radius: var(--r-md); font-weight: 600; color: var(--slate-700); cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: .96rem; }
 .drawer-group > summary::-webkit-details-marker { display: none; }
-.drawer-group > summary svg { width: 18px; height: 18px; transition: transform .3s; }
+.drawer-group > summary svg { width: 15px; height: 15px; flex: none; transition: transform .3s; }
 .drawer-group[open] > summary svg { transform: rotate(180deg); }
-.drawer-group .sub { padding-left: 12px; }
-.drawer-group .sub a { font-weight: 500; font-size: .96rem; padding: 10px 14px; }
+.drawer-group .sub { display: flex; flex-direction: column; padding-left: 10px; border-left: 2px solid var(--mist); margin: 2px 14px 4px; }
+.drawer-group .sub a { font-weight: 500; font-size: .9rem; padding: 8px 10px; }
 .drawer-foot { margin-top: auto; padding-top: 20px; display: flex; flex-direction: column; gap: 10px; }
 
 /* ---------- Hero ---------- */
@@ -894,6 +894,9 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .nav-links, .nav-phone { display: none; }
   .nav-toggle { display: grid; }
   .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .nav { position: relative; }
+  .nav .brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .nav-cta { margin-left: auto; }
 }
 @media (max-width: 960px) {
   .hero-grid { grid-template-columns: 1fr; }

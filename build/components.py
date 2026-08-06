@@ -214,17 +214,12 @@ def nav(depth=0):
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
       <a href="{root}index.html">Home</a>
+      <a href="{root}about.html">About Us</a>
       <details class="drawer-group"><summary>Our Services {icon('chevron')}</summary>
         <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}</div>
       </details>
       <a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a>
-      <a href="{root}residential.html">Residential</a>
-      <a href="{root}service-areas.html">Service Areas</a>
       <a href="{root}reviews.html">Reviews</a>
-      <a href="{root}about.html">About</a>
-      <a href="{root}blog.html">Blog</a>
-      <a href="{root}faqs.html">FAQs</a>
-      <a href="{root}financing.html">Financing</a>
     </nav>
     <div class="drawer-foot">
       <a class="btn btn-block" href="{root}get-quote.html">Get My Free Quote</a>
