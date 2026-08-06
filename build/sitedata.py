@@ -110,15 +110,13 @@ SERVICES = [
             ("Streak-free guarantee", "We don't leave until every pane is spotless — or we come back free."),
             ("Furniture-safe process", "Drop cloths and careful technique keep your floors and furnishings protected."),
             ("Every sill &amp; frame detailed", "We hand-wipe the parts most companies skip."),
-            ("Flexible scheduling", "We work around your household — pets, kids, and all."),
+            ("We work around your home", "Light furniture, blinds, pets, kids — we adapt to whatever's happening in your house that day."),
         ],
-        "intro": "Interior glass collects fingerprints, dust, and haze that exterior-only cleaning never touches — and it's the view you actually live with every day. Barta hand-details interior panes, frames, and sills room by room, using drop cloths and careful technique so your floors and furnishings stay protected the whole time.",
+        "intro": "Interior glass takes a different kind of wear than the outside — fingerprints on the slider, dust along the sill, everyday grime that builds up on the glass you're actually looking through all day. Barta hand-details every pane, frame, and sill room by room, laying down drop cloths and working carefully so your floors and furnishings stay protected the whole time.",
         "includes": [
             "Interior glass hand-cleaned and squeegeed",
             "Interior sills and frames wiped down",
             "Drop cloths placed to protect floors and furnishings",
-            "Spot treatment for fingerprints, haze, and light stains",
-            "Full cleanup — we leave each room tidier than we found it",
             "Screens and track cleaning available as add-ons",
         ],
         "process": [
