@@ -52,6 +52,23 @@ def _variants_exist(stem):
     return all(os.path.exists(os.path.join(_ROOT, f"{stem}-{w}w.{fmt}"))
                for w in (640, 1200) for fmt in ("webp", "jpg"))
 
+def slide_permalink(permalink, index, total):
+    """Instagram post URL pointing at one specific slide of a carousel.
+
+    Instagram reads ?img_index=N (1-based) and opens the post on that slide,
+    so a visitor who taps the third photo in our grid lands on the third
+    photo in the post rather than the cover. Skipped for single-image posts
+    and reels, where the parameter is meaningless.
+
+    index must be the slide's position in the ORIGINAL post, not in whatever
+    list survived filtering — the gallery drops duplicate slides, and
+    renumbering after that would point every later slide at the wrong photo.
+    """
+    if not permalink or total <= 1:
+        return permalink
+    sep = "&" if "?" in permalink else "?"
+    return f"{permalink}{sep}img_index={index + 1}"
+
 _PHASH_CACHE = {}
 def photo_hash(relpath):
     """Perceptual hash of an image — a 64-bit fingerprint of its content.
@@ -872,12 +889,17 @@ def instagram_carousel(depth=0):
         # instagram_sync.py (no per-slide/video data yet) still renders
         # instead of the carousel going empty until the next sync.
         raw_slides = p.get("slides") or [{"image": img, "type": p.get("type")}]
-        slides = [s for s in raw_slides if s.get("image") and os.path.exists(os.path.join(_ROOT, s["image"]))]
+        # Carry the original position alongside each slide so the permalink
+        # can point at the right photo even after missing files are dropped.
+        slides = [(i, s) for i, s in enumerate(raw_slides)
+                  if s.get("image") and os.path.exists(os.path.join(_ROOT, s["image"]))]
         if not slides:
             continue
+        total_slides = len(raw_slides)
         alt = caption_short or f"{BIZ['name']} on Instagram"
         link = p.get("permalink") or BIZ["instagram"]
-        for s in slides:
+        for slide_idx, s in slides:
+            slide_link = slide_permalink(link, slide_idx, total_slides)
             w, h = _real_size(s["image"])
             ratio = f"{w}/{h}"
             if s.get("video") and os.path.exists(os.path.join(_ROOT, s["video"])):
@@ -906,7 +928,7 @@ def instagram_carousel(depth=0):
             # Same clipping trap as the lazy video posters in main.js.
             cards += (f'<div class="insta-card" style="--card-ar:{ratio}">'
                       f'<div class="insta-card-media">{media_html}'
-                      f'<a class="insta-card-badge insta-card-ig" href="{link}" target="_blank" rel="noopener" '
+                      f'<a class="insta-card-badge insta-card-ig" href="{slide_link}" target="_blank" rel="noopener" '
                       f'aria-label="View this post on Instagram">{icon("instagram")}</a></div></div>')
     if not cards:
         return ""
@@ -950,7 +972,10 @@ def gallery_instagram_figures(depth=0, seen_hashes=None):
             caption = caption[:88].rsplit(" ", 1)[0] + "…"
         link = p.get("permalink") or BIZ["instagram"]
         raw_slides = p.get("slides") or [{"image": p.get("image")}]
-        for s in raw_slides:
+        total_slides = len(raw_slides)
+        # enumerate the raw list: dedup below removes slides, and the link has
+        # to keep pointing at the photo's real position inside the post.
+        for slide_idx, s in enumerate(raw_slides):
             img = s.get("image")
             if not img or not os.path.exists(os.path.join(_ROOT, img)):
                 continue
@@ -961,7 +986,8 @@ def gallery_instagram_figures(depth=0, seen_hashes=None):
                 seen.append(h)
             alt = caption or f"{BIZ['name']} on Instagram"
             img_html = picture(root, img, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 25vw")
-            figures += (f'<figure class="reveal"><a href="{link}" target="_blank" rel="noopener" '
+            slide_link = slide_permalink(link, slide_idx, total_slides)
+            figures += (f'<figure class="reveal"><a href="{slide_link}" target="_blank" rel="noopener" '
                         f'aria-label="View this post on Instagram">{img_html}</a></figure>')
     return figures
 
