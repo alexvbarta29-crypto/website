@@ -880,7 +880,7 @@ def build_about():
         slug="about.html", eyebrow="About Us", og_image="assets/img/hero-home.jpg",
         # The page title IS the team heading now — there's no separate
         # headline above it and no lead. The founding line that used to sit
-        # here is covered by "How Barta started" below.
+        # here is covered by "How BWW started" below.
         h1="The brothers behind the brand",
         lead="",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
@@ -892,7 +892,7 @@ def build_about():
   </div></section>
 
   <section class="section-tight"><div class="container">
-    <div class="section-head center"><h2>How Barta started</h2></div>
+    <div class="section-head center"><h2>How BWW started</h2></div>
     <div class="split mt-3">
       <div class="reveal">
         <p>{BIZ['name']} was founded in {BIZ['founded']} by brothers Alex and Jacob Barta, out of
