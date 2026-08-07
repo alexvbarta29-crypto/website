@@ -895,22 +895,25 @@ def build_about():
     <div class="section-head center"><h2>How BWW started</h2></div>
     <div class="split mt-3">
       <div class="reveal">
-        <p>{BIZ['name']} started in {BIZ['founded']} as a summer job between two brothers. What
-          started simply as a summer job quickly became something bigger.</p>
-        <p class="mt-2">We saw an industry where the standard had been set too low. Missed calls, poor
-          communication, unreliable service, and an experience that too often left homeowners
-          expecting less. We knew it could be better.</p>
-        <p class="mt-2">So we built {BIZ['name']} with one goal in mind: set the standard for the home
-          service industry.</p>
-        <p class="mt-2">For us, that means bringing back old-school customer service&mdash;the kind
-          where we answer the phone, show up when we say we will, treat your home with respect, and
-          make sure every detail is right. We want every customer to feel genuinely taken care of from
-          the first call to the final walkthrough.</p>
-        <p class="mt-2">At the same time, we believe great service should feel modern. Clean equipment.
-          Professional communication. Simple processes. Attention to detail. And a premium experience
-          from start to finish.</p>
-        <p class="mt-2">We're not here just to clean windows. We're here to raise expectations for what
-          hiring a home service company should feel like.</p>
+        <p>{BIZ['name']} began in {BIZ['founded']} as a summer job between two brothers, Alex and
+          Jacob. It didn’t stay a summer job for long.</p>
+        <p class="mt-2">Alex and Jacob saw an industry where the standard had fallen so low that
+          simply answering the phone, arriving on time, and doing what was promised was often enough
+          to exceed expectations. Homeowners had grown accustomed to poor communication, unreliable
+          service, and being let down.</p>
+        <p class="mt-2">But Alex and Jacob didn’t want to stand out simply because expectations were
+          low. They wanted to raise them.</p>
+        <p class="mt-2">That became the goal behind {BIZ['name']}: not just to exceed expectations, but
+          to set a new standard for the home service industry.</p>
+        <p class="mt-2">For Alex and Jacob, that means bringing back old-school customer service—the
+          kind where every call is answered, appointments are kept, homes are treated with respect, and
+          every detail is handled correctly. From the first call to the final walkthrough, their goal
+          is to make every customer feel genuinely taken care of.</p>
+        <p class="mt-2">They also believe great service should feel premium—and the experience
+          surrounding it should feel modern. That means clean equipment, professional communication,
+          simple processes, and careful attention to every detail.</p>
+        <p class="mt-2">{BIZ['name']} isn’t here just to clean windows. The company is here to raise
+          expectations for what hiring a home service provider should feel like.</p>
         <p class="mt-2 story-kicker">Old-school service. Modern standards.</p>
       </div>
       <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
