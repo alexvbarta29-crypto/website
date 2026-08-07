@@ -540,7 +540,7 @@ SERVICES = [
         "name": "Christmas Light Installation",
         "hero_pos": "48%",
         "icon": "lights",
-        "image": "assets/img/svc-christmas-light-installation.jpg",
+        "image": "assets/img/xmas-lights-stone-home.jpg",
         "short": "Professional, custom holiday lighting — design, install, maintain, and take down.",
         "hero_sub": "Skip the cold ladder — serving Delano and communities throughout the western Twin Cities with premium holiday lighting.",
         # Exact title/meta/H1 per the Dec-2026 SEO pass — this service gets its
@@ -690,7 +690,11 @@ HOME_SERVICES = [
      "desc": "Restore driveways, patios, and walkways to like-new."},
     {"label": "Commercial Cleaning", "target": "services/commercial-cleaning.html", "icon": "building",
      "desc": "Reliable, scheduled exterior cleaning for your business."},
+    # Explicit img: this card's filename guess (svc-christmas-light-installation.jpg)
+    # is the service's old hero photo, which now only lives in the gallery. Point
+    # it at the current hero so the card matches the page it links to.
     {"label": "Christmas Light Installation", "target": "services/christmas-light-installation.html", "icon": "lights",
+     "img": "assets/img/xmas-lights-stone-home.jpg",
      "desc": "Custom holiday lighting — we design, hang, maintain, and take it down."},
 ]
 
@@ -895,6 +899,7 @@ IMAGE_ALT = {
     "assets/img/svc-screen-cleaning-services.jpg": "Technician washing a window screen at a screen-cleaning station",
     "assets/img/svc-hand-scrubbing.jpg": "Hand-scrubbing a window pane with an abrasive pad",
     "assets/img/svc-christmas-light-installation.jpg": "Warm white holiday lights installed along a home's roofline at night",
+    "assets/img/xmas-lights-stone-home.jpg": "Warm white holiday lights outlining every roofline and peak of a large stone home at dusk",
     "assets/img/xmas-lights-candy-cane.jpg": "Red and white holiday lights installed along a bungalow's roofline at night",
     "assets/img/xmas-lights-craftsman-gables.jpg": "White holiday lights tracing the gables of a craftsman-style home above a snow-covered driveway",
     "assets/img/svc-commercial-cleaning.jpg": "Technicians cleaning storefront windows on a commercial building",
