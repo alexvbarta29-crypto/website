@@ -845,11 +845,12 @@ def build_about():
     depth = 0
     team_cards = ""
     for i, (name, role, initials, photo, bio) in enumerate(TEAM):
-        team_cards += f"""<div class="card reveal" data-delay="{i%3}" style="text-align:center">
-        <img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="420" height="420" style="width:100%;max-width:420px;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center 22%;border-radius:24px;margin:0 auto 20px;display:block">
-        <h3 style="font-size:1.25rem">{name}</h3>
-        <p style="color:var(--blue-600);font-weight:700;font-family:var(--font-head);margin-top:4px">{role}</p>
-        <p class="mt-1" style="font-size:.95rem">{bio}</p></div>"""
+        w, h = _img_size(photo)
+        team_cards += f"""<div class="team-card reveal" data-delay="{i%3}">
+        <div class="team-photo"><img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" decoding="async"></div>
+        <h3>{name}</h3>
+        <p class="team-role">{role}</p>
+        <p class="team-bio">{bio}</p></div>"""
 
     experience = [
         ("Recurring plans that actually save money",
@@ -873,11 +874,18 @@ def build_about():
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
-        h1_class="h1-tight", phero_class="phero-tight",
-        hero_extra=f'<a href="#team" class="about-scroll-cue">Meet Alex &amp; Jacob {icon("chevron")}</a>')
+        h1_class="h1-tight", phero_class="phero-tight")
 
     html += f"""<main id="main">{body}
-  <section class="section-tight" style="padding-top:24px"><div class="container">
+  <section class="section-tight" id="team" style="padding-top:20px"><div class="container">
+    <div class="section-head center">
+      <h2>Meet the Team</h2>
+      <p>The brothers behind every job in {BIZ['city']} and the western metro.</p>
+    </div>
+    <div class="team-grid mt-3">{team_cards}</div>
+  </div></section>
+
+  <section class="section-tight"><div class="container">
     <div class="section-head center"><h2>Our Story</h2></div>
     <div class="split mt-3">
       <div class="reveal">
@@ -909,14 +917,6 @@ def build_about():
         three things.</p>
     </div>
     <ul class="checklist mt-3" style="max-width:760px;margin-inline:auto">{exp_html}</ul>
-  </div></section>
-
-  <section class="section-tight" id="team"><div class="container">
-    <div class="section-head center">
-      <h2>Meet the Team</h2>
-      <p>The brothers behind every job in {BIZ['city']} and the western metro.</p>
-    </div>
-    <div class="grid cols-2 mt-3">{team_cards}</div>
   </div></section>
   {C.cta_band(depth)}
 </main>"""

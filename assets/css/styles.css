@@ -718,10 +718,22 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .phero .hero-trust li { color: var(--slate-700); }
 .phero .hero-trust svg { color: var(--blue-600); }
 .phero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
-.about-scroll-cue { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-family: var(--font-head); font-weight: 700; font-size: .92rem; color: var(--blue-600); }
-.about-scroll-cue svg { width: 16px; height: 16px; animation: aboutCueBounce 1.6s ease-in-out infinite; }
-@keyframes aboutCueBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
-@media (prefers-reduced-motion: reduce) { .about-scroll-cue svg { animation: none; } }
+/* Meet the Team — the photos lead the About page, so they get no card
+   chrome at all: no white panel, no border, no padding. The photo IS the
+   element. Capped at 880px so two portraits sitting side by side on a wide
+   monitor stay a sensible size instead of filling the viewport. */
+.team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(20px, 3.2vw, 36px); max-width: 880px; margin-inline: auto; }
+.team-card { text-align: center; }
+.team-photo { width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); background: var(--mist); }
+.team-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block; }
+.team-card h3 { margin-top: 18px; font-size: clamp(1.2rem, 2.4vw, 1.45rem); }
+.team-role { margin-top: 4px; color: var(--blue-600); font-weight: 700; font-family: var(--font-head); }
+.team-card p.team-bio { margin-top: 10px; font-size: .95rem; }
+/* One per row below this width: two portraits side by side on a phone are
+   too small to be the page's main attraction. */
+@media (max-width: 640px) {
+  .team-grid { grid-template-columns: 1fr; gap: 34px; max-width: 420px; }
+}
 .crumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--slate-400); margin-bottom: 18px; }
 .crumbs a { color: var(--slate-500); }
 .crumbs a:hover { color: var(--blue-600); }
@@ -1145,6 +1157,18 @@ html.js .reveal.in { opacity: 1; transform: none; }
      i.e. exactly over the photo it was meant to leave alone. */
   .hero-photo-full .hero-overlay { background: linear-gradient(180deg,
     rgba(8,8,10,.58) 0%, rgba(8,8,10,.5) 30%, rgba(8,8,10,.28) 52%, rgba(8,8,10,.07) 74%, transparent 90%); }
+
+  /* Drop the CTA to the foot of the hero so it lands on the road beneath the
+     van rather than across the van itself, which is the thing the photo is
+     there to show. Needs the whole chain to stretch — the section, the
+     container and the content block — before margin-top:auto on the button
+     row has any height to push against. The generous bottom padding keeps it
+     clear of the fixed Call / Free Quote bar, which is always on screen at
+     this width and would otherwise sit right on top of it. */
+  .hero-photo-full { align-items: stretch; padding-bottom: 124px; }
+  .hero-photo-full > .container { display: flex; flex-direction: column; }
+  .hero-photo-full .hero-content { flex: 1; display: flex; flex-direction: column; }
+  .hero-photo-full .hero-actions { margin-top: auto; margin-bottom: 0; }
 }
 
 
