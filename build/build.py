@@ -105,9 +105,10 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     hero_pos=None omits the inline object-position style, leaving cropping to
     the page's own CSS (including any @media override) — used by the
     homepage hero, whose .hero-bg-img rule already handles this responsively.
-    Adds a 1920w candidate to the srcset when one exists on disk (currently
-    only the homepage van hero) so a large/high-DPI screen isn't stuck
-    stretching the 1200w file."""
+    Every -<N>w variant found on disk becomes a srcset candidate, so an
+    above-1200 tier (the 1920w homepage/gallery heroes, or a native-width
+    tier for a source that lands between 1200 and 1920) is picked up
+    automatically without this function needing to know the widths."""
     style = f'style="object-position:50% {hero_pos}"' if hero_pos else ""
     stem = image_path.rsplit(".", 1)[0]
     variants_exist = all(
@@ -117,14 +118,19 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
         w, h = _img_size(image_path)
         return C.picture(root, image_path, alt, img_class=img_class,
                           extra_attrs=f'width="{w}" height="{h}" fetchpriority="high" decoding="async" {style}')
-    has_1920 = all(os.path.exists(os.path.join(ROOT, f"{stem}-1920w.{fmt}")) for fmt in ("webp", "jpg"))
-    webp_srcset = f"{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w"
-    jpg_srcset = f"{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w"
-    default_w = "1200w"
-    if has_1920:
-        webp_srcset += f", {root}{stem}-1920w.webp 1920w"
-        jpg_srcset += f", {root}{stem}-1920w.jpg 1920w"
-        default_w = "1920w"
+    # Only widths present as BOTH webp and jpg are offered, so the two srcsets
+    # always stay in lockstep and no browser can be sent to a missing file.
+    import glob as _g, re as _re
+    widths = sorted(
+        w for w in {
+            int(m.group(1))
+            for p in _g.glob(os.path.join(ROOT, f"{stem}-*w.jpg"))
+            for m in [_re.search(r"-(\d+)w\.jpg$", p)] if m
+        }
+        if os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.webp")))
+    webp_srcset = ", ".join(f"{root}{stem}-{w}w.webp {w}w" for w in widths)
+    jpg_srcset = ", ".join(f"{root}{stem}-{w}w.jpg {w}w" for w in widths)
+    default_w = f"{widths[-1]}w"
     w_img, h_img = _img_size(f"{stem}-{default_w}.jpg")
     return (f'<picture>'
             f'<source type="image/webp" srcset="{webp_srcset}" sizes="100vw">'
@@ -530,7 +536,7 @@ def build_service(svc):
           <p>{svc['why_barta']}</p>
           <a class="btn mt-3" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Quote {icon('arrow')}</a>
         </div>
-        <div class="reveal">{C.photo("assets/img/xmas-lights-craftsman-gables.jpg", IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"], ratio="5/4", depth=depth)}</div>
+        <div class="reveal">{C.photo("assets/img/svc-christmas-light-installation.jpg", IMAGE_ALT["assets/img/svc-christmas-light-installation.jpg"], ratio="5/4", depth=depth)}</div>
       </div>
     </div>
   </section>"""
@@ -540,8 +546,8 @@ def build_service(svc):
     prose_photo = ""
     if is_xmas:
         prose_photo = ('<div style="margin:26px 0">'
-                       + C.photo("assets/img/xmas-lights-candy-cane.jpg",
-                                 IMAGE_ALT["assets/img/xmas-lights-candy-cane.jpg"],
+                       + C.photo("assets/img/xmas-lights-craftsman-gables.jpg",
+                                 IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"],
                                  ratio="3/2", depth=depth) + "</div>")
 
     # The generic "how often should I schedule this / membership plans bundle
@@ -1910,6 +1916,12 @@ _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 # never upscales. GALLERY_HERO is the Gallery page's photo header.
 _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 
+# Full-bleed heroes whose source is wider than the 1200w tier but narrower
+# than 1920 — they get one extra derivative at their exact native width so
+# a desktop stops stretching the 1200w file. Every other service hero has a
+# 4000px+ source, where the fixed tiers above already cover the range.
+_HERO_NATIVE_PATHS = {"assets/img/xmas-lights-stone-home.jpg"}
+
 # Every individual service page's hero photo gets this higher-quality tier —
 # it's the single largest, most-scrutinized image on that page (the proof
 # the crew actually does the work), and each page only loads its own one
@@ -1965,6 +1977,19 @@ def generate_hero_variants():
         base = None
         base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
         specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
+        # A full-bleed hero is object-fit:cover, so on a 1440x900 window it is
+        # scaled to ~1600px wide — above the 1200w tier. Sources with real
+        # pixels between 1200 and 1920 get one extra tier at their exact
+        # native width rather than letting the browser upscale the 1200w file.
+        # The true width goes in the filename, so the srcset descriptor never
+        # over-claims (the resizer clamps to the source and never upscales).
+        if rel in _HERO_NATIVE_PATHS:
+            nat_w = _img_size(rel)[0]
+            if 1200 < nat_w < 1920:
+                # No downscale happens at native width, so this is a straight
+                # re-encode — quality set high because it is the page's LCP
+                # image and a sub-1920 source is small enough to afford it.
+                specs = specs + [(nat_w, "webp", 90), (nat_w, "jpg", 93)]
         for max_w, fmt, quality in specs:
             out_rel = f"{stem}-{max_w}w.{fmt}"
             out_path = os.path.join(ROOT, out_rel)
