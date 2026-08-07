@@ -309,9 +309,11 @@ def nav(depth=0):
 
 def sticky_cta(depth=0):
     root = rel(depth)
+    # Call only. The quote button was removed from this bar at the owner's
+    # request — a phone call converts better for them than a form. Every
+    # stationary "Get a Quote" button elsewhere on the site stays.
     return f"""<div class="sticky-cta">
-  <a class="btn btn-call" href="tel:{BIZ['phone_href']}">{icon('phone')} Call</a>
-  <a class="btn" href="{root}get-quote.html">Free Quote</a>
+  <a class="btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
 </div>"""
 
 def footer(depth=0):

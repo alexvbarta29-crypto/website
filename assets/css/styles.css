@@ -862,7 +862,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Same glass as the header — it's the other bar pinned over the page. */
 .sticky-cta { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 90; display: none; gap: 10px; padding: 10px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
 .sticky-cta .btn { flex: 1; padding: 14px; }
-.sticky-cta .btn-call { background: #fff; color: var(--navy-800); box-shadow: var(--sh-sm); border: 1px solid var(--line); }
+/* .btn-call (the white secondary treatment) is gone with the second button —
+   with Call now the only action in the bar it takes the primary brand style,
+   and flex:1 above stretches it the full width. */
 
 /* ---------- Footer ---------- */
 .footer { background: var(--navy-900); color: rgba(255,255,255,.88); padding-block: clamp(48px, 6vw, 76px) 30px; }

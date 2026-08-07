@@ -871,8 +871,10 @@ def build_about():
          "You're dealing with the two people whose name is on the van, not a call center — and every "
          "job is covered by full insurance, on a crew Alex and Jacob trained themselves."),
     ]
-    exp_html = "".join(
-        f"<li>{icon('check-circle')}<span><strong>{t}.</strong> {d}</span></li>" for t, d in experience)
+    # Prose bullets with a bold lead-in, not icon rows — the label carries the
+    # point and the sentence explains it, which reads better at this length
+    # than a checklist does.
+    exp_html = "".join(f"<li><span><strong>{t}:</strong> {d}</span></li>" for t, d in experience)
 
     html, body = interior_head(
         title=seo_title("About Us — Family-Owned in Delano, MN"),
@@ -921,13 +923,14 @@ def build_about():
   </div></section>
 
   <section class="bg-mist"><div class="container">
-    <div class="section-head center">
-      <span class="eyebrow" style="justify-content:center">Why homeowners stay with us</span>
-      <h2>The Barta Experience</h2>
-      <p>We'd rather earn a customer for years than a job for a day. In practice, that comes down to
-        three things.</p>
+    <div class="prose reveal" style="margin-inline:auto">
+      <h2 class="mt-0">The Barta Experience</h2>
+      <p>Barta goes beyond just getting your windows clean. We'd rather earn a customer for years
+        than a job for a day, and that shapes how every visit runs. Here's what it comes down to:</p>
+      <ul>{exp_html}</ul>
+      <p>The promise is simple: the job done right, your home left exactly as we found it, and nobody
+        to chase afterwards. Call us and you'll get one of the owners, not a queue.</p>
     </div>
-    <ul class="checklist mt-3" style="max-width:760px;margin-inline:auto">{exp_html}</ul>
   </div></section>
   {C.cta_band(depth)}
 </main>"""
