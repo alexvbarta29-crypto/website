@@ -895,20 +895,23 @@ def build_about():
     <div class="section-head center"><h2>How BWW started</h2></div>
     <div class="split mt-3">
       <div class="reveal">
-        <p>{BIZ['name']} was founded in {BIZ['founded']} by brothers Alex and Jacob Barta, out of
-          {BIZ['city']}, Minnesota. They started the company because they thought the home service
-          industry could do a whole lot better. Calls that never get returned, pricing you can't pin
-          down, crews that show up whenever it suits them — somewhere along the line that became
-          normal, and homeowners just learned to expect it.</p>
-        <p class="mt-2">They didn't think it should be that way. Two brothers, one goal: set the
-          standard for what home service is supposed to look like.</p>
-        <p class="mt-2">In practice that means old-school customer service with a modern edge. You call
-          and a real person picks up. You get a straight answer on price, and the job gets done right
-          the first time. Around that, the things people expect now — branded vans, trained crews,
-          clear scheduling, and a quote you can request in a couple of minutes.</p>
-        <p class="mt-2">From {BIZ['city']}, Barta serves homeowners and businesses across the western
-          Twin Cities: window cleaning inside and out, gutters, pressure and soft washing, screens and
-          tracks, and holiday lighting through the winter.</p>
+        <p>{BIZ['name']} started in {BIZ['founded']} as a summer job between two brothers. What
+          started simply as a summer job quickly became something bigger.</p>
+        <p class="mt-2">We saw an industry where the standard had been set too low. Missed calls, poor
+          communication, unreliable service, and an experience that too often left homeowners
+          expecting less. We knew it could be better.</p>
+        <p class="mt-2">So we built {BIZ['name']} with one goal in mind: set the standard for the home
+          service industry.</p>
+        <p class="mt-2">For us, that means bringing back old-school customer service&mdash;the kind
+          where we answer the phone, show up when we say we will, treat your home with respect, and
+          make sure every detail is right. We want every customer to feel genuinely taken care of from
+          the first call to the final walkthrough.</p>
+        <p class="mt-2">At the same time, we believe great service should feel modern. Clean equipment.
+          Professional communication. Simple processes. Attention to detail. And a premium experience
+          from start to finish.</p>
+        <p class="mt-2">We're not here just to clean windows. We're here to raise expectations for what
+          hiring a home service company should feel like.</p>
+        <p class="mt-2 story-kicker">Old-school service. Modern standards.</p>
       </div>
       <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
     </div>

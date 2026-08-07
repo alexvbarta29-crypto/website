@@ -788,6 +788,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* Split feature */
+/* Closing line of the About story — a two-sentence sign-off, set apart from
+   the paragraphs above it rather than reading as another one. */
+.story-kicker { font-family: var(--font-head); font-weight: 800; font-size: clamp(1.05rem, 1.9vw, 1.25rem); color: var(--ink); margin-top: 26px; }
+
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; }
 .split.top { align-items: start; }
 .split.reverse .split-media { order: 2; }
