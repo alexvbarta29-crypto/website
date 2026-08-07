@@ -690,6 +690,9 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
                   primary_kw=primary_kw, noindex=noindex, og_image=og_image)
     html += C.nav(depth)
     crumbs = C.crumbs([("Home", C.rel(depth) + "index.html"), (crumb_label or h1, None)])
+    # An empty lead would still emit <p class="lead"></p> and its margin, so
+    # a page that wants a bare headline can pass lead="" and get one.
+    lead_html = f'<p class="lead">{lead}</p>' if lead else ""
     if cta_form:
         body = f"""
   <section class="phero {phero_class}">
@@ -699,7 +702,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
         <div>
           <span class="eyebrow">{eyebrow}</span>
           <h1 class="mt-1 {h1_class}">{h1}</h1>
-          <p class="lead">{lead}</p>
+          {lead_html}
           <div class="phero-actions">
             <a class="btn btn-lg" href="#quote-form">Get a Free Quote {icon('arrow')}</a>
             <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
@@ -717,7 +720,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
       <div style="max-width:760px">
         <span class="eyebrow">{eyebrow}</span>
         <h1 class="mt-1 {h1_class}">{h1}</h1>
-        <p class="lead">{lead}</p>
+        {lead_html}
         {hero_extra}
       </div>
     </div>
@@ -860,9 +863,11 @@ def build_about():
         ("A guarantee without the fine print",
          "Every service is backed by our 100% Satisfaction Guarantee. If any part of a job isn't right, "
          "call us and we come back and re-clean it free. No forms, no argument."),
+        # "to the standard Alex and Jacob set" removed — "set the standard"
+        # already opens Our Story and Alex's bio uses it too.
         ("Owner-run, and fully insured",
          "You're dealing with the two people whose name is on the van, not a call center — and every "
-         "visit is covered by full insurance, on a crew trained to the standard Alex and Jacob set."),
+         "job is covered by full insurance, on a crew Alex and Jacob trained themselves."),
     ]
     exp_html = "".join(
         f"<li>{icon('check-circle')}<span><strong>{t}.</strong> {d}</span></li>" for t, d in experience)
@@ -872,38 +877,39 @@ def build_about():
         desc="Two brothers started Barta Window Washing in Delano, MN to raise the standard of home service — old-school customer care with a modern edge.",
         slug="about.html", eyebrow="About Us", og_image="assets/img/hero-home.jpg",
         h1="A Delano family business, built on trust",
-        lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
+        # No lead. It read "Founded in 2024 by two brothers, Alex and Jacob
+        # Barta" — the same fact Our Story opens with a screen further down.
+        # Saying it twice is what made the header feel padded.
+        lead="",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
         h1_class="h1-tight", phero_class="phero-tight")
 
     html += f"""<main id="main">{body}
   <section class="section-tight" id="team" style="padding-top:20px"><div class="container">
     <div class="section-head center">
-      <h2>Meet the Team</h2>
-      <p>The brothers behind every job in {BIZ['city']} and the western metro.</p>
+      <h2>The brothers behind the brand</h2>
     </div>
     <div class="team-grid mt-3">{team_cards}</div>
   </div></section>
 
   <section class="section-tight"><div class="container">
-    <div class="section-head center"><h2>Our Story</h2></div>
+    <div class="section-head center"><h2>How Barta started</h2></div>
     <div class="split mt-3">
       <div class="reveal">
-        <p>We started this company because we thought the home service industry could do a whole
-          lot better. Calls that never get returned, pricing you can't pin down, crews that show up
-          whenever it suits them — somewhere along the line that became normal, and homeowners just
-          learned to expect it.</p>
-        <p class="mt-2">We didn't think it should be that way. So in {BIZ['founded']} we started
-          {BIZ['name']} out of {BIZ['city']}, Minnesota — two brothers, one goal: set the standard
-          for what home service is supposed to look like.</p>
-        <p class="mt-2">For us that means old-school customer service with a modern edge. You call and
-          a real person picks up. You get a straight answer on price, and the job gets done right the
-          first time. Around that, the things people expect now — branded vans, trained crews, clear
-          scheduling, and a quote you can request in a couple of minutes.</p>
-        <p class="mt-2">From {BIZ['city']} we serve homeowners and businesses across the western Twin Cities:
-          window cleaning inside and out, gutters, pressure and soft washing, screens and tracks, and
-          holiday lighting through the winter. Every visit is fully insured, and every job is backed by
-          our satisfaction guarantee.</p>
+        <p>{BIZ['name']} was founded in {BIZ['founded']} by brothers Alex and Jacob Barta, out of
+          {BIZ['city']}, Minnesota. They started the company because they thought the home service
+          industry could do a whole lot better. Calls that never get returned, pricing you can't pin
+          down, crews that show up whenever it suits them — somewhere along the line that became
+          normal, and homeowners just learned to expect it.</p>
+        <p class="mt-2">They didn't think it should be that way. Two brothers, one goal: set the
+          standard for what home service is supposed to look like.</p>
+        <p class="mt-2">In practice that means old-school customer service with a modern edge. You call
+          and a real person picks up. You get a straight answer on price, and the job gets done right
+          the first time. Around that, the things people expect now — branded vans, trained crews,
+          clear scheduling, and a quote you can request in a couple of minutes.</p>
+        <p class="mt-2">From {BIZ['city']}, Barta serves homeowners and businesses across the western
+          Twin Cities: window cleaning inside and out, gutters, pressure and soft washing, screens and
+          tracks, and holiday lighting through the winter.</p>
       </div>
       <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
     </div>
