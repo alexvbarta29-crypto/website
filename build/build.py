@@ -847,13 +847,15 @@ def build_about():
     docs/OWNER-VERIFICATION.md."""
     depth = 0
     team_cards = ""
-    for i, (name, role, initials, photo, bio) in enumerate(TEAM):
+    # Photo, name, role — nothing else. The bios are still in sitedata.TEAM
+    # but deliberately not rendered: the owners wanted the photos to carry
+    # this section on their own.
+    for i, (name, role, _initials, photo, _bio) in enumerate(TEAM):
         w, h = _img_size(photo)
         team_cards += f"""<div class="team-card reveal" data-delay="{i%3}">
         <div class="team-photo"><img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" decoding="async"></div>
-        <h3>{name}</h3>
-        <p class="team-role">{role}</p>
-        <p class="team-bio">{bio}</p></div>"""
+        <h2>{name}</h2>
+        <p class="team-role">{role}</p></div>"""
 
     experience = [
         ("Recurring plans that actually save money",
@@ -876,20 +878,17 @@ def build_about():
         title=seo_title("About Us — Family-Owned in Delano, MN"),
         desc="Two brothers started Barta Window Washing in Delano, MN to raise the standard of home service — old-school customer care with a modern edge.",
         slug="about.html", eyebrow="About Us", og_image="assets/img/hero-home.jpg",
-        h1="A Delano family business, built on trust",
-        # No lead. It read "Founded in 2024 by two brothers, Alex and Jacob
-        # Barta" — the same fact Our Story opens with a screen further down.
-        # Saying it twice is what made the header feel padded.
+        # The page title IS the team heading now — there's no separate
+        # headline above it and no lead. The founding line that used to sit
+        # here is covered by "How Barta started" below.
+        h1="The brothers behind the brand",
         lead="",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
         h1_class="h1-tight", phero_class="phero-tight")
 
     html += f"""<main id="main">{body}
-  <section class="section-tight" id="team" style="padding-top:20px"><div class="container">
-    <div class="section-head center">
-      <h2>The brothers behind the brand</h2>
-    </div>
-    <div class="team-grid mt-3">{team_cards}</div>
+  <section class="section-tight" id="team" style="padding-top:8px"><div class="container">
+    <div class="team-grid">{team_cards}</div>
   </div></section>
 
   <section class="section-tight"><div class="container">

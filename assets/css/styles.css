@@ -726,9 +726,12 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .team-card { text-align: center; }
 .team-photo { width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); background: var(--mist); }
 .team-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block; }
-.team-card h3 { margin-top: 18px; font-size: clamp(1.2rem, 2.4vw, 1.45rem); }
+/* The names are h2s — with the page title now being the section heading,
+   each brother is a top-level section under it, and an h3 straight after an
+   h1 would skip a level. Sized down from the global h2 scale, which is built
+   for section headings rather than a caption under a photo. */
+.team-card h2 { margin-top: 18px; font-size: clamp(1.2rem, 2.4vw, 1.45rem); }
 .team-role { margin-top: 4px; color: var(--blue-600); font-weight: 700; font-family: var(--font-head); }
-.team-card p.team-bio { margin-top: 10px; font-size: .95rem; }
 /* One per row below this width: two portraits side by side on a phone are
    too small to be the page's main attraction. */
 @media (max-width: 640px) {
@@ -1167,7 +1170,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
      row has any height to push against. The generous bottom padding keeps it
      clear of the fixed Call / Free Quote bar, which is always on screen at
      this width and would otherwise sit right on top of it. */
-  .hero-photo-full { align-items: stretch; padding-bottom: 124px; }
+  .hero-photo-full { align-items: stretch; padding-bottom: 100px; }
   .hero-photo-full > .container { display: flex; flex-direction: column; }
   .hero-photo-full .hero-content { flex: 1; display: flex; flex-direction: column; }
   .hero-photo-full .hero-actions { margin-top: auto; margin-bottom: 0; }
