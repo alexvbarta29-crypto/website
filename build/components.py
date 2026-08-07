@@ -700,10 +700,13 @@ def picture_card(item, depth=0, idx=0):
     alt = IMAGE_ALT.get(img, f"{item['label']} service photo")
     feat = " featured" if item.get("featured") else ""
     # Featured cards span 2 of 4 columns (desktop) or the full row (tablet/
-    # mobile); non-featured cards are 1 of 4 (desktop), 1 of 2 (tablet), or
-    # full-width (mobile) — see .svc-grid in styles.css.
+    # mobile); non-featured cards are 1 of 4 (desktop) and 1 of 2 everywhere
+    # below 980px — .svc-grid stays repeat(2, 1fr) all the way down, so the
+    # old "(max-width: 560px) 100vw" branch (from when mobile was a single
+    # column) overstated these by 2x and made phones fetch the 1200w file for
+    # a card that renders ~170 css px wide.
     sizes = ("(max-width: 980px) 100vw, 50vw" if item.get("featured")
-             else "(max-width: 560px) 100vw, (max-width: 980px) 50vw, 25vw")
+             else "(max-width: 980px) 50vw, 25vw")
     img_tag = picture(root, img, alt, img_class="img-card-bg",
                        extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
                        sizes=sizes)
