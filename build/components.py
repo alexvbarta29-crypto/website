@@ -977,11 +977,22 @@ GOOGLE_G = ('<svg viewBox="0 0 48 48" aria-hidden="true" width="18" height="18">
             '<path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"/>'
             '<path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>')
 
-def google_badge(depth=0, light=False, text=None):
+def google_badge(depth=0, light=False, text=None, bare=False):
+    """Clickable Google review badge → links to the Google Business Profile.
+
+    light=True is the solid-white chip for light page sections. bare=True
+    drops the pill entirely — no fill, no border, no blur — leaving just the
+    stars, the G and the words over a hero photo. Only use bare over a photo:
+    its text goes white, which would be invisible on a pale background, and
+    this same badge renders on two dozen light-background pages via
+    reviews_block()."""
     if text is None:
         text = f"{BIZ['rating']} rating · {BIZ['review_count']}+ reviews"
-    """Clickable Google review badge → links to the Google Business Profile."""
-    cls = "google-badge google-badge--light" if light else "google-badge"
+    cls = "google-badge"
+    if light:
+        cls += " google-badge--light"
+    elif bare:
+        cls += " google-badge--bare"
     stars = '<span class="stars">' + icon("star") * 5 + "</span>"
     return (f'<a class="{cls}" href="{BIZ["google"]}" target="_blank" rel="noopener" aria-label="{text} on Google — view our Google Business Profile">'
             f'{stars}<span class="gb-g">{GOOGLE_G}</span><span class="gb-text">{text}</span></a>')

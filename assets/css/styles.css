@@ -1005,7 +1005,9 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .nav-toggle { display: grid; }
   .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
   .nav { position: relative; }
-  .nav .brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  /* Brand sits at the left as a normal flex item. It used to be absolutely
+     centred; without that it falls back to the start of the row, with
+     .nav-cta pushed to the far end by its auto margin. */
   .nav-cta { margin-left: auto; }
 }
 @media (max-width: 960px) {
@@ -1188,6 +1190,17 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .google-badge--light { background: #fff; border: 1px solid var(--line); box-shadow: var(--sh-sm); }
 .google-badge--light:hover { background: #fff; box-shadow: var(--sh-md); }
 .google-badge--light .gb-text { color: var(--navy-800); }
+
+/* Bare variant — no pill at all, just stars, the G and the words sitting on
+   the hero photo. The text goes white and carries the same shadow as the
+   headline directly beneath it, which is what keeps it readable: over a
+   photo, white type with a dark shadow reads far better than dark type with
+   a light outline, and it matches the rest of the hero. Padding stays for
+   the tap target even though nothing draws it. */
+.google-badge--bare { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 10px 2px; }
+.google-badge--bare:hover { background: none; box-shadow: none; }
+.google-badge--bare .gb-text { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7), 0 2px 16px rgba(0,0,0,.55); }
+.google-badge--bare .stars svg, .google-badge--bare .gb-g svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
 
 /* "Save money with every service" promo plan cards */
 .promo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-items: stretch; }

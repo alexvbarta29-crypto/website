@@ -246,7 +246,7 @@ def build_home():
     <div class="hero-overlay"></div>
     <div class="container">
       <div class="hero-content reveal in">
-        {C.google_badge(depth)}
+        {C.google_badge(depth, bare=True)}
         <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
         <p class="lead">Professional window and exterior cleaning based in Delano and serving communities throughout the western Twin Cities.</p>
         <div class="hero-actions">
