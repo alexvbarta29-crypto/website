@@ -58,6 +58,23 @@ picture { display: contents; }
   --sh-glass: 0 8px 32px rgba(14,14,18,.12);
   --sh-glow: 0 14px 38px rgba(251,77,61,.34);
 
+  /* Frosted glass — one definition shared by the header, the rating badge
+     and the sticky mobile bar so they can't drift apart. The tint is kept
+     deliberately light: a heavy blur only reads as blur if enough of the
+     backdrop shows through, so opacity and blur have to move together.
+     Raise --glass-bg toward 1 and the surface goes opaque white and the
+     blur stops being visible at all, whatever its radius. */
+     The two tints are not interchangeable. --glass-bg is for glass sitting
+     over the hero photo, where a soft backdrop can show through and the
+     effect is the point. --glass-bg-strong is for glass over ordinary page
+     content: headings and buttons are high-contrast, and at the lighter
+     tint they ghost straight through and compete with the logo. The header
+     swaps to the stronger tint the moment it leaves the hero. */
+  --glass-bg: rgba(255,255,255,.46);
+  --glass-bg-strong: rgba(255,255,255,.7);
+  --glass-blur: saturate(180%) blur(90px);
+  --glass-border: rgba(255,255,255,.45);
+
   /* Layout */
   --container: 1180px;
   --gutter: clamp(20px, 5vw, 56px);
@@ -156,15 +173,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   max-width: var(--container); margin-inline: auto;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   height: var(--nav-h); padding: 0 14px 0 22px;
-  background: rgba(255,255,255,.6);
-  backdrop-filter: saturate(150%) blur(38px); -webkit-backdrop-filter: saturate(150%) blur(38px);
-  border: 1px solid rgba(255,255,255,.5);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--r-pill);
   box-shadow: 0 8px 30px rgba(14,14,18,.1);
   transition: box-shadow .4s var(--ease), background .4s var(--ease);
 }
 .nav-wrap.scrolled { padding-top: 8px; padding-bottom: 8px; }
-.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.14); background: rgba(255,255,255,.78); }
+.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.14); background: var(--glass-bg-strong); }
 .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-head); font-weight: 800; font-size: 1.18rem; letter-spacing: -.02em; color: var(--navy-800); }
 .brand-logo { height: 40px; width: auto; display: block; }
 .footer .brand-logo { height: 44px; }
@@ -822,7 +839,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .imgph svg { width: 40px; height: 40px; opacity: .6; }
 
 /* ---------- Sticky mobile CTA ---------- */
-.sticky-cta { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 90; display: none; gap: 10px; padding: 10px; background: rgba(255,255,255,.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.6); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
+/* Same glass as the header — it's the other bar pinned over the page. Uses
+   the stronger tint because it sits behind two solid buttons and needs to
+   read as a surface, not a haze. */
+.sticky-cta { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 90; display: none; gap: 10px; padding: 10px; background: var(--glass-bg-strong); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
 .sticky-cta .btn { flex: 1; padding: 14px; }
 .sticky-cta .btn-call { background: #fff; color: var(--navy-800); box-shadow: var(--sh-sm); border: 1px solid var(--line); }
 
@@ -1133,12 +1153,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 /* Frosted white, not a dark chip: the badge sits over the hero photo, and
    dark-on-photo made it read as a black box. White with navy text keeps the
    glassy look while staying legible over whatever the photo is doing. */
-/* Background, blur, border and shadow are copied from .nav deliberately, so
-   the badge and the header read as the same piece of frosted glass over the
-   hero photo. Keep these four values in step with .nav if that ever changes
-   — the whole point is that they match at rest, at the top of the page. */
-.google-badge { display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: var(--r-pill); background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.5); -webkit-backdrop-filter: saturate(150%) blur(38px); backdrop-filter: saturate(150%) blur(38px); box-shadow: 0 8px 30px rgba(14,14,18,.1); transition: background .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease); }
-.google-badge:hover { background: rgba(255,255,255,.78); transform: translateY(-1px); box-shadow: 0 10px 34px rgba(14,14,18,.14); }
+/* Same glass tokens as .nav, so the badge and the header read as one
+   material over the hero photo. */
+.google-badge { display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: var(--r-pill); background: var(--glass-bg); border: 1px solid var(--glass-border); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: 0 8px 30px rgba(14,14,18,.1); transition: background .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease); }
+.google-badge:hover { background: var(--glass-bg-strong); transform: translateY(-1px); box-shadow: 0 10px 34px rgba(14,14,18,.14); }
 .google-badge .stars { display: inline-flex; gap: 2px; color: var(--gold); }
 .google-badge .stars svg { width: 16px; height: 16px; }
 .google-badge .gb-g { display: inline-flex; }
