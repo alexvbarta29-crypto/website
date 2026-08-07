@@ -843,7 +843,21 @@ def instagram_carousel(depth=0):
             else:
                 media_html = picture(root, s["image"], alt, img_class="insta-card-media-el",
                                       extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")
-            cards += (f'<div class="insta-card reveal" style="aspect-ratio:{ratio}">'
+            # The post's true aspect goes in a custom property rather than
+            # straight into aspect-ratio, so the mobile stylesheet can opt out
+            # of it (inline styles would otherwise beat the rule) and give
+            # every card one uniform width.
+            #
+            # No "reveal" class here on purpose. That scroll-in animation holds
+            # an element at opacity 0 until an IntersectionObserver sees it —
+            # but .insta-track is a horizontal scroll container, and an
+            # intermediate clipper like that keeps cards outside the visible
+            # strip from ever registering as intersecting. Cards therefore
+            # stayed invisible until you scrolled them to the middle, which
+            # meant the slivers of the previous and next post either side of
+            # the centred one were positioned correctly but never painted.
+            # Same clipping trap as the lazy video posters in main.js.
+            cards += (f'<div class="insta-card" style="--card-ar:{ratio}">'
                       f'<div class="insta-card-media">{media_html}'
                       f'<a class="insta-card-badge insta-card-ig" href="{link}" target="_blank" rel="noopener" '
                       f'aria-label="View this post on Instagram">{icon("instagram")}</a></div></div>')
