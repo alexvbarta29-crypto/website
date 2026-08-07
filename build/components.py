@@ -52,6 +52,51 @@ def _variants_exist(stem):
     return all(os.path.exists(os.path.join(_ROOT, f"{stem}-{w}w.{fmt}"))
                for w in (640, 1200) for fmt in ("webp", "jpg"))
 
+_PHASH_CACHE = {}
+def photo_hash(relpath):
+    """Perceptual hash of an image — a 64-bit fingerprint of its content.
+
+    Filename comparison can't catch the real problem in the gallery: the same
+    photograph arriving twice under two different names, once as a curated
+    site image and once pulled from Instagram. Those files differ in
+    resolution, crop and compression, so their bytes never match, but the
+    picture is identical to a visitor.
+
+    This is a dHash: shrink to 9x8 greyscale and record whether each pixel is
+    brighter than the one to its right. Comparing relative brightness rather
+    than absolute values makes it survive rescaling and re-encoding, which is
+    exactly how these duplicates differ. Returns None if the file can't be
+    read, so a missing image never breaks a build."""
+    if relpath in _PHASH_CACHE:
+        return _PHASH_CACHE[relpath]
+    bits = None
+    try:
+        from PIL import Image
+        with Image.open(os.path.join(_ROOT, relpath)) as im:
+            px = list(im.convert("L").resize((9, 8), Image.LANCZOS).getdata())
+        bits = 0
+        for row in range(8):
+            for col in range(8):
+                if px[row * 9 + col] < px[row * 9 + col + 1]:
+                    bits |= 1 << (row * 8 + col)
+    except Exception:
+        bits = None
+    _PHASH_CACHE[relpath] = bits
+    return bits
+
+# Two photos count as the same picture below this many differing bits. Measured
+# against the real duplicates on this site: identical shots scored 0-4 bits
+# apart, while the genuinely different before/after pairs — same driveway, same
+# angle, minutes apart — scored 35 and 62. 12 sits well clear of both.
+PHASH_DUPE_BITS = 12
+
+def is_duplicate_photo(relpath, seen_hashes):
+    """True if this image is visually the same as one already shown."""
+    h = photo_hash(relpath)
+    if h is None:
+        return False
+    return any(bin(h ^ prev).count("1") <= PHASH_DUPE_BITS for prev in seen_hashes)
+
 def _poster_src(relpath):
     """A <video poster> takes one URL and can't carry a srcset, so it would
     otherwise serve the full-size original — on the homepage that was ~1.1 MB
@@ -871,7 +916,7 @@ def instagram_carousel(depth=0):
       <button type="button" class="insta-arrow next" aria-label="Scroll right">{icon('chevron')}</button>
     </div>"""
 
-def gallery_instagram_figures(depth=0):
+def gallery_instagram_figures(depth=0, seen_hashes=None):
     """Every real Instagram photo as bare <figure> tags (no wrapping .gallery
     div, no section/heading — the Gallery page drops them straight into its
     one continuous photo grid alongside every other real photo, not a
@@ -879,7 +924,13 @@ def gallery_instagram_figures(depth=0):
     Instagram post. Reads the same build/instagram_feed.json manifest as
     instagram_carousel() — see that function's docstring for how it gets
     populated — and returns "" (not a broken section) if the manifest is
-    missing or empty."""
+    missing or empty.
+
+    seen_hashes: fingerprints of photos the gallery has already placed. Several
+    Instagram posts are the very same shots that also live as curated site
+    images — the two team portraits, the screen-cleaning and solar photos —
+    just at a different resolution. Skipping those here is what keeps the
+    gallery from showing one picture twice."""
     path = os.path.join(_ROOT, "build", "instagram_feed.json")
     if not os.path.exists(path):
         return ""
@@ -891,6 +942,7 @@ def gallery_instagram_figures(depth=0):
     if not posts:
         return ""
     root = rel(depth)
+    seen = list(seen_hashes or [])
     figures = ""
     for p in posts:
         caption = (p.get("caption") or "").strip().split("\n")[0]
@@ -902,6 +954,11 @@ def gallery_instagram_figures(depth=0):
             img = s.get("image")
             if not img or not os.path.exists(os.path.join(_ROOT, img)):
                 continue
+            if is_duplicate_photo(img, seen):
+                continue
+            h = photo_hash(img)
+            if h is not None:
+                seen.append(h)
             alt = caption or f"{BIZ['name']} on Instagram"
             img_html = picture(root, img, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 25vw")
             figures += (f'<figure class="reveal"><a href="{link}" target="_blank" rel="noopener" '

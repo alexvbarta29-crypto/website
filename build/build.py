@@ -766,15 +766,23 @@ def build_gallery():
 
     # Every real photo on the site, not just a curated handful — the more
     # of the actual work visitors can see, the better. Anything already shown
-    # elsewhere on this page (the hero, the CTA backdrop) is held back, and a
-    # seen-set guards against the same file arriving from two sources, so no
-    # photo appears twice.
+    # elsewhere on this page (the hero, the CTA backdrop) is held back.
+    #
+    # Dedup is by image content, not filename. Matching names only catches the
+    # same file arriving twice; it misses the same photograph stored under two
+    # different names, which is what actually happens here — several Instagram
+    # posts are the identical shots already curated as site images, at a
+    # different resolution. Those slipped through and appeared twice.
     already_shown = {GALLERY_HERO, GALLERY_CTA_IMAGE}
     work_photos, seen = [], set(already_shown)
+    seen_hashes = [h for h in (C.photo_hash(s) for s in already_shown) if h is not None]
     def _add(src, alt):
-        if src in seen:
+        if src in seen or C.is_duplicate_photo(src, seen_hashes):
             return
         seen.add(src)
+        h = C.photo_hash(src)
+        if h is not None:
+            seen_hashes.append(h)
         work_photos.append((src, alt))
     for src, alt in IMAGE_ALT.items():
         _add(src, alt)
@@ -804,7 +812,7 @@ def build_gallery():
         figures.insert(min(len(figures), step * (i + 1) + i), tile)
 
     work_html = "".join(figures)
-    work_html += C.gallery_instagram_figures(depth)
+    work_html += C.gallery_instagram_figures(depth, seen_hashes=seen_hashes)
 
     # 34% keeps the technician's head, the squeegee and the arched glass in
     # frame; the default centre crop pushes his head up behind the nav bar.
