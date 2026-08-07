@@ -648,8 +648,8 @@ def build_service(svc):
           <h2 class="mt-0">{svc['name']} at {BIZ['name']}</h2>
           <p>{svc['intro']}</p>
           {prose_photo}
-          <h3>The benefits you'll notice</h3>
-          <ul class="checklist">{benefits_html}</ul>
+          {"" if is_xmas else f'''<h3>The benefits you'll notice</h3>
+          <ul class="checklist">{benefits_html}</ul>'''}
           <h3>What's included</h3>
           <ul class="checklist">{includes_html}</ul>
         </div>
