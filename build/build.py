@@ -256,7 +256,7 @@ def build_home():
   </section>
 
   <!-- SERVICES (straight after hero) -->
-  <section>
+  <section id="services">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Services</span>
@@ -577,9 +577,11 @@ def build_service(svc):
             ("Do you guarantee your work?",
              "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll re-clean it free."),
         ]
+    # Two levels, not three: there is no standalone services index page to
+    # point a middle "Services" crumb at, and a BreadcrumbList step must be a
+    # real URL — an #anchor on the homepage would duplicate the Home step.
     breadcrumb = S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
-        ("Services", BIZ["domain"] + "/residential.html"),
         (svc["name"], BIZ["domain"] + "/services/" + svc["slug"] + ".html"),
     ])
     schema = BASE_SCHEMA + [S.service_schema(svc), S.faq_schema(svc_faqs), breadcrumb]
@@ -607,7 +609,7 @@ def build_service(svc):
     <div class="svc-hero-overlay" aria-hidden="true"></div>
     {(_xmas_garland_svg() + _xmas_snow()) if is_xmas else ""}
     <div class="container">
-      {C.crumbs([("Home", root + "index.html"), ("Services", root + "residential.html"), (svc['name'], None)], light=True)}
+      {C.crumbs([("Home", root + "index.html"), (svc['name'], None)], light=True)}
       <h1>{svc.get('h1') or svc['name']}</h1>
       <p class="lead">{svc['hero_sub']}</p>
       <div class="hero-actions">
@@ -723,48 +725,11 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
 # ===========================================================================
 # RESIDENTIAL
 # ===========================================================================
-def build_residential():
-    depth = 0
-    svc_cards = "".join(C.service_image_card(s, depth, i) for i, s in enumerate(SERVICES))
-    html, body = interior_head(
-        title=seo_title("Residential Exterior Cleaning in Delano, MN"),
-        desc="Residential exterior cleaning in Delano and the western metro — windows, gutters, pressure washing and house washing. Family-owned, insured, guaranteed.",
-        slug="residential.html", eyebrow="Residential Services",
-        h1="Everything your home's exterior needs, in one trusted team",
-        lead="Windows, gutters, siding, walkways, and seasonal lighting — Barta keeps every inch of your home's exterior beautifully maintained, so you can simply enjoy it.",
-        depth=depth, crumb_label="Residential", cta_form=False,
-        primary_kw="residential exterior cleaning Delano MN")
-    html += f"""<main id="main">{body}
-  <section>
-    <div class="container">
-      <div class="section-head center"><span class="eyebrow">Our home services</span><h2>Pick a service, or bundle and save</h2>
-        <p>Every service is delivered by uniformed, insured professionals and backed by our 100% satisfaction guarantee.</p></div>
-      <div class="grid cols-3">{svc_cards}</div>
-    </div>
-  </section>
-  <section class="bg-mist">
-    <div class="container">
-      <div class="split">
-        <div class="reveal">
-          <span class="eyebrow">Bundle &amp; save</span>
-          <h2 class="mt-1">Why homeowners bundle their exterior care</h2>
-          <p>Combining services in one visit saves you money and gives your home a complete, cohesive refresh. Most clients pair window cleaning with screens and a house wash — or join a membership for automatic, year-round care.</p>
-          <ul class="checklist mt-2">
-            <li>{icon('check-circle')} One trip, one team, one tidy result</li>
-            <li>{icon('check-circle')} Bundle pricing on combined services</li>
-            <li>{icon('check-circle')} Save on every visit with a recurring plan</li>
-            <li>{icon('check-circle')} Priority scheduling for recurring clients</li>
-          </ul>
-          <a class="btn mt-3" href="get-quote.html">See Recurring Plans {icon('arrow')}</a>
-        </div>
-        <div class="reveal">{C.imgph("Beautiful clean home exterior", ratio="5/4")}</div>
-      </div>
-    </div>
-  </section>
-  {C.cta_band(depth)}
-</main>"""
-    html += C.page_end(depth)
-    write("residential.html", html, slug="residential.html", priority="0.8")
+# The standalone Residential Services index page was removed at the owner's
+# request: it duplicated the homepage's own service grid, sat outside the main
+# nav (reachable only via a breadcrumb), and carried the site's last gradient
+# placeholder where a real photo should have been. Links that pointed at it now
+# go to the homepage's #services section.
 
 # ===========================================================================
 # GALLERY
@@ -1134,7 +1099,7 @@ def build_area(a):
   <section class="bg-mist"><div class="container">
     <div class="section-head center"><span class="eyebrow">In {a['city']}</span><h2>Services we offer locally</h2></div>
     <div class="grid cols-3">{svc_cards}</div>
-    <div class="center mt-4"><a class="btn btn-ghost" href="../residential.html">View all services {icon('arrow')}</a></div>
+    <div class="center mt-4"><a class="btn btn-ghost" href="../index.html#services">View all services {icon('arrow')}</a></div>
   </div></section>
   <section><div class="container">
     <div class="section-head center"><span class="eyebrow">{a['city']} reviews</span><h2>What your neighbors say</h2></div>
@@ -1345,7 +1310,6 @@ def build_sitemap_page():
         ("house", "Home", "index.html"),
         ("user", "About Us", "about.html"),
         ("image", "Gallery", "gallery.html"),
-        ("window", "Residential Services", "residential.html"),
         ("building", "Commercial Cleaning", "services/commercial-cleaning.html"),
         ("pin", "Service Areas", "service-areas.html"),
         ("star", "Reviews", "reviews.html"),
@@ -1418,7 +1382,7 @@ def build_404():
       <p class="lead" style="max-width:560px;margin-inline:auto">The page you're looking for may have been moved, renamed, or no longer exists. Here are a few places to go instead.</p>
       <div class="hero-actions" style="justify-content:center;flex-wrap:wrap">
         <a class="btn btn-lg" href="index.html">Back to Homepage {icon('arrow')}</a>
-        <a class="btn btn-lg btn-ghost" href="residential.html">Browse Services</a>
+        <a class="btn btn-lg btn-ghost" href="index.html#services">Browse Services</a>
         <a class="btn btn-lg btn-ghost" href="service-areas.html">Service Areas</a>
         <a class="btn btn-lg btn-ghost" href="get-quote.html">Get a Quote</a>
       </div>
@@ -2017,7 +1981,6 @@ def main():
     build_home()
     for s in SERVICES:
         build_service(s)
-    build_residential()
     build_gallery()
     build_about()
     build_reviews()

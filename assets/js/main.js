@@ -89,6 +89,38 @@
     }
   });
 
+  /* ---- Lazy-load Instagram video posters ----
+         A <video poster> takes a single URL, can't carry a srcset, and — unlike
+         an <img> — has no loading="lazy", so the browser fetches every poster
+         on page load even though the carousel sits far down the homepage. That
+         was ~800 KB before a visitor scrolled anywhere. The build emits the URL
+         as data-poster instead, and the whole set is promoted once the carousel
+         itself nears the viewport.
+
+         Observing the carousel rather than each <video> is deliberate.
+         .insta-track is a horizontal scroller several thousand px wide, so most
+         cards sit outside it and an intermediate scroll container CLIPS the
+         intersection rectangle — rootMargin only inflates the root (the
+         viewport), never an ancestor clipper, so per-card observers simply
+         never fire for anything scrolled out of the track. Watching the
+         container sidesteps that and still costs nothing until you scroll down
+         to the section. Without IntersectionObserver, every poster is set
+         immediately — same behaviour as before this existed. ---- */
+  const setPoster = (v) => {
+    if (v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; }
+  };
+  $$(".insta-carousel").forEach((car) => {
+    const load = () => $$("video[data-poster]", car).forEach(setPoster);
+    if ("IntersectionObserver" in window) {
+      const pio = new IntersectionObserver((entries) => {
+        entries.forEach((en) => { if (en.isIntersecting) { load(); pio.unobserve(en.target); } });
+      }, { rootMargin: "600px 0px" });
+      pio.observe(car);
+    } else {
+      load();
+    }
+  });
+
   /* ---- Animated counters ---- */
   const counters = $$("[data-count]");
   const runCount = (el) => {

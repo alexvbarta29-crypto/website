@@ -683,25 +683,9 @@ _IMG_CARD_DARKS = [
     "linear-gradient(155deg,#2a1c22 0%,#110c0f 100%)",
 ]
 
-def service_image_card(s, depth=0, idx=0):
-    """DirtyMint-style large image card with overlaid title. Uses the same
-    real service photo as the homepage grid when present on disk, falling
-    back to a branded dark gradient + faint service icon otherwise."""
-    root = rel(depth)
-    dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
-    # Use the service's own real photo (SERVICES[]["image"], the same field
-    # its own service page's hero uses) instead of re-guessing a filename
-    # from the service name — the guess doesn't always match an actual file
-    # on disk (e.g. "House Washing" reuses the "soft-washing" photo).
-    img = s.get("image") or "assets/img/hero-home.jpg"
-    alt = IMAGE_ALT.get(img, f"{s['name']} service photo")
-    img_tag = picture(root, img, alt, img_class="img-card-bg",
-                       extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
-                       sizes="(max-width: 760px) 100vw, 33vw")
-    return (f'<a class="img-card reveal" data-delay="{idx%4}" href="{root}services/{s["slug"]}.html" aria-label="{s["name"]}" style="background:{dark}">'
-            f'{img_tag}'
-            f'<span class="img-card-arrow">{icon("arrow")}</span>'
-            f'<span class="img-card-body"><h3>{s["name"]}</h3><p>{s["short"]}</p></span></a>')
+# service_image_card() lived here. Its only caller was the Residential
+# Services page, which has been removed; the homepage grid uses
+# picture_card() below. Deleted rather than left dangling.
 
 def _slugify(s):
     out = "".join(c if c.isalnum() else "-" for c in s.lower())
@@ -823,8 +807,12 @@ def instagram_carousel(depth=0):
             w, h = _real_size(s["image"])
             ratio = f"{w}/{h}"
             if s.get("video") and os.path.exists(os.path.join(_ROOT, s["video"])):
+                # data-poster, not poster: main.js promotes it to a real poster
+                # once the card nears the viewport. A poster has no lazy-loading
+                # of its own, so as a plain attribute every one of these is
+                # fetched on page load for a carousel far down the page.
                 media_html = (f'<video class="insta-card-media-el" src="{root}{s["video"]}" '
-                               f'poster="{root}{_poster_src(s["image"])}" controls playsinline preload="metadata"></video>')
+                               f'data-poster="{root}{_poster_src(s["image"])}" controls playsinline preload="none"></video>')
             else:
                 media_html = picture(root, s["image"], alt, img_class="insta-card-media-el",
                                       extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")
