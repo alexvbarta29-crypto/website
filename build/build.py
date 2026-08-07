@@ -233,7 +233,8 @@ def build_home():
         title=seo_title("Window &amp; Exterior Cleaning in Delano, MN"),
         desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
-        canonical=BIZ["domain"] + "/", uses_reviews_widget=True)
+        canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
+        og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
     hero_picture = _hero_picture_html("", "assets/img/hero-home.jpg", img_class="hero-bg-img",
                                        alt="The branded Barta Window Washing (BWW) service van in the Delano, MN area")
@@ -591,7 +592,7 @@ def build_service(svc):
         title=svc.get("seo_title") or f"{svc['name']} in {BIZ['city']}, MN | {BIZ['name']}",
         desc=svc.get("seo_desc") or f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Insured & guaranteed. Get your free quote from Barta today.",
         slug=f"services/{svc['slug']}.html", depth=depth, schema=schema,
-        uses_reviews_widget=True)
+        uses_reviews_widget=True, og_image=svc.get("image"))
     html += C.nav(depth)
 
     hero_img = svc.get("image") or "assets/img/hero-home.jpg"
@@ -679,13 +680,14 @@ def build_service(svc):
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
                   crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False, h1_class="",
-                  phero_class="", hero_extra=""):
+                  phero_class="", hero_extra="", og_image=None):
     schema = list(schema or BASE_SCHEMA)
     schema.append(S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
         (crumb_label or h1, BIZ["domain"] + "/" + slug),
     ]))
-    html = C.head(title=title, desc=desc, slug=slug, depth=depth, schema=schema, primary_kw=primary_kw, noindex=noindex)
+    html = C.head(title=title, desc=desc, slug=slug, depth=depth, schema=schema,
+                  primary_kw=primary_kw, noindex=noindex, og_image=og_image)
     html += C.nav(depth)
     crumbs = C.crumbs([("Home", C.rel(depth) + "index.html"), (crumb_label or h1, None)])
     if cta_form:
@@ -756,7 +758,7 @@ def build_gallery():
     html = C.head(
         title=seo_title("Photo Gallery — Real Job Photos"),
         desc="Real photos from real jobs — window cleaning, gutter cleaning, pressure washing and more across Delano and the western Twin Cities. No stock photos.",
-        slug="gallery.html", depth=depth, schema=schema)
+        slug="gallery.html", depth=depth, schema=schema, og_image=GALLERY_HERO)
     html += C.nav(depth)
 
     # Every real photo on the site, not just a curated handful — the more
@@ -867,7 +869,7 @@ def build_about():
     html, body = interior_head(
         title=seo_title("About Us — Family-Owned in Delano, MN"),
         desc="Two brothers started Barta Window Washing in Delano, MN to raise the standard of home service — old-school customer care with a modern edge.",
-        slug="about.html", eyebrow="About Us",
+        slug="about.html", eyebrow="About Us", og_image="assets/img/hero-home.jpg",
         h1="A Delano family business, built on trust",
         lead=f"Founded in {BIZ['founded']} by two brothers, Alex and Jacob Barta.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
@@ -927,11 +929,19 @@ def build_about():
 def build_reviews():
     depth = 0
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
-    schema = BASE_SCHEMA
+    # This page was the only indexable one without a BreadcrumbList.
+    # Deliberately no AggregateRating/Review markup here: Google disallows
+    # self-serving review markup — ratings a business publishes about itself
+    # on its own site — so it earns no stars and risks a manual action.
+    schema = BASE_SCHEMA + [S.breadcrumb([
+        ("Home", BIZ["domain"] + "/"),
+        ("Reviews", BIZ["domain"] + "/reviews.html"),
+    ])]
     html = C.head(
         title=seo_title(f"Reviews — {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
-        slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True)
+        slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
+        og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
     reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth)
     html += f"""<main id="main">
@@ -951,7 +961,7 @@ def build_faqs():
     html, body = interior_head(
         title=seo_title("Frequently Asked Questions"),
         desc="Answers about pricing, scheduling, insurance, our satisfaction guarantee, eco-safe methods, and maintenance plans at Barta Window Washing in Delano, MN.",
-        slug="faqs.html", eyebrow="FAQs", schema=schema,
+        slug="faqs.html", eyebrow="FAQs", schema=schema, og_image="assets/img/svc-cta-squeegee.jpg",
         h1="Frequently asked questions",
         lead="Everything you need to know before booking. Don't see your question? Call us — we're happy to help.",
         depth=depth, crumb_label="FAQs", primary_kw="window cleaning FAQ Delano MN")
@@ -987,7 +997,7 @@ def build_service_areas():
     html, body = interior_head(
         title=seo_title("Service Areas — Western Twin Cities, MN"),
         desc="Barta Window Washing proudly serves Delano, Buffalo, Medina, Mound, Plymouth, St. Michael & more across the western Twin Cities metro. Find your city.",
-        slug="service-areas.html", eyebrow="Service Areas",
+        slug="service-areas.html", eyebrow="Service Areas", og_image="assets/img/hero-home.jpg",
         h1="Proudly serving the western Twin Cities",
         lead="Based in Delano and serving homeowners and businesses across the western Twin Cities metro. Find your community below.",
         depth=depth, crumb_label="Service Areas", primary_kw="window cleaning service areas Twin Cities MN")
@@ -1294,7 +1304,7 @@ def build_sitemap_page():
     depth = 0
     html, body = interior_head(
         title=seo_title("Sitemap"),
-        desc=f"Every page on the {BIZ['name']} site in one place — all services, all 37 service-area communities, blog posts, and company information.",
+        desc=f"Every page on the {BIZ['name']} site in one place — all services, our service-area cities, blog posts, and company information.",
         slug="sitemap.html", eyebrow="Site map", h1="Sitemap",
         lead="Every page on our site, in one place.",
         depth=depth, crumb_label="Sitemap")
@@ -1478,7 +1488,7 @@ def build_blog():
     html, body = interior_head(
         title=seo_title("Blog — Exterior Cleaning Tips &amp; Guides"),
         desc="Expert tips on window cleaning, gutter care, house washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
-        slug="blog.html", eyebrow="Blog",
+        slug="blog.html", eyebrow="Blog", og_image="assets/img/svc-cta-squeegee.jpg",
         h1="Tips, guides &amp; exterior care advice",
         lead="Practical, no-nonsense advice from the Barta team to help you protect and beautify your home year-round.",
         depth=depth, crumb_label="Blog", primary_kw="window cleaning tips Minnesota")
@@ -1548,13 +1558,20 @@ def build_post(p, idx):
         "publisher": {"@id": BIZ["domain"] + "/#org"},
         "description": p["excerpt"], "url": BIZ["domain"] + "/blog/" + p["slug"] + ".html",
         "articleSection": p["cat"],
+        # image + mainEntityOfPage are what make a BlogPosting eligible for the
+        # image-bearing treatment in search and Discover; without them Google
+        # has no declared visual for the article.
+        "image": BIZ["domain"] + "/" + post_img,
+        "mainEntityOfPage": {"@type": "WebPage",
+                             "@id": BIZ["domain"] + "/blog/" + p["slug"] + ".html"},
     }, S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
         ("Blog", BIZ["domain"] + "/blog.html"),
         (p["title"], BIZ["domain"] + "/blog/" + p["slug"] + ".html"),
     ])]
     html = C.head(title=seo_title(p.get("seo_title") or p["title"]), desc=p["excerpt"],
-                  slug=f"blog/{p['slug']}.html", depth=depth, schema=schema, og_type="article")
+                  slug=f"blog/{p['slug']}.html", depth=depth, schema=schema, og_type="article",
+                  og_image=post_img)
     html += C.nav(depth)
     html += f"""<main id="main">
   <section class="phero"><div class="container">
@@ -1973,9 +1990,57 @@ def generate_hero_variants():
             except Exception as e:
                 print(f"  (hero variant skipped for {out_rel}: {e})")
 
+OG_W, OG_H = 1200, 630
+
+def generate_og_images():
+    """A 1200x630 share card for every photo used as an og:image.
+
+    The page photos can't be handed to social scrapers as-is: most are phone
+    shots in portrait (1125x1500), and X's summary_large_image only accepts
+    an aspect between 2:1 and 1:1 — outside that the large card degrades to a
+    small one or doesn't render. Facebook/LinkedIn accept it but centre-crop
+    hard, which decapitates anyone standing in frame. So each source is
+    cover-cropped once, at build time, to the 1.91:1 shape every platform
+    actually renders, anchored slightly above centre because the subject of
+    a job photo (a person, a roofline) sits in the upper half far more often
+    than the lower."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return
+    srcs = {s["image"] for s in SERVICES if s.get("image")}
+    srcs |= {"assets/img/hero-home.jpg", GALLERY_HERO, "assets/img/svc-cta-squeegee.jpg"}
+    srcs |= set(_BLOG_PHOTOS.values())
+    made = 0
+    for rel_path in sorted(srcs):
+        src = os.path.join(ROOT, rel_path)
+        if not os.path.exists(src):
+            continue
+        stem = rel_path.rsplit(".", 1)[0]
+        out_rel = f"{stem}-og.jpg"
+        out_path = os.path.join(ROOT, out_rel)
+        if os.path.exists(out_path) and os.path.getmtime(out_path) >= os.path.getmtime(src):
+            continue
+        try:
+            im = Image.open(src).convert("RGB")
+            w, h = im.size
+            scale = max(OG_W / w, OG_H / h)
+            im = im.resize((max(OG_W, round(w * scale)), max(OG_H, round(h * scale))), Image.LANCZOS)
+            nw, nh = im.size
+            left = (nw - OG_W) // 2
+            top = int((nh - OG_H) * 0.38)          # bias upward, not dead centre
+            im.crop((left, top, left + OG_W, top + OG_H)).save(
+                out_path, "JPEG", quality=84, optimize=True, progressive=True)
+            made += 1
+        except Exception as e:
+            print(f"  (og image skipped for {out_rel}: {e})")
+    if made:
+        print(f"  {made} og share image(s) generated")
+
 def main():
     generate_webp_versions()
     generate_hero_variants()
+    generate_og_images()
     minify_assets()
     C.ASSET_VER = _asset_version()
     build_home()

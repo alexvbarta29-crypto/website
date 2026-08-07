@@ -151,7 +151,32 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
     return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
             f'<img class="{img_class}" src="{root}{src}"{dim_attrs} alt="{alt}" {extra_attrs}></picture>')
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None):
+def _og_image(og_image):
+    """Absolute URL + real pixel dimensions for the social share image.
+    Falls back to the generic branded cover when a page has no photo of its
+    own. Dimensions are read off the actual file rather than hardcoded —
+    Facebook/LinkedIn/iMessage use them to reserve the preview box, and
+    wrong numbers give a stretched or letterboxed card."""
+    default = ("assets/img/og-cover.png", 1200, 630)
+    if not og_image:
+        rel_path, w, h = default
+    else:
+        # Prefer the purpose-built 1200x630 crop (generate_og_images) — most
+        # source photos are portrait, which social cards handle badly. Fall
+        # back to the 1200w derivative, then the original, then the cover.
+        stem, _, ext = og_image.rpartition(".")
+        rel_path = None
+        for cand in (f"{stem}-og.jpg", f"{stem}-1200w.{ext}", og_image):
+            if os.path.exists(os.path.join(_ROOT, cand)):
+                rel_path = cand
+                break
+        if rel_path is None:
+            rel_path, w, h = default
+        else:
+            w, h = _real_size(rel_path)
+    return f"{BIZ['domain']}/{rel_path}", w, h
+
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
     pages that shouldn't compete in search) instead of the default index.
@@ -178,6 +203,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     trustindex_preconnect = ('<link rel="preconnect" href="https://cdn.trustindex.io">\n'
                               '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
     base_tag = f'<base href="{base_href}">\n' if base_href else ""
+    og_img_url, og_img_w, og_img_h = _og_image(og_image)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -195,13 +221,14 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
 <meta property="og:url" content="{canonical}">
-<meta property="og:image" content="{BIZ['domain']}/assets/img/og-cover.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image" content="{og_img_url}">
+<meta property="og:image:width" content="{og_img_w}">
+<meta property="og:image:height" content="{og_img_h}">
+<meta property="og:image:alt" content="{title}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{title}">
 <meta name="twitter:description" content="{desc}">
-<meta name="twitter:image" content="{BIZ['domain']}/assets/img/og-cover.png">
+<meta name="twitter:image" content="{og_img_url}">
 <!-- Fonts — Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>

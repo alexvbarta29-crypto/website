@@ -19,8 +19,17 @@ def local_business():
         "telephone": BIZ["phone_display"],
         "email": BIZ["email"],
         "priceRange": "$$",
-        "image": BIZ["domain"] + "/assets/img/og-cover.png",
-        "logo": BIZ["domain"] + "/assets/img/favicon.svg",
+        # Real photographs, not the generic share card. Google surfaces these
+        # in local results, and its guidance is to offer several aspect ratios
+        # so it can pick one per layout rather than crop whatever it's given.
+        "image": [
+            BIZ["domain"] + "/assets/img/hero-home-1200w.jpg",
+            BIZ["domain"] + "/assets/img/svc-exterior-window-cleaning-1200w.jpg",
+            BIZ["domain"] + "/assets/img/svc-cta-squeegee-1200w.jpg",
+        ],
+        # A raster logo, not favicon.svg — that's a 0.2 KB browser-tab icon,
+        # too small to serve as the brand mark Google renders.
+        "logo": BIZ["domain"] + "/assets/img/logo-bww.png",
         "foundingDate": BIZ["founded"],
         "address": {
             "@type": "PostalAddress",
@@ -62,7 +71,9 @@ def organization():
         "@id": BIZ["domain"] + "/#org",
         "name": BIZ["name"],
         "url": BIZ["domain"],
-        "logo": BIZ["domain"] + "/assets/img/favicon.svg",
+        # Same raster logo the LocalBusiness entity uses — this is the one
+        # Google reads for the Organization brand mark.
+        "logo": BIZ["domain"] + "/assets/img/logo-bww.png",
         "telephone": BIZ["phone_display"],
         "sameAs": [BIZ["facebook"], BIZ["instagram"], BIZ["google"]],
     }
@@ -87,6 +98,9 @@ def service_schema(svc):
         "provider": {"@id": BIZ["domain"] + "/#business"},
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
         "url": BIZ["domain"] + "/services/" + svc["slug"] + ".html",
+        # The page's own hero photo, so the Service entity has a declared
+        # visual instead of inheriting nothing.
+        "image": BIZ["domain"] + "/" + (svc.get("image") or "assets/img/hero-home.jpg"),
         # Deliberately no "offers" block: there's no real price to publish,
         # and "availability: InStock" is a product-catalog concept that adds
         # no accurate signal for a quoted local service.
