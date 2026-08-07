@@ -52,6 +52,25 @@ def _variants_exist(stem):
     return all(os.path.exists(os.path.join(_ROOT, f"{stem}-{w}w.{fmt}"))
                for w in (640, 1200) for fmt in ("webp", "jpg"))
 
+def _poster_src(relpath):
+    """A <video poster> takes one URL and can't carry a srcset, so it would
+    otherwise serve the full-size original — on the homepage that was ~1.1 MB
+    of un-resized Instagram stills fetched before any scrolling, since a
+    poster isn't lazy-loadable either. Point it at the 1200w derivative
+    instead, which already matches the largest size the card ever displays.
+    Falls back to the original when the derivative is missing, or when the
+    source was already smaller than 1200w and re-encoding it made it bigger."""
+    stem, _, ext = relpath.rpartition(".")
+    cand = f"{stem}-1200w.{ext}"
+    full_c = os.path.join(_ROOT, cand)
+    full_o = os.path.join(_ROOT, relpath)
+    try:
+        if os.path.exists(full_c) and os.path.getsize(full_c) < os.path.getsize(full_o):
+            return cand
+    except OSError:
+        pass
+    return relpath
+
 _SIZE_CACHE = {}
 def _real_size(relpath, default=(1125, 1500)):
     """Real pixel dimensions of an assets/img file. Tries Pillow first, then
@@ -805,7 +824,7 @@ def instagram_carousel(depth=0):
             ratio = f"{w}/{h}"
             if s.get("video") and os.path.exists(os.path.join(_ROOT, s["video"])):
                 media_html = (f'<video class="insta-card-media-el" src="{root}{s["video"]}" '
-                               f'poster="{root}{s["image"]}" controls playsinline preload="metadata"></video>')
+                               f'poster="{root}{_poster_src(s["image"])}" controls playsinline preload="metadata"></video>')
             else:
                 media_html = picture(root, s["image"], alt, img_class="insta-card-media-el",
                                       extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")

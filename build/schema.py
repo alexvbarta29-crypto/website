@@ -34,13 +34,17 @@ def local_business():
         "openingHoursSpecification": [
             {
                 "@type": "OpeningHoursSpecification",
+            # Must stay in step with BIZ["hours"], which is the text visitors
+            # see in the footer — Google cross-checks the two, and they were
+            # previously out of sync (schema said weekdays to 19:00 and
+            # Saturday to 17:00 while the page said 18:00 and 18:00).
                 "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-                "opens": "08:00", "closes": "19:00",
+                "opens": "08:00", "closes": "18:00",
             },
             {
                 "@type": "OpeningHoursSpecification",
                 "dayOfWeek": ["Saturday"],
-                "opens": "08:00", "closes": "17:00",
+                "opens": "08:00", "closes": "18:00",
             },
         ],
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
