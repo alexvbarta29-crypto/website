@@ -531,10 +531,36 @@
     const SCROLL_SETTLE = 400; // how long scrolling must be quiet before we call it "stopped"
     let dir = 1, inView = false, timer = null, settleTimer = null;
 
+    /* Below 640px the track shows one card at a time and the CSS snaps on
+       centre, so the slide being shown should land in the middle of the
+       screen rather than flush against the left edge. Above that several
+       cards are visible at once and leading-edge alignment is correct, so
+       this stays off. The query matches the breakpoint in styles.css — if
+       the two disagreed, JS would scroll to one position and snapping would
+       drag it to another. */
+    const oneUp = window.matchMedia("(max-width: 640px)");
+    const centred = () => oneUp.matches;
+    const targetFor = (c) => centred()
+      ? c.offsetLeft - (track.clientWidth - c.offsetWidth) / 2
+      : c.offsetLeft;
+
+    /* Without end padding the browser clamps scrollLeft to 0 and to the far
+       end, so the first and last cards can never actually sit centred. */
+    const padEnds = () => {
+      const last = cards[cards.length - 1];
+      const lead = centred() ? Math.max(4, (track.clientWidth - cards[0].offsetWidth) / 2) : 4;
+      const tail = centred() ? Math.max(4, (track.clientWidth - last.offsetWidth) / 2) : 4;
+      track.style.paddingLeft = lead + "px";
+      track.style.paddingRight = tail + "px";
+    };
+    padEnds();
+    window.addEventListener("resize", padEnds);
+    if (oneUp.addEventListener) oneUp.addEventListener("change", padEnds);
+
     const currentIndex = () => {
       let idx = 0, best = Infinity;
       cards.forEach((c, i) => {
-        const d = Math.abs(c.offsetLeft - track.scrollLeft);
+        const d = Math.abs(targetFor(c) - track.scrollLeft);
         if (d < best) { best = d; idx = i; }
       });
       return idx;
@@ -548,7 +574,7 @@
       let idx = currentIndex() + dir;
       if (idx >= max) { idx = max; dir = -1; }
       else if (idx <= 0) { idx = 0; dir = 1; }
-      track.scrollTo({ left: cards[idx].offsetLeft, behavior: reduce ? "auto" : "smooth" });
+      track.scrollTo({ left: targetFor(cards[idx]), behavior: reduce ? "auto" : "smooth" });
       schedule(INTERVAL);
     };
     if (!reduce) {

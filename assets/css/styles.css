@@ -556,8 +556,16 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform var(--line-dur, .8s) linear var(--line-delay, 0s); }
 .process-line.filled::after { transform: scaleX(1); }
 @media (max-width: 780px) {
-  .process-track { height: 560px; }
-  .process-slide { flex-direction: column; overflow: auto; }
+  /* Stacked in a single grid cell rather than absolutely positioned in a
+     fixed-height box. The slides still overlap (so the opacity crossfade is
+     unchanged) but the track now sizes itself to the tallest slide, so the
+     content can't overflow. The old fixed 560px + overflow:auto gave every
+     step its own inner scrollbar, which meant a second scroll surface inside
+     the page — drag on a step and the page itself wouldn't move. Desktop is
+     untouched and keeps its fixed 420px absolute layout. */
+  .process-track { height: auto; display: grid; }
+  .process-slide { grid-area: 1 / 1; position: relative; inset: auto;
+                   flex-direction: column; overflow: visible; }
   .process-photo { flex: 0 0 200px; }
   .process-arrow { display: none; }
 }
@@ -845,8 +853,18 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    width per card) so nothing gets cropped to a square; video slides embed
    a real <video controls> and play in place, no overlay/lightbox involved. */
 .insta-carousel { position: relative; margin-bottom: 40px; }
+/* overflow-y must be stated explicitly. With overflow-x:auto and overflow-y
+   left at its default of visible, CSS computes the visible axis to auto too —
+   so the track became a second vertical scroll surface, and a downward drag
+   on the carousel scrolled inside the box instead of moving the page.
+   touch-action pins touch gestures to the horizontal axis for the same
+   reason. Centre snapping is applied only at the one-card-at-a-time
+   breakpoint below; wider screens show several cards and keep leading-edge
+   alignment. */
 .insta-track {
-  display: flex; align-items: stretch; gap: 14px; height: min(58vh, 460px); overflow-x: auto;
+  display: flex; align-items: stretch; gap: 14px; height: min(58vh, 460px);
+  overflow-x: auto; overflow-y: hidden; touch-action: pan-x pinch-zoom;
+  overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 4px 4px 14px; scrollbar-width: none;
 }
 .insta-track::-webkit-scrollbar { display: none; }
@@ -861,7 +879,12 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   background: rgba(0,0,0,.45); backdrop-filter: blur(4px); color: #fff; display: grid; place-items: center; z-index: 2;
 }
 .insta-card-badge svg { width: 17px; height: 17px; }
-@media (max-width: 640px) { .insta-track { height: min(52vh, 380px); } }
+/* One card at a time: centre it. main.js pads the ends to match so the first
+   and last cards can reach the middle instead of being clamped flush. */
+@media (max-width: 640px) {
+  .insta-track { height: min(52vh, 380px); }
+  .insta-card { scroll-snap-align: center; }
+}
 .insta-arrow {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 44px; height: 44px; border-radius: var(--r-pill);
   background: #fff; border: 1px solid var(--line); box-shadow: var(--sh-md); display: grid; place-items: center; cursor: pointer;
