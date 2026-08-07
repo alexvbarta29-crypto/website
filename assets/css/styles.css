@@ -64,14 +64,13 @@ picture { display: contents; }
      backdrop shows through, so opacity and blur have to move together.
      Raise --glass-bg toward 1 and the surface goes opaque white and the
      blur stops being visible at all, whatever its radius. */
-     The two tints are not interchangeable. --glass-bg is for glass sitting
-     over the hero photo, where a soft backdrop can show through and the
-     effect is the point. --glass-bg-strong is for glass over ordinary page
-     content: headings and buttons are high-contrast, and at the lighter
-     tint they ghost straight through and compete with the logo. The header
-     swaps to the stronger tint the moment it leaves the hero. */
-  --glass-bg: rgba(255,255,255,.46);
-  --glass-bg-strong: rgba(255,255,255,.7);
+     One tint everywhere, deliberately. A lighter tint was tried for the
+     header while it sits over the hero, on the theory that letting more of
+     the photo through shows off the blur — but the hero is a dark stormy
+     sky, so a thin white veil over it just turned the bar dark grey. This
+     level keeps every frosted surface reading as pale, clear glass no
+     matter what passes behind it. */
+  --glass-bg: rgba(255,255,255,.7);
   --glass-blur: saturate(180%) blur(90px);
   --glass-border: rgba(255,255,255,.45);
 
@@ -181,7 +180,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   transition: box-shadow .4s var(--ease), background .4s var(--ease);
 }
 .nav-wrap.scrolled { padding-top: 8px; padding-bottom: 8px; }
-.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.14); background: var(--glass-bg-strong); }
+/* Only the shadow deepens on scroll now — the tint is the same at the top of
+   the page as it is further down, so the header never changes character. */
+.nav-wrap.scrolled .nav { box-shadow: 0 10px 34px rgba(14,14,18,.14); }
 .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-head); font-weight: 800; font-size: 1.18rem; letter-spacing: -.02em; color: var(--navy-800); }
 .brand-logo { height: 40px; width: auto; display: block; }
 .footer .brand-logo { height: 44px; }
@@ -839,10 +840,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .imgph svg { width: 40px; height: 40px; opacity: .6; }
 
 /* ---------- Sticky mobile CTA ---------- */
-/* Same glass as the header — it's the other bar pinned over the page. Uses
-   the stronger tint because it sits behind two solid buttons and needs to
-   read as a surface, not a haze. */
-.sticky-cta { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 90; display: none; gap: 10px; padding: 10px; background: var(--glass-bg-strong); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
+/* Same glass as the header — it's the other bar pinned over the page. */
+.sticky-cta { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 90; display: none; gap: 10px; padding: 10px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
 .sticky-cta .btn { flex: 1; padding: 14px; }
 .sticky-cta .btn-call { background: #fff; color: var(--navy-800); box-shadow: var(--sh-sm); border: 1px solid var(--line); }
 
@@ -1156,7 +1155,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 /* Same glass tokens as .nav, so the badge and the header read as one
    material over the hero photo. */
 .google-badge { display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: var(--r-pill); background: var(--glass-bg); border: 1px solid var(--glass-border); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: 0 8px 30px rgba(14,14,18,.1); transition: background .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease); }
-.google-badge:hover { background: var(--glass-bg-strong); transform: translateY(-1px); box-shadow: 0 10px 34px rgba(14,14,18,.14); }
+.google-badge:hover { background: rgba(255,255,255,.82); transform: translateY(-1px); box-shadow: 0 10px 34px rgba(14,14,18,.14); }
 .google-badge .stars { display: inline-flex; gap: 2px; color: var(--gold); }
 .google-badge .stars svg { width: 16px; height: 16px; }
 .google-badge .gb-g { display: inline-flex; }
