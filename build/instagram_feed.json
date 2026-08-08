@@ -1,5 +1,31 @@
 [
   {
+    "id": "18111014425971457",
+    "image": "assets/img/instagram/18111014425971457_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18111014425971457_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18111014425971457_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18111014425971457_2.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18111014425971457_3.jpg"
+      }
+    ],
+    "caption": "Who\u2019s ready for a refresh this fall? \ud83c\udf41\ud83c\udfe0\ud83e\uddfc",
+    "permalink": "https://www.instagram.com/p/Dbvpsn5kfiJ/",
+    "timestamp": "2026-08-07T15:51:00+0000"
+  },
+  {
     "id": "17908170873275253",
     "image": "assets/img/instagram/17908170873275253_0.jpg",
     "type": "CAROUSEL_ALBUM",
@@ -203,43 +229,5 @@
     "caption": "Happy 250th Birthday from @bartawindowwashing !!\n\nwww.BartaWindowWashing.com\n763-314-3400\n\n#4thofjuly #delano #windowcleaning",
     "permalink": "https://www.instagram.com/reel/DaRfZe-xfOy/",
     "timestamp": "2026-07-02T02:19:02+0000"
-  },
-  {
-    "id": "17870581794546118",
-    "image": "assets/img/instagram/17870581794546118_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_0.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_1.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_2.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_3.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_4.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_5.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17870581794546118_6.jpg"
-      }
-    ],
-    "caption": "\u2728 Crystal-clear windows make a bigger difference than you think.\n\nAt Barta Window Washing, we take pride in delivering spotless, streak-free windows that let more light into your home and make every view better.\n\nWhether it\u2019s first-story windows, hard-to-reach second-story glass, or routine maintenance, we\u2019ve got you covered.\n\n\ud83d\udccdLocally owned & operated\u2028\ud83d\udca7Pure water window cleaning\u2028\ud83c\udfe1Residential & Commercial\u2028\u2705Fully insured\n\nReady to see the difference?\n\nFirst time customers get $50 OFF!",
-    "permalink": "https://www.instagram.com/p/DaBJXDMlIR4/",
-    "timestamp": "2026-06-25T17:51:58+0000"
   }
 ]
