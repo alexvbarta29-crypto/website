@@ -773,10 +773,10 @@ ZIP_CODES = [
 # Hard Water Removal" in particular appear nowhere else in the repo to
 # corroborate them.
 PROMO_PLANS = [
-    # (display name, url slug, "$ off per cleaning", featured-in-comparison, most-popular-badge)
-    ("Biannual", "biannual", "50", False, False),
-    ("Quarterly", "quarterly", "100", True, True),
-    ("Monthly", "monthly", "150", True, False),
+    # (display name, url slug, "$ off per cleaning", featured-in-comparison, most-popular-badge, cadence line)
+    ("Biannual", "biannual", "50", False, False, "2 Exterior Cleans / Year"),
+    ("Quarterly", "quarterly", "100", True, True, "3 Exterior + 1 Interior / Year"),
+    ("Monthly", "monthly", "150", True, False, "12 Exterior Cleans / Year"),
 ]
 PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
 

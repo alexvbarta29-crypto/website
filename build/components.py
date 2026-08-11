@@ -444,7 +444,7 @@ def page_end(depth=0):
 def promo_plan_cards(depth=0, svc=None):
     root = rel(depth)
     cards = ""
-    for i, (name, slug, amt, included, popular) in enumerate(PROMO_PLANS):
+    for i, (name, slug, amt, included, popular, cadence) in enumerate(PROMO_PLANS):
         cls = "yes" if included else "no"
         mark = icon("check-circle") if included else icon("x")
         feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in PROMO_FEATS)
@@ -453,6 +453,7 @@ def promo_plan_cards(depth=0, svc=None):
         href = f"{root}get-quote.html?plan={slug}" + (f"&svc={svc}" if svc else "")
         cards += f"""<div class="promo-card{pop_cls} reveal" data-delay="{i}">{badge}
         <h3 class="promo-name">{name}</h3>
+        <div class="promo-cadence">{cadence}</div>
         <div class="promo-price">${amt} <small>OFF</small></div>
         <div class="promo-per">Per Cleaning</div>
         <ul class="promo-feats">{feats}</ul>
@@ -587,7 +588,7 @@ def quote_wizard(depth=0, svc_default=None):
     # just made selectable (radio) instead of links, since we're already
     # on the quote form.
     plan_cards = ""
-    for name, slug, amt, included, popular in PROMO_PLANS:
+    for name, slug, amt, included, popular, cadence in PROMO_PLANS:
         cls = "yes" if included else "no"
         mark = icon("check-circle") if included else icon("x")
         feats = "".join(f'<li class="{cls}">{mark} {f}</li>' for f in PROMO_FEATS)
@@ -597,6 +598,7 @@ def quote_wizard(depth=0, svc_default=None):
         plan_cards += f"""<label class="promo-card select-card{pop_cls}">
       <input type="radio" name="plan_choice" value="{slug}" required{checked}>{badge}
       <span class="promo-name">{name}</span>
+      <span class="promo-cadence">{cadence}</span>
       <span class="promo-price">${amt} <small>OFF</small></span>
       <span class="promo-per">Per Cleaning</span>
       <ul class="promo-feats">{feats}</ul>
