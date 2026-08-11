@@ -450,6 +450,26 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .xmas-bulb, .xmas-snow span { animation: none; }
 }
 
+/* Early-bird promo — countdown banner at the top of the Christmas page. */
+.xmas-promo { position: relative; text-align: center; padding: 54px 0 60px; background: radial-gradient(90% 75% at 50% 0%, #eafff4 0%, #fff 65%); }
+.xmas-promo-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--r-pill); background: var(--xmas-green); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
+.xmas-promo-pill svg { width: 15px; height: 15px; }
+.xmas-promo-head { color: var(--xmas-red); font-size: clamp(1.85rem, 4.4vw, 3rem); line-height: 1.1; max-width: 860px; margin: 18px auto 0; }
+.xmas-promo-ends { margin-top: 12px; color: var(--xmas-green); font-family: var(--font-head); font-weight: 700; font-size: 1.12rem; }
+/* tabular-nums so the ticking seconds don't change digit widths and wiggle
+   the row; the cell floor keeps 3-digit day counts from crowding. */
+.xmas-countdown { display: flex; justify-content: center; gap: clamp(20px, 4.5vw, 48px); width: fit-content; margin: 28px auto 0; padding: 24px clamp(22px, 5vw, 52px); background: #fff; border: 1px solid rgba(31,158,99,.22); border-radius: var(--r-lg); box-shadow: var(--sh-md); }
+.cd-cell { display: grid; gap: 3px; min-width: 2.4ch; }
+.cd-num { font-family: var(--font-head); font-weight: 800; font-size: clamp(2rem, 5vw, 3rem); line-height: 1; color: var(--xmas-green); font-variant-numeric: tabular-nums; }
+.cd-label { font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--xmas-red); }
+.xmas-promo > .container > .btn { margin-top: 30px; }
+/* flex + fit-content rather than inline-flex: as an inline box this flowed
+   onto the same line as the quote button, side by side — it belongs on its
+   own row beneath it, centred, like the reference. */
+.xmas-promo-limit { display: flex; align-items: center; justify-content: center; gap: 9px; width: fit-content; margin: 24px auto 0; padding: 12px 20px; border-radius: var(--r-md); background: rgba(214,58,48,.07); border: 1px solid rgba(214,58,48,.16); color: var(--xmas-red); font-weight: 700; font-size: .92rem; }
+.xmas-promo-limit svg { width: 17px; height: 17px; flex: none; }
+@media (max-width: 480px) { .xmas-countdown { gap: 18px; padding-inline: 18px; } }
+
 .xmas-candy-stripe { height: 8px; background: repeating-linear-gradient(-45deg, var(--xmas-red) 0 16px, #fff 16px 32px, var(--xmas-green) 32px 48px, #fff 48px 64px); }
 .xmas-highlight { position: relative; background: linear-gradient(180deg, #fff6f2 0%, #fff 75%); }
 .xmas-highlight .eyebrow { color: var(--xmas-green); }

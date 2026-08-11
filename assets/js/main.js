@@ -121,6 +121,32 @@
     }
   });
 
+  /* ---- Christmas early-bird countdown ----
+         Ticks down to December 1st in the visitor's own timezone. The build
+         seeds the numbers server-side so first paint is already correct;
+         this only keeps them live. After the deadline passes, the target
+         rolls to next year's December 1st — the offer is seasonal and the
+         banner text ("Deal Ends December 1st") stays true either way, so
+         the timer never sits at zero for eleven months. ---- */
+  const cdown = $("[data-countdown]");
+  if (cdown) {
+    const cd = (k) => $('[data-cd="' + k + '"]', cdown);
+    const els = { d: cd("d"), h: cd("h"), m: cd("m"), s: cd("s") };
+    const pad = (n) => String(n).padStart(2, "0");
+    const tick = () => {
+      const now = new Date();
+      let t = new Date(now.getFullYear(), 11, 1);
+      if (t <= now) t = new Date(now.getFullYear() + 1, 11, 1);
+      const secs = Math.max(0, Math.floor((t - now) / 1000));
+      els.d.textContent = pad(Math.floor(secs / 86400));
+      els.h.textContent = pad(Math.floor(secs / 3600) % 24);
+      els.m.textContent = pad(Math.floor(secs / 60) % 60);
+      els.s.textContent = pad(secs % 60);
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+
   /* ---- Animated counters ---- */
   const counters = $$("[data-count]");
   const runCount = (el) => {

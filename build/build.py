@@ -513,7 +513,41 @@ def build_service(svc):
                            '<circle class="xmas-bulb" cx="70" cy="32" r="6" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="270" cy="4" r="6" style="fill:#18b673;color:#18b673"/>'
                            '<circle class="xmas-bulb" cx="470" cy="32" r="6" style="fill:#f5a623;color:#f5a623"/><circle class="xmas-bulb" cx="670" cy="4" r="6" style="fill:#fb4d3d;color:#fb4d3d"/>'
                            '<circle class="xmas-bulb" cx="870" cy="32" r="6" style="fill:#18b673;color:#18b673"/><circle class="xmas-bulb" cx="1070" cy="4" r="6" style="fill:#f5a623;color:#f5a623"/></svg>')
-        xmas_extra = f"""
+        # Early-bird promo with a live countdown to December 1st. The numbers
+        # are seeded at build time so the first paint is already correct (the
+        # daily Instagram sync rebuilds the site, keeping the seed within a
+        # day); main.js then ticks them once a second in the visitor's own
+        # timezone. role=timer + aria-live=off so screen readers don't
+        # announce every tick.
+        from datetime import datetime
+        _now = datetime.now()
+        _dl = datetime(_now.year, 12, 1)
+        if _dl <= _now:
+            _dl = datetime(_now.year + 1, 12, 1)
+        _left = _dl - _now
+        cd_d, cd_h = _left.days, _left.seconds // 3600
+        cd_m, cd_s = (_left.seconds % 3600) // 60, _left.seconds % 60
+        _warn_svg = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+                     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                     '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>'
+                     '<path d="M12 9v4M12 17h.01"/></svg>')
+        promo = f"""
+  <section class="xmas-promo">
+    <div class="container">
+      <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
+      <h2 class="xmas-promo-head">50% OFF Early Bird Special + FREE Takedown &amp; Storage!!!</h2>
+      <p class="xmas-promo-ends">Deal Ends December 1st</p>
+      <div class="xmas-countdown" data-countdown role="timer" aria-live="off">
+        <div class="cd-cell"><span class="cd-num" data-cd="d">{cd_d:02d}</span><span class="cd-label">Days</span></div>
+        <div class="cd-cell"><span class="cd-num" data-cd="h">{cd_h:02d}</span><span class="cd-label">Hours</span></div>
+        <div class="cd-cell"><span class="cd-num" data-cd="m">{cd_m:02d}</span><span class="cd-label">Minutes</span></div>
+        <div class="cd-cell"><span class="cd-num" data-cd="s">{cd_s:02d}</span><span class="cd-label">Seconds</span></div>
+      </div>
+      <a class="btn btn-lg" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Free Quote {icon('arrow')}</a>
+      <p class="xmas-promo-limit">{_warn_svg} We Are Only Taking On 50 New Clients This Year</p>
+    </div>
+  </section>"""
+        xmas_extra = f"""{promo}
   <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
     <div class="container">
