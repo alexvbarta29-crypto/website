@@ -267,6 +267,14 @@ def build_home():
     </div>
   </section>
 
+  <!-- MEET THE TEAM -->
+  <section class="section-tight">
+    <div class="container">
+      <div class="section-head center"><h2>Meet the team</h2></div>
+      <div class="team-grid mt-3">{_team_cards(name_tag="h3")}</div>
+    </div>
+  </section>
+
   <!-- PLANS / SAVINGS -->
   <section class="bg-mist">
     <div class="container">
@@ -846,6 +854,26 @@ def build_gallery():
 # ===========================================================================
 # ABOUT
 # ===========================================================================
+def _team_cards(name_tag="h2"):
+    """Photo + name, nothing else. Shared by the About page and the homepage
+    so the two can't drift apart.
+
+    No role line: the owners don't want "Co-Owner" printed under their names.
+    It stays in the alt text, which is accurate and never displayed, so a
+    screen reader still gets who these people are.
+
+    name_tag varies by page because the heading above the cards does. On
+    About the page title IS the team heading, so the names sit at h2; on the
+    homepage they sit under an h2 of their own and so take h3. Hardcoding
+    either would put a heading-level skip on one of the two pages."""
+    out = ""
+    for i, (name, role, _initials, photo, _bio) in enumerate(TEAM):
+        w, h = _img_size(photo)
+        out += f"""<div class="team-card reveal" data-delay="{i%3}">
+        <div class="team-photo"><img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" loading="lazy" decoding="async"></div>
+        <{name_tag}>{name}</{name_tag}></div>"""
+    return out
+
 def build_about():
     """About page laid out as Our Story -> The Barta Experience -> The Team.
     Every claim here is one already confirmed by the owner and used elsewhere
@@ -854,16 +882,7 @@ def build_about():
     the founding motivation or company history is invented — see
     docs/OWNER-VERIFICATION.md."""
     depth = 0
-    team_cards = ""
-    # Photo, name, role — nothing else. The bios are still in sitedata.TEAM
-    # but deliberately not rendered: the owners wanted the photos to carry
-    # this section on their own.
-    for i, (name, role, _initials, photo, _bio) in enumerate(TEAM):
-        w, h = _img_size(photo)
-        team_cards += f"""<div class="team-card reveal" data-delay="{i%3}">
-        <div class="team-photo"><img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" decoding="async"></div>
-        <h2>{name}</h2>
-        <p class="team-role">{role}</p></div>"""
+    team_cards = _team_cards(name_tag="h2")
 
     experience = [
         ("Recurring plans that actually save money",
