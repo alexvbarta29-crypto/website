@@ -221,20 +221,45 @@
     const prev = $(".process-arrow.prev", slider);
     const next = $(".process-arrow.next", slider);
     const SWEEP_MS = 460; // total travel time for the bar, however many segments move
-    let i = 0, timer = null, liveLine = null;
-    const resetLine = (l) => {
-      l.classList.remove("filled");
+    let i = 0, timer = null, liveLine = null, liveTimer = null;
+
+    /* Current fill of a segment, 0..1, read off the pseudo-element's live
+       transform matrix — accurate even mid-transition. */
+    const progressOf = (l) => {
+      const t = getComputedStyle(l, "::after").transform;
+      if (!t || t === "none") return l.classList.contains("filled") ? 1 : 0;
+      const m = t.match(/matrix\(([^,]+)/);
+      return m ? Math.min(1, Math.max(0, parseFloat(m[1]))) : 0;
+    };
+    /* Pin a segment exactly where it is, with no transition, so whatever we
+       drive it to next animates FROM here. This is what removes the snap:
+       a CSS transition can't be re-timed mid-flight, but it can be stopped
+       at its current position and restarted toward a new target. */
+    const freeze = (l) => {
+      const p = progressOf(l);
       l.style.setProperty("--line-dur", "0s");
       l.style.setProperty("--line-delay", "0s");
+      l.style.setProperty("--line-scale", p);
+      l.classList.remove("filled");
       void l.offsetWidth;
+      return p;
     };
-    const show = (n) => {
-      // The segment acting as the live countdown is mid-flight on a 16s
-      // transition. Changing --line-dur doesn't speed up a transition already
-      // running toward the same end value, so drop it back to empty here and
-      // let the sweep below re-drive it at its own pace.
-      if (liveLine) { resetLine(liveLine); liveLine = null; }
+    const drive = (l, to, dur, delay, ease) => {
+      l.style.setProperty("--line-dur", `${dur}ms`);
+      l.style.setProperty("--line-delay", `${delay}ms`);
+      l.style.setProperty("--line-ease", ease || "linear");
+      if (to >= 1) {
+        l.classList.add("filled");
+      } else {
+        // dropping .filled matters as much as setting the scale: on a full
+        // segment the class pins the transform at 1 and would override it
+        l.style.setProperty("--line-scale", to);
+        l.classList.remove("filled");
+      }
+    };
 
+    const show = (n) => {
+      clearTimeout(liveTimer);
       i = (n + slides.length) % slides.length;
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
       dots.forEach((d, idx) => {
@@ -242,47 +267,68 @@
         d.classList.toggle("filled", idx <= i);
       });
 
-      // Segments move one after another — each starts as the previous ends —
-      // so jumping from step 1 to step 3 reads as a single line travelling the
-      // length of the bar. Previously every segment animated simultaneously,
-      // which looked like separate bars growing side by side. Segments already
-      // full are left untouched so they don't redraw underneath the sweep.
-      const toFill = lines.filter((l, idx) => idx < i && !l.classList.contains("filled"));
-      const toEmpty = lines.filter((l, idx) => idx > i && l.classList.contains("filled"));
-      const fillSeg = toFill.length ? SWEEP_MS / toFill.length : SWEEP_MS;
-      const emptySeg = toEmpty.length ? SWEEP_MS / toEmpty.length : SWEEP_MS;
+      /* Pin the in-flight countdown wherever it happens to be. From here it's
+         just a partially-filled segment like any other, and the sweep below
+         continues its motion — forward to full or retracting to empty —
+         instead of blanking it and starting over. On a normal auto-advance
+         it sits at ~100%, so its remaining travel is ~0 and the handoff to
+         the next segment's countdown is seamless. */
+      if (liveLine) { freeze(liveLine); liveLine = null; }
 
+      /* Segments move one after another — each starts as the previous ends —
+         so any jump reads as a single line travelling the bar. Time is split
+         by how far each segment actually has to travel (a pinned segment may
+         only have a fraction left), keeping the sweep's speed constant. */
+      const fillLegs = [];   // left-to-right toward the active dot
+      const emptyLegs = [];  // right-to-left back toward it
       lines.forEach((l, idx) => {
+        let from = l.classList.contains("filled") ? 1 : progressOf(l);
+        // pin anything caught mid-flight (a leg of an interrupted sweep), so
+        // the new sweep's timing applies to it instead of the stale one's
+        if (from > 0 && from < 1) from = freeze(l);
         if (idx < i) {
-          const pos = toFill.indexOf(l);
-          if (pos === -1) return; // already full — restarting it would break the sweep
-          l.style.setProperty("--line-dur", `${fillSeg}ms`);
-          l.style.setProperty("--line-delay", `${pos * fillSeg}ms`);
-          requestAnimationFrame(() => l.classList.add("filled"));
-        } else if (idx === i && !reduce) {
-          // Live timer: reset instantly, then animate to full over one
-          // dwell period so the fill lands exactly when the next step shows.
-          resetLine(l);
-          liveLine = l;
-          requestAnimationFrame(() => {
-            l.style.setProperty("--line-dur", `${AUTOADVANCE_MS}ms`);
-            requestAnimationFrame(() => {
-              // Once it completes on its own it's just a full segment; forget
-              // it's the live one so the next step leaves it alone instead of
-              // blanking and refilling it.
-              l.addEventListener("transitionend", () => { if (liveLine === l) liveLine = null; }, { once: true });
-              l.classList.add("filled");
-            });
-          });
-        } else {
-          // Stepping backwards retracts right-to-left, so that reads as one
-          // line too rather than several segments emptying together.
-          const pos = toEmpty.indexOf(l);
-          l.style.setProperty("--line-dur", `${emptySeg}ms`);
-          l.style.setProperty("--line-delay", pos === -1 ? "0s" : `${(toEmpty.length - 1 - pos) * emptySeg}ms`);
-          l.classList.remove("filled");
+          if (from < 1) fillLegs.push({ l, dist: 1 - from });
+        } else if (from > 0) {
+          emptyLegs.push({ l, dist: from });
         }
       });
+      emptyLegs.reverse(); // retract starts from the rightmost segment
+
+      const run = (legs, to) => {
+        const total = legs.reduce((s, x) => s + x.dist, 0);
+        if (!total) return 0;
+        // one leg gets a soft curve; chained legs stay linear so the joined
+        // motion doesn't pulse at each segment boundary
+        const ease = legs.length === 1 ? "cubic-bezier(.4,0,.2,1)" : "linear";
+        let at = 0;
+        legs.forEach(({ l, dist }) => {
+          const dur = Math.max(1, SWEEP_MS * (dist / total));
+          drive(l, to, dur, at, ease);
+          at += dur;
+        });
+        return at;
+      };
+      const fillDone = run(fillLegs, 1);
+      const emptyDone = run(emptyLegs, 0);
+
+      /* Live countdown on the segment ahead of the active dot: wait for the
+         sweep to finish, then crawl to full across the rest of the dwell so
+         it lands just as the next step arrives. Scheduled with a timeout
+         rather than a CSS delay because when stepping backwards this same
+         segment is retracting as part of the sweep above — re-targeting it
+         to full in the same tick would cancel that retract, leaving the bar
+         stuck at 1 instead of visibly emptying first. */
+      if (!reduce && lines[i]) {
+        const l = lines[i];
+        liveLine = l;
+        const wait = Math.max(fillDone, emptyDone);
+        liveTimer = setTimeout(() => {
+          if (liveLine !== l) return; // superseded by a later step change
+          freeze(l);
+          l.addEventListener("transitionend", () => { if (liveLine === l) liveLine = null; }, { once: true });
+          drive(l, 1, Math.max(1000, AUTOADVANCE_MS - wait), 0, "linear");
+        }, wait + 20);
+      }
     };
     const restart = () => {
       if (timer) clearInterval(timer);

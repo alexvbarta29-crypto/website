@@ -591,7 +591,13 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
 /* --line-delay lets main.js stagger the segments so a multi-step jump reads
    as one line travelling the bar instead of every segment growing at once. */
-.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform var(--line-dur, .8s) linear var(--line-delay, 0s); }
+/* The empty-state scale is a custom property so the script can pin a bar at
+   its current mid-flight position (freeze) and animate from there, instead
+   of every interruption snapping the fill back to zero. Easing is a variable
+   for the same reason: multi-segment sweeps stay linear so chained segments
+   read as one line moving at constant speed, while a lone segment gets a
+   gentler curve. */
+.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(var(--line-scale, 0)); transform-origin: left; transition: transform var(--line-dur, .8s) var(--line-ease, linear) var(--line-delay, 0s); }
 .process-line.filled::after { transform: scaleX(1); }
 @media (max-width: 780px) {
   /* Stacked in a single grid cell rather than absolutely positioned in a
