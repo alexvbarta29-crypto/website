@@ -1,5 +1,19 @@
 [
   {
+    "id": "17980987080059318",
+    "image": "assets/img/instagram/17980987080059318.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17980987080059318.jpg"
+      }
+    ],
+    "caption": "The cleanest of cleans. \ud83e\ude9f\u2728",
+    "permalink": "https://www.instagram.com/reel/DcAArC1Skaq/",
+    "timestamp": "2026-08-14T00:21:46+0000"
+  },
+  {
     "id": "18132958747618003",
     "image": "assets/img/instagram/18132958747618003_0.jpg",
     "type": "CAROUSEL_ALBUM",
@@ -22,7 +36,7 @@
         "image": "assets/img/instagram/18132958747618003_3.jpg"
       }
     ],
-    "caption": "Giving your windows the professional career they deserve! \ud83e\uddfc\ud83c\udfe0\ud83c\udf32",
+    "caption": "Giving your windows the professional care they deserve! \ud83e\uddfc\ud83c\udfe0\ud83c\udf32",
     "permalink": "https://www.instagram.com/p/Db5paf6EUg2/",
     "timestamp": "2026-08-11T13:00:03+0000"
   },
@@ -218,28 +232,5 @@
     "caption": "Ever wonder how we get your windows looking crystal clear? \n\n1\ufe0f\u20e3 Scrub \u2014 We use commercial-grade abrasives to remove built-up dirt, grime, and stuck-on debris.\n\n2\ufe0f\u20e3 Squeegee \u2014 Every pane is professionally squeegeed for a clean, streak-free finish.\n\n3\ufe0f\u20e3 Detail \u2014 We finish by detailing the glass, sills, and frames to make sure everything looks sharp.\n\nIt\u2019s all in the details. Clean windows, done right. \ud83c\udf32",
     "permalink": "https://www.instagram.com/p/DbI66RXkWGR/",
     "timestamp": "2026-07-23T14:51:02+0000"
-  },
-  {
-    "id": "18144547531542050",
-    "image": "assets/img/instagram/18144547531542050_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18144547531542050_0.jpg"
-      },
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/18144547531542050_1.jpg",
-        "video": "assets/img/instagram/18144547531542050_1.mp4"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18144547531542050_2.jpg"
-      }
-    ],
-    "caption": "Dirty Windows? We can fix that\ud83c\udf32",
-    "permalink": "https://www.instagram.com/p/DbGqMg8FF4X/",
-    "timestamp": "2026-07-22T17:46:29+0000"
   }
 ]
