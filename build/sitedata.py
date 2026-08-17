@@ -20,7 +20,7 @@ BIZ = {
     "zip": "55328",
     "lat": "45.0419",
     "lng": "-93.7891",
-    "hours": "Mon–Fri 8am–6pm, Sat 8am–6pm, Sun Closed",
+    "hours": "Mon–Fri 8am–6pm, Sat 8am–5pm, Sun Closed",
     "founded": "2024",
     "rating": "5.0",
     "review_count": "100",

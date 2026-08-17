@@ -305,6 +305,9 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <link rel="canonical" href="{canonical}">
 <meta name="theme-color" content="#16161b">
 <meta name="robots" content="{robots}">
+<!-- Google Search Console ownership, carried over from the Wix site so
+     verification survives the move to Netlify. Do not change the content. -->
+<meta name="google-site-verification" content="mcN7p2g6XzyvGg2ItuYK9nBOp37G57zMr7EhDfreBl0">
 <!-- Open Graph / social -->
 <meta property="og:type" content="{og_type}">
 <meta property="og:site_name" content="{BIZ['name']}">
