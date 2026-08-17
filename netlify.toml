@@ -1,12 +1,15 @@
-# Netlify deploy config — the site is plain static files at the repo root.
-# Connect this repo in the Netlify dashboard (or run `netlify deploy`) and
-# it will publish with no build step required.
+# Netlify deploy config — the HTML is pre-generated and committed, so the
+# build step only packages the served files into _deploy/ (never the repo's
+# build/, docs/, or config/ internals), and Netlify publishes that artifact.
 
 [build]
-  publish = "."
-  # The HTML is pre-generated and committed, so no build command is needed.
-  # To regenerate during deploy instead, uncomment the next line:
-  # command = "python3 build/build.py"
+  command = "python3 build/make_deploy.py"
+  publish = "_deploy"
+
+# Old-path canonicalization is handled explicitly by the generated _redirects
+# file; keep Netlify's pretty-URL rewriting off so it can't compete with it.
+[build.processing.html]
+  pretty_urls = false
 
 [[headers]]
   for = "/assets/*"
