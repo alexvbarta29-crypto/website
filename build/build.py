@@ -1300,9 +1300,15 @@ def build_privacy():
     <p>We will never sell your personal information to third parties.</p>
     <h2>5. SMS / text messaging</h2>
     <p>By providing your phone number and opting in, you consent to receive text messages from {BIZ['name']} regarding appointment scheduling, service reminders, and updates. Message and data rates may apply, and message frequency varies. You may opt out at any time by replying STOP to any text message, or reply HELP for assistance. We do not share your phone number or SMS opt-in status with third parties for their own marketing purposes.</p>
-    <h2 id="cookies">6. Cookies</h2>
-    <p>This website does not set cookies. We do not use advertising cookies, analytics cookies, or similar tracking technologies, and the photos and videos on this site are served directly from our own website rather than embedded from social media platforms.</p>
-    <p>Links on this site to third-party platforms such as Instagram, Facebook, TikTok, and Google take you to those services, which may set their own cookies under their own privacy policies once you are on their sites. If we add analytics or other cookie-based tools in the future, we will update this section to describe what is used and the choices available to you.</p>
+    <h2 id="cookies">6. Cookies and third-party services</h2>
+    <p>{BIZ['short']} does not intentionally use first-party analytics or advertising cookies on this website. However, some features of the site are provided by third parties. When your browser loads those features, the providers receive technical information such as your IP address and browser details, and they may use cookies or similar technologies under their own privacy policies. These features include:</p>
+    <ul>
+      <li><strong>Trustindex</strong> — displays our Google reviews on this site</li>
+      <li><strong>Google Maps</strong> — powers the embedded map of our location and service area</li>
+      <li><strong>Fontshare</strong> — serves the fonts used on this site</li>
+      <li><strong>OpenStreetMap / Nominatim</strong> — powers the address suggestions on our quote form; the address text you type into that field is sent to Nominatim to look up matching addresses</li>
+    </ul>
+    <p>We encourage you to review those providers' privacy policies for details on how they handle your data. Links on this site to platforms such as Instagram, Facebook, TikTok, and Google likewise take you to services that operate under their own policies. If we add analytics or other cookie-based tools in the future, we will update this section to describe what is used and the choices available to you.</p>
     <h2>7. Sharing of information</h2>
     <p>We do not sell, trade, or rent your personal information. We may share your information only in the following limited circumstances:</p>
     <ul>
