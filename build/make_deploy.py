@@ -31,7 +31,7 @@ SKIP_DIRS = {".git", ".github", ".claude", "build", "docs", "config",
              "node_modules", "_deploy", "__pycache__"}
 
 # Root-level non-HTML files the site genuinely serves.
-ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME"]
+ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redirects"]
 
 # Any local asset path appearing anywhere in a shipped text file. Scanning the
 # raw text (not just src/href) also catches srcset entries, poster attrs,

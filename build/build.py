@@ -1880,6 +1880,95 @@ def build_meta_files():
     sitemap = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls + '</urlset>\n')
     write_asset("sitemap.xml", sitemap)
+    build_redirects()
+
+# Permanent 301s from the old Wix site's URLs to their new homes, served by
+# Netlify via the generated _redirects file (inert on GitHub Pages). All rules
+# are plain (no "!"), so Netlify treats them as fallbacks: a rule whose path
+# already resolves to a real file on the new site is never applied, and rules
+# for paths the old site never had are simply dead entries — the only real
+# hazard is a destination that doesn't exist, which build_redirects() verifies.
+# The old Wix sitemap wasn't reachable from the build sandbox, so this covers
+# Wix's standard slugs plus every plausible name for our pages.
+WIX_REDIRECTS = [
+    # Core pages
+    ("/home",                         "/"),
+    ("/main",                         "/"),
+    ("/about",                        "/about.html"),
+    ("/about-us",                     "/about.html"),
+    ("/our-story",                    "/about.html"),
+    ("/team",                         "/about.html"),
+    ("/contact",                      "/get-quote.html"),
+    ("/contact-us",                   "/get-quote.html"),
+    ("/quote",                        "/get-quote.html"),
+    ("/free-quote",                   "/get-quote.html"),
+    ("/estimate",                     "/get-quote.html"),
+    ("/book-online",                  "/get-quote.html"),
+    ("/book",                         "/get-quote.html"),
+    ("/booking",                      "/get-quote.html"),
+    ("/schedule",                     "/get-quote.html"),
+    # Services
+    ("/services",                     "/#services"),
+    ("/our-services",                 "/#services"),
+    ("/window-cleaning",              "/services/exterior-window-cleaning.html"),
+    ("/window-washing",               "/services/exterior-window-cleaning.html"),
+    ("/exterior-window-cleaning",     "/services/exterior-window-cleaning.html"),
+    ("/interior-window-cleaning",     "/services/interior-window-cleaning.html"),
+    ("/pressure-washing",             "/services/pressure-washing.html"),
+    ("/power-washing",                "/services/pressure-washing.html"),
+    ("/soft-washing",                 "/services/soft-washing.html"),
+    ("/house-washing",                "/services/house-washing.html"),
+    ("/gutter-cleaning",              "/services/gutter-cleaning.html"),
+    ("/gutters",                      "/services/gutter-cleaning.html"),
+    ("/screen-cleaning",              "/services/screen-cleaning.html"),
+    ("/track-detailing",              "/services/track-detailing.html"),
+    ("/hard-water-stain-removal",     "/services/hard-water-stain-removal.html"),
+    ("/hard-water-removal",           "/services/hard-water-stain-removal.html"),
+    ("/solar-panel-cleaning",         "/services/solar-panel-cleaning.html"),
+    ("/commercial",                   "/services/commercial-cleaning.html"),
+    ("/commercial-cleaning",          "/services/commercial-cleaning.html"),
+    ("/christmas-lights",             "/services/christmas-light-installation.html"),
+    ("/christmas-light-installation", "/services/christmas-light-installation.html"),
+    ("/holiday-lights",               "/services/christmas-light-installation.html"),
+    ("/holiday-lighting",             "/services/christmas-light-installation.html"),
+    # Content pages
+    ("/gallery",                      "/gallery.html"),
+    ("/photos",                       "/gallery.html"),
+    ("/portfolio",                    "/gallery.html"),
+    ("/our-work",                     "/gallery.html"),
+    ("/reviews",                      "/reviews.html"),
+    ("/testimonials",                 "/reviews.html"),
+    ("/news",                         "/blog.html"),
+    ("/faq",                          "/faqs.html"),
+    ("/areas-we-serve",               "/service-areas.html"),
+    ("/locations",                    "/service-areas.html"),
+    # Legal / boilerplate
+    ("/privacy-policy",               "/privacy.html"),
+    ("/cookie-policy",                "/privacy.html"),
+    ("/cookies",                      "/privacy.html"),
+    ("/terms-of-service",             "/terms.html"),
+    ("/terms-and-conditions",         "/terms.html"),
+    ("/terms-of-use",                 "/terms.html"),
+    ("/accessibility",                "/"),
+    ("/accessibility-statement",      "/"),
+    # Wix structural prefixes
+    ("/post/*",                       "/blog.html"),
+    ("/service-page/*",               "/#services"),
+    ("/blog/categories/*",            "/blog.html"),
+    ("/blog/tags/*",                  "/blog.html"),
+]
+
+def build_redirects():
+    for src, dst in WIX_REDIRECTS:
+        rel = dst.split("#")[0].strip("/") or "index.html"
+        if not os.path.isfile(os.path.join(ROOT, rel)):
+            raise SystemExit(f"_redirects: destination {dst} for {src} does not exist")
+    width = max(len(s) for s, _ in WIX_REDIRECTS) + 2
+    lines = ["# Permanent redirects from the old Wix site (served by Netlify).",
+             "# Fallback-only rules: any path that resolves to a real file is served as-is.",
+             ""]
+    lines += [f"{src:<{width}}{dst}  301" for src, dst in WIX_REDIRECTS]
+    write_asset("_redirects", "\n".join(lines) + "\n")
 
 # ===========================================================================
 # MAIN
