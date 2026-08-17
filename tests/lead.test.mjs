@@ -1,5 +1,5 @@
 // Mocked tests for the /api/lead → Rotor field mapping. Run with:
-//   node --test netlify/functions/
+//   node --test tests/lead.test.mjs
 // globalThis.fetch is replaced with a capture stub, so no request ever
 // leaves the machine and no real API key is involved — ROTOR_API_KEY is a
 // clearly fake placeholder.
@@ -8,7 +8,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 process.env.ROTOR_API_KEY = "test-dummy-key-not-real";
-const handler = (await import("./lead.mjs")).default;
+const handler = (await import("../netlify/functions/lead.mjs")).default;
 
 let captured;
 beforeEach(() => {
