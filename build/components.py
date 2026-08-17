@@ -755,7 +755,6 @@ def xmas_quote_modal(depth=0):
             <option>Front only</option>
             <option>Front and sides</option>
             <option>Front, sides, and back</option>
-            <option>Not sure — help me decide</option>
           </select>
         </div>
         <div class="field"><label for="xq-hear">How did you hear about us?</label>
