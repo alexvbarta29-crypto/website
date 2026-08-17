@@ -28,6 +28,24 @@ def lead_form_fallback(depth=0):
     </div>
   </div>"""
 
+def form_success(depth=0, closer=""):
+    """Post-submit confirmation, shared by every lead form. Hidden until
+    main.js gets a 2xx back from the lead endpoint, then it replaces the
+    form entirely. `closer` carries a data-attribute for forms that live in
+    a modal (the close button dismisses the overlay instead of navigating)."""
+    root = rel(depth)
+    away = (f'<button type="button" class="btn btn-ghost" {closer}>Continue Browsing</button>' if closer
+            else f'<a class="btn btn-ghost" href="{root}index.html">Back to Homepage</a>')
+    return f"""<div class="form-success">
+    <div class="success-badge">{icon('check-circle')}</div>
+    <h2 class="success-title">You&rsquo;re all set!</h2>
+    <p class="success-sub">Your quote request is in. One of the owners will look it over and reach out shortly with your free, no-obligation quote.</p>
+    <div class="success-actions">
+      <a class="btn btn-lg" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
+      {away}
+    </div>
+  </div>"""
+
 # Cache-busting version for static assets (set at build time from file hashes).
 # Keeps CSS/JS from being served stale by the browser/CDN after a change.
 ASSET_VER = "1"
@@ -551,13 +569,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
     <p class="form-note center">By submitting, you agree to be contacted about your request. We never sell your info.</p>
   </form>
   {lead_form_fallback(depth)}
-  <div class="form-success">
-    {icon('check-circle')}
-    <h3>Thank you! Your request is in.</h3>
-    <p>One of the owners will reach out with your free, no-obligation quote.</p>
-    <a class="btn mt-2" href="tel:{BIZ['phone_href']}">{icon('phone')} Or call us now: {BIZ['phone_display']}</a>
-    <p class="mt-2"><a class="back-link" href="{rel(depth)}index.html"><span class="back-link-icon">{icon('arrow')}</span> Back to homepage</a></p>
-  </div>
+  {form_success(depth)}
 </div>"""
 
 # Services offered in the quote wizard's picker — every homepage service
@@ -674,6 +686,8 @@ def quote_wizard(depth=0, svc_default=None):
         <div class="field"><label for="q-zip">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{{5}}" data-address-zip placeholder="55328"></div>
       </div>
       <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
+      <div class="field mt-1"><label for="q-notes">Anything else we should know? <span class="label-hint">(optional)</span></label>
+        <textarea id="q-notes" name="notes" placeholder="Special requests, gate codes, scheduling preferences — anything you'd like us to know."></textarea></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="submit" class="btn btn-lg btn-block">Get My Free Quote {icon('arrow')}</button>
@@ -682,14 +696,7 @@ def quote_wizard(depth=0, svc_default=None):
     </div>
   </form>
   {lead_form_fallback(depth)}
-  <div class="form-success">
-    {icon('check-circle')}
-    <h2>Thank you! Your request is in.</h2>
-    <p>Someone will reach out shortly.</p>
-    <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
-    <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
-    <p class="mt-2"><a class="back-link" href="{rel(depth)}index.html"><span class="back-link-icon">{icon('arrow')}</span> Back to homepage</a></p>
-  </div>
+  {form_success(depth)}
 </div>"""
 
 def xmas_quote_modal(depth=0):
@@ -756,14 +763,7 @@ def xmas_quote_modal(depth=0):
         <button type="submit" class="btn btn-lg btn-block mt-2">Submit {icon('arrow')}</button>
       </form>
       {lead_form_fallback(depth)}
-  <div class="form-success">
-        {icon('check-circle')}
-        <h3>Thank you! Your request is in.</h3>
-        <p>Someone will reach out shortly.</p>
-        <a class="btn mt-2 call-us-btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
-        <p class="call-us-number">Or call us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
-        <p class="mt-2"><button type="button" class="link-btn" data-xmas-close>Continue browsing</button></p>
-      </div>
+      {form_success(depth, closer="data-xmas-close")}
     </div>
   </div>
 </div>"""

@@ -469,7 +469,11 @@
 
       const showSuccess = () => {
         form.classList.add("sent");
-        if (success) { success.classList.add("show"); success.setAttribute("role", "status"); }
+        if (success) {
+          success.classList.add("show");
+          success.setAttribute("role", "status");
+          success.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+        }
         const wizardFill = $("[data-wizard-fill]", form.closest(".wizard") || form);
         if (wizardFill) wizardFill.style.width = "100%";
       };
