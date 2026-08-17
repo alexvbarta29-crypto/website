@@ -44,7 +44,7 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
   assert.equal(captured.options.headers["x-api-key"], "test-dummy-key-not-real");
   assert.deepEqual(captured.payload, {
     source: "Website quote form",
-    tags: ["website-lead", "Exterior Window Cleaning", "Gutter Cleaning", "plan: quarterly"],
+    tags: ["Website", "Exterior Window Cleaning", "Gutter Cleaning", "plan: quarterly"],
     name: "Test Person",
     phone: "(763) 555-0100",
     email: "test@example.com",

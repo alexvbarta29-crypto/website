@@ -34,7 +34,7 @@ fallback — visitors are never shown a false "we got it" confirmation.
   form fields; the function falls back to MN/US only when they're missing
 - `service_type`: the selected service(s), capped at Rotor's 100-character
   limit (whole names only — overflow services still arrive via tags)
-- `tags`: `website-lead`, each selected service, and `plan: <choice>` when a
+- `tags`: `Website`, each selected service, and `plan: <choice>` when a
   maintenance plan was picked
 - `source`: "Website quote form"
 - `notes` (≤2,000 chars): the customer's own message first ("Customer

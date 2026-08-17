@@ -117,7 +117,7 @@ export default async (req) => {
   const svcType = services.length ? serviceType(services)
     : clean(data.service_type).slice(0, MAX_SERVICE_TYPE);
   const plan = clean(data.plan || data.plan_choice);
-  const tags = ["website-lead", ...services, ...(plan ? ["plan: " + plan] : [])];
+  const tags = ["Website", ...services, ...(plan ? ["plan: " + plan] : [])];
 
   const notes = buildNotes(data);
 
