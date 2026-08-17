@@ -416,6 +416,7 @@ def footer(depth=0):
           <li><a href="{root}service-areas.html">Service Areas</a></li>
           <li><a href="{root}privacy.html">Privacy Policy</a></li>
           <li><a href="{root}terms.html">Terms &amp; Conditions</a></li>
+          <li><a href="{root}accessibility.html">Accessibility</a></li>
           <li><a href="{root}sitemap.html">Sitemap</a></li>
         </ul>
       </div>

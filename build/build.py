@@ -1300,23 +1300,26 @@ def build_privacy():
     <p>We will never sell your personal information to third parties.</p>
     <h2>5. SMS / text messaging</h2>
     <p>By providing your phone number and opting in, you consent to receive text messages from {BIZ['name']} regarding appointment scheduling, service reminders, and updates. Message and data rates may apply, and message frequency varies. You may opt out at any time by replying STOP to any text message, or reply HELP for assistance. We do not share your phone number or SMS opt-in status with third parties for their own marketing purposes.</p>
-    <h2>6. Sharing of information</h2>
+    <h2 id="cookies">6. Cookies</h2>
+    <p>This website does not set cookies. We do not use advertising cookies, analytics cookies, or similar tracking technologies, and the photos and videos on this site are served directly from our own website rather than embedded from social media platforms.</p>
+    <p>Links on this site to third-party platforms such as Instagram, Facebook, TikTok, and Google take you to those services, which may set their own cookies under their own privacy policies once you are on their sites. If we add analytics or other cookie-based tools in the future, we will update this section to describe what is used and the choices available to you.</p>
+    <h2>7. Sharing of information</h2>
     <p>We do not sell, trade, or rent your personal information. We may share your information only in the following limited circumstances:</p>
     <ul>
       <li>With service providers who support our operations, such as scheduling or payment tools, under confidentiality obligations</li>
       <li>When required by law, regulation, or valid legal process</li>
       <li>To protect the rights, safety, or property of {BIZ['short']}, our customers, or others</li>
     </ul>
-    <h2>7. Data retention</h2>
-    <p>We retain your personal information for as long as necessary to provide services to you and to meet our legal and business obligations. You may request deletion of your data at any time by contacting us (see Section 10).</p>
-    <h2>8. Data security</h2>
+    <h2>8. Data retention</h2>
+    <p>We retain your personal information for as long as necessary to provide services to you and to meet our legal and business obligations. You may request deletion of your data at any time by contacting us (see Section 11).</p>
+    <h2>9. Data security</h2>
     <p>We use reasonable administrative, technical, and physical safeguards to protect your personal information from unauthorized access, use, or disclosure. However, no method of transmission over the internet or electronic storage is completely secure.</p>
-    <h2>9. Your rights</h2>
-    <p>Regardless of where you live, we're glad to help you access, correct, or delete the personal information we hold about you, or opt out of promotional communications, any time you ask. Minnesota residents may also have specific rights under Minnesota law, including the Minnesota Consumer Data Privacy Act, where applicable. To exercise any of these rights, contact us using the information in Section 10.</p>
-    <h2>10. Contact us</h2>
+    <h2>10. Your rights</h2>
+    <p>Regardless of where you live, we're glad to help you access, correct, or delete the personal information we hold about you, or opt out of promotional communications, any time you ask. Minnesota residents may also have specific rights under Minnesota law, including the Minnesota Consumer Data Privacy Act, where applicable. To exercise any of these rights, contact us using the information in Section 11.</p>
+    <h2>11. Contact us</h2>
     <p>If you have questions about this Privacy Policy or wish to exercise your rights, please contact us:</p>
     <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: {BIZ['phone_display']}<br>Address: {BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</p>
-    <h2>11. Updates to this policy</h2>
+    <h2>12. Updates to this policy</h2>
     <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with a revised effective date. Continued use of our services after changes are posted constitutes your acceptance of the updated policy.</p>
     <p><em>This document is provided for informational purposes and does not constitute legal advice. We recommend having it reviewed by a licensed Minnesota attorney to ensure full compliance with applicable state and federal law.</em></p>
   </div></div></section></main>"""
@@ -1373,6 +1376,42 @@ def build_terms():
     write("terms.html", html, slug="terms.html", priority="0.2")
 
 # ===========================================================================
+# ACCESSIBILITY STATEMENT
+# ===========================================================================
+def build_accessibility():
+    depth = 0
+    html, body = interior_head(
+        title=seo_title("Accessibility Statement"),
+        desc="Accessibility statement for the Barta Window Washing website: the standards we aim for, the accessibility features built into this site, and how to reach us if you hit a barrier.",
+        slug="accessibility.html", eyebrow="Accessibility", h1="Accessibility Statement",
+        lead="We want everyone to be able to use this website comfortably, regardless of ability or technology.",
+        depth=depth, crumb_label="Accessibility", noindex=True)
+    html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
+    <p><em>Last reviewed: August 2026</em></p>
+    <h2>Our commitment</h2>
+    <p>{BIZ['legal_name']} is committed to making this website accessible to as many people as possible, including people who use screen readers, keyboard navigation, or other assistive technologies. We aim to conform to the <a href="https://www.w3.org/TR/WCAG21/" rel="noopener">Web Content Accessibility Guidelines (WCAG) 2.1</a> at Level AA.</p>
+    <h2>What we've built into this site</h2>
+    <ul>
+      <li>A "Skip to content" link at the top of every page for keyboard and screen-reader users</li>
+      <li>Semantic HTML with one main heading per page and a logical heading order</li>
+      <li>Descriptive alternative text on images</li>
+      <li>Full keyboard operability with clearly visible focus indicators</li>
+      <li>Animations and transitions that are reduced when your device requests reduced motion</li>
+      <li>Text that scales with your browser settings and layouts that adapt to any screen size</li>
+      <li>Form fields with visible labels and touch targets sized for easy use</li>
+    </ul>
+    <h2>Known limitations</h2>
+    <p>Some content on this site comes from our social media feeds, and the wording of those posts isn't always something we can control. If any of that content is hard to use with assistive technology, contact us and we'll help directly.</p>
+    <h2>Feedback and assistance</h2>
+    <p>If you have difficulty using any part of this website, or would like information from it in another format, please reach out — we'll respond as quickly as we can, and we're always happy to provide quotes and scheduling by phone or email instead:</p>
+    <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
+    <h2>Continuous improvement</h2>
+    <p>Accessibility is ongoing work, not a one-time checkbox. We review this site as we update it and fix accessibility issues as we find them or as they're reported to us.</p>
+  </div></div></section></main>"""
+    html += C.page_end(depth)
+    write("accessibility.html", html, slug="accessibility.html", priority="0.2")
+
+# ===========================================================================
 # SITEMAP (human-readable page — separate from the machine sitemap.xml)
 # ===========================================================================
 def build_sitemap_page():
@@ -1404,6 +1443,7 @@ def build_sitemap_page():
         ("calendar", "Get a Quote", "get-quote.html"),
         ("shield", "Privacy Policy", "privacy.html"),
         ("clipboard", "Terms &amp; Conditions", "terms.html"),
+        ("user", "Accessibility", "accessibility.html"),
     ]
     service_items = [(s["icon"], s["name"], f"services/{s['slug']}.html") for s in SERVICES]
     area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in PRIMARY_AREAS]
@@ -1883,79 +1923,27 @@ def build_meta_files():
     build_redirects()
 
 # Permanent 301s from the old Wix site's URLs to their new homes, served by
-# Netlify via the generated _redirects file (inert on GitHub Pages). All rules
-# are plain (no "!"), so Netlify treats them as fallbacks: a rule whose path
-# already resolves to a real file on the new site is never applied, and rules
-# for paths the old site never had are simply dead entries — the only real
-# hazard is a destination that doesn't exist, which build_redirects() verifies.
-# The old Wix sitemap wasn't reachable from the build sandbox, so this covers
-# Wix's standard slugs plus every plausible name for our pages.
+# Netlify via the generated _redirects file (inert on GitHub Pages). Every
+# entry here is a URL verified from the old site's actual Wix sitemap — no
+# guessed slugs and no wildcards; add new rules only for URLs confirmed via
+# the old sitemap, Search Console, or known backlinks. The rules are forced
+# ("301!") so Netlify's static-file shadowing / pretty-URL resolution can
+# never serve content at the old path instead of redirecting; that makes a
+# collision with a real file a silent content-hider, so build_redirects()
+# verifies each destination exists and no source path matches a real file.
 WIX_REDIRECTS = [
-    # Core pages
-    ("/home",                         "/"),
-    ("/main",                         "/"),
-    ("/about",                        "/about.html"),
-    ("/about-us",                     "/about.html"),
-    ("/our-story",                    "/about.html"),
-    ("/team",                         "/about.html"),
-    ("/contact",                      "/get-quote.html"),
-    ("/contact-us",                   "/get-quote.html"),
-    ("/quote",                        "/get-quote.html"),
-    ("/free-quote",                   "/get-quote.html"),
-    ("/estimate",                     "/get-quote.html"),
-    ("/book-online",                  "/get-quote.html"),
-    ("/book",                         "/get-quote.html"),
-    ("/booking",                      "/get-quote.html"),
-    ("/schedule",                     "/get-quote.html"),
-    # Services
-    ("/services",                     "/#services"),
-    ("/our-services",                 "/#services"),
-    ("/window-cleaning",              "/services/exterior-window-cleaning.html"),
-    ("/window-washing",               "/services/exterior-window-cleaning.html"),
-    ("/exterior-window-cleaning",     "/services/exterior-window-cleaning.html"),
-    ("/interior-window-cleaning",     "/services/interior-window-cleaning.html"),
-    ("/pressure-washing",             "/services/pressure-washing.html"),
-    ("/power-washing",                "/services/pressure-washing.html"),
-    ("/soft-washing",                 "/services/soft-washing.html"),
-    ("/house-washing",                "/services/house-washing.html"),
-    ("/gutter-cleaning",              "/services/gutter-cleaning.html"),
-    ("/gutters",                      "/services/gutter-cleaning.html"),
-    ("/screen-cleaning",              "/services/screen-cleaning.html"),
-    ("/track-detailing",              "/services/track-detailing.html"),
-    ("/hard-water-stain-removal",     "/services/hard-water-stain-removal.html"),
-    ("/hard-water-removal",           "/services/hard-water-stain-removal.html"),
-    ("/solar-panel-cleaning",         "/services/solar-panel-cleaning.html"),
-    ("/commercial",                   "/services/commercial-cleaning.html"),
-    ("/commercial-cleaning",          "/services/commercial-cleaning.html"),
-    ("/christmas-lights",             "/services/christmas-light-installation.html"),
-    ("/christmas-light-installation", "/services/christmas-light-installation.html"),
-    ("/holiday-lights",               "/services/christmas-light-installation.html"),
-    ("/holiday-lighting",             "/services/christmas-light-installation.html"),
-    # Content pages
-    ("/gallery",                      "/gallery.html"),
-    ("/photos",                       "/gallery.html"),
-    ("/portfolio",                    "/gallery.html"),
-    ("/our-work",                     "/gallery.html"),
-    ("/reviews",                      "/reviews.html"),
-    ("/testimonials",                 "/reviews.html"),
-    ("/news",                         "/blog.html"),
-    ("/faq",                          "/faqs.html"),
-    ("/areas-we-serve",               "/service-areas.html"),
-    ("/locations",                    "/service-areas.html"),
-    # Legal / boilerplate
-    ("/privacy-policy",               "/privacy.html"),
-    ("/cookie-policy",                "/privacy.html"),
-    ("/cookies",                      "/privacy.html"),
-    ("/terms-of-service",             "/terms.html"),
-    ("/terms-and-conditions",         "/terms.html"),
-    ("/terms-of-use",                 "/terms.html"),
-    ("/accessibility",                "/"),
-    ("/accessibility-statement",      "/"),
-    # Wix structural prefixes
-    ("/post/*",                       "/blog.html"),
-    ("/service-page/*",               "/#services"),
-    ("/blog/categories/*",            "/blog.html"),
-    ("/blog/tags/*",                  "/blog.html"),
+    ("/about",                    "/about.html"),
+    ("/accessibility-statement",  "/accessibility.html"),
+    ("/service-area",             "/service-areas.html"),
+    ("/softwashing",              "/services/soft-washing.html"),
+    ("/windowwashing",            "/services/exterior-window-cleaning.html"),
+    ("/pressurewashing",          "/services/pressure-washing.html"),
+    ("/privacy-policy",           "/privacy.html"),
+    ("/contact",                  "/get-quote.html"),
+    ("/guttercleaning",           "/services/gutter-cleaning.html"),
+    ("/faq",                      "/faqs.html"),
+    ("/cookie-policy",            "/privacy.html#cookies"),
+    ("/plymouth-window-cleaning", "/areas/plymouth.html"),
 ]
 
 def build_redirects():
@@ -1963,11 +1951,13 @@ def build_redirects():
         rel = dst.split("#")[0].strip("/") or "index.html"
         if not os.path.isfile(os.path.join(ROOT, rel)):
             raise SystemExit(f"_redirects: destination {dst} for {src} does not exist")
+        if os.path.exists(os.path.join(ROOT, src.strip("/"))):
+            raise SystemExit(f"_redirects: forced rule {src} would hide a real file")
     width = max(len(s) for s, _ in WIX_REDIRECTS) + 2
-    lines = ["# Permanent redirects from the old Wix site (served by Netlify).",
-             "# Fallback-only rules: any path that resolves to a real file is served as-is.",
+    lines = ["# Permanent redirects for the old Wix site's URLs (served by Netlify).",
+             "# Forced rules — these exact paths were verified from the old Wix sitemap.",
              ""]
-    lines += [f"{src:<{width}}{dst}  301" for src, dst in WIX_REDIRECTS]
+    lines += [f"{src:<{width}}{dst}  301!" for src, dst in WIX_REDIRECTS]
     write_asset("_redirects", "\n".join(lines) + "\n")
 
 # ===========================================================================
@@ -2221,6 +2211,7 @@ def main():
     build_get_quote()
     build_privacy()
     build_terms()
+    build_accessibility()
     build_404()
     build_instagram_callback()
     build_blog()
