@@ -364,6 +364,8 @@
     const verified = wrap.querySelector("[data-address-verified]");
     const cityField = panel.querySelector("[data-address-city]");
     const zipField = panel.querySelector("[data-address-zip]");
+    const stateField = panel.querySelector("[data-address-state]");
+    const countryField = panel.querySelector("[data-address-country]");
     const status = panel.querySelector("[data-address-status]");
     if (!list) return;
     let timer = null, aborter = null, lastFired = 0;
@@ -404,6 +406,12 @@
               input.value = road || r.display_name;
               if (cityField) cityField.value = cityName || cityField.value;
               if (zipField) zipField.value = addr.postcode || zipField.value;
+              // Prefer the two-letter abbreviation ("US-MN" → "MN") over the
+              // spelled-out state name Nominatim also returns.
+              const iso = addr["ISO3166-2-lvl4"] || "";
+              const stateAbbr = iso.indexOf("-") > -1 ? iso.split("-")[1] : "";
+              if (stateField) stateField.value = stateAbbr || addr.state || stateField.value;
+              if (countryField) countryField.value = (addr.country_code || "").toUpperCase() || countryField.value;
               if (verified) verified.value = "yes";
               if (status) status.hidden = true;
               close();

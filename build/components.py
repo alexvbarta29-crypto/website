@@ -541,8 +541,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
         <option value="" selected disabled>Select one…</option>
         <option>Google Search</option><option>Google Maps / Reviews</option><option>Facebook / Instagram</option>
         <option>Referral from friend/neighbor</option><option>Saw our crew / vehicle</option><option>Returning customer</option><option>Other</option>
-      </select></div>
-    <div class="field"><label for="lf-notes">Notes (optional)</label><textarea id="lf-notes" name="notes" placeholder="Tell us about your home, number of windows, or anything special…"></textarea></div>"""
+      </select></div>"""
     return f"""<div class="hero-card" id="quote-form">
   <h2 class="form-card-title">{heading}</h2>
   <p class="form-note">{sub}</p>
@@ -557,12 +556,17 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
       <div class="field addr-field"><label for="lf-address">Service address</label>
         <input type="text" id="lf-address" name="address" autocomplete="off" required data-address-input placeholder="Start typing your address…">
         <input type="hidden" name="address_verified" data-address-verified value="no">
+        <input type="hidden" name="address_city" data-address-city value="">
+        <input type="hidden" name="address_zip" data-address-zip value="">
+        <input type="hidden" name="address_state" data-address-state value="">
+        <input type="hidden" name="address_country" data-address-country value="">
         <ul class="addr-suggestions" data-address-list hidden></ul>
       </div>
     </div>
     <fieldset class="field svc-fieldset"><legend>Services requested <span class="form-note" style="font-weight:400">(select all that apply)</span></legend>
       <div class="svc-checks" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
     </fieldset>{extra_fields}
+    <div class="field"><label for="lf-notes">Anything else we should know? <span class="label-hint">(optional)</span></label><textarea id="lf-notes" name="notes"></textarea></div>
     <label class="check"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
     <label class="check"><input type="checkbox" name="plan_info"> I'm interested in info about recurring maintenance plans.</label>
     <button type="submit" class="btn btn-lg btn-block">{submit} {icon('arrow')}</button>
@@ -679,6 +683,8 @@ def quote_wizard(depth=0, svc_default=None):
       <div class="field addr-field mt-3"><label for="q-street">Street address</label>
         <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
         <input type="hidden" name="address_verified" data-address-verified value="no">
+        <input type="hidden" name="address_state" data-address-state value="">
+        <input type="hidden" name="address_country" data-address-country value="">
         <ul class="addr-suggestions" data-address-list hidden></ul>
       </div>
       <div class="form-row">
@@ -721,7 +727,9 @@ def xmas_quote_modal(depth=0):
       <h2 id="xmas-modal-title" class="center mt-1">Christmas Lights Installation</h2>
       <p class="form-note center">Fill out the form below and we'll reach out shortly.</p>
       <form class="form mt-3" data-lead novalidate {lead_form_attrs()}>
-        <input type="hidden" name="address_state" value="{BIZ['state']}">
+        <input type="hidden" name="service_type" value="Christmas Light Installation">
+        <input type="hidden" name="address_state" data-address-state value="{BIZ['state']}">
+        <input type="hidden" name="address_country" data-address-country value="US">
         <h3 class="xmas-modal-section">Contact info</h3>
         <div class="form-row">
           <div class="field"><label for="xq-first" class="sr-only">First name</label><input type="text" id="xq-first" name="first_name" autocomplete="given-name" required placeholder="First name"></div>

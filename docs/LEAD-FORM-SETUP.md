@@ -26,17 +26,24 @@ Until the variable is set (and on the GitHub Pages preview, which has no
 functions at all), the POST fails and the form shows the phone/email
 fallback — visitors are never shown a false "we got it" confirmation.
 
-## What lands in Rotor
+## What lands in Rotor (API version 1.1.0, `rotor-api-version` header)
 
-- `name` (or first + last), `phone`, `email`, `address` (single field or
-  street/city/state/zip joined)
+- `name` (or first + last), `phone`, `email`
+- Structured address: `address_street1/street2/city/state/zip/country` —
+  Nominatim selection fills city/state (two-letter)/zip/country into hidden
+  form fields; the function falls back to MN/US only when they're missing
+- `service_type`: the selected service(s), capped at Rotor's 100-character
+  limit (whole names only — overflow services still arrive via tags)
 - `tags`: `website-lead`, each selected service, and `plan: <choice>` when a
   maintenance plan was picked
 - `source`: "Website quote form"
-- `notes`: every field the visitor filled in, one per line (preferred
-  date/time, referral source, free-text notes, promo code, reminders opt-in,
-  originating page, …) — so nothing is lost even if Rotor has no structured
-  field for it
+- `notes` (≤2,000 chars): the customer's own message first ("Customer
+  notes:"), then "Additional submission details:" with readable labels
+  (plan interest, promo code, preferred date/time, referral source,
+  reminders opt-in, originating page). Contact/address/service fields are
+  never duplicated into notes, and the customer's message survives any
+  truncation ahead of the detail lines. Empty optional fields are omitted
+  from the payload entirely.
 
 ## After setting the key
 
