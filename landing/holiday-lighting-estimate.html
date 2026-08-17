@@ -123,21 +123,7 @@
     <fieldset class="field svc-fieldset"><legend>Services requested <span class="form-note" style="font-weight:400">(select all that apply)</span></legend>
       <div class="svc-checks" data-service-checks data-default-svc="christmas-light-installation"><label class="check svc-check"><input type="checkbox" name="services" value="Exterior Window Cleaning" data-svc="exterior-window-cleaning"> Exterior Window Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Interior Window Cleaning" data-svc="interior-window-cleaning"> Interior Window Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Screen Cleaning Services" data-svc="screen-cleaning-services"> Screen Cleaning Services</label><label class="check svc-check"><input type="checkbox" name="services" value="Track Detailing" data-svc="track-detailing"> Track Detailing</label><label class="check svc-check"><input type="checkbox" name="services" value="Solar Panel Cleaning" data-svc="solar-panel-cleaning"> Solar Panel Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Gutter Cleaning" data-svc="gutter-cleaning"> Gutter Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Soft Washing" data-svc="soft-washing"> Soft Washing</label><label class="check svc-check"><input type="checkbox" name="services" value="Pressure Washing" data-svc="pressure-washing"> Pressure Washing</label><label class="check svc-check"><input type="checkbox" name="services" value="Commercial Cleaning" data-svc="commercial-cleaning"> Commercial Cleaning</label><label class="check svc-check"><input type="checkbox" name="services" value="Christmas Light Installation" data-svc="christmas-light-installation"> Christmas Light Installation</label></div>
     </fieldset>
-    <div class="form-row">
-      <div class="field"><label for="lf-date">Preferred date</label><input type="date" id="lf-date" name="preferred_date"></div>
-      <div class="field"><label for="lf-time">Preferred time</label>
-        <select id="lf-time" name="preferred_time">
-          <option value="" selected disabled>Choose a window…</option>
-          <option>Morning (7am–11am)</option><option>Midday (11am–2pm)</option>
-          <option>Afternoon (2pm–5pm)</option><option>Evening (5pm–7pm)</option><option>Flexible</option>
-        </select></div>
-    </div>
-    <div class="field"><label for="lf-hear">How did you hear about us?</label>
-      <select id="lf-hear" name="referral_source">
-        <option value="" selected disabled>Select one…</option>
-        <option>Google Search</option><option>Google Maps / Reviews</option><option>Facebook / Instagram</option>
-        <option>Referral from friend/neighbor</option><option>Saw our crew / vehicle</option><option>Returning customer</option><option>Other</option>
-      </select></div>
+    <div class="field"><label for="lf-hear">How did you hear about us?</label><select id="lf-hear" name="referral_source" required><option value="" selected disabled>Select one…</option><option>Family/Friend</option><option>BARTA Van</option><option>Postcard/Door Hanger</option><option>Yard Sign</option><option>Facebook</option><option>Instagram</option><option>TikTok</option><option>Google</option><option>Other</option></select></div>
     <div class="field"><label for="lf-notes">Anything else we should know? <span class="label-hint">(optional)</span></label><textarea id="lf-notes" name="notes"></textarea></div>
     <label class="check"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
     <label class="check"><input type="checkbox" name="plan_info"> I'm interested in info about recurring maintenance plans.</label>

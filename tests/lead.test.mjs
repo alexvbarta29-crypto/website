@@ -33,7 +33,7 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
     address_state: "MN", address_zip: "55328", address_country: "US",
     address_verified: "yes",
     services: ["Exterior Window Cleaning", "Gutter Cleaning"],
-    plan: "quarterly", promo_code: "FALL10",
+    plan: "quarterly", promo_code: "FALL10", referral_source: "Yard Sign",
     notes: "Please call after 5pm.\nDog in the yard.",
     reminders: "on", page: "/get-quote.html",
     subject: "New quote request", access_key: "",
@@ -44,7 +44,7 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
   assert.equal(captured.options.headers["x-api-key"], "test-dummy-key-not-real");
   assert.deepEqual(captured.payload, {
     source: "Website quote form",
-    tags: ["Website"],
+    tags: ["Website", "Yard Sign"],
     name: "Test Person",
     phone: "(763) 555-0100",
     email: "test@example.com",
@@ -89,7 +89,8 @@ test("service_type respects the 100-character limit, notes keep everything", asy
   assert.ok(p.service_type.length <= 100, `service_type too long: ${p.service_type.length}`);
   const kept = p.service_type.split(", ");
   assert.deepEqual(kept, services.slice(0, kept.length), "must keep whole leading services");
-  assert.deepEqual(p.tags, ["Website"], "exactly one tag on every lead");
+  // No source submitted, but the service list includes Christmas lights.
+  assert.deepEqual(p.tags, ["Website", "Christmas Lights"]);
   assert.ok(p.notes.includes("Services: " + services.join(", ")), "full service list in notes");
 });
 
@@ -103,6 +104,18 @@ test("customer message survives truncation ahead of details", async () => {
   const p = captured.payload;
   assert.ok(p.notes.length <= 2000, "notes over Rotor limit");
   assert.ok(p.notes.startsWith("Customer notes:\n" + longMsg), "customer message truncated before details");
+});
+
+test("christmas lead: three tags and lights location in notes", async () => {
+  await post({
+    first_name: "Holiday", last_name: "Home", phone: "7635550104",
+    service_type: "Christmas Light Installation", referral_source: "BARTA Van",
+    light_location: "Front and sides", notes: "Warm white please.",
+  });
+  const p = captured.payload;
+  assert.deepEqual(p.tags, ["Website", "Christmas Lights", "BARTA Van"]);
+  assert.equal(p.service_type, "Christmas Light Installation");
+  assert.equal(p.notes, "Customer notes:\nWarm white please.\n\nLights location: Front and sides");
 });
 
 test("phone-or-email validation still rejects uncontactable submissions", async () => {

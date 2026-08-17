@@ -31,14 +31,17 @@ const serviceType = (services) => {
   return out;
 };
 
-// Rotor notes carry exactly three things, per the owners: the customer's own
-// message, the services they picked, and the plan they selected. Nothing
-// else goes in, and the customer's words take priority under the length cap.
+// Rotor notes carry, per the owners: the customer's own message, the
+// services they picked, the plan they selected, and (for Christmas leads)
+// where they want the lights. Nothing else goes in, and the customer's
+// words take priority under the length cap.
 const buildNotes = (data, services, plan) => {
   const message = clean(data.notes || data.additional_information || data.message);
+  const lightsLoc = clean(data.light_location);
   const lines = [];
   if (services.length) lines.push("Services: " + services.join(", "));
   if (plan) lines.push("Plan: " + plan);
+  if (lightsLoc) lines.push("Lights location: " + lightsLoc);
   const msgBlock = message ? "Customer notes:\n" + message : "";
   const assemble = (ls) => [msgBlock, ls.join("\n")].filter(Boolean).join("\n\n");
   let notes = assemble(lines);
@@ -92,8 +95,14 @@ export default async (req) => {
   const svcType = services.length ? serviceType(services)
     : clean(data.service_type).slice(0, MAX_SERVICE_TYPE);
   const plan = clean(data.plan || data.plan_choice);
-  // Exactly one tag on every website lead.
+  // Tags: Website on every lead, Christmas Lights on christmas-light leads,
+  // and the "how did you hear about us" answer as the source tag.
+  const source = clean(data.referral_source);
+  const isChristmas = [...services, clean(data.service_type)]
+    .some((s) => s.includes("Christmas"));
   const tags = ["Website"];
+  if (isChristmas) tags.push("Christmas Lights");
+  if (source) tags.push(source);
 
   const notes = buildNotes(data, services, plan);
 

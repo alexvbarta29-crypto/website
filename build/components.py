@@ -7,6 +7,16 @@ from icons import icon
 def _esc(s):
     return str(s).replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
 
+# "How did you hear about us?" options, shared by every lead form. The answer
+# becomes the source tag on the Rotor lead.
+SOURCE_OPTIONS = ("Family/Friend", "BARTA Van", "Postcard/Door Hanger", "Yard Sign",
+                  "Facebook", "Instagram", "TikTok", "Google", "Other")
+
+def source_select(el_id, label_first="Select one…"):
+    opts = "".join(f"<option>{o}</option>" for o in SOURCE_OPTIONS)
+    return (f'<select id="{el_id}" name="referral_source" required>'
+            f'<option value="" selected disabled>{label_first}</option>{opts}</select>')
+
 def lead_form_attrs():
     """Delivery config carried on every <form data-lead>. main.js reads these
     and posts the submission; with no endpoint set it shows the call-us
@@ -526,22 +536,6 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
         f'<label class="check svc-check"><input type="checkbox" name="services" value="{item["label"]}" '
         f'data-svc="{_slugify(item["label"])}"> {item["label"]}</label>'
         for item in HOME_SERVICES)
-    extra_fields = "" if compact else f"""
-    <div class="form-row">
-      <div class="field"><label for="lf-date">Preferred date</label><input type="date" id="lf-date" name="preferred_date"></div>
-      <div class="field"><label for="lf-time">Preferred time</label>
-        <select id="lf-time" name="preferred_time">
-          <option value="" selected disabled>Choose a window…</option>
-          <option>Morning (7am–11am)</option><option>Midday (11am–2pm)</option>
-          <option>Afternoon (2pm–5pm)</option><option>Evening (5pm–7pm)</option><option>Flexible</option>
-        </select></div>
-    </div>
-    <div class="field"><label for="lf-hear">How did you hear about us?</label>
-      <select id="lf-hear" name="referral_source">
-        <option value="" selected disabled>Select one…</option>
-        <option>Google Search</option><option>Google Maps / Reviews</option><option>Facebook / Instagram</option>
-        <option>Referral from friend/neighbor</option><option>Saw our crew / vehicle</option><option>Returning customer</option><option>Other</option>
-      </select></div>"""
     return f"""<div class="hero-card" id="quote-form">
   <h2 class="form-card-title">{heading}</h2>
   <p class="form-note">{sub}</p>
@@ -565,7 +559,8 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
     </div>
     <fieldset class="field svc-fieldset"><legend>Services requested <span class="form-note" style="font-weight:400">(select all that apply)</span></legend>
       <div class="svc-checks" data-service-checks data-default-svc="{','.join(defaults)}">{svc_boxes}</div>
-    </fieldset>{extra_fields}
+    </fieldset>
+    <div class="field"><label for="lf-hear">How did you hear about us?</label>{source_select("lf-hear")}</div>
     <div class="field"><label for="lf-notes">Anything else we should know? <span class="label-hint">(optional)</span></label><textarea id="lf-notes" name="notes"></textarea></div>
     <label class="check"><input type="checkbox" name="reminders" checked> Send me seasonal cleaning reminders so I never have to remember.</label>
     <label class="check"><input type="checkbox" name="plan_info"> I'm interested in info about recurring maintenance plans.</label>
@@ -648,6 +643,10 @@ def quote_wizard(depth=0, svc_default=None):
       <div class="field field-icon">
         <label for="q-promo" class="sr-only">Promo code (optional)</label>{icon('tag')}
         <input type="text" id="q-promo" name="promo_code" autocomplete="off" placeholder="Promo code (optional)">
+      </div>
+      <div class="field">
+        <label for="q-source" class="sr-only">How did you hear about us?</label>
+        {source_select("q-source", "How did you hear about us?")}
       </div>
       <label class="check mt-2"><input type="checkbox" name="reminders" required> I agree to receive text messages from {BIZ['name']}, including appointment updates, service notifications, and marketing offers.</label>
       <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
@@ -760,11 +759,7 @@ def xmas_quote_modal(depth=0):
           </select>
         </div>
         <div class="field"><label for="xq-hear">How did you hear about us?</label>
-          <select id="xq-hear" name="referral_source" required>
-            <option value="" selected disabled>Select one…</option>
-            <option>Google Search</option><option>Google Maps / Reviews</option><option>Facebook / Instagram</option>
-            <option>Referral from friend/neighbor</option><option>Saw our crew / vehicle</option><option>Returning customer</option><option>Other</option>
-          </select>
+          {source_select("xq-hear")}
         </div>
         <label class="check mt-2"><input type="checkbox" name="reminders" required> I agree to receive text messages from {BIZ['name']}, including appointment updates, service notifications, and marketing offers.</label>
         <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
