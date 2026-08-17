@@ -366,7 +366,12 @@
     const zipField = panel.querySelector("[data-address-zip]");
     const status = panel.querySelector("[data-address-status]");
     if (!list) return;
-    let timer = null, aborter = null;
+    let timer = null, aborter = null, lastFired = 0;
+    // Nominatim's usage policy caps clients at 1 request/second, so live
+    // as-you-type suggestions run on a leading-edge throttle: the first
+    // keystroke queries immediately, further keystrokes re-query on a 1s
+    // cadence while typing, and a trailing call catches the final value.
+    const INTERVAL = 1000;
     const close = () => { list.hidden = true; list.innerHTML = ""; };
     const search = () => {
       const q = input.value.trim();
@@ -412,7 +417,8 @@
     input.addEventListener("input", () => {
       if (verified) verified.value = "no";
       clearTimeout(timer);
-      timer = setTimeout(search, 220);
+      const wait = Math.max(0, lastFired + INTERVAL - Date.now());
+      timer = setTimeout(() => { lastFired = Date.now(); search(); }, wait);
     });
     input.addEventListener("blur", () => setTimeout(close, 150));
   });

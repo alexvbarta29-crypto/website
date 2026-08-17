@@ -38,8 +38,8 @@ def form_success(depth=0, closer=""):
             else f'<a class="btn btn-ghost" href="{root}index.html">Back to Homepage</a>')
     return f"""<div class="form-success">
     <div class="success-badge">{icon('check-circle')}</div>
-    <h2 class="success-title">You&rsquo;re all set!</h2>
-    <p class="success-sub">Your quote request is in. One of the owners will look it over and reach out shortly with your free, no-obligation quote.</p>
+    <h2 class="success-title">Your request is in!</h2>
+    <p class="success-sub">Our office will reach out to you shortly — or just give us a call right now and we&rsquo;ll get you taken care of.</p>
     <div class="success-actions">
       <a class="btn btn-lg" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
       {away}
@@ -687,7 +687,7 @@ def quote_wizard(depth=0, svc_default=None):
       </div>
       <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
       <div class="field mt-1"><label for="q-notes">Anything else we should know? <span class="label-hint">(optional)</span></label>
-        <textarea id="q-notes" name="notes" placeholder="Special requests, gate codes, scheduling preferences — anything you'd like us to know."></textarea></div>
+        <textarea id="q-notes" name="notes"></textarea></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="submit" class="btn btn-lg btn-block">Get My Free Quote {icon('arrow')}</button>
