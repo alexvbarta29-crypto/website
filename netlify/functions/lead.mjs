@@ -17,6 +17,11 @@ const MAX_NOTES = 2000;         // Rotor's notes limit
 const clean = (v) =>
   (typeof v === "string" ? v.replace(/\r\n?/g, "\n").trim().slice(0, MAX_FIELD) : "");
 
+// The plan radio values are lowercase slugs; the office reads them in notes.
+const PLAN_LABELS = { biannual: "Bi-Annual", quarterly: "Quarterly", monthly: "Monthly" };
+const planLabel = (p) =>
+  PLAN_LABELS[p.toLowerCase()] || (p.charAt(0).toUpperCase() + p.slice(1));
+
 // Joins as many whole service names as fit Rotor's service_type limit. The
 // full list always travels in tags as well, so dropping overflow here loses
 // nothing — it just keeps service_type valid.
@@ -40,7 +45,7 @@ const buildNotes = (data, services, plan) => {
   const lightsLoc = clean(data.light_location);
   const lines = [];
   if (services.length) lines.push("Services: " + services.join(", "));
-  if (plan) lines.push("Plan: " + plan);
+  if (plan) lines.push("Plan: " + planLabel(plan));
   if (lightsLoc) lines.push("Lights location: " + lightsLoc);
   const msgBlock = message ? "Customer notes:\n" + message : "";
   const assemble = (ls) => [msgBlock, ls.join("\n")].filter(Boolean).join("\n\n");

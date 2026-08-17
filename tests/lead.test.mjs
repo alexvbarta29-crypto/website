@@ -56,7 +56,7 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
     service_type: "Exterior Window Cleaning, Gutter Cleaning",
     notes: "Customer notes:\nPlease call after 5pm.\nDog in the yard.\n\n"
          + "Services: Exterior Window Cleaning, Gutter Cleaning\n"
-         + "Plan: quarterly",
+         + "Plan: Quarterly",
   });
   assert.ok(!("address" in captured.payload), "combined address field must not be sent");
 });
@@ -99,7 +99,7 @@ test("customer message survives truncation ahead of details", async () => {
   await post({
     phone: "7635550103",
     notes: longMsg + "y".repeat(1500),
-    services: ["Exterior Window Cleaning"], plan: "monthly",
+    services: ["Exterior Window Cleaning"], plan: "biannual",
   });
   const p = captured.payload;
   assert.ok(p.notes.length <= 2000, "notes over Rotor limit");
