@@ -57,9 +57,7 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
     notes: "Customer notes:\nPlease call after 5pm.\nDog in the yard.\n\n"
          + "Additional submission details:\n"
          + "Plan interest: quarterly\n"
-         + "Promo code: FALL10\n"
-         + "Wants seasonal reminders: yes\n"
-         + "Submitted from: /get-quote.html",
+         + "Promo code: FALL10",
   });
   assert.ok(!("address" in captured.payload), "combined address field must not be sent");
 });
@@ -77,7 +75,7 @@ test("blank notes: no Customer notes block, no empty properties", async () => {
   assert.equal(p.address_state, "MN", "server fallback state");
   assert.equal(p.address_country, "US", "server fallback country");
   assert.equal(p.service_type, "House Washing");
-  assert.equal(p.notes, "Additional submission details:\nSubmitted from: /services/house-washing.html");
+  assert.ok(!("notes" in p), "no notes property when nothing noteworthy was submitted");
   for (const [k, v] of Object.entries(p))
     assert.notEqual(v, "", `empty optional property sent: ${k}`);
   assert.ok(!("email" in p), "blank email must be omitted");

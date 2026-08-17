@@ -40,7 +40,7 @@ fallback — visitors are never shown a false "we got it" confirmation.
 - `notes` (≤2,000 chars): the customer's own message first ("Customer
   notes:"), then "Additional submission details:" with readable labels
   (plan interest, promo code, preferred date/time, referral source,
-  reminders opt-in, originating page). Contact/address/service fields are
+  lights location, plan-info interest). Contact/address/service fields are
   never duplicated into notes, and the customer's message survives any
   truncation ahead of the detail lines. Empty optional fields are omitted
   from the payload entirely.

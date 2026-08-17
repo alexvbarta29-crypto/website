@@ -42,9 +42,7 @@ const DETAIL_LABELS = [
   ["preferred_time", "Preferred time"],
   ["referral_source", "How they heard about us"],
   ["light_location", "Lights location"],
-  ["reminders", "Wants seasonal reminders"],
   ["plan_info", "Wants maintenance-plan info"],
-  ["page", "Submitted from"],
 ];
 
 const buildNotes = (data) => {
