@@ -28,7 +28,7 @@ OUT = os.path.join(ROOT, "_deploy")
 
 # Directories that are never part of the served site.
 SKIP_DIRS = {".git", ".github", ".claude", "build", "docs", "config",
-             "node_modules", "_deploy", "__pycache__"}
+             "netlify", "node_modules", "_deploy", "__pycache__"}
 
 # Root-level non-HTML files the site genuinely serves.
 ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redirects"]

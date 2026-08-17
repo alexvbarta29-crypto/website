@@ -6,6 +6,12 @@
   command = "python3 build/make_deploy.py"
   publish = "_deploy"
 
+# Serverless functions (the /api/lead form-to-Rotor forwarder). The Rotor API
+# key is NOT in the repo — set ROTOR_API_KEY in the Netlify dashboard under
+# Site configuration → Environment variables.
+[functions]
+  directory = "netlify/functions"
+
 # Old-path canonicalization is handled explicitly by the generated _redirects
 # file; keep Netlify's pretty-URL rewriting off so it can't compete with it.
 [build.processing.html]

@@ -45,7 +45,11 @@ BIZ = {
 # can't honour is worse than no form at all.
 # ---------------------------------------------------------------------------
 LEAD_FORM = {
-    "endpoint": "",     # e.g. Rotor inbound-lead URL, Zapier catch hook, or https://api.web3forms.com/submit
+    # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards
+    # to Rotor CRM with the API key held server-side in the ROTOR_API_KEY
+    # Netlify environment variable. Inert on the GitHub Pages preview, where
+    # the POST fails and the form shows the honest call-us fallback.
+    "endpoint": "/api/lead",
     "access_key": "",   # only for services that use a public submit key (Web3Forms); leave blank otherwise
     "subject": "New quote request from bartawindowwashing.com",
 }
