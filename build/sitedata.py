@@ -572,7 +572,7 @@ SERVICES = [
         # Promotional, not a second feature list — the intro and the benefits
         # already cover design, custom-cutting, insurance, maintenance and
         # takedown. No role attribution: who does what was being stated wrong.
-        "why_barta": "Make your home the one the whole street slows down for. Alex and Jacob will have it glowing before the first snow and keep it that way right through the season — so all you have to do is pull into the driveway and enjoy it.",
+        "why_barta": "Make your home the one the whole street slows down for. Our team will have it glowing before the first snow and keep it that way right through the season — so all you have to do is pull into the driveway and enjoy it.",
         "experience_steps": [
             ("Custom-Cut Christmas Lights", "We measure your roofline and peaks, then custom-cut every strand to fit — no extra lights or cords bunched up or hanging loose."),
             ("Takedown &amp; Storage, Included", "Storing lights is a hassle, so we handle it. After the holidays, we take everything down and store it at our shop, organized and ready to go for next year — it's part of your price, not something you add on separately."),

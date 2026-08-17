@@ -270,7 +270,7 @@ def build_home():
   <!-- MEET THE TEAM -->
   <section class="section-tight">
     <div class="container">
-      <div class="section-head center"><h2>Meet the team</h2></div>
+      <div class="section-head center"><h2>Meet the brothers</h2></div>
       <div class="team-grid mt-3">{_team_cards(name_tag="h3")}</div>
     </div>
   </section>
