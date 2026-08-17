@@ -34,16 +34,15 @@ fallback — visitors are never shown a false "we got it" confirmation.
   form fields; the function falls back to MN/US only when they're missing
 - `service_type`: the selected service(s), capped at Rotor's 100-character
   limit (whole names only — overflow services still arrive via tags)
-- `tags`: `Website`, each selected service, and `plan: <choice>` when a
-  maintenance plan was picked
+- `tags`: exactly one — `Website`
 - `source`: "Website quote form"
-- `notes` (≤2,000 chars): the customer's own message first ("Customer
-  notes:"), then "Additional submission details:" with readable labels
-  (plan interest, promo code, preferred date/time, referral source,
-  lights location, plan-info interest). Contact/address/service fields are
-  never duplicated into notes, and the customer's message survives any
-  truncation ahead of the detail lines. Empty optional fields are omitted
-  from the payload entirely.
+- `notes` (≤2,000 chars): three things only, per the owners — the
+  customer's own message first ("Customer notes:"), then "Services: …"
+  and "Plan: …" lines when selected. The customer's message survives any
+  truncation ahead of those lines. Other form answers (promo code,
+  preferred date/time, referral source, lights location) are deliberately
+  NOT transmitted to Rotor. Empty optional fields are omitted from the
+  payload entirely.
 
 ## After setting the key
 

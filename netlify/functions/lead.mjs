@@ -31,41 +31,16 @@ const serviceType = (services) => {
   return out;
 };
 
-// Readable labels for submission details that have no structured Rotor field.
-// Never includes name/phone/email/address/services — those land in their own
-// Rotor categories and must not be duplicated into notes.
-const DETAIL_LABELS = [
-  ["plan", "Plan interest"],
-  ["plan_choice", "Plan interest"],
-  ["promo_code", "Promo code"],
-  ["preferred_date", "Preferred date"],
-  ["preferred_time", "Preferred time"],
-  ["referral_source", "How they heard about us"],
-  ["light_location", "Lights location"],
-  ["plan_info", "Wants maintenance-plan info"],
-];
-
-const buildNotes = (data) => {
+// Rotor notes carry exactly three things, per the owners: the customer's own
+// message, the services they picked, and the plan they selected. Nothing
+// else goes in, and the customer's words take priority under the length cap.
+const buildNotes = (data, services, plan) => {
   const message = clean(data.notes || data.additional_information || data.message);
-  const seen = new Set();
-  const details = [];
-  for (const [field, label] of DETAIL_LABELS) {
-    if (seen.has(label)) continue;
-    let v = data[field];
-    if (v === "on" || v === true) v = "yes";
-    v = clean(String(v ?? ""));
-    if (!v || v === "false" || v === "undefined" || v === "null") continue;
-    seen.add(label);
-    details.push(label + ": " + v);
-  }
+  const lines = [];
+  if (services.length) lines.push("Services: " + services.join(", "));
+  if (plan) lines.push("Plan: " + plan);
   const msgBlock = message ? "Customer notes:\n" + message : "";
-  const assemble = (lines) => {
-    const detailBlock = lines.length ? "Additional submission details:\n" + lines.join("\n") : "";
-    return [msgBlock, detailBlock].filter(Boolean).join("\n\n");
-  };
-  // The customer's own words take priority: drop detail lines from the end
-  // before ever shortening the message itself.
-  let lines = details.slice();
+  const assemble = (ls) => [msgBlock, ls.join("\n")].filter(Boolean).join("\n\n");
   let notes = assemble(lines);
   while (notes.length > MAX_NOTES && lines.length) {
     lines.pop();
@@ -117,9 +92,10 @@ export default async (req) => {
   const svcType = services.length ? serviceType(services)
     : clean(data.service_type).slice(0, MAX_SERVICE_TYPE);
   const plan = clean(data.plan || data.plan_choice);
-  const tags = ["Website", ...services, ...(plan ? ["plan: " + plan] : [])];
+  // Exactly one tag on every website lead.
+  const tags = ["Website"];
 
-  const notes = buildNotes(data);
+  const notes = buildNotes(data, services, plan);
 
   // Only Rotor-supported fields, and no empty optional properties.
   const payload = { source: "Website quote form", tags };

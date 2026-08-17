@@ -44,7 +44,7 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
   assert.equal(captured.options.headers["x-api-key"], "test-dummy-key-not-real");
   assert.deepEqual(captured.payload, {
     source: "Website quote form",
-    tags: ["Website", "Exterior Window Cleaning", "Gutter Cleaning", "plan: quarterly"],
+    tags: ["Website"],
     name: "Test Person",
     phone: "(763) 555-0100",
     email: "test@example.com",
@@ -55,9 +55,8 @@ test("wizard submission maps to Rotor structured fields exactly", async () => {
     address_country: "US",
     service_type: "Exterior Window Cleaning, Gutter Cleaning",
     notes: "Customer notes:\nPlease call after 5pm.\nDog in the yard.\n\n"
-         + "Additional submission details:\n"
-         + "Plan interest: quarterly\n"
-         + "Promo code: FALL10",
+         + "Services: Exterior Window Cleaning, Gutter Cleaning\n"
+         + "Plan: quarterly",
   });
   assert.ok(!("address" in captured.payload), "combined address field must not be sent");
 });
@@ -75,14 +74,14 @@ test("blank notes: no Customer notes block, no empty properties", async () => {
   assert.equal(p.address_state, "MN", "server fallback state");
   assert.equal(p.address_country, "US", "server fallback country");
   assert.equal(p.service_type, "House Washing");
-  assert.ok(!("notes" in p), "no notes property when nothing noteworthy was submitted");
+  assert.equal(p.notes, "Services: House Washing", "services listed in notes");
   for (const [k, v] of Object.entries(p))
     assert.notEqual(v, "", `empty optional property sent: ${k}`);
   assert.ok(!("email" in p), "blank email must be omitted");
   assert.ok(!("address" in p));
 });
 
-test("service_type respects the 100-character limit, tags keep everything", async () => {
+test("service_type respects the 100-character limit, notes keep everything", async () => {
   const services = ["Exterior Window Cleaning", "Interior Window Cleaning",
     "Hard Water Stain Removal", "Christmas Light Installation", "Screen Cleaning"];
   await post({ phone: "7635550102", services });
@@ -90,15 +89,16 @@ test("service_type respects the 100-character limit, tags keep everything", asyn
   assert.ok(p.service_type.length <= 100, `service_type too long: ${p.service_type.length}`);
   const kept = p.service_type.split(", ");
   assert.deepEqual(kept, services.slice(0, kept.length), "must keep whole leading services");
-  for (const s of services) assert.ok(p.tags.includes(s), `tag missing: ${s}`);
+  assert.deepEqual(p.tags, ["Website"], "exactly one tag on every lead");
+  assert.ok(p.notes.includes("Services: " + services.join(", ")), "full service list in notes");
 });
 
 test("customer message survives truncation ahead of details", async () => {
   const longMsg = "x".repeat(480);
   await post({
     phone: "7635550103",
-    notes: longMsg, promo_code: "y".repeat(480), referral_source: "z".repeat(480),
-    preferred_date: "w".repeat(480), preferred_time: "v".repeat(480), page: "/x",
+    notes: longMsg + "y".repeat(1500),
+    services: ["Exterior Window Cleaning"], plan: "monthly",
   });
   const p = captured.payload;
   assert.ok(p.notes.length <= 2000, "notes over Rotor limit");
