@@ -52,6 +52,10 @@ def _variants_exist(stem):
     return all(os.path.exists(os.path.join(_ROOT, f"{stem}-{w}w.{fmt}"))
                for w in (640, 1200) for fmt in ("webp", "jpg"))
 
+_PLAY_SVG = ('<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+             '<path d="M8 5.14v13.72c0 .8.87 1.3 1.56.9l10.5-6.86c.66-.4.66-1.36 0-1.76'
+             'L9.56 4.24c-.69-.4-1.56.1-1.56.9Z"/></svg>')
+
 def slide_permalink(permalink, index, total):
     """Instagram post URL pointing at one specific slide of a carousel.
 
@@ -911,6 +915,17 @@ def instagram_carousel(depth=0):
                 # fetched on page load for a carousel far down the page.
                 media_html = (f'<video class="insta-card-media-el" src="{root}{s["video"]}" '
                                f'data-poster="{root}{_poster_src(s["image"])}" controls playsinline preload="none"></video>')
+            elif s.get("type") == "VIDEO":
+                # A video post with no local file: Instagram withholds
+                # media_url when a post uses licensed audio, so there is no
+                # video to embed. Show the still with a play badge that opens
+                # the reel on Instagram, so it still reads as a video instead
+                # of silently posing as a photo.
+                img_html = picture(root, s["image"], alt, img_class="insta-card-media-el",
+                                    extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")
+                media_html = (f'<a class="insta-video-link" href="{slide_link}" target="_blank" rel="noopener" '
+                              f'aria-label="Watch this reel on Instagram">{img_html}'
+                              f'<span class="insta-play" aria-hidden="true">{_PLAY_SVG}</span></a>')
             else:
                 media_html = picture(root, s["image"], alt, img_class="insta-card-media-el",
                                       extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")
@@ -989,8 +1004,10 @@ def gallery_instagram_figures(depth=0, seen_hashes=None):
             alt = caption or f"{BIZ['name']} on Instagram"
             img_html = picture(root, img, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 25vw")
             slide_link = slide_permalink(link, slide_idx, total_slides)
-            figures += (f'<figure class="reveal"><a href="{slide_link}" target="_blank" rel="noopener" '
-                        f'aria-label="View this post on Instagram">{img_html}</a></figure>')
+            play = ("" if (s.get("video") or s.get("type") != "VIDEO")
+                    else f'<span class="insta-play insta-play-sm" aria-hidden="true">{_PLAY_SVG}</span>')
+            figures += (f'<figure class="reveal"><a class="gallery-video-link" href="{slide_link}" target="_blank" rel="noopener" '
+                        f'aria-label="View this post on Instagram">{img_html}{play}</a></figure>')
     return figures
 
 def trust_badges():
