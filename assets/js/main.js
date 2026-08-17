@@ -368,13 +368,27 @@
     const countryField = panel.querySelector("[data-address-country]");
     const status = panel.querySelector("[data-address-status]");
     if (!list) return;
-    let timer = null, aborter = null, lastFired = 0;
+    let timer = null, aborter = null, lastFired = 0, overList = false;
     // Nominatim's usage policy caps clients at 1 request/second, so live
     // as-you-type suggestions run on a leading-edge throttle: the first
     // keystroke queries immediately, further keystrokes re-query on a 1s
     // cadence while typing, and a trailing call catches the final value.
     const INTERVAL = 1000;
-    const close = () => { list.hidden = true; list.innerHTML = ""; };
+    // Nominatim is weak on abbreviated directionals and street suffixes
+    // ("123 S Main" finds nothing where "123 South Main" works), so expand
+    // unambiguous standalone tokens in the query we send — never what the
+    // visitor sees in the field. "st"/"dr" stay as typed (Saint/Doctor).
+    const ABBR = { n: "north", s: "south", e: "east", w: "west",
+      ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest",
+      ave: "avenue", blvd: "boulevard", rd: "road", ln: "lane", ct: "court",
+      cir: "circle", hwy: "highway", pkwy: "parkway", trl: "trail" };
+    const expand = (q) => q.split(/\s+/)
+      .map((w) => ABBR[w.replace(/\.$/, "").toLowerCase()] || w).join(" ");
+    // Don't let a throttled refresh swap the list out from under the cursor
+    // mid-click — that made picking a suggestion feel like whack-a-mole.
+    list.addEventListener("pointerenter", () => { overList = true; });
+    list.addEventListener("pointerleave", () => { overList = false; });
+    const close = () => { list.hidden = true; list.innerHTML = ""; overList = false; };
     const search = () => {
       const q = input.value.trim();
       if (q.length < 4) { close(); return; }
@@ -383,13 +397,16 @@
       // Immediate feedback so a slow network read doesn't just look frozen —
       // Nominatim (free, keyless) typically answers in a few hundred ms, but
       // there's no way to make a public rate-limited API instant.
-      list.innerHTML = '<li class="addr-loading" aria-disabled="true">Searching…</li>';
-      list.hidden = false;
+      if (!overList) {
+        list.innerHTML = '<li class="addr-loading" aria-disabled="true">Searching…</li>';
+        list.hidden = false;
+      }
       const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us" +
-        "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(q);
+        "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(expand(q));
       fetch(url, { signal: aborter.signal, headers: { Accept: "application/json" } })
         .then((r) => r.json())
         .then((results) => {
+          if (overList) return; // never rebuild the list mid-interaction
           list.innerHTML = "";
           if (!results.length) { close(); return; }
           results.forEach((r) => {
@@ -401,7 +418,7 @@
             const li = document.createElement("li");
             li.textContent = short || r.display_name;
             li.setAttribute("role", "option");
-            li.addEventListener("mousedown", (e) => {
+            li.addEventListener("pointerdown", (e) => {
               e.preventDefault();
               input.value = road || r.display_name;
               if (cityField) cityField.value = cityName || cityField.value;
