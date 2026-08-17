@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://nominatim.openstreetmap.org">
 <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="assets/css/styles.min.css?v=142efa88">
+<link rel="stylesheet" href="assets/css/styles.min.css?v=d37b1b2b">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="site.webmanifest">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"HomeAndConstructionBusiness","@id":"https://www.bartawindowwashing.com/#business","name":"Barta Window Washing","legalName":"Barta Window Washing Services","description":"Premium residential and commercial exterior cleaning \u2014 window cleaning, gutter cleaning, pressure washing, house soft washing, and holiday lighting in Delano, MN and the western Twin Cities metro.","url":"https://www.bartawindowwashing.com","telephone":"(763) 314-3400","email":"office@bartawindowwashing.com","priceRange":"$$","image":["https://www.bartawindowwashing.com/assets/img/hero-home-1200w.jpg","https://www.bartawindowwashing.com/assets/img/svc-exterior-window-cleaning-1200w.jpg","https://www.bartawindowwashing.com/assets/img/svc-cta-squeegee-1200w.jpg"],"logo":"https://www.bartawindowwashing.com/assets/img/logo-bww.png","foundingDate":"2024","address":{"@type":"PostalAddress","streetAddress":"320 3rd St S","addressLocality":"Delano","addressRegion":"MN","postalCode":"55328","addressCountry":"US"},"geo":{"@type":"GeoCoordinates","latitude":"45.0419","longitude":"-93.7891"},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"08:00","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":["Saturday"],"opens":"08:00","closes":"18:00"}],"areaServed":[{"@type":"City","name":"Delano, MN"},{"@type":"City","name":"Buffalo, MN"},{"@type":"City","name":"Medina, MN"},{"@type":"City","name":"Mound, MN"},{"@type":"City","name":"Plymouth, MN"},{"@type":"City","name":"St. Michael, MN"},{"@type":"City","name":"Chanhassen, MN"},{"@type":"City","name":"Corcoran, MN"},{"@type":"City","name":"Deephaven, MN"},{"@type":"City","name":"Eden Prairie, MN"},{"@type":"City","name":"Excelsior, MN"},{"@type":"City","name":"Golden Valley, MN"},{"@type":"City","name":"Greenfield, MN"},{"@type":"City","name":"Greenwood, MN"},{"@type":"City","name":"Hamel, MN"},{"@type":"City","name":"Hanover, MN"},{"@type":"City","name":"Independence, MN"},{"@type":"City","name":"Long Lake, MN"},{"@type":"City","name":"Loretto, MN"},{"@type":"City","name":"Maple Grove, MN"},{"@type":"City","name":"Maple Plain, MN"},{"@type":"City","name":"Minnetonka, MN"},{"@type":"City","name":"Minnetonka Beach, MN"},{"@type":"City","name":"Minnetrista, MN"},{"@type":"City","name":"Montrose, MN"},{"@type":"City","name":"Orono, MN"},{"@type":"City","name":"Rockford, MN"},{"@type":"City","name":"Rogers, MN"},{"@type":"City","name":"Spring Park, MN"},{"@type":"City","name":"St. Bonifacius, MN"},{"@type":"City","name":"Tonka Bay, MN"},{"@type":"City","name":"Victoria, MN"},{"@type":"City","name":"Waconia, MN"},{"@type":"City","name":"Waverly, MN"},{"@type":"City","name":"Wayzata, MN"},{"@type":"City","name":"Winsted, MN"},{"@type":"City","name":"Woodland, MN"}],"sameAs":["https://www.facebook.com/p/Barta-Window-Washing-Services-61558622544052/","https://www.instagram.com/bartawindowwashing","https://www.google.com/search?q=Barta+Window+Washing+Services#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,"]}</script>
@@ -120,20 +120,20 @@
     <div class="wizard-panel" data-panel="3" hidden>
       <h2>You're Almost There!</h2>
       <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
-      <div class="field addr-field mt-3"><label for="q-street">Street address</label>
-        <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
+      <div class="field addr-field mt-3"><label for="q-street" class="sr-only">Street address</label>
+        <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Street address">
         <input type="hidden" name="address_verified" data-address-verified value="no">
-        <input type="hidden" name="address_state" data-address-state value="">
         <input type="hidden" name="address_country" data-address-country value="">
         <ul class="addr-suggestions" data-address-list hidden></ul>
       </div>
-      <div class="form-row">
-        <div class="field"><label for="q-city">City</label><input type="text" id="q-city" name="address_city" required data-address-city placeholder="Delano"></div>
-        <div class="field"><label for="q-zip">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{5}" data-address-zip placeholder="55328"></div>
+      <div class="form-row addr-row">
+        <div class="field"><label for="q-city" class="sr-only">City</label><input type="text" id="q-city" name="address_city" required data-address-city placeholder="City"></div>
+        <div class="field"><label for="q-state" class="sr-only">State</label><input type="text" id="q-state" name="address_state" required data-address-state value="MN" placeholder="State"></div>
+        <div class="field"><label for="q-zip" class="sr-only">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{5}" data-address-zip placeholder="ZIP code"></div>
       </div>
       <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
-      <div class="field mt-1"><label for="q-notes">Anything else we should know? <span class="label-hint">(optional)</span></label>
-        <textarea id="q-notes" name="notes"></textarea></div>
+      <div class="field mt-1"><label for="q-notes" class="sr-only">Anything else we should know? (optional)</label>
+        <textarea id="q-notes" name="notes" placeholder="Anything else we should know? (optional)"></textarea></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="submit" class="btn btn-lg btn-block">Get My Free Quote <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -160,6 +160,6 @@
   </div>
 </div></div>
 </main>
-<script src="assets/js/main.min.js?v=142efa88" defer></script>
+<script src="assets/js/main.min.js?v=d37b1b2b" defer></script>
 </body>
 </html>

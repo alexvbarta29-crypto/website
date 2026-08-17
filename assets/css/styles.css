@@ -287,6 +287,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* ---------- Forms ---------- */
 .form { display: grid; gap: 14px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-row.addr-row { grid-template-columns: 1.6fr .7fr 1fr; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: .82rem; font-weight: 600; color: var(--slate-700); }
 .field input, .field select, .field textarea {
@@ -1074,7 +1075,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .sticky-cta { display: flex; }
   .footer-top { grid-template-columns: 1fr; gap: 28px; }
   .footer-bottom { flex-direction: column; }
-  .form-row { grid-template-columns: 1fr; }
+  .form-row, .form-row.addr-row { grid-template-columns: 1fr; }
   body { padding-bottom: 76px; }
   .gallery { column-count: 2; }
   /* The bottom sticky bar already carries Call + Free Quote on mobile —

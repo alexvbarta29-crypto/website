@@ -680,20 +680,20 @@ def quote_wizard(depth=0, svc_default=None):
     <div class="wizard-panel" data-panel="3" hidden>
       <h2>You're Almost There!</h2>
       <p class="form-note">Start typing and choose your address from the list so we can confirm it.</p>
-      <div class="field addr-field mt-3"><label for="q-street">Street address</label>
-        <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Start typing your address…">
+      <div class="field addr-field mt-3"><label for="q-street" class="sr-only">Street address</label>
+        <input type="text" id="q-street" name="address_street" autocomplete="off" required data-address-input placeholder="Street address">
         <input type="hidden" name="address_verified" data-address-verified value="no">
-        <input type="hidden" name="address_state" data-address-state value="">
         <input type="hidden" name="address_country" data-address-country value="">
         <ul class="addr-suggestions" data-address-list hidden></ul>
       </div>
-      <div class="form-row">
-        <div class="field"><label for="q-city">City</label><input type="text" id="q-city" name="address_city" required data-address-city placeholder="Delano"></div>
-        <div class="field"><label for="q-zip">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{{5}}" data-address-zip placeholder="55328"></div>
+      <div class="form-row addr-row">
+        <div class="field"><label for="q-city" class="sr-only">City</label><input type="text" id="q-city" name="address_city" required data-address-city placeholder="City"></div>
+        <div class="field"><label for="q-state" class="sr-only">State</label><input type="text" id="q-state" name="address_state" required data-address-state value="MN" placeholder="State"></div>
+        <div class="field"><label for="q-zip" class="sr-only">ZIP code</label><input type="text" id="q-zip" name="address_zip" required inputmode="numeric" pattern="[0-9]{{5}}" data-address-zip placeholder="ZIP code"></div>
       </div>
       <p class="form-note wizard-address-warning" data-address-status hidden>Please choose your address from the suggestions so we can confirm it's a real, serviceable address.</p>
-      <div class="field mt-1"><label for="q-notes">Anything else we should know? <span class="label-hint">(optional)</span></label>
-        <textarea id="q-notes" name="notes"></textarea></div>
+      <div class="field mt-1"><label for="q-notes" class="sr-only">Anything else we should know? (optional)</label>
+        <textarea id="q-notes" name="notes" placeholder="Anything else we should know? (optional)"></textarea></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn-ghost" data-wizard-back>Back</button>
         <button type="submit" class="btn btn-lg btn-block">Get My Free Quote {icon('arrow')}</button>
