@@ -870,7 +870,7 @@ def build_gallery():
     <div class="container">
       <div class="hero-content reveal in">
         {C.crumbs([("Home", root + "index.html"), ("Gallery", None)], light=True)}
-        {C.google_badge(depth, text=f"{BIZ['review_count']}+ 5-star Google reviews")}
+        {C.google_badge(depth, text=f"{BIZ['review_count']}+ 5-star Google reviews", bare=True)}
         <h1 class="mt-1">See the work for <em>yourself.</em></h1>
         <p class="lead">Real photos from real jobs around {BIZ['city']} and the western Twin Cities — no stock photos.</p>
       </div>
