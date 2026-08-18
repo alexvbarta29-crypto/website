@@ -406,6 +406,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   font-size: 1.02rem; font-weight: 600; transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
 }
 .wizard .svc-check input { width: 20px; height: 20px; }
+@media (hover: hover) {
+  .wizard .svc-check:hover { border-color: rgba(251,77,61,.45); }
+}
 .wizard .svc-check:has(input:checked) { border-color: transparent; box-shadow: 0 0 0 2px var(--blue-600); background: linear-gradient(#fff,#fff) padding-box, var(--grad-brand) border-box; }
 @media (max-width: 560px) { .wizard .svc-checks { grid-template-columns: 1fr; } }
 
@@ -422,7 +425,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 .card { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 28px; box-shadow: var(--sh-sm); transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out), border-color .4s; height: 100%; }
 .card:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); border-color: transparent; }
-.step-num { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 1.1rem; box-shadow: var(--sh-glow); }
+.step-num { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 1.1rem; box-shadow: var(--sh-glow); transition: transform .25s var(--ease); }
+@media (hover: hover) {
+  .step:hover .step-num, .xmas-step:hover .step-num { transform: scale(1.1); }
+}
 
 /* ---------- Christmas Light Installation: its own festive vibe ---------- */
 :root { --xmas-red: #d63a30; --xmas-green: #1f9e63; --xmas-gold: #f0b429; --grad-xmas: linear-gradient(135deg, var(--xmas-red) 0%, #ef6f52 100%); }
@@ -595,12 +601,16 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-num { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--r-pill); background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 1.2rem; box-shadow: var(--sh-glow); }
 .process-info h3 { margin-top: 18px; font-size: clamp(1.8rem, 3.4vw, 2.6rem); text-transform: uppercase; letter-spacing: .01em; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .process-info p { margin-top: 14px; max-width: 460px; font-size: 1rem; line-height: 1.6; color: rgba(255,255,255,.82); }
-.process-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(255,255,255,.92); border: none; color: var(--ink); display: grid; place-items: center; cursor: pointer; z-index: 2; transition: background .2s ease; }
+.process-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(255,255,255,.92); border: none; color: var(--ink); display: grid; place-items: center; cursor: pointer; z-index: 2; transition: background .2s ease, transform .2s var(--ease); }
+.process-arrow:hover { transform: translateY(-50%) scale(1.08); }
+.process-arrow:active { transform: translateY(-50%) scale(.9); }
 .process-arrow:hover { background: #fff; }
 .process-arrow.prev { left: -18px; transform: translateY(-50%) rotate(180deg); }
 .process-arrow.next { right: -18px; }
 .process-dots { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 28px; }
-.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: all .5s ease; flex: 0 0 auto; }
+.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: border-color .5s ease, background .5s ease, color .5s ease, transform .2s var(--ease); flex: 0 0 auto; }
+.process-dot:hover { transform: scale(1.12); border-color: var(--blue-500); }
+.process-dot:active { transform: scale(.9); }
 .process-dot.filled { border-color: transparent; background: var(--grad-brand); color: #fff; }
 .process-dot.active { box-shadow: var(--sh-glow); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
@@ -633,7 +643,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* ---------- Before / After Slider ---------- */
-.ba { position: relative; aspect-ratio: 3/4; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); user-select: none; touch-action: pan-y; }
+.ba { position: relative; aspect-ratio: 3/4; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-lg); user-select: none; touch-action: pan-y; transition: box-shadow .3s var(--ease); }
+/* Same coral hover ring the gallery tiles wear — on every standalone
+   before/after too. Gallery-embedded sliders skip it (their wrapping
+   figure already draws the ring; two rings would double up). */
+@media (hover: hover) {
+  .ba:hover { box-shadow: 0 0 0 2px rgba(251,77,61,.5), var(--sh-lg); }
+  .gallery .gallery-ba .ba:hover { box-shadow: none; }
+}
 /* .ba-range is visually transparent (opacity:0) so its own native focus
    ring is invisible too. Focus lands on the knob — the actual control —
    as a coral ring, instead of the old 3px outline around the whole tile,
@@ -667,7 +684,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* ---------- Pricing / Plans ---------- */
 .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-items: stretch; }
 .plan { position: relative; background: #fff; border: 1.5px solid var(--line); border-radius: var(--r-xl); padding: 32px; box-shadow: var(--sh-sm); display: flex; flex-direction: column; transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
-.plan:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); }
+.plan:hover { transform: translateY(-6px) scale(1.015); box-shadow: var(--sh-lg); }
 .plan.featured { border-color: transparent; box-shadow: var(--sh-lg); background: linear-gradient(180deg, #fff, #fff) padding-box, var(--grad-brand) border-box; border: 2px solid transparent; }
 .plan-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; padding: 7px 18px; border-radius: var(--r-pill); box-shadow: var(--sh-glow); white-space: nowrap; }
 .plan h3 { font-size: 1.4rem; }
@@ -1017,9 +1034,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .insta-arrow {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 44px; height: 44px; border-radius: var(--r-pill);
   background: #fff; border: 1px solid var(--line); box-shadow: var(--sh-md); display: grid; place-items: center; cursor: pointer;
-  transition: background .2s ease;
+  transition: background .2s ease, transform .2s var(--ease);
 }
-.insta-arrow:hover { background: var(--mist); }
+.insta-arrow:hover { background: var(--mist); transform: translateY(-50%) scale(1.08); }
+.insta-arrow:active { transform: translateY(-50%) scale(.9); }
 .insta-arrow.prev { left: -14px; }
 .insta-arrow.next { right: -14px; }
 .insta-arrow.prev svg { transform: rotate(90deg); }
@@ -1045,7 +1063,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 
 /* Pills row */
 .pills { display: flex; flex-wrap: wrap; gap: 10px; }
-.pill { padding: 9px 16px; border-radius: var(--r-pill); background: var(--mist); border: 1px solid var(--line); font-size: .88rem; font-weight: 600; color: var(--slate-700); }
+.pill { padding: 9px 16px; border-radius: var(--r-pill); background: var(--mist); border: 1px solid var(--line); font-size: .88rem; font-weight: 600; color: var(--slate-700); transition: border-color .25s, color .25s, transform .25s var(--ease); }
+@media (hover: hover) {
+  .pill:hover { transform: translateY(-2px); }
+}
 .pill:hover { border-color: var(--blue-500); color: var(--blue-600); }
 .pill svg { display: inline; width: 15px; height: 15px; vertical-align: -2px; margin-right: 4px; color: var(--blue-600); }
 
@@ -1279,6 +1300,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 /* "Save money with every service" promo plan cards */
 .promo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-items: stretch; }
 .promo-card { position: relative; background: #fff; border: 1.5px solid var(--line); border-radius: var(--r-xl); padding: 34px 30px; box-shadow: var(--sh-sm); display: flex; flex-direction: column; text-align: center; transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
+@media (hover: hover) {
+  .promo-card:hover { transform: translateY(-4px) scale(1.015); box-shadow: var(--sh-md); }
+}
+.promo-card.select-card:active { transform: translateY(-2px) scale(.99); }
 .promo-card:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); }
 .promo-card.popular { border: 2px solid transparent; background: linear-gradient(#fff, #fff) padding-box, var(--grad-brand) border-box; box-shadow: var(--sh-lg); }
 .promo-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--grad-brand); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .74rem; letter-spacing: .07em; text-transform: uppercase; padding: 7px 18px; border-radius: var(--r-pill); box-shadow: var(--sh-glow); white-space: nowrap; }
