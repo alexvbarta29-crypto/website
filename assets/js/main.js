@@ -408,6 +408,55 @@
     list.addEventListener("pointerenter", () => { overList = true; });
     list.addEventListener("pointerleave", () => { overList = false; });
     const close = () => { list.hidden = true; list.innerHTML = ""; overList = false; };
+    // Builds one suggestion row. houseNo is carried over when the match came
+    // from a street-level fallback search, so "320 3rd St S" keeps its 320
+    // even though OpenStreetMap only knows the street.
+    const addRow = (r, houseNo) => {
+      const addr = r.address || {};
+      const road = [addr.house_number || houseNo, addr.road].filter(Boolean).join(" ");
+      const cityName = addr.city || addr.town || addr.village || addr.hamlet || "";
+      // Keep suggestions to street, city, state, ZIP — no county/country clutter.
+      const short = [road, cityName, addr.state, addr.postcode].filter(Boolean).join(", ");
+      const li = document.createElement("li");
+      li.textContent = short || r.display_name;
+      li.setAttribute("role", "option");
+      li.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        input.value = road || r.display_name;
+        if (cityField) cityField.value = cityName || cityField.value;
+        if (zipField) zipField.value = addr.postcode || zipField.value;
+        // Prefer the two-letter abbreviation ("US-MN" → "MN") over the
+        // spelled-out state name Nominatim also returns.
+        const iso = addr["ISO3166-2-lvl4"] || "";
+        const stateAbbr = iso.indexOf("-") > -1 ? iso.split("-")[1] : "";
+        if (stateField) stateField.value = stateAbbr || addr.state || stateField.value;
+        if (countryField) countryField.value = (addr.country_code || "").toUpperCase() || countryField.value;
+        if (verified) verified.value = "yes";
+        if (status) status.hidden = true;
+        close();
+      });
+      list.appendChild(li);
+    };
+    // OpenStreetMap simply doesn't hold every house number, so the list must
+    // never dead-end: this row always sits at the bottom and lets someone
+    // proceed with exactly what they typed.
+    const addUseTypedRow = (typed) => {
+      const li = document.createElement("li");
+      li.className = "addr-use-typed";
+      li.setAttribute("role", "option");
+      li.textContent = "Use “" + typed + "” as typed";
+      li.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        input.value = typed;
+        if (verified) verified.value = "typed";
+        if (status) status.hidden = true;
+        close();
+      });
+      list.appendChild(li);
+    };
+    const queryUrl = (text) =>
+      "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us" +
+      "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(expand(text));
     const search = () => {
       const q = input.value.trim();
       if (q.length < 4) { close(); return; }
@@ -420,43 +469,28 @@
         list.innerHTML = '<li class="addr-loading" aria-disabled="true">Searching…</li>';
         list.hidden = false;
       }
-      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us" +
-        "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(expand(q));
-      fetch(url, { signal: aborter.signal, headers: { Accept: "application/json" } })
+      const opts = { signal: aborter.signal, headers: { Accept: "application/json" } };
+      // A house number OSM has never been told about sinks the whole query, so
+      // when the exact address finds nothing, fall back to the street on its
+      // own and re-attach the number to whatever the visitor picks.
+      const houseNo = (q.match(/^\s*(\d+[a-zA-Z]?)\s+/) || [])[1] || "";
+      const streetOnly = houseNo ? q.replace(/^\s*\d+[a-zA-Z]?\s+/, "") : "";
+      const paint = (results, carryNo) => {
+        if (overList) return; // never rebuild the list mid-interaction
+        list.innerHTML = "";
+        results.slice(0, 5).forEach((r) => addRow(r, carryNo));
+        addUseTypedRow(q);
+        list.hidden = false;
+      };
+      fetch(queryUrl(q), opts)
         .then((r) => r.json())
         .then((results) => {
-          if (overList) return; // never rebuild the list mid-interaction
-          list.innerHTML = "";
-          if (!results.length) { close(); return; }
-          results.forEach((r) => {
-            const addr = r.address || {};
-            const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
-            const cityName = addr.city || addr.town || addr.village || addr.hamlet || "";
-            // Keep suggestions to street, city, state, ZIP — no county/country clutter.
-            const short = [road, cityName, addr.state, addr.postcode].filter(Boolean).join(", ");
-            const li = document.createElement("li");
-            li.textContent = short || r.display_name;
-            li.setAttribute("role", "option");
-            li.addEventListener("pointerdown", (e) => {
-              e.preventDefault();
-              input.value = road || r.display_name;
-              if (cityField) cityField.value = cityName || cityField.value;
-              if (zipField) zipField.value = addr.postcode || zipField.value;
-              // Prefer the two-letter abbreviation ("US-MN" → "MN") over the
-              // spelled-out state name Nominatim also returns.
-              const iso = addr["ISO3166-2-lvl4"] || "";
-              const stateAbbr = iso.indexOf("-") > -1 ? iso.split("-")[1] : "";
-              if (stateField) stateField.value = stateAbbr || addr.state || stateField.value;
-              if (countryField) countryField.value = (addr.country_code || "").toUpperCase() || countryField.value;
-              if (verified) verified.value = "yes";
-              if (status) status.hidden = true;
-              close();
-            });
-            list.appendChild(li);
-          });
-          list.hidden = false;
+          if (results.length || !streetOnly || streetOnly.length < 3) { paint(results, ""); return; }
+          return fetch(queryUrl(streetOnly), opts)
+            .then((r) => r.json())
+            .then((streets) => paint(streets, houseNo));
         })
-        .catch(() => close());
+        .catch((e) => { if (e.name !== "AbortError") paint([], ""); });
     };
     input.addEventListener("input", () => {
       if (verified) verified.value = "no";
@@ -499,13 +533,20 @@
         checks.forEach((c) => c.addEventListener("change", () => checks[0].setCustomValidity(""), { once: true }));
         return;
       }
+      // Nudge people to pick a confirmed address, but never trap them:
+      // OpenStreetMap doesn't know every house number, and a visitor who
+      // can't submit is a lost customer. The prompt shows once; a second
+      // click on submit goes through with the address as typed.
       const addrVerified = form.querySelector("[data-address-verified]");
-      if (addrVerified && addrVerified.value !== "yes") {
-        const status = form.querySelector("[data-address-status]");
-        if (status) status.hidden = false;
-        const addrInput = form.querySelector("[data-address-input]");
-        if (addrInput) addrInput.focus();
-        return;
+      const addrStatus = form.querySelector("[data-address-status]");
+      if (addrVerified && addrVerified.value === "no") {
+        if (addrStatus && addrStatus.hidden) {
+          addrStatus.hidden = false;
+          const addrInput = form.querySelector("[data-address-input]");
+          if (addrInput) addrInput.focus();
+          return;
+        }
+        addrVerified.value = "typed";
       }
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
@@ -593,10 +634,15 @@
       if (addrInput) {
         const verified = panel.querySelector("[data-address-verified]");
         const status = panel.querySelector("[data-address-status]");
-        if (!verified || verified.value !== "yes") {
-          if (status) status.hidden = false;
-          addrInput.focus();
-          return false;
+        // Same soft nudge as submit: prompt once, then let them continue with
+        // what they typed rather than stranding them on this step.
+        if (verified && verified.value === "no") {
+          if (status && status.hidden) {
+            status.hidden = false;
+            addrInput.focus();
+            return false;
+          }
+          verified.value = "typed";
         }
         if (status) status.hidden = true;
       }

@@ -316,6 +316,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .addr-suggestions li:hover { background: var(--mist); color: var(--ink); }
 .addr-suggestions li.addr-loading { cursor: default; color: var(--slate-400); font-style: italic; }
 .addr-suggestions li.addr-loading:hover { background: none; color: var(--slate-400); }
+/* Always-present escape hatch: OpenStreetMap doesn't know every house
+   number, so the list can never dead-end on someone's real address. */
+.addr-suggestions li.addr-use-typed { color: var(--slate-400); border-top: 1px solid rgba(22,22,27,.10);
+  border-radius: 0 0 10px 10px; margin-top: 4px; }
 .form-success { display: none; text-align: center; padding: 36px 12px 22px; }
 .form.sent { display: none; }
 .form-success.show { display: block; }
