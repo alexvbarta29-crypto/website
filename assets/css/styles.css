@@ -648,7 +648,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    before/after too. Gallery-embedded sliders skip it (their wrapping
    figure already draws the ring; two rings would double up). */
 @media (hover: hover) {
-  .ba:hover { box-shadow: 0 0 0 1px rgba(251,77,61,.28), var(--sh-lg); }
+  .ba:hover { box-shadow: 0 0 0 2px var(--blue-600), var(--sh-lg); }
   .gallery .gallery-ba .ba:hover { box-shadow: none; }
 }
 /* .ba-range is visually transparent (opacity:0) so its own native focus
@@ -742,7 +742,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Only the before/after tiles get the coral hover ring (owner's call:
    plain gallery photos stay quiet — just their zoom, no ring, no lift). */
 @media (hover: hover) {
-  .gallery .gallery-ba:hover { box-shadow: 0 0 0 1px rgba(251,77,61,.28), var(--sh-sm); }
+  .gallery .gallery-ba:hover { box-shadow: 0 0 0 2px var(--blue-600), var(--sh-sm); }
 }
 /* Before/after sliders embedded as collage tiles. Two of the collage's
    own rules would otherwise break them: `.gallery img { height:auto }`
