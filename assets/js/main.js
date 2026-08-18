@@ -42,16 +42,29 @@
   $$(".drawer-nav a, .drawer-foot a").forEach((a) => a.addEventListener("click", () => toggle(false)));
 
   /* ---- Reveal on scroll ---- */
+  // Once the slide-up finishes, shed the reveal classes entirely: the "in"
+  // end-state pins `transform: none` at html.js specificity, which silently
+  // out-ranked every :hover/:active transform (card lifts, plan pops) on
+  // revealed elements. Bare elements render identically — opacity 1 and no
+  // transform are the defaults — but interactions win again.
+  const shed = (el) => el.classList.remove("reveal", "in");
+  const reveal = (el) => {
+    el.classList.add("in");
+    let done = false;
+    const finish = () => { if (!done) { done = true; shed(el); } };
+    el.addEventListener("transitionend", finish, { once: true });
+    setTimeout(finish, 1400); // fallback: transitionend can be swallowed
+  };
   const reveals = $$(".reveal");
   if (reveals.length && "IntersectionObserver" in window && !reduce) {
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
-        if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+        if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target); }
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
     reveals.forEach((el) => io.observe(el));
   } else {
-    reveals.forEach((el) => el.classList.add("in"));
+    reveals.forEach(shed);
   }
 
   /* ---- Lazy-load the 3rd-party Google reviews widget (Trustindex) only as
