@@ -376,14 +376,33 @@
     const INTERVAL = 1000;
     // Nominatim is weak on abbreviated directionals and street suffixes
     // ("123 S Main" finds nothing where "123 South Main" works), so expand
-    // unambiguous standalone tokens in the query we send — never what the
-    // visitor sees in the field. "st"/"dr" stay as typed (Saint/Doctor).
+    // standalone tokens in the query we send — never what the visitor sees
+    // in the field.
     const ABBR = { n: "north", s: "south", e: "east", w: "west",
       ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest",
       ave: "avenue", blvd: "boulevard", rd: "road", ln: "lane", ct: "court",
       cir: "circle", hwy: "highway", pkwy: "parkway", trl: "trail" };
-    const expand = (q) => q.split(/\s+/)
-      .map((w) => ABBR[w.replace(/\.$/, "").toLowerCase()] || w).join(" ");
+    // "St"/"Dr" mean Street/Drive as a suffix but Saint/Doctor when they open
+    // a name — and St. Michael is one of our service-area cities. A real
+    // suffix always trails a street name, so these expand only when they
+    // neither open a comma-separated segment nor directly follow a house
+    // number: "123 Main St, St Michael" → "…street, St Michael", and
+    // "1200 Dr Martin Luther King Blvd" keeps its Dr.
+    const SUFFIX_ABBR = { st: "street", dr: "drive" };
+    const expand = (q) => {
+      let opensSegment = true, afterNumber = false;
+      return q.split(/\s+/).map((w) => {
+        const [, word, punct] = w.match(/^(.*?)([.,]*)$/);
+        const key = word.toLowerCase();
+        const suffixOk = !opensSegment && !afterNumber;
+        const swap = ABBR[key] || (suffixOk ? SUFFIX_ABBR[key] : null);
+        opensSegment = punct.indexOf(",") > -1;
+        afterNumber = /^\d+[a-z]?$/i.test(word);
+        // Keep a comma (it separates address parts for Nominatim); drop a
+        // period, which is just abbreviation punctuation.
+        return (swap || word) + punct.replace(/\./g, "");
+      }).join(" ");
+    };
     // Don't let a throttled refresh swap the list out from under the cursor
     // mid-click — that made picking a suggestion feel like whack-a-mole.
     list.addEventListener("pointerenter", () => { overList = true; });
