@@ -1,7 +1,7 @@
 """Reusable HTML partials and section builders."""
 import json, os
 from urllib.parse import quote_plus
-from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT, LEAD_FORM
+from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID
 from icons import icon
 
 def _esc(s):
@@ -293,6 +293,13 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     trustindex_preconnect = ('<link rel="preconnect" href="https://cdn.trustindex.io">\n'
                               '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
     base_tag = f'<base href="{base_href}">\n' if base_href else ""
+    # Google Analytics 4 — rendered exactly once per page, from this one
+    # shared head(). The standard async gtag.js loader plus config call.
+    ga_tag = ""
+    if GA4_ID:
+        ga_tag = (f'<script async src="https://www.googletagmanager.com/gtag/js?id={GA4_ID}"></script>\n'
+                  "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
+                  f'gtag("js",new Date());gtag("config","{GA4_ID}");</script>')
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -308,6 +315,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <!-- Google Search Console ownership, carried over from the Wix site so
      verification survives the move to Netlify. Do not change the content. -->
 <meta name="google-site-verification" content="mcN7p2g6XzyvGg2ItuYK9nBOp37G57zMr7EhDfreBl0">
+{ga_tag}
 <!-- Open Graph / social -->
 <meta property="og:type" content="{og_type}">
 <meta property="og:site_name" content="{BIZ['name']}">

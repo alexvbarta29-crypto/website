@@ -44,6 +44,14 @@ BIZ = {
 # message — they tell the visitor to call instead, because a confirmation we
 # can't honour is worse than no form at all.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Google Analytics 4. The gtag snippet renders once in every page's <head>
+# (via components.head) whenever this is set; empty string disables it.
+# "G-XXXXXXXXXX" is Google's docs placeholder — swap in the real measurement
+# ID from GA4 Admin → Data streams → Web, then rebuild.
+# ---------------------------------------------------------------------------
+GA4_ID = "G-XXXXXXXXXX"
+
 LEAD_FORM = {
     # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards
     # to Rotor CRM with the API key held server-side in the ROTOR_API_KEY

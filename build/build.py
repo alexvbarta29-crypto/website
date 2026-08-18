@@ -1301,7 +1301,8 @@ def build_privacy():
     <h2>5. SMS / text messaging</h2>
     <p>By providing your phone number and opting in, you consent to receive text messages from {BIZ['name']} regarding appointment scheduling, service reminders, and updates. Message and data rates may apply, and message frequency varies. You may opt out at any time by replying STOP to any text message, or reply HELP for assistance. We do not share your phone number or SMS opt-in status with third parties for their own marketing purposes.</p>
     <h2 id="cookies">6. Cookies and third-party services</h2>
-    <p>{BIZ['short']} does not intentionally use first-party analytics or advertising cookies on this website. However, some features of the site are provided by third parties. When your browser loads those features, the providers receive technical information such as your IP address and browser details, and they may use cookies or similar technologies under their own privacy policies. These features include:</p>
+    <p>This website uses <strong>Google Analytics</strong> to understand how visitors find and use the site — for example, which pages are viewed and roughly where visitors come from. Google Analytics sets cookies in your browser for this purpose, and the information it collects is processed by Google under <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Google's privacy policy</a>. We do not use advertising cookies.</p>
+    <p>Some other features of the site are also provided by third parties. When your browser loads those features, the providers receive technical information such as your IP address and browser details, and they may use cookies or similar technologies under their own privacy policies. These features include:</p>
     <ul>
       <li><strong>Trustindex</strong> — displays our Google reviews on this site</li>
       <li><strong>Google Maps</strong> — powers the embedded map of our location and service area</li>
