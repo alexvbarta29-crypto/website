@@ -2,7 +2,7 @@
 from sitedata import BIZ, AREAS
 
 def local_business():
-    """Core LocalBusiness node. Deliberately omits aggregateRating/review —
+    """Core LocalBusiness node. Deliberately omits aggregateRating/review , 
     self-published review structured data on your own LocalBusiness isn't
     eligible for Google's review-star rich results anyway, and publishing
     an unverified rating/count is a real trust and policy risk. Genuine
@@ -14,7 +14,7 @@ def local_business():
         "@id": BIZ["domain"] + "/#business",
         "name": BIZ["name"],
         "legalName": BIZ["legal_name"],
-        "description": "Premium residential and commercial exterior cleaning — window cleaning, gutter cleaning, pressure washing, house soft washing, and holiday lighting in Delano, MN and the western Twin Cities metro.",
+        "description": "Premium residential and commercial exterior cleaning, window cleaning, gutter cleaning, pressure washing, house soft washing, and holiday lighting in Delano, MN and the western Twin Cities metro.",
         "url": BIZ["domain"],
         "telephone": BIZ["phone_display"],
         "email": BIZ["email"],
@@ -27,7 +27,7 @@ def local_business():
             BIZ["domain"] + "/assets/img/svc-exterior-window-cleaning-1200w.jpg",
             BIZ["domain"] + "/assets/img/svc-cta-squeegee-1200w.jpg",
         ],
-        # A raster logo, not favicon.svg — that's a 0.2 KB browser-tab icon,
+        # A raster logo, not favicon.svg, that's a 0.2 KB browser-tab icon,
         # too small to serve as the brand mark Google renders.
         "logo": BIZ["domain"] + "/assets/img/logo-bww.png",
         "foundingDate": BIZ["founded"],
@@ -44,7 +44,7 @@ def local_business():
             {
                 "@type": "OpeningHoursSpecification",
             # Must stay in step with BIZ["hours"], which is the text visitors
-            # see in the footer — Google cross-checks the two, and they have
+            # see in the footer, Google cross-checks the two, and they have
             # drifted apart before. Owner-confirmed hours: weekdays 8am–6pm,
             # Saturday 8am–5pm, Sunday closed.
                 "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
@@ -59,7 +59,7 @@ def local_business():
         "areaServed": [{"@type": "City", "name": a["city"] + ", MN"} for a in AREAS],
         "sameAs": [BIZ["facebook"], BIZ["instagram"], BIZ["google"]],
         # Deliberately no "makesOffer": a $0-priced Offer reads as "the
-        # service costs $0," not "quotes are free" — the visible CTAs already
+        # service costs $0," not "quotes are free", the visible CTAs already
         # make the free-quote offer clear without a misleading schema price.
     }
     return biz
@@ -71,7 +71,7 @@ def organization():
         "@id": BIZ["domain"] + "/#org",
         "name": BIZ["name"],
         "url": BIZ["domain"],
-        # Same raster logo the LocalBusiness entity uses — this is the one
+        # Same raster logo the LocalBusiness entity uses, this is the one
         # Google reads for the Organization brand mark.
         "logo": BIZ["domain"] + "/assets/img/logo-bww.png",
         "telephone": BIZ["phone_display"],

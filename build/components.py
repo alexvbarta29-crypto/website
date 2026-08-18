@@ -31,7 +31,7 @@ def lead_form_fallback(depth=0):
     a thank-you that goes nowhere."""
     return f"""<div class="form-fallback" hidden>
     <p><strong>We couldn't send that automatically.</strong> Please call us or email
-      <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> and we'll get you a quote right away — sorry for the trouble.</p>
+      <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> and we'll get you a quote right away, sorry for the trouble.</p>
     <div class="form-fallback-actions">
       <a class="btn" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
       <a class="btn btn-ghost" href="mailto:{BIZ['email']}">{icon('mail')} Email us</a>
@@ -49,7 +49,7 @@ def form_success(depth=0, closer=""):
     return f"""<div class="form-success">
     <div class="success-badge">{icon('check-circle')}</div>
     <h2 class="success-title">Your request is in!</h2>
-    <p class="success-sub">Our office will reach out to you shortly — or just give us a call right now and we&rsquo;ll get you taken care of.</p>
+    <p class="success-sub">Our office will reach out to you shortly, or just give us a call right now and we&rsquo;ll get you taken care of.</p>
     <div class="success-actions">
       <a class="btn btn-lg" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
       {away}
@@ -76,7 +76,7 @@ def _webp(src):
 
 def _variants_exist(stem):
     """True if 640w/1200w WebP+JPG derivatives exist for this image stem
-    (see build.generate_hero_variants — the single place that creates them)."""
+    (see build.generate_hero_variants, the single place that creates them)."""
     return all(os.path.exists(os.path.join(_ROOT, f"{stem}-{w}w.{fmt}"))
                for w in (640, 1200) for fmt in ("webp", "jpg"))
 
@@ -89,7 +89,7 @@ def slide_permalink(permalink, index, total):
     and reels, where the parameter is meaningless.
 
     index must be the slide's position in the ORIGINAL post, not in whatever
-    list survived filtering — the gallery drops duplicate slides, and
+    list survived filtering, the gallery drops duplicate slides, and
     renumbering after that would point every later slide at the wrong photo.
     """
     if not permalink or total <= 1:
@@ -99,7 +99,7 @@ def slide_permalink(permalink, index, total):
 
 _PHASH_CACHE = {}
 def photo_hash(relpath):
-    """Perceptual hash of an image — a 64-bit fingerprint of its content.
+    """Perceptual hash of an image, a 64-bit fingerprint of its content.
 
     Filename comparison can't catch the real problem in the gallery: the same
     photograph arriving twice under two different names, once as a curated
@@ -131,8 +131,8 @@ def photo_hash(relpath):
 
 # Two photos count as the same picture below this many differing bits. Measured
 # against the real duplicates on this site: identical shots scored 0-4 bits
-# apart, while the genuinely different before/after pairs — same driveway, same
-# angle, minutes apart — scored 35 and 62. 12 sits well clear of both.
+# apart, while the genuinely different before/after pairs, same driveway, same
+# angle, minutes apart, scored 35 and 62. 12 sits well clear of both.
 PHASH_DUPE_BITS = 12
 
 def is_duplicate_photo(relpath, seen_hashes):
@@ -144,7 +144,7 @@ def is_duplicate_photo(relpath, seen_hashes):
 
 def _poster_src(relpath):
     """A <video poster> takes one URL and can't carry a srcset, so it would
-    otherwise serve the full-size original — on the homepage that was ~1.1 MB
+    otherwise serve the full-size original, on the homepage that was ~1.1 MB
     of un-resized Instagram stills fetched before any scrolling, since a
     poster isn't lazy-loadable either. Point it at the 1200w derivative
     instead, which already matches the largest size the card ever displays.
@@ -165,7 +165,7 @@ _SIZE_CACHE = {}
 def _real_size(relpath, default=(1125, 1500)):
     """Real pixel dimensions of an assets/img file. Tries Pillow first, then
     a dependency-free JPEG header read, so width/height attributes always
-    match the actual file instead of a guessed placeholder value — the
+    match the actual file instead of a guessed placeholder value, the
     same fallback strategy build.py's _img_size uses, duplicated here in a
     few lines rather than importing build.py (which itself imports this
     module, so importing the other way would be circular)."""
@@ -208,7 +208,7 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
     If 640w/1200w responsive variants exist on disk (see
     build.generate_hero_variants), emits a full srcset/sizes picture so the
     browser downloads an appropriately-sized file instead of the full
-    original — `sizes` should reflect the image's real rendered width
+    original, `sizes` should reflect the image's real rendered width
     (e.g. "33vw" for a three-column card), defaulting to "100vw" for
     full-bleed uses. Falls back to a single full-resolution WebP+JPG pair
     when no variants exist.
@@ -244,14 +244,14 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
 def _og_image(og_image):
     """Absolute URL + real pixel dimensions for the social share image.
     Falls back to the generic branded cover when a page has no photo of its
-    own. Dimensions are read off the actual file rather than hardcoded —
+    own. Dimensions are read off the actual file rather than hardcoded , 
     Facebook/LinkedIn/iMessage use them to reserve the preview box, and
     wrong numbers give a stretched or letterboxed card."""
     default = ("assets/img/og-cover.png", 1200, 630)
     if not og_image:
         rel_path, w, h = default
     else:
-        # Prefer the purpose-built 1200x630 crop (generate_og_images) — most
+        # Prefer the purpose-built 1200x630 crop (generate_og_images), most
         # source photos are portrait, which social cards handle badly. Fall
         # back to the 1200w derivative, then the original, then the cover.
         stem, _, ext = og_image.rpartition(".")
@@ -270,14 +270,14 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
     pages that shouldn't compete in search) instead of the default index.
-    uses_reviews_widget=True adds the Trustindex preconnect — only pages
+    uses_reviews_widget=True adds the Trustindex preconnect, only pages
     that actually render the widget (home, service pages, reviews.html)
     should pay for that connection.
     primary_kw is accepted for callers that still pass it, but is no longer
-    rendered — Google doesn't use <meta name="keywords">, and publishing one
+    rendered, Google doesn't use <meta name="keywords">, and publishing one
     telegraphs targeted phrases for no ranking benefit.
     base_href, when given, renders a <base> tag so every relative URL on
-    the page (nav/footer links, CSS, JS, images — all built assuming
+    the page (nav/footer links, CSS, JS, images, all built assuming
     depth=0) resolves against the site root instead of whatever nested
     path the browser is actually showing. Only 404.html needs this: a
     static host serves 404.html's bytes without changing the visible URL,
@@ -293,7 +293,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     trustindex_preconnect = ('<link rel="preconnect" href="https://cdn.trustindex.io">\n'
                               '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
     base_tag = f'<base href="{base_href}">\n' if base_href else ""
-    # Google Analytics 4 — rendered exactly once per page, from this one
+    # Google Analytics 4, rendered exactly once per page, from this one
     # shared head(). The standard async gtag.js loader plus config call.
     ga_tag = ""
     if GA4_ID:
@@ -330,7 +330,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <meta name="twitter:title" content="{title}">
 <meta name="twitter:description" content="{desc}">
 <meta name="twitter:image" content="{og_img_url}">
-<!-- Fonts — Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
+<!-- Fonts, Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://nominatim.openstreetmap.org">
@@ -353,7 +353,7 @@ def _menu_item(s, root):
 def nav(depth=0):
     root = rel(depth)
     # The drawer promotes Christmas Light Installation out of the collapsed
-    # "Our Services" list onto a top-level row — it's the seasonal headline
+    # "Our Services" list onto a top-level row, it's the seasonal headline
     # service, and a thumb shouldn't have to expand a <details> to reach it.
     # The desktop dropdown is unaffected and still lists it with the rest.
     xmas_target = "services/christmas-light-installation.html"
@@ -411,7 +411,7 @@ def nav(depth=0):
 def sticky_cta(depth=0):
     root = rel(depth)
     # Call only. The quote button was removed from this bar at the owner's
-    # request — a phone call converts better for them than a form. Every
+    # request, a phone call converts better for them than a form. Every
     # stationary "Get a Quote" button elsewhere on the site stays.
     return f"""<div class="sticky-cta">
   <a class="btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
@@ -479,7 +479,7 @@ def page_end(depth=0):
 # Recurring-plan promo cards (Biannual left, Quarterly center/popular,
 # Monthly right). Each card sends the visitor to the quote form with the
 # chosen plan pre-attached via ?plan=. PROMO_PLANS/PROMO_FEATS live in
-# sitedata.py (the actual source of truth for plans) — see the owner-
+# sitedata.py (the actual source of truth for plans), see the owner-
 # verification note there before changing these numbers.
 def promo_plan_cards(depth=0, svc=None):
     root = rel(depth)
@@ -582,7 +582,7 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
   {form_success(depth)}
 </div>"""
 
-# Services offered in the quote wizard's picker — every homepage service
+# Services offered in the quote wizard's picker, every homepage service
 # except Christmas Light Installation and Commercial Cleaning, which are
 # booked/quoted through their own dedicated flows.
 WIZARD_SERVICES = [s for s in HOME_SERVICES if s["label"] not in ("Christmas Light Installation", "Commercial Cleaning")]
@@ -717,7 +717,7 @@ def quote_wizard(depth=0, svc_default=None):
 
 def xmas_quote_modal(depth=0):
     """Christmas Light Installation gets its own lightweight on-page quote
-    form that opens as a modal overlay right on the service page — no
+    form that opens as a modal overlay right on the service page, no
     dedicated page, no multi-step wizard. Any "get a quote" link on this
     page is hijacked by main.js to open it instead of navigating away."""
     root = rel(depth)
@@ -811,7 +811,7 @@ def picture_card(item, depth=0, idx=0):
     feat = " featured" if item.get("featured") else ""
     # Featured cards span 2 of 4 columns (desktop) or the full row (tablet/
     # mobile); non-featured cards are 1 of 4 (desktop) and 1 of 2 everywhere
-    # below 980px — .svc-grid stays repeat(2, 1fr) all the way down, so the
+    # below 980px, .svc-grid stays repeat(2, 1fr) all the way down, so the
     # old "(max-width: 560px) 100vw" branch (from when mobile was a single
     # column) overstated these by 2x and made phones fetch the 1200w file for
     # a card that renders ~170 css px wide.
@@ -864,7 +864,7 @@ def process_slider(steps, depth=0):
 
 def instagram_carousel(depth=0):
     """Real Instagram posts, shown right on the page instead of just a link
-    out to the profile. Reads build/instagram_feed.json — written by the
+    out to the profile. Reads build/instagram_feed.json, written by the
     "Sync Instagram Feed" GitHub Action (build/instagram_sync.py), which
     calls the Instagram API and downloads each post's image (and, for
     videos and multi-photo carousels, every slide) into
@@ -873,7 +873,7 @@ def instagram_carousel(depth=0):
     a fresh checkout (before the first sync has ever run) degrades
     gracefully to no carousel rather than a broken one.
 
-    No overlay/lightbox — every slide from every post is its own card in
+    No overlay/lightbox, every slide from every post is its own card in
     the scrollable row, sized to that slide's real aspect ratio (a fixed
     row height, auto width per card) instead of a cropped square, and video
     slides get a real <video controls> element right in the card so it
@@ -934,7 +934,7 @@ def instagram_carousel(depth=0):
             # every card one uniform width.
             #
             # No "reveal" class here on purpose. That scroll-in animation holds
-            # an element at opacity 0 until an IntersectionObserver sees it —
+            # an element at opacity 0 until an IntersectionObserver sees it , 
             # but .insta-track is a horizontal scroll container, and an
             # intermediate clipper like that keeps cards outside the visible
             # strip from ever registering as intersecting. Cards therefore
@@ -956,17 +956,17 @@ def instagram_carousel(depth=0):
 
 def gallery_instagram_figures(depth=0, seen_hashes=None):
     """Every real Instagram photo as bare <figure> tags (no wrapping .gallery
-    div, no section/heading — the Gallery page drops them straight into its
+    div, no section/heading, the Gallery page drops them straight into its
     one continuous photo grid alongside every other real photo, not a
     separate "From Instagram" section). Each tile links out to the real
     Instagram post. Reads the same build/instagram_feed.json manifest as
-    instagram_carousel() — see that function's docstring for how it gets
-    populated — and returns "" (not a broken section) if the manifest is
+    instagram_carousel(), see that function's docstring for how it gets
+    populated, and returns "" (not a broken section) if the manifest is
     missing or empty.
 
     seen_hashes: fingerprints of photos the gallery has already placed. Several
     Instagram posts are the very same shots that also live as curated site
-    images — the two team portraits, the screen-cleaning and solar photos —
+    images, the two team portraits, the screen-cleaning and solar photos , 
     just at a different resolution. Skipping those here is what keeps the
     gallery from showing one picture twice."""
     path = os.path.join(_ROOT, "build", "instagram_feed.json")
@@ -1017,7 +1017,7 @@ BA_REAL_PHOTOS = {"ba1": "window", "ba2": "siding", "ba3": "gutter"}
 
 def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", sizes="(max-width: 760px) 100vw, 33vw"):
     """`sizes` should match the real column width the .ba container renders
-    at — defaults to the 3-column grid used on the homepage and gallery;
+    at, defaults to the 3-column grid used on the homepage and gallery;
     pass "(max-width: 960px) 100vw, 50vw" for the 2-column landing-page use."""
     root = rel(depth)
     if name in BA_REAL_PHOTOS:
@@ -1026,8 +1026,8 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", s
     else:
         before_src, after_src = f"{name}-before.svg", f"{name}-after.svg"
     ba_attrs = 'loading="lazy" decoding="async"'
-    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning — visible dirt, algae, and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs, sizes=sizes)
-    after_img = picture(root, f"assets/img/{after_src}", "After Barta professional cleaning — bright, spotless, like-new surface", img_class="ba-img ba-after", extra_attrs=ba_attrs, sizes=sizes)
+    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning, visible dirt, algae, and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs, sizes=sizes)
+    after_img = picture(root, f"assets/img/{after_src}", "After Barta professional cleaning, bright, spotless, like-new surface", img_class="ba-img ba-after", extra_attrs=ba_attrs, sizes=sizes)
     return f"""<div class="ba" role="group" aria-label="Before and after comparison slider">
   {before_img}
   {after_img}
@@ -1043,7 +1043,7 @@ def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              primary=("Get Your Free Quote", "get-quote.html"),
              image="assets/img/svc-cta-squeegee.jpg", image_pos="35%"):
     root = rel(depth)
-    # Decorative full-bleed backdrop behind an overlay + text — never the
+    # Decorative full-bleed backdrop behind an overlay + text, never the
     # sole carrier of information, so a CSS background (hidden from
     # assistive tech by default) is correct here. Prefer the pre-generated
     # 1200w variant over the multi-hundred-KB original when one exists;
@@ -1082,7 +1082,7 @@ def google_badge(depth=0, light=False, text=None, bare=False):
     """Clickable Google review badge → links to the Google Business Profile.
 
     light=True is the solid-white chip for light page sections. bare=True
-    drops the pill entirely — no fill, no border, no blur — leaving just the
+    drops the pill entirely, no fill, no border, no blur, leaving just the
     stars, the G and the words over a hero photo. Only use bare over a photo:
     its text goes white, which would be invisible on a pale background, and
     this same badge renders on two dozen light-background pages via
@@ -1095,7 +1095,7 @@ def google_badge(depth=0, light=False, text=None, bare=False):
     elif bare:
         cls += " google-badge--bare"
     stars = '<span class="stars">' + icon("star") * 5 + "</span>"
-    return (f'<a class="{cls}" href="{BIZ["google"]}" target="_blank" rel="noopener" aria-label="{text} on Google — view our Google Business Profile">'
+    return (f'<a class="{cls}" href="{BIZ["google"]}" target="_blank" rel="noopener" aria-label="{text} on Google, view our Google Business Profile">'
             f'{stars}<span class="gb-g">{GOOGLE_G}</span><span class="gb-text">{text}</span></a>')
 
 def reviews_block(widget_embed, fallback_cards, depth=0):
@@ -1105,7 +1105,7 @@ def reviews_block(widget_embed, fallback_cards, depth=0):
     executed once its section nears the viewport (see main.js), so it can't
     delay first paint. The "see all reviews" link is static HTML either way.
     With no curated cards and no widget configured, we don't fabricate
-    placeholder testimonials — show a Google rating badge/CTA instead."""
+    placeholder testimonials, show a Google rating badge/CTA instead."""
     if widget_embed and widget_embed.strip():
         import base64
         encoded = base64.b64encode(widget_embed.encode("utf-8")).decode("ascii")
@@ -1131,18 +1131,18 @@ def gmap_embed(title, label=None, zoom=10, cls=""):
     """Responsive, lazy-loaded Google Maps embed (no API key required) with
     the business's own Google pin. The embedded iframe centers on our raw
     lat/lng (a plain pin, no business-card panel) so the CSS pin-shift trick
-    on `.map-pin-left` reliably works — a business-name `q=` search instead
+    on `.map-pin-left` reliably works, a business-name `q=` search instead
     renders Google's place-card layout, which ignores the CSS offset. The
     whole widget is still a link that opens the real listing (searched by
     name) on Google Maps. A light placeholder panel shows until the iframe
     finishes loading."""
-    label = label or f"{BIZ['legal_name']} — {BIZ['city']}, {BIZ['state']}"
+    label = label or f"{BIZ['legal_name']}, {BIZ['city']}, {BIZ['state']}"
     biz_query = quote_plus(f"{BIZ['legal_name']} {BIZ['city']} {BIZ['state']}")
     src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
     gmaps_link = "https://www.google.com/maps/search/?api=1&query=" + biz_query
     return f"""<a class="map-embed {cls}" data-map-embed
     href="{gmaps_link}" target="_blank" rel="noopener"
-    aria-label="{title} — opens Google Maps in a new tab">
+    aria-label="{title}, opens Google Maps in a new tab">
     <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{label}</span></div>
     <iframe src="{src}" title="{title}" width="100%" height="100%" tabindex="-1"
       style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
@@ -1155,7 +1155,7 @@ def imgph(label, ratio="16/10", depth=0, extra_class=""):
 
 def photo(src, alt, ratio="5/4", depth=0, cls=""):
     """Real <img> layered over the gradient placeholder. If the file is missing
-    (e.g. not uploaded yet) the img hides itself and the placeholder shows —
+    (e.g. not uploaded yet) the img hides itself and the placeholder shows , 
     no broken-image icons, graceful before and after the photo exists."""
     root = rel(depth)
     img_tag = picture(root, src, alt, extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"')

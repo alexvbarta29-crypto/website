@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barta Window Washing — static site generator.
+Barta Window Washing, static site generator.
 Run from repo root:  python3 build/build.py
 Outputs HTML pages, sitemap, robots, manifest, and placeholder imagery.
 """
@@ -24,7 +24,7 @@ def load_reviews_widget(filename="google-reviews-embed.html"):
     if not os.path.exists(p):
         return ""
     raw = open(p, encoding="utf-8").read()
-    # Ignore the instructional HTML comment(s) — only real markup counts.
+    # Ignore the instructional HTML comment(s), only real markup counts.
     stripped = re.sub(r"<!--.*?-->", "", raw, flags=re.S).strip()
     return raw if stripped else ""
 
@@ -39,13 +39,13 @@ def write(relpath, html, slug=None, priority="0.7"):
     with open(path, "w", encoding="utf-8") as f:
         f.write(html)
     # Pages whose <meta name="robots"> says noindex (legal/utility pages, PPC
-    # landing pages) are deliberately excluded from the sitemap — a sitemap
+    # landing pages) are deliberately excluded from the sitemap, a sitemap
     # entry for a noindexed URL is a direct contradiction search engines flag.
     if 'name="robots" content="noindex' not in html:
         PAGES.append((relpath, slug if slug is not None else relpath, priority))
 
 def _jpeg_size(path):
-    """Pure-stdlib JPEG pixel-size reader (scans SOF0/2/etc. markers) — used
+    """Pure-stdlib JPEG pixel-size reader (scans SOF0/2/etc. markers), used
     when Pillow isn't installed so a missing dependency can't silently write
     a wrong, hardcoded aspect ratio into width/height attributes (that's a
     real CLS/layout-shift bug, not just a cosmetic one)."""
@@ -75,7 +75,7 @@ def _img_size(relpath, default=(1125, 1500)):
     width/height attributes (correct aspect-ratio hint, no invented numbers).
     Tries Pillow first, then a dependency-free JPEG header read, and only
     falls back to `default` if the file is genuinely missing or unreadable
-    — this should never fail the build, but should also never silently
+   , this should never fail the build, but should also never silently
     report the wrong aspect ratio for a file that does exist."""
     if relpath in _IMG_SIZE_CACHE:
         return _IMG_SIZE_CACHE[relpath]
@@ -98,12 +98,12 @@ def _img_size(relpath, default=(1125, 1500)):
 def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img", alt=""):
     """Responsive hero <picture>: WebP source + JPG fallback, each with a
     640w/1200w srcset (see generate_hero_variants()) so a phone downloads the
-    small file and only one image request happens either way — never both a
+    small file and only one image request happens either way, never both a
     CSS background and an <img>. Falls back to the single full-resolution
     image (previous behavior) if the responsive variants haven't been
     generated for some reason, so a missing Pillow install can't break a page.
     hero_pos=None omits the inline object-position style, leaving cropping to
-    the page's own CSS (including any @media override) — used by the
+    the page's own CSS (including any @media override), used by the
     homepage hero, whose .hero-bg-img rule already handles this responsively.
     Every -<N>w variant found on disk becomes a srcset candidate, so an
     above-1200 tier (the 1920w homepage/gallery heroes, or a native-width
@@ -156,7 +156,7 @@ TITLE_MAX = 60  # Google truncates search-result titles around here
 def seo_title(core):
     """Page <title> kept under TITLE_MAX so search results don't cut it off
     mid-word. Appends the full brand when it fits and falls back to the short
-    "Barta" form when it doesn't — losing part of the brand name is better
+    "Barta" form when it doesn't, losing part of the brand name is better
     than losing the end of the page's actual subject. Only affects <title>;
     on-page H1s are set separately and are unchanged."""
     full = f"{core} | {BIZ['name']}"
@@ -176,7 +176,7 @@ def build_home():
     svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
-    # Full community list, ordered priority-first — sized so the grid's
+    # Full community list, ordered priority-first, sized so the grid's
     # bottom edge lines up with the map beside it (a full square that grows
     # with viewport width); service-areas.html remains the dedicated,
     # detail-per-city page this grid links out to.
@@ -199,19 +199,19 @@ def build_home():
         ("01", "Mop", "assets/img/svc-mop-window.jpg",
          "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
         ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
-         "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup — silicone, putty overspray, baked-on bug residue — that a simple wash won't touch, without ever scratching the glass.", None),
+         "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup, silicone, putty overspray, baked-on bug residue, that a simple wash won't touch, without ever scratching the glass.", None),
         ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
          "Then we squeegee the window from edge to edge, pulling every last drop of water and solution off the glass so nothing is left behind to dry into streaks or spots.", None),
         ("04", "Detail", "assets/img/svc-detail-frame.jpg",
-         "Finally, we hand-detail the glass, frames, and sills — wiping down every edge and corner so the window looks brand new, not just clean, before we move on to the next one.", None),
+         "Finally, we hand-detail the glass, frames, and sills, wiping down every edge and corner so the window looks brand new, not just clean, before we move on to the next one.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
 
     why = [
         ("shield", "Fully insured", "Full insurance coverage on every job. Your home and our team are always protected."),
-        ("home", "Locally &amp; family owned", "Born and based in Delano. We treat your home like a neighbor's — because you are one."),
+        ("home", "Locally &amp; family owned", "Born and based in Delano. We treat your home like a neighbor's, because you are one."),
         ("leaf", "Safe, eco-friendly methods", "Biodegradable solutions and the right pressure for every surface. Safe for your family, pets, and landscaping."),
-        ("award", "Obsessed with detail", "Sills, tracks, screens, downspouts — we sweat the details most companies skip."),
+        ("award", "Obsessed with detail", "Sills, tracks, screens, downspouts, we sweat the details most companies skip."),
         ("clock", "On time, every time", "We respect your schedule with confirmed windows, text updates, and crews that show up when we say."),
         ("check-circle", "100% satisfaction guarantee", "If any part of your service isn't perfect, we return and re-clean it free. No hassle, no fine print."),
     ]
@@ -281,7 +281,7 @@ def build_home():
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Membership Savings</span>
         <h2>Save money with every service</h2>
-        <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
+        <p>Join a recurring plan and save on every visit, the more often we come, the more you save.</p>
       </div>
       <div class="promo-grid">{promo_cards}</div>
     </div>
@@ -304,7 +304,7 @@ def build_home():
       <div class="section-head center">
         <span class="eyebrow">How it works</span>
         <h2>Our 4-step process</h2>
-        <p>Every job follows the same disciplined routine — mop, scrub, squeegee, detail — for a streak-free finish, every time.</p>
+        <p>Every job follows the same disciplined routine, mop, scrub, squeegee, detail, for a streak-free finish, every time.</p>
       </div>
       {process_slider_html}
     </div>
@@ -344,10 +344,10 @@ def build_home():
       <div class="section-head center">
         <span class="eyebrow">Areas we serve</span>
         <h2>Proudly cleaning Delano &amp; the western Twin Cities</h2>
-        <p>Delano is our home base — from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
+        <p>Delano is our home base, from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
       </div>
       <div class="areas-split">
-        {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps — serving {BIZ['city']} and the western Twin Cities", cls="reveal map-pin-left")}
+        {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps, serving {BIZ['city']} and the western Twin Cities", cls="reveal map-pin-left")}
         <div class="area-grid reveal">{areas_html}</div>
       </div>
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">View All Service Areas {icon('arrow')}</a></div>
@@ -381,9 +381,9 @@ def build_home():
 # a long city/ZIP list) plus the service-areas hub. svc_lower is filled in
 # per page; the area links themselves come from _service_area_links().
 _SERVICE_AREA_TEMPLATES = {
-    # Every family ends on {hub_view_all} — "View all communities we serve." —
+    # Every family ends on {hub_view_all}, "View all communities we serve." , 
     # for a single consistent anchor-text pattern sitewide.
-    "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities — including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
+    "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
     "wash": "Based in Delano, Barta brings {svc_lower} to homes across the western Twin Cities metro, from {a1} and {a2} to {a3} and {a4}. {hub_view_all}",
     "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
 }
@@ -401,7 +401,7 @@ _SERVICE_AREA_FAMILY = {
     "commercial-cleaning": ("specialty", ("plymouth", "medina", "st-michael", "mound")),
     "christmas-light-installation": ("specialty", ("plymouth", "medina", "mound", "st-michael")),
 }
-# Primary-tier only — these are the cities that still have their own page.
+# Primary-tier only, these are the cities that still have their own page.
 _AREA_LABELS = {"plymouth": "Plymouth", "medina": "Medina", "mound": "Mound",
                 "buffalo": "Buffalo", "delano": "Delano", "st-michael": "St. Michael"}
 
@@ -426,7 +426,7 @@ def _service_area_section(svc, depth):
 
 def _xmas_garland_svg():
     """Draped string-light garland across the top of the Christmas Lights
-    hero — a wavy wire with twinkling colored bulbs, generated rather than
+    hero, a wavy wire with twinkling colored bulbs, generated rather than
     hand-plotted so the spacing stays even at any width."""
     import math
     colors = ["#fb4d3d", "#18b673", "#f5c344"]
@@ -464,7 +464,7 @@ def build_service(svc):
     benefits_html = "".join(
         f'<li>{icon("check-circle")} <span><strong>{t}:</strong> {d}</span></li>' for t, d in svc["benefits"])
     includes_html = "".join(f'<li>{icon("check-circle")} {x}</li>' for x in svc["includes"])
-    # Homepage-style process slideshow — shown only for exterior/interior window
+    # Homepage-style process slideshow, shown only for exterior/interior window
     # cleaning (the two pages the process actually differs meaningfully for);
     # every other service page skips this section entirely.
     _wc_step_imgs = ["assets/img/svc-mop-window.jpg", "assets/img/svc-hand-scrubbing.jpg",
@@ -491,8 +491,8 @@ def build_service(svc):
 
     # Christmas Light Installation is its own thing: no membership plans (a
     # seasonal, once-a-year job doesn't have a recurring-visit discount), and
-    # a lighter, more character-driven "how it works" + benefits section —
-    # an inline numbered flow and an icon+text list rather than card grids —
+    # a lighter, more character-driven "how it works" + benefits section , 
+    # an inline numbered flow and an icon+text list rather than card grids , 
     # right under the hero.
     is_xmas = svc["slug"] == "christmas-light-installation"
     xmas_extra = ""
@@ -600,29 +600,29 @@ def build_service(svc):
     _frequency_faq_overrides = {
         "hard-water-stain-removal": (
             "How often will I need hard water stain removal?",
-            "This is a restoration treatment, not routine maintenance — most homes only need it once to remove existing buildup. If sprinklers or hard water exposure are ongoing, we can also apply a protective coating to help keep new deposits from bonding as easily."),
+            "This is a restoration treatment, not routine maintenance, most homes only need it once to remove existing buildup. If sprinklers or hard water exposure are ongoing, we can also apply a protective coating to help keep new deposits from bonding as easily."),
         "commercial-cleaning": (
             "How often should we schedule commercial cleaning?",
-            "It depends on your property, foot traffic, and industry — many commercial clients schedule us on a recurring contract (weekly, monthly, or seasonally) rather than a fixed once- or twice-a-year visit. We'll recommend a schedule after seeing your property."),
+            "It depends on your property, foot traffic, and industry, many commercial clients schedule us on a recurring contract (weekly, monthly, or seasonally) rather than a fixed once- or twice-a-year visit. We'll recommend a schedule after seeing your property."),
     }
     if svc.get("faqs"):
         svc_faqs = svc["faqs"]
     else:
         freq_faq = _frequency_faq_overrides.get(svc["slug"], (
             f"How often should I schedule {svc['name'].lower()}?",
-            f"For most Minnesota homes we recommend {svc['name'].lower()} once or twice per year, though it varies by your home and surroundings. Our membership plans bundle it on the ideal schedule at a member discount — so it's handled automatically."))
+            f"For most Minnesota homes we recommend {svc['name'].lower()} once or twice per year, though it varies by your home and surroundings. Our membership plans bundle it on the ideal schedule at a member discount, so it's handled automatically."))
         svc_faqs = [
             (f"How much does {svc['name'].lower()} cost in {BIZ['city']}?",
              f"Every home is different, so we provide free, upfront, all-in quotes with no hidden fees. Pricing for {svc['name'].lower()} depends on the size and accessibility of your property. Request a quote and we'll get you a clear price."),
             freq_faq,
             ("Are you insured?",
-             "Yes — Barta is fully insured."),
+             "Yes, Barta is fully insured."),
             ("Do you guarantee your work?",
              "Always. Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll re-clean it free."),
         ]
     # Two levels, not three: there is no standalone services index page to
     # point a middle "Services" crumb at, and a BreadcrumbList step must be a
-    # real URL — an #anchor on the homepage would duplicate the Home step.
+    # real URL, an #anchor on the homepage would duplicate the Home step.
     breadcrumb = S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
         (svc["name"], BIZ["domain"] + "/services/" + svc["slug"] + ".html"),
@@ -641,7 +641,7 @@ def build_service(svc):
     hero_pos = svc.get("hero_pos", "30%")
     # Empty alt + aria-hidden wrapper: this photo functions as a background
     # layer behind the H1/lead text (same role the CSS background played
-    # before), not standalone content — the adjacent heading already states
+    # before), not standalone content, the adjacent heading already states
     # the service and location, so a screen reader shouldn't announce it twice.
     hero_picture = _hero_picture_html(root, hero_img, hero_pos)
 
@@ -667,7 +667,7 @@ def build_service(svc):
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Membership Savings</span>
         <h2>Save money with every service</h2>
-        <p>Join a recurring plan and save on every visit — the more often we come, the more you save.</p>
+        <p>Join a recurring plan and save on every visit, the more often we come, the more you save.</p>
       </div>
       <div class="promo-grid">{C.promo_plan_cards(depth, svc=checkbox_slug)}</div>
     </div>
@@ -781,12 +781,12 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
 # ===========================================================================
 # GALLERY
 # ===========================================================================
-# Technician squeegeeing the transom above a door, shot from behind — the
+# Technician squeegeeing the transom above a door, shot from behind, the
 # clearest "this is the work" photo on the site, and one of only three in
 # landscape, so it fills a full-width banner without heavy cropping.
 GALLERY_HERO = "assets/img/svc-cta-squeegee.jpg"
 # The CTA band at the foot of the page normally uses GALLERY_HERO too, so
-# the Gallery gives it a different backdrop — no photo twice on one page.
+# the Gallery gives it a different backdrop, no photo twice on one page.
 GALLERY_CTA_IMAGE = "assets/img/hero-home.jpg"
 
 def build_gallery():
@@ -801,18 +801,18 @@ def build_gallery():
         ("Gallery", BIZ["domain"] + "/gallery.html"),
     ]))
     html = C.head(
-        title=seo_title("Photo Gallery — Real Job Photos"),
-        desc="Real photos from real jobs — window cleaning, gutter cleaning, pressure washing and more across Delano and the western Twin Cities. No stock photos.",
+        title=seo_title("Photo Gallery, Real Job Photos"),
+        desc="Real photos from real jobs, window cleaning, gutter cleaning, pressure washing and more across Delano and the western Twin Cities. No stock photos.",
         slug="gallery.html", depth=depth, schema=schema, og_image=GALLERY_HERO)
     html += C.nav(depth)
 
-    # Every real photo on the site, not just a curated handful — the more
+    # Every real photo on the site, not just a curated handful, the more
     # of the actual work visitors can see, the better. Anything already shown
     # elsewhere on this page (the hero, the CTA backdrop) is held back.
     #
     # Dedup is by image content, not filename. Matching names only catches the
     # same file arriving twice; it misses the same photograph stored under two
-    # different names, which is what actually happens here — several Instagram
+    # different names, which is what actually happens here, several Instagram
     # posts are the identical shots already curated as site images, at a
     # different resolution. Those slipped through and appeared twice.
     already_shown = {GALLERY_HERO, GALLERY_CTA_IMAGE}
@@ -839,7 +839,7 @@ def build_gallery():
 
     # The before/after pairs stay in the collage rather than sitting in their
     # own section, but as draggable comparison sliders instead of two flat
-    # photos side by side — one tile you scrub through, not a before you have
+    # photos side by side, one tile you scrub through, not a before you have
     # to mentally pair with an after. sizes matches the collage's real column
     # width (3 columns, 2 under 760px).
     ba_tiles = [
@@ -860,7 +860,7 @@ def build_gallery():
     # frame; the default centre crop pushes his head up behind the nav bar.
     hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="34%", img_class="hero-bg-img",
                                        alt=IMAGE_ALT.get(GALLERY_HERO, "Barta Window Washing technicians cleaning windows"))
-    # One collage, before/after shots included inline with everything else —
+    # One collage, before/after shots included inline with everything else , 
     # they used to sit above in their own "Before & after" section of drag
     # sliders, which split the page into two separate galleries.
     html += f"""<main id="main">
@@ -872,7 +872,7 @@ def build_gallery():
         {C.crumbs([("Home", root + "index.html"), ("Gallery", None)], light=True)}
         {C.google_badge(depth, text=f"{BIZ['review_count']}+ 5-star Google reviews", bare=True)}
         <h1 class="mt-1">See the work for <em>yourself.</em></h1>
-        <p class="lead">Real photos from real jobs around {BIZ['city']} and the western Twin Cities — no stock photos.</p>
+        <p class="lead">Real photos from real jobs around {BIZ['city']} and the western Twin Cities, no stock photos.</p>
       </div>
     </div>
   </section>
@@ -913,35 +913,35 @@ def build_about():
     Every claim here is one already confirmed by the owner and used elsewhere
     on the site (founding year, the brothers' split of duties, the recurring
     plan discounts, the re-clean guarantee, insured status). Nothing about
-    the founding motivation or company history is invented — see
+    the founding motivation or company history is invented, see
     docs/OWNER-VERIFICATION.md."""
     depth = 0
     team_cards = _team_cards(name_tag="h2")
 
     experience = [
         ("Recurring plans that actually save money",
-         f"Book on a repeating schedule and every visit is discounted — ${PROMO_PLANS[0][2]} off biannual, "
+         f"Book on a repeating schedule and every visit is discounted, ${PROMO_PLANS[0][2]} off biannual, "
          f"${PROMO_PLANS[1][2]} off quarterly, ${PROMO_PLANS[2][2]} off monthly. Quarterly and monthly "
          "members get priority scheduling on top of it."),
         ("A guarantee without the fine print",
          "Every service is backed by our 100% Satisfaction Guarantee. If any part of a job isn't right, "
          "call us and we come back and re-clean it free. No forms, no argument."),
-        # "to the standard Alex and Jacob set" removed — "set the standard"
+        # "to the standard Alex and Jacob set" removed, "set the standard"
         # already opens Our Story and Alex's bio uses it too.
         ("Owner-run, and fully insured",
-         "You're dealing with the two people whose name is on the van, not a call center — and every "
+         "You're dealing with the two people whose name is on the van, not a call center, and every "
          "job is covered by full insurance, on a crew Alex and Jacob trained themselves."),
     ]
-    # Prose bullets with a bold lead-in, not icon rows — the label carries the
+    # Prose bullets with a bold lead-in, not icon rows, the label carries the
     # point and the sentence explains it, which reads better at this length
     # than a checklist does.
     exp_html = "".join(f"<li><span><strong>{t}:</strong> {d}</span></li>" for t, d in experience)
 
     html, body = interior_head(
-        title=seo_title("About Us — Family-Owned in Delano, MN"),
-        desc="Two brothers started Barta Window Washing in Delano, MN to raise the standard of home service — old-school customer care with a modern edge.",
+        title=seo_title("About Us, Family-Owned in Delano, MN"),
+        desc="Two brothers started Barta Window Washing in Delano, MN to raise the standard of home service, old-school customer care with a modern edge.",
         slug="about.html", eyebrow="About Us", og_image="assets/img/hero-home.jpg",
-        # The page title IS the team heading now — there's no separate
+        # The page title IS the team heading now, there's no separate
         # headline above it and no lead. The founding line that used to sit
         # here is covered by "How BWW started" below.
         h1="The brothers behind the brand",
@@ -968,11 +968,11 @@ def build_about():
           low. They wanted to raise them.</p>
         <p class="mt-2">That became the goal behind {BIZ['name']}: not just to exceed expectations, but
           to set a new standard for the home service industry.</p>
-        <p class="mt-2">For Alex and Jacob, that means bringing back old-school customer service—the
+        <p class="mt-2">For Alex and Jacob, that means bringing back old-school customer service, the
           kind where every call is answered, appointments are kept, homes are treated with respect, and
           every detail is handled correctly. From the first call to the final walkthrough, their goal
           is to make every customer feel genuinely taken care of.</p>
-        <p class="mt-2">They also believe great service should feel premium—and the experience
+        <p class="mt-2">They also believe great service should feel premium, and the experience
           surrounding it should feel modern. That means clean equipment, professional communication,
           simple processes, and careful attention to every detail.</p>
         <p class="mt-2">{BIZ['name']} isn’t here just to clean windows. The company is here to raise
@@ -1006,21 +1006,21 @@ def build_reviews():
     cards = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS))
     # This page was the only indexable one without a BreadcrumbList.
     # Deliberately no AggregateRating/Review markup here: Google disallows
-    # self-serving review markup — ratings a business publishes about itself
-    # on its own site — so it earns no stars and risks a manual action.
+    # self-serving review markup, ratings a business publishes about itself
+    # on its own site, so it earns no stars and risks a manual action.
     schema = BASE_SCHEMA + [S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
         ("Reviews", BIZ["domain"] + "/reviews.html"),
     ])]
     html = C.head(
-        title=seo_title(f"Reviews — {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
+        title=seo_title(f"Reviews, {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
         desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
         og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
     reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth)
     html += f"""<main id="main">
-  <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors — {BIZ['name']} Reviews</h1>
+  <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors, {BIZ['name']} Reviews</h1>
   <section class="section-tight" style="padding-top:calc(var(--nav-h) + 40px)"><div class="container">{reviews_content}</div></section>
 </main>"""
     html += C.page_end(depth)
@@ -1038,11 +1038,11 @@ def build_faqs():
         desc="Answers about pricing, scheduling, insurance, our satisfaction guarantee, eco-safe methods, and maintenance plans at Barta Window Washing in Delano, MN.",
         slug="faqs.html", eyebrow="FAQs", schema=schema, og_image="assets/img/svc-cta-squeegee.jpg",
         h1="Frequently asked questions",
-        lead="Everything you need to know before booking. Don't see your question? Call us — we're happy to help.",
+        lead="Everything you need to know before booking. Don't see your question? Call us, we're happy to help.",
         depth=depth, crumb_label="FAQs", primary_kw="window cleaning FAQ Delano MN")
     html += f"""<main id="main">{body}
   <section><div class="container">{C.faq_block(FAQS)}</div></section>
-  {C.cta_band(depth, heading="Still have questions?", text="Our friendly team is a quick call away — and ready to give you a free, no-obligation quote.")}
+  {C.cta_band(depth, heading="Still have questions?", text="Our friendly team is a quick call away, and ready to give you a free, no-obligation quote.")}
 </main>"""
     html += C.page_end(depth)
     write("faqs.html", html, slug="faqs.html", priority="0.7")
@@ -1070,7 +1070,7 @@ def build_service_areas():
     extended_html = "".join(area_row(a) for a in AREAS if a["tier"] == "extended")
 
     html, body = interior_head(
-        title=seo_title("Service Areas — Western Twin Cities, MN"),
+        title=seo_title("Service Areas, Western Twin Cities, MN"),
         desc="Barta Window Washing proudly serves Delano, Buffalo, Medina, Mound, Plymouth, St. Michael & more across the western Twin Cities metro. Find your city.",
         slug="service-areas.html", eyebrow="Service Areas", og_image="assets/img/hero-home.jpg",
         h1="Proudly serving the western Twin Cities",
@@ -1092,7 +1092,7 @@ def build_service_areas():
         </div>
       </div>
     </div>
-    <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too — <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
+    <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too, <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
   </div></section>
   <section class="bg-mist"><div class="container">
     <div class="section-head center">
@@ -1111,7 +1111,7 @@ def build_service_areas():
 # ===========================================================================
 def _area_region_note(a):
     """One genuinely differentiating sentence per area, derived only from
-    the real neighborhood data already in AREAS — not invented per-city
+    the real neighborhood data already in AREAS, not invented per-city
     copy. Groups cities into a couple of real, verifiable local patterns
     (lake shoreline vs. river town) instead of a single generic sentence
     with the city name swapped in."""
@@ -1124,7 +1124,7 @@ def _area_region_note(a):
         return ("As a river-adjacent community, homes here see extra humidity and tree debris near the "
                 "water, which is exactly the kind of algae and grime buildup soft washing is built for.")
     return ("Like most homes across the western metro, exteriors here deal with Minnesota's full range of "
-            "seasons — spring pollen, summer dust, and winter road spray — which is why most homeowners "
+            "seasons, spring pollen, summer dust, and winter road spray, which is why most homeowners "
             "pair window cleaning with a seasonal house wash or gutter cleaning.")
 
 def build_area(a):
@@ -1139,7 +1139,7 @@ def build_area(a):
     nearby_html = "".join(f'<a class="pill" href="{o["slug"]}.html">{o["city"]}, MN</a>' for o in nearby)
     area_faqs = [
         (f"Do you serve all of {a['city']}, MN?",
-         f"Yes — we serve the entire {a['city']} area, including {nbhds}. Whether you're in town or just outside it, we'd love to give you a free quote."),
+         f"Yes, we serve the entire {a['city']} area, including {nbhds}. Whether you're in town or just outside it, we'd love to give you a free quote."),
         (f"How quickly can you get to my home in {a['city']}?",
          f"As a local company, we're often in the {a['city']} area each week and can usually schedule within a few days. Members always get priority. Call or request a quote to check current availability."),
         ("Are you insured to work in my city?",
@@ -1148,11 +1148,11 @@ def build_area(a):
     schema = BASE_SCHEMA + [S.faq_schema(area_faqs), S.breadcrumb([
         ("Home", BIZ["domain"] + "/"), ("Service Areas", BIZ["domain"] + "/service-areas.html"),
         (a["city"], BIZ["domain"] + "/areas/" + a["slug"] + ".html")])]
-    homebase = " — our home base" if a["note"] == "our home base" else ""
+    homebase = ", our home base" if a["note"] == "our home base" else ""
     html = C.head(
         title=seo_title(f"Exterior Cleaning in {a['city']}, MN"),
         # Neighborhood names are already visible on the page itself (hero +
-        # FAQ) — repeating the full list here was pushing every one of the
+        # FAQ), repeating the full list here was pushing every one of the
         # 36 area-page descriptions past 175-200+ characters, well beyond
         # what Google renders before truncating in search results.
         desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local & insured. Get your free quote from Barta.",
@@ -1166,7 +1166,7 @@ def build_area(a):
       <div>
         <span class="eyebrow">Serving {a['city']}, MN{homebase}</span>
         <h1 class="mt-1">Premium exterior cleaning in {a['city']}</h1>
-        <p class="lead">Spotless windows, clear gutters, and a fresh-washed exterior for {a['city']} homes and businesses — from a local, family-owned team that treats your property like its own.</p>
+        <p class="lead">Spotless windows, clear gutters, and a fresh-washed exterior for {a['city']} homes and businesses, from a local, family-owned team that treats your property like its own.</p>
         <div class="phero-actions">
           <a class="btn btn-lg" href="#quote-form">Get a Free {a['city']} Quote {icon('arrow')}</a>
           <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
@@ -1178,7 +1178,7 @@ def build_area(a):
   <section><div class="container"><div class="prose reveal" style="max-width:820px;margin-inline:auto;text-align:center">
     <span class="eyebrow" style="justify-content:center">Local experts</span>
     <h2 class="mt-1">Your trusted exterior cleaners in {a['city']}</h2>
-    <p>Barta proudly serves homeowners and businesses throughout {a['city']} and the surrounding neighborhoods — including {nbhds}. {_area_region_note(a)}</p>
+    <p>Barta proudly serves homeowners and businesses throughout {a['city']} and the surrounding neighborhoods, including {nbhds}. {_area_region_note(a)}</p>
     <p>As a local, family-owned company, we're nearby, responsive, and personally invested in our reputation across {a['city']}. Every job is backed by full insurance and our 100% satisfaction guarantee.</p>
   </div></div></section>
   <section class="bg-mist"><div class="container">
@@ -1209,10 +1209,10 @@ def build_area(a):
 # ===========================================================================
 def build_financing():
     depth = 0
-    opts = [("money", "Pay over time", "Spread larger projects — like full-home washing or gutter cleaning — into easy monthly payments."),
+    opts = [("money", "Pay over time", "Spread larger projects, like full-home washing or gutter cleaning, into easy monthly payments."),
             ("tag", "Membership budgeting", "Our maintenance plans turn big seasonal bills into a small, predictable monthly amount."),
             ("check-circle", "Simple application", "Quick, no-obligation approval decisions so you can move forward with confidence."),
-            ("shield", "No surprises", "Clear terms, transparent pricing, and no hidden fees — ever.")]
+            ("shield", "No surprises", "Clear terms, transparent pricing, and no hidden fees, ever.")]
     opt_html = "".join(f'<div class="feature reveal" data-delay="{i%2}"><span class="ic">{icon(ic)}</span><div><h3>{t}</h3><p>{d}</p></div></div>'
                        for i, (ic, t, d) in enumerate(opts))
     html, body = interior_head(
@@ -1234,8 +1234,8 @@ def build_financing():
     write("financing.html", html, slug="financing.html", priority="0.4")
 
 def build_get_quote():
-    """get-quote.html — a bare, distraction-free full-screen quote wizard.
-    No site nav, no footer, no sidebar content — just one step at a time,
+    """get-quote.html, a bare, distraction-free full-screen quote wizard.
+    No site nav, no footer, no sidebar content, just one step at a time,
     each filling the screen, with a slim progress bar as the only chrome."""
     depth = 0
     root = C.rel(depth)
@@ -1244,7 +1244,7 @@ def build_get_quote():
         ("Get a Quote", BIZ["domain"] + "/get-quote.html"),
     ])]
     html = C.head(
-        title=seo_title("Get Your Free Quote — Delano, MN"),
+        title=seo_title("Get Your Free Quote, Delano, MN"),
         desc="Tell us about your home and the services you need, and Barta Window Washing will get back to you with clear, upfront, no-obligation pricing.",
         slug="get-quote.html", depth=depth, schema=schema,
         primary_kw="free exterior cleaning quote Delano MN")
@@ -1301,13 +1301,13 @@ def build_privacy():
     <h2>5. SMS / text messaging</h2>
     <p>By providing your phone number and opting in, you consent to receive text messages from {BIZ['name']} regarding appointment scheduling, service reminders, and updates. Message and data rates may apply, and message frequency varies. You may opt out at any time by replying STOP to any text message, or reply HELP for assistance. We do not share your phone number or SMS opt-in status with third parties for their own marketing purposes.</p>
     <h2 id="cookies">6. Cookies and third-party services</h2>
-    <p>This website uses <strong>Google Analytics</strong> to understand how visitors find and use the site — for example, which pages are viewed and roughly where visitors come from. Google Analytics sets cookies in your browser for this purpose, and the information it collects is processed by Google under <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Google's privacy policy</a>. We do not use advertising cookies.</p>
+    <p>This website uses <strong>Google Analytics</strong> to understand how visitors find and use the site, for example, which pages are viewed and roughly where visitors come from. Google Analytics sets cookies in your browser for this purpose, and the information it collects is processed by Google under <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Google's privacy policy</a>. We do not use advertising cookies.</p>
     <p>Some other features of the site are also provided by third parties. When your browser loads those features, the providers receive technical information such as your IP address and browser details, and they may use cookies or similar technologies under their own privacy policies. These features include:</p>
     <ul>
-      <li><strong>Trustindex</strong> — displays our Google reviews on this site</li>
-      <li><strong>Google Maps</strong> — powers the embedded map of our location and service area</li>
-      <li><strong>Fontshare</strong> — serves the fonts used on this site</li>
-      <li><strong>OpenStreetMap / Nominatim</strong> — powers the address suggestions on our quote form; the address text you type into that field is sent to Nominatim to look up matching addresses</li>
+      <li><strong>Trustindex</strong>, displays our Google reviews on this site</li>
+      <li><strong>Google Maps</strong>, powers the embedded map of our location and service area</li>
+      <li><strong>Fontshare</strong>, serves the fonts used on this site</li>
+      <li><strong>OpenStreetMap / Nominatim</strong>, powers the address suggestions on our quote form; the address text you type into that field is sent to Nominatim to look up matching addresses</li>
     </ul>
     <p>We encourage you to review those providers' privacy policies for details on how they handle your data. Links on this site to platforms such as Instagram, Facebook, TikTok, and Google likewise take you to services that operate under their own policies. If we add analytics or other cookie-based tools in the future, we will update this section to describe what is used and the choices available to you.</p>
     <h2>7. Sharing of information</h2>
@@ -1349,7 +1349,7 @@ def build_terms():
     <h2>1. Acceptance of terms</h2>
     <p>By requesting a quote, scheduling a service, or otherwise using this website or {BIZ['name']}'s services, you ("Customer") agree to be bound by these Terms and Conditions. If you do not agree, please do not use our services.</p>
     <h2>2. Services</h2>
-    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services — including window cleaning, gutter cleaning, pressure washing, soft washing, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation — throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
+    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services, including window cleaning, gutter cleaning, pressure washing, soft washing, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation, throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
     <h2>3. Scheduling and cancellations</h2>
     <p>Appointments can be scheduled by phone, text, email, or through this website. We ask that cancellations or rescheduling requests be made as far in advance as possible. Late cancellations or no-shows may result in a cancellation fee, which will be communicated to you at the time of booking.</p>
     <h2>4. Access to property</h2>
@@ -1357,7 +1357,7 @@ def build_terms():
     <h2>5. Payment</h2>
     <p>Payment is due upon completion of service unless other arrangements have been made in advance. We accept major debit and credit cards along with other payment methods communicated at the time of booking. Recurring membership plans are billed automatically according to the schedule selected at signup unless cancelled.</p>
     <h2>6. Satisfaction guarantee</h2>
-    <p>Your satisfaction matters to us. Every service is backed by our 100% Satisfaction Guarantee — if you're not happy with the results, contact us and we'll return to make it right at no additional charge.</p>
+    <p>Your satisfaction matters to us. Every service is backed by our 100% Satisfaction Guarantee, if you're not happy with the results, contact us and we'll return to make it right at no additional charge.</p>
     <h2>7. Limitation of liability</h2>
     <p>{BIZ['name']} takes reasonable precautions while performing services. However, we are not liable for:</p>
     <ul>
@@ -1410,7 +1410,7 @@ def build_accessibility():
     <h2>Known limitations</h2>
     <p>Some content on this site comes from our social media feeds, and the wording of those posts isn't always something we can control. If any of that content is hard to use with assistive technology, contact us and we'll help directly.</p>
     <h2>Feedback and assistance</h2>
-    <p>If you have difficulty using any part of this website, or would like information from it in another format, please reach out — we'll respond as quickly as we can, and we're always happy to provide quotes and scheduling by phone or email instead:</p>
+    <p>If you have difficulty using any part of this website, or would like information from it in another format, please reach out, we'll respond as quickly as we can, and we're always happy to provide quotes and scheduling by phone or email instead:</p>
     <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
     <h2>Continuous improvement</h2>
     <p>Accessibility is ongoing work, not a one-time checkbox. We review this site as we update it and fix accessibility issues as we find them or as they're reported to us.</p>
@@ -1419,13 +1419,13 @@ def build_accessibility():
     write("accessibility.html", html, slug="accessibility.html", priority="0.2")
 
 # ===========================================================================
-# SITEMAP (human-readable page — separate from the machine sitemap.xml)
+# SITEMAP (human-readable page, separate from the machine sitemap.xml)
 # ===========================================================================
 def build_sitemap_page():
     depth = 0
     html, body = interior_head(
         title=seo_title("Sitemap"),
-        desc=f"Every page on the {BIZ['name']} site in one place — all services, our service-area cities, blog posts, and company information.",
+        desc=f"Every page on the {BIZ['name']} site in one place, all services, our service-area cities, blog posts, and company information.",
         slug="sitemap.html", eyebrow="Site map", h1="Sitemap",
         lead="Every page on our site, in one place.",
         depth=depth, crumb_label="Sitemap")
@@ -1485,13 +1485,13 @@ def build_404():
     """Static hosts (GitHub Pages included) serve this file's bytes for any
     unmatched URL without changing the address bar, so every relative path
     the shared nav/footer/CSS normally rely on (built assuming depth=0)
-    would resolve against whatever nested path the visitor actually hit —
+    would resolve against whatever nested path the visitor actually hit , 
     see the base_href note on components.head(). A <base> tag fixes that
     for the whole page without duplicating the nav/footer markup here."""
     depth = 0
     # Root-relative (no scheme/host) rather than an absolute production URL,
     # so this still resolves correctly under local/preview testing and any
-    # other root-domain deploy, not just the final production domain — the
+    # other root-domain deploy, not just the final production domain, the
     # only case it doesn't cover is a GitHub Pages *project* page served
     # from a /reponame/ subpath instead of a domain root. The trailing
     # "/404.html" (not just "/") matters too: <base> resolves a bare
@@ -1531,7 +1531,7 @@ def build_instagram_callback():
     redirect back to after login; this page just lifts the ?code= param
     out of the address bar into a copyable box so the owner doesn't have
     to select it out of a URL by hand. Never linked from anywhere on the
-    site and excluded from the sitemap/search index — it's a setup
+    site and excluded from the sitemap/search index, it's a setup
     utility, not a page visitors should ever land on."""
     depth = 0
     schema = [S.local_business(), S.organization(), S.website()]
@@ -1565,7 +1565,7 @@ def build_instagram_callback():
       input.value = code;
       status.textContent = 'Copy this code and send it back.';
     }} else {{
-      status.textContent = params.get('error_description') || 'No code found in the URL — did the login step fail?';
+      status.textContent = params.get('error_description') || 'No code found in the URL, did the login step fail?';
       copyBtn.disabled = true;
     }}
     copyBtn.addEventListener('click', function() {{
@@ -1582,7 +1582,7 @@ def build_instagram_callback():
 # ===========================================================================
 # BLOG HUB + POSTS
 # ===========================================================================
-# Real photo per post (matched to topic) instead of a generic placeholder —
+# Real photo per post (matched to topic) instead of a generic placeholder , 
 # reused for both the blog.html card thumbnail and the post's own header.
 _BLOG_PHOTOS = {
     "how-often-clean-windows-minnesota": "assets/img/svc-exterior-window-cleaning.jpg",
@@ -1608,7 +1608,7 @@ def build_blog():
         <span class="more">Read article {icon('arrow')}</span>
         <span style="font-size:.8rem;color:var(--slate-400);margin-top:6px">{p['date']} · {p['read']} read</span></a>"""
     html, body = interior_head(
-        title=seo_title("Blog — Exterior Cleaning Tips &amp; Guides"),
+        title=seo_title("Blog, Exterior Cleaning Tips &amp; Guides"),
         desc="Expert tips on window cleaning, gutter care, house washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
         slug="blog.html", eyebrow="Blog", og_image="assets/img/svc-cta-squeegee.jpg",
         h1="Tips, guides &amp; exterior care advice",
@@ -1630,44 +1630,44 @@ def build_post(p, idx):
     body_paras = {
         "how-often-clean-windows-minnesota": [
             ("Why Minnesota windows get dirty faster", "Between spring tree pollen, summer dust and lawn debris, autumn's falling leaves, and winter's salt and ice, Minnesota glass takes a beating every season. Add hard water from sprinklers and a north side that grows algae, and most homes need more frequent cleaning than the national average."),
-            ("Our recommended schedule", "For most homes, we recommend cleaning exterior windows twice per year — once in late spring after the pollen settles, and once in early fall before the leaves fly. Interior glass benefits from an annual cleaning, ideally paired with screen washing. Homes near lakes, gravel roads, or heavy trees may want a third visit."),
+            ("Our recommended schedule", "For most homes, we recommend cleaning exterior windows twice per year, once in late spring after the pollen settles, and once in early fall before the leaves fly. Interior glass benefits from an annual cleaning, ideally paired with screen washing. Homes near lakes, gravel roads, or heavy trees may want a third visit."),
             ("Signs it's time", "Don't wait for the calendar if you notice spotting, a hazy film, visible pollen, or screens dulling your view. Catching buildup early keeps glass easier to clean and prevents hard-water etching that's far harder to remove later."),
-            ("Make it automatic", "The easiest approach? A maintenance plan. We schedule your cleanings at the ideal times, send reminders, and handle everything — so your windows stay clear without you tracking a single date."),
+            ("Make it automatic", "The easiest approach? A maintenance plan. We schedule your cleanings at the ideal times, send reminders, and handle everything, so your windows stay clear without you tracking a single date."),
         ],
         "soft-washing-vs-pressure-washing": [
             ("They're not the same thing", "Pressure washing uses high-pressure water to physically blast dirt off hard surfaces. Soft washing uses low pressure plus specialized cleaning solutions to dissolve grime and kill organic growth. Using the wrong one can cause real damage."),
-            ("When to pressure wash", "Pressure washing shines on durable hardscapes: concrete driveways, paver patios, sidewalks, and pool decks. It removes embedded dirt, oil, and tire marks that solutions alone can't lift — when applied at the right pressure for the surface."),
+            ("When to pressure wash", "Pressure washing shines on durable hardscapes: concrete driveways, paver patios, sidewalks, and pool decks. It removes embedded dirt, oil, and tire marks that solutions alone can't lift, when applied at the right pressure for the surface."),
             ("When to soft wash", "Siding, stucco, screens, and painted surfaces should always be soft washed. High pressure can strip paint, etch stucco, and damage delicate materials. Soft washing cleans gently and kills algae at the root, so results last far longer."),
-            ("The bottom line", "A good exterior cleaner uses both — matched to each surface. That's exactly how Barta approaches every home: the right method, the right pressure, the right solution, every time."),
+            ("The bottom line", "A good exterior cleaner uses both, matched to each surface. That's exactly how Barta approaches every home: the right method, the right pressure, the right solution, every time."),
         ],
         "gutter-cleaning-checklist-fall": [
             ("Why fall is critical", "Clogged gutters in winter mean ice dams, overflow, and water pooling against your foundation. Clearing them before the first freeze is one of the cheapest, highest-impact things you can do to protect your home."),
             ("The checklist", "Clear all gutters of leaves and debris by hand. Flush downspouts and confirm water flows freely to the ground and away from the house. Check for sagging sections and loose hangers. Inspect seams for leaks. Look at the roof edge for damage or missing shingles."),
             ("Don't forget the extensions", "Make sure downspout extensions carry water at least four to six feet away from your foundation. Water pooling at the base of your home is a leading cause of basement leaks and foundation issues."),
-            ("Let us handle it", "Fall gutter cleaning means ladders, heights, and a mess to haul away. Our crew clears everything by hand, flushes every downspout, bags the debris, and gives you a free inspection report — usually in a single visit."),
+            ("Let us handle it", "Fall gutter cleaning means ladders, heights, and a mess to haul away. Our crew clears everything by hand, flushes every downspout, bags the debris, and gives you a free inspection report, usually in a single visit."),
         ],
         "hard-water-stains-windows": [
-            ("What's actually causing the haze", "Hard water stains come from minerals — mostly calcium and magnesium — left behind when water evaporates off glass. In Minnesota, the two biggest sources are sprinkler overspray hitting windows all summer and rain mixing with minerals in siding or hard water runoff. The water evaporates; the minerals stay, bonding to the glass surface."),
-            ("Why regular cleaning doesn't fix it", "A squeegee and glass cleaner remove dirt and grime, but they can't dissolve mineral deposits that have already bonded to the surface. If your windows still look cloudy or spotted right after a normal cleaning, what you're seeing is mineral buildup, not dirt — it needs a different approach entirely."),
-            ("What actually removes it", "Professional restoration uses mineral-dissolving compounds and technique matched to how heavy the buildup is. Light-to-moderate staining usually lifts in one treatment. Years of untreated buildup can etch the glass itself, which limits how much clarity comes back — an honest inspection before starting tells you which situation you're in."),
+            ("What's actually causing the haze", "Hard water stains come from minerals, mostly calcium and magnesium, left behind when water evaporates off glass. In Minnesota, the two biggest sources are sprinkler overspray hitting windows all summer and rain mixing with minerals in siding or hard water runoff. The water evaporates; the minerals stay, bonding to the glass surface."),
+            ("Why regular cleaning doesn't fix it", "A squeegee and glass cleaner remove dirt and grime, but they can't dissolve mineral deposits that have already bonded to the surface. If your windows still look cloudy or spotted right after a normal cleaning, what you're seeing is mineral buildup, not dirt, it needs a different approach entirely."),
+            ("What actually removes it", "Professional restoration uses mineral-dissolving compounds and technique matched to how heavy the buildup is. Light-to-moderate staining usually lifts in one treatment. Years of untreated buildup can etch the glass itself, which limits how much clarity comes back, an honest inspection before starting tells you which situation you're in."),
             ("Preventing it from coming back", "If sprinklers are the cause, the simplest fix is redirecting the head so it doesn't hit the glass. For homes where hard water exposure is unavoidable, a protective glass coating applied after restoration makes it harder for new deposits to bond, so spots wipe away more easily going forward."),
         ],
         "winter-prep-checklist-minnesota": [
             ("Gutters first", "Ice dams form when melting snow refreezes in clogged gutters and backs up under your shingles. Clearing gutters and confirming downspouts drain freely before the first hard freeze is the single most effective thing you can do to prevent winter roof leaks."),
-            ("Check your roof while you still can", "Once snow sticks around, a real roof inspection isn't practical until spring. Look now for missing or lifted shingles, and note any black streaking — algae left untreated all winter has months to keep spreading before you can address it."),
+            ("Check your roof while you still can", "Once snow sticks around, a real roof inspection isn't practical until spring. Look now for missing or lifted shingles, and note any black streaking, algae left untreated all winter has months to keep spreading before you can address it."),
             ("Wash the exterior before the salt season", "Road salt spray, sand, and winter grime are much easier to rinse off siding that's already clean than to remove once it's baked on by repeated freeze-thaw cycles. A fall house wash also removes summer's algae growth before it has all winter to set in."),
-            ("Windows and screens", "Store or clean screens before winter rather than leaving them dusty in the frame — pollen and grime left all season are harder to remove in spring. If storm windows or interior glass show hard-water spotting from summer sprinklers, treating it now means a clearer view all winter."),
+            ("Windows and screens", "Store or clean screens before winter rather than leaving them dusty in the frame, pollen and grime left all season are harder to remove in spring. If storm windows or interior glass show hard-water spotting from summer sprinklers, treating it now means a clearer view all winter."),
         ],
         "spring-exterior-cleaning-checklist": [
-            ("Start with gutters and the roofline", "Winter is hard on gutters — ice, debris, and heavy snow can loosen hangers or leave leaves frozen in place since fall. Clear them first and confirm downspouts flow freely before you tackle anything else, since a clogged system undoes work done lower down the house."),
+            ("Start with gutters and the roofline", "Winter is hard on gutters, ice, debris, and heavy snow can loosen hangers or leave leaves frozen in place since fall. Clear them first and confirm downspouts flow freely before you tackle anything else, since a clogged system undoes work done lower down the house."),
             ("Wash off the winter grime", "Salt spray, sand, and months of grime dull siding more than most homeowners realize until it's washed. A soft wash in spring also catches algae and mildew that started growing over winter before it spreads further with warmer, wetter weather."),
             ("Driveways and walkways", "Salt stains, tracked-in sand, and de-icer residue build up on concrete all winter. Pressure washing driveways, walkways, and steps in spring removes it before it has all summer to embed further, and it's the fastest visible curb-appeal improvement most homes can make."),
-            ("Windows last", "Clean windows and screens after the rest of the exterior work is done — otherwise overspray and dust from washing siding or the driveway just lands back on freshly cleaned glass. This is also when hard-water spots from a full season of sprinklers tend to be most visible."),
+            ("Windows last", "Clean windows and screens after the rest of the exterior work is done, otherwise overspray and dust from washing siding or the driveway just lands back on freshly cleaned glass. This is also when hard-water spots from a full season of sprinklers tend to be most visible."),
         ],
         "window-cleaning-mistakes-to-avoid": [
-            ("Cleaning in direct sunlight", "Glass cleaner dries almost instantly in direct sun, leaving streaks behind before you can wipe it off evenly. Professionals work in shade or on overcast days for exactly this reason — it has nothing to do with the product and everything to do with timing."),
+            ("Cleaning in direct sunlight", "Glass cleaner dries almost instantly in direct sun, leaving streaks behind before you can wipe it off evenly. Professionals work in shade or on overcast days for exactly this reason, it has nothing to do with the product and everything to do with timing."),
             ("Paper towels and newspaper", "Both leave behind lint or ink residue and don't absorb water evenly, which is what causes streaking. A microfiber cloth or a proper squeegee pulls water off in one clean pass instead of smearing it around the glass."),
-            ("Dish soap as glass cleaner", "Dish soap is formulated to cut grease, not to rinse cleanly off glass — it often leaves a filmy residue that actually attracts dust faster afterward. A dedicated glass cleaner or a vinegar-water solution rinses clean without that buildup."),
+            ("Dish soap as glass cleaner", "Dish soap is formulated to cut grease, not to rinse cleanly off glass, it often leaves a filmy residue that actually attracts dust faster afterward. A dedicated glass cleaner or a vinegar-water solution rinses clean without that buildup."),
             ("Ignoring the frames, sills, and tracks", "Spotless glass next to a dirty track or grime-lined sill still looks unfinished, and dirt sitting in the track eventually works its way back onto the glass anyway. Wiping down the whole frame, not just the pane, is what makes a cleaning job actually look complete."),
         ],
     }
@@ -1733,27 +1733,27 @@ def build_post(p, idx):
 # ===========================================================================
 LANDING = [
     {"slug": "free-window-cleaning-quote", "svc": "exterior-window-cleaning", "h1": "Free Window Cleaning Quote in Delano, MN",
-     "headline": "Streak-free windows, zero hassle — get your free quote today",
+     "headline": "Streak-free windows, zero hassle, get your free quote today",
      "kw": "free window cleaning quote Delano MN",
      "guarantee": "Streak-Free Guarantee: if it streaks, we re-clean it free."},
     {"slug": "free-pressure-washing-quote", "svc": "pressure-washing", "h1": "Free Pressure Washing Quote in Delano, MN",
-     "headline": "Restore your driveway, patio &amp; walkways — get your free quote",
+     "headline": "Restore your driveway, patio &amp; walkways, get your free quote",
      "kw": "free pressure washing quote Delano MN",
      "guarantee": "Surface-Safe Guarantee: the right pressure for every material, every time."},
     {"slug": "free-gutter-cleaning-estimate", "svc": "gutter-cleaning", "h1": "Free Gutter Cleaning Estimate in Delano, MN",
-     "headline": "Protect your home from clogged gutters — get your free estimate",
+     "headline": "Protect your home from clogged gutters, get your free estimate",
      "kw": "free gutter cleaning estimate Delano MN",
      "guarantee": "Flow Guarantee: every downspout flushed and tested, debris hauled away."},
     {"slug": "house-washing-estimate", "svc": "house-washing", "h1": "House Washing Estimate in Delano, MN",
-     "headline": "Make your whole home look new again — free house washing estimate",
+     "headline": "Make your whole home look new again, free house washing estimate",
      "kw": "house washing estimate Delano MN",
      "guarantee": "Soft-Wash Safe Guarantee: gentle on siding, tough on algae and grime."},
-    {"slug": "commercial-quote", "svc": "commercial-cleaning", "h1": "Free Commercial Cleaning Quote — Western Twin Cities",
-     "headline": "Reliable commercial exterior cleaning — request your free quote",
+    {"slug": "commercial-quote", "svc": "commercial-cleaning", "h1": "Free Commercial Cleaning Quote, Western Twin Cities",
+     "headline": "Reliable commercial exterior cleaning, request your free quote",
      "kw": "commercial cleaning quote Twin Cities MN",
      "guarantee": "Dependability Guarantee: scheduled, insured, and always on time."},
     {"slug": "holiday-lighting-estimate", "svc": "christmas-light-installation", "h1": "Holiday Lighting Estimate in Delano, MN",
-     "headline": "Skip the cold ladder — get a free custom holiday lighting estimate",
+     "headline": "Skip the cold ladder, get a free custom holiday lighting estimate",
      "kw": "Christmas light installation estimate Delano MN",
      "guarantee": "Worry-Free Guarantee: we design, install, maintain, and take it all down."},
 ]
@@ -1772,9 +1772,9 @@ def build_landing(L):
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     lp_faqs = [
         ("How does the quote process work?", "Tell us about your home and the services you need, and we'll put together clear, upfront pricing. Many quotes can be priced without an on-site visit."),
-        ("Is the quote really free?", "Yes — 100% free and no obligation. We'll give you clear, upfront, all-in pricing with no pressure and no hidden fees."),
+        ("Is the quote really free?", "Yes, 100% free and no obligation. We'll give you clear, upfront, all-in pricing with no pressure and no hidden fees."),
         ("Are you insured?", "Absolutely. Barta is fully insured."),
-        ("What if I'm not satisfied?", "Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, we make it right — free."),
+        ("What if I'm not satisfied?", "Every service is backed by our 100% Satisfaction Guarantee. If anything isn't right, we make it right, free."),
     ]
     schema = BASE_SCHEMA + [S.faq_schema(lp_faqs)]
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
@@ -1812,7 +1812,7 @@ def build_landing(L):
     <div class="cta-band" style="background:transparent;padding:0">
       <span class="eyebrow" style="color:#ff9b86;justify-content:center">Our promise to you</span>
       <h2 class="mt-1">{L['guarantee']}</h2>
-      <p>Backed by our 100% satisfaction guarantee. If you're not thrilled, we make it right — free.</p>
+      <p>Backed by our 100% satisfaction guarantee. If you're not thrilled, we make it right, free.</p>
     </div>
   </div></section>
 
@@ -1841,15 +1841,15 @@ def gradient_svg(stops, w=800, h=500):
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%d" height="%d">' % (w, h, w, h)) + stops + '</svg>'
 
 def build_images():
-    # Before/after placeholder pairs — "before" muted/grimy, "after" bright/clean.
+    # Before/after placeholder pairs, "before" muted/grimy, "after" bright/clean.
     pairs = {
-        "ba1": ("#6b6f63", "#8a8f80", "Window — before", "Window — after"),
-        "ba2": ("#7a7264", "#938b7c", "Siding — before", "Siding — after"),
-        "ba3": ("#5f6660", "#7d847d", "Roof — before", "Roof — after"),
+        "ba1": ("#6b6f63", "#8a8f80", "Window, before", "Window, after"),
+        "ba2": ("#7a7264", "#938b7c", "Siding, before", "Siding, after"),
+        "ba3": ("#5f6660", "#7d847d", "Roof, before", "Roof, after"),
     }
     for name, (b1, b2, blabel, alabel) in pairs.items():
         if name in C.BA_REAL_PHOTOS:
-            continue  # real photo on disk — don't overwrite with a placeholder
+            continue  # real photo on disk, don't overwrite with a placeholder
         before = gradient_svg(
             f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{b1}"/><stop offset="1" stop-color="{b2}"/></linearGradient>'
             f'<filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.28"/></feComponentTransfer></filter></defs>'
@@ -1867,7 +1867,7 @@ def build_images():
         write_asset(f"assets/img/{name}-before.svg", before)
         write_asset(f"assets/img/{name}-after.svg", after)
 
-    # Favicon — black rounded square with the coral // mark
+    # Favicon, black rounded square with the coral // mark
     favicon = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
                '<rect width="64" height="64" rx="15" fill="#111116"/>'
                '<g fill="#fb4d3d"><path d="M27 14 H38 L27 50 H16 Z"/><path d="M46 14 H57 L46 50 H35 Z"/></g></svg>')
@@ -1890,7 +1890,7 @@ def build_images():
     write_asset("assets/img/logo-barta.svg", _logo("#16161b"))
     write_asset("assets/img/logo-barta-white.svg", _logo("#ffffff"))
 
-    # OG cover — black with coral // mark + wordmark
+    # OG cover, black with coral // mark + wordmark
     og = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">'
           '<rect width="1200" height="630" fill="#111116"/>'
           '<circle cx="1010" cy="110" r="240" fill="#fb4d3d" opacity="0.20"/><circle cx="120" cy="560" r="210" fill="#ff6a3d" opacity="0.16"/>'
@@ -1914,7 +1914,7 @@ def build_meta_files():
     write_asset("site.webmanifest",
         '{"name":"Barta Window Washing","short_name":"Barta","start_url":"/","display":"standalone",'
         '"background_color":"#ffffff","theme_color":"#16161b","icons":[{"src":"/assets/img/favicon.svg","sizes":"any","type":"image/svg+xml"}]}')
-    # sitemap — <lastmod> is only included where we actually know a real
+    # sitemap, <lastmod> is only included where we actually know a real
     # modification date (blog posts carry one in sitedata.POSTS); every other
     # page type has no tracked per-page date, so we omit lastmod rather than
     # stamp every URL with today's date, which isn't true and isn't useful.
@@ -1931,7 +1931,7 @@ def build_meta_files():
 
 # Permanent 301s from the old Wix site's URLs to their new homes, served by
 # Netlify via the generated _redirects file (inert on GitHub Pages). Every
-# entry here is a URL verified from the old site's actual Wix sitemap — no
+# entry here is a URL verified from the old site's actual Wix sitemap, no
 # guessed slugs and no wildcards; add new rules only for URLs confirmed via
 # the old sitemap, Search Console, or known backlinks. The rules are forced
 # ("301!") so Netlify's static-file shadowing / pretty-URL resolution can
@@ -1962,7 +1962,7 @@ def build_redirects():
             raise SystemExit(f"_redirects: forced rule {src} would hide a real file")
     width = max(len(s) for s, _ in WIX_REDIRECTS) + 2
     lines = ["# Permanent redirects for the old Wix site's URLs (served by Netlify).",
-             "# Forced rules — these exact paths were verified from the old Wix sitemap.",
+             "# Forced rules, these exact paths were verified from the old Wix sitemap.",
              ""]
     lines += [f"{src:<{width}}{dst}  301!" for src, dst in WIX_REDIRECTS]
     write_asset("_redirects", "\n".join(lines) + "\n")
@@ -2013,17 +2013,17 @@ def generate_webp_versions():
     try:
         from PIL import Image
     except ImportError:
-        print("  (Pillow not available — skipping WebP generation)")
+        print("  (Pillow not available, skipping WebP generation)")
         return
     import re
     _is_derived = lambda p: re.search(r"-(640|1200|1920)w\.jpg$", p)
     insta_jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")) if not _is_derived(p)]
-    # Must exclude the same -640w/-1200w/-1920w derivatives here too — those
+    # Must exclude the same -640w/-1200w/-1920w derivatives here too, those
     # are generate_hero_variants()'s output, re-encoded from the true
     # original at a deliberately chosen quality. Without this filter, this
     # glob picks them up as if they were source photos and overwrites their
     # already-correct .webp sibling by re-compressing the *already-resized*
-    # jpg at this function's flat quality=80 — compounding two lossy passes
+    # jpg at this function's flat quality=80, compounding two lossy passes
     # into one, and permanently masking the mistake because the resulting
     # fresh mtime then makes generate_hero_variants() skip it as "up to date".
     jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/*.jpg")) if not _is_derived(p)] + insta_jpgs
@@ -2036,42 +2036,42 @@ def generate_webp_versions():
         except Exception as e:
             print(f"  (webp skipped for {os.path.basename(jpg)}: {e})")
 
-# (max_width, format, quality) — never upscales: target_width = min(max_width,
+# (max_width, format, quality), never upscales: target_width = min(max_width,
 # source_width), so a variant wider than its source is just the source
 # re-encoded at that quality, not stretched. Every current hero/service photo
 # is a ~1100-1126px-wide portrait phone photo, meaning the 1200w tier already
-# sits at native resolution — there's no higher-resolution tier to add for
+# sits at native resolution, there's no higher-resolution tier to add for
 # these, so the previous q40/q50 settings were pure compression artifacts,
 # visible as fuzziness on the large full-bleed hero display. Raised quality
 # substantially (owner explicitly prioritized sharpness over the extra file
 # size) while still compressing meaningfully vs. the untouched original.
 _HERO_VARIANT_SPECS = [(1200, "webp", 72), (1200, "jpg", 78), (640, "webp", 72), (640, "jpg", 78)]
 
-# Extra large-desktop/high-DPI tier for the homepage van hero specifically —
+# Extra large-desktop/high-DPI tier for the homepage van hero specifically , 
 # its source is exactly 1920px wide (no higher-res original exists), so this
 # never upscales; it's a straight re-encode at a higher quality than the
 # 1200w tier so the full-bleed hero stays sharp on large/retina screens
 # instead of the browser stretching the 1200w file to fill the viewport.
 _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 # Both of these render full-bleed edge to edge, and both have sources wider
-# than 1920 (or exactly 1920), so this tier is always a real downscale — it
+# than 1920 (or exactly 1920), so this tier is always a real downscale, it
 # never upscales. GALLERY_HERO is the Gallery page's photo header.
 _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 
 # Full-bleed heroes whose source is wider than the 1200w tier but narrower
-# than 1920 — they get one extra derivative at their exact native width so
+# than 1920, they get one extra derivative at their exact native width so
 # a desktop stops stretching the 1200w file. Every other service hero has a
 # 4000px+ source, where the fixed tiers above already cover the range.
 _HERO_NATIVE_PATHS = {"assets/img/xmas-lights-stone-home.jpg"}
 
-# Every individual service page's hero photo gets this higher-quality tier —
+# Every individual service page's hero photo gets this higher-quality tier , 
 # it's the single largest, most-scrutinized image on that page (the proof
 # the crew actually does the work), and each page only loads its own one
 # hero, so the extra weight never compounds the way it would on a page
 # showing many photos at once (gallery, Instagram feed). Those stay on the
 # lighter default tier above on purpose. Originally added just for the
 # Christmas Lights night shot, whose deep shadows and small bright bulbs
-# are exactly the content JPEG/WebP compress worst — kept as the top tier
+# are exactly the content JPEG/WebP compress worst, kept as the top tier
 # and extended to every service hero at the owner's request.
 _HERO_HIGH_Q_SPECS = [(1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 84), (640, "jpg", 88)]
 _HERO_HIGH_Q_PATHS = {s["image"] for s in SERVICES if s.get("image")}
@@ -2080,13 +2080,13 @@ def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
     before/after photo (assets/img/<stem>-{640,1200}w.{webp,jpg}), used via
     srcset so a phone downloads the small file and a desktop downloads the
-    mid-size one — never the full multi-hundred-KB original. Source JPGs are
+    mid-size one, never the full multi-hundred-KB original. Source JPGs are
     never modified or replaced; these are new sibling files, skipped once
     already up to date."""
     try:
         from PIL import Image
     except ImportError:
-        print("  (Pillow not available — skipping responsive image variant generation)")
+        print("  (Pillow not available, skipping responsive image variant generation)")
         return
     hero_paths = {"assets/img/hero-home.jpg", "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg",
                   "assets/img/svc-cta-squeegee.jpg"}
@@ -2100,9 +2100,9 @@ def generate_hero_variants():
         hero_paths.add(f"assets/img/ba-{name}-before.jpg")
         hero_paths.add(f"assets/img/ba-{name}-after.jpg")
     # Instagram-synced photos land as full-size originals (often 1-2MB each,
-    # unresized) — the Gallery page shows every one of them at once, so
+    # unresized), the Gallery page shows every one of them at once, so
     # without responsive variants that's dozens of megabytes on one page.
-    # Excludes already-generated "-640w"/"-1200w" siblings from the glob —
+    # Excludes already-generated "-640w"/"-1200w" siblings from the glob , 
     # otherwise a second build run treats last run's output as new source
     # images and resizes them again into "-640w-640w.jpg"-style junk.
     import glob as _glob, re as _re
@@ -2120,7 +2120,7 @@ def generate_hero_variants():
         base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
         specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
         # A full-bleed hero is object-fit:cover, so on a 1440x900 window it is
-        # scaled to ~1600px wide — above the 1200w tier. Sources with real
+        # scaled to ~1600px wide, above the 1200w tier. Sources with real
         # pixels between 1200 and 1920 get one extra tier at their exact
         # native width rather than letting the browser upscale the 1200w file.
         # The true width goes in the filename, so the srcset descriptor never
@@ -2129,7 +2129,7 @@ def generate_hero_variants():
             nat_w = _img_size(rel)[0]
             if 1200 < nat_w < 1920:
                 # No downscale happens at native width, so this is a straight
-                # re-encode — quality set high because it is the page's LCP
+                # re-encode, quality set high because it is the page's LCP
                 # image and a sub-1920 source is small enough to afford it.
                 specs = specs + [(nat_w, "webp", 90), (nat_w, "jpg", 93)]
         for max_w, fmt, quality in specs:
@@ -2158,7 +2158,7 @@ def generate_og_images():
 
     The page photos can't be handed to social scrapers as-is: most are phone
     shots in portrait (1125x1500), and X's summary_large_image only accepts
-    an aspect between 2:1 and 1:1 — outside that the large card degrades to a
+    an aspect between 2:1 and 1:1, outside that the large card degrades to a
     small one or doesn't render. Facebook/LinkedIn accept it but centre-crop
     hard, which decapitates anyone standing in frame. So each source is
     cover-cropped once, at build time, to the 1.91:1 shape every platform

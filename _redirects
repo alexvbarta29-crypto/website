@@ -1,5 +1,5 @@
 # Permanent redirects for the old Wix site's URLs (served by Netlify).
-# Forced rules — these exact paths were verified from the old Wix sitemap.
+# Forced rules, these exact paths were verified from the old Wix sitemap.
 
 /about                     /about.html  301!
 /accessibility-statement   /accessibility.html  301!
