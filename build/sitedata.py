@@ -50,7 +50,7 @@ BIZ = {
 # "G-XXXXXXXXXX" is Google's docs placeholder, swap in the real measurement
 # ID from GA4 Admin → Data streams → Web, then rebuild.
 # ---------------------------------------------------------------------------
-GA4_ID = "G-XXXXXXXXXX"
+GA4_ID = "G-TRBCP1HHNR"
 
 LEAD_FORM = {
     # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards
