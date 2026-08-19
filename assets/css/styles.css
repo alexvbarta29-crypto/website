@@ -464,6 +464,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .xmas-garland .g-mobile { display: block; }
 }
 .xmas-hero .container { padding-top: 56px; }
+/* The same string strung over light sections further down the page. The
+   promo copy hangs from the very top of its section; the inline variant
+   flows in-document as a divider above the how-it-works heading. */
+.xmas-garland-promo { top: 10px; height: 58px; z-index: 1; }
+.xmas-garland-inline { position: static; height: 54px; max-width: 1100px; margin: 0 auto 14px; }
 /* Bulbs glow and gently pulse, in four offset groups so the string
    twinkles rather than blinking in unison. Placement lives on the outer
    .xb group's transform attribute; the animation scales only the inner
@@ -481,11 +486,31 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .xmas-snow span { position: absolute; top: -12px; display: block; border-radius: 50%; background: #fff; animation-name: xmasFall; animation-iteration-count: infinite; animation-timing-function: linear; }
 @keyframes xmasFall { to { transform: translateY(115vh) translateX(var(--drift, 0)); } }
 @media (prefers-reduced-motion: reduce) {
-  .xmas-bulb, .xmas-snow span { animation: none; }
+  .xmas-bulb, .xmas-snow span, .xmas-flakes span { animation: none; }
 }
 
+/* Faint oversized snowflakes drifting in section-background corners. They
+   sit behind the content (z-index 0 vs the container's implicit stacking),
+   turn very slowly, and never intercept clicks. */
+.xmas-flakes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.xmas-flakes span { position: absolute; display: block; opacity: .14; animation: xmasSpin 80s linear infinite; }
+.xmas-flakes span:nth-child(even) { animation-direction: reverse; opacity: .11; }
+.xmas-flakes svg { display: block; width: 100%; height: 100%; }
+@keyframes xmasSpin { to { transform: rotate(360deg); } }
+@media (max-width: 720px) { .xmas-flakes span { opacity: .09; } .xmas-flakes span:nth-child(n+2) { display: none; } }
+
+/* Holly sprig ornaments: a mirrored pair flanking the promo pill, and a
+   single sprig under section headings as a finishing touch. */
+.xmas-pill-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.xmas-holly { display: inline-flex; flex: none; }
+.xmas-holly svg { width: 46px; height: 24px; }
+.xmas-holly.flip svg { transform: scaleX(-1); }
+.xmas-holly-row { display: flex; justify-content: center; margin-top: 10px; }
+.xmas-holly-row svg { width: 58px; height: 30px; }
+
 /* Early-bird promo — countdown banner at the top of the Christmas page. */
-.xmas-promo { position: relative; text-align: center; padding: 54px 0 60px; background: radial-gradient(90% 75% at 50% 0%, #eafff4 0%, #fff 65%); }
+.xmas-promo { position: relative; text-align: center; padding: 96px 0 60px; background: radial-gradient(90% 75% at 50% 0%, #eafff4 0%, #fff 65%); overflow: hidden; }
+.xmas-promo .container { position: relative; }
 .xmas-promo-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--r-pill); background: var(--xmas-green); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
 .xmas-promo-pill svg { width: 15px; height: 15px; }
 .xmas-promo-head { color: var(--xmas-red); font-size: clamp(1.85rem, 4.4vw, 3rem); line-height: 1.1; max-width: 860px; margin: 18px auto 0; }
@@ -509,7 +534,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .xmas-highlight .eyebrow { color: var(--xmas-green); }
 .xmas-highlight .eyebrow::before { background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green)); }
 .xmas-highlight h2 { color: var(--xmas-red); }
-.xmas-lights { display: block; width: 100%; height: 40px; margin: 0 auto 8px; }
+.xmas-benefit-sec { position: relative; overflow: hidden; }
+.xmas-benefit-sec .container { position: relative; }
 .xmas-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 52px; }
 .xmas-step {
   text-align: center; position: relative; padding: 44px 28px 34px; overflow: hidden;

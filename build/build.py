@@ -424,15 +424,23 @@ def _service_area_section(svc, depth):
     </div>
   </section>"""
 
-def _xmas_garland_svg():
-    """Draped string-light garland across the top of the Christmas Lights
-    hero. Two variants of the same string (a phone shows fewer, larger
-    swags than a desktop) so the bulbs keep their shape at any width
-    instead of being stretched or squeezed by preserveAspectRatio."""
-    return ('<div class="xmas-garland" aria-hidden="true">'
-            f'<span class="g-desktop">{C.xmas_garland_svg(width=1200, swags=8, uid="d")}</span>'
-            f'<span class="g-mobile">{C.xmas_garland_svg(width=480, swags=3, uid="m")}</span>'
+def _xmas_garland_svg(cls="", wire="rgba(255,255,255,.45)", uid="d", uid_m="m",
+                      width=1200, swags=8):
+    """Draped string-light garland, used across the top of the Christmas
+    Lights hero and again on the light-background promo and how-it-works
+    sections (with a dark wire so the cord stays visible). Two variants of
+    the same string (a phone shows fewer, larger swags than a desktop) so
+    the bulbs keep their shape at any width instead of being stretched or
+    squeezed by preserveAspectRatio. uids keep gradient ids unique across
+    every copy on the page."""
+    return (f'<div class="xmas-garland{cls}" aria-hidden="true">'
+            f'<span class="g-desktop">{C.xmas_garland_svg(width=width, swags=swags, wire=wire, uid=uid)}</span>'
+            f'<span class="g-mobile">{C.xmas_garland_svg(width=480, swags=3, wire=wire, uid=uid_m)}</span>'
             "</div>")
+
+# The cord color garlands use when strung over a light background (the hero
+# variant keeps its translucent-white wire against the photo).
+_XMAS_DARK_WIRE = "rgba(23,74,52,.38)"
 
 _XMAS_SNOW_SEED = [
     (2, 5, 12.4, -3.1, -18), (7, 4, 9.8, -8.2, 24), (13, 6, 14.1, -1.5, -30),
@@ -503,11 +511,10 @@ def build_service(svc):
             f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic {_xmas_tone(i)}">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
             f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
-        lights_divider = ('<svg class="xmas-lights" viewBox="0 0 1200 50" preserveAspectRatio="none" aria-hidden="true">'
-                           '<path d="M0 15 Q100 45 200 15 T400 15 T600 15 T800 15 T1000 15 T1200 15" fill="none" stroke="var(--line)" stroke-width="2"/>'
-                           '<circle class="xmas-bulb" cx="70" cy="32" r="6" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="270" cy="4" r="6" style="fill:#18b673;color:#18b673"/>'
-                           '<circle class="xmas-bulb" cx="470" cy="32" r="6" style="fill:#f5a623;color:#f5a623"/><circle class="xmas-bulb" cx="670" cy="4" r="6" style="fill:#fb4d3d;color:#fb4d3d"/>'
-                           '<circle class="xmas-bulb" cx="870" cy="32" r="6" style="fill:#18b673;color:#18b673"/><circle class="xmas-bulb" cx="1070" cy="4" r="6" style="fill:#f5a623;color:#f5a623"/></svg>')
+        # The same premium light string as the hero, laid in-flow above the
+        # how-it-works heading (dark wire so the cord reads on white).
+        lights_divider = _xmas_garland_svg(cls=" xmas-garland-inline", wire=_XMAS_DARK_WIRE,
+                                           uid="h", uid_m="hm", width=1100, swags=7)
         # Early-bird promo with a live countdown to December 1st. The numbers
         # are seeded at build time so the first paint is already correct (the
         # daily Instagram sync rebuilds the site, keeping the seed within a
@@ -526,10 +533,26 @@ def build_service(svc):
                      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
                      '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>'
                      '<path d="M12 9v4M12 17h.01"/></svg>')
+        # Faint oversized snowflakes drifting in a section's background
+        # corners; colors are set per copy via currentColor.
+        def _flakes():
+            f = C.xmas_flake_svg()
+            return ('<div class="xmas-flakes" aria-hidden="true">'
+                    f'<span style="left:3%;top:14%;width:92px;height:92px;color:var(--xmas-green)">{f}</span>'
+                    f'<span style="right:4%;top:8%;width:64px;height:64px;color:var(--xmas-red)">{f}</span>'
+                    f'<span style="left:9%;bottom:10%;width:52px;height:52px;color:var(--xmas-red)">{f}</span>'
+                    f'<span style="right:8%;bottom:16%;width:80px;height:80px;color:var(--xmas-green)">{f}</span>'
+                    "</div>")
         promo = f"""
   <section class="xmas-promo">
+    {_xmas_garland_svg(cls=" xmas-garland-promo", wire=_XMAS_DARK_WIRE, uid="p", uid_m="pm")}
+    {_flakes()}
     <div class="container">
-      <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
+      <div class="xmas-pill-row">
+        <span class="xmas-holly flip">{C.xmas_holly_svg(uid="p1")}</span>
+        <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
+        <span class="xmas-holly">{C.xmas_holly_svg(uid="p2")}</span>
+      </div>
       <h2 class="xmas-promo-head">50% OFF Early Bird Special + FREE Takedown &amp; Storage!!!</h2>
       <p class="xmas-promo-ends">Deal Ends December 1st</p>
       <div class="xmas-countdown" data-countdown role="timer" aria-live="off">
@@ -551,16 +574,19 @@ def build_service(svc):
       <div class="section-head center mt-3">
         <span class="eyebrow">How it works</span>
         <h2>The Barta Holiday Lighting Experience</h2>
+        <div class="xmas-holly-row" aria-hidden="true">{C.xmas_holly_svg(uid="hw")}</div>
       </div>
       <div class="xmas-steps">{step_items}</div>
     </div>
   </section>
   <div class="xmas-candy-stripe" aria-hidden="true"></div>
-  <section class="bg-mist">
+  <section class="bg-mist xmas-benefit-sec">
+    {_flakes()}
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">Why homeowners choose us</span>
         <h2>Built for Minnesota winters</h2>
+        <div class="xmas-holly-row" aria-hidden="true">{C.xmas_holly_svg(uid="bw")}</div>
       </div>
       <div class="xmas-benefits">{benefit_items}</div>
     </div>
