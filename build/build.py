@@ -430,8 +430,8 @@ def _xmas_garland_svg():
     swags than a desktop) so the bulbs keep their shape at any width
     instead of being stretched or squeezed by preserveAspectRatio."""
     return ('<div class="xmas-garland" aria-hidden="true">'
-            f'<span class="g-desktop">{C.xmas_garland_svg(width=1200, swags=8)}</span>'
-            f'<span class="g-mobile">{C.xmas_garland_svg(width=480, swags=3)}</span>'
+            f'<span class="g-desktop">{C.xmas_garland_svg(width=1200, swags=8, uid="d")}</span>'
+            f'<span class="g-mobile">{C.xmas_garland_svg(width=480, swags=3, uid="m")}</span>'
             "</div>")
 
 _XMAS_SNOW_SEED = [

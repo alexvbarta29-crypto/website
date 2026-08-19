@@ -17,18 +17,34 @@ def source_select(el_id, label_first="Select one…"):
     return (f'<select id="{el_id}" name="referral_source" required>'
             f'<option value="" selected disabled>{label_first}</option>{opts}</select>')
 
-def xmas_garland_svg(width=1200, height=62, swags=8, wire="rgba(255,255,255,.45)"):
-    """One draped string of Christmas lights: a wire that sags between
-    attachment points in proper swags, with alternating red and green bulbs
-    hanging below it, each on a little socket cap with a specular glint.
-    Shared by the Christmas hero (desktop + mobile variants) and the quote
-    modal so the string looks the same everywhere."""
-    top_y, sag = 8.0, 30.0
+def xmas_garland_svg(width=1200, height=64, swags=8, wire="rgba(255,255,255,.45)", uid="g"):
+    """One draped string of C9 Christmas lights: a wire sagging in swags,
+    with alternating red and green teardrop bulbs hanging below it. Each
+    bulb is glass lit from within (radial gradient with a hot core), sits
+    in a two-tone metal socket, carries a specular glint, and hangs with a
+    slight organic tilt as if hand-strung. Shared by the Christmas hero
+    (desktop + mobile variants) and the quote modal; uid keeps gradient ids
+    unique per instance so hidden variants can't hijack references."""
+    top_y, sag = 7.0, 28.0
     span = width / swags
     path = f"M0 {top_y:.0f}"
     for s in range(swags):
         x0 = s * span
         path += f" Q{x0 + span / 2:.1f} {top_y + sag:.1f} {x0 + span:.1f} {top_y:.0f}"
+    # Lit-from-within glass: hot bright core offset toward the glint, deep
+    # saturated rim. Sockets get a simple vertical metal gradient.
+    defs = (f'<defs>'
+            f'<radialGradient id="xr-{uid}" cx="38%" cy="30%" r="75%">'
+            f'<stop offset="0%" stop-color="#ff9d8c"/><stop offset="45%" stop-color="#e6483c"/><stop offset="100%" stop-color="#9e1c14"/></radialGradient>'
+            f'<radialGradient id="xg-{uid}" cx="38%" cy="30%" r="75%">'
+            f'<stop offset="0%" stop-color="#8ce8b8"/><stop offset="45%" stop-color="#22a768"/><stop offset="100%" stop-color="#0c5f39"/></radialGradient>'
+            f'<linearGradient id="xc-{uid}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#565e68"/><stop offset="100%" stop-color="#22262c"/></linearGradient>'
+            f'</defs>')
+    # C9 teardrop: round shoulder, gentle taper to a soft tip.
+    glass = ("M0 0 C3.4 0 5 2.3 5 4.9 C5 8.6 2.8 11.6 0 13.2 "
+             "C-2.8 11.6 -5 8.6 -5 4.9 C-5 2.3 -3.4 0 0 0 Z")
+    tilts = (-6, 4, -3, 6, -5, 3)
     bulbs, i = [], 0
     for s in range(swags):
         x0 = s * span
@@ -36,16 +52,23 @@ def xmas_garland_svg(width=1200, height=62, swags=8, wire="rgba(255,255,255,.45)
             mt = 1 - t
             x = mt * mt * x0 + 2 * mt * t * (x0 + span / 2) + t * t * (x0 + span)
             y = mt * mt * top_y + 2 * mt * t * (top_y + sag) + t * t * top_y
-            c = "var(--xmas-red)" if i % 2 == 0 else "var(--xmas-green)"
+            red = i % 2 == 0
+            grad = f"xr-{uid}" if red else f"xg-{uid}"
+            c = "var(--xmas-red)" if red else "var(--xmas-green)"
+            # Outer g owns the position/tilt (attribute transform); the inner
+            # .xmas-bulb g is what CSS animates, so the twinkle's transform
+            # can never clobber the placement.
             bulbs.append(
+                f'<g class="xb" transform="translate({x:.1f} {y:.1f}) rotate({tilts[i % 6]})">'
                 f'<g class="xmas-bulb" style="color:{c}">'
-                f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x:.1f}" y2="{y + 3:.1f}" stroke="#3a4048" stroke-width="1.6"/>'
-                f'<rect x="{x - 2.1:.1f}" y="{y + 2.6:.1f}" width="4.2" height="3.6" rx="1.2" fill="#3a4048"/>'
-                f'<ellipse cx="{x:.1f}" cy="{y + 11.6:.1f}" rx="4.3" ry="5.7" fill="currentColor"/>'
-                f'<circle cx="{x - 1.5:.1f}" cy="{y + 9.6:.1f}" r="1.15" fill="#fff" opacity=".55"/>'
-                f"</g>")
+                f'<line x1="0" y1="0" x2="0" y2="2.6" stroke="#2f343b" stroke-width="1.5"/>'
+                f'<rect x="-2.6" y="2.4" width="5.2" height="4" rx="1.2" fill="url(#xc-{uid})"/>'
+                f'<rect x="-2.2" y="5.9" width="4.4" height="1" rx=".5" fill="#171a1e" opacity=".8"/>'
+                f'<path d="{glass}" transform="translate(0 6.6)" fill="url(#{grad})"/>'
+                f'<ellipse cx="-1.9" cy="10.6" rx="1.05" ry="2" fill="#fff" opacity=".6" transform="rotate(-16 -1.9 10.6)"/>'
+                f"</g></g>")
             i += 1
-    return (f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">'
+    return (f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">{defs}'
             f'<path d="{path}" fill="none" stroke="{wire}" stroke-width="2.2" stroke-linecap="round"/>'
             + "".join(bulbs) + "</svg>")
 
@@ -754,7 +777,7 @@ def xmas_quote_modal(depth=0):
     page is hijacked by main.js to open it instead of navigating away."""
     root = rel(depth)
     garland = (f'<div class="xmas-modal-garland" aria-hidden="true">'
-               f'{xmas_garland_svg(width=560, height=52, swags=4, wire="var(--line)")}</div>')
+               f'{xmas_garland_svg(width=560, height=54, swags=4, wire="var(--line)", uid="q")}</div>')
     return f"""<div class="xmas-modal" id="xmas-quote-modal" hidden>
   <div class="xmas-modal-scrim" data-xmas-close></div>
   <div class="xmas-modal-panel" role="dialog" aria-modal="true" aria-labelledby="xmas-modal-title">

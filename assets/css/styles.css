@@ -465,15 +465,17 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 .xmas-hero .container { padding-top: 56px; }
 /* Bulbs glow and gently pulse, in four offset groups so the string
-   twinkles rather than blinking in unison. */
-.xmas-bulb { animation: xmasTwinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 72%; }
-.xmas-bulb:nth-of-type(4n+1) { animation-delay: 0s; }
-.xmas-bulb:nth-of-type(4n+2) { animation-delay: .9s; }
-.xmas-bulb:nth-of-type(4n+3) { animation-delay: 1.7s; }
-.xmas-bulb:nth-of-type(4n) { animation-delay: 2.5s; }
+   twinkles rather than blinking in unison. Placement lives on the outer
+   .xb group's transform attribute; the animation scales only the inner
+   .xmas-bulb, so the twinkle never moves a bulb off its wire. */
+.xmas-bulb { animation: xmasTwinkle 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 22%; }
+.xb:nth-of-type(4n+1) .xmas-bulb { animation-delay: 0s; }
+.xb:nth-of-type(4n+2) .xmas-bulb { animation-delay: .9s; }
+.xb:nth-of-type(4n+3) .xmas-bulb { animation-delay: 1.8s; }
+.xb:nth-of-type(4n) .xmas-bulb { animation-delay: 2.6s; }
 @keyframes xmasTwinkle {
-  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 14px currentColor); }
-  50% { opacity: .72; transform: scale(.94); filter: drop-shadow(0 0 2px currentColor); }
+  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 13px currentColor); }
+  50% { opacity: .8; transform: scale(.96); filter: drop-shadow(0 0 2px currentColor); }
 }
 .xmas-snow { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .xmas-snow span { position: absolute; top: -12px; display: block; border-radius: 50%; background: #fff; animation-name: xmasFall; animation-iteration-count: infinite; animation-timing-function: linear; }
