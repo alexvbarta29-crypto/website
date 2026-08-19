@@ -426,18 +426,13 @@ def _service_area_section(svc, depth):
 
 def _xmas_garland_svg():
     """Draped string-light garland across the top of the Christmas Lights
-    hero, a wavy wire with twinkling colored bulbs, generated rather than
-    hand-plotted so the spacing stays even at any width."""
-    import math
-    colors = ["#fb4d3d", "#18b673", "#f5c344"]
-    n = 15
-    pts = [(i * (1200 / (n - 1)), 18 + 9 * math.sin(i * 0.9)) for i in range(n)]
-    wire = "M" + " ".join(f"{x:.0f} {y:.0f}" for x, y in pts)
-    bulbs = "".join(
-        f'<circle class="xmas-bulb" cx="{x:.0f}" cy="{y:.0f}" r="5.5" style="fill:{colors[i % 3]};color:{colors[i % 3]}"/>'
-        for i, (x, y) in enumerate(pts))
-    return (f'<div class="xmas-garland" aria-hidden="true"><svg viewBox="0 0 1200 36" preserveAspectRatio="none">'
-            f'<path d="{wire}" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>{bulbs}</svg></div>')
+    hero. Two variants of the same string (a phone shows fewer, larger
+    swags than a desktop) so the bulbs keep their shape at any width
+    instead of being stretched or squeezed by preserveAspectRatio."""
+    return ('<div class="xmas-garland" aria-hidden="true">'
+            f'<span class="g-desktop">{C.xmas_garland_svg(width=1200, swags=8)}</span>'
+            f'<span class="g-mobile">{C.xmas_garland_svg(width=480, swags=3)}</span>'
+            "</div>")
 
 _XMAS_SNOW_SEED = [
     (2, 5, 12.4, -3.1, -18), (7, 4, 9.8, -8.2, 24), (13, 6, 14.1, -1.5, -30),

@@ -17,6 +17,38 @@ def source_select(el_id, label_first="Select one…"):
     return (f'<select id="{el_id}" name="referral_source" required>'
             f'<option value="" selected disabled>{label_first}</option>{opts}</select>')
 
+def xmas_garland_svg(width=1200, height=62, swags=8, wire="rgba(255,255,255,.45)"):
+    """One draped string of Christmas lights: a wire that sags between
+    attachment points in proper swags, with alternating red and green bulbs
+    hanging below it, each on a little socket cap with a specular glint.
+    Shared by the Christmas hero (desktop + mobile variants) and the quote
+    modal so the string looks the same everywhere."""
+    top_y, sag = 8.0, 30.0
+    span = width / swags
+    path = f"M0 {top_y:.0f}"
+    for s in range(swags):
+        x0 = s * span
+        path += f" Q{x0 + span / 2:.1f} {top_y + sag:.1f} {x0 + span:.1f} {top_y:.0f}"
+    bulbs, i = [], 0
+    for s in range(swags):
+        x0 = s * span
+        for t in (0.22, 0.5, 0.78):
+            mt = 1 - t
+            x = mt * mt * x0 + 2 * mt * t * (x0 + span / 2) + t * t * (x0 + span)
+            y = mt * mt * top_y + 2 * mt * t * (top_y + sag) + t * t * top_y
+            c = "var(--xmas-red)" if i % 2 == 0 else "var(--xmas-green)"
+            bulbs.append(
+                f'<g class="xmas-bulb" style="color:{c}">'
+                f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x:.1f}" y2="{y + 3:.1f}" stroke="#3a4048" stroke-width="1.6"/>'
+                f'<rect x="{x - 2.1:.1f}" y="{y + 2.6:.1f}" width="4.2" height="3.6" rx="1.2" fill="#3a4048"/>'
+                f'<ellipse cx="{x:.1f}" cy="{y + 11.6:.1f}" rx="4.3" ry="5.7" fill="currentColor"/>'
+                f'<circle cx="{x - 1.5:.1f}" cy="{y + 9.6:.1f}" r="1.15" fill="#fff" opacity=".55"/>'
+                f"</g>")
+            i += 1
+    return (f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">'
+            f'<path d="{path}" fill="none" stroke="{wire}" stroke-width="2.2" stroke-linecap="round"/>'
+            + "".join(bulbs) + "</svg>")
+
 def lead_form_attrs():
     """Delivery config carried on every <form data-lead>. main.js reads these
     and posts the submission; with no endpoint set it shows the call-us
@@ -721,12 +753,8 @@ def xmas_quote_modal(depth=0):
     dedicated page, no multi-step wizard. Any "get a quote" link on this
     page is hijacked by main.js to open it instead of navigating away."""
     root = rel(depth)
-    garland = ('<div class="xmas-modal-garland" aria-hidden="true"><svg viewBox="0 0 600 26" preserveAspectRatio="none">'
-               '<path d="M0 7 Q37 22 75 7 T150 7 T225 7 T300 7 T375 7 T450 7 T525 7 T600 7" fill="none" stroke="var(--line)" stroke-width="2"/>'
-               '<circle class="xmas-bulb" cx="26" cy="15" r="4.5" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="101" cy="3" r="4.5" style="fill:#18b673;color:#18b673"/>'
-               '<circle class="xmas-bulb" cx="176" cy="15" r="4.5" style="fill:#f5c344;color:#f5c344"/><circle class="xmas-bulb" cx="251" cy="3" r="4.5" style="fill:#fb4d3d;color:#fb4d3d"/>'
-               '<circle class="xmas-bulb" cx="326" cy="15" r="4.5" style="fill:#18b673;color:#18b673"/><circle class="xmas-bulb" cx="401" cy="3" r="4.5" style="fill:#f5c344;color:#f5c344"/>'
-               '<circle class="xmas-bulb" cx="476" cy="15" r="4.5" style="fill:#fb4d3d;color:#fb4d3d"/><circle class="xmas-bulb" cx="551" cy="3" r="4.5" style="fill:#18b673;color:#18b673"/></svg></div>')
+    garland = (f'<div class="xmas-modal-garland" aria-hidden="true">'
+               f'{xmas_garland_svg(width=560, height=52, swags=4, wire="var(--line)")}</div>')
     return f"""<div class="xmas-modal" id="xmas-quote-modal" hidden>
   <div class="xmas-modal-scrim" data-xmas-close></div>
   <div class="xmas-modal-panel" role="dialog" aria-modal="true" aria-labelledby="xmas-modal-title">

@@ -453,16 +453,27 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* Hero: string-light garland along the top + gentle falling snow over the photo */
 .xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.32) 0%, rgba(18,16,14,.30) 50%, rgba(9,9,18,.62) 100%); }
-.xmas-garland { position: absolute; left: 0; right: 0; top: calc(var(--nav-h) + 26px); height: 36px; z-index: 2; pointer-events: none; }
+.xmas-garland { position: absolute; left: 0; right: 0; top: calc(var(--nav-h) + 22px); height: 62px; z-index: 2; pointer-events: none; }
 .xmas-garland svg { display: block; width: 100%; height: 100%; }
-.xmas-hero .container { padding-top: 38px; }
-.xmas-bulb { animation: xmasTwinkle 2.8s ease-in-out infinite; transform-origin: center; }
-.xmas-bulb:nth-child(3n+1) { animation-delay: .3s; }
-.xmas-bulb:nth-child(3n+2) { animation-delay: 1.1s; }
-.xmas-bulb:nth-child(3n) { animation-delay: 1.9s; }
+.xmas-garland span { display: block; height: 100%; }
+/* Phones get their own string with fewer, larger swags so the bulbs keep
+   their shape instead of being squeezed into slivers. */
+.xmas-garland .g-mobile { display: none; }
+@media (max-width: 640px) {
+  .xmas-garland .g-desktop { display: none; }
+  .xmas-garland .g-mobile { display: block; }
+}
+.xmas-hero .container { padding-top: 56px; }
+/* Bulbs glow and gently pulse, in four offset groups so the string
+   twinkles rather than blinking in unison. */
+.xmas-bulb { animation: xmasTwinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 72%; }
+.xmas-bulb:nth-of-type(4n+1) { animation-delay: 0s; }
+.xmas-bulb:nth-of-type(4n+2) { animation-delay: .9s; }
+.xmas-bulb:nth-of-type(4n+3) { animation-delay: 1.7s; }
+.xmas-bulb:nth-of-type(4n) { animation-delay: 2.5s; }
 @keyframes xmasTwinkle {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 7px currentColor); }
-  50% { opacity: .5; filter: drop-shadow(0 0 1px currentColor); }
+  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 14px currentColor); }
+  50% { opacity: .72; transform: scale(.94); filter: drop-shadow(0 0 2px currentColor); }
 }
 .xmas-snow { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .xmas-snow span { position: absolute; top: -12px; display: block; border-radius: 50%; background: #fff; animation-name: xmasFall; animation-iteration-count: infinite; animation-timing-function: linear; }
@@ -506,7 +517,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 .xmas-step::before {
   content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px;
-  background: linear-gradient(90deg, var(--xmas-red), var(--xmas-gold), var(--xmas-green));
+  background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green));
 }
 .xmas-step:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); }
 .xmas-step .step-num { width: 60px; height: 60px; font-size: 1.5rem; }
@@ -541,7 +552,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
     repeating-linear-gradient(-45deg, var(--xmas-red) 0 12px, #fff 12px 24px, var(--xmas-green) 24px 36px, #fff 36px 48px) border-box;
   border: 9px solid transparent; border-radius: var(--r-xl); box-shadow: var(--sh-lg); padding: 34px 32px 40px;
 }
-.xmas-modal-garland { width: 100%; height: 26px; margin: -6px 0 10px; }
+.xmas-modal-garland { width: 100%; height: 46px; margin: -8px 0 10px; }
 .xmas-modal-garland svg { display: block; width: 100%; height: 100%; }
 .xmas-modal-body .eyebrow { color: var(--xmas-green); justify-content: center; }
 .xmas-modal-body .eyebrow::before { background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green)); }
