@@ -31,19 +31,32 @@ def xmas_garland_svg(width=1200, height=64, swags=8, wire="rgba(255,255,255,.45)
     for s in range(swags):
         x0 = s * span
         path += f" Q{x0 + span / 2:.1f} {top_y + sag:.1f} {x0 + span:.1f} {top_y:.0f}"
-    # Lit-from-within glass: hot bright core offset toward the glint, deep
-    # saturated rim. Sockets get a simple vertical metal gradient.
+    # Layered light, not flat fills: each bulb sits inside a soft bloom halo
+    # (alpha radial fading to nothing), the glass runs from a near-white hot
+    # core through the body color to a deep rim, and a bright filament sits
+    # in the upper third, the way a lit C9 actually photographs at night.
     defs = (f'<defs>'
-            f'<radialGradient id="xr-{uid}" cx="38%" cy="30%" r="75%">'
-            f'<stop offset="0%" stop-color="#ff9d8c"/><stop offset="45%" stop-color="#e6483c"/><stop offset="100%" stop-color="#9e1c14"/></radialGradient>'
-            f'<radialGradient id="xg-{uid}" cx="38%" cy="30%" r="75%">'
-            f'<stop offset="0%" stop-color="#8ce8b8"/><stop offset="45%" stop-color="#22a768"/><stop offset="100%" stop-color="#0c5f39"/></radialGradient>'
+            f'<radialGradient id="xr-{uid}" cx="40%" cy="26%" r="80%">'
+            f'<stop offset="0%" stop-color="#ffdcc9"/><stop offset="28%" stop-color="#ff7a5f"/>'
+            f'<stop offset="62%" stop-color="#dd3023"/><stop offset="100%" stop-color="#82100a"/></radialGradient>'
+            f'<radialGradient id="xg-{uid}" cx="40%" cy="26%" r="80%">'
+            f'<stop offset="0%" stop-color="#dbffe9"/><stop offset="28%" stop-color="#59d896"/>'
+            f'<stop offset="62%" stop-color="#149157"/><stop offset="100%" stop-color="#07472c"/></radialGradient>'
+            f'<radialGradient id="xrh-{uid}"><stop offset="0%" stop-color="#ff5744" stop-opacity=".42"/>'
+            f'<stop offset="45%" stop-color="#ff5744" stop-opacity=".14"/><stop offset="100%" stop-color="#ff5744" stop-opacity="0"/></radialGradient>'
+            f'<radialGradient id="xgh-{uid}"><stop offset="0%" stop-color="#2ed67f" stop-opacity=".42"/>'
+            f'<stop offset="45%" stop-color="#2ed67f" stop-opacity=".14"/><stop offset="100%" stop-color="#2ed67f" stop-opacity="0"/></radialGradient>'
             f'<linearGradient id="xc-{uid}" x1="0" y1="0" x2="0" y2="1">'
-            f'<stop offset="0%" stop-color="#565e68"/><stop offset="100%" stop-color="#22262c"/></linearGradient>'
+            f'<stop offset="0%" stop-color="#7b8590"/><stop offset="45%" stop-color="#3a4049"/>'
+            f'<stop offset="100%" stop-color="#15181d"/></linearGradient>'
             f'</defs>')
     # C9 teardrop: round shoulder, gentle taper to a soft tip.
-    glass = ("M0 0 C3.4 0 5 2.3 5 4.9 C5 8.6 2.8 11.6 0 13.2 "
-             "C-2.8 11.6 -5 8.6 -5 4.9 C-5 2.3 -3.4 0 0 0 Z")
+    glass = ("M0 0 C3.6 0 5.2 2.4 5.2 5.1 C5.2 9 2.9 12.2 0 13.9 "
+             "C-2.9 12.2 -5.2 9 -5.2 5.1 C-5.2 2.4 -3.6 0 0 0 Z")
+    # Right-side crescent of shade, so the glass turns away from the light
+    # instead of reading as one flat sticker.
+    shade = ("M2.1 1.2 C4.2 2.2 5.2 3.8 5.2 5.1 C5.2 9 2.9 12.2 0 13.9 "
+             "C2 11.2 3.4 8.4 3.4 5.4 C3.4 3.6 2.9 2.2 2.1 1.2 Z")
     tilts = (-6, 4, -3, 6, -5, 3)
     bulbs, i = [], 0
     for s in range(swags):
@@ -53,7 +66,7 @@ def xmas_garland_svg(width=1200, height=64, swags=8, wire="rgba(255,255,255,.45)
             x = mt * mt * x0 + 2 * mt * t * (x0 + span / 2) + t * t * (x0 + span)
             y = mt * mt * top_y + 2 * mt * t * (top_y + sag) + t * t * top_y
             red = i % 2 == 0
-            grad = f"xr-{uid}" if red else f"xg-{uid}"
+            grad, halo = (f"xr-{uid}", f"xrh-{uid}") if red else (f"xg-{uid}", f"xgh-{uid}")
             c = "var(--xmas-red)" if red else "var(--xmas-green)"
             # Outer g owns the position/tilt (attribute transform); the inner
             # .xmas-bulb g is what CSS animates, so the twinkle's transform
@@ -61,12 +74,19 @@ def xmas_garland_svg(width=1200, height=64, swags=8, wire="rgba(255,255,255,.45)
             bulbs.append(
                 f'<g class="xb" transform="translate({x:.1f} {y:.1f}) rotate({tilts[i % 6]})">'
                 f'<g class="xmas-bulb" style="color:{c}">'
+                f'<circle cx="0" cy="12.6" r="17.5" fill="url(#{halo})"/>'
                 f'<line x1="0" y1="0" x2="0" y2="2.6" stroke="#2f343b" stroke-width="1.5"/>'
-                f'<rect x="-2.6" y="2.4" width="5.2" height="4" rx="1.2" fill="url(#xc-{uid})"/>'
-                f'<rect x="-2.2" y="5.9" width="4.4" height="1" rx=".5" fill="#171a1e" opacity=".8"/>'
-                f'<path d="{glass}" transform="translate(0 6.6)" fill="url(#{grad})"/>'
-                f'<ellipse cx="-1.9" cy="10.6" rx="1.05" ry="2" fill="#fff" opacity=".6" transform="rotate(-16 -1.9 10.6)"/>'
-                f"</g></g>")
+                f'<path d="M-2.9 2.3 H2.9 L2.3 6.6 H-2.3 Z" fill="url(#xc-{uid})"/>'
+                f'<rect x="-2.9" y="2.3" width="5.8" height=".9" rx=".45" fill="#9aa3ad" opacity=".85"/>'
+                f'<rect x="-2.4" y="5.9" width="4.8" height=".9" rx=".45" fill="#101318" opacity=".85"/>'
+                f'<g transform="translate(0 6.6)">'
+                f'<path d="{glass}" fill="url(#{grad})"/>'
+                f'<path d="{shade}" fill="#000" opacity=".14"/>'
+                f'<ellipse cx="0" cy="4.6" rx="1.2" ry="2.6" fill="#fff" opacity=".9"/>'
+                f'<ellipse cx="0" cy="4.6" rx="2.3" ry="3.9" fill="#fff" opacity=".28"/>'
+                f'<ellipse cx="-2" cy="3.4" rx="1" ry="2.1" fill="#fff" opacity=".5" transform="rotate(-18 -2 3.4)"/>'
+                f'<path d="{glass}" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width=".7"/>'
+                f"</g></g></g>")
             i += 1
     return (f'<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">{defs}'
             f'<path d="{path}" fill="none" stroke="{wire}" stroke-width="2.2" stroke-linecap="round"/>'

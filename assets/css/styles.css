@@ -474,8 +474,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .xb:nth-of-type(4n+3) .xmas-bulb { animation-delay: 1.8s; }
 .xb:nth-of-type(4n) .xmas-bulb { animation-delay: 2.6s; }
 @keyframes xmasTwinkle {
-  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 13px currentColor); }
-  50% { opacity: .8; transform: scale(.96); filter: drop-shadow(0 0 2px currentColor); }
+  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 4px currentColor); }
+  50% { opacity: .84; transform: scale(.97); filter: none; }
 }
 .xmas-snow { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .xmas-snow span { position: absolute; top: -12px; display: block; border-radius: 50%; background: #fff; animation-name: xmasFall; animation-iteration-count: infinite; animation-timing-function: linear; }
