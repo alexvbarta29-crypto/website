@@ -548,11 +548,7 @@ def build_service(svc):
     {_xmas_garland_svg(cls=" xmas-garland-promo", wire=_XMAS_DARK_WIRE, uid="p", uid_m="pm")}
     {_flakes()}
     <div class="container">
-      <div class="xmas-pill-row">
-        <span class="xmas-holly flip">{C.xmas_holly_svg(uid="p1")}</span>
-        <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
-        <span class="xmas-holly">{C.xmas_holly_svg(uid="p2")}</span>
-      </div>
+      <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
       <h2 class="xmas-promo-head">50% OFF Early Bird Special + FREE Takedown &amp; Storage!!!</h2>
       <p class="xmas-promo-ends">Deal Ends December 1st</p>
       <div class="xmas-countdown" data-countdown role="timer" aria-live="off">
@@ -574,7 +570,6 @@ def build_service(svc):
       <div class="section-head center mt-3">
         <span class="eyebrow">How it works</span>
         <h2>The Barta Holiday Lighting Experience</h2>
-        <div class="xmas-holly-row" aria-hidden="true">{C.xmas_holly_svg(uid="hw")}</div>
       </div>
       <div class="xmas-steps">{step_items}</div>
     </div>
@@ -586,7 +581,6 @@ def build_service(svc):
       <div class="section-head center">
         <span class="eyebrow">Why homeowners choose us</span>
         <h2>Built for Minnesota winters</h2>
-        <div class="xmas-holly-row" aria-hidden="true">{C.xmas_holly_svg(uid="bw")}</div>
       </div>
       <div class="xmas-benefits">{benefit_items}</div>
     </div>

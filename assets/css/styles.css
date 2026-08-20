@@ -499,21 +499,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 @keyframes xmasSpin { to { transform: rotate(360deg); } }
 @media (max-width: 720px) { .xmas-flakes span { opacity: .09; } .xmas-flakes span:nth-child(n+2) { display: none; } }
 
-/* Holly sprig ornaments: a mirrored pair flanking the promo pill, and a
-   single sprig under section headings as a finishing touch. */
-.xmas-pill-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
-.xmas-holly { display: inline-flex; flex: none; }
-.xmas-holly svg { width: 46px; height: 24px; }
-.xmas-holly.flip svg { transform: scaleX(-1); }
-.xmas-holly-row { display: flex; justify-content: center; margin-top: 10px; }
-.xmas-holly-row svg { width: 58px; height: 30px; }
-
 /* Early-bird promo — countdown banner at the top of the Christmas page. */
 .xmas-promo { position: relative; text-align: center; padding: 96px 0 60px; background: radial-gradient(90% 75% at 50% 0%, #eafff4 0%, #fff 65%); overflow: hidden; }
 .xmas-promo .container { position: relative; }
 .xmas-promo-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--r-pill); background: var(--xmas-green); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
 .xmas-promo-pill svg { width: 15px; height: 15px; }
-.xmas-promo-head { color: var(--xmas-red); font-size: clamp(1.85rem, 4.4vw, 3rem); line-height: 1.1; max-width: 860px; margin: 18px auto 0; }
+/* Clamp floor raised so the offer headline stays a real focal point on
+   phones (the 4.4vw middle term only kicks in on wider screens). */
+.xmas-promo-head { color: var(--xmas-red); font-size: clamp(2.2rem, 4.4vw, 3rem); line-height: 1.1; max-width: 860px; margin: 18px auto 0; }
 .xmas-promo-ends { margin-top: 12px; color: var(--xmas-green); font-family: var(--font-head); font-weight: 700; font-size: 1.12rem; }
 /* tabular-nums so the ticking seconds don't change digit widths and wiggle
    the row; the cell floor keeps 3-digit day counts from crowding. */

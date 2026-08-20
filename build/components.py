@@ -92,31 +92,6 @@ def xmas_garland_svg(width=1200, height=64, swags=8, wire="rgba(255,255,255,.45)
             f'<path d="{path}" fill="none" stroke="{wire}" stroke-width="2.2" stroke-linecap="round"/>'
             + "".join(bulbs) + "</svg>")
 
-def xmas_holly_svg(uid="h"):
-    """Small holly sprig ornament: two spiked leaves angled outward with a
-    cluster of three glossy berries where they meet. Used as a decorative
-    accent on the Christmas page; uid keeps gradient ids unique per copy."""
-    leaf = ("M0 0 Q2.2 -4.8 6 -5.2 Q5.6 -3 7.8 -2.9 Q7.6 -1.2 10.4 -1.6 "
-            "Q11.6 -.6 13.2 -1.8 Q14.6 -.8 17 0 Q14.6 .8 13.2 1.8 Q11.6 .6 10.4 1.6 "
-            "Q7.6 1.2 7.8 2.9 Q5.6 3 6 5.2 Q2.2 4.8 0 0 Z")
-    defs = (f'<defs>'
-            f'<linearGradient id="hl-{uid}" x1="0" y1="0" x2="1" y2="0">'
-            f'<stop offset="0%" stop-color="#2fb372"/><stop offset="100%" stop-color="#0d5c36"/></linearGradient>'
-            f'<radialGradient id="hb-{uid}" cx="35%" cy="30%" r="80%">'
-            f'<stop offset="0%" stop-color="#ff9c8a"/><stop offset="45%" stop-color="#e04437"/>'
-            f'<stop offset="100%" stop-color="#8c150c"/></radialGradient>'
-            f'</defs>')
-    def _leaf(tf):
-        return (f'<g transform="{tf}"><path d="{leaf}" fill="url(#hl-{uid})"/>'
-                f'<path d="M1.6 0 L14.6 0" stroke="#0a4227" stroke-width=".8" stroke-linecap="round" opacity=".55"/></g>')
-    def _berry(cx, cy, r):
-        return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="url(#hb-{uid})"/>'
-                f'<circle cx="{cx - r * .32}" cy="{cy - r * .38}" r="{r * .3}" fill="#fff" opacity=".55"/>')
-    return (f'<svg viewBox="-26 -13 52 26" aria-hidden="true">{defs}'
-            + _leaf("translate(-3.5 -.5) rotate(-165)") + _leaf("translate(3.5 -.5) rotate(-15)")
-            + _berry(-3.2, 2.6, 3.1) + _berry(3.4, 3.0, 3.0) + _berry(0.2, -0.6, 3.4)
-            + "</svg>")
-
 def xmas_flake_svg():
     """Simple six-armed snowflake drawn with strokes in currentColor, so the
     caller sets its color and opacity. Used as faint oversized background
