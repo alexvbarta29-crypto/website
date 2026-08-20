@@ -468,7 +468,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    promo copy hangs from the very top of its section; the inline variant
    flows in-document as a divider above the how-it-works heading. */
 .xmas-garland-promo { top: 10px; height: 58px; z-index: 1; }
-.xmas-garland-inline { position: static; height: 54px; max-width: 1100px; margin: 0 auto 14px; }
+.xmas-garland-inline { position: static; height: 54px; margin: 0 0 14px; }
 /* Bulbs glow and gently pulse, in four offset groups so the string
    twinkles rather than blinking in unison. Placement lives on the outer
    .xb group's transform attribute; the animation scales only the inner
