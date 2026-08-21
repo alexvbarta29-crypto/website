@@ -1,5 +1,20 @@
 [
   {
+    "id": "18123147766865990",
+    "image": "assets/img/instagram/18123147766865990.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18123147766865990.jpg",
+        "video": "assets/img/instagram/18123147766865990.mp4"
+      }
+    ],
+    "caption": "Who doesn\u2019t love window cleaning? We sure do! \u2728",
+    "permalink": "https://www.instagram.com/reel/DcRsKr_y8p8/",
+    "timestamp": "2026-08-20T21:08:02+0000"
+  },
+  {
     "id": "17980987080059318",
     "image": "assets/img/instagram/17980987080059318.jpg",
     "type": "VIDEO",
@@ -206,31 +221,5 @@
     "caption": "Sit back and let BWW take care of it. \ud83c\udf32",
     "permalink": "https://www.instagram.com/p/DbLoZ_wkbi0/",
     "timestamp": "2026-07-24T16:07:03+0000"
-  },
-  {
-    "id": "18001854047986368",
-    "image": "assets/img/instagram/18001854047986368_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18001854047986368_0.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18001854047986368_1.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18001854047986368_2.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18001854047986368_3.jpg"
-      }
-    ],
-    "caption": "Ever wonder how we get your windows looking crystal clear? \n\n1\ufe0f\u20e3 Scrub \u2014 We use commercial-grade abrasives to remove built-up dirt, grime, and stuck-on debris.\n\n2\ufe0f\u20e3 Squeegee \u2014 Every pane is professionally squeegeed for a clean, streak-free finish.\n\n3\ufe0f\u20e3 Detail \u2014 We finish by detailing the glass, sills, and frames to make sure everything looks sharp.\n\nIt\u2019s all in the details. Clean windows, done right. \ud83c\udf32",
-    "permalink": "https://www.instagram.com/p/DbI66RXkWGR/",
-    "timestamp": "2026-07-23T14:51:02+0000"
   }
 ]
