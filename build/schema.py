@@ -14,7 +14,7 @@ def local_business():
         "@id": BIZ["domain"] + "/#business",
         "name": BIZ["name"],
         "legalName": BIZ["legal_name"],
-        "description": "Premium residential and commercial exterior cleaning, window cleaning, gutter cleaning, screen cleaning, solar panel cleaning, and holiday lighting in Delano, MN and the western Twin Cities metro.",
+        "description": "Premium residential and commercial exterior cleaning, window cleaning, gutter cleaning, pressure washing, house soft washing, and holiday lighting in Delano, MN and the western Twin Cities metro.",
         "url": BIZ["domain"],
         "telephone": BIZ["phone_display"],
         "email": BIZ["email"],

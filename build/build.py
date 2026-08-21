@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS, HIDDEN_SERVICE_SLUGS
+from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS
 from icons import icon
 import components as C
 import schema as S
@@ -818,7 +818,7 @@ def build_gallery():
     ]))
     html = C.head(
         title=seo_title("Photo Gallery, Real Job Photos"),
-        desc="Real photos from real jobs, window cleaning, gutter cleaning, holiday lighting and more across Delano and the western Twin Cities. No stock photos.",
+        desc="Real photos from real jobs, window cleaning, gutter cleaning, pressure washing and more across Delano and the western Twin Cities. No stock photos.",
         slug="gallery.html", depth=depth, schema=schema, og_image=GALLERY_HERO)
     html += C.nav(depth)
 
@@ -842,13 +842,7 @@ def build_gallery():
         if h is not None:
             seen_hashes.append(h)
         work_photos.append((src, alt))
-    # Hero photos of hidden services stay out of the collage, a picture
-    # captioned "pressure washing a patio" advertises the service as surely
-    # as a nav link does. They come back with the service.
-    hidden_photos = {f"assets/img/svc-{slug}.jpg" for slug in HIDDEN_SERVICE_SLUGS}
     for src, alt in IMAGE_ALT.items():
-        if src in hidden_photos:
-            continue
         _add(src, alt)
     _add("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van")
     for name, role, _initials, photo, _bio in TEAM:
@@ -1036,7 +1030,7 @@ def build_reviews():
     ])]
     html = C.head(
         title=seo_title(f"Reviews, {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
-        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters & more.",
+        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
         og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
@@ -1144,11 +1138,10 @@ def _area_region_note(a):
                 "to keep the lake view clear.")
     if "crow river" in nbhd_text:
         return ("As a river-adjacent community, homes here see extra humidity and tree debris near the "
-                "water, which means windows, screens, and gutters need attention more often to stay "
-                "clear and flowing.")
+                "water, which is exactly the kind of algae and grime buildup soft washing is built for.")
     return ("Like most homes across the western metro, exteriors here deal with Minnesota's full range of "
             "seasons, spring pollen, summer dust, and winter road spray, which is why most homeowners "
-            "pair window cleaning with a seasonal gutter cleaning.")
+            "pair window cleaning with a seasonal house wash or gutter cleaning.")
 
 def build_area(a):
     depth = 1
@@ -1178,7 +1171,7 @@ def build_area(a):
         # FAQ), repeating the full list here was pushing every one of the
         # 36 area-page descriptions past 175-200+ characters, well beyond
         # what Google renders before truncating in search results.
-        desc=f"Window cleaning, gutter cleaning, screen cleaning & more in {a['city']}, MN. Local & insured. Get your free quote from Barta.",
+        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local & insured. Get your free quote from Barta.",
         slug=f"areas/{a['slug']}.html", depth=depth, schema=schema,
         primary_kw=f"exterior cleaning services {a['city']} MN")
     html += C.nav(depth)
@@ -1372,7 +1365,7 @@ def build_terms():
     <h2>1. Acceptance of terms</h2>
     <p>By requesting a quote, scheduling a service, or otherwise using this website or {BIZ['name']}'s services, you ("Customer") agree to be bound by these Terms and Conditions. If you do not agree, please do not use our services.</p>
     <h2>2. Services</h2>
-    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services, including window cleaning, gutter cleaning, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation, throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
+    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services, including window cleaning, gutter cleaning, pressure washing, soft washing, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation, throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
     <h2>3. Scheduling and cancellations</h2>
     <p>Appointments can be scheduled by phone, text, email, or through this website. We ask that cancellations or rescheduling requests be made as far in advance as possible. Late cancellations or no-shows may result in a cancellation fee, which will be communicated to you at the time of booking.</p>
     <h2>4. Access to property</h2>
@@ -1613,9 +1606,7 @@ _BLOG_PHOTOS = {
     "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
     "hard-water-stains-windows": "assets/img/svc-hand-scrubbing.jpg",
     "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
-    # Was the pressure-washing hero; swapped to a neutral photo while that
-    # service is hidden.
-    "spring-exterior-cleaning-checklist": "assets/img/svc-cta-squeegee.jpg",
+    "spring-exterior-cleaning-checklist": "assets/img/svc-pressure-washing.jpg",
     "window-cleaning-mistakes-to-avoid": "assets/img/svc-mop-window.jpg",
 }
 
@@ -1634,7 +1625,7 @@ def build_blog():
         <span style="font-size:.8rem;color:var(--slate-400);margin-top:6px">{p['date']} · {p['read']} read</span></a>"""
     html, body = interior_head(
         title=seo_title("Blog, Exterior Cleaning Tips &amp; Guides"),
-        desc="Expert tips on window cleaning, gutter care, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
+        desc="Expert tips on window cleaning, gutter care, house washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
         slug="blog.html", eyebrow="Blog", og_image="assets/img/svc-cta-squeegee.jpg",
         h1="Tips, guides &amp; exterior care advice",
         lead="Practical, no-nonsense advice from the Barta team to help you protect and beautify your home year-round.",
@@ -1685,8 +1676,8 @@ def build_post(p, idx):
         ],
         "spring-exterior-cleaning-checklist": [
             ("Start with gutters and the roofline", "Winter is hard on gutters, ice, debris, and heavy snow can loosen hangers or leave leaves frozen in place since fall. Clear them first and confirm downspouts flow freely before you tackle anything else, since a clogged system undoes work done lower down the house."),
-            ("Wash off the winter grime", "Salt spray, sand, and months of grime dull siding more than most homeowners realize until it's washed. A gentle rinse in spring also clears the algae and mildew that started growing over winter before it spreads further with warmer, wetter weather."),
-            ("Driveways and walkways", "Salt stains, tracked-in sand, and de-icer residue build up on concrete all winter. A thorough sweep and rinse of driveways, walkways, and steps in spring clears it before it has all summer to embed further, and it's one of the fastest visible curb-appeal improvements most homes can make."),
+            ("Wash off the winter grime", "Salt spray, sand, and months of grime dull siding more than most homeowners realize until it's washed. A soft wash in spring also catches algae and mildew that started growing over winter before it spreads further with warmer, wetter weather."),
+            ("Driveways and walkways", "Salt stains, tracked-in sand, and de-icer residue build up on concrete all winter. Pressure washing driveways, walkways, and steps in spring removes it before it has all summer to embed further, and it's the fastest visible curb-appeal improvement most homes can make."),
             ("Windows last", "Clean windows and screens after the rest of the exterior work is done, otherwise overspray and dust from washing siding or the driveway just lands back on freshly cleaned glass. This is also when hard-water spots from a full season of sprinklers tend to be most visible."),
         ],
         "window-cleaning-mistakes-to-avoid": [
@@ -1782,8 +1773,6 @@ LANDING = [
      "kw": "Christmas light installation estimate Delano MN",
      "guarantee": "Worry-Free Guarantee: we design, install, maintain, and take it all down."},
 ]
-# Landing pages for hidden services hide (and return) with the service.
-LANDING = [L for L in LANDING if L["svc"] not in HIDDEN_SERVICE_SLUGS]
 
 def build_landing(L):
     depth = 1
@@ -1969,12 +1958,9 @@ WIX_REDIRECTS = [
     ("/about",                    "/about.html"),
     ("/accessibility-statement",  "/accessibility.html"),
     ("/service-area",             "/service-areas.html"),
-    # The old Wix wash-service URLs land on the homepage while pressure and
-    # soft washing are hidden; point them back at the service pages if those
-    # return (see HIDDEN_SERVICE_SLUGS in sitedata.py).
-    ("/softwashing",              "/"),
+    ("/softwashing",              "/services/soft-washing.html"),
     ("/windowwashing",            "/services/exterior-window-cleaning.html"),
-    ("/pressurewashing",          "/"),
+    ("/pressurewashing",          "/services/pressure-washing.html"),
     ("/privacy-policy",           "/privacy.html"),
     ("/contact",                  "/get-quote.html"),
     ("/guttercleaning",           "/services/gutter-cleaning.html"),

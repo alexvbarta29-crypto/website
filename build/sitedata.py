@@ -273,7 +273,7 @@ SERVICES = [
             ("Do I need to be home during gutter cleaning?",
              "No, as long as we can safely access your gutters and downspouts from the exterior, you don't need to be home."),
             ("Can I bundle gutter cleaning with other services?",
-             "Yes, many customers pair gutter cleaning with window cleaning or screen cleaning for a complete exterior refresh in one visit."),
+             "Yes, many customers pair gutter cleaning with window cleaning, pressure washing, or house washing for a complete exterior refresh in one visit."),
         ],
     },
     {
@@ -629,7 +629,7 @@ SERVICES = [
         "short": "Reliable, scheduled exterior cleaning for your business, storefronts, offices, and more.",
         "hero_sub": "Serving Delano and businesses throughout the western Twin Cities, from storefronts to multi-building portfolios, with flexible scheduling and a single point of contact.",
         "seo_title": "Commercial Exterior Cleaning Delano, MN | Barta",
-        "seo_desc": "Commercial exterior cleaning in Delano and the western Twin Cities. Scheduled window and gutter cleaning for your property. Get a quote.",
+        "seo_desc": "Commercial exterior cleaning in Delano and the western Twin Cities. Scheduled window, gutter and pressure washing for your property. Get a quote.",
         "h1": "Commercial Exterior Cleaning Services",
         "schema_name": "Commercial Exterior Cleaning Services",
         "kw": "commercial window cleaning Twin Cities MN",
@@ -644,6 +644,8 @@ SERVICES = [
         "includes": [
             "Storefront &amp; office window cleaning",
             "High-rise &amp; multi-story water-fed pole cleaning",
+            "Pressure washing for lots, walkways &amp; entries",
+            "Building &amp; awning soft washing",
             "Gutter cleaning &amp; maintenance",
             "Solar array cleaning",
             "Recurring scheduled service contracts",
@@ -655,7 +657,7 @@ SERVICES = [
         # and "bonded" claims removed, owner confirmed neither applies.)
         "faqs": [
             ("What services are included for commercial properties?",
-             "Storefront and office window cleaning, high-rise water-fed pole cleaning, gutter cleaning, and solar array cleaning, scheduled around your business."),
+             "Storefront and office window cleaning, high-rise water-fed pole cleaning, pressure washing, building soft washing, gutter cleaning, and solar array cleaning, scheduled around your business."),
             ("Can you work outside business hours?",
              "Yes, we schedule around your hours and your tenants, including evenings and weekends when needed."),
             ("Do you offer recurring service contracts?",
@@ -666,21 +668,6 @@ SERVICES = [
         "cta_text": "Get your free, no-obligation commercial exterior cleaning quote today and see why businesses and property managers across the western Twin Cities trust Barta.",
     },
 ]
-
-# ---------------------------------------------------------------------------
-# Services hidden from the site without deleting their data. Everything for
-# a slug listed here (its page, nav/footer/homepage entries, quote-form
-# checkbox, landing page, sitemap and schema rows) is filtered out at build
-# time; remove the slug from this set and rebuild to bring it all back.
-# House Washing is here alongside Soft Washing because it IS a soft-wash
-# service, the page itself says "Barta only soft-washes."
-# ---------------------------------------------------------------------------
-HIDDEN_SERVICE_SLUGS = {"pressure-washing", "house-washing", "soft-washing"}
-SERVICES = [s for s in SERVICES if s["slug"] not in HIDDEN_SERVICE_SLUGS]
-
-def _visible_targets(entries, target_of):
-    return [e for e in entries
-            if not any(f"/{slug}." in target_of(e) for slug in HIDDEN_SERVICE_SLUGS)]
 
 # ---------------------------------------------------------------------------
 # Header "Our Services" dropdown, exact list as offered, mapped to pages.
@@ -697,7 +684,6 @@ DROPDOWN_SERVICES = [
     ("Pressure Washing", "services/pressure-washing.html"),
     ("Christmas Light Installation", "services/christmas-light-installation.html"),
 ]
-DROPDOWN_SERVICES = _visible_targets(DROPDOWN_SERVICES, lambda e: e[1])
 
 # Homepage "Our Services" picture-box grid (first two are featured/large).
 HOME_SERVICES = [
@@ -726,7 +712,6 @@ HOME_SERVICES = [
      "img": "assets/img/xmas-lights-stone-home.jpg",
      "desc": "Custom holiday lighting, we design, hang, maintain, and take it down."},
 ]
-HOME_SERVICES = _visible_targets(HOME_SERVICES, lambda e: e["target"])
 
 # ---------------------------------------------------------------------------
 # Service areas, each drives a local landing page
@@ -895,12 +880,6 @@ POSTS = [
     },
 ]
 
-# The soft-washing-vs-pressure-washing explainer exists only to pitch
-# services that are currently hidden, so it hides (and returns) with them.
-HIDDEN_POST_SLUGS = ({"soft-washing-vs-pressure-washing"}
-                     if HIDDEN_SERVICE_SLUGS & {"pressure-washing", "soft-washing"} else set())
-POSTS = [p for p in POSTS if p["slug"] not in HIDDEN_POST_SLUGS]
-
 # ---------------------------------------------------------------------------
 # FAQs (general)
 # ---------------------------------------------------------------------------
@@ -910,7 +889,7 @@ FAQS = [
     ("Do I need to be home during the service?", "Not for most exterior work. As long as we have access to the areas being cleaned and any gates are unlocked, you don't need to be home. For interior window cleaning, we'll coordinate a time that works for you."),
     ("What if I'm not satisfied?", "Every Barta service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll make it right, re-cleaning at no charge. We don't consider a job done until you're thrilled."),
     ("How is pricing determined?", "Pricing is based on the size of your home, number and accessibility of windows or surfaces, and the services you choose. We give clear, upfront, all-in quotes, no hidden fees and no surprises on the invoice."),
-    ("Are your cleaning products safe for kids, pets, and plants?", "Yes. We use professional-grade, biodegradable solutions and take care to protect landscaping on every job. Our methods are safe for your family, pets, and yard."),
+    ("Are your cleaning products safe for kids, pets, and plants?", "Yes. We use professional-grade, biodegradable solutions and pre-wet and rinse landscaping on every soft-wash job. Our methods are safe for your family, pets, and yard."),
     ("How far in advance should I book?", "It varies, depending on the season and our schedule, we can sometimes get to you the same day, or it may be a week or two out. Holiday lighting books up earliest, so reserve your spot by early fall. Priority-plan members get scheduling preference."),
     ("Do you offer recurring maintenance plans?", "We do, and they're our most popular option. Choose a Biannual, Quarterly, or Monthly recurring plan to save on every cleaning, with priority scheduling included on Quarterly and Monthly. Just select a plan when you request your free quote."),
 ]
