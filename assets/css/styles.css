@@ -468,7 +468,6 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    promo copy hangs from the very top of its section; the inline variant
    flows in-document as a divider above the how-it-works heading. */
 .xmas-garland-promo { top: 10px; height: 58px; z-index: 1; }
-.xmas-garland-inline { position: static; height: 54px; margin: 0 0 14px; }
 /* Bulbs glow and gently pulse, in four offset groups so the string
    twinkles rather than blinking in unison. Placement lives on the outer
    .xb group's transform attribute; the animation scales only the inner
@@ -1272,10 +1271,11 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .hero-photo-full .hero-content .lead { margin-top: 22px; max-width: 600px; }
 .hero-photo-full .hero-actions { margin-top: 30px; }
 .hero-photo-full .hero-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 58%; z-index: -2; }
-/* Black scrim entering from the left at 50% opacity, gone by the midline —
-   the headline (left) gets contrast while the van (right) stays clear. */
+/* Black scrim entering from the left at 60% opacity, gone two-thirds of the
+   way across — the headline (left) gets contrast while the van (right)
+   stays clear. */
 .hero-photo-full .hero-overlay { position: absolute; inset: 0; z-index: -1; background:
-  linear-gradient(90deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 50%); }
+  linear-gradient(90deg, rgba(0,0,0,.6) 0%, rgba(0,0,0,0) 66.7%); }
 .hero-photo-full .hero-content { max-width: 660px; position: relative; }
 .hero-photo-full .hero-content h1, .hero-photo-full .hero-content .lead { text-shadow: 0 2px 22px rgba(8,8,10,.55), 0 1px 4px rgba(8,8,10,.45); }
 .hero-photo-full .hero-content .lead { color: #fff; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,.7), 0 2px 16px rgba(0,0,0,.55); }

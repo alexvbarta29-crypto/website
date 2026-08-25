@@ -511,11 +511,6 @@ def build_service(svc):
             f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic {_xmas_tone(i)}">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
             f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
-        # The same premium light string as the hero, laid in-flow across the
-        # full width of the how-it-works section, edge to edge (dark wire so
-        # the cord reads on white).
-        lights_divider = _xmas_garland_svg(cls=" xmas-garland-inline", wire=_XMAS_DARK_WIRE,
-                                           uid="h", uid_m="hm", width=1200, swags=8)
         # Early-bird promo with a live countdown to December 1st. The numbers
         # are seeded at build time so the first paint is already correct (the
         # daily Instagram sync rebuilds the site, keeping the seed within a
@@ -563,8 +558,8 @@ def build_service(svc):
     </div>
   </section>"""
         xmas_extra = f"""{promo}
+  <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
-    {lights_divider}
     <div class="container">
       <p class="pill" style="margin-inline:auto;width:fit-content;text-align:center">{icon('clock')} {svc['process_note']}</p>
       <div class="section-head center mt-3">
