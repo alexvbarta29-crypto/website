@@ -1883,10 +1883,15 @@ def build_images():
         write_asset(f"assets/img/{name}-before.svg", before)
         write_asset(f"assets/img/{name}-after.svg", after)
 
-    # Favicon, black rounded square with the coral // mark
+    # Favicon, black square with the coral // mark. Full-bleed on purpose:
+    # Google crops search-result favicons to a circle, so the background must
+    # reach the canvas edge (rx kept under the circle's diagonal cut, ~13px,
+    # so the corners never notch the circle) and the mark is scaled up 15%
+    # while staying inside the circle-safe zone so nothing clips.
     favicon = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-               '<rect width="64" height="64" rx="15" fill="#111116"/>'
-               '<g fill="#fb4d3d"><path d="M27 14 H38 L27 50 H16 Z"/><path d="M46 14 H57 L46 50 H35 Z"/></g></svg>')
+               '<rect width="64" height="64" rx="10" fill="#111116"/>'
+               '<g fill="#fb4d3d" transform="translate(32 32) scale(1.15) translate(-36.5 -32)">'
+               '<path d="M27 14 H38 L27 50 H16 Z"/><path d="M46 14 H57 L46 50 H35 Z"/></g></svg>')
     write_asset("assets/img/favicon.svg", favicon)
 
     # Standalone logo lockup (coral // + BARTA wordmark) for email sigs, etc.
