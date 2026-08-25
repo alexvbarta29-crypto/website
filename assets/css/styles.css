@@ -815,6 +815,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .phero h1 { color: var(--ink); max-width: 16ch; }
 .phero h1.h1-tight { font-size: clamp(2rem, 3.6vw, 2.6rem); max-width: 22ch; }
 .phero .lead { color: var(--slate-500); margin-top: 18px; max-width: 600px; }
+/* The "Old-school service. Modern standards." tagline now leads the about
+   hero (phero-tight is unique to that page) — kicker weight, not muted gray. */
+.phero.phero-tight .lead { font-family: var(--font-head); font-weight: 800; color: var(--ink); font-size: clamp(1.05rem, 1.9vw, 1.25rem); margin-top: 10px; }
 .phero .hero-trust li { color: var(--slate-700); }
 .phero .hero-trust svg { color: var(--blue-600); }
 .phero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
@@ -897,7 +900,6 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Split feature */
 /* Closing line of the About story — a two-sentence sign-off, set apart from
    the paragraphs above it rather than reading as another one. */
-.story-kicker { font-family: var(--font-head); font-weight: 800; font-size: clamp(1.05rem, 1.9vw, 1.25rem); color: var(--ink); margin-top: 26px; }
 
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; }
 .split.top { align-items: start; }
@@ -1270,8 +1272,10 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .hero-photo-full .hero-content .lead { margin-top: 22px; max-width: 600px; }
 .hero-photo-full .hero-actions { margin-top: 30px; }
 .hero-photo-full .hero-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 58%; z-index: -2; }
+/* Black scrim entering from the left at 50% opacity, gone by the midline —
+   the headline (left) gets contrast while the van (right) stays clear. */
 .hero-photo-full .hero-overlay { position: absolute; inset: 0; z-index: -1; background:
-  linear-gradient(0deg, rgba(8,8,10,.74) 0%, rgba(8,8,10,.36) 28%, rgba(8,8,10,.05) 52%, transparent 70%); }
+  linear-gradient(90deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 50%); }
 .hero-photo-full .hero-content { max-width: 660px; position: relative; }
 .hero-photo-full .hero-content h1, .hero-photo-full .hero-content .lead { text-shadow: 0 2px 22px rgba(8,8,10,.55), 0 1px 4px rgba(8,8,10,.45); }
 .hero-photo-full .hero-content .lead { color: #fff; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,.7), 0 2px 16px rgba(0,0,0,.55); }

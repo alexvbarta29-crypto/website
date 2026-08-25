@@ -563,7 +563,6 @@ def build_service(svc):
     </div>
   </section>"""
         xmas_extra = f"""{promo}
-  <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
     {lights_divider}
     <div class="container">
@@ -961,7 +960,7 @@ def build_about():
         # headline above it and no lead. The founding line that used to sit
         # here is covered by "How BWW started" below.
         h1="The brothers behind the brand",
-        lead="",
+        lead="Old-school service. Modern standards.",
         depth=depth, crumb_label="About", primary_kw="about Barta Window Washing Delano MN",
         h1_class="h1-tight", phero_class="phero-tight")
 
@@ -993,7 +992,6 @@ def build_about():
           simple processes, and careful attention to every detail.</p>
         <p class="mt-2">{BIZ['name']} isn’t here just to clean windows. The company is here to raise
           expectations for what hiring a home service provider should feel like.</p>
-        <p class="mt-2 story-kicker">Old-school service. Modern standards.</p>
       </div>
       <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
     </div>
