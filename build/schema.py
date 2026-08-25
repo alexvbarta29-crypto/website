@@ -23,7 +23,7 @@ def local_business():
         # in local results, and its guidance is to offer several aspect ratios
         # so it can pick one per layout rather than crop whatever it's given.
         "image": [
-            BIZ["domain"] + "/assets/img/hero-home-squeegee-1200w.jpg",
+            BIZ["domain"] + "/assets/img/hero-home-main-1200w.jpg",
             BIZ["domain"] + "/assets/img/svc-exterior-window-cleaning-1200w.jpg",
             BIZ["domain"] + "/assets/img/svc-cta-squeegee-1200w.jpg",
         ],

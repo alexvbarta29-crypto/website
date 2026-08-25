@@ -95,7 +95,8 @@ def _img_size(relpath, default=(1125, 1500)):
     _IMG_SIZE_CACHE[relpath] = size
     return size
 
-def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img", alt=""):
+def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img", alt="",
+                       sizes="100vw"):
     """Responsive hero <picture>: WebP source + JPG fallback, each with a
     640w/1200w srcset (see generate_hero_variants()) so a phone downloads the
     small file and only one image request happens either way, never both a
@@ -133,9 +134,9 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     default_w = f"{widths[-1]}w"
     w_img, h_img = _img_size(f"{stem}-{default_w}.jpg")
     return (f'<picture>'
-            f'<source type="image/webp" srcset="{webp_srcset}" sizes="100vw">'
+            f'<source type="image/webp" srcset="{webp_srcset}" sizes="{sizes}">'
             f'<img class="{img_class}" src="{root}{stem}-{default_w}.jpg" '
-            f'srcset="{jpg_srcset}" sizes="100vw" '
+            f'srcset="{jpg_srcset}" sizes="{sizes}" '
             f'alt="{alt}" width="{w_img}" height="{h_img}" fetchpriority="high" decoding="async" {style}>'
             f'</picture>')
 
@@ -234,10 +235,16 @@ def build_home():
         desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
-        og_image="assets/img/hero-home-squeegee.jpg")
+        og_image="assets/img/hero-home-main.jpg")
     html += C.nav(depth)
-    hero_picture = _hero_picture_html("", "assets/img/hero-home-squeegee.jpg", img_class="hero-bg-img",
-                                       alt="A Barta Window Washing technician squeegeeing a home's exterior windows")
+    # The hero is object-fit: cover over a 100svh section, so on a portrait
+    # phone the wide (1.55:1) photo is scaled to the screen's HEIGHT and its
+    # rendered width is ~viewport-height x 1.55 — roughly 340vw, not 100vw.
+    # Declaring the honest size makes phones fetch the large tier instead of
+    # a 1200w file stretched ~3x (which is exactly how the hero went soft).
+    hero_picture = _hero_picture_html("", "assets/img/hero-home-main.jpg", img_class="hero-bg-img",
+                                       alt="A Barta Window Washing technician squeegeeing a home's exterior windows",
+                                       sizes="(max-width: 760px) 340vw, 100vw")
     html += f"""
 <main id="main">
   <!-- HERO -->
@@ -2065,7 +2072,16 @@ _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 # Both of these render full-bleed edge to edge, and both have sources wider
 # than 1920 (or exactly 1920), so this tier is always a real downscale, it
 # never upscales. GALLERY_HERO is the Gallery page's photo header.
-_HERO_1920_PATHS = {"assets/img/hero-home.jpg", "assets/img/hero-home-squeegee.jpg", GALLERY_HERO}
+_HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
+
+# The homepage hero is the single most-seen photo on the site, so it gets its
+# own top tier instead of the shared specs: every width encoded at the same
+# high quality as the service heroes, plus a 2560w cap for phones and retina
+# laptops (the hero's sizes attribute declares its true cover-scaled width,
+# so those screens actually request the big file).
+_HERO_TOP_Q_PATH = "assets/img/hero-home-main.jpg"
+_HERO_TOP_Q_SPECS = [(2560, "webp", 88), (2560, "jpg", 92), (1920, "webp", 88), (1920, "jpg", 92),
+                     (1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 86), (640, "jpg", 90)]
 
 # Full-bleed heroes whose source is wider than the 1200w tier but narrower
 # than 1920, they get one extra derivative at their exact native width so
@@ -2097,7 +2113,7 @@ def generate_hero_variants():
     except ImportError:
         print("  (Pillow not available, skipping responsive image variant generation)")
         return
-    hero_paths = {"assets/img/hero-home.jpg", "assets/img/hero-home-squeegee.jpg",
+    hero_paths = {"assets/img/hero-home.jpg", "assets/img/hero-home-main.jpg",
                   "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg",
                   "assets/img/svc-cta-squeegee.jpg"}
     for s in SERVICES:
@@ -2127,8 +2143,11 @@ def generate_hero_variants():
         stem = rel.rsplit(".", 1)[0]
         src_mtime = os.path.getmtime(src)
         base = None
-        base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
-        specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
+        if rel == _HERO_TOP_Q_PATH:
+            specs = list(_HERO_TOP_Q_SPECS)
+        else:
+            base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
+            specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
         # A full-bleed hero is object-fit:cover, so on a 1440x900 window it is
         # scaled to ~1600px wide, above the 1200w tier. Sources with real
         # pixels between 1200 and 1920 get one extra tier at their exact
@@ -2180,7 +2199,7 @@ def generate_og_images():
     except ImportError:
         return
     srcs = {s["image"] for s in SERVICES if s.get("image")}
-    srcs |= {"assets/img/hero-home.jpg", "assets/img/hero-home-squeegee.jpg",
+    srcs |= {"assets/img/hero-home.jpg", "assets/img/hero-home-main.jpg",
              GALLERY_HERO, "assets/img/svc-cta-squeegee.jpg"}
     srcs |= set(_BLOG_PHOTOS.values())
     made = 0
