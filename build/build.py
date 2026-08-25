@@ -234,10 +234,10 @@ def build_home():
         desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
-        og_image="assets/img/hero-home.jpg")
+        og_image="assets/img/hero-home-window-clean.jpg")
     html += C.nav(depth)
-    hero_picture = _hero_picture_html("", "assets/img/hero-home.jpg", img_class="hero-bg-img",
-                                       alt="The branded Barta Window Washing (BWW) service van in the Delano, MN area")
+    hero_picture = _hero_picture_html("", "assets/img/hero-home-window-clean.jpg", img_class="hero-bg-img",
+                                       alt="A Barta Window Washing technician squeegeeing a home's exterior windows")
     html += f"""
 <main id="main">
   <!-- HERO -->
@@ -2065,7 +2065,7 @@ _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 # Both of these render full-bleed edge to edge, and both have sources wider
 # than 1920 (or exactly 1920), so this tier is always a real downscale, it
 # never upscales. GALLERY_HERO is the Gallery page's photo header.
-_HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
+_HERO_1920_PATHS = {"assets/img/hero-home.jpg", "assets/img/hero-home-window-clean.jpg", GALLERY_HERO}
 
 # Full-bleed heroes whose source is wider than the 1200w tier but narrower
 # than 1920, they get one extra derivative at their exact native width so
@@ -2097,7 +2097,8 @@ def generate_hero_variants():
     except ImportError:
         print("  (Pillow not available, skipping responsive image variant generation)")
         return
-    hero_paths = {"assets/img/hero-home.jpg", "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg",
+    hero_paths = {"assets/img/hero-home.jpg", "assets/img/hero-home-window-clean.jpg",
+                  "assets/img/svc-mop-window.jpg", "assets/img/svc-detail-frame.jpg",
                   "assets/img/svc-cta-squeegee.jpg"}
     for s in SERVICES:
         hero_paths.add(s.get("image") or "assets/img/hero-home.jpg")
@@ -2179,7 +2180,8 @@ def generate_og_images():
     except ImportError:
         return
     srcs = {s["image"] for s in SERVICES if s.get("image")}
-    srcs |= {"assets/img/hero-home.jpg", GALLERY_HERO, "assets/img/svc-cta-squeegee.jpg"}
+    srcs |= {"assets/img/hero-home.jpg", "assets/img/hero-home-window-clean.jpg",
+             GALLERY_HERO, "assets/img/svc-cta-squeegee.jpg"}
     srcs |= set(_BLOG_PHOTOS.values())
     made = 0
     for rel_path in sorted(srcs):
