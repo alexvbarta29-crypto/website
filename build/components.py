@@ -942,6 +942,17 @@ def process_slider(steps, depth=0):
     <div class="center mt-4"><a class="btn" href="{root}get-quote.html">Get Your Free Quote</a></div>
   </div>"""
 
+def _instagram_excluded_ids():
+    """Post ids the site never shows, shared with the sync script (which is
+    the authoritative list and skips them at download time); filtering here
+    too keeps an already-committed manifest from showing them before the
+    next sync rewrites it."""
+    try:
+        from instagram_sync import EXCLUDED_POST_IDS
+        return EXCLUDED_POST_IDS
+    except Exception:
+        return set()
+
 def instagram_carousel(depth=0):
     """Real Instagram posts, shown right on the page instead of just a link
     out to the profile. Reads build/instagram_feed.json, written by the
@@ -973,6 +984,8 @@ def instagram_carousel(depth=0):
     root = rel(depth)
     cards = ""
     for p in posts:
+        if p.get("id") in _instagram_excluded_ids():
+            continue
         caption = (p.get("caption") or "").strip()
         caption_short = caption.split("\n")[0]
         if len(caption_short) > 110:
@@ -1063,6 +1076,8 @@ def gallery_instagram_figures(depth=0, seen_hashes=None):
     seen = list(seen_hashes or [])
     figures = ""
     for p in posts:
+        if p.get("id") in _instagram_excluded_ids():
+            continue
         caption = (p.get("caption") or "").strip().split("\n")[0]
         if len(caption) > 90:
             caption = caption[:88].rsplit(" ", 1)[0] + "…"

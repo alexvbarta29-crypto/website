@@ -19,6 +19,13 @@ MANIFEST_PATH = os.path.join(HERE, "instagram_feed.json")
 MAX_POSTS = 10
 API_BASE = "https://graph.instagram.com"
 
+# Posts never shown on the site, by Instagram post id. The site-launch
+# announcement carousel lives here — no point advertising the website on
+# the website itself. The sync skips these entirely (no media downloaded,
+# nothing written to the manifest), and components.py filters by the same
+# set at render time as a backstop against a stale manifest.
+EXCLUDED_POST_IDS = {"17878396158527541"}
+
 
 def _get_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "barta-site-instagram-sync/1"})
@@ -105,6 +112,8 @@ def main():
     for item in items[:MAX_POSTS]:
         media_type = item.get("media_type")
         post_id = item["id"]
+        if post_id in EXCLUDED_POST_IDS:
+            continue
 
         slides = []
         if media_type == "CAROUSEL_ALBUM":

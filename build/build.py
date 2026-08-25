@@ -2080,7 +2080,8 @@ _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 # laptops (the hero's sizes attribute declares its true cover-scaled width,
 # so those screens actually request the big file).
 _HERO_TOP_Q_PATH = "assets/img/hero-home-main.jpg"
-_HERO_TOP_Q_SPECS = [(2560, "webp", 88), (2560, "jpg", 92), (1920, "webp", 88), (1920, "jpg", 92),
+_HERO_TOP_Q_SPECS = [(3200, "webp", 90), (3200, "jpg", 93),
+                     (2560, "webp", 88), (2560, "jpg", 92), (1920, "webp", 88), (1920, "jpg", 92),
                      (1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 86), (640, "jpg", 90)]
 
 # Full-bleed heroes whose source is wider than the 1200w tier but narrower
