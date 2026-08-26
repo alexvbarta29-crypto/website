@@ -144,6 +144,12 @@ def form_success(depth=0, closer=""):
 # Keeps CSS/JS from being served stale by the browser/CDN after a change.
 ASSET_VER = "1"
 
+# Critical CSS extracted from styles.min.css at build time (build.py sets
+# this). Pages that pass inline_critical=True to head() inline it and load
+# the full stylesheet without render-blocking; empty string disables that
+# and every page falls back to the plain blocking <link>.
+CRITICAL_CSS = ""
+
 # Navigation grouping for mega-menu
 NAV_SERVICES = SERVICES  # all 10 services appear in the Services mega menu
 
@@ -364,7 +370,7 @@ def _og_image(og_image):
             w, h = _real_size(rel_path)
     return f"{BIZ['domain']}/{rel_path}", w, h
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None):
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
     pages that shouldn't compete in search) instead of the default index.
@@ -413,6 +419,18 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
             "if(document.readyState==='complete'){i();}else{window.addEventListener('load',i);}"
             "})();</script>")
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
+    css_href = f"{root}assets/css/styles.min.css?v={ASSET_VER}"
+    if inline_critical and CRITICAL_CSS:
+        # First paint styled by the inline subset; the full sheet loads
+        # without blocking render (non-matching media until onload flips it),
+        # with a preload keeping its fetch priority up and a noscript
+        # fallback for visitors without JavaScript.
+        css_links = (f"<style>{CRITICAL_CSS}</style>\n"
+                     f'<link rel="preload" as="style" href="{css_href}">\n'
+                     f'<link rel="stylesheet" href="{css_href}" media="print" onload="this.media=\'all\'">\n'
+                     f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>')
+    else:
+        css_links = f'<link rel="stylesheet" href="{css_href}">'
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -449,7 +467,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 {trustindex_preconnect}<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap"></noscript>
-<link rel="stylesheet" href="{root}assets/css/styles.min.css?v={ASSET_VER}">
+{css_links}
 <link rel="icon" href="{root}assets/img/favicon.svg?v=2" type="image/svg+xml">
 <link rel="manifest" href="{root}site.webmanifest">
 {schema_blocks}</head>

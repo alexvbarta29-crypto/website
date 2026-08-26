@@ -4,7 +4,7 @@ Barta Window Washing, static site generator.
 Run from repo root:  python3 build/build.py
 Outputs HTML pages, sitemap, robots, manifest, and placeholder imagery.
 """
-import os, sys
+import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
@@ -235,7 +235,7 @@ def build_home():
         desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
-        og_image="assets/img/hero-home-main.jpg")
+        og_image="assets/img/hero-home-main.jpg", inline_critical=True)
     html += C.nav(depth)
     # The hero is object-fit: cover over a 100svh section, so on a portrait
     # phone the wide (1.55:1) photo is scaled to the screen's HEIGHT and its
@@ -2026,6 +2026,115 @@ def minify_assets():
         print(f"  (js minify skipped: {e}; using unminified copy)")
         shutil.copyfile(js_src, js_out)
 
+# ---------------------------------------------------------------------------
+# Critical CSS for the homepage. styles.min.css is loaded non-blocking on the
+# home page (media="print" swap, same pattern as the Fontshare sheet), so
+# every rule the first viewport needs must be inlined in <head> or the header
+# and hero would flash unstyled. The subset is extracted from styles.min.css
+# at build time (never hand-copied) so it can't drift from the real
+# stylesheet, and it must cover not just what's *visible* above the fold but
+# also what's hidden there by CSS (mobile drawer, desktop dropdown panels,
+# the sticky call bar, html.js .reveal) — losing a display:none is a worse
+# flash than losing a color.
+_CRITICAL_CLASSES = {
+    "skip", "nav-wrap", "nav", "brand", "brand-logo", "nav-links", "nav-phone",
+    "nav-item", "nav-trigger", "nav-menu", "nav-menu-simple", "nav-cta",
+    "nav-toggle", "btn", "btn-lg", "btn-ghost", "btn-block",
+    "drawer", "drawer-scrim", "drawer-panel", "drawer-head", "drawer-close",
+    "drawer-nav", "drawer-group", "drawer-foot",
+    "hero", "hero-photo-full", "hero-bg-img", "hero-overlay", "hero-content",
+    "hero-actions", "container", "reveal",
+    "google-badge", "google-badge--bare", "stars", "gb-g", "gb-text", "lead",
+    "sticky-cta",
+}
+_CRITICAL_ELEMENTS = {
+    "html", "body", "main", "header", "nav", "ul", "ol", "li", "a", "img",
+    "picture", "svg", "button", "h1", "h2", "h3", "p", "em", "strong",
+    "details", "summary",
+}
+
+def _split_top(css, sep=","):
+    """Split on sep at nesting depth 0 (ignores separators inside (), [], quotes)."""
+    parts, buf, depth = [], [], 0
+    quote = None
+    for ch in css:
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                quote = None
+            continue
+        if ch in "\"'":
+            quote = ch
+        elif ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        elif ch == sep and depth == 0:
+            parts.append("".join(buf)); buf = []
+            continue
+        buf.append(ch)
+    if buf:
+        parts.append("".join(buf))
+    return parts
+
+def _selector_is_critical(sel):
+    sel = sel.strip()
+    if not sel:
+        return False
+    if sel == "*" or sel == ":root":
+        return True
+    for m in re.finditer(r"\.([A-Za-z0-9_-]+)", sel):
+        if m.group(1) in _CRITICAL_CLASSES:
+            return True
+    # No critical class: keep only pure element selectors (resets like
+    # `img,svg{...}` or `h1{...}`) whose every element name is critical.
+    if re.search(r"[.#\[]", sel):
+        return False
+    stripped = re.sub(r"::?[A-Za-z-]+(\([^)]*\))?", "", sel)
+    elems = re.findall(r"[A-Za-z][A-Za-z0-9-]*", stripped)
+    return bool(elems) and all(e in _CRITICAL_ELEMENTS for e in elems)
+
+def _iter_rules(css):
+    """Yield (prelude, body) for each top-level `prelude{body}` block."""
+    depth, start_body, prelude_start = 0, 0, 0
+    prelude = ""
+    for i, ch in enumerate(css):
+        if ch == "{":
+            if depth == 0:
+                prelude = css[prelude_start:i]
+                start_body = i + 1
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                yield prelude.strip(), css[start_body:i]
+                prelude_start = i + 1
+
+def _filter_css(css):
+    out = []
+    for prelude, body in _iter_rules(css):
+        if prelude.startswith("@media") or prelude.startswith("@supports"):
+            inner = _filter_css(body)
+            if inner:
+                out.append(f"{prelude}{{{inner}}}")
+        elif prelude.startswith("@"):
+            continue  # @keyframes/@font-face: animation polish, not first paint
+        else:
+            kept = [s.strip() for s in _split_top(prelude) if _selector_is_critical(s)]
+            if kept:
+                out.append(f"{','.join(kept)}{{{body}}}")
+    return "".join(out)
+
+def extract_critical_css():
+    path = os.path.join(ROOT, "assets/css/styles.min.css")
+    try:
+        with open(path, encoding="utf-8") as f:
+            css = f.read()
+    except FileNotFoundError:
+        return ""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    return _filter_css(css)
+
 def generate_webp_versions():
     """Generate a .webp sibling for every real photo (assets/img/*.jpg), used
     by components.picture() as the modern-format <picture> source. Skips any
@@ -2269,6 +2378,9 @@ def main():
     generate_og_images()
     minify_assets()
     C.ASSET_VER = _asset_version()
+    C.CRITICAL_CSS = extract_critical_css()
+    if C.CRITICAL_CSS:
+        print(f"  critical css: {len(C.CRITICAL_CSS)} bytes inlined on the homepage")
     build_home()
     for s in SERVICES:
         build_service(s)
