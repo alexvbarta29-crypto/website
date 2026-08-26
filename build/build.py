@@ -2085,9 +2085,16 @@ _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 # laptops (the hero's sizes attribute declares its true cover-scaled width,
 # so those screens actually request the big file).
 _HERO_TOP_Q_PATH = "assets/img/hero-home-main.jpg"
-_HERO_TOP_Q_SPECS = [(3200, "webp", 90), (3200, "jpg", 93),
-                     (2560, "webp", 88), (2560, "jpg", 92), (1920, "webp", 88), (1920, "jpg", 92),
+_HERO_TOP_Q_SPECS = [(3200, "webp", 84), (3200, "jpg", 93),
+                     (2560, "webp", 84), (2560, "jpg", 92), (1920, "webp", 88), (1920, "jpg", 92),
                      (1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 86), (640, "jpg", 90)]
+
+# Service photos double as homepage grid cards, which render far smaller than
+# the 640w tier (a phone's two-column card is ~350 device px wide, a featured
+# card ~720). These tiers exist for those card renders, at the default
+# quality rather than the service-hero tier, a small card never reveals the
+# compression a full-bleed hero would. picture() discovers them from disk.
+_CARD_TIER_SPECS = [(400, "webp", 75), (400, "jpg", 78), (760, "webp", 74), (760, "jpg", 80)]
 
 # Full-bleed heroes whose source is wider than the 1200w tier but narrower
 # than 1920, they get one extra derivative at their exact native width so
@@ -2154,6 +2161,8 @@ def generate_hero_variants():
         else:
             base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
             specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
+            if rel in _HERO_HIGH_Q_PATHS:
+                specs = specs + _CARD_TIER_SPECS
         # A full-bleed hero is object-fit:cover, so on a 1440x900 window it is
         # scaled to ~1600px wide, above the 1200w tier. Sources with real
         # pixels between 1200 and 1920 get one extra tier at their exact
@@ -2185,6 +2194,26 @@ def generate_hero_variants():
                 img.save(out_path, save_fmt, **kwargs)
             except Exception as e:
                 print(f"  (hero variant skipped for {out_rel}: {e})")
+
+    # The nav logo renders at ~150 CSS px, so the 765px source is oversized
+    # even on high-DPR screens. A 320px derivative (alpha preserved) serves
+    # the header and drawer via srcset; the original stays untouched for the
+    # schema logo and as the srcset's large candidate.
+    logo_src = os.path.join(ROOT, "assets/img/logo-bww.png")
+    logo_out = os.path.join(ROOT, "assets/img/logo-bww-320w.png")
+    if os.path.exists(logo_src) and (
+            not os.path.exists(logo_out) or os.path.getmtime(logo_out) < os.path.getmtime(logo_src)):
+        try:
+            img = Image.open(logo_src).convert("RGBA")
+            lw, lh = img.size
+            small = img.resize((320, round(lh * 320 / lw)), Image.LANCZOS)
+            # The mark is only a few flat colors plus antialiasing, so a
+            # 256-color palette PNG (alpha kept) is a fraction of the
+            # full-color encode with no visible difference at logo size.
+            small = small.quantize(256, method=Image.Quantize.FASTOCTREE)
+            small.save(logo_out, "PNG", optimize=True)
+        except Exception as e:
+            print(f"  (logo variant skipped: {e})")
 
 OG_W, OG_H = 1200, 630
 

@@ -317,10 +317,24 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
         if not has_dims:
             w, h = _real_size(f"{stem}-1200w.jpg")
             dim_attrs = f' width="{w}" height="{h}"'
+        # Every -<N>w width present as BOTH webp and jpg becomes a srcset
+        # candidate (not just the 640/1200 pair), so the small card tiers
+        # generated for grid images are offered to phones automatically and
+        # the two srcsets can never point a browser at a missing file.
+        import glob as _g, re as _re
+        widths = sorted(
+            wd for wd in {
+                int(m.group(1))
+                for p in _g.glob(os.path.join(_ROOT, f"{stem}-*w.jpg"))
+                for m in [_re.search(r"-(\d+)w\.jpg$", p)] if m
+            }
+            if os.path.exists(os.path.join(_ROOT, f"{stem}-{wd}w.webp")))
+        webp_srcset = ", ".join(f"{root}{stem}-{wd}w.webp {wd}w" for wd in widths)
+        jpg_srcset = ", ".join(f"{root}{stem}-{wd}w.jpg {wd}w" for wd in widths)
         return (f'<picture>'
-                f'<source type="image/webp" srcset="{root}{stem}-640w.webp 640w, {root}{stem}-1200w.webp 1200w" sizes="{sizes_val}">'
+                f'<source type="image/webp" srcset="{webp_srcset}" sizes="{sizes_val}">'
                 f'<img class="{img_class}" src="{root}{stem}-1200w.jpg" '
-                f'srcset="{root}{stem}-640w.jpg 640w, {root}{stem}-1200w.jpg 1200w" sizes="{sizes_val}" '
+                f'srcset="{jpg_srcset}" sizes="{sizes_val}" '
                 f'alt="{alt}"{dim_attrs} {extra_attrs}></picture>')
     return (f'<picture><source srcset="{root}{webp}" type="image/webp">'
             f'<img class="{img_class}" src="{root}{src}"{dim_attrs} alt="{alt}" {extra_attrs}></picture>')
@@ -446,7 +460,7 @@ def nav(depth=0):
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
-      <img class="brand-logo" src="{root}assets/img/logo-bww.png" alt="{BIZ['name']}" width="148" height="40">
+      <img class="brand-logo" src="{root}assets/img/logo-bww.png" srcset="{root}assets/img/logo-bww-320w.png 320w, {root}assets/img/logo-bww.png 765w" sizes="148px" alt="{BIZ['name']}" width="148" height="40">
     </a>
     <ul class="nav-links">
       <li><a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a></li>
@@ -471,7 +485,7 @@ def nav(depth=0):
   <div class="drawer-scrim"></div>
   <div class="drawer-panel">
     <div class="drawer-head">
-      <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-bww.png" alt="{BIZ['name']}" width="150" height="32"></a>
+      <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-bww.png" srcset="{root}assets/img/logo-bww-320w.png 320w, {root}assets/img/logo-bww.png 765w" sizes="150px" alt="{BIZ['name']}" width="150" height="32"></a>
       <button class="drawer-close" aria-label="Close menu">{icon('x')}</button>
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
