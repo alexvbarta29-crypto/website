@@ -9,11 +9,25 @@
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---- Sticky nav shadow on scroll ---- */
+  /* A 1px sentinel parked 12px down the document, watched by an
+     IntersectionObserver: the moment it scrolls out of the viewport the
+     page is past 12px and the shadow goes on. The old handler read
+     window.scrollY, and its initial call during script evaluation forced
+     the document's entire first style+layout pass synchronously inside the
+     script task — Lighthouse attributed ~166ms of forced reflow to that
+     one read (and deferring the read only moves the cost to whenever the
+     frame is next dirty). The observer is handed its geometry after layout
+     completes, so neither the initial state nor any amount of scrolling
+     ever forces layout, and the class still flips at the same 12px line. */
   const navWrap = $(".nav-wrap");
   if (navWrap) {
-    const onScroll = () => navWrap.classList.toggle("scrolled", window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const sentinel = document.createElement("div");
+    sentinel.setAttribute("aria-hidden", "true");
+    sentinel.style.cssText = "position:absolute;top:12px;left:0;width:1px;height:1px;pointer-events:none;visibility:hidden";
+    document.body.prepend(sentinel);
+    new IntersectionObserver(([e]) => {
+      navWrap.classList.toggle("scrolled", !e.isIntersecting);
+    }).observe(sentinel);
   }
 
   /* ---- Mobile drawer ---- */
@@ -237,8 +251,14 @@
     let i = 0, timer = null, liveLine = null, liveTimer = null;
 
     /* Current fill of a segment, 0..1, read off the pseudo-element's live
-       transform matrix — accurate even mid-transition. */
+       transform matrix — accurate even mid-transition. A segment that has
+       never been driven can't be mid-transition (only drive()/freeze() set
+       the transition custom props), so its state is exactly its class and
+       the getComputedStyle read — a forced style recalc when anything has
+       been written this task, including the whole document's first pass at
+       startup — is skipped entirely. */
     const progressOf = (l) => {
+      if (!l.__driven) return l.classList.contains("filled") ? 1 : 0;
       const t = getComputedStyle(l, "::after").transform;
       if (!t || t === "none") return l.classList.contains("filled") ? 1 : 0;
       const m = t.match(/matrix\(([^,]+)/);
@@ -250,14 +270,22 @@
        at its current position and restarted toward a new target. */
     const freeze = (l) => {
       const p = progressOf(l);
+      pin(l, p);
+      void l.offsetWidth;
+      return p;
+    };
+    /* The write half of freeze(): pins the segment at p with no transition.
+       Kept separate so show() can batch every pin after a single read pass
+       and flush them all with one layout instead of one per segment. */
+    const pin = (l, p) => {
+      l.__driven = true;
       l.style.setProperty("--line-dur", "0s");
       l.style.setProperty("--line-delay", "0s");
       l.style.setProperty("--line-scale", p);
       l.classList.remove("filled");
-      void l.offsetWidth;
-      return p;
     };
     const drive = (l, to, dur, delay, ease) => {
+      l.__driven = true;
       l.style.setProperty("--line-dur", `${dur}ms`);
       l.style.setProperty("--line-delay", `${delay}ms`);
       l.style.setProperty("--line-ease", ease || "linear");
@@ -274,6 +302,19 @@
     const show = (n) => {
       clearTimeout(liveTimer);
       i = (n + slides.length) % slides.length;
+
+      /* READ phase first: capture every segment's current position in one
+         pass while layout is still clean. Interleaving these computed-style
+         reads with the class writes below is what showed up as forced
+         reflow — every read after a write pays a synchronous style recalc.
+         The in-flight countdown (liveLine) is read for real even though it
+         carries .filled (drive() adds the class up front while the transform
+         is still travelling); for anything else .filled means settled at 1,
+         exactly as before. */
+      const cur = lines.map((l) =>
+        (l !== liveLine && l.classList.contains("filled")) ? 1 : progressOf(l));
+
+      /* WRITE phase: everything below only mutates. */
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
       dots.forEach((d, idx) => {
         d.classList.toggle("active", idx === i);
@@ -285,26 +326,30 @@
          continues its motion — forward to full or retracting to empty —
          instead of blanking it and starting over. On a normal auto-advance
          it sits at ~100%, so its remaining travel is ~0 and the handoff to
-         the next segment's countdown is seamless. */
-      if (liveLine) { freeze(liveLine); liveLine = null; }
+         the next segment's countdown is seamless. Anything else caught
+         mid-flight (a leg of an interrupted sweep) is pinned the same way,
+         so the new sweep's timing applies to it instead of the stale one's.
 
-      /* Segments move one after another — each starts as the previous ends —
+         Segments move one after another — each starts as the previous ends —
          so any jump reads as a single line travelling the bar. Time is split
          by how far each segment actually has to travel (a pinned segment may
          only have a fraction left), keeping the sweep's speed constant. */
       const fillLegs = [];   // left-to-right toward the active dot
       const emptyLegs = [];  // right-to-left back toward it
+      let pinned = false;
       lines.forEach((l, idx) => {
-        let from = l.classList.contains("filled") ? 1 : progressOf(l);
-        // pin anything caught mid-flight (a leg of an interrupted sweep), so
-        // the new sweep's timing applies to it instead of the stale one's
-        if (from > 0 && from < 1) from = freeze(l);
+        const from = cur[idx];
+        if (l === liveLine || (from > 0 && from < 1)) { pin(l, from); pinned = true; }
         if (idx < i) {
           if (from < 1) fillLegs.push({ l, dist: 1 - from });
         } else if (from > 0) {
           emptyLegs.push({ l, dist: from });
         }
       });
+      liveLine = null;
+      // One flush for all pins (freeze() did one per segment), so the
+      // transitions drive() starts next animate from the pinned positions.
+      if (pinned) void slider.offsetWidth;
       emptyLegs.reverse(); // retract starts from the rightmost segment
 
       const run = (legs, to) => {
@@ -337,7 +382,12 @@
         const wait = Math.max(fillDone, emptyDone);
         liveTimer = setTimeout(() => {
           if (liveLine !== l) return; // superseded by a later step change
-          freeze(l);
+          // A segment that has never animated has no transition to stop —
+          // freezing it would only force a layout (the flush) for nothing.
+          // This is every segment's state at page load, where that flush
+          // 20ms after script evaluation paid for the document's first
+          // layout.
+          if (l.__driven) freeze(l);
           l.addEventListener("transitionend", () => { if (liveLine === l) liveLine = null; }, { once: true });
           drive(l, 1, Math.max(1000, AUTOADVANCE_MS - wait), 0, "linear");
         }, wait + 20);
@@ -738,9 +788,22 @@
       track.style.paddingLeft = lead + "px";
       track.style.paddingRight = tail + "px";
     };
-    padEnds();
-    window.addEventListener("resize", padEnds);
-    if (oneUp.addEventListener) oneUp.addEventListener("change", padEnds);
+    /* ResizeObserver replaces the eager call + resize/media listeners: its
+       callback runs right after layout completes, so the clientWidth reads
+       are free there — calling padEnds() during script evaluation forced
+       the document's first layout synchronously, and a plain resize
+       listener re-reads mid-dirty frames. It also fires once on observe(),
+       which supplies the initial padding, and again whenever the track's
+       size changes (every viewport resize or breakpoint flip that could
+       change the answer). Re-applying the same padding doesn't resize the
+       content box, so it settles immediately instead of looping. */
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(padEnds).observe(track);
+    } else {
+      padEnds();
+      window.addEventListener("resize", padEnds);
+      if (oneUp.addEventListener) oneUp.addEventListener("change", padEnds);
+    }
 
     const currentIndex = () => {
       let idx = 0, best = Infinity;
