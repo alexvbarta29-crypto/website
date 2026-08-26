@@ -419,7 +419,8 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
 <link rel="preconnect" href="https://nominatim.openstreetmap.org">
 {trustindex_preconnect}<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap"></noscript>
 <link rel="stylesheet" href="{root}assets/css/styles.min.css?v={ASSET_VER}">
 <link rel="icon" href="{root}assets/img/favicon.svg?v=2" type="image/svg+xml">
 <link rel="manifest" href="{root}site.webmanifest">
