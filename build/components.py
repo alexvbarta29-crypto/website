@@ -392,12 +392,26 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
                               '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
     base_tag = f'<base href="{base_href}">\n' if base_href else ""
     # Google Analytics 4, rendered exactly once per page, from this one
-    # shared head(). The standard async gtag.js loader plus config call.
+    # shared head(). The dataLayer and gtag() stub exist immediately, and the
+    # js/config calls are queued right away, so the page view (and anything
+    # pushed before the library arrives) is recorded exactly once when it
+    # does. Only the 162 KiB gtag.js library itself is deferred: it injects
+    # after the window load event, in an idle slice (requestIdleCallback with
+    # a 2s ceiling; plain timeout fallback), so its parse/execute and forced
+    # layout work never compete with rendering the visible page. The
+    # readyState check covers pages already loaded when the script runs.
     ga_tag = ""
     if GA4_ID:
-        ga_tag = (f'<script async src="https://www.googletagmanager.com/gtag/js?id={GA4_ID}"></script>\n'
-                  "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
-                  f'gtag("js",new Date());gtag("config","{GA4_ID}");</script>')
+        ga_tag = (
+            "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
+            f'gtag("js",new Date());gtag("config","{GA4_ID}");'
+            "(function(){var d=false;function l(){if(d)return;d=true;"
+            "var s=document.createElement('script');s.async=true;"
+            f"s.src='https://www.googletagmanager.com/gtag/js?id={GA4_ID}';"
+            "document.head.appendChild(s);}"
+            "function i(){('requestIdleCallback' in window)?requestIdleCallback(l,{timeout:2000}):setTimeout(l,600);}"
+            "if(document.readyState==='complete'){i();}else{window.addEventListener('load',i);}"
+            "})();</script>")
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
     return f"""<!DOCTYPE html>
 <html lang="en">
