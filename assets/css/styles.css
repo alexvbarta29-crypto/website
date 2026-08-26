@@ -15,6 +15,7 @@ picture { display: contents; }
   --navy-800: #16161b;   /* ink / headings on light           */
   --navy-700: #24242b;   /* charcoal                          */
   --blue-600: #fb4d3d;   /* BRAND coral (primary / links)     */
+  --blue-700: #d0331f;   /* AA-contrast coral: small text on light bg (4.6:1 on --mist) */
   --blue-500: #ff5e43;   /* coral light                       */
   --sky-400:  #ff8a73;   /* focus ring / light coral          */
   --aqua-400: #ff6a3d;   /* coral-orange (gradient end)       */
@@ -119,7 +120,7 @@ p { color: var(--slate-700); }
 .eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--font-head); font-weight: 700; font-size: .82rem;
-  letter-spacing: .14em; text-transform: uppercase; color: var(--blue-600);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--blue-700);
 }
 .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--grad-brand); border-radius: 2px; }
 .text-gradient { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -431,14 +432,16 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* ---------- Christmas Light Installation: its own festive vibe ---------- */
-:root { --xmas-red: #d63a30; --xmas-green: #1f9e63; --xmas-gold: #f0b429; --grad-xmas: linear-gradient(135deg, var(--xmas-red) 0%, #ef6f52 100%); }
+/* --xmas-green-deep: the AA-contrast shade for small green TEXT (eyebrows)
+   on light backgrounds (5.4:1 on white); decorative fills keep --xmas-green. */
+:root { --xmas-red: #d63a30; --xmas-green: #1f9e63; --xmas-green-deep: #177a4c; --xmas-gold: #f0b429; --grad-xmas: linear-gradient(135deg, var(--xmas-red) 0%, #ef6f52 100%); }
 
 /* Sitewide accents scoped to the Christmas page's <main> only — nav/footer
    stay on-brand orange, but every section inside the page picks up the
    festive palette instead of the default look every other service page uses. */
 .xmas-page .btn { --btn-bg: var(--grad-xmas); box-shadow: 0 14px 38px rgba(214,58,48,.36); }
 .xmas-page .btn:hover { box-shadow: 0 18px 46px rgba(214,58,48,.44); }
-.xmas-page .eyebrow { color: var(--xmas-green); }
+.xmas-page .eyebrow { color: var(--xmas-green-deep); }
 .xmas-page .eyebrow::before { background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green)); }
 .xmas-page .step-num { background: var(--grad-xmas); }
 .xmas-page .prose .checklist svg { color: var(--xmas-green); }
@@ -501,7 +504,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* Early-bird promo — countdown banner at the top of the Christmas page. */
 .xmas-promo { position: relative; text-align: center; padding: 96px 0 60px; background: radial-gradient(90% 75% at 50% 0%, #eafff4 0%, #fff 65%); overflow: hidden; }
 .xmas-promo .container { position: relative; }
-.xmas-promo-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--r-pill); background: var(--xmas-green); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
+.xmas-promo-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--r-pill); background: var(--xmas-green-deep); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
 .xmas-promo-pill svg { width: 15px; height: 15px; }
 /* Clamp floor raised so the offer headline stays a real focal point on
    phones (the 4.4vw middle term only kicks in on wider screens). */
@@ -523,7 +526,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 .xmas-candy-stripe { height: 8px; background: repeating-linear-gradient(-45deg, var(--xmas-red) 0 16px, #fff 16px 32px, var(--xmas-green) 32px 48px, #fff 48px 64px); }
 .xmas-highlight { position: relative; background: linear-gradient(180deg, #fff6f2 0%, #fff 75%); }
-.xmas-highlight .eyebrow { color: var(--xmas-green); }
+.xmas-highlight .eyebrow { color: var(--xmas-green-deep); }
 .xmas-highlight .eyebrow::before { background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green)); }
 .xmas-highlight h2 { color: var(--xmas-red); }
 .xmas-benefit-sec { position: relative; overflow: hidden; }
@@ -574,7 +577,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 .xmas-modal-garland { width: 100%; height: 46px; margin: -8px 0 10px; }
 .xmas-modal-garland svg { display: block; width: 100%; height: 100%; }
-.xmas-modal-body .eyebrow { color: var(--xmas-green); justify-content: center; }
+.xmas-modal-body .eyebrow { color: var(--xmas-green-deep); justify-content: center; }
 .xmas-modal-body .eyebrow::before { background: linear-gradient(90deg, var(--xmas-red), var(--xmas-green)); }
 .xmas-modal-body h2 { color: var(--xmas-red); }
 .xmas-modal .btn { --btn-bg: var(--grad-xmas); box-shadow: 0 14px 38px rgba(214,58,48,.34); }
@@ -846,7 +849,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 @media (max-width: 640px) {
   .team-grid { grid-template-columns: 1fr; gap: 34px; max-width: 420px; }
 }
-.crumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--slate-400); margin-bottom: 18px; }
+.crumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--slate-500); margin-bottom: 18px; }
 .crumbs a { color: var(--slate-500); }
 .crumbs a:hover { color: var(--blue-600); }
 .crumbs svg { width: 14px; height: 14px; opacity: .5; }
