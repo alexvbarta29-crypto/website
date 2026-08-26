@@ -370,6 +370,48 @@ def _og_image(og_image):
             w, h = _real_size(rel_path)
     return f"{BIZ['domain']}/{rel_path}", w, h
 
+# Self-hosted webfonts: the exact faces the site uses, declared under the same
+# family names, weights and styles the Fontshare API served, so every
+# font-family/font-weight rule in styles.css resolves identically.
+# (family, weight, versioned file). font-display: swap matches the old
+# &display=swap. Filenames carry .v1 so the Netlify /assets/* immutable
+# one-year cache rule can never serve a stale font after an update — bump to
+# .v2 if a file ever changes.
+_FONT_FACES = [
+    ("Cabinet Grotesk", 700, "CabinetGrotesk-Bold.v1.woff2"),
+    ("Cabinet Grotesk", 800, "CabinetGrotesk-Extrabold.v1.woff2"),
+    ("Cabinet Grotesk", 900, "CabinetGrotesk-Black.v1.woff2"),
+    ("General Sans",    400, "GeneralSans-Regular.v1.woff2"),
+    ("General Sans",    500, "GeneralSans-Medium.v1.woff2"),
+    ("General Sans",    600, "GeneralSans-Semibold.v1.woff2"),
+    ("General Sans",    700, "GeneralSans-Bold.v1.woff2"),
+]
+
+# Only the faces the header + opening hero actually render get a preload; the
+# rest load on demand when the browser first needs them. General Sans 600 is
+# desktop-nav-only (the nav links hide at <=1080px), so its preload is gated
+# to viewports where that text exists.
+_FONT_PRELOADS = [
+    ("CabinetGrotesk-Black.v1.woff2", None),        # h1 (weight 900)
+    ("CabinetGrotesk-Extrabold.v1.woff2", None),    # buttons / nav-phone / sticky bar (800)
+    ("GeneralSans-Medium.v1.woff2", None),          # hero lead paragraph (500)
+    ("GeneralSans-Bold.v1.woff2", None),            # Google-badge text (700)
+    ("GeneralSans-Semibold.v1.woff2", "(min-width: 1081px)"),  # desktop nav links (600)
+]
+
+def _fonts_html(root):
+    """Preload links for above-the-fold faces + inline @font-face for all."""
+    links = []
+    for fname, media in _FONT_PRELOADS:
+        m = f' media="{media}"' if media else ""
+        links.append(f'<link rel="preload" as="font" type="font/woff2" '
+                     f'href="{root}assets/fonts/{fname}" crossorigin{m}>')
+    faces = "".join(
+        f"@font-face{{font-family:'{fam}';src:url('{root}assets/fonts/{fname}') "
+        f"format('woff2');font-weight:{wt};font-style:normal;font-display:swap}}"
+        for fam, wt, fname in _FONT_FACES)
+    return "\n".join(links) + f"\n<style>{faces}</style>"
+
 def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
@@ -419,6 +461,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
             "if(document.readyState==='complete'){i();}else{window.addEventListener('load',i);}"
             "})();</script>")
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
+    fonts_html = _fonts_html(root)
     css_href = f"{root}assets/css/styles.min.css?v={ASSET_VER}"
     if inline_critical and CRITICAL_CSS:
         # First paint styled by the inline subset; the full sheet loads
@@ -460,13 +503,13 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <meta name="twitter:title" content="{title}">
 <meta name="twitter:description" content="{desc}">
 <meta name="twitter:image" content="{og_img_url}">
-<!-- Fonts, Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
-<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<!-- Fonts, Cabinet Grotesk (display) + General Sans (body), self-hosted.
+     Official Fontshare WOFF2 files served from assets/fonts/ under the ITF
+     Free Font License v2.0 (assets/fonts/FFL.txt), which permits self-hosting
+     via @font-face. The license forbids modifying the files (subsetting
+     included), so they ship byte-identical to the download. -->
 <link rel="preconnect" href="https://nominatim.openstreetmap.org">
-{trustindex_preconnect}<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap"></noscript>
+{trustindex_preconnect}{fonts_html}
 {css_links}
 <link rel="icon" href="{root}assets/img/favicon.svg?v=2" type="image/svg+xml">
 <link rel="manifest" href="{root}site.webmanifest">

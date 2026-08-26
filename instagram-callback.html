@@ -27,13 +27,18 @@
 <meta name="twitter:title" content="Instagram Connect | Barta Window Washing">
 <meta name="twitter:description" content="Instagram connection utility page.">
 <meta name="twitter:image" content="https://www.bartawindowwashing.com/assets/img/og-cover.png">
-<!-- Fonts, Cabinet Grotesk (display) + General Sans (body) via Fontshare -->
-<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<!-- Fonts, Cabinet Grotesk (display) + General Sans (body), self-hosted.
+     Official Fontshare WOFF2 files served from assets/fonts/ under the ITF
+     Free Font License v2.0 (assets/fonts/FFL.txt), which permits self-hosting
+     via @font-face. The license forbids modifying the files (subsetting
+     included), so they ship byte-identical to the download. -->
 <link rel="preconnect" href="https://nominatim.openstreetmap.org">
-<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap">
-<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=general-sans@400,500,600,700&display=swap"></noscript>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/CabinetGrotesk-Black.v1.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/CabinetGrotesk-Extrabold.v1.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/GeneralSans-Medium.v1.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/GeneralSans-Bold.v1.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/GeneralSans-Semibold.v1.woff2" crossorigin media="(min-width: 1081px)">
+<style>@font-face{font-family:'Cabinet Grotesk';src:url('assets/fonts/CabinetGrotesk-Bold.v1.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}@font-face{font-family:'Cabinet Grotesk';src:url('assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800;font-style:normal;font-display:swap}@font-face{font-family:'Cabinet Grotesk';src:url('assets/fonts/CabinetGrotesk-Black.v1.woff2') format('woff2');font-weight:900;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('assets/fonts/GeneralSans-Regular.v1.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('assets/fonts/GeneralSans-Medium.v1.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('assets/fonts/GeneralSans-Semibold.v1.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('assets/fonts/GeneralSans-Bold.v1.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}</style>
 <link rel="stylesheet" href="assets/css/styles.min.css?v=165b928a">
 <link rel="icon" href="assets/img/favicon.svg?v=2" type="image/svg+xml">
 <link rel="manifest" href="site.webmanifest">

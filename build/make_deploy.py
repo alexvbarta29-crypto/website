@@ -39,7 +39,7 @@ ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redire
 # URLs (the assets/... substring still matches), and data-* attributes used by
 # the Instagram lightbox.
 ASSET_RE = re.compile(
-    r"assets/[A-Za-z0-9_\-./]+?\.(?:jpe?g|png|webp|svg|gif|ico|mp4|css|js|json|webmanifest)",
+    r"assets/[A-Za-z0-9_\-./]+?\.(?:jpe?g|png|webp|svg|gif|ico|mp4|css|js|json|webmanifest|woff2?)",
     re.I)
 
 
@@ -60,6 +60,10 @@ def main():
 
     ship = [p for p in site_html_files()]
     ship += [f for f in ROOT_FILES if os.path.exists(os.path.join(ROOT, f))]
+    # The ITF Free Font License must travel with the self-hosted font files;
+    # no page references it, so the asset scan alone would drop it.
+    if os.path.exists(os.path.join(ROOT, "assets/fonts/FFL.txt")):
+        ship.append("assets/fonts/FFL.txt")
 
     # Fixpoint scan: shipped text files reference assets; referenced .css/.js
     # may reference further assets of their own.
