@@ -1,5 +1,19 @@
 [
   {
+    "id": "17950840314027611",
+    "image": "assets/img/instagram/17950840314027611.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17950840314027611.jpg"
+      }
+    ],
+    "caption": "Nothing better than a BARTA window wash.\ud83e\uddfc",
+    "permalink": "https://www.instagram.com/reel/DcgSvZiReN4/",
+    "timestamp": "2026-08-26T13:15:25+0000"
+  },
+  {
     "id": "18123147766865990",
     "image": "assets/img/instagram/18123147766865990.jpg",
     "type": "VIDEO",
@@ -177,27 +191,5 @@
     "caption": "Just some highlights from the summer. Can\u2019t wait for the fall season! \ud83c\udf41",
     "permalink": "https://www.instagram.com/p/DbVzALvkWf_/",
     "timestamp": "2026-07-28T14:52:03+0000"
-  },
-  {
-    "id": "18105187085130700",
-    "image": "assets/img/instagram/18105187085130700_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18105187085130700_0.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18105187085130700_1.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18105187085130700_2.jpg"
-      }
-    ],
-    "caption": "There\u2019s only one way to clean screens: The XERO Screen Cleaner! \u2728",
-    "permalink": "https://www.instagram.com/p/DbT3PhylAet/",
-    "timestamp": "2026-07-27T20:50:37+0000"
   }
 ]
