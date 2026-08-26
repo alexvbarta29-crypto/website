@@ -43,7 +43,10 @@ picture { display: contents; }
 
   /* Typography — Cabinet Grotesk (display) + General Sans (body) */
   --font-head: "Cabinet Grotesk", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: "General Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* "General Sans Fallback" is a local()-sourced face (declared inline in
+     head) that forces General Sans' vertical metrics, so line boxes don't
+     move by a pixel when the real font arrives after first paint. */
+  --font-body: "General Sans", "General Sans Fallback", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Radius — softer, friendlier */
   --r-sm: 12px;

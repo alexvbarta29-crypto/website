@@ -400,7 +400,16 @@ _FONT_PRELOADS = [
 ]
 
 def _fonts_html(root):
-    """Preload links for above-the-fold faces + inline @font-face for all."""
+    """Preload links for above-the-fold faces + inline @font-face for all.
+
+    Deliberately NOT done here, after measurement: serving the h1's face
+    (Cabinet Grotesk 900) as an inline data: URI. It removes that request
+    from PageSpeed's simulated LCP dependency graph, but the ~27KB of
+    base64 grows every homepage fetch and measurably worsens simulated FCP
+    (+0.3s locally) without improving the stable LCP median — the
+    simulation's "heading render delay" is dominated by the hero image and
+    stylesheet requests that start before the heading's observed paint
+    (which itself happens at FCP, fully styled, ~180ms after TTFB)."""
     links = []
     for fname, media in _FONT_PRELOADS:
         m = f' media="{media}"' if media else ""
@@ -410,6 +419,19 @@ def _fonts_html(root):
         f"@font-face{{font-family:'{fam}';src:url('{root}assets/fonts/{fname}') "
         f"format('woff2');font-weight:{wt};font-style:normal;font-display:swap}}"
         for fam, wt, fname in _FONT_FACES)
+    # Strut stabilizer: while General Sans is still in flight, text set in
+    # --font-body falls back through this face, which borrows whatever local
+    # sans the platform has but FORCES General Sans' exact vertical metrics
+    # (hhea 1010/-240/100 on a 1000 UPM, read from the shipped file). Line
+    # boxes and baselines are then identical before and after the font
+    # arrives, so late-arriving faces can't nudge anything below them — the
+    # hero badge's line strut was moving the h1 by 1px (CLS 0.001) when
+    # GeneralSans-Regular landed after first paint. Widths are deliberately
+    # left alone (no size-adjust): only vertical metrics decide strut and
+    # line-box geometry.
+    faces += ("@font-face{font-family:'General Sans Fallback';"
+              "src:local('Roboto'),local('Helvetica Neue'),local('Arial'),local('DejaVu Sans');"
+              "ascent-override:101%;descent-override:24%;line-gap-override:10%}")
     return "\n".join(links) + f"\n<style>{faces}</style>"
 
 def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False):
