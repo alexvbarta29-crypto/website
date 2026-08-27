@@ -974,7 +974,18 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* ---------- Sticky mobile CTA ---------- */
 /* Same glass as the header — it's the other bar pinned over the page. */
-.sticky-cta { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 90; display: none; gap: 10px; padding: 10px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
+.sticky-cta { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 90; display: none; gap: 10px; padding: 10px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-pill); box-shadow: var(--sh-lg); }
+/* iOS WebKit (Safari and every iOS in-app browser) draws very-large-radius
+   backdrop blurs on fixed elements as a smeared band with a hard edge that
+   trails the bar while scrolling. A conventional frosted recipe — modest
+   blur, slightly more opaque fill — renders cleanly there and looks the
+   same at a glance. Only iOS matches this @supports probe, so Chrome and
+   Android keep the original 90px glass untouched. The safe-area inset
+   above also lifts the bar clear of the home indicator / collapsed
+   Safari toolbar instead of butting against it. */
+@supports (-webkit-touch-callout: none) {
+  .sticky-cta { background: rgba(255,255,255,.82); backdrop-filter: saturate(150%) blur(14px); -webkit-backdrop-filter: saturate(150%) blur(14px); }
+}
 .sticky-cta .btn { flex: 1; padding: 14px; }
 /* .btn-call (the white secondary treatment) is gone with the second button —
    with Call now the only action in the bar it takes the primary brand style,
