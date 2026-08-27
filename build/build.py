@@ -2388,12 +2388,15 @@ _AVIF_Q_OVERRIDES = {("svc-exterior-window-cleaning", 760): 55}
 
 # The homepage hero's AVIF ladder mirrors its webp/jpg widths exactly, so
 # the browser's rung choice (1200w on the PageSpeed profile, 1600w on
-# high-density phones) is unchanged — only the transferred format. q65 for
-# the phone rungs and q60 above were verified indistinguishable from the
-# q88 webp on the technician's face at 1.75x and 2.625x device scale.
+# high-density phones) is unchanged — only the transferred format. Encoded
+# at the encoder's slowest effort (speed 0, see generate_avif_versions);
+# q58 (and q60 for the 1600w high-density rung) were verified against the
+# previous q65/speed-4 encodes in-page at 1.75x and 2.625x device scale on
+# the technician's face, hair, shirt logo, window edges, and background
+# leaves: indistinguishable, ~20% smaller (1200w lands at ~48 KiB).
 _AVIF_HERO_STEM = "hero-home-main"
-_AVIF_HERO_WIDTHS = [(480, 65), (640, 65), (828, 65), (960, 65),
-                     (1200, 65), (1600, 65), (1920, 60), (2560, 60), (3200, 60)]
+_AVIF_HERO_WIDTHS = [(480, 58), (640, 58), (828, 58), (960, 58),
+                     (1200, 58), (1600, 60), (1920, 58), (2560, 58), (3200, 58)]
 
 # Team portraits: served as a bare full-size JPEG before (115 KB for a
 # 422px-wide box). Faces get a small quality margin (webp 82 / avif 65 —
@@ -2431,7 +2434,13 @@ def generate_avif_versions():
             if wd < im.size[0]:
                 im = im.resize((wd, round(im.size[1] * wd / im.size[0])), Image.LANCZOS)
             if fmt == "avif":
-                im.save(out_path, "AVIF", quality=q, speed=4)
+                # Slowest effort for the hero (its files sit on the LCP
+                # critical path, so every KiB counts and encode time is a
+                # one-off build cost); the lazy below-fold tiers keep the
+                # faster setting. No metadata is carried over — the RGB
+                # re-encode writes pixel data only.
+                speed = 0 if _AVIF_HERO_STEM in rel else 4
+                im.save(out_path, "AVIF", quality=q, speed=speed)
             else:
                 im.save(out_path, "WEBP", quality=q, method=6)
             made += 1

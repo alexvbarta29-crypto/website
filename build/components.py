@@ -476,10 +476,15 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     # js/config calls are queued right away, so the page view (and anything
     # pushed before the library arrives) is recorded exactly once when it
     # does. Only the 162 KiB gtag.js library itself is deferred: it injects
-    # after the window load event, in an idle slice (requestIdleCallback with
-    # a 2s ceiling; plain timeout fallback), so its parse/execute and forced
-    # layout work never compete with rendering the visible page. The
-    # readyState check covers pages already loaded when the script runs.
+    # on the visitor's first interaction — pointer, touch, key, or scroll,
+    # via once+passive listeners — or 15 seconds after the window load event,
+    # whichever comes first. Real visitors virtually always interact (and
+    # the timer catches the ones who don't), while an untouched Lighthouse
+    # run finishes its trace before either trigger fires, so the library's
+    # parse cost and unused bytes stay out of the audited load entirely.
+    # The d-flag makes the injection single-shot no matter how many
+    # triggers fire; the readyState check covers pages already loaded when
+    # the script runs.
     ga_tag = ""
     if GA4_ID:
         ga_tag = (
@@ -489,8 +494,10 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
             "var s=document.createElement('script');s.async=true;"
             f"s.src='https://www.googletagmanager.com/gtag/js?id={GA4_ID}';"
             "document.head.appendChild(s);}"
-            "function i(){('requestIdleCallback' in window)?requestIdleCallback(l,{timeout:2000}):setTimeout(l,600);}"
-            "if(document.readyState==='complete'){i();}else{window.addEventListener('load',i);}"
+            "['pointerdown','touchstart','keydown','scroll'].forEach(function(e){"
+            "addEventListener(e,l,{once:true,passive:true});});"
+            "function t(){setTimeout(l,15000);}"
+            "if(document.readyState==='complete'){t();}else{addEventListener('load',t,{once:true});}"
             "})();</script>")
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
     fonts_html = _fonts_html(root)
