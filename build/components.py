@@ -468,8 +468,13 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
         for s in schema:
             schema_blocks += '<script type="application/ld+json">' + json.dumps(s, separators=(",", ":")) + "</script>\n"
     robots = "noindex, follow" if noindex else "index, follow, max-image-preview:large"
-    trustindex_preconnect = ('<link rel="preconnect" href="https://cdn.trustindex.io">\n'
-                              '<link rel="dns-prefetch" href="https://cdn.trustindex.io">\n') if uses_reviews_widget else ""
+    # No permanent third-party preconnects: the Trustindex connection is
+    # opened by main.js when the reviews section comes within ~1200px of the
+    # viewport, and the Nominatim connection when the address field is first
+    # focused — a persistent head preconnect for either just holds an idle
+    # socket through the critical load. uses_reviews_widget is retained for
+    # caller compatibility.
+    trustindex_preconnect = ""
     base_tag = f'<base href="{base_href}">\n' if base_href else ""
     # Google Analytics 4, rendered exactly once per page, from this one
     # shared head(). The dataLayer and gtag() stub exist immediately, and the
@@ -547,7 +552,6 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
      Free Font License v2.0 (assets/fonts/FFL.txt), which permits self-hosting
      via @font-face. The license forbids modifying the files (subsetting
      included), so they ship byte-identical to the download. -->
-<link rel="preconnect" href="https://nominatim.openstreetmap.org">
 {trustindex_preconnect}{fonts_html}
 {css_links}
 <link rel="icon" href="{root}assets/img/favicon.svg?v=2" type="image/svg+xml">

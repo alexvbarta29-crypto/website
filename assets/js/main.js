@@ -8,6 +8,19 @@
   const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* Open a connection to a third-party origin just before it's needed,
+     instead of holding permanent preconnects in the page head. Set-guarded
+     so each origin gets exactly one link no matter how many callers ask. */
+  const preconnected = new Set();
+  const preconnect = (origin) => {
+    if (preconnected.has(origin)) return;
+    preconnected.add(origin);
+    const l = document.createElement("link");
+    l.rel = "preconnect";
+    l.href = origin;
+    document.head.appendChild(l);
+  };
+
   /* ---- Sticky nav shadow on scroll ---- */
   /* A 1px sentinel parked 12px down the document, watched by an
      IntersectionObserver: the moment it scrolls out of the viewport the
@@ -86,31 +99,96 @@
          The curated cards underneath are real, visible HTML from the start —
          this only swaps in the live widget once (and never removes the
          "see all reviews" link, which is static markup either way). ---- */
+  /* Staged in two IntersectionObserver rings around the section:
+     ~1200px out the Trustindex connection opens (DNS+TLS overlap the
+     remaining scroll), ~800px out the loader script injects — so the live
+     widget is typically ready before the section enters the viewport, and
+     nothing third-party ever runs during the initial page load. The local
+     shell (the curated review cards, real quotes with real stars) stays
+     VISIBLE until the live widget has actually rendered content, instead
+     of vanishing the moment the loader is injected: the widget mounts as a
+     zero-height overlay, a ResizeObserver waits for it to produce real
+     height, and only then does it swap in — one write batch, after the
+     observer's post-layout read, so the section never shows a blank gap
+     and never thrashes layout. If the vendor never renders (blocked,
+     offline), the shell simply remains. Each vendor script URL is injected
+     at most once page-wide. */
+  const injectedVendorScripts = new Set();
   $$("[data-lazy-reviews]").forEach((el) => {
     const b64 = el.dataset.widgetB64;
     if (!b64) return;
+    let loaded = false;
     const load = () => {
+      if (loaded) return;
+      loaded = true;
       let html;
       try { html = atob(b64); } catch (err) { return; }
       const temp = document.createElement("div");
       temp.innerHTML = html;
       // innerHTML-inserted <script> tags are inert — recreate each one so
-      // the widget's loader actually executes.
+      // the widget's loader actually executes (skipping any src already
+      // injected by another widget on the page).
       temp.querySelectorAll("script").forEach((old) => {
+        const src = old.getAttribute("src") || "";
+        if (src && injectedVendorScripts.has(src)) { old.remove(); return; }
+        if (src) injectedVendorScripts.add(src);
         const s = document.createElement("script");
         [...old.attributes].forEach((a) => s.setAttribute(a.name, a.value));
         s.textContent = old.textContent;
         old.replaceWith(s);
       });
       const fallback = el.querySelector("[data-reviews-fallback]");
-      if (fallback) fallback.replaceWith(temp);
-      else el.insertBefore(temp, el.firstChild);
+      if (!fallback) { el.insertBefore(temp, el.firstChild); return; }
+      // Mount the widget invisibly above the shell; reveal only once it has
+      // real rendered height AND the section is outside the viewport, so
+      // the shell->widget height change can never register as a layout
+      // shift or happen in front of the visitor. In the normal flow the
+      // widget finishes rendering while the section is still ~hundreds of
+      // px below the fold and swaps immediately; a visitor who outruns it
+      // keeps reading the shell (real quotes) and the swap completes the
+      // moment the section scrolls back out of view.
+      el.style.position = "relative";
+      temp.style.cssText = "position:absolute;top:0;left:0;right:0;opacity:0;pointer-events:none";
+      el.insertBefore(temp, fallback);
+      let ready = false, revealed = false;
+      // Swapping is only shift-proof while the section sits fully BELOW the
+      // viewport: resizing content above (or inside) the view moves what
+      // the visitor is reading. A visitor who outran the widget keeps the
+      // shell until the section drops below the fold again; if it never
+      // does, the shell (real quotes) simply stays.
+      const belowViewport = () => el.getBoundingClientRect().top > innerHeight + 100;
+      const reveal = () => {
+        if (revealed || !fallback.isConnected) return;
+        revealed = true;
+        fallback.remove();
+        temp.style.cssText = "";
+      };
+      const maybeReveal = () => {
+        if (!ready || revealed) return;
+        if (belowViewport()) reveal();
+        else addEventListener("scroll", function onS() {
+          if (revealed) { removeEventListener("scroll", onS); return; }
+          if (belowViewport()) { removeEventListener("scroll", onS); reveal(); }
+        }, { passive: true });
+      };
+      if ("ResizeObserver" in window) {
+        const ro = new ResizeObserver(() => {
+          if (temp.offsetHeight > 60) { ro.disconnect(); ready = true; maybeReveal(); }
+        });
+        ro.observe(temp);
+      } else {
+        setTimeout(() => { if (temp.offsetHeight > 60) { ready = true; maybeReveal(); } }, 2500);
+      }
     };
     if ("IntersectionObserver" in window) {
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((en) => { if (en.isIntersecting) { load(); io.unobserve(en.target); } });
-      }, { rootMargin: "600px 0px" });
-      io.observe(el);
+      const ioConnect = new IntersectionObserver((entries) => {
+        entries.forEach((en) => { if (en.isIntersecting) { preconnect("https://cdn.trustindex.io"); ioConnect.unobserve(en.target); } });
+      }, { rootMargin: "1200px 0px" });
+      ioConnect.observe(el);
+      const ioLoad = new IntersectionObserver((entries) => {
+        entries.forEach((en) => { if (en.isIntersecting) { load(); ioLoad.unobserve(en.target); } });
+      }, { rootMargin: "800px 0px" });
+      ioLoad.observe(el);
     } else {
       load();
     }
@@ -421,6 +499,11 @@
          suggestion's structured address also fills those in, confirming
          the town is a real, geocodable place. ---- */
   $$("input[data-address-input]").forEach((input) => {
+    // Open the Nominatim connection on first focus — comfortably ahead of
+    // the first keystroke's request. It used to sit permanently in every
+    // page's head, holding an idle socket through the critical load for a
+    // service only this field ever contacts.
+    input.addEventListener("focus", () => preconnect("https://nominatim.openstreetmap.org"), { once: true });
     const wrap = input.closest(".field") || input.parentElement;
     const panel = input.closest(".wizard-panel") || input.closest("form") || wrap;
     const list = wrap.querySelector("[data-address-list]");
