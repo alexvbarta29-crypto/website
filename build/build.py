@@ -237,18 +237,18 @@ def build_home():
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
         og_image="assets/img/hero-home-main.jpg", inline_critical=True)
     html += C.nav(depth)
-    # sizes describes the img element's LAYOUT box — 100vw, since the hero
-    # img is absolutely inset over the section. The box is object-fit: cover
-    # over 100svh, so on a portrait phone the photo is scaled to ~viewport
-    # height x 1.55 and side-cropped; a previous iteration encoded that
-    # cover-scaled width here as 340vw, which bought extra sharpness in the
-    # visible crop at the cost of a ~318 KiB high-priority download (the
-    # main remaining LCP dependency). Standard density selection now picks
-    # ~828w on a typical 412px phone (~74 KiB); the wide tiers remain in the
-    # srcset for large/high-DPR screens.
+    # The hero img's layout box is 100vw, but it renders object-fit: cover
+    # over 100svh, so a portrait phone shows only the middle ~third of the
+    # file's width scaled to ~viewport-height x 1.55 (~340vw). Declaring the
+    # full cover width made phones pull the 2560/3200w tiers (~320-520 KiB,
+    # the dominant LCP request); declaring the bare 100vw box picked 828w
+    # and the owner found the visible crop noticeably blurry. 135vw is the
+    # tuned midpoint: a 412px phone selects 1200w at 1.75x density and
+    # 1600w at 2.6-3x — sharp at normal viewing (~1.4-1.9x upscale in the
+    # visible slice) for a third of the old bytes. Desktop stays 100vw.
     hero_picture = _hero_picture_html("", "assets/img/hero-home-main.jpg", img_class="hero-bg-img",
                                        alt="A Barta Window Washing technician squeegeeing a home's exterior windows",
-                                       sizes="100vw")
+                                       sizes="(max-width: 760px) 135vw, 100vw")
     html += f"""
 <main id="main">
   <!-- HERO -->
@@ -2150,7 +2150,12 @@ def generate_webp_versions():
         print("  (Pillow not available, skipping WebP generation)")
         return
     import re
-    _is_derived = lambda p: re.search(r"-(640|1200|1920)w\.jpg$", p)
+    # Any -<N>w.jpg is a generated derivative (source photos never carry the
+    # suffix). The old list named only 640/1200/1920, so tiers outside it
+    # (2560/3200, the card tiers, 480/828/960/1600) had their spec-quality
+    # webp silently overwritten a build later with a q80 re-encode of the
+    # derivative JPEG — the double-lossy pass described below.
+    _is_derived = lambda p: re.search(r"-\d+w\.jpg$", p)
     insta_jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")) if not _is_derived(p)]
     # Must exclude the same -640w/-1200w/-1920w derivatives here too, those
     # are generate_hero_variants()'s output, re-encoded from the true
