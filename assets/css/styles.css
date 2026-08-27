@@ -261,6 +261,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .drawer-group[open] > summary svg { transform: rotate(180deg); }
 .drawer-group .sub { display: flex; flex-direction: column; padding-left: 10px; border-left: 2px solid var(--mist); margin: 2px 14px 4px; }
 .drawer-group .sub a { font-weight: 500; font-size: .9rem; padding: 8px 10px; }
+/* Client Portal: an external account link, not a page of this site, so it
+   sits after the real navigation, set apart by the same hairline the
+   services sub-list uses and kept quieter (sub-list weight/size) than the
+   primary rows. min-height keeps the row a full-size touch target. */
+.drawer-nav .drawer-portal { margin-top: 12px; position: relative; font-weight: 500; font-size: .92rem;
+  min-height: 44px; display: flex; align-items: center; }
+.drawer-nav .drawer-portal::before { content: ""; position: absolute; top: -7px; left: 14px; right: 14px;
+  height: 1px; background: var(--mist); }
 .drawer-foot { margin-top: auto; padding-top: 20px; display: flex; flex-direction: column; gap: 10px; }
 
 /* ---------- Hero ---------- */
@@ -1008,6 +1016,12 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .footer .footer-col-title { font-family: var(--font-head); color: #fff; font-size: 1rem;
   margin-bottom: 16px; font-weight: 700; line-height: normal; letter-spacing: normal; }
 .footer-col ul { display: grid; gap: 10px; font-size: .92rem; }
+/* The Client Portal link keeps the column's exact typography; the padding/
+   negative-margin pair only enlarges the tap area to 44px without moving a
+   pixel of the rendered layout. Downward only: it is the column's last item
+   (nothing but empty column space below), while padding upward would overlap
+   the Sitemap link above and flunk its target-size audit. */
+.footer-col .footer-portal { display: inline-block; padding-bottom: 25px; margin-bottom: -25px; }
 .footer-social { display: flex; gap: 10px; margin-top: 18px; }
 .footer-social a { width: 40px; height: 40px; border-radius: var(--r-pill); background: rgba(255,255,255,.08); display: grid; place-items: center; transition: background .25s, transform .25s var(--ease); }
 .footer-social a:hover { transform: translateY(-3px); }

@@ -616,6 +616,7 @@ def nav(depth=0):
       <a href="{root}{xmas_target}">Christmas Light Installation</a>
       <a href="{root}gallery.html">Gallery</a>
       <a href="{root}reviews.html">Reviews</a>
+      <a class="drawer-portal" href="https://bartawindowwashing.portal.getrotor.com" target="_blank" rel="noopener noreferrer">Client Portal<span class="sr-only"> (opens in a new tab)</span></a>
     </nav>
     <div class="drawer-foot">
       <a class="btn btn-block" href="{root}get-quote.html">Get My Free Quote</a>
@@ -674,6 +675,7 @@ def footer(depth=0):
           <li><a href="{root}terms.html">Terms &amp; Conditions</a></li>
           <li><a href="{root}accessibility.html">Accessibility</a></li>
           <li><a href="{root}sitemap.html">Sitemap</a></li>
+          <li><a class="footer-portal" href="https://bartawindowwashing.portal.getrotor.com" target="_blank" rel="noopener noreferrer">Client Portal<span class="sr-only"> (opens in a new tab)</span></a></li>
         </ul>
       </div>
     </div>
