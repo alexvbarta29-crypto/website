@@ -99,20 +99,24 @@
          The curated cards underneath are real, visible HTML from the start —
          this only swaps in the live widget once (and never removes the
          "see all reviews" link, which is static markup either way). ---- */
-  /* Staged in two IntersectionObserver rings around the section:
-     ~1200px out the Trustindex connection opens (DNS+TLS overlap the
-     remaining scroll), ~800px out the loader script injects — so the live
-     widget is typically ready before the section enters the viewport, and
-     nothing third-party ever runs during the initial page load. The local
-     shell (the curated review cards, real quotes with real stars) stays
-     VISIBLE until the live widget has actually rendered content, instead
-     of vanishing the moment the loader is injected: the widget mounts as a
-     zero-height overlay, a ResizeObserver waits for it to produce real
-     height, and only then does it swap in — one write batch, after the
-     observer's post-layout read, so the section never shows a blank gap
-     and never thrashes layout. If the vendor never renders (blocked,
-     offline), the shell simply remains. Each vendor script URL is injected
-     at most once page-wide. */
+  /* Staged so the live widget is normally ready well before the visitor
+     arrives, while nothing third-party runs during an untouched initial
+     load. Measured section distances from the opening viewport: ~4480px on
+     a 412px phone, ~3200px on a 1400px desktop. The Trustindex CONNECTION
+     opens on the visitor's first meaningful scroll (~4400/3100px out —
+     a plain 4000px observer ring would fire during the untouched desktop
+     load, so the scroll gate is the safe early trigger; the section is
+     unreachable without scrolling, so nothing is lost). The loader SCRIPT
+     injects from a 2500px observer ring, which sits outside both untouched
+     viewports, and also fires immediately when a visitor lands mid-page
+     (refresh near the section, back-navigation scroll restoration). The
+     local shell stays VISIBLE until the live widget has actually rendered:
+     the widget mounts as an invisible overlay, a ResizeObserver waits for
+     real height, and the swap runs only while the section is fully below
+     the viewport, so it can never blank the section or shift anything the
+     visitor is reading. If the vendor never renders, the shell remains
+     permanently. Each vendor script URL is injected at most once
+     page-wide. */
   const injectedVendorScripts = new Set();
   $$("[data-lazy-reviews]").forEach((el) => {
     const b64 = el.dataset.widgetB64;
@@ -181,13 +185,35 @@
       }
     };
     if ("IntersectionObserver" in window) {
-      const ioConnect = new IntersectionObserver((entries) => {
-        entries.forEach((en) => { if (en.isIntersecting) { preconnect("https://cdn.trustindex.io"); ioConnect.unobserve(en.target); } });
-      }, { rootMargin: "1200px 0px" });
-      ioConnect.observe(el);
+      // Connection + wide script ring arm on the first meaningful scroll
+      // (never during an untouched load — Lighthouse and first paint see no
+      // third-party work; the section is unreachable without scrolling, so
+      // nothing is lost). Covers scroll restoration too: restored positions
+      // either fire a scroll event or leave scrollY non-zero at load.
+      const armed = { wide: false };
+      const onFirstScroll = () => {
+        preconnect("https://cdn.trustindex.io");
+        if (armed.wide) return;
+        armed.wide = true;
+        // 3800px ring: measured under slow-4G at 1200px/s this puts the
+        // fully rendered widget in place >1s before the section enters the
+        // viewport. Only exists after a scroll, so it can't fire during an
+        // untouched load even on the 1400px desktop where the section sits
+        // ~3200px out.
+        const ioWide = new IntersectionObserver((entries) => {
+          entries.forEach((en) => { if (en.isIntersecting) { load(); ioWide.unobserve(en.target); } });
+        }, { rootMargin: "3800px 0px" });
+        ioWide.observe(el);
+      };
+      addEventListener("scroll", onFirstScroll, { once: true, passive: true });
+      addEventListener("load", () => { if (scrollY > 0) onFirstScroll(); }, { once: true });
+      // Base 2500px ring — outside both untouched opening viewports
+      // (section sits ~4480px out on mobile, ~3200px on desktop) — fires
+      // instantly when a visitor lands mid-page near the section without a
+      // scroll event. load() is single-shot, so overlapping rings are safe.
       const ioLoad = new IntersectionObserver((entries) => {
-        entries.forEach((en) => { if (en.isIntersecting) { load(); ioLoad.unobserve(en.target); } });
-      }, { rootMargin: "800px 0px" });
+        entries.forEach((en) => { if (en.isIntersecting) { preconnect("https://cdn.trustindex.io"); load(); ioLoad.unobserve(en.target); } });
+      }, { rootMargin: "2500px 0px" });
       ioLoad.observe(el);
     } else {
       load();
