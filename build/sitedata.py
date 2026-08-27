@@ -921,6 +921,40 @@ IMAGE_ALT = {
     "assets/img/svc-mop-window.jpg": "Applying cleaning solution to a window with a T-bar mop",
     "assets/img/svc-detail-frame.jpg": "Hand-detailing a window frame with a microfiber cloth",
     "assets/img/hero-home.jpg": "The branded Barta Window Washing (BWW) service van",
+    # --- Gallery-only photos below this line. -------------------------------
+    # Real job photos that previously sat in the repo unreferenced: four
+    # straight-from-camera originals plus the photos from Instagram posts old
+    # enough to have rotated out of the 10-post feed manifest (the sync
+    # downloads every post's photos but the carousel/gallery only read the
+    # manifest, so once a post aged out its photos silently vanished from the
+    # site). Listing them here puts each one in the gallery permanently and
+    # hands them to generate_webp_versions for right-sized derivatives.
+    # Every entry was checked against the rest of the site by perceptual hash
+    # AND by eye; photos that turned out to be the same shot as an existing
+    # site image (e.g. the uncropped originals of svc-hand-scrubbing,
+    # svc-interior-window-cleaning and svc-detail-frame that also live in
+    # assets/img/instagram/) are deliberately NOT listed.
+    "assets/img/3P8A8136.JPEG": "Technician scrubbing an exterior window, his reflection caught in the freshly wetted glass",
+    "assets/img/3P8A8143.JPEG": "Technician hand-wiping the upper corner of a tall exterior window while a teammate works behind him",
+    "assets/img/3P8A7912.JPEG": "Technician with microfiber cloths in hand on a covered porch, ready to detail the next window",
+    "assets/img/DSC02797.JPG": "Technician raising a water-fed pole to clean windows beneath a mature shade tree",
+    "assets/img/instagram/17870581794546118_0.jpg": "Technician cleaning second-story windows from the ground using a water-fed pole",
+    "assets/img/instagram/17870581794546118_1.jpg": "Technician looking up while guiding a water-fed pole brush toward a home's upper windows",
+    "assets/img/instagram/17870581794546118_2.jpg": "Water-fed pole brush scrubbing an upper pane, rinse water sheeting down the glass",
+    "assets/img/instagram/17870581794546118_3.jpg": "Technician reaching the top windows of a stucco home's corner with a water-fed pole",
+    "assets/img/instagram/17870581794546118_4.jpg": "Technician cleaning around an opened window sash from inside the home",
+    "assets/img/instagram/17870581794546118_5.jpg": "Technician rinsing a high window beneath an overhanging oak branch",
+    "assets/img/instagram/17870581794546118_6.jpg": "Close-up of a water-fed pole brush head working across leafy reflected glass",
+    "assets/img/instagram/18001854047986368_0.jpg": "Technician setting down buckets beside the Barta Window Washing van on a rural road",
+    "assets/img/instagram/18001854047986368_3.jpg": "Technician wiping down a window's edge with a blue microfiber cloth after squeegeeing",
+    "assets/img/instagram/18105187085130700_1.jpg": "Row of freshly cleaned black-framed windows reflecting the lake and trees",
+    "assets/img/instagram/18143533390535660_0.jpg": "Barta Window Washing van arriving on the paver driveway of a two-story home",
+    "assets/img/instagram/18143533390535660_1.jpg": "Technician rinsing a tall vinyl-sided gable wall from the back lawn",
+    "assets/img/instagram/18143533390535660_2.jpg": "Technician on a ladder cleaning lakeside sunroom windows",
+    "assets/img/instagram/18144547531542050_0.jpg": "Extension ladder staged against a tall home for upper-window cleaning",
+    "assets/img/instagram/18144547531542050_1.jpg": "Brass-channel squeegee clearing suds from a textured privacy-glass window",
+    "assets/img/instagram/18144547531542050_2.jpg": "View over a backyard pool through a just-cleaned open window",
+    "assets/img/instagram/18461203987113057.jpg": "Two Barta Window Washing crew members on a pickup tailgate flanked by American flags",
 }
 
 # ---------------------------------------------------------------------------
