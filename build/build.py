@@ -924,8 +924,24 @@ def _team_cards(name_tag="h2"):
     out = ""
     for i, (name, role, _initials, photo, _bio) in enumerate(TEAM):
         w, h = _img_size(photo)
+        # AVIF/WebP tiers sized to the card's real box (<=422px CSS, one
+        # column under 640px), with the untouched original JPEG as the
+        # universal fallback. Attribute set is identical to the old bare
+        # <img> so nothing about layout, laziness, or a11y changes.
+        stem = photo.rsplit(".", 1)[0]
+        srcs = ""
+        for fmt in ("avif", "webp"):
+            tiers = [wd for wd in (480, 700)
+                     if os.path.exists(os.path.join(ROOT, f"{stem}-{wd}w.{fmt}"))]
+            if tiers:
+                srcset = ", ".join(f"{stem}-{wd}w.{fmt} {wd}w" for wd in tiers)
+                srcs += f'<source type="image/{fmt}" srcset="{srcset}" sizes="(max-width: 640px) 92vw, 422px">'
+        # display:contents inline because the img,picture,svg display:block
+        # reset outranks the stylesheet's picture{display:contents} — as a
+        # block the wrapper breaks the img's height:100% chain and shifts
+        # the object-position crop by a few pixels.
         out += f"""<div class="team-card reveal" data-delay="{i%3}">
-        <div class="team-photo"><img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" loading="lazy" decoding="async"></div>
+        <div class="team-photo"><picture style="display:contents">{srcs}<img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" loading="lazy" decoding="async"></picture></div>
         <{name_tag}>{name}</{name_tag}></div>"""
     return out
 
@@ -2340,6 +2356,63 @@ def generate_hero_variants():
 
 OG_W, OG_H = 1200, 630
 
+# The six service-card photos Lighthouse flags for compression on the
+# homepage grid get an AVIF ladder alongside webp/jpg. AVIF at these
+# qualities measured 25-40% smaller than the equivalent single-pass webp and
+# was visually indistinguishable at displayed size (checked on the screen
+# mesh lettering, solar panel grid, siding/window lines, and jacket logo).
+# All tiers are cut from the full-resolution original, never from an
+# already-compressed derivative. picture() only emits AVIF for stems that
+# have these files, so nothing else changes delivery.
+_AVIF_CARD_STEMS = [
+    "svc-exterior-window-cleaning", "svc-interior-window-cleaning",
+    "svc-screen-cleaning-services", "svc-solar-panel-cleaning",
+    "svc-pressure-washing", "svc-soft-washing",
+]
+_AVIF_CARD_WIDTHS = [(400, 55), (640, 60), (760, 60), (1200, 60)]
+
+# Team portraits: served as a bare full-size JPEG before (115 KB for a
+# 422px-wide box). Faces get a small quality margin (webp 82 / avif 65 —
+# verified indistinguishable from the JPEG original side by side). The 700w
+# tier IS the source's native width; high-DPR phones display ~970 device px,
+# so they were upscaling before and still are — no new pixels exist.
+_TEAM_TIER_SOURCES = ["assets/img/team-alex.jpg", "assets/img/team-jacob.jpg"]
+_TEAM_TIER_SPECS = [(480, "webp", 82), (480, "avif", 65),
+                    (700, "webp", 82), (700, "avif", 65)]
+
+def generate_avif_versions():
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  (Pillow not available, skipping AVIF generation)")
+        return
+    made = 0
+    jobs = [(f"assets/img/{stem}.jpg", wd, "avif", q)
+            for stem in _AVIF_CARD_STEMS for wd, q in _AVIF_CARD_WIDTHS]
+    jobs += [(src, wd, fmt, q) for src in _TEAM_TIER_SOURCES
+             for wd, fmt, q in _TEAM_TIER_SPECS]
+    for rel, wd, fmt, q in jobs:
+        src_path = os.path.join(ROOT, rel)
+        if not os.path.exists(src_path):
+            print(f"  (avif tier skipped, missing source {rel})")
+            continue
+        out_path = os.path.join(ROOT, f"{rel.rsplit('.', 1)[0]}-{wd}w.{fmt}")
+        if os.path.exists(out_path) and os.path.getmtime(out_path) >= os.path.getmtime(src_path):
+            continue
+        try:
+            im = Image.open(src_path).convert("RGB")
+            if wd < im.size[0]:
+                im = im.resize((wd, round(im.size[1] * wd / im.size[0])), Image.LANCZOS)
+            if fmt == "avif":
+                im.save(out_path, "AVIF", quality=q, speed=4)
+            else:
+                im.save(out_path, "WEBP", quality=q, method=6)
+            made += 1
+        except Exception as e:
+            print(f"  (tier skipped for {out_path}: {e})")
+    if made:
+        print(f"  {made} avif/team tier(s) generated")
+
 def generate_og_images():
     """A 1200x630 share card for every photo used as an og:image.
 
@@ -2389,6 +2462,7 @@ def generate_og_images():
 def main():
     generate_webp_versions()
     generate_hero_variants()
+    generate_avif_versions()
     generate_og_images()
     minify_assets()
     C.ASSET_VER = _asset_version()

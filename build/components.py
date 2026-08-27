@@ -337,7 +337,17 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
             if os.path.exists(os.path.join(_ROOT, f"{stem}-{wd}w.webp")))
         webp_srcset = ", ".join(f"{root}{stem}-{wd}w.webp {wd}w" for wd in widths)
         jpg_srcset = ", ".join(f"{root}{stem}-{wd}w.jpg {wd}w" for wd in widths)
-        return (f'<picture>'
+        # AVIF rides in front when build.generate_avif_versions() has cut
+        # tiers for this stem — only widths that actually exist as .avif are
+        # offered, and the generator produces the full ladder, so whichever
+        # width the sizes math lands on has an AVIF candidate.
+        avif_widths = [wd for wd in widths
+                       if os.path.exists(os.path.join(_ROOT, f"{stem}-{wd}w.avif"))]
+        avif_source = ""
+        if avif_widths:
+            avif_srcset = ", ".join(f"{root}{stem}-{wd}w.avif {wd}w" for wd in avif_widths)
+            avif_source = f'<source type="image/avif" srcset="{avif_srcset}" sizes="{sizes_val}">'
+        return (f'<picture>{avif_source}'
                 f'<source type="image/webp" srcset="{webp_srcset}" sizes="{sizes_val}">'
                 f'<img class="{img_class}" src="{root}{stem}-1200w.jpg" '
                 f'srcset="{jpg_srcset}" sizes="{sizes_val}" '

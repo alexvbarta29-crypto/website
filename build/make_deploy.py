@@ -39,7 +39,7 @@ ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redire
 # URLs (the assets/... substring still matches), and data-* attributes used by
 # the Instagram lightbox.
 ASSET_RE = re.compile(
-    r"assets/[A-Za-z0-9_\-./]+?\.(?:jpe?g|png|webp|svg|gif|ico|mp4|css|js|json|webmanifest|woff2?)",
+    r"assets/[A-Za-z0-9_\-./]+?\.(?:jpe?g|png|webp|avif|svg|gif|ico|mp4|css|js|json|webmanifest|woff2?)",
     re.I)
 
 
