@@ -237,14 +237,18 @@ def build_home():
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
         og_image="assets/img/hero-home-main.jpg", inline_critical=True)
     html += C.nav(depth)
-    # The hero is object-fit: cover over a 100svh section, so on a portrait
-    # phone the wide (1.55:1) photo is scaled to the screen's HEIGHT and its
-    # rendered width is ~viewport-height x 1.55 — roughly 340vw, not 100vw.
-    # Declaring the honest size makes phones fetch the large tier instead of
-    # a 1200w file stretched ~3x (which is exactly how the hero went soft).
+    # sizes describes the img element's LAYOUT box — 100vw, since the hero
+    # img is absolutely inset over the section. The box is object-fit: cover
+    # over 100svh, so on a portrait phone the photo is scaled to ~viewport
+    # height x 1.55 and side-cropped; a previous iteration encoded that
+    # cover-scaled width here as 340vw, which bought extra sharpness in the
+    # visible crop at the cost of a ~318 KiB high-priority download (the
+    # main remaining LCP dependency). Standard density selection now picks
+    # ~828w on a typical 412px phone (~74 KiB); the wide tiers remain in the
+    # srcset for large/high-DPR screens.
     hero_picture = _hero_picture_html("", "assets/img/hero-home-main.jpg", img_class="hero-bg-img",
                                        alt="A Barta Window Washing technician squeegeeing a home's exterior windows",
-                                       sizes="(max-width: 760px) 340vw, 100vw")
+                                       sizes="100vw")
     html += f"""
 <main id="main">
   <!-- HERO -->
@@ -2196,7 +2200,12 @@ _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 _HERO_TOP_Q_PATH = "assets/img/hero-home-main.jpg"
 _HERO_TOP_Q_SPECS = [(3200, "webp", 84), (3200, "jpg", 93),
                      (2560, "webp", 84), (2560, "jpg", 92), (1920, "webp", 88), (1920, "jpg", 92),
-                     (1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 86), (640, "jpg", 90)]
+                     (1600, "webp", 88), (1600, "jpg", 92),
+                     (1200, "webp", 88), (1200, "jpg", 92),
+                     (960, "webp", 86), (960, "jpg", 90),
+                     (828, "webp", 86), (828, "jpg", 90),
+                     (640, "webp", 86), (640, "jpg", 90),
+                     (480, "webp", 86), (480, "jpg", 90)]
 
 # Service photos double as homepage grid cards, which render far smaller than
 # the 640w tier (a phone's two-column card is ~350 device px wide, a featured
