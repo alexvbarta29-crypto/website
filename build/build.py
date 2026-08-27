@@ -131,9 +131,19 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
         if os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.webp")))
     webp_srcset = ", ".join(f"{root}{stem}-{w}w.webp {w}w" for w in widths)
     jpg_srcset = ", ".join(f"{root}{stem}-{w}w.jpg {w}w" for w in widths)
+    # AVIF leads when generate_avif_versions() has cut the ladder for this
+    # stem; the same widths and sizes keep the browser's rung choice
+    # identical, only the format (and bytes) change. WebP and JPG remain
+    # untouched behind it as fallbacks.
+    avif_widths = [w for w in widths
+                   if os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.avif"))]
+    avif_source = ""
+    if avif_widths:
+        avif_srcset = ", ".join(f"{root}{stem}-{w}w.avif {w}w" for w in avif_widths)
+        avif_source = f'<source type="image/avif" srcset="{avif_srcset}" sizes="{sizes}">'
     default_w = f"{widths[-1]}w"
     w_img, h_img = _img_size(f"{stem}-{default_w}.jpg")
-    return (f'<picture>'
+    return (f'<picture>{avif_source}'
             f'<source type="image/webp" srcset="{webp_srcset}" sizes="{sizes}">'
             f'<img class="{img_class}" src="{root}{stem}-{default_w}.jpg" '
             f'srcset="{jpg_srcset}" sizes="{sizes}" '
@@ -2368,8 +2378,22 @@ _AVIF_CARD_STEMS = [
     "svc-exterior-window-cleaning", "svc-interior-window-cleaning",
     "svc-screen-cleaning-services", "svc-solar-panel-cleaning",
     "svc-pressure-washing", "svc-soft-washing",
+    "svc-commercial-cleaning", "xmas-lights-stone-home",
 ]
 _AVIF_CARD_WIDTHS = [(400, 55), (640, 60), (760, 60), (1200, 60)]
+# Per-file quality overrides where the default still drew a PageSpeed
+# compression flag AND a lower setting survived the visual check at
+# displayed size. Anything not listed keeps the default above.
+_AVIF_Q_OVERRIDES = {("svc-exterior-window-cleaning", 760): 55}
+
+# The homepage hero's AVIF ladder mirrors its webp/jpg widths exactly, so
+# the browser's rung choice (1200w on the PageSpeed profile, 1600w on
+# high-density phones) is unchanged — only the transferred format. q65 for
+# the phone rungs and q60 above were verified indistinguishable from the
+# q88 webp on the technician's face at 1.75x and 2.625x device scale.
+_AVIF_HERO_STEM = "hero-home-main"
+_AVIF_HERO_WIDTHS = [(480, 65), (640, 65), (828, 65), (960, 65),
+                     (1200, 65), (1600, 65), (1920, 60), (2560, 60), (3200, 60)]
 
 # Team portraits: served as a bare full-size JPEG before (115 KB for a
 # 422px-wide box). Faces get a small quality margin (webp 82 / avif 65 —
@@ -2387,8 +2411,11 @@ def generate_avif_versions():
         print("  (Pillow not available, skipping AVIF generation)")
         return
     made = 0
-    jobs = [(f"assets/img/{stem}.jpg", wd, "avif", q)
+    jobs = [(f"assets/img/{stem}.jpg", wd, "avif",
+             _AVIF_Q_OVERRIDES.get((stem, wd), q))
             for stem in _AVIF_CARD_STEMS for wd, q in _AVIF_CARD_WIDTHS]
+    jobs += [(f"assets/img/{_AVIF_HERO_STEM}.jpg", wd, "avif", q)
+             for wd, q in _AVIF_HERO_WIDTHS]
     jobs += [(src, wd, fmt, q) for src in _TEAM_TIER_SOURCES
              for wd, fmt, q in _TEAM_TIER_SPECS]
     for rel, wd, fmt, q in jobs:
