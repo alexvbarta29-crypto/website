@@ -253,12 +253,12 @@
   });
 
   /* ---- Christmas early-bird countdown ----
-         Ticks down to December 1st in the visitor's own timezone. The build
+         Ticks down to October 4th in the visitor's own timezone. The build
          seeds the numbers server-side so first paint is already correct;
          this only keeps them live. After the deadline passes, the target
-         rolls to next year's December 1st — the offer is seasonal and the
-         banner text ("Deal Ends December 1st") stays true either way, so
-         the timer never sits at zero for eleven months. ---- */
+         rolls to next year's October 4th — the offer is seasonal and the
+         banner text ("Deal Ends October 4th") stays true either way, so
+         the timer never sits at zero for the rest of the year. ---- */
   const cdown = $("[data-countdown]");
   if (cdown) {
     const cd = (k) => $('[data-cd="' + k + '"]', cdown);
@@ -266,8 +266,8 @@
     const pad = (n) => String(n).padStart(2, "0");
     const tick = () => {
       const now = new Date();
-      let t = new Date(now.getFullYear(), 11, 1);
-      if (t <= now) t = new Date(now.getFullYear() + 1, 11, 1);
+      let t = new Date(now.getFullYear(), 9, 4);
+      if (t <= now) t = new Date(now.getFullYear() + 1, 9, 4);
       const secs = Math.max(0, Math.floor((t - now) / 1000));
       els.d.textContent = pad(Math.floor(secs / 86400));
       els.h.textContent = pad(Math.floor(secs / 3600) % 24);
