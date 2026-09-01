@@ -741,7 +741,8 @@ def build_service(svc):
     </div>
   </section>
 
-  {C.cta_band(depth, heading=f"Ready for spotless results?", text=svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta.")}
+  {C.cta_band(depth, heading=f"Ready for spotless results?", text=svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta.",
+              **({"image": "assets/img/DSC03257.jpg", "image_pos": "25%"} if is_xmas else {}))}
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
