@@ -935,7 +935,9 @@ IMAGE_ALT = {
     # svc-interior-window-cleaning and svc-detail-frame that also live in
     # assets/img/instagram/) are deliberately NOT listed.
     "assets/img/3P8A8136.JPEG": "Technician scrubbing an exterior window, his reflection caught in the freshly wetted glass",
-    "assets/img/3P8A8143.JPEG": "Technician hand-wiping the upper corner of a tall exterior window while a teammate works behind him",
+    # 3P8A8143.JPEG (same shoot, technician reaching to the window top) is
+    # deliberately NOT listed — the owner asked for it to stay out of the
+    # gallery (too similar to the shot above, 2026-09).
     "assets/img/3P8A7912.JPEG": "Technician with microfiber cloths in hand on a covered porch, ready to detail the next window",
     "assets/img/DSC02797.JPG": "Technician raising a water-fed pole to clean windows beneath a mature shade tree",
     "assets/img/instagram/17870581794546118_0.jpg": "Technician cleaning second-story windows from the ground using a water-fed pole",
