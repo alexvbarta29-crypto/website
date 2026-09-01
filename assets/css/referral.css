@@ -1,0 +1,202 @@
+/* =====================================================================
+   Barta Window Washing — Referral program (refer.html + referred.html)
+   Page-specific rules only. Tokens, buttons, fields, cards, stat tiles,
+   the FAQ and the success/fallback panels all come from styles.css; this
+   sheet loads after it, on these two pages only (docs/REFERRAL-PROGRAM.md).
+   ===================================================================== */
+
+/* ---------- Hero: the offer said once in words, once in numbers ---------- */
+.ref-hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(30px, 4vw, 60px); align-items: center; }
+/* Each sentence of the "Give $X. Get $Y." headline is its own span and
+   stays whole, so it breaks between the sentences or not at all, never
+   with the second amount orphaned on its own line. */
+.ref-hero h1 span { white-space: nowrap; }
+.ref-hero .phero-actions { margin-top: 30px; }
+/* Two halves of one ticket: the friend's side on white, the customer's on
+   the deep gradient, so the two amounts read as a pair rather than a list. */
+.ref-offer { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: var(--r-xl); border: 1px solid var(--line); background: #fff; box-shadow: var(--sh-lg); }
+.ref-offer-half { position: relative; display: flex; flex-direction: column; gap: 8px; padding: clamp(28px, 3.6vw, 44px) clamp(20px, 2.6vw, 32px); text-align: center; }
+.ref-offer-half--you { background: var(--grad-deep); }
+.ref-offer-half--you::after { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 55% at 80% 10%, rgba(255,106,61,.30), transparent 60%); pointer-events: none; }
+.ref-offer-half > * { position: relative; }
+.ref-offer-who { font-family: var(--font-head); font-weight: 700; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--blue-700); }
+.ref-offer-half--you .ref-offer-who { color: var(--aqua-300); }
+.ref-offer-amt { font-family: var(--font-head); font-weight: 900; font-size: clamp(3rem, 6vw, 4.6rem); line-height: 1; letter-spacing: -.03em; color: var(--ink); }
+.ref-offer-half--you .ref-offer-amt { background: linear-gradient(120deg, #ff7a63, #ffd9d0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ref-offer-what { font-size: .92rem; line-height: 1.45; color: var(--slate-500); }
+.ref-offer-half--you .ref-offer-what { color: rgba(255,255,255,.8); }
+
+/* ---------- How it works ---------- */
+.ref-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.ref-step { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 30px 28px; box-shadow: var(--sh-sm); transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
+.ref-step h3 { margin-top: 18px; font-size: 1.25rem; }
+.ref-step p { margin-top: 10px; font-size: .97rem; }
+@media (hover: hover) {
+  .ref-step:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); }
+  .ref-step:hover .step-num { transform: scale(1.1); }
+}
+
+/* ---------- The form card ---------- */
+/* The form itself is the anchor target (#refer-form), so the offset has to
+   clear the fixed nav plus the card padding above the heading. */
+#refer-form { scroll-margin-top: calc(var(--nav-h) + 40px); }
+.ref-card { max-width: 860px; margin-inline: auto; padding: clamp(24px, 4vw, 48px); background: #fff; border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--sh-lg); }
+.ref-form { gap: 30px; }
+.ref-form-head h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.ref-form-head p { margin-top: 8px; color: var(--slate-500); }
+.ref-group { display: grid; gap: 14px; }
+.ref-group-title { font-size: 1.2rem; }
+.ref-group-sub { margin-top: -6px; font-size: .95rem; color: var(--slate-500); }
+.ref-group-body { display: grid; gap: 14px; }
+
+/* Friend rows. A fieldset per friend (one label for the whole group), with
+   the legend floated so it renders as an ordinary heading row instead of
+   sitting in the border; min-width:0 because a fieldset's default
+   min-inline-size is min-content, which would let a long placeholder push
+   the card wider than the phone. */
+.ref-friends { display: grid; gap: 14px; }
+.ref-friend { position: relative; display: block; margin: 0; min-width: 0; padding: 18px 18px 20px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--mist); }
+.ref-friend legend { float: left; width: 100%; margin: 0 0 12px; padding: 0; font-family: var(--font-head); font-weight: 800; font-size: 1.02rem; line-height: 44px; color: var(--ink); }
+.ref-friend > .form-row, .ref-friend > .field { clear: both; }
+.ref-friend > .form-row + .form-row, .ref-friend > .form-row + .field, .ref-friend > .field + .field { margin-top: 14px; }
+/* Fields sit on the grey friend block, so they go white (the default mist
+   would vanish into the background). */
+.ref-friend .field input { background: #fff; }
+.ref-remove { position: absolute; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; font-size: .84rem; transition: background .2s, color .2s; }
+.ref-remove:hover { background: #fff; color: var(--blue-700); }
+.ref-remove svg { width: 16px; height: 16px; }
+/* These two set their own display, which would out-rank the browser's
+   [hidden] rule; the script toggles them with the attribute. */
+.ref-remove[hidden], .rd-code-wrap[hidden] { display: none; }
+.ref-friend-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.ref-add { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 1.5px dashed rgba(251,77,61,.5); border-radius: var(--r-pill); background: #fff; color: var(--blue-700); font-family: var(--font-head); font-weight: 700; font-size: .92rem; transition: border-color .2s, background .2s, transform .25s var(--ease); }
+.ref-add:hover { border-style: solid; background: rgba(251,77,61,.06); transform: translateY(-1px); }
+.ref-add:disabled { opacity: .55; cursor: not-allowed; transform: none; background: #fff; border-style: dashed; }
+.ref-add svg { width: 16px; height: 16px; }
+.ref-count { font-size: .84rem; color: var(--slate-500); }
+
+/* Reward choice: the quote wizard's selectable promo cards, two-up. The
+   top padding leaves room for the "Most popular" badge that hangs above
+   the card edge. */
+.ref-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; padding-top: 14px; }
+.ref-reward { padding: 30px 24px 26px; }
+.ref-reward .promo-price { font-size: clamp(2.4rem, 4.4vw, 3.2rem); }
+.ref-reward .promo-per { text-transform: none; letter-spacing: 0; font-size: .9rem; }
+.ref-reward-ic { display: grid; place-items: center; width: 50px; height: 50px; margin: 0 auto 14px; border-radius: 14px; background: var(--grad-brand); color: #fff; box-shadow: var(--sh-glow); }
+.ref-reward-ic svg { width: 24px; height: 24px; }
+.ref-reward-desc { display: block; margin-top: 14px; font-size: .9rem; line-height: 1.5; color: var(--slate-500); }
+/* The radio is invisible over the whole card, so keyboard focus has to show
+   on the card itself. */
+.ref-reward:has(input:focus-visible) { outline: 3px solid var(--sky-400); outline-offset: 4px; }
+
+.ref-consent-field { gap: 8px; }
+.ref-consent { align-items: flex-start; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--mist); font-size: .9rem; line-height: 1.5; }
+.ref-consent input { width: 20px; height: 20px; margin-top: 2px; }
+.ref-consent a { color: var(--blue-700); font-weight: 600; text-decoration: underline; }
+.ref-form .btn-block { min-height: 56px; }
+
+/* Inline validation + the server-message strip at the top of the form.
+   --blue-700 is the coral tuned for AA small text on light backgrounds. */
+.ref-err { margin: 0; font-size: .82rem; font-weight: 600; color: var(--blue-700); }
+.field.is-invalid input { border-color: var(--blue-700); box-shadow: 0 0 0 4px rgba(208,51,31,.12); background: #fff; }
+.ref-alert { margin: 0; padding: 14px 18px; border: 1px solid rgba(208,51,31,.25); border-left: 4px solid var(--blue-600); border-radius: var(--r-md); background: #fff5f3; color: var(--slate-700); font-size: .95rem; font-weight: 500; }
+
+/* Referrer fields pre-filled from a tracking link: still submitted, just
+   not editable here. */
+.field input.ref-locked, .ref-friend .field input.ref-locked { background: var(--mist-2); border-style: dashed; color: var(--slate-500); cursor: default; }
+.ref-locked-note { margin-top: -6px; font-size: .84rem; color: var(--slate-500); }
+
+/* ---------- Success panel + share block (also used on the dashboard) ---------- */
+/* Scrolled to its top once a submission lands, so it needs to clear the
+   fixed nav like the form does. */
+.ref-success { padding-bottom: 8px; scroll-margin-top: calc(var(--nav-h) + 40px); }
+.ref-success .success-sub { max-width: 520px; }
+.ref-share { max-width: 560px; margin: 30px auto 0; padding: 22px 22px 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--mist); text-align: center; }
+.ref-share-label { display: block; font-family: var(--font-head); font-weight: 700; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--slate-500); }
+.ref-code { display: block; margin-top: 8px; font-family: var(--font-head); font-weight: 900; font-size: clamp(1.9rem, 5vw, 2.8rem); line-height: 1.05; letter-spacing: .06em; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ref-share-url { display: flex; gap: 10px; margin-top: 16px; }
+.ref-share-url input { flex: 1 1 auto; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--r-md); background: #fff; font-family: inherit; font-size: .92rem; color: var(--slate-700); }
+.ref-share-url input:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 4px rgba(251,77,61,.12); }
+.ref-copy { flex: none; min-height: 44px; padding: 10px 18px; font-size: .92rem; }
+.ref-copy-status { display: block; min-height: 1.4em; margin-top: 8px; font-size: .84rem; font-weight: 600; color: #107a4d; }
+.ref-share-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 18px; }
+.ref-share-actions .btn, .ref-success .success-actions .btn { min-width: 0; white-space: normal; }
+.ref-track { margin-top: 26px; font-size: .95rem; }
+.ref-track a { display: inline-flex; align-items: center; gap: 6px; color: var(--blue-700); font-weight: 700; text-decoration: underline; }
+.ref-track a svg { width: 16px; height: 16px; }
+.ref-track-hint { display: block; margin-top: 6px; font-size: .86rem; color: var(--slate-500); }
+.ref-track-none { max-width: 520px; margin: 26px auto 0; font-size: .92rem; color: var(--slate-700); }
+.ref-track-none a { color: var(--blue-700); font-weight: 700; text-decoration: underline; }
+.ref-more { margin-top: 22px; min-height: 44px; }
+.ref-more svg { width: 16px; height: 16px; }
+/* The check badge pops in once; the global reduced-motion rule already
+   collapses every animation, this just makes the intent explicit. */
+@keyframes refPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.ref-success.show .success-badge { animation: refPop .5s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .ref-success.show .success-badge { animation: none; } }
+
+/* ---------- Private dashboard (?t=TOKEN) ---------- */
+.ref-dash { max-width: 860px; margin: 0 auto clamp(28px, 4vw, 44px); padding: clamp(24px, 4vw, 44px); background: #fff; border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--sh-lg); scroll-margin-top: calc(var(--nav-h) + 24px); }
+.ref-dash-head h2 { margin-top: 10px; font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.ref-dash-head p { margin-top: 8px; color: var(--slate-500); }
+.ref-stats { gap: 14px; margin-top: 26px; }
+.ref-stats .stat { padding: 20px 12px 18px; border-radius: var(--r-lg); }
+.ref-stats .num { font-size: clamp(1.7rem, 3vw, 2.4rem); }
+.ref-stats .label { margin-top: 6px; font-size: .84rem; }
+.ref-stat-detail { min-height: 1.2em; margin-top: 4px; font-size: .78rem; color: var(--slate-400); }
+.ref-share--dash { max-width: none; margin-top: 26px; }
+.ref-list-title { margin-top: 30px; font-size: 1.2rem; }
+.ref-list { display: grid; gap: 10px; margin-top: 14px; }
+.ref-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center; padding: 14px 18px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--mist); }
+.ref-item-name { font-family: var(--font-head); font-weight: 800; color: var(--ink); }
+.ref-item-meta { grid-column: 1; font-size: .84rem; color: var(--slate-500); }
+/* Customer-friendly status pills. Dark text on light tints keeps every one
+   of them AA; only "Reward issued" gets the brand gradient, as the one you
+   want to notice. */
+.ref-pill { grid-row: 1 / span 2; display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 4px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: #fff; color: var(--slate-700); font-family: var(--font-head); font-weight: 700; font-size: .78rem; letter-spacing: .02em; white-space: nowrap; }
+.ref-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--slate-400); flex: none; }
+.ref-pill--contacted::before { background: var(--slate-700); }
+.ref-pill--quoted { background: #fff7e0; border-color: #f4dc9a; color: #7a5300; }
+.ref-pill--quoted::before { background: var(--gold); }
+.ref-pill--booked { background: #e8f8f0; border-color: #b9e8d0; color: #0f6b43; }
+.ref-pill--booked::before { background: var(--green); }
+.ref-pill--rewarded { background: var(--grad-brand); border-color: transparent; color: #fff; box-shadow: var(--sh-glow); }
+.ref-pill--rewarded::before { background: rgba(255,255,255,.9); }
+.ref-pill--declined { color: var(--slate-400); }
+.ref-pill--declined::before { background: var(--line); }
+.ref-list-empty { font-size: .95rem; color: var(--slate-500); }
+.ref-note { max-width: 860px; margin: 0 auto 22px; padding: 14px 18px; border: 1px solid var(--line); border-radius: var(--r-md); background: #fff; font-size: .95rem; color: var(--slate-500); }
+.ref-note--warn { border-left: 4px solid var(--blue-600); color: var(--slate-700); }
+
+/* ---------- Friend landing (referred.html) ---------- */
+.rd-hero-inner { max-width: 760px; }
+.rd-hero .hero-trust { margin-top: 30px; }
+.rd-code-wrap { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 24px; padding: 14px 20px; border: 1px solid var(--line); border-radius: var(--r-lg); background: #fff; box-shadow: var(--sh-md); }
+.rd-code-label, .rd-code-hint { font-size: .92rem; color: var(--slate-700); }
+.rd-code { display: inline; margin: 0; font-size: clamp(1.4rem, 3.6vw, 1.9rem); }
+.rd-svc { flex-direction: column; gap: 14px; padding: 26px 24px; border: 1px solid var(--line); border-radius: var(--r-lg); background: #fff; box-shadow: var(--sh-sm); transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
+.rd-svc h3 a { color: inherit; }
+.rd-svc h3 a:hover { color: var(--blue-600); }
+@media (hover: hover) { .rd-svc:hover { transform: translateY(-6px); box-shadow: var(--sh-lg); } }
+.rd-how { max-width: 620px; margin: 26px auto 0; font-size: .98rem; color: var(--slate-700); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .ref-hero-grid { grid-template-columns: 1fr; }
+  .ref-offer { max-width: 560px; }
+  .ref-steps { grid-template-columns: 1fr; max-width: 560px; margin-inline: auto; }
+}
+@media (max-width: 560px) {
+  .ref-offer { grid-template-columns: 1fr; }
+  .ref-rewards { grid-template-columns: 1fr; }
+  .ref-share-url { flex-direction: column; }
+  .ref-copy { width: 100%; justify-content: center; }
+  /* Icon-only remove on narrow screens; the aria-label still says which. */
+  .ref-remove { width: 44px; padding: 0; justify-content: center; }
+  .ref-remove span { display: none; }
+}
+@media (max-width: 480px) {
+  .ref-stats { grid-template-columns: repeat(2, 1fr); }
+  .ref-item { grid-template-columns: 1fr; }
+  .ref-pill { grid-row: auto; justify-self: start; margin-top: 6px; }
+}

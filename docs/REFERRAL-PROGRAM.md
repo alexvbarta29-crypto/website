@@ -175,7 +175,8 @@ Rules: referrer first name + valid 10-digit US phone required; `reward_pref`
 required (`credit`/`giftcard`); `consent` must be `true`; 1–10 friends; each
 friend needs a first name and a valid phone; a friend's phone can't equal
 the referrer's; duplicates within one submission collapse to one. Field
-caps: names 60, email 120, address 200, note 500 chars.
+caps: names 60, email 120, address 200, note 500 chars; longer values are
+rejected with `400` and the field path rather than silently cut.
 
 Success `200`:
 
@@ -220,7 +221,10 @@ latest choice.
 ```
 
 `totals.pending` counts `new`/`contacted`/`quoted`; `booked` counts
-`booked` + `rewarded`. Unknown token → `404`.
+`booked` + `rewarded`. Unknown token → `404`. Every read endpoint (this one,
+the code lookup, and the admin API) answers `503` when Netlify Blobs itself
+is unavailable, so the pages can say "try again in a minute" instead of
+pretending there is nothing to show.
 
 ### `GET /api/referral?code=CODE` — public share-code lookup (friend landing)
 
@@ -246,12 +250,19 @@ Wrong/missing key → `401`; key not configured on the server → `503`.
   "referrals": [ { …full referral record… } ],
   "referrers": [ { "id": "7635550100", "code": "BARTA-7K3XQ", "first_name": "Alex", "last_name": "Barta",
                    "phone": "(763) 555-0100", "email": "…", "reward_pref": "credit", "created_at": "…",
+                   "status_url": "https://www.bartawindowwashing.com/refer.html?t=…",
                    "referred": 3, "booked": 1, "rewarded": 1 } ]
 }
 ```
 
-Newest referrals first. `GET /api/referral/admin?format=csv` returns
-`text/csv` of all referrals (one row each) for a spreadsheet.
+Newest referrals first. `?status=` and `?q=` narrow only `referrals`;
+`stats` stay global and `referrers` is always the full list (each with a
+ready-made `status_url` so the office can resend a customer's tracking
+link; the raw token is never returned). `GET /api/referral/admin?format=csv`
+returns `text/csv` of every referral (filters ignored, one row each: id,
+dates, status, friend and referrer details, code, reward, Rotor delivery)
+for a spreadsheet; cells that start with `=`, `+`, `-` or `@` are
+neutralized so a spreadsheet can't run them as formulas.
 
 `POST /api/referral/admin` with one of:
 
@@ -266,17 +277,35 @@ Newest referrals first. `GET /api/referral/admin?format=csv` returns
 Each returns `{ "ok": true, "referral": {…} }` (or `{ "ok": true, "referrer": {…} }`,
 or `{ "ok": true, "deleted": "r_…" }`). `issue_reward` sets `status:
 "rewarded"` and `reward: { type, amount, issued_at, note }` (amount from
-`REWARDS`). Every status change appends to `history` with `by: "office"`.
+`REWARDS`; `reward_type` defaults to the referrer's `reward_pref`). Every
+status change appends to `history` with `by: "office"`. Guard rails:
+`issue_reward` on a referral that is already `rewarded` answers `409` (move
+it back to Booked first if the reward really must be re-issued);
+`set_status` to `rewarded` answers `400` (rewards go through `issue_reward`
+so the details are always recorded); moving a rewarded referral to any
+other status clears its `reward` so totals stay honest. Ids must look like
+`r_…` and `referrer_id` must be a 10-digit phone; anything else is `404`.
 
 ### Quote form integration (`/api/lead`)
 
 `netlify/functions/lead.mjs` gains one best-effort step (wrapped in
-try/catch with a short timeout, so it can never break a quote request): if
-`promo_code` looks like a referral code and exists, or the lead's phone
-matches `idx/phone/…`, the Rotor payload gets the tag `Referral` and a
-notes line `Referral code: BARTA-7K3XQ (referred by Alex Barta)`, and the
-matched referral moves from `new`/`contacted` to `quoted` with
-`quote_requested_at` set (history entry `by: "lead-form"`).
+try/catch with a 1.5 s timeout, so it can never break or noticeably delay
+a quote request): if `promo_code` looks like a referral code and exists, or
+the lead's phone matches `idx/phone/…`, the Rotor payload gets the tag
+`Referral` and a notes line `Referral code: BARTA-7K3XQ (referred by Alex
+Barta)`, and the matched referral moves from `new`/`contacted` to `quoted`
+with `quote_requested_at` set (history entry `by: "lead-form"`).
+
+**Share-link arrivals.** A friend the referrer never listed on `refer.html`
+(they were simply sent the `/r/CODE` link or told the code) has no record
+yet. When such a quote request carries a valid code and a phone number, the
+hook creates the referral on the spot under that referrer, already at
+`quoted`, with the name / email / address from the quote form and
+`rotor.delivered: true` (the quote form is what delivered them). It shows
+up in the dashboard and on the referrer's tracking page like any other
+referral, and a later listing of the same phone is treated as a duplicate.
+A customer typing their own code into their own quote request is ignored
+(no tag, no record).
 
 ## Text message templates
 
@@ -287,6 +316,13 @@ links (so manual and automatic texts read the same).
 - **Referrer (confirmation):** `Thanks for referring {n} friend(s) to Barta Window Washing! You earn a $50 credit (or a $25 gift card) for each one who books. Track your referrals: {status_url}`
 - **Referrer (reward issued, manual from dashboard):** `Great news from Barta Window Washing: {friend_first} booked, so your {reward} is ready. Thanks for spreading the word!`
 - **Office alert:** `New referral: {referrer_name} ({referrer_phone}) referred {friend_name} ({friend_phone}). Code {code}. {site}/admin/referrals.html`
+
+When the referrer gave no last name the friend text reads `Alex referred
+you…` (no dangling initial). The customer's own "Text a friend" / "Email a
+friend" buttons on `refer.html` send a shorter personal note from their
+own phone (`Hi! Alex referred you to Barta Window Washing, so your first
+service is $25 off. Claim it here: {share_url}`), since a text from a
+friend should not carry a business opt-out line.
 
 ## Admin dashboard (`/admin/referrals.html`)
 
@@ -305,7 +341,7 @@ the key screen.
 
 ```bash
 npm install          # once: installs @netlify/blobs for the functions
-npm test             # node --test tests/  (all functions are unit-tested with a mocked store + fetch)
+npm test             # node --test "tests/**/*.test.mjs"  (all functions are unit-tested with a mocked store + fetch)
 python3 build/build.py   # regenerate pages after editing build/*.py, sitedata.py, or the css/js
 ```
 

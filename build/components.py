@@ -444,7 +444,7 @@ def _fonts_html(root):
               "ascent-override:101%;descent-override:24%;line-gap-override:10%}")
     return "\n".join(links) + f"\n<style>{faces}</style>"
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False, extra_head=""):
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False, extra_head="", analytics=True):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
     pages that shouldn't compete in search) instead of the default index.
@@ -462,7 +462,9 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     so a 404 hit under e.g. /services/typo.html would otherwise resolve
     "index.html" to /services/index.html instead of the real homepage.
     extra_head is raw markup appended just before </head>, for the few
-    pages that load a page-specific stylesheet (the referral program)."""
+    pages that load a page-specific stylesheet (the referral program).
+    analytics=False leaves the GA4 snippet out: the office's referral
+    dashboard is staff traffic, not visitors, and would skew the numbers."""
     root = rel(depth)
     canonical = canonical or (BIZ["domain"] + "/" + slug)
     schema_blocks = ""
@@ -493,7 +495,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     # triggers fire; the readyState check covers pages already loaded when
     # the script runs.
     ga_tag = ""
-    if GA4_ID:
+    if GA4_ID and analytics:
         ga_tag = (
             "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
             f'gtag("js",new Date());gtag("config","{GA4_ID}");'
