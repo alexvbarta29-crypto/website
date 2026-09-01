@@ -955,6 +955,9 @@ IMAGE_ALT = {
     "assets/img/instagram/18144547531542050_1.jpg": "Brass-channel squeegee clearing suds from a textured privacy-glass window",
     "assets/img/instagram/18144547531542050_2.jpg": "View over a backyard pool through a just-cleaned open window",
     "assets/img/instagram/18461203987113057.jpg": "Two Barta Window Washing crew members on a pickup tailgate flanked by American flags",
+    "assets/img/DSC03260.jpg": "Two technicians stringing holiday lights across a modern farmhouse roof, seen from above",
+    "assets/img/DSC03257.jpg": "Technician fastening holiday light clips along the roofline of a white home",
+    "assets/img/DSC03255.jpg": "Close-up of a C9 holiday bulb clipped to the shingle roofline during installation",
 }
 
 # ---------------------------------------------------------------------------
