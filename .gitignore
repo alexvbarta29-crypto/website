@@ -13,5 +13,5 @@ __tmp*.html
 # assembled deploy artifact (built in CI by build/make_deploy.py)
 _deploy/
 
-# npm dependencies for the Netlify Functions (npm install; see docs/REFERRAL-PROGRAM.md)
+# referral-app npm dependencies (see referral-app/README.md)
 node_modules/

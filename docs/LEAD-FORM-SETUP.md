@@ -43,13 +43,6 @@ fallback — visitors are never shown a false "we got it" confirmation.
   preferred date/time, referral source, lights location) are deliberately
   NOT transmitted to Rotor. Empty optional fields are omitted from the
   payload entirely.
-- **Referral program** (`docs/REFERRAL-PROGRAM.md`): when the promo code is
-  a referral share code that exists, or the phone number was referred by a
-  customer, the function also adds the tag `Referral` and a notes line
-  `Referral code: BARTA-7K3XQ (referred by Alex Barta)` (kept ahead of the
-  Services/Plan lines under the cap), and the referral moves to *Quote
-  requested* in the office dashboard. This lookup is best-effort with a
-  short timeout, so it can never fail or delay a quote request.
 
 ## After setting the key
 

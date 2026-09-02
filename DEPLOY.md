@@ -52,8 +52,3 @@ changes.
 
 > Tip: GitHub Pages is the fastest way to get a shareable preview link today. Netlify or Vercel are
 > better long-term homes if you want a custom domain, form handling, and analytics.
-
-> The quote form (`/api/lead`) and the customer referral program (`/api/referral`, the
-> `admin/referrals.html` dashboard) run on Netlify Functions + Netlify Blobs, so they only work on
-> the Netlify deployment. Required environment variables: `ROTOR_API_KEY` and `REFERRAL_ADMIN_KEY`
-> (see `docs/LEAD-FORM-SETUP.md` and `docs/REFERRAL-PROGRAM.md`).

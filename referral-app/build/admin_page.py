@@ -1,0 +1,303 @@
+"""Office-facing referral dashboard page.
+
+  referral_admin_page() -> public/admin/index.html   noindex, key-protected
+
+App-like screen: no marketing header/footer, its own compact bar. Styling in
+public/assets/css/admin.css, behaviour in public/assets/js/admin.js (see
+README.md → "Admin dashboard").
+"""
+import chrome as C
+from icons import icon
+from config import BIZ, REFERRAL
+
+FRIEND_OFF = REFERRAL["friend_discount"]
+CREDIT = REFERRAL["referrer_credit"]
+GIFT = REFERRAL["referrer_gift_card"]
+PREFIX = REFERRAL["code_prefix"]
+
+# Same-origin function the page talks to (netlify/functions/referral-admin.mjs).
+API = "/api/referral/admin"
+
+# The six record statuses in pipeline order, with the office-facing label
+# for each. Rendered once into the filter chips and into every card's
+# <select>; referral-admin.js reads the labels back from those options, so
+# the wording lives here and nowhere else.
+STATUSES = (
+    ("new", "New"),
+    ("contacted", "Contacted"),
+    ("quoted", "Quote requested"),
+    ("booked", "Booked"),
+    ("rewarded", "Reward issued"),
+    ("declined", "Declined"),
+)
+
+# A few app-chrome glyphs the shared icon library has no reason to carry
+# (it serves the marketing pages). Same 24x24 stroke style as icons.py so
+# they sit next to its icons without looking borrowed.
+_ATTRS = ('viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"')
+_EXTRA_ICONS = {
+    "refresh": '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+    "download": '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+    "logout": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    "search": '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    "eye": '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+    "eye-off": ('<path d="m3 3 18 18"/><path d="M10.6 10.6a3 3 0 0 0 4.2 4.2"/>'
+                '<path d="M9.9 5.2A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2"/>'
+                '<path d="M6.6 6.6C3.9 8.5 2 12 2 12s3.5 7 10 7a9.9 9.9 0 0 0 4.4-1"/>'),
+    "message": '<path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.5-4.5A8 8 0 1 1 21 12Z"/>',
+    "trash": ('<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>'
+              '<path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>'),
+}
+
+
+def _icon(name):
+    if name in _EXTRA_ICONS:
+        return f"<svg {_ATTRS}>{_EXTRA_ICONS[name]}</svg>"
+    return icon(name)
+
+
+def _status_options():
+    return "".join(f'<option value="{v}">{label}</option>' for v, label in STATUSES)
+
+
+def _header():
+    """Compact sticky bar in place of the site nav. The actions only make
+    sense once a key has been accepted, so they start hidden and the script
+    reveals them with the dashboard."""
+    return f"""<header class="ra-bar">
+  <div class="ra-bar-in">
+    <a class="ra-brand" href="/" aria-label="Referral program home">
+      <img src="/assets/img/logo-bww.png" srcset="/assets/img/logo-bww-320w.png 320w, /assets/img/logo-bww.png 765w" sizes="118px" alt="" width="118" height="32">
+    </a>
+    <h1 class="ra-title">Referral Dashboard</h1>
+    <div class="ra-bar-actions" id="ra-bar-actions" hidden>
+      <button type="button" class="ra-tool" id="ra-refresh" aria-label="Refresh">{_icon('refresh')}<span>Refresh</span></button>
+      <button type="button" class="ra-tool" id="ra-export" aria-label="Export CSV">{_icon('download')}<span>Export CSV</span></button>
+      <button type="button" class="ra-tool" id="ra-signout" aria-label="Sign out">{_icon('logout')}<span>Sign out</span></button>
+    </div>
+  </div>
+</header>"""
+
+
+def _key_screen():
+    """The only thing a visitor without the key ever sees. The key goes to
+    sessionStorage (not localStorage) on purpose: an office phone that is
+    lost or shared shouldn't stay signed in forever, and the text here says
+    exactly that so nobody expects otherwise."""
+    return f"""<section class="ra-screen ra-key" id="ra-key" aria-labelledby="ra-key-title">
+    <div class="ra-panel">
+      <span class="eyebrow">{BIZ['short']} office</span>
+      <h2 id="ra-key-title">Enter the admin key</h2>
+      <p class="ra-intro">This dashboard is for the {BIZ['name']} office. It lists every customer referral, who sent it, and where it stands, and it only loads with the key set as <code>REFERRAL_ADMIN_KEY</code> in Netlify.</p>
+      <form id="ra-key-form" novalidate>
+        <div class="field">
+          <label for="ra-key-input">Admin key</label>
+          <div class="ra-key-wrap">
+            <input type="password" id="ra-key-input" name="key" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="ra-key-help">
+            <button type="button" class="ra-key-toggle" id="ra-key-toggle" aria-pressed="false" aria-label="Show key">{_icon('eye')}{_icon('eye-off')}</button>
+          </div>
+        </div>
+        <p class="ra-err" id="ra-key-err" role="alert" hidden></p>
+        <button type="submit" class="btn btn-block" id="ra-key-submit">Continue</button>
+        <p class="ra-help" id="ra-key-help">The key stays in this browser tab only: it is sent with each request and forgotten when the tab is closed.</p>
+      </form>
+    </div>
+  </section>"""
+
+
+def _stat(key, label):
+    return f'<div class="stat"><span class="num" data-stat="{key}">&ndash;</span><span class="label">{label}</span></div>'
+
+
+def _dashboard():
+    chips = "".join(
+        f'<button type="button" class="ra-chip" data-filter="{v}" aria-pressed="false">{label} <span class="ra-count" data-count="{v}"></span></button>'
+        for v, label in STATUSES)
+    return f"""<section class="ra-screen ra-dash" id="ra-dash" hidden aria-labelledby="ra-dash-title">
+    <h2 class="sr-only" id="ra-dash-title">Referrals</h2>
+    <div class="ra-stats stats-light" id="ra-stats">
+      {_stat('new', 'New')}
+      {_stat('contacted', 'Contacted')}
+      {_stat('quoted', 'Quote requested')}
+      {_stat('booked', 'Booked &middot; rewards owed')}
+      {_stat('rewarded', 'Rewards issued')}
+      {_stat('credit', 'Credit issued')}
+      {_stat('giftcards', 'Gift cards issued')}
+    </div>
+    <div class="ra-toolbar">
+      <div class="ra-tabs" role="tablist" aria-label="View">
+        <button type="button" role="tab" id="ra-tab-referrals" aria-selected="true" aria-controls="ra-panel-referrals" data-view="referrals">Referrals <span class="ra-count" data-count="total"></span></button>
+        <button type="button" role="tab" id="ra-tab-referrers" aria-selected="false" aria-controls="ra-panel-referrers" data-view="referrers" tabindex="-1">Referrers <span class="ra-count" data-count="referrers"></span></button>
+      </div>
+      <div class="field ra-search">
+        <label for="ra-search" class="sr-only">Search by name, phone, or code</label>
+        {_icon('search')}
+        <input type="search" id="ra-search" placeholder="Search name, phone, or code" autocomplete="off">
+      </div>
+    </div>
+    <div class="ra-filters" id="ra-filters" role="group" aria-label="Filter by status">
+      <button type="button" class="ra-chip" data-filter="all" aria-pressed="true">All <span class="ra-count" data-count="all"></span></button>
+      {chips}
+    </div>
+    <p class="ra-meta"><span id="ra-results" role="status" aria-live="polite" tabindex="-1"></span><span class="ra-updated" id="ra-updated"></span></p>
+    <p class="ra-loading" id="ra-loading" hidden>Loading referrals&hellip;</p>
+    <div id="ra-panel-referrals" role="tabpanel" aria-labelledby="ra-tab-referrals" tabindex="0">
+      <div class="ra-list" id="ra-list"></div>
+      <p class="ra-empty" id="ra-empty" hidden></p>
+    </div>
+    <div id="ra-panel-referrers" role="tabpanel" aria-labelledby="ra-tab-referrers" tabindex="0" hidden>
+      <div class="ra-table-wrap">
+        <table class="ra-table">
+          <thead>
+            <tr><th scope="col">Customer</th><th scope="col">Phone</th><th scope="col">Code</th><th scope="col">Reward preference</th><th scope="col" class="ra-num">Referred</th><th scope="col" class="ra-num">Booked</th><th scope="col" class="ra-num">Rewarded</th><th scope="col">First referral</th></tr>
+          </thead>
+          <tbody id="ra-referrers"></tbody>
+        </table>
+      </div>
+      <p class="ra-empty" id="ra-referrers-empty" hidden></p>
+    </div>
+  </section>"""
+
+
+def _card_template():
+    """One referral, cloned per record by referral-admin.js, which fills the
+    data-f hooks with textContent and wires ids for the labels. Everything
+    with a dollar sign is printed here from sitedata, so the script never
+    carries an amount of its own; the reward line for an issued reward
+    prints the amount the server recorded."""
+    return f"""<template id="ra-tpl-card">
+  <article class="ra-card">
+    <div class="ra-card-main">
+      <header class="ra-card-head">
+        <div class="ra-card-title">
+          <h3 class="ra-name" data-f="name"></h3>
+          <div class="ra-tags">
+            <span class="ra-pill" data-f="status"></span>
+            <span class="ra-flag" data-f="dup" hidden>Duplicate</span>
+            <span class="ra-flag" data-f="crm" hidden>Not in CRM</span>
+          </div>
+        </div>
+        <time class="ra-when" data-f="created"></time>
+      </header>
+      <dl class="ra-facts">
+        <div class="ra-fact"><dt>Phone</dt><dd><a data-f="phone"></a></dd></div>
+        <div class="ra-fact" data-f="email-row" hidden><dt>Email</dt><dd><a data-f="email"></a></dd></div>
+        <div class="ra-fact" data-f="address-row" hidden><dt>Address</dt><dd data-f="address"></dd></div>
+        <div class="ra-fact" data-f="quoted-row" hidden><dt>Quote requested</dt><dd><time data-f="quoted"></time></dd></div>
+        <div class="ra-fact" data-f="last-row" hidden><dt>Last update</dt><dd data-f="last"></dd></div>
+      </dl>
+      <div class="ra-referrer">
+        <span class="ra-kicker">Referred by</span>
+        <div class="ra-referrer-line">
+          <strong data-f="ref-name"></strong>
+          <a data-f="ref-phone"></a>
+          <code class="ra-code" data-f="code"></code>
+        </div>
+        <p class="ra-their-note" data-f="note-row" hidden><span class="ra-kicker">Their note</span> <span data-f="note"></span></p>
+      </div>
+      <p class="ra-reward-line" data-f="reward" hidden>{icon('check-circle')}<span data-f="reward-text"></span></p>
+      <div class="ra-actions">
+        <a class="ra-act" data-f="sms-friend">{_icon('message')} Text friend</a>
+        <a class="ra-act" data-f="call-friend">{icon('phone')} Call friend</a>
+        <a class="ra-act" data-f="sms-ref">{_icon('message')} Text referrer</a>
+      </div>
+    </div>
+    <div class="ra-card-side">
+      <div class="ra-status-row">
+        <div class="field ra-status-field">
+          <label data-f="status-label">Status</label>
+          <select data-f="status-select">{_status_options()}</select>
+        </div>
+        <button type="button" class="btn ra-issue" data-f="issue">{icon('gift')} Issue reward</button>
+      </div>
+      <div class="ra-issue-panel" data-f="issue-panel" hidden>
+        <fieldset class="ra-reward-choice">
+          <legend>Reward for the referrer</legend>
+          <label class="check"><input type="radio" value="credit"> <span>${CREDIT} account credit</span></label>
+          <label class="check"><input type="radio" value="giftcard"> <span>${GIFT} gift card</span></label>
+        </fieldset>
+        <div class="field">
+          <label data-f="issue-note-label">Note <span class="label-hint">(optional, e.g. &ldquo;Applied in Rotor&rdquo;)</span></label>
+          <input type="text" data-f="issue-note" maxlength="500" autocomplete="off">
+        </div>
+        <div class="ra-issue-actions">
+          <button type="button" class="btn" data-f="issue-confirm">Confirm reward</button>
+          <button type="button" class="btn btn-ghost" data-f="issue-cancel">Cancel</button>
+        </div>
+      </div>
+      <div class="field ra-office-note">
+        <label data-f="office-note-label">Office note <span class="label-hint">(only the office sees this)</span></label>
+        <textarea data-f="office-note" rows="2" maxlength="1000"></textarea>
+        <div class="ra-note-row">
+          <button type="button" class="btn btn-ghost ra-small" data-f="save-note" disabled>Save note</button>
+          <span class="ra-note-state" data-f="note-state"></span>
+        </div>
+      </div>
+      <button type="button" class="ra-delete" data-f="delete">{_icon('trash')} Delete referral</button>
+    </div>
+  </article>
+</template>"""
+
+
+def _referrer_template():
+    return f"""<template id="ra-tpl-referrer">
+  <tr>
+    <td data-label="Customer"><div class="ra-customer"><strong data-f="name"></strong><span class="ra-sub" data-f="email"></span></div></td>
+    <td data-label="Phone"><a data-f="phone"></a></td>
+    <td data-label="Code"><code class="ra-code" data-f="code"></code></td>
+    <td data-label="Reward preference"><label class="sr-only" data-f="pref-label">Reward preference</label><select class="ra-pref" data-f="pref"><option value="credit">${CREDIT} credit</option><option value="giftcard">${GIFT} gift card</option></select></td>
+    <td data-label="Referred" class="ra-num" data-f="referred"></td>
+    <td data-label="Booked" class="ra-num" data-f="booked"></td>
+    <td data-label="Rewarded" class="ra-num" data-f="rewarded"></td>
+    <td data-label="First referral"><time data-f="created"></time></td>
+  </tr>
+</template>"""
+
+
+def _dialog():
+    """Delete confirmation. A native <dialog> gives focus trapping, Escape
+    and a backdrop for free; the script falls back to window.confirm where
+    showModal is missing."""
+    return """<dialog class="ra-dialog" id="ra-confirm" aria-labelledby="ra-confirm-title" aria-describedby="ra-confirm-text">
+    <h2 id="ra-confirm-title">Delete this referral?</h2>
+    <p id="ra-confirm-text"></p>
+    <div class="ra-dialog-actions">
+      <button type="button" class="btn btn-ghost" id="ra-confirm-cancel">Cancel</button>
+      <button type="button" class="btn ra-btn-danger" id="ra-confirm-ok">Delete</button>
+    </div>
+  </dialog>"""
+
+
+def referral_admin_page():
+    """Full HTML for admin/index.html: key screen, dashboard, the two
+    templates the script clones, the toast and the confirm dialog. Uses the
+    app's shared <head> (fonts, site.css, noindex) but not its marketing
+    header/footer: this is an app screen."""
+    # C.ASSET_VER is stamped by build.py just before pages render, so it is
+    # read here per call and never captured at import time.
+    css = f"/assets/css/admin.css?v={C.ASSET_VER}"
+    js = f'<script src="/assets/js/admin.js?v={C.ASSET_VER}" defer></script>'
+    html = C.head(
+        title=f"Referral Dashboard | {BIZ['name']}",
+        desc="Office dashboard for the customer referral program.",
+        path="/admin/", noindex=True, extra_css=[css])
+    # The offer and contact details ride on <main> as data attributes
+    # (config via this module), so the script's text-message templates and
+    # reward labels print the same numbers as the pages without owning any.
+    main_attrs = (f'data-api="{API}" data-friend-off="{FRIEND_OFF}" data-credit="{CREDIT}" '
+                  f'data-gift="{GIFT}" data-prefix="{PREFIX}" data-biz="{C.esc(BIZ["name"])}" '
+                  f'data-phone="{BIZ["phone_display"]}"')
+    html += f"""{_header()}
+<main id="main" class="ra-main" {main_attrs}>
+  {_key_screen()}
+  {_dashboard()}
+  <div class="ra-toast" id="ra-toast" role="status" aria-live="polite"></div>
+  {_dialog()}
+  {_card_template()}
+  {_referrer_template()}
+</main>
+{js}
+</body>
+</html>"""
+    return html

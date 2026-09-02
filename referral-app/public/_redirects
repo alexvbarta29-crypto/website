@@ -1,0 +1,2 @@
+# Referral short links: the code the office texts to a referred friend.
+/r/:code   /friend.html?code=:code   200

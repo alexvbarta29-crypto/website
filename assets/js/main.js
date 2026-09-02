@@ -694,20 +694,6 @@
     }
   }
 
-  /* ---- Referral hand-off (docs/REFERRAL-PROGRAM.md): referred.html sends a
-         friend here as get-quote.html?promo=CODE&src=referral, so the promo
-         box is already filled in and "Family/Friend" is already picked as
-         the source. Every promo_code input on the page gets the code, not
-         just the wizard's, so the same link works wherever a quote form
-         lives. ---- */
-  const promoParam = (params.get("promo") || "").trim();
-  if (promoParam) $$('input[name="promo_code"]').forEach((el) => { el.value = promoParam; });
-  if (params.get("src") === "referral") {
-    $$('select[name="referral_source"]').forEach((sel) => {
-      if ([...sel.options].some((o) => o.value === "Family/Friend")) sel.value = "Family/Friend";
-    });
-  }
-
   /* ---- Lead form (demo handler) ---- */
   $$("form[data-lead]").forEach((form) => {
     form.addEventListener("submit", (e) => {

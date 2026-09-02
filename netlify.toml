@@ -6,15 +6,11 @@
   command = "python3 build/make_deploy.py"
   publish = "_deploy"
 
-# Serverless functions: the /api/lead form-to-Rotor forwarder and the
-# customer referral program (/api/referral, /api/referral/admin — see
-# docs/REFERRAL-PROGRAM.md). Secrets (ROTOR_API_KEY, REFERRAL_ADMIN_KEY,
-# Twilio) are NOT in the repo — set them in the Netlify dashboard under
-# Site configuration → Environment variables. esbuild bundles the shared
-# netlify/lib/ modules and the @netlify/blobs dependency into each function.
+# Serverless functions (the /api/lead form-to-Rotor forwarder). The Rotor API
+# key is NOT in the repo — set ROTOR_API_KEY in the Netlify dashboard under
+# Site configuration → Environment variables.
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
 
 # Old-path canonicalization is handled explicitly by the generated _redirects
 # file; keep Netlify's pretty-URL rewriting off so it can't compete with it.

@@ -13,6 +13,3 @@
 /faq                       /faqs.html  301!
 /cookie-policy             /privacy.html#cookies  301!
 /plymouth-window-cleaning  /areas/plymouth.html  301!
-
-# Referral program short links (docs/REFERRAL-PROGRAM.md).
-/r/:code                   /referred.html?code=:code  200
