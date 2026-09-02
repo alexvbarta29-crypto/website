@@ -13,3 +13,8 @@
 /faq                       /faqs.html  301!
 /cookie-policy             /privacy.html#cookies  301!
 /plymouth-window-cleaning  /areas/plymouth.html  301!
+
+# Referral program (docs/REFERRAL-PROGRAM.md): the clean address the
+# owner texts customers, and the short links texted to referred friends.
+/referral                  /referral.html  200
+/r/:code                   /referred.html?code=:code  200

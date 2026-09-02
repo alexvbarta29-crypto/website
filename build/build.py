@@ -13,6 +13,8 @@ from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERV
 from icons import icon
 import components as C
 import schema as S
+import referral_pages as RP
+import referral_admin_page as RAP
 
 PAGES = []  # (relpath, slug, lastmod, priority) for sitemap
 
@@ -1306,6 +1308,48 @@ def build_get_quote():
     write("get-quote.html", html, slug="get-quote.html", priority="0.9")
 
 # ===========================================================================
+# CUSTOMER REFERRAL PROGRAM (docs/REFERRAL-PROGRAM.md)
+# ===========================================================================
+def build_referral():
+    """referral.html (served at /referral too): the program page customers
+    get texted, plus the referrer's private dashboard when opened with
+    ?t=TOKEN. Reached from a footer link only and kept out of search, per
+    the owner: it is for customers they hand the link to."""
+    depth = 0
+    schema = BASE_SCHEMA + [S.breadcrumb([
+        ("Home", BIZ["domain"] + "/"),
+        ("Referral Program", BIZ["domain"] + "/referral.html"),
+    ])]
+    html = RP.referral_page(depth, seo_title=seo_title, schema=schema)
+    write("referral.html", html, slug="referral.html")
+
+def _root_absolute(html):
+    """referred.html is served at /r/CODE through a Netlify rewrite, where
+    the site's relative URLs (assets/…, services/…) would resolve under /r/
+    and the page would load without its stylesheet or script. Every local
+    URL becomes root-absolute so the page works at both addresses; fragment
+    links (#claim) are left alone so they stay on the short URL."""
+    html = re.sub(r'((?:href|src|poster|action)=")(?!https?:|//|/|#|mailto:|tel:|sms:|data:|javascript:)', r'\1/', html)
+    html = re.sub(r'(srcset=")([^"]*)"',
+                  lambda m: m.group(1) + re.sub(r'(^|,\s*)(?!https?:|/)', r'\1/', m.group(2)) + '"', html)
+    html = re.sub(r"url\('(?!https?:|/|data:)", "url('/", html)
+    return html
+
+def build_referred():
+    """referred.html: what a referred friend lands on from /r/CODE. Personal
+    and thin on its own, so kept out of search (noindex) and the sitemap."""
+    depth = 0
+    html = _root_absolute(RP.referred_page(depth, seo_title=seo_title, schema=BASE_SCHEMA))
+    write("referred.html", html, slug="referred.html")
+
+def build_referral_admin():
+    """admin/referrals.html: the office dashboard. noindex, and robots.txt
+    disallows /admin/; the real protection is the REFERRAL_ADMIN_KEY the
+    API demands on every request."""
+    html = RAP.referral_admin_page(1, seo_title=seo_title)
+    write("admin/referrals.html", html, slug="admin/referrals.html")
+
+# ===========================================================================
 # PRIVACY (minimal legal)
 # ===========================================================================
 def build_privacy():
@@ -1963,7 +2007,7 @@ def write_asset(relpath, content):
 
 def build_meta_files():
     # robots.txt
-    write_asset("robots.txt", f"User-agent: *\nAllow: /\n\nSitemap: {BIZ['domain']}/sitemap.xml\n")
+    write_asset("robots.txt", f"User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: {BIZ['domain']}/sitemap.xml\n")
     # manifest
     write_asset("site.webmanifest",
         '{"name":"Barta Window Washing","short_name":"Barta","start_url":"/","display":"standalone",'
@@ -2019,6 +2063,14 @@ def build_redirects():
              "# Forced rules, these exact paths were verified from the old Wix sitemap.",
              ""]
     lines += [f"{src:<{width}}{dst}  301!" for src, dst in WIX_REDIRECTS]
+    # Referral short links: the code the office texts to a referred friend
+    # (/r/BARTA-7K3XQ) is served by referred.html, which reads ?code=. A 200
+    # rewrite, not a redirect, so the short URL stays in the address bar.
+    lines += ["",
+              "# Referral program (docs/REFERRAL-PROGRAM.md): the clean address the",
+              "# owner texts customers, and the short links texted to referred friends.",
+              "/referral                  /referral.html  200",
+              "/r/:code                   /referred.html?code=:code  200"]
     write_asset("_redirects", "\n".join(lines) + "\n")
 
 # ===========================================================================
@@ -2028,7 +2080,9 @@ def _asset_version():
     """Short hash of the CSS+JS so their URLs change whenever they do."""
     import hashlib
     h = hashlib.md5()
-    for rel in ("assets/css/styles.css", "assets/js/main.js"):
+    for rel in ("assets/css/styles.css", "assets/js/main.js",
+                "assets/css/referral.css", "assets/js/referral.js",
+                "assets/css/referral-admin.css", "assets/js/referral-admin.js"):
         try:
             with open(os.path.join(ROOT, rel), "rb") as f:
                 h.update(f.read())
@@ -2036,28 +2090,38 @@ def _asset_version():
             pass
     return h.hexdigest()[:8]
 
+# Source -> minified pairs. styles/main ship on every page; the referral
+# files only on the referral program pages (docs/REFERRAL-PROGRAM.md).
+MINIFY_PAIRS = [
+    ("assets/css/styles.css",         "assets/css/styles.min.css"),
+    ("assets/js/main.js",             "assets/js/main.min.js"),
+    ("assets/css/referral.css",       "assets/css/referral.min.css"),
+    ("assets/js/referral.js",         "assets/js/referral.min.js"),
+    ("assets/css/referral-admin.css", "assets/css/referral-admin.min.css"),
+    ("assets/js/referral-admin.js",   "assets/js/referral-admin.min.js"),
+]
+
 def minify_assets():
-    """Produce minified styles.min.css / main.min.js for production (via
+    """Produce the minified *.min.css / *.min.js files for production (via
     clean-css-cli / terser, fetched on demand with npx). Falls back to a
     plain copy of the source file if Node/npx isn't available, so the build
-    never fails just because minifiers couldn't run."""
+    never fails just because minifiers couldn't run. A missing source file
+    is skipped (its page isn't built either)."""
     import subprocess, shutil
-    css_src = os.path.join(ROOT, "assets/css/styles.css")
-    css_out = os.path.join(ROOT, "assets/css/styles.min.css")
-    js_src = os.path.join(ROOT, "assets/js/main.js")
-    js_out = os.path.join(ROOT, "assets/js/main.min.js")
-    try:
-        subprocess.run(["npx", "--yes", "clean-css-cli", "-o", css_out, css_src],
-                        check=True, capture_output=True, timeout=90)
-    except Exception as e:
-        print(f"  (css minify skipped: {e}; using unminified copy)")
-        shutil.copyfile(css_src, css_out)
-    try:
-        subprocess.run(["npx", "--yes", "terser", js_src, "-c", "-m", "-o", js_out],
-                        check=True, capture_output=True, timeout=90)
-    except Exception as e:
-        print(f"  (js minify skipped: {e}; using unminified copy)")
-        shutil.copyfile(js_src, js_out)
+    for src_rel, out_rel in MINIFY_PAIRS:
+        src = os.path.join(ROOT, src_rel)
+        out = os.path.join(ROOT, out_rel)
+        if not os.path.exists(src):
+            continue
+        if src_rel.endswith(".css"):
+            cmd = ["npx", "--yes", "clean-css-cli", "-o", out, src]
+        else:
+            cmd = ["npx", "--yes", "terser", src, "-c", "-m", "-o", out]
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=90)
+        except Exception as e:
+            print(f"  ({os.path.basename(src_rel)} minify skipped: {e}; using unminified copy)")
+            shutil.copyfile(src, out)
 
 # ---------------------------------------------------------------------------
 # Critical CSS for the homepage. styles.min.css is loaded non-blocking on the
@@ -2520,6 +2584,9 @@ def main():
         build_area(a)
     build_financing()
     build_get_quote()
+    build_referral()
+    build_referred()
+    build_referral_admin()
     build_privacy()
     build_terms()
     build_accessibility()

@@ -8,6 +8,8 @@
 // in the Netlify dashboard (Site configuration → Environment variables). It
 // must never appear in this repo, in the static pages, or in any log line.
 
+import { referralForLead } from "../lib/referral-hook.mjs";
+
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
 const MAX_FIELD = 500;          // per-field sanity cap for form values
@@ -39,11 +41,14 @@ const serviceType = (services) => {
 // Rotor notes carry, per the owners: the customer's own message, the
 // services they picked, the plan they selected, and (for Christmas leads)
 // where they want the lights. Nothing else goes in, and the customer's
-// words take priority under the length cap.
-const buildNotes = (data, services, plan) => {
+// words take priority under the length cap. The one addition is the
+// referral program's line (docs/REFERRAL-PROGRAM.md), passed in as
+// extraLines and kept ahead of the others because it is what the office
+// acts on when the friend books.
+const buildNotes = (data, services, plan, extraLines = []) => {
   const message = clean(data.notes || data.additional_information || data.message);
   const lightsLoc = clean(data.light_location);
-  const lines = [];
+  const lines = [...extraLines];
   if (services.length) lines.push("Services: " + services.join(", "));
   if (plan) lines.push("Plan: " + planLabel(plan));
   if (lightsLoc) lines.push("Lights location: " + lightsLoc);
@@ -109,7 +114,17 @@ export default async (req) => {
   if (isChristmas) tags.push("Christmas Lights");
   if (source) tags.push(source);
 
-  const notes = buildNotes(data, services, plan);
+  // Referral program (docs/REFERRAL-PROGRAM.md): a referred friend's quote
+  // gets the Referral tag and a notes line naming the referrer, and their
+  // referral moves to "quoted" in the office dashboard. Best-effort with a
+  // short timeout inside — it can never fail or hold up the quote itself.
+  const referral = await referralForLead({
+    promo_code: data.promo_code, phone, name, email,
+    address: [street1, city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+  });
+  if (referral) tags.push("Referral");
+
+  const notes = buildNotes(data, services, plan, referral ? [referral.notes_line] : []);
 
   // Only Rotor-supported fields, and no empty optional properties.
   const payload = { source: "Website quote form", tags };
