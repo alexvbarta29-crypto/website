@@ -66,8 +66,6 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 │   ├── icons.py · schema.py · build.py
 ├── docs/SEO-AND-STRATEGY.md    # Sitemap, per-page SEO, wireframes, palette, CRO, GBP, citations
 ├── sitemap.xml · robots.txt · site.webmanifest
-├── referral-app/               # Separate "Give $25, Get $50" referral app: its own Netlify site,
-│                               # not part of this website (see referral-app/README.md)
 ```
 
 ---
