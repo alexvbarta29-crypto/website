@@ -72,7 +72,9 @@ async function list(store, req) {
   // The export is always everything, regardless of filters — it is the
   // office's spreadsheet backup.
   if ((params.get("format") || "").trim().toLowerCase() === "csv") {
-    return new Response(toCSV(referrals), {
+    // The byte-order mark makes Excel (Windows) read the file as UTF-8 when
+    // the office double-clicks it, so accented names survive.
+    return new Response("\uFEFF" + toCSV(referrals), {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

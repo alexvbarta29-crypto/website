@@ -178,7 +178,10 @@ test("CSV export: content type, header row, one row per referral, escaping", asy
   assert.match(res.headers.get("content-type"), /^text\/csv/);
   assert.match(res.headers.get("content-disposition"), /attachment; filename="referrals-\d{4}-\d{2}-\d{2}\.csv"/);
   assert.equal(res.headers.get("cache-control"), "no-store");
-  const text = await res.text();
+  // text() strips a leading BOM while decoding, so check the bytes.
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [0xEF, 0xBB, 0xBF], "UTF-8 BOM for Excel");
+  const text = new TextDecoder().decode(bytes);
   const lines = text.trimEnd().split("\r\n");
   assert.equal(lines.length, 3, "header + 2 rows");
   assert.ok(lines[0].startsWith("id,created_at,updated_at,status,duplicate_of,friend_first_name,"));

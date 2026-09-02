@@ -12,7 +12,10 @@ import { fullName, lastInitial, safeErr } from "./referral-lib.mjs";
 // Same endpoint/version as netlify/functions/lead.mjs.
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
-const ROTOR_TIMEOUT_MS = 8000;
+// Well under Netlify's 10 s function limit: up to ten Rotor calls run in
+// parallel, but the store writes that follow are sequential, so an
+// unreachable Rotor must not eat most of the budget by itself.
+const ROTOR_TIMEOUT_MS = 5000;
 const MAX_NOTES = 2000;             // Rotor's notes limit
 const TWILIO_TIMEOUT_MS = 6000;
 

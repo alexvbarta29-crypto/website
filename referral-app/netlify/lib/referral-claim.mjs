@@ -34,7 +34,8 @@ export function validateClaim(body) {
   if (first_name.length > CAPS.name) throw new ValidationError("That first name is too long.", "first_name");
   if (last_name.length > CAPS.name) throw new ValidationError("That last name is too long.", "last_name");
   const digits = normalizePhone(phone);
-  if (!digits) throw new ValidationError("Please enter a valid 10-digit mobile number.", "phone");
+  if (!digits || phone.length > CAPS.phone)
+    throw new ValidationError("Please enter a valid 10-digit mobile number.", "phone");
   if (email && (email.length > CAPS.email || !isEmail(email)))
     throw new ValidationError("That email doesn’t look right.", "email");
   if (address.length > CAPS.address) throw new ValidationError("That address is too long.", "address");

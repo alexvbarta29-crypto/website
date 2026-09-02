@@ -71,9 +71,19 @@ async function submit(req) {
   // stored:false tells the page the tracking link won't work.
   let referrer = await guard.run("load referrer", (s) => getReferrer(s, sub.referrer.digits));
   let isNew = false;
+  // Knowing the private token proves this is the customer (they came from
+  // their tracking link). A phone number alone does not: anyone who has it
+  // could otherwise pull the customer's private dashboard link out of this
+  // response or flip their reward choice. Untrusted resubmissions are still
+  // accepted (the friends are real referrals for the office to handle), but
+  // the token stays private and the stored preferences stay as they were.
+  let trusted = true;
   if (referrer && referrer.code && referrer.token) {
-    referrer.reward_pref = sub.referrer.reward_pref;
-    if (sub.referrer.email) referrer.email = sub.referrer.email;
+    trusted = Boolean(sub.token) && sub.token === referrer.token;
+    if (trusted) {
+      referrer.reward_pref = sub.referrer.reward_pref;
+      if (sub.referrer.email) referrer.email = sub.referrer.email;
+    }
     if (!referrer.last_name && sub.referrer.last_name) referrer.last_name = sub.referrer.last_name;
     referrer.updated_at = now;
   } else {
@@ -99,7 +109,9 @@ async function submit(req) {
   const duplicates = results.filter((r) => r.duplicate_of).length;
   const delivered = results.every((r) => r.duplicate_of || r.rotor.delivered);
 
-  await guard.run("save referrer", (s) => saveReferrer(s, referrer, { newMaps: isNew }));
+  // The code/token maps are rewritten every time (idempotent), so a first
+  // write that failed halfway can never leave a dead share code or link.
+  await guard.run("save referrer", (s) => saveReferrer(s, referrer, { newMaps: true }));
   for (const r of results)
     await guard.run("save referral", (s) => saveReferral(s, r, { indexPhone: !r.duplicate_of }));
   const stored = guard.ok;
@@ -117,9 +129,10 @@ async function submit(req) {
   return json({
     ok: true,
     code: referrer.code,
-    token: referrer.token,
+    token: trusted ? referrer.token : null,
     share_url: shareUrl(referrer.code),
-    status_url: statusUrl(referrer.token),
+    status_url: trusted ? statusUrl(referrer.token) : null,
+    returning: !trusted,
     referrer: { first_name: referrer.first_name, reward_pref: referrer.reward_pref },
     friends: results.map((r) => ({
       id: r.id, first_name: r.first_name, status: r.status, duplicate: Boolean(r.duplicate_of),

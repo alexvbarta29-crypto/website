@@ -312,7 +312,8 @@
       $("#ref-sms").href = links.sms;
       $("#ref-email-share").href = links.mail;
 
-      const trackWrap = $("#ref-track-wrap"), trackNone = $("#ref-track-none");
+      const trackWrap = $("#ref-track-wrap"), trackNone = $("#ref-track-none"), trackReturning = $("#ref-track-returning");
+      trackReturning.hidden = true;
       // stored:false = the tracking store was unavailable; the referrals
       // still reached the office, but a status link would dead-end.
       if (data.stored !== false && data.status_url) {
@@ -320,6 +321,12 @@
         trackWrap.hidden = false;
         trackNone.hidden = true;
         if (data.token) tokenField.value = data.token;
+      } else if (data.returning) {
+        // Known customer, but this request didn't come from their tracking
+        // link, so the server kept the private link private.
+        trackWrap.hidden = true;
+        trackNone.hidden = true;
+        trackReturning.hidden = false;
       } else {
         trackWrap.hidden = true;
         trackNone.hidden = false;

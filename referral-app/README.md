@@ -214,8 +214,13 @@ Rotor; tracking link will not work). `delivered: false` means Rotor
 rejected/was unreachable for at least one friend (they are still stored and
 show in the dashboard). Only when **both** fail does the request return
 `502` so the page shows the call-us fallback. An existing referrer (same
-phone) keeps their existing code/token; `reward_pref` is updated to the
-latest choice.
+phone) keeps their existing code; `token` and `status_url` are only returned
+for a **new** referrer or when the request carries the referrer's existing
+`token` (they came from their tracking link). Otherwise both are `null` and
+`returning: true`: the referrals are still accepted, but a phone number alone
+never unlocks someone's private link or changes their reward choice. The
+customer's original link keeps working, and the office can resend it from
+the dashboard.
 
 ### `GET /api/referral?t=TOKEN` — private dashboard (referrer)
 
@@ -296,7 +301,8 @@ Newest referrals first. `?status=` and `?q=` narrow only `referrals`;
 `stats` stay global and `referrers` is always the full list (each with a
 ready-made `status_url` so the office can resend a customer's tracking
 link; the raw token is never returned). `GET /api/referral/admin?format=csv`
-returns `text/csv` of every referral (filters ignored, one row each) for a
+returns `text/csv` (UTF-8 with a byte-order mark, so Excel opens it
+correctly) of every referral (filters ignored, one row each) for a
 spreadsheet; cells that start with `=`, `+`, `-` or `@` are neutralized so
 a spreadsheet can't run them as formulas.
 

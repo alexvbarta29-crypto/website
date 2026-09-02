@@ -477,7 +477,15 @@
 
     const tel = telHref(r.phone);
     setLink(node, "phone", fmtPhone(r.phone) || "No phone", tel);
-    if (r.email) { hook(node, "email-row").hidden = false; setLink(node, "email", r.email, "mailto:" + r.email); }
+    if (r.email) {
+      hook(node, "email-row").hidden = false;
+      // Customer-typed text only becomes a mailto: when it is shaped like an
+      // address, with anything unusual percent-encoded so it can't add
+      // recipients or a body of its own.
+      const mail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)
+        ? "mailto:" + r.email.replace(/[^A-Za-z0-9.@_+-]/g, encodeURIComponent) : "";
+      setLink(node, "email", r.email, mail);
+    }
     if (r.address) { hook(node, "address-row").hidden = false; setText(node, "address", r.address); }
     if (r.quote_requested_at) { hook(node, "quoted-row").hidden = false; setTime(hook(node, "quoted"), r.quote_requested_at); }
     // The most recent history entry, once there is more than the automatic

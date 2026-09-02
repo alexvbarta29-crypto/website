@@ -193,6 +193,7 @@ def _referral_form():
           <a class="btn btn-ghost" id="ref-email-share" href="mailto:?subject=&amp;body=">{icon('mail')} Email a friend</a>
         </div>
         <p class="ref-track" id="ref-track-wrap"><a id="ref-track" href="/">Track your referrals {icon('arrow')}</a><span class="ref-track-hint">Bookmark that private link: it shows each friend&rsquo;s progress and your rewards.</span></p>
+        <p class="ref-track-none" id="ref-track-returning" hidden>You&rsquo;ve referred friends with us before, so your original tracking link still works: check the text or bookmark from last time. Need it again? Call or text us at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a> and we&rsquo;ll send it over.</p>
         <p class="ref-track-none" id="ref-track-none" hidden>Our office has your referrals and will reach out to your friends directly. Tracking isn&rsquo;t available for this one, so give us a call at <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a> any time you&rsquo;d like an update.</p>
         <button type="button" class="link-btn ref-more" id="ref-more">Refer more friends {icon('plus')}</button>
       </div>

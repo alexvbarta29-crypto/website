@@ -20,7 +20,7 @@ export const TOKEN_LENGTH = 24;
 // because the forms enforce the same maxlength and only hand-crafted
 // requests ever exceed them.
 export const CAPS = Object.freeze({
-  name: 60, email: 120, address: 200, note: 500, page: 200, office_note: 1000,
+  name: 60, phone: 25, email: 120, address: 200, note: 500, page: 200, office_note: 1000,
 });
 
 export const nowISO = () => new Date().toISOString();
@@ -109,6 +109,10 @@ const phoneField = (v, path, label) => {
   const phone = clean(v);
   const digits = normalizePhone(phone);
   if (!phone) throw new ValidationError(`${label} is required.`, path);
+  // The typed string is stored and printed (texts, CRM notes), so it is
+  // capped as well as checked: "+1 (763) 555-0100 ext. 12" is 25 characters.
+  if (phone.length > CAPS.phone)
+    throw new ValidationError(`${label} needs to be a 10-digit US phone number.`, path);
   if (!digits)
     throw new ValidationError(`${label} needs to be a 10-digit US phone number.`, path);
   return { phone, digits };

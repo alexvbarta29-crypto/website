@@ -176,23 +176,49 @@ test("Rotor payload omits empty optional fields", async () => {
   assert.ok(!p.notes.includes("Note from"), "no note line without a note");
 });
 
-test("a returning referrer keeps their code and token, reward_pref updates", async () => {
+test("a returning referrer keeps their code; without their token the private link stays private", async () => {
   const first = await postOk(submission());
+  // Same phone, no token: anyone who knows the number could send this. The
+  // referrals are accepted, but neither the token nor the reward choice
+  // is theirs to take.
   const second = await postOk(submission({
-    referrer: { phone: "7635550100", reward_pref: "giftcard", last_name: "" },
+    referrer: { phone: "7635550100", reward_pref: "giftcard", last_name: "", email: "someone@else.com" },
     friends: [{ first_name: "Bob", last_name: "Lee", phone: "(763) 555-0102" }],
   }));
   assert.equal(second.code, first.code);
-  assert.equal(second.token, first.token);
-  assert.equal(second.referrer.reward_pref, "giftcard");
-  const referrer = store.json("referrer/7635550100");
-  assert.equal(referrer.reward_pref, "giftcard");
+  assert.equal(second.token, null);
+  assert.equal(second.status_url, null);
+  assert.equal(second.returning, true);
+  assert.equal(second.referrer.reward_pref, "credit", "stored preference untouched");
+  let referrer = store.json("referrer/7635550100");
+  assert.equal(referrer.reward_pref, "credit");
+  assert.equal(referrer.email, "alex@example.com", "stored email untouched");
+  assert.equal(referrer.token, first.token, "token unchanged");
   assert.equal(referrer.last_name, "Barta", "existing last name is kept");
+  // With the token (they came from their tracking link): full access.
+  const third = await postOk(submission({
+    referrer: { phone: "7635550100", reward_pref: "giftcard" },
+    friends: [{ first_name: "Cy", phone: "(763) 555-0103" }],
+    extra: { token: first.token.toLowerCase() },
+  }));
+  assert.equal(third.token, first.token);
+  assert.equal(third.status_url, first.status_url);
+  assert.equal(third.returning, false);
+  assert.equal(third.referrer.reward_pref, "giftcard");
+  referrer = store.json("referrer/7635550100");
+  assert.equal(referrer.reward_pref, "giftcard");
   assert.equal(store.keys("referrer/").length, 1, "still one referrer record");
   assert.equal(store.keys("code/").length, 1);
   assert.equal(store.keys("token/").length, 1);
-  assert.equal(store.keys("idx/referrer/7635550100/").length, 2, "both referrals indexed");
-  assert.equal(net.rotor().length, 2);
+  assert.equal(store.keys("idx/referrer/7635550100/").length, 3, "all referrals indexed");
+  assert.equal(net.rotor().length, 3);
+});
+
+test("a first referrer gets their token and status_url; returning is false", async () => {
+  const out = await postOk(submission());
+  assert.match(out.token, TOKEN_RE);
+  assert.equal(out.returning, false);
+  assert.ok(out.status_url.endsWith("?t=" + out.token));
 });
 
 test("the same friend twice in one submission collapses to one referral", async () => {
@@ -242,14 +268,23 @@ test("a stale phone index (deleted original) does not flag a duplicate", async (
   assert.deepEqual(store.json("idx/phone/7635550101"), { id: out.friends[0].id }, "index re-pointed");
 });
 
-test("optional token in the body is accepted", async () => {
+test("the token in the body unlocks the private link for a returning referrer", async () => {
   const first = await postOk(submission());
   const out = await postOk(submission({
     friends: [{ first_name: "Bob", phone: "7635550102" }],
     extra: { token: first.token },
   }));
   assert.equal(out.token, first.token);
+  assert.equal(out.returning, false);
   assert.equal(out.friends[0].first_name, "Bob");
+  // A wrong token is just an untrusted resubmission, never an error.
+  const wrong = await postOk(submission({
+    friends: [{ first_name: "Cy", phone: "7635550103" }],
+    extra: { token: "Z".repeat(24) },
+  }));
+  assert.equal(wrong.token, null);
+  assert.equal(wrong.returning, true);
+  assert.equal(wrong.code, first.code);
 });
 
 // ---------------------------------------------------------------------------
