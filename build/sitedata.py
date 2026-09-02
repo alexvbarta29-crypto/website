@@ -63,6 +63,21 @@ LEAD_FORM = {
 }
 
 # ---------------------------------------------------------------------------
+# Customer referral program ("Give $25, Get $50"), see docs/REFERRAL-PROGRAM.md.
+# Every dollar amount printed on refer.html / referred.html / the admin
+# dashboard comes from here. The serverless side (API responses, CRM notes,
+# text messages) reads the same numbers from netlify/lib/referral-config.mjs;
+# change both together.
+# ---------------------------------------------------------------------------
+REFERRAL = {
+    "friend_discount": 25,      # $ off the referred friend's first service
+    "referrer_credit": 50,      # $ account credit per friend who books...
+    "referrer_gift_card": 25,   # ...or a $ gift card instead (referrer's choice)
+    "code_prefix": "BARTA",     # share codes look like BARTA-7K3XQ
+    "max_friends": 10,          # per submission
+}
+
+# ---------------------------------------------------------------------------
 # Services, each drives a full service page + nav + cards
 # ---------------------------------------------------------------------------
 SERVICES = [

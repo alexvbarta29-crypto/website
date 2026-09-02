@@ -48,6 +48,9 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 ├── careers.html · financing.html · contact.html
 ├── request-quote.html          # Primary lead-capture page
 ├── blog.html · privacy.html
+├── referral.html               # Customer referral program ("Give $25, Get $50"), served at /referral; ?t= = private tracking
+├── referred.html               # What a referred friend lands on from the /r/CODE short link (claim form)
+├── admin/referrals.html        # Office referral dashboard (key-protected, noindex)
 ├── services/                   # 10 service pages
 │   ├── window-cleaning.html · gutter-cleaning.html · pressure-washing.html
 │   ├── house-washing.html · soft-washing.html · roof-cleaning.html
@@ -64,9 +67,34 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 │   ├── sitedata.py             # Single source of truth: NAP, services, areas, plans, reviews…
 │   ├── components.py           # head/SEO, nav, footer, forms, sections
 │   ├── icons.py · schema.py · build.py
+├── netlify/functions/          # Serverless API: lead.mjs (/api/lead → Rotor), referral.mjs, referral-admin.mjs
+├── netlify/lib/                # Shared referral code: config, validation, Netlify Blobs store, Rotor/Twilio
+├── tests/                      # node --test unit tests for every function (mocked fetch + in-memory store)
 ├── docs/SEO-AND-STRATEGY.md    # Sitemap, per-page SEO, wireframes, palette, CRO, GBP, citations
+├── docs/REFERRAL-PROGRAM.md    # Referral program: flows, data model, API, env vars, launch checklist
 ├── sitemap.xml · robots.txt · site.webmanifest
 ```
+
+---
+
+## Customer referral program
+
+`bartawindowwashing.com/referral` is the link you text to customers (it is
+also a small "Referral Program" link in the footer, and nowhere else): they
+enter who they want to refer (name + phone, address optional) and submit.
+Each referred friend gets **$25 off** their first service; the referrer
+earns a **$50 account credit or a $25 gift card** for every friend who
+books, picking which once the friend's first job is complete. Every
+referral is stored (Netlify Blobs), created as a lead in Rotor tagged
+`Referral`, and shown in the office dashboard at `admin/referrals.html`,
+which has one-tap "Text friend" / "Text referrer" links (or automatic
+Twilio texts, if you turn them on) and tracks each referral from *New* →
+*Booked* → *Job complete* (referrer picks) → *Reward issued*. Referrers
+follow their own progress, and pick their reward, on a private link.
+
+Setup (env vars, optional SMS), the API, and the launch checklist are in
+[`docs/REFERRAL-PROGRAM.md`](docs/REFERRAL-PROGRAM.md). Tests: `npm install`
+once, then `npm test`.
 
 ---
 
@@ -102,4 +130,7 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
    `build/sitedata.py` (`BIZ`). Update and rebuild.
 4. **Set the real domain** in `BIZ["domain"]` so canonical/OG/sitemap URLs are correct.
 5. **Have the privacy policy reviewed** by counsel (`privacy.html` is a starter template).
-6. Deploy to any static host (Netlify, Vercel, Cloudflare Pages, S3+CloudFront, GitHub Pages).
+6. **Turn on the referral program** — set `REFERRAL_ADMIN_KEY` in Netlify and walk the launch
+   checklist in `docs/REFERRAL-PROGRAM.md` (the program needs Netlify Functions, so it is inert on
+   the GitHub Pages preview).
+7. Deploy to any static host (Netlify, Vercel, Cloudflare Pages, S3+CloudFront, GitHub Pages).
