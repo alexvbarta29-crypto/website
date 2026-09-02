@@ -1,0 +1,33 @@
+# Netlify config for the referral app (its own site, built from this
+# repository's root). See README.md for the full setup.
+
+[build]
+  # Regenerates the three pages from build/ (pages are also committed, so a
+  # deploy without Python would still have them), then publishes public/.
+  command = "python3 build.py"
+  publish = "public"
+
+# Serverless API: /api/referral (+ ?t= / ?code=), /api/referral/admin,
+# /api/claim. Secrets (ROTOR_API_KEY, REFERRAL_ADMIN_KEY, Twilio) are NOT in
+# the repo: set them under Site configuration → Environment variables.
+# esbuild bundles netlify/lib and the @netlify/blobs dependency (installed
+# from package.json) into each function.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+    Cache-Control = "no-store"
