@@ -121,6 +121,13 @@
   $$("[data-lazy-reviews]").forEach((el) => {
     const b64 = el.dataset.widgetB64;
     if (!b64) return;
+    // On a page whose whole purpose is the reviews (reviews.html) the section
+    // sits at the very top, so the "swap only while it is below the viewport"
+    // rule below can never be satisfied and the widget would stay hidden for
+    // ever. There, load at once and reveal as soon as it has rendered: a
+    // reflow at the top of a page the visitor opened FOR this content is
+    // expected, and showing nothing is the worse outcome.
+    const isPrimary = el.hasAttribute("data-reviews-primary");
     let loaded = false;
     const load = () => {
       if (loaded) return;
@@ -169,7 +176,7 @@
       };
       const maybeReveal = () => {
         if (!ready || revealed) return;
-        if (belowViewport()) reveal();
+        if (isPrimary || belowViewport()) reveal();
         else addEventListener("scroll", function onS() {
           if (revealed) { removeEventListener("scroll", onS); return; }
           if (belowViewport()) { removeEventListener("scroll", onS); reveal(); }
@@ -184,7 +191,10 @@
         setTimeout(() => { if (temp.offsetHeight > 60) { ready = true; maybeReveal(); } }, 2500);
       }
     };
-    if ("IntersectionObserver" in window) {
+    if (isPrimary) {
+      preconnect("https://cdn.trustindex.io");
+      load();
+    } else if ("IntersectionObserver" in window) {
       // Connection + wide script ring arm on the first meaningful scroll
       // (never during an untouched load — Lighthouse and first paint see no
       // third-party work; the section is unreachable without scrolling, so

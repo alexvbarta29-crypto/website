@@ -1069,7 +1069,7 @@ def build_reviews():
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
         og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
-    reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth)
+    reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth, primary=True)
     html += f"""<main id="main">
   <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors, {BIZ['name']} Reviews</h1>
   <section class="section-tight" style="padding-top:calc(var(--nav-h) + 40px)"><div class="container">{reviews_content}</div></section>

@@ -1334,7 +1334,7 @@ def google_badge(depth=0, light=False, text=None, bare=False):
     return (f'<a class="{cls}" href="{BIZ["google"]}" target="_blank" rel="noopener" aria-label="{text} on Google, view our Google Business Profile">'
             f'{stars}<span class="gb-g">{GOOGLE_G}</span><span class="gb-text">{text}</span></a>')
 
-def reviews_block(widget_embed, fallback_cards, depth=0):
+def reviews_block(widget_embed, fallback_cards, depth=0, primary=False):
     """Curated review cards render immediately (so the section works with
     no JavaScript at all) when real quotes are available; the 3rd-party
     widget embed is base64-stashed in a data attribute and only fetched/
@@ -1346,7 +1346,13 @@ def reviews_block(widget_embed, fallback_cards, depth=0):
         import base64
         encoded = base64.b64encode(widget_embed.encode("utf-8")).decode("ascii")
         fallback_inner = fallback_cards if fallback_cards.strip() else f'<div class="center">{google_badge()}</div>'
-        return f"""<div class="reviews-embed reveal" data-lazy-reviews data-widget-b64="{encoded}">
+        # primary=True marks a block that IS the page (reviews.html), where the
+        # section sits at the top: main.js then loads it at once and reveals it
+        # the moment it renders, instead of waiting for the section to fall
+        # below the viewport — a condition that page can never satisfy.
+        prim = " data-reviews-primary" if primary else ""
+        cls = "reviews-embed reveal" + (" reviews-embed--primary" if primary else "")
+        return f"""<div class="{cls}" data-lazy-reviews{prim} data-widget-b64="{encoded}">
   <div class="grid cols-3" data-reviews-fallback>{fallback_inner}</div>
   <p class="center mt-3"><a class="btn btn-ghost" href="{BIZ['google']}">{icon('star')} See all reviews on Google {icon('arrow')}</a></p>
 </div>"""
