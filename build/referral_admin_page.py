@@ -24,11 +24,16 @@ API = "/api/referral/admin"
 # for each. Rendered once into the filter chips and into every card's
 # <select>; referral-admin.js reads the labels back from those options, so
 # the wording lives here and nowhere else.
+# The office pipeline, in order. referral-admin.js reads its labels straight
+# off the rendered <select>, so adding a stage here gives the dropdown, the
+# filter chips, the status pills and the toasts all the same wording.
 STATUSES = (
     ("new", "New"),
     ("contacted", "Contacted"),
     ("quoted", "Quote requested"),
-    ("booked", "Booked"),
+    ("quote_sent", "Quote sent"),
+    ("approved", "Quote approved"),
+    ("scheduled", "Scheduled"),
     ("completed", "Job complete"),
     ("rewarded", "Reward issued"),
     ("declined", "Declined"),
@@ -122,9 +127,10 @@ def _dashboard():
     <h2 class="sr-only" id="ra-dash-title">Referrals</h2>
     <div class="ra-stats stats-light" id="ra-stats">
       {_stat('new', 'New')}
-      {_stat('contacted', 'Contacted')}
       {_stat('quoted', 'Quote requested')}
-      {_stat('booked', 'Booked')}
+      {_stat('quote_sent', 'Quote sent')}
+      {_stat('approved', 'Quote approved')}
+      {_stat('scheduled', 'Scheduled')}
       {_stat('completed', 'Job complete &middot; reward owed')}
       {_stat('rewarded', 'Rewards issued')}
       {_stat('credit', 'Credit issued')}

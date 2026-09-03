@@ -28,12 +28,20 @@ export const OFFICE_PHONE_DISPLAY = "(763) 314-3400";
 // Pipeline order. "completed" = the friend's first job is finished and paid,
 // which unlocks the referrer's reward: they pick credit or gift card on their
 // tracking page, and the office issues it ("rewarded").
-export const STATUSES = Object.freeze(
-  ["new", "contacted", "quoted", "booked", "completed", "rewarded", "declined"]);
+export const STATUSES = Object.freeze([
+  "new", "contacted", "quoted", "quote_sent", "approved", "scheduled",
+  "completed", "rewarded", "declined",
+]);
 // new/contacted/quoted are "pending" on the referrer's dashboard; booked,
 // completed and rewarded all count as booked there.
-export const PENDING_STATUSES = Object.freeze(["new", "contacted", "quoted"]);
-export const BOOKED_STATUSES = Object.freeze(["booked", "completed", "rewarded"]);
+// Pending = nobody has committed to the work yet. Booked = the friend said
+// yes, so the referrer's reward is on its way (that is what their own
+// dashboard counts). "booked" is the old single stage that "approved" and
+// "scheduled" replaced; it is no longer offered, but records saved under it
+// still count here so an existing referral's totals never silently drop.
+export const PENDING_STATUSES = Object.freeze(["new", "contacted", "quoted", "quote_sent"]);
+export const BOOKED_STATUSES = Object.freeze(
+  ["approved", "scheduled", "booked", "completed", "rewarded"]);
 export const REWARD_TYPES = Object.freeze(["credit", "giftcard"]);
 
 // Trailing slashes are stripped so the links below never come out as

@@ -82,7 +82,7 @@ test("empty dashboard: zero-filled stats and empty lists", async () => {
   const out = await ok(await adminGet());
   assert.deepEqual(out, {
     ok: true,
-    stats: { total: 0, by_status: { new: 0, contacted: 0, quoted: 0, booked: 0, completed: 0, rewarded: 0, declined: 0 },
+    stats: { total: 0, by_status: { new: 0, contacted: 0, quoted: 0, quote_sent: 0, approved: 0, scheduled: 0, completed: 0, rewarded: 0, declined: 0 },
              rewards_owed: 0, credit_issued: 0, gift_cards_issued: 0 },
     referrals: [],
     referrers: [],
@@ -231,9 +231,9 @@ test("set_status: rewarded is refused, unknown status/id are errors", async () =
   assert.equal((await res.json()).field, "status");
   res = await adminPost({ action: "set_status", id, status: "paid" });
   assert.equal(res.status, 400);
-  res = await adminPost({ action: "set_status", id: "r_nope", status: "booked" });
+  res = await adminPost({ action: "set_status", id: "r_nope", status: "approved" });
   assert.equal(res.status, 404);
-  res = await adminPost({ action: "set_status", status: "booked" });
+  res = await adminPost({ action: "set_status", status: "approved" });
   assert.equal(res.status, 400);
   assert.equal((await res.json()).field, "id");
 });
@@ -243,7 +243,7 @@ test("issue_reward: amount from REWARDS, status rewarded, history; refuses to pa
     { first_name: "Jane", last_name: "Smith", phone: "7635550101" }, { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
   ] });
   const [jane, bob] = s.friends.map((f) => f.id);
-  await ok(await adminPost({ action: "set_status", id: jane, status: "booked" }));
+  await ok(await adminPost({ action: "set_status", id: jane, status: "approved" }));
 
   let out = await ok(await adminPost({ action: "issue_reward", id: jane, reward_type: "credit", note: "Applied in Rotor 9/3" }));
   assert.equal(out.referral.status, "rewarded");
@@ -412,7 +412,7 @@ test("delete_all: refuses without the exact phrase and deletes nothing; wipes ev
   assert.deepEqual(list.referrals, []);
   assert.deepEqual(list.referrers, []);
   assert.deepEqual(list.stats, {
-    total: 0, by_status: { new: 0, contacted: 0, quoted: 0, booked: 0, completed: 0, rewarded: 0, declined: 0 },
+    total: 0, by_status: { new: 0, contacted: 0, quoted: 0, quote_sent: 0, approved: 0, scheduled: 0, completed: 0, rewarded: 0, declined: 0 },
     rewards_owed: 0, credit_issued: 0, gift_cards_issued: 0,
   });
   assert.equal(store.json("referrer/7635550100"), null);

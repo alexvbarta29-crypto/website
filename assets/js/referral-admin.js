@@ -52,6 +52,10 @@
   $$("option", tplCard.content).forEach((o) => { STATUS_LABEL[o.value] = o.textContent; });
   const STATUSES = Object.keys(STATUS_LABEL);
   const statusLabel = (s) => STATUS_LABEL[s] || String(s || "");
+  // Mirrors BOOKED_STATUSES in netlify/lib/referral-config.mjs, including the
+  // retired "booked" stage so older records still count toward a referrer's
+  // total. Kept beside the labels so both live in one place.
+  const BOOKED = ["approved", "scheduled", "booked", "completed", "rewarded"];
 
   const state = { key: "", authed: false, data: null, filter: "all", query: "", view: "referrals", loadedAt: 0 };
   const dirtyNotes = new Map(); // referral id → office note typed but not yet saved
@@ -316,7 +320,11 @@
     d.referrers.forEach((p) => {
       const mine = d.referrals.filter((r) => r.referrer_id === p.id);
       p.referred = mine.length;
-      p.booked = mine.filter((r) => r.status === "booked" || r.status === "rewarded").length;
+      // Parity with BOOKED_STATUSES in netlify/lib/referral-config.mjs: a
+      // friend counts as booked from the moment they approve the quote, not
+      // only once the reward is issued. These used to disagree, so the
+      // referrers table under-counted after any local recompute.
+      p.booked = mine.filter((r) => BOOKED.includes(r.status)).length;
       p.rewarded = mine.filter((r) => r.status === "rewarded").length;
     });
   };

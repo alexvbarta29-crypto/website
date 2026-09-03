@@ -207,10 +207,26 @@ five characters after the `BARTA-` prefix. Lookups are case-insensitive.
 | `new` | Referral received; office has not reached out yet. | system |
 | `contacted` | Office has texted/called the friend. | office |
 | `quoted` | The friend claimed the offer / requested a quote. | claim form or quote form (automatic), or office |
-| `booked` | The friend booked their first service. | office |
+| `quote_sent` | A price has gone out; waiting on the friend. | office |
+| `approved` | The friend accepted the quote. | office |
+| `scheduled` | On the calendar with a date. | office |
 | `completed` | First job finished and paid: reward owed. `reward.type` is `null` until the referrer picks. | office (texts the referrer in SMS mode `all`) |
 | `rewarded` | Reward issued to the referrer (`reward` filled in). | office (`issue_reward`) |
 | `declined` | Not eligible / not interested / duplicate. | office |
+
+`PENDING_STATUSES` (`new`, `contacted`, `quoted`, `quote_sent`) are the
+stages where nobody has committed to the work yet; `BOOKED_STATUSES`
+(`approved`, `scheduled`, `completed`, `rewarded`) are where the friend has
+said yes, which is what the referrer's own dashboard counts as booked and
+what their reward rides on.
+
+**Retired:** `booked` was the single stage that `approved` and `scheduled`
+replaced. It is no longer offered in the dropdown and `set_status` rejects
+it, but it is still listed in `BOOKED_STATUSES` and still renders a label on
+both dashboards, so a referral saved under it keeps counting correctly
+instead of silently dropping out of a referrer's totals. It has no column of
+its own in `by_status`, so on a store with legacy records those counts can
+sum to less than `total`.
 
 The office can move a referral to any status at any time; `rewarded` is
 set through `issue_reward` so the reward details are always recorded.

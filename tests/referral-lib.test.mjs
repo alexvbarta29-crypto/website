@@ -24,7 +24,8 @@ test("REWARDS mirrors build/sitedata.py REFERRAL", async () => {
   assert.equal(rewardAmount("giftcard"), 25);
   assert.equal(rewardLabel("credit"), "$50 credit");
   assert.equal(rewardLabel("giftcard"), "$25 gift card");
-  assert.deepEqual([...STATUSES], ["new", "contacted", "quoted", "booked", "completed", "rewarded", "declined"]);
+  assert.deepEqual([...STATUSES],
+    ["new", "contacted", "quoted", "quote_sent", "approved", "scheduled", "completed", "rewarded", "declined"]);
 });
 
 test("site URLs default and strip trailing slashes", () => {
@@ -177,18 +178,25 @@ test("record builders produce the contract shapes", () => {
 
 test("dashboardTotals() and adminStats()", () => {
   const rs = [
-    { status: "new" }, { status: "contacted" }, { status: "quoted" }, { status: "booked" },
+    { status: "new" }, { status: "contacted" }, { status: "quoted" }, { status: "quote_sent" },
+    { status: "approved" }, { status: "scheduled" },
     { status: "rewarded", reward: { type: "credit", amount: 50 } },
     { status: "rewarded", reward: { type: "giftcard", amount: 25 } },
     { status: "declined" },
-    { status: "booked", reward: { type: "credit", amount: 50 } },   // stale reward, not rewarded → not counted
+    // The retired "booked" stage: still counts as booked so an older
+    // referral's totals don't silently drop, and its stale reward is not
+    // counted as issued because the status isn't "rewarded".
+    { status: "booked", reward: { type: "credit", amount: 50 } },
     { status: "completed", reward: { type: null, amount: null } },  // job done, pick still open
     { status: "completed", reward: { type: "giftcard", amount: 25, chosen_at: "x" } },  // picked, not issued
   ];
-  assert.deepEqual(dashboardTotals(rs), { referred: 10, booked: 6, rewarded: 2, pending: 3, to_choose: 1, credit_earned: 50, gift_cards_earned: 1 });
+  assert.deepEqual(dashboardTotals(rs), { referred: 12, booked: 7, rewarded: 2, pending: 4, to_choose: 1, credit_earned: 50, gift_cards_earned: 1 });
   assert.deepEqual(adminStats(rs), {
-    total: 10,
-    by_status: { new: 1, contacted: 1, quoted: 1, booked: 2, completed: 2, rewarded: 2, declined: 1 },
+    total: 12,
+    // "booked" is no longer one of STATUSES, so that record is listed and
+    // counted as booked but has no column of its own here.
+    by_status: { new: 1, contacted: 1, quoted: 1, quote_sent: 1, approved: 1, scheduled: 1,
+      completed: 2, rewarded: 2, declined: 1 },
     rewards_owed: 2, credit_issued: 50, gift_cards_issued: 1,
   });
   assert.deepEqual(dashboardTotals([]), { referred: 0, booked: 0, rewarded: 0, pending: 0, to_choose: 0, credit_earned: 0, gift_cards_earned: 0 });

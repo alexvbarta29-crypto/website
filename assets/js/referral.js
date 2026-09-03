@@ -150,6 +150,11 @@
     new: ["Sent", "sent"],
     contacted: ["Contacted", "contacted"],
     quoted: ["Quote requested", "quoted"],
+    quote_sent: ["Quote sent", "quoted"],
+    approved: ["Quote approved", "booked"],
+    scheduled: ["Scheduled", "booked"],
+    // The old single stage that approved/scheduled replaced: still rendered
+    // so a referral saved under it reads as something, not as a raw value.
     booked: ["Booked", "booked"],
     completed: ["Job complete", "done"],
     rewarded: ["Reward issued", "rewarded"],
