@@ -38,10 +38,10 @@
 <link rel="preload" as="font" type="font/woff2" href="../assets/fonts/GeneralSans-Bold.v1.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="../assets/fonts/GeneralSans-Semibold.v1.woff2" crossorigin media="(min-width: 1081px)">
 <style>@font-face{font-family:'Cabinet Grotesk';src:url('../assets/fonts/CabinetGrotesk-Bold.v1.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}@font-face{font-family:'Cabinet Grotesk';src:url('../assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800;font-style:normal;font-display:swap}@font-face{font-family:'Cabinet Grotesk';src:url('../assets/fonts/CabinetGrotesk-Black.v1.woff2') format('woff2');font-weight:900;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('../assets/fonts/GeneralSans-Regular.v1.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('../assets/fonts/GeneralSans-Medium.v1.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('../assets/fonts/GeneralSans-Semibold.v1.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}@font-face{font-family:'General Sans';src:url('../assets/fonts/GeneralSans-Bold.v1.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}@font-face{font-family:'General Sans Fallback';src:local('Roboto'),local('Helvetica Neue'),local('Arial'),local('DejaVu Sans');ascent-override:101%;descent-override:24%;line-gap-override:10%}</style>
-<link rel="stylesheet" href="../assets/css/styles.min.css?v=0cb85744">
+<link rel="stylesheet" href="../assets/css/styles.min.css?v=5f07b0af">
 <link rel="icon" href="../assets/img/favicon.svg?v=2" type="image/svg+xml">
 <link rel="manifest" href="../site.webmanifest">
-<link rel="stylesheet" href="../assets/css/referral-admin.min.css?v=0cb85744">
+<link rel="stylesheet" href="../assets/css/referral-admin.min.css?v=5f07b0af">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -54,6 +54,7 @@
     <div class="ra-bar-actions" id="ra-bar-actions" hidden>
       <button type="button" class="ra-tool" id="ra-refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg><span>Refresh</span></button>
       <button type="button" class="ra-tool" id="ra-export" aria-label="Export CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span>Export CSV</span></button>
+      <button type="button" class="ra-tool ra-tool--danger" id="ra-clear-all-open" aria-label="Clear all referral data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg><span>Clear all</span></button>
       <button type="button" class="ra-tool" id="ra-signout" aria-label="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg><span>Sign out</span></button>
     </div>
   </div>
@@ -130,6 +131,18 @@
     <div class="ra-dialog-actions">
       <button type="button" class="btn btn-ghost" id="ra-confirm-cancel">Cancel</button>
       <button type="button" class="btn ra-btn-danger" id="ra-confirm-ok">Delete</button>
+    </div>
+  </dialog>
+  <dialog class="ra-dialog" id="ra-clear-all" aria-labelledby="ra-clear-all-title" aria-describedby="ra-clear-all-text">
+    <h2 id="ra-clear-all-title">Clear all referral data?</h2>
+    <p id="ra-clear-all-text">This permanently deletes every referral and every customer on this dashboard, not just what matches your current filter. It does not touch Rotor — any leads already created there stay put. This can’t be undone.</p>
+    <div class="field">
+      <label for="ra-clear-all-input">Type DELETE ALL to confirm</label>
+      <input type="text" id="ra-clear-all-input" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text">
+    </div>
+    <div class="ra-dialog-actions">
+      <button type="button" class="btn btn-ghost" id="ra-clear-all-cancel">Cancel</button>
+      <button type="button" class="btn ra-btn-danger" id="ra-clear-all-ok" disabled>Clear everything</button>
     </div>
   </dialog>
   <template id="ra-tpl-card">
@@ -214,9 +227,10 @@
     <td data-label="Booked" class="ra-num" data-f="booked"></td>
     <td data-label="Rewarded" class="ra-num" data-f="rewarded"></td>
     <td data-label="First referral"><time data-f="created"></time></td>
+    <td data-label="Delete"><button type="button" class="ra-delete ra-delete--row" data-f="delete" aria-label="Delete this customer and everyone they referred"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td>
   </tr>
 </template>
 </main>
-<script src="../assets/js/referral-admin.min.js?v=0cb85744" defer></script>
+<script src="../assets/js/referral-admin.min.js?v=5f07b0af" defer></script>
 </body>
 </html>

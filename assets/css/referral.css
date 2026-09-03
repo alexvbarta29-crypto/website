@@ -119,8 +119,7 @@
 .ref-share-url input:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 4px rgba(251,77,61,.12); }
 .ref-copy { flex: none; min-height: 44px; padding: 10px 18px; font-size: .92rem; }
 .ref-copy-status { display: block; min-height: 1.4em; margin-top: 8px; font-size: .84rem; font-weight: 600; color: #107a4d; }
-.ref-share-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 18px; }
-.ref-share-actions .btn, .ref-success .success-actions .btn { min-width: 0; white-space: normal; }
+.ref-success .success-actions .btn { min-width: 0; white-space: normal; }
 .ref-track { margin-top: 26px; font-size: .95rem; }
 .ref-track a { display: inline-flex; align-items: center; gap: 6px; color: var(--blue-700); font-weight: 700; text-decoration: underline; }
 .ref-track a svg { width: 16px; height: 16px; }

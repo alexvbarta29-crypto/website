@@ -77,6 +77,7 @@ def _header(root):
     <div class="ra-bar-actions" id="ra-bar-actions" hidden>
       <button type="button" class="ra-tool" id="ra-refresh" aria-label="Refresh">{_icon('refresh')}<span>Refresh</span></button>
       <button type="button" class="ra-tool" id="ra-export" aria-label="Export CSV">{_icon('download')}<span>Export CSV</span></button>
+      <button type="button" class="ra-tool ra-tool--danger" id="ra-clear-all-open" aria-label="Clear all referral data">{_icon('trash')}<span>Clear all</span></button>
       <button type="button" class="ra-tool" id="ra-signout" aria-label="Sign out">{_icon('logout')}<span>Sign out</span></button>
     </div>
   </div>
@@ -255,6 +256,7 @@ def _referrer_template():
     <td data-label="Booked" class="ra-num" data-f="booked"></td>
     <td data-label="Rewarded" class="ra-num" data-f="rewarded"></td>
     <td data-label="First referral"><time data-f="created"></time></td>
+    <td data-label="Delete"><button type="button" class="ra-delete ra-delete--row" data-f="delete" aria-label="Delete this customer and everyone they referred">{_icon('trash')}</button></td>
   </tr>
 </template>"""
 
@@ -269,6 +271,18 @@ def _dialog():
     <div class="ra-dialog-actions">
       <button type="button" class="btn btn-ghost" id="ra-confirm-cancel">Cancel</button>
       <button type="button" class="btn ra-btn-danger" id="ra-confirm-ok">Delete</button>
+    </div>
+  </dialog>
+  <dialog class="ra-dialog" id="ra-clear-all" aria-labelledby="ra-clear-all-title" aria-describedby="ra-clear-all-text">
+    <h2 id="ra-clear-all-title">Clear all referral data?</h2>
+    <p id="ra-clear-all-text">This permanently deletes every referral and every customer on this dashboard, not just what matches your current filter. It does not touch Rotor — any leads already created there stay put. This can’t be undone.</p>
+    <div class="field">
+      <label for="ra-clear-all-input">Type DELETE ALL to confirm</label>
+      <input type="text" id="ra-clear-all-input" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text">
+    </div>
+    <div class="ra-dialog-actions">
+      <button type="button" class="btn btn-ghost" id="ra-clear-all-cancel">Cancel</button>
+      <button type="button" class="btn ra-btn-danger" id="ra-clear-all-ok" disabled>Clear everything</button>
     </div>
   </dialog>"""
 

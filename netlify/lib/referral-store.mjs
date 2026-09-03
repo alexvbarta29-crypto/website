@@ -97,6 +97,15 @@ export async function deleteReferral(store, referral) {
   const idx = await getJSON(store, KEYS.byPhone(referral.phone_digits));
   if (idx && idx.id === referral.id) await store.delete(KEYS.byPhone(referral.phone_digits));
 }
+// Used only by the admin dashboard's "clear all" reset: also drops the
+// code/{CODE} and token/{TOKEN} pointers, so a wiped referrer's old share
+// link and tracking link both stop resolving rather than pointing at a
+// referrer record that no longer exists.
+export async function deleteReferrer(store, referrer) {
+  await store.delete(KEYS.referrer(referrer.id));
+  if (referrer.code) await store.delete(KEYS.code(referrer.code));
+  if (referrer.token) await store.delete(KEYS.token(referrer.token));
+}
 
 // Picks a share code nobody holds yet. 32^5 codes make a collision rare, but
 // a customer's code is forever, so check rather than hope.

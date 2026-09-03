@@ -106,20 +106,6 @@
   const api = (url, options) =>
     fetch(url, options).then((res) => res.json().catch(() => null).then((data) => ({ res, data })));
 
-  /* One-tap share messages. The friend text names the referrer, the offer,
-     and the share link, so it reads like the office's own template. */
-  const shareLinks = (first, shareUrl) => {
-    const who = first ? first + " referred you" : "A friend referred you";
-    const msg = "Hi! " + who + " to Barta Window Washing, so your first service is " + money(cfg.friendOff)
-      + " off. Claim it here: " + shareUrl;
-    const subject = money(cfg.friendOff) + " off Barta Window Washing" + (first ? ", from " + first : "");
-    return {
-      sms: "sms:?&body=" + encodeURIComponent(msg),
-      mail: "mailto:?subject=" + encodeURIComponent(subject)
-        + "&body=" + encodeURIComponent(msg + "\n\nOr call " + cfg.phone + " and mention the code."),
-    };
-  };
-
   /* Copy button: async clipboard where allowed, select + execCommand where
      not (older Safari, non-secure contexts), and a spoken "Copied!" either
      way. If both fail the text is left selected so a manual copy is one
@@ -551,9 +537,6 @@
 
       $("#ref-dash-code").textContent = r.code || "";
       $("#ref-dash-url").value = data.share_url || "";
-      const links = shareLinks(r.first_name, data.share_url || "");
-      $("#ref-dash-sms").href = links.sms;
-      $("#ref-dash-email").href = links.mail;
 
       const ul = $("#ref-dash-list");
       ul.innerHTML = "";

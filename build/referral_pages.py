@@ -75,17 +75,12 @@ def _friend_row(n):
 
 
 def _share_block(prefix_id, dash=False):
-    """Share code + copy-able link + one-tap text/email buttons. Used twice,
-    on the success panel and on the private dashboard, so both stay
-    identical; prefix_id keeps their ids apart for referral.js."""
+    """Share code + copy-able link. Used on the success panel and on the
+    private dashboard, so both stay identical; prefix_id keeps their ids
+    apart for referral.js. No "Text a friend" / "Email a friend" buttons:
+    they don't fit how the office actually works a referral (they text the
+    friend themselves, from the Rotor lead notes or the admin dashboard)."""
     extra = " ref-share--dash" if dash else ""
-    actions = ""
-    if dash:
-        actions = f"""
-          <div class="ref-share-actions">
-            <a class="btn" id="{prefix_id}-sms" href="sms:?&amp;body=">{icon('phone')} Text a friend</a>
-            <a class="btn btn-ghost" id="{prefix_id}-email" href="mailto:?subject=&amp;body=">{icon('mail')} Email a friend</a>
-          </div>"""
     return f"""<div class="ref-share{extra}">
           <span class="ref-share-label">Your share code</span>
           <strong class="ref-code" id="{prefix_id}-code"></strong>
@@ -94,7 +89,7 @@ def _share_block(prefix_id, dash=False):
             <input type="text" id="{prefix_id}-url" readonly value="">
             <button type="button" class="btn btn-ghost ref-copy" id="{prefix_id}-copy" data-copy="#{prefix_id}-url">{icon('clipboard')} Copy</button>
           </div>
-          <span class="ref-copy-status" id="{prefix_id}-copy-status" aria-live="polite"></span>{actions}
+          <span class="ref-copy-status" id="{prefix_id}-copy-status" aria-live="polite"></span>
         </div>"""
 
 

@@ -350,6 +350,86 @@ test("delete: removes the record and its indexes; duplicates keep pointing", asy
   assert.equal((await adminPost({ action: "delete", id })).status, 404);
 });
 
+test("delete_referrer: cascades to every referral, releases the code/token maps, leaves other referrers alone", async () => {
+  const mike = await seed({ referrer: { first_name: "Mike", last_name: "Olson", phone: "7635550100" },
+    friends: [
+      { first_name: "Jane", last_name: "Doe", phone: "7635550101" },
+      { first_name: "Bob", last_name: "Lee", phone: "7635550102" },
+    ] });
+  const maria = await seed({ referrer: { first_name: "Maria", last_name: "Smith", phone: "7635550200" },
+    friends: [{ first_name: "Cy", last_name: "Kay", phone: "7635550103" }] });
+
+  const out = await ok(await adminPost({ action: "delete_referrer", referrer_id: "7635550100" }));
+  assert.deepEqual(out, { ok: true, deleted_referrer: "7635550100", deleted_referrals: 2 });
+
+  assert.equal(store.json("referrer/7635550100"), null);
+  assert.equal(store.json(`code/${mike.code}`), null, "share code released");
+  assert.equal(store.json(`token/${mike.token}`), null, "tracking token released");
+  for (const f of mike.friends) {
+    assert.equal(store.json(`referral/${f.id}`), null);
+    assert.equal(store.json(`idx/referrer/7635550100/${f.id}`), null);
+  }
+  assert.equal(store.json("idx/phone/7635550101"), null);
+  assert.equal(store.json("idx/phone/7635550102"), null);
+
+  // Untouched: Maria and Cy are still exactly as they were.
+  assert.ok(store.json("referrer/7635550200"));
+  assert.ok(store.json(`referral/${maria.friends[0].id}`));
+
+  const list = await ok(await adminGet());
+  assert.equal(list.referrals.length, 1);
+  assert.equal(list.referrers.length, 1);
+  assert.equal(list.referrers[0].id, "7635550200");
+
+  const missing = await adminPost({ action: "delete_referrer", referrer_id: "7635550100" });
+  assert.equal(missing.status, 404);
+});
+
+test("delete_all: refuses without the exact phrase and deletes nothing; wipes everything when it matches", async () => {
+  const mike = await seed({ referrer: { first_name: "Mike", last_name: "Olson", phone: "7635550100" },
+    friends: [
+      { first_name: "Jane", last_name: "Doe", phone: "7635550101" },
+      { first_name: "Bob", last_name: "Lee", phone: "7635550102" },
+    ] });
+  await seed({ referrer: { first_name: "Maria", last_name: "Smith", phone: "7635550200" },
+    friends: [{ first_name: "Cy", last_name: "Kay", phone: "7635550103" }] });
+
+  for (const body of [{ action: "delete_all" }, { action: "delete_all", confirm: "delete all" },
+    { action: "delete_all", confirm: "DELETE ALL TEST DATA" }]) {
+    const res = await adminPost(body);
+    assert.equal(res.status, 400, JSON.stringify(body));
+    assert.equal((await res.json()).field, "confirm");
+  }
+  // Confirmed nothing was touched by any of the rejected attempts.
+  assert.equal((await ok(await adminGet())).referrals.length, 3);
+  assert.ok(store.json("referrer/7635550100"), "Mike's record survives a rejected wipe");
+  assert.ok(store.json(`referral/${mike.friends[0].id}`), "Jane's referral survives a rejected wipe");
+
+  const out = await ok(await adminPost({ action: "delete_all", confirm: "DELETE ALL" }));
+  assert.deepEqual(out, { ok: true, deleted_referrals: 3, deleted_referrers: 2 });
+
+  const list = await ok(await adminGet());
+  assert.deepEqual(list.referrals, []);
+  assert.deepEqual(list.referrers, []);
+  assert.deepEqual(list.stats, {
+    total: 0, by_status: { new: 0, contacted: 0, quoted: 0, booked: 0, completed: 0, rewarded: 0, declined: 0 },
+    rewards_owed: 0, credit_issued: 0, gift_cards_issued: 0,
+  });
+  assert.equal(store.json("referrer/7635550100"), null);
+  assert.equal(store.json(`token/${mike.token}`), null);
+  assert.equal(store.json(`referral/${mike.friends[0].id}`), null);
+
+  // Idempotent-ish: running it again on an already-empty store just reports zero.
+  const again = await ok(await adminPost({ action: "delete_all", confirm: "DELETE ALL" }));
+  assert.deepEqual(again, { ok: true, deleted_referrals: 0, deleted_referrers: 0 });
+});
+
+test("delete_all: whitespace around the phrase is forgiven, same as every other trimmed field", async () => {
+  await seed({ friends: [{ first_name: "Jane", last_name: "Doe", phone: "7635550101" }] });
+  const out = await ok(await adminPost({ action: "delete_all", confirm: " DELETE ALL " }));
+  assert.deepEqual(out, { ok: true, deleted_referrals: 1, deleted_referrers: 1 });
+});
+
 test("unknown action / invalid body are 400", async () => {
   let res = await adminPost({ action: "explode", id: "r_x" });
   assert.equal(res.status, 400);

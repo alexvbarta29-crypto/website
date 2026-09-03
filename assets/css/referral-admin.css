@@ -197,6 +197,12 @@
 .ra-delete { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-left: -12px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; font-size: .84rem; transition: color .2s, background .2s; }
 .ra-delete:hover { color: var(--blue-700); background: rgba(208,51,31,.08); }
 .ra-delete svg { width: 16px; height: 16px; }
+/* The referrer table's per-row delete: icon only, centered in its cell. */
+.ra-delete--row { justify-self: center; margin-left: 0; min-width: 40px; min-height: 40px; padding: 0; justify-content: center; }
+/* The header's "Clear all" tool reads as ordinary chrome until hovered, same
+   as Refresh/Export/Sign out — it should not draw the eye on a normal visit,
+   only confirm as dangerous once someone is already reaching for it. */
+.ra-tool--danger:hover { color: var(--blue-700); background: rgba(208,51,31,.08); }
 
 /* ---------- Referrers table ---------- */
 .ra-table-wrap { margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-sm); overflow-x: auto; }

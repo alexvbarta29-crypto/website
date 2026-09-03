@@ -332,6 +332,19 @@
     if (openIssue === id) openIssue = null;
     recompute();
   };
+  // Deleting a customer takes their referrals with them (the server does the
+  // same cascade), so the friend cards for them vanish from the list too
+  // rather than being left pointing at a referrer that no longer exists.
+  const removeReferrer = (id) => {
+    state.data.referrals.forEach((r) => {
+      if (r.referrer_id !== id) return;
+      dirtyNotes.delete(r.id);
+      if (openIssue === r.id) openIssue = null;
+    });
+    state.data.referrals = state.data.referrals.filter((r) => r.referrer_id !== id);
+    state.data.referrers = state.data.referrers.filter((p) => p.id !== id);
+    recompute();
+  };
   // set_reward_pref answers with the bare referrer record (no counts), so
   // merge it over what's already listed rather than replacing.
   const applyReferrer = (rec) => {
@@ -640,7 +653,7 @@
           toast("Referral for " + name + " deleted.");
           resultsEl.focus();
         });
-      });
+      }, "Delete this referral?");
     });
     return node;
   };
@@ -688,6 +701,20 @@
     when.textContent = fmtDate(p.created_at);
     when.title = fmtExact(p.created_at);
     when.dateTime = p.created_at || "";
+    hook(tr, "delete").addEventListener("click", (e) => {
+      const n = p.referred || 0;
+      const text = "Delete " + name + " and " + n + " referred friend" + (n === 1 ? "" : "s")
+        + "? Their share link and tracking link both stop working. This can't be undone.";
+      confirmDelete(text, e.currentTarget, () => {
+        act({ action: "delete_referrer", referrer_id: p.id }, tr).then((data) => {
+          if (!data) return;
+          removeReferrer(p.id);
+          render();
+          toast(name + " and their referrals deleted.");
+          referrersBody.focus();
+        });
+      }, "Delete this customer?");
+    });
     return tr;
   };
 
@@ -822,10 +849,12 @@
      Native <dialog> for the focus trap, Escape and backdrop; Cancel takes
      focus first so Enter can't delete by accident. Focus returns to the
      button that opened it (if that card still exists). */
+  const confirmTitle = $("#ra-confirm-title");
   const confirmText = $("#ra-confirm-text"), confirmOk = $("#ra-confirm-ok"), confirmCancel = $("#ra-confirm-cancel");
   let pendingDelete = null, returnFocus = null;
-  const confirmDelete = (text, opener, onOk) => {
+  const confirmDelete = (text, opener, onOk, title) => {
     if (!dialog || typeof dialog.showModal !== "function") { if (window.confirm(text)) onOk(); return; }
+    if (confirmTitle) confirmTitle.textContent = title || "Delete this referral?";
     confirmText.textContent = text;
     pendingDelete = onOk;
     returnFocus = opener;
@@ -844,6 +873,62 @@
       pendingDelete = null;
       if (returnFocus && document.contains(returnFocus)) returnFocus.focus();
       returnFocus = null;
+    });
+  }
+
+  /* ---- Clear all referral data ----
+     A second, heavier dialog for the one action that outranks a single
+     Cancel/Delete pair: it erases every referral and every customer, not
+     just what the current filter shows. The confirm button stays disabled
+     until the office types the exact phrase, checked again on the server so
+     the bar holds even against a raw API call. Never touches Rotor. */
+  const CLEAR_ALL_PHRASE = "DELETE ALL";
+  const clearAllOpenBtn = $("#ra-clear-all-open"), clearAllDialog = $("#ra-clear-all");
+  const clearAllInput = $("#ra-clear-all-input"), clearAllOk = $("#ra-clear-all-ok"),
+    clearAllCancel = $("#ra-clear-all-cancel");
+  if (clearAllOpenBtn && clearAllDialog && typeof clearAllDialog.showModal === "function") {
+    clearAllOpenBtn.addEventListener("click", () => {
+      clearAllInput.value = "";
+      clearAllOk.disabled = true;
+      clearAllDialog.showModal();
+      clearAllInput.focus();
+    });
+    clearAllInput.addEventListener("input", () => {
+      clearAllOk.disabled = clearAllInput.value !== CLEAR_ALL_PHRASE;
+    });
+    clearAllCancel.addEventListener("click", () => clearAllDialog.close());
+    clearAllDialog.addEventListener("close", () => {
+      clearAllInput.value = "";
+      clearAllOk.disabled = true;
+      if (document.contains(clearAllOpenBtn)) clearAllOpenBtn.focus();
+    });
+    clearAllOk.addEventListener("click", () => {
+      if (clearAllInput.value !== CLEAR_ALL_PHRASE || clearAllOk.disabled) return;
+      act({ action: "delete_all", confirm: CLEAR_ALL_PHRASE }, clearAllOk).then((data) => {
+        clearAllDialog.close();
+        if (!data) return;
+        state.data.referrals = [];
+        state.data.referrers = [];
+        recompute();
+        render();
+        toast("Cleared " + data.deleted_referrals + " referral(s) and "
+          + data.deleted_referrers + " customer(s).");
+      });
+    });
+  } else if (clearAllOpenBtn) {
+    // No native <dialog> support: the typed-confirmation UX degrades to a
+    // browser prompt() asking for the same exact phrase.
+    clearAllOpenBtn.addEventListener("click", () => {
+      if (window.prompt('Type "' + CLEAR_ALL_PHRASE + '" to clear every referral and customer. This can\'t be undone.') !== CLEAR_ALL_PHRASE) return;
+      act({ action: "delete_all", confirm: CLEAR_ALL_PHRASE }, clearAllOpenBtn).then((data) => {
+        if (!data) return;
+        state.data.referrals = [];
+        state.data.referrers = [];
+        recompute();
+        render();
+        toast("Cleared " + data.deleted_referrals + " referral(s) and "
+          + data.deleted_referrers + " customer(s).");
+      });
     });
   }
 

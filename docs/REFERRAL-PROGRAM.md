@@ -38,8 +38,7 @@ Amounts live in exactly two places that must be kept in sync:
    is on, **texts the friend, the
    referrer, and/or the office** (see `REFERRAL_SMS_MODE`).
    The customer sees a success screen with their share code, a copy-able
-   share link, one-tap "Text a friend" / "Email" buttons, and a private
-   tracking link.
+   share link, a "Refer more friends" button, and a private tracking link.
 4. **The office reaches out to the friend** ("Hi Jane, Alex referred you,
    here's $25 off"), automatically via Twilio or by hand. Both by-hand
    routes write the message for you: the friend's Rotor lead notes *are*
@@ -152,8 +151,11 @@ be walked with a real phone before the change reaches the live site:
    context: Netlify env vars apply to all contexts unless scoped.
 3. Walk the checklist below on the preview address with your own phone as
    the friend. Test referrals create real leads in Rotor tagged `Referral`;
-   delete them there afterwards, and delete the test referrals from the
-   dashboard. Texts are only sent if Twilio is configured for that context.
+   delete them there afterwards. On the dashboard, delete individual test
+   referrals as you go, or clear everything at once with the header's
+   **Clear all** button (type `DELETE ALL` to confirm) — it wipes every
+   referral and every customer on this site's dashboard, but never touches
+   Rotor. Texts are only sent if Twilio is configured for that context.
 4. When it behaves, merge to the production branch; the same code deploys
    with the live data store.
 
@@ -423,11 +425,23 @@ spreadsheet; cells that start with `=`, `+`, `-` or `@` are neutralized.
 { "action": "issue_reward", "id": "r_…", "reward_type": "giftcard", "note": "Mailed 9/14" }
 { "action": "set_note",     "id": "r_…", "note": "Office-only note" }
 { "action": "set_reward_pref", "referrer_id": "7635550100", "reward_pref": "giftcard" }
-{ "action": "delete",       "id": "r_…" }
+{ "action": "delete",          "id": "r_…" }
+{ "action": "delete_referrer", "referrer_id": "7635550100" }
+{ "action": "delete_all",      "confirm": "DELETE ALL" }
 ```
 
 Each returns `{ "ok": true, "referral": {…} }` (or `{ "ok": true, "referrer": {…} }`,
-or `{ "ok": true, "deleted": "r_…" }`). `set_status` to `completed` stamps
+or `{ "ok": true, "deleted": "r_…" }`). `delete_referrer` also removes every
+referral that customer sent (`{ "ok": true, "deleted_referrer": "7635550100",
+"deleted_referrals": 3 }`) — their share link and tracking link both stop
+resolving. `delete_all` wipes every referral **and every referrer**, site-wide,
+not just what a filter shows; it requires `confirm` to be the exact phrase
+`DELETE ALL` (checked here, not only in the dashboard's typed-confirmation
+dialog, so the bar holds against a raw API call too) and answers
+`{ "ok": true, "deleted_referrals": N, "deleted_referrers": M }`. Neither
+delete action touches Rotor — leads already created there are a separate
+system and stay put; delete them there by hand if a clean slate is wanted on
+both sides. `set_status` to `completed` stamps
 `reward_ready_at`, opens the pick, and in SMS mode `all` texts the referrer.
 `issue_reward` sets `status: "rewarded"` and `reward: { type, amount,
 chosen_at, issued_at, note }` (`reward_type` defaults to the referrer's pick,
@@ -448,8 +462,11 @@ links (so manual and automatic texts read the same).
 - **Office alert:** `New referral: {referrer_name} ({referrer_phone}) referred {friend_name} ({friend_phone}). Code {code}. {site}/admin/referrals.html`
 
 When the referrer gave no last name the friend text reads `Alex referred
-you…`. The customer's own "Text a friend" / "Email a friend" buttons send a
-shorter personal note from their own phone.
+you…`. There is no self-service "Text a friend" / "Email a friend" on the
+customer's own success screen or tracking page — the office is the one who
+reaches out to a referred friend (from the Rotor lead notes or the
+dashboard's one-tap link), so a customer forwarding their own note never
+duplicates or contradicts that message.
 
 ## Admin dashboard (`/admin/referrals.html`)
 

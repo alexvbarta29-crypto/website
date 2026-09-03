@@ -19,7 +19,7 @@ import {
 } from "../lib/referral-lib.mjs";
 import {
   openStore, allReferrals, allReferrers, getReferral, getReferrer, saveReferralRecord,
-  saveReferrer, deleteReferral,
+  saveReferrer, deleteReferral, deleteReferrer, referralsForReferrer,
 } from "../lib/referral-store.mjs";
 
 const json = (body, status = 200, headers = {}) =>
@@ -27,7 +27,13 @@ const json = (body, status = 200, headers = {}) =>
 const fail = (status, error, field) =>
   json(field ? { ok: false, error, field } : { ok: false, error }, status);
 
-const ACTIONS = new Set(["set_status", "issue_reward", "set_note", "set_reward_pref", "delete"]);
+const ACTIONS = new Set([
+  "set_status", "issue_reward", "set_note", "set_reward_pref", "delete", "delete_referrer", "delete_all",
+]);
+// A single-record delete needs no ceremony; wiping the whole dashboard does.
+// The office has to type this exact phrase, checked here (not just in the
+// UI) so the bar holds even against a raw API call.
+const DELETE_ALL_PHRASE = "DELETE ALL";
 
 export default async (req) => {
   const denied = authorize(req);
@@ -113,6 +119,30 @@ async function act(store, req) {
   if (!ACTIONS.has(action)) return fail(400, "Unknown action.", "action");
   const now = nowISO();
   const note = clean(body.note);
+
+  if (action === "delete_referrer") {
+    // referrer_id is the phone digits; a formatted phone is accepted too,
+    // same convention as set_reward_pref.
+    const rid = normalizePhone(body.referrer_id);
+    const referrer = rid ? await getReferrer(store, rid) : null;
+    if (!referrer) return fail(404, "Referrer not found.", "referrer_id");
+    // Deleting a customer takes everyone they referred with them: a
+    // referral with no referrer is a broken record, not a useful one.
+    const referrals = await referralsForReferrer(store, referrer.id);
+    for (const r of referrals) await deleteReferral(store, r);
+    await deleteReferrer(store, referrer);
+    return json({ ok: true, deleted_referrer: referrer.id, deleted_referrals: referrals.length });
+  }
+
+  if (action === "delete_all") {
+    if (clean(body.confirm) !== DELETE_ALL_PHRASE)
+      return fail(400, `Type "${DELETE_ALL_PHRASE}" to confirm.`, "confirm");
+    const [referrals, referrers] = await Promise.all([allReferrals(store), allReferrers(store)]);
+    for (const r of referrals) await deleteReferral(store, r);
+    for (const p of referrers) await deleteReferrer(store, p);
+    console.log(`referral admin: delete_all wiped ${referrals.length} referral(s), ${referrers.length} referrer(s)`);
+    return json({ ok: true, deleted_referrals: referrals.length, deleted_referrers: referrers.length });
+  }
 
   if (action === "set_reward_pref") {
     // referrer_id is the phone digits; a formatted phone is accepted too.
