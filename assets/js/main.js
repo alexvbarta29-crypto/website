@@ -706,6 +706,14 @@
   if (refCode) {
     const promoField = $("#q-promo");
     if (promoField && !promoField.value) promoField.value = refCode.toUpperCase();
+    // Arriving on a referral link answers "How did you hear about us?" by
+    // itself — set it whether or not the code checks out, since even a
+    // mistyped code came from a friend. Never override a choice already made.
+    const source = $("#q-source");
+    if (source && !source.value) {
+      const opt = Array.from(source.options).find((o) => o.value === "Family/Friend");
+      if (opt) source.value = opt.value;
+    }
     const banner = $("[data-referral-banner]");
     const slot = banner && $("[data-referral-text]", banner);
     if (slot) {
