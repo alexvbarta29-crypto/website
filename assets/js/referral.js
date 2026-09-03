@@ -33,6 +33,44 @@
   const money = (n) => "$" + n;
   // Same rule as main.js' data-validate-phone: 10 US digits, leading 1 dropped.
   const digits = (v) => String(v || "").replace(/\D/g, "").replace(/^1/, "");
+
+  /* Phone fields format themselves as you type: 7635550101 -> (763) 555-0101.
+     NANP area codes never start with 1, so a leading 1 is always the country
+     code and is dropped once a second digit arrives. */
+  const phoneDigits = (v) => {
+    const raw = String(v || "").replace(/\D/g, "");
+    return (raw.length > 1 && raw[0] === "1" ? raw.slice(1) : raw).slice(0, 10);
+  };
+  const formatPhone = (v) => {
+    const d = phoneDigits(v);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return "(" + d.slice(0, 3) + ") " + d.slice(3);
+    return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
+  };
+  /* Delegated so friend rows added after load are covered too. The caret is
+     restored by digit count, not string offset, so editing mid-number doesn't
+     throw it to the end; and a deletion never re-adds the separator the
+     visitor just backspaced over, which would make it undeletable. */
+  const bindPhoneFormat = (scope) => {
+    scope.addEventListener("input", (e) => {
+      const input = e.target;
+      if (!input.matches || !input.matches('input[type="tel"]')) return;
+      const before = input.value;
+      const caret = input.selectionStart;
+      const typedDigits = phoneDigits(before.slice(0, caret === null ? before.length : caret)).length;
+      let out = formatPhone(before);
+      if (/^delete/.test(e.inputType || "")) out = out.replace(/[\s()-]+$/, "");
+      if (out === before) return;
+      input.value = out;
+      if (caret === null) return;
+      let pos = 0, seen = 0;
+      while (pos < out.length && seen < typedDigits) {
+        if (/\d/.test(out[pos])) seen++;
+        pos++;
+      }
+      try { input.setSelectionRange(pos, pos); } catch (err) { /* not a text input */ }
+    });
+  };
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const trim = (el) => (el ? el.value.trim() : "");
 
@@ -168,6 +206,7 @@
     /* ---- Inline validation (setError is shared with the claim form) ---- */
     // Errors clear the moment the field is touched again.
     form.addEventListener("input", (e) => { if (e.target.matches("input")) setError(e.target, ""); });
+    bindPhoneFormat(form);
     form.addEventListener("change", (e) => {
       if (e.target.name === "reward_pref" && rewardErr) { rewardErr.hidden = true; rewardErr.textContent = ""; }
     });
@@ -640,6 +679,7 @@
         if (on) submitBtn.textContent = "Sending…"; else submitBtn.innerHTML = submitLabel;
       };
       claim.addEventListener("input", (e) => { if (e.target.matches("input")) setError(e.target, ""); });
+      bindPhoneFormat(claim);
 
       const validate = () => {
         let first = null;
