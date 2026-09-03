@@ -43,7 +43,7 @@ test("share-link friend with a valid code: CRM lead + a quoted record under the 
   assert.deepEqual(out, { ok: true, code: seeded.code, referrer_first_name: "Alex", delivered: true, stored: true });
 
   const [lead] = net.rotor();
-  assert.equal(lead.payload.source, "Referral program");
+  assert.equal(lead.payload.source, "Referral Program");
   assert.deepEqual(lead.payload.tags, ["Referral"]);
   assert.equal(lead.payload.name, "Carla Mendez");
   assert.equal(lead.payload.phone, "7635550199");
@@ -138,7 +138,7 @@ test("a customer using their own code: not a referral, no record, no Referral ta
   const out = await res.json();
   assert.equal(out.code, null);
   const p = net.rotor()[0].payload;
-  assert.deepEqual(p.tags, ["Referral program"]);
+  assert.deepEqual(p.tags, ["Referral Program"]);
   assert.ok(p.notes.startsWith(`Used their own referral code ${seeded.code} (not a referral)`));
   assert.equal(records().length, 2);
 });

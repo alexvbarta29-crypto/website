@@ -1,6 +1,6 @@
 // POST /api/claim — a referred friend claims their discount from friend.html
 // (the /r/CODE landing). Creates the quote request in Rotor CRM (source
-// "Referral program", tag "Referral", notes naming the referrer and code),
+// "Referral Program", tag "Referral", notes naming the referrer and code),
 // and records the claim: the friend's referral moves to "quoted", or is
 // created on the spot when the referrer only shared their link. See
 // README.md → "API".
@@ -48,8 +48,8 @@ function rotorPayload(lead, claim) {
   if (notes.length > MAX_NOTES) notes = notes.slice(0, MAX_NOTES);
 
   const payload = {
-    source: "Referral program",
-    tags: claim && claim.self ? ["Referral program"] : ["Referral"],
+    source: "Referral Program",
+    tags: claim && claim.self ? ["Referral Program"] : ["Referral"],
     name: fullName(lead.first_name, lead.last_name),
     phone: lead.phone,
   };

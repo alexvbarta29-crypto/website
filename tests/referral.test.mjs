@@ -153,7 +153,7 @@ test("Rotor payload for a referred friend is exact", async () => {
   assert.equal(req.headers["x-api-key"], "test-dummy-rotor-key-not-real");
   assert.ok(req.options.signal, "Rotor call carries an abort signal (timeout)");
   assert.deepEqual(req.payload, {
-    source: "Referral program",
+    source: "Referral Program",
     tags: ["Referral"],
     name: "Jane Doe",
     phone: "763-555-0101",

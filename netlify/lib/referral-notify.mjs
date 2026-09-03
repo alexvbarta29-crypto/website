@@ -36,7 +36,7 @@ export function rotorLeadPayload({ referrer, friend, code }) {
   if (notes.length > MAX_NOTES) notes = notes.slice(0, MAX_NOTES);
 
   const payload = {
-    source: "Referral program",
+    source: "Referral Program",
     tags: ["Referral"],
     name: fullName(friend.first_name, friend.last_name),
     phone: friend.phone,

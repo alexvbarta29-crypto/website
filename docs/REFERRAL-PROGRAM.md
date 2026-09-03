@@ -33,7 +33,7 @@ Amounts live in exactly two places that must be kept in sync:
    so asking the referrer for any of it twice would only slow them down.
    They confirm they have their friends' permission to share their details.
 3. **The site stores the referral** (Netlify Blobs), **creates a lead in
-   Rotor** for each friend (tag `Referral`, source `Referral program`, and
+   Rotor** for each friend (tag `Referral`, source `Referral Program`, and
    notes that are the exact text to send them — see below), and, when SMS
    is on, **texts the friend, the
    referrer, and/or the office** (see `REFERRAL_SMS_MODE`).
@@ -291,7 +291,7 @@ from the dashboard.
 
 #### The Rotor lead each friend gets
 
-Source `Referral program`, tag `Referral`, no `service_type` (they haven't
+Source `Referral Program`, tag `Referral`, no `service_type` (they haven't
 asked for anything yet), and **notes that are the text to send them and
 nothing else** — `rotorLeadPayload()` in `netlify/lib/referral-notify.mjs`:
 
@@ -367,12 +367,12 @@ Deliberately exposes only the referrer's first name. Unknown code → `404`.
 
 First name, a valid phone and `consent: true` are required; `code` is
 optional (a mistyped code is kept in the notes for the office). The claim
-always becomes a Rotor lead (source `Referral program`, tag `Referral`,
+always becomes a Rotor lead (source `Referral Program`, tag `Referral`,
 `service_type` from the services, notes with the referral code and referrer,
 the services and the friend's note). Then, by code and/or phone: a listed
 friend's referral moves `new`/`contacted` → `quoted`; a friend nobody listed
 gets a `quoted` record created under the referrer; a customer using their
-own code is not treated as a referral (tag `Referral program`, note "not a
+own code is not treated as a referral (tag `Referral Program`, note "not a
 referral"). Response
 `{ "ok": true, "code": "BARTA-7K3XQ", "referrer_first_name": "Alex", "delivered": true, "stored": true }`;
 `code` is `null` when nobody referred them; `502` only when the CRM failed
