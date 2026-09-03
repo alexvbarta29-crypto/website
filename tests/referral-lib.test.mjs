@@ -162,7 +162,7 @@ test("record builders produce the contract shapes", () => {
     "last_name", "phone", "phone_digits", "reward_pref", "source_page", "token", "updated_at"]);
   assert.equal(referrer.id, "7635550100");
   const referral = buildReferral({ id: "r_1", referrer, friend: sub.friends[0], duplicateOf: null,
-    rotor: { delivered: true, status: 201, at: now }, now });
+    rotor: { delivered: true, status: 201, lead_id: "27e399b4-194b", at: now }, now });
   assert.deepEqual(Object.keys(referral).sort(), ["address", "code", "created_at", "duplicate_of", "email",
     "first_name", "history", "id", "last_name", "note", "office_note", "phone", "phone_digits",
     "quote_requested_at", "referrer_id", "referrer_name", "referrer_phone", "reward", "reward_ready_at",
@@ -173,7 +173,7 @@ test("record builders produce the contract shapes", () => {
     rotor: { delivered: false, status: null, at: null }, now });
   assert.equal(dup.duplicate_of, "r_1");
   assert.equal(dup.history[0].note, "Duplicate of r_1");
-  assert.deepEqual(dup.rotor, { delivered: false, status: null, at: null });
+  assert.deepEqual(dup.rotor, { delivered: false, status: null, lead_id: null, at: null });
 });
 
 test("dashboardTotals() and adminStats()", () => {

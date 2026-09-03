@@ -170,6 +170,8 @@
 .ra-act { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-pill); background: #fff; color: var(--ink); font-family: var(--font-head); font-weight: 700; font-size: .88rem; white-space: nowrap; box-shadow: var(--sh-sm); transition: border-color .2s, color .2s, box-shadow .25s var(--ease), transform .25s var(--ease); }
 .ra-act:hover { border-color: var(--blue-500); color: var(--blue-700); box-shadow: var(--sh-md); transform: translateY(-1px); }
 .ra-act svg { width: 17px; height: 17px; color: var(--blue-600); }
+/* Leaves the site for Rotor, so it reads as the odd one out in the row. */
+.ra-act--rotor { border-color: color-mix(in srgb, var(--blue-600) 34%, #fff); background: color-mix(in srgb, var(--blue-600) 5%, #fff); }
 @media (max-width: 480px) { .ra-act { flex: 1 1 calc(50% - 4px); justify-content: center; } }
 
 /* Side column: status, reward, notes. Fields go white on the grey ground. */

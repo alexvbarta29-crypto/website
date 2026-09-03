@@ -53,6 +53,12 @@ export const shareUrl = (code) => `${siteUrl()}/r/${code}`;
 // with it), so a tracking link reads cleanly in a text message.
 export const statusUrl = (token) => `${siteUrl()}/referral?t=${token}`;
 export const adminUrl = () => `${siteUrl()}/admin/referrals.html`;
+// Rotor's own app. A lead's /conversation page is its message thread, which
+// is where the office texts a customer so the exchange is logged on the
+// record rather than living only on someone's phone.
+export const ROTOR_APP_URL = "https://app.getrotor.com";
+export const rotorLeadUrl = (leadId) =>
+  leadId ? `${ROTOR_APP_URL}/leads/${encodeURIComponent(leadId)}/conversation` : "";
 
 export const rewardAmount = (type) =>
   type === "giftcard" ? REWARDS.referrer_gift_card : REWARDS.referrer_credit;

@@ -137,7 +137,7 @@ test("successful submission: response shape, headers, and stored records", async
   assert.equal(referral.history[0].by, "system");
   assert.equal(referral.reward, null);
   assert.equal(referral.duplicate_of, null);
-  assert.deepEqual({ ...referral.rotor, at: "x" }, { delivered: true, status: 201, at: "x" });
+  assert.deepEqual({ ...referral.rotor, at: "x" }, { delivered: true, status: 201, lead_id: null, at: "x" });
   assert.deepEqual(referral.sms, { friend: false, referrer: false, office: false });
   assert.equal(referral.quote_requested_at, null);
   assert.deepEqual(store.json(`idx/referrer/7635550100/${id}`), { id });
@@ -200,6 +200,41 @@ test("nothing but the message reaches the Rotor notes", async () => {
   // The message still says who referred them, and the link carries the code.
   assert.ok(notes.includes("Alex B. referred you"), "the referrer is still named");
   assert.ok(notes.includes(out.code), "the code still travels, in the link");
+});
+
+test("Rotor's lead id is captured and stored so the office can open the conversation", async () => {
+  // The shape isn't documented, so every plausible holder is accepted.
+  for (const [label, body] of [
+    ["top-level id", { id: "27e399b4-194b-4af4-8e54-c7ddbaa0cca7" }],
+    ["lead_id", { lead_id: "27e399b4-194b-4af4-8e54-c7ddbaa0cca7" }],
+    ["nested under data", { data: { id: "27e399b4-194b-4af4-8e54-c7ddbaa0cca7" } }],
+    ["nested under lead", { lead: { uuid: "27e399b4-194b-4af4-8e54-c7ddbaa0cca7" } }],
+  ]) {
+    store = useStore(createMemoryStore());
+    net = mockFetch({ rotorBody: body });
+    const out = await postOk(submission());
+    const rec = store.json(`referral/${out.friends[0].id}`);
+    assert.equal(rec.rotor.lead_id, "27e399b4-194b-4af4-8e54-c7ddbaa0cca7", label);
+  }
+});
+
+test("a Rotor reply with no usable id stores null rather than guessing", async () => {
+  for (const body of [{}, { id: "" }, { id: 12345 }, { id: "has spaces" },
+    { id: "../../escape" }, { id: "x".repeat(65) }, { ok: true }]) {
+    store = useStore(createMemoryStore());
+    net = mockFetch({ rotorBody: body });
+    const out = await postOk(submission());
+    const rec = store.json(`referral/${out.friends[0].id}`);
+    assert.equal(rec.rotor.lead_id, null, JSON.stringify(body));
+  }
+});
+
+test("a referral Rotor rejected carries no lead id", async () => {
+  net = mockFetch({ rotor: 502, rotorBody: { id: "27e399b4-194b-4af4-8e54-c7ddbaa0cca7" } });
+  const out = await postOk(submission());
+  const rec = store.json(`referral/${out.friends[0].id}`);
+  assert.equal(rec.rotor.delivered, false);
+  assert.equal(rec.rotor.lead_id, null, "an id from a failed call is not recorded");
 });
 
 test("Rotor payload omits empty optional fields", async () => {
@@ -287,7 +322,7 @@ test("a friend already referred by someone else is flagged, not sent to Rotor", 
   const dup = store.json(`referral/${out.friends[0].id}`);
   assert.equal(dup.duplicate_of, firstId);
   assert.equal(dup.referrer_id, "7635550200");
-  assert.deepEqual(dup.rotor, { delivered: false, status: null, at: null });
+  assert.deepEqual(dup.rotor, { delivered: false, status: null, lead_id: null, at: null });
   assert.deepEqual(store.json("idx/phone/7635550101"), { id: firstId }, "phone index keeps the first");
   assert.ok(store.json(`idx/referrer/7635550200/${out.friends[0].id}`), "still listed for its referrer");
 });

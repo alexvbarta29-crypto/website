@@ -68,7 +68,7 @@ test("share-link friend with a valid code: CRM lead + a quoted record under the 
   assert.equal(rec.email, "carla@example.com");
   assert.equal(rec.address, "9 Lake Rd, Delano");
   assert.ok(rec.quote_requested_at);
-  assert.deepEqual(rec.rotor, { delivered: true, status: 201, at: rec.rotor.at });
+  assert.deepEqual(rec.rotor, { delivered: true, status: 201, lead_id: null, at: rec.rotor.at });
   assert.deepEqual(rec.history.map((h) => [h.status, h.by]), [["new", "system"], ["quoted", "lead-form"]]);
   assert.deepEqual(store.json("idx/phone/7635550199"), { id: rec.id });
   assert.deepEqual(store.json(`idx/referrer/7635550100/${rec.id}`), { id: rec.id });

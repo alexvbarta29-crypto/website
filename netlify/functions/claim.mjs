@@ -91,7 +91,10 @@ export default async (req) => {
   const delivered = Boolean(rotor.delivered);
 
   if (claim && claim.record) {
-    claim.record.rotor = { delivered, status: rotor.status ?? null, at: new Date().toISOString() };
+    claim.record.rotor = { delivered, status: rotor.status ?? null,
+      // Keep an id we already had if this call didn't return one.
+      lead_id: rotor.lead_id || (claim.record.rotor && claim.record.rotor.lead_id) || null,
+      at: new Date().toISOString() };
     claim.record.updated_at = claim.record.rotor.at;
     await guard.run("save claim delivery", (s) => saveReferralRecord(s, claim.record));
   }

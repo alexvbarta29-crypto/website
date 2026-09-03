@@ -56,6 +56,11 @@
   // retired "booked" stage so older records still count toward a referrer's
   // total. Kept beside the labels so both live in one place.
   const BOOKED = ["approved", "scheduled", "booked", "completed", "rewarded"];
+  /* Rotor's own app, mirroring rotorLeadUrl() in netlify/lib/referral-config.mjs.
+     A lead's /conversation page is its message thread, so texting from there
+     lands on the customer's record instead of only on someone's phone. */
+  const rotorLeadUrl = (id) =>
+    id ? "https://app.getrotor.com/leads/" + encodeURIComponent(id) + "/conversation" : "";
 
   const state = { key: "", authed: false, data: null, filter: "all", query: "", view: "referrals", loadedAt: 0 };
   const dirtyNotes = new Map(); // referral id → office note typed but not yet saved
@@ -554,8 +559,28 @@
     }
 
     // One-tap links. Hidden rather than dead when there's no usable number.
-    const smsFriend = hook(node, "sms-friend"), hf = smsHref(r.phone, friendText(r));
-    if (hf) smsFriend.href = hf; else smsFriend.hidden = true;
+    /* Text in Rotor when Rotor gave us an id for this lead; otherwise the
+       phone's own Messages app, so a referral created before we started
+       recording the id still has a working button. The message is copied on
+       the way out, because Rotor opens on an empty compose box. */
+    const body = friendText(r);
+    const rotorHref = rotorLeadUrl(r.rotor && r.rotor.lead_id);
+    const rotorFriend = hook(node, "rotor-friend");
+    const smsFriend = hook(node, "sms-friend"), hf = smsHref(r.phone, body);
+    if (rotorHref) {
+      rotorFriend.href = rotorHref;
+      rotorFriend.addEventListener("click", () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(body).then(
+            () => toast("Message copied — paste it in Rotor."),
+            () => toast("Opened Rotor. Copy the message from the notes.", true));
+        } else toast("Opened Rotor. Copy the message from the notes.", true);
+      });
+      smsFriend.hidden = true;
+    } else {
+      rotorFriend.hidden = true;
+      if (hf) smsFriend.href = hf; else smsFriend.hidden = true;
+    }
     const call = hook(node, "call-friend");
     if (tel) call.href = tel; else call.hidden = true;
     const smsRef = hook(node, "sms-ref"), hr = smsHref(r.referrer_phone, referrerText(r));

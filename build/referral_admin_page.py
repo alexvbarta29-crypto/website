@@ -209,6 +209,7 @@ def _card_template():
       </div>
       <p class="ra-reward-line" data-f="reward" hidden>{icon('check-circle')}<span data-f="reward-text"></span></p>
       <div class="ra-actions">
+        <a class="ra-act ra-act--rotor" data-f="rotor-friend" target="_blank" rel="noopener noreferrer">{_icon('message')} Text in Rotor</a>
         <a class="ra-act" data-f="sms-friend">{_icon('message')} Text friend</a>
         <a class="ra-act" data-f="call-friend">{icon('phone')} Call friend</a>
         <a class="ra-act" data-f="sms-ref">{_icon('message')} Text referrer</a>

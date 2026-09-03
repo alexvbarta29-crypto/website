@@ -53,6 +53,32 @@ export function rotorLeadPayload({ referrer, friend, code }) {
   return payload;
 }
 
+// Rotor's own app links to a lead by id — https://app.getrotor.com/leads/
+// {id}/conversation — so the id it hands back on create/update is what lets
+// the office dashboard open a referral straight in Rotor. The response shape
+// isn't in any documentation we have, so this reads the handful of shapes an
+// API of this kind uses and gives up quietly rather than guessing wrong. When
+// nothing matches it logs the response's KEYS only (never values, which are
+// customer data) so the real shape can be read off a function log once.
+const ID_KEYS = ["id", "lead_id", "leadId", "uuid"];
+const usableId = (v) =>
+  typeof v === "string" && v.length > 0 && v.length <= 64 && !/[^\w.-]/.test(v) ? v : null;
+async function rotorLeadId(res) {
+  let body;
+  try { body = await res.clone().json(); } catch { return null; }
+  if (!body || typeof body !== "object") return null;
+  for (const holder of [body, body.data, body.lead, body.result]) {
+    if (!holder || typeof holder !== "object") continue;
+    for (const k of ID_KEYS) {
+      const id = usableId(holder[k]);
+      if (id) return id;
+    }
+  }
+  console.warn("referral: no lead id in Rotor's response; keys were "
+    + JSON.stringify(Object.keys(body).slice(0, 12)));
+  return null;
+}
+
 // 201 = new lead, 200 = existing lead updated (Rotor upserts by phone, so a
 // friend who is already a contact just gains the Referral tag and notes).
 export async function createRotorLead(payload) {
@@ -74,7 +100,7 @@ export async function createRotorLead(payload) {
     });
     const delivered = res.status === 200 || res.status === 201;
     if (!delivered) console.error("referral: Rotor rejected lead: HTTP " + res.status);
-    return { delivered, status: res.status };
+    return { delivered, status: res.status, lead_id: delivered ? await rotorLeadId(res) : null };
   } catch (err) {
     console.error(`referral: Rotor unreachable (${safeErr(err)})`);
     return { delivered: false, status: null };

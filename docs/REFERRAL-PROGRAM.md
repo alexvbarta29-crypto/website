@@ -233,6 +233,24 @@ set through `issue_reward` so the reward details are always recorded.
 Leaving `completed` for an earlier stage, or `rewarded` for any other
 stage, clears the reward (and the pick).
 
+### Texting a friend from Rotor
+
+`createRotorLead()` reads the lead id out of Rotor's reply and stores it as
+`rotor.lead_id`, which lets the dashboard link straight to that customer's
+message thread: `https://app.getrotor.com/leads/{id}/conversation`. Texting
+from there logs the exchange on the Rotor record instead of leaving it only
+on someone's phone. Clicking also copies the ready-to-send message, because
+Rotor opens on an empty compose box.
+
+Rotor's response shape isn't documented anywhere we have, so the id is read
+defensively (`id` / `lead_id` / `leadId` / `uuid`, at the top level or under
+`data` / `lead` / `result`) and anything that doesn't look like a safe URL
+segment is ignored. When no id is found the response's **keys** are logged —
+never its values, which are customer data — so the real shape can be read off
+one function log. A referral with no id (any created before this existed, or
+one Rotor rejected) falls back to the phone's own Messages app with the same
+message pre-written, so no card is ever left without a working button.
+
 ### Duplicates
 
 A friend phone number that already has a referral (from anyone) is
@@ -491,7 +509,7 @@ Phone-friendly, app-like page. Enter the admin key once (kept in
 Booked, Job complete · reward owed, Rewards issued, credit and gift cards
 issued), status filter tabs, a search box (name / phone / code), and a card
 per referral with friend and referrer details, created date, status, a
-status selector, "Text friend" / "Call friend" / "Text referrer" one-tap
+status selector, "Text in Rotor" / "Call friend" / "Text referrer" one-tap
 links (the referrer text changes with the stage: tracking link → pick your
 reward → reward issued), an office note, the referrer's pick once made,
 and an **Issue reward** action ($50 credit or $25 gift card, defaulting to

@@ -245,6 +245,9 @@ export function buildReferral({ id, referrer, friend, duplicateOf, rotor, now })
     duplicate_of: duplicateOf || null,
     rotor: { delivered: Boolean(rotor && rotor.delivered),
              status: rotor && typeof rotor.status === "number" ? rotor.status : null,
+             // Rotor's own id for this lead, when it told us one: the office
+             // dashboard uses it to open the conversation in Rotor.
+             lead_id: (rotor && rotor.lead_id) || null,
              at: (rotor && rotor.at) || null },
     sms: { friend: false, referrer: false, office: false },
     quote_requested_at: null,

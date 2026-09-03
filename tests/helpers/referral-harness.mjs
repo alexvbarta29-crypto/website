@@ -71,7 +71,10 @@ export function useStore(store) {
 // Replaces globalThis.fetch. `rotor` / `twilio` are HTTP statuses, or
 // "throw" to simulate an unreachable host, or a function of the captured
 // request returning either.
-export function mockFetch({ rotor = 201, twilio = 201 } = {}) {
+// rotorBody: what Rotor answers with. Its real shape isn't documented
+// anywhere we have, and createRotorLead() reads a lead id out of it, so tests
+// can hand in whatever shape they want to exercise.
+export function mockFetch({ rotor = 201, twilio = 201, rotorBody = null } = {}) {
   const requests = [];
   const pick = (v, entry) => (typeof v === "function" ? v(entry) : v);
   globalThis.fetch = async (url, options = {}) => {
@@ -91,7 +94,9 @@ export function mockFetch({ rotor = 201, twilio = 201 } = {}) {
     }
     requests.push(entry);
     if (outcome === "throw") throw new TypeError("fetch failed");
-    return new Response("{}", { status: outcome });
+    const body = entry.kind === "rotor" && rotorBody
+      ? JSON.stringify(pick(rotorBody, entry)) : "{}";
+    return new Response(body, { status: outcome, headers: { "Content-Type": "application/json" } });
   };
   return {
     requests,
