@@ -91,15 +91,23 @@ test("a listed friend claiming without a code: matched by phone, referral moves 
   assert.equal(records().length, 2, "no extra record for a listed friend");
 });
 
-test("a listed friend's claim fills in the details the referrer left blank", async () => {
+test("a listed friend's claim fills in the details the referrer left blank, and only those", async () => {
+  // The form now requires a friend's last name, so blank it on the stored
+  // record directly: that is exactly the state of every referral created
+  // before the rule, and of a share-link friend (validateClaim() keeps the
+  // surname optional). Pre-fill the email so "never overwritten" is tested
+  // by a field the loop actually visits.
+  const key = `referral/${seeded.friends[1].id}`;
+  store.map.set(key, JSON.stringify({ ...store.json(key), last_name: "", email: "old@example.com" }));
+
   const res = await post({ first_name: "Bob", last_name: "Smith", phone: "7635550102", email: "bob@example.com",
     address: "77 Elm St, Delano", code: "" });
   assert.equal(res.status, 200);
-  const bob = store.json(`referral/${seeded.friends[1].id}`);
-  assert.equal(bob.last_name, "Smith");
-  assert.equal(bob.email, "bob@example.com");
-  assert.equal(bob.address, "77 Elm St, Delano");
-  assert.equal(bob.first_name, "Bob", "existing details are never overwritten");
+  const bob = store.json(key);
+  assert.equal(bob.last_name, "Smith", "a blank surname is filled in from the claim");
+  assert.equal(bob.address, "77 Elm St, Delano", "a blank address is filled in from the claim");
+  assert.equal(bob.email, "old@example.com", "a detail already on file is never overwritten");
+  assert.equal(bob.first_name, "Bob");
   assert.equal(bob.status, "quoted");
 });
 

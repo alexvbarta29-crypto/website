@@ -56,7 +56,7 @@ const invalid = [
   ["no friends", submission({ friends: [] }), "friends"],
   ["friends not an array", submission({ friends: "Jane" }), "friends"],
   ["more than 10 friends", submission({ friends: Array.from({ length: 11 }, (_, i) => ({
-    first_name: "F" + i, phone: "763555" + String(1000 + i) })) }), "friends"],
+    first_name: "F" + i, last_name: "L" + i, phone: "763555" + String(1000 + i) })) }), "friends"],
   ["friend without first name", submission({ friends: [{ first_name: "", last_name: "Doe", phone: "7635550101" }] }), "friends.0.first_name"],
   ["friend without last name", submission({ friends: [{ first_name: "Jane", last_name: "", phone: "7635550101" }] }), "friends.0.last_name"],
   ["friend with a blank last name", submission({ friends: [{ first_name: "Jane", last_name: "   ", phone: "7635550101" }] }), "friends.0.last_name"],
