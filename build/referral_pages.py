@@ -67,10 +67,10 @@ def _friend_row(n):
           <legend>Friend <span data-friend-num>{n}</span></legend>
           <button type="button" class="ref-remove" data-remove-friend aria-label="Remove friend {n}">{icon('x')}<span>Remove</span></button>
           <div class="form-row">
-            <div class="field"><label for="{p}-first">First name</label><input type="text" id="{p}-first" name="friend_first_name" data-field="first_name" autocomplete="off" maxlength="60" required placeholder="First name"></div>
-            <div class="field"><label for="{p}-last">Last name <span class="label-hint">(optional)</span></label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" placeholder="Last name"></div>
+            <div class="field"><label for="{p}-first" class="sr-only">First name</label><input type="text" id="{p}-first" name="friend_first_name" data-field="first_name" autocomplete="off" maxlength="60" required placeholder="First name"></div>
+            <div class="field"><label for="{p}-last" class="sr-only">Last name (optional)</label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" placeholder="Last name (optional)"></div>
           </div>
-          <div class="field"><label for="{p}-phone">Mobile phone</label><input type="tel" id="{p}-phone" name="friend_phone" data-field="phone" data-ref-phone inputmode="tel" autocomplete="off" required placeholder="(763) 555-0101"></div>
+          <div class="field"><label for="{p}-phone" class="sr-only">Mobile phone</label><input type="tel" id="{p}-phone" name="friend_phone" data-field="phone" data-ref-phone inputmode="tel" autocomplete="off" required placeholder="Mobile phone"></div>
         </fieldset>"""
 
 
@@ -129,12 +129,12 @@ def _referral_form(depth):
           <p class="ref-locked-note" id="ref-locked-note" hidden>These are your details from your tracking link.</p>
           <div class="ref-group-body">
             <div class="form-row">
-              <div class="field"><label for="ref-first">First name</label><input type="text" id="ref-first" name="first_name" autocomplete="given-name" maxlength="60" required placeholder="First name"></div>
-              <div class="field"><label for="ref-last">Last name</label><input type="text" id="ref-last" name="last_name" autocomplete="family-name" maxlength="60" placeholder="Last name"></div>
+              <div class="field"><label for="ref-first" class="sr-only">First name</label><input type="text" id="ref-first" name="first_name" autocomplete="given-name" maxlength="60" required placeholder="First name"></div>
+              <div class="field"><label for="ref-last" class="sr-only">Last name</label><input type="text" id="ref-last" name="last_name" autocomplete="family-name" maxlength="60" placeholder="Last name"></div>
             </div>
             <div class="form-row">
-              <div class="field"><label for="ref-phone">Mobile phone</label><input type="tel" id="ref-phone" name="phone" autocomplete="tel" inputmode="tel" data-ref-phone required placeholder="{BIZ['phone_display']}"></div>
-              <div class="field"><label for="ref-email">Email <span class="label-hint">(optional)</span></label><input type="email" id="ref-email" name="email" autocomplete="email" maxlength="120" placeholder="you@email.com"></div>
+              <div class="field"><label for="ref-phone" class="sr-only">Mobile phone</label><input type="tel" id="ref-phone" name="phone" autocomplete="tel" inputmode="tel" data-ref-phone required placeholder="Mobile phone"></div>
+              <div class="field"><label for="ref-email" class="sr-only">Email (optional)</label><input type="email" id="ref-email" name="email" autocomplete="email" maxlength="120" placeholder="Email (optional)"></div>
             </div>
           </div>
         </div>
