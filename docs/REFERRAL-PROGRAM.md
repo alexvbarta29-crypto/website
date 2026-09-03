@@ -26,9 +26,12 @@ Amounts live in exactly two places that must be kept in sync:
    ("Want $50 off? Refer a friend."). The same page sits behind the footer
    link, and nowhere else on the site.
 2. **The customer fills in the form**: their own name, phone, optional
-   email, and who they're referring (name + phone required; email, address,
-   and a note optional; up to 10 friends at once). They confirm they have
-   their friends' permission to share their contact details.
+   email, and who they're referring — **first name, last name and mobile
+   number, nothing more** (last name optional; up to 10 friends at once).
+   All the office does with a referred friend is text them a link, and
+   their own form on `/r/CODE` collects the address, email and job details,
+   so asking the referrer for any of it twice would only slow them down.
+   They confirm they have their friends' permission to share their details.
 3. **The site stores the referral** (Netlify Blobs), **creates a lead in
    Rotor** for each friend (tag `Referral`, source `Referral program`, and
    notes that are the exact text to send them — see below), and, when SMS
@@ -204,8 +207,7 @@ Every read endpoint answers `503` when Netlify Blobs itself is unavailable.
   "referrer": { "first_name": "Alex", "last_name": "Barta", "phone": "(763) 555-0100",
                 "email": "alex@example.com" },
   "friends": [
-    { "first_name": "Jane", "last_name": "Doe", "phone": "763-555-0101",
-      "email": "", "address": "123 Main St, Delano, MN 55328", "note": "Neighbor, big house" }
+    { "first_name": "Jane", "last_name": "Doe", "phone": "763-555-0101" }
   ],
   "consent": true,
   "page": "/referral",
@@ -219,6 +221,13 @@ phone; a friend's phone can't equal the referrer's; duplicates within one
 submission collapse to one. `referrer.reward_pref` (`credit`/`giftcard`) is
 optional. Field caps: names 60, phone 25, email 120, address 200, note 500
 chars; longer values are rejected with `400` and the field path.
+
+The referral form sends only `first_name`, `last_name` and `phone` per
+friend. A friend's `email`, `address` and `note` are still **accepted and
+stored** when present, because `recordClaim()`
+(`netlify/lib/referral-claim.mjs`) fills them in for a friend who arrives
+through the share link and asks for a quote — that friend typed them on
+their own form. Don't remove them from the record shape.
 
 Success `200`:
 

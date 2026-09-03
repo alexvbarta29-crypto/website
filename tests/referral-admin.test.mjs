@@ -212,7 +212,9 @@ test("set_status: status + history by office, note kept, quoted stamps quote_req
   assert.equal(out.referral.history.length, 2);
   assert.deepEqual({ ...out.referral.history[1], at: "x" },
     { status: "contacted", at: "x", by: "office", note: "Left voicemail" });
-  assert.ok(out.referral.updated_at > out.referral.created_at);
+  // Both are ISO strings at millisecond resolution, so a seed and a status
+  // change in the same millisecond legitimately produce equal stamps.
+  assert.ok(out.referral.updated_at >= out.referral.created_at);
   assert.equal(store.json(`referral/${id}`).status, "contacted", "persisted");
 
   out = await ok(await adminPost({ action: "set_status", id, status: "QUOTED" }));

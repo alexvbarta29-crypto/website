@@ -54,12 +54,13 @@ def _trust_list():
 
 
 def _friend_row(n):
-    """One "who are you referring?" block. n numbers the ids and labels; the
-    <template> copy passes the literal "__N__", which referral.js swaps for
-    a fresh number each time it clones a row, so ids stay unique however
-    many rows are added and removed. Phone validation is the same 10-digit
-    rule as main.js' data-validate-phone, applied by referral.js so rows
-    added after load get it too."""
+    """One "who are you referring?" block: a name and a mobile number, because
+    all the office does with it is text them a link to their own form. n
+    numbers the ids and labels; the <template> copy passes the literal
+    "__N__", which referral.js swaps for a fresh number each time it clones a
+    row, so ids stay unique however many rows are added and removed. Phone
+    validation is the same 10-digit rule as main.js' data-validate-phone,
+    applied by referral.js so rows added after load get it too."""
     p = f"ref-f{n}"
     return f"""<fieldset class="ref-friend" data-friend>
           <legend>Friend <span data-friend-num>{n}</span></legend>
@@ -68,12 +69,7 @@ def _friend_row(n):
             <div class="field"><label for="{p}-first">First name</label><input type="text" id="{p}-first" name="friend_first_name" data-field="first_name" autocomplete="off" maxlength="60" required placeholder="Jane"></div>
             <div class="field"><label for="{p}-last">Last name <span class="label-hint">(optional)</span></label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" placeholder="Doe"></div>
           </div>
-          <div class="form-row">
-            <div class="field"><label for="{p}-phone">Mobile phone</label><input type="tel" id="{p}-phone" name="friend_phone" data-field="phone" data-ref-phone inputmode="tel" autocomplete="off" required placeholder="(763) 555-0101"></div>
-            <div class="field"><label for="{p}-email">Email <span class="label-hint">(optional)</span></label><input type="email" id="{p}-email" name="friend_email" data-field="email" autocomplete="off" maxlength="120" placeholder="jane@email.com"></div>
-          </div>
-          <div class="field"><label for="{p}-address">Their address <span class="label-hint">(optional, helps us quote faster)</span></label><input type="text" id="{p}-address" name="friend_address" data-field="address" autocomplete="off" maxlength="200" placeholder="123 Main St, Delano"></div>
-          <div class="field"><label for="{p}-note">Anything we should know? <span class="label-hint">(optional)</span></label><input type="text" id="{p}-note" name="friend_note" data-field="note" autocomplete="off" maxlength="500" placeholder="Neighbor, two-story house, best after 5pm"></div>
+          <div class="field"><label for="{p}-phone">Mobile phone</label><input type="tel" id="{p}-phone" name="friend_phone" data-field="phone" data-ref-phone inputmode="tel" autocomplete="off" required placeholder="(763) 555-0101"></div>
         </fieldset>"""
 
 
@@ -144,7 +140,7 @@ def _referral_form(depth):
 
         <div class="ref-group" role="group" aria-labelledby="ref-g2-title">
           <h3 class="ref-group-title" id="ref-g2-title">Who are you referring?</h3>
-          <p class="ref-group-sub">Name and mobile number are all we need. The rest helps us quote them faster.</p>
+          <p class="ref-group-sub">Just a name and mobile number. We text them their ${FRIEND_OFF} off and take it from there.</p>
           <div class="ref-friends" id="ref-friends">
         {_friend_row(1)}
           </div>

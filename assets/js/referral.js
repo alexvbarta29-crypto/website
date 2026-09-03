@@ -202,7 +202,6 @@
         else if (d === mine) bad(f.phone, "That’s your own number, so it can’t be referred.");
         else if (seen.has(d)) bad(f.phone, "You’ve already added this number above.");
         else { ok(f.phone); seen.add(d); }
-        checkEmail(f.email);
       });
 
       // The reward is picked later, when a friend's job is complete; a form
@@ -381,11 +380,12 @@
           first_name: trim(me.first_name), last_name: trim(me.last_name),
           phone: trim(me.phone), email: trim(me.email), reward_pref: reward ? reward.value : "",
         },
+        // Name and mobile only: the office texts them a link to their own
+        // form, which is where an email, address and notes get collected.
         friends: rows().map((row) => {
           const f = fieldsOf(row);
           return {
             first_name: trim(f.first_name), last_name: trim(f.last_name), phone: trim(f.phone),
-            email: trim(f.email), address: trim(f.address), note: trim(f.note),
           };
         }),
         consent: true,
