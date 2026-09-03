@@ -248,6 +248,11 @@ export function buildReferral({ id, referrer, friend, duplicateOf, rotor, now })
              // Rotor's own id for this lead, when it told us one: the office
              // dashboard uses it to open the conversation in Rotor.
              lead_id: (rotor && rotor.lead_id) || null,
+             // When it didn't tell us one: the field names of its reply (never
+             // values), which the dashboard shows as "No Rotor id · reply: …"
+             // so the parser can be fixed from the card, not a function log.
+             ...(!(rotor && rotor.lead_id) && rotor && Array.isArray(rotor.reply_keys)
+                 ? { reply_keys: rotor.reply_keys } : {}),
              at: (rotor && rotor.at) || null },
     sms: { friend: false, referrer: false, office: false },
     quote_requested_at: null,
@@ -377,6 +382,7 @@ export const CSV_COLUMNS = [
   ["quote_requested_at", (r) => r.quote_requested_at],
   ["rotor_delivered", (r) => (r.rotor ? r.rotor.delivered : "")],
   ["rotor_status", (r) => (r.rotor ? r.rotor.status : "")],
+  ["rotor_lead_id", (r) => (r.rotor && r.rotor.lead_id) || ""],
 ];
 
 // RFC 4180 quoting, plus a leading apostrophe on anything a spreadsheet

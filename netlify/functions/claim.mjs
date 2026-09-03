@@ -91,9 +91,15 @@ export default async (req) => {
   const delivered = Boolean(rotor.delivered);
 
   if (claim && claim.record) {
-    claim.record.rotor = { delivered, status: rotor.status ?? null,
-      // Keep an id we already had if this call didn't return one.
-      lead_id: rotor.lead_id || (claim.record.rotor && claim.record.rotor.lead_id) || null,
+    const prev = claim.record.rotor || {};
+    // Keep an id we already had if this call didn't return one.
+    const lead_id = rotor.lead_id || prev.lead_id || null;
+    claim.record.rotor = { delivered, status: rotor.status ?? null, lead_id,
+      // Still no id: keep the field names of the latest reply that had none
+      // (see rotorLeadId in referral-notify.mjs) for the dashboard's note.
+      ...(lead_id ? {} :
+        Array.isArray(rotor.reply_keys) ? { reply_keys: rotor.reply_keys } :
+        Array.isArray(prev.reply_keys) ? { reply_keys: prev.reply_keys } : {}),
       at: new Date().toISOString() };
     claim.record.updated_at = claim.record.rotor.at;
     await guard.run("save claim delivery", (s) => saveReferralRecord(s, claim.record));

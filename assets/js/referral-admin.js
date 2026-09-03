@@ -516,6 +516,21 @@
       crm.title = r.duplicate_of ? "Duplicates aren't sent to Rotor." :
         "Rotor didn't accept this lead" + (r.rotor.status ? " (HTTP " + r.rotor.status + ")" : "") + ". Add it by hand.";
     }
+    // Rotor took the lead but its reply carried no id we recognize, so "Text
+    // in Rotor" can't deep-link and the phone's Messages app stands in. The
+    // reply's field names are shown so the id can be found from a screenshot
+    // of this card rather than a server log. Older referrals (before the id
+    // was recorded at all) have no reply_keys and show nothing.
+    const noid = hook(node, "noid");
+    const keys = r.rotor && r.rotor.delivered && !r.rotor.lead_id && Array.isArray(r.rotor.reply_keys)
+      ? r.rotor.reply_keys.map(String) : null;
+    noid.hidden = !keys;
+    if (keys) {
+      noid.textContent = "No Rotor id" + (keys.length ? " · reply: " + keys.join(", ") : " · empty reply");
+      noid.title = "Rotor accepted this lead but sent back no id, so “Text in Rotor” can't open it; "
+        + "the phone's Messages app is used instead. "
+        + (keys.length ? "Rotor's reply had these fields: " + keys.join(", ") + "." : "Rotor's reply was empty.");
+    }
     setTime(hook(node, "created"), r.created_at);
 
     const tel = telHref(r.phone);

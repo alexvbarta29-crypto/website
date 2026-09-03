@@ -57,26 +57,33 @@ export function rotorLeadPayload({ referrer, friend, code }) {
 // {id}/conversation — so the id it hands back on create/update is what lets
 // the office dashboard open a referral straight in Rotor. The response shape
 // isn't in any documentation we have, so this reads the handful of shapes an
-// API of this kind uses and gives up quietly rather than guessing wrong. When
-// nothing matches it logs the response's KEYS only (never values, which are
-// customer data) so the real shape can be read off a function log once.
+// API of this kind uses and gives up quietly rather than guessing wrong.
+//
+// Returns { id } when one was found, otherwise { id: null, keys } where keys
+// are the reply's top-level field NAMES (never values, which are customer
+// data; [] when the reply wasn't a JSON object at all). They are recorded on
+// the referral and shown on its dashboard card, because a function log is
+// not somewhere the office looks: one screenshot of the card says what Rotor
+// actually sends back, and the parser can be tightened from that.
 const ID_KEYS = ["id", "lead_id", "leadId", "uuid"];
+const MAX_REPLY_KEYS = 12;
 const usableId = (v) =>
   typeof v === "string" && v.length > 0 && v.length <= 64 && !/[^\w.-]/.test(v) ? v : null;
 async function rotorLeadId(res) {
   let body;
-  try { body = await res.clone().json(); } catch { return null; }
-  if (!body || typeof body !== "object") return null;
-  for (const holder of [body, body.data, body.lead, body.result]) {
+  try { body = await res.clone().json(); } catch { body = null; }
+  if (!body || typeof body !== "object") return { id: null, keys: [] };
+  const holders = [body, body.data, body.lead, body.result, Array.isArray(body) ? body[0] : null];
+  for (const holder of holders) {
     if (!holder || typeof holder !== "object") continue;
     for (const k of ID_KEYS) {
       const id = usableId(holder[k]);
-      if (id) return id;
+      if (id) return { id, keys: null };
     }
   }
-  console.warn("referral: no lead id in Rotor's response; keys were "
-    + JSON.stringify(Object.keys(body).slice(0, 12)));
-  return null;
+  const keys = Object.keys(body).slice(0, MAX_REPLY_KEYS).map((k) => k.slice(0, 40));
+  console.warn("referral: no lead id in Rotor's response; keys were " + JSON.stringify(keys));
+  return { id: null, keys };
 }
 
 // 201 = new lead, 200 = existing lead updated (Rotor upserts by phone, so a
@@ -99,8 +106,13 @@ export async function createRotorLead(payload) {
       signal: AbortSignal.timeout(ROTOR_TIMEOUT_MS),
     });
     const delivered = res.status === 200 || res.status === 201;
-    if (!delivered) console.error("referral: Rotor rejected lead: HTTP " + res.status);
-    return { delivered, status: res.status, lead_id: delivered ? await rotorLeadId(res) : null };
+    if (!delivered) {
+      console.error("referral: Rotor rejected lead: HTTP " + res.status);
+      return { delivered, status: res.status, lead_id: null };
+    }
+    const { id, keys } = await rotorLeadId(res);
+    return id ? { delivered, status: res.status, lead_id: id }
+              : { delivered, status: res.status, lead_id: null, reply_keys: keys };
   } catch (err) {
     console.error(`referral: Rotor unreachable (${safeErr(err)})`);
     return { delivered: false, status: null };

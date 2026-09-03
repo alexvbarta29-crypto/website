@@ -187,6 +187,7 @@ def _card_template():
             <span class="ra-pill" data-f="status"></span>
             <span class="ra-flag" data-f="dup" hidden>Duplicate</span>
             <span class="ra-flag" data-f="crm" hidden>Not in CRM</span>
+            <span class="ra-flag" data-f="noid" hidden>No Rotor id</span>
           </div>
         </div>
         <time class="ra-when" data-f="created"></time>

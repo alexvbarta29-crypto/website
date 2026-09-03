@@ -183,12 +183,15 @@ referral/{referral_id}         referral_id = "r_" + base36 time + 6 random chars
   { id, referrer_id, code, referrer_name, referrer_phone,
     first_name, last_name, phone, phone_digits, email, address, note,
     office_note,
-    status: "new" | "contacted" | "quoted" | "booked" | "completed" | "rewarded" | "declined",
+    status: "new" | "contacted" | "quoted" | "quote_sent" | "approved" | "scheduled"
+          | "completed" | "rewarded" | "declined",   // "booked" only on records saved before the split
     history: [ { status, at, by: "system" | "office" | "lead-form" | "customer", note } ],
     reward: null | { type: null | "credit" | "giftcard", amount, chosen_at, issued_at, note },
     reward_ready_at: null | ISO        (set when marked completed),
     duplicate_of: null | referral_id,
-    rotor: { delivered: bool, status: number | null, at },
+    rotor: { delivered: bool, status: number | null, lead_id: string | null,
+             reply_keys?: string[],   // only when delivered without an id
+             at },
     sms: { friend: bool, referrer: bool, office: bool, reward_ready?: bool },
     quote_requested_at: null | ISO,
     created_at, updated_at }
@@ -243,13 +246,17 @@ on someone's phone. Clicking also copies the ready-to-send message, because
 Rotor opens on an empty compose box.
 
 Rotor's response shape isn't documented anywhere we have, so the id is read
-defensively (`id` / `lead_id` / `leadId` / `uuid`, at the top level or under
-`data` / `lead` / `result`) and anything that doesn't look like a safe URL
-segment is ignored. When no id is found the response's **keys** are logged —
-never its values, which are customer data — so the real shape can be read off
-one function log. A referral with no id (any created before this existed, or
-one Rotor rejected) falls back to the phone's own Messages app with the same
-message pre-written, so no card is ever left without a working button.
+defensively (`id` / `lead_id` / `leadId` / `uuid`, at the top level, under
+`data` / `lead` / `result`, or in a one-element array) and anything that
+doesn't look like a safe URL segment is ignored. When no id is found, the
+reply's top-level field **names** (at most twelve; never its values, which
+are customer data) are stored as `rotor.reply_keys`, and the card shows an
+amber **No Rotor id · reply: …** flag listing them, so the real shape can be
+read off a screenshot of the dashboard and the parser tightened — no function
+log needed. A referral with no id (any created before this existed, or one
+Rotor rejected) falls back to the phone's own Messages app with the same
+message pre-written, so no card is ever left without a working button. The
+CSV export carries the id as `rotor_lead_id`.
 
 ### Duplicates
 

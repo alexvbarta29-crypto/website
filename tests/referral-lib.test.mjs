@@ -169,6 +169,12 @@ test("record builders produce the contract shapes", () => {
     "rotor", "sms", "status", "updated_at"]);
   assert.equal(referral.status, "new");
   assert.deepEqual(referral.history, [{ status: "new", at: now, by: "system", note: "Referral received" }]);
+  assert.deepEqual(referral.rotor, { delivered: true, status: 201, lead_id: "27e399b4-194b", at: now },
+    "with an id there is nothing to explain, so no reply_keys");
+  const noId = buildReferral({ id: "r_3", referrer, friend: sub.friends[0], duplicateOf: null,
+    rotor: { delivered: true, status: 200, lead_id: null, reply_keys: ["success", "message"], at: now }, now });
+  assert.deepEqual(noId.rotor,
+    { delivered: true, status: 200, lead_id: null, reply_keys: ["success", "message"], at: now });
   const dup = buildReferral({ id: "r_2", referrer, friend: sub.friends[0], duplicateOf: "r_1",
     rotor: { delivered: false, status: null, at: null }, now });
   assert.equal(dup.duplicate_of, "r_1");
@@ -232,7 +238,7 @@ test("csvCell()/toCSV(): RFC 4180 quoting and formula neutralization", () => {
   assert.equal(csvCell("-5"), "-5", "plain negatives are numbers");
   const csv = toCSV([{ id: "r_1", status: "new", note: "a,b", reward: null, rotor: { delivered: true, status: 201 } }]);
   const [header, row] = csv.split("\r\n");
-  assert.equal(header.split(",").length, 25);
+  assert.equal(header.split(",").length, 26);
   assert.ok(row.includes('"a,b"'));
   assert.ok(csv.endsWith("\r\n"));
 });

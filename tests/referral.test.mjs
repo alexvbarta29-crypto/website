@@ -137,7 +137,10 @@ test("successful submission: response shape, headers, and stored records", async
   assert.equal(referral.history[0].by, "system");
   assert.equal(referral.reward, null);
   assert.equal(referral.duplicate_of, null);
-  assert.deepEqual({ ...referral.rotor, at: "x" }, { delivered: true, status: 201, lead_id: null, at: "x" });
+  // The stub Rotor answers "{}": no id, and the reply's (absent) field names
+  // are kept for the dashboard's "No Rotor id" note.
+  assert.deepEqual({ ...referral.rotor, at: "x" },
+    { delivered: true, status: 201, lead_id: null, reply_keys: [], at: "x" });
   assert.deepEqual(referral.sms, { friend: false, referrer: false, office: false });
   assert.equal(referral.quote_requested_at, null);
   assert.deepEqual(store.json(`idx/referrer/7635550100/${id}`), { id });
@@ -215,18 +218,41 @@ test("Rotor's lead id is captured and stored so the office can open the conversa
     const out = await postOk(submission());
     const rec = store.json(`referral/${out.friends[0].id}`);
     assert.equal(rec.rotor.lead_id, "27e399b4-194b-4af4-8e54-c7ddbaa0cca7", label);
+    assert.equal("reply_keys" in rec.rotor, false, label + ": found an id, so no field names are kept");
   }
+  // A one-element array around the lead is read too.
+  store = useStore(createMemoryStore());
+  net = mockFetch({ rotorBody: [{ id: "27e399b4-194b-4af4-8e54-c7ddbaa0cca7" }] });
+  const out = await postOk(submission());
+  assert.equal(store.json(`referral/${out.friends[0].id}`).rotor.lead_id,
+    "27e399b4-194b-4af4-8e54-c7ddbaa0cca7", "array reply");
 });
 
-test("a Rotor reply with no usable id stores null rather than guessing", async () => {
-  for (const body of [{}, { id: "" }, { id: 12345 }, { id: "has spaces" },
-    { id: "../../escape" }, { id: "x".repeat(65) }, { ok: true }]) {
+test("a Rotor reply with no usable id stores null, plus the reply's field names for the dashboard", async () => {
+  for (const [body, keys] of [
+    [{}, []], [{ id: "" }, ["id"]], [{ id: 12345 }, ["id"]], [{ id: "has spaces" }, ["id"]],
+    [{ id: "../../escape" }, ["id"]], [{ id: "x".repeat(65) }, ["id"]], [{ ok: true }, ["ok"]],
+    [{ success: true, message: "Lead created", data: { lead_uuid: "abc" } }, ["success", "message", "data"]],
+    ["just text", []], [null, []], [[], []],
+  ]) {
     store = useStore(createMemoryStore());
-    net = mockFetch({ rotorBody: body });
+    net = mockFetch({ rotorBody: body === null ? "null" : body });
     const out = await postOk(submission());
     const rec = store.json(`referral/${out.friends[0].id}`);
     assert.equal(rec.rotor.lead_id, null, JSON.stringify(body));
+    assert.deepEqual(rec.rotor.reply_keys, keys, JSON.stringify(body));
   }
+});
+
+test("the field names kept from a Rotor reply are capped, never values", async () => {
+  const body = {};
+  for (let i = 0; i < 30; i++) body["field_" + i + "_" + "n".repeat(60)] = "customer data " + i;
+  net = mockFetch({ rotorBody: body });
+  const out = await postOk(submission());
+  const rec = store.json(`referral/${out.friends[0].id}`);
+  assert.equal(rec.rotor.reply_keys.length, 12, "at most twelve names");
+  assert.ok(rec.rotor.reply_keys.every((k) => k.length <= 40), "each name is trimmed");
+  assert.ok(!JSON.stringify(rec.rotor).includes("customer data"), "no reply values are stored");
 });
 
 test("a referral Rotor rejected carries no lead id", async () => {
