@@ -310,9 +310,6 @@
       $("#ref-code").textContent = data.code || "";
       const url = data.share_url || "";
       $("#ref-url").value = url;
-      const links = shareLinks(first, url);
-      $("#ref-sms").href = links.sms;
-      $("#ref-email-share").href = links.mail;
 
       const trackWrap = $("#ref-track-wrap"), trackNone = $("#ref-track-none"), trackReturning = $("#ref-track-returning");
       trackReturning.hidden = true;
