@@ -303,7 +303,11 @@
     let owed = 0, credit = 0, cards = 0;
     d.referrals.forEach((r) => {
       if (by[r.status] !== undefined) by[r.status]++;
-      if (r.status === "booked") owed++;
+      // Parity with adminStats() in netlify/lib/referral-lib.mjs: the reward
+      // is owed once the job is COMPLETE, not merely booked. These used to
+      // disagree, so every optimistic recompute after an action showed the
+      // booked count as money owed until the next server refresh.
+      if (r.status === "completed") owed++;
       if (r.status === "rewarded" && r.reward && typeof r.reward.amount === "number") {
         if (r.reward.type === "giftcard") cards++; else credit += r.reward.amount;
       }

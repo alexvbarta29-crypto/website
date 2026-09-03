@@ -265,16 +265,26 @@ test("safeErr(): masks digit runs that could be phone numbers", () => {
   assert.equal(safeErr(null), "Error");
 });
 
-test("rotorLeadPayload(): every dollar amount comes from REWARDS", () => {
+// The notes ARE the message the office sends the friend — nothing else — so
+// the friend's discount is the only amount they carry. The referrer's two
+// amounts are quoted to the referrer instead; guard them where they live.
+test("every dollar amount the office sends out comes from REWARDS", () => {
   const sub = validateSubmission(submission());
   const referrer = buildReferrer({ referrer: sub.referrer, code: "BARTA-7K3XQ", token: "T".repeat(24), page: "", now: "x" });
   const p = rotorLeadPayload({ referrer, friend: sub.friends[0], code: "BARTA-7K3XQ" });
   assert.ok(p.notes.includes(`$${REWARDS.friend_discount} off`));
-  assert.ok(p.notes.includes(`$${REWARDS.referrer_credit} credit`));
-  assert.ok(p.notes.includes(`$${REWARDS.referrer_gift_card} gift card`));
   assert.ok(p.notes.length <= 2000);
+  // A referrer note is the office's, not the friend's: it never rides along.
   const long = rotorLeadPayload({ referrer, friend: { ...sub.friends[0], note: "n".repeat(500) }, code: "BARTA-7K3XQ" });
+  assert.equal(long.notes, p.notes);
   assert.ok(long.notes.length <= 2000);
+
+  const toReferrer = SMS.referrer({ n: 1, status_url: "https://x/referral?t=T" });
+  assert.ok(toReferrer.includes(`$${REWARDS.referrer_credit} credit`));
+  assert.ok(toReferrer.includes(`$${REWARDS.referrer_gift_card} gift card`));
+  const ready = SMS.rewardReady({ friend_first: "Jane", status_url: "https://x/referral?t=T" });
+  assert.ok(ready.includes(`$${REWARDS.referrer_credit} account credit`));
+  assert.ok(ready.includes(`$${REWARDS.referrer_gift_card} gift card`));
 });
 
 test("e164() and smsMode()", () => {

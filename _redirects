@@ -17,4 +17,4 @@
 # Referral program (docs/REFERRAL-PROGRAM.md): the clean address the
 # owner texts customers, and the short links texted to referred friends.
 /referral                  /referral.html  200
-/r/:code                   /referred.html?code=:code  200
+/r/:code                   /get-quote.html?promo=:code  200

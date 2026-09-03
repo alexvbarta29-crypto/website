@@ -6,7 +6,7 @@
 // Secrets (ROTOR_API_KEY, TWILIO_*) are read from the environment at call
 // time and must never be logged; only HTTP statuses are.
 
-import { REWARDS, SMS, shareUrl, statusUrl, siteUrl } from "./referral-config.mjs";
+import { SMS, shareUrl, statusUrl, siteUrl } from "./referral-config.mjs";
 import { fullName, lastInitial, safeErr } from "./referral-lib.mjs";
 
 // Same endpoint/version as netlify/functions/lead.mjs.
@@ -21,17 +21,18 @@ const TWILIO_TIMEOUT_MS = 6000;
 
 // The lead Rotor receives for a referred friend. Only Rotor-supported fields,
 // no empty optional properties, and no service_type (the friend hasn't asked
-// for anything yet — the notes tell the office who sent them and why).
+// for anything yet).
+//
+// The notes are the text to send them and nothing else: the office opens the
+// lead, copies the whole notes box — or hits Rotor's share button on it —
+// and sends it as-is. The message names the referrer and carries the code in
+// its link, and everything else about the referral (the referrer's phone and
+// reward, the note they wrote about this friend, the status) lives on the
+// referral dashboard, which is where that context is worked.
 export function rotorLeadPayload({ referrer, friend, code }) {
-  const referrerName = fullName(referrer.first_name, referrer.last_name);
-  const lines = [
-    `Referral code: ${code} (referred by ${referrerName}, ${referrer.phone})`,
-    `Offer: $${REWARDS.friend_discount} off their first service. `
-      + `${referrer.first_name} earns a $${REWARDS.referrer_credit} credit `
-      + `(or a $${REWARDS.referrer_gift_card} gift card) when they book.`,
-  ];
-  if (friend.note) lines.push(`Note from ${referrer.first_name}: ${friend.note}`);
-  let notes = lines.join("\n");
+  // Word for word what the automatic text would say, so a hand-sent message
+  // and an automatic one read identically to the friend.
+  let notes = friendText({ friend, referrer, code });
   if (notes.length > MAX_NOTES) notes = notes.slice(0, MAX_NOTES);
 
   const payload = {
