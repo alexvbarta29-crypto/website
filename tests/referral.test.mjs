@@ -158,41 +158,46 @@ test("Rotor payload for a referred friend is exact", async () => {
     address_street1: "123 Main St, Delano, MN 55328",
     address_state: "MN",
     address_country: "US",
-    notes: `Referral code: ${out.code} (referred by Alex Barta, (763) 555-0100)\n`
-      + "Offer: $25 off their first service. Alex earns a $50 credit (or a $25 gift card) when they book.\n"
-      + "Note from Alex: Neighbor, big house\n"
-      + "\n--- TEXT TO SEND ---\n"
-      + "Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. "
+    notes: "Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. "
       + `Claim it here: https://www.bartawindowwashing.com/r/${out.code} `
       + "or call (763) 314-3400. Reply STOP to opt out.",
   });
   assert.ok(!("service_type" in req.payload), "service_type must be omitted");
 });
 
-// The office works the friend's lead in Rotor, so the message to send them
-// has to be in the notes, word for word, with the link to their page.
-test("Rotor notes end with the ready-to-send text and the share link", async () => {
+// The office opens the friend's lead in Rotor, selects the whole notes box
+// (or hits Rotor's share button on it) and sends it. So the notes are the
+// message and nothing else — no heading, no preamble, nothing to hand-select
+// around. The referral's own context lives on the dashboard.
+test("Rotor notes are the ready-to-send text, alone", async () => {
   const out = await postOk(submission());
   const { notes } = net.rotor()[0].payload;
-  const [before, message] = notes.split("\n\n--- TEXT TO SEND ---\n");
-  assert.ok(before.includes(out.code), "the referral context still comes first");
-  assert.equal(message, friendText({
+  assert.equal(notes, friendText({
     friend: { first_name: "Jane" },
     referrer: { first_name: "Alex", last_name: "Barta" },
     code: out.code,
-  }), "the notes carry the friend text verbatim");
-  assert.ok(message.includes(`/r/${out.code}`), "the message links to the friend's page");
+  }), "the notes are the friend text verbatim");
+  assert.ok(notes.includes(`/r/${out.code}`), "the message links to the friend's page");
   assert.ok(notes.length <= 2000, "within Rotor's notes limit");
 });
 
-test("an over-long referrer note is trimmed, never the text to send", async () => {
+test("nothing but the message reaches the Rotor notes", async () => {
   const out = await postOk(submission({
-    friends: [{ first_name: "Jane", last_name: "Doe", phone: "7635550101", note: "x".repeat(500) }],
+    referrer: { first_name: "Alex", last_name: "Barta", phone: "(763) 555-0100" },
+    friends: [{ first_name: "Jane", last_name: "Doe", phone: "7635550101", note: "Neighbor, big house" }],
   }));
   const { notes } = net.rotor()[0].payload;
-  assert.ok(notes.length <= 2000, "within Rotor's notes limit");
-  assert.ok(notes.endsWith("Reply STOP to opt out."), "the message survives whole");
-  assert.ok(notes.includes(`/r/${out.code}`), "the link survives");
+  // The office context the notes used to carry: all of it is on the dashboard.
+  assert.ok(!notes.includes("Neighbor, big house"), "no referrer note");
+  assert.ok(!notes.includes("(763) 555-0100"), "no referrer phone");
+  assert.ok(!notes.includes("Referral code:"), "no code preamble");
+  assert.ok(!notes.includes("Offer:"), "no offer line");
+  assert.ok(!notes.includes("---"), "no heading");
+  assert.ok(notes.startsWith("Hi Jane!"), "starts at the message");
+  assert.ok(notes.endsWith("Reply STOP to opt out."), "ends at the message");
+  // The message still says who referred them, and the link carries the code.
+  assert.ok(notes.includes("Alex B. referred you"), "the referrer is still named");
+  assert.ok(notes.includes(out.code), "the code still travels, in the link");
 });
 
 test("Rotor payload omits empty optional fields", async () => {

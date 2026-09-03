@@ -30,19 +30,19 @@ Amounts live in exactly two places that must be kept in sync:
    and a note optional; up to 10 friends at once). They confirm they have
    their friends' permission to share their contact details.
 3. **The site stores the referral** (Netlify Blobs), **creates a lead in
-   Rotor** for each friend (tag `Referral`, source `Referral program`,
-   notes naming the referrer and the code and ending with the exact text to
-   send them — see below), and, when SMS is on, **texts the friend, the
+   Rotor** for each friend (tag `Referral`, source `Referral program`, and
+   notes that are the exact text to send them — see below), and, when SMS
+   is on, **texts the friend, the
    referrer, and/or the office** (see `REFERRAL_SMS_MODE`).
    The customer sees a success screen with their share code, a copy-able
    share link, one-tap "Text a friend" / "Email" buttons, and a private
    tracking link.
 4. **The office reaches out to the friend** ("Hi Jane, Alex referred you,
    here's $25 off"), automatically via Twilio or by hand. Both by-hand
-   routes write the message for you: the friend's Rotor lead carries it
-   under `--- TEXT TO SEND ---` in the notes (copy, paste, send), and the
-   admin dashboard's "Text friend" link opens the phone's messaging app
-   with the same message already filled in.
+   routes write the message for you: the friend's Rotor lead notes *are*
+   the message (copy the box, send it), and the admin dashboard's "Text
+   friend" link opens the phone's messaging app with the same text already
+   filled in.
 5. **The friend books.** Either on the short link `/r/CODE` (a page that
    greets them by the referrer's name with a "Claim my $25 off" form that
    creates the quote request in Rotor with the code attached), or through
@@ -253,26 +253,27 @@ from the dashboard.
 #### The Rotor lead each friend gets
 
 Source `Referral program`, tag `Referral`, no `service_type` (they haven't
-asked for anything yet), and notes built by
-`rotorLeadPayload()` in `netlify/lib/referral-notify.mjs`:
+asked for anything yet), and **notes that are the text to send them and
+nothing else** — `rotorLeadPayload()` in `netlify/lib/referral-notify.mjs`:
 
 ```
-Referral code: BARTA-7K3XQ (referred by Alex Barta, (763) 555-0100)
-Offer: $25 off their first service. Alex earns a $50 credit (or a $25 gift card) when they book.
-Note from Alex: Neighbor, big house
-
---- TEXT TO SEND ---
 Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: https://www.bartawindowwashing.com/r/BARTA-7K3XQ or call (763) 314-3400. Reply STOP to opt out.
 ```
 
-Everything under `--- TEXT TO SEND ---` is the message itself: open the lead
-in Rotor, copy it, send it. It is `SMS.friend()` from
-`netlify/lib/referral-config.mjs` word for word, so a hand-sent text and an
-automatic one (SMS mode `all`) read identically, and the link is the
-friend's own page — `/r/CODE` greets them by the referrer's name and shows
-the "Claim my $25 off" form. Rotor caps notes at 2 000 characters; if a
-referrer writes a very long note, that note is what gets trimmed — the
-message and its link always survive whole.
+No heading, no preamble, nothing to hand-select around: open the lead,
+select the notes box (or use Rotor's share button on it) and send. The text
+is `SMS.friend()` from `netlify/lib/referral-config.mjs` word for word, so a
+hand-sent message and an automatic one (SMS mode `all`) read identically,
+and the link is the friend's own page — `/r/CODE` greets them by the
+referrer's name and shows the "Claim my $25 off" form.
+
+Everything the notes deliberately leave out — the referrer's phone, the
+$50/$25 reward breakdown, the note the referrer wrote about this friend, the
+status — is on the referral dashboard, which is where that context is
+worked. The message itself still names the referrer ("Alex B. referred
+you") and carries the code inside its link, so a Rotor lead on its own is
+never anonymous. `/api/claim` and `/api/lead` leads are different: those
+friends have already asked for a quote, so their notes stay descriptive.
 
 ### `POST /api/referral` with `{ "action": "choose_reward" }` — the referrer picks
 
