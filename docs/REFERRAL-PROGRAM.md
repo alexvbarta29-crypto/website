@@ -296,7 +296,7 @@ asked for anything yet), and **notes that are the text to send them and
 nothing else** — `rotorLeadPayload()` in `netlify/lib/referral-notify.mjs`:
 
 ```
-Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: https://www.bartawindowwashing.com/r/BARTA-7K3XQ or call (763) 314-3400. Reply STOP to opt out.
+Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: https://www.bartawindowwashing.com/r/BARTA-7K3XQ or call (763) 314-3400. Reply with any questions.
 ```
 
 No heading, no preamble, nothing to hand-select around: open the lead,
@@ -441,7 +441,7 @@ look like `r_…` and `referrer_id` must be a 10-digit phone (`404` otherwise).
 Used by the Twilio sender and, verbatim, by the dashboard's one-tap `sms:`
 links (so manual and automatic texts read the same).
 
-- **Friend (new referral):** `Hi {friend_first}! {referrer_first} {referrer_last_initial}. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: {share_url} or call (763) 314-3400. Reply STOP to opt out.`
+- **Friend (new referral):** `Hi {friend_first}! {referrer_first} {referrer_last_initial}. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: {share_url} or call (763) 314-3400. Reply with any questions.`
 - **Referrer (confirmation):** `Thanks for referring {n} friend(s) to Barta Window Washing! You earn a $50 credit (or a $25 gift card) for each one who books. Track your referrals: {status_url}`
 - **Referrer (job complete, pick your reward):** `Great news from Barta Window Washing: {friend_first}'s first service is complete, so your reward is ready! Pick a $50 account credit or a $25 gift card here: {status_url}`
 - **Referrer (reward issued, manual from the dashboard):** `Great news from Barta Window Washing: your {reward} for referring {friend_first} has been issued. Thanks for spreading the word!`

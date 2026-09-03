@@ -64,7 +64,7 @@ export const SMS = Object.freeze({
     return `Hi ${friend_first}! ${who} referred you to Barta Window Washing, `
       + `so your first service is $${REWARDS.friend_discount} off. `
       + `Claim it here: ${share_url} or call ${OFFICE_PHONE_DISPLAY}. `
-      + "Reply STOP to opt out.";
+      + "Reply with any questions.";
   },
   referrer: ({ n, status_url }) =>
     `Thanks for referring ${n} friend(s) to Barta Window Washing! `

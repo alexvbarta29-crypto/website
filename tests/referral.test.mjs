@@ -162,7 +162,7 @@ test("Rotor payload for a referred friend is exact", async () => {
     address_country: "US",
     notes: "Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. "
       + `Claim it here: https://www.bartawindowwashing.com/r/${out.code} `
-      + "or call (763) 314-3400. Reply STOP to opt out.",
+      + "or call (763) 314-3400. Reply with any questions.",
   });
   assert.ok(!("service_type" in req.payload), "service_type must be omitted");
 });
@@ -196,7 +196,7 @@ test("nothing but the message reaches the Rotor notes", async () => {
   assert.ok(!notes.includes("Offer:"), "no offer line");
   assert.ok(!notes.includes("---"), "no heading");
   assert.ok(notes.startsWith("Hi Jane!"), "starts at the message");
-  assert.ok(notes.endsWith("Reply STOP to opt out."), "ends at the message");
+  assert.ok(notes.endsWith("Reply with any questions."), "ends at the message");
   // The message still says who referred them, and the link carries the code.
   assert.ok(notes.includes("Alex B. referred you"), "the referrer is still named");
   assert.ok(notes.includes(out.code), "the code still travels, in the link");

@@ -145,7 +145,7 @@
     const who = (initial ? names[0] + " " + initial + "." : names[0]) || "A friend";
     return "Hi " + (r.first_name || "there") + "! " + who + " referred you to " + cfg.biz
       + ", so your first service is " + money(cfg.friendOff) + " off. Claim it here: " + shareUrl(r.code)
-      + " or call " + cfg.phone + ". Reply STOP to opt out.";
+      + " or call " + cfg.phone + ". Reply with any questions.";
   };
   const referrerText = (r) => {
     const p0 = referrerOf(r);

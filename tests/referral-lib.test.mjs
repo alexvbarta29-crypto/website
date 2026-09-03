@@ -46,7 +46,7 @@ test("SMS templates match docs/REFERRAL-PROGRAM.md verbatim", () => {
   assert.equal(SMS.friend({ friend_first: "Jane", referrer_first: "Alex", referrer_last_initial: "B",
     share_url: "https://www.bartawindowwashing.com/r/BARTA-7K3XQ" }),
     "Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. "
-    + "Claim it here: https://www.bartawindowwashing.com/r/BARTA-7K3XQ or call (763) 314-3400. Reply STOP to opt out.");
+    + "Claim it here: https://www.bartawindowwashing.com/r/BARTA-7K3XQ or call (763) 314-3400. Reply with any questions.");
   assert.equal(SMS.referrer({ n: 2, status_url: "https://www.bartawindowwashing.com/referral?t=T" }),
     "Thanks for referring 2 friend(s) to Barta Window Washing! You earn a $50 credit (or a $25 gift card) "
     + "for each one who books. Track your referrals: https://www.bartawindowwashing.com/referral?t=T");

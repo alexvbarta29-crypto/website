@@ -84,7 +84,7 @@ test("mode all: friend, office, and referrer texts with the verbatim templates",
   const friend = to("+17635550101");
   assert.ok(friend, "friend texted");
   assert.equal(friend.params.get("Body"),
-    `Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: https://www.bartawindowwashing.com/r/${out.code} or call (763) 314-3400. Reply STOP to opt out.`);
+    `Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: https://www.bartawindowwashing.com/r/${out.code} or call (763) 314-3400. Reply with any questions.`);
 
   const referrer = to("+17635550100");
   assert.ok(referrer, "referrer texted");
