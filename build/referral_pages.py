@@ -1,7 +1,8 @@
 """Customer-facing referral program pages (docs/REFERRAL-PROGRAM.md).
 
   referral_page(depth)  -> referral.html   program page + form + private tracking dashboard (?t=TOKEN)
-  referred_page(depth)  -> referred.html   what a referred friend lands on (/r/CODE), with the claim form
+  referred_page(depth)  -> referred.html   standalone landing + claim form for a referred friend
+                                          (not what /r/CODE serves; see build.py's build_referred)
 
 Both share the site chrome (C.head / C.nav / C.page_end) and the design
 system in assets/css/styles.css; page-specific rules live in
@@ -378,7 +379,9 @@ def _claim_form(depth):
 
 
 def referred_page(depth=0, seo_title=None, schema=None):
-    """Full HTML for referred.html, what a friend lands on from /r/CODE.
+    """Full HTML for referred.html, a standalone landing page for a referred
+    friend. /r/CODE serves the ordinary quote form instead; this page and its
+    /api/claim endpoint stay working as the alternative.
     The generic offer is rendered server-side so the page is complete
     before (or without) JavaScript; referral.js personalizes it with the
     referrer's first name and the code once GET /api/referral?code=

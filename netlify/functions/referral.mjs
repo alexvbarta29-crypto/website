@@ -4,7 +4,8 @@
 //   POST /api/referral            { action: "choose_reward", t, id, reward_type }: the
 //                                 referrer picks credit or gift card once a job is complete
 //   GET  /api/referral?t=TOKEN    the referrer's private dashboard
-//   GET  /api/referral?code=CODE  public share-code lookup (referred.html)
+//   GET  /api/referral?code=CODE  public share-code lookup (the quote form's
+//                                 referral banner, and referred.html)
 //
 // Every referral is stored in Netlify Blobs and created as a lead in Rotor
 // CRM tagged "Referral"; depending on REFERRAL_SMS_MODE the friend, the

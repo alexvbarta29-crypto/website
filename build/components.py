@@ -856,6 +856,7 @@ def quote_wizard(depth=0, svc_default=None):
   <div class="wizard-progress-bar" aria-hidden="true"><div class="wizard-progress-fill" data-wizard-fill></div></div>
   <form class="form wizard-form" data-lead novalidate {lead_form_attrs()}>
     <div class="wizard-panel" data-panel="0">
+      <p class="quote-referral" data-referral-banner hidden>{icon('gift')}<span data-referral-text></span></p>
       <h2 class="wizard-hero-title">Let's get to know you!</h2>
       <div class="form-row mt-3">
         <div class="field field-icon">

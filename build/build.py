@@ -1305,7 +1305,11 @@ def build_get_quote():
 <script src="{root}assets/js/main.min.js?v={C.ASSET_VER}" defer></script>
 </body>
 </html>"""
-    write("get-quote.html", html, slug="get-quote.html", priority="0.9")
+    # Also served at /r/CODE (a referred friend's short link) through the
+    # rewrite in build_redirects(), where relative URLs would resolve under
+    # /r/ and the page would arrive with no stylesheet and no script — the
+    # same reason referred.html gets this treatment.
+    write("get-quote.html", _root_absolute(html), slug="get-quote.html", priority="0.9")
 
 # ===========================================================================
 # CUSTOMER REFERRAL PROGRAM (docs/REFERRAL-PROGRAM.md)
@@ -1336,8 +1340,12 @@ def _root_absolute(html):
     return html
 
 def build_referred():
-    """referred.html: what a referred friend lands on from /r/CODE. Personal
-    and thin on its own, so kept out of search (noindex) and the sitemap."""
+    """referred.html: a standalone landing page for a referred friend, with
+    its own short claim form posting to /api/claim. No longer what /r/CODE
+    serves — that now goes to the ordinary quote form (build_get_quote) so
+    there is one form and one funnel — but the page and its endpoint are
+    kept working, and swapping the /r/ rewrite back is a one-line change.
+    Personal and thin, so kept out of search (noindex) and the sitemap."""
     depth = 0
     html = _root_absolute(RP.referred_page(depth, seo_title=seo_title, schema=BASE_SCHEMA))
     write("referred.html", html, slug="referred.html")
@@ -2064,13 +2072,19 @@ def build_redirects():
              ""]
     lines += [f"{src:<{width}}{dst}  301!" for src, dst in WIX_REDIRECTS]
     # Referral short links: the code the office texts to a referred friend
-    # (/r/BARTA-7K3XQ) is served by referred.html, which reads ?code=. A 200
-    # rewrite, not a redirect, so the short URL stays in the address bar.
+    # (/r/BARTA-7K3XQ). A 200 rewrite, not a redirect, so the short URL stays
+    # in the address bar.
     lines += ["",
               "# Referral program (docs/REFERRAL-PROGRAM.md): the clean address the",
               "# owner texts customers, and the short links texted to referred friends.",
               "/referral                  /referral.html  200",
-              "/r/:code                   /referred.html?code=:code  200"]
+              # A referred friend lands straight on the ordinary quote form
+              # with their code as the promo code: one form, one funnel, and
+              # leads arrive in the shape the office already works. Kept as a
+              # rewrite so the pretty /r/CODE stays in the address bar (which
+              # means the query string never reaches the browser, so main.js
+              # reads the code back out of the path).
+              "/r/:code                   /get-quote.html?promo=:code  200"]
     write_asset("_redirects", "\n".join(lines) + "\n")
 
 # ===========================================================================

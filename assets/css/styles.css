@@ -389,6 +389,18 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .wizard-panel h2 { font-size: clamp(2rem, 4.2vw, 2.9rem); }
 .wizard-panel h2.wizard-hero-title { text-align: center; text-transform: uppercase; letter-spacing: .01em; }
 .wizard-panel .form-note { font-size: 1rem; }
+/* The "Alex referred you, $25 off" band a referred friend lands on from
+   /r/CODE. Hidden until main.js confirms the code with the API, so a bad
+   code never promises a discount we would then have to walk back. */
+.quote-referral { display: flex; align-items: center; justify-content: center; gap: 10px;
+  max-width: 620px; margin: 0 auto 22px; padding: 13px 20px; text-align: center;
+  background: color-mix(in srgb, var(--blue-600) 9%, #fff); color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--blue-600) 26%, #fff);
+  border-radius: var(--r-lg); font-weight: 600; line-height: 1.45; }
+.quote-referral svg { width: 22px; height: 22px; flex: none; color: var(--blue-600); }
+/* An author `display` beats the UA's [hidden] rule, so say it explicitly:
+   without this the band shows before (and despite) the code being checked. */
+.quote-referral[hidden] { display: none; }
 .wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 32px; }
 .wizard-address-warning { color: #dc4c3e; }
 .wizard-disclaimer { font-size: .76rem; line-height: 1.5; color: var(--slate-400); margin-top: 10px; }

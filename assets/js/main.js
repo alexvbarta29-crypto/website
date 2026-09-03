@@ -694,6 +694,35 @@
     }
   }
 
+  /* ---- A referred friend: /r/CODE, or ?promo= / ?ref= ----
+     /r/CODE is a Netlify rewrite, so the browser keeps the short path and
+     no query string ever arrives — read the code back out of the path too.
+     The code goes in the promo field (which /api/lead already recognises,
+     see netlify/lib/referral-hook.mjs) and the banner tells them, in so many
+     words, that the discount is theirs. A code we can't look up stays in the
+     field for the office to sort out, but never promises a discount. */
+  const refCode = (params.get("promo") || params.get("ref")
+    || (location.pathname.match(/\/r\/([A-Za-z0-9-]+)\/?$/) || [])[1] || "").trim();
+  if (refCode) {
+    const promoField = $("#q-promo");
+    if (promoField && !promoField.value) promoField.value = refCode.toUpperCase();
+    const banner = $("[data-referral-banner]");
+    const slot = banner && $("[data-referral-text]", banner);
+    if (slot) {
+      fetch("/api/referral?code=" + encodeURIComponent(refCode), { headers: { Accept: "application/json" } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d || !d.ok) return;
+          const who = String(d.referrer_first_name || "").trim();
+          const off = "$" + (Number(d.friend_discount) || 25);
+          slot.textContent = (who ? who + " referred you! " : "You've been referred! ")
+            + "Your first service is " + off + " off, and we've already applied it below.";
+          banner.hidden = false;
+        })
+        .catch(() => {});
+    }
+  }
+
   /* ---- Lead form (demo handler) ---- */
   $$("form[data-lead]").forEach((form) => {
     form.addEventListener("submit", (e) => {
