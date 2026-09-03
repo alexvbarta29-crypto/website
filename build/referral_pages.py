@@ -233,7 +233,7 @@ def referral_page(depth=0, seo_title=None, schema=None):
 
     steps = [
         ("Tell us who to refer",
-         f"Add a friend&rsquo;s name and mobile number below, up to {MAX_FRIENDS} per submission and no limit overall. About a minute, start to finish."),
+         f"Add a friend&rsquo;s name and mobile number below. Refer up to {MAX_FRIENDS} at a time, as often as you like. About a minute, start to finish."),
         (f"We reach out with ${FRIEND_OFF} off",
          f"We contact your friend, mention you by name, and take ${FRIEND_OFF} off their first service. No coupon hunting on their end."),
         (f"You pick your ${CREDIT}",
