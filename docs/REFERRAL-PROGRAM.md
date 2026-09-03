@@ -31,15 +31,18 @@ Amounts live in exactly two places that must be kept in sync:
    their friends' permission to share their contact details.
 3. **The site stores the referral** (Netlify Blobs), **creates a lead in
    Rotor** for each friend (tag `Referral`, source `Referral program`,
-   notes naming the referrer and the code), and, when SMS is on, **texts
-   the friend, the referrer, and/or the office** (see `REFERRAL_SMS_MODE`).
+   notes naming the referrer and the code and ending with the exact text to
+   send them — see below), and, when SMS is on, **texts the friend, the
+   referrer, and/or the office** (see `REFERRAL_SMS_MODE`).
    The customer sees a success screen with their share code, a copy-able
    share link, one-tap "Text a friend" / "Email" buttons, and a private
    tracking link.
 4. **The office reaches out to the friend** ("Hi Jane, Alex referred you,
-   here's $25 off"), automatically via Twilio or by hand from the admin
-   dashboard, whose "Text friend" link opens the phone's messaging app
-   with the message already written.
+   here's $25 off"), automatically via Twilio or by hand. Both by-hand
+   routes write the message for you: the friend's Rotor lead carries it
+   under `--- TEXT TO SEND ---` in the notes (copy, paste, send), and the
+   admin dashboard's "Text friend" link opens the phone's messaging app
+   with the same message already filled in.
 5. **The friend books.** Either on the short link `/r/CODE` (a page that
    greets them by the referrer's name with a "Claim my $25 off" form that
    creates the quote request in Rotor with the code attached), or through
@@ -246,6 +249,30 @@ existing `token` (they came from their tracking link). Otherwise both are
 number alone never unlocks someone's private link or changes their details.
 The customer's original link keeps working, and the office can resend it
 from the dashboard.
+
+#### The Rotor lead each friend gets
+
+Source `Referral program`, tag `Referral`, no `service_type` (they haven't
+asked for anything yet), and notes built by
+`rotorLeadPayload()` in `netlify/lib/referral-notify.mjs`:
+
+```
+Referral code: BARTA-7K3XQ (referred by Alex Barta, (763) 555-0100)
+Offer: $25 off their first service. Alex earns a $50 credit (or a $25 gift card) when they book.
+Note from Alex: Neighbor, big house
+
+--- TEXT TO SEND ---
+Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. Claim it here: https://www.bartawindowwashing.com/r/BARTA-7K3XQ or call (763) 314-3400. Reply STOP to opt out.
+```
+
+Everything under `--- TEXT TO SEND ---` is the message itself: open the lead
+in Rotor, copy it, send it. It is `SMS.friend()` from
+`netlify/lib/referral-config.mjs` word for word, so a hand-sent text and an
+automatic one (SMS mode `all`) read identically, and the link is the
+friend's own page — `/r/CODE` greets them by the referrer's name and shows
+the "Claim my $25 off" form. Rotor caps notes at 2 000 characters; if a
+referrer writes a very long note, that note is what gets trimmed — the
+message and its link always survive whole.
 
 ### `POST /api/referral` with `{ "action": "choose_reward" }` — the referrer picks
 

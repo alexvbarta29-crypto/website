@@ -12,6 +12,7 @@ import {
 
 setEnv({ REFERRAL_SMS_MODE: "off" });
 const handler = (await import("../netlify/functions/referral.mjs")).default;
+const { friendText } = await import("../netlify/lib/referral-notify.mjs");
 
 let store, net;
 beforeEach(() => {
@@ -159,9 +160,39 @@ test("Rotor payload for a referred friend is exact", async () => {
     address_country: "US",
     notes: `Referral code: ${out.code} (referred by Alex Barta, (763) 555-0100)\n`
       + "Offer: $25 off their first service. Alex earns a $50 credit (or a $25 gift card) when they book.\n"
-      + "Note from Alex: Neighbor, big house",
+      + "Note from Alex: Neighbor, big house\n"
+      + "\n--- TEXT TO SEND ---\n"
+      + "Hi Jane! Alex B. referred you to Barta Window Washing, so your first service is $25 off. "
+      + `Claim it here: https://www.bartawindowwashing.com/r/${out.code} `
+      + "or call (763) 314-3400. Reply STOP to opt out.",
   });
   assert.ok(!("service_type" in req.payload), "service_type must be omitted");
+});
+
+// The office works the friend's lead in Rotor, so the message to send them
+// has to be in the notes, word for word, with the link to their page.
+test("Rotor notes end with the ready-to-send text and the share link", async () => {
+  const out = await postOk(submission());
+  const { notes } = net.rotor()[0].payload;
+  const [before, message] = notes.split("\n\n--- TEXT TO SEND ---\n");
+  assert.ok(before.includes(out.code), "the referral context still comes first");
+  assert.equal(message, friendText({
+    friend: { first_name: "Jane" },
+    referrer: { first_name: "Alex", last_name: "Barta" },
+    code: out.code,
+  }), "the notes carry the friend text verbatim");
+  assert.ok(message.includes(`/r/${out.code}`), "the message links to the friend's page");
+  assert.ok(notes.length <= 2000, "within Rotor's notes limit");
+});
+
+test("an over-long referrer note is trimmed, never the text to send", async () => {
+  const out = await postOk(submission({
+    friends: [{ first_name: "Jane", last_name: "Doe", phone: "7635550101", note: "x".repeat(500) }],
+  }));
+  const { notes } = net.rotor()[0].payload;
+  assert.ok(notes.length <= 2000, "within Rotor's notes limit");
+  assert.ok(notes.endsWith("Reply STOP to opt out."), "the message survives whole");
+  assert.ok(notes.includes(`/r/${out.code}`), "the link survives");
 });
 
 test("Rotor payload omits empty optional fields", async () => {

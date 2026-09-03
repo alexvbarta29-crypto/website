@@ -17,11 +17,15 @@ const ROTOR_API_VERSION = "1.1.0";
 // unreachable Rotor must not eat most of the budget by itself.
 const ROTOR_TIMEOUT_MS = 5000;
 const MAX_NOTES = 2000;             // Rotor's notes limit
+// Labels the ready-to-send text at the bottom of the friend's Rotor notes,
+// so whoever opens the lead can copy the message and send it as-is.
+const TEXT_HEADING = "--- TEXT TO SEND ---";
 const TWILIO_TIMEOUT_MS = 6000;
 
 // The lead Rotor receives for a referred friend. Only Rotor-supported fields,
 // no empty optional properties, and no service_type (the friend hasn't asked
-// for anything yet — the notes tell the office who sent them and why).
+// for anything yet — the notes tell the office who sent them and why, and end
+// with the exact text to send them, share link included, ready to copy.
 export function rotorLeadPayload({ referrer, friend, code }) {
   const referrerName = fullName(referrer.first_name, referrer.last_name);
   const lines = [
@@ -31,8 +35,16 @@ export function rotorLeadPayload({ referrer, friend, code }) {
       + `(or a $${REWARDS.referrer_gift_card} gift card) when they book.`,
   ];
   if (friend.note) lines.push(`Note from ${referrer.first_name}: ${friend.note}`);
+
+  // Word for word what the automatic text would say, so a hand-sent message
+  // and an automatic one read identically to the friend.
+  const send = `${TEXT_HEADING}\n${friendText({ friend, referrer, code })}`;
+  // The message is the part the office acts on, so it is never what gets
+  // cut: an over-long note above it loses the characters instead.
+  const room = MAX_NOTES - send.length - 2;   // 2 = the blank line before it
   let notes = lines.join("\n");
-  if (notes.length > MAX_NOTES) notes = notes.slice(0, MAX_NOTES);
+  if (room <= 0) notes = send.slice(0, MAX_NOTES);
+  else notes = `${notes.length > room ? notes.slice(0, room) : notes}\n\n${send}`;
 
   const payload = {
     source: "Referral program",
