@@ -197,6 +197,7 @@
       rows().forEach((row) => {
         const f = fieldsOf(row);
         if (trim(f.first_name)) ok(f.first_name); else bad(f.first_name, "Please enter your friend’s first name.");
+        if (trim(f.last_name)) ok(f.last_name); else bad(f.last_name, "Please enter your friend’s last name.");
         const d = digits(f.phone.value);
         if (d.length !== 10) bad(f.phone, "Please enter a valid 10-digit mobile number.");
         else if (d === mine) bad(f.phone, "That’s your own number, so it can’t be referred.");

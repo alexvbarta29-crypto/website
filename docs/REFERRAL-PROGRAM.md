@@ -27,7 +27,7 @@ Amounts live in exactly two places that must be kept in sync:
    link, and nowhere else on the site.
 2. **The customer fills in the form**: their own name, phone, optional
    email, and who they're referring — **first name, last name and mobile
-   number, nothing more** (last name optional; up to 10 friends at once).
+   number, nothing more**, all three required (up to 10 friends at once).
    All the office does with a referred friend is text them a link, and
    their own form on `/r/CODE` collects the address, email and job details,
    so asking the referrer for any of it twice would only slow them down.
@@ -246,8 +246,8 @@ Every read endpoint answers `503` when Netlify Blobs itself is unavailable.
 ```
 
 Rules: referrer first name + valid 10-digit US phone required; `consent`
-must be `true`; 1–10 friends; each friend needs a first name and a valid
-phone; a friend's phone can't equal the referrer's; duplicates within one
+must be `true`; 1–10 friends; each friend needs a first name, a last name
+and a valid phone; a friend's phone can't equal the referrer's; duplicates within one
 submission collapse to one. `referrer.reward_pref` (`credit`/`giftcard`) is
 optional. Field caps: names 60, phone 25, email 120, address 200, note 500
 chars; longer values are rejected with `400` and the field path.

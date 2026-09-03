@@ -126,8 +126,8 @@ test("validateSubmission(): normalizes and collapses in-submission duplicates", 
     referrer: { reward_pref: " Credit ", email: " alex@example.com " },
     friends: [
       { first_name: " Jane ", last_name: "Doe", phone: "763-555-0101", note: "a\r\nb" },
-      { first_name: "Janie", phone: "(763) 555-0101" },
-      { first_name: "Bob", phone: "7635550102", email: "" },
+      { first_name: "Janie", last_name: "Smith", phone: "(763) 555-0101" },
+      { first_name: "Bob", last_name: "Smith", phone: "7635550102", email: "" },
     ],
     extra: { token: "k7q2m9x4p8w3n6r5t2y7v4b9", page: "/refer.html" },
   }));
@@ -144,7 +144,7 @@ test("validateSubmission(): normalizes and collapses in-submission duplicates", 
 });
 
 test("validateSubmission(): exactly max_friends is fine, one more is not", () => {
-  const friends = (n) => Array.from({ length: n }, (_, i) => ({ first_name: "F" + i, phone: "763555" + (1000 + i) }));
+  const friends = (n) => Array.from({ length: n }, (_, i) => ({ first_name: "F" + i, last_name: "L" + i, phone: "763555" + (1000 + i) }));
   assert.equal(validateSubmission(submission({ friends: friends(10) })).friends.length, 10);
   assert.throws(() => validateSubmission(submission({ friends: friends(11) })),
     (e) => e instanceof ValidationError && e.field === "friends");

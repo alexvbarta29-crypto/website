@@ -21,7 +21,7 @@ beforeEach(async () => {
   net = mockFetch();
   const res = await referral(jsonRequest("/api/referral", "POST", submission({ friends: [
     { first_name: "Jane", last_name: "Doe", phone: "763-555-0101" },
-    { first_name: "Bob", phone: "7635550102" },
+    { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
   ] })));
   assert.equal(res.status, 200);
   seeded = await res.json();

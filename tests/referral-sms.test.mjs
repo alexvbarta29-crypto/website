@@ -44,7 +44,7 @@ test("mode office: one alert per referral to the office number, verbatim templat
   process.env.REFERRAL_SMS_MODE = "office";
   const out = await post(submission({ friends: [
     { first_name: "Jane", last_name: "Doe", phone: "763-555-0101" },
-    { first_name: "Bob", phone: "7635550102" },
+    { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
   ] }));
   const texts = net.twilio();
   assert.equal(texts.length, 2);
@@ -60,7 +60,7 @@ test("mode office: one alert per referral to the office number, verbatim templat
   }
   const bodies = texts.map((t) => t.params.get("Body")).sort();
   assert.deepEqual(bodies, [
-    `New referral: Alex Barta ((763) 555-0100) referred Bob (7635550102). Code ${out.code}. https://www.bartawindowwashing.com/admin/referrals.html`,
+    `New referral: Alex Barta ((763) 555-0100) referred Bob Smith (7635550102). Code ${out.code}. https://www.bartawindowwashing.com/admin/referrals.html`,
     `New referral: Alex Barta ((763) 555-0100) referred Jane Doe (763-555-0101). Code ${out.code}. https://www.bartawindowwashing.com/admin/referrals.html`,
   ]);
   assert.deepEqual(record(out, 0).sms, { friend: false, referrer: false, office: true });
@@ -101,8 +101,8 @@ test("mode all: friend, office, and referrer texts with the verbatim templates",
 test("mode all: referrer confirmation counts every friend in the submission", async () => {
   process.env.REFERRAL_SMS_MODE = "all";
   await post(submission({ friends: [
-    { first_name: "Jane", phone: "7635550101" }, { first_name: "Bob", phone: "7635550102" },
-    { first_name: "Cy", phone: "7635550103" },
+    { first_name: "Jane", last_name: "Smith", phone: "7635550101" }, { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
+    { first_name: "Cy", last_name: "Smith", phone: "7635550103" },
   ] }));
   const referrer = net.twilio().filter((t) => t.params.get("To") === "+17635550100");
   assert.equal(referrer.length, 1, "one confirmation per submission");
@@ -123,7 +123,7 @@ test("mode all: a duplicate friend is not texted; office still alerted", async (
   net.requests.length = 0;
   const out = await post(submission({
     referrer: { first_name: "Maria", last_name: "Lopez", phone: "7635550200" },
-    friends: [{ first_name: "Jane", phone: "7635550101" }],
+    friends: [{ first_name: "Jane", last_name: "Smith", phone: "7635550101" }],
   }));
   assert.equal(out.friends[0].duplicate, true);
   const tos = net.twilio().map((t) => t.params.get("To")).sort();

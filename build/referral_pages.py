@@ -68,7 +68,7 @@ def _friend_row(n):
           <button type="button" class="ref-remove" data-remove-friend aria-label="Remove friend {n}">{icon('x')}<span>Remove</span></button>
           <div class="form-row">
             <div class="field"><label for="{p}-first" class="sr-only">First name</label><input type="text" id="{p}-first" name="friend_first_name" data-field="first_name" autocomplete="off" maxlength="60" required placeholder="First name"></div>
-            <div class="field"><label for="{p}-last" class="sr-only">Last name (optional)</label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" placeholder="Last name (optional)"></div>
+            <div class="field"><label for="{p}-last" class="sr-only">Last name</label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" required placeholder="Last name"></div>
           </div>
           <div class="field"><label for="{p}-phone" class="sr-only">Mobile phone</label><input type="tel" id="{p}-phone" name="friend_phone" data-field="phone" data-ref-phone inputmode="tel" autocomplete="off" required placeholder="Mobile phone"></div>
         </fieldset>"""

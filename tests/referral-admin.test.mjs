@@ -97,7 +97,7 @@ test("list: full records newest first, referrers with counts and no token", asyn
   // Make the second referrer's referral clearly newer.
   await new Promise((r) => setTimeout(r, 5));
   const b = await seed({ referrer: { first_name: "Maria", last_name: "Lopez", phone: "7635550200", reward_pref: "giftcard" },
-    friends: [{ first_name: "Cy", phone: "7635550103" }] });
+    friends: [{ first_name: "Cy", last_name: "Smith", phone: "7635550103" }] });
 
   const out = await ok(await adminGet());
   assert.equal(out.stats.total, 3);
@@ -171,7 +171,7 @@ test("CSV export: content type, header row, one row per referral, escaping", asy
   await seed({ friends: [
     { first_name: "Jane", last_name: "Doe", phone: "7635550101", address: "123 Main St, Delano, MN",
       note: 'He said "hi", then left' },
-    { first_name: "Bob", phone: "7635550102", note: "=SUM(A1:A9)" },
+    { first_name: "Bob", last_name: "Smith", phone: "7635550102", note: "=SUM(A1:A9)" },
   ] });
   const res = await adminGet("?format=csv");
   assert.equal(res.status, 200);
@@ -194,7 +194,7 @@ test("CSV export: content type, header row, one row per referral, escaping", asy
 });
 
 test("CSV export ignores status/q filters (it is the full backup)", async () => {
-  await seed({ friends: [{ first_name: "Jane", phone: "7635550101" }, { first_name: "Bob", phone: "7635550102" }] });
+  await seed({ friends: [{ first_name: "Jane", last_name: "Smith", phone: "7635550101" }, { first_name: "Bob", last_name: "Smith", phone: "7635550102" }] });
   const text = await (await adminGet("?format=csv&q=jane&status=declined")).text();
   assert.equal(text.trimEnd().split("\r\n").length, 3);
 });
@@ -240,7 +240,7 @@ test("set_status: rewarded is refused, unknown status/id are errors", async () =
 
 test("issue_reward: amount from REWARDS, status rewarded, history; refuses to pay twice", async () => {
   const s = await seed({ friends: [
-    { first_name: "Jane", phone: "7635550101" }, { first_name: "Bob", phone: "7635550102" },
+    { first_name: "Jane", last_name: "Smith", phone: "7635550101" }, { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
   ] });
   const [jane, bob] = s.friends.map((f) => f.id);
   await ok(await adminPost({ action: "set_status", id: jane, status: "booked" }));
@@ -330,8 +330,8 @@ test("set_reward_pref: updates the referrer, response omits the token", async ()
 test("delete: removes the record and its indexes; duplicates keep pointing", async () => {
   const s = await seed();
   const id = s.friends[0].id;
-  const dup = await seed({ referrer: { first_name: "Maria", phone: "7635550200" },
-    friends: [{ first_name: "Jane", phone: "7635550101" }] });
+  const dup = await seed({ referrer: { first_name: "Maria", last_name: "Smith", phone: "7635550200" },
+    friends: [{ first_name: "Jane", last_name: "Smith", phone: "7635550101" }] });
   const dupId = dup.friends[0].id;
 
   // Deleting the duplicate must not release the original's phone index.

@@ -170,7 +170,7 @@ export function validateSubmission(body) {
       throw new ValidationError("You can't refer your own phone number.", `${p}.phone`);
     const friend = {
       first_name: nameField(f.first_name, `${p}.first_name`, true, "Your friend's first name"),
-      last_name: nameField(f.last_name, `${p}.last_name`, false, "Your friend's last name"),
+      last_name: nameField(f.last_name, `${p}.last_name`, true, "Your friend's last name"),
       phone: phone.phone,
       digits: phone.digits,
       email: emailField(f.email, `${p}.email`),

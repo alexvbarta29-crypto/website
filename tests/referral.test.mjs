@@ -57,13 +57,15 @@ const invalid = [
   ["friends not an array", submission({ friends: "Jane" }), "friends"],
   ["more than 10 friends", submission({ friends: Array.from({ length: 11 }, (_, i) => ({
     first_name: "F" + i, phone: "763555" + String(1000 + i) })) }), "friends"],
-  ["friend without first name", submission({ friends: [{ first_name: "", phone: "7635550101" }] }), "friends.0.first_name"],
-  ["friend with bad phone", submission({ friends: [{ first_name: "Jane", phone: "12345" }] }), "friends.0.phone"],
+  ["friend without first name", submission({ friends: [{ first_name: "", last_name: "Doe", phone: "7635550101" }] }), "friends.0.first_name"],
+  ["friend without last name", submission({ friends: [{ first_name: "Jane", last_name: "", phone: "7635550101" }] }), "friends.0.last_name"],
+  ["friend with a blank last name", submission({ friends: [{ first_name: "Jane", last_name: "   ", phone: "7635550101" }] }), "friends.0.last_name"],
+  ["friend with bad phone", submission({ friends: [{ first_name: "Jane", last_name: "Smith", phone: "12345" }] }), "friends.0.phone"],
   ["second friend with bad phone names its index", submission({ friends: [
-    { first_name: "Jane", phone: "7635550101" }, { first_name: "Bob", phone: "abc" }] }), "friends.1.phone"],
-  ["self-referral", submission({ friends: [{ first_name: "Me", phone: "1 (763) 555-0100" }] }), "friends.0.phone"],
-  ["friend note over 500 chars", submission({ friends: [{ first_name: "Jane", phone: "7635550101", note: "x".repeat(501) }] }), "friends.0.note"],
-  ["friend address over 200 chars", submission({ friends: [{ first_name: "Jane", phone: "7635550101", address: "x".repeat(201) }] }), "friends.0.address"],
+    { first_name: "Jane", last_name: "Smith", phone: "7635550101" }, { first_name: "Bob", last_name: "Smith", phone: "abc" }] }), "friends.1.phone"],
+  ["self-referral", submission({ friends: [{ first_name: "Me", last_name: "Smith", phone: "1 (763) 555-0100" }] }), "friends.0.phone"],
+  ["friend note over 500 chars", submission({ friends: [{ first_name: "Jane", last_name: "Smith", phone: "7635550101", note: "x".repeat(501) }] }), "friends.0.note"],
+  ["friend address over 200 chars", submission({ friends: [{ first_name: "Jane", last_name: "Smith", phone: "7635550101", address: "x".repeat(201) }] }), "friends.0.address"],
   ["consent false", submission({ consent: false }), "consent"],
   ["consent missing", (() => { const s = submission(); delete s.consent; return s; })(), "consent"],
   ["consent as string", submission({ consent: "true" }), "consent"],
@@ -201,9 +203,9 @@ test("nothing but the message reaches the Rotor notes", async () => {
 });
 
 test("Rotor payload omits empty optional fields", async () => {
-  await postOk(submission({ friends: [{ first_name: "Sam", phone: "7635550102" }] }));
+  await postOk(submission({ friends: [{ first_name: "Sam", last_name: "Smith", phone: "7635550102" }] }));
   const p = net.rotor()[0].payload;
-  assert.equal(p.name, "Sam");
+  assert.equal(p.name, "Sam Smith");
   assert.equal(p.phone, "7635550102");
   for (const k of ["email", "address_street1", "address_state", "address_country", "service_type"])
     assert.ok(!(k in p), `${k} must be omitted when blank`);
@@ -233,7 +235,7 @@ test("a returning referrer keeps their code; without their token the private lin
   // With the token (they came from their tracking link): full access.
   const third = await postOk(submission({
     referrer: { phone: "7635550100", reward_pref: "giftcard" },
-    friends: [{ first_name: "Cy", phone: "(763) 555-0103" }],
+    friends: [{ first_name: "Cy", last_name: "Smith", phone: "(763) 555-0103" }],
     extra: { token: first.token.toLowerCase() },
   }));
   assert.equal(third.token, first.token);
@@ -259,8 +261,8 @@ test("a first referrer gets their token and status_url; returning is false", asy
 test("the same friend twice in one submission collapses to one referral", async () => {
   const out = await postOk(submission({ friends: [
     { first_name: "Jane", last_name: "Doe", phone: "763-555-0101" },
-    { first_name: "Janie", phone: "+1 (763) 555-0101" },
-    { first_name: "Bob", phone: "7635550102" },
+    { first_name: "Janie", last_name: "Smith", phone: "+1 (763) 555-0101" },
+    { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
   ] }));
   assert.equal(out.friends.length, 2);
   assert.deepEqual(out.friends.map((f) => f.first_name), ["Jane", "Bob"]);
@@ -295,8 +297,8 @@ test("a stale phone index (deleted original) does not flag a duplicate", async (
   store.map.delete(`referral/${first.friends[0].id}`);   // original gone, idx still points at it
   net.requests.length = 0;
   const out = await postOk(submission({
-    referrer: { first_name: "Maria", phone: "7635550200" },
-    friends: [{ first_name: "Jane", phone: "7635550101" }],
+    referrer: { first_name: "Maria", last_name: "Smith", phone: "7635550200" },
+    friends: [{ first_name: "Jane", last_name: "Smith", phone: "7635550101" }],
   }));
   assert.equal(out.friends[0].duplicate, false);
   assert.equal(net.rotor().length, 1);
@@ -306,7 +308,7 @@ test("a stale phone index (deleted original) does not flag a duplicate", async (
 test("the token in the body unlocks the private link for a returning referrer", async () => {
   const first = await postOk(submission());
   const out = await postOk(submission({
-    friends: [{ first_name: "Bob", phone: "7635550102" }],
+    friends: [{ first_name: "Bob", last_name: "Smith", phone: "7635550102" }],
     extra: { token: first.token },
   }));
   assert.equal(out.token, first.token);
@@ -314,7 +316,7 @@ test("the token in the body unlocks the private link for a returning referrer", 
   assert.equal(out.friends[0].first_name, "Bob");
   // A wrong token is just an untrusted resubmission, never an error.
   const wrong = await postOk(submission({
-    friends: [{ first_name: "Cy", phone: "7635550103" }],
+    friends: [{ first_name: "Cy", last_name: "Smith", phone: "7635550103" }],
     extra: { token: "Z".repeat(24) },
   }));
   assert.equal(wrong.token, null);
@@ -382,9 +384,9 @@ test("store down AND Rotor down: 502 so the page shows the call-us fallback", as
 });
 
 test("delivered:false when any one of several friends fails at Rotor", async () => {
-  net = mockFetch({ rotor: (entry) => (entry.payload.name === "Bob" ? 502 : 201) });
+  net = mockFetch({ rotor: (entry) => (entry.payload.name === "Bob Smith" ? 502 : 201) });
   const out = await postOk(submission({ friends: [
-    { first_name: "Jane", phone: "7635550101" }, { first_name: "Bob", phone: "7635550102" },
+    { first_name: "Jane", last_name: "Smith", phone: "7635550101" }, { first_name: "Bob", last_name: "Smith", phone: "7635550102" },
   ] }));
   assert.equal(out.delivered, false);
   assert.equal(out.stored, true);
@@ -398,7 +400,7 @@ async function seedDashboard() {
   const out = await postOk(submission({ friends: [
     { first_name: "Jane", last_name: "Doe", phone: "7635550101" },
     { first_name: "Bob", last_name: "Lee", phone: "7635550102" },
-    { first_name: "Cy", phone: "7635550103" },
+    { first_name: "Cy", last_name: "Smith", phone: "7635550103" },
     { first_name: "Dee", last_name: "Kay", phone: "7635550104" },
   ] }));
   const set = (i, patch) => {
@@ -429,7 +431,7 @@ test("GET ?t=: totals math, masked friend names, no friend contact details", asy
   });
   assert.equal(out.referrals.length, 4);
   const byName = Object.fromEntries(out.referrals.map((r) => [r.friend_name, r]));
-  assert.deepEqual(Object.keys(byName).sort(), ["Bob L.", "Cy", "Dee K.", "Jane D."]);
+  assert.deepEqual(Object.keys(byName).sort(), ["Bob L.", "Cy S.", "Dee K.", "Jane D."]);
   assert.equal(byName["Jane D."].status, "rewarded");
   assert.deepEqual(byName["Jane D."].reward,
     { type: "credit", amount: 50, chosen_at: null, issued_at: "2026-09-02T00:00:00.000Z" });
@@ -571,7 +573,7 @@ test("choose_reward: opens when the office marks the job complete, closes when t
 
   // Another customer's tracking link can't touch it.
   const other = await postOk(submission({ referrer: { phone: "7635550200", first_name: "Maria" },
-    friends: [{ first_name: "Cy", phone: "7635550103" }] }));
+    friends: [{ first_name: "Cy", last_name: "Smith", phone: "7635550103" }] }));
   assert.equal((await choose(other.token, id, "credit")).status, 404);
 });
 
