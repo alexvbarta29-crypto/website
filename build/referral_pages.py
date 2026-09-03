@@ -67,8 +67,8 @@ def _friend_row(n):
           <legend>Friend <span data-friend-num>{n}</span></legend>
           <button type="button" class="ref-remove" data-remove-friend aria-label="Remove friend {n}">{icon('x')}<span>Remove</span></button>
           <div class="form-row">
-            <div class="field"><label for="{p}-first">First name</label><input type="text" id="{p}-first" name="friend_first_name" data-field="first_name" autocomplete="off" maxlength="60" required placeholder="Jane"></div>
-            <div class="field"><label for="{p}-last">Last name <span class="label-hint">(optional)</span></label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" placeholder="Doe"></div>
+            <div class="field"><label for="{p}-first">First name</label><input type="text" id="{p}-first" name="friend_first_name" data-field="first_name" autocomplete="off" maxlength="60" required placeholder="First name"></div>
+            <div class="field"><label for="{p}-last">Last name <span class="label-hint">(optional)</span></label><input type="text" id="{p}-last" name="friend_last_name" data-field="last_name" autocomplete="off" maxlength="60" placeholder="Last name"></div>
           </div>
           <div class="field"><label for="{p}-phone">Mobile phone</label><input type="tel" id="{p}-phone" name="friend_phone" data-field="phone" data-ref-phone inputmode="tel" autocomplete="off" required placeholder="(763) 555-0101"></div>
         </fieldset>"""
@@ -129,8 +129,8 @@ def _referral_form(depth):
           <p class="ref-locked-note" id="ref-locked-note" hidden>These are your details from your tracking link.</p>
           <div class="ref-group-body">
             <div class="form-row">
-              <div class="field"><label for="ref-first">First name</label><input type="text" id="ref-first" name="first_name" autocomplete="given-name" maxlength="60" required placeholder="Alex"></div>
-              <div class="field"><label for="ref-last">Last name</label><input type="text" id="ref-last" name="last_name" autocomplete="family-name" maxlength="60" placeholder="Barta"></div>
+              <div class="field"><label for="ref-first">First name</label><input type="text" id="ref-first" name="first_name" autocomplete="given-name" maxlength="60" required placeholder="First name"></div>
+              <div class="field"><label for="ref-last">Last name</label><input type="text" id="ref-last" name="last_name" autocomplete="family-name" maxlength="60" placeholder="Last name"></div>
             </div>
             <div class="form-row">
               <div class="field"><label for="ref-phone">Mobile phone</label><input type="tel" id="ref-phone" name="phone" autocomplete="tel" inputmode="tel" data-ref-phone required placeholder="{BIZ['phone_display']}"></div>
@@ -342,8 +342,8 @@ def _claim_form(depth):
           <h3 class="ref-group-title" id="claim-g1-title">About you</h3>
           <div class="ref-group-body">
             <div class="form-row">
-              <div class="field"><label for="claim-first">First name</label><input type="text" id="claim-first" name="first_name" autocomplete="given-name" maxlength="60" required placeholder="Jane"></div>
-              <div class="field"><label for="claim-last">Last name</label><input type="text" id="claim-last" name="last_name" autocomplete="family-name" maxlength="60" placeholder="Doe"></div>
+              <div class="field"><label for="claim-first">First name</label><input type="text" id="claim-first" name="first_name" autocomplete="given-name" maxlength="60" required placeholder="First name"></div>
+              <div class="field"><label for="claim-last">Last name</label><input type="text" id="claim-last" name="last_name" autocomplete="family-name" maxlength="60" placeholder="Last name"></div>
             </div>
             <div class="form-row">
               <div class="field"><label for="claim-phone">Mobile phone</label><input type="tel" id="claim-phone" name="phone" autocomplete="tel" inputmode="tel" required placeholder="{BIZ['phone_display']}"></div>
