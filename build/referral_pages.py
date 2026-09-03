@@ -233,7 +233,7 @@ def referral_page(depth=0, seo_title=None, schema=None):
 
     steps = [
         ("Tell us who to refer",
-         f"Add a friend&rsquo;s name and mobile number below, up to {MAX_FRIENDS} at a time. About a minute, start to finish."),
+         f"Add a friend&rsquo;s name and mobile number below, up to {MAX_FRIENDS} per submission and no limit overall. About a minute, start to finish."),
         (f"We reach out with ${FRIEND_OFF} off",
          f"We contact your friend, mention you by name, and take ${FRIEND_OFF} off their first service. No coupon hunting on their end."),
         (f"You pick your ${CREDIT}",
@@ -252,7 +252,7 @@ def referral_page(depth=0, seo_title=None, schema=None):
         ("How is the credit or gift card delivered?",
          f"Account credit is applied automatically and comes off your next invoice with us, there&rsquo;s nothing to remember. A gift card is texted or mailed to you within a few days of your pick. You choose each time, so you can take credit for one friend and a gift card for the next."),
         ("Is there a limit to how many friends I can refer?",
-         f"No. Refer as many friends as you like, up to {MAX_FRIENDS} in one go, and earn a reward for every one who books. It&rsquo;s one reward per referred household, and the friend&rsquo;s ${FRIEND_OFF} applies to their first service only."),
+         f"There&rsquo;s no limit. Refer as many friends as you like and earn a reward for every one who books. The form takes up to {MAX_FRIENDS} friends per submission; send those, then come back and add more whenever you like. It&rsquo;s one reward per referred household, and the friend&rsquo;s ${FRIEND_OFF} applies to their first service only."),
         ("Can the program change?",
          "We may adjust or end the program at any time, but every referral you&rsquo;ve already sent is honored under the terms shown when you sent it."),
         ("I have a question about one of my referrals.",
@@ -282,7 +282,7 @@ def referral_page(depth=0, seo_title=None, schema=None):
         <div class="ref-offer-half ref-offer-half--you">
           <span class="ref-offer-who">You get</span>
           <span class="ref-offer-amt">${CREDIT}</span>
-          <span class="ref-offer-what">in credit, or a ${GIFT} gift card, per friend who books</span>
+          <span class="ref-offer-what">in credit, or a ${GIFT} gift card, per friend who books. No limit.</span>
         </div>
       </div>
     </div>

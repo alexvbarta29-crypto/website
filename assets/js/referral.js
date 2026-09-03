@@ -247,7 +247,7 @@
       const max = cfg.maxFriends;
       addBtn.disabled = all.length >= max;
       counter.textContent = all.length >= max
-        ? "That’s the most we can take at once (" + max + "). You can always send more after."
+        ? max + " per submission. Send these, then refer more — there’s no limit."
         : all.length + " of " + max + " friends added";
     };
     const addRow = (focus) => {
