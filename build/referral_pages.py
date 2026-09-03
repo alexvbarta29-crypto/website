@@ -158,7 +158,7 @@ def _referral_form(depth):
         </div>
 
         <div class="field ref-consent-field">
-          <label class="check ref-consent"><input type="checkbox" name="consent" id="ref-consent" required> I have my friends&rsquo; permission to share their contact details, and I agree to the <a href="#ref-terms">program terms</a>.</label>
+          <label class="check ref-consent"><input type="checkbox" name="consent" id="ref-consent" required><span>I have my friends&rsquo; permission to share their contact details, and I agree to the <a href="#ref-terms">program terms</a>.</span></label>
         </div>
         <button type="submit" class="btn btn-lg btn-block" id="ref-submit">Send my referrals {icon('arrow')}</button>
         <p class="form-note center">We only contact your friends about this offer, never for anything else.</p>
@@ -359,7 +359,7 @@ def _claim_form(depth):
           <div class="field mt-2"><label for="claim-note">Anything we should know? <span class="label-hint">(optional)</span></label><input type="text" id="claim-note" name="note" autocomplete="off" maxlength="500" placeholder="Two-story house, best to call after 5pm"></div>
         </div>
         <div class="field ref-consent-field">
-          <label class="check ref-consent"><input type="checkbox" name="consent" id="claim-consent" required> I agree to be contacted by {BIZ['name']} by call or text about my request. Msg &amp; data rates may apply; reply STOP to opt out. See our <a href="{root}privacy.html">Privacy Policy</a>.</label>
+          <label class="check ref-consent"><input type="checkbox" name="consent" id="claim-consent" required><span>I agree to be contacted by {BIZ['name']} by call or text about my request. Msg &amp; data rates may apply; reply STOP to opt out. See our <a href="{root}privacy.html">Privacy Policy</a>.</span></label>
         </div>
         <button type="submit" class="btn btn-lg btn-block" id="claim-submit">Claim my ${FRIEND_OFF} off {icon('arrow')}</button>
         <p class="form-note center">No obligation and no pressure. Your ${FRIEND_OFF} comes straight off your first invoice.</p>
