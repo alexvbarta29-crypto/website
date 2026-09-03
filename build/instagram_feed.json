@@ -1,5 +1,19 @@
 [
   {
+    "id": "17996620314007671",
+    "image": "assets/img/instagram/17996620314007671.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17996620314007671.jpg"
+      }
+    ],
+    "caption": "Nothing like some clean windows \ud83e\uddfc\ud83e\udd18",
+    "permalink": "https://www.instagram.com/reel/Dc04roSyLaF/",
+    "timestamp": "2026-09-03T13:13:21+0000"
+  },
+  {
     "id": "17950840314027611",
     "image": "assets/img/instagram/17950840314027611.jpg",
     "type": "VIDEO",
@@ -163,33 +177,5 @@
     "caption": "We may be known for our amazing window cleaning, but we also offer a variety of other services! \ud83d\udcaa Check them out on our website! BartaWindowWashing.com",
     "permalink": "https://www.instagram.com/p/DbZBMEkFHlD/",
     "timestamp": "2026-07-29T20:53:44+0000"
-  },
-  {
-    "id": "17961575196156269",
-    "image": "assets/img/instagram/17961575196156269_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/17961575196156269_0.jpg",
-        "video": "assets/img/instagram/17961575196156269_0.mp4"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17961575196156269_1.jpg"
-      },
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/17961575196156269_2.jpg",
-        "video": "assets/img/instagram/17961575196156269_2.mp4"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17961575196156269_3.jpg"
-      }
-    ],
-    "caption": "Just some highlights from the summer. Can\u2019t wait for the fall season! \ud83c\udf41",
-    "permalink": "https://www.instagram.com/p/DbVzALvkWf_/",
-    "timestamp": "2026-07-28T14:52:03+0000"
   }
 ]
