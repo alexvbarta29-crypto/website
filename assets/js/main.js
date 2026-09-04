@@ -1031,6 +1031,19 @@
     const fallback = countyMap.querySelector(".map-fallback");
     const label = countyMap.querySelector(".ph-label");
     const counties = Array.from(countyList.querySelectorAll("details[data-map-query]"));
+    // Closing a taller county above the one just opened pulls the page up
+    // under the reader's finger, and the browser's scroll anchoring can't
+    // compensate (the anchor is inside the list that just closed). The
+    // measurement has to be taken on the press: with name= grouping the
+    // browser closes the others itself, before any toggle event runs.
+    let pressed = null;
+    const markPress = (summary) => { pressed = { summary, top: summary.getBoundingClientRect().top }; };
+    const keepInView = (summary) => {
+      if (!pressed || pressed.summary !== summary) return;
+      const delta = summary.getBoundingClientRect().top - pressed.top;
+      pressed = null;
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    };
     const show = (d) => {
       const q = d.dataset.mapQuery;
       if (!q || !frame || countyMap.dataset.mapQuery === q) return;
@@ -1038,19 +1051,35 @@
       const nameEl = d.querySelector(".county-name") || d.querySelector("summary");
       const name = nameEl ? nameEl.textContent.trim() : q;
       const title = "Map of " + name + ", Minnesota";
-      // The placeholder shows again until the new map has loaded.
-      if (fallback) fallback.style.display = "";
+      // The placeholder covers the old map until the new one has loaded —
+      // the iframe paints the previous county until the new navigation
+      // commits, so without this the wrong county sits there meanwhile.
+      if (fallback) { fallback.style.display = ""; fallback.style.zIndex = "2"; }
       if (label && label.lastChild && label.lastChild.nodeType === 3) label.lastChild.textContent = name + ", MN";
       frame.title = title;
       frame.src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&output=embed";
       countyMap.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
       countyMap.setAttribute("aria-label", title + ", opens Google Maps in a new tab");
     };
-    counties.forEach((d) => d.addEventListener("toggle", () => {
-      if (!d.open) return;
-      counties.forEach((o) => { if (o !== d && o.open) o.open = false; });
-      show(d);
-    }));
+    // The iframe's inline onload only hides the placeholder; it must also
+    // drop back under the map so a later swap can cover it again.
+    if (frame) frame.addEventListener("load", () => { if (fallback) fallback.style.zIndex = ""; });
+    counties.forEach((d) => {
+      const summary = d.querySelector("summary");
+      if (summary) {
+        summary.addEventListener("pointerdown", () => markPress(summary));
+        summary.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") markPress(summary);
+        });
+      }
+      d.addEventListener("toggle", () => {
+        if (!d.open) return;
+        // Older browsers with no name= grouping still need closing by hand.
+        counties.forEach((o) => { if (o !== d && o.open) o.open = false; });
+        if (summary) keepInView(summary);
+        show(d);
+      });
+    });
   }
 
   /* ---- Active nav state ---- */

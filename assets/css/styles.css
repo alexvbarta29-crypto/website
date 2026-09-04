@@ -974,13 +974,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .county-list details { border-bottom: 1px solid var(--line); }
 .county-list summary { display: flex; align-items: center; gap: 14px; padding: 22px 6px; font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; color: var(--navy-800); cursor: pointer; list-style: none; }
 .county-list summary::-webkit-details-marker { display: none; }
-.county-list summary:hover .county-name, .county-list details[open] .county-name { color: var(--blue-600); }
+/* --blue-700, not --blue-600: the brand coral is only 3.37:1 on white,
+   under WCAG AA for text this size; the darker shade is 5.03:1. */
+.county-list summary:hover .county-name, .county-list details[open] .county-name { color: var(--blue-700); }
 .county-count { margin-left: auto; font-family: var(--font-body, inherit); font-weight: 600; font-size: .8rem; letter-spacing: 0; text-transform: none; color: var(--slate-500); white-space: nowrap; }
 .county-list .chev { width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--slate-400); transition: transform .3s var(--ease); }
-.county-list details[open] .chev { transform: rotate(180deg); color: var(--blue-600); }
+.county-list details[open] .chev { transform: rotate(180deg); color: var(--blue-700); }
 .county-list .chev svg { width: 16px; height: 16px; }
 .county-cities { list-style: none; margin: 0; padding: 0 6px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; font-size: 1.02rem; color: var(--navy-800); }
-.county-cities a { color: var(--blue-600); font-weight: 600; text-decoration: none; }
+.county-cities a { color: var(--blue-700); font-weight: 600; text-decoration: none; }
 .county-cities a:hover { text-decoration: underline; }
 .county-hint { margin-top: 14px; font-size: .88rem; color: var(--slate-500); }
 @media (max-width: 860px) {

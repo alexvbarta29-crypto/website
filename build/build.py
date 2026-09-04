@@ -1118,7 +1118,10 @@ def build_service_areas():
         # Home base first, then the cities with their own page, then the rest, A–Z.
         cities.sort(key=lambda a: (a["slug"] != "delano", a["slug"] not in PRIMARY_SLUGS, a["city"]))
         n = len(cities)
-        return f"""<details class="county" data-map-query="{c['query']}"{" open" if i == 0 else ""}>
+        # name= makes the group exclusive in the browser itself (Chrome 120+,
+        # Safari 17.2+, Firefox 130+), so only one county opens even with no
+        # JavaScript; the script below still handles older browsers.
+        return f"""<details class="county" name="county" data-map-query="{c['query']}"{" open" if i == 0 else ""}>
         <summary><span class="county-name">{c['name']}</span><span class="county-count">{n} {"city" if n == 1 else "cities"}</span><span class="chev">{icon('chevron')}</span></summary>
         <ul class="county-cities">{"".join(city_item(a) for a in cities)}</ul>
       </details>"""
@@ -1140,7 +1143,7 @@ def build_service_areas():
       <div class="reveal county-panel">
         <h2 class="county-state">{BIZ['state_name'] if BIZ.get('state_name') else 'Minnesota'}</h2>
         <div class="county-list" data-county-list>{counties_html}</div>
-        <p class="county-hint">Open a county to see the towns we serve there. The map follows along.</p>
+        <p class="county-hint">Open a county to see the towns we serve there.</p>
       </div>
     </div>
     <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too, <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>

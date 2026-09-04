@@ -1405,7 +1405,7 @@ def county_map_embed(county, cls=""):
     aria-label="{title}, opens Google Maps in a new tab">
     <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{county['name']}, {BIZ['state']}</span></div>
     <iframe src="https://maps.google.com/maps?q={q}&output=embed" title="{title}" width="100%" height="100%" tabindex="-1"
-      style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+      aria-hidden="true" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
       onload="this.previousElementSibling.style.display='none'"></iframe>
     <span class="map-open-hint">{icon('pin')} Open in Google Maps</span>
   </a>"""
