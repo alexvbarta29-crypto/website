@@ -1392,6 +1392,24 @@ def gmap_embed(title, label=None, zoom=10, cls=""):
     <span class="map-open-hint">{icon('pin')} Open in Google Maps</span>
   </a>"""
 
+def county_map_embed(county, cls=""):
+    """The Service Areas hub's map: Google's keyless embed searched for a
+    county, which draws that county's boundary and its name card. main.js
+    swaps the same iframe to whichever county is opened in the list beside
+    it; without JavaScript it simply stays on this one. Like gmap_embed, the
+    whole widget is a link to the county on Google Maps."""
+    q = quote_plus(county["query"])
+    title = f"Map of {county['name']}, Minnesota"
+    return f"""<a class="map-embed {cls}" data-map-embed data-county-map data-map-query="{county['query']}"
+    href="https://www.google.com/maps/search/?api=1&query={q}" target="_blank" rel="noopener"
+    aria-label="{title}, opens Google Maps in a new tab">
+    <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{county['name']}, {BIZ['state']}</span></div>
+    <iframe src="https://maps.google.com/maps?q={q}&output=embed" title="{title}" width="100%" height="100%" tabindex="-1"
+      style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+      onload="this.previousElementSibling.style.display='none'"></iframe>
+    <span class="map-open-hint">{icon('pin')} Open in Google Maps</span>
+  </a>"""
+
 def imgph(label, ratio="16/10", depth=0, extra_class=""):
     return f'<div class="imgph {extra_class}" style="aspect-ratio:{ratio}" role="img" aria-label="{label}"><span class="ph-label">{icon("image")}<br>{label}</span></div>'
 

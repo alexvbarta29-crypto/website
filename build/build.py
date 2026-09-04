@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS
+from sitedata import BIZ, SERVICES, AREAS, COUNTIES, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS
 from icons import icon
 import components as C
 import schema as S
@@ -1102,23 +1102,28 @@ def build_faqs():
 # SERVICE AREAS (hub)
 # ===========================================================================
 def build_service_areas():
+    """The hub: one county map beside a county → cities accordion. Opening a
+    county lists the towns we serve there and (main.js) swaps the map to
+    that county's outline. Cities with a page of their own link to it; the
+    rest are plain text — the CTA band below handles quotes."""
     depth = 0
 
-    def area_row(a):
-        nbhds = ", ".join(a["neighborhoods"])
-        # Extended-area cities have no page of their own, so they show the
-        # neighbourhoods and route to the quote form instead of a dead link.
+    def city_item(a):
         if a["slug"] in PRIMARY_SLUGS:
-            cta = f'<a href="areas/{a["slug"]}.html">View services in {a["city"]} {icon("arrow")}</a>'
-        else:
-            cta = f'<a href="get-quote.html">Get a free quote in {a["city"]} {icon("arrow")}</a>'
-        return f"""<details class="reveal">
-        <summary>{a['city']}, MN <span class="chev">{icon('chevron')}</span></summary>
-        <div class="area-body"><p>{nbhds}</p>{cta}</div>
+            return f'<li><a href="areas/{a["slug"]}.html">{a["city"]}</a></li>'
+        return f'<li>{a["city"]}</li>'
+
+    def county_row(c, i):
+        cities = [a for a in AREAS if a["county"] == c["name"]]
+        # Home base first, then the cities with their own page, then the rest, A–Z.
+        cities.sort(key=lambda a: (a["slug"] != "delano", a["slug"] not in PRIMARY_SLUGS, a["city"]))
+        n = len(cities)
+        return f"""<details class="county" data-map-query="{c['query']}"{" open" if i == 0 else ""}>
+        <summary><span class="county-name">{c['name']}</span><span class="county-count">{n} {"city" if n == 1 else "cities"}</span><span class="chev">{icon('chevron')}</span></summary>
+        <ul class="county-cities">{"".join(city_item(a) for a in cities)}</ul>
       </details>"""
 
-    primary_html = "".join(area_row(a) for a in AREAS if a["tier"] == "primary")
-    extended_html = "".join(area_row(a) for a in AREAS if a["tier"] == "extended")
+    counties_html = "".join(county_row(c, i) for i, c in enumerate(COUNTIES))
 
     html, body = interior_head(
         title=seo_title("Service Areas, Western Twin Cities, MN"),
@@ -1131,16 +1136,11 @@ def build_service_areas():
     html += f"""<main id="main">{body}
   <section><div class="container">
     <div class="areas-map-grid">
-      {C.gmap_embed(f"Map of the {BIZ['name']} service area, centered on {BIZ['city']}, {BIZ['state']}", cls="reveal")}
-      <div class="reveal">
-        <div class="areas-group">
-          <h2>Primary Service Area</h2>
-          <div class="area-list">{primary_html}</div>
-        </div>
-        <div class="areas-group">
-          <h2>Extended Service Area</h2>
-          <div class="area-list">{extended_html}</div>
-        </div>
+      {C.county_map_embed(COUNTIES[0], cls="reveal")}
+      <div class="reveal county-panel">
+        <h2 class="county-state">{BIZ['state_name'] if BIZ.get('state_name') else 'Minnesota'}</h2>
+        <div class="county-list" data-county-list>{counties_html}</div>
+        <p class="county-hint">Open a county to see the towns we serve there. The map follows along.</p>
       </div>
     </div>
     <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too, <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>

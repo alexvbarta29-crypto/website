@@ -964,27 +964,30 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .areas-split .area-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Service-area map + expandable city accordion (Proudly Serving section) */
-.areas-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: start; }
+/* Service-area hub: county map beside a county → cities accordion. Opening
+   a county swaps the map to that county's outline (main.js) and closes the
+   others; the <details> themselves work with no script at all. */
+.areas-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(32px, 4vw, 56px); align-items: start; }
 .areas-map-grid .map-embed { position: sticky; top: calc(var(--nav-h) + 20px); }
-.areas-group + .areas-group { margin-top: 28px; }
-.areas-group h2, .areas-group h3 { font-family: var(--font-head); font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; color: var(--blue-600); margin-bottom: 12px; }
-.area-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: start; }
-@media (max-width: 560px) { .area-list { grid-template-columns: 1fr; } }
-.area-list details { background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; transition: box-shadow .3s; }
-.area-list details[open] { box-shadow: var(--sh-sm); }
-.area-list summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 18px; font-family: var(--font-head); font-weight: 700; color: var(--navy-800); cursor: pointer; list-style: none; }
-.area-list summary::-webkit-details-marker { display: none; }
-.area-list summary .chev { width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--slate-400); transition: transform .3s var(--ease); }
-.area-list details[open] summary .chev { transform: rotate(180deg); color: var(--blue-600); }
-.area-list summary .chev svg { width: 16px; height: 16px; }
-.area-list .area-body { padding: 0 18px 16px; font-size: .92rem; color: var(--slate-500); }
-.area-list .area-body a { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--blue-600); font-weight: 600; }
-.area-list .area-body a svg { width: 15px; height: 15px; flex: none; }
+.county-state { text-align: center; font-size: clamp(2rem, 3.4vw, 2.6rem); margin-bottom: 20px; }
+.county-list { border-top: 1px solid var(--line); }
+.county-list details { border-bottom: 1px solid var(--line); }
+.county-list summary { display: flex; align-items: center; gap: 14px; padding: 22px 6px; font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; color: var(--navy-800); cursor: pointer; list-style: none; }
+.county-list summary::-webkit-details-marker { display: none; }
+.county-list summary:hover .county-name, .county-list details[open] .county-name { color: var(--blue-600); }
+.county-count { margin-left: auto; font-family: var(--font-body, inherit); font-weight: 600; font-size: .8rem; letter-spacing: 0; text-transform: none; color: var(--slate-500); white-space: nowrap; }
+.county-list .chev { width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--slate-400); transition: transform .3s var(--ease); }
+.county-list details[open] .chev { transform: rotate(180deg); color: var(--blue-600); }
+.county-list .chev svg { width: 16px; height: 16px; }
+.county-cities { list-style: none; margin: 0; padding: 0 6px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; font-size: 1.02rem; color: var(--navy-800); }
+.county-cities a { color: var(--blue-600); font-weight: 600; text-decoration: none; }
+.county-cities a:hover { text-decoration: underline; }
+.county-hint { margin-top: 14px; font-size: .88rem; color: var(--slate-500); }
 @media (max-width: 860px) {
   .areas-map-grid { grid-template-columns: 1fr; }
   .areas-map-grid .map-embed { position: static; }
 }
+@media (max-width: 480px) { .county-cities { grid-template-columns: 1fr; } }
 
 /* Image placeholder (graceful when no photo present) */
 .imgph { background: var(--grad-deep); position: relative; display: grid; place-items: center; color: rgba(255,255,255,.8); overflow: hidden; }

@@ -773,6 +773,40 @@ AREAS = [
     {"slug": "woodland", "city": "Woodland", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
 ]
 
+# The counties those cities sit in, in the order the Service Areas hub lists
+# them (home base first). "query" is what the hub's map is searched for —
+# Google's keyless embed draws a county's boundary for a "<County>, MN"
+# search — and what its "open in Google Maps" link points at.
+COUNTIES = [
+    {"name": "Wright County", "query": "Wright County, MN"},
+    {"name": "Hennepin County", "query": "Hennepin County, MN"},
+    {"name": "Carver County", "query": "Carver County, MN"},
+    {"name": "McLeod County", "query": "McLeod County, MN"},
+]
+
+# Which county each service-area city belongs to (by slug). A city that
+# straddles a county line is listed under the county holding most of it:
+# Hanover and Rockford reach into Hennepin, Chanhassen into Hennepin.
+CITY_COUNTY = {
+    "delano": "Wright County", "buffalo": "Wright County", "st-michael": "Wright County",
+    "hanover": "Wright County", "montrose": "Wright County", "rockford": "Wright County",
+    "waverly": "Wright County",
+    "medina": "Hennepin County", "mound": "Hennepin County", "plymouth": "Hennepin County",
+    "corcoran": "Hennepin County", "deephaven": "Hennepin County", "eden-prairie": "Hennepin County",
+    "excelsior": "Hennepin County", "golden-valley": "Hennepin County", "greenfield": "Hennepin County",
+    "greenwood": "Hennepin County", "hamel": "Hennepin County", "independence": "Hennepin County",
+    "long-lake": "Hennepin County", "loretto": "Hennepin County", "maple-grove": "Hennepin County",
+    "maple-plain": "Hennepin County", "minnetonka": "Hennepin County", "minnetonka-beach": "Hennepin County",
+    "minnetrista": "Hennepin County", "orono": "Hennepin County", "rogers": "Hennepin County",
+    "spring-park": "Hennepin County", "st-bonifacius": "Hennepin County", "tonka-bay": "Hennepin County",
+    "wayzata": "Hennepin County", "woodland": "Hennepin County",
+    "chanhassen": "Carver County", "victoria": "Carver County", "waconia": "Carver County",
+    "winsted": "McLeod County",
+}
+for _a in AREAS:
+    _a["county"] = CITY_COUNTY[_a["slug"]]   # KeyError = a city with no county; fix the map above
+assert {c["name"] for c in COUNTIES} == set(CITY_COUNTY.values()), "every county in CITY_COUNTY needs a COUNTIES entry, and vice versa"
+
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
 ZIP_CODES = [
     "55305", "55311", "55317", "55328", "55331", "55340", "55341", "55343",

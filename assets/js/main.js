@@ -1018,6 +1018,41 @@
     }
   }
 
+  /* ---- Service-area hub: opening a county in the list swaps the map
+     beside it to that county's outline (Google's keyless embed draws the
+     boundary for a "<County>, MN" search), keeps one county open at a
+     time, and points the map's "open in Google Maps" link at the same
+     county. The <details> work without any of this; the map then simply
+     stays on the first county. ---- */
+  const countyMap = document.querySelector("[data-county-map]");
+  const countyList = document.querySelector("[data-county-list]");
+  if (countyMap && countyList) {
+    const frame = countyMap.querySelector("iframe");
+    const fallback = countyMap.querySelector(".map-fallback");
+    const label = countyMap.querySelector(".ph-label");
+    const counties = Array.from(countyList.querySelectorAll("details[data-map-query]"));
+    const show = (d) => {
+      const q = d.dataset.mapQuery;
+      if (!q || !frame || countyMap.dataset.mapQuery === q) return;
+      countyMap.dataset.mapQuery = q;
+      const nameEl = d.querySelector(".county-name") || d.querySelector("summary");
+      const name = nameEl ? nameEl.textContent.trim() : q;
+      const title = "Map of " + name + ", Minnesota";
+      // The placeholder shows again until the new map has loaded.
+      if (fallback) fallback.style.display = "";
+      if (label && label.lastChild && label.lastChild.nodeType === 3) label.lastChild.textContent = name + ", MN";
+      frame.title = title;
+      frame.src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&output=embed";
+      countyMap.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+      countyMap.setAttribute("aria-label", title + ", opens Google Maps in a new tab");
+    };
+    counties.forEach((d) => d.addEventListener("toggle", () => {
+      if (!d.open) return;
+      counties.forEach((o) => { if (o !== d && o.open) o.open = false; });
+      show(d);
+    }));
+  }
+
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";
   $$(".nav-links a, .drawer-nav a").forEach((a) => {
