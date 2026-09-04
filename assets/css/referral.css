@@ -17,19 +17,20 @@
 .ref-hero-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 26px; }
 .ref-hero-insured { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 700; color: var(--slate-700); }
 .ref-hero-insured svg { width: 18px; height: 18px; color: var(--blue-600); flex: none; }
-/* Right column: a photo of the crew with the offer ticket laid across its
-   bottom edge, so the two amounts sit on a person rather than on nothing.
-   The photo is near-square; the 5:4 frame crops it to a landscape anchored
-   near the bottom, so the technician shows head to hands and the ticket
-   overlaps only the strip of tools beneath them. */
+/* Right column: a photo of the crew, shown whole in a near-square frame,
+   with the offer ticket standing upright in the open siding to the
+   technician's left — the two halves stacked top to bottom, the same
+   margin on three sides, and none of him underneath it. */
 .ref-hero-visual { position: relative; }
-.ref-hero-photo { position: relative; overflow: hidden; border-radius: var(--r-xl); box-shadow: var(--sh-lg); aspect-ratio: 5 / 4; background: var(--ink); }
+.ref-hero-photo { position: relative; overflow: hidden; border-radius: var(--r-xl); box-shadow: var(--sh-lg); aspect-ratio: 1 / 1.02; background: var(--ink); }
 /* <picture> is inline by default, so the img's 100% height would resolve
    to auto and it would simply be clipped at the bottom; sizing the picture
    too is what lets object-fit/object-position choose the crop. */
 .ref-hero-photo picture, .ref-hero-photo img { display: block; width: 100%; height: 100%; }
-.ref-hero-photo img { object-fit: cover; object-position: 50% 88%; }
-.ref-hero-visual .ref-offer { position: relative; z-index: 2; width: calc(100% - 32px); margin: -44px auto 0; }
+.ref-hero-photo img { object-fit: cover; object-position: 50% 50%; }
+.ref-hero-visual .ref-offer { position: absolute; z-index: 2; top: 20px; bottom: 20px; left: 20px; width: min(46%, 236px); grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+.ref-hero-visual .ref-offer-half { justify-content: center; padding: clamp(18px, 2.4vw, 28px) clamp(14px, 1.8vw, 22px); }
+.ref-hero-visual .ref-offer-amt { font-size: clamp(2.6rem, 4.4vw, 3.8rem); }
 /* Two halves of one ticket: the friend's side on white, the customer's on
    the deep gradient, so the two amounts read as a pair rather than a list. */
 .ref-offer { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: var(--r-xl); border: 1px solid var(--line); background: #fff; box-shadow: var(--sh-lg); }
@@ -204,8 +205,13 @@
   .ref-offer { max-width: 560px; }
   .ref-steps { grid-template-columns: 1fr; max-width: 560px; margin-inline: auto; }
 }
+@media (max-width: 640px) {
+  /* Phones: an upright ticket would leave him no room, so it goes back to
+     lying across the photo's bottom edge, halves side by side. */
+  .ref-hero-visual .ref-offer { position: relative; inset: auto; width: calc(100% - 32px); margin: -44px auto 0; grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+}
 @media (max-width: 560px) {
-  .ref-offer { grid-template-columns: 1fr; }
+  .ref-offer, .ref-hero-visual .ref-offer { grid-template-columns: 1fr; }
   .ref-rewards { grid-template-columns: 1fr; }
   .ref-share-url { flex-direction: column; }
   .ref-copy { width: 100%; justify-content: center; }
