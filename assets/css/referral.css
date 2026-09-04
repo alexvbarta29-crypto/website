@@ -31,14 +31,20 @@
 .ref-hero-photo picture, .ref-hero-photo img { display: block; width: 100%; height: 100%; }
 .ref-hero-photo img { object-fit: cover; object-position: 50% 50%; }
 .ref-hero-visual .ref-offer { position: absolute; z-index: 2; top: 64px; bottom: 0; left: 0; width: min(50%, 240px); grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; box-shadow: 0 34px 70px -22px rgba(14,14,18,.5), 0 10px 28px rgba(14,14,18,.16); }
-.ref-hero-visual .ref-offer-half { justify-content: center; padding: clamp(18px, 2.4vw, 28px) clamp(14px, 1.8vw, 22px); }
+.ref-hero-visual .ref-offer-half { justify-content: center; padding: clamp(18px, 2.4vw, 28px) clamp(14px, 1.8vw, 22px); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.ref-hero-visual .ref-offer-half--you { border-radius: 0 0 var(--r-xl) var(--r-xl); }
 .ref-hero-visual .ref-offer-amt { font-size: clamp(2.6rem, 4.4vw, 3.8rem); }
 /* Two halves of one ticket: the friend's side on white, the customer's on
    the deep gradient, so the two amounts read as a pair rather than a list. */
-.ref-offer { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: var(--r-xl); border: 1px solid var(--line); background: #fff; box-shadow: var(--sh-lg); }
-.ref-offer-half { position: relative; display: flex; flex-direction: column; gap: 8px; padding: clamp(28px, 3.6vw, 44px) clamp(20px, 2.6vw, 32px); text-align: center; }
-.ref-offer-half--you { background: var(--grad-deep); }
-.ref-offer-half--you::after { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 55% at 80% 10%, rgba(255,106,61,.30), transparent 60%); pointer-events: none; }
+.ref-offer { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--r-xl); box-shadow: var(--sh-lg); }
+/* The ticket itself has no border and no background: each half paints its
+   own rounded corners, so nothing pale can rim the dark half (a border or a
+   white backing clipped by overflow:hidden leaves a light hairline around
+   it). The radii follow the halves' arrangement — side by side here,
+   stacked in the hero and on phones, see below. */
+.ref-offer-half { position: relative; display: flex; flex-direction: column; gap: 8px; padding: clamp(28px, 3.6vw, 44px) clamp(20px, 2.6vw, 32px); text-align: center; background: #fff; border-radius: var(--r-xl) 0 0 var(--r-xl); }
+.ref-offer-half--you { background: var(--grad-deep); border-radius: 0 var(--r-xl) var(--r-xl) 0; }
+.ref-offer-half--you::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(60% 55% at 80% 10%, rgba(255,106,61,.30), transparent 60%); pointer-events: none; }
 .ref-offer-half > * { position: relative; }
 .ref-offer-who { font-family: var(--font-head); font-weight: 700; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--blue-700); }
 .ref-offer-half--you .ref-offer-who { color: var(--aqua-300); }
@@ -212,9 +218,13 @@
      lying across the photo's bottom edge, halves side by side. */
   .ref-hero-visual { padding: 0; }
   .ref-hero-visual .ref-offer { position: relative; inset: auto; width: calc(100% - 32px); margin: -44px auto 0; grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .ref-hero-visual .ref-offer-half { border-radius: var(--r-xl) 0 0 var(--r-xl); }
+  .ref-hero-visual .ref-offer-half--you { border-radius: 0 var(--r-xl) var(--r-xl) 0; }
 }
 @media (max-width: 560px) {
   .ref-offer, .ref-hero-visual .ref-offer { grid-template-columns: 1fr; }
+  .ref-offer-half, .ref-hero-visual .ref-offer-half { border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .ref-offer-half--you, .ref-hero-visual .ref-offer-half--you { border-radius: 0 0 var(--r-xl) var(--r-xl); }
   .ref-rewards { grid-template-columns: 1fr; }
   .ref-share-url { flex-direction: column; }
   .ref-copy { width: 100%; justify-content: center; }
