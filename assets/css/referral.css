@@ -18,17 +18,19 @@
 .ref-hero-insured { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 700; color: var(--slate-700); }
 .ref-hero-insured svg { width: 18px; height: 18px; color: var(--blue-600); flex: none; }
 /* Right column: a photo of the crew, shown whole in a near-square frame,
-   with the offer ticket standing upright in the open siding to the
-   technician's left — the two halves stacked top to bottom, the same
-   margin on three sides, and none of him underneath it. */
-.ref-hero-visual { position: relative; }
+   with the offer ticket standing upright over its bottom-left corner — the
+   two halves stacked top to bottom, hanging past the photo's left and
+   bottom edges (the wrapper's padding is that overhang) on a deep shadow,
+   so it floats over the picture rather than sitting inside it. It covers
+   only the open siding; none of him is underneath it. */
+.ref-hero-visual { position: relative; padding: 0 0 36px 36px; }
 .ref-hero-photo { position: relative; overflow: hidden; border-radius: var(--r-xl); box-shadow: var(--sh-lg); aspect-ratio: 1 / 1.02; background: var(--ink); }
 /* <picture> is inline by default, so the img's 100% height would resolve
    to auto and it would simply be clipped at the bottom; sizing the picture
    too is what lets object-fit/object-position choose the crop. */
 .ref-hero-photo picture, .ref-hero-photo img { display: block; width: 100%; height: 100%; }
 .ref-hero-photo img { object-fit: cover; object-position: 50% 50%; }
-.ref-hero-visual .ref-offer { position: absolute; z-index: 2; top: 20px; bottom: 20px; left: 20px; width: min(46%, 236px); grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+.ref-hero-visual .ref-offer { position: absolute; z-index: 2; top: 64px; bottom: 0; left: 0; width: min(50%, 240px); grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; box-shadow: 0 34px 70px -22px rgba(14,14,18,.5), 0 10px 28px rgba(14,14,18,.16); }
 .ref-hero-visual .ref-offer-half { justify-content: center; padding: clamp(18px, 2.4vw, 28px) clamp(14px, 1.8vw, 22px); }
 .ref-hero-visual .ref-offer-amt { font-size: clamp(2.6rem, 4.4vw, 3.8rem); }
 /* Two halves of one ticket: the friend's side on white, the customer's on
@@ -208,6 +210,7 @@
 @media (max-width: 640px) {
   /* Phones: an upright ticket would leave him no room, so it goes back to
      lying across the photo's bottom edge, halves side by side. */
+  .ref-hero-visual { padding: 0; }
   .ref-hero-visual .ref-offer { position: relative; inset: auto; width: calc(100% - 32px); margin: -44px auto 0; grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
 }
 @media (max-width: 560px) {
