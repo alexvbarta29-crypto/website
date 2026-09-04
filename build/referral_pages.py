@@ -12,7 +12,7 @@ and main.js.
 """
 import components as C
 from icons import icon
-from sitedata import BIZ, REFERRAL, SERVICES
+from sitedata import BIZ, REFERRAL, SERVICES, IMAGE_ALT
 
 # Every number printed on these pages comes from sitedata.REFERRAL so the
 # offer can be changed in one place (mirror netlify/lib/referral-config.mjs).
@@ -21,6 +21,11 @@ CREDIT = REFERRAL["referrer_credit"]
 GIFT = REFERRAL["referrer_gift_card"]
 PREFIX = REFERRAL["code_prefix"]
 MAX_FRIENDS = REFERRAL["max_friends"]
+
+# The program page's hero photo: a technician on a customer's porch, in the
+# BWW shirt, smiling. Rendered through C.picture, so only the 640w/1200w
+# derivatives are ever served (see build.generate_hero_variants).
+HERO_PHOTO = "assets/img/3P8A7912.JPEG"
 
 # What a referred friend most often books first: shown on the friend page
 # and offered as checkboxes on its claim form.
@@ -46,12 +51,14 @@ def _offer_attrs():
             f'data-phone="{BIZ["phone_display"]}" data-email="{BIZ["email"]}" data-biz="{C._esc(BIZ["name"])}"')
 
 
-def _trust_list():
-    return f"""<ul class="hero-trust">
-          <li>{icon('star')} {BIZ['rating']}&#9733; Google rating</li>
-          <li>{icon('shield')} Fully insured</li>
-          <li>{icon('house')} Family-owned in {BIZ['city']}</li>
-        </ul>"""
+def _proof_row(depth):
+    """Under the lead: the same clickable Google-reviews badge the gallery
+    hero carries (stars, the G, "100+ 5-star Google reviews"), in its solid
+    white form for this pale background, and "Fully insured" beside it."""
+    return f"""<div class="ref-hero-proof">
+          {C.google_badge(depth, light=True, text=f"{BIZ['review_count']}+ 5-star Google reviews")}
+          <span class="ref-hero-insured">{icon('shield')} Fully insured</span>
+        </div>"""
 
 
 def _friend_row(n):
@@ -260,22 +267,28 @@ def referral_page(depth=0, seo_title=None, schema=None):
         <span class="eyebrow">Referral program</span>
         <h1 class="mt-1"><span>Give ${FRIEND_OFF}.</span> <span>Get ${CREDIT}.</span></h1>
         <p class="lead">Know someone who&rsquo;d love spotless windows? Send them our way: they get ${FRIEND_OFF} off their first service, and you get a ${CREDIT} credit, or a ${GIFT} gift card, every time one of them books.</p>
-        {_trust_list()}
+        {_proof_row(depth)}
         <div class="phero-actions">
           <a class="btn btn-lg" href="#refer-form">Refer a friend {icon('arrow')}</a>
           <a class="btn btn-lg btn-ghost" href="#how">How it works</a>
         </div>
       </div>
-      <div class="ref-offer reveal" data-delay="1">
-        <div class="ref-offer-half">
-          <span class="ref-offer-who">Your friend gets</span>
-          <span class="ref-offer-amt">${FRIEND_OFF}</span>
-          <span class="ref-offer-what">off their first service</span>
+      <div class="ref-hero-visual reveal" data-delay="1">
+        <div class="ref-hero-photo">
+          {C.picture(root, HERO_PHOTO, IMAGE_ALT[HERO_PHOTO], sizes="(max-width: 960px) min(100vw, 560px), 44vw",
+                     extra_attrs='loading="eager" fetchpriority="high" decoding="async"')}
         </div>
-        <div class="ref-offer-half ref-offer-half--you">
-          <span class="ref-offer-who">You get</span>
-          <span class="ref-offer-amt">${CREDIT}</span>
-          <span class="ref-offer-what">in credit, or a ${GIFT} gift card, per friend who books. No limit.</span>
+        <div class="ref-offer">
+          <div class="ref-offer-half">
+            <span class="ref-offer-who">Your friend gets</span>
+            <span class="ref-offer-amt">${FRIEND_OFF}</span>
+            <span class="ref-offer-what">off their first service</span>
+          </div>
+          <div class="ref-offer-half ref-offer-half--you">
+            <span class="ref-offer-who">You get</span>
+            <span class="ref-offer-amt">${CREDIT}</span>
+            <span class="ref-offer-what">in credit, or a ${GIFT} gift card, per friend who books. No limit.</span>
+          </div>
         </div>
       </div>
     </div>
@@ -412,7 +425,7 @@ def referred_page(depth=0, seo_title=None, schema=None):
         <a class="btn btn-lg" id="rd-claim" href="#claim">Claim my ${FRIEND_OFF} off {icon('arrow')}</a>
         <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
       </div>
-      {_trust_list()}
+      {_proof_row(depth)}
     </div>
   </div></section>
 
