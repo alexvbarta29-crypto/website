@@ -1,7 +1,8 @@
 """Reusable HTML partials and section builders."""
 import json, os
 from urllib.parse import quote_plus
-from sitedata import BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS, PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID
+from sitedata import (BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
+                      PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, CTA_PHOTOS)
 from icons import icon
 
 def _esc(s):
@@ -1274,23 +1275,56 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", s
   <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Reveal more of the before or after image">
 </div>"""
 
+# Every page's closing call-to-action shows a different job photo. The
+# banner is a wide, short strip, so the roster in sitedata.CTA_PHOTOS is
+# only photos that survive a 3:1 crop with white text over the middle of
+# them, each with the crop position that keeps its subject in frame.
+# Pages are served in build order, one photo each, wrapping when the roster
+# runs out — deterministic, so a rebuild never reshuffles the site.
+_CTA_TURN = {"i": 0}
+
+def _next_cta_photo():
+    if not CTA_PHOTOS:
+        return "assets/img/svc-cta-squeegee.jpg", "35%"
+    photo = CTA_PHOTOS[_CTA_TURN["i"] % len(CTA_PHOTOS)]
+    _CTA_TURN["i"] += 1
+    return photo["image"], f"{photo['focal_y']}%"
+
+CTA_BAND_GRADIENT = ("linear-gradient(180deg, rgba(8,22,46,.18) 0%, "
+                     "rgba(7,18,40,.32) 45%, rgba(5,13,30,.52) 100%)")
+
+def _cta_background(root, image):
+    """Two background-image declarations, in this order on purpose: the
+    1200w JPEG every browser can read, then a wider WebP for the ones that
+    understand image-set(). The band is up to 1180 CSS px across, so 1200w
+    is exactly 1x and soft on a retina screen; 1600w WebP is sharp there and
+    still smaller than the JPEG. A browser without image-set() drops only
+    the second declaration and keeps the first, so nobody loses the photo."""
+    stem = image.rsplit(".", 1)[0]
+    base = f"{stem}-1200w.jpg" if _variants_exist(stem) else image
+    css = f"background-image:{CTA_BAND_GRADIENT}, url('{root}{base}')"
+    wide_webp, wide_jpg = f"{stem}-1600w.webp", f"{stem}-1600w.jpg"
+    if os.path.exists(os.path.join(_ROOT, wide_webp)) and os.path.exists(os.path.join(_ROOT, wide_jpg)):
+        css += (f";background-image:{CTA_BAND_GRADIENT}, "
+                f"image-set(url('{root}{wide_webp}') type('image/webp'), "
+                f"url('{root}{wide_jpg}') type('image/jpeg'))")
+    return css
+
 def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
              text="Join hundreds of Delano-area homeowners who trust Barta for a spotless, stress-free exterior. Get your free quote today.",
              primary=("Get Your Free Quote", "get-quote.html"),
-             image="assets/img/svc-cta-squeegee.jpg", image_pos="35%"):
+             image=None, image_pos=None):
     root = rel(depth)
     # Decorative full-bleed backdrop behind an overlay + text, never the
     # sole carrier of information, so a CSS background (hidden from
-    # assistive tech by default) is correct here. Prefer the pre-generated
-    # 1200w variant over the multi-hundred-KB original when one exists;
-    # CSS background-image has no srcset equivalent, so this is a single
-    # fixed choice rather than a responsive one.
-    _bg_stem = image.rsplit(".", 1)[0]
-    if _variants_exist(_bg_stem):
-        image = f"{_bg_stem}-1200w.jpg"
-    bg = (f"linear-gradient(180deg, rgba(8,22,46,.18) 0%, rgba(7,18,40,.32) 45%, rgba(5,13,30,.52) 100%), "
-          f"url('{root}{image}')")
-    return f"""<section><div class="container"><div class="cta-band reveal" style="background-image:{bg};background-position:center,center {image_pos}">
+    # assistive tech by default) is correct here. A caller that names its
+    # own photo (the Christmas page, the gallery) keeps it and takes no turn
+    # in the rotation.
+    if image is None:
+        image, rotated_pos = _next_cta_photo()
+        image_pos = image_pos or rotated_pos
+    bg = _cta_background(root, image)
+    return f"""<section><div class="container"><div class="cta-band reveal" style="{bg};background-position:center,center {image_pos or '35%'}">
   <span class="eyebrow" style="color:#ff9b86;justify-content:center">Let's get started</span>
   <h2 class="mt-1">{heading}</h2>
   <p>{text}</p>

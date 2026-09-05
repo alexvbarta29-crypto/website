@@ -9,8 +9,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, REVIEWS,
-                      TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
+from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
+                      CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
+                      ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
 from icons import icon
 import components as C
 import schema as S
@@ -725,7 +726,7 @@ def build_service(svc):
   {C.cta_band(depth, heading="Ready to light up the holidays?" if is_xmas else "Ready for spotless results?",
               text=("Get your free, no-obligation Christmas light installation quote today and see why homeowners across the western Twin Cities trust Barta." if is_xmas else
                     svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta."),
-              **({"image": "assets/img/DSC03257.jpg", "image_pos": "25%"} if is_xmas else {}))}
+              **({"image": CTA_PINNED_PHOTOS["christmas"], "image_pos": "25%"} if is_xmas else {}))}
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
@@ -802,7 +803,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
 GALLERY_HERO = "assets/img/svc-cta-squeegee.jpg"
 # The CTA band at the foot of the page normally uses GALLERY_HERO too, so
 # the Gallery gives it a different backdrop, no photo twice on one page.
-GALLERY_CTA_IMAGE = "assets/img/hero-home.jpg"
+GALLERY_CTA_IMAGE = CTA_PINNED_PHOTOS["gallery"]
 
 def build_gallery():
     depth = 0
@@ -2482,6 +2483,40 @@ _TEAM_TIER_SOURCES = ["assets/img/team-alex.jpg", "assets/img/team-jacob.jpg"]
 _TEAM_TIER_SPECS = [(480, "webp", 82), (480, "avif", 65),
                     (700, "webp", 82), (700, "avif", 65)]
 
+def generate_cta_wide_variants():
+    """A 1600w WebP+JPEG pair for each photo in the closing call-to-action's
+    rotation. The band is up to 1180 CSS px across, so the shared 1200w tier
+    is exactly 1x and visibly soft on a retina screen; components._cta_background
+    serves these through image-set() with the 1200w JPEG as the fallback.
+    Cut from the full-resolution original, never from a derivative."""
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  (Pillow not available, skipping CTA banner variants)")
+        return
+    made = 0
+    images = [p["image"] for p in CTA_PHOTOS] + list(CTA_PINNED_PHOTOS.values())
+    for image in dict.fromkeys(images):
+        src = os.path.join(ROOT, image)
+        if not os.path.exists(src):
+            print(f"  (CTA photo missing: {image})")
+            continue
+        stem = image.rsplit(".", 1)[0]
+        for ext, kwargs in (("jpg", {"quality": 80, "optimize": True, "progressive": True}),
+                            ("webp", {"quality": 78, "method": 6})):
+            out = os.path.join(ROOT, f"{stem}-1600w.{ext}")
+            if os.path.exists(out) and os.path.getmtime(out) >= os.path.getmtime(src):
+                continue
+            with Image.open(src) as im:
+                im = im.convert("RGB")
+                if im.width > 1600:
+                    im = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
+                im.save(out, **kwargs)
+            made += 1
+    if made:
+        print(f"  CTA banner variants: {made} file(s)")
+
+
 def generate_avif_versions():
     try:
         from PIL import Image
@@ -2573,6 +2608,7 @@ def generate_og_images():
 def main():
     generate_webp_versions()
     generate_hero_variants()
+    generate_cta_wide_variants()
     generate_avif_versions()
     generate_og_images()
     minify_assets()

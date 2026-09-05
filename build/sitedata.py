@@ -842,6 +842,25 @@ assert len({_a["slug"] for _a in AREAS}) == len(AREAS), "duplicate city slug in 
 assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
     "a primary-tier city needs neighborhoods — its own page prints them"
 
+# The closing call-to-action's photo rotation: pages take one each, in build
+# order (components.cta_band). The band is a wide, short strip with white
+# text over the middle of it, so a photo earns a place here only if the 3:1
+# crop still shows the work and the text still reads — "focal_y" is the
+# background-position that keeps the subject in that crop. Every entry was
+# judged against the real image at banner proportions, twice.
+CTA_PHOTOS = [
+    {"image": "assets/img/svc-exterior-window-cleaning.jpg", "focal_y": 45},
+    {"image": "assets/img/svc-detail-frame.jpg", "focal_y": 43},
+]
+
+# Two pages pin their own banner photo instead of taking a turn: the gallery
+# (its own hero) and the Christmas page (lights, not window cleaning). Listed
+# here so they get the same sharp 1600w treatment as the rotation.
+CTA_PINNED_PHOTOS = {
+    "gallery": "assets/img/hero-home.jpg",
+    "christmas": "assets/img/DSC03257.jpg",
+}
+
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
 ZIP_CODES = [
     "55305", "55311", "55317", "55328", "55331", "55340", "55341", "55343",
