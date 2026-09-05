@@ -190,25 +190,6 @@ def build_home():
     svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
-    # Full community list, ordered priority-first, sized so the grid's
-    # bottom edge lines up with the map beside it (a full square that grows
-    # with viewport width); service-areas.html remains the dedicated,
-    # detail-per-city page this grid links out to.
-    _HOME_AREA_SLUGS = ["delano", "buffalo", "medina", "mound", "plymouth", "st-michael",
-                         "maple-grove", "minnetonka", "wayzata", "orono", "excelsior", "chanhassen",
-                         "eden-prairie", "golden-valley", "deephaven", "corcoran", "hamel", "long-lake",
-                         "minnetrista", "victoria", "rogers", "loretto", "maple-plain", "hanover",
-                         "independence", "greenfield", "rockford", "spring-park", "tonka-bay",
-                         "minnetonka-beach"]
-    _areas_by_slug = {a["slug"]: a for a in AREAS}
-    _priority_areas = [_areas_by_slug[slug] for slug in _HOME_AREA_SLUGS]
-    def _area_chip(a, i):
-        inner = f'{icon("pin")} {a["city"]}'
-        if a["slug"] in PRIMARY_SLUGS:
-            return f'<a class="area-card reveal" data-delay="{i%4}" href="areas/{a["slug"]}.html">{inner}</a>'
-        return f'<span class="area-card area-card--static reveal" data-delay="{i%4}">{inner}</span>'
-    areas_html = "".join(_area_chip(a, i) for i, a in enumerate(_priority_areas))
-
     process_steps = [
         ("01", "Mop", "assets/img/svc-mop-window.jpg",
          "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
@@ -370,10 +351,7 @@ def build_home():
         <h2>Proudly cleaning Delano &amp; the western Twin Cities</h2>
         <p>Delano is our home base, from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
       </div>
-      <div class="areas-split">
-        {C.gmap_embed(f"{BIZ['legal_name']} on Google Maps, serving {BIZ['city']} and the western Twin Cities", cls="reveal map-pin-left")}
-        <div class="area-grid reveal">{areas_html}</div>
-      </div>
+      {county_areas_block(depth)}
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">View All Service Areas {icon('arrow')}</a></div>
     </div>
   </section>
@@ -1102,34 +1080,51 @@ def build_faqs():
 # ===========================================================================
 # SERVICE AREAS (hub)
 # ===========================================================================
-def build_service_areas():
-    """The hub: one county map beside a county → cities accordion. Opening a
-    county lists the towns we serve there and (main.js) swaps the map to
-    that county's outline. Cities with a page of their own link to it; the
-    rest are plain text — the CTA band below handles quotes."""
-    depth = 0
+def county_areas_block(depth):
+    """The service-area widget, identical on the homepage and the hub: a map
+    beside a county → cities accordion. Opening a county lists the towns we
+    serve there and (main.js) swaps the map to that county's outline;
+    closing it returns the map to the whole service area. Cities with a page
+    of their own link to it, but every city name is set the same way either
+    way, so the list reads as one column of towns rather than two classes of
+    them."""
+    root = C.rel(depth)
 
     def city_item(a):
         if a["slug"] in PRIMARY_SLUGS:
-            return f'<li><a href="areas/{a["slug"]}.html">{a["city"]}</a></li>'
-        return f'<li>{a["city"]}</li>'
+            return f'<li><a href="{root}areas/{a["slug"]}.html">{a["city"]}</a></li>'
+        return f"<li>{a['city']}</li>"
 
-    def county_row(c, i):
+    def county_row(c):
         cities = [a for a in AREAS if a["county"] == c["name"]]
         # Home base first, then the cities with their own page, then the rest, A–Z.
         cities.sort(key=lambda a: (a["slug"] != "delano", a["slug"] not in PRIMARY_SLUGS, a["city"]))
-        n = len(cities)
         # name= makes the group exclusive in the browser itself (Chrome 120+,
         # Safari 17.2+, Firefox 130+), so only one county opens even with no
-        # JavaScript; the script below still handles older browsers. None
-        # starts open: the map is showing the whole service area, which is
-        # the more useful first answer.
+        # JavaScript; main.js still handles older browsers. None starts open:
+        # the map is showing the whole service area, which is the more useful
+        # first answer.
         return f"""<details class="county" name="county" data-map-query="{c['query']}">
-        <summary><span class="county-name">{c['name']}</span><span class="county-count">{n} {"city" if n == 1 else "cities"}</span><span class="chev">{icon('chevron')}</span></summary>
+        <summary><span class="county-name">{c['name']}</span><span class="chev">{icon('chevron')}</span></summary>
         <ul class="county-cities">{"".join(city_item(a) for a in cities)}</ul>
       </details>"""
 
-    counties_html = "".join(county_row(c, i) for i, c in enumerate(COUNTIES))
+    counties_html = "".join(county_row(c) for c in COUNTIES)
+    state = BIZ.get("state_name") or "Minnesota"
+    return f"""<div class="areas-map-grid">
+      {C.county_map_embed(SERVICE_AREA_VIEW, cls="reveal")}
+      <div class="reveal county-panel">
+        <h2 class="county-state">{state}</h2>
+        <p class="county-radius">Everything within about {SERVICE_RADIUS_MI} miles of {BIZ['city']}.</p>
+        <div class="county-list" data-county-list>{counties_html}</div>
+        <p class="county-hint">Open a county to see the towns we serve there.</p>
+      </div>
+    </div>"""
+
+
+def build_service_areas():
+    """The hub: the shared county block, plus the ZIP list and the CTA band."""
+    depth = 0
 
     html, body = interior_head(
         title=seo_title("Service Areas, Western Twin Cities, MN"),
@@ -1141,15 +1136,7 @@ def build_service_areas():
     zip_html = "".join(f'<span class="pill" style="background:var(--mist-2);border:0">{z}</span>' for z in ZIP_CODES)
     html += f"""<main id="main">{body}
   <section><div class="container">
-    <div class="areas-map-grid">
-      {C.county_map_embed(SERVICE_AREA_VIEW, cls="reveal")}
-      <div class="reveal county-panel">
-        <h2 class="county-state">{BIZ['state_name'] if BIZ.get('state_name') else 'Minnesota'}</h2>
-        <p class="county-radius">Everything within about {SERVICE_RADIUS_MI} miles of {BIZ['city']}.</p>
-        <div class="county-list" data-county-list>{counties_html}</div>
-        <p class="county-hint">Open a county to see the towns we serve there.</p>
-      </div>
-    </div>
+    {county_areas_block(depth)}
     <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too, <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
   </div></section>
   <section class="bg-mist"><div class="container">

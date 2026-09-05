@@ -953,17 +953,6 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .map-embed:hover .map-open-hint svg { color: #fff; }
 @media (max-width: 640px) { .map-embed.map-wide { aspect-ratio: 4/3; } }
 
-/* Homepage: square map on the left, compact city list beside it */
-.areas-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 40px; align-items: start; }
-.areas-split .area-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.areas-split .area-card { padding: 8px 11px; gap: 7px; font-size: .8rem; font-weight: 600; border-radius: 11px; box-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.areas-split .area-card svg { width: 14px; height: 14px; }
-@media (max-width: 960px) { .areas-split .area-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 760px) {
-  .areas-split { grid-template-columns: 1fr; }
-  .areas-split .area-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
 /* Service-area hub: county map beside a county → cities accordion. Opening
    a county swaps the map to that county's outline (main.js) and closes the
    others; the <details> themselves work with no script at all. */
@@ -978,13 +967,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* --blue-700, not --blue-600: the brand coral is only 3.37:1 on white,
    under WCAG AA for text this size; the darker shade is 5.03:1. */
 .county-list summary:hover .county-name, .county-list details[open] .county-name { color: var(--blue-700); }
-.county-count { margin-left: auto; font-family: var(--font-body, inherit); font-weight: 600; font-size: .8rem; letter-spacing: 0; text-transform: none; color: var(--slate-500); white-space: nowrap; }
-.county-list .chev { width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--slate-400); transition: transform .3s var(--ease); }
+.county-list .chev { margin-left: auto; width: 24px; height: 24px; flex: none; display: grid; place-items: center; color: var(--slate-400); transition: transform .3s var(--ease); }
 .county-list details[open] .chev { transform: rotate(180deg); color: var(--blue-700); }
 .county-list .chev svg { width: 16px; height: 16px; }
 .county-cities { list-style: none; margin: 0; padding: 0 6px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; font-size: 1.02rem; color: var(--navy-800); }
-.county-cities a { color: var(--blue-700); font-weight: 600; text-decoration: none; }
-.county-cities a:hover { text-decoration: underline; }
+/* A city with a page of its own and one without are set identically — same
+   face, size, weight and colour — so the list reads as one column of towns
+   rather than two classes of them. The link shows itself on hover/focus. */
+.county-cities a { color: inherit; font: inherit; text-decoration: none; }
+.county-cities a:hover, .county-cities a:focus-visible { color: var(--blue-700); text-decoration: underline; }
 .county-hint { margin-top: 14px; font-size: .88rem; color: var(--slate-500); }
 @media (max-width: 860px) {
   .areas-map-grid { grid-template-columns: 1fr; }
