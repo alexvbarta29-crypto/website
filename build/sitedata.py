@@ -743,9 +743,7 @@ AREAS = [
     {"slug": "chanhassen", "city": "Chanhassen", "neighborhoods": ["Lake Minnewashta", "Lotus Lake", "Longacres"], "note": "", "tier": "extended"},
     {"slug": "corcoran", "city": "Corcoran", "neighborhoods": ["Hackamore", "Rush Creek", "Pioneer"], "note": "", "tier": "extended"},
     {"slug": "deephaven", "city": "Deephaven", "neighborhoods": ["Lake Minnetonka shoreline", "Cottagewood"], "note": "", "tier": "extended"},
-    {"slug": "eden-prairie", "city": "Eden Prairie", "neighborhoods": ["Downtown Eden Prairie", "Eden Prairie Center area"], "note": "", "tier": "extended"},
     {"slug": "excelsior", "city": "Excelsior", "neighborhoods": ["Downtown Excelsior", "Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
-    {"slug": "golden-valley", "city": "Golden Valley", "neighborhoods": ["Downtown Golden Valley", "Theodore Wirth Park area"], "note": "", "tier": "extended"},
     {"slug": "greenfield", "city": "Greenfield", "neighborhoods": ["Rural Greenfield", "Rockford border"], "note": "", "tier": "extended"},
     {"slug": "greenwood", "city": "Greenwood", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
     {"slug": "hamel", "city": "Hamel", "neighborhoods": ["Downtown Hamel", "Medina area"], "note": "", "tier": "extended"},
@@ -769,12 +767,10 @@ AREAS = [
     {"slug": "waconia", "city": "Waconia", "neighborhoods": ["Downtown Waconia", "Lake Waconia shoreline", "Lakeview Terrace"], "note": "", "tier": "extended"},
     {"slug": "waverly", "city": "Waverly", "neighborhoods": ["Downtown Waverly", "Waverly Lake"], "note": "", "tier": "extended"},
     {"slug": "wayzata", "city": "Wayzata", "neighborhoods": ["Ferndale", "Holdridge", "Downtown Wayzata"], "note": "", "tier": "extended"},
-    {"slug": "winsted", "city": "Winsted", "neighborhoods": ["Downtown Winsted", "Winsted Lake"], "note": "", "tier": "extended"},
     {"slug": "woodland", "city": "Woodland", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
-    # Added to even out the counties, and because they are as close to home
-    # as much of the list already was: every remaining city in Wright, Carver
-    # and McLeod within SERVICE_RADIUS_MI straight-line miles of Delano, with
-    # the distance measured from each city's own published coordinates.
+    # Every remaining city in Wright and Carver within SERVICE_RADIUS_MI
+    # straight-line miles of Delano, with the distance measured from each
+    # city's own published coordinates (the comment on each line).
     # "neighborhoods" is only rendered on a city's own page, which extended
     # cities do not have (the assertion below guards that).
     {"slug": "howard-lake", "city": "Howard Lake", "neighborhoods": [], "note": "", "tier": "extended"},      # 13.9 mi
@@ -789,33 +785,28 @@ AREAS = [
     {"slug": "chaska", "city": "Chaska", "neighborhoods": [], "note": "", "tier": "extended"},                # 17.7 mi
     {"slug": "cologne", "city": "Cologne", "neighborhoods": [], "note": "", "tier": "extended"},              # 18.8 mi
     {"slug": "norwood-young-america", "city": "Norwood Young America", "neighborhoods": [], "note": "", "tier": "extended"},  # 19.7 mi
-    {"slug": "lester-prairie", "city": "Lester Prairie", "neighborhoods": [], "note": "", "tier": "extended"},  # 16.3 mi
 ]
 
 # How far we travel from Delano. Every city below is inside this, and the
 # Service Areas hub says so in as many words.
 SERVICE_RADIUS_MI = 20
 
-# What the hub's map shows before any county is opened: Delano itself, zoomed
-# out far enough to take in the towns around it. (Google's keyless embed can't
-# draw a circle, so the radius is stated in words beside the map.)
-SERVICE_AREA_VIEW = {
-    "name": f"About {SERVICE_RADIUS_MI} miles around Delano",
-    "query": "45.0419,-93.7891",     # BIZ lat/lng — a plain pin, not a place card
-    "zoom": 10,
-    "label": "Our service area",
-}
-
-# The counties those cities sit in, in the order the Service Areas hub lists
-# them (home base first). "query" is what the hub's map is searched for —
-# Google's keyless embed draws a county's boundary for a "<County>, MN"
-# search — and what its "open in Google Maps" link points at.
+# The counties those cities sit in, in the order the pages list them (home
+# base first). "query" is what the map is searched for — Google's keyless
+# embed draws a county's boundary for a "<County>, MN" search — and what its
+# "open in Google Maps" link points at.
 COUNTIES = [
     {"name": "Wright County", "query": "Wright County, MN"},
     {"name": "Hennepin County", "query": "Hennepin County, MN"},
     {"name": "Carver County", "query": "Carver County, MN"},
-    {"name": "McLeod County", "query": "McLeod County, MN"},
 ]
+
+# What the map shows before any county is opened, and what it returns to when
+# one is closed: our home county, drawn as an outline. No pin on the shop —
+# the question the map answers is "do you come out my way?", not "where are
+# you?". The radius is stated in words beside it, since a keyless embed
+# cannot draw a circle.
+SERVICE_AREA_VIEW = dict(COUNTIES[0], label=COUNTIES[0]["name"])
 
 # Which county each service-area city belongs to (by slug). A city that
 # straddles a county line is listed under the county holding most of it:
@@ -827,8 +818,8 @@ CITY_COUNTY = {
     "maple-lake": "Wright County", "monticello": "Wright County", "otsego": "Wright County",
     "cokato": "Wright County",
     "medina": "Hennepin County", "mound": "Hennepin County", "plymouth": "Hennepin County",
-    "corcoran": "Hennepin County", "deephaven": "Hennepin County", "eden-prairie": "Hennepin County",
-    "excelsior": "Hennepin County", "golden-valley": "Hennepin County", "greenfield": "Hennepin County",
+    "corcoran": "Hennepin County", "deephaven": "Hennepin County",
+    "excelsior": "Hennepin County", "greenfield": "Hennepin County",
     "greenwood": "Hennepin County", "hamel": "Hennepin County", "independence": "Hennepin County",
     "long-lake": "Hennepin County", "loretto": "Hennepin County", "maple-grove": "Hennepin County",
     "maple-plain": "Hennepin County", "minnetonka": "Hennepin County", "minnetonka-beach": "Hennepin County",
@@ -838,7 +829,6 @@ CITY_COUNTY = {
     "chanhassen": "Carver County", "victoria": "Carver County", "waconia": "Carver County",
     "watertown": "Carver County", "mayer": "Carver County", "new-germany": "Carver County",
     "chaska": "Carver County", "cologne": "Carver County", "norwood-young-america": "Carver County",
-    "winsted": "McLeod County", "lester-prairie": "McLeod County",
 }
 for _a in AREAS:
     _a["county"] = CITY_COUNTY[_a["slug"]]   # KeyError = a city with no county; fix the map above
@@ -852,9 +842,9 @@ assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
 ZIP_CODES = [
     "55305", "55311", "55317", "55328", "55331", "55340", "55341", "55343",
-    "55344", "55345", "55346", "55347", "55356", "55357", "55359", "55363",
-    "55364", "55369", "55373", "55374", "55375", "55376", "55384", "55386",
-    "55387", "55390", "55391", "55416", "55422", "55427", "55446", "55447",
+    "55345", "55356", "55357", "55359", "55363", "55364", "55369", "55373",
+    "55374", "55375", "55376", "55384", "55386", "55387", "55390", "55391",
+    "55446", "55447",
 ]
 
 # ---------------------------------------------------------------------------

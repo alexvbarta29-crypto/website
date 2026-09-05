@@ -977,6 +977,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .county-cities a { color: inherit; font: inherit; text-decoration: none; }
 .county-cities a:hover, .county-cities a:focus-visible { color: var(--blue-700); text-decoration: underline; }
 .county-hint { margin-top: 14px; font-size: .88rem; color: var(--slate-500); }
+.county-more { margin-top: 8px; font-size: .92rem; color: var(--slate-700); }
+.county-more a { color: var(--blue-700); font-weight: 700; }
 @media (max-width: 860px) {
   .areas-map-grid { grid-template-columns: 1fr; }
   .areas-map-grid .map-embed { position: static; }

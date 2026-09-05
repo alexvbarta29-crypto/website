@@ -1118,6 +1118,8 @@ def county_areas_block(depth):
         <p class="county-radius">Everything within about {SERVICE_RADIUS_MI} miles of {BIZ['city']}.</p>
         <div class="county-list" data-county-list>{counties_html}</div>
         <p class="county-hint">Open a county to see the towns we serve there.</p>
+        <p class="county-more">These are the towns within {SERVICE_RADIUS_MI} miles of {BIZ['city']} — we serve plenty more nearby.
+          Don&rsquo;t see yours? <a href="tel:{BIZ['phone_href']}">Just ask</a>, we probably cover it.</p>
       </div>
     </div>"""
 
@@ -1137,7 +1139,6 @@ def build_service_areas():
     html += f"""<main id="main">{body}
   <section><div class="container">
     {county_areas_block(depth)}
-    <p class="center mt-4" style="color:var(--slate-500)">Don't see your town? We likely serve it too, <a href="tel:{BIZ['phone_href']}" style="color:var(--blue-600);font-weight:600">just ask</a>.</p>
   </div></section>
   <section class="bg-mist"><div class="container">
     <div class="section-head center">
