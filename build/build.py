@@ -350,7 +350,6 @@ def build_home():
       <div class="section-head center">
         <span class="eyebrow">Areas we serve</span>
         <h2>Proudly cleaning Delano &amp; the western Twin Cities</h2>
-        <p>Delano is our home base, from there we serve homeowners and businesses across the western Twin Cities metro, including the communities below.</p>
       </div>
       {county_areas_block(depth)}
       <div class="center mt-4"><a class="btn btn-ghost" href="service-areas.html">View All Service Areas {icon('arrow')}</a></div>

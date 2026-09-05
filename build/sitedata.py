@@ -805,11 +805,12 @@ COUNTIES = [
 ]
 
 # What the map shows before any county is opened, and what it returns to when
-# one is closed: our home county, drawn as an outline. No pin on the shop —
-# the question the map answers is "do you come out my way?", not "where are
-# you?". The radius is stated in words beside it, since a keyless embed
-# cannot draw a circle.
-SERVICE_AREA_VIEW = dict(COUNTIES[0], label=COUNTIES[0]["name"])
+# one is closed: Hennepin, where most of the towns we serve are, drawn as an
+# outline. No pin on the shop — the question the map answers is "do you come
+# out my way?", not "where are you?". The county list keeps its own order
+# (home base first), so this names the county rather than taking a position.
+SERVICE_AREA_VIEW = dict(next(c for c in COUNTIES if c["name"] == "Hennepin County"),
+                         label="Hennepin County")
 
 # Which county each service-area city belongs to (by slug). A city that
 # straddles a county line is listed under the county holding most of it:
