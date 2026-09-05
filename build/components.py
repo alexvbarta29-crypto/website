@@ -1290,8 +1290,14 @@ def _next_cta_photo():
     _CTA_TURN["i"] += 1
     return photo["image"], f"{photo['focal_y']}%"
 
-CTA_BAND_GRADIENT = ("linear-gradient(180deg, rgba(8,22,46,.18) 0%, "
-                     "rgba(7,18,40,.32) 45%, rgba(5,13,30,.52) 100%)")
+# The scrim over the photo. It used to start at .18, which was fine over the
+# one dark photo the band always showed and far too light for the rest: on
+# any bright shot — a white farmhouse, a sunlit window — the small coral
+# eyebrow washed out entirely. Checked over a bright, a mid and a dark photo
+# at banner size: this holds the eyebrow and the heading on all three and
+# still reads as a photograph, not a tint.
+CTA_BAND_GRADIENT = ("linear-gradient(180deg, rgba(8,22,46,.40) 0%, "
+                     "rgba(7,18,40,.48) 45%, rgba(5,13,30,.62) 100%)")
 
 def _cta_background(root, image):
     """Two background-image declarations, in this order on purpose: the

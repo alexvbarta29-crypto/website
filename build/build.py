@@ -726,7 +726,8 @@ def build_service(svc):
   {C.cta_band(depth, heading="Ready to light up the holidays?" if is_xmas else "Ready for spotless results?",
               text=("Get your free, no-obligation Christmas light installation quote today and see why homeowners across the western Twin Cities trust Barta." if is_xmas else
                     svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta."),
-              **({"image": CTA_PINNED_PHOTOS["christmas"], "image_pos": "25%"} if is_xmas else {}))}
+              **({"image": CTA_PINNED_PHOTOS["christmas"]["image"],
+                   "image_pos": f"{CTA_PINNED_PHOTOS['christmas']['focal_y']}%"} if is_xmas else {}))}
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
@@ -803,7 +804,7 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
 GALLERY_HERO = "assets/img/svc-cta-squeegee.jpg"
 # The CTA band at the foot of the page normally uses GALLERY_HERO too, so
 # the Gallery gives it a different backdrop, no photo twice on one page.
-GALLERY_CTA_IMAGE = CTA_PINNED_PHOTOS["gallery"]
+GALLERY_CTA_IMAGE = CTA_PINNED_PHOTOS["gallery"]["image"]
 
 def build_gallery():
     depth = 0
@@ -896,7 +897,7 @@ def build_gallery():
     <div class="gallery">{work_html}</div>
   </div></section>"""
     html += f"""
-  {C.cta_band(depth, image=GALLERY_CTA_IMAGE, image_pos="58%")}
+  {C.cta_band(depth, image=GALLERY_CTA_IMAGE, image_pos=f"{CTA_PINNED_PHOTOS['gallery']['focal_y']}%")}
 </main>"""
     html += C.page_end(depth)
     write("gallery.html", html, slug="gallery.html", priority="0.6")
@@ -2495,7 +2496,7 @@ def generate_cta_wide_variants():
         print("  (Pillow not available, skipping CTA banner variants)")
         return
     made = 0
-    images = [p["image"] for p in CTA_PHOTOS] + list(CTA_PINNED_PHOTOS.values())
+    images = [p["image"] for p in CTA_PHOTOS] + [p["image"] for p in CTA_PINNED_PHOTOS.values()]
     for image in dict.fromkeys(images):
         src = os.path.join(ROOT, image)
         if not os.path.exists(src):

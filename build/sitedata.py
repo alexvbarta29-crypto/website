@@ -848,17 +848,27 @@ assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
 # crop still shows the work and the text still reads — "focal_y" is the
 # background-position that keeps the subject in that crop. Every entry was
 # judged against the real image at banner proportions, twice.
+# Ordered so consecutive pages get visibly different scenes — a wide shot
+# then a close one, a technician then a house.
 CTA_PHOTOS = [
     {"image": "assets/img/svc-exterior-window-cleaning.jpg", "focal_y": 45},
+    {"image": "assets/img/3P8A8136.JPEG", "focal_y": 55},
+    {"image": "assets/img/instagram/18105187085130700_1.jpg", "focal_y": 45},
     {"image": "assets/img/svc-detail-frame.jpg", "focal_y": 43},
+    {"image": "assets/img/DSC03260.jpg", "focal_y": 40},
+    {"image": "assets/img/svc-commercial-cleaning.jpg", "focal_y": 40},
+    {"image": "assets/img/svc-screen-cleaning-services.jpg", "focal_y": 19},
+    {"image": "assets/img/3P8A7912.JPEG", "focal_y": 45},
+    {"image": "assets/img/svc-solar-panel-cleaning.jpg", "focal_y": 22},
 ]
 
-# Two pages pin their own banner photo instead of taking a turn: the gallery
-# (its own hero) and the Christmas page (lights, not window cleaning). Listed
-# here so they get the same sharp 1600w treatment as the rotation.
+# Two pages pin their own banner instead of taking a turn: the gallery (so
+# the photo above the fold isn't repeated in its own grid) and the Christmas
+# page (lights, not window cleaning). Listed here, not inline at the call
+# site, so they get the same sharp 1600w treatment as the rotation.
 CTA_PINNED_PHOTOS = {
-    "gallery": "assets/img/hero-home.jpg",
-    "christmas": "assets/img/DSC03257.jpg",
+    "gallery": {"image": "assets/img/hero-home-main.jpg", "focal_y": 55},
+    "christmas": {"image": "assets/img/xmas-lights-stone-home.jpg", "focal_y": 42},
 }
 
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
