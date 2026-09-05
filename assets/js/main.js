@@ -1044,22 +1044,29 @@
       pressed = null;
       if (Math.abs(delta) > 1) window.scrollBy(0, delta);
     };
-    const show = (d) => {
-      const q = d.dataset.mapQuery;
+    // The view the map returns to when every county is closed: the whole
+    // service area, as rendered by county_map_embed.
+    const home = { q: countyMap.dataset.homeQuery, zoom: countyMap.dataset.homeZoom,
+                   name: countyMap.dataset.homeName, label: countyMap.dataset.homeLabel };
+    const show = (q, name, labelText, zoom) => {
       if (!q || !frame || countyMap.dataset.mapQuery === q) return;
       countyMap.dataset.mapQuery = q;
-      const nameEl = d.querySelector(".county-name") || d.querySelector("summary");
-      const name = nameEl ? nameEl.textContent.trim() : q;
-      const title = "Map of " + name + ", Minnesota";
+      const title = "Map of " + name;
       // The placeholder covers the old map until the new one has loaded —
       // the iframe paints the previous county until the new navigation
       // commits, so without this the wrong county sits there meanwhile.
       if (fallback) { fallback.style.display = ""; fallback.style.zIndex = "2"; }
-      if (label && label.lastChild && label.lastChild.nodeType === 3) label.lastChild.textContent = name + ", MN";
+      if (label && label.lastChild && label.lastChild.nodeType === 3) label.lastChild.textContent = labelText;
       frame.title = title;
-      frame.src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&output=embed";
+      frame.src = "https://maps.google.com/maps?q=" + encodeURIComponent(q)
+        + (zoom ? "&z=" + zoom : "") + "&output=embed";
       countyMap.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
       countyMap.setAttribute("aria-label", title + ", opens Google Maps in a new tab");
+    };
+    const showCounty = (d) => {
+      const nameEl = d.querySelector(".county-name") || d.querySelector("summary");
+      const name = (nameEl ? nameEl.textContent.trim() : d.dataset.mapQuery) + ", Minnesota";
+      show(d.dataset.mapQuery, name, name.replace(", Minnesota", ", MN"), "");
     };
     // The iframe's inline onload only hides the placeholder; it must also
     // drop back under the map so a later swap can cover it again.
@@ -1073,11 +1080,15 @@
         });
       }
       d.addEventListener("toggle", () => {
-        if (!d.open) return;
+        if (!d.open) {
+          // Every county closed: back to the whole service area.
+          if (!counties.some((o) => o.open)) show(home.q, home.name, home.label, home.zoom);
+          return;
+        }
         // Older browsers with no name= grouping still need closing by hand.
         counties.forEach((o) => { if (o !== d && o.open) o.open = false; });
         if (summary) keepInView(summary);
-        show(d);
+        showCounty(d);
       });
     });
   }

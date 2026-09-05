@@ -9,7 +9,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import BIZ, SERVICES, AREAS, COUNTIES, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS
+from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, SERVICE_RADIUS_MI, REVIEWS,
+                      TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
 from icons import icon
 import components as C
 import schema as S
@@ -1120,8 +1121,10 @@ def build_service_areas():
         n = len(cities)
         # name= makes the group exclusive in the browser itself (Chrome 120+,
         # Safari 17.2+, Firefox 130+), so only one county opens even with no
-        # JavaScript; the script below still handles older browsers.
-        return f"""<details class="county" name="county" data-map-query="{c['query']}"{" open" if i == 0 else ""}>
+        # JavaScript; the script below still handles older browsers. None
+        # starts open: the map is showing the whole service area, which is
+        # the more useful first answer.
+        return f"""<details class="county" name="county" data-map-query="{c['query']}">
         <summary><span class="county-name">{c['name']}</span><span class="county-count">{n} {"city" if n == 1 else "cities"}</span><span class="chev">{icon('chevron')}</span></summary>
         <ul class="county-cities">{"".join(city_item(a) for a in cities)}</ul>
       </details>"""
@@ -1139,9 +1142,10 @@ def build_service_areas():
     html += f"""<main id="main">{body}
   <section><div class="container">
     <div class="areas-map-grid">
-      {C.county_map_embed(COUNTIES[0], cls="reveal")}
+      {C.county_map_embed(SERVICE_AREA_VIEW, cls="reveal")}
       <div class="reveal county-panel">
         <h2 class="county-state">{BIZ['state_name'] if BIZ.get('state_name') else 'Minnesota'}</h2>
+        <p class="county-radius">Everything within about {SERVICE_RADIUS_MI} miles of {BIZ['city']}.</p>
         <div class="county-list" data-county-list>{counties_html}</div>
         <p class="county-hint">Open a county to see the towns we serve there.</p>
       </div>

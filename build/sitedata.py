@@ -773,6 +773,20 @@ AREAS = [
     {"slug": "woodland", "city": "Woodland", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
 ]
 
+# How far we travel from Delano. Every city below is inside this, and the
+# Service Areas hub says so in as many words.
+SERVICE_RADIUS_MI = 20
+
+# What the hub's map shows before any county is opened: Delano itself, zoomed
+# out far enough to take in the towns around it. (Google's keyless embed can't
+# draw a circle, so the radius is stated in words beside the map.)
+SERVICE_AREA_VIEW = {
+    "name": f"About {SERVICE_RADIUS_MI} miles around Delano",
+    "query": "45.0419,-93.7891",     # BIZ lat/lng — a plain pin, not a place card
+    "zoom": 10,
+    "label": "Our service area",
+}
+
 # The counties those cities sit in, in the order the Service Areas hub lists
 # them (home base first). "query" is what the hub's map is searched for —
 # Google's keyless embed draws a county's boundary for a "<County>, MN"

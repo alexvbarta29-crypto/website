@@ -1392,19 +1392,29 @@ def gmap_embed(title, label=None, zoom=10, cls=""):
     <span class="map-open-hint">{icon('pin')} Open in Google Maps</span>
   </a>"""
 
-def county_map_embed(county, cls=""):
-    """The Service Areas hub's map: Google's keyless embed searched for a
-    county, which draws that county's boundary and its name card. main.js
-    swaps the same iframe to whichever county is opened in the list beside
-    it; without JavaScript it simply stays on this one. Like gmap_embed, the
-    whole widget is a link to the county on Google Maps."""
-    q = quote_plus(county["query"])
-    title = f"Map of {county['name']}, Minnesota"
-    return f"""<a class="map-embed {cls}" data-map-embed data-county-map data-map-query="{county['query']}"
+def county_map_embed(view, cls=""):
+    """The Service Areas hub's map. It opens on the whole service area —
+    Delano, zoomed out to take in the towns around it — and main.js swaps
+    the same iframe to a county's outline when one is opened in the list
+    beside it (Google's keyless embed draws a county's boundary for a
+    "<County>, MN" search), then back again when it is closed. Without
+    JavaScript it simply stays on the service area. Like gmap_embed, the
+    whole widget is a link to the same place on Google Maps.
+
+    `view` is SERVICE_AREA_VIEW or one of COUNTIES: a name, a Maps query and
+    an optional zoom. The home view is stashed in data attributes so the
+    script can return to it without knowing the numbers."""
+    q = quote_plus(view["query"])
+    zoom = view.get("zoom")
+    title = f"Map of {view['name']}"
+    label = view.get("label", view["name"])
+    return f"""<a class="map-embed {cls}" data-map-embed data-county-map
+    data-map-query="{view['query']}" data-home-query="{view['query']}"
+    data-home-zoom="{zoom or ''}" data-home-name="{view['name']}" data-home-label="{label}"
     href="https://www.google.com/maps/search/?api=1&query={q}" target="_blank" rel="noopener"
     aria-label="{title}, opens Google Maps in a new tab">
-    <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{county['name']}, {BIZ['state']}</span></div>
-    <iframe src="https://maps.google.com/maps?q={q}&output=embed" title="{title}" width="100%" height="100%" tabindex="-1"
+    <div class="map-fallback" aria-hidden="true"><span class="ph-label">{icon('pin')}<br>{label}</span></div>
+    <iframe src="https://maps.google.com/maps?q={q}{f'&z={zoom}' if zoom else ''}&output=embed" title="{title}" width="100%" height="100%" tabindex="-1"
       aria-hidden="true" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
       onload="this.previousElementSibling.style.display='none'"></iframe>
     <span class="map-open-hint">{icon('pin')} Open in Google Maps</span>

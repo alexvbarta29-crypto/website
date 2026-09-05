@@ -969,7 +969,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    others; the <details> themselves work with no script at all. */
 .areas-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(32px, 4vw, 56px); align-items: start; }
 .areas-map-grid .map-embed { position: sticky; top: calc(var(--nav-h) + 20px); }
-.county-state { text-align: center; font-size: clamp(2rem, 3.4vw, 2.6rem); margin-bottom: 20px; }
+.county-state { text-align: center; font-size: clamp(2rem, 3.4vw, 2.6rem); margin-bottom: 6px; }
+.county-radius { text-align: center; margin-bottom: 20px; color: var(--slate-500); }
 .county-list { border-top: 1px solid var(--line); }
 .county-list details { border-bottom: 1px solid var(--line); }
 .county-list summary { display: flex; align-items: center; gap: 14px; padding: 22px 6px; font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; color: var(--navy-800); cursor: pointer; list-style: none; }
