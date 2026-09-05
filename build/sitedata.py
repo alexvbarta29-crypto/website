@@ -787,8 +787,11 @@ AREAS = [
     {"slug": "norwood-young-america", "city": "Norwood Young America", "neighborhoods": [], "note": "", "tier": "extended"},  # 19.7 mi
 ]
 
-# How far we travel from Delano. Every city below is inside this, and the
-# Service Areas hub says so in as many words.
+# How far we travel from Delano: the rule every city in AREAS was measured
+# against (straight-line miles from Delano's lat/lng to the city's own
+# published coordinates). Not printed on the site — the pages say "the west
+# metro and surrounding areas", which is how a customer thinks about it —
+# but it is what decides whether a town belongs on the list.
 SERVICE_RADIUS_MI = 20
 
 # The counties those cities sit in, in the order the pages list them (home

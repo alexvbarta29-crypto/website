@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, SERVICE_RADIUS_MI, REVIEWS,
+from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, REVIEWS,
                       TEAM, POSTS, FAQS, HOME_SERVICES, ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
 from icons import icon
 import components as C
@@ -1115,7 +1115,7 @@ def county_areas_block(depth):
       {C.county_map_embed(SERVICE_AREA_VIEW, cls="reveal")}
       <div class="reveal county-panel">
         <h2 class="county-state">{state}</h2>
-        <p class="county-radius">Everything within about {SERVICE_RADIUS_MI} miles of {BIZ['city']}.</p>
+        <p class="county-radius">Serving the west metro and surrounding areas.</p>
         <div class="county-list" data-county-list>{counties_html}</div>
         <p class="county-more">We serve many more towns nearby. Don&rsquo;t see yours?
           <a href="tel:{BIZ['phone_href']}">Just ask</a>.</p>
