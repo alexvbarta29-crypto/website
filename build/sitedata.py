@@ -771,6 +771,25 @@ AREAS = [
     {"slug": "wayzata", "city": "Wayzata", "neighborhoods": ["Ferndale", "Holdridge", "Downtown Wayzata"], "note": "", "tier": "extended"},
     {"slug": "winsted", "city": "Winsted", "neighborhoods": ["Downtown Winsted", "Winsted Lake"], "note": "", "tier": "extended"},
     {"slug": "woodland", "city": "Woodland", "neighborhoods": ["Lake Minnetonka shoreline"], "note": "", "tier": "extended"},
+    # Added to even out the counties, and because they are as close to home
+    # as much of the list already was: every remaining city in Wright, Carver
+    # and McLeod within SERVICE_RADIUS_MI straight-line miles of Delano, with
+    # the distance measured from each city's own published coordinates.
+    # "neighborhoods" is only rendered on a city's own page, which extended
+    # cities do not have (the assertion below guards that).
+    {"slug": "howard-lake", "city": "Howard Lake", "neighborhoods": [], "note": "", "tier": "extended"},      # 13.9 mi
+    {"slug": "albertville", "city": "Albertville", "neighborhoods": [], "note": "", "tier": "extended"},      # 14.9 mi
+    {"slug": "maple-lake", "city": "Maple Lake", "neighborhoods": [], "note": "", "tier": "extended"},        # 16.6 mi
+    {"slug": "monticello", "city": "Monticello", "neighborhoods": [], "note": "", "tier": "extended"},        # 17.9 mi
+    {"slug": "otsego", "city": "Otsego", "neighborhoods": [], "note": "", "tier": "extended"},                # 18.4 mi
+    {"slug": "cokato", "city": "Cokato", "neighborhoods": [], "note": "", "tier": "extended"},                # 19.7 mi
+    {"slug": "watertown", "city": "Watertown", "neighborhoods": [], "note": "", "tier": "extended"},          #  6.2 mi
+    {"slug": "mayer", "city": "Mayer", "neighborhoods": [], "note": "", "tier": "extended"},                  # 11.8 mi
+    {"slug": "new-germany", "city": "New Germany", "neighborhoods": [], "note": "", "tier": "extended"},      # 14.3 mi
+    {"slug": "chaska", "city": "Chaska", "neighborhoods": [], "note": "", "tier": "extended"},                # 17.7 mi
+    {"slug": "cologne", "city": "Cologne", "neighborhoods": [], "note": "", "tier": "extended"},              # 18.8 mi
+    {"slug": "norwood-young-america", "city": "Norwood Young America", "neighborhoods": [], "note": "", "tier": "extended"},  # 19.7 mi
+    {"slug": "lester-prairie", "city": "Lester Prairie", "neighborhoods": [], "note": "", "tier": "extended"},  # 16.3 mi
 ]
 
 # How far we travel from Delano. Every city below is inside this, and the
@@ -804,7 +823,9 @@ COUNTIES = [
 CITY_COUNTY = {
     "delano": "Wright County", "buffalo": "Wright County", "st-michael": "Wright County",
     "hanover": "Wright County", "montrose": "Wright County", "rockford": "Wright County",
-    "waverly": "Wright County",
+    "waverly": "Wright County", "howard-lake": "Wright County", "albertville": "Wright County",
+    "maple-lake": "Wright County", "monticello": "Wright County", "otsego": "Wright County",
+    "cokato": "Wright County",
     "medina": "Hennepin County", "mound": "Hennepin County", "plymouth": "Hennepin County",
     "corcoran": "Hennepin County", "deephaven": "Hennepin County", "eden-prairie": "Hennepin County",
     "excelsior": "Hennepin County", "golden-valley": "Hennepin County", "greenfield": "Hennepin County",
@@ -815,11 +836,18 @@ CITY_COUNTY = {
     "spring-park": "Hennepin County", "st-bonifacius": "Hennepin County", "tonka-bay": "Hennepin County",
     "wayzata": "Hennepin County", "woodland": "Hennepin County",
     "chanhassen": "Carver County", "victoria": "Carver County", "waconia": "Carver County",
-    "winsted": "McLeod County",
+    "watertown": "Carver County", "mayer": "Carver County", "new-germany": "Carver County",
+    "chaska": "Carver County", "cologne": "Carver County", "norwood-young-america": "Carver County",
+    "winsted": "McLeod County", "lester-prairie": "McLeod County",
 }
 for _a in AREAS:
     _a["county"] = CITY_COUNTY[_a["slug"]]   # KeyError = a city with no county; fix the map above
 assert {c["name"] for c in COUNTIES} == set(CITY_COUNTY.values()), "every county in CITY_COUNTY needs a COUNTIES entry, and vice versa"
+assert len({_a["slug"] for _a in AREAS}) == len(AREAS), "duplicate city slug in AREAS"
+# A city page prints its neighborhoods in a sentence, so a primary-tier city
+# has to have some; extended cities have no page and may leave the list empty.
+assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
+    "a primary-tier city needs neighborhoods — its own page prints them"
 
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
 ZIP_CODES = [
