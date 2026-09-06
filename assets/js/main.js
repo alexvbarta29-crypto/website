@@ -885,6 +885,19 @@
     $$('a[href*="get-quote.html"]').forEach((a) => a.addEventListener("click", openXmas));
     $$("[data-xmas-close]", xmasModal).forEach((el) => el.addEventListener("click", closeXmas));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !xmasModal.hidden) closeXmas(); });
+    // A link can land here with the form already open — for ads and social
+    // posts, where the click is the intent and the page is just the wrapper:
+    // .../christmas-light-installation.html?quote=1 (or #quote). Any other
+    // parameters an ad platform tacks on (fbclid, utm_*) ride along
+    // untouched. The first field takes focus so a phone keyboard comes up
+    // and the visitor can start typing without a second tap.
+    const wantsQuote = new URLSearchParams(location.search).has("quote")
+      || location.hash.replace("#", "") === "quote";
+    if (wantsQuote) {
+      openXmas();
+      const first = xmasModal.querySelector("input:not([type=hidden]), select, textarea");
+      if (first) first.focus({ preventScroll: true });
+    }
   }
 
   /* ---- Instagram carousel: arrow buttons, a self-running auto-advance

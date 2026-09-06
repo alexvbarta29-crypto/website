@@ -18,3 +18,8 @@
 # owner texts customers, and the short links texted to referred friends.
 /referral                  /referral.html  200
 /r/:code                   /get-quote.html?promo=:code  200
+
+# Christmas lights, straight into the quote form (main.js opens the
+# modal when ?quote is present). A short address for sharing by hand;
+# ads should link to the full URL so their tracking parameters survive.
+/christmas-quote           /services/christmas-light-installation.html?quote=1  301

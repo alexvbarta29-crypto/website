@@ -2079,7 +2079,12 @@ def build_redirects():
               # rewrite so the pretty /r/CODE stays in the address bar (which
               # means the query string never reaches the browser, so main.js
               # reads the code back out of the path).
-              "/r/:code                   /get-quote.html?promo=:code  200"]
+              "/r/:code                   /get-quote.html?promo=:code  200",
+              "",
+              "# Christmas lights, straight into the quote form (main.js opens the",
+              "# modal when ?quote is present). A short address for sharing by hand;",
+              "# ads should link to the full URL so their tracking parameters survive.",
+              "/christmas-quote           /services/christmas-light-installation.html?quote=1  301"]
     write_asset("_redirects", "\n".join(lines) + "\n")
 
 # ===========================================================================
