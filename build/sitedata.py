@@ -52,17 +52,15 @@ BIZ = {
 # ---------------------------------------------------------------------------
 GA4_ID = "G-TRBCP1HHNR"
 
-# Meta (Facebook/Instagram) Pixel, for measuring the ads. Paste the numeric
-# Pixel ID from Events Manager -> Data sources -> your pixel (15-16 digits,
-# no letters) between the quotes and rebuild; leave it empty and no Meta
-# code is emitted anywhere on the site at all.
-#
-# The pixel reports three things: a PageView on every page, "Lead" when a
-# quote form is actually submitted successfully (see assets/js/main.js --
-# that is the conversion to optimise campaigns for), and "Contact" when
-# someone taps a phone number. Turning it on also makes the site use
-# advertising cookies, which privacy.html says.
-META_PIXEL_ID = ""
+# ---------------------------------------------------------------------------
+# Meta (Facebook) Pixel. Renders once in every page's <head> (via
+# components.head) whenever this is set; empty string disables it. The ID
+# comes from Meta Events Manager → Data sources → your pixel. Like GA4 above,
+# the fbq() queue and the init/PageView calls fire immediately while the
+# fbevents.js library itself is deferred to first interaction, see the
+# comment in components.head for why.
+# ---------------------------------------------------------------------------
+META_PIXEL_ID = "1629810322074915"
 
 LEAD_FORM = {
     # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards

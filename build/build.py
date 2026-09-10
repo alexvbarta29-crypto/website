@@ -11,7 +11,7 @@ sys.path.insert(0, HERE)
 
 from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
-                      ZIP_CODES, IMAGE_ALT, PROMO_PLANS, META_PIXEL_ID)
+                      ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
 from icons import icon
 import components as C
 import schema as S
@@ -1355,14 +1355,8 @@ def build_referral_admin():
 # ===========================================================================
 # PRIVACY (minimal legal)
 # ===========================================================================
-# Only claim the advertising pixel when it is actually switched on: the
-# policy has to match what the pages really load, in both directions.
-PRIVACY_META_PIXEL_PARAGRAPH = """    <p>This website also uses the <strong>Meta Pixel</strong>, so we can tell which of our Facebook and Instagram ads actually bring people to the site and lead to a quote request. It records the pages you view, when a quote form is submitted, and when a phone number is tapped, and it sets advertising cookies. Meta receives this information and processes it under <a href="https://www.facebook.com/privacy/policy/" rel="noopener" target="_blank">Meta's privacy policy</a>. You can limit how it is used for advertising through your <a href="https://accountscenter.facebook.com/ad_preferences" rel="noopener" target="_blank">Meta ad preferences</a>, and most browsers let you block or delete cookies in their settings.</p>"""
-
-
 def build_privacy():
     depth = 0
-    meta_pixel_para = PRIVACY_META_PIXEL_PARAGRAPH if META_PIXEL_ID else ""
     html, body = interior_head(
         title=seo_title("Privacy Policy"),
         desc="Privacy policy for Barta Window Washing. Learn how we collect, use, and protect the information you share when requesting a quote or contacting us.",
@@ -1404,7 +1398,7 @@ def build_privacy():
     <p>By providing your phone number and opting in, you consent to receive text messages from {BIZ['name']} regarding appointment scheduling, service reminders, and updates. Message and data rates may apply, and message frequency varies. You may opt out at any time by replying STOP to any text message, or reply HELP for assistance. We do not share your phone number or SMS opt-in status with third parties for their own marketing purposes.</p>
     <h2 id="cookies">6. Cookies and third-party services</h2>
     <p>This website uses <strong>Google Analytics</strong> to understand how visitors find and use the site, for example, which pages are viewed and roughly where visitors come from. Google Analytics sets cookies in your browser for this purpose, and the information it collects is processed by Google under <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Google's privacy policy</a>.</p>
-{meta_pixel_para}
+    <p>This website also uses the <strong>Meta Pixel</strong>, a tool provided by Meta (Facebook and Instagram). It tells us how many people visit the site or request a quote after seeing one of our ads, and it allows us to show our ads to people who have visited this site. To do that, it sends Meta technical information such as your IP address, browser details and the pages you view here, and it may set advertising cookies in your browser. Meta processes that information under <a href="https://www.facebook.com/privacy/policy/" rel="noopener" target="_blank">Meta's privacy policy</a>. You can control how your data is used for advertising in your Facebook or Instagram ad settings, and most browsers let you block or delete cookies entirely.</p>
     <p>Some other features of the site are also provided by third parties. When your browser loads those features, the providers receive technical information such as your IP address and browser details, and they may use cookies or similar technologies under their own privacy policies. These features include:</p>
     <ul>
       <li><strong>Trustindex</strong>, displays our Google reviews on this site</li>

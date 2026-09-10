@@ -1,36 +1,26 @@
 # Analytics and ad tracking
 
-Two tags, both rendered exactly once per page from `components.head()`, both
-switched entirely on or off by one value in `build/sitedata.py`. Neither is
-present on a page that opts out of analytics.
+Two tags, both rendered once per page from `components.head()`, both driven by
+one value in `build/sitedata.py`, and neither present on a page that opts out
+of analytics.
 
 ## Google Analytics 4 — `GA4_ID`
 
-Already on. The `gtag()` stub and the `js`/`config` calls run immediately, so
-the page view is queued at once, but the 162 KiB `gtag.js` library is only
-injected on the visitor's first interaction (pointer, touch, key, scroll) or
-15 seconds after load. Real visitors virtually always trigger it; an untouched
-Lighthouse run finishes first, so its cost stays out of the audited load.
-
 ## Meta Pixel — `META_PIXEL_ID`
 
-Off until an ID is set. To turn it on:
+Both load the same way. The stub and queue exist immediately and the page view
+is recorded right away, while the heavy library (`gtag.js`, `fbevents.js`)
+waits for the visitor's first interaction — pointer, touch, key, scroll — or
+15 seconds after load, whichever comes first. That shared trigger lives in
+`__b3p()` so both tags register with one implementation and neither can inject
+twice. Meta's `<noscript>` beacon covers visitors without JavaScript.
 
-1. In Meta **Events Manager → Data sources**, open the pixel and copy its ID
-   (15-16 digits, no letters). Create one first if there isn't one.
-2. Put it in `build/sitedata.py`:
+Changing `META_PIXEL_ID` to `""` removes the script and the beacon. The
+privacy policy's description of the pixel is written into `build_privacy()`,
+so if the pixel is ever switched off that paragraph has to be removed by hand
+in the same change.
 
-       META_PIXEL_ID = "1234567890123456"
-
-3. Run `python3 build/build.py` and push. Every page gets the tag, and
-   `privacy.html` gains the paragraph describing it.
-
-Setting it back to `""` removes every trace: no script, no `<noscript>`
-beacon, and the privacy paragraph disappears with it. The policy is generated
-from the same value, so it can never claim a pixel the site isn't running, or
-stay silent about one it is.
-
-### What it reports
+### What the pixel reports
 
 | Event | When |
 | --- | --- |
@@ -38,31 +28,35 @@ stay silent about one it is.
 | `Lead` | a quote form submission that actually succeeded — never on a click, never on a failed send. `content_name` carries the service. This is the conversion to optimise campaigns for. |
 | `Contact` | a tap on any `tel:` link, which on a phone is usually the whole conversion |
 
-`Lead` and `Contact` live in `assets/js/main.js` and no-op when no pixel is
-configured, so they cost nothing while it is off.
+`Lead` and `Contact` live in `assets/js/main.js`, guarded on `fbq` existing,
+so they cost nothing when no pixel is configured. Both fire after the visitor
+has already interacted with the page, so the deferred library is always loaded
+(or about to be, with the call safely queued) by the time they run.
 
-### Why this one is not deferred
+### One thing to know about the deferral
 
-Unlike `gtag.js`, `fbevents.js` loads right away (async, so it never blocks
-rendering). The pixel measures paid traffic, and someone who lands from an ad
-and leaves in three seconds is exactly the visitor an advertiser must not
-lose. Deferring behind first interaction would quietly under-count them and
-flatter every campaign.
+`PageView` is queued instantly but only *sent* when `fbevents.js` loads. A
+visitor who lands from an ad and leaves within 15 seconds without touching the
+page never sends one, so Meta's Landing Page Views will read a little lower
+than the true number. That is the deliberate trade for keeping third-party
+JavaScript out of the audited page load (Lighthouse: desktop 99, mobile 86-87).
+To measure paid traffic exactly instead, drop the `__b3p(...)` wrapper around
+the Meta tag in `components.head()` so `fbevents.js` loads immediately — it is
+`async` either way, so it never blocks rendering.
 
 ### Checking it
 
 `scratchpad/e2e/pixel-check.mjs` drives a real browser with the Facebook
-endpoints stubbed and asserts: the library loads, `init` uses the configured
-ID, `PageView` fires once, a phone tap reports `Contact`, a successful quote
-reports exactly one `Lead` naming the service, and a failed submission
-reports nothing. Set a test ID, rebuild, run it against the local e2e server.
+endpoints stubbed, so no test ever calls Meta. It asserts the library loads,
+`init` uses the configured ID, `PageView` fires once, a phone tap reports
+`Contact`, a successful quote reports exactly one `Lead` naming the service,
+and a failed submission reports nothing.
 
-In production, Meta's **Test events** tab in Events Manager (or the Meta Pixel
-Helper extension) shows the same events arriving live.
+In production, Events Manager's **Test events** tab (or the Meta Pixel Helper
+extension) shows the same events arriving live.
 
-### If you use the ads deep link
+### The ads deep link
 
-`/services/christmas-light-installation.html?quote=1` opens the Christmas
-quote form on arrival. Link ads to the full URL rather than the
-`/christmas-quote` shortcut, so Meta's `fbclid` and any `utm_*` parameters
-survive to the page.
+`/services/christmas-light-installation.html?quote=1` opens the Christmas quote
+form on arrival. Point ads at the full URL rather than the `/christmas-quote`
+shortcut, so Meta's `fbclid` and any `utm_*` parameters survive to the page.
