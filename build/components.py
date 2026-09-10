@@ -2,7 +2,7 @@
 import json, os
 from urllib.parse import quote_plus
 from sitedata import (BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
-                      PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, CTA_PHOTOS)
+                      PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
 from icons import icon
 
 def _esc(s):
@@ -495,20 +495,46 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     # The d-flag makes the injection single-shot no matter how many
     # triggers fire; the readyState check covers pages already loaded when
     # the script runs.
+    # The Meta Pixel below defers on exactly the same terms, so the trigger
+    # itself lives in one place: __b3p(fn) runs fn once, on whichever comes
+    # first. Each registered callback is still single-shot on its own (the
+    # queue is emptied before it runs), so a tag can never inject twice no
+    # matter how many triggers fire.
+    defer_helper = (
+        "<script>(function(){var q=[],d=false;window.__b3p=function(f){d?f():q.push(f);};"
+        "function l(){if(d)return;d=true;var c=q;q=[];c.forEach(function(f){f();});}"
+        "['pointerdown','touchstart','keydown','scroll'].forEach(function(e){"
+        "addEventListener(e,l,{once:true,passive:true});});"
+        "function t(){setTimeout(l,15000);}"
+        "if(document.readyState==='complete'){t();}else{addEventListener('load',t,{once:true});}"
+        "})();</script>")
     ga_tag = ""
     if GA4_ID and analytics:
         ga_tag = (
             "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
             f'gtag("js",new Date());gtag("config","{GA4_ID}");'
-            "(function(){var d=false;function l(){if(d)return;d=true;"
-            "var s=document.createElement('script');s.async=true;"
+            "__b3p(function(){var s=document.createElement('script');s.async=true;"
             f"s.src='https://www.googletagmanager.com/gtag/js?id={GA4_ID}';"
-            "document.head.appendChild(s);}"
-            "['pointerdown','touchstart','keydown','scroll'].forEach(function(e){"
-            "addEventListener(e,l,{once:true,passive:true});});"
-            "function t(){setTimeout(l,15000);}"
-            "if(document.readyState==='complete'){t();}else{addEventListener('load',t,{once:true});}"
-            "})();</script>")
+            "document.head.appendChild(s);});</script>")
+    # Meta Pixel, same shape as GA4 above: the fbq() stub and its queue exist
+    # immediately and init/PageView are recorded right away, so no page view
+    # is lost and any fbq('track', ...) call elsewhere on the site still
+    # works before the library lands. Only fbevents.js (~70 KiB, and unused
+    # bytes in a Lighthouse trace) waits for the visitor's first interaction.
+    # The <noscript> beacon is Meta's own, unchanged, for visitors without
+    # JavaScript.
+    meta_tag = ""
+    if META_PIXEL_ID:
+        meta_tag = (
+            "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){"
+            "n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};"
+            "if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];"
+            "__b3p(function(){t=b.createElement(e);t.async=!0;t.src=v;"
+            "s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s);});}"
+            "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');"
+            f"fbq('init','{META_PIXEL_ID}');fbq('track','PageView');</script>\n"
+            f'<noscript><img height="1" width="1" style="display:none" alt=""'
+            f' src="https://www.facebook.com/tr?id={META_PIXEL_ID}&amp;ev=PageView&amp;noscript=1"></noscript>')
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
     fonts_html = _fonts_html(root)
     css_href = f"{root}assets/css/styles.min.css?v={ASSET_VER}"
@@ -537,7 +563,9 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <!-- Google Search Console ownership, carried over from the Wix site so
      verification survives the move to Netlify. Do not change the content. -->
 <meta name="google-site-verification" content="mcN7p2g6XzyvGg2ItuYK9nBOp37G57zMr7EhDfreBl0">
+{defer_helper}
 {ga_tag}
+{meta_tag}
 <!-- Open Graph / social -->
 <meta property="og:type" content="{og_type}">
 <meta property="og:site_name" content="{BIZ['name']}">

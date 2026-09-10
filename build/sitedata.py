@@ -52,6 +52,16 @@ BIZ = {
 # ---------------------------------------------------------------------------
 GA4_ID = "G-TRBCP1HHNR"
 
+# ---------------------------------------------------------------------------
+# Meta (Facebook) Pixel. Renders once in every page's <head> (via
+# components.head) whenever this is set; empty string disables it. The ID
+# comes from Meta Events Manager → Data sources → your pixel. Like GA4 above,
+# the fbq() queue and the init/PageView calls fire immediately while the
+# fbevents.js library itself is deferred to first interaction, see the
+# comment in components.head for why.
+# ---------------------------------------------------------------------------
+META_PIXEL_ID = "1629810322074915"
+
 LEAD_FORM = {
     # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards
     # to Rotor CRM with the API key held server-side in the ROTOR_API_KEY
