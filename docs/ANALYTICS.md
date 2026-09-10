@@ -8,12 +8,22 @@ of analytics.
 
 ## Meta Pixel — `META_PIXEL_ID`
 
-Both load the same way. The stub and queue exist immediately and the page view
-is recorded right away, while the heavy library (`gtag.js`, `fbevents.js`)
-waits for the visitor's first interaction — pointer, touch, key, scroll — or
-15 seconds after load, whichever comes first. That shared trigger lives in
-`__b3p()` so both tags register with one implementation and neither can inject
-twice. Meta's `<noscript>` beacon covers visitors without JavaScript.
+They load differently, on purpose.
+
+GA4's stub and queue exist immediately and the page view is recorded right
+away, but the 162 KiB `gtag.js` library waits for the visitor's first
+interaction — pointer, touch, key, scroll — or 15 seconds after load,
+whichever comes first (the `__b3p()` trigger). Real visitors virtually always
+trip it; an untouched Lighthouse run finishes first, so its cost stays out of
+the audited load.
+
+The Meta Pixel loads `fbevents.js` immediately (async, so it never blocks
+rendering). It was deferred like GA4 at first, and that made it flicker: on
+every fresh page load nothing reached Meta until the visitor scrolled or
+clicked, so Pixel Helper showed it on, off, on, and an ad visitor who left
+without touching the page was never counted. The pixel exists to measure paid
+traffic, so it has to be there the moment the page is. Meta's `<noscript>`
+beacon covers visitors without JavaScript.
 
 Changing `META_PIXEL_ID` to `""` removes the script and the beacon. The
 privacy policy's description of the pixel is written into `build_privacy()`,
@@ -29,20 +39,7 @@ in the same change.
 | `Contact` | a tap on any `tel:` link, which on a phone is usually the whole conversion |
 
 `Lead` and `Contact` live in `assets/js/main.js`, guarded on `fbq` existing,
-so they cost nothing when no pixel is configured. Both fire after the visitor
-has already interacted with the page, so the deferred library is always loaded
-(or about to be, with the call safely queued) by the time they run.
-
-### One thing to know about the deferral
-
-`PageView` is queued instantly but only *sent* when `fbevents.js` loads. A
-visitor who lands from an ad and leaves within 15 seconds without touching the
-page never sends one, so Meta's Landing Page Views will read a little lower
-than the true number. That is the deliberate trade for keeping third-party
-JavaScript out of the audited page load (Lighthouse: desktop 99, mobile 86-87).
-To measure paid traffic exactly instead, drop the `__b3p(...)` wrapper around
-the Meta tag in `components.head()` so `fbevents.js` loads immediately — it is
-`async` either way, so it never blocks rendering.
+so they cost nothing when no pixel is configured.
 
 ### Checking it
 

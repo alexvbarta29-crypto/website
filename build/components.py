@@ -495,11 +495,10 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     # The d-flag makes the injection single-shot no matter how many
     # triggers fire; the readyState check covers pages already loaded when
     # the script runs.
-    # The Meta Pixel below defers on exactly the same terms, so the trigger
-    # itself lives in one place: __b3p(fn) runs fn once, on whichever comes
-    # first. Each registered callback is still single-shot on its own (the
-    # queue is emptied before it runs), so a tag can never inject twice no
-    # matter how many triggers fire.
+    # __b3p(fn) runs fn once, on whichever comes first. Each registered
+    # callback is single-shot on its own (the queue is emptied before it
+    # runs), so a tag can never inject twice no matter how many triggers
+    # fire. Only GA4 uses it now — see the Meta Pixel below for why not.
     defer_helper = (
         "<script>(function(){var q=[],d=false;window.__b3p=function(f){d?f():q.push(f);};"
         "function l(){if(d)return;d=true;var c=q;q=[];c.forEach(function(f){f();});}"
@@ -516,21 +515,22 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
             "__b3p(function(){var s=document.createElement('script');s.async=true;"
             f"s.src='https://www.googletagmanager.com/gtag/js?id={GA4_ID}';"
             "document.head.appendChild(s);});</script>")
-    # Meta Pixel, same shape as GA4 above: the fbq() stub and its queue exist
-    # immediately and init/PageView are recorded right away, so no page view
-    # is lost and any fbq('track', ...) call elsewhere on the site still
-    # works before the library lands. Only fbevents.js (~70 KiB, and unused
-    # bytes in a Lighthouse trace) waits for the visitor's first interaction.
-    # The <noscript> beacon is Meta's own, unchanged, for visitors without
-    # JavaScript.
+    # Meta Pixel — Meta's own snippet, loading fbevents.js immediately (async,
+    # so it never blocks rendering), NOT behind __b3p like GA4. It was deferred
+    # at first, and that made the pixel flicker: on every fresh page load
+    # nothing reaches Meta until the visitor scrolls or clicks, so Pixel
+    # Helper showed it on, off, on, and a visitor who lands from an ad and
+    # leaves without touching the page was never counted at all. The pixel
+    # exists to measure paid traffic; it has to be there the moment the page
+    # is. The <noscript> beacon is Meta's own, for visitors without JavaScript.
     meta_tag = ""
     if META_PIXEL_ID:
         meta_tag = (
             "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){"
             "n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};"
             "if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];"
-            "__b3p(function(){t=b.createElement(e);t.async=!0;t.src=v;"
-            "s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s);});}"
+            "t=b.createElement(e);t.async=!0;t.src=v;"
+            "s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}"
             "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');"
             f"fbq('init','{META_PIXEL_ID}');fbq('track','PageView');</script>\n"
             f'<noscript><img height="1" width="1" style="display:none" alt=""'
