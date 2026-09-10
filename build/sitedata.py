@@ -52,6 +52,18 @@ BIZ = {
 # ---------------------------------------------------------------------------
 GA4_ID = "G-TRBCP1HHNR"
 
+# Meta (Facebook/Instagram) Pixel, for measuring the ads. Paste the numeric
+# Pixel ID from Events Manager -> Data sources -> your pixel (15-16 digits,
+# no letters) between the quotes and rebuild; leave it empty and no Meta
+# code is emitted anywhere on the site at all.
+#
+# The pixel reports three things: a PageView on every page, "Lead" when a
+# quote form is actually submitted successfully (see assets/js/main.js --
+# that is the conversion to optimise campaigns for), and "Contact" when
+# someone taps a phone number. Turning it on also makes the site use
+# advertising cookies, which privacy.html says.
+META_PIXEL_ID = ""
+
 LEAD_FORM = {
     # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards
     # to Rotor CRM with the API key held server-side in the ROTOR_API_KEY

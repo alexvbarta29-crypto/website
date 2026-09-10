@@ -2,7 +2,7 @@
 import json, os
 from urllib.parse import quote_plus
 from sitedata import (BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
-                      PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, CTA_PHOTOS)
+                      PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
 from icons import icon
 
 def _esc(s):
@@ -509,6 +509,27 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
             "function t(){setTimeout(l,15000);}"
             "if(document.readyState==='complete'){t();}else{addEventListener('load',t,{once:true});}"
             "})();</script>")
+    # Meta Pixel, alongside GA4 and on the same terms: one tag per page from
+    # this one head(), nothing at all when META_PIXEL_ID is unset.
+    #
+    # Unlike gtag.js this is NOT deferred behind first interaction. The pixel
+    # measures paid traffic, and a visitor who lands from an ad and leaves in
+    # three seconds is exactly the one an advertiser must not lose --
+    # deferring would quietly under-count those and flatter every campaign.
+    # fbevents.js is async, so it still never blocks rendering. The <noscript>
+    # beacon covers visitors without JavaScript.
+    meta_tag = ""
+    if META_PIXEL_ID and analytics:
+        meta_tag = (
+            "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){"
+            "n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};"
+            "if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];"
+            "t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];"
+            "s.parentNode.insertBefore(t,s)}(window,document,'script',"
+            "'https://connect.facebook.net/en_US/fbevents.js');"
+            f"fbq('init','{META_PIXEL_ID}');fbq('track','PageView');</script>\n"
+            f'<noscript><img height="1" width="1" style="display:none" alt=""'
+            f' src="https://www.facebook.com/tr?id={META_PIXEL_ID}&ev=PageView&noscript=1"></noscript>')
     og_img_url, og_img_w, og_img_h = _og_image(og_image)
     fonts_html = _fonts_html(root)
     css_href = f"{root}assets/css/styles.min.css?v={ASSET_VER}"
@@ -537,7 +558,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
 <!-- Google Search Console ownership, carried over from the Wix site so
      verification survives the move to Netlify. Do not change the content. -->
 <meta name="google-site-verification" content="mcN7p2g6XzyvGg2ItuYK9nBOp37G57zMr7EhDfreBl0">
-{ga_tag}
+{ga_tag}{meta_tag}
 <!-- Open Graph / social -->
 <meta property="og:type" content="{og_type}">
 <meta property="og:site_name" content="{BIZ['name']}">

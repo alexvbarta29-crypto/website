@@ -779,6 +779,12 @@
 
       const showSuccess = () => {
         form.classList.add("sent");
+        // The conversion, reported only once the submission actually landed
+        // — never on a click, never on a failure — so Meta optimises toward
+        // real quote requests. No-ops when no pixel is configured.
+        if (typeof fbq === "function") {
+          fbq("track", "Lead", { content_name: data.service_type || form.dataset.subject || "Quote request" });
+        }
         if (success) {
           success.classList.add("show");
           success.setAttribute("role", "status");
@@ -1105,6 +1111,15 @@
       });
     });
   }
+
+  /* ---- Meta Pixel: tapping a phone number is a contact, and on a phone
+         it is usually the whole conversion. Delegated, so it covers every
+         tel: link on every page including ones added later. No-ops when no
+         pixel is configured. ---- */
+  document.addEventListener("click", (e) => {
+    const tel = e.target.closest && e.target.closest('a[href^="tel:"]');
+    if (tel && typeof fbq === "function") fbq("track", "Contact", { content_name: "Phone tap" });
+  });
 
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";
