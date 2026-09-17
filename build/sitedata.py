@@ -55,10 +55,10 @@ GA4_ID = "G-TRBCP1HHNR"
 # ---------------------------------------------------------------------------
 # Meta (Facebook) Pixel. Renders once in every page's <head> (via
 # components.head) whenever this is set; empty string disables it. The ID
-# comes from Meta Events Manager → Data sources → your pixel. Like GA4 above,
-# the fbq() queue and the init/PageView calls fire immediately while the
-# fbevents.js library itself is deferred to first interaction, see the
-# comment in components.head for why.
+# comes from Meta Events Manager → Data sources → your pixel. Unlike GA4
+# above, the fbevents.js library loads immediately rather than waiting for
+# first interaction: deferring it makes Meta's Pixel Helper flicker between
+# "found" and "not found". See the comment in components.head.
 # ---------------------------------------------------------------------------
 META_PIXEL_ID = "1629810322074915"
 
