@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- Source of assets/img/email/referral-hero.v1.jpg, the header of the referral
+     campaign email (email/README.md). Fonts and logo come from the repo; render
+     it at 2x with: node build/email_hero.mjs --><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Cabinet Grotesk';src:url('../assets/fonts/CabinetGrotesk-Black.v1.woff2') format('woff2');font-weight:900}
+@font-face{font-family:'Cabinet Grotesk';src:url('../assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800}
+@font-face{font-family:'Cabinet Grotesk';src:url('../assets/fonts/CabinetGrotesk-Bold.v1.woff2') format('woff2');font-weight:700}
+@font-face{font-family:'General Sans';src:url('../assets/fonts/GeneralSans-Medium.v1.woff2') format('woff2');font-weight:500}
+@font-face{font-family:'General Sans';src:url('../assets/fonts/GeneralSans-Regular.v1.woff2') format('woff2');font-weight:400}
+body{margin:0;background:#fff}
+.hero{position:relative;width:600px;box-sizing:border-box;padding:40px 44px 46px;background:linear-gradient(158deg,#1b1b21 0%,#111116 55%,#08080a 100%);overflow:hidden;color:#fff;font-family:'General Sans',sans-serif;-webkit-font-smoothing:antialiased}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 55% at 88% 0%, rgba(255,106,61,.34), transparent 62%), radial-gradient(42% 46% at 0% 100%, rgba(251,77,61,.16), transparent 60%)}
+.hero > *{position:relative}
+.logo{height:46px;display:block}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;margin-top:40px;font-family:'Cabinet Grotesk';font-weight:700;font-size:16px;letter-spacing:.14em;text-transform:uppercase;color:#ffb3a3}
+.eyebrow::before{content:"";width:22px;height:2px;background:linear-gradient(135deg,#fb4d3d,#ff6a3d);border-radius:2px}
+h1{margin:12px 0 0;font-family:'Cabinet Grotesk';font-weight:900;font-size:74px;line-height:1.0;letter-spacing:-.03em;color:#fff}
+h1 span{white-space:nowrap;display:inline-block}
+h1 .you{background:linear-gradient(120deg,#ff7a63,#ffd9d0);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.06em}
+.sub{margin:20px 0 0;font-size:21px;line-height:1.45;color:rgba(255,255,255,.84);font-weight:500;max-width:460px}
+</style></head><body>
+<div class="hero" id="hero">
+  <img class="logo" src="../assets/img/logo-bww-white.png" alt="">
+  <div class="eyebrow">Referral program</div>
+  <h1><span>Give $25.</span><br><span class="you">Get $50.</span></h1>
+  <p class="sub">Send a friend $25 off their first service. Earn $50 every time one of them books.</p>
+</div></body></html>

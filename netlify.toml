@@ -30,3 +30,12 @@
   for = "/*.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# The referral campaign email (email/referral-program.html) uses these same
+# font files as web fonts. Mail clients that load web fonts (Apple Mail)
+# fetch them from an origin that isn't this site, so the browser engine
+# needs CORS permission before it will use them.
+[[headers]]
+  for = "/assets/fonts/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
