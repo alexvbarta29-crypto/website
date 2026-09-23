@@ -33,6 +33,13 @@ SKIP_DIRS = {".git", ".github", ".claude", "build", "docs", "config",
 # Root-level non-HTML files the site genuinely serves.
 ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redirects"]
 
+# Assets that no page references but the live site must still host: the
+# referral email template in docs/emails/ (docs/ is not shipped) loads its
+# logo from the site, and it needs a flattened copy because dark-mode
+# inboxes recolor backgrounds but not images, which hides the transparent
+# site logo.
+EMAIL_ASSETS = ["assets/img/email-logo-bww.png"]
+
 # Any local asset path appearing anywhere in a shipped text file. Scanning the
 # raw text (not just src/href) also catches srcset entries, poster attrs,
 # inline style url(...) backgrounds, JSON-LD image fields, og:image absolute
@@ -64,6 +71,7 @@ def main():
     # no page references it, so the asset scan alone would drop it.
     if os.path.exists(os.path.join(ROOT, "assets/fonts/FFL.txt")):
         ship.append("assets/fonts/FFL.txt")
+    ship += [f for f in EMAIL_ASSETS if os.path.exists(os.path.join(ROOT, f))]
 
     # Fixpoint scan: shipped text files reference assets; referenced .css/.js
     # may reference further assets of their own.
