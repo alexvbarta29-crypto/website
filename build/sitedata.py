@@ -1246,7 +1246,18 @@ CITY_PAGES = [
             ("A Tree City with mature canopy",
              "Waconia has been a Tree City USA community for about 20 years, and its boulevards and parks are full of mature trees. That means pollen on your windows and screens every spring, which is why a late-spring cleaning, once the pollen settles, is the one most Waconia homes shouldn&rsquo;t skip."),
         ],
-        "jobs": [],
+        # Owner's own photos: GPS and camera data stripped, house numbers blurred.
+        "jobs": [
+            {"photo": "assets/img/jobs/waconia-patio-doors-transom-windows.jpg",
+             "label": "Patio doors and transom windows &middot; April 2026",
+             "alt": "Barta technician cleaning patio doors and transom windows from inside a covered patio at a Waconia home"},
+            {"photo": "assets/img/jobs/waconia-spring-window-cleaning.jpg",
+             "label": "Spring window cleaning &middot; April 2026",
+             "alt": "Barta Window Washing van parked outside a Waconia home for a spring window cleaning"},
+            {"photo": "assets/img/jobs/waconia-two-person-crew-modern-home.jpg",
+             "label": "Two-person crew on a modern home &middot; May 2026",
+             "alt": "Two Barta technicians cleaning the front windows of a modern Waconia home"},
+        ],
         "faqs": [
             ("How often should I get my windows cleaned in Waconia?",
              "Four times a year is what we recommend if you want your glass consistently clean. At a minimum, go twice: in late spring, once the pollen has settled, and again in early fall. If your sprinklers reach the windows, the quarterly schedule keeps mineral spots from building up."),
