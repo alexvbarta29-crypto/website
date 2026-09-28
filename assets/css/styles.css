@@ -135,6 +135,8 @@ p { color: var(--slate-700); }
 section { padding-block: clamp(56px, 8vw, 110px); }
 .section-tight { padding-block: clamp(40px, 5vw, 64px); }
 #team { scroll-margin-top: calc(var(--nav-h) + 30px); }
+/* In-page "Get a Free Quote" buttons land the form below the fixed nav, not under it. */
+#quote-form { scroll-margin-top: calc(var(--nav-h) + 20px); }
 .bg-mist { background: var(--mist); }
 .bg-grad-sky { background: var(--grad-sky); }
 .bg-deep { background: var(--grad-deep); color: var(--white); }
@@ -1417,7 +1419,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .city-proof .proof-item { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; color: var(--slate-700); }
 .city-proof .proof-item svg { width: 18px; height: 18px; color: var(--blue-600); flex: none; }
 /* "Add-on" tag on the screen-cleaning card. */
-.addon-tag { display: inline-block; margin-left: 8px; font-family: var(--font-head); font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue-700); background: var(--mist-2); border-radius: 999px; padding: 3px 8px; vertical-align: middle; }
+.addon-tag { display: inline-block; margin-left: 6px; font-family: var(--font-head); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue-700); background: #fff; border: 1px solid var(--sky-400); border-radius: 999px; padding: 3px 9px; vertical-align: middle; }
 /* Clearly marked placeholders for content the owner still has to supply (a
    real review from that town, real job photos). Dashed and tagged so nobody
    mistakes them for finished content; see SHOW_PLACEHOLDERS in city_pages.py. */
@@ -1431,3 +1433,15 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .point-card p { margin-top: 10px; font-size: .96rem; }
 /* Job cards: photo (or none) + short write-up. */
 .job-card .job-meta { display: block; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--blue-700); margin-bottom: 8px; }
+
+/* Keep at the end of the file: overrides the base .btn and .hero-grid rules
+   at equal specificity, so it has to come after them. */
+/* On a 320px phone, no-wrap buttons with long labels ("Get a Free Wayzata
+   Quote", "Get My Free Quote", "See all reviews on Google") were wider than
+   the screen: they pushed the hero column past its edge, where overflow
+   clipping cut text off, or ran off the side themselves. Let buttons wrap
+   there, and cap the hero column at the container's width. */
+@media (max-width: 380px) {
+  .btn { white-space: normal; max-width: 100%; text-align: center; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+}

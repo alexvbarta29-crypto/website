@@ -10,7 +10,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 import city_pages as CP
-from sitedata import (CITY_PAGES, city_page_path,
+from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
@@ -392,7 +392,7 @@ _SERVICE_AREA_TEMPLATES = {
     "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
 }
 _SERVICE_AREA_FAMILY = {
-    "exterior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
+    "exterior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "mound")),
     "interior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "track-detailing": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "screen-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
@@ -420,9 +420,17 @@ def _service_area_section(svc, depth):
     # The main window-cleaning page also names the towns with their own
     # city page (build/city_pages.py), each linked once its page is live.
     if svc["slug"] == "exterior-window-cleaning" and CITY_PAGES:
-        towns = [f'<a href="{root}{city_page_path(c)}">{c["city"]}</a>' if c.get("live") else c["city"]
-                 for c in CITY_PAGES]
-        text += f" We serve {', '.join(towns)} and the surrounding West Metro."
+        def town(c):
+            if c.get("live"):
+                return f'<a href="{root}{city_page_path(c)}">{c["city"]}</a>'
+            if c["slug"] in PRIMARY_SLUGS:  # its areas/ page, until the city page replaces it
+                return f'<a href="{root}areas/{c["slug"]}.html">{c["city"]}</a>'
+            return c["city"]
+        towns = [town(c) for c in CITY_PAGES]
+        sentence = f"We also serve {', '.join(towns[:-1])}, {towns[-1]} and the surrounding West Metro."
+        if len(towns) == 1:
+            sentence = f"We also serve {towns[0]} and the surrounding West Metro."
+        text = text.replace(hub_view_all, sentence + " " + hub_view_all)
     return f"""
   <section class="bg-mist">
     <div class="container">
@@ -1099,7 +1107,13 @@ def county_areas_block(depth):
     them."""
     root = C.rel(depth)
 
+    live_city = {c["slug"]: c for c in LIVE_CITY_PAGES}
+
     def city_item(a):
+        # A town's window-cleaning page (build/city_pages.py) takes the link
+        # over its older areas/ page once it is live.
+        if a["slug"] in live_city:
+            return f'<li><a href="{root}{city_page_path(live_city[a["slug"]])}">{a["city"]}</a></li>'
         if a["slug"] in PRIMARY_SLUGS:
             return f'<li><a href="{root}areas/{a["slug"]}.html">{a["city"]}</a></li>'
         return f"<li>{a['city']}</li>"
@@ -1107,7 +1121,8 @@ def county_areas_block(depth):
     def county_row(c):
         cities = [a for a in AREAS if a["county"] == c["name"]]
         # Home base first, then the cities with their own page, then the rest, A–Z.
-        cities.sort(key=lambda a: (a["slug"] != "delano", a["slug"] not in PRIMARY_SLUGS, a["city"]))
+        cities.sort(key=lambda a: (a["slug"] != "delano",
+                                   a["slug"] not in PRIMARY_SLUGS and a["slug"] not in live_city, a["city"]))
         # name= makes the group exclusive in the browser itself (Chrome 120+,
         # Safari 17.2+, Firefox 130+), so only one county opens even with no
         # JavaScript; main.js still handles older browsers. None starts open:
@@ -1559,6 +1574,7 @@ def build_sitemap_page():
     ]
     service_items = [(s["icon"], s["name"], f"services/{s['slug']}.html") for s in SERVICES]
     area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in PRIMARY_AREAS]
+    area_items += [("window", f"Window Cleaning in {c['city']}, MN", city_page_path(c)) for c in LIVE_CITY_PAGES]
     post_items = [("sparkle", p["title"], f"blog/{p['slug']}.html") for p in POSTS]
 
     def _section(title, items):

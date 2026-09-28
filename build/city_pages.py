@@ -67,14 +67,15 @@ def _nearby_links(c, primary_slugs):
 # JSON-LD
 # ---------------------------------------------------------------------------
 def _local_business(c):
-    """The site-wide LocalBusiness node with areaServed narrowed to this
-    town, which is the point of the page. Same @id: it is the same business."""
+    """The site-wide LocalBusiness node with this town first in areaServed."""
     biz = S.local_business()
-    biz["areaServed"] = [{
-        "@type": "City",
-        "name": f"{c['city']}, MN",
-        "containedInPlace": {"@type": "AdministrativeArea", "name": f"{c['county']}, Minnesota"},
-    }]
+    town = {"@type": "City", "name": f"{c['city']}, MN",
+            "containedInPlace": {"@type": "AdministrativeArea", "name": f"{c['county']}, Minnesota"}}
+    # Same @id as every other page, so the rest of the service area stays
+    # (a contradictory areaServed on one page would muddy the entity);
+    # this town simply leads and carries its county.
+    rest = [a for a in biz["areaServed"] if a["name"] != town["name"]]
+    biz["areaServed"] = [town] + rest
     return biz
 
 
@@ -93,7 +94,7 @@ def _service_cards():
     cards = ""
     for i, slug in enumerate(CITY_SERVICE_SLUGS):
         s = _SVC_BY_SLUG[slug]
-        tag = f'<span class="addon-tag">{ADD_ON[slug]}</span>' if slug in ADD_ON else ""
+        tag = f' <span class="addon-tag">{ADD_ON[slug]}</span>' if slug in ADD_ON else ""
         cards += f"""<a class="card svc-card reveal" data-delay="{i % 3}" href="../services/{s['slug']}.html">
         <span class="ic">{icon(s['icon'])}</span><h3>{s['name']}{tag}</h3><p>{s['short']}</p>
         <span class="more">Learn more {icon('arrow')}</span></a>"""
@@ -189,6 +190,9 @@ def render(c, seo_title, primary_slugs):
     <div class="center mt-3"><a class="btn btn-ghost" href="../service-areas.html">See all service areas {icon('arrow')}</a></div>
   </div></section>""" if nearby else ""
     faq_html = C.faq_block([(q, _tel(a)) for q, a in faqs])
+    tel = f'<a href="tel:{BIZ["phone_href"]}" style="color:#fff;text-decoration:underline">{BIZ["phone_display"]}</a>'
+    cta_text = (f"Call {tel} or request your free, no-obligation quote online. Every job is backed by our "
+                "100% satisfaction guarantee: if a window isn't right, we re-clean it free.")
 
     html = C.head(
         title=seo_title(c["title"]),
@@ -210,7 +214,7 @@ def render(c, seo_title, primary_slugs):
           <a class="btn btn-lg btn-ghost" href="tel:{BIZ['phone_href']}">{icon('phone')} {BIZ['phone_display']}</a>
         </div>
         <div class="city-proof">
-          {C.google_badge(DEPTH, light=True, text=f"{BIZ['review_count']}+ 5-star Google reviews")}
+          {C.google_badge(DEPTH, light=True, text=f"{BIZ['review_count']}+ 5-star reviews")}
           <span class="proof-item">{icon('shield')} Fully insured</span>
           <span class="proof-item">{icon('check-circle')} 100% satisfaction guarantee</span>
         </div>
@@ -240,7 +244,7 @@ def render(c, seo_title, primary_slugs):
     <div class="section-head center"><span class="eyebrow">Questions</span><h2>{city} window cleaning FAQs</h2></div>
     {faq_html}
   </div></section>
-  {C.cta_band(DEPTH, heading=f"Ready for cleaner windows in {city}?", text=f"Call {BIZ['phone_display']} or request your free, no-obligation quote online. Every job is backed by our 100% satisfaction guarantee: if a window isn't right, we re-clean it free.")}
+  {C.cta_band(DEPTH, heading=f"Ready for cleaner windows in {city}?", text=cta_text)}
 </main>"""
     html += C.page_end(DEPTH)
     return html
