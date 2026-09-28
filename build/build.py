@@ -2328,6 +2328,9 @@ _HERO_1920_SPECS = [(1920, "webp", 75), (1920, "jpg", 82)]
 # than 1920 (or exactly 1920), so this tier is always a real downscale, it
 # never upscales. GALLERY_HERO is the Gallery page's photo header.
 _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
+# City service pages (build/city_pages.py) use the same full-bleed hero as a
+# service page, so their photos get the same 1920w tier and quality.
+_HERO_1920_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
 
 # The homepage hero is the single most-seen photo on the site, so it gets its
 # own top tier instead of the shared specs: every width encoded at the same
@@ -2368,6 +2371,7 @@ _HERO_NATIVE_PATHS = {"assets/img/xmas-lights-stone-home.jpg"}
 # and extended to every service hero at the owner's request.
 _HERO_HIGH_Q_SPECS = [(1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 84), (640, "jpg", 88)]
 _HERO_HIGH_Q_PATHS = {s["image"] for s in SERVICES if s.get("image")}
+_HERO_HIGH_Q_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
 
 def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
@@ -2609,6 +2613,7 @@ def generate_og_images():
     srcs |= {"assets/img/hero-home.jpg", "assets/img/hero-home-main.jpg",
              GALLERY_HERO, "assets/img/svc-cta-squeegee.jpg"}
     srcs |= set(_BLOG_PHOTOS.values())
+    srcs |= {c["hero"] for c in LIVE_CITY_PAGES}  # city pages share their hero
     made = 0
     for rel_path in sorted(srcs):
         src = os.path.join(ROOT, rel_path)
@@ -2656,7 +2661,7 @@ def main():
     build_service_areas()
     for a in PRIMARY_AREAS:
         build_area(a)
-    CP.build_all(write, seo_title, PRIMARY_SLUGS)
+    CP.build_all(write, seo_title, _hero_picture_html)
     build_financing()
     build_get_quote()
     build_referral()

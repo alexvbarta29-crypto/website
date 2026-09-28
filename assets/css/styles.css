@@ -1414,25 +1414,18 @@ html.js .reveal.in { opacity: 1; transform: none; }
 /* ---------------------------------------------------------------------------
    City service pages (/window-cleaning-<town>-mn/), see build/city_pages.py
    --------------------------------------------------------------------------- */
-/* Hero proof row: Google badge + insured + guarantee, under the lead. */
-.city-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 22px; }
-.city-proof .proof-item { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; color: var(--slate-700); }
-.city-proof .proof-item svg { width: 18px; height: 18px; color: var(--blue-600); flex: none; }
-/* "Add-on" tag on the screen-cleaning card. */
-.addon-tag { display: inline-block; margin-left: 6px; font-family: var(--font-head); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue-700); background: #fff; border: 1px solid var(--sky-400); border-radius: 999px; padding: 3px 9px; vertical-align: middle; }
-/* Clearly marked placeholders for content the owner still has to supply (a
-   real review from that town, real job photos). Dashed and tagged so nobody
-   mistakes them for finished content; see SHOW_PLACEHOLDERS in city_pages.py. */
+/* Clearly marked placeholders for content the owner still has to supply
+   (real job photos). Dashed and tagged so nobody mistakes them for finished
+   content. */
 .ph-card { border: 2px dashed var(--sky-400); background: #fff8f6; border-radius: var(--r-lg); padding: 28px 24px; text-align: center; color: var(--slate-500); height: 100%; }
 .ph-card .ph-tag { display: inline-block; font-family: var(--font-head); font-weight: 800; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--blue-700); background: #fff; border: 1px solid var(--sky-400); border-radius: 999px; padding: 4px 10px; margin-bottom: 12px; }
 .ph-card h3 { font-size: 1.1rem; color: var(--ink); }
 .ph-card p { margin-top: 6px; font-size: .94rem; line-height: 1.5; }
-/* Market-specifics cards: a titled point each. */
-.point-card h3 { font-size: 1.12rem; display: flex; align-items: center; gap: 10px; }
-.point-card h3 svg { width: 22px; height: 22px; color: var(--blue-600); flex: none; }
-.point-card p { margin-top: 10px; font-size: .96rem; }
-/* Job cards: photo (or none) + short write-up. */
-.job-card .job-meta { display: block; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--blue-700); margin-bottom: 8px; }
+/* "Jobs we've done in <town>": a photo with its label underneath. */
+.job-ph-photo { display: grid; place-items: center; aspect-ratio: 4 / 3; margin: 0 0 14px; border-radius: var(--r-md); background: #fff; color: var(--sky-400); }
+.job-ph-photo svg { width: 40px; height: 40px; }
+.job-card { margin: 0; }
+.job-card figcaption { margin-top: 12px; font-family: var(--font-head); font-weight: 700; font-size: .98rem; color: var(--ink); text-align: center; }
 
 /* Keep at the end of the file: overrides the base .btn and .hero-grid rules
    at equal specificity, so it has to come after them. */
