@@ -1138,16 +1138,16 @@ CITY_PAGES = [
              "Wayzata&rsquo;s estate lots are old and wooded, and the sugar maples and basswood in the Big Woods Preserve are a reminder of the forest that stood here first. All that shade means pollen in spring, sap in summer, and glass that dries slowly and shows every streak. Regular cleanings keep up with it."),
         ],
         # Owner's own photos (GPS and camera data stripped), labelled from
-        # what each shows and the month it was taken.
+        # what each shows.
         "jobs": [
             {"photo": "assets/img/jobs/wayzata-lakefront-sunroom-windows.jpg",
-             "label": "Lake-facing sunroom glass &middot; July 2026",
+             "label": "Lake-facing sunroom glass",
              "alt": "Barta Window Washing technician on a ladder cleaning the windows of a lake-facing sunroom at a Wayzata home"},
             {"photo": "assets/img/jobs/wayzata-second-story-lake-windows.jpg",
-             "label": "Second-story windows over the lake &middot; July 2026",
+             "label": "Second-story windows over the lake",
              "alt": "Freshly cleaned black-framed upper-story windows on a Wayzata lake home, with the lake behind"},
             {"photo": "assets/img/jobs/wayzata-exterior-window-cleaning.jpg",
-             "label": "Whole-house exterior windows &middot; July 2026",
+             "label": "Whole-house exterior windows",
              "alt": "Barta Window Washing technician and van arriving at a Wayzata home for an exterior window cleaning"},
         ],
         "faqs": [
@@ -1196,10 +1196,10 @@ CITY_PAGES = [
         ],
         "jobs": [
             {"photo": "assets/img/jobs/orono-three-story-window-cleaning.jpg",
-             "label": "Three stories of glass, pole and ladder &middot; August 2026",
+             "label": "Three stories of glass, pole and ladder",
              "alt": "Barta technician cleaning the back windows of a three-story Orono home with a water-fed pole and a ladder"},
             {"photo": "assets/img/jobs/orono-water-fed-pole-gable-window.jpg",
-             "label": "High gable window, from the ground &middot; April 2026",
+             "label": "High gable window, from the ground",
              "alt": "Water-fed pole reaching a high gable window on an Orono home"},
         ],
         "faqs": [
@@ -1249,13 +1249,13 @@ CITY_PAGES = [
         # Owner's own photos: GPS and camera data stripped, house numbers blurred.
         "jobs": [
             {"photo": "assets/img/jobs/waconia-patio-doors-transom-windows.jpg",
-             "label": "Patio doors and transom windows &middot; April 2026",
+             "label": "Patio doors and transom windows",
              "alt": "Barta technician cleaning patio doors and transom windows from inside a covered patio at a Waconia home"},
             {"photo": "assets/img/jobs/waconia-spring-window-cleaning.jpg",
-             "label": "Spring window cleaning &middot; April 2026",
+             "label": "Spring window cleaning",
              "alt": "Barta Window Washing van parked outside a Waconia home for a spring window cleaning"},
             {"photo": "assets/img/jobs/waconia-two-person-crew-modern-home.jpg",
-             "label": "Two-person crew on a modern home &middot; May 2026",
+             "label": "Two-person crew on a modern home",
              "alt": "Two Barta technicians cleaning the front windows of a modern Waconia home"},
         ],
         "faqs": [
@@ -1305,13 +1305,13 @@ CITY_PAGES = [
         # still pulled from a short video of the same lake-home job.
         "jobs": [
             {"photo": "assets/img/jobs/buffalo-lake-home-detailing-windows.jpg",
-             "label": "Detailing lake-facing windows &middot; August 2026",
+             "label": "Detailing lake-facing windows",
              "alt": "Barta technician hand-detailing a lake-facing window at a Buffalo lake home"},
             {"photo": "assets/img/jobs/buffalo-lake-home-water-fed-pole.jpg",
-             "label": "Upper-level glass, water-fed pole &middot; August 2026",
+             "label": "Upper-level glass, water-fed pole",
              "alt": "Water-fed pole cleaning the upper-level windows of a Buffalo lake home"},
             {"photo": "assets/img/jobs/buffalo-exterior-window-cleaning.jpg",
-             "label": "Front windows, ladder and van &middot; September 2026",
+             "label": "Front windows, ladder and van",
              "alt": "Barta technician on a ladder cleaning the front windows of a Buffalo home, with the Barta van out front"},
         ],
         "faqs": [
