@@ -1137,7 +1137,19 @@ CITY_PAGES = [
             ("Old trees, lots of pollen",
              "Wayzata&rsquo;s estate lots are old and wooded, and the sugar maples and basswood in the Big Woods Preserve are a reminder of the forest that stood here first. All that shade means pollen in spring, sap in summer, and glass that dries slowly and shows every streak. Regular cleanings keep up with it."),
         ],
-        "jobs": [],
+        # Owner's own photos (GPS and camera data stripped), labelled from
+        # what each shows and the month it was taken.
+        "jobs": [
+            {"photo": "assets/img/jobs/wayzata-lakefront-sunroom-windows.jpg",
+             "label": "Lake-facing sunroom glass &middot; July 2026",
+             "alt": "Barta Window Washing technician on a ladder cleaning the windows of a lake-facing sunroom at a Wayzata home"},
+            {"photo": "assets/img/jobs/wayzata-second-story-lake-windows.jpg",
+             "label": "Second-story windows over the lake &middot; July 2026",
+             "alt": "Freshly cleaned black-framed upper-story windows on a Wayzata lake home, with the lake behind"},
+            {"photo": "assets/img/jobs/wayzata-exterior-window-cleaning.jpg",
+             "label": "Whole-house exterior windows &middot; July 2026",
+             "alt": "Barta Window Washing technician and van arriving at a Wayzata home for an exterior window cleaning"},
+        ],
         "faqs": [
             ("How often should I get my windows cleaned in Wayzata?",
              "We recommend four cleanings a year to keep lake-facing glass consistently clear, and at minimum twice a year: once in late spring, after the ice is off the bay and the pollen has settled, and again in early fall so the view stays clear through winter. Homes where sprinklers hit the glass get the most out of the quarterly schedule."),
@@ -1164,7 +1176,9 @@ CITY_PAGES = [
         "live": True,
         "title": "Window Cleaning in Orono, MN",
         "desc": "Window cleaning in Orono, MN for Lake Minnetonka homes and wooded acreages: lake-facing glass, screens and well-water spots. Free quotes, guaranteed work.",
-        "hero": "assets/img/instagram/18143533390535660_2.jpg",
+        # The owner's own Orono job (the Instagram sunroom shot used here first
+        # turned out to be one of their Wayzata jobs).
+        "hero": "assets/img/jobs/orono-window-cleaning-home.jpg",
         "hero_pos": "45%",
         "hero_sub": "From the lake homes on Crystal Bay and Browns Bay to the wooded acreages back from the water, we keep Orono&rsquo;s glass clear. Fully insured, with a 100% satisfaction guarantee.",
         "why_heading": "One city, two very different kinds of homes",
@@ -1180,7 +1194,14 @@ CITY_PAGES = [
             ("Wooded lots, heavy canopy",
              "Orono was carved out of the Big Woods, and maple-basswood forest still stands on Big Island and across the wooded interior. That canopy is beautiful and hard on windows: pollen in spring, sap in summer, and shaded glass that stays damp longer and shows every streak."),
         ],
-        "jobs": [],
+        "jobs": [
+            {"photo": "assets/img/jobs/orono-three-story-window-cleaning.jpg",
+             "label": "Three stories of glass, pole and ladder &middot; August 2026",
+             "alt": "Barta technician cleaning the back windows of a three-story Orono home with a water-fed pole and a ladder"},
+            {"photo": "assets/img/jobs/orono-water-fed-pole-gable-window.jpg",
+             "label": "High gable window, from the ground &middot; April 2026",
+             "alt": "Water-fed pole reaching a high gable window on an Orono home"},
+        ],
         "faqs": [
             ("How often should I get my windows cleaned in Orono?",
              "For lake-facing glass we recommend four cleanings a year, the schedule that keeps the view clear from ice-out to freeze-up. At the least, plan on two: late spring, once the pollen settles, and early fall. Homes on wooded interior lots usually do well on the twice-a-year schedule."),

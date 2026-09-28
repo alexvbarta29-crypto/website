@@ -2394,6 +2394,10 @@ def generate_hero_variants():
     # so a new gallery photo serves a right-sized file instead of its
     # multi-thousand-pixel original.
     hero_paths.update(k for k in IMAGE_ALT if k.lower().endswith((".jpg", ".jpeg")))
+    # City pages' "Jobs we've done" photos (kept out of IMAGE_ALT, which also
+    # feeds the Gallery page).
+    hero_paths.update(j["photo"] for c in LIVE_CITY_PAGES for j in c.get("jobs") or [])
+    hero_paths.update(c["hero"] for c in LIVE_CITY_PAGES)
     for name in ("window", "siding", "gutter"):
         hero_paths.add(f"assets/img/ba-{name}-before.jpg")
         hero_paths.add(f"assets/img/ba-{name}-after.jpg")

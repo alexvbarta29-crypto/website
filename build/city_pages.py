@@ -89,9 +89,11 @@ def _jobs(c):
     photos."""
     jobs = c.get("jobs") or []
     if jobs:
+        # 4:5 tiles: phone photos are mostly portrait, and a landscape shot
+        # still keeps its middle three-fifths.
         cards = "".join(
             f"""<figure class="job-card reveal" data-delay="{i % 3}">
-        {C.photo(j["photo"], j.get("alt") or j["label"], ratio="4/3", depth=DEPTH)}
+        {C.photo(j["photo"], j.get("alt") or j["label"], ratio="4/5", depth=DEPTH)}
         <figcaption>{j["label"]}</figcaption>
       </figure>""" for i, j in enumerate(jobs))
     elif not SHOW_JOB_PLACEHOLDERS:
@@ -104,6 +106,8 @@ def _jobs(c):
         <h3>Photo of a real {c['city']} job</h3>
         <p>Label: neighborhood &middot; what we cleaned</p>
       </div>""" for i in range(JOB_SLOTS))
+    count = len(jobs) or JOB_SLOTS
+    grid = {1: 'cols-1 job-grid-1', 2: 'cols-2 job-grid-2'}.get(count, 'cols-3')
     return f"""
   <section class="bg-mist">
     <div class="container">
@@ -111,7 +115,7 @@ def _jobs(c):
         <span class="eyebrow" style="justify-content:center">Recent work</span>
         <h2>Jobs we&rsquo;ve done in {c['city']}</h2>
       </div>
-      <div class="grid cols-3">{cards}</div>
+      <div class="grid {grid}">{cards}</div>
     </div>
   </section>"""
 
