@@ -1333,6 +1333,46 @@ CITY_PAGES = [
             "City watering rule: no lawn watering with city water 7 a.m. to 5 p.m. (the city's 2026 water conservation flyer).",
         ],
     },
+    {
+        "slug": "plymouth",
+        "city": "Plymouth",
+        "county": "Hennepin County",
+        "live": False,          # copy pending the fact-checked research
+        "replaces_area": True,  # owner approved: this page takes over areas/plymouth.html
+        "title": "Window Cleaning in Plymouth, MN",
+        "hero": "assets/img/jobs/plymouth-crew-and-van-from-the-roof.jpg",
+        "hero_pos": "45%",
+        # Owner's own photos: GPS and camera data stripped; a house number and
+        # the licence plates of parked cars blurred.
+        "jobs": [
+            {"photo": "assets/img/jobs/plymouth-skylight-cleaning.jpg",
+             "label": "Skylight, cleaned from the roof",
+             "alt": "A skylight cleaned from the roof of a Plymouth home, with the sky reflected in the glass"},
+            {"photo": "assets/img/jobs/plymouth-screen-washing.jpg",
+             "label": "Hand-washing screens on the lawn",
+             "alt": "Two Barta technicians hand-washing window screens on the front lawn of a Plymouth home"},
+        ],
+    },
+    {
+        "slug": "independence",
+        "city": "Independence",
+        "county": "Hennepin County",
+        "live": False,          # copy pending the fact-checked research
+        "title": "Window Cleaning in Independence, MN",
+        "hero": "assets/img/instagram/18001854047986368_0.jpg",
+        "hero_pos": "55%",
+        "jobs": [
+            {"photo": "assets/img/jobs/independence-tall-glass-ladder.jpg",
+             "label": "A wall of tall glass, ladder and pole",
+             "alt": "Extension ladder against a wall of tall windows on the back of an Independence home"},
+            {"photo": "assets/img/jobs/independence-arched-window-home.jpg",
+             "label": "Arched windows, three levels up",
+             "alt": "The back of a three-level Independence home with arched windows, mid-cleaning with a ladder"},
+            {"photo": "assets/img/jobs/independence-water-fed-pole-gable.jpg",
+             "label": "Gable windows from the ground",
+             "alt": "Water-fed pole cleaning the gable windows of an Independence home"},
+        ],
+    },
 ]
 
 # Directory-style path for a city page ("window-cleaning-wayzata-mn/"); the

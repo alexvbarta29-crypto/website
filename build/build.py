@@ -167,6 +167,16 @@ BASE_SCHEMA = [S.local_business(), S.organization(), S.website()]
 PRIMARY_AREAS = [a for a in AREAS if a["tier"] == "primary"]
 EXTENDED_AREAS = [a for a in AREAS if a["tier"] != "primary"]
 PRIMARY_SLUGS = {a["slug"] for a in PRIMARY_AREAS}
+# Towns whose window-cleaning city page (build/city_pages.py) has replaced
+# their old areas/ page ("replaces_area" in CITY_PAGES). The old page is no
+# longer built, its URL 301s to the city page (build_redirects), and every
+# internal link goes through area_href() so none point at the old address.
+REPLACED_AREAS = {c["slug"]: c for c in LIVE_CITY_PAGES if c.get("replaces_area")}
+
+def area_href(slug, root):
+    if slug in REPLACED_AREAS:
+        return root + city_page_path(REPLACED_AREAS[slug])
+    return f"{root}areas/{slug}.html"
 
 TITLE_MAX = 60  # Google truncates search-result titles around here
 
@@ -388,11 +398,14 @@ _SERVICE_AREA_TEMPLATES = {
     # Every family ends on {hub_view_all}, "View all communities we serve." , 
     # for a single consistent anchor-text pattern sitewide.
     "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
+    # The main window-cleaning page, which also carries the "We also serve"
+    # sentence naming every city page, so this list avoids those towns.
+    "glass3": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities, including {a1}, {a2}, and {a3}. {hub_view_all}",
     "wash": "Based in Delano, Barta brings {svc_lower} to homes across the western Twin Cities metro, from {a1} and {a2} to {a3} and {a4}. {hub_view_all}",
     "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
 }
 _SERVICE_AREA_FAMILY = {
-    "exterior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "mound")),
+    "exterior-window-cleaning": ("glass3", ("medina", "st-michael", "mound", "delano")),
     "interior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "track-detailing": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "screen-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
@@ -412,7 +425,7 @@ _AREA_LABELS = {"plymouth": "Plymouth", "medina": "Medina", "mound": "Mound",
 def _service_area_section(svc, depth):
     root = C.rel(depth)
     family, area_slugs = _SERVICE_AREA_FAMILY.get(svc["slug"], ("specialty", ("plymouth", "medina", "mound", "buffalo")))
-    links = [f'<a href="{root}areas/{slug}.html">{_AREA_LABELS[slug]}</a>' for slug in area_slugs]
+    links = [f'<a href="{area_href(slug, root)}">{_AREA_LABELS[slug]}</a>' for slug in area_slugs]
     hub_view_all = f'<a href="{root}service-areas.html">View all communities we serve.</a>'
     text = _SERVICE_AREA_TEMPLATES[family].format(
         svc_lower=svc["name"].lower(), a1=links[0], a2=links[1], a3=links[2], a4=links[3],
@@ -424,7 +437,7 @@ def _service_area_section(svc, depth):
             if c.get("live"):
                 return f'<a href="{root}{city_page_path(c)}">{c["city"]}</a>'
             if c["slug"] in PRIMARY_SLUGS:  # its areas/ page, until the city page replaces it
-                return f'<a href="{root}areas/{c["slug"]}.html">{c["city"]}</a>'
+                return f'<a href="{area_href(c["slug"], root)}">{c["city"]}</a>'
             return c["city"]
         towns = [town(c) for c in CITY_PAGES]
         sentence = f"We also serve {', '.join(towns[:-1])}, {towns[-1]} and the surrounding West Metro."
@@ -1115,7 +1128,7 @@ def county_areas_block(depth):
         if a["slug"] in live_city:
             return f'<li><a href="{root}{city_page_path(live_city[a["slug"]])}">{a["city"]}</a></li>'
         if a["slug"] in PRIMARY_SLUGS:
-            return f'<li><a href="{root}areas/{a["slug"]}.html">{a["city"]}</a></li>'
+            return f'<li><a href="{area_href(a["slug"], root)}">{a["city"]}</a></li>'
         return f"<li>{a['city']}</li>"
 
     def county_row(c):
@@ -1205,7 +1218,9 @@ def build_area(a):
         <span class="more">Learn more {icon('arrow')}</span></a>""" for i, s in enumerate(SERVICES[:6]))
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:3]))
     nearby = [o for o in AREAS if o["slug"] != a["slug"] and o["tier"] == a["tier"]][:6]
-    nearby_html = "".join(f'<a class="pill" href="{o["slug"]}.html">{o["city"]}, MN</a>' for o in nearby)
+    nearby_html = "".join(
+        f'<a class="pill" href="{area_href(o["slug"], "../") if o["slug"] in REPLACED_AREAS else o["slug"] + ".html"}">{o["city"]}, MN</a>'
+        for o in nearby)
     area_faqs = [
         (f"Do you serve all of {a['city']}, MN?",
          f"Yes, we serve the entire {a['city']} area, including {nbhds}. Whether you're in town or just outside it, we'd love to give you a free quote."),
@@ -1573,7 +1588,7 @@ def build_sitemap_page():
         ("user", "Accessibility", "accessibility.html"),
     ]
     service_items = [(s["icon"], s["name"], f"services/{s['slug']}.html") for s in SERVICES]
-    area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in PRIMARY_AREAS]
+    area_items = [("pin", a["city"], f"areas/{a['slug']}.html") for a in PRIMARY_AREAS if a["slug"] not in REPLACED_AREAS]
     area_items += [("window", f"Window Cleaning in {c['city']}, MN", city_page_path(c)) for c in LIVE_CITY_PAGES]
     post_items = [("sparkle", p["title"], f"blog/{p['slug']}.html") for p in POSTS]
 
@@ -2080,17 +2095,28 @@ WIX_REDIRECTS = [
 ]
 
 def build_redirects():
-    for src, dst in WIX_REDIRECTS:
+    # A Wix rule whose target page has since been replaced points straight at
+    # the replacement, so visitors and Google never go through two hops.
+    replaced = {f"/areas/{slug}.html": "/" + city_page_path(c) for slug, c in REPLACED_AREAS.items()}
+    wix = [(src, replaced.get(dst, dst)) for src, dst in WIX_REDIRECTS]
+    area_rules = sorted(replaced.items())
+    for src, dst in wix + area_rules:
         rel = dst.split("#")[0].strip("/") or "index.html"
+        if dst.split("#")[0].endswith("/"):
+            rel = os.path.join(rel, "index.html")
         if not os.path.isfile(os.path.join(ROOT, rel)):
             raise SystemExit(f"_redirects: destination {dst} for {src} does not exist")
         if os.path.exists(os.path.join(ROOT, src.strip("/"))):
             raise SystemExit(f"_redirects: forced rule {src} would hide a real file")
-    width = max(len(s) for s, _ in WIX_REDIRECTS) + 2
+    width = max(len(s) for s, _ in wix + area_rules) + 2
     lines = ["# Permanent redirects for the old Wix site's URLs (served by Netlify).",
              "# Forced rules, these exact paths were verified from the old Wix sitemap.",
              ""]
-    lines += [f"{src:<{width}}{dst}  301!" for src, dst in WIX_REDIRECTS]
+    lines += [f"{src:<{width}}{dst}  301!" for src, dst in wix]
+    if area_rules:
+        lines += ["",
+                  "# Town pages replaced by their window-cleaning city page (build/city_pages.py).",
+                  *[f"{src:<{width}}{dst}  301!" for src, dst in area_rules]]
     # Referral short links: the code the office texts to a referred friend
     # (/r/BARTA-7K3XQ). A 200 rewrite, not a redirect, so the short URL stays
     # in the address bar.
@@ -2664,6 +2690,11 @@ def main():
     build_faqs()
     build_service_areas()
     for a in PRIMARY_AREAS:
+        if a["slug"] in REPLACED_AREAS:
+            stale = os.path.join(ROOT, "areas", f"{a['slug']}.html")
+            if os.path.exists(stale):
+                os.remove(stale)  # generated output; its URL now redirects
+            continue
         build_area(a)
     CP.build_all(write, seo_title, _hero_picture_html)
     build_financing()
