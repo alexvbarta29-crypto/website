@@ -21,7 +21,12 @@ DEPTH = 1  # window-cleaning-<slug>-mn/index.html
 
 # Meta descriptions longer than this get cut off in search results.
 DESC_MAX = 155
-# Slots in the "Jobs we've done" gallery while the owner collects real ones.
+# Until a town has real job photos, its "Jobs we've done" section is left
+# off the page: dashed "Placeholder" boxes look unfinished to customers and
+# to Google. Set True to show JOB_SLOTS placeholder slots instead (useful on
+# a preview while collecting photos). A town's section appears on its own
+# as soon as its "jobs" list has entries.
+SHOW_JOB_PLACEHOLDERS = False
 JOB_SLOTS = 3
 
 _WINDOWS = next(s for s in SERVICES if s["slug"] == "exterior-window-cleaning")
@@ -89,6 +94,8 @@ def _jobs(c):
         {C.photo(j["photo"], j.get("alt") or j["label"], ratio="4/3", depth=DEPTH)}
         <figcaption>{j["label"]}</figcaption>
       </figure>""" for i, j in enumerate(jobs))
+    elif not SHOW_JOB_PLACEHOLDERS:
+        return ""
     else:
         cards = "".join(
             f"""<div class="ph-card job-ph reveal" data-delay="{i}">
