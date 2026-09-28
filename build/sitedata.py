@@ -1301,7 +1301,19 @@ CITY_PAGES = [
             ("Lake homes on Pulaski and Buffalo Lake",
              "The estates along Lake Pulaski and Buffalo Lake are built to look out over the water, and lake-facing glass is where clean windows pay off most. We&rsquo;ll get the lake side and the tall glass above a walkout, not just the windows you can reach from the lawn."),
         ],
-        "jobs": [],
+        # Owner's own photos, GPS and camera data stripped. The first is a
+        # still pulled from a short video of the same lake-home job.
+        "jobs": [
+            {"photo": "assets/img/jobs/buffalo-lake-home-detailing-windows.jpg",
+             "label": "Detailing lake-facing windows &middot; August 2026",
+             "alt": "Barta technician hand-detailing a lake-facing window at a Buffalo lake home"},
+            {"photo": "assets/img/jobs/buffalo-lake-home-water-fed-pole.jpg",
+             "label": "Upper-level glass, water-fed pole &middot; August 2026",
+             "alt": "Water-fed pole cleaning the upper-level windows of a Buffalo lake home"},
+            {"photo": "assets/img/jobs/buffalo-exterior-window-cleaning.jpg",
+             "label": "Front windows, ladder and van &middot; September 2026",
+             "alt": "Barta technician on a ladder cleaning the front windows of a Buffalo home, with the Barta van out front"},
+        ],
         "faqs": [
             ("How often should I get my windows cleaned in Buffalo?",
              "Our recommendation is four cleanings a year, which keeps glass consistently clear. The minimum we&rsquo;d suggest is twice a year: a late-spring cleaning after the pollen has settled and an early-fall cleaning before the cold sets in. Lake homes and houses where sprinklers hit the glass benefit most from the quarterly plan."),
