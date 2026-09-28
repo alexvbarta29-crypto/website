@@ -1097,3 +1097,76 @@ BADGES = [
     ("leaf", "Safe, Eco-Friendly Methods"),
     ("clock", "Since " + BIZ["founded"]),
 ]
+
+# ---------------------------------------------------------------------------
+# City service pages, served at /window-cleaning-<slug>-mn/ (built by
+# build/city_pages.py). Unlike AREAS above, whose pages share one template,
+# every entry here carries its own hand-written copy so no two pages read
+# alike: the generator only supplies the frame (hero, services grid, CTA).
+#
+# "live": False keeps a drafted town out of the build, the footer, and the
+# services-page sentence until its copy is ready. "review" and "jobs" are
+# None/empty until the owner supplies real ones; the page then shows a
+# clearly marked placeholder (see SHOW_PLACEHOLDERS in city_pages.py).
+# Never write a review here that a customer did not actually leave.
+#
+# "verify" lists the local claims the owner should confirm before the page
+# goes live. It is not rendered.
+# ---------------------------------------------------------------------------
+CITY_PAGES = [
+    {
+        "slug": "wayzata",
+        "city": "Wayzata",
+        "county": "Hennepin County",
+        "lat": "44.9741", "lng": "-93.5066",
+        "live": True,
+        "title": "Window Cleaning in Wayzata, MN",
+        "desc": "Window cleaning in Wayzata, MN for lakefront and in-town homes: streak-free glass, screens, gutters & house washing. Free quotes, satisfaction guaranteed.",
+        "eyebrow": "Serving Wayzata &middot; Hennepin County",
+        "lead": "Crystal-clear glass for homes on Wayzata Bay, along Ferndale Road, and in the neighborhoods above Lake Street. Local, fully insured, and backed by a 100% satisfaction guarantee: if a window isn&rsquo;t right, we re-clean it free.",
+        "intro_eyebrow": "Wayzata, up close",
+        "intro_heading": "We know Wayzata&rsquo;s windows",
+        "intro": [
+            "Wayzata sits on the north shore of Lake Minnetonka, and most of what makes the town special is something you take in through glass: the view across Wayzata Bay, the shops along Lake Street, the 1906 Depot at the end of the Lakewalk. When we&rsquo;re in town it&rsquo;s usually for lakefront homes off Ferndale Road, older houses tucked into Holdridge, and the new builds going up where the cottages near downtown used to be.",
+            "Our crew comes over from Delano on Highway 12, about half an hour west, so Wayzata is a regular stop rather than a special trip. We clean exterior and interior glass, wash screens, clear gutters, and pressure- or soft-wash siding: everything on the outside of a house that a lake breeze, a sprinkler head, or a row of oaks can leave its mark on.",
+        ],
+        "market_eyebrow": "Lakefront glass",
+        "market_heading": "What&rsquo;s different about windows in Wayzata",
+        "market": [
+            "Homes here are built for the view. Floor-to-ceiling picture windows, walls of sliders opening onto the deck, glass that faces the water all day. That is exactly the glass that shows every water spot and pollen streak, and it is the hardest to keep clean.",
+        ],
+        "points": [
+            ("drop", "Hard-water spotting",
+             "Sprinkler overspray dries into mineral rings on lake-facing glass, and Minnesota&rsquo;s hard groundwater makes it worse. We rinse with purified water so nothing dries behind us, and we can remove mineral stains that are already there."),
+            ("house", "Big, high, and hard to reach",
+             "Two-story great-room windows, transoms over the sliders, glass above a walkout. We bring the ladders and water-fed poles so you don&rsquo;t have to."),
+            ("leaf", "Trees, pollen, and lake haze",
+             "Mature oaks and maples along the shore drop pollen in spring and sap in summer, and humidity off the lake leaves a film that dulls the view. Twice-a-year cleaning keeps up with it."),
+        ],
+        "services_note": "Everything we do in Wayzata, from a single window cleaning to a full exterior refresh. Each one is quoted free and backed by our guarantee.",
+        "review": None,
+        "jobs": [],
+        "faqs": [
+            ("How often should I get my windows cleaned in Wayzata?",
+             "Twice a year is the sweet spot for most Wayzata homes: once in late spring after the pollen drops, and again in fall before the lake views matter most in winter. Lakefront homes with sprinklers that hit the glass sometimes go quarterly."),
+            ("Do you clean screens?",
+             "Yes. Screen cleaning is an add-on to any window cleaning: we take the screens down, wash them, and put them back so you&rsquo;re not looking at the lake through a layer of dust. We can clean tracks and sills at the same time."),
+            ("Can you remove the hard-water spots on my lake-facing windows?",
+             "Usually, yes. Light spotting comes off with a normal cleaning; baked-on mineral rings need our hard-water stain removal, which we quote after seeing the glass. We won&rsquo;t promise a result we can&rsquo;t deliver on etched glass."),
+            ("How do quotes work?",
+             "They&rsquo;re free and no-obligation. Send a few details through the form or call (763) 314-3400, and we&rsquo;ll quote from the window count and layout, often without a site visit. For large lakefront homes we may stop by to count windows and check access."),
+        ],
+        "nearby": ["orono", "mound", "long-lake", "plymouth", "minnetonka", "minnetonka-beach"],
+        "verify": [
+            "Ferndale Road and Holdridge as the neighborhoods to name (both are in AREAS already; confirm they are how locals refer to them).",
+            "Drive time Delano to Wayzata on Highway 12: written as 'about half an hour'.",
+        ],
+    },
+]
+
+# Directory-style path for a city page ("window-cleaning-wayzata-mn/"); the
+# file inside is index.html, so the URL needs no rewrite rule on any host.
+def city_page_path(c):
+    return f"window-cleaning-{c['slug']}-mn/"
+
+LIVE_CITY_PAGES = [c for c in CITY_PAGES if c.get("live")]

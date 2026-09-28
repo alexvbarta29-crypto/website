@@ -1,7 +1,7 @@
 """Reusable HTML partials and section builders."""
 import json, os
 from urllib.parse import quote_plus
-from sitedata import (BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
+from sitedata import (LIVE_CITY_PAGES, city_page_path, BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
                       PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
 from icons import icon
 
@@ -671,6 +671,10 @@ def sticky_cta(depth=0):
 def footer(depth=0):
     root = rel(depth)
     svc_links = "".join(f'<li><a href="{root}{target}">{label}</a></li>' for label, target in DROPDOWN_SERVICES)
+    # City service pages (build/city_pages.py). Listed here, not in the
+    # header, so the top menu stays clean; the hub link closes the list.
+    area_links = "".join(f'<li><a href="{root}{city_page_path(c)}">{c["city"]}, MN</a></li>' for c in LIVE_CITY_PAGES)
+    area_links += f'<li><a href="{root}service-areas.html">All service areas</a></li>'
     return f"""<footer class="footer">
   <div class="container">
     <div class="footer-top">
@@ -711,6 +715,10 @@ def footer(depth=0):
           <li><a href="{root}sitemap.html">Sitemap</a></li>
           <li><a class="footer-portal" href="https://bartawindowwashing.portal.getrotor.com" target="_blank" rel="noopener noreferrer">Client Portal<span class="sr-only"> (opens in a new tab)</span></a></li>
         </ul>
+      </div>
+      <div class="footer-col footer-col--areas">
+        <h2 class="footer-col-title">Service Areas</h2>
+        <ul>{area_links}</ul>
       </div>
     </div>
     <div class="footer-bottom">

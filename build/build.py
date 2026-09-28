@@ -9,7 +9,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-from sitedata import (BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
+import city_pages as CP
+from sitedata import (CITY_PAGES, city_page_path,
+                      BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
 from icons import icon
@@ -415,6 +417,12 @@ def _service_area_section(svc, depth):
     text = _SERVICE_AREA_TEMPLATES[family].format(
         svc_lower=svc["name"].lower(), a1=links[0], a2=links[1], a3=links[2], a4=links[3],
         hub_view_all=hub_view_all)
+    # The main window-cleaning page also names the towns with their own
+    # city page (build/city_pages.py), each linked once its page is live.
+    if svc["slug"] == "exterior-window-cleaning" and CITY_PAGES:
+        towns = [f'<a href="{root}{city_page_path(c)}">{c["city"]}</a>' if c.get("live") else c["city"]
+                 for c in CITY_PAGES]
+        text += f" We serve {', '.join(towns)} and the surrounding West Metro."
     return f"""
   <section class="bg-mist">
     <div class="container">
@@ -2632,6 +2640,7 @@ def main():
     build_service_areas()
     for a in PRIMARY_AREAS:
         build_area(a)
+    CP.build_all(write, seo_title, PRIMARY_SLUGS)
     build_financing()
     build_get_quote()
     build_referral()

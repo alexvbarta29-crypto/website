@@ -1013,7 +1013,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .footer { background: var(--navy-900); color: rgba(255,255,255,.88); padding-block: clamp(48px, 6vw, 76px) 30px; }
 .footer a { color: rgba(255,255,255,.88); transition: color .2s; }
 .footer a:hover { color: #fff; }
-.footer-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px; padding-bottom: 44px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.footer-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr .9fr; gap: 36px; padding-bottom: 44px; border-bottom: 1px solid rgba(255,255,255,.1); }
 .footer .brand { color: #fff; }
 .footer-about p { margin-top: 16px; font-size: .94rem; max-width: 34ch; color: #fff; }
 .footer-contact { margin-top: 20px; display: grid; gap: 10px; font-size: .92rem; }
@@ -1408,3 +1408,26 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .review-share:hover { transform: translateY(-2px); box-shadow: var(--sh-lg); color: #fff; }
 .review-share svg { width: 18px; height: 18px; }
 @media (max-width: 560px) { .reviews-topbar { flex-direction: column; gap: 14px; } }
+
+/* ---------------------------------------------------------------------------
+   City service pages (/window-cleaning-<town>-mn/), see build/city_pages.py
+   --------------------------------------------------------------------------- */
+/* Hero proof row: Google badge + insured + guarantee, under the lead. */
+.city-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 22px; }
+.city-proof .proof-item { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; color: var(--slate-700); }
+.city-proof .proof-item svg { width: 18px; height: 18px; color: var(--blue-600); flex: none; }
+/* "Add-on" tag on the screen-cleaning card. */
+.addon-tag { display: inline-block; margin-left: 8px; font-family: var(--font-head); font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue-700); background: var(--mist-2); border-radius: 999px; padding: 3px 8px; vertical-align: middle; }
+/* Clearly marked placeholders for content the owner still has to supply (a
+   real review from that town, real job photos). Dashed and tagged so nobody
+   mistakes them for finished content; see SHOW_PLACEHOLDERS in city_pages.py. */
+.ph-card { border: 2px dashed var(--sky-400); background: #fff8f6; border-radius: var(--r-lg); padding: 28px 24px; text-align: center; color: var(--slate-500); height: 100%; }
+.ph-card .ph-tag { display: inline-block; font-family: var(--font-head); font-weight: 800; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--blue-700); background: #fff; border: 1px solid var(--sky-400); border-radius: 999px; padding: 4px 10px; margin-bottom: 12px; }
+.ph-card h3 { font-size: 1.1rem; color: var(--ink); }
+.ph-card p { margin-top: 6px; font-size: .94rem; line-height: 1.5; }
+/* Market-specifics cards: a titled point each. */
+.point-card h3 { font-size: 1.12rem; display: flex; align-items: center; gap: 10px; }
+.point-card h3 svg { width: 22px; height: 22px; color: var(--blue-600); flex: none; }
+.point-card p { margin-top: 10px; font-size: .96rem; }
+/* Job cards: photo (or none) + short write-up. */
+.job-card .job-meta { display: block; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--blue-700); margin-bottom: 8px; }
