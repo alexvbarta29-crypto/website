@@ -182,7 +182,7 @@ def render(c, seo_title, hero_picture):
     <div class="svc-hero-overlay" aria-hidden="true"></div>
     <div class="container">
       {C.crumbs([("Home", root + "index.html"), ("Service Areas", root + "service-areas.html"), (city, None)], light=True)}
-      <h1>Window Cleaning in {city},&nbsp;MN</h1>
+      <h1>Window Cleaning in {city.replace(' ', '&nbsp;')},&nbsp;MN</h1>
       <p class="lead">{c['hero_sub']}</p>
       <div class="hero-actions">
         <a class="btn btn-lg" href="{root}get-quote.html?svc={_QUOTE_SVC}">Get Your Quote {icon('arrow')}</a>
