@@ -1283,6 +1283,7 @@ CITY_PAGES = [
         "city": "Buffalo",
         "county": "Wright County",
         "live": True,
+        "replaces_area": True,  # owner approved: this page takes over areas/buffalo.html
         "title": "Window Cleaning in Buffalo, MN",
         "desc": "Window cleaning in Buffalo, MN from a crew 15 minutes away in Delano: streak-free glass, screens and hard-water spot removal. Free quotes, guaranteed work.",
         "hero": "assets/img/instagram/18001854047986368_3.jpg",

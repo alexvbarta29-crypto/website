@@ -15,6 +15,7 @@
 /plymouth-window-cleaning  /window-cleaning-plymouth-mn/  301!
 
 # Town pages replaced by their window-cleaning city page (build/city_pages.py).
+/areas/buffalo.html        /window-cleaning-buffalo-mn/  301!
 /areas/plymouth.html       /window-cleaning-plymouth-mn/  301!
 
 # Referral program (docs/REFERRAL-PROGRAM.md): the clean address the

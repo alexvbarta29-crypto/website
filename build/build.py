@@ -399,13 +399,14 @@ _SERVICE_AREA_TEMPLATES = {
     # for a single consistent anchor-text pattern sitewide.
     "glass": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
     # The main window-cleaning page, which also carries the "We also serve"
-    # sentence naming every city page, so this list avoids those towns.
-    "glass3": "Barta is based in Delano, MN, and provides {svc_lower} for homes throughout the western Twin Cities, including {a1}, {a2}, and {a3}. {hub_view_all}",
+    # sentence naming every other city page, so only the home base is linked
+    # here and no town is named twice.
+    "glass3": "Barta is based in {a1}, MN, and provides {svc_lower} for homes throughout the western Twin Cities. {hub_view_all}",
     "wash": "Based in Delano, Barta brings {svc_lower} to homes across the western Twin Cities metro, from {a1} and {a2} to {a3} and {a4}. {hub_view_all}",
     "specialty": "Barta is based in Delano and serves homeowners and businesses throughout the western Twin Cities, including {a1}, {a2}, {a3}, and {a4}. {hub_view_all}",
 }
 _SERVICE_AREA_FAMILY = {
-    "exterior-window-cleaning": ("glass3", ("medina", "st-michael", "mound", "delano")),
+    "exterior-window-cleaning": ("glass3", ("delano",)),
     "interior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "track-detailing": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "screen-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
@@ -428,8 +429,8 @@ def _service_area_section(svc, depth):
     links = [f'<a href="{area_href(slug, root)}">{_AREA_LABELS[slug]}</a>' for slug in area_slugs]
     hub_view_all = f'<a href="{root}service-areas.html">View all communities we serve.</a>'
     text = _SERVICE_AREA_TEMPLATES[family].format(
-        svc_lower=svc["name"].lower(), a1=links[0], a2=links[1], a3=links[2], a4=links[3],
-        hub_view_all=hub_view_all)
+        svc_lower=svc["name"].lower(), hub_view_all=hub_view_all,
+        **{f"a{i}": link for i, link in enumerate(links, 1)})
     # The main window-cleaning page also names the towns with their own
     # city page (build/city_pages.py), each linked once its page is live.
     if svc["slug"] == "exterior-window-cleaning" and CITY_PAGES:
@@ -439,7 +440,7 @@ def _service_area_section(svc, depth):
             if c["slug"] in PRIMARY_SLUGS:  # its areas/ page, until the city page replaces it
                 return f'<a href="{area_href(c["slug"], root)}">{c["city"]}</a>'
             return c["city"]
-        towns = [town(c) for c in CITY_PAGES]
+        towns = [town(c) for c in sorted(CITY_PAGES, key=lambda c: c["city"]) if c["slug"] not in area_slugs]
         sentence = f"We also serve {', '.join(towns[:-1])}, {towns[-1]} and the surrounding West Metro."
         if len(towns) == 1:
             sentence = f"We also serve {towns[0]} and the surrounding West Metro."

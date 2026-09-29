@@ -673,7 +673,8 @@ def footer(depth=0):
     svc_links = "".join(f'<li><a href="{root}{target}">{label}</a></li>' for label, target in DROPDOWN_SERVICES)
     # City service pages (build/city_pages.py). Listed here, not in the
     # header, so the top menu stays clean; the hub link closes the list.
-    area_links = "".join(f'<li><a href="{root}{city_page_path(c)}">{c["city"]}, MN</a></li>' for c in LIVE_CITY_PAGES)
+    area_links = "".join(f'<li><a href="{root}{city_page_path(c)}">{c["city"]}, MN</a></li>'
+                         for c in sorted(LIVE_CITY_PAGES, key=lambda c: c["city"]))
     area_links += f'<li><a href="{root}service-areas.html">All service areas</a></li>'
     return f"""<footer class="footer">
   <div class="container">
