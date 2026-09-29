@@ -843,6 +843,19 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
   {form_success(depth)}
 </div>"""
 
+def sms_consent(root):
+    """Text-message opt-in shared by the quote forms: the consent itself is
+    the checkbox label, and the carrier-required disclosures sit in the small
+    print underneath (worded once so the two forms can't drift apart)."""
+    return (f'<label class="check mt-2"><input type="checkbox" name="reminders" required> '
+            f"I agree to receive recurring text messages from {BIZ['name']}, including appointment "
+            f"updates, service notifications, and marketing offers.</label>\n"
+            f'<p class="form-note wizard-disclaimer">Message frequency varies. Msg &amp; data rates may '
+            f"apply. Consent is not a condition of purchase. Reply STOP to unsubscribe or HELP for help. "
+            f'See our <a href="{root}privacy.html">Privacy Policy</a> and '
+            f'<a href="{root}terms.html">Terms &amp; Conditions</a>.</p>')
+
+
 # Services offered in the quote wizard's picker, every homepage service
 # except Christmas Light Installation and Commercial Cleaning, which are
 # booked/quoted through their own dedicated flows.
@@ -921,8 +934,7 @@ def quote_wizard(depth=0, svc_default=None):
         <label for="q-source" class="sr-only">How did you hear about us?</label>
         {source_select("q-source", "How did you hear about us?")}
       </div>
-      <label class="check mt-2"><input type="checkbox" name="reminders" required> I agree to receive text messages from {BIZ['name']}, including appointment updates, service notifications, and marketing offers.</label>
-      <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
+      {sms_consent(root)}
       <div class="wizard-actions">
         <span></span>
         <button type="button" class="btn btn-lg" data-wizard-next>Next {icon('arrow')}</button>
@@ -1029,8 +1041,7 @@ def xmas_quote_modal(depth=0):
         <div class="field"><label for="xq-hear">How did you hear about us?</label>
           {source_select("xq-hear")}
         </div>
-        <label class="check mt-2"><input type="checkbox" name="reminders" required> I agree to receive text messages from {BIZ['name']}, including appointment updates, service notifications, and marketing offers.</label>
-        <p class="form-note wizard-disclaimer">By checking this box, you consent to receive recurring SMS messages from {BIZ['name']} at the number provided. Consent is not a condition of purchase. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to unsubscribe, HELP for help. See our <a href="{root}privacy.html">Privacy Policy</a> and <a href="{root}terms.html">Terms &amp; Conditions</a>.</p>
+        {sms_consent(root)}
         <button type="submit" class="btn btn-lg btn-block mt-2">Submit {icon('arrow')}</button>
       </form>
       {lead_form_fallback(depth)}
