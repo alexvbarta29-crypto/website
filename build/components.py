@@ -2,7 +2,7 @@
 import json, os
 from urllib.parse import quote_plus
 from sitedata import (LIVE_CITY_PAGES, city_page_path, BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
-                      PROMO_FEATS, IMAGE_ALT, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
+                      PROMO_FEATS, IMAGE_ALT, IMAGE_FOCAL, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
 from icons import icon
 
 def _esc(s):
@@ -308,7 +308,14 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
     hasn't already supplied them (checked via extra_attrs) and the source
     file exists on disk, so dimensions always match the actual image
     instead of a guessed value. Pass any extra img attributes (loading,
-    decoding, onerror...) as a raw string."""
+    decoding, onerror...) as a raw string.
+
+    A photo listed in sitedata.IMAGE_FOCAL gets that object-position, so a
+    cropped slot keeps its subject in frame, unless the caller passed its
+    own style."""
+    focal = IMAGE_FOCAL.get(src)
+    if focal and "style=" not in extra_attrs:
+        extra_attrs = f'{extra_attrs} style="object-position:{focal}"'.strip()
     webp = _webp(src)
     has_dims = "width=" in extra_attrs
     full_src = os.path.join(_ROOT, src)
@@ -1336,6 +1343,8 @@ def _next_cta_photo():
         return "assets/img/svc-cta-squeegee.jpg", "35%"
     photo = CTA_PHOTOS[_CTA_TURN["i"] % len(CTA_PHOTOS)]
     _CTA_TURN["i"] += 1
+    if "focal_x" in photo:
+        return photo["image"], f"{photo['focal_x']}% {photo['focal_y']}%"
     return photo["image"], f"{photo['focal_y']}%"
 
 # The scrim over the photo. It used to start at .18, which was fine over the
@@ -1378,7 +1387,12 @@ def cta_band(depth=0, heading="Schedule Your Next Window Cleaning Today!",
         image, rotated_pos = _next_cta_photo()
         image_pos = image_pos or rotated_pos
     bg = _cta_background(root, image)
-    return f"""<section><div class="container"><div class="cta-band reveal" style="{bg};background-position:center,center {image_pos or '35%'}">
+    # "35%" anchors vertically; "30% 40%" also sets where a phone-width band
+    # (which crops a landscape photo from the sides) sits across the photo.
+    pos = image_pos or "35%"
+    if " " not in pos.strip():
+        pos = f"center {pos}"
+    return f"""<section><div class="container"><div class="cta-band reveal" style="{bg};background-position:center,{pos}">
   <span class="eyebrow" style="color:#ff9b86;justify-content:center">Let's get started</span>
   <h2 class="mt-1">{heading}</h2>
   <p>{text}</p>

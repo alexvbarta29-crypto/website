@@ -13,7 +13,7 @@ import city_pages as CP
 from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
-                      ZIP_CODES, IMAGE_ALT, PROMO_PLANS)
+                      ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS)
 from icons import icon
 import components as C
 import schema as S
@@ -116,7 +116,12 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     above-1200 tier (the 1920w homepage/gallery heroes, or a native-width
     tier for a source that lands between 1200 and 1920) is picked up
     automatically without this function needing to know the widths."""
-    style = f'style="object-position:50% {hero_pos}"' if hero_pos else ""
+    # "35%" anchors vertically (centred across); "40% 35%" sets both axes,
+    # for landscape photos a phone-width hero crops from the sides.
+    if hero_pos and " " in hero_pos.strip():
+        style = f'style="object-position:{hero_pos}"'
+    else:
+        style = f'style="object-position:50% {hero_pos}"' if hero_pos else ""
     stem = image_path.rsplit(".", 1)[0]
     variants_exist = all(
         os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.{fmt}"))
@@ -2314,7 +2319,8 @@ def generate_webp_versions():
     # (2560/3200, the card tiers, 480/828/960/1600) had their spec-quality
     # webp silently overwritten a build later with a q80 re-encode of the
     # derivative JPEG — the double-lossy pass described below.
-    _is_derived = lambda p: re.search(r"-\d+w\.jpg$", p)
+    # The -og.jpg share cards are derived too, and only ever served as JPEG.
+    _is_derived = lambda p: re.search(r"-(\d+w|og)\.jpg$", p)
     insta_jpgs = [p for p in glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")) if not _is_derived(p)]
     # Must exclude the same -640w/-1200w/-1920w derivatives here too, those
     # are generate_hero_variants()'s output, re-encoded from the true
@@ -2646,6 +2652,19 @@ def generate_og_images():
              GALLERY_HERO, "assets/img/svc-cta-squeegee.jpg"}
     srcs |= set(_BLOG_PHOTOS.values())
     srcs |= {c["hero"] for c in LIVE_CITY_PAGES}  # city pages share their hero
+    # Where to anchor each crop: the photo's IMAGE_FOCAL entry, else the
+    # position its page hero uses, else slightly above centre.
+    anchors = {}
+    for page_img, pos in ([(s["image"], s.get("hero_pos")) for s in SERVICES if s.get("image")]
+                          + [(c["hero"], c.get("hero_pos")) for c in LIVE_CITY_PAGES]):
+        if pos:
+            anchors.setdefault(page_img, pos if " " in pos.strip() else f"50% {pos}")
+    anchors.update(IMAGE_FOCAL)
+    def _frac(pct, default):
+        try:
+            return min(1.0, max(0.0, float(pct.strip().rstrip("%")) / 100))
+        except ValueError:
+            return default
     made = 0
     for rel_path in sorted(srcs):
         src = os.path.join(ROOT, rel_path)
@@ -2654,7 +2673,15 @@ def generate_og_images():
         stem = rel_path.rsplit(".", 1)[0]
         out_rel = f"{stem}-og.jpg"
         out_path = os.path.join(ROOT, out_rel)
-        if os.path.exists(out_path) and os.path.getmtime(out_path) >= os.path.getmtime(src):
+        ax, ay = 0.5, 0.38                          # bias upward, not dead centre
+        if rel_path in anchors:
+            px, py = (anchors[rel_path].split() + ["38%"])[:2]
+            ax, ay = _frac(px, 0.5), _frac(py, 0.38)
+        # A photo with a set anchor is re-cut every build (cheap, and the file
+        # is only rewritten if the crop changed), so moving an anchor updates
+        # its share card; the rest keep the old up-to-date check.
+        if (rel_path not in anchors and os.path.exists(out_path)
+                and os.path.getmtime(out_path) >= os.path.getmtime(src)):
             continue
         try:
             im = Image.open(src).convert("RGB")
@@ -2662,10 +2689,17 @@ def generate_og_images():
             scale = max(OG_W / w, OG_H / h)
             im = im.resize((max(OG_W, round(w * scale)), max(OG_H, round(h * scale))), Image.LANCZOS)
             nw, nh = im.size
-            left = (nw - OG_W) // 2
-            top = int((nh - OG_H) * 0.38)          # bias upward, not dead centre
+            left = int((nw - OG_W) * ax)
+            top = int((nh - OG_H) * ay)
+            import io
+            buf = io.BytesIO()
             im.crop((left, top, left + OG_W, top + OG_H)).save(
-                out_path, "JPEG", quality=84, optimize=True, progressive=True)
+                buf, "JPEG", quality=84, optimize=True, progressive=True)
+            data = buf.getvalue()
+            if os.path.exists(out_path) and open(out_path, "rb").read() == data:
+                continue
+            with open(out_path, "wb") as f:
+                f.write(data)
             made += 1
         except Exception as e:
             print(f"  (og image skipped for {out_rel}: {e})")

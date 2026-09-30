@@ -1026,6 +1026,17 @@ FAQS = [
 # label that repeats the adjacent heading and states a location the photo
 # itself doesn't show.
 # ---------------------------------------------------------------------------
+# Where each photo's subject sits, as a CSS object-position ("x% y%"). Most
+# slots crop their photo (a 4:5 job tile, a wide page-top band, a phone-width
+# hero), and the browser crops around the centre unless told otherwise, which
+# cut off heads, ladders and the glass being cleaned. Every <img> built by
+# components.picture() uses the entry for its photo, and so do the share
+# cards (build.generate_og_images). Page heroes and CTA banners still set
+# their own position ("hero_pos", CTA_PHOTOS["focal_y"]), because a very wide
+# band often wants a different anchor than a card does.
+IMAGE_FOCAL = {
+}
+
 IMAGE_ALT = {
     "assets/img/svc-exterior-window-cleaning.jpg": "Two Barta Window Washing technicians cleaning exterior windows on a home, with screens removed nearby",
     "assets/img/svc-cta-squeegee.jpg": "Close-up of a Barta Window Washing technician squeegeeing an arched window",
@@ -1724,6 +1735,12 @@ CITY_PAGES = [
             {"photo": "assets/img/jobs/watertown-area-log-home-tall-windows.jpg",
              "label": "Tall windows on a log home, outside town",
              "alt": "Tall windows on the gable end of a log-sided home near Watertown, freshly cleaned and reflecting the sky"},
+            {"photo": "assets/img/jobs/watertown-area-water-fed-pole-second-story.jpg",
+             "label": "Second-story glass from the deck",
+             "alt": "Barta crew member on a deck guiding a water-fed pole up to a second-story window of a gray shingle-sided home near Watertown"},
+            {"photo": "assets/img/jobs/watertown-area-arched-windows-water-fed-pole.jpg",
+             "label": "Arched windows, same home",
+             "alt": "Crew member cleaning a row of arched and square windows along a wet deck with a water-fed pole, beside a stone chimney"},
         ],
         "faqs": [
             ("How frequently should windows be cleaned on a Watertown-area home?",
@@ -1743,7 +1760,7 @@ CITY_PAGES = [
             "Watertown-Mayer Public Schools, ISD 111, shared with Mayer, about 5.5 miles south-southwest of Watertown in a straight line (state school-district list; Census 2021 Gazetteer).",
             "Delano about 6 miles north (5.95 miles straight-line between town centers; the drive is longer).",
             "City water from groundwater wells (EPA drinking-water system records). No hardness figure was found, so none is given; country homes having private wells is a general description.",
-            "Job photo: taken between Delano and Watertown, about 3 miles from Watertown (photo GPS), labelled 'outside town'. Confirm it counts as a Watertown-area job.",
+            "Job photos: the log home was taken between Delano and Watertown, about 3 miles from Watertown; the other two (one a still from your video) at one home in the countryside west of St. Bonifacius, most likely Watertown Township (photo GPS). Confirm they count as Watertown-area jobs.",
             "Webs, bugs and pollen near water, and field dust at planting and harvest, are general descriptions, not sourced facts.",
         ],
     },
