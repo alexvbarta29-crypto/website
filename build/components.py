@@ -292,7 +292,7 @@ def _real_size(relpath, default=(1125, 1500)):
     _SIZE_CACHE[relpath] = size
     return size
 
-def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
+def picture(root, src, alt, img_class="", extra_attrs="", sizes=None, focal_kind=None):
     """<picture> with a WebP source (smaller, modern) + the original JPG as
     the universally-supported <img> fallback.
 
@@ -310,10 +310,12 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None):
     instead of a guessed value. Pass any extra img attributes (loading,
     decoding, onerror...) as a raw string.
 
-    A photo listed in sitedata.IMAGE_FOCAL gets that object-position, so a
-    cropped slot keeps its subject in frame, unless the caller passed its
-    own style."""
+    A photo listed in sitedata.IMAGE_FOCAL gets the object-position set for
+    this slot (focal_kind, else the img class, else "*"), so a cropped slot
+    keeps its subject in frame, unless the caller passed its own style."""
     focal = IMAGE_FOCAL.get(src)
+    if isinstance(focal, dict):
+        focal = focal.get(focal_kind) or focal.get(img_class) or focal.get("*")
     if focal and "style=" not in extra_attrs:
         extra_attrs = f'{extra_attrs} style="object-position:{focal}"'.strip()
     webp = _webp(src)
@@ -1118,7 +1120,7 @@ def process_slider(steps, depth=0):
     def _slide(i, num, title, img, desc, fic):
         if img:
             alt = IMAGE_ALT.get(img, f"{title} step of the Barta Window Washing cleaning process")
-            photo_html = f'<div class="process-photo">{picture(root, img, alt, extra_attrs=photo_attrs, sizes=photo_sizes)}</div>'
+            photo_html = f'<div class="process-photo">{picture(root, img, alt, extra_attrs=photo_attrs, sizes=photo_sizes, focal_kind="process")}</div>'
         else:
             photo_html = f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>'
         return (f'<div class="process-slide{" active" if i == 0 else ""}">{photo_html}'
@@ -1530,7 +1532,8 @@ def photo(src, alt, ratio="5/4", depth=0, cls=""):
     (e.g. not uploaded yet) the img hides itself and the placeholder shows , 
     no broken-image icons, graceful before and after the photo exists."""
     root = rel(depth)
-    img_tag = picture(root, src, alt, extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"')
+    img_tag = picture(root, src, alt, extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
+                      focal_kind=ratio)
     return (f'<div class="photo {cls}" style="aspect-ratio:{ratio}" role="img" aria-label="{alt}">'
             f'<span class="imgph" aria-hidden="true"><span class="ph-label">{icon("image")}<br>{alt}</span></span>'
             f'{img_tag}</div>')

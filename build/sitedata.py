@@ -95,7 +95,7 @@ SERVICES = [
         "slug": "exterior-window-cleaning",
         "name": "Exterior Window Cleaning",
         "icon": "window",
-        "hero_pos": "35%",
+        "hero_pos": "68% 35%",
         "image": "assets/img/svc-exterior-window-cleaning.jpg",
         "short": "Streak-free exterior glass, frames, and sills, cleaned without ladders in your flower beds.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities.",
@@ -156,7 +156,7 @@ SERVICES = [
         "slug": "interior-window-cleaning",
         "name": "Interior Window Cleaning",
         "icon": "window",
-        "hero_pos": "32%",
+        "hero_pos": "50% 44%",
         "image": "assets/img/svc-interior-window-cleaning.jpg",
         "short": "Spotless interior glass, sills, and frames, hand-detailed without disturbing your home.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with spotless, streak-free interior glass.",
@@ -211,7 +211,7 @@ SERVICES = [
         "name": "Track Detailing",
         "icon": "wrench",
         "image": "assets/img/svc-track-detailing.jpg",
-        "hero_pos": "80%",
+        "hero_pos": "50% 58%",
         "short": "Deep-cleaned window tracks and sills, free of built-up grime and debris.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with hand-detailed window tracks and sills.",
         "seo_title": "Window Track Cleaning Delano, MN | Barta",
@@ -305,7 +305,7 @@ SERVICES = [
         "slug": "pressure-washing",
         "name": "Pressure Washing",
         "icon": "pressure",
-        "hero_pos": "16%",
+        "hero_pos": "6% 16%",
         "image": "assets/img/svc-pressure-washing.jpg",
         "short": "Restore driveways, patios, walkways, and decks to like-new with controlled high-pressure cleaning.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with driveway, patio, and walkway pressure washing.",
@@ -446,7 +446,7 @@ SERVICES = [
         "slug": "solar-panel-cleaning",
         "name": "Solar Panel Cleaning",
         "icon": "solar",
-        "hero_pos": "30%",
+        "hero_pos": "29% 30%",
         "image": "assets/img/svc-solar-panel-cleaning.jpg",
         "short": "Dust, pollen, and grime cut solar output, we restore peak efficiency safely.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with safe solar panel cleaning that restores lost output.",
@@ -495,6 +495,7 @@ SERVICES = [
         "name": "Screen Cleaning Services",
         "icon": "screen",
         "image": "assets/img/svc-screen-cleaning-services.jpg",
+        "hero_pos": "95% 20%",
         "short": "Hand-washed window screens that breathe better and look brand new.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with hand-washed window screens.",
         "seo_title": "Screen Cleaning Delano, MN | Barta",
@@ -536,6 +537,7 @@ SERVICES = [
         "name": "Hard Water Stain Removal",
         "icon": "drop",
         "image": "assets/img/svc-hand-scrubbing.jpg",
+        "hero_pos": "63% 37%",
         "short": "Remove cloudy mineral stains from glass that ordinary cleaning can't touch.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities with professional hard water stain removal for glass.",
         "seo_title": "Hard Water Stain Removal Delano, MN | Barta",
@@ -575,7 +577,7 @@ SERVICES = [
     {
         "slug": "christmas-light-installation",
         "name": "Christmas Light Installation",
-        "hero_pos": "48%",
+        "hero_pos": "70% 48%",
         "icon": "lights",
         "image": "assets/img/xmas-lights-stone-home.jpg",
         "short": "Professional, custom holiday lighting, design, install, maintain, and take down.",
@@ -862,15 +864,15 @@ assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
 # Ordered so consecutive pages get visibly different scenes — a wide shot
 # then a close one, a technician then a house.
 CTA_PHOTOS = [
-    {"image": "assets/img/svc-exterior-window-cleaning.jpg", "focal_y": 45},
+    {"image": "assets/img/svc-exterior-window-cleaning.jpg", "focal_x": 76, "focal_y": 45},
     {"image": "assets/img/3P8A8136.JPEG", "focal_y": 55},
     {"image": "assets/img/instagram/18105187085130700_1.jpg", "focal_y": 45},
     {"image": "assets/img/svc-detail-frame.jpg", "focal_y": 43},
-    {"image": "assets/img/DSC03260.jpg", "focal_y": 40},
+    {"image": "assets/img/DSC03260.jpg", "focal_y": 30},
     {"image": "assets/img/svc-commercial-cleaning.jpg", "focal_y": 40},
     {"image": "assets/img/svc-screen-cleaning-services.jpg", "focal_y": 19},
-    {"image": "assets/img/3P8A7912.JPEG", "focal_y": 45},
-    {"image": "assets/img/svc-solar-panel-cleaning.jpg", "focal_y": 22},
+    {"image": "assets/img/3P8A7912.JPEG", "focal_x": 90, "focal_y": 45},
+    {"image": "assets/img/svc-solar-panel-cleaning.jpg", "focal_y": 44},
 ]
 
 # Two pages pin their own banner instead of taking a turn: the gallery (so
@@ -878,8 +880,8 @@ CTA_PHOTOS = [
 # page (lights, not window cleaning). Listed here, not inline at the call
 # site, so they get the same sharp 1600w treatment as the rotation.
 CTA_PINNED_PHOTOS = {
-    "gallery": {"image": "assets/img/hero-home-main.jpg", "focal_y": 55},
-    "christmas": {"image": "assets/img/xmas-lights-stone-home.jpg", "focal_y": 42},
+    "gallery": {"image": "assets/img/hero-home-main.jpg", "focal_x": 58, "focal_y": 55},
+    "christmas": {"image": "assets/img/xmas-lights-stone-home.jpg", "focal_x": 70, "focal_y": 42},
 }
 
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
@@ -1026,7 +1028,8 @@ FAQS = [
 # label that repeats the adjacent heading and states a location the photo
 # itself doesn't show.
 # ---------------------------------------------------------------------------
-# Where each photo's subject sits, as a CSS object-position ("x% y%"). Most
+# Where each photo's subject sits, as a CSS object-position ("x% y%"), per
+# slot the photo appears in. Most
 # slots crop their photo (a 4:5 job tile, a wide page-top band, a phone-width
 # hero), and the browser crops around the centre unless told otherwise, which
 # cut off heads, ladders and the glass being cleaned. Every <img> built by
@@ -1035,6 +1038,25 @@ FAQS = [
 # their own position ("hero_pos", CTA_PHOTOS["focal_y"]), because a very wide
 # band often wants a different anchor than a card does.
 IMAGE_FOCAL = {
+    # {slot: position}. Slots: "16/9", "5/4", "4/5" (components.photo's
+    # ratio), "img-card-bg" / "insta-card-media-el" (the <img> class),
+    # "process" (the process slider), "og" (share card), "*" (any slot).
+    "assets/img/svc-soft-washing.jpg": {"img-card-bg": "50% 80%", "og": "50% 52%"},
+    "assets/img/xmas-lights-stone-home.jpg": {"img-card-bg": "75% 50%"},
+    "assets/img/svc-gutter-cleaning.jpg": {"16/9": "50% 38%"},
+    "assets/img/svc-pressure-washing.jpg": {"16/9": "50% 15%", "og": "50% 17%"},
+    "assets/img/svc-mop-window.jpg": {"16/9": "50% 81%", "process": "50% 71%", "og": "50% 83%"},
+    "assets/img/service-van.jpg": {"5/4": "50% 35%"},
+    "assets/img/jobs/watertown-area-water-fed-pole-second-story.jpg": {"4/5": "50% 26%"},
+    "assets/img/instagram/17950840314027611.jpg": {"insta-card-media-el": "50% 33%"},
+    "assets/img/svc-interior-window-cleaning.jpg": {"og": "50% 43%"},
+    "assets/img/svc-screen-cleaning-services.jpg": {"og": "50% 19%"},
+    "assets/img/svc-hand-scrubbing.jpg": {"og": "50% 47%"},
+    "assets/img/instagram/18001854047986368_3.jpg": {"og": "50% 3%"},
+    "assets/img/instagram/18001854047986368_0.jpg": {"og": "50% 77%"},
+    "assets/img/instagram/17870581794546118_0.jpg": {"og": "50% 14%"},
+    "assets/img/instagram/17870581794546118_2.jpg": {"og": "50% 4%"},
+    "assets/img/hero-home.jpg": {"og": "50% 60%"},
 }
 
 IMAGE_ALT = {
@@ -1133,7 +1155,7 @@ CITY_PAGES = [
         "title": "Window Cleaning in Wayzata, MN",
         "desc": "Window cleaning in Wayzata, MN for lake homes and in-town houses: streak-free glass, screens and hard-water spot removal. Free quotes, guaranteed work.",
         "hero": "assets/img/DSC02797.JPG",
-        "hero_pos": "35%",
+        "hero_pos": "59% 35%",
         "hero_sub": "Streak-free glass for homes on Wayzata Bay, the estates along Ferndale Road, and every neighborhood in between. Fully insured, and backed by our 100% satisfaction guarantee.",
         "why_heading": "Wayzata homes are built around the view",
         "why_intro": [
@@ -1242,7 +1264,7 @@ CITY_PAGES = [
         "title": "Window Cleaning in Waconia, MN",
         "desc": "Window cleaning in Waconia, MN for lake homes and newer neighborhoods: spot-free glass, screens and hard-water stain removal. Free quotes, guaranteed work.",
         "hero": "assets/img/svc-cta-squeegee.jpg",
-        "hero_pos": "40%",
+        "hero_pos": "30% 40%",
         "hero_sub": "Clear glass for homes on Lake Waconia, around downtown, and in the newer neighborhoods on the edges of town. Fully insured, with a 100% satisfaction guarantee.",
         "why_heading": "A lake town that keeps growing",
         "why_intro": [
@@ -1298,7 +1320,7 @@ CITY_PAGES = [
         "title": "Window Cleaning in Buffalo, MN",
         "desc": "Window cleaning in Buffalo, MN from a crew 15 minutes away in Delano: streak-free glass, screens and hard-water spot removal. Free quotes, guaranteed work.",
         "hero": "assets/img/instagram/18001854047986368_3.jpg",
-        "hero_pos": "40%",
+        "hero_pos": "50% 2%",
         "hero_sub": "Streak-free windows for Buffalo homes, from the older houses near downtown and the lakes to the newer neighborhoods on the edges of town. Fully insured, with a 100% satisfaction guarantee.",
         "why_heading": "Close to home, between two lakes",
         "why_intro": [
@@ -1422,7 +1444,7 @@ CITY_PAGES = [
              "On Lake Independence and Lake Sarah, the lake-facing side is the one that matters most, and usually the hardest to reach. Out in open country, wind carries dust off fields and country roads onto windows and screens, which is why a spring cleaning goes a long way here."),
         ],
         "hero": "assets/img/instagram/18001854047986368_0.jpg",
-        "hero_pos": "55%",
+        "hero_pos": "42% 55%",
         "jobs": [
             {"photo": "assets/img/jobs/independence-tall-glass-ladder.jpg",
              "label": "A wall of tall glass, ladder and pole",
@@ -1477,7 +1499,7 @@ CITY_PAGES = [
              "A survey for the city&rsquo;s emerald ash borer plan counted about 3,400 ash trees in Delano, and that&rsquo;s just one kind of tree. Leaves and seeds end up in gutters every fall, and spring pollen settles on windows and screens. Our gutter cleaning clears what collects, and screens can be added to any window cleaning: each one comes out, is washed by hand on both sides with its frame, and goes back where it came from."),
         ],
         "hero": "assets/img/3P8A8136.JPEG",
-        "hero_pos": "35%",
+        "hero_pos": "58% 35%",
         "jobs": [
             {"photo": "assets/img/jobs/delano-walkout-windows-by-the-pool.jpg",
              "label": "Back windows above the pool",
@@ -1580,7 +1602,7 @@ CITY_PAGES = [
              "According to the city&rsquo;s 2040 Comprehensive Plan, more than half of Mound&rsquo;s homes were built by the end of the 1960s. Houses that age often have original wood sashes, storm windows or divided panes, and sliders whose tracks have been collecting grit for decades. We clean the glass inside and out, and our track detailing clears out the channels. Add screen washing and we lift each screen out, hand-wash both sides of the mesh and frame, and refit it in the same opening."),
         ],
         "hero": "assets/img/instagram/17870581794546118_2.jpg",
-        "hero_pos": "30%",
+        "hero_pos": "50% 3%",
         "jobs": [
             {"photo": "assets/img/jobs/mound-stucco-home-two-person-crew.jpg",
              "label": "Two on the job, ladder and stepladder",
@@ -1632,7 +1654,7 @@ CITY_PAGES = [
              "From June through September, the city allows lawn sprinkling only between 7 p.m. and 10 a.m., on odd or even dates by house number. That means sprinklers run in the evening and early morning, and any spray on the windows dries in place. Aiming the heads at the lawn prevents most of it, and the early-fall cleaning is a good time to check whether any spots have set in."),
         ],
         "hero": "assets/img/3P8A7912.JPEG",
-        "hero_pos": "40%",
+        "hero_pos": "86% 40%",
         "jobs": [],
         "faqs": [
             ("How often do St. Michael homeowners need their windows cleaned?",
@@ -1678,7 +1700,7 @@ CITY_PAGES = [
              "At that density, Minnetrista homes tend to sit well apart, often with open yard all the way around. That leaves windows on every side out in the sun, wind and weather, second-story panes included. Water-fed poles handle those upper panes from the ground on all four sides, and a ladder comes out for any window a pole can&rsquo;t angle into."),
         ],
         "hero": "assets/img/jobs/minnetrista-farmhouse-with-screen-porch.jpg",
-        "hero_pos": "45%",
+        "hero_pos": "39% 45%",
         "jobs": [
             {"photo": "assets/img/jobs/minnetrista-two-story-windows-inside-and-out.jpg",
              "label": "Two stories of great-room windows",
@@ -1730,7 +1752,7 @@ CITY_PAGES = [
              "Out past the city limits, homes sit among fields, and at planting and harvest the dust ends up on screens and in window tracks, which track detailing cleans out. Upstairs glass is mostly a job for our water-fed poles, worked from the yard, with a ladder for anything they can&rsquo;t reach."),
         ],
         "hero": "assets/img/instagram/17870581794546118_6.jpg",
-        "hero_pos": "35%",
+        "hero_pos": "66% 35%",
         "jobs": [
             {"photo": "assets/img/jobs/watertown-area-log-home-tall-windows.jpg",
              "label": "Tall windows on a log home, outside town",
@@ -1786,7 +1808,7 @@ CITY_PAGES = [
              "Many of those homes are decades old now, and often so are their windows. Years of use pack grit into the tracks and turn screens gray with dust. Our track detailing cleans out the channels, and if you add screen cleaning, we remove each screen, wash both sides and the frame by hand, and return it to its own window."),
         ],
         "hero": "assets/img/instagram/17870581794546118_0.jpg",
-        "hero_pos": "40%",
+        "hero_pos": "29% 16%",
         "jobs": [],
         "faqs": [
             ("How often do you recommend cleaning windows in Minnetonka?",
@@ -1808,6 +1830,120 @@ CITY_PAGES = [
             "Minnetonka's 'stretch of the lake is small' and most homes being inland follow from the city's lake frontage being around Grays Bay; many homes dating from 1960-2000 is inferred from census growth, not year-built data.",
             "No job photos yet: the 'Jobs we've done' section stays hidden until you add some.",
             "Lake sides carrying the most glass, pollen season, and track grit on older windows are general descriptions, not sourced facts.",
+        ],
+    },
+    {
+        "slug": "victoria",
+        "city": "Victoria",
+        "county": "Carver County",
+        "live": True,
+        "title": "Window Cleaning in Victoria, MN",
+        "desc": "Window cleaning in Victoria, MN for lake homes and big newer houses: upper glass from the ground, sprinkler spots, screens and tracks. Free quotes.",
+        "hero_sub": "Clear glass for Victoria homes, whether yours faces one of the city&rsquo;s lakes, backs onto parkland or sits in one of the newer neighborhoods. Fully insured, with our 100% satisfaction guarantee behind the work.",
+        "why_heading": "Lakes, parks and a downtown on Stieger Lake",
+        "why_intro": [
+            "Victoria sits on the southwest edge of Lake Minnetonka in Carver County and calls itself the City of Lakes and Parks: along with its share of Lake Minnetonka, the city&rsquo;s list of lakes includes Lake Virginia, Schutz Lake, Lake Zumbra and Lake Auburn, and it looks after 32 parks and more than 400 acres of reserved land. Downtown, Bayfront Park sits on Stieger Lake, looking across to Carver Park Reserve, and hosts free Live by the Lake concerts on summer Wednesday evenings.",
+            "Swiss immigrants settled the area in 1852, and the village that grew up here, named for St. Victoria Church, incorporated in 1915. It has grown quickly since: 7,345 residents at the 2010 census, 10,546 in 2020, and more than 12,000 by the city&rsquo;s 2025 count, with new neighborhoods still going in.",
+        ],
+        "why_points": [
+            ("Hard groundwater and a midday sprinkler ban",
+             "Victoria&rsquo;s wells feed a plant that removes iron and manganese, but water-treatment companies still put the city&rsquo;s water at about 18 grains of hardness per gallon, well into the very-hard range. From May through September, the city bans irrigation with city water from 10 a.m. to 5 p.m., so sprinklers run early and late, and any spray that reaches a window dries there and leaves its minerals behind. Our water-fed poles rinse upper panes with purified water that adds no spots of its own; set-in spots need hard-water stain removal, priced after we&rsquo;ve seen the glass."),
+            ("Built since 2000, and built big",
+             "By NeighborhoodScout&rsquo;s count, about 62 percent of Victoria&rsquo;s housing has gone up since 2000, and big homes are common. Houses that size put glass on every level, from patio doors off the kitchen to dormers and half-round windows up by the roofline. Water-fed poles let our crew clean most of that upper glass with both feet on the ground, and the ladder is for the few windows out of a pole&rsquo;s reach."),
+            ("Close to woods, marshes and water",
+             "Carver Park Reserve&rsquo;s Lowry Nature Center, on Victoria Drive, was the first public nature center built in the Twin Cities, and its trails wind past lakes, tamarack bogs, cattail marshes and hardwood forest. Homes near that kind of landscape tend to see more pollen on their windows and more cobwebs in the frame corners, and screens collect the same buildup. As an add-on, we pull every screen, hand-wash both faces and the frame, and reinstall each one in the window it belongs to."),
+        ],
+        "hero": "assets/img/jobs/victoria-two-story-front-windows.jpg",
+        "hero_pos": "50%",
+        "jobs": [
+            {"photo": "assets/img/jobs/victoria-three-stories-above-the-patio.jpg",
+             "label": "Three stories above the patio",
+             "alt": "The tall back of a Victoria home, three stories of windows rising above a stone patio with a deck and fire pit"},
+            {"photo": "assets/img/jobs/victoria-sunroom-windows.jpg",
+             "label": "A wall of sunroom windows",
+             "alt": "The sunroom on the back of a Victoria home, a long row of windows above a stone retaining wall"},
+        ],
+        "faqs": [
+            ("Is twice a year often enough for windows in Victoria?",
+             "It works as a minimum: a cleaning in late spring and another in early fall is the lightest schedule we recommend. For glass that looks clean year-round, we suggest four."),
+            ("Our house is in one of Victoria&rsquo;s older neighborhoods. Do older windows need a different approach?",
+             "Sometimes. Many of Victoria&rsquo;s older homes date from before 1980, and windows from those decades can have storm panels or small divided panes. We clean those by hand, one pane at a time, finishing each with a squeegee, and if dirt has packed into the tracks, window track detailing cleans it out."),
+            ("You&rsquo;re based in Delano. Is Victoria in your service area?",
+             "It is. Victoria is about 17 miles from Delano by way of County Road 11, roughly a half-hour drive, and the whole city is in our service area, the newest developments included."),
+            ("Will I know the total before any work starts?",
+             "Yes. Quotes cost nothing and you&rsquo;re free to say no; call (763) 314-3400 or send in the quote form. Three things set the price: how big the home is, its number of windows, and how easy or awkward they are to reach, and you&rsquo;ll see a clear, all-in total before we begin."),
+        ],
+        "verify": [
+            "Carver County; 7,345 residents at the 2010 census and 10,546 at the 2020 census (Wikipedia; Census, read from search excerpts). More than 12,000 per the city's 2025 budget overview. Double-check.",
+            "On the southwest edge of Lake Minnetonka (City of Victoria, About Victoria).",
+            "'City of Lakes and Parks', 32 parks and more than 400 acres of reserved land (City of Victoria, Parks and Recreation); Lake Virginia, Schutz Lake, Lake Zumbra and Lake Auburn on the city's lakes list (City of Victoria, Lakes page).",
+            "Bayfront Park downtown on Stieger Lake, looking across to Carver Park Reserve; free Live by the Lake concerts on summer Wednesday evenings (City of Victoria).",
+            "Settled by Swiss immigrants in 1852 (Carver County Historical Society); named for St. Victoria Church and incorporated in 1915 (City of Victoria, History).",
+            "New neighborhoods still going in (the city's development projects list: Marsh Hollow, Victoria Ridge, Estoria).",
+            "Wells feed a plant that removes iron and manganese (City of Victoria, Water Services). About 18 grains of hardness is a water-treatment company's figure, not the city's. Double-check against the city's drinking-water report.",
+            "No irrigation from city water 10 a.m. to 5 p.m., May through September (City of Victoria, Water Conservation). Confirm it is current.",
+            "About 62 percent of housing built since 2000, and big homes common (NeighborhoodScout, about 2021 data). Double-check.",
+            "Lowry Nature Center in Carver Park Reserve on Victoria Drive, the first public nature center built in the Twin Cities (Three Rivers Park District).",
+            "Many older homes from before 1980 (City of Victoria news item on its Old Town Residential district). Double-check.",
+            "About 17 miles and roughly 30 minutes from Delano via County Road 11 (a distance calculator). Double-check against your own drive.",
+            "Job photos taken near downtown Victoria (photo GPS); the house number above the garage in the top photo is blurred.",
+            "Pollen and cobwebs near woods and water, big houses having glass on every level, and older windows having storms or divided panes are general descriptions, not sourced facts.",
+        ],
+    },
+    {
+        "slug": "chanhassen",
+        "city": "Chanhassen",
+        "county": "Carver County",
+        "live": True,
+        "title": "Window Cleaning in Chanhassen, MN",
+        "desc": "Window cleaning in Chanhassen, MN for lake homes and wooded lots: upper glass from the ground, screens, and spots from very hard water. Free quotes.",
+        "hero_sub": "Window cleaning for Chanhassen homes, from the shores of Lake Minnewashta and Lotus Lake to wooded neighborhoods across town. Fully insured, and the work carries our 100% satisfaction guarantee.",
+        "why_heading": "Twelve lakes and a name from the sugar maple",
+        "why_intro": [
+            "Chanhassen sits about 15 miles southwest of Minneapolis, and its name comes from Dakota words for the sugar maple, the tree with sweet sap. The city has 12 lakes, the largest being 680-acre Lake Minnewashta, with a Carver County regional park on its shore, and Lake Ann is where the fireworks go up during the three-day Fourth of July celebration, which draws more than 70,000 people.",
+            "The 2020 census counted 25,947 people here, most of them in detached single-family homes, and census-based estimates put the median home&rsquo;s build year in the early 1990s. Paisley Park, Prince&rsquo;s home and studio complex, opened as a museum in 2016, and Chanhassen Dinner Theatres has been staging shows since 1968.",
+        ],
+        "why_points": [
+            ("What comes out of Chanhassen&rsquo;s wells",
+             "Chanhassen&rsquo;s deep wells are high in iron and manganese, which left orange and brown stains for years until the city began filtering them out. Hardness is another matter: the city lists its water at 21 grains per gallon, which is very hard, so sprinkler or hose water that dries on glass leaves white mineral spots. On upper panes, our water-fed poles run purified water and leave no new spots, and set-in spots get a separate hard-water stain removal treatment, quoted after we look at the glass."),
+            ("Houses that look out on the water",
+             "Homes around Lake Minnewashta, along Lotus Lake and on Chanhassen&rsquo;s end of Christmas Lake tend to put their biggest windows on the lake side: patio doors on a walkout level and wide panes above. We clean the walkout glass by hand and squeegee it dry, work the upper panes from the lawn with water-fed poles, and use a ladder for anything the poles can&rsquo;t reach."),
+            ("Trees the city means to keep",
+             "Chanhassen has tightened its tree rules as emerald ash borer, confirmed here in 2021, has spread, including a Heritage Tree Ordinance for trees at least 25 inches across. In wooded neighborhoods like those on the east side of Lotus Lake, pollen, seeds and leaf bits collect in window screens over a season. Our screen cleaning add-on takes each screen out for a hand wash on both sides, frame and all, then puts it back in its own window."),
+        ],
+        "hero": "assets/img/jobs/chanhassen-patio-and-upper-windows.jpg",
+        "hero_pos": "45%",
+        "jobs": [
+            {"photo": "assets/img/jobs/chanhassen-front-windows-ladder.jpg",
+             "label": "Front windows, ladder to the second floor",
+             "alt": "Barta crew member cleaning by the front door of a Chanhassen home, with an extension ladder set against the second-floor windows"},
+            {"photo": "assets/img/jobs/chanhassen-window-over-the-pool.jpg",
+             "label": "Poolside window, freshly cleaned",
+             "alt": "A freshly cleaned window on a Chanhassen home, with the backyard pool in view"},
+        ],
+        "faqs": [
+            ("When in the year should a Chanhassen home get its windows cleaned?",
+             "Late spring and early fall, at the least: that&rsquo;s the two-visit minimum we recommend. For windows that stay consistently clean all year, we suggest four cleanings, one each season."),
+            ("Our house is in the part of Chanhassen that&rsquo;s in Hennepin County. Is it in your service area?",
+             "Yes. Most of Chanhassen is in Carver County, but a small part of the city extends east into Hennepin County, and every Chanhassen address, on either side of the county line, is in our service area."),
+            ("Our home was built in the early &rsquo;90s, and a few windows look foggy even after cleaning. Can you fix that?",
+             "Not if the fog is between the panes. On a double-pane window, that usually means the seal has failed and moisture has gotten inside, where no cleaning can reach, so it&rsquo;s a job for a window repair or replacement company. Haze on a surface you can touch, inside or out, is something on the glass, and we can clean it or tell you what it will take."),
+            ("Can we find out what it will cost before we commit to anything?",
+             "Yes. Phone us at (763) 314-3400 or use the quote form; the quote costs nothing, and you decide afterward whether to go ahead. Three things set the price: the size of the house, its number of windows and how easy the glass is to get to. Before any work starts, you&rsquo;ll have a clear price with everything included."),
+        ],
+        "verify": [
+            "About 15 miles southwest of Minneapolis; mostly in Carver County, with a small part in Hennepin County (Wikipedia; Census Reporter).",
+            "Name from Dakota words for the sugar maple, 'the tree with sweet sap' (City of Chanhassen history page; Wikipedia).",
+            "12 lakes (City of Chanhassen, Lakes page); Lake Minnewashta 680 acres (City of Chanhassen) with Carver County's Lake Minnewashta Regional Park on its shore. 'Largest' is inferred from the city's lake sizes.",
+            "Fireworks over Lake Ann during the three-day Fourth of July celebration, more than 70,000 people (City of Chanhassen). Double-check.",
+            "25,947 people at the 2020 census (Census via Wikipedia); mostly detached single-family homes (Chanhassen 2040 Comprehensive Plan).",
+            "Median build year in the early 1990s (third-party summaries of Census ACS: 1993 to 1994). Double-check.",
+            "Paisley Park opened as a museum in 2016 (Wikipedia); Chanhassen Dinner Theatres opened in 1968 (Chanhassen Dinner Theatres).",
+            "Deep wells high in iron and manganese that stained until the city began filtering them (City of Chanhassen, Water Treatment); water at 21 grains per gallon (City of Chanhassen, Sewer and Water FAQ).",
+            "Lake Minnewashta, Lotus Lake and Christmas Lake homes; Christmas Lake lies mostly in Shorewood with part in Chanhassen (Wikipedia). Double-check.",
+            "Emerald ash borer confirmed in 2021; Heritage Tree Ordinance for trees at least 25 inches across (City of Chanhassen EAB page; 2026 council recaps). Double-check the adopted wording.",
+            "Job photos taken in central Chanhassen (photo GPS); the house number beside the front door is blurred.",
+            "Lake-side glass on walkout homes, pollen and leaves in screens, and fog between panes meaning a failed seal are general descriptions, not sourced facts.",
         ],
     },
 ]

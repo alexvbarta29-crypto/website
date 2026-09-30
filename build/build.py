@@ -761,7 +761,7 @@ def build_service(svc):
               text=("Get your free, no-obligation Christmas light installation quote today and see why homeowners across the western Twin Cities trust Barta." if is_xmas else
                     svc.get("cta_text") or f"Get your free, no-obligation {svc['name'].lower()} quote today and see why homeowners across the western Twin Cities trust Barta."),
               **({"image": CTA_PINNED_PHOTOS["christmas"]["image"],
-                   "image_pos": f"{CTA_PINNED_PHOTOS['christmas']['focal_y']}%"} if is_xmas else {}))}
+                   "image_pos": _pinned_cta_pos("christmas")} if is_xmas else {}))}
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
@@ -840,6 +840,12 @@ GALLERY_HERO = "assets/img/svc-cta-squeegee.jpg"
 # the Gallery gives it a different backdrop, no photo twice on one page.
 GALLERY_CTA_IMAGE = CTA_PINNED_PHOTOS["gallery"]["image"]
 
+def _pinned_cta_pos(name):
+    """Background position for a pinned CTA photo: "y%", or "x% y%" when a
+    focal_x is set for the phone-width band."""
+    p = CTA_PINNED_PHOTOS[name]
+    return f"{p['focal_x']}% {p['focal_y']}%" if "focal_x" in p else f"{p['focal_y']}%"
+
 def build_gallery():
     depth = 0
     # Full-bleed photo header in the homepage's style rather than the standard
@@ -909,7 +915,7 @@ def build_gallery():
 
     # 34% keeps the technician's head, the squeegee and the arched glass in
     # frame; the default centre crop pushes his head up behind the nav bar.
-    hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="34%", img_class="hero-bg-img",
+    hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="30% 34%", img_class="hero-bg-img",
                                        alt=IMAGE_ALT.get(GALLERY_HERO, "Barta Window Washing technicians cleaning windows"))
     # One collage, before/after shots included inline with everything else , 
     # they used to sit above in their own "Before & after" section of drag
@@ -931,7 +937,7 @@ def build_gallery():
     <div class="gallery">{work_html}</div>
   </div></section>"""
     html += f"""
-  {C.cta_band(depth, image=GALLERY_CTA_IMAGE, image_pos=f"{CTA_PINNED_PHOTOS['gallery']['focal_y']}%")}
+  {C.cta_band(depth, image=GALLERY_CTA_IMAGE, image_pos=_pinned_cta_pos("gallery"))}
 </main>"""
     html += C.page_end(depth)
     write("gallery.html", html, slug="gallery.html", priority="0.6")
@@ -2659,7 +2665,10 @@ def generate_og_images():
                           + [(c["hero"], c.get("hero_pos")) for c in LIVE_CITY_PAGES]):
         if pos:
             anchors.setdefault(page_img, pos if " " in pos.strip() else f"50% {pos}")
-    anchors.update(IMAGE_FOCAL)
+    for img, slots in IMAGE_FOCAL.items():
+        pos = slots.get("og") or slots.get("*") if isinstance(slots, dict) else slots
+        if pos:
+            anchors[img] = pos
     def _frac(pct, default):
         try:
             return min(1.0, max(0.0, float(pct.strip().rstrip("%")) / 100))
