@@ -1051,12 +1051,17 @@ IMAGE_FOCAL = {
     "assets/img/instagram/17950840314027611.jpg": {"insta-card-media-el": "50% 33%"},
     "assets/img/svc-interior-window-cleaning.jpg": {"og": "50% 43%"},
     "assets/img/svc-screen-cleaning-services.jpg": {"og": "50% 19%"},
-    "assets/img/svc-hand-scrubbing.jpg": {"og": "50% 47%"},
+    "assets/img/svc-hand-scrubbing.jpg": {"og": "50% 53%"},
     "assets/img/instagram/18001854047986368_3.jpg": {"og": "50% 3%"},
     "assets/img/instagram/18001854047986368_0.jpg": {"og": "50% 77%"},
-    "assets/img/instagram/17870581794546118_0.jpg": {"og": "50% 14%"},
+    "assets/img/instagram/17870581794546118_0.jpg": {"og": "50% 19%"},
     "assets/img/instagram/17870581794546118_2.jpg": {"og": "50% 4%"},
     "assets/img/hero-home.jpg": {"og": "50% 60%"},
+    "assets/img/jobs/orono-window-cleaning-home.jpg": {"og": "50% 57%"},
+    "assets/img/jobs/plymouth-crew-and-van-from-the-roof.jpg": {"og": "50% 37%"},
+    "assets/img/jobs/victoria-two-story-front-windows.jpg": {"og": "50% 43%"},
+    "assets/img/svc-solar-panel-cleaning.jpg": {"og": "50% 43%"},
+    "assets/img/svc-track-detailing.jpg": {"og": "50% 52%"},
 }
 
 IMAGE_ALT = {
@@ -1212,7 +1217,7 @@ CITY_PAGES = [
         # The owner's own Orono job (the Instagram sunroom shot used here first
         # turned out to be one of their Wayzata jobs).
         "hero": "assets/img/jobs/orono-window-cleaning-home.jpg",
-        "hero_pos": "45%",
+        "hero_pos": "84% 45%",
         "hero_sub": "From the lake homes on Crystal Bay and Browns Bay to the wooded acreages back from the water, we keep Orono&rsquo;s glass clear. Fully insured, with a 100% satisfaction guarantee.",
         "why_heading": "One city, two very different kinds of homes",
         "why_intro": [
