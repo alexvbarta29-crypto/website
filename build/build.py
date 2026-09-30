@@ -2431,12 +2431,13 @@ def generate_hero_variants():
     # Instagram-synced photos land as full-size originals (often 1-2MB each,
     # unresized), the Gallery page shows every one of them at once, so
     # without responsive variants that's dozens of megabytes on one page.
-    # Excludes already-generated "-640w"/"-1200w" siblings from the glob , 
+    # Excludes already-generated siblings ("-640w", "-1200w", and the "-400w",
+    # "-760w" and "-og" tiers a town-page hero also gets) from the glob,
     # otherwise a second build run treats last run's output as new source
     # images and resizes them again into "-640w-640w.jpg"-style junk.
     import glob as _glob, re as _re
     for p in _glob.glob(os.path.join(ROOT, "assets/img/instagram/*.jpg")):
-        if _re.search(r"-(640|1200|1920)w\.jpg$", p):
+        if _re.search(r"-(\d+w|og)\.jpg$", p):
             continue
         hero_paths.add(os.path.relpath(p, ROOT).replace(os.sep, "/"))
     for rel in sorted(hero_paths):

@@ -211,7 +211,7 @@ def render(c, seo_title, hero_picture):
   </section>
 
   {C.cta_band(DEPTH, heading=f"Ready for cleaner windows in {city}?",
-              text=f"Get your free, no-obligation window cleaning quote today and see why {city} homeowners trust Barta.")}
+              text=f"Get your free, no-obligation window cleaning quote for your {city} home today.")}
 </main>"""
     html += C.page_end(DEPTH)
     return html

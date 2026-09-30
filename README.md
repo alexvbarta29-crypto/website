@@ -56,7 +56,7 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 │   ├── house-washing.html · soft-washing.html · roof-cleaning.html
 │   ├── solar-panel-cleaning.html · screen-cleaning.html
 │   ├── hard-water-stain-removal.html · christmas-light-installation.html
-├── areas/                      # 12 local SEO landing pages (Delano, Maple Grove, …)
+├── window-cleaning-<town>-mn/   # 13 town pages (build/city_pages.py, copy in sitedata.CITY_PAGES); old areas/<town>.html URLs 301 via _redirects
 ├── landing/                    # 6 conversion landing pages (Free Window Cleaning Quote, …)
 ├── blog/                       # 4 articles
 ├── assets/
