@@ -350,10 +350,17 @@
     window.addEventListener("pointerup", endDrag);
   });
 
-  /* ---- Process slider (Mop / Scrub / Squeegee / Detail) — auto-advances
-         every AUTOADVANCE_MS; the line ahead of the active dot fills in
-         real time over that same span, acting as a live countdown to the
-         next step instead of just snapping over when the step changes. ---- */
+  /* ---- Process slider (Mop / Scrub / Squeegee / Detail) ----
+         The progress bar under the steps is ONE bar with one leading edge,
+         even though the markup splits it into a segment between each pair
+         of dots. A single number, pos (in dot units: 0 = empty, k = filled
+         up to dot k), drives every segment and every dot's fill, and each
+         change animates pos from wherever the edge currently is to the new
+         dot. So a jump from step 4 to step 1 is one edge travelling back
+         through segments 3, 2 and 1, with each dot going grey as the edge
+         passes under it, and a tap mid-motion just redirects the edge.
+         Between steps the edge creeps toward the next dot over the dwell,
+         as a live countdown to the auto-advance. ---- */
   const AUTOADVANCE_MS = 16000;
   $$(".process-slider").forEach((slider) => {
     const slides = $$(".process-slide", slider);
@@ -361,240 +368,190 @@
     const lines = $$(".process-line", slider);
     const prev = $(".process-arrow.prev", slider);
     const next = $(".process-arrow.next", slider);
-    const SWEEP_MS = 320; // the bar's travel time, however many segments move
-    // After a tap or swipe the bar rests where it landed for this long before
-    // the next segment's countdown starts creeping. Without the pause it
-    // emptied and immediately began refilling, so it never looked "all the
-    // way back"; on an auto-advance there is nothing to rest from.
+    const viewport = $(".process-viewport", slider) || $(".process-track", slider);
+    const n = slides.length;
+    if (!n) return;
+    // After a tap or swipe the bar rests on the new dot this long before the
+    // countdown toward the next one starts creeping; on an auto-advance
+    // there is nothing to rest from.
     const HOLD_MS = 1000;
-    let i = 0, timer = null, liveLine = null, liveTimer = null;
-    let seq = 0; // bumped by every show(); callbacks it queued check it before acting
+    // Travel time for the edge, by distance in dots: one step 300ms, a jump
+    // across all three 600ms, so the edge moves at a near-constant speed and
+    // a long jump still reads as one motion rather than a crawl.
+    const sweepMs = (dist) => 150 + 150 * dist;
+    const easeInOut = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const linear = (t) => t;
 
-    /* Current fill of a segment, 0..1, read off the pseudo-element's live
-       transform matrix — accurate even mid-transition. A segment that has
-       never been driven can't be mid-transition (only drive()/freeze() set
-       the transition custom props), so its state is exactly its class and
-       the getComputedStyle read — a forced style recalc when anything has
-       been written this task, including the whole document's first pass at
-       startup — is skipped entirely. */
-    const progressOf = (l) => {
-      if (!l.__driven) return l.classList.contains("filled") ? 1 : 0;
-      const t = getComputedStyle(l, "::after").transform;
-      if (!t || t === "none") return l.classList.contains("filled") ? 1 : 0;
-      const m = t.match(/matrix\(([^,]+)/);
-      return m ? Math.min(1, Math.max(0, parseFloat(m[1]))) : 0;
+    let i = 0, pos = 0, anim = null, raf = 0, hold = null;
+    let timer = null, dwellEnd = 0;
+
+    const render = () => {
+      lines.forEach((l, k) => l.style.setProperty("--line-scale", Math.min(1, Math.max(0, pos - k)).toFixed(4)));
+      // Dot k is coloured once the edge has reached it (dot 1 is always
+      // reached), so the dots flip exactly as the edge passes.
+      dots.forEach((d, k) => d.classList.toggle("filled", k === 0 || pos >= k - 1e-4));
     };
-    /* Pin a segment exactly where it is, with no transition, so whatever we
-       drive it to next animates FROM here. This is what removes the snap:
-       a CSS transition can't be re-timed mid-flight, but it can be stopped
-       at its current position and restarted toward a new target. */
-    const freeze = (l) => {
-      const p = progressOf(l);
-      pin(l, p);
-      void l.offsetWidth;
-      return p;
-    };
-    /* The write half of freeze(): pins the segment at p with no transition.
-       Kept separate so show() can batch every pin after a single read pass
-       and flush them all with one layout instead of one per segment. */
-    const pin = (l, p) => {
-      l.__driven = true;
-      l.style.setProperty("--line-dur", "0s");
-      l.style.setProperty("--line-delay", "0s");
-      l.style.setProperty("--line-scale", p);
-      l.classList.remove("filled");
-    };
-    const drive = (l, to, dur, delay, ease) => {
-      l.__driven = true;
-      // While a sweep is in flight the segment may carry .filled before it
-      // is actually full, so show() reads it for real until then.
-      l.__sweepUntil = performance.now() + dur + delay;
-      l.style.setProperty("--line-dur", `${dur}ms`);
-      l.style.setProperty("--line-delay", `${delay}ms`);
-      l.style.setProperty("--line-ease", ease || "linear");
-      if (to >= 1) {
-        l.classList.add("filled");
-      } else {
-        // dropping .filled matters as much as setting the scale: on a full
-        // segment the class pins the transform at 1 and would override it
-        l.style.setProperty("--line-scale", to);
-        l.classList.remove("filled");
+    /* Move the edge from where it is now to `to`. Starting a new move
+       cancels the old one mid-flight, so there is never a snap. */
+    const animate = (to, dur, ease, then) => {
+      cancelAnimationFrame(raf);
+      anim = null;
+      if (reduce || dur <= 0 || Math.abs(to - pos) < 1e-4) {
+        pos = to; render();
+        if (then) then();
+        return;
       }
-    };
-
-    const show = (n, manual = false) => {
-      clearTimeout(liveTimer);
-      const my = ++seq;
-      i = (n + slides.length) % slides.length;
-
-      /* READ phase first: capture every segment's current position in one
-         pass while layout is still clean. Interleaving these computed-style
-         reads with the class writes below is what showed up as forced
-         reflow — every read after a write pays a synchronous style recalc.
-         The in-flight countdown (liveLine) is read for real even though it
-         carries .filled (drive() adds the class up front while the transform
-         is still travelling); for anything else .filled means settled at 1,
-         exactly as before. */
-      const cur = lines.map((l) =>
-        (l !== liveLine && l.classList.contains("filled") && !(l.__sweepUntil > performance.now())) ? 1 : progressOf(l));
-
-      /* WRITE phase: everything below only mutates. */
-      slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
-      dots.forEach((d, idx) => {
-        d.classList.toggle("active", idx === i);
-        d.classList.toggle("filled", idx <= i);
-      });
-
-      /* Pin the in-flight countdown wherever it happens to be. From here it's
-         just a partially-filled segment like any other, and the sweep below
-         continues its motion — forward to full or retracting to empty —
-         instead of blanking it and starting over. On a normal auto-advance
-         it sits at ~100%, so its remaining travel is ~0 and the handoff to
-         the next segment's countdown is seamless. Anything else caught
-         mid-flight (a leg of an interrupted sweep) is pinned the same way.
-
-         Every segment that has to move does so at once, over one SWEEP_MS
-         with one easing, so the bar and the dots (whose colours transition
-         over the same span) change together as a single motion. Segments
-         used to move one after another, as a "line travelling the bar", but
-         on a multi-step jump that left the segment beside the chosen dot
-         still full for a third of a second after the dot had already
-         switched, which read as lag. */
-      const fillLegs = [];   // segments left of the active dot that aren't full
-      const emptyLegs = [];  // segments at or right of it that aren't empty
-      let pinned = false;
-      lines.forEach((l, idx) => {
-        const from = cur[idx];
-        if (l === liveLine || (from > 0 && from < 1)) { pin(l, from); pinned = true; }
-        if (idx < i) {
-          if (from < 1) fillLegs.push(l);
-        } else if (from > 0) {
-          emptyLegs.push(l);
-        }
-      });
-      liveLine = null;
-      // One flush for all pins (freeze() did one per segment), so the
-      // transitions drive() starts next animate from the pinned positions.
-      if (pinned) void slider.offsetWidth;
-
-      const run = (legs, to) => {
-        if (!legs.length) return 0;
-        legs.forEach((l) => drive(l, to, SWEEP_MS, 0, "cubic-bezier(.4,0,.2,1)"));
-        return SWEEP_MS;
+      const a = { from: pos, to, start: performance.now(), dur, ease, then };
+      anim = a;
+      const step = (now) => {
+        if (anim !== a) return;
+        const t = Math.min(1, (now - a.start) / a.dur);
+        pos = a.from + (a.to - a.from) * a.ease(t);
+        render();
+        if (t < 1) { raf = requestAnimationFrame(step); return; }
+        anim = null;
+        if (a.then) a.then();
       };
-      const fillDone = run(fillLegs, 1);
-      const emptyDone = run(emptyLegs, 0);
+      raf = requestAnimationFrame(step);
+    };
 
-      /* Live countdown on the segment ahead of the active dot: wait for the
-         sweep to finish, then crawl to full across the rest of the dwell so
-         it lands just as the next step arrives. Scheduled with a timeout
-         rather than a CSS delay because when stepping backwards this same
-         segment is retracting as part of the sweep above — re-targeting it
-         to full in the same tick would cancel that retract, leaving the bar
-         stuck at 1 instead of visibly emptying first. */
-      if (!reduce && lines[i]) {
-        const l = lines[i];
-        liveLine = l;
-        const wait = Math.max(fillDone, emptyDone) + (manual ? HOLD_MS : 0);
-        liveTimer = setTimeout(() => {
-          // Two frames later, so the segment has been painted at least once
-          // before its target changes: a change applied before the first
-          // paint has no starting style to transition from and snaps the bar
-          // straight to full. That happened at page load whenever this ran
-          // before the first frame. Waiting a frame costs nothing, where a
-          // forced style flush here would.
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            if (my !== seq || liveLine !== l) return; // superseded by a later step change
-            // A segment that has never animated has no transition to stop,
-            // and freezing it would only force a layout for nothing.
-            if (l.__driven) freeze(l);
-            drive(l, 1, Math.max(1000, AUTOADVANCE_MS - wait), 0, "linear");
-            // liveLine deliberately stays set until the next show(), which
-            // reads the segment's real position. A transitionend listener
-            // used to clear it, but one left over from a countdown that
-            // never ran could fire during a later retract and cancel the
-            // countdown that followed, leaving the bar stuck at empty.
-          }));
-        }, wait + 20);
-      }
+    const show = (k, manual = false) => {
+      clearTimeout(hold);
+      i = (k + n) % n;
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+      dots.forEach((d, idx) => d.classList.toggle("active", idx === i));
+      const sweep = sweepMs(Math.abs(i - pos));
+      animate(i, sweep, easeInOut, () => {
+        if (reduce || i >= lines.length) return;   // last step: nothing ahead to count down
+        const begin = () => animate(i + 1, Math.max(1000, AUTOADVANCE_MS - sweep - (manual ? HOLD_MS : 0)), linear, null);
+        if (manual) hold = setTimeout(begin, HOLD_MS); else begin();
+      });
     };
-    const restart = () => {
-      if (timer) clearInterval(timer);
-      if (!reduce && slides.length > 1) timer = setInterval(() => show(i + 1), AUTOADVANCE_MS);
+
+    /* Auto-advance as a resettable timeout (not an interval) so a finger
+       resting on the card can pause it and the release resume the same
+       dwell, instead of the step changing under the finger. */
+    const schedule = (ms) => {
+      clearTimeout(timer); timer = null;
+      if (reduce || n < 2) return;
+      dwellEnd = performance.now() + ms;
+      timer = setTimeout(() => { show(i + 1); restart(); }, ms);
     };
+    const restart = () => schedule(AUTOADVANCE_MS);
+    const pause = () => { clearTimeout(timer); timer = null; };
+    const resume = () => { if (!timer) schedule(Math.max(50, dwellEnd - performance.now())); };
+
     dots.forEach((d, idx) => d.addEventListener("click", () => { show(idx, true); restart(); }));
     if (prev) prev.addEventListener("click", () => { show(i - 1, true); restart(); });
     if (next) next.addEventListener("click", () => { show(i + 1, true); restart(); });
 
-    /* Swipe between steps. The arrows are hidden on phones, so a finger
-       swipe across the card is the natural way through the steps there (it
-       works with a mouse drag too). The track has touch-action: pan-y, so a
-       vertical drag still scrolls the page as normal: the browser takes it
-       over and sends pointercancel, and only a drag that is clearly more
-       sideways than up-and-down counts. The card follows the finger a little
-       so the gesture has something to grab, then springs back as the step
-       changes. Drags that start on a button or link are left alone. */
-    const track = $(".process-track", slider);
-    if (track) {
-      const SWIPE_MIN = 40;   // px of sideways travel that commits a step change
-      const FOLLOW = 0.35;    // how far the card follows the finger
-      let sw = null;          // { id, x0, y0, axis: null|"x"|"y" }
-      let swiped = false;     // set for the click that trails a committed swipe
-      const settle = (dx) => {
-        track.classList.remove("is-dragging");
-        track.style.transform = "";
-        if (dx !== undefined && Math.abs(dx) >= SWIPE_MIN) {
-          swiped = true;
-          setTimeout(() => { swiped = false; }, 80);
-          show(i + (dx < 0 ? 1 : -1), true);
-        }
-        restart(); // resumes the auto-advance paused on pointerdown
+    /* Swipe between steps (touch, or a mouse drag). The card follows the
+       finger one-to-one and the neighbouring step slides in from the side,
+       so letting go either carries it the rest of the way or springs back.
+       Releasing past a quarter of the card's width commits, and so does a
+       quick flick however short. The viewport has touch-action: pan-y, so a
+       vertical drag still scrolls the page as normal (the browser takes it
+       over and sends pointercancel); only a drag that starts more sideways
+       than up-and-down counts. Drags from a button or link are left alone. */
+    if (viewport && n > 1) {
+      const FLICK = 0.35;     // px per ms that commits regardless of distance
+      let sw = null;          // the drag in progress
+      let swiped = false;     // set for the click that trails a committed mouse swipe
+      const width = () => viewport.getBoundingClientRect().width || 1;
+      const place = (s, x) => {
+        s.style.transition = "none";
+        s.style.visibility = "visible";
+        s.style.opacity = "1";
+        s.style.transform = `translateX(${x}px)`;
       };
-      track.addEventListener("pointerdown", (e) => {
-        // One pointer at a time (a second finger is ignored), primary button
-        // only, and never from a button or link inside the card.
+      const clear = (s) => { s.style.transition = ""; s.style.visibility = ""; s.style.opacity = ""; s.style.transform = ""; };
+
+      viewport.addEventListener("pointerdown", (e) => {
         if (sw || !e.isPrimary || e.button !== 0 || e.target.closest("button, a")) return;
-        // For a mouse, the default action is to start dragging the photo as
-        // an image (which cancels the pointer and kills the swipe) or to
-        // select text; neither is wanted here. Touch scrolling is governed by
+        // For a mouse, the default is to start dragging the photo as an image
+        // or to select text; neither is wanted. Touch scrolling is governed by
         // touch-action, not by this.
         if (e.pointerType === "mouse") e.preventDefault();
-        sw = { id: e.pointerId, x0: e.clientX, y0: e.clientY, axis: null };
-        // Hold the auto-advance while a finger rests on the card, so the
-        // step can't change under it and the release then count as another.
-        if (timer) { clearInterval(timer); timer = null; }
+        sw = { id: e.pointerId, x0: e.clientX, y0: e.clientY, axis: null, dir: 0, inc: null,
+               lastX: e.clientX, lastT: performance.now(), v: 0 };
+        pause();
       });
-      track.addEventListener("dragstart", (e) => e.preventDefault());
-      track.addEventListener("pointermove", (e) => {
+      viewport.addEventListener("pointermove", (e) => {
         if (!sw || e.pointerId !== sw.id) return;
         const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
         if (!sw.axis) {
-          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-          sw.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          sw.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
           if (sw.axis === "x") {
-            track.classList.add("is-dragging");
-            try { track.setPointerCapture(sw.id); } catch (_) { /* older browsers */ }
+            viewport.classList.add("is-dragging");
+            try { viewport.setPointerCapture(sw.id); } catch (_) { /* older browsers */ }
           }
         }
         if (sw.axis !== "x") return;
-        const follow = Math.max(-72, Math.min(72, dx * FOLLOW));
-        track.style.transform = reduce ? "" : `translateX(${follow}px)`;
+        const now = performance.now(), dt = now - sw.lastT;
+        if (dt > 0) sw.v = 0.6 * sw.v + 0.4 * ((e.clientX - sw.lastX) / dt);
+        sw.lastX = e.clientX; sw.lastT = now;
+        if (reduce) return;
+        const dir = dx < 0 ? 1 : -1;            // swiping left brings the next step in
+        if (dir !== sw.dir) {
+          if (sw.inc) clear(sw.inc);
+          sw.dir = dir;
+          sw.inc = slides[(i + dir + n) % n];
+          if (sw.inc === slides[i]) sw.inc = null;
+        }
+        const w = width();
+        place(slides[i], dx);
+        if (sw.inc) place(sw.inc, dir * w + dx);
       });
-      const end = (e) => {
-        if (!sw || e.pointerId !== sw.id) return;
-        const dx = sw.axis === "x" ? e.clientX - sw.x0 : undefined;
-        sw = null;
-        settle(dx);
+
+      const finish = (commit) => {
+        const s = sw; sw = null;
+        viewport.classList.remove("is-dragging");
+        if (!s || s.axis !== "x") { if (s && s.inc) clear(s.inc); resume(); return; }
+        const active = slides[i], inc = s.inc, dir = s.dir || 1, w = width();
+        const swap = () => {
+          swiped = true;
+          setTimeout(() => { swiped = false; }, 80);
+          // The slide animation has already brought the new step in, so the
+          // usual crossfade is switched off for this one change.
+          slider.classList.add("no-fade");
+          show(i + dir, true);
+          clear(active); if (inc) clear(inc);
+          void viewport.offsetWidth;
+          slider.classList.remove("no-fade");
+          restart();
+        };
+        if (reduce || !inc) {
+          clear(active); if (inc) clear(inc);
+          if (commit) swap(); else resume();
+          return;
+        }
+        const ms = commit ? 260 : 220, ease = "cubic-bezier(.2,.7,.2,1)";
+        active.style.transition = `transform ${ms}ms ${ease}`;
+        inc.style.transition = `transform ${ms}ms ${ease}`;
+        void viewport.offsetWidth;                 // start the transitions from the current positions
+        active.style.transform = `translateX(${commit ? -dir * w : 0}px)`;
+        inc.style.transform = `translateX(${commit ? 0 : dir * w}px)`;
+        setTimeout(() => {
+          if (commit) swap();
+          else { clear(active); clear(inc); resume(); }
+        }, ms + 20);
       };
-      track.addEventListener("pointerup", end);
-      track.addEventListener("pointercancel", (e) => { if (sw && e.pointerId === sw.id) { sw = null; settle(); } });
-      // A click that follows a real swipe (mouse drags fire one) must not
-      // reach anything inside the card.
-      track.addEventListener("click", (e) => {
+      viewport.addEventListener("pointerup", (e) => {
+        if (!sw || e.pointerId !== sw.id) return;
+        const dx = e.clientX - sw.x0;
+        const flick = Math.abs(sw.v) > FLICK && Math.sign(sw.v) === Math.sign(dx);
+        finish(sw.axis === "x" && (Math.abs(dx) >= Math.min(80, width() * 0.25) || flick));
+      });
+      viewport.addEventListener("pointercancel", (e) => { if (sw && e.pointerId === sw.id) finish(false); });
+      viewport.addEventListener("dragstart", (e) => e.preventDefault());
+      // A click that trails a real mouse swipe must not reach the card.
+      viewport.addEventListener("click", (e) => {
         if (swiped) { e.preventDefault(); e.stopPropagation(); }
       }, true);
     }
 
+    render();
     show(0);
     restart();
   });

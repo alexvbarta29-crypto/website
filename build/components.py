@@ -1109,7 +1109,9 @@ def process_slider(steps, depth=0):
     """Step slideshow (e.g. Mop / Scrub / Squeegee / Detail): photo on the
     left, numbered description panel on the right, with nav dots + progress
     line. Steps without a real photo yet (img=None) get a branded gradient
-    tile with a watermark icon instead."""
+    tile with a watermark icon instead. The slides sit in a clipping
+    .process-viewport so a swipe can slide the next step in from the side
+    (main.js); the arrows stay outside it, hanging off the track."""
     root = rel(depth)
 
     photo_attrs = 'loading="lazy" decoding="async"'
@@ -1133,7 +1135,7 @@ def process_slider(steps, depth=0):
         for i, (num, title, img, desc, fic) in enumerate(steps))
     return f"""<div class="process-slider reveal">
     <div class="process-track">
-      {slides}
+      <div class="process-viewport">{slides}</div>
       <button type="button" class="process-arrow prev" aria-label="Previous step">{icon('arrow')}</button>
       <button type="button" class="process-arrow next" aria-label="Next step">{icon('arrow')}</button>
     </div>
