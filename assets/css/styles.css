@@ -648,7 +648,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* Process slider (Scrub / Squeegee / Detail) */
 .process-slider { position: relative; }
-.process-track { position: relative; height: 420px; }
+/* touch-action: pan-y hands vertical drags to the browser (the page scrolls
+   as normal) and leaves sideways ones to main.js's step swipe. The card
+   follows the finger a little during a swipe and springs back on release. */
+.process-track { position: relative; height: 420px; touch-action: pan-y; transition: transform .28s var(--ease); }
+.process-track.is-dragging { transition: none; cursor: grabbing; }
 .process-slide { position: absolute; inset: 0; height: 100%; display: flex; align-items: stretch; gap: 28px; padding: 20px; border-radius: var(--r-lg); background: var(--grad-deep); box-shadow: var(--sh-lg); opacity: 0; visibility: hidden; transition: opacity 1.1s ease; }
 .process-slide.active { opacity: 1; visibility: visible; }
 .process-photo { position: relative; flex: 0 0 42%; border-radius: var(--r-md); min-height: 280px; overflow: hidden; }
@@ -667,14 +671,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-arrow.prev { left: -18px; transform: translateY(-50%) rotate(180deg); }
 .process-arrow.next { right: -18px; }
 .process-dots { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 28px; }
-.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: border-color .5s ease, background .5s ease, color .5s ease, transform .2s var(--ease); flex: 0 0 auto; }
+.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: border-color .32s ease, background .32s ease, color .32s ease, transform .2s var(--ease); flex: 0 0 auto; }
 .process-dot:hover { transform: scale(1.12); border-color: var(--blue-500); }
 .process-dot:active { transform: scale(.9); }
 .process-dot.filled { border-color: transparent; background: var(--grad-brand); color: #fff; }
 .process-dot.active { box-shadow: var(--sh-glow); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
-/* --line-delay lets main.js stagger the segments so a multi-step jump reads
-   as one line travelling the bar instead of every segment growing at once. */
+/* --line-delay is kept for main.js, which now moves every segment at once
+   (a staggered sweep left the segment beside the chosen dot lagging). */
 /* The empty-state scale is a custom property so the script can pin a bar at
    its current mid-flight position (freeze) and animate from there, instead
    of every interruption snapping the fill back to zero. Easing is a variable
