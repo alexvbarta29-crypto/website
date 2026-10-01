@@ -423,7 +423,9 @@
       const sweep = sweepMs(Math.abs(i - pos));
       animate(i, sweep, easeInOut, () => {
         if (reduce || i >= lines.length) return;   // last step: nothing ahead to count down
-        const begin = () => { if (!paused) animate(i + 1, Math.max(1000, AUTOADVANCE_MS - sweep - (manual ? HOLD_MS : 0)), linear, null); };
+        // The creep runs out to the dwell clock, so it and the auto-advance
+        // always land together, however the dwell was paused or reset.
+        const begin = () => { if (!paused) animate(i + 1, Math.max(1000, dwellEnd - performance.now()), linear, null); };
         if (manual) hold = setTimeout(begin, HOLD_MS); else begin();
       });
     };
@@ -435,7 +437,7 @@
       clearTimeout(timer); timer = null;
       if (reduce || n < 2) return;
       dwellEnd = performance.now() + ms;
-      timer = setTimeout(() => { show(i + 1); restart(); }, ms);
+      timer = setTimeout(() => { restart(); show(i + 1); }, ms);  // clock first: show() may start the creep at once
     };
     /* While a finger rests on the card the dwell clock stops, and so does the
        creeping edge, which is that clock made visible; both pick up where
@@ -452,6 +454,7 @@
     const resume = () => {
       if (!paused) return;
       paused = false;
+      clearTimeout(hold);                               // resume starts the creep itself
       const left = Math.max(50, dwellEnd - pausedAt);
       schedule(left);
       if (!reduce && !anim && i < lines.length) animate(i + 1, left, linear, null);
@@ -566,7 +569,9 @@
         inc.style.transform = `translateX(${commit ? 0 : dir * w}px)`;
         const done = () => {
           settle = null;
-          if (commit) swap();
+          // A dot or arrow tapped while the swipe was still settling has
+          // already moved the step; the swipe then just tidies up.
+          if (commit && s.step === i) swap();
           else { clear(active); clear(inc); resume(); }
         };
         settle = { done, timer: setTimeout(done, ms + 20) };
@@ -598,8 +603,8 @@
     }
 
     render();
-    show(0);
     restart();
+    show(0);
   });
 
   /* ---- Phone validation: require a real 10-digit US number ---- */
