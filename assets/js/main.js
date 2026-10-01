@@ -423,7 +423,7 @@
       const sweep = sweepMs(Math.abs(i - pos));
       animate(i, sweep, easeInOut, () => {
         if (reduce || i >= lines.length) return;   // last step: nothing ahead to count down
-        const begin = () => animate(i + 1, Math.max(1000, AUTOADVANCE_MS - sweep - (manual ? HOLD_MS : 0)), linear, null);
+        const begin = () => { if (!paused) animate(i + 1, Math.max(1000, AUTOADVANCE_MS - sweep - (manual ? HOLD_MS : 0)), linear, null); };
         if (manual) hold = setTimeout(begin, HOLD_MS); else begin();
       });
     };
@@ -437,9 +437,25 @@
       dwellEnd = performance.now() + ms;
       timer = setTimeout(() => { show(i + 1); restart(); }, ms);
     };
-    const restart = () => schedule(AUTOADVANCE_MS);
-    const pause = () => { clearTimeout(timer); timer = null; };
-    const resume = () => { if (!timer) schedule(Math.max(50, dwellEnd - performance.now())); };
+    /* While a finger rests on the card the dwell clock stops, and so does the
+       creeping edge, which is that clock made visible; both pick up where
+       they left off on release. */
+    let paused = false, pausedAt = 0;
+    const restart = () => { paused = false; schedule(AUTOADVANCE_MS); };
+    const pause = () => {
+      if (paused) return;
+      paused = true; pausedAt = performance.now();
+      clearTimeout(timer); timer = null;
+      clearTimeout(hold);
+      if (anim && anim.ease === linear) { cancelAnimationFrame(raf); anim = null; }  // the creep, not a sweep
+    };
+    const resume = () => {
+      if (!paused) return;
+      paused = false;
+      const left = Math.max(50, dwellEnd - pausedAt);
+      schedule(left);
+      if (!reduce && !anim && i < lines.length) animate(i + 1, left, linear, null);
+    };
 
     dots.forEach((d, idx) => d.addEventListener("click", () => { show(idx, true); restart(); }));
     if (prev) prev.addEventListener("click", () => { show(i - 1, true); restart(); });
@@ -450,68 +466,84 @@
        so letting go either carries it the rest of the way or springs back.
        Releasing past a quarter of the card's width commits, and so does a
        quick flick however short. The viewport has touch-action: pan-y, so a
-       vertical drag still scrolls the page as normal (the browser takes it
-       over and sends pointercancel); only a drag that starts more sideways
-       than up-and-down counts. Drags from a button or link are left alone. */
+       vertical drag still scrolls the page as normal: the browser takes it
+       over and sends pointercancel. Until that happens the gesture stays
+       undecided, because a thumb swipe usually starts with a small arc and
+       the first few pixels can lean vertical before it turns sideways; only
+       a mouse (which has no scroll to defer to) gives up on a vertical
+       start. Drags from a button or link are left alone. */
     if (viewport && n > 1) {
       const FLICK = 0.35;     // px per ms that commits regardless of distance
       let sw = null;          // the drag in progress
+      let settle = null;      // the previous swipe's slide animation, still finishing
       let swiped = false;     // set for the click that trails a committed mouse swipe
       const width = () => viewport.getBoundingClientRect().width || 1;
-      const place = (s, x) => {
-        s.style.transition = "none";
-        s.style.visibility = "visible";
-        s.style.opacity = "1";
+      // The incoming slide has to be forced visible (it is normally hidden
+      // and faded out); the active one only moves, so a slide still fading
+      // in from a step change keeps fading rather than popping to full.
+      const place = (s, x, incoming) => {
+        if (incoming) { s.style.transition = "none"; s.style.visibility = "visible"; s.style.opacity = "1"; }
         s.style.transform = `translateX(${x}px)`;
       };
       const clear = (s) => { s.style.transition = ""; s.style.visibility = ""; s.style.opacity = ""; s.style.transform = ""; };
 
       viewport.addEventListener("pointerdown", (e) => {
         if (sw || !e.isPrimary || e.button !== 0 || e.target.closest("button, a")) return;
+        // If the last swipe is still sliding into place, land it now so this
+        // drag starts from a settled card and a consistent step.
+        if (settle) { clearTimeout(settle.timer); settle.done(); }
         // For a mouse, the default is to start dragging the photo as an image
         // or to select text; neither is wanted. Touch scrolling is governed by
         // touch-action, not by this.
         if (e.pointerType === "mouse") e.preventDefault();
-        sw = { id: e.pointerId, x0: e.clientX, y0: e.clientY, axis: null, dir: 0, inc: null,
-               lastX: e.clientX, lastT: performance.now(), v: 0 };
+        // Capture from the start so a release outside the card still reaches
+        // us (touch is captured implicitly; this does not stop touch-action's
+        // pointercancel).
+        try { viewport.setPointerCapture(e.pointerId); } catch (_) { /* older browsers */ }
+        sw = { id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY, axis: null, dir: 0,
+               step: i, active: slides[i], inc: null, lastX: e.clientX, lastT: performance.now(), v: 0 };
         pause();
       });
       viewport.addEventListener("pointermove", (e) => {
         if (!sw || e.pointerId !== sw.id) return;
-        const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
-        if (!sw.axis) {
+        let dx = e.clientX - sw.x0;
+        const dy = e.clientY - sw.y0;
+        if (sw.axis !== "x") {
           if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-          sw.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
-          if (sw.axis === "x") {
-            viewport.classList.add("is-dragging");
-            try { viewport.setPointerCapture(sw.id); } catch (_) { /* older browsers */ }
+          if (Math.abs(dx) < Math.abs(dy)) {
+            if (sw.type === "mouse") sw.axis = "y";   // a mouse drag that heads up or down is not a swipe
+            return;                                   // touch: undecided, a scroll will pointercancel us
           }
+          if (sw.axis === "y") return;
+          sw.axis = "x";
+          sw.x0 = e.clientX; dx = 0;                  // follow from here, with no jump by the dead zone
+          viewport.classList.add("is-dragging");
         }
-        if (sw.axis !== "x") return;
         const now = performance.now(), dt = now - sw.lastT;
         if (dt > 0) sw.v = 0.6 * sw.v + 0.4 * ((e.clientX - sw.lastX) / dt);
         sw.lastX = e.clientX; sw.lastT = now;
-        if (reduce) return;
-        const dir = dx < 0 ? 1 : -1;            // swiping left brings the next step in
+        const dir = dx < 0 ? 1 : -1;                  // swiping left brings the next step in
         if (dir !== sw.dir) {
           if (sw.inc) clear(sw.inc);
           sw.dir = dir;
-          sw.inc = slides[(i + dir + n) % n];
-          if (sw.inc === slides[i]) sw.inc = null;
+          sw.inc = reduce ? null : slides[(sw.step + dir + n) % n];
+          if (sw.inc === sw.active) sw.inc = null;
         }
+        if (reduce) return;
         const w = width();
-        place(slides[i], dx);
-        if (sw.inc) place(sw.inc, dir * w + dx);
+        place(sw.active, dx, false);
+        if (sw.inc) place(sw.inc, dir * w + dx, true);
       });
 
       const finish = (commit) => {
         const s = sw; sw = null;
         viewport.classList.remove("is-dragging");
         if (!s || s.axis !== "x") { if (s && s.inc) clear(s.inc); resume(); return; }
-        const active = slides[i], inc = s.inc, dir = s.dir || 1, w = width();
+        const active = s.active, inc = s.inc, dir = s.dir || 1, w = width();
+        if (s.step !== i) {                           // the step changed under the drag: just tidy up
+          clear(active); if (inc) clear(inc); resume(); return;
+        }
         const swap = () => {
-          swiped = true;
-          setTimeout(() => { swiped = false; }, 80);
           // The slide animation has already brought the new step in, so the
           // usual crossfade is switched off for this one change.
           slider.classList.add("no-fade");
@@ -527,24 +559,38 @@
           return;
         }
         const ms = commit ? 260 : 220, ease = "cubic-bezier(.2,.7,.2,1)";
-        active.style.transition = `transform ${ms}ms ${ease}`;
+        active.style.transition = `transform ${ms}ms ${ease}, opacity 1.1s ease`;
         inc.style.transition = `transform ${ms}ms ${ease}`;
-        void viewport.offsetWidth;                 // start the transitions from the current positions
+        void viewport.offsetWidth;                    // start the transitions from the current positions
         active.style.transform = `translateX(${commit ? -dir * w : 0}px)`;
         inc.style.transform = `translateX(${commit ? 0 : dir * w}px)`;
-        setTimeout(() => {
+        const done = () => {
+          settle = null;
           if (commit) swap();
           else { clear(active); clear(inc); resume(); }
-        }, ms + 20);
+        };
+        settle = { done, timer: setTimeout(done, ms + 20) };
       };
-      viewport.addEventListener("pointerup", (e) => {
+      const onUp = (e) => {
         if (!sw || e.pointerId !== sw.id) return;
         const dx = e.clientX - sw.x0;
-        const flick = Math.abs(sw.v) > FLICK && Math.sign(sw.v) === Math.sign(dx);
-        finish(sw.axis === "x" && (Math.abs(dx) >= Math.min(80, width() * 0.25) || flick));
-      });
-      viewport.addEventListener("pointercancel", (e) => { if (sw && e.pointerId === sw.id) finish(false); });
+        // A finger that has been still for a moment is not flicking, however
+        // fast it moved before it stopped.
+        const v = performance.now() - sw.lastT > 100 ? 0 : sw.v;
+        const flick = Math.abs(v) > FLICK && Math.sign(v) === Math.sign(dx);
+        const commit = sw.axis === "x" && (Math.abs(dx) >= Math.min(80, width() * 0.25) || flick);
+        if (commit && sw.type === "mouse") { swiped = true; setTimeout(() => { swiped = false; }, 80); }
+        finish(commit);
+      };
+      // On window, not the viewport: a release or cancel must end the drag
+      // wherever the pointer is by then.
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", (e) => { if (sw && e.pointerId === sw.id) finish(false); });
+      window.addEventListener("blur", () => { if (sw) finish(false); });
       viewport.addEventListener("dragstart", (e) => e.preventDefault());
+      // Android Chrome opens an image menu on a long press; a resting finger
+      // is part of the gesture here (it pauses the slideshow).
+      viewport.addEventListener("contextmenu", (e) => { if (sw) e.preventDefault(); });
       // A click that trails a real mouse swipe must not reach the card.
       viewport.addEventListener("click", (e) => {
         if (swiped) { e.preventDefault(); e.stopPropagation(); }
