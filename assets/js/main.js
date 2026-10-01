@@ -368,6 +368,7 @@
     // way back"; on an auto-advance there is nothing to rest from.
     const HOLD_MS = 1000;
     let i = 0, timer = null, liveLine = null, liveTimer = null;
+    let seq = 0; // bumped by every show(); callbacks it queued check it before acting
 
     /* Current fill of a segment, 0..1, read off the pseudo-element's live
        transform matrix — accurate even mid-transition. A segment that has
@@ -405,6 +406,9 @@
     };
     const drive = (l, to, dur, delay, ease) => {
       l.__driven = true;
+      // While a sweep is in flight the segment may carry .filled before it
+      // is actually full, so show() reads it for real until then.
+      l.__sweepUntil = performance.now() + dur + delay;
       l.style.setProperty("--line-dur", `${dur}ms`);
       l.style.setProperty("--line-delay", `${delay}ms`);
       l.style.setProperty("--line-ease", ease || "linear");
@@ -420,6 +424,7 @@
 
     const show = (n, manual = false) => {
       clearTimeout(liveTimer);
+      const my = ++seq;
       i = (n + slides.length) % slides.length;
 
       /* READ phase first: capture every segment's current position in one
@@ -431,7 +436,7 @@
          is still travelling); for anything else .filled means settled at 1,
          exactly as before. */
       const cur = lines.map((l) =>
-        (l !== liveLine && l.classList.contains("filled")) ? 1 : progressOf(l));
+        (l !== liveLine && l.classList.contains("filled") && !(l.__sweepUntil > performance.now())) ? 1 : progressOf(l));
 
       /* WRITE phase: everything below only mutates. */
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
@@ -499,7 +504,7 @@
           // before the first frame. Waiting a frame costs nothing, where a
           // forced style flush here would.
           requestAnimationFrame(() => requestAnimationFrame(() => {
-            if (liveLine !== l) return; // superseded by a later step change
+            if (my !== seq || liveLine !== l) return; // superseded by a later step change
             // A segment that has never animated has no transition to stop,
             // and freezing it would only force a layout for nothing.
             if (l.__driven) freeze(l);
@@ -542,13 +547,24 @@
           swiped = true;
           setTimeout(() => { swiped = false; }, 80);
           show(i + (dx < 0 ? 1 : -1), true);
-          restart();
         }
+        restart(); // resumes the auto-advance paused on pointerdown
       };
       track.addEventListener("pointerdown", (e) => {
-        if (e.button !== 0 || e.target.closest("button, a")) return;
+        // One pointer at a time (a second finger is ignored), primary button
+        // only, and never from a button or link inside the card.
+        if (sw || !e.isPrimary || e.button !== 0 || e.target.closest("button, a")) return;
+        // For a mouse, the default action is to start dragging the photo as
+        // an image (which cancels the pointer and kills the swipe) or to
+        // select text; neither is wanted here. Touch scrolling is governed by
+        // touch-action, not by this.
+        if (e.pointerType === "mouse") e.preventDefault();
         sw = { id: e.pointerId, x0: e.clientX, y0: e.clientY, axis: null };
+        // Hold the auto-advance while a finger rests on the card, so the
+        // step can't change under it and the release then count as another.
+        if (timer) { clearInterval(timer); timer = null; }
       });
+      track.addEventListener("dragstart", (e) => e.preventDefault());
       track.addEventListener("pointermove", (e) => {
         if (!sw || e.pointerId !== sw.id) return;
         const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
@@ -563,7 +579,6 @@
         if (sw.axis !== "x") return;
         const follow = Math.max(-72, Math.min(72, dx * FOLLOW));
         track.style.transform = reduce ? "" : `translateX(${follow}px)`;
-        if (e.cancelable) e.preventDefault();
       });
       const end = (e) => {
         if (!sw || e.pointerId !== sw.id) return;
