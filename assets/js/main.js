@@ -410,10 +410,23 @@
     let i = 0, pos = 0, anim = null, raf = 0, hold = null;
     let timer = null, dwellEnd = 0;
     let r = 0.6;
+    /* Layout widths (offsetWidth), not on-screen ones: a hovered or pressed
+       dot is scaled by CSS and must not skew the ratio. Returns false while
+       the stylesheet has not applied yet (the sheet loads without blocking,
+       so on a slow connection this script can run first and see 0px). A
+       change in r repaints at once and redirects a running countdown creep,
+       so it never lands as a jump at the start of the next sweep. */
     const measure = () => {
-      if (!lines.length) return;
-      const lw = lines[0].getBoundingClientRect().width, dw = dots[0].getBoundingClientRect().width;
-      if (lw > 0 && dw > 0) r = lw / (lw + dw);
+      if (!lines.length) return true;
+      const lw = lines[0].offsetWidth, dw = dots[0].offsetWidth;
+      if (!(lw > 0 && dw > 0)) return false;
+      const nr = lw / (lw + dw);
+      if (Math.abs(nr - r) > 1e-4) {
+        r = nr;
+        if (anim && anim.ease === linear) anim.to = i + r;
+        render();
+      }
+      return true;
     };
     const fills = lines.map((l) => $(".process-line-fill", l) || l);
     const dotFills = dots.map((d) => $(".process-dot-fill", d));
@@ -437,7 +450,6 @@
     const animate = (to, dur, ease, then) => {
       cancelAnimationFrame(raf);
       anim = null;
-      measure();
       if (reduce || dur <= 0 || Math.abs(to - pos) < 1e-4) {
         pos = to; render();
         if (then) then();
@@ -646,10 +658,14 @@
       }, true);
     }
 
-    measure();
-    render();
-    restart();
-    show(0);
+    /* Start once the layout can be measured; give up waiting after about
+       three seconds and run with the default ratio (the first slide is
+       already marked active in the markup, so nothing is hidden meanwhile). */
+    const start = () => { render(); restart(); show(0); };
+    let tries = 0;
+    const whenReady = () => { if (measure() || ++tries > 180) start(); else requestAnimationFrame(whenReady); };
+    whenReady();
+    window.addEventListener("load", measure);
     window.addEventListener("resize", measure, { passive: true });
   });
 
