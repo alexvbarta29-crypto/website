@@ -405,8 +405,10 @@
        sits at the far side of dot k (dot k filled, segment k empty). Within a
        step the edge first crosses the segment, then wipes through the next
        dot, at one speed, so r (the segment's share of a step's length) is
-       measured from the layout: 56px segments and 38px dots on desktop,
-       28px segments on phones. */
+       measured from the layout: 62px line boxes (56px visible, the rest
+       tucked 3px under each neighbouring dot) and 38px dots on desktop,
+       34px line boxes on phones. The hidden 3px at either end of a line
+       cost the edge about a hundredth of a second each, less than a frame. */
     let i = 0, pos = 0, anim = null, raf = 0, hold = null;
     let timer = null, dwellEnd = 0;
     let r = 0.6;

@@ -688,13 +688,23 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    z-index inside the button's stacking context) and below the number. A
    gradient can't be faded in by a transition, which is why the colour used
    to pop; the wipe is continuous. */
-.process-dot { position: relative; z-index: 0; width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: color .15s ease, transform .2s var(--ease); flex: 0 0 auto; }
+.process-dot { position: relative; z-index: 1; width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: color .15s ease, transform .2s var(--ease); flex: 0 0 auto; }
 .process-dot-fill { position: absolute; inset: -2px; border-radius: inherit; background: var(--grad-brand); z-index: -1; clip-path: inset(0 100% 0 0); pointer-events: none; }
-.process-dot:hover { transform: scale(1.12); border-color: var(--blue-500); }
+/* Dots paint above the lines (z-index 1 on a flex row where the lines are
+   z-index auto), so a dot scaled up by hover covers the line ends instead
+   of a line end cutting a notch into the circle. The hover enlargement is
+   for real pointers only: on a phone :hover sticks after a tap and the
+   tapped dot would stay big until the next touch. */
+@media (hover: hover) {
+  .process-dot:hover { transform: scale(1.12); border-color: var(--blue-500); }
+}
 .process-dot:active { transform: scale(.9); }
 .process-dot.filled { color: #fff; }
 .process-dot.active { box-shadow: var(--sh-glow); }
-.process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+/* Each line runs 3px under the dot at either end (negative margins; the
+   visible segment is still 56px), so the join stays seamless while a dot
+   is scaled up by hover or down by a press. */
+.process-line { width: 62px; height: 2px; margin: 0 -3px; background: var(--line); position: relative; overflow: hidden; }
 /* Each segment's fill is a real element whose transform main.js sets per
    frame from one shared edge position (the bar is a single edge travelling
    across segments and dots alike), so there is no CSS transition here: it
@@ -717,7 +727,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .process-arrow { display: none; }
 }
 @media (max-width: 640px) {
-  .process-line { width: 28px; }
+  .process-line { width: 34px; }   /* 28px visible */
 }
 
 /* ---------- Before / After Slider ---------- */
