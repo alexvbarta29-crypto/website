@@ -681,16 +681,26 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .process-arrow.prev { left: -18px; transform: translateY(-50%) rotate(180deg); }
 .process-arrow.next { right: -18px; }
 .process-dots { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 28px; }
-.process-dot { width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s var(--ease); flex: 0 0 auto; }
+/* The progress bar's edge travels through each dot as well as along the
+   segments (main.js), so a dot is filled by a wipe: .process-dot-fill is the
+   gradient disc, clipped from the right by the script frame by frame. It
+   sits above the button's own white background and grey ring (negative
+   z-index inside the button's stacking context) and below the number. A
+   gradient can't be faded in by a transition, which is why the colour used
+   to pop; the wipe is continuous. */
+.process-dot { position: relative; z-index: 0; width: 38px; height: 38px; border-radius: var(--r-pill); border: 2px solid var(--line); background: #fff; color: var(--slate-500); font-family: var(--font-head); font-weight: 700; display: grid; place-items: center; cursor: pointer; transition: color .15s ease, transform .2s var(--ease); flex: 0 0 auto; }
+.process-dot-fill { position: absolute; inset: -2px; border-radius: inherit; background: var(--grad-brand); z-index: -1; clip-path: inset(0 100% 0 0); pointer-events: none; }
 .process-dot:hover { transform: scale(1.12); border-color: var(--blue-500); }
 .process-dot:active { transform: scale(.9); }
-.process-dot.filled { border-color: transparent; background: var(--grad-brand); color: #fff; }
+.process-dot.filled { color: #fff; }
 .process-dot.active { box-shadow: var(--sh-glow); }
 .process-line { width: 56px; height: 2px; background: var(--line); position: relative; overflow: hidden; }
-/* The fill of each segment is set per frame by main.js from one shared
-   position (the bar is a single edge travelling across all the segments), so
-   there is no CSS transition here: it would fight the script's motion. */
-.process-line::after { content: ""; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(var(--line-scale, 0)); transform-origin: left; }
+/* Each segment's fill is a real element whose transform main.js sets per
+   frame from one shared edge position (the bar is a single edge travelling
+   across segments and dots alike), so there is no CSS transition here: it
+   would fight the script's motion. will-change keeps the fill on its own
+   layer, so moving it repaints nothing else. */
+.process-line-fill { position: absolute; inset: 0; background: var(--grad-brand); transform-origin: left; transform: scaleX(0); will-change: transform; }
 @media (max-width: 780px) {
   /* Stacked in a single grid cell rather than absolutely positioned in a
      fixed-height box. The slides still overlap (so the opacity crossfade is

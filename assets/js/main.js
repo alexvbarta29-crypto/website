@@ -375,27 +375,69 @@
     // countdown toward the next one starts creeping; on an auto-advance
     // there is nothing to rest from.
     const HOLD_MS = 1000;
-    // Travel time for the edge, by distance in dots: one step 300ms, a jump
-    // across all three 600ms, so the edge moves at a near-constant speed and
+    // Travel time for the edge, by distance in steps: one step 330ms, a jump
+    // across all three 630ms, so the edge moves at a near-constant speed and
     // a long jump still reads as one motion rather than a crawl.
-    const sweepMs = (dist) => 150 + 150 * dist;
-    const easeInOut = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const sweepMs = (dist) => 180 + 150 * dist;
+    // The sweep follows the browser's own "ease" curve (cubic-bezier .25 .1
+    // .25 1): under way within the first frame of a tap, never faster than
+    // about 17px a frame, and settling gently. A plain cubic ease-out
+    // lurched off the mark at 23px a frame, which read as a skip on the
+    // 2px line; a cubic ease-in-out sat still for the first tenth of a
+    // second, which read as a hitch.
+    const bezier = (x1, y1, x2, y2) => {
+      const poly = (a1, a2) => [1 - 3 * a2 + 3 * a1, 3 * a2 - 6 * a1, 3 * a1];
+      const [ax, bx, cx] = poly(x1, x2), [ay, by, cy] = poly(y1, y2);
+      return (x) => {
+        let t = x;   // Newton's method on the x polynomial, then y at that t
+        for (let k = 0; k < 6; k++) {
+          const slope = (3 * ax * t + 2 * bx) * t + cx;
+          if (slope < 1e-6) break;
+          t -= (((ax * t + bx) * t + cx) * t - x) / slope;
+        }
+        return ((ay * t + by) * t + cy) * t;
+      };
+    };
+    const easeSweep = bezier(.25, .1, .25, 1);
     const linear = (t) => t;
 
+    /* pos is the edge's position in steps: whole number k means the edge
+       sits at the far side of dot k (dot k filled, segment k empty). Within a
+       step the edge first crosses the segment, then wipes through the next
+       dot, at one speed, so r (the segment's share of a step's length) is
+       measured from the layout: 56px segments and 38px dots on desktop,
+       28px segments on phones. */
     let i = 0, pos = 0, anim = null, raf = 0, hold = null;
     let timer = null, dwellEnd = 0;
-
+    let r = 0.6;
+    const measure = () => {
+      if (!lines.length) return;
+      const lw = lines[0].getBoundingClientRect().width, dw = dots[0].getBoundingClientRect().width;
+      if (lw > 0 && dw > 0) r = lw / (lw + dw);
+    };
+    const fills = lines.map((l) => $(".process-line-fill", l) || l);
+    const dotFills = dots.map((d) => $(".process-dot-fill", d));
+    const clamp01 = (v) => Math.min(1, Math.max(0, v));
+    const last = { lines: [], dots: [], filled: [] };   // only write what changed
     const render = () => {
-      lines.forEach((l, k) => l.style.setProperty("--line-scale", Math.min(1, Math.max(0, pos - k)).toFixed(4)));
-      // Dot k is coloured once the edge has reached it (dot 1 is always
-      // reached), so the dots flip exactly as the edge passes.
-      dots.forEach((d, k) => d.classList.toggle("filled", k === 0 || pos >= k - 1e-4));
+      lines.forEach((l, k) => {
+        const v = `scaleX(${clamp01((pos - k) / r).toFixed(4)})`;
+        if (last.lines[k] !== v) { last.lines[k] = v; fills[k].style.transform = v; }
+      });
+      dots.forEach((d, k) => {
+        const f = k === 0 ? 1 : clamp01((pos - (k - 1) - r) / (1 - r));   // dot 1 is always filled
+        const v = `inset(0 ${((1 - f) * 100).toFixed(2)}% 0 0)`;
+        if (last.dots[k] !== v) { last.dots[k] = v; if (dotFills[k]) dotFills[k].style.clipPath = v; }
+        const on = f >= 0.5;                                              // the number turns white as the edge passes its centre
+        if (last.filled[k] !== on) { last.filled[k] = on; d.classList.toggle("filled", on); }
+      });
     };
     /* Move the edge from where it is now to `to`. Starting a new move
        cancels the old one mid-flight, so there is never a snap. */
     const animate = (to, dur, ease, then) => {
       cancelAnimationFrame(raf);
       anim = null;
+      measure();
       if (reduce || dur <= 0 || Math.abs(to - pos) < 1e-4) {
         pos = to; render();
         if (then) then();
@@ -405,7 +447,7 @@
       anim = a;
       const step = (now) => {
         if (anim !== a) return;
-        const t = Math.min(1, (now - a.start) / a.dur);
+        const t = Math.min(1, Math.max(0, (now - a.start) / a.dur));   // a frame stamped before the tap must not run backwards
         pos = a.from + (a.to - a.from) * a.ease(t);
         render();
         if (t < 1) { raf = requestAnimationFrame(step); return; }
@@ -421,11 +463,13 @@
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
       dots.forEach((d, idx) => d.classList.toggle("active", idx === i));
       const sweep = sweepMs(Math.abs(i - pos));
-      animate(i, sweep, easeInOut, () => {
+      animate(i, sweep, easeSweep, () => {
         if (reduce || i >= lines.length) return;   // last step: nothing ahead to count down
-        // The creep runs out to the dwell clock, so it and the auto-advance
-        // always land together, however the dwell was paused or reset.
-        const begin = () => { if (!paused) animate(i + 1, Math.max(1000, dwellEnd - performance.now()), linear, null); };
+        // The creep fills the segment ahead (to the next dot's edge) by the
+        // time the dwell clock runs out, so it and the auto-advance always
+        // land together, however the dwell was paused or reset; the
+        // auto-advance's own sweep then carries the edge through the dot.
+        const begin = () => { if (!paused) animate(i + r, Math.max(1000, dwellEnd - performance.now()), linear, null); };
         if (manual) hold = setTimeout(begin, HOLD_MS); else begin();
       });
     };
@@ -457,7 +501,7 @@
       clearTimeout(hold);                               // resume starts the creep itself
       const left = Math.max(50, dwellEnd - pausedAt);
       schedule(left);
-      if (!reduce && !anim && i < lines.length) animate(i + 1, left, linear, null);
+      if (!reduce && !anim && i < lines.length) animate(i + r, left, linear, null);
     };
 
     dots.forEach((d, idx) => d.addEventListener("click", () => { show(idx, true); restart(); }));
@@ -602,9 +646,11 @@
       }, true);
     }
 
+    measure();
     render();
     restart();
     show(0);
+    window.addEventListener("resize", measure, { passive: true });
   });
 
   /* ---- Phone validation: require a real 10-digit US number ---- */

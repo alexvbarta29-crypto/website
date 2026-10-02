@@ -1130,8 +1130,8 @@ def process_slider(steps, depth=0):
 
     slides = "".join(_slide(i, num, title, img, desc, fic) for i, (num, title, img, desc, fic) in enumerate(steps))
     dots = "".join(
-        (f'<span class="process-line"></span>' if i > 0 else "")
-        + f'<button type="button" class="process-dot{" active" if i == 0 else ""}" data-i="{i}" aria-label="Step {i+1}: {title}">{i+1}</button>'
+        (f'<span class="process-line"><span class="process-line-fill"></span></span>' if i > 0 else "")
+        + f'<button type="button" class="process-dot{" active" if i == 0 else ""}" data-i="{i}" aria-label="Step {i+1}: {title}">{i+1}<span class="process-dot-fill" aria-hidden="true"></span></button>'
         for i, (num, title, img, desc, fic) in enumerate(steps))
     return f"""<div class="process-slider reveal">
     <div class="process-track">
