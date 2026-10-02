@@ -403,15 +403,17 @@
 
     /* pos is the edge's position in steps: whole number k means the edge
        sits at the far side of dot k (dot k filled, segment k empty). Within a
-       step the edge first crosses the segment, then wipes through the next
-       dot, at one speed, so r (the segment's share of a step's length) is
-       measured from the layout: 62px line boxes (56px visible, the rest
-       tucked 3px under each neighbouring dot) and 38px dots on desktop,
-       34px line boxes on phones. The hidden 3px at either end of a line
-       cost the edge about a hundredth of a second each, less than a frame. */
+       step the edge first crosses the visible segment, then wipes through
+       the next dot, at one speed, so r (the segment's share of a step's
+       length) is measured from the layout: 56px visible segments and 38px
+       dots on desktop, 28px segments on phones. Each line box is 3px longer
+       at either end (ov), tucked under the neighbouring dots so the join
+       stays seamless while a dot is scaled by hover or press; the fill
+       skips those hidden stubs rather than spending time under a dot, which
+       the 15-second countdown creep would otherwise do for over a second. */
     let i = 0, pos = 0, anim = null, raf = 0, hold = null;
     let timer = null, dwellEnd = 0;
-    let r = 0.6;
+    let r = 0.6, lw = 1, ov = 0, lv = 1;
     /* Layout widths (offsetWidth), not on-screen ones: a hovered or pressed
        dot is scaled by CSS and must not skew the ratio. Returns false while
        the stylesheet has not applied yet (the sheet loads without blocking,
@@ -420,11 +422,14 @@
        so it never lands as a jump at the start of the next sweep. */
     const measure = () => {
       if (!lines.length) return true;
-      const lw = lines[0].offsetWidth, dw = dots[0].offsetWidth;
-      if (!(lw > 0 && dw > 0)) return false;
-      const nr = lw / (lw + dw);
-      if (Math.abs(nr - r) > 1e-4) {
-        r = nr;
+      const w = lines[0].offsetWidth, dw = dots[0].offsetWidth;
+      if (!(w > 0 && dw > 0)) return false;
+      // how far the line box runs under the dot before it (offsetLeft, like
+      // offsetWidth, ignores the hover/press scale)
+      const o = Math.max(0, Math.min(w / 3, dots[0].offsetLeft + dw - lines[0].offsetLeft));
+      const v = w - 2 * o, nr = v / (v + dw);
+      if (Math.abs(nr - r) > 1e-4 || w !== lw || o !== ov) {
+        r = nr; lw = w; ov = o; lv = v;
         if (anim && anim.ease === linear) anim.to = i + r;
         render();
       }
@@ -434,9 +439,19 @@
     const dotFills = dots.map((d) => $(".process-dot-fill", d));
     const clamp01 = (v) => Math.min(1, Math.max(0, v));
     const last = { lines: [], dots: [], filled: [] };   // only write what changed
+    /* A segment's fill, as a share of its line box: nothing until the edge
+       has left dot k; then the stub under dot k (already filled) plus the
+       visible share; the stub under dot k+1 only once that dot is filled
+       too, so a pressed dot never uncovers a sliver of the wrong colour. */
+    const segScale = (k) => {
+      const f = clamp01((pos - k) / r);
+      if (f <= 0) return 0;
+      if (pos >= k + 1) return 1;
+      return (ov + lv * f) / lw;
+    };
     const render = () => {
       lines.forEach((l, k) => {
-        const v = `scaleX(${clamp01((pos - k) / r).toFixed(4)})`;
+        const v = `scaleX(${segScale(k).toFixed(4)})`;
         if (last.lines[k] !== v) { last.lines[k] = v; fills[k].style.transform = v; }
       });
       dots.forEach((d, k) => {
