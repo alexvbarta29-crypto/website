@@ -147,7 +147,7 @@ SERVICES = [
             ("What happens if it rains after service?",
              "Don't let the forecast hold you back from booking, rain itself typically doesn't cause mineral spotting on professionally cleaned glass. And with certain plans, every visit is backed by a 7-day rain guarantee, so if weather does cause an issue within a week of your cleaning, just let us know and we'll make it right."),
             ("Do you offer discounts for recurring service?",
-             "Yes, our Biannual, Quarterly, and Monthly recurring plans all save you money on every cleaning, and Quarterly and Monthly plans add priority scheduling, a 7-day rain guarantee, and free hard-water treatment."),
+             "Yes, our Biannual, Quarterly, and Monthly recurring plans all save you money on every cleaning, and Quarterly and Monthly plans add FREE BARTA RainBlock Tech, a 7-day rain guarantee, and free hard-water treatment."),
             ("Do you guarantee your work?",
              "Yes, every exterior window cleaning is backed by our 100% Satisfaction Guarantee. If anything isn't right, let us know and we'll come back and make it right, free."),
         ],
@@ -916,7 +916,7 @@ PROMO_PLANS = [
     ("Quarterly", "quarterly", "100", True, True, "3 Exterior + 1 Interior / Year"),
     ("Monthly", "monthly", "150", True, False, "12 Exterior Cleans / Year"),
 ]
-PROMO_FEATS = ["Priority Scheduling", "7-Day Rain Guarantee", "Free Hard Water Removal"]
+PROMO_FEATS = ["FREE BARTA RainBlock Tech", "7-Day Rain Guarantee", "Free Hard Water Removal"]
 
 # ---------------------------------------------------------------------------
 # Testimonials, intentionally empty. There is no curated-quote content here;
@@ -1017,7 +1017,7 @@ FAQS = [
     ("How is pricing determined?", "Pricing is based on the size of your home, number and accessibility of windows or surfaces, and the services you choose. We give clear, upfront, all-in quotes, no hidden fees and no surprises on the invoice."),
     ("Are your cleaning products safe for kids, pets, and plants?", "Yes. We use professional-grade, biodegradable solutions and pre-wet and rinse landscaping on every soft-wash job. Our methods are safe for your family, pets, and yard."),
     ("How far in advance should I book?", "It varies, depending on the season and our schedule, we can sometimes get to you the same day, or it may be a week or two out. Holiday lighting books up earliest, so reserve your spot by early fall. Priority-plan members get scheduling preference."),
-    ("Do you offer recurring maintenance plans?", "We do, and they're our most popular option. Choose a Biannual, Quarterly, or Monthly recurring plan to save on every cleaning, with priority scheduling included on Quarterly and Monthly. Just select a plan when you request your free quote."),
+    ("Do you offer recurring maintenance plans?", "We do, and they're our most popular option. Choose a Biannual, Quarterly, or Monthly recurring plan to save on every cleaning, with FREE BARTA RainBlock Tech included on Quarterly and Monthly. Just select a plan when you request your free quote."),
 ]
 
 # ---------------------------------------------------------------------------

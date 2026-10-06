@@ -995,7 +995,7 @@ def build_about():
         ("Recurring plans that actually save money",
          f"Book on a repeating schedule and every visit is discounted, ${PROMO_PLANS[0][2]} off biannual, "
          f"${PROMO_PLANS[1][2]} off quarterly, ${PROMO_PLANS[2][2]} off monthly. Quarterly and monthly "
-         "members get priority scheduling on top of it."),
+         "members get FREE BARTA RainBlock Tech on top of it."),
         ("A guarantee without the fine print",
          "Every service is backed by our 100% Satisfaction Guarantee. If any part of a job isn't right, "
          "call us and we come back and re-clean it free. No forms, no argument."),
