@@ -1309,7 +1309,7 @@ def build_area(a):
 # ===========================================================================
 def build_financing():
     depth = 0
-    opts = [("money", "Pay over time", "Spread larger projects, like full-home washing or gutter cleaning, into easy monthly payments."),
+    opts = [("money", "Pay over time", "Spread larger projects, like whole-home window cleaning or gutter cleaning, into easy monthly payments."),
             ("tag", "Membership budgeting", "Our maintenance plans turn big seasonal bills into a small, predictable monthly amount."),
             ("check-circle", "Simple application", "Quick, no-obligation approval decisions so you can move forward with confidence."),
             ("shield", "No surprises", "Clear terms, transparent pricing, and no hidden fees, ever.")]

@@ -26,6 +26,16 @@ API_BASE = "https://graph.instagram.com"
 # set at render time as a backstop against a stale manifest.
 EXCLUDED_POST_IDS = {"17878396158527541"}
 
+# Single photos or videos never shown on the site, by slide id: the post id,
+# plus "_<n>" (counting from 0) for a slide inside a multi-photo post. Use
+# this rather than EXCLUDED_POST_IDS when the rest of the post is fine. These
+# show the crew washing house siding, a service the business stopped
+# offering in October 2026. The sync downloads nothing for them and writes
+# an {"excluded": true} placeholder in their place, so the other slides keep
+# their real position for the "view on Instagram" links; components.py
+# filters by the same set at render time as a backstop.
+EXCLUDED_SLIDE_IDS = {"18111014425971457_1", "18110294294515814_2"}
+
 
 def _get_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "barta-site-instagram-sync/1"})
@@ -112,12 +122,15 @@ def main():
     for item in items[:MAX_POSTS]:
         media_type = item.get("media_type")
         post_id = item["id"]
-        if post_id in EXCLUDED_POST_IDS:
+        if post_id in EXCLUDED_POST_IDS or post_id in EXCLUDED_SLIDE_IDS:
             continue
 
         slides = []
         if media_type == "CAROUSEL_ALBUM":
             for i, child in enumerate(fetch_children(post_id, token)):
+                if f"{post_id}_{i}" in EXCLUDED_SLIDE_IDS:
+                    slides.append({"excluded": True})
+                    continue
                 slide = _save_slide(child.get("media_type"), child.get("media_url"),
                                      child.get("thumbnail_url"), f"{post_id}_{i}")
                 if slide:
@@ -127,12 +140,13 @@ def main():
             if slide:
                 slides.append(slide)
 
-        if not slides:
+        shown = [s for s in slides if not s.get("excluded")]
+        if not shown:
             continue
 
         manifest.append({
             "id": post_id,
-            "image": slides[0]["image"],
+            "image": shown[0]["image"],
             "type": media_type,
             "slides": slides,
             "caption": (item.get("caption") or "").strip(),

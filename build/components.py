@@ -1152,6 +1152,20 @@ def _instagram_excluded_ids():
     except Exception:
         return set()
 
+def _instagram_excluded_slide(s):
+    """True for a slide the site never shows: a placeholder the sync wrote
+    for a slide in instagram_sync.EXCLUDED_SLIDE_IDS, or (backstop for a
+    manifest written before a slide was added to that set) a slide whose
+    file name is one of those ids."""
+    if s.get("excluded"):
+        return True
+    try:
+        from instagram_sync import EXCLUDED_SLIDE_IDS
+    except Exception:
+        return False
+    stem = os.path.splitext(os.path.basename(s.get("image") or ""))[0]
+    return stem in EXCLUDED_SLIDE_IDS
+
 def instagram_carousel(depth=0):
     """Real Instagram posts, shown right on the page instead of just a link
     out to the profile. Reads build/instagram_feed.json, written by the
@@ -1190,17 +1204,17 @@ def instagram_carousel(depth=0):
         if len(caption_short) > 110:
             caption_short = caption_short[:108].rsplit(" ", 1)[0] + "…"
         img = p.get("image")
-        if not img or not os.path.exists(os.path.join(_ROOT, img)):
-            continue
         # Falls back to a single slide built from the top-level image when
         # "slides" is absent, so a manifest written by an older version of
         # instagram_sync.py (no per-slide/video data yet) still renders
         # instead of the carousel going empty until the next sync.
-        raw_slides = p.get("slides") or [{"image": img, "type": p.get("type")}]
+        raw_slides = p.get("slides") or ([{"image": img, "type": p.get("type")}] if img else [])
         # Carry the original position alongside each slide so the permalink
-        # can point at the right photo even after missing files are dropped.
+        # can point at the right photo even after missing or hidden slides
+        # are dropped.
         slides = [(i, s) for i, s in enumerate(raw_slides)
-                  if s.get("image") and os.path.exists(os.path.join(_ROOT, s["image"]))]
+                  if s.get("image") and not _instagram_excluded_slide(s)
+                  and os.path.exists(os.path.join(_ROOT, s["image"]))]
         if not slides:
             continue
         total_slides = len(raw_slides)
@@ -1287,7 +1301,7 @@ def gallery_instagram_figures(depth=0, seen_hashes=None):
         # to keep pointing at the photo's real position inside the post.
         for slide_idx, s in enumerate(raw_slides):
             img = s.get("image")
-            if not img or not os.path.exists(os.path.join(_ROOT, img)):
+            if not img or _instagram_excluded_slide(s) or not os.path.exists(os.path.join(_ROOT, img)):
                 continue
             if is_duplicate_photo(img, seen):
                 continue
@@ -1320,7 +1334,7 @@ def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", s
     else:
         before_src, after_src = f"{name}-before.svg", f"{name}-after.svg"
     ba_attrs = 'loading="lazy" decoding="async"'
-    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning, visible dirt, algae, and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs, sizes=sizes)
+    before_img = picture(root, f"assets/img/{before_src}", "Before professional cleaning, visible dirt and water spots", img_class="ba-img ba-before", extra_attrs=ba_attrs, sizes=sizes)
     after_img = picture(root, f"assets/img/{after_src}", "After Barta professional cleaning, bright, spotless, like-new surface", img_class="ba-img ba-after", extra_attrs=ba_attrs, sizes=sizes)
     return f"""<div class="ba" role="group" aria-label="Before and after comparison slider">
   {before_img}
