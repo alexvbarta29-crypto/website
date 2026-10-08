@@ -641,10 +641,7 @@ def build_service(svc):
         <h2>A fresh install, lit up at dusk</h2>
         <p>Rooflines, peaks and front windows outlined in warm white on a ranch-style home.</p>
       </div>
-      <div class="grid cols-2">
-        <div class="reveal">{C.photo("assets/img/xmas-lights-ranch-windows.jpg", IMAGE_ALT["assets/img/xmas-lights-ranch-windows.jpg"], ratio="16/10", depth=depth)}</div>
-        <div class="reveal" data-delay="1">{C.photo("assets/img/xmas-lights-ranch-dusk.jpg", IMAGE_ALT["assets/img/xmas-lights-ranch-dusk.jpg"], ratio="16/10", depth=depth)}</div>
-      </div>
+      <div class="reveal" style="max-width:900px;margin-inline:auto">{C.photo("assets/img/xmas-lights-ranch-windows.jpg", IMAGE_ALT["assets/img/xmas-lights-ranch-windows.jpg"], ratio="16/10", depth=depth)}</div>
     </div>
   </section>"""
 
