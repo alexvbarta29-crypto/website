@@ -1,5 +1,31 @@
 [
   {
+    "id": "17915758842260517",
+    "image": "assets/img/instagram/17915758842260517_0.jpg",
+    "type": "CAROUSEL_ALBUM",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17915758842260517_0.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17915758842260517_1.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17915758842260517_2.jpg"
+      },
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/17915758842260517_3.jpg"
+      }
+    ],
+    "caption": "Just a little Christmas lights reminder \ud83c\udf84\u2728\n\nBarta Window Washing is out getting homes ready for the season! If you\u2019ve been thinking about having professional Christmas lights installed this year, now\u2019s a great time to get on the schedule.\n\nWe handle everything from install to takedown so you can just enjoy the lights \ud83c\udf85\ud83c\udffc\ud83c\udfe0\n\nSend us a message for a free quote!",
+    "permalink": "https://www.instagram.com/p/DeNRMFHlC-N/",
+    "timestamp": "2026-10-07T20:56:51+0000"
+  },
+  {
     "id": "17996620314007671",
     "image": "assets/img/instagram/17996620314007671.jpg",
     "type": "VIDEO",
@@ -149,33 +175,5 @@
     "caption": "Nothing beats a clean home! \ud83c\udfe0\ud83e\ude9f\u2728",
     "permalink": "https://www.instagram.com/p/DblfIYDlFBq/",
     "timestamp": "2026-08-03T17:06:16+0000"
-  },
-  {
-    "id": "18606051982024491",
-    "image": "assets/img/instagram/18606051982024491_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/18606051982024491_0.jpg",
-        "video": "assets/img/instagram/18606051982024491_0.mp4"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18606051982024491_1.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18606051982024491_2.jpg"
-      },
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/18606051982024491_3.jpg",
-        "video": "assets/img/instagram/18606051982024491_3.mp4"
-      }
-    ],
-    "caption": "We may be known for our amazing window cleaning, but we also offer a variety of other services! \ud83d\udcaa Check them out on our website! BartaWindowWashing.com",
-    "permalink": "https://www.instagram.com/p/DbZBMEkFHlD/",
-    "timestamp": "2026-07-29T20:53:44+0000"
   }
 ]
