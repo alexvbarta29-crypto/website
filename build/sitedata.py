@@ -884,6 +884,9 @@ IMAGE_FOCAL = {
     # ratio), "img-card-bg" / "insta-card-media-el" (the <img> class),
     # "process" (the process slider), "og" (share card), "*" (any slot).
     "assets/img/xmas-lights-stone-home.jpg": {"img-card-bg": "75% 50%"},
+    # Dusk shots with the house in a thin band: the 16:10 crop trims mostly dark lawn.
+    "assets/img/xmas-lights-ranch-windows.jpg": {"16/10": "50% 25%"},
+    "assets/img/xmas-lights-ranch-dusk.jpg": {"16/10": "50% 25%"},
     "assets/img/svc-gutter-cleaning.jpg": {"16/9": "50% 38%"},
     "assets/img/svc-mop-window.jpg": {"16/9": "50% 81%", "process": "50% 71%", "og": "50% 83%"},
     "assets/img/service-van.jpg": {"5/4": "50% 35%"},
@@ -917,6 +920,8 @@ IMAGE_ALT = {
     "assets/img/xmas-lights-stone-home.jpg": "Warm white holiday lights outlining every roofline and peak of a large stone home at dusk",
     "assets/img/xmas-lights-candy-cane.jpg": "Red and white holiday lights installed along a bungalow's roofline at night",
     "assets/img/xmas-lights-craftsman-gables.jpg": "White holiday lights tracing the gables of a craftsman-style home above a snow-covered driveway",
+    "assets/img/xmas-lights-ranch-windows.jpg": "Warm white holiday lights outlining the roofline, gables and front windows of a ranch-style home at dusk",
+    "assets/img/xmas-lights-ranch-dusk.jpg": "A ranch-style home at dusk with warm white lights along its rooflines and around its front windows, seen from across the lawn",
     "assets/img/svc-commercial-cleaning.jpg": "Technicians cleaning storefront windows on a commercial building",
     "assets/img/svc-mop-window.jpg": "Applying cleaning solution to a window with a T-bar mop",
     "assets/img/svc-detail-frame.jpg": "Hand-detailing a window frame with a microfiber cloth",
