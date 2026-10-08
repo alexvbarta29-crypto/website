@@ -1,26 +1,34 @@
 # Permanent redirects for the old Wix site's URLs (served by Netlify).
 # Forced rules, these exact paths were verified from the old Wix sitemap.
 
-/about                     /about.html  301!
-/accessibility-statement   /accessibility.html  301!
-/service-area              /service-areas.html  301!
-/softwashing               /services/soft-washing.html  301!
-/windowwashing             /services/exterior-window-cleaning.html  301!
-/pressurewashing           /services/pressure-washing.html  301!
-/privacy-policy            /privacy.html  301!
-/contact                   /get-quote.html  301!
-/guttercleaning            /services/gutter-cleaning.html  301!
-/faq                       /faqs.html  301!
-/cookie-policy             /privacy.html#cookies  301!
-/plymouth-window-cleaning  /window-cleaning-plymouth-mn/  301!
+/about                                       /about.html  301!
+/accessibility-statement                     /accessibility.html  301!
+/service-area                                /service-areas.html  301!
+/softwashing                                 /  301!
+/windowwashing                               /services/exterior-window-cleaning.html  301!
+/pressurewashing                             /  301!
+/privacy-policy                              /privacy.html  301!
+/contact                                     /get-quote.html  301!
+/guttercleaning                              /services/gutter-cleaning.html  301!
+/faq                                         /faqs.html  301!
+/cookie-policy                               /privacy.html#cookies  301!
+/plymouth-window-cleaning                    /window-cleaning-plymouth-mn/  301!
 
 # Town pages replaced by their window-cleaning city page (build/city_pages.py).
-/areas/buffalo.html        /window-cleaning-buffalo-mn/  301!
-/areas/delano.html         /window-cleaning-delano-mn/  301!
-/areas/medina.html         /window-cleaning-medina-mn/  301!
-/areas/mound.html          /window-cleaning-mound-mn/  301!
-/areas/plymouth.html       /window-cleaning-plymouth-mn/  301!
-/areas/st-michael.html     /window-cleaning-st-michael-mn/  301!
+/areas/buffalo.html                          /window-cleaning-buffalo-mn/  301!
+/areas/delano.html                           /window-cleaning-delano-mn/  301!
+/areas/medina.html                           /window-cleaning-medina-mn/  301!
+/areas/mound.html                            /window-cleaning-mound-mn/  301!
+/areas/plymouth.html                         /window-cleaning-plymouth-mn/  301!
+/areas/st-michael.html                       /window-cleaning-st-michael-mn/  301!
+
+# Services no longer offered (REMOVED_PAGES in build/build.py).
+/services/soft-washing.html                  /  301!
+/services/pressure-washing.html              /  301!
+/services/house-washing.html                 /  301!
+/blog/soft-washing-vs-pressure-washing.html  /blog.html  301!
+/landing/free-pressure-washing-quote.html    /  301!
+/landing/house-washing-estimate.html         /  301!
 
 # Referral program (docs/REFERRAL-PROGRAM.md): the clean address the
 # owner texts customers, and the short links texted to referred friends.

@@ -29,7 +29,7 @@ HERO_PHOTO = "assets/img/3P8A7912.JPEG"
 
 # What a referred friend most often books first: shown on the friend page
 # and offered as checkboxes on its claim form.
-LANDING_SERVICE_SLUGS = ("exterior-window-cleaning", "gutter-cleaning", "house-washing", "pressure-washing")
+LANDING_SERVICE_SLUGS = ("exterior-window-cleaning", "interior-window-cleaning", "gutter-cleaning", "christmas-light-installation")
 
 
 def _assets(depth):
@@ -399,7 +399,7 @@ def referred_page(depth=0, seo_title=None, schema=None):
     html = C.head(
         title=seo_title(f"You&rsquo;ve Been Referred, ${FRIEND_OFF} Off Your First Service"),
         desc=(f"A friend referred you to {BIZ['name']}, so your first service is ${FRIEND_OFF} off. "
-              f"Window cleaning, gutters, house washing and more across the western Twin Cities."),
+              f"Window cleaning, gutters, holiday lighting and more across the western Twin Cities."),
         slug="referred.html", depth=depth, schema=schema, noindex=True, extra_head=css)
     html += C.nav(depth)
     crumbs = C.crumbs([("Home", root + "index.html"), ("You&rsquo;ve been referred", None)])
@@ -437,7 +437,7 @@ def referred_page(depth=0, seo_title=None, schema=None):
     <div class="section-head center">
       <span class="eyebrow">What Barta does</span>
       <h2>Exterior cleaning, done properly</h2>
-      <p>Windows, gutters, siding, concrete: one careful crew, no ladders in your flower beds, and results you can see from the street.</p>
+      <p>Windows inside and out, gutters, holiday lights: one careful crew, no ladders in your flower beds, and results you can see from the street.</p>
     </div>
     <div class="grid cols-4 rd-services">{svc_cards}</div>
   </div></section>

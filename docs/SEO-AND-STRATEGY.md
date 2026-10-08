@@ -13,9 +13,6 @@ Home (/)
 ├── Services
 │   ├── Window Cleaning            /services/window-cleaning.html
 │   ├── Gutter Cleaning            /services/gutter-cleaning.html
-│   ├── Pressure Washing           /services/pressure-washing.html
-│   ├── House Washing              /services/house-washing.html
-│   ├── Soft Washing               /services/soft-washing.html
 │   ├── Roof Cleaning              /services/roof-cleaning.html
 │   ├── Solar Panel Cleaning       /services/solar-panel-cleaning.html
 │   ├── Screen Cleaning            /services/screen-cleaning.html
@@ -38,8 +35,7 @@ Home (/)
 ├── Contact                        /contact.html
 ├── Request a Quote (primary CTA)  /request-quote.html
 ├── Lead landing pages             /landing/<slug>.html
-│   ├── Free Window Cleaning Quote      ├── House Washing Estimate
-│   ├── Free Pressure Washing Quote     ├── Commercial Quote
+│   ├── Free Window Cleaning Quote      ├── Commercial Quote
 │   ├── Free Gutter Cleaning Estimate   └── Holiday Lighting Estimate
 └── Privacy Policy                 /privacy.html
 ```
@@ -89,8 +85,6 @@ H1, structured H2/H3s, internal links, and JSON-LD. Representative targets:
 | Home | window cleaning Delano MN | LocalBusiness, Organization, WebSite, FAQPage |
 | Window Cleaning | window cleaning Delano MN | Service, FAQPage, BreadcrumbList |
 | Gutter Cleaning | gutter cleaning Delano MN | Service, FAQPage, BreadcrumbList |
-| Pressure Washing | pressure washing Delano MN | Service, FAQPage, BreadcrumbList |
-| House Washing | house washing Delano MN | Service, FAQPage, BreadcrumbList |
 | Roof Cleaning | roof cleaning Delano MN | Service, FAQPage, BreadcrumbList |
 | Commercial | commercial window cleaning Twin Cities MN | LocalBusiness |
 | Reviews | Barta Window Washing reviews Delano MN | AggregateRating (LocalBusiness) |
@@ -99,7 +93,7 @@ H1, structured H2/H3s, internal links, and JSON-LD. Representative targets:
 | Landing pages | free `<service>` quote Delano MN | FAQPage |
 | Blog posts | topic long-tail (e.g. roof black streaks) | BlogPosting |
 
-**Secondary keyword themes:** "near me", interior/exterior, soft wash, algae/mildew removal, hard
+**Secondary keyword themes:** "near me", interior/exterior, hard
 water spots, downspout, curb appeal, residential/commercial, plus nearby-city and neighborhood
 modifiers (e.g. *Arbor Lakes*, *Bass Lake*, *Lake Minnewashta*) embedded in the area pages.
 
@@ -114,8 +108,9 @@ each service page links to 3 related services; area pages link to services and t
 ## 5. Local SEO playbook
 
 **Google Business Profile (GBP)**
-- Primary category: *Window Cleaning Service*; secondary: *Pressure Washing Service*, *Gutter
-  Cleaning Service*, *Building Restoration Service*.
+- Primary category: *Window Cleaning Service*; secondary: *Gutter Cleaning Service*.
+  (Soft washing, pressure washing and house washing were dropped in October 2026: remove
+  *Pressure Washing Service* and any washing services from the live profile too.)
 - Match name/address/phone exactly to the site footer (NAP consistency).
 - Add all services as GBP "Services" with the same names used here; write a keyword-rich business
   description mirroring the homepage value prop.

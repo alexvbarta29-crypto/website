@@ -205,7 +205,14 @@ def stars_row():
 # ===========================================================================
 def build_home():
     depth = 0
-    svc_cards = "".join(C.picture_card(item, depth, i) for i, item in enumerate(HOME_SERVICES))
+    # On the 4-column desktop grid a last row of two would leave two empty
+    # slots, so those two cards span two columns each, mirroring the two
+    # featured cards on the top row. (Tablets and phones are 2 columns, where
+    # an even count already fills every row.)
+    regular = [it["label"] for it in HOME_SERVICES if not it.get("featured")]
+    wide = set(regular[-2:]) if len(regular) % 4 == 2 else set()
+    svc_cards = "".join(C.picture_card(dict(item, wide=item["label"] in wide), depth, i)
+                        for i, item in enumerate(HOME_SERVICES))
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
     process_steps = [
@@ -237,7 +244,7 @@ def build_home():
 
     ba_html = "".join(
         f'<div class="reveal" data-delay="{i}">{C.ba_slider(depth=depth, name=n)}</div>'
-        for i, n in enumerate(["ba1", "ba2", "ba3"]))
+        for i, n in enumerate(["ba1", "ba3"]))
 
     home_faqs = FAQS[:5]
     schema = BASE_SCHEMA + [S.faq_schema(home_faqs)]
@@ -341,7 +348,7 @@ def build_home():
         <h2>Before &amp; After Results</h2>
         <p>Drag the slider to compare the before and after results.</p>
       </div>
-      <div class="grid cols-3">{ba_html}</div>
+      <div class="grid cols-2 job-grid-2">{ba_html}</div>
     </div>
   </section>
 
@@ -417,9 +424,6 @@ _SERVICE_AREA_FAMILY = {
     "screen-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "hard-water-stain-removal": ("glass", ("mound", "medina", "plymouth", "buffalo")),
     "gutter-cleaning": ("wash", ("buffalo", "mound", "medina", "delano")),
-    "pressure-washing": ("wash", ("buffalo", "mound", "medina", "delano")),
-    "house-washing": ("wash", ("buffalo", "mound", "medina", "delano")),
-    "soft-washing": ("wash", ("buffalo", "mound", "medina", "delano")),
     "solar-panel-cleaning": ("specialty", ("plymouth", "medina", "mound", "st-michael")),
     "commercial-cleaning": ("specialty", ("plymouth", "medina", "st-michael", "mound")),
     "christmas-light-installation": ("specialty", ("plymouth", "medina", "mound", "st-michael")),
@@ -859,7 +863,7 @@ def build_gallery():
     ]))
     html = C.head(
         title=seo_title("Photo Gallery, Real Job Photos"),
-        desc="Real photos from real jobs, window cleaning, gutter cleaning, pressure washing and more across Delano and the western Twin Cities. No stock photos.",
+        desc="Real photos from real jobs, window cleaning, gutter cleaning, holiday lighting and more across Delano and the western Twin Cities. No stock photos.",
         slug="gallery.html", depth=depth, schema=schema, og_image=GALLERY_HERO)
     html += C.nav(depth)
 
@@ -902,7 +906,7 @@ def build_gallery():
     ba_tiles = [
         f'<figure class="gallery-ba reveal">'
         f'{C.ba_slider(depth=depth, name=n, sizes="(max-width: 760px) 50vw, 33vw")}</figure>'
-        for n in ("ba1", "ba2", "ba3")
+        for n in ("ba1", "ba3")
         if os.path.exists(os.path.join(ROOT, f"assets/img/ba-{C.BA_REAL_PHOTOS[n]}-before.jpg"))
     ]
     # Spread them through the collage instead of clumping them together.
@@ -1086,7 +1090,7 @@ def build_reviews():
     ])]
     html = C.head(
         title=seo_title(f"Reviews, {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
-        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, pressure washing & more.",
+        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, holiday lighting & more.",
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
         og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
@@ -1212,14 +1216,14 @@ def _area_region_note(a):
     nbhd_text = " ".join(a["neighborhoods"]).lower()
     if "lake minnetonka" in nbhd_text or "lake" in a["city"].lower():
         return ("Many homes here sit on or near the water, where lake spray, humidity, and heavier tree "
-                "cover mean faster algae growth on siding and roofs, and more frequent window cleaning "
-                "to keep the lake view clear.")
+                "cover mean more pollen, grime, and water spotting on the glass, and more frequent window "
+                "cleaning to keep the lake view clear.")
     if "crow river" in nbhd_text:
         return ("As a river-adjacent community, homes here see extra humidity and tree debris near the "
-                "water, which is exactly the kind of algae and grime buildup soft washing is built for.")
+                "water, which leaves glass spotted and gutters filling faster than in drier parts of town.")
     return ("Like most homes across the western metro, exteriors here deal with Minnesota's full range of "
             "seasons, spring pollen, summer dust, and winter road spray, which is why most homeowners "
-            "pair window cleaning with a seasonal house wash or gutter cleaning.")
+            "pair window cleaning with a seasonal gutter or screen cleaning.")
 
 def build_area(a):
     depth = 1
@@ -1251,7 +1255,7 @@ def build_area(a):
         # FAQ), repeating the full list here was pushing every one of the
         # 36 area-page descriptions past 175-200+ characters, well beyond
         # what Google renders before truncating in search results.
-        desc=f"Window cleaning, gutter cleaning, pressure washing & house washing in {a['city']}, MN. Local & insured. Get your free quote from Barta.",
+        desc=f"Window cleaning, gutter cleaning, screen cleaning & more in {a['city']}, MN. Local & insured. Get your free quote from Barta.",
         slug=f"areas/{a['slug']}.html", depth=depth, schema=schema,
         primary_kw=f"exterior cleaning services {a['city']} MN")
     html += C.nav(depth)
@@ -1496,7 +1500,7 @@ def build_terms():
     <h2>1. Acceptance of terms</h2>
     <p>By requesting a quote, scheduling a service, or otherwise using this website or {BIZ['name']}'s services, you ("Customer") agree to be bound by these Terms and Conditions. If you do not agree, please do not use our services.</p>
     <h2>2. Services</h2>
-    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services, including window cleaning, gutter cleaning, pressure washing, soft washing, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation, throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
+    <p>{BIZ['name']} provides professional residential and commercial exterior cleaning services, including window cleaning, gutter cleaning, solar panel cleaning, screen cleaning, window track detailing, and holiday light installation, throughout {BIZ['city']}, {BIZ['state']} and the surrounding western Twin Cities area. Quotes provided through this site are estimates based on the information you provide and are confirmed after an on-site or photo assessment. We reserve the right to decline or modify any service request at our discretion.</p>
     <h2>3. Scheduling and cancellations</h2>
     <p>Appointments can be scheduled by phone, text, email, or through this website. We ask that cancellations or rescheduling requests be made as far in advance as possible. Late cancellations or no-shows may result in a cancellation fee, which will be communicated to you at the time of booking.</p>
     <h2>4. Access to property</h2>
@@ -1734,11 +1738,10 @@ def build_instagram_callback():
 # reused for both the blog.html card thumbnail and the post's own header.
 _BLOG_PHOTOS = {
     "how-often-clean-windows-minnesota": "assets/img/svc-exterior-window-cleaning.jpg",
-    "soft-washing-vs-pressure-washing": "assets/img/svc-soft-washing.jpg",
     "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
     "hard-water-stains-windows": "assets/img/svc-hand-scrubbing.jpg",
     "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
-    "spring-exterior-cleaning-checklist": "assets/img/svc-pressure-washing.jpg",
+    "spring-exterior-cleaning-checklist": "assets/img/svc-screen-cleaning-services.jpg",
     "window-cleaning-mistakes-to-avoid": "assets/img/svc-mop-window.jpg",
 }
 
@@ -1757,7 +1760,7 @@ def build_blog():
         <span style="font-size:.8rem;color:var(--slate-400);margin-top:6px">{p['date']} · {p['read']} read</span></a>"""
     html, body = interior_head(
         title=seo_title("Blog, Exterior Cleaning Tips &amp; Guides"),
-        desc="Expert tips on window cleaning, gutter care, house washing, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
+        desc="Expert tips on window cleaning, gutter care, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
         slug="blog.html", eyebrow="Blog", og_image="assets/img/svc-cta-squeegee.jpg",
         h1="Tips, guides &amp; exterior care advice",
         lead="Practical, no-nonsense advice from the Barta team to help you protect and beautify your home year-round.",
@@ -1782,12 +1785,6 @@ def build_post(p, idx):
             ("Signs it's time", "Don't wait for the calendar if you notice spotting, a hazy film, visible pollen, or screens dulling your view. Catching buildup early keeps glass easier to clean and prevents hard-water etching that's far harder to remove later."),
             ("Make it automatic", "The easiest approach? A maintenance plan. We schedule your cleanings at the ideal times, send reminders, and handle everything, so your windows stay clear without you tracking a single date."),
         ],
-        "soft-washing-vs-pressure-washing": [
-            ("They're not the same thing", "Pressure washing uses high-pressure water to physically blast dirt off hard surfaces. Soft washing uses low pressure plus specialized cleaning solutions to dissolve grime and kill organic growth. Using the wrong one can cause real damage."),
-            ("When to pressure wash", "Pressure washing shines on durable hardscapes: concrete driveways, paver patios, sidewalks, and pool decks. It removes embedded dirt, oil, and tire marks that solutions alone can't lift, when applied at the right pressure for the surface."),
-            ("When to soft wash", "Siding, stucco, screens, and painted surfaces should always be soft washed. High pressure can strip paint, etch stucco, and damage delicate materials. Soft washing cleans gently and kills algae at the root, so results last far longer."),
-            ("The bottom line", "A good exterior cleaner uses both, matched to each surface. That's exactly how Barta approaches every home: the right method, the right pressure, the right solution, every time."),
-        ],
         "gutter-cleaning-checklist-fall": [
             ("Why fall is critical", "Clogged gutters in winter mean ice dams, overflow, and water pooling against your foundation. Clearing them before the first freeze is one of the cheapest, highest-impact things you can do to protect your home."),
             ("The checklist", "Clear all gutters of leaves and debris by hand. Flush downspouts and confirm water flows freely to the ground and away from the house. Check for sagging sections and loose hangers. Inspect seams for leaks. Look at the roof edge for damage or missing shingles."),
@@ -1803,14 +1800,12 @@ def build_post(p, idx):
         "winter-prep-checklist-minnesota": [
             ("Gutters first", "Ice dams form when melting snow refreezes in clogged gutters and backs up under your shingles. Clearing gutters and confirming downspouts drain freely before the first hard freeze is the single most effective thing you can do to prevent winter roof leaks."),
             ("Check your roof while you still can", "Once snow sticks around, a real roof inspection isn't practical until spring. Look now for missing or lifted shingles, and note any black streaking, algae left untreated all winter has months to keep spreading before you can address it."),
-            ("Wash the exterior before the salt season", "Road salt spray, sand, and winter grime are much easier to rinse off siding that's already clean than to remove once it's baked on by repeated freeze-thaw cycles. A fall house wash also removes summer's algae growth before it has all winter to set in."),
             ("Windows and screens", "Store or clean screens before winter rather than leaving them dusty in the frame, pollen and grime left all season are harder to remove in spring. If storm windows or interior glass show hard-water spotting from summer sprinklers, treating it now means a clearer view all winter."),
         ],
         "spring-exterior-cleaning-checklist": [
             ("Start with gutters and the roofline", "Winter is hard on gutters, ice, debris, and heavy snow can loosen hangers or leave leaves frozen in place since fall. Clear them first and confirm downspouts flow freely before you tackle anything else, since a clogged system undoes work done lower down the house."),
-            ("Wash off the winter grime", "Salt spray, sand, and months of grime dull siding more than most homeowners realize until it's washed. A soft wash in spring also catches algae and mildew that started growing over winter before it spreads further with warmer, wetter weather."),
-            ("Driveways and walkways", "Salt stains, tracked-in sand, and de-icer residue build up on concrete all winter. Pressure washing driveways, walkways, and steps in spring removes it before it has all summer to embed further, and it's the fastest visible curb-appeal improvement most homes can make."),
-            ("Windows last", "Clean windows and screens after the rest of the exterior work is done, otherwise overspray and dust from washing siding or the driveway just lands back on freshly cleaned glass. This is also when hard-water spots from a full season of sprinklers tend to be most visible."),
+            ("Screens and tracks", "Winter packs sand and grit into window tracks and leaves a film of dust on every screen. Washing screens and vacuuming tracks in spring keeps windows sliding smoothly and stops that grit from working its way back onto clean glass."),
+            ("Windows last", "Clean windows and screens after the gutters and roofline are done, otherwise debris and dirty runoff from up top just lands back on freshly cleaned glass. This is also when hard-water spots from a full season of sprinklers tend to be most visible."),
         ],
         "window-cleaning-mistakes-to-avoid": [
             ("Cleaning in direct sunlight", "Glass cleaner dries almost instantly in direct sun, leaving streaks behind before you can wipe it off evenly. Professionals work in shade or on overcast days for exactly this reason, it has nothing to do with the product and everything to do with timing."),
@@ -1884,18 +1879,10 @@ LANDING = [
      "headline": "Streak-free windows, zero hassle, get your free quote today",
      "kw": "free window cleaning quote Delano MN",
      "guarantee": "Streak-Free Guarantee: if it streaks, we re-clean it free."},
-    {"slug": "free-pressure-washing-quote", "svc": "pressure-washing", "h1": "Free Pressure Washing Quote in Delano, MN",
-     "headline": "Restore your driveway, patio &amp; walkways, get your free quote",
-     "kw": "free pressure washing quote Delano MN",
-     "guarantee": "Surface-Safe Guarantee: the right pressure for every material, every time."},
     {"slug": "free-gutter-cleaning-estimate", "svc": "gutter-cleaning", "h1": "Free Gutter Cleaning Estimate in Delano, MN",
      "headline": "Protect your home from clogged gutters, get your free estimate",
      "kw": "free gutter cleaning estimate Delano MN",
      "guarantee": "Flow Guarantee: every downspout flushed and tested, debris hauled away."},
-    {"slug": "house-washing-estimate", "svc": "house-washing", "h1": "House Washing Estimate in Delano, MN",
-     "headline": "Make your whole home look new again, free house washing estimate",
-     "kw": "house washing estimate Delano MN",
-     "guarantee": "Soft-Wash Safe Guarantee: gentle on siding, tough on algae and grime."},
     {"slug": "commercial-quote", "svc": "commercial-cleaning", "h1": "Free Commercial Cleaning Quote, Western Twin Cities",
      "headline": "Reliable commercial exterior cleaning, request your free quote",
      "kw": "commercial cleaning quote Twin Cities MN",
@@ -1992,7 +1979,6 @@ def build_images():
     # Before/after placeholder pairs, "before" muted/grimy, "after" bright/clean.
     pairs = {
         "ba1": ("#6b6f63", "#8a8f80", "Window, before", "Window, after"),
-        "ba2": ("#7a7264", "#938b7c", "Siding, before", "Siding, after"),
         "ba3": ("#5f6660", "#7d847d", "Roof, before", "Roof, after"),
     }
     for name, (b1, b2, blabel, alabel) in pairs.items():
@@ -2106,21 +2092,46 @@ WIX_REDIRECTS = [
     ("/plymouth-window-cleaning", "/areas/plymouth.html"),
 ]
 
+# Pages for services the business no longer offers: soft washing, pressure
+# washing and house washing (a soft wash under another name), removed in
+# October 2026 at the owner's direction, with the blog post and ad landing
+# pages that sold them. The build deletes any leftover copy of each page
+# (they were generated output) and _redirects sends the old URL somewhere
+# useful, so bookmarks, old ads and search results never land on a 404.
+REMOVED_PAGES = {
+    "services/soft-washing.html":                 "/",
+    "services/pressure-washing.html":             "/",
+    "services/house-washing.html":                "/",
+    "blog/soft-washing-vs-pressure-washing.html": "/blog.html",
+    "landing/free-pressure-washing-quote.html":   "/",
+    "landing/house-washing-estimate.html":        "/",
+}
+
+def remove_retired_pages():
+    for rel in REMOVED_PAGES:
+        path = os.path.join(ROOT, rel)
+        if os.path.exists(path):
+            os.remove(path)
+
 def build_redirects():
     # A Wix rule whose target page has since been replaced points straight at
     # the replacement, so visitors and Google never go through two hops.
     replaced = {f"/areas/{slug}.html": "/" + city_page_path(c) for slug, c in REPLACED_AREAS.items()}
-    wix = [(src, replaced.get(dst, dst)) for src, dst in WIX_REDIRECTS]
+    removed = {"/" + rel: dst for rel, dst in REMOVED_PAGES.items()}
+    resolve = lambda dst: removed.get(dst, replaced.get(dst, dst))
+    wix = [(src, resolve(dst)) for src, dst in WIX_REDIRECTS]
     area_rules = sorted(replaced.items())
-    for src, dst in wix + area_rules:
-        rel = dst.split("#")[0].strip("/") or "index.html"
-        if dst.split("#")[0].endswith("/"):
-            rel = os.path.join(rel, "index.html")
+    removed_rules = list(removed.items())
+    for src, dst in wix + area_rules + removed_rules:
+        path = dst.split("#")[0]
+        rel = path.strip("/")
+        if not rel or path.endswith("/"):
+            rel = os.path.join(rel, "index.html")   # "/" is the home page itself
         if not os.path.isfile(os.path.join(ROOT, rel)):
             raise SystemExit(f"_redirects: destination {dst} for {src} does not exist")
         if os.path.exists(os.path.join(ROOT, src.strip("/"))):
             raise SystemExit(f"_redirects: forced rule {src} would hide a real file")
-    width = max(len(s) for s, _ in wix + area_rules) + 2
+    width = max(len(s) for s, _ in wix + area_rules + removed_rules) + 2
     lines = ["# Permanent redirects for the old Wix site's URLs (served by Netlify).",
              "# Forced rules, these exact paths were verified from the old Wix sitemap.",
              ""]
@@ -2129,6 +2140,9 @@ def build_redirects():
         lines += ["",
                   "# Town pages replaced by their window-cleaning city page (build/city_pages.py).",
                   *[f"{src:<{width}}{dst}  301!" for src, dst in area_rules]]
+    lines += ["",
+              "# Services no longer offered (REMOVED_PAGES in build/build.py).",
+              *[f"{src:<{width}}{dst}  301!" for src, dst in removed_rules]]
     # Referral short links: the code the office texts to a referred friend
     # (/r/BARTA-7K3XQ). A 200 rewrite, not a redirect, so the short URL stays
     # in the address bar.
@@ -2531,7 +2545,6 @@ OG_W, OG_H = 1200, 630
 _AVIF_CARD_STEMS = [
     "svc-exterior-window-cleaning", "svc-interior-window-cleaning",
     "svc-screen-cleaning-services", "svc-solar-panel-cleaning",
-    "svc-pressure-washing", "svc-soft-washing",
     "svc-commercial-cleaning", "xmas-lights-stone-home",
 ]
 _AVIF_CARD_WIDTHS = [(400, 55), (640, 60), (760, 60), (1200, 60)]
@@ -2726,6 +2739,7 @@ def main():
     C.CRITICAL_CSS = extract_critical_css()
     if C.CRITICAL_CSS:
         print(f"  critical css: {len(C.CRITICAL_CSS)} bytes inlined on the homepage")
+    remove_retired_pages()
     build_home()
     for s in SERVICES:
         build_service(s)

@@ -12,7 +12,6 @@ nothing builds trust for a home-service brand faster than authentic, well-lit jo
 | `logo.svg` | Standalone logo (email sigs, docs) | The // mark + BARTA wordmark. Drop in your original vector to be pixel-perfect |
 | `og-cover.svg` | Social share preview | On-brand black + coral card. Optionally export a 1200×630 `og-cover.jpg` photo version |
 | `ba1-before.svg` / `ba1-after.svg` | Window before/after slider | Real window job, same camera angle |
-| `ba2-before.svg` / `ba2-after.svg` | House/siding before/after | Real soft-wash job, same angle |
 | `ba3-before.svg` / `ba3-after.svg` | Roof before/after | Real roof job, same angle |
 
 > **Brand note:** the nav/footer logo is rendered as crisp inline SVG (the coral **//** mark +
@@ -55,8 +54,7 @@ Throughout the HTML you'll see `<div class="imgph" …>` blocks with descriptive
 - Branded vehicle / uniformed crew arriving (trust signal)
 
 **Per service** (one strong before/after + one action shot each)
-- Window cleaning · Gutter cleaning · Pressure washing (driveway) · House washing (siding)
-- Soft washing · Roof cleaning (black-streak removal) · Solar panels · Screens
+- Window cleaning · Gutter cleaning · Solar panels · Screens · Window tracks
 - Hard-water stain removal (glass close-up) · Holiday lighting (dusk, lights glowing)
 
 **Team & trust**

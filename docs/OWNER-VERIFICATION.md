@@ -13,6 +13,14 @@ concern because it isn't part of the generated site at all — it lives only in 
 
 ## Audit history
 
+- **Soft washing, pressure washing and house washing removed (October 2026):** the owner is not
+  offering these services, so their pages (`services/soft-washing.html`,
+  `services/pressure-washing.html`, `services/house-washing.html`, which sold the same soft wash
+  under another name), the "Soft Washing vs. Pressure Washing" blog post, both washing landing
+  pages, the siding before/after slider, their photos, menu entries, quote-form options and every
+  mention in FAQs, town pages and search data were deleted. Old URLs 301 to the home page (the
+  blog post to the blog) via `REMOVED_PAGES` in `build/build.py`. Older entries below that mention
+  these services are kept as history.
 - **Full sitewide technical/production-readiness audit:** every claim below was re-checked against
   the current generated HTML across all 80 pages. All individual claims and the plan-structure
   conflict were still present, worded the same way, and still unverified — nothing new was

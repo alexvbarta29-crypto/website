@@ -1299,6 +1299,11 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .svc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .svc-grid > .img-card { aspect-ratio: 1 / 1; }
 .svc-grid > .img-card.featured { grid-column: span 2; aspect-ratio: 16 / 10; }
+/* Desktop only: a short last row's two cards span two columns each
+   (build_home sets .wide), so the grid ends as evenly as it starts. */
+@media (min-width: 981px) {
+  .svc-grid > .img-card.wide { grid-column: span 2; aspect-ratio: 16 / 10; }
+}
 @media (max-width: 980px) {
   .svc-grid { grid-template-columns: repeat(2, 1fr); }
   .svc-grid > .img-card.featured { grid-column: span 2; aspect-ratio: 16 / 9; }

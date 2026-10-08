@@ -792,9 +792,6 @@ def service_sidebar(current_target, depth=0):
 # so svc_default works whether callers pass either kind of identifier.
 SERVICE_SLUG_TO_LABEL = {
     "gutter-cleaning": "gutter-cleaning",
-    "pressure-washing": "pressure-washing",
-    "house-washing": "soft-washing",
-    "soft-washing": "soft-washing",
     "solar-panel-cleaning": "solar-panel-cleaning",
     "screen-cleaning": "screen-cleaning-services",
     "hard-water-stain-removal": "exterior-window-cleaning",
@@ -804,7 +801,7 @@ SERVICE_SLUG_TO_LABEL = {
 def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligation, and zero pressure.",
               submit="Get My Free Quote", svc_default=None, compact=False):
     """Full lead-capture form. Services are multi-select checkboxes matching
-    the 10 homepage service boxes. svc_default: label-slug (or list of them)
+    the homepage service boxes. svc_default: label-slug (or list of them)
     to pre-check; a ?svc= query param on the page URL overrides via JS."""
     if svc_default is None:
         defaults = []
@@ -1087,7 +1084,7 @@ def picture_card(item, depth=0, idx=0):
     dark = _IMG_CARD_DARKS[idx % len(_IMG_CARD_DARKS)]
     img = item.get("img") or ("assets/img/svc-" + _slugify(item["label"]) + ".jpg")
     alt = IMAGE_ALT.get(img, f"{item['label']} service photo")
-    feat = " featured" if item.get("featured") else ""
+    feat = " featured" if item.get("featured") else (" wide" if item.get("wide") else "")
     # Featured cards span 2 of 4 columns (desktop) or the full row (tablet/
     # mobile); non-featured cards are 1 of 4 (desktop) and 1 of 2 everywhere
     # below 980px, .svc-grid stays repeat(2, 1fr) all the way down, so the
@@ -1095,6 +1092,7 @@ def picture_card(item, depth=0, idx=0):
     # column) overstated these by 2x and made phones fetch the 1200w file for
     # a card that renders ~170 css px wide.
     sizes = ("(max-width: 980px) 100vw, 50vw" if item.get("featured")
+             else "(max-width: 980px) 50vw, 50vw" if item.get("wide")
              else "(max-width: 980px) 50vw, 25vw")
     img_tag = picture(root, img, alt, img_class="img-card-bg",
                        extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
@@ -1309,7 +1307,7 @@ def trust_badges():
 
 # Slots with real photos on disk (assets/img/{name}-before.jpg / -after.jpg)
 # instead of the auto-generated placeholder SVGs.
-BA_REAL_PHOTOS = {"ba1": "window", "ba2": "siding", "ba3": "gutter"}
+BA_REAL_PHOTOS = {"ba1": "window", "ba3": "gutter"}
 
 def ba_slider(label_before="Before", label_after="After", depth=0, name="ba1", sizes="(max-width: 760px) 100vw, 33vw"):
     """`sizes` should match the real column width the .ba container renders
