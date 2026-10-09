@@ -634,7 +634,7 @@ def build_service(svc):
           <p>{svc['why_barta']}</p>
           <a class="btn mt-3" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Quote {icon('arrow')}</a>
         </div>
-        <div class="reveal">{C.photo("assets/img/xmas-warm-white-mediterranean.jpg", XMAS_PHOTO_ALT["assets/img/xmas-warm-white-mediterranean.jpg"], ratio="5/4", depth=depth)}</div>
+        <div class="reveal">{C.photo("assets/img/xmas-warm-white-french-estate.jpg", XMAS_PHOTO_ALT["assets/img/xmas-warm-white-french-estate.jpg"], ratio="5/4", depth=depth)}</div>
       </div>
     </div>
   </section>
