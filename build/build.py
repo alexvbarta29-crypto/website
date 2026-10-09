@@ -13,7 +13,8 @@ import city_pages as CP
 from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
-                      ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS)
+                      ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
+                      XMAS_PHOTO_ALT, XMAS_STYLES)
 from icons import icon
 import components as C
 import schema as S
@@ -598,6 +599,9 @@ def build_service(svc):
       <p class="xmas-promo-limit">{_warn_svg} We Are Only Taking On 50 New Clients This Year</p>
     </div>
   </section>"""
+        xmas_style_cards = "".join(
+            f'''<figure class="job-card reveal" data-delay="{i % 3}">{C.photo(img, XMAS_PHOTO_ALT[img], ratio="4/3", depth=depth)}<figcaption>{cap}</figcaption></figure>'''
+            for i, (img, cap) in enumerate(XMAS_STYLES))
         xmas_extra = f"""{promo}
   <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
@@ -630,18 +634,18 @@ def build_service(svc):
           <p>{svc['why_barta']}</p>
           <a class="btn mt-3" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Quote {icon('arrow')}</a>
         </div>
-        <div class="reveal">{C.photo("assets/img/svc-christmas-light-installation.jpg", IMAGE_ALT["assets/img/svc-christmas-light-installation.jpg"], ratio="5/4", depth=depth)}</div>
+        <div class="reveal">{C.photo("assets/img/xmas-warm-white-mediterranean.jpg", XMAS_PHOTO_ALT["assets/img/xmas-warm-white-mediterranean.jpg"], ratio="5/4", depth=depth)}</div>
       </div>
     </div>
   </section>
   <section class="bg-mist">
     <div class="container">
       <div class="section-head center">
-        <span class="eyebrow" style="justify-content:center">Recent work</span>
-        <h2>A fresh install, lit up at dusk</h2>
-        <p>Rooflines, peaks and front windows outlined in warm white on a ranch-style home.</p>
+        <span class="eyebrow" style="justify-content:center">Lighting styles</span>
+        <h2>Every style, every scale</h2>
+        <p>From classic warm white to bold color, for homes and businesses alike. We design your display around your roofline.</p>
       </div>
-      <div class="reveal" style="max-width:900px;margin-inline:auto">{C.photo("assets/img/xmas-lights-ranch-windows.jpg", IMAGE_ALT["assets/img/xmas-lights-ranch-windows.jpg"], ratio="16/10", depth=depth)}</div>
+      <div class="grid cols-3 xmas-styles">{xmas_style_cards}</div>
     </div>
   </section>"""
 
@@ -650,8 +654,8 @@ def build_service(svc):
     prose_photo = ""
     if is_xmas:
         prose_photo = ('<div style="margin:26px 0">'
-                       + C.photo("assets/img/xmas-lights-craftsman-gables.jpg",
-                                 IMAGE_ALT["assets/img/xmas-lights-craftsman-gables.jpg"],
+                       + C.photo("assets/img/xmas-red-green-brick-gables.jpg",
+                                 XMAS_PHOTO_ALT["assets/img/xmas-red-green-brick-gables.jpg"],
                                  ratio="3/2", depth=depth) + "</div>")
 
     # The generic "how often should I schedule this / membership plans bundle
@@ -2394,6 +2398,9 @@ _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 # City service pages (build/city_pages.py) use the same full-bleed hero as a
 # service page, so their photos get the same 1920w tier and quality.
 _HERO_1920_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
+# The Christmas page's header is a 4000px professional night shot: a 1920w
+# tier keeps it sharp on a desktop instead of upscaling the 1200w file.
+_HERO_1920_PATHS |= {s["image"] for s in SERVICES if s["slug"] == "christmas-light-installation"}
 
 # The homepage hero is the single most-seen photo on the site, so it gets its
 # own top tier instead of the shared specs: every width encoded at the same
@@ -2457,6 +2464,8 @@ def generate_hero_variants():
     # so a new gallery photo serves a right-sized file instead of its
     # multi-thousand-pixel original.
     hero_paths.update(k for k in IMAGE_ALT if k.lower().endswith((".jpg", ".jpeg")))
+    # The Christmas page's photo set, kept out of IMAGE_ALT (see sitedata).
+    hero_paths.update(XMAS_PHOTO_ALT)
     # City pages' "Jobs we've done" photos (kept out of IMAGE_ALT, which also
     # feeds the Gallery page).
     hero_paths.update(j["photo"] for c in LIVE_CITY_PAGES for j in c.get("jobs") or [])

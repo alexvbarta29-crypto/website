@@ -436,9 +436,9 @@ SERVICES = [
     {
         "slug": "christmas-light-installation",
         "name": "Christmas Light Installation",
-        "hero_pos": "70% 48%",
+        "hero_pos": "62% 50%",
         "icon": "lights",
-        "image": "assets/img/xmas-lights-stone-home.jpg",
+        "image": "assets/img/xmas-warm-white-french-estate.jpg",
         "short": "Professional, custom holiday lighting, design, install, maintain, and take down.",
         "hero_sub": "Skip the cold ladder, serving Delano and communities throughout the western Twin Cities with premium holiday lighting.",
         # Exact title/meta/H1 per the Dec-2026 SEO pass, this service gets its
@@ -732,7 +732,7 @@ CTA_PHOTOS = [
 # site, so they get the same sharp 1600w treatment as the rotation.
 CTA_PINNED_PHOTOS = {
     "gallery": {"image": "assets/img/hero-home-main.jpg", "focal_x": 58, "focal_y": 55},
-    "christmas": {"image": "assets/img/xmas-lights-stone-home.jpg", "focal_x": 70, "focal_y": 42},
+    "christmas": {"image": "assets/img/xmas-multicolor-modern-chimney.jpg", "focal_x": 50, "focal_y": 55},
 }
 
 # ZIP codes served, shown on the Service Areas hub page for local SEO.
@@ -880,6 +880,16 @@ FAQS = [
 # their own position ("hero_pos", CTA_PHOTOS["focal_y"]), because a very wide
 # band often wants a different anchor than a card does.
 IMAGE_FOCAL = {
+    # Christmas lights page photo set (XMAS_PHOTO_ALT below).
+    "assets/img/xmas-warm-white-french-estate.jpg": {"og": "62% 50%"},
+    "assets/img/xmas-warm-white-mediterranean.jpg": {"5/4": "48% 60%"},
+    "assets/img/xmas-red-green-brick-gables.jpg": {"3/2": "50% 55%"},
+    "assets/img/xmas-warm-white-terracotta.jpg": {"4/3": "50% 60%"},
+    "assets/img/xmas-multicolor-tudor.jpg": {"4/3": "50% 60%"},
+    "assets/img/xmas-commercial-clubhouse.jpg": {"4/3": "50% 55%"},
+    "assets/img/xmas-commercial-stone-gatehouse.jpg": {"4/3": "45% 50%"},
+    "assets/img/xmas-commercial-wrapped-trees.jpg": {"4/3": "35% 55%"},
+    "assets/img/xmas-teal-red-modern.jpg": {"4/3": "50% 55%"},
     # {slot: position}. Slots: "16/9", "5/4", "4/5" (components.photo's
     # ratio), "img-card-bg" / "insta-card-media-el" (the <img> class),
     # "process" (the process slider), "og" (share card), "*" (any slot).
@@ -905,6 +915,34 @@ IMAGE_FOCAL = {
     "assets/img/svc-solar-panel-cleaning.jpg": {"og": "50% 43%"},
     "assets/img/svc-track-detailing.jpg": {"og": "50% 52%"},
 }
+
+# The Christmas lights page's photos, uploaded by the owner in October 2026.
+# Kept out of IMAGE_ALT on purpose: IMAGE_ALT also feeds the Gallery page,
+# which promises "real photos from real jobs", and these professional shots
+# (dated January 2023, before the business started, in a snow-free climate)
+# may be supplier or photographer images rather than Barta installs. Alt
+# text therefore describes what is shown and never says who did the work.
+XMAS_PHOTO_ALT = {
+    "assets/img/xmas-warm-white-french-estate.jpg": "Warm white lights outlining the rooflines and every window of a large French-style home at dusk",
+    "assets/img/xmas-warm-white-mediterranean.jpg": "Warm white lights along the rooflines, arches and porch of a Mediterranean-style home, with garland and lit shrubs",
+    "assets/img/xmas-red-green-brick-gables.jpg": "Red and green lights outlining the gables of a brick home, with lit shrubs and a walkway lined in green",
+    "assets/img/xmas-warm-white-terracotta.jpg": "Warm white lights along a terracotta roofline, with glowing shrubs on either side of the front steps",
+    "assets/img/xmas-multicolor-tudor.jpg": "A Tudor-style home outlined in bright multicolor lights at night",
+    "assets/img/xmas-commercial-clubhouse.jpg": "A stone clubhouse entrance with its gable and rooflines outlined in warm white and a lit wreath",
+    "assets/img/xmas-commercial-stone-gatehouse.jpg": "A stone gatehouse with its stepped gables outlined in warm white and two lit wreaths",
+    "assets/img/xmas-commercial-wrapped-trees.jpg": "Two tall trees wrapped in warm white lights flanking a building's entrance",
+    "assets/img/xmas-teal-red-modern.jpg": "Teal and red roofline lights on a modern white home, with garland around the front door",
+    "assets/img/xmas-multicolor-modern-chimney.jpg": "A modern home at dusk with colorful roofline lights and lit wreaths on its chimneys",
+}
+# "Lighting styles" showcase on the Christmas page: (photo, caption).
+XMAS_STYLES = [
+    ("assets/img/xmas-warm-white-terracotta.jpg", "Classic warm white"),
+    ("assets/img/xmas-multicolor-tudor.jpg", "Bold multicolor"),
+    ("assets/img/xmas-commercial-clubhouse.jpg", "Commercial entrances"),
+    ("assets/img/xmas-commercial-stone-gatehouse.jpg", "Lit wreaths"),
+    ("assets/img/xmas-commercial-wrapped-trees.jpg", "Wrapped trees"),
+    ("assets/img/xmas-teal-red-modern.jpg", "Color accents"),
+]
 
 IMAGE_ALT = {
     "assets/img/svc-exterior-window-cleaning.jpg": "Two Barta Window Washing technicians cleaning exterior windows on a home, with screens removed nearby",
