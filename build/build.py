@@ -569,7 +569,7 @@ def build_service(svc):
             f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic {_xmas_tone(i)}">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
             f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
-        # Early-bird promo with a live countdown to December 1st. The numbers
+        # Early-bird promo with a live countdown to November 1st. The numbers
         # are seeded at build time so the first paint is already correct (the
         # daily Instagram sync rebuilds the site, keeping the seed within a
         # day); main.js then ticks them once a second in the visitor's own
@@ -577,9 +577,9 @@ def build_service(svc):
         # announce every tick.
         from datetime import datetime
         _now = datetime.now()
-        _dl = datetime(_now.year, 12, 1)
+        _dl = datetime(_now.year, 11, 1)
         if _dl <= _now:
-            _dl = datetime(_now.year + 1, 12, 1)
+            _dl = datetime(_now.year + 1, 11, 1)
         _left = _dl - _now
         cd_d, cd_h = _left.days, _left.seconds // 3600
         cd_m, cd_s = (_left.seconds % 3600) // 60, _left.seconds % 60
@@ -604,7 +604,7 @@ def build_service(svc):
     <div class="container">
       <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
       <h2 class="xmas-promo-head">50% OFF Early Bird Special + FREE Takedown &amp; Storage!!!</h2>
-      <p class="xmas-promo-ends">Deal Ends December 1st</p>
+      <p class="xmas-promo-ends">Deal Ends November 1st</p>
       <div class="xmas-countdown" data-countdown role="timer" aria-live="off">
         <div class="cd-cell"><span class="cd-num" data-cd="d">{cd_d:02d}</span><span class="cd-label">Days</span></div>
         <div class="cd-cell"><span class="cd-num" data-cd="h">{cd_h:02d}</span><span class="cd-label">Hours</span></div>
