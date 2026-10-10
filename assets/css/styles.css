@@ -203,6 +203,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .footer .brand small { color: rgba(255,255,255,.6); }
 
 .nav-links { display: flex; align-items: center; flex: 1; justify-content: center; gap: clamp(6px, 1.6vw, 26px); }
+/* Menu labels stay on one line; the bar switches to the menu button
+   below 1200px rather than wrapping them. */
+.nav-links > li > a, .nav-trigger { white-space: nowrap; }
+.nav .brand, .nav-trigger svg { flex-shrink: 0; }
 .nav-links > li > a, .nav-trigger {
   display: inline-flex; align-items: center; gap: 5px;
   font-weight: 600; font-size: .94rem; color: var(--slate-700);
@@ -480,13 +484,13 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* Hero: string-light garland along the top + gentle falling snow over the photo */
-.xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.34) 0%, rgba(14,14,16,.50) 32%, rgba(14,14,16,.50) 72%, rgba(9,9,18,.66) 100%); }
+.xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.20) 0%, rgba(14,14,16,.50) 32%, rgba(14,14,16,.50) 72%, rgba(9,9,18,.66) 100%); }
 /* The header photo is a brightly lit facade, so the band behind the text is
    shaded more than the top and bottom (phones: the text spans the full
    width). Desktop: the headline sits on the left third, so a left-side shade
    keeps it crisp without dimming the house on the right. */
 @media (min-width: 761px) {
-  .xmas-hero .svc-hero-overlay { background: linear-gradient(90deg, rgba(8,10,16,.50) 0%, rgba(8,10,16,.30) 45%, rgba(8,10,16,0) 72%), linear-gradient(180deg, rgba(9,46,31,.34) 0%, rgba(14,14,16,.36) 50%, rgba(9,9,18,.64) 100%); }
+  .xmas-hero .svc-hero-overlay { background: linear-gradient(90deg, rgba(8,10,16,.50) 0%, rgba(8,10,16,.30) 45%, rgba(8,10,16,0) 72%), linear-gradient(180deg, rgba(9,46,31,.18) 0%, rgba(14,14,16,.36) 50%, rgba(9,9,18,.64) 100%); }
 }
 .xmas-garland { position: absolute; left: 0; right: 0; top: calc(var(--nav-h) + 22px); height: 62px; z-index: 2; pointer-events: none; }
 .xmas-garland svg { display: block; width: 100%; height: 100%; }
@@ -498,7 +502,6 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .xmas-garland .g-desktop { display: none; }
   .xmas-garland .g-mobile { display: block; }
 }
-.xmas-hero .container { padding-top: 56px; }
 /* The same string strung over light sections further down the page. The
    promo copy hangs from the very top of its section; the inline variant
    flows in-document as a divider above the how-it-works heading. */
@@ -1209,15 +1212,20 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .hide { display: none !important; }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1080px) {
+/* The full menu bar needs about 1190px to fit on one line with the logo at
+   full size (labels never wrap, see .nav-links rules); below 1200px the
+   menu button takes over. */
+@media (max-width: 1199px) {
   .nav-links, .nav-phone { display: none; }
   .nav-toggle { display: grid; }
-  .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
   .nav { position: relative; }
   /* Brand sits at the left as a normal flex item. It used to be absolutely
      centred; without that it falls back to the start of the row, with
      .nav-cta pushed to the far end by its auto margin. */
   .nav-cta { margin-left: auto; }
+}
+@media (max-width: 1080px) {
+  .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
 }
 @media (max-width: 960px) {
   .hero-grid { grid-template-columns: 1fr; }

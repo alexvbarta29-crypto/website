@@ -611,12 +611,13 @@ def _menu_item(s, root):
 
 def nav(depth=0):
     root = rel(depth)
-    # The drawer promotes Christmas Light Installation out of the collapsed
-    # "Our Services" list onto a top-level row, it's the seasonal headline
-    # service, and a thumb shouldn't have to expand a <details> to reach it.
-    # The desktop dropdown is unaffected and still lists it with the rest.
+    # Christmas Light Installation is the seasonal headline service, so it
+    # gets the top-level menu slot (desktop bar and phone drawer alike) and
+    # Commercial Cleaning moves into the "Our Services" list in its place,
+    # at the owner's request. The footer keeps DROPDOWN_SERVICES as it is.
     xmas_target = "services/christmas-light-installation.html"
-    drawer_services = [(l, t) for l, t in DROPDOWN_SERVICES if t != xmas_target]
+    menu_services = ([(l, t) for l, t in DROPDOWN_SERVICES if t != xmas_target]
+                     + [("Commercial Cleaning", "services/commercial-cleaning.html")])
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
@@ -628,10 +629,10 @@ def nav(depth=0):
       <li class="nav-item">
         <button class="nav-trigger" aria-haspopup="true" aria-expanded="false">Our Services {icon('chevron')}</button>
         <div class="nav-menu nav-menu-simple" role="menu">
-          {"".join(f'<a href="{root}{target}">{label}</a>' for label, target in DROPDOWN_SERVICES)}
+          {"".join(f'<a href="{root}{target}">{label}</a>' for label, target in menu_services)}
         </div>
       </li>
-      <li><a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a></li>
+      <li><a href="{root}{xmas_target}">Christmas Light Installation</a></li>
       <li><a href="{root}reviews.html">Reviews</a></li>
     </ul>
     <div class="nav-cta">
@@ -652,9 +653,8 @@ def nav(depth=0):
       <a href="{root}index.html">Home</a>
       <a href="{root}about.html">About Us</a>
       <details class="drawer-group"><summary>Our Services {icon('chevron')}</summary>
-        <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in drawer_services)}</div>
+        <div class="sub">{"".join(f'<a href="{root}{target}">{label}</a>' for label, target in menu_services)}</div>
       </details>
-      <a href="{root}services/commercial-cleaning.html">Commercial Cleaning</a>
       <a href="{root}{xmas_target}">Christmas Light Installation</a>
       <a href="{root}gallery.html">Gallery</a>
       <a href="{root}reviews.html">Reviews</a>
