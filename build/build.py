@@ -670,8 +670,8 @@ def build_service(svc):
     prose_photo = ""
     if is_xmas:
         prose_photo = ('<div style="margin:26px 0">'
-                       + C.photo("assets/img/xmas-red-green-brick-gables.jpg",
-                                 XMAS_PHOTO_ALT["assets/img/xmas-red-green-brick-gables.jpg"],
+                       + C.photo("assets/img/xmas-multicolor-tudor.jpg",
+                                 XMAS_PHOTO_ALT["assets/img/xmas-multicolor-tudor.jpg"],
                                  ratio="3/2", depth=depth) + "</div>")
 
     # The generic "how often should I schedule this / membership plans bundle

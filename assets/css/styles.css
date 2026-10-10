@@ -484,7 +484,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* Hero: string-light garland along the top + gentle falling snow over the photo */
-.xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.20) 0%, rgba(14,14,16,.36) 32%, rgba(14,14,16,.36) 72%, rgba(9,9,18,.62) 100%); }
+.xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.20) 0%, rgba(14,14,16,.46) 32%, rgba(14,14,16,.46) 72%, rgba(9,9,18,.64) 100%); }
 /* Shading tuned to the header photo (a night shot with a bright facade):
    the band behind the text is shaded more than the top and bottom (phones: the text spans the full
    width). Desktop: the headline sits on the left third, so a left-side shade

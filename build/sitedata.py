@@ -436,9 +436,9 @@ SERVICES = [
     {
         "slug": "christmas-light-installation",
         "name": "Christmas Light Installation",
-        "hero_pos": "50% 50%",
+        "hero_pos": "30% 50%",
         "icon": "lights",
-        "image": "assets/img/xmas-multicolor-tudor.jpg",
+        "image": "assets/img/xmas-red-green-brick-gables.jpg",
         "short": "Professional, custom holiday lighting, design, install, maintain, and take down.",
         "hero_sub": "Skip the cold ladder, serving Delano and communities throughout the western Twin Cities with premium holiday lighting.",
         # Exact title/meta/H1 per the Dec-2026 SEO pass, this service gets its
@@ -883,9 +883,9 @@ IMAGE_FOCAL = {
     # Christmas lights page photo set (XMAS_PHOTO_ALT below).
     "assets/img/xmas-warm-white-mediterranean.jpg": {"og": "48% 55%", "4/3": "48% 58%"},
     "assets/img/xmas-warm-white-french-estate.jpg": {"5/4": "58% 55%"},
-    "assets/img/xmas-red-green-brick-gables.jpg": {"3/2": "50% 55%"},
+    "assets/img/xmas-red-green-brick-gables.jpg": {"3/2": "50% 55%", "og": "50% 50%"},
     "assets/img/xmas-warm-white-terracotta.jpg": {"4/3": "50% 60%"},
-    "assets/img/xmas-multicolor-tudor.jpg": {"4/3": "50% 60%", "og": "50% 50%"},
+    "assets/img/xmas-multicolor-tudor.jpg": {"4/3": "50% 60%", "og": "50% 50%", "3/2": "50% 62%"},
     "assets/img/xmas-commercial-clubhouse.jpg": {"4/3": "50% 55%"},
     "assets/img/xmas-commercial-stone-gatehouse.jpg": {"4/3": "45% 50%"},
     "assets/img/xmas-commercial-wrapped-trees.jpg": {"4/3": "35% 55%"},
