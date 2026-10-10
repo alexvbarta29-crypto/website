@@ -484,13 +484,13 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* Hero: string-light garland along the top + gentle falling snow over the photo */
-.xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.20) 0%, rgba(14,14,16,.50) 32%, rgba(14,14,16,.50) 72%, rgba(9,9,18,.66) 100%); }
-/* The header photo is a brightly lit facade, so the band behind the text is
-   shaded more than the top and bottom (phones: the text spans the full
+.xmas-hero .svc-hero-overlay { background: linear-gradient(180deg, rgba(9,46,31,.20) 0%, rgba(14,14,16,.36) 32%, rgba(14,14,16,.36) 72%, rgba(9,9,18,.62) 100%); }
+/* Shading tuned to the header photo (a night shot with a bright facade):
+   the band behind the text is shaded more than the top and bottom (phones: the text spans the full
    width). Desktop: the headline sits on the left third, so a left-side shade
    keeps it crisp without dimming the house on the right. */
 @media (min-width: 761px) {
-  .xmas-hero .svc-hero-overlay { background: linear-gradient(90deg, rgba(8,10,16,.50) 0%, rgba(8,10,16,.30) 45%, rgba(8,10,16,0) 72%), linear-gradient(180deg, rgba(9,46,31,.18) 0%, rgba(14,14,16,.36) 50%, rgba(9,9,18,.64) 100%); }
+  .xmas-hero .svc-hero-overlay { background: linear-gradient(90deg, rgba(8,10,16,.42) 0%, rgba(8,10,16,.22) 40%, rgba(8,10,16,0) 66%), linear-gradient(180deg, rgba(9,46,31,.18) 0%, rgba(14,14,16,.26) 50%, rgba(9,9,18,.60) 100%); }
 }
 .xmas-garland { position: absolute; left: 0; right: 0; top: calc(var(--nav-h) + 22px); height: 62px; z-index: 2; pointer-events: none; }
 .xmas-garland svg { display: block; width: 100%; height: 100%; }
