@@ -436,9 +436,9 @@ SERVICES = [
     {
         "slug": "christmas-light-installation",
         "name": "Christmas Light Installation",
-        "hero_pos": "30% 50%",
+        "hero_pos": "50% 50%",
         "icon": "lights",
-        "image": "assets/img/xmas-red-green-brick-gables.jpg",
+        "image": "assets/img/xmas-warm-white-french-front.jpg",
         "short": "Professional, custom holiday lighting, design, install, maintain, and take down.",
         "hero_sub": "Skip the cold ladder, serving Delano and communities throughout the western Twin Cities with premium holiday lighting.",
         # Exact title/meta/H1 per the Dec-2026 SEO pass, this service gets its
@@ -883,7 +883,8 @@ IMAGE_FOCAL = {
     # Christmas lights page photo set (XMAS_PHOTO_ALT below).
     "assets/img/xmas-warm-white-mediterranean.jpg": {"og": "48% 55%", "4/3": "48% 58%"},
     "assets/img/xmas-warm-white-french-estate.jpg": {"5/4": "58% 55%"},
-    "assets/img/xmas-red-green-brick-gables.jpg": {"3/2": "50% 55%", "og": "50% 50%"},
+    "assets/img/xmas-red-green-brick-gables.jpg": {"3/2": "50% 55%", "og": "50% 50%", "5/4": "55% 50%"},
+    "assets/img/xmas-warm-white-french-front.jpg": {"og": "50% 50%"},
     "assets/img/xmas-warm-white-terracotta.jpg": {"4/3": "50% 60%"},
     "assets/img/xmas-multicolor-tudor.jpg": {"4/3": "50% 60%", "og": "50% 50%", "3/2": "50% 62%"},
     "assets/img/xmas-commercial-clubhouse.jpg": {"4/3": "50% 55%"},
@@ -924,6 +925,7 @@ IMAGE_FOCAL = {
 # text therefore describes what is shown and never says who did the work.
 XMAS_PHOTO_ALT = {
     "assets/img/xmas-warm-white-french-estate.jpg": "Warm white lights outlining the rooflines and every window of a large French-style home at dusk",
+    "assets/img/xmas-warm-white-french-front.jpg": "The front of a French-style home at dusk with warm white lights outlining every window, the roofline and a garland-wrapped front door",
     "assets/img/xmas-warm-white-mediterranean.jpg": "Warm white lights along the rooflines, arches and porch of a Mediterranean-style home, with garland and lit shrubs",
     "assets/img/xmas-red-green-brick-gables.jpg": "Red and green lights outlining the gables of a brick home, with lit shrubs and a walkway lined in green",
     "assets/img/xmas-warm-white-terracotta.jpg": "Warm white lights along a terracotta roofline, with glowing shrubs on either side of the front steps",
