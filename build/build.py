@@ -14,7 +14,7 @@ from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
-                      XMAS_PHOTO_ALT, XMAS_STYLES)
+                      XMAS_PHOTO_ALT, XMAS_SHOWCASE)
 from icons import icon
 import components as C
 import schema as S
@@ -616,8 +616,8 @@ def build_service(svc):
     </div>
   </section>"""
         xmas_style_cards = "".join(
-            f'''<figure class="job-card reveal" data-delay="{i % 3}">{C.photo(img, XMAS_PHOTO_ALT[img], ratio="4/3", depth=depth)}<figcaption>{cap}</figcaption></figure>'''
-            for i, (img, cap) in enumerate(XMAS_STYLES))
+            f'''<div class="reveal" data-delay="{i % 3}">{C.photo(img, XMAS_PHOTO_ALT[img], ratio="4/3", depth=depth)}</div>'''
+            for i, img in enumerate(XMAS_SHOWCASE))
         xmas_extra = f"""{promo}
   <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
@@ -657,9 +657,9 @@ def build_service(svc):
   <section class="bg-mist">
     <div class="container">
       <div class="section-head center">
-        <span class="eyebrow" style="justify-content:center">Lighting styles</span>
-        <h2>Every style, every scale</h2>
-        <p>From classic warm white to bold color, for homes and businesses alike. We design your display around your roofline.</p>
+        <span class="eyebrow" style="justify-content:center">Holiday lighting</span>
+        <h2>Make your home shine this season</h2>
+        <p>Clean, evenly spaced lights along your rooflines and peaks, put up, kept lit all season and taken down for you.</p>
       </div>
       <div class="grid cols-3 xmas-styles">{xmas_style_cards}</div>
     </div>

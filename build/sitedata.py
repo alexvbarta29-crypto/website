@@ -444,7 +444,7 @@ SERVICES = [
         # Exact title/meta/H1 per the Dec-2026 SEO pass, this service gets its
         # own copy instead of the generic "<Service> in <City>, MN" template.
         "seo_title": f"Christmas Light Installation Delano, MN | {BIZ['short']}",
-        "seo_desc": "Custom Christmas light installation in Delano and the western Twin Cities. Design, installation, maintenance and removal included. Get a quote.",
+        "seo_desc": "Christmas light installation in Delano and the western Twin Cities. Roofline lights installed, maintained and taken down for you. Get a quote.",
         "h1": "Custom Christmas Light Installation",
         "schema_name": "Custom Christmas Light Installation",
         "kw": "Christmas light installation Delano MN",
@@ -457,11 +457,11 @@ SERVICES = [
             ("Proper safety equipment", "Our insured crew climbs so you don't have to, full safety gear every time, so nobody's risking a fall on an icy ladder."),
             ("Upfront, honest pricing", "Clear pricing before we start, no surprise fees and no pressure, just an honest quote for a beautifully lit home."),
         ],
-        "intro": "The magic of a beautifully lit home, without a single trip up a frozen ladder. Barta designs a custom holiday display for your rooflines, walkways, trees, and shrubs, installs premium commercial-grade lighting, and keeps it shining all season. When the holidays end, we take everything down and store it for next year. You enjoy the lights; we handle everything else.",
+        "intro": "The magic of a beautifully lit home, without a single trip up a frozen ladder. Barta lines your rooflines and peaks with premium commercial-grade lights cut to fit your home, and keeps them shining all season. When the holidays end, we take everything down and store it for next year. You enjoy the lights; we handle everything else.",
         "includes": [
-            "Free custom lighting design consultation",
-            "Premium, commercial-grade LED lights and greenery",
-            "Professional installation on rooflines, trees, and walkways",
+            "Free, no-obligation quote",
+            "Premium, commercial-grade LED lights",
+            "Professional installation along your rooflines and peaks",
             "In-season maintenance, burnt-out bulbs replaced free",
             "Post-season takedown",
             "Storage of your lights between seasons, included in your price",
@@ -491,9 +491,9 @@ SERVICES = [
             ("How much does Christmas light installation cost?",
              "Every home's roofline and layout is different, so there's no fixed price list. Request a free quote and we'll give you clear, upfront pricing before any work begins."),
             ("Does Barta provide the lights?",
-             "Yes, commercial-grade LED lights and greenery are included in the installation. You don't need to buy or supply anything yourself."),
+             "Yes, commercial-grade LED lights are included in the installation. You don't need to buy or supply anything yourself."),
             ("What is included with installation?",
-             "A free design consultation, commercial-grade LED lights, professional installation on your roofline, trees, and walkways, in-season maintenance, and post-season takedown and storage, all included in your price."),
+             "A free quote, commercial-grade LED lights, professional installation along your roofline, in-season maintenance, and post-season takedown and storage, all included in your price."),
             ("What happens if a bulb or strand fails?",
              "Let us know and we'll repair or replace it at no charge during the season as part of our included in-season maintenance."),
             ("When are the lights taken down?",
@@ -936,14 +936,16 @@ XMAS_PHOTO_ALT = {
     "assets/img/xmas-teal-red-modern.jpg": "Teal and red roofline lights on a modern white home, with garland around the front door",
     "assets/img/xmas-multicolor-modern-chimney.jpg": "A modern home at dusk with colorful roofline lights and lit wreaths on its chimneys",
 }
-# "Lighting styles" showcase on the Christmas page: (photo, caption).
-XMAS_STYLES = [
-    ("assets/img/xmas-warm-white-terracotta.jpg", "Classic warm white"),
-    ("assets/img/xmas-warm-white-mediterranean.jpg", "Garland &amp; wrapped columns"),
-    ("assets/img/xmas-commercial-clubhouse.jpg", "Commercial entrances"),
-    ("assets/img/xmas-commercial-stone-gatehouse.jpg", "Lit wreaths"),
-    ("assets/img/xmas-commercial-wrapped-trees.jpg", "Wrapped trees"),
-    ("assets/img/xmas-teal-red-modern.jpg", "Color accents"),
+# Photo grid on the Christmas page. Photos only, no captions: the owner
+# installs simple roofline lighting and does not want to advertise garland,
+# wreaths, wrapped trees, color schemes or commercial displays as services.
+XMAS_SHOWCASE = [
+    "assets/img/xmas-warm-white-terracotta.jpg",
+    "assets/img/xmas-warm-white-mediterranean.jpg",
+    "assets/img/xmas-commercial-clubhouse.jpg",
+    "assets/img/xmas-commercial-stone-gatehouse.jpg",
+    "assets/img/xmas-commercial-wrapped-trees.jpg",
+    "assets/img/xmas-teal-red-modern.jpg",
 ]
 
 IMAGE_ALT = {
