@@ -195,6 +195,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .brand-logo { height: 40px; width: auto; display: block; }
 .footer .brand-logo { height: 44px; }
 .drawer-head .brand-logo { height: 34px; }
+/* Snow-capped Christmas logo: 220/207 of the regular height, pulled up by the
+   difference, so its lettering matches the regular logo's size and position
+   and only the snow rises above it. */
+.brand-logo-snow { height: 42.5px; margin-top: -2.5px; }
+.drawer-head .brand-logo-snow { height: 36.1px; margin-top: -2.1px; }
 .brand { gap: 12px; font-size: 1.32rem; }
 .brand-mark { width: 42px; height: 30px; flex: none; display: grid; place-items: center; color: var(--blue-600); }
 .brand-mark svg { width: 42px; height: 30px; }

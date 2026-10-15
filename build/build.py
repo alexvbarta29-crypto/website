@@ -2596,13 +2596,16 @@ def generate_hero_variants():
         except Exception as e:
             print(f"  (logo variant skipped: {e})")
 
-    # The Christmas logos (the owner's design: the same mark with a strand of
-    # lights on each slash, black and white lettering versions), shown only
-    # on the Christmas Light Installation page. Same 765x207 canvas as the
-    # regular logo, cropped from the owner's 2000px upload. Kept full color:
-    # a 256-color palette flattens the soft glow under each bulb, and the
-    # full-color 320w is still only ~20 KB. 480w covers a 3x phone's nav.
-    for name in ("logo-bww-xmas", "logo-bww-xmas-white"):
+    # The Christmas logos (the owner's designs), shown only on the Christmas
+    # Light Installation page: the header and phone menu use the snow-capped
+    # version (lights on the slashes, snow on every top edge), the dark footer
+    # the white-lettered lights version (snow would vanish on white letters).
+    # Both are cropped from the owner's 2000px uploads at the regular logo's
+    # scale: 765 wide, 207 tall for the lights version, 220 for the snowy one
+    # (the snow sits above the lettering). Kept full color: a 256-color
+    # palette flattens the soft glow under each bulb, and the full-color 320w
+    # is still only ~20 KB. 480w covers a 3x phone's nav.
+    for name in ("logo-bww-xmas-snow", "logo-bww-xmas-white"):
         src = os.path.join(ROOT, f"assets/img/{name}.png")
         if not os.path.exists(src):
             continue

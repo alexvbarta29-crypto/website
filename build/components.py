@@ -611,17 +611,24 @@ def _menu_item(s, root):
 
 def _brand_logo(root, sizes, width, height, xmas=False):
     """The header/drawer logo. On the Christmas Light Installation page it's
-    the owner's Christmas version (lights strung on the slashes), drawn on
-    the same canvas as the regular mark so it swaps in at the same size."""
+    the owner's snow-capped Christmas version (lights on the slashes, snow
+    along every top edge). Its lettering is drawn at the regular mark's
+    scale with the snow above it, so the file is a little taller (765x220 vs
+    765x207); .brand-logo-snow grows the box by that much and pulls it up by
+    the same amount, so the letters land exactly where the regular ones do
+    and only the snow pokes above."""
+    cls = "brand-logo"
     if xmas:
-        stem = f"{root}assets/img/logo-bww-xmas"
+        stem = f"{root}assets/img/logo-bww-xmas-snow"
         srcset = f"{stem}-320w.png 320w, {stem}-480w.png 480w, {stem}.png 765w"
         src = f"{stem}.png"
+        cls = "brand-logo brand-logo-snow"
+        height = round(width * 220 / 765)
     else:
         srcset = f"{root}assets/img/logo-bww-320w.png 320w, {root}assets/img/logo-bww.png 765w"
         src = f"{root}assets/img/logo-bww.png"
     alt = BIZ["name"]
-    return (f'<img class="brand-logo" src="{src}" srcset="{srcset}" sizes="{sizes}" '
+    return (f'<img class="{cls}" src="{src}" srcset="{srcset}" sizes="{sizes}" '
             f'alt="{alt}" width="{width}" height="{height}">')
 
 def nav(depth=0, xmas=False):
