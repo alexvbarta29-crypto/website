@@ -2398,9 +2398,6 @@ _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 # City service pages (build/city_pages.py) use the same full-bleed hero as a
 # service page, so their photos get the same 1920w tier and quality.
 _HERO_1920_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
-# The team photo is shown up to 880px wide, so a retina screen wants more
-# than the 1200w tier.
-_HERO_1920_PATHS |= {TEAM_PHOTO}
 # The Christmas page's header is a 4000px professional night shot: a 1920w
 # tier keeps it sharp on a desktop instead of upscaling the 1200w file.
 _HERO_1920_PATHS |= {s["image"] for s in SERVICES if s["slug"] == "christmas-light-installation"}
@@ -2419,6 +2416,18 @@ _HERO_TOP_Q_SPECS = [(3200, "webp", 84), (3200, "jpg", 93),
                      (828, "webp", 86), (828, "jpg", 90),
                      (640, "webp", 86), (640, "jpg", 90),
                      (480, "webp", 86), (480, "jpg", 90)]
+
+# The photo of Alex and Jacob is shown up to 880 CSS px wide (about 1760
+# device px on a retina screen), and faces are where heavy compression shows
+# first, so it gets its own ladder at the homepage hero's quality instead of
+# the shared q72/q78 specs. The source is 3874px wide, so every tier is a
+# real downscale.
+_TEAM_PHOTO_SPECS = [(2560, "webp", 88), (2560, "jpg", 92),
+                     (1920, "webp", 88), (1920, "jpg", 92),
+                     (1600, "webp", 88), (1600, "jpg", 92),
+                     (1200, "webp", 88), (1200, "jpg", 92),
+                     (960, "webp", 86), (960, "jpg", 90),
+                     (640, "webp", 86), (640, "jpg", 90)]
 
 # Service photos double as homepage grid cards, which render far smaller than
 # the 640w tier (a phone's two-column card is ~350 device px wide, a featured
@@ -2497,6 +2506,8 @@ def generate_hero_variants():
         base = None
         if rel == _HERO_TOP_Q_PATH:
             specs = list(_HERO_TOP_Q_SPECS)
+        elif rel == TEAM_PHOTO:
+            specs = list(_TEAM_PHOTO_SPECS)
         else:
             base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
             specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
