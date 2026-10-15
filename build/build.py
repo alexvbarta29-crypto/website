@@ -12,7 +12,7 @@ sys.path.insert(0, HERE)
 import city_pages as CP
 from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
-                      CTA_PINNED_PHOTOS, REVIEWS, TEAM, POSTS, FAQS, HOME_SERVICES,
+                      CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
                       XMAS_PHOTO_ALT, XMAS_SHOWCASE)
 from icons import icon
@@ -302,7 +302,7 @@ def build_home():
   <section class="section-tight">
     <div class="container">
       <div class="section-head center"><h2>Meet the brothers</h2></div>
-      <div class="team-grid mt-3">{_team_cards(name_tag="h3")}</div>
+      <div class="mt-3">{_team_cards(name_tag="h3")}</div>
     </div>
   </section>
 
@@ -920,8 +920,6 @@ def build_gallery():
     for src, alt in IMAGE_ALT.items():
         _add(src, alt)
     _add("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van")
-    for name, role, _initials, photo, _bio in TEAM:
-        _add(photo, f"{name}, {role} of {BIZ['name']}")
     root = C.rel(depth)
     def _work_figure(src, alt):
         img_html = C.picture(root, src, alt, extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 50vw, 33vw")
@@ -980,40 +978,26 @@ def build_gallery():
 # ABOUT
 # ===========================================================================
 def _team_cards(name_tag="h2"):
-    """Photo + name, nothing else. Shared by the About page and the homepage
-    so the two can't drift apart.
+    """The owners together in one photo, with each name under their side of
+    the picture. Shared by the About page and the homepage so the two can't
+    drift apart. (It replaced two separate portraits at the owners' request.)
 
     No role line: the owners don't want "Co-Owner" printed under their names.
     It stays in the alt text, which is accurate and never displayed, so a
     screen reader still gets who these people are.
 
-    name_tag varies by page because the heading above the cards does. On
+    name_tag varies by page because the heading above the photo does. On
     About the page title IS the team heading, so the names sit at h2; on the
     homepage they sit under an h2 of their own and so take h3. Hardcoding
     either would put a heading-level skip on one of the two pages."""
-    out = ""
-    for i, (name, role, _initials, photo, _bio) in enumerate(TEAM):
-        w, h = _img_size(photo)
-        # AVIF/WebP tiers sized to the card's real box (<=422px CSS, one
-        # column under 640px), with the untouched original JPEG as the
-        # universal fallback. Attribute set is identical to the old bare
-        # <img> so nothing about layout, laziness, or a11y changes.
-        stem = photo.rsplit(".", 1)[0]
-        srcs = ""
-        for fmt in ("avif", "webp"):
-            tiers = [wd for wd in (480, 700)
-                     if os.path.exists(os.path.join(ROOT, f"{stem}-{wd}w.{fmt}"))]
-            if tiers:
-                srcset = ", ".join(f"{stem}-{wd}w.{fmt} {wd}w" for wd in tiers)
-                srcs += f'<source type="image/{fmt}" srcset="{srcset}" sizes="(max-width: 640px) 92vw, 422px">'
-        # display:contents inline because the img,picture,svg display:block
-        # reset outranks the stylesheet's picture{display:contents} — as a
-        # block the wrapper breaks the img's height:100% chain and shifts
-        # the object-position crop by a few pixels.
-        out += f"""<div class="team-card reveal" data-delay="{i%3}">
-        <div class="team-photo"><picture style="display:contents">{srcs}<img src="{photo}" alt="{name}, {role} of {BIZ['name']}" width="{w}" height="{h}" loading="lazy" decoding="async"></picture></div>
-        <{name_tag}>{name}</{name_tag}></div>"""
-    return out
+    names = "".join(f"<{name_tag}>{n}</{name_tag}>" for n in TEAM_PHOTO_NAMES)
+    photo = C.picture("", TEAM_PHOTO, IMAGE_ALT[TEAM_PHOTO],
+                      extra_attrs='loading="lazy" decoding="async"',
+                      sizes="(max-width: 940px) 92vw, 880px")
+    return f"""<div class="team-duo reveal">
+        <div class="team-duo-photo">{photo}</div>
+        <div class="team-duo-names">{names}</div>
+      </div>"""
 
 def build_about():
     """About page laid out as Our Story -> The Barta Experience -> The Team.
@@ -1058,7 +1042,7 @@ def build_about():
 
     html += f"""<main id="main">{body}
   <section class="section-tight" id="team" style="padding-top:8px"><div class="container">
-    <div class="team-grid">{team_cards}</div>
+    <div>{team_cards}</div>
   </div></section>
 
   <section class="section-tight"><div class="container">
@@ -2414,6 +2398,9 @@ _HERO_1920_PATHS = {"assets/img/hero-home.jpg", GALLERY_HERO}
 # City service pages (build/city_pages.py) use the same full-bleed hero as a
 # service page, so their photos get the same 1920w tier and quality.
 _HERO_1920_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
+# The team photo is shown up to 880px wide, so a retina screen wants more
+# than the 1200w tier.
+_HERO_1920_PATHS |= {TEAM_PHOTO}
 # The Christmas page's header is a 4000px professional night shot: a 1920w
 # tier keeps it sharp on a desktop instead of upscaling the 1200w file.
 _HERO_1920_PATHS |= {s["image"] for s in SERVICES if s["slug"] == "christmas-light-installation"}

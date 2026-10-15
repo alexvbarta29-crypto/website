@@ -783,6 +783,12 @@ REVIEWS = []
 # Alex leads the field side (technicians and crews, on every job site);
 # Jacob runs the office and sales side (quotes, scheduling, customer contact).
 # ---------------------------------------------------------------------------
+# The two of them together (owner's upload, October 2026). It replaces the
+# two separate portraits wherever the team appears. Left to right in the
+# photo: Alex, then Jacob (matched against the individual portraits).
+TEAM_PHOTO = "assets/img/team-barta-brothers.jpg"
+TEAM_PHOTO_NAMES = ["Alex Barta", "Jacob Barta"]
+
 TEAM = [
     ("Jacob Barta", "Co-Owner", "JB", "assets/img/team-jacob.jpg", "Jacob is organized and straightforward, the one who makes sure nothing falls through the cracks. If you've talked to Barta on the phone or gotten a clear answer fast, that's Jacob."),
     ("Alex Barta", "Co-Owner", "AB", "assets/img/team-alex.jpg", "Alex is steady and hands-on, the kind of person who'd rather show you than tell you. He manages the crew day to day and holds everyone, himself included, to the standard he'd want at his own home."),
@@ -949,6 +955,7 @@ XMAS_SHOWCASE = [
 ]
 
 IMAGE_ALT = {
+    "assets/img/team-barta-brothers.jpg": "Co-owners Alex Barta (left) and Jacob Barta (right) of Barta Window Washing in their company polos",
     "assets/img/svc-exterior-window-cleaning.jpg": "Two Barta Window Washing technicians cleaning exterior windows on a home, with screens removed nearby",
     "assets/img/svc-cta-squeegee.jpg": "Close-up of a Barta Window Washing technician squeegeeing an arched window",
     "assets/img/svc-interior-window-cleaning.jpg": "Technician cleaning interior window glass with a squeegee",

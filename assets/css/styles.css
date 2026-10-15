@@ -891,6 +891,18 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    chrome at all: no white panel, no border, no padding. The photo IS the
    element. Capped at 880px so two portraits sitting side by side on a wide
    monitor stay a sensible size instead of filling the viewport. */
+/* The owners together in one photo (About + homepage). Each name sits under
+   that person: in the photo Alex stands at about 37% across and Jacob at
+   about 63%, so the two name columns are inset to centre on those points. */
+.team-duo { max-width: 880px; margin-inline: auto; }
+.team-duo-photo { aspect-ratio: 3 / 2; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); background: var(--mist); }
+.team-duo-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
+.team-duo-names { display: grid; grid-template-columns: 1fr 1fr; padding-inline: 24%; text-align: center; }
+.team-duo-names h2, .team-duo-names h3 { margin-top: 18px; font-size: clamp(1.2rem, 2.4vw, 1.45rem); white-space: nowrap; }
+@media (max-width: 640px) {
+  .team-duo-names { padding-inline: 17%; }
+  .team-duo-names h2, .team-duo-names h3 { margin-top: 14px; font-size: 1.08rem; }
+}
 .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(20px, 3.2vw, 36px); max-width: 880px; margin-inline: auto; }
 .team-card { text-align: center; }
 .team-photo { width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); background: var(--mist); transition: box-shadow .3s var(--ease), transform .3s var(--ease); }
