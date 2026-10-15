@@ -158,9 +158,10 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     hero_m sets a phone-only framing (max-width 760px), for photos whose
     desktop crop lands badly on a tall phone screen: {"pos": "76% 34%"}
     re-aims the crop, and "zoom": 1.4 enlarges the photo by that factor,
-    anchored at the bottom, which lifts a face that would sit behind the
-    headline up into the open space under the menu (the phone sizes value
-    grows to match so the zoomed photo stays sharp). See .has-pos-m /
+    anchored at the bottom (the phone sizes value grows to match so the
+    zoomed photo stays sharp). "image" swaps in a different photo on phones
+    only, through <source media> ahead of the desktop sources, so a phone
+    downloads just that one; "pos" then aims it. See .has-pos-m /
     .has-zoom-m in styles.css."""
     # "35%" anchors vertically (centred across); "40% 35%" sets both axes,
     # for landscape photos a phone-width hero crops from the sides.
@@ -208,7 +209,22 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
         avif_source = f'<source type="image/avif" srcset="{avif_srcset}" sizes="{sizes}">'
     default_w = f"{widths[-1]}w"
     w_img, h_img = _img_size(f"{stem}-{default_w}.jpg")
-    return (f'<picture>{avif_source}'
+    phone_sources = ""
+    if hero_m and hero_m.get("image"):
+        m_stem = hero_m["image"].rsplit(".", 1)[0]
+        m_widths = sorted(
+            w for w in {
+                int(m.group(1))
+                for p in _g.glob(os.path.join(ROOT, f"{m_stem}-*w.jpg"))
+                for m in [_re.search(r"-(\d+)w\.jpg$", p)] if m
+            }
+            if os.path.exists(os.path.join(ROOT, f"{m_stem}-{w}w.webp")))
+        if m_widths:
+            phone_sources = "".join(
+                f'<source media="(max-width: 760px)" type="image/{t}" '
+                f'srcset="{", ".join(f"{root}{m_stem}-{w}w.{ext} {w}w" for w in m_widths)}" sizes="100vw">'
+                for t, ext in (("webp", "webp"), ("jpeg", "jpg")))
+    return (f'<picture>{phone_sources}{avif_source}'
             f'<source type="image/webp" srcset="{webp_srcset}" sizes="{sizes}">'
             f'<img class="{img_class}" src="{root}{stem}-{default_w}.jpg" '
             f'srcset="{jpg_srcset}" sizes="{sizes}" '
@@ -1511,7 +1527,7 @@ def build_privacy():
         lead="Your trust matters to us. This policy explains what information we collect and how we use it.",
         depth=depth, crumb_label="Privacy", noindex=True)
     html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
-    <p><em>Effective Date: August 2026</em></p>
+    <p><em>Effective Date: October 2026</em></p>
     <h2>1. Introduction</h2>
     <p>{BIZ['legal_name']} ("{BIZ['short']}," "we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your personal information when you contact us, request a quote, or use our services. By using our services, you agree to the terms of this Privacy Policy.</p>
     <h2>2. Information we collect</h2>
@@ -1587,7 +1603,7 @@ def build_terms():
         lead="Please review these terms before requesting a quote or using our services.",
         depth=depth, crumb_label="Terms", noindex=True)
     html += f"""<main id="main">{body}<section><div class="container"><div class="prose" style="margin-inline:auto">
-    <p><em>Effective Date: August 2026</em></p>
+    <p><em>Effective Date: October 2026</em></p>
     <h2>1. Acceptance of terms</h2>
     <p>By requesting a quote, scheduling a service, or otherwise using this website or {BIZ['name']}'s services, you ("Customer") agree to be bound by these Terms and Conditions. If you do not agree, please do not use our services.</p>
     <h2>2. Services</h2>

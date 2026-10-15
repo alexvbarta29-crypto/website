@@ -89,7 +89,7 @@ def _also(c):
     each one says, in its own words, that Barta does both in this town too,
     and links to those service pages. The copy is per town in CITY_PAGES
     (also_gutters / also_xmas)."""
-    city = c["city"]
+    city = c["city"].replace(" ", "&nbsp;")  # keep "St. Michael" on one line
     root = C.rel(DEPTH)
     cards = [
         ("gutter", f"Gutter cleaning in {city}", c["also_gutters"],

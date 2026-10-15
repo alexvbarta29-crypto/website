@@ -390,7 +390,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .quote-flow-logo { top: 16px; }
   .quote-flow-logo .brand-logo { height: 30px; }
 }
-.quote-flow-inner { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: clamp(56px, 8vw, 88px) 20px 32px; }
+.quote-flow-inner { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: clamp(78px, 8vw, 96px) 20px 32px; }
 /* Room for the logo above the first step's heading on phones. */
 @media (max-width: 640px) { .quote-flow-inner { padding-top: 70px; } }
 .quote-flow-inner .wizard { width: 100%; }

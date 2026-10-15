@@ -915,15 +915,15 @@ XMAS_PHOTO_ALT = {
     "assets/img/xmas-teal-red-modern.jpg": "Teal and red roofline lights on a modern white home, with garland around the front door",
     "assets/img/xmas-multicolor-modern-chimney.jpg": "A modern home at dusk with colorful roofline lights and lit wreaths on its chimneys",
 }
-# Photo grid on the Christmas page. Photos only, no captions: the owner
-# installs simple roofline lighting and does not want to advertise garland,
-# wreaths, wrapped trees, color schemes or commercial displays as services.
 # Christmas early-bird deal deadlines, as (month, day), in order. The countdown
 # and its "Deal Ends ..." line run to the first one that hasn't passed: to
 # November 1st, then on to December 1st (owner's call, October 2026). After
 # the last one they roll to next year's first.
 XMAS_DEAL_DEADLINES = [(11, 1), (12, 1)]
 
+# Photo grid on the Christmas page. Photos only, no captions: the owner
+# installs simple roofline lighting and does not want to advertise garland,
+# wreaths, wrapped trees, color schemes or commercial displays as services.
 XMAS_SHOWCASE = [
     "assets/img/xmas-warm-white-terracotta.jpg",
     "assets/img/xmas-warm-white-mediterranean.jpg",
@@ -1567,10 +1567,14 @@ CITY_PAGES = [
         ],
         "hero": "assets/img/3P8A7912.JPEG",
         "hero_pos": "86% 40%",
-        # On phones the photo fills the screen's full height, so the tech's
-        # face sat right behind the headline; a 1.4x zoom from the bottom
-        # lifts it into the open space under the menu.
-        "hero_m": {"pos": "62% 100%", "zoom": 1.4},
+        # On phones this porch portrait fills the screen's full height, so
+        # the tech's face always sat behind the headline (on an iPhone with
+        # Safari's toolbars there's only ~60px between the menu and the
+        # breadcrumb, too little for any zoom to clear it). Phones get the
+        # van-on-the-driveway shot instead: the van and tech sit low in the
+        # frame, with the house and sky behind the text. Checked: no house
+        # number or licence plate in view.
+        "hero_m": {"image": "assets/img/instagram/18143533390535660_0.jpg", "pos": "70% 50%"},
         "jobs": [],
         # "Gutter cleaning & Christmas lights in st-michael" cards (owner's request,
         # Oct 2026), written only from the facts already on this page.

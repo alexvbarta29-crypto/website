@@ -51,9 +51,9 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 ├── referral.html               # Customer referral program ("Give $25, Get $50"), served at /referral; ?t= = private tracking
 ├── referred.html               # What a referred friend lands on from the /r/CODE short link (claim form)
 ├── admin/referrals.html        # Office referral dashboard (key-protected, noindex)
-├── services/                   # 9 service pages (soft washing, pressure washing and house washing retired Oct 2026; old URLs 301 via _redirects)
+├── services/                   # 8 service pages (soft washing, pressure washing and house washing retired Oct 2026, and the hard water stain removal page folded into window cleaning; old URLs 301 via _redirects)
 │   ├── exterior-window-cleaning.html · interior-window-cleaning.html · track-detailing.html
-│   ├── screen-cleaning.html · hard-water-stain-removal.html · solar-panel-cleaning.html
+│   ├── screen-cleaning.html · solar-panel-cleaning.html
 │   ├── gutter-cleaning.html · commercial-cleaning.html · christmas-light-installation.html
 ├── window-cleaning-<town>-mn/   # 13 town pages (build/city_pages.py, copy in sitedata.CITY_PAGES); old areas/<town>.html URLs 301 via _redirects
 ├── landing/                    # 4 conversion landing pages (Free Window Cleaning Quote, …)
