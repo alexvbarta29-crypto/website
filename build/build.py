@@ -2443,9 +2443,12 @@ _TEAM_PHOTO_SPECS = [(2560, "webp", 88), (2560, "jpg", 92),
 
 # The "Best of Delano Area 2026" graphic is lettering as much as photo, and
 # lettering is where compression shows first, so it gets the same high
-# quality as the team photo, with 4:4:4 JPEGs (no colour subsampling) so the
-# red and gold text keeps clean edges. It displays at most 440 CSS px wide,
-# so 960w covers a retina laptop and 1200w a 3x phone.
+# quality as the team photo. Full-resolution colour (4:4:4) is what keeps the
+# red and gold text's edges clean, and browsers actually receive it from the
+# AVIF ladder (_AWARD_AVIF_WIDTHS, picked ahead of WebP). Lossy WebP always
+# halves colour resolution, so these WebPs are the fallback for browsers
+# without AVIF, and the 4:4:4 JPEGs for those with neither. It displays at
+# most 440 CSS px wide, so 960w covers a retina laptop and 1200w a 3x phone.
 _AWARD_SPECS = [(1600, "webp", 88), (1600, "jpg", 92),
                 (1200, "webp", 88), (1200, "jpg", 92),
                 (960, "webp", 88), (960, "jpg", 92),
@@ -2647,6 +2650,11 @@ _AVIF_HERO_STEM = "hero-home-main"
 _AVIF_HERO_WIDTHS = [(480, 58), (640, 58), (828, 58), (960, 58),
                      (1200, 58), (1600, 60), (1920, 58), (2560, 58), (3200, 58)]
 
+# The award graphic's AVIF ladder, at 4:4:4 (Pillow's AVIF default is
+# 4:2:0, which would blur the coloured lettering just as WebP does). q80
+# lands within a few KB of the q88 WebP at every width.
+_AWARD_AVIF_WIDTHS = [(480, 80), (640, 80), (960, 80), (1200, 80), (1600, 80)]
+
 # Team portraits: served as a bare full-size JPEG before (115 KB for a
 # 422px-wide box). Faces get a small quality margin (webp 82 / avif 65 —
 # verified indistinguishable from the JPEG original side by side). The 700w
@@ -2704,6 +2712,7 @@ def generate_avif_versions():
              for wd, q in _AVIF_HERO_WIDTHS]
     jobs += [(src, wd, fmt, q) for src in _TEAM_TIER_SOURCES
              for wd, fmt, q in _TEAM_TIER_SPECS]
+    jobs += [(AWARD["image"], wd, "avif", q) for wd, q in _AWARD_AVIF_WIDTHS]
     for rel, wd, fmt, q in jobs:
         src_path = os.path.join(ROOT, rel)
         if not os.path.exists(src_path):
@@ -2723,7 +2732,8 @@ def generate_avif_versions():
                 # faster setting. No metadata is carried over — the RGB
                 # re-encode writes pixel data only.
                 speed = 0 if _AVIF_HERO_STEM in rel else 4
-                im.save(out_path, "AVIF", quality=q, speed=speed)
+                extra = {"subsampling": "4:4:4"} if rel == AWARD["image"] else {}
+                im.save(out_path, "AVIF", quality=q, speed=speed, **extra)
             else:
                 im.save(out_path, "WEBP", quality=q, method=6)
             made += 1
