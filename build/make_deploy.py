@@ -38,7 +38,11 @@ ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redire
 # logo from the site, and it needs a flattened copy because dark-mode
 # inboxes recolor backgrounds but not images, which hides the transparent
 # site logo.
-EMAIL_ASSETS = ["assets/img/email-logo-bww.png"]
+# IMG_4788.jpeg is the "Best of Delano Area 2026" graphic that the owner's
+# already-sent email blast loads from the site root; it must stay at that
+# exact path even though no page uses it (the homepage serves its own
+# award-best-of-delano-2026 tiers).
+EMAIL_ASSETS = ["assets/img/email-logo-bww.png", "IMG_4788.jpeg"]
 
 # Any local asset path appearing anywhere in a shipped text file. Scanning the
 # raw text (not just src/href) also catches srcset entries, poster attrs,
