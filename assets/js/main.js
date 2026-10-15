@@ -1083,11 +1083,44 @@
          No-ops on every other page since the modal simply isn't there. ---- */
   const xmasModal = $("#xmas-quote-modal");
   if (xmasModal) {
-    const openXmas = (e) => { if (e) e.preventDefault(); xmasModal.hidden = false; document.body.style.overflow = "hidden"; };
-    const closeXmas = () => { xmasModal.hidden = true; document.body.style.overflow = ""; };
+    /* Keyboard and screen-reader users: opening moves focus into the
+       dialog, the page behind it goes inert (it can't be tabbed to or read
+       out while the dialog is up), Tab and Shift+Tab cycle inside the
+       dialog, and closing hands focus back to whatever opened it. */
+    const xmasPanel = $(".xmas-modal-panel", xmasModal);
+    let xmasReturn = null;
+    const xmasBackground = () => [...document.body.children].filter((el) => el !== xmasModal && el.tagName !== "SCRIPT");
+    const xmasFocusables = () => $$('a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', xmasPanel)
+      .filter((el) => el.getClientRects().length > 0);
+    const openXmas = (e) => {
+      if (e) e.preventDefault();
+      if (!xmasModal.hidden) return;
+      xmasReturn = document.activeElement;
+      xmasModal.hidden = false;
+      document.body.style.overflow = "hidden";
+      xmasBackground().forEach((el) => el.setAttribute("inert", ""));
+      xmasPanel.focus({ preventScroll: true });
+    };
+    const closeXmas = () => {
+      if (xmasModal.hidden) return;
+      xmasModal.hidden = true;
+      document.body.style.overflow = "";
+      xmasBackground().forEach((el) => el.removeAttribute("inert"));
+      if (xmasReturn && xmasReturn.isConnected && xmasReturn.focus) xmasReturn.focus({ preventScroll: true });
+      xmasReturn = null;
+    };
     $$('a[href*="get-quote.html"]').forEach((a) => a.addEventListener("click", openXmas));
     $$("[data-xmas-close]", xmasModal).forEach((el) => el.addEventListener("click", closeXmas));
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !xmasModal.hidden) closeXmas(); });
+    document.addEventListener("keydown", (e) => {
+      if (xmasModal.hidden) return;
+      if (e.key === "Escape") { closeXmas(); return; }
+      if (e.key !== "Tab") return;
+      const f = xmasFocusables();
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1], at = document.activeElement;
+      if (e.shiftKey && (at === first || at === xmasPanel || !xmasPanel.contains(at))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (at === last || !xmasPanel.contains(at))) { e.preventDefault(); first.focus(); }
+    });
     // A link can land here with the form already open — for ads and social
     // posts, where the click is the intent and the page is just the wrapper:
     // .../christmas-light-installation.html?quote=1 (or #quote). Any other

@@ -4,7 +4,7 @@ Barta Window Washing, static site generator.
 Run from repo root:  python3 build/build.py
 Outputs HTML pages, sitemap, robots, manifest, and placeholder imagery.
 """
-import os, re, sys
+import hashlib, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
@@ -40,9 +40,46 @@ def load_reviews_widget(filename="google-reviews-embed.html"):
 REVIEWS_WIDGET = load_reviews_widget("google-reviews-embed.html")
 REVIEWS_WIDGET_PAGE = load_reviews_widget("google-reviews-embed-reviews-page.html") or REVIEWS_WIDGET
 
+# Every local image URL a page uses gets a short fingerprint of the file's
+# contents (assets/img/x.jpg -> assets/img/x.jpg?v=3f9a2c1b0d). netlify.toml
+# tells browsers to keep /assets/* for a year without re-checking, which is
+# only safe if an edited photo gets a new URL: re-saving a photo under the
+# same name (blurring a house number, re-encoding at higher quality) changes
+# its fingerprint, so every browser fetches the new version immediately
+# instead of showing its cached copy for up to a year. Applied in write(), so
+# it covers src, srcset, preload hints, inline background url()s, og:image
+# and JSON-LD alike. Matches end at a quote, space, comma, paren or "&", so a
+# URL that already carries a query string is left alone; other sites' URLs
+# and paths with no file on disk are skipped.
+_ASSET_URL_RE = re.compile(
+    r'(https?://[^/"\'\s]+/)?(assets/[A-Za-z0-9_\-./]+?\.(?:jpe?g|png|webp|avif|gif|svg|ico))(?=["\'\s),&<])',
+    re.I)
+_ASSET_HASHES = {}
+
+def _asset_fingerprint(rel):
+    if rel not in _ASSET_HASHES:
+        path = os.path.join(ROOT, rel)
+        if os.path.isfile(path):
+            with open(path, "rb") as f:
+                _ASSET_HASHES[rel] = hashlib.md5(f.read()).hexdigest()[:10]
+        else:
+            _ASSET_HASHES[rel] = None
+    return _ASSET_HASHES[rel]
+
+def _fingerprint_asset_urls(html):
+    own_host = BIZ["domain"].rstrip("/") + "/"
+    def sub(m):
+        host, rel = m.group(1), m.group(2)
+        if host and host.lower() != own_host.lower():
+            return m.group(0)
+        fp = _asset_fingerprint(rel)
+        return f"{m.group(0)}?v={fp}" if fp else m.group(0)
+    return _ASSET_URL_RE.sub(sub, html)
+
 def write(relpath, html, slug=None, priority="0.7"):
     path = os.path.join(ROOT, relpath)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    html = _fingerprint_asset_urls(html)
     with open(path, "w", encoding="utf-8") as f:
         f.write(html)
     # Pages whose <meta name="robots"> says noindex (legal/utility pages, PPC

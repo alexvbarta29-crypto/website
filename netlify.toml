@@ -21,6 +21,11 @@
 [build.processing.html]
   pretty_urls = false
 
+# Browsers may keep anything under /assets/ for a year without re-checking.
+# That is only safe because every URL to it changes when its contents do:
+# the CSS and JS carry ?v=<build hash>, and every image URL a page uses
+# carries ?v=<fingerprint of that file> (build.py write()), so an edited photo
+# re-saved under the same name is fetched fresh, never served stale.
 [[headers]]
   for = "/assets/*"
   [headers.values]

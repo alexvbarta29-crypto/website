@@ -1040,7 +1040,7 @@ def xmas_quote_modal(depth=0):
                f'{xmas_garland_svg(width=560, height=54, swags=4, wire="var(--line)", uid="q")}</div>')
     return f"""<div class="xmas-modal" id="xmas-quote-modal" hidden>
   <div class="xmas-modal-scrim" data-xmas-close></div>
-  <div class="xmas-modal-panel" role="dialog" aria-modal="true" aria-labelledby="xmas-modal-title">
+  <div class="xmas-modal-panel" role="dialog" aria-modal="true" aria-labelledby="xmas-modal-title" tabindex="-1">
     <button type="button" class="xmas-modal-close" data-xmas-close aria-label="Close">{icon('x')}</button>
     <div class="xmas-modal-body">
       {garland}

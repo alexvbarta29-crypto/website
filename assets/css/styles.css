@@ -649,6 +649,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .xmas-modal-panel > form > .form-row + .form-row,
 .xmas-modal-panel > form > .field + h3,
 .xmas-modal-panel > form > .form-row + h3 { margin-top: 16px; }
+/* The dialog itself takes focus when it opens (so keyboard users start inside
+   it); a ring around the whole panel would only add noise, and the next Tab
+   lands on a control that shows its own focus ring. */
+.xmas-modal-panel:focus { outline: none; }
 @media (max-width: 560px) { .xmas-modal-panel { padding: 30px 20px; } }
 
 /* Service card */
