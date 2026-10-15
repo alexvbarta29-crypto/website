@@ -89,8 +89,6 @@ def _also(c):
     each one says, in its own words, that Barta does both in this town too,
     and links to those service pages. The copy is per town in CITY_PAGES
     (also_gutters / also_xmas)."""
-    if not (c.get("also_gutters") and c.get("also_xmas")):
-        return ""
     city = c["city"]
     root = C.rel(DEPTH)
     cards = [
@@ -157,7 +155,8 @@ def _jobs(c):
 # ---------------------------------------------------------------------------
 # Page
 # ---------------------------------------------------------------------------
-_REQUIRED = ("title", "desc", "hero", "hero_sub", "why_heading", "why_intro", "why_points", "faqs")
+_REQUIRED = ("title", "desc", "hero", "hero_sub", "why_heading", "why_intro", "why_points", "faqs",
+             "also_gutters", "also_xmas")
 
 
 def _check(c):
@@ -181,9 +180,8 @@ def _check_unique(cities):
             yield "why_points", p
         for q, a in c["faqs"]:
             yield "faq answer", a
-        for k in ("also_gutters", "also_xmas"):
-            if c.get(k):
-                yield k, c[k]
+        yield "also_gutters", c["also_gutters"]
+        yield "also_xmas", c["also_xmas"]
     seen = {}
     for c in cities:
         for field, t in texts(c):

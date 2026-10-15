@@ -1056,6 +1056,10 @@ CITY_PAGES = [
              "label": "Whole-house exterior windows",
              "alt": "Barta Window Washing technician and van arriving at a Wayzata home for an exterior window cleaning"},
         ],
+        # "Gutter cleaning & Christmas lights in wayzata" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Old trees give Wayzata&rsquo;s estate lots their shade, and they also fill the gutters with leaves and seeds. With that much tree cover, homes often need more than the usual spring and fall cleanings. After each cleaning, you&rsquo;ll get a photo report of anything that needs attention.",
+        "also_xmas": "Wayzata&rsquo;s lake estates along Ferndale Road and Grays Bay look sharp with a roofline traced in light. Our crew installs premium commercial-grade LEDs, each run cut to fit, and swaps out any burnt-out bulb free of charge while the lights are up.",
         "faqs": [
             ("How often should I get my windows cleaned in Wayzata?",
              "We recommend four cleanings a year to keep lake-facing glass consistently clear, and at minimum twice a year: once in late spring, after the ice is off the bay and the pollen has settled, and again in early fall so the view stays clear through winter. Homes where sprinklers hit the glass get the most out of the quarterly schedule."),
@@ -1108,6 +1112,10 @@ CITY_PAGES = [
              "label": "High gable window, from the ground",
              "alt": "Water-fed pole reaching a high gable window on an Orono home"},
         ],
+        # "Gutter cleaning & Christmas lights in orono" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Away from the shoreline, many Orono homes sit on wooded acreages along private roads, under a canopy that sheds into the gutters. A fall cleaning gets those leaves out before winter, which helps prevent ice dams. We clear every gutter by hand and with a blower, then bag and haul away most of the debris.",
+        "also_xmas": "Former summer cottages, now lived in year-round, share Orono&rsquo;s shoreline with newly built estates, and roofline lighting suits both. We supply and install the premium commercial-grade LEDs, so there&rsquo;s nothing for you to buy. Storage between seasons is included in the price, too.",
         "faqs": [
             ("How often should I get my windows cleaned in Orono?",
              "For lake-facing glass we recommend four cleanings a year, the schedule that keeps the view clear from ice-out to freeze-up. At the least, plan on two: late spring, once the pollen settles, and early fall. Homes on wooded interior lots usually do well on the twice-a-year schedule."),
@@ -1167,6 +1175,10 @@ CITY_PAGES = [
              "label": "Two-person crew on a modern home",
              "alt": "Two Barta technicians cleaning the front windows of a modern Waconia home"},
         ],
+        # "Gutter cleaning & Christmas lights in waconia" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Seeds and leaves from the mature trees along Waconia&rsquo;s boulevards tend to end up in nearby gutters. Spring is a good time to clear them out, along with leftover winter debris, before the rains arrive. Where needed, we also wipe the gutters down at the waterline, and nobody needs to be home while we work.",
+        "also_xmas": "Older homes close to Main Street and new construction at the edge of town give Waconia a wide mix of rooflines to light. Whatever the style, we fit premium commercial-grade LEDs along the roof edges and peaks, and the lights are part of the price. The schedule fills up quickly every season, so it pays to reserve early.",
         "faqs": [
             ("How often should I get my windows cleaned in Waconia?",
              "Four times a year is what we recommend if you want your glass consistently clean. At a minimum, go twice: in late spring, once the pollen has settled, and again in early fall. If your sprinklers reach the windows, the quarterly schedule keeps mineral spots from building up."),
@@ -1224,6 +1236,10 @@ CITY_PAGES = [
              "label": "Front windows, ladder and van",
              "alt": "Barta technician on a ladder cleaning the front windows of a Buffalo home, with the Barta van out front"},
         ],
+        # "Gutter cleaning & Christmas lights in buffalo" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Buffalo is among the nearest towns we serve, about 15 minutes up Highway 25 from Delano, and gutters can be cleaned in the same visit as your windows. Each downspout gets flushed and tested for proper flow, and the roof and gutters get a free visual check for damage while we&rsquo;re up there.",
+        "also_xmas": "For Buffalo homeowners, from Lake Pulaski to the newer neighborhoods, putting lights on the roofline yourself means a trip up a frozen ladder. We&rsquo;ll make that climb instead, installing premium commercial-grade LEDs cut to fit your rooflines and peaks. Quotes are free, with no obligation and clear pricing up front.",
         "faqs": [
             ("How often should I get my windows cleaned in Buffalo?",
              "Our recommendation is four cleanings a year, which keeps glass consistently clear. The minimum we&rsquo;d suggest is twice a year: a late-spring cleaning after the pollen has settled and an early-fall cleaning before the cold sets in. Lake homes and houses where sprinklers hit the glass benefit most from the quarterly plan."),
@@ -1277,6 +1293,10 @@ CITY_PAGES = [
              "label": "Hand-washing screens on the lawn",
              "alt": "Two Barta technicians hand-washing window screens on the front lawn of a Plymouth home"},
         ],
+        # "Gutter cleaning & Christmas lights in plymouth" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Most homes in Plymouth sit among trees and greenery, fitting for a city with more than four decades as a Tree City USA. Plan on cleaning the gutters at least twice a year, once in spring and again in fall. Our insured crew brings the right equipment, so you never have to climb a ladder yourself.",
+        "also_xmas": "Whether your home is near Medicine Lake on the east side or in the newer northwest corner of Plymouth, its rooflines and peaks can carry a clean line of light. We handle the installation with premium commercial-grade LEDs trimmed to fit, then take everything down once the season is over.",
         "faqs": [
             ("How often should I get my windows cleaned in Plymouth?",
              "Four cleanings a year keeps glass at its best, and it&rsquo;s what we recommend. If that&rsquo;s more than you need, twice a year is the minimum we&rsquo;d suggest: once in late spring, after the pollen, and once in early fall. Homes whose lower windows catch sprinkler spray over the summer benefit most from quarterly visits."),
@@ -1332,6 +1352,10 @@ CITY_PAGES = [
              "label": "Gable windows from the ground",
              "alt": "Water-fed pole cleaning the gable windows of an Independence home"},
         ],
+        # "Gutter cleaning & Christmas lights in independence" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Walkouts and two-story great rooms show up on a lot of the custom homes spread across Independence, and on the back of a house like that, the gutters can sit three levels up. We clear them by hand and with a blower, bag most of the debris to haul away, and you don&rsquo;t need to be home while we work.",
+        "also_xmas": "On a big Independence home with high gables, a clean line of lights along the roofline and up each peak shows off that shape after dark. We bring premium commercial-grade LEDs and cut them to fit your home, and since the lights are included, there&rsquo;s nothing for you to buy.",
         "faqs": [
             ("How often should I get my windows cleaned in Independence?",
              "We recommend four cleanings a year for glass that stays consistently clean, and twice a year at the least: once in late spring and again in early fall. Lake homes on Lake Independence and Lake Sarah, where the view is the point, get the most from the quarterly schedule."),
@@ -1384,6 +1408,10 @@ CITY_PAGES = [
              "label": "Storefront glass downtown",
              "alt": "Barta crew member squeegeeing the inside of a large storefront window in downtown Delano"},
         ],
+        # "Gutter cleaning & Christmas lights in delano" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Delano, our home town, has a lot of trees, and the city&rsquo;s emerald ash borer survey counted thousands of ash trees alone, so plenty of leaves and seeds find their way into gutters here. A fall cleaning clears the leaves out before winter to help prevent ice dams, while a spring visit removes seeds and winter debris before the rains come.",
+        "also_xmas": "Whether your Delano home is an older house close to downtown or a newer build in Highland Ridge, its rooflines and peaks can be lined with LED lights cut to fit. Once the holiday season ends, we take everything down and store it until next year, and that storage is built into the price rather than added on.",
         "faqs": [
             ("How often should a Delano home book window cleaning?",
              "Four visits a year keeps the glass clean from one season to the next. Two is the least we&rsquo;d suggest: late spring, then early fall, once sprinkler season is over."),
@@ -1432,6 +1460,10 @@ CITY_PAGES = [
         "hero": "assets/img/instagram/17870581794546118_5.jpg",
         "hero_pos": "45%",
         "jobs": [],
+        # "Gutter cleaning & Christmas lights in medina" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Rural lots in Medina are five acres or larger, and the houses on them tend to be big, which can add up to a long stretch of gutter. Our insured crew brings the right equipment to clear every run and flush each downspout, so the ladder work stays with us. Gutters and windows can be done together in a single visit.",
+        "also_xmas": "From Hamel to Medina&rsquo;s rural lots, every home in the city is in our service area for holiday roofline lighting. Nobody in the family has to climb a frozen ladder, because we install premium commercial-grade LEDs along the rooflines and peaks ourselves. Getting started takes just a free, no-obligation quote with clear pricing up front.",
         "faqs": [
             ("How many times a year should I have my Medina windows cleaned?",
              "We suggest four visits a year if you want glass that stays clean from season to season, and two at the minimum, one in late spring and one in early fall. Homes that face a lake, or where sprinklers reach the glass, get the most out of four."),
@@ -1484,6 +1516,10 @@ CITY_PAGES = [
              "label": "Two on the job, ladder and stepladder",
              "alt": "Two Barta crew members cleaning the front windows of a stucco home in Mound, one on an extension ladder and one on a stepladder"},
         ],
+        # "Gutter cleaning & Christmas lights in mound" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Over half the houses in Mound went up before the 1970s, so it&rsquo;s worth knowing what shape the gutters are in. Along with clearing every gutter and flushing the downspouts, we give the roof and gutters a free visual check for damage and send a photo report of anything that needs attention.",
+        "also_xmas": "With more than 17 miles of shoreline in Mound, many homes here face the water on one side and the street on the other. We can outline the rooflines and peaks on either side, or both, with commercial-grade LEDs, and burnt-out bulbs get replaced free all season. Installation books up quickly, so reserving early in the fall is a good idea.",
         "faqs": [
             ("What&rsquo;s the right number of window cleanings a year for a Mound home?",
              "Four times a year keeps the glass looking good through every season, and two, in late spring and early fall, is the least we&rsquo;d recommend. Lake-facing windows and glass in reach of the sprinklers are where the extra visits show most."),
@@ -1536,6 +1572,10 @@ CITY_PAGES = [
         # lifts it into the open space under the menu.
         "hero_m": {"pos": "62% 100%", "zoom": 1.4},
         "jobs": [],
+        # "Gutter cleaning & Christmas lights in st-michael" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Homes in the newer St. Michael neighborhoods out around Uhl Lake and Gonz Lake may be young, but they still need their gutters cleared at least twice a year, like most houses in Minnesota. After clearing the gutters out, we wipe them down at the waterline where needed and flush every downspout to check that water flows the way it should.",
+        "also_xmas": "St. Michael keeps growing, and if your home is one of the newer ones with an upper story, its roofline sits a long way up. We do the climbing, hanging premium LED lights across the rooflines and peaks, keeping them maintained through the season and taking them down when it&rsquo;s over.",
         "faqs": [
             ("How often do St. Michael homeowners need their windows cleaned?",
              "We recommend a quarterly schedule, four cleanings a year, and two is the minimum: late spring, then early fall, after the busiest sprinkler months."),
@@ -1589,6 +1629,10 @@ CITY_PAGES = [
              "label": "Three stories of stucco and glass",
              "alt": "The tall stucco back of a Minnetrista home with a wide band of divided-light windows on the second floor"},
         ],
+        # "Gutter cleaning & Christmas lights in minnetrista" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "A two- or three-story Minnetrista home puts its gutters well out of reach, but our insured crew brings the right equipment so you can stay off the ladder. Along with clearing every gutter, we give the roof and gutters a free visual check and include a photo report of anything that needs attention.",
+        "also_xmas": "Minnetrista homes often have open yard on every side and plenty of room between neighbors, which leaves the roofline in clear view. Our premium commercial-grade LED lights are cut to fit your rooflines and peaks, burnt-out bulbs get swapped free during the season, and we take everything down when it&rsquo;s over.",
         "faqs": [
             ("What cleaning schedule makes sense for a Minnetrista home?",
              "Four visits a year is our recommendation if you want the glass clean all the time. Two is the minimum we suggest: one late in spring and one early in fall. Lake-facing homes and houses near new construction gain the most from all four."),
@@ -1644,6 +1688,10 @@ CITY_PAGES = [
              "label": "Arched windows, same home",
              "alt": "Crew member cleaning a row of arched and square windows along a wet deck with a water-fed pole, beside a stone chimney"},
         ],
+        # "Gutter cleaning & Christmas lights in watertown" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "From a house in town by the Crow River to one out among the fields, every Watertown home gets the same careful gutter clearing. Leaves, seeds and debris come out by hand and with a blower, and most of what we pull out is bagged and hauled away.",
+        "also_xmas": "Watertown sits about 6 miles from our Delano base, close to home for our crew. We supply premium commercial-grade LED lights, so there&rsquo;s nothing for you to buy, and cut each strand to match your rooflines and peaks. You get to skip the trip up a frozen ladder.",
         "faqs": [
             ("How frequently should windows be cleaned on a Watertown-area home?",
              "Our advice is four cleanings a year, one per season, and never fewer than two: late spring and early fall. Homes next to open fields get the most from all four."),
@@ -1690,6 +1738,10 @@ CITY_PAGES = [
         "hero": "assets/img/instagram/17870581794546118_0.jpg",
         "hero_pos": "29% 16%",
         "jobs": [],
+        # "Gutter cleaning & Christmas lights in minnetonka" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "In Minnetonka, ice-out on the big lake makes a handy cue for spring gutter cleaning, whether your home is near Grays Bay or inland. We clear seeds and winter debris before the rains come and run water through every downspout to make sure it drains. A fall cleaning empties the gutters again before winter, which helps prevent ice dams.",
+        "also_xmas": "From Delano, it&rsquo;s a straight shot to Minnetonka on Highway 12 and I-394. Our crew installs premium commercial-grade LED lights, trimmed to fit each roofline and peak on your house. Ask for a free, no-obligation quote with clear upfront pricing, and ask early, since the season books up quickly.",
         "faqs": [
             ("How often do you recommend cleaning windows in Minnetonka?",
              "Quarterly, since four cleanings a year keep the glass clear through every season. Two a year is the floor: late spring and early fall."),
@@ -1743,6 +1795,10 @@ CITY_PAGES = [
              "label": "A wall of sunroom windows",
              "alt": "The sunroom on the back of a Victoria home, a long row of windows above a rock bed and block retaining wall"},
         ],
+        # "Gutter cleaning & Christmas lights in victoria" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "Some Victoria homes back onto parkland or sit near the woods of Carver Park Reserve, which means leaves and seeds have a short trip to the gutters. Our crew clears out every gutter, wipes it down at the waterline where needed and flushes each downspout. You don&rsquo;t even need to be home for it.",
+        "also_xmas": "Victoria has grown fast, and many of its homes are newer and on the large side, so there&rsquo;s plenty of roofline to light. Our crew traces your rooflines and peaks with premium commercial-grade LED lights cut to fit, and any bulb that burns out during the season is replaced free. Spots go fast every season, so it&rsquo;s smart to reserve early.",
         "faqs": [
             ("Is twice a year often enough for windows in Victoria?",
              "It works as a minimum: a cleaning in late spring and another in early fall is the lightest schedule we recommend. For glass that looks clean year-round, we suggest four."),
@@ -1801,6 +1857,10 @@ CITY_PAGES = [
              "label": "Poolside window, freshly cleaned",
              "alt": "A freshly cleaned window on a Chanhassen home, with the backyard pool reflected in the glass"},
         ],
+        # "Gutter cleaning & Christmas lights in chanhassen" cards (owner's request,
+        # Oct 2026), written only from the facts already on this page.
+        "also_gutters": "On Chanhassen&rsquo;s wooded lots, like those east of Lotus Lake, the same seeds and bits of leaf that end up in window screens land in the gutters too. Homes with that kind of tree cover may need more than the usual spring and fall cleanings. We empty every gutter, and your windows can be washed on the same visit.",
+        "also_xmas": "Part of Christmas Lake lies inside Chanhassen, though you don&rsquo;t need a lakeside address to get your roofline lit. We hang premium commercial-grade LED lights along your rooflines and peaks, then take them down after the season and store them until next year, with storage included in the price. Your quote is free, with pricing laid out clearly before anything goes up.",
         "faqs": [
             ("When in the year should a Chanhassen home get its windows cleaned?",
              "Late spring and early fall, at the least: that&rsquo;s the two-visit minimum we recommend. Our full recommendation is four, one in each season."),
