@@ -40,8 +40,8 @@ repository secret named `GH_PAT`.
   `build/instagram_feed.json`.
 - It then runs `build/build.py` to regenerate the site (the homepage's
   carousel is built from that JSON file) and commits/pushes the result.
-- That push triggers the existing `deploy.yml` workflow automatically, same
-  as any other content change.
+- Netlify publishes that push to the live site, same as any other content
+  change.
 
 `build/build.py` itself never makes network calls — only
 `build/instagram_sync.py` does, and only when run with a valid

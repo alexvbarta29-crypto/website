@@ -22,8 +22,8 @@ pages is public.
 2. In Netlify: **Site configuration → Environment variables → Add**
    `ROTOR_API_KEY` = the key. Redeploy.
 
-Until the variable is set (and on the GitHub Pages preview, which has no
-functions at all), the POST fails and the form shows the phone/email
+Until the variable is set (and on any copy of the site outside Netlify,
+which has no functions at all), the POST fails and the form shows the phone/email
 fallback — visitors are never shown a false "we got it" confirmation.
 
 ## What lands in Rotor (API version 1.1.0, `rotor-api-version` header)

@@ -1,8 +1,8 @@
 name: Sync Instagram Feed
 
 # Pulls the latest posts from Instagram for the homepage carousel and
-# commits the refreshed images/manifest/HTML back to the branch. That push
-# then triggers deploy.yml automatically, same as any other content change.
+# commits the refreshed images/manifest/HTML back to the branch. Netlify,
+# which hosts the live site, publishes that push like any other.
 on:
   schedule:
     - cron: "0 13 * * *" # daily, ~8am Central
@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   sync:
@@ -51,17 +50,6 @@ jobs:
             git push
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      # A push made with the default token doesn't trigger other workflows
-      # (a GitHub safety default, to stop workflows from re-triggering each
-      # other in a loop) — so deploy.yml's "on: push" wouldn't fire on its
-      # own here. Trigger it explicitly instead, only when something actually
-      # changed.
-      - name: Trigger deploy
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref claude/barta-window-washing-site-f51v9x
 
       # Optional: only runs if you've added a GH_PAT secret (a personal
       # access token scoped to just this repo's Secrets: write permission).

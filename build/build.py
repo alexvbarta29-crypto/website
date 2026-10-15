@@ -14,7 +14,7 @@ from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, AWARD, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
-                      XMAS_PHOTO_ALT, XMAS_SHOWCASE)
+                      XMAS_PHOTO_ALT, XMAS_SHOWCASE, XMAS_DEAL_DEADLINES)
 from icons import icon
 import components as C
 import schema as S
@@ -103,7 +103,7 @@ def _img_size(relpath, default=(1125, 1500)):
     return size
 
 def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img", alt="",
-                       sizes="100vw"):
+                       sizes="100vw", hero_m=None):
     """Responsive hero <picture>: WebP source + JPG fallback, each with a
     640w/1200w srcset (see generate_hero_variants()) so a phone downloads the
     small file and only one image request happens either way, never both a
@@ -116,13 +116,29 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     Every -<N>w variant found on disk becomes a srcset candidate, so an
     above-1200 tier (the 1920w homepage/gallery heroes, or a native-width
     tier for a source that lands between 1200 and 1920) is picked up
-    automatically without this function needing to know the widths."""
+    automatically without this function needing to know the widths.
+
+    hero_m sets a phone-only framing (max-width 760px), for photos whose
+    desktop crop lands badly on a tall phone screen: {"pos": "76% 34%"}
+    re-aims the crop, and "zoom": 1.4 enlarges the photo by that factor,
+    anchored at the bottom, which lifts a face that would sit behind the
+    headline up into the open space under the menu (the phone sizes value
+    grows to match so the zoomed photo stays sharp). See .has-pos-m /
+    .has-zoom-m in styles.css."""
     # "35%" anchors vertically (centred across); "40% 35%" sets both axes,
     # for landscape photos a phone-width hero crops from the sides.
     if hero_pos and " " in hero_pos.strip():
-        style = f'style="object-position:{hero_pos}"'
+        css = f"object-position:{hero_pos}"
     else:
-        style = f'style="object-position:50% {hero_pos}"' if hero_pos else ""
+        css = f"object-position:50% {hero_pos}" if hero_pos else ""
+    if hero_m:
+        img_class += " has-pos-m"
+        css += f";--pos-m:{hero_m['pos']}"
+        if hero_m.get("zoom"):
+            img_class += " has-zoom-m"
+            css += f";--zoom-m:{hero_m['zoom']}"
+            sizes = f"(max-width: 760px) {round(200 * hero_m['zoom'])}vw, {sizes}"
+    style = f'style="{css.lstrip(";")}"' if css else ""
     stem = image_path.rsplit(".", 1)[0]
     variants_exist = all(
         os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.{fmt}"))
@@ -436,7 +452,6 @@ _SERVICE_AREA_FAMILY = {
     "interior-window-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "track-detailing": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
     "screen-cleaning": ("glass", ("plymouth", "medina", "st-michael", "buffalo")),
-    "hard-water-stain-removal": ("glass", ("mound", "medina", "plymouth", "buffalo")),
     "gutter-cleaning": ("wash", ("buffalo", "mound", "medina", "delano")),
     "solar-panel-cleaning": ("specialty", ("plymouth", "medina", "mound", "st-michael")),
     "commercial-cleaning": ("specialty", ("plymouth", "medina", "st-michael", "mound")),
@@ -531,6 +546,11 @@ def _xmas_snow():
         for left, size, dur, delay, drift, op in _XMAS_SNOW_SEED)
     return f'<div class="xmas-snow" aria-hidden="true">{spans}</div>'
 
+def _ordinal(n):
+    """1 -> '1st', 2 -> '2nd', 11 -> '11th', 22 -> '22nd'."""
+    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
 def build_service(svc):
     depth = 1
     root = C.rel(depth)
@@ -582,17 +602,23 @@ def build_service(svc):
             f'<div class="xmas-benefit reveal" data-delay="{i%3}"><span class="ic {_xmas_tone(i)}">{icon(benefit_icons[i % len(benefit_icons)])}</span>'
             f'<div><h3>{t}</h3><p>{d}</p></div></div>'
             for i, (t, d) in enumerate(svc["benefits"]))
-        # Early-bird promo with a live countdown to November 1st. The numbers
-        # are seeded at build time so the first paint is already correct (the
+        # Early-bird promo with a live countdown. It runs to November 1st,
+        # then (at the owner's request) straight on to December 1st, and the
+        # "Deal Ends ..." line follows whichever date it's counting to. After
+        # December 1st it rolls to next year's November 1st. The numbers are
+        # seeded at build time so the first paint is already correct (the
         # daily Instagram sync rebuilds the site, keeping the seed within a
         # day); main.js then ticks them once a second in the visitor's own
-        # timezone. role=timer + aria-live=off so screen readers don't
-        # announce every tick.
+        # timezone, from the same deadline list (data-deadlines), and swaps
+        # the label itself if the page was built before a deadline passed.
+        # role=timer + aria-live=off so screen readers don't announce every
+        # tick.
         from datetime import datetime
         _now = datetime.now()
-        _dl = datetime(_now.year, 11, 1)
-        if _dl <= _now:
-            _dl = datetime(_now.year + 1, 11, 1)
+        _dl = next((d for d in (datetime(_now.year, m, day) for m, day in XMAS_DEAL_DEADLINES)
+                    if d > _now), datetime(_now.year + 1, *XMAS_DEAL_DEADLINES[0]))
+        _dl_label = f"Deal Ends {_dl.strftime('%B')} {_ordinal(_dl.day)}"
+        _dl_attr = ",".join(f"{m}-{day}" for m, day in XMAS_DEAL_DEADLINES)
         _left = _dl - _now
         cd_d, cd_h = _left.days, _left.seconds // 3600
         cd_m, cd_s = (_left.seconds % 3600) // 60, _left.seconds % 60
@@ -617,8 +643,8 @@ def build_service(svc):
     <div class="container">
       <span class="xmas-promo-pill">{icon('gift')} Early Bird Special</span>
       <h2 class="xmas-promo-head">50% OFF Early Bird Special + FREE Takedown &amp; Storage!!!</h2>
-      <p class="xmas-promo-ends">Deal Ends November 1st</p>
-      <div class="xmas-countdown" data-countdown role="timer" aria-live="off">
+      <p class="xmas-promo-ends" data-cd-label>{_dl_label}</p>
+      <div class="xmas-countdown" data-countdown data-deadlines="{_dl_attr}" role="timer" aria-live="off">
         <div class="cd-cell"><span class="cd-num" data-cd="d">{cd_d:02d}</span><span class="cd-label">Days</span></div>
         <div class="cd-cell"><span class="cd-num" data-cd="h">{cd_h:02d}</span><span class="cd-label">Hours</span></div>
         <div class="cd-cell"><span class="cd-num" data-cd="m">{cd_m:02d}</span><span class="cd-label">Minutes</span></div>
@@ -692,9 +718,6 @@ def build_service(svc):
     # a one-time restoration project, or a contract-based commercial service.
     # Christmas lights gets a fully custom FAQ set (svc["faqs"]) instead.
     _frequency_faq_overrides = {
-        "hard-water-stain-removal": (
-            "How often will I need hard water stain removal?",
-            "This is a restoration treatment, not routine maintenance, most homes only need it once to remove existing buildup. If sprinklers or hard water exposure are ongoing, we can also apply a protective coating to help keep new deposits from bonding as easily."),
         "commercial-cleaning": (
             "How often should we schedule commercial cleaning?",
             "It depends on your property, foot traffic, and industry, many commercial clients schedule us on a recurring contract (weekly, monthly, or seasonally) rather than a fixed once- or twice-a-year visit. We'll recommend a schedule after seeing your property."),
@@ -961,6 +984,7 @@ def build_gallery():
     # 34% keeps the technician's head, the squeegee and the arched glass in
     # frame; the default centre crop pushes his head up behind the nav bar.
     hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="30% 34%", img_class="hero-bg-img",
+                                       hero_m={"pos": "76% 34%"},
                                        alt=IMAGE_ALT.get(GALLERY_HERO, "Barta Window Washing technicians cleaning windows"))
     # One collage, before/after shots included inline with everything else , 
     # they used to sit above in their own "Before & after" section of drag
@@ -1267,7 +1291,7 @@ def build_area(a):
         (f"Do you serve all of {a['city']}, MN?",
          f"Yes, we serve the entire {a['city']} area, including {nbhds}. Whether you're in town or just outside it, we'd love to give you a free quote."),
         (f"How quickly can you get to my home in {a['city']}?",
-         f"As a local company, we're often in the {a['city']} area each week and can usually schedule within a few days. Members always get priority. Call or request a quote to check current availability."),
+         f"As a local company, we're often in the {a['city']} area each week and can usually schedule within a few days. Call or request a quote to check current availability."),
         ("Are you insured to work in my city?",
          "Absolutely. Barta is fully insured to work throughout the western Twin Cities metro, including " + a["city"] + "."),
     ]
@@ -1374,7 +1398,13 @@ def build_get_quote():
         desc="Tell us about your home and the services you need, and Barta Window Washing will get back to you with clear, upfront, no-obligation pricing.",
         slug="get-quote.html", depth=depth, schema=schema,
         primary_kw="free exterior cleaning quote Delano MN")
+    # The logo (owner's request) is the one piece of site chrome here: it
+    # tells a visitor arriving straight from an ad or a referral link whose
+    # form this is, and links home. Absolutely placed above the centred
+    # wizard so the steps keep their position.
+    logo = C._brand_logo(root, "(max-width: 640px) 111px, 133px", 133, 36)
     html += f"""<main id="main" class="quote-flow">
+  <a class="quote-flow-logo" href="{root}index.html" aria-label="{BIZ['name']} home">{logo}</a>
   <div class="quote-flow-inner">{C.quote_wizard(depth)}</div>
 </main>
 <script src="{root}assets/js/main.min.js?v={C.ASSET_VER}" defer></script>
@@ -1483,10 +1513,9 @@ def build_privacy():
     <ul>
       <li><strong>Trustindex</strong>, displays our Google reviews on this site</li>
       <li><strong>Google Maps</strong>, powers the embedded map of our location and service area</li>
-      <li><strong>Fontshare</strong>, serves the fonts used on this site</li>
       <li><strong>OpenStreetMap / Nominatim</strong>, powers the address suggestions on our quote form; the address text you type into that field is sent to Nominatim to look up matching addresses</li>
     </ul>
-    <p>We encourage you to review those providers' privacy policies for details on how they handle your data. Links on this site to platforms such as Instagram, Facebook, TikTok, and Google likewise take you to services that operate under their own policies. If we add analytics or other cookie-based tools in the future, we will update this section to describe what is used and the choices available to you.</p>
+    <p>We encourage you to review those providers' privacy policies for details on how they handle your data. Links on this site to platforms such as Instagram, Facebook, TikTok, and Google likewise take you to services that operate under their own policies. If we add other analytics or cookie-based tools, we will update this section to describe what is used and the choices available to you.</p>
     <h2>7. Sharing of information</h2>
     <p>We do not sell, trade, or rent your personal information. We may share your information only in the following limited circumstances:</p>
     <ul>
@@ -1505,7 +1534,6 @@ def build_privacy():
     <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: {BIZ['phone_display']}<br>Address: {BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</p>
     <h2>12. Updates to this policy</h2>
     <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with a revised effective date. Continued use of our services after changes are posted constitutes your acceptance of the updated policy.</p>
-    <p><em>This document is provided for informational purposes and does not constitute legal advice. We recommend having it reviewed by a licensed Minnesota attorney to ensure full compliance with applicable state and federal law.</em></p>
   </div></div></section></main>"""
     html += C.page_end(depth)
     write("privacy.html", html, slug="privacy.html", priority="0.2")
@@ -1546,7 +1574,7 @@ def build_terms():
     <h2>8. Insurance</h2>
     <p>{BIZ['name']} is fully insured for our operations. Proof of insurance is available upon request.</p>
     <h2>9. SMS communications</h2>
-    <p>If you opt in to text messages, {BIZ['name']} may send appointment updates, service notifications, and marketing offers to the phone number you provide. Consent to receive text messages is not a condition of purchasing any service. Message and data rates may apply, and message frequency varies. Reply STOP at any time to unsubscribe, or HELP for help. See our <a href="{C.rel(depth)}privacy.html">Privacy Policy</a> for more on how we handle your information.</p>
+    <p>When you request a quote, you agree to receive text messages from {BIZ['name']} about your quote and service, such as appointment updates, reminders, and service notifications, at the phone number you provide. Message and data rates may apply, and message frequency varies. Reply STOP at any time to unsubscribe, or HELP for help. See our <a href="{C.rel(depth)}privacy.html">Privacy Policy</a> for more on how we handle your information.</p>
     <h2>10. Governing law</h2>
     <p>These Terms and Conditions are governed by and construed in accordance with the laws of the State of Minnesota, without regard to its conflict of law provisions. Any disputes arising from these terms or our services are subject to the exclusive jurisdiction of the courts located in Minnesota.</p>
     <h2>11. Modifications</h2>
@@ -1554,7 +1582,6 @@ def build_terms():
     <h2>12. Contact us</h2>
     <p>If you have questions about these Terms and Conditions, please contact us:</p>
     <p>{BIZ['legal_name']}<br>Email: <a href="mailto:{BIZ['email']}">{BIZ['email']}</a><br>Phone: {BIZ['phone_display']}<br>Address: {BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</p>
-    <p><em>This document is provided for informational purposes and does not constitute legal advice. We recommend having it reviewed by a licensed Minnesota attorney to ensure full compliance with applicable state and federal law.</em></p>
   </div></div></section></main>"""
     html += C.page_end(depth)
     write("terms.html", html, slug="terms.html", priority="0.2")
@@ -2131,6 +2158,10 @@ REMOVED_PAGES = {
     "blog/soft-washing-vs-pressure-washing.html": "/blog.html",
     "landing/free-pressure-washing-quote.html":   "/",
     "landing/house-washing-estimate.html":        "/",
+    # The owner doesn't want a separate hard-water page (October 2026); the
+    # treatment is still mentioned as part of window cleaning, so its old
+    # address goes to the exterior window cleaning page.
+    "services/hard-water-stain-removal.html":     "/services/exterior-window-cleaning.html",
 }
 
 def remove_retired_pages():
@@ -2167,7 +2198,8 @@ def build_redirects():
                   "# Town pages replaced by their window-cleaning city page (build/city_pages.py).",
                   *[f"{src:<{width}}{dst}  301!" for src, dst in area_rules]]
     lines += ["",
-              "# Services no longer offered (REMOVED_PAGES in build/build.py).",
+              "# Retired pages: services no longer offered, or folded into another page",
+              "# (REMOVED_PAGES in build/build.py).",
               *[f"{src:<{width}}{dst}  301!" for src, dst in removed_rules]]
     # Referral short links: the code the office texts to a referred friend
     # (/r/BARTA-7K3XQ). A 200 rewrite, not a redirect, so the short URL stays

@@ -127,8 +127,8 @@ just no longer what `/r/CODE` serves. Switching back is one line in
 
 Netlify Blobs needs no configuration; it is available to every Netlify
 Function automatically and the data survives deploys. Nothing referral-
-related works on the GitHub Pages preview (no functions), where the forms
-show the honest call-us fallback.
+related works on a copy of the site outside Netlify (no functions), where the
+forms show the honest call-us fallback.
 
 > **Texting referred friends.** Mode `all` sends a text to a person who has
 > not themselves opted in, on the strength of their friend's confirmation

@@ -130,6 +130,6 @@ once, then `npm test`.
 4. **Set the real domain** in `BIZ["domain"]` so canonical/OG/sitemap URLs are correct.
 5. **Have the privacy policy reviewed** by counsel (`privacy.html` is a starter template).
 6. **Turn on the referral program** — set `REFERRAL_ADMIN_KEY` in Netlify and walk the launch
-   checklist in `docs/REFERRAL-PROGRAM.md` (the program needs Netlify Functions, so it is inert on
-   the GitHub Pages preview).
-7. Deploy to any static host (Netlify, Vercel, Cloudflare Pages, S3+CloudFront, GitHub Pages).
+   checklist in `docs/REFERRAL-PROGRAM.md` (the program needs Netlify Functions, so it only works on
+   Netlify).
+7. The live site is on Netlify (see `DEPLOY.md`); every push to the live branch publishes.

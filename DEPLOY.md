@@ -1,59 +1,35 @@
 # Deploying the site
 
-This is a **static site** (plain HTML/CSS/JS at the repo root), so it runs on any static host with
-no build step. Three ready-to-go options are included.
+The live site, **www.bartawindowwashing.com**, is hosted on **Netlify**. Every push to the
+`claude/barta-window-washing-site-f51v9x` branch publishes automatically, including the daily
+Instagram-sync commit.
 
----
+## How a deploy works
 
-## Option A — GitHub Pages (no signup, deploys from this repo)
+1. Pages are generated locally with `python3 build/build.py`, and the generated HTML is committed.
+   Netlify does not run the page build itself.
+2. On each push, Netlify runs the build command in `netlify.toml`, `python3 build/make_deploy.py`.
+   It assembles `_deploy/` from the site pages plus only the assets they reference, so `docs/`,
+   `build/`, `config/` and unused full-size photo originals are never served.
+3. Netlify publishes `_deploy/`, the redirects in the generated `_redirects` file, the headers in
+   `netlify.toml`, and the serverless functions in `netlify/functions/`.
 
-A workflow at `.github/workflows/deploy.yml` publishes the site automatically.
+The quote form (`/api/lead`) and the customer referral program (`/api/referral`, the
+`admin/referrals.html` dashboard) run on Netlify Functions + Netlify Blobs, so they only work on
+Netlify. Required environment variables (Netlify → Site configuration → Environment variables):
+`ROTOR_API_KEY` and `REFERRAL_ADMIN_KEY` (see `docs/LEAD-FORM-SETUP.md` and
+`docs/REFERRAL-PROGRAM.md`).
 
-**One-time setup:**
-1. On GitHub, go to **Settings → Pages**.
-2. Under **Build and deployment → Source**, choose **GitHub Actions**.
-3. That's it. Every push to the `claude/barta-window-washing-site-f51v9x` branch now builds and
-   deploys automatically (you can also trigger it from the **Actions** tab → *Deploy site to GitHub
-   Pages* → *Run workflow*).
+## No second copy
 
-**Your live URL** will be:
-`https://alexvbarta29-crypto.github.io/website/`
+A GitHub Pages copy at `alexvbarta29-crypto.github.io/website/` used to be published on every push
+as well. It was switched off in October 2026, and its workflow (`.github/workflows/deploy.yml`) was
+deleted. Its quote form could never work, because GitHub Pages can't run the Netlify functions.
+Don't re-enable it. To take down the last published copy: GitHub → this repo → **Settings →
+Pages** → **Unpublish site**.
 
-(The Actions run also prints the URL in the deploy step.) All internal links are relative, so the
-site works correctly under the `/website/` subpath.
+## Domain
 
----
-
-## Option B — Netlify (custom domain in minutes)
-
-1. Create a free account at [netlify.com](https://netlify.com).
-2. **Add new site → Import an existing project →** connect this GitHub repo.
-3. Netlify reads `netlify.toml` — no build command needed. Click **Deploy**.
-4. You'll get a `*.netlify.app` URL instantly; add your real domain under **Domain settings**.
-
-Drag-and-drop alternative: zip the repo (minus `.git`) and drop it on Netlify's **Deploys** page.
-
----
-
-## Option C — Vercel
-
-1. Create a free account at [vercel.com](https://vercel.com).
-2. **Add New → Project →** import this repo. Framework preset: **Other**.
-3. Vercel reads `vercel.json` (clean URLs, asset caching). Click **Deploy**.
-
----
-
-## Pointing your real domain
-
-Once live on any host above, add `www.bartawindowwashing.com` in the host's domain settings and
-update your DNS (the host gives you the exact records). The site's canonical/SEO URLs already use
-that domain — set the final domain in `build/sitedata.py` (`BIZ["domain"]`) and rebuild if it
-changes.
-
-> Tip: GitHub Pages is the fastest way to get a shareable preview link today. Netlify or Vercel are
-> better long-term homes if you want a custom domain, form handling, and analytics.
-
-> The quote form (`/api/lead`) and the customer referral program (`/api/referral`, the
-> `admin/referrals.html` dashboard) run on Netlify Functions + Netlify Blobs, so they only work on
-> the Netlify deployment. Required environment variables: `ROTOR_API_KEY` and `REFERRAL_ADMIN_KEY`
-> (see `docs/LEAD-FORM-SETUP.md` and `docs/REFERRAL-PROGRAM.md`).
+`BIZ["domain"]` in `build/sitedata.py` sets every canonical, Open Graph, sitemap and schema URL.
+If the domain ever changes, update it there, rebuild, and update the domain in Netlify's
+**Domain management**.

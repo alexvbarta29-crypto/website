@@ -13,6 +13,18 @@ concern because it isn't part of the generated site at all — it lives only in 
 
 ## Audit history
 
+- **Owner's audit follow-ups (October 15, 2026):** the Christmas early-bird countdown now runs to
+  November 1st, then on to December 1st, with the "Deal Ends ..." line following it
+  (`XMAS_DEAL_DEADLINES` in `build/sitedata.py`). After December 1st it rolls to next year's
+  November 1st. **To confirm:** what the banner should say between December 1st and next fall.
+  The quote forms' required text-message checkbox now covers only texts about the visitor's own
+  quote and service; "marketing offers" and the contradicting "consent is not a condition of
+  purchase" line were removed, and the Terms' SMS clause matches. The Hard Water Stain Removal
+  page was removed at the owner's request (it 301s to exterior window cleaning; the treatment is
+  still mentioned as part of window cleaning). Both "Priority" member lines were removed. The
+  attorney-review notes no longer show on the Terms and Privacy pages; the recommendation to have
+  them reviewed stands. Every town page now has a "Gutter cleaning & Christmas lights" section in
+  its own words, built only from facts already on that page.
 - **"Best of Delano Area 2026, Best Cleaner" award added (October 2026):** the owner uploaded the
   award graphic and asked for it on the site. It now has its own homepage section (between the
   savings plans and the reviews) and an `award` line in the LocalBusiness structured data
@@ -213,9 +225,9 @@ deferred by the owner until launch; listed here so they can't be forgotten.
 
 | # | Blocker | Where | Status |
 |---|---|---|---|
-| A | **Quote forms have no delivery endpoint.** All 45 lead forms POST to `LEAD_FORM["endpoint"]`, which is empty. Until it's set, submitting shows the call-us fallback instead of a confirmation — so no lead is silently lost, but no lead is captured automatically either. Owner uses **Rotor** as their CRM; needs Rotor's inbound-lead/webhook URL, a Zapier/Make catch hook, or a form-to-email service. Must be safe to expose publicly — this is a static site, so a secret API key can't be used without a proxy. | `build/sitedata.py` → `LEAD_FORM`; see `docs/LEAD-FORM-SETUP.md` | **Open — deferred to launch** |
-| B | **Custom domain not connected.** GitHub Pages serves the site at `alexvbarta29-crypto.github.io/website/`, but every canonical URL, `og:url`, `sitemap.xml` entry and schema.org record declares `https://www.bartawindowwashing.com`. Until the domain is attached, search engines are told the real address is somewhere that isn't serving the site, and essentially none of the SEO work can take effect. | GitHub repo → Settings → Pages; a `CNAME` file in the deploy artifact | **Open — deferred to launch** |
-| C | **No analytics of any kind.** No GA4, no Meta pixel, nothing. There's no way to tell whether the site converts, which pages work, or where leads come from. Worth adding before spending on ads or SEO. | — | **Open** |
+| A | **Quote forms have no delivery endpoint.** Resolved: every lead form POSTs to `/api/lead` (`netlify/functions/lead.mjs`), which forwards to Rotor with the key held in Netlify's `ROTOR_API_KEY`. | `LEAD_FORM` in `build/sitedata.py` | **Done** |
+| B | **Custom domain not connected.** Resolved: the site is live on Netlify at `www.bartawindowwashing.com`. The old GitHub Pages copy was switched off in October 2026 (see `DEPLOY.md`). | Netlify | **Done** |
+| C | **No analytics of any kind.** Resolved: GA4 (`GA4_ID`) and the Meta Pixel run on every page. Since October 2026 GA4 also gets a `generate_lead` event for each quote request that goes through and a `phone_click` event for each phone-number tap. Mark both as key events in GA4 Admin. | `build/components.py`, `assets/js/main.js` | **Done** |
 
 ---
 

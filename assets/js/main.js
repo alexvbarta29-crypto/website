@@ -263,21 +263,38 @@
   });
 
   /* ---- Christmas early-bird countdown ----
-         Ticks down to November 1st in the visitor's own timezone. The build
-         seeds the numbers server-side so first paint is already correct;
-         this only keeps them live. After the deadline passes, the target
-         rolls to next year's November 1st — the offer is seasonal and the
-         banner text ("Deal Ends November 1st") stays true either way, so
-         the timer never sits at zero for the rest of the year. ---- */
+         Ticks down, in the visitor's own timezone, to the first deadline in
+         data-deadlines ("11-1,12-1": November 1st, then December 1st) that
+         hasn't passed, and keeps the "Deal Ends ..." line ([data-cd-label])
+         naming that same date. The build seeds both server-side so first
+         paint is already correct; this keeps them live and switches them
+         over if a deadline passes after the page was built. After the last
+         deadline the target rolls to next year's first one, so the timer
+         never sits at zero. ---- */
   const cdown = $("[data-countdown]");
   if (cdown) {
     const cd = (k) => $('[data-cd="' + k + '"]', cdown);
     const els = { d: cd("d"), h: cd("h"), m: cd("m"), s: cd("s") };
+    const label = $("[data-cd-label]");
     const pad = (n) => String(n).padStart(2, "0");
+    const deadlines = (cdown.dataset.deadlines || "11-1")
+      .split(",").map((md) => md.split("-").map(Number));
+    const ordinal = (n) => n + ((n % 100 >= 11 && n % 100 <= 13) ? "th"
+      : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th"));
+    const target = (now) => {
+      for (const [m, d] of deadlines) {
+        const t = new Date(now.getFullYear(), m - 1, d);   // months count from 0
+        if (t > now) return t;
+      }
+      return new Date(now.getFullYear() + 1, deadlines[0][0] - 1, deadlines[0][1]);
+    };
     const tick = () => {
       const now = new Date();
-      let t = new Date(now.getFullYear(), 10, 1);   // months count from 0: 10 is November
-      if (t <= now) t = new Date(now.getFullYear() + 1, 10, 1);
+      const t = target(now);
+      if (label) {
+        const text = "Deal Ends " + t.toLocaleString("en-US", { month: "long" }) + " " + ordinal(t.getDate());
+        if (label.textContent !== text) label.textContent = text;
+      }
       const secs = Math.max(0, Math.floor((t - now) / 1000));
       els.d.textContent = pad(Math.floor(secs / 86400));
       els.h.textContent = pad(Math.floor(secs / 3600) % 24);
@@ -953,6 +970,18 @@
         if (typeof fbq === "function") {
           fbq("track", "Lead", { content_name: data.service_type || form.dataset.subject || "Quote request" });
         }
+        // The same moment, counted in Google Analytics as its standard
+        // "generate_lead" event (mark it as a key event in GA4 Admin). The
+        // gtag() stub exists from the first byte of every page, so this
+        // queues even before gtag.js itself has loaded.
+        if (typeof gtag === "function") {
+          gtag("event", "generate_lead", {
+            form_name: form.dataset.subject || "Quote request",
+            service: (data.services && data.services.length ? data.services.join(", ") : data.service_type) || "",
+            plan: data.plan_choice || data.plan || "",
+            page_path: location.pathname,
+          });
+        }
         if (success) {
           success.classList.add("show");
           success.setAttribute("role", "status");
@@ -1280,13 +1309,18 @@
     });
   }
 
-  /* ---- Meta Pixel: tapping a phone number is a contact, and on a phone
-         it is usually the whole conversion. Delegated, so it covers every
-         tel: link on every page including ones added later. No-ops when no
-         pixel is configured. ---- */
+  /* ---- Meta Pixel + Google Analytics: tapping a phone number is a
+         contact, and on a phone it is usually the whole conversion.
+         Delegated, so it covers every tel: link on every page including ones
+         added later. Each no-ops when its tag isn't configured. In GA4 the
+         event is "phone_click" (mark it as a key event in GA4 Admin). ---- */
   document.addEventListener("click", (e) => {
     const tel = e.target.closest && e.target.closest('a[href^="tel:"]');
-    if (tel && typeof fbq === "function") fbq("track", "Contact", { content_name: "Phone tap" });
+    if (!tel) return;
+    if (typeof fbq === "function") fbq("track", "Contact", { content_name: "Phone tap" });
+    if (typeof gtag === "function") {
+      gtag("event", "phone_click", { page_path: location.pathname, link_text: (tel.textContent || "").trim().slice(0, 60) });
+    }
   });
 
   /* ---- Active nav state ---- */

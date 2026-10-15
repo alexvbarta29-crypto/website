@@ -381,8 +381,18 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 }
 
 /* ---------- Quote flow (bare full-screen wizard page, no nav/footer) ---------- */
-.quote-flow { min-height: 100vh; min-height: 100svh; background: #fff; }
+.quote-flow { position: relative; min-height: 100vh; min-height: 100svh; background: #fff; }
+/* The site logo, centred above the wizard and clear of the 5px progress bar;
+   it sits inside the inner wrapper's top padding (deeper on phones). */
+.quote-flow-logo { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2; }
+.quote-flow-logo .brand-logo { height: 36px; }
+@media (max-width: 640px) {
+  .quote-flow-logo { top: 16px; }
+  .quote-flow-logo .brand-logo { height: 30px; }
+}
 .quote-flow-inner { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: clamp(56px, 8vw, 88px) 20px 32px; }
+/* Room for the logo above the first step's heading on phones. */
+@media (max-width: 640px) { .quote-flow-inner { padding-top: 70px; } }
 .quote-flow-inner .wizard { width: 100%; }
 
 /* ---------- Quote wizard (multi-step get-quote form) ---------- */
@@ -413,6 +423,15 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    without this the band shows before (and despite) the code being checked. */
 .quote-referral[hidden] { display: none; }
 .wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 32px; }
+/* The last step's full-width submit sits beside Back: let it take the
+   remaining room instead of forcing 100% (which pushed the row a few pixels
+   past the screen edge on common iPhone widths), and on phones trim its side
+   padding and let the label wrap rather than overflow. */
+.wizard-actions .btn-block { flex: 1 1 0; min-width: 0; width: auto; }
+@media (max-width: 640px) {
+  .wizard-actions .btn-ghost { padding-inline: 22px; }
+  .wizard-actions .btn-block { padding-inline: 16px; font-size: 1rem; white-space: normal; }
+}
 .wizard-address-warning { color: #dc4c3e; }
 .wizard-disclaimer { font-size: .76rem; line-height: 1.5; color: var(--slate-400); margin-top: 10px; }
 .wizard-disclaimer a { color: var(--blue-600); text-decoration: underline; }
@@ -972,6 +991,14 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .svc-hero { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: calc(var(--nav-h) + 30px) 0 70px; text-align: left; overflow: hidden; }
 .svc-hero-media { position: absolute; inset: 0; z-index: 0; }
 .svc-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* Phone-only hero framing (build.py _hero_picture_html hero_m): --pos-m
+   re-aims the crop (!important: the desktop focal point is an inline style),
+   and --zoom-m enlarges the photo, anchored at the bottom, so its upper part
+   rises out of the box. */
+@media (max-width: 760px) {
+  img.has-pos-m { object-position: var(--pos-m) !important; }
+  img.has-zoom-m { top: auto; bottom: 0; height: calc(var(--zoom-m) * 100%); }
+}
 .svc-hero-overlay {
   position: absolute; inset: 0; z-index: 0;
   background: linear-gradient(180deg, rgba(8,22,46,.16) 0%, rgba(7,18,40,.30) 55%, rgba(5,13,30,.52) 100%);
@@ -1274,7 +1301,13 @@ html.js .reveal.in { opacity: 1; transform: none; }
   body { font-size: 16px; }
   .cols-2, .cols-3 { grid-template-columns: 1fr; }
   .sticky-cta { display: flex; }
-  .footer-top { grid-template-columns: 1fr; gap: 28px; }
+  /* Two columns on phones (owner's request): one long single column of
+     about 40 links ran over two screens. The about/contact block and the
+     town list span the full width; Services and Company sit side by side,
+     and the towns run in two columns. */
+  .footer-top { grid-template-columns: 1fr 1fr; gap: 28px 20px; }
+  .footer-about, .footer-col--areas { grid-column: 1 / -1; }
+  .footer-col--areas ul { grid-template-columns: 1fr 1fr; column-gap: 20px; }
   .footer-bottom { flex-direction: column; }
   .form-row, .form-row.addr-row { grid-template-columns: 1fr; }
   body { padding-bottom: 76px; }

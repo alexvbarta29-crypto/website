@@ -22,13 +22,15 @@
 /areas/plymouth.html                         /window-cleaning-plymouth-mn/  301!
 /areas/st-michael.html                       /window-cleaning-st-michael-mn/  301!
 
-# Services no longer offered (REMOVED_PAGES in build/build.py).
+# Retired pages: services no longer offered, or folded into another page
+# (REMOVED_PAGES in build/build.py).
 /services/soft-washing.html                  /  301!
 /services/pressure-washing.html              /  301!
 /services/house-washing.html                 /  301!
 /blog/soft-washing-vs-pressure-washing.html  /blog.html  301!
 /landing/free-pressure-washing-quote.html    /  301!
 /landing/house-washing-estimate.html         /  301!
+/services/hard-water-stain-removal.html      /services/exterior-window-cleaning.html  301!
 
 # Referral program (docs/REFERRAL-PROGRAM.md): the clean address the
 # owner texts customers, and the short links texted to referred friends.

@@ -824,7 +824,6 @@ SERVICE_SLUG_TO_LABEL = {
     "gutter-cleaning": "gutter-cleaning",
     "solar-panel-cleaning": "solar-panel-cleaning",
     "screen-cleaning": "screen-cleaning-services",
-    "hard-water-stain-removal": "exterior-window-cleaning",
     "christmas-light-installation": "christmas-light-installation",
 }
 
@@ -881,14 +880,19 @@ def lead_form(depth=0, heading="Request Your Free Quote", sub="Free, no-obligati
 </div>"""
 
 def sms_consent(root):
-    """Text-message opt-in shared by the quote forms: the consent itself is
-    the checkbox label, and the carrier-required disclosures sit in the small
-    print underneath (worded once so the two forms can't drift apart)."""
+    """Text-message acknowledgement shared by the quote forms: the consent
+    itself is the checkbox label, and the carrier-required disclosures sit in
+    the small print underneath (worded once so the two forms can't drift
+    apart). The box is required, at the owner's request, so it covers only
+    texts about the visitor's own quote and service, never marketing: a
+    required box can't also carry promotional consent, which by law can't be
+    a condition of buying. Matches the Privacy Policy's SMS section and the
+    Terms' SMS clause."""
     return (f'<label class="check mt-2"><input type="checkbox" name="reminders" required> '
-            f"I agree to receive recurring text messages from {BIZ['name']}, including appointment "
-            f"updates, service notifications, and marketing offers.</label>\n"
+            f"I agree to receive text messages from {BIZ['name']} about my quote and service, "
+            f"such as appointment updates and reminders, at the phone number I provided.</label>\n"
             f'<p class="form-note wizard-disclaimer">Message frequency varies. Msg &amp; data rates may '
-            f"apply. Consent is not a condition of purchase. Reply STOP to unsubscribe or HELP for help. "
+            f"apply. Reply STOP to unsubscribe or HELP for help. "
             f'See our <a href="{root}privacy.html">Privacy Policy</a> and '
             f'<a href="{root}terms.html">Terms &amp; Conditions</a>.</p>')
 

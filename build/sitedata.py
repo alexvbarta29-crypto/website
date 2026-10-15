@@ -65,7 +65,7 @@ META_PIXEL_ID = "1629810322074915"
 LEAD_FORM = {
     # Same-origin Netlify Function (netlify/functions/lead.mjs) that forwards
     # to Rotor CRM with the API key held server-side in the ROTOR_API_KEY
-    # Netlify environment variable. Inert on the GitHub Pages preview, where
+    # Netlify environment variable. Anywhere the function isn't available,
     # the POST fails and the form shows the honest call-us fallback.
     "endpoint": "/api/lead",
     "access_key": "",   # only for services that use a public submit key (Web3Forms); leave blank otherwise
@@ -141,7 +141,7 @@ SERVICES = [
             ("How do water-fed poles work?",
              "For second-story and hard-to-reach glass, we use purified, deionized water on extension poles. Because the water carries no minerals, it rinses spot-free without soap, and it often lets us skip a ladder in your flower beds, though some spots still call for one."),
             ("Is hard-water stain removal included?",
-             "Hard-water spot treatment isn't part of a standard exterior window cleaning, it's included at no charge on certain service plans, or available as an add-on. Deeper, embedded mineral staining that's bonded to the glass is a separate service, our Hard Water Stain Removal page has details, or ask us for an assessment."),
+             "Hard-water spot treatment isn't part of a standard exterior window cleaning, it's included at no charge on certain service plans, or available as an add-on. Deeper, embedded mineral staining that's bonded to the glass needs a separate treatment, which we quote after looking at your glass."),
             ("How often do Minnesota homes need exterior window cleaning?",
              "We recommend four visits a year to keep your windows consistently clean and as well-maintained as possible. At minimum, we recommend twice a year, once in late spring after pollen settles, and again in early fall, to keep things properly maintained."),
             ("What happens if it rains after service?",
@@ -389,48 +389,6 @@ SERVICES = [
              "If a screen is torn or damaged, we won't clean it, we don't want to risk making the damage worse. Depending on the screen, repair may be available upon request for an added charge; just ask when you book."),
             ("Do you clean both sides of the screen?",
              "Yes, each screen is fully removed so we can wash both sides and the frame, not just what's visible from outside."),
-        ],
-    },
-    {
-        "slug": "hard-water-stain-removal",
-        "name": "Hard Water Stain Removal",
-        "icon": "drop",
-        "image": "assets/img/svc-hand-scrubbing.jpg",
-        "hero_pos": "63% 37%",
-        "short": "Remove cloudy mineral stains from glass that ordinary cleaning can't touch.",
-        "hero_sub": "Serving Delano and communities throughout the western Twin Cities with professional hard water stain removal for glass.",
-        "seo_title": "Hard Water Stain Removal Delano, MN | Barta",
-        "seo_desc": "Hard water stain removal in Delano and the western Twin Cities. Restore cloudy, mineral-stained glass that ordinary cleaning can't fix. Get a quote.",
-        "h1": "Professional Hard Water Stain Removal",
-        "schema_name": "Professional Hard Water Stain Removal",
-        "kw": "hard water stain removal Delano MN",
-        "kw2": ["hard water stain removal glass", "mineral stain removal windows", "water spot removal", "glass restoration service"],
-        "benefits": [
-            ("Restore clear glass", "Remove the cloudy haze sprinklers and minerals leave behind."),
-            ("Save the windows", "Far cheaper than replacing etched or stained glass."),
-            ("Specialized process", "Professional compounds and technique, not guesswork."),
-            ("Protective options", "Ask about coatings that help repel future spotting."),
-        ],
-        "intro": "Sprinkler overspray, runoff, and Minnesota's hard water leave behind mineral deposits that bond to glass and fog it permanently if ignored. Barta uses professional restoration compounds and proven technique to dissolve and lift these deposits, bringing back clarity that standard window cleaning simply cannot, and we can apply a protective treatment to slow future buildup.",
-        "includes": [
-            "Windows, glass doors, and shower glass",
-            "Assessment of stain severity and etching",
-            "Professional mineral-dissolving restoration process",
-            "Multi-stage treatment for heavy deposits",
-            "Optional protective glass coating",
-            "Prevention tips to keep glass clearer",
-        ],
-        "process_note": "Severity varies, we provide an honest assessment before any work begins.",
-        "why_barta": "Minnesota's hard water and sprinkler overspray leave mineral deposits that regular window cleaning can't touch, and our crew, trained by co-owner Alex Barta, restores glass for homeowners around Delano. We'll give you an honest read on what's recoverable before starting, sometimes buildup lifts completely, sometimes years of etching means a coating is the best next step. Either way, no guesswork, no surprise charges, and our satisfaction guarantee applies.",
-        "faqs": [
-            ("How is this different from regular window cleaning?",
-             "Regular window cleaning removes ordinary dirt, pollen, and everyday grime. Hard-water spot treatment isn't part of a standard visit, it's included at no charge on certain service plans, or available as an add-on. Hard Water Stain Removal is a separate, dedicated process for mineral deposits and etching that have bonded to the glass and that standard cleaning can't dissolve."),
-            ("Can all hard water staining be removed?",
-             "It depends on severity, light-to-moderate buildup usually lifts in one treatment, but years of untreated exposure can etch the glass itself, which limits how much clarity comes back. We give an honest assessment before starting."),
-            ("Will this prevent staining from coming back?",
-             "We can apply an optional protective coating that makes it harder for new deposits to bond, though the most effective prevention is addressing the water source itself, for example, redirecting a sprinkler head."),
-            ("How is pricing determined?",
-             "Severity varies significantly from window to window, so we assess your glass and provide an honest, upfront quote before any work begins."),
         ],
     },
     {
@@ -879,7 +837,7 @@ FAQS = [
     ("What if I'm not satisfied?", "Every Barta service is backed by our 100% Satisfaction Guarantee. If anything isn't right, call us and we'll make it right, re-cleaning at no charge. We don't consider a job done until you're thrilled."),
     ("How is pricing determined?", "Pricing is based on the size of your home, number and accessibility of windows or surfaces, and the services you choose. We give clear, upfront, all-in quotes, no hidden fees and no surprises on the invoice."),
     ("Are your cleaning products safe for kids, pets, and plants?", "Yes. We use professional-grade, biodegradable solutions, and our methods are safe for your family, pets, and yard."),
-    ("How far in advance should I book?", "It varies, depending on the season and our schedule, we can sometimes get to you the same day, or it may be a week or two out. Holiday lighting books up earliest, so reserve your spot by early fall. Priority-plan members get scheduling preference."),
+    ("How far in advance should I book?", "It varies, depending on the season and our schedule, we can sometimes get to you the same day, or it may be a week or two out. Holiday lighting books up earliest, so reserve your spot by early fall."),
     ("Do you offer recurring maintenance plans?", "We do, and they're our most popular option. Choose a Biannual, Quarterly, or Monthly recurring plan to save on every cleaning, with FREE BARTA RainBlock Tech included on Quarterly and Monthly. Just select a plan when you request your free quote."),
 ]
 
@@ -960,6 +918,12 @@ XMAS_PHOTO_ALT = {
 # Photo grid on the Christmas page. Photos only, no captions: the owner
 # installs simple roofline lighting and does not want to advertise garland,
 # wreaths, wrapped trees, color schemes or commercial displays as services.
+# Christmas early-bird deal deadlines, as (month, day), in order. The countdown
+# and its "Deal Ends ..." line run to the first one that hasn't passed: to
+# November 1st, then on to December 1st (owner's call, October 2026). After
+# the last one they roll to next year's first.
+XMAS_DEAL_DEADLINES = [(11, 1), (12, 1)]
+
 XMAS_SHOWCASE = [
     "assets/img/xmas-warm-white-terracotta.jpg",
     "assets/img/xmas-warm-white-mediterranean.jpg",
@@ -1174,6 +1138,9 @@ CITY_PAGES = [
         "desc": "Window cleaning in Waconia, MN for lake homes and newer neighborhoods: spot-free glass, screens and hard-water stain removal. Free quotes, guaranteed work.",
         "hero": "assets/img/svc-cta-squeegee.jpg",
         "hero_pos": "30% 40%",
+        # On phones the desktop crop showed only the tech's back and belt;
+        # this aims it at the arm, squeegee and window instead.
+        "hero_m": {"pos": "76% 40%"},
         "hero_sub": "Clear glass for homes on Lake Waconia, around downtown, and in the newer neighborhoods on the edges of town. Fully insured, with a 100% satisfaction guarantee.",
         "why_heading": "A lake town that keeps growing",
         "why_intro": [
@@ -1564,6 +1531,10 @@ CITY_PAGES = [
         ],
         "hero": "assets/img/3P8A7912.JPEG",
         "hero_pos": "86% 40%",
+        # On phones the photo fills the screen's full height, so the tech's
+        # face sat right behind the headline; a 1.4x zoom from the bottom
+        # lifts it into the open space under the menu.
+        "hero_m": {"pos": "62% 100%", "zoom": 1.4},
         "jobs": [],
         "faqs": [
             ("How often do St. Michael homeowners need their windows cleaned?",

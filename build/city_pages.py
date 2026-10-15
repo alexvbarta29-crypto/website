@@ -3,7 +3,8 @@
 Laid out like the individual service pages (services/*.html), per the owner:
 a full-width photo hero, the "Save money with every service" plan picker,
 a "Why <town>" write-up, a labelled "Jobs we've done in <town>" gallery,
-the FAQs, and the closing call-to-action band. No quote form, services
+the FAQs, a "Gutter cleaning & Christmas lights in <town>" pair of cards,
+and the closing call-to-action band. No quote form, services
 grid or review block: the page is there to rank for "window cleaning in
 <town>" and send people to the quote page.
 
@@ -82,6 +83,39 @@ def _why(c):
   </section>"""
 
 
+def _also(c):
+    """Gutter cleaning and Christmas light installation in this town (owner's
+    request, October 2026). These pages are what rank for local searches, so
+    each one says, in its own words, that Barta does both in this town too,
+    and links to those service pages. The copy is per town in CITY_PAGES
+    (also_gutters / also_xmas)."""
+    if not (c.get("also_gutters") and c.get("also_xmas")):
+        return ""
+    city = c["city"]
+    root = C.rel(DEPTH)
+    cards = [
+        ("gutter", f"Gutter cleaning in {city}", c["also_gutters"],
+         "services/gutter-cleaning.html", "See gutter cleaning"),
+        ("lights", f"Christmas light installation in {city}", c["also_xmas"],
+         "services/christmas-light-installation.html", "See Christmas lights"),
+    ]
+    html = "".join(
+        f"""<a class="card svc-card reveal" data-delay="{i}" href="{root}{href}">
+        <span class="ic">{icon(ic)}</span><h3>{h}</h3><p>{p}</p>
+        <span class="more">{more} {icon('arrow')}</span></a>"""
+        for i, (ic, h, p, href, more) in enumerate(cards))
+    return f"""
+  <section class="bg-mist">
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">More in {city}</span>
+        <h2>Gutter cleaning &amp; Christmas lights in {city}</h2>
+      </div>
+      <div class="grid cols-2">{html}</div>
+    </div>
+  </section>"""
+
+
 def _jobs(c):
     """Real jobs render as a photo with its label underneath. Until the owner
     sends some, the slots are dashed, tagged placeholders so nobody mistakes
@@ -147,6 +181,9 @@ def _check_unique(cities):
             yield "why_points", p
         for q, a in c["faqs"]:
             yield "faq answer", a
+        for k in ("also_gutters", "also_xmas"):
+            if c.get(k):
+                yield k, c[k]
     seen = {}
     for c in cities:
         for field, t in texts(c):
@@ -178,7 +215,7 @@ def render(c, seo_title, hero_picture):
     html += f"""
 <main id="main">
   <section class="svc-hero">
-    <div class="svc-hero-media" aria-hidden="true">{hero_picture(root, c["hero"], c.get("hero_pos"))}</div>
+    <div class="svc-hero-media" aria-hidden="true">{hero_picture(root, c["hero"], c.get("hero_pos"), hero_m=c.get("hero_m"))}</div>
     <div class="svc-hero-overlay" aria-hidden="true"></div>
     <div class="container">
       {C.crumbs([("Home", root + "index.html"), ("Service Areas", root + "service-areas.html"), (city, None)], light=True)}
@@ -209,6 +246,7 @@ def render(c, seo_title, hero_picture):
       {C.faq_block([(q, _tel(a)) for q, a in faqs])}
     </div>
   </section>
+{_also(c)}
 
   {C.cta_band(DEPTH, heading=f"Ready for cleaner windows in {city}?",
               text=f"Get your free, no-obligation window cleaning quote for your {city} home today.")}
