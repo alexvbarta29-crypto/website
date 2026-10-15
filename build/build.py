@@ -625,7 +625,7 @@ def build_service(svc):
         <div class="cd-cell"><span class="cd-num" data-cd="s">{cd_s:02d}</span><span class="cd-label">Seconds</span></div>
       </div>
       <a class="btn btn-lg" href="{root}get-quote.html?svc={checkbox_slug}">Get Your Free Quote {icon('arrow')}</a>
-      <p class="xmas-promo-limit">{_warn_svg} We Are Only Taking On 50 New Clients This Year</p>
+      <p class="xmas-promo-limit">{_warn_svg} We Are Only Taking On 150 New Clients This Year</p>
     </div>
   </section>"""
         xmas_style_cards = "".join(
