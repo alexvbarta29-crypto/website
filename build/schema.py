@@ -1,5 +1,5 @@
 """JSON-LD schema builders for SEO."""
-from sitedata import BIZ, AREAS
+from sitedata import BIZ, AREAS, AWARD
 
 def local_business():
     """Core LocalBusiness node. Deliberately omits aggregateRating/review , 
@@ -31,6 +31,7 @@ def local_business():
         # too small to serve as the brand mark Google renders.
         "logo": BIZ["domain"] + "/assets/img/logo-bww.png",
         "foundingDate": BIZ["founded"],
+        "award": AWARD["name"],
         "address": {
             "@type": "PostalAddress",
             "streetAddress": BIZ["street"],

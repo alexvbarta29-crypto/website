@@ -789,6 +789,19 @@ REVIEWS = []
 TEAM_PHOTO = "assets/img/team-barta-brothers.jpg"
 TEAM_PHOTO_NAMES = ["Alex Barta", "Jacob Barta"]
 
+# The owner's "Best of Delano Area 2026" graphic (October 2026 upload, a
+# 2430x3038 PNG re-saved as a q95 JPEG without metadata). The wording here
+# matches the graphic exactly; who runs the contest isn't named on it and
+# couldn't be confirmed online, so it isn't named on the site either (see
+# docs/OWNER-VERIFICATION.md). Kept out of IMAGE_ALT so the Gallery's
+# real-jobs set doesn't pick it up.
+AWARD = {
+    "image": "assets/img/award-best-of-delano-2026.jpg",
+    "alt": ("Thank you, Delano! Alex and Jacob Barta in their Barta Window Washing polos, "
+            "voted by our neighbors Best of Delano Area, Best Cleaner 2026"),
+    "name": "Best of Delano Area 2026, Best Cleaner",
+}
+
 TEAM = [
     ("Jacob Barta", "Co-Owner", "JB", "assets/img/team-jacob.jpg", "Jacob is organized and straightforward, the one who makes sure nothing falls through the cracks. If you've talked to Barta on the phone or gotten a clear answer fast, that's Jacob."),
     ("Alex Barta", "Co-Owner", "AB", "assets/img/team-alex.jpg", "Alex is steady and hands-on, the kind of person who'd rather show you than tell you. He manages the crew day to day and holds everyone, himself included, to the standard he'd want at his own home."),

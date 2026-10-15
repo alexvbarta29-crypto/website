@@ -903,6 +903,20 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .team-duo-names { padding-inline: 17%; }
   .team-duo-names h2, .team-duo-names h3 { margin-top: 14px; font-size: 1.08rem; }
 }
+/* Best of Delano Area award: the owner's graphic at its own 4:5 shape (never
+   cropped, it has lettering at every edge) beside a short thank-you. */
+.award-split { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 480px); gap: clamp(32px, 6vw, 80px); align-items: center; justify-content: center; }
+.award-media { border-radius: var(--r-lg); overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.45); background: #0b0d14; }
+.award-media img { width: 100%; height: auto; display: block; }
+.award-section .eyebrow { color: #f2c14e; }
+.award-copy h2 { margin-top: 10px; font-size: clamp(1.9rem, 3.6vw, 2.7rem); }
+.award-copy p { margin-top: 16px; font-size: 1.08rem; line-height: 1.6; }
+.award-copy .btn { margin-top: 26px; }
+@media (max-width: 760px) {
+  .award-split { grid-template-columns: minmax(0, 440px); }
+  .award-copy { text-align: center; }
+  .award-copy .eyebrow { justify-content: center; }
+}
 .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(20px, 3.2vw, 36px); max-width: 880px; margin-inline: auto; }
 .team-card { text-align: center; }
 .team-photo { width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); background: var(--mist); transition: box-shadow .3s var(--ease), transform .3s var(--ease); }

@@ -13,6 +13,14 @@ concern because it isn't part of the generated site at all — it lives only in 
 
 ## Audit history
 
+- **"Best of Delano Area 2026, Best Cleaner" award added (October 2026):** the owner uploaded the
+  award graphic and asked for it on the site. It now has its own homepage section (between the
+  savings plans and the reviews) and an `award` line in the LocalBusiness structured data
+  (`AWARD` in `build/sitedata.py`). The site repeats only what the graphic itself says ("Voted by
+  our neighbors", "Best of Delano Area", "Best Cleaner · 2026"). **To confirm:** who runs the
+  contest. No public listing of it could be found online, so the organizer isn't named or linked
+  anywhere. Once the owner confirms it (for example a newspaper's reader poll), the section can
+  name and link it.
 - **Soft washing, pressure washing and house washing removed (October 2026):** the owner is not
   offering these services, so their pages (`services/soft-washing.html`,
   `services/pressure-washing.html`, `services/house-washing.html`, which sold the same soft wash

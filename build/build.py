@@ -12,7 +12,7 @@ sys.path.insert(0, HERE)
 import city_pages as CP
 from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
-                      CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, POSTS, FAQS, HOME_SERVICES,
+                      CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, AWARD, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
                       XMAS_PHOTO_ALT, XMAS_SHOWCASE)
 from icons import icon
@@ -227,6 +227,11 @@ def build_home():
          "Finally, we hand-detail the glass, frames, and sills, wiping down every edge and corner so the window looks brand new, not just clean, before we move on to the next one.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
+    # Never cropped: the graphic has lettering right up to its edges, so the
+    # box takes the image's own 4:5 shape instead of an object-fit crop.
+    award_picture = C.picture("", AWARD["image"], AWARD["alt"],
+                              extra_attrs='loading="lazy" decoding="async"',
+                              sizes="(max-width: 520px) calc(100vw - 40px), 440px")
 
     why = [
         ("shield", "Fully insured", "Full insurance coverage on every job. Your home and our team are always protected."),
@@ -315,6 +320,22 @@ def build_home():
         <p>Join a recurring plan and save on every visit, the more often we come, the more you save.</p>
       </div>
       <div class="promo-grid">{promo_cards}</div>
+    </div>
+  </section>
+
+  <!-- AWARD -->
+  <section class="bg-deep award-section">
+    <div class="container">
+      <div class="award-split">
+        <div class="award-media reveal">{award_picture}</div>
+        <div class="award-copy reveal" data-delay="1">
+          <span class="eyebrow">Best of Delano Area 2026</span>
+          <h2>Voted Best Cleaner by our neighbors</h2>
+          <p>Thank you, Delano! Our neighbors voted {BIZ['name']} Best Cleaner in Best of Delano Area 2026.
+            We started this business right here in town, and we're grateful to every customer who trusts us with their home.</p>
+          <a class="btn btn-lg" href="get-quote.html">Get Your Free Quote {icon('arrow')}</a>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -2429,6 +2450,17 @@ _TEAM_PHOTO_SPECS = [(2560, "webp", 88), (2560, "jpg", 92),
                      (960, "webp", 86), (960, "jpg", 90),
                      (640, "webp", 86), (640, "jpg", 90)]
 
+# The "Best of Delano Area 2026" graphic is lettering as much as photo, and
+# lettering is where compression shows first, so it gets the same high
+# quality as the team photo, with 4:4:4 JPEGs (no colour subsampling) so the
+# red and gold text keeps clean edges. It displays at most 440 CSS px wide,
+# so 960w covers a retina laptop and 1200w a 3x phone.
+_AWARD_SPECS = [(1600, "webp", 88), (1600, "jpg", 92),
+                (1200, "webp", 88), (1200, "jpg", 92),
+                (960, "webp", 88), (960, "jpg", 92),
+                (640, "webp", 88), (640, "jpg", 92),
+                (480, "webp", 88), (480, "jpg", 92)]
+
 # Service photos double as homepage grid cards, which render far smaller than
 # the 640w tier (a phone's two-column card is ~350 device px wide, a featured
 # card ~720). These tiers exist for those card renders, at the default
@@ -2478,6 +2510,7 @@ def generate_hero_variants():
     hero_paths.update(k for k in IMAGE_ALT if k.lower().endswith((".jpg", ".jpeg")))
     # The Christmas page's photo set, kept out of IMAGE_ALT (see sitedata).
     hero_paths.update(XMAS_PHOTO_ALT)
+    hero_paths.add(AWARD["image"])
     # City pages' "Jobs we've done" photos (kept out of IMAGE_ALT, which also
     # feeds the Gallery page).
     hero_paths.update(j["photo"] for c in LIVE_CITY_PAGES for j in c.get("jobs") or [])
@@ -2508,6 +2541,8 @@ def generate_hero_variants():
             specs = list(_HERO_TOP_Q_SPECS)
         elif rel == TEAM_PHOTO:
             specs = list(_TEAM_PHOTO_SPECS)
+        elif rel == AWARD["image"]:
+            specs = list(_AWARD_SPECS)
         else:
             base_specs = _HERO_HIGH_Q_SPECS if rel in _HERO_HIGH_Q_PATHS else _HERO_VARIANT_SPECS
             specs = base_specs + (_HERO_1920_SPECS if rel in _HERO_1920_PATHS else [])
@@ -2541,6 +2576,8 @@ def generate_hero_variants():
                 kwargs = {"quality": quality, "optimize": True}
                 if fmt == "webp":
                     kwargs["method"] = 6
+                elif rel == AWARD["image"]:
+                    kwargs["subsampling"] = 0
                 img.save(out_path, save_fmt, **kwargs)
             except Exception as e:
                 print(f"  (hero variant skipped for {out_rel}: {e})")
