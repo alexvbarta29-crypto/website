@@ -303,14 +303,6 @@ def build_home():
     </div>
   </section>
 
-  <!-- MEET THE TEAM -->
-  <section class="section-tight">
-    <div class="container">
-      <div class="section-head center"><h2>Meet the brothers</h2></div>
-      <div class="mt-3">{_team_cards(name_tag="h3")}</div>
-    </div>
-  </section>
-
   <!-- PLANS / SAVINGS -->
   <section class="bg-mist">
     <div class="container">
@@ -998,22 +990,21 @@ def build_gallery():
 # ===========================================================================
 # ABOUT
 # ===========================================================================
-def _team_cards(name_tag="h2"):
+def _team_cards():
     """The owners together in one photo, with each name under their side of
-    the picture. Shared by the About page and the homepage so the two can't
-    drift apart. (It replaced two separate portraits at the owners' request.)
+    the picture. (It replaced two separate portraits at the owners' request.)
+    About page only: the homepage dropped its copy once the Best of Delano
+    award graphic, which shows the same two of them, went up there.
 
     No role line: the owners don't want "Co-Owner" printed under their names.
     It stays in the alt text, which is accurate and never displayed, so a
     screen reader still gets who these people are.
 
-    name_tag varies by page because the heading above the photo does. On
-    About the page title IS the team heading, so the names sit at h2; on the
-    homepage they sit under an h2 of their own and so take h3. Hardcoding
-    either would put a heading-level skip on one of the two pages."""
-    names = "".join(f"<{name_tag}>{n}</{name_tag}>" for n in TEAM_PHOTO_NAMES)
+    The page title IS the team heading on About, so the names sit at h2.
+    Not lazy-loaded: it's the first thing under the title, in view on load."""
+    names = "".join(f"<h2>{n}</h2>" for n in TEAM_PHOTO_NAMES)
     photo = C.picture("", TEAM_PHOTO, IMAGE_ALT[TEAM_PHOTO],
-                      extra_attrs='loading="lazy" decoding="async"',
+                      extra_attrs='decoding="async"',
                       sizes="(max-width: 940px) 92vw, 880px")
     return f"""<div class="team-duo reveal">
         <div class="team-duo-photo">{photo}</div>
@@ -1028,7 +1019,7 @@ def build_about():
     the founding motivation or company history is invented, see
     docs/OWNER-VERIFICATION.md."""
     depth = 0
-    team_cards = _team_cards(name_tag="h2")
+    team_cards = _team_cards()
 
     experience = [
         ("Recurring plans that actually save money",

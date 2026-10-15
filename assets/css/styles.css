@@ -898,10 +898,10 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 .team-duo-photo { aspect-ratio: 3 / 2; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); background: var(--mist); }
 .team-duo-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
 .team-duo-names { display: grid; grid-template-columns: 1fr 1fr; padding-inline: 24%; text-align: center; }
-.team-duo-names h2, .team-duo-names h3 { margin-top: 18px; font-size: clamp(1.2rem, 2.4vw, 1.45rem); white-space: nowrap; }
+.team-duo-names h2 { margin-top: 18px; font-size: clamp(1.2rem, 2.4vw, 1.45rem); white-space: nowrap; }
 @media (max-width: 640px) {
   .team-duo-names { padding-inline: 17%; }
-  .team-duo-names h2, .team-duo-names h3 { margin-top: 14px; font-size: 1.08rem; }
+  .team-duo-names h2 { margin-top: 14px; font-size: 1.08rem; }
 }
 /* Best of Delano Area award: the owner's graphic at its own 4:5 shape (never
    cropped, it has lettering at every edge) beside a short thank-you. */
