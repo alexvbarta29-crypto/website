@@ -737,7 +737,7 @@ def build_service(svc):
         desc=svc.get("seo_desc") or f"Professional {svc['name'].lower()} in {BIZ['city']} & the western Twin Cities. {svc['short']} Insured & guaranteed. Get your free quote from Barta today.",
         slug=f"services/{svc['slug']}.html", depth=depth, schema=schema,
         uses_reviews_widget=True, og_image=svc.get("image"))
-    html += C.nav(depth)
+    html += C.nav(depth, xmas=is_xmas)
 
     hero_img = svc.get("image") or "assets/img/hero-home.jpg"
     hero_pos = svc.get("hero_pos", "30%")
@@ -820,7 +820,7 @@ def build_service(svc):
 </main>
 {C.xmas_quote_modal(depth) if is_xmas else ""}
 """
-    html += C.page_end(depth)
+    html += C.page_end(depth, xmas=is_xmas)
     write(f"services/{svc['slug']}.html", html, slug=f"services/{svc['slug']}.html", priority="0.9")
 
 # ===========================================================================
@@ -2601,6 +2601,27 @@ def generate_hero_variants():
             small.save(logo_out, "PNG", optimize=True)
         except Exception as e:
             print(f"  (logo variant skipped: {e})")
+
+    # The Christmas logos (the owner's design: the same mark with a strand of
+    # lights on each slash, black and white lettering versions), shown only
+    # on the Christmas Light Installation page. Same 765x207 canvas as the
+    # regular logo, cropped from the owner's 2000px upload. Kept full color:
+    # a 256-color palette flattens the soft glow under each bulb, and the
+    # full-color 320w is still only ~20 KB. 480w covers a 3x phone's nav.
+    for name in ("logo-bww-xmas", "logo-bww-xmas-white"):
+        src = os.path.join(ROOT, f"assets/img/{name}.png")
+        if not os.path.exists(src):
+            continue
+        for w in (320, 480):
+            out = os.path.join(ROOT, f"assets/img/{name}-{w}w.png")
+            if os.path.exists(out) and os.path.getmtime(out) >= os.path.getmtime(src):
+                continue
+            try:
+                img = Image.open(src).convert("RGBA")
+                lw, lh = img.size
+                img.resize((w, round(lh * w / lw)), Image.LANCZOS).save(out, "PNG", optimize=True)
+            except Exception as e:
+                print(f"  (logo variant skipped for {name}-{w}w: {e})")
 
 OG_W, OG_H = 1200, 630
 

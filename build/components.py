@@ -609,7 +609,22 @@ def _menu_item(s, root):
             f'<span><span class="mi-title">{s["name"]}</span>'
             f'<span class="mi-desc">{s["short"][:54]}…</span></span></a>')
 
-def nav(depth=0):
+def _brand_logo(root, sizes, width, height, xmas=False):
+    """The header/drawer logo. On the Christmas Light Installation page it's
+    the owner's Christmas version (lights strung on the slashes), drawn on
+    the same canvas as the regular mark so it swaps in at the same size."""
+    if xmas:
+        stem = f"{root}assets/img/logo-bww-xmas"
+        srcset = f"{stem}-320w.png 320w, {stem}-480w.png 480w, {stem}.png 765w"
+        src = f"{stem}.png"
+    else:
+        srcset = f"{root}assets/img/logo-bww-320w.png 320w, {root}assets/img/logo-bww.png 765w"
+        src = f"{root}assets/img/logo-bww.png"
+    alt = BIZ["name"]
+    return (f'<img class="brand-logo" src="{src}" srcset="{srcset}" sizes="{sizes}" '
+            f'alt="{alt}" width="{width}" height="{height}">')
+
+def nav(depth=0, xmas=False):
     root = rel(depth)
     # Christmas Light Installation is the seasonal headline service, so it
     # gets the top-level menu slot (desktop bar and phone drawer alike) and
@@ -621,7 +636,7 @@ def nav(depth=0):
     return f"""<header class="nav-wrap">
   <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
-      <img class="brand-logo" src="{root}assets/img/logo-bww.png" srcset="{root}assets/img/logo-bww-320w.png 320w, {root}assets/img/logo-bww.png 765w" sizes="148px" alt="{BIZ['name']}" width="148" height="40">
+      {_brand_logo(root, "148px", 148, 40, xmas)}
     </a>
     <ul class="nav-links">
       <li><a class="nav-phone" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a></li>
@@ -646,7 +661,7 @@ def nav(depth=0):
   <div class="drawer-scrim"></div>
   <div class="drawer-panel">
     <div class="drawer-head">
-      <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-bww.png" srcset="{root}assets/img/logo-bww-320w.png 320w, {root}assets/img/logo-bww.png 765w" sizes="150px" alt="{BIZ['name']}" width="150" height="32"></a>
+      <a class="brand" href="{root}index.html">{_brand_logo(root, "150px", 150, 32, xmas)}</a>
       <button class="drawer-close" aria-label="Close menu">{icon('x')}</button>
     </div>
     <nav class="drawer-nav" aria-label="Mobile">
@@ -677,8 +692,16 @@ def sticky_cta(depth=0):
   <a class="btn" href="tel:{BIZ['phone_href']}">{icon('phone')} Call Us</a>
 </div>"""
 
-def footer(depth=0):
+def footer(depth=0, xmas=False):
     root = rel(depth)
+    alt = BIZ["name"]
+    if xmas:
+        stem = f"{root}assets/img/logo-bww-xmas-white"
+        footer_logo = (f'<img class="brand-logo" src="{stem}.png" srcset="{stem}-320w.png 320w, '
+                       f'{stem}-480w.png 480w, {stem}.png 765w" sizes="163px" '
+                       f'alt="{alt}" width="160" height="44">')
+    else:
+        footer_logo = f'<img class="brand-logo" src="{root}assets/img/logo-bww-white.png" alt="{alt}" width="160" height="44">'
     svc_links = "".join(f'<li><a href="{root}{target}">{label}</a></li>' for label, target in DROPDOWN_SERVICES)
     # City service pages (build/city_pages.py). Listed here, not in the
     # header, so the top menu stays clean; the hub link closes the list.
@@ -689,7 +712,7 @@ def footer(depth=0):
   <div class="container">
     <div class="footer-top">
       <div class="footer-about">
-        <a class="brand" href="{root}index.html"><img class="brand-logo" src="{root}assets/img/logo-bww-white.png" alt="{BIZ['name']}" width="160" height="44"></a>
+        <a class="brand" href="{root}index.html">{footer_logo}</a>
         <p>{BIZ['tagline']}. Family-owned, fully insured exterior cleaning for homes and businesses across the western Twin Cities metro.</p>
         <ul class="footer-contact">
           <li>{icon('pin')}<span>{BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}</span></li>
@@ -737,9 +760,9 @@ def footer(depth=0):
   </div>
 </footer>"""
 
-def page_end(depth=0):
+def page_end(depth=0, xmas=False):
     return f"""{sticky_cta(depth)}
-{footer(depth)}
+{footer(depth, xmas)}
 <script src="{rel(depth)}assets/js/main.min.js?v={ASSET_VER}" defer></script>
 </body>
 </html>"""
