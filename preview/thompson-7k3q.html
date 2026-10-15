@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="See Thompson Chiropractic lit up for the holidays. A 3D preview by Barta Window Washing.">
+<meta property="og:title" content="Thompson Chiropractic Holiday Lights">
+<meta property="og:description" content="See your building lit up for the holidays. A 3D preview by Barta Window Washing.">
+<meta name="theme-color" content="#070B12">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<title>Thompson Chiropractic Lights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=EB+Garamond:wght@500&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-bleed winter scene; a quiet title top-left and one floating control bar bottom-center. Single dark look by design. */
+:root{
+  color-scheme: dark;
+  --ink:#070B12;
+  --glass: rgb(9 13 21 / .66);
+  --line: rgb(255 255 255 / .11);
+  --text:#F3EFE7;
+  --muted:#A9A69E;
+  --gold:#E8C07A;
+  --serif:'EB Garamond', Garamond, Georgia, 'Times New Roman', serif;
+  --ui:'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+html,body{height:100%}
+body{background:var(--ink);color:var(--text);font-family:var(--ui);overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;background:var(--ink)}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;transition:opacity .8s;
+  background:radial-gradient(120% 90% at 50% 42%, rgb(0 0 0 / 0) 55%, rgb(0 0 0 / .5) 100%)}
+body[data-time="day"] .vignette{opacity:.3}
+
+.hud{position:fixed;inset:0;z-index:2;pointer-events:none;
+  padding-left:max(18px, env(safe-area-inset-left, 0px));
+  padding-right:max(18px, env(safe-area-inset-right, 0px));
+  padding-block:calc(env(safe-area-inset-top, 0px) + 22px) calc(env(safe-area-inset-bottom, 0px) + 18px);
+  display:grid;grid-template-rows:auto 1fr auto;grid-template-columns:minmax(0,1fr)}
+
+.title{justify-self:start;text-shadow:0 1px 20px rgb(0 0 0 / .55)}
+.eyebrow{margin:0 0 10px;font:600 10.5px/1 var(--ui);letter-spacing:.24em;text-transform:uppercase;color:var(--gold)}
+h1{margin:0;font:500 clamp(30px, 4.2vw, 46px)/1 var(--serif);letter-spacing:.005em;text-wrap:balance}
+.addr{margin:9px 0 0;font:500 12px/1.3 var(--ui);letter-spacing:.08em;color:var(--muted)}
+
+.hint{align-self:end;justify-self:center;margin-bottom:12px;font:500 12px/1 var(--ui);letter-spacing:.02em;color:var(--text);
+  background:rgb(9 13 21 / .5);border:1px solid var(--line);border-radius:999px;padding:9px 14px;transition:opacity .7s}
+.hint.gone{opacity:0}
+
+.bottom{justify-self:center;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%}
+.bar{pointer-events:auto;display:flex;align-items:center;gap:14px;padding:7px 7px 7px 10px;
+  background:var(--glass);-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
+  border:1px solid var(--line);border-radius:999px;box-shadow:0 14px 44px rgb(0 0 0 / .4)}
+.divider{width:1px;height:24px;background:var(--line)}
+
+.power{display:inline-flex;align-items:center;gap:10px;background:none;border:0;padding:6px 6px;cursor:pointer;
+  font:600 13px/1 var(--ui);color:var(--text)}
+.track{position:relative;width:40px;height:24px;border-radius:999px;background:rgb(255 255 255 / .16);transition:background .35s, box-shadow .35s}
+.track::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgb(0 0 0 / .35);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.power[aria-pressed="true"] .track{background:var(--gold);box-shadow:0 0 18px rgb(232 192 122 / .6)}
+.power[aria-pressed="true"] .track::after{transform:translateX(16px)}
+
+.colors{display:flex;align-items:center;gap:12px;transition:opacity .3s}
+.colors.off{opacity:.45}
+.cname{font:500 13px/1 var(--ui);color:var(--muted);min-width:9.6em;text-align:right}
+.dots{display:flex;gap:9px}
+.dot{width:28px;height:28px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgb(255 255 255 / .2);transition:box-shadow .3s, transform .2s}
+.dot:hover{transform:scale(1.07)}
+.dot[aria-pressed="true"]{box-shadow:0 0 0 2px rgb(9 13 21), 0 0 0 3.5px var(--text), 0 0 18px 3px var(--glow)}
+
+.seg{display:inline-flex;gap:2px;background:rgb(255 255 255 / .06);border-radius:999px;padding:3px}
+.seg button{font:600 13px/1 var(--ui);color:var(--muted);background:transparent;border:0;border-radius:999px;padding:9px 14px;cursor:pointer;transition:background .25s,color .25s}
+.seg button:hover{color:var(--text)}
+.seg button[aria-pressed="true"]{background:var(--text);color:#11151c}
+
+.icon{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--text);
+  background:rgb(255 255 255 / .06);border:1px solid var(--line);transition:background .25s}
+.icon:hover{background:rgb(255 255 255 / .12)}
+.icon svg{width:17px;height:17px}
+
+.credit{pointer-events:auto;margin:0;font:500 11.5px/1.3 var(--ui);letter-spacing:.03em;color:var(--muted);text-shadow:0 1px 12px rgb(0 0 0 / .6)}
+.credit a{color:var(--text);text-decoration:none;border-bottom:1px solid rgb(232 192 122 / .55)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+#loading,#fallback{position:fixed;inset:0;z-index:3;display:grid;place-items:center;background:var(--ink);color:var(--text);
+  font:500 15px/1.4 var(--ui);letter-spacing:.02em;transition:opacity .9s;
+  padding-left:max(18px, env(safe-area-inset-left, 0px));padding-right:max(18px, env(safe-area-inset-right, 0px))}
+#loading.gone{opacity:0;pointer-events:none}
+#loading span{display:inline-flex;align-items:center;gap:12px}
+#loading span::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 14px 3px rgb(232 192 122 / .7);animation:pulse 1.4s ease-in-out infinite}
+#fallback p{max-width:30rem;text-align:center;margin:0}
+@keyframes pulse{50%{opacity:.35}}
+
+@media (max-width: 600px){
+  .hud{padding-block:calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 14px)}
+  h1{font-size:30px}
+  .eyebrow{margin-bottom:8px}
+  .bottom{width:100%}
+  .bar{width:100%;border-radius:22px;padding:12px;display:grid;gap:12px 8px;
+    grid-template-columns:auto 1fr auto;grid-template-areas:"colors colors colors" "power time reset"}
+  .divider{display:none}
+  .colors{grid-area:colors;justify-content:space-between;padding:0 2px}
+  .cname{text-align:left;min-width:0}
+  .dots{gap:10px}
+  .dot{width:30px;height:30px}
+  .power{grid-area:power}
+  .seg{grid-area:time;justify-self:center}
+  .icon{grid-area:reset}
+}
+@media (prefers-reduced-motion: reduce){
+  #loading span::before{animation:none}
+  .hint,#loading,.track,.track::after{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="vignette"></div>
+
+<div class="hud">
+  <header class="title">
+    <p class="eyebrow">Holiday lighting preview</p>
+    <h1>Thompson Chiropractic</h1>
+    <p class="addr">1262 Crossing Dr · Delano, MN</p>
+  </header>
+
+  <div class="hint" id="hint">Drag to look around · Pinch to zoom</div>
+
+  <div class="bottom">
+    <div class="bar" role="group" aria-label="Lighting controls">
+      <button class="power" id="power" type="button" aria-pressed="true"><span class="track"></span><span>Lights</span></button>
+      <span class="divider"></span>
+      <div class="colors" id="colors">
+        <span class="cname" id="cname">Warm white</span>
+        <div class="dots" id="dots" role="group" aria-label="Bulb color"></div>
+      </div>
+      <span class="divider"></span>
+      <div class="seg" id="time" role="group" aria-label="Time of day"></div>
+      <button class="icon" id="reset" type="button" aria-label="Reset view" title="Reset view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      </button>
+    </div>
+    <p class="credit">Prepared by <a href="https://bartawindowwashing.com" target="_blank" rel="noopener">Barta Window Washing</a></p>
+  </div>
+</div>
+
+<div id="loading"><span>Hanging the lights…</span></div>
+<div id="fallback" hidden><p>This preview needs 3D graphics, and this browser didn't start them. Try opening the link in Chrome or Safari on a phone or computer.</p></div>
+
+<script>
+  window.__fallback = function (msg) {
+    var l = document.getElementById('loading'); if (l) l.classList.add('gone');
+    var f = document.getElementById('fallback');
+    if (f) { f.hidden = false; if (msg) f.querySelector('p').textContent = msg; }
+  };
+  setTimeout(function () { if (!window.__sceneReady) window.__fallback(); }, 30000);
+</script>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ---------------------------------------------------------------
+   Thompson Chiropractic and Integrative Health, 1262 Crossing Dr, Delano MN
+   Units are feet. +x = east, +z = south (toward Crossing Dr), +y = up.
+   70 x 50 ft footprint, hip roof about 4.3/12, 12 ft eaves.
+   35 ft cream storefront: stepped false-front parapet (center 23.7 ft,
+   shoulders 20.8 ft), two grid windows under black awnings, steel canopy.
+   Wings and sides: slate-blue lap siding, cream board-and-batten corners,
+   brick wainscot. Measured from aerial imagery and Oct 2026 site photos.
+   Lights: C9 bulbs on 12" spacing along the gutter line all the way
+   around, plus the three flat tops of the storefront parapet.
+---------------------------------------------------------------- */
+
+const $ = (s) => document.querySelector(s);
+const stage = $('#stage');
+const DEG = Math.PI / 180;
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = matchMedia('(pointer: coarse)').matches;
+const small = Math.min(innerWidth, innerHeight) < 700;
+
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------------- renderer ---------------- */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+} catch (e) {
+  window.__fallback();
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.6 : 2));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.domElement.setAttribute('role', 'img');
+renderer.domElement.setAttribute('aria-label', '3D model of Thompson Chiropractic with holiday lights along the gutter line');
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog('#121d36', 180, 820);
+const camera = new THREE.PerspectiveCamera(44, 1, 0.5, 5000);
+
+const buf = new THREE.Vector2();
+renderer.getDrawingBufferSize(buf);
+const rt = new THREE.WebGLRenderTarget(buf.x, buf.y, {
+  type: THREE.HalfFloatType,
+  samples: renderer.capabilities.isWebGL2 ? 4 : 0,
+});
+const composer = new EffectComposer(renderer, rt);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(stage.clientWidth, stage.clientHeight), 1.0, 0.6, 0.9);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 9;
+controls.maxDistance = 380;
+controls.maxPolarAngle = Math.PI * 0.497;
+controls.screenSpacePanning = false;
+controls.rotateSpeed = 0.7;
+
+/* ---------------- textures ---------------- */
+const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+function makeTex(w, h, draw, { srgb = true, repeat = true } = {}) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  draw(g, w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = maxAniso;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function speckle(g, w, h, amt, r) {
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (r() - 0.5) * amt;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+// Slate-blue fiber-cement lap siding, ~7" exposure. Tile = 8 ft x 3.5 ft (6 boards).
+const sidingTex = makeTex(512, 256, (g, w, h) => {
+  const r = rng(11), bh = h / 6;
+  for (let i = 0; i < 6; i++) {
+    const y = i * bh, v = (r() - 0.5) * 8;
+    g.fillStyle = `rgb(${78 + v},${114 + v},${133 + v})`;
+    g.fillRect(0, y, w, bh);
+    const gr = g.createLinearGradient(0, y, 0, y + bh);
+    gr.addColorStop(0, 'rgba(10,25,35,0.42)');
+    gr.addColorStop(0.1, 'rgba(0,0,0,0)');
+    gr.addColorStop(0.9, 'rgba(255,255,255,0.04)');
+    gr.addColorStop(1, 'rgba(255,255,255,0.10)');
+    g.fillStyle = gr; g.fillRect(0, y, w, bh);
+  }
+  g.globalAlpha = 0.05;
+  for (let k = 0; k < 160; k++) { g.fillStyle = r() < 0.5 ? '#000' : '#fff'; g.fillRect(r() * w, r() * h, 20 + r() * 90, 1); }
+  g.globalAlpha = 1;
+  speckle(g, w, h, 8, r);
+});
+
+// Cream board-and-batten corner panels. Tile = 4 ft x 8 ft, battens 16" on center.
+const battenTex = makeTex(256, 512, (g, w, h) => {
+  const r = rng(17);
+  g.fillStyle = '#E6DFCC'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 6, r);
+  for (let i = 0; i < 3; i++) {
+    const x = (i * w) / 3;
+    g.fillStyle = '#EFE9DA'; g.fillRect(x, 0, 13, h);
+    g.fillStyle = 'rgba(80,68,48,0.28)'; g.fillRect(x + 13, 0, 4, h);
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x, 0, 2, h);
+  }
+});
+
+// Brick wainscot. Tile = 4 ft x 2 ft (9 courses, 6 units).
+const brickTex = makeTex(512, 256, (g, w, h) => {
+  const r = rng(7), rows = 9, ch = h / rows, bw = w / 6;
+  g.fillStyle = '#8e857c'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < rows; i++) {
+    const off = (i % 2) * bw / 2;
+    for (let j = -1; j < 7; j++) {
+      const x = j * bw + off, v = (r() - 0.5) * 26;
+      g.fillStyle = `rgb(${(116 + v) | 0},${(88 + v * 0.8) | 0},${(76 + v * 0.7) | 0})`;
+      g.fillRect(x + 1.6, i * ch + 1.6, bw - 3.2, ch - 3.2);
+    }
+  }
+  speckle(g, w, h, 22, r);
+});
+
+// EIFS panels on the storefront. Tile = 4.25 ft x 3.4 ft, reveal grooves on two edges.
+const eifsTex = makeTex(256, 256, (g, w, h) => {
+  const r = rng(3);
+  g.fillStyle = '#E7E0CE'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 6, r);
+  g.fillStyle = 'rgba(110,96,74,0.45)'; g.fillRect(w - 4, 0, 4, h); g.fillRect(0, h - 4, w, 4);
+  g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(w - 5, 0, 1, h); g.fillRect(0, h - 5, w, 1);
+});
+
+// Architectural asphalt shingles, cool gray. Tile = 6 ft x 6 ft, 12 courses.
+const shingleTex = makeTex(512, 512, (g, w, h) => {
+  const r = rng(21), rows = 12, rh = h / rows;
+  g.fillStyle = '#56585c'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < rows; i++) {
+    let x = -r() * 40;
+    const y = i * rh;
+    while (x < w) {
+      const tw = 30 + r() * 60, v = (r() - 0.5) * 30, b = 104 + v;
+      g.fillStyle = `rgb(${b | 0},${(b * 1.01) | 0},${(b * 1.05) | 0})`;
+      g.fillRect(x, y, tw - 1.5, rh);
+      if (r() < 0.35) { g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(x, y + rh * 0.55, tw - 1.5, rh * 0.45); }
+      x += tw;
+    }
+    g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(0, y + rh - 3, w, 3);
+  }
+  speckle(g, w, h, 30, r);
+});
+
+// Cedar privacy fence. Tile = 3 ft x 6 ft (6 boards).
+const fenceTex = makeTex(256, 256, (g, w, h) => {
+  const r = rng(23), bw = w / 6;
+  for (let i = 0; i < 6; i++) {
+    const v = (r() - 0.5) * 30;
+    g.fillStyle = `rgb(${(190 + v) | 0},${(140 + v * 0.8) | 0},${(92 + v * 0.6) | 0})`;
+    g.fillRect(i * bw, 0, bw - 2, h);
+  }
+  g.globalAlpha = 0.08;
+  for (let k = 0; k < 200; k++) { g.fillStyle = '#3a2410'; g.fillRect(r() * w, r() * h, 1, 10 + r() * 40); }
+  g.globalAlpha = 1;
+});
+
+const asphaltTex = makeTex(256, 256, (g, w, h) => {
+  const r = rng(5);
+  g.fillStyle = '#3c3f44'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 30, r);
+  for (let k = 0; k < 300; k++) { g.fillStyle = `rgba(200,200,200,${r() * 0.15})`; g.fillRect(r() * w, r() * h, 1.5, 1.5); }
+});
+const concreteTex = makeTex(256, 256, (g, w, h) => {
+  const r = rng(9);
+  g.fillStyle = '#b4b1ab'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 14, r);
+  g.fillStyle = 'rgba(60,60,60,0.45)'; g.fillRect(w - 3, 0, 3, h); g.fillRect(0, h - 3, w, 3);
+});
+const snowTex = makeTex(256, 256, (g, w, h) => {
+  const r = rng(13);
+  g.fillStyle = '#edf1f6'; g.fillRect(0, 0, w, h);
+  for (let k = 0; k < 40; k++) {
+    const x = r() * w, y = r() * h, rad = 10 + r() * 40;
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, 'rgba(205,215,230,0.45)'); gr.addColorStop(1, 'rgba(205,215,230,0)');
+    g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  speckle(g, w, h, 6, r);
+});
+const gradTex = makeTex(4, 128, (g, w, h) => {
+  for (let y = 0; y < h; y++) {
+    const a = Math.pow(1 - y / (h - 1), 1.8);
+    g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(0, y, w, 1);
+  }
+}, { srgb: false, repeat: false });
+const radialTex = makeTex(128, 128, (g, w, h) => {
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+}, { srgb: false, repeat: false });
+
+/* ---------------- materials ---------------- */
+function tiled(map, tile, o = {}, offset = [0, 0]) {
+  const m = new THREE.MeshStandardMaterial({ map, ...o });
+  m.userData.tile = tile; m.userData.offset = offset;
+  return m;
+}
+const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...o });
+const M = {
+  siding: tiled(sidingTex, [8, 3.5], { roughness: 0.8 }),
+  batten: tiled(battenTex, [4, 8], { roughness: 0.75 }),
+  brick: tiled(brickTex, [4, 2], { roughness: 0.95 }),
+  brick2: tiled(brickTex, [4, 2], { roughness: 0.95, color: '#d0a090' }),
+  eifs: tiled(eifsTex, [4.25, 3.4], { roughness: 0.85 }, [-12.75, 0]),
+  eifsL: tiled(eifsTex, [4.75, 3.4], { roughness: 0.85 }, [-17.5, 0]),
+  eifsR: tiled(eifsTex, [4.75, 3.4], { roughness: 0.85 }, [12.75, 0]),
+  shingle: tiled(shingleTex, [6, 6], { roughness: 0.92, side: THREE.DoubleSide }),
+  fence: tiled(fenceTex, [3, 6], { roughness: 0.95 }),
+  asphalt: tiled(asphaltTex, [16, 16], { roughness: 0.95 }),
+  concrete: tiled(concreteTex, [5, 5], { roughness: 0.9 }),
+  snow: tiled(snowTex, [24, 24], { roughness: 1 }),
+  ridge: std('#4a4c50', { roughness: 0.95 }),
+  trim: std('#F3F1EB', { roughness: 0.6 }),
+  cream: std('#E6DFCC', { roughness: 0.75 }),
+  coping: std('#EEEAE0', { roughness: 0.6 }),
+  soffit: std('#ECEAE4', { roughness: 0.8 }),
+  gutter: std('#F5F3EE', { roughness: 0.45 }),
+  fabric: std('#17181b', { roughness: 0.75, side: THREE.DoubleSide }),
+  black: std('#1c1d20', { roughness: 0.5, metalness: 0.3 }),
+  steel: std('#9a9a96', { roughness: 0.4, metalness: 0.6 }),
+  glass: std('#232c38', { roughness: 0.12 }),
+  glassLit: std('#26303b', { roughness: 0.12, emissive: '#ffbf80', emissiveIntensity: 0 }),
+  glassLobby: std('#1f2834', { roughness: 0.1, emissive: '#ffbe7a', emissiveIntensity: 0 }),
+  paint: std('#E9E6DA', { roughness: 0.8 }),
+  paintBlue: std('#2a5db0', { roughness: 0.8 }),
+  bark: std('#4b3d33', { roughness: 1 }),
+  shrub: std('#2c4637', { roughness: 1, flatShading: true }),
+  snowCap: std('#f2f5f9', { roughness: 1 }),
+  pole: std('#5b6067', { roughness: 0.5, metalness: 0.5 }),
+  beige: std('#cdc4b4', { roughness: 0.9 }),
+  tan: std('#c9b597', { roughness: 0.9 }),
+  yellow: std('#d8c27c', { roughness: 0.85 }),
+  roofMem: std('#55585d', { roughness: 0.95 }),
+  door: std('#f1efe9', { roughness: 0.5, metalness: 0.2 }),
+  ac: std('#b8bbbd', { roughness: 0.6, metalness: 0.3 }),
+  green: std('#55644f', { roughness: 0.7, metalness: 0.2 }),
+  red: std('#b3262a', { roughness: 0.5 }),
+  ever: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, flatShading: true }),
+  socket: std('#1f3d25', { roughness: 0.6 }),
+};
+
+/* ---------------- geometry helpers ---------------- */
+function worldUV(g, su, sv, ou = 0, ov = 0) {
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i)), az = Math.abs(n.getZ(i));
+    let u, v;
+    if (ay >= ax && ay >= az) { u = p.getX(i) - ou; v = p.getZ(i); }
+    else if (ax >= az) { u = p.getZ(i); v = p.getY(i) - ov; }
+    else { u = p.getX(i) - ou; v = p.getY(i) - ov; }
+    uv.setXY(i, u / su, v / sv);
+  }
+  uv.needsUpdate = true;
+}
+function box(w, h, d, x, y, z, material, { cast = true, receive = true, parent = scene } = {}) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x, y, z);
+  const first = Array.isArray(material) ? material[0] : material;
+  if (first.userData.tile) worldUV(g, first.userData.tile[0], first.userData.tile[1], ...(first.userData.offset || [0, 0]));
+  const m = new THREE.Mesh(g, material);
+  m.castShadow = cast; m.receiveShadow = receive;
+  parent.add(m);
+  return m;
+}
+function beam(a, b, w, h, material, parent = scene) {
+  const d = b.clone().sub(a);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(d.length(), h, w), material);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(V(1, 0, 0), d.normalize());
+  m.castShadow = true; m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function polyGeom(polys, tile) {
+  const pos = [], uv = [];
+  for (const P of polys) {
+    const p = P.pts;
+    for (let i = 1; i < p.length - 1; i++) {
+      for (const q of [p[0], p[i], p[i + 1]]) {
+        pos.push(q.x, q.y, q.z);
+        uv.push(q.dot(P.a) / tile, q.dot(P.s) / tile);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+function plane(w, h, material, x, y, z, ry = 0, parent = scene) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material);
+  m.position.set(x, y, z); m.rotation.y = ry;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+const FACE = { 'z+': 0, 'z-': Math.PI, 'x+': Math.PI / 2, 'x-': -Math.PI / 2 };
+function faceGroup(x, y, z, face) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z); g.rotation.y = FACE[face];
+  scene.add(g);
+  return g;
+}
+function lbox(parent, w, h, d, x, y, z, material) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m);
+  return m;
+}
+// Gable-roofed block for neighbors (ridge runs east-west).
+function gableBuilding(x0, x1, z0, z1, h, wall, rise) {
+  box(x1 - x0, h, z1 - z0, (x0 + x1) / 2, h / 2, (z0 + z1) / 2, wall);
+  const o = 1.5, zm = (z0 + z1) / 2, ryy = h + rise;
+  const s1 = V(0, rise, (zm - z0)).normalize(), s2 = V(0, rise, -(z1 - zm)).normalize();
+  const g = polyGeom([
+    { pts: [V(x0 - o, h, z0 - o), V(x1 + o, h, z0 - o), V(x1 + o, ryy, zm), V(x0 - o, ryy, zm)], a: V(1, 0, 0), s: s1 },
+    { pts: [V(x1 + o, h, z1 + o), V(x0 - o, h, z1 + o), V(x0 - o, ryy, zm), V(x1 + o, ryy, zm)], a: V(-1, 0, 0), s: s2 },
+  ], 6);
+  const m = new THREE.Mesh(g, M.shingle); m.castShadow = true; m.receiveShadow = true; scene.add(m);
+  const tri = new THREE.BufferGeometry();
+  const ry2 = h + rise * 0.92;
+  tri.setAttribute('position', new THREE.Float32BufferAttribute([x0, h, z0, x0, h, z1, x0, ry2, zm, x1, h, z1, x1, h, z0, x1, ry2, zm], 3));
+  tri.computeVertexNormals();
+  const gm = new THREE.Mesh(tri, new THREE.MeshStandardMaterial({ color: wall.color, roughness: 0.9, side: THREE.DoubleSide }));
+  gm.castShadow = true; scene.add(gm);
+}
+
+/* ---------------- sky, stars, moon ---------------- */
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(2400, 32, 16),
+  new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color() }, mid: { value: new THREE.Color() }, bottom: { value: new THREE.Color() } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; varying vec3 vP; void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h * 1.6, 0.0, 1.0), 0.6)) : mix(mid, bottom, clamp(-h * 5.0, 0.0, 1.0)); gl_FragColor = vec4(c, 1.0); }',
+  })
+);
+sky.renderOrder = -2;
+scene.add(sky);
+
+const stars = (() => {
+  const r = rng(99), n = 1200, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const th = r() * Math.PI * 2, y = 0.06 + r() * 0.94, rad = Math.sqrt(1 - y * y);
+    pos[i * 3] = Math.cos(th) * rad * 2000; pos[i * 3 + 1] = y * 2000; pos[i * 3 + 2] = Math.sin(th) * rad * 2000;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: '#dfe8ff', size: 1.6, sizeAttenuation: false, transparent: true, depthWrite: false, fog: false }));
+  p.renderOrder = -1;
+  scene.add(p);
+  return p;
+})();
+const moon = new THREE.Mesh(new THREE.SphereGeometry(18, 24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.45, 1.3), fog: false }));
+moon.position.set(0.567, 0.47, -0.676).multiplyScalar(1700);
+scene.add(moon);
+
+/* ---------------- lights ---------------- */
+const hemi = new THREE.HemisphereLight('#3a5290', '#0c0f17', 0.9);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight('#ffffff', 1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 10, far: 700 });
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.04;
+scene.add(sun);
+scene.add(sun.target);
+
+/* ---------------- site ---------------- */
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1800), M.snow);
+ground.geometry.rotateX(-Math.PI / 2);
+worldUV(ground.geometry, 24, 24);
+ground.receiveShadow = true;
+scene.add(ground);
+
+function strip(x0, x1, w, h, y, z, material, gaps = []) {
+  let a = x0;
+  const sorted = gaps.filter(([g0, g1]) => g1 > x0 && g0 < x1).sort((p, q) => p[0] - q[0]);
+  for (const [g0, g1] of sorted) { if (g0 > a) box(g0 - a, h, w, (a + g0) / 2, y, z, material, { cast: false }); a = Math.max(a, g1); }
+  if (x1 > a) box(x1 - a, h, w, (a + x1) / 2, y, z, material, { cast: false });
+}
+// Crossing Dr runs east-west in front of the clinic.
+box(760, 0.06, 32, 0, 0.03, 63, M.asphalt, { cast: false });           // z 47..79
+strip(-380, 380, 0.6, 0.5, 0.25, 46.8, M.concrete, [[-82, -62], [43.5, 48.5], [62, 112]]);
+strip(-380, 380, 0.6, 0.5, 0.25, 79.3, M.concrete);
+// Front walk along the building, curving down to the street at the east end.
+strip(-380, 44, 4.5, 0.25, 0.125, 33.75, M.concrete);
+box(5, 0.25, 11.5, 46, 0.125, 41.25, M.concrete, { cast: false });
+box(5, 0.25, 3.3, 0, 0.125, 29.95, M.concrete, { cast: false });          // to the door
+box(2.8, 0.25, 54, -36.6, 0.125, 2, M.concrete, { cast: false });         // along the west wall
+
+// West parking lot and its drive.
+box(44, 0.06, 123, -60, 0.04, -32.5, M.asphalt, { cast: false });        // x -82..-38, z -94..29
+box(18, 0.06, 64, -29, 0.04, -62, M.asphalt, { cast: false });           // x -38..-20, z -94..-30
+box(20, 0.06, 18, -72, 0.035, 38, M.asphalt, { cast: false });           // drive to the street
+for (let z = -90; z <= 22; z += 9.5) box(18, 0.02, 0.33, -73, 0.08, z, M.paint, { cast: false });
+for (let z = -20.5; z <= 24; z += 9.5) box(17, 0.02, 0.33, -47, 0.08, z, M.paint, { cast: false });
+for (let x = -37; x <= -21; x += 9.5) box(0.33, 0.02, 18, x, 0.08, -85, M.paint, { cast: false });
+box(4.5, 0.02, 9.1, -41.2, 0.075, 20.25, M.paintBlue, { cast: false });
+
+// Wide drive on the east side.
+box(50, 0.06, 122, 87, 0.04, -14, M.asphalt, { cast: false });
+for (let z = -60; z <= 20; z += 9.5) box(12, 0.02, 0.33, 106, 0.08, z, M.paint, { cast: false });
+
+// Snow banks pushed onto the boulevard by the plow.
+function bank(x0, x1, z, r = 0.9) {
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, x1 - x0, 6, 10), M.snowCap);
+  m.rotation.z = Math.PI / 2;
+  m.scale.set(0.5, 1, 1);
+  m.position.set((x0 + x1) / 2, 0.15, z);
+  m.receiveShadow = true;
+  scene.add(m);
+}
+bank(-380, -85, 45.6); bank(-59, 42, 45.6); bank(50, 59, 45.6); bank(115, 380, 45.6); bank(-380, 380, 80.6);
+{
+  const pile = new THREE.Mesh(new THREE.SphereGeometry(7, 20, 12), M.snowCap);
+  pile.scale.set(1.2, 0.42, 1); pile.position.set(-74, 0, -86); pile.castShadow = true; pile.receiveShadow = true;
+  scene.add(pile);
+}
+
+/* ---------------- the building ---------------- */
+const ey = 12.2, ex = 37, ez = 27, PITCH = 0.36;
+const ry = ey + ez * PITCH;          // main ridge, ~21.9 ft
+const rx = ex - ez;                  // ridge half-length, 10 ft
+const gy = ey + 17.5 * PITCH;        // cross gable behind the storefront, ~18.5 ft
+
+// Walls, wainscot, sill.
+box(70, 8.85, 50, 0, 7.025, 0, M.siding);              // siding 2.6 to 11.45 ft
+box(70.5, 2.6, 50.5, 0, 1.3, 0, M.brick);
+box(70.9, 0.2, 50.9, 0, 2.7, 0, M.trim);
+
+// Cream board-and-batten corner panels with a trim band.
+for (const sx of [-1, 1]) {
+  for (const sz of [-1, 1]) {
+    box(4, 8.8, 0.18, sx * 33, 7.0, sz * 25.09, M.batten);
+    box(0.18, 8.8, 6.2, sx * 35.09, 7.0, sz * 22.0, M.batten);
+    box(4.3, 0.3, 0.32, sx * 33, 9.6, sz * 25.2, M.cream);
+    box(0.32, 0.3, 6.4, sx * 35.2, 9.6, sz * 22.0, M.cream);
+  }
+}
+// Soffit, fascia, gutters, downspouts.
+box(74, 0.14, 54, 0, 11.4, 0, M.soffit);
+box(74, 0.75, 0.2, 0, 11.825, 26.85, M.trim); box(74, 0.75, 0.2, 0, 11.825, -26.85, M.trim);
+box(0.2, 0.75, 54, 36.85, 11.825, 0, M.trim); box(0.2, 0.75, 54, -36.85, 11.825, 0, M.trim);
+box(19.85, 0.42, 0.4, -27.425, 11.99, 27.15, M.gutter); box(19.85, 0.42, 0.4, 27.425, 11.99, 27.15, M.gutter);
+box(74.7, 0.42, 0.4, 0, 11.99, -27.15, M.gutter);
+box(0.4, 0.42, 54.7, 37.15, 11.99, 0, M.gutter); box(0.4, 0.42, 54.7, -37.15, 11.99, 0, M.gutter);
+for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+  box(0.36, 11.4, 0.3, sx * 34.4, 5.9, sz * 25.4, M.gutter);
+  box(0.36, 0.3, 1.8, sx * 34.4, 11.65, sz * 26.15, M.gutter);
+}
+
+// Hip roof with a cross gable tucked behind the storefront parapet.
+const FL = V(-ex, ey, ez), FR = V(ex, ey, ez), BL = V(-ex, ey, -ez), BR = V(ex, ey, -ez), RL = V(-rx, ry, 0), RR = V(rx, ry, 0);
+const sF = V(0, ez * PITCH, -ez).normalize(), sB = V(0, ez * PITCH, ez).normalize();
+const sW = V(ez, ez * PITCH, 0).normalize(), sE = V(-ez, ez * PITCH, 0).normalize();
+const GA = V(-17.5, ey, ez), GB = V(0, gy, ez), GC = V(0, gy, ez - 17.5), GA2 = V(17.5, ey, ez);
+const roof = new THREE.Mesh(polyGeom([
+  { pts: [FL, FR, RR, RL], a: V(1, 0, 0), s: sF },
+  { pts: [BR, BL, RL, RR], a: V(-1, 0, 0), s: sB },
+  { pts: [BL, FL, RL], a: V(0, 0, 1), s: sW },
+  { pts: [FR, BR, RR], a: V(0, 0, -1), s: sE },
+  { pts: [GA, GB, GC], a: V(0, 0, -1), s: V(1, PITCH, 0).normalize() },
+  { pts: [GA2, GC, GB], a: V(0, 0, 1), s: V(-1, PITCH, 0).normalize() },
+], 6), M.shingle);
+roof.castShadow = true; roof.receiveShadow = true;
+scene.add(roof);
+const up = V(0, 0.07, 0);
+for (const [a, b] of [[FL, RL], [FR, RR], [BL, RL], [BR, RR], [RL, RR], [GB, GC]]) beam(a.clone().add(up), b.clone().add(up), 0.8, 0.16, M.ridge);
+for (const [x, z] of [[14.5, -2.4], [14.5, 0.2], [14.5, 2.8]]) box(0.7, 0.8, 0.7, x, ey + (ex - x) * PITCH + 0.3, z, M.gutter);
+
+// Storefront: stepped false-front parapet in cream EIFS panels.
+box(25.5, 23.7, 4.8, 0, 11.85, 25.9, M.eifs);                 // center, x -12.75..12.75, face z 28.3
+box(26.2, 0.5, 5.4, 0, 23.95, 25.9, M.coping);
+box(4.75, 20.8, 3.9, -15.125, 10.4, 25.95, M.eifsL);          // shoulders, face z 27.9
+box(4.75, 20.8, 3.9, 15.125, 10.4, 25.95, M.eifsR);
+box(5.35, 0.45, 4.5, -15.125, 21.03, 25.95, M.coping);
+box(5.35, 0.45, 4.5, 15.125, 21.03, 25.95, M.coping);
+box(10.75, 2.6, 5.0, -7.475, 1.3, 25.95, M.brick); box(10.75, 2.6, 5.0, 7.475, 1.3, 25.95, M.brick);
+box(4.85, 2.6, 4.1, -15.125, 1.3, 25.95, M.brick); box(4.85, 2.6, 4.1, 15.125, 1.3, 25.95, M.brick);
+box(10.9, 0.2, 5.15, -7.475, 2.7, 25.95, M.trim); box(10.9, 0.2, 5.15, 7.475, 2.7, 25.95, M.trim);
+box(5.0, 0.2, 4.25, -15.125, 2.7, 25.95, M.trim); box(5.0, 0.2, 4.25, 15.125, 2.7, 25.95, M.trim);
+
+// Black storefront door, numerals, hours plaque.
+box(3.9, 7.6, 0.16, 0, 3.8, 28.36, M.black);
+plane(3.2, 6.9, M.glassLobby, 0, 3.6, 28.46);
+box(0.07, 1.4, 0.14, 1.15, 3.6, 28.52, M.steel);
+{
+  const c = document.createElement('canvas'); c.width = 96; c.height = 320;
+  const g = c.getContext('2d'); g.translate(48, 160); g.rotate(Math.PI / 2);
+  g.fillStyle = '#2a2b2e'; g.font = '600 70px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('1262', 0, 4);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  plane(0.5, 1.65, new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.6, depthWrite: false }), -2.45, 5.6, 28.34);
+  plane(1.1, 1.35, std('#d9d6cf', { roughness: 0.5 }), 2.75, 5.3, 28.34);
+}
+
+// Windows: white grid storefronts, small cream-trimmed wing windows, faux cross panels.
+function windowUnit({ x, y, z, face, w, h, outer = 0, cols = 1, rows = 1, lit = false, faux = false }) {
+  const g = faceGroup(x, y, z, face), t = 0.28, d = 0.32;
+  if (outer > 0) {
+    const W = w + 2 * t, H = h + 2 * t;
+    lbox(g, W + 2 * outer, outer, 0.22, 0, H / 2 + outer / 2, 0.05, M.cream);
+    lbox(g, W + 2 * outer, outer, 0.22, 0, -H / 2 - outer / 2, 0.05, M.cream);
+    lbox(g, outer, H, 0.22, -W / 2 - outer / 2, 0, 0.05, M.cream);
+    lbox(g, outer, H, 0.22, W / 2 + outer / 2, 0, 0.05, M.cream);
+  }
+  if (faux) {
+    lbox(g, w, h, 0.12, 0, 0, 0.06, M.cream);
+    lbox(g, w, 0.3, 0.2, 0, 0, 0.12, M.cream);
+    lbox(g, 0.3, h, 0.2, 0, 0, 0.12, M.cream);
+    return;
+  }
+  const gl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lit ? M.glassLit : M.glass);
+  gl.position.z = 0.03; g.add(gl);
+  lbox(g, w + 2 * t, t, d, 0, h / 2 + t / 2, 0.08, M.trim);
+  lbox(g, w + 2 * t, t, d, 0, -h / 2 - t / 2, 0.08, M.trim);
+  lbox(g, t, h, d, -w / 2 - t / 2, 0, 0.08, M.trim);
+  lbox(g, t, h, d, w / 2 + t / 2, 0, 0.08, M.trim);
+  for (let i = 1; i < cols; i++) lbox(g, 0.1, h, 0.08, -w / 2 + (w * i) / cols, 0, 0.07, M.trim);
+  for (let j = 1; j < rows; j++) lbox(g, w, 0.1, 0.08, 0, -h / 2 + (h * j) / rows, 0.07, M.trim);
+}
+windowUnit({ x: -9.6, y: 5.4, z: 28.3, face: 'z+', w: 6.2, h: 5.0, cols: 4, rows: 3, lit: true });
+windowUnit({ x: 9.6, y: 5.4, z: 28.3, face: 'z+', w: 6.2, h: 5.0, cols: 4, rows: 3, lit: true });
+windowUnit({ x: -27.6, y: 6.8, z: 25.0, face: 'z+', w: 2.4, h: 2.4, outer: 0.55, lit: true });
+windowUnit({ x: 27.6, y: 6.8, z: 25.0, face: 'z+', w: 2.4, h: 2.4, outer: 0.55, lit: true });
+windowUnit({ x: -35, y: 8.6, z: 14, face: 'x-', w: 5.6, h: 2.8, outer: 0.5, cols: 2, lit: true });
+windowUnit({ x: -35, y: 7.6, z: -14, face: 'x-', w: 3.4, h: 3.4, faux: true });
+windowUnit({ x: 35, y: 7.6, z: -17, face: 'x+', w: 3.4, h: 3.4, faux: true });
+windowUnit({ x: -8, y: 7.6, z: -25, face: 'z-', w: 3.4, h: 3.4, faux: true });
+windowUnit({ x: 12, y: 7.6, z: -25, face: 'z-', w: 3.4, h: 3.4, faux: true });
+
+// Black fabric awnings over the storefront windows (and the back door).
+function awning(x, y, z, face, w, proj, drop, valance) {
+  const g = faceGroup(x, y, z, face), hw = w / 2;
+  const P = (a, b, c) => [a, b, c];
+  const quads = [
+    [P(-hw, 0, 0), P(hw, 0, 0), P(hw, -drop, proj), P(-hw, -drop, proj)],
+    [P(-hw, -drop, proj), P(hw, -drop, proj), P(hw, -drop - valance, proj), P(-hw, -drop - valance, proj)],
+  ];
+  const pos = [];
+  for (const q of quads) pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+  for (const sx of [-hw, hw]) pos.push(sx, 0, 0, sx, -drop, proj, sx, -drop, 0);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, M.fabric); m.castShadow = true; m.receiveShadow = true;
+  g.add(m);
+}
+awning(-9.6, 11.3, 28.32, 'z+', 7.5, 2.6, 2.3, 0.75);
+awning(9.6, 11.3, 28.32, 'z+', 7.5, 2.6, 2.3, 0.75);
+box(7.6, 0.9, 2.5, 0, 10.55, 29.55, M.black);
+beam(V(-3.4, 13.6, 28.32), V(-3.4, 11.0, 30.55), 0.09, 0.09, M.black);
+beam(V(3.4, 13.6, 28.32), V(3.4, 11.0, 30.55), 0.09, 0.09, M.black);
+
+// White barn lights over the sign.
+const lampGlow = new THREE.MeshBasicMaterial({ color: '#000000' });
+for (const x of [-6.6, -2.2, 2.2, 6.6]) {
+  box(0.45, 0.45, 0.14, x, 22.65, 28.37, M.trim);
+  beam(V(x, 22.65, 28.4), V(x, 23.0, 29.25), 0.09, 0.09, M.trim);
+  beam(V(x, 23.0, 29.25), V(x, 22.55, 29.65), 0.09, 0.09, M.trim);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.45, 16, 1, true), new THREE.MeshStandardMaterial({ color: '#f3f1eb', roughness: 0.4, side: THREE.DoubleSide }));
+  shade.position.set(x, 22.3, 29.65); shade.castShadow = true; scene.add(shade);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.48, 16), lampGlow);
+  disc.rotation.x = Math.PI / 2; disc.position.set(x, 22.08, 29.65); scene.add(disc);
+}
+const signWash = new THREE.Mesh(new THREE.PlaneGeometry(24, 9), new THREE.MeshBasicMaterial({
+  map: radialTex, color: '#ffd29a', transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false,
+  polygonOffset: true, polygonOffsetFactor: -2,
+}));
+signWash.position.set(0, 18.6, 28.33); signWash.renderOrder = 3; scene.add(signWash);
+
+// The sign: "Thompson Chiropractic" with the logo mark, over the "AND INTEGRATIVE HEALTH" plaque.
+const signCanvas = document.createElement('canvas'); signCanvas.width = 2048; signCanvas.height = 512;
+const signTex = new THREE.CanvasTexture(signCanvas); signTex.colorSpace = THREE.SRGBColorSpace; signTex.anisotropy = maxAniso;
+function drawSign() {
+  const g = signCanvas.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, 2048, 512);
+  g.save();
+  g.font = '500 224px "EB Garamond", Garamond, Georgia, serif';
+  const t1 = 'Thompson', t2 = 'Chiropractic', gap = 150;
+  const w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, total = w1 + gap + w2;
+  const sx = Math.min(1, 1990 / total);
+  g.translate(1024, 0); g.scale(sx, 1);
+  const x0 = -total / 2;
+  g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowOffsetX = 5; g.shadowOffsetY = 9; g.shadowBlur = 10;
+  g.fillStyle = '#3b3e43';
+  g.fillText(t1, x0, 198);
+  g.fillText(t2, x0 + w1 + gap, 198);
+  g.shadowColor = 'transparent';
+  const lx = x0 + w1 + gap / 2;
+  g.strokeStyle = '#7193ab'; g.lineWidth = 9; g.lineCap = 'round';
+  for (const dx of [-13, 13]) {
+    g.beginPath(); g.moveTo(lx + dx, 236); g.bezierCurveTo(lx + dx - 34, 170, lx + dx + 34, 100, lx + dx, 34); g.stroke();
+  }
+  g.restore();
+  const pw = 1382, ph = 170, px = 1024 - pw / 2, py = 304;
+  g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowOffsetX = 5; g.shadowOffsetY = 9; g.shadowBlur = 10;
+  g.fillStyle = '#2f3438'; g.fillRect(px, py, pw, ph);
+  g.shadowColor = 'transparent';
+  g.fillStyle = '#f4f2ec'; g.font = '600 120px "Barlow Condensed", "Arial Narrow", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  try { g.letterSpacing = '6px'; } catch (e) { /* older browsers */ }
+  g.fillText('AND INTEGRATIVE HEALTH', 1024, py + ph / 2 + 4);
+  try { g.letterSpacing = '0px'; } catch (e) { /* older browsers */ }
+  g.textAlign = 'start'; g.textBaseline = 'alphabetic';
+  signTex.needsUpdate = true;
+}
+drawSign();
+if (document.fonts && document.fonts.load) {
+  Promise.all([
+    document.fonts.load('500 224px "EB Garamond"'),
+    document.fonts.load('600 120px "Barlow Condensed"'),
+  ]).then(drawSign).catch(() => {});
+}
+const sign = plane(20, 5, new THREE.MeshStandardMaterial({ map: signTex, transparent: true, roughness: 0.45, metalness: 0.25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }), 0, 17.4, 28.38);
+sign.renderOrder = 2;
+
+// East wall: white service door, wall pack, alarm bell, meters.
+box(0.2, 7.2, 3.2, 35.12, 3.6, -2, M.door);
+box(0.24, 0.6, 1.0, 35.2, 2.0, -2, M.red);
+box(0.4, 0.5, 0.8, 35.25, 10.4, 4, M.black);
+box(0.3, 0.55, 0.55, 35.2, 9.4, 1.2, M.red);
+box(0.8, 1.6, 1.0, 35.5, 2.6, 18.5, M.steel);
+box(0.4, 1.4, 0.9, 35.3, 5.2, -6, M.steel);
+// Back: service door with a small awning, light.
+box(3.2, 7.2, 0.2, -28, 3.6, -25.12, M.door);
+awning(-28, 8.6, -25.15, 'z-', 4.4, 1.8, 1.0, 0.45);
+const backLamp = new THREE.MeshBasicMaterial({ color: '#000000' });
+box(0.6, 0.4, 0.3, -28, 9.2, -25.3, backLamp, { cast: false });
+box(5, 0.2, 4, -28, 0.1, -27.5, M.concrete, { cast: false });
+// Cedar enclosure off the back corner on the east side, condensers inside, transformer next to it.
+box(7.8, 6, 0.3, 39.1, 3, -8, M.fence);
+box(0.3, 6, 26, 43, 3, -21, M.fence);
+box(10, 6, 0.3, 38, 3, -34, M.fence);
+box(3, 2.8, 3, 39.6, 1.5, -15, M.ac); box(3, 2.8, 3, 39.6, 1.5, -20, M.ac);
+box(6, 4.6, 5, 49.5, 2.3, -30, M.green);
+box(1.4, 3.4, 1.4, 54, 1.7, -31, M.ac);
+
+/* ---------------- trees and shrubs ---------------- */
+const coneTiers = [], trunks = [], branches = [];
+function evergreen(x, z, h, r, seed) {
+  const R = rng(seed), trunkH = h * 0.12, tiers = 5, th = h * 0.34;
+  trunks.push({ x, z, h: trunkH + 0.5, r: Math.max(0.25, r * 0.09) });
+  const tint = 0.85 + R() * 0.3;
+  for (let i = 0; i < tiers; i++) {
+    const t = i / tiers;
+    const tr = r * (1 - t * 0.78) * (0.92 + R() * 0.16);
+    const ty = trunkH + (h - trunkH) * t * 0.86 + th * 0.45;
+    coneTiers.push({ x, y: ty, z, r: tr, h: th, rot: R() * Math.PI, tint });
+  }
+}
+function bareTree(x, z, h, seed) {
+  const R = rng(seed);
+  const grow = (p, dir, len, rad, depth) => {
+    branches.push({ p: p.clone(), dir: dir.clone(), len, rad });
+    if (depth >= 3) return;
+    const end = p.clone().addScaledVector(dir, len);
+    const kids = depth === 0 ? 4 : 3;
+    for (let k = 0; k < kids; k++) {
+      const nd = dir.clone();
+      nd.applyAxisAngle(V(R() - 0.5, 0, R() - 0.5).normalize(), 0.35 + R() * 0.45);
+      nd.y = Math.max(nd.y, 0.25); nd.normalize();
+      const start = depth === 0 ? p.clone().addScaledVector(dir, len * (0.55 + 0.45 * R())) : end;
+      grow(start, nd, len * (0.62 + R() * 0.12), rad * 0.6, depth + 1);
+    }
+  };
+  grow(V(x, 0, z), V(0, 1, 0), h * 0.42, h * 0.022, 0);
+}
+// Small ornamental trees at the front corners (bare in December).
+bareTree(-36.6, 30.0, 10.5, 41);
+bareTree(36.6, 30.0, 10, 42);
+// Bare shade trees and evergreens along the west side of the lot.
+evergreen(-91, -88, 26, 5, 8); bareTree(-90, -72, 30, 9);
+evergreen(-92, -58, 24, 4.6, 10); evergreen(-91, -44, 27, 5, 11);
+bareTree(-90, -29, 28, 12); evergreen(-92, -15, 22, 4.4, 13);
+bareTree(-96, 30, 32, 15);
+// Arborvitae toward the brick neighbor, spruces behind.
+for (let z = -20; z <= 20; z += 6) evergreen(114.5, z, 15, 1.7, 60 + z);
+evergreen(70, -95, 24, 4.4, 70); evergreen(82, -100, 27, 5, 71);
+// Distant trees for depth.
+{
+  const R = rng(77);
+  for (let i = 0; i < 80; i++) {
+    const a = R() * Math.PI * 2, d = 240 + R() * 380;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (z > 38 && z < 92) continue;
+    if (R() < 0.62) evergreen(x, z, 22 + R() * 18, 4 + R() * 3, 200 + i);
+    else bareTree(x, z, 26 + R() * 16, 400 + i);
+  }
+}
+{
+  const cone = new THREE.ConeGeometry(1, 1, 9);
+  const im = new THREE.InstancedMesh(cone, M.ever, coneTiers.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  coneTiers.forEach((t, i) => {
+    q.setFromAxisAngle(V(0, 1, 0), t.rot);
+    m4.compose(p.set(t.x, t.y, t.z), q, s.set(t.r, t.h, t.r));
+    im.setMatrixAt(i, m4);
+    c.setRGB(0.13 * t.tint, 0.23 * t.tint, 0.16 * t.tint);
+    im.setColorAt(i, c);
+  });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im);
+
+  const cyl = new THREE.CylinderGeometry(0.75, 1, 1, 7); cyl.translate(0, 0.5, 0);
+  const tm = new THREE.InstancedMesh(cyl, M.bark, trunks.length + branches.length);
+  let k = 0;
+  for (const t of trunks) { m4.compose(p.set(t.x, 0, t.z), q.identity(), s.set(t.r, t.h, t.r)); tm.setMatrixAt(k++, m4); }
+  for (const b of branches) {
+    q.setFromUnitVectors(V(0, 1, 0), b.dir);
+    m4.compose(b.p, q, s.set(b.rad, b.len, b.rad));
+    tm.setMatrixAt(k++, m4);
+  }
+  tm.castShadow = true; tm.receiveShadow = true; scene.add(tm);
+
+  // Boxwoods in the front beds, with a little snow on top.
+  const spots = [];
+  for (const x of [-32.5, -29.5, -24.5, -21.5]) { spots.push([x, 29.2]); spots.push([-x, 29.2]); }
+  for (const x of [-15.5, -12.5, -6.5, -3.8]) { spots.push([x, 30.4]); spots.push([-x, 30.4]); }
+  const sph = new THREE.SphereGeometry(1, 10, 7);
+  const sh = new THREE.InstancedMesh(sph, M.shrub, spots.length);
+  const sc = new THREE.InstancedMesh(sph, M.snowCap, spots.length);
+  spots.forEach(([x, z], i) => {
+    m4.compose(p.set(x, 0.65, z), q.identity(), s.set(1.0, 0.8, 0.9)); sh.setMatrixAt(i, m4);
+    m4.compose(p.set(x, 1.12, z), q.identity(), s.set(0.75, 0.3, 0.65)); sc.setMatrixAt(i, m4);
+  });
+  sh.castShadow = true; sh.receiveShadow = true; sc.receiveShadow = true;
+  scene.add(sh, sc);
+}
+
+/* ---------------- neighbors (simple massing) ---------------- */
+const nightWin = std('#1e2632', { roughness: 0.15, emissive: '#ffd6a0', emissiveIntensity: 0 });
+box(67, 17, 105, 150.5, 8.5, -25.5, [M.brick2, M.brick2, M.roofMem, M.brick2, M.brick2, M.brick2]);
+box(67.6, 0.5, 105.6, 150.5, 17.25, -25.5, M.coping);
+for (const x of [125, 137, 149, 161, 173]) plane(7, 5, nightWin, x, 6.5, 27.06);
+box(6, 3.5, 4, 140, 18.75, -10, M.ac); box(6, 3.5, 4, 160, 18.75, -40, M.ac); box(5, 3, 4, 133, 18.5, -58, M.ac);
+box(65, 18, 50, -152.5, 9, -10, [M.tan, M.tan, M.roofMem, M.tan, M.tan, M.tan]);
+for (const x of [-174, -159, -144]) plane(12, 12, M.ac, x, 6, 15.06);
+gableBuilding(10, 85, -155, -115, 13, M.yellow, 8);
+gableBuilding(95, 160, -150, -112, 12, M.yellow, 7.5);
+for (let x = 18; x <= 78; x += 12) plane(4, 4, nightWin, x, 6.5, -114.94);
+gableBuilding(45, 175, 88, 150, 12, M.beige, 10.3);
+for (let x = 55; x <= 165; x += 15) plane(4, 4.5, nightWin, x, 6.5, 87.94, Math.PI);
+box(160, 0.06, 62, -40, 0.04, 119, M.asphalt, { cast: false });
+
+/* ---------------- street lights ---------------- */
+const lensMat = new THREE.MeshBasicMaterial({ color: '#000000' });
+const spots = [];
+function streetLight(x, z, withLight) {
+  box(0.9, 0.6, 0.9, x, 0.3, z, M.concrete);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 25, 10), M.pole);
+  pole.position.set(x, 12.8, z); pole.castShadow = true; scene.add(pole);
+  beam(V(x, 24.8, z), V(x, 25.6, z + 7), 0.22, 0.22, M.pole);
+  box(1.1, 0.35, 2.4, x, 25.55, z + 7.8, M.pole);
+  const lens = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.0), lensMat);
+  lens.rotation.x = Math.PI / 2; lens.position.set(x, 25.36, z + 7.8); scene.add(lens);
+  if (withLight) {
+    const sp = new THREE.SpotLight('#e2eaff', 0, 160, 58 * DEG, 0.75, 2);
+    sp.position.set(x, 25.2, z + 7.8);
+    sp.target.position.set(x, 0, z + 11);
+    scene.add(sp, sp.target);
+    spots.push(sp);
+  }
+}
+streetLight(-92, 45.4, true);
+streetLight(55, 45.4, true);
+streetLight(-230, 45.4, false);
+streetLight(200, 45.4, false);
+
+/* ---------------- holiday lights ---------------- */
+// C9 bulbs, 12" on center: the gutter line all the way around, and the three flat tops of the storefront.
+const runs = [];
+function addRun(pts, spacing = 1) {
+  const out = [];
+  let acc = 0, next = spacing * 0.5;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], L = a.distanceTo(b);
+    while (next <= acc + L) { out.push(a.clone().lerp(b, (next - acc) / L)); next += spacing; }
+    acc += L;
+  }
+  runs.push({ pts, bulbs: out });
+}
+const yB = 12.35;
+addRun([V(-37.2, yB, 27.4), V(-17.6, yB, 27.4)]);        // front gutter, west wing
+addRun([V(17.6, yB, 27.4), V(37.2, yB, 27.4)]);          // front gutter, east wing
+addRun([V(-37.4, yB, 27.2), V(-37.4, yB, -27.2)]);       // west gutter
+addRun([V(37.4, yB, -27.2), V(37.4, yB, 27.2)]);         // east gutter
+addRun([V(37.2, yB, -27.4), V(-37.2, yB, -27.4)]);       // back gutter
+addRun([V(-17.7, 21.37, 28.25), V(-12.9, 21.37, 28.25)]); // left shoulder top
+addRun([V(-13.0, 24.32, 28.65), V(13.0, 24.32, 28.65)]);  // center top
+addRun([V(12.9, 21.37, 28.25), V(17.7, 21.37, 28.25)]);   // right shoulder top
+
+const allBulbs = runs.flatMap((r) => r.bulbs.map((p, k) => ({ p, k })));
+const lightGroup = new THREE.Group();
+scene.add(lightGroup);
+const bulbGeo = (() => { const g = new THREE.SphereGeometry(0.1, 10, 8); g.scale(1, 1.55, 1); g.translate(0, 0.11, 0); return g; })();
+const socketGeo = (() => { const g = new THREE.CylinderGeometry(0.055, 0.065, 0.13, 8); g.translate(0, -0.02, 0); return g; })();
+const bulbs = new THREE.InstancedMesh(bulbGeo, new THREE.MeshBasicMaterial({ color: '#ffffff' }), allBulbs.length);
+const sockets = new THREE.InstancedMesh(socketGeo, M.socket, allBulbs.length);
+{
+  const m4 = new THREE.Matrix4(), white = new THREE.Color(1, 1, 1);
+  allBulbs.forEach((b, i) => {
+    m4.makeTranslation(b.p.x, b.p.y, b.p.z);
+    bulbs.setMatrixAt(i, m4); sockets.setMatrixAt(i, m4); bulbs.setColorAt(i, white);
+  });
+  bulbs.instanceMatrix.needsUpdate = true; sockets.instanceMatrix.needsUpdate = true;
+  const seg = [];
+  for (const r of runs) for (let i = 0; i < r.pts.length - 1; i++) seg.push(r.pts[i].x, r.pts[i].y - 0.05, r.pts[i].z, r.pts[i + 1].x, r.pts[i + 1].y - 0.05, r.pts[i + 1].z);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+  lightGroup.add(bulbs, sockets, new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#1c3322' })));
+}
+
+// The glow the bulbs throw onto the fascia, soffit, siding, shingles and storefront.
+const washMat = new THREE.MeshBasicMaterial({
+  map: gradTex, color: '#ffb867', transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending,
+  depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+});
+const washGroup = new THREE.Group();
+scene.add(washGroup);
+function washPlane(w, h, x, y, z, rx = 0, ry = 0, rz = 0) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), washMat);
+  m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.renderOrder = 3;
+  washGroup.add(m);
+}
+function roofWash(A, B, s, n, L, insetA, insetB) {
+  const a = B.clone().sub(A).normalize(), off = n.clone().multiplyScalar(0.05);
+  const p1 = A.clone().add(off), p2 = B.clone().add(off);
+  const p3 = B.clone().addScaledVector(a, -insetB).addScaledVector(s, L).add(off);
+  const p4 = A.clone().addScaledVector(a, insetA).addScaledVector(s, L).add(off);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([...p1.toArray(), ...p2.toArray(), ...p3.toArray(), ...p1.toArray(), ...p3.toArray(), ...p4.toArray()], 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0], 2));
+  const m = new THREE.Mesh(g, washMat); m.renderOrder = 3;
+  washGroup.add(m);
+}
+{
+  const L = 3.4, inset = L * Math.cos(Math.atan(PITCH));
+  const nF = V(0, ez, ez * PITCH).normalize(), nB = V(0, ez, -ez * PITCH).normalize();
+  const nW = V(-ez * PITCH, ez, 0).normalize(), nE = V(ez * PITCH, ez, 0).normalize();
+  roofWash(V(-ex, ey, ez), V(-17.5, ey, ez), sF, nF, L, inset, 0);
+  roofWash(V(17.5, ey, ez), V(ex, ey, ez), sF, nF, L, 0, inset);
+  roofWash(V(-ex, ey, -ez), V(-ex, ey, ez), sW, nW, L, inset, inset);
+  roofWash(V(ex, ey, ez), V(ex, ey, -ez), sE, nE, L, inset, inset);
+  roofWash(V(ex, ey, -ez), V(-ex, ey, -ez), sB, nB, L, inset, inset);
+
+  washPlane(17.5, 3.1, -26.25, 9.85, 25.22);
+  washPlane(17.5, 3.1, 26.25, 9.85, 25.22);
+  washPlane(19.5, 1.75, -27.25, 11.32, 25.9, Math.PI / 2, 0, 0);
+  washPlane(19.5, 1.75, 27.25, 11.32, 25.9, Math.PI / 2, 0, 0);
+  washPlane(50, 3.1, -35.22, 9.85, 0, 0, -Math.PI / 2, 0);
+  washPlane(50, 3.1, 35.22, 9.85, 0, 0, Math.PI / 2, 0);
+  washPlane(54, 1.75, -35.9, 11.32, 0, Math.PI / 2, 0, Math.PI / 2);
+  washPlane(54, 1.75, 35.9, 11.32, 0, Math.PI / 2, 0, -Math.PI / 2);
+  washPlane(70, 3.1, 0, 9.85, -25.22, 0, Math.PI, 0);
+  washPlane(74, 1.75, 0, 11.32, -25.9, Math.PI / 2, 0, Math.PI);
+
+  washPlane(25.5, 2.6, 0, 22.4, 28.34);              // under the center coping
+  washPlane(4.75, 2.4, -15.125, 19.6, 27.94);        // under each shoulder coping
+  washPlane(4.75, 2.4, 15.125, 19.6, 27.94);
+}
+
+// Soft point lights so the glow reaches walls, roof and snow.
+const PL = [
+  [-27, 11.0, 30.0], [27, 11.0, 30.0],
+  [-8, 23.5, 31.5], [8, 23.5, 31.5],
+  [-40.5, 11.0, 12], [-40.5, 11.0, -12], [40.5, 11.0, 12], [40.5, 11.0, -12],
+  [0, 11.0, -31],
+].map(([x, y, z]) => {
+  const l = new THREE.PointLight('#ffb867', 0, 46, 2);
+  l.position.set(x, y, z); scene.add(l);
+  return l;
+});
+
+/* ---------------- snowfall ---------------- */
+const snow = (() => {
+  const n = small ? 1400 : 2400, R = rng(31), pos = new Float32Array(n * 3), spd = new Float32Array(n), ph = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = (R() - 0.5) * 340; pos[i * 3 + 1] = R() * 95; pos[i * 3 + 2] = (R() - 0.5) * 340 + 10;
+    spd[i] = 2.0 + R() * 2.2; ph[i] = R() * 6.28;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color: '#ffffff', size: 0.45, map: radialTex, transparent: true, depthWrite: false, opacity: 0.85 });
+  const p = new THREE.Points(g, mat);
+  p.frustumCulled = false;
+  p.visible = !reduceMotion;
+  scene.add(p);
+  return { p, pos, spd, ph, n, mat };
+})();
+function stepSnow(dt, t) {
+  const { pos, spd, ph, n } = snow;
+  for (let i = 0; i < n; i++) {
+    const j = i * 3;
+    pos[j + 1] -= spd[i] * dt;
+    pos[j] += Math.sin(t * 0.7 + ph[i]) * 0.6 * dt;
+    if (pos[j + 1] < 0) pos[j + 1] += 95;
+  }
+  snow.p.geometry.attributes.position.needsUpdate = true;
+}
+
+/* ---------------- options ---------------- */
+const SCHEMES = {
+  warm: { label: 'Warm white', cols: ['#FFB867'], css: 'radial-gradient(circle at 38% 32%, #fff6e2, #ffc274 45%, #c87a24 100%)', glow: 'rgb(255 190 105 / .7)' },
+  red: { label: 'White & red', cols: ['#FFB867', '#FF2B2B'], css: 'linear-gradient(135deg, #ffc274 0 50%, #ff3030 50% 100%)', glow: 'rgb(255 90 70 / .6)' },
+  green: { label: 'White & green', cols: ['#FFB867', '#1FD45A'], css: 'linear-gradient(135deg, #ffc274 0 50%, #1fd45a 50% 100%)', glow: 'rgb(120 220 110 / .55)' },
+  trio: { label: 'Red, white & green', cols: ['#FF2B2B', '#FFB867', '#1FD45A'], css: 'conic-gradient(from 210deg, #ff3030 0 33.3%, #ffc274 0 66.6%, #1fd45a 0)', glow: 'rgb(255 190 105 / .6)' },
+};
+const TIMES = {
+  night: { label: 'Night', skyTop: '#03060e', skyMid: '#121d36', skyBot: '#0a0e18', fog: [170, 780], hemiSky: '#3a5290', hemiGround: '#0c0f17', hemi: 0.9,
+    sunColor: '#9db3ea', sun: 0.55, sunAz: 40, sunEl: 30, exposure: 1.05, bloom: [1.05, 0.6, 0.9], gain: 4.8, wash: 0.6, pl: 38, street: 820,
+    lens: [2.4, 2.6, 3.0], stars: 0.9, moon: true, glass: 0.9, goose: 1, flake: '#9fb0cc' },
+  day: { label: 'Day', skyTop: '#3f78c2', skyMid: '#b8cfe8', skyBot: '#dfe6ee', fog: [300, 900], hemiSky: '#cfe0f4', hemiGround: '#e9eef4', hemi: 1.6,
+    sunColor: '#fff0da', sun: 3.4, sunAz: 192, sunEl: 21, exposure: 0.8, bloom: [0.18, 0.4, 1.6], gain: 1.6, wash: 0, pl: 0, street: 0,
+    lens: [0.32, 0.33, 0.35], stars: 0, moon: false, glass: 0, goose: 0, flake: '#ffffff' },
+};
+const HOME = { pos: [-66, 26, 84], tgt: [0, 11.5, 8] };
+const state = { scheme: 'warm', time: 'night', lights: true };
+
+function applyColors() {
+  const cols = SCHEMES[state.scheme].cols.map((h) => new THREE.Color(h)), T = TIMES[state.time];
+  const colored = cols.length > 1;
+  const c = new THREE.Color();
+  allBulbs.forEach((b, i) => {
+    const base = cols[b.k % cols.length];
+    const boost = colored && (base.r + base.g + base.b) < 1.6 ? 1.3 : 1;
+    c.setRGB(base.r * T.gain * boost, base.g * T.gain * boost, base.b * T.gain * boost);
+    bulbs.setColorAt(i, c);
+  });
+  bulbs.instanceColor.needsUpdate = true;
+  const avg = new THREE.Color(0, 0, 0);
+  cols.forEach((k) => { avg.r += k.r; avg.g += k.g; avg.b += k.b; });
+  const mx = Math.max(avg.r, avg.g, avg.b) || 1;
+  avg.setRGB(avg.r / mx, avg.g / mx, avg.b / mx);
+  washMat.color.copy(avg);
+  for (const l of PL) l.color.copy(avg);
+}
+function applyLights() {
+  const T = TIMES[state.time];
+  lightGroup.visible = state.lights;
+  washGroup.visible = state.lights && T.wash > 0;
+  washMat.opacity = T.wash;
+  for (const l of PL) l.intensity = state.lights ? T.pl : 0;
+}
+function applyTime() {
+  const T = TIMES[state.time];
+  document.body.dataset.time = state.time;
+  const u = sky.material.uniforms;
+  u.top.value.set(T.skyTop); u.mid.value.set(T.skyMid); u.bottom.value.set(T.skyBot);
+  scene.fog.color.set(T.skyMid); scene.fog.near = T.fog[0]; scene.fog.far = T.fog[1];
+  hemi.color.set(T.hemiSky); hemi.groundColor.set(T.hemiGround); hemi.intensity = T.hemi;
+  sun.color.set(T.sunColor); sun.intensity = T.sun;
+  const az = T.sunAz * DEG, el = T.sunEl * DEG;
+  sun.position.set(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).multiplyScalar(300);
+  renderer.toneMappingExposure = T.exposure;
+  [bloom.strength, bloom.radius, bloom.threshold] = T.bloom;
+  stars.material.opacity = T.stars; stars.visible = T.stars > 0;
+  moon.visible = T.moon;
+  for (const s of spots) s.intensity = T.street;
+  lensMat.color.setRGB(...T.lens);
+  M.glassLit.emissiveIntensity = T.glass * 0.45;
+  M.glassLobby.emissiveIntensity = T.glass;
+  nightWin.emissiveIntensity = T.glass * 0.3;
+  lampGlow.color.setRGB(2.4 * T.goose, 1.9 * T.goose, 1.2 * T.goose);
+  backLamp.color.setRGB(1.8 * T.goose, 1.6 * T.goose, 1.2 * T.goose);
+  signWash.visible = T.goose > 0; signWash.material.opacity = 0.3 * T.goose;
+  snow.mat.color.set(T.flake);
+  applyColors();
+  applyLights();
+}
+
+/* ---------------- camera ---------------- */
+let tween = null;
+function homePose() {
+  const tgt = V(...HOME.tgt), pos = V(...HOME.pos);
+  const asp = stage.clientWidth / Math.max(1, stage.clientHeight);
+  const scale = clamp(Math.pow(1.15 / asp, 0.9), 1, 2.6);
+  pos.sub(tgt).multiplyScalar(scale).add(tgt);
+  return { pos, tgt };
+}
+function goHome(dur = 1500) {
+  const to = homePose();
+  if (reduceMotion || dur === 0) { camera.position.copy(to.pos); controls.target.copy(to.tgt); tween = null; return; }
+  const fromT = controls.target.clone();
+  const fromS = new THREE.Spherical().setFromVector3(camera.position.clone().sub(fromT));
+  const toS = new THREE.Spherical().setFromVector3(to.pos.clone().sub(to.tgt));
+  let dth = toS.theta - fromS.theta;
+  while (dth > Math.PI) dth -= Math.PI * 2;
+  while (dth < -Math.PI) dth += Math.PI * 2;
+  tween = { fromT, toT: to.tgt, fromS, toS, dth, t0: performance.now(), dur };
+}
+function stepTween() {
+  const k = Math.min(1, (performance.now() - tween.t0) / tween.dur);
+  const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+  const { fromS, toS } = tween;
+  controls.target.lerpVectors(tween.fromT, tween.toT, e);
+  const s = new THREE.Spherical(
+    fromS.radius + (toS.radius - fromS.radius) * e,
+    fromS.phi + (toS.phi - fromS.phi) * e,
+    fromS.theta + tween.dth * e
+  );
+  camera.position.setFromSpherical(s).add(controls.target);
+  if (k >= 1) tween = null;
+}
+function clampView() {
+  const T = controls.target;
+  T.x = clamp(T.x, -150, 170); T.z = clamp(T.z, -140, 130); T.y = clamp(T.y, 2, 30);
+  if (camera.position.y < 1.4) camera.position.y = 1.4;
+}
+function layoutCamera() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+  // Keep the building centered in the open space between the title and the control bar.
+  const top = $('.title').getBoundingClientRect().bottom;
+  const bottom = $('.bottom').getBoundingClientRect().top;
+  const dy = clamp(((h - bottom) - top) / 2, 0, h * 0.2);
+  const fullH = h + 2 * dy;
+  const vis = (w / h < 0.8 ? 52 : 44) * DEG;
+  camera.aspect = w / fullH;
+  camera.fov = (2 * Math.atan(Math.tan(vis / 2) * fullH / h)) / DEG;
+  camera.setViewOffset(w, fullH, 0, 2 * dy, w, h);
+  camera.updateProjectionMatrix();
+}
+
+/* ---------------- controls ---------------- */
+const power = $('#power'), colorsEl = $('#colors'), dots = $('#dots'), cname = $('#cname');
+function setLights(on) {
+  state.lights = on;
+  power.setAttribute('aria-pressed', String(on));
+  colorsEl.classList.toggle('off', !on);
+  applyLights();
+}
+power.addEventListener('click', () => setLights(!state.lights));
+
+for (const [key, s] of Object.entries(SCHEMES)) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'dot'; b.dataset.key = key;
+  b.style.background = s.css; b.style.setProperty('--glow', s.glow);
+  b.setAttribute('aria-label', s.label); b.title = s.label;
+  b.setAttribute('aria-pressed', String(key === state.scheme));
+  b.addEventListener('click', () => {
+    state.scheme = key;
+    dots.querySelectorAll('button').forEach((d) => d.setAttribute('aria-pressed', String(d.dataset.key === key)));
+    cname.textContent = s.label;
+    applyColors();
+    if (!state.lights) setLights(true);
+  });
+  dots.appendChild(b);
+}
+
+const timeEl = $('#time');
+for (const [key, t] of Object.entries(TIMES)) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = t.label; b.dataset.key = key;
+  b.setAttribute('aria-pressed', String(key === state.time));
+  b.addEventListener('click', () => {
+    state.time = key;
+    timeEl.querySelectorAll('button').forEach((d) => d.setAttribute('aria-pressed', String(d.dataset.key === key)));
+    applyTime();
+  });
+  timeEl.appendChild(b);
+}
+$('#reset').addEventListener('click', () => goHome());
+
+const hint = $('#hint');
+hint.textContent = coarse ? 'Drag to look around · Pinch to zoom' : 'Drag to look around · Scroll to zoom';
+let hintHidden = false;
+controls.addEventListener('start', () => {
+  tween = null;
+  if (!hintHidden) { hintHidden = true; hint.classList.add('gone'); }
+});
+
+new ResizeObserver(() => layoutCamera()).observe($('.bottom'));
+addEventListener('resize', layoutCamera);
+
+/* ---------------- start ---------------- */
+applyTime();
+layoutCamera();
+{
+  const start = homePose();
+  const intro = start.pos.clone().sub(start.tgt).applyAxisAngle(V(0, 1, 0), -0.5).multiplyScalar(1.7).add(start.tgt);
+  intro.y += 40;
+  camera.position.copy(reduceMotion ? start.pos : intro);
+  controls.target.copy(start.tgt);
+  controls.update();
+  if (!reduceMotion) goHome(2800);
+}
+
+const clock = new THREE.Clock();
+let ready = false;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  if (tween) stepTween();
+  controls.update();
+  clampView();
+  if (snow.p.visible) stepSnow(dt, t);
+  composer.render();
+  if (!ready) {
+    ready = true;
+    window.__sceneReady = true;
+    $('#fallback').hidden = true;
+    $('#loading').classList.add('gone');
+  }
+});
+</script>
+</body>
+</html>
