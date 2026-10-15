@@ -789,14 +789,16 @@ REVIEWS = []
 TEAM_PHOTO = "assets/img/team-barta-brothers.jpg"
 TEAM_PHOTO_NAMES = ["Alex Barta", "Jacob Barta"]
 
-# The owner's "Best of Delano Area 2026" graphic (October 2026 upload, a
-# 2430x3038 PNG re-saved as a q95 JPEG without metadata). The wording here
+# The owner's "Best of Delano Area 2026" graphic (v2, Oct 2026: the version
+# without the dark edge vignette; a 2430x3038 PNG re-saved as a q95 4:4:4 JPEG
+# without metadata). New filename so year-long immutable asset caching can't
+# keep serving returning visitors the old graphic. The wording here
 # matches the graphic exactly; who runs the contest isn't named on it and
 # couldn't be confirmed online, so it isn't named on the site either (see
 # docs/OWNER-VERIFICATION.md). Kept out of IMAGE_ALT so the Gallery's
 # real-jobs set doesn't pick it up.
 AWARD = {
-    "image": "assets/img/award-best-of-delano-2026.jpg",
+    "image": "assets/img/award-best-of-delano-2026-v2.jpg",
     "alt": ("Thank you, Delano! Alex and Jacob Barta in their Barta Window Washing polos, "
             "voted by our neighbors Best of Delano Area, Best Cleaner 2026"),
     "name": "Best of Delano Area 2026, Best Cleaner",
