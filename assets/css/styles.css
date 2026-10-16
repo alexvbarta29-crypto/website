@@ -562,6 +562,9 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 
 /* Early-bird promo — countdown banner at the top of the Christmas page. */
 .xmas-promo { position: relative; text-align: center; padding: 96px 0 60px; background: radial-gradient(90% 75% at 50% 0%, #eafff4 0%, #fff 65%); overflow: hidden; }
+/* Out of season (after the last deal deadline, before the next season starts)
+   the build and main.js set [hidden] on the whole deal section. */
+.xmas-promo[hidden] { display: none; }
 .xmas-promo .container { position: relative; }
 .xmas-promo-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--r-pill); background: var(--xmas-green-deep); color: #fff; font-family: var(--font-head); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
 .xmas-promo-pill svg { width: 15px; height: 15px; }

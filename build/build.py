@@ -14,7 +14,8 @@ from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, AWARD, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
-                      XMAS_PHOTO_ALT, XMAS_SHOWCASE, XMAS_DEAL_DEADLINES)
+                      XMAS_PHOTO_ALT, XMAS_SHOWCASE, XMAS_DEAL_DEADLINES,
+                      XMAS_DEAL_SEASON_START)
 from icons import icon
 import components as C
 import schema as S
@@ -657,8 +658,10 @@ def build_service(svc):
             for i, (t, d) in enumerate(svc["benefits"]))
         # Early-bird promo with a live countdown. It runs to November 1st,
         # then (at the owner's request) straight on to December 1st, and the
-        # "Deal Ends ..." line follows whichever date it's counting to. After
-        # December 1st it rolls to next year's November 1st. The numbers are
+        # "Deal Ends ..." line follows whichever date it's counting to. From
+        # the last deadline until XMAS_DEAL_SEASON_START (September 1st) the
+        # whole section is hidden, then it returns for the new season. The
+        # numbers are
         # seeded at build time so the first paint is already correct (the
         # daily Instagram sync rebuilds the site, keeping the seed within a
         # day); main.js then ticks them once a second in the visitor's own
@@ -672,6 +675,9 @@ def build_service(svc):
                     if d > _now), datetime(_now.year + 1, *XMAS_DEAL_DEADLINES[0]))
         _dl_label = f"Deal Ends {_dl.strftime('%B')} {_ordinal(_dl.day)}"
         _dl_attr = ",".join(f"{m}-{day}" for m, day in XMAS_DEAL_DEADLINES)
+        _deal_on = (datetime(_now.year, *XMAS_DEAL_SEASON_START) <= _now
+                    < datetime(_now.year, *XMAS_DEAL_DEADLINES[-1]))
+        _season_attr = "{}-{}".format(*XMAS_DEAL_SEASON_START)
         _left = _dl - _now
         cd_d, cd_h = _left.days, _left.seconds // 3600
         cd_m, cd_s = (_left.seconds % 3600) // 60, _left.seconds % 60
@@ -690,7 +696,7 @@ def build_service(svc):
                     f'<span style="right:8%;bottom:16%;width:80px;height:80px;color:var(--xmas-green)">{f}</span>'
                     "</div>")
         promo = f"""
-  <section class="xmas-promo">
+  <section class="xmas-promo" data-xmas-deal data-deal-start="{_season_attr}"{"" if _deal_on else " hidden"}>
     {_xmas_garland_svg(cls=" xmas-garland-promo", wire=_XMAS_DARK_WIRE, uid="p", uid_m="pm")}
     {_flakes()}
     <div class="container">

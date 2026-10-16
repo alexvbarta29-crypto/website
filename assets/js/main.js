@@ -268,14 +268,16 @@
          hasn't passed, and keeps the "Deal Ends ..." line ([data-cd-label])
          naming that same date. The build seeds both server-side so first
          paint is already correct; this keeps them live and switches them
-         over if a deadline passes after the page was built. After the last
-         deadline the target rolls to next year's first one, so the timer
-         never sits at zero. ---- */
+         over if a deadline passes after the page was built. Outside the
+         deal season (from the last deadline until data-deal-start on the
+         section, September 1st) the whole deal section is hidden, so a
+         finished offer never shows with a year-long timer. ---- */
   const cdown = $("[data-countdown]");
   if (cdown) {
     const cd = (k) => $('[data-cd="' + k + '"]', cdown);
     const els = { d: cd("d"), h: cd("h"), m: cd("m"), s: cd("s") };
     const label = $("[data-cd-label]");
+    const deal = cdown.closest("[data-xmas-deal]");
     const pad = (n) => String(n).padStart(2, "0");
     const deadlines = (cdown.dataset.deadlines || "11-1")
       .split(",").map((md) => md.split("-").map(Number));
@@ -288,8 +290,18 @@
       }
       return new Date(now.getFullYear() + 1, deadlines[0][0] - 1, deadlines[0][1]);
     };
+    const seasonStart = ((deal && deal.dataset.dealStart) || "").split("-").map(Number);
+    const inSeason = (now) => {
+      if (!seasonStart[0]) return true;
+      const [lm, ld] = deadlines[deadlines.length - 1];
+      return now >= new Date(now.getFullYear(), seasonStart[0] - 1, seasonStart[1])
+        && now < new Date(now.getFullYear(), lm - 1, ld);
+    };
     const tick = () => {
       const now = new Date();
+      const on = inSeason(now);
+      if (deal && deal.hidden === on) deal.hidden = !on;
+      if (!on) return;
       const t = target(now);
       if (label) {
         const text = "Deal Ends " + t.toLocaleString("en-US", { month: "long" }) + " " + ordinal(t.getDate());

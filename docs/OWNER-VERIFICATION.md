@@ -15,8 +15,10 @@ concern because it isn't part of the generated site at all — it lives only in 
 
 - **Owner's audit follow-ups (October 15, 2026):** the Christmas early-bird countdown now runs to
   November 1st, then on to December 1st, with the "Deal Ends ..." line following it
-  (`XMAS_DEAL_DEADLINES` in `build/sitedata.py`). After December 1st it rolls to next year's
-  November 1st. **To confirm:** what the banner should say between December 1st and next fall.
+  (`XMAS_DEAL_DEADLINES` in `build/sitedata.py`). After December 1st the whole deal section
+  (offer, countdown, 150-client line) is hidden, per the owner, and it returns on its own on
+  September 1st (`XMAS_DEAL_SEASON_START`) with the same deadlines. **To confirm each fall:**
+  that the offer wording and the client limit still apply for the new season.
   The quote forms' required text-message checkbox now covers only texts about the visitor's own
   quote and service; "marketing offers" and the contradicting "consent is not a condition of
   purchase" line were removed, and the Terms' SMS clause matches. The Hard Water Stain Removal

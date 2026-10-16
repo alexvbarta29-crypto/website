@@ -917,9 +917,12 @@ XMAS_PHOTO_ALT = {
 }
 # Christmas early-bird deal deadlines, as (month, day), in order. The countdown
 # and its "Deal Ends ..." line run to the first one that hasn't passed: to
-# November 1st, then on to December 1st (owner's call, October 2026). After
-# the last one they roll to next year's first.
+# November 1st, then on to December 1st (owner's call, October 2026).
 XMAS_DEAL_DEADLINES = [(11, 1), (12, 1)]
+# The deal section (offer, countdown, client limit) only shows from this date
+# until the last deadline. After December 1st it's hidden, at the owner's
+# request, and it comes back on its own on September 1st for next season.
+XMAS_DEAL_SEASON_START = (9, 1)
 
 # Photo grid on the Christmas page. Photos only, no captions: the owner
 # installs simple roofline lighting and does not want to advertise garland,
