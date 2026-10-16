@@ -924,17 +924,11 @@ XMAS_DEAL_DEADLINES = [(11, 1), (12, 1)]
 # request, and it comes back on its own on September 1st for next season.
 XMAS_DEAL_SEASON_START = (9, 1)
 
-# Photo grid on the Christmas page. Photos only, no captions: the owner
-# installs simple roofline lighting and does not want to advertise garland,
-# wreaths, wrapped trees, color schemes or commercial displays as services.
-XMAS_SHOWCASE = [
-    "assets/img/xmas-warm-white-terracotta.jpg",
-    "assets/img/xmas-warm-white-mediterranean.jpg",
-    "assets/img/xmas-commercial-clubhouse.jpg",
-    "assets/img/xmas-commercial-stone-gatehouse.jpg",
-    "assets/img/xmas-commercial-wrapped-trees.jpg",
-    "assets/img/xmas-teal-red-modern.jpg",
-]
+# The six-photo "Make your home shine this season" grid that used to sit on
+# the Christmas page (terracotta, mediterranean, clubhouse, stone gatehouse,
+# wrapped trees, teal & red modern) was removed at the owner's request,
+# October 2026: he wants only a few photos on that page. The photos stay in
+# XMAS_PHOTO_ALT and assets/img/ in case any are wanted again.
 
 IMAGE_ALT = {
     "assets/img/team-barta-brothers.jpg": "Co-owners Alex Barta (left) and Jacob Barta (right) of Barta Window Washing in their company polos",

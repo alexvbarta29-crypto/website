@@ -14,7 +14,7 @@ from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
                       CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, AWARD, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
-                      XMAS_PHOTO_ALT, XMAS_SHOWCASE, XMAS_DEAL_DEADLINES,
+                      XMAS_PHOTO_ALT, XMAS_DEAL_DEADLINES,
                       XMAS_DEAL_SEASON_START)
 from icons import icon
 import components as C
@@ -713,9 +713,6 @@ def build_service(svc):
       <p class="xmas-promo-limit">{_warn_svg} We Are Only Taking On 150 New Clients This Year</p>
     </div>
   </section>"""
-        xmas_style_cards = "".join(
-            f'''<div class="reveal" data-delay="{i % 3}">{C.photo(img, XMAS_PHOTO_ALT[img], ratio="4/3", depth=depth)}</div>'''
-            for i, img in enumerate(XMAS_SHOWCASE))
         xmas_extra = f"""{promo}
   <div class="xmas-candy-stripe" aria-hidden="true"></div>
   <section class="xmas-highlight">
@@ -750,16 +747,6 @@ def build_service(svc):
         </div>
         <div class="reveal">{C.photo("assets/img/xmas-red-green-brick-gables.jpg", XMAS_PHOTO_ALT["assets/img/xmas-red-green-brick-gables.jpg"], ratio="5/4", depth=depth)}</div>
       </div>
-    </div>
-  </section>
-  <section class="bg-mist">
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow" style="justify-content:center">Holiday lighting</span>
-        <h2>Make your home shine this season</h2>
-        <p>Clean, evenly spaced lights along your rooflines and peaks, put up, kept lit all season and taken down for you.</p>
-      </div>
-      <div class="grid cols-3 xmas-styles">{xmas_style_cards}</div>
     </div>
   </section>"""
 
