@@ -1,5 +1,19 @@
 [
   {
+    "id": "18111331346155144",
+    "image": "assets/img/instagram/18111331346155144.jpg",
+    "type": "IMAGE",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18111331346155144.jpg"
+      }
+    ],
+    "caption": "Best of Delano Area, 2 years in a row! \ud83c\udfc6\n\nWe\u2019re so grateful to every neighbor who voted for us. Thanks for trusting us with your windows, gutters, and Christmas lights. We\u2019ll keep showing up with clean glass and big smiles.",
+    "permalink": "https://www.instagram.com/p/Dehgq36SbxQ/",
+    "timestamp": "2026-10-15T17:42:27+0000"
+  },
+  {
     "id": "17915758842260517",
     "image": "assets/img/instagram/17915758842260517_0.jpg",
     "type": "CAROUSEL_ALBUM",
@@ -151,26 +165,5 @@
     "caption": "Meet the owners! \n\nAlex and Jacob are the brothers behind the brand. Born and raised in Delano, they are proud to serve the place they call home! \ud83c\uddfa\ud83c\uddf8",
     "permalink": "https://www.instagram.com/p/DbocnrtFFzh/",
     "timestamp": "2026-08-04T20:42:03+0000"
-  },
-  {
-    "id": "18110294294515814",
-    "image": "assets/img/instagram/18110294294515814_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18110294294515814_0.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18110294294515814_1.jpg"
-      },
-      {
-        "excluded": true
-      }
-    ],
-    "caption": "Nothing beats a clean home! \ud83c\udfe0\ud83e\ude9f\u2728",
-    "permalink": "https://www.instagram.com/p/DblfIYDlFBq/",
-    "timestamp": "2026-08-03T17:06:16+0000"
   }
 ]
