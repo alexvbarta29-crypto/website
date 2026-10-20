@@ -87,6 +87,41 @@ REFERRAL = {
     "max_friends": 10,          # per submission
 }
 
+# Holiday Lights Giveaway (docs/GIVEAWAY.md). Mirror of GIVEAWAY/DATES in
+# netlify/lib/giveaway-config.mjs: every date and dollar amount printed on
+# /giveaway and /giveaway/rules comes from here, every one in a text message
+# comes from there. Change both together.
+GIVEAWAY = {
+    "name": "Holiday Lights Giveaway",
+    "year": 2026,
+    "winners": 2,
+    "prize_value": 1500,          # approximate retail value of one prize, $
+    "coupon": 250,                # $ off for every entrant who doesn't win
+    "code_prefix": "LIGHTS",
+    "starts": "Wednesday, October 21, 2026",
+    "closes": "Thursday, November 6, 2026 at 11:59 PM Central Time",
+    "closes_iso": "2026-11-07T05:59:59Z",
+    "draw": "Friday, November 7, 2026",
+    "draw_short": "Fri, Nov 7",
+    "draw_time": "6:00 PM Central Time",
+    "draw_iso": "2026-11-08T00:00:00Z",
+    "claim_by": "Monday, November 10, 2026 at 6:00 PM Central Time",
+    "install_by": "December 15, 2026",
+    "coupon_book_by": "December 1, 2026",
+    "radius_mi": 20,
+    # Owner's intro video for the top of /giveaway (playbook: "people trust a
+    # face"). Drop the file in assets/video/ and set the path here, e.g.
+    # "assets/video/giveaway-intro.mp4"; empty shows the photo hero only.
+    "video": "",
+    "video_poster": "assets/img/xmas-warm-white-french-front.jpg",
+    "hero_photo": "assets/img/xmas-warm-white-french-front.jpg",
+    "photos": [
+        "assets/img/xmas-warm-white-mediterranean.jpg",
+        "assets/img/xmas-red-green-brick-gables.jpg",
+        "assets/img/xmas-multicolor-tudor.jpg",
+    ],
+}
+
 # ---------------------------------------------------------------------------
 # Services, each drives a full service page + nav + cards
 # ---------------------------------------------------------------------------

@@ -746,6 +746,17 @@
     const stateField = panel.querySelector("[data-address-state]");
     const countryField = panel.querySelector("[data-address-country]");
     const status = panel.querySelector("[data-address-status]");
+    // Optional coordinates (the giveaway's service-area check reads them).
+    const latField = panel.querySelector("[data-address-lat]");
+    const lngField = panel.querySelector("[data-address-lng]");
+    const setCoords = (lat, lng) => {
+      if (latField) latField.value = lat || "";
+      if (lngField) lngField.value = lng || "";
+    };
+    // Lets a page react to a pick ("address:picked", detail = the structured
+    // address) or to an edit that un-picks it ("address:cleared").
+    const announce = (name, detail) =>
+      input.dispatchEvent(new CustomEvent(name, { bubbles: true, detail }));
     if (!list) return;
     let timer = null, aborter = null, lastFired = 0, overList = false;
     // Nominatim's usage policy caps clients at 1 request/second, so live
@@ -812,7 +823,10 @@
         if (countryField) countryField.value = (addr.country_code || "").toUpperCase() || countryField.value;
         if (verified) verified.value = "yes";
         if (status) status.hidden = true;
+        setCoords(r.lat, r.lon);
         close();
+        announce("address:picked", { city: cityName, zip: addr.postcode || "",
+          state: stateAbbr || addr.state || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
       });
       list.appendChild(li);
     };
@@ -829,7 +843,9 @@
         input.value = typed;
         if (verified) verified.value = "typed";
         if (status) status.hidden = true;
+        setCoords("", "");
         close();
+        announce("address:picked", { typed: true });
       });
       list.appendChild(li);
     };
@@ -872,7 +888,9 @@
         .catch((e) => { if (e.name !== "AbortError") paint([], ""); });
     };
     input.addEventListener("input", () => {
+      if (verified && verified.value !== "no") announce("address:cleared", {});
       if (verified) verified.value = "no";
+      setCoords("", "");
       clearTimeout(timer);
       const wait = Math.max(0, lastFired + INTERVAL - Date.now());
       timer = setTimeout(() => { lastFired = Date.now(); search(); }, wait);

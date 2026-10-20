@@ -71,6 +71,7 @@ placeholder imagery. Edit content in `build/sitedata.py`; edit layout in `build/
 ├── tests/                      # node --test unit tests for every function (mocked fetch + in-memory store)
 ├── docs/SEO-AND-STRATEGY.md    # Sitemap, per-page SEO, wireframes, palette, CRO, GBP, citations
 ├── docs/REFERRAL-PROGRAM.md    # Referral program: flows, data model, API, env vars, launch checklist
+├── docs/GIVEAWAY.md           # Holiday Lights Giveaway (/giveaway, /g/CODE, /admin/giveaway.html)
 ├── sitemap.xml · robots.txt · site.webmanifest
 ```
 

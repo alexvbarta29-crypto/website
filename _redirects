@@ -37,6 +37,13 @@
 /referral                  /referral.html  200
 /r/:code                   /get-quote.html?promo=:code  200
 
+# Holiday Lights Giveaway (docs/GIVEAWAY.md): the entry page, every
+# entrant's share link (giveaway.js reads the code back out of the
+# path), and the official rules.
+/giveaway/rules            /giveaway-rules.html  200
+/giveaway                  /giveaway.html  200
+/g/:code                   /giveaway.html  200
+
 # Christmas lights, straight into the quote form (main.js opens the
 # modal when ?quote is present). A short address for sharing by hand;
 # ads should link to the full URL so their tracking parameters survive.

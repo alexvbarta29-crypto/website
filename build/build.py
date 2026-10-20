@@ -21,6 +21,7 @@ import components as C
 import schema as S
 import referral_pages as RP
 import referral_admin_page as RAP
+import giveaway_pages as GP
 
 PAGES = []  # (relpath, slug, lastmod, priority) for sitemap
 
@@ -1508,6 +1509,18 @@ def build_referral_admin():
     html = RAP.referral_admin_page(1, seo_title=seo_title)
     write("admin/referrals.html", html, slug="admin/referrals.html")
 
+def build_giveaway():
+    """Holiday Lights Giveaway (docs/GIVEAWAY.md): the entry page (served at
+    /giveaway and at every /g/CODE share link), the official rules (served at
+    /giveaway/rules) and the office dashboard. Root-absolute URLs because
+    the pages are served from rewritten paths; noindex because the campaign
+    is temporary and reached from social posts, not search."""
+    write("giveaway.html", _root_absolute(GP.giveaway_page(0, seo_title=seo_title, schema=BASE_SCHEMA)),
+          slug="giveaway.html")
+    write("giveaway-rules.html", _root_absolute(GP.giveaway_rules_page(0, seo_title=seo_title, schema=BASE_SCHEMA)),
+          slug="giveaway-rules.html")
+    write("admin/giveaway.html", GP.giveaway_admin_page(1, seo_title=seo_title), slug="admin/giveaway.html")
+
 # ===========================================================================
 # PRIVACY (minimal legal)
 # ===========================================================================
@@ -2262,6 +2275,13 @@ def build_redirects():
               # reads the code back out of the path).
               "/r/:code                   /get-quote.html?promo=:code  200",
               "",
+              "# Holiday Lights Giveaway (docs/GIVEAWAY.md): the entry page, every",
+              "# entrant's share link (giveaway.js reads the code back out of the",
+              "# path), and the official rules.",
+              "/giveaway/rules            /giveaway-rules.html  200",
+              "/giveaway                  /giveaway.html  200",
+              "/g/:code                   /giveaway.html  200",
+              "",
               "# Christmas lights, straight into the quote form (main.js opens the",
               "# modal when ?quote is present). A short address for sharing by hand;",
               "# ads should link to the full URL so their tracking parameters survive.",
@@ -2277,7 +2297,9 @@ def _asset_version():
     h = hashlib.md5()
     for rel in ("assets/css/styles.css", "assets/js/main.js",
                 "assets/css/referral.css", "assets/js/referral.js",
-                "assets/css/referral-admin.css", "assets/js/referral-admin.js"):
+                "assets/css/referral-admin.css", "assets/js/referral-admin.js",
+                "assets/css/giveaway.css", "assets/js/giveaway.js",
+                "assets/css/giveaway-admin.css", "assets/js/giveaway-admin.js"):
         try:
             with open(os.path.join(ROOT, rel), "rb") as f:
                 h.update(f.read())
@@ -2294,6 +2316,10 @@ MINIFY_PAIRS = [
     ("assets/js/referral.js",         "assets/js/referral.min.js"),
     ("assets/css/referral-admin.css", "assets/css/referral-admin.min.css"),
     ("assets/js/referral-admin.js",   "assets/js/referral-admin.min.js"),
+    ("assets/css/giveaway.css",       "assets/css/giveaway.min.css"),
+    ("assets/js/giveaway.js",         "assets/js/giveaway.min.js"),
+    ("assets/css/giveaway-admin.css", "assets/css/giveaway-admin.min.css"),
+    ("assets/js/giveaway-admin.js",   "assets/js/giveaway-admin.min.js"),
 ]
 
 def minify_assets():
@@ -2934,6 +2960,7 @@ def main():
     build_referral()
     build_referred()
     build_referral_admin()
+    build_giveaway()
     build_privacy()
     build_terms()
     build_accessibility()
