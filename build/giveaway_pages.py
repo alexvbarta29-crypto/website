@@ -124,7 +124,7 @@ def _panels():
           <h2 class="gw-panel-title">Nice, <span data-gw-name></span>. You have <span class="gw-count" data-gw-entries>1</span> <span data-gw-entries-word>entry</span>.</h2>
           <p>Every friend who enters with your link gives you <strong>+1 entry</strong>. And if a friend you invited wins, <strong>you both win</strong>.</p>
           {share}
-          <p class="gw-fine" data-gw-status-wrap>Save your private link to check your entries any time: <a data-gw-status href="#">my entries</a>. We texted it to you too.</p>
+          <p class="gw-fine" data-gw-status-wrap>Bookmark <a data-gw-status href="#">your private entries page</a>, or come back here any time and use &ldquo;Already entered?&rdquo; with your number.</p>
         </div>
         <div class="gw-panel" data-gw-panel="returning" hidden tabindex="-1">
           <span class="gw-badge">Already entered</span>
@@ -277,7 +277,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
                  '<span class="gw-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></div>')
 
     steps = [
-        ("Sign up, get your link", "Enter below. Your own share link pops up on the screen and lands in your texts."),
+        ("Sign up, get your link", "Enter above. Your own share link pops up on the screen right away."),
         ("Send friends your link", "Every friend who enters through it is one more chance for you. If they win, you win too."),
         ("Watch the drawing", f"Live on Facebook, {G['draw']} at 6pm. We call the winners that night."),
     ]
