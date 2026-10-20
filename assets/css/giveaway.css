@@ -4,8 +4,20 @@
 /* Component display rules below would otherwise beat the browser's [hidden]. */
 .gw-page [hidden], .gw-rules [hidden] { display: none !important; }
 
+/* ---------- Standalone landing chrome (no site nav, no call bar) ---------- */
+.gw-lp-top { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding-block: 18px; }
+.gw-lp-top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gw-lp-brand img { display: block; width: 150px; height: auto; filter: drop-shadow(0 2px 10px rgba(0, 0, 0, .45)); }
+.gw-lp-cta { background: var(--xmas-red); padding: 10px 18px; font-size: .9rem; }
+.gw-lp-link { font-weight: 600; color: var(--ink); }
+.gw-rules ~ .gw-lp-foot, .gw-lp-foot { background: var(--navy-900); color: rgba(255, 255, 255, .78); padding-block: 34px 40px; font-size: .9rem; }
+.gw-lp-foot a { color: #fff; text-decoration: underline; }
+.gw-lp-legal { margin-top: 8px; font-size: .8rem; color: rgba(255, 255, 255, .55); }
+body:has(.gw-rules) .gw-lp-top { position: static; background: #fff; border-bottom: 1px solid var(--line); }
+body:has(.gw-rules) .gw-lp-brand img { filter: none; }
+
 /* ---------- Hero: the photo fills the screen, copy and card sit on it ---------- */
-.gw-hero { position: relative; isolation: isolate; color: #fff; padding-block: clamp(110px, 12vw, 150px) clamp(56px, 7vw, 96px); overflow: hidden; }
+.gw-hero { position: relative; isolation: isolate; color: #fff; padding-block: clamp(96px, 10vw, 128px) clamp(56px, 7vw, 96px); overflow: hidden; }
 .gw-hero-bg { position: absolute; inset: 0; z-index: -2; }
 .gw-hero-bg picture, .gw-hero-img { display: block; width: 100%; height: 100%; }
 .gw-hero-img { object-fit: cover; object-position: 50% 45%; }
@@ -114,7 +126,7 @@
 .gw-final .btn { background: #fff; color: var(--xmas-red); }
 
 /* ---------- Official rules ---------- */
-.gw-rules { padding-block: clamp(110px, 12vw, 140px) 80px; }
+.gw-rules { padding-block: 40px 80px; }
 .gw-rules h1 { font-size: clamp(1.8rem, 3.6vw, 2.5rem); margin-top: 14px; }
 .gw-rules h2 { font-size: 1.15rem; margin-top: 30px; }
 .gw-rules p { margin-top: 10px; color: var(--slate-700); line-height: 1.65; }
@@ -127,7 +139,8 @@
   .gw-steps { grid-template-columns: 1fr; max-width: 520px; }
 }
 @media (max-width: 760px) {
-  .gw-hero { padding-top: 96px; }
+  .gw-hero { padding-top: 84px; }
+  .gw-lp-brand img { width: 120px; }
   .gw-photos { grid-template-columns: 1fr; }
   .gw-photo { aspect-ratio: 4 / 3; transform: none !important; }
   .gw-countdown { gap: 6px; padding: 10px 12px; }

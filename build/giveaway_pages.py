@@ -26,6 +26,40 @@ def _assets(depth, name="giveaway"):
     return css, js
 
 
+def _lp_header(root, rules=False):
+    """Standalone landing-page header: the snow-capped logo and nothing that
+    leads into the main site. The giveaway is its own page, not a page of
+    the website."""
+    right = ('<a class="gw-lp-link" href="/giveaway">Back to the giveaway</a>' if rules
+             else '<a class="btn gw-lp-cta" href="#enter">Enter to win</a>')
+    if rules:
+        logo = C._brand_logo(root, "(max-width: 760px) 120px, 150px", 150, 41, xmas=True)
+    else:
+        # White Christmas mark: the hero is a dark photo.
+        stem = f"{root}assets/img/logo-bww-xmas-white"
+        logo = (f'<img src="{stem}.png" srcset="{stem}-320w.png 320w, {stem}-480w.png 480w, {stem}.png 765w" '
+                f'sizes="(max-width: 760px) 120px, 150px" alt="{BIZ["name"]}" width="150" height="41">')
+    return f"""<header class="gw-lp-top"><div class="container gw-lp-top-row">
+  <span class="gw-lp-brand">{logo}</span>
+  {right}
+</div></header>"""
+
+
+def _lp_end(root):
+    """Minimal footer: who runs it, the legal links the rules need, and the
+    site script (address autocomplete, reveal animations). No site nav,
+    no call bar."""
+    return f"""<footer class="gw-lp-foot"><div class="container">
+  <p><strong>{G['name']}</strong> by {BIZ['name']}, {BIZ['city']}, {BIZ['state']}.
+     Questions? Call or text <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a>.</p>
+  <p class="gw-lp-legal">No purchase necessary. <a href="/giveaway/rules">Official rules</a> &middot;
+     <a href="{root}privacy.html">Privacy</a> &middot; Not sponsored or endorsed by Facebook.</p>
+</div></footer>
+<script src="{root}assets/js/main.min.js?v={C.ASSET_VER}" defer></script>
+</body>
+</html>"""
+
+
 def _alt(src):
     return C._esc(XMAS_PHOTO_ALT.get(src, "A home lit up with Christmas lights installed by Barta"))
 
@@ -138,7 +172,7 @@ def _panels():
           </div>
           <div class="gw-result" data-gw-expired hidden>
             <h3>The {COUPON} coupon has expired.</h3>
-            <p>We&rsquo;d still love to light up your home. <a href="/services/christmas-light-installation.html?quote=1">Get a free quote</a>.</p>
+            <p>We&rsquo;d still love to light up your home. Call or text <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a> for a free quote.</p>
           </div>
         </div>
         <div class="gw-panel" data-gw-panel="notfound" hidden>
@@ -166,7 +200,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
             f"Christmas light installation (up to {PRIZE} each). Drawing {G['draw']}. No purchase necessary.")
     html = C.head(title=seo_title(title), desc=desc, slug="giveaway.html", depth=depth, schema=schema,
                   noindex=True, extra_head=css, og_image=G["hero_photo"])
-    html += C.nav(depth, xmas=True)
+    html += _lp_header(root)
 
     video = ""
     if G.get("video"):
@@ -215,7 +249,6 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
         <span class="gw-eyebrow">{icon('gift')} {G['name']} &middot; Drawing {G['draw_short']}</span>
         <h1>Win free Christmas lights for your house.</h1>
         <p class="lead">We&rsquo;re giving away <strong>{WORDS.get(WINNERS, WINNERS)} professional light installs</strong>, up to {PRIZE} each, to homes in the west metro. Enter in 30 seconds, then share your link for more chances.</p>
-        <a class="btn btn-lg gw-jump" href="#enter">Enter to win {icon('arrow')}</a>
         {_countdown()}
         {video}
         <ul class="gw-proof">
@@ -264,7 +297,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
   </div></section>
 </main>
 {js}
-{C.page_end(depth, xmas=True)}"""
+{_lp_end(root)}"""
     return html
 
 
@@ -279,13 +312,11 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
     html = C.head(title=seo_title(f"Official Rules, {G['name']}"),
                   desc=f"Official rules for the Barta Window Washing {G['name']} {G['year']}.",
                   slug="giveaway-rules.html", depth=depth, schema=schema, noindex=True, extra_head=css)
-    html += C.nav(depth, xmas=True)
-    crumbs = C.crumbs([("Home", root + "index.html"), (G["name"], "/giveaway"), ("Official Rules", None)])
+    html += _lp_header(root, rules=True)
     sponsor = (f"{BIZ['legal_name']} (&ldquo;Barta Window Washing&rdquo; or &ldquo;Sponsor&rdquo;), "
                f"{BIZ['street']}, {BIZ['city']}, {BIZ['state']} {BIZ['zip']}, {BIZ['phone_display']}")
     max_prizes = n * 2
     html += f"""<main id="main" class="gw-rules"><div class="container container-narrow">
-  {crumbs}
   <h1>{G['name']} {G['year']}: Official Rules</h1>
   <p class="gw-rules-lede"><strong>NO PURCHASE NECESSARY TO ENTER OR WIN. A PURCHASE WILL NOT INCREASE YOUR CHANCES OF WINNING. VOID WHERE PROHIBITED.</strong></p>
 
@@ -333,7 +364,7 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
 
   <p class="gw-rules-back"><a class="btn" href="/giveaway">Back to the giveaway {icon('arrow')}</a></p>
 </div></main>
-{C.page_end(depth, xmas=True)}"""
+{_lp_end(root)}"""
     return html
 
 
