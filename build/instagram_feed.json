@@ -1,5 +1,19 @@
 [
   {
+    "id": "17929453812421949",
+    "image": "assets/img/instagram/17929453812421949.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17929453812421949.jpg"
+      }
+    ],
+    "caption": "Who doesn\u2019t want to be the house everyone drives by twice?\n\nIf you\u2019ve been wanting your house to look like this but don\u2019t want to spend a Saturday on a ladder, we\u2019d love to help. We\u2019re doing Christmas light installs around Delano and the West Metro this season. Send us a message or head to the link in our bio to get on the schedule.",
+    "permalink": "https://www.instagram.com/reel/Desvy7TRCcf/",
+    "timestamp": "2026-10-20T02:21:08+0000"
+  },
+  {
     "id": "18111331346155144",
     "image": "assets/img/instagram/18111331346155144.jpg",
     "type": "IMAGE",
@@ -147,23 +161,5 @@
     "caption": "Who\u2019s ready for a refresh this fall? \ud83c\udf41\ud83c\udfe0\ud83e\uddfc",
     "permalink": "https://www.instagram.com/p/Dbvpsn5kfiJ/",
     "timestamp": "2026-08-07T15:51:00+0000"
-  },
-  {
-    "id": "17908170873275253",
-    "image": "assets/img/instagram/17908170873275253_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17908170873275253_0.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/17908170873275253_1.jpg"
-      }
-    ],
-    "caption": "Meet the owners! \n\nAlex and Jacob are the brothers behind the brand. Born and raised in Delano, they are proud to serve the place they call home! \ud83c\uddfa\ud83c\uddf8",
-    "permalink": "https://www.instagram.com/p/DbocnrtFFzh/",
-    "timestamp": "2026-08-04T20:42:03+0000"
   }
 ]
