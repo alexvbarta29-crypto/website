@@ -9,7 +9,7 @@
   const KEY = "gwa-key";
   const TEMPLATES = [
     ["nudge", "3-day nudge", "Send Tue, Nov 4: each person's entry count + share link"],
-    ["coupon", "Coupon to everyone who didn't win", "Send within 1 hour of the drawing"],
+    ["coupon", "Coupon to everyone who didn't win", "Send within 1 hour of the drawing (only people who ticked the optional coupon box)"],
     ["followup24", "24-hour follow-up", "Send Sat, Nov 8 to anyone who hasn't claimed"],
     ["followup48", "48-hour follow-up", "Send Sun, Nov 9 to anyone who hasn't claimed"],
   ];
@@ -100,7 +100,7 @@
     const s = data.stats;
     const tiles = [
       ["Entrants", s.entrants], ["Total entries", s.entries], ["Came in via a share link", s.via_link],
-      ["Coupons claimed", s.claimed], ["Addresses to double-check", s.unverified], ["Out-of-area quote asks", s.outside],
+      ["Coupons claimed", s.claimed], ["Said yes to coupon texts", s.offers_opt_in], ["Addresses to double-check", s.unverified], ["Out-of-area quote asks", s.outside],
     ];
     $("[data-gwa-stats]").innerHTML = tiles.map(([l, v]) =>
       `<div class="gwa-tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");

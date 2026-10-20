@@ -65,6 +65,7 @@ function adminRow(e, counts, winners) {
     coupon_claimed_at: e.coupon ? e.coupon.claimed_at : null,
     rotor_delivered: Boolean(e.rotor && e.rotor.delivered),
     rotor_lead_id: (e.rotor && e.rotor.lead_id) || null,
+    offers_opt_in: Boolean(e.offers_opt_in),
     disqualified: Boolean(e.disqualified), office_note: e.office_note || "",
     created_at: e.created_at,
     texts: Object.fromEntries(["nudge", "coupon", "followup24", "followup48"]
@@ -100,6 +101,7 @@ async function list(store, req) {
       via_link: viaLink,
       unverified: entrants.filter((e) => e.area && e.area.ok === null).length,
       claimed: entrants.filter((e) => e.coupon && e.coupon.claimed_at).length,
+      offers_opt_in: entrants.filter((e) => e.offers_opt_in).length,
       outside: outside.length,
     },
     audiences: Object.fromEntries(BROADCASTS.map((t) => [t, broadcastAudience(t, entrants, drawResult).length])),

@@ -101,7 +101,7 @@ export function validateEntry(body) {
   if (!isPlainObject(body)) throw new ValidationError("Invalid request.");
   if (clean(body.website)) throw new ValidationError("Invalid request.");   // honeypot
   const first_name = text(body.first_name, "first_name", CAPS.name, "First name", true);
-  const last_name = text(body.last_name, "last_name", CAPS.name, "Last name", true);
+  const last_name = text(body.last_name, "last_name", CAPS.name, "Last name");
   const phone = text(body.phone, "phone", CAPS.phone, "Mobile number", true);
   const phone_digits = normalizePhone(phone);
   if (!phone_digits) throw new ValidationError("Mobile number needs to be a 10-digit US number.", "phone");
@@ -118,8 +118,9 @@ export function validateEntry(body) {
   };
   if (body.consent !== true && body.consent !== "on" && body.consent !== "true")
     throw new ValidationError("Please check the box to agree to giveaway texts.", "consent");
+  const yes = (v) => v === true || v === "on" || v === "true";
   return {
-    first_name, last_name, phone, phone_digits, address,
+    first_name, last_name, phone, phone_digits, address, offers: yes(body.offers),
     ref_code: normalizeGiveawayCode(body.ref || body.ref_code),
     page: text(body.page, "page", 200, "Page"),
   };
@@ -143,6 +144,7 @@ export function buildEntrant({ entry, code, token, area, household, referrer, no
     referred_by: referrer ? { id: referrer.id, code: referrer.code,
       name: `${referrer.first_name} ${lastInitial(referrer.last_name)}.`.trim() } : null,
     consent_at: now,
+    offers_opt_in: Boolean(entry.offers),
     source_page: entry.page || "/giveaway",
     rotor: null,
     sms: {},
@@ -250,6 +252,9 @@ export function broadcastAudience(template, entrants, drawResult) {
     if (e.sms && (e.sms[template] || e.sms[`${template}_failed`])) return false;
     if (template === "nudge") return true;
     if (winners.has(e.id)) return false;
+    // The coupon and its follow-ups are promotional: only for people who
+    // ticked the optional offers box (giveaway consent alone covers the rest).
+    if (!e.offers_opt_in) return false;
     if (template === "coupon") return true;
     // follow-ups
     return Boolean(e.sms && e.sms.coupon) && !(e.coupon && e.coupon.claimed_at);
@@ -279,6 +284,7 @@ export function toCSV(entrants, counts, drawResult) {
     ["status_url", (e) => statusUrl(e.token)],
     ["winner", (e) => winners.get(e.id) || ""],
     ["coupon_claimed_at", (e) => (e.coupon ? e.coupon.claimed_at : "")],
+    ["offers_opt_in", (e) => (e.offers_opt_in ? "yes" : "")],
     ["disqualified", (e) => (e.disqualified ? "yes" : "")],
     ["entered_at", (e) => e.created_at],
     ["nudge_text", (e) => renderText("nudge", e, counts)],

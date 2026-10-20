@@ -69,7 +69,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 export const SMS = Object.freeze({
   welcome: ({ first, share_url, status_url }) =>
     `You're in, ${first}! Barta's Holiday Lights Giveaway drawing is ${DATES.draw_short}. `
-    + `Share your link: ${share_url} Every friend who enters with it = +1 entry for you, `
+    + `Share your link: ${share_url} Every friend who enters with it = +1 chance for you, `
     + `and if they win, you BOTH win. Your entries: ${status_url} Reply STOP to opt out.`,
   nudge: ({ first, entries, share_url }) =>
     `Drawing's in 3 days, ${first}! You have ${plural(entries, "entry", "entries")} in Barta's `

@@ -25,7 +25,7 @@ const DELANO = { address_lat: 45.0419, address_lng: -93.7891 };
 const entry = (over = {}) => ({
   first_name: "Jane", last_name: "Doe", phone: "(763) 555-0101",
   address: "123 Main St", address_city: "Delano", address_state: "MN", address_zip: "55328",
-  address_verified: "yes", ...DELANO, consent: true, ...over,
+  address_verified: "yes", ...DELANO, consent: true, offers: true, ...over,
 });
 const post = (body) => handler(jsonRequest("/api/giveaway", "POST", body));
 const get = (q = "") => handler(new Request("http://localhost/api/giveaway" + q));
@@ -276,4 +276,18 @@ test("delete_all needs the exact phrase", async () => {
   await ok(adminPost({ action: "delete_all", confirm: "yes" }), 400);
   await ok(adminPost({ action: "delete_all", confirm: "DELETE ALL" }));
   assert.equal(store.keys("").length, 0);
+});
+
+test("last name is optional (one name box), and coupon texts need the optional opt-in", async () => {
+  const r = await ok(post(entry({ last_name: "", offers: false })));
+  assert.equal(r.entries, 1);
+  await ok(post(entry({ first_name: "Bob", phone: "763-555-0102", address: "7 Oak Ln" })));
+  await ok(post(entry({ first_name: "Cy", phone: "763-555-0103", address: "8 Elm Ct" })));
+  const d = await ok(adminPost({ action: "draw", early: true }));
+  const winners = new Set(d.draw.winners.map((w) => w.id));
+  const list = await ok(adminGet());
+  const expected = list.entrants.filter((e) => !winners.has(e.id) && e.offers_opt_in).length;
+  assert.equal(list.audiences.coupon, expected);
+  assert.equal(list.audiences.nudge, 3);
+  assert.equal(list.stats.offers_opt_in, 2);
 });

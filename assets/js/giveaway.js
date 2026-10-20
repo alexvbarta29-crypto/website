@@ -24,6 +24,7 @@
   const card = $(".gw-card");
   const form = $("[data-gw-form]");
   const title = $("[data-gw-card-title]");
+  const sub = $("[data-gw-card-sub]");
   const errBox = $("[data-gw-error]");
   let lastEntry = null;
 
@@ -31,6 +32,7 @@
     form.hidden = Boolean(name);
     $$("[data-gw-panel]").forEach((p) => { p.hidden = p.dataset.gwPanel !== name; });
     title.hidden = Boolean(name);
+    if (sub) sub.hidden = Boolean(name);
     const panel = name && $(`[data-gw-panel="${name}"]`);
     if (panel) {
       panel.focus({ preventScroll: true });
@@ -50,7 +52,7 @@
     const target = now < CLOSES ? CLOSES : DRAW;
     cdLabel.textContent = now < CLOSES ? "Entries close in" : "Drawing in";
     let left = Math.max(0, target - now);
-    if (now >= DRAW) { cd.classList.add("is-done"); cdLabel.textContent = "Winners drawn " + D.drawLabel; return false; }
+    if (now >= DRAW) { cd.classList.add("is-done"); cdLabel.textContent = "Winners drawn"; return false; }
     const d = Math.floor(left / 864e5); left -= d * 864e5;
     const h = Math.floor(left / 36e5); left -= h * 36e5;
     const m = Math.floor(left / 6e4); left -= m * 6e4;
@@ -189,14 +191,20 @@
   /* ---- Submit ---- */
   const submitBtn = $(".gw-submit", form);
   const btnHTML = submitBtn.innerHTML;
-  const fieldFor = (name) => form.querySelector(name === "address" ? "#gw-address" : `[name="${name}"]`);
+  const fieldFor = (name) => form.querySelector(name === "address" ? "#gw-address"
+    : /^(first|last)_name$/.test(name) ? "#gw-name" : `[name="${name}"]`);
   form.addEventListener("submit", (ev) => {
     ev.preventDefault();
     errBox.hidden = true;
     $$("[aria-invalid]", form).forEach((el) => el.removeAttribute("aria-invalid"));
     if (!form.checkValidity()) { form.reportValidity(); return; }
     const data = Object.fromEntries(new FormData(form).entries());
+    // One "Your name" box: first word is the first name, the rest the last.
+    const parts = String(data.name || "").trim().split(/\s+/);
+    data.first_name = parts.shift() || "";
+    data.last_name = parts.join(" ");
     data.consent = form.querySelector('[name="consent"]').checked;
+    data.offers = form.querySelector('[name="offers"]').checked;
     data.ref = refCode;
     data.page = location.pathname;
     lastEntry = data;
