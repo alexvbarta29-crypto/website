@@ -104,10 +104,56 @@
     ];
     $("[data-gwa-stats]").innerHTML = tiles.map(([l, v]) =>
       `<div class="gwa-tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+    renderChart();
+    renderLeaders();
     renderDraw();
     renderBroadcasts();
     renderList();
     renderOutside();
+  }
+
+  // Entries per day (Central time), new entries split from ones that came
+  // in through someone's share link, as a simple SVG bar chart.
+  function renderChart() {
+    const el = $("[data-gwa-chart]");
+    const day = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+    const counts = new Map();
+    data.entrants.forEach((e) => {
+      const d = day(e.created_at);
+      const c = counts.get(d) || { direct: 0, link: 0 };
+      if (e.referred_by) c.link++; else c.direct++;
+      counts.set(d, c);
+    });
+    if (!counts.size) { el.innerHTML = '<p class="gwa-sub">No entries yet.</p>'; $("[data-gwa-chart-sub]").textContent = ""; return; }
+    const days = [];
+    const first = new Date([...counts.keys()].sort()[0] + "T12:00:00");
+    const lastKey = day(new Date().toISOString());
+    for (let d = new Date(first); day(d.toISOString()) <= lastKey && days.length < 60; d.setDate(d.getDate() + 1)) days.push(day(d.toISOString()));
+    const max = Math.max(1, ...days.map((d) => { const c = counts.get(d); return c ? c.direct + c.link : 0; }));
+    const W = Math.max(320, days.length * 28), H = 170, base = 140, bw = 18;
+    const bars = days.map((d, i) => {
+      const c = counts.get(d) || { direct: 0, link: 0 };
+      const x = 14 + i * 28;
+      const hd = (c.direct / max) * 120, hl = (c.link / max) * 120;
+      const label = d.slice(5).replace("-", "/");
+      return `<g><rect x="${x}" y="${base - hd}" width="${bw}" height="${hd}" class="gwa-bar-direct"><title>${d}: ${c.direct} direct</title></rect>`
+        + `<rect x="${x}" y="${base - hd - hl}" width="${bw}" height="${hl}" class="gwa-bar-link"><title>${d}: ${c.link} via a share link</title></rect>`
+        + (c.direct + c.link ? `<text x="${x + bw / 2}" y="${base - hd - hl - 4}" text-anchor="middle" class="gwa-bar-num">${c.direct + c.link}</text>` : "")
+        + (i % Math.ceil(days.length / 12) === 0 ? `<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle" class="gwa-bar-day">${label}</text>` : "")
+        + "</g>";
+    }).join("");
+    el.innerHTML = `<div class="gwa-chart-wrap"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Entries per day">${bars}
+      <line x1="8" x2="${W - 8}" y1="${base}" y2="${base}" class="gwa-axis"/></svg></div>
+      <p class="gwa-legend"><span class="gwa-key gwa-key-direct"></span> Entered on their own <span class="gwa-key gwa-key-link"></span> Came in through a friend's link</p>`;
+    const linkShare = data.stats.entrants ? Math.round((data.stats.via_link / data.stats.entrants) * 100) : 0;
+    $("[data-gwa-chart-sub]").textContent = `${linkShare}% came in through a share link`;
+  }
+
+  function renderLeaders() {
+    const top = data.entrants.filter((e) => e.entries > 1).sort((a, b) => b.entries - a.entries).slice(0, 10);
+    $("[data-gwa-leaders]").innerHTML = top.length
+      ? `<ol class="gwa-leaders">${top.map((e) => `<li><span>${esc(e.first_name)} ${esc(e.last_name)}</span><b>${e.entries} entries</b><span class="gwa-sub">${e.entries - 1} friends</span></li>`).join("")}</ol>`
+      : '<p class="gwa-sub">Nobody has brought in a friend yet.</p>';
   }
 
   function renderDraw() {
@@ -160,7 +206,7 @@
   function renderBroadcasts() {
     $("[data-gwa-sms-state]").textContent = data.sms_ready
       ? "Automatic texting is on (Twilio)."
-      : "Automatic texting isn't set up. Use Export CSV (it has each person's own text) or the text links on each entrant.";
+      : "These go out as Rotor campaigns (tag Giveaway 2026). Counts below show who should get each one.";
     const sample = data.entrants[0];
     $("[data-gwa-broadcasts]").innerHTML = TEMPLATES.map(([t, label, hint]) => {
       const n = data.audiences[t] || 0;

@@ -20,7 +20,7 @@ import {
   saveEntrantRecord, allocateCode, getDraw, listKeys, putJSON, KEYS, guarded,
 } from "../lib/giveaway-store.mjs";
 import { createRotorLead, sendSms, e164, officePhone } from "../lib/referral-notify.mjs";
-import { newToken, nowISO, safeErr, withTimeout, fullName, lastInitial } from "../lib/referral-lib.mjs";
+import { newToken, nowISO, safeErr, withTimeout, fullName, lastInitial, normalizePhone } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -39,6 +39,7 @@ export default async (req) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail(400, "Invalid request.");
     if (body.action === "claim") return await claim(body);
     if (body.action === "outside_quote") return await outsideQuote(body);
+    if (body.action === "lookup") return await lookup(body);
     return await enter(body);
   } catch (err) {
     console.error(`giveaway: ${req.method} failed (${safeErr(err)})`);
@@ -184,7 +185,7 @@ export function rotorEntryPayload(e) {
   if (e.area.ok !== true) lines.push("Service area: couldn't verify the address, please check.");
   const p = {
     source: GIVEAWAY.name,
-    tags: ["Giveaway 2026", "Christmas Lights"],
+    tags: ["Giveaway 2026", "Christmas Lights", ...(e.offers_opt_in ? ["Giveaway Offers OK"] : [])],
     name: fullName(e.first_name, e.last_name),
     phone: e.phone,
     notes: lines.join("\n"),
@@ -195,6 +196,21 @@ export function rotorEntryPayload(e) {
   if (a.zip) p.address_zip = a.zip;
   p.address_country = "US";
   return p;
+}
+
+// ---------------------------------------------------------------------------
+// "Check my entries" by mobile number, for people arriving from a Rotor
+// text (which can't carry each person's own link). Reveals only what is
+// already public or harmless: first name, entry count, and the share link.
+async function lookup(body) {
+  const digits = normalizePhone(body.phone);
+  if (!digits) return fail(400, "Enter the 10-digit mobile number you entered with.", { field: "phone" });
+  const store = await openStore();
+  const e = await getEntrant(store, digits);
+  if (!e) return fail(404, "We couldn't find an entry for that number. Enter above!");
+  const view = statusView(e, await friendsOf(store, e.id), await getDraw(store));
+  return json({ ok: true, first_name: view.first_name, entries: view.entries,
+                friends: view.friends.length, share_url: view.share_url });
 }
 
 // ---------------------------------------------------------------------------

@@ -107,6 +107,15 @@ body:has(.gw-rules) .gw-lp-top { position: static; background: #fff; border-bott
 .gw-result .btn { margin-top: 12px; background: var(--xmas-red); }
 .gw-coupon { border-color: var(--xmas-red); background: #fff5f4; }
 
+/* ---------- Already entered? ---------- */
+.gw-check { background: #fff; border-bottom: 1px solid var(--line); }
+.gw-check p { margin-top: 6px; color: var(--slate-500); }
+.gw-check-form { display: flex; gap: 8px; margin-top: 14px; }
+.gw-check-form input { flex: 1; min-width: 0; padding: 13px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); font-size: 16px; background: var(--mist); }
+.gw-check .gw-err { margin-top: 10px; }
+.gw-check-result { margin-top: 14px; }
+.gw-check-count { font-weight: 700; color: var(--ink) !important; font-size: 1.1rem; }
+
 /* ---------- Below the fold ---------- */
 .gw-page h2 { font-size: clamp(1.5rem, 4.4vw, 2rem); line-height: 1.15; }
 .gw-steps { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 18px; }

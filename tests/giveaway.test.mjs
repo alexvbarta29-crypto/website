@@ -75,7 +75,7 @@ test("entering stores the entrant, returns share + status links, creates a Rotor
   const e = store.json("entrant/7635550101");
   assert.equal(e.area.ok, true);
   const [lead] = net.rotor();
-  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Christmas Lights"]);
+  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Christmas Lights", "Giveaway Offers OK"]);
   assert.equal(lead.payload.source, GIVEAWAY.name);
   assert.match(lead.payload.notes, /Share link: .*\/g\/LIGHTS-/);
   assert.equal(lead.payload.address_city, "Delano");
@@ -290,4 +290,20 @@ test("last name is optional (one name box), and coupon texts need the optional o
   assert.equal(list.audiences.coupon, expected);
   assert.equal(list.audiences.nudge, 3);
   assert.equal(list.stats.offers_opt_in, 2);
+});
+
+test("lookup by phone returns count and share link, nothing private", async () => {
+  const a = await ok(post(entry()));
+  await ok(post(entry({ first_name: "Bob", phone: "763-555-0102", address: "7 Oak Ln", ref: a.code })));
+  const r = await ok(post({ action: "lookup", phone: "(763) 555-0101" }));
+  assert.equal(r.entries, 2);
+  assert.equal(r.share_url, a.share_url);
+  assert.equal(r.token, undefined);
+  await ok(post({ action: "lookup", phone: "763-555-0199" }), 404);
+  await ok(post({ action: "lookup", phone: "12" }), 400);
+});
+
+test("no offers opt-in means no offers tag in Rotor", async () => {
+  await ok(post(entry({ offers: false })));
+  assert.deepEqual(net.rotor()[0].payload.tags, ["Giveaway 2026", "Christmas Lights"]);
 });

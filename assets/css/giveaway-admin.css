@@ -60,3 +60,15 @@ body { background: var(--mist); }
   border-radius: 12px; box-shadow: var(--sh-lg); font-weight: 600; z-index: 50; max-width: calc(100% - 32px); }
 .gwa-toast.is-bad { background: #b3261e; }
 @media (max-width: 640px) { .gwa-bc { grid-template-columns: 1fr; } .gwa-bc-side { align-items: flex-start; text-align: left; } .gwa-search { min-width: 0; width: 100%; } }
+.gwa-chart-wrap { overflow-x: auto; }
+.gwa-bar-direct { fill: var(--xmas-red); }
+.gwa-bar-link { fill: var(--xmas-green); }
+.gwa-bar-num { font: 700 10px var(--font-body); fill: var(--slate-700); }
+.gwa-bar-day { font: 600 10px var(--font-body); fill: var(--slate-500); }
+.gwa-axis { stroke: var(--line); }
+.gwa-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: .8rem; color: var(--slate-500); margin-top: 6px; }
+.gwa-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.gwa-key-direct { background: var(--xmas-red); } .gwa-key-link { background: var(--xmas-green); }
+.gwa-leaders { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.gwa-leaders li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.gwa-leaders b { color: var(--xmas-red); }

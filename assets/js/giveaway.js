@@ -138,6 +138,29 @@
       });
   });
 
+  /* ---- "Already entered?" lookup by phone (for people coming from a text) ---- */
+  const checkForm = $("[data-gw-check]");
+  if (checkForm) checkForm.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const box = $("[data-gw-check-error]");
+    const out = $("[data-gw-check-result]");
+    box.hidden = true;
+    const btn = $("button", checkForm);
+    btn.disabled = true;
+    fetch(API, { method: "POST", headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify({ action: "lookup", phone: checkForm.phone.value }) })
+      .then((r) => r.json().then((b) => ({ r, b })))
+      .then(({ r, b }) => {
+        btn.disabled = false;
+        if (!r.ok || !b.ok) { out.hidden = true; fail(box, b.error || "Something went wrong."); return; }
+        fillShare(out, b.share_url, b.first_name);
+        setText(out, "[data-gw-entries]", String(b.entries));
+        setText(out, "[data-gw-entries-word]", entryWord(b.entries));
+        out.hidden = false;
+      })
+      .catch(() => { btn.disabled = false; fail(box, `We couldn't reach the server. Call or text ${PHONE}.`); });
+  });
+
   if (token) {
     title.textContent = "Your entries";
     form.hidden = true;

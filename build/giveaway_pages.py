@@ -310,6 +310,28 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     </div>
   </div></section>
 
+  <section class="gw-check" id="check"><div class="gw-col">
+    <h2>Already entered?</h2>
+    <p>Check how many entries you have and grab your share link.</p>
+    <form class="gw-check-form" data-gw-check novalidate>
+      <input type="tel" name="phone" inputmode="tel" autocomplete="tel" required maxlength="25" placeholder="Your mobile number" aria-label="Your mobile number">
+      <button type="submit" class="btn">Check</button>
+    </form>
+    <p class="gw-err" data-gw-check-error role="alert" hidden></p>
+    <div class="gw-check-result" data-gw-check-result hidden>
+      <p class="gw-check-count">Hi <span data-gw-name></span>! You have <span class="gw-count" data-gw-entries>1</span> <span data-gw-entries-word>entry</span>.</p>
+      <div class="gw-share">
+        <label class="gw-share-label" for="gw-check-url">Your share link</label>
+        <div class="gw-share-row"><input id="gw-check-url" readonly data-gw-share-url><button type="button" class="btn gw-copy" data-gw-copy>Copy</button></div>
+        <div class="gw-share-btns">
+          <button type="button" class="btn btn-ghost" data-gw-native hidden>Share</button>
+          <a class="btn btn-ghost" data-gw-sms href="#">Text it</a>
+          <a class="btn btn-ghost" data-gw-fb href="#" target="_blank" rel="noopener">Facebook</a>
+        </div>
+      </div>
+    </div>
+  </div></section>
+
   <section class="gw-how"><div class="gw-col">
     <h2>How it works</h2>
     <ol class="gw-steps">{step_html}</ol>
@@ -431,6 +453,16 @@ def giveaway_admin_page(depth=1, seo_title=None):
 
   <div class="gwa-body" data-gwa-body hidden>
     <section class="gwa-stats" data-gwa-stats></section>
+
+    <section class="gwa-card">
+      <div class="gwa-card-head"><h2>Entries per day</h2><span class="gwa-sub" data-gwa-chart-sub></span></div>
+      <div data-gwa-chart></div>
+    </section>
+
+    <section class="gwa-card">
+      <div class="gwa-card-head"><h2>Top sharers</h2><span class="gwa-sub">Most entries from their link</span></div>
+      <div data-gwa-leaders></div>
+    </section>
 
     <section class="gwa-card">
       <div class="gwa-card-head"><h2>Drawing</h2><span class="gwa-sub" data-gwa-draw-when></span></div>
