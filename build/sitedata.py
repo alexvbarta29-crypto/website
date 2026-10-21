@@ -108,7 +108,7 @@ GIVEAWAY = {
     "claim_by": "Monday, November 9, 2026 at 6:00 PM Central Time",
     "install_by": "December 15, 2026",
     "coupon_book_by": "December 1, 2026",
-    "radius_mi": 20,
+    "radius_mi": 17,              # never printed on the pages (owner's call); the map shows it
     # Owner's intro video for the top of /giveaway (playbook: "people trust a
     # face"). Drop the file in assets/video/ and set the path here, e.g.
     # "assets/video/giveaway-intro.mp4"; empty shows the photo hero only.

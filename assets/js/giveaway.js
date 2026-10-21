@@ -13,7 +13,7 @@
   const CLOSES = Date.parse(D.closes);
   const DRAW = Date.parse(D.draw);
   const PHONE = D.phone;
-  const RADIUS = 20, ORIGIN = { lat: 45.0419, lng: -93.7891 };
+  const RADIUS = 17, ORIGIN = { lat: 45.0419, lng: -93.7891 };
 
   const params = new URLSearchParams(location.search);
   const token = (params.get("t") || "").trim().toUpperCase();
@@ -204,7 +204,7 @@
       areaNote.textContent = "✓ You're in our service area.";
       areaNote.classList.add("is-in");
     } else {
-      areaNote.textContent = "That address looks outside our service area (about " + Math.round(mi) + " miles from Delano).";
+      areaNote.textContent = "That address looks outside the giveaway circle.";
       areaNote.classList.add("is-out");
     }
     areaNote.hidden = false;
