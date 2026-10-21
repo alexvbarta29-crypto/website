@@ -8,10 +8,10 @@
   const API = main.dataset.api;
   const KEY = "gwa-key";
   const TEMPLATES = [
-    ["nudge", "3-day nudge", "Send Tue, Nov 4: each person's entry count + share link"],
+    ["nudge", "3-day nudge", "Send Tue, Nov 3: each person's entry count + share link"],
     ["coupon", "Coupon to everyone who didn't win", "Send within 1 hour of the drawing (only people who ticked the optional coupon box)"],
-    ["followup24", "24-hour follow-up", "Send Sat, Nov 8 to anyone who hasn't claimed"],
-    ["followup48", "48-hour follow-up", "Send Sun, Nov 9 to anyone who hasn't claimed"],
+    ["followup24", "24-hour follow-up", "Send Sat, Nov 7 to anyone who hasn't claimed"],
+    ["followup48", "48-hour follow-up", "Send Sun, Nov 8 to anyone who hasn't claimed"],
   ];
   let key = "";
   try { key = sessionStorage.getItem(KEY) || ""; } catch (e) { /* private mode */ }
