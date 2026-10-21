@@ -246,25 +246,27 @@ def _lock_gate():
 
 
 def _area_map():
-    """A real Google Map (keyless embed) centred on the shop, with the
-    eligibility circle drawn over it. At a fixed zoom a Web Mercator map has
-    a fixed scale, so the circle's pixel radius is computed, not guessed:
-    zoom 9 at Delano's latitude is ~216 m per CSS pixel. The map is not
-    draggable (a pan would slide it out from under the circle); tapping it
-    opens Google Maps."""
-    import math
-    zoom = 9
-    lat = float(BIZ["lat"])
-    m_per_px = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
-    r_px = round(G["radius_mi"] * 1609.344 / m_per_px)
-    src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
+    """The giveaway circle: the same map as the intro reel (17 miles around
+    Delano, every town inside labeled). Static image, rendered from Esri map
+    tiles; its file hash rides on the URL because /assets/ is cached
+    immutably. Tapping it opens Google Maps."""
+    import hashlib, os
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    def ver(rel):
+        with open(os.path.join(base, rel), "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()[:10]
+    jpg, webp = "assets/img/giveaway-map.jpg", "assets/img/giveaway-map.webp"
     link = f"https://www.google.com/maps/@{BIZ['lat']},{BIZ['lng']},10z"
-    return f"""<a class="gw-gmap" href="{link}" target="_blank" rel="noopener"
-      aria-label="Map of the giveaway circle around Delano. Opens Google Maps" style="--gw-r:{r_px}px">
-      <iframe src="{src}" title="Map around Delano, MN" loading="lazy" tabindex="-1" referrerpolicy="no-referrer-when-downgrade"></iframe>
-      <span class="gw-gmap-circle" aria-hidden="true"></span>
-      <span class="gw-gmap-tag">The giveaway circle</span>
-    </a>"""
+    alt = ("Map of the giveaway circle: 17 miles around Delano, covering Buffalo, Rockford, Montrose, Waverly, "
+           "Howard Lake, Maple Lake, Albertville, St. Michael, Hanover, Rogers, Corcoran, Loretto, Medina, Maple Plain, "
+           "Orono, Wayzata, Mound, Minnetrista, St. Bonifacius, Victoria, Waconia, Mayer, Watertown, Winsted and Lester Prairie")
+    return f"""<figure class="gw-map">
+      <a href="{link}" target="_blank" rel="noopener" aria-label="Open the area around Delano in Google Maps">
+        <picture><source type="image/webp" srcset="/{webp}?v={ver(webp)}">
+        <img src="/{jpg}?v={ver(jpg)}" width="1080" height="1080" alt="{alt}" loading="lazy" decoding="async"></picture>
+      </a>
+      <figcaption>Map: Esri, HERE, Garmin, &copy; OpenStreetMap contributors</figcaption>
+    </figure>"""
 
 
 def giveaway_page(depth=0, seo_title=None, schema=None):
@@ -367,7 +369,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
 
   <section class="gw-area-sec"><div class="gw-col">
     <h2>Anywhere inside the circle</h2>
-    <p>If your home is inside the circle, you can enter. It runs from Buffalo and St.&nbsp;Michael down to Waconia and Victoria, from Howard Lake over to Wayzata and Maple Grove, and every town in between. Enter your address and the form checks it for you.</p>
+    <p>If your home is inside the circle, you can enter. It runs from Buffalo and St.&nbsp;Michael down to Waconia and Victoria, from Howard Lake over to Wayzata and Rogers, and every town in between. Enter your address and the form checks it for you.</p>
     {_area_map()}
     <p class="gw-out-link"><a href="/get-quote.html?svc=christmas-light-installation">Outside the circle? Get a regular quote &rarr;</a></p>
   </div></section>

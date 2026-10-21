@@ -208,3 +208,9 @@ html.gw-open .gw-gate { display: none; }
 .gw-gate-card .field { margin-top: 18px; }
 .gw-gate-card .gw-submit { margin-top: 16px; }
 html:not(.gw-open) body { padding-bottom: 0; }
+
+/* Giveaway circle map (same render as the intro reel) */
+.gw-map { margin: 20px 0 0; }
+.gw-map a { display: block; border-radius: var(--r-lg); overflow: hidden; background: #2b2b2e; box-shadow: 0 24px 50px -26px rgba(13, 16, 39, .7); }
+.gw-map img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; }
+.gw-map figcaption { margin-top: 8px; font-size: .72rem; color: var(--slate-400); text-align: right; }
