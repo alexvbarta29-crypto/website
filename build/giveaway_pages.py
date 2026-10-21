@@ -145,7 +145,7 @@ def _panels():
         <div class="gw-panel" data-gw-panel="closed" hidden>
           <span class="gw-badge gw-badge-muted">Entries closed</span>
           <h2 class="gw-panel-title">Entries closed {G['closes'].split(' at ')[0].split(', ', 1)[1]}.</h2>
-          <p>Winners are drawn live {G['draw']}. If you entered, keep an eye on your texts.</p>
+          <p>Winners are drawn {G['draw']}. If you entered, keep an eye on your texts.</p>
         </div>
         <div class="gw-panel" data-gw-panel="status" hidden tabindex="-1">
           <span class="gw-badge" data-gw-status-badge>Your entries</span>
@@ -183,8 +183,66 @@ def _countdown():
     return f"""<div class="gw-timer" data-gw-countdown role="timer" aria-live="off">
           <p class="gw-timer-head"><span class="gw-dot" aria-hidden="true"></span><span data-gw-cd-label>Entries close in</span></p>
           <div class="gw-timer-units">{unit('d', 'days')}{unit('h', 'hours')}{unit('m', 'min')}{unit('s', 'sec')}</div>
-          <p class="gw-timer-when">Drawing live {G['draw_short']} at 6pm</p>
+          <p class="gw-timer-when">Winners drawn {G['draw_short']} at 6pm</p>
         </div>"""
+
+
+def _lock_head():
+    """Runs before first paint: a visitor who already unlocked this browser
+    skips the gate (no flash of the Coming soon screen)."""
+    h = G.get("lock_sha256")
+    if not h:
+        return ""
+    return ('<script>(function(){try{if(localStorage.getItem("gw-unlock")==="' + h +
+            '")document.documentElement.classList.add("gw-open")}catch(e){}})();</script>\n')
+
+
+def _lock_gate():
+    """Pre-launch gate: a Coming soon screen, and a password box below it.
+    The password is checked in the browser against its SHA-256 (sitedata
+    GIVEAWAY["lock_sha256"]), so it keeps casual visitors out until launch;
+    it isn't account-grade security. Remove the hash to open the page."""
+    h = G.get("lock_sha256")
+    if not h:
+        return ""
+    return f"""<div class="gw-gate" data-gw-gate data-hash="{h}">
+  <section class="gw-gate-hero"><div class="gw-col">
+    <span class="gw-eyebrow">{G['name']}</span>
+    <h1>Coming <em>soon.</em></h1>
+    <p class="gw-hook">Something merry is headed to the West Metro. Check back shortly.</p>
+    <a class="gw-gate-scroll" href="#gw-unlock" aria-label="Scroll to the password box"><span>Have the password?</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  </div></section>
+  <section class="gw-gate-pass" id="gw-unlock"><div class="gw-col">
+    <form class="gw-card gw-gate-card" data-gw-gate-form novalidate>
+      <h2 class="gw-card-title">Have the password?</h2>
+      <p class="gw-card-sub">Enter it to see the giveaway early.</p>
+      <div class="field"><label for="gw-gate-pw">Password</label>
+        <input id="gw-gate-pw" name="password" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required></div>
+      <p class="gw-err" data-gw-gate-error role="alert" hidden>That&rsquo;s not it. Check the spelling and try again.</p>
+      <button type="submit" class="btn btn-lg btn-block gw-submit">Unlock {icon('arrow')}</button>
+    </form>
+  </div></section>
+</div>
+<script>(function(){{
+  var g=document.querySelector("[data-gw-gate]"),f=g&&g.querySelector("[data-gw-gate-form]");
+  if(!f)return;
+  var err=f.querySelector("[data-gw-gate-error]"),inp=f.querySelector("input");
+  function hex(b){{return Array.prototype.map.call(new Uint8Array(b),function(x){{return("0"+x.toString(16)).slice(-2)}}).join("")}}
+  f.addEventListener("submit",function(e){{
+    e.preventDefault();
+    var v=(inp.value||"").toLowerCase().replace(/\\s+/g,"");
+    if(!v||!window.crypto||!crypto.subtle){{err.hidden=false;return}}
+    crypto.subtle.digest("SHA-256",new TextEncoder().encode(v)).then(function(d){{
+      if(hex(d)!==g.getAttribute("data-hash")){{err.hidden=false;inp.select();return}}
+      try{{localStorage.setItem("gw-unlock",g.getAttribute("data-hash"))}}catch(x){{}}
+      document.documentElement.classList.add("gw-open");
+      window.scrollTo(0,0);
+    }});
+  }});
+  inp.addEventListener("input",function(){{err.hidden=true}});
+}})();</script>
+"""
 
 
 def _area_map():
@@ -221,8 +279,9 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     desc = (f"Barta Window Washing is giving away up to {n_word} free Christmas light installs (up to {PRIZE} each) "
             f"in the west metro. Drawing {G['draw']}. No purchase necessary.")
     html = C.head(title=seo_title(title), desc=desc, slug="giveaway.html", depth=depth, schema=schema,
-                  noindex=True, extra_head=css, og_image=G["hero_photo"])
+                  noindex=True, extra_head=css + _lock_head(), og_image=G["hero_photo"])
     html += _lp_header(root)
+    html += _lock_gate()
 
     if G.get("video"):
         # /assets/ is cached as immutable, so the file's hash rides on its URL:
@@ -241,7 +300,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     steps = [
         ("Sign up, get your link", "Name, number, address: about 20 seconds. Your own link pops up right away."),
         ("Send friends your link", "Friends enter in about 20 seconds. Each one is one more chance for you, and if they win, you win too."),
-        ("Watch the drawing", f"Live on Facebook and Instagram, {G['draw_short']} at 6pm. Winners get a call from Alex."),
+        ("We draw the winners", f"{G['draw_short']} at 6pm. Winners get a call from Alex."),
     ]
     step_html = "".join(
         f'<li class="gw-step"><span class="step-num {"xmas-red" if i % 2 == 0 else "xmas-green"}">{i + 1}</span>'
@@ -359,7 +418,7 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
   <p>Prizes are not transferable and have no cash value. No substitution except by Sponsor, which may substitute a prize of equal or greater value if necessary. Winners are responsible for any taxes; a winner receiving $600 or more in prizes may be asked for a completed IRS Form W-9 and will receive a Form 1099.</p>
 
   <h2>7. Drawing and odds</h2>
-  <p>Grand prize winners will be selected in a random drawing on or about {G['draw']}, at approximately {G['draw_time']}, from all eligible entries received, weighted so each entry counts once. Sponsor plans to stream the drawing live on its Facebook and Instagram pages. Odds of winning depend on the number of eligible entries received and on how many entries each entrant has.</p>
+  <p>Grand prize winners will be selected in a random drawing on or about {G['draw']}, at approximately {G['draw_time']}, from all eligible entries received, weighted so each entry counts once. Odds of winning depend on the number of eligible entries received and on how many entries each entrant has.</p>
 
   <h2>8. Winner notification</h2>
   <p>Potential winners will be contacted by phone and/or text message within 24 hours of the drawing. A potential winner must respond within 72 hours of the first contact attempt and confirm eligibility, or the prize may be forfeited and an alternate winner selected by random drawing from the remaining eligible entries.</p>

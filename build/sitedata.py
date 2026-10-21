@@ -114,6 +114,10 @@ GIVEAWAY = {
     # "assets/video/giveaway-intro.mp4"; empty shows the photo hero only.
     "video": "assets/video/giveaway-intro.mp4",          # vertical 9:16, H.264 1080x1920, ~2.3 Mbps (capped 2.8) for smooth playback
     "video_poster": "assets/video/giveaway-intro-poster.jpg",
+    # Pre-launch lock: while set, /giveaway shows a "Coming soon" screen and a
+    # password box instead of the page. SHA-256 of the password, lowercased
+    # with spaces removed (currently "alexbarta"). Set to "" to open the page.
+    "lock_sha256": "fce9fa91acb8a524d12a97b4a35d1c05b283b0ccb17087da7a965cc1b693979e",
     "hero_photo": "assets/img/xmas-warm-white-french-front.jpg",
     "photos": [
         "assets/img/xmas-warm-white-mediterranean.jpg",
