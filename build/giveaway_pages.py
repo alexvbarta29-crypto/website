@@ -32,13 +32,7 @@ def _lp_header(root, rules=False):
     the website."""
     right = ('<a class="gw-lp-link" href="/giveaway">Back to the giveaway</a>' if rules
              else '<a class="btn gw-lp-cta" href="#enter">Enter to win</a>')
-    if rules:
-        logo = C._brand_logo(root, "(max-width: 760px) 120px, 150px", 150, 41, xmas=True)
-    else:
-        # White Christmas mark: the hero is a dark photo.
-        stem = f"{root}assets/img/logo-bww-xmas-white"
-        logo = (f'<img src="{stem}.png" srcset="{stem}-320w.png 320w, {stem}-480w.png 480w, {stem}.png 765w" '
-                f'sizes="(max-width: 760px) 120px, 150px" alt="{BIZ["name"]}" width="150" height="41">')
+    logo = C._brand_logo(root, "(max-width: 760px) 120px, 150px", 150, 41, xmas=True)
     return f"""<header class="gw-lp-top"><div class="container gw-lp-top-row">
   <span class="gw-lp-brand">{logo}</span>
   {right}
@@ -50,10 +44,11 @@ def _lp_end(root):
     site script (address autocomplete, reveal animations). No site nav,
     no call bar."""
     return f"""<footer class="gw-lp-foot"><div class="container">
-  <p><strong>{G['name']}</strong> by {BIZ['name']}, {BIZ['city']}, {BIZ['state']}.
-     Questions? Call or text <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a>.</p>
-  <p class="gw-lp-legal">No purchase necessary. <a href="/giveaway/rules">Official rules</a> &middot;
-     <a href="{root}privacy.html">Privacy</a> &middot; Not sponsored or endorsed by Facebook.</p>
+  <p>{BIZ['name']} &middot; {BIZ['city']}, {BIZ['state']} &middot; <a href="tel:{BIZ['phone_href']}">{BIZ['phone_display']}</a></p>
+  <p class="gw-lp-legal">No purchase necessary to enter or win; a purchase won&rsquo;t improve your chances. Open to legal
+     Minnesota residents 18 and older with a home inside the map area. Entries close {G['closes'].replace(' Central Time', ' CT')};
+     drawing {G['draw']}. Void where prohibited. Not sponsored, endorsed or administered by Facebook or Instagram.
+     See the <a href="/giveaway/rules">Official Rules</a>.</p>
 </div></footer>
 <script src="{root}assets/js/main.min.js?v={C.ASSET_VER}" defer></script>
 </body>
@@ -79,9 +74,9 @@ def _entry_form():
     and the post-drawing coupon + occasional offers (optional)."""
     return f"""<form class="gw-form" data-gw-form novalidate>
           <div class="gw-invite" data-gw-invite hidden>{icon('gift')} <span data-gw-invite-text></span></div>
-          <div class="field"><label for="gw-name">Your name</label><input id="gw-name" name="name" autocomplete="name" required maxlength="120" placeholder="Jane Doe"></div>
-          <div class="field"><label for="gw-phone">Mobile number</label><input id="gw-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="25" placeholder="(763) 555-0123"></div>
-          <div class="field addr-field"><label for="gw-address">Home address <span class="label-hint">(to confirm you&rsquo;re inside the circle)</span></label>
+          <div class="field"><label for="gw-name">Your name</label><input id="gw-name" name="name" autocomplete="name" required maxlength="120"></div>
+          <div class="field"><label for="gw-phone">Mobile number</label><input id="gw-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="25"></div>
+          <div class="field addr-field"><label for="gw-address">Home address</label>
             <input type="text" id="gw-address" name="address" autocomplete="off" required maxlength="200" data-address-input placeholder="Start typing your address…">
             <input type="hidden" name="address_verified" data-address-verified value="no">
             <input type="hidden" name="address_city" data-address-city value="">
@@ -95,13 +90,13 @@ def _entry_form():
           </div>
           <input type="text" name="website" class="gw-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
           <label class="check gw-consent"><input type="checkbox" name="consent" required>
-            <span>Text me about this giveaway: my entry and share link, up to two reminders, the results, and replies to anything I text back.</span></label>
+            <span><strong>Text me about the giveaway.</strong> My entry confirmation, up to two reminders, the results, and replies to my texts. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span></label>
           <label class="check gw-consent"><input type="checkbox" name="offers">
-            <span>Optional: if I don&rsquo;t win, text me the {COUPON}-off coupon, plus a few offers a year.</span></label>
+            <span><strong>Send me the coupon.</strong> If I don&rsquo;t win, text me a Barta entrant coupon after the drawing, plus a few offers a year. Reply STOP anytime.</span></label>
           <p class="gw-err" data-gw-error role="alert" hidden></p>
           <button type="submit" class="btn btn-lg btn-block gw-submit">Enter the giveaway {icon('arrow')}</button>
-          <p class="gw-legal">No purchase necessary. Entries close {G['closes'].replace(', 2026', '')}. Msg &amp; data rates may apply; reply STOP to opt out.
-            <a href="/giveaway/rules">Official rules</a> &middot; <a href="/privacy.html">Privacy</a></p>
+          <p class="gw-legal">No purchase necessary. Ends {G['closes'].split(' at ')[0].split(', ', 1)[1]}.
+            <a href="/giveaway/rules">Official rules</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">SMS terms</a></p>
         </form>"""
 
 
@@ -183,74 +178,35 @@ def _panels():
 
 
 def _countdown():
-    """One line, like the playbook page: "Drawing in 17d 09h 14m · Fri, Nov 7, 6pm"."""
-    return f"""<p class="gw-timer" data-gw-countdown role="timer" aria-live="off">
-          <span class="gw-dot" aria-hidden="true"></span>
-          <span data-gw-cd-label>Drawing in</span>
-          <b><span data-cd="d">--</span>d <span data-cd="h">--</span>h <span data-cd="m">--</span>m <span data-cd="s">--</span>s</b>
-          <span class="gw-timer-when">&middot; {G['draw_short']}, 6pm</span>
-        </p>"""
-
-
-# Towns drawn on the service-area map (approximate centers). Only names; the
-# circle is the real rule (G["radius_mi"] straight-line miles from Delano).
-MAP_TOWNS = [
-    ("Delano", 45.042, -93.789), ("Buffalo", 45.172, -93.875), ("St. Michael", 45.210, -93.665),
-    ("Rockford", 45.088, -93.734), ("Watertown", 44.964, -93.847), ("Waconia", 44.851, -93.787),
-    ("Mound", 44.937, -93.666), ("Wayzata", 44.974, -93.507), ("Plymouth", 45.011, -93.456),
-    ("Maple Grove", 45.073, -93.456), ("Medina", 45.035, -93.582), ("Minnetonka", 44.921, -93.468),
-    ("Chanhassen", 44.862, -93.531), ("Victoria", 44.859, -93.662),
-    ("Howard Lake", 45.061, -94.073), ("Monticello", 45.306, -93.794), ("Otsego", 45.274, -93.591),
-    ("Chaska", 44.789, -93.602), ("Mayer", 44.885, -93.888), ("Rogers", 45.189, -93.553),
-    ("Cokato", 45.076, -94.190),
-]
+    """A big countdown block: to entries closing, then to the drawing."""
+    unit = lambda k, label: (f'<span class="gw-timer-unit"><b data-cd="{k}">--</b><small>{label}</small></span>')
+    return f"""<div class="gw-timer" data-gw-countdown role="timer" aria-live="off">
+          <p class="gw-timer-head"><span class="gw-dot" aria-hidden="true"></span><span data-gw-cd-label>Entries close in</span></p>
+          <div class="gw-timer-units">{unit('d', 'days')}{unit('h', 'hours')}{unit('m', 'min')}{unit('s', 'sec')}</div>
+          <p class="gw-timer-when">Drawing live {G['draw_short']} at 6pm</p>
+        </div>"""
 
 
 def _area_map():
-    """An SVG of the eligibility circle with the towns inside it, projected
-    from lat/lng (miles east/north of Delano). No map tiles to load."""
+    """A real Google Map (keyless embed) centred on the shop, with the
+    eligibility circle drawn over it. At a fixed zoom a Web Mercator map has
+    a fixed scale, so the circle's pixel radius is computed, not guessed:
+    zoom 9 at Delano's latitude is ~216 m per CSS pixel. The map is not
+    draggable (a pan would slide it out from under the circle); tapping it
+    opens Google Maps."""
     import math
-    lat0, lng0 = 45.0419, -93.7891
-    R = G["radius_mi"]
-    size, pad = 420, 34
-    scale = (size / 2 - pad) / R          # px per mile
-    cx = cy = size / 2
-    kx = math.cos(math.radians(lat0)) * 69.0
-    pts = []
-    for name, lat, lng in MAP_TOWNS:
-        x = cx + (lng - lng0) * kx * scale
-        y = cy - (lat - lat0) * 69.0 * scale
-        pts.append((name, x, y))
-    dots = "".join(
-        (f'<g class="gw-map-home"><circle cx="{x:.1f}" cy="{y:.1f}" r="7"/>'
-         f'<text x="{x:.1f}" y="{y - 13:.1f}" text-anchor="middle">Delano</text></g>') if name == "Delano" else
-        (f'<circle class="gw-map-dot" cx="{x:.1f}" cy="{y:.1f}" r="3.6"/>'
-         + (f'<text class="gw-map-label" x="{x:.1f}" y="{y + 15:.1f}" text-anchor="middle">{name}</text>'
-            if name == "Victoria" else
-            f'<text class="gw-map-label" x="{x:.1f}" y="{y - 9:.1f}" text-anchor="middle">{name}</text>'
-            if name == "Chanhassen" else
-            f'<text class="gw-map-label" x="{x - 6:.1f}" y="{y + 4:.1f}" text-anchor="end">{name}</text>'
-            if x > cx + 70 else
-            f'<text class="gw-map-label" x="{x + 6:.1f}" y="{y + 4:.1f}">{name}</text>'))
-        for name, x, y in pts)
-    # the bulb strand around the circle edge
-    bulbs = "".join(
-        f'<circle class="gw-map-bulb b{i % 3}" cx="{cx + (R * scale) * math.cos(a):.1f}" cy="{cy + (R * scale) * math.sin(a):.1f}" r="3.2"/>'
-        for i, a in enumerate([2 * math.pi * k / 48 for k in range(48)]))
-    mpls_x = cx + (-93.265 - lng0) * kx * scale
-    arrow = ""
-    if mpls_x > size - 10:
-        my = cy - (44.978 - lat0) * 69.0 * scale
-        arrow = (f'<text class="gw-map-label gw-map-out" x="{size - 10}" y="{size - 36}" text-anchor="end">Minneapolis &rarr;</text>')
-    return f"""<svg class="gw-map" viewBox="0 0 {size} {size}" role="img"
-      aria-label="Map: the giveaway circle reaches {R} miles from Delano, including Buffalo, St. Michael, Maple Grove, Plymouth, Wayzata, Minnetonka, Chanhassen, Waconia and Watertown">
-      <rect width="{size}" height="{size}" rx="22" class="gw-map-bg"/>
-      <circle cx="{cx}" cy="{cy}" r="{R * scale:.1f}" class="gw-map-circle"/>
-      {bulbs}
-      {dots}
-      {arrow}
-      <text class="gw-map-scale" x="{cx}" y="{size - 10}" text-anchor="middle">{R} miles from Delano</text>
-    </svg>"""
+    zoom = 9
+    lat = float(BIZ["lat"])
+    m_per_px = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
+    r_px = round(G["radius_mi"] * 1609.344 / m_per_px)
+    src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
+    link = f"https://www.google.com/maps/@{BIZ['lat']},{BIZ['lng']},10z"
+    return f"""<a class="gw-gmap" href="{link}" target="_blank" rel="noopener"
+      aria-label="Map of the giveaway circle, {G['radius_mi']} miles around Delano. Opens Google Maps" style="--gw-r:{r_px}px">
+      <iframe src="{src}" title="Map around Delano, MN" loading="lazy" tabindex="-1" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <span class="gw-gmap-circle" aria-hidden="true"></span>
+      <span class="gw-gmap-tag">{G['radius_mi']} miles around Delano</span>
+    </a>"""
 
 
 def giveaway_page(depth=0, seo_title=None, schema=None):
@@ -283,18 +239,18 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
                  '<span class="gw-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></div>')
 
     steps = [
-        ("Sign up, get your link", "Enter above. Your own share link pops up on the screen right away."),
-        ("Send friends your link", "Every friend who enters through it is one more chance for you. If they win, you win too."),
-        ("Watch the drawing", f"Live on Facebook, {G['draw']} at 6pm. We call the winners that night."),
+        ("Sign up, get your link", "Name, number, address: about 20 seconds. Your own link pops up right away."),
+        ("Send friends your link", "Friends enter in about 20 seconds. Each one is one more chance for you, and if they win, you win too."),
+        ("Watch the drawing", f"Live on Facebook and Instagram, {G['draw_short']} at 6pm. Winners get a call from Alex."),
     ]
     step_html = "".join(
         f'<li class="gw-step"><span class="step-num {"xmas-red" if i % 2 == 0 else "xmas-green"}">{i + 1}</span>'
         f'<div><h3>{t}</h3><p>{d}</p></div></li>' for i, (t, d) in enumerate(steps))
     perks = [
-        ("No ladders", "We hang every light. You don&rsquo;t touch a thing."),
-        ("No tangled cords", "Commercial-grade LEDs, cut to fit your house."),
-        ("Bulb goes out? We fix it", "Service calls are included all season."),
-        ("No January takedown", "We take it all down after the holidays."),
+        ("No ladders.", "We hang every light."),
+        ("No tangled cords.", "Commercial-grade LEDs, cut to fit your house."),
+        ("No dead bulbs.", "One goes out during the season? We fix it."),
+        ("No January takedown in the cold.", "We take it all down after the holidays."),
     ]
     perk_html = "".join(f'<li>{icon("check-circle")}<div><strong>{t}</strong> <span>{d}</span></div></li>' for t, d in perks)
     photo = G["photos"][0]
@@ -306,6 +262,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     <p class="gw-hook"><strong>Free Christmas lights on your house, up to {PRIZE}.</strong>
       Share your link: if a friend wins, you win too. We design it, hang it, and take it down.</p>
     {_countdown()}
+    {f'<p class="gw-watch">{icon("arrow")} Watch (1:40)</p>' if G.get('video') else ''}
     <div class="gw-video{' gw-video--tall' if G.get('video') else ''}">{video}</div>
 
     <div class="gw-card" id="enter">
@@ -351,9 +308,9 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
 
   <section class="gw-area-sec"><div class="gw-col">
     <h2>Anywhere inside the circle</h2>
-    <p>If your home is within about {G['radius_mi']} miles of Delano, you&rsquo;re in: Buffalo, St.&nbsp;Michael, Rockford, Maple&nbsp;Grove, Plymouth, Wayzata, Orono, Mound, Minnetonka, Chanhassen, Victoria, Waconia, Watertown and everything in between. The form checks your address for you.</p>
+    <p>If your home is inside the circle, you can enter. It runs from Buffalo and Monticello down to Chaska and Waconia, from Howard Lake over to Plymouth and Minnetonka, and every town in between. Enter your address and the form checks it for you.</p>
     {_area_map()}
-    <p class="gw-out-link">Outside the circle? <a href="tel:{BIZ['phone_href']}">Call or text {BIZ['phone_display']}</a> for a regular quote.</p>
+    <p class="gw-out-link"><a href="/get-quote.html?svc=christmas-light-installation">Outside the circle? Get a regular quote &rarr;</a></p>
   </div></section>
 </main>
 {js}
@@ -402,7 +359,7 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
   <p>Prizes are not transferable and have no cash value. No substitution except by Sponsor, which may substitute a prize of equal or greater value if necessary. Winners are responsible for any taxes; a winner receiving $600 or more in prizes may be asked for a completed IRS Form W-9 and will receive a Form 1099.</p>
 
   <h2>7. Drawing and odds</h2>
-  <p>Grand prize winners will be selected in a random drawing on or about {G['draw']}, at approximately {G['draw_time']}, from all eligible entries received, weighted so each entry counts once. Sponsor plans to stream the drawing live on its Facebook page. Odds of winning depend on the number of eligible entries received and on how many entries each entrant has.</p>
+  <p>Grand prize winners will be selected in a random drawing on or about {G['draw']}, at approximately {G['draw_time']}, from all eligible entries received, weighted so each entry counts once. Sponsor plans to stream the drawing live on its Facebook and Instagram pages. Odds of winning depend on the number of eligible entries received and on how many entries each entrant has.</p>
 
   <h2>8. Winner notification</h2>
   <p>Potential winners will be contacted by phone and/or text message within 24 hours of the drawing. A potential winner must respond within 72 hours of the first contact attempt and confirm eligibility, or the prize may be forfeited and an alternate winner selected by random drawing from the remaining eligible entries.</p>
@@ -417,7 +374,7 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
   <p>Except where prohibited, accepting a prize constitutes permission for Sponsor to use the winner&rsquo;s first name, last initial, city, and photos of the installed display for promotional purposes without further compensation.</p>
 
   <h2>12. General conditions</h2>
-  <p>By entering, entrants agree to these Official Rules and to Sponsor&rsquo;s decisions, which are final. Sponsor may cancel, suspend or modify the Giveaway if fraud, technical failure or any other factor impairs its integrity, and in that event may select winners from eligible entries received before the action. Sponsor is not responsible for lost, late, incomplete or misdirected entries, or for text messages that are not delivered. To the extent permitted by law, entrants release Sponsor from liability for any injury, loss or damage arising from participation or from acceptance or use of a prize, except for Sponsor&rsquo;s own negligence in performing the installation. This Giveaway is governed by the laws of Minnesota. It is in no way sponsored, endorsed or administered by, or associated with, Facebook or any other social network.</p>
+  <p>By entering, entrants agree to these Official Rules and to Sponsor&rsquo;s decisions, which are final. Sponsor may cancel, suspend or modify the Giveaway if fraud, technical failure or any other factor impairs its integrity, and in that event may select winners from eligible entries received before the action. Sponsor is not responsible for lost, late, incomplete or misdirected entries, or for text messages that are not delivered. To the extent permitted by law, entrants release Sponsor from liability for any injury, loss or damage arising from participation or from acceptance or use of a prize, except for Sponsor&rsquo;s own negligence in performing the installation. This Giveaway is governed by the laws of Minnesota. It is in no way sponsored, endorsed or administered by, or associated with, Facebook, Instagram or any other social network.</p>
 
   <h2>13. Winners list</h2>
   <p>For the first name, last initial and city of the winners, call or text {BIZ['phone_display']} or email <a href="mailto:{BIZ['email']}">{BIZ['email']}</a> after {G['draw']}.</p>
