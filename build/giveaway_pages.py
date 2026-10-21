@@ -269,8 +269,14 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     html += _lp_header(root)
 
     if G.get("video"):
+        # /assets/ is cached as immutable, so the file's hash rides on its URL:
+        # re-exported under the same name, it is still fetched fresh.
+        import hashlib, os
+        vpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), G["video"])
+        with open(vpath, "rb") as f:
+            vfp = hashlib.md5(f.read()).hexdigest()[:10]
         video = (f'<video controls playsinline preload="metadata" poster="{root}{G["video_poster"]}" '
-                 f'src="{root}{G["video"]}"></video>')
+                 f'src="{root}{G["video"]}?v={vfp}"></video>')
     else:
         # Blank screen until the owner's video is ready (sitedata GIVEAWAY["video"]).
         video = ('<div class="gw-video-blank" aria-label="Video coming soon">'
@@ -300,7 +306,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     <p class="gw-hook"><strong>Free Christmas lights on your house, up to {PRIZE}.</strong>
       Share your link: if a friend wins, you win too. We design it, hang it, and take it down.</p>
     {_countdown()}
-    <div class="gw-video">{video}</div>
+    <div class="gw-video{' gw-video--tall' if G.get('video') else ''}">{video}</div>
 
     <div class="gw-card" id="enter">
       <h2 class="gw-card-title" data-gw-card-title>Enter in 20 seconds</h2>

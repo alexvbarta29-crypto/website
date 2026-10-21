@@ -112,8 +112,8 @@ GIVEAWAY = {
     # Owner's intro video for the top of /giveaway (playbook: "people trust a
     # face"). Drop the file in assets/video/ and set the path here, e.g.
     # "assets/video/giveaway-intro.mp4"; empty shows the photo hero only.
-    "video": "",
-    "video_poster": "assets/img/xmas-warm-white-french-front.jpg",
+    "video": "assets/video/giveaway-intro.mp4",          # vertical 9:16, H.264 720x1280
+    "video_poster": "assets/video/giveaway-intro-poster.jpg",
     "hero_photo": "assets/img/xmas-warm-white-french-front.jpg",
     "photos": [
         "assets/img/xmas-warm-white-mediterranean.jpg",
