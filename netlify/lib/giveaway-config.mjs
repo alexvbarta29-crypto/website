@@ -16,12 +16,12 @@ export const GIVEAWAY = Object.freeze({
   prize_value: 1500,                // approximate retail value of one prize, $
   coupon: 250,                      // $ off for every entrant who doesn't win
   // All instants are absolute (UTC) so the server and every browser agree.
-  // Entries close Thu Nov 6, 11:59:59 PM Central (CST, UTC-6).
-  closes_at: "2026-11-07T05:59:59Z",
-  // Drawing: Fri Nov 7, 6:00 PM Central.
-  draw_at: "2026-11-08T00:00:00Z",
+  // Entries close Thu Nov 5, 11:59:59 PM Central (CST, UTC-6; DST ended Nov 1).
+  closes_at: "2026-11-06T05:59:59Z",
+  // Drawing: Fri Nov 6, 6:00 PM Central.
+  draw_at: "2026-11-07T00:00:00Z",
   // The non-winner coupon is good for 72 hours after the drawing.
-  claim_deadline: "2026-11-11T00:00:00Z",
+  claim_deadline: "2026-11-10T00:00:00Z",
   code_prefix: "LIGHTS",            // share codes look like LIGHTS-7K3XQ
   // Who can enter: within this many straight-line miles of the shop, the
   // same rule sitedata.SERVICE_RADIUS_MI applies to the service-area list.
@@ -31,11 +31,11 @@ export const GIVEAWAY = Object.freeze({
 
 // Display strings, matching the official rules page.
 export const DATES = Object.freeze({
-  closes: "Thursday, November 6 at 11:59 PM",
-  draw: "Friday, November 7",
-  draw_short: "Fri, Nov 7",
-  claim_by: "Monday, November 10 at 6 PM",
-  claim_by_short: "Mon 11/10 at 6 PM",
+  closes: "Thursday, November 5 at 11:59 PM",
+  draw: "Friday, November 6",
+  draw_short: "Fri, Nov 6",
+  claim_by: "Monday, November 9 at 6 PM",
+  claim_by_short: "Mon 11/9 at 6 PM",
 });
 
 // Every city on the site's service-area list (sitedata.AREAS), lowercased.

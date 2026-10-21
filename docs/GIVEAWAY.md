@@ -12,9 +12,9 @@ built on the same Netlify stack as the quote form and the referral program
 | "Friend wins, you both win" | If a drawn winner entered through someone's share link, that person also wins an install (so up to 4 installs) |
 | Entries | 1 per household, +1 for every eligible friend who enters through your link |
 | Who | 18+, home within 20 straight-line miles of Delano (the site's own service-area rule) |
-| Entries close | Thu Nov 6, 2026, 11:59 PM Central |
-| Drawing | Fri Nov 7, 2026, 6:00 PM Central (film it / go live on Facebook) |
-| Non-winners | $250 off a 2026 light install, claim within 72 hours (by Mon Nov 10, 6 PM) |
+| Entries close | Thu Nov 5, 2026, 11:59 PM Central |
+| Drawing | Fri Nov 6, 2026, 6:00 PM Central (film it / go live on Facebook) |
+| Non-winners | $250 off a 2026 light install, claim within 72 hours (by Mon Nov 9, 6 PM) |
 
 Dates and amounts live in two places that must match:
 `build/sitedata.py` → `GIVEAWAY` (pages, official rules) and
@@ -51,9 +51,9 @@ To put the owner video at the top (playbook step 3), add the file under
 2. **Share link** shows on screen the moment they submit (copy, share sheet,
    text, Facebook). Every entry becomes a Rotor lead tagged `Giveaway 2026` +
    `Christmas Lights` with their share link and who invited them in the notes.
-3. **Nudge** (Tue Nov 4): dashboard → Texts → "3-day nudge" sends each person
+3. **Nudge** (Tue Nov 3): dashboard → Texts → "3-day nudge" sends each person
    their real entry count and link.
-4. **Drawing** (Fri Nov 7): dashboard → Drawing. Weighted random draw
+4. **Drawing** (Fri Nov 6): dashboard → Drawing. Weighted random draw
    (`crypto.randomInt`), bonus winners added automatically, "Replace (no
    response)" draws an alternate. Call and text the winners from their cards.
 5. **Coupon** (within an hour): dashboard → "Coupon to everyone who didn't win".
@@ -61,7 +61,7 @@ To put the owner video at the top (playbook step 3), add the file under
 6. **YES flow**: a claim re-tags the Rotor lead `Giveaway Coupon` with
    service type Christmas Light Installation and "Send the quote!" in the notes,
    and (SMS mode on) texts the office. Name, phone and address are already there.
-7. **Follow-ups** (Sat Nov 8, Sun Nov 9): the 24h and 48h texts go only to
+7. **Follow-ups** (Sat Nov 7, Sun Nov 8): the 24h and 48h texts go only to
    people who got the coupon text and haven't claimed.
 
 Every broadcast skips anyone already sent that text, so a batch that stops
