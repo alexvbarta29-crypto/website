@@ -20,7 +20,7 @@ beforeEach(() => {
   net = mockFetch();
 });
 
-// Delano itself, and Plymouth (~16 mi) — both inside the 20-mile radius.
+// Delano itself — inside the 17-mile circle.
 const DELANO = { address_lat: 45.0419, address_lng: -93.7891 };
 const entry = (over = {}) => ({
   first_name: "Jane", last_name: "Doe", phone: "(763) 555-0101",
@@ -45,6 +45,11 @@ test("area check: distance wins, listed city as fallback, other states out", () 
   assert.equal(lib.areaCheck({ lat: 44.98, lng: -93.27 }).ok, false);          // Minneapolis ~27 mi
   assert.equal(lib.areaCheck({ city: "St. Michael", state: "MN" }).ok, true);
   assert.equal(lib.areaCheck({ city: "Saint Bonifacius", state: "MN" }).ok, true);
+  // 17-mile circle: Maple Grove's centre (16.4 mi) is in, Chanhassen's (17.7 mi) is out,
+  // and a town on the edge with no coordinates is accepted but flagged (null).
+  assert.equal(lib.areaCheck({ lat: 45.0725, lng: -93.4558 }).ok, true);
+  assert.equal(lib.areaCheck({ lat: 44.8622, lng: -93.5306 }).ok, false);
+  assert.equal(lib.areaCheck({ city: "Plymouth", state: "MN" }).ok, null);
   assert.equal(lib.areaCheck({ city: "Fargo", state: "ND" }).ok, false);
   assert.equal(lib.areaCheck({ city: "Somewhere", state: "MN" }).ok, null);
 });

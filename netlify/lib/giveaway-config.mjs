@@ -23,9 +23,9 @@ export const GIVEAWAY = Object.freeze({
   // The non-winner coupon is good for 72 hours after the drawing.
   claim_deadline: "2026-11-10T00:00:00Z",
   code_prefix: "LIGHTS",            // share codes look like LIGHTS-7K3XQ
-  // Who can enter: within this many straight-line miles of the shop, the
-  // same rule sitedata.SERVICE_RADIUS_MI applies to the service-area list.
-  radius_mi: 20,
+  // Who can enter: within this many straight-line miles of the shop. Never
+  // printed on the page or in texts (owner's call); the map shows the circle.
+  radius_mi: 17,
   origin: Object.freeze({ lat: 45.0419, lng: -93.7891 }),   // Delano shop
 });
 
@@ -40,15 +40,15 @@ export const DATES = Object.freeze({
 
 // Every city on the site's service-area list (sitedata.AREAS), lowercased.
 // An address in one of these is in the area even when it can't be geocoded.
+// Towns whose centre sits within ~15 straight-line miles of Delano. An
+// address in one of these is treated as in the area when it couldn't be
+// geocoded; any other town is accepted but flagged "check address".
 export const AREA_CITIES = Object.freeze(new Set([
-  "delano", "buffalo", "medina", "mound", "plymouth", "st. michael", "st michael", "saint michael",
-  "chanhassen", "corcoran", "deephaven", "excelsior", "greenfield", "greenwood", "hamel", "hanover",
-  "independence", "long lake", "loretto", "maple grove", "maple plain", "minnetonka",
-  "minnetonka beach", "minnetrista", "montrose", "orono", "rockford", "rogers", "spring park",
-  "st. bonifacius", "st bonifacius", "saint bonifacius", "tonka bay", "victoria", "waconia",
-  "waverly", "wayzata", "woodland", "howard lake", "albertville", "maple lake", "monticello",
-  "otsego", "cokato", "watertown", "mayer", "new germany", "chaska", "cologne",
-  "norwood young america", "norwood", "young america",
+  "delano", "independence", "rockford", "watertown", "montrose", "greenfield", "maple plain",
+  "loretto", "minnetrista", "waverly", "mound", "st. bonifacius", "st bonifacius", "saint bonifacius",
+  "hanover", "buffalo", "medina", "orono", "spring park", "long lake", "mayer", "corcoran",
+  "minnetonka beach", "hamel", "st. michael", "st michael", "saint michael", "waconia", "tonka bay",
+  "howard lake", "new germany", "victoria", "excelsior", "wayzata", "greenwood", "albertville",
 ]));
 
 export const STORE_NAME = "giveaway";

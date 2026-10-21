@@ -130,7 +130,7 @@ def _panels():
         <div class="gw-panel" data-gw-panel="outside" hidden tabindex="-1">
           <span class="gw-badge gw-badge-muted">Outside our area</span>
           <h2 class="gw-panel-title">Sorry, that address is outside our service area.</h2>
-          <p>The giveaway is only open to homes within about {G['radius_mi']} miles of Delano, so we can&rsquo;t enter you. But we&rsquo;d still be glad to give you a quick, free quote on Christmas lights if we can make it out your way.</p>
+          <p>The giveaway is only open to homes inside the circle on the map, so we can&rsquo;t enter you. But we&rsquo;d still be glad to give you a quick, free quote on Christmas lights if we can make it out your way.</p>
           <div class="gw-actions">
             <button type="button" class="btn" data-gw-outside-yes>Yes, get me a free quote</button>
             <button type="button" class="btn btn-ghost" data-gw-outside-no>Fix my address</button>
@@ -202,10 +202,10 @@ def _area_map():
     src = f"https://maps.google.com/maps?q={BIZ['lat']},{BIZ['lng']}&z={zoom}&output=embed"
     link = f"https://www.google.com/maps/@{BIZ['lat']},{BIZ['lng']},10z"
     return f"""<a class="gw-gmap" href="{link}" target="_blank" rel="noopener"
-      aria-label="Map of the giveaway circle, {G['radius_mi']} miles around Delano. Opens Google Maps" style="--gw-r:{r_px}px">
+      aria-label="Map of the giveaway circle around Delano. Opens Google Maps" style="--gw-r:{r_px}px">
       <iframe src="{src}" title="Map around Delano, MN" loading="lazy" tabindex="-1" referrerpolicy="no-referrer-when-downgrade"></iframe>
       <span class="gw-gmap-circle" aria-hidden="true"></span>
-      <span class="gw-gmap-tag">{G['radius_mi']} miles around Delano</span>
+      <span class="gw-gmap-tag">The giveaway circle</span>
     </a>"""
 
 
@@ -267,7 +267,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
 
     <div class="gw-card" id="enter">
       <h2 class="gw-card-title" data-gw-card-title>Enter in 20 seconds</h2>
-      <p class="gw-card-sub" data-gw-card-sub>One entry per household. Homes inside the circle only (about {G['radius_mi']} miles around Delano).</p>
+      <p class="gw-card-sub" data-gw-card-sub>One entry per household. Homes inside the circle on the map only.</p>
       {_entry_form()}
       {_panels()}
     </div>
@@ -308,7 +308,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
 
   <section class="gw-area-sec"><div class="gw-col">
     <h2>Anywhere inside the circle</h2>
-    <p>If your home is inside the circle, you can enter. It runs from Buffalo and Monticello down to Chaska and Waconia, from Howard Lake over to Plymouth and Minnetonka, and every town in between. Enter your address and the form checks it for you.</p>
+    <p>If your home is inside the circle, you can enter. It runs from Buffalo and St.&nbsp;Michael down to Waconia and Victoria, from Howard Lake over to Wayzata and Maple Grove, and every town in between. Enter your address and the form checks it for you.</p>
     {_area_map()}
     <p class="gw-out-link"><a href="/get-quote.html?svc=christmas-light-installation">Outside the circle? Get a regular quote &rarr;</a></p>
   </div></section>
@@ -341,7 +341,7 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
   <p>The {G['name']} (the &ldquo;Giveaway&rdquo;) is sponsored by {sponsor}.</p>
 
   <h2>2. Who can enter</h2>
-  <p>Open only to legal residents of Minnesota who are 18 or older at the time of entry and who own, or have the owner&rsquo;s written permission to decorate, a single-family home or townhome located within {G['radius_mi']} straight-line miles of Delano, MN (the &ldquo;Service Area&rdquo;). Sponsor checks each address when it is entered and may verify eligibility before awarding a prize. Employees of Sponsor and members of their immediate families and households are not eligible.</p>
+  <p>Open only to legal residents of Minnesota who are 18 or older at the time of entry and who own, or have the owner&rsquo;s written permission to decorate, a single-family home or townhome located inside the circle centered on Delano, MN shown on the map at bartawindowwashing.com/giveaway (the &ldquo;Service Area&rdquo;). Sponsor checks each address when it is entered and may verify eligibility before awarding a prize. Employees of Sponsor and members of their immediate families and households are not eligible.</p>
 
   <h2>3. Entry period</h2>
   <p>The Giveaway begins {G['starts']} and ends {G['closes']} (the &ldquo;Entry Period&rdquo;). Sponsor&rsquo;s server clock is the official timekeeper.</p>
