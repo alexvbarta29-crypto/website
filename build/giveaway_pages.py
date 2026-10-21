@@ -183,7 +183,7 @@ def _panels():
 
 
 def _countdown():
-    """One line, like the playbook page: "Drawing in 17d 09h 14m · Fri, Nov 7, 6pm"."""
+    """One line, like the playbook page: "Drawing in 17d 09h 14m · Fri, Nov 6, 6pm"."""
     return f"""<p class="gw-timer" data-gw-countdown role="timer" aria-live="off">
           <span class="gw-dot" aria-hidden="true"></span>
           <span data-gw-cd-label>Drawing in</span>
