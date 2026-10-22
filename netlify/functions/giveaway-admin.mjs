@@ -18,7 +18,8 @@ import {
   openStore, allEntrants, allOutside, getEntrant, saveEntrantRecord, deleteEntrant,
   deleteEverything, getDraw, saveDraw, clearDraw,
 } from "../lib/giveaway-store.mjs";
-import { sendSms, e164, createRotorLead } from "../lib/referral-notify.mjs";
+import { sendSms, e164 } from "../lib/referral-notify.mjs";
+import { upsertGiveawayLead } from "../lib/giveaway-rotor.mjs";
 import { clean, safeEqual, nowISO, safeErr, fullName } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200, headers = {}) =>
@@ -65,6 +66,7 @@ function adminRow(e, counts, winners) {
     coupon_claimed_at: e.coupon ? e.coupon.claimed_at : null,
     rotor_delivered: Boolean(e.rotor && e.rotor.delivered),
     rotor_lead_id: (e.rotor && e.rotor.lead_id) || null,
+    rotor_existing: Boolean(e.rotor && e.rotor.existing),
     offers_opt_in: Boolean(e.offers_opt_in),
     disqualified: Boolean(e.disqualified), office_note: e.office_note || "",
     created_at: e.created_at,
@@ -220,10 +222,9 @@ async function tagWinners(entrants, winners) {
   for (const w of winners) {
     const e = byId.get(w.id);
     if (!e) continue;
-    // Tags only (no notes): Rotor merges tags on an update by phone, and this
-    // must never overwrite the notes the entry already put on the lead.
-    const r = await createRotorLead({
-      source: GIVEAWAY.name, tags: [TAGS.WINNER], name: fullName(e.first_name, e.last_name), phone: e.phone,
+    // Tags only: Rotor merges tags, and nothing else on the lead changes.
+    const r = await upsertGiveawayLead({
+      phone: e.phone, tags: [TAGS.WINNER], name: fullName(e.first_name, e.last_name),
     }).catch(() => ({ delivered: false }));
     if (r.delivered) ok++;
   }

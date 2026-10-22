@@ -258,7 +258,7 @@
       </summary>
       <div class="gwa-detail">
         <p>${esc(e.phone)} · entered ${esc(when(e.created_at))}${e.referred_by ? " · invited by " + esc(e.referred_by.name) : ""}${e.area && e.area.miles ? " · " + esc(e.area.miles) + " mi" : ""}</p>
-        <p class="gwa-sub">Share code ${esc(e.code)}${sent ? " · texts sent: " + esc(sent) : ""}${e.rotor_delivered ? " · in Rotor" : " · <strong>not in Rotor</strong>"}</p>
+        <p class="gwa-sub">Share code ${esc(e.code)}${sent ? " · texts sent: " + esc(sent) : ""}${e.rotor_delivered ? (e.rotor_existing ? " · in Rotor (already a lead, only tagged)" : " · in Rotor") : " · <strong>not in Rotor</strong>"}</p>
         <div class="gwa-row-actions">
           <a class="gwa-btn" href="tel:${esc(e.phone)}">Call</a>
           ${e.rotor_lead_id ? `<a class="gwa-btn gwa-btn-ghost" target="_blank" rel="noopener" href="https://app.getrotor.com/leads/${encodeURIComponent(e.rotor_lead_id)}/conversation">Open in Rotor</a>` : ""}
