@@ -40,6 +40,22 @@ which the giveaway uses for the instant "you're in our area" check.
 To put the owner video at the top (playbook step 3), add the file under
 `assets/video/` and set `GIVEAWAY["video"]` in `build/sitedata.py`, then rebuild.
 
+## Rotor tags (what each one means)
+
+| Tag | Added when | Use it for |
+|-----|-----------|------------|
+| `Giveaway 2026` (+ `Christmas Lights`) | Every entry | Texts 1 (nudge) and 2 (drawing tonight) |
+| `Giveaway - Coupon Opt-In` | Entrant ticked the optional $250-coupon box | Texts 3, 4, 5 (coupon + follow-ups) |
+| `Giveaway - Winner` | Automatically when the dashboard draws (and for an alternate) | Leave these people OUT of texts 3, 4, 5 |
+| `Giveaway - Coupon Claimed` | Entrant claimed on their entries page | Send the quote |
+| `Giveaway - Out of Area` | Outside the circle, asked for a quote anyway | Normal quote follow-up |
+
+Each entry's lead notes also say "$250 coupon texts: YES, opted in" or "no".
+A YES reply to the coupon text arrives in the Rotor inbox; add
+`Giveaway - Coupon Claimed` to that lead by hand (or ask Claude to), so
+follow-ups 4 and 5 skip them. Tags are only ever added (Rotor merges them); if
+a winner is replaced, remove `Giveaway - Winner` from that lead by hand.
+
 ## The flow (maps to the playbook)
 
 1. **Entry** (`POST /api/giveaway`): name, mobile, address, texting consent.
@@ -58,7 +74,7 @@ To put the owner video at the top (playbook step 3), add the file under
    response)" draws an alternate. Call and text the winners from their cards.
 5. **Coupon** (within an hour): dashboard → "Coupon to everyone who didn't win".
    The text links to their page, where one tap claims it.
-6. **YES flow**: a claim re-tags the Rotor lead `Giveaway Coupon` with
+6. **YES flow**: a claim adds `Giveaway - Coupon Claimed` to the Rotor lead, with
    service type Christmas Light Installation and "Send the quote!" in the notes,
    and (SMS mode on) texts the office. Name, phone and address are already there.
 7. **Follow-ups** (Sat Nov 7, Sun Nov 8): the 24h and 48h texts go only to
