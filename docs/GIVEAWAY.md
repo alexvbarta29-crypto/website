@@ -44,17 +44,45 @@ To put the owner video at the top (playbook step 3), add the file under
 
 | Tag | Added when | Use it for |
 |-----|-----------|------------|
-| `Giveaway 2026` (+ `Christmas Lights`) | Every entry | Texts 1 (nudge) and 2 (drawing tonight) |
+| `Giveaway 2026` | Every entry | Texts 1 (nudge) and 2 (drawing tonight) |
 | `Giveaway - Coupon Opt-In` | Entrant ticked the optional $250-coupon box | Texts 3, 4, 5 (coupon + follow-ups) |
 | `Giveaway - Winner` | Automatically when the dashboard draws (and for an alternate) | Leave these people OUT of texts 3, 4, 5 |
-| `Giveaway - Coupon Claimed` | Entrant claimed on their entries page | Send the quote |
-| `Giveaway - Out of Area` | Outside the circle, asked for a quote anyway | Normal quote follow-up |
+| `Giveaway - Coupon Claimed` (+ `Christmas Lights`) | Entrant claimed on their entries page | A real light lead: send the quote |
+| `Giveaway - Out of Area` | Outside the circle, asked for a quote anyway (source "Website quote form") | Normal quote follow-up |
 
-Each entry's lead notes also say "$250 coupon texts: YES, opted in" or "no".
+Entering does NOT add `Christmas Lights`: that tag is how real light leads
+are found, and a claim adds it. Each new entrant's notes say "$250 coupon
+texts: YES, opted in" or "no", plus their share link and who invited them.
 A YES reply to the coupon text arrives in the Rotor inbox; add
-`Giveaway - Coupon Claimed` to that lead by hand (or ask Claude to), so
-follow-ups 4 and 5 skip them. Tags are only ever added (Rotor merges them); if
-a winner is replaced, remove `Giveaway - Winner` from that lead by hand.
+`Giveaway - Coupon Claimed` to that lead by hand (or ask Claude to). Tags are
+only ever added (Rotor merges them); if a winner is replaced, remove
+`Giveaway - Winner` from that lead by hand.
+
+### Existing leads are never overwritten
+
+Rotor upserts by phone, so someone who is already a lead (a quote request,
+a Meta lead) would have their name, source and notes replaced by a plain
+upsert. Every giveaway write (`netlify/lib/giveaway-rotor.mjs`) goes in two
+steps instead: (1) phone + tags only; (2) if Rotor created the lead, fill in
+name, address, source and notes; if it already existed, append our notes
+under theirs and leave everything else alone. The dashboard card says
+"in Rotor (already a lead, only tagged)" for those.
+
+### Keeping entrants out of the sales pipeline (Rotor workflow setup)
+
+Rotor's "Lead created" workflow puts every new lead into **New Lead - No
+Estimate Yet**. Step 1 above carries no source, so:
+
+1. Rotor → Marketing → Workflows → the "Lead created" workflow(s) that add
+   to New Lead - No Estimate Yet → filter by source: **Website quote form,
+   Meta Ads, Referral, Referral Program** (every real source; not Holiday
+   Lights Giveaway, not blank). There are currently two such workflows
+   (every lead lands in that pipeline twice); keep one.
+2. New workflow: trigger **Lead → Tag added → Giveaway - Coupon Claimed** →
+   action **Add to Pipeline → New Lead - No Estimate Yet**. Claims and YES
+   replies (tagged by hand) then become real pipeline leads.
+3. Out-of-area quote requests come in as source "Website quote form", so
+   they join the pipeline like any quote.
 
 ## The flow (maps to the playbook)
 
@@ -65,8 +93,9 @@ a winner is replaced, remove `Giveaway - Winner` from that lead by hand.
    tagged `Giveaway - Out of Area`). Couldn't tell → accepted and flagged
    "Check address" on the dashboard.
 2. **Share link** shows on screen the moment they submit (copy, share sheet,
-   text, Facebook). Every entry becomes a Rotor lead tagged `Giveaway 2026` +
-   `Christmas Lights` with their share link and who invited them in the notes.
+   text, Facebook). Every entry becomes a Rotor lead tagged `Giveaway 2026`
+   with their share link and who invited them in the notes (an existing lead
+   is only tagged, with the notes appended).
 3. **Nudge** (Tue Nov 3): dashboard → Texts → "3-day nudge" sends each person
    their real entry count and link.
 4. **Drawing** (Fri Nov 6): dashboard → Drawing. Weighted random draw

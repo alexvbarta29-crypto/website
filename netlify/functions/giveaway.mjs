@@ -20,7 +20,8 @@ import {
   openStore, getEntrant, idForCode, idForToken, idForHousehold, friendsOf, saveNewEntrant,
   saveEntrantRecord, allocateCode, getDraw, listKeys, putJSON, KEYS, guarded,
 } from "../lib/giveaway-store.mjs";
-import { createRotorLead, sendSms, e164, officePhone } from "../lib/referral-notify.mjs";
+import { sendSms, e164, officePhone } from "../lib/referral-notify.mjs";
+import { upsertGiveawayLead } from "../lib/giveaway-rotor.mjs";
 import { newToken, nowISO, safeErr, withTimeout, fullName, lastInitial, normalizePhone } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200) =>
@@ -157,7 +158,7 @@ async function enter(body) {
     await saveNewEntrant(store, e);
 
     // Rotor + welcome text: best-effort, never blocks the confirmation.
-    e.rotor = await withTimeout(() => createRotorLead(rotorEntryPayload(e)), 6000, "rotor")
+    e.rotor = await withTimeout(() => upsertGiveawayLead(rotorEntryPayload(e)), 8000, "rotor")
       .catch((err) => ({ delivered: false, status: null, error: safeErr(err) }));
     if (smsOn()) {
       const sent = await sendSms(e164(e.phone), renderText("welcome", e, null)).catch(() => false);
@@ -185,19 +186,19 @@ export function rotorEntryPayload(e) {
   if (e.referred_by) lines.push(`Invited by: ${e.referred_by.name} (${e.referred_by.code})`);
   lines.push(`$${GIVEAWAY.coupon} coupon texts: ${e.offers_opt_in ? "YES, opted in" : "no"}`);
   if (e.area.ok !== true) lines.push("Service area: couldn't verify the address, please check.");
-  const p = {
-    source: GIVEAWAY.name,
-    tags: [TAGS.ENTRANT, TAGS.LIGHTS, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : [])],
-    name: fullName(e.first_name, e.last_name),
+  // No "Christmas Lights" tag here: entering isn't a request for lights, and
+  // that tag is how real light leads are found. A coupon claim adds it.
+  const fields = { source: GIVEAWAY.name, address_state: a.state || "MN", address_country: "US" };
+  if (a.street) fields.address_street1 = a.street;
+  if (a.city) fields.address_city = a.city;
+  if (a.zip) fields.address_zip = a.zip;
+  return {
     phone: e.phone,
+    tags: [TAGS.ENTRANT, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : [])],
+    name: fullName(e.first_name, e.last_name),
+    fields,
     notes: lines.join("\n"),
   };
-  if (a.street) p.address_street1 = a.street;
-  if (a.city) p.address_city = a.city;
-  p.address_state = a.state || "MN";
-  if (a.zip) p.address_zip = a.zip;
-  p.address_country = "US";
-  return p;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,16 +231,16 @@ async function claim(body) {
   if (!claimOpen()) return fail(410, `Sorry, the $${GIVEAWAY.coupon} coupon expired ${DATES.claim_by}.`);
 
   const at = nowISO();
-  const rotor = await withTimeout(() => createRotorLead({
-    source: GIVEAWAY.name,
+  const rotor = await withTimeout(() => upsertGiveawayLead({
+    phone: e.phone,
     tags: [TAGS.CLAIMED, TAGS.LIGHTS],
     name: fullName(e.first_name, e.last_name),
-    phone: e.phone,
     service_type: "Christmas Light Installation",
+    fields: { source: GIVEAWAY.name, service_type: "Christmas Light Installation" },
     notes: `Claimed $${GIVEAWAY.coupon} off a Christmas light installation (${GIVEAWAY.name}) on `
       + `${new Date(at).toLocaleString("en-US", { timeZone: "America/Chicago" })}. Send the quote!\n`
       + `Address: ${addressLine(e.address)}`,
-  }), 6000, "rotor").catch((err) => ({ delivered: false, error: safeErr(err) }));
+  }), 8000, "rotor").catch((err) => ({ delivered: false, error: safeErr(err) }));
 
   e.coupon = { claimed_at: at, rotor };
   e.updated_at = at;
@@ -261,20 +262,24 @@ async function outsideQuote(body) {
     throw err;
   }
   const area = areaCheck(entry.address);
-  const rotor = await withTimeout(() => createRotorLead({
-    source: GIVEAWAY.name,
+  // A real quote request, so it arrives like any website quote (and joins
+  // the sales pipeline the same way); the tag says where it came from.
+  const rotor = await withTimeout(() => upsertGiveawayLead({
+    phone: entry.phone,
     tags: [TAGS.OUTSIDE],
     name: fullName(entry.first_name, entry.last_name),
-    phone: entry.phone,
-    address_street1: entry.address.street,
-    ...(entry.address.city ? { address_city: entry.address.city } : {}),
-    address_state: entry.address.state || "MN",
-    ...(entry.address.zip ? { address_zip: entry.address.zip } : {}),
-    address_country: "US",
+    fields: {
+      source: "Website quote form",
+      address_street1: entry.address.street,
+      ...(entry.address.city ? { address_city: entry.address.city } : {}),
+      address_state: entry.address.state || "MN",
+      ...(entry.address.zip ? { address_zip: entry.address.zip } : {}),
+      address_country: "US",
+    },
     notes: "Tried to enter the giveaway from outside the service area"
       + (area.miles ? ` (${area.miles} mi from Delano)` : "")
       + " and asked for a free quote anyway.",
-  }), 6000, "rotor").catch(() => ({ delivered: false }));
+  }), 8000, "rotor").catch(() => ({ delivered: false }));
   try {
     const store = await openStore();
     await putJSON(store, KEYS.outside(entry.phone_digits), {
