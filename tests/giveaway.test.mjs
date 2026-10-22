@@ -80,7 +80,8 @@ test("entering stores the entrant, returns share + status links, creates a Rotor
   const e = store.json("entrant/7635550101");
   assert.equal(e.area.ok, true);
   const [lead] = net.rotor();
-  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Christmas Lights", "Giveaway Offers OK"]);
+  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Christmas Lights", "Giveaway - Coupon Opt-In"]);
+  assert.match(lead.payload.notes, /coupon texts: YES/);
   assert.equal(lead.payload.source, GIVEAWAY.name);
   assert.match(lead.payload.notes, /Share link: .*\/g\/LIGHTS-/);
   assert.equal(lead.payload.address_city, "Delano");
@@ -199,7 +200,7 @@ test("coupon claim: only after the drawing, never for winners, idempotent, re-ta
   const again = await ok(post({ action: "claim", t: b.token }));
   assert.equal(again.already, true);
   const claimLead = net.rotor().at(-1).payload;
-  assert.deepEqual(claimLead.tags, ["Giveaway Coupon", "Christmas Lights"]);
+  assert.deepEqual(claimLead.tags, ["Giveaway - Coupon Claimed", "Christmas Lights"]);
   assert.equal(claimLead.service_type, "Christmas Light Installation");
   assert.ok(winnerId);
 });
@@ -311,4 +312,17 @@ test("lookup by phone returns count and share link, nothing private", async () =
 test("no offers opt-in means no offers tag in Rotor", async () => {
   await ok(post(entry({ offers: false })));
   assert.deepEqual(net.rotor()[0].payload.tags, ["Giveaway 2026", "Christmas Lights"]);
+  assert.match(net.rotor()[0].payload.notes, /coupon texts: no/);
+});
+
+test("the drawing tags each winner in Rotor so coupon texts can skip them", async () => {
+  const a = await ok(post(entry()));
+  await ok(post(entry({ first_name: "Bob", phone: "763-555-0102", address: "7 Oak Ln", ref: a.code })));
+  await ok(post(entry({ first_name: "Cy", phone: "763-555-0103", address: "8 Elm Ct" })));
+  const before = net.rotor().length;
+  const d = await ok(adminPost({ action: "draw", early: true }));
+  const winnerLeads = net.rotor().slice(before);
+  assert.equal(winnerLeads.length, d.draw.winners.length);
+  assert.ok(winnerLeads.every((r) => r.payload.tags.includes("Giveaway - Winner")));
+  assert.equal(d.draw.rotor_tagged, d.draw.winners.length);
 });

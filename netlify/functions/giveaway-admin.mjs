@@ -10,7 +10,7 @@
 // or REFERRAL_ADMIN_KEY when that isn't set, so the office can use the key
 // it already has for the referral dashboard.
 
-import { GIVEAWAY, BROADCASTS, SMS, DATES } from "../lib/giveaway-config.mjs";
+import { GIVEAWAY, BROADCASTS, SMS, DATES, TAGS } from "../lib/giveaway-config.mjs";
 import {
   entryCounts, draw, broadcastAudience, renderText, toCSV, eligible, addressLine, isOpen,
 } from "../lib/giveaway-lib.mjs";
@@ -18,7 +18,7 @@ import {
   openStore, allEntrants, allOutside, getEntrant, saveEntrantRecord, deleteEntrant,
   deleteEverything, getDraw, saveDraw, clearDraw,
 } from "../lib/giveaway-store.mjs";
-import { sendSms, e164 } from "../lib/referral-notify.mjs";
+import { sendSms, e164, createRotorLead } from "../lib/referral-notify.mjs";
 import { clean, safeEqual, nowISO, safeErr, fullName } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200, headers = {}) =>
@@ -208,7 +208,26 @@ async function doDraw(store, body) {
     replaced: [],
   };
   await saveDraw(store, record);
+  record.rotor_tagged = await tagWinners(entrants, record.winners);
   return json({ ok: true, draw: record });
+}
+
+// Adds "Giveaway - Winner" to each winner's Rotor lead, so the coupon texts
+// (3, 4, 5) can leave them out. Best-effort: the drawing never fails on it.
+async function tagWinners(entrants, winners) {
+  const byId = new Map(entrants.map((e) => [e.id, e]));
+  let ok = 0;
+  for (const w of winners) {
+    const e = byId.get(w.id);
+    if (!e) continue;
+    // Tags only (no notes): Rotor merges tags on an update by phone, and this
+    // must never overwrite the notes the entry already put on the lead.
+    const r = await createRotorLead({
+      source: GIVEAWAY.name, tags: [TAGS.WINNER], name: fullName(e.first_name, e.last_name), phone: e.phone,
+    }).catch(() => ({ delivered: false }));
+    if (r.delivered) ok++;
+  }
+  return ok;
 }
 
 // Replace one drawn winner (didn't respond, ineligible) with an alternate.
@@ -230,6 +249,7 @@ async function doRedraw(store, id) {
     replaced: [...current.replaced, ...out.map((w) => ({ ...w, replaced_at: nowISO() }))],
   };
   await saveDraw(store, record);
+  record.rotor_tagged = await tagWinners(entrants, describe(result, entrants, { alternate: true }));
   return json({ ok: true, draw: record });
 }
 

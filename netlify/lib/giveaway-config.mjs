@@ -53,6 +53,22 @@ export const AREA_CITIES = Object.freeze(new Set([
 
 export const STORE_NAME = "giveaway";
 
+// Rotor tags, one place. Rotor merges tags when a lead is updated by phone,
+// so each step only ever adds its own tag to the same lead.
+//   ENTRANT      every entry (with "Christmas Lights")   → texts 1 and 2
+//   COUPON_OPTIN ticked the optional $250-coupon box      → texts 3, 4 and 5
+//   WINNER       drawn or friend-bonus winner             → leave OUT of 3, 4, 5
+//   CLAIMED      claimed the coupon on the site           → send the quote
+//   OUTSIDE      outside the circle, asked for a quote
+export const TAGS = Object.freeze({
+  ENTRANT: "Giveaway 2026",
+  COUPON_OPTIN: "Giveaway - Coupon Opt-In",
+  WINNER: "Giveaway - Winner",
+  CLAIMED: "Giveaway - Coupon Claimed",
+  OUTSIDE: "Giveaway - Out of Area",
+  LIGHTS: "Christmas Lights",
+});
+
 export const siteUrl = () =>
   (process.env.SITE_URL || process.env.URL || DEFAULT_SITE_URL).trim().replace(/\/+$/, "");
 export const shareUrl = (code) => `${siteUrl()}/g/${code}`;
@@ -91,7 +107,7 @@ export const SMS = Object.freeze({
     + `(${DATES.claim_by_short}). Claim it: ${claim_url} or reply with any questions. Reply STOP to opt out.`,
   office_claim: ({ name, phone, address }) =>
     `Giveaway coupon claimed: ${name} (${phone}), ${address}. $${GIVEAWAY.coupon} off lights. `
-    + "Send the quote! Lead is in Rotor tagged Giveaway Coupon.",
+    + "Send the quote! Lead is in Rotor tagged Giveaway - Coupon Claimed.",
 });
 
 // The batch-sendable templates, in the order the dashboard offers them.

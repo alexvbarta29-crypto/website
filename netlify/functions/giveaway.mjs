@@ -8,9 +8,10 @@
 //   GET  /api/giveaway?t=TOKEN                  an entrant's private status (entries, friends, coupon)
 //
 // Every entry becomes a Rotor lead tagged "Giveaway 2026"; a claimed coupon
-// re-tags it "Giveaway Coupon" so the office can send the quote fast.
+// adds "Giveaway - Coupon Claimed" so the office can send the quote fast.
+// Every tag name lives in TAGS (netlify/lib/giveaway-config.mjs).
 
-import { GIVEAWAY, SMS, siteUrl, shareUrl, statusUrl, DATES } from "../lib/giveaway-config.mjs";
+import { GIVEAWAY, SMS, siteUrl, shareUrl, statusUrl, DATES, TAGS } from "../lib/giveaway-config.mjs";
 import {
   validateEntry, ValidationError, areaCheck, householdKey, buildEntrant, newGiveawayCode,
   normalizeGiveawayCode, statusView, isOpen, claimOpen, addressLine, renderText,
@@ -182,10 +183,11 @@ export function rotorEntryPayload(e) {
     `Share link: ${shareUrl(e.code)}`,
   ];
   if (e.referred_by) lines.push(`Invited by: ${e.referred_by.name} (${e.referred_by.code})`);
+  lines.push(`$${GIVEAWAY.coupon} coupon texts: ${e.offers_opt_in ? "YES, opted in" : "no"}`);
   if (e.area.ok !== true) lines.push("Service area: couldn't verify the address, please check.");
   const p = {
     source: GIVEAWAY.name,
-    tags: ["Giveaway 2026", "Christmas Lights", ...(e.offers_opt_in ? ["Giveaway Offers OK"] : [])],
+    tags: [TAGS.ENTRANT, TAGS.LIGHTS, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : [])],
     name: fullName(e.first_name, e.last_name),
     phone: e.phone,
     notes: lines.join("\n"),
@@ -230,7 +232,7 @@ async function claim(body) {
   const at = nowISO();
   const rotor = await withTimeout(() => createRotorLead({
     source: GIVEAWAY.name,
-    tags: ["Giveaway Coupon", "Christmas Lights"],
+    tags: [TAGS.CLAIMED, TAGS.LIGHTS],
     name: fullName(e.first_name, e.last_name),
     phone: e.phone,
     service_type: "Christmas Light Installation",
@@ -261,7 +263,7 @@ async function outsideQuote(body) {
   const area = areaCheck(entry.address);
   const rotor = await withTimeout(() => createRotorLead({
     source: GIVEAWAY.name,
-    tags: ["Giveaway - Out of Area"],
+    tags: [TAGS.OUTSIDE],
     name: fullName(entry.first_name, entry.last_name),
     phone: entry.phone,
     address_street1: entry.address.street,
