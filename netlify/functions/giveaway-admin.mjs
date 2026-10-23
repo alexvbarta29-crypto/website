@@ -5,6 +5,7 @@
 //   GET  /api/giveaway/admin?format=csv    every entrant, with personalised texts, as CSV
 //   POST /api/giveaway/admin {action, …}   draw | redraw | undo_draw | send_batch | mark_sent
 //                                          | set_note | disqualify | set_opt_out | update | resync_rotor
+//                                          | tag_new_leads
 //                                          | delete | delete_outside | delete_all
 //
 // Auth: "Authorization: Bearer <key>", where the key is GIVEAWAY_ADMIN_KEY,
@@ -21,7 +22,9 @@ import {
   deleteEverything, getDraw, saveDraw, clearDraw, idForHousehold, putJSON, KEYS,
 } from "../lib/giveaway-store.mjs";
 import { sendSms, e164 } from "../lib/referral-notify.mjs";
-import { upsertGiveawayLead, rotorEntryPayload, rotorClaimPayload } from "../lib/giveaway-rotor.mjs";
+import {
+  upsertGiveawayLead, rotorEntryPayload, rotorClaimPayload, rotorIsNew, settleRotorNew,
+} from "../lib/giveaway-rotor.mjs";
 import { clean, safeEqual, nowISO, safeErr, fullName } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200, headers = {}) =>
@@ -71,7 +74,8 @@ function adminRow(e, counts, winners) {
     coupon_claimed_at: e.coupon ? e.coupon.claimed_at : null,
     rotor_delivered: Boolean(e.rotor && e.rotor.delivered),
     rotor_lead_id: (e.rotor && e.rotor.lead_id) || null,
-    rotor_existing: Boolean(e.rotor && e.rotor.existing),
+    rotor_existing: rotorIsNew(e) === false,
+    rotor_new: rotorIsNew(e) === true,
     offers_opt_in: Boolean(e.offers_opt_in),
     disqualified: Boolean(e.disqualified), office_note: e.office_note || "",
     created_at: e.created_at,
@@ -114,6 +118,9 @@ async function list(store, req) {
       opted_out: entrants.filter((e) => e.sms_opt_out).length,
       disqualified: entrants.filter((e) => e.disqualified).length,
       not_in_rotor: entrants.filter((e) => !(e.rotor && e.rotor.delivered)).length,
+      new_leads: entrants.filter((e) => rotorIsNew(e) === true).length,
+      already_leads: entrants.filter((e) => rotorIsNew(e) === false).length,
+      new_leads_untagged: entrants.filter(needsNewLeadTag).length,
     },
     audiences: Object.fromEntries(BROADCASTS.map((t) => [t, broadcastAudience(t, entrants, drawResult).length])),
     draw: drawResult,
@@ -178,7 +185,9 @@ async function act(store, req) {
       case "update": return await doUpdate(store, await one(), body.fields);
       case "resync_rotor": {
         const e = await one();
+        const before = rotorIsNew(e);
         e.rotor = await upsertGiveawayLead(rotorEntryPayload(e)).catch(() => ({ delivered: false }));
+        settleRotorNew(e, before);
         if (e.coupon && e.coupon.claimed_at)
           await upsertGiveawayLead(rotorClaimPayload(e, e.coupon.claimed_at, e.coupon.by)).catch(() => null);
         e.updated_at = nowISO();
@@ -186,6 +195,7 @@ async function act(store, req) {
         if (!e.rotor.delivered) return fail(502, "Rotor didn't accept it. Try again in a minute.");
         return json({ ok: true, id: e.id, rotor: e.rotor });
       }
+      case "tag_new_leads": return await tagNewLeads(store);
       case "delete_outside": {
         if (!/^\d{10}$/.test(id)) return fail(404, "Not found.");
         await store.delete(KEYS.outside(id));
@@ -206,6 +216,28 @@ async function act(store, req) {
     if (err.status === 404) return fail(404, "Entrant not found.");
     throw err;
   }
+}
+
+// Entrants who entered before the "Giveaway - New Lead" tag existed: the
+// leads the giveaway made get it now. Runs in a time budget; the dashboard
+// calls again while any are left.
+const needsNewLeadTag = (e) => rotorIsNew(e) === true && !e.rotor_new_tagged;
+async function tagNewLeads(store) {
+  const todo = (await allEntrants(store)).filter(needsNewLeadTag);
+  const until = Date.now() + 18000;
+  let tagged = 0, failed = 0;
+  for (const e of todo) {
+    if (Date.now() > until) break;
+    const r = await upsertGiveawayLead({ phone: e.phone, tags: [TAGS.NEW_LEAD] }).catch(() => ({ delivered: false }));
+    if (r.delivered) {
+      e.rotor_new = true;
+      e.rotor_new_tagged = nowISO();
+      e.updated_at = nowISO();
+      await saveEntrantRecord(store, e);
+      tagged++;
+    } else failed++;
+  }
+  return json({ ok: true, tagged, failed, remaining: todo.length - tagged });
 }
 
 // The office edits one entrant: name, address, the coupon opt-in, the coupon

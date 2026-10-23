@@ -114,9 +114,27 @@
       ["Entrants", s.entrants], ["Total entries", s.entries], ["Came in via a share link", s.via_link],
       ["Want the $250 coupon", s.offers_opt_in], ["Coupons claimed", s.claimed], ["Winners", s.winners],
       ["Addresses to double-check", s.unverified], ["Not in Rotor", s.not_in_rotor], ["Out-of-area quote asks", s.outside],
+      ["New to Rotor (tag: Giveaway - New Lead)", s.new_leads || 0], ["Were already in Rotor", s.already_leads || 0],
     ];
     $("[data-gwa-stats]").innerHTML = tiles.map(([l, v]) =>
-      `<div class="gwa-tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+      `<div class="gwa-tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")
+      + (s.new_leads_untagged ? `<div class="gwa-tile gwa-tile-wide"><span>${esc(s.new_leads_untagged)} new lead${s.new_leads_untagged === 1 ? "" : "s"} entered before the
+        &ldquo;Giveaway - New Lead&rdquo; tag existed.</span> <button class="gwa-btn" type="button" data-gwa-tag-new>Tag them in Rotor</button></div>` : "");
+    const tagBtn = $("[data-gwa-tag-new]");
+    if (tagBtn) tagBtn.addEventListener("click", async () => {
+      tagBtn.disabled = true;
+      let total = 0;
+      try {
+        for (let i = 0; i < 20; i++) {
+          tagBtn.textContent = total ? `Tagged ${total}…` : "Tagging…";
+          const r = await api("POST", { action: "tag_new_leads" });
+          total += r.tagged;
+          if (!r.remaining || !r.tagged) { if (r.failed) toast(`${r.failed} didn't go through. Try again in a minute.`); break; }
+        }
+        toast(`Tagged ${total} in Rotor.`);
+      } catch (e) { toast(e.message); }
+      load();
+    });
     renderChart();
     renderLeaders();
     renderDraw();
@@ -273,7 +291,7 @@
       </summary>
       <div class="gwa-detail">
         <p>${esc(e.phone)} · entered ${esc(when(e.created_at))}${e.referred_by ? " · invited by " + esc(e.referred_by.name) : ""}${e.area && e.area.miles ? " · " + esc(e.area.miles) + " mi" : ""}</p>
-        <p class="gwa-sub">Share code ${esc(e.code)}${sent ? " · texts sent: " + esc(sent) : ""}${e.rotor_delivered ? (e.rotor_existing ? " · in Rotor (already a lead, only tagged)" : " · in Rotor") : " · <strong>not in Rotor</strong>"}</p>
+        <p class="gwa-sub">Share code ${esc(e.code)}${sent ? " · texts sent: " + esc(sent) : ""}${e.rotor_delivered ? (e.rotor_existing ? " · in Rotor (already a lead, only tagged)" : e.rotor_new ? " · in Rotor (new lead from the giveaway)" : " · in Rotor") : " · <strong>not in Rotor</strong>"}</p>
         <div class="gwa-row-actions">
           <a class="gwa-btn" href="tel:${esc(e.phone)}">Call</a>
           ${e.rotor_lead_id ? `<a class="gwa-btn gwa-btn-ghost" target="_blank" rel="noopener" href="https://app.getrotor.com/leads/${encodeURIComponent(e.rotor_lead_id)}/conversation">Open in Rotor</a>` : ""}

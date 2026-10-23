@@ -79,6 +79,7 @@ export function mergeNotes(existing, ours) {
  * @param {object} [o.fields]        for a NEW lead only: source, address_*, service_type...
  * @param {string} [o.notes]         new lead: the notes; existing lead: appended to theirs
  * @param {string} [o.service_type]  existing lead: set only if theirs is empty
+ * @param {string[]} [o.new_lead_tags] added only when this write created the lead
  * @returns {{delivered:boolean, status:number|null, lead_id:string|null, existing:boolean|null, details:boolean}}
  */
 // Rotor keeps phones as +1XXXXXXXXXX; sending that form makes both steps
@@ -90,7 +91,8 @@ function e164(v) {
   return String(v || "").trim();
 }
 
-export async function upsertGiveawayLead({ phone: rawPhone, tags, name, fields = {}, notes = "", service_type } = {}) {
+export async function upsertGiveawayLead({ phone: rawPhone, tags, name, fields = {}, notes = "", service_type,
+                                           new_lead_tags = [] } = {}) {
   const phone = e164(rawPhone);
   // Step 1: find or create the lead by phone alone. The tags wait for step 2
   // so they always arrive as an UPDATE, which is what fires Rotor's
@@ -105,7 +107,9 @@ export async function upsertGiveawayLead({ phone: rawPhone, tags, name, fields =
   const lead = leadOf(r1.body);
   const id = lead ? lead.id : null;
 
-  const update = { tags };
+  // new_lead_tags mark a lead this write created, never one that was
+  // already in Rotor ("Giveaway - New Lead": safe to bulk-delete later).
+  const update = { tags: existing ? tags : [...new Set([...tags, ...new_lead_tags])] };
   if (!existing) {
     Object.assign(update, fields);
     if (name) update.name = name;
@@ -132,6 +136,23 @@ export async function upsertGiveawayLead({ phone: rawPhone, tags, name, fields =
 // What each giveaway event writes to Rotor (used by /api/giveaway and the
 // office dashboard).
 
+// Did the giveaway create this person's Rotor lead? true (yes: they get
+// "Giveaway - New Lead"), false (they were already a lead), null (not known
+// yet: Rotor hasn't accepted them). Settled by the first write that lands
+// and never changed after, so a later re-send (which always finds the lead
+// it made) can't flip a giveaway-made lead to "already a lead".
+export function rotorIsNew(e) {
+  if (typeof e.rotor_new === "boolean") return e.rotor_new;
+  if (e.rotor && e.rotor.delivered && typeof e.rotor.existing === "boolean") return !e.rotor.existing;
+  return null;
+}
+// Call with what rotorIsNew said BEFORE the write, after storing its result in e.rotor.
+export function settleRotorNew(e, before) {
+  if (typeof before === "boolean") e.rotor_new = before;
+  else if (e.rotor && e.rotor.delivered && typeof e.rotor.existing === "boolean") e.rotor_new = !e.rotor.existing;
+  if (e.rotor_new === true && e.rotor && e.rotor.delivered) e.rotor_new_tagged = e.rotor_new_tagged || new Date().toISOString();
+}
+
 export function rotorEntryPayload(e) {
   const a = e.address;
   const lines = [
@@ -149,7 +170,9 @@ export function rotorEntryPayload(e) {
   if (a.zip) fields.address_zip = a.zip;
   return {
     phone: e.phone,
-    tags: [TAGS.ENTRANT, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : [])],
+    tags: [TAGS.ENTRANT, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : []),
+           ...(rotorIsNew(e) === true ? [TAGS.NEW_LEAD] : [])],
+    new_lead_tags: [TAGS.NEW_LEAD],
     name: fullName(e.first_name, e.last_name),
     fields,
     notes: lines.join("\n"),
