@@ -634,11 +634,10 @@ def _brand_logo(root, sizes, width, height, xmas=False):
             f'alt="{alt}" width="{width}" height="{height}">')
 
 # ---------------------------------------------------------------------------
-# Holiday Lights Giveaway promo: a slim red ribbon above the menu on every
-# page, and a card with a live countdown on the homepage. Both are only
-# built while entries are open, and main.js hides them the moment entries
-# close (data-gw-end), so a page built earlier never advertises a giveaway
-# that has ended.
+# Holiday Lights Giveaway promo: a slim red ribbon under the menu on every
+# page, with a live countdown. Built only while entries are open, and
+# main.js hides it the moment entries close (data-gw-end), so a page built
+# earlier never advertises a giveaway that has ended.
 def giveaway_open(now=None):
     from datetime import timezone
     end = datetime.fromisoformat(GIVEAWAY["closes_iso"].replace("Z", "+00:00"))
@@ -655,31 +654,6 @@ def giveaway_ribbon(root):
     <span class="gw-ribbon-cta">Enter free {icon('arrow')}</span>
   </a>
   """
-
-def giveaway_home_card(root):
-    """Homepage card: the offer, a live countdown and the Enter button (no
-    photo, owner's call)."""
-    if not giveaway_open():
-        return ""
-    units = "".join(f'<div class="gwp-unit"><b data-gw-unit="{u}">--</b><small>{l}</small></div>'
-                    for u, l in (("d", "Days"), ("h", "Hours"), ("m", "Min"), ("s", "Sec")))
-    return f"""
-  <!-- HOLIDAY LIGHTS GIVEAWAY -->
-  <section class="gwp" data-gw-end="{GIVEAWAY['closes_iso']}">
-    <div class="container">
-      <div class="gwp-card">
-        <div class="gwp-body">
-          <span class="gwp-tag">Holiday Lights Giveaway</span>
-          <h2>You and a friend can win <em>free Christmas lights.</em></h2>
-          <p>One professional Christmas light install, up to ${GIVEAWAY['prize_value']:,}. Share your link: if a friend you invite wins, you win too. Everyone else who opts in gets ${GIVEAWAY['coupon']} off.</p>
-          <div class="gwp-timer" role="timer" aria-label="Time left to enter">{units}</div>
-          <p class="gwp-when">Entries close Thu, Nov 5 &middot; Drawing {GIVEAWAY['draw_short']}</p>
-          <a class="btn btn-lg gwp-btn" href="{root}giveaway.html">Enter free in 20 seconds {icon('arrow')}</a>
-        </div>
-      </div>
-    </div>
-  </section>
-"""
 
 def nav(depth=0, xmas=False):
     root = rel(depth)
