@@ -65,6 +65,20 @@
   };
   if (cd && tick()) { const iv = setInterval(() => { if (!tick()) clearInterval(iv); }, 1000); }
 
+  /* ---- Remember this phone ----
+     After someone enters, this browser keeps their private status token
+     (or, for a returning entrant, their number) so the link in our texts,
+     bartawindowwashing.com/mylink, opens straight to THEIR share link on
+     the phone they entered with: no typing. Stays on their device only. */
+  const MEMO = "gw-me";
+  const remember = (v) => {
+    try {
+      const old = JSON.parse(localStorage.getItem(MEMO) || "{}");
+      localStorage.setItem(MEMO, JSON.stringify({ token: v.token || old.token || "", phone: v.phone || old.phone || "" }));
+    } catch (e) { /* private mode: fine, /mylink just asks for the number */ }
+  };
+  const recall = () => { try { return JSON.parse(localStorage.getItem(MEMO) || "{}"); } catch (e) { return {}; } };
+
   /* ---- Share tools ---- */
   const fillShare = (panel, url, first) => {
     $$("[data-gw-share-url]", panel).forEach((i) => { i.value = url; });
@@ -153,6 +167,7 @@
       .then(({ r, b }) => {
         btn.disabled = false;
         if (!r.ok || !b.ok) { out.hidden = true; fail(box, b.error || "Something went wrong."); return; }
+        remember({ phone: checkForm.phone.value });
         fillShare(out, b.share_url, b.first_name);
         setText(out, "[data-gw-entries]", String(b.entries));
         setText(out, "[data-gw-entries-word]", entryWord(b.entries));
@@ -163,15 +178,29 @@
 
   // bartawindowwashing.com/mylink (the short link in texts): straight to the
   // "Already entered?" box with the number field ready.
+  // On the phone they entered with, it skips the box: their own status
+  // page (entries + share buttons), or their number looked up for them.
   if (checkForm && /^\/mylink\/?$/i.test(location.pathname)) {
+    const me = recall();
+    if (/^[A-Z0-9]{24}$/.test(String(me.token || "").toUpperCase())) {
+      location.replace("/giveaway?t=" + encodeURIComponent(me.token));
+      return;
+    }
     const sec = document.getElementById("check");
     if (sec) {
       sec.scrollIntoView({ block: "start" });
-      try { checkForm.phone.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
+      if (me.phone) {
+        checkForm.phone.value = me.phone;
+        if (checkForm.requestSubmit) checkForm.requestSubmit();
+        else checkForm.dispatchEvent(new Event("submit", { cancelable: true }));
+      } else {
+        try { checkForm.phone.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
+      }
     }
   }
 
   if (token) {
+    remember({ token });
     title.textContent = "Your entries";
     form.hidden = true;
     fetch(API + "?t=" + encodeURIComponent(token), { headers: { Accept: "application/json" } })
@@ -283,6 +312,7 @@
           if (f) { f.setAttribute("aria-invalid", "true"); f.focus(); }
           return;
         }
+        remember({ token: b.token || "", phone: data.phone });
         if (b.returning) {
           const p = show("returning");
           fillShare(p, b.share_url, b.first_name);
