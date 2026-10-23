@@ -408,3 +408,61 @@ test("mergeNotes keeps theirs first, never stacks twice, caps at 2,000", () => {
   assert.equal(rotorMod.mergeNotes("x".repeat(1990), "Ours here").length, 2000);
   assert.ok(rotorMod.mergeNotes("x".repeat(1990), "Ours here").startsWith("x".repeat(1990)));
 });
+
+// ---------------------------------------------------------------------------
+// Office edits from the dashboard.
+test("admin update: edit name and address, re-check the area, move the household", async () => {
+  await ok(post(entry()));
+  const r = await ok(adminPost({ action: "update", id: "7635550101",
+    fields: { first_name: "Janet", last_name: "Doe-Smith", street: "500 River St", city: "Delano", zip: "55328" } }));
+  assert.equal(r.ok, true);
+  const e = store.json("entrant/7635550101");
+  assert.equal(e.first_name, "Janet");
+  assert.equal(e.address.street, "500 River St");
+  assert.equal(e.area.ok, true);                                   // Delano is on the city list
+  assert.equal(store.keys("household/").length, 1);
+  assert.ok(store.keys("household/")[0].includes("500river"));
+  // the old address is free again
+  await ok(post(entry({ phone: "763-555-0109" })));
+});
+
+test("admin update: an address someone else entered from is refused", async () => {
+  await ok(post(entry()));
+  await ok(post(entry({ phone: "763-555-0102", address: "7 Oak Ln" })));
+  await ok(adminPost({ action: "update", id: "7635550102", fields: { street: "123 Main St" } }), 409);
+});
+
+test("admin update: opting in and marking claimed write the Rotor tags; undoing says to remove them", async () => {
+  await ok(post(entry({ offers: false })));
+  const before = net.rotor().length;
+  const r = await ok(adminPost({ action: "update", id: "7635550101", fields: { offers_opt_in: true, coupon_claimed: true } }));
+  assert.equal(r.rotor_ok, true);
+  const calls = net.rotor().slice(before);
+  assert.ok(calls.some((c) => (c.payload.tags || []).includes("Giveaway - Coupon Opt-In")));
+  assert.ok(calls.some((c) => (c.payload.tags || []).includes("Giveaway - Coupon Claimed")));
+  const e = store.json("entrant/7635550101");
+  assert.equal(e.offers_opt_in, true);
+  assert.equal(e.coupon.by, "office");
+  const undo = await ok(adminPost({ action: "update", id: "7635550101", fields: { offers_opt_in: false, coupon_claimed: false } }));
+  assert.equal(undo.notes.length, 2);
+  assert.equal(store.json("entrant/7635550101").coupon, null);
+});
+
+test("admin update: empty first name and empty fields are refused", async () => {
+  await ok(post(entry()));
+  await ok(adminPost({ action: "update", id: "7635550101", fields: { first_name: " " } }), 400);
+  await ok(adminPost({ action: "update", id: "7635550101" }), 400);
+  await ok(adminPost({ action: "update", id: "7635559999", fields: { last_name: "X" } }), 404);
+});
+
+test("admin resync_rotor re-sends an entrant that didn't reach Rotor", async () => {
+  net = mockFetch({ rotor: 500 });
+  await ok(post(entry()));
+  assert.equal(store.json("entrant/7635550101").rotor.delivered, false);
+  net = mockFetch();
+  await ok(adminPost({ action: "resync_rotor", id: "7635550101" }));
+  assert.equal(store.json("entrant/7635550101").rotor.delivered, true);
+  const list = await ok(adminGet());
+  assert.equal(list.stats.not_in_rotor, 0);
+  assert.equal(list.entrants[0].street, "123 Main St");
+});
