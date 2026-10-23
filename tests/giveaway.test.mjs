@@ -470,3 +470,28 @@ test("admin resync_rotor re-sends an entrant that didn't reach Rotor", async () 
   assert.equal(list.stats.not_in_rotor, 0);
   assert.equal(list.entrants[0].street, "123 Main St");
 });
+
+// ---------------------------------------------------------------------------
+// One referrer per person, ever: a winner brings in exactly one bonus winner.
+test("an entrant keeps the first link they used; a second link changes nothing", async () => {
+  const a = await ok(post(entry({ first_name: "Amy", phone: "763-555-0201", address: "1 A St" })));
+  const b = await ok(post(entry({ first_name: "Ben", phone: "763-555-0202", address: "2 B St" })));
+  // Xena enters through Amy's link, then tries again through Ben's link.
+  await ok(post(entry({ first_name: "Xena", phone: "763-555-0209", address: "9 X St", ref: a.code })));
+  const again = await ok(post(entry({ first_name: "Xena", phone: "763-555-0209", address: "9 X St", ref: b.code })));
+  assert.equal(again.returning, true);
+  const x = store.json("entrant/7635550209");
+  assert.equal(x.referred_by.id, "7635550201");               // still Amy, never Ben
+  assert.equal((await ok(get("?t=" + b.token))).entrant.entries, 1); // Ben got nothing from her
+  assert.equal((await ok(get("?t=" + a.token))).entrant.entries, 2);
+});
+
+test("if a referred friend wins, only their one referrer wins too, and it doesn't chain", async () => {
+  // Cal referred Amy, Amy referred Xena. Xena is drawn: Amy wins too, Cal doesn't.
+  const mk = (id, ref) => ({ id, first_name: id, last_name: "T", phone: id, household: id,
+    referred_by: ref ? { id: ref, code: "C-" + ref, name: ref } : null, created_at: "2026-10-25T00:00:00Z" });
+  const people = [mk("xena", "amy"), mk("amy", "cal"), mk("cal")];
+  const r = lib.draw(people, { n: 1, rand: () => 0 });       // first ticket = Xena
+  assert.equal(r.drawn[0].id, "xena");
+  assert.deepEqual(r.bonus.map((b) => b.id), ["amy"]);
+});
