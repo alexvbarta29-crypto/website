@@ -3,7 +3,8 @@ import json, os
 from datetime import datetime
 from urllib.parse import quote_plus
 from sitedata import (LIVE_CITY_PAGES, city_page_path, BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
-                      PROMO_FEATS, IMAGE_ALT, IMAGE_FOCAL, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
+                      PROMO_FEATS, IMAGE_ALT, IMAGE_FOCAL, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS,
+                      GIVEAWAY)
 from icons import icon
 
 def _esc(s):
@@ -632,6 +633,59 @@ def _brand_logo(root, sizes, width, height, xmas=False):
     return (f'<img class="{cls}" src="{src}" srcset="{srcset}" sizes="{sizes}" '
             f'alt="{alt}" width="{width}" height="{height}">')
 
+# ---------------------------------------------------------------------------
+# Holiday Lights Giveaway promo: a slim red ribbon above the menu on every
+# page, and a card with a live countdown on the homepage. Both are only
+# built while entries are open, and main.js hides them the moment entries
+# close (data-gw-end), so a page built earlier never advertises a giveaway
+# that has ended.
+def giveaway_open(now=None):
+    from datetime import timezone
+    end = datetime.fromisoformat(GIVEAWAY["closes_iso"].replace("Z", "+00:00"))
+    return (now or datetime.now(timezone.utc)) < end
+
+def giveaway_ribbon(root):
+    if not giveaway_open():
+        return ""
+    return f"""<a class="gw-ribbon" href="{root}giveaway.html" data-gw-end="{GIVEAWAY['closes_iso']}">
+    <span class="gw-ribbon-dot" aria-hidden="true"></span>
+    <span class="gw-ribbon-long">Holiday Lights Giveaway: you and a friend can win free Christmas lights</span>
+    <span class="gw-ribbon-short">Win free Christmas lights</span>
+    <span class="gw-ribbon-time" data-gw-text><span class="sr-only">Entries close </span>Nov 5</span>
+    <span class="gw-ribbon-cta">Enter free {icon('arrow')}</span>
+  </a>
+  """
+
+def giveaway_home_card(root):
+    """Homepage card: the offer, a live countdown and the Enter button."""
+    if not giveaway_open():
+        return ""
+    stem = f"{root}assets/img/giveaway-white-estate"
+    units = "".join(f'<div class="gwp-unit"><b data-gw-unit="{u}">--</b><small>{l}</small></div>'
+                    for u, l in (("d", "Days"), ("h", "Hours"), ("m", "Min"), ("s", "Sec")))
+    return f"""
+  <!-- HOLIDAY LIGHTS GIVEAWAY -->
+  <section class="gwp" data-gw-end="{GIVEAWAY['closes_iso']}">
+    <div class="container">
+      <div class="gwp-card">
+        <picture class="gwp-photo">
+          <source type="image/webp" srcset="{stem}-640w.webp 640w, {stem}-1200w.webp 1200w" sizes="(max-width: 860px) 100vw, 50vw">
+          <img src="{stem}-1200w.jpg" srcset="{stem}-640w.jpg 640w, {stem}-1200w.jpg 1200w" sizes="(max-width: 860px) 100vw, 50vw"
+               alt="A white two-story home at dusk outlined in warm white Christmas lights" loading="lazy" decoding="async" width="1200" height="801">
+        </picture>
+        <div class="gwp-body">
+          <span class="gwp-tag">Holiday Lights Giveaway</span>
+          <h2>You and a friend can win <em>free Christmas lights.</em></h2>
+          <p>One professional Christmas light install, up to ${GIVEAWAY['prize_value']:,}. Share your link: if a friend you invite wins, you win too. Everyone else who opts in gets ${GIVEAWAY['coupon']} off.</p>
+          <div class="gwp-timer" role="timer" aria-label="Time left to enter">{units}</div>
+          <p class="gwp-when">Entries close Thu, Nov 5 &middot; Drawing {GIVEAWAY['draw_short']}</p>
+          <a class="btn btn-lg gwp-btn" href="{root}giveaway.html">Enter free in 20 seconds {icon('arrow')}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+"""
+
 def nav(depth=0, xmas=False):
     root = rel(depth)
     # Christmas Light Installation is the seasonal headline service, so it
@@ -642,7 +696,7 @@ def nav(depth=0, xmas=False):
     menu_services = ([(l, t) for l, t in DROPDOWN_SERVICES if t != xmas_target]
                      + [("Commercial Cleaning", "services/commercial-cleaning.html")])
     return f"""<header class="nav-wrap">
-  <nav class="nav" aria-label="Primary">
+  {giveaway_ribbon(root)}<nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
       {_brand_logo(root, "148px", 148, 40, xmas)}
     </a>
