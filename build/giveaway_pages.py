@@ -258,7 +258,7 @@ def _area_map():
             return hashlib.md5(f.read()).hexdigest()[:10]
     jpg, webp = "assets/img/giveaway-map.jpg", "assets/img/giveaway-map.webp"
     link = f"https://www.google.com/maps/@{BIZ['lat']},{BIZ['lng']},10z"
-    alt = ("Map of the giveaway circle: 17 miles around Delano, covering Buffalo, Rockford, Montrose, Waverly, "
+    alt = ("Map of the giveaway circle around Delano, covering Buffalo, Rockford, Montrose, Waverly, "
            "Howard Lake, Maple Lake, Albertville, St. Michael, Hanover, Rogers, Corcoran, Loretto, Medina, Maple Plain, "
            "Orono, Wayzata, Mound, Minnetrista, St. Bonifacius, Victoria, Waconia, Mayer, Watertown, Winsted and Lester Prairie")
     return f"""<figure class="gw-map">
@@ -411,7 +411,7 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
   <p>The {G['name']} (the &ldquo;Giveaway&rdquo;) is sponsored by {sponsor}.</p>
 
   <h2>2. Who can enter</h2>
-  <p>Open only to legal residents of Minnesota who are 18 or older at the time of entry and who own, or have the owner&rsquo;s written permission to decorate, a single-family home or townhome located inside the circle centered on Delano, MN shown on the map at bartawindowwashing.com/giveaway (the &ldquo;Service Area&rdquo;). Sponsor checks each address when it is entered and may verify eligibility before awarding a prize. Employees of Sponsor and members of their immediate families and households are not eligible.</p>
+  <p>Open only to legal residents of Minnesota who are 18 or older at the time of entry and who own, or have the owner&rsquo;s written permission to decorate, a single-family home or townhome located within 17 straight-line miles of downtown Delano, MN, the circle shown on the map at bartawindowwashing.com/giveaway (the &ldquo;Service Area&rdquo;). Sponsor checks each address when it is entered and may verify eligibility before awarding a prize. Employees of Sponsor and members of their immediate families and households are not eligible.</p>
 
   <h2>3. Entry period</h2>
   <p>The Giveaway begins {G['starts']} and ends {G['closes']} (the &ldquo;Entry Period&rdquo;). Sponsor&rsquo;s server clock is the official timekeeper.</p>
