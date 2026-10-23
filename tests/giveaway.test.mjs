@@ -606,3 +606,28 @@ function baseEntrantForPayload() {
   return { phone: "7635550100", first_name: "A", last_name: "B", code: "LIGHTS-ABCDE", offers_opt_in: false,
     address: { street: "1 Main St", city: "Delano", state: "MN", zip: "55328" }, area: { ok: true } };
 }
+
+// A street OpenStreetMap can't find: the town's centre decides when it is
+// clearly outside (or inside) the circle.
+test("an unfindable street in a town well outside the circle is turned away", async () => {
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    const u = String(url);
+    if (u.includes("nominatim")) {
+      const q = decodeURIComponent(u.split("&q=")[1] || "");
+      const body = /Lakeview/.test(q) ? [] : /Cokato/.test(q)
+        ? [{ lat: "45.0750", lon: "-94.1904", address: { town: "Cokato" } }]
+        : [{ lat: "45.0419", lon: "-93.7891", address: { town: "Delano" } }];
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+    return base(url, opts);
+  };
+  try {
+    const out = await post(entry({ phone: "3205550100", address: "45 Lakeview Dr NW", address_city: "Cokato",
+      address_zip: "55321", address_verified: "typed", address_lat: "", address_lng: "" }));
+    assert.equal(out.status, 422);
+    const inn = await ok(post(entry({ phone: "3205550101", address: "45 Lakeview Dr NW", address_city: "Delanoish",
+      address_zip: "55328", address_verified: "typed", address_lat: "", address_lng: "" })));
+    assert.equal(inn.area, "in");
+  } finally { globalThis.fetch = base; }
+});
