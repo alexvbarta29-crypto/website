@@ -161,6 +161,16 @@
       .catch(() => { btn.disabled = false; fail(box, `We couldn't reach the server. Call or text ${PHONE}.`); });
   });
 
+  // bartawindowwashing.com/mylink (the short link in texts): straight to the
+  // "Already entered?" box with the number field ready.
+  if (checkForm && /^\/mylink\/?$/i.test(location.pathname)) {
+    const sec = document.getElementById("check");
+    if (sec) {
+      sec.scrollIntoView({ block: "start" });
+      try { checkForm.phone.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
+    }
+  }
+
   if (token) {
     title.textContent = "Your entries";
     form.hidden = true;
