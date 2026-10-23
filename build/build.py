@@ -363,7 +363,6 @@ def build_home():
     </div>
   </section>
 
-  {C.giveaway_home_card("")}
   <!-- SERVICES (straight after hero) -->
   <section id="services">
     <div class="container">
