@@ -194,7 +194,7 @@ def _lock_head():
     h = G.get("lock_sha256")
     if not h:
         return ""
-    return ('<script>(function(){try{if(localStorage.getItem("gw-unlock")==="' + h +
+    return ('<script>(function(){document.documentElement.classList.add("gw-locked");try{if(localStorage.getItem("gw-unlock")==="' + h +
             '")document.documentElement.classList.add("gw-open")}catch(e){}})();</script>\n')
 
 
