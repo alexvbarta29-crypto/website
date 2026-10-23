@@ -5,10 +5,11 @@
 // their lead UPDATED, and any name / source / notes we send replace theirs.
 // So every giveaway write goes in two steps:
 //
-//   1. POST { phone, tags } only. Tags merge, nothing else changes.
+//   1. POST { phone } only. Nothing on an existing lead changes.
 //      201 → we just created this lead; 200 → it already existed.
-//   2. With the lead id from step 1:
-//      - new lead      → fill in name, address, source and notes;
+//   2. With the lead id from step 1, the tags (always, so Rotor's "Tag added"
+//      workflows fire) plus:
+//      - new lead      → name, address, source and notes;
 //      - existing lead → append our notes under theirs (only when Rotor's
 //        reply shows us their current notes), fill service_type only if
 //        it is empty, and leave name, source and address alone.
@@ -77,39 +78,42 @@ export function mergeNotes(existing, ours) {
  * @returns {{delivered:boolean, status:number|null, lead_id:string|null, existing:boolean|null, details:boolean}}
  */
 export async function upsertGiveawayLead({ phone, tags, name, fields = {}, notes = "", service_type } = {}) {
-  let r1 = await post({ phone, tags });
+  // Step 1: find or create the lead by phone alone. The tags wait for step 2
+  // so they always arrive as an UPDATE, which is what fires Rotor's
+  // "Tag added" workflows (the giveaway pipelines) for new and existing leads.
+  let r1 = await post({ phone });
   // If this Rotor account insists on a name for new leads, ask again with one.
-  if (r1.status === 400 && name) r1 = await post({ phone, tags, name });
+  if (r1.status === 400 && name) r1 = await post({ phone, name });
   if (!okStatus(r1.status))
     return { delivered: false, status: r1.status, lead_id: null, existing: null, details: false };
 
   const existing = r1.status === 200;
   const lead = leadOf(r1.body);
   const id = lead ? lead.id : null;
-  const wantsDetails = existing ? Boolean(notes || service_type) : Boolean(name || notes || Object.keys(fields).length);
-  if (!wantsDetails) return { delivered: true, status: r1.status, lead_id: id, existing, details: true };
 
-  let update;
+  const update = { tags };
   if (!existing) {
-    update = { ...fields };
+    Object.assign(update, fields);
     if (name) update.name = name;
     if (notes) update.notes = String(notes).slice(0, MAX_NOTES);
   } else {
-    update = {};
     // Notes only when Rotor showed us theirs, so we can keep them.
     if (notes && lead && Object.prototype.hasOwnProperty.call(lead, "notes")) {
       const merged = mergeNotes(lead.notes, notes);
       if (merged !== String(lead.notes || "").trim()) update.notes = merged;
     }
     if (service_type && lead && !String(lead.service_type || "").trim()) update.service_type = service_type;
-    if (!Object.keys(update).length) return { delivered: true, status: r1.status, lead_id: id, existing, details: true };
   }
-  // By id when we have it; otherwise by phone, which is safe only for a lead
-  // we just created ourselves.
+  // By id when we have it. Without one, by phone: fine for a lead we just
+  // created; for an existing lead only the tags go (they merge, nothing else
+  // on it changes).
   if (id) update.id = id;
-  else if (!existing) update.phone = phone;
-  else return { delivered: true, status: r1.status, lead_id: null, existing, details: false };
+  else {
+    update.phone = phone;
+    if (existing) for (const k of Object.keys(update)) if (k !== "phone" && k !== "tags") delete update[k];
+  }
 
   const r2 = await post(update);
-  return { delivered: true, status: r1.status, lead_id: id, existing, details: okStatus(r2.status) };
+  const delivered = okStatus(r2.status);
+  return { delivered, status: delivered ? r1.status : r2.status, lead_id: id, existing, details: delivered };
 }
