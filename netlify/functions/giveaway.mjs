@@ -115,6 +115,19 @@ async function checkArea(addr) {
     if (byGeo.ok === false && area.ok === true) return { ...area, geocoded_miles: byGeo.miles };
     return { ...byGeo, method: "geocoded" };
   }
+  // OpenStreetMap doesn't know every house, but it knows every town. When
+  // the street can't be found and the town isn't on our list, the town's
+  // centre decides: clearly outside the circle (2+ miles past its edge) →
+  // out, clearly inside → in, anything near the line stays "check address".
+  if (area.ok === null && addr.city) {
+    const town = await geocode({ street: "", city: addr.city, state: addr.state || "MN", zip: addr.zip });
+    if (town) {
+      const t = areaCheck({ ...addr, lat: town.lat, lng: town.lng });
+      if (t.miles > GIVEAWAY.radius_mi + 2) return { ok: false, method: "town", miles: t.miles };
+      if (t.miles < GIVEAWAY.radius_mi - 2) return { ok: true, method: "town", miles: t.miles };
+      return { ok: null, method: "town", miles: t.miles };
+    }
+  }
   return area;
 }
 

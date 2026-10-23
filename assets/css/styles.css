@@ -1563,21 +1563,23 @@ html.js .reveal.in { opacity: 1; transform: none; }
 
 
 /* ---------- Holiday Lights Giveaway promo (build: components.giveaway_*) ----------
-   A slim red ribbon under the menu pill on every page while entries are
-   open. It folds away once the page scrolls, and pages push their first
+   A slim green ribbon under the menu pill on every page while entries are
+   open. It shows on every page load and folds away once the visitor scrolls down, and pages push their first
    section down by its height (--ribbon-h) so it never covers a heading. */
 html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
 .gw-ribbon {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   max-width: var(--container); height: 34px; margin: 8px auto 0; padding: 0 16px;
-  border-radius: var(--r-pill); background: var(--xmas-red); color: #fff;
+  border-radius: var(--r-pill); background: var(--xmas-green); color: #fff;
   font-size: .84rem; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden;
-  box-shadow: 0 10px 24px -12px rgba(214,58,48,.85);
+  box-shadow: 0 10px 24px -12px rgba(23,122,76,.85);
   transition: height .35s var(--ease), margin .35s var(--ease), opacity .25s var(--ease), background .2s;
 }
 .gw-ribbon[hidden] { display: none; }
-.gw-ribbon:hover { background: #c22f26; color: #fff; }
-.nav-wrap.scrolled .gw-ribbon { height: 0; margin-top: 0; opacity: 0; pointer-events: none; }
+.gw-ribbon:hover { background: var(--xmas-green-deep); color: #fff; }
+/* main.js adds .is-away once the visitor scrolls down themselves (not when a
+   refresh restores the scroll position), and drops it back near the top. */
+.gw-ribbon.is-away { height: 0; margin-top: 0; opacity: 0; pointer-events: none; }
 .gw-ribbon-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: gw-ribbon-pulse 1.8s ease-out infinite; }
 @keyframes gw-ribbon-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.75); } 70% { box-shadow: 0 0 0 7px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
 .gw-ribbon-time { padding: 5px 10px; border-radius: var(--r-pill); background: rgba(0,0,0,.2); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -1594,3 +1596,8 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
 @media (max-width: 350px) { .gw-ribbon-cta { display: none; } }
 
 @media (prefers-reduced-motion: reduce) { .gw-ribbon-dot { animation: none; } }
+
+/* Phones: the homepage hero drops its quote button (owner's call: too many
+   red buttons up top with the giveaway bar); Get a Quote stays in the menu
+   and further down the page. */
+@media (max-width: 760px) { .hero-photo-full .hero-actions--home { display: none; } }

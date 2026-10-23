@@ -356,7 +356,7 @@ def build_home():
         {C.google_badge(depth, bare=True)}
         <h1>Dirty Windows?<br>We can <em>fix that.</em></h1>
         <p class="lead">Professional window and exterior cleaning based in Delano and serving communities throughout the western Twin Cities.</p>
-        <div class="hero-actions">
+        <div class="hero-actions hero-actions--home">
           <a class="btn btn-lg" href="get-quote.html">Get Your Free Quote {icon('arrow')}</a>
         </div>
       </div>
@@ -2400,7 +2400,7 @@ _CRITICAL_CLASSES = {
     "hero-actions", "container", "reveal",
     "google-badge", "google-badge--bare", "stars", "gb-g", "gb-text", "lead",
     "sticky-cta", "gw-ribbon", "gw-ribbon-dot", "gw-ribbon-long", "gw-ribbon-short",
-    "gw-ribbon-time", "gw-ribbon-cta", "sr-only",
+    "gw-ribbon-time", "gw-ribbon-cta", "sr-only", "hero-actions--home",
 }
 _CRITICAL_ELEMENTS = {
     "html", "body", "main", "header", "nav", "ul", "ol", "li", "a", "img",

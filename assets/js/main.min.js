@@ -68,6 +68,25 @@
     tick();
     setInterval(tick, 1000);
   }
+  // The ribbon is there on every page load, even when a refresh puts the
+  // page back where it was scrolled to; it folds away once the visitor
+  // scrolls down themselves, and comes back near the top.
+  const ribbon = $(".gw-ribbon");
+  if (ribbon) {
+    // A refresh restoring the scroll position moves the page with no input
+    // from the visitor; only a downward scroll after they've touched,
+    // wheeled or pressed a key counts.
+    let touched = false, lastY = window.scrollY;
+    const touch = () => { touched = true; };
+    ["wheel", "touchstart", "keydown", "pointerdown"].forEach((t) =>
+      window.addEventListener(t, touch, { passive: true, once: true }));
+    window.addEventListener("scroll", () => {
+      const y = window.scrollY;
+      if (y <= 12) ribbon.classList.remove("is-away");
+      else if (touched && y > lastY + 2) ribbon.classList.add("is-away");
+      lastY = y;
+    }, { passive: true });
+  }
 
   /* ---- Mobile drawer ---- */
   const drawer = $(".drawer");
