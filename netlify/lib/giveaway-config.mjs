@@ -60,8 +60,11 @@ export const STORE_NAME = "giveaway";
 //   WINNER       drawn or friend-bonus winner             → leave OUT of 3, 4, 5
 //   CLAIMED      claimed the coupon on the site           → send the quote
 //   OUTSIDE      outside the circle, asked for a quote
+//   NEW_LEAD     the giveaway itself created this lead (not already a lead
+//                or customer): the ones safe to bulk-delete afterwards
 export const TAGS = Object.freeze({
   ENTRANT: "Giveaway 2026",
+  NEW_LEAD: "Giveaway - New Lead",
   COUPON_OPTIN: "Giveaway - Coupon Opt-In",
   WINNER: "Giveaway - Winner",
   CLAIMED: "Giveaway - Coupon Claimed",

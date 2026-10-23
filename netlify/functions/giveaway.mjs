@@ -21,7 +21,7 @@ import {
   saveEntrantRecord, allocateCode, getDraw, listKeys, putJSON, KEYS, guarded,
 } from "../lib/giveaway-store.mjs";
 import { sendSms, e164, officePhone } from "../lib/referral-notify.mjs";
-import { upsertGiveawayLead, rotorEntryPayload, rotorClaimPayload } from "../lib/giveaway-rotor.mjs";
+import { upsertGiveawayLead, settleRotorNew, rotorEntryPayload, rotorClaimPayload } from "../lib/giveaway-rotor.mjs";
 import { newToken, nowISO, safeErr, withTimeout, fullName, lastInitial, normalizePhone } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200) =>
@@ -160,6 +160,7 @@ async function enter(body) {
     // Rotor + welcome text: best-effort, never blocks the confirmation.
     e.rotor = await withTimeout(() => upsertGiveawayLead(rotorEntryPayload(e)), 8000, "rotor")
       .catch((err) => ({ delivered: false, status: null, error: safeErr(err) }));
+    settleRotorNew(e, null);
     if (smsOn()) {
       const sent = await sendSms(e164(e.phone), renderText("welcome", e, null)).catch(() => false);
       if (sent) e.sms.welcome = nowISO();

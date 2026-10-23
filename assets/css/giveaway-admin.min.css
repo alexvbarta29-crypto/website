@@ -23,6 +23,8 @@ body { background: var(--mist); }
 .gwa-tile { background: #fff; border-radius: 14px; padding: 14px; box-shadow: var(--sh-sm); }
 .gwa-tile b { display: block; font-family: var(--font-head); font-size: 1.8rem; line-height: 1; }
 .gwa-tile span { font-size: .78rem; color: var(--slate-500); }
+.gwa-tile-wide { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: #fff6e0; }
+.gwa-tile-wide span { font-size: .9rem; color: var(--ink); }
 .gwa-card { background: #fff; border-radius: 18px; padding: 20px; margin-top: 16px; box-shadow: var(--sh-sm); }
 .gwa-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .gwa-card h2 { font-size: 1.15rem; }

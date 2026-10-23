@@ -87,7 +87,7 @@ test("entering stores the entrant, returns share + status links, creates a Rotor
   // Never by id: an update by id blanked the phone on the first live entries.
   assert.equal(lead.payload.id, undefined);
   assert.equal(lead.payload.phone, "+17635550101");
-  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
+  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In", "Giveaway - New Lead"]);
   assert.match(lead.payload.notes, /coupon texts: YES/);
   assert.equal(lead.payload.source, GIVEAWAY.name);
   assert.equal(lead.payload.name, "Jane Doe");
@@ -319,7 +319,7 @@ test("lookup by phone returns count and share link, nothing private", async () =
 
 test("no offers opt-in means no offers tag in Rotor", async () => {
   await ok(post(entry({ offers: false })));
-  assert.deepEqual(net.rotor()[1].payload.tags, ["Giveaway 2026"]);
+  assert.deepEqual(net.rotor()[1].payload.tags, ["Giveaway 2026", "Giveaway - New Lead"]);
   assert.match(net.rotor()[1].payload.notes, /coupon texts: no/);
 });
 
@@ -387,7 +387,7 @@ test("if Rotor wants a name for a new lead, step 1 is retried with one", async (
   const calls = net.rotor().map((r) => Object.keys(r.payload).sort().join(","));
   assert.equal(calls[0], "phone");
   assert.equal(calls[1], "name,phone");
-  assert.deepEqual(net.rotor()[2].payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
+  assert.deepEqual(net.rotor()[2].payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In", "Giveaway - New Lead"]);
   assert.equal(net.rotor()[2].payload.phone, "+17635550101");
   assert.equal(net.rotor()[2].payload.id, undefined);
   assert.equal(net.rotor()[2].payload.source, "Holiday Lights Giveaway");
@@ -543,3 +543,66 @@ test("a picked address keeps its parts", () => {
   assert.equal(e.address.street, "123 Main St");
   assert.equal(e.address.city, "Delano");
 });
+
+// ---------------------------------------------------------------------------
+// "Giveaway - New Lead": only on leads the giveaway itself created.
+const rotorLib = await import("../netlify/lib/giveaway-rotor.mjs");
+test("new_lead_tags go only on a lead the write created", async () => {
+  const args = { phone: "7635550100", tags: ["Giveaway 2026"], new_lead_tags: ["Giveaway - New Lead"] };
+  let n = mockFetch({ rotor: 201 });
+  const made = await rotorLib.upsertGiveawayLead(args);
+  assert.deepEqual(n.rotor()[1].payload.tags, ["Giveaway 2026", "Giveaway - New Lead"]);
+  assert.equal(made.existing, false);
+  n = mockFetch({ rotor: 200 });
+  const had = await rotorLib.upsertGiveawayLead(args);
+  assert.deepEqual(n.rotor()[1].payload.tags, ["Giveaway 2026"]);
+  assert.equal(had.existing, true);
+});
+test("an entry the giveaway puts into Rotor first gets the New Lead tag; an existing lead doesn't", async () => {
+  net = mockFetch({ rotor: 201 });
+  await ok(post(entry({ phone: "7635550111", address: "11 Oak St" })));
+  assert.ok(net.rotor()[1].payload.tags.includes("Giveaway - New Lead"));
+  net = mockFetch({ rotor: 200 });
+  await ok(post(entry({ phone: "7635550112", address: "12 Oak St" })));
+  assert.ok(!net.rotor()[1].payload.tags.includes("Giveaway - New Lead"));
+  const l = await ok(adminGet());
+  assert.equal(l.stats.new_leads, 1);
+  assert.equal(l.stats.already_leads, 1);
+  assert.equal(l.stats.new_leads_untagged, 0);
+  // A re-send finds the lead it made (200) but it stays a new lead, and keeps its tag.
+  net = mockFetch({ rotor: 200 });
+  await ok(adminPost({ action: "resync_rotor", id: "7635550111" }));
+  assert.ok(net.rotor()[1].payload.tags.includes("Giveaway - New Lead"));
+  assert.equal((await ok(adminGet())).stats.new_leads, 1);
+});
+test("tag_new_leads backfills leads made before the tag existed", async () => {
+  net = mockFetch({ rotor: 201 });
+  await ok(post(entry({ phone: "7635550113", address: "13 Oak St" })));
+  const rec = JSON.parse(JSON.stringify(await store.get("entrant/7635550113", { type: "json" })));
+  delete rec.rotor_new; delete rec.rotor_new_tagged;          // as it was saved before this change
+  await store.setJSON("entrant/7635550113", rec);
+  assert.equal((await ok(adminGet())).stats.new_leads_untagged, 1);
+  net = mockFetch({ rotor: 200 });
+  const r = await ok(adminPost({ action: "tag_new_leads" }));
+  assert.equal(r.tagged, 1);
+  assert.deepEqual(net.rotor()[1].payload.tags, ["Giveaway - New Lead"]);
+  assert.equal((await ok(adminGet())).stats.new_leads_untagged, 0);
+});
+test("rotorIsNew is settled by the first write and never flipped by a re-send", () => {
+  const e = { rotor: { delivered: true, existing: false } };
+  assert.equal(rotorLib.rotorIsNew(e), true);
+  const before = rotorLib.rotorIsNew(e);
+  e.rotor = { delivered: true, existing: true };          // a re-send always finds the lead it made
+  rotorLib.settleRotorNew(e, before);
+  assert.equal(rotorLib.rotorIsNew(e), true);
+  assert.ok(e.rotor_new_tagged);
+  const old = { rotor: { delivered: true, existing: true } };
+  assert.equal(rotorLib.rotorIsNew(old), false);
+  assert.equal(rotorLib.rotorIsNew({ rotor: { delivered: false } }), null);
+  assert.ok(rotorLib.rotorEntryPayload({ ...baseEntrantForPayload(), rotor_new: true }).tags.includes("Giveaway - New Lead"));
+  assert.ok(!rotorLib.rotorEntryPayload({ ...baseEntrantForPayload(), rotor_new: false }).tags.includes("Giveaway - New Lead"));
+});
+function baseEntrantForPayload() {
+  return { phone: "7635550100", first_name: "A", last_name: "B", code: "LIGHTS-ABCDE", offers_opt_in: false,
+    address: { street: "1 Main St", city: "Delano", state: "MN", zip: "55328" }, area: { ok: true } };
+}

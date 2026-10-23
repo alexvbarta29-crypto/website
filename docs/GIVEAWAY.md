@@ -49,6 +49,7 @@ To put the owner video at the top (playbook step 3), add the file under
 | `Giveaway - Winner` | Automatically when the dashboard draws (and for an alternate) | Leave these people OUT of texts 3, 4, 5 |
 | `Giveaway - Coupon Claimed` (+ `Christmas Lights`) | Entrant claimed on their entries page | A real light lead: send the quote |
 | `Giveaway - Out of Area` | Outside the circle, asked for a quote anyway (source "Website quote form") | Normal quote follow-up |
+| `Giveaway - New Lead` | The giveaway itself created this lead: they were NOT already a lead before entering (set once, at their first write to Rotor; never on an existing lead or customer lead) | After the giveaway, filter Leads by this tag to bulk-delete giveaway-only people without touching real customers. Glance over the list for names you know first: someone who is only a Rotor *customer* (no lead) may still get it |
 
 Entering does NOT add `Christmas Lights`: that tag is how real light leads
 are found, and a claim adds it. Each new entrant's notes say "$250 coupon
