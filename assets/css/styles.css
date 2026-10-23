@@ -67,7 +67,7 @@ picture { display: contents; }
      deliberately light: a heavy blur only reads as blur if enough of the
      backdrop shows through, so opacity and blur have to move together.
      Raise --glass-bg toward 1 and the surface goes opaque white and the
-     blur stops being visible at all, whatever its radius. */
+     blur stops being visible at all, whatever its radius.
      One tint everywhere, deliberately. A lighter tint was tried for the
      header while it sits over the hero, on the theory that letting more of
      the photo through shows off the blur — but the hero is a dark stormy
