@@ -97,6 +97,39 @@ const coord = (v, min, max) => {
   return Number.isFinite(n) && n >= min && n <= max ? n : null;
 };
 
+// A whole address typed into the one box ("123 Main St, Delano, MN 55328",
+// "123 Main St, Delano 55328") → its street, city, state and ZIP, so the
+// household check and Rotor get the parts. Anything it can't read stays in
+// the street, untouched.
+const STATE_ZIP = /^(?:(MN|Minn\.?|Minnesota|[A-Z]{2})\b\.?)?\s*(\d{5}(?:-\d{4})?)?$/i;
+export function splitTypedAddress(line, known = {}) {
+  const parts = String(line || "").split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2 || !/\d/.test(parts[0])) return {};
+  const out = { street: parts[0] };
+  let rest = parts.slice(1);
+  if (/^(usa?|united states)$/i.test(rest[rest.length - 1] || "")) rest = rest.slice(0, -1);
+  // The last part may be "MN 55328", "55328", or "Delano MN 55328".
+  const last = rest[rest.length - 1] || "";
+  const tail = last.match(/^(.*?)[\s]*\b((?:MN|Minn\.?|Minnesota|[A-Z]{2})\.?\s*(?:\d{5}(?:-\d{4})?)?|\d{5}(?:-\d{4})?)$/i);
+  if (STATE_ZIP.test(last)) {
+    const m = last.match(STATE_ZIP);
+    if (m[1] && !known.state) out.state = /^min/i.test(m[1]) ? "MN" : m[1].toUpperCase();
+    if (m[2] && !known.zip) out.zip = m[2].slice(0, CAPS.zip);
+    rest = rest.slice(0, -1);
+  } else if (tail && tail[1] && /\d|^(MN|Minn|Minnesota)/i.test(tail[2])) {
+    const m = tail[2].match(STATE_ZIP);
+    if (m) {
+      if (m[1] && !known.state) out.state = /^min/i.test(m[1]) ? "MN" : m[1].toUpperCase();
+      if (m[2] && !known.zip) out.zip = m[2].slice(0, CAPS.zip);
+      rest = [...rest.slice(0, -1), tail[1]];
+    }
+  }
+  const city = rest[0] || "";
+  if (!city || /\d/.test(city) || city.length > CAPS.city) return {};
+  out.city = city;
+  return out;
+}
+
 export function validateEntry(body) {
   if (!isPlainObject(body)) throw new ValidationError("Invalid request.");
   if (clean(body.website)) throw new ValidationError("Invalid request.");   // honeypot
@@ -116,6 +149,7 @@ export function validateEntry(body) {
     lng: coord(body.address_lng, -180, 180),
     verified: ["yes", "typed"].includes(clean(body.address_verified)) ? clean(body.address_verified) : "no",
   };
+  if (!address.city) Object.assign(address, splitTypedAddress(address.street, address));
   if (body.consent !== true && body.consent !== "on" && body.consent !== "true")
     throw new ValidationError("Please check the box to agree to giveaway texts.", "consent");
   const yes = (v) => v === true || v === "on" || v === "true";

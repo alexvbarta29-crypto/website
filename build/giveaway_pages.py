@@ -13,6 +13,10 @@ import components as C
 from icons import icon
 from sitedata import BIZ, GIVEAWAY as G, XMAS_PHOTO_ALT
 
+# Centre of the giveaway circle (the Delano shop, same as the server's
+# GIVEAWAY.origin): the address box only suggests addresses inside it.
+GW_ORIGIN = f'{BIZ["lat"]},{BIZ["lng"]}'
+
 PRIZE = f"${G['prize_value']:,}"
 COUPON = f"${G['coupon']}"
 WINNERS = G["winners"]
@@ -78,7 +82,8 @@ def _entry_form():
           <div class="field"><label for="gw-name">Your name</label><input id="gw-name" name="name" autocomplete="name" required maxlength="120"></div>
           <div class="field"><label for="gw-phone">Mobile number</label><input id="gw-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="25"></div>
           <div class="field addr-field"><label for="gw-address">Home address</label>
-            <input type="text" id="gw-address" name="address" autocomplete="off" required maxlength="200" data-address-input placeholder="Start typing your address…">
+            <input type="text" id="gw-address" name="address" autocomplete="off" required maxlength="200" data-address-input data-address-origin="{GW_ORIGIN}" data-address-radius="{G["radius_mi"]}" placeholder="Start typing your address…">
+            <input type="hidden" name="address_street" data-address-street value="">
             <input type="hidden" name="address_verified" data-address-verified value="no">
             <input type="hidden" name="address_city" data-address-city value="">
             <input type="hidden" name="address_zip" data-address-zip value="">
@@ -372,7 +377,6 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
   <section class="gw-value"><div class="gw-col">
     <h2>The best-looking house on the street. Zero work.</h2>
     <div class="gw-photos">{photos_html}</div>
-    <p class="gw-photos-note">{"A real Barta install." if len(ph) == 1 else "Real Barta installs around the West Metro."}</p>
     <ul class="gw-perks">{perk_html}</ul>
   </div></section>
 
