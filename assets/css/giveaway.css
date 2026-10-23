@@ -191,7 +191,8 @@ body:has(.gw-rules) .gw-lp-top { position: static; background: #fff; border-bott
 }
 
 /* ---------- Pre-launch lock (sitedata GIVEAWAY["lock_sha256"]) ---------- */
-html:not(.gw-open) .gw-page, html:not(.gw-open) .gw-lp-foot, html:not(.gw-open) .gw-lp-cta { display: none !important; }
+/* Only while a lock is set: _lock_head() adds .gw-locked; no lock, nothing hidden. */
+html.gw-locked:not(.gw-open) .gw-page, html.gw-locked:not(.gw-open) .gw-lp-foot, html.gw-locked:not(.gw-open) .gw-lp-cta { display: none !important; }
 html.gw-open .gw-gate { display: none; }
 .gw-gate-hero { position: relative; isolation: isolate; min-height: 100vh; min-height: 100svh; display: flex; align-items: center;
   padding-block: 110px 60px; background: #fff; }
@@ -213,7 +214,7 @@ html.gw-open .gw-gate { display: none; }
 .gw-gate-card { margin-top: 0; }
 .gw-gate-card .field { margin-top: 18px; }
 .gw-gate-card .gw-submit { margin-top: 16px; }
-html:not(.gw-open) body { padding-bottom: 0; }
+html.gw-locked:not(.gw-open) body { padding-bottom: 0; }
 
 /* Giveaway circle map (same render as the intro reel) */
 .gw-map { margin: 20px 0 0; }
