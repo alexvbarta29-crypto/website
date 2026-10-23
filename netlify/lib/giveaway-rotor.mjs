@@ -18,6 +18,10 @@
 // the real lead sources (Website quote form, Meta Ads, Referral...) never
 // fires for a giveaway entrant: they stay out of the sales pipeline.
 
+import { GIVEAWAY, DATES, TAGS, shareUrl } from "./giveaway-config.mjs";
+import { addressLine } from "./giveaway-lib.mjs";
+import { fullName } from "./referral-lib.mjs";
+
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
 const TIMEOUT_MS = 3500;
@@ -116,4 +120,45 @@ export async function upsertGiveawayLead({ phone, tags, name, fields = {}, notes
   const r2 = await post(update);
   const delivered = okStatus(r2.status);
   return { delivered, status: delivered ? r1.status : r2.status, lead_id: id, existing, details: delivered };
+}
+
+// ---------------------------------------------------------------------------
+// What each giveaway event writes to Rotor (used by /api/giveaway and the
+// office dashboard).
+
+export function rotorEntryPayload(e) {
+  const a = e.address;
+  const lines = [
+    `Entered the ${GIVEAWAY.name} (drawing ${DATES.draw}).`,
+    `Share link: ${shareUrl(e.code)}`,
+  ];
+  if (e.referred_by) lines.push(`Invited by: ${e.referred_by.name} (${e.referred_by.code})`);
+  lines.push(`$${GIVEAWAY.coupon} coupon texts: ${e.offers_opt_in ? "YES, opted in" : "no"}`);
+  if (e.area.ok !== true) lines.push("Service area: couldn't verify the address, please check.");
+  // No "Christmas Lights" tag here: entering isn't a request for lights, and
+  // that tag is how real light leads are found. A coupon claim adds it.
+  const fields = { source: GIVEAWAY.name, address_state: a.state || "MN", address_country: "US" };
+  if (a.street) fields.address_street1 = a.street;
+  if (a.city) fields.address_city = a.city;
+  if (a.zip) fields.address_zip = a.zip;
+  return {
+    phone: e.phone,
+    tags: [TAGS.ENTRANT, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : [])],
+    name: fullName(e.first_name, e.last_name),
+    fields,
+    notes: lines.join("\n"),
+  };
+}
+
+export function rotorClaimPayload(e, at, by = "") {
+  return {
+    phone: e.phone,
+    tags: [TAGS.CLAIMED, TAGS.LIGHTS],
+    name: fullName(e.first_name, e.last_name),
+    service_type: "Christmas Light Installation",
+    fields: { source: GIVEAWAY.name, service_type: "Christmas Light Installation" },
+    notes: `Claimed $${GIVEAWAY.coupon} off a Christmas light installation (${GIVEAWAY.name}) on `
+      + `${new Date(at).toLocaleString("en-US", { timeZone: "America/Chicago" })}${by ? " (" + by + ")" : ""}. Send the quote!\n`
+      + `Address: ${addressLine(e.address)}`,
+  };
 }

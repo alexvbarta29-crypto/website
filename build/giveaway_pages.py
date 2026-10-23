@@ -93,7 +93,7 @@ def _entry_form():
           <label class="check gw-consent"><input type="checkbox" name="consent" required>
             <span><strong>Text me about the giveaway.</strong> My entry confirmation, up to two reminders, the results, and replies to my texts. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span></label>
           <label class="check gw-consent"><input type="checkbox" name="offers">
-            <span><strong>Send me the coupon.</strong> If I don&rsquo;t win, text me a Barta entrant coupon after the drawing, plus a few offers a year. Reply STOP anytime.</span></label>
+            <span><strong>Yes, send me my {COUPON} off coupon.</strong> If I don&rsquo;t win, text me {COUPON} off a Christmas light install after the drawing, plus a few offers a year. Reply STOP anytime.</span></label>
           <p class="gw-err" data-gw-error role="alert" hidden></p>
           <button type="submit" class="btn btn-lg btn-block gw-submit">Enter the giveaway {icon('arrow')}</button>
           <p class="gw-legal">No purchase necessary. Ends {G['closes'].split(' at ')[0].split(', ', 1)[1]}.
@@ -511,6 +511,8 @@ def giveaway_admin_page(depth=1, seo_title=None):
       <div class="gwa-card-head"><h2>Entrants</h2>
         <input class="gwa-search" type="search" placeholder="Search name, phone, city…" data-gwa-search>
       </div>
+      <p class="gwa-sub">Tap anyone to call or text them, edit their details or coupon status, add a note, or delete them.</p>
+      <div class="gwa-filters" data-gwa-filters></div>
       <div class="gwa-list" data-gwa-list></div>
     </section>
 

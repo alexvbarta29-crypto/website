@@ -21,7 +21,7 @@ import {
   saveEntrantRecord, allocateCode, getDraw, listKeys, putJSON, KEYS, guarded,
 } from "../lib/giveaway-store.mjs";
 import { sendSms, e164, officePhone } from "../lib/referral-notify.mjs";
-import { upsertGiveawayLead } from "../lib/giveaway-rotor.mjs";
+import { upsertGiveawayLead, rotorEntryPayload, rotorClaimPayload } from "../lib/giveaway-rotor.mjs";
 import { newToken, nowISO, safeErr, withTimeout, fullName, lastInitial, normalizePhone } from "../lib/referral-lib.mjs";
 
 const json = (body, status = 200) =>
@@ -177,29 +177,7 @@ async function enter(body) {
   });
 }
 
-export function rotorEntryPayload(e) {
-  const a = e.address;
-  const lines = [
-    `Entered the ${GIVEAWAY.name} (drawing ${DATES.draw}).`,
-    `Share link: ${shareUrl(e.code)}`,
-  ];
-  if (e.referred_by) lines.push(`Invited by: ${e.referred_by.name} (${e.referred_by.code})`);
-  lines.push(`$${GIVEAWAY.coupon} coupon texts: ${e.offers_opt_in ? "YES, opted in" : "no"}`);
-  if (e.area.ok !== true) lines.push("Service area: couldn't verify the address, please check.");
-  // No "Christmas Lights" tag here: entering isn't a request for lights, and
-  // that tag is how real light leads are found. A coupon claim adds it.
-  const fields = { source: GIVEAWAY.name, address_state: a.state || "MN", address_country: "US" };
-  if (a.street) fields.address_street1 = a.street;
-  if (a.city) fields.address_city = a.city;
-  if (a.zip) fields.address_zip = a.zip;
-  return {
-    phone: e.phone,
-    tags: [TAGS.ENTRANT, ...(e.offers_opt_in ? [TAGS.COUPON_OPTIN] : [])],
-    name: fullName(e.first_name, e.last_name),
-    fields,
-    notes: lines.join("\n"),
-  };
-}
+export { rotorEntryPayload };
 
 // ---------------------------------------------------------------------------
 // "Check my entries" by mobile number, for people arriving from a Rotor
@@ -231,16 +209,8 @@ async function claim(body) {
   if (!claimOpen()) return fail(410, `Sorry, the $${GIVEAWAY.coupon} coupon expired ${DATES.claim_by}.`);
 
   const at = nowISO();
-  const rotor = await withTimeout(() => upsertGiveawayLead({
-    phone: e.phone,
-    tags: [TAGS.CLAIMED, TAGS.LIGHTS],
-    name: fullName(e.first_name, e.last_name),
-    service_type: "Christmas Light Installation",
-    fields: { source: GIVEAWAY.name, service_type: "Christmas Light Installation" },
-    notes: `Claimed $${GIVEAWAY.coupon} off a Christmas light installation (${GIVEAWAY.name}) on `
-      + `${new Date(at).toLocaleString("en-US", { timeZone: "America/Chicago" })}. Send the quote!\n`
-      + `Address: ${addressLine(e.address)}`,
-  }), 8000, "rotor").catch((err) => ({ delivered: false, error: safeErr(err) }));
+  const rotor = await withTimeout(() => upsertGiveawayLead(rotorClaimPayload(e, at)), 8000, "rotor")
+    .catch((err) => ({ delivered: false, error: safeErr(err) }));
 
   e.coupon = { claimed_at: at, rotor };
   e.updated_at = at;

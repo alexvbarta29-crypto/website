@@ -72,3 +72,20 @@ body { background: var(--mist); }
 .gwa-leaders { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .gwa-leaders li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .gwa-leaders b { color: var(--xmas-red); }
+
+/* Filters + office edit form */
+.gwa-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+.gwa-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--navy-800); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.gwa-chip b { font-weight: 800; color: var(--slate-500); }
+.gwa-chip.is-on { background: var(--navy-800); border-color: var(--navy-800); color: #fff; }
+.gwa-chip.is-on b { color: #ffd27a; }
+.gwa-edit { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--mist); display: grid; gap: 10px; }
+.gwa-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.gwa-edit label { display: grid; gap: 4px; font-size: .8rem; font-weight: 700; color: var(--slate-700); }
+.gwa-edit input:not([type="checkbox"]), .gwa-edit textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 15px; font-weight: 500; color: var(--ink); background: #fff; }
+.gwa-edit .gwa-span2 { grid-column: 1 / -1; }
+.gwa-edit label.gwa-check { display: flex; align-items: center; gap: 10px; font-size: .92rem; font-weight: 600; min-height: 36px; }
+.gwa-edit label.gwa-check input { width: 20px; height: 20px; accent-color: var(--xmas-green); }
+@media (max-width: 640px) { .gwa-edit-grid { grid-template-columns: 1fr; } }
