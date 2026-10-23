@@ -372,7 +372,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
   <section class="gw-value"><div class="gw-col">
     <h2>The best-looking house on the street. Zero work.</h2>
     <div class="gw-photos">{photos_html}</div>
-    <p class="gw-photos-note">Real Barta installs around the West Metro.</p>
+    <p class="gw-photos-note">{"A real Barta install." if len(ph) == 1 else "Real Barta installs around the West Metro."}</p>
     <ul class="gw-perks">{perk_html}</ul>
   </div></section>
 

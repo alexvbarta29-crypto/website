@@ -118,19 +118,14 @@ GIVEAWAY = {
     # password box instead of the page. SHA-256 of the password, lowercased
     # with spaces removed (currently "alexbarta"). Set to "" to open the page.
     "lock_sha256": "",
-    # The owner's own install photos (Oct 2026): EXIF stripped, a house
-    # number and a license plate blurred, yard signs cropped out. The first
-    # is also the link-share preview (its -og.jpg crop).
-    "hero_photo": "assets/img/giveaway-white-gables.jpg",
+    # The owner's pick for the page and the link-share preview (Oct 23,
+    # 2026): EXIF stripped, the house-number plaque blurred.
+    "hero_photo": "assets/img/giveaway-white-estate.jpg",
     "photos": [
-        "assets/img/giveaway-white-gables.jpg",
-        "assets/img/giveaway-red-warm-white.jpg",
-        "assets/img/giveaway-moonlit-farmhouse.jpg",
+        "assets/img/giveaway-white-estate.jpg",
     ],
     "photo_alts": {
-        "assets/img/giveaway-white-gables.jpg": "A dark-sided two-story home with every gable and roofline outlined in warm white lights, installed by Barta",
-        "assets/img/giveaway-red-warm-white.jpg": "A two-story home at dusk with red and warm white lights on the rooflines and a wrapped porch post, installed by Barta",
-        "assets/img/giveaway-moonlit-farmhouse.jpg": "A white farmhouse under the moon with warm white lights on every peak, installed by Barta",
+        "assets/img/giveaway-white-estate.jpg": "A white two-story home at dusk with warm white lights outlining the roofline and every window, lit garland over the front door and lights in the hedges",
     },
 }
 
