@@ -98,7 +98,7 @@ GIVEAWAY = {
     "prize_value": 1500,          # approximate retail value of one prize, $
     "coupon": 250,                # $ off for every entrant who doesn't win
     "code_prefix": "LIGHTS",
-    "starts": "Wednesday, October 21, 2026",
+    "starts": "Friday, October 23, 2026",
     "closes": "Thursday, November 5, 2026 at 11:59 PM Central Time",
     "closes_iso": "2026-11-06T05:59:59Z",
     "draw": "Friday, November 6, 2026",
