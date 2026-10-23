@@ -1,5 +1,20 @@
 [
   {
+    "id": "17980351626125708",
+    "image": "assets/img/instagram/17980351626125708.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17980351626125708.jpg",
+        "video": "assets/img/instagram/17980351626125708.mp4"
+      }
+    ],
+    "caption": "You and a friend can win free holiday lights. \ud83c\udf84\n\nEnter at bartawindowwashing.com/giveaway\n\nDrawing November 6th.",
+    "permalink": "https://www.instagram.com/reel/De13M4qSelS/",
+    "timestamp": "2026-10-23T15:19:32+0000"
+  },
+  {
     "id": "17929453812421949",
     "image": "assets/img/instagram/17929453812421949.jpg",
     "type": "VIDEO",
@@ -136,30 +151,5 @@
     "caption": "Giving your windows the professional care they deserve! \ud83e\uddfc\ud83c\udfe0\ud83c\udf32",
     "permalink": "https://www.instagram.com/p/Db5paf6EUg2/",
     "timestamp": "2026-08-11T13:00:03+0000"
-  },
-  {
-    "id": "18111014425971457",
-    "image": "assets/img/instagram/18111014425971457_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18111014425971457_0.jpg"
-      },
-      {
-        "excluded": true
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18111014425971457_2.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18111014425971457_3.jpg"
-      }
-    ],
-    "caption": "Who\u2019s ready for a refresh this fall? \ud83c\udf41\ud83c\udfe0\ud83e\uddfc",
-    "permalink": "https://www.instagram.com/p/Dbvpsn5kfiJ/",
-    "timestamp": "2026-08-07T15:51:00+0000"
   }
 ]
