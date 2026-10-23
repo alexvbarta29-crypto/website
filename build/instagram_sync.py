@@ -99,19 +99,23 @@ def _ffmpeg():
     return shutil.which("ffmpeg")
 
 
-def _shrink_video(path):
+def _shrink_video(path, mute=False):
     """Story videos arrive as full 1080x1920 files of several MB each. If
     ffmpeg is available (it is on GitHub's runners), re-encode to at most 720px
     wide, which looks the same in a carousel card at a fraction of the size.
-    Keeps the original if anything goes wrong or the result isn't smaller."""
+    mute drops the sound track: story videos play silently on a loop in the
+    carousel, so audio would only add weight (and any licensed music on a
+    story isn't ours to re-host). Keeps the original if anything goes wrong or
+    the result isn't smaller."""
     ff = _ffmpeg()
     if not ff:
         return
     tmp = path + ".tmp.mp4"
+    audio = ["-an"] if mute else ["-c:a", "aac", "-b:a", "96k"]
     try:
         subprocess.run([ff, "-y", "-loglevel", "error", "-i", path,
                         "-vf", "scale='min(720,iw)':-2", "-c:v", "libx264", "-crf", "27",
-                        "-preset", "veryfast", "-c:a", "aac", "-b:a", "96k",
+                        "-preset", "veryfast", *audio,
                         "-movflags", "+faststart", tmp], check=True, timeout=180)
         if os.path.getsize(tmp) < os.path.getsize(path):
             os.replace(tmp, path)
@@ -142,10 +146,30 @@ def _remove_story_files(story_id):
         os.remove(path)
 
 
+def _story_video(st, name):
+    """Downloads a live video story's file (re-encoded, silent). Returns
+    (path, None) or (None, the reason it couldn't), which is saved with the
+    story so a missing video can be explained."""
+    url = st.get("media_url")
+    if not url:
+        return None, "Instagram didn't provide the video file (it withholds it for stories with licensed music)"
+    dest = os.path.join(IMG_DIR, f"{name}.mp4")
+    try:
+        download_file(url, dest)
+    except Exception as e:
+        if os.path.exists(dest):
+            os.remove(dest)
+        return None, f"video download failed: {e}"
+    _shrink_video(dest, mute=True)
+    return f"assets/img/instagram/{name}.mp4", None
+
+
 def sync_stories(token):
     """Adds any live story not saved yet to STORIES_PATH (newest first),
-    downloading its media; keeps the newest MAX_STORIES. Best-effort: if the
-    stories call fails, posts still sync and the saved stories stay."""
+    downloading its media; keeps the newest MAX_STORIES. A saved video story
+    that's still missing its video gets another try on every run while it's
+    live (and a "video_note" saying why, if it still can't). Best-effort: if
+    the stories call fails, posts still sync and the saved stories stay."""
     try:
         with open(STORIES_PATH, encoding="utf-8") as f:
             saved = json.load(f)
@@ -157,27 +181,49 @@ def sync_stories(token):
         detail = e.read().decode()[:300] if isinstance(e, urllib.error.HTTPError) else str(e)
         print(f"  (stories skipped: {detail})")
         return
-    known = {s["id"] for s in saved}
-    added = 0
+    by_id = {s["id"]: s for s in saved}
+    added = videos = 0
     for st in live:
         sid = st.get("id")
-        if not sid or sid in known or sid in EXCLUDED_STORY_IDS:
+        if not sid or sid in EXCLUDED_STORY_IDS:
             continue
         media_type = st.get("media_type")
         name = f"story-{sid}"
-        slide = _save_slide(media_type, st.get("media_url"), st.get("thumbnail_url"), name)
-        video = os.path.join(IMG_DIR, f"{name}.mp4")
-        if slide is None and media_type == "VIDEO" and os.path.exists(video):
-            if _poster_from_video(video, os.path.join(IMG_DIR, f"{name}.jpg")):
-                slide = {"type": media_type, "image": f"assets/img/instagram/{name}.jpg",
-                         "video": f"assets/img/instagram/{name}.mp4"}
-        if slide is None:
+        entry = by_id.get(sid)
+        if entry is not None:
+            if media_type == "VIDEO" and not entry.get("video"):
+                video, note = _story_video(st, name)
+                if video:
+                    entry["video"] = video
+                    entry.pop("video_note", None)
+                    videos += 1
+                else:
+                    entry["video_note"] = note
+            continue
+        image = f"assets/img/instagram/{name}.jpg"
+        still_url = st.get("thumbnail_url") if media_type == "VIDEO" else st.get("media_url")
+        have_still = False
+        if still_url:
+            try:
+                download_file(still_url, os.path.join(ROOT, image))
+                have_still = True
+            except Exception as e:
+                print(f"  (skipped image for {name}: {e})")
+        video, note = _story_video(st, name) if media_type == "VIDEO" else (None, None)
+        if not have_still and video:
+            have_still = _poster_from_video(os.path.join(ROOT, video), os.path.join(ROOT, image))
+        if not have_still:
             _remove_story_files(sid)
             continue
-        if slide.get("video"):
-            _shrink_video(os.path.join(ROOT, slide["video"]))
-        saved.append({"id": sid, "source": "story", **slide, "timestamp": st.get("timestamp")})
-        known.add(sid)
+        entry = {"id": sid, "source": "story", "type": media_type, "image": image,
+                 "timestamp": st.get("timestamp")}
+        if video:
+            entry["video"] = video
+            videos += 1
+        if note:
+            entry["video_note"] = note
+        saved.append(entry)
+        by_id[sid] = entry
         added += 1
     saved.sort(key=lambda s: s.get("timestamp") or "", reverse=True)
     for old in saved[MAX_STORIES:]:
@@ -185,7 +231,7 @@ def sync_stories(token):
     saved = [s for s in saved[:MAX_STORIES] if s["id"] not in EXCLUDED_STORY_IDS]
     with open(STORIES_PATH, "w", encoding="utf-8") as f:
         json.dump(saved, f, indent=2)
-    print(f"  Stories: {len(live)} live, {added} new saved, {len(saved)} kept.")
+    print(f"  Stories: {len(live)} live, {added} new saved, {videos} videos saved, {len(saved)} kept.")
 
 
 def download_file(url, dest):
