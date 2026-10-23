@@ -362,8 +362,16 @@
     const el = $("[data-gwa-outside]");
     el.innerHTML = data.outside.length ? data.outside.map((o) =>
       `<div class="gwa-out"><b>${esc(o.first_name)} ${esc(o.last_name)}</b> · <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a>
-       <span class="gwa-sub">${esc(o.address)}${o.miles ? " · " + esc(o.miles) + " mi" : ""} · ${esc(when(o.created_at))}</span></div>`).join("")
+       <span class="gwa-sub">${esc(o.address)}${o.miles ? " · " + esc(o.miles) + " mi" : ""} · ${esc(when(o.created_at))}</span>
+       <button class="gwa-btn gwa-btn-danger gwa-out-del" data-del-outside="${esc(o.id)}">Delete</button></div>`).join("")
       : '<p class="gwa-sub">None yet. These people are also in Rotor, tagged "Giveaway - Out of Area".</p>';
+    el.querySelectorAll("[data-del-outside]").forEach((b) => {
+      b.onclick = async () => {
+        if (!confirm("Remove this person from the out-of-area list? (Their Rotor lead stays.)")) return;
+        try { await api("POST", { action: "delete_outside", id: b.dataset.delOutside }); await load(); toast("Deleted."); }
+        catch (e) { toast(e.message, true); }
+      };
+    });
   }
 
   $("[data-gwa-search]").addEventListener("input", (ev) => { query = ev.target.value; showAll = false; if (data) renderList(); });

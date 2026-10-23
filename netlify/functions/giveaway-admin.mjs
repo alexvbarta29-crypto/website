@@ -5,7 +5,7 @@
 //   GET  /api/giveaway/admin?format=csv    every entrant, with personalised texts, as CSV
 //   POST /api/giveaway/admin {action, …}   draw | redraw | undo_draw | send_batch | mark_sent
 //                                          | set_note | disqualify | set_opt_out | update | resync_rotor
-//                                          | delete | delete_all
+//                                          | delete | delete_outside | delete_all
 //
 // Auth: "Authorization: Bearer <key>", where the key is GIVEAWAY_ADMIN_KEY,
 // or REFERRAL_ADMIN_KEY when that isn't set, so the office can use the key
@@ -119,7 +119,7 @@ async function list(store, req) {
     draw: drawResult,
     entrants: entrants.map((e) => adminRow(e, counts, winners)),
     outside: outside.sort(newestFirst).map((o) => ({
-      first_name: o.first_name, last_name: o.last_name, phone: o.phone,
+      id: o.id, first_name: o.first_name, last_name: o.last_name, phone: o.phone,
       address: addressLine(o.address), miles: o.area ? o.area.miles : null, created_at: o.created_at,
     })),
   });
@@ -185,6 +185,11 @@ async function act(store, req) {
         await saveEntrantRecord(store, e);
         if (!e.rotor.delivered) return fail(502, "Rotor didn't accept it. Try again in a minute.");
         return json({ ok: true, id: e.id, rotor: e.rotor });
+      }
+      case "delete_outside": {
+        if (!/^\d{10}$/.test(id)) return fail(404, "Not found.");
+        await store.delete(KEYS.outside(id));
+        return json({ ok: true, deleted: id });
       }
       case "delete": {
         const e = await one();

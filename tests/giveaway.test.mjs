@@ -505,3 +505,11 @@ test("one drawn winner: their referrer is the only other winner, so at most 2 in
     await ok(adminPost({ action: "undo_draw", confirm: "UNDO DRAW" }));
   }
 });
+
+test("admin can delete someone from the out-of-area list", async () => {
+  await ok(post({ ...entry({ address_lat: 44.98, address_lng: -93.27 }), action: "outside_quote" }));
+  const before = await ok(adminGet());
+  assert.equal(before.outside.length, 1);
+  await ok(adminPost({ action: "delete_outside", id: before.outside[0].id }));
+  assert.equal((await ok(adminGet())).outside.length, 0);
+});
