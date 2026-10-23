@@ -758,6 +758,34 @@
     const announce = (name, detail) =>
       input.dispatchEvent(new CustomEvent(name, { bubbles: true, detail }));
     if (!list) return;
+    // Optional service circle (the giveaway: data-address-origin="lat,lng"
+    // + data-address-radius="miles"). Suggestions then come only from inside
+    // it, and only real street addresses, never a bare town.
+    const circle = (() => {
+      const o = String(input.dataset.addressOrigin || "").split(",").map(Number);
+      const r = Number(input.dataset.addressRadius);
+      if (o.length !== 2 || !o.every(Number.isFinite) || !(r > 0)) return null;
+      const dLat = (r / 69) * 1.03;
+      const dLng = (r / (69.17 * Math.cos((o[0] * Math.PI) / 180))) * 1.03;
+      return { lat: o[0], lng: o[1], r,
+        box: [o[1] - dLng, o[0] + dLat, o[1] + dLng, o[0] - dLat].map((v) => v.toFixed(4)).join(",") };
+    })();
+    const rad = (d) => (d * Math.PI) / 180;
+    const milesFrom = (lat, lng) => {
+      const h = Math.sin(rad(lat - circle.lat) / 2) ** 2
+        + Math.cos(rad(circle.lat)) * Math.cos(rad(lat)) * Math.sin(rad(lng - circle.lng) / 2) ** 2;
+      return 2 * 3958.8 * Math.asin(Math.sqrt(h));
+    };
+    const usable = (r) => {
+      if (!circle) return true;
+      const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+      return Boolean((r.address || {}).road) && Number.isFinite(lat) && Number.isFinite(lng)
+        && milesFrom(lat, lng) <= circle.r;
+    };
+    // With a hidden street field (the giveaway), the box shows the whole
+    // picked address, "123 Main St, Delano, MN 55328", so the town is right
+    // there to see, and the street travels on its own.
+    const streetField = panel.querySelector("[data-address-street]");
     let timer = null, aborter = null, lastFired = 0, overList = false;
     // Nominatim's usage policy caps clients at 1 request/second, so live
     // as-you-type suggestions run on a leading-edge throttle: the first
@@ -801,33 +829,40 @@
     // Builds one suggestion row. houseNo is carried over when the match came
     // from a street-level fallback search, so "320 3rd St S" keeps its 320
     // even though OpenStreetMap only knows the street.
-    const addRow = (r, houseNo) => {
+    const describe = (r, houseNo) => {
       const addr = r.address || {};
       const road = [addr.house_number || houseNo, addr.road].filter(Boolean).join(" ");
       const cityName = addr.city || addr.town || addr.village || addr.hamlet || "";
-      // Keep suggestions to street, city, state, ZIP — no county/country clutter.
-      const short = [road, cityName, addr.state, addr.postcode].filter(Boolean).join(", ");
+      // Prefer the two-letter abbreviation ("US-MN" → "MN") over the
+      // spelled-out state name Nominatim also returns.
+      const iso = addr["ISO3166-2-lvl4"] || "";
+      const stateAbbr = iso.indexOf("-") > -1 ? iso.split("-")[1] : "";
+      const st = stateAbbr || addr.state || "";
+      // Street, city, state ZIP — no county/country clutter.
+      const short = [road, cityName, [st, addr.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+      return { addr, road, cityName, st, short };
+    };
+    const pick = (r, houseNo) => {
+      const { addr, road, cityName, st, short } = describe(r, houseNo);
+      input.value = streetField ? (short || r.display_name) : (road || r.display_name);
+      if (streetField) streetField.value = road;
+      if (cityField) cityField.value = cityName || cityField.value;
+      if (zipField) zipField.value = addr.postcode || zipField.value;
+      if (stateField) stateField.value = st || stateField.value;
+      if (countryField) countryField.value = (addr.country_code || "").toUpperCase() || countryField.value;
+      if (verified) verified.value = "yes";
+      if (status) status.hidden = true;
+      setCoords(r.lat, r.lon);
+      prevLen = input.value.length;
+      close();
+      announce("address:picked", { city: cityName, zip: addr.postcode || "",
+        state: st, lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
+    };
+    const addRow = (r, houseNo) => {
       const li = document.createElement("li");
-      li.textContent = short || r.display_name;
+      li.textContent = describe(r, houseNo).short || r.display_name;
       li.setAttribute("role", "option");
-      li.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        input.value = road || r.display_name;
-        if (cityField) cityField.value = cityName || cityField.value;
-        if (zipField) zipField.value = addr.postcode || zipField.value;
-        // Prefer the two-letter abbreviation ("US-MN" → "MN") over the
-        // spelled-out state name Nominatim also returns.
-        const iso = addr["ISO3166-2-lvl4"] || "";
-        const stateAbbr = iso.indexOf("-") > -1 ? iso.split("-")[1] : "";
-        if (stateField) stateField.value = stateAbbr || addr.state || stateField.value;
-        if (countryField) countryField.value = (addr.country_code || "").toUpperCase() || countryField.value;
-        if (verified) verified.value = "yes";
-        if (status) status.hidden = true;
-        setCoords(r.lat, r.lon);
-        close();
-        announce("address:picked", { city: cityName, zip: addr.postcode || "",
-          state: stateAbbr || addr.state || "", lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
-      });
+      li.addEventListener("pointerdown", (e) => { e.preventDefault(); pick(r, houseNo); });
       list.appendChild(li);
     };
     // OpenStreetMap simply doesn't hold every house number, so the list must
@@ -841,6 +876,7 @@
       li.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         input.value = typed;
+        if (streetField) streetField.value = "";
         if (verified) verified.value = "typed";
         if (status) status.hidden = true;
         setCoords("", "");
@@ -850,13 +886,60 @@
       list.appendChild(li);
     };
     const queryUrl = (text) =>
-      "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us" +
-      "&viewbox=-94.3,45.4,-93.2,44.7&bounded=0&q=" + encodeURIComponent(expand(text));
+      "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=us" +
+      (circle ? "&limit=10&viewbox=" + circle.box + "&bounded=1"
+              : "&limit=5&viewbox=-94.3,45.4,-93.2,44.7&bounded=0") +
+      "&q=" + encodeURIComponent(expand(text));
+    // Same street + town twice (OSM often has several pieces of one road)
+    // shows once.
+    const tidy = (results, carryNo) => {
+      const seen = new Set();
+      return results.filter(usable).filter((r) => {
+        const k = describe(r, carryNo).short.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    };
+    // Looks the typed text up: the exact address first, then (when OSM has
+    // never been told about that house number, which sinks the whole query)
+    // the street alone, re-attaching the number to whatever is picked.
+    // Resolves to { results, carryNo, houseNo } or null when aborted.
+    const lookup = (q) => {
+      if (aborter) aborter.abort();
+      aborter = new AbortController();
+      lastFired = Date.now();
+      const opts = { signal: aborter.signal, headers: { Accept: "application/json" } };
+      const houseNo = (q.match(/^\s*(\d+[a-zA-Z]?)\s+/) || [])[1] || "";
+      const streetOnly = houseNo ? q.replace(/^\s*\d+[a-zA-Z]?\s+/, "") : "";
+      return fetch(queryUrl(q), opts)
+        .then((r) => r.json())
+        .then((raw) => {
+          const results = tidy(raw, "");
+          if (results.length || !streetOnly || streetOnly.length < 3) return { results, carryNo: "", houseNo };
+          return fetch(queryUrl(streetOnly), opts)
+            .then((r) => r.json())
+            .then((streets) => ({ results: tidy(streets, houseNo), carryNo: houseNo, houseNo }));
+        })
+        .catch((e) => (e.name === "AbortError" ? null : { results: [], carryNo: "", houseNo }));
+    };
+    const paint = (q, found) => {
+      if (overList) return; // never rebuild the list mid-interaction
+      list.innerHTML = "";
+      found.results.slice(0, 5).forEach((r) => addRow(r, found.carryNo));
+      if (circle && !found.results.length) {
+        const li = document.createElement("li");
+        li.className = "addr-loading";
+        li.setAttribute("aria-disabled", "true");
+        li.textContent = "No match in our giveaway area yet. Keep typing, or add your town.";
+        list.appendChild(li);
+      }
+      addUseTypedRow(q);
+      list.hidden = false;
+    };
     const search = () => {
       const q = input.value.trim();
       if (q.length < 4) { close(); return; }
-      if (aborter) aborter.abort();
-      aborter = new AbortController();
       // Immediate feedback so a slow network read doesn't just look frozen —
       // Nominatim (free, keyless) typically answers in a few hundred ms, but
       // there's no way to make a public rate-limited API instant.
@@ -864,38 +947,61 @@
         list.innerHTML = '<li class="addr-loading" aria-disabled="true">Searching…</li>';
         list.hidden = false;
       }
-      const opts = { signal: aborter.signal, headers: { Accept: "application/json" } };
-      // A house number OSM has never been told about sinks the whole query, so
-      // when the exact address finds nothing, fall back to the street on its
-      // own and re-attach the number to whatever the visitor picks.
-      const houseNo = (q.match(/^\s*(\d+[a-zA-Z]?)\s+/) || [])[1] || "";
-      const streetOnly = houseNo ? q.replace(/^\s*\d+[a-zA-Z]?\s+/, "") : "";
-      const paint = (results, carryNo) => {
-        if (overList) return; // never rebuild the list mid-interaction
-        list.innerHTML = "";
-        results.slice(0, 5).forEach((r) => addRow(r, carryNo));
-        addUseTypedRow(q);
-        list.hidden = false;
-      };
-      fetch(queryUrl(q), opts)
-        .then((r) => r.json())
-        .then((results) => {
-          if (results.length || !streetOnly || streetOnly.length < 3) { paint(results, ""); return; }
-          return fetch(queryUrl(streetOnly), opts)
-            .then((r) => r.json())
-            .then((streets) => paint(streets, houseNo));
-        })
-        .catch((e) => { if (e.name !== "AbortError") paint([], ""); });
+      lookup(q).then((found) => { if (found && document.activeElement === input) paint(q, found); });
     };
-    input.addEventListener("input", () => {
+    // Fills the address in without a click when the lookup leaves no doubt:
+    // the first in-area match carries the house number that was typed, or
+    // the street-only fallback found exactly one street. That's what makes
+    // a browser- or phone-autofilled street line ("123 Main St", no town)
+    // come out as "123 Main St, Delano, MN 55328". Resolves true when it
+    // filled the address in.
+    const autoResolve = () => {
+      if (!verified || verified.value !== "no") return Promise.resolve(verified ? verified.value !== "no" : true);
+      const q = input.value.trim();
+      if (q.length < 5 || !/\d/.test(q)) return Promise.resolve(false);
+      clearTimeout(timer);
+      return lookup(q).then((found) => {
+        if (!found || input.value.trim() !== q || verified.value !== "no") return verified.value !== "no";
+        const { results, carryNo, houseNo } = found;
+        const exact = !carryNo && houseNo
+          ? results.find((r) => String((r.address || {}).house_number || "").toLowerCase() === houseNo.toLowerCase())
+          : null;
+        const sure = exact || (carryNo && results.length === 1 ? results[0] : null);
+        if (sure) { pick(sure, exact ? "" : carryNo); return true; }
+        // Not sure: lay the in-area choices out for them instead.
+        if (document.activeElement === input && results.length) paint(q, found);
+        return false;
+      });
+    };
+    // The giveaway form waits on this before it sends an unpicked address.
+    input.addressResolve = autoResolve;
+    let prevLen = 0;
+    input.addEventListener("input", (ev) => {
       if (verified && verified.value !== "no") announce("address:cleared", {});
       if (verified) verified.value = "no";
+      if (streetField) streetField.value = "";
       setCoords("", "");
       clearTimeout(timer);
+      // Autofill, a pasted address or a phone's QuickType suggestion lands
+      // in one go rather than a key at a time: look it up right away and
+      // fill the town in, instead of waiting for a pick that never comes.
+      const jump = input.value.length - prevLen;
+      prevLen = input.value.length;
+      const filled = !ev.inputType || ev.inputType === "insertReplacementText"
+        || ev.inputType === "insertFromPaste" || jump >= 6;
+      if (filled && circle) {
+        const wait = Math.max(0, lastFired + INTERVAL - Date.now());
+        timer = setTimeout(autoResolve, wait);
+        return;
+      }
       const wait = Math.max(0, lastFired + INTERVAL - Date.now());
-      timer = setTimeout(() => { lastFired = Date.now(); search(); }, wait);
+      timer = setTimeout(search, wait);
     });
-    input.addEventListener("blur", () => setTimeout(close, 150));
+    input.addEventListener("blur", () => {
+      setTimeout(close, 150);
+      // Typed it out and moved on without picking: try once to fill it in.
+      if (circle) setTimeout(() => { if (verified && verified.value === "no") autoResolve(); }, 200);
+    });
   });
 
   /* ---- Pre-check services: ?svc= param wins, else the page's default ---- */

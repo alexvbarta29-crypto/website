@@ -513,3 +513,33 @@ test("admin can delete someone from the out-of-area list", async () => {
   await ok(adminPost({ action: "delete_outside", id: before.outside[0].id }));
   assert.equal((await ok(adminGet())).outside.length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// A whole address typed into the one box is split into its parts.
+test("splitTypedAddress reads street, town, state and ZIP from one line", () => {
+  assert.deepEqual(lib.splitTypedAddress("123 Main St, Delano, MN 55328"),
+    { street: "123 Main St", city: "Delano", state: "MN", zip: "55328" });
+  assert.deepEqual(lib.splitTypedAddress("123 Main St, Delano"), { street: "123 Main St", city: "Delano" });
+  assert.deepEqual(lib.splitTypedAddress("123 Main St, Delano MN 55328"),
+    { street: "123 Main St", city: "Delano", state: "MN", zip: "55328" });
+  assert.deepEqual(lib.splitTypedAddress("45 Oak Ln, Saint Michael, Minnesota, USA"),
+    { street: "45 Oak Ln", city: "Saint Michael", state: "MN" });
+  assert.deepEqual(lib.splitTypedAddress("9 Elm Ave, Long Lake 55356"), { street: "9 Elm Ave", city: "Long Lake", zip: "55356" });
+  assert.deepEqual(lib.splitTypedAddress("123 Main St"), {});
+  assert.deepEqual(lib.splitTypedAddress("Main St, Delano"), {});
+});
+test("an entry typed as one line gets its town for the area check", () => {
+  const e = lib.validateEntry({ first_name: "A", phone: "7635550100", consent: true,
+    address: "123 Main St, Delano, MN 55328" });
+  assert.equal(e.address.street, "123 Main St");
+  assert.equal(e.address.city, "Delano");
+  assert.equal(e.address.zip, "55328");
+  assert.equal(lib.areaCheck(e.address).ok, true);
+});
+test("a picked address keeps its parts", () => {
+  const e = lib.validateEntry({ first_name: "A", phone: "7635550100", consent: true,
+    address: "123 Main St, Delano, MN 55328", address_street: "123 Main St", address_city: "Delano",
+    address_zip: "55328", address_state: "MN", address_lat: "45.04", address_lng: "-93.79" });
+  assert.equal(e.address.street, "123 Main St");
+  assert.equal(e.address.city, "Delano");
+});

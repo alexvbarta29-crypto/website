@@ -226,11 +226,37 @@
   const btnHTML = submitBtn.innerHTML;
   const fieldFor = (name) => form.querySelector(name === "address" ? "#gw-address"
     : /^(first|last)_name$/.test(name) ? "#gw-name" : `[name="${name}"]`);
+  // An address that was typed or autofilled without picking a suggestion
+  // gets one more lookup before sending, so the town and ZIP get filled in.
+  // If it still can't be matched and no town was typed, ask for the town
+  // rather than send a bare street line.
+  const addrInput = $("#gw-address");
+  const addrVerified = $("[data-address-verified]", form);
+  const readyAddress = () => {
+    if (!addrVerified || addrVerified.value !== "no" || typeof addrInput.addressResolve !== "function")
+      return Promise.resolve(true);
+    return addrInput.addressResolve().catch(() => false).then((ok) => {
+      if (ok || addrVerified.value !== "no") return true;
+      return /,\s*[A-Za-z]/.test(addrInput.value); // "123 Main St, Delano" is enough to go on
+    });
+  };
   form.addEventListener("submit", (ev) => {
     ev.preventDefault();
     errBox.hidden = true;
     $$("[aria-invalid]", form).forEach((el) => el.removeAttribute("aria-invalid"));
     if (!form.checkValidity()) { form.reportValidity(); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Entering…";
+    readyAddress().then((ok) => {
+      if (ok) { send(); return; }
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = btnHTML;
+      fail(errBox, "Pick your address from the list, or add your town (like “123 Main St, Delano”).");
+      addrInput.setAttribute("aria-invalid", "true");
+      addrInput.focus();
+    });
+  });
+  function send() {
     const data = Object.fromEntries(new FormData(form).entries());
     // One "Your name" box: first word is the first name, the rest the last.
     const parts = String(data.name || "").trim().split(/\s+/);
@@ -275,7 +301,7 @@
         submitBtn.innerHTML = btnHTML;
         fail(errBox, `We couldn't reach the server. Check your connection, or call or text ${PHONE}.`);
       });
-  });
+  }
 
   /* ---- Out of area: offer a free quote anyway ---- */
   const yes = $("[data-gw-outside-yes]");
