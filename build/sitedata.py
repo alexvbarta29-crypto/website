@@ -118,12 +118,20 @@ GIVEAWAY = {
     # password box instead of the page. SHA-256 of the password, lowercased
     # with spaces removed (currently "alexbarta"). Set to "" to open the page.
     "lock_sha256": "fce9fa91acb8a524d12a97b4a35d1c05b283b0ccb17087da7a965cc1b693979e",
-    "hero_photo": "assets/img/xmas-warm-white-french-front.jpg",
+    # The owner's own install photos (Oct 2026): EXIF stripped, a house
+    # number and a license plate blurred, yard signs cropped out. The first
+    # is also the link-share preview (its -og.jpg crop).
+    "hero_photo": "assets/img/giveaway-white-gables.jpg",
     "photos": [
-        "assets/img/xmas-warm-white-mediterranean.jpg",
-        "assets/img/xmas-red-green-brick-gables.jpg",
-        "assets/img/xmas-multicolor-tudor.jpg",
+        "assets/img/giveaway-white-gables.jpg",
+        "assets/img/giveaway-red-warm-white.jpg",
+        "assets/img/giveaway-moonlit-farmhouse.jpg",
     ],
+    "photo_alts": {
+        "assets/img/giveaway-white-gables.jpg": "A dark-sided two-story home with every gable and roofline outlined in warm white lights, installed by Barta",
+        "assets/img/giveaway-red-warm-white.jpg": "A two-story home at dusk with red and warm white lights on the rooflines and a wrapped porch post, installed by Barta",
+        "assets/img/giveaway-moonlit-farmhouse.jpg": "A white farmhouse under the moon with warm white lights on every peak, installed by Barta",
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -898,6 +906,9 @@ FAQS = [
 # their own position ("hero_pos", CTA_PHOTOS["focal_y"]), because a very wide
 # band often wants a different anchor than a card does.
 IMAGE_FOCAL = {
+    # Giveaway page photos (GIVEAWAY["photos"]): keep the lit house in the square crops.
+    "assets/img/giveaway-moonlit-farmhouse.jpg": "50% 80%",
+    "assets/img/giveaway-red-warm-white.jpg": "48% 50%",
     # Christmas lights page photo set (XMAS_PHOTO_ALT below).
     "assets/img/xmas-warm-white-mediterranean.jpg": {"og": "48% 55%", "4/3": "48% 58%"},
     "assets/img/xmas-warm-white-french-estate.jpg": {"5/4": "58% 55%"},
