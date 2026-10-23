@@ -363,6 +363,7 @@ def build_home():
     </div>
   </section>
 
+  {C.giveaway_home_card("")}
   <!-- SERVICES (straight after hero) -->
   <section id="services">
     <div class="container">
@@ -2366,7 +2367,8 @@ _CRITICAL_CLASSES = {
     "hero", "hero-photo-full", "hero-bg-img", "hero-overlay", "hero-content",
     "hero-actions", "container", "reveal",
     "google-badge", "google-badge--bare", "stars", "gb-g", "gb-text", "lead",
-    "sticky-cta",
+    "sticky-cta", "gw-ribbon", "gw-ribbon-dot", "gw-ribbon-long", "gw-ribbon-short",
+    "gw-ribbon-time", "gw-ribbon-cta", "sr-only",
 }
 _CRITICAL_ELEMENTS = {
     "html", "body", "main", "header", "nav", "ul", "ol", "li", "a", "img",

@@ -43,6 +43,32 @@
     }).observe(sentinel);
   }
 
+  /* ---- Holiday Lights Giveaway: live countdowns ----
+     The ribbon above the menu and the homepage card both carry
+     data-gw-end (when entries close). Each ticks once a second and hides
+     itself the moment entries close, so an older page never keeps
+     advertising a giveaway that has ended. */
+  const gwBoxes = $$("[data-gw-end]");
+  if (gwBoxes.length) {
+    const pad = (n) => String(n).padStart(2, "0");
+    const tick = () => {
+      gwBoxes.forEach((box) => {
+        const left = Date.parse(box.dataset.gwEnd) - Date.now();
+        if (!(left > 0)) { box.hidden = true; return; }
+        const s = Math.floor(left / 1000);
+        const d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24, m = Math.floor(s / 60) % 60, sec = s % 60;
+        const text = box.querySelector("[data-gw-text]");
+        if (text) text.innerHTML = (d ? d + "d " : "") + h + "h " + pad(m) + "m"
+          + '<span class="gw-ribbon-s"> ' + pad(sec) + "s</span><span class=\"sr-only\"> left to enter</span>";
+        box.querySelectorAll("[data-gw-unit]").forEach((el) => {
+          el.textContent = { d: String(d), h: pad(h), m: pad(m), s: pad(sec) }[el.dataset.gwUnit];
+        });
+      });
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+
   /* ---- Mobile drawer ---- */
   const drawer = $(".drawer");
   const openBtn = $(".nav-toggle");
