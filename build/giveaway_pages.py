@@ -91,9 +91,9 @@ def _entry_form():
           </div>
           <input type="text" name="website" class="gw-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
           <label class="check gw-consent"><input type="checkbox" name="consent" required>
-            <span><strong>Text me about the giveaway.</strong> My entry confirmation, up to two reminders, the results, and replies to my texts. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span></label>
+            <span><strong>Text me about the giveaway:</strong> my entry confirmation, up to two reminders, the results, plus replies to anything I text. From Barta Window Washing at the number above. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span></label>
           <label class="check gw-consent"><input type="checkbox" name="offers">
-            <span><strong>Send me the coupon.</strong> If I don&rsquo;t win, text me a Barta entrant coupon after the drawing, plus a few offers a year. Reply STOP anytime.</span></label>
+            <span><strong>Also text me the coupon after the drawing if I don&rsquo;t win.</strong> It&rsquo;s a Barta offer just for entrants, plus a few more offers a year. Reply STOP anytime.</span></label>
           <p class="gw-err" data-gw-error role="alert" hidden></p>
           <button type="submit" class="btn btn-lg btn-block gw-submit">Enter the giveaway {icon('arrow')}</button>
           <p class="gw-legal">No purchase necessary. Ends {G['closes'].split(' at ')[0].split(', ', 1)[1]}.
