@@ -4,13 +4,15 @@
     "source": "story",
     "type": "VIDEO",
     "image": "assets/img/instagram/story-18618846445035645.jpg",
-    "timestamp": "2026-10-23T00:53:29+0000"
+    "timestamp": "2026-10-23T00:53:29+0000",
+    "video_note": "Instagram didn't provide the video file (it withholds it for stories with licensed music)"
   },
   {
     "id": "18112371974522158",
     "source": "story",
     "type": "VIDEO",
     "image": "assets/img/instagram/story-18112371974522158.jpg",
-    "timestamp": "2026-10-23T00:16:57+0000"
+    "timestamp": "2026-10-23T00:16:57+0000",
+    "video_note": "Instagram didn't provide the video file (it withholds it for stories with licensed music)"
   }
 ]
