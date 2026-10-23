@@ -33,8 +33,9 @@ repository secret named `GH_PAT`.
 
 ## How the sync works
 
-- `.github/workflows/instagram-sync.yml` runs daily (and can be triggered
-  manually from the Actions tab → "Sync Instagram Feed" → "Run workflow").
+- `.github/workflows/instagram-sync.yml` runs daily, plus three story checks a
+  day (every 6 hours in all), and can be triggered manually from the Actions
+  tab → "Sync Instagram Feed" → "Run workflow".
 - It runs `build/instagram_sync.py`, which calls the Instagram API, downloads
   each post's image into `assets/img/instagram/`, and writes
   `build/instagram_feed.json`.
@@ -49,3 +50,29 @@ repository secret named `GH_PAT`.
 manifest file doesn't exist yet (a fresh checkout, before the first sync has
 ever run), the carousel section simply doesn't render — the page falls back
 to just the social icon row, no broken build.
+
+## Stories
+
+- Every run also asks the API for the account's live stories (the API only
+  returns stories posted in the last 24 hours, hence the 6-hourly checks).
+  Each new story's photo, or video plus a still, is saved as
+  `assets/img/instagram/story-<id>.*` and listed in
+  `build/instagram_stories.json`, which keeps it after Instagram drops it.
+  Story videos are re-encoded to 720px wide with ffmpeg to keep the repo lean.
+- The homepage carousel mixes stories in among the posts by date: the newest
+  12, at most 3 from any one day, none older than the oldest post shown
+  (`MAX_CAROUSEL_STORIES` / `STORIES_PER_DAY` in `build/components.py`). A
+  story's Instagram badge links to the profile, since story links expire.
+  Stories are not added to the Gallery.
+- Only the newest 24 stories are kept (`MAX_STORIES` in
+  `build/instagram_sync.py`); older ones' files are deleted.
+- To keep a story off the site, add its id to `EXCLUDED_STORY_IDS` in
+  `build/instagram_sync.py` and rebuild.
+- A story check only rebuilds and commits when the posts or stories changed,
+  so it doesn't trigger a Netlify deploy for nothing.
+
+## Story Highlights
+
+The Instagram API has no way to read Highlights (only stories that are live
+right now), so they can't sync automatically. To show Highlights, save their
+photos and videos from the Instagram app and add them to the site by hand.

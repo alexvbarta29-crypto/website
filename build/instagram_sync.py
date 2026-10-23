@@ -10,7 +10,7 @@ to run in the "Sync Instagram Feed" GitHub Action (.github/workflows/
 instagram-sync.yml), not in a network-sandboxed environment. Run manually
 with:  INSTAGRAM_ACCESS_TOKEN=... python3 build/instagram_sync.py
 """
-import json, os, sys, urllib.request, urllib.error
+import glob, json, os, shutil, subprocess, sys, urllib.request, urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -18,6 +18,18 @@ IMG_DIR = os.path.join(ROOT, "assets", "img", "instagram")
 MANIFEST_PATH = os.path.join(HERE, "instagram_feed.json")
 MAX_POSTS = 10
 API_BASE = "https://graph.instagram.com"
+
+# Stories (owner's request, October 2026). The API only returns stories that
+# are live right now (they vanish after 24 hours), so every run saves any it
+# hasn't seen into STORIES_PATH, which keeps them after Instagram drops them.
+# The workflow runs four times a day so no 24-hour story is ever missed.
+# Files are named story-<id> straight in IMG_DIR so build.py's responsive
+# image pipeline picks them up like any post photo. Only the newest
+# MAX_STORIES are kept; older ones' files are deleted to keep the repo lean.
+STORIES_PATH = os.path.join(HERE, "instagram_stories.json")
+MAX_STORIES = 24
+# Stories never shown on the site, by story id (same idea as the post sets).
+EXCLUDED_STORY_IDS = set()
 
 # Posts never shown on the site, by Instagram post id. The site-launch
 # announcement carousel lives here — no point advertising the website on
@@ -74,6 +86,106 @@ def fetch_children(media_id, token):
     except Exception as e:
         print(f"  (children fetch skipped for {media_id}: {e})")
         return []
+
+
+def fetch_stories(token):
+    """The account's live stories (posted in the last 24 hours)."""
+    fields = "id,media_type,media_url,thumbnail_url,permalink,timestamp"
+    url = f"{API_BASE}/me/stories?fields={fields}&access_token={token}"
+    return _get_json(url).get("data", [])
+
+
+def _ffmpeg():
+    return shutil.which("ffmpeg")
+
+
+def _shrink_video(path):
+    """Story videos arrive as full 1080x1920 files of several MB each. If
+    ffmpeg is available (it is on GitHub's runners), re-encode to at most 720px
+    wide, which looks the same in a carousel card at a fraction of the size.
+    Keeps the original if anything goes wrong or the result isn't smaller."""
+    ff = _ffmpeg()
+    if not ff:
+        return
+    tmp = path + ".tmp.mp4"
+    try:
+        subprocess.run([ff, "-y", "-loglevel", "error", "-i", path,
+                        "-vf", "scale='min(720,iw)':-2", "-c:v", "libx264", "-crf", "27",
+                        "-preset", "veryfast", "-c:a", "aac", "-b:a", "96k",
+                        "-movflags", "+faststart", tmp], check=True, timeout=180)
+        if os.path.getsize(tmp) < os.path.getsize(path):
+            os.replace(tmp, path)
+    except Exception as e:
+        print(f"  (video re-encode skipped for {os.path.basename(path)}: {e})")
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
+def _poster_from_video(video, dest):
+    """A still for a video story that came without a thumbnail: its first
+    frame, if ffmpeg is available."""
+    ff = _ffmpeg()
+    if not ff:
+        return False
+    try:
+        subprocess.run([ff, "-y", "-loglevel", "error", "-i", video, "-frames:v", "1",
+                        "-q:v", "3", dest], check=True, timeout=60)
+        return os.path.exists(dest)
+    except Exception as e:
+        print(f"  (poster frame skipped for {os.path.basename(video)}: {e})")
+        return False
+
+
+def _remove_story_files(story_id):
+    for path in glob.glob(os.path.join(IMG_DIR, f"story-{story_id}*")):
+        os.remove(path)
+
+
+def sync_stories(token):
+    """Adds any live story not saved yet to STORIES_PATH (newest first),
+    downloading its media; keeps the newest MAX_STORIES. Best-effort: if the
+    stories call fails, posts still sync and the saved stories stay."""
+    try:
+        with open(STORIES_PATH, encoding="utf-8") as f:
+            saved = json.load(f)
+    except (OSError, ValueError):
+        saved = []
+    try:
+        live = fetch_stories(token)
+    except Exception as e:
+        detail = e.read().decode()[:300] if isinstance(e, urllib.error.HTTPError) else str(e)
+        print(f"  (stories skipped: {detail})")
+        return
+    known = {s["id"] for s in saved}
+    added = 0
+    for st in live:
+        sid = st.get("id")
+        if not sid or sid in known or sid in EXCLUDED_STORY_IDS:
+            continue
+        media_type = st.get("media_type")
+        name = f"story-{sid}"
+        slide = _save_slide(media_type, st.get("media_url"), st.get("thumbnail_url"), name)
+        video = os.path.join(IMG_DIR, f"{name}.mp4")
+        if slide is None and media_type == "VIDEO" and os.path.exists(video):
+            if _poster_from_video(video, os.path.join(IMG_DIR, f"{name}.jpg")):
+                slide = {"type": media_type, "image": f"assets/img/instagram/{name}.jpg",
+                         "video": f"assets/img/instagram/{name}.mp4"}
+        if slide is None:
+            _remove_story_files(sid)
+            continue
+        if slide.get("video"):
+            _shrink_video(os.path.join(ROOT, slide["video"]))
+        saved.append({"id": sid, "source": "story", **slide, "timestamp": st.get("timestamp")})
+        known.add(sid)
+        added += 1
+    saved.sort(key=lambda s: s.get("timestamp") or "", reverse=True)
+    for old in saved[MAX_STORIES:]:
+        _remove_story_files(old["id"])
+    saved = [s for s in saved[:MAX_STORIES] if s["id"] not in EXCLUDED_STORY_IDS]
+    with open(STORIES_PATH, "w", encoding="utf-8") as f:
+        json.dump(saved, f, indent=2)
+    print(f"  Stories: {len(live)} live, {added} new saved, {len(saved)} kept.")
 
 
 def download_file(url, dest):
@@ -157,6 +269,8 @@ def main():
     with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
     print(f"Synced {len(manifest)} Instagram posts.")
+
+    sync_stories(token)
 
     gh_output = os.environ.get("GITHUB_OUTPUT")
     if gh_output:

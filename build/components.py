@@ -1,5 +1,6 @@
 """Reusable HTML partials and section builders."""
 import json, os
+from datetime import datetime
 from urllib.parse import quote_plus
 from sitedata import (LIVE_CITY_PAGES, city_page_path, BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
                       PROMO_FEATS, IMAGE_ALT, IMAGE_FOCAL, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS)
@@ -1200,6 +1201,82 @@ def _instagram_excluded_slide(s):
     stem = os.path.splitext(os.path.basename(s.get("image") or ""))[0]
     return stem in EXCLUDED_SLIDE_IDS
 
+# Stories in the carousel (owner's request, October 2026): the newest
+# MAX_CAROUSEL_STORIES, no more than STORIES_PER_DAY from any one day (a run
+# of near-identical frames from one busy day would swamp the row), and none
+# older than the oldest post shown, so they mix in among the posts by date
+# rather than trailing off the end.
+MAX_CAROUSEL_STORIES = 12
+STORIES_PER_DAY = 3
+
+def _insta_time(ts):
+    try:
+        return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S%z")
+    except (TypeError, ValueError):
+        return None
+
+def _instagram_stories(posts_oldest=None):
+    """Saved stories (build/instagram_stories.json, written by
+    instagram_sync.sync_stories), newest first, trimmed for the carousel."""
+    path = os.path.join(_ROOT, "build", "instagram_stories.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            stories = json.load(f)
+    except (OSError, ValueError):
+        return []
+    try:
+        from instagram_sync import EXCLUDED_STORY_IDS
+    except Exception:
+        EXCLUDED_STORY_IDS = set()
+    out, per_day = [], {}
+    for st in sorted(stories, key=lambda x: x.get("timestamp") or "", reverse=True):
+        t = _insta_time(st.get("timestamp"))
+        if (not t or st.get("id") in EXCLUDED_STORY_IDS or not st.get("image")
+                or not os.path.exists(os.path.join(_ROOT, st["image"]))):
+            continue
+        if posts_oldest and t < posts_oldest:
+            continue
+        day = t.date()
+        if per_day.get(day, 0) >= STORIES_PER_DAY:
+            continue
+        per_day[day] = per_day.get(day, 0) + 1
+        out.append((t, st))
+        if len(out) >= MAX_CAROUSEL_STORIES:
+            break
+    return out
+
+def _insta_card(root, image, video, alt, link, link_label):
+    w, h = _real_size(image)
+    ratio = f"{w}/{h}"
+    if video and os.path.exists(os.path.join(_ROOT, video)):
+        # data-poster, not poster: main.js promotes it to a real poster
+        # once the card nears the viewport. A poster has no lazy-loading
+        # of its own, so as a plain attribute every one of these is
+        # fetched on page load for a carousel far down the page.
+        media_html = (f'<video class="insta-card-media-el" src="{root}{video}" '
+                      f'data-poster="{root}{_poster_src(image)}" controls playsinline preload="none"></video>')
+    else:
+        media_html = picture(root, image, alt, img_class="insta-card-media-el",
+                             extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")
+    # The post's true aspect goes in a custom property rather than
+    # straight into aspect-ratio, so the mobile stylesheet can opt out
+    # of it (inline styles would otherwise beat the rule) and give
+    # every card one uniform width.
+    #
+    # No "reveal" class here on purpose. That scroll-in animation holds
+    # an element at opacity 0 until an IntersectionObserver sees it,
+    # but .insta-track is a horizontal scroll container, and an
+    # intermediate clipper like that keeps cards outside the visible
+    # strip from ever registering as intersecting. Cards therefore
+    # stayed invisible until you scrolled them to the middle, which
+    # meant the slivers of the previous and next post either side of
+    # the centred one were positioned correctly but never painted.
+    # Same clipping trap as the lazy video posters in main.js.
+    return (f'<div class="insta-card" style="--card-ar:{ratio}">'
+            f'<div class="insta-card-media">{media_html}'
+            f'<a class="insta-card-badge insta-card-ig" href="{link}" target="_blank" rel="noopener" '
+            f'aria-label="{link_label}">{icon("instagram")}</a></div></div>')
+
 def instagram_carousel(depth=0):
     """Real Instagram posts, shown right on the page instead of just a link
     out to the profile. Reads build/instagram_feed.json, written by the
@@ -1217,7 +1294,11 @@ def instagram_carousel(depth=0):
     slides get a real <video controls> element right in the card so it
     plays in place. A multi-photo Instagram post therefore just becomes a
     short run of adjacent cards you scroll straight through, same as
-    swiping through it in the Instagram app."""
+    swiping through it in the Instagram app.
+
+    Saved stories (build/instagram_stories.json) are mixed in by date, one
+    card each; their badge links to the profile, since a story's own link
+    stops working after 24 hours."""
     path = os.path.join(_ROOT, "build", "instagram_feed.json")
     if not os.path.exists(path):
         return ""
@@ -1229,8 +1310,8 @@ def instagram_carousel(depth=0):
     if not posts:
         return ""
     root = rel(depth)
-    cards = ""
-    for p in posts:
+    entries = []  # (time, cards html), merged newest first below
+    for order, p in enumerate(posts):
         if p.get("id") in _instagram_excluded_ids():
             continue
         caption = (p.get("caption") or "").strip()
@@ -1254,38 +1335,20 @@ def instagram_carousel(depth=0):
         total_slides = len(raw_slides)
         alt = caption_short or f"{BIZ['name']} on Instagram"
         link = p.get("permalink") or BIZ["instagram"]
-        for slide_idx, s in slides:
-            slide_link = slide_permalink(link, slide_idx, total_slides)
-            w, h = _real_size(s["image"])
-            ratio = f"{w}/{h}"
-            if s.get("video") and os.path.exists(os.path.join(_ROOT, s["video"])):
-                # data-poster, not poster: main.js promotes it to a real poster
-                # once the card nears the viewport. A poster has no lazy-loading
-                # of its own, so as a plain attribute every one of these is
-                # fetched on page load for a carousel far down the page.
-                media_html = (f'<video class="insta-card-media-el" src="{root}{s["video"]}" '
-                               f'data-poster="{root}{_poster_src(s["image"])}" controls playsinline preload="none"></video>')
-            else:
-                media_html = picture(root, s["image"], alt, img_class="insta-card-media-el",
-                                      extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")
-            # The post's true aspect goes in a custom property rather than
-            # straight into aspect-ratio, so the mobile stylesheet can opt out
-            # of it (inline styles would otherwise beat the rule) and give
-            # every card one uniform width.
-            #
-            # No "reveal" class here on purpose. That scroll-in animation holds
-            # an element at opacity 0 until an IntersectionObserver sees it , 
-            # but .insta-track is a horizontal scroll container, and an
-            # intermediate clipper like that keeps cards outside the visible
-            # strip from ever registering as intersecting. Cards therefore
-            # stayed invisible until you scrolled them to the middle, which
-            # meant the slivers of the previous and next post either side of
-            # the centred one were positioned correctly but never painted.
-            # Same clipping trap as the lazy video posters in main.js.
-            cards += (f'<div class="insta-card" style="--card-ar:{ratio}">'
-                      f'<div class="insta-card-media">{media_html}'
-                      f'<a class="insta-card-badge insta-card-ig" href="{slide_link}" target="_blank" rel="noopener" '
-                      f'aria-label="View this post on Instagram">{icon("instagram")}</a></div></div>')
+        cards = "".join(
+            _insta_card(root, s["image"], s.get("video"), alt,
+                        slide_permalink(link, slide_idx, total_slides), "View this post on Instagram")
+            for slide_idx, s in slides)
+        entries.append((_insta_time(p.get("timestamp")), order, cards))
+    post_times = [t for t, _, _ in entries if t]
+    for t, st in _instagram_stories(min(post_times) if post_times else None):
+        alt = f"{BIZ['name']} Instagram story from {t.strftime('%B')} {t.day}"
+        entries.append((t, -1, _insta_card(root, st["image"], st.get("video"), alt,
+                                           BIZ["instagram"], f"See {BIZ['name']} on Instagram")))
+    # Newest first; a post without a timestamp keeps its place from the feed.
+    if all(t for t, _, _ in entries):
+        entries.sort(key=lambda e: e[0], reverse=True)
+    cards = "".join(c for _, _, c in entries)
     if not cards:
         return ""
     return f"""<div class="insta-carousel">

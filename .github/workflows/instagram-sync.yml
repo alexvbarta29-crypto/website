@@ -1,15 +1,27 @@
 name: Sync Instagram Feed
 
-# Pulls the latest posts from Instagram for the homepage carousel and
-# commits the refreshed images/manifest/HTML back to the branch. Netlify,
-# which hosts the live site, publishes that push like any other.
+# Pulls the latest posts and live stories from Instagram for the homepage
+# carousel and commits the refreshed images/manifest/HTML back to the branch.
+# Netlify, which hosts the live site, publishes that push like any other.
+#
+# Stories disappear from the Instagram API 24 hours after they're posted, so
+# besides the daily run there are three story checks a day (every 6 hours in
+# all). A story check only rebuilds and commits when the posts or stories
+# actually changed, so it doesn't trigger a deploy for nothing; the daily
+# run always rebuilds (it also refreshes the Christmas countdown).
 on:
   schedule:
     - cron: "0 13 * * *" # daily, ~8am Central
+    - cron: "0 1,7,19 * * *" # story checks
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+# Never two syncs at once (a manual run overlapping a scheduled one).
+concurrency:
+  group: instagram-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
@@ -28,17 +40,31 @@ jobs:
       - name: Install build dependencies
         run: pip install -r requirements.txt
 
-      - name: Sync Instagram posts
+      - name: Sync Instagram posts and stories
         id: sync
         env:
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
         run: python3 build/instagram_sync.py
 
+      # On a story check, stop here unless a post or story is new or gone.
+      - name: Check for new posts or stories
+        id: changed
+        run: |
+          if [ "${{ github.event.schedule }}" != "0 1,7,19 * * *" ] \
+             || [ -n "$(git status --porcelain -- build/instagram_feed.json build/instagram_stories.json)" ]; then
+            echo "rebuild=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new posts or stories."
+            echo "rebuild=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Rebuild site
+        if: steps.changed.outputs.rebuild == 'true'
         run: python3 build/build.py
 
       - name: Commit and push changes
         id: commit
+        if: steps.changed.outputs.rebuild == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
