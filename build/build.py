@@ -2344,8 +2344,41 @@ def minify_assets():
         try:
             subprocess.run(cmd, check=True, capture_output=True, timeout=90)
         except Exception as e:
+            if src_rel.endswith(".css"):
+                print(f"  ({os.path.basename(src_rel)}: clean-css unavailable, using the built-in CSS compactor)")
+                with open(src, encoding="utf-8") as f:
+                    css = f.read()
+                with open(out, "w", encoding="utf-8") as f:
+                    f.write(_compact_css(css))
+                continue
             print(f"  ({os.path.basename(src_rel)} minify skipped: {e}; using unminified copy)")
             shutil.copyfile(src, out)
+
+def _compact_css(css):
+    """Fallback when clean-css can't be fetched: drop comments and squeeze
+    whitespace, nothing cleverer. Strings are left exactly as they are."""
+    out, i, n = [], 0, len(css)
+    while i < n:
+        ch = css[i]
+        if ch in "\"'":
+            j = i + 1
+            while j < n and css[j] != ch:
+                j += 2 if css[j] == "\\" else 1
+            out.append(css[i:j + 1]); i = j + 1
+        elif css.startswith("/*", i):
+            j = css.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif ch.isspace():
+            j = i
+            while j < n and css[j].isspace():
+                j += 1
+            out.append(" "); i = j
+        else:
+            out.append(ch); i += 1
+    text = "".join(out)
+    # Spaces next to braces and semicolons never matter.
+    text = re.sub(r"\s*([{};])\s*", r"\1", text)
+    return text.replace(";}", "}").strip() + "\n"
 
 # ---------------------------------------------------------------------------
 # Critical CSS for the homepage. styles.min.css is loaded non-blocking on the
