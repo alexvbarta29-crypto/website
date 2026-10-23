@@ -175,8 +175,8 @@
     $("[data-gwa-draw-when]").textContent = c.dates.draw + (c.open ? " · entries open until " + c.dates.closes : " · entries closed");
     const d = data.draw;
     if (!d) {
-      el.innerHTML = `<p>Draws ${c.winners} winners at random, weighted by entries. If a winner came in through someone's share link, that person wins too.</p>
-        <button class="gwa-btn gwa-btn-big" data-gwa-do-draw>${c.open ? "Draw early (entries still open)" : "Draw " + c.winners + " winners"}</button>`;
+      el.innerHTML = `<p>Draws ${c.winners} ${c.winners === 1 ? "winner" : "winners"} at random, weighted by entries. If the winner came in through someone's share link, that person wins too.</p>
+        <button class="gwa-btn gwa-btn-big" data-gwa-do-draw>${c.open ? "Draw early (entries still open)" : "Draw " + (c.winners === 1 ? "the winner" : c.winners + " winners")}</button>`;
       $("[data-gwa-do-draw]").onclick = async () => {
         if (c.open && !confirm("Entries are still open. Draw now anyway?")) return;
         try { data.draw = (await api("POST", { action: "draw", early: c.open })).draw; await load(); toast("Winners drawn!"); }

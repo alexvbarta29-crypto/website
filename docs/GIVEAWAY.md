@@ -8,8 +8,8 @@ built on the same Netlify stack as the quote form and the referral program
 
 | What | Value |
 |------|-------|
-| Prize | 2 drawn winners, each a professional Christmas light install, ARV up to $1,500 |
-| "Friend wins, you both win" | If a drawn winner entered through someone's share link, that person also wins an install (so up to 4 installs) |
+| Prize | 1 drawn winner: a professional Christmas light install, ARV up to $1,500 |
+| "Friend wins, you both win" | If the drawn winner entered through someone's share link, that person also wins an install (so at most 2 installs, ARV up to $3,000) |
 | Entries | 1 per household, +1 for every eligible friend who enters through your link |
 | Who | 18+, home within 17 straight-line miles of Delano. The number is never shown to visitors (owner's call); the page and rules point to the circle on the map |
 | Entries close | Thu Nov 5, 2026, 11:59 PM Central |

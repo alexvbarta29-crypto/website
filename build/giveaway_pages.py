@@ -146,7 +146,7 @@ def _panels():
         <div class="gw-panel" data-gw-panel="closed" hidden>
           <span class="gw-badge gw-badge-muted">Entries closed</span>
           <h2 class="gw-panel-title">Entries closed {G['closes'].split(' at ')[0].split(', ', 1)[1]}.</h2>
-          <p>Winners are drawn {G['draw']}. If you entered, keep an eye on your texts.</p>
+          <p>The winner is drawn {G['draw']}. If you entered, keep an eye on your texts.</p>
         </div>
         <div class="gw-panel" data-gw-panel="status" hidden tabindex="-1">
           <span class="gw-badge" data-gw-status-badge>Your entries</span>
@@ -184,7 +184,7 @@ def _countdown():
     return f"""<div class="gw-timer" data-gw-countdown role="timer" aria-live="off">
           <p class="gw-timer-head"><span class="gw-dot" aria-hidden="true"></span><span data-gw-cd-label>Entries close in</span></p>
           <div class="gw-timer-units">{unit('d', 'days')}{unit('h', 'hours')}{unit('m', 'min')}{unit('s', 'sec')}</div>
-          <p class="gw-timer-when">Winners drawn {G['draw_short']} at 6pm</p>
+          <p class="gw-timer-when">Winner drawn {G['draw_short']} at 6pm</p>
         </div>"""
 
 
@@ -277,7 +277,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     seo_title = seo_title or (lambda s: s)
     root = C.rel(depth)
     css, js = _assets(depth)
-    n_word = WORDS.get(WINNERS, str(WINNERS))
+    n_word = WORDS.get(WINNERS * 2, str(WINNERS * 2))   # the most installs: each drawn winner + their referrer
     title = f"Win Free Christmas Lights, {G['name']}"
     desc = (f"Barta Window Washing is giving away up to {n_word} free Christmas light installs (up to {PRIZE} each) "
             f"in the west metro. Drawing {G['draw']}. No purchase necessary.")
@@ -303,7 +303,7 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
     steps = [
         ("Sign up, get your link", "Name, number, address: about 20 seconds. Your own link pops up right away."),
         ("Send friends your link", "Friends enter in about 20 seconds. Each one is one more chance for you, and if they win, you win too."),
-        ("We draw the winners", f"{G['draw_short']} at 6pm. Winners get a call from Alex."),
+        ("We draw the winner", f"{G['draw_short']} at 6pm. If a friend sent them, that friend wins too. Alex calls you both."),
     ]
     step_html = "".join(
         f'<li class="gw-step"><span class="step-num {"xmas-red" if i % 2 == 0 else "xmas-green"}">{i + 1}</span>'
@@ -423,13 +423,13 @@ def giveaway_rules_page(depth=0, seo_title=None, schema=None):
   <p>Each entrant receives a personal share link. Each eligible person who enters through your link during the Entry Period earns you one (1) bonus entry. There is no limit on bonus entries. Entries from your own household, or from fake, duplicate or ineligible people, don&rsquo;t count, and Sponsor may disqualify anyone who tampers with the entry process.</p>
 
   <h2>6. Prizes</h2>
-  <p><strong>Grand prize ({n}):</strong> {n} grand prize winners will each receive one professional Christmas light installation at the winner&rsquo;s eligible home for the {G['year']} holiday season, including design, lights for the season, installation and takedown after the holidays. Approximate retail value (&ldquo;ARV&rdquo;): up to {PRIZE} each. Sponsor determines the design and scope of the installation to fit within the ARV; if a winner wants more than that, the winner may pay the difference at Sponsor&rsquo;s regular prices. The installation will be scheduled at a mutually agreed time and completed by {G['install_by']}, weather permitting.</p>
-  <p><strong>Friend bonus prize:</strong> if a grand prize winner entered through another entrant&rsquo;s share link, that entrant also wins one installation as described above (same ARV). Each entrant is credited to one share link only, the one they first entered through; entering again through another link changes nothing. A friend bonus prize goes only to that one entrant and does not pass on to anyone who referred them. As a result, up to {max_prizes} installations may be awarded in total (total ARV up to ${G['prize_value'] * max_prizes:,}).</p>
+  <p><strong>Grand prize ({n}):</strong> {"one grand prize winner will receive" if n == 1 else f"{n} grand prize winners will each receive"} one professional Christmas light installation at the winner&rsquo;s eligible home for the {G['year']} holiday season, including design, lights for the season, installation and takedown after the holidays. Approximate retail value (&ldquo;ARV&rdquo;): up to {PRIZE} each. Sponsor determines the design and scope of the installation to fit within the ARV; if a winner wants more than that, the winner may pay the difference at Sponsor&rsquo;s regular prices. The installation will be scheduled at a mutually agreed time and completed by {G['install_by']}, weather permitting.</p>
+  <p><strong>Friend bonus prize:</strong> if {"the" if n == 1 else "a"} grand prize winner entered through another entrant&rsquo;s share link, that entrant also wins one installation as described above (same ARV). Each entrant is credited to one share link only, the one they first entered through; entering again through another link changes nothing. A friend bonus prize goes only to that one entrant and does not pass on to anyone who referred them. As a result, up to {max_prizes} installations may be awarded in total (total ARV up to ${G['prize_value'] * max_prizes:,}).</p>
   <p><strong>Entrant offer (not a prize):</strong> every eligible entrant who does not win and who opted in to offer texts will be offered {COUPON} off a Christmas light installation from Sponsor for the {G['year']} season. The offer must be claimed by {G['claim_by']} using the link Sponsor texts, and the installation must be booked by {G['coupon_book_by']}. One per household; not redeemable for cash; can&rsquo;t be combined with other offers.</p>
   <p>Prizes are not transferable and have no cash value. No substitution except by Sponsor, which may substitute a prize of equal or greater value if necessary. Winners are responsible for any taxes on the value of their prize. Sponsor will request an IRS Form W-9 and issue a Form 1099 if the law requires it.</p>
 
   <h2>7. Drawing and odds</h2>
-  <p>Grand prize winners will be selected by Sponsor in a computer-generated random drawing on or about {G['draw']}, at approximately {G['draw_time']}, from all eligible entries received, weighted so each entry counts once. The drawing does not need to be held in public or broadcast live. Odds of winning depend on the number of eligible entries received and on how many entries each entrant has.</p>
+  <p>{"The grand prize winner" if n == 1 else "Grand prize winners"} will be selected by Sponsor in a computer-generated random drawing on or about {G['draw']}, at approximately {G['draw_time']}, from all eligible entries received, weighted so each entry counts once. The drawing does not need to be held in public or broadcast live. Odds of winning depend on the number of eligible entries received and on how many entries each entrant has.</p>
 
   <h2>8. Winner notification</h2>
   <p>Potential winners will be contacted by phone and/or text message within 24 hours of the drawing. A potential winner must respond within 72 hours of the first contact attempt and confirm eligibility, or the prize may be forfeited and an alternate winner selected by random drawing from the remaining eligible entries.</p>

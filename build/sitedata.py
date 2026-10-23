@@ -94,7 +94,7 @@ REFERRAL = {
 GIVEAWAY = {
     "name": "Holiday Lights Giveaway",
     "year": 2026,
-    "winners": 2,
+    "winners": 1,
     "prize_value": 1500,          # approximate retail value of one prize, $
     "coupon": 250,                # $ off for every entrant who doesn't win
     "code_prefix": "LIGHTS",
