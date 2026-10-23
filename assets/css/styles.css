@@ -1435,7 +1435,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .nav-menu-simple .nav-menu-all svg { width: 15px; height: 15px; }
 
 /* Full-bleed photo hero (DirtyMint-style) — content anchored bottom-left */
-.hero-photo-full { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: flex-start; padding-top: calc(var(--nav-h) + var(--ribbon-h, 0px) + 30px); padding-bottom: clamp(40px, 6vw, 72px); overflow: hidden; }
+.hero-photo-full { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: flex-start; padding-top: calc(var(--nav-h) + var(--ribbon-h, 0px) + var(--hero-top-gap, 30px)); padding-bottom: clamp(40px, 6vw, 72px); overflow: hidden; }
 .hero-photo-full .hero-content h1 { font-size: clamp(2.9rem, 6.4vw, 5.2rem); line-height: 1.0; margin-top: 18px; }
 .hero-photo-full .hero-content .lead { margin-top: 22px; max-width: 600px; }
 .hero-photo-full .hero-actions { margin-top: 30px; }
@@ -1568,10 +1568,14 @@ html.js .reveal.in { opacity: 1; transform: none; }
    A slim green ribbon under the menu pill on every page while entries are
    open. It shows on every page load and folds away once the visitor scrolls down, and pages push their first
    section down by its height (--ribbon-h) so it never covers a heading. */
-html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
+/* The ribbon sits the same 16px below the menu as the homepage hero's review
+   line sits below the ribbon (owner's request: evenly spaced). --ribbon-h is
+   that gap plus the ribbon's 34px height; --hero-top-gap is the homepage
+   hero's matching gap. */
+html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 50px; --hero-top-gap: 16px; }
 .gw-ribbon {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  max-width: var(--container); height: 34px; margin: 8px auto 0; padding: 0 16px;
+  max-width: var(--container); height: 34px; margin: 16px auto 0; padding: 0 16px;
   border-radius: var(--r-pill); background: var(--xmas-green); color: #fff;
   font-size: .84rem; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden;
   box-shadow: 0 10px 24px -12px rgba(23,122,76,.85);
@@ -1599,7 +1603,11 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
 
 @media (prefers-reduced-motion: reduce) { .gw-ribbon-dot { animation: none; } }
 
-/* Phones: the homepage hero drops its quote button (owner's call: too many
-   red buttons up top with the giveaway bar); Get a Quote stays in the menu
-   and further down the page. */
-@media (max-width: 760px) { .hero-photo-full .hero-actions--home { display: none; } }
+/* Phones: the homepage quote button sits right under the description, at
+   its natural width on the left and a size smaller, so it doesn't run across
+   the person in the photo (owner's call, October 23, 2026; it had been
+   hidden on phones). */
+@media (max-width: 760px) {
+  .hero-photo-full .hero-actions--home { margin-top: 22px; justify-content: flex-start; }
+  .hero-photo-full .hero-actions--home .btn { padding: 12px 18px; font-size: .8rem; gap: 8px; }
+}
