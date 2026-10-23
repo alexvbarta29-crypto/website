@@ -1186,6 +1186,8 @@ section { padding-block: clamp(56px, 8vw, 110px); }
   .insta-card:hover .insta-card-media img { transform: scale(1.03); }
 }
 .insta-card-media-el { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+/* Story videos play on their own; a tap pauses or resumes them. */
+video.insta-card-media-el[data-autoplay] { cursor: pointer; }
 .insta-card-badge {
   position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%;
   background: rgba(0,0,0,.45); backdrop-filter: blur(4px); color: #fff; display: grid; place-items: center; z-index: 2;

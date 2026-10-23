@@ -1335,8 +1335,60 @@
     const next = $(".insta-arrow.next", carousel);
     if (!track) return;
 
-    const videos = $$(".insta-card-media-el", track).filter((v) => v.tagName === "VIDEO");
-    videos.forEach((v) => v.addEventListener("play", () => videos.forEach((o) => { if (o !== v) o.pause(); })));
+    const allVideos = $$(".insta-card-media-el", track).filter((v) => v.tagName === "VIDEO");
+    // Reels: controls and sound, played by the visitor. Starting one pauses
+    // every other video in the row.
+    const videos = allVideos.filter((v) => !v.hasAttribute("data-autoplay"));
+    videos.forEach((v) => v.addEventListener("play", () => allVideos.forEach((o) => { if (o !== v) o.pause(); })));
+
+    /* Story videos (data-autoplay): silent loops that play on their own
+       while at least 60% of the card is on screen and pause once it isn't
+       (a per-card observer only sees cards inside the track's visible strip,
+       which is exactly what's wanted here). They hold off while a reel is
+       playing and pick up again when it stops. A tap or Enter pauses or
+       resumes one, and a pause chosen that way sticks until resumed. With
+       reduced motion nothing moves on its own: they get ordinary controls
+       instead. They never hold up the row's auto-advance. */
+    const loops = allVideos.filter((v) => v.hasAttribute("data-autoplay"));
+    if (loops.length) {
+      const onScreen = new Set();
+      const reelPlaying = () => videos.some((v) => !v.paused);
+      const playLoop = (v) => {
+        if (reduce || v.dataset.userPaused || reelPlaying()) return;
+        setPoster(v);
+        v.muted = true;
+        const p = v.play();
+        if (p && p.catch) p.catch(() => {});
+      };
+      if (reduce) {
+        loops.forEach((v) => { v.controls = true; });
+      } else {
+        loops.forEach((v) => {
+          v.tabIndex = 0;
+          v.setAttribute("role", "button");
+          const toggle = () => {
+            if (v.paused) { delete v.dataset.userPaused; playLoop(v); }
+            else { v.dataset.userPaused = "1"; v.pause(); }
+          };
+          v.addEventListener("click", toggle);
+          v.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+          });
+        });
+        if ("IntersectionObserver" in window) {
+          const lio = new IntersectionObserver((entries) => entries.forEach((en) => {
+            const v = en.target;
+            if (en.isIntersecting && en.intersectionRatio >= 0.6) { onScreen.add(v); playLoop(v); }
+            else { onScreen.delete(v); v.pause(); }
+          }), { threshold: [0, 0.6] });
+          loops.forEach((v) => lio.observe(v));
+        }
+        videos.forEach((v) => {
+          v.addEventListener("pause", () => onScreen.forEach(playLoop));
+          v.addEventListener("ended", () => onScreen.forEach(playLoop));
+        });
+      }
+    }
 
     const step = () => Math.min(track.clientWidth * 0.8, 420);
     if (prev && next) {

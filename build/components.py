@@ -1232,11 +1232,20 @@ def _instagram_excluded_slide(s):
 MAX_CAROUSEL_STORIES = 12
 STORIES_PER_DAY = 3
 
+try:
+    from zoneinfo import ZoneInfo
+    _CENTRAL = ZoneInfo("America/Chicago")
+except Exception:  # no tz database: fall back to the API's UTC times
+    _CENTRAL = None
+
 def _insta_time(ts):
+    """An Instagram timestamp as Minnesota time, so a story posted on an
+    evening counts (and is labelled) as that day, not the next UTC day."""
     try:
-        return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S%z")
+        t = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S%z")
     except (TypeError, ValueError):
         return None
+    return t.astimezone(_CENTRAL) if _CENTRAL else t
 
 def _instagram_stories(posts_oldest=None):
     """Saved stories (build/instagram_stories.json, written by
@@ -1268,10 +1277,17 @@ def _instagram_stories(posts_oldest=None):
             break
     return out
 
-def _insta_card(root, image, video, alt, link, link_label):
+def _insta_card(root, image, video, alt, link, link_label, loop=False):
     w, h = _real_size(image)
     ratio = f"{w}/{h}"
-    if video and os.path.exists(os.path.join(_ROOT, video)):
+    if loop and video and os.path.exists(os.path.join(_ROOT, video)):
+        # A story video (owner's request): no controls, silent, looping, and
+        # main.js plays it while it's on screen and pauses it off screen; a
+        # tap or Enter pauses/resumes it (and a reel starting pauses it).
+        media_html = (f'<video class="insta-card-media-el" src="{root}{video}" '
+                      f'data-poster="{root}{_poster_src(image)}" muted loop playsinline preload="none" '
+                      f'data-autoplay aria-label="{alt}, video (tap to pause or play)"></video>')
+    elif video and os.path.exists(os.path.join(_ROOT, video)):
         # data-poster, not poster: main.js promotes it to a real poster
         # once the card nears the viewport. A poster has no lazy-loading
         # of its own, so as a plain attribute every one of these is
@@ -1367,7 +1383,7 @@ def instagram_carousel(depth=0):
     for t, st in _instagram_stories(min(post_times) if post_times else None):
         alt = f"{BIZ['name']} Instagram story from {t.strftime('%B')} {t.day}"
         entries.append((t, -1, _insta_card(root, st["image"], st.get("video"), alt,
-                                           BIZ["instagram"], f"See {BIZ['name']} on Instagram")))
+                                           BIZ["instagram"], f"See {BIZ['name']} on Instagram", loop=True)))
     # Newest first; a post without a timestamp keeps its place from the feed.
     if all(t for t, _, _ in entries):
         entries.sort(key=lambda e: e[0], reverse=True)
