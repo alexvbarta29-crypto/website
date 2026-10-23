@@ -31,14 +31,13 @@ def _assets(depth, name="giveaway"):
 
 
 def _lp_header(root, rules=False):
-    """Standalone landing-page header: the snow-capped logo and nothing that
-    leads into the main site. The giveaway is its own page, not a page of
-    the website."""
+    """Standalone landing-page header: the snow-capped logo, which links to
+    the homepage (owner's request), and the Enter button."""
     right = ('<a class="gw-lp-link" href="/giveaway">Back to the giveaway</a>' if rules
              else '<a class="btn gw-lp-cta" href="#enter">Enter to win</a>')
     logo = C._brand_logo(root, "(max-width: 760px) 120px, 150px", 150, 41, xmas=True)
     return f"""<header class="gw-lp-top"><div class="container gw-lp-top-row">
-  <span class="gw-lp-brand">{logo}</span>
+  <a class="gw-lp-brand" href="/" aria-label="{BIZ['name']} home">{logo}</a>
   {right}
 </div></header>"""
 
