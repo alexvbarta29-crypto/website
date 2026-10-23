@@ -13,7 +13,7 @@ built on the same Netlify stack as the quote form and the referral program
 | Entries | 1 per household, +1 for every eligible friend who enters through your link |
 | Who | 18+, home within 17 straight-line miles of Delano. The number is never shown to visitors (owner's call); the page and rules point to the circle on the map |
 | Entries close | Thu Nov 5, 2026, 11:59 PM Central |
-| Drawing | Fri Nov 6, 2026, 6:00 PM Central (film it / go live on Facebook) |
+| Drawing | Fri Nov 6, 2026, 6:00 PM Central (not live; post the winners afterward) |
 | Non-winners | $250 off a 2026 light install, claim within 72 hours (by Mon Nov 9, 6 PM) |
 
 Dates and amounts live in two places that must match:
