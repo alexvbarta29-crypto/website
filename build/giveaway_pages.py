@@ -56,7 +56,8 @@ def _lp_end(root):
 
 
 def _alt(src):
-    return C._esc(XMAS_PHOTO_ALT.get(src, "A home lit up with Christmas lights installed by Barta"))
+    alt = G.get("photo_alts", {}).get(src) or XMAS_PHOTO_ALT.get(src)
+    return C._esc(alt or "A home lit up with Christmas lights installed by Barta")
 
 
 def _data_attrs():
@@ -314,7 +315,14 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
         ("No January takedown in the cold.", "We take it all down after the holidays."),
     ]
     perk_html = "".join(f'<li>{icon("check-circle")}<div><strong>{t}</strong> <span>{d}</span></div></li>' for t, d in perks)
-    photo = G["photos"][0]
+    lazy = 'loading="lazy" decoding="async"'
+
+    def _ph(src, cls, sizes):
+        return (f'<figure class="gw-photo {cls}">'
+                f'{C.picture(root, src, _alt(src), sizes=sizes, extra_attrs=lazy)}</figure>')
+    ph = G["photos"]
+    photos_html = _ph(ph[0], "gw-photo--big", "(max-width: 700px) 100vw, 640px") + "".join(
+        _ph(p, "gw-photo--half", "(max-width: 700px) 50vw, 320px") for p in ph[1:3])
 
     html += f"""<main id="main" class="gw-page" {_data_attrs()}>
   <section class="gw-top"><div class="gw-col">
@@ -363,7 +371,8 @@ def giveaway_page(depth=0, seo_title=None, schema=None):
 
   <section class="gw-value"><div class="gw-col">
     <h2>The best-looking house on the street. Zero work.</h2>
-    <figure class="gw-value-photo">{C.picture(root, photo, _alt(photo), sizes="(max-width: 700px) 100vw, 640px", extra_attrs='loading="lazy" decoding="async"')}</figure>
+    <div class="gw-photos">{photos_html}</div>
+    <p class="gw-photos-note">Real Barta installs around the West Metro.</p>
     <ul class="gw-perks">{perk_html}</ul>
   </div></section>
 
