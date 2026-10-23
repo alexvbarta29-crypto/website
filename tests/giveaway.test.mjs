@@ -198,18 +198,13 @@ test("coupon claim: only after the drawing, never for winners, idempotent, re-ta
   const b = await ok(post(entry({ first_name: "Bob", phone: "763-555-0102", address: "7 Oak Ln" })));
   await ok(post({ action: "claim", t: b.token }), 409);              // no drawing yet
   const d = await ok(adminPost({ action: "draw", early: true }));
+  assert.equal(d.draw.winners.length, 1);                            // one drawn winner, nobody referred
   const winnerId = d.draw.winners[0].id;
-  // two winners requested but only... both entrants win here (2 winners)
-  assert.equal(d.draw.winners.length, 2);
-  await ok(post({ action: "claim", t: a.token }), 409);              // a won
-  // Undo and draw with only one winner slot by disqualifying b first.
-  await ok(adminPost({ action: "undo_draw", confirm: "UNDO DRAW" }));
-  await ok(adminPost({ action: "disqualify", id: "7635550102", value: true }));
-  await ok(adminPost({ action: "draw", early: true }));
-  await ok(adminPost({ action: "disqualify", id: "7635550102", value: false }));
-  const c = await ok(post({ action: "claim", t: b.token }));
+  const [win, lose] = winnerId === "7635550101" ? [a, b] : [b, a];
+  await ok(post({ action: "claim", t: win.token }), 409);            // the winner gets no coupon
+  const c = await ok(post({ action: "claim", t: lose.token }));
   assert.equal(c.already, false);
-  const again = await ok(post({ action: "claim", t: b.token }));
+  const again = await ok(post({ action: "claim", t: lose.token }));
   assert.equal(again.already, true);
   const claimTags = net.rotor().find((r) => (r.payload.tags || []).includes("Giveaway - Coupon Claimed"));
   assert.deepEqual(claimTags.payload.tags, ["Giveaway - Coupon Claimed", "Christmas Lights"]);
@@ -263,10 +258,10 @@ test("send_batch needs Twilio, sends once per person, and skips winners for the 
   await ok(adminPost({ action: "send_batch", template: "coupon" }), 409);   // no drawing yet
   await ok(adminPost({ action: "draw", early: true }));
   const c = await ok(adminPost({ action: "send_batch", template: "coupon" }));
-  assert.equal(c.sent, 1);                                                     // 3 entrants, 2 winners
+  assert.equal(c.sent, 2);                                                     // 3 entrants, 1 winner
   assert.match(net.twilio().at(-1).params.get("Body"), /\$250 off/);
   const f = await ok(adminPost({ action: "send_batch", template: "followup24" }));
-  assert.equal(f.sent, 1);
+  assert.equal(f.sent, 2);
 });
 
 test("a failed send is recorded and not retried in a loop", async () => {
@@ -286,7 +281,7 @@ test("redraw replaces a drawn winner with an alternate", async () => {
   const out = d.draw.winners.find((w) => w.kind === "drawn").id;
   const r = await ok(adminPost({ action: "redraw", id: out }));
   assert.ok(!r.draw.winners.some((w) => w.id === out));
-  assert.equal(r.draw.winners.filter((w) => w.kind === "drawn").length, 2);
+  assert.equal(r.draw.winners.filter((w) => w.kind === "drawn").length, 1);
   assert.equal(r.draw.replaced[0].id, out);
 });
 
@@ -494,4 +489,19 @@ test("if a referred friend wins, only their one referrer wins too, and it doesn'
   const r = lib.draw(people, { n: 1, rand: () => 0 });       // first ticket = Xena
   assert.equal(r.drawn[0].id, "xena");
   assert.deepEqual(r.bonus.map((b) => b.id), ["amy"]);
+});
+
+test("one drawn winner: their referrer is the only other winner, so at most 2 installs", async () => {
+  const amy = await ok(post(entry({ first_name: "Amy", phone: "763-555-0301", address: "1 Elm St" })));
+  await ok(post(entry({ first_name: "Xena", phone: "763-555-0302", address: "2 Elm St", ref: amy.code })));
+  await ok(post(entry({ first_name: "Cy", phone: "763-555-0303", address: "3 Elm St" })));
+  for (let i = 0; i < 20; i++) {
+    const d = await ok(adminPost({ action: "draw", early: true }));
+    const drawn = d.draw.winners.filter((w) => w.kind === "drawn");
+    assert.equal(drawn.length, 1);
+    assert.ok(d.draw.winners.length <= 2);
+    if (drawn[0].id === "7635550302") assert.deepEqual(d.draw.winners.map((w) => w.id).sort(), ["7635550301", "7635550302"]);
+    else assert.equal(d.draw.winners.length, 1);
+    await ok(adminPost({ action: "undo_draw", confirm: "UNDO DRAW" }));
+  }
 });

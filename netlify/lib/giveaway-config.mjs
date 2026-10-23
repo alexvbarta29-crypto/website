@@ -12,7 +12,7 @@ import { DEFAULT_SITE_URL, OFFICE_PHONE_DISPLAY } from "./referral-config.mjs";
 export const GIVEAWAY = Object.freeze({
   name: "Holiday Lights Giveaway",
   year: 2026,
-  winners: 2,                       // drawn winners (a drawn winner's referrer also wins)
+  winners: 1,                       // drawn winners (a drawn winner's referrer also wins)
   prize_value: 1500,                // approximate retail value of one prize, $
   coupon: 250,                      // $ off for every entrant who doesn't win
   // All instants are absolute (UTC) so the server and every browser agree.
@@ -96,7 +96,7 @@ export const SMS = Object.freeze({
     + `a free Christmas light installation (up to $${GIVEAWAY.prize_value}) in Barta's Holiday Lights `
     + `Giveaway! We'll call you shortly to set it up. Questions? ${OFFICE_PHONE_DISPLAY}`,
   coupon: ({ first, claim_url }) =>
-    `${first}, the Barta Holiday Lights Giveaway winners are drawn. You didn't win the big one, `
+    `${first}, the Barta Holiday Lights Giveaway winner is drawn. You didn't win the big one, `
     + `but for entering you get $${GIVEAWAY.coupon} off a Christmas light install this season. `
     + `It's good for 72 hours, claim it here: ${claim_url} Reply STOP to opt out.`,
   followup24: ({ first, claim_url }) =>

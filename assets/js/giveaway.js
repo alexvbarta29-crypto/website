@@ -52,7 +52,7 @@
     const target = now < CLOSES ? CLOSES : DRAW;
     cdLabel.textContent = now < CLOSES ? "Entries close in" : "Drawing in";
     let left = Math.max(0, target - now);
-    if (now >= DRAW) { cd.classList.add("is-done"); cdLabel.textContent = "Winners drawn"; return false; }
+    if (now >= DRAW) { cd.classList.add("is-done"); cdLabel.textContent = "Winner drawn"; return false; }
     const d = Math.floor(left / 864e5); left -= d * 864e5;
     const h = Math.floor(left / 36e5); left -= h * 36e5;
     const m = Math.floor(left / 6e4); left -= m * 6e4;
