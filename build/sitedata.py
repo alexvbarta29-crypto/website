@@ -117,7 +117,7 @@ GIVEAWAY = {
     # Pre-launch lock: while set, /giveaway shows a "Coming soon" screen and a
     # password box instead of the page. SHA-256 of the password, lowercased
     # with spaces removed (currently "alexbarta"). Set to "" to open the page.
-    "lock_sha256": "fce9fa91acb8a524d12a97b4a35d1c05b283b0ccb17087da7a965cc1b693979e",
+    "lock_sha256": "",
     # The owner's own install photos (Oct 2026): EXIF stripped, a house
     # number and a license plate blurred, yard signs cropped out. The first
     # is also the link-share preview (its -og.jpg crop).
