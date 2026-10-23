@@ -657,10 +657,10 @@ def giveaway_ribbon(root):
   """
 
 def giveaway_home_card(root):
-    """Homepage card: the offer, a live countdown and the Enter button."""
+    """Homepage card: the offer, a live countdown and the Enter button (no
+    photo, owner's call)."""
     if not giveaway_open():
         return ""
-    stem = f"{root}assets/img/giveaway-white-estate"
     units = "".join(f'<div class="gwp-unit"><b data-gw-unit="{u}">--</b><small>{l}</small></div>'
                     for u, l in (("d", "Days"), ("h", "Hours"), ("m", "Min"), ("s", "Sec")))
     return f"""
@@ -668,11 +668,6 @@ def giveaway_home_card(root):
   <section class="gwp" data-gw-end="{GIVEAWAY['closes_iso']}">
     <div class="container">
       <div class="gwp-card">
-        <picture class="gwp-photo">
-          <source type="image/webp" srcset="{stem}-640w.webp 640w, {stem}-1200w.webp 1200w" sizes="(max-width: 860px) 100vw, 50vw">
-          <img src="{stem}-1200w.jpg" srcset="{stem}-640w.jpg 640w, {stem}-1200w.jpg 1200w" sizes="(max-width: 860px) 100vw, 50vw"
-               alt="A white two-story home at dusk outlined in warm white Christmas lights" loading="lazy" decoding="async" width="1200" height="801">
-        </picture>
         <div class="gwp-body">
           <span class="gwp-tag">Holiday Lights Giveaway</span>
           <h2>You and a friend can win <em>free Christmas lights.</em></h2>
@@ -696,7 +691,7 @@ def nav(depth=0, xmas=False):
     menu_services = ([(l, t) for l, t in DROPDOWN_SERVICES if t != xmas_target]
                      + [("Commercial Cleaning", "services/commercial-cleaning.html")])
     return f"""<header class="nav-wrap">
-  {giveaway_ribbon(root)}<nav class="nav" aria-label="Primary">
+  <nav class="nav" aria-label="Primary">
     <a class="brand" href="{root}index.html" aria-label="{BIZ['name']} home">
       {_brand_logo(root, "148px", 148, 40, xmas)}
     </a>
@@ -717,7 +712,7 @@ def nav(depth=0, xmas=False):
       <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">{icon('menu')}</button>
     </div>
   </nav>
-</header>
+  {giveaway_ribbon(root)}</header>
 
 <div class="drawer" role="dialog" aria-modal="true" aria-label="Menu">
   <div class="drawer-scrim"></div>
