@@ -64,7 +64,8 @@ Rotor upserts by phone, so someone who is already a lead (a quote request,
 a Meta lead) would have their name, source and notes replaced by a plain
 upsert. Every giveaway write (`netlify/lib/giveaway-rotor.mjs`) goes in two
 steps instead: (1) the phone alone, which finds or creates the lead;
-(2) the tags, plus name, address, source and notes if Rotor just created
+(2) by phone again (never by id, which blanks fields it isn't sent), the
+tags, plus name, address, source and notes if Rotor just created
 the lead, or only notes appended under theirs if it already existed. The
 tags always arrive in step 2, an update, so Rotor's "Tag added" workflows
 fire for new and existing leads alike. The dashboard card says

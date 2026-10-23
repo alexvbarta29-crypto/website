@@ -7,8 +7,8 @@
 //
 //   1. POST { phone } only. Nothing on an existing lead changes.
 //      201 → we just created this lead; 200 → it already existed.
-//   2. With the lead id from step 1, the tags (always, so Rotor's "Tag added"
-//      workflows fire) plus:
+//   2. By phone again (never by id, which blanks fields it isn't sent), the
+//      tags (always, so Rotor's "Tag added" workflows fire) plus:
 //      - new lead      → name, address, source and notes;
 //      - existing lead → append our notes under theirs (only when Rotor's
 //        reply shows us their current notes), fill service_type only if
@@ -81,7 +81,17 @@ export function mergeNotes(existing, ours) {
  * @param {string} [o.service_type]  existing lead: set only if theirs is empty
  * @returns {{delivered:boolean, status:number|null, lead_id:string|null, existing:boolean|null, details:boolean}}
  */
-export async function upsertGiveawayLead({ phone, tags, name, fields = {}, notes = "", service_type } = {}) {
+// Rotor keeps phones as +1XXXXXXXXXX; sending that form makes both steps
+// match the same lead however the entrant typed it.
+function e164(v) {
+  const d = String(v || "").replace(/\D/g, "");
+  if (d.length === 10) return "+1" + d;
+  if (d.length === 11 && d[0] === "1") return "+" + d;
+  return String(v || "").trim();
+}
+
+export async function upsertGiveawayLead({ phone: rawPhone, tags, name, fields = {}, notes = "", service_type } = {}) {
+  const phone = e164(rawPhone);
   // Step 1: find or create the lead by phone alone. The tags wait for step 2
   // so they always arrive as an UPDATE, which is what fires Rotor's
   // "Tag added" workflows (the giveaway pipelines) for new and existing leads.
@@ -108,15 +118,11 @@ export async function upsertGiveawayLead({ phone, tags, name, fields = {}, notes
     }
     if (service_type && lead && !String(lead.service_type || "").trim()) update.service_type = service_type;
   }
-  // By id when we have it. Without one, by phone: fine for a lead we just
-  // created; for an existing lead only the tags go (they merge, nothing else
-  // on it changes).
-  if (id) update.id = id;
-  else {
-    update.phone = phone;
-    if (existing) for (const k of Object.keys(update)) if (k !== "phone" && k !== "tags") delete update[k];
-  }
-
+  // Always by phone, never by id: an update by id blanks fields it isn't
+  // sent (it erased the phone on the first live entries), while an upsert by
+  // phone only changes what it carries. The phone is the lead's own, so it
+  // finds the same lead step 1 found or made.
+  update.phone = phone;
   const r2 = await post(update);
   const delivered = okStatus(r2.status);
   return { delivered, status: delivered ? r1.status : r2.status, lead_id: id, existing, details: delivered };

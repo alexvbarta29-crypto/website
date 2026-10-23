@@ -84,6 +84,9 @@ test("entering stores the entrant, returns share + status links, creates a Rotor
   // fire) and fills in the new lead.
   const [phoneOnly, lead] = net.rotor();
   assert.deepEqual(Object.keys(phoneOnly.payload), ["phone"]);
+  // Never by id: an update by id blanked the phone on the first live entries.
+  assert.equal(lead.payload.id, undefined);
+  assert.equal(lead.payload.phone, "+17635550101");
   assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
   assert.match(lead.payload.notes, /coupon texts: YES/);
   assert.equal(lead.payload.source, GIVEAWAY.name);
@@ -350,9 +353,9 @@ test("entering with a phone that's already a Rotor lead only adds tags and appen
   await ok(post(entry()));
   const [phoneOnly, update] = net.rotor();
   assert.deepEqual(Object.keys(phoneOnly.payload), ["phone"]);
-  assert.deepEqual(Object.keys(update.payload).sort(), ["id", "notes", "tags"]);
+  assert.deepEqual(Object.keys(update.payload).sort(), ["notes", "phone", "tags"]);
+  assert.equal(update.payload.phone, "+17635550101");
   assert.deepEqual(update.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
-  assert.equal(update.payload.id, "lead-1");
   assert.match(update.payload.notes, /^Customer notes: call after 5\nServices: Exterior Window Cleaning\n\nEntered the Holiday/);
   assert.equal(store.json("entrant/7635550101").rotor.existing, true);
 });
@@ -361,7 +364,7 @@ test("an existing lead whose notes Rotor didn't show us gets tags only", async (
   net = mockFetch({ rotor: 200, rotorBody: { id: "lead-1" } });
   await ok(post(entry()));
   assert.equal(net.rotor().length, 2);
-  assert.deepEqual(net.rotor()[1].payload, { tags: ["Giveaway 2026", "Giveaway - Coupon Opt-In"], id: "lead-1" });
+  assert.deepEqual(net.rotor()[1].payload, { tags: ["Giveaway 2026", "Giveaway - Coupon Opt-In"], phone: "+17635550101" });
 });
 
 test("an existing lead with no id in Rotor's reply gets tags by phone, nothing else", async () => {
@@ -377,7 +380,7 @@ test("a claim on an existing lead appends notes and fills an empty service type 
     fields: { source: "Holiday Lights Giveaway" }, notes: "Claimed $250. Send the quote!" });
   assert.equal(r.delivered, true);
   const upd = net.rotor()[1].payload;
-  assert.deepEqual(upd, { tags: ["Giveaway - Coupon Claimed"], id: "lead-9",
+  assert.deepEqual(upd, { tags: ["Giveaway - Coupon Claimed"], phone: "+17635550101",
                           notes: "Old notes\n\nClaimed $250. Send the quote!",
                           service_type: "Christmas Light Installation" });
 });
@@ -390,7 +393,8 @@ test("if Rotor wants a name for a new lead, step 1 is retried with one", async (
   assert.equal(calls[0], "phone");
   assert.equal(calls[1], "name,phone");
   assert.deepEqual(net.rotor()[2].payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
-  assert.equal(net.rotor()[2].payload.id, "new-1");
+  assert.equal(net.rotor()[2].payload.phone, "+17635550101");
+  assert.equal(net.rotor()[2].payload.id, undefined);
   assert.equal(net.rotor()[2].payload.source, "Holiday Lights Giveaway");
 });
 
