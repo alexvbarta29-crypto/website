@@ -79,17 +79,17 @@ test("entering stores the entrant, returns share + status links, creates a Rotor
   assert.equal(r.entries, 1);
   const e = store.json("entrant/7635550101");
   assert.equal(e.area.ok, true);
-  // Step 1 is phone + tags only (no source, so the sales-pipeline workflow
-  // skips it); step 2 fills in the new lead.
-  const [tagsOnly, lead] = net.rotor();
-  assert.deepEqual(Object.keys(tagsOnly.payload).sort(), ["phone", "tags"]);
-  assert.deepEqual(tagsOnly.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
+  // Step 1 is the phone alone (no source, so the sales-pipeline workflow
+  // skips it); step 2 adds the tags (an update, so "Tag added" workflows
+  // fire) and fills in the new lead.
+  const [phoneOnly, lead] = net.rotor();
+  assert.deepEqual(Object.keys(phoneOnly.payload), ["phone"]);
+  assert.deepEqual(lead.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
   assert.match(lead.payload.notes, /coupon texts: YES/);
   assert.equal(lead.payload.source, GIVEAWAY.name);
   assert.equal(lead.payload.name, "Jane Doe");
   assert.match(lead.payload.notes, /Share link: .*\/g\/LIGHTS-/);
   assert.equal(lead.payload.address_city, "Delano");
-  assert.equal(lead.payload.tags, undefined);
   assert.equal(e.rotor.delivered, true);
   assert.equal(e.rotor.existing, false);
   assert.equal(net.twilio().length, 0);   // SMS mode off
@@ -104,7 +104,7 @@ test("out-of-area address is refused with out_of_area, and nothing is stored", a
 
 test("out-of-area quote request becomes a Rotor lead", async () => {
   await ok(post({ ...entry({ address_lat: 44.98, address_lng: -93.27 }), action: "outside_quote" }));
-  assert.deepEqual(net.rotor()[0].payload.tags, ["Giveaway - Out of Area"]);
+  assert.deepEqual(net.rotor()[1].payload.tags, ["Giveaway - Out of Area"]);
   // A real quote request: it arrives like any website quote.
   assert.equal(net.rotor()[1].payload.source, "Website quote form");
   assert.equal(store.keys("outside/").length, 1);
@@ -321,7 +321,7 @@ test("lookup by phone returns count and share link, nothing private", async () =
 
 test("no offers opt-in means no offers tag in Rotor", async () => {
   await ok(post(entry({ offers: false })));
-  assert.deepEqual(net.rotor()[0].payload.tags, ["Giveaway 2026"]);
+  assert.deepEqual(net.rotor()[1].payload.tags, ["Giveaway 2026"]);
   assert.match(net.rotor()[1].payload.notes, /coupon texts: no/);
 });
 
@@ -348,9 +348,10 @@ test("entering with a phone that's already a Rotor lead only adds tags and appen
     notes: "Customer notes: call after 5\nServices: Exterior Window Cleaning", service_type: "Exterior Window Cleaning",
   } });
   await ok(post(entry()));
-  const [tagsOnly, update] = net.rotor();
-  assert.deepEqual(Object.keys(tagsOnly.payload).sort(), ["phone", "tags"]);
-  assert.deepEqual(Object.keys(update.payload).sort(), ["id", "notes"]);
+  const [phoneOnly, update] = net.rotor();
+  assert.deepEqual(Object.keys(phoneOnly.payload), ["phone"]);
+  assert.deepEqual(Object.keys(update.payload).sort(), ["id", "notes", "tags"]);
+  assert.deepEqual(update.payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
   assert.equal(update.payload.id, "lead-1");
   assert.match(update.payload.notes, /^Customer notes: call after 5\nServices: Exterior Window Cleaning\n\nEntered the Holiday/);
   assert.equal(store.json("entrant/7635550101").rotor.existing, true);
@@ -359,7 +360,14 @@ test("entering with a phone that's already a Rotor lead only adds tags and appen
 test("an existing lead whose notes Rotor didn't show us gets tags only", async () => {
   net = mockFetch({ rotor: 200, rotorBody: { id: "lead-1" } });
   await ok(post(entry()));
-  assert.equal(net.rotor().length, 1);
+  assert.equal(net.rotor().length, 2);
+  assert.deepEqual(net.rotor()[1].payload, { tags: ["Giveaway 2026", "Giveaway - Coupon Opt-In"], id: "lead-1" });
+});
+
+test("an existing lead with no id in Rotor's reply gets tags by phone, nothing else", async () => {
+  net = mockFetch({ rotor: 200, rotorBody: { notes: "Theirs" } });
+  await ok(post(entry()));
+  assert.deepEqual(Object.keys(net.rotor()[1].payload).sort(), ["phone", "tags"]);
 });
 
 test("a claim on an existing lead appends notes and fills an empty service type only", async () => {
@@ -369,7 +377,8 @@ test("a claim on an existing lead appends notes and fills an empty service type 
     fields: { source: "Holiday Lights Giveaway" }, notes: "Claimed $250. Send the quote!" });
   assert.equal(r.delivered, true);
   const upd = net.rotor()[1].payload;
-  assert.deepEqual(upd, { id: "lead-9", notes: "Old notes\n\nClaimed $250. Send the quote!",
+  assert.deepEqual(upd, { tags: ["Giveaway - Coupon Claimed"], id: "lead-9",
+                          notes: "Old notes\n\nClaimed $250. Send the quote!",
                           service_type: "Christmas Light Installation" });
 });
 
@@ -378,8 +387,9 @@ test("if Rotor wants a name for a new lead, step 1 is retried with one", async (
                     rotorBody: { id: "new-1" } });
   await ok(post(entry()));
   const calls = net.rotor().map((r) => Object.keys(r.payload).sort().join(","));
-  assert.equal(calls[0], "phone,tags");
-  assert.equal(calls[1], "name,phone,tags");
+  assert.equal(calls[0], "phone");
+  assert.equal(calls[1], "name,phone");
+  assert.deepEqual(net.rotor()[2].payload.tags, ["Giveaway 2026", "Giveaway - Coupon Opt-In"]);
   assert.equal(net.rotor()[2].payload.id, "new-1");
   assert.equal(net.rotor()[2].payload.source, "Holiday Lights Giveaway");
 });

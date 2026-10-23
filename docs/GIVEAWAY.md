@@ -63,26 +63,29 @@ only ever added (Rotor merges them); if a winner is replaced, remove
 Rotor upserts by phone, so someone who is already a lead (a quote request,
 a Meta lead) would have their name, source and notes replaced by a plain
 upsert. Every giveaway write (`netlify/lib/giveaway-rotor.mjs`) goes in two
-steps instead: (1) phone + tags only; (2) if Rotor created the lead, fill in
-name, address, source and notes; if it already existed, append our notes
-under theirs and leave everything else alone. The dashboard card says
-"in Rotor (already a lead, only tagged)" for those.
+steps instead: (1) the phone alone, which finds or creates the lead;
+(2) the tags, plus name, address, source and notes if Rotor just created
+the lead, or only notes appended under theirs if it already existed. The
+tags always arrive in step 2, an update, so Rotor's "Tag added" workflows
+fire for new and existing leads alike. The dashboard card says
+"in Rotor (already a lead, only tagged)" for existing ones.
 
-### Keeping entrants out of the sales pipeline (Rotor workflow setup)
+### Rotor workflows (Marketing → Workflows)
 
-Rotor's "Lead created" workflow puts every new lead into **New Lead - No
-Estimate Yet**. Step 1 above carries no source, so:
+Giveaway people sit in their own holding pipelines (one stage each, never
+moved) and stay out of the sales pipeline:
 
-1. Rotor → Marketing → Workflows → the "Lead created" workflow(s) that add
-   to New Lead - No Estimate Yet → filter by source: **Website quote form,
-   Meta Ads, Referral, Referral Program** (every real source; not Holiday
-   Lights Giveaway, not blank). There are currently two such workflows
-   (every lead lands in that pipeline twice); keep one.
-2. New workflow: trigger **Lead → Tag added → Giveaway - Coupon Claimed** →
-   action **Add to Pipeline → New Lead - No Estimate Yet**. Claims and YES
-   replies (tagged by hand) then become real pipeline leads.
-3. Out-of-area quote requests come in as source "Website quote form", so
-   they join the pipeline like any quote.
+| # | Trigger | Action |
+|---|---------|--------|
+| 1 | Lead created, source filter = Website quote form, Meta Ads, Referral, Referral Program (keep one such workflow; there are two) | Add to Pipeline → New Lead - No Estimate Yet (existing) |
+| 2 | Lead → Tag added → `Giveaway 2026` | Add to Pipeline → **Giveaway - Entrants** |
+| 3 | Lead → Tag added → `Giveaway - Winner` | Add to Pipeline → **Giveaway - Winners**; Send Notification to the owner |
+| 4 | Lead → Tag added → `Giveaway - Coupon Claimed` | Add to Pipeline → **Giveaway - $250 Claimed**; Create Task "Send Christmas light quote"; Send Notification |
+| 5 (optional) | Lead → Contact replied, Conditional Split: has tag `Giveaway - Coupon Opt-In` | Send Notification "Giveaway reply: check for YES" |
+
+Out-of-area quote requests arrive as source "Website quote form" and go
+through workflow 1 like any quote. The coupon opt-in needs no pipeline: the
+tag is what texts 3-5 filter on.
 
 ## The flow (maps to the playbook)
 
