@@ -1563,13 +1563,13 @@ html.js .reveal.in { opacity: 1; transform: none; }
 
 
 /* ---------- Holiday Lights Giveaway promo (build: components.giveaway_*) ----------
-   A slim red ribbon above the menu pill on every page while entries are
+   A slim red ribbon under the menu pill on every page while entries are
    open. It folds away once the page scrolls, and pages push their first
    section down by its height (--ribbon-h) so it never covers a heading. */
 html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
 .gw-ribbon {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  max-width: var(--container); height: 34px; margin: 0 auto 8px; padding: 0 16px;
+  max-width: var(--container); height: 34px; margin: 8px auto 0; padding: 0 16px;
   border-radius: var(--r-pill); background: var(--xmas-red); color: #fff;
   font-size: .84rem; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden;
   box-shadow: 0 10px 24px -12px rgba(214,58,48,.85);
@@ -1577,7 +1577,7 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
 }
 .gw-ribbon[hidden] { display: none; }
 .gw-ribbon:hover { background: #c22f26; color: #fff; }
-.nav-wrap.scrolled .gw-ribbon { height: 0; margin-bottom: 0; opacity: 0; pointer-events: none; }
+.nav-wrap.scrolled .gw-ribbon { height: 0; margin-top: 0; opacity: 0; pointer-events: none; }
 .gw-ribbon-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: gw-ribbon-pulse 1.8s ease-out infinite; }
 @keyframes gw-ribbon-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.75); } 70% { box-shadow: 0 0 0 7px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
 .gw-ribbon-time { padding: 5px 10px; border-radius: var(--r-pill); background: rgba(0,0,0,.2); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -1593,11 +1593,11 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
 }
 @media (max-width: 350px) { .gw-ribbon-cta { display: none; } }
 
-/* Homepage card: photo on one side, the offer and a live countdown on the other. */
+/* Homepage card: the offer and a live countdown, centered. */
 .gwp { padding-block: clamp(36px, 6vw, 64px) 0; }
 .gwp[hidden] { display: none; }
 .gwp-card {
-  position: relative; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;
+  position: relative; overflow: hidden; text-align: center;
   border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 0%, #2b3566, #171c3b 55%, #0d1027);
   color: #fff; box-shadow: 0 30px 60px -30px rgba(13,16,39,.75);
 }
@@ -1609,23 +1609,16 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 42px; }
     radial-gradient(circle at 50% 60%, var(--xmas-green) 0 4px, transparent 5px) 28px 0 / 42px 18px repeat-x;
   filter: drop-shadow(0 0 6px rgba(240,180,41,.9));
 }
-.gwp-photo { display: block; min-height: 100%; }
-.gwp-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
-.gwp-body { padding: clamp(40px, 5vw, 56px) clamp(22px, 4vw, 48px) clamp(26px, 4vw, 44px); }
+.gwp-body { max-width: 680px; margin-inline: auto; padding: clamp(46px, 6vw, 60px) clamp(20px, 4vw, 48px) clamp(28px, 4vw, 44px); }
 .gwp-tag { display: inline-block; padding: 6px 13px; border-radius: var(--r-pill); background: var(--xmas-red); color: #fff; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; transform: rotate(-1.5deg); }
 .gwp-body h2 { margin-top: 14px; color: #fff; font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.08; letter-spacing: -.02em; }
 .gwp-body h2 em { font-style: normal; color: var(--xmas-gold); }
 .gwp-body > p { margin-top: 12px; color: rgba(255,255,255,.82); line-height: 1.55; }
-.gwp-timer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 20px; max-width: 420px; }
+.gwp-timer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px auto 0; max-width: 440px; }
 .gwp-unit { padding: 12px 2px 10px; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); text-align: center; }
 .gwp-unit b { display: block; font-family: var(--font-head); font-weight: 900; font-size: clamp(1.8rem, 4vw, 2.5rem); line-height: 1; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 18px rgba(240,180,41,.55); }
 .gwp-unit small { display: block; margin-top: 6px; font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--xmas-gold); }
 .gwp-body > .gwp-when { margin-top: 10px; font-size: .86rem; color: rgba(255,255,255,.7); }
 .gwp-btn { margin-top: 18px; background: var(--xmas-red); box-shadow: 0 14px 30px -12px rgba(214,58,48,.8); }
 .gwp-btn:hover { background: #c22f26; }
-@media (max-width: 860px) {
-  .gwp-card { grid-template-columns: 1fr; }
-  .gwp-photo { aspect-ratio: 16 / 10; }
-  .gwp-body { padding-top: 26px; }
-}
 @media (prefers-reduced-motion: reduce) { .gw-ribbon-dot { animation: none; } .gwp-tag { transform: none; } }
