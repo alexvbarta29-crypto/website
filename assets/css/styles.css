@@ -1603,11 +1603,12 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 50px; --hero-top-gap: 16px; }
 
 @media (prefers-reduced-motion: reduce) { .gw-ribbon-dot { animation: none; } }
 
-/* Phones: the homepage quote button sits right under the description, at
-   its natural width on the left and a size smaller, so it doesn't run across
-   the person in the photo (owner's call, October 23, 2026; it had been
-   hidden on phones). */
+/* Phones: the homepage quote button sits on the left at its natural width
+   and a size smaller, centered in the open space between the description and
+   the Call Us bar, so it lands below the person's chin instead of across his
+   face (owner's calls, October 23, 2026; it had been hidden on phones). The
+   padding keeps a 22px minimum gap under the description on short screens. */
 @media (max-width: 760px) {
-  .hero-photo-full .hero-actions--home { margin-top: 22px; justify-content: flex-start; }
+  .hero-photo-full .hero-actions--home { margin-block: auto; padding-top: 22px; justify-content: flex-start; }
   .hero-photo-full .hero-actions--home .btn { padding: 12px 18px; font-size: .8rem; gap: 8px; }
 }
