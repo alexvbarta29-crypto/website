@@ -53,7 +53,7 @@ def _offer_attrs():
 
 def _proof_row(depth):
     """Under the lead: the same clickable Google-reviews badge the gallery
-    hero carries (stars, the G, "100+ 5-star Google reviews"), in its solid
+    hero carries (stars, the G, "<count>+ 5-star Google reviews"), in its solid
     white form for this pale background, and "Fully insured" beside it."""
     return f"""<div class="ref-hero-proof">
           {C.google_badge(depth, light=True, text=f"{BIZ['review_count']}+ 5-star Google reviews")}

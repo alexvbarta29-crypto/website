@@ -23,7 +23,7 @@ BIZ = {
     "hours": "Mon–Fri 8am–6pm, Sat 8am–5pm, Sun Closed",
     "founded": "2024",
     "rating": "5.0",
-    "review_count": "100",
+    "review_count": "140",
     "domain": "https://www.bartawindowwashing.com",
     "facebook": "https://www.facebook.com/p/Barta-Window-Washing-Services-61558622544052/",
     "instagram": "https://www.instagram.com/bartawindowwashing",
