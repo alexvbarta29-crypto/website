@@ -1852,7 +1852,7 @@ def build_instagram_callback():
 _BLOG_PHOTOS = {
     "how-often-clean-windows-minnesota": "assets/img/fall-water-fed-pole-under-eaves.jpg",
     "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
-    "hard-water-stains-windows": "assets/img/svc-hand-scrubbing.jpg",
+    "hard-water-stains-windows": "assets/img/fall-water-fed-brush-closeup.jpg",
     "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
     "spring-exterior-cleaning-checklist": "assets/img/svc-screen-cleaning-services.jpg",
     "window-cleaning-mistakes-to-avoid": "assets/img/fall-squeegee-deck-door.jpg",
