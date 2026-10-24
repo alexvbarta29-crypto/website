@@ -132,7 +132,7 @@ async function checkArea(addr) {
 }
 
 const OUTSIDE_MSG =
-  "Sorry, that address is outside our service area, so it can't be entered in the giveaway.";
+  "Sorry, that address is outside our giveaway area, so it can't be entered in the giveaway.";
 
 async function enter(body) {
   if (!isOpen()) return fail(410, `Entries closed ${DATES.closes}. The drawing is ${DATES.draw}.`);

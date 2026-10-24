@@ -240,7 +240,7 @@
     if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) return;
     const mi = miles(ORIGIN, d);
     if (mi <= RADIUS) {
-      areaNote.textContent = "✓ You're in our service area.";
+      areaNote.textContent = "✓ You're in the giveaway area.";
       areaNote.classList.add("is-in");
     } else {
       areaNote.textContent = "That address looks outside the giveaway circle.";
