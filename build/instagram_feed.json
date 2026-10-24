@@ -1,5 +1,19 @@
 [
   {
+    "id": "18148890586559627",
+    "image": "assets/img/instagram/18148890586559627.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/18148890586559627.jpg"
+      }
+    ],
+    "caption": "Enter now at bartawindowwashing.com/giveaway! Drawing is Nov. 6th",
+    "permalink": "https://www.instagram.com/reel/De5EsMpyxMy/",
+    "timestamp": "2026-10-24T21:14:27+0000"
+  },
+  {
     "id": "17980351626125708",
     "image": "assets/img/instagram/17980351626125708.jpg",
     "type": "VIDEO",
@@ -124,32 +138,5 @@
     "caption": "The cleanest of cleans. \ud83e\ude9f\u2728",
     "permalink": "https://www.instagram.com/reel/DcAArC1Skaq/",
     "timestamp": "2026-08-14T00:21:46+0000"
-  },
-  {
-    "id": "18132958747618003",
-    "image": "assets/img/instagram/18132958747618003_0.jpg",
-    "type": "CAROUSEL_ALBUM",
-    "slides": [
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/18132958747618003_0.jpg",
-        "video": "assets/img/instagram/18132958747618003_0.mp4"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18132958747618003_1.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18132958747618003_2.jpg"
-      },
-      {
-        "type": "IMAGE",
-        "image": "assets/img/instagram/18132958747618003_3.jpg"
-      }
-    ],
-    "caption": "Giving your windows the professional care they deserve! \ud83e\uddfc\ud83c\udfe0\ud83c\udf32",
-    "permalink": "https://www.instagram.com/p/Db5paf6EUg2/",
-    "timestamp": "2026-08-11T13:00:03+0000"
   }
 ]
