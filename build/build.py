@@ -203,8 +203,7 @@ def _hero_picture_html(root, image_path, hero_pos=None, img_class="svc-hero-img"
     # stem; the same widths and sizes keep the browser's rung choice
     # identical, only the format (and bytes) change. WebP and JPG remain
     # untouched behind it as fallbacks.
-    avif_widths = [w for w in widths
-                   if os.path.exists(os.path.join(ROOT, f"{stem}-{w}w.avif"))]
+    avif_widths = C.avif_ladder(stem, widths)
     avif_source = ""
     if avif_widths:
         avif_srcset = ", ".join(f"{root}{stem}-{w}w.avif {w}w" for w in avif_widths)
@@ -890,7 +889,7 @@ def build_service(svc):
 # ===========================================================================
 def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
                   crumb_label=None, primary_kw="", cta_form=False, svc_default=None, noindex=False, h1_class="",
-                  phero_class="", hero_extra="", og_image=None):
+                  phero_class="", hero_extra="", og_image=None, hero_photo=None):
     schema = list(schema or BASE_SCHEMA)
     schema.append(S.breadcrumb([
         ("Home", BIZ["domain"] + "/"),
@@ -919,6 +918,25 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
           </div>
         </div>
         <div>{C.lead_form(depth, svc_default=svc_default, compact=True)}</div>
+      </div>
+    </div>
+  </section>"""
+    elif hero_photo:
+        # A photo beside the headline (beneath it on phones), from the
+        # October 2026 shoot. Loaded eagerly: on desktop it's above the fold.
+        body = f"""
+  <section class="phero phero-with-photo {phero_class}">
+    <div class="container">
+      {crumbs}
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">{eyebrow}</span>
+          <h1 class="mt-1 {h1_class}">{h1}</h1>
+          {lead_html}
+          {hero_extra}
+        </div>
+        <div class="phero-photo">{C.photo(hero_photo, IMAGE_ALT.get(hero_photo, ""), ratio="5/4", depth=depth,
+                                           sizes="(max-width: 960px) calc(100vw - 40px), 44vw", eager=True)}</div>
       </div>
     </div>
   </section>"""
@@ -1210,7 +1228,8 @@ def build_faqs():
     html, body = interior_head(
         title=seo_title("Frequently Asked Questions"),
         desc="Answers about pricing, scheduling, insurance, our satisfaction guarantee, eco-safe methods, and maintenance plans at Barta Window Washing in Delano, MN.",
-        slug="faqs.html", eyebrow="FAQs", schema=schema, og_image="assets/img/svc-cta-squeegee.jpg",
+        slug="faqs.html", eyebrow="FAQs", schema=schema, og_image="assets/img/fall-water-fed-pole-smiling.jpg",
+        hero_photo="assets/img/fall-water-fed-pole-smiling.jpg",
         h1="Frequently asked questions",
         lead="Everything you need to know before booking. Don't see your question? Call us, we're happy to help.",
         depth=depth, crumb_label="FAQs", primary_kw="window cleaning FAQ Delano MN")
@@ -1281,7 +1300,8 @@ def build_service_areas():
     html, body = interior_head(
         title=seo_title("Service Areas, Western Twin Cities, MN"),
         desc="Barta Window Washing proudly serves Delano, Buffalo, Medina, Mound, Plymouth, St. Michael & more across the western Twin Cities metro. Find your city.",
-        slug="service-areas.html", eyebrow="Service Areas", og_image="assets/img/hero-home.jpg",
+        slug="service-areas.html", eyebrow="Service Areas", og_image="assets/img/fall-water-fed-pole-cedar-home.jpg",
+        hero_photo="assets/img/fall-water-fed-pole-cedar-home.jpg",
         h1="Proudly serving the western Twin Cities",
         lead="Based in Delano and serving homeowners and businesses across the western Twin Cities metro. Find your community below.",
         depth=depth, crumb_label="Service Areas", primary_kw="window cleaning service areas Twin Cities MN")
@@ -1416,7 +1436,8 @@ def build_financing():
     html, body = interior_head(
         title=seo_title("Financing &amp; Flexible Payment Options"),
         desc="Flexible payment options make exterior cleaning easy to budget. Spread larger projects into monthly payments or join a recurring maintenance plan.",
-        slug="financing.html", eyebrow="Financing",
+        slug="financing.html", eyebrow="Financing", og_image="assets/img/fall-towel-checking-glass.jpg",
+        hero_photo="assets/img/fall-towel-checking-glass.jpg",
         h1="Premium care that fits your budget",
         lead="A clean, well-maintained home shouldn't have to wait. We offer flexible payment options and budget-friendly maintenance plans so you can get the service you want, on terms that work for you.",
         depth=depth, crumb_label="Financing", primary_kw="exterior cleaning financing Delano MN")
@@ -1874,7 +1895,8 @@ def build_blog():
     html, body = interior_head(
         title=seo_title("Blog, Exterior Cleaning Tips &amp; Guides"),
         desc="Expert tips on window cleaning, gutter care, and seasonal home maintenance from Barta Window Washing in Delano, MN.",
-        slug="blog.html", eyebrow="Blog", og_image="assets/img/svc-cta-squeegee.jpg",
+        slug="blog.html", eyebrow="Blog", og_image="assets/img/fall-towel-profile.jpg",
+        hero_photo="assets/img/fall-towel-profile.jpg",
         h1="Tips, guides &amp; exterior care advice",
         lead="Practical, no-nonsense advice from the Barta team to help you protect and beautify your home year-round.",
         depth=depth, crumb_label="Blog", primary_kw="window cleaning tips Minnesota")
@@ -2843,6 +2865,26 @@ def generate_cta_wide_variants():
         print(f"  CTA banner variants: {made} file(s)")
 
 
+# The October 2026 shoot (assets/img/fall-*.jpg) is used all over the site
+# (owner's request), so every width already cut for it (the 400-1920w
+# ladder and the 1600w banner tier) gets an AVIF twin, cut from the
+# full-resolution original. Same quality as the service-card ladder above.
+_SHOOT_AVIF_Q = 60
+
+def _shoot_avif_jobs():
+    import glob as _g, re as _re
+    jobs = []
+    for src in sorted(_g.glob(os.path.join(ROOT, "assets/img/fall-*.jpg"))):
+        if _re.search(r"-(\d+w|og)\.jpg$", src):
+            continue
+        stem = src[:-4]
+        rel = os.path.relpath(src, ROOT)
+        for tier in sorted(_g.glob(stem + "-*w.jpg")):
+            m = _re.fullmatch(_re.escape(stem) + r"-(\d+)w\.jpg", tier)
+            if m:
+                jobs.append((rel, int(m.group(1)), "avif", _SHOOT_AVIF_Q))
+    return jobs
+
 def generate_avif_versions():
     try:
         from PIL import Image
@@ -2858,6 +2900,7 @@ def generate_avif_versions():
     jobs += [(src, wd, fmt, q) for src in _TEAM_TIER_SOURCES
              for wd, fmt, q in _TEAM_TIER_SPECS]
     jobs += [(AWARD["image"], wd, "avif", q) for wd, q in _AWARD_AVIF_WIDTHS]
+    jobs += _shoot_avif_jobs()
     for rel, wd, fmt, q in jobs:
         src_path = os.path.join(ROOT, rel)
         if not os.path.exists(src_path):

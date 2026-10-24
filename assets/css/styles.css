@@ -1612,3 +1612,11 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 50px; --hero-top-gap: 16px; }
   .hero-photo-full .hero-actions--home { margin-block: auto; padding-top: 22px; justify-content: flex-start; }
   .hero-photo-full .hero-actions--home .btn { padding: 12px 18px; font-size: .8rem; gap: 8px; }
 }
+
+/* Plain page headers with a photo beside the headline (FAQs, Service Areas,
+   Financing, Blog; October 2026 shoot). Phones stack it under the text at a
+   shorter 16:10 crop so the page content isn't pushed far down. */
+.phero-with-photo .hero-grid { align-items: center; }
+@media (max-width: 960px) {
+  .phero-photo .photo { aspect-ratio: 16/10 !important; }
+}

@@ -294,6 +294,24 @@ def _real_size(relpath, default=(1125, 1500)):
     _SIZE_CACHE[relpath] = size
     return size
 
+def avif_ladder(stem, widths):
+    """The widths to offer as AVIF for this image stem (paths relative to the
+    site root, no extension). Normally every width that has an .avif file.
+    For the October 2026 shoot photos (fall-*), AVIF is offered only when it
+    is smaller than the WebP at every width: photos with soft, blurred
+    backgrounds are already tiny as WebP and their AVIF can come out larger,
+    and a partial AVIF ladder would steer the browser to the wrong width."""
+    have = [wd for wd in widths if os.path.exists(os.path.join(_ROOT, f"{stem}-{wd}w.avif"))]
+    if not os.path.basename(stem).startswith("fall-"):
+        return have
+    if len(have) != len(widths):
+        return []
+    for wd in widths:
+        webp = os.path.join(_ROOT, f"{stem}-{wd}w.webp")
+        if os.path.exists(webp) and os.path.getsize(os.path.join(_ROOT, f"{stem}-{wd}w.avif")) >= os.path.getsize(webp):
+            return []
+    return have
+
 def picture(root, src, alt, img_class="", extra_attrs="", sizes=None, focal_kind=None):
     """<picture> with a WebP source (smaller, modern) + the original JPG as
     the universally-supported <img> fallback.
@@ -353,8 +371,7 @@ def picture(root, src, alt, img_class="", extra_attrs="", sizes=None, focal_kind
         # tiers for this stem — only widths that actually exist as .avif are
         # offered, and the generator produces the full ladder, so whichever
         # width the sizes math lands on has an AVIF candidate.
-        avif_widths = [wd for wd in widths
-                       if os.path.exists(os.path.join(_ROOT, f"{stem}-{wd}w.avif"))]
+        avif_widths = avif_ladder(stem, widths)
         avif_source = ""
         if avif_widths:
             avif_srcset = ", ".join(f"{root}{stem}-{wd}w.avif {wd}w" for wd in avif_widths)
@@ -1522,9 +1539,14 @@ def _cta_background(root, image):
     base = f"{stem}-1200w.jpg" if _variants_exist(stem) else image
     css = f"background-image:{CTA_BAND_GRADIENT}, url('{root}{base}')"
     wide_webp, wide_jpg = f"{stem}-1600w.webp", f"{stem}-1600w.jpg"
+    wide_avif = f"{stem}-1600w.avif"
     if os.path.exists(os.path.join(_ROOT, wide_webp)) and os.path.exists(os.path.join(_ROOT, wide_jpg)):
+        # AVIF first when the build cut one (the October 2026 shoot photos):
+        # about a third smaller again than the WebP at the same look.
+        avif = (f"url('{root}{wide_avif}') type('image/avif'), "
+                if avif_ladder(stem, [1600]) else "")
         css += (f";background-image:{CTA_BAND_GRADIENT}, "
-                f"image-set(url('{root}{wide_webp}') type('image/webp'), "
+                f"image-set({avif}url('{root}{wide_webp}') type('image/webp'), "
                 f"url('{root}{wide_jpg}') type('image/jpeg'))")
     return css
 
@@ -1680,13 +1702,16 @@ def county_map_embed(view, cls=""):
 def imgph(label, ratio="16/10", depth=0, extra_class=""):
     return f'<div class="imgph {extra_class}" style="aspect-ratio:{ratio}" role="img" aria-label="{label}"><span class="ph-label">{icon("image")}<br>{label}</span></div>'
 
-def photo(src, alt, ratio="5/4", depth=0, cls=""):
+def photo(src, alt, ratio="5/4", depth=0, cls="", sizes=None, eager=False):
     """Real <img> layered over the gradient placeholder. If the file is missing
     (e.g. not uploaded yet) the img hides itself and the placeholder shows , 
-    no broken-image icons, graceful before and after the photo exists."""
+    no broken-image icons, graceful before and after the photo exists.
+    eager=True for a photo above the fold (no lazy-load delay); sizes is the
+    photo's rendered width, so the browser picks a file no bigger than needed."""
     root = rel(depth)
-    img_tag = picture(root, src, alt, extra_attrs='loading="lazy" decoding="async" onerror="this.remove()"',
-                      focal_kind=ratio)
+    load = 'loading="eager"' if eager else 'loading="lazy"'
+    img_tag = picture(root, src, alt, extra_attrs=f'{load} decoding="async" onerror="this.remove()"',
+                      sizes=sizes, focal_kind=ratio)
     return (f'<div class="photo {cls}" style="aspect-ratio:{ratio}" role="img" aria-label="{alt}">'
             f'<span class="imgph" aria-hidden="true"><span class="ph-label">{icon("image")}<br>{alt}</span></span>'
             f'{img_tag}</div>')
