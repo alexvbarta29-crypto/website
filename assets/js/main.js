@@ -1335,58 +1335,71 @@
     const next = $(".insta-arrow.next", carousel);
     if (!track) return;
 
+    /* Every video in the row plays on its own, silently, while at least
+       60% of its card is on screen, and pauses once it isn't (owner's
+       request; a per-card observer only sees cards inside the track's
+       visible strip, which is exactly what's wanted here). Story videos
+       (data-autoplay) have no controls and loop; a tap or Enter pauses or
+       resumes one. Reels keep their controls, so a visitor can turn the
+       sound on, scrub or pause; a reel the visitor turns the sound on for
+       pauses every other video until it stops. A pause the visitor chose
+       sticks until they play it again. The row's auto-advance waits for an
+       on-screen reel to play through once (and for any reel playing with
+       sound); story loops never hold it up. With reduced motion nothing
+       plays on its own: every video gets ordinary controls instead. */
     const allVideos = $$(".insta-card-media-el", track).filter((v) => v.tagName === "VIDEO");
-    // Reels: controls and sound, played by the visitor. Starting one pauses
-    // every other video in the row.
-    const videos = allVideos.filter((v) => !v.hasAttribute("data-autoplay"));
-    videos.forEach((v) => v.addEventListener("play", () => allVideos.forEach((o) => { if (o !== v) o.pause(); })));
-
-    /* Story videos (data-autoplay): silent loops that play on their own
-       while at least 60% of the card is on screen and pause once it isn't
-       (a per-card observer only sees cards inside the track's visible strip,
-       which is exactly what's wanted here). They hold off while a reel is
-       playing and pick up again when it stops. A tap or Enter pauses or
-       resumes one, and a pause chosen that way sticks until resumed. With
-       reduced motion nothing moves on its own: they get ordinary controls
-       instead. They never hold up the row's auto-advance. */
     const loops = allVideos.filter((v) => v.hasAttribute("data-autoplay"));
-    if (loops.length) {
-      const onScreen = new Set();
-      const reelPlaying = () => videos.some((v) => !v.paused);
-      const playLoop = (v) => {
-        if (reduce || v.dataset.userPaused || reelPlaying()) return;
-        setPoster(v);
-        v.muted = true;
-        const p = v.play();
-        if (p && p.catch) p.catch(() => {});
-      };
-      if (reduce) {
-        loops.forEach((v) => { v.controls = true; });
-      } else {
-        loops.forEach((v) => {
-          v.tabIndex = 0;
-          v.setAttribute("role", "button");
-          const toggle = () => {
-            if (v.paused) { delete v.dataset.userPaused; playLoop(v); }
-            else { v.dataset.userPaused = "1"; v.pause(); }
-          };
-          v.addEventListener("click", toggle);
-          v.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
-          });
+    const videos = allVideos.filter((v) => !v.hasAttribute("data-autoplay")); // reels
+    const onScreen = new Set();
+    const loud = () => allVideos.some((v) => !v.paused && !v.muted);
+    const autoPause = (v) => { if (!v.paused) { v.autoPausing = true; v.pause(); } };
+    const autoPlay = (v) => {
+      if (reduce || v.dataset.userPaused || !onScreen.has(v) || loud()) return;
+      setPoster(v);
+      v.muted = true;
+      const p = v.play();
+      if (p && p.catch) p.catch(() => {});
+    };
+    // Is an on-screen reel still on its first silent play-through?
+    const reelShowing = () => videos.some((v) => onScreen.has(v) && !v.paused && !v.playedOnce);
+    if (reduce) {
+      loops.forEach((v) => { v.controls = true; });
+    } else if (allVideos.length) {
+      allVideos.forEach((v) => {
+        v.addEventListener("pause", () => {
+          if (v.autoPausing) v.autoPausing = false;
+          else if (!v.ended) v.dataset.userPaused = "1";
+          if (!loud()) onScreen.forEach(autoPlay);
         });
-        if ("IntersectionObserver" in window) {
-          const lio = new IntersectionObserver((entries) => entries.forEach((en) => {
-            const v = en.target;
-            if (en.isIntersecting && en.intersectionRatio >= 0.6) { onScreen.add(v); playLoop(v); }
-            else { onScreen.delete(v); v.pause(); }
-          }), { threshold: [0, 0.6] });
-          loops.forEach((v) => lio.observe(v));
-        }
-        videos.forEach((v) => {
-          v.addEventListener("pause", () => onScreen.forEach(playLoop));
-          v.addEventListener("ended", () => onScreen.forEach(playLoop));
+        v.addEventListener("play", () => { delete v.dataset.userPaused; });
+        const solo = () => { if (!v.paused && !v.muted) allVideos.forEach((o) => { if (o !== v) autoPause(o); }); };
+        v.addEventListener("playing", solo);
+        v.addEventListener("volumechange", solo);
+      });
+      videos.forEach((v) => v.addEventListener("ended", () => {
+        v.playedOnce = true;
+        if (v.muted) autoPlay(v); // keep looping silently while it's still on screen
+        else onScreen.forEach(autoPlay);
+      }));
+      loops.forEach((v) => {
+        v.tabIndex = 0;
+        v.setAttribute("role", "button");
+        const toggle = () => {
+          if (v.paused) { delete v.dataset.userPaused; autoPlay(v); }
+          else v.pause();
+        };
+        v.addEventListener("click", toggle);
+        v.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
         });
+      });
+      if ("IntersectionObserver" in window) {
+        const vio = new IntersectionObserver((entries) => entries.forEach((en) => {
+          const v = en.target;
+          if (en.isIntersecting && en.intersectionRatio >= 0.6) { onScreen.add(v); autoPlay(v); }
+          else { onScreen.delete(v); v.playedOnce = false; autoPause(v); }
+        }), { threshold: [0, 0.6] });
+        allVideos.forEach((v) => vio.observe(v));
       }
     }
 
@@ -1455,7 +1468,7 @@
     const pauseAuto = () => clearTimeout(timer);
     const resumeAuto = () => schedule(RESUME_DELAY);
     const advance = () => {
-      if (!inView || videos.some((v) => !v.paused)) { schedule(INTERVAL); return; }
+      if (!inView || loud() || reelShowing()) { schedule(INTERVAL); return; }
       const max = cards.length - 1;
       let idx = currentIndex() + dir;
       if (idx >= max) { idx = max; dir = -1; }
