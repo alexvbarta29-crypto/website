@@ -119,7 +119,7 @@ async function checkArea(addr) {
   // the street can't be found and the town isn't on our list, the town's
   // centre decides: clearly outside the circle (2+ miles past its edge) →
   // out, clearly inside → in, anything near the line stays "check address".
-  if (area.ok === null && addr.city) {
+  if (area.ok === null && (addr.city || addr.zip)) {
     const town = await geocode({ street: "", city: addr.city, state: addr.state || "MN", zip: addr.zip });
     if (town) {
       const t = areaCheck({ ...addr, lat: town.lat, lng: town.lng });

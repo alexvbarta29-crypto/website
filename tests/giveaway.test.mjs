@@ -631,3 +631,32 @@ test("an unfindable street in a town well outside the circle is turned away", as
     assert.equal(inn.area, "in");
   } finally { globalThis.fetch = base; }
 });
+
+test("an address typed on one line with no commas still yields its town", () => {
+  assert.deepEqual(lib.splitTypedAddress("1701 McLeod Ave N  Glencoe Mn 55336"),
+    { street: "1701 McLeod Ave N", city: "Glencoe", state: "MN", zip: "55336" });
+  assert.deepEqual(lib.splitTypedAddress("45 Lakeview Dr NW Cokato MN"),
+    { street: "45 Lakeview Dr NW", city: "Cokato", state: "MN" });
+  assert.deepEqual(lib.splitTypedAddress("226 Verbena Drive Watertown 55388"),
+    { street: "226 Verbena Drive", city: "Watertown", zip: "55388" });
+  assert.deepEqual(lib.splitTypedAddress("123 Main St"), {});
+  assert.deepEqual(lib.splitTypedAddress("123 Main St Delano"), {});      // no state/ZIP: too unsure
+});
+test("a no-comma Glencoe address is turned away by the town check", async () => {
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    const u = String(url);
+    if (u.includes("nominatim")) {
+      const q = decodeURIComponent(u.split("&q=")[1] || "");
+      const body = /McLeod/.test(q) ? [] : /Glencoe/.test(q)
+        ? [{ lat: "44.7691", lon: "-94.1517", address: { city: "Glencoe" } }] : [];
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+    return base(url, opts);
+  };
+  try {
+    const out = await post(entry({ phone: "3205550109", address: "1701 McLeod Ave N  Glencoe Mn 55336",
+      address_city: "", address_zip: "", address_state: "", address_verified: "typed", address_lat: "", address_lng: "" }));
+    assert.equal(out.status, 422);
+  } finally { globalThis.fetch = base; }
+});

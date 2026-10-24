@@ -102,8 +102,31 @@ const coord = (v, min, max) => {
 // household check and Rotor get the parts. Anything it can't read stays in
 // the street, untouched.
 const STATE_ZIP = /^(?:(MN|Minn\.?|Minnesota|[A-Z]{2})\b\.?)?\s*(\d{5}(?:-\d{4})?)?$/i;
+// "1701 McLeod Ave N Glencoe MN 55336", typed with no commas: the town is
+// the words between the street's suffix (Ave, St, Dr..., plus a trailing
+// N/S/E/W) and the state or ZIP.
+const STREET_SUFFIX = new Set(("st street ave avenue rd road dr drive ln lane ct court cir circle blvd boulevard "
+  + "way trl trail pkwy parkway hwy highway pl place ter terrace pt point cv cove xing crossing loop run bnd bend "
+  + "rdg ridge pass path sq square aly alley").split(" "));
+const DIRECTIONAL = new Set("n s e w ne nw se sw north south east west northeast northwest southeast southwest".split(" "));
+function splitNoCommas(line, known) {
+  const t = String(line || "").trim().split(/\s+/);
+  if (t.length < 4 || !/^\d/.test(t[0])) return {};
+  const out = {};
+  if (/^\d{5}(-\d{4})?$/.test(t[t.length - 1])) { if (!known.zip) out.zip = t.pop().slice(0, CAPS.zip); else t.pop(); }
+  if (/^(mn|minn\.?|minnesota)$/i.test(t[t.length - 1] || "")) { t.pop(); if (!known.state) out.state = "MN"; }
+  let end = -1;
+  for (let i = 1; i < t.length - 1; i++) if (STREET_SUFFIX.has(t[i].toLowerCase().replace(/\.$/, ""))) end = i;
+  if (end < 0) return {};
+  if (DIRECTIONAL.has((t[end + 1] || "").toLowerCase().replace(/\.$/, "")) && end + 2 < t.length) end++;
+  const city = t.slice(end + 1).join(" ");
+  if (!city || /\d/.test(city) || city.length > CAPS.city || (!out.zip && !out.state)) return {};
+  return { street: t.slice(0, end + 1).join(" "), city, ...out };
+}
+
 export function splitTypedAddress(line, known = {}) {
   const parts = String(line || "").split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 1) return splitNoCommas(parts[0], known);
   if (parts.length < 2 || !/\d/.test(parts[0])) return {};
   const out = { street: parts[0] };
   let rest = parts.slice(1);
