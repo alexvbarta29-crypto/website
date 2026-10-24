@@ -137,8 +137,8 @@ SERVICES = [
         "slug": "exterior-window-cleaning",
         "name": "Exterior Window Cleaning",
         "icon": "window",
-        "hero_pos": "68% 35%",
-        "image": "assets/img/svc-exterior-window-cleaning.jpg",
+        "hero_pos": "72% 40%",
+        "image": "assets/img/fall-water-fed-pole-second-story.jpg",
         "short": "Streak-free exterior glass, frames, and sills, cleaned without ladders in your flower beds.",
         "hero_sub": "Serving Delano and communities throughout the western Twin Cities.",
         "seo_title": "Exterior Window Cleaning Delano, MN | Barta",
@@ -570,6 +570,7 @@ DROPDOWN_SERVICES = [
 # Homepage "Our Services" picture-box grid (first two are featured/large).
 HOME_SERVICES = [
     {"label": "Exterior Window Cleaning", "target": "services/exterior-window-cleaning.html", "icon": "window", "featured": True,
+     "img": "assets/img/fall-water-fed-pole-second-story.jpg",
      "desc": "Streak-free exterior glass that makes your whole home shine."},
     {"label": "Interior Window Cleaning", "target": "services/interior-window-cleaning.html", "icon": "window", "featured": True,
      "desc": "Spotless interior glass for brighter, sun-filled rooms."},
@@ -715,15 +716,17 @@ assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
 # Ordered so consecutive pages get visibly different scenes — a wide shot
 # then a close one, a technician then a house.
 CTA_PHOTOS = [
+    # The October 2026 professional shoot leads the rotation (owner's request).
+    {"image": "assets/img/fall-water-fed-pole-wide.jpg", "focal_x": 72, "focal_y": 45},
+    {"image": "assets/img/fall-towel-smiling.jpg", "focal_x": 70, "focal_y": 32},
+    {"image": "assets/img/fall-water-fed-pole-modern-home.jpg", "focal_x": 32, "focal_y": 40},
+    {"image": "assets/img/fall-squeegee-deck-door.jpg", "focal_x": 45, "focal_y": 40},
+    {"image": "assets/img/fall-stone-doors-wide.jpg", "focal_x": 38, "focal_y": 40},
     {"image": "assets/img/svc-exterior-window-cleaning.jpg", "focal_x": 76, "focal_y": 45},
     {"image": "assets/img/3P8A8136.JPEG", "focal_y": 55},
-    {"image": "assets/img/instagram/18105187085130700_1.jpg", "focal_y": 45},
     {"image": "assets/img/svc-detail-frame.jpg", "focal_y": 43},
     {"image": "assets/img/DSC03260.jpg", "focal_y": 30},
     {"image": "assets/img/svc-commercial-cleaning.jpg", "focal_y": 40},
-    {"image": "assets/img/svc-screen-cleaning-services.jpg", "focal_y": 19},
-    {"image": "assets/img/3P8A7912.JPEG", "focal_x": 90, "focal_y": 45},
-    {"image": "assets/img/svc-solar-panel-cleaning.jpg", "focal_y": 44},
 ]
 
 # Two pages pin their own banner instead of taking a turn: the gallery (so
@@ -901,6 +904,15 @@ FAQS = [
 # their own position ("hero_pos", CTA_PHOTOS["focal_y"]), because a very wide
 # band often wants a different anchor than a card does.
 IMAGE_FOCAL = {
+    # October 2026 shoot: keep the technician in frame when a slot crops the sides.
+    "assets/img/fall-water-fed-pole-wide.jpg": {"*": "72% 50%"},
+    "assets/img/fall-water-fed-pole-second-story.jpg": {"*": "70% 45%"},
+    "assets/img/fall-water-fed-pole-modern-home.jpg": {"*": "33% 45%"},
+    "assets/img/fall-towel-smiling.jpg": {"*": "68% 35%"},
+    "assets/img/fall-stone-doors-wide.jpg": {"*": "38% 45%"},
+    "assets/img/fall-stone-doors-detailing.jpg": {"*": "42% 40%"},
+    "assets/img/fall-squeegee-soapy-glass.jpg": {"*": "55% 40%"},
+    "assets/img/fall-towel-door-frame.jpg": {"*": "50% 40%"},
     # Giveaway page photos (GIVEAWAY["photos"]): keep the lit house in the square crops.
     "assets/img/giveaway-moonlit-farmhouse.jpg": "50% 80%",
     "assets/img/giveaway-red-warm-white.jpg": "48% 50%",
@@ -976,6 +988,24 @@ XMAS_DEAL_SEASON_START = (9, 1)
 # XMAS_PHOTO_ALT and assets/img/ in case any are wanted again.
 
 IMAGE_ALT = {
+    # The October 2026 professional shoot, listed first so it leads the
+    # Gallery (owner's request: prioritize these photos across the site).
+    "assets/img/fall-water-fed-pole-wide.jpg": "A Barta Window Washing technician cleaning second-story windows on a cedar home with a water-fed pole, fall trees all around",
+    "assets/img/fall-towel-smiling.jpg": "A smiling Barta Window Washing technician in a BWW polo wiping a sunlit window with a microfiber towel",
+    "assets/img/fall-water-fed-pole-modern-home.jpg": "A technician in a BARTA shirt reaching upper windows on a modern wood home with a water-fed pole",
+    "assets/img/fall-squeegee-soapy-glass.jpg": "A technician squeegeeing soapy glass on a large window in bright sunlight",
+    "assets/img/fall-towel-reaching-high.jpg": "A technician reaching up to wipe the top of a glass door with a towel, fall color behind",
+    "assets/img/fall-water-fed-pole-second-story.jpg": "Cleaning tall second-story windows with a water-fed pole and brush",
+    "assets/img/fall-stone-doors-wide.jpg": "A technician wiping down glass patio doors set into a stone wall",
+    "assets/img/fall-squeegee-deck-door.jpg": "A technician squeegeeing a glass door on a deck surrounded by fall trees",
+    "assets/img/fall-towel-checking-glass.jpg": "A technician checking a freshly cleaned glass door, towel in hand",
+    "assets/img/fall-water-fed-pole-under-eaves.jpg": "Looking up at a technician cleaning windows under deep eaves with a water-fed pole",
+    "assets/img/fall-stone-doors-detailing.jpg": "A technician in a BARTA shirt detailing a glass door in a stone entryway",
+    "assets/img/fall-towel-door-frame.jpg": "Hand-detailing the frame of a glass door with a microfiber towel",
+    "assets/img/fall-squeegee-hands-closeup.jpg": "Close-up of a squeegee pulling water off a glass door, reflected in the glass",
+    "assets/img/fall-towel-backlit.jpg": "A technician drying a window by hand in late-afternoon sun",
+    "assets/img/fall-towel-profile.jpg": "A technician wiping a window frame under a wood soffit, fall leaves behind",
+    "assets/img/fall-towel-door-handle.jpg": "Wiping around the handle of a glass door with a microfiber towel",
     "assets/img/team-barta-brothers.jpg": "Co-owners Alex Barta (left) and Jacob Barta (right) of Barta Window Washing in their company polos",
     "assets/img/svc-exterior-window-cleaning.jpg": "Two Barta Window Washing technicians cleaning exterior windows on a home, with screens removed nearby",
     "assets/img/svc-cta-squeegee.jpg": "Close-up of a Barta Window Washing technician squeegeeing an arched window",

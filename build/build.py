@@ -292,9 +292,9 @@ def build_home():
          "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
         ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
          "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup, silicone, putty overspray, baked-on bug residue, that a simple wash won't touch, without ever scratching the glass.", None),
-        ("03", "Squeegee", "assets/img/svc-interior-window-cleaning.jpg",
+        ("03", "Squeegee", "assets/img/fall-squeegee-soapy-glass.jpg",
          "Then we squeegee the window from edge to edge, pulling every last drop of water and solution off the glass so nothing is left behind to dry into streaks or spots.", None),
-        ("04", "Detail", "assets/img/svc-detail-frame.jpg",
+        ("04", "Detail", "assets/img/fall-towel-door-frame.jpg",
          "Finally, we hand-detail the glass, frames, and sills, wiping down every edge and corner so the window looks brand new, not just clean, before we move on to the next one.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
@@ -617,7 +617,7 @@ def build_service(svc):
     # cleaning (the two pages the process actually differs meaningfully for);
     # every other service page skips this section entirely.
     _wc_step_imgs = ["assets/img/svc-mop-window.jpg", "assets/img/svc-hand-scrubbing.jpg",
-                     "assets/img/svc-interior-window-cleaning.jpg", "assets/img/svc-detail-frame.jpg"]
+                     "assets/img/fall-squeegee-soapy-glass.jpg", "assets/img/fall-towel-door-frame.jpg"]
     _has_process = svc["slug"] in ("exterior-window-cleaning", "interior-window-cleaning")
     slider_steps = []
     if _has_process:
@@ -949,10 +949,11 @@ def interior_head(title, desc, slug, eyebrow, h1, lead, depth=0, schema=None,
 # ===========================================================================
 # GALLERY
 # ===========================================================================
-# Technician squeegeeing the transom above a door, shot from behind, the
-# clearest "this is the work" photo on the site, and one of only three in
-# landscape, so it fills a full-width banner without heavy cropping.
-GALLERY_HERO = "assets/img/svc-cta-squeegee.jpg"
+# From the October 2026 professional shoot (owner's request to prioritize
+# it): a technician with a water-fed pole beside a cedar home in fall color.
+# Landscape and 2576px wide, so it fills the full-width banner, and the
+# technician stands on the right, clear of the heading on the left.
+GALLERY_HERO = "assets/img/fall-water-fed-pole-wide.jpg"
 # The CTA band at the foot of the page normally uses GALLERY_HERO too, so
 # the Gallery gives it a different backdrop, no photo twice on one page.
 GALLERY_CTA_IMAGE = CTA_PINNED_PHOTOS["gallery"]["image"]
@@ -1028,10 +1029,10 @@ def build_gallery():
     work_html = "".join(figures)
     work_html += C.gallery_instagram_figures(depth, seen_hashes=seen_hashes)
 
-    # 34% keeps the technician's head, the squeegee and the arched glass in
-    # frame; the default centre crop pushes his head up behind the nav bar.
-    hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="30% 34%", img_class="hero-bg-img",
-                                       hero_m={"pos": "76% 34%"},
+    # Desktop keeps the pole and the windows it reaches; phones re-aim at the
+    # technician, who stands at about 72% across.
+    hero_picture = _hero_picture_html(root, GALLERY_HERO, hero_pos="50% 40%", img_class="hero-bg-img",
+                                       hero_m={"pos": "72% 50%"},
                                        alt=IMAGE_ALT.get(GALLERY_HERO, "Barta Window Washing technicians cleaning windows"))
     # One collage, before/after shots included inline with everything else , 
     # they used to sit above in their own "Before & after" section of drag
@@ -1849,12 +1850,12 @@ def build_instagram_callback():
 # Real photo per post (matched to topic) instead of a generic placeholder , 
 # reused for both the blog.html card thumbnail and the post's own header.
 _BLOG_PHOTOS = {
-    "how-often-clean-windows-minnesota": "assets/img/svc-exterior-window-cleaning.jpg",
+    "how-often-clean-windows-minnesota": "assets/img/fall-water-fed-pole-under-eaves.jpg",
     "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
     "hard-water-stains-windows": "assets/img/svc-hand-scrubbing.jpg",
     "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
     "spring-exterior-cleaning-checklist": "assets/img/svc-screen-cleaning-services.jpg",
-    "window-cleaning-mistakes-to-avoid": "assets/img/svc-mop-window.jpg",
+    "window-cleaning-mistakes-to-avoid": "assets/img/fall-squeegee-deck-door.jpg",
 }
 
 def build_blog():
