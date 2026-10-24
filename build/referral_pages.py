@@ -22,10 +22,11 @@ GIFT = REFERRAL["referrer_gift_card"]
 PREFIX = REFERRAL["code_prefix"]
 MAX_FRIENDS = REFERRAL["max_friends"]
 
-# The program page's hero photo: a technician in the BWW shirt, smiling while
-# wiping a sunlit window (October 2026 shoot). Rendered through C.picture, so only the 640w/1200w
-# derivatives are ever served (see build.generate_hero_variants).
-HERO_PHOTO = "assets/img/fall-towel-smiling.jpg"
+# The program page's hero photo: a technician smiling up at the window while
+# raising a water-fed pole (October 2026 shoot). Rendered through C.picture,
+# so only the 640w/1200w derivatives are ever served (see
+# build.generate_hero_variants).
+HERO_PHOTO = "assets/img/fall-water-fed-pole-looking-up.jpg"
 
 # What a referred friend most often books first: shown on the friend page
 # and offered as checkboxes on its claim form.

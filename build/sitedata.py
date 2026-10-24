@@ -717,19 +717,24 @@ assert all(_a["neighborhoods"] for _a in AREAS if _a["tier"] == "primary"), \
 # Ordered so consecutive pages get visibly different scenes — a wide shot
 # then a close one, a technician then a house.
 CTA_PHOTOS = [
-    # The October 2026 professional shoot leads the rotation (owner's request).
+    # All from the October 2026 professional shoot (owner's request: every
+    # photo from it shown somewhere besides the gallery). Fifteen entries, so
+    # each lands on at least one page; "focal_x" aims the narrow phone band.
     {"image": "assets/img/fall-water-fed-pole-cedar-home.jpg", "focal_x": 28, "focal_y": 45},
-    {"image": "assets/img/fall-water-fed-pole-wide.jpg", "focal_x": 72, "focal_y": 45},
     {"image": "assets/img/fall-towel-smiling.jpg", "focal_x": 70, "focal_y": 32},
+    {"image": "assets/img/fall-water-fed-pole-wide.jpg", "focal_x": 72, "focal_y": 45},
+    {"image": "assets/img/fall-towel-checking-glass.jpg", "focal_x": 32, "focal_y": 35},
     {"image": "assets/img/fall-water-fed-pole-modern-home.jpg", "focal_x": 32, "focal_y": 40},
+    {"image": "assets/img/fall-stone-doors-detailing.jpg", "focal_x": 40, "focal_y": 35},
     {"image": "assets/img/fall-squeegee-deck-door.jpg", "focal_x": 45, "focal_y": 40},
-    {"image": "assets/img/fall-water-fed-pole-smiling.jpg", "focal_x": 40, "focal_y": 35},
+    {"image": "assets/img/fall-towel-reaching-high.jpg", "focal_x": 38, "focal_y": 35},
+    {"image": "assets/img/fall-water-fed-pole-bird-feeders.jpg", "focal_x": 28, "focal_y": 45},
+    {"image": "assets/img/fall-towel-profile.jpg", "focal_x": 50, "focal_y": 35},
     {"image": "assets/img/fall-stone-doors-wide.jpg", "focal_x": 38, "focal_y": 40},
-    {"image": "assets/img/svc-exterior-window-cleaning.jpg", "focal_x": 76, "focal_y": 45},
-    {"image": "assets/img/3P8A8136.JPEG", "focal_y": 55},
-    {"image": "assets/img/svc-detail-frame.jpg", "focal_y": 43},
-    {"image": "assets/img/DSC03260.jpg", "focal_y": 30},
-    {"image": "assets/img/svc-commercial-cleaning.jpg", "focal_y": 40},
+    {"image": "assets/img/fall-towel-backlit.jpg", "focal_x": 72, "focal_y": 30},
+    {"image": "assets/img/fall-water-fed-pole-lawn.jpg", "focal_x": 62, "focal_y": 35},
+    {"image": "assets/img/fall-towel-door-handle.jpg", "focal_x": 40, "focal_y": 35},
+    {"image": "assets/img/fall-water-fed-pole-smiling.jpg", "focal_x": 40, "focal_y": 35},
 ]
 
 # Two pages pin their own banner instead of taking a turn: the gallery (so
@@ -923,6 +928,8 @@ IMAGE_FOCAL = {
     "assets/img/fall-water-fed-pole-bird-feeders.jpg": {"*": "30% 45%"},
     "assets/img/fall-water-fed-pole-smiling-back.jpg": {"*": "40% 40%"},
     "assets/img/fall-water-fed-pole-looking-up.jpg": {"*": "45% 40%"},
+    "assets/img/fall-squeegee-hands-closeup.jpg": {"*": "50% 48%"},
+    "assets/img/fall-van-logo.jpg": {"*": "45% 50%"},
     # Giveaway page photos (GIVEAWAY["photos"]): keep the lit house in the square crops.
     "assets/img/giveaway-moonlit-farmhouse.jpg": "50% 80%",
     "assets/img/giveaway-red-warm-white.jpg": "48% 50%",

@@ -1153,7 +1153,7 @@ def build_about():
         <p class="mt-2">{BIZ['name']} isn’t here just to clean windows. The company is here to raise
           expectations for what hiring a home service provider should feel like.</p>
       </div>
-      <div class="reveal">{C.photo("assets/img/service-van.jpg", "A fully branded Barta Window Washing service van", ratio="5/4", depth=depth)}</div>
+      <div class="reveal">{C.photo("assets/img/fall-van-logo.jpg", IMAGE_ALT["assets/img/fall-van-logo.jpg"], ratio="5/4", depth=depth)}</div>
     </div>
   </div></section>
 
@@ -1854,8 +1854,8 @@ _BLOG_PHOTOS = {
     "gutter-cleaning-checklist-fall": "assets/img/svc-gutter-cleaning.jpg",
     "hard-water-stains-windows": "assets/img/fall-water-fed-brush-closeup.jpg",
     "winter-prep-checklist-minnesota": "assets/img/svc-christmas-light-installation.jpg",
-    "spring-exterior-cleaning-checklist": "assets/img/svc-screen-cleaning-services.jpg",
-    "window-cleaning-mistakes-to-avoid": "assets/img/fall-squeegee-deck-door.jpg",
+    "spring-exterior-cleaning-checklist": "assets/img/fall-water-fed-pole-smiling-back.jpg",
+    "window-cleaning-mistakes-to-avoid": "assets/img/fall-squeegee-hands-closeup.jpg",
 }
 
 def build_blog():
