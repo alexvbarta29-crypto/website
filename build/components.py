@@ -1292,8 +1292,11 @@ def _insta_card(root, image, video, alt, link, link_label, loop=False):
         # once the card nears the viewport. A poster has no lazy-loading
         # of its own, so as a plain attribute every one of these is
         # fetched on page load for a carousel far down the page.
+        # muted in the markup, not just set from main.js: iPhone Safari only
+        # lets a video start on its own when it's silent, and the attribute
+        # is the dependable way to say so. Its controls can turn sound on.
         media_html = (f'<video class="insta-card-media-el" src="{root}{video}" '
-                      f'data-poster="{root}{_poster_src(image)}" controls playsinline preload="none"></video>')
+                      f'data-poster="{root}{_poster_src(image)}" controls muted playsinline preload="none"></video>')
     else:
         media_html = picture(root, image, alt, img_class="insta-card-media-el",
                              extra_attrs='loading="lazy" decoding="async"', sizes="(max-width: 760px) 82vh, 60vh")

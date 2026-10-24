@@ -1357,6 +1357,7 @@
       if (reduce || v.dataset.userPaused || !onScreen.has(v) || loud()) return;
       setPoster(v);
       v.muted = true;
+      v.setAttribute("muted", "");
       const p = v.play();
       if (p && p.catch) p.catch(() => {});
     };
