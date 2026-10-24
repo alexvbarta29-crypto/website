@@ -381,9 +381,6 @@ def build_home():
     </div>
   </section>
 
-  <!-- AD VIDEO -->
-  {_home_video_html()}
-
   <!-- SERVICES (straight after hero) -->
   <section id="services">
     <div class="container">
@@ -394,6 +391,9 @@ def build_home():
       <div class="svc-grid">{svc_cards}</div>
     </div>
   </section>
+
+  <!-- AD VIDEO -->
+  {_home_video_html()}
 
   <!-- PLANS / SAVINGS -->
   <section class="bg-mist">
