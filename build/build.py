@@ -274,6 +274,25 @@ def stars_row():
 # ===========================================================================
 # HOMEPAGE
 # ===========================================================================
+def _home_video_html():
+    """Homepage ad video (16:9). Hash in the URL because /assets/ is cached immutable."""
+    import hashlib
+    src = "assets/video/barta-ad.mp4"
+    path = os.path.join(ROOT, src)
+    if not os.path.exists(path):
+        return ""
+    with open(path, "rb") as f:
+        vfp = hashlib.md5(f.read()).hexdigest()[:10]
+    return f"""<section class="home-video-section">
+    <div class="container">
+      <div class="home-video reveal">
+        <video controls playsinline preload="none" poster="assets/video/barta-ad-poster.jpg?v={vfp}"
+          src="{src}?v={vfp}" aria-label="Barta Window Washing video"></video>
+      </div>
+    </div>
+  </section>"""
+
+
 def build_home():
     depth = 0
     # On the 4-column desktop grid a last row of two would leave two empty
@@ -361,6 +380,9 @@ def build_home():
       </div>
     </div>
   </section>
+
+  <!-- AD VIDEO -->
+  {_home_video_html()}
 
   <!-- SERVICES (straight after hero) -->
   <section id="services">
