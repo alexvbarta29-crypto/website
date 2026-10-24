@@ -133,9 +133,9 @@ def _panels():
           {share}
         </div>
         <div class="gw-panel" data-gw-panel="outside" hidden tabindex="-1">
-          <span class="gw-badge gw-badge-muted">Outside our area</span>
-          <h2 class="gw-panel-title">Sorry, that address is outside our service area.</h2>
-          <p>The giveaway is only open to homes inside the circle on the map, so we can&rsquo;t enter you. But we&rsquo;d still be glad to give you a quick, free quote on Christmas lights if we can make it out your way.</p>
+          <span class="gw-badge gw-badge-muted">Outside the giveaway area</span>
+          <h2 class="gw-panel-title">Sorry, that address is outside our giveaway area.</h2>
+          <p>The giveaway is only open to homes inside the circle on the map, so we can&rsquo;t enter you. But we still travel well beyond it for regular jobs, so we&rsquo;d be glad to give you a quick, free quote on Christmas lights.</p>
           <div class="gw-actions">
             <button type="button" class="btn" data-gw-outside-yes>Yes, get me a free quote</button>
             <button type="button" class="btn btn-ghost" data-gw-outside-no>Fix my address</button>
