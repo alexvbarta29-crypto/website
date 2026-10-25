@@ -283,7 +283,7 @@ def _home_video_html():
         return ""
     with open(path, "rb") as f:
         vfp = hashlib.md5(f.read()).hexdigest()[:10]
-    return f"""<section class="bg-deep home-video-section">
+    return f"""<section class="home-video-section">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Watch</span>
