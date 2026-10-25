@@ -287,7 +287,7 @@ def _home_video_html():
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Watch</span>
-        <h2>See Barta in action</h2>
+        <h2>What to Expect</h2>
       </div>
       <div class="home-video reveal">
         <video controls playsinline preload="none" poster="assets/video/barta-ad-poster.jpg?v={vfp}"
