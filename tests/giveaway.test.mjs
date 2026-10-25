@@ -660,3 +660,19 @@ test("a no-comma Glencoe address is turned away by the town check", async () => 
     assert.equal(out.status, 422);
   } finally { globalThis.fetch = base; }
 });
+
+// New-construction streets OpenStreetMap doesn't know yet still get in when
+// the town (on our list) or its centre is inside the circle.
+test("a new-build street the map doesn't know, typed with its town, is accepted", async () => {
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => (String(url).includes("nominatim")
+    ? new Response("[]", { status: 200 }) : base(url, opts));
+  try {
+    for (const [i, a] of ["3624 William Way Independence MN 55359", "3626 William Way, Independence, MN 55359",
+                          "3628 William Way, Independence"].entries()) {
+      const r = await ok(post(entry({ phone: "952555044" + i, address: a, address_city: "", address_zip: "",
+        address_state: "", address_verified: "typed", address_lat: "", address_lng: "" })));
+      assert.equal(r.area, "in", a);
+    }
+  } finally { globalThis.fetch = base; }
+});
