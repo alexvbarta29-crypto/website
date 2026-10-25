@@ -976,7 +976,7 @@
         const li = document.createElement("li");
         li.className = "addr-loading";
         li.setAttribute("aria-disabled", "true");
-        li.textContent = "No match in our giveaway area yet. Keep typing, or add your town.";
+        li.textContent = "Not on the map yet? New homes often aren’t. Type your full address with town and ZIP, then tap Enter.";
         list.appendChild(li);
       }
       addUseTypedRow(q);
