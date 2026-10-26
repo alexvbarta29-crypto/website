@@ -2023,12 +2023,12 @@ CITY_PAGES = [
                    'Few suburbs have grown like it. Census counts went from 6,275 residents in 1970 to 50,365 in '
                    '2000 and 70,253 in 2020, so most of the city&rsquo;s homes went up in those decades. From '
                    'our base in Delano, it&rsquo;s about a half-hour drive.'],
-     'why_points': [['Hard well water meets sprinkler season',
+     'why_points': [('Hard well water meets sprinkler season',
                      'Maple Grove&rsquo;s city water comes from groundwater. The treatment plant removes iron '
-                     'and manganese, but the water isn&rsquo;t softened, and the city has been asking residents '
-                     'about a softening plant. When that water dries on glass from sprinklers, it leaves white '
-                     'spots that build up over a summer. We can remove those with hard-water stain removal, and '
-                     'our water-fed poles use purified water, so our own rinse doesn&rsquo;t add any.'],
+                     'and manganese, but the water isn&rsquo;t softened. When that water dries on glass from '
+                     'sprinklers, it leaves white spots that build up over a summer. We can remove those with '
+                     'hard-water stain removal, and our water-fed poles use purified water, so our own rinse '
+                     'doesn&rsquo;t add any.'),
                     ['Lake-facing glass, a story or two up',
                      'Homes near Fish, Weaver and Eagle Lakes tend to put their biggest panes toward the water, '
                      'often on upper floors. We reach most of that glass from the ground with water-fed poles, '
@@ -2195,8 +2195,7 @@ CITY_PAGES = [
      'why_intro': ['Chaska is the county seat of Carver County, with its downtown sitting on the Minnesota '
                    'River. Clay deposits started a brick industry here in 1857, and cream-colored Chaska brick '
                    'went into buildings across the Twin Cities. Three of the old clayholes, filled by natural '
-                   'springs, are now part of the downtown parks, and Hazeltine National Golf Club, a Ryder Cup '
-                   'host, is in town too.',
+                   'springs, are now part of the downtown parks.',
                    'Census counts show how far the city has come: 2,501 residents in 1960, 17,449 in 2000 and '
                    '27,810 in 2020. Much of that growth started with Jonathan, a planned community begun in the '
                    'late 1960s. From our base in Delano, it&rsquo;s a little over half an hour to Chaska.'],
