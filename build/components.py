@@ -1603,7 +1603,7 @@ def google_badge(depth=0, light=False, text=None, bare=False):
     this same badge renders on two dozen light-background pages via
     reviews_block()."""
     if text is None:
-        text = f"{BIZ['rating']} rating · {BIZ['review_count']}+ reviews"
+        text = f"{BIZ['rating']} rating · {BIZ['review_count']} reviews"
     cls = "google-badge"
     if light:
         cls += " google-badge--light"

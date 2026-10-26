@@ -2,6 +2,8 @@
 Barta Window Washing, site data & shared components.
 Single source of truth for NAP, services, areas, plans, icons, and HTML partials.
 """
+import json as _json
+import os as _os
 
 # ---------------------------------------------------------------------------
 # Business identity (NAP), edit here to update site-wide
@@ -30,6 +32,20 @@ BIZ = {
     "tiktok": "https://www.tiktok.com/@bartawindowwashing",
     "google": "https://www.google.com/search?q=Barta+Window+Washing+Services#lrd=0x52b4a9e4856ebf2f:0x384cc062f9b0d3f9,1,,,,",
 }
+
+# Live Google review count and rating (owner's request, October 2026): the
+# "Sync Google review count" GitHub Action (.github/workflows/review-sync.yml)
+# runs build/review_sync.py, which writes build/google_reviews.json from
+# /api/review-stats, then rebuilds when the numbers change. The values above
+# are only the fallback if that file is missing or unreadable.
+try:
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "google_reviews.json")) as _f:
+        _gr = _json.load(_f)
+    if int(_gr["count"]) > 0:
+        BIZ["review_count"] = str(int(_gr["count"]))
+        BIZ["rating"] = f"{float(_gr['rating']):.1f}"
+except (OSError, ValueError, KeyError, TypeError):
+    pass
 
 # ---------------------------------------------------------------------------
 # Where quote-form submissions are delivered.
@@ -1096,7 +1112,7 @@ IMAGE_ALT = {
 BADGES = [
     ("shield", "Insured"),
     ("home", "Locally &amp; Family Owned"),
-    ("star", BIZ["rating"] + "★ Rated (" + BIZ["review_count"] + "+ reviews)"),
+    ("star", BIZ["rating"] + "★ Rated (" + BIZ["review_count"] + " reviews)"),
     ("check", "100% Satisfaction Guarantee"),
     ("leaf", "Safe, Eco-Friendly Methods"),
     ("clock", "Since " + BIZ["founded"]),

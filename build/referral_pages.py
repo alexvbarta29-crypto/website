@@ -57,7 +57,7 @@ def _proof_row(depth):
     hero carries (stars, the G, "<count>+ 5-star Google reviews"), in its solid
     white form for this pale background, and "Fully insured" beside it."""
     return f"""<div class="ref-hero-proof">
-          {C.google_badge(depth, light=True, text=f"{BIZ['review_count']}+ 5-star Google reviews")}
+          {C.google_badge(depth, light=True, text=f"{BIZ['review_count']} 5-star Google reviews")}
           <span class="ref-hero-insured">{icon('shield')} Fully insured</span>
         </div>"""
 

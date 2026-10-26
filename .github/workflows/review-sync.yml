@@ -1,0 +1,58 @@
+name: Sync Google review count
+
+# Keeps every "N reviews" / "5.0 rating" line on the site exact (owner's
+# request, October 2026). Reads the live count from /api/review-stats
+# (netlify/functions/review-stats.mjs) and, only when it changed, rebuilds the
+# pages and commits. Netlify publishes that push like any other.
+on:
+  schedule:
+    - cron: "17 */2 * * *" # every 2 hours
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+# Shares the Instagram sync's group so the two never push at the same time.
+concurrency:
+  group: instagram-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: claude/barta-window-washing-site-f51v9x
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Fetch live review count
+        id: sync
+        run: python3 build/review_sync.py
+
+      - name: Install build dependencies
+        if: steps.sync.outputs.changed == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Rebuild site
+        if: steps.sync.outputs.changed == 'true'
+        run: python3 build/build.py
+
+      - name: Commit and push changes
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "Update Google review count [automated]"
+            git pull --rebase
+            git push
+          fi

@@ -1088,7 +1088,7 @@ def build_gallery():
     <div class="container">
       <div class="hero-content reveal in">
         {C.crumbs([("Home", root + "index.html"), ("Gallery", None)], light=True)}
-        {C.google_badge(depth, text=f"{BIZ['review_count']}+ 5-star Google reviews", bare=True)}
+        {C.google_badge(depth, text=f"{BIZ['review_count']} 5-star Google reviews", bare=True)}
         <h1 class="mt-1">See the work for <em>yourself.</em></h1>
         <p class="lead">Real photos from real jobs around {BIZ['city']} and the western Twin Cities, no stock photos.</p>
       </div>
@@ -1231,14 +1231,14 @@ def build_reviews():
         ("Reviews", BIZ["domain"] + "/reviews.html"),
     ])]
     html = C.head(
-        title=seo_title(f"Reviews, {BIZ['rating']}★ from {BIZ['review_count']}+ Customers"),
-        desc=f"Read {BIZ['review_count']}+ five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, holiday lighting & more.",
+        title=seo_title(f"Reviews, {BIZ['rating']}★ from {BIZ['review_count']} Customers"),
+        desc=f"Read {BIZ['review_count']} five-star reviews for Barta Window Washing. See why Delano-area homeowners rate us 5.0★ for window cleaning, gutters, holiday lighting & more.",
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
         og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
     reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth, primary=True)
     html += f"""<main id="main">
-  <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']}+ neighbors, {BIZ['name']} Reviews</h1>
+  <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']} neighbors, {BIZ['name']} Reviews</h1>
   <section class="section-tight" style="padding-top:calc(var(--nav-h) + 40px)"><div class="container">{reviews_content}</div></section>
 </main>"""
     html += C.page_end(depth)
@@ -2074,7 +2074,7 @@ def build_landing(L):
     ]
     schema = BASE_SCHEMA + [S.faq_schema(lp_faqs)]
     trust = "".join(f'<li>{icon("check-circle")} {t}</li>' for t in [
-        f"{BIZ['rating']}★ from {BIZ['review_count']}+ reviews", "Fully insured",
+        f"{BIZ['rating']}★ from {BIZ['review_count']} reviews", "Fully insured",
         "Free, no-obligation quotes", "100% satisfaction guarantee", "Family-owned &amp; local"])
     html = C.head(title=seo_title(L.get("seo_title") or L["h1"]),
                   desc=f"{L['headline'].replace('&amp;','&')}. Insured & guaranteed. Serving Delano & the western Twin Cities. Get your free, no-obligation quote from Barta now!",
@@ -2083,7 +2083,7 @@ def build_landing(L):
     html += f"""<main id="main">
   <section class="phero"><div class="container"><div class="hero-grid">
     <div>
-      <div class="hero-rating" style="background:#fff;border:1px solid var(--line);color:var(--slate-700)">{stars_row()}<span>{BIZ['rating']}/5 · {BIZ['review_count']}+ reviews</span></div>
+      <div class="hero-rating" style="background:#fff;border:1px solid var(--line);color:var(--slate-700)">{stars_row()}<span>{BIZ['rating']}/5 · {BIZ['review_count']} reviews</span></div>
       <h1 class="mt-1">{L['headline']}</h1>
       <p class="lead">Trusted, family-owned exterior cleaning across the western Twin Cities. Get clear, upfront pricing with no pressure and no obligation.</p>
       <ul class="hero-trust">
