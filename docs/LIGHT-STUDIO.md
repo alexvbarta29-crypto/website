@@ -9,9 +9,9 @@ light lines on the house, and download the photo named for the customer.
   `netlify/lib/lights-page.mjs` (generated from the Light Studio build; replace
   the whole string to update the tool). It is not a static file, so it can't be
   reached without signing in.
-- **Password:** the `LIGHTS_PASSWORD` environment variable in Netlify → Site
-  configuration → Environment variables (redeploy afterwards). It is never in
-  the repo. Until it's set, the page stays locked. Changing it signs every
+- **Password:** the owner's chosen default (the owner has it; the code keeps
+  only a digest). To change it, set `LIGHTS_PASSWORD` in Netlify → Site
+  configuration → Environment variables and redeploy. Changing it signs every
   device out.
 - **Staying signed in:** the right password sets a year-long HttpOnly cookie
   (`barta_lights`, path `/lights`) that renews on every visit, so each device

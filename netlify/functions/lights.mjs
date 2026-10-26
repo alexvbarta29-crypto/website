@@ -5,9 +5,10 @@
 // a year-long, HttpOnly cookie, so the browser stays signed in (and its
 // password manager offers to save the password). See docs/LIGHT-STUDIO.md.
 //
-// Password: the LIGHTS_PASSWORD Netlify env var — never in the repo. Until it
-// is set, the page stays locked. The cookie is a slow PBKDF2 key of the
-// password, which only someone who knows the password can make.
+// Password: the owner's chosen default (kept here only as a slow PBKDF2
+// digest), or the LIGHTS_PASSWORD Netlify env var when that is set. The
+// cookie is the PBKDF2 key itself, which only someone who knows the password
+// can make. Changing the password signs every device out.
 
 import { pbkdf2Sync, createHash, timingSafeEqual } from "node:crypto";
 import { LIGHTS_HTML } from "../lib/lights-page.mjs";
@@ -16,6 +17,8 @@ export const config = { path: ["/lights", "/lights/"] };
 
 const SALT = "barta-light-studio-v1";
 const ITERATIONS = 210000;
+// sha256(PBKDF2(default password))
+const DEFAULT_CHECK = "bc5533134f445a4a9da597d33bbb0eb012928b48711b4ccd11e337750020e621";
 const COOKIE = "barta_lights";
 const ONE_YEAR = 365 * 24 * 60 * 60;
 
@@ -26,7 +29,7 @@ const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), 
 let envCache = null;
 function expected() {
   const pw = String(process.env.LIGHTS_PASSWORD || "");
-  if (!pw) return "";
+  if (!pw) return DEFAULT_CHECK;
   if (!envCache || envCache.pw !== pw) envCache = { pw, check: sha256(derive(pw)) };
   return envCache.check;
 }

@@ -58,11 +58,11 @@ test("changing LIGHTS_PASSWORD swaps the password and signs old devices out", as
   }
 });
 
-test("with no LIGHTS_PASSWORD set, the page stays locked", async () => {
+test("with no LIGHTS_PASSWORD set, the built-in default still guards the page", async () => {
   delete process.env.LIGHTS_PASSWORD;
   try {
-    assert.equal((await post("")).status, 503);
-    assert.equal((await post("anything")).status, 503);
+    assert.equal((await post("test-password")).status, 401);
+    assert.equal((await post("")).status, 401);
     assert.doesNotMatch(await (await get()).text(), /Paste or drop the house photos/);
   } finally {
     process.env.LIGHTS_PASSWORD = "test-password";
