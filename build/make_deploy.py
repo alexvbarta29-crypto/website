@@ -44,6 +44,11 @@ ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redire
 # award-best-of-delano-2026 tiers).
 EMAIL_ASSETS = ["assets/img/email-logo-bww.png", "IMG_4788.jpeg"]
 
+# Photos for Google Business Profile posts (owner's request, October 2026).
+# No page shows them, but Google fetches each post's photo from its public
+# URL, so everything in this folder always ships.
+GBP_POST_DIR = "assets/img/gbp"
+
 # Any local asset path appearing anywhere in a shipped text file. Scanning the
 # raw text (not just src/href) also catches srcset entries, poster attrs,
 # inline style url(...) backgrounds, JSON-LD image fields, og:image absolute
@@ -76,6 +81,9 @@ def main():
     if os.path.exists(os.path.join(ROOT, "assets/fonts/FFL.txt")):
         ship.append("assets/fonts/FFL.txt")
     ship += [f for f in EMAIL_ASSETS if os.path.exists(os.path.join(ROOT, f))]
+    gbp_dir = os.path.join(ROOT, GBP_POST_DIR)
+    if os.path.isdir(gbp_dir):
+        ship += [f"{GBP_POST_DIR}/{n}" for n in sorted(os.listdir(gbp_dir)) if n.lower().endswith((".jpg", ".jpeg", ".png"))]
 
     # Fixpoint scan: shipped text files reference assets; referenced .css/.js
     # may reference further assets of their own.
