@@ -1,1 +1,1223 @@
-{"count": 152, "rating": 5.0, "updated": "2026-10-26T21:40:00Z"}
+{
+ "count": 152,
+ "rating": 5.0,
+ "updated": "2026-10-26T23:48:21.071Z",
+ "reviews": [
+  {
+   "id": "7dd3db0bac",
+   "name": "Shanna Guidry",
+   "stars": 5,
+   "text": "I would highly recommend BARTA Window Washing! They installed our holiday lights on our home, and we are very happy about the finished product. Their customer service and communication was prompt and professional. They really went above and beyond to make sure we were satisfied with the level of service they provided. I was really impressed by this team. Thank you!",
+   "created": "2026-10-26T15:43:21.346870Z",
+   "reply": "Thank you so much, Shanna! We’re thrilled you love how your holiday lights turned out. It was a pleasure working with you, and we’re glad the communication made it easy. Enjoy the glow this season, and we’ll see you next year! 🎄✨"
+  },
+  {
+   "id": "f3046c274c",
+   "name": "Brigit Cousin",
+   "stars": 5,
+   "text": "Courteous, quick, excellent result!",
+   "created": "2026-10-24T23:47:57.558402Z",
+   "reply": "Thanks so much, Brigit! Courteous, quick, and excellent results is exactly what we aim for, so this made our day. We'll be ready whenever those windows need another shine! – Alex, Barta Window Washing"
+  },
+  {
+   "id": "4380811b65",
+   "name": "Craig Ohlson",
+   "stars": 5,
+   "text": "Guys did a great job cleaning our exterior windows and cleaning our gutters!",
+   "created": "2026-10-24T23:46:55.523275Z",
+   "reply": "Thanks, Craig! Glad the windows are sparkling and the gutters are cleared out before winter hits. We appreciate you trusting us with both, see you next time! – Alex, Barta Window Washing"
+  },
+  {
+   "id": "3853759316",
+   "name": "Kimmy Emanuel",
+   "stars": 5,
+   "text": "My windows look great !!  Very professional and did super job!!",
+   "created": "2026-10-24T21:16:13.396559Z",
+   "reply": "Thank you so much, Kimmy! We’re glad to hear you’re happy with how your windows turned out! We really appreciate your kind words and your support of our business. It was a pleasure working with you, and we look forward to helping you again!"
+  },
+  {
+   "id": "43ba6d08f5",
+   "name": "Rebecca Hertzog",
+   "stars": 5,
+   "text": "Barta did a nice job and were friendly.",
+   "created": "2026-10-24T21:09:41.618751Z",
+   "reply": "Thank you so much, Rebecca! We really appreciate you taking the time to leave us a review. We’re glad you had a great experience with our team, and we look forward to helping you again in the future!"
+  },
+  {
+   "id": "b33217ae77",
+   "name": "Rachel",
+   "stars": 5,
+   "text": "Barta did a great job cleaning our windows, inside and out.  We would definitely recommend.",
+   "created": "2026-10-24T19:52:09.602714Z",
+   "reply": "Thank you so much, Rachel! We really appreciate you taking the time to leave us a review. We’re glad you had a great experience with our team, and we look forward to helping you again in the future!"
+  },
+  {
+   "id": "7e75477474",
+   "name": "Roman Kozak",
+   "stars": 5,
+   "text": "BARTA just installed our Christmas and Holiday lights and they did a wonderful job!  An excellent, very professional, and very friendly staff took care of beautifully decorating the exterior of the house and getting it ready for the upcoming Christmas and Holiday Season!  Excellent staff, very timely and professional installation, and at a very reasonable price for the great service!",
+   "created": "2026-10-23T01:13:02.398814Z",
+   "reply": "Thank you so much for the amazing review, Roman! We’re glad to hear you’re happy with how everything turned out. It was a pleasure getting your home ready for the holiday season. We really appreciate your support and hope you enjoy the lights all season long!"
+  },
+  {
+   "id": "3b054021ba",
+   "name": "Shelly Babusek",
+   "stars": 5,
+   "text": "Just used BARTA windows for our exterior window cleaning and highly recommend them! Professional from start to finish Gustov and Bennett did such a great job! Windows look amazing and already scheduled to use them again in the Spring!",
+   "created": "2026-10-21T14:24:28.878351Z",
+   "reply": "Thank you so much, Shelly! We’re happy to hear you had such a great experience with us. We’ll be sure to pass your kind words along to Gustov and Bennett! We really appreciate your support and look forward to seeing you again in the spring!"
+  },
+  {
+   "id": "737ec83e70",
+   "name": "john engel",
+   "stars": 5,
+   "text": "Gustov did an outstanding job! It’s refreshing to see a young person, that goes out of their way, to make things perfect! We will be telling our neighbor about it!",
+   "created": "2026-10-14T17:31:59.278589Z",
+   "reply": "Thank you so much, John! We're glad to hear you had such a great experience with Gustov! We really appreciate your kind words and your willingness to recommend us to your neighbors. Thank you for trusting BARTA Window Washing!"
+  },
+  {
+   "id": "95195e5f8e",
+   "name": "H Hedberg",
+   "stars": 5,
+   "text": "Excellent service from BARTA Window Washing! Gustov, Alex, and Bennet did a fantastic, thorough job cleaning our windows, tracks, and gutters. They were professional, meticulous, and clearly took pride in their work. BARTA also offers outdoor Christmas lighting, and we plan to reach out for the holidays. Highly recommend!",
+   "created": "2026-10-13T21:43:56.490046Z",
+   "reply": "Thank you so much for the wonderful review! We're so glad to hear you had a great experience with Gustov, Alex, and Bennet! We take a lot of pride in our work, so your kind words mean a lot to our team. We truly appreciate your support and look forward to helping you with your Christmas lights this holiday season!"
+  },
+  {
+   "id": "7facef8441",
+   "name": "Bobbi Bohnsack",
+   "stars": 5,
+   "text": "",
+   "created": "2026-10-13T14:40:27.801459Z",
+   "reply": "Thank you so much, Bobbi! We're glad you were happy with our window cleaning services! We really appreciate your support and for choosing BARTA Window Washing. We look forward to serving you again!"
+  },
+  {
+   "id": "47423f38f1",
+   "name": "Sharon Schmidt",
+   "stars": 5,
+   "text": "Barta window washing did a FANTASTIC  job  cleaning all of my windows  on the outside. and also  cleaning the gutters. My windows  haven't  been this clean in a long time.",
+   "created": "2026-10-12T20:24:13.464534Z",
+   "reply": "Thank you so much, Sharon! We’re so glad to hear you’re happy with how your windows and gutters turned out! We really appreciate your kind words and your trust in Barta Window Washing. We look forward to serving you again!"
+  },
+  {
+   "id": "94f086b38f",
+   "name": "Craig Schmidt",
+   "stars": 5,
+   "text": "Prompt and friendly, with high quality work. Service was Christmas light installation.",
+   "created": "2026-10-12T19:01:10.520179Z",
+   "reply": "Thank you so much for the great review, Craig! We’re glad to hear you were happy with your Christmas light installation. We really appreciate your business and look forward to working with you again!"
+  },
+  {
+   "id": "0bb62933e1",
+   "name": "ray d",
+   "stars": 5,
+   "text": "Alex did a great job installing the Christmas lights. Everything works as it should and they look fabulous.Excellent communication. Great work!",
+   "created": "2026-10-10T00:59:42.476921Z",
+   "reply": "Thank you so much for the great review, Ray! We’re glad to hear you’re happy with how the Christmas lights turned out! It was a pleasure working with you, and we really appreciate your trust in Barta Window Washing. Enjoy the lights and have a wonderful holiday season! 🎄"
+  },
+  {
+   "id": "7532476b9a",
+   "name": "Tana Breault",
+   "stars": 5,
+   "text": "Alex came out and installed Christmas Lights along our roofline. The work was excellent. Communication was great. Any questions we had were answered. He was courteous and respectful.  I would absolutely recommend Barta!!",
+   "created": "2026-10-08T20:22:55.233111Z",
+   "reply": "Thank you so much, Tana! We’re so glad to hear you’re happy with your Christmas lights! It was a pleasure working with you, and we really appreciate your kind words and recommendation. Thank you for trusting Barta Window Washing with your holiday lighting!"
+  },
+  {
+   "id": "221df51ce2",
+   "name": "Ben Nelsen",
+   "stars": 5,
+   "text": "Barta was great!  Great communication, on time and great price.  Highly recommend!",
+   "created": "2026-10-08T19:03:56.606721Z",
+   "reply": "Thank you so much for the great review, Ben! We’re glad to hear you had a great experience with us. We really appreciate your kind words, recommendation, and support of Barta Window Washing. We look forward to working with you again!"
+  },
+  {
+   "id": "adadcb1b7f",
+   "name": "Jan Funke",
+   "stars": 5,
+   "text": "The young man providing our service today was most. Excellent!  Highly recommend him.",
+   "created": "2026-10-08T16:34:25.005506Z",
+   "reply": "Thank you so much for the wonderful review, Jan! We’re so glad to hear you had a great experience with our team. We really appreciate your kind words, recommendation, and support of Barta Window Washing. We look forward to serving you again!"
+  },
+  {
+   "id": "ac8f8783f9",
+   "name": "Lucretia Wyrowski",
+   "stars": 5,
+   "text": "We are very pleased with the quality of  Barta Windows Service!  Jake was prompt\nand an incredible young man.  If you want a job well done you can count on him.  I’m already scheduled for Spring.",
+   "created": "2026-10-08T16:03:56.867669Z",
+   "reply": "Thank you so much for the kind words, Lucretia! We’re so happy to hear you had a great experience with Jacob. We’ll be sure to pass along your compliments! We truly appreciate your continued trust in Barta Window Washing and look forward to seeing you again this spring!"
+  },
+  {
+   "id": "973cd8ee45",
+   "name": "Rob Buchner",
+   "stars": 5,
+   "text": "This guys hustle. Massively impressed with their professionalism, decency and work ethic! Good people",
+   "created": "2026-10-07T00:09:49.654823Z",
+   "reply": "Thank you so much, Rob! We really appreciate the kind words. It means a lot to hear that our work ethic and professionalism stood out. Thanks again for choosing Barta Window Washing!"
+  },
+  {
+   "id": "66b6ea0357",
+   "name": "Jan Miskowic",
+   "stars": 5,
+   "text": "Alex did an amazing job cleaning our outside windows.  He is meticulous and took his time.  We have very high windows and he uses a ladder and not a pole, so the corners are nice a clean. Alex is personable, let us know he would be a few minutes late.  I am\nvery  fussy and BARTA exceeded my expectations and I will definitely use them again.",
+   "created": "2026-10-06T14:32:02.205904Z",
+   "reply": "Thank you so much, Jan! I really appreciate the kind words. I’m glad we were able to exceed your expectations, and it was a pleasure getting your windows cleaned. We’d be happy to help again anytime!"
+  },
+  {
+   "id": "29a51acf21",
+   "name": "Betsy Hopf",
+   "stars": 5,
+   "text": "Barta did an excellent job putting up our Holiday lights! Price was reasonable and our house has never looked this festive.",
+   "created": "2026-10-06T00:27:41.754899Z",
+   "reply": "Thank you so much, Betsy! We’re so glad you’re happy with the Christmas lights. We really appreciate you choosing Barta and hope you enjoy them all season long!"
+  },
+  {
+   "id": "916f16197f",
+   "name": "Raymond Haverstock",
+   "stars": 5,
+   "text": "They were very careful of the inside of our house, which had recently been painted while they cleaned the windows. Their job was very thorough and professional.",
+   "created": "2026-10-01T16:25:13.885007Z",
+   "reply": "Thank you, Raymond! We really appreciate you taking the time to leave a review. We’re glad you were happy with the window cleaning and that we could take extra care around your freshly painted home. It was a pleasure working with you!"
+  },
+  {
+   "id": "dbe55e43d2",
+   "name": "Brenda Scandin",
+   "stars": 5,
+   "text": "Barta Window Washing Services did an excellent job washing my windows & screens!!  I am thrilled with the results!  Highly recommend!!",
+   "created": "2026-09-30T19:07:09.154334Z",
+   "reply": "Thank you so much, Brenda! We really appreciate the kind words and are glad you’re happy with how the windows and screens turned out. It was a pleasure working with you!"
+  },
+  {
+   "id": "bd7a49bb26",
+   "name": "Bev Yaeck",
+   "stars": 5,
+   "text": "We used Barta Window Washing Services to do exterior windows. They were friendly, honest and did an amazing job. Would highly recommend them.",
+   "created": "2026-09-29T20:55:11.060953Z",
+   "reply": "Thank you so much, Bev! We really appreciate the kind words and are glad you were happy with the exterior window cleaning. It was a pleasure working with you!"
+  },
+  {
+   "id": "f1c0f7b4dc",
+   "name": "Lonnie",
+   "stars": 1,
+   "text": "They keep knocking on my door trying to sell me their window washing. I’ve told them no numerous times and they keep coming back. Next time I will call the cops and have them trespassed.",
+   "created": "2026-09-29T16:02:46.217470Z",
+   "reply": "Hi Lonnie, we take reviews like this very seriously and want to make it clear that Barta Window Washing does not conduct door-to-door sales. We have no record of any interaction with you or visits to your property, and the conduct described in your review does not reflect our business practices.\n\nWe believe this review may have been posted to the wrong business. We respectfully ask that you verify the company involved and remove this review if it was posted in error. We take our reputation and customer relationships seriously and want to ensure that the information shared about our company is accurate."
+  },
+  {
+   "id": "28a8ceb192",
+   "name": "Harry DeBeer",
+   "stars": 4,
+   "text": "",
+   "created": "2026-09-29T15:11:54.430932Z",
+   "reply": "Thank you, Harry! We really appreciate your business and are glad to hear you were happy with the service, results, and pricing."
+  },
+  {
+   "id": "81deeb9a65",
+   "name": "Michael Q",
+   "stars": 5,
+   "text": "Absolutely a perfect job .. Couldn’t have been happier and will definitely use them again. I will definitely refer to family and friends and anyone that can use there services.. Thank you very much..",
+   "created": "2026-09-28T16:08:26.703480Z",
+   "reply": "Thank you so much, Michael! We really appreciate the kind words and your recommendation. It was a pleasure working with you, and we’re glad you’re happy with the results. We look forward to helping you again in the future!"
+  },
+  {
+   "id": "b605422fd6",
+   "name": "Megan Mallory",
+   "stars": 5,
+   "text": "Great work- our house looks amazing! They were honest and worked hard and efficiently. Also loved the clear communication!",
+   "created": "2026-09-26T00:21:16.806711Z",
+   "reply": "Thank you so much, Megan! We really appreciate the kind words. We’re glad you were happy with the results and the communication throughout the process. It was a pleasure working with you, and we’d be happy to help again anytime!"
+  },
+  {
+   "id": "d28dd84555",
+   "name": "Kim Hondel",
+   "stars": 5,
+   "text": "Great team of polite and friendly young men!  They were efficient and made sure the windows were spotless. I definitely will be using them again and highly recommend you give them a try!",
+   "created": "2026-09-25T18:43:48.605680Z",
+   "reply": "Thank you so much, Kim! We really appreciate the kind words and recommendation. We’re glad you were happy with the windows and our team. It was a pleasure working with you, and we look forward to helping you again!"
+  },
+  {
+   "id": "02f7df2416",
+   "name": "Ivanna Sechko",
+   "stars": 5,
+   "text": "Alex and his team did a fantastic job cleaning our windows! They were professional, efficient, and everything looks spotless. Great service — highly recommend Barta",
+   "created": "2026-09-25T04:45:21.425500Z",
+   "reply": "Thank you so much, Ivanna! We really appreciate the kind words and recommendation. We’re glad you had a great experience with our team and that your windows turned out spotless. Thank you for choosing Barta Window Washing!"
+  },
+  {
+   "id": "f27cb7e7c3",
+   "name": "Marette M",
+   "stars": 5,
+   "text": "This is the first time I have ever had my windows professionally cleaned and I was super impressed ! They showed up on time, very conscientious of their work , friendly and greatly priced. I would recommend them to anyone and I will be using them again and again  !",
+   "created": "2026-09-24T22:55:22.535063Z",
+   "reply": "Thank you so much, Marette! We’re glad your first professional window cleaning was such a great experience. We really appreciate the kind words and recommendation, and we look forward to helping you again in the future!"
+  },
+  {
+   "id": "c3af40960c",
+   "name": "Kathy Franke",
+   "stars": 5,
+   "text": "It was so nice to come home to clean sparkling windows!   My husband said these guys went right to work and kept at it until the job was completed!   I would highly recommend Barta Window Washing Services to all!   Thank you again!",
+   "created": "2026-09-24T16:19:18.262592Z",
+   "reply": "Thank you so much, Kathy! We really appreciate the kind words and recommendation. We’re glad you came home to sparkling clean windows and had a great experience with our team. Thank you again for choosing Barta Window Washing!"
+  },
+  {
+   "id": "6e06033485",
+   "name": "steve Cherro",
+   "stars": 5,
+   "text": "They did a great job on our windows! The young man was polite and friendly! You won’t be disappointed by their work!",
+   "created": "2026-09-23T20:56:26.965593Z",
+   "reply": "It's fantastic to know you had an excellent experience with us, Steve! We're so happy the politeness and friendliness of our team stood out to you. We truly appreciate your kind words and support. We look forward to sparkling your windows again!"
+  },
+  {
+   "id": "01cbcdd68c",
+   "name": "Deb Klatt",
+   "stars": 5,
+   "text": "Jacob and his crew did an excellent job cleaning our windows.  Good communication, very friendly easy to work with! We would recommend him and his crew for his cleaning services as our windows are as clean as if they are brand new!",
+   "created": "2026-09-23T19:48:04.843865Z",
+   "reply": "Thank you so much for your lovely review! 😊 We're delighted to hear that our team's friendliness and clear communication resonated with you. Your recommendation means the world to us, and we can't wait to make your windows shine again in the future!"
+  },
+  {
+   "id": "d9b0dfd62d",
+   "name": "Diane Gittiban",
+   "stars": 5,
+   "text": "Professional  from start to finish! Gusty was great! Windows look amazing! Thanks Barta!",
+   "created": "2026-09-23T18:03:16.655912Z",
+   "reply": "We're so grateful for your kind words! It's wonderful to know you loved how your windows turned out. Gusty and the team take great pride in their work. Can't wait to help out with your windows once more!"
+  },
+  {
+   "id": "6aed5518ae",
+   "name": "Emily Aho",
+   "stars": 5,
+   "text": "BWW did a great job on the windows! They are fast efficient and a great price! Their service plans are super easy and I don’t have to worry about my windows anymore!",
+   "created": "2026-09-23T02:45:59.475777Z",
+   "reply": "We're delighted to hear that you were pleased with our services! 😊 It thrills us that you found our service plans convenient and worry-free. Your satisfaction is our top priority, and feedback like yours makes it all worthwhile!"
+  },
+  {
+   "id": "78cba923d0",
+   "name": "Heidi Nelson",
+   "stars": 5,
+   "text": "Very responsive and did a beautiful job on our windows! Definitely recommend!",
+   "created": "2026-09-17T17:34:30.793251Z",
+   "reply": "Thank you so much, Heidi! We really appreciate the kind words and recommendation. It was a pleasure cleaning your windows, and we’re glad you’re happy with how everything turned out!"
+  },
+  {
+   "id": "1296267841",
+   "name": "M. P. Sr.",
+   "stars": 5,
+   "text": "Great attention to detail.  Our windows are cleaner than they've ever been.  We'll be using them again.",
+   "created": "2026-09-17T01:02:47.073583Z",
+   "reply": "Thank you for the kind words! We’re glad the attention to detail showed and that your windows look better than ever. We appreciate your business and look forward to cleaning them again!"
+  },
+  {
+   "id": "d09f070553",
+   "name": "Judi Salonek",
+   "stars": 5,
+   "text": "My windows are so clean it looks like there isn't any glass in them.  Efficient,  timely, very professional.",
+   "created": "2026-09-15T21:47:17.181682Z",
+   "reply": "Thank you so much, Judi! We’re glad your windows turned out crystal clear and that you had a great experience with our team. We really appreciate the kind review!"
+  },
+  {
+   "id": "a563b48e47",
+   "name": "Anne M",
+   "stars": 5,
+   "text": "BARTA did a great job! Communication was easy and fair pricing .",
+   "created": "2026-09-15T19:05:17.241204Z",
+   "reply": "Thank you, Anne! We really appreciate the kind review. We’re glad you were happy with the communication, pricing, and the work. It was a pleasure helping with your windows and gutters!"
+  },
+  {
+   "id": "e060a468e8",
+   "name": "Joe Thomas",
+   "stars": 5,
+   "text": "Gustov was a really nice person and did a great job.\nI have him back anytime.",
+   "created": "2026-09-10T01:38:23.107985Z",
+   "reply": "Thanks so much, Joe! We really appreciate the kind words. I’ll be sure to pass this along to Gustov. Glad you were happy with the window cleaning, and we’d be happy to help again anytime!"
+  },
+  {
+   "id": "829bf54587",
+   "name": "allan larson",
+   "stars": 5,
+   "text": "Gustav did a great job on our windows for us. Hard worker, good listener & does the  little ''extras''. Thanks to All the Barta boys.",
+   "created": "2026-09-04T14:27:41.936932Z",
+   "reply": "Thank you, Allan! We’re glad Gustov took great care of your windows and that you appreciated the little extras. We’ll pass along your kind words. Thanks for supporting the Barta boys!"
+  },
+  {
+   "id": "38ec7674ba",
+   "name": "Todd and Mary Schulze",
+   "stars": 5,
+   "text": "Great communication, great price and an outstanding job!! You won't be disappointed!! We had our patio cleaned and our church siding pressure washed.",
+   "created": "2026-09-01T14:27:58.821050Z",
+   "reply": "Thank you so much, Todd! We really appreciate you trusting Barta Window Washing with the patio cleaning and church siding. We’re glad you were happy with the communication, pricing, and results. Thank you again for the great review and for choosing us!"
+  },
+  {
+   "id": "8da7dbb018",
+   "name": "Katie Ross",
+   "stars": 5,
+   "text": "Alex and his team were great! My husband and I were impressed right away with their professionalism and dedication to getting the job done right and to our satisfaction. I could tell instantly how well they did when I got home. Living in a new development, the dust that collected everywhere was awful. So happy we decided to call in the professionals. A job that would have taken me days only took his team hours. Our windows, tracks and screens have never looked better!",
+   "created": "2026-08-26T01:50:48.926194Z",
+   "reply": "Katie, thank you so much for the kind words! We’re really glad you and your husband were happy with the results. It was a pleasure getting everything cleaned up, and we really appreciate you trusting us with your home. Thank you for choosing Barta Window Washing!"
+  },
+  {
+   "id": "78b5ad2195",
+   "name": "Jill Schmidt",
+   "stars": 5,
+   "text": "Gustov did a great job washing our windows!  He took his time and double checked his work.  He was mindful of covering his shoes in the house, and made sure everything was cleaned up before he left.  Appreciate it!",
+   "created": "2026-08-21T20:45:04.578786Z",
+   "reply": "Thank you so much! We really appreciate the kind words and are glad Gustov took great care of everything. Thanks again for choosing Barta Window Washing."
+  },
+  {
+   "id": "d1bd37d557",
+   "name": "Laurie Henry",
+   "stars": 5,
+   "text": "Great team!!  Promptly arrived at 8:00 AM and did a top notch job of cleaning our windows. Highly recommend",
+   "created": "2026-08-20T16:14:29.606819Z",
+   "reply": "Thank you so much, Laurie! We really appreciate the kind words and are glad you’re happy with how the windows turned out. It was a pleasure working with you, and we hope to help you again in the future!"
+  },
+  {
+   "id": "8209376313",
+   "name": "Tanner Joas",
+   "stars": 5,
+   "text": "We had the pleasure of working with the Barta team to tackle some much needed cleaning. They took care of our gutters, windows exterior and interior, and window tracks.\n\nAlex came out the next day after approving the proposal. They worked efficiently and had amazing attention to detail. Our windows are very old and were in desperate need of cleaning, we weren’t expecting perfection, but they absolutely exceeded our expectations.\n\nWould highly recommend to anyone in need of window or gutter cleaning. They are professional, communicative, and very reasonably priced. Will be calling them again. Great job guys!",
+   "created": "2026-07-30T17:11:59.363360Z",
+   "reply": "Thank you so much, Tanner! We really appreciate you trusting us with your windows, tracks, and gutters. It was a pleasure working with you, and we’re glad we could exceed your expectations. We look forward to helping you again in the future!"
+  },
+  {
+   "id": "298dd9f106",
+   "name": "Mitchell Scrimgeour",
+   "stars": 5,
+   "text": "These guys knocked it out of the park! Service from the time we originally connected was top notch. They power washed my front porch and deck and did an excellent job. I would highly recommend reaching out to these guys for anything exterior on your home.",
+   "created": "2026-07-28T20:05:21.152137Z",
+   "reply": "Thank you, Mitchell! We’re glad you were happy with the results on your front porch and deck. We really appreciate your recommendation and look forward to helping with any future exterior cleaning projects!"
+  },
+  {
+   "id": "6c4357f983",
+   "name": "renee callaway",
+   "stars": 5,
+   "text": "The Barta Brothers & their workers are some of the nicest, most polite, hardworking & knowledgeable young men we have had do any services at our home. They are prompt, honest\n& 2 guys finished 62 windows in 3 hours. They look great. Clear as a bell. I highly recommend them.",
+   "created": "2026-07-22T16:47:36.068193Z",
+   "reply": "Thank you so much, Renee! We truly appreciate the kind words and your recommendation. It was a pleasure working with you, and we are so glad you are happy with how your windows turned out. Our team takes a lot of pride in providing honest, professional service and leaving every home with crystal-clear results. Thank you for trusting the BARTA team! We look forward to helping you again in the future!"
+  },
+  {
+   "id": "3f14597975",
+   "name": "Aaron Geffre",
+   "stars": 5,
+   "text": "Superior customer service, our house looked clean and sparkly! Great company!",
+   "created": "2026-07-15T14:00:32.573136Z",
+   "reply": "Aaron, thank you so much for the awesome review! We're thrilled to hear you had a great experience and that your home is looking clean and sparkling. We appreciate your support and look forward to helping you keep it that way for years to come!"
+  },
+  {
+   "id": "8512f2bbe6",
+   "name": "Dawn Frank",
+   "stars": 5,
+   "text": "Alex and the team did a great job cleaning my exterior windows and the exterior of the house. They were timely and finished quickly. We will be having them return in the fall.",
+   "created": "2026-06-12T16:29:29.956371Z",
+   "reply": "Dawn, thank you so much for your kind review! We're glad Alex and the team provided a great experience and completed everything efficiently. We truly appreciate your trust in us and are excited to come back this fall. Thanks again for your support!"
+  },
+  {
+   "id": "5166725fb6",
+   "name": "Colleen Ernesti",
+   "stars": 5,
+   "text": "Very impressed with these young hard workers!  They did a fantastic job on my windows, they cleaned the windows inside and out, the tracks and the screens!",
+   "created": "2026-06-02T23:19:35.148486Z",
+   "reply": "Colleen, thank you so much for your thoughtful review! We truly appreciate your kind words about our team. We work hard to provide a thorough cleaning on every job, from the glass to the tracks and screens, and we're so glad you were happy with the results. We look forward to serving you again!"
+  },
+  {
+   "id": "fc40d8c260",
+   "name": "Jeff Johnson",
+   "stars": 5,
+   "text": "Great working with Barta Window Washing! Showed up on scheduled date on time. Very respectful of property, good communication, great value! BWW is awesome!",
+   "created": "2026-06-02T20:50:32.112431Z",
+   "reply": "Jeff, thank you for the fantastic review! We take pride in showing up on time, communicating well, and treating every home with the utmost respect. It means a lot that you noticed those things. We truly appreciate your support and look forward to working with you again!"
+  },
+  {
+   "id": "5530e5da76",
+   "name": "Nancy Follano",
+   "stars": 5,
+   "text": "Barta Window Washing Services cleaned my windows for the first time and I could not have been happier.  They have top-notch communication and response skills.  The quality of their work is excellent and their professionalism is something you do not see very often.  Three weeks later, my windows are as clean as they were right after service even after multiple rainstorms.  I highly recommend Barta for window cleaning service.",
+   "created": "2026-06-02T18:44:37.791282Z",
+   "reply": "Nancy, thank you so much for trusting us with your home! We're thrilled to hear your first experience with Barta Window Washing was such a positive one. Our goal is to make every customer feel confident they received exceptional service and value. We truly appreciate your support and can't wait to help you again in the future!"
+  },
+  {
+   "id": "eafbf87a14",
+   "name": "NANCY Schwartz",
+   "stars": 4,
+   "text": "We had our windows cleaned by Barta.\nThey did an excellent job.  I definitely use the again. Very happy.",
+   "created": "2026-06-02T16:45:40.640187Z",
+   "reply": "Nancy, thank you so much for your kind words! We're so glad you were happy with your window cleaning. Our goal is to make the entire process easy while delivering spotless results every time. We truly appreciate your support and look forward to helping you again!"
+  },
+  {
+   "id": "af146b8bba",
+   "name": "Jackie Unrein",
+   "stars": 5,
+   "text": "They did a great job. I would definitely recommend!",
+   "created": "2026-06-02T13:49:39.924008Z",
+   "reply": "Jackie, thank you for the awesome review! It means a lot that you'd recommend us. We work hard to provide great service, fair pricing, and a hassle-free experience. We appreciate your support and hope to see you again in the future!"
+  },
+  {
+   "id": "433caab16e",
+   "name": "Roger Georges",
+   "stars": 5,
+   "text": "Friendly. Very meticulous  I would recommend Barta for windows.  They did inside outside screens and sills",
+   "created": "2026-06-02T02:49:38.994196Z",
+   "reply": "Roger, thank you for taking the time to leave us a review! We're happy to hear you noticed our attention to detail. We take pride in making sure every window, screen, sill, and piece of glass is cleaned with care. We truly appreciate your recommendation and look forward to helping you again in the future!"
+  },
+  {
+   "id": "041de5adcd",
+   "name": "Morgan Heller",
+   "stars": 5,
+   "text": "Great work and fair pricing! I highly recommend them!",
+   "created": "2026-05-22T22:51:21.689148Z",
+   "reply": "Morgan, thank you so much for the 5-star review! We believe in providing high-quality work at a fair, honest price, so your feedback means a lot to us. We truly appreciate the recommendation and look forward to serving you again!"
+  },
+  {
+   "id": "712218e898",
+   "name": "Annika Londerville",
+   "stars": 5,
+   "text": "Jacob was great at communicating and our windows look amazing! I would definitely recommend. Interior, exterior, tracks and screens. The best refresh in our home!",
+   "created": "2026-05-19T01:53:34.859666Z",
+   "reply": "Annika, thank you so much for the wonderful review! It means a lot that you noticed our communication and attention to detail. We work hard to make the entire experience—from scheduling to the final walkthrough—as smooth as possible. We're so glad you're happy with your windows, tracks, and screens, and we look forward to helping you again in the future!"
+  },
+  {
+   "id": "99b88a57b0",
+   "name": "kris chase",
+   "stars": 5,
+   "text": "Barta window cleaning did a fantastic job on our outdoor windows.  I own a cleaning business so I consider myself little more picky then others. I'll will be definitely be having Barta come again.",
+   "created": "2026-05-08T21:12:47.250331Z",
+   "reply": "Kris, thank you so much! Receiving a compliment like this from another cleaning business owner means a great deal to us. We take pride in delivering quality work and paying attention to the little details. We truly appreciate your support and look forward to cleaning your windows again next time!"
+  },
+  {
+   "id": "9aa6ab9c6d",
+   "name": "Nick Matheson",
+   "stars": 5,
+   "text": "",
+   "created": "2026-04-28T23:16:14.650727Z",
+   "reply": "Nick, thank you for the 5-star review! We believe everyone deserves high-quality service at a fair and honest price, so we're glad to hear you felt that way. We appreciate your support and hope to work with you again in the future!"
+  },
+  {
+   "id": "5624581b4b",
+   "name": "Sue Peglow",
+   "stars": 5,
+   "text": "They did an amazing job!!!",
+   "created": "2026-04-24T20:40:50.053177Z",
+   "reply": "Sue, thank you so much! We look forward to serving you again!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "b503559c8f",
+   "name": "Chad Michaels",
+   "stars": 5,
+   "text": "I had an excellent experience with the guys at Barta Window Washing.  They were professional from start to finish, arrived on time, and worked efficiently throughout the entire job. The team was courteous, detail-oriented, and clearly took pride in their work. My windows look great.\n\nIt's obvious this is a well-run operation. Communication was clear, scheduling was easy, and everything was handled smoothly. I would highly recommend them.",
+   "created": "2026-04-24T02:51:22.584994Z",
+   "reply": "Chad, thank you so much for the kind words — we really appreciate it! We'll pass the compliments along to the team. We look forward to working with you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "38a97df823",
+   "name": "C Brand",
+   "stars": 5,
+   "text": "Jacob and Alex, brothers/co-owners, showed up bright and early this morning and did a FANTASTIC  job. The pricing is fair, the guys are friendly and engaging; I heartily recommend them!\nI so admire young entrepreneurs, and have NO DOUBT they will continue building this enterprise into a long-term business with a fine reputation!\nThank you, Jacob and Alex.",
+   "created": "2026-04-23T14:11:15.843582Z",
+   "reply": "Wow, thank you so much for such a generous review! We love what we do and are so glad it shows. Review like yours keep us motivated to keep growing and doing our best work. We look forward to seeing you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "a0eb7ac4cd",
+   "name": "Robin Olson",
+   "stars": 5,
+   "text": "This was our second year having Barta clean our gutters. They are highly responsive, professional, kind and they do great work for a great price!",
+   "created": "2026-04-22T19:10:04.020199Z",
+   "reply": "Robin, thank you so much.  We love hearing from a returning customer! Year two means the world to us, and we'll look forward to taking care of you again next year too. We really appreciate your support!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "d96daf8718",
+   "name": "Lisa Seguin",
+   "stars": 5,
+   "text": "They did a great job. Would definitely recommend.",
+   "created": "2026-04-22T18:14:52.214474Z",
+   "reply": "Lisa, thank you so much! We really appreciate it and we're glad you were happy with everything and we look forward to serving you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "b81d7a50c3",
+   "name": "Amanda Peterson",
+   "stars": 5,
+   "text": "As a Realtor I am always looking for fantastic vendors to refer to my clients and I would give them 10 stars if I could. Getting an estimate and scheduling was a breeze. They showed up on time, were kind and professional, explained everything and did an outstanding job cleaning windows and removing moss from a deck at one of my clients homes. Would highly recommend!",
+   "created": "2026-04-22T15:37:48.616497Z",
+   "reply": "Amanda, thank you so much, 10 stars, we'll take it! \nIt means a lot to be a vendor you trust and we don't take that lightly.  Thanks again for the kind words and we look forward to working with you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "8366f323cd",
+   "name": "Jeff Oscarson",
+   "stars": 5,
+   "text": "Could not be more impressed.   Jacob is on top of everything.  They do a great job with the windows and their process is effortless.    Highly professional and I recommend fully",
+   "created": "2026-04-22T14:13:54.114128Z",
+   "reply": "Jeff, thank you so much for the kind words!  We take a lot of pride in making the whole experience as easy as possible for our customers, so it's great to hear that came through. We look forward to taking care of you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "c89fbfd3cc",
+   "name": "Del Jenkins",
+   "stars": 5,
+   "text": "Professional, highly communicative, and delivered excellent results at a great value. I will absolutely hire them again.  Thanks Barta Team!",
+   "created": "2026-04-18T17:36:55.988528Z",
+   "reply": "Del, thank you and we really appreciate it! \nWe'll see you next time and promise to deliver the same great experience. Thanks for the support!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "5d805da7e4",
+   "name": "Tim Gallagher",
+   "stars": 5,
+   "text": "Very professional will definitely use them again",
+   "created": "2026-04-18T00:48:01.049944Z",
+   "reply": "Tim, thank you so much! We look forward to seeing you again! \nWe appreciate the kind words and your support.\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "8b4ee70d77",
+   "name": "Kris Larson",
+   "stars": 5,
+   "text": "We were very happy with Barta Window Washing services.  The young men that came to wash our windows did a great job and were so respectful.  They left our windows sparkling clean and screens looked amazing!  Highly recommend!  Communication was awesome as well. They let us know when they would be here and what to expect.  Reasonable pricing also!",
+   "created": "2026-04-11T19:57:39.312498Z",
+   "reply": "Kris, thank you! We work hard to make sure every customer knows what to expect from start to finish, so it means a lot that that came through. We look forward to serving you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "b33bb60834",
+   "name": "Marianne Barta",
+   "stars": 5,
+   "text": "Barta Window Washing Services are a very professional and courteous.  Super teamwork, and wonderful results with our Christmas lights!",
+   "created": "2026-03-29T17:37:03.149748Z",
+   "reply": "Marianne, thank you so much, we had a great time getting your Christmas lights up! We're so glad you're happy with how everything turned out. We'll look forward to making your home shine again next holiday season!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "8433e4a2b2",
+   "name": "Danille Mathison",
+   "stars": 5,
+   "text": "Excellent business!!  Prompt, professional and my windows are sparkling clean!!!",
+   "created": "2026-03-28T19:23:16.619469Z",
+   "reply": "Danielle, thank you so much! Sparkling clean is exactly what we're going for! We're so glad you're happy and we look forward to serving you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "31f83d83f0",
+   "name": "Sue Gorres",
+   "stars": 5,
+   "text": "Exceptional service and always smiling 😀",
+   "created": "2025-11-14T20:08:20.941711Z",
+   "reply": "Sue, sorry for the late reply here!  \nWe believe a smile goes a long way, and we'll keep bringing both the great service and the good energy every time! We look forward to seeing you again!  Thank You!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "126b837712",
+   "name": "Peg",
+   "stars": 5,
+   "text": "The Barta brothers did a very nice job doing our exterior only. Would highly recommend them. Very friendly as well",
+   "created": "2025-11-09T01:15:34.712280Z",
+   "reply": "Hi Peg!  Thank you so much for the great review, we really appreciate the kind words! We're so glad you were happy with how everything turned out. We'll look forward to taking care of you again!\n\n— The Barta Brothers, Barta Window Washing"
+  },
+  {
+   "id": "1e3692d935",
+   "name": "Bruce Clark",
+   "stars": 5,
+   "text": "Came out same day, great estimate and did an excellent job. No wasted time.",
+   "created": "2025-11-07T20:38:59.709177Z",
+   "reply": "Bruce, We know your time is valuable and we're glad we could make it easy from start to finish! \nSame day service is something we really take pride in. We look forward to working with you again!  Thank you for your review, \n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "5678a34f6d",
+   "name": "Melissa Sorensen",
+   "stars": 5,
+   "text": "I haven’t had my windows cleaned in a long time and decided to hire professionals to get it done right. I hired Barta through a recommendation from a friend and I’m very happy I chose them. They came out and gave me a detailed estimate and got me on the schedule. When they arrived they were friendly and courteous. I’ve never seen my windows this clean! I also love that they are a local company out of Delano. I’ll definitely hire them again.",
+   "created": "2025-11-07T14:30:56.594558Z",
+   "reply": "Melissa, thank you so much for such a wonderful review! We're so glad your friend pointed you our way, and we promise to always be worthy of that recommendation. There's nothing quite like seeing your windows crystal clear for the first time in a while — we love that moment! It also means a lot that you mentioned us being local. We're proud to be rooted right here in Delano and love taking care of our community. We look forward to seeing you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "3f35aaca3e",
+   "name": "Candice Kleinbeck",
+   "stars": 5,
+   "text": "Tried Barta Window Washing Service for the first time. Very pleased with the service from Barta. The windows look spotless. Jacob was very professional and thorough. I have already booked them next May.",
+   "created": "2025-11-06T18:13:31.911309Z",
+   "reply": "Candice, thank you so much!  We appreciate your kind words and we hope to work with you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "1fe8557d08",
+   "name": "Suz Bedell",
+   "stars": 5,
+   "text": "",
+   "created": "2025-10-07T15:01:26.447337Z",
+   "reply": "Thank You Sue!  We appreciate your positive review and we look forward to working with you again!  \n-The Barta Window Washing team"
+  },
+  {
+   "id": "8451fb7989",
+   "name": "Anne Parsons",
+   "stars": 5,
+   "text": "Alex showed up on time and did a great job cleaning and power washing our gutters. He also power washed the front of our home. Looks great!  They are building a great business. I would recommend thier suite of services.",
+   "created": "2025-09-22T15:46:39.820982Z",
+   "reply": "Anna, thank you so much for the kind words!  We take a lot of pride in every job and it's great to know it shows. We appreciate your support and look forward to working with you again!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "3f416efdce",
+   "name": "Christine Parr",
+   "stars": 5,
+   "text": "Super professional, very personable, Alex did an amazing job cleaning our windows and screens. It feels so good to look out fresh windows! We will definitely hire them back in the spring for a freshen up!",
+   "created": "2025-09-21T12:29:44.963216Z",
+   "reply": "Christine, thank you so much!\nThere really is nothing like that feeling of looking out through perfectly clean windows!  Thank you again for the kind words and support!\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "10dba38a4e",
+   "name": "patricia pribyl-brown",
+   "stars": 5,
+   "text": "The two-person team did a wonderful job cleaning our challenging/older windows.\nWe’ll definitely use them again.",
+   "created": "2025-08-29T01:58:43.721325Z",
+   "reply": "Thank you so much for sharing your experience Patricia! We’re glad our team could take great care of your windows, and we’re excited to work with you again in the future.\n\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "9c65dc7398",
+   "name": "Russell Loecken",
+   "stars": 5,
+   "text": "We had a great experience with Barta window washing!  We would highly recommend!",
+   "created": "2025-08-26T14:58:17.669631Z",
+   "reply": "Thank you so much for your kind words Russ! We’re thrilled to hear you had a great experience with Barta Window Washing. It means a lot that you’d recommend us, and we truly appreciate the trust you placed in our team. We look forward to servicing your home again!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "a961988124",
+   "name": "Karen Wind Grotting",
+   "stars": 5,
+   "text": "Barta did an excellent job cleaning windows at a great value. I highly recommend!!\n\nKaren",
+   "created": "2025-08-25T16:36:23.773727Z",
+   "reply": "Hi Karen,\nThank you so much! I’m really glad you’re happy with how the windows turned out, and we appreciate the recommendation—it means a lot to us!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "df5f675e37",
+   "name": "Avis MANDEL",
+   "stars": 5,
+   "text": "Very professional young men. Did a great job quoting the job and following through. We’ll have them back to do more soon.",
+   "created": "2025-08-22T02:33:37.196095Z",
+   "reply": "Hi Avis,\nThank you so much! We’re really glad you were happy with the quoting process and the results. It means a lot to us that you noticed the follow-through. We look forward to helping you out again soon!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "f86f7f14fa",
+   "name": "Julie Strobl",
+   "stars": 5,
+   "text": "They did a wonderful job and fit me in as I was scheduling late for a graduation party.",
+   "created": "2025-07-24T15:56:17.997558Z",
+   "reply": "Hi Julie,\nThank you so much! I’m really glad we could get you taken care of in time for the graduation party. It was a pleasure helping you get everything looking great—appreciate the kind words!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "75d2274948",
+   "name": "Kathy Oja",
+   "stars": 5,
+   "text": "My windows look amazing.. it was a real treat!",
+   "created": "2025-07-17T21:15:26.578246Z",
+   "reply": "Hi Kathy,\nThank you! I’m so glad you’re loving how the windows turned out. It was a treat for us too—really appreciate you having us out!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "b3c0b5e228",
+   "name": "Mary McNally",
+   "stars": 5,
+   "text": "Very responsible and timely. They worked hard from start to finish and exceeded all expectations. Highly recommend!",
+   "created": "2025-07-17T18:30:24.477673Z",
+   "reply": "Hi Mary,\nThank you so much for the thoughtful feedback! We always aim to go above and beyond, so it means a lot to hear we exceeded your expectations. Really appreciate the recommendation!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "c8971afecf",
+   "name": "Andrew Taylor",
+   "stars": 5,
+   "text": "Windows are sparkling. Thanks!",
+   "created": "2025-07-16T13:31:15.170458Z",
+   "reply": "Hi Andrew,\nYou’re very welcome! Glad to hear the windows are sparkling—appreciate you having us out!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "110c2efde4",
+   "name": "Addie Geske",
+   "stars": 5,
+   "text": "They did an outstanding job! Our windows have never looked better. Also wonderful communication. I requested a quote and received a call within 10 minutes. I would definitely recommend their services.",
+   "created": "2025-07-16T10:10:23.939302Z",
+   "reply": "Hi Addie,\nThank you so much! I’m really glad we could get your windows shining and that the communication stood out—it’s something we really value. We truly appreciate the recommendation and your support!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "e7f6743eb2",
+   "name": "Cynthia Kuenzel",
+   "stars": 5,
+   "text": "Jacob Barta has done the windows of my townhome for two years. He  has done a great job both times- very conscious in getting back to me in scheduling and willing to come back if I wasn’t satisfied with his work. I recommend Barta Window Washing to anyone who wants excellent service.😊",
+   "created": "2025-07-16T02:58:03.001118Z",
+   "reply": "Hi Cynthia,\nThank you so much for your continued support and kind words! It truly means a lot to me. I’m always happy to make sure everything’s just right, and I appreciate you trusting me with your windows year after year.\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "0f4193e33d",
+   "name": "Carol Henry",
+   "stars": 5,
+   "text": "Highly recommend Barta Window Washing Services. My window look amazing and they took the time to do the job right!  Love the job they did.",
+   "created": "2025-07-15T23:31:57.699174Z",
+   "reply": "Hi Carol,\nThank you so much! I’m really glad you loved how the windows turned out. We always aim to do the job right, and it means a lot to hear that it showed. Truly appreciate the recommendation!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "29b08336fa",
+   "name": "AJ Rasmussen",
+   "stars": 5,
+   "text": "Jakob and the BWW team did an awesome job on our windows! Very professional, prompt, courteous and affordable! We highly recommend Bart Window Washing!",
+   "created": "2025-07-15T22:39:42.069845Z",
+   "reply": "Thank you so much for the kind words! It was a pleasure working with you, and I’m glad we could deliver on all fronts. We really appreciate your recommendation and support—it means a lot!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "6573cdbcd8",
+   "name": "Heather Ehalt",
+   "stars": 5,
+   "text": "Jacob and Alex did a great job washing our siding.  We had a mildew build-up on one side and they got the siding looking like new again.  They also washed our windows inside and out.  I would highly recommend Barta Window Washing.",
+   "created": "2025-07-15T22:22:10.550886Z",
+   "reply": "Hi Heather,\nThank you so much for the kind words! Alex and I really enjoyed working on your home, and we’re so glad we could get everything looking fresh again. We appreciate the recommendation more than you know!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "ee908e0f24",
+   "name": "William Alt",
+   "stars": 5,
+   "text": "They did a really great job.  Is very detailed and professional.  We will have them back every year.",
+   "created": "2025-07-15T22:18:41.761555Z",
+   "reply": "Hi William,\nThank you! I'm really glad you were happy with the work. We take a lot of pride in the details, so it means a lot to hear that stood out. Looking forward to seeing you again next year!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "2c46340ef2",
+   "name": "Mtriple",
+   "stars": 5,
+   "text": "Great service and really did a nice job on our windows.  Much appreciated!",
+   "created": "2025-07-15T21:48:58.242566Z",
+   "reply": "Hi there,\nThank you so much! I'm really glad you were happy with the service and your windows are looking great. I truly appreciate the kind words and the support—it means a lot!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "e03fad7553",
+   "name": "Carmella Gaddo",
+   "stars": 5,
+   "text": "Nothing has changed. Jacob is still very professional, did a great job. There was not a single streak on my windows. First time ever!\nI will recommend BWW to everyone I know.",
+   "created": "2025-07-15T16:17:55.776695Z",
+   "reply": "Hi Carmella,\nThank you so much for the awesome feedback! We’re so glad Jacob knocked it out of the park and gave you the streak-free windows you deserve. Your recommendation means a lot—thanks for spreading the word!\n– The Barta Window Washing Team"
+  },
+  {
+   "id": "2668862658",
+   "name": "Susan Pospichal",
+   "stars": 5,
+   "text": "From initial contact to clean windows, hiring the Barta Window Washing team proved to be a great choice. The young brothers were personable, professional, and efficient. The “little extra” is that they stand behind their work, which we would rate as 5 out of 5 star service.\nHighly recommend!",
+   "created": "2025-07-09T14:15:58.316740Z",
+   "reply": "Hi Susan,\nThank you so much for the kind words! I really appreciate you noticing the effort we put into our work. My brother and I take a lot of pride in what we do, and it means a lot to hear that it made a difference. Thanks again for the recommendation—it truly means the world to us!\n– Jacob Barta, Barta Window Washing"
+  },
+  {
+   "id": "6ba9262e0d",
+   "name": "Jodi Leuer",
+   "stars": 5,
+   "text": "Outstanding service—highly recommend!\n\nOur windows were in rough shape after all the nearby construction, and this team absolutely blew us away. They were thorough, professional, and made every pane sparkle. I’m now officially on their regular rotation—because let’s be honest, I hate doing windows, and these folks are incredible at it.\nWhat impressed me just as much as the results was the level of customer service. Communication was timely, clear, and friendly from start to finish. Jacob and Alex both were awesome and friendly!\nAnd one more thing that deserves serious recognition: this business was started by a young entrepreneur at just 15 years old. The drive, ethics, and follow-through it takes to not only launch but run a business with integrity is something I deeply admire.",
+   "created": "2025-07-02T00:10:57.248481Z",
+   "reply": "Jodi, Wow—thank you so much for the awesome review! We really appreciate you taking the time to share your experience.  It seriously means a lot to hear that our work (and communication!) stood out to you. \n\nAnd a big thank you for the kind words about how we got started—it's been a fun ride growing the business, and feedback like this keeps us motivated. We’re glad to have you on the regular schedule… We’ll handle the windows so you don’t have to! Have a great 4th!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "92cd2cbda4",
+   "name": "Jacob Olson1780",
+   "stars": 5,
+   "text": "",
+   "created": "2025-06-28T23:29:55.355452Z",
+   "reply": "Thanks so much for the 5-star rating Olson's! We're glad we could help get your exterior windows looking their best. We really appreciate your support and hope to work with you again down the road!\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "05b5dffe47",
+   "name": "Christopher Lee",
+   "stars": 5,
+   "text": "BWW does great work!  My garage hasn't looked this good since I moved in.  I highly recommend their services!",
+   "created": "2025-06-25T00:51:20.456350Z",
+   "reply": "Thanks Chris and we’re glad we could bring that fresh look back to your garage. Thanks for the recommendation and for choosing BWW!\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "d45b644726",
+   "name": "Jennifer Schuler",
+   "stars": 5,
+   "text": "We had such a wonderful experience with this company! The customer service was fantastic, and communication was great every step of the way. Our windows are shining like new! We definitely recommend them! 😊",
+   "created": "2025-06-25T00:05:48.169463Z",
+   "reply": "Thanks so much for the awesome review! We're really glad you had a great experience and that your windows are looking like new. It means a lot that you'd recommend us — we appreciate it and hope to work with you again soon!\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "cc8d0eee59",
+   "name": "Cheryl Gielau",
+   "stars": 5,
+   "text": "Their team was very accommodating in rescheduling around rain and a realtor appt for our house.  On time, easy to work with and the windows look great!",
+   "created": "2025-06-19T21:43:25.265149Z",
+   "reply": "Thank you so much, Cheryl! We really appreciate your kind words. It was our pleasure to work around your schedule, and we’re glad you’re happy with how the windows turned out. We look forward to the next cleaning!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "a774789cf4",
+   "name": "Edward Francis",
+   "stars": 5,
+   "text": "Did a nice job cleaning my windows.",
+   "created": "2025-06-17T22:31:55.497991Z",
+   "reply": "Thanks, Ed! We appreciate the review and are glad you’re happy with the window cleaning. Let us know if we can help again!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "e4be890f0b",
+   "name": "Teri Kuperus",
+   "stars": 5,
+   "text": "Very professional, on time, flexible, great communication and did an excellent job! We will be using them again!",
+   "created": "2025-06-17T22:07:54.648286Z",
+   "reply": "Thanks so much, Teri! We’re thrilled to hear everything went smoothly and that you were happy with the service. Can’t wait to work with you again!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "a49a6ba1d9",
+   "name": "Shanna Hendrickson",
+   "stars": 5,
+   "text": "Thank you Jacob and Alex for the quick turnaround time to get our windows looking fantastic for our grad party! We will be reaching out every spring!",
+   "created": "2025-06-13T19:39:06.127115Z",
+   "reply": "Thank you, Shanna! We were happy to help get your windows party-ready! We’re so glad you were pleased with the results and look forward to seeing you each spring!\n-The Barta Window Washing Team"
+  },
+  {
+   "id": "010215795d",
+   "name": "Andrea Quandt",
+   "stars": 5,
+   "text": "Thanks Barta brothers for the excellent service and beautifully clean windows! I love the online payment option and very reasonable pricing. Thanks again!",
+   "created": "2025-06-11T01:02:16.203571Z",
+   "reply": "Thank you Quandt's! We’re glad you loved the window cleaning and found the online payment easy to use. We really appreciate your support and hope to see you again soon!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "2e9ccdc121",
+   "name": "Suzanne Mackedanz",
+   "stars": 5,
+   "text": "Very good service and a great personality.\nWe would recommend their services to everyone!",
+   "created": "2025-06-10T18:51:12.842605Z",
+   "reply": "Thank you Suzanne!  We’re thrilled to hear you enjoyed the service and the experience. Your recommendation means a lot to us—we truly appreciate your support!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "1316d8c806",
+   "name": "Brenda Clarke",
+   "stars": 5,
+   "text": "Super nice did an excellent job of washing my house, windows and screens.  Very reasonably priced.  Done in a timely manner.  Would highly recommend Barta window Washing Service.",
+   "created": "2025-06-10T18:21:11.908261Z",
+   "reply": "Thank you so much Brenda! We're glad you were happy with the house, window, and screen cleaning—and that everything was done on time and at a fair price. We truly appreciate your recommendation and hope to help again soon!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "10539ba31f",
+   "name": "Cathy Clairmont",
+   "stars": 5,
+   "text": "Great kid, great experience and great outcome for the windows!! Give Jacob a call you won’t be disappointed!!",
+   "created": "2025-06-10T12:45:10.976826Z",
+   "reply": "Thanks so much Cathy! I’m glad you were happy with how everything turned out and I appreciate you taking the time to leave a review—means a lot! We look forward to working with you again!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "4d26ae96dd",
+   "name": "Sandra Kraemer",
+   "stars": 5,
+   "text": "This company had excellent communication and follow through.  They did an excellent job on the windows and the pricing was fair.",
+   "created": "2025-06-06T19:58:29.162991Z",
+   "reply": "Thank you Sandra and we are glad you were happy with the results and found our communication on point. We aim to make the whole experience smooth and worthwhile! Thank you for choosing Barta Window Washing!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "5c3069d91e",
+   "name": "Tom LaPlant",
+   "stars": 5,
+   "text": "We had our windows washed by Barta window washing services and they did an amazing job. We moved into a new house and were able to reach windows that we were unable to get to. They were extremely friendly,  professional, and arrived when they said they would. We will be using them again in the future.",
+   "created": "2025-06-05T15:48:28.225696Z",
+   "reply": "Thank you for the wonderful review Tom! We're glad we could help get your new home’s windows sparkling clean — especially those tricky ones! It means a lot to hear you were happy with our service and professionalism and we’d be more than happy to help again in the future. Welcome to your new home!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "e674f56aeb",
+   "name": "Julie Grangroth",
+   "stars": 5,
+   "text": "Jacob and Alex did a wonderful job washing our windows inside and out. Windows are shiny clean. They arrived on time, were very professional and courteous. I would have them come back again.\nThanks guys.",
+   "created": "2025-06-05T15:19:43.632822Z",
+   "reply": "Thank you Julie for the kind words! We're thrilled to hear you are happy with our work and service. We truly appreciate your support and would be glad to help again. Thanks again!\n— The Barta Window Washing Team"
+  },
+  {
+   "id": "ddeaf5db38",
+   "name": "tara mullen",
+   "stars": 5,
+   "text": "The Barta Window Washing team did an amazing job!  They are highly professional and efficient.  I was so happy with how quickly they turned around our quote and got us scheduled.  I also appreciated the electronic quote and appointment confirmation.  Our windows are perfect!  Highly recommend!",
+   "created": "2025-05-28T02:00:16.913517Z",
+   "reply": "Thank you so much for the wonderful review Tara! We're thrilled to hear you had a great experience from start to finish. Our team works hard to make things easy and efficient, and we're so glad you loved the results. We truly appreciate the recommendation!"
+  },
+  {
+   "id": "4f42d1c95a",
+   "name": "Corey Anderson",
+   "stars": 5,
+   "text": "These guys did a great job. Cleaned our windows and screens, and gutters. Followed up with a call afterwards to make sure we were 100% satisfied. Great customer service.\nThanks gentlemen!",
+   "created": "2025-05-28T01:43:03.432005Z",
+   "reply": "Thank you Corey! We’re glad to hear you were happy with the window, screen, and gutter cleaning. Following up is important to us—your satisfaction means everything. We really appreciate your kind words and support!"
+  },
+  {
+   "id": "408d8e3d4f",
+   "name": "marabeth williams",
+   "stars": 5,
+   "text": "I’m so happy I found these guys. They are excellent workers 😊 the siding and windows are sparkling clean. They worked very hard and I believe them to be perfectionists. Thanks again !",
+   "created": "2025-05-28T01:35:51.182510Z",
+   "reply": "Thanks so much for the great review! We're really happy you found us and that you’re pleased with the work. The team puts a lot of care into every job, and it’s awesome to hear it showed. We appreciate your support!"
+  },
+  {
+   "id": "e975b59eb1",
+   "name": "David Kenison",
+   "stars": 5,
+   "text": "Very prompt and processional.  Did an excellent job.  Highly recommend. .",
+   "created": "2025-05-25T15:00:55.465277Z",
+   "reply": "Thank you David for sharing your feedback!  The Barta Window Washing Team looks forward to seeing you next time!  Have a great day!"
+  },
+  {
+   "id": "864080e6cb",
+   "name": "Amy Schmeling",
+   "stars": 5,
+   "text": "Very pleased with the work done.  jacob and alex were very pleasant and\nProfessional.  would highly recommend them and we'll have them come back next year.",
+   "created": "2025-05-25T00:27:50.058884Z",
+   "reply": "Thank you for your business Amy!  We appreciate your feedback that you were fully satisfied with our quality of work with window washing!  Have a great day!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "38332c6cf7",
+   "name": "Dr. Kelly Thompson",
+   "stars": 5,
+   "text": "Barta did a great job! They were professional and efficient. It rained right after they came and they came back no charge to touch up what got rain spots. I will use them yearly!",
+   "created": "2025-05-11T13:52:47.294612Z",
+   "reply": "Thank you so much for the kind words! We're thrilled to hear you were happy with the service, and we truly appreciate your understanding when the rain rolled in. Our goal is to make sure you're 100% satisfied, no matter what the weather brings. We look forward to seeing you again next year!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "a65f7ca592",
+   "name": "Joe Geelan",
+   "stars": 5,
+   "text": "Timely, efficient and attention to detail. Looking forward to their return this fall.",
+   "created": "2025-05-10T18:42:06.010726Z",
+   "reply": "Thanks so much, Joe! We really appreciate the feedback and are glad to hear you noticed the attention to detail. We’ll be ready and looking forward to helping out again this fall with your window washing needs!\nThe Barta Window Washing Team"
+  },
+  {
+   "id": "08ca5b7a2f",
+   "name": "Kelsey Berg",
+   "stars": 5,
+   "text": "Barta did an amazing job with our windows! They were very professional, polite, and easy to work with! I appreciated their great communication from start to finish, and am so glad I can see out my windows again!",
+   "created": "2025-04-30T01:45:58.739177Z",
+   "reply": "Thank you so much for the kind words! We're thrilled to hear you were happy with our work and communication—it means a lot to us. Please don't hesitate to reach out if we can help again in the future!"
+  },
+  {
+   "id": "adcde6eb8d",
+   "name": "Ryan Gueningsman",
+   "stars": 5,
+   "text": "I cannot say enough good about this company! Incredibly responsive, wonderful work (our windows and screens have never been cleaner), fair pricing for the services provided, and absolutely love the professionalism and promptness of them! Would highly recommend to anyone looking for window cleaning and hope to utilize their services again down the road.",
+   "created": "2025-04-23T17:27:43.468050Z",
+   "reply": "Thank you Ryan!  We appreciate your feedback and are glad you are satisfied with our services!  We look forward to working with you again!  Have a great day!  - Barta Window Washing"
+  },
+  {
+   "id": "6042ddd5aa",
+   "name": "Liz Morris Otto",
+   "stars": 5,
+   "text": "The Barta Window Washing team is SUPERB. Great communication when providing an estimate, corresponding online, and scheduling. Their work is fabulous and thorough. So grateful for our gleaming windows. Highly recommend!",
+   "created": "2025-04-11T01:33:03.876139Z",
+   "reply": "Liz glad to hear you are happy with our communication and window washing services! We look forward to servicing any of your future needs!"
+  },
+  {
+   "id": "2654ea6c7f",
+   "name": "Gloria Caballero",
+   "stars": 5,
+   "text": "Jacob and Alex did an amazing job on all the windows in my house! They even did the skylight over the porch and the window I. The garage! I almost thought I was in the wrong g house because clean sparkly Wi does make the whole house pop with beauty! I will definitely have them back in a regular casino keep the beauty of clean windows going! Thank you so much for your professionalism and patience with all my questions and concerns!",
+   "created": "2025-04-09T00:03:01.563392Z",
+   "reply": "Thank you Gloria! We are happy that you are very satisfied with our window washing services!  We look forward to working with you in the future!"
+  },
+  {
+   "id": "1f108f5054",
+   "name": "Holden Youngs",
+   "stars": 5,
+   "text": "We love using a family owned company for our services and they did top notch work!",
+   "created": "2025-03-31T16:04:28.324206Z",
+   "reply": "Thank you Holden!  We enjoyed getting to know you as a new customer and we appreciate you using Barta Window Washing!"
+  },
+  {
+   "id": "07cb48fd8d",
+   "name": "Sarah Settles",
+   "stars": 5,
+   "text": "We had Barta do our exterior windows.   They were on time, friendly,  and did a terrific job!",
+   "created": "2024-07-25T23:35:37.968918Z",
+   "reply": "Thank you Sarah! We are happy you are satisfied with our services!  We look forward to working with you again in the future!"
+  },
+  {
+   "id": "c3a21e5c5e",
+   "name": "The Carson’s",
+   "stars": 5,
+   "text": "Wow! My widows have never looked so good. Got hard water stains off my windows",
+   "created": "2024-07-18T21:55:01.561175Z",
+   "reply": "Thank you so much! Hard water stains are no match for us. We're glad your windows have never looked better, and we really appreciate the kind review!"
+  },
+  {
+   "id": "bde34b3b4e",
+   "name": "Greg Vossen",
+   "stars": 5,
+   "text": "",
+   "created": "2024-07-18T20:27:31.195592Z",
+   "reply": "Thank you for the 5-star review, Greg! We really appreciate you choosing Barta Window Washing and would be happy to help again anytime."
+  },
+  {
+   "id": "4497e0d88c",
+   "name": "Patrick Narlock",
+   "stars": 5,
+   "text": "First class. Great communication and spotless work. I will hire them again without hesitation",
+   "created": "2024-07-09T02:01:12.313501Z",
+   "reply": "Thanks so much! We’re glad you’re happy with the work and look forward to helping you again anytime!"
+  },
+  {
+   "id": "1b0486b0b9",
+   "name": "Leslie Carver",
+   "stars": 5,
+   "text": "I recently had my interior/exterior windows and screens professionally cleaned by Barta Window Washing.  I am so impressed with the amazing job these boys did cleaning the windows and screens.\nThey were able to get me on their schedule within a few days, they were on time, and they worked really hard to clean all of my windows and screens in a few hours for a very fair price.\nI will definitely hire them again.  I highly recommend Barta Window Washing!",
+   "created": "2024-06-26T00:11:16.106734Z",
+   "reply": "Leslie, thank you so much for the kind words! We're glad we could get you on the schedule quickly and that you were happy with the windows and screens. We really appreciate you trusting Barta Window Washing and would love to help again!"
+  },
+  {
+   "id": "6ea1b5364b",
+   "name": "Maria Martin",
+   "stars": 5,
+   "text": "Alex and Jacob did a wonderful job.  The communication was great. They arrived on time and left their shoes at the door.   They even cleaned the screens.  My windows are sparkling clean.  I love looking out my windows now.  No more dirt.  Thank you!",
+   "created": "2024-06-25T17:35:47.415410Z",
+   "reply": "Thank you so much for the kind words! We’re thrilled to hear Alex and Jacob took great care of your home—clean screens, clear views, and respectful service are exactly what we aim for. We’re glad you’re enjoying those sparkling windows again!"
+  },
+  {
+   "id": "45d4cffd20",
+   "name": "Rebecca Forland",
+   "stars": 5,
+   "text": "These boys were so polite, they responded to my inquiry immediately and were at my door the same day. They did a great job and we will be calling them the next time we need their  services!",
+   "created": "2024-06-21T16:06:25.982698Z",
+   "reply": "Thank you, Rebecca! We're glad we could get out to you the same day and that you were happy with the work. We really appreciate the kind review and look forward to helping again!"
+  },
+  {
+   "id": "09cd08ea57",
+   "name": "CJ L",
+   "stars": 5,
+   "text": "We recently had Barta Window Washing help with cleaning out our gutters and washing the exterior and interior windows on our home.\n\nFrom the moment I reached out, Jacob responded promptly and efficiently. Their commitment to providing timely and informative communication made me feel valued as a customer.\n\nThroughout our interaction, the Barta brothers demonstrated a high level of professionalism. They consistently went above and beyond and demonstrate a strong work ethic and attention to detail. Their polite and courteous demeanor also added a personal touch to the overall experience.\n\nWe highly recommend Barta Window Washing for their exceptional service. Jacob and Alex’s responsiveness, professionalism, hard work, and politeness set them apart, making them a top choice for anyone seeking an outstanding service experience.",
+   "created": "2024-06-14T14:24:59.579664Z",
+   "reply": "CJ, thank you so much for this thoughtful review! We're really glad the communication and the work on your gutters and windows stood out. Jacob and I truly appreciate you trusting Barta Window Washing with your home. Thank you for the recommendation!"
+  },
+  {
+   "id": "0e22805de4",
+   "name": "Virginia Grefsrud",
+   "stars": 5,
+   "text": "The Barta men did an amazing job, they worked efficiently and were very kind. It was so easy from getting a quote to timely scheduling. Will definitely use them again!",
+   "created": "2024-06-07T10:41:32.102153Z",
+   "reply": "Thank you, Virginia! We're glad the whole process was easy from quote to scheduling and that you were happy with the results. We really appreciate the kind words and would love to help again!"
+  },
+  {
+   "id": "9cf63b7a94",
+   "name": "ben rousu",
+   "stars": 5,
+   "text": "We like the prompt service and attention to detail. The windows are clear,  clean no hazy residue.",
+   "created": "2024-06-05T18:53:16.888157Z",
+   "reply": "Thank you! We’re glad you noticed the details—that’s what we aim for. Appreciate your support!"
+  },
+  {
+   "id": "f129948240",
+   "name": "Kit Dekarski",
+   "stars": 5,
+   "text": "Prompt and Professional service!\nWill call Barta Window Washers again!",
+   "created": "2024-06-04T20:57:26.796557Z",
+   "reply": "Thank you, Kit! We really appreciate the kind review and are glad you were happy with the service. We'd be happy to help again anytime!"
+  },
+  {
+   "id": "e96a614c7a",
+   "name": "Susan Kariniemi",
+   "stars": 5,
+   "text": "We hired Barta Window Washing Services to clean both the interior and exterior windows of our PPP home. The Barta brothers made our old windows sparkle and shine! We are very happy with the results.",
+   "created": "2024-05-30T21:18:37.252841Z",
+   "reply": "Thank you for the wonderful review! We’re so glad to hear you were happy with the results. It was our pleasure to help make your windows sparkle—thank you for trusting the Barta brothers with your home!"
+  },
+  {
+   "id": "e8aa6da435",
+   "name": "Rachael Praught",
+   "stars": 5,
+   "text": "Great customer service and quality work at a fair price! I would highly recommend Barta window washing 👍",
+   "created": "2024-05-20T23:45:44.558986Z",
+   "reply": "Thank you so much, Rachael! We're glad you were happy with the service, the work, and the pricing. We really appreciate the recommendation!"
+  },
+  {
+   "id": "f2b0020786",
+   "name": "Lydia Nelson",
+   "stars": 5,
+   "text": "Great job! Polite, timely, and efficient. I now have perfectly cleaned windows!",
+   "created": "2024-05-17T23:50:27.624043Z",
+   "reply": "Thank you, Lydia! We're glad your windows turned out perfectly clean and that you had a great experience with our team. We really appreciate the kind review!"
+  },
+  {
+   "id": "e1e9470beb",
+   "name": "Anthony Nelson",
+   "stars": 5,
+   "text": "These young brothers worked their tails off at my place. I have over 50 windows on multiple levels and they never once stopped moving. For a young crew they are very professional and hard working for a fair price. Diligent, on time and flexible in their scheduling. Alex and Jacob are a top notch team. Jacob reminds me of that neighbor kid that comes to visit with a smile on his face and hangs out.  And Alex sets the tone with a stoic determination rarely seen in young men. Highly recommend this business for crystal clear windows.",
+   "created": "2024-05-05T22:08:30.227885Z",
+   "reply": "We’re grateful for your support and are so glad we could help bring some crystal-clear views to your home. Thanks again for the recommendation!"
+  },
+  {
+   "id": "3906aacd1c",
+   "name": "Michelle Tuomisto",
+   "stars": 5,
+   "text": "These boys are hard workers. A few of my windows are super tall and hard to reach. They came back with a ladder and took the time to ensure they looked great. Will have them back when i’m ready to have my windows cleaned again.",
+   "created": "2024-05-02T16:29:21.098713Z",
+   "reply": "Thank you, Michelle! Those tall windows deserve the same care as the rest, so we're glad we could get them looking great. We really appreciate your patience and the kind words, and we'd love to help again!"
+  },
+  {
+   "id": "5fff67863d",
+   "name": "Kelly Michaels",
+   "stars": 5,
+   "text": "Best experience ever with both Jacob and Alex! Professional,  friendly, fair and hard-working young men. My windows have never looked so sparkly.  Can't wait to get them back for some power washing! Customer for life! Thank you!",
+   "created": "2024-04-22T23:52:16.597612Z",
+   "reply": "Thank you so much! We’re honored by your kind words and thrilled to know Jacob and Alex made such a great impression. Sparkling windows and happy customers are what we strive for—and we’ll be ready when it’s time for that power washing! Thanks for being a customer for life!"
+  },
+  {
+   "id": "65ee59479b",
+   "name": "Butch Priester",
+   "stars": 5,
+   "text": "We had Barta’s do our outside and thought we would try them for our inside. They did an excellent job! They were careful with our belongings that had to be moved and very thorough. They are polite and kind. We will definitely use them again!",
+   "created": "2024-04-18T15:04:06.558199Z",
+   "reply": "Thank you, Butch! We're glad you gave us a try on the interior and that you were happy with the results. We always try to treat your home with care. We really appreciate you trusting Barta Window Washing again!"
+  },
+  {
+   "id": "6dc9fd7b44",
+   "name": "Meg Lontz",
+   "stars": 5,
+   "text": "We hired Barta Window Washing to wash the exterior windows on our house. When I called the have them come by to do an estimate they showed up exactly as scheduled. When Alex and Jacob arrived two days later to complete the work they showed up on schedule and were  professional and speedy. The price was reasonable our windows look great!  We will definitely use their services again.",
+   "created": "2024-04-13T21:16:11.497303Z",
+   "reply": "Thank you for choosing Barta Window Washing Services, Meg!  We appreciate your business and feedback!  We look forward to working with you again!\nJacob\nBarta Window Washing Services"
+  },
+  {
+   "id": "d08b05a112",
+   "name": "Lois Abel",
+   "stars": 5,
+   "text": "When Jacob came to our door offering his services, we readily agreed. He was kind and engaging. These two young men arrived on time and fulfilled what they promised at the agreed price. They were polite and careful. These two old very particular retirees are having them back to do the inside of our windows  We have so much respect for these young entrepreneurs. Great attitudes and great work! Highly recommended!",
+   "created": "2024-04-10T00:03:25.512381Z",
+   "reply": "Thank you for the opportunity to earn your business Lois!  We are glad you are satisfied with our services!  We will see you on your next cleaning!\nJacob\nBarta Window Washing Services"
+  },
+  {
+   "id": "20d05cb7b7",
+   "name": "Karen Johnson",
+   "stars": 5,
+   "text": "These guys were great! Fair price, excellent job, showed up on time.  Will definitely use them again in the future!  They did such a good  job, the next door neighbor hired them on the spot!  My neighbor who doesn't have a google account wanted me to let the Barta team know that she loved the work they did.  Will also hire them again",
+   "created": "2024-04-06T19:59:33.834592Z",
+   "reply": "Hi Karen!  Thank you very much for your business and feedback!\nWe look forward to working with you in the future!\nJacob\nBarta Window Washing Services"
+  },
+  {
+   "id": "73eb051985",
+   "name": "Collin Nelson",
+   "stars": 5,
+   "text": "Hired Jacob and Alex to wash all the windows on the outside of our home. They came out same day to do the estimate, and I was able to get on their schedule within a week. Clear communication, very professional, and they had equipment that didn't necessitate them to get in any ladders. Windows look great, would definitely recommend!",
+   "created": "2024-03-19T22:43:24.434557Z",
+   "reply": "Good Day Collin! \nWe thank you for your business and feedback!  We are glad you are satisfied with your sparkling windows!  We hope to see you in the future!\nThank you again,\nJacob\nBarta Window Washing Services"
+  },
+  {
+   "id": "acd4df79cf",
+   "name": "Adam Eskola",
+   "stars": 5,
+   "text": "Jacob did an awesome job cleaning our windows!! He showed up on time and got straight to work. Honest, hard working, professional and very fair pricing! Our windows are sparkling. Highly recommend Barta Window Washing.",
+   "created": "2023-07-27T21:51:41.763665Z",
+   "reply": "Thank you for the opportunity Adam! We are glad you are happy with our service!"
+  },
+  {
+   "id": "ed0defc696",
+   "name": "Merv Sorenson",
+   "stars": 5,
+   "text": "Jacob did an excellent job on our exterior windows. Hard working, aims to please always with a smile on his face.I highly recommend Jacob for a job well done.",
+   "created": "2023-07-21T18:29:50.785723Z",
+   "reply": "Thank you, Merv! We're glad Jacob took great care of your exterior windows. We'll be sure to pass along your kind words. Thanks for the recommendation!"
+  },
+  {
+   "id": "2fc7874806",
+   "name": "Melissa Noreen",
+   "stars": 5,
+   "text": "Windows look great! Would definitely use Barta Window Washing Services again",
+   "created": "2023-07-17T23:55:35.793594Z",
+   "reply": "Thank you, Melissa! We're glad your windows turned out great and really appreciate the kind review. We'd be happy to help again anytime!"
+  },
+  {
+   "id": "e659d466bd",
+   "name": "Debra Rousu",
+   "stars": 5,
+   "text": "Jacob  did  an excellent job washing  our windows. The windows sparkled after being washed. He checked  to make  sure  that their were no water spots on the sills or floor. He worked efficiently  and professionally.when youlook out  of windows it is as if there is no glass there. We thought  the price of the job was reasonable.",
+   "created": "2023-07-16T01:04:41.800534Z",
+   "reply": "Thank you, Debra! We'll pass this along to Jacob. He takes pride in the details, and checking the sills and floors for drips is exactly his style. So glad your windows are sparkling! – Alex, Barta Window Washing"
+  },
+  {
+   "id": "980866cf55",
+   "name": "Michael Mastellar",
+   "stars": 5,
+   "text": "Good job on exterior windows and reasonable pricing.  Professional and respectful.  Will use again.",
+   "created": "2023-07-14T21:26:09.994477Z",
+   "reply": "Thank you for the opportunity and business!   We look forward to providing services in the future!"
+  }
+ ]
+}
