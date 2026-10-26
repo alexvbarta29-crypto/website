@@ -8,6 +8,9 @@
 // JSON object of per-person overrides keyed by Rotor user id or full name,
 // e.g. {"Gustov Huotari": 21}. Pay per shift matches Rotor's own payroll
 // run: exact clock-in to clock-out time × rate, rounded to the cent per shift.
+// Overtime: every hour over 40 in a Monday–Sunday week (Central time) is paid
+// at 1.5× the rate. Timesheets are read for whole weeks so a week's first 40
+// hours count even when the pay period starts mid-week.
 // A tip belongs to the job's service date and is split evenly between the
 // technicians on the job.
 
@@ -18,6 +21,8 @@ const PAGE = 1000;
 const MAX_PAGES = 20;
 export const TZ = "America/Chicago";
 export const DEFAULT_OWNERS = ["Alex Barta", "Jacob Barta"];
+export const OT_AFTER_HOURS = 40;
+export const OT_MULTIPLIER = 1.5;
 
 export class RotorError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -36,6 +41,12 @@ export function offsetFor(ymd) {
   } catch { return "-06:00"; }
 }
 export const startIso = (ymd) => `${ymd}T00:00:00${offsetFor(ymd)}`;
+const ymdFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+/** The company-time calendar date (YYYY-MM-DD) of an instant. */
+export const localYmd = (iso) => ymdFmt.format(new Date(iso));
+export const addDays = (ymd, n) => { const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+/** Monday of the week containing this date. */
+export const weekStartOf = (ymd) => addDays(ymd, -((new Date(ymd + "T00:00:00Z").getUTCDay() + 6) % 7));
 export const endIso = (ymd) => `${ymd}T23:59:59${offsetFor(ymd)}`;
 
 // ---------- Rotor ----------
@@ -68,7 +79,7 @@ async function getAll(path, params, key, fetchImpl) {
 /** Raw timesheets and serviced jobs for a pay period (inclusive YYYY-MM-DD dates). */
 export async function fetchPeriod(start, end, { key, fetchImpl = fetch } = {}) {
   const [timesheets, jobs] = await Promise.all([
-    getAll("/timesheets", { start_date: startIso(start), end_date: endIso(end) }, key, fetchImpl),
+    getAll("/timesheets", { start_date: startIso(weekStartOf(start)), end_date: endIso(addDays(weekStartOf(end), 6)) }, key, fetchImpl),
     getAll("/serviced-jobs", {
       only_completed: "false",
       service_date_range_start: startIso(start),
@@ -103,7 +114,7 @@ export function readOwners(env = process.env) {
  * People with their shifts and tip shares for the period.
  * @returns {{id, name, owner, shifts: object[], tips: object[]}[]}
  */
-export function buildPayroll({ timesheets = [], jobs = [], rates = readRates({}), owners = new Set() }) {
+export function buildPayroll({ timesheets = [], jobs = [], rates = readRates({}), owners = new Set(), start = null, end = null }) {
   const people = new Map();
   const person = (id, name) => {
     const key = id || ("name:" + name);
@@ -151,7 +162,29 @@ export function buildPayroll({ timesheets = [], jobs = [], rates = readRates({})
     p.owner = owners.has(String(p.name).toLowerCase());
     p.shifts.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
     p.tips.sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
-    for (const s of p.shifts) { s.rate_cents = rate; s.amount_cents = Math.round(s.hours * rate); }
+    // Overtime, week by week, in clock order: the hours past 40 are the week's last ones.
+    const weeks = new Map();
+    for (const s of p.shifts) {
+      const wk = weekStartOf(localYmd(s.start));
+      const used = weeks.get(wk) || 0;
+      const reg = Math.max(0, Math.min(s.hours, OT_AFTER_HOURS - used));
+      const ot = s.hours - reg > 1e-6 ? s.hours - reg : 0;
+      s.week_start = wk;
+      s.rate_cents = rate;
+      s.reg_hours = reg;
+      s.ot_hours = ot;
+      s.ot_pay_cents = Math.round(ot * rate * OT_MULTIPLIER);
+      s.amount_cents = Math.round(reg * rate) + s.ot_pay_cents;
+      weeks.set(wk, used + s.hours);
+    }
+    const inPeriod = (iso) => { if (!start || !end) return true; const d = localYmd(iso); return d >= start && d <= end; };
+    p.shifts = p.shifts.filter((s) => inPeriod(s.start));
+    p.weeks = [...weeks.entries()]
+      .filter(([wk]) => !start || !end || (wk <= end && addDays(wk, 6) >= start))
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([wk, h]) => ({ week_start: wk, hours: h, ot_hours: Math.max(0, h - OT_AFTER_HOURS),
+        partial: !!(start && end) && (wk < start || addDays(wk, 6) > end) }));
+    if (!p.shifts.length && !p.tips.length) continue;
     out.push(p);
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));

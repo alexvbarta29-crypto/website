@@ -30,7 +30,13 @@ Redeploy after changing any of these.
 
 - **Hours:** each Rotor timesheet, clock-in to clock-out to the second.
 - **Hourly pay:** hours × rate, rounded to the cent per shift, the same way
-  Rotor's payroll run pays it.
+  Rotor's payroll run pays it. Hours show as hours and minutes ("5h 39m");
+  pay uses the exact seconds.
+- **Overtime:** every hour over 40 in a Monday–Sunday week (Central time),
+  paid at 1.5× the rate ($30 on $20). The week's last shifts carry it.
+  Timesheets are read for whole weeks, so a pay period that starts mid-week
+  still counts that week's earlier hours toward the 40. Each sheet shows a
+  week-by-week table of total, regular and overtime hours.
 - **Tips:** the tip on each succeeded payment for a job whose first visit is
   in the pay period, split evenly between the technicians on that job.
 - Rotor's open API has no pay rates, commission or "paid" status, so rates

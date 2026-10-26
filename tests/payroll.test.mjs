@@ -111,3 +111,41 @@ test("bad or too-long date ranges are refused", async () => {
   assert.equal((await payroll(req("/payroll/data?start=2026-10-25&end=2026-10-19", { headers: { cookie } }))).status, 400);
   assert.equal((await payroll(req("/payroll/data?start=2026-08-01&end=2026-10-25", { headers: { cookie } }))).status, 400);
 });
+
+test("overtime: hours past 40 in a Monday–Sunday week pay 1.5×, starting with that week's last shift", () => {
+  // Five 9-hour days Mon Oct 19 – Fri Oct 23 (Central) = 45 hours: Friday has 4h regular + 5h overtime.
+  const timesheets = [19, 20, 21, 22, 23].map((d, i) => ({
+    id: i, user: { user_id: "g", name: "Gustov Huotari" },
+    start: `2026-10-${d}T13:00:00Z`, end: `2026-10-${d}T22:00:00Z`,
+  }));
+  const [g] = buildPayroll({ timesheets, rates: readRates({}), start: "2026-10-19", end: "2026-10-25" });
+  const fri = g.shifts[4];
+  assert.equal(fri.reg_hours, 4);
+  assert.equal(fri.ot_hours, 5);
+  assert.equal(fri.ot_pay_cents, 15000);               // 5h × $30
+  assert.equal(fri.amount_cents, 8000 + 15000);        // 4h × $20 + 5h × $30
+  assert.equal(g.shifts.slice(0, 4).every((s) => s.ot_hours === 0), true);
+  assert.deepEqual(g.weeks, [{ week_start: "2026-10-19", hours: 45, ot_hours: 5, partial: false }]);
+});
+
+test("overtime counts the whole week even when the pay period starts mid-week", () => {
+  // Mon–Wed: 36h before the period; Thursday's 9h shift is 4h regular + 5h overtime.
+  const timesheets = [
+    { id: 1, user: { user_id: "g", name: "G" }, start: "2026-10-19T12:00:00Z", end: "2026-10-20T00:00:00Z" },
+    { id: 2, user: { user_id: "g", name: "G" }, start: "2026-10-20T12:00:00Z", end: "2026-10-21T00:00:00Z" },
+    { id: 3, user: { user_id: "g", name: "G" }, start: "2026-10-21T12:00:00Z", end: "2026-10-22T00:00:00Z" },
+    { id: 4, user: { user_id: "g", name: "G" }, start: "2026-10-22T13:00:00Z", end: "2026-10-22T22:00:00Z" },
+  ];
+  const [g] = buildPayroll({ timesheets, rates: readRates({}), start: "2026-10-22", end: "2026-10-28" });
+  assert.equal(g.shifts.length, 1);
+  assert.equal(g.shifts[0].ot_hours, 5);
+  assert.equal(g.weeks[0].partial, true);
+  assert.deepEqual(g.weeks, [{ week_start: "2026-10-19", hours: 45, ot_hours: 5, partial: true }]);
+});
+
+test("weeks are Monday–Sunday in Central time: a Sunday-evening shift counts toward the week before", () => {
+  const timesheets = [{ id: 1, user: { user_id: "g", name: "G" }, start: "2026-10-26T02:00:00Z", end: "2026-10-26T04:00:00Z" }]; // Sun Oct 25, 9–11pm CDT
+  const [g] = buildPayroll({ timesheets, rates: readRates({}), start: "2026-10-19", end: "2026-10-25" });
+  assert.equal(g.shifts.length, 1);
+  assert.equal(g.weeks[0].week_start, "2026-10-19");
+});

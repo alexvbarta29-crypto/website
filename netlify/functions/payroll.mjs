@@ -73,7 +73,7 @@ async function data(req) {
   if (!key) return json({ error: "not_configured", message: "Payroll isn't connected to Rotor yet: add ROTOR_PAYROLL_API_KEY in Netlify." }, 503);
   try {
     const raw = await fetchPeriod(start, end, { key });
-    const people = buildPayroll({ ...raw, rates: readRates(), owners: readOwners() });
+    const people = buildPayroll({ ...raw, rates: readRates(), owners: readOwners(), start, end });
     return json({ start, end, people });
   } catch (err) {
     const status = err instanceof RotorError ? err.status : 0;
