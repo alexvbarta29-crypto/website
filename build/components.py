@@ -4,7 +4,8 @@ from datetime import datetime
 from urllib.parse import quote_plus
 from sitedata import (LIVE_CITY_PAGES, city_page_path, BIZ, SERVICES, BADGES, DROPDOWN_SERVICES, HOME_SERVICES, PROMO_PLANS,
                       PROMO_FEATS, IMAGE_ALT, IMAGE_FOCAL, LEAD_FORM, GA4_ID, META_PIXEL_ID, CTA_PHOTOS,
-                      GIVEAWAY)
+                      GIVEAWAY, GOOGLE_REVIEWS, REVIEW_PIN_IDS, REVIEW_HIDE_IDS, REVIEW_MIN_STARS,
+                      REVIEW_TOPICS)
 from icons import icon
 
 def _esc(s):
@@ -1586,6 +1587,130 @@ def review_card(text, name, place, initials, delay=0):
   <blockquote>“{text}”</blockquote>
   <div class="who"><span class="avatar">{initials}</span><span><b>{name}</b><span>{place}</span></span></div>
 </div>"""
+
+# ---------------------------------------------------------------------------
+# Google reviews (sitedata.GOOGLE_REVIEWS, synced from the Business Profile).
+# Real reviews, word for word, as plain HTML in the site's own card style:
+# no third-party script, so they cost nothing to load and Google can read
+# them. Deliberately no Review/AggregateRating markup (see build_reviews).
+# ---------------------------------------------------------------------------
+import html as _html
+
+def shown_reviews():
+    """Every review the site may show: has text, meets REVIEW_MIN_STARS, not
+    hidden. Newest first (as saved)."""
+    return [r for r in GOOGLE_REVIEWS
+            if (r.get("stars") or 0) >= REVIEW_MIN_STARS and r.get("id") not in REVIEW_HIDE_IDS]
+
+def pick_reviews(limit, words=None, min_len=60):
+    """Up to `limit` reviews for a section: pinned ones first, then (when
+    `words` is given) newest reviews mentioning one of the words, then the
+    newest of the rest. Very short ones ("Great job!") are skipped unless
+    nothing longer is left, since a section reads better with substance."""
+    pool = shown_reviews()
+    by_id = {r.get("id"): r for r in pool}
+    out = [by_id[i] for i in REVIEW_PIN_IDS if i in by_id]
+    def take(cands):
+        for r in cands:
+            if len(out) >= limit:
+                return
+            if r not in out:
+                out.append(r)
+    if words:
+        take(r for r in pool if len(r["text"]) >= min_len
+             and any(w in r["text"].lower() for w in words))
+    take(r for r in pool if len(r["text"]) >= min_len)
+    take(pool)
+    return out[:limit]
+
+def _review_name(name):
+    """'Shanna Guidry' -> 'Shanna G.': first name and last initial, enough to
+    be real without reprinting a customer's full name off Google."""
+    parts = (name or "").split()
+    if len(parts) >= 2 and parts[0].lower() != "a":
+        return f"{parts[0]} {parts[-1][0].upper()}."
+    return name or "Google user"
+
+def _review_date(iso):
+    try:
+        return datetime.strptime(iso[:10], "%Y-%m-%d").strftime("%B %Y")
+    except (TypeError, ValueError):
+        return ""
+
+_AVATAR_TINTS = ["#fb4d3d", "#18b673", "#3b82f6", "#f59e0b", "#8b5cf6", "#0ea5a4"]
+
+def google_review_card(r, delay=0, reply=False, tags=""):
+    """One review. Long text is clamped to a few lines with a "Read more"
+    toggle (main.js); without JavaScript the full text simply shows."""
+    name = _review_name(r.get("name"))
+    initial = _html.escape(name[:1].upper() or "G")
+    tint = _AVATAR_TINTS[sum(map(ord, name)) % len(_AVATAR_TINTS)]
+    stars = icon("star") * max(1, min(5, int(r.get("stars") or 5)))
+    text = _html.escape(r["text"])
+    long_text = len(r["text"]) > 260
+    more = '<button type="button" class="rv-more" aria-expanded="false">Read more</button>' if long_text else ""
+    reply_html = ""
+    if reply and r.get("reply"):
+        reply_html = (f'<details class="rv-reply"><summary>Response from {BIZ["name"]}</summary>'
+                      f'<p>{_html.escape(r["reply"])}</p></details>')
+    data = f' data-tags="{tags}"' if tags else ""
+    return f"""<article class="rv-card reveal" data-delay="{delay}"{data}>
+  <div class="rv-top"><span class="rv-stars" role="img" aria-label="{r.get('stars') or 5} out of 5 stars">{stars}</span><span class="rv-g" title="Posted on Google">{GOOGLE_G}</span></div>
+  <blockquote class="rv-text{' rv-long' if long_text else ''}">{text}</blockquote>{more}
+  <div class="rv-who"><span class="rv-avatar" style="background:{tint}" aria-hidden="true">{initial}</span><span><b>{_html.escape(name)}</b><span>{_review_date(r.get('created'))}</span></span></div>
+  {reply_html}
+</article>"""
+
+def google_reviews_summary(depth=0):
+    """The '5.0 ★★★★★ · 152 Google reviews' strip above a review grid."""
+    stars = '<span class="stars">' + icon("star") * 5 + "</span>"
+    return f"""<div class="rv-summary reveal">
+  <span class="rv-score">{BIZ['rating']}</span>
+  <span class="rv-summary-mid">{stars}<span>Based on <b>{BIZ['review_count']}</b> Google reviews</span></span>
+  <a class="rv-summary-link" href="{BIZ['google']}" target="_blank" rel="noopener"><span class="gb-g">{GOOGLE_G}</span> See them on Google {icon('arrow')}</a>
+</div>"""
+
+def google_reviews(depth=0, limit=6, words=None):
+    """A review section for the homepage and service pages: summary strip,
+    up to `limit` cards (a swipeable row on phones), and a link to the full
+    Reviews page. Returns '' when no Google reviews are saved yet, so callers
+    can fall back to the old widget."""
+    picks = pick_reviews(limit, words)
+    if not picks:
+        return ""
+    root = rel(depth)
+    cards = "".join(google_review_card(r, delay=i % 3) for i, r in enumerate(picks))
+    return f"""{google_reviews_summary(depth)}
+<div class="rv-grid rv-row">{cards}</div>
+<p class="center mt-3"><a class="btn btn-ghost" href="{root}reviews.html">{icon('star')} Read all {BIZ['review_count']} reviews {icon('arrow')}</a></p>"""
+
+def google_reviews_page_list(depth=0, batch=24):
+    """Every shown review for reviews.html, with topic filter chips and a
+    'Show more' button (main.js). Without JavaScript every review shows."""
+    reviews = shown_reviews()
+    if not reviews:
+        return ""
+    topics = []
+    for i, (label, words) in enumerate(REVIEW_TOPICS):
+        n = sum(1 for r in reviews if any(w in r["text"].lower() for w in words))
+        if n >= 3:
+            topics.append((f"t{i}", label, words, n))
+    cards = []
+    for i, r in enumerate(reviews):
+        low = r["text"].lower()
+        tags = " ".join(key for key, _, words, _ in topics if any(w in low for w in words))
+        cards.append(google_review_card(r, delay=i % 3, reply=True, tags=tags))
+    chips = ""
+    if topics:
+        chips = ('<div class="rv-chips" role="group" aria-label="Filter reviews">'
+                 f'<button type="button" class="rv-chip is-on" data-topic="" aria-pressed="true">All <b>{len(reviews)}</b></button>'
+                 + "".join(f'<button type="button" class="rv-chip" data-topic="{key}" aria-pressed="false">{label} <b>{n}</b></button>'
+                           for key, label, _, n in topics)
+                 + "</div>")
+    return f"""{google_reviews_summary(depth)}
+{chips}
+<div class="rv-grid rv-masonry" data-rv-list data-batch="{batch}">{''.join(cards)}</div>
+<p class="center mt-3"><button type="button" class="btn btn-ghost rv-show-more" hidden>Show more reviews</button></p>"""
 
 GOOGLE_G = ('<svg viewBox="0 0 48 48" aria-hidden="true" width="18" height="18">'
             '<path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>'

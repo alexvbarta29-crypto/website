@@ -1603,6 +1603,39 @@
     }
   });
 
+  /* ---- Google reviews (components.google_reviews): "Read more" on long
+         reviews, and on the Reviews page the topic chips and "Show more".
+         Without JavaScript every review shows in full. ---- */
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest(".rv-more");
+    if (!btn) return;
+    const card = btn.closest(".rv-card");
+    const open = card.classList.toggle("is-open");
+    btn.textContent = open ? "Show less" : "Read more";
+    btn.setAttribute("aria-expanded", String(open));
+  });
+  $$("[data-rv-list]").forEach((list) => {
+    const cards = $$(".rv-card", list);
+    const batch = parseInt(list.dataset.batch, 10) || 24;
+    const more = list.parentElement.querySelector(".rv-show-more");
+    const chips = $$(".rv-chip", list.parentElement);
+    let topic = "", shown = batch;
+    const render = () => {
+      const match = cards.filter((c) => !topic || (c.dataset.tags || "").split(" ").includes(topic));
+      cards.forEach((c) => { c.hidden = true; });
+      match.slice(0, shown).forEach((c) => { c.hidden = false; });
+      if (more) more.hidden = match.length <= shown;
+    };
+    if (more) more.addEventListener("click", () => { shown += batch; render(); });
+    chips.forEach((chip) => chip.addEventListener("click", () => {
+      topic = chip.dataset.topic || "";
+      shown = batch;
+      chips.forEach((c) => { const on = c === chip; c.classList.toggle("is-on", on); c.setAttribute("aria-pressed", String(on)); });
+      render();
+    }));
+    render();
+  });
+
   /* ---- Active nav state ---- */
   const path = location.pathname.split("/").pop() || "index.html";
   $$(".nav-links a, .drawer-nav a").forEach((a) => {

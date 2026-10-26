@@ -798,12 +798,59 @@ PROMO_FEATS = ["FREE BARTA RainBlock Tech", "7-Day Rain Guarantee", "Free Hard W
 
 # ---------------------------------------------------------------------------
 # Testimonials, intentionally empty. There is no curated-quote content here;
-# real reviews live on Google (see BIZ["google"]) and render via the
-# REVIEWS_WIDGET embed in build.py when configured. Do not add invented
+# real reviews come from Google (GOOGLE_REVIEWS below), or the Trustindex
+# REVIEWS_WIDGET embed in build.py while no Google reviews are saved yet. Do not add invented
 # testimonials here, reviews_block() in components.py falls back to a
 # Google-badge CTA when this list is empty, instead of a blank grid.
 # ---------------------------------------------------------------------------
 REVIEWS = []
+
+# ---------------------------------------------------------------------------
+# Google reviews, shown on the site in place of the Trustindex widget
+# (owner's request, October 2026). The "Sync Google review count" GitHub
+# Action saves every review from the Google Business Profile into
+# build/google_reviews.json (newest first) every two hours and rebuilds the
+# site when there's a new review or reply; components.google_reviews() renders
+# them as plain HTML in the site's own style. Nothing here is written by hand:
+# every review shown is a real one, word for word.
+#
+# The owner's controls, by review "id" (listed in build/google_reviews.json):
+#   REVIEW_PIN_IDS   shown first on the homepage and service pages, in order
+#   REVIEW_HIDE_IDS  never shown anywhere on the site
+#   REVIEW_MIN_STARS reviews below this many stars aren't shown
+# Reviews with no written comment (stars only) count toward the total but
+# aren't shown as cards.
+# ---------------------------------------------------------------------------
+try:
+    GOOGLE_REVIEWS = [r for r in (_gr.get("reviews") or [])
+                      if isinstance(r, dict) and (r.get("text") or "").strip()]
+except NameError:  # google_reviews.json missing: the fallback above kicked in
+    GOOGLE_REVIEWS = []
+REVIEW_PIN_IDS = []
+REVIEW_HIDE_IDS = set()
+REVIEW_MIN_STARS = 4
+# Which reviews a service page prefers: ones that mention its service.
+# Lower-case words matched against the review text; the rest of the page's
+# slots fill with the newest reviews.
+SERVICE_REVIEW_WORDS = {
+    "exterior-window-cleaning": ["window", "glass", "streak"],
+    "interior-window-cleaning": ["inside", "interior", "window"],
+    "screen-cleaning": ["screen"],
+    "track-detailing": ["track", "sill"],
+    "gutter-cleaning": ["gutter", "downspout"],
+    "solar-panel-cleaning": ["solar", "panel"],
+    "christmas-light-installation": ["light", "christmas", "holiday"],
+    "commercial-cleaning": ["business", "commercial", "storefront", "office", "building"],
+}
+# Filter chips on the Reviews page: (label, words). A chip only shows when at
+# least three reviews mention one of its words.
+REVIEW_TOPICS = [
+    ("Window cleaning", ["window", "glass"]),
+    ("Gutters", ["gutter", "downspout"]),
+    ("Holiday lights", ["christmas", "holiday", "lights"]),
+    ("Screens &amp; tracks", ["screen", "track"]),
+    ("Solar panels", ["solar"]),
+]
 
 # ---------------------------------------------------------------------------
 # Team, Alex and Jacob are brothers who co-founded the company in 2024.

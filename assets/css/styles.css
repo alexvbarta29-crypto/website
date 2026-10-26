@@ -1626,3 +1626,62 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 50px; --hero-top-gap: 16px; }
 .home-video { max-width: 820px; margin-inline: auto; border-radius: 18px; overflow: hidden;
   box-shadow: 0 18px 50px rgba(0,0,0,.18); background: #000; aspect-ratio: 16/9; }
 .home-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ---- Google reviews, rendered by the site itself (components.google_reviews,
+   October 2026; replaces the Trustindex widget). Same card language as
+   .review-card: white, soft border, gold stars, round initial avatar. ---- */
+.rv-summary { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px 22px; margin: 0 auto 30px; }
+.rv-score { font-family: var(--font-head); font-weight: 900; font-size: 3rem; line-height: 1; color: var(--ink); }
+.rv-summary-mid { display: flex; flex-direction: column; gap: 4px; font-size: .95rem; color: var(--slate-500); }
+.rv-summary-mid .stars { display: inline-flex; gap: 2px; color: var(--gold); }
+.rv-summary-mid .stars svg { width: 20px; height: 20px; }
+.rv-summary-mid b { color: var(--ink); }
+.rv-summary-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--r-pill); border: 1px solid var(--line); background: #fff; font-weight: 700; font-size: .88rem; color: var(--navy-800); box-shadow: var(--sh-sm); transition: box-shadow .25s var(--ease); }
+.rv-summary-link:hover { box-shadow: var(--sh-md); }
+.rv-summary-link svg { width: 16px; height: 16px; }
+.rv-summary-link .gb-g svg { width: 18px; height: 18px; display: block; }
+
+.rv-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.rv-card { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 26px; box-shadow: var(--sh-sm); display: flex; flex-direction: column; }
+.rv-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.rv-stars { display: inline-flex; gap: 2px; color: var(--gold); }
+.rv-stars svg { width: 18px; height: 18px; }
+.rv-g svg { width: 20px; height: 20px; display: block; }
+.rv-text { font-size: 1rem; color: var(--slate-700); line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+html.js .rv-text.rv-long { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+html.js .rv-card.is-open .rv-text.rv-long { display: block; }
+.rv-more { align-self: flex-start; margin-top: 8px; padding: 4px 0; border: 0; background: none; font-weight: 700; font-size: .88rem; color: var(--blue-600); cursor: pointer; }
+html:not(.js) .rv-more { display: none; }
+.rv-who { margin-top: auto; padding-top: 20px; display: flex; align-items: center; gap: 12px; }
+.rv-avatar { flex: none; width: 42px; height: 42px; border-radius: var(--r-pill); color: #fff; display: grid; place-items: center; font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; }
+.rv-who b { display: block; font-family: var(--font-head); font-size: .96rem; color: var(--navy-800); }
+.rv-who span span { font-size: .82rem; color: var(--slate-500); }
+.rv-reply { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: .9rem; color: var(--slate-500); }
+.rv-reply summary { cursor: pointer; font-weight: 700; color: var(--slate-700); list-style: none; }
+.rv-reply summary::-webkit-details-marker { display: none; }
+.rv-reply summary::after { content: " +"; color: var(--blue-600); }
+.rv-reply[open] summary::after { content: " −"; }
+.rv-reply p { margin-top: 8px; white-space: pre-line; color: var(--slate-500); }
+
+/* Reviews page: every review, in a masonry flow so short and long ones pack. */
+.rv-masonry { display: block; columns: 3 300px; column-gap: 22px; }
+.rv-masonry .rv-card { break-inside: avoid; margin-bottom: 22px; }
+.rv-masonry .rv-card[hidden] { display: none; }
+.rv-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 auto 26px; }
+.rv-chip { padding: 9px 16px; border-radius: var(--r-pill); border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: .9rem; color: var(--slate-700); cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+.rv-chip b { font-weight: 700; color: var(--slate-400); margin-left: 4px; }
+.rv-chip.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.rv-chip.is-on b { color: rgba(255,255,255,.7); }
+
+@media (max-width: 960px) { .rv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Phones: the homepage/service-page row becomes a swipeable strip, one card
+   and a peek of the next, instead of six cards stacked down the page. */
+@media (max-width: 760px) {
+  .rv-row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin-inline: calc(var(--gutter) * -1); padding: 4px var(--gutter) 10px; scrollbar-width: none; }
+  .rv-row::-webkit-scrollbar { display: none; }
+  .rv-row .rv-card { flex: 0 0 84%; scroll-snap-align: center; }
+  /* The scroll-in fade can't see cards clipped by the strip, which would
+     leave the peeking next card blank: show them outright here. */
+  html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
+  .rv-score { font-size: 2.4rem; }
+}

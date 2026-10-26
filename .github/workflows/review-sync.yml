@@ -1,9 +1,11 @@
 name: Sync Google review count
 
-# Keeps every "N reviews" / "5.0 rating" line on the site exact (owner's
-# request, October 2026). Reads the live count from /api/review-stats
-# (netlify/functions/review-stats.mjs) and, only when it changed, rebuilds the
-# pages and commits. Netlify publishes that push like any other.
+# Keeps every "N reviews" / "5.0 rating" line on the site exact, and the
+# site's own review sections current (owner's requests, October 2026). Reads
+# every review from /api/reviews (netlify/functions/reviews.mjs, falling back
+# to the count-only /api/review-stats) and, only when something changed (a
+# new review, an edit, a reply), rebuilds the pages and commits. Netlify
+# publishes that push like any other.
 on:
   schedule:
     - cron: "17 */2 * * *" # every 2 hours
@@ -52,7 +54,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nothing to commit."
           else
-            git commit -m "Update Google review count [automated]"
+            git commit -m "Update Google reviews [automated]"
             git pull --rebase
             git push
           fi

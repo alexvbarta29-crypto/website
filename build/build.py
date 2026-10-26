@@ -12,7 +12,7 @@ sys.path.insert(0, HERE)
 import city_pages as CP
 from sitedata import (CITY_PAGES, LIVE_CITY_PAGES, city_page_path,
                       BIZ, SERVICES, AREAS, COUNTIES, SERVICE_AREA_VIEW, CTA_PHOTOS,
-                      CTA_PINNED_PHOTOS, REVIEWS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, AWARD, POSTS, FAQS, HOME_SERVICES,
+                      CTA_PINNED_PHOTOS, REVIEWS, SERVICE_REVIEW_WORDS, TEAM, TEAM_PHOTO, TEAM_PHOTO_NAMES, AWARD, POSTS, FAQS, HOME_SERVICES,
                       ZIP_CODES, IMAGE_ALT, IMAGE_FOCAL, PROMO_PLANS,
                       XMAS_PHOTO_ALT, XMAS_DEAL_DEADLINES,
                       XMAS_DEAL_SEASON_START)
@@ -434,7 +434,7 @@ def build_home():
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      {C.google_reviews(depth, limit=6) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 
@@ -868,7 +868,7 @@ def build_service(svc):
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      {C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      {C.google_reviews(depth, limit=6, words=SERVICE_REVIEW_WORDS.get(svc["slug"])) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 
@@ -1236,10 +1236,16 @@ def build_reviews():
         slug="reviews.html", depth=depth, schema=schema, uses_reviews_widget=True,
         og_image="assets/img/hero-home.jpg")
     html += C.nav(depth)
-    reviews_content = C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth, primary=True)
+    # The site's own list of every Google review (synced every two hours);
+    # the Trustindex widget only while no reviews are saved yet.
+    own = C.google_reviews_page_list(depth)
+    reviews_content = own or C.reviews_block(REVIEWS_WIDGET_PAGE, cards, depth, primary=True)
+    heading = (f"""<div class="section-head center"><span class="eyebrow" style="justify-content:center">Google reviews</span>
+      <h1>What our customers say</h1></div>""" if own else
+               f'<h1 class="sr-only">{BIZ["rating"]}★ rated by {BIZ["review_count"]} neighbors, {BIZ["name"]} Reviews</h1>')
     html += f"""<main id="main">
-  <h1 class="sr-only">{BIZ['rating']}★ rated by {BIZ['review_count']} neighbors, {BIZ['name']} Reviews</h1>
-  <section class="section-tight" style="padding-top:calc(var(--nav-h) + 40px)"><div class="container">{reviews_content}</div></section>
+  {heading if not own else ""}
+  <section class="section-tight" style="padding-top:calc(var(--nav-h) + var(--ribbon-h, 0px) + 40px)"><div class="container">{heading if own else ""}{reviews_content}</div></section>
 </main>"""
     html += C.page_end(depth)
     write("reviews.html", html, slug="reviews.html", priority="0.7")
