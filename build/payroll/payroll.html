@@ -1,0 +1,655 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<title>Barta Payroll Sheets</title>
+<style>
+@font-face { font-family: "Cabinet Grotesk"; font-weight: 700; font-display: swap; src: url('/assets/fonts/CabinetGrotesk-Bold.v1.woff2') format("woff2"); }
+@font-face { font-family: "Cabinet Grotesk"; font-weight: 800; font-display: swap; src: url('/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format("woff2"); }
+@font-face { font-family: "General Sans"; font-weight: 400; font-display: swap; src: url('/assets/fonts/GeneralSans-Regular.v1.woff2') format("woff2"); }
+@font-face { font-family: "General Sans"; font-weight: 600; font-display: swap; src: url('/assets/fonts/GeneralSans-Semibold.v1.woff2') format("woff2"); }
+
+/* Layout: Barta brand (BWW coral slashes on near-black) — a control bar over a stack of paper pay stubs that print the same in either theme. */
+:root {
+  --bg: #f4f4f6;
+  --surface: #ffffff;
+  --fg: #121215;
+  --muted: #67676f;
+  --line: #e1e1e6;
+  --accent: #d0331f;
+  --accent-ink: #ffffff;
+  --chip: #e9e9ed;
+  --danger: #b4321f;
+
+  /* paper: the pay sheet itself, always light so it prints true */
+  --paper: #ffffff;
+  --paper-ink: #121215;
+  --paper-muted: #67676f;
+  --paper-line: #e6e6ea;
+  --paper-tint: #f4f4f6;
+  --band: #ffffff;
+  --coral: #fb4d3d;
+  --coral-deep: #d0331f;
+  --gold: #ffb400;
+  --ok: #12855a;
+  --ok-tint: #e2f6ee;
+  --warn: #8f5500;
+  --warn-tint: #fff3d6;
+
+  --f-display: "Cabinet Grotesk", "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --f-body: "General Sans", "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+
+* { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+.brand .sub a { color: inherit; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* header + controls */
+.top { display: grid; gap: 14px; }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+.brand-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand img { height: 40px; width: auto; display: block; }
+.brand h1 { font-family: var(--f-display); font-weight: 800; font-size: 26px; letter-spacing: -0.01em; margin: 0; text-wrap: balance; padding-left: 16px; border-left: 2px solid var(--line); }
+.brand .sub { color: var(--muted); font-size: 13px; }
+.controls {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; display: grid; gap: 12px;
+}
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.chipbtn {
+  font: 600 13px var(--f-body); color: var(--fg); background: var(--chip);
+  border: 1px solid transparent; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.chipbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+input[type="date"], input[type="text"], input[type="number"], textarea {
+  font: 15px var(--f-body); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0;
+}
+.btn {
+  font: 700 14px var(--f-display); letter-spacing: 0.02em; border-radius: 8px; padding: 9px 18px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+}
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); cursor: pointer; }
+.spacer { flex: 1; }
+
+/* summary */
+.summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.stat .k { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.stat .v { font-family: var(--f-display); font-weight: 800; font-size: 26px; font-variant-numeric: tabular-nums; }
+.msg { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; color: var(--muted); }
+.msg strong { color: var(--fg); }
+.msg.err { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.msg.err strong { color: var(--danger); }
+.msg .btn { margin-top: 10px; }
+.toast { font-size: 13px; color: var(--muted); min-height: 1em; }
+.notice { font-size: 13.5px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+
+/* the pay sheet */
+.sheet {
+  background: var(--paper); color: var(--paper-ink); border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(10,10,12,.14), 0 10px 28px rgba(10,10,12,.10);
+  overflow: hidden; font-family: var(--f-body);
+}
+.sheet.capturing { width: 816px; border-radius: 0; box-shadow: none; animation: none; }
+.sheet.capturing .s-band { padding: 18px 32px; }
+.sheet.capturing .s-sub { padding: 5px 32px; }
+.sheet.capturing .s-body { padding: 18px 32px 6px; gap: 14px; }
+.sheet.capturing .s-foot { display: none; }
+.sheet.capturing td { padding: 5px 8px; }
+.sheet.capturing .s-h { margin-bottom: 6px; }
+.print-holder { position: absolute; left: -10000px; top: 0; width: 816px; background: #fff; }
+.s-band {
+  position: relative; overflow: hidden;
+  background: var(--band); color: var(--paper-ink); border-bottom: 1px solid var(--paper-line); padding: 16px 22px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.s-band img { height: 38px; width: auto; display: block; }
+.s-band .slash { position: absolute; top: -10px; bottom: -10px; width: 16px; background: var(--coral); transform: skewX(-24deg); }
+.s-band .slash.a { right: 214px; }
+.s-band .slash.b { right: 190px; }
+.s-period { position: relative; z-index: 1; text-align: right; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--paper-muted); }
+.s-period b { display: block; font-family: var(--f-display); font-weight: 800; font-size: 17px; letter-spacing: 0.01em; text-transform: none; color: var(--paper-ink); }
+.s-sub { background: var(--coral); color: #fff; font-family: var(--f-display); font-weight: 800; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; padding: 5px 22px; }
+.s-body { padding: 20px 22px 8px; display: grid; gap: 18px; }
+.s-body > * { min-width: 0; }
+.s-hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.s-name { font-family: var(--f-display); font-weight: 800; font-size: 34px; line-height: 1.02; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.s-name span { display: block; font-family: var(--f-body); font-weight: 400; font-size: 13px; letter-spacing: 0; color: var(--paper-muted); margin-top: 6px; }
+.s-total { text-align: right; }
+.s-total .k { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper-muted); }
+.s-total .v { font-family: var(--f-display); font-weight: 800; font-size: 48px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.s-total .v sup { font-size: 24px; vertical-align: 16px; margin-right: 2px; color: var(--coral-deep); }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 10px; margin-top: 8px; }
+.pill.paid { background: var(--ok-tint); color: var(--ok); }
+.pill.est { background: var(--warn-tint); color: var(--warn); }
+.s-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--paper-line); border-top: 3px solid var(--paper-ink); border-radius: 0 0 8px 8px; overflow: hidden; }
+.s-stats div { padding: 10px 12px; border-left: 1px solid var(--paper-line); min-width: 0; }
+.s-stats div:first-child { border-left: 0; }
+.s-stats .k { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--paper-muted); }
+.s-stats .v { font-family: var(--f-display); font-weight: 800; font-size: 21px; font-variant-numeric: tabular-nums; }
+.s-h { font-family: var(--f-display); font-weight: 800; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper-ink); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.s-h::before { content: ""; width: 10px; height: 12px; background: var(--coral); transform: skewX(-24deg); }
+.chart { background: var(--paper-tint); border-radius: 8px; padding: 10px 10px 4px; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; min-width: 520px; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--paper-muted); padding: 6px 8px; border-bottom: 2px solid var(--paper-ink); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--paper-line); vertical-align: top; }
+td b { font-weight: 600; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td .sub { display: block; font-size: 12px; color: var(--paper-muted); }
+tr.tot td { border-bottom: 0; font-weight: 600; padding-top: 9px; }
+tr.tot td.num:last-child { font-family: var(--f-display); font-weight: 800; font-size: 15px; }
+.tag { font-size: 11px; font-weight: 600; color: var(--warn); }
+.adj-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.adj-form input { background: #fff; color: var(--paper-ink); border-color: var(--paper-line); }
+.adj-form input[type="text"] { flex: 1 1 160px; }
+.adj-form input[type="number"] { width: 120px; }
+.mini { font: 600 12.5px var(--f-body); color: var(--coral-deep); background: transparent; border: 1px solid var(--paper-line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.mini.x { border: 0; padding: 2px 6px; color: var(--paper-muted); font-size: 16px; line-height: 1; }
+.note textarea { width: 100%; min-height: 56px; resize: vertical; background: #fff; color: var(--paper-ink); border-color: var(--paper-line); }
+.note-print { display: none; white-space: pre-wrap; background: var(--paper-tint); border-left: 3px solid var(--coral); border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 14px; }
+.sheet.capturing .note-print.has { display: block; }
+.s-foot {
+  margin-top: 4px; padding: 6px 22px 16px;
+  display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; align-items: center;
+  font-size: 12px; color: var(--paper-muted);
+}
+.s-foot .thanks { font-family: var(--f-display); font-weight: 800; font-size: 16px; color: var(--paper-ink); }
+.s-foot .thanks i { font-style: normal; color: var(--coral); letter-spacing: -0.05em; margin-right: 6px; }
+.s-foot .fine { display: grid; gap: 2px; }
+.s-actions { display: flex; gap: 8px; }
+.sheets { display: grid; gap: 24px; }
+.empty-line { color: var(--paper-muted); font-size: 13.5px; padding: 4px 0; }
+
+@media (max-width: 560px) {
+  .brand h1 { border-left: 0; padding-left: 0; width: 100%; }
+  .summary { grid-template-columns: 1fr 1fr; }
+  .summary .stat:last-child { grid-column: span 2; }
+  .s-stats { grid-template-columns: 1fr 1fr; }
+  .s-stats div:nth-child(3) { border-left: 0; }
+  .s-stats div:nth-child(n+3) { border-top: 1px solid var(--paper-line); }
+  .s-total { text-align: left; }
+  .s-total .v { font-size: 40px; }
+  .s-band .slash { display: none; }
+  .s-period { text-align: left; padding-left: 0; }
+  .s-foot .fine { text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: rise .35s ease both; }
+  @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
+}
+</style></head><body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-left">
+        <img class="logo-d" src="/assets/img/logo-bww.png" alt="Barta Window Washing">
+        <h1>Payroll Sheets</h1>
+      </div>
+      <div class="sub">Pulled live from Rotor · <a href="#" id="signout">Sign out</a></div>
+    </div>
+    <form class="controls" id="controls" autocomplete="off">
+      <div class="presets" role="group" aria-label="Pay period">
+        <button type="button" class="chipbtn" data-preset="this" aria-pressed="false">This week</button>
+        <button type="button" class="chipbtn" data-preset="last" aria-pressed="true">Last week</button>
+        <button type="button" class="chipbtn" data-preset="two" aria-pressed="false">Last 2 weeks</button>
+      </div>
+      <div class="row">
+        <div class="field"><label for="start">From</label><input type="date" id="start" required></div>
+        <div class="field"><label for="end">To</label><input type="date" id="end" required></div>
+        <button type="submit" class="btn" id="loadBtn">Pull payroll</button>
+        <div class="spacer"></div>
+        <label class="check"><input type="checkbox" id="owners"> Include owners</label>
+      </div>
+    </form>
+  </header>
+
+  <section class="summary" id="summary" aria-live="polite">
+    <div class="stat"><div class="k">Total payroll</div><div class="v" id="sumPay">—</div></div>
+    <div class="stat"><div class="k">Hours worked</div><div class="v" id="sumHrs">—</div></div>
+    <div class="stat"><div class="k">Tips</div><div class="v" id="sumTips">—</div></div>
+  </section>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="row" id="bulkRow" hidden>
+    <button type="button" class="btn ghost" id="allPdf">Download all as one PDF</button>
+    <span class="toast" id="toast"></span>
+  </div>
+
+  <main class="sheets" id="sheets">
+    <div class="msg"><strong>Pulling payroll from Rotor…</strong><br>Each guy's pay sheet shows up here for the dates above.</div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(() => {
+  const SERVER = "Get Rotor CRM";
+  const TZ = "America/Chicago";
+  const PAPER = { bar: "#fb4d3d", muted: "#67676f", line: "#d6d6dc", ink: "#121215" };
+  const LOGO = "/assets/img/logo-bww.png";
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (cents) => (cents < 0 ? "−$" : "$") + (Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const hrs = (h) => (Math.round(h * 100) / 100).toFixed(2);
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+
+  // ---------- dates ----------
+  const ymdFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+  const localYmd = (d) => ymdFmt.format(d);
+  const parseYmd = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+  const ymd = (u) => u.toISOString().slice(0, 10);
+  const addDays = (s, n) => { const u = parseYmd(s); u.setUTCDate(u.getUTCDate() + n); return ymd(u); };
+  const daysBetween = (a, b) => Math.round((parseYmd(b) - parseYmd(a)) / 86400000);
+  function offsetFor(s) {
+    try {
+      const [y, m, d] = s.split("-").map(Number);
+      const p = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "longOffset" })
+        .formatToParts(new Date(Date.UTC(y, m - 1, d, 12))).find(x => x.type === "timeZoneName");
+      const o = p && p.value.replace("GMT", "");
+      return /^[+-]\d\d:\d\d$/.test(o) ? o : "-06:00";
+    } catch { return "-06:00"; }
+  }
+  const startIso = (s) => `${s}T00:00:00${offsetFor(s)}`;
+  const endIso = (s) => `${s}T23:59:59${offsetFor(s)}`;
+  const shortDate = (s) => parseYmd(s).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+  const weekday = (s) => parseYmd(s).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" });
+  const timeOf = (iso) => new Date(iso).toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
+  const periodLabel = (a, b) => {
+    const A = parseYmd(a), B = parseYmd(b);
+    const sameYear = A.getUTCFullYear() === B.getUTCFullYear();
+    const fa = A.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+    const fb = B.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
+    return a === b ? fb : `${fa} – ${fb}`;
+  };
+
+  function presetRange(p) {
+    const today = localYmd(new Date());
+    const dow = (parseYmd(today).getUTCDay() + 6) % 7; // Monday = 0
+    const thisMon = addDays(today, -dow);
+    if (p === "this") return [thisMon, today];
+    if (p === "two") return [addDays(thisMon, -14), addDays(thisMon, -1)];
+    return [addDays(thisMon, -7), addDays(thisMon, -1)];
+  }
+
+  // ---------- state ----------
+  const S = { start: "", end: "", people: [], downloads: true, loading: false, tipsNote: "" };
+
+  // ---------- data: this site's /payroll/data reads Rotor (docs/PAYROLL.md) ----------
+  function toPeople(data) {
+    return (data.people || []).map(p => ({
+      id: p.id, name: p.name, role: p.owner ? "owner" : "member",
+      shifts: (p.shifts || []).map(s => ({ start: s.start, end: s.end, hours: s.hours, rate: s.rate_cents, amount: s.amount_cents, paid: false, active: s.active })),
+      extras: (p.tips || []).map(t => ({
+        type: "tip", label: "Tip", who: t.customer, detail: t.split > 1 ? `split ${t.split} ways` : "",
+        when: t.date, amount: t.share_cents, basis: t.tip_cents, paid: false
+      }))
+    }));
+  }
+
+  // ---------- adjustments + notes (kept in this browser) ----------
+  const adjKey = (id) => `adj:${S.start}:${S.end}:${id}`;
+  const noteKey = (id) => `note:${S.start}:${S.end}:${id}`;
+  const adjsFor = (id) => store.get(adjKey(id), []);
+
+  function totals(p) {
+    const shiftPay = p.shifts.reduce((s, x) => s + x.amount, 0);
+    const tips = p.extras.filter(x => x.type === "tip").reduce((s, x) => s + x.amount, 0);
+    const extraPay = p.extras.reduce((s, x) => s + x.amount, 0);
+    const adjPay = adjsFor(p.id).reduce((s, x) => s + x.cents, 0);
+    const hours = p.shifts.reduce((s, x) => s + x.hours, 0);
+    return { shiftPay, extraPay, tips, comm: extraPay - tips, adjPay, hours, total: shiftPay + extraPay + adjPay };
+  }
+
+  // ---------- render ----------
+  function chartSvg(p) {
+    const n = daysBetween(S.start, S.end) + 1;
+    const byDay = {};
+    for (const s of p.shifts) { const d = localYmd(new Date(s.start)); byDay[d] = (byDay[d] || 0) + s.hours; }
+    const days = Array.from({ length: n }, (_, i) => addDays(S.start, i));
+    const max = Math.max(8, ...days.map(d => byDay[d] || 0));
+    const top = Math.ceil(max / 2) * 2;
+    const left = 30, W = 720, colW = (W - left) / n, H = 150, base = 116, plotH = 92;
+    const y = (v) => base - (v / top) * plotH;
+    const ff = `font-family="General Sans, Inter, sans-serif"`;
+    let g = "";
+    for (let t = 0; t <= top; t += (top > 10 ? 4 : 2)) {
+      g += `<line x1="${left}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="${PAPER.line}" stroke-width="1" ${t ? 'stroke-dasharray="2 4"' : ""}/>`;
+      g += `<text x="${left - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="${PAPER.muted}" ${ff}>${t}h</text>`;
+    }
+    days.forEach((d, i) => {
+      const v = byDay[d] || 0, cx = left + i * colW + colW / 2, bw = Math.min(46, colW * 0.6);
+      if (v > 0) {
+        const yt = y(v), skew = 5;
+        g += `<path d="M${cx - bw / 2 + skew} ${yt} L${cx + bw / 2 + skew} ${yt} L${cx + bw / 2} ${base} L${cx - bw / 2} ${base} Z" fill="${PAPER.bar}"/>`;
+        g += `<text x="${cx + 3}" y="${yt - 5}" text-anchor="middle" font-size="11" font-weight="600" fill="${PAPER.ink}" ${ff}>${(Math.round(v * 10) / 10).toFixed(1)}</text>`;
+      }
+      g += `<text x="${cx}" y="${base + 15}" text-anchor="middle" font-size="10.5" font-weight="600" fill="${v ? PAPER.ink : PAPER.muted}" ${ff}>${weekday(d)}</text>`;
+      g += `<text x="${cx}" y="${base + 28}" text-anchor="middle" font-size="10" fill="${PAPER.muted}" ${ff}>${shortDate(d)}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hours worked each day">${g}</svg>`;
+  }
+
+  function sheetHtml(p) {
+    const t = totals(p);
+    const adjs = adjsFor(p.id);
+    const all = [...p.shifts, ...p.extras];
+    const allPaid = all.length > 0 && all.every(x => x.paid);
+    const somePaid = all.some(x => x.paid);
+    const lastPaid = all.filter(x => x.paidAt).map(x => x.paidAt).sort().pop();
+    const pill = allPaid
+      ? `<span class="pill paid">Paid ${lastPaid ? new Date(lastPaid).toLocaleDateString("en-US", { timeZone: TZ, month: "short", day: "numeric" }) : ""}</span>`
+      : "";
+    const rates = [...new Set(p.shifts.map(s => s.rate).filter(Boolean))];
+    const rateTxt = rates.length === 1 ? money(rates[0]) + "/hr" : rates.length ? "Varies" : "—";
+    const note = store.get(noteKey(p.id), "");
+    const thirdStat = t.comm ? `<div><div class="k">Tips + commission</div><div class="v">${money(t.extraPay)}</div></div>`
+                             : `<div><div class="k">Tips</div><div class="v">${money(t.tips)}</div></div>`;
+
+    const shiftRows = p.shifts.map(s => {
+      const d = localYmd(new Date(s.start));
+      return `<tr>
+        <td><b>${weekday(d)}</b> ${shortDate(d)}${s.active ? ` <span class="tag">· clocked in</span>` : ""}</td>
+        <td>${timeOf(s.start)} – ${s.end ? timeOf(s.end) : "now"}</td>
+        <td class="num">${hrs(s.hours)}</td>
+        <td class="num">${s.rate ? money(s.rate) : "—"}</td>
+        <td class="num">${money(s.amount)}</td>
+      </tr>`;
+    }).join("");
+
+    const extraRows = p.extras.map(x => `<tr>
+        <td>${esc(x.label)}<span class="sub">${esc(x.who)}${x.detail ? " · " + esc(x.detail) : ""}</span></td>
+        <td>${x.when ? shortDate(localYmd(new Date(x.when))) : ""}</td>
+        <td class="num">${x.pct ? x.pct + "% of " + money(x.basis || 0) : (x.type === "tip" && x.basis ? money(x.basis) + " tip" : "")}</td>
+        <td class="num">${money(x.amount)}</td>
+      </tr>`).join("");
+
+    const adjRows = adjs.map((a, i) => `<tr>
+        <td>${esc(a.label)}</td>
+        <td class="num">${money(a.cents)} <button type="button" class="mini x" data-noprint data-del="${i}" aria-label="Remove ${esc(a.label)}">×</button></td>
+      </tr>`).join("");
+
+    return `<article class="sheet" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
+      <div class="s-band">
+        <img src="${LOGO}" alt="Barta Window Washing">
+        <div class="s-period">Pay period<b>${periodLabel(S.start, S.end)}</b></div>
+      </div>
+      <div class="s-sub">Pay sheet</div>
+      <div class="s-body">
+        <div class="s-hero">
+          <h2 class="s-name">${esc(p.name)}<span>${p.shifts.length} shift${p.shifts.length === 1 ? "" : "s"} · ${hrs(t.hours)} hours on the clock</span></h2>
+          <div class="s-total">
+            <div class="k">Total pay this period</div>
+            <div class="v"><sup>$</sup>${(t.total / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            ${pill}
+          </div>
+        </div>
+
+        <div class="s-stats">
+          <div><div class="k">Hours</div><div class="v">${hrs(t.hours)}</div></div>
+          <div><div class="k">Hourly rate</div><div class="v">${rateTxt}</div></div>
+          <div><div class="k">Hourly pay</div><div class="v">${money(t.shiftPay)}</div></div>
+          ${thirdStat}
+        </div>
+
+        <div>
+          <h3 class="s-h">Hours by day</h3>
+          <div class="chart">${chartSvg(p)}</div>
+        </div>
+
+        <div>
+          <h3 class="s-h">Shifts</h3>
+          ${p.shifts.length ? `<div class="tbl-wrap"><table>
+            <thead><tr><th>Day</th><th>Clock in – out</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Pay</th></tr></thead>
+            <tbody>${shiftRows}
+              <tr class="tot"><td colspan="2">Hourly total</td><td class="num">${hrs(t.hours)}</td><td></td><td class="num">${money(t.shiftPay)}</td></tr>
+            </tbody></table></div>` : `<div class="empty-line">No clocked shifts this period.</div>`}
+        </div>
+
+        ${p.extras.length ? `<div>
+          <h3 class="s-h">${t.comm ? "Tips &amp; commission" : "Tips"}</h3>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Job</th><th>Date</th><th class="num">Customer paid</th><th class="num">Your share</th></tr></thead>
+            <tbody>${extraRows}
+              <tr class="tot"><td colspan="3">${t.comm ? "Tips &amp; commission total" : "Tips total"}</td><td class="num">${money(t.extraPay)}</td></tr>
+            </tbody></table></div>
+        </div>` : ""}
+
+        <div ${adjs.length ? "" : "data-noprint"}>
+          <h3 class="s-h">Bonuses &amp; adjustments</h3>
+          ${adjs.length ? `<div class="tbl-wrap"><table><tbody>${adjRows}</tbody></table></div>` : ""}
+          <form class="adj-form" data-noprint data-adj>
+            <input type="text" id="adj-label-${esc(p.id)}" placeholder="e.g. Gas reimbursement, bonus" aria-label="Adjustment description" required>
+            <input type="number" id="adj-amt-${esc(p.id)}" step="0.01" placeholder="Amount" aria-label="Amount in dollars (negative to deduct)" required>
+            <button type="submit" class="mini">Add</button>
+          </form>
+        </div>
+
+        <div class="note">
+          <h3 class="s-h" ${note ? "" : "data-noprint"}>Note</h3>
+          <textarea id="note-${esc(p.id)}" data-noprint data-note placeholder="Optional note that prints on the sheet">${esc(note)}</textarea>
+          <div class="note-print ${note ? "has" : ""}">${esc(note)}</div>
+        </div>
+      </div>
+      <div class="s-foot">
+        <div class="s-actions" data-noprint>${S.downloads ? `<button type="button" class="mini" data-pdf>Download PDF</button>` : ""}</div>
+      </div>
+    </article>`;
+  }
+
+  function render() {
+    const showOwners = $("#owners").checked;
+    const list = S.people
+      .filter(p => showOwners || p.role !== "owner")
+      .map(p => ({ p, t: totals(p) }))
+      .filter(x => x.t.total !== 0 || x.t.hours > 0 || adjsFor(x.p.id).length)
+      .sort((a, b) => b.t.total - a.t.total);
+
+    $("#sumPay").textContent = money(list.reduce((s, x) => s + x.t.total, 0));
+    $("#sumHrs").textContent = hrs(list.reduce((s, x) => s + x.t.hours, 0));
+    $("#sumTips").textContent = money(list.reduce((s, x) => s + x.t.tips, 0));
+    $("#bulkRow").hidden = !(list.length > 1 && S.downloads);
+    $("#notice").hidden = !S.tipsNote;
+    $("#notice").textContent = S.tipsNote;
+
+    if (!list.length) {
+      $("#sheets").innerHTML = `<div class="msg"><strong>No payroll for ${periodLabel(S.start, S.end)}.</strong><br>Nobody clocked hours or earned tips in Rotor for these dates. Try another pay period above.</div>`;
+      return;
+    }
+    $("#sheets").innerHTML = list.map(x => sheetHtml(x.p)).join("");
+  }
+
+  function renderError(e) {
+    $("#sheets").innerHTML = `<div class="msg err"><strong>Couldn't pull payroll from Rotor.</strong><br>${esc((e && e.message) || "Something went wrong.")}<br><button type="button" class="btn" id="retry">Try again</button></div>`;
+    const r = $("#retry"); if (r) r.addEventListener("click", load);
+  }
+
+  // ---------- load ----------
+  async function load() {
+    if (S.loading) return;
+    const a = $("#start").value, b = $("#end").value;
+    if (!a || !b) return;
+    if (b < a) { $("#sheets").innerHTML = `<div class="msg err"><strong>The "To" date is before the "From" date.</strong><br>Swap them and pull again.</div>`; return; }
+    if (daysBetween(a, b) > 61) { $("#sheets").innerHTML = `<div class="msg err"><strong>That range is too long.</strong><br>Pick a pay period of 62 days or less.</div>`; return; }
+    S.start = a; S.end = b;
+    S.loading = true; $("#loadBtn").disabled = true; $("#loadBtn").textContent = "Pulling…";
+    $("#sheets").innerHTML = `<div class="msg"><strong>Pulling payroll for ${periodLabel(a, b)}…</strong></div>`;
+    try {
+      const res = await fetch(`/payroll/data?start=${a}&end=${b}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
+      if (res.status === 401) { location.reload(); return; }
+      let data = {};
+      try { data = await res.json(); } catch {}
+      if (!res.ok) throw { message: data.message || "Rotor didn't answer just now. Give it a moment and pull payroll again." };
+      S.people = toPeople(data);
+      render();
+    } catch (e) {
+      renderError(e);
+    } finally {
+      S.loading = false; $("#loadBtn").disabled = false; $("#loadBtn").textContent = "Pull payroll";
+    }
+  }
+
+  // ---------- PDF ----------
+  async function makePdf(sheets, filename) {
+    const toast = $("#toast");
+    const say = (m) => { toast.textContent = m; $("#bulkRow").hidden = false; };
+    if (!window.html2canvas || !window.jspdf) { say("The PDF maker didn't load. Reload the page and try again."); return; }
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: "pt", format: "letter" });
+    const W = 612, H = 792, m = 22;
+    say("Making PDF…");
+    try {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      const CSS_W = 816, usableW = W - 2 * m, ptPerCss = usableW / CSS_W, CONT = 18;
+      const capFirst = (H - 2 * m) / ptPerCss, capNext = (H - 2 * m - CONT) / ptPerCss;
+      const rendered = [];
+      for (const src of sheets) {
+        // Lay the sheet out off-screen at a fixed letter-page width, whatever the screen size.
+        const holder = document.createElement("div");
+        holder.className = "print-holder";
+        const el = src.cloneNode(true);
+        el.classList.add("capturing");
+        el.querySelectorAll("[data-noprint]").forEach(n => n.remove());
+        holder.appendChild(el);
+        document.body.appendChild(holder);
+        let canvas, cssH, breaks;
+        try {
+          const top0 = el.getBoundingClientRect().top;
+          cssH = el.offsetHeight;
+          // Places it's fine to start the back page: between sections and between table rows.
+          breaks = [...el.querySelectorAll(".s-body > div, tbody tr, .s-foot")]
+            .map(n => n.getBoundingClientRect().top - top0).filter(y => y > 0).sort((a, b) => a - b);
+          canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", windowWidth: 1100, width: CSS_W });
+        } finally { holder.remove(); }
+        const k = canvas.width / CSS_W;
+        const slices = [];
+        let start = 0;
+        while (start < cssH - 1) {
+          const cap = slices.length ? capNext : capFirst;
+          let end;
+          if (cssH - start <= cap) end = cssH;
+          else {
+            const fits = breaks.filter(y => y > start + 60 && y <= start + cap);
+            end = fits.length ? fits[fits.length - 1] : start + cap;
+          }
+          slices.push([start, end]);
+          start = end;
+        }
+        rendered.push({ name: src.dataset.name || "", canvas, k, slices });
+      }
+      // Front/back printing: if any sheet runs onto a back page, give every sheet its own sheet of paper.
+      const pad = rendered.length > 1 && rendered.some(r => r.slices.length > 1);
+      let pageNo = 0;
+      const newPage = () => { if (pageNo++ > 0) pdf.addPage(); };
+      rendered.forEach((r, ri) => {
+        r.slices.forEach(([a, b], si) => {
+          newPage();
+          const piece = document.createElement("canvas");
+          piece.width = r.canvas.width;
+          piece.height = Math.max(1, Math.round((b - a) * r.k));
+          const ctx = piece.getContext("2d");
+          ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, piece.width, piece.height);
+          ctx.drawImage(r.canvas, 0, Math.round(a * r.k), piece.width, piece.height, 0, 0, piece.width, piece.height);
+          let y = m;
+          if (si > 0) {
+            pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(103, 103, 111);
+            pdf.text(`${r.name} · ${periodLabel(S.start, S.end)} · continued`, m, m + 8);
+            y += CONT;
+          }
+          pdf.addImage(piece.toDataURL("image/jpeg", 0.95), "JPEG", m, y, usableW, (b - a) * ptPerCss);
+        });
+        if (pad && r.slices.length % 2 === 1 && ri < rendered.length - 1) newPage();
+      });
+      const url = URL.createObjectURL(pdf.output("blob"));
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      say("PDF downloaded.");
+    } catch (e) {
+      say("Couldn't make the PDF. Reload the page and try again.");
+    }
+  }
+  const fileStamp = () => periodLabel(S.start, S.end).replace(/[,–]/g, m => m === "–" ? "to" : "").replace(/\s+/g, " ").trim();
+
+  // ---------- events ----------
+  function setPreset(p) {
+    const [a, b] = presetRange(p);
+    $("#start").value = a; $("#end").value = b;
+    document.querySelectorAll("[data-preset]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.preset === p)));
+  }
+  document.querySelectorAll("[data-preset]").forEach(btn => btn.addEventListener("click", () => { setPreset(btn.dataset.preset); load(); }));
+  ["start", "end"].forEach(id => $("#" + id).addEventListener("change", () => document.querySelectorAll("[data-preset]").forEach(x => x.setAttribute("aria-pressed", "false"))));
+  $("#controls").addEventListener("submit", (e) => { e.preventDefault(); load(); });
+  $("#owners").addEventListener("change", () => { if (S.people.length) render(); });
+
+  $("#sheets").addEventListener("submit", (e) => {
+    const f = e.target.closest("[data-adj]"); if (!f) return;
+    e.preventDefault();
+    const id = f.closest(".sheet").dataset.id;
+    const label = f.querySelector('input[type="text"]').value.trim();
+    const amt = parseFloat(f.querySelector('input[type="number"]').value);
+    if (!label || !isFinite(amt)) return;
+    const list = adjsFor(id); list.push({ label, cents: Math.round(amt * 100) });
+    store.set(adjKey(id), list); render();
+  });
+  $("#sheets").addEventListener("click", (e) => {
+    const del = e.target.closest("[data-del]");
+    if (del) {
+      const id = del.closest(".sheet").dataset.id;
+      const list = adjsFor(id); list.splice(Number(del.dataset.del), 1);
+      store.set(adjKey(id), list); render(); return;
+    }
+    const pdfBtn = e.target.closest("[data-pdf]");
+    if (pdfBtn) {
+      const sheet = pdfBtn.closest(".sheet");
+      makePdf([sheet], `Pay sheet - ${sheet.dataset.name} - ${fileStamp()}.pdf`);
+    }
+  });
+  $("#sheets").addEventListener("input", (e) => {
+    const t = e.target.closest("[data-note]"); if (!t) return;
+    const sheet = t.closest(".sheet");
+    store.set(noteKey(sheet.dataset.id), t.value);
+    const mirror = sheet.querySelector(".note-print");
+    mirror.textContent = t.value; mirror.classList.toggle("has", !!t.value.trim());
+    const h = sheet.querySelector(".note .s-h");
+    if (t.value.trim()) h.removeAttribute("data-noprint"); else h.setAttribute("data-noprint", "");
+  });
+  $("#allPdf").addEventListener("click", () => {
+    makePdf([...document.querySelectorAll(".sheet")], `Pay sheets - ${fileStamp()}.pdf`);
+  });
+
+  // ---------- boot ----------
+  $("#signout").addEventListener("click", (e) => {
+    e.preventDefault();
+    location.href = "/payroll?signout=1";
+  });
+  setPreset("last");
+  load();
+})();
+</script>
+</body></html>
