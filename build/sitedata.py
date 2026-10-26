@@ -2005,6 +2005,360 @@ CITY_PAGES = [
             "Lake-side glass on walkout homes, pollen and leaves in screens, and fog between panes meaning a failed seal are general descriptions, not sourced facts.",
         ],
     },
+    {'slug': 'maple-grove',
+     'city': 'Maple Grove',
+     'county': 'Hennepin County',
+     'live': True,
+     'title': 'Window Cleaning in Maple Grove, MN',
+     'desc': 'Window cleaning in Maple Grove, MN for homes near Fish, Weaver and Eagle Lakes and across the '
+             'city: upper panes, screens, tracks. Free quotes.',
+     'hero_sub': 'Spot-free glass for Maple Grove homes, from houses on the city&rsquo;s lakes to the '
+                 'neighborhoods built up around them. Fully insured, and every job is backed by our 100% '
+                 'satisfaction guarantee.',
+     'why_heading': 'A city of lakes that grew up fast',
+     'why_intro': ['Maple Grove sits in Hennepin County&rsquo;s northwest suburbs, bordered by Plymouth, '
+                   'Corcoran, Dayton, Champlin, Brooklyn Park and Osseo. It counts 13 named lakes, Fish, Weaver, '
+                   'Eagle and Rice among them, and Three Rivers&rsquo; Elm Creek Park Reserve, the largest park '
+                   'in the district at 4,900 acres, fills much of its north end.',
+                   'Few suburbs have grown like it. Census counts went from 6,275 residents in 1970 to 50,365 in '
+                   '2000 and 70,253 in 2020, so most of the city&rsquo;s homes went up in those decades. From '
+                   'our base in Delano, it&rsquo;s about a half-hour drive.'],
+     'why_points': [['Hard well water meets sprinkler season',
+                     'Maple Grove&rsquo;s city water comes from groundwater. The treatment plant removes iron '
+                     'and manganese, but the water isn&rsquo;t softened, and the city has been asking residents '
+                     'about a softening plant. When that water dries on glass from sprinklers, it leaves white '
+                     'spots that build up over a summer. We can remove those with hard-water stain removal, and '
+                     'our water-fed poles use purified water, so our own rinse doesn&rsquo;t add any.'],
+                    ['Lake-facing glass, a story or two up',
+                     'Homes near Fish, Weaver and Eagle Lakes tend to put their biggest panes toward the water, '
+                     'often on upper floors. We reach most of that glass from the ground with water-fed poles, '
+                     'so the view dries clear, and the odd window tucked under a roofline or above a walkout '
+                     'gets a ladder.'],
+                    ['Windows that have seen a few decades',
+                     'With so much of Maple Grove built between the 1970s and 2000s, plenty of windows have been '
+                     'opening and closing for 20 to 50 years. That packs grit into the tracks and turns screens '
+                     'gray. Our track detailing cleans out the channels, and if you add screen cleaning, we '
+                     'remove each screen, wash both sides and the frame by hand, and return it to its own '
+                     'window.']],
+     'hero': 'assets/img/3P8A8143.JPEG',
+     'hero_pos': '40% 35%',
+     'jobs': [],
+     'also_gutters': 'Maple Grove has worked for years to save its boulevard ash trees from emerald ash borer, '
+                     'and between those, the maples and the trees around its lakes and parks, fall leaves end up '
+                     'in a lot of gutters. We clear seeds in spring and leaves in fall, run water through every '
+                     'downspout to make sure it drains, and send a photo report when we&rsquo;re done. A fall '
+                     'cleaning before winter also helps prevent ice dams.',
+     'also_xmas': 'From Delano, Maple Grove is about a half-hour drive for our crew. We install premium '
+                  'commercial-grade LED lights, trimmed to fit each roofline and peak on your house, and replace '
+                  'any burnt bulbs free during the season. Ask for a free, no-obligation quote with clear '
+                  'upfront pricing, and ask early, since the season books up quickly.',
+     'faqs': [('How often do you recommend cleaning windows in Maple Grove?',
+               'We suggest four cleanings a year for Maple Grove homes, so pollen in spring and sprinkler spots '
+               'in summer never pile up. If that&rsquo;s more than you need, twice a year works: once in late '
+               'spring and again in early fall.'),
+              ['Do you work all over Maple Grove, or only near the lakes?',
+               'All over. Most Maple Grove homes aren&rsquo;t on the water, and they&rsquo;re in our service '
+               'area just like the houses on Fish, Weaver or Eagle Lake. Inside or out, one story or three, '
+               'we&rsquo;ll quote whatever glass you&rsquo;d like cleaned.'],
+              ['White spots keep showing up where my sprinklers hit the windows. What can you do?',
+               'Those spots are minerals left behind when sprinkler water dries on glass, and Maple '
+               'Grove&rsquo;s city water isn&rsquo;t softened. Once they build up, they need hard-water stain '
+               'removal, which we quote on its own after seeing the glass. Our regular cleanings won&rsquo;t add '
+               'more, since the water in our poles is purified, and keeping the spray off the windows stops new '
+               'spots from forming.'],
+              ('How is a Maple Grove quote priced?',
+               'Free, and you&rsquo;re never obligated to book. Call (763) 314-3400 or use the quote form. We '
+               'price by the size of the home, the number of windows and how easy they are to reach, and '
+               'you&rsquo;ll know the full price up front, before any work begins.')],
+     'verify': ['Northwest suburbs (Wikipedia: northwest part of the metro); borders Dayton, Champlin, Brooklyn '
+                'Park, Osseo, Plymouth and Corcoran (Wikipedia, Maple Grove, Minnesota). Double-check.',
+                '13 named lakes including Eagle, Fish, Weaver and Rice (Wikipedia, Maple Grove, Minnesota).',
+                "Elm Creek Park Reserve: 4,900 acres, 'the largest park in Three Rivers', address 12400 James "
+                "Deane Parkway, Maple Grove (threeriversparks.org). 'Fills much of its north end' is a general "
+                'description; the park also reaches into Dayton and Champlin. Double-check.',
+                '6,275 in 1970, 50,365 in 2000 and 70,253 in 2020 (Census via Wikipedia). Double-check the 2020 '
+                'count.',
+                'Most homes built 1970s-2000s, and windows being 20 to 50 years old, are inferred from census '
+                'growth, not year-built data. Double-check.',
+                'About a half-hour drive from Delano: about 19.1 miles and 31 minutes (Rome2Rio). Varies by '
+                'which part of Maple Grove.',
+                'City water is groundwater; the plant removes iron and manganese and adds chlorine, fluoride and '
+                "orthophosphate, with no softening plant yet (CCX Media, 'Maple Grove Works Hard to Provide "
+                "Safe, Reliable Drinking Water', 2023; Osseo 2025 Drinking Water Report says Osseo buys "
+                'groundwater from Maple Grove).',
+                "Maple Grove is studying a centralized softening system and surveying users; 'no decisions have "
+                "been made' (City of Osseo news release, 05-20-2026, pointing to "
+                'maplegrovemn.gov/water-softening). No published hardness number was found, so the copy gives '
+                "none. Double-check the city's current status before launch.",
+                'Boulevard ash trees: the city approved a 20-year plan to treat ash trees against emerald ash '
+                'borer, almost 2,000 treated in 2021 (CCX Media, May 4, 2022; CBS Minnesota, May 13, 2022). '
+                "Double-check it's still running.",
+                "No hero photo or job photos yet: hero is blank and the 'Jobs we've done' section stays hidden "
+                'until you add some.',
+                'Lake sides carrying the most glass, maples and lake/park trees filling gutters, and track grit '
+                'on older windows are general descriptions, not sourced facts.']},
+    {'slug': 'maple-plain',
+     'city': 'Maple Plain',
+     'county': 'Hennepin County',
+     'live': True,
+     'title': 'Window Cleaning in Maple Plain, MN',
+     'desc': 'Window cleaning in Maple Plain, MN, 10 minutes from our Delano base: spot-free glass, screens, '
+             'tracks, hard-water stain removal. Free quotes.',
+     'hero_sub': 'Spot-free glass for Maple Plain homes, just down Highway 12 from our base in Delano. Fully '
+                 'insured, and every job is backed by our 100% satisfaction guarantee.',
+     'why_heading': 'Our next-door neighbor on Highway 12',
+     'why_intro': ['Maple Plain is a small city in western Hennepin County, right on U.S. Highway 12, with '
+                   'Independence to the west and Lake Independence just to the north. Baker Park Reserve borders '
+                   'the city, and Pioneer Creek runs through its northwest corner. The town takes its name from '
+                   'the big maples of the Big Woods that early settlers noticed for their fall color.',
+                   'Settlers arrived in 1854, the railroad came through in 1868&ndash;1869, and the village was '
+                   'incorporated in 1912. The population grew from 754 in 1960 to 2,005 in 1990 and was 1,743 at '
+                   'the 2020 census. From our base in Delano, it&rsquo;s about a 10-minute drive east on Highway '
+                   '12.'],
+     'why_points': [['Hard water, and how we work around it',
+                     'Maple Plain&rsquo;s city water measures about 18.6 grains of hardness, so sprinkler '
+                     'overspray and hose water can leave white mineral spots on glass. Our water-fed poles use '
+                     'purified water, so the panes dry clear, and built-up spots can be handled with hard-water '
+                     'stain removal, quoted after we see the glass.'],
+                    ['A town named for its trees',
+                     'Fall leaves and spring seeds end up in the gutters, and a clog can send water over the '
+                     'edge and down the windows. We clear the gutters, run water through every downspout to make '
+                     'sure it drains, and send you a photo report when we&rsquo;re done.'],
+                    ['Screens and tracks, old windows and new',
+                     'Whether your home is one of the older ones near downtown or a newer build, window tracks '
+                     'collect grit and screens hold dust. Our track detailing cleans out the channels, and if '
+                     'you add screen cleaning, we remove each screen, wash both sides and the frame by hand, and '
+                     'return it to its own window.']],
+     'hero': 'assets/img/DSC02797.JPG',
+     'hero_pos': '59% 35%',
+     'jobs': [],
+     'also_gutters': 'In Maple Plain, plan on a spring cleaning to clear seeds and winter debris before the '
+                     'rains come, and a fall cleaning once the leaves are down, which empties the gutters again '
+                     'before winter and helps prevent ice dams. We run water through every downspout to make '
+                     'sure it drains and send a photo report afterward.',
+     'also_xmas': 'Maple Plain is about 10 minutes from our Delano base on Highway 12. Our crew installs premium '
+                  'commercial-grade LED lights, cut to fit each roofline and peak on your house, and replaces '
+                  'burnt bulbs free during the season. Ask for a free, no-obligation quote with clear upfront '
+                  'pricing, and ask early, since the season books up quickly.',
+     'faqs': [('How often do you recommend cleaning windows in Maple Plain?',
+               'Four times a year keeps the glass at its best through every Minnesota season. The minimum '
+               'we&rsquo;d suggest is twice a year, in late spring after the pollen and in early fall before the '
+               'cold sets in.'),
+              ['Do you also serve homes just outside Maple Plain&rsquo;s city limits?',
+               'Yes. We&rsquo;re based in Delano, just up Highway 12, so homes in and around Maple Plain are '
+               'close to home for us. Inside or out, one story or three, we&rsquo;ll quote whatever glass '
+               'you&rsquo;d like cleaned.'],
+              ['White spots keep showing up where my sprinklers hit the windows. What can you do?',
+               'Those spots are minerals left behind when hard water dries on glass, and Maple Plain&rsquo;s '
+               'water is on the hard side. Once they build up, they need hard-water stain removal, which we '
+               'quote on its own after seeing the glass. Our regular cleanings won&rsquo;t add more, since the '
+               'water in our poles is purified, and keeping the spray off the windows stops new spots from '
+               'forming.'],
+              ('How is a Maple Plain quote priced?',
+               'Quotes cost nothing and come with no obligation. Give us a call at (763) 314-3400 or fill out '
+               'the quote form. The number depends on the home&rsquo;s size, its window count and how tricky the '
+               'glass is to reach, and it&rsquo;s the full price, agreed before we start.')],
+     'verify': ["Small city in western Hennepin County on U.S. Highway 12 (City of Maple Plain 'About Maple "
+                "Plain' page; Wikipedia).",
+                'Independence borders it to the west, Lake Independence lies to the north, and Pioneer Creek '
+                'flows through the northwest corner (Wikipedia). ',
+                'Baker Park Reserve (Three Rivers Park District) borders Maple Plain (City of Maple Plain Parks '
+                'page).',
+                'Named for the large maples of the Big Woods that early settlers noticed for their fall color '
+                '(City of Maple Plain History page; Wikipedia says sugar maples).',
+                'First settlers in 1854; St. Paul, Pacific and Manitoba Railroad built through in 1868-1869; '
+                'incorporated as a village in 1912 (Wikipedia; City History page).',
+                '754 in 1960, 2,005 in 1990 and 1,743 in 2020 (Census via Wikipedia). Double-check the 2020 '
+                'count.',
+                'About 7.8 miles and 10 minutes from Delano to Maple Plain (Rome2Rio). Both towns are on U.S. '
+                'Highway 12 (Wikipedia pages for Delano and Maple Plain). Double-check the drive time in Google '
+                'Maps.',
+                'Hardness of 18.6 grains (City of Maple Plain Water & Sewer page). The 2025 CCR lists no '
+                'hardness value: city water comes from two wells in the Wonewoc Sandstone and Mt. Simon '
+                'aquifers.',
+                "No hero photo or job photos yet: hero is blank and 'Jobs we've done' stays hidden until you add "
+                'some.',
+                'Leaves and seeds in gutters, overflow running down windows, and track grit on older windows are '
+                "general descriptions, not sourced facts. The site doesn't say how many maples still stand in "
+                'town.']},
+    {'slug': 'chaska',
+     'city': 'Chaska',
+     'county': 'Carver County',
+     'live': True,
+     'title': 'Window Cleaning in Chaska, MN',
+     'desc': 'Window cleaning in Chaska, MN for homes from the historic downtown to Jonathan: hard-water spot '
+             'removal, screens and tracks. Free quotes.',
+     'hero_sub': 'Spot-free glass for Chaska homes, from the river town&rsquo;s old downtown to the '
+                 'neighborhoods of Jonathan and beyond. Fully insured, and every job is backed by our 100% '
+                 'satisfaction guarantee.',
+     'why_heading': 'A brick-making river town that kept on growing',
+     'why_intro': ['Chaska is the county seat of Carver County, with its downtown sitting on the Minnesota '
+                   'River. Clay deposits started a brick industry here in 1857, and cream-colored Chaska brick '
+                   'went into buildings across the Twin Cities. Three of the old clayholes, filled by natural '
+                   'springs, are now part of the downtown parks, and Hazeltine National Golf Club, a Ryder Cup '
+                   'host, is in town too.',
+                   'Census counts show how far the city has come: 2,501 residents in 1960, 17,449 in 2000 and '
+                   '27,810 in 2020. Much of that growth started with Jonathan, a planned community begun in the '
+                   'late 1960s. From our base in Delano, it&rsquo;s a little over half an hour to Chaska.'],
+     'why_points': [['Hard water, by the city&rsquo;s own numbers',
+                     'Chaska&rsquo;s tap water is drawn from deep aquifers and it&rsquo;s hard: the city '
+                     'suggests setting home softeners to 29 grains per gallon. When that water lands on glass '
+                     'from sprinklers or a hose and dries, it can leave white mineral spots. Our water-fed poles '
+                     'use purified water, so a regular cleaning dries clear without adding more.'],
+                    ['Jonathan&rsquo;s ravines and trails',
+                     'The original Jonathan neighborhoods are still going strong, now wrapped in newer housing '
+                     'and a system of ravines and trails. Homes near the green space get great views, and their '
+                     'windows and screens collect the pollen, dust and debris that come with it. Screen cleaning '
+                     'means we remove each screen, wash both sides and the frame by hand, and return it to its '
+                     'own window.'],
+                    ['Older homes, older tracks',
+                     'Plenty of Chaska homes have been around since the city&rsquo;s growth took off decades '
+                     'ago, and so have their windows. Years of use pack grit into the tracks until windows '
+                     'stick. Our track detailing cleans out the channels so they slide the way they should.']],
+     'hero': 'assets/img/svc-cta-squeegee.jpg',
+     'hero_pos': '50%',
+     'jobs': [],
+     'also_gutters': 'In Chaska, the trees along the ravines and older streets drop plenty into gutters each '
+                     'year. We clear out leaves, seeds and debris and run water through every downspout to make '
+                     'sure it drains, then send you a photo report when we&rsquo;re done. A fall cleaning '
+                     'empties the gutters before winter, which helps prevent ice dams.',
+     'also_xmas': 'From Delano, Chaska is a little over half an hour away. Our crew installs premium '
+                  'commercial-grade LED lights, cut to fit each roofline and peak on your house, and we replace '
+                  'burnt bulbs free during the season. Ask for a free, no-obligation quote with clear upfront '
+                  'pricing, and ask early, since the season books up quickly.',
+     'faqs': [('How often do you recommend cleaning windows in Chaska?',
+               'Every three months is ideal, since that keeps up with spring pollen, summer sprinklers and fall '
+               'leaves. At the very least, book a cleaning in late spring and another in early fall.'),
+              ['Chaska&rsquo;s water is hard. Will that leave spots on my windows?',
+               'Not from us. The water in our poles is purified, so it dries without leaving minerals behind. '
+               'Spots that are already baked on from sprinklers or a hose need hard-water stain removal, which '
+               'we quote on its own after seeing the glass, and keeping the spray off the windows stops new ones '
+               'from forming.'],
+              ['Do you work all over Chaska?',
+               'Yes. Downtown near the river, Jonathan, and the newer neighborhoods around them are all in our '
+               'service area. Inside or out, one story or three, we&rsquo;ll quote whatever glass you&rsquo;d '
+               'like cleaned.'],
+              ('How is a Chaska quote priced?',
+               'Getting a quote is free, with no commitment. Reach us at (763) 314-3400 or through the quote '
+               'form. Your price comes down to the size of the house, how many windows there are and how hard '
+               'they are to reach, and you&rsquo;ll have the complete number before we begin.')],
+     'verify': ['County seat of Carver County, downtown on the Minnesota River (Wikipedia: Chaska, Minnesota).',
+                'Brickmaking began in 1857 using local clay; Chaska brick is cream-colored and was used in Twin '
+                'Cities buildings such as the Orpheum Theatre and the State Capitol basement (Wikipedia: Chaska '
+                'brick; Carver County Historical Society).',
+                'Three former clayholes are part of the downtown park system and are filled by natural springs '
+                "(Carver County Historical Society, Chaska page). Firemen's Park includes Clayhole Beach "
+                '(chaskamn.gov About Parks & Recreation).',
+                'Hazeltine National Golf Club hosted the Ryder Cup in 2016 and is set to host again in 2028 '
+                '(Wikipedia: Chaska, Minnesota). Double-check that Hazeltine is inside Chaska city limits.',
+                '2,501 in 1960, 17,449 in 2000 and 27,810 in 2020 (Census via Wikipedia). Double-check the 2020 '
+                'count.',
+                'Jonathan was a federally funded planned community begun in the late 1960s (1966 per Wikipedia) '
+                "and drove much of the city's growth; original Jonathan neighborhoods are surrounded by newer "
+                'housing and a ravine and trail system (Carver County Historical Society).',
+                'City recommends setting water softeners to 29 grains per gallon (chaskamn.gov water FAQ). Water '
+                'is hard and drawn mostly from the Mount Simon-Hinkley aquifer about 800 feet down (Carver '
+                'County Local News, Aug. 28, 2025).',
+                'Drive from Delano to Chaska is about 24 miles, roughly 36 minutes (Rome2Rio). Double-check with '
+                'a map app.',
+                "No job photos yet and no hero image: the 'Jobs we've done' section stays hidden until you add "
+                'some, and the hero needs a photo.',
+                'Sprinkler/hose spotting, pollen and debris near green space, track grit on older windows, and '
+                "trees filling gutters are general descriptions, not sourced facts. 'Homes since the city's "
+                "growth took off decades ago' is inferred from census growth, not year-built data."]},
+    {'slug': 'rogers',
+     'city': 'Rogers',
+     'county': 'Hennepin County',
+     'live': True,
+     'title': 'Window Cleaning in Rogers, MN',
+     'desc': 'Window cleaning in Rogers, MN for newer subdivisions and former Hassan Township acreages near the '
+             'Crow River: upper panes, screens and tracks. Free quotes.',
+     'hero_sub': 'Spot-free glass for Rogers homes, from newer neighborhoods along I-94 to the wooded lots of '
+                 'the old Hassan Township. Fully insured, and every job is backed by our 100% satisfaction '
+                 'guarantee.',
+     'why_heading': 'A young suburb that doubled in size',
+     'why_intro': ['Rogers sits in the northwest corner of Hennepin County, where I-94 meets Highway 101, with '
+                   'the Crow River along its edge and Three Rivers&rsquo; Crow-Hassan Park Reserve on its '
+                   'western side. On January 1, 2012, the city took in the rest of Hassan Township, growing from '
+                   'about nine square miles to more than 26.',
+                   'Census counts show how fast Rogers has grown: 698 residents in 1990, 3,588 in 2000 and '
+                   '13,295 in 2020. The city&rsquo;s own comprehensive plan counts nearly half of its '
+                   'single-family homes as built since 2000. From our base in Delano, it&rsquo;s about a '
+                   '40-minute drive.'],
+     'why_points': [['Newer homes, bigger windows',
+                     'With so many Rogers houses built in the last couple of decades, a lot of them carry plenty '
+                     'of glass: tall great-room windows, transoms over the entry and upper panes a story or two '
+                     'off the ground. We reach most of it from the grass with water-fed poles, which use '
+                     'purified water, so the glass dries without spots, and anything tucked under a roofline '
+                     'gets a ladder.'],
+                    ['Prairie, woods and wetlands next door',
+                     'Crow-Hassan Park Reserve has roughly 600 acres of restored prairie, and the city&rsquo;s '
+                     'plan counts a dozen lakes and 15 wetlands in or around Rogers. All that open country is '
+                     'lovely to live near, but wind carries dust and pollen onto the glass. A cleaning in late '
+                     'spring, once pollen season winds down, clears it off.'],
+                    ['Tracks and screens that need a reset',
+                     'Whether your windows are original to a 1990s house or a few years old, grit packs into the '
+                     'tracks and screens turn gray with dust. Our track detailing cleans out the channels, and '
+                     'if you add screen cleaning, we remove each screen, wash both sides and the frame by hand, '
+                     'and return it to its own window.']],
+     'hero': 'assets/img/3P8A7912.JPEG',
+     'hero_pos': '50%',
+     'jobs': [],
+     'also_gutters': 'Southern Rogers still holds some large stands of maple-basswood forest, and maples drop '
+                     'their seeds right into gutters every spring. We clear seeds and winter debris before the '
+                     'rains come and run water through every downspout to make sure it drains, then send you a '
+                     'photo report when we&rsquo;re done. A fall cleaning empties the gutters again before '
+                     'winter, which helps prevent ice dams.',
+     'also_xmas': 'Rogers is about 40 minutes from our shop in Delano, and we&rsquo;re glad to make the trip. '
+                  'Our crew installs premium commercial-grade LED lights, trimmed to fit each roofline and peak '
+                  'on your house, and replaces any burnt bulbs free during the season. Ask for a free, '
+                  'no-obligation quote with clear upfront pricing, and ask early, since the season books up '
+                  'quickly.',
+     'faqs': [('How often do you recommend cleaning windows in Rogers?',
+               'Our recommendation is a quarterly schedule, so dust and pollen from the fields and wetlands '
+               'never get a chance to build up. If you&rsquo;d rather keep it simple, a late-spring and an '
+               'early-fall cleaning cover the basics.'),
+              ['Do you cover the old Hassan Township side of Rogers too?',
+               'Yes. Hassan Township is part of Rogers now, and homes out there are in our service area just '
+               'like the neighborhoods near I-94. Inside or out, one story or three, we&rsquo;ll quote whatever '
+               'glass you&rsquo;d like cleaned.'],
+              ('White spots keep showing up where my sprinklers hit the windows. What can you do?',
+               'That white haze is mineral left behind when sprinkler water dries on the glass. Once it builds '
+               'up, it takes our hard-water stain removal, which we price separately after seeing the windows. '
+               'Our regular cleanings won&rsquo;t make it worse, because our poles rinse with purified water, '
+               'and aiming sprinklers away from the glass keeps new spots from forming.'),
+              ('How is a Rogers quote priced?',
+               'There&rsquo;s no charge for a quote and no pressure to book. Call (763) 314-3400 or send a '
+               'request through the quote form. We look at the home&rsquo;s size, how many windows it has and '
+               'how hard they are to get to, then give you one all-in price before any work starts.')],
+     'verify': ['Rogers is in Hennepin County at the intersection of I-94 and TH 101 (City of Rogers '
+                'Comprehensive Plan, Chapter 2 Community Profile; Wikipedia).',
+                "'Crow River along its edge': Wikipedia says the Crow River touches the western boundary; the "
+                "city's Community Profile says it forms the northern boundary. Wording kept general on purpose. "
+                'Double-check.',
+                "Crow-Hassan Park Reserve is a Three Rivers Park District regional park on the city's western "
+                'side (Community Profile: western boundary is mostly Crow-Hassan; rogersmn.gov Parks to Visit '
+                'page).',
+                'Hassan Township annexation completed January 1, 2012; city grew from roughly nine to more than '
+                "26 square miles (Wikipedia; Community Profile). Double-check the 'about nine' figure.",
+                "698 in 1990, 3,588 in 2000 and 13,295 in 2020 (Census via Wikipedia). Note: the city's "
+                'Community Profile gives higher figures (2,649 / 6,051) that appear to count Hassan Township. '
+                'Double-check.',
+                "'Nearly half of its single-family homes built since 2000': 1,599 single-family homes (47.5 "
+                'percent) built since 2000, per the Community Profile (2016-era data).',
+                'About a 40-minute drive from Delano: about 21 miles / 39 minutes by OSRM routing, Delano to '
+                'central Rogers. Double-check with Google Maps.',
+                'Roughly 600 acres of restored prairie at Crow-Hassan (Explore Minnesota listing). Double-check.',
+                '12 lakes and 15 wetlands among the protected waters in Rogers (Community Profile). The copy '
+                "says 'in or around' to stay safe.",
+                'Four large remnants (20+ acres) of maple-basswood forest remain in southern Rogers (Community '
+                'Profile).',
+                'Rogers city water comes from seven deep wells (2022 CCR); no hardness figure was published in '
+                "the CCR, so the page doesn't cite one.",
+                "No job photos yet and no hero image: the 'Jobs we've done' section stays hidden until you add "
+                'some, and the hero needs a photo.',
+                'Tall great-room windows on newer homes, prairie dust and pollen on glass, maples dropping seeds '
+                'into gutters, and track grit are general descriptions, not sourced facts.']},
 ]
 
 # Directory-style path for a city page ("window-cleaning-wayzata-mn/"); the
