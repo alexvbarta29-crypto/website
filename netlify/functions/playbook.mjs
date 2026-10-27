@@ -9,7 +9,7 @@
 // Password and cookie: netlify/lib/playbook-auth.mjs.
 
 import { PLAYBOOK_HTML } from "../lib/playbook-page.mjs";
-import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor } from "../lib/playbook-auth.mjs";
+import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor, toOffice } from "../lib/playbook-auth.mjs";
 
 export const config = { path: ["/playbook", "/playbook/"] };
 
@@ -82,5 +82,5 @@ export default async (req) => {
     // Keep the year-long sign-in rolling while the playbook is in use.
     return html(PLAYBOOK_HTML, 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
   }
-  return html(loginPage());
+  return toOffice("followups");
 };

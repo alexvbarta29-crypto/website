@@ -5,7 +5,6 @@ to switch between
 
 - **Christmas Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
-- **Referrals** → `/admin/referrals.html`
 - **Giveaway** → `/admin/giveaway.html`
 - **Rotor** → opens Rotor in a new tab
 
@@ -18,9 +17,10 @@ own logo, footer and sign-out are hidden (the `css` for each tool in
 
 ## One password
 
-One office password opens `/office`, `/lights` and `/playbook`, and the
-referral and giveaway dashboards accept the same sign-in instead of their
-admin key. The password is the owner's chosen one (kept only as a PBKDF2
+One office password, asked for only at `/office`, opens everything:
+`/lights` and `/playbook` send a signed-out visitor to `/office` instead of
+asking for a password themselves, and the giveaway (and referral) dashboards
+accept the same sign-in instead of their admin key. The password is the owner's chosen one (kept only as a PBKDF2
 digest in `netlify/lib/lights-auth.mjs`), or `OFFICE_PASSWORD` in Netlify if
 set. The year-long cookie (`barta_office`, path `/`) renews on every visit.
 Changing the password signs every device out. The dashboards' admin key

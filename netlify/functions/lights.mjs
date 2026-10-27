@@ -8,7 +8,7 @@
 // Password and cookie: netlify/lib/lights-auth.mjs.
 
 import { LIGHTS_HTML } from "../lib/lights-page.mjs";
-import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor } from "../lib/lights-auth.mjs";
+import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor, toOffice } from "../lib/lights-auth.mjs";
 
 export const config = { path: ["/lights", "/lights/"] };
 
@@ -92,5 +92,5 @@ export default async (req) => {
     // Keep the year-long sign-in rolling while the tool is in use.
     return html(withMapsKey(LIGHTS_HTML), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
   }
-  return html(loginPage());
+  return toOffice("lights");
 };

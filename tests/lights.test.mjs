@@ -13,11 +13,12 @@ const post = (password) => lights(new Request("https://x.test/lights", {
 }));
 const cookieOf = (res) => res.headers.get("set-cookie").split(";")[0];
 
-test("signed-out visit shows the sign-in page, not the tool", async () => {
+test("signed-out visit goes to the one office sign-in, not the tool", async () => {
   const res = await get();
   const body = await res.text();
   assert.equal(res.status, 200);
-  assert.match(body, /autocomplete="current-password"/);
+  assert.match(body, /\/office#lights/);
+  assert.doesNotMatch(body, /autocomplete="current-password"/);
   assert.doesNotMatch(body, /Paste or drop the house photos/);
   assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
 });
