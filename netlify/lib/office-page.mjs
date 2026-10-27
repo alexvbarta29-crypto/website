@@ -4,9 +4,8 @@
 // tool keeps its own sign-in (its own password, remembered for a year).
 
 export const TOOLS = [
-  { id: "lights", label: "Christmas Lights", short: "Lights", src: "/lights", css: ".brand{display:none!important}", icon: '<path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v.1h5v-.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z"/>' },
+  { id: "lights", label: "Christmas Lights", short: "Lights", src: "/lights", css: ".brand{display:none!important}", icon: '<path d="M12 2.8c1.9 1.6 4.8 6.2 4.8 9.6a4.8 4.8 0 0 1-9.6 0c0-3.4 2.9-8 4.8-9.6z"/><path d="M9.6 17.2v2.3c0 .8.6 1.4 1.4 1.4h2c.8 0 1.4-.6 1.4-1.4v-2.3"/><path d="M9.6 19h4.8"/>' },
   { id: "followups", label: "Follow-ups", src: "/playbook", css: ".wrap>header>.brand,.wrap>footer{display:none!important}", icon: '<path d="M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H4.5A1.5 1.5 0 0 1 3 15.5V7a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M7.5 10h9M7.5 13h6"/>' },
-  { id: "referrals", label: "Referrals", src: "/admin/referrals.html", css: ".ra-brand,#ra-signout,.skip{display:none!important}", seed: "referralAdminKey", icon: '<circle cx="8.5" cy="8.5" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3 19c.6-3 2.8-4.6 5.5-4.6S13.4 16 14 19M14.6 14.6c.6-.2 1.2-.3 1.9-.3 2.3 0 4 1.4 4.5 4.2"/>' },
   { id: "giveaway", label: "Giveaway", src: "/admin/giveaway.html", css: "[data-gwa-logout]{display:none!important}", seed: "gwa-key", icon: '<rect x="3.5" y="9" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17M12 9v11"/><path d="M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z"/>' },
 ];
 export const LINKS = [

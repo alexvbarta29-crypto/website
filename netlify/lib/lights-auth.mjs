@@ -46,3 +46,15 @@ export const signedIn = (req) => {
 export const cookieFor = (token, maxAge) =>
   `${COOKIE}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
 
+
+// Signed out of an office tool: there's only one sign-in, at /office. Sends
+// the whole window there (also when the tool is inside the Office app).
+export function toOffice(tab) {
+  const to = "/office" + (tab ? "#" + tab : "");
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><title>Barta Office</title>
+<script>try{(window.top||window).location.href=${JSON.stringify(to)}}catch(e){location.href=${JSON.stringify(to)}}</script>
+<p style="font:16px system-ui;margin:40px;text-align:center"><a href="${to}">Sign in to Barta Office</a></p>`, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+  });
+}

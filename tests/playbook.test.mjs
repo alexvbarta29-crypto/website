@@ -13,11 +13,12 @@ const post = (password) => playbook(new Request("https://x.test/playbook", {
 }));
 const cookieOf = (res) => res.headers.get("set-cookie").split(";")[0];
 
-test("signed-out visit shows the sign-in page, not the scripts", async () => {
+test("signed-out visit goes to the one office sign-in, not the scripts", async () => {
   const res = await get();
   const body = await res.text();
   assert.equal(res.status, 200);
-  assert.match(body, /autocomplete="current-password"/);
+  assert.match(body, /\/office#followups/);
+  assert.doesNotMatch(body, /autocomplete="current-password"/);
   assert.doesNotMatch(body, /phone tag/);
   assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
 });

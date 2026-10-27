@@ -17,7 +17,8 @@ test("office page lists every tool and is never indexed", async () => {
   for (const t of TOOLS) assert.match(body, new RegExp(`data-tool="${t.id}"`));
   assert.match(body, /Christmas Lights/);
   assert.match(body, /Follow-ups/);
-  assert.match(body, /referralAdminKey/);
+  assert.match(body, /gwa-key/);
+  assert.doesNotMatch(body, /data-tool="referrals"/);
 });
 
 test("every tab points at a page that exists", () => {
