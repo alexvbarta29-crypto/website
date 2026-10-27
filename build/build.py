@@ -421,6 +421,18 @@ def build_home():
     </div>
   </section>
 
+  <!-- PROCESS -->
+  <section>
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow">How it works</span>
+        <h2>Our 4-step process</h2>
+        <p>Every job follows the same disciplined routine, mop, scrub, squeegee, detail, for a streak-free finish, every time.</p>
+      </div>
+      {process_slider_html}
+    </div>
+  </section>
+
   <!-- REVIEWS (Google): frosted-glass cards over soft brand glows -->
   <section{' class="rv-glass glow-red"' if C.GOOGLE_REVIEWS else ""}>
     <div class="container">
@@ -445,18 +457,6 @@ def build_home():
           <a class="btn btn-lg" href="get-quote.html">Get Your Free Quote {icon('arrow')}</a>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- PROCESS -->
-  <section>
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow">How it works</span>
-        <h2>Our 4-step process</h2>
-        <p>Every job follows the same disciplined routine, mop, scrub, squeegee, detail, for a streak-free finish, every time.</p>
-      </div>
-      {process_slider_html}
     </div>
   </section>
 
