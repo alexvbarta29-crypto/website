@@ -5,6 +5,7 @@ to switch between
 
 - **Christmas Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
+- **Purchases** → `/purchases` (see docs/PURCHASES.md)
 - **Giveaway** → `/admin/giveaway.html`
 - **Rotor** → opens Rotor in a new tab
 
