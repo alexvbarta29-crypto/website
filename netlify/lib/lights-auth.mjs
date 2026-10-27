@@ -12,7 +12,7 @@ import { pbkdf2Sync, createHash, timingSafeEqual } from "node:crypto";
 const SALT = "barta-light-studio-v1";
 const ITERATIONS = 210000;
 // sha256(PBKDF2(default password))
-const DEFAULT_CHECK = "92ebfbd14dc36b38aab7a335f6c3724d0c077b64dd7646b73bbe2afc67d50896";
+const DEFAULT_CHECK = "1790b0ef9e400629c086f0a5744894da1e0528658aa2217136197eef7b163f9a";
 export const COOKIE = "barta_office";
 export const ONE_YEAR = 365 * 24 * 60 * 60;
 
