@@ -1529,16 +1529,18 @@ def _next_cta_photo():
 CTA_BAND_GRADIENT = ("linear-gradient(180deg, rgba(8,22,46,.40) 0%, "
                      "rgba(7,18,40,.48) 45%, rgba(5,13,30,.62) 100%)")
 
-def _cta_background(root, image):
+def _cta_background(root, image, overlay=None):
     """Two background-image declarations, in this order on purpose: the
     1200w JPEG every browser can read, then a wider WebP for the ones that
     understand image-set(). The band is up to 1180 CSS px across, so 1200w
     is exactly 1x and soft on a retina screen; 1600w WebP is sharp there and
     still smaller than the JPEG. A browser without image-set() drops only
-    the second declaration and keeps the first, so nobody loses the photo."""
+    the second declaration and keeps the first, so nobody loses the photo.
+    overlay replaces the band's dark gradient (another CSS gradient)."""
+    tint = overlay or CTA_BAND_GRADIENT
     stem = image.rsplit(".", 1)[0]
     base = f"{stem}-1200w.jpg" if _variants_exist(stem) else image
-    css = f"background-image:{CTA_BAND_GRADIENT}, url('{root}{base}')"
+    css = f"background-image:{tint}, url('{root}{base}')"
     wide_webp, wide_jpg = f"{stem}-1600w.webp", f"{stem}-1600w.jpg"
     wide_avif = f"{stem}-1600w.avif"
     if os.path.exists(os.path.join(_ROOT, wide_webp)) and os.path.exists(os.path.join(_ROOT, wide_jpg)):
@@ -1546,7 +1548,7 @@ def _cta_background(root, image):
         # about a third smaller again than the WebP at the same look.
         avif = (f"url('{root}{wide_avif}') type('image/avif'), "
                 if avif_ladder(stem, [1600]) else "")
-        css += (f";background-image:{CTA_BAND_GRADIENT}, "
+        css += (f";background-image:{tint}, "
                 f"image-set({avif}url('{root}{wide_webp}') type('image/webp'), "
                 f"url('{root}{wide_jpg}') type('image/jpeg'))")
     return css
@@ -1639,16 +1641,11 @@ def _review_date(iso):
 
 _AVATAR_TINTS = ["#fb4d3d", "#18b673", "#3b82f6", "#f59e0b", "#8b5cf6", "#0ea5a4"]
 
-# Owner's trial (October 2026): the first five cards of a review section each
-# get a different look, labelled "Style 1"-"Style 5", so the owner can pick
-# one for every card. Set to False (or apply the winner) once chosen.
-REVIEW_STYLE_TRIAL = True
-REVIEW_STYLES = ["Clean premium", "Dark luxe", "Big quote", "Accent stripe", "Google style"]
-
-def google_review_card(r, delay=0, reply=False, tags="", style=None):
-    """One review. Long text is clamped to a few lines with a "Read more"
-    toggle (main.js); without JavaScript the full text simply shows.
-    style=1-5 applies one of the trial looks (REVIEW_STYLES) with its label."""
+def google_review_card(r, delay=0, reply=False, tags=""):
+    """One review, in the "clean premium" look the owner picked from a
+    five-style trial (October 2026). Long text is clamped to a few lines
+    with a "Read more" toggle (main.js); without JavaScript the full text
+    simply shows."""
     name = _review_name(r.get("name"))
     initial = _html.escape(name[:1].upper() or "G")
     tint = _AVATAR_TINTS[sum(map(ord, name)) % len(_AVATAR_TINTS)]
@@ -1661,11 +1658,7 @@ def google_review_card(r, delay=0, reply=False, tags="", style=None):
         reply_html = (f'<details class="rv-reply"><summary>Response from {BIZ["name"]}</summary>'
                       f'<p>{_html.escape(r["reply"])}</p></details>')
     data = f' data-tags="{tags}"' if tags else ""
-    vcls, label = "", ""
-    if style:
-        vcls = f" rv-s{style}"
-        label = f'<span class="rv-style-tag">Style {style} · {REVIEW_STYLES[style - 1]}</span>'
-    return f"""<article class="rv-card{vcls} reveal" data-delay="{delay}"{data}>{label}
+    return f"""<article class="rv-card reveal" data-delay="{delay}"{data}>
   <div class="rv-top"><span class="rv-stars" role="img" aria-label="{r.get('stars') or 5} out of 5 stars">{stars}</span><span class="rv-g" title="Posted on Google">{GOOGLE_G}</span></div>
   <blockquote class="rv-text{' rv-long' if long_text else ''}">{text}</blockquote>{more}
   <div class="rv-who"><span class="rv-avatar" style="background:{tint}" aria-hidden="true">{initial}</span><span><b>{_html.escape(name)}</b><span>{_review_date(r.get('created'))}</span></span></div>
@@ -1690,11 +1683,23 @@ def google_reviews(depth=0, limit=6, words=None):
     if not picks:
         return ""
     root = rel(depth)
-    cards = "".join(google_review_card(r, delay=i % 3, style=(i + 1 if REVIEW_STYLE_TRIAL and i < 5 else None))
-                    for i, r in enumerate(picks))
+    cards = "".join(google_review_card(r, delay=i % 3) for i, r in enumerate(picks))
     return f"""{google_reviews_summary(depth)}
 <div class="rv-grid rv-row">{cards}</div>
 <p class="center mt-3"><a class="btn btn-ghost" href="{root}reviews.html">{icon('star')} Read all {BIZ['review_count']} reviews {icon('arrow')}</a></p>"""
+
+# The homepage review section's backdrop (owner's request, October 2026: try
+# the header's frosted-glass look on the review cards). Glass only reads as
+# glass over a photo, so this section sits on one from the shoot, with a
+# light dark wash so the white heading reads.
+REVIEW_GLASS_PHOTO = "assets/img/fall-towel-backlit.jpg"
+REVIEW_GLASS_TINT = "linear-gradient(180deg, rgba(10,10,12,.34) 0%, rgba(10,10,12,.22) 45%, rgba(10,10,12,.38) 100%)"
+
+def review_glass_style(depth=0):
+    """Inline background for the glass review section: same sized/format
+    ladder as the closing banner (1600w AVIF/WebP, 1200w JPEG fallback)."""
+    return (_cta_background(rel(depth), REVIEW_GLASS_PHOTO, overlay=REVIEW_GLASS_TINT)
+            + ";background-size:cover;background-position:center 40%")
 
 def google_reviews_page_list(depth=0, batch=24):
     """Every shown review for reviews.html, with topic filter chips and a
@@ -1711,8 +1716,7 @@ def google_reviews_page_list(depth=0, batch=24):
     for i, r in enumerate(reviews):
         low = r["text"].lower()
         tags = " ".join(key for key, _, words, _ in topics if any(w in low for w in words))
-        cards.append(google_review_card(r, delay=i % 3, reply=True, tags=tags,
-                                        style=(i + 1 if REVIEW_STYLE_TRIAL and i < 5 else None)))
+        cards.append(google_review_card(r, delay=i % 3, reply=True, tags=tags))
     chips = ""
     if topics:
         chips = ('<div class="rv-chips" role="group" aria-label="Filter reviews">'

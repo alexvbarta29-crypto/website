@@ -427,8 +427,8 @@ def build_home():
     </div>
   </section>
 
-  <!-- REVIEWS (Google) -->
-  <section>
+  <!-- REVIEWS (Google): frosted-glass cards over a shoot photo -->
+  <section{f' class="rv-glass" style="{C.review_glass_style(depth)}"' if C.GOOGLE_REVIEWS else ""}>
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">See what your</span>
