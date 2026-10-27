@@ -8,7 +8,7 @@
 import { derive, sha256, same, ONE_YEAR } from "./lights-auth.mjs";
 
 // sha256(PBKDF2(owner's password))
-const DEFAULT_CHECK = "cb2b02e799b3c6c6db45ade8d7ac0399dfec0b5eb2a9efdc2e45298b83f6a4e7";
+const DEFAULT_CHECK = "64454073c3e4bf4c39368d35b902f7b12535e97bf4785eedbf20cc4b766760b6";
 
 export { derive, sha256, same, ONE_YEAR };
 export const COOKIE = "barta_playbook";
