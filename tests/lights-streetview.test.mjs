@@ -87,3 +87,21 @@ test("without a Google key it says Street View isn't set up", async () => {
   assert.equal(res.status, 503);
   assert.equal((await res.json()).error, "not_configured");
 });
+
+test("move slides to the next panorama along the road and re-aims at the house", async () => {
+  const NEXT = { lat: 45.0415, lng: -93.7895 };
+  google([["/streetview/metadata", { status: "OK", pano_id: "NeXtPaNo_456", location: NEXT }]]);
+  const res = await get(`move=-1&pano=AbCdEfGhIjKl_123&lat=${PANO.lat}&lng=${PANO.lng}&heading=60&hlat=${HOUSE.lat}&hlng=${HOUSE.lng}`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.pano, "NeXtPaNo_456");
+  assert.equal(body.heading, Math.round(mod.bearing(NEXT, HOUSE)));
+  assert.equal(calls.length, 1);
+});
+
+test("move says end_of_road when there is no further panorama", async () => {
+  google([["/streetview/metadata", { status: "OK", pano_id: "AbCdEfGhIjKl_123", location: PANO }]]);
+  const res = await get(`move=1&pano=AbCdEfGhIjKl_123&lat=${PANO.lat}&lng=${PANO.lng}&heading=60&hlat=${HOUSE.lat}&hlng=${HOUSE.lng}`);
+  assert.equal(res.status, 404);
+  assert.equal((await res.json()).error, "end_of_road");
+});
