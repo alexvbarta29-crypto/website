@@ -1,6 +1,6 @@
 # Barta Office (/office)
 
-The office's tools as one app: a sidebar on computers (a tab bar on phones)
+The office's tools as one app: a frosted-glass header across the top (like the website's)
 to switch between
 
 - **Christmas Lights** → `/lights` (Light Studio)

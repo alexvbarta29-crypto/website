@@ -25,38 +25,41 @@ export const OFFICE_HTML = `<!doctype html><html lang="en"><head><meta charset="
 @font-face{font-family:'Cabinet Grotesk';src:url('/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800}
 @font-face{font-family:'General Sans';src:url('/assets/fonts/GeneralSans-Medium.v1.woff2') format('woff2');font-weight:500}
 @font-face{font-family:'General Sans';src:url('/assets/fonts/GeneralSans-Semibold.v1.woff2') format('woff2');font-weight:600}
-:root{color-scheme:light;--side:#16161b;--side-2:#24242b;--muted:rgba(255,255,255,.62);--coral:#fb4d3d;--coral-2:#ff6a3d;--mist:#f4f4f6}
+:root{color-scheme:light;--ink:#16161b;--slate:#3b3b42;--muted:#67676f;--coral:#fb4d3d;--mist:#f4f4f6;--glass:rgba(255,255,255,.62);--glass-line:rgba(255,255,255,.5)}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{display:flex;background:var(--side);color:#16161b;font:500 14px/1.4 'General Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
-.side{flex:none;width:224px;display:flex;flex-direction:column;padding:18px 12px 14px;padding-left:max(12px,env(safe-area-inset-left));color:#fff}
-.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;color:#fff;text-decoration:none}
-.brand img{height:24px;width:auto;display:block;filter:brightness(0) invert(1)}
-.brand span{font:800 17px/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:-.01em;color:var(--muted)}
-.nav{display:flex;flex-direction:column;gap:3px}
-.item{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border:0;border-radius:12px;background:none;color:var(--muted);font:600 14.5px/1 inherit;font-family:inherit;text-align:left;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
-.item:hover{background:var(--side-2);color:#fff}
-.item[aria-selected="true"]{background:linear-gradient(135deg,var(--coral),var(--coral-2));color:#fff;box-shadow:0 8px 22px rgba(251,77,61,.28)}
-.item svg{width:20px;height:20px;flex:none}
+body{background:var(--mist);color:var(--ink);font:500 14px/1.4 'General Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+/* Frosted header, like the website's: barely there until you look for it. */
+.side{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(1180px,calc(100% - 16px));height:54px;display:flex;align-items:center;gap:6px;padding:0 8px 0 18px;background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(40px);backdrop-filter:saturate(180%) blur(40px);border:1px solid var(--glass-line);border-radius:999px;box-shadow:0 6px 24px rgba(14,14,18,.07)}
+.brand{display:flex;align-items:center;gap:9px;flex:none;margin-right:10px;color:inherit;text-decoration:none}
+.brand img{height:24px;width:auto;display:block}
+.brand span{font:800 15px/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:-.01em;color:var(--muted)}
+.nav{display:flex;align-items:center;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.item{flex:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border:0;border-radius:999px;background:none;color:var(--slate);font:600 14px/1 inherit;font-family:inherit;text-decoration:none;white-space:nowrap;cursor:pointer;transition:background .2s,color .2s}
+.item:hover{background:rgba(251,77,61,.08);color:var(--ink)}
+.item[aria-selected="true"]{background:rgba(251,77,61,.1);color:var(--coral)}
+.item svg{width:18px;height:18px;flex:none}
 .item .short{display:none}
-.item .ext{width:14px;height:14px;margin-left:auto;opacity:.6}
-.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
-main{position:relative;flex:1;min-width:0;margin:8px 8px 8px 0;border-radius:18px;overflow:hidden;background:var(--mist)}
+.item .ext{width:13px;height:13px;opacity:.55}
+.side-foot{flex:none;display:flex;align-items:center}
+main{position:fixed;left:0;right:0;bottom:0;top:calc(max(8px,env(safe-area-inset-top)) + 62px);background:var(--mist)}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--mist)}
 iframe[hidden]{display:none}
 .boot{position:absolute;inset:0;display:grid;place-items:center;color:#85858d;font-weight:600}
 @media (max-width:860px){
-  body{flex-direction:column-reverse}
-  .side{width:auto;flex-direction:row;padding:6px max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
-  .brand,.side-foot{display:none}
-  .nav{flex-direction:row;flex:1;gap:4px}
-  .item{flex:1;flex-direction:column;justify-content:center;gap:4px;height:56px;padding:0 4px;font-size:11px;border-radius:12px}
-  .item[aria-selected="true"]{box-shadow:none}
+  .side{height:50px;padding:0 6px 0 12px}
+  .brand span{display:none}
+  .brand{margin-right:4px}
+  .brand img{height:20px}
+  .item{padding:0 10px;gap:6px;font-size:13px}
   .item .full{display:none}.item .short{display:inline}
-  main{margin:0;border-radius:0 0 18px 18px;padding-top:env(safe-area-inset-top)}
+  .item:not([aria-selected="true"]) .short{display:none}
+  .side-foot .item span{display:none}
+  main{top:calc(max(8px,env(safe-area-inset-top)) + 58px)}
 }
 </style></head><body>
-<aside class="side">
+<header class="side">
   <a class="brand" href="/office" aria-label="Barta Office"><img src="/assets/img/logo-bww.png" alt="" width="89" height="24"><span>Office</span></a>
   <nav class="nav" role="tablist" aria-label="Office tools">
 ${TOOLS.map((t) => `    <button type="button" class="item" role="tab" data-tool="${t.id}" aria-selected="false">${svg(t.icon)}<span class="full">${esc(t.label)}</span><span class="short">${esc(t.short || t.label)}</span></button>`).join("\n")}
@@ -64,7 +67,7 @@ ${TOOLS.map((t) => `    <button type="button" class="item" role="tab" data-tool=
   <div class="side-foot">
 ${LINKS.map((l) => `    <a class="item" href="${esc(l.href)}" target="_blank" rel="noopener">${svg('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>')}<span>${esc(l.label)}</span>${svg('<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>').replace('<svg ', '<svg class="ext" ')}</a>`).join("\n")}
   </div>
-</aside>
+</header>
 <main id="main"><div class="boot">Loading…</div></main>
 <script>
 (() => {
