@@ -10,11 +10,11 @@ light lines on the house, and download the photo named for the customer.
   the whole string to update the tool). It is not a static file, so it can't be
   reached without signing in.
 - **Password:** the owner's chosen default (the owner has it; the code keeps
-  only a digest). To change it, set `LIGHTS_PASSWORD` in Netlify → Site
+  only a digest). To change it, set `OFFICE_PASSWORD` in Netlify → Site
   configuration → Environment variables and redeploy. Changing it signs every
   device out.
 - **Staying signed in:** the right password sets a year-long HttpOnly cookie
-  (`barta_lights`, path `/lights`) that renews on every visit, so each device
+  (`barta_office`, path `/`, shared by all office tools; see docs/OFFICE.md) that renews on every visit, so each device
   types the password once.
 
 ## Street View by address

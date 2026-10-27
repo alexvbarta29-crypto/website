@@ -27,11 +27,12 @@ function html(body, status = 200, extra = {}) {
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-export function loginPage(error = "") {
+export function loginPage(error = "", opts = {}) {
+  const o = { title: "Barta Light Studio", text: "Enter the password to open the light mockup tool. This browser will remember you.", action: "/lights", ...opts };
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Barta Light Studio</title>
+<title>${esc(o.title)}</title>
 <style>
 @font-face{font-family:'Cabinet Grotesk';src:url('/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800}
 @font-face{font-family:'General Sans';src:url('/assets/fonts/GeneralSans-Medium.v1.woff2') format('woff2');font-weight:500}
@@ -48,9 +49,9 @@ input[type=password]:focus{border-color:#fb4d3d;background:#fff;box-shadow:0 0 0
 button{margin-top:16px;width:100%;border:0;border-radius:999px;padding:16px;font:800 1rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.045em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#fb4d3d,#ff6a3d);box-shadow:0 14px 38px rgba(251,77,61,.34);cursor:pointer}
 .err{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:#fff5f3;border:1px solid rgba(208,51,31,.25);color:#d0331f;font-size:.92rem}
 </style></head><body>
-<form class="card" method="post" action="/lights">
-<h1>Barta Light Studio</h1>
-<p>Enter the password to open the light mockup tool. This browser will remember you.</p>
+<form class="card" method="post" action="${esc(o.action)}">
+<h1>${esc(o.title)}</h1>
+<p>${esc(o.text)}</p>
 ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 <input class="user" type="text" name="username" value="Barta" autocomplete="username" tabindex="-1" aria-hidden="true" readonly>
 <label for="pw">Password</label>
@@ -74,7 +75,7 @@ export default async (req) => {
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
     const check = expected();
-    if (!check) return html(loginPage("Light Studio isn't set up yet: add LIGHTS_PASSWORD in Netlify."), 503);
+    if (!check) return html(loginPage("Light Studio isn't set up yet: add OFFICE_PASSWORD in Netlify."), 503);
     const token = pw ? derive(pw) : "";
     if (token && same(sha256(token), check)) {
       return new Response(null, {

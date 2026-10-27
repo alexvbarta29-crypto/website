@@ -21,6 +21,7 @@ import {
   openStore, allReferrals, allReferrers, getReferral, getReferrer, saveReferralRecord,
   saveReferrer, deleteReferral, deleteReferrer, referralsForReferrer,
 } from "../lib/referral-store.mjs";
+import { signedIn as officeSignedIn } from "../lib/lights-auth.mjs";
 
 const json = (body, status = 200, headers = {}) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
@@ -54,6 +55,8 @@ export default async (req) => {
 export const config = { path: "/api/referral/admin" };
 
 function authorize(req) {
+  // Signed in to Barta Office (one office password): no admin key needed.
+  if (officeSignedIn(req)) return null;
   const key = String(process.env.REFERRAL_ADMIN_KEY || "").trim();
   if (!key)
     return fail(503, "The admin key isn't configured on the server yet (set REFERRAL_ADMIN_KEY in Netlify).");

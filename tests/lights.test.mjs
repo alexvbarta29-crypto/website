@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-process.env.LIGHTS_PASSWORD = "test-password";
+process.env.OFFICE_PASSWORD = "test-password";
 const lights = (await import("../netlify/functions/lights.mjs")).default;
 
 const get = (cookie) => lights(new Request("https://x.test/lights", { headers: cookie ? { cookie } : {} }));
@@ -42,30 +42,30 @@ test("right password signs in for a year and opens the tool", async () => {
 });
 
 test("a forged cookie doesn't get in", async () => {
-  const res = await get("barta_lights=" + "a".repeat(64));
+  const res = await get("barta_office=" + "a".repeat(64));
   assert.doesNotMatch(await res.text(), /Paste or drop the house photos/);
 });
 
-test("changing LIGHTS_PASSWORD swaps the password and signs old devices out", async () => {
+test("changing OFFICE_PASSWORD swaps the password and signs old devices out", async () => {
   const old = cookieOf(await post("test-password"));
-  process.env.LIGHTS_PASSWORD = "new-secret";
+  process.env.OFFICE_PASSWORD = "new-secret";
   try {
     assert.equal((await post("test-password")).status, 401);
     assert.equal((await post("new-secret")).status, 303);
     assert.doesNotMatch(await (await get(old)).text(), /Paste or drop the house photos/);
   } finally {
-    process.env.LIGHTS_PASSWORD = "test-password";
+    process.env.OFFICE_PASSWORD = "test-password";
   }
 });
 
-test("with no LIGHTS_PASSWORD set, the built-in default still guards the page", async () => {
-  delete process.env.LIGHTS_PASSWORD;
+test("with no OFFICE_PASSWORD set, the built-in default still guards the page", async () => {
+  delete process.env.OFFICE_PASSWORD;
   try {
     assert.equal((await post("test-password")).status, 401);
     assert.equal((await post("")).status, 401);
     assert.doesNotMatch(await (await get()).text(), /Paste or drop the house photos/);
   } finally {
-    process.env.LIGHTS_PASSWORD = "test-password";
+    process.env.OFFICE_PASSWORD = "test-password";
   }
 });
 

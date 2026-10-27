@@ -3,11 +3,11 @@
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
-process.env.LIGHTS_PASSWORD = "test-password";
+process.env.OFFICE_PASSWORD = "test-password";
 const { derive } = await import("../netlify/lib/lights-auth.mjs");
 const mod = await import("../netlify/functions/lights-streetview.mjs");
 const sv = mod.default;
-const cookie = "barta_lights=" + derive("test-password");
+const cookie = "barta_office=" + derive("test-password");
 
 const realFetch = globalThis.fetch;
 let calls;

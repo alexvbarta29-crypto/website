@@ -65,7 +65,7 @@ export default async (req) => {
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
     const check = expected();
-    if (!check) return html(loginPage("The playbook isn't set up yet: add PLAYBOOK_PASSWORD in Netlify."), 503);
+    if (!check) return html(loginPage("The playbook isn't set up yet: add OFFICE_PASSWORD in Netlify."), 503);
     const token = pw ? derive(pw) : "";
     if (token && same(sha256(token), check)) {
       return new Response(null, {

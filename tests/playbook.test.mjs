@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-process.env.PLAYBOOK_PASSWORD = "test-password";
+process.env.OFFICE_PASSWORD = "test-password";
 const playbook = (await import("../netlify/functions/playbook.mjs")).default;
 
 const get = (cookie) => playbook(new Request("https://x.test/playbook", { headers: cookie ? { cookie } : {} }));
@@ -35,7 +35,7 @@ test("right password remembers the device for a year and opens the playbook", as
   const sc = res.headers.get("set-cookie");
   assert.match(sc, /Max-Age=31536000/);
   assert.match(sc, /HttpOnly/);
-  assert.match(sc, /Path=\/playbook/);
+  assert.match(sc, /Path=\/;/);
   const page = await get(cookieOf(res));
   assert.equal(page.status, 200);
   const body = await page.text();
@@ -44,6 +44,6 @@ test("right password remembers the device for a year and opens the playbook", as
 });
 
 test("a forged cookie does not get in", async () => {
-  const res = await get("barta_playbook=" + "0".repeat(64));
+  const res = await get("barta_office=" + "0".repeat(64));
   assert.doesNotMatch(await res.text(), /phone tag/);
 });
