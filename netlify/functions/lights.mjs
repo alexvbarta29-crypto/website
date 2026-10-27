@@ -59,6 +59,16 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 </form></body></html>`;
 }
 
+// Live Street View and the live satellite map need a browser key. It's only
+// handed to signed-in browsers, and should be restricted in Google Cloud to
+// this website and the Maps JavaScript API (GOOGLE_MAPS_BROWSER_KEY).
+export function withMapsKey(page) {
+  const key = String(process.env.GOOGLE_MAPS_BROWSER_KEY || "").trim();
+  if (!key) return page;
+  const tag = `<script>window.BLS_MAPS_KEY=${JSON.stringify(key).replace(/</g, "\\u003c")}</script>`;
+  return page.replace("<body>", "<body>" + tag);
+}
+
 export default async (req) => {
   if (req.method === "POST") {
     let pw = "";
@@ -79,7 +89,7 @@ export default async (req) => {
   }
   if (signedIn(req)) {
     // Keep the year-long sign-in rolling while the tool is in use.
-    return html(LIGHTS_HTML, 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
+    return html(withMapsKey(LIGHTS_HTML), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
   }
   return html(loginPage());
 };
