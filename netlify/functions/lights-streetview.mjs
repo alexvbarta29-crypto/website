@@ -4,6 +4,9 @@
 //   ?address=123 Main St, Delano   → JSON {address, pano, heading, pitch, fov}:
 //       the nearest outdoor Street View panorama, aimed at the house.
 //   ?pano=…&heading=…&pitch=…&fov=… → the 640×480 JPEG of that view.
+//   ?move=1|-1&pano=…&lat=…&lng=…&heading=…&hlat=…&hlng=… → the next panorama
+//       to the right (1) or left (-1) along the road, still aimed at the house
+//       (Street View metadata lookups are free).
 //
 // Only answers a signed-in /lights browser (same cookie as the page), so the
 // Google key can't be spent by anyone else. The key stays server-side:
@@ -37,6 +40,14 @@ export function meters(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+// The point d meters from a along compass bearing b.
+export function offset(a, b, d) {
+  const R = 6371000, br = toRad(b), p1 = toRad(a.lat), l1 = toRad(a.lng), q = d / R;
+  const p2 = Math.asin(Math.sin(p1) * Math.cos(q) + Math.cos(p1) * Math.sin(q) * Math.cos(br));
+  const l2 = l1 + Math.atan2(Math.sin(br) * Math.sin(q) * Math.cos(p1), Math.cos(q) - Math.sin(p1) * Math.sin(p2));
+  return { lat: toDeg(p2), lng: toDeg(l2) };
+}
+
 async function getJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`google ${res.status}`);
@@ -68,6 +79,10 @@ async function find(address, key) {
     ok: true,
     address: top.formatted_address || address,
     pano: meta.pano_id,
+    lat: from.lat,
+    lng: from.lng,
+    hlat: house.lat,
+    hlng: house.lng,
     heading: Math.round(bearing(from, house)),
     // Closer houses need a wider, higher view to fit the roofline.
     pitch: d < 18 ? 14 : d < 35 ? 10 : 6,
@@ -79,6 +94,26 @@ const num = (v, lo, hi) => {
   const n = Number(v);
   return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
 };
+
+// Step sideways along the road: the next panorama past the current one, at
+// right angles to where the camera faces, then aim it back at the house.
+async function move(params, key) {
+  const dir = Number(params.get("move")) < 0 ? -1 : 1;
+  const pano = String(params.get("pano") || "");
+  const here = { lat: num(params.get("lat"), -90, 90), lng: num(params.get("lng"), -180, 180) };
+  const house = { lat: num(params.get("hlat"), -90, 90), lng: num(params.get("hlng"), -180, 180) };
+  const heading = num(params.get("heading"), -720, 720);
+  if (here.lat === null || here.lng === null || house.lat === null || house.lng === null || heading === null) return fail("bad_request", 400);
+  const side = (heading + 90 * dir + 360) % 360;
+  for (const d of [10, 16, 24, 34]) {
+    const to = offset(here, side, d);
+    const m = await getJson(`${GOOGLE}/streetview/metadata?${new URLSearchParams({ location: `${to.lat},${to.lng}`, radius: "12", source: "outdoor", key })}`);
+    if (m.status === "OK" && m.pano_id && m.pano_id !== pano && m.location) {
+      return json({ ok: true, pano: m.pano_id, lat: m.location.lat, lng: m.location.lng, heading: Math.round(bearing(m.location, house)) });
+    }
+  }
+  return fail("end_of_road", 404);
+}
 
 async function image(params, key) {
   const pano = String(params.get("pano") || "");
@@ -108,6 +143,7 @@ export default async (req) => {
   try {
     const address = String(params.get("address") || "").trim().slice(0, 200);
     if (address) return await find(address, key);
+    if (params.has("move")) return await move(params, key);
     if (params.has("pano")) return await image(params, key);
     return fail("bad_request", 400);
   } catch (e) {
