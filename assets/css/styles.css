@@ -1685,3 +1685,45 @@ html:not(.js) .rv-more { display: none; }
   html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
   .rv-score { font-size: 2.4rem; }
 }
+
+/* ---- Review card style trial (owner's request, October 2026): the first
+   five cards of a section each wear one look, labelled, so the owner can
+   choose one for all of them. Remove the losers once picked. ---- */
+.rv-card { position: relative; }
+.rv-style-tag { position: absolute; top: -11px; left: 18px; z-index: 2; padding: 3px 10px; border-radius: var(--r-pill); background: var(--ink); color: #fff; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.rv-row .rv-card { margin-top: 12px; }
+
+/* 1 · Clean premium: borderless, deep soft shadow, coral quote mark. */
+.rv-s1 { border-color: transparent; box-shadow: 0 24px 60px -20px rgba(14,14,18,.22), 0 2px 8px rgba(14,14,18,.05); padding: 32px; }
+.rv-s1 .rv-text { font-size: 1.06rem; color: var(--ink); }
+.rv-s1 .rv-text::before { content: "\201C"; display: block; font-family: Georgia, serif; font-size: 3.6rem; line-height: .6; color: var(--blue-600); margin: 6px 0 10px; }
+.rv-s1 .rv-who { border-top: 1px solid var(--line); margin-top: 22px; }
+
+/* 2 · Dark luxe: deep charcoal card, white text, gold stars, coral rule. */
+.rv-s2 { background: var(--grad-deep); border-color: transparent; box-shadow: var(--sh-lg); }
+.rv-s2::after { content: ""; position: absolute; left: 26px; right: 26px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--grad-brand); }
+.rv-s2 .rv-text { color: rgba(255,255,255,.88); }
+.rv-s2 .rv-who b { color: #fff; }
+.rv-s2 .rv-who span span { color: rgba(255,255,255,.55); }
+.rv-s2 .rv-more { color: var(--sky-400); }
+.rv-s2 .rv-reply { border-color: rgba(255,255,255,.12); color: rgba(255,255,255,.6); }
+.rv-s2 .rv-reply summary { color: #fff; }
+.rv-s2 .rv-reply p { color: rgba(255,255,255,.6); }
+
+/* 3 · Big quote: the review as a headline, oversized quote watermark. */
+.rv-s3 { background: linear-gradient(180deg, #fff 0%, var(--mist) 100%); }
+.rv-s3::before { content: "\201D"; position: absolute; right: 18px; bottom: -18px; font-family: Georgia, serif; font-size: 8rem; line-height: .8; color: rgba(251,77,61,.10); pointer-events: none; }
+.rv-s3 .rv-text { font-family: var(--font-head); font-weight: 700; font-size: 1.22rem; line-height: 1.38; color: var(--ink); letter-spacing: -.01em; }
+
+/* 4 · Accent stripe: soft tint, coral stripe down the left, verified chip. */
+.rv-s4 { background: #fffaf8; border-color: #fde3dd; border-left: 5px solid var(--blue-600); border-radius: var(--r-md); }
+.rv-s4 .rv-top::after { content: "Verified review"; white-space: nowrap; order: 1; margin-left: auto; margin-right: 10px; padding: 3px 9px; border-radius: var(--r-pill); background: rgba(24,182,115,.12); color: #128a57; font-size: .72rem; font-weight: 700; }
+.rv-s4 .rv-g { order: 2; }
+
+/* 5 · Google style: reviewer up top like on Google Maps, then stars and text. */
+.rv-s5 { border-radius: 16px; box-shadow: none; border-color: #e3e3e3; }
+.rv-s5 .rv-who { order: -1; margin-top: 0; padding-top: 0; margin-bottom: 12px; }
+.rv-s5 .rv-avatar { width: 38px; height: 38px; font-size: .95rem; }
+.rv-s5 .rv-top { margin-bottom: 8px; }
+.rv-s5 .rv-stars svg { width: 15px; height: 15px; }
+.rv-s5 .rv-text { font-size: .95rem; color: #3c4043; }

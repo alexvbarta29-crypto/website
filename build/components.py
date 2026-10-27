@@ -1639,9 +1639,16 @@ def _review_date(iso):
 
 _AVATAR_TINTS = ["#fb4d3d", "#18b673", "#3b82f6", "#f59e0b", "#8b5cf6", "#0ea5a4"]
 
-def google_review_card(r, delay=0, reply=False, tags=""):
+# Owner's trial (October 2026): the first five cards of a review section each
+# get a different look, labelled "Style 1"-"Style 5", so the owner can pick
+# one for every card. Set to False (or apply the winner) once chosen.
+REVIEW_STYLE_TRIAL = True
+REVIEW_STYLES = ["Clean premium", "Dark luxe", "Big quote", "Accent stripe", "Google style"]
+
+def google_review_card(r, delay=0, reply=False, tags="", style=None):
     """One review. Long text is clamped to a few lines with a "Read more"
-    toggle (main.js); without JavaScript the full text simply shows."""
+    toggle (main.js); without JavaScript the full text simply shows.
+    style=1-5 applies one of the trial looks (REVIEW_STYLES) with its label."""
     name = _review_name(r.get("name"))
     initial = _html.escape(name[:1].upper() or "G")
     tint = _AVATAR_TINTS[sum(map(ord, name)) % len(_AVATAR_TINTS)]
@@ -1654,7 +1661,11 @@ def google_review_card(r, delay=0, reply=False, tags=""):
         reply_html = (f'<details class="rv-reply"><summary>Response from {BIZ["name"]}</summary>'
                       f'<p>{_html.escape(r["reply"])}</p></details>')
     data = f' data-tags="{tags}"' if tags else ""
-    return f"""<article class="rv-card reveal" data-delay="{delay}"{data}>
+    vcls, label = "", ""
+    if style:
+        vcls = f" rv-s{style}"
+        label = f'<span class="rv-style-tag">Style {style} · {REVIEW_STYLES[style - 1]}</span>'
+    return f"""<article class="rv-card{vcls} reveal" data-delay="{delay}"{data}>{label}
   <div class="rv-top"><span class="rv-stars" role="img" aria-label="{r.get('stars') or 5} out of 5 stars">{stars}</span><span class="rv-g" title="Posted on Google">{GOOGLE_G}</span></div>
   <blockquote class="rv-text{' rv-long' if long_text else ''}">{text}</blockquote>{more}
   <div class="rv-who"><span class="rv-avatar" style="background:{tint}" aria-hidden="true">{initial}</span><span><b>{_html.escape(name)}</b><span>{_review_date(r.get('created'))}</span></span></div>
@@ -1679,7 +1690,8 @@ def google_reviews(depth=0, limit=6, words=None):
     if not picks:
         return ""
     root = rel(depth)
-    cards = "".join(google_review_card(r, delay=i % 3) for i, r in enumerate(picks))
+    cards = "".join(google_review_card(r, delay=i % 3, style=(i + 1 if REVIEW_STYLE_TRIAL and i < 5 else None))
+                    for i, r in enumerate(picks))
     return f"""{google_reviews_summary(depth)}
 <div class="rv-grid rv-row">{cards}</div>
 <p class="center mt-3"><a class="btn btn-ghost" href="{root}reviews.html">{icon('star')} Read all {BIZ['review_count']} reviews {icon('arrow')}</a></p>"""
@@ -1699,7 +1711,8 @@ def google_reviews_page_list(depth=0, batch=24):
     for i, r in enumerate(reviews):
         low = r["text"].lower()
         tags = " ".join(key for key, _, words, _ in topics if any(w in low for w in words))
-        cards.append(google_review_card(r, delay=i % 3, reply=True, tags=tags))
+        cards.append(google_review_card(r, delay=i % 3, reply=True, tags=tags,
+                                        style=(i + 1 if REVIEW_STYLE_TRIAL and i < 5 else None)))
     chips = ""
     if topics:
         chips = ('<div class="rv-chips" role="group" aria-label="Filter reviews">'
