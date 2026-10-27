@@ -68,3 +68,15 @@ test("with no LIGHTS_PASSWORD set, the built-in default still guards the page", 
     process.env.LIGHTS_PASSWORD = "test-password";
   }
 });
+
+test("the browser maps key is handed only to signed-in browsers", async () => {
+  process.env.GOOGLE_MAPS_BROWSER_KEY = "AIza-browser-test";
+  try {
+    assert.doesNotMatch(await (await get()).text(), /AIza-browser-test/);
+    const res = await post("test-password");
+    const page = await (await get(cookieOf(res))).text();
+    assert.match(page, /window\.BLS_MAPS_KEY="AIza-browser-test"/);
+  } finally {
+    delete process.env.GOOGLE_MAPS_BROWSER_KEY;
+  }
+});

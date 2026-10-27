@@ -45,3 +45,19 @@ every section and the total; **New line** starts a separate run, drag to move
 the map, zoom 17–21. Points are kept as latitude/longitude, so they stay put
 when the map moves or zooms. Needs the **Maps Static API** enabled for the
 same Google key (and added to the key's API restrictions).
+
+## Live Street View and live map
+
+With `GOOGLE_MAPS_BROWSER_KEY` set in Netlify, the signed-in page gets real,
+live Google Street View (drag, walk along the road, zoom) and a live
+satellite map for measuring. **Crop** captures exactly the view on screen
+(as a Street View Static picture of the same panorama, heading, pitch and
+zoom). Without the key, or if Google refuses it, the page falls back to the
+picture-by-picture view.
+
+Make it a **separate** key: Application restriction **Websites** →
+`https://www.bartawindowwashing.com/*` and `https://bartawindowwashing.com/*`;
+API restriction **Maps JavaScript API**. (The server key can't be
+website-restricted, because Google's server APIs refuse such keys.)
+Free monthly allowance: 10,000 dynamic map loads and 5,000 dynamic Street
+View loads.
