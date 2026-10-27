@@ -1710,7 +1710,7 @@ def google_reviews_summary(depth=0):
   <a class="rv-summary-link" href="{BIZ['google']}" target="_blank" rel="noopener"><span class="gb-g">{GOOGLE_G}</span> See them on Google {icon('arrow')}</a>
 </div>"""
 
-def google_reviews(depth=0, limit=8, words=None):
+def google_reviews(depth=0, limit=12, words=None):
     """A review section for the homepage and service pages: summary strip,
     up to `limit` cards (a swipeable row on phones), and a link to the full
     Reviews page. Returns '' when no Google reviews are saved yet, so callers
@@ -1720,8 +1720,14 @@ def google_reviews(depth=0, limit=8, words=None):
         return ""
     root = rel(depth)
     cards = "".join(google_review_card(r, delay=i % 3) for i, r in enumerate(picks))
+    # A banner of reviews you click (or swipe) through left to right (owner's
+    # request, October 2026); main.js drives the arrows.
     return f"""{google_reviews_summary(depth)}
-<div class="rv-grid rv-row">{cards}</div>
+<div class="rv-carousel">
+  <button type="button" class="rv-arrow prev" aria-label="Previous reviews" disabled>{icon('chevron')}</button>
+  <div class="rv-row" tabindex="0" aria-label="Google reviews, scroll sideways for more">{cards}</div>
+  <button type="button" class="rv-arrow next" aria-label="More reviews">{icon('chevron')}</button>
+</div>
 <p class="center mt-3"><a class="btn btn-ghost" href="{root}reviews.html">{icon('star')} Read all {BIZ['review_count']} reviews {icon('arrow')}</a></p>"""
 
 def google_reviews_page_list(depth=0, batch=24):

@@ -283,11 +283,14 @@ def _home_video_html():
         return ""
     with open(path, "rb") as f:
         vfp = hashlib.md5(f.read()).hexdigest()[:10]
-    return f"""<section class="home-video-section">
+    # Its own section, on the same soft red glow as the reviews (owner's
+    # request, October 2026), with the video in a frosted-glass frame.
+    return f"""<section class="home-video-section glow-red">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Watch</span>
         <h2>What to Expect</h2>
+        <p>A quick look at how we take care of your home, start to finish.</p>
       </div>
       <div class="home-video reveal">
         <video controls playsinline preload="none" poster="assets/video/barta-ad-poster.jpg?v={vfp}"
@@ -428,13 +431,13 @@ def build_home():
   </section>
 
   <!-- REVIEWS (Google): frosted-glass cards over soft brand glows -->
-  <section{' class="rv-glass"' if C.GOOGLE_REVIEWS else ""}>
+  <section{' class="rv-glass glow-red"' if C.GOOGLE_REVIEWS else ""}>
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      {C.google_reviews(depth, limit=8) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      {C.google_reviews(depth, limit=12) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 
@@ -868,7 +871,7 @@ def build_service(svc):
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      {C.google_reviews(depth, limit=8, words=SERVICE_REVIEW_WORDS.get(svc["slug"])) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      {C.google_reviews(depth, limit=12, words=SERVICE_REVIEW_WORDS.get(svc["slug"])) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 

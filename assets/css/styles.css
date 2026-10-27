@@ -1621,11 +1621,15 @@ html:has(.gw-ribbon:not([hidden])) { --ribbon-h: 50px; --hero-top-gap: 16px; }
   .phero-photo .photo { aspect-ratio: 16/10 !important; }
 }
 
-/* Homepage ad video (16:9) */
+/* Homepage ad video (16:9): its own section on the red glow, in a
+   frosted-glass frame like the review cards. */
+.home-video-section { padding-block: clamp(72px, 9vw, 120px); }
 .home-video-section .section-head { margin-bottom: clamp(24px, 3.5vw, 40px); }
-.home-video { max-width: 820px; margin-inline: auto; border-radius: 18px; overflow: hidden;
-  box-shadow: 0 18px 50px rgba(0,0,0,.18); background: #000; aspect-ratio: 16/9; }
-.home-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.home-video { max-width: 940px; margin-inline: auto; padding: 10px; border-radius: 28px;
+  background: linear-gradient(160deg, rgba(255,255,255,.72), rgba(255,255,255,.4)); border: 1px solid rgba(255,255,255,.95);
+  box-shadow: 0 30px 70px -30px rgba(120,20,10,.35), 0 2px 6px rgba(14,14,18,.05), inset 0 1px 0 #fff; }
+.home-video video { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 20px; background: #000; }
+@media (max-width: 760px) { .home-video { padding: 6px; border-radius: 20px; } .home-video video { border-radius: 15px; } }
 
 /* ---- Google reviews, rendered by the site itself (components.google_reviews,
    October 2026; replaces the Trustindex widget). Same card language as
@@ -1678,15 +1682,7 @@ html:not(.js) .rv-more { display: none; }
 .rv-chip.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
 .rv-chip.is-on b { color: rgba(255,255,255,.7); }
 
-/* Phones: the homepage/service-page row becomes a swipeable strip, one card
-   and a peek of the next, instead of six cards stacked down the page. */
 @media (max-width: 760px) {
-  .rv-row { columns: auto; display: flex; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin-inline: calc(var(--gutter) * -1); padding: 4px var(--gutter) 10px; scrollbar-width: none; }
-  .rv-row::-webkit-scrollbar { display: none; }
-  .rv-row .rv-card { flex: 0 0 78%; margin-bottom: 0; scroll-snap-align: center; }
-  /* The scroll-in fade can't see cards clipped by the strip, which would
-     leave the peeking next card blank: show them outright here. */
-  html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
   .rv-score { font-size: 2.4rem; }
 }
 
@@ -1698,10 +1694,45 @@ html:not(.js) .rv-more { display: none; }
    a bright rim and inner highlight, so the glows show through as frosted
    glass, and scrolling costs nothing extra (backdrop-filter on six cards was
    what made it heavy). */
-.rv-glass { background:
-    radial-gradient(40% 36% at 14% 42%, rgba(251,77,61,.30), transparent 72%),
-    radial-gradient(36% 34% at 86% 52%, rgba(255,180,0,.30), transparent 72%),
-    radial-gradient(40% 26% at 50% 66%, rgba(24,182,115,.16), transparent 72%),
+/* The soft red glow behind the homepage reviews and the What to Expect
+   video (owner: "make them all red"). Three brand reds, kept clear of the
+   section's edges so it melts into the white around it. */
+.glow-red { background:
+    radial-gradient(40% 36% at 14% 42%, rgba(251,77,61,.28), transparent 72%),
+    radial-gradient(36% 34% at 86% 52%, rgba(255,106,61,.26), transparent 72%),
+    radial-gradient(40% 26% at 50% 66%, rgba(208,51,31,.12), transparent 72%),
     #fff; }
 .rv-glass .rv-card { background: linear-gradient(160deg, rgba(255,255,255,.72), rgba(255,255,255,.4)); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 22px 50px -26px rgba(14,14,18,.22), 0 1px 3px rgba(14,14,18,.04), inset 0 1px 0 #fff; }
 .rv-glass .rv-summary-link, .rv-glass .btn-ghost { background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 8px 24px -12px rgba(14,14,18,.2); }
+
+/* Homepage and service-page reviews: a banner you click (arrows) or swipe
+   through left to right (owner's request, October 2026). Four cards across
+   on desktop, two on tablets, one and a peek on phones; every card the same
+   height. */
+.rv-carousel { position: relative; }
+/* Extra padding (taken back with negative margins) gives the cards' soft
+   shadows room inside the scroller, which would otherwise clip them into
+   hard straight edges. */
+.rv-row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; padding: 8px 28px 48px; margin: 0 -28px -22px; scroll-padding-inline: 28px; }
+.rv-row::-webkit-scrollbar { display: none; }
+.rv-row:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 4px; border-radius: var(--r-md); }
+.rv-row .rv-card { flex: 0 0 calc((100% - 3 * 16px) / 4); scroll-snap-align: start; }
+/* The scroll-in fade can't see cards clipped by the strip, which would leave
+   the ones off to the side blank: show them outright here. */
+html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
+.rv-arrow { position: absolute; top: calc(50% - 10px); transform: translateY(-50%); z-index: 2; width: 46px; height: 46px; border-radius: var(--r-pill);
+  background: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 10px 28px -10px rgba(14,14,18,.3);
+  display: grid; place-items: center; cursor: pointer; color: var(--ink); transition: transform .2s var(--ease), opacity .2s; }
+.rv-arrow svg { width: 20px; height: 20px; }
+.rv-arrow.prev { left: -22px; }
+.rv-arrow.prev svg { transform: rotate(90deg); }
+.rv-arrow.next { right: -22px; }
+.rv-arrow.next svg { transform: rotate(-90deg); }
+.rv-arrow:hover { transform: translateY(-50%) scale(1.08); }
+.rv-arrow:disabled { opacity: 0; pointer-events: none; }
+@media (max-width: 1100px) { .rv-row .rv-card { flex-basis: calc((100% - 16px) / 2); } .rv-arrow.prev { left: -8px; } .rv-arrow.next { right: -8px; } }
+@media (max-width: 760px) {
+  .rv-row { margin-inline: calc(var(--gutter) * -1); padding: 6px var(--gutter) 22px; scroll-padding-inline: var(--gutter); }
+  .rv-row .rv-card { flex-basis: 80%; scroll-snap-align: center; }
+  .rv-arrow { display: none; }
+}

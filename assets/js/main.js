@@ -1631,6 +1631,20 @@
     return n(days / 365.25, "year");
   };
   $$("time[data-ago]").forEach((t) => { const v = ago(t.getAttribute("datetime")); if (v) t.textContent = v; });
+  // Review banner arrows: one page of cards per click; hidden at either end.
+  $$(".rv-carousel").forEach((car) => {
+    const row = $(".rv-row", car), prev = $(".rv-arrow.prev", car), next = $(".rv-arrow.next", car);
+    if (!row || !prev || !next) return;
+    const step = () => { const c = row.firstElementChild; return c ? Math.max(c.offsetWidth + 16, row.clientWidth - 56 - c.offsetWidth / 2) : row.clientWidth; };
+    const sync = () => {
+      prev.disabled = row.scrollLeft < 12;
+      next.disabled = row.scrollLeft + row.clientWidth >= row.scrollWidth - 12;
+    };
+    prev.addEventListener("click", () => row.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }));
+    next.addEventListener("click", () => row.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }));
+    row.addEventListener("scroll", sync, { passive: true });
+    if ("ResizeObserver" in window) new ResizeObserver(sync).observe(row); else sync();
+  });
   $$("[data-rv-list]").forEach((list) => {
     const cards = $$(".rv-card", list);
     const batch = parseInt(list.dataset.batch, 10) || 24;
