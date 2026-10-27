@@ -25,6 +25,7 @@ test("every tab points at a page that exists", () => {
   for (const t of TOOLS) {
     if (t.src === "/lights") assert.ok(existsSync("netlify/functions/lights.mjs"));
     else if (t.src === "/playbook") assert.ok(existsSync("netlify/functions/playbook.mjs"));
+    else if (t.src === "/purchases") assert.ok(existsSync("netlify/functions/purchases.mjs"));
     else assert.ok(existsSync("." + t.src), t.src);
   }
 });
