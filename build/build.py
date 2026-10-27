@@ -434,7 +434,7 @@ def build_home():
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      {C.google_reviews(depth, limit=6) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      {C.google_reviews(depth, limit=8) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 
@@ -868,7 +868,7 @@ def build_service(svc):
         <span class="eyebrow" style="justify-content:center">See what your</span>
         <h2>Neighbors are saying</h2>
       </div>
-      {C.google_reviews(depth, limit=6, words=SERVICE_REVIEW_WORDS.get(svc["slug"])) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
+      {C.google_reviews(depth, limit=8, words=SERVICE_REVIEW_WORDS.get(svc["slug"])) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 

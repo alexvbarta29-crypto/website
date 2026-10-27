@@ -1629,9 +1629,42 @@ def _review_name(name):
     """'Shanna Guidry' -> 'Shanna G.': first name and last initial, enough to
     be real without reprinting a customer's full name off Google."""
     parts = (name or "").split()
+    if parts:
+        parts[0] = parts[0][:1].upper() + parts[0][1:]
     if len(parts) >= 2 and parts[0].lower() != "a":
         return f"{parts[0]} {parts[-1][0].upper()}."
+    if parts:
+        return parts[0]
     return name or "Google user"
+
+def review_ago(iso, now=None):
+    """'2 days ago' style age of a review. Printed at build time as the
+    fallback; main.js recomputes it in the visitor's browser from the
+    <time datetime>, so it never goes stale between rebuilds."""
+    from datetime import timezone
+    try:
+        then = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        return ""
+    now = now or datetime.now(timezone.utc)
+    secs = max(0, (now - then).total_seconds())
+    days = secs / 86400
+    def n(v, unit):
+        v = int(v)
+        return f"{v} {unit}{'' if v == 1 else 's'} ago"
+    if secs < 3600:
+        return "just now" if secs < 60 else n(secs / 60, "minute")
+    if secs < 86400:
+        return n(secs / 3600, "hour")
+    if days < 2:
+        return "yesterday"
+    if days < 7:
+        return n(days, "day")
+    if days < 30:
+        return n(days / 7, "week")
+    if days < 365:
+        return n(max(1, days / 30.44), "month")
+    return n(days / 365.25, "year")
 
 def _review_date(iso):
     try:
@@ -1651,17 +1684,20 @@ def google_review_card(r, delay=0, reply=False, tags=""):
     tint = _AVATAR_TINTS[sum(map(ord, name)) % len(_AVATAR_TINTS)]
     stars = icon("star") * max(1, min(5, int(r.get("stars") or 5)))
     text = _html.escape(r["text"])
-    long_text = len(r["text"]) > 260
+    long_text = len(r["text"]) > 200
     more = '<button type="button" class="rv-more" aria-expanded="false">Read more</button>' if long_text else ""
     reply_html = ""
     if reply and r.get("reply"):
         reply_html = (f'<details class="rv-reply"><summary>Response from {BIZ["name"]}</summary>'
                       f'<p>{_html.escape(r["reply"])}</p></details>')
     data = f' data-tags="{tags}"' if tags else ""
+    created = r.get("created") or ""
+    when = (f'<time datetime="{_html.escape(created)}" data-ago title="{_review_date(created)}">{review_ago(created)}</time>'
+            if created else "")
     return f"""<article class="rv-card reveal" data-delay="{delay}"{data}>
-  <div class="rv-top"><span class="rv-stars" role="img" aria-label="{r.get('stars') or 5} out of 5 stars">{stars}</span><span class="rv-g" title="Posted on Google">{GOOGLE_G}</span></div>
+  <div class="rv-who"><span class="rv-avatar" style="background:{tint}" aria-hidden="true">{initial}</span><span class="rv-id"><b>{_html.escape(name)}</b>{when}</span><span class="rv-g" title="Posted on Google">{GOOGLE_G}</span></div>
+  <span class="rv-stars" role="img" aria-label="{r.get('stars') or 5} out of 5 stars">{stars}</span>
   <blockquote class="rv-text{' rv-long' if long_text else ''}">{text}</blockquote>{more}
-  <div class="rv-who"><span class="rv-avatar" style="background:{tint}" aria-hidden="true">{initial}</span><span><b>{_html.escape(name)}</b><span>{_review_date(r.get('created'))}</span></span></div>
   {reply_html}
 </article>"""
 
@@ -1674,7 +1710,7 @@ def google_reviews_summary(depth=0):
   <a class="rv-summary-link" href="{BIZ['google']}" target="_blank" rel="noopener"><span class="gb-g">{GOOGLE_G}</span> See them on Google {icon('arrow')}</a>
 </div>"""
 
-def google_reviews(depth=0, limit=6, words=None):
+def google_reviews(depth=0, limit=8, words=None):
     """A review section for the homepage and service pages: summary strip,
     up to `limit` cards (a swipeable row on phones), and a link to the full
     Reviews page. Returns '' when no Google reviews are saved yet, so callers

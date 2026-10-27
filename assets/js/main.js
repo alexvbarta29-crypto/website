@@ -1614,6 +1614,23 @@
     btn.textContent = open ? "Show less" : "Read more";
     btn.setAttribute("aria-expanded", String(open));
   });
+  // "2 days ago": recomputed here so it's right on the day it's read, not
+  // the day the page was built (components.review_ago prints the fallback).
+  const ago = (iso) => {
+    const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (!isFinite(secs)) return null;
+    const days = secs / 86400;
+    const n = (v, u) => { v = Math.floor(v); return `${v} ${u}${v === 1 ? "" : "s"} ago`; };
+    if (secs < 60) return "just now";
+    if (secs < 3600) return n(secs / 60, "minute");
+    if (secs < 86400) return n(secs / 3600, "hour");
+    if (days < 2) return "yesterday";
+    if (days < 7) return n(days, "day");
+    if (days < 30) return n(days / 7, "week");
+    if (days < 365) return n(Math.max(1, days / 30.44), "month");
+    return n(days / 365.25, "year");
+  };
+  $$("time[data-ago]").forEach((t) => { const v = ago(t.getAttribute("datetime")); if (v) t.textContent = v; });
   $$("[data-rv-list]").forEach((list) => {
     const cards = $$(".rv-card", list);
     const batch = parseInt(list.dataset.batch, 10) || 24;
