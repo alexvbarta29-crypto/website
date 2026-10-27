@@ -1,9 +1,9 @@
-// Sign-in for /lights (Barta Light Studio): the password check and the
-// year-long cookie, shared by the page (functions/lights.mjs) and its
-// Street View lookup (functions/lights-streetview.mjs).
+// Sign-in for the office tools: /office, /lights (Barta Light Studio and its
+// Street View lookup) and /playbook all share this one password and one
+// year-long cookie, so signing in once opens all of them.
 //
-// Password: the owner's chosen default (kept here only as a slow PBKDF2
-// digest), or the LIGHTS_PASSWORD Netlify env var when that is set. The
+// Password: the owner's chosen office password (kept here only as a slow
+// PBKDF2 digest), or the OFFICE_PASSWORD Netlify env var when that is set. The
 // cookie is the PBKDF2 key itself, which only someone who knows the password
 // can make. Changing the password signs every device out.
 
@@ -12,8 +12,8 @@ import { pbkdf2Sync, createHash, timingSafeEqual } from "node:crypto";
 const SALT = "barta-light-studio-v1";
 const ITERATIONS = 210000;
 // sha256(PBKDF2(default password))
-const DEFAULT_CHECK = "bc5533134f445a4a9da597d33bbb0eb012928b48711b4ccd11e337750020e621";
-export const COOKIE = "barta_lights";
+const DEFAULT_CHECK = "92ebfbd14dc36b38aab7a335f6c3724d0c077b64dd7646b73bbe2afc67d50896";
+export const COOKIE = "barta_office";
 export const ONE_YEAR = 365 * 24 * 60 * 60;
 
 export const derive = (pw) => pbkdf2Sync(String(pw), SALT, ITERATIONS, 32, "sha256").toString("hex");
@@ -22,7 +22,7 @@ export const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.fr
 
 let envCache = null;
 export function expected() {
-  const pw = String(process.env.LIGHTS_PASSWORD || "");
+  const pw = String(process.env.OFFICE_PASSWORD || "");
   if (!pw) return DEFAULT_CHECK;
   if (!envCache || envCache.pw !== pw) envCache = { pw, check: sha256(derive(pw)) };
   return envCache.check;
@@ -44,5 +44,5 @@ export const signedIn = (req) => {
 };
 
 export const cookieFor = (token, maxAge) =>
-  `${COOKIE}=${token}; Path=/lights; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+  `${COOKIE}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
 

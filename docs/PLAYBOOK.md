@@ -5,7 +5,7 @@ modeled on Mint's follow-up templates. Served by `netlify/functions/playbook.mjs
 `netlify/lib/playbook-page.mjs`. Not linked from the site, never indexed.
 
 - **Password:** the owner's own password (stored only as a PBKDF2 digest in
-  `playbook-auth.mjs`), or the `PLAYBOOK_PASSWORD` Netlify env var if set. Changing it signs every device out.
+  `playbook-auth.mjs`), or the `OFFICE_PASSWORD` Netlify env var if set. Changing it signs every device out.
 - **Remembered device:** the right password sets a year-long HttpOnly cookie scoped to
   `/playbook`, renewed on every visit.
 - **Review count:** read live from `/api/review-stats` (falls back to 150).
