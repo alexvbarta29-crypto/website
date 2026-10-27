@@ -1179,6 +1179,13 @@ def picture_card(item, depth=0, idx=0):
             f'<span class="img-card-arrow">{icon("arrow")}</span>'
             f'<span class="img-card-body"><h3>{item["label"]}</h3><p>{item["desc"]}</p></span></a>')
 
+# Alt text for the process-only crops, kept out of IMAGE_ALT so they don't
+# show up a second time on the Gallery page.
+_PROCESS_ALT = {
+    "assets/img/process-squeegee-closeup.jpg": "Close-up of a squeegee pulling soapy water off a glass door",
+    "assets/img/process-detail-door-frame.jpg": "Hand-detailing the frame of a glass door with a microfiber towel",
+}
+
 def process_slider(steps, depth=0):
     """Step slideshow (e.g. Mop / Scrub / Squeegee / Detail): photo on the
     left, numbered description panel on the right, with nav dots + progress
@@ -1190,12 +1197,15 @@ def process_slider(steps, depth=0):
 
     photo_attrs = 'loading="lazy" decoding="async"'
     # .process-photo is a fixed-height flex panel at ~42% of the track's
-    # width on desktop and a 200px fixed column on mobile (see styles.css).
-    photo_sizes = "(max-width: 760px) 200px, 42vw"
+    # width on desktop; on phones the slide stacks and the photo runs the
+    # full width of the card (container gutters + 20px slide padding each
+    # side, ~80px in all). The old "200px" mobile value made a 3x phone pick
+    # the 640w file for a ~310px-wide photo, which looked soft.
+    photo_sizes = "(max-width: 780px) calc(100vw - 80px), 42vw"
 
     def _slide(i, num, title, img, desc, fic):
         if img:
-            alt = IMAGE_ALT.get(img, f"{title} step of the Barta Window Washing cleaning process")
+            alt = IMAGE_ALT.get(img) or _PROCESS_ALT.get(img, f"{title} step of the Barta Window Washing cleaning process")
             photo_html = f'<div class="process-photo">{picture(root, img, alt, extra_attrs=photo_attrs, sizes=photo_sizes, focal_kind="process")}</div>'
         else:
             photo_html = f'<div class="process-photo process-photo-fallback"><span class="process-photo-icon">{icon(fic)}</span></div>'

@@ -614,16 +614,18 @@
     /* Swipe between steps (touch, or a mouse drag). The card follows the
        finger one-to-one and the neighbouring step slides in from the side,
        so letting go either carries it the rest of the way or springs back.
-       Releasing past a quarter of the card's width commits, and so does a
-       quick flick however short. The viewport has touch-action: pan-y, so a
-       vertical drag still scrolls the page as normal: the browser takes it
-       over and sends pointercancel. Until that happens the gesture stays
+       Releasing past 50px (or under a fifth of a narrow card) commits, and so does a
+       quick flick however short. A vertical drag still scrolls the page as
+       normal: the touchmove listener below only blocks scrolling once the
+       gesture has gone sideways, so otherwise the browser takes it over and
+       sends pointercancel. Until that happens the gesture stays
        undecided, because a thumb swipe usually starts with a small arc and
        the first few pixels can lean vertical before it turns sideways; only
        a mouse (which has no scroll to defer to) gives up on a vertical
        start. Drags from a button or link are left alone. */
     if (viewport && n > 1) {
-      const FLICK = 0.35;     // px per ms that commits regardless of distance
+      const FLICK = 0.25;     // px per ms that commits regardless of distance
+      const TOUCH_DECIDE = 12; // px a touch moves before it counts as a swipe or a scroll
       let sw = null;          // the drag in progress
       let settle = null;      // the previous swipe's slide animation, still finishing
       let swiped = false;     // set for the click that trails a committed mouse swipe
@@ -650,7 +652,7 @@
         // us (touch is captured implicitly; this does not stop touch-action's
         // pointercancel).
         try { viewport.setPointerCapture(e.pointerId); } catch (_) { /* older browsers */ }
-        sw = { id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY, axis: null, dir: 0,
+        sw = { id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY, xStart: e.clientX, axis: null, dir: 0,
                step: i, active: slides[i], inc: null, lastX: e.clientX, lastT: performance.now(), v: 0 };
         pause();
       });
@@ -659,12 +661,19 @@
         let dx = e.clientX - sw.x0;
         const dy = e.clientY - sw.y0;
         if (sw.axis !== "x") {
-          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-          if (Math.abs(dx) < Math.abs(dy)) {
-            if (sw.type === "mouse") sw.axis = "y";   // a mouse drag that heads up or down is not a swipe
-            return;                                   // touch: undecided, a scroll will pointercancel us
-          }
           if (sw.axis === "y") return;
+          const touch = sw.type !== "mouse";
+          // A touch waits a little longer before deciding (the touchmove
+          // listener below holds the page still meanwhile), so the small
+          // vertical arc a thumb swipe starts with doesn't decide it.
+          if (Math.hypot(dx, dy) < (touch ? TOUCH_DECIDE : 6)) return;
+          // ...and counts as sideways up to about 60 degrees off horizontal
+          // (the browser's own pan-y lock gave up at 45, which is why some
+          // swipes scrolled the page instead).
+          if (Math.abs(dx) < Math.abs(dy) * (touch ? 0.6 : 1)) {
+            sw.axis = "y";                            // a scroll: the browser takes it from here
+            return;
+          }
           sw.axis = "x";
           sw.x0 = e.clientX; dx = 0;                  // follow from here, with no jump by the dead zone
           viewport.classList.add("is-dragging");
@@ -730,13 +739,30 @@
         // fast it moved before it stopped.
         const v = performance.now() - sw.lastT > 100 ? 0 : sw.v;
         const flick = Math.abs(v) > FLICK && Math.sign(v) === Math.sign(dx);
-        const commit = sw.axis === "x" && (Math.abs(dx) >= Math.min(80, width() * 0.25) || flick);
+        // Distance counts from where the finger first landed, so the few
+        // pixels spent deciding the gesture's direction aren't lost.
+        const travel = e.clientX - sw.xStart;
+        const far = Math.sign(travel) === Math.sign(dx) && Math.abs(travel) >= Math.min(50, width() * 0.18);
+        const commit = sw.axis === "x" && (far || flick);
         if (commit && sw.type === "mouse") { swiped = true; setTimeout(() => { swiped = false; }, 80); }
         finish(commit);
       };
       // On window, not the viewport: a release or cancel must end the drag
       // wherever the pointer is by then.
       window.addEventListener("pointerup", onUp);
+      // The viewport leaves touch panning to us (touch-action: manipulation),
+      // so for a touch we decide here: once the gesture has gone sideways
+      // (pointermove runs first and sets the axis) the page must not scroll;
+      // a gesture that leans vertical is left alone and scrolls as normal.
+      // Non-passive, or preventDefault would be ignored.
+      viewport.addEventListener("touchmove", (e) => {
+        if (e.touches.length > 1 || !sw || !e.cancelable || sw.axis === "y") return;
+        if (sw.axis === "x") { e.preventDefault(); return; }
+        // Still undecided: hold the page still until the gesture has moved
+        // far enough to tell a sideways swipe from a scroll.
+        const t = e.touches[0];
+        if (t && Math.hypot(t.clientX - sw.x0, t.clientY - sw.y0) < TOUCH_DECIDE) e.preventDefault();
+      }, { passive: false });
       window.addEventListener("pointercancel", (e) => { if (sw && e.pointerId === sw.id) finish(false); });
       window.addEventListener("blur", () => { if (sw) finish(false); });
       viewport.addEventListener("dragstart", (e) => e.preventDefault());

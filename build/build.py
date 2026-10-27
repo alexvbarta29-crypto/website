@@ -300,6 +300,13 @@ def _home_video_html():
   </section>"""
 
 
+# Process-slider photos for steps 3 and 4: crops of fall-squeegee-hands-closeup
+# and fall-towel-door-frame cut to the slider's ~1.12:1 photo slot, so
+# object-fit: cover never has to blow a landscape file up to fill it.
+PROCESS_SQUEEGEE_IMG = "assets/img/process-squeegee-closeup.jpg"
+PROCESS_DETAIL_IMG = "assets/img/process-detail-door-frame.jpg"
+
+
 def build_home():
     depth = 0
     # On the 4-column desktop grid a last row of two would leave two empty
@@ -317,9 +324,9 @@ def build_home():
          "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
         ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
          "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup, silicone, putty overspray, baked-on bug residue, that a simple wash won't touch, without ever scratching the glass.", None),
-        ("03", "Squeegee", "assets/img/fall-squeegee-soapy-glass.jpg",
+        ("03", "Squeegee", PROCESS_SQUEEGEE_IMG,
          "Then we squeegee the window from edge to edge, pulling every last drop of water and solution off the glass so nothing is left behind to dry into streaks or spots.", None),
-        ("04", "Detail", "assets/img/fall-towel-door-frame.jpg",
+        ("04", "Detail", PROCESS_DETAIL_IMG,
          "Finally, we hand-detail the glass, frames, and sills, wiping down every edge and corner so the window looks brand new, not just clean, before we move on to the next one.", None),
     ]
     process_slider_html = C.process_slider(process_steps, depth)
@@ -403,7 +410,7 @@ def build_home():
   {_home_video_html()}
 
   <!-- PLANS / SAVINGS -->
-  <section class="bg-mist">
+  <section class="bg-mist bg-fade">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow" style="justify-content:center">Membership Savings</span>
@@ -411,6 +418,17 @@ def build_home():
         <p>Join a recurring plan and save on every visit, the more often we come, the more you save.</p>
       </div>
       <div class="promo-grid">{promo_cards}</div>
+    </div>
+  </section>
+
+  <!-- REVIEWS (Google): frosted-glass cards over soft brand glows -->
+  <section{' class="rv-glass glow-red"' if C.GOOGLE_REVIEWS else ""}>
+    <div class="container">
+      <div class="section-head center">
+        <span class="eyebrow" style="justify-content:center">See what your</span>
+        <h2>Neighbors are saying</h2>
+      </div>
+      {C.google_reviews(depth, limit=12) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
     </div>
   </section>
 
@@ -430,17 +448,6 @@ def build_home():
     </div>
   </section>
 
-  <!-- REVIEWS (Google): frosted-glass cards over soft brand glows -->
-  <section{' class="rv-glass glow-red"' if C.GOOGLE_REVIEWS else ""}>
-    <div class="container">
-      <div class="section-head center">
-        <span class="eyebrow" style="justify-content:center">See what your</span>
-        <h2>Neighbors are saying</h2>
-      </div>
-      {C.google_reviews(depth, limit=12) or C.reviews_block(REVIEWS_WIDGET, reviews_html, depth)}
-    </div>
-  </section>
-
   <!-- PROCESS -->
   <section>
     <div class="container">
@@ -454,7 +461,7 @@ def build_home():
   </section>
 
   <!-- BEFORE / AFTER -->
-  <section class="bg-mist">
+  <section class="bg-mist bg-fade">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">See the difference</span>
@@ -494,7 +501,7 @@ def build_home():
   </section>
 
   <!-- FAQ -->
-  <section class="bg-mist">
+  <section class="bg-mist bg-fade-top">
     <div class="container">
       <div class="section-head center">
         <span class="eyebrow">Good to know</span>
@@ -645,7 +652,7 @@ def build_service(svc):
     # cleaning (the two pages the process actually differs meaningfully for);
     # every other service page skips this section entirely.
     _wc_step_imgs = ["assets/img/svc-mop-window.jpg", "assets/img/svc-hand-scrubbing.jpg",
-                     "assets/img/fall-squeegee-soapy-glass.jpg", "assets/img/fall-towel-door-frame.jpg"]
+                     PROCESS_SQUEEGEE_IMG, PROCESS_DETAIL_IMG]
     _has_process = svc["slug"] in ("exterior-window-cleaning", "interior-window-cleaning")
     slider_steps = []
     if _has_process:
@@ -2679,6 +2686,9 @@ _HERO_NATIVE_PATHS = {"assets/img/xmas-lights-stone-home.jpg"}
 _HERO_HIGH_Q_SPECS = [(1200, "webp", 88), (1200, "jpg", 92), (640, "webp", 84), (640, "jpg", 88)]
 _HERO_HIGH_Q_PATHS = {s["image"] for s in SERVICES if s.get("image")}
 _HERO_HIGH_Q_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
+# Process-slider steps 3 and 4 (owner found them fuzzy on phones, Oct 2026):
+# crops cut to the slot's own ~1.12:1 shape, encoded at hero quality.
+_HERO_HIGH_Q_PATHS |= {PROCESS_SQUEEGEE_IMG, PROCESS_DETAIL_IMG}
 
 def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
@@ -2704,6 +2714,7 @@ def generate_hero_variants():
     # The Christmas page's photo set, kept out of IMAGE_ALT (see sitedata).
     hero_paths.update(XMAS_PHOTO_ALT)
     hero_paths.add(AWARD["image"])
+    hero_paths.update({PROCESS_SQUEEGEE_IMG, PROCESS_DETAIL_IMG})
     # City pages' "Jobs we've done" photos (kept out of IMAGE_ALT, which also
     # feeds the Gallery page).
     hero_paths.update(j["photo"] for c in LIVE_CITY_PAGES for j in c.get("jobs") or [])

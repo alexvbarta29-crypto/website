@@ -138,6 +138,11 @@ section { padding-block: clamp(56px, 8vw, 110px); }
 /* In-page "Get a Free Quote" buttons land the form below the fixed nav, not under it. */
 #quote-form { scroll-margin-top: calc(var(--nav-h) + 20px); }
 .bg-mist { background: var(--mist); }
+/* Homepage grey bands fade in from (and out to) the white around them
+   instead of starting on a hard edge, which read as a solid line while
+   scrolling on phones (owner's request, October 2026). */
+.bg-mist.bg-fade { background: linear-gradient(180deg, var(--white) 0, var(--mist) clamp(70px, 10vw, 140px), var(--mist) calc(100% - clamp(70px, 10vw, 140px)), var(--white) 100%); }
+.bg-mist.bg-fade-top { background: linear-gradient(180deg, var(--white) 0, var(--mist) clamp(70px, 10vw, 140px)); }
 .bg-grad-sky { background: var(--grad-sky); }
 .bg-deep { background: var(--grad-deep); color: var(--white); }
 .bg-deep p, .bg-deep .lead { color: rgba(255,255,255,.78); }
@@ -699,7 +704,7 @@ section { padding-block: clamp(56px, 8vw, 110px); }
    would cut the shadow off, and two rounded slides side by side mid-swipe
    would show the page through notches at their seam. */
 .process-viewport { position: relative; height: 100%; overflow: hidden; border-radius: var(--r-lg); box-shadow: var(--sh-lg); isolation: isolate;
-                    touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+                    touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .process-viewport.is-dragging { cursor: grabbing; }
 .process-slide { position: absolute; inset: 0; height: 100%; display: flex; align-items: stretch; gap: 28px; padding: 20px; background: var(--grad-deep); opacity: 0; visibility: hidden; transition: opacity 1.1s ease; }
 .process-slide.active { opacity: 1; visibility: visible; }
