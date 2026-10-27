@@ -36,3 +36,12 @@ zoom and tilt (or drag the picture), then **Use this view** to start drawing.
 - **Size:** Google serves Street View at most 640 px wide, so these photos are
   softer than a full-screen screenshot. The download is upscaled to 1920 px so
   the bulbs stay sharp.
+
+## Measure roof (satellite)
+
+The **Measure roof** tab shows the address from above (Maps Static API,
+satellite, 2× scale). Click each corner along a roofline to get the feet for
+every section and the total; **New line** starts a separate run, drag to move
+the map, zoom 17–21. Points are kept as latitude/longitude, so they stay put
+when the map moves or zooms. Needs the **Maps Static API** enabled for the
+same Google key (and added to the key's API restrictions).

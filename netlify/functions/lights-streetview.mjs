@@ -7,6 +7,8 @@
 //   ?move=1|-1&pano=…&lat=…&lng=…&heading=…&hlat=…&hlng=… → the next panorama
 //       to the right (1) or left (-1) along the road, still aimed at the house
 //       (Street View metadata lookups are free).
+//   ?sat=1&lat=…&lng=…&zoom=… → the 640×480 (2× scale) satellite picture
+//       centered there, for measuring rooflines (Maps Static API).
 //
 // Only answers a signed-in /lights browser (same cookie as the page), so the
 // Google key can't be spent by anyone else. The key stays server-side:
@@ -72,7 +74,10 @@ async function find(address, key) {
       return fail("not_configured", 502);
     }
   }
-  if (!meta) return fail("no_imagery", 404);
+  if (!meta) {
+    // No Street View here, but measuring from the satellite view still works.
+    return json({ ok: false, error: "no_imagery", address: top.formatted_address || address, hlat: house.lat, hlng: house.lng }, 404);
+  }
   const from = meta.location || house;
   const d = meters(from, house);
   return json({
@@ -134,6 +139,23 @@ async function image(params, key) {
   });
 }
 
+async function satellite(params, key) {
+  const lat = num(params.get("lat"), -85, 85), lng = num(params.get("lng"), -180, 180);
+  const zoom = num(params.get("zoom"), 15, 21);
+  if (lat === null || lng === null || zoom === null || !Number.isInteger(zoom)) return fail("bad_request", 400);
+  const res = await fetch(`${GOOGLE}/staticmap?${new URLSearchParams({
+    center: `${lat.toFixed(7)},${lng.toFixed(7)}`, zoom: String(zoom), size: "640x480", scale: "2", maptype: "satellite", format: "jpg", key,
+  })}`);
+  if (!res.ok) {
+    console.error("lights-streetview satellite:", res.status);
+    return fail(res.status === 403 ? "not_configured" : "google_error", 502);
+  }
+  return new Response(await res.arrayBuffer(), {
+    status: 200,
+    headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=86400", "X-Robots-Tag": "noindex, nofollow" },
+  });
+}
+
 export default async (req) => {
   if (req.method !== "GET") return fail("method_not_allowed", 405);
   if (!signedIn(req)) return fail("signed_out", 401);
@@ -143,6 +165,7 @@ export default async (req) => {
   try {
     const address = String(params.get("address") || "").trim().slice(0, 200);
     if (address) return await find(address, key);
+    if (params.has("sat")) return await satellite(params, key);
     if (params.has("move")) return await move(params, key);
     if (params.has("pano")) return await image(params, key);
     return fail("bad_request", 400);

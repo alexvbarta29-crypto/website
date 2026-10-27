@@ -77,7 +77,9 @@ test("unknown address and no Street View say so", async () => {
   google([["/geocode/json", { status: "ZERO_RESULTS", results: [] }]]);
   assert.equal((await (await get("address=nowhere")).json()).error, "not_found");
   google([okRoutes()[0], ["/streetview/metadata", { status: "ZERO_RESULTS" }]]);
-  assert.equal((await (await get("address=farm")).json()).error, "no_imagery");
+  const farm = await (await get("address=farm")).json();
+  assert.equal(farm.error, "no_imagery");
+  assert.equal(farm.hlat, HOUSE.lat, "still gives the house location for measuring");
 });
 
 test("without a Google key it says Street View isn't set up", async () => {
@@ -104,4 +106,21 @@ test("move says end_of_road when there is no further panorama", async () => {
   const res = await get(`move=1&pano=AbCdEfGhIjKl_123&lat=${PANO.lat}&lng=${PANO.lng}&heading=60&hlat=${HOUSE.lat}&hlng=${HOUSE.lng}`);
   assert.equal(res.status, 404);
   assert.equal((await res.json()).error, "end_of_road");
+});
+
+test("satellite view for measuring comes back as a JPEG at 2x", async () => {
+  google([["/staticmap?", () => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { headers: { "content-type": "image/jpeg" } })]]);
+  const res = await get(`sat=1&lat=${HOUSE.lat}&lng=${HOUSE.lng}&zoom=20`);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "image/jpeg");
+  assert.match(calls[0], /maptype=satellite/);
+  assert.match(calls[0], /scale=2/);
+  assert.match(calls[0], /size=640x480/);
+});
+
+test("satellite refuses odd zooms before calling Google", async () => {
+  google([]);
+  assert.equal((await get(`sat=1&lat=${HOUSE.lat}&lng=${HOUSE.lng}&zoom=25`)).status, 400);
+  assert.equal((await get(`sat=1&lat=${HOUSE.lat}&lng=${HOUSE.lng}&zoom=19.5`)).status, 400);
+  assert.equal(calls.length, 0);
 });
