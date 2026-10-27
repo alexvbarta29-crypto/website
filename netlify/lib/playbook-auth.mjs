@@ -1,11 +1,14 @@
 // Sign-in for /playbook (the office follow-up playbook).
 //
-// Password: PLAYBOOK_PASSWORD (Netlify env var) when that is set, otherwise
-// the same password as Barta Light Studio (lights-auth.mjs). The cookie is
+// Password: the owner's chosen password (kept here only as a slow PBKDF2
+// digest), or the PLAYBOOK_PASSWORD Netlify env var when that is set. The cookie is
 // the PBKDF2 key itself, so only someone who knows the password can make it.
 // Changing the password signs every device out.
 
-import { derive, sha256, same, expected as lightsExpected, ONE_YEAR } from "./lights-auth.mjs";
+import { derive, sha256, same, ONE_YEAR } from "./lights-auth.mjs";
+
+// sha256(PBKDF2(owner's password))
+const DEFAULT_CHECK = "cb2b02e799b3c6c6db45ade8d7ac0399dfec0b5eb2a9efdc2e45298b83f6a4e7";
 
 export { derive, sha256, same, ONE_YEAR };
 export const COOKIE = "barta_playbook";
@@ -13,7 +16,7 @@ export const COOKIE = "barta_playbook";
 let envCache = null;
 export function expected() {
   const pw = String(process.env.PLAYBOOK_PASSWORD || "");
-  if (!pw) return lightsExpected();
+  if (!pw) return DEFAULT_CHECK;
   if (!envCache || envCache.pw !== pw) envCache = { pw, check: sha256(derive(pw)) };
   return envCache.check;
 }
