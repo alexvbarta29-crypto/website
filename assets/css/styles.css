@@ -1692,14 +1692,18 @@ html:not(.js) .rv-more { display: none; }
 }
 
 /* Homepage review section, frosted-glass version (owner's request, October
-   2026: the header's transparent look). The cards use the exact glass of the
-   header (--glass-bg / --glass-blur / --glass-border) over a shoot photo;
-   the heading, rating strip and button turn white or glass to match. */
-.rv-glass { padding-block: clamp(70px, 9vw, 120px); background-color: var(--navy-800); }
-.rv-glass .section-head h2 { color: #fff; text-shadow: 0 2px 18px rgba(0,0,0,.35); }
-.rv-glass .section-head .eyebrow { color: #fff; }
-.rv-glass .rv-card { background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: 0 8px 30px rgba(14,14,18,.16); }
-.rv-glass .rv-who { border-top-color: rgba(14,14,18,.1); }
-.rv-glass .rv-score { color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.3); }
-.rv-glass .rv-summary-mid > span:not(.stars), .rv-glass .rv-summary-mid b { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.4); }
-.rv-glass .rv-summary-link, .rv-glass .btn-ghost { background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); }
+   2026: the header's transparent look, but smooth). No photo and no live
+   backdrop blur: the section stays on the page's white, with three soft,
+   already-blurry brand glows (coral, gold, green) kept clear of its edges so
+   it melts into the sections around it. The cards are translucent white with
+   a bright rim and inner highlight, so the glows show through as frosted
+   glass, and scrolling costs nothing extra (backdrop-filter on six cards was
+   what made it heavy). */
+.rv-glass { background:
+    radial-gradient(40% 36% at 14% 42%, rgba(251,77,61,.30), transparent 72%),
+    radial-gradient(36% 34% at 86% 52%, rgba(255,180,0,.30), transparent 72%),
+    radial-gradient(40% 26% at 50% 66%, rgba(24,182,115,.16), transparent 72%),
+    #fff; }
+.rv-glass .rv-card { background: linear-gradient(160deg, rgba(255,255,255,.72), rgba(255,255,255,.4)); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 22px 50px -26px rgba(14,14,18,.22), 0 1px 3px rgba(14,14,18,.04), inset 0 1px 0 #fff; }
+.rv-glass .rv-who { border-top-color: rgba(14,14,18,.08); }
+.rv-glass .rv-summary-link, .rv-glass .btn-ghost { background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 8px 24px -12px rgba(14,14,18,.2); }

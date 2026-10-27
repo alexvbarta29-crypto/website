@@ -1688,19 +1688,6 @@ def google_reviews(depth=0, limit=6, words=None):
 <div class="rv-grid rv-row">{cards}</div>
 <p class="center mt-3"><a class="btn btn-ghost" href="{root}reviews.html">{icon('star')} Read all {BIZ['review_count']} reviews {icon('arrow')}</a></p>"""
 
-# The homepage review section's backdrop (owner's request, October 2026: try
-# the header's frosted-glass look on the review cards). Glass only reads as
-# glass over a photo, so this section sits on one from the shoot, with a
-# light dark wash so the white heading reads.
-REVIEW_GLASS_PHOTO = "assets/img/fall-towel-backlit.jpg"
-REVIEW_GLASS_TINT = "linear-gradient(180deg, rgba(10,10,12,.34) 0%, rgba(10,10,12,.22) 45%, rgba(10,10,12,.38) 100%)"
-
-def review_glass_style(depth=0):
-    """Inline background for the glass review section: same sized/format
-    ladder as the closing banner (1600w AVIF/WebP, 1200w JPEG fallback)."""
-    return (_cta_background(rel(depth), REVIEW_GLASS_PHOTO, overlay=REVIEW_GLASS_TINT)
-            + ";background-size:cover;background-position:center 40%")
-
 def google_reviews_page_list(depth=0, batch=24):
     """Every shown review for reviews.html, with topic filter chips and a
     'Show more' button (main.js). Without JavaScript every review shows."""
