@@ -1,8 +1,16 @@
 {
- "count": 152,
+ "count": 153,
  "rating": 5.0,
- "updated": "2026-10-26T23:48:21.071Z",
+ "updated": "2026-10-28T01:27:06.177Z",
  "reviews": [
+  {
+   "id": "7476c21bf2",
+   "name": "Julie Nawrocki",
+   "stars": 5,
+   "text": "Highly recommend Barta Window Washing to hang exterior Christmas lights. Great customer service, prompt response and super final product! Alex, Gustov and Bennett were very professional and hard-working.",
+   "created": "2026-10-28T00:10:29.156633Z",
+   "reply": null
+  },
   {
    "id": "7dd3db0bac",
    "name": "Shanna Guidry",
