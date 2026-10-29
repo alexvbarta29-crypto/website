@@ -1,15 +1,23 @@
 {
- "count": 155,
+ "count": 156,
  "rating": 5.0,
- "updated": "2026-10-29T13:11:31.780Z",
+ "updated": "2026-10-29T19:41:57.872Z",
  "reviews": [
+  {
+   "id": "7a0937d616",
+   "name": "Beth Giebel",
+   "stars": 5,
+   "text": "I contacted BARTA window washing to inquire about Christmas light installation and ended up retaining their services.  I couldn’t be more pleased!  They are prompt and friendly, communication is great/reliable, the installation looks clean and professional, and they offer to come back to address any issues.  I highly recommend BARTA!",
+   "created": "2026-10-29T18:04:03.902087Z",
+   "reply": null
+  },
   {
    "id": "9d64312b8c",
    "name": "Michelle Thomas",
    "stars": 5,
    "text": "Great work! The team was responsive to my inquiry and worked with my schedule to find a time that worked best. They communicated their arrival time and did a great job on my windows inside and out! Highly commend",
    "created": "2026-10-29T12:57:57.157046Z",
-   "reply": null
+   "reply": "Thank you, Michelle! We're so glad we could find a time that fit your schedule and that your windows are sparkling inside and out. We really appreciate you choosing us and look forward to seeing you next time!"
   },
   {
    "id": "65590612e7",
