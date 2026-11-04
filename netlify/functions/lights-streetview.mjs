@@ -91,7 +91,8 @@ async function find(address, key) {
     heading: Math.round(bearing(from, house)),
     // Closer houses need a wider, higher view to fit the roofline.
     pitch: d < 18 ? 14 : d < 35 ? 10 : 6,
-    fov: d < 18 ? 100 : d < 35 ? 85 : 70,
+    // Wide enough to show the whole house with room to crop.
+    fov: d < 18 ? 115 : d < 35 ? 105 : 95,
   });
 }
 
