@@ -57,7 +57,9 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 <label for="pw">Password</label>
 <input id="pw" type="password" name="password" autocomplete="current-password" required autofocus>
 <button type="submit">Open</button>
-</form></body></html>`;
+</form>
+<script>document.querySelector('form').addEventListener('submit',function(e){if(location.hash)e.target.action=e.target.getAttribute('action')+location.hash;});</script>
+</body></html>`;
 }
 
 // Live Street View and the live satellite map need a browser key. It's only

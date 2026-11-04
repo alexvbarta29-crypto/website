@@ -6,6 +6,7 @@
 export const TOOLS = [
   { id: "lights", label: "Christmas Lights", short: "Lights", src: "/lights", css: ".brand{display:none!important}", icon: '<path d="M12 2.8c1.9 1.6 4.8 6.2 4.8 9.6a4.8 4.8 0 0 1-9.6 0c0-3.4 2.9-8 4.8-9.6z"/><path d="M9.6 17.2v2.3c0 .8.6 1.4 1.4 1.4h2c.8 0 1.4-.6 1.4-1.4v-2.3"/><path d="M9.6 19h4.8"/>' },
   { id: "followups", label: "Follow-ups", src: "/playbook", css: ".wrap>header>.brand,.wrap>footer{display:none!important}", icon: '<path d="M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H4.5A1.5 1.5 0 0 1 3 15.5V7a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M7.5 10h9M7.5 13h6"/>' },
+  { id: "purchases", label: "Purchases", src: "/purchases", icon: '<path d="M3.5 4.5h2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.1l1.6-6.3H6.6"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>' },
   { id: "giveaway", label: "Giveaway", src: "/admin/giveaway.html", css: "[data-gwa-logout]{display:none!important}", seed: "gwa-key", icon: '<rect x="3.5" y="9" width="17" height="11" rx="1.5"/><path d="M3.5 12.5h17M12 9v11"/><path d="M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z"/>' },
 ];
 export const LINKS = [
@@ -51,7 +52,8 @@ iframe[hidden]{display:none}
   .brand span{display:none}
   .brand{margin-right:4px}
   .brand img{height:20px}
-  .item{padding:0 10px;gap:6px;font-size:13px}
+  .item{padding:0 8px;gap:5px;font-size:13px}
+  .side-foot .item{padding:0 6px}
   .item .full{display:none}.item .short{display:inline}
   .item:not([aria-selected="true"]) .short{display:none}
   .side-foot .item span{display:none}
