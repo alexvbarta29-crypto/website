@@ -37,6 +37,15 @@ zoom and tilt (or drag the picture), then **Use this view** to start drawing.
   softer than a full-screen screenshot. The download is upscaled to 1920 px so
   the bulbs stay sharp.
 
+## Bulb size
+
+Rooflines and bushes/trees/pillars each have their own bulb size per photo.
+The size slider changes the roofline bulbs while the Roofline tool is picked
+(or a line is selected), and the bush/tree/pillar bulbs while one of those
+tools is picked (or one of those shapes is selected). Their slider goes up to
+500, which takes the mini lights past full C9 size without touching the
+roofline.
+
 ## Measure roof (satellite)
 
 The **Measure roof** tab shows the address from above (Maps Static API,
