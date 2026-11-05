@@ -1,8 +1,16 @@
 {
- "count": 156,
+ "count": 157,
  "rating": 5.0,
- "updated": "2026-10-29T23:59:59.053Z",
+ "updated": "2026-11-05T23:41:36.647Z",
  "reviews": [
+  {
+   "id": "bf66a43653",
+   "name": "Dawn Johnson",
+   "stars": 5,
+   "text": "",
+   "created": "2026-11-05T20:59:22.763445Z",
+   "reply": "Thank you so much, Dawn! We loved getting your windows sparkling inside and out today. We really appreciate you taking the time to leave us a review, and we look forward to seeing you next time! – Alex, Barta Window Washing"
+  },
   {
    "id": "7a0937d616",
    "name": "Beth Giebel",
