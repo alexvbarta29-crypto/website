@@ -46,6 +46,13 @@ tools is picked (or one of those shapes is selected). Their slider goes up to
 500, which takes the mini lights past full C9 size without touching the
 roofline.
 
+**Pure white** is a bulb color matched to the cool white C9s on Barta's own
+installs (the Christmas page photos).
+
+**Pillar wrap:** with the Pillar tool picked (or a pillar selected) a second
+slider appears, from thin diagonal wraps to a super thick, solid column of
+lights. Pair it with a smaller bulb size for the packed look.
+
 ## Measure roof (satellite)
 
 The **Measure roof** tab shows the address from above (Maps Static API,
