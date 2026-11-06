@@ -1,8 +1,16 @@
 {
- "count": 157,
+ "count": 158,
  "rating": 5.0,
- "updated": "2026-11-05T23:41:36.647Z",
+ "updated": "2026-11-06T15:58:18.031Z",
  "reviews": [
+  {
+   "id": "0b28a9b6c5",
+   "name": "Jason Holmer",
+   "stars": 5,
+   "text": "We have used Barta for our window washing and most recently had them install Christmas lights on our roof line. They did a fantastic job on both accounts. The team is very professional and communicate with their clients every step of the process. Highly recommended!",
+   "created": "2026-11-06T13:50:43.199671Z",
+   "reply": null
+  },
   {
    "id": "bf66a43653",
    "name": "Dawn Johnson",
