@@ -1,8 +1,16 @@
 {
- "count": 158,
+ "count": 159,
  "rating": 5.0,
- "updated": "2026-11-06T21:34:13.893Z",
+ "updated": "2026-11-07T16:30:06.211Z",
  "reviews": [
+  {
+   "id": "f414c23f01",
+   "name": "Kevin Newberger",
+   "stars": 5,
+   "text": "Highly recommend Barta Window Washing! They provided great service and absolutely killed it with the Christmas lights.",
+   "created": "2026-11-07T16:17:14.072900Z",
+   "reply": null
+  },
   {
    "id": "0b28a9b6c5",
    "name": "Jason Holmer",
