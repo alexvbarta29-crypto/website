@@ -2729,6 +2729,9 @@ _HERO_HIGH_Q_PATHS |= {c["hero"] for c in LIVE_CITY_PAGES}
 # Process-slider steps 3 and 4 (owner found them fuzzy on phones, Oct 2026):
 # crops cut to the slot's own ~1.12:1 shape, encoded at hero quality.
 _HERO_HIGH_Q_PATHS |= {PROCESS_SQUEEGEE_IMG, PROCESS_DETAIL_IMG}
+# Homepage service cards that name their own photo (HOME_SERVICES "img"),
+# so they get the small card tiers too.
+_HERO_HIGH_Q_PATHS |= {it["img"] for it in HOME_SERVICES if it.get("img")}
 
 def generate_hero_variants():
     """Responsive, capped-size derivatives of every hero, process-slider, and
@@ -2883,7 +2886,7 @@ OG_W, OG_H = 1200, 630
 _AVIF_CARD_STEMS = [
     "svc-exterior-window-cleaning", "svc-interior-window-cleaning",
     "svc-screen-cleaning-services", "svc-solar-panel-cleaning",
-    "svc-commercial-cleaning", "xmas-lights-stone-home",
+    "svc-commercial-cleaning", "xmas-lights-stone-home", "giveaway-white-gables",
 ]
 _AVIF_CARD_WIDTHS = [(400, 55), (640, 60), (760, 60), (1200, 60)]
 # Per-file quality overrides where the default still drew a PageSpeed

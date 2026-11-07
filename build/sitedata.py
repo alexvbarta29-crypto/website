@@ -610,7 +610,7 @@ HOME_SERVICES = [
     # is the service's old hero photo, which now only lives in the gallery. Point
     # it at the current hero so the card matches the page it links to.
     {"label": "Christmas Light Installation", "target": "services/christmas-light-installation.html", "icon": "lights",
-     "img": "assets/img/xmas-lights-stone-home.jpg",
+     "img": "assets/img/giveaway-white-gables.jpg",
      "desc": "Custom holiday lighting, we design, hang, maintain, and take it down."},
 ]
 
@@ -980,6 +980,7 @@ FAQS = [
 # their own position ("hero_pos", CTA_PHOTOS["focal_y"]), because a very wide
 # band often wants a different anchor than a card does.
 IMAGE_FOCAL = {
+    "assets/img/giveaway-white-gables.jpg": {"img-card-bg": "50% 52%"},
     # October 2026 shoot: keep the technician in frame when a slot crops the sides.
     "assets/img/fall-water-fed-pole-wide.jpg": {"*": "72% 50%"},
     "assets/img/fall-water-fed-pole-second-story.jpg": {"*": "70% 45%"},
@@ -1073,6 +1074,10 @@ XMAS_DEAL_SEASON_START = (9, 1)
 # XMAS_PHOTO_ALT and assets/img/ in case any are wanted again.
 
 IMAGE_ALT = {
+    # Homepage Christmas card (owner, November 2026: "a better photo for the
+    # christmas lights"). A Barta install: the same house as the Google
+    # Business Profile post photo assets/img/gbp/lights-warm-white-gables-night.jpg.
+    "assets/img/giveaway-white-gables.jpg": "Warm white Christmas lights outlining every gable, roofline and window of a two-story home at night",
     # The October 2026 professional shoot, listed first so it leads the
     # Gallery (owner's request: prioritize these photos across the site).
     "assets/img/fall-water-fed-pole-wide.jpg": "A Barta Window Washing technician cleaning second-story windows on a cedar home with a water-fed pole, fall trees all around",
