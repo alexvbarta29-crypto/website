@@ -474,7 +474,7 @@ def _fonts_html(root):
               "ascent-override:101%;descent-override:24%;line-gap-override:10%}")
     return "\n".join(links) + f"\n<style>{faces}</style>"
 
-def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False, extra_head="", analytics=True):
+def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw="", canonical=None, noindex=False, uses_reviews_widget=False, base_href=None, og_image=None, inline_critical=False, extra_head="", analytics=True, lcp_preload=""):
     """<head> block with full SEO + social + JSON-LD.
     noindex=True renders "noindex, follow" (for utility/legal/PPC-landing
     pages that shouldn't compete in search) instead of the default index.
@@ -614,7 +614,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
      Free Font License v2.0 (assets/fonts/FFL.txt), which permits self-hosting
      via @font-face. The license forbids modifying the files (subsetting
      included), so they ship byte-identical to the download. -->
-{trustindex_preconnect}{fonts_html}
+{lcp_preload}{trustindex_preconnect}{fonts_html}
 {css_links}
 <link rel="icon" href="{root}assets/img/favicon.svg?v=2" type="image/svg+xml">
 <link rel="manifest" href="{root}site.webmanifest">

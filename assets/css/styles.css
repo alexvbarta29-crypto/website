@@ -75,7 +75,7 @@ picture { display: contents; }
      level keeps every frosted surface reading as pale, clear glass no
      matter what passes behind it. */
   --glass-bg: rgba(255,255,255,.7);
-  --glass-blur: saturate(180%) blur(90px);
+  --glass-blur: saturate(180%) blur(30px);
   --glass-border: rgba(255,255,255,.45);
 
   /* Layout */
@@ -1241,7 +1241,7 @@ video.insta-card-media-el[data-autoplay] { cursor: pointer; }
    it renders so the page does not collapse to a badge and then jump. */
 .reviews-embed--primary { min-height: 620px; }
 @media (max-width: 700px) { .reviews-embed--primary { min-height: 900px; } }
-html.js .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s var(--ease-out), transform .8s var(--ease-out); }
+html.js .reveal { opacity: 0; transform: translateY(16px); transition: opacity .55s var(--ease-out), transform .55s var(--ease-out); }
 html.js .reveal.in { opacity: 1; transform: none; }
 .reveal[data-delay="1"] { transition-delay: .08s; }
 .reveal[data-delay="2"] { transition-delay: .16s; }
@@ -1753,3 +1753,13 @@ html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
    It sets the "js" class in the same statement, so --hero-h always exists
    when this rule applies. */
 html.js .hero-photo-full, html.js .svc-hero { min-height: var(--hero-h); }
+
+/* Page-top photos while they download (owner, November 2026: "the image on
+   the homepage can't even be seen" on a first visit). The section is its own
+   stacking context, so its background (a dark fill, plus on the homepage a
+   tiny pre-blurred copy of the photo set inline by build._hero_placeholder_css)
+   paints UNDER the z-index:-2 photo instead of over it; the photo, preloaded
+   ahead of the fonts, then sharpens on top. White text never sits on white. */
+.hero-photo-full { isolation: isolate; background-color: #2c3226; background-size: cover; background-position: 59% 60%; }
+@media (min-width: 761px) { .hero-photo-full { background-position: center 58%; } }
+.svc-hero { background-color: #1c1f1d; }

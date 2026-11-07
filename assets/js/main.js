@@ -133,7 +133,7 @@
       entries.forEach((en) => {
         if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target); }
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    }, { threshold: 0, rootMargin: "0px 0px 12% 0px" });
     reveals.forEach((el) => io.observe(el));
   } else {
     reveals.forEach(shed);

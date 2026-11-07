@@ -307,6 +307,42 @@ PROCESS_SQUEEGEE_IMG = "assets/img/process-squeegee-closeup.jpg"
 PROCESS_DETAIL_IMG = "assets/img/process-detail-door-frame.jpg"
 
 
+def _hero_preload(image, sizes):
+    """<link rel=preload> for a page-top photo, placed ahead of the font
+    preloads (owner, November 2026: on a first visit the homepage photo
+    arrived ~3s late on a phone connection, queued behind the fonts, leaving
+    a grey-to-white hero). Same AVIF ladder and sizes as its <picture>, so
+    the browser fetches exactly the file the <img> will use, once."""
+    import glob as _g, re as _re
+    stem = image.rsplit(".", 1)[0]
+    widths = sorted(int(m.group(1)) for f in _g.glob(os.path.join(ROOT, stem + "-*w.avif"))
+                    for m in [_re.search(r"-(\d+)w\.avif$", f)] if m)
+    if not widths:
+        return ""
+    srcset = ", ".join(f"{stem}-{w}w.avif {w}w" for w in widths)
+    return (f'<link rel="preload" as="image" type="image/avif" imagesrcset="{srcset}" '
+            f'imagesizes="{sizes}" fetchpriority="high">\n')
+
+def _hero_placeholder_css(image):
+    """Inline CSS painting a tiny, pre-blurred copy of a page-top photo
+    (about 1 KB) as the hero's own background, so the photo's colours are
+    there at first paint and the sharp image simply sharpens on top of it,
+    instead of a pale gradient while it downloads."""
+    import base64, io
+    try:
+        from PIL import Image, ImageFilter
+        with Image.open(os.path.join(ROOT, image)) as im:
+            im = im.convert("RGB")
+            im.thumbnail((48, 48))
+            im = im.filter(ImageFilter.GaussianBlur(1.2))
+            buf = io.BytesIO()
+            im.save(buf, "JPEG", quality=55, optimize=True)
+        uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+        return f"background-image:url({uri})"
+    except Exception as e:
+        print(f"  (hero placeholder skipped for {image}: {e})")
+        return ""
+
 def build_home():
     depth = 0
     # On the 4-column desktop grid a last row of two would leave two empty
@@ -363,7 +399,8 @@ def build_home():
         desc="Professional window and exterior cleaning based in Delano and serving the western Twin Cities. Explore our services and request a free quote.",
         slug="index.html", depth=depth, schema=schema,
         canonical=BIZ["domain"] + "/", uses_reviews_widget=True,
-        og_image="assets/img/hero-home-main.jpg", inline_critical=True)
+        og_image="assets/img/hero-home-main.jpg", inline_critical=True,
+        lcp_preload=_hero_preload("assets/img/hero-home-main.jpg", "(max-width: 760px) 135vw, 100vw"))
     html += C.nav(depth)
     # The hero img's layout box is 100vw, but it renders object-fit: cover
     # over 100svh, so a portrait phone shows only the middle ~third of the
@@ -380,7 +417,7 @@ def build_home():
     html += f"""
 <main id="main">
   <!-- HERO -->
-  <section class="hero hero-photo-full">
+  <section class="hero hero-photo-full" style="{_hero_placeholder_css('assets/img/hero-home-main.jpg')}">
     {hero_picture}
     <div class="hero-overlay"></div>
     <div class="container">
