@@ -300,15 +300,14 @@ def _home_video_html():
   </section>"""
 
 
-# Process-slider photos for steps 3 and 4: crops of fall-squeegee-hands-closeup
-# and fall-towel-door-frame cut to the slider's ~1.12:1 photo slot, so
-# object-fit: cover never has to blow a landscape file up to fill it.
-PROCESS_SQUEEGEE_IMG = "assets/img/process-squeegee-closeup.jpg"
-PROCESS_DETAIL_IMG = "assets/img/process-detail-door-frame.jpg"
-# Steps 1 and 2 use shoot photos too (owner, November 2026: only the October
-# 2026 shoot on the service pages, even where a shot doesn't match the step).
-PROCESS_MOP_IMG = "assets/img/fall-squeegee-deck-door.jpg"
-PROCESS_SCRUB_IMG = "assets/img/fall-stone-doors-detailing.jpg"
+# The 4-step process photos: back to the original four (owner, November
+# 2026), each showing its own step: mopping, hand-scrubbing, squeegeeing,
+# hand-detailing the frame. (They'd been swapped for October 2026 shoot
+# photos, which don't show those steps.)
+PROCESS_MOP_IMG = "assets/img/svc-mop-window.jpg"
+PROCESS_SCRUB_IMG = "assets/img/svc-hand-scrubbing.jpg"
+PROCESS_SQUEEGEE_IMG = "assets/img/svc-interior-window-cleaning.jpg"
+PROCESS_DETAIL_IMG = "assets/img/svc-detail-frame.jpg"
 
 
 def _hero_preload(image, sizes):
