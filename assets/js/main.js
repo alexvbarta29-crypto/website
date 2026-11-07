@@ -43,6 +43,33 @@
     }).observe(sentinel);
   }
 
+  /* ---- Full-screen page-top photos keep one size while scrolling ----
+     (owner, November 2026). 100svh holds still in Safari, but in-app
+     browsers (the Google app, Instagram, Facebook, Chrome on iPhone) resize
+     the whole page as their toolbars slide away, so the photo grew and
+     shrank mid-scroll. This runs after the page has its mobile layout
+     (main.js is deferred; an earlier attempt measured in <head>, before the
+     viewport tag, and on an iPhone refresh got a desktop-sized height),
+     locks the photo to the screen height it opened at, ignores any reading
+     taller than the device's screen, and only re-measures when the width
+     changes (turning the phone) or on a desktop window resize. Until it
+     runs, and if it never does, the CSS 100svh applies. */
+  if ($(".hero-photo-full, .svc-hero")) {
+    const root = document.documentElement;
+    let lockedW = 0;
+    const lockHero = () => {
+      const w = window.innerWidth, h = window.innerHeight;
+      if (w === lockedW && !window.matchMedia("(hover: hover)").matches) return;
+      const maxH = Math.max(screen.width, screen.height) * 1.05;
+      if (!(h > 200 && h <= maxH)) return;
+      lockedW = w;
+      root.style.setProperty("--hero-lock", h + "px");
+      root.classList.add("hero-locked");
+    };
+    lockHero();
+    window.addEventListener("resize", lockHero, { passive: true });
+  }
+
   /* ---- Holiday Lights Giveaway: live countdowns ----
      The ribbon above the menu and the homepage card both carry
      data-gw-end (when entries close). Each ticks once a second and hides

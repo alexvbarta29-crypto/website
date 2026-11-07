@@ -1752,3 +1752,8 @@ html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
 .hero-photo-full { isolation: isolate; background-color: #2c3226; background-size: cover; background-position: 59% 60%; }
 @media (min-width: 761px) { .hero-photo-full { background-position: center 58%; } }
 .svc-hero { background-color: #1c1f1d; }
+
+/* main.js sets --hero-lock (the screen height the page opened at) and the
+   hero-locked class together, so in-app browsers that resize the page as
+   their toolbars slide can't stretch the page-top photo mid-scroll. */
+html.hero-locked .hero-photo-full, html.hero-locked .svc-hero { min-height: var(--hero-lock); }
