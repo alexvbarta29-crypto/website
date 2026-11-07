@@ -581,7 +581,7 @@ def head(title, desc, slug, depth=0, schema=None, og_type="website", primary_kw=
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-{base_tag}<script>(function(d,w){{var r=d.documentElement,W=0;r.className+=" js";function f(){{if(w.innerWidth!==W||matchMedia("(hover:hover)").matches){{W=w.innerWidth;r.style.setProperty("--hero-h",w.innerHeight+"px")}}}}f();w.addEventListener("resize",f,{{passive:true}})}})(document,window);</script>
+{base_tag}<script>document.documentElement.className+=" js";</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>

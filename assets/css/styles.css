@@ -1742,17 +1742,6 @@ html.js .rv-row .rv-card.reveal { opacity: 1; transform: none; }
   .rv-arrow { display: none; }
 }
 
-/* Full-screen page-top photos keep one height while you scroll (owner's
-   request, November 2026: "the smoothest experience possible"). 100svh is
-   already stable in current Safari and Chrome, but in-app browsers
-   (Instagram, Facebook) and older phones fall back to 100vh, which grows
-   and shrinks as the address bar slides away, resizing the photo mid-scroll.
-   The inline script in <head> measures the screen once, before first paint,
-   into --hero-h, and only re-measures when the width changes (rotating the
-   phone) or on a desktop window resize, never when the address bar moves.
-   It sets the "js" class in the same statement, so --hero-h always exists
-   when this rule applies. */
-html.js .hero-photo-full, html.js .svc-hero { min-height: var(--hero-h); }
 
 /* Page-top photos while they download (owner, November 2026: "the image on
    the homepage can't even be seen" on a first visit). The section is its own
