@@ -305,6 +305,10 @@ def _home_video_html():
 # object-fit: cover never has to blow a landscape file up to fill it.
 PROCESS_SQUEEGEE_IMG = "assets/img/process-squeegee-closeup.jpg"
 PROCESS_DETAIL_IMG = "assets/img/process-detail-door-frame.jpg"
+# Steps 1 and 2 use shoot photos too (owner, November 2026: only the October
+# 2026 shoot on the service pages, even where a shot doesn't match the step).
+PROCESS_MOP_IMG = "assets/img/fall-squeegee-deck-door.jpg"
+PROCESS_SCRUB_IMG = "assets/img/fall-stone-doors-detailing.jpg"
 
 
 def _hero_preload(image, sizes):
@@ -356,9 +360,9 @@ def build_home():
 
     reviews_html = "".join(C.review_card(*r, delay=i % 3) for i, r in enumerate(REVIEWS[:6]))
     process_steps = [
-        ("01", "Mop", "assets/img/svc-mop-window.jpg",
+        ("01", "Mop", PROCESS_MOP_IMG,
          "We start by mopping down every window with our T-bar scrubbers, working a cleaning solution into the glass to lift dirt, dust, pollen, and grime off the surface and get each pane ready for a deeper clean.", None),
-        ("02", "Scrub", "assets/img/svc-hand-scrubbing.jpg",
+        ("02", "Scrub", PROCESS_SCRUB_IMG,
          "Next, we scrub the glass by hand with our industrial-grade abrasives, going after the more aggressive buildup, silicone, putty overspray, baked-on bug residue, that a simple wash won't touch, without ever scratching the glass.", None),
         ("03", "Squeegee", PROCESS_SQUEEGEE_IMG,
          "Then we squeegee the window from edge to edge, pulling every last drop of water and solution off the glass so nothing is left behind to dry into streaks or spots.", None),
@@ -688,7 +692,7 @@ def build_service(svc):
     # Homepage-style process slideshow, shown only for exterior/interior window
     # cleaning (the two pages the process actually differs meaningfully for);
     # every other service page skips this section entirely.
-    _wc_step_imgs = ["assets/img/svc-mop-window.jpg", "assets/img/svc-hand-scrubbing.jpg",
+    _wc_step_imgs = [PROCESS_MOP_IMG, PROCESS_SCRUB_IMG,
                      PROCESS_SQUEEGEE_IMG, PROCESS_DETAIL_IMG]
     _has_process = svc["slug"] in ("exterior-window-cleaning", "interior-window-cleaning")
     slider_steps = []

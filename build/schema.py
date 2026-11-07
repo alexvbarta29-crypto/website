@@ -24,8 +24,8 @@ def local_business():
         # so it can pick one per layout rather than crop whatever it's given.
         "image": [
             BIZ["domain"] + "/assets/img/hero-home-main-1200w.jpg",
-            BIZ["domain"] + "/assets/img/svc-exterior-window-cleaning-1200w.jpg",
-            BIZ["domain"] + "/assets/img/svc-cta-squeegee-1200w.jpg",
+            BIZ["domain"] + "/assets/img/fall-water-fed-pole-wide-1200w.jpg",
+            BIZ["domain"] + "/assets/img/fall-towel-smiling-1200w.jpg",
         ],
         # A raster logo, not favicon.svg, that's a 0.2 KB browser-tab icon,
         # too small to serve as the brand mark Google renders.
