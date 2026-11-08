@@ -79,6 +79,9 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
 .tip .r{display:flex;align-items:center;gap:7px}
 .tip .r i{width:12px;height:2px;border-radius:1px;display:inline-block}
 .tip .r b{font-weight:600}
+.err{margin:4px 0 12px;padding:12px 14px;border-radius:14px;background:#fff5f3;border:1px solid rgba(208,51,31,.25);color:#7a1d12;font-size:13px;line-height:1.4;word-break:break-word}
+.err b{display:block;color:#d0331f}
+.err[hidden]{display:none}
 .empty{max-width:520px;margin:12vh auto;text-align:center;padding:0 16px}
 .empty h1{margin-bottom:10px}
 .empty p{color:var(--text-2)}
@@ -86,13 +89,15 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
 
 // Everything below runs in the browser.
 const CLIENT = String.raw`
-(() => {
+(() => { try {
   const D = JSON.parse(document.getElementById('dash-data').textContent);
   const $ = (s, el = document) => el.querySelector(s);
   const C = { coral: '#fb4d3d', blue: '#2a78d6', grid: '#efeff1', axis: '#6b6b73', ink: '#16161b' };
   const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
   const compactMoney = (n) => n >= 1000 ? '$' + (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K' : '$' + Math.round(n);
   const num = (n) => Math.round(n).toLocaleString('en-US');
+  // Older iPhones (before iOS 14) have no replaceChildren.
+  const clear = (node) => { while (node.firstChild) node.removeChild(node.firstChild); return node; };
   const el = (tag, attrs = {}, text) => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
   const NS = 'http://www.w3.org/2000/svg';
   const sv = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
@@ -101,7 +106,7 @@ const CLIENT = String.raw`
   const tip = el('div', { class: 'tip', role: 'status' });
   document.body.appendChild(tip);
   function showTip(x, y, title, rows) {
-    tip.replaceChildren(el('div', { class: 't' }, title));
+    clear(tip).appendChild(el('div', { class: 't' }, title));
     for (const r of rows) {
       const row = el('div', { class: 'r' });
       if (r.color) { const k = el('i'); k.style.background = r.color; row.appendChild(k); }
@@ -150,7 +155,7 @@ const CLIENT = String.raw`
     legend(host, series);
     host.appendChild(box);
     const draw = () => {
-      box.replaceChildren();
+      clear(box);
       const W = Math.max(280, box.clientWidth), H = height, L = 46, R = 6, T = 18, B = 26;
       const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': host.dataset.title || '' });
       const max = niceMax(Math.max(...rows.flatMap((r) => r.values)));
@@ -192,7 +197,7 @@ const CLIENT = String.raw`
     const box = el('div', { class: 'chart' });
     host.appendChild(box);
     const draw = () => {
-      box.replaceChildren();
+      clear(box);
       const W = Math.max(280, box.clientWidth), H = height, L = 46, R = 46, T = 14, B = 26;
       const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': host.dataset.title || '' });
       const max = niceMax(Math.max(...rows.map((r) => r.value)));
@@ -317,7 +322,10 @@ const CLIENT = String.raw`
   tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.view)));
   addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || (embedded ? 'overview' : store.get('barta-dash-view')) || 'overview');
-})();
+} catch (err) {
+  const b = document.getElementById('dash-err');
+  if (b) { b.hidden = false; b.lastChild.textContent = (err && err.message || String(err)) + ' · ' + navigator.userAgent; }
+} })();
 `;
 
 const money = (n) => "$" + Math.round(n).toLocaleString("en-US");
@@ -406,12 +414,14 @@ export function dashboardHtml(d) {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard · Barta Office</title>
-<script>if(/[?&]embed=1/.test(location.search))document.documentElement.className='embed'</script>
+<script>if(/[?&]embed=1/.test(location.search))document.documentElement.className='embed';
+window.addEventListener('error',function(e){try{var b=document.getElementById('dash-err');if(!b)return;b.hidden=false;b.lastChild.textContent=(e.message||'Script error')+(e.lineno?' (line '+e.lineno+')':'')+' · '+navigator.userAgent}catch(x){}});</script>
 <style>${CSS}</style></head><body>
 <div class="wrap">
+  <div class="err" id="dash-err" role="alert" hidden><b>The charts didn't load.</b> Send Claude a screenshot of this: <span></span></div>
   <div class="top"><h1>Dashboard</h1><div class="asof">From Rotor · updated ${esc(asOf)}</div></div>
   <div class="tabs" role="tablist" aria-label="Dashboards">${VIEWS.map(([id, label]) => `<button type="button" class="tab" role="tab" data-view="${id}" aria-selected="false">${label}</button>`).join("")}</div>
-  ${VIEWS.map(([id, , html]) => `<div class="view" id="v-${id}" role="tabpanel" hidden>${html}</div>`).join("\n")}
+  ${VIEWS.map(([id, , html], i) => `<div class="view" id="v-${id}" role="tabpanel"${i ? " hidden" : ""}>${html}</div>`).join("\n")}
 </div>
 <script type="application/json" id="dash-data">${JSON.stringify(d).replace(/</g, "\\u003c")}</script>
 <script>${CLIENT}</script>
