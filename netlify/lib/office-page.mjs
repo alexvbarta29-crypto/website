@@ -124,24 +124,38 @@ ${LINKS.map((l) => `    <a class="tab" href="${esc(l.href)}" target="_blank" rel
       d.head.appendChild(st);
     } catch (e) { /* not ready */ }
   }
+  // The view the dashboard should show once it has loaded. Never touch a
+  // frame's location before its page has loaded: Safari treats that as a new
+  // navigation and drops the page that was loading, leaving the frame blank.
+  let pendingView = null;
   function frame(t, hash) {
     if (frames[t.id]) return frames[t.id];
     const boot = main.querySelector('.boot');
     const f = document.createElement('iframe');
     f.title = t.label;
     f.allow = 'clipboard-read; clipboard-write; fullscreen';
-    f.addEventListener('load', () => { blend(f, t); if (boot) boot.remove(); });
+    f.addEventListener('load', () => {
+      f.dataset.loaded = '1';
+      blend(f, t);
+      if (boot) boot.remove();
+      if (t.id === 'dashboard' && pendingView) { const v = pendingView; pendingView = null; setView(f, v); }
+    });
     f.src = t.src + (hash ? '#' + hash : '');
     main.appendChild(f);
     return (frames[t.id] = f);
+  }
+  function setView(f, id) {
+    if (!f.dataset.loaded) { pendingView = id; return; }
+    try { if (f.contentWindow.location.hash !== '#' + id) f.contentWindow.location.hash = id; } catch (e) { /* not reachable */ }
   }
   function show(id) {
     id = OLD[id] || id;
     const view = VIEWS.find((v) => v.id === id);
     const tool = view ? TOOLS[0] : (TOOLS.find((x) => x.id === id && x.id !== 'dashboard') || null);
     if (!view && !tool) return show(VIEWS[0].id);
+    const isNew = !frames[tool.id];
     const f = frame(tool, view && view.id);
-    if (view) { try { if (f.contentWindow.location.hash !== '#' + view.id) f.contentWindow.location.hash = view.id; } catch (e) { /* still loading: the src has the view */ } }
+    if (view && !isNew) setView(f, view.id);
     for (const k in frames) frames[k].hidden = frames[k] !== f;
     let sel = null;
     document.querySelectorAll('.tab[data-tool]').forEach((b) => { const on = b.dataset.tool === id; b.setAttribute('aria-selected', String(on)); if (on) sel = b; });
