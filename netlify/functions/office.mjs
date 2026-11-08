@@ -4,7 +4,7 @@
 // cookie from netlify/lib/lights-auth.mjs). Not linked from the site and
 // never indexed. See docs/OFFICE.md.
 
-import { OFFICE_HTML } from "../lib/office-page.mjs";
+import { OFFICE_HTML, APP_HEAD } from "../lib/office-page.mjs";
 import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor } from "../lib/lights-auth.mjs";
 import { loginPage } from "./lights.mjs";
 
@@ -18,7 +18,7 @@ const headers = {
 };
 const page = (body, status = 200, extra = {}) =>
   new Response(body, { status, headers: { ...headers, "Content-Type": "text/html; charset=utf-8", ...extra } });
-const login = (error = "") => loginPage(error, { title: "Barta Office", text: "Enter the office password. This browser will remember you, and it opens every office tool.", action: "/office" });
+const login = (error = "") => loginPage(error, { title: "Barta Office", text: "Enter the office password. This browser will remember you, and it opens every office tool.", action: "/office", head: APP_HEAD + '\n<meta name="theme-color" content="#16161b">' });
 
 export default async (req) => {
   if (req.method === "POST") {

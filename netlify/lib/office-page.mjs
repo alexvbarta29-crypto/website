@@ -13,6 +13,17 @@ export const LINKS = [
   { label: "Rotor", href: "https://getrotor.com" },
 ];
 
+// Makes /office a phone app (docs/OFFICE.md, "The phone app"): the manifest
+// and icons for Add to Home Screen, and full-screen launch on iPhone. The
+// sign-in page carries it too, so the app installs from either screen.
+export const APP_HEAD = `<link rel="manifest" href="/office.webmanifest">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/app/office-icon-180.v1.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Barta Office">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">`;
+
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 
@@ -20,6 +31,7 @@ export const OFFICE_HTML = `<!doctype html><html lang="en"><head><meta charset="
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16161b">
+${APP_HEAD}
 <title>Barta Office</title>
 <style>
 @font-face{font-family:'Cabinet Grotesk';src:url('/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800}
@@ -47,6 +59,17 @@ main{position:fixed;left:0;right:0;bottom:0;top:calc(max(8px,env(safe-area-inset
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--mist)}
 iframe[hidden]{display:none}
 .boot{position:absolute;inset:0;display:grid;place-items:center;color:#85858d;font-weight:600}
+/* "Get the app" card: only in a browser tab, never inside the installed app. */
+.install{position:fixed;z-index:20;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(440px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:12px 10px 12px 12px;background:#fff;border:1px solid #ececee;border-radius:20px;box-shadow:0 18px 48px rgba(14,14,18,.16)}
+.install[hidden]{display:none}
+.install img{width:44px;height:44px;border-radius:11px;flex:none}
+.install-text{flex:1;min-width:0;font-size:13.5px;line-height:1.35;color:var(--slate)}
+.install-text b{display:block;font:800 15px/1.2 'Cabinet Grotesk',system-ui,sans-serif;color:var(--ink)}
+.install-text strong{font-weight:600;color:var(--ink)}
+.install-text svg{width:15px;height:15px;vertical-align:-3px;color:#0a84ff}
+.install-go{flex:none;border:0;border-radius:999px;padding:10px 16px;background:var(--coral);color:#fff;font:800 13px/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.install-go[hidden]{display:none}
+.install-x{flex:none;width:32px;height:32px;border:0;border-radius:999px;background:none;color:#85858d;font-size:22px;line-height:1;cursor:pointer}
 @media (max-width:860px){
   .side{height:50px;padding:0 6px 0 12px}
   .brand span{display:none}
@@ -70,6 +93,12 @@ ${LINKS.map((l) => `    <a class="item" href="${esc(l.href)}" target="_blank" re
   </div>
 </header>
 <main id="main"><div class="boot">Loading…</div></main>
+<div class="install" id="install" role="dialog" aria-label="Get the Barta Office app" hidden>
+  <img src="/assets/img/app/office-icon-180.v1.png" alt="">
+  <div class="install-text"><b>Get the app</b><span id="install-how">Put Barta Office on your home screen.</span><span id="install-ios" hidden>Tap Share ${svg('<path d="M12 3v12M8 7l4-4 4 4"/><path d="M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"/>')} then <strong>Add to Home Screen</strong>.</span></div>
+  <button type="button" class="install-go" id="install-go" hidden>Install</button>
+  <button type="button" class="install-x" id="install-x" aria-label="Not now">&times;</button>
+</div>
 <script>
 (() => {
   const TOOLS = ${JSON.stringify(TOOLS.map(({ id, label, src, css, seed }) => ({ id, label, src, css: css || "", seed: seed || "" })))};
@@ -111,6 +140,37 @@ ${LINKS.map((l) => `    <a class="item" href="${esc(l.href)}" target="_blank" re
   document.querySelectorAll('.item[data-tool]').forEach((b) => b.addEventListener('click', () => show(b.dataset.tool)));
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   show(location.hash.slice(1) || store.get('barta-office-tab') || TOOLS[0].id);
+
+  // The phone app: offline screen, plus a one-time "Get the app" card.
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/office-sw.js', { scope: '/office' }).catch(() => {});
+  const installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const card = document.getElementById('install');
+  const go = document.getElementById('install-go');
+  const hide = (forGood) => { card.hidden = true; if (forGood) store.set('barta-office-install', 'no'); };
+  document.getElementById('install-x').addEventListener('click', () => hide(true));
+  if (!installed && store.get('barta-office-install') !== 'no') {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) {
+      document.getElementById('install-how').hidden = true;
+      document.getElementById('install-ios').hidden = false;
+      card.hidden = false;
+    }
+    let prompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      prompt = e;
+      go.hidden = false;
+      card.hidden = false;
+    });
+    go.addEventListener('click', async () => {
+      if (!prompt) return;
+      prompt.prompt();
+      try { await prompt.userChoice; } catch (e) { /* closed */ }
+      prompt = null;
+      hide(false);
+    });
+    window.addEventListener('appinstalled', () => hide(true));
+  }
 })();
 </script>
 </body></html>`;

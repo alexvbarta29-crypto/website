@@ -57,3 +57,30 @@ test("wrong office password is refused", async () => {
   assert.equal(res.status, 401);
   assert.equal(res.headers.get("set-cookie"), null);
 });
+
+test("the office installs as a phone app", async () => {
+  const { readFileSync } = await import("node:fs");
+  const signedInBody = await (await office(new Request("https://x.test/office", { headers: signedIn }))).text();
+  const signedOutBody = await (await office(new Request("https://x.test/office"))).text();
+  for (const body of [signedInBody, signedOutBody]) {
+    assert.match(body, /<link rel="manifest" href="\/office.webmanifest">/);
+    assert.match(body, /<link rel="apple-touch-icon" href="\/assets\/img\/app\/office-icon-180\.v1\.png">/);
+    assert.match(body, /apple-mobile-web-app-capable/);
+  }
+  assert.match(signedInBody, /serviceWorker\.register\('\/office-sw\.js', \{ scope: '\/office' \}\)/);
+
+  const m = JSON.parse(readFileSync("office.webmanifest", "utf8"));
+  assert.equal(m.start_url, "/office");
+  assert.equal(m.scope, "/office");
+  assert.equal(m.display, "standalone");
+  assert.ok(m.icons.some((i) => i.sizes === "512x512" && i.purpose === "maskable"));
+  for (const i of m.icons) assert.ok(existsSync("." + i.src), i.src);
+  assert.ok(existsSync("assets/img/app/office-icon-180.v1.png"));
+
+  const deploy = readFileSync("build/make_deploy.py", "utf8");
+  assert.match(deploy, /"office\.webmanifest"/);
+  assert.match(deploy, /"office-sw\.js"/);
+  // The service worker never caches signed-in pages.
+  const sw = readFileSync("office-sw.js", "utf8");
+  assert.doesNotMatch(sw, /cache\.put|c\.put/);
+});
