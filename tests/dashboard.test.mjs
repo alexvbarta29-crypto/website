@@ -106,7 +106,13 @@ test("signed in without the key, /dashboard explains the one setup step", async 
   assert.match(setupHtml("bad-key"), /doesn't open/);
 });
 
-test("the dashboard is the office's first tab", () => {
+test("the dashboard views lead the office's one tab row", async () => {
+  const { VIEWS } = await import("../netlify/lib/office-page.mjs");
   assert.equal(TOOLS[0].id, "dashboard");
-  assert.equal(TOOLS[0].src, "/dashboard");
+  assert.equal(TOOLS[0].src, "/dashboard?embed=1");
+  assert.deepEqual(VIEWS.map((v) => v.id), ["overview", "money", "sales", "plans", "jobs"]);
+  // Inside the office, the dashboard hides its own title and tabs and follows #view.
+  const html = dashboardHtml(buildSnapshot(RAW));
+  assert.match(html, /embed=1/);
+  assert.match(html, /hashchange/);
 });

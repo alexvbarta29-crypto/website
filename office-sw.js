@@ -3,9 +3,9 @@
 // are private and always fetched fresh; nothing signed-in is ever cached.
 // With no signal it shows a "you're offline" screen instead of the browser's
 // error page. Bump VERSION to replace the cached icon and fonts.
-const VERSION = "barta-office-v1";
+const VERSION = "barta-office-v2";
 const KEEP = [
-  "/assets/img/app/office-icon-192.v1.png",
+  "/assets/img/app/office-icon-192.v2.png",
   "/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2",
   "/assets/fonts/GeneralSans-Medium.v1.woff2",
 ];
@@ -32,7 +32,7 @@ h1{margin:18px 0 6px;font:800 1.6rem/1.1 'Cabinet Grotesk',system-ui,sans-serif}
 p{margin:0 0 22px;color:#67676f}
 button{border:0;border-radius:999px;padding:14px 28px;font:800 .95rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.045em;text-transform:uppercase;color:#fff;background:#fb4d3d;cursor:pointer}
 </style></head><body><div>
-<img src="/assets/img/app/office-icon-192.v1.png" alt="">
+<img src="/assets/img/app/office-icon-192.v2.png" alt="">
 <h1>No connection</h1>
 <p>Barta Office needs signal. It'll open again as soon as you're back online.</p>
 <button type="button" onclick="location.reload()">Try again</button>

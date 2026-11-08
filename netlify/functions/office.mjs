@@ -18,7 +18,7 @@ const headers = {
 };
 const page = (body, status = 200, extra = {}) =>
   new Response(body, { status, headers: { ...headers, "Content-Type": "text/html; charset=utf-8", ...extra } });
-const login = (error = "") => loginPage(error, { title: "Barta Office", text: "Enter the office password. This browser will remember you, and it opens every office tool.", action: "/office", head: APP_HEAD + '\n<meta name="theme-color" content="#16161b">' });
+const login = (error = "") => loginPage(error, { title: "Barta Office", text: "Enter the office password. This browser will remember you, and it opens every office tool.", action: "/office", logo: "/assets/img/logo-bww.png", head: APP_HEAD + '\n<meta name="theme-color" content="#f7f7f8">' });
 
 export default async (req) => {
   if (req.method === "POST") {

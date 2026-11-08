@@ -7,23 +7,25 @@ process.env.OFFICE_PASSWORD = "test-password";
 const office = (await import("../netlify/functions/office.mjs")).default;
 const { derive } = await import("../netlify/lib/lights-auth.mjs");
 const signedIn = { cookie: "barta_office=" + derive("test-password") };
-const { TOOLS } = await import("../netlify/lib/office-page.mjs");
+const { TOOLS, VIEWS } = await import("../netlify/lib/office-page.mjs");
 
 test("office page lists every tool and is never indexed", async () => {
   const res = await office(new Request("https://x.test/office", { headers: signedIn }));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
   const body = await res.text();
-  for (const t of TOOLS) assert.match(body, new RegExp(`data-tool="${t.id}"`));
-  assert.match(body, /Christmas Lights/);
+  for (const t of TOOLS) if (t.id !== "dashboard") assert.match(body, new RegExp(`data-tool="${t.id}"`));
+  for (const v of VIEWS) assert.match(body, new RegExp(`data-tool="${v.id}"`));
+  assert.match(body, />Lights</);
   assert.match(body, /Follow-ups/);
+  assert.match(body, /logo-bww\.png/);
   assert.match(body, /gwa-key/);
   assert.doesNotMatch(body, /data-tool="referrals"/);
 });
 
 test("every tab points at a page that exists", () => {
   for (const t of TOOLS) {
-    if (t.src === "/dashboard") assert.ok(existsSync("netlify/functions/dashboard.mjs"));
+    if (t.src.startsWith("/dashboard")) assert.ok(existsSync("netlify/functions/dashboard.mjs"));
     else if (t.src === "/lights") assert.ok(existsSync("netlify/functions/lights.mjs"));
     else if (t.src === "/playbook") assert.ok(existsSync("netlify/functions/playbook.mjs"));
     else if (t.src === "/purchases") assert.ok(existsSync("netlify/functions/purchases.mjs"));
@@ -34,6 +36,7 @@ test("every tab points at a page that exists", () => {
 test("signed out, /office shows the sign-in page, not the tools", async () => {
   const body = await (await office(new Request("https://x.test/office"))).text();
   assert.match(body, /autocomplete="current-password"/);
+  assert.match(body, /class="logo" src="\/assets\/img\/logo-bww\.png"/);
   assert.doesNotMatch(body, /data-tool=/);
 });
 
@@ -65,7 +68,7 @@ test("the office installs as a phone app", async () => {
   const signedOutBody = await (await office(new Request("https://x.test/office"))).text();
   for (const body of [signedInBody, signedOutBody]) {
     assert.match(body, /<link rel="manifest" href="\/office.webmanifest">/);
-    assert.match(body, /<link rel="apple-touch-icon" href="\/assets\/img\/app\/office-icon-180\.v1\.png">/);
+    assert.match(body, /<link rel="apple-touch-icon" href="\/assets\/img\/app\/office-icon-180\.v2\.png">/);
     assert.match(body, /apple-mobile-web-app-capable/);
   }
   assert.match(signedInBody, /serviceWorker\.register\('\/office-sw\.js', \{ scope: '\/office' \}\)/);
@@ -76,7 +79,7 @@ test("the office installs as a phone app", async () => {
   assert.equal(m.display, "standalone");
   assert.ok(m.icons.some((i) => i.sizes === "512x512" && i.purpose === "maskable"));
   for (const i of m.icons) assert.ok(existsSync("." + i.src), i.src);
-  assert.ok(existsSync("assets/img/app/office-icon-180.v1.png"));
+  assert.ok(existsSync("assets/img/app/office-icon-180.v2.png"));
 
   const deploy = readFileSync("build/make_deploy.py", "utf8");
   assert.match(deploy, /"office\.webmanifest"/);

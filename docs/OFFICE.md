@@ -1,20 +1,22 @@
 # Barta Office (/office)
 
-The office's tools as one app: a frosted-glass header across the top (like the website's)
-to switch between
+The office's tools as one app. Your logo sits at the top, with one row of tabs
+under it (beside it on a computer):
 
-- **Dashboard** → `/dashboard` (KPI dashboards from Rotor, see docs/DASHBOARD.md)
-- **Christmas Lights** → `/lights` (Light Studio)
+- **Overview · Money · Sales · Plans · Jobs**: the dashboards (docs/DASHBOARD.md)
+- **Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
 - **Purchases** → `/purchases` (see docs/PURCHASES.md)
 - **Giveaway** → `/admin/giveaway.html`
 - **Rotor** → opens Rotor in a new tab
 
-Served by `netlify/functions/office.mjs` from `netlify/lib/office-page.mjs`.
-Each tool loads in its own frame the first time it's opened and stays open in
-the background, so switching never loses work. The page remembers the last
-tool, and `/office#lights` etc. opens one directly. Inside the app each tool's
-own logo, footer and sign-out are hidden (the `css` for each tool in
+Served by `netlify/functions/office.mjs` from `netlify/lib/office-page.mjs`
+(`VIEWS` and `TOOLS`). The dashboard is one frame (`/dashboard?embed=1`, which
+hides its own title and tabs) that switches view by its #hash; each tool loads
+in its own frame the first time it's opened and stays open in the background,
+so switching never loses work. The page remembers the last tab, and
+`/office#money`, `/office#lights` etc. open one directly. Inside the app each
+tool's own logo, footer and sign-out are hidden (the `css` for each tool in
 `office-page.mjs`), so it reads as one piece of software.
 
 ## One password
@@ -29,7 +31,8 @@ Changing the password signs every device out. The dashboards' admin key
 (`REFERRAL_ADMIN_KEY`) still works on its own too.
 
 Not linked from the site and never indexed. To add a tool, add it to `TOOLS`
-in `office-page.mjs`.
+in `office-page.mjs`; to add a dashboard view, add it to `VIEWS` and to the
+views in `netlify/lib/dashboard-page.mjs`.
 
 ## The phone app
 
@@ -52,7 +55,9 @@ Pieces:
   screen with no signal. It never caches office pages, only the icon and fonts.
 - `APP_HEAD` in `netlify/lib/office-page.mjs`: manifest and iPhone tags, on
   both the office page and its sign-in page.
-- Icons in `assets/img/app/`, drawn by `python3 build/make_app_icons.py`.
+- Icons in `assets/img/app/`: the //BWW logo on white, drawn by
+  `python3 build/make_app_icons.py`. A phone that installed the app earlier
+  keeps its old icon until the app is removed and added to the home screen again.
   `/assets/` is cached for a year, so a new icon needs a new `.vN` name.
 - `build/make_deploy.py` ships the manifest and service worker; `netlify.toml`
   stops them being cached.

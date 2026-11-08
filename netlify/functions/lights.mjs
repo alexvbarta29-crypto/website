@@ -41,6 +41,7 @@ ${o.head || ""}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:#f7f7f8;color:#121215;font:500 16px/1.5 'General Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
 .card{width:100%;max-width:380px;background:#fff;border:1px solid #ececee;border-radius:28px;padding:34px 28px 30px;box-shadow:0 20px 50px rgba(13,27,42,.10),0 8px 20px rgba(13,27,42,.06)}
+.logo{display:block;width:160px;height:auto;margin:0 0 22px}
 h1{margin:0;font:800 1.7rem/1.1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:-.015em}
 p{margin:8px 0 22px;color:#67676f}
 label{display:block;font:800 .78rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#67676f;margin-bottom:8px}
@@ -51,6 +52,7 @@ button{margin-top:16px;width:100%;border:0;border-radius:999px;padding:16px;font
 .err{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:#fff5f3;border:1px solid rgba(208,51,31,.25);color:#d0331f;font-size:.92rem}
 </style></head><body>
 <form class="card" method="post" action="${esc(o.action)}">
+${o.logo ? `<img class="logo" src="${esc(o.logo)}" alt="Barta Window Washing" width="160" height="43">` : ""}
 <h1>${esc(o.title)}</h1>
 <p>${esc(o.text)}</p>
 ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}

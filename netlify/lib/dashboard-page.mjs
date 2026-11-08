@@ -23,6 +23,8 @@ body{margin:0;background:var(--mist);color:var(--ink);font:500 15px/1.45 'Genera
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 2px 14px}
 h1{margin:0;font:800 28px/1.05 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:-.015em}
 .asof{color:var(--muted);font-size:13px}
+.embed h1,.embed .tabs{display:none}
+.embed .top{margin:2px 2px 10px;justify-content:flex-end}
 .tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 16px;padding:0 16px}
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex:none;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text-2);font:600 14px/1 'General Sans',system-ui,sans-serif;cursor:pointer}
@@ -308,10 +310,13 @@ const CLIENT = String.raw`
     tabs.forEach((x) => x.setAttribute('aria-selected', String(x === t)));
     document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== 'v-' + t.dataset.view; });
     drawIn($('#v-' + t.dataset.view));
-    store.set('barta-dash-view', t.dataset.view);
+    if (!embedded) store.set('barta-dash-view', t.dataset.view);
   }
+  // Inside Barta Office the office's own tab row picks the view (#money etc.).
+  const embedded = document.documentElement.classList.contains('embed');
   tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.view)));
-  show(store.get('barta-dash-view') || 'overview');
+  addEventListener('hashchange', () => show(location.hash.slice(1)));
+  show(location.hash.slice(1) || (embedded ? 'overview' : store.get('barta-dash-view')) || 'overview');
 })();
 `;
 
@@ -401,6 +406,7 @@ export function dashboardHtml(d) {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard · Barta Office</title>
+<script>if(/[?&]embed=1/.test(location.search))document.documentElement.className='embed'</script>
 <style>${CSS}</style></head><body>
 <div class="wrap">
   <div class="top"><h1>Dashboard</h1><div class="asof">From Rotor · updated ${esc(asOf)}</div></div>
