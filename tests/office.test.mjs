@@ -23,7 +23,8 @@ test("office page lists every tool and is never indexed", async () => {
 
 test("every tab points at a page that exists", () => {
   for (const t of TOOLS) {
-    if (t.src === "/lights") assert.ok(existsSync("netlify/functions/lights.mjs"));
+    if (t.src === "/dashboard") assert.ok(existsSync("netlify/functions/dashboard.mjs"));
+    else if (t.src === "/lights") assert.ok(existsSync("netlify/functions/lights.mjs"));
     else if (t.src === "/playbook") assert.ok(existsSync("netlify/functions/playbook.mjs"));
     else if (t.src === "/purchases") assert.ok(existsSync("netlify/functions/purchases.mjs"));
     else assert.ok(existsSync("." + t.src), t.src);

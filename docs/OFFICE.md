@@ -3,6 +3,7 @@
 The office's tools as one app: a frosted-glass header across the top (like the website's)
 to switch between
 
+- **Dashboard** → `/dashboard` (KPI dashboards from Rotor, see docs/DASHBOARD.md)
 - **Christmas Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
 - **Purchases** → `/purchases` (see docs/PURCHASES.md)
