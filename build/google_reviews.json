@@ -1,8 +1,16 @@
 {
- "count": 159,
+ "count": 160,
  "rating": 5.0,
- "updated": "2026-11-07T21:56:24.586Z",
+ "updated": "2026-11-08T22:12:36.814Z",
  "reviews": [
+  {
+   "id": "6bcfad49a3",
+   "name": "Kate Sawyer",
+   "stars": 5,
+   "text": "Professional, courteous and great work!! We will definitely use them again.",
+   "created": "2026-11-08T17:34:46.725108Z",
+   "reply": "Thank you, Kate! Professional and courteous is exactly what we aim for every time we pull up to a home, so this made our day. We're so glad you loved the results and can't wait to work with you again!"
+  },
   {
    "id": "f414c23f01",
    "name": "Kevin Newberger",
