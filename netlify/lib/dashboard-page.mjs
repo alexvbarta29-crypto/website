@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 const SETUP = {
   "no-key": ["Almost there", "The numbers are in the site, locked. To unlock them, add the <b>OFFICE_DATA_KEY</b> environment variable in Netlify (Site configuration → Environment variables), then redeploy. See docs/DASHBOARD.md."],
-  "bad-key": ["Key doesn't match", "OFFICE_DATA_KEY in Netlify doesn't open these numbers. Paste the key again exactly as given, then redeploy."],
+  "bad-key": ["Key doesn't match", "OFFICE_DATA_KEY in Netlify doesn't open these numbers. It should be the short key (44 characters) Claude gave you, not the older long one. Paste it again, then redeploy."],
   "no-data": ["No numbers yet", "Ask Claude to refresh the dashboard from Rotor."],
 };
 

@@ -27,14 +27,19 @@ This repo is **public**, so the numbers are never committed in the clear.
   `netlify/data/office-dashboard.sealed.mjs`.
 - Only the site's server can open it, with the private key in the Netlify
   environment variable **`OFFICE_DATA_KEY`** (`netlify/lib/office-data.mjs`).
+  It's an X25519 key, 44 characters. Keep it that short: Netlify gives all of
+  a site's function environment variables 4KB **in total** (an AWS Lambda
+  limit), and going over it makes every deploy fail. The first version of
+  this used a 3.3KB RSA key and did exactly that.
 - `/dashboard` needs the office sign-in and is never cached or indexed.
 
 ### One-time setup
 
 In Netlify: **Site configuration → Environment variables → Add**
-`OFFICE_DATA_KEY` = the key Claude gave you (one long line). Redeploy. Until
-then the Dashboard tab says "Almost there". If the key is ever lost, generate
-a new key pair, replace the public key file, set the new private key in
+`OFFICE_DATA_KEY` = the key Claude gave you (44 characters). Redeploy. Until
+then the Dashboard tab says "Almost there". If the key is ever lost, make a
+new pair with `newKeyPair()` from `netlify/lib/office-data.mjs`, put its
+`publicKeyPem` in `build/office-dashboard-public.pem`, set its `privateKey` in
 Netlify, and refresh the snapshot.
 
 ## Refreshing the numbers

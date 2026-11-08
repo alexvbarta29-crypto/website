@@ -12,7 +12,8 @@ const { derive } = await import("../netlify/lib/lights-auth.mjs");
 const { TOOLS } = await import("../netlify/lib/office-page.mjs");
 const signedIn = { cookie: "barta_office=" + derive("test-password") };
 
-const keys = crypto.generateKeyPairSync("rsa", { modulusLength: 2048, publicKeyEncoding: { type: "spki", format: "pem" }, privateKeyEncoding: { type: "pkcs8", format: "pem" } });
+const { newKeyPair } = await import("../netlify/lib/office-data.mjs");
+const keys = newKeyPair();
 
 const RAW = {
   as_of: "2026-11-08",
@@ -41,22 +42,27 @@ const RAW = {
 };
 
 test("sealed snapshots open only with the matching private key", () => {
-  const box = seal({ hello: "world" }, keys.publicKey);
-  assert.deepEqual(open(box, keys.privateKey), { hello: "world" });
+  const box = seal({ hello: "world" }, keys.publicKeyPem);
+  assert.equal(box.v, 2);
   assert.doesNotMatch(JSON.stringify(box), /world/);
-  const env = { OFFICE_DATA_KEY: Buffer.from(keys.privateKey).toString("base64") };
+  const env = { OFFICE_DATA_KEY: keys.privateKey };
   assert.deepEqual(loadDashboard(env, box), { ok: true, data: { hello: "world" } });
   assert.deepEqual(loadDashboard({}, box), { ok: false, reason: "no-key" });
   assert.deepEqual(loadDashboard(env, null), { ok: false, reason: "no-data" });
-  const other = crypto.generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
-  assert.deepEqual(loadDashboard({ OFFICE_DATA_KEY: other.privateKey }, box), { ok: false, reason: "bad-key" });
+  assert.deepEqual(loadDashboard({ OFFICE_DATA_KEY: newKeyPair().privateKey }, box), { ok: false, reason: "bad-key" });
+  // The old, long key style is refused, not crashed on.
+  assert.deepEqual(loadDashboard({ OFFICE_DATA_KEY: "x".repeat(3312) }, box), { ok: false, reason: "bad-key" });
+});
+
+test("the key fits Netlify's 4KB limit for all function settings with room to spare", () => {
+  assert.equal(keys.privateKey.length, 44);
 });
 
 test("the committed snapshot is sealed with the committed public key", async () => {
   const { readFileSync } = await import("node:fs");
   const box = (await import("../netlify/data/office-dashboard.sealed.mjs")).default;
-  assert.equal(box.v, 1);
-  assert.ok(box.key && box.iv && box.tag && box.data);
+  assert.equal(box.v, 2);
+  assert.ok(box.epk && box.iv && box.tag && box.data);
   // The plain numbers never appear in the repo.
   assert.doesNotMatch(readFileSync("netlify/data/office-dashboard.sealed.mjs", "utf8"), /collected|revenue|Rotor snapshot as of \d/);
 });
