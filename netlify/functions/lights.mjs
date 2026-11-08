@@ -30,8 +30,9 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 export function loginPage(error = "", opts = {}) {
   const o = { title: "Barta Light Studio", text: "Enter the password to open the light mockup tool. This browser will remember you.", action: "/lights", ...opts };
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+${o.head || ""}
 <title>${esc(o.title)}</title>
 <style>
 @font-face{font-family:'Cabinet Grotesk';src:url('/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2') format('woff2');font-weight:800}

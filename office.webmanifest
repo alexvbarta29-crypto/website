@@ -1,0 +1,18 @@
+{
+  "id": "/office",
+  "name": "Barta Office",
+  "short_name": "Barta Office",
+  "description": "Barta Window Washing's office tools.",
+  "start_url": "/office",
+  "scope": "/office",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16161b",
+  "theme_color": "#16161b",
+  "icons": [
+    { "src": "/assets/img/app/office-icon-180.v1.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/img/app/office-icon-192.v1.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/img/app/office-icon-512.v1.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/img/app/office-icon-maskable-512.v1.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

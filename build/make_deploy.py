@@ -31,7 +31,10 @@ SKIP_DIRS = {".git", ".github", ".claude", "build", "docs", "config",
              "netlify", "node_modules", "_deploy", "__pycache__"}
 
 # Root-level non-HTML files the site genuinely serves.
-ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "CNAME", "_redirects"]
+# office.webmanifest and office-sw.js make /office installable as a phone
+# app (docs/OFFICE.md); the manifest also pulls in its icons via the scan.
+ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "office.webmanifest",
+              "office-sw.js", "CNAME", "_redirects"]
 
 # Assets that no page references but the live site must still host: the
 # referral email template in docs/emails/ (docs/ is not shipped) loads its
