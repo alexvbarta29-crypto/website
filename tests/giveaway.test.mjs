@@ -2,7 +2,7 @@
 // /api/giveaway/admin, plus the pure helpers. Nothing leaves the machine:
 // the store is an in-memory Map and fetch is a capture stub.
 
-import { test, beforeEach } from "node:test";
+import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { setEnv, createMemoryStore, mockFetch, jsonRequest, FAKE_ENV } from "./helpers/referral-harness.mjs";
 
@@ -12,13 +12,26 @@ const admin = (await import("../netlify/functions/giveaway-admin.mjs")).default;
 const lib = await import("../netlify/lib/giveaway-lib.mjs");
 const { GIVEAWAY } = await import("../netlify/lib/giveaway-config.mjs");
 
+// The real giveaway closed on 2026-11-06 (GIVEAWAY.closes_at), so on a real
+// clock every "entries are open" test below would hit the closed phase. The
+// library reads Date.now() when a phase check runs (isOpen, claimOpen,
+// statusView), so each test gets the clock pinned to an instant inside the
+// entry window; a test about a later phase pins its own. Stored timestamps
+// (nowISO → new Date()) are never compared to the deadlines, so they stay real.
+const realDateNow = Date.now;
+const ENTRIES_OPEN_AT = Date.parse("2026-10-20T12:00:00-05:00");   // Tue Oct 20, noon Central
+assert.ok(ENTRIES_OPEN_AT < Date.parse(GIVEAWAY.closes_at), "ENTRIES_OPEN_AT must fall inside the entry window");
+const pinClock = (at = ENTRIES_OPEN_AT) => { Date.now = () => at; };
+
 let store, net;
 beforeEach(() => {
+  pinClock();
   setEnv({ GIVEAWAY_SMS_MODE: "off" });
   store = createMemoryStore();
   globalThis.__giveawayStoreOverride = store;
   net = mockFetch();
 });
+afterEach(() => { Date.now = realDateNow; });
 
 // Delano itself — inside the 17-mile circle.
 const DELANO = { address_lat: 45.0419, address_lng: -93.7891 };
@@ -150,11 +163,8 @@ test("self-referral and same-household referral don't count", async () => {
 });
 
 test("entries close at the deadline", async () => {
-  const realNow = Date.now;
-  Date.now = () => Date.parse(GIVEAWAY.closes_at) + 1000;
-  try {
-    await ok(post(entry()), 410);
-  } finally { Date.now = realNow; }
+  pinClock(Date.parse(GIVEAWAY.closes_at) + 1000);     // one second past the close; afterEach restores the clock
+  await ok(post(entry()), 410);
 });
 
 test("public GET reports phase and entrant count", async () => {
