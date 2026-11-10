@@ -90,6 +90,36 @@ const day = 86400000;
 const T0 = Date.parse("2026-07-29T19:12:48Z");    // the Markate import batch 1
 const MARKATE2 = Date.parse("2026-07-29T21:49:46Z");
 
+// ------------------------------------------------------------ message bodies (real sizes)
+
+// Rotor's outbound emails are whole HTML documents (inline styles on every
+// cell, a table layout, the quote lines, a long footer), which is why the real
+// messages.jsonl is ~33 MB for ~10,900 rows. These bodies match that size.
+const CSS = ".wrap{max-width:600px;margin:0 auto;font-family:Helvetica,Arial,sans-serif;color:#16161b}.hdr{background:#16161b;color:#fff;padding:18px 24px}.btn{display:inline-block;padding:12px 22px;border-radius:999px;background:#fb4d3d;color:#fff;text-decoration:none;font-weight:700}.tbl td{padding:8px 10px;border-bottom:1px solid #ececee;font-size:14px}.muted{color:#6b6b75;font-size:12px}";
+const LINE_NAMES = ["Exterior Window Cleaning", "Interior Window Cleaning", "Screen Cleaning", "Track Cleaning", "Gutter Cleaning", "Christmas Light Installation"];
+const FOOT = ["Questions? Reply to this email or text us and we'll get right back to you.", "Our crew uses pure water and soft brushes, so there are no streaks and nothing harsh near your plants.", "Fully insured. Satisfaction guaranteed: if we miss a spot, we come back and fix it at no charge."];
+export function emailHtml(first, n, kind = "quote") {
+  const td = "font-family:Helvetica,Arial,sans-serif;mso-line-height-rule:exactly;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%";
+  const rows = Array.from({ length: 6 + (n % 5) }, (_, k) => `<tr><td style="${td};padding:8px 10px;border-bottom:1px solid #ececee;font-size:14px;line-height:20px;color:#16161b">${LINE_NAMES[(n + k) % 6]}</td><td style="${td};padding:8px 10px;border-bottom:1px solid #ececee;font-size:14px;line-height:20px;text-align:right;color:#16161b">$${(120 + ((n + k) % 9) * 15).toFixed(2)}</td></tr>`).join("");
+  const para = (t) => `<p style="${td};margin:0 0 14px 0;font-size:15px;line-height:22px;color:#16161b">${t}</p>`;
+  const blocks = Array.from({ length: 22 }, (_, k) => `<tr><td style="${td};padding:${4 + (k % 3)}px 24px;font-size:13px;line-height:19px;color:#4a4a52">${FOOT[(n + k) % 3]}</td></tr>`).join("");
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>BARTA Window Washing</title><style type="text/css">${CSS.repeat(4)}@media only screen and (max-width:600px){.wrap{width:100%!important}.hdr{padding:14px 16px!important}}</style></head>`
+    + `<body style="margin:0;padding:0;background:#f4f4f6"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f6"><tr><td align="center"><table class="wrap" role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:20px">`
+    + `<tr><td class="hdr" style="${td};background:#16161b;color:#ffffff;padding:18px 24px;font-size:20px;font-weight:800">BARTA Window Washing</td></tr><tr><td style="padding:24px">`
+    + para(`Hi ${first || "there"},`) + para(kind === "quote" ? "Thanks for asking about window cleaning. Your quote is ready below; tap the button to see it, pick a date and approve it." : "Here is your receipt. Thank you for your business!")
+    + `<table class="tbl" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${rows}</table>`
+    + `<p style="margin:20px 0"><a class="btn" href="https://example.com/q/${n}" style="${td};display:inline-block;padding:12px 22px;border-radius:999px;background:#fb4d3d;color:#ffffff;text-decoration:none;font-weight:700">${kind === "quote" ? "View your quote" : "View your receipt"}</a></p>`
+    + `</td></tr>${blocks}<tr><td class="muted" style="${td};padding:18px 24px;color:#6b6b75;font-size:12px">BARTA Window Washing · Delano, MN · Reply STOP to texts to opt out · <a href="https://example.com/unsubscribe/${n}" style="color:#6b6b75">Unsubscribe</a></td></tr></table></td></tr></table></body></html>`;
+}
+const SMS_OUT = [
+  "Hi there! This is Barta Window Washing. We have you on the schedule for tomorrow between 8:00 and 10:00 AM. Reply here if anything changes, and please leave the gate unlocked if you won't be home. Thank you!",
+  "On our way! The crew should be there in about 20 minutes.",
+  "Running about 15 minutes behind, see you soon!",
+  "Thanks again for choosing Barta! If you have a minute, a quick Google review helps our small team a lot: https://example.com/review",
+  "Your invoice is ready. You can pay securely here: https://example.com/pay - thank you!",
+];
+const SMS_IN = ["Sounds good, see you then", "Thank you!", "Can we move it to Thursday afternoon? Something came up at work.", "Yes please", "The gate code is on file, the dog will be inside.", "How much would it be to add the screens?"];
+
 // ------------------------------------------------------------ the generator
 
 export function countsFor(scale = 0.05) {
@@ -435,9 +465,11 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     const stop = i < stopCount * 4 && i % 4 === 2;            // inbound, exact STOP family
     const nearStop = i === 6 || i === 30;
     const html = !sms && !inbound;
-    let content = stop ? r.pick(["STOP", "Stop", " stop ", "STOP"]) : nearStop ? "Stop by tomorrow?" : inbound ? (sms ? "Sounds good, see you then" : "Thanks! Looks great.\n\nOn Mon, someone wrote:\n> Your quote") : sms
-      ? (i % 11 === 0 ? "REMINDER: Barta Window Washing is scheduled for tomorrow between 8:00 and 10:00 AM." : i % 13 === 0 ? `Hi ${p.c.first_name || "there"}! Thanks for reaching out to Barta Window Washing. Reply stop to opt-out.` : "Running about 15 minutes behind, see you soon!")
-      : `<!doctype html><html><body><p>Hi ${p.c.first_name || "there"},</p><p>Your quote from BARTA Window Washing is ready.</p></body></html>`;
+    let content = stop ? r.pick(["STOP", "Stop", " stop ", "STOP"]) : nearStop ? "Stop by tomorrow?" : inbound
+      ? (sms ? SMS_IN[i % SMS_IN.length] : `Thanks! Looks great, we'd like the second option.\n\nOn Mon, Nov 3, 2026 at 10:14 AM BARTA Window Washing wrote:\n> Hi ${p.c.first_name || "there"},\n> Thanks for asking about window cleaning. Your quote is ready.\n> ${FOOT.join(" ").repeat(6)}\n> BARTA Window Washing · Delano, MN`)
+      : sms
+        ? (i % 11 === 0 ? "REMINDER: Barta Window Washing is scheduled for tomorrow between 8:00 and 10:00 AM." : i % 13 === 0 ? `Hi ${p.c.first_name || "there"}! Thanks for reaching out to Barta Window Washing. We got your request and will text you a quote shortly. Reply stop to opt-out.` : SMS_OUT[i % SMS_OUT.length])
+        : emailHtml(p.c.first_name, i, i % 4 === 0 ? "receipt" : "quote");
     const attach = i % 33 === 5 ? [{ url: `https://example.com/storage/v1/object/public/attachments/${COMPANY}/${r.uuid()}.jpg`, name: `photo-${i}.jpg`, type: "image/jpeg" }] : [];
     if (attach.length && media) mediaRows.push({ url: attach[0].url, source: "message_attachment", ref_id: null, n: i });
     const msg = {

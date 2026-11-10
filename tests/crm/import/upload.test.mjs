@@ -49,9 +49,12 @@ test("the pack script refuses a path inside any worktree (exit 2) and prints cou
     // every worktree counts, not just this checkout: a fake list of roots
     assert.equal(pack.main([ex, path.join(other, "out"), "--as-of", "2026-11-10"], { ...io, roots: [ROOT, other] }), 2);
     assert.ok(!existsSync(path.join(ROOT, "tmp-pack-out")), "nothing was written in the repo");
-    // the upload script refuses a pack folder inside a worktree too
-    return uploadCli.main([path.join(ROOT, "tests"), "--site", HOST], { env: { CRM_UPLOAD_KEY: "bimp_" + "a".repeat(32) }, ...io }).then((code) => {
+    // the upload script refuses a pack folder inside a worktree too, and a key file inside one
+    return uploadCli.main([path.join(ROOT, "tests"), "--site", HOST], { env: { CRM_UPLOAD_KEY: "bimp_" + "a".repeat(32) }, ...io }).then(async (code) => {
       assert.equal(code, 2);
+      const e = quiet();
+      assert.equal(await uploadCli.main([ex, "--site", HOST, "--key-file", path.join(ROOT, "package.json")], { env: {}, ask: async () => "", ...e }), 2);
+      assert.match(e.lines.join("\n"), /key file is inside a worktree/);
       assert.ok(io.lines.every((l) => !/@example\.com|\+1763555|Example Ave/.test(l)), "no value is ever printed");
     });
   } finally { for (const d of [ex, linkDir, other]) rmSync(d, { recursive: true, force: true }); }
@@ -95,12 +98,17 @@ test("pack → upload → run: sealed chunks under 4.5 MB, a key for one run onl
     assert.equal((await t.api("/contacts", { headers: bearer(keyA), csrf: false, client: false })).status, 401, "nor any other CRM route");
     assert.equal((await t.api(`/import/runs/${runA}/start`, { method: "POST", headers: bearer(keyB), body: {}, csrf: false, client: false })).status, 401);
 
-    // the upload script with key A: manifest, chunks, media, start
+    // the upload script with key A, typed at its prompt: manifest, chunks, media; it does not start the run
     const calls = [];
     const uio = quiet();
-    const code = await uploadCli.main([out, "--site", HOST], { env: { CRM_UPLOAD_KEY: keyA }, fetch: apiFetch(calls), sleep: async () => {}, ...uio });
+    const asked = [];
+    const code = await uploadCli.main([out, "--site", HOST], { env: {}, ask: async (q) => { asked.push(q); return keyA + "\n"; }, fetch: apiFetch(calls), sleep: async () => {}, ...uio });
     assert.equal(code, 0, uio.lines.join("\n"));
+    assert.equal(asked.length, 1, "the key is asked for, not taken from the command line");
     assert.ok(uio.lines.every((l) => !l.includes(keyA)), "the key is never printed");
+    assert.ok(!calls.some((c) => c.url.endsWith("/start")), "no start by default");
+    assert.equal((await store.getRecord("import_run", runA)).data.status, "uploading", "the owner checks the team, then starts");
+    assert.match(uio.lines.join("\n"), /tap Start the import/);
     const media = JSON.parse(readFileSync(path.join(out, "media.json"), "utf8"));
     assert.equal(calls.filter((c) => c.url.includes("/media/")).length, media.length, "each media file is PUT once");
     assert.deepEqual(t.fetchCalls(), [], "the site fetched nothing: media arrive as uploads");
@@ -111,6 +119,15 @@ test("pack → upload → run: sealed chunks under 4.5 MB, a key for one run onl
     assert.ok(recs.some((f) => f.content_type === "image/jpeg" && !f.download_only));
     assert.ok(recs.every((f) => f.owner.type === "import_run" && f.owner.id === runA && /^[0-9a-f]{64}$/.test(f.rotor.url_sha256)));
 
+    // --start (key from a file outside every worktree) sends nothing again and starts the run
+    const keyFile = path.join(keys.dir, "upload-key.txt");
+    writeFileSync(keyFile, keyA + "\n");
+    const calls2 = [];
+    const sio = quiet();
+    assert.equal(await uploadCli.main([out, "--site", HOST, "--key-file", keyFile, "--start"], { env: {}, ask: async () => { throw new Error("not asked"); }, fetch: apiFetch(calls2), sleep: async () => {}, ...sio }), 0, sio.lines.join("\n"));
+    assert.ok(calls2.some((c) => c.url.endsWith(`/import/runs/${runA}/start`)));
+    assert.ok(!calls2.some((c) => c.method === "PUT" && /\/(chunks|media)\//.test(c.url)), "every chunk and file was there already");
+    assert.match(sio.lines.join("\n"), /started/);
     // the run, then a second upload of the same pack sends nothing again
     const r = await runToEnd(t, owner, runA, { start: false });
     assert.equal(r.run.status, "done");

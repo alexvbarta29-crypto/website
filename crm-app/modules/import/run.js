@@ -61,7 +61,7 @@ function teamCard(s) {
     <ul class="im-team">${t.members.map((m) => html`<li>
       <span class="who"><span class="nm">${m.name}</span><span class="sub">${ROLE[m.role] || m.role} in Rotor</span></span>
       ${editable ? html`<select class="im-sel" ${attrs({ "data-member": m.rid, "aria-label": "CRM user for " + m.name })}>
-          <option value="" ${attrs({ selected: !m.match })}>New user (invited)</option>
+          <option value="new" ${attrs({ selected: !m.match })}>New user (invited)</option>
           ${t.users.filter((u) => u.status !== "disabled").map((u) => html`<option ${attrs({ value: u.id, selected: !!(m.match && m.match.id === u.id) })}>${u.name}</option>`)}
         </select>`
         : html`<span class="end">${m.match ? html`<span class="pill green">${m.match.name || "Matched"}</span>` : html`<span class="pill amber">New user</span>`}</span>`}
@@ -178,10 +178,10 @@ export default {
       catch (err) { toast(err.message, { bad: true }); }
     },
     "change [data-member]": async (e, el, ctx) => {
-      const uid = el.value || null;
+      const uid = el.value || "new";
       try {
         await ctx.api(`/import/runs/${encodeURIComponent(ctx.state.run.id)}/user-map`, { method: "POST", body: { map: { [el.dataset.member]: uid } } });
-        toast(uid ? "Matched" : "Will be a new user");
+        toast(uid === "new" ? "Will be a new user" : "Matched");
       } catch (err) { toast(err.message, { bad: true }); ctx.refresh(); }
     },
     "change [data-files]": async (e, el, ctx) => {

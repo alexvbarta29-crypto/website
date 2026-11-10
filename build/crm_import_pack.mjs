@@ -30,9 +30,10 @@
 // With OFFICE_DATA_KEY in the environment (never in a file in the repo) it
 // also proves each chunk opens. --print counts and writes nothing.
 //
-// Then: CRM_UPLOAD_KEY=bimp_... node build/crm_import_upload.mjs <out-dir> --site https://www.bartawindowwashing.com
+// Then: node build/crm_import_upload.mjs <out-dir> --site https://www.bartawindowwashing.com
+// (it asks for the upload key; the owner then taps Start on the Import screen)
 
-import { readFileSync, readdirSync, statSync, existsSync, rmSync, realpathSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync, rmSync, realpathSync, lstatSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,6 +50,20 @@ const MEDIA_SOURCES = ["message_attachment", "quote_photo"];
 const sha256 = (b) => createHash("sha256").update(b).digest("hex");
 
 export class PackError extends Error {}
+// A path the pack must not write to (inside a worktree, or a symbolic link): exit 2.
+export class PathRefused extends Error {}
+
+// Every folder the pack writes into is checked, not only <out-dir>: a
+// symbolic link (or a link up the path) that leads into a worktree of this
+// repository is refused before anything is written.
+export function checkTargets(outDir, inside) {
+  for (const d of [outDir, path.join(outDir, "chunks"), path.join(outDir, "media")]) {
+    let st = null;
+    try { st = lstatSync(d); } catch { /* not there yet */ }
+    if (st && st.isSymbolicLink()) throw new PathRefused(`Refusing: ${d === outDir ? "the output folder" : "a folder in the output"} is a symbolic link. Use a plain folder outside every worktree.`);
+    if (inside(d)) throw new PathRefused("Refusing: the output would land inside a worktree of this repository.");
+  }
+}
 
 // A sealed box with no run of ten digits in it (a test treats one as a
 // leaked phone number), sealed again with a fresh key until there isn't.
@@ -124,7 +139,7 @@ export function readMedia(exportDir) {
 }
 
 // The whole pack. → { as_of, entities: { name: { rows, chunks, dupes } }, media: {...}, written: boolean }
-export function pack(exportDir, outDir, { asOf, publicKeyPem, force = false, print = false, env = process.env, now = () => new Date() } = {}) {
+export function pack(exportDir, outDir, { asOf, publicKeyPem, force = false, print = false, env = process.env, now = () => new Date(), inside = (p) => insideAnyWorktree(p) } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(asOf || ""))) throw new PackError("--as-of must be YYYY-MM-DD");
   if (!existsSync(exportDir) || !statSync(exportDir).isDirectory()) throw new PackError("the export folder doesn't exist");
   const files = readdirSync(exportDir).filter((f) => f.endsWith(".jsonl")).sort();
@@ -143,6 +158,7 @@ export function pack(exportDir, outDir, { asOf, publicKeyPem, force = false, pri
   const mediaSummary = { count: media.list.length, bytes: media.list.reduce((s, m) => s + m.bytes, 0), skipped_big: media.skipped_big, invalid: media.invalid, missing: media.missing };
   if (print) return { as_of: asOf, entities, media: mediaSummary, written: false };
 
+  checkTargets(outDir, inside);
   if (existsSync(path.join(outDir, "manifest.json"))) {
     if (!force) throw new PackError("the output folder already holds a pack (use --force to replace it)");
     for (const p of ["chunks", "media"]) rmSync(path.join(outDir, p), { recursive: true, force: true });
@@ -200,13 +216,14 @@ export function main(argv = process.argv.slice(2), { env = process.env, log = co
   let publicKeyPem;
   try { publicKeyPem = readFileSync(a.publicKey, "utf8"); } catch { error("Can't read the office public key."); return 2; }
   try {
-    const r = pack(exportDir, outDir, { asOf: a.asOf, publicKeyPem, force: a.force, print: a.print, env });
+    const r = pack(exportDir, outDir, { asOf: a.asOf, publicKeyPem, force: a.force, print: a.print, env, inside });
     const rows = Object.values(r.entities).reduce((s, e) => s + e.rows, 0);
     const chunks = Object.values(r.entities).reduce((s, e) => s + e.chunks, 0);
     log(JSON.stringify({ as_of: r.as_of, entities: Object.fromEntries(Object.entries(r.entities).map(([k, v]) => [k, { rows: v.rows, chunks: v.chunks, ...(v.dupes ? { duplicates_dropped: v.dupes } : {}) }])), media: r.media }, null, 1));
     log(r.written ? `packed ${rows} rows in ${chunks} sealed chunks and ${r.media.count} media files` : `would pack ${rows} rows in ${chunks} chunks (nothing written)`);
     return 0;
   } catch (e) {
+    if (e instanceof PathRefused) { error(e.message); return 2; }
     if (e instanceof PackError) { error(`can't pack: ${e.message}`); return 1; }
     error(`can't pack: ${e && e.code ? e.code : "unexpected error"}`);
     return 1;

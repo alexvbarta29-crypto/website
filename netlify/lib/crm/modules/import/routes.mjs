@@ -115,6 +115,8 @@ const upload = (fn, opts) => async (ctx) => {
 };
 
 async function whoami(ctx, a) {
+  // once the run has left "uploading" its key only says so (nothing is taken any more)
+  if (a.run.status !== "uploading") return ok({ run_id: a.run.id, status: a.run.status, as_of: a.run.as_of || null });
   const got = await received(a.run.id);
   const { missing } = a.run.manifest ? await missingChunks(a.run) : { missing: [] };
   return ok({ run_id: a.run.id, status: a.run.status, as_of: a.run.as_of || null, manifest: !!a.run.manifest, expires_at: a.run.upload.expires_at, received: got, missing });
@@ -136,12 +138,13 @@ async function putChunk(ctx, a) {
 }
 
 async function putMedia(ctx, a) {
-  if (!["uploading", "queued", "running", "done"].includes(a.run.status)) throw new ConflictError("This import was cancelled.");
+  if (a.run.status !== "uploading") throw new ConflictError("This import has started; it takes no more uploads.");
   const out = await receiveMedia(a.run, ctx.params.sha, ctx.raw, { ref: ctx.req.headers.get("x-media-ref"), ctx: a.write });
   return ok(out);
 }
 
 async function mediaCheck(ctx, a) {
+  if (a.run.status !== "uploading") throw new ConflictError("This import has started; it takes no more uploads.");
   const hashes = Array.isArray(ctx.body && ctx.body.hashes) ? ctx.body.hashes.filter((h) => SHA_RE.test(String(h))).slice(0, 1000) : null;
   if (!hashes) throw new InputError("Send the media checksums.", "hashes");
   return ok({ have: await mediaHave(hashes), run_id: a.run.id });

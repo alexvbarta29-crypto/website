@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 // Upload a pack to the CRM's import (design §10.1 step 4, §10.10).
 //
-//   CRM_UPLOAD_KEY=bimp_... node build/crm_import_upload.mjs <out-dir> --site https://www.bartawindowwashing.com [--no-start] [--no-media]
+//   node build/crm_import_upload.mjs <pack-dir> --site https://www.bartawindowwashing.com [--key-file FILE] [--start] [--no-media]
 //
-// <out-dir> is what build/crm_import_pack.mjs wrote (manifest.json, the
+// <pack-dir> is what build/crm_import_pack.mjs wrote (manifest.json, the
 // sealed chunks, media/ and media.json), outside every worktree of this
 // repository. The key is the one-run upload key an owner made on the
 // Import screen (More → Import from Rotor → Start an import; shown once,
-// good for 24 hours, only for that run); it comes from the environment,
-// never an argument (shell history), and is never printed.
+// good for 24 hours, only for that run). It is asked for at a prompt that
+// doesn't show what is typed (or pasted), so it never lands in the shell's
+// history; --key-file FILE reads it from a file outside every worktree, and
+// CRM_UPLOAD_KEY in the environment still works. It is never printed.
 //
 // It asks the site what the run already has, sends the manifest, then each
 // sealed chunk the site doesn't have yet (PUT, with X-Content-SHA256, three
 // tries on a network error or a 5xx), then each media file the site doesn't
-// already hold (raw bytes, X-Media-Ref), and finally starts the run (unless
-// --no-start). Run it again after an interruption: it picks up where it
-// stopped. Media are uploaded from here; the site never fetches a URL.
-// Output is counts only.
+// already hold. It does NOT start the run: the owner checks the team map on
+// the Import screen and taps Start (--start starts it from here instead).
+// Run it again after an interruption: it picks up where it stopped. Media
+// are uploaded from here; the site never fetches a URL. Output is counts only.
 
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -30,11 +32,13 @@ const TRIES = 3;
 const realSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function parseArgs(args) {
-  const out = { positional: [], site: null, start: true, media: true, unknown: [] };
+  const out = { positional: [], site: null, start: false, media: true, keyFile: null, unknown: [] };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--site") out.site = args[++i] || "";
+    else if (a === "--start") out.start = true;
     else if (a === "--no-start") out.start = false;
+    else if (a === "--key-file") out.keyFile = args[++i] || "";
     else if (a === "--no-media") out.media = false;
     else if (a.startsWith("--")) out.unknown.push(a);
     else out.positional.push(a);
@@ -81,7 +85,7 @@ async function call(io, method, p, { body, headers = {}, raw = false } = {}) {
 }
 
 // → { run_id, chunks: { sent, had }, media: { sent, had, skipped }, started }
-export async function upload(outDir, { site, key, start = true, media = true, fetch: fetchFn = globalThis.fetch, sleep = realSleep, log = () => {} }) {
+export async function upload(outDir, { site, key, start = false, media = true, fetch: fetchFn = globalThis.fetch, sleep = realSleep, log = () => {} }) {
   const io = { site: String(site).replace(/\/+$/, ""), key, fetch: fetchFn, sleep };
   const manifestFile = path.join(outDir, "manifest.json");
   if (!existsSync(manifestFile)) throw new UploadError("there is no manifest.json in that folder (run crm_import_pack.mjs first)");
@@ -128,19 +132,60 @@ export async function upload(outDir, { site, key, start = true, media = true, fe
   return out;
 }
 
-const USAGE = "usage: CRM_UPLOAD_KEY=bimp_... node build/crm_import_upload.mjs <pack-dir> --site https://www.bartawindowwashing.com [--no-start] [--no-media]";
+const USAGE = "usage: node build/crm_import_upload.mjs <pack-dir> --site https://www.bartawindowwashing.com [--key-file FILE] [--start] [--no-media]\n       (it asks for the upload key the Import screen showed; CRM_UPLOAD_KEY also works)";
 
-export async function main(argv = process.argv.slice(2), { env = process.env, log = console.log, error = console.error, fetch: fetchFn, sleep, roots } = {}) {
+// Reads a line from the terminal without showing it (the key is pasted, not typed for others to see).
+export function promptHidden(question, { input = process.stdin, output = process.stderr } = {}) {
+  return new Promise((resolve) => {
+    if (!input.isTTY) {
+      // piped in: the first line
+      let buf = "";
+      input.setEncoding("utf8");
+      input.on("data", (d) => { buf += d; });
+      input.on("end", () => resolve(buf.split(/\r?\n/)[0].trim()));
+      return;
+    }
+    output.write(question);
+    input.setRawMode(true);
+    input.resume();
+    input.setEncoding("utf8");
+    let value = "";
+    const done = (v) => { input.setRawMode(false); input.pause(); input.removeListener("data", onData); output.write("\n"); resolve(v); };
+    const onData = (chunk) => {
+      for (const ch of chunk) {
+        if (ch === "\r" || ch === "\n") return done(value.trim());
+        if (ch === "\u0003") return done("");              // Ctrl-C
+        if (ch === "\u007f" || ch === "\b") value = value.slice(0, -1);
+        else value += ch;
+      }
+    };
+    input.on("data", onData);
+  });
+}
+
+// The key: --key-file, CRM_UPLOAD_KEY, else the hidden prompt.
+async function readKey(a, env, { roots, ask }) {
+  if (a.keyFile) {
+    if (roots ? insideAnyWorktree(a.keyFile, roots) : insideAnyWorktree(a.keyFile)) return { refused: "Refusing: the key file is inside a worktree of this repository. Keep it outside, or let the script ask for the key." };
+    try { return { key: readFileSync(a.keyFile, "utf8").trim() }; } catch { return { refused: "Can't read the key file." }; }
+  }
+  if (env.CRM_UPLOAD_KEY) return { key: String(env.CRM_UPLOAD_KEY).trim() };
+  return { key: String(await ask("Upload key (from the Import screen; it won't show): ")).trim() };
+}
+
+export async function main(argv = process.argv.slice(2), { env = process.env, log = console.log, error = console.error, fetch: fetchFn, sleep, roots, ask = promptHidden } = {}) {
   const a = parseArgs(argv);
   const [dir] = a.positional;
-  if (a.unknown.length || !dir || a.positional.length > 1 || !siteOk(a.site)) { error(USAGE); return 2; }
-  const key = String(env.CRM_UPLOAD_KEY || "");
-  if (!KEY_RE.test(key)) { error("Set CRM_UPLOAD_KEY to the upload key the Import screen showed (bimp_...)."); return 2; }
+  if (a.unknown.length || !dir || a.positional.length > 1 || !siteOk(a.site) || a.keyFile === "") { error(USAGE); return 2; }
   if (roots ? insideAnyWorktree(dir, roots) : insideAnyWorktree(dir)) { error("Refusing: the pack folder is inside a worktree of this repository. Keep it outside every worktree, like ~/barta-private/import-pack."); return 2; }
+  const k = await readKey(a, env, { roots, ask });
+  if (k.refused) { error(k.refused); return 2; }
+  const key = k.key;
+  if (!KEY_RE.test(key)) { error("That isn't an upload key (bimp_ and 32 letters and digits, from the Import screen)."); return 2; }
   try {
     const r = await upload(dir, { site: a.site, key, start: a.start, media: a.media, fetch: fetchFn || globalThis.fetch, sleep, log });
     log(JSON.stringify(r));
-    log(r.started ? `run ${r.run_id} started: watch it on the Import screen` : `run ${r.run_id}: uploaded, not started`);
+    log(r.started ? `run ${r.run_id} started: watch it on the Import screen` : r.status && r.status !== "uploading" ? `run ${r.run_id} is ${r.status}` : `run ${r.run_id}: uploaded. Check the team on the Import screen, then tap Start the import.`);
     return 0;
   } catch (e) {
     error(`upload stopped: ${String((e && e.message) || "unexpected error").replace(/bimp_[0-9A-Za-z]+/g, "bimp_…")}`);

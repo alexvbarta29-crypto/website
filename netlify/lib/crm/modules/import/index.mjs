@@ -11,8 +11,8 @@
 
 import { defineModule } from "../../core/registry.mjs";
 import { defineFileOwner } from "../../core/files.mjs";
-import { readIndex, listKeys, deleteRaw } from "../../../crm-store.mjs";
-import { nowMs } from "../../core/clock.mjs";
+import { readIndex, listKeys, deleteRaw, getRecord, updateRecord } from "../../../crm-store.mjs";
+import { nowMs, nowIso } from "../../core/clock.mjs";
 import { types } from "./types.mjs";
 import { importRoutes } from "./routes.mjs";
 import { userPhases } from "./users.mjs";
@@ -29,17 +29,30 @@ defineFileOwner("import_run", {
 
 // import.staging_gc (bulk, daily): the plaintext rows of a run that
 // finished more than 30 days ago are deleted (the run, its state, report,
-// conflicts and id map stay).
+// conflicts and id map stay); an upload nobody started whose key ran out
+// more than 7 days ago is cancelled ("abandoned") and its rows deleted at once.
+export const ABANDONED_AFTER_DAYS = 7;
 async function stagingGc(ctx) {
   const ix = await readIndex("import-runs", "");
-  const old = ix.rows.filter((r) => r.fin && Date.parse(r.fin) + STAGING_KEEP_DAYS * 86400000 < nowMs());
+  const day = 86400000;
   let removed = 0;
-  for (const r of old) {
-    for (const k of await listKeys(`imp/${r.id}/raw/`)) {
-      if (ctx.budget && ctx.budget.left() < 5000) return { done: false, progress: removed };
+  const drop = async (id) => {
+    for (const k of await listKeys(`imp/${id}/raw/`)) {
+      if (ctx.budget && ctx.budget.left() < 5000) return false;
       await deleteRaw(k);
       removed += 1;
     }
+    return true;
+  };
+  for (const r of ix.rows.filter((x) => x.st === "uploading" && Date.parse(x.at) + (ABANDONED_AFTER_DAYS + 1) * day < nowMs())) {
+    const got = await getRecord("import_run", r.id);
+    const run = got && got.data;
+    if (!run || run.status !== "uploading" || !run.upload || Date.parse(run.upload.expires_at) + ABANDONED_AFTER_DAYS * day > nowMs()) continue;
+    await updateRecord("import_run", run.id, (x) => (x.status !== "uploading" ? null : { ...x, status: "cancelled", cancel_reason: "abandoned", finished_at: nowIso() }), { by: "import", origin: "import", actor_kind: "import", requestId: "staging_gc" });
+    if (!(await drop(run.id))) return { done: false, progress: removed };
+  }
+  for (const r of ix.rows.filter((x) => x.fin && Date.parse(x.fin) + STAGING_KEEP_DAYS * day < nowMs())) {
+    if (!(await drop(r.id))) return { done: false, progress: removed };
   }
   return { progress: removed };
 }

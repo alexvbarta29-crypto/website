@@ -46,25 +46,31 @@ not, ever goes into git.
    each sealed chunk, the export date: no personal data) and `media.json`
    (checksum, source, Rotor ref id, size). It **refuses (exit 2) an export
    or output folder inside any worktree** (`git worktree list --porcelain`,
-   symlinks followed), refuses to overwrite an earlier pack without
+   symlinks followed), refuses an output folder, `chunks/` or `media/` that
+   is a symbolic link (each is checked before anything is written), refuses
+   to overwrite an earlier pack without
    `--force`, writes files readable by their owner only, and prints counts
    only. `--print` counts and writes nothing. With `OFFICE_DATA_KEY` in the
    environment it also proves every chunk opens.
 3. **Make the run**: an owner opens **More → Import from Rotor → Start an
    import** and copies the upload key (shown once, `bimp_...`, good for 24
-   hours, only for this run) or the whole command the sheet shows.
+   hours, only for this run) and the command the sheet shows.
 4. **Upload**:
    ```bash
-   CRM_UPLOAD_KEY=bimp_... node build/crm_import_upload.mjs ~/barta-private/import-pack --site https://www.bartawindowwashing.com
+   node build/crm_import_upload.mjs ~/barta-private/import-pack --site https://www.bartawindowwashing.com
    ```
-   It asks the site what the run has, sends the manifest, each chunk the
-   site doesn't have yet (PUT with `X-Content-SHA256`; three tries on a
-   network error, a 429 or a 5xx), each media file the site doesn't hold
-   yet (from any earlier run), then starts the run. Run it again after an
-   interruption: it picks up where it stopped. `--no-start` uploads only
-   (the owner then checks the team map and taps Start). The key comes from
-   the environment, never an argument, and is never printed; the site
-   address may be the production site or `http://localhost:PORT` only.
+   It asks for the upload key at a prompt that doesn't echo it (so it
+   never lands in the shell history); `--key-file FILE` reads it from a
+   file outside every worktree instead, and `CRM_UPLOAD_KEY` in the
+   environment still works. It asks the site what the run has, sends the
+   manifest, each chunk the site doesn't have yet (PUT with
+   `X-Content-SHA256`; three tries on a network error, a 429 or a 5xx) and
+   each media file the site doesn't hold yet (from any earlier run). Run it
+   again after an interruption: it picks up where it stopped. It does
+   **not** start the run: the owner checks the team map on the Import
+   screen and taps Start the import (`--start` starts it from the script
+   instead). The key is never printed; the site address may be the
+   production site or `http://localhost:PORT` only.
 5. **Watch and settle**: the Import screen shows the upload, the team map,
    each step, then the report. Conflicts are settled on the Conflicts
    screen. The report and the id map download as CSV.
@@ -83,7 +89,8 @@ files (media only go up with the script).
   four characters and when it runs out, New upload key), the **team map**
   (each Rotor member and the CRM user it becomes; a dropdown changes one
   before the start; "New user (invited)" makes a new login nobody can use
-  until an owner sends its invite link), Start the import, the steps as
+  until an owner sends its invite link; the map shown is fixed when the
+  run starts and is exactly what the run applies), Start the import, the steps as
   they run (refreshed every 4 s while it runs; leaving the screen is
   fine), Resume when the lane gave up, Cancel. Once done, the **report**:
   added / updated / unchanged / linked / to settle / skipped, what waits
@@ -99,38 +106,71 @@ files (media only go up with the script).
 ## Field ownership (§10.7)
 
 A type's `rotorFields` are the fields the import owns; everything else on
-a record is the CRM's. Each import write stores `record.import =
-{ run_id, at, hash, source }` (the hash of the mapped rotorFields as
-canonical JSON; `source` is the Rotor row, like `customers:<id>`) and the
-mapped values in `ib/{type}/{id}` (the import base). Per mapped row:
+a record is the CRM's. One record may be written by several Rotor rows,
+its **sources** (`customers:<id>`, `leads:<id>`, `opportunities:<id>`: the
+phase's entity and the row's id): a lead Rotor converted to a customer,
+two Rotor customers the owner merged into one contact, Sales' deal that
+both the lead and its opportunities describe. So the import base is kept
+**per source**:
+
+```
+ib/{type}/{id}  = { v: 2, primary, sources: { [source]: { fields, hash, rank, run_id, at } } }
+record.import   = { run_id, at, source: primary, hash, src: { [source]: hash } }
+```
+
+`fields` are what that source last wrote (its mapped rotorFields), `hash`
+names that version and `record.import.src` repeats it; `record.import.hash`
+is the hash of the record's rotorFields as the import left them. Per
+mapped row (source S, Rotor's values N, the record C, S's base B):
 
 | The record | What happens |
 |---|---|
 | not there | created (`onlyIfNew`) |
-| untouched (its rotorFields still hash to `import.hash`), Rotor sent the same | **nothing is written** |
-| untouched, Rotor changed | Rotor's values go into those fields only (CAS) |
-| edited | three-way, field by field, against the base: CRM = base → Rotor's value; Rotor = base → the CRM's; equal → nothing; both changed → a **conflict** (the CRM's value stays; the base keeps its old value for that field, so it comes back next run until it is settled) |
-| made in the CRM, matched by identity (an intake contact; no `import`) | **linked**: only its empty fields are filled, its values kept, no conflicts, then `import` and the base are set |
-| its base came from another Rotor row (a lead Rotor converted to a customer) | **relinked**: three-way, but where both changed the CRM's value is kept quietly (the conversion itself is not an edit) |
-| a placeholder (`flags.placeholder`, row 9) | the real row overwrites it in place and clears the flag; an edited placeholder conflicts like any record |
+| S sent exactly what B holds | **nothing is written**, whatever other sources or people did |
+| per field S maps | N = B → the record keeps its value; C = N → nothing; C empty → filled; C = B → Rotor's value; C = another source's base value → that source holds the field: S takes it only when it **ranks** higher, else it stays quietly; otherwise C is a person's value: a **conflict** when S changed the field since B (the CRM's value stays; B keeps its old value for that field, so it comes back next run until it is settled) |
+| S never wrote this record (an intake contact matched by identity, a merged duplicate, a new facet) | **linked**: only empty fields are filled, the record's values kept quietly, then S's base is set |
+| a placeholder (`flags.placeholder`, row 9) | the real row takes over the placeholder's base and clears the flag; a placeholder row (rank 0) never overrides anything; an edited placeholder conflicts like any record |
+| no base at all (backups skip `ib/`, so every record after a restore) | the primary source trusts the record when its rotorFields still hash to `import.hash` (nobody edited it: Rotor's changes apply); otherwise every field that differs from Rotor's is a conflict, never a quiet keep |
+
+Ranks: customers and opportunities 3, leads 2, any other entity 1, a
+placeholder row 0; a phase may set `rank` itself. So a lead row still in
+`leads.jsonl` after Rotor converted it (the export ran while the owner
+converted it) never turns its customer back into a lead, and a contact the
+owner kept after merging two Rotor customers keeps its own values (the
+merged-away row's source is recorded and stays quiet).
 
 Two kinds of fields never conflict: `rotor` (the import's own bag of Rotor
-ids and raw values: Rotor's changed values win, lists named `*_ids` are
-unions, so a converted customer keeps its lead id), and lists of plain
-values such as tags (merged as sets: Rotor's additions and removals apply,
-the CRM's own additions stay). Fields outside rotorFields that a mapped
-record carries are filled only where the record has nothing. A record
-missing from a newer export is never deleted.
+ids and raw values: S's changed values win where the bag still holds S's
+old value, nothing, or a lower-ranked source's; lists named `*_ids` are
+unions, so a converted customer keeps its lead id; a key S stops sending
+goes only if it still holds S's value, never another source's), and lists
+of plain values such as tags (merged as sets: S's additions and removals
+apply, everyone else's additions stay). Fields outside rotorFields that a
+mapped record carries are filled only where the record has nothing. A
+record missing from a newer export is never deleted.
+
+Crash safety: before a record write that moves S's base, the new base is
+written into `ib/` as `sources[S].pending`; then the record (whose
+`import.src[S]` names the new hash); then the base proper. A crash between
+the record write and the base write leaves a pending base the record
+names, and the next run takes it as the base (a pending base the record
+doesn't name never happened). A base the record names but `ib/` lacks is
+rebuilt from the record when nobody edited it since, else it conflicts
+where it differs.
 
 Settling a conflict: "Take Rotor's" writes Rotor's value as the owner (a
 person's write, audited); "Keep the CRM's" changes nothing on the record.
-Either way the base takes Rotor's value, so the field stays quiet until
-Rotor changes it again.
+Either way the conflicting source's base takes Rotor's value, so the field
+stays quiet until Rotor changes it again.
 
 Writes run as the import (`origin: "import"`, exempt from the parallel-run
-guard), with `bulk` (no index rows: the run rebuilds every index and
-relation family it touched at the end) and without per-record audit events
-(one `phase_done` summary event per phase on the run).
+guard), with `bulk` (no index rows: the run rebuilds the indexes and
+relation families of the types it really created or changed records of; an
+unchanged run rebuilds none) and without per-record audit events (one
+`phase_done` summary event per phase on the run). A run that stops before
+its finish steps (cancelled, or given up by the lane) queues a `reindex`
+run for the indexes of the types it wrote, so its records are listed
+anyway.
 
 ## Identity (§10.3)
 
@@ -171,7 +211,12 @@ with a code, never the run. A function killed between checkpoints redoes
 at most those rows, which changes nothing twice.
 
 ctx for `map()`: `{ runId, idForRotor, lookup, users (Map of Rotor user id
-→ CRM user id), settings.get(name), report.warn(code), cache, phase }`.
+→ CRM user id), settings.get(name), report.warn(code), cache, phase,
+prepared }`. A phase may have `prepare(rows, ctx)`: it runs once, before
+the phase's first row, over all the phase's staged rows, and its answer is
+saved with the run's state (`ctx.prepared`, the same after a resume);
+`system.users` uses it to fix the team map at the start. A phase may set
+`rank` (see Field ownership).
 
 Finish steps: rebuild the indexes and verify the relation families of the
 types written, write the id map in parts, write the report, mark the run
@@ -181,7 +226,7 @@ done.
 
 | Phase | Entity | What |
 |---|---|---|
-| `system.users` | `members` | each Rotor member → a CRM user: the owner's choice on the screen, an earlier mapping (`ptr/rotor/user/{rid}`), the same full name, a first name only one user has; only a member with no match becomes a new user (`invited`, no password, role owner/admin/member → owner/admin/tech, login from the first name). Rotor's facts go in `user.rotor` (the type's only rotorField); a matched user's role, password and settings are never changed |
+| `system.users` | `members` | each Rotor member → a CRM user, computed once when the phase starts (exactly the map the screen showed): the owner's choice on the screen (a user, or "new"), an earlier mapping (`ptr/rotor/user/{rid}`), the same full name, a first name only one user has, never a CRM user another member already took; only a member with no match (or the owner's "new") becomes a new user (`invited`, no password, role owner/admin/member → owner/admin/tech, login from the first name). Rotor's facts go in `user.rotor` (the type's only rotorField); a matched user's role, password and settings are never changed. Rotor ids made of dots only are refused |
 | `system.availability` | `member_availability` | weekly slots fill an empty `availability`; `is_technician` only on a user the import created |
 | `system.rates` | `rate_settings` | hourly cents per category and commission percent (→ basis points) fill a rate that is still 0; one rate row or a `{hourly_rates, commission_rates}` row |
 
@@ -197,12 +242,12 @@ messages phase lists `contacts.suppressions` in its `after`.
 | `POST /import/runs` | `import:run` | `{ manifest?, note? }` → `{ run, upload_key }` (the key once) |
 | `GET /import/runs` · `/import/runs/:id` | `import:run` | the runs; one run with its upload, phases, team map, lane |
 | `POST /import/runs/:id/key` | `import:run` | a fresh upload key (the old one stops working) |
-| `GET /import/upload` | the upload key | `{ run_id, status, manifest, received, missing }` |
+| `GET /import/upload` | the upload key | `{ run_id, status, as_of, manifest, received, missing }` while uploading; `{ run_id, status, as_of }` after |
 | `PUT /import/runs/:id/manifest` | key or owner | the pack's `manifest.json` |
 | `PUT /import/runs/:id/chunks/:name` | key or owner | one sealed chunk (≤ 4.5 MB, `X-Content-SHA256`), after the manifest; it must match the manifest's checksum and row count → `{ entity, rows, invalid }` |
-| `PUT /import/runs/:id/media/:urlSha256` | key or owner | raw bytes ≤ 4 MB, `X-Media-Ref: <source>:<rotor id>` → `{ file_id }` |
-| `POST /import/runs/:id/media-check` | key or owner | `{ hashes }` → `{ have }` |
-| `POST /import/runs/:id/user-map` | `import:run` | `{ map: { rotorUserId: crmUserId \| null } }` |
+| `PUT /import/runs/:id/media/:urlSha256` | key or owner | raw bytes ≤ 4 MB, `X-Media-Ref: <source>:<rotor id>` → `{ file_id }`; only while uploading |
+| `POST /import/runs/:id/media-check` | key or owner | `{ hashes }` → `{ have }`; only while uploading |
+| `POST /import/runs/:id/user-map` | `import:run` | `{ map: { rotorUserId: crmUserId \| "new" \| null } }` (null: back to the proposal); only while uploading |
 | `POST /import/runs/:id/start` | key or owner | every chunk the manifest lists must be there |
 | `POST /import/runs/:id/resume` · `/cancel` | `import:run` | |
 | `GET /import/runs/:id/report` · `/report.csv` · `/idmap.csv` | `import:run` | the id map download is audited (`idmap_download`) |
@@ -212,8 +257,13 @@ messages phase lists `contacts.suppressions` in its `after`.
 The upload key is not an API key: it is `bimp_` + 32 base62 characters,
 stored only as its SHA-256 (on the run and as `ptr/import-key/{sha256}`),
 checked by the upload routes themselves (`auth: "hook"`), useless on any
-other route, for any other run, or after 24 hours. On the same routes an
+other route, for any other run, or after 24 hours, and it takes nothing
+once its run has left "uploading" (chunks, manifest and media are refused;
+`GET /import/upload` then says only the status). On the same routes an
 owner's session works with the usual CSRF checks (the phone upload).
+Store keys never hold a `.` or `..` segment (`crm-store` refuses them:
+the Blobs client puts the key in the request path, where such a segment
+would be folded into another key).
 
 Staging: `imp/{runId}/raw/{entity}/{nnnn}` (the opened rows; a row no
 phase takes is counted, kept and skipped later with its field),
@@ -233,8 +283,10 @@ None.
 
 - `import.staging_gc` (bulk, daily 04:40, maintenance): the staged rows of
   a run that finished more than 30 days ago are deleted (the run, its
-  report, conflicts and id map stay).
-- Run kind `import` (bulk lane).
+  report, conflicts and id map stay); a run still waiting for its upload
+  a week after its key ran out is cancelled ("abandoned") and its staged
+  rows deleted.
+- Run kinds `import` (bulk lane) and, after a stopped run, `reindex`.
 - Today: "Import conflicts to settle" (owners).
 
 ## Automations
@@ -243,26 +295,37 @@ None.
 
 ## Tests
 
-`tests/crm/import/`: `ownership.test.mjs` (the three-way rules; a stats or
-listener update between runs gives zero conflicts and no write; a human
+`tests/crm/import/`: `ownership.test.mjs` (the per-source rules; a stats
+or listener update between runs gives zero conflicts and no write; a human
 edit to one field gives exactly one conflict while the others take
 Rotor's values; settling sticks; a linked intake contact keeps its
-values), `identity.test.mjs` (dual-write lead → conversion → one contact
+values), `sources.test.mjs` (a lead converted during the export stays the
+customer; merged Rotor customers stay quiet; two phases writing one record
+merge per field by rank; a crash between the record write and the base
+write; no base after a restore; an unchanged run rebuilds no index),
+`hardening.test.mjs` (the team map is the screen's; a key takes nothing
+after the start; abandoned uploads; dot-only ids and keys; a cancelled or
+given-up run's records are listed; symlinked pack folders; the scan flags
+pack media), `identity.test.mjs` (dual-write lead → conversion → one contact
 with all its history; placeholders; ids need no `created_at`),
 `week.test.mjs` (a simulated week of every sweep, then the same export:
 0 conflicts, rotorFields byte-identical, nothing mirrored created),
 `upload.test.mjs` (keys for one run only, 24 hours, upload routes only;
-pack refuses a path in any worktree; media uploaded, never fetched; pack →
-upload → run end to end with a throwaway key pair), `runner.test.mjs`
+pack refuses a path in any worktree, the upload script a key file in one;
+the key asked at a prompt; no start without `--start`; media uploaded,
+never fetched; pack → upload → run end to end with a throwaway key pair), `runner.test.mjs`
 (the gate: repeated passes, no row or finished phase done twice; a crash
 mid-phase; waiting phases; money sums; the audited id map; cancel and
 resume), `users.test.mjs`, `screens.test.mjs`.
 
 The gate at full size: `CRM_IMPORT_FULL=1 node --test --test-name-pattern
 "the gate" tests/crm/import/runner.test.mjs` (14,268 synthetic rows, about
-25 bulk passes, under 15 s in memory). The generator alone:
-`node tests/crm/fixtures/rotor-synthetic.mjs <out-dir> --scale 1 --media`
-(the folder must be empty; keep it outside the repo).
+25 bulk passes, under 15 s in memory; by default the gate runs scale 0.1).
+The generator alone: `node tests/crm/fixtures/rotor-synthetic.mjs <out-dir>
+--scale 1 --media` (the folder must be empty; keep it outside the repo).
+At scale 1 it matches the real export's size: about 40 MB, of which
+messages are about 34 MB (10,927 rows; outbound emails are whole HTML
+documents of 12-16 KB, like Rotor's).
 
 ## Data rules
 
@@ -270,4 +333,6 @@ Synthetic fixtures only (made-up names, `555` numbers, `example.com`
 emails). Logs carry counts and codes, never a name, phone, email, address
 or amount tied to a person; the report and the manifest hold counts only;
 the pack and upload scripts print counts only and refuse any path inside a
-worktree. Real exports, packs and media stay in `~/barta-private/`.
+worktree. Real exports, packs and media stay in `~/barta-private/`. The
+no-data scan also flags, outside `assets/`, a file named like a pack's
+media (64 hex characters) and a photo or PDF hidden under another name.

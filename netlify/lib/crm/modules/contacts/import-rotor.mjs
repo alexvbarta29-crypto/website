@@ -41,7 +41,8 @@ export class RowError extends Error {
 const str = (v) => (v == null ? "" : String(v)).trim();
 const clean = (v) => fixMojibake(str(v));
 const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-const ROTOR_ID = /^[A-Za-z0-9_.-]{1,64}$/;
+// a Rotor id: letters, digits, "_", "-", "." (never only dots: "." and ".." are path segments in a key)
+const ROTOR_ID = /^(?!\.+$)[A-Za-z0-9_.-]{1,64}$/;
 export const MARKATE_BATCH_2 = "2026-07-29T21:49:46";
 export const MAIN_NUMBER = "+17633143400";
 export const STOP_WORDS = Object.freeze(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE"]);
@@ -292,7 +293,9 @@ async function mapLead(r, ctx) {
   // same person, §10.4) only adds its lead id, tags and empty fields.
   let id = await lookup(ctx, "lead", r.id);
   let joins = false;
-  if (id && id !== idForRotor("contact", r.id)) {
+  if (id) {
+    // a contact that is a customer (Rotor converted the lead, or the lead joined a customer): the lead row only
+    // adds to it, whatever its id, even when the export still lists the lead (exported before the conversion, R3)
     const cur = await getRecord("contact", id).catch(() => null);
     joins = !!(cur && ((cur.data.rotor && cur.data.rotor.customer_id) || ["customer", "former_customer"].includes(cur.data.lifecycle)));
   }

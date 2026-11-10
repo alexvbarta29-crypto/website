@@ -25,10 +25,10 @@ import { authenticate, loadPermissions } from "../../core/auth.mjs";
 import { can } from "../../core/perms.mjs";
 import { fail } from "../../core/http.mjs";
 import { checkManifest, manifestChunkNames, received, stagedChunks, readChunk } from "./staging.mjs";
-import { startLaneRun, loadState, phaseView } from "./runner.mjs";
+import { startLaneRun, loadState, phaseView, queueReindex } from "./runner.mjs";
 import { conflictsPrefix } from "./report.mjs";
 import { conflictKey, ibKey, setPath } from "./ownership.mjs";
-import { normalizeMember, proposeMap, userRows, memberPointers } from "./users.mjs";
+import { normalizeMember, proposeMap, userRows, memberPointers, NEW_USER } from "./users.mjs";
 
 export const UPLOAD_KEY_RE = /^bimp_[0-9A-Za-z]{32}$/;
 export const KEY_TTL_MS = 24 * 3600 * 1000;
@@ -180,6 +180,9 @@ export async function cancelImport(ir, ctx) {
   if (["done", "cancelled"].includes(ir.status)) return runView(ir);
   const r = await updateRecord("import_run", ir.id, (x) => (["done", "cancelled"].includes(x.status) ? null : { ...x, status: "cancelled", finished_at: nowIso() }), ctx);
   if (ir.lane_run_id) await cancelLaneRun(ir.lane_run_id, ctx).catch(() => null);
+  // what the run wrote so far (bulk: no index rows) gets its lists back in the background
+  const state = await loadState(ir.id).catch(() => null);
+  if (state && state.types && state.types.length) await queueReindex(state.types, ctx.requestId).catch(() => null);
   return runView(r.data);
 }
 
@@ -206,15 +209,18 @@ export async function memberMap(ir, state = null) {
   return { members: map.map((x) => ({ ...x, match: x.match ? { ...x.match, name: named(x.match.id) } : null })), users: users.map((u) => ({ id: u.id, name: u.name, status: u.status })), done: false };
 }
 
-// The owner's choices: { [rotorUserId]: crmUserId | null } (null drops a choice).
+// The owner's choices before the run starts: { [rotorUserId]: crmUserId |
+// "new" (make a new invited user) | null (drop the choice: match by name) }.
+// Once the run has started the map it applies is fixed.
 export async function setUserMap(ir, map, ctx) {
+  if (ir.status !== "uploading") throw new ConflictError("This import has started; change the team on the next import.");
   if (!map || typeof map !== "object" || Array.isArray(map)) throw new InputError("Send who each Rotor member is.", "map");
   const entries = Object.entries(map).slice(0, 50);
   for (const [rid, uid] of entries) {
-    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(rid)) throw new InputError("That isn't a Rotor member.", "map");
-    if (uid !== null && !isId(uid, "user")) throw new InputError("That isn't someone on the team.", `map.${rid}`);
+    if (!/^(?!\.+$)[A-Za-z0-9_.-]{1,64}$/.test(rid)) throw new InputError("That isn't a Rotor member.", "map");
+    if (uid !== null && uid !== NEW_USER && !isId(uid, "user")) throw new InputError("That isn't someone on the team.", `map.${rid}`);
   }
-  const ids = entries.map(([, u]) => u).filter(Boolean);
+  const ids = entries.map(([, u]) => u).filter((u) => u && u !== NEW_USER);
   const found = await getRecords("user", ids);
   if (found.some((g) => !g)) throw new InputError("That isn't someone on the team.", "map");
   const r = await updateRecord("import_run", ir.id, (x) => {
@@ -271,11 +277,18 @@ export async function resolveConflict(id, take, ctx) {
   if (take === "rotor") {
     await updateRecord(type, recId, (rec) => { const next = JSON.parse(JSON.stringify(rec)); setPath(next, field, c.rotor === null ? undefined : c.rotor); return next; }, ctx);
   }
+  // the conflict's source's base takes Rotor's value (its version tag stays: the next
+  // run sees Rotor = base for the field, keeps the CRM's value and re-tags the record)
   const ib = await getRaw(ibKey(type, recId));
-  if (ib && ib.data && ib.data.fields) {
-    const fields = { ...ib.data.fields };
-    if (c.rotor === null || c.rotor === undefined) delete fields[field]; else fields[field] = c.rotor;
-    await putRaw(ibKey(type, recId), { ...ib.data, fields, at: nowIso() });
+  const setField = (fields) => { const f = { ...(fields || {}) }; if (c.rotor === null || c.rotor === undefined) delete f[field]; else f[field] = c.rotor; return f; };
+  if (ib && ib.data && ib.data.sources && typeof ib.data.sources === "object") {
+    const srcKey = c.source && ib.data.sources[c.source] ? c.source : ib.data.primary;
+    if (srcKey && ib.data.sources[srcKey]) {
+      const sources = { ...ib.data.sources, [srcKey]: { ...ib.data.sources[srcKey], fields: setField(ib.data.sources[srcKey].fields) } };
+      await putRaw(ibKey(type, recId), { ...ib.data, sources, at: nowIso() });
+    }
+  } else if (ib && ib.data && ib.data.fields) {
+    await putRaw(ibKey(type, recId), { ...ib.data, fields: setField(ib.data.fields), at: nowIso() });
   }
   await putRaw(key, { ...c, status: "resolved", resolution: take, resolved_by: ctx.by, resolved_at: nowIso() });
   await updateRecord("import_run", runId, (x) => ({ ...x, conflicts: { open: Math.max(0, ((x.conflicts && x.conflicts.open) || 0) - 1), resolved: ((x.conflicts && x.conflicts.resolved) || 0) + 1 } }), ctx).catch(() => null);

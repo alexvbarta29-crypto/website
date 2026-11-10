@@ -30,8 +30,11 @@ import { rotorKey } from "../contacts/display.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
 const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-const ROTOR_ID = /^[A-Za-z0-9_.-]{1,64}$/;
+// a Rotor id: letters, digits, "_", "-", "." (never only dots: "." and ".." are path segments in a key)
+const ROTOR_ID = /^(?!\.+$)[A-Za-z0-9_.-]{1,64}$/;
 export const ROLE_MAP = Object.freeze({ owner: "owner", admin: "admin", member: "tech" });
+// The owner's choice "this Rotor member is nobody here yet: make a new (invited) user".
+export const NEW_USER = "new";
 
 export class MemberRowError extends Error {
   constructor(field) { super(`${field} is missing or the wrong type`); this.name = "RowError"; this.field = field; }
@@ -69,14 +72,15 @@ export function matchMember(m, users, { override = null, pointer = null, taken =
 // run starts). → [{ rid, name, role, match: { id, how } | null }]
 export function proposeMap(members, users, { overrides = {}, pointers = {} } = {}) {
   const taken = new Set();
-  const out = members.map((m) => ({ m, match: null }));
-  // overrides and earlier mappings first, so a name match never steals their user
+  const out = members.map((m) => ({ m, match: null, fixed: false }));
+  // the owner's choices first ("new": a new user, never a name match), then earlier mappings, so a name match never steals their user
   for (const x of out) {
     const o = overrides[x.m.rid] || null;
+    if (o === NEW_USER) { x.fixed = true; continue; }
     const p = pointers[x.m.rid] || null;
-    if (o || p) { x.match = matchMember(x.m, users, { override: o, pointer: p }); if (x.match) taken.add(x.match.id); }
+    if (o || p) { x.match = matchMember(x.m, users, { override: o, pointer: p }); if (x.match) { taken.add(x.match.id); x.fixed = true; } }
   }
-  for (const x of out) if (!x.match) { x.match = matchMember(x.m, users, { taken }); if (x.match) taken.add(x.match.id); }
+  for (const x of out) if (!x.fixed) { x.match = matchMember(x.m, users, { taken }); if (x.match) taken.add(x.match.id); }
   return out.map((x) => ({ rid: x.m.rid, name: x.m.name, role: x.m.role, match: x.match }));
 }
 
@@ -114,22 +118,40 @@ async function pointMember(rid, uid) {
   await settledWrite(key, { id: uid, at: nowIso() }, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
 }
 
+// Before the first member: the whole map at once, exactly as the Import
+// screen showed it (proposeMap over every member, with the owner's choices
+// and the earlier mappings), so one member's match can't take another's user.
+async function prepareMembers(rows, ctx) {
+  const members = [];
+  for (const row of rows) { try { members.push(normalizeMember(row)); } catch { /* skipped with its field later */ } }
+  const users = await userRows();
+  const pointers = await memberPointers(members.map((m) => m.rid));
+  const map = {};
+  for (const x of proposeMap(members, users, { overrides: ctx.userOverrides || {}, pointers })) map[x.rid] = x.match ? { id: x.match.id, how: x.match.how } : null;
+  return { map };
+}
+
 async function mapMember(m, ctx) {
-  const users = ctx.cache.users ||= await userRows();
-  const overrides = ctx.userOverrides || {};
-  const pointer = (await memberPointers([m.rid]))[m.rid] || null;
-  // users already given to another member in this run
-  const taken = new Set([...ctx.users].filter(([rid]) => rid !== m.rid).map(([, uid]) => uid));
-  const match = matchMember(m, users, { override: overrides[m.rid] || null, pointer, taken });
+  const planned = ctx.prepared && ctx.prepared.map && Object.hasOwn(ctx.prepared.map, m.rid) ? ctx.prepared.map[m.rid] : undefined;
+  let matchId = planned ? planned.id : planned;
+  let how = planned ? planned.how : null;
+  if (planned === undefined) {
+    // a member the map didn't see (only when prepare couldn't run): match it alone
+    const users = ctx.cache.users ||= await userRows();
+    const pointer = (await memberPointers([m.rid]))[m.rid] || null;
+    const taken = new Set([...ctx.users].filter(([rid]) => rid !== m.rid).map(([, uid]) => uid));
+    const match = matchMember(m, users, { override: (ctx.userOverrides || {})[m.rid] || null, pointer, taken });
+    matchId = match ? match.id : null;
+    how = match ? match.how : null;
+  }
   const rotor = { user_id: m.rid, role: m.role, name: m.name };
-  if (match) {
-    taken.add(match.id);
-    const got = await getRecord("user", match.id);
+  if (matchId) {
+    const got = await getRecord("user", matchId);
     if (!got) return { warnings: ["user_gone"] };
-    await pointMember(m.rid, match.id);
-    ctx.setUser(m.rid, match.id);
+    await pointMember(m.rid, matchId);
+    ctx.setUser(m.rid, matchId);
     // the user as it is, plus Rotor's facts in `rotor` (the type's only rotorField)
-    return { records: [{ type: "user", data: { ...got.data, rotor } }], warnings: [`user_matched_${match.how}`] };
+    return { records: [{ type: "user", data: { ...got.data, rotor } }], warnings: [`user_matched_${how || "name"}`] };
   }
   const id = idForRotor("user", m.rid);
   const existing = await getRecord("user", id);
@@ -137,10 +159,11 @@ async function mapMember(m, ctx) {
     const login = await freeLogin(m);
     ctx.setUser(m.rid, id);
     await pointMember(m.rid, id);
+    const n = (ctx.cache.made = (ctx.cache.made || 0) + 1);
     return {
       records: [{ type: "user", data: {
         id, login, name: m.name, first_name: m.first_name, last_name: m.last_name, role: ROLE_MAP[m.role] || "tech", status: "invited", is_technician: false,
-        color: USER_COLORS[(users.length + 3) % USER_COLORS.length], password: null, session_epoch: 0, grants: [], denies: [], rotor,
+        color: USER_COLORS[(n + 4) % USER_COLORS.length], password: null, session_epoch: 0, grants: [], denies: [], rotor,
       } }],
       warnings: ["user_created"],
     };
@@ -214,7 +237,7 @@ async function mapRates(r, ctx) {
 }
 
 export const userPhases = [
-  { name: "system.users", entity: "members", after: [], normalize: normalizeMember, map: mapMember },
+  { name: "system.users", entity: "members", after: [], normalize: normalizeMember, prepare: prepareMembers, map: mapMember },
   { name: "system.availability", entity: "member_availability", after: ["system.users"], normalize: normalizeAvailability, map: mapAvailability },
   { name: "system.rates", entity: "rate_settings", after: ["system.users"], normalize: normalizeRates, map: mapRates },
 ];

@@ -29,7 +29,9 @@ test("the list: runs with their state, and Start when none runs", async () => {
   const running = text(list.render({ runs: [{ id: RUN.id, status: "running", created_at: NOW }] }, ctx));
   assert.doesNotMatch(running, /data-start/, "one import at a time");
   assert.match(running, /See the import that&#39;s running|See the import that's running/);
-  assert.match((await import("../../../crm-app/modules/import/list.js")).UPLOAD_COMMAND("bimp_x"), /^CRM_UPLOAD_KEY=bimp_x node build\/crm_import_upload\.mjs .* --site https:\/\/www\.bartawindowwashing\.com$/);
+  const cmd = (await import("../../../crm-app/modules/import/list.js")).UPLOAD_COMMAND;
+  assert.match(cmd, /^node build\/crm_import_upload\.mjs \S+ --site https:\/\/www\.bartawindowwashing\.com$/);
+  assert.doesNotMatch(cmd, /bimp_|CRM_UPLOAD_KEY/, "the key never goes on a command line");
 });
 
 test("a run: upload, team map, steps, the report with its downloads", async () => {

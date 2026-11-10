@@ -30,6 +30,8 @@
 //   - an email outside example.com and bartawindowwashing.com (plus the reserved .test /
 //     .invalid / .example names and two form placeholders already in the site)
 //   - Stripe/Twilio secret or id shapes (live secret and restricted keys, customer ids, account SIDs)
+//   - outside assets/: a file named like an import pack's media (64 hex characters) and a photo
+//     or PDF (by its first bytes) in a file whose name has no image or PDF extension
 // in every text file (UTF-8 or UTF-16), and in --push / --range mode also on commit messages
 // (trailer lines like Co-Authored-By are skipped: they name authors, not customers). Findings
 // print as path:line and a kind, never the matched text. Exit 2 = the scan itself could not run.
@@ -108,7 +110,19 @@ export function scanPath(rel) {
   if (/\.sealed\.json(\.[a-z0-9]+)?$/i.test(p)) out.push("sealed export file");
   if (p.startsWith("netlify/data/") && !DATA_DIR_ALLOWED.includes(p.slice("netlify/data/".length))) out.push("file in netlify/data/ (only the sealed dashboard snapshot may live there)");
   if (EXPORT_EXT.test(p) && !p.startsWith("assets/") && !EXPORT_FILES_ALLOWED.includes(p) && !out.length) out.push("spreadsheet or archive (a possible data export)");
+  // an import pack's media files are named by the SHA-256 of their URL
+  if (/(^|\/)[0-9a-f]{64}(\.[a-z0-9]{1,5})?$/i.test(p) && !p.startsWith("assets/")) out.push("file named like an import pack's media (a customer's photo or attachment?)");
   return out;
+}
+
+// A photo or a PDF in a file whose name doesn't say so (an import pack's
+// media, a phone's attachment saved without its extension): a content rule
+// for files outside assets/ that are not already skipped as binaries.
+const MAGIC = [[0xff, 0xd8, 0xff], [0x89, 0x50, 0x4e, 0x47], [0x25, 0x50, 0x44, 0x46, 0x2d], [0x47, 0x49, 0x46, 0x38]];
+export function hiddenMedia(rel, buf) {
+  if (!buf || buf.length < 4 || rel.split(path.sep).join("/").startsWith("assets/") || BINARY_EXT.test(rel)) return false;
+  if (MAGIC.some((m) => m.every((b, i) => buf[i] === b))) return true;
+  return buf.length >= 12 && buf.subarray(0, 4).toString("latin1") === "RIFF" && buf.subarray(8, 12).toString("latin1") === "WEBP";
 }
 
 // The text of a file, or null for a binary one: UTF-8, or UTF-16 (a BOM, or
@@ -165,6 +179,7 @@ export function scanTree(root) {
     if (!existsSync(abs)) continue;            // deleted in the working tree
     let buf;
     try { if (!statSync(abs).isFile()) continue; buf = readFileSync(abs); } catch { continue; }
+    if (hiddenMedia(rel, buf)) { findings.push({ file: rel, line: 0, kind: "image or PDF without its extension (an import pack's media?)" }); continue; }
     const text = decodeText(rel, buf);
     if (text === null) continue;
     for (const f of scanText(text)) findings.push({ file: rel, ...f });
@@ -215,6 +230,7 @@ export function scanCommits(root, shas) {
       if (BINARY_EXT.test(rel)) continue;
       let buf;
       try { buf = git(root, ["cat-file", "blob", `${sha}:${rel}`]); } catch { continue; }
+      if (hiddenMedia(rel, buf)) { findings.push({ file: `${rel} (commit ${short})`, line: 0, kind: "image or PDF without its extension (an import pack's media?)" }); continue; }
       const text = decodeText(rel, buf);
       if (text === null) continue;
       for (const f of scanText(text)) findings.push({ file: `${rel} (commit ${short})`, ...f });

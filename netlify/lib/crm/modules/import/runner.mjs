@@ -35,7 +35,7 @@
 // cache: {} (per phase and step), phase }.
 
 import { getRecord, updateRecord, getRaw, putRaw, readPointer, claimPointer, updatePointerList, rebuildIndex, verifyRels, appendEvent, getSetting, listKeys } from "../../../crm-store.mjs";
-import { defineRun, createRun } from "../../core/lanes.mjs";
+import { defineRun, createRun, RUN_MAX_ATTEMPTS } from "../../core/lanes.mjs";
 import { allModules, getType } from "../../core/registry.mjs";
 import { idForRotor, deriveId, typeOf, isId } from "../../core/ids.mjs";
 import { nowIso, nowMs } from "../../core/clock.mjs";
@@ -156,16 +156,22 @@ const rowCode = (e) => (e && e.name === "RowError" ? "invalid" : e instanceof In
 
 const rowIdOf = (raw) => (raw && (typeof raw.id === "string" || typeof raw.id === "number") ? String(raw.id) : raw && raw.user_id ? String(raw.user_id) : null);
 
-// Writes one map() output. → nothing; tallies into ph.
-export async function applyOutput(out, { runId, ph, ctx, source, state }) {
+// Types whose records this run really wrote (their indexes and relation
+// families are rebuilt at the end; an unchanged run rebuilds nothing).
+const WROTE = new Set(["created", "updated", "linked", "conflicted"]);
+const touch = (state, t) => { if (t && !state.types.includes(t)) state.types.push(t); };
+
+// Writes one map() output. → nothing; tallies into ph. rank: the phase's
+// own rank for the field ownership (else SOURCE_RANK by entity).
+export async function applyOutput(out, { runId, ph, ctx, source, state, rank }) {
   for (const rec of out.records || []) {
-    const r = await writeMapped(rec, { runId, source, ctx });
+    const r = await writeMapped(rec, { runId, source, ctx, rank });
     const t = r.type || (rec && rec.type) || "unknown";
     const row = (ph.records[t] ||= {});
     inc(row, r.outcome);
     if (r.kept && r.kept.length) ph.kept_fields += r.kept.length;
     if (r.outcome === "invalid") inc(ph.warnings, `invalid_${t}${r.field ? "_" + keySafe(String(r.field), 30) : ""}`);
-    if (!["waiting", "invalid"].includes(r.outcome) && !state.types.includes(t)) state.types.push(t);
+    if (WROTE.has(r.outcome)) touch(state, t);
   }
   for (const p of out.pointers || []) {
     if (!p || !p.kind || !p.key || !p.value || !isId(p.value.id)) continue;
@@ -183,12 +189,15 @@ export async function applyOutput(out, { runId, ph, ctx, source, state }) {
   if ((out.patches && out.patches.length) || (out.stats && out.stats.length) || (out.suppressions && out.suppressions.length) || (out.mergeCandidates && out.mergeCandidates.length)) {
     const x = await applyExtras(out, ctx);
     ph.extras.patched += x.patched; ph.extras.stats += x.stats; ph.extras.suppressed += x.suppressed; ph.extras.candidates += x.candidates;
-    if (x.stats && !state.types.includes("contact_stats")) state.types.push("contact_stats");
-    if (x.candidates && !state.types.includes("merge_candidate")) state.types.push("merge_candidate");
-    for (const p of out.patches || []) if (p && p.type && !state.types.includes(p.type)) state.types.push(p.type);
+    if (x.stats) touch(state, "contact_stats");
+    if (x.candidates) touch(state, "merge_candidate");
+    if (x.patched) for (const p of out.patches || []) if (p && p.type) touch(state, p.type);
   }
   for (const w of out.warnings || []) inc(ph.warnings, keySafe(String(w), 60));
 }
+
+// The index names of the types a run wrote.
+export const indexNamesOf = (types) => [...new Set((types || []).flatMap((t) => { const d = getType(t); return d ? d.indexes.map((x) => x.name) : t === "contact_stats" ? ["contacts"] : []; }))].sort();
 
 // ------------------------------------------------------------ the step
 
@@ -215,7 +224,16 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
   const chunks = (state.chunks[p.entity] || []).slice();
   const mctx = mapCtx(state, { runId, phase: p });
   mctx.userOverrides = (ir && ir.user_map) || {};
-  if (st.status === "pending") { st.status = "running"; st.started_at = nowIso(); }
+  if (st.status === "pending") {
+    // a phase may look at all its rows once before the first one (the team map)
+    if (typeof phase.prepare === "function") {
+      const all = [];
+      for (const n of chunks) { const c = await readChunk(runId, p.entity, n); for (const row of (c && c.rows) || []) all.push(row); }
+      st.prepared = (await phase.prepare(all, mctx)) || null;
+    }
+    st.status = "running"; st.started_at = nowIso();
+  }
+  mctx.prepared = st.prepared || null;
   let rows = 0;
   let lastSave = nowMs();
   for (; st.chunk < chunks.length; st.chunk += 1, st.row = 0) {
@@ -235,7 +253,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
         }
         const out = (await phase.map(row, mctx)) || {};
         const rid = rowIdOf(raw);
-        await applyOutput(out, { runId, ph: st, ctx, source: rid ? `${p.entity}:${String(rid).slice(0, 80)}` : null, state });
+        await applyOutput(out, { runId, ph: st, ctx, source: rid ? `${p.entity}:${String(rid).slice(0, 80)}` : null, state, rank: Number.isInteger(phase.rank) ? phase.rank : undefined });
       } catch (e) {
         if (isStorageError(e)) { e.rowsDone = rows; throw e; }        // the cursor still points at this row
         const code = rowCode(e);
@@ -267,7 +285,7 @@ async function runFinish(state, { runId, budget, ctx }) {
   const f = state.finish;
   const low = () => budget && budget.left() < IMPORT_LIMITS.minLeftMs;
   if (f.step === "indexes") {
-    const names = [...new Set(state.types.flatMap((t) => { const d = getType(t); return d ? d.indexes.map((x) => x.name) : t === "contact_stats" ? ["contacts"] : []; }))].sort();
+    const names = indexNamesOf(state.types);
     for (; f.i < names.length; f.i += 1) {
       if (low()) return false;
       await rebuildIndex(names[f.i]);
@@ -347,6 +365,8 @@ async function importStep(run, rctx) {
       console.error(`crm:import: storage stopped a step after ${rows} rows; the next pass goes on (${safeErr(e)})`);
       return { progress: progress(), checkpoint: { stopped: true } };
     }
+    // the lane gives up after this try: the records written so far still get their lists
+    if ((run.attempts || 0) + 1 >= RUN_MAX_ATTEMPTS) await queueReindex(state.types, holder).catch(() => {});
     throw e;
   }
   const summary = state.report || {};
@@ -354,6 +374,14 @@ async function importStep(run, rctx) {
   return { done: true, progress: { done: total, total }, result: summary };
 }
 defineRun(RUN_KIND, { lane: "bulk", step: importStep, label: "Import from Rotor" });
+
+// A bulk "reindex" run for the indexes of the types a run wrote (a run
+// that stops before its finish steps: cancelled, or given up).
+export async function queueReindex(types, holder = "import") {
+  const names = indexNamesOf(types);
+  if (!names.length) return null;
+  return createRun("reindex", { names }, runCtx(holder));
+}
 
 // Queues the lane run for an import run (attempt n gives a fresh lane run on resume).
 export function startLaneRun(ir, ctx, attempt = 0) {

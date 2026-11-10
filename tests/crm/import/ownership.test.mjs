@@ -23,31 +23,50 @@ function mini({ customers = 4, leads = 3, seed = 11 } = {}) {
 const cid = (rid) => ids.idForRotor("contact", rid);
 const contact = async (id) => (await store.getRecord("contact", id)).data;
 
-test("the three-way rules, one field at a time", () => {
-  const t3 = (b, c, n, f = "last_name") => O.threeWay(f, b, c, n);
-  assert.deepEqual(t3("A", "A", "B"), { value: "B", outcome: "rotor" }, "CRM = base: Rotor's value");
-  assert.deepEqual(t3("A", "C", "A"), { value: "C", outcome: "crm" }, "Rotor = base: the CRM's value");
-  assert.deepEqual(t3("A", "C", "C"), { value: "C", outcome: "same" });
-  assert.deepEqual(t3("A", "C", "B"), { value: "C", outcome: "conflict" }, "both changed: a conflict, the CRM's value stays");
-  assert.equal(O.threeWay("last_name", "A", "C", "B", { quiet: true }).outcome, "crm", "relinked: kept quietly");
-  assert.equal(t3(undefined, "", null).outcome, "same", "blank is blank");
-  // lists of plain values merge as sets: Rotor's removals and additions, the CRM's additions
-  assert.deepEqual(O.threeWay("tags", ["a", "b"], ["a", "b", "mine"], ["a", "c"]).value, ["a", "mine", "c"]);
-  assert.equal(O.threeWay("tags", ["a"], ["a", "x"], ["a", "y"]).outcome, "merged");
+test("the three-way rules, one field at a time, per source", () => {
+  // one field from one source S: B = S's base, C = the record, N = Rotor's value now
+  const one = (b, c, n, opts = {}, f = "last_name") => {
+    const m = O.mergeFields([f], { base: b === undefined ? {} : { [f]: b }, crm: { [f]: c }, rotor: { [f]: n }, ...opts });
+    return { value: m.next[f], conflict: m.conflicts.includes(f), kept: m.kept.includes(f), base: m.base[f] };
+  };
+  assert.deepEqual(one("A", "A", "B"), { value: "B", conflict: false, kept: false, base: "B" }, "C = B: Rotor's value");
+  assert.deepEqual(one("A", "C", "A"), { value: "C", conflict: false, kept: false, base: "A" }, "N = B: the CRM's value");
+  assert.equal(one("A", "C", "C").value, "C");
+  assert.deepEqual(one("A", "C", "B"), { value: "C", conflict: true, kept: false, base: "A" }, "both changed: a conflict, the CRM's value stays, the old base stays");
+  assert.deepEqual(one(undefined, "C", "B", { mode: "new" }), { value: "C", conflict: false, kept: true, base: "B" }, "a source that never wrote the record keeps it quietly");
+  assert.deepEqual(one(undefined, "C", "B", { mode: "unknown" }), { value: "C", conflict: true, kept: false, base: undefined }, "no base and an edited record (after a restore): a conflict, never a quiet keep");
+  assert.equal(one(undefined, "", null).conflict, false, "blank is blank");
+  assert.equal(one(undefined, "", "B", { mode: "unknown" }).value, "B", "an empty field is filled");
+  // lists of plain values merge as sets: S's removals and additions, the CRM's additions
+  assert.deepEqual(one(["a", "b"], ["a", "b", "mine"], ["a", "c"], {}, "tags").value, ["a", "mine", "c"]);
+  assert.deepEqual(one(undefined, ["a", "x"], ["a", "y"], { mode: "new" }, "tags").value, ["a", "x", "y"], "a new source only adds");
   // lists of objects (phones) are one value: both changed → conflict
-  assert.equal(O.threeWay("phones", [{ e164: "+17635550101" }], [{ e164: "+17635550102" }], [{ e164: "+17635550103" }]).outcome, "conflict");
-  // the import's own bag: never a conflict; *_ids lists are unions, Rotor's changed scalars win
-  const bag = O.threeWay("rotor", { customer_id: "x", lead_ids: [], tags_raw: ["a"], status_raw: "active" }, { customer_id: "x", lead_ids: ["L1"], tags_raw: ["a"], status_raw: "active", converted_from_lead_id: "L1" }, { customer_id: "x", lead_ids: [], tags_raw: ["b"], status_raw: "inactive" });
-  assert.deepEqual(bag.value, { customer_id: "x", lead_ids: ["L1"], tags_raw: ["b"], status_raw: "inactive", converted_from_lead_id: "L1" });
+  assert.equal(one([{ e164: "+17635550101" }], [{ e164: "+17635550102" }], [{ e164: "+17635550103" }], {}, "phones").conflict, true);
+  // another source holds the value: the higher rank takes it over, else it stays quietly
+  const lead = { src: "leads:L1", rank: 2, base: { last_name: "Lead" } };
+  assert.equal(one(undefined, "Lead", "Cust", { mode: "new", rank: 3, others: [lead] }).value, "Cust", "the customer row takes over its lead's value");
+  const cust = { src: "customers:C1", rank: 3, base: { last_name: "Cust" } };
+  assert.deepEqual(one("L", "Cust", "L2", { rank: 2, others: [cust] }), { value: "Cust", conflict: false, kept: true, base: "L2" }, "a lead row never overrides its customer");
+  const ka = { src: "customers:Ka", rank: 3, base: { last_name: "Ka" } };
+  assert.equal(one("Kb", "Ka", "Kb2", { rank: 3, others: [ka] }).value, "Ka", "a merged-away duplicate never overwrites the kept contact (equal rank)");
+  // the import's own bag: never a conflict; *_ids lists are unions, S's changed scalars win
+  const bag = O.mergeBag({ customer_id: "x", lead_ids: [], tags_raw: ["a"], status_raw: "active" }, { customer_id: "x", lead_ids: ["L1"], tags_raw: ["a"], status_raw: "active", converted_from_lead_id: "L1" }, { customer_id: "x", lead_ids: [], tags_raw: ["b"], status_raw: "inactive" });
+  assert.deepEqual(bag, { customer_id: "x", lead_ids: ["L1"], tags_raw: ["b"], status_raw: "inactive", converted_from_lead_id: "L1" });
+  // a key S stops sending goes only if it still holds S's value; another source's keys stay
+  assert.deepEqual(O.mergeBag({ lead_id: "L1", source_raw: "Meta" }, { lead_id: "L1", source_raw: "Meta", customer_id: "C1", status_raw: "active" }, { lead_id: "L1" }), { lead_id: "L1", customer_id: "C1", status_raw: "active" });
   // whole records
-  const m = O.mergeFields(["first_name", "last_name", "notes"], { mode: "edited", base: { first_name: "Pat", last_name: "Old", notes: "n1" }, crm: { first_name: "Pat", last_name: "Human", notes: "n1" }, rotor: { first_name: "Patricia", last_name: "Rotor", notes: "n2" } });
+  const m = O.mergeFields(["first_name", "last_name", "notes"], { base: { first_name: "Pat", last_name: "Old", notes: "n1" }, crm: { first_name: "Pat", last_name: "Human", notes: "n1" }, rotor: { first_name: "Patricia", last_name: "Rotor", notes: "n2" } });
   assert.deepEqual(m.conflicts, ["last_name"]);
   assert.deepEqual([m.next.first_name, m.next.last_name, m.next.notes], ["Patricia", "Human", "n2"]);
   assert.equal(m.base.last_name, "Old", "a conflicting field keeps its old base, so it comes back until it is settled");
   assert.equal(m.base.notes, "n2");
-  const l = O.mergeFields(["first_name", "billing_address"], { mode: "linked", crm: { first_name: "Riley" }, rotor: { first_name: "R", billing_address: { street1: "1 Example Ave" } } });
+  assert.deepEqual(m.changed.sort(), ["first_name", "notes"], "only changed fields are written");
+  const l = O.mergeFields(["first_name", "billing_address"], { mode: "new", crm: { first_name: "Riley" }, rotor: { first_name: "R", billing_address: { street1: "1 Example Ave" } } });
   assert.deepEqual(l.next, { first_name: "Riley", billing_address: { street1: "1 Example Ave" } });
   assert.deepEqual(l.kept, ["first_name"]);
+  assert.equal(O.rankOf("customers:x"), 3);
+  assert.equal(O.rankOf("leads:x"), 2);
+  assert.equal(O.rankOf("jobs:x"), 1);
   assert.equal(O.hashFields({ b: 1, a: [1, { y: 2, x: 1 }] }), O.hashFields({ a: [1, { x: 1, y: 2 }], b: 1 }), "the hash is over canonical JSON");
 });
 
