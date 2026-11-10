@@ -2,8 +2,9 @@
 
 Barta Window Washing's own CRM, built in milestones (design: the CRM
 design document, §11). This page covers what is live so far: the
-**Customers list** (the first slice, below), the **foundations** (M1.1) and
-**sign-in and the app shell** (M1.2). Each module keeps its own
+**Customers list** (the first slice, below), the **foundations** (M1.1),
+**sign-in and the app shell** (M1.2) and the **platform engine** (M1.3,
+part A: workers, queue, events, operations, backups, files, settings). Each module keeps its own
 `docs/CRM-<MODULE>.md`. Rotor stays the system of record until cutover.
 
 ## The Customers list (/crm/legacy)
@@ -468,7 +469,7 @@ production branch should build.
 | `POST /api/crm/auth/password` | signed in | `{current, next}`; other phones signed out |
 | `POST /api/crm/auth/setup` | office cookie + `CRM_SETUP_CODE`, once | first owner |
 | `GET /api/crm/auth/invite/:token` · `POST /api/crm/auth/invite` | the link | set a password from an invite or reset link |
-| `GET /api/crm/me` · `/me/badges` | signed in | who am I, permissions, tabs · badge counts (0 until M1.3) |
+| `GET /api/crm/me` · `/me/badges` | signed in | who am I, permissions, tabs · badge counts (approvals since M1.3; inbox and notifications when they ship) |
 | `GET/POST /api/crm/users`, `GET/PATCH /users/:id` | owners (names only for schedule readers; yourself for name, phone, notifications) | the team |
 | `POST /users/:id/invite` · `reset` · `disable` · `enable` | owners | links and access |
 | `GET /users/:id/sessions` · `DELETE /users/:id/sessions/:hash` | yourself or owners | phones signed in |
@@ -502,3 +503,208 @@ errors with no stack or record data.
   `tests/crm-import.test.mjs`, with the harness
   `tests/helpers/crm-http.mjs` (fresh memory stores, pinned clock, strict
   fetch, real handlers), `crm-clock.mjs` and `crm-fetch.mjs`.
+
+## The platform engine (M1.3, part A)
+
+What runs behind the screens: the two worker lanes and their cron, the
+scheduled-work queue, events between modules, multi-record operations, the
+nightly maintenance, backups and restore, files, settings, approvals and
+API keys. Nothing here contacts a customer: sending, templates,
+automations, bulk runs, notifications and web push are part B of M1.3,
+built on these pieces. Nothing a customer sees changes.
+
+### Before and after the owner's setup
+
+Scheduled and background functions run on the production deploy whether
+or not the CRM is set up. **Before** the owner sets `CRM_PRODUCTION` and
+`CRM_KEY_SALT` they do exactly what the M1.1 probe did and nothing else:
+the cron records its facts in `crm-probe` and wakes the fast worker, which
+records the background facts and (hourly) times 20 writes there; the bulk
+worker does nothing; no CRM store is opened. **After** setup the cron also
+makes `sys/worker-secret` (once), notes `sys/health.cron_at` and wakes
+both lanes. The probe facts are still recorded until the M1 gate.
+
+### Lanes (`core/lanes.mjs`, `core/worker.mjs`)
+
+- **Fast lane** (`crm-worker-background`): due queue items, fast sweeps,
+  fast runs, then maintenance (operations whose lease ran out, `pend/`
+  repairs, `fix/` settling). **Bulk lane** (`crm-bulk-background`): runs
+  (reindex, the nightly check, backups, CSV exports, later imports and bulk
+  sends) one checkpointed step at a time, then bulk sweeps.
+- Each lane has its own lease (`lock/worker-fast`, `lock/worker-bulk`, 5
+  minutes, renewed by CAS after every pass); a second invocation exits at
+  once. Passes are at most 2 minutes; no new pass starts after 13. A pass
+  that made no progress ends the invocation, except that the fast lane
+  sleeps until the next queue item when it is due inside its budget (so a
+  5-minute `lead.ack` goes out at 5 minutes, re-checking the queue head
+  every 30 s). Work left at the end makes the lane kick itself, at most 3
+  times in a row (`sys/health.lanes.<lane>.self_kicks`; a cron kick resets it).
+- Kicks: `kickWorker(lane, reason)` POSTs to the lane on the canonical host
+  with `x-crm-worker: <sys/worker-secret>` and a 1.5 s timeout, through
+  `context.waitUntil`; failures are ignored (the 15-minute cron catches up).
+  `POST /api/crm/hooks/cron` with the same header does the cron's work when
+  scheduled functions are unavailable (D39).
+- `sys/health`: per lane `last_pass_at`, `last_progress_at`,
+  `last_invocation`, `self_kicks`, `last_error`; the queue's depth and next
+  item; the nightly check; the last snapshot and off-site copy; `alerts`.
+  `GET /api/crm/admin/health` adds `status.fast|bulk` = ok / stuck (no
+  finished pass in 3 hours) / never.
+
+### Queue and events (`core/queue.mjs`, `core/events.mjs`)
+
+- `enqueue(kind, subject, expect, dueAt, marker)` writes
+  `q/{utcDate}/{utcHHMM}--{qid}`: UTC keys, so the 01:00-01:59 hour that
+  happens twice on 2026-11-01 cannot run anything early. An item holds the
+  subject and the state it expects, never a rendered body.
+- Running one: claim its marker (`done/` or `done-dry/`, §7.3) with a lease;
+  the kind's handler re-reads the subject and acts on its current state;
+  `{ defer: at }` (quiet hours) keeps the same marker and moves the item;
+  a failure retries after 1, 5, 30 and 120 minutes, then the marker is
+  failed and the owners get an alert; a `ParallelRunGuard` becomes a
+  `would-<action>` row in `alog/`. The `q/` key is deleted only once the
+  marker is final.
+- `emit(event, payload)` queues one `evt` item per listener with marker
+  `done/evt/{event_id}--{module}` and kicks the fast lane; the event id is
+  derived from the record's write counter, so "reopen and complete again"
+  is a second event and a retried request is the same one.
+
+### Operations (`core/ops.mjs`)
+
+`runOp(opId, kind | steps, { input })` with the journal `op/{opId}`:
+versioned ids (`opIdFor("approve--{quoteId}", n)`), a 2-minute lease
+renewed after each step, children made once (`s.createOnce(type, scope, n,
+data)` with ids derived from the op), numbers journaled before use
+(`s.number(childId, seq)`), and resume by the fast lane only after the
+lease ran out. A double tap gets `{ status: "running" }` and runs nothing.
+Ops the worker must be able to resume are defined by kind with
+`defineOp(kind, { steps(input) })`.
+
+### Sweeps (`core/sweeps.mjs`)
+
+Modules register sweeps in their manifests (`every: pass | hourly | daily |
+weekly | monthly`, `at_local`, `dow`, `day`, `mutates`, `maintenance`).
+A periodic sweep claims `done/sweep/{key}--{instance}` when it starts and,
+if it stops half way, hands the claim back with its cursor until it
+finishes. While `sys/mode.paused` only maintenance sweeps run. Core
+catalog: `system.seed` (each module's seeds once), `auth.sessions` (03:15:
+expired sessions, throttle records older than a day, expired idempotency
+records, sweep claims older than 90 days, stale leases, finished runs older
+than 60 days), `backup.nightly` (03:00), `index.verify` (03:45: rebuilds
+every index and declared relation family from the records, diffs, repairs,
+reports; a banner after two nights in a row with repairs), `files.backup`
+(04:15), `files.purge` (04:30), `backup.offsite` (Sundays 04:00: alerts
+when no off-site copy is newer than 8 days).
+
+### Repair (`crm-store.mjs`)
+
+A record write leaves `pend/{type}/{id}` with its side plan (and, for an
+update, the previous version's). If the function dies before the index
+rows, relations and pointers land, the fast lane finishes them after 60 s
+(`repairPending`), moving rows an update left in the old shard; a create
+whose record never landed gets its claimed pointers released. `fix/`
+markers (writes whose outcome storage never confirmed) are settled by
+`settleFix`. `verifyIndex` and `verifyRels` are the nightly check.
+
+### Backups, the off-site copy and restore (`core/backup.mjs`)
+
+- Nightly snapshot into `crm-backups`: partitions `sys` (`sys/mode`,
+  `sys/bootstrap`), `cfg/`, `seq/`, `ptr/`, `sup/`, one per `rec/{type}/`,
+  `rel/`, `op/`, `plk/`, `apikey/`, `push/`, `done/`, `evt/`, `q/`,
+  `alog/`, `idx/`; never sessions, throttles, idempotency records, leases,
+  intents, staging, dry-run markers or the derivable indexes and activity
+  feed. Parts `snap/{date}/{partition}/part-{nnnn}.jsonl` (≤ 4 MB);
+  the run checkpoints after each part and resumes from `last_key`. Kept:
+  35 dailies and each 1st-of-month for 12 months.
+- **Off-site copy (weekly, until the Drive upload exists):** an owner makes
+  a **backup key** (My account → API keys → kind "backup": it carries
+  `export:all` and nothing else, owners only, 90 days by default). Then:
+
+  ```bash
+  CRM_BACKUP_KEY=bcrm_... node build/crm_backup_pull.mjs --site https://www.bartawindowwashing.com
+  ```
+
+  It downloads the newest snapshot through `GET /api/crm/admin/export`,
+  seals every part with the office public key and writes
+  `~/barta-private/backups/{date}/...sealed.json` (refusing any folder
+  inside a worktree), then marks the copy on the site (the "no off-site
+  copy" alert clears).
+- **Restore** (each step with the owner's yes):
+
+  ```bash
+  NETLIFY_AUTH_TOKEN=... node build/crm_restore.mjs --site-id SITE_ID --date 2026-11-17 --check
+  NETLIFY_AUTH_TOKEN=... node build/crm_restore.mjs --site-id SITE_ID --date 2026-11-17 --apply
+  # or from the sealed copy: add --from-dir ~/barta-private/backups with OFFICE_DATA_KEY set
+  ```
+
+  `--check` restores into the scratch store `crm-restore-check` and
+  compares keys per partition and the invoice/payment money sums.
+  `--apply` (type RESTORE) writes `sys/mode` paused first, then every
+  partition (conditional writes; counters never go back), then re-seats
+  every sequence past the highest issued number + 100. Then, in the app:
+  rebuild the lists (`POST /api/crm/admin/reindex`), let the nightly check
+  run, review, and resume with RESUME.
+- Owner export: `GET /api/crm/admin/export?date=&partition=&part=` (a
+  snapshot part, never a live listing, audited) and
+  `POST /api/crm/admin/export.csv?type=` (a run; CSV of one record type
+  from the latest snapshot, without password hashes; download from
+  `GET /api/crm/admin/export.csv/{runId}`).
+
+### Files (`core/files.mjs`)
+
+Upload `POST /api/crm/files?owner_type=&owner_id=&kind=&tag=` with the raw
+bytes (≤ 4,000,000; JPEG, PNG, WebP or PDF); the type comes from the magic
+bytes, never the header. Download `GET /api/crm/files/{id}[?thumb=1]`:
+`nosniff`, `Content-Security-Policy: sandbox`, inline for images and
+`attachment` for PDFs and anything else, ETag and 304. Imported media
+outside the allowlist (HTML, SVG, unknown) is stored download-only and
+served as `application/octet-stream` attachments. Who may read and edit
+follows the owner record, declared by its module with
+`defineFileOwner(type, { canRead, canEdit, attach? })`. Delete is soft; the
+bytes go 30 days later and only once `files.backup` has copied them.
+
+### Settings, system mode, approvals, API keys
+
+- `GET /api/crm/settings` (what this person may open), `GET/PUT
+  /api/crm/settings/{name}` with `If-Match` (`"new"` before the first
+  save; 412 with the current value when stale). Each document has one
+  permission (§4.12): company, hours, calendar and service area
+  (`settings:general`), messaging (`settings:messaging`), automations
+  (`automations:configure`); messaging_test, integrations, numbering,
+  storage, permissions and auth are owner-only (`settings:owner`). Saving
+  `permissions` or `auth` moves `sys/auth-epoch`, so every server picks it
+  up within seconds; a failed read of `cfg/permissions` still answers 503.
+- `POST /api/crm/admin/pause` / `resume` (owners, typed PAUSE / RESUME):
+  `sys/mode.paused` stops every side effect, the queue, automations and
+  non-maintenance sweeps. `POST /api/crm/admin/reindex` and
+  `/admin/purge-shadow` (typed PURGE SHADOW) are owner runs; `GET
+  /api/crm/runs/{id}` follows a run.
+- Approvals: `GET /api/crm/pending-actions`, `POST
+  /pending-actions/{id}/approve|reject` (owners). A phone's offline work
+  older than 6 days arrives through `POST /api/crm/outbox-review` as one
+  pending action. Claude's actions through an API key (M7c) will arrive the
+  same way; an approved action runs once on the fast lane as the approver.
+  `/me/badges` counts them for whoever may approve.
+- API keys: `GET/POST /api/crm/api-keys`, `DELETE /api-keys/{id}` (owners
+  and admins, their own keys). A key is shown once (the create route is
+  secret and never kept for replay), read-only unless write scopes are
+  ticked, and some permissions can never be on a key. The owner-only
+  backup kind is the one exception for `export:all`.
+- Audit: `GET /api/crm/audit?date=&user=&type=` (who did what that day),
+  `GET /audit/event?key=`, `GET /records/{type}/{id}/history`.
+
+### Code and tests
+
+- Core: `netlify/lib/crm/core/{settings,activity,audit,lanes,queue,ops,sweeps,worker,backup,files,pending}.mjs`;
+  routes in `netlify/lib/crm/modules/system/{settings,admin,audit,files,pending,apikeys}.mjs`;
+  types `file`, `run`, `pending_action` in `modules/system/types.mjs`.
+- Functions: `crm-cron.mjs`, `crm-worker-background.mjs`,
+  `crm-bulk-background.mjs`. Scripts: `build/crm_backup_pull.mjs`,
+  `build/crm_restore.mjs`.
+- Tests: `tests/crm/core/{worker,ops,events,index,backup,backup-tools,files,platform,budget,schema-compat}.test.mjs`,
+  with `tests/helpers/crm-fixtures.mjs` (`fakeServices`, `fixtureModule`,
+  `fixtureType`, `virtualSleep`, `recordKicks`, synthetic people and file
+  bytes) and `t.runWorker()` / `t.kicks()` in `crm-http.mjs`.
+  `budget.test.mjs` calls every route under a strict budget; a module adds
+  its samples in `tests/crm/<module>/budget-samples.mjs`.
+  `schema-compat.test.mjs` runs the previous commit's validators over
+  records the current code writes.

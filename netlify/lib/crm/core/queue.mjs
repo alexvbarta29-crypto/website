@@ -95,7 +95,7 @@ export async function scanQueue(opts = {}) {
   const today = iso.slice(0, 10);
   const hhmm = iso.slice(11, 13) + iso.slice(14, 16);
   const { directories } = await listKeys("q/", { directories: true }, opts);
-  const dates = directories.map((d) => d.replace(/\/+$/, "").slice(2)).filter((d) => DATE_RE.test(d)).sort();
+  const dates = directories.map((d) => d.replace(/\/+$/, "").replace(/^q\//, "")).filter((d) => DATE_RE.test(d)).sort();
   const due = [];
   let depth = 0;
   let next = null;
@@ -116,10 +116,10 @@ export async function scanQueue(opts = {}) {
 
 const isFinal = (m) => !!m && (FINAL_STATES.includes(m.state) || (m.state === "failed" && !m.retry_at));
 
+const unknownKinds = new Set();   // logged once per warm instance, not every pass
+
 // Thrown to end the invocation (a record written by newer code, §3.14 rule 2).
 export class StopInvocation extends Error {}
-
-const markerFields = (m) => ({ ns: m.ns, scope: m.scope, key: m.key });
 
 // Runs one queue item (see the top of the file). → { outcome, ... } where
 // outcome is "done" | "deferred" | "retry" | "failed" | "superseded" |
@@ -131,7 +131,7 @@ export async function runQueueItem(key, { holder, mode, budget } = {}, opts = {}
   if (Date.parse(item.due_at) > nowMs()) return { outcome: "not_due", due_at: item.due_at };
   const def = item.kind === EVT_KIND ? { handler: runListener, mutates: true } : queueKind(item.kind);
   if (!def) {
-    console.error(`crm:queue: no handler for a queue kind; item left for a newer deploy`);
+    if (!unknownKinds.has(item.kind)) { unknownKinds.add(item.kind); console.error("crm:queue: no handler for a queue kind; its items wait for a deploy that has one"); }
     return { outcome: "busy" };
   }
   const m = item.marker || {};

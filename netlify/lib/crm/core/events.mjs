@@ -5,9 +5,9 @@
 // counter: event_id = deriveId("event", recordId + ":" + wv), so a job
 // reopened and completed again is a second event, and a retried request is
 // the same one. Each listener becomes a queue item with the marker
-// done/evt/{event_id}--{module} (§7.3); the queue arrives in M1.3, which
-// installs its dispatcher with setDispatcher(). Until then emit() checks the
-// event and reports which listeners would run, and nothing is queued.
+// done/evt/{event_id}--{module} (§7.3). core/queue.mjs installs that
+// dispatcher with setDispatcher() when it loads; emit() loads it on first
+// use if nothing else has, so an emission is never dropped.
 //
 // Listeners re-read the subject and act on its current state.
 
@@ -56,6 +56,7 @@ export async function emit(name, payload, ctx = {}) {
     payload: { ...payload, at: payload.at || nowIso(), by: payload.by || (ctx && ctx.by) || "system" },
   };
   const listeners = listenersFor(name);
+  if (!dispatcher) await import("./queue.mjs");
   if (dispatcher) return dispatcher(event, listeners, ctx);
   return { event, listeners: listeners.map((l) => l.module), queued: false };
 }

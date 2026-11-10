@@ -28,7 +28,7 @@
 import { createHash } from "node:crypto";
 import {
   putFileBytes, getFileStream, deleteFileBytes, createRecord, updateRecord, getRecord, softDelete,
-  addRel, removeRel, listRel, listKeys, getRaw, putRaw,
+  removeRel, listRel, listKeys, getRaw, putRaw,
 } from "../../crm-store.mjs";
 import { newId, deriveId, isId, typeOf } from "./ids.mjs";
 import { nowIso, nowMs, tsKey } from "./clock.mjs";
@@ -200,8 +200,7 @@ export async function deleteFile(ctx, id) {
   const file = await loadFile(id);
   const { spec, record } = await loadOwner(file.owner.type, file.owner.id);
   if (!(await spec.canEdit(ctx, record))) throw new ForbiddenError("You don't have access to that.");
-  const r = await softDelete("file", id, ctx.write());
-  await addRel("files-deleted", "all", tsKey(new Date(Date.parse(r.data.deleted_at) || nowMs())), id);
+  const r = await softDelete("file", id, ctx.write());     // also files it under rel/files-deleted/all (the file type's relation)
   return r.data;
 }
 
@@ -251,12 +250,11 @@ async function filesPurgeStep(run, { budget, write }) {
     if (budget && budget.left() < 10000) return { checkpoint: cp, progress: { done: cp.purged, total: null } };
     const got = await getRecord("file", r.id);
     const f = got && got.data;
-    if (!f || !f.deleted_at) { await removeRel("files-deleted", "all", r.sortKey, r.id); continue; }   // restored meanwhile
+    if (!f || !f.deleted_at || f.purged_at) { await removeRel("files-deleted", "all", r.sortKey, r.id); continue; }   // gone, restored or done meanwhile
     const backedUp = (await listKeys(backupKey(r.id, false), { kind: "backups" })).includes(backupKey(r.id, false));
     if (!backedUp) { cp.kept += 1; continue; }
     await deleteFileBytes(r.id);
-    await updateRecord("file", r.id, (x) => (x.purged_at ? null : { ...x, purged_at: nowIso(), has_thumb: false }), write());
-    await removeRel("files-deleted", "all", r.sortKey, r.id);
+    await updateRecord("file", r.id, (x) => (x.purged_at ? null : { ...x, purged_at: nowIso(), has_thumb: false }), write());   // leaves rel/files-deleted
     cp.purged += 1;
   }
   return { done: true, checkpoint: cp, result: { purged: cp.purged, kept_without_backup: cp.kept } };

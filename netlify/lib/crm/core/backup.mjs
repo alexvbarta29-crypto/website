@@ -60,7 +60,7 @@ async function mapLimit(items, limit, fn) {
 // The partitions of a snapshot, in order: [{ name, prefix } | { name, keys }].
 export async function planPartitions(opts = {}) {
   const { directories } = await listKeys("rec/", { directories: true }, opts);
-  const types = directories.map((d) => d.replace(/\/+$/, "")).filter((d) => /^rec\/[a-z_]+$/.test(d)).sort();
+  const types = directories.map((d) => d.replace(/\/+$/, "")).map((d) => (d.startsWith("rec/") ? d : `rec/${d}`)).filter((d) => /^rec\/[a-z_]+$/.test(d)).sort();
   return [
     { name: "sys", keys: [...SYS_KEYS] },
     { name: "cfg", prefix: "cfg/" }, { name: "seq", prefix: "seq/" }, { name: "ptr", prefix: "ptr/" }, { name: "sup", prefix: "sup/" },
@@ -145,7 +145,7 @@ defineRun("backup.snapshot", { lane: "bulk", step: snapshotStep, maintenance: tr
 // The snapshot dates in crm-backups, newest first.
 export async function snapshotDates(opts = {}) {
   const { directories } = await listKeys(SNAP, { directories: true, kind: "backups" }, opts);
-  return directories.map((d) => d.replace(/\/+$/, "").slice(SNAP.length)).filter((d) => DATE_RE.test(d)).sort().reverse();
+  return directories.map((d) => d.replace(/\/+$/, "").replace(/^snap\//, "")).filter((d) => DATE_RE.test(d)).sort().reverse();
 }
 
 export async function readManifest(date, opts = {}) {
@@ -276,8 +276,12 @@ export async function lastSnapshot(opts = {}) {
 }
 
 // A missed night raises an alert on Today (health), cleared by the next good snapshot.
+// (A new system gets 36 hours from the bulk lane's first run before it warns.)
+export const BACKUP_MAX_AGE_MS = 36 * 3600 * 1000;
 export function checkBackupAge(health, t = nowMs()) {
   const b = health && health.backup;
-  if (b && Date.parse(b.at) + 36 * 3600 * 1000 > t) return health;
+  if (b && Date.parse(b.at) + BACKUP_MAX_AGE_MS > t) return health;
+  const first = health && health.lanes && health.lanes.bulk && health.lanes.bulk.first_run_at;
+  if (!b && !(Date.parse(first) + BACKUP_MAX_AGE_MS <= t)) return health;
   return withAlert(health, "backup", "No backup snapshot in the last 36 hours.");
 }

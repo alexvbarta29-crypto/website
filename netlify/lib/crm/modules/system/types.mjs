@@ -200,7 +200,11 @@ export const fileType = defineType({
   rotorFields: ["rotor"],
   techFields: ["id", "kind", "content_type", "bytes", "owner", "caption", "tag", "taken_at", "has_thumb", "created_at"],
   shadow: false,
-  rels: [{ rel: "owner-files", parent: (r) => (r.owner && r.owner.id) || null, sort: sortOf }],
+  rels: [
+    { rel: "owner-files", parent: (r) => (r.owner && r.owner.id) || null, sort: sortOf },
+    // files deleted but whose bytes are still there: what files.purge walks (§3.11)
+    { rel: "files-deleted", parent: (r) => (r.deleted_at && !r.purged_at ? "all" : null), sort: (r) => tsKey(new Date(Date.parse(r.deleted_at) || 0)) },
+  ],
   summary: (r) => ({ id: r.id, kind: r.kind, content_type: r.content_type }),
   example: () => ({
     kind: "photo", content_type: "image/jpeg", bytes: 1024, sha256: "0".repeat(64), owner: { type: "contact", id: "ct_0000000000000000000a" },

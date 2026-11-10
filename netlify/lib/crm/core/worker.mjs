@@ -191,7 +191,11 @@ export async function runLane(lane, opts = {}) {
     const small = () => ({ budget: withBudget(20000, PASS_CALLS, { strict: false }) });
     if (!(await acquireLease(lease, LEASE_MS, holder, small()))) return { ran: false, ended: "busy", passes: 0, progress: 0 };
     const startedAt = nowIso();
-    await updateHealth(laneLine(lane, { invocation_started_at: startedAt, ...(reason === "self" ? {} : { self_kicks: 0 }) }), small());
+    await updateHealth((h) => laneLine(lane, {
+      invocation_started_at: startedAt,
+      first_run_at: (h.lanes && h.lanes[lane] && h.lanes[lane].first_run_at) || startedAt,
+      ...(reason === "self" ? {} : { self_kicks: 0 }),
+    })(h), small());
     let passes = 0;
     let progress = 0;
     let ended = "idle";
