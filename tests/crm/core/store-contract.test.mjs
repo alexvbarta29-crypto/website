@@ -167,6 +167,24 @@ test("slowCommit on a CAS update → applied exactly once", async () => {
   assert.equal(raw(K.rec("gadget", GID)).wv, 2);
 });
 
+for (const [label, ms, failAfter] of [["lands before the settle read", 1, 15], ["lands late", 40, 1]]) {
+  test(`slowCommit on a pointer claim (${label}) → ok, one pointer`, async () => {
+    S.data.slowCommit({ op: "setJSON", key: K.ptr("gadget-code", "s-1"), ms, failAfter });
+    assert.deepEqual(await claimPointer("gadget-code", "s-1", { id: GID }, ctx()), { ok: true });
+    await S.data.settle();
+    assert.equal((await readPointer("gadget-code", "s-1")).id, GID);
+  });
+
+  test(`slowCommit on a marker claim (${label}) → ok, attempt 1`, async () => {
+    S.data.slowCommit({ op: "setJSON", key: "done/review.sequence/jb_1--1", ms, failAfter });
+    const r = await claimMarker("done", "review.sequence", "jb_1--1", { holder: "w1", leaseMs: 60000 }, ctx());
+    await S.data.settle();
+    assert.equal(r.ok, true);
+    assert.equal(raw("done/review.sequence/jb_1--1").attempt, 1);
+    assert.equal(raw("done/review.sequence/jb_1--1").holder, "w1");
+  });
+}
+
 test("a transient 503 on a conditional write (seen as modified with no etag) is settled and retried", async () => {
   S.data.transient({ op: "setJSON", key: K.rec("gadget", GID), status: 503 });
   const r = await createRecord("gadget", { id: GID, name: "Blue" }, ctx());
