@@ -52,7 +52,8 @@ export default defineModule({
   statsParts: {
     comms: {
       defaults: { first_sms: {}, last_contacted_at: null, last_inbound_at: null },
-      row: (p) => ({ lc: (p && p.last_contacted_at) || null, li: (p && p.last_inbound_at) || null }),
+      // `lca`, not `lc`: the contact part's `lc` is the lifecycle (§3.5), and a row's parts share one object
+      row: (p) => ({ lca: (p && p.last_contacted_at) || null, li: (p && p.last_inbound_at) || null }),
     },
   },
   sweeps: [

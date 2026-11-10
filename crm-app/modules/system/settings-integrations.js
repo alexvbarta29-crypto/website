@@ -6,7 +6,7 @@
 // outbox until the Messages module connects Twilio and Postmark. Web push
 // goes to staff phones as soon as the VAPID keys exist.
 // Intake mode: where website leads go (Rotor, both, the CRM); "both" and
-// "the CRM" arrive with the Contacts module.
+// "the CRM" work since the Contacts module (M2a).
 
 import { html, attrs, toast, icon } from "../../core/ui.js";
 import { readForm, clearErrors, showError, busy, select, field } from "../../core/forms.js";
@@ -50,7 +50,7 @@ function intake(s, ctx) {
   const mode = s.doc.data.mode || "rotor";
   const opts = [
     { value: "rotor", label: "Rotor only (today)", sub: "Website leads go to Rotor, as now." },
-    { value: "dual", label: "Rotor and the CRM", sub: "Both get every lead until the switch-over. Arrives with Contacts." },
+    { value: "dual", label: "Rotor and the CRM", sub: "Both get every lead until the switch-over. Rotor stays first and the website's answer stays Rotor's." },
     { value: "crm", label: "The CRM only", sub: "After the switch-over." },
   ];
   return html`<div class="stack"><form class="card form" id="f" novalidate>

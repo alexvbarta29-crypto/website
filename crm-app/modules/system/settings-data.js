@@ -52,7 +52,7 @@ export default {
     return html`<div class="stack">
       ${m.paused ? html`<div class="card alert"><h2>The CRM is paused</h2>
         <p>${m.paused_reason === "restore" ? `A backup${m.restored_from ? ` from ${dateShort(m.restored_from)}` : ""} was restored. ` : ""}Nothing is texted, emailed, charged or automated${m.paused_at ? ` since ${dateTime(m.paused_at)}` : ""}.${owner ? " Check the data, then resume." : " An owner resumes it here."}</p></div>` : ""}
-      ${(h.alerts || []).length ? html`<div class="card alert"><h2>Needs a look</h2>${h.alerts.map((a) => html`<p>${a.text}</p>`)}</div>` : ""}
+      ${(h.alerts || []).length ? html`<div class="card alert"><h2>Needs a look</h2>${h.alerts.map((a) => html`<p>${a.text}</p>${(a.leads || []).filter((l) => /^ct_[a-z0-9]+$/.test(l.contact_id || "")).map((l) => html`<p><a href="#/contacts/${l.contact_id}">Open the lead from ${ago(l.at)}</a></p>`)}`)}</div>` : ""}
       <div class="section-h">Workers</div>
       <ul class="list">${lane("fast")}${lane("bulk")}<li><div class="row"><span class="who"><span class="nm">Scheduled work</span><span class="sub">${plural((h.queue && h.queue.depth) || 0, "step")} waiting${h.queue && h.queue.next_due_at ? " · next " + ago(h.queue.next_due_at) : ""}</span></span></div></li></ul>
       <div class="section-h">Backups</div>

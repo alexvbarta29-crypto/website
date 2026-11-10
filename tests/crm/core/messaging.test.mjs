@@ -144,9 +144,10 @@ test("permissions and integrations for the owner: labels, defaults, secrets by n
   assert.equal(i.body.data.integrations.push.secrets.CRM_VAPID_PRIVATE, true);
   assert.equal(i.body.data.integrations.sms.effective, "dry_run");
   assert.ok(!JSON.stringify(i.body).includes("secret-not-real-value"), "never a value");
+  // the gate opened with Contacts (M2a): website leads may go to the CRM too
   const dual = await t.api("/settings/intake", { method: "PUT", as: owner, ifMatch: "new", body: { mode: "dual" } });
-  assert.equal(dual.status, 400, "website leads into the CRM arrive with Contacts");
-  assert.equal((await t.api("/settings/intake", { method: "PUT", as: owner, ifMatch: "new", body: { mode: "rotor" } })).status, 200);
+  assert.equal(dual.status, 200, "website leads into the CRM since Contacts");
+  assert.equal((await t.api("/settings/intake", { method: "PUT", as: owner, ifMatch: dual.headers.get("etag"), body: { mode: "rotor" } })).status, 200);
   const portal = await t.api("/settings/portal", { as: owner });
   assert.equal(portal.body.data.data.lifetimes.present_minutes, 15);
   assert.equal((await t.api("/settings/portal", { as: admin })).status, 403, "portal settings are owner-only");

@@ -7,8 +7,17 @@
 // The Rotor API key lives ONLY in the ROTOR_API_KEY environment variable set
 // in the Netlify dashboard (Site configuration → Environment variables). It
 // must never appear in this repo, in the static pages, or in any log line.
+//
+// The Barta CRM (docs/CRM-CONTACTS.md, "Website leads"): AFTER the Rotor
+// call, which is unchanged, the same lead also goes to the CRM when an owner
+// set Settings → Intake mode to "Rotor and the CRM" (the default is Rotor
+// only, and before the CRM's Netlify setup nothing happens at all). When
+// Rotor accepted the lead the visitor's answer is Rotor's and the CRM write
+// runs after it; when Rotor failed, a lead the CRM kept is still a success.
 
 import { referralForLead } from "../lib/referral-hook.mjs";
+import { rotorLeadId } from "../lib/referral-notify.mjs";
+import { afterRotor, crmRescued, watchRotor } from "../lib/crm/modules/contacts/hook.mjs";
 
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
@@ -63,7 +72,17 @@ const buildNotes = (data, services, plan, extraLines = []) => {
   return notes;
 };
 
-export default async (req) => {
+// What the CRM's intake gets: the same lead, with the notes Rotor got.
+const crmInput = ({ name, data, phone, email, street1, street2, city, state, zip, services, svcType, plan, source, tags, notes }) => ({
+  name, first_name: clean(data.first_name), last_name: clean(data.last_name), phone, email,
+  address: street1 || city || zip ? { street1, street2, city, state, zip } : null,
+  services, service_type: svcType, plan, promo_code: clean(data.promo_code), referral_source: source,
+  page: clean(data.page), tags, source: "Website quote form", notes,
+  // the form's required text-consent box ("reminders"): texts about their own quote and visits
+  consent: { sms_service: data.reminders === "on" || data.reminders === true },
+});
+
+export default async (req, context) => {
   if (req.method !== "POST")
     return Response.json({ error: "Method not allowed" }, { status: 405 });
 
@@ -140,15 +159,26 @@ export default async (req) => {
   if (svcType) payload.service_type = svcType;
   if (notes) payload.notes = notes;
 
-  const res = await fetch(ROTOR_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "rotor-api-version": ROTOR_API_VERSION,
-    },
-    body: JSON.stringify(payload),
-  });
+  const input = crmInput({ name, data, phone, email, street1, street2, city, state, zip, services, svcType, plan, source, tags, notes });
+
+  let res;
+  try {
+    // watchRotor: in "rotor" mode (and before the CRM is set up) the call itself;
+    // in "dual" it starts the CRM write if Rotor takes more than 5 s
+    res = await watchRotor(fetch(ROTOR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "rotor-api-version": ROTOR_API_VERSION,
+      },
+      body: JSON.stringify(payload),
+    }), { req, context, input, origin: "lead-form" });
+  } catch (err) {
+    // Rotor unreachable (or silent for 9 s): as before, unless the CRM (intake "dual") kept the lead
+    if (crmRescued(await afterRotor({ req, context, input, origin: "lead-form", rotorOk: false }))) return Response.json({ ok: true });
+    throw err;
+  }
 
   // 201 = new lead, 200 = existing lead updated. Anything else must NOT look
   // like success to the visitor — main.js only shows the success screen on
@@ -156,8 +186,11 @@ export default async (req) => {
   // upstream error body may echo submitted customer information.
   if (res.status !== 200 && res.status !== 201) {
     console.error("Rotor rejected lead: HTTP " + res.status);
+    if (crmRescued(await afterRotor({ req, context, input, origin: "lead-form", rotorOk: false }))) return Response.json({ ok: true });
     return Response.json({ error: "Upstream error" }, { status: 502 });
   }
+  // Rotor has it: the answer is Rotor's; the CRM write (if intake is on) runs after it
+  await afterRotor({ req, context, input, origin: "lead-form", rotorOk: true, rotor: async () => ({ lead_id: (await rotorLeadId(res, "lead")).id }) });
   return Response.json({ ok: true });
 };
 

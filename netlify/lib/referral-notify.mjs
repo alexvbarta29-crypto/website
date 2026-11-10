@@ -8,6 +8,7 @@
 
 import { SMS, shareUrl, statusUrl, siteUrl } from "./referral-config.mjs";
 import { fullName, lastInitial, safeErr } from "./referral-lib.mjs";
+import { afterRotor, crmRescued } from "./crm/modules/contacts/hook.mjs";
 
 // Same endpoint/version as netlify/functions/lead.mjs.
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
@@ -69,7 +70,8 @@ const ID_KEYS = ["id", "lead_id", "leadId", "uuid"];
 const MAX_REPLY_KEYS = 12;
 const usableId = (v) =>
   typeof v === "string" && v.length > 0 && v.length <= 64 && !/[^\w.-]/.test(v) ? v : null;
-async function rotorLeadId(res) {
+// Shared with lead.mjs (label names the caller in the log line).
+export async function rotorLeadId(res, label = "referral") {
   let body;
   try { body = await res.clone().json(); } catch { body = null; }
   if (!body || typeof body !== "object") return { id: null, keys: [] };
@@ -82,13 +84,34 @@ async function rotorLeadId(res) {
     }
   }
   const keys = Object.keys(body).slice(0, MAX_REPLY_KEYS).map((k) => k.slice(0, 40));
-  console.warn("referral: no lead id in Rotor's response; keys were " + JSON.stringify(keys));
+  console.warn(label + ": no lead id in Rotor's response; keys were " + JSON.stringify(keys));
   return { id: null, keys };
+}
+
+// The Barta CRM's intake input for a Rotor lead payload (the same person,
+// tags and notes; docs/CRM-CONTACTS.md "Website leads").
+export function crmInputFromRotor(payload) {
+  const p = payload || {};
+  return {
+    name: p.name, phone: p.phone, email: p.email,
+    address: p.address_street1 ? { street1: p.address_street1, city: p.address_city, state: p.address_state, zip: p.address_zip } : null,
+    tags: Array.isArray(p.tags) ? p.tags : [], source: p.source === "Referral Program" ? "Referral" : p.source,
+    service_type: p.service_type, notes: p.notes,
+  };
 }
 
 // 201 = new lead, 200 = existing lead updated (Rotor upserts by phone, so a
 // friend who is already a contact just gains the Referral tag and notes).
-export async function createRotorLead(payload) {
+// After Rotor, the same lead goes to the CRM when its intake is on
+// (crm/modules/contacts/hook.mjs): when Rotor failed and the CRM kept it,
+// the result says crm_ok (delivered stays Rotor's own answer).
+export async function createRotorLead(payload, { origin = "referral", context } = {}) {
+  const r = await rotorCall(payload);
+  const crm = await afterRotor({ context, input: crmInputFromRotor(payload), origin, rotorOk: !!r.delivered, rotor: r.lead_id ? { lead_id: r.lead_id } : null });
+  return crmRescued(crm) ? { ...r, crm_ok: true } : r;
+}
+
+async function rotorCall(payload) {
   const key = process.env.ROTOR_API_KEY;
   if (!key) {
     console.error("referral: ROTOR_API_KEY is not set — lead not delivered");

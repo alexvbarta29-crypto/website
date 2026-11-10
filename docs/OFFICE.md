@@ -5,8 +5,10 @@ under it (beside it on a computer):
 
 - **Overview · Money · Sales · Plans · Jobs**: the dashboards (docs/DASHBOARD.md)
 - **CRM** → `/crm` (Barta's own CRM, each person's own login; see docs/CRM.md).
-  Its Contacts tab holds the customer list from Rotor until the Contacts
-  module replaces it. Old `#customers` links open this tab.
+  Its Contacts tab is the CRM's own contact list (docs/CRM-CONTACTS.md);
+  the first slice's customer list from Rotor stays one tap away at its
+  bottom until the Rotor import goes live. Old `#customers` links open
+  this tab.
 - **Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
 - **Purchases** → `/purchases` (see docs/PURCHASES.md)

@@ -6,18 +6,21 @@ design document, §11). This page covers what is live so far: the
 **sign-in and the app shell** (M1.2), the **platform engine** (M1.3,
 part A: workers, queue, events, operations, backups, files, settings) and
 **messaging, automations, the client portal frame and the owner's screens**
-(M1.3, part B). Each module keeps its own `docs/CRM-<MODULE>.md`. Rotor
+(M1.3, part B), and **Contacts** (M2a: the Contacts tab, lead intake from
+the website and Meta, merge review; docs/CRM-CONTACTS.md). Each module
+keeps its own `docs/CRM-<MODULE>.md`. Rotor
 stays the system of record until cutover, and nothing the CRM decides to
 send reaches a customer yet: it lands in the Outbox.
 
 ## The Customers list (/crm/legacy)
 
-The first slice: every customer from Rotor, made for a phone. **Read-only**;
-editing, new customers, jobs and the rest arrive with the Contacts module
-(M2a), which replaces this list. Since M1.2 it lives at `/crm/legacy` (the
-CRM's app shell took `/crm`) and opens from the CRM's **Contacts** tab, or
-from the "Open the Customers list" button while the CRM still needs its
-setup. It opens for the office password's cookie and for owners and
+The first slice: every customer from Rotor, made for a phone. **Read-only**.
+Since M2a the CRM's **Contacts** tab is the Contacts module's own list
+(docs/CRM-CONTACTS.md); this one stays at `/crm/legacy`, linked at the
+bottom of Contacts and from the "Open the Customers list" button while the
+CRM still needs its setup, until the Rotor import goes live (then it is
+deleted with `crm-page.mjs`, `crm-data.mjs` and the seal script). Its
+display helpers live in `netlify/lib/crm/modules/contacts/display.mjs`. It opens for the office password's cookie and for owners and
 office staff signed in to the CRM (`contacts:read_all`); technicians get
 "Not for this login".
 

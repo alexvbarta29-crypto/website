@@ -30,7 +30,8 @@ export default {
     const stuck = s.health && s.health.status && (s.health.status.fast === "stuck" || s.health.status.bulk === "stuck");
     const mode = (s.health && s.health.mode) || {};
     const links = [
-      ctx.can("contacts:read_all") && router.has("/legacy/customers") ? html`<a class="tile" href="#/legacy/customers">${icon("contacts")}<span>Customers</span></a>` : "",
+      ctx.can("contacts:read_all") && router.has("/contacts") ? html`<a class="tile" href="#/contacts">${icon("contacts")}<span>Contacts</span></a>`
+        : ctx.can("contacts:read_all") && router.has("/legacy/customers") ? html`<a class="tile" href="#/legacy/customers">${icon("contacts")}<span>Customers</span></a>` : "",
       ctx.can("outbox:read") ? html`<a class="tile" href="#/outbox">${icon("send")}<span>Outbox</span></a>` : "",
       ctx.can("automations:configure") ? html`<a class="tile" href="#/automations">${icon("bolt")}<span>Automations</span></a>` : "",
       ctx.can("users:manage") ? html`<a class="tile" href="#/team">${icon("team")}<span>Team</span></a>` : "",
