@@ -115,7 +115,7 @@ const schedule = async (ctx) => {
   const to = str(ctx.query.get("to")) || from;
   const users = str(ctx.query.get("users")).split(",").filter((x) => isId(x, "user"));
   const data = await scheduleRange({ from, to, users });
-  return { data, meta: { stale: data.stale } };
+  return { data: { ...data, from, to }, meta: { stale: data.stale } };
 };
 
 const unscheduled = async (ctx) => {

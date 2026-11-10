@@ -21,7 +21,13 @@ async function fetchView(ctx, s) {
     s.tray = r.data;
     return;
   }
-  const [from, to] = s.view === "day" ? [s.date, s.date] : s.view === "week" ? [weekStart(s.date), addDays(weekStart(s.date), 6)] : [today(), addDays(today(), 13)];
+  if (!s.date) {
+    // no day asked for: the server's today (the phone's clock may be off)
+    const r = await ctx.api("/schedule", { cache: false });
+    s.date = r.data.from || today();
+    if (s.view === "day") { s.data = r.data; return; }
+  }
+  const [from, to] = s.view === "day" ? [s.date, s.date] : s.view === "week" ? [weekStart(s.date), addDays(weekStart(s.date), 6)] : [s.date, addDays(s.date, 13)];
   const r = await ctx.api(`/schedule?from=${from}&to=${to}`, { cache: false });
   s.data = { ...r.data, from, to };
 }
@@ -32,7 +38,7 @@ async function load(params, ctx) {
   const q = new URLSearchParams((location.hash.split("?")[1]) || "");
   const k = ctx.keep;
   const s = {
-    view: k.view || "day", date: isDate(q.get("date")) ? q.get("date") : k.date || today(), tech: k.tech || null,
+    view: VIEWS.some(([v]) => v === q.get("view")) ? q.get("view") : k.view || "day", date: isDate(q.get("date")) ? q.get("date") : k.date || null, tech: k.tech || null,
     month: k.month || today().slice(0, 7), users: team(await loadUsers(ctx).catch(() => [])), data: null, tray: null,
   };
   await fetchView(ctx, s);
@@ -121,7 +127,7 @@ function weekView(s) {
 }
 
 function listView(s) {
-  const days = Array.from({ length: 14 }, (_, i) => addDays(today(), i));
+  const days = Array.from({ length: 14 }, (_, i) => addDays(s.data.from || s.date, i));
   const withAny = days.filter((d) => dayItems(s, d).length);
   return html`${techChips(s)}
     ${withAny.length ? withAny.map((d) => html`<div class="section-h">${dayLabel(d)}</div><ul class="list">${dayItems(s, d).map((x) => (x.k === "v" ? visitRow(s, x.v) : taskRow(x.t)))}</ul>`)
@@ -155,7 +161,7 @@ export default {
   },
   events: {
     "click [data-view]": (e, el, ctx) => { ctx.state.view = el.dataset.view; reload(ctx); },
-    "click [data-day]": (e, el, ctx) => { const s = ctx.state; s.date = el.dataset.day === "today" ? today() : addDays(s.date, Number(el.dataset.day)); reload(ctx); },
+    "click [data-day]": (e, el, ctx) => { const s = ctx.state; s.date = el.dataset.day === "today" ? null : addDays(s.date, Number(el.dataset.day)); reload(ctx); },
     "click [data-week]": (e, el, ctx) => { const s = ctx.state; s.date = addDays(s.date, 7 * Number(el.dataset.week)); reload(ctx); },
     "click [data-month]": (e, el, ctx) => { ctx.state.month = el.dataset.month; reload(ctx); },
     "click [data-tech]": (e, el, ctx) => { ctx.state.tech = el.dataset.tech || null; keep(ctx); ctx.rerender(); },

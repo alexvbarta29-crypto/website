@@ -12,14 +12,14 @@ export default {
   async load(ctx) {
     ensureStyles();
     if (!officeView()) return { none: true };
-    const d = today();
+    // the server's today (the phone's clock may be off)
     const [day, tray, stale, users] = await Promise.all([
-      ctx.api(`/schedule?from=${d}&to=${d}`, { cache: false }).then((r) => r.data).catch(() => null),
-      ctx.api(`/schedule/unscheduled?month=${d.slice(0, 7)}`, { cache: false }).then((r) => r.data).catch(() => null),
+      ctx.api("/schedule", { cache: false }).then((r) => r.data).catch(() => null),
+      ctx.api("/schedule/unscheduled", { cache: false }).then((r) => r.data).catch(() => null),
       ctx.api("/stale", { cache: false }).then((r) => r.data).catch(() => null),
       loadUsers(ctx).catch(() => []),
     ]);
-    return { date: d, day, tray, stale, users };
+    return { date: (day && day.from) || today(), day, tray, stale, users };
   },
   render(s) {
     if (s.none || !s.day) return html``;
@@ -38,7 +38,7 @@ export default {
           <span class="who"><span class="nm">${u ? u.name : uid ? "Someone" : "Nobody assigned"}</span><span class="sub">${plural(list.length, "visit")}${left !== list.length ? `, ${left} to go` : ""}</span></span><span class="chev" aria-hidden="true"></span></a></li>`;
       })}</ul>` : html`<a class="tile" href="#/schedule">${icon("schedule")}<span>Nothing booked today</span></a>`}
       ${toBook || staleN || doneN ? html`<div class="links wk-todaylinks">
-        ${toBook ? html`<a class="tile" href="#/schedule">${icon("list")}<span>${plural(toBook, "job")} to book</span><span class="n">${toBook}</span></a>` : ""}
+        ${toBook ? html`<a class="tile" href="#/schedule?view=tray">${icon("list")}<span>${plural(toBook, "job")} to book</span><span class="n">${toBook}</span></a>` : ""}
         ${staleN ? html`<a class="tile" href="#/jobs?status=stale">${icon("bell")}<span>${plural(staleN, "job")} need${staleN === 1 ? "s" : ""} a look</span><span class="n">${staleN}</span></a>` : ""}
       </div>` : ""}`;
   },
