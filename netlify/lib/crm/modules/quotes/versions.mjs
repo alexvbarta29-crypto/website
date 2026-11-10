@@ -19,7 +19,7 @@ import { nowIso, now, localDate, addLocalDays } from "../../core/clock.mjs";
 import { ExistsError, NotFoundError, ConflictError } from "../../core/errors.mjs";
 import { has, call } from "../../core/services.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { earlyBirdDeadline } from "./pricing.mjs";
+import { earlyBirdDeadline, isEarlyBird } from "./pricing.mjs";
 
 const sha = (s) => createHash("sha256").update(String(s), "utf8").digest("hex");
 
@@ -42,16 +42,20 @@ export function canonicalJson(v) {
 
 export const termsVersion = (text) => `t-${sha(text).slice(0, 12)}`;
 
-// An option has an Early Bird discount (D30): the quote then expires no later than the deadline in effect.
-const hasEarlyBird = (options) => (options || []).some((o) => (o.discounts || []).some((d) => d.key === "early_bird" || d.offer_until));
+// The Early Bird discounts on a quote's options (D30).
+const earlyBirds = (options) => (options || []).flatMap((o) => (o.discounts || []).filter(isEarlyBird));
 
-// expires_on = min(sent + expiry days, the Early Bird deadline in effect when an Early Bird discount is on the quote).
+// expires_on = min(sent + expiry days, the Early Bird deadline in effect and
+// each Early Bird discount's own offer_until, when one is on the quote).
+// Sending a quote whose Early Bird is over is refused before this (quotes.mjs).
 export function expiryFor(options, pricing, at = now()) {
   const day = localDate(at);
   let exp = addLocalDays(day, Number.isSafeInteger(pricing && pricing.quote_expiry_days) ? pricing.quote_expiry_days : 30);
-  if (hasEarlyBird(options)) {
+  const eb = earlyBirds(options);
+  if (eb.length) {
     const d = earlyBirdDeadline(day, pricing);
     if (d && d < exp) exp = d;
+    for (const x of eb) if (x.offer_until && x.offer_until < exp) exp = x.offer_until;
   }
   return exp;
 }

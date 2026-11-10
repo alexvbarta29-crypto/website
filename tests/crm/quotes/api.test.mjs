@@ -51,10 +51,18 @@ test("create, read, edit (If-Match), list: techs get nothing; prices change only
     assert.equal((await t.api(`/quotes/${q.id}`, { method: "PATCH", as: denied, ifMatch: e2, body: { client_notes: "See you soon" } })).status, 200);
     // two plan discounts in one stack group can't combine (D15)
     const e3 = (await t.api(`/quotes/${q.id}`, { as: owner })).headers.get("etag");
-    const two = (await t.api(`/quotes/${q.id}`, { as: owner })).body.data.quote.options.map((o) => (o.kind === "plan" ? { ...o, discounts: [...o.discounts, { key: "plan_biannual", name: "Biannual plan discount", type: "fixed", value: 5000, stack_group: "plan" }] } : o));
+    const cur3 = (await t.api(`/quotes/${q.id}`, { as: owner })).body.data.quote.options;
+    const two = cur3.map((o) => (o.kind === "plan" ? { ...o, discounts: [...o.discounts, { name: "Neighbor plan deal", type: "fixed", value: 2500, stack_group: "plan" }] } : o));
     const bad = await t.api(`/quotes/${q.id}`, { method: "PATCH", as: owner, ifMatch: e3, body: { options: two } });
     assert.equal(bad.status, 400);
     assert.match(bad.body.error.message, /can't be combined/);
+    // a plan's own discount only on that plan (plan_only): not on the quarterly plan, not on a one-time option
+    const wrongPlan = cur3.map((o) => (o.kind === "plan" ? { ...o, discounts: [{ key: "plan_biannual", name: "Biannual plan discount", type: "fixed", value: 5000, scope: { type: "all" } }] } : o));
+    const wp = await t.api(`/quotes/${q.id}`, { method: "PATCH", as: owner, ifMatch: e3, body: { options: wrongPlan } });
+    assert.equal(wp.status, 400);
+    assert.match(wp.body.error.message, /for the biannual plan only/);
+    const oneTimePlanDisc = cur3.map((o) => (o.kind === "one_time" ? { ...o, discounts: [{ key: "plan_quarterly", name: "Quarterly plan discount", type: "fixed", value: 10000, scope: { type: "all" } }] } : o));
+    assert.equal((await t.api(`/quotes/${q.id}`, { method: "PATCH", as: owner, ifMatch: e3, body: { options: oneTimePlanDisc } })).status, 400, "the Quarterly plan discount on a one-time option");
     // measured by square feet: the property keeps it for a re-quote
     const prop = (await scope(() => store.createRecord("property", { contact_id: c.id, label: "Home", address: { street1: "300 Example Ave", city: "Delano", state: "MN", zip: "55328" }, access: {}, assets: {}, photo_ids: [] }, AS(owner)))).data;
     const e4 = (await t.api(`/quotes/${q.id}`, { as: owner })).headers.get("etag");

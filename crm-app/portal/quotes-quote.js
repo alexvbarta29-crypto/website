@@ -31,7 +31,12 @@ function visitPrices(o, picked, floor) {
   for (let k = 1; k <= o.visits.term; k++) {
     const base = o.lines.filter((l) => (l.o ? picked.has(l.id) : true) && covers(l.s, k)).reduce((s, l) => s + l.c, 0);
     let bp = 0, fixed = 0;
-    for (const d of o.discounts) { if (!covers(d.s, k)) continue; if (d.t === "percentage") bp += d.v; else fixed += d.v; }
+    for (const d of o.discounts) {
+      if (!covers(d.s, k)) continue;
+      // tied to a line (10 free screens on an add-on): only when that line counts
+      if (d.l && !o.lines.some((l) => l.id === d.l && (l.o ? picked.has(l.id) : true) && covers(l.s, k))) continue;
+      if (d.t === "percentage") bp += d.v; else fixed += d.v;
+    }
     bp = Math.min(10000, bp);
     per.push(Math.max(Math.min(floor, base), base - rhu(base * bp, 10000) - fixed));
   }

@@ -109,7 +109,7 @@ function servicesCard(s) {
   return html`<section class="card"><h2>Services</h2>
     <div class="qb-svc">${SERVICES.map(([k, label]) => html`<label class="check"><input ${attrs({ type: "checkbox", "data-svc": k, checked: !!s.services[k] })}><span>${label}</span>${k === "screens" ? count(k, "est.") : k === "tracks_standard" || k === "tracks_premium" ? count(k, "how many") : k === "gutters" ? count(k, "$ price") : ""}</label>`)}</div>
     <div class="section-h" style="margin:14px 0 6px">Also offer a plan</div>
-    <div class="qb-seg" role="group" aria-label="Plan">${[["", "No plan"], ["biannual", "Biannual"], ["quarterly", "Quarterly"], ["monthly", "Monthly"]].map(([k, label]) => html`<button type="button" ${attrs({ "data-plan": k, "aria-pressed": String(s.plan === k) })}>${label}</button>`)}</div>
+    <div class="qb-seg qb-plans" role="group" aria-label="Plan">${[["", "No plan"], ["biannual", "Biannual"], ["quarterly", "Quarterly"], ["monthly", "Monthly"]].map(([k, label]) => html`<button type="button" ${attrs({ "data-plan": k, "aria-pressed": String(s.plan === k) })}>${label}</button>`)}</div>
     <button type="button" class="btn primary block" data-price>${icon("bolt")}Price it</button>
     ${s.warnings.length ? html`<ul class="qb-warn">${s.warnings.map((w) => html`<li class="warn-box">${warningText(w)}</li>`)}</ul>` : ""}
     ${!s.isNew ? html`<a class="btn block" style="margin-top:8px" href="${"#/quotes/" + encodeURIComponent(s.id) + "/lights"}">${icon("sun")}Christmas lights quote</a>` : html`<button type="button" class="btn block" style="margin-top:8px" data-lights>${icon("sun")}Christmas lights quote</button>`}
@@ -336,13 +336,18 @@ function lineSheet(ctx, i) {
   const l = isNew ? { title: "", qty_milli: 1000, unit_cents: 0, scope: { type: "all" }, unit: "flat", category: "other", show: { qty: false, unit: false, description: true } } : clone(o.lines[i]);
   const canOverride = !!(s.cx.can && s.cx.can.override);
   const scopeVal = !l.scope || l.scope.type === "all" ? "all" : l.scope.type;
+  // a price the engine or the price book sets changes only as "Change the line total" with a reason (the server agrees)
+  const item = l.price_item_id ? (s.cx.book || []).find((x) => x.id === l.price_item_id) : null;
+  const locked = Number.isInteger(l.engine_cents) || !!(item && item.unit_cents > 0);
+  const qtyLocked = locked && (l.unit || "flat") === "flat";
   const sh = sheet({
     title: isNew ? "Custom line" : "Line",
     body: html`<form class="form" data-lf>
       <label class="field" data-field="title"><span>What it is</span><input ${attrs({ name: "title", value: l.title, maxlength: 160, required: true })}><small class="why" hidden></small></label>
       <label class="field"><span>Description (on the quote)</span><textarea name="description" rows="2" maxlength="2000">${l.description || ""}</textarea></label>
-      <div class="grid2"><label class="field"><span>Quantity</span><input ${attrs({ name: "qty", inputmode: "decimal", value: qtyText(l.qty_milli) })}></label>
-      <label class="field"><span>Price each</span><input ${attrs({ name: "unit", inputmode: "decimal", value: (l.unit_cents / 100).toFixed(2) })}></label></div>
+      <div class="grid2"><label class="field"><span>Quantity</span><input ${attrs({ name: "qty", inputmode: "decimal", value: qtyText(l.qty_milli), disabled: qtyLocked })}></label>
+      <label class="field"><span>Price each</span><input ${attrs({ name: "unit", inputmode: "decimal", value: (l.unit_cents / 100).toFixed(2), disabled: locked })}></label></div>
+      ${locked ? html`<p class="small muted">${canOverride ? "This price comes from the price book. To change it, change the line total and say why." : "This price comes from the price book."}</p>` : ""}
       ${canOverride ? html`<div class="grid2"><label class="field"><span>Change the line total</span><input ${attrs({ name: "ov", inputmode: "decimal", value: l.override ? (l.override.cents / 100).toFixed(2) : "", placeholder: "No change" })}></label>
         <label class="field" data-field="reason"><span>Why</span><input ${attrs({ name: "reason", value: l.override ? l.override.reason : "", maxlength: 200, placeholder: "e.g. neighbor deal" })}><small class="why" hidden></small></label></div>` : (l.override ? html`<p class="small muted">Price changed: ${l.override.reason}</p>` : "")}
       <label class="field"><span>Which visits</span><select name="scope">${[["all", "Every visit"], ["initial", "First visit only"], ["after_initial", "After the first visit"], ["specific", "Some visits…"]].map(([v, t]) => html`<option ${attrs({ value: v, selected: scopeVal === v })}>${t}</option>`)}</select></label>
@@ -358,10 +363,10 @@ function lineSheet(ctx, i) {
         const f = form.elements;
         const title = f.title.value.trim();
         if (!title) { const w = form.querySelector('[data-field="title"] .why'); w.textContent = "Say what it is."; w.hidden = false; return; }
-        const qty = toMilli(f.qty.value);
-        const unit = readMoney(f.unit.value);
-        const next = { ...l, id: l.id || tmpId("ln"), title, description: f.description.value, qty_milli: qty === null ? 1000 : qty, unit_cents: unit === null ? 0 : unit, optional: f.optional.checked || undefined, selected: f.optional.checked ? f.selected.checked : undefined };
-        if (f.unit.value && (qty !== 1000) && next.unit === "flat") next.unit = "each";
+        const qty = qtyLocked ? l.qty_milli : toMilli(f.qty.value);
+        const unit = locked ? l.unit_cents : readMoney(f.unit.value);
+        const next = { ...l, id: l.id || tmpId("ln"), title, description: f.description.value, qty_milli: qty === null || qty === undefined ? 1000 : qty, unit_cents: unit === null ? 0 : unit, optional: f.optional.checked || undefined, selected: f.optional.checked ? f.selected.checked : undefined };
+        if (!locked && f.unit.value && (qty !== 1000) && next.unit === "flat") next.unit = "each";
         const sc = f.scope.value;
         next.scope = sc === "specific" ? (parseVisits(f.visits.value) || { type: "all" }) : { type: sc };
         if (canOverride) {

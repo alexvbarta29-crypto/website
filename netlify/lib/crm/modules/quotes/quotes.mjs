@@ -27,7 +27,7 @@ import { readSysMode } from "../../core/settings.mjs";
 import { wouldAct } from "../../core/activity.mjs";
 import { notify, approvers } from "../../core/notify.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { pricingWith, optionTotals, PLAN_CATALOG, lineTotal } from "./pricing.mjs";
+import { pricingWith, optionTotals, PLAN_CATALOG, lineTotal, checkSizes, earlyBirdOver, isThreeYear, addOnUnit } from "./pricing.mjs";
 import { OPEN_STATUSES, MAX_OPTIONS, numberLabel, LINE_ID_RE, OPTION_ID_RE, DISCOUNT_ID_RE } from "./types.mjs";
 import { freezeVersion } from "./versions.mjs";
 
@@ -79,20 +79,50 @@ export function emptyOption(kind = "one_time", name) {
 }
 
 const sameOverride = (a, b) => !!a && !!b && a.cents === b.cents && String(a.reason || "") === String(b.reason || "");
+const PRICE_CHANGE = "To change this price, change the line total and say why.";
+
+// A line whose price the engine or the price book sets (engine_cents, or a
+// price-book item with a price; a "priced by hand" item is typed in) and
+// whose price changed outside an override: its unit price, or the quantity
+// of a flat (tier) line; a new line whose unit price isn't its item's. A
+// recount of a per-unit line (24 screens, not 20) is not a price change.
+export function bookPriced(l, book) {
+  if (Number.isSafeInteger(l.engine_cents)) return true;
+  const item = l.price_item_id && Array.isArray(book) ? book.find((i) => i.id === l.price_item_id) : null;
+  return !!(item && Number.isSafeInteger(item.unit_cents) && item.unit_cents > 0);
+}
+function bookPriceChanged(l, prev, book) {
+  if (!bookPriced(l, book) && !(prev && bookPriced(prev, book))) return false;
+  if (prev) return l.unit_cents !== prev.unit_cents || (l.unit === "flat" && (l.qty_milli ?? 1000) !== (prev.qty_milli ?? 1000));
+  const item = l.price_item_id && Array.isArray(book) ? book.find((i) => i.id === l.price_item_id) : null;
+  if (item && Number.isSafeInteger(item.unit_cents) && item.unit_cents > 0 && l.unit_cents !== item.unit_cents) return true;
+  if (l.unit === "flat" && Number.isSafeInteger(l.engine_cents)) return lineTotal({ unit_cents: l.unit_cents, qty_milli: l.qty_milli }) !== l.engine_cents;
+  return false;
+}
 
 // Ids for whatever is new, the price-override permission (a line whose
-// override is new or changed needs prices:override and a reason), plan
-// defaults from the catalog, and every option's totals.
+// override is new or changed needs prices:override and a reason; a book or
+// engine price changes only that way), plan defaults from the catalog,
+// sizes no quote has refused (400), and every option's totals.
 // defs (the discount catalog): a catalog discount takes its stack group, and
-// two discounts of one group can't be on one option (D15).
-export function normalizeOptions(options, { pricing, before = [], user = null, canOverride = false, defs = null } = {}) {
+// two discounts of one group can't be on one option (D15); a plan's discount
+// (plan_only) only on that plan, the 3-year contract only on a plan.
+// trusted: a copy the server makes itself (duplicate, the preview totals).
+export function normalizeOptions(options, { pricing, before = [], user = null, canOverride = false, defs = null, book = null, trusted = false } = {}) {
   if (!Array.isArray(options)) throw new InputError("Expected the options.", "options");
   if (options.length > MAX_OPTIONS) throw new InputError(`Up to ${MAX_OPTIONS} options.`, "options");
   const prevLines = new Map();
-  for (const o of before || []) for (const l of o.lines || []) prevLines.set(`${o.id}|${l.id}`, l);
+  const prevOptions = new Map();
+  const prevDiscounts = new Set();
+  for (const o of before || []) {
+    prevOptions.set(o.id, o);
+    for (const l of o.lines || []) prevLines.set(`${o.id}|${l.id}`, l);
+    for (const d of o.discounts || []) prevDiscounts.add(`${o.id}|${d.id}`);
+  }
   const optIds = new Set();
   return options.map((src, oi) => {
     const o = src && typeof src === "object" ? clone(src) : {};
+    checkSizes(o, `options.${oi}`);
     if (!OPTION_ID_RE.test(String(o.id || "")) || optIds.has(o.id)) o.id = newOptionId();
     optIds.add(o.id);
     o.kind = o.kind === "plan" ? "plan" : "one_time";
@@ -107,6 +137,10 @@ export function normalizeOptions(options, { pricing, before = [], user = null, c
       if (!LINE_ID_RE.test(String(l.id || "")) || ids.has(l.id)) l.id = newLineId();
       ids.add(l.id);
       const prev = prevLines.get(`${o.id}|${l.id}`);
+      if (!trusted && bookPriceChanged(l, prev, book)) {
+        if (!canOverride) throw new ForbiddenError("Changing a price needs the price override permission.");
+        throw new InputError(PRICE_CHANGE, `options.${oi}.lines.${li}.unit_cents`);
+      }
       if (l.override === null || l.override === undefined) delete l.override;
       else if (!(prev && sameOverride(prev.override, l.override))) {
         if (!canOverride) throw new ForbiddenError("Changing a price needs the price override permission.");
@@ -118,12 +152,20 @@ export function normalizeOptions(options, { pricing, before = [], user = null, c
     });
     const dids = new Set();
     const groups = new Map();
+    const p0 = prevOptions.get(o.id);
+    const sameKind = !!p0 && p0.kind === o.kind && ((p0.plan && p0.plan.catalog_key) || null) === ((o.plan && o.plan.catalog_key) || null);
     o.discounts = (Array.isArray(o.discounts) ? o.discounts : []).map((d0, di) => {
       const d = d0 && typeof d0 === "object" ? { ...d0 } : {};
       if (!DISCOUNT_ID_RE.test(String(d.id || "")) || dids.has(d.id)) d.id = newDiscountId();
       dids.add(d.id);
       const def = Array.isArray(defs) ? defs.find((x) => (d.def_id && x.id === d.def_id) || (d.key && x.key === d.key)) : null;
       if (def) { if (def.stack_group) d.stack_group = def.stack_group; else delete d.stack_group; if (!d.def_id) d.def_id = def.id; if (!d.key) d.key = def.key; }
+      // a plan's own discount on that plan only; the 3-year contract on a plan only (a new discount, or the option's kind changed)
+      if (!trusted && !(sameKind && prevDiscounts.has(`${o.id}|${d.id}`))) {
+        const planOnly = (def && def.plan_only) || (/^plan_(biannual|quarterly|monthly)$/.test(String(d.key || "")) ? String(d.key).slice(5) : null);
+        if (planOnly && !(o.kind === "plan" && o.plan.catalog_key === planOnly)) throw new InputError(`${d.name || "That discount"} is for the ${planOnly} plan only.`, `options.${oi}.discounts.${di}`);
+        if (isThreeYear(d) && o.kind !== "plan") throw new InputError("The 3-year discount is for a plan of several seasons, not one.", `options.${oi}.discounts.${di}`);
+      }
       if (d.stack_group) {
         if (groups.has(d.stack_group)) throw new InputError(`${groups.get(d.stack_group)} and ${d.name || "that discount"} can't be combined.`, `options.${oi}.discounts.${di}`);
         groups.set(d.stack_group, d.name || "A discount");
@@ -133,6 +175,25 @@ export function normalizeOptions(options, { pricing, before = [], user = null, c
     o.totals = optionTotals(o, pricing);
     return o;
   });
+}
+
+// photo_ids / mockup_file_ids a person sends: the ones already there, or
+// files uploaded to this quote (owner quote/this id); never another
+// record's file (a signature, another customer's photo).
+const ATTACHABLE = Object.freeze(["photo", "mockup", "attachment", "import_media"]);
+async function ownFiles(ids, q0, field) {
+  if (!Array.isArray(ids)) throw new InputError("Expected a list of files.", field);
+  if (ids.length > 20) throw new InputError("Up to 20 files.", field);
+  const had = new Set(q0[field] || []);
+  const out = [];
+  for (const id of [...new Set(ids.map(String))]) {
+    if (had.has(id)) { out.push(id); continue; }
+    const f = isId(id, "file") ? await getRecord("file", id).catch(() => null) : null;
+    const d = f && f.data;
+    if (!d || d.deleted_at || !d.owner || d.owner.type !== "quote" || d.owner.id !== q0.id || !ATTACHABLE.includes(d.kind)) throw new InputError("That file isn't on this quote. Add photos with the camera button.", field);
+    out.push(id);
+  }
+  return out;
 }
 
 // What a person may send in (POST/PATCH): the editable fields only.
@@ -217,10 +278,10 @@ export async function createQuote(body = {}, ctx) {
     const d = await getRecord("deal", deal_id);
     if (!d || d.data.contact_id !== contact.id) throw new InputError("That deal isn't theirs.", "deal_id");
   } else deal_id = await openDealOf(contact.id);
-  const [pricing, defs] = await Promise.all([loadPricing(), discountDefs().catch(() => [])]);
+  const [pricing, defs, book] = await Promise.all([loadPricing(), discountDefs().catch(() => []), priceBook().catch(() => [])]);
   const mode = typeof ctx.sysMode === "function" ? await ctx.sysMode() : await readSysMode();
   const seq = mode.system_of_record === "crm" ? "quote" : "quote-shadow";
-  const options = normalizeOptions(Array.isArray(body.options) && body.options.length ? body.options : [{ ...emptyOption("one_time", "One-time"), recommended: true }], { pricing, defs, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false });
+  const options = normalizeOptions(Array.isArray(body.options) && body.options.length ? body.options : [{ ...emptyOption("one_time", "One-time"), recommended: true }], { pricing, defs, book, trusted: ctx.trustedCopy === true, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false });
   const number = await nextNumber(seq, { id: quoteId });
   const data = {
     id: quoteId, number, number_seq: seq, contact_id: contact.id, contact_name: contactName(contact), status: "draft",
@@ -247,9 +308,10 @@ export async function patchQuote(id, body = {}, ctx) {
   const q0 = cur.data;
   if (["approved", "converted"].includes(q0.status)) throw new ConflictError("An approved quote can't change. Duplicate it to make a new one.");
   if (["archived", "declined"].includes(q0.status)) throw new ConflictError("Restore this quote first.");
-  const [pricing, defs] = await Promise.all([loadPricing(), discountDefs().catch(() => [])]);
+  const [pricing, defs, book] = await Promise.all([loadPricing(), discountDefs().catch(() => []), priceBook().catch(() => [])]);
   const patch = {};
   for (const k of EDITABLE) if (body[k] !== undefined) patch[k] = body[k];
+  for (const k of ["photo_ids", "mockup_file_ids"]) if (patch[k] !== undefined) patch[k] = await ownFiles(patch[k], q0, k);
   if (patch.property_id !== undefined) patch.property_id = await checkProperty(patch.property_id, q0.contact_id) || null;
   if (patch.deal_id !== undefined && patch.deal_id !== null) {
     if (!isId(patch.deal_id, "deal")) throw new InputError("That isn't a deal.", "deal_id");
@@ -258,7 +320,7 @@ export async function patchQuote(id, body = {}, ctx) {
     // before Money (M5) deposits and "require card" are hidden (§11.3): keep what's stored
     patch.agreement = { ...(q0.agreement || {}), ...(patch.agreement || {}), require_card: !!(q0.agreement && q0.agreement.require_card), deposit: (q0.agreement && q0.agreement.deposit) || { type: "none", value: 0 } };
   }
-  const options = patch.options !== undefined ? normalizeOptions(patch.options, { pricing, defs, before: q0.options, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false }) : null;
+  const options = patch.options !== undefined ? normalizeOptions(patch.options, { pricing, defs, book, before: q0.options, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false }) : null;
   const r = await updateRecord("quote", id, (q) => {
     if (["approved", "converted", "archived", "declined"].includes(q.status)) throw new ConflictError("This quote changed. Reload it.");
     const next = { ...q, ...patch };
@@ -272,13 +334,43 @@ export async function patchQuote(id, body = {}, ctx) {
 }
 
 // POST /quotes/:id/duplicate: a new draft with the same options (new ids), for the same contact.
+// The follow-up's offers stay behind, and so does an Early Bird whose deadline has passed.
 export async function duplicateQuote(id, body = {}, ctx) {
   const { data: q } = await getQuote(id);
-  const options = (q.options || []).map((o) => ({ ...clone(o), id: newOptionId(), lines: (o.lines || []).map((l) => ({ ...clone(l), id: newLineId() })), discounts: (o.discounts || []).filter((d) => !d.offer).map((d) => ({ ...clone(d), id: newDiscountId() })) }));
+  const pricing = await loadPricing();
+  const today = localDate(now());
+  const options = (q.options || []).map((o) => {
+    const lines = (o.lines || []).filter((l) => !l.offer).map((l) => ({ ...clone(l), id: newLineId(), _was: l.id }));
+    const lineIds = new Map(lines.map((l) => [l._was, l.id]));
+    for (const l of lines) delete l._was;
+    const discounts = (o.discounts || []).filter((d) => !d.offer && !earlyBirdOver(d, today, pricing)).map((d) => {
+      const x = { ...clone(d), id: newDiscountId() };
+      if (x.line_id) { if (lineIds.has(x.line_id)) x.line_id = lineIds.get(x.line_id); else delete x.line_id; }
+      return x;
+    });
+    return { ...clone(o), id: newOptionId(), lines, discounts };
+  });
   return createQuote({
     client_id: body.client_id || `dup:${id}:${randomBytes(6).toString("hex")}`, contact_id: q.contact_id, property_id: q.property_id, deal_id: q.deal_id,
     options, client_notes: q.client_notes, internal_notes: q.internal_notes,
-  }, { ...ctx, can: () => true });
+  }, { ...ctx, can: () => true, trustedCopy: true });
+}
+
+// What stops a customer approving this version now: it expired, an offer
+// on it ended (the follow-up archived the quote), or its Early Bird is over.
+// → null | { code, title, message (the customer's words), staff (the office's) }
+export function versionClosed(q, version, { today, pricing }) {
+  if (!version) return null;
+  if (version.expires_on && version.expires_on < today) return { code: "expired", title: "This quote has expired", message: "This quote has expired. Call or text us and we'll put together a fresh one.", staff: "This quote has expired. Send it again to give it a new date." };
+  const offers = new Set(q.offers || []);
+  const opts = version.options || [];
+  if (opts.some((o) => (o.lines || []).some((l) => l.offer && !offers.has(l.offer)) || (o.discounts || []).some((d) => d.offer && !offers.has(d.offer)))) {
+    return { code: "expired", title: "This offer has ended", message: "The offer on this quote has ended. Call or text us and we'll put together a fresh one.", staff: "The follow-up offer on this version has ended. Send the quote again first." };
+  }
+  if (opts.some((o) => (o.discounts || []).some((d) => earlyBirdOver(d, today, pricing)))) {
+    return { code: "expired", title: "The Early Bird deadline has passed", message: "The Early Bird deadline has passed. Call or text us and we'll put together a fresh quote.", staff: "The Early Bird deadline has passed. Take the Early Bird discount off and send the quote again." };
+  }
+  return null;
 }
 
 // ------------------------------------------------------------ send
@@ -304,6 +396,10 @@ export async function sendQuote(id, { channels = [], first_send_note } = {}, ctx
   if (!["draft", "sent", "viewed", "changes_requested"].includes(q0.status)) throw new ConflictError(q0.status === "approved" || q0.status === "converted" ? "This quote is already approved." : "Restore this quote first.");
   checkSendable(q0);
   const pricing = await loadPricing();
+  const today = localDate(now());
+  if ((q0.options || []).some((o) => (o.discounts || []).some((d) => earlyBirdOver(d, today, pricing)))) {
+    throw new InputError("The Early Bird deadline has passed. Take the Early Bird discount off, then send.", "options");
+  }
   // totals as they are now (a pricing change since the last save)
   const options = normalizeOptions(q0.options, { pricing, before: q0.options, user: null, canOverride: true });
   const { version, created } = await freezeVersion({ ...q0, options }, { channels: chans, pricing, ctx: W(ctx) });
@@ -346,7 +442,10 @@ export async function markViewed(id, { version_id } = {}, ctx) {
   return { changed: r.changed, status: r.data.status };
 }
 
-const ANSWERABLE = ["sent", "viewed"];
+// The customer can answer (approve, ask for changes, decline) a quote that
+// was sent, also while the office edits it (a draft keeps the sent version
+// on the link until the next send): the three agree (approve.mjs uses this).
+export const customerCanAnswer = (q) => ["sent", "viewed"].includes(q.status) || (q.status === "draft" && !!q.current_version_id);
 
 async function staffToTell(q) {
   const people = new Set(await approvers().catch(() => []));
@@ -362,9 +461,9 @@ export async function requestChanges(id, { message } = {}, ctx) {
   if (text.length > 2000) throw new InputError("Keep it under 2,000 characters.", "message");
   const { data: q0 } = await getQuote(id);
   if (q0.status === "changes_requested") return { quote: q0, already: true };
-  if (!ANSWERABLE.includes(q0.status)) throw new ConflictError("This quote can't take changes right now. Call or text us.");
+  if (!customerCanAnswer(q0)) throw new ConflictError("This quote can't take changes right now. Call or text us.");
   const r = await updateRecord("quote", id, (q) => {
-    if (!ANSWERABLE.includes(q.status)) throw new ConflictError("This quote changed.");
+    if (!customerCanAnswer(q)) throw new ConflictError("This quote changed.");
     return { ...q, status: "changes_requested", changes_requested_at: nowIso(), change_message: text };
   }, W(ctx));
   const q = r.data;
@@ -382,10 +481,10 @@ export async function declineQuote(id, { reason } = {}, ctx) {
   const why = String(reason ?? "").trim().slice(0, 500);
   const { data: q0 } = await getQuote(id);
   if (q0.status === "declined") return { quote: q0, already: true };
-  const allowed = actorKindOf(W(ctx)) === "portal" ? ANSWERABLE : ["draft", "sent", "viewed", "changes_requested"];
-  if (!allowed.includes(q0.status)) throw new ConflictError("This quote can't be declined now.");
+  const allowed = actorKindOf(W(ctx)) === "portal" ? customerCanAnswer : (q) => ["draft", "sent", "viewed", "changes_requested"].includes(q.status);
+  if (!allowed(q0)) throw new ConflictError("This quote can't be declined now.");
   const r = await updateRecord("quote", id, (q) => {
-    if (!allowed.includes(q.status)) throw new ConflictError("This quote changed.");
+    if (!allowed(q)) throw new ConflictError("This quote changed.");
     return { ...q, status: "declined", declined_at: nowIso(), ...(why ? { decline_reason: why } : {}) };
   }, W(ctx));
   const q = r.data;
@@ -422,7 +521,9 @@ export async function archiveQuote(id, { reason = "manual" } = {}, ctx) {
   return { quote: q, etag: r.etag };
 }
 
-// Restore: archived or declined → draft.
+// Restore: archived or declined → draft. The customer's link shows nothing
+// to approve until it is sent again (a new version, with today's date and
+// without the follow-up's ended offers): the old version stays history.
 export async function restoreQuote(id, ctx) {
   const { data: q0 } = await getQuote(id);
   if (!["archived", "declined"].includes(q0.status)) throw new ConflictError("Only an archived or declined quote can be restored.");
@@ -430,6 +531,7 @@ export async function restoreQuote(id, ctx) {
     if (!["archived", "declined"].includes(q.status)) return null;
     const next = { ...q, status: "draft", restored_at: nowIso() };
     delete next.archived_at; delete next.archive_reason; delete next.declined_at; delete next.decline_reason; delete next.archived_from;
+    delete next.current_version_id; delete next.expires_on;
     return next;
   }, W(ctx));
   await touchStats(r.data, ctx);
@@ -453,10 +555,9 @@ export async function applyOffer(quoteId, offer, opts = {}, ctx = {}) {
     await would(ctx, q0, `offer_${offer}`, { offers: [(q0.offers || []).join(",") || null, offer] });
     return { applied: false, would: true };
   }
-  const pricing = await loadPricing();
-  const defs = await discountDefs().catch(() => []);
+  const [pricing, defs, book] = await Promise.all([loadPricing(), discountDefs().catch(() => []), priceBook().catch(() => [])]);
   const def = defs.find((d) => d.key === offer);
-  const each = pricing.screens.each_cents;
+  const each = addOnUnit(book, "screens", pricing);
   const options = (q0.options || []).map((o) => {
     const x = clone(o);
     if (offer === "followup_50") {
@@ -466,10 +567,12 @@ export async function applyOffer(quoteId, offer, opts = {}, ctx = {}) {
       const free = 10 * each;
       if (scr) {
         const value = Math.min(free, Math.max(0, scr.total_cents || lineTotal(scr)));
-        if (value > 0) x.discounts.push({ id: newDiscountId(), ...(def ? { def_id: def.id } : {}), key: "ten_free_screens", name: (def && def.name) || "10 free screens", type: "fixed", value, scope: { type: "initial" }, offer });
+        // tied to the screens line: an add-on the customer doesn't tick takes nothing off
+        if (value > 0) x.discounts.push({ id: newDiscountId(), ...(def ? { def_id: def.id } : {}), key: "ten_free_screens", name: (def && def.name) || "10 free screens", type: "fixed", value, scope: { type: "initial" }, line_id: scr.id, offer });
       } else {
-        x.lines.push({ id: newLineId(), title: "Screen Cleaning (10 screens)", description: "10 screens cleaned free.", qty_milli: 10000, unit_cents: each, scope: { type: "initial" }, category: "screens", unit: "screen", show: { qty: true, unit: true, description: true }, offer });
-        x.discounts.push({ id: newDiscountId(), ...(def ? { def_id: def.id } : {}), key: "ten_free_screens", name: (def && def.name) || "10 free screens", type: "fixed", value: free, scope: { type: "initial" }, offer });
+        const lid = newLineId();
+        x.lines.push({ id: lid, title: "Screen Cleaning (10 screens)", description: "10 screens cleaned free.", qty_milli: 10000, unit_cents: each, scope: { type: "initial" }, category: "screens", unit: "screen", show: { qty: true, unit: true, description: true }, offer });
+        x.discounts.push({ id: newDiscountId(), ...(def ? { def_id: def.id } : {}), key: "ten_free_screens", name: (def && def.name) || "10 free screens", type: "fixed", value: free, scope: { type: "initial" }, line_id: lid, offer });
       }
     }
     return x;

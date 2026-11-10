@@ -95,3 +95,14 @@
 .qp .field span{overflow-wrap:anywhere}
 .qp-tiers .tier{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px}
 @media (max-width:360px){.qb-step input{width:48px}.qb-step button{width:44px}}
+
+/* review round: the plan pills two by two (no wrapped "No plan"), quote rows
+   that wrap a long name or "sent 1 min ago" instead of cutting it, the
+   phone-approval sheet's add-on boxes under their option */
+.qb-plans{display:grid;grid-template-columns:1fr 1fr}
+.qb-seg button{white-space:nowrap}
+.qt-row .who{min-width:0}
+.qt-row .nm,.qt-row .sub{white-space:normal;overflow-wrap:anywhere}
+@media (max-width:380px){.qt-row .ico{display:none}}
+.check.sub{margin-left:34px;font-size:14px;color:var(--ink-2)}
+.form input:disabled{background:var(--fill);color:var(--ink-3);border-color:transparent}

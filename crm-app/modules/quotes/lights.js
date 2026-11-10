@@ -41,7 +41,7 @@ export default {
       <section class="card"><h2>Colors</h2><div class="qb-svc">${(s.cx.pricing.lights.colors || []).map((c) => html`<label class="check"><input ${attrs({ type: "checkbox", "data-color": c, checked: s.colors.includes(c) })}><span>${COLOR_NAMES[c] || c}</span></label>`)}</div></section>
       <section class="card"><h2>Offers</h2>
         <label class="check"><input ${attrs({ type: "checkbox", "data-early": "1", checked: s.early, disabled: !deadline })}><span>${deadline ? `Early Bird 50% off (until ${dateShort(deadline)})` : "Early Bird: the deadline has passed"}</span></label>
-        <label class="check"><input ${attrs({ type: "checkbox", "data-three": "1", checked: s.three })}><span>3-year contract ($${(s.cx.pricing.lights.three_year_off_cents / 100).toFixed(0)} off)</span></label>
+        <label class="check"><input ${attrs({ type: "checkbox", "data-three": "1", checked: s.three && s.every, disabled: !s.every })}><span>${s.every ? `3-year contract ($${(s.cx.pricing.lights.three_year_off_cents / 100).toFixed(0)} off the first season)` : "3-year contract: for every season only"}</span></label>
         <div class="qb-seg" role="group" aria-label="How long"><button type="button" ${attrs({ "data-every": "1", "aria-pressed": String(s.every) })}>Every season</button><button type="button" ${attrs({ "data-every": "0", "aria-pressed": String(!s.every) })}>This season only</button></div>
         <button type="button" class="btn primary block" data-preview>${icon("bolt")}Price the lights</button>
         ${s.warnings.length ? html`<ul class="qb-warn">${s.warnings.map((w) => html`<li class="warn-box">${warningText(w)}</li>`)}</ul>` : ""}
@@ -49,7 +49,8 @@ export default {
       ${p ? html`<section class="card"><h2>The lights option</h2>
         <ul class="qb-lines">${p.lines.map((l) => html`<li><span class="ln" style="display:flex;gap:10px;padding:10px 0"><span class="t">${l.title}${l.description ? html`<small>${l.description}</small>` : ""}</span><span class="p">${lineTotal(l) ? money(lineTotal(l)) : "Included"}</span></span></li>`)}
           ${p.discounts.map((d) => html`<li class="d"><span class="ln" style="display:flex;gap:10px;padding:10px 0"><span class="t">${d.name}</span><span class="p">${d.type === "percentage" ? `${d.value / 100}% off` : `−${money(d.value)}`}</span></span></li>`)}</ul>
-        <div class="qb-sum"><span>${s.every ? "Each season" : "This season"}</span><b class="big">${money(optionTotals({ kind: "one_time", lines: p.lines, discounts: p.discounts }).first_cents)}</b></div>
+        <div class="qb-sum"><span>${s.every ? "First season" : "This season"}</span><b class="big">${money(optionTotals({ kind: "one_time", lines: p.lines, discounts: p.discounts }).first_cents)}</b></div>
+        ${s.every && p.plan ? html`<p class="small muted">Each season after: ${money(laterSeason(p))} (the bulbs and the first-season offers come once).</p>` : ""}
       </section>` : ""}
       <section class="card"><h2>Mockup</h2><p class="small muted">The Light Studio picture, so they see their house lit.</p><button type="button" class="btn" data-mockup>${icon("sun")}Attach the mockup</button></section>
       <div class="qb-bar"><button type="button" class="btn primary" data-add ${attrs({ disabled: !p })}>Add to the quote</button></div>
@@ -63,9 +64,10 @@ export default {
     "change [data-pkg-on]": (e, el, ctx) => { ctx.state.usePkg = el.checked; ctx.rerender(); },
     "input [data-pkg]": (e, el, ctx) => { ctx.state.pkg = el.value; },
     "change [data-color]": (e, el, ctx) => { const c = el.dataset.color; ctx.state.colors = el.checked ? [...new Set([...ctx.state.colors, c])] : ctx.state.colors.filter((x) => x !== c); },
-    "change [data-early]": (e, el, ctx) => { ctx.state.early = el.checked; },
-    "change [data-three]": (e, el, ctx) => { ctx.state.three = el.checked; },
-    "click [data-every]": (e, el, ctx) => { ctx.state.every = el.dataset.every === "1"; ctx.rerender(); },
+    "change [data-early]": (e, el, ctx) => { ctx.state.early = el.checked; ctx.state.preview = null; },
+    "change [data-three]": (e, el, ctx) => { ctx.state.three = el.checked; ctx.state.preview = null; },
+    // one season: no 3-year contract (a plan of three seasons); priced again either way
+    "click [data-every]": (e, el, ctx) => { const s = ctx.state; s.every = el.dataset.every === "1"; if (!s.every) s.three = false; s.preview = null; ctx.rerender(); },
     "click [data-preview]": (e, el, ctx) => preview(el, ctx),
     "click [data-mockup]": async (e, el, ctx) => {
       const file = await capture({ camera: false });
@@ -77,13 +79,20 @@ export default {
   },
 };
 
+// A season after the first (season 2 of the plan): what's left once the
+// first-season lines and offers (scope "initial") are done.
+function laterSeason(p) {
+  const later = { kind: "plan", plan: { ...p.plan, visits_per_year: 1, term_months: 24 }, lines: p.lines, discounts: p.discounts };
+  return optionTotals(later).per_visit_cents[1];
+}
+
 async function preview(el, ctx) {
   const s = ctx.state;
   const runs = s.runs.map((r) => ({ label: r.label, feet: Number(String(r.feet).replace(/,/g, "")) || 0 })).filter((r) => r.feet > 0);
   const pkg = s.usePkg ? readMoney(s.pkg) : null;
   busy(el, true, "Pricing…");
   try {
-    const r = await ctx.api("/pricing/lights", { method: "POST", body: { runs, ...(pkg ? { package_cents: pkg } : {}), colors: s.colors, early_bird: s.early, three_year: s.three } });
+    const r = await ctx.api("/pricing/lights", { method: "POST", body: { runs, ...(pkg ? { package_cents: pkg } : {}), colors: s.colors, early_bird: s.early, three_year: s.every && s.three, every_season: s.every } });
     s.preview = r.data;
     s.warnings = r.data.warnings || [];
     ctx.rerender();

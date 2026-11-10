@@ -27,7 +27,8 @@ import { deliveryHeaders } from "../../core/files.mjs";
 import { definePortalBeacon, PORTAL_HEADERS, createPresentLink, linkKey } from "../../portal/core.mjs";
 import { renderQuotePage } from "./render.mjs";
 import { getVersion } from "./versions.mjs";
-import { markViewed, requestChanges, declineQuote, getQuote, sendQuote, loadPricing } from "./quotes.mjs";
+import { markViewed, requestChanges, declineQuote, getQuote, sendQuote, loadPricing, versionClosed } from "./quotes.mjs";
+import { now, localDate } from "../../core/clock.mjs";
 import { startApproval, runForPortal } from "./approve.mjs";
 
 const SCRIPT = "quotes-quote.js";
@@ -49,7 +50,10 @@ async function shownVersion(q) {
 async function page(p, q, mode, token) {
   const [version, contact, pricing] = await Promise.all([shownVersion(q), getRecord("contact", q.contact_id).catch(() => null), loadPricing()]);
   const files = version ? [...(version.photo_ids || []), ...(version.mockup_file_ids || [])] : [];
-  const { title, body } = renderQuotePage({ quote: q, version, contact: contact && contact.data, mode, token, files, floor: pricing.discount_floor_cents || 0 });
+  // an expired version, an ended offer, an Early Bird past its deadline: said plainly, no Approve
+  const done = ["approved", "converted"].includes(q.status);
+  const closed = version && !done ? versionClosed(q, version, { today: localDate(now()), pricing }) : null;
+  const { title, body } = renderQuotePage({ quote: q, version, contact: contact && contact.data, mode, token, files, floor: pricing.discount_floor_cents || 0, closed });
   const live = version && ["sent", "viewed"].includes(q.status);
   return p.portalPage(p.layout({ title, body, script: SCRIPT, company: p.company, page: mode === "present" ? "present" : "quote", beacon: mode === "portal" && live ? { kind: "quote", id: q.id } : null }));
 }
@@ -71,12 +75,16 @@ async function runAnswer(p, runId, quoteId) {
   return p.json({ ok: true, data: runForPortal(g.data) });
 }
 
+// Only a photo or mockup of the shown version that belongs to THIS quote
+// (owner quote/q.id): never another record's file, never a signature.
+const SHOWABLE = Object.freeze(["photo", "mockup", "attachment", "import_media"]);
 async function fileAnswer(p, q, fileId) {
   const version = await shownVersion(q);
   const allowed = version ? [...(version.photo_ids || []), ...(version.mockup_file_ids || [])] : [];
   if (!isId(fileId, "file") || !allowed.includes(fileId)) return p.fail("not_found", "Not found.", 404);
   const f = await getRecord("file", fileId).catch(() => null);
   if (!f || f.data.deleted_at || f.data.download_only) return p.fail("not_found", "Not found.", 404);
+  if (!f.data.owner || f.data.owner.type !== "quote" || f.data.owner.id !== q.id || !SHOWABLE.includes(f.data.kind)) return p.fail("not_found", "Not found.", 404);
   const ifNoneMatch = p.req.headers.get("if-none-match") || undefined;
   const got = await getFileStream(fileId, { ifNoneMatch });
   if (!got) return p.fail("not_found", "Not found.", 404);
@@ -174,6 +182,10 @@ export async function presentLink(id, ctx) {
   let { data: q } = await getQuote(id);
   if (!["draft", "sent", "viewed", "changes_requested"].includes(q.status)) throw new ConflictError(["approved", "converted"].includes(q.status) ? "This quote is already approved." : "Restore this quote first.");
   if (q.status !== "sent" && q.status !== "viewed") q = (await sendQuote(id, { channels: [] }, ctx)).quote;
+  else {
+    const closed = versionClosed(q, await getVersion(q.current_version_id), { today: localDate(now()), pricing: await loadPricing() });
+    if (closed) throw new ConflictError(closed.staff, { code: closed.code });
+  }
   const link = await createPresentLink({ contact_id: q.contact_id, quote_id: q.id, created_by: (ctx.user && ctx.user.id) || "system" });
   return { url: `/p/present/${link.code}`, expires_at: link.expires_at };
 }

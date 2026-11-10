@@ -77,7 +77,12 @@ export function optionTotals(o, floor = 0) {
   for (let k = 1; k <= v.term; k++) {
     const base = (o.lines || []).filter((l) => selected(l) && covers(l.scope, k)).reduce((s, l) => s + lineTotal(l), 0);
     let bp = 0, fixed = 0;
-    for (const d of o.discounts || []) { if (!covers(d.scope, k)) continue; if (d.type === "percentage") bp += d.value || 0; else fixed += d.value || 0; }
+    for (const d of o.discounts || []) {
+      if (!covers(d.scope, k)) continue;
+      // a discount tied to a line (10 free screens) counts only when that line does
+      if (d.line_id && !(o.lines || []).some((l) => l.id === d.line_id && selected(l) && covers(l.scope, k))) continue;
+      if (d.type === "percentage") bp += d.value || 0; else fixed += d.value || 0;
+    }
     bp = Math.min(10000, bp);
     per.push(Math.max(Math.min(floor, base), base - rhu(base * bp, 10000) - fixed));
   }
@@ -108,7 +113,7 @@ export const optionSummary = (o) => html`<section class="card qt-opt">
 // onContact: the contact's own Quotes tab names the quote, not the contact again.
 export function quoteRow(r, onContact = false) {
   const name = onContact === true ? r.n : r.cn || "No name";
-  return html`<li><a class="row" href="${"#/quotes/" + encodeURIComponent(r.id)}">
+  return html`<li><a class="row qt-row" href="${"#/quotes/" + encodeURIComponent(r.id)}">
     <span class="ico">${icon("doc")}</span>
     <span class="who"><span class="nm">${name}</span><span class="sub">${onContact === true ? "" : r.n}${onContact === true ? "" : " · "}${r.sent ? `sent ${ago(r.sent)}` : `made ${dateShort(r.at || r.u)}`}${r.viewed ? ` · viewed ${ago(r.viewed)}` : ""}</span></span>
     <span class="end"><span class="qt-end"><span class="qt-amt num">${r.first !== null && r.first !== undefined ? money(r.first) : ""}</span>${statusPill(r.st)}</span><span class="chev" aria-hidden="true"></span></span></a></li>`;
