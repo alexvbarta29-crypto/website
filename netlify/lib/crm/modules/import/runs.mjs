@@ -232,17 +232,25 @@ export const conflictId = (runId, c) => `${runId}--${c.type}--${c.id}--${c.field
 
 const label = (rec) => rec ? (rec.display_name || rec.name || [rec.first_name, rec.last_name].filter(Boolean).join(" ") || rec.title || rec.id) : null;
 
-// One page of a run's conflicts: { rows: [{ key, type, id, field, label, base, crm, rotor, status, resolution? }], next }
-export async function listConflicts(runId, { after = null, limit = 15, status = null } = {}) {
-  const keys = (await listKeys(conflictsPrefix(runId))).filter((k) => !after || k > conflictsPrefix(runId) + after);
-  const page = keys.slice(0, limit);
-  const vals = await Promise.all(page.map((k) => getRaw(k)));
-  const rows = vals.map((g) => g && g.data).filter(Boolean).filter((c) => !status || c.status === status);
+// One page of a run's conflicts: { rows: [{ key, type, id, field, label, base, crm, rotor, status, resolution? }], next, total }
+// With a status, keys are read in small batches until a page of matches
+// (or 30 reads), so settled ones don't leave a page empty.
+export async function listConflicts(runId, { after = null, limit = 12, status = null } = {}) {
+  const prefix = conflictsPrefix(runId);
+  const keys = (await listKeys(prefix)).filter((k) => !after || k > prefix + after);
+  const rows = [];
+  let i = 0;
+  while (i < keys.length && rows.length < limit && i < 30) {
+    const batch = keys.slice(i, i + Math.min(limit, 30 - i));
+    i += batch.length;
+    const vals = await Promise.all(batch.map((k) => getRaw(k)));
+    for (const g of vals) if (g && g.data && (!status || g.data.status === status)) rows.push(g.data);
+  }
   const withLabels = await Promise.all(rows.map(async (c) => {
     const rec = getType(c.type) ? await getRecord(c.type, c.id).catch(() => null) : null;
     return { key: conflictId(runId, c), type: c.type, id: c.id, field: c.field, label: label(rec && rec.data), base: c.base, crm: c.crm, rotor: c.rotor, status: c.status, resolution: c.resolution || null, at: c.at };
   }));
-  return { rows: withLabels, next: keys.length > limit ? page[page.length - 1].slice(conflictsPrefix(runId).length) : null, total: keys.length };
+  return { rows: withLabels, next: i < keys.length ? keys[i - 1].slice(prefix.length) : null, total: keys.length };
 }
 
 // Settles one conflict: "rotor" writes Rotor's value (as the person: a

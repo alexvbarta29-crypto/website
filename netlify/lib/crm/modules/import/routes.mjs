@@ -173,7 +173,7 @@ export const importRoutes = [
   own("GET", "/import/runs/:id/report", report, { subject: "required" }),
   own("GET", "/import/runs/:id/report.csv", reportCsvRoute, { subject: "required" }),
   own("GET", "/import/runs/:id/idmap.csv", idmapCsvRoute, { subject: "required", maxCalls: 40 }),
-  own("GET", "/import/runs/:id/conflicts", conflicts, { subject: "required", maxCalls: 40 }),
+  own("GET", "/import/runs/:id/conflicts", conflicts, { subject: "required", maxCalls: 60 }),
   own("POST", "/import/conflicts/:key/resolve", resolve, { subject: "required", maxCalls: 40 }),
   hook("GET", "/import/upload", upload(whoami, { session: false }), { body: "none" }),
   hook("PUT", "/import/runs/:id/manifest", upload(putManifest), { maxCalls: 40 }),

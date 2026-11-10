@@ -45,7 +45,7 @@ import { keySafe } from "../../core/text.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { rotorKey } from "../contacts/display.mjs";
 import { applyExtras } from "../contacts/import-rotor.mjs";
-import { EXPECTED_PHASES, MODULE_LABELS } from "./catalog.mjs";
+import { EXPECTED_PHASES, MODULE_LABELS, phaseLabel } from "./catalog.mjs";
 import { writeMapped } from "./ownership.mjs";
 import { stagedChunks, readChunk } from "./staging.mjs";
 import { buildReport, buildIdMapPart, IDMAP_BATCH } from "./report.mjs";
@@ -368,7 +368,7 @@ export function phaseView(state) {
     const rows = (state.chunks[p.entity] || []).length;
     const sum = (k) => Object.values(st.records || {}).reduce((s, r) => s + (r[k] || 0), 0);
     return {
-      name: p.name, module: p.module, entity: p.entity, status: st.status, waiting_for: st.waiting_for || null, waiting_label: MODULE_LABELS[st.waiting_for] || null,
+      name: p.name, label: phaseLabel(p.name), module: p.module, entity: p.entity, status: st.status, waiting_for: st.waiting_for || null, waiting_label: MODULE_LABELS[st.waiting_for] || MODULE_LABELS[String(st.waiting_for || "").split(".")[0]] || null,
       chunks: rows, read: st.read, created: sum("created"), updated: sum("updated"), unchanged: sum("unchanged"), linked: sum("linked") + sum("relinked"),
       conflicted: sum("conflicted"), skipped: Object.values(st.skipped || {}).reduce((s, n) => s + n, 0), started_at: st.started_at || null, finished_at: st.finished_at || null,
     };
