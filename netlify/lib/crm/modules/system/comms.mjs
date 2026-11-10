@@ -46,7 +46,8 @@ async function templates(ctx) {
   const category = ctx.query.get("category") || undefined;
   if (channel && !CHANNELS.includes(channel)) throw new InputError("Pick text or email.", "channel");
   let rows = await listTemplates({ channel, category });
-  if (isTech(ctx)) rows = rows.filter((t) => t.active && ["service", "personal"].includes(t.category));
+  // a tech gets the template's techFields only, as from GET /templates/:id
+  if (isTech(ctx)) rows = rows.filter((t) => t.active && ["service", "personal"].includes(t.category)).map((t) => techView("template", t));
   const variables = Object.entries(VARIABLES).map(([name, v]) => ({ name, label: v.label, group: v.group, sample: v.sample }));
   return { data: rows, meta: { variables } };
 }

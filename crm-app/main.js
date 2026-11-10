@@ -108,11 +108,27 @@ async function doSignOut(opts = {}) {
 
 // ------------------------------------------------------------ start
 
+// The very first visit loads before crm-sw.js runs, so the service worker
+// never saw this shell and a start with no signal would find nothing. Once
+// it is ready, keep this person's shell where it looks (the "crm-shell"
+// cache; the same check as the worker: only a real shell, never a sign-in
+// redirect). Sign-in and sign-out drop it again.
+async function keepShell() {
+  if (typeof caches === "undefined") return;
+  const c = await caches.open("crm-shell");
+  if (await c.match("/crm")) return;
+  const res = await fetch("/crm", { credentials: "same-origin", redirect: "manual", cache: "no-store" });
+  if (res.ok && res.headers.get("X-CRM-Shell") === "1") await c.put("/crm", res);
+}
+
 function start() {
   if (!boot || !session.user) { location.replace("/crm/login"); return; }
   // Offline copies are kept per person: another person's never shows here.
   setCacheOwner(session.user.id);
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/crm-sw.js", { scope: "/crm" }).catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/crm-sw.js", { scope: "/crm" }).catch(() => {});
+    navigator.serviceWorker.ready.then(keepShell).catch(() => {});
+  }
   router.register(MANIFESTS);
   router.configure({
     can, api, user: session.user,

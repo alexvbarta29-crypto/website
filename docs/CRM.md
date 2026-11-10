@@ -1,16 +1,96 @@
 # Barta CRM (/crm) and the Customers list (/crm/legacy)
 
 Barta Window Washing's own CRM, built in milestones (design: the CRM
-design document, §11). This page covers what is live so far: the
-**Customers list** (the first slice, below), the **foundations** (M1.1),
-**sign-in and the app shell** (M1.2), the **platform engine** (M1.3,
-part A: workers, queue, events, operations, backups, files, settings) and
-**messaging, automations, the client portal frame and the owner's screens**
-(M1.3, part B), and **Contacts** (M2a: the Contacts tab, lead intake from
-the website and Meta, merge review; docs/CRM-CONTACTS.md). Each module
-keeps its own `docs/CRM-<MODULE>.md`. Rotor
-stays the system of record until cutover, and nothing the CRM decides to
+design document, §11). Live so far: the **Customers list** (the first
+slice), the **foundations** (M1.1), **sign-in and the app shell** (M1.2),
+the **platform engine** and **messaging, automations, the client portal
+frame and the owner's screens** (M1.3), **Contacts** (M2a), **Sales**
+(M2b), **Import from Rotor** (M2c) and the **guards and phone checks**
+(M1.4). Barta Office is one app: with a CRM sign-in `/office` is the CRM,
+with the dashboards and office tools inside (docs/OFFICE.md). Rotor stays
+exactly as it is and the CRM never calls it; nothing the CRM decides to
 send reaches a customer yet: it lands in the Outbox.
+
+## Start here
+
+### Modules
+
+Each module keeps its own page (design §0 rule 14); this page keeps the
+core: storage, sign-in, the shell, the engine, messaging and the portal.
+
+| Page | Milestone | What it covers | Status |
+|---|---|---|---|
+| [CRM-CONTACTS.md](CRM-CONTACTS.md) | M2a | people, properties, intake from the website and Meta, merge review | live |
+| [CRM-SALES.md](CRM-SALES.md) | M2b | deals, follow-up cadences, Leads & calls, tasks, the Follow-ups wording | live |
+| [CRM-IMPORT.md](CRM-IMPORT.md) | M2c | the Rotor export: pack, upload, phases, conflicts, report | live |
+| [CRM-QUOTES.md](CRM-QUOTES.md) | M3a | price book, pricing, quotes and portal approval | stub |
+| [CRM-PLANS.md](CRM-PLANS.md) | M3b | care plans, agreements, Christmas lights seasons | stub |
+| [CRM-WORK.md](CRM-WORK.md) | M4a, M4b | jobs, visits, scheduling, the tech app | stub |
+| [CRM-MONEY.md](CRM-MONEY.md) | M5 | invoices, payments, tips, autopay | stub |
+| [CRM-COMMS.md](CRM-COMMS.md) | M6 | conversations, campaigns, reviews | stub |
+| [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
+| [CRM-REPORTS.md](CRM-REPORTS.md) | M7b | rollups, the dashboard feed | stub |
+| [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's tools over the CRM | stub |
+
+The office side (tabs, the launcher for a start with no signal, web push,
+where the Follow-ups wording comes from): [OFFICE.md](OFFICE.md).
+
+### Tests
+
+- `npm test`: everything under `tests/**/*.test.mjs` (unit, API, guards),
+  no network, a pinned clock, under 30 s. `npm run test:crm` only the CRM's;
+  `CRM_IT=1 npm test` adds the store contract against a local Blobs server.
+- `tests/crm/routes-meta.test.mjs` (the route guard, generated from the
+  registry): every route declares `auth`, `perm`, `subject` and `mode` with
+  a real permission; every route is called as nobody, the office cookie,
+  an owner, an admin, two techs, two API keys and an import upload key,
+  and must answer what its perm and the role defaults say (403 without the
+  permission, 401 for the wrong credential, a list never on an "own"
+  permission); every JSON answer to a tech is crawled for contact ids
+  outside that tech's ±7/30-day visit window, office-only text and fields
+  beyond a type's `techFields`. A module adds nothing for a plain route.
+  It extends the test only when its route checks credentials itself
+  (`auth: "hook"`: list it in `HOOKS`), applies a stricter rule inside the
+  handler than its `perm` (a `GATES` entry that reads the rule from its
+  source), or takes a path param of a new record type (a fixture in
+  `byType`).
+- `npm run e2e`: the phone checks (`tests/e2e/*.spec.mjs`, not part of
+  `npm test`). They use the machine's own Playwright with Chromium (not a
+  dependency of the site: Netlify installs `package.json`'s dependencies on
+  every deploy); on a new machine `npm i -g playwright && npx playwright
+  install chromium` first. Each spec starts `tests/e2e/server.mjs` (every
+  function and static file of the working tree on the memory stores, a
+  clock from Tuesday 2026-11-17 09:00, a throwaway office data key so the
+  first-owner setup works with the office password `test-password`, no
+  network) and `seed.mjs` (the team, 200 contacts, the sales data).
+  `core.spec` walks the one app, back and the edge swipe, sheets, the
+  offline start, links that leave, the insets message, a 2 s round trip and
+  every client route of the manifests at iPhone 13 and SE sizes;
+  `contacts.spec` and `sales.spec` their modules' flows. `E2E_SHOTS=<dir>`
+  saves screenshots. `node tests/e2e/server.mjs` runs the seeded server by
+  hand on port 8796 (sign in as olive, ada, theo or tess with "a long
+  synthetic passphrase"). Chromium can't check what only WebKit does (the
+  installed iPhone app, iOS zoom and safe areas): each gate still ends with
+  the §9.4 checklist on an iPhone.
+
+### Releasing a client change
+
+A track never touches `crm-sw.js`, `crm-app/version.js` or `MIN_CLIENT`;
+the integrator, after merging:
+
+1. `npm test` (only `precache.test.mjs` may fail: new client files).
+2. Bump `APP_VERSION` in `crm-app/version.js` (`YYYY.MM.DD-n`), then
+   `node build/crm_precache.mjs` (rewrites `crm-sw.js`: `VERSION` and the
+   precache list; `--check` says whether it is current). `npm test` is green.
+3. `npm run e2e` and `npm run scan`.
+4. `python3 build/make_deploy.py`, look through `_deploy/` (nothing private,
+   no `tests/`, `docs/` or `build/`), `rm -rf _deploy`.
+5. Commit "CRM: release client <version> (...)" and push. Phones pick the
+   new version up on their next start ("New version, tap to reload"; never
+   under someone's thumb). Raise `MIN_CLIENT` in `core/http.mjs` only when
+   older clients must stop (426); offline replays still get one version of
+   grace (`MIN_REPLAY_CLIENT`).
+6. On an iPhone, in the installed app: the §9.4 checklist for what changed.
 
 ## The Customers list (/crm/legacy)
 
@@ -367,10 +447,12 @@ production branch should build.
   owner-only settings, voids, refunds, payroll runs and the team), **tech**
   (their own visits, time and pay). An owner can also tick a person as
   "goes out on visits".
-- **The office password** keeps opening the old tools (Lights, Purchases,
-  Follow-ups, Giveaway, the dashboards) exactly as before, and the
-  Customers list. A CRM sign-in alone opens the CRM only: the office shows
-  it full screen (**solo mode**, techs).
+- **The office password** keeps opening the office tools (Lights,
+  Purchases, Follow-ups, Giveaway, the dashboards) and the Customers list.
+  With a CRM sign-in, `/office` is the CRM full screen (one app); on a
+  phone that also has the office cookie the dashboards are its Dashboard
+  tab and the tools are in More (docs/OFFICE.md). A CRM sign-in alone
+  (techs) opens the CRM only.
 - **Owners get both with one sign-in (D14):** Team sign-in has an optional
   "Office password" field. Filled in by an owner (the roles in the
   owner-only setting `cfg/auth.office_cookie_roles`, default owners only)
