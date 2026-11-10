@@ -19,6 +19,7 @@ export const TABS = Object.freeze({
   inbox: { label: "Inbox", paths: ["/inbox"], icon: "inbox" },
   contacts: { label: "Contacts", paths: ["/contacts", "/legacy/customers"], icon: "contacts" },
   schedule: { label: "Schedule", paths: ["/schedule"], icon: "schedule" },
+  dashboard: { label: "Dashboard", paths: ["/dashboard"], icon: "chart" },
   time: { label: "Time", paths: ["/time"], icon: "time" },
   pay: { label: "Pay", paths: ["/pay"], icon: "pay" },
   me: { label: "Me", paths: ["/me"], icon: "me" },

@@ -90,11 +90,15 @@ test("a CRM sign-in alone gets solo mode: the CRM fills the screen, no dashboard
   for (const id of ["overview", "money", "lights", "purchases", "followups", "giveaway", "dashboard"]) assert.doesNotMatch(r.text, new RegExp(`"id":"${id}"|data-tool="${id}"`), id);
   assert.doesNotMatch(r.text, /dashboard\?embed|\/lights|\/purchases|admin\/giveaway/);
   assert.equal(r.headers.get("set-cookie"), null, "no office cookie for a CRM session");
-  // an owner with both cookies gets the whole office
+  assert.match(r.text, /const IN_CRM = \{\};/, "no office cookie: old tab links never open the office tools");
+  // one app: an owner with both cookies gets the CRM full screen, and the
+  // old tab links (#lights, #money, ...) open the matching CRM screens
   const owner = await t.user("owner");
   const both = await t.office("/office", { as: owner, office: true });
-  assert.doesNotMatch(both.text, /<body class="solo">/);
-  assert.match(both.text, /data-tool="lights"/);
+  assert.match(both.text, /<body class="solo">/);
+  assert.doesNotMatch(both.text, /data-tool="lights"/);
+  assert.match(both.text, /"lights":"\/tools\/lights"/);
+  assert.match(both.text, /"money":"\/dashboard\/money"/);
   // a disabled or expired session is just signed out
   const gone = await t.office("/office", { cookie: "barta_crm=us_00000000000000000000." + "a".repeat(43) });
   assert.match(gone.text, /autocomplete="current-password"/);
@@ -286,4 +290,19 @@ test("the office keeps the CRM's screen across tab switches, tells Team sign-in'
   const main = readFileSync("crm-app/main.js", "utf8");
   assert.match(main, /m\.type === "office:overlay"/);
   assert.match(readFileSync("crm-app/styles/crm.css", "utf8"), /\.toasts\{[^}]*var\(--lift,0px\)/);
+});
+
+test("one app: the office password alone opens the CRM to set it up, and keeps the tabs once the CRM has owners", async () => {
+  t = await crmTest();
+  // before the first owner exists: the CRM fills the screen (its setup screen)
+  let r = await t.office("/office", { office: true });
+  assert.match(r.text, /<body class="solo">/);
+  assert.match(r.text, /"src":"\/crm"/);
+  // after setup, without a CRM sign-in: the tab row, so nobody is locked out of the tools
+  const owner = await t.user("owner");
+  await t.bootstrap(owner);
+  r = await t.office("/office", { office: true });
+  assert.doesNotMatch(r.text, /<body class="solo">/);
+  assert.match(r.text, /data-tool="lights"/);
+  assert.match(r.text, /data-tool="crm"/);
 });

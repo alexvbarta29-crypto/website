@@ -91,9 +91,21 @@ const INSETS_JS = String.raw`
 
 const PROBE = `<div id="sa-probe" aria-hidden="true" style="position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"></div>`;
 
-// The office shell. solo = a CRM session without the office cookie: no tab
-// row, no other tools, the CRM fills the screen.
-export function officeHtml({ solo = false } = {}) {
+// Inside the CRM (one app): where each old tab id lives now. Bookmarks,
+// home-screen links and a tool's own "sign in" bounce (/office#lights) land
+// on the matching CRM screen. Only with the office cookie (`office`), so a
+// tool that bounces for a missing cookie can never loop.
+export const IN_CRM = {
+  overview: "/dashboard/overview", money: "/dashboard/money", sales: "/dashboard/sales", plans: "/dashboard/plans", jobs: "/dashboard/jobs",
+  dashboard: "/dashboard", lights: "/tools/lights", followups: "/tools/followups", purchases: "/tools/purchases", giveaway: "/tools/giveaway",
+};
+
+// The office shell. solo = the CRM fills the screen, no tab row: one app.
+// That is every CRM session (techs, and owners whose phone also has the
+// office cookie, `office`, who find the dashboards and office tools inside
+// the CRM), and the office cookie alone before the first owner exists (the
+// CRM shows its setup screen).
+export function officeHtml({ solo = false, office = false } = {}) {
   const tools = solo ? TOOLS.filter((t) => t.needs === "crm") : TOOLS;
   const views = solo ? [] : VIEWS;
   const bar = solo ? "" : `<header class="bar"><div class="bar-in">
@@ -182,6 +194,7 @@ ${PROBE}
   const VIEWS = ${JSON.stringify(views)};
   const TOOLS = ${JSON.stringify(tools.map(({ id, label, src, css, seed, compact }) => ({ id, label, src, css: css || "", seed: seed || "", compact: !!compact })))};
   const OLD = ${JSON.stringify(OLD)};
+  const IN_CRM = ${solo && office ? JSON.stringify(IN_CRM) : "{}"};
   const main = document.getElementById('main');
   const frames = {};
   let crmPath = '';   // the CRM frame's screen, from its last crm:route
@@ -233,6 +246,7 @@ ${INSETS_JS}
     let id = slash >= 0 ? raw.slice(0, slash) : raw;
     const sub = slash >= 0 ? raw.slice(slash) : '';
     id = OLD[id] || id;
+    if (SOLO && Object.prototype.hasOwnProperty.call(IN_CRM, id)) return show('crm' + IN_CRM[id]);
     const view = VIEWS.find((v) => v.id === id);
     const tool = view ? TOOLS.find((x) => x.id === 'dashboard') : (TOOLS.find((x) => x.id === id && x.id !== 'dashboard') || null);
     if (!view && !tool) return show(VIEWS.length ? VIEWS[0].id : TOOLS[0].id);

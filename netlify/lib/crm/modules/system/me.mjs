@@ -21,7 +21,8 @@ export const SETTINGS_PUBLIC = Object.freeze({ company_name: "Barta Window Washi
 
 // The tab bar for a role (§9.1); the app shows a tab only once its screen exists.
 export function navFor(user) {
-  return user && user.role === "tech" ? ["today", "inbox", "time", "pay", "me"] : ["today", "inbox", "contacts", "schedule", "more"];
+  // "dashboard" shows only on a phone with the office sign-in (office:tools).
+  return user && user.role === "tech" ? ["today", "inbox", "time", "pay", "me"] : ["today", "inbox", "contacts", "schedule", "dashboard", "more"];
 }
 
 async function me(ctx) {
