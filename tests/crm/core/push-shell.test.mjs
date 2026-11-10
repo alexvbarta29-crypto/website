@@ -56,3 +56,14 @@ test("the office shell asks for notifications itself and saves the subscription 
     assert.match(page, /type: 'office:push'/);
   }
 });
+
+test("build/crm_vapid_keys.mjs makes a key pair the CRM can sign with (and writes nothing)", async () => {
+  const { vapidKeys } = await import("../../../build/crm_vapid_keys.mjs");
+  const WP = await import("../../../netlify/lib/crm/core/webpush.mjs");
+  const k = vapidKeys();
+  assert.equal(WP.fromB64u(k.publicKey).length, 65);
+  assert.equal(WP.fromB64u(k.privateKey).length, 32);
+  const jwt = WP.vapidJwt({ audience: "https://web.push.apple.com", ...k });
+  assert.equal(WP.verifyVapidJwt(jwt, k.publicKey), true);
+  assert.notEqual(vapidKeys().privateKey, k.privateKey, "a fresh pair every time");
+});

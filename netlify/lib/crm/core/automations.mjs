@@ -38,7 +38,7 @@
 // "automation.event"); "sweep" automations are run by their module's sweep
 // per subject (runAutomation); "manual" ones by a person's action.
 
-import { getSetting, getSettingWithEtag, getRaw, getRecord, putSetting } from "../../crm-store.mjs";
+import { getSetting, getSettingWithEtag, getRaw, getRecord, putSetting, currentScope } from "../../crm-store.mjs";
 import { allAutomations } from "./registry.mjs";
 import { now, localDate, zonedToUtc, addLocalDays, isLocalTime } from "./clock.mjs";
 import { isId } from "./ids.mjs";
@@ -130,7 +130,8 @@ async function contactOf(step) {
 export function automationContext(def, { mode, settings, cfg, requestId, deploy } = {}) {
   const base = automationCtx({ mode, key: def.key, requestId });
   const actx = {
-    ...base, automation: def.key, settings, cfg, deploy,
+    // the deploy decides the marker namespace (done/ vs done-dry/): the worker's store scope has it
+    ...base, automation: def.key, settings, cfg, deploy: deploy || (currentScope() || {}).deploy,
     eligible: (fact) => checkEligible(def, settings, cfg, fact),
     send: (step) => queueSend(def, actx, step),
     async sendMany(steps, opts = {}) {

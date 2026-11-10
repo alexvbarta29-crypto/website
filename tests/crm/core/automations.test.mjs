@@ -223,3 +223,23 @@ test("five recipients or fewer are sent as ordinary steps", async () => {
   assert.equal(t.stores.data.keys("rec/outbox/").length, 5);
   assert.equal(B.DEFAULT_THRESHOLD, 5);
 });
+
+test("on the production deploy with a test driver, a queued step uses done/ and really sends to a staff test contact", async () => {
+  const A = await import("../../../netlify/lib/crm/adapters/index.mjs");
+  t = await crmTest({ now: "2026-11-17T17:00:00Z", env: { CONTEXT: "production", CRM_PRODUCTION: "1", CRM_KEY_SALT: "test-salt-not-real", TWILIO_ACCOUNT_SID: "AC-not-real", TWILIO_AUTH_TOKEN: "not-real" } });
+  const sent = [];
+  A.registerAdapter("sms", "test", { async send(a) { sent.push(a); return { status: "queued", provider_id: "SM1" }; } });
+  try {
+    await scope(() => store.createRecord("template", { key: "fixture_note", name: "Fixture note", channel: "sms", category: "service", body: "Hi {{first_name|there}}, a note from {{company_name}}.", tags: [], active: true }, W8));
+    const staff = await scope(() => seedContact(60, { flags: { test: true } }));
+    await scope(() => store.putSetting("integrations", { sms: { mode: "live", test_from: "+17635550150", test_allowlist: [staff.phones[0].e164] } }, { ...W8, origin: "worker" }));
+    await emit("fixture.done", { id: "zx_0000000000000000001a", contact_id: staff.id, fact_at: "2026-11-17T12:00:00.000Z" });
+    await drain();
+    assert.equal(sent.length, 1, "the step went to the (test) provider");
+    assert.equal(t.stores.data.keys("done/fixture.note/").length, 1, "under a live marker");
+    assert.equal(t.stores.data.keys("done-dry/fixture.note/").length, 0);
+    assert.ok((await log("fixture.note")).some((r) => r.result === "queued"), "logged with the provider's status");
+  } finally {
+    A.__unregisterAdapterForTests("sms", "test");
+  }
+});

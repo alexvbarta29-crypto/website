@@ -3,9 +3,12 @@
 Barta Window Washing's own CRM, built in milestones (design: the CRM
 design document, §11). This page covers what is live so far: the
 **Customers list** (the first slice, below), the **foundations** (M1.1),
-**sign-in and the app shell** (M1.2) and the **platform engine** (M1.3,
-part A: workers, queue, events, operations, backups, files, settings). Each module keeps its own
-`docs/CRM-<MODULE>.md`. Rotor stays the system of record until cutover.
+**sign-in and the app shell** (M1.2), the **platform engine** (M1.3,
+part A: workers, queue, events, operations, backups, files, settings) and
+**messaging, automations, the client portal frame and the owner's screens**
+(M1.3, part B). Each module keeps its own `docs/CRM-<MODULE>.md`. Rotor
+stays the system of record until cutover, and nothing the CRM decides to
+send reaches a customer yet: it lands in the Outbox.
 
 ## The Customers list (/crm/legacy)
 
@@ -510,8 +513,8 @@ What runs behind the screens: the two worker lanes and their cron, the
 scheduled-work queue, events between modules, multi-record operations, the
 nightly maintenance, backups and restore, files, settings, approvals and
 API keys. Nothing here contacts a customer: sending, templates,
-automations, bulk runs, notifications and web push are part B of M1.3,
-built on these pieces. Nothing a customer sees changes.
+automations, bulk runs, notifications and web push (part B, next section)
+are built on these pieces.
 
 ### Before and after the owner's setup
 
@@ -588,8 +591,8 @@ if it stops half way, hands the claim back with its cursor until it
 finishes. While `sys/mode.paused` only maintenance sweeps run. Core
 catalog: `system.seed` (each module's seeds once), `auth.sessions` (03:15:
 expired sessions, throttle records older than a day, expired idempotency
-records, sweep claims older than 90 days, stale leases, finished runs older
-than 60 days), `backup.nightly` (03:00), `index.verify` (03:45: rebuilds
+records, sweep claims older than 90 days, the sender's duplicate-guard
+markers older than a day, stale leases, finished runs older than 60 days), `backup.nightly` (03:00), `index.verify` (03:45: rebuilds
 every index and declared relation family from the records, diffs, repairs,
 reports; a banner after two nights in a row with repairs), `files.backup`
 (04:15), `files.purge` (04:30), `backup.offsite` (Sundays 04:00: alerts
@@ -708,3 +711,155 @@ bytes go 30 days later and only once `files.backup` has copied them.
   its samples in `tests/crm/<module>/budget-samples.mjs`.
   `schema-compat.test.mjs` runs the previous commit's validators over
   records the current code writes.
+
+## Messaging, automations, the portal and the screens (M1.3, part B)
+
+### What the owner sees
+
+More (the tab bar) gains **Approvals**, **Automations**, **Templates**,
+**Outbox**, **Activity** and **Settings**; Today gains the bell
+(notifications), an Approvals card and the workers' alerts.
+
+- **Outbox**: every text, email, push or charge the CRM would have made
+  ("Not sent": dry run) or held back (with the reason: opted out, no
+  consent, a blank in the template, sent the same a moment ago...), by
+  day; tap one for the whole message. Beside it, the **automation log**:
+  sent, dry-run, skipped and the **would have** rows (what an automation
+  would have changed on a record Rotor still owns).
+- **Automations**: the built-in catalog (design §5.7.4). Each one on or
+  off, its channels, delay, time of day and templates, the last 7 days and
+  today's log. Automations of modules that haven't shipped show "Arrives
+  with Sales / Scheduling / ...". **Pause all** stops every automation
+  (people's own messages still go).
+- **Templates**: the library by category; the editor has variable chips,
+  a live preview (made-up values, or a chosen contact's) and the server's
+  warnings. A template never says "Reply STOP to opt out": the sender adds
+  it. Built-in templates (each module brings its own) are written once by
+  the worker and never overwritten afterwards.
+- **Approvals**: bulk sends waiting for their test send and a confirm, and
+  (owners) pending actions: a phone's offline work older than 6 days, and
+  later Claude's requests. The owners get a notification for each.
+- **Activity**: who did what, by day, by person and kind of record; tap a
+  row for that record's history.
+- **Settings**: Company; Hours & holidays; Service area; Messaging (quiet
+  hours, the opt-out footer, the bulk threshold, the duplicate window,
+  reply keywords, and for owners the **test contact** every bulk send goes
+  to first); Team permissions (owners: office and technician defaults, Yes /
+  Own / No, and whose Team sign-in may open the office tools); Integrations
+  (owners: the mode of each service and the mode it really runs in, and
+  which secrets Netlify has, by name only); Intake mode (owners; "Rotor and
+  the CRM" arrives with Contacts); Data (workers, backups, the off-site
+  copy, CSV export, rebuild the lists, pause and resume).
+- **My account**: notification channels per kind, **push on this phone**
+  (see docs/OFFICE.md), API keys (make one, shown once; revoke).
+
+### Sending (`core/send.mjs`, `adapters/`)
+
+`sendMessage()` is the only way anything texts or emails a customer:
+suppression (`sup/{channel}/{hk}`, beats consent), consent per category
+(marketing texts need "granted"; service texts and marketing email only
+"not revoked"), a contact's `automations_paused`, the test allowlist in
+test mode, the template rendered at send time (a blank without a fallback
+blocks the send), **quiet hours** (service 08:00-21:00, cadence
+08:00-20:00, marketing 09:00-20:00 Monday-Saturday and never on holidays;
+a queued step keeps its marker and waits, a person's send of a template is
+scheduled; a person's own words go any time), the **opt-out footer**
+(" Reply STOP to opt out." on the first text to a phone from each sending
+number, and on every marketing text), the step's **marker**
+(`done-dry/` in dry-run, `done/` when real) and the **duplicate guard**
+(the same body to the same address within 10 minutes).
+
+The adapter layer picks dry-run, test or live per integration
+(`cfg/integrations`, Settings → Integrations): live only on the production
+deploy with the secrets, never paused, and before cutover live acts as
+test (staff numbers only). Automated sends to a contact Rotor still owns
+are always dry-run before cutover. Live Twilio and Postmark drivers arrive
+with Messages (M6); until then a live or test mode without its driver stays
+dry-run. **Dry-run writes only an outbox item and its `done-dry/` marker**:
+no message, conversation, stats or activity. Magic values test the failure
+paths: a text to (763) 555-0199 fails with 30007, email to
+bounce@example.com bounces, `dry_pm_decline`/`dry_pm_auth`/`dry_pm_ach`
+for payments. Marketing email gets an unsubscribe link and RFC 8058
+`List-Unsubscribe` headers when it really goes out.
+
+### Automations and bulk sends (`core/automations.mjs`, `core/bulk.mjs`)
+
+Modules declare automations in their manifests; the engine gives them
+settings (`cfg/automations.{key}`), eligibility (the triggering fact at or
+after `cfg/automations.effective_from`, written at cutover; nothing the
+import created unless the automation says `imported: "eligible"`, and then
+only for subjects still in the future), the step marker (never twice), the
+parallel-run guard (would- rows) and the run log (`alog/`). Event-triggered
+automations are queued by the event dispatcher (marker
+`done/evt/{event_id}--auto.{key}`); a send is a queue item
+(`automation.send`) re-checked when it is due.
+
+Anything addressed to more than `cfg/messaging.bulk_threshold` (5)
+people becomes a **bulk run** (`rec/bulk_run`): a preview in the bulk lane
+(how many, who is left out and why, 10 sample texts), a required **test
+send** to the test contact, then an owner's or the office's **confirm**
+(`campaigns:send`); the bulk lane then sends 25 at a time, each one
+through the sender again, about one a second when real.
+
+### Notifications and web push (`core/notify.mjs`, `core/webpush.mjs`)
+
+`notify(userIds, { kind, title, body, link })` (the `notify.users`
+service) writes one queue item; the fast lane writes one notification per
+person (the bell; `rel/user-unread/{uid}` is the badge's count) and pushes
+it to each of their phones whose channels include push. Web push is
+RFC 8291 (aes128gcm) and RFC 8292 (VAPID, ES256) with `node:crypto`, live
+on the production deploy once `CRM_VAPID_PUBLIC` and `CRM_VAPID_PRIVATE`
+exist (staff only, so before cutover too); a 404/410 deletes the
+subscription; only Apple, Google, Mozilla and Microsoft push services are
+ever called. Old notifications go after 60 days (`notifications.prune`).
+
+### The client portal frame (`/p/*`, `/api/portal/*`)
+
+`netlify/functions/crm-portal.mjs` (rate limited) and
+`netlify/lib/crm/portal/core.mjs`: magic links (`/p/{10 characters}`, kept
+only as a hash, expiring per `cfg/portal`, revocable, locked after too
+many opens a day), the entry page whose script POSTs `/api/portal/open`
+(a GET changes nothing: link previews and email scanners open nothing),
+the scoped cookie `barta_portal` (one link's scope only: a quote link
+never opens the hub or another invoice), the view beacon, the
+unsubscribe page and its RFC 8058 one-click POST (writes the
+suppression), the Checkout return page and present links (no cookie,
+single use, 15 minutes). Headers: no-store, noindex,
+`Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, a strict CSP with
+only `/crm-app/portal/*.js` scripts. The pages themselves (quote,
+agreement, invoice, card, hub) arrive with their modules through
+`portalRoutes`.
+
+### Endpoints added in part B
+
+| Route | Who | What |
+|---|---|---|
+| `GET /templates`, `GET /templates/:id`, `POST /templates/preview` | `messages:send` (techs: active service/personal) | the library, one template, a preview with warnings |
+| `POST /templates`, `PATCH /templates/:id` | `templates:edit` | create, edit (If-Match) |
+| `GET /automations`, `PATCH /automations/:key`, `POST /automations/pause` · `resume` | `automations:configure` | the catalog and settings |
+| `GET /automations/log?date=&key=` | `outbox:read` | the run log |
+| `GET /outbox?date=&contact=&kind=&before=` | `outbox:read` | what would have gone out |
+| `GET /notifications`, `POST /notifications/read` | yourself | the bell |
+| `GET /suppressions`, `POST /suppressions` | `consent:edit` | opt-outs by address (masked) |
+| `GET/POST /bulk-runs`, `GET /bulk-runs/:id`, `POST …/cancel` | `campaigns:write` | bulk sends |
+| `POST /bulk-runs/:id/test` · `confirm` | `campaigns:send` | the test send, the confirm |
+| `POST /messages` | `messages:send` (techs: their visits' contacts) | a person's text or email (the `messages.sink` service) |
+| `GET/POST /push/subscriptions`, `DELETE /push/subscriptions/:hash`, `POST /push/test` | yourself | push on this phone |
+| `GET /search?q=`, `POST /search/deep` | `contacts:read_all` | numbers and contacts; a run over notes and messages |
+| `GET /permissions`, `GET /admin/integrations` | owners | Team permissions, Integrations |
+| `GET/PUT /settings/portal`, `/settings/intake` (owners), `/settings/comms` (`settings:messaging`) | | new settings documents |
+
+### Code and tests
+
+- Core: `netlify/lib/crm/core/{templates,send,outbox,automations,bulk,notify,webpush}.mjs`,
+  `netlify/lib/crm/adapters/{index,dry-run,webpush}.mjs`,
+  `netlify/lib/crm/portal/core.mjs`; routes in
+  `modules/system/{comms,search,permissions}.mjs`; the comms part of the
+  contact stats (`first_sms` per sending number, `last_contacted_at`) is
+  registered by the system module because core's sender writes it.
+- App: `crm-app/core/{poll,outbox,camera,signature,pickers,map}.js`,
+  `crm-app/portal/core.js`, the screens in `crm-app/modules/system/`;
+  `office-sw.js` shows pushes; the office shell asks for permission.
+- Tests: `tests/crm/core/{send,automations,webpush,templates,messaging,portal,push-shell,screens}.test.mjs`;
+  fixtures `seedContact`, `seedImportedContact`, `seedStats` (contacts
+  before M2a) and `t.portal()` in the harness.
