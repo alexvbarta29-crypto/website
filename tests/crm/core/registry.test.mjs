@@ -64,9 +64,12 @@ test("a module with two tracks composes its parts", () => {
 });
 
 test("services: a missing one says so; only the contract's module may provide it", async () => {
-  await assert.rejects(services.call("work.createJobs", []), ServiceMissing);
-  assert.equal(services.has("work.createJobs"), false);
-  assert.throws(() => services.provide("work.createJobs", fn, { module: "quotes" }), /belongs to work/);
+  // a contract service whose module hasn't shipped yet
+  const [missing, owner] = Object.entries(services.SERVICE_CONTRACTS).find(([name]) => !services.has(name)) || [];
+  assert.ok(missing, "some service is still to come");
+  await assert.rejects(services.call(missing, []), ServiceMissing);
+  assert.throws(() => services.provide(missing, fn, { module: owner === "quotes" ? "plans" : "quotes" }), new RegExp(`belongs to ${owner}`));
+  assert.equal(services.has("work.createJobs"), true, "Scheduling provides work.createJobs");
   services.provide("t.custom", async (x) => x * 2, { module: "anything" });
   assert.equal(await services.call("t.custom", 21), 42);
 });

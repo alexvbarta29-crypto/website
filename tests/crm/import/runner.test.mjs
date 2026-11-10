@@ -139,7 +139,11 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     assert.equal(w["money.invoices"].rows, ex.invoices.length, "the report says how many rows wait");
     assert.equal(w["comms.messages"].module_label, "Messages");
     assert.equal(w["fixture.after_quotes"].waiting_for, "quotes.quotes", "after a phase that isn't there: waits");
-    assert.ok(w["quotes.quotes"] && w["work.visits"] && w["plans.plans"] && w["payroll.payroll"]);
+    // every phase the design expects from a module that hasn't registered it yet waits
+    const { EXPECTED_PHASES } = await import("../../../netlify/lib/crm/modules/import/catalog.mjs");
+    const registered = new Set(runner.phasePlan().filter((p) => p.registered).map((p) => p.name));
+    for (const p of EXPECTED_PHASES) if (!registered.has(p.name)) assert.ok(w[p.name], `${p.name} waits`);
+    assert.ok(!w["work.jobs"] && !w["work.visits"], "Scheduling's phases run");
     assert.ok(!w["contacts.customers"]);
     assert.ok(!w["sales.pipelines"] && !w["sales.opportunities"] && !w["sales.tasks"], "a module that shipped runs its phases");
     // the run's money: Rotor's side from the staged rows

@@ -40,8 +40,10 @@ test("import, a simulated week of every sweep, the same export again: 0 conflict
     assert.equal(again.run.summary.conflicted, 0);
     assert.equal(again.run.summary.created, 0);
     assert.deepEqual(await rotorSnapshot(t.stores), snap, "every rotorField byte-identical");
+    // nothing mirrored was created by automation: whatever exists came from the import
     for (const type of ["invoice", "job", "message", "conversation", "visit", "payment", "quote", "plan"]) {
-      assert.deepEqual(t.stores.data.keys(`rec/${type}/`), [], `no ${type} record created`);
+      const made = t.stores.data.keys(`rec/${type}/`).filter((k) => t.stores.data.json(k).created_by !== "import");
+      assert.deepEqual(made, [], `no ${type} record created`);
     }
   } finally { t.done(); }
 });
