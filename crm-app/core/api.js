@@ -9,8 +9,10 @@
 // GETs give up after 4 s and fall back to the last good copy kept by
 // core/cache.js, flagged { offline: true, as_of } so the screen can say
 // "Offline, as of 7:42 AM". Writes time out after 10 s (the offline outbox
-// for techs arrives in M1.3). A 401 sends this frame (never the top window)
-// to /crm/login, keeping the screen it was on.
+// for techs arrives in M1.3). A 401 wipes this phone's offline copies and
+// sends this frame (never the top window) to /crm/login, keeping the screen
+// it was on. Offline copies are keyed by the signed-in person (setCacheOwner),
+// so on a shared phone nobody reads the last person's copy.
 
 import { APP_VERSION } from "../version.js";
 import * as cache from "./cache.js";
@@ -43,12 +45,19 @@ export function uuid() {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
+let owner = null;   // the signed-in person's id: offline copies are theirs only
+export function setCacheOwner(id) { owner = typeof id === "string" && id ? id : null; }
+const cacheKey = (url) => (owner ? owner + "|" + url : null);
+
 let signingOut = false;
-function signedOut() {
+async function signedOut() {
   if (signingOut) return;
   signingOut = true;
   emit("signedOut");
   const here = location.hash && location.hash.length > 1 ? location.hash : "";
+  // Signed out (expired, disabled, signed out elsewhere): forget this
+  // person's offline copies before anything else can read them.
+  try { await cache.wipe(); } catch (e) { /* nothing kept */ }
   location.replace("/crm/login?to=" + encodeURIComponent("/crm" + here));
 }
 
@@ -74,15 +83,15 @@ export async function api(path, opts = {}) {
     res = await fetch(url, init);
   } catch (e) {
     clearTimeout(timer);
-    if (method === "GET" && opts.cache !== false) {
-      const hit = await cache.get(url);
+    if (method === "GET" && opts.cache !== false && cacheKey(url)) {
+      const hit = await cache.get(cacheKey(url));
       if (hit) { emit("offline", hit.at); return { data: hit.data, meta: hit.meta, etag: hit.etag, offline: true, as_of: hit.at }; }
     }
     throw new OfflineError(0, { code: "offline", message: method === "GET" ? "No connection. Try again when you have signal." : "No connection. Nothing was saved; try again when you have signal." });
   }
   clearTimeout(timer);
-  if (res.status === 304) {
-    const hit = await cache.get(url);
+  if (res.status === 304 && cacheKey(url)) {
+    const hit = await cache.get(cacheKey(url));
     if (hit) return { data: hit.data, meta: hit.meta, etag: hit.etag };
   }
   let body = null;
@@ -95,7 +104,7 @@ export async function api(path, opts = {}) {
     throw new ApiError(res.status, err);
   }
   const out = { data: body.data, meta: body.meta, etag: res.headers.get("ETag") || undefined };
-  if (method === "GET" && opts.cache !== false) cache.put(url, out).catch(() => {});
+  if (method === "GET" && opts.cache !== false && cacheKey(url)) cache.put(cacheKey(url), out).catch(() => {});
   return out;
 }
 

@@ -6,7 +6,9 @@
 // - The CSP every /crm page sends (§2.3): script-src 'self', no inline
 //   script. The legacy Customers page (moved unchanged from the first slice
 //   to /crm/legacy until M2a replaces it) keeps its inline scripts, so its
-//   CSP lists their sha256 hashes instead of 'unsafe-inline'.
+//   CSP lists their sha256 hashes instead of 'unsafe-inline': the hashes of
+//   its fixed script sources (crm-page.mjs LEGACY_SCRIPTS), computed once,
+//   never of whatever a rendered page happens to contain.
 // - Cookies: parse and build (HttpOnly; Secure; SameSite=Lax; Path=/).
 // - The client version gate (MIN_CLIENT, MIN_REPLAY_CLIENT, step 5).
 // - Bodies are read streamed under a byte cap (413 before buffering a huge
@@ -52,8 +54,12 @@ export const JSON_HEADERS = Object.freeze({
   "X-Content-Type-Options": "nosniff",
 });
 
+// The CSP source for one inline script body.
+export const scriptHash = (src) => `'sha256-${createHash("sha256").update(String(src), "utf8").digest("base64")}'`;
+
 // The sha256 CSP sources of every executable inline <script> in a page
-// (no src, no type or a JavaScript type). The legacy page only.
+// (no src, no type or a JavaScript type). For tests and checks only: a
+// page's CSP never comes from its own rendered output.
 export function inlineScriptHashes(html) {
   const out = [];
   const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi;
@@ -63,7 +69,7 @@ export function inlineScriptHashes(html) {
     if (/\ssrc\s*=/i.test(attrs)) continue;
     const type = /\stype\s*=\s*["']?([^"'\s>]+)/i.exec(attrs);
     if (type && !/^(text\/javascript|module|application\/javascript)$/i.test(type[1])) continue;
-    out.push(`'sha256-${createHash("sha256").update(m[2], "utf8").digest("base64")}'`);
+    out.push(scriptHash(m[2]));
   }
   return [...new Set(out)];
 }
@@ -73,9 +79,15 @@ export const cspWithHashes = (hashes) => (hashes.length ? CSP.replace("script-sr
 export function htmlPage(body, status = 200, extra = {}) {
   return new Response(body, { status, headers: { ...HTML_HEADERS, "Content-Security-Policy": CSP, ...extra } });
 }
-// A legacy page: its own inline scripts are allowed by hash, nothing else.
-export function legacyPage(body, status = 200, extra = {}) {
-  return new Response(body, { status, headers: { ...HTML_HEADERS, "Content-Security-Policy": cspWithHashes(inlineScriptHashes(body)), ...extra } });
+// A legacy page: exactly the given inline script hashes (fixed at module
+// load from the page's static script sources) are allowed, nothing else.
+export function legacyPage(body, hashes, status = 200, extra = {}) {
+  if (!Array.isArray(hashes)) throw new TypeError("legacyPage: pass the fixed script hashes");
+  return new Response(body, { status, headers: { ...HTML_HEADERS, "Content-Security-Policy": cspWithHashes(hashes), ...extra } });
+}
+// A 405 for a page route, with the private headers.
+export function pageMethodNotAllowed(allow) {
+  return new Response("Method not allowed", { status: 405, headers: { ...PRIVATE_HEADERS, "Content-Type": "text/plain; charset=utf-8", "X-Content-Type-Options": "nosniff", Allow: allow } });
 }
 
 export function json(body, status = 200, extra = {}) {

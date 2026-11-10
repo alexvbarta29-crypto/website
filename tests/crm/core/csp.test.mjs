@@ -9,7 +9,8 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { crmTest } from "../../helpers/crm-http.mjs";
 
-const { CSP, inlineScriptHashes } = await import("../../../netlify/lib/crm/core/http.mjs");
+const { CSP, inlineScriptHashes, scriptHash } = await import("../../../netlify/lib/crm/core/http.mjs");
+const { LEGACY_SCRIPTS } = await import("../../../netlify/lib/crm-page.mjs");
 const { html, raw, attrs, openExternal, isSafeUrl, UnsafeHtml, escapeHtml } = await import("../../../crm-app/core/ui.js");
 const { writeCustomerIndex, buildCustomerIndex } = await import("../../../netlify/lib/crm-store.mjs");
 
@@ -138,4 +139,75 @@ test("client code builds markup only through ui.js (no innerHTML, eval or inline
     if (!f.endsWith(path.join("core", "ui.js"))) assert.doesNotMatch(src, /\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=/, f);
     assert.doesNotMatch(src, /\beval\(|new Function\(|document\.write\(/, f);
   }
+});
+
+test("html`` judges a path by where the browser really goes: backslashes, dot segments and encodings can't leave the CRM or open a portal page", () => {
+  // Regression (M1.2 review): anything starting with "/" was trusted, so
+  // "/\\evil.example/x" (a browser reads "\\" as "/") went off-site and
+  // "/./p/abc" reached a portal page inside the frame.
+  const bad = [
+    "/\\evil.example/x", "\\\\evil.example", "/\\/evil.example", "\\/evil.example",
+    "/./p/abc", "/crm/../p/abc", "/%2e/p/abc", "/%2E%2E/p/abc", "p/abc", "./p/abc", "../p/abc", "/P/abc", "/%70/abc", "/%2fp/abc",
+    "/crm/../../p/x", "//evil.example/x", "///evil.example/x", "/\t/evil.example", "java\tscript:alert(1)",
+  ];
+  for (const u of bad) {
+    assert.equal(isSafeUrl(u), false, u);
+    assert.throws(() => html`<a href="${u}">x</a>`, UnsafeHtml, u);
+    assert.throws(() => attrs({ href: u }), UnsafeHtml, u);
+  }
+  // what the CRM really links stays fine
+  for (const ok of ["#/team", "#/team/us_00000000000000000000", "/crm/legacy", "/crm/legacy?import=1", "/office#crm", "/crm-app/x.png", "team", "?q=1", "/pricing", "/photos/p.png"]) {
+    assert.equal(isSafeUrl(ok), true, ok);
+  }
+  // the portal still opens through openExternal (a new tab)
+  assert.match(html`<a ${openExternal("/p/abc")}>Portal</a>`.__html, /target="_blank"/);
+});
+
+test("the legacy page's CSP allows only its own fixed scripts: one injected into a row is not covered", async () => {
+  // Regression (M1.2 review): the CSP hashed every inline script in the
+  // rendered output, so an injected <script> was allowed too.
+  t = await crmTest();
+  const injected = "fetch('/api/crm/users')";
+  await writeCustomerIndex(buildCustomerIndex({ exported_at: "2026-11-08", members: [], customers: [{ id: "00000000-0000-4000-8000-000000000001", first_name: "<script>" + injected + "</script>", last_name: "Sample", phone: "+15550100123", address: {} }] }, { now: new Date("2026-11-08T12:00:00Z") }));
+  const r = await t.page("/crm/legacy", { office: true });
+  assert.equal(r.status, 200);
+  const scriptSrc = /script-src ([^;]+)/.exec(r.headers.get("content-security-policy"))[1];
+  assert.ok(!scriptSrc.includes(scriptHash(injected)), "an injected script's hash is never listed");
+  const fixed = LEGACY_SCRIPTS.map(scriptHash);
+  assert.equal(scriptSrc, "'self' " + fixed.join(" "), "exactly the page's own scripts");
+  // the same list on every legacy page, whatever it shows
+  const imp = await t.page("/crm/legacy?import=1", { office: true });
+  assert.equal(imp.headers.get("content-security-policy"), r.headers.get("content-security-policy"));
+});
+
+test("a POST to a /crm page answers 405 with the private headers", async () => {
+  // Regression (M1.2 review): the 405s carried no Cache-Control or X-Robots-Tag.
+  t = await crmTest();
+  for (const p of ["/crm", "/crm/legacy", "/crm/login", "/crm/setup"]) {
+    const r = await t.page(p, { method: "POST", body: {} });
+    assert.equal(r.status, 405, p);
+    assert.equal(r.headers.get("cache-control"), "private, no-store", p);
+    assert.equal(r.headers.get("x-robots-tag"), "noindex, nofollow", p);
+    assert.equal(r.headers.get("referrer-policy"), "same-origin", p);
+    assert.equal(r.headers.get("allow"), "GET, HEAD", p);
+  }
+});
+
+test("Team sign-in with the office cookie leaves out the optional office password and links the Customers list", async () => {
+  // Regression (M1.2 review): someone with only the office password had no
+  // way to the Customers list once the CRM was set up.
+  t = await crmTest();
+  const o = await t.user("owner");
+  await t.bootstrap(o);
+  const inOffice = await t.page("/crm/login", { office: true });
+  assert.equal(inOffice.status, 200);
+  assert.match(inOffice.text, /<a class="btn block" href="\/crm\/legacy">Open the Customers list<\/a>/);
+  assert.doesNotMatch(inOffice.text, /office_password/);
+  assertNoInlineScript(inOffice.text, "login in office");
+  const plain = await t.page("/crm/login");
+  assert.match(plain.text, /name="office_password"/, "elsewhere D14's optional field is there");
+  assert.doesNotMatch(plain.text, /\/crm\/legacy/);
+  // the setup page's way to the list is a full-size button, not a small inline link
+  const t2setup = (await import("../../../netlify/lib/crm/core/shell-html.mjs")).setupHtml();
+  assert.match(t2setup, /<a class="btn block" href="\/crm\/legacy">Open the Customers list<\/a>/);
 });

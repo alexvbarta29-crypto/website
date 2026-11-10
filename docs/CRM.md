@@ -80,7 +80,9 @@ Pieces:
 
 - Page: `netlify/functions/crm.mjs` (`GET /crm/legacy`, office cookie or a
   CRM session with `contacts:read_all`, never cached or indexed; its CSP
-  allows exactly its own inline scripts by hash). `GET
+  allows exactly its own inline scripts by hash: the fixed script sources
+  in `crm-page.mjs` `LEGACY_SCRIPTS`, hashed once, so a script that a
+  missed escape let into a row would not run). `GET
   /crm/legacy?import=1` is the Import screen even when there is a list, and
   even when the saved list can't be read; a list blob that isn't JSON shows
   the Import screen too, so it can always be imported over.
@@ -372,11 +374,21 @@ production branch should build.
   login off signs that person out on every phone within seconds.
 - **Sign-in throttling:** after 5 wrong passwords in 15 minutes on one
   phone, each further try waits (30 s, then doubling, at most 15 minutes);
-  someone else guessing can't lock Alex out of his own phone. A browser
-  that has never signed in shares one bucket per login (an hour's lock
-  after 20 failures), and one address gets an hour off after 30 failures.
-  Netlify's own rate limit (30 a minute) comes first. The answer never says
-  whether a login exists.
+  someone else guessing can't lock Alex out of his own phone. The phone is
+  known by a device id the server signs (`barta_dev`, an HMAC with
+  `CRM_KEY_SALT`), so made-up ids count as a new browser. A browser that
+  has never signed in shares one bucket per login (an hour's lock after 20
+  failures), and one address gets an hour off after 30 failures. Each
+  failure is its own small record under `thr/` (so 30 at the same moment
+  all count), and a bucket's state is worked out from them. Netlify's own
+  rate limit (30 a minute) comes first. The answer never says whether a
+  login exists, in its words or in its timing (the same storage reads for
+  a known and an unknown login; the failure's audit event is written after
+  the answer).
+- **Permissions** come from the role, the person's grants and denies, and
+  the owner-only `cfg/permissions`. If that setting can't be read, the
+  request answers "Storage didn't answer" (503); it never falls back to the
+  role defaults.
 
 ### First owner (once), then the team
 
@@ -388,15 +400,21 @@ production branch should build.
 2. Sign in to Barta Office with the office password and open the **CRM**
    tab: it shows **Set up the CRM**. Type the setup code, your name, a
    login and a password. That makes the first owner (it works once, even
-   if two phones try at the same moment) and signs you in.
+   if two phones try at the same moment) and signs you in. A typo (a name
+   over 60 characters, a taken login) is refused before setup is claimed,
+   so fixing it and tapping again just works; and if setup's last write is
+   lost, the next page view sees the owner and finishes it.
 3. Delete `CRM_SETUP_CODE` in Netlify. Setup now answers "Setup is done".
 4. **More → Team → Add** for each person (name, login, role). Each gets a
    one-time **invite link** (7 days) to send by text or AirDrop. Opening it
    asks for a password; then they add Barta Office to their home screen
    and use **Team sign-in** there (the installed app keeps its own
    sign-in). Forgotten password: Team → the person → **Password reset
-   link** (it signs them out until they use it). **Turn off their login**
-   ends their access at once.
+   link** (it signs them out and the old password stops working until they
+   use it). Invite and reset links are kept only as a hash: never in an
+   idempotency record or anywhere else in Blobs (their routes are `secret`,
+   so a retry makes a fresh link). **Turn off their login** ends their
+   access at once.
 5. If both owners are ever locked out: someone with Netlify access deletes
    `sys/bootstrap` from the `crm` store (`netlify blobs:delete crm
    sys/bootstrap`) and sets a new `CRM_SETUP_CODE`; setup opens once more
@@ -419,14 +437,27 @@ production branch should build.
 - **Offline:** the CRM's service worker (`crm-sw.js`, scope `/crm`) keeps
   the app's files and the shell, so it starts with no signal; the office's
   service worker keeps a data-free launcher (`/office/launch`) for a cold
-  start with no signal. Data needs signal (the tech's offline day arrives
-  with the tech app, M4b). Signing out wipes what the phone kept.
+  start with no signal, used only when this phone has a CRM shell to start
+  (otherwise "No connection"). Data needs signal (the tech's offline day
+  arrives with the tech app, M4b). The last good copy of what a screen read
+  is kept per person (keyed by the user id), and signing out, being signed
+  out (a 401) and a new sign-in all wipe it.
+- **Wider screens** (900 px and up: an iPad, the office desk): the tab bar
+  becomes a left rail and the screens sit centred beside it. Screens load
+  behind grey skeletons, not spinners.
 - **Security:** every CRM page sends `Content-Security-Policy` with
   `script-src 'self'` and has no inline script; screens build markup only
   through `html```, which escapes everything and refuses inline handlers,
   `javascript:` links and links that leave the CRM (those go through
-  `openExternal()`: a new tab). Every write needs the `X-CRM: 1` header and
-  JSON, so another site can't post with your cookie.
+  `openExternal()`: a new tab). A path is judged by where the browser would
+  really go (resolved against `/crm`), so `/\evil.example`, `/./p/x` and
+  the like are refused. Every write needs the `X-CRM: 1` header and a
+  same-site (or absent) `Origin`, and JSON when it has a body (a `DELETE`
+  has none), so another site can't post with your cookie.
+- **Signed in with only the office password** (Jacob before his invite,
+  or anyone without a login): the CRM tab shows Team sign-in with an
+  **Open the Customers list** button; the old list still opens on the
+  office cookie.
 
 ### Endpoints (all JSON, `{ ok, data }` or `{ ok: false, error: { code, message } }`)
 
@@ -466,7 +497,7 @@ errors with no stack or record data.
   `PRECACHE` and `VERSION` in `crm-sw.js`; `--check` only checks), and
   raise `MIN_CLIENT` in `core/http.mjs` only when old apps must stop.
   `tests/crm/core/precache.test.mjs` fails when they disagree.
-- Tests: `tests/crm/core/{auth,perms,router,csp,precache}.test.mjs`,
+- Tests: `tests/crm/core/{auth,perms,router,csp,precache,client}.test.mjs`,
   `tests/office.test.mjs`, `tests/crm.test.mjs`,
   `tests/crm-import.test.mjs`, with the harness
   `tests/helpers/crm-http.mjs` (fresh memory stores, pinned clock, strict

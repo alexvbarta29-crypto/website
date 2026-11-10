@@ -104,6 +104,9 @@ async function patchUser(ctx) {
   for (const k of Object.keys(b)) if (!allowed.includes(k)) throw new ForbiddenError(`You can't change ${k.replace(/_/g, " ")} here.`);
   const patch = { ...b };
   if ("login" in patch) patch.login = normLogin(patch.login);
+  // A role someone sends is one of the three, never a stored oddity (the
+  // type's update validator keeps unknown stored enums, so check it here).
+  if ("role" in patch) patch.role = enumValue(patch.role, USER_ROLES, { field: "role", required: true });
   if ("name" in patch && !("first_name" in patch) && !("last_name" in patch)) {
     const parts = String(patch.name || "").trim().split(/\s+/).filter(Boolean);
     patch.first_name = parts[0] || "";
@@ -137,7 +140,12 @@ async function patchUser(ctx) {
   return { data: publicUser(r.data, { full: true }), etag: r.etag };
 }
 
-// POST /users/:id/invite and /users/:id/reset → { link, expires_at }
+// POST /users/:id/invite and /users/:id/reset → { link, expires_at }. The
+// link is a bearer secret: these routes are never idempotent-stored (the
+// router would keep the whole answer, link and all, in idem/ for 7 days);
+// a retry just issues a fresh link and voids the old one. A reset also
+// clears the password and bumps session_epoch: signed out everywhere, and
+// the old password stops working, until the link sets a new one.
 async function issueLink(ctx, kind) {
   const id = ctx.params.id;
   const cur = await loadUser(id);
@@ -145,7 +153,7 @@ async function issueLink(ctx, kind) {
   if (kind === "invite" && cur.data.status === "active") throw new ConflictError("They already signed in. Use a reset link instead.");
   if (kind === "reset" && cur.data.status !== "active") throw new ConflictError("They haven't set a password yet. Send an invite link instead.");
   const { token, invite } = newInvite(kind);
-  const r = await updateRecord("user", id, (u) => ({ ...u, invite, ...(kind === "reset" ? { session_epoch: (u.session_epoch || 0) + 1 } : {}) }), ctx.write());
+  const r = await updateRecord("user", id, (u) => ({ ...u, invite, ...(kind === "reset" ? { password: null, session_epoch: (u.session_epoch || 0) + 1 } : {}) }), ctx.write());
   forgetUser(id);
   if (kind === "reset") await bumpAuthEpoch("reset");
   await audit(ctx, id, kind === "reset" ? "reset_link" : "invite_link");
@@ -197,8 +205,8 @@ export const userRoutes = [
   r("POST", "/users", "users:manage", "none", addUser),
   r("GET", "/users/:id", "account:own", "required", getUser),
   r("PATCH", "/users/:id", "account:own", "required", patchUser, { maxCalls: 30 }),
-  r("POST", "/users/:id/invite", "users:manage", "none", (ctx) => issueLink(ctx, "invite")),
-  r("POST", "/users/:id/reset", "users:manage", "none", (ctx) => issueLink(ctx, "reset")),
+  r("POST", "/users/:id/invite", "users:manage", "none", (ctx) => issueLink(ctx, "invite"), { idempotent: false, secret: true }),
+  r("POST", "/users/:id/reset", "users:manage", "none", (ctx) => issueLink(ctx, "reset"), { idempotent: false, secret: true }),
   r("POST", "/users/:id/disable", "users:manage", "none", (ctx) => setStatus(ctx, false)),
   r("POST", "/users/:id/enable", "users:manage", "none", (ctx) => setStatus(ctx, true)),
   r("GET", "/users/:id/sessions", "account:own", "required", userSessions, { maxCalls: 30 }),

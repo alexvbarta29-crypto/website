@@ -6,6 +6,7 @@
 //   await t.auth("/auth/login", { body: {...} });                // the sign-in function (crm-auth.mjs)
 //   await t.page("/crm", { as: alex });                          // crm.mjs → { status, text, headers }
 //   await t.office("/office", { as: alex });                     // office.mjs
+//   t.device();                                                // a signed barta_dev cookie (a phone the server knows)
 //   t.fetchCalls(); t.logs(); t.done();
 //
 // Requests go to https://www.bartawindowwashing.com unless `host` says
@@ -111,6 +112,8 @@ export async function crmTest({ now = "2026-11-17T15:00:00Z", env = {}, quiet = 
     auth: async (path, opts = {}) => asJson(await crmAuth(request("/api/crm" + path, { method: "POST", ...opts }), opts.context || {})),
     page: async (path, opts = {}) => asText(await crmPage(request(path, { csrf: false, client: false, ...opts }), opts.context || {})),
     office: async (path, opts = {}) => asText(await officeFn(request(path, { csrf: false, client: false, ...opts }), opts.context || {})),
+    // A device cookie the server issued (signed), as "barta_dev=...".
+    device: () => "barta_dev=" + sessions.newDeviceCookie().value,
     // Cookies a response set, as "name=value" strings.
     setCookies: (res) => (res.headers.getSetCookie ? res.headers.getSetCookie() : [res.headers.get("set-cookie")].filter(Boolean)),
     cookieFrom(res, name) {

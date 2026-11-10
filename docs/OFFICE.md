@@ -35,7 +35,9 @@ the office cookie **or** a CRM session:
   for the CRM) next to **Office password**. The installed app opens on Team
   sign-in; a browser remembers the last one used. Before the CRM is set up
   only the office password shows. Owners can type the office password into
-  Team sign-in's optional field to open both at once (docs/CRM.md).
+  Team sign-in's optional field to open both at once (docs/CRM.md); if it
+  isn't right (or isn't for that login), the page says so for a few seconds
+  before the CRM opens on its own.
 
 While the CRM still needs its Netlify setup, its tab shows "Setup needed"
 with a button to the customer list, so nothing used today disappears. Once
@@ -44,10 +46,14 @@ the settings exist, the first owner sets it up from this tab (docs/CRM.md
 
 The office and the CRM frame talk with `postMessage` (same origin only):
 the CRM tells the office where it is (`/office#crm/<screen>` stays in step,
-and opening such a link opens that screen), shows a dot on the tab when
-something needs you, and asks the office to reload on sign-out; the office
-tells the CRM the phone's safe areas (frames don't get them) and hides its
-logo row on phones while the CRM tab is open.
+also after a trip to another tab, and opening such a link opens that
+screen), shows a dot on the tab when something needs you, and asks the
+office to reload on sign-out; the office tells the CRM the phone's safe
+areas (frames don't get them) and the height of the "Get the app" card
+(the CRM lifts its toasts above it), and hides its logo row on phones while
+the CRM tab is open. Signed in with only the office password after the CRM
+is set up, the CRM tab shows Team sign-in with an **Open the Customers
+list** button.
 
 ## One password
 
@@ -84,9 +90,11 @@ Pieces:
 - `office-sw.js`: service worker for `/office` only. It never caches office
   pages, only the icon, the fonts and the data-free **launcher**
   (`/office/launch`: a full-screen CRM frame and an "Offline" strip). With
-  no signal the app opens on the launcher, and the CRM starts from its own
-  cached copy (`crm-sw.js`); without a launcher yet it shows "No
-  connection". Back online it reloads the real office.
+  no signal the app opens on the launcher when this phone has a CRM to
+  start (someone signed in to the CRM, so `crm-sw.js` kept its shell), and
+  the CRM starts from that cached copy; otherwise (office password only,
+  signed out, nothing kept yet) it shows "No connection". Back online it
+  reloads the real office.
 - `APP_HEAD` in `netlify/lib/office-page.mjs`: manifest and iPhone tags, on
   both the office page and its sign-in page.
 - Icons in `assets/img/app/`: the //BWW logo on white, drawn by

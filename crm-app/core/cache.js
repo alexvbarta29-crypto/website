@@ -1,9 +1,10 @@
 // Barta CRM client: the last good copy of what the app read (design §2.3,
 // §2.5). A memory map in front of IndexedDB (database "crm-cache"), keyed
-// by URL, holding { data, meta, etag, at }. api.js reads it when a GET
+// by "{userId}|{url}" (api.js), holding { data, meta, etag, at }. api.js reads it when a GET
 // times out or the phone has no signal, and the screen shows "as of".
-// Signing out wipes it (and the service worker's copy of the shell), so the
-// next person on the phone sees nothing of the last one's.
+// Signing out, a 401 and a new sign-in wipe it (and the service worker's
+// copy of the shell), so the next person on the phone sees nothing of the
+// last one's.
 //
 // Every IndexedDB call is wrapped: private browsing, a full disk or an old
 // Safari just means no offline copy, never a broken screen.

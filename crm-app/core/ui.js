@@ -45,17 +45,33 @@ const checkName = (name) => {
   return n;
 };
 
-// A URL a page may link or load without openExternal().
+// A URL a page may link or load without openExternal(). A path is judged
+// by where the browser would really go: it is resolved against the shell's
+// own address (/crm, and /crm/ to be safe) and must stay on this origin
+// and off the portal (/p/...), whatever its spelling ("/\\evil.example",
+// "//evil.example", "/./p/x", "/crm/../p/x", "/%2e/p/x", "p/x", "/%70/x").
+// A backslash is refused outright: browsers read it as a slash.
+const HOME = "https://crm.invalid";
+const BASES = [HOME + "/crm", HOME + "/crm/"];
+const PORTAL = /^\/p(\/|$)/i;
+function staysHome(u) {
+  for (const base of BASES) {
+    let r;
+    try { r = new URL(u, base); } catch (e) { return false; }
+    if (r.origin !== HOME) return false;
+    let path = r.pathname;
+    try { path = decodeURIComponent(path).replace(/\/{2,}/g, "/"); } catch (e) { return false; }
+    if (PORTAL.test(r.pathname) || PORTAL.test(path) || /(^|\/)\.\.?(\/|$)/.test(path)) return false;
+  }
+  return true;
+}
 export function isSafeUrl(url, attr = "href") {
   const u = String(url ?? "").trim();
   if (u === "") return true;
-  if (/[\u0000-\u001f\u007f]/.test(u)) return false;
+  if (/[\u0000-\u001f\u007f\\]/.test(u)) return false;
   if (u.startsWith("#")) return true;
-  if (u.startsWith("//") || u.startsWith("\\")) return false;
-  if (/^\/p(\/|$|\?|#)/i.test(u)) return false;                  // portal pages open outside the frame
-  if (u.startsWith("/")) return true;
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(u);
-  if (!scheme) return !/^\s*javascript/i.test(u);              // a relative path
+  if (!scheme) return staysHome(u);                             // a path: where does it really go?
   const s = scheme[1].toLowerCase();
   if (attr === "href" && ["tel", "sms", "mailto"].includes(s)) return true;
   if (attr === "src" && (s === "blob" || /^data:image\/(png|jpe?g|webp|gif);/i.test(u))) return true;

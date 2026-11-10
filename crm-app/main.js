@@ -9,8 +9,9 @@
 //
 // Inside the /office frame it talks to the shell with postMessage, same
 // origin only: it sends crm:route, crm:badge and crm:signed_out, and takes
-// office:insets (safe areas, which iframes don't reliably get) and
-// office:show {path}. A new deploy never reloads the app under someone's
+// office:insets (safe areas, which iframes don't reliably get),
+// office:show {path} and office:overlay {bottom} (the office's "Get the
+// app" card floats over the frame: toasts move above it). A new deploy never reloads the app under someone's
 // thumb: it shows "New version, tap to reload" instead.
 
 import { APP_VERSION } from "./version.js";
@@ -18,7 +19,7 @@ import { MANIFESTS } from "./modules/index.js";
 import * as router from "./core/router.js";
 import * as nav from "./core/nav.js";
 import { edgeSwipe } from "./core/edge.js";
-import { api, get, on, signOut, compareVersions } from "./core/api.js";
+import { api, get, on, signOut, compareVersions, setCacheOwner } from "./core/api.js";
 import { html, render, toast } from "./core/ui.js";
 import { time as fmtTime } from "./core/format.js";
 
@@ -77,6 +78,10 @@ window.addEventListener("message", (e) => {
   if (e.origin !== location.origin || (framed && e.source !== window.parent)) return;
   const m = e.data || {};
   if (m.type === "office:insets") setInsets(m);
+  else if (m.type === "office:overlay") {
+    const n = Number(m.bottom);
+    document.documentElement.style.setProperty("--lift", (Number.isFinite(n) && n >= 0 && n < 400 ? n : 0) + "px");
+  }
   else if (m.type === "office:show" && typeof m.path === "string" && m.path.startsWith("/")) router.go(m.path);
 });
 
@@ -100,6 +105,8 @@ async function doSignOut(opts = {}) {
 
 function start() {
   if (!boot || !session.user) { location.replace("/crm/login"); return; }
+  // Offline copies are kept per person: another person's never shows here.
+  setCacheOwner(session.user.id);
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/crm-sw.js", { scope: "/crm" }).catch(() => {});
   router.register(MANIFESTS);
   router.configure({

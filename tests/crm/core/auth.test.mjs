@@ -93,7 +93,7 @@ test("progressive delay per login and device, the shared bucket for new browsers
   t = await crmTest();
   const owner = await t.user("owner", { login: "olive" });
   await t.bootstrap(owner);
-  const dev = "barta_dev=abcdefghijklmnopqrstuvwx";
+  const dev = t.device();
   const tryLogin = (password, opts = {}) => t.auth("/auth/login", { body: { login: "olive", password }, cookie: dev, ...opts });
   for (let i = 0; i < LOGIN_FREE_FAILS; i++) assert.equal((await tryLogin("wrong password " + i)).status, 401);
   let r = await tryLogin(PASSWORD);
@@ -101,7 +101,7 @@ test("progressive delay per login and device, the shared bucket for new browsers
   assert.equal(r.headers.get("retry-after"), "30");
   assert.ok(r.body.error.details.retry_after_s <= 30);
   // another phone of the same person is not locked out
-  const other = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, cookie: "barta_dev=zyxwvutsrqponmlkjihgfedc" });
+  const other = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, cookie: t.device() });
   assert.equal(other.status, 200);
   advance(31 * 1000);
   assert.equal((await tryLogin("wrong again")).status, 401);
@@ -116,7 +116,7 @@ test("progressive delay per login and device, the shared bucket for new browsers
   assert.equal((await tryLogin(PASSWORD)).status, 200);
 
   // the IP limit: 30 failures an hour from one address, whatever the login
-  for (let i = 0; i < IP_LIMIT; i++) await t.auth("/auth/login", { body: { login: "x" + i, password: "nope nope nope" }, headers: { "x-nf-client-connection-ip": "198.51.100.7" }, cookie: "barta_dev=dev" + String(i).padStart(21, "0") });
+  for (let i = 0; i < IP_LIMIT; i++) await t.auth("/auth/login", { body: { login: "x" + i, password: "nope nope nope" }, headers: { "x-nf-client-connection-ip": "198.51.100.7" }, cookie: t.device() });
   r = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, headers: { "x-nf-client-connection-ip": "198.51.100.7" }, cookie: dev });
   assert.equal(r.status, 429);
   assert.ok(r.body.error.details.retry_after_s > 3000, "refused for about an hour");
@@ -132,7 +132,7 @@ test("a browser without a device id shares the 'new' bucket, which locks for an 
   const r = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, headers: { "x-nf-client-connection-ip": "203.0.113.250" } });
   assert.equal(r.status, 429);
   assert.ok(r.body.error.details.retry_after_s > 3000);
-  const phone = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, cookie: "barta_dev=abcdefghijklmnopqrstuvwx" });
+  const phone = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, cookie: t.device() });
   assert.equal(phone.status, 200, "Alex's own phone still signs in");
 });
 
@@ -317,4 +317,202 @@ test("the sign-in routes refuse cross-site posts (CSRF) and a production deploy 
   r = await t.auth("/auth/login", { body: { login: owner.login, password: PASSWORD }, context: { deploy: { context: "production" } } });
   assert.equal(r.status, 503, "production without CRM_PRODUCTION: setup needed");
   assert.equal(r.body.error.code, "setup_needed");
+});
+
+// ------------------------------------------------------------ M1.2 review regressions
+
+test("a reset link signs the person out AND stops the old password until the link sets a new one", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner", { login: "olive" });
+  await t.bootstrap(owner);
+  const tech = await t.user("tech", { login: "gus" });
+  assert.equal((await t.auth("/auth/login", { body: { login: "gus", password: PASSWORD } })).status, 200, "before: the password works");
+  const r = await t.api(`/users/${tech.id}/reset`, { method: "POST", as: owner, body: {} });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.data.user.has_password, false);
+  const old = await t.auth("/auth/login", { body: { login: "gus", password: PASSWORD } });
+  assert.equal(old.status, 401, "the old password no longer signs in");
+  assert.equal(old.body.error.message, "That login or password isn't right.");
+  const token = r.body.data.link.split("/crm/invite/")[1];
+  assert.equal((await t.auth("/auth/invite", { body: { token, password: "gus picks a new one" } })).status, 200);
+  assert.equal((await t.auth("/auth/login", { body: { login: "gus", password: "gus picks a new one" } })).status, 200);
+  assert.equal((await t.auth("/auth/login", { body: { login: "gus", password: PASSWORD } })).status, 401);
+});
+
+test("invite and reset links are never stored in clear, even when the request carries an Idempotency-Key", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner", { login: "olive" });
+  await t.bootstrap(owner);
+  const add = await t.api("/users", { method: "POST", as: owner, idem: "11111111-2222-4333-8444-555555555555", body: { name: "Gus Tech", login: "gus", role: "tech" } });
+  assert.equal(add.status, 201);
+  const inv = await t.api(`/users/${add.body.data.id}/invite`, { method: "POST", as: owner, idem: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", body: {} });
+  assert.equal(inv.status, 200);
+  const token = inv.body.data.link.split(".").pop();
+  assert.ok(!dump(t).includes(token), "the invite token is nowhere in Blobs");
+  // a retry with the same key is a fresh link (and voids the first), never a replay of the stored one
+  const again = await t.api(`/users/${add.body.data.id}/invite`, { method: "POST", as: owner, idem: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", body: {} });
+  assert.equal(again.status, 200);
+  assert.equal(again.headers.get("idempotent-replay"), null);
+  assert.notEqual(again.body.data.link, inv.body.data.link);
+  assert.equal((await t.auth("/auth/invite", { body: { token: inv.body.data.link.split("/crm/invite/")[1], password: "a brand new password" } })).status, 410, "the first link is void");
+  const tech = await t.user("tech", { login: "ben" });
+  const reset = await t.api(`/users/${tech.id}/reset`, { method: "POST", as: owner, idem: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", body: {} });
+  assert.equal(reset.status, 200);
+  assert.ok(!dump(t).includes(reset.body.data.link.split(".").pop()), "nor the reset token");
+  assert.ok(!dump(t).includes(again.body.data.link.split(".").pop()));
+});
+
+test("setup: a too-long name is refused before the claim, so the corrected retry goes straight through", async () => {
+  t = await crmTest({ env: { CRM_SETUP_CODE: SETUP.setup_code } });
+  // the form caps what can be typed
+  const form = await t.page("/crm/setup", { office: true });
+  assert.match(form.text, /name="name"[^>]*maxlength="60"/);
+  assert.match(form.text, /name="login"[^>]*maxlength="32"/);
+  const first = await t.auth("/auth/setup", { body: { ...SETUP, name: "Olive " + "x".repeat(70) }, office: true });
+  assert.equal(first.status, 400);
+  assert.equal(first.body.error.field, "name");
+  assert.equal(await getRaw("sys/bootstrap"), null, "nothing claimed");
+  const retry = await t.auth("/auth/setup", { body: SETUP, office: true });
+  assert.equal(retry.status, 201, JSON.stringify(retry.body));
+  assert.equal((await t.page("/crm/setup", { office: true })).status, 410);
+});
+
+test("setup: a failure after the claim hands the claim back at once", async () => {
+  t = await crmTest({ env: { CRM_SETUP_CODE: SETUP.setup_code } });
+  // the login pointer is taken (an emergency re-setup over existing accounts, §4.4 step 4)
+  await t.user("tech", { login: "olive" });
+  const r = await t.auth("/auth/setup", { body: SETUP, office: true });
+  assert.equal(r.status, 400);
+  assert.equal(r.body.error.field, "login");
+  const boot = await getRaw("sys/bootstrap");
+  assert.equal(boot.data.released, true);
+  const retry = await t.auth("/auth/setup", { body: { ...SETUP, login: "olive.b" }, office: true });
+  assert.equal(retry.status, 201, "no 2-minute wait: " + JSON.stringify(retry.body));
+  assert.equal((await getRaw("sys/bootstrap")).data.state, "done");
+});
+
+test("setup: when the final 'done' write is lost, the CRM is still set up for everyone and sys/bootstrap is repaired", async () => {
+  t = await crmTest({ env: { CRM_SETUP_CODE: SETUP.setup_code } });
+  // the claim lands; every later write of sys/bootstrap times out (one bad moment of Blobs)
+  t.stores.data.beforeConditionalWrite((key, opts, store) => { store.fail({ op: ["set", "setJSON"], key: "sys/bootstrap", kind: "timeout", times: 10 }); }, { key: "sys/bootstrap" });
+  const r = await t.auth("/auth/setup", { body: SETUP, office: true });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  t.stores.data.clearHooks();
+  assert.equal((await getRaw("sys/bootstrap")).data.state, "pending", "the lost write");
+  advance(minutes(30));
+  const login = await t.page("/crm/login");
+  assert.equal(login.status, 200);
+  assert.match(login.text, /Team sign-in/, "the sign-in page, not 'Not set up yet'");
+  assert.equal((await getRaw("sys/bootstrap")).data.state, "done", "repaired");
+  const again = await t.auth("/auth/setup", { body: { ...SETUP, login: "jake" }, office: true });
+  assert.equal(again.status, 410);
+  assert.match((await t.office("/office")).text, /const TEAM = true;/);
+  // and before the repair, a pending claim whose owner exists already counts as done
+  await settledWrite("sys/bootstrap", { state: "pending", user_id: r.body.data.user.id, at: new Date().toISOString() }, { onlyIfMatch: (await getRaw("sys/bootstrap")).etag });
+  assert.match((await t.office("/office")).text, /const TEAM = true;/);
+  assert.equal((await t.auth("/auth/setup", { body: { ...SETUP, login: "jake" }, office: true })).status, 410);
+});
+
+test("failures that land at the same moment are all counted: 30 at once lock that IP", async () => {
+  t = await crmTest();
+  const { recordFailure, checkThrottle } = await import("../../../netlify/lib/crm/core/throttle.mjs");
+  const ip = "198.51.100.9";
+  await Promise.all(Array.from({ length: IP_LIMIT }, (_, i) => recordFailure({ login: "olive", device: ("d" + i).padEnd(24, "x"), ip })));
+  const th = await checkThrottle({ login: "olive", device: "z".repeat(24), ip });
+  assert.equal(th.ok, false, "the IP that just failed 30 times is refused");
+  assert.equal(th.why, "ip");
+  assert.ok(th.retry_after_s > 3000);
+  // and through the sign-in route: 30 wrong passwords at once, then the right one waits
+  const owner = await t.user("owner", { login: "olive" });
+  await t.bootstrap(owner);
+  const ip2 = { "x-nf-client-connection-ip": "198.51.100.10" };
+  await Promise.all(Array.from({ length: IP_LIMIT }, (_, i) => t.auth("/auth/login", { body: { login: "olive", password: "guess " + i }, headers: ip2, cookie: t.device() })));
+  assert.equal((await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, headers: ip2, cookie: t.device() })).status, 429);
+});
+
+test("a barta_dev the server didn't issue is no device: made-up ids share the 'new' bucket", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner", { login: "olive" });
+  await t.bootstrap(owner);
+  const statuses = [];
+  for (let i = 0; i < 21; i++) {
+    const forged = "barta_dev=" + ("f" + i).padEnd(24, "q") + (i % 2 ? "" : "." + "0".repeat(20));
+    const r = await t.auth("/auth/login", { body: { login: "olive", password: "guess number " + i }, cookie: forged, headers: { "x-nf-client-connection-ip": "203.0.113." + i } });
+    statuses.push(r.status);
+    assert.ok(t.setCookies(r).some((c) => c.startsWith("barta_dev=")), "a forged id is replaced by a real one");
+  }
+  assert.deepEqual(statuses.slice(0, 20), Array(20).fill(401));
+  assert.equal(statuses[20], 429, "the 21st guess waits an hour, forged ids or not");
+  const phone = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD }, cookie: t.device() });
+  assert.equal(phone.status, 200, "a phone the server issued an id to still signs in");
+  const issued = t.cookieFrom(phone, "barta_dev");
+  assert.equal(issued, null, "a valid id is kept, not replaced");
+});
+
+test("a wrong password for a real login and an unknown login make the same storage round trips before the answer", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner", { login: "olive" });
+  await t.bootstrap(owner);
+  const dev = t.device();
+  const run = async (login) => {
+    const later = [];
+    const before = t.stores.data.calls.length;
+    const r = await t.auth("/auth/login", { body: { login, password: "wrong password here" }, cookie: dev, context: { waitUntil: (p) => later.push(p) } });
+    const calls = t.stores.data.calls.slice(before);
+    // what the answer waited for: everything but the audit event handed to waitUntil
+    const ops = calls.filter((c) => !String(c.key).startsWith("evt/")).map((c) => c.op);
+    await Promise.all(later);
+    return { status: r.status, ops, audit: calls.filter((c) => String(c.key).startsWith("evt/")).length, later: later.length };
+  };
+  const unknown = await run("nobody");
+  const known = await run("olive");
+  const invalid = await run("not a login@example.com");
+  assert.equal(unknown.status, 401);
+  assert.equal(known.status, 401);
+  assert.equal(invalid.status, 401);
+  assert.deepEqual(known.ops, unknown.ops, "the same calls in the same order");
+  assert.deepEqual(invalid.ops, unknown.ops);
+  assert.equal(known.audit, 1, "a real login's failure is still audited");
+  assert.equal(known.later, 1, "but through waitUntil: the answer doesn't wait for it");
+  assert.equal(unknown.later, 0);
+});
+
+test("sign out that device: DELETE /users/:id/sessions/:hash with exactly the app's headers signs the other phone out", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner", { login: "olive" });
+  await t.bootstrap(owner);
+  const second = t.cookieFrom(await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD } }), SESSION_COOKIE);
+  const list = await t.api(`/users/${owner.id}/sessions`, { as: owner });
+  assert.equal(list.status, 200);
+  assert.equal(list.body.data.length, 2);
+  const other = list.body.data.find((s) => !s.current);
+  // crm-app/core/api.js: X-CRM, X-CRM-Client, Accept; no Content-Type and no body on a DELETE
+  const r = await t.api(`/users/${owner.id}/sessions/${other.hash}`, { method: "DELETE", as: owner, headers: { accept: "application/json" } });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal((await t.api("/me", { cookie: second })).status, 401, "that phone is signed out");
+  assert.equal((await t.api("/me", { as: owner })).status, 200, "this one isn't");
+  // an owner signs a tech's lost phone out from the Person screen
+  const tech = await t.user("tech", { login: "gus" });
+  const ts = await t.api(`/users/${tech.id}/sessions`, { as: owner });
+  const gone = await t.api(`/users/${tech.id}/sessions/${ts.body.data[0].hash}`, { method: "DELETE", as: owner });
+  assert.equal(gone.status, 200);
+  assert.equal((await t.api("/me", { as: tech })).status, 401);
+  // the CSRF header and the Origin check still apply to a DELETE
+  assert.equal((await t.api(`/users/${owner.id}/sessions/${other.hash}`, { method: "DELETE", as: owner, csrf: false })).status, 403);
+  assert.equal((await t.api(`/users/${owner.id}/sessions/${other.hash}`, { method: "DELETE", as: owner, headers: { origin: "https://evil.example" } })).status, 403);
+});
+
+test("PATCH /users/:id takes only owner, admin or tech as a role", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner");
+  await t.bootstrap(owner);
+  const tech = await t.user("tech");
+  for (const role of ["Owner", "boss", "", null]) {
+    const r = await t.api(`/users/${tech.id}`, { method: "PATCH", as: owner, ifMatch: tech.etag, body: { role } });
+    assert.equal(r.status, 400, String(role));
+    assert.equal(r.body.error.field, "role");
+  }
+  const ok = await t.api(`/users/${tech.id}`, { method: "PATCH", as: owner, ifMatch: tech.etag, body: { role: "admin" } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.data.role, "admin");
 });

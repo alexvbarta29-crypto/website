@@ -25,6 +25,8 @@ registerModule({
     { method: "POST", path: "/zz/echo", auth: "session", perm: "account:own", subject: "none", mode: "inline", handler: async (ctx) => { runs += 1; return { status: 201, data: { got: ctx.body, n: runs } }; } },
     { method: "POST", path: "/zz/boom", auth: "session", perm: "account:own", subject: "none", mode: "inline", handler: async () => { runs += 1; throw new Error("kaput"); } },
     { method: "POST", path: "/zz/bad", auth: "session", perm: "account:own", subject: "none", mode: "inline", handler: async () => { runs += 1; throw new InputError("Nope.", "name"); } },
+    { method: "DELETE", path: "/zz/items/:id", auth: "session", perm: "account:own", subject: "required", mode: "inline", handler: async (ctx) => { runs += 1; return { data: { deleted: ctx.params.id } }; } },
+    { method: "POST", path: "/zz/secret", auth: "session", perm: "account:own", subject: "none", mode: "inline", idempotent: false, secret: true, handler: async () => { runs += 1; return { data: { link: "bearer-" + runs } }; } },
     { method: "POST", path: "/zz/replay", auth: "session", perm: "account:own", subject: "none", mode: "inline", replaySafe: true, handler: async () => ({ data: { ok: 1 } }) },
     { method: "GET", path: "/zz/calls", auth: "session", perm: "account:own", subject: "none", mode: "inline", maxCalls: 6, handler: async () => { for (let i = 0; i < 10; i++) await getRaw("zz/nothing-" + i); return { data: 1 }; } },
     { method: "GET", path: "/zz/hang", auth: "session", perm: "account:own", subject: "none", mode: "inline", budgetMs: 900, handler: async () => { await getRaw("zz/hang"); return { data: 1 }; } },
@@ -186,4 +188,32 @@ test("a production deploy on another host gets a 308 to the canonical host; with
     assert.equal(s.status, 503);
     assert.equal(s.body.error.code, "setup_needed");
   } finally { process.env.CRM_KEY_SALT = "test-salt"; }
+});
+
+test("a body-less DELETE needs X-CRM and a same-origin Origin, but no Content-Type (the app sends none)", async () => {
+  // Regression (M1.2 review): every DELETE was refused 403 "Send JSON.",
+  // which broke "sign out that device".
+  t = await crmTest();
+  const o = await t.user("owner");
+  const r = await t.api("/zz/items/abc", { method: "DELETE", as: o, headers: { accept: "application/json" } });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.data.deleted, "abc");
+  assert.equal((await t.api("/zz/items/abc", { method: "DELETE", as: o, csrf: false })).status, 403);
+  assert.equal((await t.api("/zz/items/abc", { method: "DELETE", as: o, headers: { origin: "https://evil.example" } })).status, 403);
+  assert.equal((await t.api("/zz/items/abc", { method: "DELETE", as: o, headers: { origin: "null" } })).status, 403);
+  // a POST still needs JSON
+  assert.equal((await t.api("/zz/echo", { method: "POST", as: o, raw: "{}", headers: { "content-type": "text/plain" } })).status, 403);
+});
+
+test("a secret route's answer is never kept for replay, and the registry refuses a secret route that is idempotent", async () => {
+  t = await crmTest();
+  const o = await t.user("owner");
+  const key = "cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const a = await t.api("/zz/secret", { method: "POST", as: o, idem: key, body: {} });
+  const b = await t.api("/zz/secret", { method: "POST", as: o, idem: key, body: {} });
+  assert.equal(a.status, 200);
+  assert.notEqual(a.body.data.link, b.body.data.link, "run again, not replayed");
+  const all = [...t.stores.data.snapshot()].map(([k, v]) => k + " " + new TextDecoder().decode(v.bytes)).join("\n");
+  assert.ok(!all.includes(a.body.data.link) && !all.includes(b.body.data.link), "nothing of the answer is stored");
+  assert.throws(() => registerModule({ name: "zz-secret-bad", routes: [{ method: "POST", path: "/zz/leaky", auth: "session", perm: "account:own", subject: "none", mode: "inline", secret: true, handler: async () => ({}) }] }), /secret route must be idempotent: false/);
 });

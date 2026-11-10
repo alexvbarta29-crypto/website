@@ -19,7 +19,8 @@ import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieF
 import { deployContext } from "../lib/crm/core/context.mjs";
 import { withStoreScope, withBudget } from "../lib/crm-store.mjs";
 import { lookupSession } from "../lib/crm/core/sessions.mjs";
-import { storeBlocked, readBootstrap, bootstrapDone } from "../lib/crm/core/auth.mjs";
+import { storeBlocked, setupDone } from "../lib/crm/core/auth.mjs";
+import { pageMethodNotAllowed } from "../lib/crm/core/http.mjs";
 import { safeErr } from "../lib/referral-lib.mjs";
 
 export const config = { path: ["/office", "/office/", "/office/launch"] };
@@ -43,7 +44,7 @@ async function crmState(req, context) {
     return await withStoreScope({ deploy, budget: withBudget(4000, 8), requestId: "office" }, async () => {
       const session = await lookupSession(req);
       if (session) return { session, ready: true };
-      return { session: null, ready: bootstrapDone(await readBootstrap()) };
+      return { session: null, ready: await setupDone() };
     });
   } catch (e) {
     console.error("office: couldn't check the CRM sign-in (" + safeErr(e) + ")");
@@ -54,7 +55,7 @@ async function crmState(req, context) {
 export default async (req, context) => {
   const path = new URL(req.url).pathname;
   if (path === "/office/launch") {
-    if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { Allow: "GET" } });
+    if (req.method !== "GET" && req.method !== "HEAD") return pageMethodNotAllowed("GET, HEAD");
     return new Response(launcherHtml(), { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "same-origin", "X-Frame-Options": "DENY" } });
   }
   if (req.method === "POST") {
@@ -67,7 +68,7 @@ export default async (req, context) => {
     const { ready } = await crmState(req, context);
     return page(officeLoginHtml({ error: "That password isn't right. Try again.", team: ready }), 401);
   }
-  if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, POST" } });
+  if (req.method !== "GET" && req.method !== "HEAD") return pageMethodNotAllowed("GET, HEAD, POST");
   if (signedIn(req)) return page(officeHtml(), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
   const crm = await crmState(req, context);
   if (crm.session) return page(officeHtml({ solo: true }));

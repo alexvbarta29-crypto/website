@@ -19,7 +19,7 @@
 // session_epoch (password change, role change, disable, "sign out
 // everywhere"). A nightly auth.sessions sweep (M1.3) deletes expired ones.
 
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes, createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { getRaw, deleteRaw, settledWrite, addRel, removeRel, listRel, getRecord, getRecords } from "../../crm-store.mjs";
 import { nowMs, nowIso, tsKey } from "./clock.mjs";
 import { isId } from "./ids.mjs";
@@ -55,15 +55,23 @@ export function parseSessionCookie(req) {
   return { uid, token, hash: sha256(token) };
 }
 
-// The device id from barta_dev (a random id, per browser; §4.8).
-const DEVICE_RE = /^[a-z0-9]{24}$/;
+// The device id from barta_dev (§4.8): a random id per browser, signed by
+// the server ("{id}.{mac}", mac = HMAC-SHA256 with CRM_KEY_SALT), so a
+// client can't make up a fresh id per guess to dodge the per-device delay
+// and the shared "new" bucket. An id that doesn't verify counts as none.
+const DEVICE_RE = /^([a-z0-9]{24})\.([0-9a-f]{20})$/;
+const deviceMac = (id, salt = process.env.CRM_KEY_SALT || "dev-only") => createHmac("sha256", salt).update("barta_dev|" + id).digest("hex").slice(0, 20);
 export function deviceId(req) {
-  const v = readCookie(req, DEVICE_COOKIE);
-  return DEVICE_RE.test(v) ? v : null;
+  const m = DEVICE_RE.exec(readCookie(req, DEVICE_COOKIE));
+  if (!m) return null;
+  const want = Buffer.from(deviceMac(m[1]), "utf8");
+  const got = Buffer.from(m[2], "utf8");
+  return want.length === got.length && timingSafeEqual(want, got) ? m[1] : null;
 }
 export function newDeviceCookie() {
   const id = randomBytes(15).toString("base64url").toLowerCase().replace(/[^a-z0-9]/g, "a").slice(0, 24).padEnd(24, "a");
-  return { id, cookie: cookie(DEVICE_COOKIE, id, ONE_YEAR_S) };
+  const value = `${id}.${deviceMac(id)}`;
+  return { id, value, cookie: cookie(DEVICE_COOKIE, value, ONE_YEAR_S) };
 }
 
 export function ipHash(ip, salt = process.env.CRM_KEY_SALT || "dev-only") {

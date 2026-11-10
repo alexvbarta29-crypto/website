@@ -8,8 +8,10 @@
 //   (lights-auth.mjs, untouched), per the route's `auth`.
 // - First-owner bootstrap (§4.4): needs the office cookie AND the one-time
 //   CRM_SETUP_CODE (a Production-only env var), and works once: sys/bootstrap
-//   is claimed with onlyIfNew, so two phones racing create one owner. No
-//   office token is ever stored.
+//   is claimed with onlyIfNew, so two phones racing create one owner. The
+//   typed details are validated before the claim; a definite failure after
+//   it releases the claim; setupDone() treats "pending + its owner exists"
+//   as done. No office token is ever stored.
 // - Sign-in (§4.8): throttle first, then PBKDF2 (a dummy hash for an unknown
 //   login, so timing and wording never say whether a login exists).
 // - D14 (§2.4): an optional office password on the Team sign-in sets
@@ -21,7 +23,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { signedIn as officeSignedIn, derive, sha256 as officeSha, same, expected, cookieFor as officeCookieFor, ONE_YEAR } from "../../lights-auth.mjs";
 import { getRecord, readPointer, createRecord, updateRecord, getRaw, settledWrite, appendEvent, getSetting } from "../../crm-store.mjs";
-import { InputError, ForbiddenError, ConflictError } from "./errors.mjs";
+import { InputError, ForbiddenError, ConflictError, ExistsError } from "./errors.mjs";
 import { nowIso, nowMs } from "./clock.mjs";
 import { newId, isId } from "./ids.mjs";
 import { CANONICAL_ORIGIN } from "./context.mjs";
@@ -31,7 +33,7 @@ import { checkThrottle, recordFailure, recordSuccess } from "./throttle.mjs";
 import { permsFor } from "./perms.mjs";
 import { lookupApiKey, touchApiKey } from "./apikeys.mjs";
 import { safeTo, clientIp, uaFamily, fail, withCookies } from "./http.mjs";
-import { publicUser, normLogin, USER_COLORS, LOGIN_RE } from "../modules/system/types.mjs";
+import { publicUser, normLogin, userType, USER_COLORS, LOGIN_RE } from "../modules/system/types.mjs";
 
 export { officeSignedIn };
 
@@ -68,15 +70,32 @@ export async function readBootstrap(opts = {}) {
 }
 export const bootstrapDone = (b) => !!b && b.state === "done";
 
+// Is the first owner made? sys/bootstrap is "done", or still "pending" with
+// its owner record already written (setup's last write was lost: a timeout,
+// a budget, the function dying). That second case is repaired to "done"
+// here (CAS, best effort), so one lost write never leaves the CRM looking
+// "not set up" to everyone else. Every reader (crm.mjs, office.mjs, setup)
+// asks this, never bootstrapDone() alone.
+export async function setupDone(opts = {}) {
+  const b = await readBootstrap(opts);
+  if (bootstrapDone(b)) return true;
+  if (!b || b.state !== "pending" || !isId(b.user_id, "user")) return false;
+  const rec = await getRecord("user", b.user_id, opts);
+  if (!rec || !rec.data) return false;
+  await settledWrite(BOOTSTRAP_KEY, { state: "done", user_id: b.user_id, at: b.at, done_at: nowIso(), repaired: true }, { onlyIfMatch: b.etag }, opts).catch(() => {});
+  return true;
+}
+
 // ------------------------------------------------------------ permissions doc
 
 let permsCache = null;   // { epoch, data }
-// cfg/permissions (owner-only), cached per warm instance until sys/auth-epoch moves.
+// cfg/permissions (owner-only), cached per warm instance until sys/auth-epoch
+// moves. Fails closed: a failed read throws (the caller answers 503) and is
+// never cached, so a Blobs blip can't put an instance on the role defaults.
 export async function loadPermissions(opts = {}) {
   const epoch = await readAuthEpoch(opts);
   if (permsCache && permsCache.epoch === epoch) return permsCache.data;
-  let data = null;
-  try { data = await getSetting("permissions", opts); } catch { data = null; }
+  const data = await getSetting("permissions", opts);
   permsCache = { epoch, data };
   return data;
 }
@@ -119,6 +138,12 @@ export async function authenticate(req, auth, opts = {}) {
 export function whoAmI(user, permissions = null) {
   return { user: publicUser(user, { full: true }), perms: permsFor(user, permissions) };
 }
+// The same after a sign-in. The permissions are a hint for the page (every
+// request checks them again); if they can't be read now, the app learns
+// them from /me instead of from the role defaults.
+async function signedInAs(user) {
+  try { return whoAmI(user, await loadPermissions()); } catch { return { user: publicUser(user, { full: true }), perms: null }; }
+}
 
 // ------------------------------------------------------------ helpers
 
@@ -128,12 +153,24 @@ function auditAuth(userId, action, ctx, extra = {}) {
   if (!isId(userId, "user")) return Promise.resolve();
   return appendEvent("user", userId, { action, by: userId, origin: "api", ua: uaFamily(ctx.req.headers.get("user-agent")), ip_hash: ipHash(clientIp(ctx.req, ctx.context)), ...extra }).catch(() => {});
 }
+// Work that must not hold up the answer (the platform keeps the function
+// alive for it through context.waitUntil; elsewhere it just runs on).
+function later(ctx, p) {
+  const w = ctx.context && typeof ctx.context.waitUntil === "function" ? ctx.context.waitUntil.bind(ctx.context) : null;
+  if (w) { try { w(p); } catch { /* p still runs */ } }
+}
 
+// The user behind a typed login, or null. Known and unknown logins make the
+// same two sequential reads (the pointer, then a record: the real one or a
+// dummy id that never exists), so storage time doesn't say whether a login
+// exists (§4.8); PBKDF2 is matched by dummyCheck().
+export const DUMMY_USER_ID = "us_00000000000000000000";
 async function userByLogin(login, opts) {
-  if (!LOGIN_RE.test(login)) return null;
-  const ptr = await readPointer("login", login, opts);
-  if (!ptr || !isId(ptr.id, "user")) return null;
-  const rec = await getRecord("user", ptr.id, opts);
+  const handle = LOGIN_RE.test(login) ? login : "--";
+  const ptr = await readPointer("login", handle, opts);   // a failed read is 503, never "wrong password"
+  const id = ptr && isId(ptr.id, "user") && handle === login ? ptr.id : DUMMY_USER_ID;
+  const rec = await getRecord("user", id, opts);
+  if (id === DUMMY_USER_ID) return null;
   return rec && rec.data && rec.data.login === login ? rec.data : null;
 }
 
@@ -195,7 +232,8 @@ async function login(ctx) {
   const check = user && user.password ? await verifyPassword(password, user.password) : await dummyCheck(password);
   if (!check.ok || !user || user.status !== "active") {
     await recordFailure(who).catch(() => {});
-    if (user) await auditAuth(user.id, "sign_in_failed", ctx);
+    // Not awaited: an extra write only for real logins would time them apart.
+    if (user) later(ctx, auditAuth(user.id, "sign_in_failed", ctx));
     return withCookies(fail("bad_login", BAD_LOGIN, 401), cookies);
   }
   await recordSuccess(who).catch(() => {});
@@ -219,8 +257,7 @@ async function login(ctx) {
     }
   }
   await auditAuth(fresh.id, "sign_in", ctx, { office: office === true });
-  const permissions = await loadPermissions().catch(() => null);
-  return { data: { ...whoAmI(fresh, permissions), to, office_cookie: office }, cookies };
+  return { data: { ...(await signedInAs(fresh)), to, office_cookie: office }, cookies };
 }
 
 async function logout(ctx) {
@@ -255,13 +292,25 @@ async function changePassword(ctx) {
   return { data: { ok: true }, cookies: [ses.cookie] };
 }
 
+// Definite failures after the claim: nothing was written, so the claim is
+// handed back at once (a corrected retry never waits out BOOTSTRAP_STALE_MS).
+const RELEASE_ON = [InputError, ExistsError, ConflictError, ForbiddenError];
+async function releaseClaim(uid) {
+  const cur = await getRaw(BOOTSTRAP_KEY);
+  if (!cur || !cur.data || cur.data.state !== "pending" || cur.data.user_id !== uid) return;
+  if (await getRecord("user", uid)) return;
+  await settledWrite(BOOTSTRAP_KEY, { state: "pending", user_id: uid, at: cur.data.at, released: true }, { onlyIfMatch: cur.etag });
+}
+
+const SETUP_DONE = "Setup is done. Ask an owner to invite you.";
+const SETUP_BUSY = "Setup is already running on another phone. Wait a minute, then reload.";
+
 async function setup(ctx) {
   const b = ctx.body || {};
   if (!officeSignedIn(ctx.req)) throw new ForbiddenError("Sign in to Barta Office with the office password first.");
   const code = String(process.env.CRM_SETUP_CODE || "").trim();
   if (!code) return fail("setup_needed", "Add CRM_SETUP_CODE in Netlify first (Production only).", 503);
-  const boot = await readBootstrap();
-  if (bootstrapDone(boot)) return gone("Setup is done. Ask an owner to invite you.");
+  if (await setupDone()) return gone(SETUP_DONE);
   const ip = clientIp(ctx.req, ctx.context);
   const who = { login: "setup", device: deviceId(ctx.req), ip };
   const th = await checkThrottle(who);
@@ -270,39 +319,56 @@ async function setup(ctx) {
     await recordFailure(who).catch(() => {});
     throw new InputError("That setup code isn't right.", "setup_code");
   }
+  // Everything typed is checked BEFORE the claim, with the user type's own
+  // rules (name 60, first and last 40, login, password policy).
   const name = String(b.name ?? "").trim();
   if (!name) throw new InputError("Type your name.", "name");
   const login = normLogin(b.login);
   checkPolicy(b.password, { login, name });
   const uid = newId("user");
-  // Claim the bootstrap first: two phones racing create one owner. A claim
-  // left pending by a request that died (no owner record after 2 minutes)
-  // may be taken over.
+  const draft = {
+    id: uid, login, name, role: "owner", status: "active", is_technician: b.is_technician === true,
+    color: USER_COLORS[0], session_epoch: 0, grants: [], denies: [], last_sign_in_at: nowIso(),
+  };
+  userType.validate({ ...draft }, { op: "create" });
+  // Claim the bootstrap: two phones racing create one owner. A claim that
+  // was released, or left pending by a request that died (no owner record
+  // after 2 minutes), may be taken over; a pending claim whose owner record
+  // exists is a finished setup.
   const claim = { state: "pending", user_id: uid, at: nowIso() };
   let w = await settledWrite(BOOTSTRAP_KEY, claim, { onlyIfNew: true });
   if (!w.ok) {
     const cur = w.current && w.current.data;
-    const staleClaim = cur && cur.state === "pending" && Date.parse(cur.at) + BOOTSTRAP_STALE_MS < nowMs() && !(await getRecord("user", cur.user_id));
-    if (!staleClaim) {
-      if (cur && cur.state === "pending") throw new ConflictError("Setup is already running on another phone. Wait a minute, then reload.");
-      return gone("Setup is done. Ask an owner to invite you.");
-    }
+    if (!cur || cur.state !== "pending") return gone(SETUP_DONE);
+    if (isId(cur.user_id, "user") && (await getRecord("user", cur.user_id))) return gone(SETUP_DONE);
+    const stale = cur.released === true || !(Date.parse(cur.at) + BOOTSTRAP_STALE_MS > nowMs());
+    if (!stale) throw new ConflictError(SETUP_BUSY);
     w = await settledWrite(BOOTSTRAP_KEY, claim, { onlyIfMatch: w.current.etag });
-    if (!w.ok) throw new ConflictError("Setup is already running on another phone. Wait a minute, then reload.");
+    if (!w.ok) throw new ConflictError(SETUP_BUSY);
   }
-  const pw = await hashPassword(b.password);
-  const created = await createRecord("user", {
-    id: uid, login, name, role: "owner", status: "active", is_technician: b.is_technician === true,
-    color: USER_COLORS[0], password: pw, session_epoch: 0, grants: [], denies: [], last_sign_in_at: nowIso(),
-  }, writeCtx(ctx, uid));
-  const cur = await getRaw(BOOTSTRAP_KEY);
-  if (cur && cur.data && cur.data.user_id === uid) {
-    await settledWrite(BOOTSTRAP_KEY, { state: "done", user_id: uid, at: cur.data.at, done_at: nowIso() }, { onlyIfMatch: cur.etag }).catch(() => {});
+  let created;
+  try {
+    const pw = await hashPassword(b.password);
+    created = await createRecord("user", { ...draft, password: pw }, writeCtx(ctx, uid));
+  } catch (e) {
+    if (RELEASE_ON.some((C) => e instanceof C)) await releaseClaim(uid).catch(() => {});
+    if (e instanceof ExistsError) throw new InputError("That login is taken. Pick another.", "login");
+    throw e;
+  }
+  // Mark it done (a few tries). If every try fails, setupDone() still sees
+  // this owner behind the pending claim and repairs it.
+  for (let i = 0; i < 3; i++) {
+    try {
+      const cur = await getRaw(BOOTSTRAP_KEY);
+      if (!cur || !cur.data || cur.data.user_id !== uid || cur.data.state === "done") break;
+      const d = await settledWrite(BOOTSTRAP_KEY, { state: "done", user_id: uid, at: cur.data.at, done_at: nowIso() }, { onlyIfMatch: cur.etag });
+      if (d.ok) break;
+    } catch { /* try again */ }
   }
   await recordSuccess(who).catch(() => {});
   const ses = await createSession(created.data, ctx.req, ctx.context);
   await auditAuth(uid, "setup", ctx);
-  return { status: 201, data: { ...whoAmI(created.data), to: "/office#crm" }, cookies: [ses.cookie] };
+  return { status: 201, data: { ...(await signedInAs(created.data)), to: "/office#crm" }, cookies: [ses.cookie] };
 }
 
 async function inviteInfo(ctx) {
@@ -328,7 +394,7 @@ async function acceptInvite(ctx) {
   if ((t.user.invite.kind || "invite") === "reset") await bumpAuthEpoch("reset");
   const ses = await createSession(r.data, ctx.req, ctx.context);
   await auditAuth(t.user.id, t.user.invite.kind === "reset" ? "password_reset" : "invite_accepted", ctx);
-  return { data: { ...whoAmI(r.data), to: "/crm" }, cookies: [ses.cookie] };
+  return { data: { ...(await signedInAs(r.data)), to: "/crm" }, cookies: [ses.cookie] };
 }
 
 // Routes served by crm-auth.mjs (paths under /api/crm). `account:own` is the
