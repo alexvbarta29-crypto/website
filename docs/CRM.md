@@ -82,8 +82,9 @@ Pieces:
 - Data: `netlify/lib/crm-data.mjs` (`loadCustomers()` reads the index;
   `normalizeBundle()` checks an export; helpers for names, phones,
   addresses, maps links, members) over `netlify/lib/crm-store.mjs`
-  (`openStore()`, `readCustomerIndex()`, `buildCustomerIndex()`,
-  `writeCustomerIndex()`, `indexSummary()`).
+  (`openLegacyStore()`, `readCustomerIndex()`, `buildCustomerIndex()`,
+  `writeCustomerIndex()`, `indexSummary()`; these keep using the `crm`
+  store exactly as before while the full CRM is built next to them).
 - Tests: `tests/crm.test.mjs`, `tests/crm-import.test.mjs` (made-up people,
   555 numbers; the store is a Map).
 
@@ -163,3 +164,121 @@ merges.
   `build/office-dashboard-public.pem`, set its `privateKey` in Netlify, and
   re-seal both the dashboard snapshot and a fresh customer export, then
   re-import.
+
+## The full CRM: foundations (M1.1)
+
+The Customers list above is the first slice. The full CRM (contacts, sales,
+quotes, plans, scheduling, the tech app, money, messages, payroll, reports,
+Claude's MCP access) is being built in milestones next to it; nothing a
+customer or the office sees changes until each part ships, and Rotor stays
+the system of record until cutover. M1.1 lays the foundations; it adds no
+screen.
+
+### Storage: `netlify/lib/crm-store.mjs`
+
+The only file that talks to Netlify Blobs. Besides the legacy functions
+above it now has the CRM's store API: records (`createRecord`,
+`updateRecord`, `patchRecord`, `softDelete`, `hardDelete`, `getRecord`),
+pointers, relations, index blobs, audit events and the activity feed,
+counters, settings, exactly-once markers, leases, idempotency records, the
+`contact_stats` sidecar (`updateStats`) and file bytes. What it guarantees:
+
+- **Production data only in production.** `openStore(kind, deploy)` needs
+  the deploy object from `core/context.mjs` `deployContext()`. Production
+  means the deploy context is `production` **and** the Production-only env
+  var `CRM_PRODUCTION=1`; only then are the stores `crm`, `crm-files`,
+  `crm-backups` used. Deploy previews, branch deploys and local runs get
+  `crm--deploy-preview`, `crm--branch-deploy`, `crm--dev`. A production
+  deploy without `CRM_PRODUCTION` is "setup needed": the new CRM refuses to
+  open any store (the screens arriving in M1.2 say "Setup needed"), while
+  the office tools and the Customers list keep working as today.
+- **No lost or doubled writes.** Every shared write is conditional
+  (`onlyIfNew` / `onlyIfMatch`) and carries a writer nonce. Blobs is opened
+  with its own `fetch` that gives each attempt a timeout and turns 429/5xx
+  into one quick failure (the Blobs client would otherwise sleep 5 s per
+  retry inside a request); the store retries itself and, when an outcome is
+  unclear, re-reads the key: its own nonce means the write landed. If even
+  that read fails, a `fix/` marker names the key for the worker and the API
+  answers "Storage didn't answer" (safe to retry).
+- **No personal data in keys.** Phones and emails are keyed by an HMAC
+  (`hk()`, salt `CRM_KEY_SALT`), never by digits or addresses.
+- **Rotor stays in charge until cutover.** Automation may only create or
+  change sandboxed records (made in the CRM and never imported, or a test
+  contact); the store throws `ParallelRunGuard` otherwise (`core/guard.mjs`).
+
+### Code layout
+
+- `netlify/lib/crm/core/`: ids, clock (America/Chicago, DST-safe, pinned
+  in tests), money (integer cents), errors, validators, text helpers,
+  deploy context and the side-effect gate, the guard, the marker state
+  machine, the module registry, services, events, stats, and the platform
+  probe.
+- `netlify/lib/crm/modules/<module>/`: one directory per module (system,
+  contacts, sales, import, quotes, plans, work, money, comms, payroll,
+  reports, mcp), each a `defineModule()` manifest registered by
+  `modules/index.mjs`; all but `system` are stubs until their milestone.
+  Each has its own `docs/CRM-<MODULE>.md`.
+- `crm-app/modules/<module>/manifest.js`: the client side of each module
+  (stubs; the app itself arrives in M1.2).
+
+### The platform probe (until the M1 gate)
+
+Three probe-only functions record what Netlify actually gives each kind of
+function into a scratch store, `crm-probe` (no customer data, safe before
+any setup):
+
+- `GET /api/crm-probe` (office sign-in): records the request function's
+  facts and shows the whole report: per function kind (request, scheduled,
+  background) whether the deploy-context signal and `CRM_PRODUCTION` are
+  there, the Node version, write latency, and which Production-only
+  settings are still missing (yes/no only, never a value).
+  `POST /api/crm-probe` with header `X-CRM: 1` times 20 conditional writes.
+- `crm-cron` (every 15 minutes, production only): records the scheduled
+  function's facts and wakes the background function with a shared secret
+  kept in the probe store.
+- `crm-worker-background`: records the background function's facts and,
+  at most hourly, times 20 conditional writes.
+
+If p95 is over 150 ms, the request budget's default of 25 Blobs calls is
+lowered (`suggested_max_calls` in the report).
+
+### No customer data in git: three guards
+
+`build/no_data_scan.mjs` fails on phone numbers outside 555 and the
+business's own numbers, real email addresses, data exports (`.jsonl`,
+`*.sealed.json`, anything in `netlify/data/` but the dashboard snapshot)
+and Stripe/Twilio secret or id shapes. It runs:
+
+1. before every `git push`: `npm install` sets `core.hooksPath` to
+   `.githooks`, whose `pre-push` scans every outgoing commit (files and
+   messages, including history a later commit removed);
+2. on GitHub for every push and pull request (`.github/workflows/no-data.yml`);
+3. in `npm test` (`tests/crm/no-data.test.mjs`).
+
+`npm run scan` runs it by hand. It prints file:line and the kind of
+finding, never the value.
+
+### Tests
+
+`npm test` runs everything; `npm run test:crm` only the CRM's. The CRM
+tests use `tests/helpers/crm-memory-store.mjs`, an in-memory copy of the
+Blobs store with fault hooks (a write that lands but reports failure, a
+slow write, a hang, a 503), and pin the clock. `CRM_IT=1 npm test` also
+runs the store contract against a local Blobs server (it opens a local
+port).
+
+### Owner setup (Netlify, Production context only)
+
+Until these exist the new CRM stays in "setup needed" and changes nothing:
+
+- `CRM_PRODUCTION` = `1` (marks the real production deploy),
+- `CRM_KEY_SALT` = a long random string (keys phone and email lookups;
+  keep a copy in the password manager: a restore needs it),
+- `CRM_SETUP_CODE` = a one-time code for creating the first owner account
+  (M1.2; delete it after setup).
+
+Set each one for the **Production** context only (empty for deploy
+previews, branch deploys and local development), and turn **Deploy
+Previews** and **branch deploys** off (Site configuration → Build & deploy):
+every deploy's functions can reach the site's stores, so only the
+production branch should build.

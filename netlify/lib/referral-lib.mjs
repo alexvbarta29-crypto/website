@@ -445,12 +445,23 @@ export async function mapLimit(items, limit, fn) {
   return out;
 }
 
-// Error text safe for the function log: name plus a message with any long
-// digit run masked, because Blobs errors can echo keys that contain phone
-// numbers and Rotor errors can echo submitted fields.
+// Error text safe for the function log: name plus a message with anything
+// that could be a person masked, because Blobs errors can echo keys, Rotor
+// and JSON errors can echo submitted fields, and validators quote values:
+//   - quoted substrings ("…", '…', `…`, “…”) → "…"
+//   - email addresses → <email>
+//   - phone-like runs (digits with spaces, dots, dashes or parentheses) and
+//     any run of 4+ digits → ####
+// Then cut to 160 characters. Logs carry counts, codes and statuses only.
+export function maskSensitive(text) {
+  return String(text)
+    .replace(/"[^"\n]*"|(?<![A-Za-z0-9])'[^'\n]*'|`[^`\n]*`|\u201c[^\u201d\n]*\u201d/g, '"…"')
+    .replace(/[^\s@"'<>()[\],;:]+@[^\s@"'<>()[\],;:]+/g, "<email>")
+    .replace(/\+?\d[\d\s().-]{6,}\d/g, "####")
+    .replace(/\d{4,}/g, "####");
+}
 export const safeErr = (err) => {
   const name = err && err.name ? String(err.name) : "Error";
-  const msg = err && err.message
-    ? String(err.message).replace(/\d{4,}/g, "####").slice(0, 160) : "";
+  const msg = err && err.message ? maskSensitive(err.message).slice(0, 160) : "";
   return msg ? `${name}: ${msg}` : name;
 };

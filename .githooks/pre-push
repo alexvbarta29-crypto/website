@@ -1,0 +1,15 @@
+#!/bin/sh
+# Barta: refuse to push customer data (docs/CRM.md "No customer data in git").
+# Installed by `npm install` (package.json "prepare" sets core.hooksPath to
+# .githooks). Scans every outgoing commit with build/no_data_scan.mjs: phone
+# numbers outside 555, real emails, data exports, Stripe/Twilio secrets.
+# git passes "<remote> <url>" as arguments and the refs being pushed on stdin.
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+scan="$root/build/no_data_scan.mjs"
+# a branch from before the scan existed has nothing to run
+[ -f "$scan" ] || exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: node is not installed, so the no-data scan cannot run; push refused." >&2
+  exit 1
+fi
+exec node "$scan" --push "$@"
