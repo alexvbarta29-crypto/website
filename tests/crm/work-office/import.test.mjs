@@ -22,7 +22,8 @@ test("jobs, visits and time off from a Rotor export, twice", async () => {
     const first = await importExport(t, owner, ex);
     assert.equal(first.run.status, "done", JSON.stringify(first.run.summary));
 
-    const jobs = t.stores.data.keys("rec/job/").map((k) => t.stores.data.json(k));
+    // Rotor's jobs (Plans adds a January takedown job for this season's lights installs, D9)
+    const jobs = t.stores.data.keys("rec/job/").map((k) => t.stores.data.json(k)).filter((j) => j.rotor && j.rotor.job_id);
     assert.equal(jobs.length, ex.jobs.length, "every job");
     const rj = ex.jobs[0];
     const j0 = jobs.find((j) => j.rotor.job_id === rj.id);

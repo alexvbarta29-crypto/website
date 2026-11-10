@@ -447,7 +447,8 @@ async function me(session) {
   return pjson({ ok: true, data: { first_name: (c && c.data && c.data.first_name) || null, scope: session.scope.kind } });
 }
 
-// A module's page or API route, with its scope checked (§8.2).
+// A module's page or API route, with its scope checked (§8.2). scope
+// "public" (a module's sign-in page, /p/login) opens without a session.
 async function moduleRoute(hit, req, url, context, company) {
   const { route, params } = hit;
   let session = null;
@@ -456,6 +457,8 @@ async function moduleRoute(hit, req, url, context, company) {
     link = await readLink(params.token);
     const st = linkState(link);
     if (!link || link.scope.kind !== "present" || st !== "ok") return url.pathname.startsWith("/api/") ? pfail(st === "ok" ? "missing" : st, "This page has ended.", 410) : stateMessage(st === "ok" ? "missing" : st, { company });
+  } else if (route.scope === "public") {
+    // a page anyone may open (/p/login): no session, no contact; POSTs still need the portal header
   } else {
     session = await portalSession(req);
     const id = params.id || null;
