@@ -334,14 +334,15 @@ export async function changeVisit(visitId, event, opts = {}) {
     if (event === "cancel") { next.cancelled_at = at; next.cancel_reason = String(opts.reason || "").slice(0, 300) || undefined; if (opts.late) next.late_cancel = true; }
     if (event === "no_access") next.no_access = { at, by: w.by || "system", ...(opts.note ? { note: String(opts.note).slice(0, 500) } : {}) };
     if (event === "office_complete") next.completion = { at, by: w.by || "system", office: true };
-    if (event === "finish") {
-      const missing = checklistMissing(next);
-      if (missing.length) throw new InputError(`Finish the checklist first: ${missing.join(", ")}.`, "checklist");
-      if (!(opts.patch && opts.patch.completion)) next.completion = { at, by: w.by || "system" };
-    }
     if (event === "reopen") next.completion = { ...(v.completion || {}), reopened_at: at, reopened_by: w.by || "system" };
     if (event === "reschedule" && !opts.keepMove) delete next.moved_by_op;
-    if (typeof opts.mutate === "function") next = opts.mutate(next, before) || next;
+    if (typeof opts.mutate === "function") next = { ...(opts.mutate(next, before) || next), status };
+    if (event === "finish") {
+      // required checklist items gate completion (B13), after the change's own ticks
+      const missing = checklistMissing(next);
+      if (missing.length) throw new InputError(`Finish the checklist first: ${missing.join(", ")}.`, "checklist");
+      if (!(next.completion && next.completion.at && !(before.completion && before.completion.at === next.completion.at))) next.completion = { ...(next.completion || {}), at, by: w.by || "system" };
+    }
     return next;
   }, { ...w, ...(opts.ifMatch ? { ifMatch: opts.ifMatch } : {}) });
   const visit = r.data;

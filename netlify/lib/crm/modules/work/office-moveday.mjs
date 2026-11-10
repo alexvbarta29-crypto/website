@@ -17,7 +17,7 @@
 // meanwhile) is refused: look again.
 
 import { createHash } from "node:crypto";
-import { getRecord, getRecords, listRel, addRel, readIndex } from "../../../crm-store.mjs";
+import { getRecord, getRecords, listRel, addRel, readIndex, readPointer, claimPointer } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { now, nowIso, tsKey, localDate, isLocalDate } from "../../core/clock.mjs";
 import { InputError, ConflictError } from "../../core/errors.mjs";
@@ -51,15 +51,15 @@ const matches = (row, filter) => (!filter.service_types.length || (row.svc || []
 // The preview (no writes). → { from_date, to_date, n, token, visits, customers, techs, notify, warnings }
 export async function moveDayPreview(body) {
   const b = cleanBody(body);
-  const [{ rows }, done, env] = await Promise.all([visitRows(b.from, b.from), listRel("work-moveday", b.from, { limit: 100 }), calendarEnv()]);
+  const [{ rows }, env] = await Promise.all([visitRows(b.from, b.from), calendarEnv()]);
   const visits = rows.filter((r) => r.st === "scheduled" && matches(r, b.filter)).sort((a, c) => String(a.s).localeCompare(String(c.s)) || (a.id < c.id ? -1 : 1));
   if (visits.length > MOVE_MAX) throw new InputError(`That's more than ${MOVE_MAX} visits. Narrow it down by tech or service.`, "filter");
-  const n = done.length + 1;
-  const token = createHash("sha256").update(JSON.stringify([b.from, b.to, b.filter, b.notify, n, visits.map((r) => [r.id, r.u])])).digest("hex").slice(0, 20);
+  // the token names exactly this list as it is now: once the visits move, a new preview has another
+  const token = createHash("sha256").update(JSON.stringify([b.from, b.to, b.filter, b.notify, visits.map((r) => [r.id, r.u])])).digest("hex").slice(0, 20);
   const contacts = [...new Map(visits.map((r) => [r.c, { id: r.c, name: r.cn }])).values()];
   const warnings = hoursOn(b.to, env.hours, env.calendar) ? [] : [{ code: "closed", message: `We're closed on ${dateText(b.to)}.` }];
   return {
-    from_date: b.from, to_date: b.to, filter: b.filter, notify: b.notify, n, token, warnings,
+    from_date: b.from, to_date: b.to, filter: b.filter, notify: b.notify, token, warnings,
     visits: visits.map((r) => ({ id: r.id, contact_id: r.c, contact_name: r.cn, town: r.town, start: r.s, end: r.e, window: r.w, assignee_ids: r.a || [], job_number: r.jn, service_types: r.svc || [] })),
     customers: b.notify ? contacts : [], techs: [...new Set(visits.flatMap((r) => r.a || []))],
   };
@@ -69,14 +69,28 @@ export const moveOpId = (from, n) => opIdFor(`moveday--${from}`, n);
 
 // The confirm: the run (bulk lane) of the op. → the run record.
 export async function moveDayConfirm(body, ctx) {
+  const token = str(body.token);
+  // a double tap (the same preview) answers the run the first tap started
+  const had = /^[0-9a-f]{20}$/.test(token) ? await readPointer("moveday-token", token) : null;
+  if (had && isId(had.run_id, "run")) {
+    const got = await getRecord("run", had.run_id);
+    if (got) return got.data;
+  }
   const p = await moveDayPreview(body);
-  if (str(body.token) !== p.token) throw new ConflictError("The schedule changed since you looked. Check the list again, then move.");
+  if (token !== p.token) throw new ConflictError("The schedule changed since you looked. Check the list again, then move.");
   if (!p.visits.length) throw new InputError("There's nothing to move that day.", "from_date");
-  const op = moveOpId(p.from_date, p.n);
+  const done = await listRel("work-moveday", p.from_date, { limit: 100 });
+  const op = moveOpId(p.from_date, done.length + 1);
+  const runId = deriveId("run", op, "work.moveday", token);
+  const claim = await claimPointer("moveday-token", token, { id: runId, run_id: runId, op });
+  if (!claim.ok && claim.current && claim.current.run_id) {
+    const got = await getRecord("run", claim.current.run_id);
+    if (got) return got.data;
+  }
   const w = ctx.write();
   const run = await createRun("work.moveday", {
     op, from: p.from_date, to: p.to_date, visit_ids: p.visits.map((v) => v.id), notify: p.notify, requested_by: w.by,
-  }, w, { id: deriveId("run", op, "work.moveday", p.token) });
+  }, w, { id: runId });
   await addRel("work-moveday", p.from_date, tsKey(now()), op).catch(() => {});
   return run;
 }

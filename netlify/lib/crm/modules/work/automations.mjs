@@ -109,6 +109,9 @@ const reminderRun = (key, lo, hi) => async (input, actx) => {
     await actx.log(v.id, "skipped:booked_late");
     return { result: "skipped:booked_late" };
   }
+  // a marker the cutover seeded from Rotor's own reminder (live namespace) means it went out already
+  const seeded = await getRaw(`done/${key}/${v.id}--${v.date}`).catch(() => null);
+  if (seeded && seeded.data && ["done", "unknown"].includes(seeded.data.state)) { await actx.log(v.id, "skipped:seeded"); return { result: "skipped:seeded" }; }
   const hours = await hoursSetting();
   const r = await actx.send(step(v, hours, { key: `${v.id}--${v.date}`, fact_at: nowIso(), due_at: nowIso() }));
   return { result: r.queued ? "queued" : `skipped:${r.reason || "done"}` };
@@ -171,6 +174,9 @@ export async function staleSweep(ctx = {}) {
   const [ix, raw, s] = await Promise.all([readIndex("jobs", "open"), getRaw("ix/jobs/open"), workSettings()]);
   const today = localDate(now());
   const t = nowMs();
+  const rows = (raw && raw.data && raw.data.rows) || {};
+  // the part's write counter: the time, and always above what's there (a pinned or skewed clock)
+  const wvFor = (id) => Math.max(t, ((rows[id] && rows[id].stale && rows[id].stale.wv) || 0) + 1);
   let changed = 0;
   const live = new Set();
   for (const row of ix.rows) {
@@ -178,14 +184,13 @@ export async function staleSweep(ctx = {}) {
     const want = staleOf(row, today, t, s.stale_in_progress_days);
     if ((row.stale || null) === want) continue;
     if (ctx.budget && ctx.budget.left() < 4000) return { done: false, progress: changed };
-    await applyIndexRow("jobs", "open", row.id, "stale", want ? { stale: want } : null, t);
+    await applyIndexRow("jobs", "open", row.id, "stale", want ? { stale: want } : null, wvFor(row.id));
     changed += 1;
   }
   // a job that left "open" keeps no stale part behind
-  const rows = (raw && raw.data && raw.data.rows) || {};
   for (const [id, parts] of Object.entries(rows)) {
     if (live.has(id) || !(parts && parts.stale && parts.stale.d)) continue;
-    await applyIndexRow("jobs", "open", id, "stale", null, t);
+    await applyIndexRow("jobs", "open", id, "stale", null, wvFor(id));
     changed += 1;
   }
   return { done: true, progress: changed, result: `${changed} flags changed` };

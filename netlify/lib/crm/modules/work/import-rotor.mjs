@@ -180,7 +180,8 @@ async function mapJob(r, ctx) {
 
 // ------------------------------------------------------------ row 23: visits
 
-export const VISIT_STATUS = Object.freeze({ not_started: "scheduled", in_progress: "in_progress", paused: "paused", finished: "completed" });
+// Rotor's four values (rotor-ops §2.2); "scheduled" is read as not_started too (older exports and the synthetic one say it)
+export const VISIT_STATUS = Object.freeze({ not_started: "scheduled", scheduled: "scheduled", in_progress: "in_progress", paused: "paused", finished: "completed" });
 const IMPORT_FROM = Date.parse("2026-08-18T00:00:00Z");
 const IMPORT_TO = Date.parse("2026-08-22T12:00:00Z");
 
