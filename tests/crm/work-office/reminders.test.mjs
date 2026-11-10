@@ -92,10 +92,14 @@ test("a reminder queued for a visit that moved or was cancelled since is skipped
     await OFF.changeVisit(v.id, "reschedule", { patch: { start: "10:00", end: "12:00" }, ctx: AS(owner) });
     await OFF.changeVisit(w.id, "cancel", { reason: "customer called", ctx: AS(owner) });
     await drain(t, 4);
+    assert.match(t.stores.data.keys("alog/").join("\n"), /visit\.reminder_2d--.*--skipped-changed/);
+    // the next day's batch (1 day out, the catch-up) reminds the moved visit at its new time
+    pin("2026-11-18T16:00:00Z");
+    await drain(t, 6);
     const sent = outbox(t).filter((o) => o.template_key === "visit_reminder_2d");
     assert.equal(sent.filter((o) => o.related.visit_id === w.id).length, 0, "cancelled: skipped");
-    // the moved one went out once, with its new time (the sweep queues it again for the new slot only after the old one is skipped)
-    assert.ok(sent.filter((o) => o.related.visit_id === v.id).every((o) => /10:00 AM and 12:00 PM/.test(o.body)), JSON.stringify(sent.map((o) => o.body)));
-    assert.match(t.stores.data.keys("alog/").join("\n"), /visit\.reminder_2d--.*--skipped-changed/);
+    const mine = sent.filter((o) => o.related.visit_id === v.id);
+    assert.equal(mine.length, 1, "the moved visit is reminded once (its confirmation is skipped that close to the day)");
+    assert.match(mine[0].body, /10:00 AM and 12:00 PM/, "at its new time");
   } finally { t.done(); }
 });

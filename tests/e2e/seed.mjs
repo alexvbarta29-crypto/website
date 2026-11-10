@@ -8,14 +8,14 @@
 //   different steps, a talked-to lead with a callback task, tasks for the
 //   owner and a tech, an incident; the first slice's customer list.
 //
+// Scheduling (M4a): the crew's checklists, eight work customers in towns
+// around Delano (a property with a map location each), jobs with visits
+// today and tomorrow for both techs, a job to book and a lights takedown due
+// this month, and a day off. Invoices come with Money (M5).
 //   the quotes seeds (price book, discount catalog), a draft quote for the
 //   fresh lead and one sent (dry-run, the Outbox) to the talked-to lead with
 //   a one-time and a quarterly option.
 //
-// Scheduling (M4a): the crew's checklists, eight work customers in towns
-// around Delano (a property with a map location each), jobs with visits
-// today and tomorrow for both techs, a job to book and a lights takedown due
-// this month, and a day off. Invoices come with their module (M5).
 
 const store = await import("../../netlify/lib/crm-store.mjs");
 const PW = await import("../../netlify/lib/crm/core/passwords.mjs");
@@ -42,16 +42,17 @@ export async function seed({ contacts = 200 } = {}) {
   globalThis.__crmPbkdf2Iterations = 1000;
   const users = (await store.readIndex("users", "")).rows;
   const out = { password: PASSWORD, users: {}, contacts: {}, enrollments: {} };
-  const person = async (key, login, name, role, tech) => {
+  const person = async (key, login, name, role, tech, color) => {
     const had = users.find((u) => u.login === login || (key === "owner" && u.role === "owner"));
     if (had) { out.users[key] = { id: had.id, login: had.login, name: had.name }; return; }
-    const r = await store.createRecord("user", { login, name, role, status: "active", is_technician: tech, password: await PW.hashPassword(PASSWORD), session_epoch: 0, grants: [], denies: [] }, { by: "system", origin: "api", actor_kind: "user", requestId: "e2e-seed" });
+    const r = await store.createRecord("user", { login, name, role, status: "active", is_technician: tech, ...(color ? { color } : {}), password: await PW.hashPassword(PASSWORD), session_epoch: 0, grants: [], denies: [] }, { by: "system", origin: "api", actor_kind: "user", requestId: "e2e-seed" });
     out.users[key] = { id: r.data.id, login, name };
   };
-  await person("owner", "olive", "Olive Owner", "owner", true);
-  await person("admin", "ada", "Ada Admin", "admin", false);
-  await person("tech", "theo", "Theo Tech", "tech", true);
-  await person("tech2", "tess", "Tess Tech", "tech", true);
+  // the two techs: different initials and colors, as the schedule shows people
+  await person("owner", "olive", "Olive Owner", "owner", true, "#2a78d6");
+  await person("admin", "ada", "Ada Admin", "admin", false, "#7c4dff");
+  await person("tech", "theo", "Theo Tech", "tech", true, "#13a165");
+  await person("tech2", "tess", "Tess Rowe", "tech", true, "#b7791f");
   await store.settledWrite(AUTH.BOOTSTRAP_KEY, { state: "done", user_id: out.users.owner.id, at: clock.nowIso() }, { onlyIfNew: true }).catch(() => {});
   const O = { by: out.users.owner.id, origin: "api", actor_kind: "user", requestId: "e2e-seed" };
   const ctxO = { write: (x = {}) => ({ ...O, ...x }), user: { id: out.users.owner.id, role: "owner", name: "Olive Owner" } };
@@ -132,7 +133,6 @@ export async function seed({ contacts = 200 } = {}) {
   out.visits.tech = out.visits[0];                     // Theo's first visit today
   out.jobs.tech = out.jobs[0];
   await store.createRecord("time_off", { user_id: out.users.tech2.id, start_at: `${clock.addLocalDays(day, 3)}T06:00:00.000Z`, end_at: `${clock.addLocalDays(day, 4)}T06:00:00.000Z`, all_day: true, reason: "Synthetic day off" }, O);
-
   // quotes (M3a): a draft for the fresh lead, one sent to the talked-to lead
   await QSEED.seedPriceBook({ write: () => AUTO });
   const ext = (x = {}) => ({ title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 29500, category: "windows_ext", service_type: "Residential Window Cleaning", ...x });

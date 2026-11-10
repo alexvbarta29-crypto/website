@@ -307,7 +307,19 @@ export function validateVisit(data, { op } = {}) {
     window: (v, f) => validateWindow(v, f),
     assignee_ids: ids("user", MAX_ASSIGNEES),
     crew_rotor_id: (v, f) => int(v, { field: f, min: 0, max: 1e12 }),
-    route_order: (v, f) => int(v, { field: f, min: 1, max: 1000 }),
+    // each person's stop number on their route ({ user id: n }); a plain number from before is kept
+    route_order: (v, f) => {
+      if (v === undefined || v === null) return undefined;
+      if (typeof v === "number") return int(v, { field: f, min: 1, max: 1000 });
+      if (!isObj(v)) throw new InputError("Expected stop numbers.", f);
+      const out = {};
+      for (const [k, n] of Object.entries(v).slice(0, 16)) {
+        if (!isId(k, "user")) throw new InputError("Stop numbers are per person.", f);
+        out[k] = int(n, { field: `${f}.${k}`, min: 1, max: 1000 });
+      }
+      return Object.keys(out).length ? out : undefined;
+    },
+    last_event: (v) => (isObj(v) && typeof v.name === "string" && Number.isSafeInteger(v.wv) ? { ...v } : undefined),
     status: (v, f) => enumValue(v, VISIT_STATUSES, { field: f, stored }) || "scheduled",
     on_my_way: (v) => (isObj(v) ? { ...v } : undefined),
     running_late: (v, f) => (v === undefined || v === null ? undefined : arr(v, (x) => (isObj(x) ? { ...x } : null), { field: f, max: 20 }).filter(Boolean)),

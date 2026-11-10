@@ -25,8 +25,9 @@ import { getSetting } from "../../../crm-store.mjs";
 import { OPEN_JOB, OPEN_VISIT, VISIT_STATES } from "./states.mjs";
 import { JOB_KINDS, WINDOW_TYPES, MAX_ASSIGNEES, DEFAULT_WINDOW } from "./types.mjs";
 import {
-  createJobs, createVisit, changeVisit, cancelJob, reopenJob, completeJob, syncJob, liveContact, placeOf, W, workSettings, typesOfLines,
+  createJobs, createVisit, changeVisit, cancelJob, reopenJob, completeJob, syncJob, liveContact, placeOf, W, workSettings, typesOfLines, refreshVisits,
 } from "./office.mjs";
+import { titleFromLines } from "./types.mjs";
 import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin } from "./office-schedule.mjs";
 import { moveDayPreview, moveDayConfirm, runView } from "./office-moveday.mjs";
 
@@ -89,10 +90,6 @@ function slotInput(b, { partial = false } = {}) {
     if (!Array.isArray(b.assignee_ids) || b.assignee_ids.length > MAX_ASSIGNEES || b.assignee_ids.some((x) => !isId(x, "user"))) throw new InputError("Pick people on the team.", "assignee_ids");
     out.assignee_ids = [...new Set(b.assignee_ids)];
   }
-  if (b.route_order !== undefined && b.route_order !== null) {
-    if (!Number.isInteger(b.route_order) || b.route_order < 1 || b.route_order > 1000) throw new InputError("That isn't a stop number.", "route_order");
-    out.route_order = b.route_order;
-  }
   if (b.date_only !== undefined) out.date_only = b.date_only === true;
   if (out.start && out.end && out.end <= out.start) throw new InputError("The visit ends after it starts.", "end");
   return out;
@@ -138,11 +135,24 @@ const check = async (ctx) => {
   return { data: await checkSlot(slot) };
 };
 
-// One tech's day in route order: [{ id, ... row, wend }].
+// A stop's number on one person's route (route_order is { user id: n }, so
+// two people sharing a visit each keep their own order; a plain number is
+// an older record's, the same for everyone).
+export const stopNo = (o, uid) => (typeof o === "number" ? o : o && typeof o === "object" && Number.isInteger(o[uid]) ? o[uid] : null);
+
+// One tech's day in route order: index rows, with the map point taken from
+// the property when the visit has none yet (it was geocoded after booking).
 async function dayStops(date, userId) {
   const { rows } = await visitRows(date, date);
-  return rows.filter((r) => (r.a || []).includes(userId) && !["cancelled", "no_access"].includes(r.st))
-    .sort((a, b) => (a.o || 999) - (b.o || 999) || String(a.s).localeCompare(String(b.s)));
+  const mine = rows.filter((r) => (r.a || []).includes(userId) && !["cancelled", "no_access"].includes(r.st))
+    .sort((a, b) => (stopNo(a.o, userId) || 999) - (stopNo(b.o, userId) || 999) || String(a.s).localeCompare(String(b.s)));
+  const need = [...new Set(mine.filter((r) => !r.geo && isId(r.pr, "property")).map((r) => r.pr))];
+  if (!need.length) return mine;
+  const props = new Map((await getRecords("property", need)).filter(Boolean).map((g) => [g.data.id, g.data]));
+  return mine.map((r) => {
+    const p = !r.geo && props.get(r.pr);
+    return p && p.geo && Number.isFinite(p.geo.lat) && Number.isFinite(p.geo.lng) ? { ...r, geo: [p.geo.lat, p.geo.lng], geo_new: true } : r;
+  });
 }
 
 const routeGet = async (ctx) => {
@@ -151,11 +161,12 @@ const routeGet = async (ctx) => {
   if (!isLocalDate(date)) throw new InputError("Pick a day.", "date");
   if (!isId(user, "user")) throw new InputError("Pick someone.", "user");
   const [stops, company] = await Promise.all([dayStops(date, user), getSetting("company").catch(() => ({}))]);
-  return { data: { date, user_id: user, stops, base: (company && company.base) || null } };
+  return { data: { date, user_id: user, stops: stops.map(({ geo_new, ...r }) => ({ ...r, o: stopNo(r.o, user) })), base: (company && company.base) || null } };
 };
 
 // POST /schedule/route { date, user_id, order? }: Optimize (no order) or the
-// order someone dragged. Writes route_order on each visit that changed.
+// order someone moved. Writes this person's stop number on each visit that
+// changed (and a map point the visit learned from its property).
 const routePost = async (ctx) => {
   const b = ctx.body || {};
   if (!isLocalDate(b.date)) throw new InputError("Pick a day.", "date");
@@ -172,11 +183,17 @@ const routePost = async (ctx) => {
     result = routeOrder(stops.map((s) => ({ id: s.id, geo: s.geo, start: s.s, wend: windowEnd({ date: s.d, start: s.s, window: { type: s.w && s.w.t, minutes: s.w && s.w.m }, date_only: s.do }, env.hours) })), company && company.base);
     order = result.order;
   }
+  const geoOf = new Map(stops.filter((s) => s.geo_new).map((s) => [s.id, s.geo]));
   let changed = 0;
   const w = W(ctx);
   for (const [i, id] of order.entries()) {
     const want = i + 1;
-    const r = await updateRecord("visit", id, (v) => (v.route_order === want ? null : { ...v, route_order: want }), w);
+    const r = await updateRecord("visit", id, (v) => {
+      const cur = v.route_order && typeof v.route_order === "object" ? v.route_order : {};
+      const geo = geoOf.get(id);
+      if (cur[b.user_id] === want && !(geo && !v.geo)) return null;
+      return { ...v, route_order: { ...cur, [b.user_id]: want }, ...(geo && !v.geo ? { geo } : {}) };
+    }, w);
     if (r.changed) changed += 1;
   }
   return { data: { order, no_geo: result.no_geo, miles: result.miles, changed } };
@@ -235,7 +252,9 @@ const contactWork = async (ctx) => {
   return { data: { contact: { id: contact.id, display_name: contact.display_name }, jobs: list.map(({ visit_ids, ...j }) => j), upcoming: upcoming.map(slim), past: past.map(slim) } };
 };
 
-// The lines a person typed on the New job / Edit job form.
+// The lines a person typed on the New job / Edit job form: only what the
+// form shows (title, price, quantity, service), never totals, overrides or
+// scopes. → [{ id?, title, unit_cents, qty_milli, service_type? }]
 function formLines(list) {
   if (list === undefined) return undefined;
   if (!Array.isArray(list) || list.length > 40) throw new InputError("Up to 40 lines.", "lines");
@@ -247,10 +266,37 @@ function formLines(list) {
     if (unit === null || unit < 0 || unit > 100000000) throw new InputError("Use a price in cents.", `lines.${i}.unit_cents`);
     const qty = l.qty_milli === undefined ? 1000 : l.qty_milli;
     if (!Number.isSafeInteger(qty) || qty < 0 || qty > 10000000) throw new InputError("Use a quantity.", `lines.${i}.qty_milli`);
+    const id = str(l.id);
     return {
-      ...l, id: str(l.id) && /^[A-Za-z0-9_.:-]{1,80}$/.test(str(l.id)) ? str(l.id) : `ln_${i + 1}`, title: title.slice(0, 160), unit_cents: unit, qty_milli: qty,
-      ...(l.service_type ? { service_type: str(l.service_type).slice(0, 120) } : {}), scope: l.scope || { type: "all" },
+      ...(id && /^[A-Za-z0-9_.:-]{1,80}$/.test(id) ? { id } : {}), title: title.slice(0, 160), unit_cents: unit, qty_milli: qty,
+      ...(str(l.service_type) ? { service_type: str(l.service_type).slice(0, 120) } : {}),
     };
+  });
+}
+
+// The edited lines merged by id onto the stored ones (B1): a line keeps
+// everything the form doesn't show (scope, override, optional, tier,
+// upsell, show, rotor, its total) while its price and quantity stay as
+// they were; a changed price or quantity is priced again; a new line gets
+// a new id; a line left out is gone.
+export function mergeLines(stored = [], edited = []) {
+  const byId = new Map((stored || []).map((l) => [l.id, l]));
+  const used = new Set();
+  let n = Math.max(0, ...[...(stored || []), ...edited].map((l) => { const m = /^ln_(\d+)$/.exec(String(l.id || "")); return m ? Number(m[1]) : 0; }));
+  return edited.map((e) => {
+    const old = e.id ? byId.get(e.id) : null;
+    if (old && !used.has(old.id)) {
+      used.add(old.id);
+      const next = { ...old, title: e.title };
+      if (e.service_type) next.service_type = e.service_type; else delete next.service_type;
+      if (old.unit_cents !== e.unit_cents || (old.qty_milli ?? 1000) !== e.qty_milli) {
+        next.unit_cents = e.unit_cents; next.qty_milli = e.qty_milli;
+        delete next.total_cents; delete next.override; delete next.engine_cents;
+      }
+      return next;
+    }
+    n += 1;
+    return { id: `ln_${n}`, title: e.title, unit_cents: e.unit_cents, qty_milli: e.qty_milli, ...(e.service_type ? { service_type: e.service_type } : {}), scope: { type: "all" } };
   });
 }
 
@@ -320,15 +366,24 @@ const jobPatch = async (ctx) => {
     const p = isId(patch.property_id, "property") ? await getRecord("property", patch.property_id) : null;
     if (!p || p.data.contact_id !== got.data.contact_id) throw new InputError("Pick one of the contact's properties.", "property_id");
   }
-  const lines = formLines(b.lines);
-  if (lines) { patch.lines = lines; patch.service_types = typesOfLines(lines); }
-  if (["completed", "cancelled"].includes(got.data.status) && (lines || patch.kind)) throw new ConflictError("This job is closed. Reopen it to change its work.");
+  const edited = formLines(b.lines);
+  const closed = ["completed", "cancelled"].includes(got.data.status);
+  if (closed && ((edited && JSON.stringify(mergeLines(got.data.lines, edited)) !== JSON.stringify(got.data.lines)) || (patch.kind !== undefined && patch.kind !== got.data.kind))) {
+    throw new ConflictError("This job is closed. Reopen it to change its work.");
+  }
   const r = await updateRecord("job", got.data.id, (j) => {
     const next = { ...j };
     for (const [k, v] of Object.entries(patch)) { if (v === undefined) delete next[k]; else next[k] = v; }
-    if (patch.title === undefined && lines) delete next.title;          // the title follows the lines unless typed
-    return next;
+    if (edited) {
+      next.lines = mergeLines(j.lines, edited);
+      next.service_types = typesOfLines(next.lines);
+      // the title follows the lines unless someone typed one
+      if (b.title === undefined && j.title === titleFromLines(j.lines || [], j.kind)) delete next.title;
+    }
+    return JSON.stringify(next) === JSON.stringify(j) ? null : next;
   }, { ...W(ctx), ifMatch: ctx.ifMatch });
+  // what the open visits copied of the job (title, services, place) follows it
+  if (r.changed) await refreshVisits(r.data.id, ctx, { propertyFrom: got.data.property_id !== r.data.property_id ? got.data.property_id : undefined }).catch((e) => console.error(`crm:work: visits not refreshed (${String(e && e.name)})`));
   return { data: { job: view(r.data) }, etag: r.etag };
 };
 
@@ -354,7 +409,8 @@ const visitNew = async (ctx) => {
 };
 
 async function reminderStates(v) {
-  const keys = [["confirm", `visit.confirm/${v.id}--${v.date}-${String(v.start).replace(":", "")}`], ["d14", `visit.reminder_14d/${v.id}--${v.date}`], ["d2", `visit.reminder_2d/${v.id}--${v.date}`]];
+  const hhmm = String(v.start).replace(":", "");
+  const keys = [["confirm", `visit.confirm/${v.id}--${v.date}-${hhmm}`], ["d14", `visit.reminder_14d/${v.id}--${v.date}`], ["d2", `visit.reminder_2d/${v.id}--${v.date}-${hhmm}`]];
   const out = {};
   await Promise.all(keys.map(async ([k, key]) => {
     const [live, dry] = await Promise.all([getRaw(`done/${key}`).catch(() => null), getRaw(`done-dry/${key}`).catch(() => null)]);

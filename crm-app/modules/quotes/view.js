@@ -8,7 +8,7 @@
 import { html, attrs, icon, sheet, toast, confirmSheet, openExternal } from "../../core/ui.js";
 import { busy } from "../../core/forms.js";
 import { money, dateShort, dateTime, ago, phone } from "../../core/format.js";
-import { ensureStyles, statusPill, optionSummary, waitRun, STATUS, emptyCard } from "./kit.js";
+import { ensureStyles, statusPill, optionSummary, waitRun, STATUS, emptyCard, optionTotals, lineTotal } from "./kit.js";
 
 async function load(params, ctx) {
   ensureStyles();
@@ -80,7 +80,7 @@ export default {
       <div class="qt-acts">${actions(s, ctx)}</div>
       ${q.converted_to && (q.converted_to.plan_id || (q.converted_to.job_ids || []).length) ? html`<section class="card"><h2>Booked as</h2><p>${q.converted_to.plan_id ? "A plan" : ""}${q.converted_to.plan_id && (q.converted_to.job_ids || []).length ? " and " : ""}${(q.converted_to.job_ids || []).length ? `${q.converted_to.job_ids.length} job${q.converted_to.job_ids.length === 1 ? "" : "s"}` : ""}.</p></section>` : ""}
       <div class="section-h">${v ? `What the customer sees (version ${v.n})` : "Options (not sent yet)"}</div>
-      ${options.length ? html`<div class="qt-opts side">${options.map((o) => optionSummary(q.approval && q.approval.option_id === o.id && q.approval.totals ? { ...o, totals: q.approval.totals, recommended: false, name: `${o.name} (chosen)` } : o))}</div>` : emptyCard("No options yet", "Edit the quote to price it.")}
+      ${options.length ? html`<div class="qt-opts side">${options.map((o) => optionSummary(["approved", "converted"].includes(q.status) && q.approval && q.approval.option_id === o.id && q.approval.totals ? { ...o, totals: q.approval.totals, recommended: false, name: `${o.name} (chosen)` } : o))}</div>` : emptyCard("No options yet", "Edit the quote to price it.")}
       ${q.client_notes ? html`<section class="card"><h2>Note to the customer</h2><p class="preview">${q.client_notes}</p></section>` : ""}
       ${q.internal_notes ? html`<section class="card"><h2>Office note</h2><p class="preview">${q.internal_notes}</p></section>` : ""}
       <section class="card"><h2>What happened</h2><ul class="qt-timeline">${timeline(q).map(([w, at], i, all) => html`<li><span class="${"dot" + (i === all.length - 1 ? " on" : "")}"></span><span class="w">${w}</span><span class="when">${dateTime(at)}</span></li>`)}</ul></section>
@@ -177,26 +177,40 @@ async function present(el, ctx) {
   } catch (err) { busy(el, false); toast(err.message, { bad: true }); }
 }
 
+// The options as the customer has them, each add-on with its box (ticked as
+// the quote has it); the price read out follows the boxes, and exactly the
+// ticked add-ons are approved.
 function phoneSheet(ctx) {
   const s = ctx.state;
   const options = (s.quote.status === "sent" || s.quote.status === "viewed") && s.current_version ? s.current_version.options : s.quote.options;
   const rec = (options.find((o) => o.recommended) || options[0] || {}).id;
+  const ticked = (form, o) => new Set([...form.querySelectorAll(`input[name=addon][data-op="${o.id}"]:checked`)].map((i) => i.value));
+  const priceOf = (o, picks) => optionTotals({ ...o, lines: (o.lines || []).map((l) => (l.optional ? { ...l, selected: picks.has(l.id) } : l)) }).first_cents;
   const sh = sheet({
     title: "Approved by phone",
     body: html`<form class="form" data-phone>
       <p class="muted">For a customer who said yes on the phone. No signature is taken${options.some((o) => o.kind === "plan") ? "; a plan's agreement still needs theirs" : ""}.</p>
-      ${options.map((o) => html`<label class="check"><input ${attrs({ type: "radio", name: "option", value: o.id, checked: o.id === rec })}><span><b>${o.name}</b> · ${money((o.totals || {}).first_cents)}${o.kind === "plan" ? " first visit" : ""}</span></label>`)}
+      ${options.map((o) => html`<label class="check"><input ${attrs({ type: "radio", name: "option", value: o.id, checked: o.id === rec })}><span><b>${o.name}</b> · <span ${attrs({ "data-phone-price": o.id })}>${money((o.totals || {}).first_cents)}</span>${o.kind === "plan" ? " first visit" : ""}</span></label>
+        ${(o.lines || []).filter((l) => l.optional).map((l) => html`<label class="check sub"><input ${attrs({ type: "checkbox", name: "addon", value: l.id, "data-op": o.id, checked: l.selected === true })}><span>Add-on: ${l.title} (${money(lineTotal({ ...l, optional: false }))})</span></label>`)}`)}
       <label class="field"><span>Who said yes (optional)</span><input name="name_typed" autocomplete="off" maxlength="120"></label>
       <button type="submit" class="btn primary block">Approve</button>
     </form>`,
     events: {
+      "change input[name=addon]": (e, el) => {
+        const form = el.closest("form");
+        const o = options.find((x) => x.id === el.dataset.op);
+        const out = o && form.querySelector(`[data-phone-price="${o.id}"]`);
+        if (out) out.textContent = money(priceOf(o, ticked(form, o)));
+      },
       "submit [data-phone]": async (e, form) => {
         e.preventDefault();
         const option = form.querySelector("input[name=option]:checked");
         if (!option) return;
+        const o = options.find((x) => x.id === option.value);
+        const selected_line_ids = o ? [...ticked(form, o)] : [];
         sh.close();
         const btn = document.querySelector("[data-act=phone]");
-        await runAction(btn, ctx, `/quotes/${encodeURIComponent(s.quote.id)}/approve`, "Approved", { option_id: option.value, by_phone: true, name_typed: form.elements.name_typed.value.trim() });
+        await runAction(btn, ctx, `/quotes/${encodeURIComponent(s.quote.id)}/approve`, "Approved", { option_id: option.value, by_phone: true, selected_line_ids, name_typed: form.elements.name_typed.value.trim() });
       },
     },
   });

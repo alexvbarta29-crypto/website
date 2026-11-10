@@ -1,7 +1,11 @@
 // Quotes module: the Barta pricing engine (design §5.3, barta-rules §1.9,
 // decisions D15, D26, D30). Pure: no I/O, integer cents only, every number
-// from cfg/pricing (Settings → Pricing & price book), so an owner's change
-// is a setting, never a code change.
+// a setting (Settings → Pricing & price book), so an owner's change is a
+// setting, never a code change. One source per number: the tiers, plan
+// discounts and lights offers live in cfg/pricing; the add-ons priced per
+// unit (screens, standard and premium tracks, lights install and materials
+// per foot) are their price-book items (cfg's copies are only a fallback
+// for a book without that item).
 //
 // The engine PROPOSES; people OVERRIDE (one tap with a reason, prices:override)
 // and nothing imported is ever repriced (C3, R7).
@@ -18,6 +22,9 @@
 //   visitPrices(option, n, pricing)        per-visit prices of a term: percentages first, then fixed, never below the floor
 //   optionTotals(option, pricing)          visitPrices for an option (one-time: 1 visit; plan: its term)
 //   covers(scope, k), planDiscountFor(key, pricing), earlyBirdDeadline(on, pricing)
+//   addOnUnit(book, key, pricing)          an add-on's unit price: its price-book item (cfg only without one)
+//   earlyBirdOver(discount, today, pricing) an Early Bird discount whose deadline has passed
+//   checkSizes(option)                     refuses amounts no quote has (a 400, never an overflow)
 
 import { roundHalfUp, sumCents } from "../../core/money.mjs";
 import { InputError } from "../../core/errors.mjs";
@@ -266,6 +273,8 @@ export function visitPrices({ lines = [], discounts = [] } = {}, visitsInTerm = 
     let fixed = 0;
     for (const d of discounts || []) {
       if (!d || !covers(d.scope, k)) continue;
+      // a discount tied to a line (10 free screens on an add-on) counts only when that line does
+      if (d.line_id && !lines.some((l) => l.id === d.line_id && isSelected(l) && covers(l.scope, k))) continue;
       if (d.type === "percentage") bp += posInt(d.value);
       else fixed += posInt(d.value);
     }
@@ -324,17 +333,61 @@ export function lightsDiscounts({ early_bird = false, three_year = false, on } =
     const deadline = earlyBirdDeadline(on, p);
     if (deadline && p.lights.early_bird_bp > 0) {
       const d = def("early_bird");
-      out.push({ id: "dc_early_bird", ...(d ? { def_id: d.id } : {}), key: "early_bird", name: d ? d.name : "Early Bird", type: "percentage", value: p.lights.early_bird_bp, scope: { type: "all" }, offer_until: deadline });
+      out.push({ id: "dc_early_bird", ...(d ? { def_id: d.id } : {}), key: "early_bird", name: d ? d.name : "Early Bird", type: "percentage", value: p.lights.early_bird_bp, scope: { type: "initial" }, offer_until: deadline });
     }
   }
   if (three_year && p.lights.three_year_off_cents > 0) {
     const d = def("three_year");
-    out.push({ id: "dc_three_year", ...(d ? { def_id: d.id } : {}), key: "three_year", name: d ? d.name : "3-year contract", type: "fixed", value: p.lights.three_year_off_cents, scope: { type: "all" } });
+    out.push({ id: "dc_three_year", ...(d ? { def_id: d.id } : {}), key: "three_year", name: d ? d.name : "3-year contract", type: "fixed", value: p.lights.three_year_off_cents, scope: { type: "initial" } });
   }
   return out;
 }
 
+// An Early Bird discount (key early_bird, or one with offer_until) whose
+// deadline has passed on `today`: its own offer_until, or no deadline in
+// effect any more (barta-rules: "Deal Ends December 1st").
+export const isEarlyBird = (d) => !!d && (d.key === "early_bird" || !!d.offer_until);
+export function earlyBirdOver(d, today, pricing) {
+  if (!isEarlyBird(d)) return false;
+  const day = String(today || "").slice(0, 10);
+  if (d.offer_until && d.offer_until < day) return true;
+  return !earlyBirdDeadline(day, pricing);
+}
+
+// The 3-year contract discount is for a lights plan (several seasons), never one season.
+export const isThreeYear = (d) => !!d && d.key === "three_year";
+
+// Amounts no quote has: a line over $1,000,000, an option over $10,000,000 a
+// visit. Checked before any sum, so a hostile body is a 400, not an overflow.
+export const MAX_LINE_CENTS = 100000000;
+export function checkSizes(option, field = "option") {
+  let visit = 0;
+  const lines = option && Array.isArray(option.lines) ? option.lines : [];
+  for (const [i, l] of lines.entries()) {
+    const unit = Math.abs(Number(l && l.unit_cents) || 0);
+    const qty = Math.abs(Number((l && l.qty_milli) ?? 1000) || 0);
+    const ov = l && l.override && Number.isFinite(Number(l.override.cents)) ? Math.abs(Number(l.override.cents)) : null;
+    const t = ov !== null ? ov : (unit * qty) / 1000;
+    if (!Number.isFinite(t) || t > MAX_LINE_CENTS) throw new InputError("That line is more than a quote holds. Check the quantity and price.", `${field}.lines.${i}`);
+    visit += t;
+  }
+  if (visit > MAX_LINE_CENTS * 10) throw new InputError("That option is more than a quote holds.", `${field}.lines`);
+}
+
 // ------------------------------------------------------------ suggestions
+
+// An add-on's unit price (one source, D26): the active price-book item's,
+// cfg/pricing's copy only when the book has no such item.
+const ADDON_CFG = Object.freeze({
+  screens: (p) => p.screens.each_cents, tracks_standard: (p) => p.tracks.standard_cents, tracks_premium: (p) => p.tracks.premium_cents,
+  lights_install: (p) => p.lights.install_per_ft_cents, lights_materials: (p) => p.lights.materials_per_ft_cents,
+});
+export const ADDON_KEYS = Object.freeze(Object.keys(ADDON_CFG));
+export function addOnUnit(book, key, pricing) {
+  const item = (book || []).find((i) => i && i.active !== false && i.key === key);
+  if (item && isInt(item.unit_cents) && item.unit_cents > 0) return item.unit_cents;
+  return ADDON_CFG[key] ? ADDON_CFG[key](pricingWith(pricing)) : 0;
+}
 
 const itemFor = (book, key, fallback) => (book || []).find((i) => i && i.active !== false && i.key === key) || (fallback ? (book || []).find((i) => i && i.active !== false && fallback(i)) : null) || null;
 const SHOW_FLAT = Object.freeze({ qty: false, unit: false, description: true });
@@ -384,18 +437,18 @@ export function suggestLines(input = {}, pricing = {}, book = [], { lineId } = {
     const item = itemFor(book, "screens", (i) => i.category === "screens");
     let count = posInt(input.screens);
     if (!count) { count = screenEstimate(panesExt, p); warnings.push("count_screens_on_site"); }
-    const unit = item && isInt(item.unit_cents) && item.unit_cents > 0 ? item.unit_cents : p.screens.each_cents;
+    const unit = item && isInt(item.unit_cents) && item.unit_cents > 0 ? item.unit_cents : addOnUnit(book, "screens", p);
     lines.push(lineFrom(item, { id: id("scr"), qty_milli: count * 1000, unit_cents: unit, engine_cents: count * unit, category: "screens", unit: "screen", title: (item && item.name) || "Screen Cleaning" }));
   }
   const tr = isPlainObject(input.tracks) ? input.tracks : {};
   if (services.has("tracks_standard") && posInt(tr.standard)) {
     const item = itemFor(book, "tracks_standard", (i) => i.category === "tracks" && !/premium/i.test(i.name));
-    const unit = p.tracks.standard_cents;
+    const unit = item && isInt(item.unit_cents) && item.unit_cents > 0 ? item.unit_cents : addOnUnit(book, "tracks_standard", p);
     lines.push(lineFrom(item, { id: id("trk"), qty_milli: posInt(tr.standard) * 1000, unit_cents: unit, engine_cents: posInt(tr.standard) * unit, category: "tracks", unit: "track", title: (item && item.name) || "Track Detailing" }));
   } else if (services.has("tracks_standard")) warnings.push("count_tracks");
   if (services.has("tracks_premium") && posInt(tr.premium)) {
     const item = itemFor(book, "tracks_premium", (i) => i.category === "tracks" && /premium/i.test(i.name));
-    const unit = p.tracks.premium_cents;
+    const unit = item && isInt(item.unit_cents) && item.unit_cents > 0 ? item.unit_cents : addOnUnit(book, "tracks_premium", p);
     lines.push(lineFrom(item, { id: id("trp"), qty_milli: posInt(tr.premium) * 1000, unit_cents: unit, engine_cents: posInt(tr.premium) * unit, category: "tracks", unit: "track", title: (item && item.name) || "Premium Track Detailing" }));
   } else if (services.has("tracks_premium")) warnings.push("count_tracks");
   if (services.has("gutters")) {
@@ -421,8 +474,9 @@ export function suggestOption(input = {}, pricing = {}, book = [], defs = [], op
   if (!planKey) return { lines, discounts: [], warnings };
   const cat = PLAN_CATALOG[planKey];
   if (planKey === "quarterly") {
+    // the interior visit (2) is interior only: screens, tracks and gutters go with the exterior visits (owner to confirm, barta-rules Q2/Q3)
     for (const l of lines) {
-      if (l.category === "windows_ext") l.scope = { type: "specific", visits: [1, 3, 4] };
+      if (["windows_ext", "screens", "tracks", "gutters"].includes(l.category)) l.scope = { type: "specific", visits: [1, 3, 4] };
       if (l.category === "windows_int") l.scope = { type: "specific", visits: [2] };
     }
   }
@@ -452,10 +506,10 @@ export function lightsLines({ runs = [], package_cents, colors = [] } = {}, pric
   } else if (totalMilli > 0) {
     const inst = itemFor(book, "lights_install", (i) => i.engine === "lights_install_ft");
     const mat = itemFor(book, "lights_materials", (i) => i.engine === "lights_materials_ft");
-    const iu = p.lights.install_per_ft_cents;
-    const mu = p.lights.materials_per_ft_cents;
+    const iu = inst && isInt(inst.unit_cents) && inst.unit_cents > 0 ? inst.unit_cents : addOnUnit(book, "lights_install", p);
+    const mu = mat && isInt(mat.unit_cents) && mat.unit_cents > 0 ? mat.unit_cents : addOnUnit(book, "lights_materials", p);
     out.push(lineFrom(inst, { id: id(), title: (inst && inst.name) || "Christmas Light Installation", qty_milli: totalMilli, unit_cents: iu, engine_cents: roundHalfUp(BigInt(totalMilli) * BigInt(iu), 1000n), category: "lights", unit: "ft", service_type: "Christmas Lights", description }));
-    out.push(lineFrom(mat, { id: id(), title: (mat && mat.name) || "Christmas Light Materials", qty_milli: totalMilli, unit_cents: mu, engine_cents: roundHalfUp(BigInt(totalMilli) * BigInt(mu), 1000n), category: "lights", unit: "ft", service_type: "Christmas Lights", description: "Commercial-grade C9 LED bulbs on a dark green strand." }));
+    out.push(lineFrom(mat, { id: id(), title: (mat && mat.name) || "Christmas Light Materials", qty_milli: totalMilli, unit_cents: mu, engine_cents: roundHalfUp(BigInt(totalMilli) * BigInt(mu), 1000n), category: "lights", unit: "ft", service_type: "Christmas Lights", description: "Commercial-grade C9 LED bulbs on a dark green strand.", scope: { type: "initial" } }));
   }
   if (out.length) {
     const td = itemFor(book, "lights_takedown", (i) => i.category === "lights" && /takedown/i.test(i.name));

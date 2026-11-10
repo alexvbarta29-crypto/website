@@ -132,7 +132,7 @@ defineOp("work.moveday", {
         for (const [uid, count] of per) {
           const claim = await claimMarker("done", "moveday-push", `${keySafe(s.opId, 100)}--${uid}`, { holder: s.opId, leaseMs: 60000 });
           if (!claim.ok) continue;
-          await notify([uid], { kind: "visit_changed", title: "Visits moved", body: `${count === 1 ? "1 of your visits" : `${count} of your visits`} moved from ${dateText(input.from)} to ${dateText(input.to)}.`, link: `/schedule?date=${input.to}` }, s.ctx);
+          await notify([uid], { kind: "visit_changed", title: "Visits moved", body: `${count === 1 ? "1 of your visits" : `${count} of your visits`} moved from ${dateText(input.from)} to ${dateText(input.to)}.`, link: "/today" }, s.ctx);
           await advanceMarker(claim.marker, { state: "done", result: "pushed" });
           pushed += 1;
         }

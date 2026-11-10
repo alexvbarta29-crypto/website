@@ -97,8 +97,7 @@ export const outbox = (t) => t.stores.data.keys("rec/outbox/").map((k) => t.stor
 export const alog = (t) => t.stores.data.keys("alog/");
 export const queued = (t, kind) => t.stores.data.keys("q/").map((k) => t.stores.data.json(k)).filter((x) => !kind || x.kind === kind || (x.data && x.data.name === kind));
 
-// Fakes for Plans (M3b), Scheduling (M4a) and Money (M5): they record their
-// calls. false: that module is not there (its real services are hidden too).
+// Fakes for Plans (M3b), Scheduling (M4a) and Money (M5): they record their calls.
 export function fakes({ plans = true, work = true, money = true } = {}) {
   const calls = { agreementForOption: [], fromQuoteOption: [], createJobs: [], deposit: [] };
   const map = {};
@@ -113,11 +112,12 @@ export function fakes({ plans = true, work = true, money = true } = {}) {
       return { plan_id: "pl_00000000000000000001", agreement_id: opts && opts.signature ? "ag_00000000000000000001" : null };
     };
   }
-  else Object.assign(map, { "plans.agreementForOption": null, "plans.fromQuoteOption": null });
+  // a service switched off here is hidden even when its real module is merged
+  if (!plans) { map["plans.agreementForOption"] = null; map["plans.fromQuoteOption"] = null; }
+  if (!work) map["work.createJobs"] = null;
+  if (!money) map["money.createDepositInvoice"] = null;
   if (work) map["work.createJobs"] = async (jobs, opId, scopeName) => { calls.createJobs.push({ jobs, opId, scope: scopeName }); return ["jb_00000000000000000001"]; };
-  else map["work.createJobs"] = null;
   if (money) map["money.createDepositInvoice"] = async (quote, version, option, opId) => { calls.deposit.push({ quote_id: quote.id, opId }); return { invoice_id: "in_00000000000000000001", checkout_url: "https://checkout.stripe.com/c/pay/cs_test_example" }; };
-  else map["money.createDepositInvoice"] = null;
   const restore = fakeServices(map);
   return { calls, restore };
 }

@@ -39,27 +39,42 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
      custom, each with which visits it covers, optional add-ons the
      customer can tick; discounts from the catalog (or a typed amount for a
      price match); the totals per visit, for the term and for a year. A
-     line's total can be changed only with `prices:override` and a reason.
+     line's total can be changed only with `prices:override` and a reason;
+     a price the engine or the price book sets (its unit price, or the
+     quantity of a tier line) changes only that way, so the line sheet
+     locks those fields (a recount of screens or tracks is fine). A plan's
+     own discount goes only on that plan, the 3-year contract only on a
+     plan, and on a Quarterly plan screens, tracks and gutters go with the
+     exterior visits (1, 3, 4), not the interior visit 2.
   6. Notes for the customer, notes for the office, photos and the Light
      Studio mockup.
   The card and deposit section is hidden until the Money module (M5).
 - **Lights quote** (`#/quotes/:id/lights`): runs in feet from Light Studio,
   or one package price; colors; Early Bird (until the deadline in effect),
-  3-year contract; every season (a lights plan) or this season only. "Add
-  to the quote" puts it on the quote as its own option.
+  3-year contract (every season only: the box is off for "this season
+  only", and the server refuses it); every season (a lights plan) or this
+  season only. Early Bird, the 3-year discount and the materials (the
+  bulbs) count on the first season only; later seasons are the install.
+  "Add to the quote" puts it on the quote as its own option.
 - **A quote**: number, status, who, where, good through; the timeline
   (made, sent, opened, changes asked, approved, booked); the actions its
   status allows: **Send** (text and/or email), **Present to customer**,
-  **Approved by phone**, **Edit**, **Declined**, **Archive** / Restore,
+  **Approved by phone** (the options with their add-on boxes, ticked as the
+  quote has them; the price read out follows the boxes), **Edit**,
+  **Declined**, **Archive** / Restore (a restored quote is a draft with no
+  version on the link: send it again to reopen it),
   **Duplicate**, **Customer view** (the customer's page, opened in a new
   tab), **Book it** (only once Plans or Scheduling exist; until then it
   says "Turning this into a job arrives with Scheduling"). Then what the
   customer sees (the latest version) and the version list.
 - **Settings → Pricing & price book** (owners): the exterior tiers, interior
   per 20 panes, screens, tracks, the plan discount per visit, lights per
-  foot, Early Bird percent and deadlines, the 3-year discount, how long a
-  quote is good, "book it right after the customer approves"; the price
-  book's items (price, unit, description, on/off, sellable).
+  foot, Early Bird percent and deadlines (this season and the next), the
+  3-year discount, how long a quote is good, "book it right after the
+  customer approves"; the price book's items (price, unit, description,
+  on/off, sellable). Screens, standard and premium tracks and lights per
+  foot are their price-book items: those fields save to the items (one
+  source per price, D26).
 - **Settings → Discounts**: the catalog (amount or percent, which visits by
   default, one per option for the plan discounts), and the Rotor names kept
   for history.
@@ -143,29 +158,53 @@ Events: `quote.sent`, `quote.viewed`, `quote.approved`, `quote.declined`,
 - The customer approves the version they saw: the POST carries
   `version_id` and `version_sha256`; a newer version answers 409
   `updated` and the page reloads.
-- The approval is an op with a deterministic id
-  (`approve--{quote}--{version}`) and a run with an id derived from it:
-  double taps, retries and replays land on the same run and record once.
-  The signature PNG is stored once under an id derived from the op.
+- The approval is an op with a deterministic id (`approve--{quote}--{n}`,
+  n = the approval's number) and a run with an id derived from it: double
+  taps, retries and replays land on the same run and record once. The
+  signature PNG is stored once under an id derived from the op.
+- Tries: when that run failed (the office re-sent or archived the quote
+  between the tap and the run), the next approval is try 2
+  (`approve--{quote}--{n}--2`, its own op and run), and so on: the first
+  try whose run is missing or didn't fail, so a double tap of try 2 is
+  still one run. The approval records its try (`approval.attempt`).
+- Refused with a plain message (409 `expired`): a version past its
+  `expires_on`, a version carrying a follow-up offer the quote no longer
+  has (the cadence archived it), an Early Bird discount past its deadline.
+  The customer's page says so instead of showing Approve.
+- No add-on list sent (approved by phone from an older screen): the add-ons
+  as the version has them ticked.
+- After the write, a step retried after a crash sends `quote.approved` /
+  `quote.converted` again under the same event id (`approved_wv`,
+  `converted_wv`), so listeners still run once.
 - Steps: record the approval (status `approved`, who, how, when, IP hash,
   the option and ticked add-ons), then the deposit (only with Money), then,
   with "book it right after approval" on and a module to book it, the
   convert run (`convert--{quote}`), which is idempotent the same way.
 - The approved version is what conversion uses (`quotes.approvedVersion`).
+- Early Bird ("Deal Ends December 1st"): a quote whose Early Bird discount
+  is past its own `offer_until` or the season's last deadline isn't sent,
+  presented or approved by phone; a duplicate leaves it behind;
+  `expires_on` is no later than the deadline in effect and each Early Bird
+  `offer_until`.
 
 ## Settings
 
 `cfg/pricing` (owner; `settings:owner`): `exterior_tiers` (max panes,
 cents: $275 / $295 / $395 / $495 / $595 up to 20 / 40 / 60 / 80 / 100),
 `sqft_tiers`, `interior.per_segment_cents` ($80 per 20 panes),
-`screens.{each_cents, estimate_ratio}`, `tracks.{standard_cents,
-premium_cents}` ($8 / $15, D26), `pane_weights`,
+`screens.estimate_ratio`, `pane_weights`,
 `plan_discount_per_visit_cents.{biannual, quarterly, monthly}` ($50 /
-$100 / $150), `lights.{install_per_ft_cents, materials_per_ft_cents,
-early_bird_bp, deadlines, three_year_off_cents, colors}`,
+$100 / $150), `lights.{early_bird_bp, deadlines, three_year_off_cents,
+colors}`,
 `discount_floor_cents` (a visit's floor, $0), `quote_expiry_days` (30),
 `auto_convert` (true). A change applies to the
 next quote; sent and imported quotes keep their prices.
+
+The add-ons priced per unit are their price-book items (one source):
+`screens` $5, `tracks_standard` $8 (D26), `tracks_premium` $15,
+`lights_install` $8 and `lights_materials` $2 a foot. cfg/pricing's
+`screens.each_cents`, `tracks.*` and `lights.*_per_ft_cents` are only a
+fallback for a book without that item.
 
 ## Sweeps, queue kinds and listeners
 
@@ -220,6 +259,15 @@ Against the M2c runner (docs/CRM-IMPORT.md):
   version).
 - Customer-facing text in Barta's voice: no em dashes, "insured", the
   satisfaction guarantee is a free re-clean.
+- A quote's photos and mockups are its own files: `photo_ids` and
+  `mockup_file_ids` take only files uploaded to this quote, and the
+  customer's page serves only those (never a signature or another record's
+  file).
+- A discount can be tied to a line (`line_id`: 10 free screens on a
+  screens add-on): it counts only when that line does, on the server, in
+  the builder and on the customer's page.
+- Sizes: a line over $1,000,000 or an option over $10,000,000 a visit is a
+  400, never an overflow.
 - Synthetic fixtures only (placeholder names, `555` numbers, `example.com`
   emails); logs carry counts and codes, never a name, phone, email,
   address or amount tied to a person.

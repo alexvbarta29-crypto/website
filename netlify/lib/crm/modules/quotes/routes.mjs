@@ -85,7 +85,7 @@ async function totalsRoute(ctx) {
   const o = ctx.body && ctx.body.option;
   if (!isPlainObject(o)) throw new InputError("Send an option.", "option");
   const pricing = await loadPricing();
-  const [norm] = normalizeOptions([o], { pricing, canOverride: true });
+  const [norm] = normalizeOptions([o], { pricing, canOverride: true, trusted: true });
   validateOption(norm, "option");
   return { data: { totals: optionTotals(norm, pricing) } };
 }
@@ -103,13 +103,16 @@ async function lightsRoute(ctx) {
   if (pkg !== null && (!Number.isSafeInteger(pkg) || pkg < 0 || pkg > 10000000)) throw new InputError("A package price in cents.", "package_cents");
   const colors = (Array.isArray(b.colors) ? b.colors : []).filter((c) => (pricing.lights.colors || []).includes(c));
   const on = typeof b.on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.on) ? b.on : localDate(now());
+  // every season (a lights plan, the default) or this season only; the 3-year contract is a plan of three seasons
+  const every = b.every_season !== false;
+  if (!every && b.three_year === true) throw new InputError("The 3-year discount is for every season, not this season only.", "three_year");
   const lines = lightsLines({ runs, package_cents: pkg || undefined, colors }, pricing, book, { lineId: newLineId });
   const deadline = earlyBirdDeadline(on, pricing);
   const discounts = lightsDiscounts({ early_bird: b.early_bird === true, three_year: b.three_year === true, on }, pricing, defs).map((d) => ({ ...d, id: `dc_${d.key}_${newLineId().slice(3, 9)}` }));
   const warnings = [];
   if (!lines.length) warnings.push("add_runs_or_package");
   if (b.early_bird === true && !deadline) warnings.push("early_bird_over");
-  return { data: { lines, discounts, early_bird_deadline: deadline, warnings, plan: { catalog_key: "lights_annual", frequency: { ...PLAN_CATALOG.lights_annual.frequency }, visits_per_year: 1, term_months: b.three_year === true ? 36 : 12, billing: "after_visit", autopay: false, auto_renew: true } } };
+  return { data: { lines, discounts, early_bird_deadline: deadline, warnings, plan: every ? { catalog_key: "lights_annual", frequency: { ...PLAN_CATALOG.lights_annual.frequency }, visits_per_year: 1, term_months: b.three_year === true ? 36 : 12, billing: "after_visit", autopay: false, auto_renew: true } : null } };
 }
 
 // ------------------------------------------------------------ price book and discounts
@@ -208,7 +211,9 @@ async function getRoute(ctx) {
     versionsOf(q.id, { limit: 12 }).catch(() => []),
   ]);
   const properties = props.filter((g) => g && !g.data.deleted_at).map((g) => propertyOf(g.data));
-  const shown = (q.approval && versions.find((v) => v.id === q.approval.version_id)) || versions.find((v) => v.id === q.current_version_id) || null;
+  // the approved version while approved; after an archive and restore the old approval is only history
+  const done = ["approved", "converted"].includes(q.status);
+  const shown = (done && q.approval && versions.find((v) => v.id === q.approval.version_id)) || versions.find((v) => v.id === q.current_version_id) || null;
   const appr = q.approval && shown ? (shown.options || []).find((o) => o.id === q.approval.option_id) : null;
   return {
     data: {
@@ -281,7 +286,7 @@ const lifecycle = (fn) => async (ctx) => {
 
 async function previewRoute(ctx) {
   const { data: q } = await getQuote(ctx.params.id);
-  const vid = (q.approval && q.approval.version_id) || q.current_version_id;
+  const vid = (["approved", "converted"].includes(q.status) && q.approval && q.approval.version_id) || q.current_version_id;
   const [version, c, company] = await Promise.all([vid ? getVersion(vid) : null, getRecord("contact", q.contact_id).catch(() => null), getSetting("company").catch(() => ({}))]);
   const files = version ? [...(version.photo_ids || []), ...(version.mockup_file_ids || [])] : [];
   const out = renderQuotePage({ quote: q, version, contact: c && c.data, mode: "preview", files });

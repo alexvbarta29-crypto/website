@@ -82,13 +82,18 @@ export function arrivalWindow(visit, hours = DEFAULT_HOURS) {
   return `arriving between ${betweenText(visit.start, fromMin(windowEnd(visit, hours)))}`;
 }
 
-// "Residential Window Cleaning", "Exterior Cleaning::Gutters" → "window cleaning and exterior cleaning"
-export function serviceList(types = []) {
+// "Residential Window Cleaning", "Exterior Cleaning::Gutters" → "window cleaning and exterior cleaning".
+// "Exterior Cleaning" says what the job's title says it is, when it does
+// (gutters, a house wash, pressure washing).
+export function serviceList(types = [], title = "") {
+  const t0 = String(title || "").toLowerCase();
+  const exterior = /gutter/.test(t0) ? "gutter cleaning" : /house wash|soft wash/.test(t0) ? "house washing" : /pressure|power wash/.test(t0) ? "pressure washing" : "exterior cleaning";
   const words = [...new Set((types || []).map((t) => String(t || "").split("::")[0].trim()).filter(Boolean).map((t) => {
     const l = t.toLowerCase();
     if (/window/.test(l)) return "window cleaning";
     if (/gutter/.test(l)) return "gutter cleaning";
     if (/light/.test(l)) return "Christmas lights";
+    if (l === "exterior cleaning") return exterior;
     return l;
   }))];
   if (!words.length) return "your service";
@@ -102,7 +107,7 @@ export function visitVars(visit, hours = DEFAULT_HOURS) {
     visit_time: visit.date_only ? null : clock12(visit.start),
     arrival_window: arrivalWindow(visit, hours),
     ...(visit.town ? { town: visit.town } : {}),
-    service_list: serviceList(visit.service_types),
+    service_list: serviceList(visit.service_types, visit.job_title),
   };
 }
 

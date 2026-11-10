@@ -8,6 +8,13 @@
 // (the run id derives from the op id). A version that is no longer current
 // gets 409 "This quote was updated" before anything is written.
 //
+// Tries: when the run of approval n FAILED (the office re-sent the quote
+// between the tap and the run, or archived it), the next approval request
+// is try 2: approve--{quoteId}--{n}--2, its own op and run (try 1 keeps the
+// plain id). The try is the first one whose run is missing or didn't fail,
+// so it stays deterministic: a double tap of try 2 is still one run.
+// The convert op keeps convert--{quoteId}--{n} (one per approval).
+//
 //   approve op (quotes.approve)  record the approval on the quote (version id
 //                                and hash, option, chosen optional lines, one
 //                                signature file, how and by whom), emit
@@ -28,7 +35,7 @@
 import { createHash } from "node:crypto";
 import { getRecord, updateRecord, settledWrite, getRaw } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
-import { nowIso } from "../../core/clock.mjs";
+import { now, nowIso, localDate } from "../../core/clock.mjs";
 import { InputError, NotFoundError, ConflictError, ExistsError } from "../../core/errors.mjs";
 import { defineOp, runOp, opIdFor, readOp } from "../../core/ops.mjs";
 import { defineRun, createRun } from "../../core/lanes.mjs";
@@ -36,17 +43,18 @@ import { storeImportedFile, sniffType } from "../../core/files.mjs";
 import { has, call } from "../../core/services.mjs";
 import { notify, approvers } from "../../core/notify.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { getQuote, emitQuote, touchStats, timeline, W, loadPricing } from "./quotes.mjs";
+import { getQuote, emitQuote, touchStats, timeline, W, loadPricing, customerCanAnswer, versionClosed } from "./quotes.mjs";
 import { getVersion } from "./versions.mjs";
 import { optionTotals } from "./pricing.mjs";
 
 export const MAX_SIGNATURE_BYTES = 200 * 1024;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
-const approvable = (q) => ["sent", "viewed"].includes(q.status) || (q.status === "draft" && !!q.current_version_id);
+const approvable = customerCanAnswer;
+export const MAX_TRIES = 20;
 
-export const approveOpId = (quoteId, n) => opIdFor(`approve--${quoteId}`, n);
+export const approveOpId = (quoteId, n, attempt = 1) => `${opIdFor(`approve--${quoteId}`, n)}${Number.isSafeInteger(attempt) && attempt > 1 ? `--${attempt}` : ""}`;
 export const convertOpId = (quoteId, n) => opIdFor(`convert--${quoteId}`, n);
-export const approveRunId = (quoteId, n) => deriveId("run", approveOpId(quoteId, n), "quotes.approve", 0);
+export const approveRunId = (quoteId, n, attempt = 1) => deriveId("run", approveOpId(quoteId, n, attempt), "quotes.approve", 0);
 export const convertRunId = (quoteId, n) => deriveId("run", convertOpId(quoteId, n), "quotes.convert", 0);
 
 // The option as the customer chose it: optional lines on only when picked; totals again.
@@ -83,7 +91,7 @@ export async function startApproval(quoteId, body = {}, who = {}, ctx = {}) {
   const n0 = q.approvals_count || 0;
   // a replay after the approval finished: the same run
   if (["approved", "converted"].includes(q.status) && q.approval && q.approval.version_id === body.version_id && q.approval.option_id === body.option_id && n0 > 0) {
-    return { run_id: approveRunId(q.id, n0), already: true };
+    return { run_id: approveRunId(q.id, n0, q.approval.attempt || 1), already: true };
   }
   if (!approvable(q)) {
     if (q.status === "approved" || q.status === "converted") throw new ConflictError("This quote is already approved.", { code: "approved" });
@@ -93,10 +101,13 @@ export async function startApproval(quoteId, body = {}, who = {}, ctx = {}) {
   const version = await getVersion(q.current_version_id);
   if (!version) throw updated();
   if (who.method !== "phone" && body.version_sha256 !== version.sha256) throw updated();
+  const closed = versionClosed(q, version, { today: localDate(now()), pricing: await loadPricing() });
+  if (closed) throw new ConflictError(who.method === "phone" ? closed.staff : closed.message, { code: closed.code });
   const option = (version.options || []).find((o) => o.id === body.option_id);
   if (!option) throw new InputError("Pick one of the options.", "option_id");
   const optionalIds = new Set((option.lines || []).filter((l) => l.optional).map((l) => l.id));
-  const chosen = [...new Set(Array.isArray(body.selected_line_ids) ? body.selected_line_ids.map(String) : [])];
+  // no list sent (an older client): the add-ons as the version had them ticked
+  const chosen = [...new Set(Array.isArray(body.selected_line_ids) ? body.selected_line_ids.map(String) : (option.lines || []).filter((l) => l.optional && l.selected === true).map((l) => l.id))];
   if (chosen.some((id) => !optionalIds.has(id))) throw new InputError("That add-on isn't on this option.", "selected_line_ids");
   let name = String(body.name_typed ?? "").trim();
   let bytes = null;
@@ -107,10 +118,16 @@ export async function startApproval(quoteId, body = {}, who = {}, ctx = {}) {
     bytes = signatureBytes(body.signature_png_b64);
   } else name = name.slice(0, 120);
   const n = n0 + 1;
-  const opId = approveOpId(q.id, n);
-  const runId = approveRunId(q.id, n);
-  const existing = await getRecord("run", runId).catch(() => null);
-  if (existing) return { run_id: runId, already: true };
+  // the first try whose run is missing (start it) or didn't fail (a double tap: the same run)
+  let attempt = 1;
+  for (;; attempt++) {
+    if (attempt > MAX_TRIES) throw new ConflictError("This quote can't be approved online right now. Call or text us.", { code: "not_open" });
+    const had = await getRecord("run", approveRunId(q.id, n, attempt)).catch(() => null);
+    if (!had) break;
+    if (had.data.status !== "failed") return { run_id: had.data.id, already: true };
+  }
+  const opId = approveOpId(q.id, n, attempt);
+  const runId = approveRunId(q.id, n, attempt);
   let signature_id;
   if (bytes) {
     signature_id = deriveId("file", opId, "signature", 1);
@@ -124,7 +141,7 @@ export async function startApproval(quoteId, body = {}, who = {}, ctx = {}) {
     }
   }
   const input = {
-    quote_id: q.id, n, version_id: version.id, version_sha256: version.sha256, option_id: option.id, selected_line_ids: chosen,
+    quote_id: q.id, n, ...(attempt > 1 ? { attempt } : {}), version_id: version.id, version_sha256: version.sha256, option_id: option.id, selected_line_ids: chosen,
     name_typed: name, signature_id, method: who.method, by: who.by || null, ip_hash: who.ip_hash || null, ua: who.ua || null, at: nowIso(),
     ...(who.link_key ? { link_key: who.link_key } : {}),
   };
@@ -157,11 +174,14 @@ defineOp("quotes.approve", {
           const version = await getVersion(input.version_id);
           const option = version && (version.options || []).find((o) => o.id === input.option_id);
           if (!option) throw new ConflictError("That option isn't on the quote.");
+          const closed = versionClosed(q0, version, { today: localDate(now()), pricing: await loadPricing() });
+          if (closed) throw new ConflictError(closed.message, { code: closed.code });
           const at = input.at || nowIso();
           const approval = {
             version_id: input.version_id, version_sha256: input.version_sha256, option_id: input.option_id, selected_line_ids: input.selected_line_ids || [],
             ...(input.signature_id ? { signature_id: input.signature_id } : {}), name_typed: input.name_typed || "", ip_hash: input.ip_hash || undefined, ua: input.ua || undefined,
             at, method: input.method, ...(input.by ? { by: input.by } : {}), totals: chosenOption(option, input.selected_line_ids, await loadPricing()).totals,
+            ...(input.attempt > 1 ? { attempt: input.attempt } : {}),
           };
           const r = await updateRecord("quote", input.quote_id, (q) => {
             if (q.approval && q.approval.version_id === input.version_id && (q.approvals_count || 0) >= input.n) return null;
@@ -244,7 +264,7 @@ defineOp("quotes.convert", {
             return { plan_id: out.plan_id || null, agreement_id: out.agreement_id || null, job_ids: Array.isArray(out.job_ids) ? out.job_ids : [] };
           }
           const job = {
-            contact_id: q.contact_id, property_id: q.property_id || null, kind: option.lines.some((l) => l.category === "lights") ? "lights_install" : "one_time",
+            contact_id: q.contact_id, property_id: q.property_id || null, kind: option.lines.some((l) => l.category === "lights") ? "lights_install" : "standard",
             title: `${option.name} (${q.number_label})`.slice(0, 120), lines: option.lines.filter((l) => !l.optional || l.selected), discounts: option.discounts || [],
             quote_id: q.id, deal_id: q.deal_id || null, billable: true,
           };
@@ -314,7 +334,7 @@ async function finishOrThrow(opId, kind, input, ctx, holder) {
 async function approveStep(run, rctx) {
   const i = run.input || {};
   const ctx = personCtx(run, rctx);
-  const opId = approveOpId(i.quote_id, i.n);
+  const opId = approveOpId(i.quote_id, i.n, i.attempt || 1);
   const a = await finishOrThrow(opId, "quotes.approve", i, ctx, `approve.${run.id}`);
   if (a.status === "failed") return { failed: (a.error && a.error.code) || "failed", result: { status: "failed", message: (a.error && a.error.message) || null } };
   if (a.status !== "done") return { progress: { done: 0, total: 2 } };

@@ -127,6 +127,8 @@ export function validateDiscount(v, f, { stored = false } = {}) {
     stack_group: (x, ff) => str(x, { field: ff, max: 30 }) || undefined,
     offer: (x, ff) => (x === undefined || x === null || x === "" ? undefined : str(x, { field: ff, max: 40 })),
     offer_until: dateOpt,
+    // a discount on one line (10 free screens): counts only when that line does
+    line_id: (x, ff) => (x === undefined || x === null || x === "" ? undefined : LINE_ID_RE.test(String(x)) ? String(x) : (() => { throw new InputError("That isn't a line.", ff); })()),
   });
   out.id = id;
   out.type = type;
@@ -303,6 +305,8 @@ function validateApproval(v, f) {
     method: (x, ff) => enumValue(x, APPROVAL_METHODS, { field: ff, stored: true }),
     by: (x, ff) => str(x, { field: ff, max: 80 }) || undefined,
     selected_line_ids: (x, ff) => arr(x, (y, yf) => str(y, { field: yf, max: 64 }), { field: ff, max: MAX_LINES }),
+    // which try of this approval went through (its op and run ids, approve.mjs)
+    attempt: (x, ff) => int(x, { field: ff, min: 1, max: 1000 }) ?? undefined,
   }, { field: f });
 }
 

@@ -38,8 +38,12 @@ test("the manifest: routes with permissions and parents, More → Quotes, New qu
 test("the builder's live totals agree with the server's engine (integer math, scopes, percentages first, the floor)", () => {
   const cases = [option(), plan(), { kind: "plan", plan: { visits_per_year: 1, term_months: 36 }, lines: [{ qty_milli: 154500, unit_cents: 800 }], discounts: [{ type: "percentage", value: 5000 }, { type: "fixed", value: 10000 }] },
     { kind: "one_time", lines: [{ qty_milli: 1500, unit_cents: 333 }, { qty_milli: 1000, unit_cents: 8000, override: { cents: 7000, reason: "x" } }], discounts: [{ type: "percentage", value: 1500 }] },
-    { kind: "one_time", lines: [{ qty_milli: 1000, unit_cents: 8000 }], discounts: [{ type: "fixed", value: 10000 }] }];
+    { kind: "one_time", lines: [{ qty_milli: 1000, unit_cents: 8000 }], discounts: [{ type: "fixed", value: 10000 }] },
+    // 10 free screens tied to an add-on: nothing off until it's ticked, then $50
+    { kind: "one_time", lines: [{ id: "ln_a1", qty_milli: 1000, unit_cents: 29500 }, { id: "ln_s1", qty_milli: 20000, unit_cents: 500, optional: true }], discounts: [{ type: "fixed", value: 5000, line_id: "ln_s1" }] },
+    { kind: "one_time", lines: [{ id: "ln_a1", qty_milli: 1000, unit_cents: 29500 }, { id: "ln_s1", qty_milli: 20000, unit_cents: 500, optional: true, selected: true }], discounts: [{ type: "fixed", value: 5000, line_id: "ln_s1" }] }];
   for (const o of cases) assert.deepEqual(kit.optionTotals(o), P.optionTotals(o, P.PRICING_DEFAULTS));
+  assert.deepEqual([cases[5], cases[6]].map((o) => kit.optionTotals(o).first_cents), [29500, 34500]);
   assert.equal(kit.scopeWords({ type: "specific", visits: [1, 3, 4] }), "Visits 1, 3, 4");
   assert.deepEqual(kit.parseVisits("1, 3 4"), { type: "specific", visits: [1, 3, 4] });
   assert.equal(kit.toMilli("1.5"), 1500);
@@ -112,10 +116,15 @@ test("lights quote, pricing settings, discounts: render and escape", async () =>
   assert.match(lh, /Early Bird 50% off \(until Tue, Dec 1\)/);
   assert.match(lh, /Christmas Light Installation/);
   assert.match(lh, /\$600\.00/, "120 ft × $10 = $1,200, 50% off");
+  const once = text(lights.render({ id: "qt_1", cx, runs: [{ label: "Roofline", feet: "120" }], pkg: "", usePkg: false, colors: [], early: false, three: true, every: false, warnings: [], preview: null }, ctx()));
+  assert.match(once, /data-three="1" disabled/, "this season only: no 3-year contract");
+  assert.match(once, /for every season only/);
   const st = await load("settings");
-  const sh = text(st.render({ cfg: P.pricingWith({}), etag: "x", book: [{ id: "pi_1", name: `Screens ${XSS}`, unit: "screen", unit_cents: 500, active: true }] }, ctx()));
+  const sh = text(st.render({ cfg: P.pricingWith({}), etag: "x", book: [{ id: "pi_1", name: `Screens ${XSS}`, unit: "screen", unit_cents: 500, active: true, key: "screens" }, { id: "pi_2", key: "tracks_standard", name: "Track Detailing", unit: "track", unit_cents: 500, active: true }] }, ctx()));
   assert.ok(!sh.includes("<script>alert(1)"));
   assert.match(sh, /name="tier_c_2" inputmode="decimal" value="395\.00"/, "41-60 panes: $395");
+  assert.match(sh, /name="trk" inputmode="decimal" value="5\.00"/, "track detailing: the price-book item's price (one source)");
+  assert.match(sh, /name="dl1_2027"/, "next season's Early Bird dates can go in now");
   const dc = await load("discounts");
   const dh = text(dc.render({ defs: [{ id: "dd_1", name: `Neighbor ${XSS}`, type: "fixed", value: 2500, default_scope: { type: "initial" } }, { id: "dd_2", name: "5-Year Contract", type: "fixed", value: 20000, sellable: false }], can: false }, ctx()));
   assert.ok(!dh.includes("<script>alert(1)"));

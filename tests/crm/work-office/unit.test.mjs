@@ -24,6 +24,9 @@ test("visit variables for templates", () => {
   assert.deepEqual(vars, { visit_date: "Thu, Nov 19", visit_time: "1:00 PM", arrival_window: "arriving between 1:00 and 3:00 PM", town: "Mound", service_list: "window cleaning and exterior cleaning" });
   assert.equal(serviceList([]), "your service");
   assert.equal(serviceList(["Christmas Lights"]), "Christmas lights");
+  assert.equal(serviceList(["Exterior Cleaning"], "Gutter cleaning"), "gutter cleaning", "the job's title says which exterior cleaning");
+  assert.equal(serviceList(["Exterior Cleaning", "Residential Window Cleaning"], "House wash + Windows"), "house washing and window cleaning");
+  assert.equal(serviceList(["Exterior Cleaning"], "Deck"), "exterior cleaning");
   assert.equal(visitVars({ date: "2026-11-19", start: "08:00", date_only: true, window: {} }).visit_time, null);
 });
 

@@ -144,7 +144,7 @@ details.card summary{min-height:44px;display:flex;align-items:center;font:800 17
 </style>`;
 
 // mode: "portal" | "present" | "preview". → { title, body } (trusted HTML, every value escaped).
-export function renderQuotePage({ quote, version, contact, mode = "portal", token = null, files = [], floor = 0 } = {}) {
+export function renderQuotePage({ quote, version, contact, mode = "portal", token = null, files = [], floor = 0, closed = null } = {}) {
   const first = firstName(contact);
   const label = (version && version.number_label) || quote.number_label;
   const editable = mode !== "preview";
@@ -156,6 +156,7 @@ export function renderQuotePage({ quote, version, contact, mode = "portal", toke
   if (quote.status === "archived") return msg("This quote has expired", "Call or text us and we'll put together a fresh one for you.");
   if (quote.status === "declined") return msg("You declined this quote", "Changed your mind? Call or text us anytime.");
   if (quote.status === "changes_requested") return msg("We got your note", "Thanks! We'll update your quote and send it back over.");
+  if (closed && mode !== "preview") return msg(closed.title, closed.message);
 
   const done = ["approved", "converted"].includes(quote.status) && quote.approval;
   const options = [...(version.options || [])].sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
@@ -174,7 +175,7 @@ export function renderQuotePage({ quote, version, contact, mode = "portal", toke
     options: options.map((o) => ({
       id: o.id, name: o.name, kind: o.kind, visits: visitsOf(o),
       lines: (o.lines || []).map((l) => ({ id: l.id, c: l.total_cents || 0, s: l.scope || { type: "all" }, o: !!l.optional, sel: l.selected === true })),
-      discounts: (o.discounts || []).map((d) => ({ t: d.type, v: d.value, s: d.scope || { type: "all" } })),
+      discounts: (o.discounts || []).map((d) => ({ t: d.type, v: d.value, s: d.scope || { type: "all" }, ...(d.line_id ? { l: d.line_id } : {}) })),
     })),
     agreements: Object.keys(version.plan_agreements || {}),
   };

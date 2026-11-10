@@ -37,8 +37,7 @@ test("before Nov 1 the first deadline is in effect; after Dec 1 there is no Earl
     const late = await t.api("/pricing/lights", { method: "POST", as: owner, body: { runs: [{ label: "Roofline", feet: 120 }], early_bird: true } });
     assert.deepEqual(late.body.data.discounts, []);
     assert.ok(late.body.data.warnings.includes("early_bird_over"));
-    // a quote sent after the deadline with an Early Bird line on it: 30 days (the deadline in effect is none)
-    const after = await sentQuote(t, owner, { options: [lights()] });
-    assert.equal(after.quote.expires_on, "2027-01-04");
+    // a quote with Early Bird on it after the deadline ("Deal Ends December 1st"): not sent, said plainly
+    await assert.rejects(sentQuote(t, owner, { options: [lights()] }), /The Early Bird deadline has passed\. Take the Early Bird discount off, then send\./);
   } finally { f.restore(); t.done(); }
 });
