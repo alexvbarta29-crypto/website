@@ -54,7 +54,7 @@ import {
   InputError, NotFoundError, ExistsError, StaleError, BlobsTransientError, UnknownOutcome, ParallelRunGuard,
   SchemaTooNew, ProdStoreRefused, DeployContextRequired, SetupNeeded, BudgetError, TimeoutError, RegistryError,
 } from "./crm/core/errors.mjs";
-import { STORES, PROD_STORE_NAMES, storeNameFor, isDeploy } from "./crm/core/context.mjs";
+import { STORES, PROD_STORE_NAMES, storeNameFor, isDeploy, keySalt, prodSignal } from "./crm/core/context.mjs";
 import { now, nowIso, nowMs, tsKey, localDate, fromTsKey } from "./crm/core/clock.mjs";
 import { typeOf, newId, ALPHABET } from "./crm/core/ids.mjs";
 import { isKeySafe, keySafe } from "./crm/core/text.mjs";
@@ -329,9 +329,9 @@ export function hk(kind, value, env = process.env) {
     norm = String(value ?? "").trim().toLowerCase();
     if (!norm.includes("@")) throw new InputError("Not an email address.", "email");
   } else throw new TypeError(`hk: unknown kind ${kind}`);
-  let salt = env.CRM_KEY_SALT;
+  let salt = keySalt(env);
   if (!salt) {
-    if (env.CRM_PRODUCTION === "1") throw new SetupNeeded("CRM_KEY_SALT is not set in Netlify.");
+    if (prodSignal(env)) throw new SetupNeeded("CRM_KEY_SALT is not set in Netlify.");
     salt = "dev-only";
   }
   const mac = createHmac("sha256", salt).update(norm).digest();

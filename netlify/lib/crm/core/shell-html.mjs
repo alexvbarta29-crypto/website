@@ -85,13 +85,14 @@ ${boot("crm-page", { page: "login", to })}${pageScript}`)}</body></html>`;
 }
 
 // First-owner setup (/crm/setup): office cookie + CRM_SETUP_CODE, once.
-export function setupHtml() {
+// With automatic setup (no CRM_SETUP_CODE) the office password stands in.
+export function setupHtml({ officePassword = false } = {}) {
   return `${HEAD("Set up · Barta CRM")}${card(`
 <h1>Set up the CRM</h1>
-<p class="lead">This makes the first owner account. You need the one-time setup code from Netlify (CRM_SETUP_CODE).</p>
+<p class="lead">${officePassword ? "This makes the first owner account. Type the office password again to confirm it's you." : "This makes the first owner account. You need the one-time setup code from Netlify (CRM_SETUP_CODE)."}</p>
 <form id="setup" class="form" novalidate>
   <div class="err" id="err" role="alert" hidden></div>
-  <label class="field"><span>Setup code</span><input name="setup_code" id="setup_code" type="password" autocomplete="off" required></label>
+  <label class="field"><span>${officePassword ? "Office password" : "Setup code"}</span><input name="setup_code" id="setup_code" type="password" autocomplete="off" required></label>
   <label class="field"><span>Your name</span><input name="name" id="name" type="text" autocomplete="name" autocapitalize="words" maxlength="60" required></label>
   <label class="field"><span>Login</span><input name="login" id="login" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="alex" maxlength="32" required><small>Lowercase, like alex. You type it to sign in.</small></label>
   <label class="field"><span>Password</span><input name="password" id="password" type="password" autocomplete="new-password" minlength="10" required><small>At least 10 characters. A short sentence works well.</small></label>

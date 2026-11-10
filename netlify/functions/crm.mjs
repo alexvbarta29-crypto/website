@@ -14,7 +14,7 @@
 // (script-src 'self'); the legacy page keeps its inline scripts, allowed by
 // hash. See docs/CRM.md.
 
-import { deployContext, canonicalRedirect } from "../lib/crm/core/context.mjs";
+import { deployContext, canonicalRedirect, autoSetup } from "../lib/crm/core/context.mjs";
 import { withStoreScope, withBudget } from "../lib/crm-store.mjs";
 import { lookupSession, deviceId, newDeviceCookie } from "../lib/crm/core/sessions.mjs";
 import { officeSignedIn, missingSetup, storeBlocked, setupDone, inviteTarget, loadPermissions } from "../lib/crm/core/auth.mjs";
@@ -96,8 +96,8 @@ async function setup(req) {
   if (await setupDone()) {
     return htmlPage(messageHtml({ title: "Setup is done", text: "Ask an owner to invite you.", links: [{ label: "Sign in", href: "/crm/login", primary: true }] }), 410);
   }
-  if (!process.env.CRM_SETUP_CODE) return htmlPage(setupNeededHtml({ missing: ["CRM_SETUP_CODE"], office: true }), 503);
-  return htmlPage(setupHtml());
+  if (!process.env.CRM_SETUP_CODE && !autoSetup()) return htmlPage(setupNeededHtml({ missing: ["CRM_SETUP_CODE"], office: true }), 503);
+  return htmlPage(setupHtml({ officePassword: !process.env.CRM_SETUP_CODE }));
 }
 
 async function invite(req, token) {
