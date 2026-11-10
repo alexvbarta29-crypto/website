@@ -407,6 +407,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/import/:id": run.data.run.id, "/import/:id/conflicts": run.data.run.id, "/dashboard/:view": "money", "/tools/:id": "followups",
     "/jobs/:id": seeded.jobs.tech, "/visits/:id": seeded.visits.tech, "/settings/checklists/:id": (await get("/checklists"))[0].id,
     "/schedule/route/:date/:user": { date: (await get(`/visits/${seeded.visits.tech}`)).visit.date, user: seeded.users.tech.id },
+    "/quotes/:id": seeded.quotes.sent, "/quotes/:id/edit": seeded.quotes.draft, "/quotes/:id/lights": seeded.quotes.draft,
   };
   await o.close();
   const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] && typeof ids[path] === "object" ? ids[path][name] : ids[path] ?? null) ?? m);

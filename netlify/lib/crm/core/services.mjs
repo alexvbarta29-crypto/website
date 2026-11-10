@@ -73,6 +73,7 @@ export function __resetServicesForTests() { services.clear(); }
 // what was there.
 export function __swapServiceForTests(name, fn) {
   const had = services.get(name);
-  services.set(name, { fn, module: "test" });
+  // null/undefined hides the service, as if its module weren't merged
+  if (fn == null) services.delete(name); else services.set(name, { fn, module: "test" });
   return () => { if (had) services.set(name, had); else services.delete(name); };
 }

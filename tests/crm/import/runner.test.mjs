@@ -123,8 +123,8 @@ test("a crash mid-phase resumes at the row that failed; a lost checkpoint redoes
 });
 
 test("phases of modules not built yet wait (and say how many rows wait); a phase after a waiting one waits too", async () => {
-  // a module that registers a phase depending on Quotes' (which isn't there)
-  fixtureModule({ importPhases: [{ name: "fixture.after_quotes", entity: "quotes", after: ["quotes.quotes"], normalize: (r) => r, map: async () => ({}) }] });
+  // a module that registers a phase depending on Plans' (which isn't there)
+  fixtureModule({ importPhases: [{ name: "fixture.after_plans", entity: "service_plans", after: ["plans.plans"], normalize: (r) => r, map: async () => ({}) }] });
   const plan = runner.phasePlan();
   assert.ok(plan.findIndex((p) => p.name === "system.users") < plan.findIndex((p) => p.name === "contacts.customers"), "after: system.users");
   assert.ok(plan.findIndex((p) => p.name === "contacts.leads") < plan.findIndex((p) => p.name === "contacts.suppressions"));
@@ -138,12 +138,14 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     assert.equal(w["money.invoices"].waiting_for, "money");
     assert.equal(w["money.invoices"].rows, ex.invoices.length, "the report says how many rows wait");
     assert.equal(w["comms.messages"].module_label, "Messages");
-    assert.equal(w["fixture.after_quotes"].waiting_for, "quotes.quotes", "after a phase that isn't there: waits");
+    assert.equal(w["fixture.after_plans"].waiting_for, "plans.plans", "after a phase that isn't there: waits");
     // every phase the design expects from a module that hasn't registered it yet waits
     const { EXPECTED_PHASES } = await import("../../../netlify/lib/crm/modules/import/catalog.mjs");
     const registered = new Set(runner.phasePlan().filter((p) => p.registered).map((p) => p.name));
     for (const p of EXPECTED_PHASES) if (!registered.has(p.name)) assert.ok(w[p.name], `${p.name} waits`);
+    assert.ok(w["plans.plans"] && w["payroll.payroll"]);
     assert.ok(!w["work.jobs"] && !w["work.visits"], "Scheduling's phases run");
+    assert.ok(!w["quotes.quotes"] && !w["quotes.price_book"] && !w["quotes.discounts"], "Quotes (M3a) runs its phases");
     assert.ok(!w["contacts.customers"]);
     assert.ok(!w["sales.pipelines"] && !w["sales.opportunities"] && !w["sales.tasks"], "a module that shipped runs its phases");
     // the run's money: Rotor's side from the staged rows
