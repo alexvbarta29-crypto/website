@@ -248,7 +248,8 @@ export function validateDiscountDef(data, { op } = {}) {
     key: (v, f) => { if (!DEF_KEY_RE.test(String(v ?? ""))) throw new InputError("A short key like first_time.", f); return String(v); },
     name: (v, f) => str(v, { field: f, max: 80, required: true }),
     kind: () => kind,
-    type: () => undefined,
+    // the envelope's own type rides along (schema rule 1); an API body's fixed / percentage went to kind
+    type: (v) => (v === "discount_def" ? v : undefined),
     value: (v, f) => int(v, { field: f, min: 0, max: kind === "percentage" ? 10000 : 100000000 }) ?? 0,
     default_scope: (v, f) => validateScope(v, f, { stored }),
     sellable: (v, f) => (v === undefined ? true : bool(v, { field: f })),
@@ -332,6 +333,9 @@ export function validateQuote(data, { op } = {}) {
     versions_n: (v, f) => int(v, { field: f, min: 0, max: 100000 }) ?? 0,
     approvals_count: (v, f) => int(v, { field: f, min: 0, max: 100000 }) ?? 0,
     approved_at: isoOpt,
+    // the record's wv the approval / conversion was written at: a retried op step replays its event under the same id
+    approved_wv: (v, f) => int(v, { field: f, min: 1, max: Number.MAX_SAFE_INTEGER }) ?? undefined,
+    converted_wv: (v, f) => int(v, { field: f, min: 1, max: Number.MAX_SAFE_INTEGER }) ?? undefined,
     approval: validateApproval,
     changes_requested_at: isoOpt,
     change_message: (v, f) => str(v, { field: f, max: 2000, trim: false }) || undefined,

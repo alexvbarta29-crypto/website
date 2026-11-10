@@ -194,3 +194,37 @@ test("an approval whose op fails for good says so; the version is never half-app
     assert.equal(A.approveOpId(quote.id, 1), `approve--${quote.id}--1`);
   } finally { f.restore(); t.done(); }
 });
+
+test("a crash between the approval's write and its event: the retried step sends quote.approved under the same event id", async () => {
+  const { t, owner } = await setup();
+  const f = fakes({ plans: false, work: false });
+  try {
+    const { quote, version } = await sentQuote(t, owner);
+    const cookie = await portalCookie(t, quote);
+    const one = version.options.find((o) => o.kind === "one_time");
+    const r = await t.portal(`/api/portal/quotes/${quote.id}/approve`, { method: "POST", cookie, headers: PJSON, body: approveBody(version, one.id) });
+    const input = (await runOf(r.body.data.run_id)).input;
+    const { opKind } = await import("../../../netlify/lib/crm/core/ops.mjs");
+    const record = () => scope(() => opKind("quotes.approve").steps(input)[0].run({ ctx: { by: "portal", origin: "portal", actor_kind: "portal", requestId: "crash" }, opId: A.approveOpId(quote.id, 1), out: {} }));
+    const approvedItems = () => t.stores.data.keys("q/").filter((k) => { const x = t.stores.data.json(k); return x.data && x.data.name === "quote.approved"; });
+    assert.deepEqual(await record(), { approved: true });
+    const first = approvedItems();
+    assert.ok(first.length >= 1, "the event is queued");
+    const eventId = t.stores.data.json(first[0]).data.event_id;
+    const q = await quoteOf(quote.id);
+    assert.equal(q.status, "approved");
+    assert.equal(q.approved_wv, q.wv, "the wv the approval was written at");
+    // the crash: the write landed, the event never did
+    for (const k of first) await t.stores.data.delete(k);
+    assert.deepEqual(await record(), { already: true });
+    const again = approvedItems();
+    assert.ok(again.length >= 1, "the retry sends the event");
+    assert.deepEqual([...new Set(again.map((k) => t.stores.data.json(k).data.event_id))], [eventId], "under the same event id");
+    // another retry: items again, but under the same markers, so each listener still runs once (the queue's marker dedupe)
+    const markers = (keys) => [...new Set(keys.map((k) => t.stores.data.json(k).marker.key))].sort();
+    const before = markers(again);
+    await record();
+    assert.deepEqual(markers(approvedItems()), before);
+    assert.equal((await quoteOf(quote.id)).wv, q.wv, "a retry writes nothing");
+  } finally { f.restore(); t.done(); }
+});

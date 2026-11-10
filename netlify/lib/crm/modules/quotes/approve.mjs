@@ -76,6 +76,8 @@ export function signatureBytes(b64) {
 // body: { version_id, version_sha256?, option_id, selected_line_ids?, name_typed?, signature_png_b64?, agree? }
 // → { run_id, already?: true }
 export async function startApproval(quoteId, body = {}, who = {}, ctx = {}) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new InputError("That isn't an approval.", "body");
+  if (typeof body.version_id !== "string" || !body.version_id) throw new InputError("Which version? Reload the page.", "version_id");
   const { data: q } = await getQuote(quoteId);
   if (who.contact_id && q.contact_id !== who.contact_id) throw new NotFoundError("That quote isn't here.");
   const n0 = q.approvals_count || 0;
@@ -145,34 +147,28 @@ defineOp("quotes.approve", {
           const g = await getRecord("quote", input.quote_id);
           if (!g) throw new NotFoundError("That quote isn't there.");
           const q0 = g.data;
-          if (q0.approval && q0.approval.version_id === input.version_id && (q0.approvals_count || 0) >= input.n) return { already: true };
+          if (q0.approval && q0.approval.version_id === input.version_id && (q0.approvals_count || 0) >= input.n) {
+            // a retry after a crash between the write and what follows it: the event goes out under the same id (id:wv), the rest again
+            if ((q0.approvals_count || 0) === input.n && Number.isSafeInteger(q0.approved_wv)) await approvedEffects({ ...q0, wv: q0.approved_wv }, input, s.ctx);
+            return { already: true };
+          }
           if (!approvable(q0)) throw new ConflictError("This quote can't be approved now.", { code: "not_open" });
           if (q0.current_version_id !== input.version_id) throw updated();
           const version = await getVersion(input.version_id);
           const option = version && (version.options || []).find((o) => o.id === input.option_id);
           if (!option) throw new ConflictError("That option isn't on the quote.");
-          const pricing = await loadPricing();
-          const chosen = chosenOption(option, input.selected_line_ids, pricing);
           const at = input.at || nowIso();
           const approval = {
             version_id: input.version_id, version_sha256: input.version_sha256, option_id: input.option_id, selected_line_ids: input.selected_line_ids || [],
             ...(input.signature_id ? { signature_id: input.signature_id } : {}), name_typed: input.name_typed || "", ip_hash: input.ip_hash || undefined, ua: input.ua || undefined,
-            at, method: input.method, ...(input.by ? { by: input.by } : {}), totals: chosen.totals,
+            at, method: input.method, ...(input.by ? { by: input.by } : {}), totals: chosenOption(option, input.selected_line_ids, await loadPricing()).totals,
           };
           const r = await updateRecord("quote", input.quote_id, (q) => {
             if (q.approval && q.approval.version_id === input.version_id && (q.approvals_count || 0) >= input.n) return null;
             if (!approvable(q) || q.current_version_id !== input.version_id) throw updated();
-            return { ...q, status: "approved", approved_at: at, approval, selected_option_id: input.option_id, approvals_count: input.n };
+            return { ...q, status: "approved", approved_at: at, approval, selected_option_id: input.option_id, approvals_count: input.n, approved_wv: (q.wv || 0) + 1 };
           }, s.ctx);
-          const q = r.data;
-          if (r.changed) {
-            await Promise.all([
-              emitQuote("quote.approved", q, { option_id: input.option_id, method: input.method }, s.ctx),
-              touchStats(q, s.ctx),
-              timeline(q, "quote.approved"),
-              tellStaff(q, chosen, input.method, s.ctx),
-            ]);
-          }
+          if (r.changed) await approvedEffects(r.data, input, s.ctx);
           return { approved: true };
         },
       },
@@ -196,6 +192,18 @@ defineOp("quotes.approve", {
     ];
   },
 });
+
+// What follows an approval: the event (Sales, Plans), the contact's stats and timeline, the people to tell.
+async function approvedEffects(q, input, ctx) {
+  const version = await getVersion(input.version_id);
+  const option = version && (version.options || []).find((o) => o.id === input.option_id);
+  await Promise.all([
+    emitQuote("quote.approved", q, { option_id: input.option_id, method: input.method }, ctx),
+    touchStats(q, ctx),
+    timeline(q, "quote.approved"),
+    option ? tellStaff(q, option, input.method, ctx) : null,
+  ]);
+}
 
 async function tellStaff(q, option, method, ctx) {
   try {
@@ -251,10 +259,11 @@ defineOp("quotes.convert", {
           const r = await updateRecord("quote", input.quote_id, (q) => {
             if (q.status === "converted") return null;
             const converted_to = { ...(q.converted_to || {}), job_ids: made.job_ids || [], ...(made.plan_id ? { plan_id: made.plan_id } : {}), ...(made.agreement_id ? { agreement_id: made.agreement_id } : {}) };
-            return { ...q, status: "converted", converted_at: nowIso(), converted_to };
+            return { ...q, status: "converted", converted_at: nowIso(), converted_to, converted_wv: (q.wv || 0) + 1 };
           }, s.ctx);
-          const q = r.data;
-          if (r.changed) {
+          // a retry after a crash right after the write replays the event under the same id (id:converted_wv)
+          const q = r.changed || !Number.isSafeInteger(r.data.converted_wv) ? r.data : { ...r.data, wv: r.data.converted_wv };
+          if (r.changed || q.wv === r.data.converted_wv) {
             await Promise.all([
               emitQuote("quote.converted", q, { option_id: q.approval && q.approval.option_id, ...(q.converted_to.plan_id ? { plan_id: q.converted_to.plan_id } : {}), job_ids: q.converted_to.job_ids || [] }, s.ctx),
               touchStats(q, s.ctx),
