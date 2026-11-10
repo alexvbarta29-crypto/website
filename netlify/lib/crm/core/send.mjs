@@ -267,7 +267,8 @@ export async function sendMessage(msg, ctx = {}) {
   if (rendered.missing.length) return blocked("missing_variable");
 
   // quiet hours: a queued step keeps its marker and waits; a direct send is scheduled
-  const rule = quietRule(category, origin.kind, messaging.quiet || {}, calendar || DEFAULT_CALENDAR);
+  // (a bulk run's test send goes to the staff test contact, now: no quiet hours)
+  const rule = msg.test_send === true ? null : quietRule(category, origin.kind, messaging.quiet || {}, calendar || DEFAULT_CALENDAR);
   if (rule && !allowedNow(rule)) {
     const at = nextAllowed(now(), rule);
     if (h) return { status: "deferred", defer_until: at.toISOString(), reason: "quiet_hours", mode: a.mode };

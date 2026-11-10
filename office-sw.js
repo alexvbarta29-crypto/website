@@ -14,6 +14,11 @@
 // browser's error page in it. The only URLs ever cached here are LAUNCHER
 // and the KEEP files: never /office itself, never anything under /api/.
 // Bump VERSION to replace them.
+//
+// Web push (design §5.7.7): staff notifications arrive here (the office
+// shell subscribed on this registration). A push shows its title and body
+// (never customer data beyond a first name and a town); a tap focuses the
+// installed app, or opens it, at /office#crm/<path>.
 const VERSION = "barta-office-v4";
 const LAUNCHER = "/office/launch";
 const CRM_SHELL_CACHE = "crm-shell";
@@ -87,4 +92,29 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === location.origin && KEEP.includes(url.pathname)) {
     e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
   }
+});
+
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = { body: e.data ? e.data.text() : "" }; }
+  const link = typeof d.link === "string" && /^\/[A-Za-z0-9/_.?=&%-]*$/.test(d.link) ? d.link : "/today";
+  e.waitUntil(self.registration.showNotification(String(d.title || "Barta CRM").slice(0, 80), {
+    body: String(d.body || "").slice(0, 200),
+    icon: "/assets/img/app/office-icon-192.v2.png",
+    tag: typeof d.id === "string" ? d.id : undefined,
+    data: { url: "/office#crm" + link },
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/office#crm";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+    for (const c of list) {
+      if (new URL(c.url).pathname.startsWith("/office")) {
+        return c.focus().then((w) => (w && w.navigate ? w.navigate(url) : w)).catch(() => self.clients.openWindow(url));
+      }
+    }
+    return self.clients.openWindow(url);
+  }));
 });

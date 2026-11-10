@@ -1,8 +1,9 @@
-// Client manifest of the core "system" module (design §11.3): Today (empty
-// until the modules add their cards), My account, Team, and the first
-// slice's Customers list, which the Contacts tab opens until M2a's
-// Contacts screen replaces it. Screens load with dynamic import(). No data,
-// keys or customer names ever go in crm-app/ (§2.3).
+// Client manifest of the core "system" module (design §11.3, §9.2): Today,
+// My account, Team, the first slice's Customers list (which the Contacts
+// tab opens until M2a's Contacts screen replaces it) and, since M1.3,
+// Settings, Automations, Templates, Outbox, Activity, Approvals and the
+// notifications bell. Screens load with dynamic import(). No data, keys or
+// customer names ever go in crm-app/ (§2.3).
 
 export default {
   name: "system",
@@ -12,8 +13,31 @@ export default {
     { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/today", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },
     { path: "/legacy/customers", load: () => import("./legacy.js"), title: "Customers", perm: "contacts:read_all" },
+    { path: "/notifications", load: () => import("./notifications.js"), title: "Notifications", perm: "account:own", parent: "/today", skeleton: "list" },
+    { path: "/approvals", load: () => import("./approvals.js"), title: "Approvals", perm: "campaigns:send", parent: "/today", skeleton: "list" },
+    { path: "/automations", load: () => import("./automations.js"), title: "Automations", perm: "automations:configure", parent: "/today", skeleton: "list" },
+    { path: "/templates", load: () => import("./templates.js"), title: "Templates", perm: "templates:edit", parent: "/today", skeleton: "list" },
+    { path: "/templates/new", load: () => import("./template.js"), title: "New template", perm: "templates:edit", parent: "/templates" },
+    { path: "/templates/:id", load: () => import("./template.js"), title: "Template", perm: "templates:edit", parent: "/templates" },
+    { path: "/outbox", load: () => import("./outbox.js"), title: "Outbox", perm: "outbox:read", parent: "/today", skeleton: "list" },
+    { path: "/activity", load: () => import("./activity.js"), title: "Activity", perm: "audit:read", parent: "/today", skeleton: "list" },
+    { path: "/settings", load: () => import("./settings.js"), title: "Settings", perm: "settings:general", parent: "/today", skeleton: "list" },
+    { path: "/settings/company", load: () => import("./settings-general.js"), title: "Company", perm: "settings:general", parent: "/settings" },
+    { path: "/settings/hours", load: () => import("./settings-general.js"), title: "Hours & holidays", perm: "settings:general", parent: "/settings" },
+    { path: "/settings/service-area", load: () => import("./settings-general.js"), title: "Service area", perm: "settings:general", parent: "/settings" },
+    { path: "/settings/messaging", load: () => import("./settings-messaging.js"), title: "Messaging", perm: "settings:messaging", parent: "/settings" },
+    { path: "/settings/integrations", load: () => import("./settings-integrations.js"), title: "Integrations", perm: "settings:owner", parent: "/settings" },
+    { path: "/settings/intake", load: () => import("./settings-integrations.js"), title: "Intake mode", perm: "settings:owner", parent: "/settings" },
+    { path: "/settings/data", load: () => import("./settings-data.js"), title: "Data", perm: "audit:read", parent: "/settings" },
+    { path: "/settings/permissions", load: () => import("./settings-permissions.js"), title: "Team permissions", perm: "settings:owner", parent: "/settings" },
   ],
   nav: [
+    { where: "more", label: "Approvals", path: "/approvals", perm: "campaigns:send", order: 10, icon: "check" },
+    { where: "more", label: "Automations", path: "/automations", perm: "automations:configure", order: 60, icon: "bolt" },
+    { where: "more", label: "Templates", path: "/templates", perm: "templates:edit", order: 62, icon: "doc" },
+    { where: "more", label: "Outbox", path: "/outbox", perm: "outbox:read", order: 64, icon: "send" },
+    { where: "more", label: "Activity", path: "/activity", perm: "audit:read", order: 66, icon: "clock" },
+    { where: "more", label: "Settings", path: "/settings", perm: "settings:general", order: 80, icon: "gear" },
     { where: "more", label: "Team", path: "/team", perm: "users:manage", order: 90, icon: "team" },
     { where: "more", label: "My account", path: "/me", perm: "account:own", order: 99, icon: "me" },
   ],
@@ -21,6 +45,15 @@ export default {
   contactTabs: [],
   visitActions: [],
   todayCards: [],
-  settings: [],
+  settings: [
+    { label: "Company", path: "/settings/company", perm: "settings:general", icon: "building", order: 10 },
+    { label: "Hours & holidays", path: "/settings/hours", perm: "settings:general", icon: "clock", order: 12 },
+    { label: "Service area", path: "/settings/service-area", perm: "settings:general", icon: "map", order: 14 },
+    { label: "Messaging", path: "/settings/messaging", perm: "settings:messaging", icon: "text", order: 30 },
+    { label: "Team permissions", path: "/settings/permissions", perm: "settings:owner", icon: "shield", order: 70, owner: true },
+    { label: "Integrations", path: "/settings/integrations", perm: "settings:owner", icon: "plug", order: 80, owner: true },
+    { label: "Intake mode", path: "/settings/intake", perm: "settings:owner", icon: "contacts", order: 82, owner: true },
+    { label: "Data", path: "/settings/data", perm: "audit:read", icon: "data", order: 90 },
+  ],
   styles: [],
 };
