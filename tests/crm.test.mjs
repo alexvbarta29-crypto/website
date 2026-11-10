@@ -1,6 +1,8 @@
-// /crm — Barta Office → Customers: the Rotor export the office imported,
-// read from the "crm" Blobs store (a Map here). Fixture people are made up
-// (555 numbers, example.com).
+// /crm/legacy — the first slice's Customers list (the Rotor export the
+// office imported, read from the "crm" Blobs store, a Map here), moved from
+// /crm to /crm/legacy in M1.2 when the CRM shell took /crm. It stays open to
+// the office cookie and to owners and admins (contacts:read_all); techs get
+// 403. Fixture people are made up (555 numbers, example.com).
 import { test, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { createMemoryStore, failingStore, hangingStore } from "./helpers/referral-harness.mjs";
@@ -9,13 +11,14 @@ process.env.OFFICE_PASSWORD = "test-password";
 const { seal, open, newKeyPair, privateKey } = await import("../netlify/lib/office-data.mjs");
 const data = await import("../netlify/lib/crm-data.mjs");
 const { loadCustomers, customersSorted, displayName, sortName, initial, phoneDigits, phoneFormatted, addressLines, mapsUrl, memberName, memberNames, assignedNames, sinceLabel, sourceCounts, customerView, ROTOR_CUSTOMER_URL, LIMITS } = data;
-const { customersHtml, importHtml, setupHtml, importedLabel, IMPORT_PATH, SOURCE_CHIPS } = await import("../netlify/lib/crm-page.mjs");
+const { customersHtml, importHtml, setupHtml, importedLabel, IMPORT_PATH, LIST_PATH, SOURCE_CHIPS } = await import("../netlify/lib/crm-page.mjs");
 const { buildCustomerIndex, writeCustomerIndex, readCustomerIndex, indexSummary, KEYS, TIMEOUT_MS, memberSummary } = await import("../netlify/lib/crm-store.mjs");
 const { buildBundle, fixMojibake, sealClean, BundleError } = await import("../build/crm_seal_import.mjs");
-const { MAX_PAGE_BYTES } = await import("../netlify/functions/crm-import.mjs");
+const { MAX_PAGE_BYTES } = await import("../netlify/lib/crm/modules/system/legacy.mjs");
 const crm = (await import("../netlify/functions/crm.mjs")).default;
 const { derive } = await import("../netlify/lib/lights-auth.mjs");
 const { TOOLS } = await import("../netlify/lib/office-page.mjs");
+const { crmTest } = await import("./helpers/crm-http.mjs");
 const signedIn = { cookie: "barta_office=" + derive("test-password") };
 const keys = newKeyPair();
 
@@ -37,6 +40,7 @@ const NOW = new Date("2026-11-08T21:30:00Z");
 
 let store;
 beforeEach(() => { store = createMemoryStore(); globalThis.__crmStoreOverride = store; });
+const LEGACY = "https://x.test" + "/crm/legacy";
 const imported = (bundle = FIX, now = NOW) => writeCustomerIndex(buildCustomerIndex(bundle, { now }));
 const quietly = async (fn) => { const m = mock.method(console, "error", () => {}); try { return await fn(); } finally { m.mock.restore(); } };
 
@@ -180,8 +184,8 @@ test("the Customers page lists everyone with phones, towns, chips and letters", 
   assert.match(html, new RegExp(ROTOR_CUSTOMER_URL.replace(/[./]/g, "\\$&")));
   assert.doesNotMatch(html, /<script src=|<link rel="stylesheet"|https?:\/\/fonts\./, "no external scripts or fonts");
   // The quiet re-import link under the list.
-  assert.equal(IMPORT_PATH, "/crm?import=1");
-  assert.match(html, /<p class="foot">Imported Nov 8, 2026 · <a href="\/crm\?import=1">Re-import<\/a><\/p>/);
+  assert.equal(IMPORT_PATH, "/crm/legacy?import=1");
+  assert.match(html, /<p class="foot">Imported Nov 8, 2026 · <a href="\/crm\/legacy\?import=1">Re-import<\/a><\/p>/);
   assert.doesNotMatch(customersHtml(FIX), /class="foot"/, "no footer when the import date is unknown");
   // Member ids and emails never reach the browser.
   assert.doesNotMatch(html, /"m1"|"m2"|user_id|alex@|jacob@/);
@@ -203,23 +207,24 @@ test("a hostile name or note never breaks out of the page", () => {
   assert.match(html, /&quot;&gt;&lt;b&gt;x/);
 });
 
-test("signed out, /crm sends you to the office's Customers tab and shows no one", async () => {
+test("signed out, /crm/legacy sends you to sign in and shows no one", async () => {
   await imported();
-  const res = await crm(new Request("https://x.test/crm"));
-  const body = await res.text();
-  assert.match(body, /\/office#customers/);
-  assert.doesNotMatch(body, /Pat Zimmer|class="row"|Import your customers/);
-  assert.doesNotMatch(await (await crm(new Request("https://x.test/crm?import=1"))).text(), /Import your customers/);
+  const res = await crm(new Request(LEGACY));
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get("location"), "/crm/login?to=%2Fcrm%2Flegacy");
+  assert.doesNotMatch(await res.text(), /Pat Zimmer|class="row"|Import your customers/);
+  assert.doesNotMatch(await (await crm(new Request(LEGACY + "?import=1"))).text(), /Import your customers/);
 });
 
-test("signed in before the first import, /crm is the Import screen", async () => {
-  const res = await crm(new Request("https://x.test/crm", { headers: signedIn }));
+test("signed in before the first import, /crm/legacy is the Import screen", async () => {
+  const res = await crm(new Request(LEGACY, { headers: signedIn }));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("content-type"), "text/html; charset=utf-8");
   assert.equal(res.headers.get("cache-control"), "private, no-store");
   assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
   assert.equal(res.headers.get("referrer-policy"), "same-origin");
   assert.equal(res.headers.get("x-frame-options"), "SAMEORIGIN");
+  assert.match(res.headers.get("content-security-policy"), /script-src 'self' 'sha256-/);
   const html = await res.text();
   assert.match(html, /<h1>Import your customers<\/h1>/);
   assert.match(html, /Upload the sealed export file Claude gave you\. It only opens on this site\./);
@@ -228,11 +233,11 @@ test("signed in before the first import, /crm is the Import screen", async () =>
   assert.match(html, /id="status" role="status"/);
   assert.match(html, /new FileReader\(\)/);
   assert.match(html, /readAsText/);
-  assert.match(html, /fetch\('\/api\/crm\/import' \+ \(confirmed \? '\?confirm=1' : ''\), \{ method: 'POST', credentials: 'same-origin', headers: \{ 'Content-Type': 'application\/json' \}/);
+  assert.match(html, /fetch\('\/api\/crm\/import' \+ \(confirmed \? '\?confirm=1' : ''\), \{ method: 'POST', credentials: 'same-origin', headers: \{ 'Content-Type': 'application\/json', 'X-CRM': '1' \}/);
   assert.match(html, /<button type="button" class="btn go" id="force" hidden>Replace anyway<\/button>/, "a bigger or newer list is only replaced after a second tap");
   assert.match(html, /code === 'confirm'/);
-  assert.match(html, /location\.replace\('\/crm'\)/, "reloads the list on success");
-  assert.match(html, /\/office#customers/, "a 401 sends the whole window to the office sign-in");
+  assert.match(html, /location\.replace\('\/crm\/legacy'\)/, "reloads the list on success");
+  assert.match(html, /\/office#crm/, "a 401 sends the whole window to the office sign-in");
   for (const text of ["The site has no OFFICE_DATA_KEY yet", "That file was sealed for a different key", "That is not a Barta export file", "That export has no customers in it", "5,000 at most", "not on a preview"]) assert.match(html, new RegExp(text));
   assert.doesNotMatch(html, /couldn&#39;t be read/, "no damaged-list notice when nothing is wrong");
   assert.match(html, /<meta name="robots" content="noindex, nofollow">/);
@@ -243,9 +248,9 @@ test("signed in before the first import, /crm is the Import screen", async () =>
   assert.equal(importHtml(), html);
 });
 
-test("signed in after an import, /crm renders the customers (GET and HEAD; POST is refused) and offers a re-import", async () => {
+test("signed in after an import, /crm/legacy renders the customers (GET and HEAD; POST is refused) and offers a re-import", async () => {
   await imported();
-  const res = await crm(new Request("https://x.test/crm", { headers: signedIn }));
+  const res = await crm(new Request(LEGACY, { headers: signedIn }));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("content-type"), "text/html; charset=utf-8");
   assert.equal(res.headers.get("cache-control"), "private, no-store");
@@ -254,45 +259,95 @@ test("signed in after an import, /crm renders the customers (GET and HEAD; POST 
   assert.match(body, /\(555\) 010-0199/);
   assert.match(body, /"tags":\["Yard Sign"\]/);
   assert.match(body, /<b>5<\/b> customers · from Rotor, Nov 8, 2026/);
-  assert.match(body, /Imported Nov 8, 2026 · <a href="\/crm\?import=1">Re-import<\/a>/);
+  assert.match(body, /Imported Nov 8, 2026 · <a href="\/crm\/legacy\?import=1">Re-import<\/a>/);
+  assert.equal(IMPORT_PATH, "/crm/legacy?import=1");
+  assert.equal(LIST_PATH, "/crm/legacy");
   assert.doesNotMatch(body, /Import your customers/);
   assert.doesNotMatch(body, /alex@|jacob@|"m1"/, "member emails and ids stay on the server");
-  const head = await crm(new Request("https://x.test/crm", { method: "HEAD", headers: signedIn }));
+  const head = await crm(new Request(LEGACY, { method: "HEAD", headers: signedIn }));
   assert.equal(head.status, 200);
-  const post = await crm(new Request("https://x.test/crm", { method: "POST", headers: signedIn, body: "x" }));
+  const post = await crm(new Request(LEGACY, { method: "POST", headers: signedIn, body: "x" }));
   assert.equal(post.status, 405);
   assert.equal(post.headers.get("allow"), "GET, HEAD");
   // Re-import: the Import screen again, saying what it will replace, with a way back.
-  const again = await crm(new Request("https://x.test/crm?import=1", { headers: signedIn }));
+  const again = await crm(new Request(LEGACY + "?import=1", { headers: signedIn }));
   assert.equal(again.status, 200);
   const screen = await again.text();
   assert.match(screen, /<h1>Import your customers<\/h1>/);
   assert.match(screen, /Last import: Nov 8, 2026 · 5 customers\. A re-import replaces everything\./);
-  assert.match(screen, /<a class="back-link" href="\/crm">&larr; Back to the list<\/a>/);
+  assert.match(screen, /<a class="back-link" href="\/crm\/legacy">&larr; Back to the list<\/a>/);
   assert.doesNotMatch(screen, /Pat Zimmer|class="row"/, "no customer data on the import screen");
   // Still private even with data: no cookie, no list.
-  assert.doesNotMatch(await (await crm(new Request("https://x.test/crm/"))).text(), /Pat Zimmer/);
+  assert.doesNotMatch(await (await crm(new Request(LEGACY + "/"))).text(), /Pat Zimmer/);
+});
+
+test("the legacy list is for the office cookie, owners and admins; a tech gets 403 (page and JSON)", async () => {
+  const t = await crmTest();
+  try {
+    await imported();
+    const owner = await t.user("owner");
+    const admin = await t.user("admin");
+    const tech = await t.user("tech");
+    for (const who of [owner, admin]) {
+      const r = await t.page("/crm/legacy", { as: who });
+      assert.equal(r.status, 200);
+      assert.match(r.text, /Pat Zimmer/);
+      const j = await t.api("/legacy/customers", { as: who });
+      assert.equal(j.status, 200);
+      assert.equal(j.body.data.customers.length, 5);
+    }
+    const page = await t.page("/crm/legacy", { as: tech });
+    assert.equal(page.status, 403);
+    assert.doesNotMatch(page.text, /Pat Zimmer|class="row"/);
+    const json = await t.api("/legacy/customers", { as: tech });
+    assert.equal(json.status, 403);
+    assert.doesNotMatch(JSON.stringify(json.body), /Pat|555/);
+    const office = await t.api("/legacy/customers", { office: true });
+    assert.equal(office.status, 200, "the office cookie works for the JSON too");
+    assert.equal((await t.api("/legacy/customers")).status, 401);
+  } finally { t.done(); }
+});
+
+test("before the owner's Netlify setup, the office cookie still opens the Customers list and the CRM shows Setup needed", async () => {
+  await imported();
+  const prod = { deploy: { context: "production" } };
+  const WWW = "https://www.bartawindowwashing.com";
+  const list = await crm(new Request(WWW + "/crm/legacy", { headers: signedIn }), prod);
+  assert.equal(list.status, 200);
+  assert.match(await list.text(), /Pat Zimmer/);
+  const shell = await crm(new Request(WWW + "/crm", { headers: signedIn }), prod);
+  assert.equal(shell.status, 503);
+  const html = await shell.text();
+  assert.match(html, /<h1>Setup needed<\/h1>/);
+  assert.match(html, /CRM_PRODUCTION/);
+  assert.match(html, /CRM_KEY_SALT/);
+  assert.match(html, /href="\/crm\/legacy">Open the Customers list/);
+  const signedOut = await crm(new Request(WWW + "/crm/legacy"), prod);
+  const moved = await crm(new Request("https://bartawindowwashing.com/crm/legacy", { headers: signedIn }), prod);
+  assert.equal(moved.status, 308, "the production deploy answers only on the canonical host");
+  assert.equal(signedOut.status, 503);
+  assert.doesNotMatch(await signedOut.text(), /Pat Zimmer/);
 });
 
 test("when storage doesn't answer, the page says so instead of crashing, and Import stays reachable", async () => {
   globalThis.__crmStoreOverride = failingStore();
-  const res = await quietly(() => crm(new Request("https://x.test/crm", { headers: signedIn })));
+  const res = await quietly(() => crm(new Request(LEGACY, { headers: signedIn })));
   assert.equal(res.status, 503);
   assert.equal(res.headers.get("cache-control"), "private, no-store");
   const html = await res.text();
   assert.match(html, /<h1>Storage didn&#39;t answer<\/h1>|<h1>Storage didn't answer<\/h1>/);
   assert.doesNotMatch(html, /Import your customers|class="row"/);
-  assert.match(html, /<a class="back-link" href="\/crm\?import=1">Re-import<\/a>/, "a way back to Import");
+  assert.match(html, /<a class="back-link" href="\/crm\/legacy\?import=1">Re-import<\/a>/, "a way back to Import");
   assert.match(setupHtml("whatever"), /Storage didn/);
   // ?import=1 is the Import screen even while the list can't be read.
-  const imp = await quietly(() => crm(new Request("https://x.test/crm?import=1", { headers: signedIn })));
+  const imp = await quietly(() => crm(new Request(LEGACY + "?import=1", { headers: signedIn })));
   assert.equal(imp.status, 200);
   assert.match(await imp.text(), /<h1>Import your customers<\/h1>/);
 });
 
 test("a saved list that isn't readable shows the Import screen (so it can be imported over), and a null row can't crash the page", async () => {
   await store.set(KEYS.customers, "{truncated");
-  for (const url of ["https://x.test/crm", "https://x.test/crm?import=1"]) {
+  for (const url of [LEGACY, LEGACY + "?import=1"]) {
     const res = await quietly(() => crm(new Request(url, { headers: signedIn })));
     assert.equal(res.status, 200, url);
     const html = await res.text();
@@ -300,7 +355,7 @@ test("a saved list that isn't readable shows the Import screen (so it can be imp
     assert.match(html, /The saved customer list couldn&#39;t be read\. Import the file again to replace it\./);
   }
   await store.setJSON(KEYS.customers, { v: 1, imported_at: NOW.toISOString(), exported_at: "2026-11-08", count: 2, members: [null], customers: [null, FIX.customers[0]] });
-  const res = await crm(new Request("https://x.test/crm", { headers: signedIn }));
+  const res = await crm(new Request(LEGACY, { headers: signedIn }));
   assert.equal(res.status, 200);
   assert.match(await res.text(), /Pat Zimmer/);
 });
@@ -351,7 +406,7 @@ test("the seal script keeps the fields the site uses, fixes double-encoded names
   assert.deepEqual(open(seal(bundle, keys.publicKeyPem), privateKey({ OFFICE_DATA_KEY: keys.privateKey })), bundle);
 });
 
-test("Customers is the first tool tab after the dashboards", () => {
+test("the CRM is the first tool tab after the dashboards (it replaced Customers)", () => {
   assert.equal(TOOLS[0].id, "dashboard");
-  assert.deepEqual(TOOLS[1], { id: "customers", label: "Customers", src: "/crm" });
+  assert.deepEqual(TOOLS[1], { id: "crm", label: "CRM", src: "/crm", compact: true, needs: "crm" });
 });

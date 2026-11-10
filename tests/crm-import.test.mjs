@@ -1,6 +1,9 @@
 // /api/crm/import — loading the sealed Rotor export into the "crm" store
 // (a Map here), and the rule behind it: customer data never sits in the
-// repo. Fixture people are made up (555 numbers, example.com).
+// repo. Since M1.2 the route is served by the CRM's dispatcher (crm-api.mjs,
+// modules/system/legacy.mjs) with the same answers; the office cookie still
+// opens it, and so does an owner's CRM session. Fixture people are made up
+// (555 numbers, example.com).
 import { test, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, linkSync, statSync } from "node:fs";
@@ -12,9 +15,12 @@ import { createMemoryStore, failingStore, hangingStore } from "./helpers/referra
 
 process.env.OFFICE_PASSWORD = "test-password";
 const { seal, open, newKeyPair, privateKey } = await import("../netlify/lib/office-data.mjs");
-const mod = await import("../netlify/functions/crm-import.mjs");
-const api = mod.default;
-const { MAX_BODY, MAX_PLAINTEXT, MAX_PAGE_BYTES, IMPORT_BUDGET_MS, SHRINK_RATIO, MESSAGES, isSealedBox, readBodyText, needsConfirm, previewContext } = mod;
+const api = (await import("../netlify/functions/crm-api.mjs")).default;
+const { MAX_BODY, MAX_PLAINTEXT, MAX_PAGE_BYTES, IMPORT_BUDGET_MS, SHRINK_RATIO, MESSAGES, isSealedBox, needsConfirm } = await import("../netlify/lib/crm/modules/system/legacy.mjs");
+const { readBodyText: readBodyCapped } = await import("../netlify/lib/crm/core/http.mjs");
+const readBodyText = (req) => readBodyCapped(req, MAX_BODY);
+const { deployContext, storeNameFor } = await import("../netlify/lib/crm/core/context.mjs");
+const { crmTest } = await import("./helpers/crm-http.mjs");
 const { KEYS, TIMEOUT_MS } = await import("../netlify/lib/crm-store.mjs");
 const { normalizeBundle, normalizeCustomer, isExportDate, LIMITS, ID_RE } = await import("../netlify/lib/crm-data.mjs");
 const { derive, readCookie } = await import("../netlify/lib/lights-auth.mjs");
@@ -48,11 +54,11 @@ const withKey = async (key, fn) => {
   try { return await quietly(fn); } finally { if (saved === undefined) delete process.env.OFFICE_DATA_KEY; else process.env.OFFICE_DATA_KEY = saved; }
 };
 const call = async (method, body, { c = cookie, type = "application/json", headers = {} } = {}) => {
-  const res = await api(new Request(URL_, { method, headers: { ...(type ? { "content-type": type } : {}), ...(c ? { cookie: c } : {}), ...headers }, body }));
+  const res = await api(new Request(URL_, { method, headers: { ...(type ? { "content-type": type } : {}), ...(c ? { cookie: c } : {}), "x-crm": "1", ...headers }, body }), {});
   return { status: res.status, headers: res.headers, body: await res.json().catch(() => null) };
 };
 const post = (box, opts = {}) => call("POST", typeof box === "string" ? box : JSON.stringify(box), opts);
-const postTo = (url, box, opts = {}) => api(new Request(url, { method: "POST", headers: { "content-type": "application/json", cookie, ...(opts.headers || {}) }, body: JSON.stringify(box) }), opts.context).then(async (res) => ({ status: res.status, body: await res.json().catch(() => null) }));
+const postTo = (url, box, opts = {}) => api(new Request(url, { method: "POST", headers: { "content-type": "application/json", cookie, "x-crm": "1", ...(opts.headers || {}) }, body: JSON.stringify(box) }), opts.context || {}).then(async (res) => ({ status: res.status, body: await res.json().catch(() => null) }));
 const sealed = (bundle) => seal(bundle, keys.publicKeyPem);
 const get = (opts) => call("GET", undefined, { type: null, ...opts });
 
@@ -60,10 +66,13 @@ test("signed out, GET and POST answer 401 and the store stays empty", async () =
   await withKey(keys.privateKey, async () => {
     const g = await get({ c: "" });
     assert.equal(g.status, 401);
-    assert.deepEqual(g.body, { ok: false, error: "signed_out" });
+    assert.deepEqual(g.body, { ok: false, error: { code: "signed_out", message: "Sign in again." } });
     const p = await post(BOX, { c: "" });
     assert.equal(p.status, 401);
-    assert.deepEqual(p.body, { ok: false, error: "signed_out" });
+    assert.deepEqual(p.body, { ok: false, error: { code: "signed_out", message: "Sign in again." } });
+    // the office cookie is a cookie: a cross-site post is refused (CSRF)
+    const csrf = await api(new Request(URL_, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify(BOX) }), {});
+    assert.equal(csrf.status, 403);
     assert.equal(store.keys().length, 0);
     const bad = await post(BOX, { c: "barta_office=" + derive("wrong-password") });
     assert.equal(bad.status, 401);
@@ -315,7 +324,7 @@ test("bad uploads: not JSON → 400, the wrong content type → 415, other metho
     assert.equal(charset.status, 200, "a charset parameter is fine");
     const d = await call("DELETE", undefined, { type: null });
     assert.equal(d.status, 405);
-    assert.equal(d.headers.get("allow"), "GET, HEAD, POST");
+    assert.equal(d.headers.get("allow"), "GET, POST");
   });
 });
 
@@ -325,13 +334,13 @@ test("a 7 MB body is refused with 413 before it is read", async () => {
     // Declared up front: refused without touching the body.
     const declared = await post(BOX, { headers: { "content-length": String(7 * 1024 * 1024) } });
     assert.equal(declared.status, 413);
-    assert.equal(declared.body.error, "too-large");
+    assert.equal(declared.body.error.code, "too_large", "the dispatcher's cap (the Import screen maps it to its too-large message)");
     // Streamed with no length: the read stops as soon as the cap is passed.
     let pulled = 0;
     const chunk = new Uint8Array(256 * 1024).fill(0x61);
     const total = 28; // 7 MB
     const body = new ReadableStream({ pull(ctrl) { if (pulled++ < total) ctrl.enqueue(chunk); else ctrl.close(); } });
-    const res = await api(new Request(URL_, { method: "POST", headers: { "content-type": "application/json", cookie }, body, duplex: "half" }));
+    const res = await api(new Request(URL_, { method: "POST", headers: { "content-type": "application/json", cookie, "x-crm": "1" }, body, duplex: "half" }), {});
     assert.equal(res.status, 413);
     assert.ok(pulled < total, `stopped after ${pulled} of ${total} chunks`);
     assert.equal(store.keys().length, 0);
@@ -437,36 +446,37 @@ test("the whole import fits one time budget, even when every Blobs call is slow 
   });
 });
 
-test("deploy previews and branch deploys can't replace the live list", async () => {
-  const saved = { CONTEXT: process.env.CONTEXT, CRM_ALLOW_PREVIEW_WRITES: process.env.CRM_ALLOW_PREVIEW_WRITES };
-  const restore = () => { for (const [k, v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v; };
-  try {
-    await withKey(keys.privateKey, async () => {
-      for (const ctx of ["deploy-preview", "branch-deploy"]) {
-        process.env.CONTEXT = ctx;
-        const r = await post(BOX);
-        assert.equal(r.status, 403, ctx);
-        assert.equal(r.body.error, "preview");
-        assert.equal(r.body.message, "Imports only run on the live site, not on a preview");
-      }
-      assert.equal(store.keys().length, 0);
-      assert.equal((await get()).status, 200, "reading is fine");
-      process.env.CRM_ALLOW_PREVIEW_WRITES = "1";
-      assert.equal((await post(BOX)).status, 200, "unless the site opts in");
-      delete process.env.CRM_ALLOW_PREVIEW_WRITES;
-      delete process.env.CONTEXT;
-      // The function's own context says the same when the env var isn't there.
-      const viaContext = await postTo(URL_, BOX, { context: { deploy: { context: "deploy-preview" } } });
-      assert.equal(viaContext.status, 403);
-      process.env.CONTEXT = "production";
-      assert.equal((await post(BOX)).status, 200);
-    });
-  } finally {
-    restore();
+test("deploy previews and branch deploys write to their own store, never the live list", async () => {
+  // The first slice refused previews with 403; since M1.2 the deploy picks
+  // the store (design §3.10), so a preview's import lands in crm--deploy-preview.
+  const req = new Request(URL_);
+  for (const ctx of ["deploy-preview", "branch-deploy"]) {
+    const d = deployContext(req, { deploy: { context: ctx } }, { CRM_PRODUCTION: "1" });
+    assert.equal(storeNameFor("data", d), `crm--${ctx}`, ctx);
   }
-  assert.equal(previewContext({}, null), false, "local runs have no context");
-  assert.equal(previewContext({ CONTEXT: "dev" }), false);
-  assert.equal(previewContext({}, { deploy: { context: "production" } }), false);
+  assert.equal(storeNameFor("data", deployContext(req, null, {})), "crm--dev", "local runs have their own store too");
+  assert.equal(storeNameFor("data", deployContext(req, { deploy: { context: "production" } }, { CRM_PRODUCTION: "1" })), "crm");
+  // and the route still works in a preview context (with the test stores)
+  await withKey(keys.privateKey, async () => {
+    const viaContext = await postTo(URL_, BOX, { context: { deploy: { context: "deploy-preview" } } });
+    assert.equal(viaContext.status, 200);
+  });
+});
+
+test("an owner's CRM session opens the import too; admins and techs get 403", async () => {
+  const t = await crmTest();
+  try {
+    const owner = await t.user("owner");
+    const admin = await t.user("admin");
+    const tech = await t.user("tech");
+    await withKey(keys.privateKey, async () => {
+      for (const [who, want] of [[owner, 200], [admin, 403], [tech, 403]]) {
+        const r = await t.api("/import", { method: "POST", as: who, raw: JSON.stringify(BOX), headers: { "content-type": "application/json" } });
+        assert.equal(r.status, want, who.login);
+      }
+      assert.equal((await t.api("/import", { as: owner })).body.imported_at !== null, true);
+    });
+  } finally { t.done(); }
 });
 
 test("a malformed office cookie is just signed out (401), never a crash", async () => {
@@ -474,10 +484,11 @@ test("a malformed office cookie is just signed out (401), never a crash", async 
     assert.equal(readCookie(new Request(URL_, { headers: { cookie: c } })), "");
     const g = await get({ c });
     assert.equal(g.status, 401, c);
-    assert.deepEqual(g.body, { ok: false, error: "signed_out" });
+    assert.deepEqual(g.body, { ok: false, error: { code: "signed_out", message: "Sign in again." } });
     assert.equal((await post(BOX, { c })).status, 401);
-    const page = await crm(new Request("https://x.test/crm", { headers: { cookie: c } }));
-    assert.match(await page.text(), /\/office#customers/);
+    const page = await crm(new Request("https://x.test/crm/legacy", { headers: { cookie: c } }), {});
+    assert.equal(page.status, 302);
+    assert.match(page.headers.get("location"), /^\/crm\/login/);
   }
   assert.equal(readCookie(new Request(URL_, { headers: { cookie: "a=b; barta_office=abc%20d" } })), "abc d", "good values still decode");
 });

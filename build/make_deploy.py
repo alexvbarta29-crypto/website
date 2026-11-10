@@ -33,8 +33,17 @@ SKIP_DIRS = {".git", ".github", ".claude", "build", "docs", "config",
 # Root-level non-HTML files the site genuinely serves.
 # office.webmanifest and office-sw.js make /office installable as a phone
 # app (docs/OFFICE.md); the manifest also pulls in its icons via the scan.
+# crm-sw.js is the Barta CRM's service worker (scope /crm, docs/CRM.md).
 ROOT_FILES = ["robots.txt", "sitemap.xml", "site.webmanifest", "office.webmanifest",
-              "office-sw.js", "CNAME", "_redirects"]
+              "office-sw.js", "crm-sw.js", "CNAME", "_redirects"]
+
+# The Barta CRM's client app: plain ES modules and one stylesheet, served at
+# /crm-app/... (docs/CRM.md). They hold no data and no secrets (every byte
+# of customer data comes from the signed-in API); the pages that load them
+# are functions. Every .js/.css/.svg under it always ships, the same way the
+# GBP photo folder does, because no shipped page references them.
+CRM_APP_DIR = "crm-app"
+CRM_APP_EXT = (".js", ".css", ".svg")
 
 # Assets that no page references but the live site must still host: the
 # referral email template in docs/emails/ (docs/ is not shipped) loads its
@@ -87,6 +96,14 @@ def main():
     gbp_dir = os.path.join(ROOT, GBP_POST_DIR)
     if os.path.isdir(gbp_dir):
         ship += [f"{GBP_POST_DIR}/{n}" for n in sorted(os.listdir(gbp_dir)) if n.lower().endswith((".jpg", ".jpeg", ".png"))]
+
+    crm_dir = os.path.join(ROOT, CRM_APP_DIR)
+    if os.path.isdir(crm_dir):
+        for dirpath, dirnames, filenames in os.walk(crm_dir):
+            dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+            for n in sorted(filenames):
+                if n.endswith(CRM_APP_EXT) and not n.startswith("."):
+                    ship.append(os.path.relpath(os.path.join(dirpath, n), ROOT).replace(os.sep, "/"))
 
     # Fixpoint scan: shipped text files reference assets; referenced .css/.js
     # may reference further assets of their own.

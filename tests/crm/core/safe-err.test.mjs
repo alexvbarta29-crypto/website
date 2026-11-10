@@ -12,7 +12,8 @@ const { derive } = await import("../../../netlify/lib/lights-auth.mjs");
 const probe = (await import("../../../netlify/functions/crm-probe.mjs")).default;
 const cron = (await import("../../../netlify/functions/crm-cron.mjs")).default;
 const worker = (await import("../../../netlify/functions/crm-worker-background.mjs")).default;
-const crmImport = (await import("../../../netlify/functions/crm-import.mjs")).default;
+const crmApi = (await import("../../../netlify/functions/crm-api.mjs")).default;
+const crmAuth = (await import("../../../netlify/functions/crm-auth.mjs")).default;
 const crmPage = (await import("../../../netlify/functions/crm.mjs")).default;
 
 const cookie = "barta_office=" + derive("test-password");
@@ -99,9 +100,19 @@ test("crm-worker-background's wrapper logs only safeErr output", async () => {
   assertClean("crm-worker-background");
 });
 
-test("the first slice's functions (Customers page and import) log only safeErr output too", async () => {
-  const imp = await crmImport(new Request("http://localhost/api/crm/import", { headers: { cookie } }));
+test("the legacy Customers routes (page and import, now in crm-api) log only safeErr output too", async () => {
+  const imp = await crmApi(new Request("http://localhost/api/crm/import", { headers: { cookie } }), {});
   assert.equal(imp.status, 503);
-  await crmPage(new Request("http://localhost/crm", { headers: { cookie } }));
-  assertClean("crm-import and crm");
+  await crmPage(new Request("http://localhost/crm/legacy", { headers: { cookie } }), {});
+  assertClean("legacy import and list");
+});
+
+test("the CRM shell, the API and sign-in log only safeErr output", async () => {
+  const shell = await crmPage(new Request("http://localhost/crm", { headers: { cookie: "barta_crm=us_00000000000000000000." + "a".repeat(43) } }), {});
+  assert.equal(shell.status, 500);
+  const me = await crmApi(new Request("http://localhost/api/crm/me", { headers: { cookie: "barta_crm=us_00000000000000000000." + "a".repeat(43) } }), {});
+  assert.equal(me.status, 500);
+  const login = await crmAuth(new Request("http://localhost/api/crm/auth/login", { method: "POST", headers: { "content-type": "application/json", "x-crm": "1" }, body: JSON.stringify({ login: "pat", password: "a long enough password" }) }), {});
+  assert.equal(login.status, 500);
+  assertClean("crm, crm-api and crm-auth");
 });

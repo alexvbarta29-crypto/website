@@ -21,10 +21,12 @@ export const ROTOR_CUSTOMER_URL = "https://app.getrotor.com/customers/";
 // page then offers the Import screen, so a new import can replace it), or
 // { ok: false, reason: "store" } when Blobs didn't answer (logged with the
 // error's status only; the page shows a message instead of crashing).
-export async function loadCustomers() {
+// `deploy` (the branded deploy object) picks the store the way crm-store
+// does; without it the first slice's own way into "crm" is used.
+export async function loadCustomers({ deploy } = {}) {
   let idx;
   try {
-    idx = await readCustomerIndex();
+    idx = await readCustomerIndex({ deploy });
   } catch (e) {
     if (e instanceof SyntaxError) {
       console.error("crm: the customer index isn't readable JSON");

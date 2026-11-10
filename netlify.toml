@@ -48,3 +48,18 @@
   [headers.values]
     Cache-Control = "no-cache"
     Content-Type = "application/manifest+json"
+
+# The Barta CRM (docs/CRM.md): the client app and its service worker are
+# re-checked on every load (never the year-long /assets/ cache); the
+# service worker, not the HTTP cache, decides what a phone runs.
+[[headers]]
+  for = "/crm-app/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/crm-sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Content-Type-Options = "nosniff"

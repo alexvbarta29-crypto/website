@@ -317,7 +317,9 @@ export const importedLabel = (iso) => {
   const d = new Date(String(iso || ""));
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 };
-export const IMPORT_PATH = "/crm?import=1";
+// The list moved from /crm to /crm/legacy in M1.2 (the new CRM shell owns /crm).
+export const LIST_PATH = "/crm/legacy";
+export const IMPORT_PATH = "/crm/legacy?import=1";
 
 // The whole page from the customer index { exported_at, imported_at, customers, members }.
 export function customersHtml(data) {
@@ -415,16 +417,16 @@ const IMPORT_CLIENT = String.raw`
     ask(null);
     say('Uploading…');
     try {
-      const res = await fetch('/api/crm/import' + (confirmed ? '?confirm=1' : ''), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: text });
-      if (res.status === 401) { (window.top || window).location.href = '/office#customers'; return; }
+      const res = await fetch('/api/crm/import' + (confirmed ? '?confirm=1' : ''), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CRM': '1' }, body: text });
+      if (res.status === 401) { (window.top || window).location.href = '/office#crm'; return; }
       let body = null;
       try { body = await res.json(); } catch (x) { /* not JSON */ }
       if (res.ok && body && body.ok) {
         say('Imported ' + body.counts.customers + ' customers. Loading the list…');
-        location.replace('/crm');
+        location.replace('/crm/legacy');
         return;
       }
-      const code = body && body.error;
+      const code = body && (typeof body.error === 'string' ? body.error : body.error && body.error.code === 'too_large' ? 'too-large' : body.error && body.error.code);
       if (code === 'confirm' && !confirmed) {
         say(body.message || 'This file would replace a bigger or newer list. Replace it anyway?', true);
         ask(text);
@@ -471,7 +473,7 @@ export function importHtml({ current = null, damaged = false } = {}) {
     <div class="status" id="status" role="status" aria-live="polite"></div>
     <button type="button" class="btn go" id="force" hidden>Replace anyway</button>
   </form>
-  ${current ? '<a class="back-link" href="/crm">&larr; Back to the list</a>' : ""}
+  ${current ? '<a class="back-link" href="/crm/legacy">&larr; Back to the list</a>' : ""}
 </main>
 <script>${IMPORT_CLIENT}</script>
 </body></html>`;
