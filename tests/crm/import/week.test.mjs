@@ -45,5 +45,9 @@ test("import, a simulated week of every sweep, the same export again: 0 conflict
       const made = t.stores.data.keys(`rec/${type}/`).filter((k) => t.stores.data.json(k).created_by !== "import");
       assert.deepEqual(made, [], `no ${type} record created`);
     }
+    // Quotes (M3a) imports Rotor's quotes: every quote record is the import's, none made by automation
+    const quotes = t.stores.data.keys("rec/quote/");
+    assert.equal(quotes.length, ex.quotes.length, "one quote per Rotor quote");
+    assert.ok(quotes.every((k) => t.stores.data.json(k).import && t.stores.data.json(k).created_by === "import"), "no quote record created by automation");
   } finally { t.done(); }
 });

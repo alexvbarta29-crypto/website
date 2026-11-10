@@ -69,10 +69,11 @@ export async function call(name, ...args) {
 // Tests only: forget every provider.
 export function __resetServicesForTests() { services.clear(); }
 // Tests only (tests/helpers/crm-fixtures.mjs fakeServices): put a fake in
-// place of a service, whoever provides it; → a function that puts back
-// what was there.
+// place of a service, whoever provides it (null: the service is absent, as
+// before its module merged); → a function that puts back what was there.
 export function __swapServiceForTests(name, fn) {
   const had = services.get(name);
-  services.set(name, { fn, module: "test" });
+  if (fn == null) services.delete(name);
+  else services.set(name, { fn, module: "test" });
   return () => { if (had) services.set(name, had); else services.delete(name); };
 }

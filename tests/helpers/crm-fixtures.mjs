@@ -23,7 +23,8 @@ const { deployContext } = await import("../../netlify/lib/crm/core/context.mjs")
 export const HOST = "https://www.bartawindowwashing.com";
 
 // Fakes for services whose provider has not merged yet (or to steer a
-// test). → restore().
+// test); a null hides a service as if its module were not there.
+// → restore().
 export function fakeServices(map) {
   const undo = Object.entries(map).map(([name, fn]) => services.__swapServiceForTests(name, fn));
   return () => { for (const u of undo.reverse()) u(); };
