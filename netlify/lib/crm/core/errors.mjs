@@ -60,6 +60,12 @@ export class DeployContextRequired extends CrmError {}
 // A production deploy without the Production-only settings (CRM_PRODUCTION):
 // a ProdStoreRefused the shell turns into a "Setup needed" screen.
 export class SetupNeeded extends ProdStoreRefused {}
+// 429 rate_limited: an API key went over its calls a minute (§4.9).
+export class RateLimited extends CrmError {
+  constructor(message = "Too many requests. Wait a minute and try again.", retryAfterS = 60) {
+    super(message, { retryAfterS });
+  }
+}
 // A request went over its time or Blobs-call budget (§2.2, §3.13).
 export class BudgetError extends CrmError {}
 // A storage attempt or an external call ran out of time.
@@ -81,6 +87,7 @@ export function errorResponse(e) {
   if (e instanceof ExistsError) return { status: 409, code: "exists", message: e.message || "That already exists." };
   if (e instanceof ParallelRunGuard) return { status: 409, code: "parallel_run", message: e.message };
   if (e instanceof ConflictError) return { status: 409, code: "conflict", message: e.message };
+  if (e instanceof RateLimited) return { status: 429, code: "rate_limited", message: e.message, retryAfterS: e.retryAfterS || 60 };
   if (e instanceof ProdStoreRefused) return { status: 503, code: "setup_needed", message: "The CRM needs its setup in Netlify first." };
   if (e instanceof UnknownOutcome) return { status: 503, code: "busy", message: BUSY, details: { maybe_saved: true } };
   if (e instanceof TimeoutError || e instanceof BlobsTransientError || e instanceof BudgetError) return { status: 503, code: "busy", message: BUSY };

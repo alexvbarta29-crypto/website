@@ -61,8 +61,9 @@ async function signedOut() {
   location.replace("/crm/login?to=" + encodeURIComponent("/crm" + here));
 }
 
-// api(path, { method, body, ifMatch, idempotencyKey, timeout, cache: false })
-// → { data, meta, etag, offline?, as_of? }
+// api(path, { method, body, ifMatch, ifNoneMatch, idempotencyKey, timeout, cache: false })
+// → { data, meta, etag, offline?, as_of? } ({ notModified: true, etag } for a
+// 304 to ifNoneMatch: core/poll.js)
 export async function api(path, opts = {}) {
   const method = (opts.method || "GET").toUpperCase();
   const url = "/api/crm" + path;
@@ -74,6 +75,7 @@ export async function api(path, opts = {}) {
   }
   if (method === "POST") headers["Idempotency-Key"] = opts.idempotencyKey || uuid();
   if (opts.ifMatch) headers["If-Match"] = opts.ifMatch;
+  if (opts.ifNoneMatch) headers["If-None-Match"] = opts.ifNoneMatch;
   const timeout = opts.timeout || (method === "GET" ? GET_TIMEOUT_MS : WRITE_TIMEOUT_MS);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
@@ -90,8 +92,9 @@ export async function api(path, opts = {}) {
     throw new OfflineError(0, { code: "offline", message: method === "GET" ? "No connection. Try again when you have signal." : "No connection. Nothing was saved; try again when you have signal." });
   }
   clearTimeout(timer);
-  if (res.status === 304 && cacheKey(url)) {
-    const hit = await cache.get(cacheKey(url));
+  if (res.status === 304) {
+    if (opts.ifNoneMatch) return { notModified: true, etag: res.headers.get("ETag") || opts.ifNoneMatch };
+    const hit = cacheKey(url) ? await cache.get(cacheKey(url)) : null;
     if (hit) return { data: hit.data, meta: hit.meta, etag: hit.etag };
   }
   let body = null;

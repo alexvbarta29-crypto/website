@@ -55,6 +55,20 @@ the CRM tab is open. Signed in with only the office password after the CRM
 is set up, the CRM tab shows Team sign-in with an **Open the Customers
 list** button.
 
+**Notifications on the phone (web push).** New leads, replies, approvals
+waiting and visit changes can pop up on a phone like a text. iOS lets only
+the installed app's own page ask for that, so: CRM → My account → **Turn on
+for this phone** asks the office, which shows its own "Allow notifications"
+card at the top; tapping **Allow** asks the phone, subscribes on
+`office-sw.js` and saves the subscription in the CRM. On an iPhone this
+works only in the installed app (Add to Home Screen first). A notification
+shows a title and a short line (never more about a customer than a first
+name and a town); tapping it opens the app at that CRM screen
+(`/office#crm/<path>`). It needs the VAPID keys in Netlify
+(`CRM_VAPID_PUBLIC`, `CRM_VAPID_PRIVATE`, Production only); until then the
+bell in the CRM still shows everything. "Send a test" on My account checks a
+phone.
+
 ## One password
 
 One office password, asked for only at `/office`, opens everything:
@@ -87,7 +101,8 @@ the app on its own; there is nothing to reinstall.
 
 Pieces:
 - `office.webmanifest`: name, icons, start page `/office`, scope `/office`.
-- `office-sw.js`: service worker for `/office` only. It never caches office
+- `office-sw.js`: service worker for `/office` only. It shows web push
+  notifications and opens the app where one points when tapped. It never caches office
   pages, only the icon, the fonts and the data-free **launcher**
   (`/office/launch`: a full-screen CRM frame and an "Offline" strip). With
   no signal the app opens on the launcher when this phone has a CRM to

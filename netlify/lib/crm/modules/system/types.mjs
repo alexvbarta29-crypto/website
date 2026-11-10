@@ -5,9 +5,10 @@
 
 import { defineType } from "../../core/registry.mjs";
 import { isId } from "../../core/ids.mjs";
+import { tsKey } from "../../core/clock.mjs";
 import { InputError } from "../../core/errors.mjs";
 import { contactShard, statsIndexRow, STATS_INDEX, STATS_INDEX_PART } from "../../core/stats.mjs";
-import { shape, str, enumValue, bool, email, phoneE164, int, arr } from "../../core/validate.mjs";
+import { shape, str, enumValue, bool, email, phoneE164, int, arr, isoTime } from "../../core/validate.mjs";
 
 // rec/contact_stats/{contactId}: envelope + one part per owning module.
 // Written only by crm-store updateStats(); never a user edit, never imported
@@ -43,11 +44,11 @@ export const LOGIN_RE = /^[a-z0-9][a-z0-9.-]{1,31}$/;
 // Calendar colors handed out in order (the dashboard's palette).
 export const USER_COLORS = Object.freeze(["#2a78d6", "#fb4d3d", "#13a165", "#b7791f", "#7c4dff", "#0e9aa7", "#d0331f", "#4a4a52"]);
 const PAY_MODELS = ["hourly", "commission", "greater_of", "hourly_plus_commission"];
-const NOTIFY_KEYS = ["new_lead", "reply", "payment", "agreement_signed", "review"];
+const NOTIFY_KEYS = ["new_lead", "reply", "payment", "agreement_signed", "review", "approval", "work", "sales", "system"];
 const CHANNELS = ["sms", "email", "push"];
 
 export const DEFAULT_PAY = Object.freeze({ model: "hourly", hourly_cents: { service: 0, sales: 0, office: 0 }, commission_pct: { technician: 0, salesman: 0, upsell: 0 }, overtime: true });
-export const DEFAULT_NOTIFY = Object.freeze({ new_lead: ["push"], reply: ["push"], payment: [], agreement_signed: [], review: [] });
+export const DEFAULT_NOTIFY = Object.freeze({ new_lead: ["push"], reply: ["push"], payment: [], agreement_signed: [], review: [], approval: ["push"], work: ["push"], sales: ["push"], system: ["push"] });
 
 export function normLogin(v, field = "login") {
   const s = String(v ?? "").trim().toLowerCase();
@@ -130,6 +131,7 @@ export const userType = defineType({
   validate: validateUser,
   rotorFields: ["rotor"],
   techFields: ["id", "name", "first_name", "color", "is_technician"],
+  readPerm: "users:manage",
   shadow: false,
   indexes: [{ name: "users", shard: (r) => "", row: userRow }],
   pointers: [{ kind: "login", key: (r) => r.login }],
@@ -161,4 +163,127 @@ export function publicUser(u, { full = false } = {}) {
   return out;
 }
 
-export const types = [contactStatsType, userType];
+// ------------------------------------------------------------------ files (§3.11)
+
+const FILE_KINDS = ["photo", "signature", "attachment", "mockup", "document", "import_media"];
+const FILE_TAGS = ["before", "after", "issue", "other"];
+const HEX64 = /^[0-9a-f]{64}$/;
+const sortOf = (r) => tsKey(new Date(Date.parse(r.created_at) || 0));
+
+function validateFile(data, { op } = {}) {
+  const stored = op === "update";
+  const out = shape(data, {
+    kind: (v, f) => enumValue(v, FILE_KINDS, { field: f, required: true, stored }),
+    content_type: (v, f) => str(v, { field: f, max: 100, required: true }),
+    bytes: (v, f) => int(v, { field: f, min: 0, max: 100000000, required: true }),
+    sha256: (v, f) => { if (typeof v !== "string" || !HEX64.test(v)) throw new InputError("Missing the file's hash.", f); return v; },
+    owner: (v, f) => {
+      if (!v || typeof v !== "object" || typeof v.type !== "string" || !isId(v.id)) throw new InputError("A file needs the record it belongs to.", f);
+      return { type: v.type, id: v.id };
+    },
+    contact_id: (v, f) => (v === undefined || v === null ? undefined : isId(v, "contact") ? v : (() => { throw new InputError("That isn't a contact.", f); })()),
+    customer_visible: (v, f) => bool(v, { field: f }),
+    download_only: (v, f) => (v === undefined ? undefined : bool(v, { field: f })),
+    caption: (v, f) => str(v, { field: f, max: 200 }) || undefined,
+    tag: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, FILE_TAGS, { field: f, stored })),
+    has_thumb: (v, f) => bool(v, { field: f }),
+    taken_at: (v, f) => isoTime(v, { field: f }),
+    source: (v, f) => str(v, { field: f, max: 20 }) || "staff",
+  });
+  return out;
+}
+
+export const fileType = defineType({
+  type: "file",
+  prefix: "fl",
+  v: 1,
+  validate: validateFile,
+  rotorFields: ["rotor"],
+  techFields: ["id", "kind", "content_type", "bytes", "owner", "caption", "tag", "taken_at", "has_thumb", "created_at"],
+  shadow: false,
+  rels: [
+    { rel: "owner-files", parent: (r) => (r.owner && r.owner.id) || null, sort: sortOf },
+    // files deleted but whose bytes are still there: what files.purge walks (§3.11)
+    { rel: "files-deleted", parent: (r) => (r.deleted_at && !r.purged_at ? "all" : null), sort: (r) => tsKey(new Date(Date.parse(r.deleted_at) || 0)) },
+  ],
+  summary: (r) => ({ id: r.id, kind: r.kind, content_type: r.content_type }),
+  example: () => ({
+    kind: "photo", content_type: "image/jpeg", bytes: 1024, sha256: "0".repeat(64), owner: { type: "contact", id: "ct_0000000000000000000a" },
+    customer_visible: false, has_thumb: false, source: "staff",
+  }),
+});
+
+// ------------------------------------------------------------------ runs (§2.2 "mode: run", §7.1 bulk lane)
+
+const RUN_STATUSES = ["queued", "running", "done", "failed", "cancelled"];
+const LANE_NAMES = ["fast", "bulk"];
+
+function validateRun(data, { op } = {}) {
+  const stored = op === "update";
+  return shape(data, {
+    kind: (v, f) => str(v, { field: f, max: 40, required: true }),
+    status: (v, f) => enumValue(v, RUN_STATUSES, { field: f, required: true, stored }),
+    lane: (v, f) => enumValue(v, LANE_NAMES, { field: f, required: true, stored }),
+    attempts: (v, f) => int(v, { field: f, min: 0, max: 1000 }) ?? 0,
+    requested_by: (v, f) => str(v, { field: f, max: 80 }) || "system",
+  });
+}
+
+// ix/runs/recent: what the worker needs to pick a run and the Data screen to list them.
+export const runRow = (r) => ({
+  k: r.kind, st: r.status, ln: r.lane, at: r.created_at, by: r.requested_by || "system",
+  ...(r.retry_at ? { ra: r.retry_at } : {}), ...(r.finished_at ? { fin: r.finished_at } : {}),
+  p: r.progress && Number.isFinite(r.progress.done) ? [r.progress.done, r.progress.total ?? null] : null,
+});
+
+export const runType = defineType({
+  type: "run",
+  prefix: "rn",
+  v: 1,
+  validate: validateRun,
+  rotorFields: [],
+  techFields: ["id", "kind", "status", "progress"],
+  shadow: false,
+  audit: false,            // derived bookkeeping: one write per checkpoint
+  indexes: [{ name: "runs", shard: () => "recent", row: runRow }],
+  example: () => ({ kind: "reindex", status: "queued", lane: "bulk", input: {}, progress: { done: 0, total: null }, attempts: 0, requested_by: "system" }),
+});
+
+// ------------------------------------------------------------------ pending actions (§6.9, §2.5)
+
+const PENDING_STATUSES = ["pending", "approved", "rejected", "expired", "done", "failed"];
+
+function validatePending(data, { op } = {}) {
+  const stored = op === "update";
+  return shape(data, {
+    kind: (v, f) => str(v, { field: f, max: 40, required: true }),
+    title: (v, f) => str(v, { field: f, max: 120, required: true }),
+    status: (v, f) => enumValue(v, PENDING_STATUSES, { field: f, required: true, stored }),
+    requested_by: (v, f) => str(v, { field: f, max: 80, required: true }),
+    expires_at: (v, f) => str(v, { field: f, max: 40, required: true }),
+  });
+}
+
+export const pendingRow = (r) => ({ k: r.kind, st: r.status, t: r.title, by: r.requested_by, at: r.created_at, exp: r.expires_at });
+
+export const pendingActionType = defineType({
+  type: "pending_action",
+  prefix: "pa",
+  v: 1,
+  validate: validatePending,
+  rotorFields: [],
+  techFields: ["id", "kind", "status", "title"],
+  readPerm: "pending_actions:approve",
+  shadow: false,
+  indexes: [{ name: "pending-actions", shard: () => "", row: pendingRow }],
+  rels: [{ rel: "user-pending", parent: (r) => (isId(r.requested_by, "user") ? r.requested_by : null), sort: sortOf }],
+  example: () => ({ kind: "outbox_review", title: "2 offline changes to review", status: "pending", requested_by: "us_0000000000000000000a", expires_at: "2026-11-18T15:00:00.000Z", items: [] }),
+});
+
+// M1.3 part B: messaging types, defined next to their engines in core/.
+import { templateType } from "../../core/templates.mjs";
+import { outboxType } from "../../core/outbox.mjs";
+import { notificationType } from "../../core/notify.mjs";
+import { bulkRunType } from "../../core/bulk.mjs";
+
+export const types = [contactStatsType, userType, fileType, runType, pendingActionType, templateType, outboxType, notificationType, bulkRunType];

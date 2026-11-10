@@ -5,7 +5,8 @@
 // the shell), registers crm-sw.js (scope /crm) for the offline start,
 // mounts the tab bar and starts the router. Then, in the background, it
 // re-reads /me (permissions may have changed since a cached shell was
-// made) and polls /me/badges every 30 s while visible.
+// made), polls /me/badges every 30 s while visible (ETag/304, core/poll.js)
+// and replays the offline outbox (core/outbox.js) when there is signal.
 //
 // Inside the /office frame it talks to the shell with postMessage, same
 // origin only: it sends crm:route, crm:badge and crm:signed_out, and takes
@@ -22,6 +23,8 @@ import { edgeSwipe } from "./core/edge.js";
 import { api, get, on, signOut, compareVersions, setCacheOwner } from "./core/api.js";
 import { html, render, toast } from "./core/ui.js";
 import { time as fmtTime } from "./core/format.js";
+import { poll } from "./core/poll.js";
+import * as outbox from "./core/outbox.js";
 
 const framed = (() => { try { return window.parent !== window; } catch (e) { return true; } })();
 const toShell = (msg) => { if (framed) { try { window.parent.postMessage(msg, location.origin); } catch (e) { /* no shell */ } } };
@@ -135,19 +138,15 @@ function start() {
     if (JSON.stringify(session.perms) !== before) router.refresh();
   }).catch((e) => { if (e && e.code === "offline") offlineBanner(); });
 
-  // Badges: one cheap read every 30 s while the app is on screen.
-  const badges = async () => {
-    if (document.hidden) return;
-    try {
-      const { data } = await get("/me/badges", { cache: false });
-      if (!data) return;
-      nav.setBadges({ inbox: data.inbox_unread || 0, today: (data.attention || 0) + (data.approvals || 0) });
-      toShell({ type: "crm:badge", inbox: data.inbox_unread || 0, attention: (data.attention || 0) + (data.approvals || 0), notifications: data.notifications || 0 });
-    } catch (e) { /* next time */ }
-  };
-  badges();
-  setInterval(badges, 30000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) badges(); });
+  // Badges: one cheap read every 30 s while the app is on screen (304 when nothing changed).
+  poll("/me/badges", 30000, (data) => {
+    if (!data) return;
+    nav.setBadges({ inbox: data.inbox_unread || 0, today: (data.attention || 0) + (data.approvals || 0) + (data.notifications || 0) });
+    toShell({ type: "crm:badge", inbox: data.inbox_unread || 0, attention: (data.attention || 0) + (data.approvals || 0), notifications: data.notifications || 0 });
+  });
+
+  // Offline changes (the tech app, M4b) go out when there is signal.
+  outbox.start({ onRefused: (item, e) => toast(`A change made offline was refused: ${e.message}`, { bad: true, ms: 5000 }) });
 }
 
 try { start(); } catch (e) {

@@ -11,11 +11,14 @@
 // this page with postMessage (same origin only, both sides check):
 //   from the CRM:  crm:route {path} (mirrored into #crm/<path>),
 //                  crm:badge {inbox, attention, notifications} (a dot on the tab),
-//                  crm:signed_out (reload), crm:push_request (M1.3)
+//                  crm:signed_out (reload), crm:push_request {key} (the
+//                  office shows its own "Allow notifications" card: iOS lets
+//                  only the top document of the installed app ask)
 //   to the CRM:    office:insets {top,right,bottom,left} (safe areas: iframes
 //                  don't reliably get env(safe-area-inset-*)), office:show {path},
 //                  office:overlay {bottom} (the "Get the app" card's height,
-//                  so the CRM lifts its toasts above it)
+//                  so the CRM lifts its toasts above it), office:push {ok, reason?}
+//                  (how turning on notifications went)
 // The office remembers the CRM's last screen (crm:route), so switching to
 // another tab and back keeps /office#crm/<path> in step with the frame.
 // Deep links: /office#crm opens the tab, /office#crm/<path> opens that CRM
@@ -145,6 +148,11 @@ body.compact .install,body.solo .install{bottom:calc(max(14px,env(safe-area-inse
 .install-go{flex:none;min-height:44px;border:0;border-radius:999px;padding:10px 16px;background:var(--coral);color:#fff;font:800 13px/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
 .install-go[hidden]{display:none}
 .install-x{flex:none;width:44px;height:44px;border:0;border-radius:999px;background:none;color:#85858d;font-size:24px;line-height:1;cursor:pointer}
+/* "Allow notifications" (web push, §5.7.7): the tap must be in this top document */
+.pushask{position:fixed;z-index:21;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);width:min(440px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:12px 10px 12px 14px;background:#fff;border:1px solid #ececee;border-radius:20px;box-shadow:0 18px 48px rgba(14,14,18,.18)}
+.pushask[hidden]{display:none}
+.pushask-text{flex:1;min-width:0;font-size:13.5px;line-height:1.35;color:var(--slate)}
+.pushask-text b{display:block;font:800 15px/1.2 'Cabinet Grotesk',system-ui,sans-serif;color:var(--ink)}
 @media (max-width:860px){
   .bar-in{flex-wrap:wrap;gap:10px 0;padding:0}
   .brand{padding:0 16px}
@@ -157,6 +165,11 @@ body.compact .install,body.solo .install{bottom:calc(max(14px,env(safe-area-inse
 ${bar}
 <main id="main"><div class="boot">Loading…</div></main>
 ${PROBE}
+<div class="pushask" id="pushask" role="dialog" aria-label="Allow notifications" hidden>
+  <div class="pushask-text"><b>Allow notifications</b><span id="pushask-how">New leads, replies and approvals on this phone.</span></div>
+  <button type="button" class="install-go" id="pushask-go">Allow</button>
+  <button type="button" class="install-x" id="pushask-x" aria-label="Not now">&times;</button>
+</div>
 <div class="install" id="install" role="dialog" aria-label="Get the Barta Office app" hidden>
   <img src="${APP_ICON}" alt="">
   <div class="install-text"><b>Get the app</b><span id="install-how">Put Barta Office on your home screen.</span><span id="install-ios" hidden>Tap Share ${svg('<path d="M12 3v12M8 7l4-4 4 4"/><path d="M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"/>')} then <strong>Add to Home Screen</strong>.</span></div>
@@ -254,6 +267,46 @@ ${INSETS_JS}
       document.querySelectorAll('.tab[data-tool="crm"] .dot').forEach((d) => { d.hidden = !on; });
     } else if (m.type === 'crm:signed_out') {
       location.reload();
+    } else if (m.type === 'crm:push_request' && typeof m.key === 'string') {
+      askPush(m.key);
+    }
+  });
+
+  // Web push (§5.7.7): the CRM asks, this top document shows its own card,
+  // and the tap (a user gesture here) asks for permission and subscribes on
+  // office-sw.js (scope /office); the subscription goes to the CRM.
+  const pushCard = document.getElementById('pushask');
+  let pushKey = '';
+  function toCrm(msg) { const f = frames.crm; if (f && f.contentWindow) { try { f.contentWindow.postMessage(msg, location.origin); } catch (e) { /* gone */ } } }
+  function keyBytes(b64) {
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  }
+  function askPush(key) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || typeof Notification === 'undefined') {
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      toCrm({ type: 'office:push', ok: false, reason: ios ? 'install' : 'unsupported' });
+      return;
+    }
+    if (Notification.permission === 'denied') { toCrm({ type: 'office:push', ok: false, reason: 'denied' }); return; }
+    pushKey = key;
+    pushCard.hidden = false;
+  }
+  document.getElementById('pushask-x').addEventListener('click', () => { pushCard.hidden = true; toCrm({ type: 'office:push', ok: false, reason: 'later' }); });
+  document.getElementById('pushask-go').addEventListener('click', async () => {
+    pushCard.hidden = true;
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { toCrm({ type: 'office:push', ok: false, reason: 'denied' }); return; }
+      const reg = await navigator.serviceWorker.register('/office-sw.js', { scope: '/office' });
+      await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(pushKey) });
+      const res = await fetch('/api/crm/push/subscriptions', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CRM': '1', 'Idempotency-Key': 'push-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10) }, body: JSON.stringify({ subscription: sub.toJSON() }) });
+      toCrm({ type: 'office:push', ok: res.ok, reason: res.ok ? '' : 'save' });
+    } catch (e) {
+      toCrm({ type: 'office:push', ok: false, reason: 'failed' });
     }
   });
   const reposition = () => { if (frames.crm) postInsets(frames.crm, !SOLO); };

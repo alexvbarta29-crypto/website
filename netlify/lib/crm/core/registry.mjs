@@ -28,7 +28,7 @@ const unknownKeys = (obj, allowed, what) => {
 // ---------------------------------------------------------------- types
 
 const TYPE_KEYS = new Set(["type", "prefix", "idType", "v", "validate", "migrate", "rotorFields", "mirrored", "indexes", "rels",
-  "pointers", "summary", "techFields", "example", "shadow", "audit"]);
+  "pointers", "summary", "techFields", "example", "shadow", "audit", "readPerm"]);
 
 export function defineType(def) {
   if (!isObj(def)) fail("defineType: expected an object");
@@ -68,11 +68,14 @@ export function defineType(def) {
     return Object.freeze({ kind: p.kind, list: p.list === true, keys });
   });
   if (def.summary !== undefined && !isFn(def.summary)) fail(`${where}: summary must be a function`);
+  // readPerm: the permission that reads one record of this type (its history, §4.12); scoped checks pass the record
+  if (def.readPerm !== undefined && !(typeof def.readPerm === "string" && /^[a-z_]+:[a-z_]+$/.test(def.readPerm))) fail(`${where}: readPerm must be "resource:action"`);
   return Object.freeze({
     type: t, prefix: def.prefix, idType: def.idType || t, v: def.v, validate: def.validate, migrate: Object.freeze({ ...migrate }),
     rotorFields: Object.freeze([...def.rotorFields]), techFields: Object.freeze([...def.techFields]), example: def.example,
     mirrored, indexes: Object.freeze(indexes), rels: Object.freeze(rels), pointers: Object.freeze(pointers),
     summary: def.summary || ((r) => ({ id: r.id })), shadow: def.shadow !== false, audit: def.audit !== false,
+    readPerm: def.readPerm || null,
   });
 }
 
@@ -92,7 +95,8 @@ export const ROUTE_AUTH = Object.freeze(["session", "session_or_key", "key", "ho
 // API key shown once). Such a route must be idempotent: false, because the
 // dispatcher keeps an idempotent route's whole answer in idem/ for 7 days.
 const ROUTE_KEYS = new Set(["method", "path", "auth", "perm", "subject", "mode", "body", "maxBody", "idempotent", "replaySafe", "budgetMs", "maxCalls", "handler", "secret"]);
-const SWEEP_KEYS = new Set(["key", "lane", "every", "at_local", "day", "dow", "mutates", "run"]);
+// maintenance: true = keeps running while sys/mode.paused (after a restore, §3.10 "Paused")
+const SWEEP_KEYS = new Set(["key", "lane", "every", "at_local", "day", "dow", "mutates", "maintenance", "run", "label"]);
 const AUTOMATION_KEYS = new Set(["key", "trigger", "category", "imported", "mutates", "defaults", "run", "label"]);
 export const AUTOMATION_CATEGORIES = Object.freeze(["service", "marketing", "personal", "staff"]);
 export const AUTOMATION_IMPORTED = Object.freeze(["no", "eligible", "yes"]);
@@ -165,6 +169,10 @@ export function defineModule(input) {
     unknownKeys(s, SWEEP_KEYS, `${name}: sweep ${s.key}`);
     if (typeof s.key !== "string" || !["fast", "bulk"].includes(s.lane) || !["pass", "hourly", "daily", "weekly", "monthly"].includes(s.every) || !isFn(s.run)) fail(`${name}: sweep ${s.key} needs key, lane, every and run()`);
     if (typeof s.mutates !== "boolean") fail(`${name}: sweep ${s.key} must declare mutates`);
+    if (s.maintenance !== undefined && typeof s.maintenance !== "boolean") fail(`${name}: sweep ${s.key}: maintenance is true or false`);
+    if (s.at_local !== undefined && !(typeof s.at_local === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.at_local))) fail(`${name}: sweep ${s.key}: at_local is "HH:MM"`);
+    if (s.dow !== undefined && !(Number.isInteger(s.dow) && s.dow >= 0 && s.dow <= 6)) fail(`${name}: sweep ${s.key}: dow is 0 (Sunday) to 6`);
+    if (s.day !== undefined && !(Number.isInteger(s.day) && s.day >= 1 && s.day <= 28)) fail(`${name}: sweep ${s.key}: day is 1 to 28`);
   }
   const queue = needObj(m.queue, `${name}.queue`);
   for (const [k, q] of Object.entries(queue)) {
