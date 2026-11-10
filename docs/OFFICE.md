@@ -10,7 +10,8 @@ under it (beside it on a computer):
   bottom until the Rotor import goes live. Old `#customers` links open
   this tab.
 - **Lights** → `/lights` (Light Studio)
-- **Follow-ups** → `/playbook`
+- **Follow-ups** → `/playbook` (once the CRM is set up, its texts are the
+  CRM's current wording from Templates; see docs/CRM-SALES.md)
 - **Purchases** → `/purchases` (see docs/PURCHASES.md)
 - **Giveaway** → `/admin/giveaway.html`
 - **Rotor** → opens Rotor in a new tab

@@ -78,7 +78,7 @@ test("a seed a storage error stopped is finished on a later pass, and the seed s
   for (let i = 0; i < 4; i++) { advance(minutes(15)); await W.runOnce("fast", { deploy }); }
   assert.equal(S.data.json(opKey).status, "done");
   assert.equal(seedRuns, 2, "run again once, not every pass");
-  assert.equal(S.data.keys("done/seed/").length, 1, "the seed set is done");
+  assert.equal(S.data.keys("done/seed/").filter((k) => !k.startsWith("done/seed/templates--")).length, 1, "the seed set is done");
 });
 
 test("a seed that fails for good raises one alert; the set stays open and nothing loops", async () => {
@@ -89,7 +89,7 @@ test("a seed that fails for good raises one alert; the set stays open and nothin
   assert.ok(seedRuns <= 6, `ran ${seedRuns} times`);
   const alerts = (S.data.json("sys/health").alerts || []).filter((a) => a.key.startsWith("seed:"));
   assert.equal(alerts.length, 1);
-  assert.equal(S.data.keys("done/seed/").length, 0);
+  assert.equal(S.data.keys("done/seed/").filter((k) => !k.startsWith("done/seed/templates--")).length, 0);
 });
 
 test("the fast lane sleeps through due items it cannot run (no handler, held, waiting for a settler)", async () => {

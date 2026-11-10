@@ -132,15 +132,21 @@ const blank = (v) => v === null || v === undefined || (typeof v === "string" && 
 
 // Fills the variables. → { text, missing: [names] }. escape: a function
 // applied to each value (HTML), identity for SMS and plain text.
+// A fill-in that comes out empty (an empty fallback: "Good morning
+// {{first_name|}}!") takes the space before it along when punctuation
+// follows, so it reads "Good morning!" and "Hey, it's...", never "Hey ,".
+const TOKEN_SP = /([ \t]*)\{\{\s*([^{}|]*?)\s*(?:\|([^{}]*))?\}\}/g;
 export function fill(body, vars = {}, { escape = (x) => x } = {}) {
   const missing = new Set();
-  const text = String(body ?? "").replace(TOKEN, (_, name, fallback) => {
+  const text = String(body ?? "").replace(TOKEN_SP, (m, sp, name, fallback, offset, all) => {
     const key = name.trim();
     const v = vars[key];
-    if (!blank(v)) return escape(String(v));
-    if (fallback !== undefined) return escape(fallback.trim());
-    missing.add(key);
-    return "";
+    let out;
+    if (!blank(v)) out = escape(String(v));
+    else if (fallback !== undefined) out = escape(fallback.trim());
+    else { missing.add(key); out = ""; }
+    if (out === "" && fallback !== undefined && sp && /^[,.!?;:]/.test(all.slice(offset + m.length))) return "";
+    return sp + out;
   });
   return { text, missing: [...missing].sort() };
 }

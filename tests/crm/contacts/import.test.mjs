@@ -102,7 +102,8 @@ test("row 8, leads: a pending dual-write lead, a customer with the same first na
     assert.equal(t.lifecycle, "lead");
     assert.deepEqual([t.source.form, t.source.ad, t.source.county], ["Sample Form", "Sample Ad", "wright"]);
     assert.equal(S.data.keys("rec/merge_candidate/").length, 1);
-    assert.ok(out.warnings.includes("deal_waits_for_sales"), "the deal arrives with Sales");
+    // the lead's deal: written once Sales ships the deal type (a warning before)
+    assert.ok(out.records.some((r) => r.type === "deal" && r.data.contact_id === t.id && r.data.services.includes("Exterior Window Cleaning")) || out.warnings.includes("deal_waits_for_sales"), "the lead's deal");
 
     await run("contacts.leads", { id: uuid(34), first_name: "asdf", last_name: "asdf", phone: "7635550234", source: "Website" });
     const spam = await contact(ids.idForRotor("contact", uuid(34)));
