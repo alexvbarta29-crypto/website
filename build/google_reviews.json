@@ -1,8 +1,16 @@
 {
- "count": 161,
+ "count": 162,
  "rating": 5.0,
- "updated": "2026-11-09T20:49:25.311Z",
+ "updated": "2026-11-10T04:10:25.517Z",
  "reviews": [
+  {
+   "id": "d7ec6dd068",
+   "name": "K Hhinterm",
+   "stars": 5,
+   "text": "These 2 brothers out of Delano are exceptional! 2 brothers starting their own business before 20, awesome! Fabulous work, I would highly recommend!",
+   "created": "2026-11-09T22:48:59.787862Z",
+   "reply": "Thank you so much! Building something of our own right here in Delano means the world to us, and your encouragement made our day. We're so glad you loved the results and really appreciate you recommending us!"
+  },
   {
    "id": "3c4b676c09",
    "name": "Jane Thompson",
