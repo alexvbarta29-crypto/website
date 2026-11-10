@@ -236,7 +236,7 @@ export async function inboundOnEnrollments(contact, reason, { note = "", ctx = {
   let task = null;
   if (changed.length) {
     const people = await leadPeople(contact);
-    const title = kind === "call" ? `Called in: ${nameOf(contact)}` : `Reply from ${firstNameOf(contact)}: ${nameOf(contact)}`;
+    const title = kind === "call" ? `Called in: ${nameOf(contact)}` : `Reply from ${nameOf(contact)}`;
     task = (await followUpTask(contact, {
       title, kind: kind === "call" ? "call" : "follow_up", notes: note, assignee_ids: people.slice(0, 3),
       ...(changed[0] ? { enrollment_id: changed[0].id, deal_id: changed[0].deal_id } : {}),

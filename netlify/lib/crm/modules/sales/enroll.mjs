@@ -34,7 +34,7 @@ import {
 import { cadenceByKey } from "./seed.mjs";
 import { ensureDeal, markDeal, touchDeal } from "./deals.mjs";
 import { createTask } from "./tasks.mjs";
-import { W, mayActOn, would, loadEnv, contactOf, relRecords, nameOf } from "./common.mjs";
+import { W, mayActOn, would, loadEnv, contactOf, relRecords, nameOf, leadPeople } from "./common.mjs";
 
 export const enrollKey = (contactId, cadenceId) => `${contactId}--${cadenceId}`;
 
@@ -234,7 +234,8 @@ export async function runTaskStep(enrollment, ctx = {}) {
   if (!step || step.action !== "task") return { changed: false };
   const contact = await contactOf(enrollment.contact_id, ctx);
   const lastCaller = [...(enrollment.history || [])].reverse().find((h) => isId(h.by, "user"));
-  const assignee = enrollment.owner_id || (contact && contact.owner_id) || (lastCaller && lastCaller.by) || null;
+  // the lead's owner, else whoever last called, else the owners' first
+  const assignee = enrollment.owner_id || (contact && contact.owner_id) || (lastCaller && lastCaller.by) || (contact ? (await leadPeople(contact))[0] : null) || null;
   const task = contact ? await createTask({
     title: `${step.task_title || "Follow up"}: ${nameOf(contact)}`.slice(0, 160), kind: "todo", priority: "medium", status: "open",
     contact_id: contact.id, contact_name: nameOf(contact), enrollment_id: enrollment.id, ...(enrollment.deal_id ? { deal_id: enrollment.deal_id } : {}),
