@@ -9,7 +9,7 @@ import { createCrmStores, useCrmStores, clearCrmStores } from "../../helpers/crm
 const { createRecord, updateRecord, softDelete, getRecord, K, ParallelRunGuard } = await import("../../../netlify/lib/crm-store.mjs");
 const { defineType, registerType } = await import("../../../netlify/lib/crm/core/registry.mjs");
 const { sandboxed, guardFor } = await import("../../../netlify/lib/crm/core/context.mjs");
-const { rotorFieldsChanged, MIRRORED_TYPES } = await import("../../../netlify/lib/crm/core/guard.mjs");
+const { rotorFieldsChanged, MIRRORED_TYPES, actorKindOf, guardActive } = await import("../../../netlify/lib/crm/core/guard.mjs");
 const { setNow } = await import("../../../netlify/lib/crm/core/clock.mjs");
 const { RegistryError } = await import("../../../netlify/lib/crm/core/errors.mjs");
 
@@ -95,6 +95,25 @@ test("automation may change rotorFields of an imported record whose contact is a
   const { data } = await createRecord("gizmo", { title: "Test job", status: "open", contact_id: TESTER, import: { run_id: "ir_1", at: "x", hash: "h" } }, importer);
   const r = await updateRecord("gizmo", data.id, (g) => ({ ...g, status: "done" }), auto());
   assert.equal(r.data.status, "done");
+});
+
+test("the backstop fails closed: a write that does not say who acts counts as automation unless its origin proves a person", async () => {
+  assert.equal(actorKindOf({ origin: "worker" }), "automation");
+  assert.equal(actorKindOf({ origin: "hook", by: "us_0000000000000000000a" }), "automation");
+  assert.equal(actorKindOf(undefined), "automation");
+  assert.equal(actorKindOf({ origin: "api", by: "system" }), "automation");
+  assert.equal(actorKindOf({ origin: "api", by: "us_0000000000000000000a" }), "user");
+  assert.equal(actorKindOf({ origin: "mcp", by: "us_0000000000000000000a" }), "user");
+  assert.equal(actorKindOf({ origin: "import" }), "import");
+  assert.equal(actorKindOf({ origin: "portal" }), "portal");
+  assert.equal(actorKindOf({ origin: "worker", actor_kind: "user" }), "user", "an approved pending action says so explicitly");
+  assert.equal(guardActive(undefined), true);
+  const { data } = await createRecord("gizmo", { title: "Imported job", status: "open", contact_id: IMPORTED, import: { run_id: "ir_1", at: "x", hash: "h" } }, importer);
+  await assert.rejects(updateRecord("gizmo", data.id, (g) => ({ ...g, title: "Changed by a sweep" }), { by: "system", origin: "worker", requestId: "s", mode: ROTOR }), ParallelRunGuard);
+  await assert.rejects(updateRecord("gizmo", data.id, (g) => ({ ...g, title: "Changed with no ctx" })), ParallelRunGuard);
+  await assert.rejects(createRecord("gizmo", { title: "Made by a hook", contact_id: IMPORTED }, { origin: "hook", requestId: "h" }), ParallelRunGuard);
+  const person = await updateRecord("gizmo", data.id, (g) => ({ ...g, title: "Changed by Alex" }), { by: "us_0000000000000000000a", origin: "api", requestId: "p", mode: ROTOR });
+  assert.equal(person.data.title, "Changed by Alex");
 });
 
 test("the registry insists that Rotor-mirrored types say mirrored: true", () => {

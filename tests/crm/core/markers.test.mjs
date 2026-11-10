@@ -127,6 +127,27 @@ test("done-dry/ never satisfies a live claim", async () => {
   await assert.rejects(claimMarker("done-live", "x", "y", { holder: "w", leaseMs: 1 }, ctx), TypeError);
 });
 
+test("a holder whose claim ran out cannot move to sending; sending gets its own fresh lease", async () => {
+  const claimed = M.claimValue(null, { holder: "w", leaseMs: 60000, nowMs: T0, ns: "done", scope: "s", key: "k" });
+  assert.throws(() => M.advanceValue(claimed, { state: "sending", provider: "twilio" }, T0 + 60000), StaleError);
+  const sending = M.advanceValue(claimed, { state: "sending", provider: "twilio" }, T0 + 59000);
+  assert.equal(sending.lease_until, iso(T0 + 59000 + M.SENDING_LEASE_MS), "a fresh lease, not what was left of the claim");
+  assert.ok(M.SENDING_LEASE_MS >= 8000 + 30000, "covers the 8 s provider timeout with a wide margin");
+  // through the store: the slow holder must claim again, and nobody settles a send in flight
+  M.registerSettler("twilio", async () => ({ found: false }));
+  const a = await claimMarker("done", "visit.reminder_2d", "vs_2--2026-11-19", { holder: "w1", leaseMs: 60000 }, ctx);
+  setNow(T0 + 120000);
+  await assert.rejects(advanceMarker(a.marker, { state: "sending", provider: "twilio" }, ctx), StaleError);
+  const b = await claimMarker("done", "visit.reminder_2d", "vs_2--2026-11-19", { holder: "w2", leaseMs: 60000 }, ctx);
+  assert.equal(b.ok, true);
+  const s2 = await advanceMarker(b.marker, { state: "sending", provider: "twilio" }, ctx);
+  setNow(T0 + 120000 + 20000);   // the claim's own lease is over, the send is still in flight
+  const c = await claimMarker("done", "visit.reminder_2d", "vs_2--2026-11-19", { holder: "w3", leaseMs: 1000 }, ctx);
+  assert.equal(c.ok, false);
+  assert.equal(c.marker.state, "sending", "busy, not settled as unknown");
+  assert.equal(s2.attempt, 2);
+});
+
 test("a stale holder loses its advance", async () => {
   const a = await claimMarker("done", "sweep", "quotes.expire--2026-11-17", { holder: "w1", leaseMs: 1000 }, ctx);
   setNow(T0 + 1001);

@@ -76,6 +76,11 @@ test("deriveId: the same op, scope and n give the same id; scopes never collide"
   assert.equal(client, deriveId("timer", "c:5b1f7d64-1c55-4d4e-9b0e-0123456789ab"), "an offline replay lands on the same id");
   assert.equal(typeOf(client), "timer");
   assert.throws(() => deriveId("job", ""), TypeError);
+  // the parts are encoded unambiguously: a separator inside a part cannot make two calls collide
+  assert.notEqual(deriveId("job", "a|b", "c", 1), deriveId("job", "a", "b|c", 1));
+  assert.notEqual(deriveId("job", "op", "scope"), deriveId("job", "op|scope"));
+  assert.notEqual(deriveId("job", "op", "1"), deriveId("job", "op", undefined, "1"));
+  assert.notEqual(deriveId("job", "op", "s", 1), deriveId("job", "op", "s", "1"));
 });
 
 test("prefixes are unique per type", () => {

@@ -18,21 +18,27 @@
 //      DeployContextRequired). Tests set globalThis.__crmStoreOverride to
 //      { data, files, backups } memory stores (or one store for all).
 //    - Transport: every real store is opened with guardedFetch, which gives
-//      each attempt its own AbortSignal.timeout and turns 429/5xx/network
-//      errors into a synthetic 424, so the Blobs client never sleeps 5 s and
-//      retries inside a request; this module retries itself (<= 3 attempts,
-//      100/300 ms jitter, never past the request budget).
+//      each attempt its own timeout and turns 429/5xx/network errors into a
+//      synthetic 424, so the Blobs client never sleeps 5 s and retries inside
+//      a request; this module retries itself (<= 3 attempts, 100/300 ms
+//      jitter, never past the request budget). A streamed file read is timed
+//      to its headers only; its body gets a separate, longer limit.
+//      Listings walk page by page, each page its own attempt.
 //      NOTE: @netlify/blobs 11.0.2 reports any non-412 answer to a
 //      *conditional* write as { modified: true, etag: "" } (it does not throw
 //      on the 424), so a conditional write whose attempt saw a transient, or
-//      whose result has no etag, is treated as ambiguous and settled.
+//      whose result has no etag, is treated as ambiguous and settled; a
+//      400/401/403 (recorded by guardedFetch) is a definite refusal.
 //    - Conditional writes everywhere (§0 rule 4), each carrying a writer
-//      nonce _w. An ambiguous outcome ({modified:false}, a timeout, a
-//      transient error) is settled by re-reading the key: our nonce = it
-//      committed; another value = a real conflict; missing/unchanged =
-//      nothing committed, retry. If even the settle read fails, a fix/
-//      marker names the key for the worker and UnknownOutcome is thrown
-//      (503 busy, maybe_saved).
+//      nonce _w (process id + request id + counter). A conditional write
+//      without onlyIfNew or a real etag is refused (TypeError), never sent
+//      unconditionally. A clean 412 is a definite "not written"; an
+//      ambiguous outcome (a timeout, a transient error, a blank answer) is
+//      settled by re-reading the key: our nonce = it committed; another
+//      value = a real conflict; missing/unchanged = nothing committed, retry.
+//      Once an attempt was ambiguous, any later failure (of a retry or of
+//      the settle read) is UnknownOutcome: a fix/ marker names the key for
+//      the worker (503 busy, maybe_saved).
 //    - Intent before effect: a record write puts pend/{type}/{id} first and
 //      deletes it after its index rows, relations, pointers and event landed.
 //    - The parallel-run guard backstop (core/guard.mjs) runs on every
@@ -53,7 +59,7 @@ import { now, nowIso, nowMs, tsKey, localDate, fromTsKey } from "./crm/core/cloc
 import { typeOf, newId, ALPHABET } from "./crm/core/ids.mjs";
 import { isKeySafe, keySafe } from "./crm/core/text.mjs";
 import { getType, requireType, indexFeeds, indexPrimary, getSettingsDef, statsPart } from "./crm/core/registry.mjs";
-import { checkCreate, checkUpdate, checkDelete } from "./crm/core/guard.mjs";
+import { checkCreate, checkUpdate, checkDelete, guardActive, actorKindOf } from "./crm/core/guard.mjs";
 import { decideClaim, claimValue, advanceValue, settleSending, NAMESPACES } from "./crm/core/markers.mjs";
 import { partDefaults, statsIndexRow, contactShard, STATS_TYPE, STATS_INDEX, STATS_INDEX_PART } from "./crm/core/stats.mjs";
 
@@ -229,29 +235,49 @@ function attemptMs(sc) {
 
 // ----------------------------------------------------------- transport
 
+// How long a streamed body (a photo, a PDF) may take once its headers came:
+// a slow phone reads it at its own pace, the function's own limit still applies.
+export const STREAM_BODY_MS = 25000;
+
+const timeoutReason = () => new DOMException("The operation was aborted due to timeout", "TimeoutError");
+
 // A fetch for the Blobs client: each attempt gets its own timeout, and a
 // 429, any 5xx, an abort or a network error becomes a synthetic 424 that the
 // client does not retry. `tracker.transient` records that it happened (the
-// client hides it on conditional writes, see the note at the top).
-export function guardedFetch(budget, tracker = null) {
+// client hides it on conditional writes, see the note at the top) and
+// `tracker.status` the status of the last real answer.
+// opts.attemptMs caps the attempt (the scope's attemptMs); opts.stream times
+// only the headers and gives the body STREAM_BODY_MS (a JSON body is read
+// inside the attempt, so it stays under the attempt's timeout).
+export function guardedFetch(budget, tracker = null, { attemptMs: cap, stream = false } = {}) {
   const transient = (kind) => {
     if (tracker) tracker.transient = kind;
     return new Response(null, { status: 424, headers: { "x-crm-transient": kind } });
   };
   return async (url, init = {}) => {
     let ms;
-    try { ms = attemptMs({ budget }); } catch { return transient("budget"); }
-    const timeout = AbortSignal.timeout(ms);
-    const signal = init.signal ? AbortSignal.any([timeout, init.signal]) : timeout;
+    try { ms = attemptMs({ budget, attemptMs: cap }); } catch { return transient("budget"); }
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(timeoutReason()), ms);
+    timer.unref?.();
+    const signal = init.signal ? AbortSignal.any([ac.signal, init.signal]) : ac.signal;
     let res;
     try {
       res = await globalThis.fetch(url, { ...init, signal });
     } catch (e) {
+      clearTimeout(timer);
       return transient(e && (e.name === "TimeoutError" || e.name === "AbortError") ? "timeout" : "network");
     }
     if (res.status === 429 || res.status >= 500) {
+      clearTimeout(timer);
       try { await res.body?.cancel(); } catch { /* nothing to free */ }
       return transient(res.status === 429 ? "rate_limited" : "server");
+    }
+    if (tracker) tracker.status = res.status;
+    if (stream) {
+      clearTimeout(timer);
+      const bodyTimer = setTimeout(() => ac.abort(timeoutReason()), STREAM_BODY_MS);
+      bodyTimer.unref?.();
     }
     return res;
   };
@@ -277,15 +303,15 @@ export async function openStore(kind, deploy, opts = {}) {
   return (await handle(kind, scopeOf({ deploy }, opts))).store;
 }
 
-async function handle(kind, sc) {
+async function handle(kind, sc, { stream = false } = {}) {
   const o = overrideFor(kind);
   if (o) return { store: o, tracker: null };
   if (!isDeploy(sc.deploy)) throw new DeployContextRequired("crm-store: a branded deploy object is required");
   const name = storeNameFor(kind, sc.deploy);
   if (PROD_STORE_NAMES.has(name) && !sc.deploy.prod) throw new ProdStoreRefused("crm-store: production store outside production");
-  const tracker = { transient: null };
+  const tracker = { transient: null, status: null };
   const { getStore } = await loadBlobs();
-  return { store: getStore({ name, consistency: "strong", fetch: guardedFetch(sc.budget, tracker) }), tracker };
+  return { store: getStore({ name, consistency: "strong", fetch: guardedFetch(sc.budget, tracker, { attemptMs: sc.attemptMs, stream }) }), tracker };
 }
 
 // HMAC key of a phone or an email (§3.2): no address ever appears in a key.
@@ -337,12 +363,12 @@ export function isTransient(e) {
 }
 
 // One attempt of one store operation: budget tick, per-attempt timeout.
-async function attempt(sc, kind, label, fn) {
-  const { store, tracker } = await handle(kind, sc);
+async function attempt(sc, kind, label, fn, { stream = false } = {}) {
+  const { store, tracker } = await handle(kind, sc, { stream });
   if (sc.budget) sc.budget.tick();
   const ms = attemptMs(sc);
   const result = await timeoutRace(() => fn(store), ms, label);
-  return { result, transient: tracker ? tracker.transient : null };
+  return { result, transient: tracker ? tracker.transient : null, status: tracker ? tracker.status : null };
 }
 
 async function backoff(i, sc) {
@@ -369,7 +395,7 @@ async function retrying(sc, label, fn) {
 // Strong read with metadata: { data, etag, metadata } | null.
 async function read(sc, kind, key, { type = "json", etag } = {}) {
   return retrying(sc, "read", async () => {
-    const { result } = await attempt(sc, kind, "read", (s) => s.getWithMetadata(key, { type, ...(etag ? { etag } : {}) }));
+    const { result } = await attempt(sc, kind, "read", (s) => s.getWithMetadata(key, { type, ...(etag ? { etag } : {}) }), { stream: type === "stream" });
     return result ? { data: result.data, etag: result.etag, metadata: result.metadata } : null;
   });
 }
@@ -401,9 +427,12 @@ async function writeOnce(sc, kind, key, value) {
 
 // ----------------------------------------------------------- nonces and settling
 
+// process id + request id + counter: two function instances never write the
+// same nonce, even when they share a request id (a constant like "worker",
+// a client-supplied header, a request id cut to 60 characters).
 const PROCESS_ID = "p" + randomBytes(4).toString("hex");
 let nonceSeq = 0;
-const nonce = (sc) => `${keySafe(sc.requestId || PROCESS_ID, 60)}.${++nonceSeq}`;
+const nonce = (sc) => `${PROCESS_ID}.${keySafe(sc.requestId || "-", 60)}.${++nonceSeq}`;
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const strip = (v) => {
@@ -416,58 +445,95 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
 const stable = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((kk) => [kk, x[kk]])) : x));
 const sameJSON = (a, b) => stable(a) === stable(b);
 
-// Writes fix/{tsKey}--{kind}--{id} for the worker's fix.settle step and
-// returns the UnknownOutcome to throw. Best effort: one attempt.
+// A best-effort fix/ marker for the worker's fix.settle step: one attempt,
+// outside the request budget. → the key when it was written, else null.
+async function writeFix(sc, fixKey, marker) {
+  try {
+    const { store, tracker } = await handle("data", { ...sc, budget: undefined });
+    const r = await timeoutRace(() => store.setJSON(fixKey, marker, { onlyIfNew: true }), Math.min(sc.attemptMs || STORE_ATTEMPT_MS, 1000), "fix");
+    return r && r.modified && r.etag && !(tracker && tracker.transient) ? fixKey : null;
+  } catch {
+    return null;
+  }
+}
+
+// Writes fix/{tsKey}--{kind}--{id} naming the key and returns the
+// UnknownOutcome to throw (fixKey null when the marker did not land). A
+// scratch store (the probe) gets no marker: nothing settles it, and the
+// data store stays untouched.
 async function unknownOutcome(sc, kind, key, value, cause) {
+  if (!Object.hasOwn(STORES, kind)) return new UnknownOutcome(null);
   const fixKey = K.fix(tsKey(now()), keySafe(key.split("/")[0], 12), sha256(key).slice(0, 16));
   const marker = { store: kind, key, nonce: value && value._w, hash: sha256(JSON.stringify(value ?? null)), at: nowIso(), cause: cause && cause.name };
-  try {
-    const { store } = await handle("data", { ...sc, budget: undefined });
-    await timeoutRace(() => store.setJSON(fixKey, marker, { onlyIfNew: true }), Math.min(sc.attemptMs || STORE_ATTEMPT_MS, 1000), "fix");
-    return new UnknownOutcome(fixKey);
-  } catch {
-    return new UnknownOutcome(null);
-  }
+  return new UnknownOutcome(await writeFix(sc, fixKey, marker));
+}
+
+// The options of a conditional write: onlyIfNew, or onlyIfMatch with a real
+// etag. Anything else would go out as an unconditional write (the client
+// ignores a falsy onlyIfMatch), so it is refused (§0 rule 4).
+function condOptions(cond) {
+  if (cond && cond.onlyIfNew === true) return { onlyIfNew: true };
+  if (cond && typeof cond.onlyIfMatch === "string" && cond.onlyIfMatch !== "") return { onlyIfMatch: cond.onlyIfMatch };
+  throw new TypeError("crm-store: a conditional write needs onlyIfNew or the etag its read returned; that read gave no etag (§0 rule 4)");
+}
+
+// A status the service gives for a write it refused outright (nothing written).
+const refusedStatus = (status) => Number.isInteger(status) && status >= 400 && status < 500 && status !== 412 && status !== 424 && status !== 429;
+function refusedError(status) {
+  const e = new Error(`Netlify Blobs refused the write (${status} status code)`);
+  e.name = "BlobsInternalError";
+  e.status = status;
+  return e;
 }
 
 // One settled conditional JSON write (§3.4).
 // → { ok: true, etag } | { ok: false, current: { data, etag } | null }
+// A clean 412 is definite (guardedFetch stops the client's own retries, so
+// it never hides an earlier commit). An ambiguous attempt (timeout,
+// transient, blank answer) is settled by a read; after one, every later
+// failure is UnknownOutcome, because the earlier attempt may still land.
 async function condWrite(sc, kind, key, value, cond) {
   assertKey(key);
-  const opts = cond.onlyIfNew ? { onlyIfNew: true } : { onlyIfMatch: cond.onlyIfMatch };
+  const opts = condOptions(cond);
   let ambiguous = false;
+  const unclear = async (e) => { throw await unknownOutcome(sc, kind, key, value, e); };
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     let res = null;
     let threw = null;
     try {
       const r = await attempt(sc, kind, "write", (s) => s.setJSON(key, value, opts));
-      res = { ...r.result, transient: r.transient };
+      res = { ...r.result, transient: r.transient, status: r.status };
     } catch (e) {
       if (!isTransient(e)) {
-        if (ambiguous && e instanceof BudgetError) throw await unknownOutcome(sc, kind, key, value, e);
+        if (ambiguous) await unclear(e);
         throw e;
       }
       threw = e;
     }
     if (res && res.modified && res.etag && !res.transient) return { ok: true, etag: res.etag };
+    if (res && res.modified && !res.etag && !res.transient && refusedStatus(res.status)) {
+      const e = refusedError(res.status);
+      if (ambiguous) await unclear(e);
+      throw e;
+    }
     if (threw || (res && (res.transient || (res.modified && !res.etag)))) ambiguous = true;
     let cur;
     try { cur = await read(sc, kind, key); } catch (e) {
-      if (!isTransient(e) && !(e instanceof BudgetError)) throw e;
-      throw await unknownOutcome(sc, kind, key, value, e);
+      if (ambiguous) await unclear(e);
+      throw e;                                   // a clean 412 we could not read back: nothing was written
     }
     if (cur && cur.data && typeof cur.data === "object" && cur.data._w === value._w) return { ok: true, etag: cur.etag, settled: true };
     if (!cur) {
-      if (cond.onlyIfMatch) return { ok: false, current: null };
-    } else if (cond.onlyIfNew || cur.etag !== cond.onlyIfMatch) {
+      if (opts.onlyIfMatch) return { ok: false, current: null };
+    } else if (opts.onlyIfNew || cur.etag !== opts.onlyIfMatch) {
       return { ok: false, current: cur };
     }
     // nothing committed (yet): try again
     if (i < MAX_ATTEMPTS - 1) {
-      try { await backoff(i, sc); } catch (e) { if (ambiguous) throw await unknownOutcome(sc, kind, key, value, e); throw e; }
+      try { await backoff(i, sc); } catch (e) { if (ambiguous) await unclear(e); throw e; }
     }
   }
-  if (ambiguous) throw await unknownOutcome(sc, kind, key, value, null);
+  if (ambiguous) await unclear(null);
   throw new BlobsTransientError("write: storage kept failing");
 }
 
@@ -513,10 +579,19 @@ function migrateRecord(def, rec) {
   return out;
 }
 
-const ctxDefaults = (ctx) => ({
-  by: "system", origin: "api", actor_kind: "user", ...ctx,
-  mode: (ctx && ctx.mode) || { system_of_record: "rotor", paused: false },
-});
+// The write context with its defaults. actor_kind is never assumed to be a
+// person: a ctx that does not say is derived from its origin (core/guard.mjs
+// actorKindOf), so the parallel-run backstop fails closed.
+function ctxDefaults(ctx) {
+  const c = { by: "system", origin: "api", ...ctx };
+  return { ...c, actor_kind: actorKindOf(c), mode: (ctx && ctx.mode) || { system_of_record: "rotor", paused: false } };
+}
+
+// Envelope fields only the import may set or change (§3.3, §3.10): a create
+// from anywhere else drops them from the caller's data, and an update keeps
+// the stored import/shadow whatever the mutator returns.
+const IMPORT_ONLY_ON_CREATE = ["import", "shadow", "deleted_at", "deleted_by", "merged_into"];
+const IMPORT_ONLY_ON_UPDATE = ["import", "shadow"];
 
 // The pointers, relations and index rows a record version implies.
 function sidePlan(def, rec) {
@@ -586,11 +661,13 @@ export async function createRecord(type, data, ctx = {}) {
   const def = requireType(type);
   const c = ctxDefaults(ctx);
   const sc = scopeOf(ctx);
-  if (!data || typeof data !== "object") throw new InputError("Expected a record.");
-  const id = data.id || newId(def.prefix ? type : def.idType);
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new InputError("Expected a record.");
+  const input = clone(data);
+  if (c.origin !== "import") for (const k of IMPORT_ONLY_ON_CREATE) delete input[k];
+  const id = input.id || newId(def.prefix ? type : def.idType);
   if (def.prefix && typeOf(id) !== type) throw new InputError("That id is for another kind of record.", "id");
   const at = nowIso();
-  let rec = def.validate({ ...clone(data), id }, { op: "create", ctx: c });
+  let rec = def.validate({ ...input, id }, { op: "create", ctx: c });
   rec = {
     ...rec,
     id, type, v: def.v, wv: 1,
@@ -598,22 +675,27 @@ export async function createRecord(type, data, ctx = {}) {
     created_by: c.by, updated_at: at, updated_by: c.by,
   };
   if (def.shadow && c.origin !== "import" && !rec.import && c.mode.system_of_record !== "crm") rec.shadow = true;
-  checkCreate({ def, record: rec, contact: def.mirrored ? await readContactFor(sc, def, rec) : null, ctx: c });
+  // the contact is read only when the backstop can use it (one Blobs call less per write otherwise)
+  checkCreate({ def, record: rec, contact: def.mirrored && guardActive(c) ? await readContactFor(sc, def, rec) : null, ctx: c });
   rec._w = nonce(sc);
   const plan = sidePlan(def, rec);
   const key = K.rec(type, id);
 
-  // unique pointers first: a taken one stops the create before the record exists
+  // unique pointers first: a taken one stops the create before the record
+  // exists. Anything failing before the record write releases what was
+  // claimed (an ambiguous claim leaves its own fix/ marker).
   const claimed = [];
-  for (const p of plan.unique) {
-    const r = await claimPointer(p.kind, p.key, { id }, sc);
-    if (!r.ok && !(r.current && r.current.id === id)) {
-      await compensate(sc, def, claimed, id);
-      throw new ExistsError("That is already taken.", { pointer: p.kind });
+  try {
+    for (const p of plan.unique) {
+      const r = await claimPointer(p.kind, p.key, { id }, sc);
+      if (!r.ok && !(r.current && r.current.id === id)) throw new ExistsError("That is already taken.", { pointer: p.kind });
+      claimed.push(p);
     }
-    claimed.push(p);
+    if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: rec.wv, at, names: plan.ix.map((x) => x.name) });
+  } catch (e) {
+    await compensate(sc, def, claimed, id);
+    throw e;
   }
-  if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: rec.wv, at, names: plan.ix.map((x) => x.name) });
   let w;
   try {
     w = await condWrite(sc, "data", key, rec, { onlyIfNew: true });
@@ -638,12 +720,26 @@ export async function createRecord(type, data, ctx = {}) {
   return { data: strip(rec), etag: w.etag };
 }
 
-// Releases unique pointers claimed for a create that did not happen, but
-// only after a settle read proves the record they guard is absent.
-async function compensate(sc, def, claimed, id) {
+export const COMPENSATE_MS = 2000;
+
+// Releases unique pointers claimed for a write that did not happen, but only
+// after a settle read proves the record they guard is absent (a create) or
+// no longer holds the key (an update, `update: true`). A record that holds
+// the key (a double tap, a retry) keeps its pointer. It runs on its own short
+// budget, because the request's may be what ran out; a release that fails
+// leaves a fix/ marker for the worker (and the weekly pointers.gc).
+async function compensate(sc, def, claimed, id, { update = false } = {}) {
+  if (!claimed.length) return;
+  const grace = { ...sc, budget: withBudget(COMPENSATE_MS, 4 * claimed.length + 2, { strict: false }) };
   for (const p of claimed) {
-    // a record with this id that holds the key (a double tap, a retry) keeps its pointer
-    try { await releasePointer(p.kind, p.key, id, { ...sc, holds: (rec) => keysOf(def, rec).has(pkey(p)) }); } catch { /* a fix/ marker or the gc sweep cleans up */ }
+    const k = pkey(p);
+    const holds = (rec) => keysOf(def, rec).has(k);
+    try {
+      await releasePointer(p.kind, p.key, id, { ...grace, holds, ...(update ? { released: (rec) => !holds(rec) } : {}) });
+    } catch {
+      const ptrKey = K.ptr(p.kind, p.key);
+      await writeFix(sc, K.fix(tsKey(now()), "ptr", sha256(ptrKey).slice(0, 16)), { store: "data", key: ptrKey, kind: "release", expect: id, at: nowIso() });
+    }
   }
 }
 
@@ -659,6 +755,7 @@ export async function updateRecord(type, id, mutate, ctx = {}) {
     if (Number.isSafeInteger(cur.data.v) && cur.data.v > def.v) throw new SchemaTooNew(`${type} was written by newer code`);
     const before = strip(migrateRecord(def, cur.data));
     if (c.ifMatch && c.ifMatch !== cur.etag) throw new StaleError(before, cur.etag);
+    condOptions({ onlyIfMatch: cur.etag });         // a read with no etag cannot be the base of a CAS (§0 rule 4)
     const draft = await mutate(clone(before), c);
     if (draft === null || draft === undefined) return { data: before, etag: cur.etag, changed: false };
     let next = def.validate({ ...draft }, { op: "update", before, ctx: c });
@@ -667,10 +764,14 @@ export async function updateRecord(type, id, mutate, ctx = {}) {
       id: before.id, type: before.type, created_at: before.created_at, created_by: before.created_by,
       v: def.v, wv: (before.wv || 0) + 1, updated_at: nowIso(), updated_by: c.by,
     };
+    if (c.origin !== "import") {
+      for (const k of IMPORT_ONLY_ON_UPDATE) { if (before[k] === undefined) delete next[k]; else next[k] = clone(before[k]); }
+    }
     if (sameJSON({ ...next, wv: before.wv, updated_at: before.updated_at, updated_by: before.updated_by, v: before.v }, before)) {
       return { data: before, etag: cur.etag, changed: false };
     }
-    const contact = await readContactFor(sc, def, before);
+    // the contact is read only when the backstop can use it (an imported record, automation)
+    const contact = guardActive(c) && before.import ? await readContactFor(sc, def, before) : null;
     if (next.deleted_at && !before.deleted_at) checkDelete({ def, before, contact, ctx: c });
     checkUpdate({ def, before, after: next, contact, ctx: c });
     next._w = nonce(sc);
@@ -680,19 +781,27 @@ export async function updateRecord(type, id, mutate, ctx = {}) {
     const oldUnique = new Map(oldPlan.unique.map((p) => [pkey(p), p]));
     const newUnique = new Map(newPlan.unique.map((p) => [pkey(p), p]));
     const claimed = [];
-    for (const [k, p] of newUnique) {
-      if (oldUnique.has(k)) continue;
-      const r = await claimPointer(p.kind, p.key, { id }, sc);
-      if (!r.ok && !(r.current && r.current.id === id)) {
-        for (const q of claimed) await releasePointer(q.kind, q.key, id, { ...sc, released: (rec) => !keysOf(def, rec).has(pkey(q)), holds: (rec) => keysOf(def, rec).has(pkey(q)) }).catch(() => {});
-        throw new ExistsError("That is already taken.", { pointer: p.kind });
+    try {
+      for (const [k, p] of newUnique) {
+        if (oldUnique.has(k)) continue;
+        const r = await claimPointer(p.kind, p.key, { id }, sc);
+        if (!r.ok && !(r.current && r.current.id === id)) throw new ExistsError("That is already taken.", { pointer: p.kind });
+        claimed.push(p);
       }
-      claimed.push(p);
+      if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: next.wv, at: next.updated_at, names: newPlan.ix.map((x) => x.name) });
+    } catch (e) {
+      await compensate(sc, def, claimed, id, { update: true });
+      throw e;
     }
-    if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: next.wv, at: next.updated_at, names: newPlan.ix.map((x) => x.name) });
-    const w = await condWrite(sc, "data", key, next, { onlyIfMatch: cur.etag });
+    let w;
+    try {
+      w = await condWrite(sc, "data", key, next, { onlyIfMatch: cur.etag });
+    } catch (e) {
+      if (!(e instanceof UnknownOutcome)) await compensate(sc, def, claimed, id, { update: true });
+      throw e;
+    }
     if (!w.ok) {
-      for (const q of claimed) await releasePointer(q.kind, q.key, id, { ...sc, released: (rec) => !keysOf(def, rec).has(pkey(q)), holds: (rec) => keysOf(def, rec).has(pkey(q)) }).catch(() => {});
+      await compensate(sc, def, claimed, id, { update: true });
       if (c.ifMatch) throw new StaleError(w.current ? strip(w.current.data) : null, w.current ? w.current.etag : null);
       await casJitter(i);
       continue;
@@ -757,7 +866,7 @@ export async function hardDelete(type, id, ctx = {}) {
   const cur = await read(sc, "data", key);
   if (!cur || !cur.data) return;
   const before = strip(migrateRecord(def, cur.data));
-  checkDelete({ def, before, contact: await readContactFor(sc, def, before), ctx: c });
+  checkDelete({ def, before, contact: guardActive(c) && before.import ? await readContactFor(sc, def, before) : null, ctx: c });
   await del(sc, "data", key);
   const plan = sidePlan(def, { ...before, deleted_at: undefined });
   const wv = (before.wv || 0) + 1;
@@ -908,6 +1017,23 @@ export async function listRel(rel, parent, { from, to, limit = 200, newestFirst 
 
 const emptyIndex = (name, shard) => ({ v: 1, name, shard: shard || "", rows: {} });
 
+// A removed row part stays as a tombstone { wv, d: null, at } so a late
+// writer with a lower wv cannot bring it back; after TOMBSTONE_TTL_MS (far
+// longer than any request or worker pass) it is pruned, so status-sharded
+// blobs (jobs/open, quotes/open...) do not grow with every closed record.
+export const TOMBSTONE_TTL_MS = 24 * 3600 * 1000;
+const liveTombstone = (p, t) => !!p && !p.d && !!p.at && Date.parse(p.at) + TOMBSTONE_TTL_MS > t;
+
+function pruneTombstones(rows, t = nowMs()) {
+  const out = {};
+  for (const [id, parts] of Object.entries(rows || {})) {
+    const kept = {};
+    for (const [part, p] of Object.entries(parts || {})) if (p && (p.d || liveTombstone(p, t))) kept[part] = p;
+    if (Object.keys(kept).length) out[id] = kept;
+  }
+  return out;
+}
+
 function flatten(name, rows) {
   const primary = indexPrimary(name);
   const out = [];
@@ -957,8 +1083,8 @@ export async function applyIndexRow(name, shard, id, part, row, wv, opts = {}) {
       const blob = cur && cur.data ? cur.data : emptyIndex(name, shard);
       const entry = { ...(blob.rows[id] || {}) };
       if (entry[part] && entry[part].wv >= wv) return;
-      entry[part] = { wv, d: row || null };
-      const next = { ...blob, rows: { ...blob.rows, [id]: entry }, updated_at: nowIso(), _w: nonce(sc) };
+      entry[part] = row ? { wv, d: row } : { wv, d: null, at: nowIso() };
+      const next = { ...blob, rows: pruneTombstones({ ...blob.rows, [id]: entry }), updated_at: nowIso(), _w: nonce(sc) };
       const w = await condWrite(sc, "data", key, next, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
       if (w.ok) return;
       await casJitter(i);
@@ -971,14 +1097,23 @@ export async function applyIndexRow(name, shard, id, part, row, wv, opts = {}) {
 
 // Worker only: rebuilds an index from the records (§3.5), merging by wv with
 // whatever writers put there meanwhile, CAS on the blob, then clears the
-// dirty marker by CAS from the value read before the rebuild started.
+// dirty marker by CAS from the value read BEFORE the records were listed:
+// a dirty mark written while the rebuild runs changes the marker's etag and
+// keeps its shard dirty, and a shard with no marker at the start is never
+// marked clean. → { rows (all shards), shards }.
 export async function rebuildIndex(name, { shards } = {}, opts = {}) {
   const sc = scopeOf(opts);
   const feeds = indexFeeds(name);
   if (!feeds.length) throw new RegistryError(`no index named ${name}`);
-  const dirtyBefore = new Map();
-  const built = new Map();
   const want = (s) => !shards || shards.includes(s);
+  const dirtyBefore = new Map();
+  const dirtyRoot = K.dirty(name, "");
+  for (const k of await listKeys(dirtyRoot, {}, sc)) {
+    if (k !== dirtyRoot && !k.startsWith(dirtyRoot + "/")) continue;
+    const s = k === dirtyRoot ? "" : k.slice(dirtyRoot.length + 1);
+    if (want(s)) dirtyBefore.set(s, await read(sc, "data", k).catch(() => null));
+  }
+  const built = new Map();
   for (const feed of feeds) {
     const def = getType(feed.type);
     const keys = await listKeys(`rec/${feed.type}/`, {}, sc);
@@ -997,11 +1132,11 @@ export async function rebuildIndex(name, { shards } = {}, opts = {}) {
     .filter((k) => k === `ix/${name}` || k.startsWith(`ix/${name}/`))
     .map((k) => (k === `ix/${name}` ? "" : k.slice(`ix/${name}/`.length)));
   const targets = [...new Set([...(shards || []), ...built.keys(), ...existing.filter(want)])];
-  for (const s of targets) dirtyBefore.set(s, await read(sc, "data", K.dirty(name, s)).catch(() => null));
   let count = 0;
   for (const s of targets) {
     const fresh = built.get(s) || {};
     let done = false;
+    let rows = 0;
     for (let i = 0; i < CAS_TRIES && !done; i++) {
       const cur = await read(sc, "data", K.ix(name, s));
       const current = (cur && cur.data && cur.data.rows) || {};
@@ -1013,20 +1148,21 @@ export async function rebuildIndex(name, { shards } = {}, opts = {}) {
         for (const part of new Set([...Object.keys(a), ...Object.keys(b)])) {
           if (a[part] && b[part]) entry[part] = a[part].wv > b[part].wv ? a[part] : b[part];
           else if (b[part]) entry[part] = b[part];
-          else if (a[part] && !a[part].d) entry[part] = a[part];            // a tombstone stays (orders late writers)
+          else if (a[part] && !a[part].d) { if (liveTombstone(a[part], nowMs())) entry[part] = a[part]; }   // a recent tombstone stays (orders late writers)
           else if (a[part] && await stillFeeds(sc, name, s, id, part, a[part].wv)) entry[part] = a[part];
         }
         if (Object.keys(entry).length) merged[id] = entry;
       }
-      count = flatten(name, merged).length;
+      rows = flatten(name, merged).length;
       const blob = { ...(cur && cur.data ? cur.data : emptyIndex(name, s)), rows: merged, built_at: nowIso(), updated_at: nowIso(), _w: nonce(sc) };
       const w = await condWrite(sc, "data", K.ix(name, s), blob, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
       done = w.ok;
       if (!done) await casJitter(i);
     }
     if (!done) { await markDirty(sc, name, s); continue; }
+    count += rows;
     const d = dirtyBefore.get(s);
-    if (d && d.data && d.data.dirty_at) {
+    if (d && d.data && d.data.dirty_at && !d.data.clean_at) {
       await condWrite(sc, "data", K.dirty(name, s), { clean_at: nowIso(), _w: nonce(sc) }, { onlyIfMatch: d.etag }).catch(() => null);
     }
   }
@@ -1367,18 +1503,69 @@ export async function deleteFileBytes(fileId, opts = {}) {
 
 // ----------------------------------------------------------- raw access (worker, backup, import, tests)
 
+// How long a page call that timed out may still finish before the walk asks
+// for the page again (guardedFetch aborts it at about the same time).
+const LATE_PAGE_MS = 250;
+const settledWithin = (p, ms) => new Promise((resolve) => {
+  const t = setTimeout(() => resolve({ ok: false }), ms);
+  p.then((value) => { clearTimeout(t); resolve({ ok: true, value }); }, () => { clearTimeout(t); resolve({ ok: false }); });
+});
+
+// One listing walk (paginate: true): every page is its own attempt, with its
+// own timeout and retries, and counts as one storage call; the walk as a
+// whole is bounded by the budget, not by one attempt. A retried page reuses
+// the cursor (the client advances it only on success); a page call that
+// timed out but then answers is used rather than asked again.
+async function listWalk(sc, kind, prefix, directories) {
+  const { store } = await handle(kind, sc);
+  const listOpts = { prefix, ...(directories ? { directories: true } : {}) };
+  const blobs = [];
+  const dirs = new Set();
+  const iterable = store.list({ ...listOpts, paginate: true });
+  if (!iterable || typeof iterable[Symbol.asyncIterator] !== "function") {
+    // a store without paginate support (a test fake): one call for the whole listing
+    if (iterable && typeof iterable.then === "function") iterable.then(null, () => {});
+    const res = await retrying(sc, "list", async () => (await attempt(sc, kind, "list", (s) => s.list(listOpts))).result);
+    for (const b of (res && res.blobs) || []) blobs.push(b.key);
+    for (const d of (res && res.directories) || []) dirs.add(d);
+    return { keys: [...new Set(blobs)].sort(), directories: [...dirs].sort() };
+  }
+  const it = iterable[Symbol.asyncIterator]();
+  for (;;) {
+    const page = await retrying(sc, "list", async () => {
+      if (sc.budget) sc.budget.tick();
+      const ms = attemptMs(sc);
+      const p = it.next();
+      try {
+        return await timeoutRace(() => p, ms, "list");
+      } catch (e) {
+        if (!(e instanceof TimeoutError)) throw e;
+        const late = await settledWithin(p, LATE_PAGE_MS);
+        if (late.ok) return late.value;
+        throw e;
+      }
+    });
+    if (!page || page.done) break;
+    const v = page.value || {};
+    for (const b of v.blobs || []) blobs.push(b.key);
+    for (const d of v.directories || []) dirs.add(d);
+  }
+  return { keys: [...new Set(blobs)].sort(), directories: [...dirs].sort() };
+}
+
 // Sorted keys under a prefix (every page). With directories: { keys, directories }.
 export async function listKeys(prefix, { directories = false, kind = "data" } = {}, opts = {}) {
-  const sc = scopeOf(opts);
-  const res = await retrying(sc, "list", async () => (await attempt(sc, kind, "list", (s) => s.list({ prefix, ...(directories ? { directories: true } : {}) }))).result);
-  const keys = (res && Array.isArray(res.blobs) ? res.blobs : []).map((b) => b.key).sort();
-  return directories ? { keys, directories: [...((res && res.directories) || [])].sort() } : keys;
+  const res = await listWalk(scopeOf(opts), kind, prefix, directories);
+  return directories ? res : res.keys;
 }
 
 // Calls fn(key) for every key after `afterKey`, in key order, while the
-// budget lasts. → { done, lastKey } (resume with afterKey: lastKey).
+// budget lasts. → { done, lastKey } (resume with afterKey: lastKey). The
+// prefix is listed completely first (page by page, under `budget` when
+// given) because the list order is undocumented; each invocation re-lists
+// and skips keys <= afterKey (§3.12: Blobs list cursors cannot be resumed).
 export async function forEachKey(prefix, fn, { concurrency = 16, budget, afterKey, kind = "data" } = {}, opts = {}) {
-  const keys = (await listKeys(prefix, { kind }, opts)).filter((k) => afterKey === undefined || k > afterKey);
+  const keys = (await listKeys(prefix, { kind }, budget ? { ...opts, budget } : opts)).filter((k) => afterKey === undefined || k > afterKey);
   let lastKey = afterKey;
   for (let i = 0; i < keys.length; i += concurrency) {
     if (budget && budget.left() < 1000) return { done: false, lastKey };

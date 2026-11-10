@@ -8,14 +8,20 @@
 //     different etag answer { modified: false }; both options, a non-string
 //     onlyIfMatch or a non-boolean onlyIfNew throw like the client;
 //   - setJSON stores JSON.stringify(value), so reads round-trip like the
-//     real service; keys, store names and metadata are validated with the
-//     client's own messages;
+//     real service; keys (on writes only, like the client), store names and
+//     metadata are validated with the client's own messages;
 //   - list() pages (pageSize, default 1,000) and, by default for CRM tests,
-//     shuffles its order, because the real order is undocumented.
+//     shuffles its order, because the real order is undocumented; with
+//     paginate: true every page is its own call (fault hooks fire per page)
+//     and the cursor moves only when a page succeeds, like the client.
 //
 // Fault hooks (each takes { op, key, times = 1 }; op is a method name, a
 // list of them, "read", "write" or "*"; key is an exact string or a RegExp):
-//   fail({ kind: "internal" | "timeout" | "denied" })  the call throws, nothing commits
+//   fail({ kind: "internal" | "timeout" | "denied" })  nothing commits; the call throws, except a conditional
+//                                                       write failing "internal" or "denied", which answers
+//                                                       { modified: true, etag: "" } as @netlify/blobs 11.0.2
+//                                                       does for every non-412 status (a 5xx through
+//                                                       guardedFetch, a 401/403); "timeout" always throws
 //   hang()                                              the call never settles, nothing commits
 //   transient({ status: 429 | 503 })                   what guardedFetch makes of a 429/5xx: reads and
 //                                                       unconditional writes throw a 424 BlobsInternalError;
@@ -153,7 +159,11 @@ export function createMemoryBlobs({ name = "crm-test", pageSize = 1000, shuffle 
     const conds = conditionsOf(options);
     validateMetadata(options.metadata);
     const f = take("fail", op, key);
-    if (f) throw f.errorKind === "timeout" ? timeoutError() : blobsError(f.errorKind === "denied" ? 401 : 500);
+    if (f) {
+      if (f.errorKind === "timeout") throw timeoutError();
+      if (conds) return { modified: true, etag: "" };
+      throw blobsError(f.errorKind === "denied" ? 401 : 500);
+    }
     if (take("hang", op, key)) return new Promise(() => {});
     const t = take("transient", op, key);
     if (t) {
@@ -180,9 +190,10 @@ export function createMemoryBlobs({ name = "crm-test", pageSize = 1000, shuffle 
     return conds ? result : { modified: true, etag: result.etag };
   }
 
+  // The client validates keys on writes only (get("") lists the store); the
+  // double answers null for "", which is never a stored key.
   async function readOp(op, key, extra = {}) {
     calls.push({ op, key, opts: { ...extra } });
-    if (op !== "list") validateKey(key);
     const f = take("fail", op, key);
     if (f) throw f.errorKind === "timeout" ? timeoutError() : blobsError(f.errorKind === "denied" ? 401 : 500);
     if (take("hang", op, key)) return new Promise(() => {});
@@ -245,12 +256,21 @@ export function createMemoryBlobs({ name = "crm-test", pageSize = 1000, shuffle 
       if (options.paginate) {
         const size = options.pageSize || pageSize;
         return {
-          async *[Symbol.asyncIterator]() {
-            const all = await run();
-            for (let i = 0; i === 0 || i < all.blobs.length; i += size) {
-              yield { blobs: all.blobs.slice(i, i + size), directories: i === 0 ? all.directories : [] };
-              if (!all.blobs.length) break;
-            }
+          [Symbol.asyncIterator]() {
+            let all = null;      // the listing as of the first page that succeeded
+            let offset = 0;
+            let done = false;
+            return {
+              async next() {
+                if (done) return { done: true, value: undefined };
+                await readOp("list", options.prefix || "", { ...options, page: offset / size });
+                if (!all) all = listing(options);
+                const value = { blobs: all.blobs.slice(offset, offset + size), directories: offset === 0 ? all.directories : [] };
+                offset += size;
+                if (offset >= all.blobs.length) done = true;
+                return { done: false, value };
+              },
+            };
           },
         };
       }

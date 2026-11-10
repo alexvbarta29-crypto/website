@@ -17,9 +17,18 @@
 // - A missing marker is created as `claimed`. A `claimed` whose lease ran
 //   out never reached the provider, so it is taken over (attempt + 1).
 //   A `failed` whose retry_at has passed is taken over the same way.
+// - A holder whose `claimed` lease ran out may not move to `sending` (it
+//   must claim again): another worker may already be taking it over.
+// - `sending` gets its own fresh lease (SENDING_LEASE_MS: the 8 s provider
+//   timeout plus a wide margin), so it is never settled while the call it
+//   announces is still in flight.
 // - An expired `sending` is ambiguous: it is never re-run. The provider's
 //   settler (registerSettler) looks for the call; found → done, not found →
 //   unknown (the owners are alerted, nothing is re-sent automatically).
+
+import { StaleError } from "./errors.mjs";
+
+export const SENDING_LEASE_MS = 60 * 1000;
 
 export const NAMESPACES = Object.freeze(["done", "done-dry"]);
 export const STATES = Object.freeze(["claimed", "sending", "done", "failed", "unknown"]);
@@ -72,10 +81,14 @@ export function claimValue(prev, { holder, leaseMs, nowMs, ns, scope, key }) {
 const REQUIRED = Object.freeze({ sending: ["provider"], done: [], failed: ["code"], unknown: ["reason"], claimed: ["deferred_until"] });
 
 // The value an advance writes; throws TypeError on a move the machine forbids.
+// A `claimed` whose lease ran out cannot move to `sending`: StaleError (claim again).
 export function advanceValue(current, next, nowMs) {
   const to = next && next.state;
   if (!canAdvance(current.state, to)) throw new TypeError(`markers: ${current.state} → ${to} is not allowed`);
   for (const f of REQUIRED[to]) if (next[f] === undefined || next[f] === null || next[f] === "") throw new TypeError(`markers: ${to} needs ${f}`);
+  if (current.state === "claimed" && to === "sending" && leaseExpired(current, nowMs)) {
+    throw new StaleError(null, null, "This step's claim ran out before the send. Claim it again.");
+  }
   const at = new Date(nowMs).toISOString();
   const keep = { ns: current.ns, scope: current.scope, key: current.key, holder: current.holder, attempt: current.attempt, created_at: current.created_at, claimed_at: current.claimed_at };
   const out = { ...keep, ...next, state: to, updated_at: at, trail: trail(current, to, at) };
@@ -84,7 +97,7 @@ export function advanceValue(current, next, nowMs) {
     out.lease_until = new Date(Math.max(ms(current.lease_until) || 0, ms(next.deferred_until) || 0, nowMs)).toISOString();
   } else if (to === "sending") {
     out.at = next.at || at;
-    out.lease_until = next.lease_until || current.lease_until;
+    out.lease_until = next.lease_until || new Date(nowMs + SENDING_LEASE_MS).toISOString();
   } else {
     out.lease_until = current.lease_until;
   }

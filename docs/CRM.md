@@ -193,18 +193,44 @@ counters, settings, exactly-once markers, leases, idempotency records, the
   open any store (the screens arriving in M1.2 say "Setup needed"), while
   the office tools and the Customers list keep working as today.
 - **No lost or doubled writes.** Every shared write is conditional
-  (`onlyIfNew` / `onlyIfMatch`) and carries a writer nonce. Blobs is opened
-  with its own `fetch` that gives each attempt a timeout and turns 429/5xx
-  into one quick failure (the Blobs client would otherwise sleep 5 s per
-  retry inside a request); the store retries itself and, when an outcome is
-  unclear, re-reads the key: its own nonce means the write landed. If even
-  that read fails, a `fix/` marker names the key for the worker and the API
-  answers "Storage didn't answer" (safe to retry).
+  (`onlyIfNew` / `onlyIfMatch`) and carries a writer nonce (process id +
+  request id + counter, so two function instances never share one). A
+  conditional write without `onlyIfNew` or a real etag is refused, never
+  sent unconditionally. Blobs is opened with its own `fetch` that gives each
+  attempt a timeout and turns 429/5xx into one quick failure (the Blobs
+  client would otherwise sleep 5 s per retry inside a request); the store
+  retries itself. A clean 412 or a 401/403 is a definite "not written". When
+  an outcome is unclear (a timeout, a 5xx, a blank answer) the store
+  re-reads the key: its own nonce means the write landed. Once an attempt
+  was unclear, any later failure (of a retry or of that read) means "maybe
+  saved": a `fix/` marker names the key for the worker and the API answers
+  "Storage didn't answer" (safe to retry with the same Idempotency-Key).
+- **No orphan pointers.** A create or update claims its unique pointers
+  first; if anything fails before the record write (a taken key, a
+  storage error on `pend/`, a later claim), the claimed pointers are
+  released once a read proves the record does not hold them, on a short
+  budget of their own; a release that fails leaves a `fix/` marker.
+  Pointers stay only when the record write itself is "maybe saved".
+- **Listings and files.** A listing walks page by page, each page its own
+  attempt (a prefix with many pages is not cut off by one attempt's
+  timeout). A streamed file read is timed to its headers; its body gets
+  25 s, so a photo sent to a slow phone is not cut off.
+- **Index blobs stay small and honest.** A row that leaves a shard becomes a
+  tombstone for a day (so a late writer cannot bring it back) and is then
+  pruned. A rebuild reads the shard's dirty marker before it lists the
+  records, so a dirty mark written while it runs keeps the shard dirty.
+- **Envelope fields belong to the import.** `import`, `shadow`,
+  `deleted_at`, `deleted_by` and `merged_into` in a create from anywhere
+  but the import are dropped; an update keeps the stored `import` and
+  `shadow` whatever its mutator returns.
 - **No personal data in keys.** Phones and emails are keyed by an HMAC
   (`hk()`, salt `CRM_KEY_SALT`), never by digits or addresses.
 - **Rotor stays in charge until cutover.** Automation may only create or
   change sandboxed records (made in the CRM and never imported, or a test
   contact); the store throws `ParallelRunGuard` otherwise (`core/guard.mjs`).
+  The check fails closed: a write that does not set `ctx.actor_kind` counts
+  as automation unless it comes from the API or MCP with a signed-in user
+  (`by` = a user id), the portal or the import.
 
 ### Code layout
 
@@ -244,19 +270,35 @@ lowered (`suggested_max_calls` in the report).
 
 ### No customer data in git: three guards
 
-`build/no_data_scan.mjs` fails on phone numbers outside 555 and the
-business's own numbers, real email addresses, data exports (`.jsonl`,
-`*.sealed.json`, anything in `netlify/data/` but the dashboard snapshot)
-and Stripe/Twilio secret or id shapes. It runs:
+`build/no_data_scan.mjs` reads every text file in the repository (UTF-8 or
+UTF-16; images and fonts by name only) and fails on phone numbers outside
+555 and the business's own numbers (formatted or `+1` numbers anywhere,
+bare 10-digit Minnesota numbers anywhere, other bare runs after a word like
+"phone"), real email addresses, data exports (`.jsonl` and `*.sealed.json`,
+also compressed; spreadsheets and archives outside `assets/`; anything in
+`netlify/data/` but the dashboard snapshot) and Stripe/Twilio secret or id
+shapes. It runs:
 
 1. before every `git push`: `npm install` sets `core.hooksPath` to
    `.githooks`, whose `pre-push` scans every outgoing commit (files and
-   messages, including history a later commit removed);
-2. on GitHub for every push and pull request (`.github/workflows/no-data.yml`);
+   messages, including history a later commit removed; for a new branch,
+   every commit that remote does not have yet);
+2. on GitHub for every push and pull request (`.github/workflows/no-data.yml`):
+   the tree, then the pushed commits; the first push of a new branch and a
+   force push scan every commit that is not on another branch;
 3. in `npm test` (`tests/crm/no-data.test.mjs`).
 
 `npm run scan` runs it by hand. It prints file:line and the kind of
-finding, never the value.
+finding, never the value. If a bot-updated public file (Google reviews,
+the Instagram feed) ever trips it, allowlist that exact value, never a
+whole file type.
+
+**Integrator checklist before the first push from a checkout:** make sure
+the hook is active (`git config --get core.hooksPath` prints `.githooks`;
+if not, run `npm install`, or `git config core.hooksPath .githooks`, or push
+with `git -c core.hooksPath=.githooks push ...`). Prove it once: commit a
+planted fixture (a made-up gmail address) on a throwaway branch, push it to
+a local bare repository, see the push refused, then delete the branch.
 
 ### Tests
 
@@ -265,7 +307,10 @@ tests use `tests/helpers/crm-memory-store.mjs`, an in-memory copy of the
 Blobs store with fault hooks (a write that lands but reports failure, a
 slow write, a hang, a 503), and pin the clock. `CRM_IT=1 npm test` also
 runs the store contract against a local Blobs server (it opens a local
-port).
+port). That server answers a read without an etag, so it cannot exercise
+read-then-CAS (the store refuses such a write rather than sending it
+unconditionally); the run proves that every write carries `if-match` or
+`if-none-match` and that the server itself answers 412 to a stale etag.
 
 ### Owner setup (Netlify, Production context only)
 

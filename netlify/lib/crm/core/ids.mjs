@@ -5,8 +5,9 @@
 //   newId(type, at?)               t = creation time in ms (10 chars), r = 50 random bits: time-sortable
 //   idForRotor(type, rotorId)      t+r = first 100 bits of sha256("rotor:" + type + ":" + rotorId): a pure
 //                                  function, so placeholders, pointer lookups and re-imports agree
-//   deriveId(type, opId, scope, n) t+r = first 100 bits of sha256(opId + "|" + scope + "|" + n); scope names
-//                                  the calling service, so two services in one op never collide.
+//   deriveId(type, opId, scope, n) t+r = first 100 bits of sha256("derive:" + JSON.stringify([opId, scope, n]));
+//                                  scope names the calling service, so two services in one op never
+//                                  collide; the JSON encoding keeps ("a|b","c") and ("a","b|c") apart.
 //                                  Client-created records use deriveId(type, "c:" + uuid).
 // Randomness is injectable (setRandom) so tests can pin ids.
 
@@ -87,8 +88,7 @@ export function idForRotor(type, rotorId) {
 export function deriveId(type, opId, scope, n) {
   const p = need(type);
   if (!opId) throw new TypeError("deriveId: empty op id");
-  const parts = [opId, scope, n].filter((x) => x !== undefined && x !== null);
-  return `${p}_${hashed(parts.join("|"))}`;
+  return `${p}_${hashed("derive:" + JSON.stringify([String(opId), scope ?? null, n ?? null]))}`;
 }
 
 // Creation time of a newId() (null for hashed ids, whose t is not a time).

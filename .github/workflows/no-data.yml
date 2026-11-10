@@ -1,6 +1,9 @@
 # No customer data in git, ever (docs/CRM.md). Runs the same scan as the
 # pre-push hook and `npm test` on every push to any branch and on pull
-# requests: the working tree, then every pushed commit (messages included).
+# requests: every file of the tree, then every pushed commit (messages
+# included). The first push of a new branch (before = all zeros) and a force
+# push (the old tip is not in the clone) scan every commit that is not on
+# another branch of the repository, so history cannot slip through.
 # Read-only: it checks out the code and runs one Node script, no secrets.
 name: No customer data
 
@@ -26,8 +29,15 @@ jobs:
       - name: Scan the tree
         run: node build/no_data_scan.mjs
       - name: Scan the pushed commits
-        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        if: github.event_name == 'push'
         env:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
-        run: node build/no_data_scan.mjs --range "$BEFORE..$AFTER"
+          BRANCH: ${{ github.ref_name }}
+        run: node build/no_data_scan.mjs --range "$BEFORE..$AFTER" --exclude-ref "$BRANCH"
+      - name: Scan the pull request's commits
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node build/no_data_scan.mjs --range "$BASE..$HEAD"

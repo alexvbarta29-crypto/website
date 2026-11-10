@@ -35,6 +35,21 @@ afterEach(() => {
 
 const get = (url = "https://www.bartawindowwashing.com/api/crm-probe", headers = { cookie }, context = PROD) => probeMod.default(new Request(url, { headers }), context);
 
+test("a probe write with an unclear outcome leaves no fix/ marker anywhere: the CRM data store stays untouched", async () => {
+  const env = { CRM_PRODUCTION: "1" };
+  S.probe.transient({ op: "setJSON", key: /^facts\// });
+  const orig = S.probe.setJSON;
+  S.probe.setJSON = async function (...a) {
+    S.probe.fail({ op: "getWithMetadata", key: /^facts\//, kind: "timeout", times: 10 });
+    return orig.apply(this, a);
+  };
+  const err = await P.recordFacts("scheduled", new Request("https://www.bartawindowwashing.com/x"), PROD, env).catch((e) => e);
+  assert.equal(err && err.name, "UnknownOutcome");
+  assert.equal(err.fixKey, null);
+  assert.deepEqual(S.data.keys(), [], "nothing in the CRM data store");
+  assert.deepEqual(S.probe.keys("fix/"), []);
+});
+
 test("the functions are wired as the design says: a path, a 15-minute schedule, a background file", () => {
   assert.deepEqual(probeMod.config, { path: "/api/crm-probe" });
   assert.deepEqual(cronMod.config, { schedule: "*/15 * * * *" });

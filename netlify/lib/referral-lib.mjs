@@ -448,20 +448,25 @@ export async function mapLimit(items, limit, fn) {
 // Error text safe for the function log: name plus a message with anything
 // that could be a person masked, because Blobs errors can echo keys, Rotor
 // and JSON errors can echo submitted fields, and validators quote values:
-//   - quoted substrings ("…", '…', `…`, “…”) → "…"
-//   - email addresses → <email>
-//   - phone-like runs (digits with spaces, dots, dashes or parentheses) and
-//     any run of 4+ digits → ####
+//   - the input V8 echoes in a JSON.parse error ("…" is not valid JSON),
+//     whatever quotes or newlines it holds → "…"
+//   - quoted substrings, across lines ("…", '…', `…`, “…”, ‘…’, «…») → "…"
+//   - email addresses, also URL-encoded (%40) → <email>
+//   - phone-like runs (digits with spaces, dots, dashes, en/em dashes or
+//     parentheses) and any run of 4+ digits → ####
+//   - an error name that is not a plain identifier → "Error"
 // Then cut to 160 characters. Logs carry counts, codes and statuses only.
 export function maskSensitive(text) {
   return String(text)
-    .replace(/"[^"\n]*"|(?<![A-Za-z0-9])'[^'\n]*'|`[^`\n]*`|\u201c[^\u201d\n]*\u201d/g, '"…"')
-    .replace(/[^\s@"'<>()[\],;:]+@[^\s@"'<>()[\],;:]+/g, "<email>")
-    .replace(/\+?\d[\d\s().-]{6,}\d/g, "####")
+    .replace(/"[\s\S]*"(?=(?:\.\.\.)? is not valid JSON)/, '"…"')
+    .replace(/"[^"]*"|(?<![A-Za-z0-9])'[^']*'|`[^`]*`|\u201c[^\u201d]*\u201d|\u2018[^\u2019]*\u2019|\u00ab[^\u00bb]*\u00bb/g, '"…"')
+    .replace(/[^\s@"'<>()[\],;:]+(?:@|%40)[^\s@"'<>()[\],;:]+/gi, "<email>")
+    .replace(/\+?\d[\d\s().\-\u2010-\u2015]{6,}\d/g, "####")
     .replace(/\d{4,}/g, "####");
 }
+const PLAIN_NAME = /^[A-Za-z_$][\w$.]{0,59}$/;
 export const safeErr = (err) => {
-  const name = err && err.name ? String(err.name) : "Error";
+  const name = err && err.name && PLAIN_NAME.test(String(err.name)) ? String(err.name) : "Error";
   const msg = err && err.message ? maskSensitive(err.message).slice(0, 160) : "";
   return msg ? `${name}: ${msg}` : name;
 };

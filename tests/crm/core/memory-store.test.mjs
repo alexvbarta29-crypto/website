@@ -92,3 +92,35 @@ test("fault hooks fire for the matching op and key only, as many times as asked"
   const stores = createCrmStores();
   assert.deepEqual(Object.keys(stores), ["data", "files", "backups", "probe"]);
 });
+
+test("like @netlify/blobs 11.0.2: a failed conditional write answers blank, reads never validate keys", async () => {
+  const s = createMemoryBlobs();
+  for (const kind of ["internal", "denied"]) {
+    s.fail({ op: "setJSON", kind });
+    assert.deepEqual(await s.setJSON("c", 1, { onlyIfNew: true }), { modified: true, etag: "" }, kind);
+    assert.equal(s.has("c"), false);
+  }
+  s.fail({ op: "setJSON", kind: "denied" });
+  await assert.rejects(s.setJSON("u", 1), (e) => e.name === "BlobsInternalError" && /401/.test(e.message), "an unconditional write throws");
+  s.fail({ op: "setJSON", kind: "timeout" });
+  await assert.rejects(s.setJSON("c", 1, { onlyIfNew: true }), (e) => e.name === "TimeoutError");
+  assert.equal(await s.get(""), null);
+  assert.equal(await s.getWithMetadata(""), null);
+  assert.equal(await s.getMetadata(""), null);
+  await s.delete("");
+});
+
+test("paginated listing: every page is its own call (fault hooks fire per page), the cursor moves only on success", async () => {
+  const s = createMemoryBlobs({ pageSize: 3 });
+  for (let i = 0; i < 7; i++) await s.set(`k/${i}`, "1");
+  const it = s.list({ prefix: "k/", paginate: true })[Symbol.asyncIterator]();
+  const keys = [];
+  keys.push(...(await it.next()).value.blobs.map((b) => b.key));
+  s.fail({ op: "list" });
+  await assert.rejects(it.next(), (e) => e.name === "BlobsInternalError");
+  keys.push(...(await it.next()).value.blobs.map((b) => b.key));
+  keys.push(...(await it.next()).value.blobs.map((b) => b.key));
+  assert.equal((await it.next()).done, true);
+  assert.deepEqual(keys.sort(), ["k/0", "k/1", "k/2", "k/3", "k/4", "k/5", "k/6"], "the failed page was asked again, nothing skipped");
+  assert.equal(s.calls.filter((c) => c.op === "list").length, 4);
+});

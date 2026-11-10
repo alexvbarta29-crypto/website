@@ -3,7 +3,10 @@
 # Installed by `npm install` (package.json "prepare" sets core.hooksPath to
 # .githooks). Scans every outgoing commit with build/no_data_scan.mjs: phone
 # numbers outside 555, real emails, data exports, Stripe/Twilio secrets.
-# git passes "<remote> <url>" as arguments and the refs being pushed on stdin.
+# git passes "<remote> <url>" as arguments and the refs being pushed on stdin;
+# a new branch sends every commit that remote does not have yet.
+# Without the config (a fresh clone before `npm install`):
+#   git -c core.hooksPath=.githooks push ...
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 scan="$root/build/no_data_scan.mjs"
 # a branch from before the scan existed has nothing to run

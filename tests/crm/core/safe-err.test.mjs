@@ -61,6 +61,25 @@ test("safeErr masks emails, phone numbers, digit runs and quoted substrings", ()
   assert.ok(safeErr(new Error("x".repeat(500))).length <= 7 + 160);
 });
 
+test("safeErr masks what V8 and other errors echo: JSON snippets, quotes across lines, curly quotes, encoded emails, dashed phones, odd names", () => {
+  const parse = (s) => { try { JSON.parse(s); } catch (e) { return e; } };
+  for (const input of [`x{"n":"${NAME}"}`, "Pat\nExample", `<html>\n<title>${NAME}</title>`, NAME, `{"n":"${NAME}", oops}`]) {
+    const out = safeErr(parse(input));
+    assert.ok(!/Pat|Exampl/.test(out), out);
+    assert.match(out, /^SyntaxError: /);
+  }
+  assert.equal(maskSensitive(`contact \u2018${NAME}\u2019 not found`), 'contact "…" not found');
+  assert.equal(maskSensitive(`contact \u00ab${NAME}\u00bb not found`), 'contact "…" not found');
+  assert.equal(maskSensitive('value "Pat\nExample" bad'), 'value "…" bad');
+  assert.equal(maskSensitive("value 'Pat\nExample' bad"), 'value "…" bad');
+  const encoded = maskSensitive("GET /api?email=pat.example%40example.com failed");
+  assert.ok(!encoded.includes("pat.example") && encoded.includes("<email>"), encoded);
+  assert.equal(maskSensitive("phone 763\u2013555\u20130100 invalid"), "phone #### invalid");
+  assert.equal(maskSensitive("phone 763\u2014555\u20140100 invalid"), "phone #### invalid");
+  assert.equal(safeErr(Object.assign(new Error("x"), { name: `${NAME} <${EMAIL}>` })), "Error: x");
+  assert.equal(safeErr(Object.assign(new Error("x"), { name: "BlobsInternalError" })), "BlobsInternalError: x");
+});
+
 test("crm-probe's wrapper logs only safeErr output", async () => {
   const res = await probe(new Request("http://localhost/api/crm-probe", { headers: { cookie } }), {});
   assert.equal(res.status, 500);

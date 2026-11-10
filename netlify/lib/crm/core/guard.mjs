@@ -11,9 +11,14 @@
 // alog, outbox, runs) does not go through these checks.
 //
 // Pure functions: crm-store reads the contact and passes it in.
+//
+// The backstop fails closed: a write that does not say who is acting
+// (ctx.actor_kind) counts as automation unless its origin proves otherwise
+// (actorKindOf), so a sweep that forgets actor_kind is still guarded.
 
 import { ParallelRunGuard } from "./errors.mjs";
 import { sandboxed } from "./context.mjs";
+import { isId } from "./ids.mjs";
 
 // Types whose records mirror Rotor's and must not be created for an imported
 // customer by automation before cutover (§3.10).
@@ -21,10 +26,23 @@ export const MIRRORED_TYPES = Object.freeze(["job", "visit", "invoice", "payment
 
 const sorOf = (ctx) => (ctx && ctx.mode && ctx.mode.system_of_record) || "rotor";
 
+// Who is acting: ctx.actor_kind when the caller says so; otherwise derived
+// from the origin. Only an API or MCP call made by a signed-in user (a user
+// id in ctx.by) counts as a person; an import is "import", the portal is
+// "portal", and everything else (worker, hook, no ctx at all) is automation.
+export function actorKindOf(ctx) {
+  if (ctx && typeof ctx.actor_kind === "string" && ctx.actor_kind) return ctx.actor_kind;
+  const origin = ctx && ctx.origin;
+  if (origin === "import") return "import";
+  if (origin === "portal") return "portal";
+  if ((origin === "api" || origin === "mcp") && isId(ctx.by, "user")) return "user";
+  return "automation";
+}
+
 // Whether the guard applies to this write at all.
 export function guardActive(ctx) {
-  if (!ctx || ctx.actor_kind !== "automation") return false;
-  if (ctx.origin === "import") return false;
+  if (actorKindOf(ctx) !== "automation") return false;
+  if (ctx && ctx.origin === "import") return false;
   return sorOf(ctx) !== "crm";
 }
 

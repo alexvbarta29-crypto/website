@@ -22,7 +22,7 @@ const {
   claimOpenPointer, updatePointerList, listRel, readIndex, applyIndexRow, rebuildIndex, listEvents, getEvent, nextNumber,
   claimMarker, advanceMarker, acquireLease, renewLease, releaseLease, idemBegin, idemFinish, getSetting, putSetting, updateStats,
   settledWrite, putRaw, withBudget, withStoreScope, K, putFileBytes, getFileStream, listKeys, forEachKey, addActivity, listActivity,
-  ExistsError, StaleError, UnknownOutcome, SchemaTooNew, BudgetError, BlobsTransientError, guardedFetch, hk,
+  ExistsError, StaleError, UnknownOutcome, SchemaTooNew, BudgetError, BlobsTransientError, ParallelRunGuard, guardedFetch, hk,
 } = store;
 
 // ---------------------------------------------------------------- test types
@@ -77,7 +77,7 @@ test("create writes the envelope, pointers, relation, index row, event and activ
   assert.equal(r.data.shadow, true, "created in the CRM while Rotor is in charge");
   assert.equal(r.data.created_by, "us_test");
   assert.equal(r.data._w, undefined, "the nonce never leaves the store");
-  assert.match(raw(K.rec("gadget", GID))._w, /^req-test\.\d+$/);
+  assert.match(raw(K.rec("gadget", GID))._w, /^p[0-9a-f]{8}\.req-test\.\d+$/, "process id + request id + counter");
   assert.equal(r.etag, S.data.etagOf(K.rec("gadget", GID)));
   assert.deepEqual(await readPointer("gadget-code", "b-1"), { id: GID, at: "2026-11-17T15:00:00.000Z" });
   assert.deepEqual((await readPointer("gadget-tag", "t1")).ids, [GID]);
@@ -213,14 +213,18 @@ test("when the settle read cannot complete → UnknownOutcome with a fix/ marker
   assert.ok(err.fixKey && err.fixKey.startsWith("fix/"));
   const fix = raw(err.fixKey);
   assert.equal(fix.key, K.rec("gadget", GID));
-  assert.match(fix.nonce, /^req-test\./);
+  assert.match(fix.nonce, /^p[0-9a-f]{8}\.req-test\./);
   assert.equal(fix.name, undefined, "the marker names the key, never the value");
 });
 
-test("a non-ambiguous failure of the record write releases the claimed pointer once a read proves the record absent", async () => {
-  S.data.fail({ op: "setJSON", key: K.rec("gadget", GID), kind: "denied" });
-  await assert.rejects(createRecord("gadget", { id: GID, name: "Blue", code: "b-1" }, ctx()));
-  assert.equal(await readPointer("gadget-code", "b-1"), null);
+test("a storage failure writing pend/ (after the pointer claim) releases the pointer; the retry with a new id succeeds", async () => {
+  S.data.fail({ op: "setJSON", key: /^pend\//, times: 3 });
+  const err = await createRecord("gadget", { name: "Blue", code: "login-pat" }, ctx()).catch((e) => e);
+  assert.ok(err instanceof BlobsTransientError, String(err && err.name));
+  assert.equal(await readPointer("gadget-code", "login-pat"), null, "no orphan pointer");
+  assert.deepEqual(S.data.keys("rec/gadget/"), []);
+  const r = await createRecord("gadget", { name: "Blue", code: "login-pat" }, ctx());
+  assert.equal((await readPointer("gadget-code", "login-pat")).id, r.data.id);
 });
 
 test("compensation never deletes a pointer whose record exists", async () => {
@@ -536,6 +540,178 @@ test("file bytes: onlyIfNew with metadata, 304 on a matching etag", async () => 
   await assert.rejects(putFileBytes("fl_000000000000000000f1", bytes, { sha256: "other" }, {}, ctx()), ExistsError);
 });
 
+// ---------------------------------------------------------------- review regressions (M1.1)
+
+// A type with two unique pointers and a status-sharded index.
+registerType(defineType({
+  type: "twokey", prefix: "wk", v: 1, validate: (d) => d,
+  rotorFields: ["name"], techFields: ["id"], example: () => ({ name: "Example" }),
+  indexes: [{ name: "twokeys/open", shard: (r) => (r.status === "open" ? "" : null), row: (r) => ({ n: r.name }) }],
+  pointers: [{ kind: "twokey-a", key: (r) => r.a || null }, { kind: "twokey-b", key: (r) => r.b || null }],
+}), "test");
+const WK = "wk_000000000000000000a1";
+const wk = (n) => `wk_${String(n).padStart(20, "0")}`;
+const writes = () => S.data.calls.filter((c) => c.op === "setJSON" || c.op === "set").length;
+
+test("a conditional write without onlyIfNew or a real etag is refused, never sent unconditionally", async () => {
+  for (const cond of [{ onlyIfMatch: undefined }, { onlyIfMatch: "" }, { onlyIfMatch: null }, {}, { onlyIfNew: false }]) {
+    await assert.rejects(settledWrite("seq/x", { next: 1 }, cond, ctx()), TypeError, JSON.stringify(cond));
+  }
+  assert.equal(callsFor("seq/x", "setJSON").length, 0);
+  // a read that returns no etag (what @netlify/blobs/server answers a GET) cannot be the base of a CAS
+  await createRecord("gadget", { id: GID, name: "Blue", code: "e-1" }, ctx());
+  const realRead = S.data.getWithMetadata.bind(S.data);
+  S.data.getWithMetadata = async (key, o) => { const r = await realRead(key, o); return r ? { ...r, etag: undefined } : r; };
+  const before = writes();
+  await assert.rejects(updateRecord("gadget", GID, (g) => ({ ...g, name: "Green", code: "e-2" }), ctx()), TypeError);
+  assert.equal(writes(), before, "nothing written: no pointer, no pend/, no record");
+  assert.equal(raw(K.rec("gadget", GID)).name, "Blue");
+});
+
+test("after an ambiguous attempt, a later non-transient failure is UnknownOutcome and the unique pointer stays", async () => {
+  const key = K.rec("gadget", GID);
+  S.data.slowCommit({ op: "setJSON", key, ms: 60, failAfter: 1 });      // attempt 1 times out, lands 60 ms later
+  S.data.fail({ op: "getWithMetadata", key, kind: "denied" });           // the settle read is refused outright
+  const err = await createRecord("gadget", { id: GID, name: "A", code: "c-1" }, ctx()).catch((e) => e);
+  assert.ok(err instanceof UnknownOutcome, String(err && err.name));
+  assert.equal(raw(err.fixKey).key, key);
+  assert.equal((await readPointer("gadget-code", "c-1")).id, GID, "kept for the fix/ marker to settle");
+  await S.data.settle();
+  assert.equal(raw(key).code, "c-1", "the first attempt landed late");
+  await assert.rejects(createRecord("gadget", { id: GID2, name: "B", code: "c-1" }, ctx()), ExistsError, "the key is still unique");
+});
+
+test("a clean 412 whose read-back fails is busy: no maybe_saved, no fix/ marker", async () => {
+  await claimPointer("gadget-code", "taken", { id: GID2 }, ctx());
+  S.data.fail({ op: "getWithMetadata", key: K.ptr("gadget-code", "taken"), times: 3 });
+  const err = await claimPointer("gadget-code", "taken", { id: GID }, ctx()).catch((e) => e);
+  assert.ok(err instanceof BlobsTransientError, String(err && err.name));
+  assert.equal(S.data.keys("fix/").length, 0);
+});
+
+test("a failed second pointer claim releases the first; an unclear claim keeps its own fix/ marker", async () => {
+  await claimPointer("twokey-b", "b-taken", { id: wk(99) }, ctx());
+  await assert.rejects(createRecord("twokey", { id: WK, name: "x", a: "a-1", b: "b-taken" }, ctx()), ExistsError);
+  assert.equal(await readPointer("twokey-a", "a-1"), null);
+  S.data.fail({ op: "setJSON", key: K.ptr("twokey-b", "b-2"), kind: "timeout", times: 3 });
+  const err = await createRecord("twokey", { id: WK, name: "x", a: "a-2", b: "b-2" }, ctx()).catch((e) => e);
+  assert.ok(err instanceof UnknownOutcome, String(err && err.name));
+  assert.equal(await readPointer("twokey-a", "a-2"), null, "the first claim is released");
+  assert.equal(raw(err.fixKey).key, K.ptr("twokey-b", "b-2"));
+  assert.equal(raw(K.rec("twokey", WK)), null);
+  assert.deepEqual(S.data.keys("pend/"), []);
+});
+
+test("an update whose pend/ write fails releases the pointer it claimed and keeps the old one", async () => {
+  await createRecord("twokey", { id: WK, name: "x", a: "a-1" }, ctx());
+  S.data.fail({ op: "setJSON", key: /^pend\//, times: 3 });
+  await assert.rejects(updateRecord("twokey", WK, (r) => ({ ...r, a: "a-9" }), ctx()), BlobsTransientError);
+  assert.equal(await readPointer("twokey-a", "a-9"), null);
+  assert.equal((await readPointer("twokey-a", "a-1")).id, WK);
+  assert.equal(raw(K.rec("twokey", WK)).a, "a-1");
+});
+
+test("listings walk page by page: a hung page is retried on its own, nothing is skipped, each page is a call", async () => {
+  const P = useCrmStores(createCrmStores({ pageSize: 3 }));
+  for (let i = 0; i < 10; i++) await P.data.setJSON(`imp/r1/k${String(i).padStart(2, "0")}`, { i });
+  const realList = P.data.list.bind(P.data);
+  P.data.list = (o = {}) => {
+    const iter = realList(o);
+    if (!o.paginate) return iter;
+    return { [Symbol.asyncIterator]() { const it = iter[Symbol.asyncIterator](); let n = 0; return { next() { if (++n === 2) P.data.hang({ op: "list" }); return it.next(); } }; } };
+  };
+  const all = Array.from({ length: 10 }, (_, i) => `imp/r1/k${String(i).padStart(2, "0")}`);
+  assert.deepEqual(await listKeys("imp/r1/", {}, ctx({ attemptMs: 30 })), all);
+  assert.equal(P.data.calls.filter((c) => c.op === "list").length, 5, "4 pages + the hung one");
+  const seen = [];
+  assert.deepEqual(await forEachKey("imp/r1/", async (k) => { seen.push(k); }, { afterKey: all[6] }, ctx()), { done: true, lastKey: all[9] });
+  assert.deepEqual(seen, all.slice(7));
+  await assert.rejects(withStoreScope({ budget: withBudget(8000, 3) }, () => listKeys("imp/r1/")), BudgetError, "every page counts against the budget");
+});
+
+test("rebuildIndex reads the dirty markers first: a dirty mark written while it runs keeps the shard dirty", async () => {
+  await createRecord("twokey", { id: WK, name: "Old", status: "open" }, ctx());
+  const realList = S.data.list.bind(S.data);
+  let injected = false;
+  S.data.list = (o = {}) => {
+    if (!injected && (o.prefix || "").startsWith("ix/twokeys")) {
+      injected = true;
+      // a writer changes the record while the rebuild runs; its applyIndexRow gave up and marked the shard dirty
+      S.data.setJSON(K.rec("twokey", WK), { ...raw(K.rec("twokey", WK)), name: "New", wv: 2 });
+      S.data.setJSON(K.dirty("twokeys/open", ""), { dirty_at: "2026-11-17T15:00:01.000Z" });
+    }
+    return realList(o);
+  };
+  await rebuildIndex("twokeys/open", {}, ctx({ origin: "worker" }));
+  const ix = await readIndex("twokeys/open", "");
+  assert.deepEqual(ix.rows.map((r) => r.n), ["Old"], "the row built before the change");
+  assert.equal(ix.stale, true, "and the shard stays dirty for the next rebuild");
+  assert.equal(raw(K.dirty("twokeys/open", "")).clean_at, undefined);
+  S.data.list = realList;
+  await rebuildIndex("twokeys/open", {}, ctx({ origin: "worker" }));
+  const again = await readIndex("twokeys/open", "");
+  assert.deepEqual(again.rows.map((r) => r.n), ["New"]);
+  assert.equal(again.stale, false);
+});
+
+test("rebuildIndex counts the rows of every shard", async () => {
+  for (const [i, bucket] of ["a", "a", "a", "a", "b"].entries()) await createRecord("gadget", { id: `gd_${String(i).padStart(20, "0")}`, name: "G" + i, bucket }, ctx());
+  assert.deepEqual(await rebuildIndex("gadgets", {}, ctx({ origin: "worker" })), { rows: 5, shards: 2 });
+});
+
+test("tombstones of rows that left a shard are pruned after a day, by writers and by rebuilds", async () => {
+  for (let i = 1; i <= 6; i++) {
+    await createRecord("twokey", { id: wk(i), name: "W" + i, status: "open" }, ctx());
+    await updateRecord("twokey", wk(i), (r) => ({ ...r, status: "done" }), ctx());
+  }
+  const blob = () => raw(K.ix("twokeys/open", "")).rows;
+  assert.equal(Object.keys(blob()).length, 6, "fresh tombstones stay (they order late writers)");
+  assert.ok(Object.values(blob()).every((e) => e.twokey.d === null && e.twokey.at));
+  setNow("2026-11-19T15:00:00Z");
+  await createRecord("twokey", { id: wk(7), name: "W7", status: "open" }, ctx());
+  assert.deepEqual(Object.keys(blob()), [wk(7)], "a writer prunes day-old tombstones");
+  await updateRecord("twokey", wk(7), (r) => ({ ...r, status: "done" }), ctx());
+  setNow("2026-11-21T15:00:00Z");
+  await rebuildIndex("twokeys/open", {}, ctx({ origin: "worker" }));
+  assert.deepEqual(blob(), {}, "and so does a rebuild");
+  assert.deepEqual((await readIndex("twokeys/open", "")).rows, []);
+});
+
+test("a person's update does not read the contact (the guard has nothing to check)", async () => {
+  await createRecord("gadget", { id: GID, name: "A", contact_id: CID }, ctx());
+  const before = S.data.calls.length;
+  await updateRecord("gadget", GID, (g) => ({ ...g, name: "B" }), ctx());
+  assert.equal(S.data.calls.slice(before).filter((c) => c.key === K.rec("contact", CID)).length, 0);
+});
+
+test("two processes that share a request id never share a nonce", async () => {
+  const procB = await import("../../../netlify/lib/crm-store.mjs?process-b");
+  const procA = await import("../../../netlify/lib/crm-store.mjs?process-a");
+  assert.deepEqual(await procB.claimPointer("gadget-code", "dup", { id: GID2 }, { requestId: "req-1" }), { ok: true });
+  S.data.transient({ op: "setJSON", key: K.ptr("gadget-code", "dup") });   // A's write does not commit
+  const a = await procA.claimPointer("gadget-code", "dup", { id: GID }, { requestId: "req-1" });
+  assert.equal(a.ok, false, "B's commit is not mistaken for A's");
+  assert.equal(a.current.id, GID2);
+});
+
+test("only the import sets import, shadow or deleted_at; an update keeps import and shadow", async () => {
+  const importer = { by: "import", origin: "import", actor_kind: "import", requestId: "i" };
+  const r = await createRecord("gadget", { id: GID, name: "A", import: { run_id: "x" }, deleted_at: "2026-01-01T00:00:00Z", deleted_by: "x", merged_into: GID2, shadow: false }, ctx());
+  for (const k of ["import", "deleted_at", "deleted_by", "merged_into"]) assert.equal(r.data[k], undefined, k);
+  assert.equal(r.data.shadow, true, "the store decides shadow, not the caller");
+  assert.deepEqual((await readIndex("gadgets", "")).rows.map((x) => x.id), [GID]);
+  const link = { run_id: "ir_1", at: "2026-11-01T00:00:00Z", hash: "h" };
+  await createRecord("gadget", { id: GID2, name: "B", import: link }, importer);
+  await updateRecord("gadget", GID2, (g) => { const { import: _drop, ...rest } = g; return { ...rest, notes: "crm-owned", shadow: true }; }, ctx({ origin: "worker", actor_kind: "automation" }));
+  assert.deepEqual(raw(K.rec("gadget", GID2)).import, link, "an automation cannot unlink a record from the import");
+  assert.equal(raw(K.rec("gadget", GID2)).notes, "crm-owned");
+  await assert.rejects(updateRecord("gadget", GID2, (g) => ({ ...g, name: "Changed" }), ctx({ origin: "worker", actor_kind: "automation" })), ParallelRunGuard, "so its Rotor fields stay guarded");
+  assert.equal(raw(K.rec("gadget", GID2)).shadow, undefined);
+  assert.equal((await updateRecord("gadget", GID, (g) => ({ ...g, import: { run_id: "forged" } }), ctx())).changed, false);
+  await updateRecord("gadget", GID, (g) => ({ ...g, import: { run_id: "ir_2" } }), importer);
+  assert.deepEqual(raw(K.rec("gadget", GID)).import, { run_id: "ir_2" }, "the import itself links");
+});
+
 // ---------------------------------------------------------------- the real client, no network
 
 describe("the real @netlify/blobs client through guardedFetch (mocked fetch)", () => {
@@ -595,6 +771,81 @@ describe("the real @netlify/blobs client through guardedFetch (mocked fetch)", (
     assert.deepEqual(seen.map((c) => c.method), ["put", "get", "put"]);
   });
 
+  const keyOf = (url) => decodeURIComponent((url.split("/site:")[1] || "").replace(/^[^/?]*\/?/, "").split("?")[0]);
+  // A tiny Blobs edge: PUT/GET/DELETE on a map; `put(key, n)` may answer instead.
+  function edge(put = () => null) {
+    const data = new Map();
+    let n = 0;
+    mockFetch((url, init) => {
+      const key = keyOf(url);
+      if (init.method === "put") {
+        const answer = put(key, init);
+        if (answer) return answer;
+        if (init.headers["if-none-match"] === "*" && data.has(key)) return new Response(null, { status: 412 });
+        data.set(key, init.body);
+        return new Response(null, { status: 200, headers: { etag: `"e${++n}"` } });
+      }
+      if (init.method === "get") return data.has(key) ? new Response(data.get(key), { status: 200, headers: { etag: '"e0"' } }) : new Response(null, { status: 404 });
+      if (init.method === "delete") { data.delete(key); return new Response(null, { status: 204 }); }
+      return new Response(null, { status: 404 });
+    });
+    return data;
+  }
+
+  test("a write the service refuses (401/403) is definite: no settle retries, and the claimed pointer is released", async () => {
+    const data = edge((key) => (key.startsWith("rec/") ? new Response(null, { status: 403 }) : null));
+    const err = await createRecord("gadget", { id: GID, name: "Blue", code: "r-1" }, ctx({ deploy })).catch((e) => e);
+    assert.equal(err && err.name, "BlobsInternalError");
+    assert.match(err.message, /403/);
+    assert.equal(seen.filter((c) => c.method === "put" && keyOf(c.url).startsWith("rec/")).length, 1, "a refused write is not retried");
+    assert.equal(data.has("ptr/gadget-code/r-1"), false, "the pointer was released");
+    assert.equal([...data.keys()].some((k) => k.startsWith("fix/")), false);
+  });
+
+  test("a refusal after an ambiguous attempt is UnknownOutcome: the pointer stays and a fix/ marker names the key", async () => {
+    let recPuts = 0;
+    const data = edge((key) => (key.startsWith("rec/") ? new Response(null, { status: ++recPuts === 1 ? 503 : 403 }) : null));
+    const err = await createRecord("gadget", { id: GID, name: "Blue", code: "r-2" }, ctx({ deploy })).catch((e) => e);
+    assert.ok(err instanceof UnknownOutcome, String(err && err.name));
+    assert.ok(err.fixKey && data.has(err.fixKey));
+    assert.ok(data.has("ptr/gadget-code/r-2"), "the first attempt may still land");
+  });
+
+  test("a listing longer than one attempt succeeds: every page is its own attempt", async () => {
+    const PAGES = 5;
+    mockFetch(async (url) => {
+      const c = Number(new URL(url).searchParams.get("cursor") || 0);
+      await new Promise((r) => setTimeout(r, 40));
+      const blobs = Array.from({ length: 3 }, (_, i) => ({ key: `evt/x/${String(c * 3 + i).padStart(3, "0")}`, etag: '"e"' }));
+      return Response.json({ blobs, directories: [], ...(c + 1 < PAGES ? { next_cursor: String(c + 1) } : {}) });
+    });
+    const keys = await listKeys("evt/", {}, { deploy, attemptMs: 100 });
+    assert.equal(keys.length, 15);
+    assert.deepEqual(keys, [...keys].sort());
+    assert.equal(seen.length, PAGES, "one fetch per page, none repeated");
+  });
+
+  test("a streamed file body may take longer than the attempt: only its headers are timed", async () => {
+    mockFetch((url, init) => {
+      let timer;
+      let n = 0;
+      const body = new ReadableStream({
+        start(controller) {
+          init.signal?.addEventListener("abort", () => { clearInterval(timer); try { controller.error(init.signal.reason); } catch { /* closed */ } });
+          timer = setInterval(() => {
+            controller.enqueue(new Uint8Array(1024).fill(1));
+            if (++n === 5) { clearInterval(timer); controller.close(); }
+          }, 40);
+        },
+      });
+      return new Response(body, { status: 200, headers: { etag: '"f1"' } });
+    });
+    const got = await getFileStream("fl_000000000000000000f1", {}, { deploy, attemptMs: 60 });
+    let bytes = 0;
+    for await (const chunk of got.stream) bytes += chunk.length;
+    assert.equal(bytes, 5 * 1024, "the whole file, although it took about 200 ms against a 60 ms attempt");
+  });
+
   test("openStore refuses the production store outside production and needs a branded deploy", async () => {
     await assert.rejects(store.openStore("data", { prod: true, ctx: "production" }), store.DeployContextRequired);
     const prodNoEnv = deployContext(new Request("https://www.bartawindowwashing.com/x"), { deploy: { context: "production" } }, {});
@@ -608,8 +859,14 @@ describe("the real @netlify/blobs client through guardedFetch (mocked fetch)", (
 
 // ---------------------------------------------------------------- CRM_IT=1: a local BlobsServer
 
+// BlobsServer answers a GET without an ETag header, so read-then-CAS
+// (updateRecord, settings, leases, marker advances, index rows over an
+// existing blob) cannot run against it: the store refuses such a CAS
+// (TypeError) rather than sending it unconditionally. What it does prove:
+// every write the store sends carries if-match or if-none-match, and the
+// server itself answers 412 to a stale etag (taken from a write result).
 describe("the same contract against a local BlobsServer (CRM_IT=1)", { skip: process.env.CRM_IT === "1" ? false : "set CRM_IT=1 to run against @netlify/blobs/server (binds a local port)" }, () => {
-  let server, dir, savedEnv;
+  let server, dir, savedEnv, savedFetch, puts;
   const deploy = deployContext(new Request("http://localhost/x"), { deploy: { context: "dev" } }, {});
   beforeEach(async () => {
     clearCrmStores();
@@ -620,24 +877,46 @@ describe("the same contract against a local BlobsServer (CRM_IT=1)", { skip: pro
     savedEnv = process.env.NETLIFY_BLOBS_CONTEXT;
     const url = `http://localhost:${port}`;
     process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ siteID: "site-it", token: "tok-it", edgeURL: url, uncachedEdgeURL: url })).toString("base64");
+    savedFetch = globalThis.fetch;
+    puts = [];
+    globalThis.fetch = async (u, init = {}) => {
+      const res = await savedFetch(u, init);
+      if (String(init.method).toLowerCase() === "put") {
+        const h = init.headers || {};
+        puts.push({ key: decodeURIComponent((String(u).split("/site:crm--dev/")[1] || "").split("?")[0]), ifMatch: h["if-match"] || null, ifNoneMatch: h["if-none-match"] || null, status: res.status });
+      }
+      return res;
+    };
   });
   afterEach(async () => {
+    globalThis.fetch = savedFetch;
     await server.stop();
     rmSync(dir, { recursive: true, force: true });
     if (savedEnv === undefined) delete process.env.NETLIFY_BLOBS_CONTEXT; else process.env.NETLIFY_BLOBS_CONTEXT = savedEnv;
   });
 
-  test("create, CAS update, 412 on a stale etag, pointer and marker claims", async () => {
+  test("create, pointer and marker claims, conditional headers on every write, a 412 from the server on a stale etag", async () => {
     const c = ctx({ deploy });
-    const r = await createRecord("gadget", { id: GID, name: "Blue", code: "it-1" }, c);
+    await createRecord("gadget", { id: GID, name: "Blue", code: "it-1" }, c);
     await assert.rejects(createRecord("gadget", { id: GID, name: "Blue" }, c), ExistsError);
-    const u = await updateRecord("gadget", GID, (g) => ({ ...g, name: "Green" }), c);
-    assert.notEqual(u.etag, r.etag);
-    await assert.rejects(updateRecord("gadget", GID, (g) => ({ ...g, name: "Red" }), { ...c, ifMatch: r.etag }), StaleError);
     assert.equal((await claimPointer("gadget-code", "it-1", { id: GID2 }, c)).ok, false);
     const m = await claimMarker("done", "it", "k1", { holder: "h1", leaseMs: 60000 }, c);
     assert.equal(m.ok, true);
     assert.equal((await claimMarker("done", "it", "k1", { holder: "h2", leaseMs: 60000 }, c)).ok, false);
-    assert.equal((await getRecord("gadget", GID, c)).data.name, "Green");
+    // read-then-CAS has no etag to send here: refused, nothing written
+    const before = puts.length;
+    await assert.rejects(updateRecord("gadget", GID, (g) => ({ ...g, name: "Green" }), c), TypeError);
+    assert.equal(puts.length, before);
+    // CAS from write-result etags: the server itself refuses the stale one
+    const w1 = await settledWrite("seq/it", { next: 1 }, { onlyIfNew: true }, c);
+    const w2 = await settledWrite("seq/it", { next: 2 }, { onlyIfMatch: w1.etag }, c);
+    assert.equal(w2.ok, true);
+    assert.notEqual(w2.etag, w1.etag);
+    assert.equal((await settledWrite("seq/it", { next: 3 }, { onlyIfMatch: w1.etag }, c)).ok, false);
+    assert.deepEqual(puts.filter((p) => p.key === "seq/it").map((p) => p.status), [200, 200, 412], "the 412 came from the server");
+    assert.equal((await getRecord("gadget", GID, c)).data.name, "Blue");
+    const guarded = puts.filter((p) => /^(rec|ptr|seq|cfg|ix|lock|done)\//.test(p.key));
+    assert.ok(guarded.length >= 6, String(guarded.length));
+    for (const p of guarded) assert.ok(p.ifMatch || p.ifNoneMatch, `${p.key} was written unconditionally`);
   });
 });
