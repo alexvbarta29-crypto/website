@@ -26,7 +26,7 @@ import { getRecord, readPointer, createRecord, updateRecord, getRaw, settledWrit
 import { InputError, ForbiddenError, ConflictError, ExistsError } from "./errors.mjs";
 import { nowIso, nowMs } from "./clock.mjs";
 import { newId, isId } from "./ids.mjs";
-import { CANONICAL_ORIGIN } from "./context.mjs";
+import { CANONICAL_ORIGIN, prodSignal, keySalt, autoSetup } from "./context.mjs";
 import { checkPolicy, hashPassword, verifyPassword, dummyCheck } from "./passwords.mjs";
 import { lookupSession, createSession, revokeSession, bumpAuthEpoch, readAuthEpoch, deviceId, newDeviceCookie, clearSessionCookie, forgetUser, ipHash } from "./sessions.mjs";
 import { checkThrottle, recordFailure, recordSuccess } from "./throttle.mjs";
@@ -55,10 +55,10 @@ const sameSecret = (a, b) => {
 export function missingSetup(deploy, env = process.env, { bootstrapped = true } = {}) {
   const out = [];
   if (deploy && deploy.ctx === "production") {
-    if (env.CRM_PRODUCTION !== "1") out.push("CRM_PRODUCTION");
-    if (!env.CRM_KEY_SALT) out.push("CRM_KEY_SALT");
+    if (!prodSignal(env)) out.push("CRM_PRODUCTION");
+    if (!keySalt(env)) out.push("CRM_KEY_SALT");
   }
-  if (!bootstrapped && !env.CRM_SETUP_CODE) out.push("CRM_SETUP_CODE");
+  if (!bootstrapped && !env.CRM_SETUP_CODE && !autoSetup(env)) out.push("CRM_SETUP_CODE");
   return out;
 }
 // The CRM's stores cannot be used at all (production without its settings).
@@ -309,16 +309,21 @@ const SETUP_BUSY = "Setup is already running on another phone. Wait a minute, th
 async function setup(ctx) {
   const b = ctx.body || {};
   if (!officeSignedIn(ctx.req)) throw new ForbiddenError("Sign in to Barta Office with the office password first.");
+  // The one-time setup code from Netlify, or (automatic setup, no code set)
+  // the office password typed again on this screen.
   const code = String(process.env.CRM_SETUP_CODE || "").trim();
-  if (!code) return fail("setup_needed", "Add CRM_SETUP_CODE in Netlify first (Production only).", 503);
+  const byOffice = !code && autoSetup();
+  if (!code && !byOffice) return fail("setup_needed", "Add CRM_SETUP_CODE in Netlify first (Production only).", 503);
   if (await setupDone()) return gone(SETUP_DONE);
   const ip = clientIp(ctx.req, ctx.context);
   const who = { login: "setup", device: deviceId(ctx.req), ip };
   const th = await checkThrottle(who);
   if (!th.ok) return fail("throttled", "Too many tries. Wait a few minutes, then try again.", 429, { headers: { "Retry-After": String(th.retry_after_s) } });
-  if (typeof b.setup_code !== "string" || !sameSecret(b.setup_code.trim(), code)) {
+  const typed = typeof b.setup_code === "string" ? b.setup_code : "";
+  const good = byOffice ? typed !== "" && same(officeSha(derive(typed)), expected()) : sameSecret(typed.trim(), code);
+  if (!good) {
     await recordFailure(who).catch(() => {});
-    throw new InputError("That setup code isn't right.", "setup_code");
+    throw new InputError(byOffice ? "That office password isn't right." : "That setup code isn't right.", "setup_code");
   }
   // Everything typed is checked BEFORE the claim, with the user type's own
   // rules (name 60, first and last 40, login, password policy).

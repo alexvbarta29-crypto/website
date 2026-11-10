@@ -29,7 +29,7 @@
 
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { getRaw, settledWrite, withStoreScope, withBudget, getSetting, addRel, listRel, getRecord, hk } from "../../crm-store.mjs";
-import { deployContext, canonicalRedirect, CANONICAL_ORIGIN } from "../core/context.mjs";
+import { deployContext, canonicalRedirect, CANONICAL_ORIGIN, keySalt } from "../core/context.mjs";
 import { storeBlocked } from "../core/auth.mjs";
 import { now, nowMs, nowIso, localDate, tsKey } from "../core/clock.mjs";
 import { isId } from "../core/ids.mjs";
@@ -127,7 +127,7 @@ export async function createPortalLink({ contact_id, scope, expires_at, single_u
 export async function unsubscribeLink({ contact_id, channel, address }) {
   if (!["sms", "email"].includes(channel)) throw new InputError("Pick text or email.", "channel");
   const key = hk(channel === "sms" ? "phone" : "email", address);
-  const salt = process.env.CRM_KEY_SALT || "dev-only";
+  const salt = keySalt() || "dev-only";
   const mac = createHmac("sha256", salt).update(`unsub:${channel}:${key}`).digest();
   let code = "";
   for (const b of mac) { if (b < 248) code += BASE62[b % 62]; if (code.length === CODE_LEN) break; }

@@ -28,7 +28,7 @@
 // the contact ("A website lead saved to the CRM but not Rotor", or the
 // reverse).
 
-import { deployContext } from "../../core/context.mjs";
+import { deployContext, keySalt } from "../../core/context.mjs";
 import { nowMs, nowIso } from "../../core/clock.mjs";
 
 export const MODE_CACHE_MS = 60 * 1000;
@@ -54,7 +54,7 @@ export function crmDeploy(req, context, env = process.env) {
   try {
     const deploy = deployContext(req || null, context || null, env);
     if (deploy.setup_needed) return null;
-    if (deploy.ctx === "production" && !env.CRM_KEY_SALT) return null;
+    if (deploy.ctx === "production" && !keySalt(env)) return null;
     // no store at all (a local run without Netlify, the first slice's tests): nothing to write to
     if (!deploy.prod && !globalThis.__crmStoreOverride && !env.NETLIFY_BLOBS_CONTEXT && !globalThis.netlifyBlobsContext) return null;
     return deploy;

@@ -29,6 +29,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { listKeys, putRaw } from "../../crm-store.mjs";
 import { nowMs, localDate, tsKey, fromTsKey } from "./clock.mjs";
 import { keySafe } from "./text.mjs";
+import { keySalt } from "./context.mjs";
 
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const LOGIN_FREE_FAILS = 5;
@@ -54,7 +55,7 @@ export const loginKey = (login) => {
 };
 // Bucket prefixes (each ends in "/": one bucket never lists another).
 export const loginBucketKey = (login, device) => `thr/login/${loginKey(login)}--${device || "new"}/`;
-export const ipBucketKey = (ip, salt = process.env.CRM_KEY_SALT || "dev-only") => `thr/ip/${sha(`${ip}|${localDate(new Date(nowMs()))}|${salt}`).slice(0, 32)}/`;
+export const ipBucketKey = (ip, salt = keySalt() || "dev-only") => `thr/ip/${sha(`${ip}|${localDate(new Date(nowMs()))}|${salt}`).slice(0, 32)}/`;
 
 // The delay after `fails` failures inside the window (0 = none yet).
 export function delayAfter(fails) {

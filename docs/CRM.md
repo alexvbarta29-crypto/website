@@ -399,6 +399,20 @@ production branch should build.
 
 ### First owner (once), then the team
 
+**Automatic setup (the default today).** A production deploy that already
+has `OFFICE_DATA_KEY` (the dashboard's key) counts as set up: that key is the
+second production signal, the key salt is derived from it with HKDF, and the
+first-owner screen asks for the **office password** typed again instead of a
+setup code. Nothing to add in Netlify. `CRM_PRODUCTION`, `CRM_KEY_SALT` and
+`CRM_SETUP_CODE`, when set, still win; `CRM_AUTO_SETUP=0` turns this off.
+Never add `CRM_KEY_SALT` after data exists, and never change
+`OFFICE_DATA_KEY` without a planned re-key: the phone and email lookups are
+keyed with the salt. Only a function that sees the production deploy context
+counts the key (with no context at all, `CRM_PRODUCTION` alone decides).
+Tests: `tests/crm/core/auto-setup.test.mjs`.
+
+The manual path, for reference:
+
 1. In Netlify (Production context only) set `CRM_PRODUCTION=1`,
    `CRM_KEY_SALT` (a long random string, kept in the password manager too)
    and `CRM_SETUP_CODE` (a one-time code), then redeploy. Until then the

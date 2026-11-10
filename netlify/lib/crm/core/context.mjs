@@ -15,7 +15,33 @@
 // production stores and may not open a scratch store either, so the new CRM
 // answers "Setup needed" while the older office tools keep working.
 
+import { hkdfSync } from "node:crypto";
 import { DeployContextRequired, ProdStoreRefused, SetupNeeded } from "./errors.mjs";
+
+// Automatic setup (the owner asked for no extra Netlify steps). A production
+// deploy that already holds the office data key (OFFICE_DATA_KEY, the
+// 32-byte key the dashboard and the import use) counts as set up: it is the
+// second production signal, and the key salt is derived from it with HKDF.
+// CRM_PRODUCTION and CRM_KEY_SALT still win when they are set; CRM_AUTO_SETUP=0
+// turns the automatic path off. Never set CRM_KEY_SALT after data exists
+// (the phone and email lookups would no longer match).
+export function autoSetup(env = process.env) {
+  if (env.CRM_AUTO_SETUP === "0") return false;
+  const raw = String(env.OFFICE_DATA_KEY || "").trim();
+  return raw !== "" && Buffer.from(raw, "base64").length === 32;
+}
+export const prodSignal = (env = process.env) => env.CRM_PRODUCTION === "1" || autoSetup(env);
+let saltCache = null;
+export function keySalt(env = process.env) {
+  if (env.CRM_KEY_SALT) return env.CRM_KEY_SALT;
+  if (!autoSetup(env)) return "";
+  const raw = String(env.OFFICE_DATA_KEY).trim();
+  if (!saltCache || saltCache.raw !== raw) {
+    const ikm = Buffer.from(raw, "base64");
+    saltCache = { raw, salt: Buffer.from(hkdfSync("sha256", ikm, Buffer.from("barta-crm"), Buffer.from("key-salt v1"), 32)).toString("hex") };
+  }
+  return saltCache.salt;
+}
 
 export const CANONICAL_HOST = "www.bartawindowwashing.com";
 export const CANONICAL_ORIGIN = "https://" + CANONICAL_HOST;
@@ -38,7 +64,9 @@ const hostOf = (req) => {
 export function deployContext(req, context, env = process.env) {
   const raw = (context && context.deploy && context.deploy.context) || env.CONTEXT || "";
   const hasCtx = typeof raw === "string" && raw !== "";
-  const hasEnv = env.CRM_PRODUCTION === "1";
+  // The automatic signal (the office data key) counts only next to a
+  // context that says production; with no context at all CRM_PRODUCTION alone decides.
+  const hasEnv = hasCtx ? prodSignal(env) : env.CRM_PRODUCTION === "1";
   let ctx, prod, signal;
   if (hasCtx) {
     ctx = CONTEXTS.has(raw) ? raw : "dev";
@@ -151,7 +179,9 @@ export function guardFor(mode) {
 export const SETUP_ENV = Object.freeze(["CRM_PRODUCTION", "CRM_KEY_SALT", "CRM_SETUP_CODE"]);
 export function setupStatus(deploy, env = process.env) {
   const present = Object.fromEntries(SETUP_ENV.map((n) => [n, typeof env[n] === "string" && env[n] !== ""]));
-  present.CRM_PRODUCTION = env.CRM_PRODUCTION === "1";
+  present.CRM_PRODUCTION = prodSignal(env);
+  present.CRM_KEY_SALT = keySalt(env) !== "";
+  if (autoSetup(env)) present.CRM_SETUP_CODE = true;   // the office password stands in for it
   const missing = deploy && deploy.ctx === "production" ? SETUP_ENV.filter((n) => !present[n]) : [];
   return { setup_needed: !!(deploy && deploy.setup_needed), ctx: deploy ? deploy.ctx : null, prod: !!(deploy && deploy.prod), present, missing };
 }

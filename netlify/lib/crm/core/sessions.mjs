@@ -24,6 +24,7 @@ import { getRaw, deleteRaw, settledWrite, addRel, removeRel, listRel, getRecord,
 import { nowMs, nowIso, tsKey } from "./clock.mjs";
 import { isId } from "./ids.mjs";
 import { cookie, clearCookie, readCookie, uaFamily, clientIp } from "./http.mjs";
+import { keySalt } from "./context.mjs";
 
 export const SESSION_COOKIE = "barta_crm";
 export const DEVICE_COOKIE = "barta_dev";
@@ -60,7 +61,7 @@ export function parseSessionCookie(req) {
 // client can't make up a fresh id per guess to dodge the per-device delay
 // and the shared "new" bucket. An id that doesn't verify counts as none.
 const DEVICE_RE = /^([a-z0-9]{24})\.([0-9a-f]{20})$/;
-const deviceMac = (id, salt = process.env.CRM_KEY_SALT || "dev-only") => createHmac("sha256", salt).update("barta_dev|" + id).digest("hex").slice(0, 20);
+const deviceMac = (id, salt = keySalt() || "dev-only") => createHmac("sha256", salt).update("barta_dev|" + id).digest("hex").slice(0, 20);
 export function deviceId(req) {
   const m = DEVICE_RE.exec(readCookie(req, DEVICE_COOKIE));
   if (!m) return null;
@@ -74,7 +75,7 @@ export function newDeviceCookie() {
   return { id, value, cookie: cookie(DEVICE_COOKIE, value, ONE_YEAR_S) };
 }
 
-export function ipHash(ip, salt = process.env.CRM_KEY_SALT || "dev-only") {
+export function ipHash(ip, salt = keySalt() || "dev-only") {
   return sha256(`${salt}|${ip}`).slice(0, 16);
 }
 

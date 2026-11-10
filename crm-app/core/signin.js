@@ -113,7 +113,7 @@ if (page.page === "login") {
 if (page.page === "setup") {
   wire("setup", (f) => {
     const name = val(f, "name").trim();
-    if (!val(f, "setup_code").trim()) throw new Error("Type the setup code from Netlify.");
+    if (!val(f, "setup_code").trim()) throw new Error(f.elements.setup_code && f.elements.setup_code.closest("label") && /office/i.test(f.elements.setup_code.closest("label").textContent) ? "Type the office password." : "Type the setup code from Netlify.");
     if (!name) throw new Error("Type your name.");
     return { setup_code: val(f, "setup_code").trim(), name, login: val(f, "login").trim().toLowerCase(), password: val(f, "password"), is_technician: !!(f.elements.is_technician && f.elements.is_technician.checked) };
   }, "/auth/setup", (data) => go(data.to || "/office#crm"));
