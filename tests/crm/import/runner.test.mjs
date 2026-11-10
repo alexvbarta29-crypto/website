@@ -64,7 +64,10 @@ test(`the gate: a synthetic export (scale ${FULL ? 1 : 0.1}) imports across repe
     assert.deepEqual([...spy.calls.values()].filter((n) => n !== 1), [], "every row mapped exactly once");
     const st = await runner.loadState(ir.id);
     const read = Object.values(st.phases).reduce((s, p) => s + p.read, 0);
-    const staged = ["members", "member_availability", "rate_settings", "customers", "quote_contacts", "leads", "quotes", "service_plans", "visits", "messages", "giveaway_entrants", "referrals"].reduce((s, e) => s + ex[e].length, 0);
+    // every phase that ran read its entity's rows (an entity two phases take, like leads, is read by each)
+    const ran = st.plan.filter((p) => !["waiting", "empty"].includes(st.phases[p.name].status));
+    assert.ok(ran.some((p) => p.name === "sales.opportunities") && ran.filter((p) => p.entity === "leads").length >= 2);
+    const staged = ran.reduce((s, p) => s + (ex[p.entity] || []).length, 0);
     assert.equal(read, staged, "every staged row of every running phase was read once");
     assert.equal(r.run.summary.pass, true);
     assert.equal(st.phases["contacts.customers"].records.contact.created, ex.customers.length);
@@ -74,6 +77,7 @@ test(`the gate: a synthetic export (scale ${FULL ? 1 : 0.1}) imports across repe
     spy.calls.clear();
     const again = await importExport(t, owner, ex, { per: FULL ? 1000 : 120 });
     assert.equal(again.run.summary.created, 0);
+    assert.equal(again.run.summary.updated, 0, "nothing rewritten (records folded from many rows share one base)");
     assert.equal(again.run.summary.conflicts_open, 0);
   } finally { spy.restore(); runner.IMPORT_LIMITS.stepRows = Infinity; t.done(); }
 });
@@ -119,8 +123,8 @@ test("a crash mid-phase resumes at the row that failed; a lost checkpoint redoes
 });
 
 test("phases of modules not built yet wait (and say how many rows wait); a phase after a waiting one waits too", async () => {
-  // a module that registers a phase depending on Sales' (which isn't there)
-  fixtureModule({ importPhases: [{ name: "fixture.after_sales", entity: "tasks", after: ["sales.tasks"], normalize: (r) => r, map: async () => ({}) }] });
+  // a module that registers a phase depending on Quotes' (which isn't there)
+  fixtureModule({ importPhases: [{ name: "fixture.after_quotes", entity: "quotes", after: ["quotes.quotes"], normalize: (r) => r, map: async () => ({}) }] });
   const plan = runner.phasePlan();
   assert.ok(plan.findIndex((p) => p.name === "system.users") < plan.findIndex((p) => p.name === "contacts.customers"), "after: system.users");
   assert.ok(plan.findIndex((p) => p.name === "contacts.leads") < plan.findIndex((p) => p.name === "contacts.suppressions"));
@@ -134,9 +138,10 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     assert.equal(w["money.invoices"].waiting_for, "money");
     assert.equal(w["money.invoices"].rows, ex.invoices.length, "the report says how many rows wait");
     assert.equal(w["comms.messages"].module_label, "Messages");
-    assert.equal(w["fixture.after_sales"].waiting_for, "sales.tasks", "after a phase that isn't there: waits");
-    assert.ok(w["sales.opportunities"] && w["quotes.quotes"] && w["work.visits"] && w["plans.plans"] && w["payroll.payroll"]);
+    assert.equal(w["fixture.after_quotes"].waiting_for, "quotes.quotes", "after a phase that isn't there: waits");
+    assert.ok(w["quotes.quotes"] && w["work.visits"] && w["plans.plans"] && w["payroll.payroll"]);
     assert.ok(!w["contacts.customers"]);
+    assert.ok(!w["sales.pipelines"] && !w["sales.opportunities"] && !w["sales.tasks"], "a module that shipped runs its phases");
     // the run's money: Rotor's side from the staged rows
     const inv = rep.money.rotor.invoices;
     assert.equal(inv.count, ex.invoices.length);

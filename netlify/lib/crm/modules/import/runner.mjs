@@ -32,7 +32,18 @@
 // ctx for map(): { runId, idForRotor, lookup(type, rotorId) → crmId | null
 // (ptr/rotor/{type}/{rotorKey}, following merges for contacts), users:
 // Map<rotorUserId, crmUserId>, settings: { get(name) }, report: { warn(code) },
-// cache: {} (per phase and step), phase }.
+// cache: {} (per phase and step), phase, prepared }.
+//
+// Sources (field ownership keeps an import base per source, ownership.mjs):
+// a record a row writes has the source "<entity>:<row id>" (a second phase
+// of the same entity adds "~<phase name>", so two phases never share one
+// base). A record that map() folds from many rows (it reads the record and
+// returns its whole new state, like Sales' deal from all of a contact's
+// opportunities) names its source itself: { type, data, source: "deal" }
+// gives "<entity>:deal" for every row of the entity, so they share one base
+// and an unchanged export writes nothing; a source with ":" is taken as it
+// is (two phases folding one record give the same name). The rank comes
+// from the part before ":".
 
 import { getRecord, updateRecord, getRaw, putRaw, readPointer, claimPointer, updatePointerList, rebuildIndex, verifyRels, appendEvent, getSetting, listKeys } from "../../../crm-store.mjs";
 import { defineRun, createRun, RUN_MAX_ATTEMPTS } from "../../core/lanes.mjs";
@@ -163,9 +174,9 @@ const touch = (state, t) => { if (t && !state.types.includes(t)) state.types.pus
 
 // Writes one map() output. → nothing; tallies into ph. rank: the phase's
 // own rank for the field ownership (else SOURCE_RANK by entity).
-export async function applyOutput(out, { runId, ph, ctx, source, state, rank }) {
+export async function applyOutput(out, { runId, ph, ctx, source, state, rank, entity = null }) {
   for (const rec of out.records || []) {
-    const r = await writeMapped(rec, { runId, source, ctx, rank });
+    const r = await writeMapped(rec, { runId, source: recordSource(rec, source, entity), ctx, rank });
     const t = r.type || (rec && rec.type) || "unknown";
     const row = (ph.records[t] ||= {});
     inc(row, r.outcome);
@@ -194,6 +205,24 @@ export async function applyOutput(out, { runId, ph, ctx, source, state, rank }) 
     if (x.patched) for (const p of out.patches || []) if (p && p.type) touch(state, p.type);
   }
   for (const w of out.warnings || []) inc(ph.warnings, keySafe(String(w), 60));
+}
+
+// The source of one mapped record: the row's, or the one the record names
+// (a record folded from many rows; see the header).
+const SOURCE_NAME = /^[a-z0-9_.-]{1,40}(:[A-Za-z0-9_.~-]{1,120})?$/;
+export function recordSource(rec, rowSource, entity) {
+  const named = rec && typeof rec.source === "string" ? rec.source : null;
+  if (!named) return rowSource;
+  if (!SOURCE_NAME.test(named)) throw new InputError("a record's import source is a short name", "source");
+  return named.includes(":") ? named : `${entity || String(rowSource || "row").split(":")[0]}:${named}`;
+}
+
+// The row source of a phase: "<entity>:<row id>", plus "~<phase>" for a
+// phase that isn't the first of its entity in the plan.
+export function rowSource(plan, p, rid) {
+  if (!rid) return null;
+  const first = plan.find((x) => x.entity === p.entity);
+  return `${p.entity}:${String(rid).slice(0, 80)}${first && first.name !== p.name ? `~${p.name}` : ""}`;
 }
 
 // The index names of the types a run wrote.
@@ -253,7 +282,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
         }
         const out = (await phase.map(row, mctx)) || {};
         const rid = rowIdOf(raw);
-        await applyOutput(out, { runId, ph: st, ctx, source: rid ? `${p.entity}:${String(rid).slice(0, 80)}` : null, state, rank: Number.isInteger(phase.rank) ? phase.rank : undefined });
+        await applyOutput(out, { runId, ph: st, ctx, source: rowSource(state.plan, p, rid), entity: p.entity, state, rank: Number.isInteger(phase.rank) ? phase.rank : undefined });
       } catch (e) {
         if (isStorageError(e)) { e.rowsDone = rows; throw e; }        // the cursor still points at this row
         const code = rowCode(e);

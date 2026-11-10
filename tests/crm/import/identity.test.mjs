@@ -11,7 +11,6 @@ import { fixtureModule } from "../../helpers/crm-fixtures.mjs";
 
 const intake = await import("../../../netlify/lib/crm/modules/contacts/intake.mjs");
 const contactsImport = await import("../../../netlify/lib/crm/modules/contacts/import-rotor.mjs");
-const { tsKey } = await import("../../../netlify/lib/crm/core/clock.mjs");
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const contact = async (id) => (await store.getRecord("contact", id)).data;
@@ -47,10 +46,13 @@ test("§10.3: a dual-write lead, a weekly import, the conversion in Rotor, anoth
     const lead = await intake.intakeLead({ name: "Jordan Convert", phone: "7635550444", email: "jordan.convert@example.com", notes: "Website note: please call after 5", address: { street1: "55 Example Ave", city: "Mound", state: "MN", zip: "55364" } }, { origin: "lead-form", rotor: { lead_id: L } });
     assert.ok(lead.ok);
     const C = lead.contact_id;
-    // what the team did in the CRM meanwhile: two logged calls and the shadow enrollment (Sales' records stand in as keys on the contact)
+    // the intake enrolled the new lead in Sales' new-lead follow-up (the shadow enrollment)
+    const enrolled = (await store.listRel("contact-enrollments", C)).map((r) => r.id);
+    assert.equal(enrolled.length, 1, "the intake's enrollment");
+    assert.ok(await store.getRecord("enrollment", enrolled[0]));
+    // what the team did in the CRM meanwhile: two logged calls
     await store.addActivity(C, "call.logged", "tk_00000000000000000001", new Date("2026-11-17T16:00:00Z"));
     await store.addActivity(C, "call.logged", "tk_00000000000000000002", new Date("2026-11-18T16:00:00Z"));
-    await store.addRel("contact-enrollments", C, tsKey(new Date("2026-11-17T15:00:00Z")), "en_00000000000000000001");
 
     // week 1: Rotor still has the lead
     const week1 = bare();
@@ -78,7 +80,8 @@ test("§10.3: a dual-write lead, a weekly import, the conversion in Rotor, anoth
     assert.equal((await store.readPointer("rotor/lead", L)).id, C);
     const acts = await store.listActivity(C, { limit: 10 });
     assert.equal(acts.filter((a) => a.kind === "call.logged").length, 2, "the logged calls");
-    assert.deepEqual((await store.listRel("contact-enrollments", C)).map((r) => r.id), ["en_00000000000000000001"], "the shadow enrollment");
+    assert.deepEqual((await store.listRel("contact-enrollments", C)).map((r) => r.id), enrolled, "the shadow enrollment");
+    assert.equal((await store.getRecord("enrollment", enrolled[0])).data.contact_id, C);
     assert.equal(c.consent.sms_service.state, "granted");
 
     // and the next weekly import of the same export changes nothing

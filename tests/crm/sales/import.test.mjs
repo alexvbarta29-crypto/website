@@ -17,7 +17,8 @@ const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const ALEX_ROTOR = "rotor-user-alex";
 let ctx;
 const phase = (name) => [...S.phases, ...CI.phases].find((p) => p.name === name);
-const run = async (name, row) => { const p = phase(name); const out = await p.map(p.normalize(row), ctx); await applyImport(out); return out; };
+// each row as the runner writes it: its source "<entity>:<row id>" (the entity's rank decides between sources)
+const run = async (name, row) => { const p = phase(name); const out = await p.map(p.normalize(row), ctx); await applyImport(out, { phase: p, row }); return out; };
 
 const P = { newLead: uuid(900), estimate: uuid(901), giveaway: uuid(902), referrals: uuid(903) };
 const STAGE = (p, pos) => uuid(1000 + Object.values(P).indexOf(p) * 20 + pos);

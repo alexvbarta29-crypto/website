@@ -13,7 +13,7 @@
 //   - an unchanged run rebuilds no index.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, store, stageRun, runToEnd, importExport, generate, ids, ownership as O } from "./fixtures.mjs";
+import { setup, store, stageRun, runToEnd, importExport, generate, ids, runner, ownership as O } from "./fixtures.mjs";
 import { fixtureModule, fixtureType } from "../../helpers/crm-fixtures.mjs";
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -173,7 +173,8 @@ test("two phases write one record (a deal from the lead and from its opportunity
     assert.deepEqual(d.rotor.opportunity_ids, [O1]);
     assert.equal(d.rotor.stage_raw, "New", "the bag keeps both sources' keys");
     const ib = t.stores.data.json(`ib/${DEAL}/${d.id}`);
-    assert.deepEqual(Object.keys(ib.sources).sort(), [`leads:${L}`, `opportunities:${O1}`]);
+    // each phase is its entity's second (contacts.leads and sales.opportunities come first): its own source
+    assert.deepEqual(Object.keys(ib.sources).sort(), [`leads:${L}~fixture.deal_from_lead`, `opportunities:${O1}~fixture.deal_from_opportunity`]);
     // unchanged: no write, both phases quiet
     const wv = d.wv;
     const r2 = await importExport(t, owner, ex);
@@ -206,6 +207,54 @@ test("two phases write one record (a deal from the lead and from its opportunity
     const r5 = await importExport(t, owner, ex3);
     assert.equal(r5.run.summary.conflicts_open, 0);
   } finally { t.done(); }
+});
+
+test("a record folded from many rows shares one source: a customer's Open then Won opportunities make a won deal; the unchanged export writes nothing", async () => {
+  const { t, owner } = await setup();
+  try {
+    const K = uuid(801), P = uuid(802), S0 = uuid(803), S1 = uuid(804), O1 = uuid(805), O2 = uuid(806);
+    const ex = bare();
+    ex.customers = [customer(K, 81)];
+    ex.pipelines = [{ id: P, name: "New Lead", position: 0 }];
+    ex.pipeline_stages = [{ id: S0, pipeline_id: P, name: "New", position: 0 }, { id: S1, pipeline_id: P, name: "Contacted", position: 1 }];
+    const opp = (id, stage_id, status, created_at) => ({ id, name: "Pat81 Example", pipeline_id: P, stage_id, status, value: 250, assigned_to: [], contact_id: K, contact_type: "customer", archived: false, created_at });
+    ex.opportunities = [opp(O1, S0, "Open", "2026-10-01T15:00:00+00:00"), opp(O2, S1, "Won", "2026-10-08T15:00:00+00:00")];
+    const r1 = await importExport(t, owner, ex);
+    assert.equal(r1.run.status, "done");
+    assert.equal(r1.run.summary.conflicts_open, 0);
+    const dealId = ids.idForRotor("deal", `customer:${K}`);
+    const d = (await store.getRecord("deal", dealId)).data;
+    assert.equal(d.status, "won", "the Won row decides, though another row of the same rank wrote the deal first");
+    assert.deepEqual(d.rotor.opportunity_ids, [O1, O2].sort());
+    assert.deepEqual(Object.keys(t.stores.data.json(`ib/deal/${dealId}`).sources), ["opportunities:fold"]);
+    const cadenceKey = t.stores.data.keys("ib/cadence/")[0];
+    assert.deepEqual(Object.keys(t.stores.data.json(cadenceKey).sources), ["pipelines:board"], "a board and its stages share the cadence's source");
+    // the same export again: nothing written (deal, enrollment, cadence)
+    const before = new Map(t.stores.data.keys("").map((k) => [k, t.stores.data.etagOf(k)]));
+    const r2 = await importExport(t, owner, ex);
+    assert.equal(r2.run.summary.updated, 0);
+    const changed = t.stores.data.keys("").filter((k) => before.get(k) !== t.stores.data.etagOf(k) && /^(rec\/(deal|enrollment|cadence|contact)\/|ib\/|rel\/|ix\/(?!import-runs|runs\/))/.test(k));
+    assert.deepEqual(changed, []);
+    // Rotor marks a third opportunity Lost: the deal stays won (a Won row), the history grows by one
+    const ex2 = JSON.parse(JSON.stringify(ex));
+    ex2.opportunities.push({ ...opp(uuid(807), S0, "Lost", "2026-10-09T15:00:00+00:00") });
+    await importExport(t, owner, ex2);
+    const d2 = (await store.getRecord("deal", dealId)).data;
+    assert.equal(d2.status, "won");
+    assert.equal(d2.rotor.opportunity_ids.length, 3);
+  } finally { t.done(); }
+});
+
+test("sources: a row's, a second phase of the same entity's, a record's own", () => {
+  const plan = [{ name: "contacts.leads", entity: "leads" }, { name: "sales.lead_follow_ups", entity: "leads" }, { name: "sales.opportunities", entity: "opportunities" }];
+  assert.equal(runner.rowSource(plan, plan[0], "L1"), "leads:L1");
+  assert.equal(runner.rowSource(plan, plan[1], "L1"), "leads:L1~sales.lead_follow_ups", "two phases of one entity never share a base");
+  assert.equal(runner.rowSource(plan, plan[2], null), null);
+  assert.equal(O.rankOf(runner.rowSource(plan, plan[1], "L1")), 2, "the rank is the entity's");
+  assert.equal(runner.recordSource({ type: "deal", data: {} }, "opportunities:O1", "opportunities"), "opportunities:O1");
+  assert.equal(runner.recordSource({ type: "deal", data: {}, source: "fold" }, "opportunities:O1", "opportunities"), "opportunities:fold");
+  assert.equal(runner.recordSource({ type: "cadence", data: {}, source: "pipelines:board" }, "pipeline_stages:S1", "pipeline_stages"), "pipelines:board");
+  assert.throws(() => runner.recordSource({ source: "a b/c" }, "x:1", "x"));
 });
 
 // Makes the import-base write that follows X's record write fail once, as a

@@ -118,6 +118,18 @@ ib/{type}/{id}  = { v: 2, primary, sources: { [source]: { fields, hash, rank, ru
 record.import   = { run_id, at, source: primary, hash, src: { [source]: hash } }
 ```
 
+A row's source is `<entity>:<row id>`; a second phase of the same entity
+adds `~<phase name>` (Sales' `sales.lead_follow_ups` after
+`contacts.leads`), so two phases never share one base. A record that
+`map()` folds from many rows (it reads the record and returns its whole
+new state: a cadence from its board and stages, a deal or an enrollment
+from all of a contact's opportunities) names its source itself
+(`{ type, data, source: "fold" }` → `opportunities:fold`; a name with `:`
+is taken as it is, so two phases can fold one record: `pipelines:board`),
+so those rows share one base: with a base per row, each would hold the
+record as that row first saw it, an unchanged export would rewrite it, and
+of two rows of equal rank the first would keep its status.
+
 `fields` are what that source last wrote (its mapped rotorFields), `hash`
 names that version and `record.import.src` repeats it; `record.import.hash`
 is the hash of the record's rotorFields as the import left them. Per
@@ -132,8 +144,9 @@ mapped row (source S, Rotor's values N, the record C, S's base B):
 | a placeholder (`flags.placeholder`, row 9) | the real row takes over the placeholder's base and clears the flag; a placeholder row (rank 0) never overrides anything; an edited placeholder conflicts like any record |
 | no base at all (backups skip `ib/`, so every record after a restore) | the primary source trusts the record when its rotorFields still hash to `import.hash` (nobody edited it: Rotor's changes apply); otherwise every field that differs from Rotor's is a conflict, never a quiet keep |
 
-Ranks: customers and opportunities 3, leads 2, any other entity 1, a
-placeholder row 0; a phase may set `rank` itself. So a lead row still in
+Ranks (by the source's entity, the part before `:`): customers and
+opportunities 3, leads 2, any other entity 1, a placeholder row 0; a phase
+may set `rank` itself. So a lead row still in
 `leads.jsonl` after Rotor converted it (the export ran while the owner
 converted it) never turns its customer back into a lead, and a contact the
 owner kept after merging two Rotor customers keeps its own values (the

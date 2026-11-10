@@ -54,11 +54,15 @@ export async function makeContact(fields = {}, ctx = PERSON) {
 // values unless someone edited them; a CRM-created record the resolution
 // linked fills only its empty fields), then the pointers, then the extras
 // (contacts' applyExtras). The write context is the import's, without bulk
-// (these tests read the index rows). → the extras' counts.
+// (these tests read the index rows). With `phase` and `row`, the records get
+// the runner's source for that row ("<entity>:<row id>", whose entity gives
+// the rank), else one source for everything. → the extras' counts.
 const { applyOutput } = await import("../../../netlify/lib/crm/modules/import/runner.mjs");
-export async function applyImport(out, { run_id = "ir_00000000000000000001", extras } = {}) {
+export async function applyImport(out, { run_id = "ir_00000000000000000001", extras, phase = null, row = null } = {}) {
   const ph = { records: {}, skipped: {}, warnings: {}, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, kept_fields: 0, errors: [] };
   const o = extras ? out : { records: out.records, pointers: out.pointers, warnings: out.warnings };
-  await applyOutput(o, { runId: run_id, ph, ctx: IMPORT, source: null, state: { types: [] } });
+  const rid = row && (row.id || row.user_id);
+  const source = phase && rid ? `${phase.entity}:${rid}` : null;
+  await applyOutput(o, { runId: run_id, ph, ctx: IMPORT, source, entity: phase ? phase.entity : null, state: { types: [] } });
   return ph.extras;
 }

@@ -58,6 +58,8 @@ export const PHASE_LABELS = Object.freeze({
   "contacts.suppressions": "STOP replies (opt-outs)",
   "contacts.giveaway": "Giveaway entrants",
   "contacts.referrals": "Referrals",
+  "sales.pipeline_stages": "Pipeline stages",
+  "sales.lead_follow_ups": "Lead follow-up dates",
   ...Object.fromEntries(EXPECTED_PHASES.map((p) => [p.name, p.label])),
 });
 

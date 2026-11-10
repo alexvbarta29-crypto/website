@@ -243,7 +243,12 @@ pipeline, the stage history in it, and the deal with Rotor's status and
 value; a placeholder contact when the lead wasn't imported),
 `sales.tasks` (row 15: by kind, incidents with their reported date), and
 `sales.lead_follow_ups` (row 8's follow-up date → a task). Imported
-enrollments are `archived` and never run.
+enrollments are `archived` and never run. A record these phases fold from
+many rows names its import source, so the rows share one import base
+(docs/CRM-IMPORT.md, Field ownership): a cadence from its board and stages
+(`pipelines:board`), a deal or an enrollment from a contact's opportunities
+(`opportunities:fold`, rank 3: over the lead's deal values from
+`contacts.leads`, rank 2).
 
 ## Data rules
 

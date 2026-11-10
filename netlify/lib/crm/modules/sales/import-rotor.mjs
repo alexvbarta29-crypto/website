@@ -25,7 +25,12 @@
 // map(row, ctx) → { records, pointers, warnings } }. map() may read what
 // earlier rows of the same run wrote (opportunities collapse that way), and
 // gives the same output for the same input on a re-run, so an unchanged
-// export changes nothing.
+// export changes nothing. A record folded from many rows that way (a
+// cadence from its board and stages, a deal or an enrollment from several
+// opportunities) names its import source (`source`), so all those rows
+// share one import base: per row, the base would hold the record as that
+// row first saw it, and the next run would rewrite it (or, on two rows of
+// equal rank, keep the first row's status).
 
 import { getRecord, readPointer } from "../../../crm-store.mjs";
 import { idForRotor, isId } from "../../core/ids.mjs";
@@ -111,7 +116,7 @@ async function mapPipeline(r) {
   if (!cadence) return { warnings: ["pipeline_unknown"] };
   const rotor = { ...(cadence.rotor || {}), pipeline_id: r.id, name: r.name, ...(r.position !== null ? { position: r.position } : {}) };
   return {
-    records: [{ type: "cadence", data: { ...strip(cadence), rotor } }],
+    records: [{ type: "cadence", data: { ...strip(cadence), rotor }, source: BOARD_SOURCE }],
     pointers: [{ kind: "rotor/pipeline", key: rotorKey(r.id), value: { id: cadence.id } }],
     warnings: [],
   };
@@ -130,10 +135,12 @@ async function mapStage(r) {
     stage_names: { ...((cadence.rotor && cadence.rotor.stage_names) || {}), [r.id]: r.name },
     ...(r.position !== null ? { stage_positions: { ...((cadence.rotor && cadence.rotor.stage_positions) || {}), [r.id]: r.position } } : {}),
   };
-  return { records: [{ type: "cadence", data: { ...strip(cadence), rotor } }], warnings: [] };
+  return { records: [{ type: "cadence", data: { ...strip(cadence), rotor }, source: BOARD_SOURCE }], warnings: [] };
 }
 
 const strip = (r) => { const { _w, ...rest } = r; return rest; };
+// the one import source of a cadence, written by its board and its stages
+const BOARD_SOURCE = "pipelines:board";
 
 // ------------------------------------------------------------ row 14: opportunities
 
@@ -222,7 +229,7 @@ async function mapOpportunity(r, ctx) {
   if (status === "won" && !deal.won_at) deal.won_at = (dealHist.find((h) => h.status_raw === "Won") || {}).at || at;
   if (status === "lost") { deal.lost_reason = deal.lost_reason || "no_response"; if (!deal.lost_at) deal.lost_at = at; }
   if (status === "abandoned" && !deal.abandoned_at) deal.abandoned_at = at;
-  out.records.push({ type: "deal", data: deal });
+  out.records.push({ type: "deal", data: deal, source: "fold" });
 
   // the enrollment: one per (contact, board)
   const enrollmentId = idForRotor("enrollment", `${contactId}:${r.pipeline_id}`);
@@ -247,7 +254,7 @@ async function mapOpportunity(r, ctx) {
     },
   };
   delete enrollment.next_due_at; delete enrollment.due_end; delete enrollment.pending;
-  out.records.push({ type: "enrollment", data: enrollment });
+  out.records.push({ type: "enrollment", data: enrollment, source: "fold" });
   out.pointers.push({ kind: "rotor/opportunity", key: rotorKey(r.id), value: { id: enrollmentId } });
   return out;
 }
