@@ -1,9 +1,21 @@
-# Barta Office → Customers (/crm)
+# Barta CRM (/crm) and the Customers list (/crm/legacy)
 
-The first slice of Barta Window Washing's own CRM: every customer from
-Rotor, in the Barta Office app, made for a phone. **Read-only for now**;
-editing, new customers, jobs and the rest arrive when the CRM's own records
-land (Rotor stays the system of record until then).
+Barta Window Washing's own CRM, built in milestones (design: the CRM
+design document, §11). This page covers what is live so far: the
+**Customers list** (the first slice, below), the **foundations** (M1.1) and
+**sign-in and the app shell** (M1.2). Each module keeps its own
+`docs/CRM-<MODULE>.md`. Rotor stays the system of record until cutover.
+
+## The Customers list (/crm/legacy)
+
+The first slice: every customer from Rotor, made for a phone. **Read-only**;
+editing, new customers, jobs and the rest arrive with the Contacts module
+(M2a), which replaces this list. Since M1.2 it lives at `/crm/legacy` (the
+CRM's app shell took `/crm`) and opens from the CRM's **Contacts** tab, or
+from the "Open the Customers list" button while the CRM still needs its
+setup. It opens for the office password's cookie and for owners and
+office staff signed in to the CRM (`contacts:read_all`); technicians get
+"Not for this login".
 
 What's on the page:
 
@@ -66,15 +78,21 @@ takes):
 
 Pieces:
 
-- Page: `netlify/functions/crm.mjs` (`GET /crm`, office sign-in, never
-  cached or indexed, framed by `/office` as the **Customers** tab).
-  `GET /crm?import=1` is the Import screen even when there is a list, and
+- Page: `netlify/functions/crm.mjs` (`GET /crm/legacy`, office cookie or a
+  CRM session with `contacts:read_all`, never cached or indexed; its CSP
+  allows exactly its own inline scripts by hash). `GET
+  /crm/legacy?import=1` is the Import screen even when there is a list, and
   even when the saved list can't be read; a list blob that isn't JSON shows
   the Import screen too, so it can always be imported over.
-- Import API: `netlify/functions/crm-import.mjs` (`GET`/`POST
-  /api/crm/import`, office cookie or `401`; refuses with `403` on a deploy
-  preview or branch deploy, which share the live store, unless
-  `CRM_ALLOW_PREVIEW_WRITES=1`).
+- Import API: `GET`/`POST /api/crm/import`, moved unchanged from the
+  deleted `crm-import.mjs` into the CRM's dispatcher
+  (`netlify/lib/crm/modules/system/legacy.mjs`, served by `crm-api.mjs`):
+  the office cookie or an owner's session (`import:run`), `401` otherwise,
+  and the CSRF header `X-CRM: 1` like every CRM write. The deploy picks the
+  store (`crm` in production, `crm--deploy-preview` on a preview), which
+  replaced the first slice's preview refusal. While production still waits
+  for its CRM settings, the office cookie reads and writes `crm` exactly as
+  before. `GET /api/crm/legacy/customers` returns the same rows as JSON.
 - Rendering: `netlify/lib/crm-page.mjs` (`customersHtml(data)`,
   `importHtml({ current })`, `setupHtml(reason)`); the list is rendered on
   the server, and the same customers are embedded as JSON for instant
@@ -125,7 +143,8 @@ anyone can make a file the site will open (see Rules).
 
 ## Importing in the app
 
-1. Open Barta Office → **Customers**. Before the first import the tab is the
+1. Open Barta Office → **CRM** → **Contacts** (before the CRM's setup: the
+   "Open the Customers list" button). Before the first import it is the
    Import screen: "Import your customers".
 2. **Choose file** → pick the `.sealed.json` file → **Import**. The browser
    reads the file and POSTs it to `/api/crm/import`; the server opens it
@@ -145,7 +164,7 @@ anyone can make a file the site will open (see Rules).
    same file twice (say, after "Storage didn't answer") never asks.
 
 To refresh the list, tap **Re-import** under the list (or on the
-"Storage didn't answer" page, or open `/crm?import=1`) and upload a newer
+"Storage didn't answer" page, or open `/crm/legacy?import=1`) and upload a newer
 sealed file. **A re-import replaces everything** the page shows; it never
 merges.
 
@@ -190,8 +209,8 @@ counters, settings, exactly-once markers, leases, idempotency records, the
   `crm-backups` used. Deploy previews, branch deploys and local runs get
   `crm--deploy-preview`, `crm--branch-deploy`, `crm--dev`. A production
   deploy without `CRM_PRODUCTION` is "setup needed": the new CRM refuses to
-  open any store (the screens arriving in M1.2 say "Setup needed"), while
-  the office tools and the Customers list keep working as today.
+  open any store (its screens say "Setup needed"), while the office tools
+  and the Customers list keep working as today.
 - **No lost or doubled writes.** Every shared write is conditional
   (`onlyIfNew` / `onlyIfMatch`) and carries a writer nonce (process id +
   request id + counter, so two function instances never share one). A
@@ -245,7 +264,7 @@ counters, settings, exactly-once markers, leases, idempotency records, the
   `modules/index.mjs`; all but `system` are stubs until their milestone.
   Each has its own `docs/CRM-<MODULE>.md`.
 - `crm-app/modules/<module>/manifest.js`: the client side of each module
-  (stubs; the app itself arrives in M1.2).
+  (stubs until each module's milestone; the app's core is below).
 
 ### The platform probe (until the M1 gate)
 
@@ -320,10 +339,135 @@ Until these exist the new CRM stays in "setup needed" and changes nothing:
 - `CRM_KEY_SALT` = a long random string (keys phone and email lookups;
   keep a copy in the password manager: a restore needs it),
 - `CRM_SETUP_CODE` = a one-time code for creating the first owner account
-  (M1.2; delete it after setup).
+  (delete it after setup; see "First owner" below).
 
 Set each one for the **Production** context only (empty for deploy
 previews, branch deploys and local development), and turn **Deploy
 Previews** and **branch deploys** off (Site configuration → Build & deploy):
 every deploy's functions can reach the site's stores, so only the
 production branch should build.
+
+## Sign-in and the app shell (M1.2)
+
+### Who signs in how
+
+- **Each person has their own login** (Alex, Jacob, Eric, Gustov,
+  Bennett): a handle like `alex` and a password of at least 10 characters
+  (PBKDF2-SHA256, 600,000 iterations; nobody can read anyone's password).
+  Roles: **owner** (everything), **admin** (the office: everything but the
+  owner-only settings, voids, refunds, payroll runs and the team), **tech**
+  (their own visits, time and pay). An owner can also tick a person as
+  "goes out on visits".
+- **The office password** keeps opening the old tools (Lights, Purchases,
+  Follow-ups, Giveaway, the dashboards) exactly as before, and the
+  Customers list. A CRM sign-in alone opens the CRM only: the office shows
+  it full screen (**solo mode**, techs).
+- **Owners get both with one sign-in (D14):** Team sign-in has an optional
+  "Office password" field. Filled in by an owner (the roles in the
+  owner-only setting `cfg/auth.office_cookie_roles`, default owners only)
+  with the right office password, it also sets the office cookie on that
+  phone. The CRM never stores the office password or its token.
+- **Sessions** last a year at most and end after 60 days without use; "Sign
+  out everywhere", a password change, a role change, a reset or turning a
+  login off signs that person out on every phone within seconds.
+- **Sign-in throttling:** after 5 wrong passwords in 15 minutes on one
+  phone, each further try waits (30 s, then doubling, at most 15 minutes);
+  someone else guessing can't lock Alex out of his own phone. A browser
+  that has never signed in shares one bucket per login (an hour's lock
+  after 20 failures), and one address gets an hour off after 30 failures.
+  Netlify's own rate limit (30 a minute) comes first. The answer never says
+  whether a login exists.
+
+### First owner (once), then the team
+
+1. In Netlify (Production context only) set `CRM_PRODUCTION=1`,
+   `CRM_KEY_SALT` (a long random string, kept in the password manager too)
+   and `CRM_SETUP_CODE` (a one-time code), then redeploy. Until then the
+   CRM tab says **Setup needed**, names what is missing, and links to the
+   Customers list; nothing else changes.
+2. Sign in to Barta Office with the office password and open the **CRM**
+   tab: it shows **Set up the CRM**. Type the setup code, your name, a
+   login and a password. That makes the first owner (it works once, even
+   if two phones try at the same moment) and signs you in.
+3. Delete `CRM_SETUP_CODE` in Netlify. Setup now answers "Setup is done".
+4. **More → Team → Add** for each person (name, login, role). Each gets a
+   one-time **invite link** (7 days) to send by text or AirDrop. Opening it
+   asks for a password; then they add Barta Office to their home screen
+   and use **Team sign-in** there (the installed app keeps its own
+   sign-in). Forgotten password: Team → the person → **Password reset
+   link** (it signs them out until they use it). **Turn off their login**
+   ends their access at once.
+5. If both owners are ever locked out: someone with Netlify access deletes
+   `sys/bootstrap` from the `crm` store (`netlify blobs:delete crm
+   sys/bootstrap`) and sets a new `CRM_SETUP_CODE`; setup opens once more
+   for an office-password holder. Existing accounts are untouched.
+
+### What the app is
+
+- `/crm` is the **app shell**: a data-free page (only the signed-in
+  person's id, name, role and permissions) that loads plain ES modules
+  from `/crm-app/` (no build step). Tabs at the bottom: Today · Contacts ·
+  More for owners and admins (Inbox and Schedule appear when their modules
+  ship); Today · Me for techs (Inbox, Time and Pay appear later). Today is
+  empty until the modules add their cards. More holds Team, My account and
+  Sign out. **My account**: name, mobile, password, the phones you're
+  signed in on.
+- Inside the office the CRM is the **CRM** tab (the first tool); `/office#crm/<screen>`
+  opens a screen, and the office mirrors where you are. The back arrow and a
+  swipe from the left edge go back (home-screen apps have no browser back),
+  sheets close with ✕ or a swipe down.
+- **Offline:** the CRM's service worker (`crm-sw.js`, scope `/crm`) keeps
+  the app's files and the shell, so it starts with no signal; the office's
+  service worker keeps a data-free launcher (`/office/launch`) for a cold
+  start with no signal. Data needs signal (the tech's offline day arrives
+  with the tech app, M4b). Signing out wipes what the phone kept.
+- **Security:** every CRM page sends `Content-Security-Policy` with
+  `script-src 'self'` and has no inline script; screens build markup only
+  through `html```, which escapes everything and refuses inline handlers,
+  `javascript:` links and links that leave the CRM (those go through
+  `openExternal()`: a new tab). Every write needs the `X-CRM: 1` header and
+  JSON, so another site can't post with your cookie.
+
+### Endpoints (all JSON, `{ ok, data }` or `{ ok: false, error: { code, message } }`)
+
+| Route | Who | What |
+|---|---|---|
+| `POST /api/crm/auth/login` | anyone (throttled) | `{login, password, office_password?, to?}` → signs in |
+| `POST /api/crm/auth/logout` · `logout-all` | signed in | this phone · every phone |
+| `POST /api/crm/auth/password` | signed in | `{current, next}`; other phones signed out |
+| `POST /api/crm/auth/setup` | office cookie + `CRM_SETUP_CODE`, once | first owner |
+| `GET /api/crm/auth/invite/:token` · `POST /api/crm/auth/invite` | the link | set a password from an invite or reset link |
+| `GET /api/crm/me` · `/me/badges` | signed in | who am I, permissions, tabs · badge counts (0 until M1.3) |
+| `GET/POST /api/crm/users`, `GET/PATCH /users/:id` | owners (names only for schedule readers; yourself for name, phone, notifications) | the team |
+| `POST /users/:id/invite` · `reset` · `disable` · `enable` | owners | links and access |
+| `GET /users/:id/sessions` · `DELETE /users/:id/sessions/:hash` | yourself or owners | phones signed in |
+| `GET /api/crm/legacy/customers`, `GET/POST /api/crm/import` | office cookie, owners/admins (import: owners) | the Customers list |
+
+Every route goes through one dispatcher (`netlify/lib/crm/core/router.mjs`):
+auth, CSRF, the client version (an app older than `MIN_CLIENT` gets 426 and
+"New version, tap to reload"), `Idempotency-Key` replay for POSTs, a
+256 KB body cap, permissions (a technician's "own" permissions never open a
+list), an 8-second and 25-Blobs-call budget per request, and plain-English
+errors with no stack or record data.
+
+### Code
+
+- Functions: `crm.mjs` (pages), `crm-api.mjs` (the dispatcher),
+  `crm-auth.mjs` (sign-in, with Netlify's rate limit), `office.mjs`.
+- Core: `netlify/lib/crm/core/{router,http,auth,passwords,sessions,throttle,perms,apikeys,shell-html}.mjs`;
+  the team, `/me` and the legacy routes in `netlify/lib/crm/modules/system/`.
+- App: `crm-app/main.js`, `crm-app/version.js`, `crm-app/core/*`,
+  `crm-app/styles/crm.css`, the system screens in
+  `crm-app/modules/system/`; `crm-sw.js`. `build/make_deploy.py` ships
+  `crm-app/` and `crm-sw.js`; `netlify.toml` has them re-checked on every
+  load.
+- **Releasing a client change (integrator):** bump `APP_VERSION` in
+  `crm-app/version.js`, run `node build/crm_precache.mjs` (rewrites
+  `PRECACHE` and `VERSION` in `crm-sw.js`; `--check` only checks), and
+  raise `MIN_CLIENT` in `core/http.mjs` only when old apps must stop.
+  `tests/crm/core/precache.test.mjs` fails when they disagree.
+- Tests: `tests/crm/core/{auth,perms,router,csp,precache}.test.mjs`,
+  `tests/office.test.mjs`, `tests/crm.test.mjs`,
+  `tests/crm-import.test.mjs`, with the harness
+  `tests/helpers/crm-http.mjs` (fresh memory stores, pinned clock, strict
+  fetch, real handlers), `crm-clock.mjs` and `crm-fetch.mjs`.

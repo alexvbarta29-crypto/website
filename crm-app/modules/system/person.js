@@ -6,7 +6,7 @@
 import { html, icon, toast, confirmSheet } from "../../core/ui.js";
 import { select, checkbox, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { ago, phone, roleLabel, initials, dateShort } from "../../core/format.js";
-import { ROLE_OPTIONS, linkSheet, expiresLabel } from "./team.js";
+import { ROLE_OPTIONS, ROLE_HINT, linkSheet, expiresLabel } from "./team.js";
 
 export default {
   title: (s) => (s && s.user ? s.user.first_name || s.user.name : "Person"),
@@ -39,14 +39,14 @@ export default {
       ${s.me ? "" : html`<div class="section-h">Role</div>
       <form class="card form" id="role-form" novalidate>
         <div class="err" data-form-err hidden></div>
-        ${select({ label: "Role", name: "role", value: u.role, options: ROLE_OPTIONS })}
+        ${select({ label: "Role", name: "role", value: u.role, options: ROLE_OPTIONS, hint: ROLE_HINT })}
         ${checkbox({ label: "Goes out on visits (can be scheduled)", name: "is_technician", checked: !!u.is_technician })}
         <button type="submit" class="btn dark block">Save role</button>
       </form>`}
 
       <div class="section-h">Signed in on</div>
       ${s.sessions.length
-        ? html`<ul class="list">${s.sessions.map((d) => html`<li><div class="row">${icon("phone")}<span class="who"><span class="nm">${d.ua}</span><span class="sub">Since ${ago(d.created_at)} · last used ${ago(d.last_seen_at)}</span></span><span class="end"><button type="button" class="btn" data-end="${d.hash}">Sign out</button></span></div></li>`)}</ul>`
+        ? html`<ul class="list">${s.sessions.map((d) => html`<li><div class="row">${icon("phone")}<span class="who"><span class="nm">${d.ua}</span><span class="sub">Last used ${ago(d.last_seen_at)}</span></span><span class="end"><button type="button" class="btn" data-end="${d.hash}">Sign out</button></span></div></li>`)}</ul>`
         : html`<div class="card muted small">Not signed in anywhere.</div>`}
 
       ${s.me ? "" : html`<div class="btn-row">${u.status === "disabled"

@@ -51,7 +51,7 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .top-title{flex:1;min-width:0;padding:0 8px;font-size:21px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top-back:not([hidden])+.top-title{padding-left:0}
 .top-act{flex:none;display:flex;gap:6px;align-items:center}
-.top-act .btn{min-height:40px;height:40px;padding:0 14px;font-size:13px}
+.top-act .btn{min-height:44px;height:44px;padding:0 16px;font-size:13px}
 .icon-btn{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:999px;background:none;color:var(--ink);cursor:pointer;text-decoration:none}
 .icon-btn:active{background:var(--fill)}
 .icon-btn svg{width:22px;height:22px}
@@ -65,7 +65,6 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .banner{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:8px calc(16px + var(--right)) 8px calc(16px + var(--left));background:var(--ink);color:#fff;font-size:13.5px;font-weight:600;text-align:center}
 .banner.warn{background:var(--amber-bg);color:#6b4510}
 .banner button{min-height:36px;border:0;border-radius:999px;padding:0 14px;background:#fff;color:var(--ink);font-weight:700;cursor:pointer}
-.edge{position:fixed;left:0;top:0;bottom:0;width:20px;z-index:4}
 
 /* ------------------------------------------------------------ tab bar */
 .tabs{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-around;align-items:stretch;height:calc(var(--tabs-h) + var(--bottom));padding:0 var(--right) var(--bottom) var(--left);background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-top:1px solid var(--line)}

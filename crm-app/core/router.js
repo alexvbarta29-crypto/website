@@ -66,17 +66,20 @@ const parse = () => {
 export const currentPath = () => (current ? current.path : parse());
 export const depth = () => stack.length;
 
-// The tab a path belongs to: the top of its parent chain.
-export function rootOf(path) {
+// A path and its parents, nearest first: ["/team/us_..", "/team", "/today"].
+export function chain(path) {
+  const out = [path];
   let m = match(path);
-  let p = path;
   let guard = 0;
   while (m && m.route.parent && guard++ < 10) {
-    p = fill(m.route.parent, m.params);
+    const p = fill(m.route.parent, m.params);
+    out.push(p);
     m = match(p);
   }
-  return p;
+  return out;
 }
+// The tab a path belongs to: the top of its parent chain.
+export const rootOf = (path) => { const c = chain(path); return c[c.length - 1]; };
 
 export function go(path, { replace = false } = {}) {
   if (replace) { pendingReplace = path; location.replace("#" + path); }
@@ -91,7 +94,9 @@ export function back() {
   const parent = current.route && current.route.parent ? fill(current.route.parent, current.params) : null;
   if (parent && parent !== current.path) { stack = []; go(parent, { replace: true }); }
 }
-export const canGoBack = () => stack.length > 1 || !!(current && current.route && current.route.parent && !env.isTabRoot(current.path));
+// Tab roots never show a back arrow (§9.1); other screens do when there is
+// somewhere to go: the stack, or the declared parent.
+export const canGoBack = () => !!current && !env.isTabRoot(current.path) && (stack.length > 1 || !!(current.route && current.route.parent));
 
 export function refresh() { if (current) show(current.path, { keepScroll: true }); }
 

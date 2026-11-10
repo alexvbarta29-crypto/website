@@ -59,7 +59,7 @@ button{cursor:pointer}
 .clear span{width:24px;height:24px;border-radius:50%;background:var(--fill-2);display:grid;place-items:center;font-size:15px;line-height:1}
 .chips{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:8px -16px 0;padding:2px 16px;-webkit-overflow-scrolling:touch}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;height:36px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);font:600 14px/1 'General Sans',system-ui,sans-serif;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip{flex:none;height:44px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);font:600 14px/1 'General Sans',system-ui,sans-serif;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .chip b{font-weight:600;color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .chip.src[aria-pressed="true"]{background:var(--coral);border-color:var(--coral)}
@@ -84,7 +84,7 @@ button{cursor:pointer}
 .empty{margin:28px auto;max-width:360px;text-align:center;padding:28px 20px;background:var(--card);border:1px dashed #d4d4d9;border-radius:20px}
 .empty b{display:block;font:800 20px/1.2 'Cabinet Grotesk',system-ui,sans-serif;margin-bottom:6px}
 .empty p{margin:0 0 14px;color:var(--muted);font-size:14px}
-.ghost{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--fill);font-weight:600;font-size:14px;color:var(--ink)}
+.ghost{height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--fill);font-weight:600;font-size:14px;color:var(--ink)}
 .rail{position:fixed;z-index:4;right:0;top:calc(var(--bar-h) + 10px);bottom:calc(10px + env(safe-area-inset-bottom));width:26px;display:flex;flex-direction:column;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
 .rail button{flex:0 1 18px;min-height:0;padding:0;border:0;background:none;color:var(--coral-ink);font:800 11px/1 'Cabinet Grotesk',system-ui,sans-serif;text-align:center}
 .rail button.off{color:#c3c3c9}

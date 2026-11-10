@@ -131,6 +131,8 @@ iframe[hidden]{display:none}
 /* "Get the app" card: only in a browser tab, never inside the installed app. */
 .install{position:fixed;z-index:20;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(440px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:12px 10px 12px 12px;background:#fff;border:1px solid #ececee;border-radius:20px;box-shadow:0 18px 48px rgba(14,14,18,.16)}
 .install[hidden]{display:none}
+/* above the CRM's own tab bar, never over it */
+body.compact .install,body.solo .install{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px)}
 .install img{width:44px;height:44px;border-radius:11px;flex:none}
 .install-text{flex:1;min-width:0;font-size:13.5px;line-height:1.35;color:var(--slate)}
 .install-text b{display:block;font:800 15px/1.2 'Cabinet Grotesk',system-ui,sans-serif;color:var(--ink)}
@@ -318,7 +320,8 @@ form[hidden]{display:none}
 label{display:block;font:800 .78rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#67676f;margin:14px 0 8px}
 input[type=password],input[type=text]{width:100%;font:inherit;font-size:1.05rem;padding:13px 16px;min-height:48px;border:1.5px solid #ececee;border-radius:14px;background:#f7f7f8;outline:0}
 input:focus{border-color:#fb4d3d;background:#fff;box-shadow:0 0 0 4px rgba(251,77,61,.12)}
-.user{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+input.user{position:absolute;left:0;top:0;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border:0!important;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.card{position:relative}
 button.go{margin-top:18px;width:100%;min-height:52px;border:0;border-radius:999px;padding:16px;font:800 1rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.045em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#fb4d3d,#ff6a3d);box-shadow:0 14px 38px rgba(251,77,61,.34);cursor:pointer}
 button.go:disabled{opacity:.6}
 details{margin-top:14px;border-top:1px solid #ececee;padding-top:6px}
@@ -391,7 +394,13 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
       const res = await fetch('/api/crm/auth/login', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CRM': '1' }, body: JSON.stringify({ login, password, office_password: $('t-office').value || undefined, to: '/office' + location.hash }) });
       let body = null;
       try { body = await res.json(); } catch (x) { /* not JSON */ }
-      if (res.ok && body && body.ok) { location.href = (body.data && body.data.to) || '/office'; return; }
+      if (res.ok && body && body.ok) {
+        const to = (body.data && body.data.to) || '/office';
+        const at = to.indexOf('#');
+        // Already on that page (only the #hash differs): reload so it sees the new sign-in.
+        if ((at < 0 ? to : to.slice(0, at)) === location.pathname) { if (at >= 0) location.hash = to.slice(at + 1); location.reload(); } else location.href = to;
+        return;
+      }
       say((body && body.error && body.error.message) || 'Sign-in failed (' + res.status + '). Try again.');
     } catch (x) {
       say('No connection. Try again.');
@@ -421,11 +430,12 @@ html,body{height:100%;margin:0}
 body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:#f4f4f6;color:#16161b;font:600 13px/1.3 'General Sans',system-ui,-apple-system,sans-serif}
 .off{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:max(6px,env(safe-area-inset-top)) 16px 6px;background:#16161b;color:#fff}
 .off[hidden]{display:none}
-.off button{min-height:32px;border:0;border-radius:999px;padding:0 14px;background:#fff;color:#16161b;font:700 12px/1 'General Sans',system-ui,sans-serif;cursor:pointer}
+.off span{min-width:0}
+.off button{flex:none;white-space:nowrap;min-height:44px;border:0;border-radius:999px;padding:0 16px;background:#fff;color:#16161b;font:700 12px/1 'General Sans',system-ui,sans-serif;cursor:pointer}
 main{flex:1;position:relative;min-height:0}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#f4f4f6}
 </style></head><body>
-<div class="off" id="off" role="status" hidden><span>Offline · showing what this phone saved</span><button type="button" id="retry">Try again</button></div>
+<div class="off" id="off" role="status" hidden><span>Offline · this phone's saved copy</span><button type="button" id="retry">Try again</button></div>
 <main><iframe id="crm" title="Barta CRM" src="/crm"></iframe></main>
 ${PROBE}
 <script>

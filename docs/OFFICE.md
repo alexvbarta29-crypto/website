@@ -4,7 +4,9 @@ The office's tools as one app. Your logo sits at the top, with one row of tabs
 under it (beside it on a computer):
 
 - **Overview · Money · Sales · Plans · Jobs**: the dashboards (docs/DASHBOARD.md)
-- **Customers** → `/crm` (every customer from Rotor, read-only; see docs/CRM.md)
+- **CRM** → `/crm` (Barta's own CRM, each person's own login; see docs/CRM.md).
+  Its Contacts tab holds the customer list from Rotor until the Contacts
+  module replaces it. Old `#customers` links open this tab.
 - **Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
 - **Purchases** → `/purchases` (see docs/PURCHASES.md)
@@ -19,6 +21,33 @@ so switching never loses work. The page remembers the last tab, and
 `/office#money`, `/office#lights` etc. open one directly. Inside the app each
 tool's own logo, footer and sign-out are hidden (the `css` for each tool in
 `office-page.mjs`), so it reads as one piece of software.
+
+## The CRM tab, solo mode and Team sign-in
+
+The CRM has its own logins (one per person); the office password keeps
+opening everything else. `office.mjs` counts a request as signed in with
+the office cookie **or** a CRM session:
+
+- **Office cookie** (with or without a CRM sign-in): every tab.
+- **CRM session only** (techs, and anyone without the office password):
+  **solo mode**, no tab row and no other tool; the CRM fills the screen.
+- **Signed out:** the sign-in page has **Team sign-in** (login + password,
+  for the CRM) next to **Office password**. The installed app opens on Team
+  sign-in; a browser remembers the last one used. Before the CRM is set up
+  only the office password shows. Owners can type the office password into
+  Team sign-in's optional field to open both at once (docs/CRM.md).
+
+While the CRM still needs its Netlify setup, its tab shows "Setup needed"
+with a button to the customer list, so nothing used today disappears. Once
+the settings exist, the first owner sets it up from this tab (docs/CRM.md
+"First owner").
+
+The office and the CRM frame talk with `postMessage` (same origin only):
+the CRM tells the office where it is (`/office#crm/<screen>` stays in step,
+and opening such a link opens that screen), shows a dot on the tab when
+something needs you, and asks the office to reload on sign-out; the office
+tells the CRM the phone's safe areas (frames don't get them) and hides its
+logo row on phones while the CRM tab is open.
 
 ## One password
 
@@ -52,13 +81,17 @@ the app on its own; there is nothing to reinstall.
 
 Pieces:
 - `office.webmanifest`: name, icons, start page `/office`, scope `/office`.
-- `office-sw.js`: service worker for `/office` only. Shows a "No connection"
-  screen with no signal. It never caches office pages, only the icon and fonts.
+- `office-sw.js`: service worker for `/office` only. It never caches office
+  pages, only the icon, the fonts and the data-free **launcher**
+  (`/office/launch`: a full-screen CRM frame and an "Offline" strip). With
+  no signal the app opens on the launcher, and the CRM starts from its own
+  cached copy (`crm-sw.js`); without a launcher yet it shows "No
+  connection". Back online it reloads the real office.
 - `APP_HEAD` in `netlify/lib/office-page.mjs`: manifest and iPhone tags, on
   both the office page and its sign-in page.
 - Icons in `assets/img/app/`: the //BWW logo on white, drawn by
   `python3 build/make_app_icons.py`. A phone that installed the app earlier
   keeps its old icon until the app is removed and added to the home screen again.
   `/assets/` is cached for a year, so a new icon needs a new `.vN` name.
-- `build/make_deploy.py` ships the manifest and service worker; `netlify.toml`
-  stops them being cached.
+- `build/make_deploy.py` ships the manifest and service workers (and the
+  CRM's `crm-app/` files); `netlify.toml` stops them being cached.

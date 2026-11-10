@@ -8,10 +8,11 @@ import { field, select, checkbox, readForm, clearErrors, showError, busy } from 
 import { roleLabel, initials } from "../../core/format.js";
 
 export const ROLE_OPTIONS = [
-  { value: "tech", label: "Technician (their own visits, time and pay)" },
-  { value: "admin", label: "Office (everything but owner settings)" },
-  { value: "owner", label: "Owner (everything)" },
+  { value: "tech", label: "Technician" },
+  { value: "admin", label: "Office" },
+  { value: "owner", label: "Owner" },
 ];
+export const ROLE_HINT = "Technician: their own visits, time and pay. Office: everything but owner settings. Owner: everything.";
 const statusPill = (s) => (s === "active" ? html`<span class="pill green">Active</span>` : s === "invited" ? html`<span class="pill amber">Invited</span>` : html`<span class="pill red">Off</span>`);
 
 // Shows a one-time link with Copy and Share (shared by Team and Person).
@@ -48,7 +49,7 @@ function addSheet(ctx) {
       <div class="err" data-form-err hidden></div>
       ${field({ label: "Name", name: "name", autocomplete: "off", autocapitalize: "words", required: true })}
       ${field({ label: "Login", name: "login", autocapitalize: "none", autocorrect: "off", spellcheck: "false", hint: "Lowercase, like gustov. They type it to sign in.", required: true })}
-      ${select({ label: "Role", name: "role", value: "tech", options: ROLE_OPTIONS })}
+      ${select({ label: "Role", name: "role", value: "tech", options: ROLE_OPTIONS, hint: ROLE_HINT })}
       ${checkbox({ label: "Goes out on visits (can be scheduled)", name: "is_technician", checked: true })}
       ${field({ label: "Mobile (optional, for staff alerts)", name: "phone", type: "tel" })}
       <button type="submit" class="btn primary block">Add and make an invite link</button>

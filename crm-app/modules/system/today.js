@@ -22,15 +22,14 @@ export default {
     const links = [
       ctx.can("contacts:read_all") && router.has("/legacy/customers") ? html`<a class="tile" href="#/legacy/customers">${icon("contacts")}<span>Customers</span></a>` : "",
       ctx.can("users:manage") ? html`<a class="tile" href="#/team">${icon("team")}<span>Team</span></a>` : "",
-      html`<a class="tile" href="#/me">${icon("me")}<span>My account</span></a>`,
-    ];
+      tech ? "" : html`<a class="tile" href="#/me">${icon("me")}<span>My account</span></a>`,
+    ].filter(Boolean);
     return html`<div class="stack">
       <div class="hello"><div class="date">${dateLong(s.now)}</div><h2>${greeting(s.now)}, ${s.user.first_name || s.user.name || "there"}</h2></div>
       ${tech
         ? html`<div class="card empty"><div class="art">${icon("today")}</div><h2>No visits today</h2><p>Your visits show up here, in route order, once scheduling moves into the CRM.</p></div>`
         : html`<div class="card empty"><div class="art">${icon("sun")}</div><h2>Nothing needs you right now</h2><p>Leads, replies, visits and money show up here as each part of the CRM goes live. Rotor is still in charge until the switch.</p></div>`}
-      <div class="section-h">Quick links</div>
-      <div class="links">${links}</div>
+      ${links.length ? html`<div class="section-h">Quick links</div><div class="links">${links}</div>` : ""}
     </div>`;
   },
 };

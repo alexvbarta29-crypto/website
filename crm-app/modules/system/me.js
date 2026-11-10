@@ -49,7 +49,7 @@ export default {
       ${s.sessions.length
         ? html`<ul class="list">${s.sessions.map((d) => html`<li><div class="row">
             ${icon("phone")}
-            <span class="who"><span class="nm">${d.ua}${d.current ? " (this phone)" : ""}</span><span class="sub">Since ${ago(d.created_at)} · last used ${ago(d.last_seen_at)}</span></span>
+            <span class="who"><span class="nm">${d.ua}${d.current ? " (this phone)" : ""}</span><span class="sub">Last used ${ago(d.last_seen_at)}</span></span>
             ${d.current ? "" : html`<span class="end"><button type="button" class="btn" data-end="${d.hash}">Sign out</button></span>`}
           </div></li>`)}</ul>`
         : html`<div class="card muted small">No other phones.</div>`}

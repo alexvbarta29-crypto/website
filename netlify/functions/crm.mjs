@@ -70,7 +70,9 @@ async function shell(req) {
 }
 
 async function login(req, url) {
-  const to = safeTo(url.searchParams.get("to"), "/crm");
+  let to = safeTo(url.searchParams.get("to"), "/crm");
+  // Inside a frame (the office's CRM tab) never load the office itself.
+  if (req.headers.get("sec-fetch-dest") === "iframe" && to.startsWith("/office")) to = "/crm";
   const s = await lookupSession(req);
   if (s) return redirect(to);
   const boot = await readBootstrap();

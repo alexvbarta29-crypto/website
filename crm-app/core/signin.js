@@ -19,12 +19,28 @@ function say(text) {
   if (text) box.scrollIntoView({ block: "nearest" });
 }
 
+// Goes to `dest`; a page that is already there (only the #hash differs)
+// is reloaded, so it sees the new sign-in.
+function navigate(win, dest) {
+  const [pathPart, hash] = dest.split("#");
+  if (win.location.pathname === pathPart) {
+    if (hash !== undefined) win.location.hash = hash;
+    win.location.reload();
+  } else win.location.href = dest;
+}
+
 function go(to) {
   const dest = typeof to === "string" && /^\/(office|crm)(#|\/|$)/.test(to) ? to : "/crm";
   let framed = false;
   try { framed = window.top !== window; } catch (e) { framed = true; }
-  if (framed && dest.startsWith("/office")) { try { window.top.location.href = dest; return; } catch (e) { /* fall through */ } }
-  location.href = dest;
+  if (framed && dest.startsWith("/office")) { try { navigate(window.top, dest); return; } catch (e) { /* fall through */ } }
+  navigate(window, dest);
+}
+
+// The service worker's copy of the shell belongs to whoever was signed in
+// before: drop it, so the next start shows this person.
+async function forgetShell() {
+  try { if (typeof caches !== "undefined") await caches.delete("crm-shell"); } catch (e) { /* no Cache Storage */ }
 }
 
 async function send(path, body) {
@@ -57,6 +73,7 @@ function wire(formId, build, path, after) {
     btn.textContent = "One moment…";
     try {
       const data = await send(path, body);
+      await forgetShell();
       after(data);
       return;
     } catch (x) {

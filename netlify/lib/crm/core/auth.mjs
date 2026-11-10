@@ -258,7 +258,7 @@ async function changePassword(ctx) {
 async function setup(ctx) {
   const b = ctx.body || {};
   if (!officeSignedIn(ctx.req)) throw new ForbiddenError("Sign in to Barta Office with the office password first.");
-  const code = process.env.CRM_SETUP_CODE || "";
+  const code = String(process.env.CRM_SETUP_CODE || "").trim();
   if (!code) return fail("setup_needed", "Add CRM_SETUP_CODE in Netlify first (Production only).", 503);
   const boot = await readBootstrap();
   if (bootstrapDone(boot)) return gone("Setup is done. Ask an owner to invite you.");
@@ -293,7 +293,7 @@ async function setup(ctx) {
   const pw = await hashPassword(b.password);
   const created = await createRecord("user", {
     id: uid, login, name, role: "owner", status: "active", is_technician: b.is_technician === true,
-    color: USER_COLORS[0], password: pw, session_epoch: 0, grants: [], denies: [],
+    color: USER_COLORS[0], password: pw, session_epoch: 0, grants: [], denies: [], last_sign_in_at: nowIso(),
   }, writeCtx(ctx, uid));
   const cur = await getRaw(BOOTSTRAP_KEY);
   if (cur && cur.data && cur.data.user_id === uid) {
@@ -321,7 +321,7 @@ async function acceptInvite(ctx) {
   const r = await updateRecord("user", t.user.id, (u) => {
     if (!u.invite || u.invite.token_hash !== hash || u.status === "disabled") return null;   // used meanwhile: single use
     const { invite, ...rest } = u;
-    return { ...rest, password: pw, status: "active", session_epoch: (u.session_epoch || 0) + (invite.kind === "reset" ? 1 : 0) };
+    return { ...rest, password: pw, status: "active", last_sign_in_at: nowIso(), session_epoch: (u.session_epoch || 0) + (invite.kind === "reset" ? 1 : 0) };
   }, writeCtx(ctx, t.user.id));
   if (!r.changed) return gone("This link has expired or was already used. Ask Alex or Jacob for a new one.");
   forgetUser(t.user.id);

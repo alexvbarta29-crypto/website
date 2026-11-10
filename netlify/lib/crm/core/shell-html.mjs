@@ -47,7 +47,6 @@ export function shellHtml({ user, perms, nav, office = false, version = APP_VERS
   <main class="view" id="view" tabindex="-1"><div class="boot" id="boot"><span class="spinner" aria-hidden="true"></span><span>Loading…</span></div></main>
   <nav class="tabs" id="tabs" aria-label="CRM sections"></nav>
 </div>
-<div class="edge" id="edge" aria-hidden="true"></div>
 <div id="layer"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <noscript><p class="noscript">Barta CRM needs JavaScript. Turn it on in Settings → Safari → Advanced.</p></noscript>

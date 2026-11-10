@@ -66,18 +66,19 @@ export const isTabRoot = (path) => st.tabs.some((t) => t.path === path);
 
 // Marks the tab of the current screen; shows the create button where it belongs.
 export function update(path) {
-  const root = router.rootOf(path);
+  // The nearest tab or More entry up the parent chain decides the highlight.
   let active = null;
+  let viaMore = false;
+  for (const p of router.chain(path)) {
+    active = st.tabs.find((t) => !t.more && t.path === p) || null;
+    if (active) break;
+    if (st.more.some((n) => n.path === p)) { viaMore = true; break; }
+  }
   document.querySelectorAll("#tabs [data-tab]").forEach((el) => {
     const t = st.tabs.find((x) => x.key === el.dataset.tab);
-    const on = !!t && !t.more && t.path === root;
-    if (on) active = t;
+    const on = !!t && (t.more ? viaMore : active === t);
     if (on) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
   });
-  if (!active) {
-    const more = document.querySelector('#tabs [data-tab="more"]');
-    if (more && st.more.some((n) => n.path === root)) more.setAttribute("aria-current", "page");
-  }
   let fab = document.getElementById("fab");
   const want = st.creates.length > 0 && !!active && CREATE_ON.has(active.key) && active.path === path;
   if (want && !fab) {

@@ -110,7 +110,7 @@ function start() {
   });
   nav.mount({ nav: session.nav, manifests: MANIFESTS, can, onSignOut: () => doSignOut() });
   document.getElementById("top-back").addEventListener("click", () => router.back());
-  edgeSwipe(() => router.back(), document.getElementById("edge"));
+  edgeSwipe(() => router.back(), document);
   const bootEl = document.getElementById("boot");
   if (bootEl) bootEl.remove();
   router.start();
@@ -119,6 +119,8 @@ function start() {
   // Fresh permissions (a cached shell may be older than a role change).
   get("/me", { cache: false }).then(({ data }) => {
     if (!data) return;
+    // A cached shell made for someone else (a shared phone): start again.
+    if (data.user && session.user && data.user.id !== session.user.id) { location.reload(); return; }
     const before = JSON.stringify(session.perms);
     session.user = { ...session.user, ...data.user };
     session.perms = data.perms || {};
