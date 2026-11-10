@@ -35,14 +35,19 @@ export function seal(obj, publicKeyPem) {
   return { v: 2, epk: b64(epk), iv: b64(iv), tag: b64(c.getAuthTag()), data: b64(data) };
 }
 
-// privateKey: a Node KeyObject (see privateKey() below).
+// privateKey: a Node KeyObject (see privateKey() below). Every part must be
+// exactly the size seal() makes: a 32-byte key, a 12-byte nonce and the full
+// 16-byte GCM tag (Node would otherwise accept a tag cut to 4 bytes).
 export function open(box, privateKey) {
   if (box.v !== 2) throw new Error("unsupported snapshot");
   const epk = Buffer.from(box.epk, "base64");
+  const iv = Buffer.from(box.iv, "base64");
+  const tag = Buffer.from(box.tag, "base64");
+  if (epk.length !== 32 || iv.length !== 12 || tag.length !== 16) throw new Error("malformed snapshot");
   const sender = crypto.createPublicKey({ key: Buffer.concat([Buffer.from("302a300506032b656e032100", "hex"), epk]), format: "der", type: "spki" });
   const key = aesKey(crypto.diffieHellman({ privateKey, publicKey: sender }), epk);
-  const d = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(box.iv, "base64"));
-  d.setAuthTag(Buffer.from(box.tag, "base64"));
+  const d = crypto.createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
+  d.setAuthTag(tag);
   return JSON.parse(Buffer.concat([d.update(Buffer.from(box.data, "base64")), d.final()]).toString("utf8"));
 }
 

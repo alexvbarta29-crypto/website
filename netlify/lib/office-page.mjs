@@ -14,6 +14,7 @@ export const VIEWS = [
 ];
 export const TOOLS = [
   { id: "dashboard", label: "Dashboard", src: "/dashboard?embed=1" },
+  { id: "customers", label: "Customers", src: "/crm" },
   { id: "lights", label: "Lights", src: "/lights", css: ".brand{display:none!important}" },
   { id: "followups", label: "Follow-ups", src: "/playbook", css: ".wrap>header>.brand,.wrap>footer{display:none!important}" },
   { id: "purchases", label: "Purchases", src: "/purchases" },

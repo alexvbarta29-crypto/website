@@ -32,7 +32,9 @@ export function readCookie(req) {
   const raw = req.headers.get("cookie") || "";
   for (const part of raw.split(";")) {
     const i = part.indexOf("=");
-    if (i > 0 && part.slice(0, i).trim() === COOKIE) return decodeURIComponent(part.slice(i + 1).trim());
+    if (i <= 0 || part.slice(0, i).trim() !== COOKIE) continue;
+    // A malformed value ("%E0%A4%A") is just a wrong cookie, not a crash.
+    try { return decodeURIComponent(part.slice(i + 1).trim()); } catch { return ""; }
   }
   return "";
 }

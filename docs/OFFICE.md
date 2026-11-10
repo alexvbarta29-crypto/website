@@ -4,6 +4,7 @@ The office's tools as one app. Your logo sits at the top, with one row of tabs
 under it (beside it on a computer):
 
 - **Overview · Money · Sales · Plans · Jobs**: the dashboards (docs/DASHBOARD.md)
+- **Customers** → `/crm` (every customer from Rotor, read-only; see docs/CRM.md)
 - **Lights** → `/lights` (Light Studio)
 - **Follow-ups** → `/playbook`
 - **Purchases** → `/purchases` (see docs/PURCHASES.md)
