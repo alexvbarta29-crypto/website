@@ -176,3 +176,16 @@ test("approvals reach the owners' bell; a bulk send waiting for its test counts 
   assert.equal(badges.body.data.notifications, 1);
   assert.equal((await t.api("/me/badges", { as: tech })).body.data.approvals, 0);
 });
+
+test("a tech can't preview a template with a contact who isn't on their visits", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner");
+  const tech = await t.user("tech");
+  const c = await scope(() => seedContact(12));
+  const made = await t.api("/templates", { method: "POST", as: owner, body: { key: "hello_tech", name: "Hello", channel: "sms", category: "service", body: "Hi {{first_name|there}} in {{town|town}}" } });
+  const r = await t.api("/templates/preview", { method: "POST", as: tech, body: { template_id: made.body.data.id, contact_id: c.id } });
+  assert.equal(r.status, 403);
+  const plain = await t.api("/templates/preview", { method: "POST", as: tech, body: { template_id: made.body.data.id } });
+  assert.equal(plain.status, 200);
+  assert.equal(plain.body.data.text, "Hi Pat in Delano", "made-up values only");
+});

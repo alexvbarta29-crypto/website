@@ -85,7 +85,10 @@ async function preview(ctx) {
     t = { channel: b.channel, subject: b.subject || "", body: String(b.body || ""), body_html: b.body_html ? sanitizeEmailHtml(b.body_html) : undefined };
   }
   const problems = [...parseTemplate(t.body || "").errors, ...(t.subject ? parseTemplate(t.subject, { field: "subject" }).errors : []), ...(t.body_html ? parseTemplate(t.body_html, { field: "body_html" }).errors : [])];
-  const p = await previewFor(t, b.contact_id, { extra: b.vars && typeof b.vars === "object" ? b.vars : undefined, sender: ctx.user });
+  // a tech previews only for a contact on their own visits (a preview shows the name and town)
+  let contactId = isId(b.contact_id, "contact") ? b.contact_id : undefined;
+  if (contactId && isTech(ctx) && !(await techVisibleContacts(ctx.user.id)).has(contactId)) throw new ForbiddenError("You don't have access to that.");
+  const p = await previewFor(t, contactId, { extra: b.vars && typeof b.vars === "object" ? b.vars : undefined, sender: ctx.user });
   return { data: { ...p, problems, variables: parseTemplate([t.body, t.subject, t.body_html].filter(Boolean).join("\n")).variables } };
 }
 
