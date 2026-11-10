@@ -40,38 +40,45 @@ so switching never loses work. The page remembers the last tab, and
 tool's own logo, footer and sign-out are hidden (the `css` for each tool in
 `office-page.mjs`), so it reads as one piece of software.
 
-## The CRM tab, solo mode and Team sign-in
+## Who sees what, sign-in and setup
 
-The CRM has its own logins (one per person); the office password keeps
-opening everything else. `office.mjs` counts a request as signed in with
-the office cookie **or** a CRM session:
+The CRM has its own logins (one per person); the office password opens the
+office tools. `office.mjs` counts a request as signed in with the office
+cookie **or** a CRM session:
 
-- **Office cookie** (with or without a CRM sign-in): every tab.
-- **CRM session only** (techs, and anyone without the office password):
-  **solo mode**, no tab row and no other tool; the CRM fills the screen.
-- **Signed out:** the sign-in page has **Team sign-in** (login + password,
-  for the CRM) next to **Office password**. The installed app opens on Team
-  sign-in; a browser remembers the last one used. Before the CRM is set up
-  only the office password shows. Owners can type the office password into
-  Team sign-in's optional field to open both at once (docs/CRM.md); if it
-  isn't right (or isn't for that login), the page says so for a few seconds
-  before the CRM opens on its own.
+- **A CRM session** (with or without the office cookie): the one app, the
+  CRM full screen. With the office cookie too (owners who typed the office
+  password once on this phone), the Dashboard tab and the office tools in
+  More; without it (techs, and Eric unless he has the office password) only
+  the CRM: a tech never sees a dashboard or an office tool, and an old
+  `#lights` link opens the CRM's Today.
+- **The office password alone:** before the CRM has an owner, the CRM full
+  screen with **Set up the CRM** (the first owner types the office password
+  again, a name, a login and a password: automatic setup, nothing to add
+  in Netlify; docs/CRM.md "First owner"); after that, the tab row above.
+- **Signed out:** the sign-in page has **Team sign-in** (login + password)
+  next to **Office password**. The installed app opens on Team sign-in.
+  Owners can type the office password into Team sign-in's optional field
+  to open both at once; if it isn't right (or isn't for that login), the
+  page says so for a few seconds before the CRM opens on its own.
 
-While the CRM still needs its Netlify setup, its tab shows "Setup needed"
-with a button to the customer list, so nothing used today disappears. Once
-the settings exist, the first owner sets it up from this tab (docs/CRM.md
-"First owner").
+If the CRM's storage can't be used, the office password still opens the tab
+row, with the customer list one tap away, so nothing used today disappears.
 
 The office and the CRM frame talk with `postMessage` (same origin only):
 the CRM tells the office where it is (`/office#crm/<screen>` stays in step,
-also after a trip to another tab, and opening such a link opens that
-screen), shows a dot on the tab when something needs you, and asks the
-office to reload on sign-out; the office tells the CRM the phone's safe
-areas (frames don't get them) and the height of the "Get the app" card
-(the CRM lifts its toasts above it), and hides its logo row on phones while
-the CRM tab is open. Signed in with only the office password after the CRM
-is set up, the CRM tab shows Team sign-in with an **Open the Customers
-list** button.
+and opening such a link opens that screen), shows a dot when something
+needs you, and asks the office to reload on sign-out; the office tells the
+CRM the phone's safe areas (frames don't get them) and the height of the
+"Get the app" card (the CRM lifts its toasts, its Create button and the
+bottom of its sheets above it). `npm run e2e` checks these on phone sizes
+(docs/CRM.md "Tests").
+
+**Where the Follow-ups wording comes from.** `/playbook` (More →
+Follow-ups) keeps its built-in texts until the CRM is set up; then each
+step shows the CRM's current wording of that text (Templates `cad_new_1..9`
+and `cad_est_1..5`, cached a minute), so an edit in the CRM shows on the
+page within a minute. Details: docs/CRM-SALES.md "The Follow-ups page".
 
 **Notifications on the phone (web push).** New leads, replies, approvals
 waiting and visit changes can pop up on a phone like a text. iOS lets only
@@ -124,10 +131,10 @@ Pieces:
   pages, only the icon, the fonts and the data-free **launcher**
   (`/office/launch`: a full-screen CRM frame and an "Offline" strip). With
   no signal the app opens on the launcher when this phone has a CRM to
-  start (someone signed in to the CRM, so `crm-sw.js` kept its shell), and
-  the CRM starts from that cached copy; otherwise (office password only,
-  signed out, nothing kept yet) it shows "No connection". Back online it
-  reloads the real office.
+  start (someone signed in to the CRM: after one online visit the CRM keeps
+  its shell in the `crm-shell` cache), and the CRM starts from that cached
+  copy; otherwise (office password only, signed out, nothing kept yet) it
+  shows "No connection". Back online it reloads the real office.
 - `APP_HEAD` in `netlify/lib/office-page.mjs`: manifest and iPhone tags, on
   both the office page and its sign-in page.
 - Icons in `assets/img/app/`: the //BWW logo on white, drawn by
