@@ -52,8 +52,16 @@ async function writable(id) {
   const got = await getRecord("contact", id);
   if (!got || got.data.deleted_at) throw new NotFoundError("That contact isn't there.");
   if (got.data.merged_into) throw new ConflictError("This contact was merged into another one. Open that one instead.");
+  if (got.data.merging_into) throw new ConflictError("This contact is being merged into another one right now. Try again in a minute.");
   return got;
 }
+
+// A person's edit never lands on a contact a merge has started on (it would
+// be left behind on the tombstone): every mutator below goes through this.
+const live = (fn) => (rec, c) => {
+  if (rec.merged_into || rec.merging_into) throw new ConflictError("This contact is being merged into another one right now. Try again in a minute.");
+  return fn(rec, c);
+};
 
 // What the API shows of a contact (no writer nonce; the rest as stored).
 const view = (c) => { const { _w, ...rest } = c; return rest; };
@@ -234,11 +242,11 @@ async function patchRoute(ctx) {
   const flags = isObj(b.flags) ? Object.fromEntries(FLAG_EDITABLE.filter((k) => b.flags[k] !== undefined).map((k) => [k, b.flags[k] === true])) : null;
   const before = await writable(ctx.params.id);
   if (before.data.lifecycle === "archived" && patch.lifecycle) throw new InputError("Restore this contact first.", "lifecycle");
-  const r = await updateRecord("contact", ctx.params.id, (rec) => {
+  const r = await updateRecord("contact", ctx.params.id, live((rec) => {
     const next = { ...rec, ...patch };
     if (flags) { next.flags = { ...(rec.flags || {}) }; for (const [k, v] of Object.entries(flags)) { if (v) next.flags[k] = true; else delete next.flags[k]; } }
     return next;
-  }, { ...ctx.write(), ifMatch: ctx.ifMatch });
+  }), { ...ctx.write(), ifMatch: ctx.ifMatch });
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
 
@@ -256,7 +264,7 @@ async function archiveRoute(ctx) {
   const reason = str((ctx.body || {}).reason) || "other";
   if (!["spam", "test", "vendor", "duplicate", "out_of_area", "do_not_contact", "other"].includes(reason)) throw new InputError("Pick a reason.", "reason");
   await writable(ctx.params.id);
-  const r = await updateRecord("contact", ctx.params.id, (c) => (c.lifecycle === "archived" && c.archived_reason === reason ? null : { ...c, lifecycle: "archived", archived_reason: reason }), ctx.write());
+  const r = await updateRecord("contact", ctx.params.id, live((c) => (c.lifecycle === "archived" && c.archived_reason === reason ? null : { ...c, lifecycle: "archived", archived_reason: reason })), ctx.write());
   await revokeLinks(ctx.params.id, { by: ctx.user.id }).catch((e) => console.error(`crm:contacts: links not revoked (${safeErr(e)})`));
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
@@ -265,12 +273,12 @@ async function restoreRoute(ctx) {
   const got = await writable(ctx.params.id);
   if (got.data.lifecycle !== "archived") return { data: { contact: view(got.data) }, etag: got.etag };
   const prev = (await previousLifecycle(ctx.params.id)) || (got.data.rotor && got.data.rotor.customer_id ? "customer" : "lead");
-  const r = await updateRecord("contact", ctx.params.id, (c) => {
+  const r = await updateRecord("contact", ctx.params.id, live((c) => {
     if (c.lifecycle !== "archived") return null;
     const next = { ...c, lifecycle: prev };
     delete next.archived_reason;
     return next;
-  }, ctx.write());
+  }), ctx.write());
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
 
@@ -301,7 +309,7 @@ async function notesRoute(ctx) {
   await writable(ctx.params.id);
   const who = ctx.user.first_name || ctx.user.name || "staff";
   const block = `— Note, ${dateLabel(now())} (${who}) —\n${text}`;
-  const r = await updateRecord("contact", ctx.params.id, (c) => ({ ...c, notes: appendNote(c.notes, block) }), ctx.write());
+  const r = await updateRecord("contact", ctx.params.id, live((c) => ({ ...c, notes: appendNote(c.notes, block) })), ctx.write());
   await addActivity(ctx.params.id, "note", ctx.params.id, now()).catch(() => {});
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
@@ -320,11 +328,11 @@ async function consentRoute(ctx) {
   if (!CONSENT_STATES.includes(b.state)) throw new InputError("Pick yes, unknown or no.", "state");
   const source = CONSENT_SOURCES.includes(b.source) ? b.source : "manual";
   await writable(ctx.params.id);
-  const r = await updateRecord("contact", ctx.params.id, (c) => {
+  const r = await updateRecord("contact", ctx.params.id, live((c) => {
     const cur = (c.consent || {})[b.channel] || {};
     if (cur.state === b.state && cur.source === source) return null;
     return { ...c, consent: { ...(c.consent || {}), [b.channel]: { state: b.state, at: nowIso(), source, by: ctx.user.id } } };
-  }, ctx.write());
+  }), ctx.write());
   if (r.changed) {
     await emit("consent.changed", { id: r.data.id, wv: r.data.wv, contact_id: r.data.id, channel: b.channel, address_hk: primaryHk(r.data, b.channel), state: b.state }, ctx.write())
       .catch((e) => console.error(`crm:contacts: consent.changed not queued (${safeErr(e)})`));
@@ -339,13 +347,13 @@ async function pausedRoute(ctx) {
   const reason = str(b.reason).slice(0, 200);
   if (b.paused && !reason) throw new InputError("Say why (it shows to the office).", "reason");
   await writable(ctx.params.id);
-  const r = await updateRecord("contact", ctx.params.id, (c) => {
+  const r = await updateRecord("contact", ctx.params.id, live((c) => {
     const cur = { ...(c.automations_paused || {}) };
     if (b.paused) cur[b.channel] = { reason, by: ctx.user.id, at: nowIso() }; else delete cur[b.channel];
     const next = { ...c, automations_paused: Object.keys(cur).length ? cur : undefined };
     if (!next.automations_paused) delete next.automations_paused;
     return next;
-  }, ctx.write());
+  }), ctx.write());
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
 
@@ -355,12 +363,12 @@ async function flagsRoute(ctx) {
   const b = ctx.body || {};
   if (typeof b.test !== "boolean") throw new InputError("Say yes or no.", "test");
   await writable(ctx.params.id);
-  const r = await updateRecord("contact", ctx.params.id, (c) => {
+  const r = await updateRecord("contact", ctx.params.id, live((c) => {
     const flags = { ...(c.flags || {}) };
     if (b.test === !!flags.test) return null;
     if (b.test) flags.test = true; else delete flags.test;
     return { ...c, flags };
-  }, ctx.write());
+  }), ctx.write());
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
 

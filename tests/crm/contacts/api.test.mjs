@@ -179,3 +179,16 @@ test("geocodeProperty: a live adapter fills geo, county, distance and tier (deri
     t.done();
   }
 });
+
+test("search (the contact picker) shows contacts by name and town, archived ones left out", async () => {
+  const t = await crmTest();
+  try {
+    const owner = await t.user("owner");
+    await newContact(t, owner, { first_name: "Riley", last_name: "Pickme", phone: "7635550145", email: "riley.pick@example.com" });
+    const gone = await newContact(t, owner, { first_name: "Riley", last_name: "Archived", phone: "7635550146", email: "riley.gone@example.com" });
+    await t.api(`/contacts/${gone.c.id}/archive`, { method: "POST", as: owner, body: { reason: "spam" } });
+    const r = await t.api("/search?q=riley", { as: owner });
+    assert.deepEqual(r.body.data.contacts.map((c) => c.name), ["Riley Pickme"]);
+    assert.match(r.body.data.contacts[0].sub, /Delano/);
+  } finally { t.done(); }
+});

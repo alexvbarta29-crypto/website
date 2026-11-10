@@ -45,7 +45,8 @@ export function rowMatches(row, ws) {
   return ws.every((w) => text.includes(w) || (/^\d{3,}$/.test(digits(w)) && digits(w).length >= 3 && d.includes(digits(w))));
 }
 
-const display = (row) => row.dn || row.display_name || row.name || [row.fn || row.first_name, row.ln || row.last_name].filter(Boolean).join(" ") || row.co || row.company_name || "No name";
+// The contacts index row (M2a, design §3.5): n = display name, f/l = names, co = company, c = town, p = phone digits.
+const display = (row) => row.n || row.dn || row.display_name || row.name || [row.f || row.fn || row.first_name, row.l || row.ln || row.last_name].filter(Boolean).join(" ") || row.co || row.company_name || "No name";
 
 async function search(ctx) {
   const q = String(ctx.query.get("q") || "").trim();
@@ -61,8 +62,8 @@ async function search(ctx) {
   if (ws.length) {
     const shard = contactShard("ct_00000000000000000000");
     const ix = await readIndex("contacts", shard);
-    contacts = ix.rows.filter((row) => isId(row.id, "contact") && !row.merged_into && rowMatches(row, ws)).slice(0, MAX_RESULTS)
-      .map((row) => ({ id: row.id, name: display(row), sub: [row.town || row.city, row.ph ? "phone on file" : null].filter(Boolean).join(" · ") }));
+    contacts = ix.rows.filter((row) => isId(row.id, "contact") && !row.merged_into && row.lc !== "archived" && rowMatches(row, ws)).slice(0, MAX_RESULTS)
+      .map((row) => ({ id: row.id, name: display(row), sub: [row.c || row.town || row.city, (row.p && row.p.length) || row.ph ? "phone on file" : null].filter(Boolean).join(" · ") }));
   }
   return { data: { numbers, contacts } };
 }

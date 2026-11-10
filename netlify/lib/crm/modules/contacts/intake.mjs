@@ -274,7 +274,16 @@ export async function intakeLead(input, { origin = "lead-form", rotor = null, by
     if (target) {
       wasLead = target.data.lifecycle === "lead";
       if (guard.mayAct({ record: target.data })) {
-        const r = await updateRecord("contact", target.id, (c) => upsertFields(c, n, origin, { rotorLeadId, pendingRotor }), ctx);
+        // a merge that starts between the read and the write: the upsert follows it to the survivor
+        let moved = null;
+        const upsert = (c) => { if (c.merging_into || c.merged_into) { moved = c.merging_into || c.merged_into; return null; } return upsertFields(c, n, origin, { rotorLeadId, pendingRotor }); };
+        let r = await updateRecord("contact", target.id, upsert, ctx);
+        for (let hop = 0; moved && hop < 3; hop++) {
+          const next = await resolveContact(moved, opts);
+          moved = null;
+          if (!next) break;
+          r = await updateRecord("contact", next.id, upsert, ctx);
+        }
         contact = r.data;
         changed = r.changed;
       } else {

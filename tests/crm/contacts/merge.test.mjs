@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { crmTest } from "../../helpers/crm-http.mjs";
 import { fixtureModule, fixtureType } from "../../helpers/crm-fixtures.mjs";
 import { advance, minutes } from "../../helpers/crm-clock.mjs";
-import { store, merge, PERSON } from "./fixtures.mjs";
+import { store, merge, intake, PERSON } from "./fixtures.mjs";
 
 const { call } = await import("../../../netlify/lib/crm/core/services.mjs");
 const { BlobsTransientError } = await import("../../../netlify/lib/crm/core/errors.mjs");
@@ -21,6 +21,8 @@ fixtureModule({
   onMerge: async (a, b) => {
     // a text that arrives mid-merge is routed by resolving its contact
     seen.resolved.push(await call("contacts.resolve", b));
+    // a website lead for b's number arrives mid-merge: it lands on the survivor
+    await intake.intakeLead({ phone: "+17635550171", notes: "Asked again during the merge." }, { origin: "lead-form" });
     // and things that still landed on b (a straggler record and a timeline row)
     await store.createRecord("widget", { contact_id: b, name: "Late arrival" }, { ...PERSON, origin: "api" }).catch(() => null);
     await store.addActivity(b, "message", "ms_00000000000000000001");
@@ -75,6 +77,8 @@ test("merge: inbound routed to the survivor, stragglers moved, each onMerge once
     assert.deepEqual(ga.emails.map((e) => e.address), ["pat.dup@example.com"]);
     assert.deepEqual(ga.tags, ["Website", "Referral"]);
     assert.match(ga.notes, /Merged from Pat Example[\s\S]*Gate code on file\./);
+    assert.match(ga.notes, /Asked again during the merge\./, "the mid-merge website lead landed on the survivor");
+    assert.doesNotMatch(gb.notes, /Asked again/);
     assert.equal(ga.consent.sms_marketing.state, "revoked", "a revocation wins");
     assert.equal(ga.lifecycle, "customer", "the stronger lifecycle");
     assert.equal(ga.source.source, "Website quote form", "the earlier source");
@@ -163,4 +167,41 @@ test("pure merge rules: consent revoked wins else the latest grant; survivor of 
   assert.deepEqual(m.rotor.lead_ids, ["l1", "l2"]);
   assert.equal(m.rotor.customer_id, "c1");
   assert.equal(m.intake_pending_rotor, undefined, "linked to Rotor now");
+});
+
+test("a person's edit never lands on a contact being merged (409), and intake follows a merge that starts under it", async () => {
+  const t = await crmTest();
+  try {
+    const owner = await t.user("owner");
+    const W = { ...PERSON, by: owner.id };
+    const a = (await store.createRecord("contact", { first_name: "Keep", last_name: "Me", phones: [{ e164: "+17635550175" }], lifecycle: "lead", source: { source: "Other" } }, W)).data;
+    const b = (await store.createRecord("contact", { first_name: "Merge", last_name: "Me", phones: [{ e164: "+17635550176" }], lifecycle: "lead", source: { source: "Other" } }, W));
+    await store.updateRecord("contact", b.data.id, (c) => ({ ...c, merging_into: a.id }), W);
+    const etag = (await store.getRecord("contact", b.data.id)).etag;
+    assert.equal((await t.api(`/contacts/${b.data.id}`, { method: "PATCH", as: owner, ifMatch: etag, body: { last_name: "Edited" } })).status, 409);
+    assert.equal((await t.api(`/contacts/${b.data.id}/notes`, { method: "POST", as: owner, body: { text: "Lost?" } })).status, 409);
+    // intake: b found by its number resolves to a
+    const r = await intake.intakeLead({ phone: "+17635550176", notes: "Hello" }, { origin: "lead-form" });
+    assert.equal(r.contact_id, a.id);
+    assert.ok((await store.getRecord("contact", a.id)).data.phones.some((p) => p.e164 === "+17635550176"));
+  } finally { t.done(); }
+});
+
+test("a merge that starts between intake's read and its write: the upsert follows it to the survivor", async () => {
+  const t = await crmTest();
+  try {
+    const owner = await t.user("owner");
+    const W = { ...PERSON, by: owner.id };
+    const a = (await store.createRecord("contact", { first_name: "Keep", last_name: "Me", phones: [{ e164: "+17635550177" }], lifecycle: "lead", source: { source: "Other" } }, W)).data;
+    const b = (await store.createRecord("contact", { first_name: "Racing", last_name: "Me", phones: [{ e164: "+17635550178" }], lifecycle: "lead", source: { source: "Other" } }, W)).data;
+    // the racing writer: the merge's first step lands right before intake's conditional write on b
+    t.stores.data.beforeConditionalWrite(async (key, opts, s) => {
+      const cur = s.json(key);
+      await s.setJSON(key, { ...cur, merging_into: a.id, wv: cur.wv + 1 });
+    }, { key: `rec/contact/${b.id}`, times: 1 });
+    const r = await intake.intakeLead({ phone: "+17635550178", notes: "Raced the merge." }, { origin: "lead-form" });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.match((await store.getRecord("contact", a.id)).data.notes, /Raced the merge\./, "landed on the survivor");
+    assert.doesNotMatch((await store.getRecord("contact", b.id)).data.notes || "", /Raced/);
+  } finally { t.done(); }
 });
