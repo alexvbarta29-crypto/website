@@ -79,9 +79,9 @@ export async function liveContact(id, ctx) {
 }
 
 // What a visit shows about where it is: { property_id, town, address_line, geo }.
-export async function placeOf(propertyId, contact) {
+export async function placeOf(propertyId, contact, { property } = {}) {
   const pid = isId(propertyId, "property") ? propertyId : contact && isId(contact.primary_property_id, "property") ? contact.primary_property_id : null;
-  const p = pid ? await getRecord("property", pid) : null;
+  const p = property && property.id === pid ? { data: property } : pid ? await getRecord("property", pid) : null;
   const a = p && !p.data.deleted_at ? p.data.address : contact && contact.billing_address;
   const geo = p && p.data.geo && Number.isFinite(p.data.geo.lat) ? [p.data.geo.lat, p.data.geo.lng] : undefined;
   return {
@@ -100,14 +100,17 @@ export const typesOfLines = (lines = []) => [...new Set((lines || []).map((l) =>
 // The checklist template for a job: the first active one (by order) whose
 // job kinds include the job's kind, else whose service types match one of
 // the job's, else none. → the template record or null.
-export async function checklistFor(job, opts = {}) {
-  const ix = await readIndex("checklists", "", opts);
+export async function checklistFor(job, opts = {}, cache = null) {
+  const ix = cache && cache.checklists ? cache.checklists : await readIndex("checklists", "", opts);
+  if (cache) cache.checklists = ix;
   const rows = ix.rows.filter((r) => r.act !== false).sort((a, b) => (a.o ?? 50) - (b.o ?? 50) || String(a.k).localeCompare(String(b.k)));
   const types = (job.service_types || []).map((t) => String(t).split("::")[0].trim().toLowerCase());
   const pick = rows.find((r) => (r.jk || []).includes(job.kind))
     || (["standard", "touch_up", "warranty"].includes(job.kind) ? rows.find((r) => !(r.jk || []).length && (r.svc || []).some((s) => types.includes(String(s).toLowerCase()))) : null);
   if (!pick) return null;
-  const got = await getRecord("checklist_template", pick.id, opts);
+  const key = `checklist:${pick.id}`;
+  const got = cache && cache[key] !== undefined ? cache[key] : await getRecord("checklist_template", pick.id, opts);
+  if (cache) cache[key] = got;
   return got && got.data.active !== false ? got.data : null;
 }
 export const checklistCopy = (t) => (t ? { template_key: t.key, items: (t.items || []).map((i) => ({ key: i.key, label: i.label, required: i.required === true, kind: i.kind || "check" })) } : { items: [] });

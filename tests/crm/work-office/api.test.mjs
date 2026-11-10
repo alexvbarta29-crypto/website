@@ -30,7 +30,7 @@ test("a tech sees only their own visits in the ±7/30-day window, with techField
     assert.equal(d.job.office_notes, undefined, "office notes never reach a tech");
     assert.equal(d.job.crew_notes, "Dog in the back yard");
     assert.equal(d.job.lines[0].total_cents, 29500, "techs see the prices of their own visits (D11)");
-    assert.deepEqual(Object.keys(d.contact).sort(), ["first_name", "id", "name", "phones"]);
+    assert.deepEqual(Object.keys(d.contact).sort(), ["display_name", "first_name", "id", "phones"]);
     assert.equal(d.property.access.gate_code, "1234");
     assert.deepEqual(contactIds(r.body), [c.id], "only the contact of their visit");
     assert.equal(d.can.office, false);
@@ -212,6 +212,16 @@ test("time off, checklists, the contact's Work tab and GET /jobs", async () => {
     assert.equal(ed.status, 200, JSON.stringify(ed.body));
     assert.equal((await t.api(`/time-off/${add.body.data.time_off.id}`, { method: "DELETE", as: owner })).status, 200);
     assert.equal((await t.api(`/time-off?user=${tech.id}`, { as: owner })).body.data.length, 0);
+    // part of a day, in Delano time on each side of the DST change
+    const part = await t.api("/time-off", { method: "POST", as: admin, body: { user_id: tech.id, date: "2027-03-15", start: "09:00", end: "11:30", reason: "Dentist" } });
+    assert.equal(part.status, 201, JSON.stringify(part.body));
+    assert.equal(part.body.data.time_off.start_at, "2027-03-15T14:00:00.000Z", "CDT after Mar 14");
+    assert.equal(part.body.data.time_off.end_at, "2027-03-15T16:30:00.000Z");
+    assert.ok(!part.body.data.time_off.all_day);
+    const bad = await t.api("/time-off", { method: "POST", as: admin, body: { user_id: tech.id, date: "2027-03-15", start: "11:00", end: "09:00" } });
+    assert.equal(bad.status, 400);
+    assert.equal(bad.body.error.field, "end");
+    assert.equal((await t.api(`/time-off/${part.body.data.time_off.id}`, { method: "DELETE", as: owner })).status, 200);
 
     const cl = await t.api("/checklists", { as: owner });
     assert.deepEqual(cl.body.data.map((r) => r.k), ["windows_exterior", "windows_interior", "gutters", "lights_install", "lights_takedown"]);

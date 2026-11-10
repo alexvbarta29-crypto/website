@@ -1,0 +1,115 @@
+/* The scheduling screens (M4a): the schedule's rows and week grid, the
+   team's colored faces, the book / move sheet, the Visit and Job heads,
+   the route's stops, the lines and checklist editors. House style (design
+   §0 rule 9): pill buttons, 20 px cards, 44 px tap targets, 16 px inputs. */
+
+/* ---------------------------------------------------------------- people */
+.wk-faces{display:inline-flex;flex-direction:row-reverse;justify-content:flex-end}
+.wk-face{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 11px/1 var(--text);letter-spacing:.02em;margin-left:-8px}
+.wk-face:last-child{margin-left:0}
+.wk-nobody{font-size:12px;font-weight:600;color:var(--coral-ink);white-space:nowrap}
+.wk-dot{display:inline-block;flex:none;width:10px;height:10px;border-radius:50%}
+.wk-dot.big{width:14px;height:14px;margin:0 4px}
+.wk-people{display:flex;flex-wrap:wrap;gap:8px}
+.wk-person[aria-pressed="true"] .wk-dot{box-shadow:0 0 0 2px #fff}
+
+/* ---------------------------------------------------------------- the schedule */
+.wk .daybar .d{font-size:15.5px}
+.wk-visit,.wk-task{align-items:flex-start}
+.wk-visit.dead .nm{text-decoration:line-through;color:var(--ink-3)}
+.wk-time{flex:none;width:52px;display:flex;flex-direction:column;gap:2px;padding-top:2px;font-variant-numeric:tabular-nums}
+.wk-time b{font:700 14.5px/1.1 var(--text)}
+.wk-time small{font-size:12px;color:var(--ink-3)}
+.wk-task .nm{color:var(--ink-2)}
+.wk-end{flex-direction:column;align-items:flex-end;gap:6px;padding-top:2px}
+.wk-count{margin:0 4px;text-align:center}
+.wk-weekcard{padding:6px 2px;overflow:hidden}
+.wk-week{width:100%;border-collapse:separate;border-spacing:2px;table-layout:fixed}
+.wk-week th{font:600 12px/1.15 var(--text);color:var(--ink-3);text-align:center;padding:4px 0}
+.wk-week thead th b{display:block;font:700 14px/1.2 var(--text);color:var(--ink)}
+.wk-week thead th.today b{color:var(--coral-ink)}
+.wk-week .wk-wname th{text-align:left;padding:10px 6px 4px;font:600 13px/1.2 var(--text);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-week .wk-wname th .wk-dot{margin-right:6px}
+.wk-week td{padding:0}
+.wk-cell{display:block;width:100%;min-height:44px;border:0;border-radius:10px;background:var(--mist);color:var(--ink);font:700 15px/1 var(--text);font-variant-numeric:tabular-nums;cursor:pointer}
+.wk-cell.on{background:var(--blue-bg);color:var(--blue)}
+.wk-cell.today{box-shadow:inset 0 0 0 1.5px var(--coral)}
+.wk-trayrow{display:flex;align-items:center;gap:8px;padding-right:12px}
+.wk-trayrow .row{flex:1;min-width:0}
+.wk-book{flex:none;padding:0 16px}
+
+/* ---------------------------------------------------------------- the book / move sheet */
+.wk-when{display:flex;flex-direction:column;gap:12px}
+#wk-slot [data-warn]{display:flex;flex-direction:column;gap:8px}
+#wk-slot [data-warn]:empty{display:none}
+
+/* ---------------------------------------------------------------- Visit and Job */
+.wk-head{display:flex;flex-direction:column;gap:12px}
+.wk-head-top{display:flex;align-items:flex-start;gap:10px}
+.wk-when-big{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.wk-when-big b{font:800 19px/1.2 var(--head);overflow-wrap:anywhere}
+.wk-when-big span{color:var(--ink-2);font-size:14.5px}
+.wk-head .kv a{color:var(--ink);text-decoration-color:var(--line);text-underline-offset:3px}
+.wk-head p{margin:0}
+.wk-who{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wk-acts .btn{flex:1 1 40%}
+.wk-lines{list-style:none;margin:6px 0 0;padding:0}
+.wk-lines li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:15px}
+.wk-lines li:first-child{border-top:0}
+.wk-lines li span{min-width:0;overflow-wrap:anywhere}
+.wk-lines li b{flex:none;font-weight:600}
+.wk-lines li.tot{font-weight:700}
+.wk-check{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.wk-check li{display:flex;align-items:flex-start;gap:10px;font-size:15px}
+.wk-check .box{flex:none;width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;color:#fff}
+.wk-check li.on .box{background:var(--green);border-color:var(--green)}
+.wk-check .box svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.wk-pre{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)!important}
+.wk-notes .kv{margin-top:6px}
+.wk-notes .wk-pre{margin-top:10px}
+.wk-rem{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 14px}
+.wk-rem .who{flex:1;min-width:0}
+.wk-rem .nm{display:block;font-weight:600}
+.wk-rem .sub{display:block;font-size:13px;color:var(--ink-3)}
+.wk-panel{display:block}
+
+/* ---------------------------------------------------------------- lists and forms */
+.wk-filter input{min-height:44px}
+.wk-pick{border:1.5px solid var(--line);border-radius:14px;background:#fff;min-height:52px}
+.wk-pick svg{width:22px;height:22px;flex:none;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:1.8}
+.wk-first{display:flex;flex-direction:column;gap:12px}
+.wk-lines-ed,.wk-items{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:10px}
+.wk-line,.wk-item{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--mist)}
+.wk-line-nums{display:grid;grid-template-columns:1fr 84px 44px;gap:8px;align-items:end}
+.wk-item-row{display:grid;grid-template-columns:1fr auto 44px;gap:8px;align-items:center}
+.wk-item-row .check{min-height:44px;align-items:center;font-size:14px}
+.wk-x svg{transform:rotate(45deg);color:var(--ink-3)}
+.wk-x{background:#fff;border:1px solid var(--line)}
+[data-field="lines"] > .btn,[data-field="items"] > .btn{align-self:flex-start}
+
+/* ---------------------------------------------------------------- the route */
+.wk-routehead div{display:flex;flex-direction:column;gap:3px}
+.wk-routehead b{font:800 18px/1.2 var(--head)}
+.wk-sketch{padding:8px}
+.wk-sketch svg{display:block;width:100%;height:auto}
+.wk-stops{list-style:none}
+.wk-stop{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;min-height:64px}
+.wk-n{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;font:700 13px/1 var(--text)}
+.wk-stop .who{flex:1;min-width:0;color:inherit;text-decoration:none;min-height:44px;display:flex;flex-direction:column;justify-content:center}
+.wk-stop .nm{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-stop .sub{display:block;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-stop-acts{flex:none;display:flex;gap:2px}
+.wk-stop-acts .icon-btn:disabled{opacity:.3}
+.wk-up,.wk-down{display:grid;place-items:center}
+.wk-up{transform:rotate(90deg)}
+.wk-down{transform:rotate(-90deg)}
+
+/* ---------------------------------------------------------------- time off, Today */
+.wk-off .row{align-items:center}
+.wk-todaylinks{margin-top:10px}
+
+@media (max-width:380px){
+  .wk-cell{font-size:14px}
+  .wk-line-nums{grid-template-columns:1fr 70px 44px}
+}
+.wk-linkrows .row .nm{white-space:normal;overflow-wrap:anywhere}

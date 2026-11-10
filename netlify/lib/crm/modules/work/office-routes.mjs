@@ -67,8 +67,9 @@ async function usersById() {
   return new Map(ix.rows.map((r) => [r.id, { id: r.id, name: r.name, first_name: r.first_name, color: r.color, is_technician: !!r.is_technician, status: r.status }]));
 }
 
-const contactFor = (c, { tech }) => (c ? (tech ? { id: c.id, name: c.display_name, first_name: c.first_name, phones: c.phones || [] }
-  : { id: c.id, name: c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" "), first_name: c.first_name, phones: c.phones || [], emails: c.emails || [], lifecycle: c.lifecycle, flags: c.flags || {} }) : null);
+// A technician gets the contact's techFields only (display_name, first_name, phones).
+const contactFor = (c, { tech }) => (c ? (tech ? { id: c.id, display_name: c.display_name, first_name: c.first_name, phones: c.phones || [] }
+  : { id: c.id, display_name: c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" "), first_name: c.first_name, phones: c.phones || [], emails: c.emails || [], lifecycle: c.lifecycle, flags: c.flags || {} }) : null);
 const propertyFor = (p) => (p ? { id: p.id, label: p.label, address: p.address, access: p.access || {}, geo: p.geo || null, town_tier: p.town_tier || null } : null);
 
 // ------------------------------------------------------------ input checks
@@ -231,7 +232,7 @@ const contactWork = async (ctx) => {
   const upcoming = visits.filter((v) => OPEN_VISIT.includes(v.status) && v.date >= today).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
   const past = visits.filter((v) => !(OPEN_VISIT.includes(v.status) && v.date >= today)).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start)).slice(0, 20);
   const slim = (v) => ({ id: v.id, job_id: v.job_id, date: v.date, start: v.start, end: v.end, window: v.window, status: v.status, assignee_ids: v.assignee_ids || [], job_title: v.job_title, job_number: v.job_number, date_only: v.date_only === true });
-  return { data: { contact: { id: contact.id, name: contact.display_name }, jobs: list.map(({ visit_ids, ...j }) => j), upcoming: upcoming.map(slim), past: past.map(slim) } };
+  return { data: { contact: { id: contact.id, display_name: contact.display_name }, jobs: list.map(({ visit_ids, ...j }) => j), upcoming: upcoming.map(slim), past: past.map(slim) } };
 };
 
 // The lines a person typed on the New job / Edit job form.
@@ -444,7 +445,16 @@ function timeOffInput(b) {
   const out = {};
   if (!isId(b.user_id, "user")) throw new InputError("Pick someone on the team.", "user_id");
   out.user_id = b.user_id;
-  if (b.date !== undefined) {
+  if (b.date !== undefined && (b.start !== undefined || b.end !== undefined)) {
+    // part of one day, in Delano time
+    const d = str(b.date), st = str(b.start), en = str(b.end);
+    if (!isLocalDate(d)) throw new InputError("Pick the day.", "date");
+    if (!isLocalTime(st)) throw new InputError("Pick when it starts.", "start");
+    if (!isLocalTime(en) || en <= st) throw new InputError("Pick when it ends (after it starts).", "end");
+    out.start_at = zonedToUtc(d, st).toISOString();
+    out.end_at = zonedToUtc(d, en).toISOString();
+    out.all_day = false;
+  } else if (b.date !== undefined) {
     const d = str(b.date), e = str(b.end_date) || d;
     if (!isLocalDate(d)) throw new InputError("Pick the first day.", "date");
     if (!isLocalDate(e) || e < d) throw new InputError("Pick the last day (on or after the first).", "end_date");

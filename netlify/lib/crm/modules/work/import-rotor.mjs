@@ -216,14 +216,14 @@ export function normalizeVisit(row) {
   };
 }
 
+// The contact's property at the visit's address (the contacts phase made it
+// from the same address), else the fallback. → { id, property? }
 async function propertyFor(contactId, address, fallback) {
   const a = address ? normalizeAddress(address) : null;
-  if (a && a.street1) {
-    const key = addressKey(a);
-    const found = (await propertiesOf(contactId)).find((p) => addressKey(p.address) === key);
-    if (found) return found.id;
-  }
-  return fallback || null;
+  const list = await propertiesOf(contactId);
+  const key = a && a.street1 ? addressKey(a) : null;
+  const found = (key && list.find((p) => addressKey(p.address) === key)) || list.find((p) => p.id === fallback) || null;
+  return found ? { id: found.id, property: found } : { id: fallback || null };
 }
 
 async function mapVisit(r, ctx) {
@@ -244,9 +244,9 @@ async function mapVisit(r, ctx) {
   if (end <= start) end = start < "23:00" ? `${String(Number(start.slice(0, 2)) + 1).padStart(2, "0")}:${start.slice(3)}` : "23:59";
   const window = placeholder || r.is_anytime ? { type: "anytime", minutes: 0 } : r.arrival_window > 0 ? { type: "window", minutes: Math.max(15, r.arrival_window) } : { type: "exact", minutes: 0 };
   const status = VISIT_STATUS[r.status];
-  const propertyId = contact ? await propertyFor(contact.id, r.address, job.property_id || contact.primary_property_id) : job.property_id;
-  const place = await placeOf(propertyId, contact);
-  const template = status === "scheduled" ? await checklistFor(job) : null;
+  const prop = contact ? await propertyFor(contact.id, r.address, job.property_id || contact.primary_property_id) : { id: job.property_id };
+  const place = await placeOf(prop.id, contact, { property: prop.property });
+  const template = status === "scheduled" ? await checklistFor(job, {}, ctx && ctx.cache) : null;
   const id = idForRotor("visit", r.id);
   const data = {
     id, job_id: job.id, contact_id: job.contact_id, ordering: r.ordering, date, start, end, window, ...(placeholder ? { date_only: true } : {}),
