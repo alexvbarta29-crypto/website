@@ -1,8 +1,16 @@
 {
- "count": 160,
+ "count": 161,
  "rating": 5.0,
- "updated": "2026-11-08T22:12:36.814Z",
+ "updated": "2026-11-09T20:49:25.311Z",
  "reviews": [
+  {
+   "id": "3c4b676c09",
+   "name": "Jane Thompson",
+   "stars": 5,
+   "text": "Fantastic service!  Great communication and arrived when they said they would.  Personable AND professional, representative got right to work, was respectful of property, and delivered sparkling windows.  Will definitely continue to use Barta service for window cleaning.",
+   "created": "2026-11-09T15:31:10.456273Z",
+   "reply": "Thank you, Jane! Showing up when we say we will is a big deal to us, so we're thrilled the communication and those sparkling windows hit the mark. We appreciate you trusting us with your home and look forward to the next visit!"
+  },
   {
    "id": "6bcfad49a3",
    "name": "Kate Sawyer",
