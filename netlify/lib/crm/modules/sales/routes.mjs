@@ -11,17 +11,17 @@
 import { getRecord, getRecords, createRecord, updateRecord, readIndex } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { nowIso, now } from "../../core/clock.mjs";
-import { InputError, NotFoundError, ConflictError, ExistsError, ForbiddenError } from "../../core/errors.mjs";
+import { InputError, NotFoundError, ConflictError, ExistsError, ForbiddenError, BlobsTransientError, BudgetError, TimeoutError, UnknownOutcome } from "../../core/errors.mjs";
 import { techVisibleContacts, techView } from "../../core/perms.mjs";
 import { fail } from "../../core/http.mjs";
 import { withDefaults } from "../../core/stats.mjs";
 import { DEAL_STATUSES, LOST_REASONS, OPEN_TASK, TASK_KINDS } from "./types.mjs";
-import { stepOf, logStep, noteStep, setStatus, isOpen, smsHref } from "./cadence.mjs";
+import { stepFor, logStep, noteStep, setStatus, isOpen, smsHref } from "./cadence.mjs";
 import {
   enroll, changeEnrollment, pauseEnrollment, resumeEnrollment, stopEnrollment, cadenceById, enrollmentsOf, previewStep, enrollmentView,
 } from "./enroll.mjs";
 import { markDeal, dealFor } from "./deals.mjs";
-import { logCall, sentByHand, sendStep, callList, callSummary, attention, smsMode } from "./calls.mjs";
+import { logCall, sentByHand, sendStep, callList, callSummary, attention, smsMode, textWindow } from "./calls.mjs";
 import { keepAttention } from "./automations.mjs";
 import { createTask, cleanTaskInput, completeTask } from "./tasks.mjs";
 import { contactOf, nameOf, primaryPhone, relRecords, W, loadEnv } from "./common.mjs";
@@ -139,8 +139,10 @@ const enrollmentsRoute = async (ctx) => {
 async function enrollmentDetail(id, ctx) {
   const got = await record("enrollment", id, "follow-up");
   const e = got.data;
-  const [cadence, contact, mode] = await Promise.all([cadenceById(e.cadence_id), contactOf(e.contact_id, ctx), smsMode()]);
-  const step = stepOf(cadence, e.step_n);
+  const [cadence, contact, mode, win] = await Promise.all([cadenceById(e.cadence_id), contactOf(e.contact_id, ctx), smsMode(), textWindow()]);
+  const step = stepFor(cadence, e);
+  // past the sender's hours: a waiting text waits for the morning (shown, not stored)
+  if (e.pending && !win.ok && win.until && mode !== "live" && mode !== "test" && !(e.pending.hold_until && Date.parse(e.pending.hold_until) > now().getTime())) e.pending = { ...e.pending, hold_until: win.until };
   let preview = null;
   if (isOpen(e) && step && step.template_key) {
     const p = e.pending && e.pending.text ? { text: e.pending.text } : await previewStep(e, step, { sender: ctx.user });
@@ -190,6 +192,7 @@ const bulkResumeRoute = async (ctx) => {
   if (list.some((x) => !isId(x, "enrollment"))) throw new InputError("That isn't a follow-up.", "ids");
   let resumed = 0;
   const skipped = [];
+  const failed = [];
   const env = await loadEnv();
   const cadences = new Map();
   for (const id of [...new Set(list)]) {
@@ -198,10 +201,13 @@ const bulkResumeRoute = async (ctx) => {
       if (r.changed) resumed += 1; else skipped.push(id);
     } catch (e) {
       if (e instanceof NotFoundError) { skipped.push(id); continue; }
-      throw e;
+      // one follow-up that can't resume doesn't stop the others; storage trouble does
+      if (e instanceof BlobsTransientError || e instanceof BudgetError || e instanceof TimeoutError || e instanceof UnknownOutcome) throw e;
+      console.error(`crm:sales: a follow-up did not resume (${(e && (e.code || e.name)) || "error"})`);
+      failed.push({ id, error: e instanceof InputError || e instanceof ConflictError ? e.message : "It couldn't resume." });
     }
   }
-  return { data: { resumed, skipped } };
+  return { data: { resumed, skipped, failed } };
 };
 
 // ------------------------------------------------------------ cadences

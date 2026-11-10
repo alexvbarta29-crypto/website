@@ -27,8 +27,8 @@ import { runAutomation } from "../../core/automations.mjs";
 import { getTemplateByKey, renderTemplate, varsFor } from "../../core/templates.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { TEXT_ACTIONS, OPEN_DEAL } from "./types.mjs";
-import { logStep, setStatus, stepOf } from "./cadence.mjs";
-import { changeEnrollment, runTaskStep, replan, sendStepText, stepEffects, cadenceById } from "./enroll.mjs";
+import { logStep, setStatus, stepFor } from "./cadence.mjs";
+import { changeEnrollment, runTaskStep, replan, refresh, sendStepText, stepEffects, cadenceById } from "./enroll.mjs";
 import { markDeal } from "./deals.mjs";
 import { attention, ATTENTION_KEY } from "./calls.mjs";
 import { loadEnv, contactOf, firstNameOf, townOf, nameOf } from "./common.mjs";
@@ -118,19 +118,24 @@ export const automations = [
 const EXPIRE_FLOOR_DAYS = 3;
 
 export async function cadenceSweep(ctx) {
-  const ix = await readIndex("enrollments/active", "");
+  const [ix, cix] = await Promise.all([readIndex("enrollments/active", ""), readIndex("cadences", "")]);
   const t = now();
-  const rows = ix.rows.filter((r) => r.st === "active");
+  const cads = new Map(cix.rows.map((c) => [c.k, c]));
+  // a cadence whose steps changed since an open enrollment was planned (or an
+  // enrollment from before step ids): bring it up to date first (refreshStep)
+  const stale = (r) => { const c = cads.get(r.cad); return !!c && (!r.sid || (c.sv || 0) > (r.sv || 0)); };
+  const rows = ix.rows.filter((r) => r.st === "active" || (r.st === "paused" && stale(r)));
   // cheap checks first: most passes touch nothing and read nothing more
-  const candidates = rows.filter((r) => !r.due || (r.act === "task" && Date.parse(r.due) <= t.getTime())
+  const candidates = rows.filter((r) => stale(r) || !r.due || (r.act === "task" && Date.parse(r.due) <= t.getTime())
     || (r.de && Date.parse(r.de) <= t.getTime() && (TEXT_ACTIONS.includes(r.act) || t.getTime() - Date.parse(r.de) > EXPIRE_FLOOR_DAYS * DAY)));
   if (!candidates.length) return { progress: 0 };
   const env = await loadEnv(t);
-  const cads = new Map((await readIndex("cadences", "")).rows.map((c) => [c.k, c]));
+  const cadences = new Map();
   let progress = 0;
   for (const r of candidates) {
     if (ctx.budget && ctx.budget.left() < 6000) return { progress, done: false };
     try {
+      if (stale(r)) { const x = await refresh(r.id, ctx, { env, cadences }); if (x.changed) progress += 1; continue; }
       if (!r.due) { const x = await replan(r.id, ctx); if (x.changed) progress += 1; continue; }
       if (r.act === "task") { const x = await runTaskStep({ id: r.id, ...(await getRecord("enrollment", r.id)).data }, ctx); if (x.changed) progress += 1; continue; }
       if (r.de && t.getTime() - Date.parse(r.de) > env.sales.expire_days * DAY) {
@@ -156,7 +161,7 @@ async function textAnyway(r, ctx, env) {
   if (!got || got.data.status !== "active" || got.data.step_n !== r.n || got.data.pending) return false;
   const e = got.data;
   const cadence = await cadenceById(e.cadence_id);
-  const step = stepOf(cadence, e.step_n);
+  const step = stepFor(cadence, e);
   if (!step || step.review_before_send || !TEXT_ACTIONS.includes(step.action) || !cadence || cadence.unattended !== "text_anyway") return false;
   if (!(await ctx.mayAct({ record: e }))) { await ctx.would(e.id, "text"); return false; }
   const sent = await sendStepText(e, step, { ctx });
@@ -164,7 +169,7 @@ async function textAnyway(r, ctx, env) {
   const x = await changeEnrollment(e.id, (en0, c, en) => logStep(en0, c, e.step_n, {
     action: ["blocked", "skipped"].includes(sent.status) ? "text_blocked" : "text", unattended: true, by: "system",
     ...(sent.outbox_id ? { outbox_id: sent.outbox_id } : {}), ...(sent.blocked_reason ? { reason: sent.blocked_reason } : {}), ...(sent.mode ? { mode: sent.mode } : {}), ...effects,
-    cid: `anyway-${e.id}-${e.step_n}`,
+    cid: `anyway-${e.id}-${e.step_id || e.step_n}`,
   }, en), ctx, { env, action: "text" });
   return x.changed;
 }

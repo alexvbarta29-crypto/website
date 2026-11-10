@@ -19,7 +19,7 @@ import { InputError } from "../../core/errors.mjs";
 import { isLocalTime } from "../../core/clock.mjs";
 import { isPlainObject } from "../../core/validate.mjs";
 import { types } from "./types.mjs";
-import { TEMPLATES, seedCadences } from "./seed.mjs";
+import { TEMPLATES, seedCadences, addStepIds } from "./seed.mjs";
 import { SALES_DEFAULTS } from "./common.mjs";
 import { enroll, stopAll } from "./enroll.mjs";
 import { markDeal } from "./deals.mjs";
@@ -76,7 +76,7 @@ export default defineModule({
   sweeps,
   automations,
   templates: TEMPLATES,
-  seeds: [{ v: 1, run: seedCadences }],
+  seeds: [{ v: 1, run: seedCadences }, { v: 2, run: addStepIds }],
   onMerge: onMergeSales,
   attention: [{ key: "sales.attention", label: "Leads that need a call", perm: "sales:work", count: () => attentionCount(), link: "#/calls" }],
   pushKinds: ["new_lead"],

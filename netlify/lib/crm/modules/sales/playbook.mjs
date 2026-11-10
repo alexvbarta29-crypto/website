@@ -7,19 +7,27 @@
 // so an owner who edits a follow-up text in Settings → Templates sees the
 // same words on the Follow-ups page. Anything else (the CRM not set up, no
 // store on this deploy, a slow or failing read, a template missing) keeps
-// the built-in text. Nothing here ever throws or delays the page more than
-// READ_MS.
+// the built-in text, and so does a template that is switched off. Nothing
+// here ever throws or delays the page more than WAIT_MS; a read that failed
+// or took too long is remembered for FAIL_MS, so a storage outage costs
+// one slow page, not one per visit.
+//
+// The page writes each text as HTML (only its fill-ins are escaped) and has
+// no Content-Security-Policy, so a text holding <, > or & never reaches it:
+// that step keeps the built-in text (pageSafe()).
 //
 // The CRM's {{variables}} become the playbook's fill-ins: {{first_name}} →
-// {first}, {{sender_first_name}} → {rep}, {{company_name}} → {co},
-// {{review_count}} → {reviews}, {{review_link}} → {link}; any other
-// variable shows its fallback (or a [Label] to fill in).
+// {first}, {{sender_first_name}} → {rep}, {{company_name}} and the company's
+// name written out → {co}, {{review_count}} → {reviews}, {{review_link}} →
+// {link}; any other variable shows its fallback (or a [Label] to fill in).
 
 import { PLAYBOOK_HTML } from "../../../playbook-page.mjs";
 import { crmDeploy } from "../contacts/hook.mjs";
 
-export const READ_MS = 1500;
+export const READ_MS = 1200;        // the store budget for the read
+export const WAIT_MS = 1300;        // the most the page ever waits (≤ 1.5 s)
 export const CACHE_MS = 60 * 1000;
+export const FAIL_MS = 30 * 1000;
 export const KEYS = Object.freeze([...Array.from({ length: 9 }, (_, i) => `cad_new_${i + 1}`), ...Array.from({ length: 5 }, (_, i) => `cad_est_${i + 1}`)]);
 
 // The page's built-in texts, exactly as playbook-page.mjs holds them.
@@ -49,18 +57,26 @@ const safeLiteral = (s) => JSON.stringify(String(s)).replace(/</g, "\\u003c").re
 const FILL = { first_name: "{first}", sender_first_name: "{rep}", company_name: "{co}", review_count: "{reviews}", review_link: "{link}" };
 const LABELS = { last_name: "Last Name", full_name: "Full Name", town: "Town", company_phone: "Company Phone", quote_link: "Quote Link", portal_link: "Portal Link" };
 
-// A CRM template body → the playbook's fill-in syntax (pure).
+// Whether a text may go into the page: no markup characters (the page
+// renders texts as HTML), nothing that isn't printable.
+export const pageSafe = (t) => typeof t === "string" && !/[<>&\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(t);
+
+// A CRM template body → the playbook's fill-in syntax (pure). null when it
+// can't be shown on the page (pageSafe).
 export function toPlaybookText(body) {
-  return String(body || "")
+  const out = String(body || "")
     .replace(/\{\{\s*([a-z_]+)\s*(?:\|([^{}]*))?\}\}/gi, (_, name, fallback) => {
       const k = name.toLowerCase();
       if (FILL[k]) return FILL[k];
       if (fallback !== undefined) return fallback.trim();
       return `[${LABELS[k] || k.replace(/_/g, " ")}]`;
     })
+    // the company's name as the page fills it in
+    .replace(/BARTA Window Washing/gi, "{co}")
     // a single brace left in the words would read as a fill-in on the page
     .replace(/\{(?!first\}|rep\}|co\}|reviews\}|link\})/g, "(")
     .slice(0, 1600);
+  return pageSafe(out) ? out : null;
 }
 
 // The page with the given texts ({ key: playbook text }) in place of the
@@ -69,7 +85,7 @@ export function withTexts(html, texts = {}) {
   let out = html;
   for (const key of KEYS) {
     const want = texts[key];
-    if (typeof want !== "string" || !want.trim() || want === BUILT_IN[key]) continue;
+    if (typeof want !== "string" || !want.trim() || want === BUILT_IN[key] || !pageSafe(want)) continue;
     const lit = jsLiteral(BUILT_IN[key]);
     if (!out.includes(lit)) continue;
     out = out.replace(lit, () => safeLiteral(want));
@@ -77,7 +93,7 @@ export function withTexts(html, texts = {}) {
   return out;
 }
 
-let cache = null;   // { at, texts }
+let cache = null;   // { at, texts, ttl } (texts null: the last read failed)
 export function clearPlaybookCache() { cache = null; }
 
 const timeout = (p, ms) => Promise.race([p, new Promise((resolve) => { const t = setTimeout(() => resolve(null), ms); t.unref?.(); })]);
@@ -88,7 +104,8 @@ export async function crmTexts(req, context, env = process.env) {
   const deploy = crmDeploy(req, context, env);
   if (!deploy) return null;
   const t = performance.now();
-  if (cache && t - cache.at < CACHE_MS) return cache.texts;
+  if (cache && t - cache.at < cache.ttl) return cache.texts;
+  const failed = () => { cache = { at: performance.now(), texts: null, ttl: FAIL_MS }; return null; };
   try {
     const store = await import("../../../crm-store.mjs");
     const read = store.withStoreScope({ deploy, budget: store.withBudget(READ_MS, 20, { strict: false }), requestId: "playbook" }, async () => {
@@ -99,18 +116,21 @@ export async function crmTexts(req, context, env = process.env) {
       const out = {};
       for (const g of got) {
         const d = g && g.data;
-        if (!d || d.deleted_at || !KEYS.includes(d.key) || typeof d.body !== "string") continue;
-        out[d.key] = toPlaybookText(d.body);
+        // a switched-off template keeps the page's own text
+        if (!d || d.deleted_at || d.active === false || !KEYS.includes(d.key) || typeof d.body !== "string") continue;
+        const text = toPlaybookText(d.body);
+        if (text) out[d.key] = text;
       }
       return out;
     });
-    const texts = await timeout(read, READ_MS + 200);
-    if (!texts) return null;
-    cache = { at: performance.now(), texts };
+    read.catch(() => {});
+    const texts = await timeout(read, WAIT_MS - (performance.now() - t));
+    if (!texts) return failed();
+    cache = { at: performance.now(), texts, ttl: CACHE_MS };
     return texts;
   } catch (e) {
     console.error(`crm:sales: playbook texts not read (${(e && (e.code || e.name)) || "error"})`);
-    return null;
+    return failed();
   }
 }
 

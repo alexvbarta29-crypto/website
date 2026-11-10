@@ -24,7 +24,12 @@ office's Follow-ups page, see below). Record types: `deal`, `cadence`,
   `sms:` link with the text) and asks **Did you send it?** "Yes" logs the
   step as sent by hand (`sent_by_hand`) and moves on; "Not yet" leaves it
   waiting on the list. Hand-sent texts carry no "Reply STOP" line (D5: the
-  sender adds it to texts the CRM sends).
+  sender adds it to texts the CRM sends). Only a text the app prepared (a
+  call logged with no answer) can be marked sent (409 otherwise). Outside
+  the sender's hours for follow-up texts (08:00-20:00, D12) the sheet says
+  it's too late to text, shows when it can go (the list says "Text waits
+  until 8:00 AM") and offers **Remind me at 8:00 AM** (a task), not Copy or
+  Messages; "I sent it" is refused until then.
 - **Estimate follow-up steps are read before sending** (D21): no answer
   opens the compose sheet with the text to adjust; nothing goes out until a
   person sends it (and while dry-run, that "send" is again Copy / Messages
@@ -59,8 +64,13 @@ Texts (`TEMPLATES`, category service): `lead_ack`, `cad_new_1..9`,
 `cad_est_1..5` from the office Follow-ups page's wording (texts 5 and 8 per
 D25: "fully insured", "we'll come back and re-clean it free of charge"),
 and `staff_new_lead` (staff). None has an opt-out line; the core sender
-adds it. Variables: `{{first_name|there}}`, `{{sender_first_name}}`,
-`{{review_count|150}}`, `{{review_link}}`.
+adds it. Variables: `{{first_name|}}` (an empty fallback: with no first
+name on file the text reads "Good morning! This is..." and "Hey, just
+missed you", core's fill takes the space before an empty fill-in along),
+`{{sender_first_name}}`, `{{review_count|150}}`, `{{review_link}}`.
+Settings → Cadences shows texts 5 and 8 with one tap to put the
+playbook's older words back (or the website's again), and a link to each in
+Templates.
 
 ### When a step is due (`cadence.mjs`, pure)
 
@@ -76,7 +86,22 @@ adds it. Variables: `{{first_name|there}}`, `{{sender_first_name}}`,
   between steps stay: when day 1's last call slips into the next morning,
   day 2's calls start the open day after (a lead at 10:30 the day before
   Thanksgiving: Wednesday 12 and 4, Friday 9, then Saturday, then Monday).
-- Changes to a cadence apply from each lead's next step.
+- Steps have ids (`s1`, `s2`, ... assigned when a cadence is saved, never
+  reused; `step_seq`). An enrollment keeps its current step's id
+  (`step_id`; `step_n` is its position when planned), so inserting,
+  removing or reordering steps never moves a lead onto another step's
+  text. A removed step's id maps to the next step that survived
+  (`moved`); a lead on it goes there (planned from now), or completes when
+  nothing survived. `steps_v` counts changes to the steps: the
+  `sales.cadence` sweep brings each open enrollment of a changed cadence up
+  to date (its position, label and text; its time as planned). A client
+  that sends steps without ids keeps the old ids by position; seed v2 gave
+  ids to cadences stored before them.
+- Changes to a cadence apply from each lead's next step; an edit to the
+  current step's text applies to that step's text.
+- Resuming plans the current step from now (from the later of its day and
+  today), however long it was paused; an enrollment without a day 1 (as
+  Rotor's come) gets today as day 1.
 - A text never goes out in quiet hours (core sender: 08:00-20:00 for
   cadence texts).
 
@@ -125,7 +150,7 @@ event (only by hand).
 | `GET /enrollments?status=&cadence=&contact=` · `POST /enrollments` `{ contact_id, cadence_key }` | `sales:work` | starting one by hand skips the entry rules; the open one comes back if there is one |
 | `GET /enrollments/:id` | `sales:work` | with the step's text preview and the SMS mode |
 | `POST /enrollments/:id/pause` · `resume` · `stop` · `advance` · `skip` | `sales:work` | |
-| `POST /enrollments/bulk-resume` `{ ids }` | `sales:work` | up to 15 at once |
+| `POST /enrollments/bulk-resume` `{ ids }` | `sales:work` | up to 15 at once → `{ resumed, skipped, failed: [{ id, error }] }` (one that can't resume doesn't stop the rest) |
 | `GET /cadences` · `GET /cadences/:id` | `sales:work` | |
 | `POST /cadences` · `PATCH /cadences/:id` (If-Match) | `cadences:configure` | |
 | `GET /tasks?assignee=me&kind=&status=&contact=` | the office | |
@@ -152,8 +177,9 @@ follow-up), `abandon_days` (30), `day_cutoff` ("17:00"), `ack_delay_min`
 
 ## Sweeps and listeners
 
-- `sales.cadence` (fast lane, every pass, mutates): task steps make their
-  task; a call step whose window passed runs its text only when the cadence
+- `sales.cadence` (fast lane, every pass, mutates): enrollments of a
+  cadence whose steps changed are brought up to date first; task steps make
+  their task; a call step whose window passed runs its text only when the cadence
   says `text_anyway` and the step isn't read before sending; a step more
   than `expire_days` late ends the follow-up (`expired`); a follow-up
   without a plan gets one.
@@ -187,8 +213,8 @@ lands in the Outbox and nowhere else).
 
 ## Parallel run (before cutover)
 
-Every automated path (listeners, sweeps, automations) asks the guard
-first: on a deal or follow-up the import brought in it changes nothing and
+Every automated path (listeners, sweeps, automations, task steps, and the
+deal's last activity when a follow-up ends) asks the guard first: on a deal or follow-up the import brought in it changes nothing and
 writes a `would-<action>` row (`would-mark_won`, `would-mark_abandoned`,
 `would-enroll`, `would-text`, ...). What the CRM made itself (shadow
 records) it changes. People's actions in the app are theirs.
@@ -198,9 +224,14 @@ records) it changes. People's actions in the app are theirs.
 `netlify/functions/playbook.mjs` keeps its built-in texts. Once the CRM is
 set up (`CRM_PRODUCTION` in production, a store, and the seeded
 templates), the page shows the CRM's current wording of `cad_new_1..9` and
-`cad_est_1..5` (Templates), cached a minute; any failure (no store, a slow
-read over 1.5 s, a missing template) shows the built-in text for that
-step. Before setup the page is byte for byte what it was.
+`cad_est_1..5` (Templates), cached a minute, in the page's own fill-ins
+(`{first}`, `{rep}`, `{co}` for the company's name, `{reviews}`,
+`{link}`). A step keeps the built-in text when its template is missing,
+switched off, or holds `<`, `>` or `&` (the page renders texts as HTML and
+has no CSP, so markup never gets in). The page waits at most 1.3 s for the
+store; a failed or slow read is remembered for 30 s (the built-in page
+right away meanwhile). Before setup the page is byte for byte what it
+was.
 
 ## Import phases (design §10.2)
 

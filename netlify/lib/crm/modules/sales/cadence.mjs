@@ -19,6 +19,14 @@
 //     list does not fill with red rows after one late call.
 //   - Overdue = past its window's end; "needs attention" = a whole window
 //     more has gone by since.
+//
+// Steps have ids (s1, s2, ... assigned when a cadence is saved, never
+// reused). An enrollment remembers its current step's id (step_id), so an
+// owner inserting, removing or reordering steps never moves a lead onto
+// another step's text: it carries on from its own step in the new order. A
+// lead whose step was removed goes to the next step that survived (the
+// cadence's `moved` map), or completes when none did. step_n is the step's
+// position when it was planned (what the screens show and send back).
 
 import { localDate, localTime, addLocalDays, zonedToUtc, dowOfDate, isHoliday, DEFAULT_HOURS, DEFAULT_CALENDAR } from "../../core/clock.mjs";
 import { TEXT_ACTIONS, MAX_HISTORY, OPEN_ENROLLMENT } from "./types.mjs";
@@ -103,6 +111,36 @@ export function nextSlot(fromDate, after, windows, env = {}) {
 
 export const stepOf = (cadence, n) => ((cadence && cadence.steps) || [])[n - 1] || null;
 
+// ------------------------------------------------------------ step ids
+
+const stepsOf = (cadence) => (cadence && Array.isArray(cadence.steps) ? cadence.steps : []);
+// A step's id (a cadence saved before ids: s1, s2, ... by position).
+export const stepIdAt = (cadence, i) => { const st = stepsOf(cadence)[i]; return st ? (st.id || `s${i + 1}`) : null; };
+export const indexOfStepId = (cadence, sid) => stepsOf(cadence).findIndex((st, i) => (st.id || `s${i + 1}`) === sid);
+
+// Where an enrollment stands in its cadence as it is now: { index, step,
+// moved } (index -1: no step left). Its own step by id; a removed step's
+// next survivor; an enrollment from before ids by its position.
+export function resolveStep(cadence, e) {
+  const steps = stepsOf(cadence);
+  if (e && e.step_id) {
+    const moves = (cadence && cadence.moved) || {};
+    let sid = e.step_id;
+    for (let hop = 0; hop < 40; hop++) {
+      const i = indexOfStepId(cadence, sid);
+      if (i >= 0) return { index: i, step: steps[i], moved: sid !== e.step_id };
+      if (!Object.hasOwn(moves, sid) || !moves[sid]) break;
+      sid = moves[sid];
+    }
+    return { index: -1, step: null, moved: true };
+  }
+  const i = Math.max(1, Number(e && e.step_n) || 1) - 1;
+  return i < steps.length ? { index: i, step: steps[i], moved: false } : { index: -1, step: null, moved: false };
+}
+export const stepFor = (cadence, e) => resolveStep(cadence, e).step;
+// The position (1-based) of the step after the enrollment's current one.
+const afterCurrent = (cadence, e) => { const r = resolveStep(cadence, e); return r.index < 0 ? stepsOf(cadence).length + 1 : r.index + 2; };
+
 // When step n is due. prev = { at, day } of the step logged before it (none
 // for the first step or after a resume). → { due_at, due_end, date, window } (ISO).
 export function planStep(cadence, n, { day1, prev, now, ...env } = {}) {
@@ -130,7 +168,10 @@ export function planStep(cadence, n, { day1, prev, now, ...env } = {}) {
   // on its day, a step keeps its own window while that hasn't ended; a step
   // pushed to a later day (a late one before it) takes the next open window
   const ideal = minDate === idealDate ? slotOf(minDate, step.window) : null;
-  const s = ideal && ideal.end > after ? ideal : nextSlot(minDate, after, windowsOf(cadence), env);
+  // the search starts at the later of the step's day and today (a lead
+  // resumed weeks after its day gets the next window from now)
+  const today = localDate(after);
+  const s = ideal && ideal.end > after ? ideal : nextSlot(minDate > today ? minDate : today, after, windowsOf(cadence), env);
   if (!s) return null;
   return { due_at: s.start.toISOString(), due_end: s.end.toISOString(), date: s.date, window: s.window };
 }
@@ -194,16 +235,21 @@ const pushHistory = (e, entry) => [...(e.history || []), entry].slice(-MAX_HISTO
 export function withStep(e, cadence, n, env) {
   const next = { ...e, step_n: n };
   delete next.pending;
+  // an enrollment without a day 1 (imported from Rotor): day 1 is now
+  if (!next.day1) next.day1 = dayOne(env.now, env);
+  if (cadence && cadence.steps_v) next.steps_v = cadence.steps_v;
   const step = stepOf(cadence, n);
   if (!step) {
     next.status = "completed";
     next.ended_at = new Date(toDate(env.now)).toISOString();
-    delete next.next_due_at; delete next.due_end; delete next.cur;
+    delete next.next_due_at; delete next.due_end; delete next.cur; delete next.step_id;
     return next;
   }
-  const plan = planStep(cadence, n, { ...env, day1: e.day1 });
+  next.step_id = stepIdAt(cadence, n - 1);
+  const plan = planStep(cadence, n, { ...env, day1: next.day1 });
   next.cur = stepInfo(step);
   if (plan) { next.next_due_at = plan.due_at; if (plan.due_end) next.due_end = plan.due_end; else delete next.due_end; }
+  else { delete next.next_due_at; delete next.due_end; }
   return next;
 }
 
@@ -220,11 +266,13 @@ export function logStep(e, cadence, n, entry, env) {
   if (!isOpen(e) || e.step_n !== n) return null;
   if (entry.cid && (e.history || []).some((h) => h.cid === entry.cid && h.action === entry.action)) return null;
   const at = new Date(toDate(env.now)).toISOString();
-  const step = stepOf(cadence, n);
-  const withEntry = { ...e, history: pushHistory(e, { n, at, ...entry }), last_touch_at: entry.touch === false ? e.last_touch_at : at };
+  const r = resolveStep(cadence, e);
+  const sid = r.index >= 0 ? stepIdAt(cadence, r.index) : e.step_id;
+  const withEntry = { ...e, history: pushHistory(e, { n, ...(sid ? { sid } : {}), at, ...entry }), last_touch_at: entry.touch === false ? e.last_touch_at : at };
+  if (!withEntry.last_touch_at) delete withEntry.last_touch_at;
   delete withEntry.history[withEntry.history.length - 1].touch;
   if (e.status === "paused") return { ...withEntry, step_n: n };
-  return withStep(withEntry, cadence, n + 1, { ...env, prev: { at, day: step ? step.day : null } });
+  return withStep(withEntry, cadence, afterCurrent(cadence, e), { ...env, prev: { at, day: r.step ? r.step.day : null } });
 }
 
 // Records something on the current step without moving on (a call whose text
@@ -233,7 +281,7 @@ export function noteStep(e, n, entry, env, extra = {}) {
   if (!e || (entry.cid && (e.history || []).some((h) => h.cid === entry.cid && h.action === entry.action))) return null;
   const at = new Date(toDate(env.now)).toISOString();
   const touch = entry.touch !== false;
-  const h = { n, at, ...entry };
+  const h = { n, ...(e.step_id ? { sid: e.step_id } : {}), at, ...entry };
   delete h.touch;
   return { ...e, history: pushHistory(e, h), ...(touch ? { last_touch_at: at } : {}), ...extra };
 }
@@ -262,7 +310,25 @@ export function setStatus(e, status, { reason, now } = {}) {
 export function resume(e, cadence, env) {
   const r = setStatus(e, "active", env);
   if (!r) return null;
-  return withStep(r, cadence, r.step_n || 1, { ...env, prev: null });
+  const at = resolveStep(cadence, r);
+  return withStep(r, cadence, at.index < 0 ? stepsOf(cadence).length + 1 : at.index + 1, { ...env, prev: null });
+}
+
+// After the cadence's steps changed (Settings → Cadences): the enrollment
+// keeps its own step (its position, label and text brought up to date, its
+// time as planned); a removed step moves it to the next surviving one,
+// planned from now, or completes it. An enrollment from before step ids
+// gets its step's id. → the enrollment, or null when nothing changes.
+export function refreshStep(e, cadence, env) {
+  if (!isOpen(e) || !cadence) return null;
+  const r = resolveStep(cadence, e);
+  if (r.index < 0) return withStep(e, cadence, stepsOf(cadence).length + 1, env);
+  if (r.moved) return withStep(e, cadence, r.index + 1, { ...env, prev: null });
+  const n = r.index + 1;
+  const next = { ...e, step_n: n, step_id: stepIdAt(cadence, r.index), cur: stepInfo(r.step), ...(cadence.steps_v ? { steps_v: cadence.steps_v } : {}) };
+  if (next.pending && next.pending.n === e.step_n) next.pending = { ...next.pending, n };
+  if (!next.day1) next.day1 = dayOne(env.now, env);
+  return JSON.stringify(next) === JSON.stringify(e) ? null : next;
 }
 
 // The text a step sends is a step's job when its action texts.

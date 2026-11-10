@@ -84,3 +84,22 @@ test("a merge moves the merged contact's deals, follow-ups and tasks; a second o
     assert.equal(again, eb2);
   } finally { t.done(); }
 });
+
+test("every seeded text reads naturally with no first name on file (\"Good morning!\", \"Hey, ...\"), and with one", async () => {
+  const T = await import("../../../netlify/lib/crm/core/templates.mjs");
+  const base = { sender_first_name: "Alex", review_count: "150", review_link: "https://example.com/r" };
+  for (const tpl of SEED.TEMPLATES) {
+    const without = T.renderTemplate({ ...tpl }, { ...base, first_name: "", town: "" }).text;
+    assert.doesNotMatch(without, /\bthere\b[!,]|morning there|Hey there|Hi there/, `${tpl.key}: no "there" for a missing name`);
+    assert.doesNotMatch(without, / [,.!?]/, `${tpl.key}: no stray space before punctuation`);
+    const withName = T.renderTemplate({ ...tpl }, { ...base, first_name: "Pat", town: "Delano" }).text;
+    if (/\{\{\s*first_name\b/.test(tpl.body)) assert.match(withName, /Pat/, `${tpl.key}: the name when we have it`);
+  }
+  const r = (key, first) => T.renderTemplate(SEED.TEMPLATES.find((x) => x.key === key), { ...base, first_name: first }).text;
+  assert.match(r("cad_new_4", ""), /^Good morning! This is Alex with BARTA Window Washing\./);
+  assert.match(r("cad_new_4", "Pat"), /^Good morning Pat! This is Alex/);
+  assert.match(r("cad_new_2", ""), /^Hey, just missed you again!/);
+  assert.match(r("cad_est_1", ""), /^Hey, it's Alex with BARTA Window Washing\./);
+  assert.match(r("lead_ack", ""), /^Hi! Thanks for reaching out/);
+  assert.match(r("staff_new_lead", ""), /^New lead: Someone in the area\./);
+});

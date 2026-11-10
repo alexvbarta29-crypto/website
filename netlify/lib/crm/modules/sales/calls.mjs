@@ -24,16 +24,17 @@
 // Every call writes a timeline row (call.<outcome> or call.in), the sales
 // stats part and the call.logged event.
 
-import { getRecord, updateRecord, updateStats, addActivity, readIndex } from "../../../crm-store.mjs";
+import { getRecord, updateRecord, updateStats, addActivity, readIndex, getSetting } from "../../../crm-store.mjs";
 import { deriveId, newId, isId } from "../../core/ids.mjs";
-import { now, nowIso, localDate, addLocalDays } from "../../core/clock.mjs";
+import { now, nowIso, localDate, addLocalDays, nextAllowed, DEFAULT_CALENDAR } from "../../core/clock.mjs";
+import { quietRule, allowedNow } from "../../core/send.mjs";
 import { InputError, NotFoundError, ConflictError } from "../../core/errors.mjs";
 import { emit } from "../../core/events.mjs";
 import { adapter } from "../../adapters/index.mjs";
 import { contactShard } from "../../core/stats.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { CALL_OUTCOMES } from "./types.mjs";
-import { stepOf, logStep, noteStep, setStatus, isOpen, textsOn, windowsOf, windowsMissed, isOverdue, smsHref } from "./cadence.mjs";
+import { stepFor, resolveStep, refreshStep, logStep, noteStep, setStatus, isOpen, textsOn, windowsOf, windowsMissed, isOverdue, smsHref } from "./cadence.mjs";
 import {
   changeEnrollment, openEnrollmentsOf, cadenceById, sendStepText, previewStep, stepEffects, enrollmentView,
 } from "./enroll.mjs";
@@ -55,20 +56,38 @@ export function setCalling(contactId, minutes = 30, ctx = {}) {
 
 // ------------------------------------------------------------ a step's text after a call
 
+// May a follow-up text go out now (the sender's hours for cadence texts,
+// 08:00-20:00 Central by default, D12)? → { ok, until? } (until: the next
+// allowed time). A text sent by hand keeps the same hours.
+export async function textWindow(at = now()) {
+  const [messaging, calendar] = await Promise.all([getSetting("messaging").catch(() => null), getSetting("calendar").catch(() => null)]);
+  const rule = quietRule("service", "cadence", (messaging && messaging.quiet) || {}, calendar || DEFAULT_CALENDAR);
+  if (!rule || allowedNow(rule, at)) return { ok: true };
+  let until = null;
+  try { until = nextAllowed(at, rule).toISOString(); } catch { until = null; }
+  return { ok: false, until };
+}
+const TOO_LATE = "It's too late to text now: follow-up texts go out between 8 AM and 8 PM. It waits on your list until then.";
+
 // What the person sees next: the text went out ("sent"), a text to send by
 // hand ("hand"), the compose sheet ("compose"), held back ("blocked"), or
 // nothing to text ("none").
 async function textAfterCall(enr, step, { callId, user, ctx, env, contact }) {
   const by = W(ctx).by;
   if (step.review_before_send) {
-    const p = await previewStep(enr, step, { sender: user });
-    const r = await changeEnrollment(enr.id, (e) => (e.step_n === enr.step_n ? { ...e, pending: { n: enr.step_n, kind: "compose", at: nowIso() } } : null), ctx, { env });
-    return { next: { kind: "compose", n: enr.step_n, text: p.text, missing: p.missing, template_key: p.template_key, mode: await smsMode(), ...(contact ? { sms_href: smsHref(primaryPhone(contact), p.text) } : {}) }, enrollment: r.data };
+    const [p, mode, win] = await Promise.all([previewStep(enr, step, { sender: user }), smsMode(), textWindow()]);
+    const hold = mode !== "live" && mode !== "test" && !win.ok ? win.until : null;
+    const r = await changeEnrollment(enr.id, (e) => (e.step_n === enr.step_n ? { ...e, pending: { n: enr.step_n, ...(enr.step_id ? { sid: enr.step_id } : {}), kind: "compose", at: nowIso(), ...(hold ? { hold_until: hold } : {}) } } : null), ctx, { env });
+    return { next: { kind: "compose", n: enr.step_n, text: p.text, missing: p.missing, template_key: p.template_key, mode, ...(hold ? { hold_until: hold } : {}), ...(contact ? { sms_href: smsHref(primaryPhone(contact), p.text) } : {}) }, enrollment: r.data };
   }
   const sent = await sendStepText(enr, step, { user, ctx });
   if (sent.status === "dry_run" || (sent.status === "already" && sent.result === "dry_run") || (sent.status === "scheduled" && sent.mode === "dry_run")) {
-    const r = await changeEnrollment(enr.id, (e) => (e.step_n === enr.step_n ? { ...e, pending: { n: enr.step_n, kind: "hand", ...(sent.outbox_id ? { outbox_id: sent.outbox_id } : {}), text: sent.text, at: nowIso() } } : null), ctx, { env });
-    return { next: { kind: "hand", n: enr.step_n, text: sent.text, outbox_id: sent.outbox_id || null, ...(contact ? { sms_href: smsHref(primaryPhone(contact), sent.text) } : {}) }, enrollment: r.data };
+    // outside the sender's hours the text waits (nobody texts a lead at 9 PM by hand either)
+    const win = await textWindow();
+    const hold = win.ok ? null : (win.until || sent.send_at || null);
+    const pending = { n: enr.step_n, ...(enr.step_id ? { sid: enr.step_id } : {}), kind: "hand", ...(sent.outbox_id ? { outbox_id: sent.outbox_id } : {}), text: sent.text, at: nowIso(), ...(hold ? { hold_until: hold } : {}) };
+    const r = await changeEnrollment(enr.id, (e) => (e.step_n === enr.step_n ? { ...e, pending } : null), ctx, { env });
+    return { next: { kind: "hand", n: enr.step_n, text: sent.text, outbox_id: sent.outbox_id || null, ...(hold ? { hold_until: hold } : {}), ...(contact ? { sms_href: smsHref(primaryPhone(contact), sent.text) } : {}) }, enrollment: r.data };
   }
   if (sent.status === "blocked" || sent.status === "skipped") {
     const reason = sent.blocked_reason || sent.reason || "blocked";
@@ -136,7 +155,7 @@ export async function logCall(body = {}, ctx) {
     if (res.task) out.task = res.task;
   } else if (enr) {
     const cadence = await cadenceById(enr.cadence_id);
-    const step = stepOf(cadence, enr.step_n);
+    const step = stepFor(cadence, enr);
     const res = await outcomeOnEnrollment(enr, cadence, step, { outcome, entry, contact, user, ctx, env, callId, note });
     out.enrollment = res.enrollment ? enrollmentView(res.enrollment) : null;
     out.next = res.next || out.next;
@@ -146,7 +165,7 @@ export async function logCall(body = {}, ctx) {
     const res = [];
     for (const e of await openEnrollmentsOf(contact.id)) {
       const cadence = await cadenceById(e.cadence_id);
-      const r = await outcomeOnEnrollment(e, cadence, stepOf(cadence, e.step_n), { outcome, entry: { ...entry, cid: `${callId}-${e.id.slice(-6)}` }, contact, user, ctx, env, callId, note, noTask: res.length > 0 });
+      const r = await outcomeOnEnrollment(e, cadence, stepFor(cadence, e), { outcome, entry: { ...entry, cid: `${callId}-${e.id.slice(-6)}` }, contact, user, ctx, env, callId, note, noTask: res.length > 0 });
       res.push(r);
     }
     out.enrollments = res.map((r) => r.enrollment && enrollmentView(r.enrollment)).filter(Boolean);
@@ -165,7 +184,12 @@ export async function logCall(body = {}, ctx) {
 async function outcomeOnEnrollment(enr, cadence, step, { outcome, entry, contact, user, ctx, env, callId, note, noTask = false }) {
   const n = enr.step_n;
   if (["no_answer", "voicemail"].includes(outcome)) {
-    if (enr.status !== "active" || !step) {
+    if (enr.status === "active" && !step) {
+      // its step was removed from the cadence and none came after it: the call is noted, the follow-up is done
+      const r = await changeEnrollment(enr.id, (e, c, en) => { const noted = noteStep(e, e.step_n, entry, en) || e; return refreshStep(noted, c, en) || noted; }, ctx, { env, action: "complete" });
+      return { enrollment: r.data, next: { kind: "none" } };
+    }
+    if (enr.status !== "active") {
       const r = await changeEnrollment(enr.id, (e, c, en) => noteStep(e, e.step_n, entry, en), ctx, { env });
       return { enrollment: r.data, next: { kind: "none" } };
     }
@@ -273,11 +297,15 @@ export async function sentByHand(enrollmentId, n, how, ctx) {
   const done = (e0.history || []).some((h) => h.n === n && h.action === "text" && h.sent_by_hand);
   if (done) return { data: { enrollment: enrollmentView(e0), already: true } };
   if (!isOpen(e0) || e0.step_n !== n) throw new ConflictError("That step has moved on. Pull to refresh.");
+  // only a text the app prepared (a call logged with no answer) can be marked sent
+  if (!e0.pending || e0.pending.kind !== "hand" || e0.pending.n !== n) throw new ConflictError("There's no text waiting on this step yet. Log the call first.");
+  const win = await textWindow();
+  if (!win.ok) throw new ConflictError(TOO_LATE);
   const cadence = await cadenceById(e0.cadence_id);
-  const step = stepOf(cadence, n);
+  const step = stepFor(cadence, e0);
   const effects = await stepEffects(e0, step, ctx);
   const r = await changeEnrollment(enrollmentId, (e, c, en) => {
-    if (e.step_n !== n) return null;
+    if (e.step_n !== n || !e.pending || e.pending.kind !== "hand") return null;
     return logStep(e, c, n, { action: "text", sent_by_hand: via, ...(e.pending && e.pending.outbox_id ? { outbox_id: e.pending.outbox_id } : {}), by: W(ctx).by, ...effects }, en);
   }, ctx);
   await addActivity(e0.contact_id, "cadence.text_by_hand", enrollmentId, now()).catch(() => {});
@@ -295,8 +323,13 @@ export async function sendStep(enrollmentId, n, { body, hand } = {}, ctx) {
   const e0 = got.data;
   if (!isOpen(e0) || e0.step_n !== n) throw new ConflictError("That step has moved on. Pull to refresh.");
   const cadence = await cadenceById(e0.cadence_id);
-  const step = stepOf(cadence, n);
+  const step = stepFor(cadence, e0);
   if (!textsOn(step)) throw new ConflictError("That step doesn't send a text.");
+  // "I sent it by hand" outside the sender's hours: not now
+  if (hand) {
+    const mode = await smsMode();
+    if (mode !== "live" && mode !== "test" && !(await textWindow()).ok) throw new ConflictError(TOO_LATE);
+  }
   const words = typeof body === "string" && body.trim() ? body.trim().slice(0, 1600) : null;
   const contact = await contactOf(e0.contact_id, ctx);
   const env = await loadEnv();
@@ -307,8 +340,11 @@ export async function sendStep(enrollmentId, n, { body, hand } = {}, ctx) {
     return { data: { enrollment: enrollmentView(e0), next: { kind: "blocked", reason: sent.blocked_reason || sent.reason || "blocked" } } };
   }
   if (dry && !hand) {
-    const r = await changeEnrollment(enrollmentId, (e) => (e.step_n === n ? { ...e, pending: { n, kind: "hand", ...(sent.outbox_id ? { outbox_id: sent.outbox_id } : {}), text: sent.text, at: nowIso() } } : null), ctx, { env });
-    return { data: { enrollment: enrollmentView(r.data), next: { kind: "hand", n, text: sent.text, outbox_id: sent.outbox_id || null, ...(contact ? { sms_href: smsHref(primaryPhone(contact), sent.text) } : {}) } } };
+    const win = await textWindow();
+    const hold = win.ok ? null : (win.until || sent.send_at || null);
+    const pending = { n, ...(e0.step_id ? { sid: e0.step_id } : {}), kind: "hand", ...(sent.outbox_id ? { outbox_id: sent.outbox_id } : {}), text: sent.text, at: nowIso(), ...(hold ? { hold_until: hold } : {}) };
+    const r = await changeEnrollment(enrollmentId, (e) => (e.step_n === n ? { ...e, pending } : null), ctx, { env });
+    return { data: { enrollment: enrollmentView(r.data), next: { kind: "hand", n, text: sent.text, outbox_id: sent.outbox_id || null, ...(hold ? { hold_until: hold } : {}), ...(contact ? { sms_href: smsHref(primaryPhone(contact), sent.text) } : {}) } } };
   }
   const effects = await stepEffects(e0, step, ctx);
   const r = await changeEnrollment(enrollmentId, (e, c, en) => (e.step_n === n ? logStep(e, c, n, {
@@ -339,7 +375,7 @@ export function buildCallList({ rows, contacts, cadences, now: t, date, env }) {
     const row = {
       id: r.id, contact_id: r.c, name: c.n || r.cn || "No name", phone: e164((c.p || [])[0]), town: c.c || "", cadence: cad.n || r.cad, cadence_key: r.cad,
       n: r.n, label: r.lbl, action: r.act, rbs: !!r.rbs, due: r.due, due_end: r.de, status: r.st, pending: r.pd || null, started_at: r.sa, last_touch_at: r.lt,
-      paused_at: r.ps, paused_reason: r.pr, deal_id: r.dl,
+      paused_at: r.ps, paused_reason: r.pr, deal_id: r.dl, ...(r.ph ? { hold_until: r.ph } : {}),
     };
     row.overdue = r.st === "active" && isOverdue(r, t);
     if (r.st === "paused") { out.paused.push(row); continue; }
@@ -366,8 +402,10 @@ export async function smsMode() {
 // GET /calls/list?date= → { now, date, sms_mode, due, later, upcoming, paused, attention, counts }
 export async function callList({ date } = {}) {
   const t = now();
-  const [ix, cx, cads, env, mode] = await Promise.all([readIndex("enrollments/active", ""), readIndex("contacts", SHARD()), readIndex("cadences", ""), loadEnv(t), smsMode()]);
+  const [ix, cx, cads, env, mode, win] = await Promise.all([readIndex("enrollments/active", ""), readIndex("contacts", SHARD()), readIndex("cadences", ""), loadEnv(t), smsMode(), textWindow(t)]);
   const list = buildCallList({ rows: ix.rows, contacts: cx.rows, cadences: cads.rows, now: t, date, env });
+  // a text waiting to be sent by hand waits for the morning when it's past the sender's hours now
+  if (!win.ok && mode !== "live" && mode !== "test") for (const r of [...list.due, ...list.later, ...list.upcoming]) if (r.pending && !r.hold_until && win.until) r.hold_until = win.until;
   const att = attentionFrom({ rows: ix.rows, contacts: cx.rows, env, now: t });
   return {
     now: t.toISOString(), date: date || localDate(t), sms_mode: mode, ...list, attention: att.items,

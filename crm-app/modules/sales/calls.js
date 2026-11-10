@@ -9,7 +9,7 @@
 import { html, icon, attrs, toast } from "../../core/ui.js";
 import { plural } from "../../core/format.js";
 import {
-  ensureStyles, winLabel, dueLabel, age, ago, telHref, emptyCard, outcomeSheet, pendingSheet, startCall, watchCalls, unwatchCalls,
+  ensureStyles, winLabel, dueLabel, age, ago, telHref, emptyCard, outcomeSheet, pendingSheet, pendingLabel, startCall, watchCalls, unwatchCalls,
   PAUSE_REASON,
 } from "./kit.js";
 
@@ -33,7 +33,7 @@ function card(r, s) {
       <span class="who"><span class="nm">${r.name}</span><span class="sub">${sub}</span><span class="sub">${meta}</span></span>
       <span class="when">${r.status === "paused" ? "Paused" : r.due ? html`${late ? "Overdue" : winLabel(r)}${late ? html`<br>${dueLabel(r.due)}` : ""}` : "Now"}</span>
     </a>
-    ${r.pending ? html`<button type="button" class="sl-pending" ${attrs({ "data-pending": r.id })}>${icon("text")}${r.pending === "compose" ? "Text to read and send" : "Text waiting: did you send it?"}</button>` : ""}
+    ${r.pending ? html`<button type="button" class="sl-pending" ${attrs({ "data-pending": r.id })}>${icon("text")}${pendingLabel(r.pending, r.hold_until)}</button>` : ""}
     ${r.status === "paused" ? html`<div class="sl-meta"><span class="pill amber">${PAUSE_REASON[r.paused_reason] || "Paused"}</span>${r.paused_at ? html`<span class="pill">since ${ago(r.paused_at)}</span>` : ""}</div>` : ""}
     <div class="sl-acts">
       ${r.phone ? html`<a class="btn primary" ${attrs({ href: telHref(r.phone), "data-call": r.id })}>${icon("phone")}Call</a>` : html`<span class="btn" aria-disabled="true">No phone</span>`}

@@ -3,7 +3,9 @@
 //
 // The texts are the office playbook's (netlify/lib/playbook-page.mjs, the
 // /playbook Follow-ups page) in the CRM's {{variable}} syntax: {first} →
-// {{first_name|there}}, {rep} → {{sender_first_name}}, {reviews} →
+// {{first_name|}} (no first name on file: "Hey, just missed you" and
+// "Good morning! This is...", the empty fill-in takes its space along),
+// {rep} → {{sender_first_name}}, {reviews} →
 // {{review_count|150}} (the playbook's own fallback), {link} →
 // {{review_link}}; "BARTA Window Washing" stays as the playbook writes it.
 // Texts 5 and 8 are reworded (D25): "fully insured" (not "licensed"), and
@@ -17,9 +19,9 @@
 // an owner's edits are never overwritten. ensureCadence() writes the same
 // record under the same id when a lead arrives before the first worker pass.
 
-import { createRecord, getRecord, readPointer } from "../../../crm-store.mjs";
+import { createRecord, getRecord, readPointer, readIndex, updateRecord } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
-import { ExistsError } from "../../core/errors.mjs";
+import { ExistsError, NotFoundError } from "../../core/errors.mjs";
 
 const w = (start, end) => ({ start, end });
 const W9 = w("09:00", "10:00");
@@ -29,24 +31,24 @@ const W16 = w("16:00", "17:00");
 // ------------------------------------------------------------ templates
 
 export const CADENCE_TEXTS = Object.freeze({
-  cad_new_1: "Hey {{first_name|there}}! This is {{sender_first_name}} with BARTA Window Washing. I saw you requested a quote to get your windows cleaned. Give me a ring back whenever you get a sec and I'd love to get you that free quote. Have a great day!",
-  cad_new_2: "Hey {{first_name|there}}, just missed you again! In case it helps while we're playing a little phone tag, here are our reviews. We've got over {{review_count|150}} 5 star ratings you can read through: {{review_link}}",
+  cad_new_1: "Hey {{first_name|}}! This is {{sender_first_name}} with BARTA Window Washing. I saw you requested a quote to get your windows cleaned. Give me a ring back whenever you get a sec and I'd love to get you that free quote. Have a great day!",
+  cad_new_2: "Hey {{first_name|}}, just missed you again! In case it helps while we're playing a little phone tag, here are our reviews. We've got over {{review_count|150}} 5 star ratings you can read through: {{review_link}}",
   cad_new_3: "Hey it's {{sender_first_name}}, kept missing you today! No rush at all, I'll try you again tomorrow to get you that free quote. I'd really love to connect so I can make sure I get you the most accurate price for your home. Talk soon!",
-  cad_new_4: "Good morning {{first_name|there}}! This is {{sender_first_name}} with BARTA Window Washing. I gave you a quick call to get you that quote on your windows but didn't catch you. I'll be around all day, so whenever you get a free minute just call me back. Thanks so much!",
+  cad_new_4: "Good morning {{first_name|}}! This is {{sender_first_name}} with BARTA Window Washing. I gave you a quick call to get you that quote on your windows but didn't catch you. I'll be around all day, so whenever you get a free minute just call me back. Thanks so much!",
   cad_new_5: "Hey, just missed you again! You're probably getting a few other quotes, so here's a few pointers for how to find the right person for the job. 1) fully insured so you and your property are protected, 2) frames and sills included, not just the glass, and 3) a 100% satisfaction guarantee. PS we do all of those things!",
-  cad_new_6: "Hey {{first_name|there}}, wasn't able to reach you today but I'll give you another call tomorrow morning to get you that quote. If now's just not the best time, no worries at all, just let me know what works! Have a wonderful evening.",
-  cad_new_7: "Hey {{first_name|there}}, I know I've reached out a few times, and I know you're busy! I just don't want to leave you hanging on that quote you requested. It would only be like a 5 min call.",
+  cad_new_6: "Hey {{first_name|}}, wasn't able to reach you today but I'll give you another call tomorrow morning to get you that quote. If now's just not the best time, no worries at all, just let me know what works! Have a wonderful evening.",
+  cad_new_7: "Hey {{first_name|}}, I know I've reached out a few times, and I know you're busy! I just don't want to leave you hanging on that quote you requested. It would only be like a 5 min call.",
   cad_new_8: "Hey, missed you again today! Real quick, one thing I love about us is our 100% satisfaction guarantee. If you're ever not happy with the job, we'll come back and re-clean it free of charge. So there's truly no risk on your end. Would love to get you that quote whenever you're free!",
-  cad_new_9: "Hey {{first_name|there}}, since we keep missing each other, I'll go ahead and put your quote together and send it right over. Take a look when you get a sec and let me know what you think! Happy to answer any questions.",
-  cad_est_1: "Hey {{first_name|there}}, it's {{sender_first_name}} with BARTA Window Washing. Just wanted to make sure you got everything you need on your window cleaning estimate. If any questions came up, I'm happy to walk through them. Want me to go ahead and find you a spot on the schedule?",
-  cad_est_2: "Hey {{first_name|there}}, one more thing! Our schedule's been filling up fast lately, so if you're leaning toward getting your windows done I'd hate for you to have to wait. Just send me a day that works and I'll hold a spot for you. No pressure either way!",
-  cad_est_3: "Hey {{first_name|there}}! Good news, I was able to take $50 off your estimate to help make this an easy yes for you. That price is good whenever you're ready to book, just send me a day that works and I'll get you locked in!",
-  cad_est_4: "Hey {{first_name|there}}! Wanted to sweeten the deal one more time. On top of the $50 off your estimate, if you book today we can also clean 10 screens for free for you. Just let me know a day that works and I'll lock it all in for you!",
-  cad_est_5: "Hey {{first_name|there}}, since I haven't heard back I'm going to go ahead and archive your quote, which means the $50 off and free screen cleaning will expire. If you still want to get your windows done, just let me know asap and I can get you taken care of before those discounts are gone. Otherwise no worries at all, just reach out whenever you're ready!",
+  cad_new_9: "Hey {{first_name|}}, since we keep missing each other, I'll go ahead and put your quote together and send it right over. Take a look when you get a sec and let me know what you think! Happy to answer any questions.",
+  cad_est_1: "Hey {{first_name|}}, it's {{sender_first_name}} with BARTA Window Washing. Just wanted to make sure you got everything you need on your window cleaning estimate. If any questions came up, I'm happy to walk through them. Want me to go ahead and find you a spot on the schedule?",
+  cad_est_2: "Hey {{first_name|}}, one more thing! Our schedule's been filling up fast lately, so if you're leaning toward getting your windows done I'd hate for you to have to wait. Just send me a day that works and I'll hold a spot for you. No pressure either way!",
+  cad_est_3: "Hey {{first_name|}}! Good news, I was able to take $50 off your estimate to help make this an easy yes for you. That price is good whenever you're ready to book, just send me a day that works and I'll get you locked in!",
+  cad_est_4: "Hey {{first_name|}}! Wanted to sweeten the deal one more time. On top of the $50 off your estimate, if you book today we can also clean 10 screens for free for you. Just let me know a day that works and I'll lock it all in for you!",
+  cad_est_5: "Hey {{first_name|}}, since I haven't heard back I'm going to go ahead and archive your quote, which means the $50 off and free screen cleaning will expire. If you still want to get your windows done, just let me know asap and I can get you taken care of before those discounts are gone. Otherwise no worries at all, just reach out whenever you're ready!",
 });
 
 // Rotor's new-lead auto-text (rotor-comms §7.2), without the footer Rotor added.
-export const LEAD_ACK_TEXT = "Hi {{first_name|there}}! Thanks for reaching out to BARTA Window Washing. I’d love to learn a little more about what you’re looking to have done and get you an accurate quote. When would be a good time for a quick call?";
+export const LEAD_ACK_TEXT = "Hi {{first_name|}}! Thanks for reaching out to BARTA Window Washing. I’d love to learn a little more about what you’re looking to have done and get you an accurate quote. When would be a good time for a quick call?";
 export const STAFF_NEW_LEAD_TEXT = "New lead: {{first_name|Someone}} in {{town|the area}}. Open Leads & calls in the CRM to call them.";
 
 const NEW_NAMES = ["Day 1 call 1 text", "Day 1 call 2 text", "Day 1 call 3 text", "Day 2 call 4 text", "Day 2 call 5 text", "Day 2 call 6 text", "Day 3 call 7 text", "Day 3 call 8 text", "Day 3 call 9 text"];
@@ -135,6 +137,22 @@ export async function cadenceByKey(key, ctx = {}, { ensure = true } = {}) {
 }
 
 // system.seed: the four cadences, once each (a key someone already used is left alone).
+// Seed v2: a cadence stored before step ids gets them (s1, s2, ... by
+// position, which is how its enrollments were reading it): the cadence's
+// own validation assigns them on any save.
+export async function addStepIds(ctx) {
+  const ix = await readIndex("cadences", "");
+  let updated = 0;
+  for (const row of ix.rows) {
+    const r = await updateRecord("cadence", row.id, (c) => ((c.steps || []).every((st) => st.id) && c.steps_v ? null : { ...c }), ctx.write ? ctx.write() : ctx).catch((e) => {
+      if (e instanceof NotFoundError) return null;
+      throw e;
+    });
+    if (r && r.changed) updated += 1;
+  }
+  return { updated };
+}
+
 export async function seedCadences(ctx) {
   let created = 0;
   for (const seed of SEED_CADENCES) {

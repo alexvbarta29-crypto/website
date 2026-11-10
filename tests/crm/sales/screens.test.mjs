@@ -49,6 +49,11 @@ test("the sheets: how did it go, the text to send by hand (Copy / Messages / Did
   assert.equal(kit.blockedLabel("opted_out"), "they opted out");
   assert.equal(kit.OUTCOMES.length, 6);
   assert.equal(kit.winLabel({ due: "2026-11-17T15:00:00.000Z", due_end: "2026-11-17T16:00:00.000Z" }), "9:00–10:00 AM");
+  // outside the hours texts go out, a waiting text says until when (and its sheet offers a reminder, not Copy)
+  assert.match(kit.pendingLabel("hand", "2099-11-18T14:00:00.000Z"), /^Text waits until Wed, Nov 18, 8:00 AM$/);
+  assert.equal(kit.pendingLabel("hand", "2000-01-01T14:00:00.000Z"), "Text waiting: did you send it?");
+  assert.equal(kit.pendingLabel("compose", null), "Text to read and send");
+  assert.equal(typeof kit.waitSheet, "function");
 });
 
 test("One follow-up, a deal, starting one, logging a call: render and escape", async () => {
@@ -122,6 +127,18 @@ test("Tasks, one task, the contact's Sales tab, the Today card, Settings → Cad
   assert.match(c, /10 steps · starts when: A new lead/);
   assert.match(c, /Board only/);
   assert.match(c, /waits 5 minutes/);
+  // texts 5 and 8: the website's wording now, one tap back to the playbook's (and again)
+  const SEED = await import("../../../netlify/lib/crm/modules/sales/seed.mjs");
+  const P = await import("../../../netlify/lib/crm/modules/sales/playbook.mjs");
+  const w = text(cadences.render({ list: [], sales: { data: {} }, ack: null, reworded: [
+    { key: "cad_new_5", id: "tp_1", body: SEED.CADENCE_TEXTS.cad_new_5, etag: "\"1\"" },
+    { key: "cad_new_8", id: "tp_2", body: P.BUILT_IN.cad_new_8, etag: "\"1\"" }] }, ctx()));
+  assert.match(w, /Texts 5 and 8/);
+  assert.match(w, /data-words="cad_new_5" data-to="old"/);
+  assert.match(w, /data-words="cad_new_8" data-to="site"/);
+  assert.match(w, /Now: the website(&#39;|')s wording\./);
+  assert.match(w, /Now: the playbook(&#39;|')s older wording\./);
+  assert.match(w, /href="#\/templates\/tp_1"/);
   const cadence = await load("cadence");
   const est = { id: "cd_2", key: "estimate_followup", name: "Estimate sent - not scheduled", active: true, entry: { on: "quote.sent" }, on_reply: "pause", unattended: "wait",
     steps: [{ n: 1, day: 1, window: { start: "09:00", end: "10:00" }, action: "call_then_text", template_key: "cad_est_1", review_before_send: true, label: "Day 1" }] };

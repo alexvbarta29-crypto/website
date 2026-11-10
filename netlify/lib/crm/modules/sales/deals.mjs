@@ -93,9 +93,18 @@ export async function markDeal(dealId, status, opts = {}, ctx = {}) {
   return { changed: r.changed, deal: r.data, etag: r.etag };
 }
 
-// Touch a deal's last activity (a call, a text, a step): CRM-owned, so
-// never a guard question.
+// Touch a deal's last activity (a follow-up ended). Automation on a deal
+// the import brought in only reports it (§0 rule 12): Rotor's deal stays as
+// the import wrote it, and sales.deal_abandon reads the contact's own
+// call and text times besides.
 export async function touchDeal(dealId, ctx = {}) {
-  if (!isId(dealId, "deal")) return;
-  await updateRecord("deal", dealId, (d) => ({ ...d, last_activity_at: nowIso() }), W(ctx)).catch(() => {});
+  if (!isId(dealId, "deal")) return { changed: false };
+  const got = await getRecord("deal", dealId).catch(() => null);
+  if (!got) return { changed: false };
+  if (!(await mayActOn(ctx, got.data))) {
+    await would(ctx, "sales.deal", dealId, "touch", { last_activity_at: [got.data.last_activity_at || null, nowIso()] });
+    return { changed: false, would: true };
+  }
+  const r = await updateRecord("deal", dealId, (d) => ({ ...d, last_activity_at: nowIso() }), W(ctx)).catch(() => null);
+  return { changed: !!(r && r.changed) };
 }

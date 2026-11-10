@@ -207,6 +207,42 @@ function validateStep(v, f, { stored }) {
   return out;
 }
 
+// Step ids (s1, s2, ...): kept as the editor sends them back, new steps get
+// the next unused number (step_seq never goes down, so an id is never
+// reused). A client that sends no ids at all keeps the old ids by position.
+// A removed step's id maps to the next step that survived (moved), so an
+// enrollment on it carries on there. steps_v counts changes to the steps.
+export const STEP_ID_RE = /^s[1-9]\d{0,5}$/;
+const MAX_MOVED = 200;
+const idNum = (id) => (typeof id === "string" && STEP_ID_RE.test(id) ? Number(id.slice(1)) : 0);
+const stripN = (steps) => JSON.stringify((steps || []).map(({ n, ...st }) => st));
+function stepIds(out, before) {
+  const prevSteps = (before && Array.isArray(before.steps)) ? before.steps : [];
+  const prevIds = prevSteps.map((st, i) => (STEP_ID_RE.test(String(st.id || "")) ? st.id : `s${i + 1}`));
+  const incoming = out.steps || [];
+  const anyId = incoming.some((st) => STEP_ID_RE.test(String(st.id || "")));
+  let seq = Math.max(Number(before && before.step_seq) || 0, ...prevIds.map(idNum), ...incoming.map((st) => idNum(st.id)), 0);
+  const used = new Set();
+  out.steps = incoming.map((st, i) => {
+    let id = STEP_ID_RE.test(String(st.id || "")) && !used.has(st.id) ? st.id : null;
+    if (!id && !anyId && prevIds[i] && !used.has(prevIds[i])) id = prevIds[i];
+    if (!id) { seq += 1; id = `s${seq}`; }
+    used.add(id);
+    return { ...st, id, n: i + 1 };
+  });
+  out.step_seq = Math.max(seq, ...out.steps.map((st) => idNum(st.id)), 0);
+  const moved = { ...((before && before.moved) || {}) };
+  prevIds.forEach((id, i) => {
+    if (used.has(id)) { delete moved[id]; return; }
+    moved[id] = prevIds.slice(i + 1).find((x) => used.has(x)) || null;
+  });
+  const keys = Object.keys(moved);
+  for (const k of keys.slice(0, Math.max(0, keys.length - MAX_MOVED))) delete moved[k];
+  if (Object.keys(moved).length) out.moved = moved; else delete out.moved;
+  const changed = !before || stripN(before.steps) !== stripN(out.steps);
+  out.steps_v = (Number(before && before.steps_v) || (before ? 1 : 0)) + (changed ? 1 : 0);
+}
+
 export function validateCadence(data, { op, before } = {}) {
   const stored = op === "update";
   const out = shape(data, {
@@ -236,8 +272,8 @@ export function validateCadence(data, { op, before } = {}) {
     board_stages: (v, f) => arr(v, (x, ff) => str(x, { field: ff, max: 60 }), { field: f, max: 20 }).filter(Boolean),
     description: (v, f) => str(v, { field: f, max: 300 }) || undefined,
   });
-  // steps are numbered in order; their days never go backwards
-  out.steps = (out.steps || []).map((s, i) => ({ ...s, n: i + 1 }));
+  // steps are numbered in order and keep their ids; their days never go backwards
+  stepIds(out, before);
   for (let i = 1; i < out.steps.length; i++) {
     if (out.steps[i].day < out.steps[i - 1].day) throw new InputError("Steps go in day order.", `steps.${i}.day`);
   }
@@ -249,7 +285,7 @@ export function validateCadence(data, { op, before } = {}) {
   return out;
 }
 
-export const cadenceRow = (r) => ({ k: r.key, n: r.name, act: r.active !== false, bo: !!r.board_only, s: (r.steps || []).length, ua: r.unattended || "wait", on: (r.entry && r.entry.on) || "manual", u: r.updated_at });
+export const cadenceRow = (r) => ({ k: r.key, n: r.name, act: r.active !== false, bo: !!r.board_only, s: (r.steps || []).length, ua: r.unattended || "wait", on: (r.entry && r.entry.on) || "manual", sv: r.steps_v || 0, u: r.updated_at });
 
 export const cadenceType = defineType({
   type: "cadence",
@@ -293,6 +329,12 @@ export function validateEnrollment(data, { op } = {}) {
     status: (v, f) => enumValue(v, ENROLLMENT_STATUSES, { field: f, stored }) || "active",
     stop_reason: (v, f) => enumValue(v, STOP_REASONS, { field: f, stored }),
     step_n: (v, f) => int(v ?? 1, { field: f, min: 0, max: 1000 }),
+    step_id: (v, f) => {
+      if (v === undefined || v === null || v === "") return undefined;
+      if (!STEP_ID_RE.test(String(v))) throw new InputError("That isn't a step.", f);
+      return v;
+    },
+    steps_v: (v, f) => (v === undefined || v === null ? undefined : int(v, { field: f, min: 0, max: 1e9 })),
     next_due_at: isoOpt,
     due_end: isoOpt,
     day1: (v, f) => {
@@ -328,7 +370,9 @@ export const enrollmentRow = (r) => {
   const cur = r.cur || {};
   return {
     c: r.contact_id, cn: r.contact_name || "", cad: r.cadence_key || null, cd: r.cadence_id, n: r.step_n, lbl: cur.label || "", act: cur.action || null,
+    sid: r.step_id || null, sv: r.steps_v || 0,
     rbs: !!cur.rbs, due: r.next_due_at || null, de: r.due_end || null, st: r.status, pd: r.pending ? r.pending.kind : null, pn: r.pending ? r.pending.n : null,
+    ph: (r.pending && r.pending.hold_until) || null,
     dl: r.deal_id || null, sa: r.started_at || null, lt: r.last_touch_at || null, ps: r.paused_at || null, pr: r.paused_reason || null, ow: r.owner_id || null, u: r.updated_at,
   };
 };

@@ -6,7 +6,7 @@
 import { html, icon, attrs, toast, confirmSheet } from "../../core/ui.js";
 import { dateTime, timeWindow } from "../../core/format.js";
 import {
-  ensureStyles, enrollmentPill, winLabel, dueLabel, telHref, outcomeSheet, pendingSheet, startCall, watchCalls, unwatchCalls,
+  ensureStyles, enrollmentPill, winLabel, dueLabel, telHref, outcomeSheet, pendingSheet, pendingLabel, startCall, watchCalls, unwatchCalls,
   OUTCOME_LABEL, STOP_REASON, PAUSE_REASON, copyText,
 } from "./kit.js";
 
@@ -35,9 +35,13 @@ function steps(s) {
   const e = s.enrollment;
   const list = (s.cadence && s.cadence.steps) || [];
   if (!list.length) return "";
-  const doneN = new Set((e.history || []).filter((h) => ["text", "skipped", "done_by_hand", "task_created", "text_blocked"].includes(h.action) || (h.action === "call" && !["call_then_text", "text"].includes((list[h.n - 1] || {}).action))).map((h) => h.n));
-  return html`<section class="card"><h2>Steps</h2><ol class="sl-steps">${list.map((st) => {
-    const cls = st.n === e.step_n && ["active", "paused"].includes(e.status) ? "cur" : doneN.has(st.n) || st.n < e.step_n ? "done" : "";
+  // steps are known by id (positions move when the cadence is edited)
+  const idOf = (st, i) => st.id || `s${i + 1}`;
+  const stepOfH = (h) => (h.sid ? list.find((st, i) => idOf(st, i) === h.sid) : list[h.n - 1]) || {};
+  const done = new Set((e.history || []).filter((h) => ["text", "skipped", "done_by_hand", "task_created", "text_blocked"].includes(h.action) || (h.action === "call" && !["call_then_text", "text"].includes(stepOfH(h).action))).map((h) => h.sid || `s${h.n}`));
+  const curAt = e.step_id ? list.findIndex((st, i) => idOf(st, i) === e.step_id) : e.step_n - 1;
+  return html`<section class="card"><h2>Steps</h2><ol class="sl-steps">${list.map((st, i) => {
+    const cls = i === curAt && ["active", "paused"].includes(e.status) ? "cur" : done.has(idOf(st, i)) || (curAt >= 0 && i < curAt) ? "done" : "";
     return html`<li class="${cls}"><span class="dot">${cls === "done" ? icon("check") : st.n}</span><span class="t"><b>${st.label || ACTION[st.action]}</b><small>Day ${st.day}${st.window ? ` · ${timeWindow(st.window.start, st.window.end)}` : ""} · ${ACTION[st.action] || st.action}${st.review_before_send ? " · read before sending" : ""}${st.offer === "followup_50" ? " · $50 off" : st.offer === "ten_free_screens" ? " · 10 free screens" : ""}${st.archive_quote ? " · archives the quote" : ""}</small></span></li>`;
   })}</ol></section>`;
 }
@@ -52,7 +56,7 @@ function current(s) {
   return html`<section class="${"card" + (late ? " alert" : "")}">
     <h2>Now: ${cur.label || `Step ${e.step_n}`}</h2>
     <p>${e.status === "paused" ? `Paused ${PAUSE_REASON[e.paused_reason] || ""}` : e.next_due_at ? html`${late ? "Overdue since " : "Due "}${winLabel({ due: e.next_due_at, due_end: e.due_end })} · ${dueLabel(e.next_due_at)}` : "Due now"}</p>
-    ${e.pending ? html`<button type="button" class="sl-pending" style="margin-top:10px" data-pending>${icon("text")}${e.pending.kind === "compose" ? "The text to read and send" : "Text waiting: did you send it?"}</button>` : ""}
+    ${e.pending ? html`<button type="button" class="sl-pending" style="margin-top:10px" data-pending>${icon("text")}${pendingLabel(e.pending.kind, e.pending.hold_until)}</button>` : ""}
     ${s.preview && s.preview.text && !e.pending ? html`<div class="bubble grey sl-preview" style="margin-top:10px">${s.preview.text}</div><textarea class="sr" readonly data-copy-area>${s.preview.text}</textarea>` : ""}
     <div class="sl-acts" style="margin-top:12px">
       ${s.contact && s.contact.phone ? html`<a class="btn primary" ${attrs({ href: telHref(s.contact.phone) })} data-call>${icon("phone")}Call</a>` : ""}

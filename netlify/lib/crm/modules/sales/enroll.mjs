@@ -29,7 +29,7 @@ import { getTemplateByKey, renderTemplate, varsFor } from "../../core/templates.
 import { safeErr } from "../../../referral-lib.mjs";
 import { OPEN_ENROLLMENT } from "./types.mjs";
 import {
-  firstStep, logStep, noteStep, setStatus, resume, stepOf, isOpen, entryMatches, textsOn, withStep,
+  firstStep, logStep, noteStep, setStatus, resume, stepFor, resolveStep, refreshStep, isOpen, entryMatches, textsOn, withStep,
 } from "./cadence.mjs";
 import { cadenceByKey } from "./seed.mjs";
 import { ensureDeal, markDeal, touchDeal } from "./deals.mjs";
@@ -186,7 +186,8 @@ export async function sendStepText(enrollment, step, { body, user, ctx = {} } = 
     origin: { kind: "cadence", id: enrollment.id, ...(user && isId(user.id, "user") ? { user_id: user.id } : {}) },
     ...(user ? { sender: user } : {}),
     related: { enrollment_id: enrollment.id, ...(enrollment.quote_id ? { quote_id: enrollment.quote_id } : {}) },
-    marker_key: `cad-${enrollment.id}-${n}${body ? "-c" : ""}`,
+    // one text per step (its id: positions move when the cadence is edited)
+    marker_key: `cad-${enrollment.id}-${enrollment.step_id || n}${body ? "-c" : ""}`,
   };
   const r = await sendMessage(msg, { by: wctx.by, origin: wctx.origin, actor_kind: wctx.actor_kind, requestId: wctx.requestId, mode: wctx.mode });
   let text = body ? String(body) : "";
@@ -230,8 +231,13 @@ export async function stepEffects(enrollment, step, ctx = {}) {
 // A task step: makes the step's task (once) and moves on.
 export async function runTaskStep(enrollment, ctx = {}) {
   const cadence = await cadenceById(enrollment.cadence_id);
-  const step = stepOf(cadence, enrollment.step_n);
+  const step = stepFor(cadence, enrollment);
   if (!step || step.action !== "task") return { changed: false };
+  // automation on a follow-up the import owns only reports (§0 rule 12)
+  if (!(await mayActOn(ctx, enrollment))) {
+    await would(ctx, "sales.enrollment", enrollment.id, "task_step", { step: [enrollment.step_n, enrollment.step_n + 1] });
+    return { changed: false, would: true };
+  }
   const contact = await contactOf(enrollment.contact_id, ctx);
   const lastCaller = [...(enrollment.history || [])].reverse().find((h) => isId(h.by, "user"));
   // the lead's owner, else whoever last called, else the owners' first
@@ -240,16 +246,20 @@ export async function runTaskStep(enrollment, ctx = {}) {
     title: `${step.task_title || "Follow up"}: ${nameOf(contact)}`.slice(0, 160), kind: "todo", priority: "medium", status: "open",
     contact_id: contact.id, contact_name: nameOf(contact), enrollment_id: enrollment.id, ...(enrollment.deal_id ? { deal_id: enrollment.deal_id } : {}),
     assignee_ids: assignee ? [assignee] : [], notes: `From the ${enrollment.cadence_key || "follow-up"} cadence, step ${enrollment.step_n}.`,
-  }, ctx, { seed: `${enrollment.id}--step${enrollment.step_n}` }) : null;
+  }, ctx, { seed: `${enrollment.id}--step${enrollment.step_id || enrollment.step_n}` }) : null;
   return changeEnrollment(enrollment.id, (e, c, env) => logStep(e, c, enrollment.step_n, { action: "task_created", ...(task ? { task_id: task.id } : {}), by: W(ctx).by || "system", touch: false }, env), ctx, { action: "advance" });
 }
 
-// Re-plans the current step from now (a cadence edited, a missing plan).
-export const replan = (id, ctx = {}) => changeEnrollment(id, (e, c, env) => {
+// Re-plans the current step from now (a missing plan).
+export const replan = (id, ctx = {}, opts = {}) => changeEnrollment(id, (e, c, env) => {
   if (!isOpen(e)) return null;
-  const next = withStep(e, c, e.step_n || 1, { ...env, prev: null });
+  const at = resolveStep(c, e);
+  const next = withStep(e, c, at.index < 0 ? ((c && c.steps) || []).length + 1 : at.index + 1, { ...env, prev: null });
   return JSON.stringify(next) === JSON.stringify(e) ? null : next;
-}, ctx, { action: "replan" });
+}, ctx, { action: "replan", ...opts });
+
+// Brings an enrollment up to date with its cadence's steps (see refreshStep).
+export const refresh = (id, ctx = {}, opts = {}) => changeEnrollment(id, (e, c, env) => refreshStep(e, c, env), ctx, { action: "refresh", ...opts });
 
 export { noteStep, logStep, setStatus };
 export const enrollmentView = (e) => { if (!e) return e; const { _w, _etag, ...rest } = e; return rest; };

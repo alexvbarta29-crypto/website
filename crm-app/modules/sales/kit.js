@@ -138,10 +138,47 @@ export function afterCall(ctx, who, data = {}, { done, smsMode } = {}) {
 const BLOCKED = { opted_out: "they opted out", no_consent: "no OK to text them", paused_automations: "automated texts are paused for them", no_address: "no mobile number", missing_variable: "a blank in the text", duplicate: "sent a moment ago" };
 export const blockedLabel = (r) => BLOCKED[r] || String(r || "held back").replace(/_/g, " ");
 
+// A text that has to wait: it's outside the hours follow-up texts go out
+// (8 AM to 8 PM, D12), so no Copy or Messages now.
+const holding = (next) => !!(next && next.hold_until && Date.parse(next.hold_until) > Date.now());
+const holdLabel = (iso) => (dateShort(iso) === dateShort(new Date()) ? time(iso) : `${dateShort(iso)}, ${time(iso)}`);
+export const pendingLabel = (kind, holdUntil) => (holdUntil && Date.parse(holdUntil) > Date.now()
+  ? `Text waits until ${holdLabel(holdUntil)}`
+  : kind === "compose" ? "Text to read and send" : "Text waiting: did you send it?");
+
+export function waitSheet(ctx, who, next, { done } = {}) {
+  ensureStyles();
+  const s = sheet({
+    title: "Too late to text now",
+    body: html`<div class="stack">
+      <p>Follow-up texts go out between 8 AM and 8 PM. This one waits on your list until ${holdLabel(next.hold_until)}.</p>
+      ${next.text ? html`<div class="bubble grey sl-text">${next.text}</div>` : ""}
+      <button type="button" class="btn primary block" data-remind>${icon("clock")}Remind me at ${time(next.hold_until)}</button>
+      <button type="button" class="btn block" data-later>OK</button>
+    </div>`,
+    events: {
+      "click [data-remind]": async (e, b) => {
+        busy(b, true, "Saving…");
+        try {
+          await ctx.api("/tasks", { method: "POST", body: {
+            title: `Text ${who.name || "the lead"}`.slice(0, 160), kind: "follow_up", priority: "medium", due_at: next.hold_until,
+            ...(who.contact_id ? { contact_id: who.contact_id } : {}), ...(ctx.user && ctx.user.id ? { assignee_ids: [ctx.user.id] } : {}),
+            notes: "The follow-up text waited for the morning. Open the lead on Leads & calls to send it.",
+          } });
+          s.close(); toast(`OK, a reminder at ${time(next.hold_until)}.`); if (done) done();
+        } catch (err) { busy(b, false); toast(err.message, { bad: true }); }
+      },
+      "click [data-later]": () => { s.close(); if (done) done(); },
+    },
+  });
+  return s;
+}
+
 // The text to send by hand while texting is in dry-run: Copy text / Open in
 // Messages, then "Did you send it?" (sent_by_hand).
 export function handSheet(ctx, who, next, { done } = {}) {
   ensureStyles();
+  if (holding(next)) return waitSheet(ctx, who, next, { done });
   let how = "copy";
   const s = sheet({
     title: "Send this text yourself",
@@ -187,6 +224,7 @@ export function handSheet(ctx, who, next, { done } = {}) {
 export function composeSheet(ctx, who, next, { done, smsMode } = {}) {
   ensureStyles();
   const dry = smsMode !== "live" && smsMode !== "test";
+  if (dry && holding(next)) return waitSheet(ctx, who, next, { done });
   let how = "copy";
   const s = sheet({
     title: "Read before you send",
