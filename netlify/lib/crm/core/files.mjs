@@ -223,21 +223,31 @@ async function copyBytes(id, thumb) {
 }
 
 // Copies every file the backups store does not have yet (originals and
-// thumbnails). Two listings decide what is missing, so imported files with
-// hashed ids are never skipped.
+// thumbnails). Listings alone decide what is missing: the bytes in
+// crm-files (f/ and t/) against the copies in crm-backups (files/), so a
+// file without a thumbnail is never "missing" one, imported files with
+// hashed ids are never skipped, and no file record is read. The step keeps
+// its position (the last id it handled), so bytes that cannot be read do
+// not hold back the files after them.
 async function filesBackupStep(run, { budget }) {
-  const ids = (await listKeys("rec/file/")).map((k) => k.slice("rec/file/".length));
-  const have = new Set(await listKeys("files/", { kind: "backups" }));
-  const todo = ids.filter((id) => !have.has(backupKey(id, false)) || !have.has(backupKey(id, true)));
-  const cp = run.checkpoint || { copied: 0 };
-  for (const id of todo) {
-    if (budget && budget.left() < 10000) return { checkpoint: cp, progress: { done: cp.copied, total: cp.copied + todo.length } };
-    const rec = await getRecord("file", id);
-    if (!have.has(backupKey(id, false)) && (await copyBytes(id, false))) cp.copied += 1;
-    if (rec && rec.data && rec.data.has_thumb && !have.has(backupKey(id, true))) await copyBytes(id, true);
+  const [originals, thumbs, copies] = await Promise.all([
+    listKeys("f/", { kind: "files" }), listKeys("t/", { kind: "files" }), listKeys("files/", { kind: "backups" }),
+  ]);
+  const have = new Set(copies);
+  const todo = [
+    ...originals.map((k) => k.slice(2)).filter((id) => !have.has(backupKey(id, false))).map((id) => ({ id, thumb: false })),
+    ...thumbs.map((k) => k.slice(2)).filter((id) => !have.has(backupKey(id, true))).map((id) => ({ id, thumb: true })),
+  ].sort((a, b) => (a.id === b.id ? (a.thumb ? 1 : -1) : a.id < b.id ? -1 : 1));
+  const cp = run.checkpoint && typeof run.checkpoint === "object" ? { copied: 0, after: null, ...run.checkpoint } : { copied: 0, after: null };
+  const pos = (x) => `${x.id}${x.thumb ? ".t" : ""}`;
+  const left = todo.filter((x) => cp.after === null || pos(x) > cp.after);
+  for (const x of left) {
+    if (budget && budget.left() < 10000) return { checkpoint: cp, progress: { done: cp.copied, total: cp.copied + left.length } };
+    if (await copyBytes(x.id, x.thumb)) cp.copied += 1;
+    cp.after = pos(x);
   }
-  await updateHealth((h) => ({ ...h, files_backup: { at: nowIso(), copied: cp.copied, files: ids.length } }));
-  return { done: true, checkpoint: cp, progress: { done: cp.copied, total: cp.copied }, result: { copied: cp.copied, files: ids.length } };
+  await updateHealth((h) => ({ ...h, files_backup: { at: nowIso(), copied: cp.copied, files: originals.length } }));
+  return { done: true, checkpoint: cp, progress: { done: cp.copied, total: cp.copied }, result: { copied: cp.copied, files: originals.length } };
 }
 
 // Deletes the bytes of files soft-deleted more than 30 days ago, but only

@@ -56,8 +56,8 @@ export default {
       </form>
       ${s.test ? html`<div class="card">
         <h2>Test contact</h2>
-        <p class="small">Every bulk send goes to this contact first, and can't go out until it has. Pick someone on the team, marked as a test contact.</p>
-        <p><b>${testId ? (s.testName || "Chosen") : "Not chosen yet"}</b>${testId ? html` <span class="muted small mono">${testId}</span>` : ""}</p>
+        <p class="small">Every bulk send goes to this contact first, and can't go out until it has. Pick someone on the team whose contact is marked as a test contact.</p>
+        <p><b>${testId ? (s.testName || (s.test.labels && s.test.labels.contact_id) || "A test contact") : "Not chosen yet"}</b></p>
         <div class="btn-row"><button type="button" class="btn dark" data-pick-test>Pick the test contact</button>${testId ? html`<button type="button" class="btn" data-clear-test>Clear</button>` : ""}</div>
       </div>` : ""}
     </div>`;

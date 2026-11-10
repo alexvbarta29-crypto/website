@@ -6,7 +6,7 @@
 // Money strip (M5). A tech sees their own day only.
 
 import { html, icon } from "../../core/ui.js";
-import { dateLong, plural } from "../../core/format.js";
+import { dateLong, plural, dateTime } from "../../core/format.js";
 import * as router from "../../core/router.js";
 
 const greeting = (d) => {
@@ -28,6 +28,7 @@ export default {
     const b = s.badges || {};
     const alerts = (s.health && s.health.alerts) || [];
     const stuck = s.health && s.health.status && (s.health.status.fast === "stuck" || s.health.status.bulk === "stuck");
+    const mode = (s.health && s.health.mode) || {};
     const links = [
       ctx.can("contacts:read_all") && router.has("/legacy/customers") ? html`<a class="tile" href="#/legacy/customers">${icon("contacts")}<span>Customers</span></a>` : "",
       ctx.can("outbox:read") ? html`<a class="tile" href="#/outbox">${icon("send")}<span>Outbox</span></a>` : "",
@@ -41,6 +42,7 @@ export default {
         <div class="hello who"><div class="date">${dateLong(s.now)}</div><h2>${greeting(s.now)}, ${s.user.first_name || s.user.name || "there"}</h2></div>
         <a class="icon-btn bell" href="#/notifications" aria-label="${b.notifications ? `Notifications, ${b.notifications} new` : "Notifications"}">${icon("bell")}${b.notifications ? html`<span class="badge">${b.notifications > 99 ? "99+" : b.notifications}</span>` : ""}</a>
       </div>
+      ${mode.paused ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>The CRM is paused</h2><p>${mode.paused_reason === "restore" ? "A backup was restored. " : ""}Nothing is texted, emailed, charged or automated${mode.paused_at ? ` since ${dateTime(mode.paused_at)}` : ""}. An owner resumes it on Settings → Data.</p></a>` : ""}
       ${stuck || alerts.length ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>Needs a look</h2>${stuck ? html`<p>A worker hasn't finished a pass in 3 hours.</p>` : ""}${alerts.slice(0, 3).map((a) => html`<p>${a.text}</p>`)}</a>` : ""}
       ${b.approvals && ctx.can("campaigns:send") ? html`<a class="tile" href="#/approvals">${icon("check")}<span>${plural(b.approvals, "approval")} waiting</span><span class="n">${b.approvals}</span></a>` : ""}
       ${tech

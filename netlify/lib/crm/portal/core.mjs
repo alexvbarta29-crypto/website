@@ -39,6 +39,7 @@ import { readCookie, readBodyText, contentType, clientIp, uaFamily, json, fail }
 import { InputError, ConflictError, errorResponse } from "../core/errors.mjs";
 import { ipHash } from "../core/sessions.mjs";
 import { safeErr } from "../../referral-lib.mjs";
+import { setSuppression } from "../core/suppressions.mjs";
 
 export const PORTAL_COOKIE = "barta_portal";
 export const SESSION_DAYS = 30;
@@ -131,6 +132,13 @@ export async function unsubscribeLink({ contact_id, channel, address }) {
   let code = "";
   for (const b of mac) { if (b < 248) code += BASE62[b % 62]; if (code.length === CODE_LEN) break; }
   const link = await createPortalLink({ contact_id, scope: { kind: "unsubscribe", id: `${channel}--${key}` }, expires_at: null }, { code });
+  // opting out always works (§8.2): a derived link revoked before this rule
+  // (revokeLinks skips unsubscribe links now) is brought back
+  const cur = await readLink(code);
+  if (cur && cur.revoked_at && cur.scope && cur.scope.kind === "unsubscribe") {
+    const { _etag, _key, ...value } = cur;
+    await settledWrite(_key, { ...value, revoked_at: null, revoked_by: null }, { onlyIfMatch: _etag }).catch(() => {});
+  }
   return { ...link, url: `${CANONICAL_ORIGIN}/p/unsubscribe/${code}`, one_click: `${CANONICAL_ORIGIN}/api/portal/unsubscribe/${code}` };
 }
 
@@ -154,7 +162,9 @@ export function linkState(link, t = nowMs(), maxPerDay = 200) {
   return "ok";
 }
 
-// Revokes every link of a contact (Contact → Portal → Revoke links; merges and archive).
+// Revokes every link of a contact (Contact → Portal → Revoke links; merges
+// and archive), except unsubscribe links: opting out is always allowed
+// (§8.2, CAN-SPAM), and an address keeps one link for every email.
 export async function revokeLinks(contactId, { by = "system" } = {}) {
   const rows = await listRel("contact-links", contactId, { limit: 500 });
   let n = 0;
@@ -162,6 +172,7 @@ export async function revokeLinks(contactId, { by = "system" } = {}) {
     const k = `plk/${r.id}`;
     const got = await getRaw(k).catch(() => null);
     if (!got || !got.data || got.data.revoked_at) continue;
+    if (got.data.scope && got.data.scope.kind === "unsubscribe") continue;
     const w = await settledWrite(k, { ...got.data, revoked_at: nowIso(), revoked_by: by }, { onlyIfMatch: got.etag });
     if (w.ok) n += 1;
   }
@@ -384,7 +395,8 @@ async function lockLink(code, link) {
 // GET /p/unsubscribe/{code}: the confirm page; POST /api/portal/unsubscribe/{code} does it.
 async function unsubscribePage(code, company) {
   const link = await readLink(code);
-  if (!link || link.scope.kind !== "unsubscribe" || linkState(link) === "revoked") return stateMessage("missing", { company });
+  // an unsubscribe link always works, even one revoked with its contact's other links
+  if (!link || link.scope.kind !== "unsubscribe") return stateMessage("missing", { company });
   const channel = String(link.scope.id).split("--")[0] === "sms" ? "texts" : "emails";
   return portalPage(layout({
     title: "Unsubscribe", company, page: "unsubscribe",
@@ -398,15 +410,11 @@ async function unsubscribe(req, url, code) {
   const oneClick = form["List-Unsubscribe"] === "One-Click";
   if (!oneClick && !sameOrigin(req, url)) return pfail("csrf", "Use the button on the page.", 403);
   const link = await readLink(code);
-  if (!link || link.scope.kind !== "unsubscribe" || link.revoked_at) return pfail("missing", "That link isn't right.", 404);
+  if (!link || link.scope.kind !== "unsubscribe") return pfail("missing", "That link isn't right.", 404);
   const [channel, key] = String(link.scope.id).split("--");
   if (!["sms", "email"].includes(channel) || !/^[0-9a-z]{26}$/.test(key || "")) return pfail("missing", "That link isn't right.", 404);
-  const k = `sup/${channel}/${key}`;
-  const cur = await getRaw(k);
-  if (!(cur && cur.data && cur.data.state === "opted_out")) {
-    const masked = channel === "sms" ? "(•••) •••-••••" : "•••@•••";
-    await settledWrite(k, { state: "opted_out", at: nowIso(), source: "portal", masked: (cur && cur.data && cur.data.masked) || masked, contact_id: link.contact_id }, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
-  }
+  // sup/ and its dated row, then consent.changed for sales and comms (§11.3)
+  await setSuppression({ channel, address_hk: key, state: "opted_out", source: "portal", by: "portal", contact_id: link.contact_id });
   if (contentType(req) === "application/json") return pjson({ ok: true, data: { unsubscribed: true, channel } });
   return message("You're unsubscribed", channel === "sms" ? "We won't send you marketing texts anymore." : "We won't send you marketing emails anymore.");
 }

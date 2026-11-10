@@ -42,6 +42,7 @@ function validateOutbox(data, { op } = {}) {
     mode: (v, f) => enumValue(v, OUTBOX_MODES, { field: f, required: true, stored }),
     to_masked: (v, f) => str(v, { field: f, max: 80 }),
     contact_id: (v, f) => (v === undefined || v === null || v === "" ? undefined : isId(v) ? v : (() => { throw new InputError("That isn't a record id.", f); })()),
+    contact_label: (v, f) => (v === undefined || v === null || v === "" ? undefined : str(v, { field: f, max: 80 })),
     subject: (v, f) => (v === undefined || v === null ? undefined : str(v, { field: f, max: 300 })),
     body: (v, f) => (v === undefined || v === null ? undefined : str(v, { field: f, max: 20000, trim: false })),
     amount_cents: (v, f) => int(v, { field: f, min: -100000000, max: 100000000 }),
@@ -81,6 +82,8 @@ export async function recordOutbox(item, ctx = {}) {
     to_masked: item.to_masked || maskFor(item.kind, item.to),
     ...(item.to_hk ? { to_hk: item.to_hk } : {}),
     ...(item.contact_id ? { contact_id: item.contact_id } : {}),
+    // the contact's name as the Outbox shows it (never the id)
+    ...(item.contact_label ? { contact_label: truncate(String(item.contact_label), 80) } : {}),
     ...(item.subject !== undefined ? { subject: item.subject ? truncate(item.subject, 300) : item.subject } : {}),
     ...(item.body !== undefined ? { body: item.body } : {}),
     ...(item.amount_cents !== undefined ? { amount_cents: item.amount_cents } : {}),
@@ -120,7 +123,7 @@ export async function listOutbox({ date, contact_id, kind, limit = 30, before } 
 }
 
 export const outboxView = (o) => ({
-  id: o.id, kind: o.kind, mode: o.mode, to_masked: o.to_masked, contact_id: o.contact_id || null, subject: o.subject || null,
+  id: o.id, kind: o.kind, mode: o.mode, to_masked: o.to_masked, contact_id: o.contact_id || null, contact_label: o.contact_label || null, subject: o.subject || null,
   body: o.body ?? null, amount_cents: o.amount_cents ?? null, related: o.related || {}, origin: o.origin || null, category: o.category || null,
   template_key: o.template_key || null, footer_appended: !!o.footer_appended, segments: o.segments || null, simulated: o.simulated || null,
   blocked_reason: o.blocked_reason || null, staff: !!o.staff, created_at: o.created_at, day: o.day,

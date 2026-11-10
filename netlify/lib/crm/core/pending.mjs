@@ -19,9 +19,13 @@
 //   done/pending/{id}); a kind without one (outbox_review) is simply done:
 //   the office acts on each item by hand.
 // - Past expires_at (24 h by default) an action can no longer be approved.
+// - An approval is never lost between its two writes (status, then the
+//   queue item): approving an action that is already "approved" but whose
+//   marker is not final queues it again, and the hourly pending.requeue
+//   sweep does the same for any it finds. The marker keeps it to one run.
 
 import { createHash } from "node:crypto";
-import { createRecord, updateRecord, getRecord, readIndex } from "../../crm-store.mjs";
+import { createRecord, updateRecord, getRecord, readIndex, getRaw } from "../../crm-store.mjs";
 import { nowIso, nowMs } from "./clock.mjs";
 import { isId } from "./ids.mjs";
 import { InputError, NotFoundError, ConflictError, RegistryError } from "./errors.mjs";
@@ -95,9 +99,22 @@ export async function getPendingAction(id) {
 
 // Approve or reject (owner). Approving an action with an executor queues
 // it for the fast lane; one without is done at once.
+const RUN_MARKER = (id) => ({ ns: "done", scope: "pending", key: id });
+const queueRun = (id) => enqueue("pending.run", { type: "pending_action", id }, { status: "approved" }, new Date(nowMs()), RUN_MARKER(id));
+async function runIsQueuedOrDone(id) {
+  const m = await getRaw(`done/pending/${id}`);
+  return !!(m && m.data);
+}
+
 export async function decidePendingAction(id, decision, ctx) {
   if (!["approve", "reject"].includes(decision)) throw new InputError("Approve or reject.", "decision");
   const a = await getPendingAction(id);
+  // approved but its run never got queued (the request died after the
+  // status write): approving again queues it now
+  if (a.status === "approved" && decision === "approve" && !(await runIsQueuedOrDone(id))) {
+    await queueRun(id);
+    return a;
+  }
   if (expired(a)) throw new ConflictError("This approval expired. Ask for it again.");
   if (a.status !== "pending") throw new ConflictError("This was already decided.");
   const k = pendingKind(a.kind);
@@ -105,10 +122,25 @@ export async function decidePendingAction(id, decision, ctx) {
   const next = decision === "reject" ? "rejected" : k && k.run ? "approved" : "done";
   const r = await updateRecord("pending_action", id, (x) => (x.status !== "pending" ? null : { ...x, status: next, decided_by: by, decided_at: nowIso() }), ctx.write());
   if (r.data.decided_by !== by || r.data.status !== next) throw new ConflictError("This was already decided.");
-  if (next === "approved") {
-    await enqueue("pending.run", { type: "pending_action", id }, { status: "approved" }, new Date(nowMs()), { ns: "done", scope: "pending", key: id });
-  }
+  if (next === "approved") await queueRun(id);
   return r.data;
+}
+
+// The pending.requeue sweep: approved actions decided more than
+// REQUEUE_AFTER_MS ago whose run has no marker yet. → how many were queued.
+export const REQUEUE_AFTER_MS = 10 * 60 * 1000;
+export async function requeueApproved() {
+  const ix = await readIndex("pending-actions", "");
+  let n = 0;
+  for (const r of ix.rows.filter((x) => x.st === "approved")) {
+    if (await runIsQueuedOrDone(r.id)) continue;
+    const got = await getRecord("pending_action", r.id);
+    const a = got && got.data;
+    if (!a || a.status !== "approved" || !(Date.parse(a.decided_at) + REQUEUE_AFTER_MS < nowMs())) continue;
+    await queueRun(r.id);
+    n += 1;
+  }
+  return n;
 }
 
 // Queue kind "pending.run": runs an approved action once, as the approver.

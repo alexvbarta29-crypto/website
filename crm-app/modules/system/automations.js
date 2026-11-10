@@ -91,7 +91,7 @@ export default {
     const later = s.automations.filter((a) => !a.available);
     const row = (a) => html`<li><div class="row">
       <button type="button" class="who linkish" style="text-decoration:none;color:inherit;text-align:left" data-open="${a.key}">
-        <span class="nm">${a.label}</span><span class="sub">${a.when || a.trigger || ""}</span><span class="sub">${last7(a.last7)}</span>
+        <span class="nm two">${a.label}</span><span class="sub two">${a.when || a.trigger || ""}</span><span class="sub">${last7(a.last7)}</span>
       </button>
       <span class="end"><button type="button" class="switch" role="switch" ${attrs({ "aria-checked": String(!!(a.settings && a.settings.enabled)), "aria-label": `${a.label} on or off`, "data-toggle": a.key })}></button></span>
     </div></li>`;
@@ -99,7 +99,7 @@ export default {
       ${s.paused ? html`<div class="warn-box">Every automation is paused.</div>` : ""}
       <div class="note">Until the switch-over, anything an automation would send to a customer goes to the Outbox instead, and changes to records Rotor owns are only reported ("would have").</div>
       ${live.length ? html`<ul class="list">${live.map(row)}</ul>` : ""}
-      ${later.length ? html`<div class="section-h">Arriving with the next parts</div><ul class="list">${later.map((a) => html`<li><div class="row"><span class="ico">${icon("bolt")}</span><span class="who"><span class="nm">${a.label}</span><span class="sub">${a.when}</span><span class="sub">${a.action}</span></span><span class="end"><span class="pill">${a.arrives_with}</span></span></div></li>`)}</ul>` : ""}
+      ${later.length ? html`<div class="section-h">Arriving with the next parts</div><ul class="list">${later.map((a) => html`<li><div class="row"><span class="ico">${icon("bolt")}</span><span class="who"><span class="nm two">${a.label}</span><span class="sub two">${a.when}</span><span class="sub two">${a.action}</span></span><span class="end"><span class="pill">${a.arrives_with}</span></span></div></li>`)}</ul>` : ""}
     </div>`;
   },
   events: {

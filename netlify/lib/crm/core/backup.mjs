@@ -188,6 +188,22 @@ export async function pruneSnapshots(today = localDate(new Date(nowMs())), opts 
 const parseLines = (text) => String(text || "").split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
+// Exactly-once state never goes back (§7.3, §3.12): a step marker that
+// moved on since the snapshot (sending, done, unknown, a failure without a
+// retry) and an op that finished keep their live value, so a restored queue
+// item finds its step final and nothing runs twice. Like seq/ counters.
+const MARKER_RE = /^done(-dry)?\//;
+const MARKER_RANK = { claimed: 0, failed: 1, sending: 2, done: 3, unknown: 3 };
+const markerRank = (m) => (m && typeof m === "object" ? (m.state === "failed" && !m.retry_at ? 3 : MARKER_RANK[m.state] ?? -1) : -1);
+function keepLive(key, live, value) {
+  if (!live || typeof live !== "object") return false;
+  if (key.startsWith("seq/")) return Number.isSafeInteger(live.next) && value && Number.isSafeInteger(value.next) && live.next >= value.next;
+  if (MARKER_RE.test(key)) return markerRank(live) >= 2 && markerRank(live) >= markerRank(value);
+  if (key.startsWith("op/")) return ["done", "failed"].includes(live.status) && !(value && ["done", "failed"].includes(value.status));
+  return false;
+}
+const isFinalMarker = (m) => !!m && (m.state === "done" || m.state === "unknown" || (m.state === "failed" && !m.retry_at));
+
 // A conditional write of a restored value: onlyIfNew for a missing key,
 // onlyIfMatch on the etag read for an existing one; an unclear answer is
 // settled by reading the key back.
@@ -197,8 +213,9 @@ async function restoreWrite(key, line, opts) {
     const cur = await getRaw(key, { ...opts, type: "text" });
     const curVal = cur ? (line.t !== undefined ? cur.data : (() => { try { return JSON.parse(cur.data); } catch { return Symbol("x"); } })()) : undefined;
     if (cur && same(curVal, value)) return "same";
-    // a counter never goes back: a store that already issued higher numbers keeps them
-    if (cur && key.startsWith("seq/") && curVal && value && Number.isSafeInteger(curVal.next) && Number.isSafeInteger(value.next) && curVal.next >= value.next) return "same";
+    // a counter never goes back (a store that already issued higher numbers
+    // keeps them), and neither does a step's marker or a finished op
+    if (cur && keepLive(key, curVal, value)) return "kept";
     const r = await putRaw(key, value, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true }, opts);
     if (r.modified && r.etag && !r.ambiguous) return "written";
   }
@@ -220,7 +237,7 @@ export async function restoreSnapshot(source, { onProgress, margin = 100 } = {},
   const paused = { ...DEFAULT_MODE, ...(snapMode && typeof snapMode === "object" ? snapMode : {}), paused: true, paused_reason: "restore", restored_from: manifest.date, paused_at: nowIso() };
   delete paused._w;
   await restoreWrite(SYS_MODE_KEY, { v: paused }, opts);
-  const counts = { keys: 0, written: 0, same: 0 };
+  const counts = { keys: 0, written: 0, same: 0, kept: 0 };
   // 2. every partition, in order
   for (const P of manifest.partitions) {
     for (let n = 1; n <= (P.parts || 0); n++) {
@@ -228,9 +245,15 @@ export async function restoreSnapshot(source, { onProgress, margin = 100 } = {},
       if (text === null || text === undefined) throw new NotFoundError(`Backup part ${P.name} ${n} is missing.`);
       for (const line of parseLines(text)) {
         if (line.k === SYS_MODE_KEY || skipped(line.k)) continue;
+        // a queued step whose marker is final now has nothing left to do
+        if (line.k.startsWith("q/") && line.v && line.v.marker) {
+          const m = line.v.marker;
+          const live = await getRaw(`${m.ns}/${m.scope}/${m.key}`, opts).catch(() => null);
+          if (live && isFinalMarker(live.data)) { counts.keys += 1; counts.kept = (counts.kept || 0) + 1; continue; }
+        }
         const r = await restoreWrite(line.k, line, opts);
         counts.keys += 1;
-        counts[r === "same" ? "same" : "written"] += 1;
+        counts[r === "written" ? "written" : r === "kept" ? "kept" : "same"] = (counts[r === "written" ? "written" : r === "kept" ? "kept" : "same"] || 0) + 1;
       }
       if (onProgress) onProgress({ partition: P.name, part: n, ...counts });
     }

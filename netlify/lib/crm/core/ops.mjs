@@ -18,9 +18,17 @@
 // - Children get ids from s.deriveId(type, scope, n) = deriveId(type, opId,
 //   scope, n) and are written with onlyIfNew, so a resumed op creates
 //   nothing twice.
-// - Numbers (job, invoice, quote): s.number(childId, seq) journals
-//   numbers[childId] by CAS right after nextNumber; a resumed op reuses the
-//   journaled number.
+// - Numbers (job, invoice, quote): s.number(childId, seq) journals an
+//   intent (numbering: childId) first, then nextNumber (which claims
+//   ptr/{seq}-no/{n} = { id: childId }), then numbers[childId]. A resumed op
+//   reuses the journaled number; one that died between nextNumber and the
+//   journal finds the pointer already naming its child (the last
+//   NUMBER_LOOKBACK numbers of the sequence) and reuses that number, so a
+//   crash never leaves a gap or a pointer to a record showing another number.
+// - The journal records who started the op (actor: by, origin, actor_kind,
+//   requested_by, approved_action). ops.resume finishes it as that actor,
+//   with the pass's sys/mode, so a person's op (a portal approval, a merge)
+//   keeps the exemption §3.10 gives people when the worker completes it.
 // - A step that fails on storage (busy, maybe saved, out of time) leaves the
 //   op running for ops.resume; any other error fails it (after 5 attempts
 //   the owners are alerted).
@@ -30,7 +38,7 @@
 // steps[], { input }) also works for an op that is never resumed by the
 // worker (its journal then only dedupes and records the result).
 
-import { getRaw, settledWrite, nextNumber, listRel, addRel, removeRel, createRecord, getRecord } from "../../crm-store.mjs";
+import { getRaw, settledWrite, nextNumber, listRel, addRel, removeRel, createRecord, getRecord, readPointer } from "../../crm-store.mjs";
 import { nowIso, nowMs, tsKey } from "./clock.mjs";
 import { deriveId } from "./ids.mjs";
 import { keySafe } from "./text.mjs";
@@ -39,6 +47,7 @@ import { updateHealth, withAlert } from "./lanes.mjs";
 import { safeErr } from "../../referral-lib.mjs";
 
 export const OP_LEASE_MS = 2 * 60 * 1000;
+export const NUMBER_LOOKBACK = 25;
 export const OP_MAX_ATTEMPTS = 5;
 export const opKey = (opId) => `op/${opId}`;
 const OP_ID_RE = /^[a-z0-9][a-z0-9._@-]{2,180}$/;
@@ -62,6 +71,24 @@ const TRANSIENT = [BlobsTransientError, UnknownOutcome, TimeoutError, BudgetErro
 const transient = (e) => TRANSIENT.some((C) => e instanceof C) || (e && e.transient === true);
 const leaseLive = (j) => Date.parse(j.lease_until) > nowMs();
 const strip = (v) => { const { _w, ...rest } = v || {}; return rest; };
+
+// Who started an op, as the journal keeps it (no mode: a resume uses the
+// pass's own).
+const ACTOR_FIELDS = ["by", "origin", "actor_kind", "requested_by", "approved_action"];
+const actorOf = (ctx) => Object.fromEntries(ACTOR_FIELDS.filter((f) => ctx && typeof ctx[f] === "string" && ctx[f]).map((f) => [f, String(ctx[f]).slice(0, 80)]));
+
+// A number nextNumber already claimed for childId (a crash before the
+// journal kept it): the newest NUMBER_LOOKBACK pointers of the sequence.
+async function claimedNumber(seqName, childId, store) {
+  const seq = await getRaw(`seq/${seqName}`, store);
+  const next = seq && seq.data && Number.isSafeInteger(seq.data.next) ? seq.data.next : null;
+  if (!next) return null;
+  for (let n = next - 1; n >= Math.max(1, next - NUMBER_LOOKBACK); n--) {
+    const p = await readPointer(`${seqName}-no`, String(n), store);
+    if (p && p.id === childId) return n;
+  }
+  return null;
+}
 
 // The journal of an op, or null.
 export async function readOp(opId, opts = {}) {
@@ -92,7 +119,7 @@ export async function runOp(opId, spec, opts = {}) {
     const steps = stepsOf(spec, opts.input);
     const fresh = {
       status: "running", kind, input: opts.input || {}, step: 0, steps: steps.length, holder, lease_until: new Date(nowMs() + OP_LEASE_MS).toISOString(),
-      numbers: {}, out: {}, started_at: nowIso(), attempts: 1,
+      numbers: {}, out: {}, started_at: nowIso(), attempts: 1, actor: actorOf(opts.ctx),
     };
     const w = await settledWrite(key, fresh, { onlyIfNew: true }, opts.store || {});
     if (w.ok) {
@@ -142,8 +169,13 @@ async function execute(opId, spec, journal, etag, holder, opts) {
     },
     async number(childId, seqName, numberOpts = {}) {
       if (journal.numbers && Number.isSafeInteger(journal.numbers[childId])) return journal.numbers[childId];
-      const n = await nextNumber(seqName, { ...store, start: numberOpts.start, id: childId });
-      await save({ numbers: { ...(journal.numbers || {}), [childId]: n } });
+      // an intent first: a resume that finds it looks for the number already claimed
+      let n = journal.numbering === childId ? await claimedNumber(seqName, childId, store) : null;
+      if (n === null) {
+        if (journal.numbering !== childId) await save({ numbering: childId });
+        n = await nextNumber(seqName, { ...store, start: numberOpts.start, id: childId });
+      }
+      await save({ numbers: { ...(journal.numbers || {}), [childId]: n }, numbering: null });
       return n;
     },
   };
@@ -177,8 +209,9 @@ async function execute(opId, spec, journal, etag, holder, opts) {
 
 // The worker's ops.resume step: every running op whose lease ran out is
 // taken over and finished (kind-defined ops only; an op without a kind is
-// marked failed, nothing can rebuild its steps). → { resumed, failed }
-export async function resumeOps({ holder = "ops.resume", budget, minLeftMs = 5000 } = {}, opts = {}) {
+// marked failed, nothing can rebuild its steps), as the actor that started
+// it and with the pass's sys/mode. → { resumed, failed }
+export async function resumeOps({ holder = "ops.resume", budget, minLeftMs = 5000, mode } = {}, opts = {}) {
   const rows = await listRel("op-running", "all", { limit: 100, newestFirst: false }, opts);
   let resumed = 0;
   let failed = 0;
@@ -197,7 +230,8 @@ export async function resumeOps({ holder = "ops.resume", budget, minLeftMs = 500
       continue;
     }
     try {
-      const out = await runOp(r.id, j.kind, { holder, resume: true, input: j.input, ctx: { by: "system", origin: "worker", actor_kind: "automation", requestId: holder }, store: opts });
+      const actor = j.actor && typeof j.actor === "object" && j.actor.by ? j.actor : { by: "system", origin: "worker", actor_kind: "automation" };
+      const out = await runOp(r.id, j.kind, { holder, resume: true, input: j.input, ctx: { ...actor, requestId: holder, ...(mode ? { mode } : {}) }, store: opts });
       if (out.status === "done") resumed += 1;
       if (out.status === "failed") failed += 1;
     } catch (e) {

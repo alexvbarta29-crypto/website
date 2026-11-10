@@ -93,3 +93,38 @@ test("Settings screens, Automations, Templates and My account render for an owne
   assert.match(mm, /…abcd/);
   assert.match(mm, /New leads/);
 });
+
+test("M1.3 review: names instead of ids, the hours grid's Open column, rows that wrap", async () => {
+  const activity = await load("activity");
+  const a = text(activity.render({ date: "2026-11-17", user: "", type: "", labels: { tp_1: "Visit note" }, rows: [
+    { at: NOW, type: "template", id: "tp_1", action: "update", actor: "us_00000000000000000002" },
+    { at: NOW, type: "user", id: "us_00000000000000000001", action: "update", actor: "us_00000000000000000002" },
+    { at: NOW, type: "cfg", id: "messaging", action: "update", actor: "us_00000000000000000002" },
+    { at: NOW, type: "bulk_run", id: "bk_01m7aaaaaaaaaaaaaaaa", action: "create", actor: "system" },
+  ], users: [{ id: "us_00000000000000000001", name: "Olive Owner", first_name: "Olive" }, { id: "us_00000000000000000002", name: "Ada Admin", first_name: "Ada" }] }, ctx(["audit:read", "schedule:read"])));
+  assert.match(a, /Ada Admin changed template/);
+  assert.match(a, /Visit note/);
+  assert.match(a, /Olive Owner/);
+  assert.match(a, /messaging settings/);
+  const visible = (h) => h.replace(/<[^>]*>/g, " ");
+  assert.doesNotMatch(visible(a), /us_0000|tp_1|bk_01m7/, "no raw ids on the screen");
+
+  const outbox = await load("outbox");
+  const o = text(outbox.render({ date: "2026-11-17", tab: "outbox", kind: "", items: [{ id: "ob_1", kind: "sms", mode: "dry_run", to_masked: "(763) •••-0101", contact_id: "ct_01m7aaaaaaaaaaaaaaaa", contact_label: "Pat Example", body: "Hi", created_at: NOW }], next: null, log: [] }, ctx()));
+  assert.match(o, /Pat Example/);
+  assert.doesNotMatch(visible(o), /ct_01m7/);
+
+  const general = await load("settings-general");
+  const doc = (data) => ({ name: "x", data, etag: '"1"' });
+  const h = text(general.render({ section: "hours", hours: doc({ 0: null, 1: ["08:00", "18:00"] }), calendar: doc({ rules: [], dates: [] }), dates: [] }));
+  assert.match(h, /<span class="gh">Open<\/span>/, "the checkbox column has a header");
+  assert.match(h, /name="from_0"[^>]*disabled/, "a closed day's times are disabled (and styled as such)");
+
+  const notes = await load("notifications");
+  assert.match(text(notes.render({ items: [{ id: "nt_1", kind: "new_lead", title: "New lead: Pat in Delano", body: "x", link: "/today", read_at: null, created_at: NOW }] })), /class="nm two"/, "a long title wraps to two lines");
+
+  const messaging = await load("settings-messaging");
+  const m = text(messaging.render({ messaging: doc({ quiet: {}, footer: {} }), comms: doc({ reply_keywords: { enabled: false } }), test: { ...doc({ contact_id: "ct_01m7aaaaaaaaaaaaaaaa" }), labels: { contact_id: "Tess Tester" } }, words: [] }, ctx()));
+  assert.match(m, /Tess Tester/);
+  assert.doesNotMatch(visible(m), /ct_01m7/);
+});

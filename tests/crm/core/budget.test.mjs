@@ -156,11 +156,14 @@ test("every route stays under its maxCalls on fixtures (strict budget: one call 
     fx.pending = await scope(() => P.createPendingAction({ kind: "outbox_review", title: "Review", requested_by: fx.tech.id, items: [] }, W));
     fx.pending2 = await scope(() => P.createPendingAction({ kind: "outbox_review", title: "Review", requested_by: fx.tech.id, items: [] }, W));
     fx.eventKey = t.stores.data.keys(`evt/user/${fx.tech.id}/`)[0];
-    await t.api("/settings/messaging_test", { method: "PUT", as: fx.owner, ifMatch: "new", body: { contact_id: fx.contact.id } });
+    fx.tester = await scope(() => seedContact(3, { flags: { test: true } }));      // the bulk-send test contact is flagged test (§5.7.5)
+    assert.equal((await t.api("/settings/messaging_test", { method: "PUT", as: fx.owner, ifMatch: "new", body: { contact_id: fx.tester.id } })).status, 200);
     assert.equal((await t.api(`/bulk-runs/${fx.bulkTested.id}/test`, { method: "POST", as: fx.owner, body: {} })).status, 200);
     fx.pushHash = (await scope(() => N.savePushSubscription(fx.owner.id, { endpoint: "https://fcm.googleapis.com/fcm/send/budget-1", keys: PUSH_KEYS }))).hash;
-    await scope(() => N.notify([fx.owner.id], { kind: "system", title: "Budget" }));
-    await t.runWorker({ lane: "fast" });
+    // 50 unread: "Mark all read" works in batches that fit the route's budget
+    for (let i = 0; i < 50; i++) await scope(() => N.notify([fx.owner.id], { kind: "system", title: `Budget ${i}` }));
+    for (let i = 0; i < 6 && t.stores.data.keys("q/").length; i++) await t.runWorker({ lane: "fast" });
+    assert.ok(t.stores.data.keys(`rel/user-unread/${fx.owner.id}/`).length >= 50);
     const key = await t.api("/api-keys", { method: "POST", as: fx.owner, body: { name: "Old key" } });
     fx.apiKeyId = key.body.data.id;
 

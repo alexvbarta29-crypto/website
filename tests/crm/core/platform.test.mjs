@@ -327,3 +327,102 @@ test("before setup the bulk lane does nothing and touches no store", async () =>
   assert.equal(res.status, 202);
   assert.equal(t.stores.data.calls.length, before);
 });
+
+// ------------------------------------------------------------ M1.3 review
+
+test("auth.sessions also deletes expired portal sessions (pses/) and CSV exports a few days after their run", async () => {
+  const S = t.stores.data;
+  await scope(async () => {
+    await store.settledWrite("pses/" + "a".repeat(64), { contact_id: "ct_00000000000000000001", expires_at: "2026-11-10T00:00:00.000Z" }, { onlyIfNew: true });
+    await store.settledWrite("pses/" + "b".repeat(64), { contact_id: "ct_00000000000000000001", expires_at: "2026-12-10T00:00:00.000Z" }, { onlyIfNew: true });
+    const old = await L.createRun("export.csv", { type: "user", date: "2026-11-10" }, { by: owner.id }, { kick: false });
+    await store.updateRecord("run", old.id, (x) => ({ ...x, status: "done", finished_at: "2026-11-10T12:00:00.000Z" }), { by: "system", origin: "worker", actor_kind: "automation" });
+    const fresh = await L.createRun("export.csv", { type: "user", date: "2026-11-17" }, { by: owner.id }, { kick: false });
+    await store.updateRecord("run", fresh.id, (x) => ({ ...x, status: "done", finished_at: "2026-11-17T12:00:00.000Z" }), { by: "system", origin: "worker", actor_kind: "automation" });
+    await store.putRaw(`exports/${old.id}/user.csv`, "id\r\n", {}, { kind: "backups" });
+    await store.putRaw(`exports/${fresh.id}/user.csv`, "id\r\n", {}, { kind: "backups" });
+    await store.putRaw("exports/rn_00000000000000000000/user.csv", "id\r\n", {}, { kind: "backups" });   // its run is gone
+    t.fresh = fresh.id;
+  });
+  pin("2026-11-18T09:20:00Z");        // 03:20 local
+  await t.runWorker();
+  assert.deepEqual(S.keys("pses/"), ["pses/" + "b".repeat(64)], "the expired portal session goes, the live one stays");
+  assert.deepEqual(t.stores.backups.keys("exports/"), [`exports/${t.fresh}/user.csv`], "only the recent export is left");
+});
+
+test("health tells Today and Data the CRM is paused (since when, why); Data offers only the switch that applies", async () => {
+  let h = await t.api("/admin/health", { as: owner });
+  assert.equal(h.body.data.mode.paused, false);
+  assert.equal((await t.api("/admin/pause", { method: "POST", as: owner, body: { confirm: "PAUSE" } })).status, 200);
+  h = await t.api("/admin/health", { as: admin });
+  assert.equal(h.body.data.mode.paused, true);
+  assert.equal(h.body.data.mode.paused_by, owner.id);
+  assert.ok(h.body.data.mode.paused_at);
+  const ctx = { can: () => true, user: { id: owner.id, role: "owner" }, keep: {} };
+  const data = (await import("../../../crm-app/modules/system/settings-data.js")).default;
+  const today = (await import("../../../crm-app/modules/system/today.js")).default;
+  const d = String(data.render({ health: h.body.data, backups: [], mode: h.body.data.mode }, ctx));
+  assert.match(d, /The CRM is paused/);
+  assert.match(d, /data-resume/);
+  assert.doesNotMatch(d, /data-pause/, "only Resume while paused");
+  assert.match(String(today.render({ now: new Date(), user: { role: "owner" }, badges: {}, health: h.body.data }, ctx)), /The CRM is paused/);
+  const off = String(data.render({ health: { status: {}, lanes: {}, alerts: [] }, backups: [], mode: { paused: false } }, ctx));
+  assert.match(off, /data-pause/);
+  assert.doesNotMatch(off, /data-resume/);
+});
+
+test("settings: unknown fields are dropped, automation settings get PATCH's checks, a page has a size cap", async () => {
+  const company = await t.api("/settings/company", { as: owner });
+  const big = await t.api("/settings/company", { method: "PUT", as: owner, ifMatch: company.body.data.etag || "new", body: { ...company.body.data.data, extra_blob: "x".repeat(200000) } });
+  assert.equal(big.status, 200);
+  assert.equal(t.stores.data.json("cfg/company").extra_blob, undefined, "an unknown field is never stored");
+  const bad = await t.api("/settings/automations", { method: "PUT", as: admin, ifMatch: "new", body: { "lead.ack": { channels: ["fax"] } } });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.body.error.field, "lead.ack.channels");
+  const bad2 = await t.api("/settings/automations", { method: "PUT", as: admin, ifMatch: "new", body: { "lead.ack": { delay: -5 } } });
+  assert.equal(bad2.status, 400);
+  const ok = await t.api("/settings/automations", { method: "PUT", as: admin, ifMatch: "new", body: { "lead.ack": { enabled: false, junk: "x" }, junk: "x" } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.deepEqual(t.stores.data.json("cfg/automations")["lead.ack"], { enabled: false });
+  assert.equal(t.stores.data.json("cfg/automations").junk, undefined);
+  const portal = await t.api("/settings/portal", { as: owner });
+  const huge = await t.api("/settings/portal", { method: "PUT", as: owner, ifMatch: "new", body: { ...portal.body.data.data, terms: "y".repeat(20000), lifetimes: { ...portal.body.data.data.lifetimes } } });
+  assert.equal(huge.status, 200, "the terms may be long");
+  const ints = await t.api("/settings/integrations", { as: owner });
+  const from = await t.api("/settings/integrations", { method: "PUT", as: owner, ifMatch: "new", body: { ...ints.body.data.data, sms: { ...ints.body.data.data.sms, from: "763-555-0177" } } });
+  assert.equal(from.status, 400);
+  assert.equal(from.body.error.field, "sms.from");
+});
+
+test("settings: the bulk-send test contact must be flagged test, and the page shows its name", async () => {
+  const { seedContact } = await import("../../helpers/crm-fixtures.mjs");
+  const plain = await scope(() => seedContact(1));
+  const tester = await scope(() => seedContact(2, { flags: { test: true } }));
+  const no = await t.api("/settings/messaging_test", { method: "PUT", as: owner, ifMatch: "new", body: { contact_id: plain.id } });
+  assert.equal(no.status, 400);
+  assert.match(no.body.error.message, /test contact/);
+  assert.equal((await t.api("/settings/messaging_test", { method: "PUT", as: owner, ifMatch: "new", body: { contact_id: tester.id } })).status, 200);
+  const got = await t.api("/settings/messaging_test", { as: owner });
+  assert.equal(got.body.data.labels.contact_id, `${tester.first_name} ${tester.last_name}`);
+});
+
+test("API keys: the new-key sheet gets the person's grantable scopes; ticked write scopes only; a key over its calls a minute gets 429", async () => {
+  const list = await t.api("/api-keys", { as: admin });
+  const sc = list.body.meta.scopes;
+  assert.ok(sc.read.some((p) => p.key === "contacts:read_all" && p.label));
+  assert.ok(sc.write.some((p) => p.key === "contacts:write"));
+  assert.ok(![...sc.read, ...sc.write].some((p) => ["payments:charge", "campaigns:send", "export:all", "settings:owner", "users:manage"].includes(p.key)), "never the ones a key can't carry");
+  assert.ok(sc.defaults.includes("contacts:read_all"));
+  const made = await t.api("/api-keys", { method: "POST", as: admin, body: { name: "Claude", scopes: ["audit:read", "contacts:write"] } });
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  assert.deepEqual(made.body.data.scopes, ["audit:read", "contacts:write"]);
+  // a header key: 120 calls a minute
+  await scope(async () => { for (let i = 0; i < 120; i++) await store.putRaw(`thr/key/${made.body.data.id}/20261117t1500${String(i).padStart(5, "0")}z-x${i}`, { at: "x" }); });
+  const bearer = { authorization: "Bearer " + made.body.data.key };
+  const over = await t.api("/audit", { headers: bearer });
+  assert.equal(over.status, 429);
+  assert.equal(over.body.error.code, "rate_limited");
+  assert.ok(Number(over.headers.get("retry-after")) > 0);
+  pin("2026-11-17T15:01:00Z");
+  assert.equal((await t.api("/audit", { headers: bearer })).status, 200, "the next minute it works again");
+});

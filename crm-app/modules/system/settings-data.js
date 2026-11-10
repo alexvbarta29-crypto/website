@@ -1,10 +1,13 @@
-// Settings → Data (design §9.2, §3.12): the workers' health and alerts,
-// the nightly backups and the last off-site copy, a CSV export of one kind
-// of record (owners), rebuilding the lists, and pausing everything (owners,
-// typed PAUSE / RESUME: no text, email, charge or automation while paused).
+// Settings → Data (design §9.2, §3.12): whether the CRM is paused (since
+// when, by whom, why: a restore pauses on its own), the workers' health and
+// alerts, the nightly backups and the last off-site copy, "Download
+// everything" (every part of the latest snapshot), a CSV export of one kind
+// of record, rebuilding the lists, and pausing everything (owners, typed
+// PAUSE / RESUME: no text, email, charge or automation while paused; only
+// the switch that applies is offered).
 
 import { html, toast, confirmSheet, sheet, attrs } from "../../core/ui.js";
-import { ago, dateShort, plural } from "../../core/format.js";
+import { ago, dateShort, plural, dateTime } from "../../core/format.js";
 
 const LANE = { ok: ["green", "Running"], stuck: ["red", "Stuck"], never: ["amber", "Not started yet"] };
 const EXPORTS = [["user", "Team"], ["contact", "Contacts"], ["quote", "Quotes"], ["job", "Jobs"], ["visit", "Visits"], ["invoice", "Invoices"], ["payment", "Payments"], ["template", "Templates"]];
@@ -34,19 +37,21 @@ async function waitRun(ctx, id, onTick) {
 export default {
   title: "Data",
   async load(params, ctx) {
-    const [health, backups, mode] = await Promise.all([
+    const [health, backups] = await Promise.all([
       ctx.api("/admin/health", { cache: false }).then((r) => r.data),
       ctx.can("export:all") ? ctx.api("/admin/backups", { cache: false }).then((r) => r.data).catch(() => []) : [],
-      Promise.resolve(null),
     ]);
-    return { health, backups, mode };
+    return { health, backups, mode: (health && health.mode) || { paused: false } };
   },
   render(s, ctx) {
     const h = s.health || {};
     const owner = ctx.can("settings:owner");
     const lane = (k) => { const [cls, label] = LANE[(h.status || {})[k]] || LANE.never; const l = (h.lanes || {})[k] || {}; return html`<li><div class="row"><span class="who"><span class="nm">${k === "fast" ? "Fast lane" : "Bulk lane"}</span><span class="sub">${l.last_pass_at ? "Last pass " + ago(l.last_pass_at) : "No pass yet"}</span></span><span class="end"><span class="pill ${cls}">${label}</span></span></div></li>`; };
     const last = (s.backups || []).find((b) => b.ok);
+    const m = s.mode || {};
     return html`<div class="stack">
+      ${m.paused ? html`<div class="card alert"><h2>The CRM is paused</h2>
+        <p>${m.paused_reason === "restore" ? `A backup${m.restored_from ? ` from ${dateShort(m.restored_from)}` : ""} was restored. ` : ""}Nothing is texted, emailed, charged or automated${m.paused_at ? ` since ${dateTime(m.paused_at)}` : ""}.${owner ? " Check the data, then resume." : " An owner resumes it here."}</p></div>` : ""}
       ${(h.alerts || []).length ? html`<div class="card alert"><h2>Needs a look</h2>${h.alerts.map((a) => html`<p>${a.text}</p>`)}</div>` : ""}
       <div class="section-h">Workers</div>
       <ul class="list">${lane("fast")}${lane("bulk")}<li><div class="row"><span class="who"><span class="nm">Scheduled work</span><span class="sub">${plural((h.queue && h.queue.depth) || 0, "step")} waiting${h.queue && h.queue.next_due_at ? " · next " + ago(h.queue.next_due_at) : ""}</span></span></div></li></ul>
@@ -58,12 +63,14 @@ export default {
       </dl>
       ${s.backups && s.backups.length ? html`<p class="small">${plural(s.backups.length, "snapshot")} kept (35 days, plus the 1st of each month for a year).</p>` : ""}</div>
       ${ctx.can("export:all") ? html`<div class="section-h">Download</div>
+        <div class="card"><p class="small">Everything in last night's backup, as files you keep (one per part; each download is recorded).</p>
+          <button type="button" class="btn dark" data-everything ${attrs({ disabled: !last })}>Download everything</button></div>
         <div class="card"><p class="small">A spreadsheet (CSV) of one kind of record, from last night's backup.</p>
           <div class="stat-row">${EXPORTS.map(([type, label]) => html`<button type="button" class="chip" data-export="${type}">${label}</button>`)}</div>
           <p class="small" data-export-status hidden></p></div>` : ""}
       ${owner ? html`<div class="section-h">Owner switches</div>
         <div class="card"><p class="small">Pausing stops every text, email, charge and automation until you resume. A restore pauses on its own.</p>
-          <div class="btn-row"><button type="button" class="btn danger" data-pause>Pause everything</button><button type="button" class="btn" data-resume>Resume</button></div>
+          <div class="btn-row">${m.paused ? html`<button type="button" class="btn dark" data-resume>Resume</button>` : html`<button type="button" class="btn danger" data-pause>Pause everything</button>`}</div>
           <div class="btn-row"><button type="button" class="btn" data-reindex>Rebuild the lists</button></div></div>` : ""}
     </div>`;
   },
@@ -84,6 +91,19 @@ export default {
         a.className = "btn dark";
         status.appendChild(a);
       } catch (err) { status.textContent = err.message; }
+    },
+    "click [data-everything]": async (e, el, ctx) => {
+      // the manifest of the latest finished snapshot, then one link per part
+      let man;
+      try { man = (await ctx.api("/admin/export", { cache: false })).data; } catch (err) { toast(err.message, { bad: true }); return; }
+      const parts = [];
+      for (const p of (man && man.partitions) || []) for (let n = 1; n <= (p.parts || 0); n++) parts.push({ name: p.name, n, keys: p.keys });
+      const q = (p) => `/api/crm/admin/export?${new URLSearchParams({ date: man.date, partition: p.name, part: String(p.n) })}`;
+      sheet({
+        title: "Download everything",
+        body: html`<p class="small">The backup of ${dateShort(man.date)}: ${plural(parts.length, "file")}. Tap each one to save it.</p>
+          <ul class="list">${parts.map((p) => html`<li><a class="row" ${attrs({ href: q(p), download: "" })}><span class="who"><span class="nm">${p.name}</span><span class="sub">Part ${p.n}${p.keys ? ` · ${plural(p.keys, "item")}` : ""}</span></span></a></li>`)}</ul>`,
+      });
     },
     "click [data-pause]": async (e, el, ctx) => {
       const w = await typed("PAUSE", "Pause everything", "No text, email, charge or automation goes out until you resume.");

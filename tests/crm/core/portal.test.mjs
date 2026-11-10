@@ -31,9 +31,12 @@ fixtureModule({
   ],
 });
 P.definePortalBeacon("quote", async ({ id }) => { viewed.push(id); });
+// sales and comms listen for consent.changed (§11.3): a stand-in listener
+const consent = [];
+fixtureModule({ events: { "consent.changed": { mutates: false, handler: async (event) => { consent.push(event.payload); return { result: "done" }; } } } });
 
 let t;
-afterEach(() => { if (t) t.done(); t = null; viewed.length = 0; });
+afterEach(() => { if (t) t.done(); t = null; viewed.length = 0; consent.length = 0; });
 
 const json = { "content-type": "application/json", "x-crm-portal": "1", origin: "https://www.bartawindowwashing.com" };
 const cookieOf = (res) => (res.headers.getSetCookie ? res.headers.getSetCookie() : []).find((c) => c.startsWith("barta_portal=")) || null;
@@ -218,4 +221,51 @@ test("before the owner's setup the portal opens nothing", async () => {
   assert.match(r.text, /isn&#39;t available right now/);
   assertPortalHeaders(r, "setup needed");
   assert.equal(t.stores.data.keys("").length, 0, "no store touched");
+});
+
+test("an unsubscribe link keeps working after the contact's links are revoked (opting out is always allowed)", async () => {
+  t = await crmTest();
+  const c = await scope(() => seedContact(8));
+  const u = await scope(() => P.unsubscribeLink({ contact_id: c.id, channel: "email", address: c.emails[0].address }));
+  const hub = await scope(() => P.createPortalLink({ contact_id: c.id, scope: { kind: "hub" } }));
+  const n = await scope(() => P.revokeLinks(c.id));
+  assert.equal(n, 1, "the hub link is revoked, the unsubscribe link is not");
+  const link = (code) => scope(() => P.readLink(code));
+  assert.ok((await link(hub.code)).revoked_at);
+  assert.equal((await link(u.code)).revoked_at, null);
+  assert.equal((await t.portal(`/p/unsubscribe/${u.code}`)).status, 200);
+  // a link revoked before this rule still works, and the next email brings it back
+  const cur = await link(u.code);
+  const { _etag, _key, ...value } = cur;
+  await scope(() => store.settledWrite(_key, { ...value, revoked_at: "2026-11-01T00:00:00.000Z" }, { onlyIfMatch: _etag }));
+  assert.equal((await t.portal(`/p/unsubscribe/${u.code}`)).status, 200);
+  const one = await t.portal(`/api/portal/unsubscribe/${u.code}`, { method: "POST", raw: "List-Unsubscribe=One-Click", headers: { "content-type": "application/x-www-form-urlencoded" } });
+  assert.equal(one.status, 200);
+  await scope(() => P.unsubscribeLink({ contact_id: c.id, channel: "email", address: c.emails[0].address }));
+  assert.equal((await link(u.code)).revoked_at, null);
+});
+
+test("unsubscribing (portal) and a manual opt-out emit consent.changed once each, for the listeners", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner");
+  const c = await scope(() => seedContact(9));
+  const u = await scope(() => P.unsubscribeLink({ contact_id: c.id, channel: "email", address: c.emails[0].address }));
+  await t.portal(`/api/portal/unsubscribe/${u.code}`, { method: "POST", raw: "List-Unsubscribe=One-Click", headers: { "content-type": "application/x-www-form-urlencoded" } });
+  await t.portal(`/api/portal/unsubscribe/${u.code}`, { method: "POST", raw: "List-Unsubscribe=One-Click", headers: { "content-type": "application/x-www-form-urlencoded" } });
+  const m = await t.api("/suppressions", { method: "POST", as: owner, body: { channel: "sms", address: "+17635550123", state: "opted_out" } });
+  assert.equal(m.status, 200);
+  await t.runWorker();
+  assert.equal(consent.length, 2, "one event per change (a second unsubscribe changes nothing)");
+  const mail = consent.find((p) => p.channel === "email");
+  assert.equal(mail.contact_id, c.id);
+  assert.equal(mail.state, "opted_out");
+  assert.equal(mail.address_hk, store.hk("email", c.emails[0].address));
+  const sms = consent.find((p) => p.channel === "sms");
+  assert.equal(sms.contact_id, null, "nobody has that number");
+  assert.equal(sms.by, owner.id);
+  // opting back in is a change too
+  await t.api("/suppressions", { method: "POST", as: owner, body: { channel: "sms", address: "+17635550123", state: "active" } });
+  await t.runWorker();
+  assert.equal(consent.length, 3);
+  assert.equal(consent[2].state, "active");
 });

@@ -12,15 +12,16 @@
 //   GET    /automations/log?date=&key=            outbox:read         sent, dry-run, skipped and would- rows
 //   GET    /notifications · POST /notifications/read    yourself
 //   GET    /outbox?date=&contact=&kind=&before=   outbox:read
-//   GET    /suppressions?channel= · POST /suppressions  consent:edit  { channel, address, state }
+//   GET    /suppressions?channel=&before= · POST /suppressions  consent:edit  { channel, address, state }
+//                                                  (newest first; core/suppressions.mjs, which emits consent.changed)
 //   GET/POST /bulk-runs[/:id], POST /bulk-runs/:id/test|confirm|cancel  campaigns:write / campaigns:send
 //   POST   /messages                              messages:send       → the messages.sink service
 //   GET/POST /push/subscriptions, DELETE /push/subscriptions/:hash, POST /push/test   yourself
 
-import { createRecord, patchRecord, getRaw, listKeys, settledWrite, deleteRaw, appendEvent, hk } from "../../../crm-store.mjs";
+import { createRecord, patchRecord, hk } from "../../../crm-store.mjs";
 import { InputError, ForbiddenError, NotFoundError } from "../../core/errors.mjs";
 import { isId } from "../../core/ids.mjs";
-import { nowIso, nowMs } from "../../core/clock.mjs";
+import { nowMs } from "../../core/clock.mjs";
 import { maskPhone, maskEmail, keySafe } from "../../core/text.mjs";
 import { techView, techVisibleContacts } from "../../core/perms.mjs";
 import { call } from "../../core/services.mjs";
@@ -29,9 +30,10 @@ import { automationsOverview, patchAutomation, setAutomationsPaused } from "../.
 import { listAutomationLog } from "../../core/activity.mjs";
 import { listNotifications, markRead, savePushSubscription, listPushSubscriptions, deletePushSubscription, notify } from "../../core/notify.mjs";
 import { listOutbox } from "../../core/outbox.mjs";
-import { listBulkRuns, getBulkRun, bulkView, createBulkRun, testBulkRun, confirmBulkRun, cancelBulkRun } from "../../core/bulk.mjs";
+import { listBulkRuns, getBulkRun, bulkView, createBulkRun, testBulkRun, confirmBulkRun, cancelBulkRun, ensurePreview } from "../../core/bulk.mjs";
 import { enqueue } from "../../core/queue.mjs";
 import { adapter } from "../../adapters/index.mjs";
+import { setSuppression as writeSuppression, listSuppressions, SUP_CHANNELS } from "../../core/suppressions.mjs";
 import { localDate, now, isLocalDate } from "../../core/clock.mjs";
 
 const r = (method, path, perm, subject, handler, more = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...more });
@@ -128,17 +130,11 @@ async function outbox(ctx) {
 
 // ------------------------------------------------------------ suppressions
 
-const SUP_CHANNELS = ["sms", "email"];
 async function suppressions(ctx) {
   const channel = ctx.query.get("channel") || "sms";
   if (!SUP_CHANNELS.includes(channel)) throw new InputError("Pick text or email.", "channel");
-  const keys = (await listKeys(`sup/${channel}/`)).slice(0, 40);
-  const got = await Promise.all(keys.map((k) => getRaw(k).catch(() => null)));
-  const rows = keys.map((k, i) => {
-    const d = got[i] && got[i].data;
-    return d ? { hash: k.split("/").pop(), channel, masked: d.masked || "•••", state: d.state, at: d.at || null, source: d.source || null, keyword: d.keyword || null } : null;
-  }).filter(Boolean).sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  return { data: rows };
+  const r2 = await listSuppressions(channel, { limit: 40, before: ctx.query.get("before") || undefined });
+  return { data: r2.items, meta: { next_cursor: r2.next } };
 }
 
 async function setSuppression(ctx) {
@@ -148,15 +144,7 @@ async function setSuppression(ctx) {
   let key;
   try { key = hk(b.channel === "sms" ? "phone" : "email", b.address); } catch (e) { throw new InputError(b.channel === "sms" ? "That phone number doesn't look right." : "That email doesn't look right.", "address"); }
   const masked = b.channel === "sms" ? maskPhone(b.address) : maskEmail(b.address);
-  const k = `sup/${b.channel}/${key}`;
-  if (b.state === "active") {
-    await deleteRaw(k);
-  } else {
-    const cur = await getRaw(k);
-    const value = { state: "opted_out", at: nowIso(), source: "manual", masked, by: ctx.user.id };
-    await settledWrite(k, value, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
-  }
-  await appendEvent("sup", key, { action: b.state === "active" ? "unsuppress" : "suppress", by: ctx.user.id, origin: "api", channel: b.channel }).catch(() => {});
+  await writeSuppression({ channel: b.channel, address_hk: key, state: b.state, source: "manual", masked, by: ctx.user.id });
   return { data: { channel: b.channel, masked, state: b.state } };
 }
 
@@ -166,7 +154,8 @@ async function bulkRuns(ctx) {
   const status = ctx.query.get("status") || undefined;
   return { data: await listBulkRuns({ status }) };
 }
-const bulkRun = async (ctx) => ({ data: bulkView(await getBulkRun(ctx.params.id)) });
+// (a draft whose preview run was never created gets it now)
+const bulkRun = async (ctx) => ({ data: bulkView(await ensurePreview(await getBulkRun(ctx.params.id), ctx.write())) });
 async function newBulkRun(ctx) {
   const b = ctx.body || {};
   const run = await createBulkRun({ kind: "manual", title: b.title, recipients: b.recipients, template_key: b.template_key, channel: b.channel, vars: b.vars, related: b.related, requested_by: ctx.user.id }, ctx.write());
@@ -199,7 +188,8 @@ async function sendMessageRoute(ctx) {
     related: b.related && typeof b.related === "object" ? b.related : {}, origin: { kind: "user", user_id: ctx.user.id },
     ...(clientId ? { marker_key: `msg-${keySafe(clientId, 64)}` } : {}),
   };
-  const sendCtx = { ...ctx.write(), deploy: ctx.deploy, sysMode: await ctx.sysMode() };
+  const sysMode = await ctx.sysMode();      // a failed read answers 503 busy (never "not paused")
+  const sendCtx = { ...ctx.write(), deploy: ctx.deploy, sysMode };
   if (b.send_at) {
     const at = Date.parse(b.send_at);
     if (!Number.isFinite(at) || at <= nowMs() || at > nowMs() + MAX_SCHEDULE_MS) throw new InputError("Pick a time in the next 30 days.", "send_at");

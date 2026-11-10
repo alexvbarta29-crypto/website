@@ -13,7 +13,25 @@ const store = await import("../../../netlify/lib/crm-store.mjs");
 const W = await import("../../../netlify/lib/crm/core/worker.mjs");
 const { BlobsTransientError } = await import("../../../netlify/lib/crm/core/errors.mjs");
 
-fixtureModule({ types: [fixtureType("fixture_child", "zc")] });
+fixtureModule({ types: [fixtureType("fixture_child", "zc"), fixtureType("fixture_mjob", "zj", { mirrored: true, shadow: true }), fixtureType("gap_child", "zg")] });
+const { seedImportedContact } = await import("../../helpers/crm-fixtures.mjs");
+
+// M1.3 review: a person's op the worker finishes, and a crash between nextNumber and the journal
+let blink = false;
+O.defineOp("fixture.portal_approve", { steps: (input) => [
+  { name: "plan", run: async () => ({ ok: true }) },
+  { name: "jobs", run: async (s) => {
+    if (blink) { blink = false; throw new BlobsTransientError("storage blinked"); }
+    const r = await s.createOnce("fixture_mjob", "job", 1, { contact_id: input.contact_id, name: "Spring windows" });
+    return { id: r.data.id };
+  } },
+] });
+O.defineOp("gap.make", { steps: () => [{ name: "make", run: async (s) => {
+  const id = s.deriveId("gap_child", "x", 1);
+  const n = await s.number(id, "gapseq");
+  await s.createOnce("gap_child", "x", 1, { name: "child", number: n });
+  return { id, n };
+} }] });
 
 const calls = { a: 0, b: 0, c: 0 };
 let crashOnce = false;
@@ -134,4 +152,41 @@ test("a definite failure fails the op; an op without a kind can't be resumed and
   await W.runOnce("fast", { deploy });
   assert.equal(S.data.json("op/fixture--loose--1").status, "failed");
   assert.equal(S.data.json("op/fixture--loose--1").error.code, "not_resumable");
+});
+
+for (const sor of ["rotor", "crm"]) {
+  test(`ops.resume finishes a person's op as that person, with the pass's sys/mode (system of record ${sor})`, async () => {
+    await scope(() => store.settledWrite("sys/mode", { system_of_record: sor, paused: false, cutover_n: sor === "crm" ? 1 : 0 }, { onlyIfNew: true }));
+    const c = await scope(() => seedImportedContact(1));
+    blink = true;
+    // the customer approves in the portal (a person, exempt from the guard); storage blinks in step 2
+    await scope(() => O.runOp("approve--qt_0000000000000000000b--1", "fixture.portal_approve", { input: { contact_id: c.id }, holder: "req-1", ctx: { by: "portal", origin: "portal", actor_kind: "portal", requestId: "req-1", mode: { system_of_record: sor } } })).catch(() => {});
+    const j0 = S.data.json("op/approve--qt_0000000000000000000b--1");
+    assert.deepEqual(j0.actor, { by: "portal", origin: "portal", actor_kind: "portal" }, "the journal keeps who started it (never its mode)");
+    advance(minutes(3));
+    await W.runOnce("fast", { deploy });
+    const j = S.data.json("op/approve--qt_0000000000000000000b--1");
+    assert.equal(j.status, "done", JSON.stringify(j.error));
+    const jobs = S.data.keys("rec/fixture_mjob/").map((k) => S.data.json(k));
+    assert.equal(jobs.length, 1);
+    assert.equal(jobs[0].created_by, "portal");
+    assert.equal(!!jobs[0].shadow, sor !== "crm", "a shadow only before cutover");
+  });
+}
+
+test("a crash between nextNumber and the journal leaves no gap: the resumed op reuses the number its pointer names", async () => {
+  // the function dies right after nextNumber claimed ptr/gapseq-no/1: every op/ write fails from then on
+  S.data.beforeConditionalWrite(() => { S.data.fail({ op: ["set", "setJSON"], key: /^op\//, kind: "timeout", times: 20 }); }, { key: "ptr/gapseq-no/1", times: 1 });
+  await scope(() => O.runOp("gap--1", "gap.make", { holder: "req-1", ctx: ctx("req-1") })).catch(() => {});
+  S.data.clearHooks();
+  assert.ok(S.data.has("ptr/gapseq-no/1"), "the number was claimed");
+  assert.equal(S.data.json("op/gap--1").numbering, S.data.json("ptr/gapseq-no/1").id, "the intent was journaled first");
+  advance(minutes(3));
+  await W.runOnce("fast", { deploy });
+  const j = S.data.json("op/gap--1");
+  assert.equal(j.status, "done");
+  const child = S.data.keys("rec/gap_child/").map((k) => S.data.json(k))[0];
+  assert.equal(child.number, 1, "no gap");
+  assert.equal(S.data.json("seq/gapseq").next, 2);
+  assert.deepEqual(S.data.keys("ptr/gapseq-no/"), ["ptr/gapseq-no/1"]);
 });

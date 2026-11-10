@@ -151,10 +151,13 @@ export function pushRequest(subscription, payload, { vapid, ttl = 3600, urgency 
   };
 }
 
-// Push services a subscription may point at (anything else is refused, so
-// the worker never POSTs to an address someone typed in).
-const PUSH_HOSTS = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "push.services.mozilla.com", "web.push.apple.com"];
-const PUSH_SUFFIXES = [".push.apple.com", ".notify.windows.com", ".googleapis.com"];
+// Push services a subscription may point at: the browsers' own push
+// services, by exact host (Windows' WNS hosts are per region, so that one
+// is a suffix). Anything else is refused, so the worker never POSTs a
+// VAPID-signed body to another API someone typed in (another Google or
+// Apple API included).
+export const PUSH_HOSTS = Object.freeze(["fcm.googleapis.com", "updates.push.services.mozilla.com", "push.services.mozilla.com", "web.push.apple.com"]);
+export const PUSH_SUFFIXES = Object.freeze([".notify.windows.com"]);
 export function isPushEndpoint(endpoint) {
   let u;
   try { u = new URL(endpoint); } catch { return false; }

@@ -23,10 +23,17 @@
 //   rows instead of acting on records Rotor still owns (§0 rule 12).
 //
 // Core catalog (the system module registers CORE_SWEEPS):
-//   system.seed     fast  every pass until done   each module's seeds once (op/seed--{module}--v{n})
-//   auth.sessions   fast  daily 03:15  maintenance expired ses/, thr/ older than a day, expired idem/,
-//                                                 old sweep claims, the sender's duplicate-guard markers
-//                                                 older than a day, stale leases, finished runs > 60 days
+//   system.seed     fast  every pass until done   each module's seeds once: a resumable op of kind
+//                                                 "system.seed" (op/seed--{module}--v{n}), so a seed a
+//                                                 storage error stopped is finished by ops.resume (or by
+//                                                 the next pass once its lease ran out); one that failed
+//                                                 for good raises an alert and the others still run
+//   auth.sessions   fast  daily 03:15  maintenance expired ses/ and pses/ (portal sessions), thr/ older
+//                                                 than a day, expired idem/, old sweep claims, the
+//                                                 sender's duplicate-guard markers older than a day,
+//                                                 stale leases, finished runs > 60 days (and the CSV a
+//                                                 finished export run wrote, after EXPORT_KEEP_DAYS)
+//   pending.requeue fast  hourly                  approved actions whose run never got queued (§6.9)
 //   index.verify    bulk  daily 03:45  maintenance the run that rebuilds and diffs every index and relation family
 //   backup.nightly  bulk  daily 03:00  maintenance the snapshot run (core/backup.mjs)
 //   files.backup    bulk  daily 04:15  maintenance copies new file bytes into crm-backups
@@ -43,7 +50,7 @@ import { keySafe } from "./text.mjs";
 import { allSweeps, allModules, allIndexes, allTypes } from "./registry.mjs";
 import { ParallelRunGuard } from "./errors.mjs";
 import { automationCtx, wouldAct } from "./activity.mjs";
-import { runOp, readOp } from "./ops.mjs";
+import { runOp, readOp, defineOp } from "./ops.mjs";
 import { createRun, defineRun, updateHealth, withAlert, withoutAlert, readHealth } from "./lanes.mjs";
 import { IDEM_TTL_MS } from "../../crm-store.mjs";
 import "./backup.mjs";     // defines the backup.snapshot run
@@ -171,6 +178,21 @@ export const nightlyRunId = (kind, date) => deriveId("run", `nightly:${kind}`, "
 
 let seedsDone = null;   // the seed-set key known done in this warm instance
 const seedList = () => allModules().flatMap((m) => (m.seeds || []).map((s) => ({ module: m.name, v: s.v, run: s.run })));
+export const seedOpId = (module, v) => `seed--${keySafe(module, 30)}--v${v}`;
+
+// The seed of one module version as a resumable op: ops.resume rebuilds it
+// from its input { module, v } and runs it as automation with the pass's mode.
+defineOp("system.seed", {
+  steps: (input) => [{
+    name: "seed",
+    run: async (st) => {
+      const s = seedList().find((x) => x.module === input.module && x.v === input.v);
+      if (!s) return null;      // the module no longer ships that seed
+      const a = automationCtx({ mode: st.ctx.mode, key: "system.seed", requestId: st.ctx.requestId });
+      return (await s.run({ ...a, op: st.opId, holder: st.ctx.requestId, now: () => now(), write: (extra = {}) => a.write({ op: st.opId, ...extra }), deriveId: st.deriveId })) ?? null;
+    },
+  }],
+});
 
 async function seedSweep(ctx) {
   const seeds = seedList();
@@ -180,14 +202,24 @@ async function seedSweep(ctx) {
   const m = await getRaw(`done/seed/${setKey}`);
   if (m && m.data && m.data.state === "done") { seedsDone = setKey; return { progress: 0 }; }
   let progress = 0;
+  let open = false;
   for (const s of seeds) {
-    const opId = `seed--${keySafe(s.module, 30)}--v${s.v}`;
+    const opId = seedOpId(s.module, s.v);
     const j = await readOp(opId);
     if (j && j.status === "done") continue;
-    const out = await runOp(opId, [{ name: "seed", run: async (st) => (await s.run({ ...ctx, op: opId, write: (extra = {}) => ctx.write({ op: opId, ...extra }), deriveId: st.deriveId })) ?? null }], { holder: ctx.holder, ctx: ctx.write({ op: opId }) });
+    if (j && j.status === "failed") {
+      // stopped for good (a bug, or storage failing 5 times): the owners hear
+      // about it once, the other seeds still run, and the set stays open
+      await updateHealth((h) => ((h.alerts || []).some((x) => x.key === `seed:${opId}`) ? null : withAlert(h, `seed:${opId}`, "A module's first-run data could not be written. Check the logs.")));
+      open = true;
+      continue;
+    }
+    // resume: true takes over this seed's own op once its lease ran out
+    const out = await runOp(opId, "system.seed", { input: { module: s.module, v: s.v }, holder: ctx.holder, resume: true, ctx: ctx.write({ op: opId }) });
     if (out.status !== "done") return { done: false, progress };
     progress += 1;
   }
+  if (open) return { done: false, progress };
   const claim = await claimMarker("done", "seed", setKey, { holder: ctx.holder, leaseMs: 60000 });
   if (claim.ok) await advanceMarker(claim.marker, { state: "done", result: `${seeds.length} seeds` });
   seedsDone = setKey;
@@ -201,6 +233,10 @@ export const THROTTLE_KEEP_MS = 24 * 3600 * 1000;
 export const SWEEP_CLAIM_KEEP_DAYS = 90;
 export const LOCK_STALE_MS = 24 * 3600 * 1000;
 export const RUN_KEEP_DAYS = 60;
+// A CSV export (exports/{runId}/{type}.csv in crm-backups) is a plaintext
+// copy of a record type: it is deleted a few days after its run, never left
+// behind when the run record goes (§3.12 keeps snapshots 35 days).
+export const EXPORT_KEEP_DAYS = 3;
 const LANE_LOCKS = new Set(["lock/worker-fast", "lock/worker-bulk"]);
 
 export const DUP_KEEP_MS = 24 * 3600 * 1000;
@@ -237,6 +273,14 @@ const PHASES = [
     const got = await getRaw(k);
     const d = got && got.data;
     if (d && Date.parse(d.at) + IDEM_TTL_MS > t) return 0;
+    await deleteRaw(k);
+    return 1;
+  }],
+  // pses/: a portal session past its end can never be used again
+  ["pses", "pses/", async (k, t) => {
+    const got = await getRaw(k);
+    const s = got && got.data;
+    if (s && Date.parse(s.expires_at) > t) return 0;
     await deleteRaw(k);
     return 1;
   }],
@@ -278,8 +322,20 @@ async function authSweep(ctx) {
     c.phase += 1;
     c.after = null;
   }
-  // finished background runs older than RUN_KEEP_DAYS leave the store
+  // CSV exports: deleted EXPORT_KEEP_DAYS after their run finished, and
+  // whenever their run is gone (exports/{runId}/{type}.csv in crm-backups)
   const ix = await readIndex("runs", "recent");
+  const runs = new Map(ix.rows.map((r) => [r.id, r]));
+  for (const k of await listKeys("exports/", { kind: "backups" })) {
+    if (ctx.budget && ctx.budget.left() < 3000) return { done: false, cursor: c, progress: 0 };
+    const id = k.split("/")[1];
+    const r = runs.get(id);
+    const fin = r && (r.fin || r.at);
+    if (r && fin && Date.parse(fin) + EXPORT_KEEP_DAYS * 86400000 > t) continue;
+    await deleteRaw(k, { kind: "backups" }).catch(() => {});
+    c.deleted.exports = (c.deleted.exports || 0) + 1;
+  }
+  // finished background runs older than RUN_KEEP_DAYS leave the store
   const old = ix.rows.filter((r) => ["done", "failed", "cancelled"].includes(r.st) && r.fin && Date.parse(r.fin) + RUN_KEEP_DAYS * 86400000 < t);
   for (const r of old.slice(0, 50)) {
     if (ctx.budget && ctx.budget.left() < 3000) return { done: false, cursor: c, progress: 0 };
@@ -360,6 +416,15 @@ async function offsiteCheck() {
   return { result: stale ? "stale" : "ok" };
 }
 
+// pending.requeue (hourly): an approved action whose pending.run item was
+// never written (the request died between the two writes) is queued again;
+// its marker done/pending/{id} keeps it to one run (core/pending.mjs).
+async function pendingRequeue() {
+  const { requeueApproved } = await import("./pending.mjs");
+  const n = await requeueApproved();
+  return { progress: n, result: `${n} requeued` };
+}
+
 export const CORE_SWEEPS = Object.freeze([
   { key: "system.seed", label: "First-run data", lane: "fast", every: "pass", mutates: true, run: seedSweep },
   { key: "auth.sessions", label: "Sign-in clean-up", lane: "fast", every: "daily", at_local: "03:15", mutates: false, maintenance: true, run: authSweep },
@@ -368,4 +433,5 @@ export const CORE_SWEEPS = Object.freeze([
   { key: "files.backup", label: "File backup", lane: "bulk", every: "daily", at_local: "04:15", mutates: false, maintenance: true, run: nightly("files.backup") },
   { key: "files.purge", label: "Deleted files clean-up", lane: "bulk", every: "daily", at_local: "04:30", mutates: false, run: nightly("files.purge") },
   { key: "backup.offsite", label: "Off-site backup check", lane: "bulk", every: "weekly", dow: 0, at_local: "04:00", mutates: false, maintenance: true, run: offsiteCheck },
+  { key: "pending.requeue", label: "Approved actions check", lane: "fast", every: "hourly", mutates: false, run: pendingRequeue },
 ]);

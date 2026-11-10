@@ -25,7 +25,7 @@
 
 import { randomBytes, createHash } from "node:crypto";
 import { withStoreScope, withBudget, idemBegin, idemFinish, getRaw } from "../../crm-store.mjs";
-import { errorResponse, ForbiddenError, InputError } from "./errors.mjs";
+import { errorResponse, ForbiddenError, InputError, RateLimited } from "./errors.mjs";
 import { deployContext, canonicalRedirect } from "./context.mjs";
 import { now } from "./clock.mjs";
 import { can, holds, techView } from "./perms.mjs";
@@ -181,7 +181,11 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
         if (!(OFFICE_AUTH.has(route.auth) && officeSignedIn(req))) return finish(fail("setup_needed", "The CRM needs its setup in Netlify first.", 503));
         ctx.office = true;
       } else {
-        const who = await authenticate(req, route.auth);
+        let who;
+        try { who = await authenticate(req, route.auth); } catch (e) {
+          if (e instanceof RateLimited) return finish(fail("rate_limited", e.message, 429, { headers: { "Retry-After": String(e.retryAfterS || 60) } }));
+          throw e;
+        }
         if (!who) return finish(fail("signed_out", "Sign in again.", 401));
         Object.assign(ctx, {
           user: who.user || null, userEtag: who.userEtag || null, session: who.session || null,
@@ -219,13 +223,18 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
       };
       ctx.require = (perm, subject) => { if (!ctx.can(perm, subject)) throw new ForbiddenError("You don't have access to that."); };
       ctx.holds = (perm) => (ctx.user ? holds(ctx.user, perm, ctx.permissions) : false);
+      // sys/mode, read at most once per request. A failed read rejects (503
+      // busy): a paused CRM never looks unpaused because storage blinked.
+      // Once read, ctx.write() carries it, so crm-store marks shadow records
+      // by the real system of record (it reads sys/mode itself otherwise).
+      let modeP = null;
+      let modeVal = null;
+      ctx.sysMode = () => (modeP ||= getRaw(SYS_MODE_KEY).then((g) => { const { _w, ...m } = { ...DEFAULT_MODE, ...(g && g.data ? g.data : {}) }; modeVal = m; return m; }));
       ctx.write = (extra = {}) => ({
         by: ctx.user ? ctx.user.id : ctx.office ? "office" : "system",
         origin: ctx.apiKey ? "mcp" : "api", actor_kind: ctx.user || ctx.office ? "user" : "automation",
-        requestId, ...extra,
+        requestId, ...(modeVal ? { mode: modeVal } : {}), ...extra,
       });
-      let modeP = null;
-      ctx.sysMode = () => (modeP ||= getRaw(SYS_MODE_KEY).then((g) => ({ ...DEFAULT_MODE, ...(g && g.data ? g.data : {}) })).catch(() => ({ ...DEFAULT_MODE })));
 
       // body
       let rawBytes = null;

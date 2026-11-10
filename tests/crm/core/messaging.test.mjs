@@ -189,3 +189,26 @@ test("a tech can't preview a template with a contact who isn't on their visits",
   assert.equal(plain.status, 200);
   assert.equal(plain.body.data.text, "Hi Pat in Delano", "made-up values only");
 });
+
+test("suppressions list the newest first, page by page, however many there are", async () => {
+  const { advance, minutes } = await import("../../helpers/crm-clock.mjs");
+  t = await crmTest({ now: "2026-11-17T15:00:00Z" });
+  const owner = await t.user("owner");
+  for (let i = 0; i < 60; i++) {
+    const r = await t.api("/suppressions", { method: "POST", as: owner, body: { channel: "sms", address: `+1763555${String(1000 + i)}`, state: "opted_out" } });
+    assert.equal(r.status, 200);
+    advance(minutes(1));
+  }
+  const first = await t.api("/suppressions?channel=sms", { as: owner });
+  assert.equal(first.body.data.length, 40);
+  assert.match(first.body.data[0].masked, /1059$/, "the newest is first");
+  const at = first.body.data.map((r) => r.at);
+  assert.deepEqual([...at].sort().reverse(), at, "newest first");
+  const next = await t.api(`/suppressions?channel=sms&before=${encodeURIComponent(first.body.meta.next_cursor)}`, { as: owner });
+  assert.equal(next.body.data.length, 20);
+  assert.match(next.body.data[19].masked, /1000$/);
+  // lifting one takes it off the list
+  await t.api("/suppressions", { method: "POST", as: owner, body: { channel: "sms", address: "+17635551059", state: "active" } });
+  const after = await t.api("/suppressions?channel=sms", { as: owner });
+  assert.match(after.body.data[0].masked, /1058$/);
+});

@@ -215,10 +215,19 @@ export async function listNotifications(userId, { limit = 30, before } = {}) {
   return { items, next: rows.length > limit ? page[page.length - 1].sortKey : null };
 }
 
-// Marks some (ids) or all (up to 50 unread) of a person's notifications read.
+// Marks some (ids) or all of a person's notifications read, at most
+// READ_BATCH per call (each is about five Blobs calls; the route has 60).
+// → { read, more }: more is true while unread ones are left (the app asks
+// again until it is false).
+export const READ_BATCH = 8;
 export async function markRead(userId, { ids, all = false } = {}, ctx = {}) {
-  let list = Array.isArray(ids) ? ids.filter((x) => isId(x, "notification")).slice(0, 50) : [];
-  if (all) list = (await listRel("user-unread", userId, { limit: 50 })).map((r) => r.id);
+  let list = Array.isArray(ids) ? ids.filter((x) => isId(x, "notification")).slice(0, READ_BATCH) : [];
+  let more = Array.isArray(ids) && ids.filter((x) => isId(x, "notification")).length > READ_BATCH;
+  if (all) {
+    const rows = await listRel("user-unread", userId, { limit: READ_BATCH + 1 });
+    more = rows.length > READ_BATCH;
+    list = rows.slice(0, READ_BATCH).map((r) => r.id);
+  }
   let n = 0;
   for (const id of list) {
     try {
@@ -228,7 +237,7 @@ export async function markRead(userId, { ids, all = false } = {}, ctx = {}) {
       if (!(e instanceof NotFoundError)) throw e;
     }
   }
-  return { read: n };
+  return { read: n, more };
 }
 
 

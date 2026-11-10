@@ -540,7 +540,9 @@ both lanes. The probe facts are still recorded until the M1 gate.
   that made no progress ends the invocation, except that the fast lane
   sleeps until the next queue item when it is due inside its budget (so a
   5-minute `lead.ack` goes out at 5 minutes, re-checking the queue head
-  every 30 s). Work left at the end makes the lane kick itself, at most 3
+  every 30 s; a due item the pass could not run, such as a kind this deploy
+  has no handler for or a step held elsewhere, does not wake it). Work left
+  at the end makes the lane kick itself, at most 3
   times in a row (`sys/health.lanes.<lane>.self_kicks`; a cron kick resets it).
 - Kicks: `kickWorker(lane, reason)` POSTs to the lane on the canonical host
   with `x-crm-worker: <sys/worker-secret>` and a 1.5 s timeout, through
@@ -551,7 +553,13 @@ both lanes. The probe facts are still recorded until the M1 gate.
   `last_invocation`, `self_kicks`, `last_error`; the queue's depth and next
   item; the nightly check; the last snapshot and off-site copy; `alerts`.
   `GET /api/crm/admin/health` adds `status.fast|bulk` = ok / stuck (no
-  finished pass in 3 hours) / never.
+  finished pass in 3 hours) / never, and `mode` (`sys/mode`: paused, since
+  when, by whom, why, the system of record), so Today and Settings → Data
+  say plainly when the CRM is paused.
+- Runs (`stepRun`) get the pass's `sys/mode` in their write context and the
+  automation helpers (`mayAct`, `would`, `log`). A step the parallel-run
+  backstop stops writes a `would-<action>` row and ends its run (done,
+  `result.would`), never a retry loop.
 
 ### Queue and events (`core/queue.mjs`, `core/events.mjs`)
 
@@ -577,10 +585,16 @@ both lanes. The probe facts are still recorded until the M1 gate.
 versioned ids (`opIdFor("approve--{quoteId}", n)`), a 2-minute lease
 renewed after each step, children made once (`s.createOnce(type, scope, n,
 data)` with ids derived from the op), numbers journaled before use
-(`s.number(childId, seq)`), and resume by the fast lane only after the
-lease ran out. A double tap gets `{ status: "running" }` and runs nothing.
-Ops the worker must be able to resume are defined by kind with
-`defineOp(kind, { steps(input) })`.
+(`s.number(childId, seq)`: an intent first, then `nextNumber`, which
+claims `ptr/{seq}-no/{n}` for the child, then the number; a resume after a
+crash in between finds the pointer naming its child and reuses that
+number, so there is never a gap), and resume by the fast lane only after
+the lease ran out. A double tap gets `{ status: "running" }` and runs
+nothing. Ops the worker must be able to resume are defined by kind with
+`defineOp(kind, { steps(input) })`. The journal keeps who started the op
+(`actor`: by, origin, actor_kind); the worker finishes it as that actor
+with the pass's `sys/mode`, so a customer's portal approval or a person's
+merge keeps the exemption people have from the parallel-run guard.
 
 ### Sweeps (`core/sweeps.mjs`)
 
@@ -589,10 +603,16 @@ weekly | monthly`, `at_local`, `dow`, `day`, `mutates`, `maintenance`).
 A periodic sweep claims `done/sweep/{key}--{instance}` when it starts and,
 if it stops half way, hands the claim back with its cursor until it
 finishes. While `sys/mode.paused` only maintenance sweeps run. Core
-catalog: `system.seed` (each module's seeds once), `auth.sessions` (03:15:
-expired sessions, throttle records older than a day, expired idempotency
-records, sweep claims older than 90 days, the sender's duplicate-guard
-markers older than a day, stale leases, finished runs older than 60 days), `backup.nightly` (03:00), `index.verify` (03:45: rebuilds
+catalog: `system.seed` (each module's seeds once, each as a resumable op
+of kind `system.seed`: a storage error is finished on a later pass; a seed
+that fails for good raises one alert), `auth.sessions` (03:15: expired
+sessions and portal sessions, throttle records older than a day (sign-in
+and API key counters), expired idempotency records, sweep claims older
+than 90 days, the sender's duplicate-guard markers older than a day, stale
+leases, CSV exports 3 days after their run (and any whose run is gone),
+finished runs older than 60 days), `pending.requeue` (hourly: an approved
+action whose run was never queued is queued again), `backup.nightly`
+(03:00), `index.verify` (03:45: rebuilds
 every index and declared relation family from the records, diffs, repairs,
 reports; a banner after two nights in a row with repairs), `files.backup`
 (04:15), `files.purge` (04:30), `backup.offsite` (Sundays 04:00: alerts
@@ -642,15 +662,21 @@ markers (writes whose outcome storage never confirmed) are settled by
   `--check` restores into the scratch store `crm-restore-check` and
   compares keys per partition and the invoice/payment money sums.
   `--apply` (type RESTORE) writes `sys/mode` paused first, then every
-  partition (conditional writes; counters never go back), then re-seats
-  every sequence past the highest issued number + 100. Then, in the app:
+  partition (conditional writes; counters never go back, and neither does
+  a step's marker that moved on since the snapshot or an operation that
+  finished: their live values are kept, and a queued step whose marker is
+  final is not brought back, so nothing runs twice), then re-seats every
+  sequence past the highest issued number + 100. Records go back to the
+  snapshot's version: that is what a restore is for. Then, in the app:
   rebuild the lists (`POST /api/crm/admin/reindex`), let the nightly check
   run, review, and resume with RESUME.
 - Owner export: `GET /api/crm/admin/export?date=&partition=&part=` (a
   snapshot part, never a live listing, audited) and
   `POST /api/crm/admin/export.csv?type=` (a run; CSV of one record type
   from the latest snapshot, without password hashes; download from
-  `GET /api/crm/admin/export.csv/{runId}`).
+  `GET /api/crm/admin/export.csv/{runId}` for 3 days, then the nightly
+  clean-up deletes it). Settings → Data's **Download everything** lists
+  every part of the latest snapshot as a download (each one audited).
 
 ### Files (`core/files.mjs`)
 
@@ -664,6 +690,9 @@ served as `application/octet-stream` attachments. Who may read and edit
 follows the owner record, declared by its module with
 `defineFileOwner(type, { canRead, canEdit, attach? })`. Delete is soft; the
 bytes go 30 days later and only once `files.backup` has copied them.
+`files.backup` decides what to copy from listings only (the bytes in
+crm-files against the copies in crm-backups) and keeps its position, so a
+night with nothing new reads no file record.
 
 ### Settings, system mode, approvals, API keys
 
@@ -676,6 +705,15 @@ bytes go 30 days later and only once `files.backup` has copied them.
   storage, permissions and auth are owner-only (`settings:owner`). Saving
   `permissions` or `auth` moves `sys/auth-epoch`, so every server picks it
   up within seconds; a failed read of `cfg/permissions` still answers 503.
+  Every validator keeps only the fields it knows (automation settings get
+  the same checks as `PATCH /automations/{key}`), a page is at most 16 KB
+  (the portal page, with its terms, 64 KB), and the bulk-send test contact
+  must be a contact flagged test (the page shows its name).
+- `sys/mode` is never guessed: a failed read answers 503 busy in a request
+  and throws in the worker. A record a person creates after cutover is
+  never a shadow (crm-store reads `sys/mode` when the write context does
+  not carry it), and purge-shadow deletes only shadows created before
+  `cutover_at`.
 - `POST /api/crm/admin/pause` / `resume` (owners, typed PAUSE / RESUME):
   `sys/mode.paused` stops every side effect, the queue, automations and
   non-maintenance sweeps. `POST /api/crm/admin/reindex` and
@@ -686,12 +724,20 @@ bytes go 30 days later and only once `files.backup` has copied them.
   older than 6 days arrives through `POST /api/crm/outbox-review` as one
   pending action. Claude's actions through an API key (M7c) will arrive the
   same way; an approved action runs once on the fast lane as the approver.
-  `/me/badges` counts them for whoever may approve.
+  If the queue write after the approval failed, approving again queues it
+  (and the hourly `pending.requeue` does too); its marker keeps it to one
+  run. `/me/badges` counts them for whoever may approve.
 - API keys: `GET/POST /api/crm/api-keys`, `DELETE /api-keys/{id}` (owners
   and admins, their own keys). A key is shown once (the create route is
   secret and never kept for replay), read-only unless write scopes are
-  ticked, and some permissions can never be on a key. The owner-only
-  backup kind is the one exception for `export:all`.
+  ticked (the new-key sheet lists the person's read permissions, ticked,
+  and write permissions to tick one by one; `GET /api-keys` gives them in
+  `meta.scopes`), and some permissions can never be on a key. The
+  owner-only backup kind is the one exception for `export:all`. Each key
+  has a rate (120 calls a minute; path keys 30): one small blob per call
+  under `thr/key/{keyId}/`, counted by one listing; over it answers 429
+  with Retry-After. The "path" kind is hidden in the app until the MCP
+  connector (M7c).
 - Audit: `GET /api/crm/audit?date=&user=&type=` (who did what that day),
   `GET /audit/event?key=`, `GET /records/{type}/{id}/history`.
 
@@ -739,8 +785,9 @@ More (the tab bar) gains **Approvals**, **Automations**, **Templates**,
 - **Approvals**: bulk sends waiting for their test send and a confirm, and
   (owners) pending actions: a phone's offline work older than 6 days, and
   later Claude's requests. The owners get a notification for each.
-- **Activity**: who did what, by day, by person and kind of record; tap a
-  row for that record's history.
+- **Activity**: who did what, by day, by person and kind of record (by
+  name: the office sees the team's names too); tap a row for that record's
+  history.
 - **Settings**: Company; Hours & holidays; Service area; Messaging (quiet
   hours, the opt-out footer, the bulk threshold, the duplicate window,
   reply keywords, and for owners the **test contact** every bulk send goes
@@ -748,8 +795,10 @@ More (the tab bar) gains **Approvals**, **Automations**, **Templates**,
   Own / No, and whose Team sign-in may open the office tools); Integrations
   (owners: the mode of each service and the mode it really runs in, and
   which secrets Netlify has, by name only); Intake mode (owners; "Rotor and
-  the CRM" arrives with Contacts); Data (workers, backups, the off-site
-  copy, CSV export, rebuild the lists, pause and resume).
+  the CRM" arrives with Contacts); Data (whether the CRM is paused, since
+  when and why; workers, backups, the off-site copy, Download everything,
+  CSV export, rebuild the lists, and Pause or Resume: only the one that
+  applies).
 - **My account**: notification channels per kind, **push on this phone**
   (see docs/OFFICE.md), API keys (make one, shown once; revoke).
 
@@ -768,6 +817,26 @@ scheduled; a person's own words go any time), the **opt-out footer**
 number, and on every marketing text), the step's **marker**
 (`done-dry/` in dry-run, `done/` when real) and the **duplicate guard**
 (the same body to the same address within 10 minutes).
+
+It fails closed. A failed read of the suppression list or of `sys/mode` is
+never "not opted out" or "not paused": a person's send answers 503 busy
+and a queued step retries. A person's send claims its own marker: a retry
+with the same `client_id` answers "already" (with its outbox item) only
+once that step finished; while the step is held it answers busy, and a
+send that failed before reaching the provider hands its claim back so the
+retry goes out. The footer's first-text rule counts by the number the text
+really goes out from (`sms.test_from` in test mode, else `sms.from` when
+set, else the main number). Category "staff" is internal only (a text to a
+staff phone with no customer contact); templates people make can't be
+"staff", and a staff send that reaches a customer follows the service
+rules. A quiet-hours window with no allowed minute (no day ticked; the
+settings page refuses it) blocks the send instead of failing.
+
+Opting out goes through `core/suppressions.mjs` (the portal unsubscribe,
+`POST /suppressions`, later inbound STOP): `sup/{channel}/{hk}`, a dated
+row so Settings → Messaging lists the newest first, and the
+`consent.changed` event for sales and comms. Unsubscribe links are never
+revoked with a contact's other links: opting out always works.
 
 The adapter layer picks dry-run, test or live per integration
 (`cfg/integrations`, Settings → Integrations): live only on the production
@@ -798,8 +867,17 @@ Anything addressed to more than `cfg/messaging.bulk_threshold` (5)
 people becomes a **bulk run** (`rec/bulk_run`): a preview in the bulk lane
 (how many, who is left out and why, 10 sample texts), a required **test
 send** to the test contact, then an owner's or the office's **confirm**
-(`campaigns:send`); the bulk lane then sends 25 at a time, each one
-through the sender again, about one a second when real.
+(`campaigns:send`); the bulk lane then sends 25 at a time, about one a
+second when real. At send time each recipient is checked again for what
+the preview left out (archived, test, vendor and spam contacts, a second
+contact on the same phone or email, opted out, no consent), so the count
+the owner confirmed is who gets it, and then by the sender. The test send
+keeps the version of the template it rendered: a template changed after
+the test sends the run back to "ready" (test again), and the send renders
+the tested version. A write that fails half way never strands a run: the
+preview and send runs have ids derived from the bulk run, confirming again
+finishes a confirm whose run was not created, and a test whose save failed
+counts once its marker shows it went out.
 
 ### Notifications and web push (`core/notify.mjs`, `core/webpush.mjs`)
 
@@ -811,7 +889,11 @@ RFC 8291 (aes128gcm) and RFC 8292 (VAPID, ES256) with `node:crypto`, live
 on the production deploy once `CRM_VAPID_PUBLIC` and `CRM_VAPID_PRIVATE`
 exist (staff only, so before cutover too); a 404/410 deletes the
 subscription; only Apple, Google, Mozilla and Microsoft push services are
-ever called. Old notifications go after 60 days (`notifications.prune`).
+ever called (exact hosts: fcm.googleapis.com, the Mozilla push hosts,
+web.push.apple.com, and Windows' `*.notify.windows.com`). Old
+notifications go after 60 days (`notifications.prune`). "Mark all read"
+marks 8 at a time (`{ read, more }`; the app asks again while `more`), so
+it fits the route's budget however many are unread.
 
 ### The client portal frame (`/p/*`, `/api/portal/*`)
 
@@ -851,7 +933,7 @@ agreement, invoice, card, hub) arrive with their modules through
 
 ### Code and tests
 
-- Core: `netlify/lib/crm/core/{templates,send,outbox,automations,bulk,notify,webpush}.mjs`,
+- Core: `netlify/lib/crm/core/{templates,send,outbox,automations,bulk,notify,webpush,suppressions}.mjs`,
   `netlify/lib/crm/adapters/{index,dry-run,webpush}.mjs`,
   `netlify/lib/crm/portal/core.mjs`; routes in
   `modules/system/{comms,search,permissions}.mjs`; the comms part of the
@@ -860,6 +942,9 @@ agreement, invoice, card, hub) arrive with their modules through
 - App: `crm-app/core/{poll,outbox,camera,signature,pickers,map}.js`,
   `crm-app/portal/core.js`, the screens in `crm-app/modules/system/`;
   `office-sw.js` shows pushes; the office shell asks for permission.
-- Tests: `tests/crm/core/{send,automations,webpush,templates,messaging,portal,push-shell,screens}.test.mjs`;
+- Tests: `tests/crm/core/{send,automations,bulk,webpush,templates,messaging,portal,push-shell,screens}.test.mjs`,
+  and `recovery.test.mjs` (a write that fails half way: seeds, the sleeping
+  lane, run steps under the guard, lost approvals, restore and markers,
+  shadows after cutover, the file backup);
   fixtures `seedContact`, `seedImportedContact`, `seedStats` (contacts
   before M2a) and `t.portal()` in the harness.

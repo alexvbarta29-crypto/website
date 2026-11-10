@@ -1,7 +1,9 @@
 // Core "system" module: health, runs, backups, export and the owner's
 // switches (design §4.12, §3.12, §7.2 step 4).
 //
-//   GET  /admin/health                      audit:read   sys/health: lanes, cron, queue, verify, backups, alerts
+//   GET  /admin/health                      audit:read   sys/health: lanes, cron, queue, verify, backups, alerts,
+//                                           and mode (sys/mode: paused since when, by whom, why; the
+//                                           system of record), so Today and Data show a paused CRM
 //   GET  /runs/:id                          the person who started it, or an owner
 //   GET  /admin/backups                     export:all   snapshot manifests, newest first
 //   POST /admin/backups/:date/pulled        export:all   the off-site pull finished (build/crm_backup_pull.mjs)
@@ -11,6 +13,7 @@
 //   GET  /admin/export.csv/:id              export:all, audited: the CSV that run wrote
 //   POST /admin/reindex {names?}            owner (run)
 //   POST /admin/purge-shadow {confirm}      owner (run): "PURGE SHADOW" deletes shadow records the import never linked
+//                                           (only records created before cutover_at: nothing made after cutover)
 //   POST /admin/pause · /admin/resume {confirm}   owner: "PAUSE" / "RESUME" (sys/mode.paused)
 //   POST /hooks/cron                        x-crm-worker = sys/worker-secret: the cron's work when scheduled
 //                                           functions are unavailable (D39)
@@ -27,17 +30,18 @@ import { isId } from "../../core/ids.mjs";
 import { allIndexes, allTypes, getType } from "../../core/registry.mjs";
 import { createRun, defineRun, getRun, runView, readWorkerSecret, sameSecret, updateHealth, withoutAlert, WORKER_HEADER, kickWorker } from "../../core/lanes.mjs";
 import { listManifests, readManifest, readPart, snapshotDates } from "../../core/backup.mjs";
-import { setPaused } from "../../core/settings.mjs";
+import { setPaused, readSysMode } from "../../core/settings.mjs";
 import { cronTick, healthReport } from "../../core/worker.mjs";
 import { auditRead } from "../../core/audit.mjs";
 import { csvCell } from "../../../referral-lib.mjs";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const MODE_FIELDS = ["system_of_record", "paused", "paused_at", "paused_by", "paused_reason", "restored_from", "cutover_at"];
 async function health() {
-  const h = await healthReport();
-  const dirty = (await listKeys("ix-dirty/")).length;
-  return { data: { ...h, dirty_indexes: dirty } };
+  const [h, dirty, m] = await Promise.all([healthReport(), listKeys("ix-dirty/").then((k) => k.length), readSysMode()]);
+  const mode = Object.fromEntries(MODE_FIELDS.filter((f) => m[f] !== undefined && m[f] !== null).map((f) => [f, m[f]]));
+  return { data: { ...h, dirty_indexes: dirty, mode: { paused: false, ...mode } } };
 }
 
 async function runStatus(ctx) {
@@ -144,7 +148,13 @@ async function reindex(ctx) {
 }
 
 // Deletes every shadow record the import never linked (§3.9), type by type.
-async function purgeShadowStep(run, { budget, write }) {
+// Only records created before cutover: after cutover nothing is a shadow
+// (crm-store), and a record created after cutover_at is kept whatever its
+// flag says. After cutover without a cutover_at it does nothing.
+async function purgeShadowStep(run, { budget, write, mode }) {
+  const m = mode || await readSysMode();
+  const cutoverAt = m.system_of_record === "crm" ? Date.parse(m.cutover_at) : NaN;
+  if (m.system_of_record === "crm" && !Number.isFinite(cutoverAt)) return { done: true, result: { deleted: 0, skipped: "no_cutover_time" } };
   const types = allTypes().filter((t) => t.shadow).map((t) => t.type).sort();
   const cp = run.checkpoint && Number.isInteger(run.checkpoint.i) ? { ...run.checkpoint } : { i: 0, after: null, deleted: 0 };
   const by = run.requested_by || "system";
@@ -155,7 +165,7 @@ async function purgeShadowStep(run, { budget, write }) {
       if (budget && budget.left() < 10000) return { checkpoint: cp, progress: { done: cp.i, total: types.length } };
       const got = await getRaw(k);
       const r = got && got.data;
-      if (r && r.shadow === true && !r.import) {
+      if (r && r.shadow === true && !r.import && !(Number.isFinite(cutoverAt) && !(Date.parse(r.created_at) < cutoverAt))) {
         await hardDelete(type, r.id, write({ by, origin: "api", actor_kind: "user" }));
         cp.deleted += 1;
       }

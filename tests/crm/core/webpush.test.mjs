@@ -91,7 +91,9 @@ test("the VAPID JWT (RFC 8292) is ES256, aimed at the push service, expires with
 
 test("only real push services are accepted as endpoints", () => {
   for (const ok of ["https://fcm.googleapis.com/fcm/send/abc", "https://web.push.apple.com/QGt", "https://updates.push.services.mozilla.com/wpush/v2/x", "https://wns2-par02p.notify.windows.com/w/?token=x"]) assert.equal(WP.isPushEndpoint(ok), true, ok);
-  for (const bad of ["http://fcm.googleapis.com/x", "https://evil.example/push", "https://fcm.googleapis.com.evil.example/x", ["https://user:pw", "fcm.googleapis.com/x"].join(String.fromCharCode(64)), "https://localhost/x", "https://169.254.169.254/x", "javascript:alert(1)"]) assert.equal(WP.isPushEndpoint(bad), false, bad);
+  for (const bad of ["http://fcm.googleapis.com/x", "https://evil.example/push", "https://fcm.googleapis.com.evil.example/x", ["https://user:pw", "fcm.googleapis.com/x"].join(String.fromCharCode(64)), "https://localhost/x", "https://169.254.169.254/x", "javascript:alert(1)",
+    // other Google and Apple APIs are not push services: no VAPID-signed POST ever goes there
+    "https://storage.googleapis.com/upload/storage/v1/b/x/o?uploadType=media&name=y", "https://www.googleapis.com/anything", "https://oauth2.googleapis.com/token", "https://api.push.apple.com/3/device/x"]) assert.equal(WP.isPushEndpoint(bad), false, bad);
 });
 
 test("the push gate: dry-run off production, off without the VAPID keys, live with them (before cutover too), off when paused", () => {

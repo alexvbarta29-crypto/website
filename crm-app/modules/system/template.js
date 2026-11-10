@@ -9,7 +9,7 @@ import { html, attrs, toast, icon, render } from "../../core/ui.js";
 import { field, select, checkbox, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { pickContact } from "../../core/pickers.js";
 
-const CATS = [{ value: "service", label: "Service (their own visits, quotes, invoices)" }, { value: "marketing", label: "Marketing (needs their OK to text)" }, { value: "personal", label: "Personal" }, { value: "staff", label: "Staff only" }];
+const CATS = [{ value: "service", label: "Service (their own visits, quotes, invoices)" }, { value: "marketing", label: "Marketing (needs their OK to text)" }, { value: "personal", label: "Personal" }];
 const segments = (text) => {
   const gsm = /^[\x20-\x7e\n\r£¥èéùìòÇØøÅåÄÖÑÜäöñüà§¿¡]*$/.test(text);
   const n = Array.from(text).length;
@@ -45,7 +45,7 @@ export default {
       </form>
       <div class="section-h">Preview</div>
       <div class="card">
-        <div class="row" style="padding:0;min-height:0"><span class="who"><span class="nm">${s.contact ? `For ${s.contact.name}` : "With made-up values"}</span></span><span class="end"><button type="button" class="btn" data-for>${icon("contacts")}Preview for…</button></span></div>
+        <div class="stack-head"><b>${s.contact ? `For ${s.contact.name}` : "With made-up values"}</b><button type="button" class="btn" data-for>${icon("contacts")}Preview for…</button></div>
         <div data-preview><p class="small muted">Type to see it.</p></div>
       </div>
     </div>`;

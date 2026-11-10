@@ -90,9 +90,9 @@ async function settleFixes({ budget, minLeftMs = 3000 } = {}) {
   return settled;
 }
 
-export async function maintenance({ budget, holder } = {}) {
+export async function maintenance({ budget, holder, mode } = {}) {
   let progress = 0;
-  try { const o = await resumeOps({ holder: `${holder}.ops`, budget }); progress += o.resumed + o.failed; } catch (e) { console.error(`crm:worker: ops.resume failed (${safeErr(e)})`); }
+  try { const o = await resumeOps({ holder: `${holder}.ops`, budget, mode }); progress += o.resumed + o.failed; } catch (e) { console.error(`crm:worker: ops.resume failed (${safeErr(e)})`); }
   try { progress += await repairPendings({ budget }); } catch (e) { console.error(`crm:worker: index.pending failed (${safeErr(e)})`); }
   try { progress += await settleFixes({ budget }); } catch (e) { console.error(`crm:worker: fix.settle failed (${safeErr(e)})`); }
   return progress;
@@ -121,11 +121,14 @@ async function stepRuns(lane, { budget, deploy, mode, holder, minLeftMs = 20000 
 // ------------------------------------------------------------ one pass
 
 // One pass (fast) or chunk (bulk). Call inside a store scope (runLane and
-// runOnce do). → { progress, more, next_due_at, stop, queue }
+// runOnce do). → { progress, more, next_due_at, stop, queue, stuck }
+// stuck: due queue keys this pass could not run (held by another holder,
+// waiting for a settler, a kind this deploy has no handler for); sleeping
+// until the next item is due does not wake up for them.
 export async function runPass(lane, { deploy, holder = holderFor(lane), budget, mode } = {}) {
   if (!Object.hasOwn(LANES, lane)) throw new TypeError(`worker: unknown lane ${lane}`);
   const m = mode || await readSysMode();
-  const out = { progress: 0, more: false, next_due_at: null, stop: false, queue: null };
+  const out = { progress: 0, more: false, next_due_at: null, stop: false, queue: null, stuck: [] };
   if (lane === "fast") {
     if (!m.paused) {
       const q = await drainQueue({ holder, mode: m, budget });
@@ -133,6 +136,7 @@ export async function runPass(lane, { deploy, holder = holderFor(lane), budget, 
       out.more = out.more || q.more;
       out.next_due_at = q.next_due_at;
       out.stop = !!q.stop;
+      out.stuck = q.stuck || [];
       out.queue = { depth: q.depth, due: q.due, next_due_at: q.next_due_at };
     }
     if (!out.stop) {
@@ -142,7 +146,7 @@ export async function runPass(lane, { deploy, holder = holderFor(lane), budget, 
       const r = await stepRuns("fast", { budget, deploy, mode: m, holder });
       out.progress += r.progress;
       out.more = out.more || r.more;
-      out.progress += await maintenance({ budget, holder });
+      out.progress += await maintenance({ budget, holder, mode: m });
     }
   } else {
     const r = await stepRuns("bulk", { budget, deploy, mode: m, holder });
@@ -234,12 +238,14 @@ export async function runLane(lane, opts = {}) {
         // idle: sleep until the next queue item when it is due inside the budget
         if (lane === "fast" && r.next_due_at) {
           let due = Date.parse(r.next_due_at);
+          const stuck = new Set(r.stuck || []);
           if (due - nowMs() <= invocationMs - elapsed() - SLEEP_MARGIN_MS) {
             while (nowMs() < due && elapsed() < invocationMs) {
               slept += await sleep(Math.min(RECHECK_MS, due - nowMs()));
               if (!(await renewLease(lease, LEASE_MS, holder, small()))) { ended = "lease_lost"; break; }
               const head = await scanQueue(small()).catch(() => null);
-              if (head && head.due.length) break;
+              // wake up early only for a newly due item this pass could run
+              if (head && head.due.some((k) => !stuck.has(k))) break;
               if (head && head.next_due_at && Date.parse(head.next_due_at) < due) due = Date.parse(head.next_due_at);
             }
             if (ended === "lease_lost") break;

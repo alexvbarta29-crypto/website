@@ -24,7 +24,7 @@ function itemSheet(o) {
         <dt>From</dt><dd>${o.origin ? (o.origin.kind === "automation" ? `Automation ${o.origin.id || ""}` : o.origin.kind === "user" ? "A person" : o.origin.kind) : ""}</dd>
         ${o.footer_appended ? html`<dt>Footer</dt><dd>Opt-out line added</dd>` : ""}
         ${o.segments ? html`<dt>Length</dt><dd>${o.segments} text${o.segments === 1 ? "" : "s"}</dd>` : ""}
-        ${o.contact_id ? html`<dt>Contact</dt><dd class="mono">${o.contact_id}</dd>` : ""}
+        ${o.contact_id ? html`<dt>Contact</dt><dd>${o.contact_label || "A contact"}</dd>` : ""}
       </dl>
     </div>`,
   });
@@ -54,7 +54,7 @@ export default {
         <div class="chips" role="group" aria-label="Kind">${KINDS.map(([v, l]) => html`<button type="button" class="chip" ${attrs({ "aria-pressed": String(s.kind === v), "data-kind": v })}>${l}</button>`)}</div>
         ${s.items.length ? html`<ul class="list">${s.items.map((o) => html`<li><button type="button" class="row" data-item="${o.id}">
           <span class="ico ${o.mode === "blocked" ? "amber" : ""}">${icon(KIND_ICON[o.kind] || "send")}</span>
-          <span class="who"><span class="nm">${o.to_masked}${o.staff ? " (staff)" : ""}</span><span class="sub two">${o.subject ? o.subject + " · " : ""}${o.body || ""}</span></span>
+          <span class="who"><span class="nm">${o.contact_label || o.to_masked}${o.staff ? " (staff)" : ""}</span><span class="sub two">${o.subject ? o.subject + " · " : ""}${o.body || ""}</span></span>
           <span class="end"><span class="pill ${o.mode === "blocked" ? "amber" : ""}">${o.mode === "blocked" ? reasonLabel(o.blocked_reason) : "Not sent"}</span><span class="small muted">${fmtTime(o.created_at)}</span></span>
         </button></li>`)}</ul>${s.next ? html`<button type="button" class="btn block" data-more>Show more</button>` : ""}`
         : html`<div class="card empty"><div class="art">${icon("send")}</div><h2>Nothing that day</h2><p>Texts, emails and charges the CRM would have made show up here until each one is switched on.</p></div>`}`
@@ -62,7 +62,7 @@ export default {
         ${would.length ? html`<p class="small">${would.length} change${would.length === 1 ? "" : "s"} automations would have made on records Rotor owns.</p>` : ""}
         ${s.log.length ? html`<ul class="list">${s.log.map((r) => html`<li><div class="row">
           <span class="ico ${r.result.startsWith("would-") ? "coral" : ""}">${icon(r.result.startsWith("would-") ? "shield" : "bolt")}</span>
-          <span class="who"><span class="nm">${r.result.startsWith("would-") ? "Would have: " + r.result.slice(6).replace(/_/g, " ") : r.result === "dry_run" ? "Sent to the outbox" : r.result === "bulk_run" ? "Made a bulk send" : "Skipped: " + reasonLabel(r.result)}</span><span class="sub mono">${r.key} · ${r.subject}</span></span>
+          <span class="who"><span class="nm">${r.result.startsWith("would-") ? "Would have: " + r.result.slice(6).replace(/_/g, " ") : r.result === "dry_run" ? "Sent to the outbox" : r.result === "bulk_run" ? "Made a bulk send" : "Skipped: " + reasonLabel(r.result)}</span><span class="sub">${r.key}</span></span>
           <span class="end small muted">${fmtTime(r.at)}</span>
         </div></li>`)}</ul>` : html`<div class="card empty"><div class="art">${icon("bolt")}</div><h2>No automation activity that day</h2><p>Automations arrive with each part of the CRM.</p></div>`}`}
     </div>`;

@@ -298,3 +298,121 @@ test("marketing email carries an unsubscribe link and RFC 8058 one-click headers
     A.__unregisterAdapterForTests("email", "test");
   }
 });
+
+// ------------------------------------------------------------ M1.3 review: the sender fails closed
+
+test("a staff-category send that reaches a customer follows the service rules: consent, quiet hours and the footer", async () => {
+  // people can't make a "staff" template (it would skip every customer rule)
+  await assert.rejects(() => template({ key: "promo_staff", name: "Staff promo", channel: "sms", category: "staff", body: "Fall special: 20% off this week!" }), (e) => e.name === "InputError" && e.field === "category");
+  await template({ key: "staff_ping", name: "Staff ping", channel: "sms", category: "staff", body: "New lead waiting.", built_in: true });
+  const revoked = await scope(() => seedContact(80, { consent: { sms_service: { state: "revoked" }, sms_marketing: { state: "unknown" } } }));
+  const r = await send({ contact_id: revoked.id, channel: "sms", template_key: "staff_ping", origin: { kind: "user", user_id: "us_00000000000000000001" } });
+  assert.equal(r.status, "blocked");
+  assert.equal(r.blocked_reason, "no_consent", "a revoked contact never gets it");
+  const ok = await scope(() => seedContact(81));
+  const r2 = await send({ contact_id: ok.id, channel: "sms", template_key: "staff_ping", origin: { kind: "automation", id: "fixture" } });
+  assert.equal(r2.footer_appended, true, "the first text to that phone gets the opt-out footer");
+  assert.equal(D.data.json(`rec/outbox/${r2.outbox_id}`).category, "service");
+  // quiet hours apply (22:00 in Delano): the person's send is scheduled, not sent
+  pin("2026-11-18T04:00:00Z");
+  const r3 = await send({ contact_id: ok.id, channel: "sms", template_key: "staff_ping", category: "staff", origin: { kind: "user", user_id: "us_00000000000000000001" }, marker_key: "m-staff-night" });
+  assert.equal(r3.status, "scheduled");
+  // an internal text to a staff phone (msg.to, no contact) stays "staff"
+  const r4 = await send({ channel: "sms", category: "staff", to: "+17635550142", body: "New lead waiting.", origin: { kind: "system" } });
+  assert.equal(r4.status, "dry_run");
+  assert.equal(D.data.json(`rec/outbox/${r4.outbox_id}`).footer_appended, false);
+});
+
+test("a failed read of the suppression list never sends: no provider call, no outbox item", async () => {
+  setEnv({ ...PROD_ENV, TWILIO_ACCOUNT_SID: "AC-test-not-real", TWILIO_AUTH_TOKEN: "not-real" });
+  const prod = deployContext(new Request(HOST + "/"), {});
+  const sent = [];
+  A.registerAdapter("sms", "test", { async send(a) { sent.push(a); return { status: "queued", provider_id: "SM1" }; } });
+  const staff = await scope(() => seedContact(82, { flags: { test: true } }), prod);
+  await scope(() => store.putSetting("integrations", { sms: { mode: "live", test_from: "+17635550150", test_allowlist: [staff.phones[0].e164] } }, { ...W8, origin: "worker" }), prod);
+  const hkey = store.hk("phone", staff.phones[0].e164);
+  await scope(() => store.settledWrite(`sup/sms/${hkey}`, { state: "opted_out", at: "2026-11-16T00:00:00Z", source: "keyword", masked: "x" }, { onlyIfNew: true }), prod);
+  const msg = (k) => ({ contact_id: staff.id, channel: "sms", template_key: "plain_note", origin: { kind: "user", user_id: "us_00000000000000000001" }, marker_key: k });
+  assert.equal((await send(msg("m-control"), {}, prod)).blocked_reason, "opted_out", "control");
+  D.data.fail({ op: ["get", "getWithMetadata"], key: `sup/sms/${hkey}`, kind: "timeout", times: 10 });
+  await assert.rejects(() => send(msg("m-blink"), {}, prod), (e) => e.name === "BlobsTransientError", "a person's send answers 503 busy");
+  D.data.clearHooks();
+  assert.equal(sent.length, 0, "nothing reached the provider");
+  assert.ok(!D.data.keys("rec/outbox/").map((k) => D.data.json(k)).some((o) => o.mode !== "blocked"), "no outbox item but the control's blocked one");
+});
+
+test("a failed read of sys/mode is never 'not paused': the sender and the adapters throw", async () => {
+  setEnv({ ...PROD_ENV, TWILIO_ACCOUNT_SID: "AC-test-not-real", TWILIO_AUTH_TOKEN: "not-real" });
+  const prod = deployContext(new Request(HOST + "/"), {});
+  const sent = [];
+  A.registerAdapter("sms", "test", { async send(a) { sent.push(a); return { status: "queued", provider_id: "SM1" }; } });
+  const staff = await scope(() => seedContact(83, { flags: { test: true } }), prod);
+  await scope(() => store.putSetting("integrations", { sms: { mode: "live", test_from: "+17635550150", test_allowlist: [staff.phones[0].e164] } }, { ...W8, origin: "worker" }), prod);
+  await scope(() => store.settledWrite("sys/mode", { system_of_record: "rotor", paused: true, paused_reason: "restore", cutover_n: 0 }, { onlyIfNew: true }), prod);
+  const msg = (k) => ({ contact_id: staff.id, channel: "sms", template_key: "plain_note", origin: { kind: "user", user_id: "us_00000000000000000001" }, marker_key: k });
+  await assert.rejects(() => send(msg("m-control"), {}, prod), /paused/, "control: paused answers 409");
+  D.data.fail({ op: ["get", "getWithMetadata"], key: "sys/mode", kind: "timeout", times: 20 });
+  await assert.rejects(() => send(msg("m-blink"), {}, prod), (e) => e.name === "BlobsTransientError");
+  await assert.rejects(() => scope(() => A.adapter("sms", { deploy: prod }), prod), (e) => e.name === "BlobsTransientError");
+  D.data.clearHooks();
+  assert.equal(sent.length, 0);
+});
+
+test("POST /messages: a retry after a failed send goes out; 'already' only for a step that finished", async () => {
+  const t = await crmTest({ now: "2026-11-17T17:00:00Z" });
+  try {
+    const owner = await t.user("owner");
+    const c = await store.withStoreScope({ requestId: "x" }, () => seedContact(84));
+    const body = { contact_id: c.id, channel: "sms", body: "Running ten minutes late.", client_id: "client-0001-abcd" };
+    t.stores.data.fail({ op: ["set", "setJSON"], key: /^rec\/outbox\//, kind: "timeout", times: 20 });
+    const first = await t.api("/messages", { method: "POST", as: owner, body });
+    t.stores.data.clearHooks();
+    assert.equal(first.status, 503);
+    const marker = t.stores.data.json(t.stores.data.keys("done-dry/send/")[0]);
+    assert.equal(marker.state, "failed", "the claim was handed back");
+    assert.ok(marker.retry_at);
+    const retry = await t.api("/messages", { method: "POST", as: owner, body });
+    assert.equal(retry.status, 200);
+    assert.equal(retry.body.data.status, "dry_run", "the retry took the step over and recorded it");
+    assert.equal(t.stores.data.keys("rec/outbox/").length, 1);
+    const again = await t.api("/messages", { method: "POST", as: owner, body });
+    assert.equal(again.body.data.status, "already");
+    assert.equal(again.body.data.outbox_id, retry.body.data.outbox_id, "'already' names the outbox item it made");
+    assert.equal(t.stores.data.keys("rec/outbox/").length, 1);
+  } finally { t.done(); }
+});
+
+test("a direct send whose marker is still held answers busy (503), never 'already'", async () => {
+  const c = await scope(() => seedContact(85));
+  await scope(() => store.claimMarker("done-dry", "send", "msg-held-0001", { holder: "another-request", leaseMs: 60000 }));
+  await assert.rejects(() => send({ contact_id: c.id, channel: "sms", body: "Hi", origin: { kind: "user", user_id: "us_00000000000000000001" }, marker_key: "msg-held-0001" }), (e) => e.name === "BlobsTransientError");
+});
+
+test("the footer counts by the number the text really goes out from (sms.from), and from must be a real number", async () => {
+  setEnv({ ...PROD_ENV, TWILIO_ACCOUNT_SID: "AC-live-not-real", TWILIO_AUTH_TOKEN: "not-real" });
+  const prod = deployContext(new Request(HOST + "/"), {});
+  const sent = [];
+  A.registerAdapter("sms", "live", { async send(a) { sent.push(a); return { status: "queued", provider_id: "SM1" }; } });
+  await scope(() => store.settledWrite("sys/mode", { system_of_record: "crm", paused: false, cutover_n: 1 }, { onlyIfNew: true }), prod);
+  const c = await scope(() => seedContact(86), prod);
+  await scope(() => seedStats(c.id, { comms: { first_sms: { [S.MAIN_NUMBER]: "2026-01-02T00:00:00.000Z" }, last_contacted_at: null, last_inbound_at: null } }), prod);
+  await assert.rejects(() => scope(() => store.putSetting("integrations", { sms: { mode: "live", from: "763-555-0177" } }, { ...W8, origin: "worker" }), prod), (e) => e.field === "sms.from");
+  await scope(() => store.putSetting("integrations", { sms: { mode: "live", from: "+17635550177" } }, { ...W8, origin: "worker" }), prod);
+  const r = await send({ contact_id: c.id, channel: "sms", template_key: "plain_note", origin: { kind: "user", user_id: "us_00000000000000000001" }, marker_key: "m-from-1" }, {}, prod);
+  assert.equal(r.mode, "live");
+  assert.equal(sent[0].from, "+17635550177");
+  assert.match(sent[0].body, / Reply STOP to opt out\.$/, "the first text from the new number has the footer");
+  assert.ok(D.data.json(`rec/contact_stats/${c.id}`).comms.first_sms["+17635550177"], "first_sms is keyed by the number used");
+  assert.equal(S.sendingNumber({ sms: { number: "+17633143400", from: "+17635550177" } }, "live"), "+17635550177");
+  assert.equal(S.sendingNumber({ sms: { number: "+17633143400", from: null, test_from: "+17635550150" } }, "test"), "+17635550150");
+});
+
+test("marketing quiet hours with no day saved: the setting is refused, and a window with no allowed minute blocks instead of throwing", async () => {
+  await assert.rejects(() => scope(() => store.putSetting("messaging", { quiet: { marketing: { from: "09:00", to: "20:00", days: [] } } }, { ...W8, origin: "worker" })), (e) => e.name === "InputError" && /day/.test(e.message));
+  // a stored value from before the check (written raw)
+  await scope(() => store.settledWrite("cfg/messaging", { quiet: { marketing: { from: "09:00", to: "20:00", days: [] } } }, { onlyIfNew: true }));
+  const c = await scope(() => seedContact(87, { consent: { sms_marketing: { state: "granted" } } }));
+  const r = await send({ contact_id: c.id, channel: "sms", template_key: "promo_note", origin: { kind: "user", user_id: "us_00000000000000000001" } });
+  assert.equal(r.status, "blocked");
+  assert.equal(r.blocked_reason, "quiet_hours");
+});

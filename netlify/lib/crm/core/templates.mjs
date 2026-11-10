@@ -299,6 +299,9 @@ function validateTemplate(data, { op, before } = {}) {
     built_in: (v, f) => bool(v, { field: f }),
   });
   if (before && before.built_in && before.category && out.category !== before.category) throw new InputError("A built-in template keeps its category.", "category");
+  // "staff" templates are built in (texts to staff phones); one people make
+  // could reach a customer without the consent, quiet-hours and footer rules
+  if (out.category === "staff" && !(out.built_in || (before && before.built_in))) throw new InputError("Pick service, marketing or personal.", "category");
   if (out.channel === "email" && !out.body && out.body_html) out.body = htmlToText(out.body_html);
   const parts = [["body", out.body], ["subject", out.subject], ["body_html", out.body_html]];
   const vars = new Set();

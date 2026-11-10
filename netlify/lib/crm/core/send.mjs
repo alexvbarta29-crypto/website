@@ -2,12 +2,15 @@
 // customer (design §5.7.1 "Sending", §5.7.2, §7.3, §7.5, §0 rules 11-12).
 //
 // sendMessage({ contact_id, channel, template_key? | body, subject?, vars?,
-//   related?, origin, category?, subject_ref?, marker_key?, to? }, ctx)
+//   related?, origin, category?, subject_ref?, marker_key?, to?, template? }, ctx)
 //   → { status, blocked_reason?, outbox_id?, provider_id?, defer_until?,
 //       send_at?, marker_key, mode, footer_appended?, segments? }
 //
 // In order:
-//   1. paused (sys/mode): a person's send answers 409; automation skips;
+//   1. paused (sys/mode): a person's send answers 409; automation skips. A
+//      failed read of sys/mode (or of the suppression list) is never taken
+//      as "not paused" ("not opted out"): it throws, so a person's send
+//      answers 503 busy and a queued step retries with backoff;
 //   2. the contact and its address (primary mobile with sms: true / primary
 //      email) → blocked no_address;
 //   3. the mode (adapters/index.mjs): dry-run unless the integration is
@@ -28,8 +31,11 @@
 //      to that phone from that sending number (stats.comms.first_sms) and
 //      on every marketing SMS; templates never carry it;
 //   8. the step's marker (§7.3): done-dry/ in dry-run, done/ when live; a
-//      queued step's marker is the queue's (a direct send claims its own,
-//      so a retry with the same client id answers "already");
+//      queued step's marker is the queue's. A direct send claims its own:
+//      a retry with the same client id answers "already" only when that
+//      marker is final; while it is held the retry answers 503 busy, and a
+//      send that failed before reaching the provider hands its claim back
+//      (failed, retry_at now) so the retry takes it over at once;
 //   9. the duplicate guard: the same body to the same address within
 //      cfg/messaging.duplicate_window_min (10) → duplicate;
 //  10. dry-run: the dry-run adapter writes the outbox item, and that is
@@ -40,12 +46,19 @@
 //      (M6), which wraps this function.
 // A blocked send is recorded in the outbox (mode "blocked", with its
 // reason), so the owner sees what didn't go out and why.
+//
+// Category "staff" is internal only: a text to a staff phone that an
+// internal caller passes in msg.to, with no customer contact. Templates
+// people make cannot be "staff" (core/templates.mjs), and a "staff" send
+// that involves a customer contact is sent under the service rules
+// (consent, quiet hours, the footer).
 
 import { createHash, randomBytes } from "node:crypto";
 import { getRecord, getSetting, getRaw, settledWrite, claimMarker, advanceMarker, updateStats, hk, currentScope } from "../../crm-store.mjs";
 import { now, nowMs, nowIso, localDate, localTime, dowOfDate, isHoliday, nextAllowed, DEFAULT_CALENDAR } from "./clock.mjs";
 import { isId } from "./ids.mjs";
-import { InputError, ConflictError, NotFoundError } from "./errors.mjs";
+import { InputError, ConflictError, NotFoundError, BlobsTransientError } from "./errors.mjs";
+import { FINAL_STATES } from "./markers.mjs";
 import { sandboxed } from "./context.mjs";
 import { statsPart } from "./registry.mjs";
 import { keySafe, smsSegments } from "./text.mjs";
@@ -79,6 +92,9 @@ export function addressOf(contact, channel) {
   const e = emails.find((x) => x.primary) || emails[0] || null;
   return e ? String(e.address).toLowerCase() : null;
 }
+
+// A contact's name as the Outbox shows it.
+export const contactLabel = (c) => (c ? [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.company_name || c.display_name || null : null);
 
 // Consent for a category (§5.7.2): "no_consent" or null.
 export function consentBlock(channel, category, contact) {
@@ -119,12 +135,14 @@ export function allowedNow(rule, t = now()) {
   return hhmm >= rule.from && hhmm < rule.to;
 }
 
-// The number a text goes out from (stats.comms.first_sms is keyed by it):
-// the test number in test mode, the public number otherwise.
+// The number a text goes out from, and the one stats.comms.first_sms is
+// keyed by (D5): the test number in test mode, else sms.from (the D1
+// fallback number) when set, else the public number. The provider call
+// gets exactly this value.
 export function sendingNumber(integrations, mode) {
   const sms = (integrations && integrations.sms) || {};
   if (mode === "test" && sms.test_from) return sms.test_from;
-  return sms.number || MAIN_NUMBER;
+  return sms.from || sms.number || MAIN_NUMBER;
 }
 
 // Whether the opt-out footer goes on this text (D5, §5.7.2).
@@ -137,10 +155,14 @@ export function needsFooter({ category, firstSms = {}, number, footer = {} }) {
 
 // ------------------------------------------------------------ helpers
 
+// sys/mode for this send. A failed read throws (BlobsTransientError → 503
+// busy): a paused CRM must never look unpaused because storage blinked.
 async function readModeOnce() {
-  const g = await getRaw("sys/mode").catch(() => null);
+  const g = await getRaw("sys/mode");
   return { ...DEFAULT_MODE, ...(g && g.data ? g.data : {}) };
 }
+
+const isFinalMarker = (m) => !!m && (FINAL_STATES.includes(m.state) || (m.state === "failed" && !m.retry_at));
 
 const normOrigin = (o, ctx) => {
   const origin = o && typeof o === "object" ? { ...o } : { kind: typeof o === "string" ? o : "system" };
@@ -210,11 +232,18 @@ export async function sendMessage(msg, ctx = {}) {
   }
   let template = null;
   if (msg.template_key) {
-    template = await getTemplateByKey(msg.template_key);
+    // internal callers may pass the version they tested (a bulk run's
+    // test.template); POST /messages never forwards this field
+    const snap = msg.template && typeof msg.template === "object" && msg.template.key === msg.template_key ? msg.template : null;
+    template = snap || await getTemplateByKey(msg.template_key);
     if (template && template.channel !== channel) throw new InputError("That template is for the other channel.", "template_key");
   }
-  const category = msg.category || (template && template.category) || "personal";
+  let category = msg.category || (template && template.category) || "personal";
   if (!CATEGORIES.includes(category)) throw new InputError("Unknown category.", "category");
+  // "staff" only for an internal text to a staff phone (msg.to, no customer
+  // contact); anything that reaches a customer follows the service rules
+  const staffSend = category === "staff" && typeof msg.to === "string" && !!msg.to && !contact;
+  if (category === "staff" && !staffSend) category = "service";
 
   // mode (§3.10): the integration's; automated sends to a contact Rotor
   // still owns are dry-run until cutover, whatever the integration says
@@ -226,7 +255,7 @@ export async function sendMessage(msg, ctx = {}) {
   const ns = a.mode === "dry_run" ? "done-dry" : "done";
   if (h && h.marker && h.marker.ns !== ns) return { status: "skipped", reason: "mode_changed", mode: a.mode };
 
-  const to = category === "staff" && msg.to ? String(msg.to) : addressOf(contact, channel);
+  const to = staffSend ? String(msg.to) : addressOf(contact, channel);
   const toHk = to ? (() => { try { return hk(channel === "sms" ? "phone" : "email", to); } catch { return null; } })() : null;
 
   // what would go out (rendered now, at send time)
@@ -239,7 +268,7 @@ export async function sendMessage(msg, ctx = {}) {
   const markerKey = h ? h.marker._key : null;
 
   const base = {
-    kind: channel, to, to_hk: toHk || undefined, contact_id: contact ? contact.id : undefined, related: msg.related || {},
+    kind: channel, to, to_hk: toHk || undefined, contact_id: contact ? contact.id : undefined, contact_label: contactLabel(contact) || undefined, related: msg.related || {},
     subject_ref: msg.subject_ref, origin, category, template_key: template ? template.key : undefined,
   };
   const blocked = async (reason) => {
@@ -255,7 +284,8 @@ export async function sendMessage(msg, ctx = {}) {
   if (template === null && msg.template_key) return blocked("no_template");
   if (template && template.active === false) return blocked("template_inactive");
   if (!to || !toHk) return blocked("no_address");
-  const sup = await getRaw(`sup/${channel}/${toHk}`).catch(() => null);
+  // suppression beats consent (§5.7.2); a failed read throws, never "not opted out"
+  const sup = await getRaw(`sup/${channel}/${toHk}`);
   if (sup && sup.data && sup.data.state === "opted_out") return blocked("opted_out");
   const noConsent = consentBlock(channel, category, contact);
   if (noConsent) return blocked(noConsent);
@@ -270,7 +300,11 @@ export async function sendMessage(msg, ctx = {}) {
   // (a bulk run's test send goes to the staff test contact, now: no quiet hours)
   const rule = msg.test_send === true ? null : quietRule(category, origin.kind, messaging.quiet || {}, calendar || DEFAULT_CALENDAR);
   if (rule && !allowedNow(rule)) {
-    const at = nextAllowed(now(), rule);
+    let at;
+    try { at = nextAllowed(now(), rule); } catch (e) {
+      if (!(e instanceof RangeError)) throw e;
+      return blocked("quiet_hours");     // a window with no allowed minute in three weeks (no days picked)
+    }
     if (h) return { status: "deferred", defer_until: at.toISOString(), reason: "quiet_hours", mode: a.mode };
     const { enqueue } = await import("./queue.mjs");
     const key = msg.marker_key || `q-${randomBytes(8).toString("hex")}`;
@@ -301,81 +335,98 @@ export async function sendMessage(msg, ctx = {}) {
   if (!h) {
     const key = keySafe(msg.marker_key || `m-${randomBytes(8).toString("hex")}`, 100);
     const claim = await claimMarker(ns, "send", key, { holder: wctx.requestId || "send", leaseMs: 60000 });
-    if (!claim.ok) return { status: "already", marker_key: claim.marker ? claim.marker._key : null, mode: a.mode };
+    if (!claim.ok) {
+      const m = claim.marker;
+      // "already" only for a step that finished; one still held (or being
+      // settled) answers busy, so the client keeps the message and retries
+      if (isFinalMarker(m)) return { status: "already", result: m.result || m.state, outbox_id: m.outbox_id || null, marker_key: m._key, mode: a.mode };
+      throw new BlobsTransientError("This message is still being sent. Try again in a moment.");
+    }
     marker = claim.marker;
   }
-
-  // the duplicate guard
-  const window = Number.isFinite(messaging.duplicate_window_min) ? messaging.duplicate_window_min : 10;
-  // (a bulk run's test send repeats on purpose: msg.test_send skips it)
-  const dup = await duplicateOf(ns, toHk, `${channel}|${rendered.subject || ""}|${text}`, msg.test_send === true ? 0 : window);
-  if (dup.dup) {
-    const out = await blocked("duplicate");
-    if (!h) await advance({ state: "done", result: "blocked:duplicate" }).catch(() => {});
-    return out;
-  }
-  const segments = channel === "sms" ? smsSegments(text) : undefined;
-  const outboxCtx = { ...base, marker_key: marker._key, footer_appended: channel === "sms" ? footerAppended : undefined, ctx: wctx };
-
-  // marketing email: an unsubscribe link in the footer and List-Unsubscribe
-  // with one-click POST (RFC 8058, §5.7.1). Dry-run shows where it goes
-  // without making the link (a dry-run send writes nothing but the outbox).
-  let html = rendered.html;
-  const headers = { ...(msg.headers || {}) };
-  if (channel === "email" && category === "marketing") {
-    if (a.mode === "dry_run") {
-      text += "\n\nUnsubscribe: https://www.bartawindowwashing.com/p/unsubscribe/…";
-    } else {
-      const { unsubscribeLink } = await import("../portal/core.mjs");
-      const u = await unsubscribeLink({ contact_id: contact.id, channel: "email", address: to });
-      text += `\n\nUnsubscribe: ${u.url}`;
-      if (html) html = html.replace(/<\/body>/, `<p style="text-align:center;font-size:12px;color:#85858d;margin:16px 0 0"><a href="${u.url}" style="color:#85858d">Unsubscribe</a></p></body>`);
-      headers["List-Unsubscribe"] = `<${u.one_click}>`;
-      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
-    }
-  }
-
-  if (a.mode === "dry_run") {
-    const res = channel === "sms"
-      ? await a.impl.send({ to, body: text, from: number, outbox: outboxCtx })
-      : await a.impl.send({ to, subject: rendered.subject, text, html, outbox: outboxCtx });
-    if (!h) await advance({ state: "done", result: "dry_run", outbox_id: res.outbox_id });
-    await noteSent(dup);
-    return { status: "dry_run", simulated: res.status, outbox_id: res.outbox_id, marker_key: marker._key, mode: "dry_run", footer_appended: footerAppended, segments };
-  }
-
-  // test / live: the provider call, under `sending` (§7.3)
-  const sms = integrations.sms || {};
-  const email = integrations.email || {};
-  await advance({ state: "sending", provider: channel === "sms" ? "twilio" : (email.provider || "postmark"), to_hk: toHk, body_sha256: sha(text), at: nowIso(), metadata: { crm_marker: marker._key } });
-  let res;
   try {
-    res = channel === "sms"
-      ? await a.impl.send({ to, body: text, from: a.mode === "test" ? sms.test_from : sms.from, markerKey: marker._key })
-      : await a.impl.send({
-        to, from: email.from || `${company.name || "Barta Window Washing"} <${company.email || "office@bartawindowwashing.com"}>`, replyTo: email.reply_to || company.email,
-        subject: rendered.subject, text, html, stream: category === "marketing" ? "broadcast" : "outbound",
-        headers, tag: template ? template.key : "message", metadata: { crm_marker: marker._key },
-      });
+    return await deliver();
   } catch (e) {
-    // the call may or may not have happened: the marker stays `sending` and
-    // its provider's settler decides (never re-sent blindly, §7.3)
-    console.error(`crm:send: a ${channel} send is unclear (${safeErr(e)})`);
-    return { status: "sending", marker_key: marker._key, mode: a.mode };
+    // a direct send that failed before the provider call hands its claim
+    // back at once (failed, retry_at now): the client's retry takes it over
+    if (!h && marker && marker.state === "claimed") {
+      await advanceMarker(marker, { state: "failed", code: keySafe((e && (e.code || e.name)) || "error", 40), retry_at: nowIso() }).catch(() => {});
+    }
+    throw e;
   }
-  if (res.status === "failed" || res.status === "blocked") {
-    await advance({ state: "failed", code: keySafe(res.error_code || res.status, 40) });
-    return { status: "failed", error_code: res.error_code || null, marker_key: marker._key, mode: a.mode };
+
+  async function deliver() {
+    // the duplicate guard
+    const window = Number.isFinite(messaging.duplicate_window_min) ? messaging.duplicate_window_min : 10;
+    // (a bulk run's test send repeats on purpose: msg.test_send skips it)
+    const dup = await duplicateOf(ns, toHk, `${channel}|${rendered.subject || ""}|${text}`, msg.test_send === true ? 0 : window);
+    if (dup.dup) {
+      const out = await blocked("duplicate");
+      if (!h) await advance({ state: "done", result: "blocked:duplicate" }).catch(() => {});
+      return out;
+    }
+    const segments = channel === "sms" ? smsSegments(text) : undefined;
+    const outboxCtx = { ...base, marker_key: marker._key, footer_appended: channel === "sms" ? footerAppended : undefined, ctx: wctx };
+
+    // marketing email: an unsubscribe link in the footer and List-Unsubscribe
+    // with one-click POST (RFC 8058, §5.7.1). Dry-run shows where it goes
+    // without making the link (a dry-run send writes nothing but the outbox).
+    let html = rendered.html;
+    const headers = { ...(msg.headers || {}) };
+    if (channel === "email" && category === "marketing") {
+      if (a.mode === "dry_run") {
+        text += "\n\nUnsubscribe: https://www.bartawindowwashing.com/p/unsubscribe/…";
+      } else {
+        const { unsubscribeLink } = await import("../portal/core.mjs");
+        const u = await unsubscribeLink({ contact_id: contact.id, channel: "email", address: to });
+        text += `\n\nUnsubscribe: ${u.url}`;
+        if (html) html = html.replace(/<\/body>/, `<p style="text-align:center;font-size:12px;color:#85858d;margin:16px 0 0"><a href="${u.url}" style="color:#85858d">Unsubscribe</a></p></body>`);
+        headers["List-Unsubscribe"] = `<${u.one_click}>`;
+        headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+      }
+    }
+
+    if (a.mode === "dry_run") {
+      const res = channel === "sms"
+        ? await a.impl.send({ to, body: text, from: number, outbox: outboxCtx })
+        : await a.impl.send({ to, subject: rendered.subject, text, html, outbox: outboxCtx });
+      if (!h) await advance({ state: "done", result: "dry_run", outbox_id: res.outbox_id });
+      await noteSent(dup);
+      return { status: "dry_run", simulated: res.status, outbox_id: res.outbox_id, marker_key: marker._key, mode: "dry_run", footer_appended: footerAppended, segments };
+    }
+
+    // test / live: the provider call, under `sending` (§7.3)
+    const email = integrations.email || {};
+    await advance({ state: "sending", provider: channel === "sms" ? "twilio" : (email.provider || "postmark"), to_hk: toHk, body_sha256: sha(text), at: nowIso(), metadata: { crm_marker: marker._key } });
+    let res;
+    try {
+      res = channel === "sms"
+        ? await a.impl.send({ to, body: text, from: number, markerKey: marker._key })
+        : await a.impl.send({
+          to, from: email.from || `${company.name || "Barta Window Washing"} <${company.email || "office@bartawindowwashing.com"}>`, replyTo: email.reply_to || company.email,
+          subject: rendered.subject, text, html, stream: category === "marketing" ? "broadcast" : "outbound",
+          headers, tag: template ? template.key : "message", metadata: { crm_marker: marker._key },
+        });
+    } catch (e) {
+      // the call may or may not have happened: the marker stays `sending` and
+      // its provider's settler decides (never re-sent blindly, §7.3)
+      console.error(`crm:send: a ${channel} send is unclear (${safeErr(e)})`);
+      return { status: "sending", marker_key: marker._key, mode: a.mode };
+    }
+    if (res.status === "failed" || res.status === "blocked") {
+      await advance({ state: "failed", code: keySafe(res.error_code || res.status, 40) });
+      return { status: "failed", error_code: res.error_code || null, marker_key: marker._key, mode: a.mode };
+    }
+    await advance({ state: "done", result: res.status || "sent", provider_ref: res.provider_id || null });
+    await noteSent(dup);
+    if (contact && statsPart("comms")) {
+      await updateStats(contact.id, "comms", (p) => ({
+        ...p, last_contacted_at: nowIso(),
+        ...(channel === "sms" ? { first_sms: { ...(p.first_sms || {}), ...(p.first_sms && p.first_sms[number] ? {} : { [number]: nowIso() }) } } : {}),
+      }), wctx).catch((e) => console.error(`crm:send: stats not updated (${safeErr(e)})`));
+    }
+    return { status: res.status || "sent", provider_id: res.provider_id || null, marker_key: marker._key, mode: a.mode, footer_appended: footerAppended, segments };
   }
-  await advance({ state: "done", result: res.status || "sent", provider_ref: res.provider_id || null });
-  await noteSent(dup);
-  if (contact && statsPart("comms")) {
-    await updateStats(contact.id, "comms", (p) => ({
-      ...p, last_contacted_at: nowIso(),
-      ...(channel === "sms" ? { first_sms: { ...(p.first_sms || {}), ...(p.first_sms && p.first_sms[number] ? {} : { [number]: nowIso() }) } } : {}),
-    }), wctx).catch((e) => console.error(`crm:send: stats not updated (${safeErr(e)})`));
-  }
-  return { status: res.status || "sent", provider_id: res.provider_id || null, marker_key: marker._key, mode: a.mode, footer_appended: footerAppended, segments };
 }
 
 // Queue kind "send.message": a person's send that waited for quiet hours to

@@ -5,10 +5,10 @@
 import { html, icon, attrs, toast } from "../../core/ui.js";
 import { dateShort, localDate } from "../../core/format.js";
 
-// GET /settings/:name → { data, etag, defaults, perm }
+// GET /settings/:name → { data, etag, defaults, perm, labels } (labels: names for ids, e.g. the test contact)
 export async function loadDoc(ctx, name) {
   const r = await ctx.api(`/settings/${name}`, { cache: false });
-  return { name, data: r.data.data, etag: r.data.etag || "new", defaults: r.data.defaults, perm: r.data.perm };
+  return { name, data: r.data.data, etag: r.data.etag || "new", defaults: r.data.defaults, perm: r.data.perm, labels: r.data.labels || {} };
 }
 
 // PUT the whole document with If-Match. → the saved doc; a 412 shows a toast and reloads.

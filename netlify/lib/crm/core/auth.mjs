@@ -31,7 +31,7 @@ import { checkPolicy, hashPassword, verifyPassword, dummyCheck } from "./passwor
 import { lookupSession, createSession, revokeSession, bumpAuthEpoch, readAuthEpoch, deviceId, newDeviceCookie, clearSessionCookie, forgetUser, ipHash } from "./sessions.mjs";
 import { checkThrottle, recordFailure, recordSuccess } from "./throttle.mjs";
 import { permsFor } from "./perms.mjs";
-import { lookupApiKey, touchApiKey } from "./apikeys.mjs";
+import { lookupApiKey, touchApiKey, checkKeyRate } from "./apikeys.mjs";
 import { safeTo, clientIp, uaFamily, fail, withCookies } from "./http.mjs";
 import { publicUser, normLogin, userType, USER_COLORS, LOGIN_RE } from "../modules/system/types.mjs";
 
@@ -120,6 +120,7 @@ export async function authenticate(req, auth, opts = {}) {
     const rec = await getRecord("user", key.user_id, opts);
     const user = rec && rec.data;
     if (!user || user.status !== "active") return null;
+    await checkKeyRate(key, opts);         // over its calls a minute: 429 (RateLimited)
     touchApiKey(key, opts).catch(() => {});
     return { user, apiKey: key };
   };

@@ -84,12 +84,12 @@ export default {
   render(s) {
     const waiting = s.bulk.filter((b) => ["draft", "ready", "tested"].includes(b.status));
     const recent = s.bulk.filter((b) => !["draft", "ready", "tested"].includes(b.status)).slice(0, 10);
-    const bulkRow = (b) => { const [cls, label] = BULK_STATUS[b.status] || ["", b.status]; return html`<li><button type="button" class="row" data-bulk="${b.id}"><span class="ico ${b.status === "tested" ? "coral" : ""}">${icon("send")}</span><span class="who"><span class="nm">${b.title}</span><span class="sub">${plural(b.recipients, "person", "people")} · ${ago(b.created_at)}</span></span><span class="end"><span class="pill ${cls}">${label}</span><span class="chev" aria-hidden="true"></span></span></button></li>`; };
+    const bulkRow = (b) => { const [cls, label] = BULK_STATUS[b.status] || ["", b.status]; return html`<li><button type="button" class="row" data-bulk="${b.id}"><span class="ico ${b.status === "tested" ? "coral" : ""}">${icon("send")}</span><span class="who"><span class="nm two">${b.title}</span><span class="sub">${plural(b.recipients, "person", "people")} · ${ago(b.created_at)}</span></span><span class="end"><span class="pill ${cls}">${label}</span><span class="chev" aria-hidden="true"></span></span></button></li>`; };
     return html`<div class="stack">
       <div class="section-h">Bulk sends</div>
       ${waiting.length ? html`<ul class="list">${waiting.map(bulkRow)}</ul>` : html`<div class="card muted small">Nothing waiting. A send to more than a handful of people stops here for a test and your OK.</div>`}
       ${s.canApprove ? html`<div class="section-h">Waiting for an owner</div>
-        ${s.pending.length ? html`<ul class="list">${s.pending.map((a) => html`<li><button type="button" class="row" data-pending="${a.id}"><span class="ico coral">${icon("check")}</span><span class="who"><span class="nm">${a.title}</span><span class="sub">${ago(a.created_at)}</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></button></li>`)}</ul>` : html`<div class="card muted small">Nothing waiting.</div>`}` : ""}
+        ${s.pending.length ? html`<ul class="list">${s.pending.map((a) => html`<li><button type="button" class="row" data-pending="${a.id}"><span class="ico coral">${icon("check")}</span><span class="who"><span class="nm two">${a.title}</span><span class="sub">${ago(a.created_at)}</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></button></li>`)}</ul>` : html`<div class="card muted small">Nothing waiting.</div>`}` : ""}
       ${recent.length ? html`<div class="section-h">Recent bulk sends</div><ul class="list">${recent.map(bulkRow)}</ul>` : ""}
     </div>`;
   },

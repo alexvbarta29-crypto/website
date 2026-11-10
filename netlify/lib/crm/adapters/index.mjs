@@ -73,7 +73,8 @@ export function modeFor(kind, { deploy, settings, env = process.env, mode = DEFA
 export async function readGate({ settings, mode } = {}) {
   const [s, m] = await Promise.all([
     settings ? settings : getSetting("integrations").catch(() => ({})),
-    mode ? mode : getRaw("sys/mode").then((g) => ({ ...DEFAULT_MODE, ...(g && g.data ? g.data : {}) })).catch(() => ({ ...DEFAULT_MODE, paused: false })),
+    // a failed read of sys/mode throws: never "not paused" by default
+    mode ? mode : getRaw("sys/mode").then((g) => ({ ...DEFAULT_MODE, ...(g && g.data ? g.data : {}) })),
   ]);
   return { settings: s || {}, mode: m || DEFAULT_MODE };
 }

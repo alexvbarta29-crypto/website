@@ -30,9 +30,9 @@ async function loadAll(ctx) {
   const [sessions, push, keys] = await Promise.all([
     ctx.api(`/users/${encodeURIComponent(id)}/sessions`).then((r) => r.data || []).catch(() => []),
     ctx.api("/push/subscriptions", { cache: false }).then((r) => r.data).catch(() => null),
-    ctx.can("api_keys:own") ? ctx.api("/api-keys", { cache: false }).then((r) => r.data || []).catch(() => []) : null,
+    ctx.can("api_keys:own") ? ctx.api("/api-keys", { cache: false }).catch(() => ({ data: [] })) : null,
   ]);
-  return { user: me.data.user, etag: me.data.etag, sessions, push, keys, offline: !!me.offline };
+  return { user: me.data.user, etag: me.data.etag, sessions, push, keys: keys ? keys.data || [] : null, scopes: (keys && keys.meta && keys.meta.scopes) || { read: [], write: [], defaults: [] }, offline: !!me.offline };
 }
 
 const pushOn = (u, key) => {
@@ -40,27 +40,41 @@ const pushOn = (u, key) => {
   return v ? v.includes("push") : DEFAULT_ON.has(key);
 };
 
+// The new-key sheet (§4.9): read permissions ticked by default, write
+// permissions ticked one by one (only ones the person holds and a key may
+// carry). The "path" kind arrives with the MCP connector (M7c); a backup key
+// (owners) carries export:all only and shows no scopes.
 function newKeySheet(ctx) {
   const owner = ctx.user && ctx.user.role === "owner";
+  const sc = ctx.state.scopes || { read: [], write: [], defaults: [] };
+  const box = (p, on) => html`<label class="check"><input ${attrs({ type: "checkbox", name: `scope_${p.key}`, checked: on })}><span>${p.label}</span></label>`;
   const s = sheet({
     title: "New API key",
     body: html`<form class="form" data-newkey novalidate>
       <div class="err" data-form-err hidden></div>
       ${field({ label: "Name (what it's for)", name: "name", value: "Claude", required: true })}
-      ${select({ label: "Kind", name: "kind", value: "header", options: [{ value: "header", label: "For Claude and tools (sent in a header)" }, { value: "path", label: "Read-only link (in the address)" }, ...(owner ? [{ value: "backup", label: "Off-site backup (owners)" }] : [])] })}
+      ${select({ label: "Kind", name: "kind", value: "header", options: [{ value: "header", label: "For Claude and tools (sent in a header)" }, ...(owner ? [{ value: "backup", label: "Off-site backup (owners)" }] : [])] })}
       ${field({ label: "Expires after (days)", name: "expires_days", value: "90", inputmode: "numeric" })}
-      <p class="small muted">It can read what you can read. Texting, charging and anything that reaches a customer always waits for an owner's OK.</p>
+      <div data-scopes>
+        <div class="section-h">It can read</div>
+        ${sc.read.length ? sc.read.map((p) => box(p, sc.defaults.includes(p.key))) : html`<p class="small muted">Nothing to read yet.</p>`}
+        ${sc.write.length ? html`<div class="section-h">It can also change (tick only what it needs)</div>${sc.write.map((p) => box(p, false))}` : ""}
+      </div>
+      <p class="small muted">Never more than you can do. Texting, charging and anything that reaches a customer always waits for an owner's OK.</p>
       <button type="submit" class="btn primary block">Make the key</button>
     </form>`,
     events: {
+      "change [name=kind]": (e, el) => { const d = s.el.querySelector("[data-scopes]"); if (d) d.hidden = el.value === "backup"; },
       "submit [data-newkey]": async (e, form) => {
         e.preventDefault();
         clearErrors(form);
         const v = readForm(form);
         const btn = form.querySelector("button[type=submit]");
+        const scopes = [...sc.read, ...sc.write].map((p) => p.key).filter((k) => v[`scope_${k}`]);
+        if (v.kind !== "backup" && !scopes.length) { showError(form, { message: "Tick at least one thing it may do.", field: null }); return; }
         busy(btn, true);
         try {
-          const r = await ctx.api("/api-keys", { method: "POST", body: { name: v.name, kind: v.kind, expires_days: Number(v.expires_days || 90) } });
+          const r = await ctx.api("/api-keys", { method: "POST", body: { name: v.name, kind: v.kind, expires_days: Number(v.expires_days || 90), ...(v.kind === "backup" ? {} : { scopes }) } });
           s.set(html`<div class="stack"><div class="warn-box">Copy it now. It's shown only this once.</div>
             <div class="copy-box"><input type="text" readonly ${attrs({ value: r.data.key, "aria-label": "API key" })} data-key><button type="button" class="btn dark" data-copy>${icon("copy")}Copy</button></div>
             <p class="small muted">${r.data.name} · ${r.data.kind} · expires ${r.data.expires_at ? dateShort(r.data.expires_at) : "never"}</p></div>`);

@@ -666,10 +666,20 @@ export async function getRecords(type, ids, opts = {}) {
   return mapLimit(ids, 16, (id) => getRecord(type, id, opts));
 }
 
+// sys/mode when a write context does not carry it. A failed read throws:
+// the system of record is never guessed for a write that depends on it.
+async function readSysModeFor(sc) {
+  const got = await read(sc, "data", "sys/mode");
+  return { system_of_record: "rotor", paused: false, ...(got && got.data ? strip(got.data) : {}) };
+}
+
 export async function createRecord(type, data, ctx = {}) {
   const def = requireType(type);
-  const c = ctxDefaults(ctx);
+  let c = ctxDefaults(ctx);
   const sc = scopeOf(ctx);
+  // whether a native record is a shadow depends on the real system of record
+  // (§3.9): after cutover nothing a person creates is a shadow
+  if (def.shadow && c.origin !== "import" && !(ctx && ctx.mode)) c = { ...c, mode: await readSysModeFor(sc) };
   if (!data || typeof data !== "object" || Array.isArray(data)) throw new InputError("Expected a record.");
   const input = clone(data);
   if (c.origin !== "import") for (const k of IMPORT_ONLY_ON_CREATE) delete input[k];

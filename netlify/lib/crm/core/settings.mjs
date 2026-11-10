@@ -19,7 +19,7 @@
 // or worker pass (readSysMode) and changed by CAS (updateSysMode): pause and
 // resume (Settings → Data, a restore), cutover and rollback (M8).
 
-import { getRaw, settledWrite, getSettingWithEtag, putSetting, appendEvent } from "../../crm-store.mjs";
+import { getRaw, settledWrite, getSettingWithEtag, putSetting, appendEvent, getRecord } from "../../crm-store.mjs";
 import { getSettingsDef, allSettings } from "./registry.mjs";
 import { InputError, ForbiddenError, NotFoundError, StaleError } from "./errors.mjs";
 import { nowIso } from "./clock.mjs";
@@ -28,8 +28,21 @@ import { DEFAULT_HOURS, DEFAULT_CALENDAR, isLocalDate, isLocalTime } from "./clo
 import { bumpAuthEpoch } from "./sessions.mjs";
 import { clearPermissionsCache } from "./auth.mjs";
 import { has as hasService } from "./services.mjs";
+import { isId } from "./ids.mjs";
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
+
+// Every validator builds its output from the fields it knows (anything else
+// is dropped), and a saved document is at most MAX_DOC_BYTES of JSON (a
+// definition may allow more with maxBytes): cfg/company is read on every
+// send and portal page.
+export const MAX_DOC_BYTES = 16 * 1024;
+const pick = (o, fields) => Object.fromEntries(fields.filter((f) => o[f] !== undefined).map((f) => [f, o[f]]));
+const yesNo = (v, field) => {
+  if (v === undefined) return v;
+  if (typeof v !== "boolean") throw new InputError("Yes or no.", field);
+  return v;
+};
 
 // ------------------------------------------------------------ validators
 
@@ -56,14 +69,16 @@ const hhmm = (v, field) => {
 const days = (v, field) => {
   if (v === undefined) return v;
   if (!Array.isArray(v) || v.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) throw new InputError("Pick days of the week.", field);
+  // a window with no day would never open (nextAllowed finds no minute)
+  if (!v.length) throw new InputError("Pick at least one day.", field);
   return [...new Set(v)].sort();
 };
 
 function validateCompany(v) {
-  const o = obj(v, "company");
+  const o = pick(obj(v, "company"), ["name", "legal_name", "phone", "email", "website", "base"]);
   for (const f of ["name", "legal_name", "phone", "email", "website"]) o[f] = text(o[f], f, 120);
   if (o.base !== undefined) {
-    const b = obj(o.base, "base");
+    const b = pick(obj(o.base, "base"), ["lat", "lng", "label"]);
     b.lat = num(b.lat, "base.lat", -90, 90);
     b.lng = num(b.lng, "base.lng", -180, 180);
     b.label = text(b.label, "base.label", 60);
@@ -73,7 +88,7 @@ function validateCompany(v) {
 }
 
 function validateHours(v) {
-  const o = obj(v, "hours");
+  const o = pick(obj(v, "hours"), ["0", "1", "2", "3", "4", "5", "6"]);
   for (let d = 0; d <= 6; d++) {
     const k = String(d);
     if (o[k] === undefined || o[k] === null) continue;
@@ -84,7 +99,7 @@ function validateHours(v) {
 }
 
 function validateCalendar(v) {
-  const o = obj(v, "calendar");
+  const o = pick(obj(v, "calendar"), ["rules", "dates"]);
   if (o.rules !== undefined && (!Array.isArray(o.rules) || o.rules.some((r) => !["thanksgiving", "christmas"].includes(r)))) throw new InputError("Pick holidays from the list.", "rules");
   if (o.dates !== undefined) {
     if (!Array.isArray(o.dates) || o.dates.length > 100 || o.dates.some((d) => !isLocalDate(d))) throw new InputError("Use dates like 2026-12-24.", "dates");
@@ -94,73 +109,121 @@ function validateCalendar(v) {
 }
 
 function validateServiceArea(v) {
-  const o = obj(v, "service_area");
+  const o = pick(obj(v, "service_area"), ["center", "radius_mi", "towns", "zips"]);
   if (o.center !== undefined) {
-    const c = obj(o.center, "center");
+    const c = pick(obj(o.center, "center"), ["lat", "lng"]);
     c.lat = num(c.lat, "center.lat", -90, 90);
     c.lng = num(c.lng, "center.lng", -180, 180);
     o.center = c;
   }
   o.radius_mi = num(o.radius_mi, "radius_mi", 1, 200);
-  if (o.towns !== undefined && (!Array.isArray(o.towns) || o.towns.length > 200)) throw new InputError("Expected a list of towns.", "towns");
+  if (o.towns !== undefined && (!Array.isArray(o.towns) || o.towns.length > 200 || o.towns.some((t) => typeof t !== "string" || t.length > 60))) throw new InputError("Expected a list of towns.", "towns");
   if (o.zips !== undefined && (!Array.isArray(o.zips) || o.zips.length > 200 || o.zips.some((z) => !/^\d{5}$/.test(String(z))))) throw new InputError("Use 5-digit ZIP codes.", "zips");
   return o;
 }
 
 function validateWindow(w, field, { withDays = false } = {}) {
-  const o = obj(w, field);
+  const o = pick(obj(w, field), ["from", "to", "days", "skip_holidays"]);
   o.from = hhmm(o.from, `${field}.from`);
   o.to = hhmm(o.to, `${field}.to`);
   if (o.from && o.to && o.from >= o.to) throw new InputError("The window must end after it starts.", field);
   if (withDays) o.days = days(o.days, `${field}.days`);
-  if (o.skip_holidays !== undefined && typeof o.skip_holidays !== "boolean") throw new InputError("Yes or no.", `${field}.skip_holidays`);
+  else delete o.days;
+  o.skip_holidays = yesNo(o.skip_holidays, `${field}.skip_holidays`);
   return o;
 }
 
 function validateMessaging(v) {
-  const o = obj(v, "messaging");
+  const o = pick(obj(v, "messaging"), ["quiet", "footer", "bulk_threshold", "duplicate_window_min", "campaign_gap_days", "inbound_first_only"]);
   if (o.quiet !== undefined) {
-    const q = obj(o.quiet, "quiet");
+    const q = pick(obj(o.quiet, "quiet"), ["service", "cadence", "marketing", "personal_warn_after"]);
     for (const k of ["service", "cadence", "marketing"]) if (q[k] !== undefined) q[k] = validateWindow(q[k], `quiet.${k}`, { withDays: true });
     q.personal_warn_after = hhmm(q.personal_warn_after, "quiet.personal_warn_after");
     o.quiet = q;
   }
   if (o.footer !== undefined) {
-    const f = obj(o.footer, "footer");
+    const f = pick(obj(o.footer, "footer"), ["text", "first_per_number", "marketing"]);
     f.text = text(f.text, "footer.text", 80);
     if (f.text !== undefined && !/stop/i.test(f.text)) throw new InputError("The footer has to tell people how to stop texts.", "footer.text");
-    for (const k of ["first_per_number", "marketing"]) if (f[k] !== undefined && typeof f[k] !== "boolean") throw new InputError("Yes or no.", `footer.${k}`);
+    for (const k of ["first_per_number", "marketing"]) f[k] = yesNo(f[k], `footer.${k}`);
     o.footer = f;
   }
   o.bulk_threshold = num(o.bulk_threshold, "bulk_threshold", 1, 100);
   o.duplicate_window_min = num(o.duplicate_window_min, "duplicate_window_min", 0, 1440);
   o.campaign_gap_days = num(o.campaign_gap_days, "campaign_gap_days", 0, 60);
+  o.inbound_first_only = yesNo(o.inbound_first_only, "inbound_first_only");
   return o;
 }
 
+// The test contact must also be flagged test (checked with the record on
+// save, saveSettingFor), §5.7.5.
 function validateMessagingTest(v) {
-  const o = obj(v, "messaging_test");
-  if (o.contact_id !== undefined && o.contact_id !== null && !(typeof o.contact_id === "string" && /^ct_[0-9a-z]{20}$/.test(o.contact_id))) throw new InputError("Pick the test contact.", "contact_id");
+  const o = pick(obj(v, "messaging_test"), ["contact_id"]);
+  if (o.contact_id !== undefined && o.contact_id !== null && !isId(o.contact_id, "contact")) throw new InputError("Pick the test contact.", "contact_id");
   return o;
 }
 
+// The fields of one automation's settings (cfg/automations.{key}), the
+// same checks for PUT /settings/automations and PATCH /automations/:key.
+export function cleanAutomationSettings(body = {}) {
+  if (!isPlainObject(body)) throw new InputError("Expected the automation's settings.");
+  const out = {};
+  if (body.enabled !== undefined) { if (typeof body.enabled !== "boolean") throw new InputError("On or off.", "enabled"); out.enabled = body.enabled; }
+  if (body.channels !== undefined) {
+    if (!Array.isArray(body.channels) || !body.channels.length || body.channels.some((c) => !["sms", "email"].includes(c))) throw new InputError("Pick text, email or both.", "channels");
+    out.channels = [...new Set(body.channels)];
+  }
+  if (body.template_keys !== undefined) {
+    if (!Array.isArray(body.template_keys) || body.template_keys.length > 6 || body.template_keys.some((k) => !/^[a-z][a-z0-9_]{1,39}$/.test(String(k)))) throw new InputError("Pick templates from the library.", "template_keys");
+    out.template_keys = body.template_keys;
+  }
+  if (body.delay !== undefined) {
+    if (!Number.isInteger(body.delay) || body.delay < 0 || body.delay > 60 * 24 * 30) throw new InputError("Use minutes, up to 30 days.", "delay");
+    out.delay = body.delay;
+  }
+  if (body.at_local !== undefined) { if (body.at_local !== null && !isLocalTime(body.at_local)) throw new InputError("Use a time like 10:00.", "at_local"); out.at_local = body.at_local; }
+  if (body.max_per_contact_days !== undefined) {
+    if (body.max_per_contact_days !== null && !(Number.isInteger(body.max_per_contact_days) && body.max_per_contact_days >= 0 && body.max_per_contact_days <= 3650)) throw new InputError("Use a number of days.", "max_per_contact_days");
+    out.max_per_contact_days = body.max_per_contact_days;
+  }
+  if (body.sender_user_id !== undefined) { if (body.sender_user_id !== null && !isId(body.sender_user_id, "user")) throw new InputError("Pick someone on the team.", "sender_user_id"); out.sender_user_id = body.sender_user_id; }
+  if (body.effective_from !== undefined) {
+    if (body.effective_from !== null && !Number.isFinite(Date.parse(body.effective_from))) throw new InputError("Use a date and time.", "effective_from");
+    out.effective_from = body.effective_from === null ? null : new Date(Date.parse(body.effective_from)).toISOString();
+  }
+  return out;
+}
+
+const AUTOMATION_KEY_RE = /^[a-z][a-z0-9_]*\.[a-z0-9_.]{1,60}$/;
 function validateAutomations(v) {
-  const o = obj(v, "automations");
-  if (o.effective_from !== undefined && o.effective_from !== null && !(typeof o.effective_from === "string" && Number.isFinite(Date.parse(o.effective_from)))) throw new InputError("Use a date and time.", "effective_from");
-  if (o.paused !== undefined && typeof o.paused !== "boolean") throw new InputError("Yes or no.", "paused");
-  // one object per automation key ({ enabled, channels, template_keys, delay, at_local, ... }); the engine (M1.3 part B) checks their fields
-  for (const [k, a] of Object.entries(o)) if (k.includes(".") && a !== undefined && !isPlainObject(a)) throw new InputError("Expected the automation's settings.", k);
+  const src = obj(v, "automations");
+  const o = {};
+  if (src.effective_from !== undefined && src.effective_from !== null && !(typeof src.effective_from === "string" && Number.isFinite(Date.parse(src.effective_from)))) throw new InputError("Use a date and time.", "effective_from");
+  if (src.effective_from !== undefined) o.effective_from = src.effective_from;
+  o.paused = yesNo(src.paused, "paused");
+  if (o.paused === undefined) delete o.paused;
+  // one object per automation key, with the same field checks as PATCH /automations/:key
+  for (const [k, a] of Object.entries(src)) {
+    if (!k.includes(".") || a === undefined) continue;
+    if (!AUTOMATION_KEY_RE.test(k)) throw new InputError("That isn't an automation.", k);
+    if (!isPlainObject(a)) throw new InputError("Expected the automation's settings.", k);
+    try { o[k] = cleanAutomationSettings(a); } catch (e) { if (e instanceof InputError) e.field = `${k}.${e.field || ""}`.replace(/\.$/, ""); throw e; }
+  }
   return o;
 }
 
 export const INTEGRATION_MODES = Object.freeze(["off", "dry_run", "test", "live"]);
 const INTEGRATIONS = ["sms", "email", "payments", "maps", "reviews", "meta", "push"];
 const E164 = /^\+1[2-9]\d{2}[2-9]\d{6}$/;
+const INTEGRATION_FIELDS = {
+  sms: ["mode", "number", "from", "test_from", "advanced_opt_out", "test_allowlist"],
+  email: ["mode", "provider", "from", "reply_to", "test_allowlist"],
+};
 function validateIntegrations(v) {
-  const o = obj(v, "integrations");
+  const o = pick(obj(v, "integrations"), INTEGRATIONS);
   for (const k of INTEGRATIONS) {
     if (o[k] === undefined) continue;
-    const i = obj(o[k], k);
+    const i = pick(obj(o[k], k), INTEGRATION_FIELDS[k] || ["mode"]);
     if (i.mode !== undefined && !INTEGRATION_MODES.includes(i.mode)) throw new InputError("Pick off, dry run, test or live.", `${k}.mode`);
     if (i.test_allowlist !== undefined) {
       if (!Array.isArray(i.test_allowlist) || i.test_allowlist.length > 20) throw new InputError("Up to 20 test addresses.", `${k}.test_allowlist`);
@@ -170,8 +233,16 @@ function validateIntegrations(v) {
         return t;
       });
     }
-    for (const f of ["number", "test_from"]) {
+    // the number a text goes out from is the one the footer rule counts by (D5): each must be a real number
+    for (const f of ["number", "from", "test_from"]) {
       if (k === "sms" && i[f] !== undefined && i[f] !== null && i[f] !== "" && !E164.test(String(i[f]))) throw new InputError("Use +1 and 10 digits.", `sms.${f}`);
+      if (k === "sms" && i[f] === "") i[f] = null;
+    }
+    if (k === "sms") i.advanced_opt_out = yesNo(i.advanced_opt_out, "sms.advanced_opt_out");
+    if (k === "email") {
+      i.provider = text(i.provider, "email.provider", 30);
+      i.from = text(i.from, "email.from", 160);
+      i.reply_to = text(i.reply_to, "email.reply_to", 120);
     }
     o[k] = i;
   }
@@ -179,9 +250,9 @@ function validateIntegrations(v) {
 }
 
 function validatePortal(v) {
-  const o = obj(v, "portal");
+  const o = pick(obj(v, "portal"), ["lifetimes", "terms", "max_opens_per_day"]);
   if (o.lifetimes !== undefined) {
-    const l = obj(o.lifetimes, "lifetimes");
+    const l = pick(obj(o.lifetimes, "lifetimes"), ["quote_after_expiry_days", "quote_after_conversion_days", "invoice_after_paid_days", "agreement_days", "card_days", "hub_days", "present_minutes"]);
     for (const [k, max] of [["quote_after_expiry_days", 365], ["quote_after_conversion_days", 365], ["invoice_after_paid_days", 730], ["agreement_days", 365], ["card_days", 60], ["hub_days", 365], ["present_minutes", 240]]) {
       if (l[k] !== undefined && !(Number.isInteger(l[k]) && l[k] >= 1 && l[k] <= max)) throw new InputError(`Use a whole number from 1 to ${max}.`, `lifetimes.${k}`);
     }
@@ -193,15 +264,15 @@ function validatePortal(v) {
 }
 
 function validateComms(v) {
-  const o = obj(v, "comms");
+  const o = pick(obj(v, "comms"), ["reply_keywords"]);
   if (o.reply_keywords !== undefined) {
-    const r = obj(o.reply_keywords, "reply_keywords");
+    const r = pick(obj(o.reply_keywords, "reply_keywords"), ["enabled", "words"]);
     if (r.enabled !== undefined && typeof r.enabled !== "boolean") throw new InputError("On or off.", "reply_keywords.enabled");
     if (r.words !== undefined) {
       if (!Array.isArray(r.words) || r.words.length > 20) throw new InputError("Up to 20 keywords.", "reply_keywords.words");
       const reserved = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE", "START", "UNSTOP", "HELP", "INFO"]);
       r.words = r.words.map((w, n) => {
-        const x = obj(w, `reply_keywords.words.${n}`);
+        const x = pick(obj(w, `reply_keywords.words.${n}`), ["word", "tag", "task"]);
         x.word = String(x.word || "").trim().toUpperCase();
         if (!/^[A-Z0-9]{1,20}$/.test(x.word)) throw new InputError("One word, letters and digits.", `reply_keywords.words.${n}.word`);
         if (reserved.has(x.word)) throw new InputError("STOP, START and HELP words always do what they say.", `reply_keywords.words.${n}.word`);
@@ -217,7 +288,7 @@ function validateComms(v) {
 
 export const INTAKE_MODES = Object.freeze(["rotor", "dual", "crm"]);
 function validateIntake(v) {
-  const o = obj(v, "intake");
+  const o = pick(obj(v, "intake"), ["mode"]);
   if (o.mode !== undefined && !INTAKE_MODES.includes(o.mode)) throw new InputError("Pick Rotor, both, or the CRM.", "mode");
   // "dual" and "crm" need the contacts module's intake (M2a): a feature gate, not a broken switch (§11.3)
   if (o.mode && o.mode !== "rotor" && !hasService("contacts.intake")) throw new InputError("Sending website leads to the CRM arrives with Contacts.", "mode");
@@ -225,9 +296,13 @@ function validateIntake(v) {
 }
 
 function validateNumbering(v) {
-  const o = obj(v, "numbering");
-  for (const [k, f] of Object.entries(o)) {
-    if (!isPlainObject(f)) throw new InputError("Expected a number format.", k);
+  const src = obj(v, "numbering");
+  const o = {};
+  for (const [k, f0] of Object.entries(src)) {
+    if (!/^[a-z][a-z0-9_-]{1,30}$/.test(k)) throw new InputError("That isn't a numbered document.", k);
+    if (!isPlainObject(f0)) throw new InputError("Expected a number format.", k);
+    const f = pick(f0, ["prefix", "pad"]);
+    o[k] = f;
     if (f.prefix !== undefined && !(typeof f.prefix === "string" && /^[A-Z]{0,6}-?$/.test(f.prefix))) throw new InputError("Use a short capital-letter prefix like INV-.", `${k}.prefix`);
     if (f.pad !== undefined && !(Number.isInteger(f.pad) && f.pad >= 0 && f.pad <= 9)) throw new InputError("Use 0 to 9 digits.", `${k}.pad`);
   }
@@ -235,7 +310,7 @@ function validateNumbering(v) {
 }
 
 function validateStorage(v) {
-  const o = obj(v, "storage");
+  const o = pick(obj(v, "storage"), ["backend"]);
   if (o.backend !== undefined && !["blobs", "postgres"].includes(o.backend)) throw new InputError("Pick blobs or postgres.", "backend");
   return o;
 }
@@ -288,6 +363,7 @@ export const CORE_SETTINGS = Object.freeze({
       terms: "", max_opens_per_day: 200,
     },
     validate: validatePortal,
+    maxBytes: 64 * 1024,     // the terms (up to 20,000 characters)
   },
   comms: {
     perm: "settings:messaging",
@@ -323,11 +399,20 @@ export function settingsFor(ctx) {
   return allSettings().filter((s) => ctx.can(s.perm)).map((s) => ({ name: s.name, perm: s.perm, module: s.module })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// A contact's name as the settings screens show it (never the id).
+const contactLabel = (c) => (c ? [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.company_name || c.display_name || "A contact" : null);
+
 export async function readSettingFor(ctx, name) {
   const def = docDef(name);
   if (!ctx.can(def.perm)) throw new ForbiddenError("You don't have access to that.");
   const got = await getSettingWithEtag(name);
-  return { data: got.data, etag: got.etag, defaults: clone(def.defaults), perm: def.perm };
+  const out = { data: got.data, etag: got.etag, defaults: clone(def.defaults), perm: def.perm };
+  // the test contact by name (Settings → Messaging)
+  if (name === "messaging_test" && isId(got.data && got.data.contact_id, "contact")) {
+    const c = await getRecord("contact", got.data.contact_id).catch(() => null);
+    out.labels = { contact_id: c && c.data && !c.data.deleted_at ? contactLabel(c.data) : null };
+  }
+  return out;
 }
 
 // PUT /settings/:name: the whole value with If-Match (the etag GET gave, or
@@ -337,6 +422,14 @@ export async function saveSettingFor(ctx, name, value) {
   if (!ctx.can(def.perm)) throw new ForbiddenError("You don't have access to that.");
   if (!isPlainObject(value)) throw new InputError("Send the whole settings page.");
   if (!ctx.ifMatch) throw new InputError("This change needs the version you edited (If-Match).", "if-match");
+  if (JSON.stringify(def.validate(clone(value), { ctx: ctx.write() })).length > (def.maxBytes || MAX_DOC_BYTES)) throw new InputError("That is too much for one settings page.");
+  // the bulk-send test contact must be a contact flagged test (§5.7.5)
+  if (name === "messaging_test" && value.contact_id) {
+    if (!isId(value.contact_id, "contact")) throw new InputError("Pick the test contact.", "contact_id");
+    const c = await getRecord("contact", value.contact_id);
+    if (!c || c.data.deleted_at || c.data.merged_into) throw new InputError("That contact isn't there anymore.", "contact_id");
+    if (!(c.data.flags && c.data.flags.test === true)) throw new InputError("Mark this contact as a test contact first (someone on the team).", "contact_id");
+  }
   const saved = await putSetting(name, value, { ...ctx.write(), ifMatch: ctx.ifMatch === "new" ? "new" : ctx.ifMatch });
   if (AUTH_DOCS.has(name)) {
     clearPermissionsCache();

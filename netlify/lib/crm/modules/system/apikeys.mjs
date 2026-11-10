@@ -11,7 +11,8 @@
 // key (owners) carries export:all only, for the off-site pull.
 
 import { getRaw, listRel, appendEvent } from "../../../crm-store.mjs";
-import { createApiKey, revokeApiKey, APIKEY_KEY } from "../../core/apikeys.mjs";
+import { createApiKey, revokeApiKey, APIKEY_KEY, grantableScopes } from "../../core/apikeys.mjs";
+import { LABELS } from "./permissions.mjs";
 import { NotFoundError } from "../../core/errors.mjs";
 import { isId } from "../../core/ids.mjs";
 
@@ -26,8 +27,11 @@ async function myKeys(user) {
   return rows.map((r, i) => (got[i] && got[i].data ? { hash: r.id, key: got[i].data } : null)).filter((x) => x && x.key.user_id === user.id);
 }
 
+// meta.scopes: what the new-key sheet offers (labels from the permissions catalog)
 async function list(ctx) {
-  return { data: (await myKeys(ctx.user)).map((k) => view(k.key)) };
+  const g = grantableScopes(ctx.user, ctx.permissions);
+  const lab = (p) => ({ key: p, label: LABELS[p] || p.replace(/[_:]/g, " ") });
+  return { data: (await myKeys(ctx.user)).map((k) => view(k.key)), meta: { scopes: { read: g.read.map(lab), write: g.write.map(lab), defaults: g.defaults } } };
 }
 
 async function create(ctx) {

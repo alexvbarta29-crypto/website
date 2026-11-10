@@ -34,7 +34,8 @@ import { getRaw, settledWrite, createRecord, updateRecord, getRecord, readIndex,
 import { CANONICAL_ORIGIN } from "./context.mjs";
 import { nowIso, nowMs } from "./clock.mjs";
 import { newId, isId } from "./ids.mjs";
-import { InputError, RegistryError, NotFoundError } from "./errors.mjs";
+import { InputError, RegistryError, NotFoundError, ParallelRunGuard } from "./errors.mjs";
+import { automationCtx, wouldAct } from "./activity.mjs";
 import { keySafe } from "./text.mjs";
 import { safeErr } from "../../referral-lib.mjs";
 
@@ -251,9 +252,13 @@ export async function runnableRuns(lane, { paused = false } = {}, opts = {}) {
 const retryAfterMs = (attempts) => Math.min(60, attempts * attempts) * 60 * 1000;
 
 // Advances one run by one step under the chunk budget. → { progressed, status }.
+// The step gets the pass's sys/mode in its write context and the automation
+// helpers (mayAct, would, log, §3.10). A step the store's parallel-run
+// backstop stops is not a failure: it leaves a would-<action> row and the
+// run ends there (done, result { would }), like a sweep.
 export async function stepRun(run, { budget, deploy, mode, holder } = {}) {
   const k = runKind(run.kind);
-  const wctx = { by: "system", origin: "worker", actor_kind: "automation", requestId: holder || "worker" };
+  const wctx = { by: "system", origin: "worker", actor_kind: "automation", requestId: holder || "worker", ...(mode ? { mode } : {}) };
   if (!k) {
     await updateRecord("run", run.id, (r) => (r.status === "failed" ? null : { ...r, status: "failed", error: { code: "unknown_kind" }, finished_at: nowIso() }), wctx);
     return { progressed: true, status: "failed" };
@@ -265,16 +270,23 @@ export async function stepRun(run, { budget, deploy, mode, holder } = {}) {
   if (run.status !== "running") return { progressed: false, status: run.status };
   let out;
   try {
-    out = (await k.step(run, { budget, deploy, mode, holder, write: (extra = {}) => ({ ...wctx, ...extra }) })) || {};
+    const a = automationCtx({ mode, key: run.kind, requestId: holder || "worker" });
+    out = (await k.step(run, { budget, deploy, mode, holder, mayAct: a.mayAct, would: a.would, log: a.log, write: (extra = {}) => ({ ...wctx, ...extra }) })) || {};
   } catch (e) {
-    const code = keySafe((e && (e.code || e.name)) || "error", 40);
-    console.error(`crm:lanes: run ${run.kind} step failed (${safeErr(e)})`);
-    const r = await updateRecord("run", run.id, (x) => {
-      const attempts = (x.attempts || 0) + 1;
-      if (attempts >= RUN_MAX_ATTEMPTS) return { ...x, attempts, status: "failed", error: { code }, finished_at: nowIso(), retry_at: null };
-      return { ...x, attempts, error: { code }, retry_at: new Date(nowMs() + retryAfterMs(attempts)).toISOString() };
-    }, wctx);
-    return { progressed: false, status: r.data.status, error: code };
+    if (e instanceof ParallelRunGuard) {
+      const action = keySafe(e.action || "change", 20);
+      await wouldAct({ key: run.kind, subject: e.subject || null, action, changes: e.fields ? { fields: e.fields } : undefined }).catch(() => {});
+      out = { done: true, result: { would: action } };
+    } else {
+      const code = keySafe((e && (e.code || e.name)) || "error", 40);
+      console.error(`crm:lanes: run ${run.kind} step failed (${safeErr(e)})`);
+      const r = await updateRecord("run", run.id, (x) => {
+        const attempts = (x.attempts || 0) + 1;
+        if (attempts >= RUN_MAX_ATTEMPTS) return { ...x, attempts, status: "failed", error: { code }, finished_at: nowIso(), retry_at: null };
+        return { ...x, attempts, error: { code }, retry_at: new Date(nowMs() + retryAfterMs(attempts)).toISOString() };
+      }, wctx);
+      return { progressed: false, status: r.data.status, error: code };
+    }
   }
   const r = await updateRecord("run", run.id, (x) => ({
     ...x,

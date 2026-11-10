@@ -16,16 +16,17 @@ import { OWNER_ONLY, ROLES } from "../../core/perms.mjs";
 import { CORE_SETTINGS, settingsFor, readSettingFor, saveSettingFor } from "../../core/settings.mjs";
 
 function validateAuth(v) {
-  const out = isPlainObject(v) ? { ...v } : {};
-  const roles = out.office_cookie_roles === undefined ? ["owner"] : out.office_cookie_roles;
+  const out = {};
+  v = isPlainObject(v) ? v : {};
+  const roles = v.office_cookie_roles === undefined ? ["owner"] : v.office_cookie_roles;
   if (!Array.isArray(roles) || roles.some((r) => !ROLES.includes(r))) throw new InputError("Pick roles from owner, admin and tech.", "office_cookie_roles");
   out.office_cookie_roles = [...new Set(roles)];
   return out;
 }
 
 function validatePermissions(v) {
-  const out = isPlainObject(v) ? { ...v } : {};
-  const roles = isPlainObject(out.roles) ? out.roles : {};
+  const out = {};
+  const roles = isPlainObject(v) && isPlainObject(v.roles) ? v.roles : {};
   const clean = {};
   for (const [role, perms] of Object.entries(roles)) {
     if (!["admin", "tech"].includes(role)) throw new InputError("Only admin and tech defaults can change.", `roles.${role}`);
@@ -58,7 +59,7 @@ async function listSettings(ctx) {
 }
 async function getSettingDoc(ctx) {
   const r = await readSettingFor(ctx, ctx.params.name);
-  return { data: { data: r.data, etag: r.etag, defaults: r.defaults, perm: r.perm }, ...(r.etag ? { etag: r.etag } : {}) };
+  return { data: { data: r.data, etag: r.etag, defaults: r.defaults, perm: r.perm, ...(r.labels ? { labels: r.labels } : {}) }, ...(r.etag ? { etag: r.etag } : {}) };
 }
 async function putSettingDoc(ctx) {
   const r = await saveSettingFor(ctx, ctx.params.name, ctx.body);

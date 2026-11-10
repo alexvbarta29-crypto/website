@@ -196,26 +196,31 @@ export async function runQueueItem(key, { holder, mode, budget } = {}, opts = {}
 }
 
 // The fast lane's queue step: every due item, oldest first, while the
-// pass budget lasts. → { finished, due, depth, next_due_at, more }.
+// pass budget lasts. → { finished, due, depth, next_due_at, more, stuck }
+// (stuck: due keys that could not run now: busy, sending, settling, or a
+// kind without a handler in this deploy).
+const STUCK = new Set(["busy", "sending", "settling"]);
 export async function drainQueue({ holder, mode, budget, minLeftMs = 3000 } = {}, opts = {}) {
   const scan = await scanQueue(opts);
   let finished = 0;
   let next = scan.next_due_at;
   let more = false;
+  const stuck = [];
   for (const key of scan.due) {
     if (budget && budget.left() < minLeftMs) { more = true; break; }
     let r;
     try {
       r = await runQueueItem(key, { holder, mode, budget }, opts);
     } catch (e) {
-      if (e instanceof StopInvocation) return { finished, due: scan.due.length, depth: scan.depth, next_due_at: next, more: true, stop: true };
+      if (e instanceof StopInvocation) return { finished, due: scan.due.length, depth: scan.depth, next_due_at: next, more: true, stop: true, stuck };
       console.error(`crm:queue: an item could not run (${safeErr(e)})`);
       continue;
     }
     if (["done", "failed", "superseded"].includes(r.outcome)) finished += 1;
+    if (STUCK.has(r.outcome)) stuck.push(key);
     if (r.outcome === "not_due" && (!next || r.due_at < next)) next = r.due_at;
   }
-  return { finished, due: scan.due.length, depth: scan.depth, next_due_at: next, more };
+  return { finished, due: scan.due.length, depth: scan.depth, next_due_at: next, more, stuck };
 }
 
 // ------------------------------------------------------------ events

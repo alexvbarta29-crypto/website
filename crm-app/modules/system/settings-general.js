@@ -35,7 +35,7 @@ function hours(s) {
   return html`<form class="card form" id="f" novalidate>
     <div class="err" data-form-err hidden></div>
     <p class="small">When the office is open: the website shows these, "anytime" visits use them, and the first text to a new lead waits for them.</p>
-    <div class="daygrid">${DAYS.map((d, i) => {
+    <div class="daygrid"><span class="gh">Day</span><span class="gh">Opens</span><span class="gh">Closes</span><span class="gh">Open</span>${DAYS.map((d, i) => {
       const span = h[String(i)];
       return html`<span class="dn">${d.slice(0, 3)}</span>
         <input ${attrs({ type: "time", name: `from_${i}`, value: span ? span[0] : "08:00", "aria-label": `${d} opens`, disabled: !span })}>

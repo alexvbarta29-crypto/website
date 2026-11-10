@@ -51,6 +51,7 @@ import { getTemplateByKey } from "./templates.mjs";
 import { bulkThreshold, createBulkRun } from "./bulk.mjs";
 import { sandboxed } from "./context.mjs";
 import { adapter } from "../adapters/index.mjs";
+import { cleanAutomationSettings } from "./settings.mjs";
 
 export const ENGINE_DEFAULTS = Object.freeze({ enabled: true, channels: ["sms"], template_keys: [], delay: 0, at_local: null, max_per_contact_days: null, sender_user_id: null, effective_from: null });
 export const SETTING_FIELDS = Object.freeze(["enabled", "channels", "template_keys", "delay", "at_local", "max_per_contact_days", "sender_user_id", "effective_from"]);
@@ -285,40 +286,12 @@ export async function automationsOverview({ days = 7 } = {}) {
 }
 const pickSettings = (s) => Object.fromEntries(SETTING_FIELDS.map((k) => [k, s[k] ?? null]));
 
-function cleanPatch(def, body) {
-  const out = {};
-  if (body.enabled !== undefined) { if (typeof body.enabled !== "boolean") throw new InputError("On or off.", "enabled"); out.enabled = body.enabled; }
-  if (body.channels !== undefined) {
-    if (!Array.isArray(body.channels) || !body.channels.length || body.channels.some((c) => !["sms", "email"].includes(c))) throw new InputError("Pick text, email or both.", "channels");
-    out.channels = [...new Set(body.channels)];
-  }
-  if (body.template_keys !== undefined) {
-    if (!Array.isArray(body.template_keys) || body.template_keys.length > 6 || body.template_keys.some((k) => !/^[a-z][a-z0-9_]{1,39}$/.test(String(k)))) throw new InputError("Pick templates from the library.", "template_keys");
-    out.template_keys = body.template_keys;
-  }
-  if (body.delay !== undefined) {
-    if (!Number.isInteger(body.delay) || body.delay < 0 || body.delay > 60 * 24 * 30) throw new InputError("Use minutes, up to 30 days.", "delay");
-    out.delay = body.delay;
-  }
-  if (body.at_local !== undefined) { if (body.at_local !== null && !isLocalTime(body.at_local)) throw new InputError("Use a time like 10:00.", "at_local"); out.at_local = body.at_local; }
-  if (body.max_per_contact_days !== undefined) {
-    if (body.max_per_contact_days !== null && !(Number.isInteger(body.max_per_contact_days) && body.max_per_contact_days >= 0 && body.max_per_contact_days <= 3650)) throw new InputError("Use a number of days.", "max_per_contact_days");
-    out.max_per_contact_days = body.max_per_contact_days;
-  }
-  if (body.sender_user_id !== undefined) { if (body.sender_user_id !== null && !isId(body.sender_user_id, "user")) throw new InputError("Pick someone on the team.", "sender_user_id"); out.sender_user_id = body.sender_user_id; }
-  if (body.effective_from !== undefined) {
-    if (body.effective_from !== null && !Number.isFinite(Date.parse(body.effective_from))) throw new InputError("Use a date and time.", "effective_from");
-    out.effective_from = body.effective_from === null ? null : new Date(Date.parse(body.effective_from)).toISOString();
-  }
-  return out;
-}
-
 // PATCH /automations/:key: merges into cfg/automations.{key} (CAS; audited
 // by the settings write).
 export async function patchAutomation(key, body, ctx) {
   const def = automationDef(key);
   if (!def) throw new NotFoundError("That automation isn't here yet.");
-  const patch = cleanPatch(def, body || {});
+  const patch = cleanAutomationSettings(body || {});
   const saved = await mergeAutomationsCfg((cur) => ({ ...cur, [def.key]: { ...(cur[def.key] || {}), ...patch } }), ctx);
   return settingsFor(def, saved.data);
 }

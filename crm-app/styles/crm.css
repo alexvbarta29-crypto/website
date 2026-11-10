@@ -219,9 +219,12 @@ code{font:600 13.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:
 .row .ico.green{background:var(--green-bg);color:#0b6b44}
 .row .ico.amber{background:var(--amber-bg);color:#7a4f12}
 .row .two{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
-.switch{position:relative;flex:none;width:52px;height:32px;border-radius:999px;background:#d7d7dc;border:0;cursor:pointer;transition:background .15s}
-.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .15s}
-.switch[aria-checked="true"]{background:var(--green)}
+.stack-head{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+/* the on/off switch: a 56 x 44 tap target (§0 rule 9), the 52 x 32 track drawn inside it */
+.switch{position:relative;flex:none;width:56px;height:44px;min-height:44px;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.switch::before{content:"";position:absolute;top:6px;left:2px;width:52px;height:32px;border-radius:999px;background:#d7d7dc;transition:background .15s}
+.switch::after{content:"";position:absolute;top:9px;left:5px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .15s}
+.switch[aria-checked="true"]::before{background:var(--green)}
 .switch[aria-checked="true"]::after{transform:translateX(20px)}
 .switch:disabled{opacity:.5}
 .tap{min-width:44px;min-height:44px;display:inline-grid;place-items:center}
@@ -233,6 +236,10 @@ code{font:600 13.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:
 .daygrid .check{justify-content:center;padding:0}
 .daygrid input[type=time]::-webkit-calendar-picker-indicator{display:none}
 .daygrid .dn{font-weight:600}
+.daygrid .gh{font:600 12px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;text-align:center}
+.daygrid .gh:first-child{text-align:left}
+/* a closed day: its times are greyed out and read "Closed" to screen readers */
+.daygrid input[type=time]:disabled{background:var(--fill);color:var(--ink-3);border-style:dashed;opacity:.55}
 .varchips{display:flex;flex-wrap:wrap;gap:6px}
 .varchips button{min-height:44px;padding:0 11px;border:1px dashed #cfcfd5;border-radius:999px;background:#fff;color:var(--ink-2);font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}
 .preview{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--mist);border-radius:16px;padding:12px 14px;font-size:15px}
