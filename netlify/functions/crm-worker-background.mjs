@@ -22,13 +22,9 @@ import { deployContext } from "../lib/crm/core/context.mjs";
 import { storeBlocked } from "../lib/crm/core/auth.mjs";
 import { withStoreScope } from "../lib/crm-store.mjs";
 import { recordFacts, maybeMeasure, readWorkerSecret as readProbeSecret, sameSecret as sameProbeSecret } from "../lib/crm/core/probe.mjs";
-import { readWorkerSecret, sameSecret, workerOrigin, WORKER_HEADER } from "../lib/crm/core/lanes.mjs";
+import { readWorkerSecret, sameSecret, workerOrigin, laneReason, WORKER_HEADER } from "../lib/crm/core/lanes.mjs";
 import { runLane } from "../lib/crm/core/worker.mjs";
 import "../lib/crm/modules/index.mjs";
-
-export async function laneReason(req) {
-  try { const b = await req.json(); return typeof b.reason === "string" ? b.reason.slice(0, 60) : "kick"; } catch { return "kick"; }
-}
 
 export default async (req, context) => {
   try {

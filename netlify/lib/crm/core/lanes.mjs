@@ -59,6 +59,11 @@ export function workerOrigin(deploy, req, env = process.env) {
   try { return new URL(req.url).origin; } catch { return CANONICAL_ORIGIN; }
 }
 
+// Why a lane was woken ({ reason } in the kick's body): "cron", "self", "run:reindex", ...
+export async function laneReason(req) {
+  try { const b = await req.json(); return typeof b.reason === "string" ? b.reason.slice(0, 60) : "kick"; } catch { return "kick"; }
+}
+
 // ------------------------------------------------------------ the secret
 
 let secretCache = null;   // { value, at }
