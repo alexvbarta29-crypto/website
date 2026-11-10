@@ -109,11 +109,13 @@ export async function enroll(contactId, cadenceKey, opts = {}, ctx = {}) {
 // Applies mutate(enrollment, cadence, env) → enrollment | null. Automation
 // on a record the import owns writes a would- row instead.
 // → { changed, data?, would?, etag? }
-export async function changeEnrollment(id, mutate, ctx = {}, { action = "change", env: given } = {}) {
+// opts.cadences: a Map (id → cadence) reused across calls of one request.
+export async function changeEnrollment(id, mutate, ctx = {}, { action = "change", env: given, cadences } = {}) {
   if (!isId(id, "enrollment")) throw new NotFoundError("That follow-up isn't there.");
   const got = await getRecord("enrollment", id);
   if (!got) throw new NotFoundError("That follow-up isn't there.");
-  const cadence = await cadenceById(got.data.cadence_id);
+  let cadence = cadences ? cadences.get(got.data.cadence_id) : undefined;
+  if (cadence === undefined) { cadence = await cadenceById(got.data.cadence_id); if (cadences) cadences.set(got.data.cadence_id, cadence); }
   const env = given || await loadEnv();
   const preview = mutate(JSON.parse(JSON.stringify(got.data)), cadence, env);
   if (!preview) return { changed: false, data: got.data, etag: got.etag };
@@ -122,14 +124,15 @@ export async function changeEnrollment(id, mutate, ctx = {}, { action = "change"
     return { changed: false, would: true, data: got.data };
   }
   const r = await updateRecord("enrollment", id, (e) => mutate(e, cadence, env), W(ctx));
-  if (r.changed && r.data.deal_id) await touchDeal(r.data.deal_id, ctx);
+  // a follow-up that ends starts its deal's quiet days (sales.deal_abandon)
+  if (r.changed && r.data.deal_id && isOpen(got.data) && !isOpen(r.data)) await touchDeal(r.data.deal_id, ctx);
   return { changed: r.changed, data: r.data, etag: r.etag };
 }
 
 // Stops one enrollment (opted out, won, lost, a person's stop...).
 export const stopEnrollment = (id, reason, ctx = {}) => changeEnrollment(id, (e, c, env) => setStatus(e, "stopped", { reason, now: env.now }), ctx, { action: "stop" });
 export const pauseEnrollment = (id, reason, ctx = {}) => changeEnrollment(id, (e, c, env) => setStatus(e, "paused", { reason, now: env.now }), ctx, { action: "pause" });
-export const resumeEnrollment = (id, ctx = {}) => changeEnrollment(id, (e, c, env) => resume(e, c, env), ctx, { action: "resume" });
+export const resumeEnrollment = (id, ctx = {}, opts = {}) => changeEnrollment(id, (e, c, env) => resume(e, c, env), ctx, { action: "resume", ...opts });
 export const completeEnrollment = (id, reason, ctx = {}) => changeEnrollment(id, (e, c, env) => setStatus(e, "completed", { reason, now: env.now }), ctx, { action: "complete" });
 
 // sales.stopAll(contact_id, reason, ctx) → how many stopped.

@@ -1,16 +1,40 @@
-// Client manifest of the "sales" module (M2b): routes, nav entries, create
-// buttons, contact tabs, visit actions, Today cards and settings screens
-// (design §11.3). Stub created in M1.1; screens load with dynamic import().
-// No data, keys or customer names ever go in crm-app/ (§2.3).
+// Client manifest of the "sales" module (M2b, design §11.3, §9.2): Leads &
+// calls (the call list), one follow-up, one deal, starting a follow-up,
+// logging a call, Tasks and one task, the contact's Sales tab, a Today card
+// and Settings → Cadences. Screens load with dynamic import(). No data,
+// keys or customer names ever go in crm-app/ (§2.3).
 
 export default {
   name: "sales",
-  routes: [],
-  nav: [],
-  creates: [],
-  contactTabs: [],
+  routes: [
+    { path: "/calls", load: () => import("./calls.js"), title: "Leads & calls", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/calls/log", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/calls" },
+    { path: "/calls/log/:contact", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/contacts/:contact" },
+    { path: "/enrollments/:id", load: () => import("./enrollment.js"), title: "Follow-up", perm: "sales:work", parent: "/calls" },
+    { path: "/deals/:id", load: () => import("./deal.js"), title: "Deal", perm: "sales:work", parent: "/calls" },
+    { path: "/sales/enroll/:contact", load: () => import("./enroll.js"), title: "Start a follow-up", perm: "sales:work", parent: "/contacts/:contact" },
+    { path: "/tasks", load: () => import("./tasks.js"), title: "Tasks", perm: "tasks:read", parent: "/today", skeleton: "list" },
+    // making a task is the office's (a technician holds tasks:write only for their own tasks)
+    { path: "/tasks/new", load: () => import("./task.js"), title: "New task", perm: "sales:work", parent: "/tasks" },
+    { path: "/tasks/new/:contact", load: () => import("./task.js"), title: "New task", perm: "sales:work", parent: "/contacts/:contact" },
+    { path: "/tasks/:id", load: () => import("./task.js"), title: "Task", perm: "tasks:read", parent: "/tasks" },
+    { path: "/settings/cadences", load: () => import("./cadences.js"), title: "Cadences", perm: "cadences:configure", parent: "/settings", skeleton: "list" },
+    { path: "/settings/cadences/:id", load: () => import("./cadence.js"), title: "Cadence", perm: "cadences:configure", parent: "/settings/cadences" },
+  ],
+  nav: [
+    { where: "more", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
+    { where: "more", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
+  ],
+  creates: [
+    { label: "Log a call", path: "/calls/log", perm: "sales:work", order: 30, icon: "phone" },
+    { label: "New task", path: "/tasks/new", perm: "sales:work", order: 40, icon: "check" },
+  ],
+  contactTabs: [{ key: "sales", label: "Sales", order: 40, load: () => import("./contact-tab.js") }],
   visitActions: [],
-  todayCards: [],
-  settings: [],
-  styles: [],
+  // one card on Today: calls due now and leads that need attention (the office), my tasks (everyone)
+  todayCards: [{ key: "sales", perm: "tasks:read", order: 20, load: () => import("./today-card.js") }],
+  settings: [
+    { label: "Cadences", path: "/settings/cadences", perm: "cadences:configure", icon: "phone", order: 40 },
+  ],
+  styles: ["./sales.css"],
 };

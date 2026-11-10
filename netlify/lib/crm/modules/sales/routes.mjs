@@ -21,10 +21,10 @@ import {
   enroll, changeEnrollment, pauseEnrollment, resumeEnrollment, stopEnrollment, cadenceById, enrollmentsOf, previewStep, enrollmentView,
 } from "./enroll.mjs";
 import { markDeal, dealFor } from "./deals.mjs";
-import { logCall, sentByHand, sendStep, callList, callSummary, attention } from "./calls.mjs";
+import { logCall, sentByHand, sendStep, callList, callSummary, attention, smsMode } from "./calls.mjs";
 import { keepAttention } from "./automations.mjs";
 import { createTask, cleanTaskInput, completeTask } from "./tasks.mjs";
-import { contactOf, nameOf, primaryPhone, relRecords, W } from "./common.mjs";
+import { contactOf, nameOf, primaryPhone, relRecords, W, loadEnv } from "./common.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
 const view = (r) => { if (!r) return r; const { _w, _etag, ...rest } = r; return rest; };
@@ -138,7 +138,7 @@ const enrollmentsRoute = async (ctx) => {
 async function enrollmentDetail(id, ctx) {
   const got = await record("enrollment", id, "follow-up");
   const e = got.data;
-  const [cadence, contact] = await Promise.all([cadenceById(e.cadence_id), contactOf(e.contact_id, ctx)]);
+  const [cadence, contact, mode] = await Promise.all([cadenceById(e.cadence_id), contactOf(e.contact_id, ctx), smsMode()]);
   const step = stepOf(cadence, e.step_n);
   let preview = null;
   if (isOpen(e) && step && step.template_key) {
@@ -147,7 +147,7 @@ async function enrollmentDetail(id, ctx) {
   }
   return {
     data: {
-      enrollment: view(e), preview,
+      enrollment: view(e), preview, sms_mode: mode,
       cadence: cadence ? { id: cadence.id, key: cadence.key, name: cadence.name, steps: cadence.steps, on_reply: cadence.on_reply, unattended: cadence.unattended } : null,
       contact: contact ? { id: contact.id, name: nameOf(contact), phone: primaryPhone(contact), lifecycle: contact.lifecycle } : null,
     },
@@ -189,9 +189,11 @@ const bulkResumeRoute = async (ctx) => {
   if (list.some((x) => !isId(x, "enrollment"))) throw new InputError("That isn't a follow-up.", "ids");
   let resumed = 0;
   const skipped = [];
+  const env = await loadEnv();
+  const cadences = new Map();
   for (const id of [...new Set(list)]) {
     try {
-      const r = await resumeEnrollment(id, ctx);
+      const r = await resumeEnrollment(id, ctx, { env, cadences });
       if (r.changed) resumed += 1; else skipped.push(id);
     } catch (e) {
       if (e instanceof NotFoundError) { skipped.push(id); continue; }
@@ -396,7 +398,7 @@ export const salesRoutes = [
   R("POST", "/deals/:id/lose", "sales:work", "required", loseDealRoute),
   R("GET", "/enrollments", "sales:work", "none", enrollmentsRoute, { maxCalls: 40 }),
   R("POST", "/enrollments", "sales:work", "required", enrollRoute, { maxCalls: 70 }),
-  R("POST", "/enrollments/bulk-resume", "sales:work", "none", bulkResumeRoute, { maxCalls: 160, budgetMs: 8000 }),
+  R("POST", "/enrollments/bulk-resume", "sales:work", "none", bulkResumeRoute, { maxCalls: 180, budgetMs: 8000 }),
   R("GET", "/enrollments/:id", "sales:work", "required", enrollmentRoute),
   R("POST", "/enrollments/:id/pause", "sales:work", "required", pauseRoute, { maxCalls: 40 }),
   R("POST", "/enrollments/:id/resume", "sales:work", "required", resumeRoute, { maxCalls: 40 }),

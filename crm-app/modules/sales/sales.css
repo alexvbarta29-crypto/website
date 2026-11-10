@@ -1,0 +1,76 @@
+/* The sales screens (M2b): the call list's lead cards with their Call /
+   Log buttons, the overdue red, the outcome sheet's buttons, the text to send
+   by hand, the steps of a follow-up, tasks, and the cadence editor. House
+   style (design §0 rule 9): pill buttons, 20 px cards, 44 px tap targets,
+   16 px inputs. */
+
+/* ---------------------------------------------------------------- the call list */
+.sl-group{margin:16px 4px 8px;display:flex;align-items:center;gap:8px;font:800 12.5px/1 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.sl-group.late{color:var(--coral-ink)}
+.sl-group .pill{letter-spacing:0;text-transform:none}
+.sl-cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.sl-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.sl-card.late{border-color:#f3c2bb;box-shadow:inset 4px 0 0 var(--coral)}
+.sl-card .top{display:flex;align-items:flex-start;gap:10px;min-width:0;color:inherit;text-decoration:none;min-height:44px}
+.sl-card .top .who{flex:1;min-width:0}
+.sl-card .nm{display:block;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sl-card .sub{display:block;font-size:13px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sl-card .when{flex:none;font:600 13px/1.2 var(--text);color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums}
+.sl-card.late .when{color:var(--coral-ink)}
+.sl-acts{display:flex;gap:8px;flex-wrap:wrap}
+.sl-acts .btn{flex:1 1 0;min-width:0;padding:0 12px}
+.sl-acts .btn svg{width:18px;height:18px}
+.sl-pending{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;background:var(--amber-bg);color:#6b4510;font-size:13.5px;font-weight:600;min-height:44px;border:0;width:100%;text-align:left;cursor:pointer}
+.sl-pending svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sl-meta{display:flex;flex-wrap:wrap;gap:6px}
+.sl-dry{display:flex;gap:10px;align-items:flex-start}
+
+/* ---------------------------------------------------------------- the sheets */
+.sl-outcomes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sl-outcomes .btn{padding:0 10px;white-space:normal;line-height:1.15;min-height:52px}
+.sl-text{white-space:pre-wrap;user-select:text;-webkit-user-select:text}
+.sl-two{margin-top:0}
+.sl-two .btn{flex:1 1 140px}
+.sl-ask{margin-top:4px;font-size:15px}
+
+/* ---------------------------------------------------------------- one follow-up */
+.sl-steps{list-style:none;margin:0;padding:0}
+.sl-steps li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.sl-steps li:first-child{border-top:0}
+.sl-steps .dot{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--ink-3);font:800 12px/1 var(--head)}
+.sl-steps li.done .dot{background:var(--green-bg);color:#0b6b44}
+.sl-steps li.cur .dot{background:var(--coral);color:#fff}
+.sl-steps .t{flex:1;min-width:0}
+.sl-steps .t b{display:block;font-weight:600;font-size:14.5px}
+.sl-steps .t small{display:block;color:var(--ink-3);font-size:12.5px}
+.sl-hist{list-style:none;margin:0;padding:0}
+.sl-hist li{padding:8px 0;border-top:1px solid var(--line);font-size:14px;display:flex;gap:10px;justify-content:space-between}
+.sl-hist li:first-child{border-top:0}
+.sl-hist .w{color:var(--ink-3);font-size:12.5px;flex:none;text-align:right}
+.sl-preview{white-space:pre-wrap}
+
+/* ---------------------------------------------------------------- tasks */
+.sl-task{display:flex;align-items:center;gap:6px}
+.sl-task .row{flex:1;min-width:0}
+.sl-done{flex:none;width:44px;height:44px;margin-right:8px;border-radius:50%;border:1.5px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--ink-3);cursor:pointer}
+.sl-done svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sl-done:active{background:var(--green-bg);color:#0b6b44}
+.sl-people{display:flex;flex-wrap:wrap;gap:4px 14px}
+
+/* ---------------------------------------------------------------- the cadence editor */
+.sl-step{border:1px solid var(--line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.sl-step .hd{display:flex;align-items:center;gap:8px}
+.sl-step .hd b{flex:1;font:800 15px/1.2 var(--head)}
+.sl-grid3{display:grid;grid-template-columns:72px 1fr 1fr;gap:10px}
+.sl-grid3 .field input{padding-left:10px;padding-right:10px}
+.sl-sources{display:flex;flex-wrap:wrap;gap:0 16px}
+.sl-sources .check{flex:1 1 150px}
+
+/* ---------------------------------------------------------------- the contact tab */
+.sl-tab-acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sl-tab-acts .btn{width:100%}
+
+@media (min-width:900px){
+  .sl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+}
+@media (prefers-reduced-motion:reduce){ .sl-card{transition:none} }

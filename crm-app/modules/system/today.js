@@ -1,13 +1,26 @@
 // Today (design §9.2, §9.3): the date, a greeting, the bell (unread
 // notifications), the Approvals card (bulk sends and owner decisions
-// waiting), alerts from the workers for owners and the office, and quick
-// links. The modules fill the rest as they land: Needs attention (M2+),
+// waiting), alerts from the workers for owners and the office, the
+// modules' cards (todayCards: calls due, leads that need attention...), and
+// quick links. The modules fill the rest as they land: Needs attention (M2+),
 // My visits with Clock in/out (M4b), Today's visits by tech (M4a), the
 // Money strip (M5). A tech sees their own day only.
 
 import { html, icon } from "../../core/ui.js";
 import { dateLong, plural, dateTime } from "../../core/format.js";
 import * as router from "../../core/router.js";
+import { MANIFESTS } from "../index.js";
+
+// The modules' Today cards (manifest todayCards: { key, perm, order, load }):
+// each loads its own small summary (load(ctx) → state) and renders links
+// (render(state, ctx) → html``); one that fails is left out.
+async function moduleCards(ctx) {
+  const defs = MANIFESTS.flatMap((m) => m.todayCards || []).filter((c) => c && typeof c.load === "function" && (!c.perm || ctx.can(c.perm))).sort((a, b) => (a.order || 50) - (b.order || 50));
+  const out = await Promise.all(defs.map(async (c) => {
+    try { const mod = (await c.load()).default; return { mod, state: mod.load ? await mod.load(ctx) : {} }; } catch (e) { return null; }
+  }));
+  return out.filter(Boolean);
+}
 
 const greeting = (d) => {
   const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }).format(d));
@@ -17,11 +30,12 @@ const greeting = (d) => {
 export default {
   title: "Today",
   async load(params, ctx) {
-    const [badges, health] = await Promise.all([
+    const [badges, health, cards] = await Promise.all([
       ctx.api("/me/badges", { cache: false }).then((r) => r.data).catch(() => null),
       ctx.can("audit:read") ? ctx.api("/admin/health", { cache: false }).then((r) => r.data).catch(() => null) : null,
+      moduleCards(ctx),
     ]);
-    return { now: new Date(), user: ctx.user || {}, badges, health };
+    return { now: new Date(), user: ctx.user || {}, badges, health, cards };
   },
   render(s, ctx) {
     const tech = s.user.role === "tech";
@@ -46,6 +60,7 @@ export default {
       ${mode.paused ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>The CRM is paused</h2><p>${mode.paused_reason === "restore" ? "A backup was restored. " : ""}Nothing is texted, emailed, charged or automated${mode.paused_at ? ` since ${dateTime(mode.paused_at)}` : ""}. An owner resumes it on Settings → Data.</p></a>` : ""}
       ${stuck || alerts.length ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>Needs a look</h2>${stuck ? html`<p>A worker hasn't finished a pass in 3 hours.</p>` : ""}${alerts.slice(0, 3).map((a) => html`<p>${a.text}</p>`)}</a>` : ""}
       ${b.approvals && ctx.can("campaigns:send") ? html`<a class="tile" href="#/approvals">${icon("check")}<span>${plural(b.approvals, "approval")} waiting</span><span class="n">${b.approvals}</span></a>` : ""}
+      ${(s.cards || []).map((c) => { try { return c.mod.render(c.state, ctx); } catch (e) { return ""; } })}
       ${tech
         ? html`<div class="card empty"><div class="art">${icon("today")}</div><h2>No visits today</h2><p>Your visits show up here, in route order, once scheduling moves into the CRM.</p></div>`
         : html`<div class="card empty"><div class="art">${icon("sun")}</div><h2>Nothing needs you right now</h2><p>Leads, replies, visits and money show up here as each part of the CRM goes live. Rotor is still in charge until the switch.</p></div>`}

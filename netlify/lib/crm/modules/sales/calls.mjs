@@ -63,7 +63,7 @@ async function textAfterCall(enr, step, { callId, user, ctx, env, contact }) {
   if (step.review_before_send) {
     const p = await previewStep(enr, step, { sender: user });
     const r = await changeEnrollment(enr.id, (e) => (e.step_n === enr.step_n ? { ...e, pending: { n: enr.step_n, kind: "compose", at: nowIso() } } : null), ctx, { env });
-    return { next: { kind: "compose", n: enr.step_n, text: p.text, missing: p.missing, template_key: p.template_key, ...(contact ? { sms_href: smsHref(primaryPhone(contact), p.text) } : {}) }, enrollment: r.data };
+    return { next: { kind: "compose", n: enr.step_n, text: p.text, missing: p.missing, template_key: p.template_key, mode: await smsMode(), ...(contact ? { sms_href: smsHref(primaryPhone(contact), p.text) } : {}) }, enrollment: r.data };
   }
   const sent = await sendStepText(enr, step, { user, ctx });
   if (sent.status === "dry_run" || (sent.status === "already" && sent.result === "dry_run") || (sent.status === "scheduled" && sent.mode === "dry_run")) {
@@ -358,7 +358,8 @@ export function buildCallList({ rows, contacts, cadences, now: t, date, env }) {
   return out;
 }
 
-async function smsMode() {
+// Whether texts really leave (live / test) or land in the Outbox (dry_run).
+export async function smsMode() {
   try { const a = await adapter("sms", {}); return a.mode; } catch { return "dry_run"; }
 }
 
