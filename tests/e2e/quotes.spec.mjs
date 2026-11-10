@@ -134,9 +134,10 @@ test("quotes: Present to customer on the staff phone: pick, tick an add-on, sign
     // the link works once
     const again = await page.goto(url);
     assert.equal(again.status(), 410);
-    // the office sees it approved in person
+    // the office sees it approved in person; with Scheduling merged, a one-time
+    // option becomes a job right away (auto_convert), so it may read converted
     const q = await (await p.ctx.request.get(`/api/crm/quotes/${seeded.quotes.sent}`, { headers: { "x-crm": "1" } })).json();
-    assert.equal(q.data.quote.status, "approved");
+    assert.ok(["approved", "converted"].includes(q.data.quote.status), q.data.quote.status);
     assert.equal(q.data.quote.approval.method, "in_person");
     assert.equal(q.data.quote.approval.option_id, oneTime);
     await p.clean();
