@@ -51,6 +51,8 @@
 .sl-preview{white-space:pre-wrap}
 /* a link in a label/value list: a 44 px tap target that keeps the line height */
 .sl-kv a{display:inline-block;padding:13px 0;margin:-13px 0}
+/* a link inside a line of help text: a 44 px tap target without moving the text */
+p.small>a.linkish{display:inline-block;min-height:0;padding:14px 0;margin:-14px 0}
 
 /* ---------------------------------------------------------------- tasks */
 .sl-task{display:flex;align-items:center;gap:6px}
