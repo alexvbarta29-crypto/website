@@ -10,7 +10,8 @@ a plan or jobs once those modules exist.
 Code: `netlify/lib/crm/modules/quotes/` (server), `crm-app/modules/quotes/`
 (screens), `crm-app/portal/quotes-quote.js` (the customer's page script).
 Record types: `quote`, `quote_version`, `price_item`, `discount_def`.
-Tests: `tests/crm/quotes/`.
+Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
+`tests/e2e/quotes.spec.mjs` (`npm run e2e`).
 
 ## What the office sees
 

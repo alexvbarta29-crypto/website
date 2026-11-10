@@ -8,8 +8,12 @@
 //   different steps, a talked-to lead with a callback task, tasks for the
 //   owner and a tech, an incident; the first slice's customer list.
 //
-// Visits, quotes and invoices come with their modules (M3a, M4a, M5); until
-// then a tech's day is empty and they see no contacts.
+//   the quotes seeds (price book, discount catalog), a draft quote for the
+//   fresh lead and one sent (dry-run, the Outbox) to the talked-to lead with
+//   a one-time and a quarterly option.
+//
+// Visits and invoices come with their modules (M4a, M5); until then a
+// tech's day is empty and they see no contacts.
 
 const store = await import("../../netlify/lib/crm-store.mjs");
 const PW = await import("../../netlify/lib/crm/core/passwords.mjs");
@@ -19,6 +23,8 @@ const T = await import("../../netlify/lib/crm/core/templates.mjs");
 const E = await import("../../netlify/lib/crm/modules/sales/enroll.mjs");
 const CALLS = await import("../../netlify/lib/crm/modules/sales/calls.mjs");
 const clock = await import("../../netlify/lib/crm/core/clock.mjs");
+const QSEED = await import("../../netlify/lib/crm/modules/quotes/seed.mjs");
+const Q = await import("../../netlify/lib/crm/modules/quotes/quotes.mjs");
 
 export const PASSWORD = "a long synthetic passphrase";
 const TOWNS = ["Delano", "Maple Plain", "Mound", "Waconia", "Orono", "Wayzata", "Medina", "Rogers", "Watertown", "Buffalo"];
@@ -90,6 +96,18 @@ export async function seed({ contacts = 200 } = {}) {
   await task({ title: "Call back about the gutter add-on", kind: "call", contact_id: f.id, contact_name: "Quinn Talkedto", assignee_ids: [out.users.owner.id], due_at: clock.nowIso() });
   out.tasks = { tech: (await task({ title: "Pick up the ladder hooks", assignee_ids: [out.users.tech.id], due_at: clock.nowIso() })).id };
   await task({ title: "Cracked storm window at arrival", kind: "incident", priority: "high", reported_on: clock.localDate(clock.now()), assignee_ids: [out.users.owner.id], notes: "Synthetic." }, { by: out.users.tech.id, origin: "api", actor_kind: "user", requestId: "e2e-seed" });
+
+  // quotes (M3a): a draft for the fresh lead, one sent to the talked-to lead
+  await QSEED.seedPriceBook({ write: () => AUTO });
+  const ext = (x = {}) => ({ title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 29500, category: "windows_ext", service_type: "Residential Window Cleaning", ...x });
+  const options = () => [
+    { name: "Windows inside and out", kind: "one_time", recommended: false, lines: [ext(), { title: "Interior Window Cleaning", qty_milli: 1000, unit_cents: 16000, category: "windows_int" }, { title: "Track Detailing", qty_milli: 8000, unit_cents: 800, category: "tracks", unit: "track", optional: true }], discounts: [{ key: "first_time", name: "First Time Customer", type: "fixed", value: 5000, scope: { type: "initial" } }] },
+    { name: "Quarterly plan", kind: "plan", recommended: true, plan: { catalog_key: "quarterly", frequency: { interval: "month", count: 3 }, visits_per_year: 4, term_months: 12, billing: "barta_standard" }, lines: [ext({ scope: { type: "specific", visits: [1, 3, 4] } }), { title: "Interior Window Cleaning", qty_milli: 1000, unit_cents: 16000, category: "windows_int", scope: { type: "specific", visits: [2] } }], discounts: [{ key: "plan_quarterly", name: "Quarterly plan discount", type: "fixed", value: 10000, scope: { type: "all" }, stack_group: "plan" }] },
+  ];
+  const qctx = { user: { id: out.users.owner.id, role: "owner" }, can: () => true, write: () => O };
+  out.quotes = { draft: (await Q.createQuote({ contact_id: a.id, options: options(), client_notes: "Thanks for having us out!" }, qctx)).data.id };
+  out.quotes.sent = (await Q.createQuote({ contact_id: f.id, options: options() }, qctx)).data.id;
+  await Q.sendQuote(out.quotes.sent, { channels: ["sms"] }, qctx);
 
   // the first slice's Customers list (/crm/legacy, /legacy/customers)
   await store.writeCustomerIndex(store.buildCustomerIndex({ exported_at: "2026-11-08", members: [], customers: Array.from({ length: 24 }, (_, i) => ({
