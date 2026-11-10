@@ -1,7 +1,22 @@
 # Barta Office (/office)
 
-The office's tools as one app. Your logo sits at the top, with one row of tabs
-under it (beside it on a computer):
+**One app: the CRM.** With a CRM sign-in (or the office password before the
+first owner exists, to set it up) `/office` is the CRM, full screen, with no
+tab row. The dashboards are the CRM's **Dashboard** tab (Overview, Money,
+Sales, Plans, Jobs, switched in place) and the office tools are in **More**:
+Lights, Follow-ups, Purchases, Giveaway and Rotor
+(`crm-app/modules/system/{dashboard,tool}.js`, routes `/dashboard`,
+`/dashboard/:view`, `/tools/:id`). They show only on a phone that also has
+the office sign-in (the client's pseudo-permission `office:tools`); each
+page checks the office cookie again on the server. Old tab links
+(`/office#lights`, `#money`, ...) open the matching CRM screen
+(`IN_CRM` in netlify/lib/office-page.mjs), only with the office cookie, so a
+tool's own "sign in" bounce can never loop.
+
+The tab layout below remains for the office password alone once the CRM has
+owners (someone without a CRM login is never locked out of the tools), and
+when the CRM's storage is unavailable. Your logo sits at the top, with one
+row of tabs under it (beside it on a computer):
 
 - **Overview · Money · Sales · Plans · Jobs**: the dashboards (docs/DASHBOARD.md)
 - **CRM** → `/crm` (Barta's own CRM, each person's own login; see docs/CRM.md).
