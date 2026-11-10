@@ -136,7 +136,7 @@ export function normalizeOptions(options, { pricing, before = [], user = null, c
 }
 
 // What a person may send in (POST/PATCH): the editable fields only.
-export const EDITABLE = Object.freeze(["options", "client_notes", "internal_notes", "property_id", "deal_id", "agreement", "photo_ids", "mockup_file_ids", "selected_option_id"]);
+export const EDITABLE = Object.freeze(["options", "client_notes", "internal_notes", "property_id", "deal_id", "agreement", "photo_ids", "mockup_file_ids", "selected_option_id", "measure"]);
 
 // ------------------------------------------------------------ events, stats, timeline
 
