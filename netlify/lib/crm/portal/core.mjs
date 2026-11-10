@@ -298,8 +298,10 @@ function compile(r, module) {
   return { ...r, module, re, names };
 }
 let compiled = null;
+// The latest-registered module's route wins a path two modules declare
+// (only a test fixture standing in for a module does that).
 function moduleRoutes() {
-  const list = allModules().flatMap((m) => (m.portalRoutes || []).map((r) => ({ r, m: m.name })));
+  const list = allModules().slice().reverse().flatMap((m) => (m.portalRoutes || []).map((r) => ({ r, m: m.name })));
   if (compiled && compiled.n === list.length) return compiled.routes;
   compiled = { n: list.length, routes: list.map(({ r, m }) => compile(r, m)) };
   return compiled.routes;

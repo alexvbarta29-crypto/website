@@ -123,8 +123,8 @@ test("a crash mid-phase resumes at the row that failed; a lost checkpoint redoes
 });
 
 test("phases of modules not built yet wait (and say how many rows wait); a phase after a waiting one waits too", async () => {
-  // a module that registers a phase depending on Quotes' (which isn't there)
-  fixtureModule({ importPhases: [{ name: "fixture.after_quotes", entity: "quotes", after: ["quotes.quotes"], normalize: (r) => r, map: async () => ({}) }] });
+  // a module that registers a phase depending on Plans' (which isn't there)
+  fixtureModule({ importPhases: [{ name: "fixture.after_plans", entity: "service_plans", after: ["plans.plans"], normalize: (r) => r, map: async () => ({}) }] });
   const plan = runner.phasePlan();
   assert.ok(plan.findIndex((p) => p.name === "system.users") < plan.findIndex((p) => p.name === "contacts.customers"), "after: system.users");
   assert.ok(plan.findIndex((p) => p.name === "contacts.leads") < plan.findIndex((p) => p.name === "contacts.suppressions"));
@@ -138,8 +138,9 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     assert.equal(w["money.invoices"].waiting_for, "money");
     assert.equal(w["money.invoices"].rows, ex.invoices.length, "the report says how many rows wait");
     assert.equal(w["comms.messages"].module_label, "Messages");
-    assert.equal(w["fixture.after_quotes"].waiting_for, "quotes.quotes", "after a phase that isn't there: waits");
-    assert.ok(w["quotes.quotes"] && w["work.visits"] && w["plans.plans"] && w["payroll.payroll"]);
+    assert.equal(w["fixture.after_plans"].waiting_for, "plans.plans", "after a phase that isn't there: waits");
+    assert.ok(w["work.visits"] && w["plans.plans"] && w["payroll.payroll"]);
+    assert.ok(!w["quotes.quotes"] && !w["quotes.price_book"] && !w["quotes.discounts"], "Quotes (M3a) runs its phases");
     assert.ok(!w["contacts.customers"]);
     assert.ok(!w["sales.pipelines"] && !w["sales.opportunities"] && !w["sales.tasks"], "a module that shipped runs its phases");
     // the run's money: Rotor's side from the staged rows
