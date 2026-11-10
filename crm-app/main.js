@@ -40,7 +40,9 @@ const session = {
   nav: (boot && boot.nav) || ["today"],
   office: !!(boot && boot.office),
 };
-const can = (perm) => !!session.perms[perm];
+// office:tools is not a CRM permission: it means this phone has the office
+// sign-in (the dashboards and office tools check that cookie themselves).
+const can = (perm) => (perm === "office:tools" ? session.office : !!session.perms[perm]);
 
 // ------------------------------------------------------------ banner
 

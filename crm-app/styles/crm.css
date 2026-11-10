@@ -183,6 +183,10 @@ a.row:active,button.row:active{background:var(--fill)}
 .toast.bad{background:var(--coral-ink)}
 @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .frame-wrap{flex:1;min-height:0;position:relative}
+.seg-bar{flex:none;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--mist);-webkit-overflow-scrolling:touch}
+.seg-bar::-webkit-scrollbar{display:none}
+.seg-bar .seg{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink-2);font:600 14px/1 'General Sans',system-ui,sans-serif;text-decoration:none;white-space:nowrap}
+.seg-bar .seg.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--mist)}
 
 /* ------------------------------------------------------------ sign-in pages */

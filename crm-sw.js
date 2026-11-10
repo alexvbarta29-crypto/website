@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.11-4";
+const VERSION = "2026.11.11-5";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -71,6 +71,7 @@ const PRECACHE = [
   "/crm-app/modules/system/activity.js",
   "/crm-app/modules/system/approvals.js",
   "/crm-app/modules/system/automations.js",
+  "/crm-app/modules/system/dashboard.js",
   "/crm-app/modules/system/kit.js",
   "/crm-app/modules/system/legacy.js",
   "/crm-app/modules/system/manifest.js",
@@ -88,6 +89,7 @@ const PRECACHE = [
   "/crm-app/modules/system/template.js",
   "/crm-app/modules/system/templates.js",
   "/crm-app/modules/system/today.js",
+  "/crm-app/modules/system/tool.js",
   "/crm-app/modules/work/manifest.js",
   "/crm-app/portal/core.js",
   "/crm-app/styles/crm.css",

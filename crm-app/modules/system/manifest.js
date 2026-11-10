@@ -30,6 +30,10 @@ export default {
     { path: "/settings/intake", load: () => import("./settings-integrations.js"), title: "Intake mode", perm: "settings:owner", parent: "/settings" },
     { path: "/settings/data", load: () => import("./settings-data.js"), title: "Data", perm: "audit:read", parent: "/settings" },
     { path: "/settings/permissions", load: () => import("./settings-permissions.js"), title: "Team permissions", perm: "settings:owner", parent: "/settings" },
+    // The office's dashboards and tools, inside the CRM (office sign-in only).
+    { path: "/dashboard", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools" },
+    { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools" },
+    { path: "/tools/:id", load: () => import("./tool.js"), title: "Office tool", perm: "office:tools" },
   ],
   nav: [
     { where: "more", label: "Approvals", path: "/approvals", perm: "campaigns:send", order: 10, icon: "check" },
@@ -37,6 +41,11 @@ export default {
     { where: "more", label: "Templates", path: "/templates", perm: "templates:edit", order: 62, icon: "doc" },
     { where: "more", label: "Outbox", path: "/outbox", perm: "outbox:read", order: 64, icon: "send" },
     { where: "more", label: "Activity", path: "/activity", perm: "audit:read", order: 66, icon: "clock" },
+    { where: "more", label: "Lights", path: "/tools/lights", perm: "office:tools", order: 70, icon: "bulb" },
+    { where: "more", label: "Follow-ups", path: "/tools/followups", perm: "office:tools", order: 71, icon: "phone" },
+    { where: "more", label: "Purchases", path: "/tools/purchases", perm: "office:tools", order: 72, icon: "cart" },
+    { where: "more", label: "Giveaway", path: "/tools/giveaway", perm: "office:tools", order: 73, icon: "gift" },
+    { where: "more", label: "Rotor", path: "/tools/rotor", perm: "office:tools", order: 74, icon: "link" },
     { where: "more", label: "Settings", path: "/settings", perm: "settings:general", order: 80, icon: "gear" },
     { where: "more", label: "Team", path: "/team", perm: "users:manage", order: 90, icon: "team" },
     { where: "more", label: "My account", path: "/me", perm: "account:own", order: 99, icon: "me" },

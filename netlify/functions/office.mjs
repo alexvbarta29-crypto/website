@@ -34,21 +34,22 @@ const headers = {
 const page = (body, status = 200, extra = {}) =>
   new Response(body, { status, headers: { ...headers, "Content-Type": "text/html; charset=utf-8", ...extra } });
 
-// What the CRM says about this request: { session, ready } (ready = the CRM
-// is set up, so Team sign-in can work). Never throws: the office password
-// keeps working whatever the CRM's storage does.
+// What the CRM says about this request: { session, ready, usable } (ready =
+// the first owner exists, so Team sign-in can work; usable = the CRM's
+// stores are open here). Never throws: the office password keeps working
+// whatever the CRM's storage does.
 async function crmState(req, context) {
   try {
     const deploy = deployContext(req, context);
-    if (storeBlocked(deploy)) return { session: null, ready: false };
+    if (storeBlocked(deploy)) return { session: null, ready: false, usable: false };
     return await withStoreScope({ deploy, budget: withBudget(4000, 8), requestId: "office" }, async () => {
       const session = await lookupSession(req);
-      if (session) return { session, ready: true };
-      return { session: null, ready: await setupDone() };
+      if (session) return { session, ready: true, usable: true };
+      return { session: null, ready: await setupDone(), usable: true };
     });
   } catch (e) {
     console.error("office: couldn't check the CRM sign-in (" + safeErr(e) + ")");
-    return { session: null, ready: false };
+    return { session: null, ready: false, usable: false };
   }
 }
 
@@ -69,8 +70,15 @@ export default async (req, context) => {
     return page(officeLoginHtml({ error: "That password isn't right. Try again.", team: ready }), 401);
   }
   if (req.method !== "GET" && req.method !== "HEAD") return pageMethodNotAllowed("GET, HEAD, POST");
-  if (signedIn(req)) return page(officeHtml(), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
   const crm = await crmState(req, context);
+  if (signedIn(req)) {
+    // One app: with a CRM sign-in (or before the first owner exists, to set
+    // it up) the CRM fills the screen and holds the dashboards and office
+    // tools. The office password alone, once the CRM has owners, keeps the
+    // tab row, so nobody without a CRM login is locked out of the tools.
+    const solo = !!crm.session || (crm.usable && !crm.ready);
+    return page(officeHtml({ solo, office: true }), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
+  }
   if (crm.session) return page(officeHtml({ solo: true }));
   return page(officeLoginHtml({ team: crm.ready }));
 };
