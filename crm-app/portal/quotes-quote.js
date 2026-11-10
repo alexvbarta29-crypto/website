@@ -133,6 +133,7 @@ function start() {
       if (t) t.textContent = "Thanks! One more step: add your card so we can keep your plan running.";
     }
     for (const x of $$(".qx")) x.hidden = true;
+    for (const i of $$("input[name=option], [data-optline]")) i.disabled = true;
     done.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 

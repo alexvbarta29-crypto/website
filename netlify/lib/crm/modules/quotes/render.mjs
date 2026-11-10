@@ -118,7 +118,7 @@ export const QUOTE_STYLE = `<style>
 .qo-head{display:flex;align-items:flex-start;gap:12px;padding:18px 18px 12px;cursor:pointer}
 .qo-head input{flex:none;width:22px;height:22px;margin:3px 0 0;accent-color:var(--coral)}
 .qo-hd{flex:1;min-width:0}.qo-name{display:block;font:800 19px/1.2 'Cabinet Grotesk',system-ui,sans-serif}
-.qo-rec{display:inline-block;margin:0 8px 6px 0;padding:3px 9px;border-radius:999px;background:var(--coral);color:#fff;font:800 11px/1.3 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle}
+.qo-rec{display:table;margin:0 0 6px;padding:3px 9px;border-radius:999px;background:var(--coral);color:#fff;font:800 11px/1.3 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle}
 .qo-sub{display:block;margin-top:2px;font-size:14px;color:var(--muted)}
 .qo-price{flex:none;text-align:right}.qo-price b{display:block;font:800 22px/1.1 'Cabinet Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums}.qo-price small{color:var(--muted);font-size:12.5px}
 .qlines{list-style:none;margin:0;padding:0 18px;border-top:1px solid var(--line)}

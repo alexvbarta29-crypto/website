@@ -29,7 +29,7 @@ export default {
     const season = Object.keys(c.lights.deadlines || {}).sort().pop() || String(new Date().getFullYear());
     const dl = (c.lights.deadlines || {})[season] || [];
     return html`<div class="stack">
-      <form class="form" data-pricing novalidate>
+      <form class="form qp" data-pricing novalidate>
         <section class="card qp-tiers"><h2>Exterior windows</h2><p class="small muted">Up to this many panes costs this much. Over the last tier is priced by hand.</p>
           ${c.exterior_tiers.map((t, i) => html`<div class="tier"><label class="field"><span>Up to panes</span><input ${attrs({ name: `tier_p_${i}`, inputmode: "numeric", value: t.max_panes })}></label>${moneyField("Price", `tier_c_${i}`, t.cents)}</div>`)}
         </section>
