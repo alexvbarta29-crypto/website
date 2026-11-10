@@ -243,7 +243,7 @@ async function patchRoute(ctx) {
 }
 
 async function previousLifecycle(id) {
-  const evts = (await listEvents("contact", id, { limit: 40 })).filter((e) => e.action === "update").slice(0, 6);
+  const evts = (await listEvents("contact", id, { limit: 40 })).filter((e) => e.action === "update").slice(0, 10);
   for (const e of evts) {
     const v = await getEvent(e.key);
     const d = v && v.diff && v.diff.lifecycle;

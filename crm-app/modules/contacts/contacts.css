@@ -1,0 +1,84 @@
+/* The contacts screens (M2a): the list with its sticky search, chips,
+   letter groups and rail; the contact's header, action buttons and tabs;
+   the merge review's stacked pairs. House style (design §0 rule 9): pill
+   buttons, 20 px cards, 44 px tap targets, 16 px inputs. */
+
+/* ---------------------------------------------------------------- the list */
+.ct-screen{flex:1;min-height:0;display:flex;flex-direction:column}
+.ct-bar{flex:none;padding:10px calc(16px + var(--right)) 6px calc(16px + var(--left));background:var(--mist);border-bottom:1px solid var(--line)}
+.ct-search{position:relative;display:flex;align-items:center}
+.ct-search svg{position:absolute;left:14px;width:20px;height:20px;color:var(--ink-3);pointer-events:none}
+.ct-search input{width:100%;min-height:48px;padding:11px 44px 11px 44px;border:1.5px solid var(--line);border-radius:999px;background:#fff;font-size:16px;outline:0;-webkit-appearance:none;appearance:none}
+.ct-search input:focus{border-color:var(--coral);box-shadow:0 0 0 4px rgba(251,77,61,.12)}
+.ct-search .clear{position:absolute;right:2px;top:2px;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:none;color:var(--ink-3);font-size:18px;cursor:pointer}
+.ct-bar .chips{margin-top:8px}
+.ct-count{margin:6px 2px 0;font-size:12.5px;color:var(--ink-3)}
+.ct-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;position:relative;padding:8px calc(16px + var(--right)) calc(96px + var(--lift,0px)) calc(16px + var(--left))}
+.app.no-tabs .ct-scroll{padding-bottom:calc(var(--bottom) + 96px + var(--lift,0px))}
+.ct-scroll.has-rail{padding-right:calc(48px + var(--right))}
+.ct-grp{margin:0 0 4px}
+.ct-ltr{position:sticky;top:-8px;z-index:2;margin:0 -2px;padding:10px 4px 6px;background:var(--mist);font:800 15px/1 var(--head);letter-spacing:.06em;color:var(--ink-3)}
+.ct-body{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.ct-rail{position:absolute;z-index:3;right:var(--right);top:8px;bottom:84px;width:44px;display:flex;flex-direction:column;justify-content:center;align-items:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.ct-rail span{flex:0 1 16px;min-height:0;font:800 11px/16px var(--head);color:var(--coral-ink)}
+.ct-rail span.off{color:#c3c3c9}
+.ct-rail.live{background:rgba(22,22,27,.05);border-radius:999px 0 0 999px}
+.ct-row-pills{display:flex;gap:6px;align-items:center}
+.notice{display:flex;align-items:center;gap:10px;min-height:52px;margin:0 0 10px;padding:10px 14px;border-radius:16px;background:var(--amber-bg);color:#6b4510;text-decoration:none;font-weight:600}
+.notice svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.notice .chev{margin-left:auto}
+
+/* ---------------------------------------------------------------- one contact */
+.ct-head{display:flex;align-items:center;gap:14px}
+.ct-head .avatar{width:56px;height:56px;font-size:20px}
+.ct-head h2{font-size:24px;line-height:1.12;overflow-wrap:anywhere}
+.ct-head .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ct-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px}
+.ct-acts a,.ct-acts span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:60px;border-radius:16px;background:var(--coral-wash);color:var(--coral-ink);text-decoration:none;font:800 11.5px/1 var(--head);letter-spacing:.05em;text-transform:uppercase}
+.ct-acts span{background:var(--fill);color:var(--ink-3)}
+.ct-acts svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ct-tabs{margin-top:2px}
+.ct-pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font:500 15px/1.5 var(--text)}
+.ct-lines{display:flex;flex-direction:column;gap:2px}
+.ct-line{display:flex;align-items:center;gap:10px;min-height:44px;color:inherit;text-decoration:none;border-radius:12px}
+.ct-line .lb{flex:none;min-width:64px;font-size:13px;color:var(--ink-3)}
+.ct-line .v{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}
+.ct-tags{display:flex;flex-wrap:wrap;gap:6px}
+.ct-act-row{display:flex;flex-wrap:wrap;gap:10px}
+.ct-act-row .btn{flex:1 1 140px}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:flex;gap:12px;padding:12px 0}
+.tl li+li{border-top:1px solid var(--line)}
+.tl .ico{flex:none;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--fill);color:var(--ink-2)}
+.tl .ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tl .body{flex:1;min-width:0}
+.tl .t{font-weight:600}
+.tl .when{font-size:12.5px;color:var(--ink-3)}
+.tl .said{margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--mist);border-radius:12px;padding:10px 12px;font-size:14px}
+
+/* ---------------------------------------------------------------- forms */
+.multi{display:flex;flex-direction:column;gap:10px}
+.addr-grid{display:grid;grid-template-columns:minmax(0,1fr) 72px minmax(0,110px);gap:10px}
+@media (max-width:380px){.addr-grid{grid-template-columns:minmax(0,1fr) 64px minmax(0,96px)}}
+.svc-grid{display:grid;grid-template-columns:1fr;gap:2px}
+.dup-list{list-style:none;margin:0 0 10px;padding:0}
+.dup-list li+li{border-top:1px solid var(--line)}
+
+/* ---------------------------------------------------------------- merge review */
+.pair{display:flex;flex-direction:column;gap:10px}
+.pair-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.side{border:1.5px solid var(--line);border-radius:16px;padding:12px 14px}
+.side h3{font:800 17px/1.2 var(--head);margin:0 0 6px;overflow-wrap:anywhere}
+.side dl{display:grid;grid-template-columns:72px minmax(0,1fr);gap:4px 10px;margin:0;font-size:14px}
+.side dt{color:var(--ink-3)}
+.side dd{margin:0;overflow-wrap:anywhere}
+.side dd.diff{background:var(--amber-bg);border-radius:6px;padding:0 4px;margin-left:-4px;font-weight:600}
+.pair-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pair-acts .btn{padding:0 10px;font-size:12.5px}
+.pair-acts .wide{grid-column:1 / -1}
+.pair-sides{display:flex;flex-direction:column;gap:8px}
+@media (min-width:900px){.pair-sides{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
+.ct-foot{display:flex;justify-content:center;margin:14px 0 0}
+.ct-foot a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;font-size:13px;font-weight:600}
+.side h3 a{display:inline-flex;align-items:center;min-height:44px}
+@media (min-width:900px){.ct-rail{bottom:24px}}
