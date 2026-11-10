@@ -56,16 +56,29 @@ and `referral-notify.mjs` call **Rotor first, exactly as before**. Then
 | Situation | What happens |
 |---|---|
 | Production without `CRM_PRODUCTION` / `CRM_KEY_SALT` (setup needed), or no CRM store | Nothing at all, not even a read |
-| Intake mode **Rotor only** (the default) | Nothing (one cached settings read, after the answer) |
+| Intake mode **Rotor only** (the default) | Nothing (one settings read a minute, while Rotor answers; a failed read counts as "Rotor only" for 15 s) |
 | **Rotor and the CRM** (`dual`) or **the CRM only** (`crm`) | The same lead goes through `intakeLead()` in process, with Rotor's lead id |
 
 The visitor's answer: when Rotor accepted the lead it is Rotor's, and the
 CRM write runs after the answer (`context.waitUntil`). When Rotor failed,
-`dual`/`crm` try the CRM before answering: a lead the CRM kept answers 200.
-A lead that reached only one side raises an owner alert on Today and a
-notification ("A website lead saved to the CRM but not Rotor", or the
-reverse). Giveaway entries and coupon claims get tags, notes and the
+`dual`/`crm` try the CRM before answering: a lead the CRM kept answers 200
+("kept" means a durable write for this request: the contact created or
+changed, or its `intake` event written). Rotor's own call has no timeout
+(and keeps none in "Rotor only"); in `dual`/`crm`, `watchRotor()` starts
+the CRM write when Rotor has taken 5 s, without stopping Rotor's call, and
+if Rotor still hasn't answered at 9 s (the platform stops the function at
+10 s) a lead the CRM kept is answered 200. A lead that reached only one
+side raises one owner alert per side on Today (`intake:crm_only` /
+`intake:rotor_only`) that counts them and lists the latest ten with their
+contact id and `intake` event (Settings → Data links each one), plus a
+notification per lead that opens the contact ("Lead missing in Rotor", or
+the reverse). Giveaway entries and coupon claims get tags, notes and the
 coupon-texts opt-in only, never the new-lead cadence.
+
+Bundling: `lead.mjs` now carries the CRM (about 700 KB unminified, 200 KB
+gzipped, against 52 KB before). The CRM's modules are wrapped lazily by the
+bundler, so nothing of them runs until a write is due; the cost is parsing,
+about 40 ms more on a cold start (none on a warm one).
 
 Turn it on when the first contacts import is in: Settings → Intake mode →
 "Rotor and the CRM".
@@ -73,7 +86,8 @@ Turn it on when the first contacts import is in: Settings → Intake mode →
 ## Intake (`intake.mjs`)
 
 `intakeLead(input, { origin, rotor })` → `{ ok, contact_id, created,
-enrollment_id?, error? }`, never throws. One address, one contact, even for
+event?, enrollment_id?, error? }`, never throws. `ok` only after a durable
+write for this request (see above); `event` is the `intake` event's key. One address, one contact, even for
 a double submit, the giveaway's two writes, a Zapier retry, or Meta and the
 website for one person:
 
@@ -85,14 +99,17 @@ website for one person:
 4. match by phone, then email (following merges); upsert onto the most
    recently updated non-archived match: only empty fields are filled, the
    note block is appended once, tags merged, consent granted only where it
-   is unknown (a "no" is never overturned by a form);
+   is unknown (a "no" is never overturned by a form); a write that keeps
+   losing its CAS to other requests for the same person tries again (the
+   upsert is fill-only, so a retry is safe);
 5. else create, id `deriveId(contact, intake--{hk}, n)`, a shadow while
    Rotor is in charge; a retried request that lost its lease lands on the
    same id; when the only matches were archived, a merge candidate too;
 6. Rotor's lead id claims `ptr/rotor/lead/{id}`; without one the contact is
    marked `intake_pending_rotor` and the import links it by phone or email;
-7. a new lead (or a returning customer asking again) → `sales.enroll`
-   once (when Sales is there) and `lead.created`;
+7. a new lead (or a returning customer whose request changed their record:
+   new words, a new number) → `sales.enroll` once (when Sales is there) and
+   `lead.created`; the same request again changes nothing and enrolls nothing;
 8. the lease is released.
 
 Before cutover, intake is automation (design §0 rule 12): on a contact the
@@ -115,6 +132,14 @@ duplicate), its portal links are revoked and `contact.merged` is emitted.
 A merge started by a person is that person's action, also when the worker
 finishes it.
 
+Two contacts whose union the contact type would refuse (more than 10 phone
+numbers, say) are not merged: the merge answers 409 before anything moves
+(and the op's first step checks again). An op that still fails for good
+(not a storage hiccup, which the run retries) releases b: `merging_into` is
+cleared, its Rotor pointers come back from a, and a `merge_undone` event
+says why, so b can be edited and merged again. What already moved to a
+stays there.
+
 ## Endpoints
 
 | Route | Who | What |
@@ -134,7 +159,7 @@ finishes it.
 | `POST /properties/:id/geocode` | `contacts:write` | Google once Maps is live; `{ skipped: "dry_run" }` before |
 | `GET /merge-candidates` | `contacts:merge` | pending pairs with both contacts' rows |
 | `POST /merge-candidates/:id/merge` · `/dismiss` · `/merge-candidates/bulk` · `/contacts/:id/merge` | `contacts:merge` | merges run in the background (`GET /runs/:id`) |
-| `POST /hooks/lead/:token` | the token | Zapier's Meta lead → intake (401 for a wrong or revoked token) |
+| `POST /hooks/lead/:token` | the token | Zapier's Meta lead → intake → `{ ok: true }` and nothing more, so a token can't tell whether a number is on file (401 for a wrong or revoked token) |
 | `GET/POST /intake/webhook-tokens`, `DELETE /intake/webhook-tokens/:id` | owners | the webhook links (the new one is shown once) |
 
 Services: `contacts.intake`, `contacts.resolve`, `contacts.findMatches`,
@@ -182,7 +207,14 @@ modules' phases. Row 11 (the tag catalog) is derived from the contacts index
 (`tagCatalog()`), not stored. Besides `records`, `pointers` and
 `mergeCandidates`, a phase's output may carry `patches` (fill-only, list
 unions, CRM-owned fields), `stats` and `suppressions`; `applyExtras()`
-writes those. Rotor ids are lower-cased in pointer keys; Stripe customer
+writes those (`only_if` guards a patch's `set` alone, so a guarded consent
+grant is its own patch: row 7's muted channels pause automations whatever
+consent says). Row 8 gives a lead that resolves to its own contact (an
+earlier run's, or the website's dual-write with or without Rotor's id) the
+full mapped record, so the runner applies field ownership (§10.7: a re-run
+takes Rotor's edits, a linked intake contact fills its empty fields and
+gains `import`); a lead that joins a customer's contact stays patch-only.
+Rotor ids are lower-cased in pointer keys; Stripe customer
 ids are hashed (keys are lower case and never hold an id that is itself a
 secret-shaped value).
 

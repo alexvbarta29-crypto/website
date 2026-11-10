@@ -11,8 +11,9 @@
 //   records          [{ type, data }]       full mapped records: the runner writes them with field ownership
 //   pointers         [{ kind, key, value }] unique pointers (ptr/rotor/customer/{rid} ...), claimed onlyIfNew
 //   mergeCandidates  [{ a, b, reason, confidence }]
-//   patches          [{ type, id, fill?, add?, set? }]   fill: set where empty; add: union into a list
-//                                                        (dotted path); set: CRM-owned fields (consent ...)
+//   patches          [{ type, id, fill?, add?, set?, only_if? }]   fill: set where empty; add: union into a
+//                                                        list (dotted path); set: CRM-owned fields (consent ...);
+//                                                        only_if guards `set` alone (a guarded grant is its own patch)
 //   stats            [{ contact_id, part, merge }]       a stats part, merged (the money/comms parts)
 //   suppressions     [{ channel, address_hk, state, source, masked }]  written before any comms phase
 //   warnings         ["phone_twelve_digits", ...]       for the report, never a value
@@ -257,10 +258,12 @@ export function normalizeQuoteContact(row) {
 async function mapQuoteContact(r, ctx) {
   const id = (await lookup(ctx, r.kind, r.id)) || (r.kind === "customer" ? idForRotor("contact", r.id) : null);
   if (!id) return { warnings: ["quote_contact_unknown"] };
-  const set = {};
-  if (r.sms_opted_in) set["consent.sms_service"] = consentGrant("import");
-  for (const ch of r.muted_channels) set[`automations_paused.${ch}`] = { reason: "Muted in Rotor", by: "import", at: nowIso() };
-  const out = { patches: Object.keys(set).length ? [{ type: "contact", id, set, only_if: r.sms_opted_in ? { "consent.sms_service.state": ["unknown", undefined] } : undefined }] : [], pointers: [], stats: [], warnings: [] };
+  const out = { patches: [], pointers: [], stats: [], warnings: [] };
+  // two patches: the grant only where consent is still unknown; the muted channels whatever consent says
+  if (r.sms_opted_in) out.patches.push({ type: "contact", id, set: { "consent.sms_service": consentGrant("import") }, only_if: { "consent.sms_service.state": ["unknown", undefined] } });
+  const paused = {};
+  for (const ch of r.muted_channels) paused[`automations_paused.${ch}`] = { reason: "Muted in Rotor", by: "import", at: nowIso() };
+  if (Object.keys(paused).length) out.patches.push({ type: "contact", id, fill: paused });
   if (r.stripe_customer_id) {
     out.stats.push({ contact_id: id, part: "money", merge: { stripe: { customer_ids: [r.stripe_customer_id] } } });
     out.pointers.push({ kind: "stripe-cus", key: stripeKey(r.stripe_customer_id), value: { id }, list: true });
@@ -281,19 +284,29 @@ async function mapLead(r, ctx) {
   const p = personFields(r, ctx, warnings);
   const out = { records: [], pointers: [], patches: [], mergeCandidates: [], warnings };
   const services = [...new Set([...(r.service_type ? r.service_type.split(/\s*,\s*/) : []), ...(p.facts.services || [])].filter(Boolean))].slice(0, 20);
+  // Where the lead lands: its own contact (made by an earlier run, or by the
+  // website's dual-write, with or without Rotor's id) gets the full mapped
+  // record, so the runner applies field ownership (§10.7: a re-run takes
+  // Rotor's edits; a linked intake contact fills its empty fields and gains
+  // `import`). A lead that joins a customer's contact (converted, or the
+  // same person, §10.4) only adds its lead id, tags and empty fields.
   let id = await lookup(ctx, "lead", r.id);
-  let linked = !!id;
+  let joins = false;
+  if (id && id !== idForRotor("contact", r.id)) {
+    const cur = await getRecord("contact", id).catch(() => null);
+    joins = !!(cur && ((cur.data.rotor && cur.data.rotor.customer_id) || ["customer", "former_customer"].includes(cur.data.lifecycle)));
+  }
   if (!id) {
     // a dual-write lead whose Rotor id the website never got back (§10.3 step 3)
     const cands = [...(p.phone ? await contactsAt("phone", p.phone) : []), ...(p.email ? await contactsAt("email", p.email) : [])];
     const pending = cands.find((c) => c.data.intake_pending_rotor);
     if (pending) {
-      id = pending.id; linked = true;
+      id = pending.id;
       out.patches.push({ type: "contact", id, set: { intake_pending_rotor: null } });
     } else {
       // a customer with this phone or email and the same first name: the lead joins them (§10.4)
       const customer = cands.find((c) => ["customer", "former_customer"].includes(c.data.lifecycle) && normName(c.data.first_name) && normName(c.data.first_name) === normName(p.data.first_name));
-      if (customer) { id = customer.id; linked = true; }
+      if (customer) { id = customer.id; joins = true; }
       else {
         id = idForRotor("contact", r.id);
         for (const c of cands.slice(0, 3)) if (c.id !== id) out.mergeCandidates.push({ a: c.id, b: id, reason: p.phone && (c.data.phones || []).some((x) => x.e164 === p.phone) ? "phone" : "email", confidence: "high" });
@@ -301,8 +314,7 @@ async function mapLead(r, ctx) {
     }
   }
   out.pointers.push({ kind: "rotor/lead", key: rotorKey(r.id), value: { id } });
-  if (linked) {
-    // an existing contact (dual-write, converted, or a customer): the lead id joins it; empty fields fill in
+  if (joins) {
     out.patches.push({ type: "contact", id, add: { "rotor.lead_ids": [r.id], tags: p.data.tags }, fill: { first_name: p.data.first_name, last_name: p.data.last_name, billing_address: p.address || undefined, owner_id: p.data.owner_id } });
   } else {
     const spam = isSpamName(p.data.first_name, p.data.last_name);

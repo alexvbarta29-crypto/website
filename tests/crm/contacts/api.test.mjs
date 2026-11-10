@@ -139,11 +139,13 @@ test("the lead webhook: tokens shown once and kept as a hash; a bad token 401; a
     assert.equal((await t.api("/hooks/lead/blh_wrongwrongwrongwrongwrongwrong", { method: "POST", csrf: false, body: meta })).status, 401);
     const one = await t.api(`/hooks/lead/${token}`, { method: "POST", csrf: false, client: false, body: meta });
     assert.equal(one.status, 200, JSON.stringify(one.body));
-    assert.equal(one.body.data.created, true);
+    assert.deepEqual(one.body, { ok: true }, "the answer says nothing about the contact");
+    const made1 = t.stores.data.keys("rec/contact/");
+    assert.equal(made1.length, 1);
     const two = await t.api(`/hooks/lead/${token}`, { method: "POST", csrf: false, client: false, body: { ...meta, phone_number: "+17635550144" } });
-    assert.equal(two.body.data.contact_id, one.body.data.contact_id);
-    assert.equal(two.body.data.duplicate, true);
-    const c = (await store.getRecord("contact", one.body.data.contact_id)).data;
+    assert.deepEqual(two.body, { ok: true });
+    assert.deepEqual(t.stores.data.keys("rec/contact/"), made1, "the same leadgen id is the same contact");
+    const c = (await store.getRecord("contact", made1[0].split("/").pop())).data;
     assert.deepEqual([c.source.source, c.source.form, c.source.ad, c.source.county], ["Meta Ads", "Sample Form", "Sample Ad", "wright"]);
     assert.equal((await t.api(`/hooks/lead/${token}`, { method: "POST", csrf: false, body: { full_name: "No Number" } })).status, 400);
     assert.ok(!t.logs().some((l) => l.includes(token)), "the token never reaches a log");

@@ -17,7 +17,7 @@
 
 import { referralForLead } from "../lib/referral-hook.mjs";
 import { rotorLeadId } from "../lib/referral-notify.mjs";
-import { afterRotor, crmRescued } from "../lib/crm/modules/contacts/hook.mjs";
+import { afterRotor, crmRescued, watchRotor } from "../lib/crm/modules/contacts/hook.mjs";
 
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
@@ -163,7 +163,9 @@ export default async (req, context) => {
 
   let res;
   try {
-    res = await fetch(ROTOR_URL, {
+    // watchRotor: in "rotor" mode (and before the CRM is set up) the call itself;
+    // in "dual" it starts the CRM write if Rotor takes more than 5 s
+    res = await watchRotor(fetch(ROTOR_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -171,9 +173,9 @@ export default async (req, context) => {
         "rotor-api-version": ROTOR_API_VERSION,
       },
       body: JSON.stringify(payload),
-    });
+    }), { req, context, input, origin: "lead-form" });
   } catch (err) {
-    // Rotor unreachable: as before, unless the CRM (intake "dual") kept the lead
+    // Rotor unreachable (or silent for 9 s): as before, unless the CRM (intake "dual") kept the lead
     if (crmRescued(await afterRotor({ req, context, input, origin: "lead-form", rotorOk: false }))) return Response.json({ ok: true });
     throw err;
   }

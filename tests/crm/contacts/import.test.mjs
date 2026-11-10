@@ -3,23 +3,16 @@
 // framework that runs them is M2c's).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fresh, store, intake, IMPORT, PERSON, ids } from "./fixtures.mjs";
+import { fresh, store, intake, IMPORT, PERSON, ids, applyImport } from "./fixtures.mjs";
 
 const I = await import("../../../netlify/lib/crm/modules/contacts/import-rotor.mjs");
 const phase = (name) => I.phases.find((p) => p.name === name);
 const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const ctx = { lookup: null, users: new Map([["rotor-user-1", "us_0000000000000000000a"]]) };
 
-// What the M2c runner does with an output, enough for these tests: records
-// created with the import's context (or skipped when there), pointers claimed, extras applied.
-async function apply(out) {
-  for (const r of out.records || []) await store.createRecord(r.type, r.data, IMPORT).catch((e) => { if (e.name !== "ExistsError") throw e; });
-  for (const p of out.pointers || []) {
-    if (p.list) await store.updatePointerList(p.kind, p.key, (l) => [...l, p.value.id]);
-    else await store.claimPointer(p.kind, p.key, p.value);
-  }
-  return I.applyExtras(out, IMPORT);
-}
+// What the M2c runner does with an output (fixtures.applyImport: field
+// ownership, simplified), then the extras.
+const apply = (out) => applyImport(out, { extras: I.applyExtras });
 const run = async (name, row) => { const p = phase(name); const out = await p.map(p.normalize(row), ctx); await apply(out); return out; };
 const contact = async (id) => (await store.getRecord("contact", id)).data;
 

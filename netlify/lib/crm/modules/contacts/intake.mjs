@@ -16,12 +16,14 @@
 //   4. match by phone, then email (following merges); upsert onto the most
 //      recently updated non-archived match: fill only empty fields, append
 //      the note block once, merge tags, grant consent only where it is unknown
+//      (a CAS that keeps losing to the same person's other requests retries)
 //   5. else create, id = deriveId(contact, intake--{hk}, n): a retried
 //      request that lost its lease lands on the same record
 //   6. Rotor link: the lead id Rotor answered claims ptr/rotor/lead/{rid};
 //      without one the contact is marked intake_pending_rotor for the import
-//   7. a new lead (not a giveaway entry: those get tags only) → sales.enroll
-//      once and lead.created
+//   7. a new lead (not a giveaway entry: those get tags only), or a
+//      contact that wasn't a lead whose record this request changed →
+//      sales.enroll once and lead.created (the same request again: nothing)
 //   8. release the lease (CAS to an expired value)
 //
 // While Rotor is the system of record, intake is automation (§0 rule 12):
@@ -30,7 +32,9 @@
 // on the timeline (an "intake" event with the note) and still links the
 // Rotor lead id by pointer, so the next import updates that contact in place.
 //
-// Never throws: → { ok, contact_id?, created, deal_id?, enrollment_id?, error? }.
+// Never throws: → { ok, contact_id?, created, event?, enrollment_id?, error? }.
+// ok means this request left a durable trace: the contact created or
+// changed, or (nothing to change) its intake event written.
 // Logs carry codes and counts only.
 
 import { createHash, randomBytes } from "node:crypto";
@@ -39,7 +43,7 @@ import {
 } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { nowIso, nowMs, now } from "../../core/clock.mjs";
-import { ExistsError, InputError } from "../../core/errors.mjs";
+import { ExistsError, InputError, StaleError } from "../../core/errors.mjs";
 import { guardFor } from "../../core/context.mjs";
 import { emit } from "../../core/events.mjs";
 import { has, call } from "../../core/services.mjs";
@@ -55,6 +59,9 @@ import { ensureProperty } from "./properties.mjs";
 export const LEASE_MS = 30 * 1000;
 export const WAIT_POLLS = 8;           // 8 × 250 ms = the 2 s a losing request waits
 export const POLL_MS = 250;
+// A busy contact (many requests for one person at once): the fill-only
+// upsert is idempotent, so a CAS that kept losing tries again a few times.
+export const UPSERT_ROUNDS = 4;
 export const ORIGINS = Object.freeze(["lead-form", "giveaway", "giveaway-claim", "referral", "claim", "webhook", "app"]);
 // Giveaway entries and coupon claims get tags and notes only, never the
 // new-lead cadence (Rotor's two-step write keeps them out of its pipeline too).
@@ -277,15 +284,24 @@ export async function intakeLead(input, { origin = "lead-form", rotor = null, by
         // a merge that starts between the read and the write: the upsert follows it to the survivor
         let moved = null;
         const upsert = (c) => { if (c.merging_into || c.merged_into) { moved = c.merging_into || c.merged_into; return null; } return upsertFields(c, n, origin, { rotorLeadId, pendingRotor }); };
-        let r = await updateRecord("contact", target.id, upsert, ctx);
+        // a CAS that kept losing (many requests for one person at once) tries again: the upsert is fill-only
+        const upsertOnto = async (id) => {
+          for (let round = 0; ; round++) {
+            try { return await updateRecord("contact", id, upsert, ctx); } catch (e) {
+              if (!(e instanceof StaleError) || round >= UPSERT_ROUNDS) throw e;
+              await sleep(20 * (round + 1) + randomBytes(1)[0] % 40);
+            }
+          }
+        };
+        let r = await upsertOnto(target.id);
         for (let hop = 0; moved && hop < 3; hop++) {
           const next = await resolveContact(moved, opts);
           moved = null;
           if (!next) break;
-          r = await updateRecord("contact", next.id, upsert, ctx);
+          r = await upsertOnto(next.id);
         }
         contact = r.data;
-        changed = r.changed;
+        changed = r.changed === true;
       } else {
         // Rotor owns this contact until cutover: report what would change, keep the request on its timeline
         contact = target.data;
@@ -310,16 +326,25 @@ export async function intakeLead(input, { origin = "lead-form", rotor = null, by
       await ensureProperty(contact.id, n.address, ctx).catch((e) => console.error(`crm:intake: property not saved (${safeErr(e)})`));
     }
 
-    // the request on the timeline, whoever owns the fields
+    // the request on the timeline, whoever owns the fields. The intake event
+    // is this request's durable trace when the record itself didn't change
+    // (a contact the import owns, a repeat): then its failure fails intake.
     const block = noteBlock(n, origin);
-    await Promise.all([
-      addActivity(contact.id, "lead.intake", contact.id, now(), opts),
+    const [evt, act] = await Promise.allSettled([
       appendEvent("contact", contact.id, { by: ctx.by, origin: "hook", action: "intake", wv: contact.wv, source: n.source.source, intake_origin: origin, ...(block ? { note: block } : {}) }, opts),
-    ]).catch((e) => console.error(`crm:intake: timeline not written (${safeErr(e)})`));
+      addActivity(contact.id, "lead.intake", contact.id, now(), opts),
+    ]);
+    if (act.status === "rejected") console.error(`crm:intake: timeline row not written (${safeErr(act.reason)})`);
+    if (evt.status === "rejected") {
+      console.error(`crm:intake: intake event not written (${safeErr(evt.reason)})`);
+      if (!created && !changed) throw evt.reason;
+    }
 
-    // 7. a new lead: one enrollment and lead.created (giveaway entries: tags only)
-    const out = { ok: true, contact_id: contact.id, created };
-    const newLead = !TAGS_ONLY.has(origin) && (created || (!wasLead && changed !== null && contact.lifecycle !== "archived"));
+    // 7. a new lead: one enrollment and lead.created (giveaway entries: tags
+    // only). A contact that was not a lead counts when this submission changed
+    // its record; a repeat of the same words changes nothing and enrolls nothing.
+    const out = { ok: true, contact_id: contact.id, created, ...(evt.status === "fulfilled" ? { event: evt.value } : {}) };
+    const newLead = !TAGS_ONLY.has(origin) && (created || (!wasLead && changed && contact.lifecycle !== "archived"));
     if (newLead) {
       if (has("sales.enroll")) {
         try {

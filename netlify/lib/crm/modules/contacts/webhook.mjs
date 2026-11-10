@@ -12,7 +12,9 @@
 // county | where_are_you_located, notes, id } → intakeLead with
 // source.source = the token's source ("Meta Ads"), form, ad, campaign and
 // county kept as structured fields, and provider_lead_id = the leadgen id,
-// so a Zapier retry or a second delivery is one contact.
+// so a Zapier retry or a second delivery is one contact. The answer is
+// { ok: true } and nothing more (no contact id, no "created"): a token
+// holder can't ask whether a phone number is already on file.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { getSetting, getSettingWithEtag, putSetting } from "../../../crm-store.mjs";
@@ -80,7 +82,8 @@ async function hookRoute(ctx) {
     if (out.error === "invalid" || out.error === "no_contact") return fail("invalid", "That lead has no usable phone or email.", 400, { field: out.field || "phone_number" });
     return fail("busy", "Storage didn't answer. Try again in a minute.", 503, { headers: { "Retry-After": "30" } });
   }
-  return { data: { contact_id: out.contact_id, created: !!out.created, duplicate: !!out.duplicate } };
+  // { ok: true } and nothing else: whoever holds a token must not learn whether a number is on file
+  return {};
 }
 
 async function listTokens() {

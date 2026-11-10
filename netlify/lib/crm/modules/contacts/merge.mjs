@@ -19,7 +19,13 @@
 //   finish      b.merged_into = a, archived as a duplicate, its portal links
 //               revoked, the candidate marked merged, contact.merged emitted
 //
-// No automatic undo: the journal and the events are the record.
+// Before anything moves, the union is checked (startMerge, and again in
+// start): two contacts whose union the contact type would refuse (more than
+// 10 phones, say) are not merged at all. An op that still fails for good
+// (not a storage hiccup the run retries) is rolled back as far as writers
+// care: b loses merging_into and its Rotor pointers come back, so b can be
+// edited and merged again. What union and onMerge already moved to a stays
+// there. Otherwise no automatic undo: the journal and the events are the record.
 
 import {
   getRecord, getRecords, updateRecord, listRel, addRel, removeRel, getRaw, settledWrite, readIndex, readPointer,
@@ -36,7 +42,7 @@ import { now, nowIso } from "../../core/clock.mjs";
 import { ConflictError, InputError, NotFoundError, BlobsTransientError } from "../../core/errors.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { dateLabel, normName, rotorKey } from "./display.mjs";
-import { pairKey, MAX_TAGS } from "./types.mjs";
+import { pairKey, MAX_TAGS, validateContact } from "./types.mjs";
 import { propertiesOf } from "./properties.mjs";
 
 export const MERGE_OP = "contacts.merge";
@@ -109,6 +115,18 @@ export function mergedFields(a, b, at = now()) {
   return out;
 }
 
+// Refuses a merge whose union the contact type would not store (pure; throws ConflictError).
+const FIELD_WORDS = { phones: "phone numbers", emails: "email addresses", tags: "tags", watcher_ids: "watchers", notes: "notes" };
+export function checkUnion(a, b, at = now()) {
+  try {
+    validateContact(mergedFields(a, b, at), { op: "update", before: a });
+  } catch (e) {
+    if (!(e instanceof InputError)) throw e;
+    const what = FIELD_WORDS[String(e.field || "").split(/[.[]/)[0]] || "details";
+    throw new ConflictError(`These two can't be merged as they are: together they have too many ${what}. Remove the extras from one of them, then merge.`);
+  }
+}
+
 // The relation families whose parent is a contact id (found by asking each
 // declared relation what parent a record of that contact would have), plus
 // the activity timeline.
@@ -128,13 +146,33 @@ export function contactFamilies() {
 
 // ------------------------------------------------------------ steps
 
-async function repoint(kind, key, from, to) {
+async function repoint(kind, key, from, to, { back = false } = {}) {
   const k = `ptr/${kind}/${key}`;
   const cur = await getRaw(k);
   if (!cur || !cur.data || cur.data.id !== from) return false;
-  const { _w, ...v } = cur.data;
-  const w = await settledWrite(k, { ...v, id: to, moved_from: from, at: nowIso() }, { onlyIfMatch: cur.etag });
+  if (back && cur.data.moved_from !== to) return false;        // only what the merge moved goes back
+  const { _w, moved_from: _m, ...v } = cur.data;
+  const w = await settledWrite(k, back ? { ...v, id: to, at: nowIso() } : { ...v, id: to, moved_from: from, at: nowIso() }, { onlyIfMatch: cur.etag });
   return w.ok;
+}
+
+// A merge that failed for good: b is itself again (merging_into cleared, its
+// Rotor pointers back from a), so writers stop following it to a and the
+// office can edit it or merge it again. → true when b was released.
+export async function releaseMerge(a, b, ctx, reason = "failed") {
+  const got = await getRecord("contact", b);
+  if (!got || got.data.merged_into || got.data.merging_into !== a) return false;
+  const rot = got.data.rotor || {};
+  for (const rid of rot.lead_ids || []) await repoint("rotor/lead", rotorKey(rid), a, b, { back: true });
+  if (rot.customer_id) await repoint("rotor/customer", rotorKey(rot.customer_id), a, b, { back: true });
+  await updateRecord("contact", b, (c) => {
+    if (c.merged_into || c.merging_into !== a) return null;
+    const next = { ...c };
+    delete next.merging_into;
+    return next;
+  }, ctx);
+  await appendEvent("contact", b, { by: ctx.by || "system", origin: ctx.origin || "worker", action: "merge_undone", survivor_id: a, reason: String(reason).slice(0, 40) }).catch(() => {});
+  return true;
 }
 
 // Moves what still hangs off b to a. → how many moved.
@@ -221,6 +259,7 @@ defineOp(MERGE_OP, {
           if (rb.data.merged_into === a) return { already: true };
           if (rb.data.merged_into || (rb.data.merging_into && rb.data.merging_into !== a)) throw new ConflictError("That contact was already merged into another one.");
           if (ra.data.merged_into || ra.data.merging_into) throw new ConflictError("The contact you keep was merged away. Start from the one that's left.");
+          if (rb.data.merging_into !== a) checkUnion(ra.data, rb.data);      // nothing has moved yet
           await updateRecord("contact", b, (c) => (c.merging_into === a ? null : { ...c, merging_into: a }), s.ctx);
           const rot = rb.data.rotor || {};
           for (const rid of rot.lead_ids || []) await repoint("rotor/lead", rotorKey(rid), b, a);
@@ -295,10 +334,30 @@ defineOp(MERGE_OP, {
 // The person who asked: a merge is a human action (exempt from the parallel-run guard).
 const personCtx = (run, rctx) => ({ by: run.requested_by || "system", origin: "api", actor_kind: isId(run.requested_by, "user") ? "user" : "automation", requestId: rctx.holder || "merge", ...(rctx.mode ? { mode: rctx.mode } : {}) });
 
+// Runs the merge op; a failure for good releases b. → runOp's answer.
+// A transient failure (the op stays running) is thrown for the run to retry.
+async function mergeOnce(opId, a, b, ctx, holder) {
+  let out;
+  try {
+    out = await runOp(opId, MERGE_OP, { input: { a, b }, ctx, holder });
+  } catch (e) {
+    const j = await readOp(opId).catch(() => null);
+    if (!j || j.status !== "failed") throw e;
+    out = { status: "failed", error: j.error || null, opId };
+  }
+  if (out.status === "failed") {
+    await releaseMerge(a, b, ctx, (out.error && out.error.code) || "failed").catch((e) => {
+      console.error(`crm:merge: the merged contact was not released (${safeErr(e)})`);
+      throw e;                          // the run tries again; releaseMerge is idempotent
+    });
+  }
+  return out;
+}
+
 async function mergeStep(run, rctx) {
   const { a, b, n } = run.input || {};
   const opId = opIdFor(`merge--${a}--${b}`, n);
-  const out = await runOp(opId, MERGE_OP, { input: { a, b }, ctx: personCtx(run, rctx), holder: `merge.${run.id}` });
+  const out = await mergeOnce(opId, a, b, personCtx(run, rctx), `merge.${run.id}`);
   if (out.status === "done") return { done: true, result: out.result || { survivor_id: a, merged_id: b }, progress: { done: 1, total: 1 } };
   if (out.status === "failed") return { failed: (out.error && out.error.code) || "failed" };
   return { progress: { done: 0, total: 1 } };
@@ -312,6 +371,8 @@ export async function startMerge(a, b, ctx) {
   if (!ra || !rb || ra.data.deleted_at || rb.data.deleted_at) throw new NotFoundError("One of those contacts isn't there anymore.");
   if (ra.data.merged_into || ra.data.merging_into) throw new ConflictError("The contact you keep was merged away. Start from the one that's left.");
   if (rb.data.merged_into) throw new ConflictError("That contact was already merged.");
+  if (rb.data.merging_into && rb.data.merging_into !== a) throw new ConflictError("That contact is being merged into another one.");
+  if (rb.data.merging_into !== a) checkUnion(ra.data, rb.data);
   const opId = opIdFor(`merge--${a}--${b}`, rb.data.wv || 1);
   const j = await readOp(opId);
   return createRun("contacts.merge", { a, b, n: rb.data.wv || 1, op: opId, ...(j ? { joined: true } : {}) }, ctx);
@@ -347,7 +408,13 @@ async function bulkStep(run, rctx) {
     if (!x || !y || x.data.merged_into || y.data.merged_into) continue;
     if (!normName(x.data.first_name) || normName(x.data.first_name) !== normName(y.data.first_name)) continue;
     const [keep, drop] = survivorOf(x.data, y.data);
-    const out = await runOp(opIdFor(`merge--${keep.id}--${drop.id}`, drop.wv || 1), MERGE_OP, { input: { a: keep.id, b: drop.id }, ctx, holder: `merge-bulk.${run.id}` });
+    let out;
+    try {
+      out = await mergeOnce(opIdFor(`merge--${keep.id}--${drop.id}`, drop.wv || 1), keep.id, drop.id, ctx, `merge-bulk.${run.id}`);
+    } catch (e) {
+      if (!(e instanceof ConflictError)) throw e;
+      continue;                        // this pair can't be merged as it is: it stays in the queue
+    }
     if (out.status === "done") cp.merged += 1;
   }
   return { done: true, checkpoint: { ...cp, done: [...doneSet] }, result: { merged: cp.merged, dismissed: cp.dismissed }, progress: { done: doneSet.size, total: doneSet.size } };
