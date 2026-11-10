@@ -32,7 +32,7 @@ export default {
     { path: "/settings/permissions", load: () => import("./settings-permissions.js"), title: "Team permissions", perm: "settings:owner", parent: "/settings" },
     // The office's dashboards and tools, inside the CRM (office sign-in only).
     { path: "/dashboard", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools" },
-    { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools" },
+    { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools", parent: "/dashboard" },
     { path: "/tools/:id", load: () => import("./tool.js"), title: "Office tool", perm: "office:tools" },
   ],
   nav: [
