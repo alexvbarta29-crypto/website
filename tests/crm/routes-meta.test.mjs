@@ -120,9 +120,15 @@ async function person(by, extra = {}) {
 }
 const property = async (by, contactId) => (await store.createRecord("property", { contact_id: contactId, label: "Home", address: { street1: "1 Example Ave", city: "Delano", state: "MN", zip: "55328" }, access: { gate_code: "1234", notes: "Side gate" } }, W(by))).data;
 
-// A visit of a tech's for a contact, the way scheduling (M4a) will keep it:
-// rec/visit/{id} plus rel/tech-visits/{uid}/{local date}--{visitId}.
+// A visit of a tech's for a contact: through the visit type once scheduling
+// (M4a) registers it (its rels keep rel/tech-visits), else the way M4a
+// keeps it: rec/visit/{id} plus rel/tech-visits/{uid}/{local date}--{visitId}.
 async function visitFor(techId, contactId, date) {
+  const def = R.getType("visit");
+  if (def) {
+    const r = await store.createRecord("visit", { ...def.example(), contact_id: contactId, assignee_ids: [techId], date }, W()).catch(() => null);
+    if (r) return r.data.id;
+  }
   const id = ids.newId("visit");
   await store.settledWrite(`rec/visit/${id}`, { id, type: "visit", v: 1, wv: 1, contact_id: contactId, assignee_ids: [techId], date, created_at: "2026-11-17T15:00:00.000Z" }, { onlyIfNew: true });
   await store.addRel("tech-visits", techId, date, id);
@@ -147,7 +153,7 @@ async function world(t) {
   const pZ = await property(owner.id, Z.id);
   const pX = await property(owner.id, X.id);
   const pY = await property(owner.id, Y.id);
-  await visitFor(tech.id, X.id, "2026-11-18");
+  const visitX = await visitFor(tech.id, X.id, "2026-11-18");
   await visitFor(tech.id, Y.id, "2026-12-27");
 
   const en = await scope(() => E.enroll(Z.id, "new_lead", {}, W(owner.id)));
@@ -210,6 +216,8 @@ async function world(t) {
       template: { office: tpl.id },
       import_run: { office: importRun.id },
       file: { office: file.id },
+      // tech A's own visit, once visits are records of a registered type
+      ...(R.getType("visit") ? { visit: { own: visitX } } : {}),
     },
     push,
     keys: { read: readKey.body.data.key, narrow: narrowKey.body.data.key },
@@ -218,6 +226,17 @@ async function world(t) {
     uploadRun: imp.body.data.run.id,
     windowA: new Set([X.id]),
   };
+  // one record of every other registered type, made from its example(), so
+  // a later module's routes are called with a real record of theirs and not
+  // only a made-up id (a type whose example needs more is left to the dummy)
+  fx.skipped = [];
+  for (const def of R.allTypes()) {
+    if ((fx.byType[def.type] && fx.byType[def.type].office) || !def.prefix) continue;
+    try {
+      const r = await store.createRecord(def.type, def.example(), W(owner.id));
+      fx.byType[def.type] = { ...(fx.byType[def.type] || {}), office: r.data.id };
+    } catch (e) { fx.skipped.push(`${def.type} (${e.message})`); }
+  }
   // every fixture record, for the gates that judge one record (history, files)
   fx.records = {};
   for (const [type, v] of Object.entries(fx.byType)) {
@@ -272,7 +291,7 @@ function probes(route, fx) {
     return out;
   }
   const typed = params.filter((p) => p.type && fx.byType[p.type]);
-  const of = (kind) => (p) => { const v = p.type && fx.byType[p.type]; return v ? v[kind] || v.office : dummy(p); };
+  const of = (kind) => (p) => { const v = p.type && fx.byType[p.type]; return (v && (v[kind] || v.office)) || dummy(p); };
   const out = [make("office", "office", of("office"))];
   for (const kind of ["visible", "far", "own"]) if (typed.some((p) => fx.byType[p.type][kind])) out.push(make(kind, kind, of(kind)));
   // the person's own user record (users/:id, users/:id/sessions)
@@ -465,7 +484,7 @@ test("the permission matrix (every route × nobody, office cookie, owner, admin,
         }
       }
     }
-    if (DEBUG) (await import("node:fs")).writeFileSync(DEBUG, rows.join("\n") + `\n${calls} calls\n`);
+    if (DEBUG) (await import("node:fs")).writeFileSync(DEBUG, rows.join("\n") + `\n${calls} calls; types without a fixture: ${fx.skipped.join(", ") || "none"}\n`);
     // every route was called by every kind of caller (a route the probes skipped would hide here)
     assert.ok(calls >= routes.length * actors.length, `${calls} calls for ${routes.length} routes`);
     assert.deepEqual(problems, [], "the permission matrix");
