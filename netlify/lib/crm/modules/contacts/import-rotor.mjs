@@ -383,7 +383,9 @@ export function normalizePropertySource(row) {
   const id = needId(row);
   const cfg = plain(row.jobs_config) ? row.jobs_config : row;
   return {
-    id, contact: str(row.customer_id || row.contact_id || row.lead_id), contact_kind: row.lead_id && !row.customer_id ? "lead" : "customer",
+    // plans and visits embed their customer as `customer: { id, ... }`; quotes say `contact_type` (rotor-ops §2.3, §4.3; rotor-money §1.1)
+    id, contact: str(row.customer_id || row.contact_id || row.lead_id || (plain(row.customer) ? row.customer.id : "")),
+    contact_kind: str(row.contact_type).toLowerCase() === "lead" || (row.lead_id && !row.customer_id) ? "lead" : "customer",
     property_id: row.property_id ?? cfg.property_id ?? null,
     address: plain(row.address) ? row.address : flatAddress(cfg, "property_"),
   };
@@ -395,7 +397,8 @@ export function normalizeMessage(row) {
   const id = needId(row);
   return {
     id, direction: str(row.direction).toLowerCase(), channel: str(row.channel || row.type || "sms").toLowerCase(),
-    body: typeof row.body === "string" ? row.body : str(row.text), from: str(row.from_number || row.from || row.phone),
+    // Rotor's list_messages rows carry the text in `content` and the contact's number in `contact_phone` (rotor-comms §2.3)
+    body: typeof row.body === "string" ? row.body : typeof row.content === "string" ? row.content : str(row.text), from: str(row.from_number || row.from || row.contact_phone || row.phone),
   };
 }
 
