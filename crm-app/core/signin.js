@@ -6,6 +6,7 @@
 // destination under /office goes to the top window.
 
 import { APP_VERSION } from "../version.js";
+import * as cache from "./cache.js";
 
 const $ = (id) => document.getElementById(id);
 let page = {};
@@ -37,9 +38,10 @@ function go(to) {
   navigate(window, dest);
 }
 
-// The service worker's copy of the shell belongs to whoever was signed in
-// before: drop it, so the next start shows this person.
+// The service worker's copy of the shell and the offline copies belong to
+// whoever was signed in before: drop them, so this person never sees theirs.
 async function forgetShell() {
+  try { await cache.wipe(); } catch (e) { /* nothing kept */ }
   try { if (typeof caches !== "undefined") await caches.delete("crm-shell"); } catch (e) { /* no Cache Storage */ }
 }
 

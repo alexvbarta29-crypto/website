@@ -44,7 +44,7 @@ export function shellHtml({ user, perms, nav, office = false, version = APP_VERS
     <div class="top-act" id="top-act"></div>
   </header>
   <div class="banner" id="banner" role="status" hidden></div>
-  <main class="view" id="view" tabindex="-1"><div class="boot" id="boot"><span class="spinner" aria-hidden="true"></span><span>Loading…</span></div></main>
+  <main class="view" id="view" tabindex="-1"><div class="skel" id="boot" aria-busy="true" aria-label="Loading"><div class="card"><span class="sk h"></span><span class="sk w90"></span><span class="sk w70"></span></div></div></main>
   <nav class="tabs" id="tabs" aria-label="CRM sections"></nav>
 </div>
 <div id="layer"></div>
@@ -58,8 +58,11 @@ ${boot("crm-boot", data)}
 const card = (inner, cls = "") => `<body class="crm page"><main class="card${cls ? " " + cls : ""}"><img class="logo" src="${LOGO}" alt="Barta Window Washing" width="148" height="40">${inner}</main>`;
 
 // Team sign-in (/crm/login). `to` is where to go after (checked server-side
-// again on POST). `office` = this browser already has the office cookie.
-export function loginHtml({ to = "/crm", notice = "" } = {}) {
+// again on POST). `office` = this browser already has the office cookie:
+// the optional office password (D14) is left out, since the office tools
+// are already open here, and the Customers list (which the office cookie
+// opens, §3.15) is one tap away.
+export function loginHtml({ to = "/crm", notice = "", office = false } = {}) {
   return `${HEAD("Sign in · Barta CRM")}${card(`
 <h1>Team sign-in</h1>
 <p class="lead">Sign in with your own login and password.</p>
@@ -68,14 +71,16 @@ ${notice ? `<div class="note" role="status">${esc(notice)}</div>` : ""}
   <div class="err" id="err" role="alert" hidden></div>
   <label class="field"><span>Login</span><input name="login" id="login" type="text" inputmode="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" required></label>
   <label class="field"><span>Password</span><input name="password" id="password" type="password" autocomplete="current-password" enterkeyhint="go" required></label>
-  <details class="more" id="office-more">
+${office ? "" : `  <details class="more" id="office-more">
     <summary>Office password <small>(optional)</small></summary>
     <p class="hint">Also opens Lights, Purchases and the dashboards on this phone. Owners only.</p>
     <label class="field"><span>Office password</span><input name="office_password" id="office_password" type="password" autocomplete="off"></label>
   </details>
-  <button type="submit" class="btn primary block" id="go">Sign in</button>
+`}  <button type="submit" class="btn primary block" id="go">Sign in</button>
 </form>
-<p class="foot">Forgot your password? Ask Alex or Jacob for a reset link.</p>
+${office ? `<p class="also">No login yet? The office password still opens the customer list.</p>
+<a class="btn block" href="/crm/legacy">Open the Customers list</a>
+` : ""}<p class="foot">Forgot your password? Ask Alex or Jacob for a reset link.</p>
 ${boot("crm-page", { page: "login", to })}${pageScript}`)}</body></html>`;
 }
 
@@ -87,13 +92,14 @@ export function setupHtml() {
 <form id="setup" class="form" novalidate>
   <div class="err" id="err" role="alert" hidden></div>
   <label class="field"><span>Setup code</span><input name="setup_code" id="setup_code" type="password" autocomplete="off" required></label>
-  <label class="field"><span>Your name</span><input name="name" id="name" type="text" autocomplete="name" autocapitalize="words" required></label>
-  <label class="field"><span>Login</span><input name="login" id="login" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="alex" required><small>Lowercase, like alex. You type it to sign in.</small></label>
+  <label class="field"><span>Your name</span><input name="name" id="name" type="text" autocomplete="name" autocapitalize="words" maxlength="60" required></label>
+  <label class="field"><span>Login</span><input name="login" id="login" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="alex" maxlength="32" required><small>Lowercase, like alex. You type it to sign in.</small></label>
   <label class="field"><span>Password</span><input name="password" id="password" type="password" autocomplete="new-password" minlength="10" required><small>At least 10 characters. A short sentence works well.</small></label>
   <label class="check"><input type="checkbox" name="is_technician" id="is_technician"><span>I also work in the field (I can be put on visits)</span></label>
   <button type="submit" class="btn primary block" id="go">Create my account</button>
 </form>
-<p class="foot"><a href="/crm/legacy">Open the Customers list</a></p>
+<p class="also">Not now? Everything you use today still works.</p>
+<a class="btn block" href="/crm/legacy">Open the Customers list</a>
 ${boot("crm-page", { page: "setup" })}${pageScript}`)}</body></html>`;
 }
 

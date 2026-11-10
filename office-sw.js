@@ -6,16 +6,23 @@
 // (/office/launch: a full-screen CRM frame and an "Offline" strip, no data,
 // no tool list) is kept here. It is cached at install and refreshed on every
 // online /office visit. When opening /office fails (no signal), the app
-// shows the launcher, and the CRM frame starts from the CRM's own service
-// worker (crm-sw.js). Without a cached launcher it shows "No connection".
-// The only URLs ever cached are LAUNCHER and the KEEP files: never /office
-// itself, never anything under /api/. Bump VERSION to replace them.
-const VERSION = "barta-office-v3";
+// shows the launcher only if this phone has a CRM to start (the CRM's own
+// service worker, crm-sw.js, keeps its shell in the "crm-shell" cache, which
+// exists only for someone signed in to the CRM); the CRM frame then starts
+// from that copy. Otherwise (office password only, signed out, nothing
+// cached) it shows the branded "No connection" page, never a frame with the
+// browser's error page in it. The only URLs ever cached here are LAUNCHER
+// and the KEEP files: never /office itself, never anything under /api/.
+// Bump VERSION to replace them.
+const VERSION = "barta-office-v4";
 const LAUNCHER = "/office/launch";
+const CRM_SHELL_CACHE = "crm-shell";
+const CRM_SHELL = "/crm";
 const KEEP = [
   "/assets/img/app/office-icon-192.v2.png",
   "/assets/fonts/CabinetGrotesk-Extrabold.v1.woff2",
   "/assets/fonts/GeneralSans-Medium.v1.woff2",
+  "/assets/fonts/GeneralSans-Semibold.v1.woff2",
 ];
 
 const keepLauncher = () => caches.open(VERSION).then((c) => c.add(LAUNCHER)).catch(() => {});
@@ -53,6 +60,15 @@ button{border:0;border-radius:999px;padding:14px 28px;font:800 .95rem/1 'Cabinet
 
 const offlinePage = () => new Response(OFFLINE, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 
+// The launcher when this phone has a CRM shell to start, else No connection.
+async function offlineStart() {
+  let shell = null;
+  try { shell = await (await caches.open(CRM_SHELL_CACHE)).match(CRM_SHELL); } catch (e) { shell = null; }
+  if (!shell) return offlinePage();
+  const hit = await caches.match(LAUNCHER).catch(() => null);
+  return hit || offlinePage();
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
@@ -65,9 +81,7 @@ self.addEventListener("fetch", (e) => {
         if (isOffice && res.ok) e.waitUntil(keepLauncher());
         return res;
       })
-      .catch(() => (isOffice || url.pathname === LAUNCHER
-        ? caches.match(LAUNCHER).then((hit) => hit || offlinePage())
-        : offlinePage())));
+      .catch(() => (isOffice || url.pathname === LAUNCHER ? offlineStart() : offlinePage())));
     return;
   }
   if (url.origin === location.origin && KEEP.includes(url.pathname)) {

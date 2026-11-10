@@ -13,7 +13,11 @@
 //                  crm:badge {inbox, attention, notifications} (a dot on the tab),
 //                  crm:signed_out (reload), crm:push_request (M1.3)
 //   to the CRM:    office:insets {top,right,bottom,left} (safe areas: iframes
-//                  don't reliably get env(safe-area-inset-*)), office:show {path}
+//                  don't reliably get env(safe-area-inset-*)), office:show {path},
+//                  office:overlay {bottom} (the "Get the app" card's height,
+//                  so the CRM lifts its toasts above it)
+// The office remembers the CRM's last screen (crm:route), so switching to
+// another tab and back keeps /office#crm/<path> in step with the frame.
 // Deep links: /office#crm opens the tab, /office#crm/<path> opens that CRM
 // screen. Below 860 px the logo row hides while the CRM tab is open.
 //
@@ -167,6 +171,7 @@ ${PROBE}
   const OLD = ${JSON.stringify(OLD)};
   const main = document.getElementById('main');
   const frames = {};
+  let crmPath = '';   // the CRM frame's screen, from its last crm:route
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } } };
   let current = null;
 ${INSETS_JS}
@@ -199,7 +204,7 @@ ${INSETS_JS}
       blend(f, t);
       if (boot) boot.remove();
       if (t.id === 'dashboard' && pendingView) { const v = pendingView; pendingView = null; setView(f, v); }
-      if (t.id === 'crm') postInsets(f, !SOLO);
+      if (t.id === 'crm') { postInsets(f, !SOLO); postOverlay(); }
     });
     f.src = t.src + (hash ? '#' + hash : '');
     main.appendChild(f);
@@ -230,7 +235,8 @@ ${INSETS_JS}
     if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     document.title = (view || tool).label + ' · Barta Office';
     store.set('barta-office-tab', id);
-    const want = '#' + id + (tool.id === 'crm' ? sub : '');
+    if (tool.id === 'crm' && sub) crmPath = sub;
+    const want = '#' + id + (tool.id === 'crm' ? (sub || crmPath) : '');
     if (location.hash !== want) history.replaceState(null, '', want);
   }
   document.querySelectorAll('.tab[data-tool]').forEach((b) => b.addEventListener('click', () => show(b.dataset.tool)));
@@ -239,9 +245,10 @@ ${INSETS_JS}
   window.addEventListener('message', (e) => {
     if (e.origin !== location.origin || !frames.crm || e.source !== frames.crm.contentWindow) return;
     const m = e.data || {};
-    if (m.type === 'crm:route' && typeof m.path === 'string' && current === 'crm') {
-      const want = '#crm' + (m.path.charAt(0) === '/' ? m.path : '/' + m.path);
-      if (location.hash !== want) history.replaceState(null, '', want);
+    if (m.type === 'crm:route' && typeof m.path === 'string') {
+      crmPath = m.path.charAt(0) === '/' ? m.path : '/' + m.path;
+      const want = '#crm' + crmPath;
+      if (current === 'crm' && location.hash !== want) history.replaceState(null, '', want);
     } else if (m.type === 'crm:badge') {
       const on = !!(m.inbox || m.attention || m.notifications);
       document.querySelectorAll('.tab[data-tool="crm"] .dot').forEach((d) => { d.hidden = !on; });
@@ -260,6 +267,14 @@ ${INSETS_JS}
   const installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
   const card = document.getElementById('install');
   const go = document.getElementById('install-go');
+  // While the card floats over the CRM, the CRM lifts its toasts above it.
+  function postOverlay() {
+    const f = frames.crm;
+    if (!f || !f.contentWindow || !f.dataset.loaded) return;
+    const bottom = card && !card.hidden ? Math.round(card.getBoundingClientRect().height) + 12 : 0;
+    try { f.contentWindow.postMessage({ type: 'office:overlay', bottom }, location.origin); } catch (e) { /* not ready */ }
+  }
+  new MutationObserver(postOverlay).observe(card, { attributes: true, attributeFilter: ['hidden'] });
   const hide = (forGood) => { card.hidden = true; if (forGood) store.set('barta-office-install', 'no'); };
   document.getElementById('install-x').addEventListener('click', () => hide(true));
   if (!installed && store.get('barta-office-install') !== 'no') {
@@ -330,6 +345,7 @@ summary small{color:#85858d;font-weight:500;margin-left:4px}
 .hint{margin:0 0 4px;font-size:.88rem}
 .err{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:#fff5f3;border:1px solid rgba(208,51,31,.25);color:#d0331f;font-size:.92rem}
 .err[hidden]{display:none}
+.err.ok{background:#fff8e6;border-color:rgba(183,121,31,.3);color:#7a4f12}
 .foot{margin:16px 0 0;font-size:.88rem;color:#85858d}
 </style></head><body>
 <main class="card">
@@ -381,7 +397,7 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
   seg.addEventListener('click', (e) => { const b = e.target.closest('button[data-mode]'); if (b) mode(b.dataset.mode); });
   mode(ERROR ? 'office' : installed ? 'team' : (store.get('barta-office-signin') || 'office'));
   const err = $('team-err');
-  const say = (t) => { err.textContent = t; err.hidden = !t; };
+  const say = (t) => { err.classList.remove('ok'); err.textContent = t; err.hidden = !t; };
   $('team').addEventListener('submit', async (e) => {
     e.preventDefault();
     const login = $('t-login').value.trim();
@@ -398,7 +414,15 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
         const to = (body.data && body.data.to) || '/office';
         const at = to.indexOf('#');
         // Already on that page (only the #hash differs): reload so it sees the new sign-in.
-        if ((at < 0 ? to : to.slice(0, at)) === location.pathname) { if (at >= 0) location.hash = to.slice(at + 1); location.reload(); } else location.href = to;
+        const open = () => { if ((at < 0 ? to : to.slice(0, at)) === location.pathname) { if (at >= 0) location.hash = to.slice(at + 1); location.reload(); } else location.href = to; };
+        if (body.data && body.data.office_cookie === false) {
+          // Signed in to the CRM, but the optional office password didn't take: say so before the CRM opens alone.
+          say("You're signed in. The office password wasn't right (or isn't for your login), so only the CRM opens on this phone.");
+          err.classList.add('ok');
+          setTimeout(open, 3500);
+          return;
+        }
+        open();
         return;
       }
       say((body && body.error && body.error.message) || 'Sign-in failed (' + res.status + '). Try again.');
@@ -431,7 +455,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:#f
 .off{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:max(6px,env(safe-area-inset-top)) 16px 6px;background:#16161b;color:#fff}
 .off[hidden]{display:none}
 .off span{min-width:0}
-.off button{flex:none;white-space:nowrap;min-height:44px;border:0;border-radius:999px;padding:0 16px;background:#fff;color:#16161b;font:700 12px/1 'General Sans',system-ui,sans-serif;cursor:pointer}
+.off button{flex:none;white-space:nowrap;min-height:44px;border:0;border-radius:999px;padding:0 16px;background:#fff;color:#16161b;font:600 12px/1 'General Sans',system-ui,sans-serif;cursor:pointer}
 main{flex:1;position:relative;min-height:0}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#f4f4f6}
 </style></head><body>

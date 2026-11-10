@@ -88,7 +88,10 @@ const MAP_KEYS = ["statsParts", "settings", "events", "services", "queue", "acti
 
 export const ROUTE_METHODS = Object.freeze(["GET", "POST", "PATCH", "PUT", "DELETE"]);
 export const ROUTE_AUTH = Object.freeze(["session", "session_or_key", "key", "hook", "public", "office_cookie", "session_or_office"]);
-const ROUTE_KEYS = new Set(["method", "path", "auth", "perm", "subject", "mode", "body", "maxBody", "idempotent", "replaySafe", "budgetMs", "maxCalls", "handler"]);
+// secret: true = the answer carries a bearer secret (a one-time link, an
+// API key shown once). Such a route must be idempotent: false, because the
+// dispatcher keeps an idempotent route's whole answer in idem/ for 7 days.
+const ROUTE_KEYS = new Set(["method", "path", "auth", "perm", "subject", "mode", "body", "maxBody", "idempotent", "replaySafe", "budgetMs", "maxCalls", "handler", "secret"]);
 const SWEEP_KEYS = new Set(["key", "lane", "every", "at_local", "day", "dow", "mutates", "run"]);
 const AUTOMATION_KEYS = new Set(["key", "trigger", "category", "imported", "mutates", "defaults", "run", "label"]);
 export const AUTOMATION_CATEGORIES = Object.freeze(["service", "marketing", "personal", "staff"]);
@@ -133,6 +136,7 @@ function checkRoute(r, where) {
   if (!["required", "none"].includes(r.subject)) fail(`${where}: subject is required ("required" | "none")`);
   if (!["inline", "run"].includes(r.mode)) fail(`${where}: mode is required ("inline" | "run")`);
   if (!isFn(r.handler)) fail(`${where}: handler is required`);
+  if (r.secret === true && r.idempotent !== false) fail(`${where}: a secret route must be idempotent: false (its answer would be stored in idem/)`);
 }
 
 export function defineModule(input) {

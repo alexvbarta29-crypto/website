@@ -55,16 +55,24 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .icon-btn{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:999px;background:none;color:var(--ink);cursor:pointer;text-decoration:none}
 .icon-btn:active{background:var(--fill)}
 .icon-btn svg{width:22px;height:22px}
-.view{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;outline:0;padding:16px calc(16px + var(--right)) calc(var(--tabs-h) + var(--bottom) + 28px) calc(16px + var(--left))}
-.app.no-tabs .view{padding-bottom:calc(var(--bottom) + 28px)}
+.view{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;outline:0;padding:16px calc(16px + var(--right)) calc(var(--tabs-h) + var(--bottom) + 28px + var(--lift,0px)) calc(16px + var(--left))}
+.app.no-tabs .view{padding-bottom:calc(var(--bottom) + 28px + var(--lift,0px))}
 .view.flush{padding:0 0 calc(var(--tabs-h) + var(--bottom)) 0;overflow:hidden;display:flex;flex-direction:column}
 .app.no-tabs .view.flush{padding-bottom:0}
-.boot{display:flex;flex-direction:column;align-items:center;gap:12px;padding:72px 0;color:var(--ink-3);font-weight:600}
-.spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--coral);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* Loading: skeletons, not spinners (§9.4). */
+.skel{display:flex;flex-direction:column;gap:12px}
+.skel .card{display:flex;flex-direction:column;gap:10px}
+.sk-row{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px}
+.sk-row+.sk-row{border-top:1px solid var(--line)}
+.sk{display:block;height:12px;border-radius:999px;background:linear-gradient(90deg,var(--fill) 0%,var(--fill-2) 40%,var(--fill) 80%);background-size:300% 100%;animation:sk 1.3s ease-in-out infinite}
+.sk.dot{flex:none;width:40px;height:40px;border-radius:50%}
+.sk.h{height:18px;width:45%}
+.sk.w30{width:30%}.sk.w50{width:50%}.sk.w70{width:70%}.sk.w90{width:90%}
+.sk-lines{flex:1;display:flex;flex-direction:column;gap:8px}
+@keyframes sk{from{background-position:100% 0}to{background-position:0 0}}
 .banner{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:8px calc(16px + var(--right)) 8px calc(16px + var(--left));background:var(--ink);color:#fff;font-size:13.5px;font-weight:600;text-align:center}
 .banner.warn{background:var(--amber-bg);color:#6b4510}
-.banner button{min-height:36px;border:0;border-radius:999px;padding:0 14px;background:#fff;color:var(--ink);font-weight:700;cursor:pointer}
+.banner button{min-height:44px;border:0;border-radius:999px;padding:0 16px;background:#fff;color:var(--ink);font:600 14px/1 var(--text);cursor:pointer}
 
 /* ------------------------------------------------------------ tab bar */
 .tabs{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-around;align-items:stretch;height:calc(var(--tabs-h) + var(--bottom));padding:0 var(--right) var(--bottom) var(--left);background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-top:1px solid var(--line)}
@@ -73,7 +81,7 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .tab{position:relative;flex:1;max-width:120px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:none;color:var(--ink-3);font:600 11px/1.1 var(--text);text-decoration:none;cursor:pointer;padding:6px 2px 4px}
 .tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tab[aria-current="page"]{color:var(--coral-ink)}
-.tab .badge{position:absolute;top:5px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral);color:#fff;font:700 10.5px/17px var(--text);text-align:center}
+.tab .badge{position:absolute;top:5px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral);color:#fff;font:600 10.5px/17px var(--text);text-align:center}
 .fab{position:absolute;z-index:6;right:calc(16px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 14px);width:56px;height:56px;border:0;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--coral-2));color:#fff;box-shadow:0 10px 26px rgba(251,77,61,.38);display:grid;place-items:center;cursor:pointer}
 .fab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
 
@@ -152,7 +160,7 @@ a.row:active,button.row:active{background:var(--fill)}
 .more summary small{color:var(--ink-3);font-weight:500}
 .more .hint{margin:0 0 10px;color:var(--muted);font-size:13.5px}
 .copy-box{display:flex;gap:8px;align-items:stretch}
-.copy-box input{flex:1;min-width:0;min-height:48px;padding:0 12px;border:1.5px solid var(--line);border-radius:14px;background:var(--mist);font-size:14px}
+.copy-box input{flex:1;min-width:0;min-height:48px;padding:0 12px;border:1.5px solid var(--line);border-radius:14px;background:var(--mist);font-size:16px}
 
 /* ------------------------------------------------------------ sheets, toasts */
 .backdrop{position:fixed;inset:0;z-index:20;background:rgba(14,14,18,.38);opacity:0;transition:opacity .2s var(--ease)}
@@ -170,7 +178,7 @@ a.row:active,button.row:active{background:var(--fill)}
 .menu svg{width:22px;height:22px;color:var(--ink-2);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .menu li+li{border-top:1px solid var(--line)}
 .menu .danger{color:var(--coral-ink)}
-.toasts{position:fixed;z-index:30;left:50%;bottom:calc(var(--tabs-h) + var(--bottom) + 16px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;width:calc(100% - 32px);max-width:420px;pointer-events:none}
+.toasts{position:fixed;z-index:30;left:50%;bottom:calc(var(--tabs-h) + var(--bottom) + 16px + var(--lift,0px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;width:calc(100% - 32px);max-width:420px;pointer-events:none}
 .toast{padding:11px 18px;border-radius:999px;background:var(--ink);color:#fff;font-weight:600;font-size:14px;box-shadow:0 10px 30px rgba(14,14,18,.25);text-align:center;animation:toast-in .2s var(--ease)}
 .toast.bad{background:var(--coral-ink)}
 @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -185,6 +193,7 @@ body.page .logo{display:block;width:148px;height:auto;margin:0 0 18px}
 body.page h1{font-size:28px;line-height:1.1}
 body.page .lead{margin:8px 0 18px;color:var(--muted)}
 body.page .foot{margin:16px 0 0;font-size:13.5px;color:var(--ink-3)}
+body.page .also{margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 body.page .list{margin:0 0 16px;padding:6px 14px}
 body.page .list li{padding:6px 0}
 body.page .card>p{margin:0 0 14px}
@@ -194,9 +203,22 @@ body.page .btn.block+.btn.block{margin-top:10px}
 code{font:600 13.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--fill);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere}
 
 /* ------------------------------------------------------------ wider screens (§9.1) */
+/* At 900 px and up (an iPad, the office desk) the tab bar becomes a left
+   rail; the header and the screen sit to its right, content centred. */
 @media (min-width:900px){
-  .view{padding-left:calc(24px + var(--left));padding-right:calc(24px + var(--right))}
-  .view>.stack,.view>.wide{max-width:760px;margin:0 auto}
+  :root{--rail-w:96px}
+  .app:not(.no-tabs){padding-left:var(--rail-w)}
+  .tabs{top:0;right:auto;bottom:0;width:calc(var(--rail-w) + var(--left));height:auto;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:4px;padding:calc(var(--top) + 14px) 8px calc(var(--bottom) + 14px) calc(8px + var(--left));border-top:0;border-right:1px solid var(--line)}
+  .tab{flex:none;max-width:none;min-height:64px;border-radius:16px}
+  .tab[aria-current="page"]{background:var(--coral-wash)}
+  .tab .badge{left:calc(50% + 8px)}
+  .toasts{bottom:calc(var(--bottom) + 24px + var(--lift,0px))}
+  .fab{bottom:calc(var(--bottom) + 24px)}
+  .view{padding-left:calc(24px + var(--left));padding-right:calc(24px + var(--right));padding-bottom:calc(var(--bottom) + 32px + var(--lift,0px))}
+  .view.flush{padding-bottom:0}
+  /* the title lines up with the centred content below it */
+  .app:not(.no-tabs) .top{padding-left:max(calc(16px + var(--left)), calc((100vw - var(--rail-w) - 760px) / 2 - 8px));padding-right:max(calc(16px + var(--right)), calc((100vw - var(--rail-w) - 760px) / 2))}
+  .view>.stack,.view>.wide,.view>.skel{max-width:760px;margin:0 auto}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}

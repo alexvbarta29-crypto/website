@@ -17,19 +17,22 @@
 import { deployContext, canonicalRedirect } from "../lib/crm/core/context.mjs";
 import { withStoreScope, withBudget } from "../lib/crm-store.mjs";
 import { lookupSession, deviceId, newDeviceCookie } from "../lib/crm/core/sessions.mjs";
-import { officeSignedIn, missingSetup, storeBlocked, readBootstrap, bootstrapDone, inviteTarget, loadPermissions } from "../lib/crm/core/auth.mjs";
+import { officeSignedIn, missingSetup, storeBlocked, setupDone, inviteTarget, loadPermissions } from "../lib/crm/core/auth.mjs";
 import { can, permsFor } from "../lib/crm/core/perms.mjs";
-import { htmlPage, legacyPage, redirect, safeTo, withCookies, MIN_CLIENT } from "../lib/crm/core/http.mjs";
+import { htmlPage, legacyPage, pageMethodNotAllowed, scriptHash, redirect, safeTo, withCookies, MIN_CLIENT } from "../lib/crm/core/http.mjs";
 import { shellHtml, loginHtml, setupHtml, setupNeededHtml, inviteHtml, messageHtml } from "../lib/crm/core/shell-html.mjs";
 import { navFor } from "../lib/crm/modules/system/me.mjs";
 import { loadCustomers } from "../lib/crm-data.mjs";
-import { customersHtml, importHtml, setupHtml as legacySetupHtml } from "../lib/crm-page.mjs";
+import { customersHtml, importHtml, setupHtml as legacySetupHtml, LEGACY_SCRIPTS } from "../lib/crm-page.mjs";
 import { safeErr } from "../lib/referral-lib.mjs";
 import "../lib/crm/modules/index.mjs";
 
 export const config = { path: ["/crm", "/crm/", "/crm/*"] };
 
 const LINK_OFFICE = { label: "Go to Barta Office", href: "/office", top: true };
+// The legacy page's CSP: the hashes of its fixed inline scripts, once.
+const LEGACY_HASHES = Object.freeze(LEGACY_SCRIPTS.map(scriptHash));
+const legacy200 = (body, status = 200) => legacyPage(body, LEGACY_HASHES, status);
 
 async function legacy(req, url, deploy) {
   const office = officeSignedIn(req);
@@ -38,7 +41,7 @@ async function legacy(req, url, deploy) {
     if (blocked) return htmlPage(setupNeededHtml({ missing: missingSetup(deploy), office: false }), 503);
     const s = await lookupSession(req);
     if (!s) return redirect("/crm/login?to=" + encodeURIComponent("/crm/legacy"));
-    const permissions = await loadPermissions().catch(() => null);
+    const permissions = await loadPermissions();   // fails closed: a failed read is the error page, never the role defaults
     if (!can(s.user, "contacts:read_all", undefined, permissions)) {
       return htmlPage(messageHtml({ title: "Not for this login", text: "The customer list is for the office. Your visits show up on Today." }), 403);
     }
@@ -48,21 +51,20 @@ async function legacy(req, url, deploy) {
   // that is broken (or a store that is down) can always be imported over.
   if (url.searchParams.has("import")) {
     const current = got.ok ? { imported_at: got.data.imported_at, count: got.data.count ?? got.data.customers.length } : null;
-    return legacyPage(importHtml({ current, damaged: got.reason === "bad-index" }));
+    return legacy200(importHtml({ current, damaged: got.reason === "bad-index" }));
   }
-  if (got.ok) return legacyPage(customersHtml(got.data));
-  if (got.reason === "no-data" || got.reason === "bad-index") return legacyPage(importHtml({ damaged: got.reason === "bad-index" }));
-  return legacyPage(legacySetupHtml(got.reason), 503);
+  if (got.ok) return legacy200(customersHtml(got.data));
+  if (got.reason === "no-data" || got.reason === "bad-index") return legacy200(importHtml({ damaged: got.reason === "bad-index" }));
+  return legacy200(legacySetupHtml(got.reason), 503);
 }
 
 async function shell(req) {
   const s = await lookupSession(req);
   if (s) {
-    const permissions = await loadPermissions().catch(() => null);
+    const permissions = await loadPermissions();
     return htmlPage(shellHtml({ user: s.user, perms: permsFor(s.user, permissions), nav: navFor(s.user), office: officeSignedIn(req), minClient: MIN_CLIENT }), 200, { "X-CRM-Shell": "1" });
   }
-  const boot = await readBootstrap();
-  if (!bootstrapDone(boot)) {
+  if (!(await setupDone())) {
     if (officeSignedIn(req)) return redirect("/crm/setup");
     return htmlPage(messageHtml({ title: "Not set up yet", text: "An owner sets up the CRM from Barta Office first.", links: [LINK_OFFICE] }));
   }
@@ -75,12 +77,14 @@ async function login(req, url) {
   if (req.headers.get("sec-fetch-dest") === "iframe" && to.startsWith("/office")) to = "/crm";
   const s = await lookupSession(req);
   if (s) return redirect(to);
-  const boot = await readBootstrap();
-  if (!bootstrapDone(boot)) {
+  if (!(await setupDone())) {
     if (officeSignedIn(req)) return redirect("/crm/setup");
     return htmlPage(messageHtml({ title: "Not set up yet", text: "An owner sets up the CRM from Barta Office first.", links: [LINK_OFFICE] }));
   }
-  const res = htmlPage(loginHtml({ to }));
+  // With the office cookie (inside /office, or someone who only has the
+  // office password) the page links the Customers list and leaves out the
+  // optional office password (already open on this phone).
+  const res = htmlPage(loginHtml({ to, office: officeSignedIn(req) }));
   // The device id the sign-in throttle counts per phone (§4.8).
   return deviceId(req) ? res : withCookies(res, [newDeviceCookie().cookie]);
 }
@@ -89,8 +93,7 @@ async function setup(req) {
   if (!officeSignedIn(req)) {
     return htmlPage(messageHtml({ title: "Office sign-in first", text: "Setting up the CRM needs the office password. Sign in to Barta Office, then open the CRM tab.", links: [LINK_OFFICE] }), 403);
   }
-  const boot = await readBootstrap();
-  if (bootstrapDone(boot)) {
+  if (await setupDone()) {
     return htmlPage(messageHtml({ title: "Setup is done", text: "Ask an owner to invite you.", links: [{ label: "Sign in", href: "/crm/login", primary: true }] }), 410);
   }
   if (!process.env.CRM_SETUP_CODE) return htmlPage(setupNeededHtml({ missing: ["CRM_SETUP_CODE"], office: true }), 503);
@@ -107,7 +110,7 @@ async function invite(req, token) {
 
 export default async (req, context) => {
   try {
-    if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+    if (req.method !== "GET" && req.method !== "HEAD") return pageMethodNotAllowed("GET, HEAD");
     const deploy = deployContext(req, context);
     const moved = canonicalRedirect(req, deploy);
     if (moved) return moved;

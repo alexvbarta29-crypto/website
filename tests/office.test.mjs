@@ -159,20 +159,37 @@ test("the office installs as a phone app", async () => {
   assert.match(deploy, /"office-sw\.js"/);
 });
 
-// office-sw.js in a sandbox: what it caches, and what a cold start with no signal shows.
-function loadOfficeSw({ online = true } = {}) {
+// office-sw.js in a sandbox: what it caches, and what a cold start with no
+// signal shows. Each named cache is its own store; caches.match() searches
+// them all. crmShell = the CRM's service worker has kept its shell (someone
+// is signed in to the CRM on this phone).
+function loadOfficeSw({ online = true, crmShell = false } = {}) {
   const src = readFileSync("office-sw.js", "utf8");
   const handlers = {};
   const cached = [];
-  const store = new Map();
-  const cache = {
-    async put(req, res) { const u = typeof req === "string" ? req : req.url; cached.push(u); store.set(new URL(u, "https://x.test").pathname, res); },
-    async add(u) { cached.push(u); store.set(u, new Response("launcher", { headers: { "Content-Type": "text/html" } })); },
-    async addAll(list) { for (const u of list) await cache.add(u); },
+  const named = new Map();
+  const cacheFor = (name) => {
+    if (named.has(name)) return named.get(name);
+    const store = new Map();
+    const cache = {
+      store,
+      async put(req, res) { const u = typeof req === "string" ? req : req.url; cached.push(u); store.set(new URL(u, "https://x.test").pathname, res); },
+      async add(u) { cached.push(u); store.set(u, new Response("launcher", { headers: { "Content-Type": "text/html" } })); },
+      async addAll(list) { for (const u of list) await cache.add(u); },
+      async match(u) { const r = store.get(typeof u === "string" ? new URL(u, "https://x.test").pathname : new URL(u.url).pathname); return r ? r.clone() : undefined; },
+    };
+    named.set(name, cache);
+    return cache;
   };
+  if (crmShell) cacheFor("crm-shell").store.set("/crm", new Response("crm shell"));
   const sandbox = {
     self: { addEventListener: (type, fn) => { handlers[type] = fn; }, skipWaiting: async () => {}, clients: { claim: async () => {} } },
-    caches: { open: async () => cache, keys: async () => [], delete: async () => true, match: async (u) => store.get(typeof u === "string" ? u : new URL(u.url).pathname) },
+    caches: {
+      open: async (name) => cacheFor(name),
+      keys: async () => [...named.keys()],
+      delete: async (name) => named.delete(name),
+      match: async (u) => { for (const c of named.values()) { const hit = await c.match(u); if (hit) return hit; } return undefined; },
+    },
     location: { origin: "https://x.test" },
     fetch: async () => { if (!online) throw new TypeError("offline"); return new Response("page", { status: 200 }); },
     Response, URL, Promise,
@@ -193,7 +210,7 @@ function loadOfficeSw({ online = true } = {}) {
 
 test("office-sw.js caches only LAUNCHER and the KEEP files, never /office itself or /api/", async () => {
   const src = readFileSync("office-sw.js", "utf8");
-  assert.match(src, /const VERSION = "barta-office-v3";/);
+  assert.match(src, /const VERSION = "barta-office-v4";/);
   assert.match(src, /const LAUNCHER = "\/office\/launch";/);
   const keep = JSON.parse(/const KEEP = (\[[\s\S]*?\]);/.exec(src)[1].replace(/,\s*\]/, "]"));
   const allowed = new Set(["/office/launch", ...keep]);
@@ -211,11 +228,62 @@ test("office-sw.js caches only LAUNCHER and the KEEP files, never /office itself
 });
 
 test("with no signal, opening /office shows the cached launcher; without one, the No connection page", async () => {
-  const sw = loadOfficeSw({ online: false });
+  const sw = loadOfficeSw({ online: false, crmShell: true });
   await sw.install();
   const res = await sw.fire("/office");
   assert.equal(await res.text(), "launcher");
-  const cold = loadOfficeSw({ online: false });
+  assert.equal(await (await sw.fire("/office/launch")).text(), "launcher");
+  const cold = loadOfficeSw({ online: false, crmShell: true });
   const res2 = await cold.fire("/office");
   assert.match(await res2.text(), /No connection/);
+});
+
+test("with no signal and no CRM on this phone (office password only, signed out), /office is No connection, never an empty launcher", async () => {
+  // Regression (M1.2 review): the launcher was served whatever the CRM
+  // state, so an office-password-only phone got a frame with the browser's
+  // error page in it.
+  const sw = loadOfficeSw({ online: false, crmShell: false });
+  await sw.install();
+  for (const p of ["/office", "/office/", "/office/launch"]) {
+    const res = await sw.fire(p);
+    const text = await res.text();
+    assert.match(text, /No connection/, p);
+    assert.doesNotMatch(text, /^launcher$/, p);
+  }
+  // the fonts the offline pages use are kept, the semibold included
+  const keep = JSON.parse(/const KEEP = (\[[\s\S]*?\]);/.exec(readFileSync("office-sw.js", "utf8"))[1].replace(/,\s*\]/, "]"));
+  assert.ok(keep.includes("/assets/fonts/GeneralSans-Semibold.v1.woff2"));
+  for (const f of keep) assert.ok(existsSync("." + f), f);
+  assert.doesNotMatch(launcherHtml(), /font:700/, "the launcher uses only the weights it loads");
+});
+
+test("POST to /office/launch answers 405 with the private headers", async () => {
+  // Regression (M1.2 review): the 405 carried no Cache-Control or X-Robots-Tag.
+  for (const [p, allow] of [["/office/launch", "GET, HEAD"], ["/office", "GET, HEAD, POST"]]) {
+    const res = await office(new Request("https://x.test" + p, { method: p === "/office" ? "PUT" : "POST" }));
+    assert.equal(res.status, 405, p);
+    assert.equal(res.headers.get("cache-control"), "private, no-store", p);
+    assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow", p);
+    assert.equal(res.headers.get("allow"), allow, p);
+  }
+});
+
+test("the office keeps the CRM's screen across tab switches, tells Team sign-in's D14 refusal, and lifts the CRM's toasts above its card", async () => {
+  // Regressions (M1.2 review): back on the CRM tab the office hash dropped
+  // to #crm; a wrong office password on Team sign-in opened solo mode with
+  // no word why; the "Get the app" card hid the CRM's toasts.
+  const full = await (await office(new Request("https://x.test/office", { headers: signedIn }))).text();
+  assert.match(full, /let crmPath = '';/);
+  assert.match(full, /crmPath = m\.path\.charAt\(0\) === '\/' \? m\.path : '\/' \+ m\.path;/, "every crm:route is remembered, on any tab");
+  assert.match(full, /const want = '#' \+ id \+ \(tool\.id === 'crm' \? \(sub \|\| crmPath\) : ''\);/, "back on the CRM tab: #crm/<its screen>");
+  assert.match(full, /type: 'office:overlay', bottom/);
+  t = await crmTest();
+  const owner = await t.user("owner");
+  await t.bootstrap(owner);
+  const out = await t.office("/office");
+  assert.match(out.text, /body\.data\.office_cookie === false/);
+  assert.match(out.text, /The office password wasn't right/);
+  const main = readFileSync("crm-app/main.js", "utf8");
+  assert.match(main, /m\.type === "office:overlay"/);
+  assert.match(readFileSync("crm-app/styles/crm.css", "utf8"), /\.toasts\{[^}]*var\(--lift,0px\)/);
 });

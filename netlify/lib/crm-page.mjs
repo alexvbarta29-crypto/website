@@ -159,7 +159,10 @@ button{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.sheet,.back{transition:none}}
 `;
 
-// Everything below runs in the browser.
+// Everything below runs in the browser. The page's inline scripts are these
+// fixed strings only (LEGACY_SCRIPTS): /crm/legacy's CSP allows exactly
+// their hashes, so nothing a row could inject would run.
+const ERROR_HOOK = "window.addEventListener('error',function(e){try{var b=document.getElementById('crm-err');if(!b)return;b.hidden=false;b.lastChild.textContent=(e.message||'Script error')+(e.lineno?' (line '+e.lineno+')':'')+' · '+navigator.userAgent}catch(x){}});";
 const CLIENT = String.raw`
 (() => { try {
   const D = JSON.parse(document.getElementById('crm-data').textContent);
@@ -354,7 +357,7 @@ export function customersHtml(data) {
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#f4f4f6">
 <title>Customers · Barta Office</title>
-<script>window.addEventListener('error',function(e){try{var b=document.getElementById('crm-err');if(!b)return;b.hidden=false;b.lastChild.textContent=(e.message||'Script error')+(e.lineno?' (line '+e.lineno+')':'')+' · '+navigator.userAgent}catch(x){}});</script>
+<script>${ERROR_HOOK}</script>
 <style>${CSS}</style></head><body>
 <header class="top"><div class="top-in">
   <div class="search">${SEARCH_ICON}<input type="search" id="q" placeholder="Search name, phone, address…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Search customers" enterkeyhint="search"><button type="button" class="clear" id="clear" aria-label="Clear search" hidden><span>&times;</span></button></div>
@@ -478,3 +481,6 @@ export function importHtml({ current = null, damaged = false } = {}) {
 <script>${IMPORT_CLIENT}</script>
 </body></html>`;
 }
+
+// The page's inline scripts, for /crm/legacy's CSP hashes (crm.mjs).
+export const LEGACY_SCRIPTS = Object.freeze([ERROR_HOOK, CLIENT, IMPORT_CLIENT]);

@@ -145,6 +145,18 @@ function screenCtx(path, params, extra = {}) {
   };
 }
 
+// What a screen shows while it loads: a skeleton, never a spinner (§9.4).
+// A route may declare skeleton: "list" (rows, for list screens); the
+// default is a card.
+export function skeleton(kind = "card") {
+  const lines = html`<span class="sk h"></span><span class="sk w90"></span><span class="sk w70"></span>`;
+  if (kind === "list") {
+    const row = html`<li class="sk-row"><span class="sk dot"></span><span class="sk-lines"><span class="sk w50"></span><span class="sk w30"></span></span></li>`;
+    return html`<div class="skel" aria-busy="true" aria-label="Loading"><span class="sk h"></span><ul class="list">${[row, row, row, row, row]}</ul></div>`;
+  }
+  return html`<div class="skel" aria-busy="true" aria-label="Loading"><div class="card">${lines}</div><div class="card"><span class="sk w70"></span><span class="sk w50"></span></div></div>`;
+}
+
 const errorView = (e) => html`<div class="stack"><div class="card empty"><div class="art">${icon("shield")}</div><h2>${e && e.code === "offline" ? "No connection" : "That didn't load"}</h2><p>${(e && e.message) || "Try again in a minute."}</p><div class="btn-row"><button type="button" class="btn primary" data-retry>Try again</button></div></div></div>`;
 
 async function show(path, { keepScroll = false } = {}) {
@@ -171,7 +183,7 @@ async function show(path, { keepScroll = false } = {}) {
   }
   current = { path, route, params, mod: null };
   header(route.title, canGoBack(), null);
-  if (!keepScroll) { v.classList.remove("flush"); render(v, html`<div class="boot"><span class="spinner" aria-hidden="true"></span></div>`); }
+  if (!keepScroll) { v.classList.remove("flush"); render(v, skeleton(route.skeleton)); }
   env.onRoute(path);
   let mod, state;
   const ctx = screenCtx(path, params);

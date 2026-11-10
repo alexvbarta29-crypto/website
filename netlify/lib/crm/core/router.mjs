@@ -7,8 +7,8 @@
 //      setup_needed, except office-cookie routes (the legacy Customers list)
 //   3. authenticate per route.auth (session cookie, API key, office cookie)
 //   4. CSRF for every cookie-authenticated or public non-GET: X-CRM: 1,
-//      Content-Type application/json (unless body: "raw"), Origin absent or
-//      same-origin
+//      Origin absent or same-origin, and Content-Type application/json when
+//      the route takes a JSON body (not a body-less DELETE, not body: "raw")
 //   5. client version (X-CRM-Client below MIN_CLIENT → 426; replaySafe
 //      routes accept MIN_REPLAY_CLIENT)
 //   6. body read under maxBody (413), then Idempotency-Key replay (POST)
@@ -96,12 +96,18 @@ const OFFICE_AUTH = new Set(["office_cookie", "session_or_office"]);
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const rid = () => randomBytes(8).toString("hex");
 
-function csrfProblem(req, url, route) {
+// The body a route takes: its declared `body`, else none for GET and
+// DELETE and JSON for every other method.
+export const bodyKind = (route, method) => route.body || (method === "GET" || method === "DELETE" ? "none" : "json");
+
+// kind = bodyKind(): a DELETE with no body needs no Content-Type (the app
+// sends none), but X-CRM and the Origin check apply to every non-GET.
+function csrfProblem(req, url, kind) {
   if (req.headers.get("x-crm") !== "1") return "Missing the X-CRM header.";
   const origin = req.headers.get("origin");
   if (origin && origin !== "null" && origin !== url.origin) return "That request came from another site.";
   if (origin === "null") return "That request came from another site.";
-  if ((route.body || "json") === "json" && contentType(req) !== "application/json") return "Send JSON.";
+  if (kind === "json" && contentType(req) !== "application/json") return "Send JSON.";
   return null;
 }
 
@@ -181,11 +187,12 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
         });
       }
       const method = req.method === "HEAD" ? "GET" : req.method;
+      const kind = bodyKind(route, method);
 
       // CSRF: anything a browser could send with cookies
       const cookieAuthed = ctx.session || ctx.office || route.auth === "public";
       if (method !== "GET" && route.auth !== "hook" && !ctx.apiKey && cookieAuthed) {
-        const why = csrfProblem(req, url, route);
+        const why = csrfProblem(req, url, kind);
         if (why) return finish(fail("csrf", why, 403));
       }
 
@@ -195,8 +202,14 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
         if (compareVersions(ctx.clientVersion, floor) < 0) return finish(fail("client_outdated", "There's a new version of the app. Reload to get it.", 426, { details: { min_client: MIN_CLIENT } }));
       }
 
-      // permissions helpers
-      if (ctx.user) ctx.permissions = await loadPermissions().catch(() => null);
+      // permissions helpers. The owner's cfg/permissions must be read: a
+      // failed read answers 503 busy and never runs on the role defaults.
+      if (ctx.user) {
+        try { ctx.permissions = await loadPermissions(); } catch (e) {
+          console.error(`crm:router: ${route.method} ${route.path}: permissions not read (${safeErr(e)})`);
+          return finish(fail("busy", "Storage didn't answer. Try again in a minute.", 503, { headers: { "Retry-After": "5" } }));
+        }
+      }
       ctx.can = (perm, subject) => {
         if (ctx.office && !ctx.user) return OFFICE_AUTH.has(route.auth);
         if (!ctx.user) return false;
@@ -213,7 +226,6 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
       ctx.sysMode = () => (modeP ||= getRaw(SYS_MODE_KEY).then((g) => ({ ...DEFAULT_MODE, ...(g && g.data ? g.data : {}) })).catch(() => ({ ...DEFAULT_MODE })));
 
       // body
-      const kind = route.body || (method === "GET" || method === "DELETE" ? "none" : "json");
       let rawBytes = null;
       if (kind !== "none") {
         const max = route.maxBody || (kind === "raw" ? DEFAULT_RAW_MAX : DEFAULT_JSON_MAX);
@@ -225,7 +237,8 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
 
       // idempotency (POST + Idempotency-Key)
       let idem = null;
-      if (method === "POST" && ctx.idempotencyKey && route.idempotent !== false) {
+      // A secret route (a one-time link, a key shown once) is never stored.
+      if (method === "POST" && ctx.idempotencyKey && route.idempotent !== false && !route.secret) {
         const uid = ctx.user ? ctx.user.id : ctx.office ? "office" : "anon";
         const reqHash = sha(method + " " + url.pathname + url.search + " " + (rawBytes ? Buffer.from(rawBytes).toString("base64") : ""));
         let begun;

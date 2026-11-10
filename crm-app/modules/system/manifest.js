@@ -9,7 +9,7 @@ export default {
   routes: [
     { path: "/today", load: () => import("./today.js"), title: "Today" },
     { path: "/me", load: () => import("./me.js"), title: "My account", perm: "account:own", parent: "/today" },
-    { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/today" },
+    { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/today", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },
     { path: "/legacy/customers", load: () => import("./legacy.js"), title: "Customers", perm: "contacts:read_all" },
   ],

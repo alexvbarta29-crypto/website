@@ -4,6 +4,7 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { crmTest } from "../../helpers/crm-http.mjs";
+import { advance, minutes } from "../../helpers/crm-clock.mjs";
 
 const { can, holds, permsFor, roleDefault, scopeFor, techView, ROLE_DEFAULTS, OWNER_ONLY, PERMISSION_KEYS } = await import("../../../netlify/lib/crm/core/perms.mjs");
 const { systemSettings } = await import("../../../netlify/lib/crm/modules/system/settings.mjs");
@@ -111,4 +112,31 @@ test("techView keeps only a type's techFields", () => {
   const u = { id: "us_x", type: "user", name: "N", first_name: "F", color: "#000000", is_technician: true, email: "n@example.com", phone: "+17635550100", password: { hash: "x" } };
   assert.deepEqual(Object.keys(techView("user", u)).sort(), ["color", "first_name", "id", "is_technician", "name"]);
   assert.deepEqual(techView("no-such-type", u), { id: "us_x" });
+});
+
+test("cfg/permissions fails closed: a failed read answers 503, is never cached, and the owner's restriction holds afterwards", async () => {
+  // Regression (M1.2 review): a failed read fell back to the role defaults
+  // and was cached until the next auth-epoch bump.
+  t = await crmTest();
+  const { putSetting } = await import("../../../netlify/lib/crm-store.mjs");
+  const { clearPermissionsCache } = await import("../../../netlify/lib/crm/core/auth.mjs");
+  const o = await t.user("owner");
+  await t.bootstrap(o);
+  await putSetting("permissions", { roles: { tech: { "leads:create": false } } }, { by: o.id, origin: "system" });
+  const tech = await t.user("tech");
+  let me = await t.api("/me", { as: tech });
+  assert.equal(me.status, 200);
+  assert.equal(me.body.data.perms["leads:create"], undefined, "the owner took it away");
+  clearPermissionsCache();
+  t.stores.data.fail({ op: ["get", "getWithMetadata"], key: "cfg/permissions", kind: "denied", times: 5 });
+  const blip = await t.api("/me", { as: tech });
+  assert.equal(blip.status, 503, JSON.stringify(blip.body));
+  assert.equal(blip.body.error.code, "busy");
+  const page = await t.page("/crm/legacy", { as: o });
+  assert.equal(page.status, 500, "an access decision never runs on the role defaults");
+  t.stores.data.clearHooks();
+  advance(minutes(60));
+  me = await t.api("/me", { as: tech });
+  assert.equal(me.status, 200);
+  assert.equal(me.body.data.perms["leads:create"], undefined, "still restricted once storage answers");
 });
