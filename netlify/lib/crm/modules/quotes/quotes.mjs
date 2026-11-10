@@ -83,7 +83,9 @@ const sameOverride = (a, b) => !!a && !!b && a.cents === b.cents && String(a.rea
 // Ids for whatever is new, the price-override permission (a line whose
 // override is new or changed needs prices:override and a reason), plan
 // defaults from the catalog, and every option's totals.
-export function normalizeOptions(options, { pricing, before = [], user = null, canOverride = false } = {}) {
+// defs (the discount catalog): a catalog discount takes its stack group, and
+// two discounts of one group can't be on one option (D15).
+export function normalizeOptions(options, { pricing, before = [], user = null, canOverride = false, defs = null } = {}) {
   if (!Array.isArray(options)) throw new InputError("Expected the options.", "options");
   if (options.length > MAX_OPTIONS) throw new InputError(`Up to ${MAX_OPTIONS} options.`, "options");
   const prevLines = new Map();
@@ -115,10 +117,17 @@ export function normalizeOptions(options, { pricing, before = [], user = null, c
       return l;
     });
     const dids = new Set();
-    o.discounts = (Array.isArray(o.discounts) ? o.discounts : []).map((d0) => {
+    const groups = new Map();
+    o.discounts = (Array.isArray(o.discounts) ? o.discounts : []).map((d0, di) => {
       const d = d0 && typeof d0 === "object" ? { ...d0 } : {};
       if (!DISCOUNT_ID_RE.test(String(d.id || "")) || dids.has(d.id)) d.id = newDiscountId();
       dids.add(d.id);
+      const def = Array.isArray(defs) ? defs.find((x) => (d.def_id && x.id === d.def_id) || (d.key && x.key === d.key)) : null;
+      if (def) { if (def.stack_group) d.stack_group = def.stack_group; else delete d.stack_group; if (!d.def_id) d.def_id = def.id; if (!d.key) d.key = def.key; }
+      if (d.stack_group) {
+        if (groups.has(d.stack_group)) throw new InputError(`${groups.get(d.stack_group)} and ${d.name || "that discount"} can't be combined.`, `options.${oi}.discounts.${di}`);
+        groups.set(d.stack_group, d.name || "A discount");
+      }
       return d;
     });
     o.totals = optionTotals(o, pricing);
@@ -208,10 +217,10 @@ export async function createQuote(body = {}, ctx) {
     const d = await getRecord("deal", deal_id);
     if (!d || d.data.contact_id !== contact.id) throw new InputError("That deal isn't theirs.", "deal_id");
   } else deal_id = await openDealOf(contact.id);
-  const pricing = await loadPricing();
+  const [pricing, defs] = await Promise.all([loadPricing(), discountDefs().catch(() => [])]);
   const mode = typeof ctx.sysMode === "function" ? await ctx.sysMode() : await readSysMode();
   const seq = mode.system_of_record === "crm" ? "quote" : "quote-shadow";
-  const options = normalizeOptions(Array.isArray(body.options) && body.options.length ? body.options : [{ ...emptyOption("one_time", "One-time"), recommended: true }], { pricing, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false });
+  const options = normalizeOptions(Array.isArray(body.options) && body.options.length ? body.options : [{ ...emptyOption("one_time", "One-time"), recommended: true }], { pricing, defs, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false });
   const number = await nextNumber(seq, { id: quoteId });
   const data = {
     id: quoteId, number, number_seq: seq, contact_id: contact.id, contact_name: contactName(contact), status: "draft",
@@ -238,7 +247,7 @@ export async function patchQuote(id, body = {}, ctx) {
   const q0 = cur.data;
   if (["approved", "converted"].includes(q0.status)) throw new ConflictError("An approved quote can't change. Duplicate it to make a new one.");
   if (["archived", "declined"].includes(q0.status)) throw new ConflictError("Restore this quote first.");
-  const pricing = await loadPricing();
+  const [pricing, defs] = await Promise.all([loadPricing(), discountDefs().catch(() => [])]);
   const patch = {};
   for (const k of EDITABLE) if (body[k] !== undefined) patch[k] = body[k];
   if (patch.property_id !== undefined) patch.property_id = await checkProperty(patch.property_id, q0.contact_id) || null;
@@ -249,7 +258,7 @@ export async function patchQuote(id, body = {}, ctx) {
     // before Money (M5) deposits and "require card" are hidden (§11.3): keep what's stored
     patch.agreement = { ...(q0.agreement || {}), ...(patch.agreement || {}), require_card: !!(q0.agreement && q0.agreement.require_card), deposit: (q0.agreement && q0.agreement.deposit) || { type: "none", value: 0 } };
   }
-  const options = patch.options !== undefined ? normalizeOptions(patch.options, { pricing, before: q0.options, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false }) : null;
+  const options = patch.options !== undefined ? normalizeOptions(patch.options, { pricing, defs, before: q0.options, user: ctx.user && ctx.user.id, canOverride: ctx.can ? ctx.can("prices:override") : false }) : null;
   const r = await updateRecord("quote", id, (q) => {
     if (["approved", "converted", "archived", "declined"].includes(q.status)) throw new ConflictError("This quote changed. Reload it.");
     const next = { ...q, ...patch };

@@ -238,14 +238,18 @@ export const priceItemType = defineType({
 
 // ------------------------------------------------------------ discount_def
 
+// The record's own `type` is the envelope's ("discount_def"), so a
+// definition keeps fixed / percentage in `kind` (the API also takes `type`).
 export function validateDiscountDef(data, { op } = {}) {
   const stored = op === "update";
-  const type = enumValue(data && data.type, ["fixed", "percentage"], { field: "type", required: true, stored });
+  const given = data && (data.kind !== undefined ? data.kind : data.type !== "discount_def" ? data.type : undefined);
+  const kind = enumValue(given, ["fixed", "percentage"], { field: "type", required: true, stored });
   return shape(data, {
     key: (v, f) => { if (!DEF_KEY_RE.test(String(v ?? ""))) throw new InputError("A short key like first_time.", f); return String(v); },
     name: (v, f) => str(v, { field: f, max: 80, required: true }),
-    type: () => type,
-    value: (v, f) => int(v, { field: f, min: 0, max: type === "percentage" ? 10000 : 100000000 }) ?? 0,
+    kind: () => kind,
+    type: () => undefined,
+    value: (v, f) => int(v, { field: f, min: 0, max: kind === "percentage" ? 10000 : 100000000 }) ?? 0,
     default_scope: (v, f) => validateScope(v, f, { stored }),
     sellable: (v, f) => (v === undefined ? true : bool(v, { field: f })),
     active: (v, f) => (v === undefined ? true : bool(v, { field: f })),
@@ -257,7 +261,7 @@ export function validateDiscountDef(data, { op } = {}) {
   });
 }
 
-export const discountRow = (r) => ({ k: r.key, nm: r.name, t: r.type, v: r.value, sc: r.default_scope || { type: "all" }, sell: r.sellable !== false, act: r.active !== false, po: r.plan_only || null, sg: r.stack_group || null, of: !!r.offer, ta: !!r.typed_amount });
+export const discountRow = (r) => ({ k: r.key, nm: r.name, t: r.kind, v: r.value, sc: r.default_scope || { type: "all" }, sell: r.sellable !== false, act: r.active !== false, po: r.plan_only || null, sg: r.stack_group || null, of: !!r.offer, ta: !!r.typed_amount });
 
 export const discountDefType = defineType({
   type: "discount_def",
@@ -271,7 +275,7 @@ export const discountDefType = defineType({
   indexes: [{ name: "discounts", shard: (r) => (r.deleted_at ? null : ""), row: discountRow }],
   pointers: [{ kind: "discount-key", key: (r) => r.key }],
   summary: (r) => ({ id: r.id, key: r.key, name: r.name }),
-  example: () => ({ key: "first_time", name: "First Time Customer", type: "fixed", value: 5000, default_scope: { type: "initial" }, sellable: true, rotor_names: ["First Time Customer"] }),
+  example: () => ({ key: "first_time", name: "First Time Customer", kind: "fixed", value: 5000, default_scope: { type: "initial" }, sellable: true, rotor_names: ["First Time Customer"] }),
 });
 
 // ------------------------------------------------------------ quote

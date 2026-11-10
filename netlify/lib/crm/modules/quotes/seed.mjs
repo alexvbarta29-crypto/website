@@ -73,7 +73,12 @@ export const seedItemId = (key) => deriveId("price_item", "seed:quotes", "priceb
 export const seedDiscountId = (key) => deriveId("discount_def", "seed:quotes", "discounts", key);
 
 export const seedItem = (key) => { const s = SEED_PRICE_BOOK.find((i) => i.key === key); return s ? { ...JSON.parse(JSON.stringify(s)), id: seedItemId(key), rotor_template_ids: [] } : null; };
-export const seedDiscount = (key) => { const s = SEED_DISCOUNTS.find((d) => d.key === key); return s ? { ...JSON.parse(JSON.stringify(s)), id: seedDiscountId(key) } : null; };
+export const seedDiscount = (key) => {
+  const s = SEED_DISCOUNTS.find((d) => d.key === key);
+  if (!s) return null;
+  const { type, ...rest } = JSON.parse(JSON.stringify(s));
+  return { ...rest, kind: type, id: seedDiscountId(key) };
+};
 
 async function once(type, data, ctx) {
   try { await createRecord(type, data, ctx); return 1; } catch (e) {

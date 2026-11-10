@@ -143,16 +143,17 @@ async function discountGet(ctx) {
   if (!g || g.data.deleted_at) throw new NotFoundError("That discount isn't there.");
   return { data: strip(g.data), etag: g.etag };
 }
-const DEF_FIELDS = ["name", "type", "value", "default_scope", "sellable", "active", "stack_group", "typed_amount"];
+const DEF_FIELDS = ["name", "kind", "value", "default_scope", "sellable", "active", "stack_group", "typed_amount"];
+const defBody = (b) => ({ ...pick(b, DEF_FIELDS), ...(b && b.type && !b.kind ? { kind: b.type } : {}) });
 async function discountCreate(ctx) {
   const b = ctx.body || {};
   const key = String(b.key || b.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^(\d)/, "d$1").slice(0, 40);
-  const r = await createRecord("discount_def", { ...pick(b, DEF_FIELDS), key, rotor_names: [] }, ctx.write());
+  const r = await createRecord("discount_def", { ...defBody(b), key, rotor_names: [] }, ctx.write());
   return { data: strip(r.data), etag: r.etag, status: 201 };
 }
 async function discountPatch(ctx) {
   if (!isId(ctx.params.id, "discount_def")) throw new NotFoundError("That discount isn't there.");
-  const r = await patchRecord("discount_def", ctx.params.id, pick(ctx.body, DEF_FIELDS), { ...ctx.write(), ifMatch: ctx.ifMatch });
+  const r = await patchRecord("discount_def", ctx.params.id, defBody(ctx.body), { ...ctx.write(), ifMatch: ctx.ifMatch });
   return { data: strip(r.data), etag: r.etag };
 }
 

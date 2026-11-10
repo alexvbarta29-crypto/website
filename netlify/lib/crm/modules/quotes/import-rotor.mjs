@@ -227,9 +227,10 @@ async function mapPriceBook(r) {
 // ------------------------------------------------------------ row 5: discounts
 
 const NEW_DEF_ID = (name) => idForRotor("discount_def", `name:${slug(name)}`);
+// The catalog's definition (the seed's own when system.seed hasn't run yet: written with it).
 async function defRecord(key) {
   const g = await getRecord("discount_def", seedDiscountId(key));
-  return g ? strip(g.data) : seedDiscount(key);
+  return g ? { rec: strip(g.data), stored: true } : { rec: seedDiscount(key), stored: false };
 }
 
 async function mapDiscounts(r) {
@@ -239,8 +240,10 @@ async function mapDiscounts(r) {
     const name = e.name || "Discount";
     const key = discountKeyFor(name);
     if (key) {
-      const cur = touched.get(key) || await defRecord(key);
+      const had = touched.get(key);
+      const { rec: cur, stored } = had ? { rec: had, stored: true } : await defRecord(key);
       if (!(cur.rotor_names || []).some((n) => n === name)) touched.set(key, { ...cur, rotor_names: [...(cur.rotor_names || []), name].slice(0, 100) });
+      else if (!stored) touched.set(key, cur);
       continue;
     }
     const id = NEW_DEF_ID(name);
@@ -249,7 +252,7 @@ async function mapDiscounts(r) {
     const pct = e.type === "percentage";
     const raw = toCents(e.value_raw) || 0;
     touched.set(`new:${id}`, {
-      id, key: `rotor_${slug(name)}`.slice(0, 40), name: name.slice(0, 80), type: pct ? "percentage" : "fixed", value: Math.min(pct ? 10000 : 100000000, raw),
+      id, key: `rotor_${slug(name)}`.slice(0, 40), name: name.slice(0, 80), kind: pct ? "percentage" : "fixed", value: Math.min(pct ? 10000 : 100000000, raw),
       default_scope: e.scope || { type: "all" }, sellable: false, active: true, rotor_names: [name],
     });
     out.warnings.push("discount_new_name");
