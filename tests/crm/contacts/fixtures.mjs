@@ -47,38 +47,18 @@ export async function makeContact(fields = {}, ctx = PERSON) {
   return r.data;
 }
 
-// What the M2c runner does with an import phase's output, enough for these
-// tests (§10.7, simplified): a new record is created with its `import`
-// block; one the import made before takes the newly mapped rotorFields (the
-// "untouched" case); a CRM-created record the resolution linked (no
-// `import` yet: an intake contact) fills only its empty fields and gains
-// `import`. Then the pointers, then the extras.
-const { getType } = await import("../../../netlify/lib/crm/core/registry.mjs");
-const { createHash } = await import("node:crypto");
-const getPath = (o, p) => p.split(".").reduce((x, k) => (x == null ? undefined : x[k]), o);
-const setPath = (o, p, v) => { const ks = p.split("."); let x = o; for (const k of ks.slice(0, -1)) { if (!x[k] || typeof x[k] !== "object") x[k] = {}; x = x[k]; } x[ks[ks.length - 1]] = v; };
-const blank = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length) || (v && typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length);
-const canon = (v) => (Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v);
-export async function applyImport(out, { run_id = "imp_test", extras } = {}) {
-  for (const r of out.records || []) {
-    const fields = (getType(r.type) && getType(r.type).rotorFields) || [];
-    const mapped = Object.fromEntries(fields.map((f) => [f, getPath(r.data, f)]).filter(([, v]) => v !== undefined));
-    const imp = { run_id, at: new Date(0).toISOString(), hash: createHash("sha256").update(JSON.stringify(canon(mapped))).digest("hex") };
-    try {
-      await store.createRecord(r.type, { ...r.data, import: imp }, IMPORT);
-    } catch (e) {
-      if (e.name !== "ExistsError") throw e;
-      await store.updateRecord(r.type, r.data.id, (cur) => {
-        const next = JSON.parse(JSON.stringify(cur));
-        for (const [f, v] of Object.entries(mapped)) if (cur.import || blank(getPath(cur, f))) setPath(next, f, v);
-        next.import = imp;
-        return next;
-      }, IMPORT);
-    }
-  }
-  for (const p of out.pointers || []) {
-    if (p.list) await store.updatePointerList(p.kind, p.key, (l) => [...l, p.value.id]);
-    else await store.claimPointer(p.kind, p.key, p.value);
-  }
-  return extras ? extras(out, IMPORT) : null;
+// What the import runner does with an import phase's output: since M2c this
+// is the real runner's applyOutput() (netlify/lib/crm/modules/import/
+// runner.mjs): records written with field ownership (a new record gets its
+// `import` block and base; one the import made before takes Rotor's new
+// values unless someone edited them; a CRM-created record the resolution
+// linked fills only its empty fields), then the pointers, then the extras
+// (contacts' applyExtras). The write context is the import's, without bulk
+// (these tests read the index rows). → the extras' counts.
+const { applyOutput } = await import("../../../netlify/lib/crm/modules/import/runner.mjs");
+export async function applyImport(out, { run_id = "ir_00000000000000000001", extras } = {}) {
+  const ph = { records: {}, skipped: {}, warnings: {}, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, kept_fields: 0, errors: [] };
+  const o = extras ? out : { records: out.records, pointers: out.pointers, warnings: out.warnings };
+  await applyOutput(o, { runId: run_id, ph, ctx: IMPORT, source: null, state: { types: [] } });
+  return ph.extras;
 }

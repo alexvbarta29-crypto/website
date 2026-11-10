@@ -165,13 +165,16 @@ const PTR_RE = /^ptr\/rotor\/([a-z0-9_-]{1,40})\/(.+)$/;
 
 // One part of the id map: the pointers in `keys` → [rotor type, Rotor id, CRM id, CRM type].
 export async function buildIdMapPart(runId, n, keys) {
-  const vals = await Promise.all(keys.map(async (k) => {
-    const m = PTR_RE.exec(k);
-    if (!m) return null;
-    const got = await getRaw(k);
-    const id = got && got.data && typeof got.data.id === "string" ? got.data.id : null;
-    return id ? [m[1], m[2], id, typeOf(id) || ""] : null;
-  }));
+  const vals = [];
+  for (let i = 0; i < keys.length; i += 16) {
+    vals.push(...await Promise.all(keys.slice(i, i + 16).map(async (k) => {
+      const m = PTR_RE.exec(k);
+      if (!m) return null;
+      const got = await getRaw(k);
+      const id = got && got.data && typeof got.data.id === "string" ? got.data.id : null;
+      return id ? [m[1], m[2], id, typeOf(id) || ""] : null;
+    })));
+  }
   await putRaw(idmapKey(runId, n), { rows: vals.filter(Boolean), at: nowIso() });
 }
 

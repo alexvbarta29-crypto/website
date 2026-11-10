@@ -138,12 +138,14 @@ export async function receiveChunk(ir, name, bytes, { sha256: claimed, env } = {
   if (!bytes || !bytes.length) throw new InputError("That chunk is empty.", "chunk");
   const sha = sha256Hex(bytes);
   if (claimed && claimed.toLowerCase() !== sha) throw new InputError("The upload got damaged on the way (checksum). Send it again.", "x-content-sha256");
+  // the manifest first: every chunk is then checked against its checksum
   const m = ir.manifest || null;
-  const listed = m ? manifestChunk(m, name) : null;
-  if (m && !listed) throw new InputError("That chunk isn't in this run's manifest.", "name");
-  if (listed && listed.sha256 !== sha) throw new ConflictError("That chunk isn't the one this run's manifest lists (a different pack?).");
+  if (!m) throw new ConflictError("Send the pack's manifest.json first.");
+  const listed = manifestChunk(m, name);
+  if (!listed) throw new InputError("That chunk isn't in this run's manifest.", "name");
+  if (listed.sha256 !== sha) throw new ConflictError("That chunk isn't the one this run's manifest lists (a different pack?).");
   const chunk = openChunk(Buffer.from(bytes).toString("utf8"), name, env);
-  if (listed && listed.rows !== chunk.rows.length) throw new InputError("That chunk's rows don't match its manifest.", "chunk");
+  if (listed.rows !== chunk.rows.length) throw new InputError("That chunk's rows don't match its manifest.", "chunk");
   const invalid = checkRows(chunk.entity, chunk.rows);
   await putRaw(rawKey(ir.id, chunk.entity, mm[2]), { entity: chunk.entity, n: chunk.n, rows: chunk.rows, sha256: sha, invalid: invalid.slice(0, 50), invalid_count: invalid.length, received_at: nowIso() });
   return { entity: chunk.entity, rows: chunk.rows.length, invalid: invalid.length };

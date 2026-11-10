@@ -19,7 +19,7 @@
 // suppressions, merge candidates: contacts' applyExtras). Records first so
 // a crash leaves no pointer to a record that isn't there; a row redone
 // after a crash lands on the same ids and changes nothing twice.
-//   - The cursor is saved every few rows, at the end of the step, and
+//   - The cursor is saved every 5 seconds (or 50 rows), at the end of the step, and
 //     before an error is passed on, so a resumed run starts at the row that
 //     failed: finished rows and finished phases are never done again.
 //   - A storage error after some rows ends the step quietly (the next pass
@@ -51,7 +51,7 @@ import { stagedChunks, readChunk } from "./staging.mjs";
 import { buildReport, buildIdMapPart, IDMAP_BATCH } from "./report.mjs";
 
 // Tests turn these down to force many small steps.
-export const IMPORT_LIMITS = { minLeftMs: 25000, checkpointRows: 10, checkpointMs: 5000, stepRows: Infinity };
+export const IMPORT_LIMITS = { minLeftMs: 25000, checkpointRows: 50, checkpointMs: 5000, stepRows: Infinity };
 export const RUN_KIND = "import";
 export const stateKey = (runId) => `imp/${runId}/state`;
 

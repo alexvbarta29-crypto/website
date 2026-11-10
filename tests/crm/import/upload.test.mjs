@@ -127,8 +127,14 @@ test("pack → upload → run: sealed chunks under 4.5 MB, a key for one run onl
     const fresh = await t.api(`/import/runs/${runB}/key`, { method: "POST", as: owner, body: {} });
     assert.equal(fresh.status, 200);
     assert.equal((await put(runB, keyB)).status, 401, "the old key stays dead");
-    // run B has no manifest yet: any chunk is taken as long as it opens (here: from another pack's run? no, the same sealed chunk)
-    const okPut = await t.api(`/import/runs/${runB}/chunks/${chunkName}`, { method: "PUT", headers: { ...bearer(fresh.body.data.upload_key), "x-content-sha256": sha(chunkBytes) }, raw: chunkBytes, csrf: false, client: false });
+    // run B has no manifest yet: no chunk before it (every chunk is checked against the manifest's checksum)
+    const keyB2 = fresh.body.data.upload_key;
+    const putB = () => t.api(`/import/runs/${runB}/chunks/${chunkName}`, { method: "PUT", headers: { ...bearer(keyB2), "x-content-sha256": sha(chunkBytes) }, raw: chunkBytes, csrf: false, client: false });
+    const early = await putB();
+    assert.equal(early.status, 409);
+    assert.match(early.body.error.message, /manifest\.json first/);
+    assert.equal((await t.api(`/import/runs/${runB}/manifest`, { method: "PUT", headers: bearer(keyB2), body: manifest, csrf: false, client: false })).status, 200);
+    const okPut = await putB();
     assert.equal(okPut.status, 200);
     assert.equal(okPut.body.data.entity, "customers");
   } finally {
@@ -164,13 +170,17 @@ test("chunks are checked: manifest checksum, the key that sealed them, the name 
     const ok = await putAs("customers-0001", good, { "x-content-sha256": sha(good) });
     assert.equal(ok.status, 200);
     assert.deepEqual(ok.body.data, { entity: "customers", rows: 1, invalid: 0 });
-    // a chunk sealed for another key, or carrying another entity's name, is refused (a run without a manifest takes any name)
-    const loose = await t.api("/import/runs", { method: "POST", as: owner, body: {} });
-    const lk = { authorization: `Bearer ${loose.body.data.upload_key}` };
-    const put2 = (name, bytes) => t.api(`/import/runs/${loose.body.data.run.id}/chunks/${name}`, { method: "PUT", headers: lk, raw: bytes, csrf: false, client: false });
-    assert.equal((await put2("customers-0001", box({ v: 1, kind: "barta-import-chunk", entity: "customers", n: 1, rows }, other.publicKeyPem))).status, 400);
-    assert.equal((await put2("leads-0001", good)).status, 400, "the name and the sealed entity must agree");
-    const bad = await put2("customers-0001", box({ v: 1, kind: "barta-import-chunk", entity: "customers", n: 1, rows: [{ id: "bad id with spaces" }, ...rows] }));
+    // a chunk sealed for another key, or carrying another entity's name, is refused; a row no phase takes is counted
+    const runWith = async (name, bytes, rows = 1) => {
+      const ent = name.split("-")[0];
+      const man = { v: 1, kind: "barta-import-manifest", as_of: "2026-11-10", entities: { [ent]: { rows, chunks: [{ name, rows, sha256: sha(bytes) }] } } };
+      const r = await t.api("/import/runs", { method: "POST", as: owner, body: { manifest: man } });
+      return t.api(`/import/runs/${r.body.data.run.id}/chunks/${name}`, { method: "PUT", headers: { authorization: `Bearer ${r.body.data.upload_key}` }, raw: bytes, csrf: false, client: false });
+    };
+    assert.equal((await runWith("customers-0001", box({ v: 1, kind: "barta-import-chunk", entity: "customers", n: 1, rows }, other.publicKeyPem))).status, 400, "sealed for another key");
+    assert.equal((await runWith("leads-0001", good)).status, 400, "the name and the sealed entity must agree");
+    const badBytes = box({ v: 1, kind: "barta-import-chunk", entity: "customers", n: 1, rows: [{ id: "bad id with spaces" }, ...rows] });
+    const bad = await runWith("customers-0001", badBytes, 2);
     assert.equal(bad.status, 200);
     assert.equal(bad.body.data.invalid, 1, "a row no phase takes is counted, kept, and skipped later");
     // starting needs every chunk the manifest lists
@@ -193,7 +203,8 @@ test("an owner's session uploads from the phone with the CSRF checks; a tech or 
   process.env.OFFICE_DATA_KEY = keys.private;
   try {
     const good = Buffer.from(JSON.stringify(pack.sealClean({ v: 1, kind: "barta-import-chunk", entity: "members", n: 1, rows: [] }, readFileSync(keys.pem, "utf8"))));
-    const c = await t.api("/import/runs", { method: "POST", as: owner, body: {} });
+    const manifest = { v: 1, kind: "barta-import-manifest", as_of: "2026-11-10", entities: { members: { rows: 0, chunks: [{ name: "members-0001", rows: 0, sha256: sha(good) }] } } };
+    const c = await t.api("/import/runs", { method: "POST", as: owner, body: { manifest } });
     const id = c.body.data.run.id;
     const put = (opts) => t.api(`/import/runs/${id}/chunks/members-0001`, { method: "PUT", raw: good, ...opts });
     assert.equal((await put({ as: owner, csrf: false })).status, 403, "a session write needs X-CRM");
