@@ -1,8 +1,16 @@
 {
- "count": 162,
+ "count": 163,
  "rating": 5.0,
- "updated": "2026-11-10T04:10:25.517Z",
+ "updated": "2026-11-10T20:52:47.677Z",
  "reviews": [
+  {
+   "id": "833c20c9ef",
+   "name": "Stephanie Cappelleri",
+   "stars": 5,
+   "text": "BARTA Window Washing did a fantastic job.  They are very professional, put in their own elbow grease scrubbing the windows, and making sure our windows looked superb. They definitely are all about customer satisfaction. I recommend them hands-down to others.",
+   "created": "2026-11-10T18:09:29.972907Z",
+   "reply": "Thank you, Stephanie! A little elbow grease goes a long way, and we're so happy your windows came out looking superb. We really appreciate you recommending us and can't wait to make them sparkle again next time!"
+  },
   {
    "id": "d7ec6dd068",
    "name": "K Hhinterm",
