@@ -268,7 +268,7 @@
       if (ok || addrVerified.value !== "no") return true;
       // Not on the map (new builds often aren't yet): fine, as long as the
       // town or ZIP is there for the server's area check: "123 Main St,
-      // Delano", "3624 William Way Independence MN 55359" or "... 55359".
+      // Delano", "100 Example Way Independence MN 55359" or "... 55359".
       const v = addrInput.value;
       return /,\s*[A-Za-z]/.test(v) || /\b\d{5}(-\d{4})?\s*$/.test(v.trim()) || /\s(MN|Minn\.?|Minnesota)\.?(\s+\d{5})?\s*$/i.test(v.trim());
     });

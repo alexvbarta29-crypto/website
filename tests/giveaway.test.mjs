@@ -678,8 +678,8 @@ test("a new-build street the map doesn't know, typed with its town, is accepted"
   globalThis.fetch = async (url, opts) => (String(url).includes("nominatim")
     ? new Response("[]", { status: 200 }) : base(url, opts));
   try {
-    for (const [i, a] of ["3624 William Way Independence MN 55359", "3626 William Way, Independence, MN 55359",
-                          "3628 William Way, Independence"].entries()) {
+    for (const [i, a] of ["100 Example Way Independence MN 55359", "102 Example Way, Independence, MN 55359",
+                          "104 Example Way, Independence"].entries()) {
       const r = await ok(post(entry({ phone: "952555044" + i, address: a, address_city: "", address_zip: "",
         address_state: "", address_verified: "typed", address_lat: "", address_lng: "" })));
       assert.equal(r.area, "in", a);
