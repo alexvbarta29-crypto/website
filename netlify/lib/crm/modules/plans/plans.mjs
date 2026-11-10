@@ -790,7 +790,7 @@ export async function ordinalSync(ctx) {
 // GET /plans/due?month=: visits due by the month (default this one) that have no visit yet.
 export async function plansDueList({ month } = {}) {
   const m = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(month || "")) ? month : monthOf(today());
-  const rows = (await readIndex("plans", "")).rows.filter((r) => ["active", "pending", "cancelling"].includes(r.st) && r.due && r.due <= m).slice(0, 150);
+  const rows = (await readIndex("plans", "")).rows.filter((r) => ["active", "cancelling"].includes(r.st) && r.due && r.due <= m).slice(0, 150);
   const plans = (await getRecords("plan", rows.map((r) => r.id))).filter(Boolean).map((g) => g.data);
   const out = [];
   for (const p of plans) {
