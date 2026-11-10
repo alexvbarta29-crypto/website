@@ -273,3 +273,28 @@ test("the dry-run adapter's magic values: a filtered number fails with 30007", a
   assert.equal(r.simulated, "failed");
   assert.deepEqual(D.data.json(`rec/outbox/${r.outbox_id}`).simulated, { status: "failed", code: "30007" });
 });
+
+test("marketing email carries an unsubscribe link and RFC 8058 one-click headers when it really goes out", async () => {
+  setEnv({ ...PROD_ENV, POSTMARK_SERVER_TOKEN: "not-real" });
+  const prod = deployContext(new Request(HOST + "/"), {});
+  const sent = [];
+  A.registerAdapter("email", "test", { async send(a) { sent.push(a); return { status: "sent", provider_id: "pm-1" }; } });
+  try {
+    const staff = await scope(() => seedContact(70, { flags: { test: true } }), prod);
+    await scope(() => store.putSetting("integrations", { email: { mode: "live", test_allowlist: [staff.emails[0].address] } }, { ...W8, origin: "worker" }), prod);
+    const r = await send({ contact_id: staff.id, channel: "email", template_key: "promo_email", origin: { kind: "campaign" } }, {}, prod);
+    assert.equal(r.status, "sent");
+    assert.equal(sent.length, 1);
+    assert.match(sent[0].headers["List-Unsubscribe"], /^<https:\/\/www\.bartawindowwashing\.com\/api\/portal\/unsubscribe\/[0-9A-Za-z]{10}>$/);
+    assert.equal(sent[0].headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
+    assert.match(sent[0].text, /Unsubscribe: https:\/\/www\.bartawindowwashing\.com\/p\/unsubscribe\/[0-9A-Za-z]{10}$/);
+    assert.match(sent[0].html, /Unsubscribe<\/a>/);
+    assert.equal(sent[0].stream, "broadcast");
+    // the dry-run outbox shows where the footer goes without making a link
+    const plain = await scope(() => seedContact(71));
+    const d = await send({ contact_id: plain.id, channel: "email", template_key: "promo_email", origin: { kind: "campaign" } });
+    assert.match(D.data.json(`rec/outbox/${d.outbox_id}`).body, /Unsubscribe: https:\/\/www\.bartawindowwashing\.com\/p\/unsubscribe\/…$/);
+  } finally {
+    A.__unregisterAdapterForTests("email", "test");
+  }
+});

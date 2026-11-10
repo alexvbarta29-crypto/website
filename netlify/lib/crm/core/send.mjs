@@ -316,10 +316,28 @@ export async function sendMessage(msg, ctx = {}) {
   const segments = channel === "sms" ? smsSegments(text) : undefined;
   const outboxCtx = { ...base, marker_key: marker._key, footer_appended: channel === "sms" ? footerAppended : undefined, ctx: wctx };
 
+  // marketing email: an unsubscribe link in the footer and List-Unsubscribe
+  // with one-click POST (RFC 8058, §5.7.1). Dry-run shows where it goes
+  // without making the link (a dry-run send writes nothing but the outbox).
+  let html = rendered.html;
+  const headers = { ...(msg.headers || {}) };
+  if (channel === "email" && category === "marketing") {
+    if (a.mode === "dry_run") {
+      text += "\n\nUnsubscribe: https://www.bartawindowwashing.com/p/unsubscribe/…";
+    } else {
+      const { unsubscribeLink } = await import("../portal/core.mjs");
+      const u = await unsubscribeLink({ contact_id: contact.id, channel: "email", address: to });
+      text += `\n\nUnsubscribe: ${u.url}`;
+      if (html) html = html.replace(/<\/body>/, `<p style="text-align:center;font-size:12px;color:#85858d;margin:16px 0 0"><a href="${u.url}" style="color:#85858d">Unsubscribe</a></p></body>`);
+      headers["List-Unsubscribe"] = `<${u.one_click}>`;
+      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+    }
+  }
+
   if (a.mode === "dry_run") {
     const res = channel === "sms"
       ? await a.impl.send({ to, body: text, from: number, outbox: outboxCtx })
-      : await a.impl.send({ to, subject: rendered.subject, text, html: rendered.html, outbox: outboxCtx });
+      : await a.impl.send({ to, subject: rendered.subject, text, html, outbox: outboxCtx });
     if (!h) await advance({ state: "done", result: "dry_run", outbox_id: res.outbox_id });
     await noteSent(dup);
     return { status: "dry_run", simulated: res.status, outbox_id: res.outbox_id, marker_key: marker._key, mode: "dry_run", footer_appended: footerAppended, segments };
@@ -335,8 +353,8 @@ export async function sendMessage(msg, ctx = {}) {
       ? await a.impl.send({ to, body: text, from: a.mode === "test" ? sms.test_from : sms.from, markerKey: marker._key })
       : await a.impl.send({
         to, from: email.from || `${company.name || "Barta Window Washing"} <${company.email || "office@bartawindowwashing.com"}>`, replyTo: email.reply_to || company.email,
-        subject: rendered.subject, text, html: rendered.html, stream: category === "marketing" ? "broadcast" : "outbound",
-        headers: msg.headers || {}, tag: template ? template.key : "message", metadata: { crm_marker: marker._key },
+        subject: rendered.subject, text, html, stream: category === "marketing" ? "broadcast" : "outbound",
+        headers, tag: template ? template.key : "message", metadata: { crm_marker: marker._key },
       });
   } catch (e) {
     // the call may or may not have happened: the marker stays `sending` and

@@ -42,6 +42,7 @@ const PRECACHE = [
   "/crm-app/modules/system/team.js",
   "/crm-app/modules/system/today.js",
   "/crm-app/modules/work/manifest.js",
+  "/crm-app/portal/core.js",
   "/crm-app/styles/crm.css",
   "/crm-app/version.js",
 ];
