@@ -17,8 +17,11 @@ async function list(ctx) {
   if (!STATUSES.has(status)) throw new InputError("Pick a status.", "status");
   return { data: await listPendingActions({ status }) };
 }
+// One approval with what the owner judges: its preview and, for stale
+// offline work, each item (method, path, times, body).
 async function one(ctx) {
-  return { data: pendingView(await getPendingAction(ctx.params.id)) };
+  const a = await getPendingAction(ctx.params.id);
+  return { data: { ...pendingView(a), ...(Array.isArray(a.items) ? { item_list: a.items } : {}) } };
 }
 const decide = (decision) => async (ctx) => ({ data: pendingView(await decidePendingAction(ctx.params.id, decision, ctx)) });
 async function review(ctx) {

@@ -8,7 +8,7 @@ import { isId } from "../../core/ids.mjs";
 import { tsKey } from "../../core/clock.mjs";
 import { InputError } from "../../core/errors.mjs";
 import { contactShard, statsIndexRow, STATS_INDEX, STATS_INDEX_PART } from "../../core/stats.mjs";
-import { shape, str, enumValue, bool, email, phoneE164, int, arr } from "../../core/validate.mjs";
+import { shape, str, enumValue, bool, email, phoneE164, int, arr, isoTime } from "../../core/validate.mjs";
 
 // rec/contact_stats/{contactId}: envelope + one part per owning module.
 // Written only by crm-store updateStats(); never a user edit, never imported
@@ -187,6 +187,7 @@ function validateFile(data, { op } = {}) {
     caption: (v, f) => str(v, { field: f, max: 200 }) || undefined,
     tag: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, FILE_TAGS, { field: f, stored })),
     has_thumb: (v, f) => bool(v, { field: f }),
+    taken_at: (v, f) => isoTime(v, { field: f }),
     source: (v, f) => str(v, { field: f, max: 20 }) || "staff",
   });
   return out;

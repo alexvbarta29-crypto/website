@@ -75,6 +75,8 @@ test("a PDF is always an attachment; an unknown or HTML upload is refused for st
   assert.equal((await upload(owner, BYTES.jpeg(), "text/html")).status, 400, "a declared type outside the list");
   assert.equal((await upload(owner, BYTES.unknown(), "image/jpeg")).status, 400);
   assert.equal((await upload(owner, BYTES.svg(), "image/png")).status, 400);
+  assert.equal((await upload(owner, BYTES.jpeg(), "image/jpeg", "&taken_at=yesterday")).status, 400, "taken_at is a time");
+  assert.equal((await upload(owner, BYTES.jpeg(), "image/jpeg", "&taken_at=2026-11-17T06:50:00.000Z")).status, 201);
 });
 
 test("imported HTML, SVG and unknown media are stored download-only and served as octet-stream attachments", async () => {

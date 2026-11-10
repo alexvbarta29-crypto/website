@@ -83,6 +83,9 @@ export function writePrivate(target, text) {
 
 // ------------------------------------------------------------ arguments
 
+// The key only ever goes to the CRM's own site.
+export const SITE = "https://www.bartawindowwashing.com";
+
 export function parseArgs(args) {
   const out = { site: null, out: DEFAULT_OUT, date: null, mark: true, publicKey: PUBLIC_KEY, unknown: [] };
   for (let i = 0; i < args.length; i++) {
@@ -142,7 +145,7 @@ export async function pull({ site, key, out, date, mark = true, publicKeyPem, fe
 
 export async function main(argv = process.argv.slice(2), env = process.env, io = { log: console.log, error: console.error }) {
   const a = parseArgs(argv);
-  if (a.unknown.length || !a.site || !/^https:\/\/[a-z0-9.-]+(?::\d+)?\/?$/i.test(a.site) || (a.date && !DATE_RE.test(a.date))) {
+  if (a.unknown.length || !a.site || a.site.replace(/\/+$/, "") !== SITE || (a.date && !DATE_RE.test(a.date))) {
     io.error("usage: CRM_BACKUP_KEY=bcrm_... node build/crm_backup_pull.mjs --site https://www.bartawindowwashing.com [--out DIR] [--date YYYY-MM-DD] [--no-mark]");
     return 1;
   }

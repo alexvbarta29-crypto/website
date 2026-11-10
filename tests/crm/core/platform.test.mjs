@@ -216,6 +216,7 @@ test("approvals: a phone's stale offline work becomes one pending action; the ba
   const id = list.body.data[0].id;
   const one = await t.api(`/pending-actions/${id}`, { as: owner });
   assert.equal(one.body.data.items, 1);
+  assert.equal(one.body.data.item_list[0].path, "/visits/vs_00000000000000000001/checklist", "the owner sees what the phone tried to do");
   const ok = await t.api(`/pending-actions/${id}/approve`, { method: "POST", as: owner, body: {} });
   assert.equal(ok.status, 200);
   assert.equal(ok.body.data.status, "done", "reviewed; the office acts on each item by hand");
