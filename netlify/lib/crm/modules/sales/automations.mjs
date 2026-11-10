@@ -215,6 +215,11 @@ export async function abandonSweep(ctx) {
     if (ctx.budget && ctx.budget.left() < 5000) return { done: false, cursor: d.id, progress };
     const last = Date.parse(d.la || d.op || d.u || 0);
     if (!Number.isFinite(last) || t.getTime() - last < limit) continue;
+    // a call or a text to the contact since (logged outside a follow-up) is activity too
+    const st = await getRecord("contact_stats", d.c).catch(() => null);
+    const s = (st && st.data && st.data.sales) || {};
+    const touched = Math.max(...[s.last_called_at, s.last_touch_at, s.last_inbound_call_at].map((x) => Date.parse(x || 0) || 0));
+    if (touched && t.getTime() - touched < limit) continue;
     const r = await markDeal(d.id, "abandoned", {}, ctx).catch((e) => { console.error(`crm:sales: deal not abandoned (${safeErr(e)})`); return { changed: false }; });
     if (r.changed || r.would) progress += 1;
   }

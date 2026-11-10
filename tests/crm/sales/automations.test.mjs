@@ -5,7 +5,7 @@
 // late ends its follow-up).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, makeLead, enrollment, outbox, drain, pin, E, AUTO, intake, AS } from "./fixtures.mjs";
+import { setup, makeLead, enrollment, outbox, drain, pin, E, AUTO, intake, AS, store } from "./fixtures.mjs";
 
 const { automationCtx } = await import("../../../netlify/lib/crm/core/activity.mjs");
 const sweepCtx = (key, mode = { system_of_record: "rotor", paused: false }) => ({ ...automationCtx({ mode, key, requestId: "test" }), budget: null, deploy: null, cursor: null });
@@ -103,5 +103,21 @@ test("sales.cadence: a call step's text goes anyway (dry-run) when the cadence s
     assert.equal(ex.status, "stopped");
     assert.equal(ex.stop_reason, "expired");
     assert.equal(outbox(t).filter((o) => o.contact_id === d.id).length, 0, "new_lead waits: no text on its own");
+  } finally { t.done(); }
+});
+
+test("sales.deal_abandon: a call logged outside a follow-up keeps a quiet deal alive", async () => {
+  const { t, owner } = await setup("2026-10-01T15:00:00Z");
+  try {
+    const c = await makeLead(owner);
+    const d = (await store.createRecord("deal", { contact_id: c.id, services: ["Gutter Cleaning"], status: "open", opened_at: "2026-10-01T15:00:00.000Z", last_activity_at: "2026-10-01T15:00:00.000Z", history: [] }, AS(owner))).data;
+    pin("2026-11-10T16:00:00Z");
+    assert.equal((await t.api("/calls", { method: "POST", as: owner, body: { contact_id: c.id, outcome: "spoke", note: "Thinking about spring." } })).status, 200);
+    pin("2026-11-17T08:30:00Z");                                 // 47 days after the deal opened, a week after the call
+    assert.equal((await AUTO.abandonSweep(sweepCtx("sales.deal_abandon"))).progress, 0);
+    assert.equal((await store.getRecord("deal", d.id)).data.status, "open");
+    pin("2026-12-15T08:30:00Z");                                 // 35 days after the call
+    assert.equal((await AUTO.abandonSweep(sweepCtx("sales.deal_abandon"))).progress, 1);
+    assert.equal((await store.getRecord("deal", d.id)).data.status, "abandoned");
   } finally { t.done(); }
 });

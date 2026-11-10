@@ -11,8 +11,8 @@
 .sl-cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .sl-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .sl-card.late{border-color:#f3c2bb;box-shadow:inset 4px 0 0 var(--coral)}
-.sl-card .top{display:flex;align-items:flex-start;gap:10px;min-width:0;color:inherit;text-decoration:none;min-height:44px}
-.sl-card .top .who{flex:1;min-width:0}
+.sl-card .sl-top{display:flex;align-items:flex-start;gap:10px;min-width:0;color:inherit;text-decoration:none;min-height:44px}
+.sl-card .sl-top .who{flex:1;min-width:0}
 .sl-card .nm{display:block;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sl-card .sub{display:block;font-size:13px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .sl-card .when{flex:none;font:600 13px/1.2 var(--text);color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums}
@@ -24,6 +24,7 @@
 .sl-pending svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .sl-meta{display:flex;flex-wrap:wrap;gap:6px}
 .sl-dry{display:flex;gap:10px;align-items:flex-start}
+.sl-dry svg{width:20px;height:20px;flex:none;margin-top:1px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------------------------------------------------------------- the sheets */
 .sl-outcomes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -48,6 +49,8 @@
 .sl-hist li:first-child{border-top:0}
 .sl-hist .w{color:var(--ink-3);font-size:12.5px;flex:none;text-align:right}
 .sl-preview{white-space:pre-wrap}
+/* a link in a label/value list: a 44 px tap target that keeps the line height */
+.sl-kv a{display:inline-block;padding:13px 0;margin:-13px 0}
 
 /* ---------------------------------------------------------------- tasks */
 .sl-task{display:flex;align-items:center;gap:6px}
@@ -61,8 +64,12 @@
 .sl-step{border:1px solid var(--line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:#fff}
 .sl-step .hd{display:flex;align-items:center;gap:8px}
 .sl-step .hd b{flex:1;font:800 15px/1.2 var(--head)}
-.sl-grid3{display:grid;grid-template-columns:72px 1fr 1fr;gap:10px}
+.sl-grid3{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px}
+.sl-grid3 .field{min-width:0}
+.sl-grid3 .field input{min-width:0}
 .sl-grid3 .field input{padding-left:10px;padding-right:10px}
+/* phones: the day on its own line, so the times show whole */
+@media (max-width:430px){ .sl-grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sl-grid3>:first-child{grid-column:1/-1;max-width:120px} }
 .sl-sources{display:flex;flex-wrap:wrap;gap:0 16px}
 .sl-sources .check{flex:1 1 150px}
 

@@ -21,7 +21,7 @@ export default {
     return html`<div class="stack">
       <p class="muted">For <b>${s.contact.name}</b></p>
       ${open.length ? html`<div class="note">Already following up: ${open.map((e) => e.cadence_name).join(", ")}. Starting the same cadence again opens that one.</div>` : ""}
-      <div class="list">${s.cadences.map((c) => html`<label class="row check" style="margin:0">
+      <div class="list">${s.cadences.map((c) => html`<label class="row check" style="margin:0;padding:10px 14px;align-items:center">
         <input ${attrs({ type: "radio", name: "cadence", value: c.key, checked: s.pick === c.key })}>
         <span class="who"><span class="nm">${c.name}</span></span>
         ${open.some((e) => e.cadence_key === c.key) ? enrollmentPill("active") : ""}

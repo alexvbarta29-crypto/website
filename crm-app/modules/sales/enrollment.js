@@ -71,7 +71,7 @@ export default {
     return html`<div class="stack">
       <section class="card">
         <div class="row" style="padding:0;min-height:0"><h2 style="flex:1;margin:0">${s.cadence ? s.cadence.name : e.cadence_key}</h2>${enrollmentPill(e.status)}</div>
-        <dl class="kv" style="margin-top:10px">
+        <dl class="kv sl-kv" style="margin-top:10px">
           ${s.contact ? html`<dt>Contact</dt><dd><a class="linkish" href="${"#/contacts/" + encodeURIComponent(s.contact.id)}">${s.contact.name}</a></dd>` : ""}
           <dt>Started</dt><dd>${dateTime(e.started_at)}</dd>
           ${e.deal_id ? html`<dt>Deal</dt><dd><a class="linkish" href="${"#/deals/" + encodeURIComponent(e.deal_id)}">Open the deal</a></dd>` : ""}

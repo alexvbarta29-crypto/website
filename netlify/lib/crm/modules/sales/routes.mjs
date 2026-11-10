@@ -88,8 +88,9 @@ const dealsRoute = async (ctx) => {
 
 const dealRoute = async (ctx) => {
   const got = await record("deal", ctx.params.id, "deal");
-  const contact = await contactOf(got.data.contact_id, ctx);
-  const enrollments = (await enrollmentsOf(got.data.contact_id)).filter((e) => e.deal_id === got.data.id).map(view);
+  const [contact, list, cads] = await Promise.all([contactOf(got.data.contact_id, ctx), enrollmentsOf(got.data.contact_id), readIndex("cadences", "")]);
+  const cadName = new Map(cads.rows.map((r) => [r.id, r.n]));
+  const enrollments = list.filter((e) => e.deal_id === got.data.id).map((e) => ({ ...view(e), cadence_name: cadName.get(e.cadence_id) || e.cadence_key }));
   return { data: { deal: view(got.data), contact: contact ? { id: contact.id, name: nameOf(contact), phone: primaryPhone(contact), lifecycle: contact.lifecycle } : null, enrollments }, etag: got.etag };
 };
 

@@ -67,7 +67,7 @@ export default {
     return html`<div class="stack">
       <section class="card">
         <div class="row" style="padding:0;min-height:0"><h2 style="flex:1;margin:0">${d.title}</h2>${dealPill(d.status)}</div>
-        <dl class="kv" style="margin-top:10px">
+        <dl class="kv sl-kv" style="margin-top:10px">
           ${s.contact ? html`<dt>Contact</dt><dd><a class="linkish" href="${"#/contacts/" + encodeURIComponent(s.contact.id)}">${s.contact.name}</a></dd>` : ""}
           <dt>Value</dt><dd class="num">${d.value_cents != null ? money(d.value_cents) : "Not quoted yet"}</dd>
           ${(d.services || []).length ? html`<dt>Services</dt><dd>${d.services.join(", ")}</dd>` : ""}
@@ -85,7 +85,7 @@ export default {
         ${["open", "quoted"].includes(d.status) ? html`<button type="button" class="btn danger" data-lose>Mark as lost</button>` : ""}
       </div>
       ${(s.enrollments || []).length ? html`<div class="section-h">Follow-ups</div><ul class="list">${s.enrollments.map((e) => html`<li><a class="row" href="${"#/enrollments/" + encodeURIComponent(e.id)}">
-        <span class="who"><span class="nm">${e.cadence_key === "estimate_followup" ? "Estimate follow-up" : e.cadence_key === "new_lead" ? "New lead follow-up" : e.cadence_key}</span><span class="sub">${(e.cur && e.cur.label) || ""}</span></span>
+        <span class="who"><span class="nm">${e.cadence_name || e.cadence_key}</span><span class="sub">${(e.cur && e.cur.label) || ""}</span></span>
         <span class="end">${enrollmentPill(e.status)}<span class="chev" aria-hidden="true"></span></span></a></li>`)}</ul>` : ""}
       ${rotorRows.length ? html`<div class="section-h">From Rotor</div><section class="card"><ul class="sl-hist">${rotorRows.map((h) => html`<li><span>${h.pipeline}: ${h.stage} (${h.status_raw}${h.archived ? ", archived" : ""})</span><span class="w">${dateTime(h.at)}</span></li>`)}</ul></section>` : ""}
     </div>`;

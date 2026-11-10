@@ -72,7 +72,10 @@ adds it. Variables: `{{first_name|there}}`, `{{sender_first_name}}`,
   Monday; the day before Thanksgiving at 17:30: Friday).
 - A step keeps its own window on its own day when it can; a step pushed
   later (the previous one logged late) takes the next open window after the
-  previous step's. Day N is counted in open days from day 1.
+  previous step's. Day N is counted in open days from day 1, and the days
+  between steps stay: when day 1's last call slips into the next morning,
+  day 2's calls start the open day after (a lead at 10:30 the day before
+  Thanksgiving: Wednesday 12 and 4, Friday 9, then Saturday, then Monday).
 - Changes to a cadence apply from each lead's next step.
 - A text never goes out in quiet hours (core sender: 08:00-20:00 for
   cadence texts).
@@ -104,7 +107,8 @@ Derived from events, overridable by hand (logged): intake → `open`; first
 quote sent → `quoted`; quote approved or converted, or a job done without
 a quote → `won`; quote declined or archived by the estimate follow-up →
 `lost` (`no_response`); open or quoted with nothing for `abandon_days`
-(30) and no open follow-up → `abandoned`. A won deal isn't lost by an
+(30) and no open follow-up → `abandoned` (a call or text to the contact
+counts as activity, also one logged outside a follow-up). A won deal isn't lost by an
 event (only by hand).
 
 ## Endpoints

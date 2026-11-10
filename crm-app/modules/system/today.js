@@ -43,6 +43,9 @@ export default {
     const alerts = (s.health && s.health.alerts) || [];
     const stuck = s.health && s.health.status && (s.health.status.fast === "stuck" || s.health.status.bulk === "stuck");
     const mode = (s.health && s.health.mode) || {};
+    // the modules' cards; one with something to show replaces "Nothing needs you"
+    const cards = (s.cards || []).map((c) => { try { return c.mod.render(c.state, ctx); } catch (e) { return ""; } });
+    const busy = cards.some((c) => String(c || "").trim() !== "");
     const links = [
       ctx.can("contacts:read_all") && router.has("/contacts") ? html`<a class="tile" href="#/contacts">${icon("contacts")}<span>Contacts</span></a>`
         : ctx.can("contacts:read_all") && router.has("/legacy/customers") ? html`<a class="tile" href="#/legacy/customers">${icon("contacts")}<span>Customers</span></a>` : "",
@@ -60,10 +63,10 @@ export default {
       ${mode.paused ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>The CRM is paused</h2><p>${mode.paused_reason === "restore" ? "A backup was restored. " : ""}Nothing is texted, emailed, charged or automated${mode.paused_at ? ` since ${dateTime(mode.paused_at)}` : ""}. An owner resumes it on Settings → Data.</p></a>` : ""}
       ${stuck || alerts.length ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>Needs a look</h2>${stuck ? html`<p>A worker hasn't finished a pass in 3 hours.</p>` : ""}${alerts.slice(0, 3).map((a) => html`<p>${a.text}</p>`)}</a>` : ""}
       ${b.approvals && ctx.can("campaigns:send") ? html`<a class="tile" href="#/approvals">${icon("check")}<span>${plural(b.approvals, "approval")} waiting</span><span class="n">${b.approvals}</span></a>` : ""}
-      ${(s.cards || []).map((c) => { try { return c.mod.render(c.state, ctx); } catch (e) { return ""; } })}
+      ${cards}
       ${tech
         ? html`<div class="card empty"><div class="art">${icon("today")}</div><h2>No visits today</h2><p>Your visits show up here, in route order, once scheduling moves into the CRM.</p></div>`
-        : html`<div class="card empty"><div class="art">${icon("sun")}</div><h2>Nothing needs you right now</h2><p>Leads, replies, visits and money show up here as each part of the CRM goes live. Rotor is still in charge until the switch.</p></div>`}
+        : busy ? "" : html`<div class="card empty"><div class="art">${icon("sun")}</div><h2>Nothing needs you right now</h2><p>Leads, replies, visits and money show up here as each part of the CRM goes live. Rotor is still in charge until the switch.</p></div>`}
       ${links.length ? html`<div class="section-h">Quick links</div><div class="links">${links}</div>` : ""}
     </div>`;
   },
