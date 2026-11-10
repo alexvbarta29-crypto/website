@@ -341,13 +341,19 @@ export async function signAgreement(id, body = {}, who = {}, ctx = {}, { onSigne
   return { agreement: r.data };
 }
 
-// After a signature: the plan's summary, the event (plans activate on it),
-// the staff notification. A retried step replays the event under the same id.
+// After a signature, in the request: only the event (a portal request has
+// a small storage budget). The listener (plans.mjs onAgreementSigned) then
+// notes it on the plan, tells the staff and activates a ready plan. A
+// retried step replays the event under the same id.
 export async function signedEffects(a, ctx, onSigned) {
-  if (a.plan_id) await notePlanAgreement(a.plan_id, a, ctx);
   await emit("agreement.signed", { id: a.id, wv: a.signed_wv || a.wv, agreement_id: a.id, plan_id: a.plan_id || null, contact_id: a.contact_id }, W(ctx))
     .catch((e) => console.error(`crm:plans: agreement.signed not queued (${safeErr(e)})`));
   if (typeof onSigned === "function") await onSigned(a, ctx);
+}
+
+// What follows a signature, on the fast lane: the plan's summary, the staff.
+export async function afterSigned(a, ctx) {
+  if (a.plan_id) await notePlanAgreement(a.plan_id, a, ctx);
   try {
     const first = String(a.contact_name || "").split(/\s+/)[0] || "A customer";
     await notify((await approvers()).slice(0, 10), { kind: "agreement_signed", title: `${first} signed`, body: `${a.title}.`, link: a.plan_id ? `/plans/${a.plan_id}` : "/plans" }, W(ctx));

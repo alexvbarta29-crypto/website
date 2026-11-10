@@ -44,7 +44,7 @@ import { loadCatalog } from "./catalog.mjs";
 import {
   firstTerm, termOrdinals, saleValue, ordinalLines, ordinalDiscounts, applyAction, respace, ordinalStatusForJob, termOver, monthOf, addMonthsYm, visitsPerYearOf,
 } from "./machine.mjs";
-import { quoteAgreement, signedEffects } from "./agreements.mjs";
+import { quoteAgreement, signedEffects, afterSigned, notePlanAgreement } from "./agreements.mjs";
 import { formatCents } from "../../core/money.mjs";
 import { planRow as planRowOf } from "./types.mjs";
 import { createSeason, seasonOfJob, syncSeason, seasonForInstallJob } from "./lights.mjs";
@@ -245,6 +245,7 @@ defineOp("plans.make", {
           const plan = (await getRecord("plan", id)).data;
           const ag = await quoteAgreement({ id: a.id, plan, quote: { id: a.quote_id }, version: { id: a.version_id }, frozen: a.frozen, signature: a.signature }, s.ctx);
           if (!ag) return { agreement_id: null, unsigned: true };
+          await afterSigned(ag, s.ctx);
           await signedEffects(ag, s.ctx);
           return { agreement_id: ag.id };
         },
@@ -288,6 +289,7 @@ async function activateRecord(id, args, ctx) {
 // ready, inline, as the customer's own action (the listener is the backstop).
 export async function activateIfReady(a, ctx) {
   if (!a || !isId(a.plan_id, "plan")) return null;
+  if (a.status === "signed") await notePlanAgreement(a.plan_id, a, ctx);
   const g = await getRecord("plan", a.plan_id);
   if (!g || g.data.status !== "pending") return null;
   const reasons = await readiness(g.data, ctx);
@@ -631,6 +633,11 @@ export async function onVisitEvent(event, h) {
 // agreement.signed / card.saved: a pending plan that's now ready activates.
 export async function onAgreementSigned(event, h) {
   const p = event.payload || {};
+  const ag = isId(p.agreement_id, "agreement") ? await getRecord("agreement", p.agreement_id) : null;
+  if (!ag || ag.data.status !== "signed") return { result: "skipped:not_signed" };
+  const plan0 = isId(p.plan_id, "plan") ? await getRecord("plan", p.plan_id) : null;
+  if (plan0 && plan0.data.agreement_status !== "signed") await afterSigned(ag.data, h.ctx.write());
+  else if (!plan0) await afterSigned(ag.data, h.ctx.write());
   if (!isId(p.plan_id, "plan")) return { result: "skipped:no_plan" };
   const g = await getRecord("plan", p.plan_id);
   if (!g || g.data.status !== "pending") return { result: "skipped:not_pending" };

@@ -31,7 +31,6 @@ import { definePortalBeacon, createPortalLink, linkKey } from "../../portal/core
 import { safeErr } from "../../../referral-lib.mjs";
 import { agreementPage, hubPage, loginPage } from "./render.mjs";
 import { signAgreement, markViewed } from "./agreements.mjs";
-import { activateIfReady } from "./plans.mjs";
 
 const SCRIPT_AGREEMENT = "plans-agreement.js";
 const SCRIPT_HUB = "plans-hub.js";
@@ -64,7 +63,8 @@ async function page(p, a, mode, base, backTo) {
 }
 
 async function sign(p, a, extra) {
-  const out = await signAgreement(a.id, p.body || {}, who(p, { contact_id: p.contact_id, ...extra }), p, { onSigned: activateIfReady });
+  // the plan activates from agreement.signed on the fast lane (the request stays inside the portal's budget)
+  const out = await signAgreement(a.id, p.body || {}, who(p, { contact_id: p.contact_id, ...extra }), p);
   return p.json({ ok: true, data: { status: out.agreement.status, already: !!out.already } });
 }
 
@@ -235,7 +235,7 @@ export const portalRoutes = [
       const staff = isId(p.link.created_by, "user") ? p.link.created_by : null;
       const res = await sign(p, a, { method: "in_person", staff_user_id: staff });
       const { consumeLink } = await import("../../portal/core.mjs");
-      await consumeLink(p.params.token).catch(() => {});
+      await consumeLink(p.params.token).catch((e) => console.error(`crm:plans: a present link wasn't spent (${e && e.name})`));
       return res;
     }),
   },
