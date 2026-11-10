@@ -36,18 +36,17 @@ function keyPair() {
 
 test("the pack script refuses a path inside any worktree (exit 2) and prints counts only", () => {
   const io = quiet();
-  const ex = tmp();
+  const ex = tmp(), linkDir = tmp(), other = tmp();
   try {
     writeExport(ex, { scale: 0.01, seed: 2 });
     // the output inside this checkout, in a folder that doesn't exist yet, and the export inside it
     assert.equal(pack.main([ex, path.join(ROOT, "tmp-pack-out"), "--as-of", "2026-11-10"], io), 2);
     assert.equal(pack.main([path.join(ROOT, "tests"), path.join(ex, "..", "x"), "--as-of", "2026-11-10"], io), 2);
     // a symlink outside the repo that points back into it
-    const link = path.join(tmp(), "link");
+    const link = path.join(linkDir, "link");
     symlinkSync(ROOT, link);
     assert.equal(pack.main([ex, path.join(link, "out"), "--as-of", "2026-11-10"], io), 2);
     // every worktree counts, not just this checkout: a fake list of roots
-    const other = tmp();
     assert.equal(pack.main([ex, path.join(other, "out"), "--as-of", "2026-11-10"], { ...io, roots: [ROOT, other] }), 2);
     assert.ok(!existsSync(path.join(ROOT, "tmp-pack-out")), "nothing was written in the repo");
     // the upload script refuses a pack folder inside a worktree too
@@ -55,7 +54,7 @@ test("the pack script refuses a path inside any worktree (exit 2) and prints cou
       assert.equal(code, 2);
       assert.ok(io.lines.every((l) => !/@example\.com|\+1763555|Example Ave/.test(l)), "no value is ever printed");
     });
-  } finally { rmSync(ex, { recursive: true, force: true }); }
+  } finally { for (const d of [ex, linkDir, other]) rmSync(d, { recursive: true, force: true }); }
 });
 
 test("pack → upload → run: sealed chunks under 4.5 MB, a key for one run only, media uploaded and never fetched", async () => {
