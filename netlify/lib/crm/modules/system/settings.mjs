@@ -1,7 +1,8 @@
-// Core "system" module: the owner-only settings documents sign-in reads
-// (design §4.5, §4.12). Both are settings:owner; the Settings screens and
-// GET/PUT /settings/:name arrive in M1.3. Changing either bumps everyone's
-// session epoch there.
+// Core "system" module: settings (design §3.3, §4.5, §4.12).
+//
+// The documents sign-in reads (owner-only, settings:owner). Saving either
+// moves sys/auth-epoch, so every warm instance re-reads it within seconds
+// (core/settings.mjs saveSettingFor); loadPermissions() fails closed.
 //
 //   cfg/auth        { office_cookie_roles: ["owner"] }  which roles' Team
 //                   sign-in may also set the office cookie (D14)
@@ -12,6 +13,7 @@
 import { InputError } from "../../core/errors.mjs";
 import { isPlainObject } from "../../core/validate.mjs";
 import { OWNER_ONLY, ROLES } from "../../core/perms.mjs";
+import { CORE_SETTINGS, settingsFor, readSettingFor, saveSettingFor } from "../../core/settings.mjs";
 
 function validateAuth(v) {
   const out = isPlainObject(v) ? { ...v } : {};
@@ -43,4 +45,29 @@ function validatePermissions(v) {
 export const systemSettings = {
   auth: { defaults: { office_cookie_roles: ["owner"] }, validate: validateAuth, perm: "settings:owner" },
   permissions: { defaults: { roles: {} }, validate: validatePermissions, perm: "settings:owner" },
+  ...CORE_SETTINGS,
 };
+
+// GET /settings: the documents this person may open. GET/PUT
+// /settings/:name: one document (its own permission, checked inside: the
+// route only needs a signed-in person). PUT takes the whole value with
+// If-Match (the etag GET gave, or "new" before the first save); 412 stale
+// carries the current value.
+async function listSettings(ctx) {
+  return { data: settingsFor(ctx) };
+}
+async function getSettingDoc(ctx) {
+  const r = await readSettingFor(ctx, ctx.params.name);
+  return { data: { data: r.data, etag: r.etag, defaults: r.defaults, perm: r.perm }, ...(r.etag ? { etag: r.etag } : {}) };
+}
+async function putSettingDoc(ctx) {
+  const r = await saveSettingFor(ctx, ctx.params.name, ctx.body);
+  return { data: { data: r.data, etag: r.etag }, etag: r.etag };
+}
+
+const route = (method, path, handler, more = {}) => ({ method, path, auth: "session", perm: "account:own", subject: "none", mode: "inline", handler, ...more });
+export const settingsRoutes = [
+  route("GET", "/settings", listSettings),
+  route("GET", "/settings/:name", getSettingDoc),
+  route("PUT", "/settings/:name", putSettingDoc, { maxCalls: 30 }),
+];

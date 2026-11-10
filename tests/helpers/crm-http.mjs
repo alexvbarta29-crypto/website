@@ -7,6 +7,8 @@
 //   await t.page("/crm", { as: alex });                          // crm.mjs → { status, text, headers }
 //   await t.office("/office", { as: alex });                     // office.mjs
 //   t.device();                                                // a signed barta_dev cookie (a phone the server knows)
+//   await t.runWorker({ lane: "fast" });                         // one in-process worker pass over the same stores
+//   t.kicks();                                                 // lane kicks the requests made (recorded, never sent)
 //   t.fetchCalls(); t.logs(); t.done();
 //
 // Requests go to https://www.bartawindowwashing.com unless `host` says
@@ -30,6 +32,9 @@ const auth = await import("../../netlify/lib/crm/core/auth.mjs");
 const passwords = await import("../../netlify/lib/crm/core/passwords.mjs");
 const { APP_VERSION } = await import("../../crm-app/version.js");
 const crmApi = (await import("../../netlify/functions/crm-api.mjs")).default;
+const lanes = await import("../../netlify/lib/crm/core/lanes.mjs");
+const worker = await import("../../netlify/lib/crm/core/worker.mjs");
+const { deployContext } = await import("../../netlify/lib/crm/core/context.mjs");
 const crmAuth = (await import("../../netlify/functions/crm-auth.mjs")).default;
 const crmPage = (await import("../../netlify/functions/crm.mjs")).default;
 const officeFn = (await import("../../netlify/functions/office.mjs")).default;
@@ -49,6 +54,8 @@ export async function crmTest({ now = "2026-11-17T15:00:00Z", env = {}, quiet = 
   const savedEnv = {};
   for (const [k, v] of Object.entries(env)) { savedEnv[k] = process.env[k]; if (v === undefined) delete process.env[k]; else process.env[k] = v; }
   const net = strictFetch([]);
+  const kicks = [];
+  lanes.setKicker((lane, reason) => { kicks.push({ lane, reason }); });
   const logs = [];
   const spies = quiet ? ["error", "log", "warn"].map((m) => mock.method(console, m, (...a) => logs.push(`${m}: ${a.map(String).join(" ")}`))) : [];
 
@@ -112,6 +119,10 @@ export async function crmTest({ now = "2026-11-17T15:00:00Z", env = {}, quiet = 
     auth: async (path, opts = {}) => asJson(await crmAuth(request("/api/crm" + path, { method: "POST", ...opts }), opts.context || {})),
     page: async (path, opts = {}) => asText(await crmPage(request(path, { csrf: false, client: false, ...opts }), opts.context || {})),
     office: async (path, opts = {}) => asText(await officeFn(request(path, { csrf: false, client: false, ...opts }), opts.context || {})),
+    // One in-process worker pass (core/worker.mjs runPass) over the same stores.
+    runWorker: ({ lane = "fast" } = {}) => worker.runOnce(lane, { deploy: deployContext(new Request(HOST + "/"), {}) }),
+    // The lane kicks requests made (recorded, never sent).
+    kicks: () => kicks,
     // A device cookie the server issued (signed), as "barta_dev=...".
     device: () => "barta_dev=" + sessions.newDeviceCookie().value,
     // Cookies a response set, as "name=value" strings.
@@ -124,6 +135,7 @@ export async function crmTest({ now = "2026-11-17T15:00:00Z", env = {}, quiet = 
       for (const s of spies) s.mock.restore();
       for (const [k, v] of Object.entries(savedEnv)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
       net.restore();
+      lanes.setKicker(null);
       unpin();
       sessions.clearSessionCache();
       auth.clearPermissionsCache();

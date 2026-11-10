@@ -58,7 +58,7 @@ import { STORES, PROD_STORE_NAMES, storeNameFor, isDeploy } from "./crm/core/con
 import { now, nowIso, nowMs, tsKey, localDate, fromTsKey } from "./crm/core/clock.mjs";
 import { typeOf, newId, ALPHABET } from "./crm/core/ids.mjs";
 import { isKeySafe, keySafe } from "./crm/core/text.mjs";
-import { getType, requireType, indexFeeds, indexPrimary, getSettingsDef, statsPart } from "./crm/core/registry.mjs";
+import { getType, requireType, indexFeeds, indexPrimary, getSettingsDef, statsPart, allIndexes } from "./crm/core/registry.mjs";
 import { checkCreate, checkUpdate, checkDelete, guardActive, actorKindOf } from "./crm/core/guard.mjs";
 import { decideClaim, claimValue, advanceValue, settleSending, NAMESPACES } from "./crm/core/markers.mjs";
 import { partDefaults, statsIndexRow, contactShard, STATS_TYPE, STATS_INDEX, STATS_INDEX_PART } from "./crm/core/stats.mjs";
@@ -612,6 +612,15 @@ function sidePlan(def, rec) {
   }
   return out;
 }
+// What a pend/ marker keeps of a side plan (§3.5): enough for the worker to
+// finish the writes, and to undo the old version's rows, relations and
+// pointers when an update moved them, without the record's values.
+const compactPlan = (plan) => ({
+  unique: plan.unique.map((p) => ({ kind: p.kind, key: p.key })),
+  lists: plan.lists.map((p) => ({ kind: p.kind, key: p.key })),
+  rels: plan.rels.map((r) => ({ rel: r.rel, parent: r.parent, sort: r.sort })),
+  ix: plan.ix.map((x) => ({ name: x.name, part: x.part, shard: x.shard })),
+});
 const pkey = (p) => `${p.kind}\u0000${p.key}`;
 const rkey = (r) => K.rel(r.rel, r.parent, r.sort, "x");
 
@@ -691,7 +700,7 @@ export async function createRecord(type, data, ctx = {}) {
       if (!r.ok && !(r.current && r.current.id === id)) throw new ExistsError("That is already taken.", { pointer: p.kind });
       claimed.push(p);
     }
-    if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: rec.wv, at, names: plan.ix.map((x) => x.name) });
+    if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: rec.wv, at, names: plan.ix.map((x) => x.name), plan: compactPlan(plan) });
   } catch (e) {
     await compensate(sc, def, claimed, id);
     throw e;
@@ -788,7 +797,7 @@ export async function updateRecord(type, id, mutate, ctx = {}) {
         if (!r.ok && !(r.current && r.current.id === id)) throw new ExistsError("That is already taken.", { pointer: p.kind });
         claimed.push(p);
       }
-      if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: next.wv, at: next.updated_at, names: newPlan.ix.map((x) => x.name) });
+      if (!c.bulk) await putSame(sc, "data", K.pend(type, id), { wv: next.wv, at: next.updated_at, names: newPlan.ix.map((x) => x.name), plan: compactPlan(newPlan), prev: compactPlan(oldPlan) });
     } catch (e) {
       await compensate(sc, def, claimed, id, { update: true });
       throw e;
@@ -1606,4 +1615,283 @@ export async function deleteRaw(key, opts = {}) {
 export async function settledWrite(key, value, cond, opts = {}) {
   const sc = scopeOf(opts);
   return condWrite(sc, opts.kind || "data", key, { ...value, _w: value._w || nonce(sc) }, cond);
+}
+
+// ----------------------------------------------------------- repair and verify (the worker, §3.4, §3.5)
+
+// A pend/ marker younger than this belongs to a write that may still be
+// running (a request's budget is 8 s); the worker leaves it alone (§3.5).
+export const PEND_GRACE_MS = 60 * 1000;
+
+const ptrKeysOf = (def, rec) => new Set(sidePlan(def, rec).unique.map((p) => K.ptr(p.kind, p.key)));
+
+// The side writes of a record as it now stands (pointers, lookup lists,
+// relations, index rows), plus the undo of the previous version's when an
+// update moved them (`prev` from the pend/ marker). All idempotent.
+function repairSides(sc, def, rec, prev) {
+  const id = rec.id;
+  const plan = sidePlan(def, rec);
+  const out = [];
+  for (const p of plan.unique) {
+    out.push(async () => {
+      const r = await claimPointer(p.kind, p.key, { id }, sc);
+      if (!r.ok && !(r.current && r.current.id === id)) console.error("crm-store: a repaired record's unique pointer is held by another record; left for pointers.gc");
+    });
+  }
+  for (const p of plan.lists) out.push(() => updatePointerList(p.kind, p.key, (ids) => [...ids, id], sc));
+  for (const r of plan.rels) out.push(() => addRel(r.rel, r.parent, r.sort, id, r.value, sc));
+  const live = new Set();
+  for (const x of plan.ix) {
+    if (x.shard === null) continue;
+    live.add(`${x.name}\u0000${x.part}\u0000${x.shard}`);
+    out.push(() => applyIndexRow(x.name, x.shard, id, x.part, x.row, rec.wv || 0, sc));
+  }
+  if (prev) {
+    for (const x of prev.ix || []) {
+      if (x.shard === null || x.shard === undefined || live.has(`${x.name}\u0000${x.part}\u0000${x.shard}`)) continue;
+      out.push(() => applyIndexRow(x.name, x.shard, id, x.part, null, rec.wv || 0, sc));
+    }
+    const relsNow = new Set(plan.rels.map(rkey));
+    for (const r of prev.rels || []) if (!relsNow.has(rkey(r))) out.push(() => removeRel(r.rel, r.parent, r.sort, id, sc));
+    const listsNow = new Set(plan.lists.map(pkey));
+    for (const p of prev.lists || []) if (!listsNow.has(pkey(p))) out.push(() => updatePointerList(p.kind, p.key, (ids) => ids.filter((x) => x !== id), sc));
+    const uniqueNow = new Set(plan.unique.map(pkey));
+    for (const p of prev.unique || []) {
+      if (uniqueNow.has(pkey(p))) continue;
+      const k = pkey(p);
+      out.push(() => releasePointer(p.kind, p.key, id, { ...sc, released: (r) => !keysOf(def, r).has(k), holds: (r) => keysOf(def, r).has(k) }));
+    }
+  }
+  return out;
+}
+
+// A write whose record never landed: its claimed unique pointers are
+// released (releasePointer proves the record absent first); anything else
+// in the plan is removed again (no-ops when it was never applied).
+function releaseSides(sc, def, id, plan, wv) {
+  if (!plan) return [];
+  const out = [];
+  for (const p of plan.unique || []) out.push(() => releasePointer(p.kind, p.key, id, sc));
+  for (const p of plan.lists || []) out.push(() => updatePointerList(p.kind, p.key, (ids) => ids.filter((x) => x !== id), sc));
+  for (const r of plan.rels || []) out.push(() => removeRel(r.rel, r.parent, r.sort, id, sc));
+  for (const x of plan.ix || []) {
+    if (x.shard === null || x.shard === undefined) continue;
+    out.push(() => applyIndexRow(x.name, x.shard, id, x.part, null, (wv || 0) + 1, sc));
+  }
+  return out;
+}
+
+// The worker's index.pending step for one pend/{type}/{id} marker: finishes
+// what the write left undone and deletes the marker (only the version it
+// repaired: a newer write's intent stays for that writer).
+// → { state: "repaired" | "absent" | "fresh" | "gone" | "newer", clean? }
+export async function repairPending(type, id, { minAgeMs = PEND_GRACE_MS } = {}, opts = {}) {
+  const sc = scopeOf(opts);
+  const pk = K.pend(type, id);
+  const p = await read(sc, "data", pk);
+  if (!p || !p.data) return { state: "gone" };
+  const at = Date.parse(p.data.at);
+  if (Number.isFinite(at) && at + minAgeMs > nowMs()) return { state: "fresh" };
+  const def = getType(type);
+  if (!def) {                                   // no module declares this type any more
+    await del(sc, "data", pk);
+    return { state: "absent", clean: true };
+  }
+  const cur = await read(sc, "data", K.rec(type, id));
+  if (cur && cur.data && Number.isSafeInteger(cur.data.v) && cur.data.v > def.v) return { state: "newer" };   // newer code finishes it
+  const rec = cur && cur.data ? strip(migrateRecord(def, cur.data)) : null;
+  const side = rec ? repairSides(sc, def, rec, p.data.prev || null) : releaseSides(sc, def, id, p.data.plan, p.data.wv);
+  const clean = await sideWrites(sc, side);
+  if (clean) {
+    const again = await read(sc, "data", pk);
+    if (again && again.etag === p.etag) await del(sc, "data", pk);
+  }
+  return { state: rec ? "repaired" : "absent", clean };
+}
+
+// The index name and shard an ix/ key belongs to (index names may hold "/").
+function indexOfKey(key, names) {
+  const rest = key.slice(3);
+  const name = [...names].sort((a, b) => b.length - a.length).find((n) => rest === n || rest.startsWith(n + "/"));
+  return name ? { name, shard: rest === name ? "" : rest.slice(name.length + 1) } : null;
+}
+
+// The worker's fix.settle step for one fix/ marker (§3.4): an outcome the
+// store could not settle while the request ran. A record that is there gets
+// its side writes finished; an index blob is marked dirty for a rebuild; a
+// pointer that could not be released is released once its record is proven
+// absent (or no longer holds it). Then the marker is deleted.
+// → { state }
+export async function settleFix(fixKey, { indexNames = [] } = {}, opts = {}) {
+  const sc = scopeOf(opts);
+  const f = await read(sc, "data", fixKey);
+  if (!f || !f.data) return { state: "gone" };
+  const m = f.data;
+  const key = String(m.key || "");
+  const kind = Object.hasOwn(STORES, m.store) ? m.store : "data";
+  let state = "settled";
+  if (m.kind === "release" && key.startsWith("ptr/")) {
+    const cur = await read(sc, "data", key);
+    if (!cur || !cur.data || cur.data.id !== m.expect) state = "gone";
+    else {
+      const type = typeOf(m.expect);
+      const def = type ? getType(type) : null;
+      const rec = def ? await read(sc, "data", K.rec(type, m.expect)) : null;
+      const live = rec && rec.data ? strip(rec.data) : null;
+      if (!def) state = "kept";
+      else if (live && ptrKeysOf(def, live).has(key)) state = "kept";
+      else { await del(sc, "data", key); state = "released"; }
+    }
+  } else if (kind === "data" && key.startsWith("rec/")) {
+    const [, type, id] = key.split("/");
+    const def = getType(type);
+    const cur = await read(sc, "data", key);
+    if (def && cur && cur.data && !(Number.isSafeInteger(cur.data.v) && cur.data.v > def.v)) {
+      await sideWrites(sc, repairSides(sc, def, strip(migrateRecord(def, cur.data)), null));
+    }
+    state = cur && cur.data ? (m.nonce && cur.data._w === m.nonce ? "committed" : "superseded") : "absent";
+    if (!cur && type && id) {
+      const pend = await read(sc, "data", K.pend(type, id));
+      if (pend) state = "absent-pending";            // index.pending releases what it claimed
+    }
+  } else if (kind === "data" && key.startsWith("ix/")) {
+    const at = indexOfKey(key, indexNames.length ? indexNames : allIndexes());
+    if (at) await markDirty(sc, at.name, at.shard);
+    state = "dirty";
+  }
+  await del(sc, "data", fixKey);
+  return { state };
+}
+
+
+// The authoritative part of one index row for (name, shard, id, part):
+// { wv, d } from a fresh read of the record that feeds it (d null = no row).
+async function authoritativePart(sc, name, shard, id, part) {
+  const feed = indexFeeds(name).find((f) => f.part === part);
+  if (!feed) return { wv: 0, d: null };
+  const type = feed.type === STATS_TYPE ? STATS_TYPE : typeOf(id) === feed.type ? feed.type : null;
+  if (!type) return { wv: 0, d: null };
+  const got = await read(sc, "data", K.rec(type, id));
+  if (!got || !got.data) return { wv: 0, d: null };
+  const rec = strip(migrateRecord(getType(type), got.data));
+  if (rec.deleted_at || rec.merged_into || feed.shard(rec) !== shard) return { wv: rec.wv || 0, d: null };
+  return { wv: rec.wv || 0, d: feed.row(rec) };
+}
+
+// The nightly index.verify for one index (§3.5): builds every shard's rows
+// from the records, diffs them with the live blobs, re-checks each
+// difference against a fresh read of its record (a write may have landed
+// meanwhile), and repairs the confirmed ones by CAS on the shard (a forced
+// replace: a planted or corrupted row loses even with a higher wv).
+// → { rows, missing, extra, stale, repaired: [shards] }
+export async function verifyIndex(name, { repair = true } = {}, opts = {}) {
+  const sc = scopeOf(opts);
+  const feeds = indexFeeds(name);
+  if (!feeds.length) throw new RegistryError(`no index named ${name}`);
+  const expected = new Map();
+  let rows = 0;
+  for (const feed of feeds) {
+    const def = getType(feed.type);
+    const keys = await listKeys(`rec/${feed.type}/`, {}, sc);
+    const recs = await mapLimit(keys, 16, (k) => read(sc, "data", k));
+    for (const got of recs) {
+      if (!got || !got.data) continue;
+      const rec = strip(migrateRecord(def, got.data));
+      const s = rec.deleted_at || rec.merged_into ? null : feed.shard(rec);
+      if (s === null || s === undefined) continue;
+      const m = expected.get(s) || {};
+      m[rec.id] = { ...(m[rec.id] || {}), [feed.part]: { wv: rec.wv || 0, d: feed.row(rec) } };
+      expected.set(s, m);
+    }
+  }
+  const liveShards = (await listKeys(`ix/${name}`, {}, sc))
+    .filter((k) => k === `ix/${name}` || k.startsWith(`ix/${name}/`))
+    .map((k) => (k === `ix/${name}` ? "" : k.slice(`ix/${name}/`.length)));
+  const counts = { missing: 0, extra: 0, stale: 0 };
+  const repaired = [];
+  for (const s of new Set([...expected.keys(), ...liveShards])) {
+    const cur = await read(sc, "data", K.ix(name, s));
+    const live = (cur && cur.data && cur.data.rows) || {};
+    const exp = expected.get(s) || {};
+    const diffs = [];
+    for (const id of new Set([...Object.keys(live), ...Object.keys(exp)])) {
+      const l = live[id] || {};
+      const e = exp[id] || {};
+      for (const part of new Set([...Object.keys(l), ...Object.keys(e)])) {
+        const lp = l[part] && l[part].d ? l[part] : null;
+        const ep = e[part] || null;
+        if (ep && !lp) diffs.push({ id, part, kind: "missing" });
+        else if (!ep && lp) diffs.push({ id, part, kind: "extra" });
+        else if (ep && lp && !sameJSON(ep.d, lp.d)) diffs.push({ id, part, kind: "stale" });
+      }
+    }
+    rows += Object.values(exp).length;
+    if (!diffs.length) continue;
+    const fixes = [];
+    for (const d of diffs) {
+      const truth = await authoritativePart(sc, name, s, d.id, d.part);
+      const lp = live[d.id] && live[d.id][d.part] && live[d.id][d.part].d ? live[d.id][d.part] : null;
+      if (truth.d ? lp && sameJSON(truth.d, lp.d) : !lp) continue;   // a write landed meanwhile: nothing to fix
+      counts[d.kind] += 1;
+      fixes.push({ ...d, truth });
+    }
+    if (!repair || !fixes.length) continue;
+    let done = false;
+    for (let i = 0; i < CAS_TRIES && !done; i++) {
+      const now0 = await read(sc, "data", K.ix(name, s));
+      const blob = now0 && now0.data ? now0.data : emptyIndex(name, s);
+      const next = { ...blob.rows };
+      for (const f of fixes) {
+        const entry = { ...(next[f.id] || {}) };
+        const have = entry[f.part];
+        // a writer that got there after the truth was read wins (higher wv, same data source)
+        if (have && have.wv > f.truth.wv && (await authoritativePart(sc, name, s, f.id, f.part)).wv >= have.wv) continue;
+        entry[f.part] = f.truth.d ? { wv: f.truth.wv, d: f.truth.d } : { wv: f.truth.wv, d: null, at: nowIso() };
+        next[f.id] = entry;
+      }
+      const value = { ...blob, rows: pruneTombstones(next), updated_at: nowIso(), verified_at: nowIso(), _w: nonce(sc) };
+      const w = await condWrite(sc, "data", K.ix(name, s), value, now0 ? { onlyIfMatch: now0.etag } : { onlyIfNew: true });
+      done = w.ok;
+      if (!done) await casJitter(i);
+    }
+    if (done) repaired.push(s);
+    else await markDirty(sc, name, s);
+  }
+  return { rows, ...counts, repaired };
+}
+
+// The relation half of index.verify (§3.5): every relation family a type
+// declares, rebuilt from its records and compared with the live keys. Only
+// keys whose child is of this type are judged (other writers may share a
+// family). → { missing, extra }
+export async function verifyRels(type, { repair = true } = {}, opts = {}) {
+  const sc = scopeOf(opts);
+  const def = requireType(type);
+  if (!def.rels.length) return { missing: 0, extra: 0 };
+  const keys = await listKeys(`rec/${type}/`, {}, sc);
+  const recs = (await mapLimit(keys, 16, (k) => read(sc, "data", k))).filter((g) => g && g.data).map((g) => strip(migrateRecord(def, g.data)));
+  const expected = new Map();
+  for (const rec of recs) for (const r of sidePlan(def, rec).rels) expected.set(K.rel(r.rel, r.parent, r.sort, rec.id), { ...r, id: rec.id });
+  const counts = { missing: 0, extra: 0 };
+  const fresh = async (id) => {
+    const got = await read(sc, "data", K.rec(type, id));
+    return got && got.data ? new Set(sidePlan(def, strip(migrateRecord(def, got.data))).rels.map((r) => K.rel(r.rel, r.parent, r.sort, id))) : new Set();
+  };
+  for (const family of new Set(def.rels.map((r) => r.rel))) {
+    const live = new Set(await listKeys(`rel/${family}/`, {}, sc));
+    for (const [k, r] of expected) {
+      if (r.rel !== family || live.has(k)) continue;
+      if (!(await fresh(r.id)).has(k)) continue;
+      counts.missing += 1;
+      if (repair) await addRel(r.rel, r.parent, r.sort, r.id, r.value, sc);
+    }
+    for (const k of live) {
+      const child = k.slice(k.lastIndexOf("--") + 2);
+      if (typeOf(child) !== type || expected.has(k)) continue;
+      if ((await fresh(child)).has(k)) continue;
+      counts.extra += 1;
+      if (repair) await del(sc, "data", k);
+    }
+  }
+  return counts;
 }

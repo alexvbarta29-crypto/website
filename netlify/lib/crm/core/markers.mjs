@@ -75,6 +75,8 @@ export function claimValue(prev, { holder, leaseMs, nowMs, ns, scope, key }) {
     lease_until: new Date(nowMs + leaseMs).toISOString(),
     created_at: (prev && prev.created_at) || at,
     trail: trail(prev, "claimed", at),
+    // a sweep that stopped half way keeps where it was (core/sweeps.mjs)
+    ...(prev && prev.cursor !== undefined ? { cursor: prev.cursor } : {}),
   };
 }
 

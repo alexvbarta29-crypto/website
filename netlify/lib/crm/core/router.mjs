@@ -163,7 +163,9 @@ export async function handleRequest(req, context, { base = API_BASE, routes } = 
     route = hit.route;
     const budget = withBudget(route.budgetMs || DEFAULT_BUDGET_MS, route.maxCalls || DEFAULT_MAX_CALLS);
     const blocked = storeBlocked(deploy);
-    return await withStoreScope({ deploy, budget, requestId }, async () => {
+    // origin and waitUntil let kickWorker() wake a lane without holding the answer (§2.2)
+    const waitUntil = context && typeof context.waitUntil === "function" ? context.waitUntil.bind(context) : undefined;
+    return await withStoreScope({ deploy, budget, requestId, origin: url.origin, waitUntil }, async () => {
       ctx = {
         req, context, url, params: hit.params, query: url.searchParams, body: undefined, raw: undefined,
         user: null, userEtag: null, session: null, sessionHash: null, apiKey: null, office: false,

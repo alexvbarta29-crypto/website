@@ -1,7 +1,8 @@
 // Barta CRM core: API keys for the MCP endpoint and command-line tools
-// (design §4.9). M1.2 ships the key format, storage and the check the
-// dispatcher runs for `Authorization: Bearer bcrm_...`; the screens and the
-// /api-keys routes arrive with M1.3 (My account → API keys).
+// (design §4.9). M1.2 shipped the key format, storage and the check the
+// dispatcher runs for `Authorization: Bearer bcrm_...`; M1.3 adds the
+// /api-keys routes (modules/system/apikeys.mjs) and the owner-only
+// "backup" kind; the My account screen arrives with M1.3's screens.
 //
 // A key is "bcrm_" + 32 base62 characters, shown once. Stored as
 // apikey/{sha256(key)} = { id, user_id, name, kind: "header" | "path",
@@ -24,7 +25,12 @@ export const KEY_PREFIX = "bcrm_";
 const B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 export const KEY_RE = /^bcrm_[0-9A-Za-z]{32}$/;
 export const NEVER_KEY_SCOPES = Object.freeze(["payments:charge", "payments:refund", "campaigns:send", "cutover:run", "users:manage", "integrations:manage", "settings:owner", "export:all"]);
-export const KINDS = Object.freeze(["header", "path"]);
+export const KINDS = Object.freeze(["header", "path", "backup"]);
+// A "backup" key (owners only) carries exactly export:all and nothing else:
+// it lets build/crm_backup_pull.mjs read the snapshot parts for the
+// off-site copy (§3.12). It is the one way export:all reaches a key.
+export const BACKUP_SCOPES = Object.freeze(["export:all"]);
+export const BACKUP_MAX_DAYS = 365;
 export const PATH_RATE_PER_MIN = 30;
 
 export const keyHash = (key) => createHash("sha256").update(String(key)).digest("hex");
@@ -42,6 +48,10 @@ export function newKeyValue() {
 // read-only).
 export function scopesFor(user, requested, kind = "header", permissions = null) {
   const held = (p) => !!holds(user, p, permissions);
+  if (kind === "backup") {
+    if (!user || user.role !== "owner" || held("export:all") !== true) throw new InputError("Only an owner can make a backup key.", "kind");
+    return [...BACKUP_SCOPES];
+  }
   if (!requested || !requested.length) {
     const all = ["contacts:read", "contacts:read_all", "tasks:read", "quotes:read", "plans:read", "schedule:read", "invoices:read", "invoices:read_all",
       "inbox:read", "reviews:read", "payroll:read_own", "payroll:read_all", "reports:read", "audit:read", "outbox:read"];
@@ -66,7 +76,8 @@ export async function createApiKey(user, { name, kind = "header", scopes, expire
   const key = newKeyValue();
   const hash = keyHash(key);
   const at = nowIso();
-  const days = Number(expires_days);
+  let days = Number(expires_days);
+  if (kind === "backup") days = Number.isFinite(days) && days > 0 ? Math.min(days, BACKUP_MAX_DAYS) : 90;
   const record = {
     id: newId("api_key"), user_id: user.id, name: label, kind, scopes: sc, last4: key.slice(-4), created_at: at, last_used_at: null,
     ...(Number.isFinite(days) && days > 0 ? { expires_at: new Date(nowMs() + Math.min(days, 3650) * 86400000).toISOString() } : {}),
@@ -109,7 +120,9 @@ export async function revokeApiKey(hash, opts = {}) {
 
 // A key may do what its user may do AND what its scopes say.
 export function keyCan(user, key, perm, subject = undefined, permissions = null) {
-  if (!key || !Array.isArray(key.scopes) || NEVER_KEY_SCOPES.includes(perm)) return false;
+  if (!key || !Array.isArray(key.scopes)) return false;
+  if (key.kind === "backup") return BACKUP_SCOPES.includes(perm) && key.scopes.includes(perm) && user.role === "owner" && can(user, perm, subject, permissions);
+  if (NEVER_KEY_SCOPES.includes(perm)) return false;
   if (!key.scopes.includes(perm)) return false;
   if (key.kind === "path" && !isReadScope(perm)) return false;
   return can(user, perm, subject, permissions);

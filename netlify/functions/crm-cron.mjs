@@ -1,52 +1,65 @@
-// The CRM's 15-minute cron (design §7.1), PROBE-ONLY in M1.1: it records
-// what a scheduled function sees about its deploy into the scratch store
-// crm-probe and kicks the background function so that one records its own
-// facts too. It touches no CRM data and contacts nobody, so it is safe on
-// the production deploy before any setup. M1.3 replaces the body with the
-// real kick of both worker lanes.
+// The CRM's 15-minute cron (design §7.1). Scheduled functions run only on
+// the published production deploy, in UTC, with a 30 s limit, so this does
+// almost nothing itself:
 //
-// Scheduled functions run only on the published production deploy, have a
-// 30 s limit, and use UTC cron. If the platform ever refuses a sub-hourly
-// schedule, use "@hourly" in both places below.
+//   - records what a scheduled function sees about its deploy into the
+//     probe's scratch store crm-probe (the M1.1 probe, until the M1 gate);
+//   - BEFORE the owner's setup (production without CRM_PRODUCTION /
+//     CRM_KEY_SALT): exactly the M1.1 probe and nothing else: the probe's
+//     own worker secret, one kick of the fast lane so it records the
+//     background facts. No CRM store is opened.
+//   - AFTER setup: makes sure sys/worker-secret exists (onlyIfNew),
+//     writes sys/health.cron_at and wakes both lanes (crm-worker-background
+//     and crm-bulk-background) with header x-crm-worker and a 5 s timeout.
+//
+// Every failure is logged once (safeErr) and the function still answers:
+// the next run is 15 minutes away, nothing retries in a loop.
+// If the platform ever refuses a sub-hourly schedule, use "@hourly" in both
+// places below and rely on the kicks.
 
 import { safeErr } from "../lib/referral-lib.mjs";
-import { deployContext, CANONICAL_ORIGIN } from "../lib/crm/core/context.mjs";
-import { recordFacts, ensureWorkerSecret } from "../lib/crm/core/probe.mjs";
+import { deployContext } from "../lib/crm/core/context.mjs";
+import { storeBlocked } from "../lib/crm/core/auth.mjs";
+import { withStoreScope } from "../lib/crm-store.mjs";
+import { recordFacts, ensureWorkerSecret as ensureProbeSecret } from "../lib/crm/core/probe.mjs";
+import { workerOrigin, lanePath, WORKER_HEADER } from "../lib/crm/core/lanes.mjs";
+import { cronTick } from "../lib/crm/core/worker.mjs";
 
 // Netlify reads `config` without running the file, so the schedule is a
 // literal here (keep CRON equal to it; a test checks).
 export const CRON = "*/15 * * * *";
 export const config = { schedule: "*/15 * * * *" };
 
-export const WORKER_PATH = "/.netlify/functions/crm-worker-background";
+export const WORKER_PATH = lanePath("fast");
 export const KICK_TIMEOUT_MS = 5000;
+export { workerOrigin };
 
-// Where the background function lives: the canonical host in production
-// (§3.10 "worker kicks always use the canonical origin"), else this deploy's URL.
-export function workerOrigin(deploy, req, env = process.env) {
-  if (deploy.ctx === "production") return CANONICAL_ORIGIN;
-  if (env.URL) return env.URL.replace(/\/+$/, "");
-  try { return new URL(req.url).origin; } catch { return CANONICAL_ORIGIN; }
+async function post(origin, lane, secret) {
+  const res = await fetch(origin + lanePath(lane), {
+    method: "POST",
+    headers: { [WORKER_HEADER]: secret, "content-type": "application/json" },
+    body: JSON.stringify({ reason: "cron" }),
+    signal: AbortSignal.timeout(KICK_TIMEOUT_MS),
+  });
+  try { await res.body?.cancel(); } catch { /* nothing to free */ }
+  if (res.status !== 202) console.error(`crm-cron: the ${lane} lane kick answered ${res.status}`);
+  return res.status === 202;
 }
 
 export default async (req, context) => {
   try {
     const deploy = deployContext(req, context);
-    await recordFacts("scheduled", req, context);
-    const secret = await ensureWorkerSecret(deploy);
-    if (!secret) {
-      console.error("crm-cron: no worker secret yet; the background probe waits for the next run");
-    } else {
-      const res = await fetch(workerOrigin(deploy, req) + WORKER_PATH, {
-        method: "POST",
-        headers: { "x-crm-worker": secret, "content-type": "application/json" },
-        body: JSON.stringify({ reason: "cron" }),
-        signal: AbortSignal.timeout(KICK_TIMEOUT_MS),
-      });
-      if (res.status !== 202) console.error(`crm-cron: the background kick answered ${res.status}`);
+    const origin = workerOrigin(deploy, req);
+    try { await recordFacts("scheduled", req, context); } catch (e) { console.error("crm-cron: probe facts not recorded (" + safeErr(e) + ")"); }
+    if (storeBlocked(deploy)) {
+      const secret = await ensureProbeSecret(deploy);
+      if (!secret) console.error("crm-cron: no worker secret yet; the background probe waits for the next run");
+      else await post(origin, "fast", secret);
+      return new Response(null, { status: 204 });
     }
+    await withStoreScope({ deploy, requestId: "cron" }, () => cronTick({ kick: (lane, secret) => post(origin, lane, secret) }));
   } catch (e) {
-    console.error("crm-cron: probe run failed (" + safeErr(e) + ")");
+    console.error("crm-cron: run failed (" + safeErr(e) + ")");
   }
   return new Response(null, { status: 204 });
 };

@@ -72,6 +72,9 @@ test("services: a missing one says so; only the contract's module may provide it
 });
 
 test("events: one id per write counter, payload checked, undeclared events refused", async () => {
+  // since M1.3 every emission is queued (core/queue.mjs): memory stores stand in for Blobs
+  const { createCrmStores, useCrmStores, clearCrmStores } = await import("../../helpers/crm-memory-store.mjs");
+  const S = useCrmStores(createCrmStores());
   R.registerModule({ name: "listener-mod", events: { "job.completed": { handler: fn, mutates: false } } });
   const payload = { id: "jb_0000000000000000000a", wv: 3, job_id: "jb_0000000000000000000a", contact_id: "ct_1", kind: "one_time", billable: true, total_cents: 24310, assignee_ids: [] };
   const a = await emit("job.completed", payload, { by: "us_a" });
@@ -81,9 +84,12 @@ test("events: one id per write counter, payload checked, undeclared events refus
   assert.notEqual(a.event.event_id, c.event.event_id, "reopened and completed again is a new event");
   assert.equal(a.event.event_id, eventId(payload.id, 3));
   assert.deepEqual(a.listeners, ["listener-mod"]);
+  assert.equal(a.queued, true);
+  assert.equal(S.data.keys("q/").length, 3, "one queue item per emission and listener");
   assert.deepEqual(listenerMarker(a.event.event_id, "money"), { ns: "done", scope: "evt", key: `${a.event.event_id}--money` });
   await assert.rejects(emit("job.exploded", payload), RegistryError);
   await assert.rejects(emit("job.completed", { ...payload, total_cents: undefined }), /needs total_cents/);
   await assert.rejects(emit("job.completed", { job_id: "x" }), /record id and wv/);
   assert.ok(Object.isFrozen(EVENTS));
+  clearCrmStores();
 });
