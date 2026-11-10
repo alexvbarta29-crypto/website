@@ -28,6 +28,7 @@ import { InputError, NotFoundError, ConflictError, RegistryError } from "./error
 import { enqueue } from "./queue.mjs";
 import { allModules } from "./registry.mjs";
 import { safeErr } from "../../referral-lib.mjs";
+import { notify, approvers } from "./notify.mjs";
 
 export const PENDING_STATUSES = Object.freeze(["pending", "approved", "rejected", "expired", "done", "failed"]);
 export const DEFAULT_EXPIRES_HOURS = 24;
@@ -64,6 +65,13 @@ export async function createPendingAction({ kind, title, tool, args, key_id, pre
     ...(key_id ? { key_id } : {}), preview: preview || null, ...(items ? { items } : {}),
     requested_by: requested_by || ctx.by || "system", expires_at: new Date(nowMs() + hours * 3600000).toISOString(),
   }, ctx);
+  // the owners hear about it (push + the bell), one queue item for all of them
+  try {
+    const who = await approvers();
+    if (who.length) await notify(who, { kind: "approval", title: "Waiting for your OK", body: rec.data.title, link: "/approvals" }, ctx);
+  } catch (e) {
+    console.error(`crm:pending: the owners were not notified (${safeErr(e)})`);
+  }
   return rec.data;
 }
 

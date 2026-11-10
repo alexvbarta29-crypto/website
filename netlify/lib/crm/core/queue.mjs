@@ -34,7 +34,7 @@ import { getRaw, deleteRaw, listKeys, claimMarker, advanceMarker, K } from "../.
 import { now, nowMs, nowIso } from "./clock.mjs";
 import { newId } from "./ids.mjs";
 import { InputError, ParallelRunGuard, SchemaTooNew, RegistryError } from "./errors.mjs";
-import { queueKind, listenersFor } from "./registry.mjs";
+import { queueKind, listenersFor, allAutomations } from "./registry.mjs";
 import { setDispatcher, listenerMarker } from "./events.mjs";
 import { NAMESPACES, FINAL_STATES } from "./markers.mjs";
 import { automationCtx, wouldAct, logAutomation, writeOnceRaw } from "./activity.mjs";
@@ -237,8 +237,18 @@ export async function dispatchEvent(event, listeners, ctx = {}) {
       data: { name: event.name, event_id: event.event_id, module: l.module, payload: event.payload }, kick: false,
     }));
   }
+  // automations triggered by this event (core/automations.mjs): one item each,
+  // marker done/evt/{event_id}--auto.{key}
+  const autos = allAutomations().filter((a) => a.trigger === `event:${event.name}`);
+  if (autos.length && queueKind("automation.event")) {
+    for (const a of autos) {
+      keys.push(await enqueue("automation.event", refOf(event.payload), { wv: event.payload.wv }, now(), { ns: "done", scope: "evt", key: `${event.event_id}--auto.${keySafe(a.key, 60)}` }, {
+        data: { automation: a.key, name: event.name, event_id: event.event_id, payload: event.payload }, kick: false,
+      }));
+    }
+  }
   if (keys.length) await kickWorker("fast", `event:${event.name}`);
-  return { event, listeners: listeners.map((l) => l.module), queued: keys.length > 0, keys };
+  return { event, listeners: listeners.map((l) => l.module), automations: autos.map((a) => a.key), queued: keys.length > 0, keys };
 }
 
 // The handler of "evt" items: the listener of that module for that event,

@@ -70,7 +70,8 @@ export async function listAutomationLog(date, { key, limit = 500 } = {}, opts = 
     if (!m) continue;
     if (key && m[3] !== keySafe(key, 60)) continue;
     const d = fromTsKey(m[2]);
-    out.push({ at: d ? d.toISOString() : null, key: m[3], subject: m[4], result: m[5], ref: k });
+    // keys hold "skipped-<reason>" (":" is outside the key alphabet); rows read as written
+    out.push({ at: d ? d.toISOString() : null, key: m[3], subject: m[4], result: m[5].replace(/^(skipped|failed)-/, "$1:"), ref: k });
   }
   return out.sort((a, b) => (a.ref < b.ref ? 1 : -1)).slice(0, limit);
 }

@@ -27,6 +27,7 @@ import { isPlainObject } from "./validate.mjs";
 import { DEFAULT_HOURS, DEFAULT_CALENDAR, isLocalDate, isLocalTime } from "./clock.mjs";
 import { bumpAuthEpoch } from "./sessions.mjs";
 import { clearPermissionsCache } from "./auth.mjs";
+import { has as hasService } from "./services.mjs";
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
@@ -153,15 +154,73 @@ function validateAutomations(v) {
 }
 
 export const INTEGRATION_MODES = Object.freeze(["off", "dry_run", "test", "live"]);
-const INTEGRATIONS = ["sms", "email", "payments", "meta", "push"];
+const INTEGRATIONS = ["sms", "email", "payments", "maps", "reviews", "meta", "push"];
+const E164 = /^\+1[2-9]\d{2}[2-9]\d{6}$/;
 function validateIntegrations(v) {
   const o = obj(v, "integrations");
   for (const k of INTEGRATIONS) {
     if (o[k] === undefined) continue;
     const i = obj(o[k], k);
     if (i.mode !== undefined && !INTEGRATION_MODES.includes(i.mode)) throw new InputError("Pick off, dry run, test or live.", `${k}.mode`);
+    if (i.test_allowlist !== undefined) {
+      if (!Array.isArray(i.test_allowlist) || i.test_allowlist.length > 20) throw new InputError("Up to 20 test addresses.", `${k}.test_allowlist`);
+      i.test_allowlist = i.test_allowlist.map((x, n) => {
+        const t = String(x || "").trim().toLowerCase();
+        if (k === "sms" ? !E164.test(t) : !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(t)) throw new InputError(k === "sms" ? "Use +1 and 10 digits." : "Use an email address.", `${k}.test_allowlist.${n}`);
+        return t;
+      });
+    }
+    for (const f of ["number", "test_from"]) {
+      if (k === "sms" && i[f] !== undefined && i[f] !== null && i[f] !== "" && !E164.test(String(i[f]))) throw new InputError("Use +1 and 10 digits.", `sms.${f}`);
+    }
     o[k] = i;
   }
+  return o;
+}
+
+function validatePortal(v) {
+  const o = obj(v, "portal");
+  if (o.lifetimes !== undefined) {
+    const l = obj(o.lifetimes, "lifetimes");
+    for (const [k, max] of [["quote_after_expiry_days", 365], ["quote_after_conversion_days", 365], ["invoice_after_paid_days", 730], ["agreement_days", 365], ["card_days", 60], ["hub_days", 365], ["present_minutes", 240]]) {
+      if (l[k] !== undefined && !(Number.isInteger(l[k]) && l[k] >= 1 && l[k] <= max)) throw new InputError(`Use a whole number from 1 to ${max}.`, `lifetimes.${k}`);
+    }
+    o.lifetimes = l;
+  }
+  o.terms = text(o.terms, "terms", 20000);
+  o.max_opens_per_day = num(o.max_opens_per_day, "max_opens_per_day", 10, 10000);
+  return o;
+}
+
+function validateComms(v) {
+  const o = obj(v, "comms");
+  if (o.reply_keywords !== undefined) {
+    const r = obj(o.reply_keywords, "reply_keywords");
+    if (r.enabled !== undefined && typeof r.enabled !== "boolean") throw new InputError("On or off.", "reply_keywords.enabled");
+    if (r.words !== undefined) {
+      if (!Array.isArray(r.words) || r.words.length > 20) throw new InputError("Up to 20 keywords.", "reply_keywords.words");
+      const reserved = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE", "START", "UNSTOP", "HELP", "INFO"]);
+      r.words = r.words.map((w, n) => {
+        const x = obj(w, `reply_keywords.words.${n}`);
+        x.word = String(x.word || "").trim().toUpperCase();
+        if (!/^[A-Z0-9]{1,20}$/.test(x.word)) throw new InputError("One word, letters and digits.", `reply_keywords.words.${n}.word`);
+        if (reserved.has(x.word)) throw new InputError("STOP, START and HELP words always do what they say.", `reply_keywords.words.${n}.word`);
+        x.tag = text(x.tag, `reply_keywords.words.${n}.tag`, 40);
+        if (x.task !== undefined && typeof x.task !== "boolean") throw new InputError("Yes or no.", `reply_keywords.words.${n}.task`);
+        return x;
+      });
+    }
+    o.reply_keywords = r;
+  }
+  return o;
+}
+
+export const INTAKE_MODES = Object.freeze(["rotor", "dual", "crm"]);
+function validateIntake(v) {
+  const o = obj(v, "intake");
+  if (o.mode !== undefined && !INTAKE_MODES.includes(o.mode)) throw new InputError("Pick Rotor, both, or the CRM.", "mode");
+  // "dual" and "crm" need the contacts module's intake (M2a): a feature gate, not a broken switch (§11.3)
+  if (o.mode && o.mode !== "rotor" && !hasService("contacts.intake")) throw new InputError("Sending website leads to the CRM arrives with Contacts.", "mode");
   return o;
 }
 
@@ -206,7 +265,7 @@ export const CORE_SETTINGS = Object.freeze({
         personal_warn_after: "21:00",
       },
       footer: { text: " Reply STOP to opt out.", first_per_number: true, marketing: true },
-      bulk_threshold: 5, duplicate_window_min: 10, campaign_gap_days: 3,
+      bulk_threshold: 5, duplicate_window_min: 10, campaign_gap_days: 3, inbound_first_only: false,
     },
     validate: validateMessaging,
   },
@@ -215,9 +274,28 @@ export const CORE_SETTINGS = Object.freeze({
   integrations: {
     perm: "settings:owner",
     // push reaches staff phones only, so it may be live once the VAPID keys exist (§5.7.7); the rest stay dry-run until the owner connects them (§11.1 rule 7)
-    defaults: { sms: { mode: "dry_run", test_from: null }, email: { mode: "dry_run" }, payments: { mode: "dry_run" }, meta: { mode: "dry_run" }, push: { mode: "live" } },
+    defaults: {
+      sms: { mode: "dry_run", number: "+17633143400", from: null, test_from: null, advanced_opt_out: true, test_allowlist: [] },
+      email: { mode: "dry_run", provider: "postmark", from: "Barta Window Washing <office@bartawindowwashing.com>", reply_to: "office@bartawindowwashing.com", test_allowlist: [] },
+      payments: { mode: "dry_run" }, maps: { mode: "dry_run" }, reviews: { mode: "dry_run" }, meta: { mode: "dry_run" }, push: { mode: "live" },
+    },
     validate: validateIntegrations,
   },
+  portal: {
+    perm: "settings:owner",
+    defaults: {
+      lifetimes: { quote_after_expiry_days: 30, quote_after_conversion_days: 90, invoice_after_paid_days: 90, agreement_days: 30, card_days: 7, hub_days: 30, present_minutes: 15 },
+      terms: "", max_opens_per_day: 200,
+    },
+    validate: validatePortal,
+  },
+  comms: {
+    perm: "settings:messaging",
+    // D23: off until the owner names the routing; STOP/START/HELP always work
+    defaults: { reply_keywords: { enabled: false, words: [{ word: "YES", tag: "Replied YES", task: true }, { word: "WINDOWS", tag: "Wants windows", task: true }, { word: "LIGHTS", tag: "Wants lights", task: true }] } },
+    validate: validateComms,
+  },
+  intake: { perm: "settings:owner", defaults: { mode: "rotor" }, validate: validateIntake },
   numbering: {
     perm: "settings:owner",
     defaults: {

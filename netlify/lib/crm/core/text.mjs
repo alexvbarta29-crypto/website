@@ -49,3 +49,24 @@ export function keySafe(s, max = 80) {
   const out = String(s ?? "").toLowerCase().replace(/[^a-z0-9\-_.@]+/g, "-").replace(/^-+|-+$/g, "").slice(0, max);
   return out || "x";
 }
+
+// How many SMS segments a text takes (what a carrier bills): GSM-7 texts
+// fit 160 characters in one segment and 153 per segment when split (the
+// extension characters ^{}\[~]|€ count twice); anything else is UCS-2, 70
+// and 67.
+const GSM7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+const GSM7_EXT = "^{}\\[~]|€\f";
+export function smsSegments(text) {
+  const chars = Array.from(String(text ?? ""));
+  let units = 0;
+  let gsm = true;
+  for (const c of chars) {
+    if (GSM7.includes(c)) units += 1;
+    else if (GSM7_EXT.includes(c)) units += 2;
+    else { gsm = false; break; }
+  }
+  if (!gsm) units = chars.reduce((n, c) => n + (c.codePointAt(0) > 0xffff ? 2 : 1), 0);
+  const [one, many] = gsm ? [160, 153] : [70, 67];
+  if (units === 0) return 0;
+  return units <= one ? 1 : Math.ceil(units / many);
+}

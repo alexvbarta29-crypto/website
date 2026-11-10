@@ -25,7 +25,8 @@
 // Core catalog (the system module registers CORE_SWEEPS):
 //   system.seed     fast  every pass until done   each module's seeds once (op/seed--{module}--v{n})
 //   auth.sessions   fast  daily 03:15  maintenance expired ses/, thr/ older than a day, expired idem/,
-//                                                 old sweep claims, stale leases, finished runs > 60 days
+//                                                 old sweep claims, the sender's duplicate-guard markers
+//                                                 older than a day, stale leases, finished runs > 60 days
 //   index.verify    bulk  daily 03:45  maintenance the run that rebuilds and diffs every index and relation family
 //   backup.nightly  bulk  daily 03:00  maintenance the snapshot run (core/backup.mjs)
 //   files.backup    bulk  daily 04:15  maintenance copies new file bytes into crm-backups
@@ -202,6 +203,15 @@ export const LOCK_STALE_MS = 24 * 3600 * 1000;
 export const RUN_KEEP_DAYS = 60;
 const LANE_LOCKS = new Set(["lock/worker-fast", "lock/worker-bulk"]);
 
+export const DUP_KEEP_MS = 24 * 3600 * 1000;
+async function dropOld(k, t) {
+  const got = await getRaw(k);
+  const d = got && got.data;
+  if (d && Date.parse(d.at) + DUP_KEEP_MS > t) return 0;
+  await deleteRaw(k);
+  return 1;
+}
+
 const PHASES = [
   // ses/: a session past its idle or absolute end can never be used again
   ["ses", "ses/", async (k, t) => {
@@ -239,6 +249,9 @@ const PHASES = [
     await deleteRaw(k);
     return 1;
   }],
+  // done/dup/ and done-dry/dup/: the sender's duplicate guard only looks back minutes
+  ["dup", "done/dup/", (k, t) => dropOld(k, t)],
+  ["dup-dry", "done-dry/dup/", (k, t) => dropOld(k, t)],
   // lock/: leases other than the lanes', expired more than a day ago
   ["locks", "lock/", async (k, t) => {
     if (LANE_LOCKS.has(k)) return 0;

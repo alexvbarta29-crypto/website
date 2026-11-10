@@ -14,16 +14,22 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { crmTest } from "../../helpers/crm-http.mjs";
-import { fixtureModule, fixtureType, BYTES } from "../../helpers/crm-fixtures.mjs";
+import { fixtureModule, fixtureType, BYTES, seedContact } from "../../helpers/crm-fixtures.mjs";
 
 const store = await import("../../../netlify/lib/crm-store.mjs");
 const R = await import("../../../netlify/lib/crm/core/registry.mjs");
 const L = await import("../../../netlify/lib/crm/core/lanes.mjs");
 const F = await import("../../../netlify/lib/crm/core/files.mjs");
 const P = await import("../../../netlify/lib/crm/core/pending.mjs");
+const B = await import("../../../netlify/lib/crm/core/bulk.mjs");
+const N = await import("../../../netlify/lib/crm/core/notify.mjs");
 const { DEFAULT_MAX_CALLS } = await import("../../../netlify/lib/crm/core/router.mjs");
 
-fixtureModule({ types: [fixtureType("budget_owner", "zb", { example: () => ({ assignee_ids: [] }) })] });
+fixtureModule({
+  types: [fixtureType("budget_owner", "zb", { example: () => ({ assignee_ids: [] }) })],
+  automations: [{ key: "budget.auto", label: "Budget automation", trigger: "manual", category: "service", imported: "no", mutates: false, run: async () => ({ result: "done" }) }],
+});
+const PUSH_KEYS = { p256dh: "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4", auth: "BTBZMqHH6r4Tts7J_aSIgg" };
 F.defineFileOwner("budget_owner", { canRead: () => true, canEdit: () => true });
 
 const W = { by: "system", origin: "api", actor_kind: "user", requestId: "budget" };
@@ -76,6 +82,36 @@ const SAMPLES = {
   "GET /api-keys": (fx) => ({ as: fx.owner, path: "/api-keys" }),
   "POST /api-keys": (fx) => ({ as: fx.owner, path: "/api-keys", body: { name: "Budget key" } }),
   "DELETE /api-keys/:id": (fx) => ({ as: fx.owner, path: `/api-keys/${fx.apiKeyId}` }),
+  "GET /templates": (fx) => ({ as: fx.owner, path: "/templates" }),
+  "GET /templates/:id": (fx) => ({ as: fx.tech, path: `/templates/${fx.template.id}` }),
+  "POST /templates": (fx) => ({ as: fx.owner, path: "/templates", body: { key: "budget_new", name: "Budget new", channel: "sms", category: "service", body: "Hi {{first_name|there}}." } }),
+  "PATCH /templates/:id": (fx) => ({ as: fx.owner, path: `/templates/${fx.template.id}`, ifMatch: fx.templateEtag, body: { name: "Budget note (edited)" } }),
+  "POST /templates/preview": (fx) => ({ as: fx.owner, path: "/templates/preview", body: { template_id: fx.template.id, contact_id: fx.contact.id } }),
+  "GET /automations": (fx) => ({ as: fx.owner, path: "/automations" }),
+  "PATCH /automations/:key": (fx) => ({ as: fx.owner, path: "/automations/budget.auto", body: { enabled: false } }),
+  "POST /automations/pause": (fx) => ({ as: fx.owner, path: "/automations/pause", body: {} }),
+  "POST /automations/resume": (fx) => ({ as: fx.owner, path: "/automations/resume", body: {} }),
+  "GET /automations/log": (fx) => ({ as: fx.owner, path: "/automations/log?date=2026-11-17" }),
+  "GET /notifications": (fx) => ({ as: fx.owner, path: "/notifications" }),
+  "POST /notifications/read": (fx) => ({ as: fx.owner, path: "/notifications/read", body: { all: true } }),
+  "GET /outbox": (fx) => ({ as: fx.owner, path: "/outbox?date=2026-11-17" }),
+  "GET /suppressions": (fx) => ({ as: fx.owner, path: "/suppressions?channel=sms" }),
+  "POST /suppressions": (fx) => ({ as: fx.owner, path: "/suppressions", body: { channel: "sms", address: "+17635550123", state: "opted_out" } }),
+  "GET /bulk-runs": (fx) => ({ as: fx.owner, path: "/bulk-runs" }),
+  "POST /bulk-runs": (fx) => ({ as: fx.owner, path: "/bulk-runs", body: { template_key: "budget_note", recipients: fx.recipients } }),
+  "GET /bulk-runs/:id": (fx) => ({ as: fx.owner, path: `/bulk-runs/${fx.bulkReady.id}` }),
+  "POST /bulk-runs/:id/test": (fx) => ({ as: fx.owner, path: `/bulk-runs/${fx.bulkReady.id}/test`, body: {} }),
+  "POST /bulk-runs/:id/confirm": (fx) => ({ as: fx.owner, path: `/bulk-runs/${fx.bulkTested.id}/confirm`, body: {} }),
+  "POST /bulk-runs/:id/cancel": (fx) => ({ as: fx.owner, path: `/bulk-runs/${fx.bulkCancel.id}/cancel`, body: {} }),
+  "POST /messages": (fx) => ({ as: fx.owner, path: "/messages", body: { contact_id: fx.contact.id, channel: "sms", body: "Running ten minutes late.", client_id: "budget-msg-0001" } }),
+  "GET /push/subscriptions": (fx) => ({ as: fx.owner, path: "/push/subscriptions" }),
+  "POST /push/subscriptions": (fx) => ({ as: fx.owner, path: "/push/subscriptions", body: { subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/budget-2", keys: PUSH_KEYS } } }),
+  "DELETE /push/subscriptions/:hash": (fx) => ({ as: fx.owner, path: `/push/subscriptions/${fx.pushHash}` }),
+  "POST /push/test": (fx) => ({ as: fx.owner, path: "/push/test", body: {} }),
+  "GET /search": (fx) => ({ as: fx.owner, path: "/search?q=Q-18641" }),
+  "POST /search/deep": (fx) => ({ as: fx.owner, path: "/search/deep", body: { q: "example" } }),
+  "GET /permissions": (fx) => ({ as: fx.owner, path: "/permissions" }),
+  "GET /admin/integrations": (fx) => ({ as: fx.owner, path: "/admin/integrations" }),
 };
 
 async function moduleSamples() {
@@ -102,6 +138,14 @@ test("every route stays under its maxCalls on fixtures (strict budget: one call 
     fx.signedIn = await t.user("tech");
     fx.signedInSession = t.stores.data.keys(`rel/user-sessions/${fx.signedIn.id}/`)[0].split("--").pop();
     await t.user("owner");                         // a second owner, so role changes are allowed
+    fx.contact = await scope(() => seedContact(1));
+    fx.recipients = [fx.contact.id, (await scope(() => seedContact(2))).id];
+    const tpl = await store.createRecord("template", { key: "budget_note", name: "Budget note", channel: "sms", category: "service", body: "Hi {{first_name|there}}, from {{company_name}}.", tags: [], active: true }, W);
+    fx.template = tpl.data;
+    fx.templateEtag = tpl.etag;
+    fx.bulkReady = await scope(() => B.createBulkRun({ recipients: fx.recipients, template_key: "budget_note", requested_by: "system" }, W));
+    fx.bulkTested = await scope(() => B.createBulkRun({ recipients: fx.recipients, template_key: "budget_note", requested_by: "system" }, W));
+    fx.bulkCancel = await scope(() => B.createBulkRun({ recipients: fx.recipients, template_key: "budget_note", requested_by: "system" }, W));
     fx.run = await scope(() => L.createRun("export.csv", { type: "user", date: "2026-11-17" }, W, { kick: false }));
     const snap = await scope(() => L.createRun("backup.snapshot", { date: "2026-11-17" }, W, { kick: false }));
     for (let i = 0; i < 6; i++) await t.runWorker({ lane: "bulk" });
@@ -112,6 +156,11 @@ test("every route stays under its maxCalls on fixtures (strict budget: one call 
     fx.pending = await scope(() => P.createPendingAction({ kind: "outbox_review", title: "Review", requested_by: fx.tech.id, items: [] }, W));
     fx.pending2 = await scope(() => P.createPendingAction({ kind: "outbox_review", title: "Review", requested_by: fx.tech.id, items: [] }, W));
     fx.eventKey = t.stores.data.keys(`evt/user/${fx.tech.id}/`)[0];
+    await t.api("/settings/messaging_test", { method: "PUT", as: fx.owner, ifMatch: "new", body: { contact_id: fx.contact.id } });
+    assert.equal((await t.api(`/bulk-runs/${fx.bulkTested.id}/test`, { method: "POST", as: fx.owner, body: {} })).status, 200);
+    fx.pushHash = (await scope(() => N.savePushSubscription(fx.owner.id, { endpoint: "https://fcm.googleapis.com/fcm/send/budget-1", keys: PUSH_KEYS }))).hash;
+    await scope(() => N.notify([fx.owner.id], { kind: "system", title: "Budget" }));
+    await t.runWorker({ lane: "fast" });
     const key = await t.api("/api-keys", { method: "POST", as: fx.owner, body: { name: "Old key" } });
     fx.apiKeyId = key.body.data.id;
 
@@ -131,7 +180,7 @@ test("every route stays under its maxCalls on fixtures (strict budget: one call 
       const busy = res.status === 503 || (res.body && res.body.error && res.body.error.code === "busy");
       assert.ok(!busy, `${name} went over its budget of ${r.maxCalls || DEFAULT_MAX_CALLS} calls (${res.status} ${JSON.stringify(res.body && res.body.error)})`);
       assert.ok(res.status < 500, `${name} failed: ${res.status}`);
-      if (process.env.CRM_BUDGET_DEBUG) tt.diagnostic(`${res.status} ${name}`);
+      if (process.env.CRM_BUDGET_DEBUG) tt.diagnostic(`${res.status} ${name}${res.status >= 400 ? " " + JSON.stringify(res.body && res.body.error) : ""}`);
     }
     assert.deepEqual(missingCore, [], "every core route has a budget sample");
   } finally {

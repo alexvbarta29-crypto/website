@@ -44,11 +44,11 @@ export const LOGIN_RE = /^[a-z0-9][a-z0-9.-]{1,31}$/;
 // Calendar colors handed out in order (the dashboard's palette).
 export const USER_COLORS = Object.freeze(["#2a78d6", "#fb4d3d", "#13a165", "#b7791f", "#7c4dff", "#0e9aa7", "#d0331f", "#4a4a52"]);
 const PAY_MODELS = ["hourly", "commission", "greater_of", "hourly_plus_commission"];
-const NOTIFY_KEYS = ["new_lead", "reply", "payment", "agreement_signed", "review"];
+const NOTIFY_KEYS = ["new_lead", "reply", "payment", "agreement_signed", "review", "approval", "work", "sales", "system"];
 const CHANNELS = ["sms", "email", "push"];
 
 export const DEFAULT_PAY = Object.freeze({ model: "hourly", hourly_cents: { service: 0, sales: 0, office: 0 }, commission_pct: { technician: 0, salesman: 0, upsell: 0 }, overtime: true });
-export const DEFAULT_NOTIFY = Object.freeze({ new_lead: ["push"], reply: ["push"], payment: [], agreement_signed: [], review: [] });
+export const DEFAULT_NOTIFY = Object.freeze({ new_lead: ["push"], reply: ["push"], payment: [], agreement_signed: [], review: [], approval: ["push"], work: ["push"], sales: ["push"], system: ["push"] });
 
 export function normLogin(v, field = "login") {
   const s = String(v ?? "").trim().toLowerCase();
@@ -280,4 +280,10 @@ export const pendingActionType = defineType({
   example: () => ({ kind: "outbox_review", title: "2 offline changes to review", status: "pending", requested_by: "us_0000000000000000000a", expires_at: "2026-11-18T15:00:00.000Z", items: [] }),
 });
 
-export const types = [contactStatsType, userType, fileType, runType, pendingActionType];
+// M1.3 part B: messaging types, defined next to their engines in core/.
+import { templateType } from "../../core/templates.mjs";
+import { outboxType } from "../../core/outbox.mjs";
+import { notificationType } from "../../core/notify.mjs";
+import { bulkRunType } from "../../core/bulk.mjs";
+
+export const types = [contactStatsType, userType, fileType, runType, pendingActionType, templateType, outboxType, notificationType, bulkRunType];

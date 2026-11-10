@@ -96,3 +96,38 @@ export const BYTES = Object.freeze({
   svg: () => new Uint8Array(Buffer.from('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')),
   unknown: () => new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
 });
+
+// ------------------------------------------------------------ contacts before M2a
+// The contact type ships with M2a; until then tests write synthetic contact
+// records straight into rec/contact/{id} (onlyIfNew), shaped like §5.1.
+//   const c = await seedContact(3, { consent: { sms_marketing: { state: "granted" } } });
+//   await seedStats(c.id, { comms: { first_sms: { "+17633143400": "2026-01-01T00:00:00Z" } } });
+const store = await import("../../netlify/lib/crm-store.mjs");
+const ids = await import("../../netlify/lib/crm/core/ids.mjs");
+const clock = await import("../../netlify/lib/crm/core/clock.mjs");
+
+export async function seedContact(n = 1, overrides = {}) {
+  const p = person(n);
+  const id = overrides.id || ids.newId("contact");
+  const at = clock.nowIso();
+  const consent = { sms_service: { state: "granted", source: "website_form" }, sms_marketing: { state: "unknown" }, email_marketing: { state: "unknown" }, ...(overrides.consent || {}) };
+  const rec = {
+    id, type: "contact", v: 1, wv: 1, kind: "person", first_name: p.first_name, last_name: p.last_name, company_name: "",
+    display_name: `${p.first_name} ${p.last_name}`, phones: [{ e164: p.phone, label: "mobile", primary: true, sms: true }],
+    emails: [{ address: p.email, label: "personal", primary: true }], lifecycle: "customer", tags: [], notes: "", watcher_ids: [],
+    billing_address: { street1: `${100 + (n % 100)} Example Ave`, city: "Delano", state: "MN", zip: "55328", country: "US" },
+    flags: {}, shadow: true, created_at: at, created_by: "system", updated_at: at, updated_by: "system",
+    ...overrides, consent,
+  };
+  await store.settledWrite(`rec/contact/${id}`, rec, { onlyIfNew: true });
+  return rec;
+}
+
+// An imported contact (Rotor's): not sandboxed, so automation only reports on it before cutover.
+export const seedImportedContact = (n, overrides = {}) => seedContact(n, { shadow: undefined, created_by: "import", import: { run_id: "ir_00000000000000000001", at: "2026-11-08T00:00:00.000Z", hash: "0".repeat(64) }, ...overrides });
+
+export async function seedStats(contactId, parts = {}) {
+  const rec = { id: contactId, type: "contact_stats", v: 1, wv: 1, created_at: clock.nowIso(), ...parts };
+  await store.settledWrite(`rec/contact_stats/${contactId}`, rec, { onlyIfNew: true });
+  return rec;
+}
