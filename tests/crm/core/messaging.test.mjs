@@ -76,7 +76,7 @@ test("built-in templates are seeded once by the worker; an owner's edit is never
   assert.equal(noCat.status, 400, "a built-in keeps its category");
   T.clearTemplateSeedCache();
   await t.runWorker({ lane: "fast" });
-  assert.equal(t.stores.data.keys("rec/template/").length, 1, "never a second copy");
+  assert.equal(t.stores.data.keys("rec/template/").filter((k) => t.stores.data.json(k).key === "fixture_builtin").length, 1, "never a second copy");
   assert.equal((await t.api(`/templates/${rows[0].id}`, { as: owner })).body.data.body, "Hello {{first_name|friend}}!");
 });
 

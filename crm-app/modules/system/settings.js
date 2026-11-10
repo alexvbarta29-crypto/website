@@ -35,7 +35,7 @@ export default {
           ${h ? html`<dt>Workers</dt><dd>${lane("fast") === "ok" && lane("bulk") === "ok" ? "Running" : lane("fast") === "never" ? "Not started yet" : "Check Data"}${h.lanes && h.lanes.fast && h.lanes.fast.last_pass_at ? html` · <span class="muted">${ago(h.lanes.fast.last_pass_at)}</span>` : ""}</dd>` : ""}
           <dt>Rotor</dt><dd>Still in charge until the switch-over</dd>
         </dl>
-        <p class="small">Arriving with later parts of the CRM: ${LATER.join(", ")}.</p>
+        <p class="small">Arriving with later parts of the CRM: ${LATER.filter((l) => !items.some((x) => x.label === l)).join(", ")}.</p>
       </div>
     </div>`;
   },

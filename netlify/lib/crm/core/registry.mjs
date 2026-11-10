@@ -97,7 +97,8 @@ export const ROUTE_AUTH = Object.freeze(["session", "session_or_key", "key", "ho
 const ROUTE_KEYS = new Set(["method", "path", "auth", "perm", "subject", "mode", "body", "maxBody", "idempotent", "replaySafe", "budgetMs", "maxCalls", "handler", "secret"]);
 // maintenance: true = keeps running while sys/mode.paused (after a restore, §3.10 "Paused")
 const SWEEP_KEYS = new Set(["key", "lane", "every", "at_local", "day", "dow", "mutates", "maintenance", "run", "label"]);
-const AUTOMATION_KEYS = new Set(["key", "trigger", "category", "imported", "mutates", "defaults", "run", "label"]);
+// recheck(item, actx) → { skip? }: core/automations.mjs asks it when a queued send is due
+const AUTOMATION_KEYS = new Set(["key", "trigger", "category", "imported", "mutates", "defaults", "run", "label", "recheck"]);
 export const AUTOMATION_CATEGORIES = Object.freeze(["service", "marketing", "personal", "staff"]);
 export const AUTOMATION_IMPORTED = Object.freeze(["no", "eligible", "yes"]);
 
@@ -192,6 +193,7 @@ export function defineModule(input) {
     if (!AUTOMATION_CATEGORIES.includes(a.category)) fail(`${name}: automation ${a.key} must declare a category`);
     if (!AUTOMATION_IMPORTED.includes(a.imported)) fail(`${name}: automation ${a.key} must declare imported`);
     if (typeof a.mutates !== "boolean") fail(`${name}: automation ${a.key} must declare mutates`);
+    if (a.recheck !== undefined && !isFn(a.recheck)) fail(`${name}: automation ${a.key}: recheck must be a function`);
   }
   const templates = needArray(m.templates, `${name}.templates`);
   for (const t of templates) {

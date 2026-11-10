@@ -169,8 +169,11 @@ export const K = Object.freeze({
 });
 
 const MAX_KEY_BYTES = 600;
+// A "." or ".." segment would be folded away in the Blobs request URL
+// (@netlify/blobs puts the key in the path), so another key would be read or written.
+const DOT_SEGMENT = /(^|\/)\.{1,2}(\/|$)/;
 function assertKey(key) {
-  if (!isKeySafe(key) || Buffer.byteLength(key, "utf8") > MAX_KEY_BYTES) throw new InputError("crm-store: key outside the key alphabet (§3.2)", "key");
+  if (!isKeySafe(key) || Buffer.byteLength(key, "utf8") > MAX_KEY_BYTES || DOT_SEGMENT.test(key)) throw new InputError("crm-store: key outside the key alphabet (§3.2)", "key");
   return key;
 }
 
@@ -394,6 +397,7 @@ async function retrying(sc, label, fn) {
 
 // Strong read with metadata: { data, etag, metadata } | null.
 async function read(sc, kind, key, { type = "json", etag } = {}) {
+  assertKey(key);
   return retrying(sc, "read", async () => {
     const { result } = await attempt(sc, kind, "read", (s) => s.getWithMetadata(key, { type, ...(etag ? { etag } : {}) }), { stream: type === "stream" });
     return result ? { data: result.data, etag: result.etag, metadata: result.metadata } : null;
@@ -401,6 +405,7 @@ async function read(sc, kind, key, { type = "json", etag } = {}) {
 }
 
 async function del(sc, kind, key) {
+  assertKey(key);
   return retrying(sc, "delete", async () => { await attempt(sc, kind, "delete", (s) => s.delete(key)); });
 }
 

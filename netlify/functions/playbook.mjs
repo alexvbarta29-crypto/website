@@ -7,6 +7,12 @@
 // password manager offers to save the password). See docs/PLAYBOOK.md.
 //
 // Password and cookie: netlify/lib/playbook-auth.mjs.
+//
+// Once the CRM is set up and holds its follow-up templates (cad_new_1..9,
+// cad_est_1..5), the page shows the CRM's wording, so an edit in the CRM's
+// Settings → Templates shows here too (netlify/lib/crm/modules/sales/
+// playbook.mjs). Before that, or if the CRM can't be read quickly, the page
+// is exactly the built-in one.
 
 import { PLAYBOOK_HTML } from "../lib/playbook-page.mjs";
 import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor, toOffice } from "../lib/playbook-auth.mjs";
@@ -60,7 +66,17 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 </form></body></html>`;
 }
 
-export default async (req) => {
+// The page: the CRM's wording when it has it (never throws, never slow).
+async function pageHtml(req, context) {
+  try {
+    const { playbookHtml } = await import("../lib/crm/modules/sales/playbook.mjs");
+    return await playbookHtml(req, context);
+  } catch {
+    return PLAYBOOK_HTML;
+  }
+}
+
+export default async (req, context) => {
   if (req.method === "POST") {
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
@@ -80,7 +96,7 @@ export default async (req) => {
   }
   if (signedIn(req)) {
     // Keep the year-long sign-in rolling while the playbook is in use.
-    return html(PLAYBOOK_HTML, 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
+    return html(await pageHtml(req, context), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
   }
   return toOffice("followups");
 };
