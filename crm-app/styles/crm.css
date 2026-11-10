@@ -82,7 +82,7 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tab[aria-current="page"]{color:var(--coral-ink)}
 .tab .badge{position:absolute;top:5px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral);color:#fff;font:600 10.5px/17px var(--text);text-align:center}
-.fab{position:absolute;z-index:6;right:calc(16px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 14px);width:56px;height:56px;border:0;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--coral-2));color:#fff;box-shadow:0 10px 26px rgba(251,77,61,.38);display:grid;place-items:center;cursor:pointer}
+.fab{position:absolute;z-index:6;right:calc(16px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 14px + var(--lift,0px));width:56px;height:56px;border:0;border-radius:50%;background:linear-gradient(135deg,var(--coral),var(--coral-2));color:#fff;box-shadow:0 10px 26px rgba(251,77,61,.38);display:grid;place-items:center;cursor:pointer}
 .fab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
 
 /* ------------------------------------------------------------ building blocks */
@@ -165,7 +165,7 @@ a.row:active,button.row:active{background:var(--fill)}
 /* ------------------------------------------------------------ sheets, toasts */
 .backdrop{position:fixed;inset:0;z-index:20;background:rgba(14,14,18,.38);opacity:0;transition:opacity .2s var(--ease)}
 .backdrop.on{opacity:1}
-.sheet{position:fixed;z-index:21;left:0;right:0;bottom:0;max-height:calc(100% - var(--top) - 24px);display:flex;flex-direction:column;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(14,14,18,.18);transform:translateY(100%);transition:transform .26s var(--ease);padding-bottom:var(--bottom)}
+.sheet{position:fixed;z-index:21;left:0;right:0;bottom:0;max-height:calc(100% - var(--top) - 24px);display:flex;flex-direction:column;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(14,14,18,.18);transform:translateY(100%);transition:transform .26s var(--ease);padding-bottom:calc(var(--bottom) + var(--lift,0px))}
 .sheet.on{transform:none}
 .sheet .grab{flex:none;width:40px;height:5px;margin:8px auto 0;border-radius:99px;background:#dcdce0}
 .sheet-head{flex:none;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 18px}
@@ -280,7 +280,7 @@ textarea.body{min-height:140px}
   .tab[aria-current="page"]{background:var(--coral-wash)}
   .tab .badge{left:calc(50% + 8px)}
   .toasts{bottom:calc(var(--bottom) + 24px + var(--lift,0px))}
-  .fab{bottom:calc(var(--bottom) + 24px)}
+  .fab{bottom:calc(var(--bottom) + 24px + var(--lift,0px))}
   .view{padding-left:calc(24px + var(--left));padding-right:calc(24px + var(--right));padding-bottom:calc(var(--bottom) + 32px + var(--lift,0px))}
   .view.flush{padding-bottom:0}
   /* the title lines up with the centred content below it */
