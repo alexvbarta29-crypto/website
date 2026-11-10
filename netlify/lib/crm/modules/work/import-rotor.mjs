@@ -9,7 +9,8 @@
 //           visit.crew_rotor_id)
 //   row 22  jobs (792) + lines → job: Rotor's number kept (seq "job"),
 //           status map, per-job lines (the job line's total_price is per
-//           job: kept as total_cents), kind from the service types
+//           job: kept as total_cents; a custom-price line is quantity 1 at
+//           its price, Rotor's quantity kept in line.rotor.qty_milli), kind from the service types
 //           (Christmas Lights → lights_install), $0 lines kept as $0, notes
 //           (gate codes, pets) → crew_notes, Rotor's job-level assigned_to
 //           and due amount kept in `rotor` only (import-only fields,
@@ -121,7 +122,10 @@ export function mapLine(l, i, users = new Map()) {
   const parent = types.find((t) => !t.includes("::")) || (types[0] ? types[0].split("::")[0] : "");
   const tier = (types.find((t) => t.includes("::")) || "").split("::")[1] || "";
   const qtyN = Number(l.quantity);
-  const qty = Number.isFinite(qtyN) && qtyN >= 0 ? Math.round(qtyN * 1000) : 1000;
+  const rotorQty = Number.isFinite(qtyN) && qtyN >= 0 ? Math.round(qtyN * 1000) : 1000;
+  // a custom (flat) price is the line's price: quantity 1, Rotor's count
+  // (panes, say) kept beside it, so pricing the line again never multiplies it
+  const qty = l.use_unit_pricing ? rotorQty : 1000;
   const unit = l.use_unit_pricing ? toCents(l.unit_price ?? 0) : toCents(l.custom_price ?? l.total_price ?? 0);
   const total = toCents(l.total_price ?? 0);
   const upsell = l.upsell_user_id ? users.get(str(l.upsell_user_id)) : null;
@@ -132,7 +136,7 @@ export function mapLine(l, i, users = new Map()) {
     ...(parent ? { service_type: parent.slice(0, 120) } : {}), ...(tier ? { tier: tier.slice(0, 120) } : {}),
     ...(isId(upsell, "user") ? { upsell_user_id: upsell } : {}),
     show: { qty: l.show_quantity !== false, unit: l.show_unit_price !== false, description: l.show_description === true },
-    ...(l.template_id ? { rotor: { template_id: str(l.template_id).slice(0, 64) } } : {}),
+    ...(l.template_id || (!l.use_unit_pricing && rotorQty !== 1000) ? { rotor: { ...(l.template_id ? { template_id: str(l.template_id).slice(0, 64) } : {}), ...(!l.use_unit_pricing && rotorQty !== 1000 ? { qty_milli: rotorQty } : {}) } } : {}),
   };
 }
 

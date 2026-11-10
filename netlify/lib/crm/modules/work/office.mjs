@@ -13,7 +13,16 @@
 //        too for its field events (on_my_way, start, pause, finish,
 //        no_access), with opts.mutate for its own fields and opts.emit
 //   syncJob(id, ctx)                    the job rule: status, schedule
-//        summary and people from its visits; one job.* event per write
+//        summary and people from its visits (the job's list and the
+//        job-visits relation, so a visit the job never heard of is found);
+//        one job.* event per write
+//
+// A visit write and its job's sync are two writes. The visit carries the
+// event its write makes (`last_event`: name, the wv of that write, the
+// payload's extra fields), so a retry of the same request (same client id,
+// a cancel sent again), and the work.sync sweep, finish what a crash left:
+// the job is synced again and the event emitted again for that wv (event
+// ids are record id + wv, so it is never queued twice).
 //   cancelJob / reopenJob / completeJob the office's job actions
 //   recomputeWorkStats(contactId)       the `work` part of ContactStats
 //   onMergeWork(a, b, ctx)              b's jobs and visits move to a
@@ -24,12 +33,12 @@
 // cutover (crm-store throws ParallelRunGuard, the caller writes a would- row).
 
 import {
-  getRecord, getRecords, createRecord, updateRecord, readIndex, readPointer, listRel, addActivity, updateStats, getSetting,
+  getRecord, getRecords, createRecord, updateRecord, readIndex, readPointer, listRel, addActivity, updateStats, getSetting, getRaw,
 } from "../../../crm-store.mjs";
 import { deriveId, isId, newId } from "../../core/ids.mjs";
 import { now, nowIso, localDate } from "../../core/clock.mjs";
 import { InputError, NotFoundError, ConflictError, ExistsError, BlobsTransientError, StaleError } from "../../core/errors.mjs";
-import { emit } from "../../core/events.mjs";
+import { emit, eventId } from "../../core/events.mjs";
 import { defineOp, runOp, opIdFor } from "../../core/ops.mjs";
 import { notify } from "../../core/notify.mjs";
 import { readSysMode } from "../../core/settings.mjs";
@@ -38,6 +47,7 @@ import { guardActive } from "../../core/guard.mjs";
 import { sandboxed } from "../../core/context.mjs";
 import { ParallelRunGuard } from "../../core/errors.mjs";
 import { keySafe, truncate } from "../../core/text.mjs";
+import { wouldAct } from "../../core/activity.mjs";
 import { addressOneLine } from "../contacts/display.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import {
@@ -219,8 +229,10 @@ export async function syncJob(jobId, ctx = {}, { add = [], by } = {}) {
   const w = W(ctx);
   const got = await getRecord("job", jobId);
   if (!got) throw new NotFoundError("That job isn't there.");
-  const ids = union(got.data.visit_ids, add).slice(0, MAX_VISITS_PER_JOB);
-  const visits = (await getRecords("visit", ids)).filter(Boolean).map((g) => g.data).filter((v) => v.job_id === jobId);
+  const rel = await listRel("job-visits", jobId, { limit: MAX_VISITS_PER_JOB }).catch(() => []);
+  const ids = union(union(got.data.visit_ids, add), rel.map((r) => r.id)).slice(0, MAX_VISITS_PER_JOB * 2);
+  const visits = (await getRecords("visit", ids)).filter(Boolean).map((g) => g.data).filter((v) => v.job_id === jobId && !v.deleted_at);
+  const mine = visits.map((v) => v.id);
   let path = [];
   const at = nowIso();
   const r = await updateRecord("job", jobId, (j) => {
@@ -228,7 +240,7 @@ export async function syncJob(jobId, ctx = {}, { add = [], by } = {}) {
     path = jobPath(j.status, target);
     const next = {
       ...j, status: target, schedule: jobSchedule(visits), assignee_ids: jobAssignees(visits),
-      visit_ids: union(j.visit_ids, add).slice(0, MAX_VISITS_PER_JOB),
+      visit_ids: union((j.visit_ids || []).filter((id) => mine.includes(id) || !ids.includes(id)), mine).slice(0, MAX_VISITS_PER_JOB),
     };
     if (path.includes("start") && !j.started_at) next.started_at = at;
     if (target === "completed" && j.status !== "completed") {
@@ -262,6 +274,25 @@ const visitEventPayload = (v, extra = {}) => ({
 
 const BOOKABLE = ["unscheduled", "scheduled", "in_progress"];
 
+// What a visit write records about the event it makes (see the top).
+const lastEvent = (name, v, by, extra = {}) => (name ? { name, wv: (v.wv || 0) + 1, by: by || "system", ...(Object.keys(extra).length ? { extra } : {}) } : undefined);
+
+// After a visit write (or a retry of one, or the sweep): the job follows its
+// visits, then the event of the visit's last write, if the event is still
+// the visit's latest. → { job }
+export async function settleVisit(visit, w, { activity = false, again = false } = {}) {
+  const synced = await syncJob(visit.job_id, w, { add: [visit.id] });
+  const e = visit.last_event;
+  // again (a retry, the sweep): skip an event the module's own listener already handled
+  const handled = again && e && e.wv === visit.wv ? await getRaw(`done/evt/${eventId(visit.id, visit.wv)}--work`).catch(() => null) : null;
+  if (e && e.name && e.wv === visit.wv && !(handled && handled.data)) {
+    await emit(e.name, visitEventPayload(visit, { ...(e.extra || {}), by: e.by || w.by || "system" }), w).catch((x) => console.error(`crm:work: ${e.name} not queued (${safeErr(x)})`));
+    if (activity && ["visit.scheduled", "visit.completed", "visit.cancelled", "visit.no_access"].includes(e.name)) await addActivity(visit.contact_id, e.name, visit.id, now()).catch(() => {});
+    if (e.name === "visit.no_access" || (e.name === "visit.cancelled" && visit.late_cancel)) await lateCancelTask(visit, e.name === "visit.no_access" ? "no_access" : "cancel", w).catch((x) => console.error(`crm:work: late-cancel task not made (${safeErr(x)})`));
+  }
+  return { job: synced.job };
+}
+
 // input: { job_id, date, start, end, window?, assignee_ids?, property_id?,
 // client_id?, route_order?, date_only? }. → { visit, job }
 export async function createVisit(input = {}, ctx = {}) {
@@ -276,16 +307,19 @@ export async function createVisit(input = {}, ctx = {}) {
   if (!contact) throw new NotFoundError("That job's contact isn't there anymore.");
   const id = typeof input.client_id === "string" && /^[A-Za-z0-9-]{8,64}$/.test(input.client_id) ? deriveId("visit", `c:${input.client_id.toLowerCase()}`) : newId("visit");
   const dup = await getRecord("visit", id);
-  if (dup) return { visit: dup.data, job, replay: true };
-  const [place, template] = await Promise.all([placeOf(input.property_id || job.property_id, contact), checklistFor(job)]);
+  if (dup) {
+    // the same booking again (a retry): finish what the first try may not have
+    const settled = await settleVisit(dup.data, w, { again: true });
+    return { visit: dup.data, job: settled.job || job, replay: true };
+  }
+  const [summary, template] = await Promise.all([visitSummary(job, contact, input.property_id || job.property_id), checklistFor(job)]);
   const s = await workSettings();
   const data = {
     id, job_id: job.id, contact_id: contact.id, ordering: (job.visit_ids || []).length + 1,
     date: input.date, start: input.start, end: input.end, window: input.window || { ...DEFAULT_WINDOW, minutes: s.default_window_minutes || 120 },
     assignee_ids: input.assignee_ids || [], status: "scheduled", checklist: checklistCopy(template), photos: [], tech_notes: "",
     ...(input.route_order ? { route_order: input.route_order } : {}), ...(input.date_only ? { date_only: true } : {}),
-    job_number: job.number_label, job_kind: job.kind, job_title: job.title, service_types: job.service_types || [], ...(job.plan_id ? { plan_id: job.plan_id } : {}),
-    contact_name: nameOf(contact), ...place,
+    ...summary, last_event: lastEvent("visit.scheduled", { wv: 0 }, w.by),
   };
   let rec;
   try {
@@ -294,13 +328,10 @@ export async function createVisit(input = {}, ctx = {}) {
     if (!(e instanceof ExistsError)) throw e;
     const got = await getRecord("visit", id);
     if (!got) throw e;
-    return { visit: got.data, job, replay: true };
+    const settled = await settleVisit(got.data, w, { again: true });
+    return { visit: got.data, job: settled.job || job, replay: true };
   }
-  const synced = await syncJob(job.id, w, { add: [rec.id] });
-  await Promise.all([
-    emit("visit.scheduled", visitEventPayload(rec), w).catch((e) => console.error(`crm:work: visit.scheduled not queued (${safeErr(e)})`)),
-    addActivity(contact.id, "visit.scheduled", rec.id, now()).catch(() => {}),
-  ]);
+  const synced = await settleVisit(rec, w, { activity: true });
   return { visit: rec, job: synced.job };
 }
 
@@ -326,6 +357,9 @@ export async function changeVisit(visitId, event, opts = {}) {
   if (event === "reopen") {
     const s = await workSettings();
     if (!canReopen(cur.data, now(), s.reopen_days)) throw new ConflictError(`A visit can be reopened for ${s.reopen_days} days after it's done.`);
+    // reopening the visit reopens a finished job: the same check as reopenJob
+    const jg = await getRecord("job", cur.data.job_id);
+    if (jg && jg.data.status === "completed") await assertNoPaidInvoice(jg.data);
   }
   let before = null;
   const at = nowIso();
@@ -346,23 +380,28 @@ export async function changeVisit(visitId, event, opts = {}) {
       if (missing.length) throw new InputError(`Finish the checklist first: ${missing.join(", ")}.`, "checklist");
       if (!(next.completion && next.completion.at && !(before.completion && before.completion.at === next.completion.at))) next.completion = { ...(next.completion || {}), at, by: w.by || "system" };
     }
+    // the event this write makes, kept with it (a retry or the sweep can emit it again)
+    const name = opts.emit === false ? null : visitEventFor(event, before, next);
+    const extra = {};
+    if (name) {
+      if (JSON.stringify(before.assignee_ids || []) !== JSON.stringify(next.assignee_ids || [])) extra.previous_assignee_ids = before.assignee_ids || [];
+      if (name === "visit.rescheduled") { extra.previous_date = before.date; extra.previous_start = before.start; }
+      if (name === "visit.cancelled" && opts.reason) extra.reason = String(opts.reason).slice(0, 120);
+    }
+    next.last_event = lastEvent(name, v, w.by, extra);
+    if (!next.last_event) delete next.last_event;
     return next;
   }, { ...w, ...(opts.ifMatch ? { ifMatch: opts.ifMatch } : {}) });
   const visit = r.data;
-  if (!r.changed) return { visit, job: null, event: null };
-  const touchesJob = before.status !== visit.status || before.date !== visit.date || JSON.stringify(before.assignee_ids) !== JSON.stringify(visit.assignee_ids);
-  const synced = touchesJob ? await syncJob(visit.job_id, w) : { job: null };
-  const name = opts.emit === false ? null : visitEventFor(event, before, visit);
-  if (name) {
-    const extra = {};
-    if (JSON.stringify(before.assignee_ids || []) !== JSON.stringify(visit.assignee_ids || [])) extra.previous_assignee_ids = before.assignee_ids || [];
-    if (name === "visit.rescheduled") { extra.previous_date = before.date; extra.previous_start = before.start; }
-    if (name === "visit.cancelled" && opts.reason) extra.reason = String(opts.reason).slice(0, 120);
-    await emit(name, visitEventPayload(visit, extra), w).catch((e) => console.error(`crm:work: ${name} not queued (${safeErr(e)})`));
-    if (["visit.completed", "visit.cancelled", "visit.no_access"].includes(name)) await addActivity(visit.contact_id, name, visit.id, now()).catch(() => {});
+  if (!r.changed) {
+    // nothing to change (a request sent again): finish what an earlier try may have left
+    const settled = await settleVisit(visit, w, { again: true });
+    return { visit, job: settled.job, event: null };
   }
-  if ((event === "no_access" || (event === "cancel" && opts.late)) && before.status !== "cancelled") await lateCancelTask(visit, event, w).catch((e) => console.error(`crm:work: late-cancel task not made (${safeErr(e)})`));
-  return { visit, job: synced.job, event: name };
+  const touchesJob = before.status !== visit.status || before.date !== visit.date || JSON.stringify(before.assignee_ids) !== JSON.stringify(visit.assignee_ids);
+  let job = null;
+  if (touchesJob || visit.last_event) job = (await settleVisit(visit, w, { activity: true })).job;
+  return { visit, job, event: visit.last_event ? visit.last_event.name : null };
 }
 
 // A no-access visit or a customer's cancel under 24 hours makes an approval
@@ -387,6 +426,34 @@ async function lateCancelTask(visit, event, w) {
 
 // ------------------------------------------------------------ the office's job actions
 
+// A job with a paid invoice stays finished (the money module's invoices,
+// read only when they exist).
+export async function assertNoPaidInvoice(job) {
+  for (const iid of (job.invoice_ids || []).slice(0, 10)) {
+    const inv = isId(iid, "invoice") ? await getRecord("invoice", iid) : null;
+    if (inv && ["paid", "partially_paid"].includes(inv.data.status)) throw new ConflictError("This job has a paid invoice, so it can't be reopened.");
+  }
+}
+
+// Every visit of a job: its list and the job-visits relation (a visit the
+// job never heard of, after a crash, is found too).
+export async function visitsOfJob(job) {
+  const rel = await listRel("job-visits", job.id, { limit: MAX_VISITS_PER_JOB }).catch(() => []);
+  const ids = union(job.visit_ids, rel.map((r) => r.id)).slice(0, MAX_VISITS_PER_JOB * 2);
+  return (await getRecords("visit", ids)).filter(Boolean).map((g) => g.data).filter((v) => v.job_id === job.id && !v.deleted_at);
+}
+
+// The parallel-run guard for an automated job change, before anything is
+// written: an imported job or visit Rotor still owns is never touched by
+// automation (one would- row instead). → null | the refusal
+async function guardRefusal(job, visits, action, w) {
+  if (!guardActive(w)) return null;
+  const contact = await liveContact(job.contact_id, w).catch(() => null);
+  const owned = (r) => !!(r && r.import) && !sandboxed(r, contact);
+  const hit = owned(job) ? job : visits.find(owned);
+  return hit ? { id: hit.id, type: hit === job ? "job" : "visit" } : null;
+}
+
 async function openJob(jobId) {
   if (!isId(jobId, "job")) throw new NotFoundError("That job isn't there.");
   const got = await getRecord("job", jobId);
@@ -401,10 +468,14 @@ export async function cancelJob(jobId, reason, ctx = {}, { ifMatch } = {}) {
   if (got.data.status === "cancelled") return got.data;
   if (got.data.status === "completed") throw new ConflictError("A finished job can't be cancelled. Reopen it first.");
   if (ifMatch && ifMatch !== got.etag) throw new StaleError(got.data, got.etag);
-  const visits = (await getRecords("visit", got.data.visit_ids || [])).filter(Boolean).map((g) => g.data);
-  for (const v of visits) {
-    if (OPEN_VISIT.includes(v.status) || v.status === "no_access") await changeVisit(v.id, "cancel", { ctx: w, reason: "job cancelled" });
+  const visits = await visitsOfJob(got.data);
+  const toCancel = visits.filter((v) => OPEN_VISIT.includes(v.status) || v.status === "no_access");
+  const refused = await guardRefusal(got.data, toCancel, "cancel", w);
+  if (refused) {
+    await wouldAct({ key: "work.cancelJobs", subject: got.data, action: "cancel", changes: { status: [got.data.status, "cancelled"], visits: [toCancel.length, 0] } }).catch(() => {});
+    throw new ParallelRunGuard("Rotor is still in charge of this job.", { type: refused.type, action: "cancel", subject: refused.id });
   }
+  for (const v of toCancel) await changeVisit(v.id, "cancel", { ctx: w, reason: "job cancelled" });
   const at = nowIso();
   let path = [];
   const r = await updateRecord("job", jobId, (j) => {
@@ -424,7 +495,13 @@ export async function cancelJobs(jobIds, reason, opId, ctx = {}) {
   for (const id of jobIds.slice(0, MAX_JOBS_PER_CALL)) {
     const got = isId(id, "job") ? await getRecord("job", id) : null;
     if (!got || !OPEN_JOB.includes(got.data.status)) { out.skipped.push(id); continue; }
-    await cancelJob(id, reason || `cancelled (${keySafe(String(opId || "op"), 60)})`, ctx);
+    try {
+      await cancelJob(id, reason || `cancelled (${keySafe(String(opId || "op"), 60)})`, ctx);
+    } catch (e) {
+      // refused before anything was written (a would- row says what it would have done)
+      if (e instanceof ParallelRunGuard) { out.skipped.push(id); continue; }
+      throw e;
+    }
     out.cancelled.push(id);
   }
   return out;
@@ -436,10 +513,7 @@ export async function reopenJob(jobId, ctx = {}) {
   const w = W(ctx);
   const got = await openJob(jobId);
   if (got.data.status !== "completed") throw new ConflictError("Only a finished job can be reopened.");
-  for (const iid of (got.data.invoice_ids || []).slice(0, 10)) {
-    const inv = isId(iid, "invoice") ? await getRecord("invoice", iid) : null;
-    if (inv && ["paid", "partially_paid"].includes(inv.data.status)) throw new ConflictError("This job has a paid invoice, so it can't be reopened.");
-  }
+  await assertNoPaidInvoice(got.data);
   let path = [];
   const r = await updateRecord("job", jobId, (j) => {
     if (j.status !== "completed") return null;
@@ -460,9 +534,57 @@ export async function completeJob(jobId, ctx = {}) {
   const got = await openJob(jobId);
   const job = got.data;
   if (!["scheduled", "in_progress"].includes(job.status)) throw new ConflictError(job.status === "unscheduled" ? "Book a visit first, then mark it done." : "This job can't be marked done.");
-  const visits = (await getRecords("visit", job.visit_ids || [])).filter(Boolean).map((g) => g.data);
+  const visits = await visitsOfJob(job);
   for (const v of visits) if (OPEN_VISIT.includes(v.status)) await changeVisit(v.id, "office_complete", { ctx: w });
   return (await syncJob(jobId, w)).job;
+}
+
+// ------------------------------------------------------------ what a visit copies
+
+// What a visit shows of its job, contact and place (copied at booking so
+// the schedule reads one index): → the fields.
+export async function visitSummary(job, contact, propertyId, { property } = {}) {
+  const place = await placeOf(propertyId || job.property_id, contact, { property });
+  return {
+    job_number: job.number_label, job_kind: job.kind, job_title: job.title, service_types: job.service_types || [], ...(job.plan_id ? { plan_id: job.plan_id } : {}),
+    contact_name: nameOf(contact), ...place,
+  };
+}
+const SUMMARY_KEYS = ["job_number", "job_kind", "job_title", "service_types", "plan_id", "contact_name", "property_id", "town", "address_line", "geo"];
+
+// Brings the copies on a job's open visits up to date (after the job, its
+// contact or its place changed). A booked visit whose checklist nobody has
+// touched gets the job's list again (the work may have changed). No event:
+// nothing about the visit itself changed. → visits changed
+export async function refreshVisits(jobId, ctx = {}, { visits: given, contact: knownContact, properties, propertyFrom } = {}) {
+  const w = W(ctx);
+  const jg = await getRecord("job", jobId);
+  if (!jg || jg.data.deleted_at) return 0;
+  const job = jg.data;
+  const visits = (given || await visitsOfJob(job)).filter((v) => OPEN_VISIT.includes(v.status));
+  if (!visits.length) return 0;
+  const contact = knownContact || await liveContact(job.contact_id, w);
+  if (!contact) return 0;
+  const template = visits.some((v) => v.status === "scheduled") ? await checklistFor(job) : null;
+  let changed = 0;
+  for (const v of visits) {
+    // a visit at the job's old place follows the job to its new one
+    const pid = (propertyFrom && v.property_id === propertyFrom ? job.property_id : v.property_id) || job.property_id;
+    const want = await visitSummary(job, contact, pid, { property: properties && properties.get(pid) });
+    const r = await updateRecord("visit", v.id, (cur) => {
+      if (!OPEN_VISIT.includes(cur.status) || cur.job_id !== job.id) return null;
+      const next = { ...cur };
+      for (const k of SUMMARY_KEYS) { if (want[k] === undefined) delete next[k]; else next[k] = want[k]; }
+      const untouched = cur.status === "scheduled" && !((cur.checklist && cur.checklist.items) || []).some((i) => i.done_at || i.done || (i.value !== undefined && i.value !== null && i.value !== ""));
+      if (untouched) {
+        const copy = checklistCopy(template);
+        if (((cur.checklist && cur.checklist.template_key) || null) !== (copy.template_key || null)) next.checklist = copy;
+      }
+      return JSON.stringify(next) === JSON.stringify(cur) ? null : next;
+    }, w).catch((e) => { if (e instanceof NotFoundError) return { changed: false }; throw e; });
+    if (r.changed) changed += 1;
+  }
+  return changed;
 }
 
 // ------------------------------------------------------------ stats (the `work` part of ContactStats, §5.1)

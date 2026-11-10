@@ -190,7 +190,7 @@ test("route order: windows first, then the shortest drive; the office can drag i
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(r.body.data.order, [vNo.id, vNear.id, vFar.id, vPm.id], "the exact 8:30 first, then the 8-10s near to far, then the afternoon");
     assert.deepEqual(r.body.data.no_geo, [vNo.id]);
-    assert.equal((await store.getRecord("visit", vFar.id)).data.route_order, 3);
+    assert.deepEqual((await store.getRecord("visit", vFar.id)).data.route_order, { [tech.id]: 3 }, "the stop number is this person's");
     const g = await t.api(`/schedule/route?date=2026-11-19&user=${tech.id}`, { as: owner });
     assert.deepEqual(g.body.data.stops.map((s) => s.id), r.body.data.order);
     const drag = await t.api("/schedule/route", { method: "POST", as: owner, body: { date: "2026-11-19", user_id: tech.id, order: [vNear.id, vNo.id, vFar.id, vPm.id] } });

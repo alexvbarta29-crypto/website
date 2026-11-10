@@ -101,6 +101,7 @@ function dayView(s) {
     <div class="btn-row">
       ${s.tech ? html`<a class="btn" href="${`#/schedule/route/${s.date}/${encodeURIComponent(s.tech)}`}">${icon("map")}Route</a>` : ""}
       <a class="btn" href="${`#/schedule/move-day?date=${s.date}`}">${icon("sun")}Rain day</a>
+      <a class="btn" href="#/schedule/time-off">${icon("clock")}Time off</a>
       ${s.date !== today() ? html`<button type="button" class="btn" data-day="today">Today</button>` : ""}
     </div>`;
 }
@@ -150,9 +151,10 @@ function trayView(s) {
 export default {
   title: "Schedule",
   load,
-  action: (s, ctx) => (s.denied ? null : { label: "Time off", run: () => ctx.go("/schedule/time-off") }),
+  // the top button books (a new job and its visit); Time off sits with the day's buttons
+  action: (s, ctx) => (s.denied || !ctx.can("schedule:write") ? null : { label: "Book", run: () => ctx.go("/jobs/new?book=1") }),
   render(s) {
-    if (s.denied) return html`<div class="stack"><div class="card empty"><div class="art">${icon("schedule")}</div><h2>Your day is on Today</h2><p>The full schedule is for the office.</p></div></div>`;
+    if (s.denied) return html`<div class="stack"><div class="card empty"><div class="art">${icon("schedule")}</div><h2>Your day is on Today</h2><p>The full schedule is for the office.</p><div class="btn-row"><a class="btn primary" href="#/today">Open Today</a></div></div></div>`;
     return html`<div class="stack wk">
       <div class="chips" role="tablist" aria-label="View">${VIEWS.map(([k, label]) => html`<button type="button" class="chip" role="tab" ${attrs({ "data-view": k, "aria-pressed": String(s.view === k) })}>${label}</button>`)}</div>
       ${s.view === "day" ? dayView(s) : s.view === "week" ? weekView(s) : s.view === "list" ? listView(s) : trayView(s)}

@@ -26,7 +26,8 @@ export default {
     ensureStyles();
     const users = team(await loadUsers(ctx).catch(() => []));
     const contact = params.contact ? await contactOf(ctx, params.contact).catch(() => null) : null;
-    return { contact, users, people: [], book: false, client_id: uuid() };
+    const q = new URLSearchParams((typeof location !== "undefined" && location.hash.split("?")[1]) || "");
+    return { contact, users, people: [], book: q.get("book") === "1", client_id: uuid() };
   },
   render(s) {
     return html`<form class="form stack wk" id="wk-new-job" novalidate>

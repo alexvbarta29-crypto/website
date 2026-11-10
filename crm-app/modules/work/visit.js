@@ -62,12 +62,16 @@ function lines(job, prices) {
     ${prices && job.totals ? html`<li class="tot"><span>Total</span><b class="num">${money(job.totals.total_cents)}</b></li>` : ""}</ul></div>`;
 }
 
+// An item is done when the crew ticked it (done_at, as the server's finish
+// gate reads it, design §5.5) or gave its photo, count or note.
+export const itemDone = (i) => !!(i && (i.done_at || i.done === true || (i.value !== undefined && i.value !== null && i.value !== "")));
+
 function checklist(v) {
   const items = (v.checklist && v.checklist.items) || [];
   if (!items.length) return "";
-  const done = items.filter((i) => i.done === true || (i.value !== undefined && i.value !== null && i.value !== "")).length;
+  const done = items.filter(itemDone).length;
   return html`<div class="card"><h2>Checklist <span class="muted small">${done} of ${items.length}</span></h2><ul class="wk-check">${items.map((i) => {
-    const ok = i.done === true || (i.value !== undefined && i.value !== null && i.value !== "");
+    const ok = itemDone(i);
     return html`<li class="${ok ? "on" : ""}"><span class="box" aria-hidden="true">${ok ? icon("check") : ""}</span><span>${i.label}${i.required ? html` <span class="muted small">(required)</span>` : ""}</span></li>`;
   })}</ul></div>`;
 }

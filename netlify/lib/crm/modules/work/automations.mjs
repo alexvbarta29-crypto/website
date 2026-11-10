@@ -14,7 +14,9 @@
 //                       sent for that date, own or seeded marker; skipped when
 //                       the visit was booked less than 14 days out): text +
 //                       email
-//   visit.reminder_2d   10:00, visits 2 days out (catch-up: 1-2 days): text
+//   visit.reminder_2d   10:00, visits 2 days out (catch-up: 1-2 days): text;
+//                       one per visit, day and start time (a time change
+//                       inside the 2 days is reminded again)
 //   Imported future visits are eligible for both reminders (§5.7.4); before
 //   cutover every send to a contact Rotor owns is dry-run (outbox only).
 //   At send time each step re-reads the visit: moved, cancelled or changed
@@ -27,6 +29,8 @@
 //               jobs/open index rows, never the record (§3.5, B12)
 //   work.stats  bulk lane, daily 02:15: contacts whose next visit date went
 //               by get their work stats worked out again (before contacts.stats)
+//   work.sync, work.summaries   office-sync.mjs (jobs in step with their
+//               visits after a crash; visits' copies after edits)
 
 import { getRecord, readIndex, getRaw, applyIndexRow, getSetting } from "../../../crm-store.mjs";
 import { now, nowIso, nowMs, localDate, addLocalDays, DEFAULT_HOURS } from "../../core/clock.mjs";
@@ -113,7 +117,11 @@ const reminderRun = (key, lo, hi) => async (input, actx) => {
   const seeded = await getRaw(`done/${key}/${v.id}--${v.date}`).catch(() => null);
   if (seeded && seeded.data && ["done", "unknown"].includes(seeded.data.state)) { await actx.log(v.id, "skipped:seeded"); return { result: "skipped:seeded" }; }
   const hours = await hoursSetting();
-  const r = await actx.send(step(v, hours, { key: `${v.id}--${v.date}`, fact_at: nowIso(), due_at: nowIso() }));
+  // the 2-day reminder is per visit, day and time: moved to another time after
+  // its reminder was queued (and skipped as changed), it is reminded again at
+  // the new time (its confirmation is skipped that close to the day)
+  const mk = key === "visit.reminder_2d" ? `${v.id}--${v.date}-${hhmmKey(v.start)}` : `${v.id}--${v.date}`;
+  const r = await actx.send(step(v, hours, { key: mk, fact_at: nowIso(), due_at: nowIso() }));
   return { result: r.queued ? "queued" : `skipped:${r.reason || "done"}` };
 };
 
@@ -214,6 +222,8 @@ export const sweeps = [
   { key: "visit.reminder_2d", label: "Visit reminders, 2 days", lane: "fast", every: "daily", at_local: "10:00", mutates: false, run: reminderSweep("visit.reminder_2d", 1, 2) },
   { key: "work.stale", label: "Stale jobs", lane: "fast", every: "hourly", mutates: false, run: staleSweep },
   { key: "work.stats", label: "Next visit dates", lane: "bulk", every: "daily", at_local: "02:15", mutates: false, run: statsSweep },
+  { key: "work.sync", label: "Jobs in step with their visits", lane: "fast", every: "hourly", mutates: true, run: (ctx) => import("./office-sync.mjs").then((m) => m.syncSweep(ctx)) },
+  { key: "work.summaries", label: "Visit copies of names and places", lane: "bulk", every: "daily", at_local: "02:30", mutates: true, run: (ctx) => import("./office-sync.mjs").then((m) => m.summariesSweep(ctx)) },
 ];
 
 export async function staleCount() {

@@ -85,6 +85,7 @@
 .wk-item-row .check{min-height:44px;align-items:center;font-size:14px}
 .wk-x svg{transform:rotate(45deg);color:var(--ink-3)}
 .wk-x{background:#fff;border:1px solid var(--line)}
+.wk-kept{color:var(--ink-2)!important;font-weight:600}
 [data-field="lines"] > .btn,[data-field="items"] > .btn{align-self:flex-start}
 
 /* ---------------------------------------------------------------- the route */

@@ -50,7 +50,9 @@ test("assign, move and cancel notify exactly the affected techs", async () => {
 
     // the route order changing tells nobody
     reset();
-    await patch(v.id, { route_order: 2 });
+    const ro = await t.api("/schedule/route", { method: "POST", as: owner, body: { date: "2026-11-26", user_id: tech.id } });
+    assert.equal(ro.status, 200, JSON.stringify(ro.body));
+    await drain(t);
     assert.deepEqual(got(), []);
 
     // cancelled: both hear, the owner who cancelled doesn't

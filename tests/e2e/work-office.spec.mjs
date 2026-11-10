@@ -90,6 +90,21 @@ for (const device of ["iphone13", "iphonese"]) {
       await goTo(f, `/jobs/${seeded.jobs[0]}`);
       await f.waitForSelector(`[href="#/visits/${seeded.visits[0]}"]`);
       await checks(f, page, `work-job-${device}`, problems);
+      if (device === "iphone13") {
+        // Edit: a notes change sends no lines, so the price never moves
+        const jobApi = async () => (await (await p.ctx.request.get(`/api/crm/jobs/${seeded.jobs[0]}`, { headers: { "x-crm": "1" } })).json()).data.job;
+        const before = await jobApi();
+        await f.click("[data-edit]");
+        await sheetUp(f, /Edit the job/);
+        await checks(f, page, `work-job-edit-${device}`, problems);
+        await f.fill(".sheet [name=crew_notes]", "Synthetic: gate code changed.");
+        await f.click(".sheet [type=submit]");
+        await sheetGone(f);
+        const after = await jobApi();
+        assert.equal(after.crew_notes, "Synthetic: gate code changed.");
+        assert.deepEqual(after.lines, before.lines, "the lines are as they were");
+        assert.equal(after.totals.total_cents, before.totals.total_cents);
+      }
       assert.deepEqual(problems, []);
       assert.deepEqual(errors.filter((e) => !/favicon/.test(e)), [], "no console errors");
       await p.clean();

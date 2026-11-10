@@ -241,6 +241,17 @@ export function reasonSheet({ title, label = "Why?", late = false, yes = "Cancel
 // line, and the kind of service (what picks the crew's checklist). Lines
 // are read back with readLines(form) → [{ id?, title, unit_cents, qty_milli, service_type? }].
 const dollars = (cents) => (Number.isFinite(cents) ? (cents / 100).toFixed(2) : "");
+// What a line's total is when it isn't price times quantity (a set price,
+// a plan's first visit only): said under the line, kept unless the price or
+// quantity changes.
+export function kept(l) {
+  if (!l || !l.id || !Number.isFinite(l.total_cents) || !Number.isFinite(l.unit_cents)) return "";
+  const plain = Math.round((l.unit_cents * (l.qty_milli ?? 1000)) / 1000);
+  if (l.override) return `Price set to ${dollarsText(l.override.cents)}${l.override.reason ? ` (${l.override.reason})` : ""}. Changing the price or quantity prices it again.`;
+  if (l.scope && l.scope.type && l.scope.type !== "all") return "Only on some of the plan's visits.";
+  return l.total_cents !== plain ? `Total ${dollarsText(l.total_cents)}, kept unless the price or quantity changes.` : "";
+}
+const dollarsText = (cents) => `$${(cents / 100).toFixed(2)}`;
 export function lineRow(l = {}, i = 0) {
   return html`<li class="wk-line" ${attrs({ "data-line": String(i), "data-id": l.id || "" })}>
     <label class="field"><span>What</span><input name="l_title" maxlength="160" ${attrs({ value: l.title || "", placeholder: "Exterior window cleaning" })}></label>
@@ -249,7 +260,8 @@ export function lineRow(l = {}, i = 0) {
       <label class="field"><span>Qty</span><input name="l_qty" inputmode="decimal" ${attrs({ value: l.qty_milli ? String(l.qty_milli / 1000) : "1" })}></label>
       <button type="button" class="icon-btn wk-x" data-unline aria-label="Remove this line">${icon("plus")}</button>
     </div>
-    <label class="field"><span>Service</span><select name="l_type">${[["", "Other"], ...SERVICE_TYPES.map((t) => [t, t])].map(([v, label]) => html`<option ${attrs({ value: v, selected: (l.service_type || "") === v })}>${label}</option>`)}</select></label>
+    <label class="field"><span>Service</span><select name="l_type">${[["", "Other"], ...[...SERVICE_TYPES, ...(l.service_type && !SERVICE_TYPES.includes(l.service_type) ? [l.service_type] : [])].map((t) => [t, t])].map(([v, label]) => html`<option ${attrs({ value: v, selected: (l.service_type || "") === v })}>${label}</option>`)}</select></label>
+    ${kept(l) ? html`<small class="wk-kept">${kept(l)}</small>` : ""}
   </li>`;
 }
 export const linesEditor = (lines = []) => html`<div class="field" data-field="lines"><span>The work</span>

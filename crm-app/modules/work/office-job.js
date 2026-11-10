@@ -26,6 +26,7 @@ function editSheet(ctx) {
   const s = ctx.state;
   const j = s.job;
   const closed = ["completed", "cancelled"].includes(j.status);
+  let linesDirty = false;
   const sh = sheet({
     title: "Edit the job",
     body: html`<form class="form" id="wk-job-edit" novalidate>
@@ -39,19 +40,24 @@ function editSheet(ctx) {
       <button type="submit" class="btn primary block">Save</button>
     </form>`,
     events: {
-      "click [data-addline]": () => addLine(sh.el),
-      "click [data-unline]": (e, b) => removeLine(b),
+      // the lines go back only when someone changed them (a crew-notes edit never prices the job again)
+      "click [data-addline]": () => { linesDirty = true; addLine(sh.el); },
+      "click [data-unline]": (e, b) => { linesDirty = true; removeLine(b); },
+      "input [data-lines]": () => { linesDirty = true; },
+      "change [data-lines]": () => { linesDirty = true; },
       "submit #wk-job-edit": async (e, form) => {
         e.preventDefault();
         clearErrors(form);
         const v = readForm(form);
         const body = { title: v.title === j.title ? undefined : v.title, crew_notes: v.crew_notes, office_notes: v.office_notes };
         if (!closed) {
-          body.kind = v.kind;
-          const got = readLines(form);
-          if (got.error) { showError(form, got.error); return; }
-          if (!got.lines.length) { showError(form, { field: "lines", message: "Add the work (one line at least)." }); return; }
-          body.lines = got.lines;
+          if (v.kind !== j.kind) body.kind = v.kind;
+          if (linesDirty) {
+            const got = readLines(form);
+            if (got.error) { showError(form, got.error); return; }
+            if (!got.lines.length) { showError(form, { field: "lines", message: "Add the work (one line at least)." }); return; }
+            body.lines = got.lines;
+          }
         }
         if (j.status === "unscheduled") body.target_month = v.target_month || "";
         const btn = form.querySelector("[type=submit]");

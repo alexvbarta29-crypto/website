@@ -37,16 +37,17 @@ export async function seed({ contacts = 200 } = {}) {
   globalThis.__crmPbkdf2Iterations = 1000;
   const users = (await store.readIndex("users", "")).rows;
   const out = { password: PASSWORD, users: {}, contacts: {}, enrollments: {} };
-  const person = async (key, login, name, role, tech) => {
+  const person = async (key, login, name, role, tech, color) => {
     const had = users.find((u) => u.login === login || (key === "owner" && u.role === "owner"));
     if (had) { out.users[key] = { id: had.id, login: had.login, name: had.name }; return; }
-    const r = await store.createRecord("user", { login, name, role, status: "active", is_technician: tech, password: await PW.hashPassword(PASSWORD), session_epoch: 0, grants: [], denies: [] }, { by: "system", origin: "api", actor_kind: "user", requestId: "e2e-seed" });
+    const r = await store.createRecord("user", { login, name, role, status: "active", is_technician: tech, ...(color ? { color } : {}), password: await PW.hashPassword(PASSWORD), session_epoch: 0, grants: [], denies: [] }, { by: "system", origin: "api", actor_kind: "user", requestId: "e2e-seed" });
     out.users[key] = { id: r.data.id, login, name };
   };
-  await person("owner", "olive", "Olive Owner", "owner", true);
-  await person("admin", "ada", "Ada Admin", "admin", false);
-  await person("tech", "theo", "Theo Tech", "tech", true);
-  await person("tech2", "tess", "Tess Tech", "tech", true);
+  // the two techs: different initials and colors, as the schedule shows people
+  await person("owner", "olive", "Olive Owner", "owner", true, "#2a78d6");
+  await person("admin", "ada", "Ada Admin", "admin", false, "#7c4dff");
+  await person("tech", "theo", "Theo Tech", "tech", true, "#13a165");
+  await person("tech2", "tess", "Tess Rowe", "tech", true, "#b7791f");
   await store.settledWrite(AUTH.BOOTSTRAP_KEY, { state: "done", user_id: out.users.owner.id, at: clock.nowIso() }, { onlyIfNew: true }).catch(() => {});
   const O = { by: out.users.owner.id, origin: "api", actor_kind: "user", requestId: "e2e-seed" };
   const ctxO = { write: (x = {}) => ({ ...O, ...x }), user: { id: out.users.owner.id, role: "owner", name: "Olive Owner" } };

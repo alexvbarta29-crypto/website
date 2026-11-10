@@ -69,7 +69,9 @@ test("Schedule: day (visits and tasks in time order, warnings, faces), week grid
   assert.match(tray, /Lights takedown \(no charge\)/);
   assert.match(tray, /3 more jobs due after November 2026/);
   assert.ok(!tray.includes("<script>alert(1)"));
-  assert.match(text(sch.render({ denied: true }, ctx())), /Your day is on Today/);
+  assert.match(text(sch.render({ denied: true }, ctx())), /Your day is on Today[\s\S]*href="#\/today"/);
+  assert.equal(sch.action(s, { ...ctx(), go: () => {} }).label, "Book", "the top button books; Time off sits with the day's buttons");
+  assert.match(h, /href="#\/schedule\/time-off"/);
 });
 
 test("Visit: the office's view (buttons by what the server allows, texts sent or would-send) and visitActions", async () => {
@@ -95,6 +97,9 @@ test("Visit: the office's view (buttons by what the server allows, texts sent or
   assert.match(h, /Would have sent/);
   assert.match(h, /Skipped/);
   assert.match(h, /1 of 2/);
+  // the crew's ticks are done_at (the server's finish gate, §5.5): the office counts those
+  const ticked = text(visit.render({ ...s, visit: { ...s.visit, checklist: { items: [{ key: "a", label: "A", done_at: "2026-11-24T14:10:00.000Z" }, { key: "b", label: "B", kind: "photo", value: "fl_00000000000000000001" }, { key: "c", label: "C" }] } } }, ctx()));
+  assert.match(ticked, /2 of 3/);
   assert.match(h, /Gate code/);
   assert.match(h, /Pays by check/);
   assert.match(h, /\$295/);

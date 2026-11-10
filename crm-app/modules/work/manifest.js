@@ -20,7 +20,8 @@ const office = {
     { path: "/jobs/new", load: () => import("./office-job-new.js"), title: "New job", perm: "schedule:write", parent: "/jobs" },
     { path: "/jobs/new/:contact", load: () => import("./office-job-new.js"), title: "New job", perm: "schedule:write", parent: "/contacts/:contact" },
     { path: "/jobs/:id", load: () => import("./office-job.js"), title: "Job", perm: "schedule:read", parent: "/jobs" },
-    { path: "/visits/:id", load: () => import("./visit.js"), title: "Visit", perm: "schedule:read", parent: "/today" },
+    // the office opens visits from the Schedule; a tech's way back from a deep link lands on its "Open Today" card
+    { path: "/visits/:id", load: () => import("./visit.js"), title: "Visit", perm: "schedule:read", parent: "/schedule" },
     { path: "/settings/checklists", load: () => import("./office-checklists.js"), title: "Checklists", perm: "settings:general", parent: "/settings", skeleton: "list" },
     { path: "/settings/checklists/:id", load: () => import("./office-checklist.js"), title: "Checklist", perm: "settings:general", parent: "/settings/checklists" },
   ],
