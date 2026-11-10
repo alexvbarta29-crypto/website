@@ -405,9 +405,11 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/team/:id": seeded.users.admin.id, "/templates/:id": (await get("/templates"))[0].id, "/enrollments/:id": seeded.enrollments.lead,
     "/deals/:id": (en.enrollment || en).deal_id, "/tasks/:id": seeded.tasks.tech, "/settings/cadences/:id": (await get("/cadences"))[0].id,
     "/import/:id": run.data.run.id, "/import/:id/conflicts": run.data.run.id, "/dashboard/:view": "money", "/tools/:id": "followups",
+    "/jobs/:id": seeded.jobs.tech, "/visits/:id": seeded.visits.tech, "/settings/checklists/:id": (await get("/checklists"))[0].id,
+    "/schedule/route/:date/:user": { date: (await get(`/visits/${seeded.visits.tech}`)).visit.date, user: seeded.users.tech.id },
   };
   await o.close();
-  const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] ?? null) ?? m);
+  const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] && typeof ids[path] === "object" ? ids[path][name] : ids[path] ?? null) ?? m);
   const problems = [];
   const missing = routes.filter((r) => fill(r).includes(":"));
   assert.deepEqual(missing, [], "every route's params have a fixture (add one when a module registers a new kind)");

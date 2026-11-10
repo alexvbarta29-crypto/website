@@ -264,6 +264,8 @@ export function toast(message, { bad = false, ms = 2600 } = {}) {
   t.className = "toast" + (bad ? " bad" : "");
   t.textContent = String(message);
   t.setAttribute("role", bad ? "alert" : "status");
+  // one at a time: a newer toast replaces the one showing (a stack covers the buttons)
+  while (box.firstChild) box.removeChild(box.firstChild);
   box.appendChild(t);
   setTimeout(() => t.remove(), ms);
 }

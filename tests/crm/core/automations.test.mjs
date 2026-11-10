@@ -160,10 +160,11 @@ test("settings: a disabled automation skips its due steps; the screen lists the 
   const mine = list.body.data.automations.find((a) => a.key === "fixture.note");
   assert.equal(mine.available, true);
   assert.equal(mine.settings.enabled, false);
-  // a catalog entry whose module hasn't shipped yet (Scheduling's) says when it arrives
-  const later = list.body.data.automations.find((a) => a.key === "visit.confirm");
-  assert.equal(later.available, false);
-  assert.equal(later.arrives_with, "Scheduling");
+  // a catalog entry whose module hasn't shipped yet says when it arrives
+  const later = list.body.data.automations.find((a) => a.available === false);
+  assert.ok(later, "some catalog entry is still to come");
+  assert.equal(later.arrives_with, AU.MODULE_LABELS[AU.CATALOG.find((c) => c.key === later.key).module]);
+  assert.equal(list.body.data.automations.find((a) => a.key === "visit.confirm").available, true, "Scheduling's automations are there");
   const bad = await t.api("/automations/fixture.note", { method: "PATCH", as: owner, body: { at_local: "25:00" } });
   assert.equal(bad.status, 400);
   const tech = await t.user("tech");
