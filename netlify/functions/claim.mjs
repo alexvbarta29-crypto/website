@@ -7,7 +7,9 @@
 //
 // Degraded modes mirror /api/referral: the CRM lead and the record are
 // attempted independently, and only when BOTH fail does the friend see the
-// call-us fallback (502). A claim is never silently lost.
+// call-us fallback (502). A claim is never silently lost. With the Barta
+// CRM's intake on (docs/CRM-CONTACTS.md), the lead also goes to the CRM
+// after Rotor, and a lead the CRM kept counts as delivered for that rule.
 
 import { REWARDS } from "../lib/referral-config.mjs";
 import { ValidationError, fullName } from "../lib/referral-lib.mjs";
@@ -67,7 +69,7 @@ function rotorPayload(lead, claim) {
   return payload;
 }
 
-export default async (req) => {
+export default async (req, context) => {
   if (req.method !== "POST")
     return json({ ok: false, error: "Method not allowed" }, 405);
 
@@ -87,7 +89,7 @@ export default async (req) => {
   const claim = await guard.run("record claim", (s) =>
     recordClaim(s, { code: lead.code, digits: lead.digits, lead }));
 
-  const rotor = await createRotorLead(rotorPayload(lead, claim || null));
+  const rotor = await createRotorLead(rotorPayload(lead, claim || null), { origin: "claim", context });
   const delivered = Boolean(rotor.delivered);
 
   if (claim && claim.record) {
@@ -106,7 +108,7 @@ export default async (req) => {
   }
   const stored = guard.ok && Boolean(claim && claim.record);
 
-  if (!delivered && !stored) {
+  if (!delivered && !stored && !rotor.crm_ok) {
     console.error("claim: lost — CRM failed and nothing recorded");
     return fail(502, "We couldn't send your request right now. Please call us and we'll take care of it.");
   }

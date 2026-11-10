@@ -287,11 +287,24 @@ function validateComms(v) {
 }
 
 export const INTAKE_MODES = Object.freeze(["rotor", "dual", "crm"]);
+// Lead webhook tokens (§6.7, M2a): kept only as a sha256 hash, shown once when made.
+export const MAX_WEBHOOK_TOKENS = 10;
+function validateWebhookTokens(list) {
+  if (list === undefined) return undefined;
+  if (!Array.isArray(list) || list.length > MAX_WEBHOOK_TOKENS) throw new InputError(`Keep it to ${MAX_WEBHOOK_TOKENS} webhook links.`, "webhook_tokens");
+  return list.map((t, i) => {
+    const f = `webhook_tokens.${i}`;
+    if (!isPlainObject(t) || typeof t.hash !== "string" || !/^[0-9a-f]{64}$/.test(t.hash) || typeof t.id !== "string" || !/^[a-z0-9]{6,20}$/.test(t.id)) throw new InputError("That webhook link isn't valid.", f);
+    return { id: t.id, hash: t.hash, label: text(t.label, `${f}.label`, 60) || "Webhook", source: text(t.source, `${f}.source`, 60) || "Meta Ads", created_at: text(t.created_at, `${f}.created_at`, 40) || null, created_by: text(t.created_by, `${f}.created_by`, 80) || null };
+  });
+}
 function validateIntake(v) {
-  const o = pick(obj(v, "intake"), ["mode"]);
+  const o = pick(obj(v, "intake"), ["mode", "webhook_tokens"]);
   if (o.mode !== undefined && !INTAKE_MODES.includes(o.mode)) throw new InputError("Pick Rotor, both, or the CRM.", "mode");
   // "dual" and "crm" need the contacts module's intake (M2a): a feature gate, not a broken switch (§11.3)
   if (o.mode && o.mode !== "rotor" && !hasService("contacts.intake")) throw new InputError("Sending website leads to the CRM arrives with Contacts.", "mode");
+  o.webhook_tokens = validateWebhookTokens(o.webhook_tokens);
+  if (o.webhook_tokens === undefined) delete o.webhook_tokens;
   return o;
 }
 
@@ -371,7 +384,7 @@ export const CORE_SETTINGS = Object.freeze({
     defaults: { reply_keywords: { enabled: false, words: [{ word: "YES", tag: "Replied YES", task: true }, { word: "WINDOWS", tag: "Wants windows", task: true }, { word: "LIGHTS", tag: "Wants lights", task: true }] } },
     validate: validateComms,
   },
-  intake: { perm: "settings:owner", defaults: { mode: "rotor" }, validate: validateIntake },
+  intake: { perm: "settings:owner", defaults: { mode: "rotor", webhook_tokens: [] }, validate: validateIntake },
   numbering: {
     perm: "settings:owner",
     defaults: {

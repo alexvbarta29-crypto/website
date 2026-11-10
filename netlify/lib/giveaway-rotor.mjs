@@ -17,10 +17,15 @@
 // Step 1 carries no source, so a Rotor "Lead created" workflow filtered to
 // the real lead sources (Website quote form, Meta Ads, Referral...) never
 // fires for a giveaway entrant: they stay out of the sales pipeline.
+//
+// After both Rotor steps, the same entrant goes to the Barta CRM when its
+// intake is on (docs/CRM-CONTACTS.md, "Website leads"): tags, notes and the
+// coupon-texts opt-in only, never the new-lead cadence, like Rotor.
 
 import { GIVEAWAY, DATES, TAGS, shareUrl } from "./giveaway-config.mjs";
 import { addressLine } from "./giveaway-lib.mjs";
 import { fullName } from "./referral-lib.mjs";
+import { afterRotor } from "./crm/modules/contacts/hook.mjs";
 
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
@@ -91,8 +96,23 @@ function e164(v) {
   return String(v || "").trim();
 }
 
-export async function upsertGiveawayLead({ phone: rawPhone, tags, name, fields = {}, notes = "", service_type,
-                                           new_lead_tags = [] } = {}) {
+export async function upsertGiveawayLead(args = {}) {
+  const r = await rotorUpsert(args);
+  const { phone, tags = [], name, fields = {}, notes = "" } = args;
+  const f = fields || {};
+  await afterRotor({
+    origin: tags.includes(TAGS.CLAIMED) ? "giveaway-claim" : "giveaway", rotorOk: !!r.delivered, rotor: r.lead_id ? { lead_id: r.lead_id } : null,
+    input: {
+      name, phone: e164(phone), tags, notes, source: f.source || GIVEAWAY.name, service_type: f.service_type,
+      address: f.address_street1 ? { street1: f.address_street1, city: f.address_city, state: f.address_state, zip: f.address_zip } : null,
+      consent: { sms_marketing: tags.includes(TAGS.COUPON_OPTIN) },
+    },
+  });
+  return r;
+}
+
+async function rotorUpsert({ phone: rawPhone, tags, name, fields = {}, notes = "", service_type,
+                             new_lead_tags = [] } = {}) {
   const phone = e164(rawPhone);
   // Step 1: find or create the lead by phone alone. The tags wait for step 2
   // so they always arrive as an UPDATE, which is what fires Rotor's

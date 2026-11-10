@@ -29,6 +29,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { seal, open, privateKey } from "../netlify/lib/office-data.mjs";
 import { normalizeBundle } from "../netlify/lib/crm-data.mjs";
+// One repair rule for names Rotor double-encoded, shared with the CRM import (M2a).
+import { fixMojibake } from "../netlify/lib/crm/modules/contacts/display.mjs";
+export { fixMojibake };
 
 export const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_KEY = path.join(ROOT, "build/office-dashboard-public.pem");
@@ -38,12 +41,6 @@ export const readJsonl = (file) => readFileSync(file, "utf8").split("\n").filter
 // Rotor hands back a few names double-encoded ("Oâ€™Connor": UTF-8 bytes read
 // as Latin-1). Undo that when every character fits in a byte and the round
 // trip decodes cleanly; leave everything else exactly as exported.
-export function fixMojibake(s) {
-  if (typeof s !== "string" || !/[Â-ô][\u0080-¿]/.test(s) || /[^\u0000-ÿ]/.test(s)) return s;
-  const fixed = Buffer.from(s, "latin1").toString("utf8");
-  return fixed.includes("�") ? s : fixed;
-}
-
 export function clean(v) {
   if (typeof v === "string") return fixMojibake(v);
   if (Array.isArray(v)) return v.map(clean);

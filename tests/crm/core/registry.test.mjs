@@ -83,9 +83,10 @@ test("events: one id per write counter, payload checked, undeclared events refus
   assert.equal(a.event.event_id, b.event.event_id, "a retried request is the same event");
   assert.notEqual(a.event.event_id, c.event.event_id, "reopened and completed again is a new event");
   assert.equal(a.event.event_id, eventId(payload.id, 3));
-  assert.deepEqual(a.listeners, ["listener-mod"]);
+  // the contacts module (M2a) also listens to job.completed (lead → customer)
+  assert.ok(a.listeners.includes("listener-mod"));
   assert.equal(a.queued, true);
-  assert.equal(S.data.keys("q/").length, 3, "one queue item per emission and listener");
+  assert.equal(S.data.keys("q/").length, 3 * a.listeners.length, "one queue item per emission and listener");
   assert.deepEqual(listenerMarker(a.event.event_id, "money"), { ns: "done", scope: "evt", key: `${a.event.event_id}--money` });
   await assert.rejects(emit("job.exploded", payload), RegistryError);
   await assert.rejects(emit("job.completed", { ...payload, total_cents: undefined }), /needs total_cents/);

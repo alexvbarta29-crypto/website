@@ -11,6 +11,7 @@
 
 import { readCustomerIndex } from "./crm-store.mjs";
 import { safeErr } from "./referral-lib.mjs";
+import { tidy, displayName, sortName, initial, customersSorted, phoneDigits, phoneFormatted, addressLines, addressText, city, mapsUrl, sinceLabel, collator } from "./crm/modules/contacts/display.mjs";
 
 export const ROTOR_CUSTOMER_URL = "https://app.getrotor.com/customers/";
 
@@ -157,79 +158,9 @@ export function normalizeBundle(b, { now = new Date() } = {}) {
     throw e;
   }
 }
-const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
-
-// Display only: a name typed all in lower case ("pat zimmer") gets its
-// capitals back. Anything with a capital in it is left exactly as entered.
-export const tidy = (s) => (s && !/\p{Lu}/u.test(s) ? s.replace(/\p{L}+/gu, (w) => w[0].toUpperCase() + w.slice(1)) : s);
-
-// "First Last", else the company, else a placeholder: never an empty row.
-export function displayName(c) {
-  return [tidy(str(c.first_name)), tidy(str(c.last_name))].filter(Boolean).join(" ") || str(c.company_name) || "No name";
-}
-
-// The name the list is alphabetised by: the last name, falling back to the
-// first name and then the company. Leading punctuation ("& Dan Baker" for a
-// couple) is skipped so the row still lands under a letter.
-export function sortName(c) {
-  const last = str(c.last_name).replace(/^[^\p{L}\p{N}]+/u, "");
-  return last || str(c.first_name).replace(/^[^\p{L}\p{N}]+/u, "") || str(c.company_name);
-}
-
-// The letter heading a customer sits under: A–Z, or # for anything else.
-export function initial(c) {
-  const ch = sortName(c).charAt(0).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
-  return /^[A-Z]$/.test(ch) ? ch : "#";
-}
-
-// By last name, then first name, then company. # sorts last.
-export function customersSorted(customers) {
-  const keys = (c) => [initial(c) === "#" ? "￿" : "", sortName(c), str(c.first_name), str(c.company_name)];
-  return [...customers].sort((a, b) => {
-    const ka = keys(a), kb = keys(b);
-    for (let i = 0; i < ka.length; i++) { const r = collator.compare(ka[i], kb[i]); if (r) return r; }
-    return 0;
-  });
-}
-
-// "+17633143400" → "7633143400"; anything that isn't a US number keeps its digits.
-export function phoneDigits(raw) {
-  let d = str(raw).replace(/\D/g, "");
-  if (d.length === 11 && d[0] === "1") d = d.slice(1);
-  return d;
-}
-
-// "(763) 314-3400" for a 10-digit number, else whatever Rotor had.
-export function phoneFormatted(raw) {
-  const d = phoneDigits(raw);
-  return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : str(raw);
-}
-
-// ["100 Example Ave", "Delano, MN 55328"], dropping whatever is missing.
-export function addressLines(c) {
-  const a = c && c.address;
-  if (!a) return [];
-  if (typeof a === "string") return a.split(/\s*[\n,]\s*/).map((s) => s.trim()).filter(Boolean);
-  const street = [str(a.street1), str(a.street2)].filter(Boolean).join(", ");
-  const cityState = [str(a.city), str(a.state)].filter(Boolean).join(", ");
-  const town = [cityState, str(a.zip)].filter(Boolean).join(" ");
-  return [street, town].filter(Boolean);
-}
-
-export const addressText = (c) => addressLines(c).join(", ");
-
-// The town shown on the right of a row.
-export function city(c) {
-  const a = c && c.address;
-  return a && typeof a === "object" ? str(a.city) : "";
-}
-
-// Apple Maps opens this on an iPhone; everywhere else it redirects to a web
-// map. Empty when there's no address to send.
-export function mapsUrl(c) {
-  const q = addressText(c);
-  return q ? "https://maps.apple.com/?q=" + encodeURIComponent(q) : "";
-}
+// The display helpers (names, phones, addresses, maps links) live in the
+// contacts module since M2a and are re-exported here for this page.
+export { tidy, displayName, sortName, initial, customersSorted, phoneDigits, phoneFormatted, addressLines, addressText, city, mapsUrl, sinceLabel };
 
 export const rotorUrl = (c) => ROTOR_CUSTOMER_URL + encodeURIComponent(str(c.id));
 
@@ -250,12 +181,6 @@ export const memberName = (id, members = []) => memberNames(members).get(id) || 
 export function assignedNames(c, members) {
   const names = memberNames(members);
   return (Array.isArray(c.assigned_to) ? c.assigned_to : []).map((id) => names.get(id) || "").filter(Boolean);
-}
-
-// "Mar 2025" (company time zone) from an ISO timestamp; "" if unreadable.
-export function sinceLabel(iso) {
-  const d = new Date(iso || "");
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "America/Chicago" });
 }
 
 export const statusLabel = (s) => { const t = str(s).toLowerCase(); return t ? t[0].toUpperCase() + t.slice(1) : "Unknown"; };
