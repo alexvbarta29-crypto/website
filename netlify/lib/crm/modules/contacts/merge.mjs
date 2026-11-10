@@ -35,7 +35,7 @@ import { isId } from "../../core/ids.mjs";
 import { now, nowIso } from "../../core/clock.mjs";
 import { ConflictError, InputError, NotFoundError, BlobsTransientError } from "../../core/errors.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { dateLabel, normName } from "./display.mjs";
+import { dateLabel, normName, rotorKey } from "./display.mjs";
 import { pairKey, MAX_TAGS } from "./types.mjs";
 import { propertiesOf } from "./properties.mjs";
 
@@ -223,8 +223,8 @@ defineOp(MERGE_OP, {
           if (ra.data.merged_into || ra.data.merging_into) throw new ConflictError("The contact you keep was merged away. Start from the one that's left.");
           await updateRecord("contact", b, (c) => (c.merging_into === a ? null : { ...c, merging_into: a }), s.ctx);
           const rot = rb.data.rotor || {};
-          for (const rid of rot.lead_ids || []) await repoint("rotor/lead", rid, b, a);
-          if (rot.customer_id) await repoint("rotor/customer", rot.customer_id, b, a);
+          for (const rid of rot.lead_ids || []) await repoint("rotor/lead", rotorKey(rid), b, a);
+          if (rot.customer_id) await repoint("rotor/customer", rotorKey(rot.customer_id), b, a);
           return { started: true };
         },
       },

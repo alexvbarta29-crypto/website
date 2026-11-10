@@ -47,7 +47,7 @@ import { readSysMode } from "../../core/settings.mjs";
 import { wouldAct } from "../../core/activity.mjs";
 import { keySafe } from "../../core/text.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { normalizePhone, normalizeEmail, normalizeAddress, dateLabel } from "./display.mjs";
+import { normalizePhone, normalizeEmail, normalizeAddress, dateLabel, rotorKey } from "./display.mjs";
 import { cleanTags, MAX_TAGS } from "./types.mjs";
 import { contactsAt, pickUpsertTarget, resolveContact, createCandidate } from "./match.mjs";
 import { ensureProperty } from "./properties.mjs";
@@ -292,7 +292,7 @@ export async function intakeLead(input, { origin = "lead-form", rotor = null, by
     if (metaKey) await claimPointer("meta-lead", metaKey, { id: contact.id }, opts).catch((e) => console.error(`crm:intake: leadgen pointer not saved (${safeErr(e)})`));
     // 6. Rotor's lead id (dual-write): the import resolves through this pointer first (§10.3)
     if (rotorLeadId) {
-      const p = await claimPointer("rotor/lead", rotorLeadId, { id: contact.id }, opts).catch(() => ({ ok: false }));
+      const p = await claimPointer("rotor/lead", rotorKey(rotorLeadId), { id: contact.id }, opts).catch(() => ({ ok: false }));
       if (!p.ok && p.current && p.current.id && p.current.id !== contact.id) console.error("crm:intake: a Rotor lead id already names another contact");
     }
 

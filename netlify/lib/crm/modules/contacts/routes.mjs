@@ -490,14 +490,14 @@ async function mergeContactRoute(ctx) {
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 
 export const contactRoutes = [
-  R("GET", "/contacts/index", "contacts:read_all", "none", indexRoute, { maxCalls: 6 }),
-  R("GET", "/contacts", "contacts:read_all", "none", listRoute, { maxCalls: 6 }),
+  R("GET", "/contacts/index", "contacts:read_all", "none", indexRoute),
+  R("GET", "/contacts", "contacts:read_all", "none", listRoute),
   R("POST", "/contacts", "leads:create", "none", createRoute, { maxCalls: 60 }),
   R("GET", "/contacts/:id", "contacts:read", "required", getRoute),
   R("PATCH", "/contacts/:id", "contacts:write", "required", patchRoute, { maxCalls: 40 }),
   R("POST", "/contacts/:id/archive", "contacts:write", "required", archiveRoute, { maxCalls: 40 }),
   R("POST", "/contacts/:id/restore", "contacts:write", "required", restoreRoute, { maxCalls: 40 }),
-  R("GET", "/contacts/:id/activity", "contacts:read", "required", activityRoute, { maxCalls: 20 }),
+  R("GET", "/contacts/:id/activity", "contacts:read", "required", activityRoute),
   R("POST", "/contacts/:id/notes", "contacts:write", "required", notesRoute),
   R("PATCH", "/contacts/:id/consent", "consent:edit", "required", consentRoute),
   R("PATCH", "/contacts/:id/automations-paused", "consent:edit", "required", pausedRoute),
@@ -507,7 +507,7 @@ export const contactRoutes = [
   R("GET", "/properties/:id", "contacts:read", "required", getPropertyRoute),
   R("PATCH", "/properties/:id", "contacts:write", "required", patchPropertyRoute),
   R("POST", "/properties/:id/geocode", "contacts:write", "required", geocodeRoute),
-  R("GET", "/merge-candidates", "contacts:merge", "none", candidatesRoute, { maxCalls: 6 }),
+  R("GET", "/merge-candidates", "contacts:merge", "none", candidatesRoute),
   R("POST", "/merge-candidates/bulk", "contacts:merge", "none", bulkRoute, { mode: "run" }),
   R("POST", "/merge-candidates/:id/merge", "contacts:merge", "required", mergeCandidateRoute, { mode: "run" }),
   R("POST", "/merge-candidates/:id/dismiss", "contacts:merge", "required", dismissRoute),

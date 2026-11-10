@@ -213,3 +213,19 @@ test("CRM unreachable and store down: 502 so the friend sees the call-us fallbac
   assert.equal(res.status, 502);
   assert.equal((await res.json()).ok, false);
 });
+
+// The Barta CRM (M2a, docs/CRM-CONTACTS.md): with no CRM store and no CRM
+// setup the claim is exactly what it was: one Rotor call, no CRM work, the
+// same answer (and no crm_ok anywhere).
+test("the CRM's dual-write leaves the claim untouched when the CRM isn't set up", async () => {
+  const waited = [];
+  const res = await claim(jsonRequest("/api/claim", "POST", {
+    first_name: "Carla", last_name: "Mendez", phone: "7635550199", consent: true, code: seeded.code,
+  }), { waitUntil: (p) => waited.push(p) });
+  assert.equal(res.status, 200);
+  const out = await res.json();
+  assert.equal(out.delivered, true);
+  assert.ok(!("crm_ok" in out));
+  assert.equal(net.rotor().length, 1, "one Rotor call, as before");
+  assert.equal(waited.length, 0, "nothing handed to the CRM");
+});

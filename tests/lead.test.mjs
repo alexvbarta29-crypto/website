@@ -123,3 +123,17 @@ test("phone-or-email validation still rejects uncontactable submissions", async 
   assert.equal(res.status, 400);
   assert.equal(captured, null, "no Rotor request for invalid submissions");
 });
+
+// The Barta CRM (M2a, docs/CRM-CONTACTS.md "Website leads"): the Rotor call
+// above is unchanged, and without the CRM's setup or store nothing else
+// happens: the answer is Rotor's, a thrown Rotor call still fails the
+// request, and no work is handed to the platform after the answer.
+test("CRM dual-write: off without the CRM's setup; a thrown Rotor call still fails as before", async () => {
+  const waited = [];
+  const ctx = { waitUntil: (p) => waited.push(p) };
+  const res = await handler(new Request("http://localhost/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Ctx Person", phone: "7635550105" }) }), ctx);
+  assert.equal(res.status, 200);
+  assert.equal(waited.length, 0, "no CRM work after the answer");
+  globalThis.fetch = async () => { throw new TypeError("fetch failed"); };
+  await assert.rejects(handler(new Request("http://localhost/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Ctx Person", phone: "7635550106" }) }), ctx), TypeError);
+});

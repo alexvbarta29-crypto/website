@@ -28,7 +28,7 @@ import { nowIso } from "../../core/clock.mjs";
 import { getType, statsPart } from "../../core/registry.mjs";
 import { maskPhone } from "../../core/text.mjs";
 import { setSuppression } from "../../core/suppressions.mjs";
-import { fixMojibake, normalizePhone, normalizeEmail, normalizeAddress, addressKey, normName } from "./display.mjs";
+import { fixMojibake, normalizePhone, normalizeEmail, normalizeAddress, addressKey, normName, rotorKey, stripeKey } from "./display.mjs";
 import { SOURCES, cleanTags } from "./types.mjs";
 import { contactsAt, createCandidate } from "./match.mjs";
 import { propertiesOf } from "./properties.mjs";
@@ -171,7 +171,7 @@ export function normalizePerson(row) {
 
 async function lookup(ctx, type, rid) {
   if (ctx && typeof ctx.lookup === "function") return (await ctx.lookup(type, rid)) || null;
-  const p = await readPointer(`rotor/${type}`, rid).catch(() => null);
+  const p = await readPointer(`rotor/${type}`, rotorKey(rid)).catch(() => null);
   return p && isId(p.id, "contact") ? p.id : null;
 }
 
@@ -238,7 +238,7 @@ async function mapCustomer(r, ctx) {
   const records = [{ type: "contact", data }];
   if (propertyId) records.push({ type: "property", data: { id: propertyId, contact_id: id, label: "Home", address: p.address, access: {}, assets: {}, photo_ids: [], rotor: { from: "customer" } } });
   const patches = p.optin ? [{ type: "contact", id, set: { "consent.sms_marketing": consentGrant("giveaway_optin") }, only_if: { "consent.sms_marketing.state": ["unknown", undefined] } }] : [];
-  return { records, pointers: [{ kind: "rotor/customer", key: r.id, value: { id } }], patches, warnings };
+  return { records, pointers: [{ kind: "rotor/customer", key: rotorKey(r.id), value: { id } }], patches, warnings };
 }
 
 // ------------------------------------------------------------ row 7: quote contact rows
@@ -263,12 +263,12 @@ async function mapQuoteContact(r, ctx) {
   const out = { patches: Object.keys(set).length ? [{ type: "contact", id, set, only_if: r.sms_opted_in ? { "consent.sms_service.state": ["unknown", undefined] } : undefined }] : [], pointers: [], stats: [], warnings: [] };
   if (r.stripe_customer_id) {
     out.stats.push({ contact_id: id, part: "money", merge: { stripe: { customer_ids: [r.stripe_customer_id] } } });
-    out.pointers.push({ kind: "stripe-cus", key: r.stripe_customer_id, value: { id }, list: true });
+    out.pointers.push({ kind: "stripe-cus", key: stripeKey(r.stripe_customer_id), value: { id }, list: true });
   }
   if (r.first_sms_sent_date && !Number.isNaN(Date.parse(r.first_sms_sent_date))) out.stats.push({ contact_id: id, part: "comms", merge: { first_sms: { [MAIN_NUMBER]: new Date(r.first_sms_sent_date).toISOString() } } });
   // a converted lead: its Rotor lead id names this contact, so the leads phase updates it in place (§10.3)
   if (r.converted_from_lead_id && ROTOR_ID.test(r.converted_from_lead_id)) {
-    out.pointers.push({ kind: "rotor/lead", key: r.converted_from_lead_id, value: { id } });
+    out.pointers.push({ kind: "rotor/lead", key: rotorKey(r.converted_from_lead_id), value: { id } });
     out.patches.push({ type: "contact", id, add: { "rotor.lead_ids": [r.converted_from_lead_id] }, fill: { "rotor.converted_from_lead_id": r.converted_from_lead_id } });
   }
   return out;
@@ -300,7 +300,7 @@ async function mapLead(r, ctx) {
       }
     }
   }
-  out.pointers.push({ kind: "rotor/lead", key: r.id, value: { id } });
+  out.pointers.push({ kind: "rotor/lead", key: rotorKey(r.id), value: { id } });
   if (linked) {
     // an existing contact (dual-write, converted, or a customer): the lead id joins it; empty fields fill in
     out.patches.push({ type: "contact", id, add: { "rotor.lead_ids": [r.id], tags: p.data.tags }, fill: { first_name: p.data.first_name, last_name: p.data.last_name, billing_address: p.address || undefined, owner_id: p.data.owner_id } });
@@ -356,12 +356,12 @@ async function mapProperty({ contactRotorId, contactKind, propertyId, address, f
   const key = addressKey(a);
   const existing = (await propertiesOf(cid)).find((p) => addressKey(p.address) === key);
   if (existing) {
-    return propertyId ? { patches: [{ type: "property", id: existing.id, fill: { "rotor.property_id": propertyId } }], pointers: [{ kind: "rotor/property", key: String(propertyId), value: { id: existing.id } }] } : {};
+    return propertyId ? { patches: [{ type: "property", id: existing.id, fill: { "rotor.property_id": propertyId } }], pointers: [{ kind: "rotor/property", key: rotorKey(propertyId), value: { id: existing.id } }] } : {};
   }
   const id = propertyId ? idForRotor("property", String(propertyId)) : idForRotor("property", `${cid}:${key}`);
   return {
     records: [{ type: "property", data: { id, contact_id: cid, label: "Property", address: a, access: {}, assets: {}, photo_ids: [], rotor: { ...(propertyId ? { property_id: propertyId } : {}), from } } }],
-    pointers: propertyId ? [{ kind: "rotor/property", key: String(propertyId), value: { id } }] : [],
+    pointers: propertyId ? [{ kind: "rotor/property", key: rotorKey(propertyId), value: { id } }] : [],
   };
 }
 

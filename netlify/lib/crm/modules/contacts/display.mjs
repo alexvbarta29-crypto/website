@@ -11,6 +11,8 @@
 // junk cases, email normalization, address normalization (state from ZIP),
 // the contacts index row's search text and the service-area tier.
 
+import { createHash } from "node:crypto";
+
 const str = (v) => (v == null ? "" : String(v)).trim();
 const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 export const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
@@ -105,7 +107,8 @@ export function normalizeEmail(raw) {
 // The three-digit ZIP prefixes of Minnesota (550-567): a junk state on a
 // row whose ZIP is clearly Minnesotan is repaired to MN (§10.2 row 6).
 const MN_ZIP = /^(55[0-9]|56[0-7])\d{2}$/;
-const STATE_RE = /^[A-Z]{2}$/;
+const US_STATES = new Set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY PR".split(" "));
+const STATE_RE = { test: (s) => US_STATES.has(s) };
 export const STATE_NAMES = Object.freeze({ MINNESOTA: "MN", WISCONSIN: "WI", IOWA: "IA", "NORTH DAKOTA": "ND", "SOUTH DAKOTA": "SD" });
 
 // { street1, street2?, city, state, zip, country: "US" } from the many shapes
@@ -190,6 +193,13 @@ export function sinceLabel(iso) {
 // "Nov 17, 2026" in the company's time zone (a note block's heading).
 const DATE_FMT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 export const dateLabel = (d) => { const x = d instanceof Date ? d : new Date(d); return Number.isNaN(x.getTime()) ? "" : DATE_FMT.format(x); };
+
+// A Rotor id as it appears in a pointer key (§3.2 alphabet: lower case;
+// Rotor's UUIDs are case-insensitive).
+export const rotorKey = (rid) => String(rid ?? "").trim().toLowerCase().replace(/[^a-z0-9\-_.@]+/g, "-").slice(0, 80);
+// A Stripe customer id as a key (its ids are case-sensitive and the key
+// alphabet is lower case): a hash, never the id itself.
+export const stripeKey = (id) => createHash("sha256").update(String(id ?? "")).digest("hex").slice(0, 32);
 
 // ------------------------------------------------------------ the service area (§5.1, §6.5)
 
