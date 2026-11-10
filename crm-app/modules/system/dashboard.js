@@ -37,6 +37,9 @@ export default {
     const f = view.querySelector("iframe");
     const bar = view.querySelector(".seg-bar");
     if (!f || !bar) return;
+    // the selected view's button may sit off-screen in the scrolling row
+    const sel = bar.querySelector(".seg.on");
+    if (sel) { try { sel.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) { /* old Safari */ } }
     let loaded = false;
     let pending = null;
     const show = (id) => {
@@ -56,6 +59,7 @@ export default {
         x.setAttribute("aria-pressed", String(on));
       });
       if (ctx && ctx.keep) ctx.keep.view = id;
+      try { b.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) { /* old Safari */ }
       if (loaded) show(id); else pending = id;
     });
   },
