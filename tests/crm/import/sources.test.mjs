@@ -245,6 +245,39 @@ test("a record folded from many rows shares one source: a customer's Open then W
   } finally { t.done(); }
 });
 
+test("two opportunities of one lead on one board that name two people fold into one enrollment that the next import leaves alone", async () => {
+  const { t, owner } = await setup();
+  try {
+    const L = uuid(821), P = uuid(822), S0 = uuid(823), O1 = uuid(825), O2 = uuid(826);
+    const ex = bare();
+    const [m0, m1] = ex.members;
+    ex.leads = [lead(L, { name: "Robin Twice", phone: "+17635550821", email: "robin.twice@example.com" })];
+    ex.pipelines = [{ id: P, name: "New Lead", position: 0 }];
+    ex.pipeline_stages = [{ id: S0, pipeline_id: P, name: "New", position: 0 }];
+    const opp = (id, assigned, created_at) => ({ id, name: "Robin Twice", pipeline_id: P, stage_id: S0, status: "Open", value: null, assigned_to: [assigned], contact_id: L, contact_type: "lead", archived: true, created_at });
+    ex.opportunities = [opp(O1, m0.user_id, "2026-09-06T00:00:00+00:00"), opp(O2, m1.user_id, "2026-09-07T00:00:00+00:00")];
+    const r1 = await importExport(t, owner, ex);
+    assert.equal(r1.run.status, "done");
+    const users = (await runner.loadState(r1.ir.id)).users;
+    const enrollments = t.stores.data.keys("rec/enrollment/").map((k) => t.stores.data.json(k));
+    assert.equal(enrollments.length, 1, "one enrollment for the two rows");
+    assert.equal(enrollments[0].owner_id, users[m0.user_id], "the owner the first row gave it");
+    assert.deepEqual(enrollments[0].rotor.opportunity_ids, [O1, O2].sort());
+    for (let n = 2; n <= 3; n++) {
+      const before = new Map(t.stores.data.keys("").map((k) => [k, t.stores.data.etagOf(k)]));
+      const r = await importExport(t, owner, ex);
+      assert.equal(r.run.summary.updated, 0, `import ${n} rewrites nothing`);
+      assert.deepEqual(t.stores.data.keys("").filter((k) => before.get(k) !== t.stores.data.etagOf(k) && /^(rec\/(enrollment|deal)\/|ib\/|rel\/)/.test(k)), []);
+    }
+    // the rows the other way round (Rotor's list order may change): still the owner it has
+    const ex2 = JSON.parse(JSON.stringify(ex));
+    ex2.opportunities.reverse();
+    const r4 = await importExport(t, owner, ex2);
+    assert.equal(r4.run.summary.updated, 0);
+    assert.equal(t.stores.data.json(`rec/enrollment/${enrollments[0].id}`).owner_id, users[m0.user_id]);
+  } finally { t.done(); }
+});
+
 test("sources: a row's, a second phase of the same entity's, a record's own", () => {
   const plan = [{ name: "contacts.leads", entity: "leads" }, { name: "sales.lead_follow_ups", entity: "leads" }, { name: "sales.opportunities", entity: "opportunities" }];
   assert.equal(runner.rowSource(plan, plan[0], "L1"), "leads:L1");
