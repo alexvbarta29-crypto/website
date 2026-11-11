@@ -86,7 +86,9 @@ test("B4: one CRM plan of a customer Rotor owns never starves the backfill of th
     let a; const others = [];
     try {
       a = (await staffPlan(t, owner, { contact: await importedCustomer() })).plan;
-      for (let i = 0; i < 6; i++) others.push((await staffPlan(t, owner, { contact: await customer(owner) })).plan);
+      // ids are random: keep adding plans until some sort before it and some after (at least 6)
+      const both = () => others.some((p) => p.id > a.id) && others.some((p) => p.id < a.id);
+      for (let i = 0; i < 40 && (others.length < 6 || !both()); i++) others.push((await staffPlan(t, owner, { contact: await customer(owner) })).plan);
     } finally { off(); }
     for (const at of ["2026-11-17T16:05:00Z", "2026-11-17T17:05:00Z"]) { pin(at); await drain(t, 3); }
     assert.ok(others.some((p) => p.id > a.id) && others.some((p) => p.id < a.id), "plans on both sides of it");

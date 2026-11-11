@@ -39,6 +39,7 @@ const scope = (fn) => store.withStoreScope({ requestId: "budget" }, fn);
 const SAMPLES = {
   "GET /me": (fx) => ({ as: fx.tech, path: "/me" }),
   "GET /me/badges": (fx) => ({ as: fx.owner, path: "/me/badges" }),
+  "GET /home": (fx) => ({ as: fx.owner, path: "/home", office: true }),
   "GET /users": (fx) => ({ as: fx.owner, path: "/users" }),
   "POST /users": (fx) => ({ as: fx.owner, path: "/users", body: { name: "Pat Example", login: "pat.example", role: "tech" } }),
   "GET /users/:id": (fx) => ({ as: fx.owner, path: `/users/${fx.tech.id}` }),

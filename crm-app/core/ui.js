@@ -403,5 +403,9 @@ export const ICONS = {
   gift: svg('<rect x="4" y="9" width="16" height="11.5" rx="1.5"/><path d="M3 9h18v3.5H3zM12 9v11.5"/><path d="M12 9c-1.5-3.5-5-4-5.5-2S9 9 12 9zM12 9c1.5-3.5 5-4 5.5-2S15 9 12 9z"/>'),
   link: svg('<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>'),
   building: svg('<rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M9 8h1.5M13.5 8H15M9 12h1.5M13.5 12H15M10.5 20.5v-4h3v4"/>'),
+  home: svg('<path d="M4 10.5 12 4l8 6.5"/><path d="M6 9v10a1.5 1.5 0 0 0 1.5 1.5H10v-5.5h4v5.5h2.5A1.5 1.5 0 0 0 18 19V9"/>'),
+  grid: svg('<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>'),
+  sales: svg('<path d="M4 19.5h16"/><path d="M5.5 15.5l4.5-4.5 3.5 3 5.5-6.5"/><path d="M15 7.5h4v4"/>'),
+  truck: svg('<path d="M3 6.5h11v9.5H3zM14 10h3.8l3.2 3.3V16H14"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/>'),
 };
 export const icon = (name) => ICONS[name] || raw("");

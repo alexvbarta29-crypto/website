@@ -13,7 +13,7 @@ after(async () => { await browser?.close(); await srv?.close(); });
 
 const PASS = "a long synthetic passphrase";
 
-test("one app: office sign-in → first-owner setup (the office password again) → Today", async () => {
+test("one app: office sign-in → first-owner setup (the office password again) → Home", async () => {
   const p = await phone(browser, srv);
   try {
     const { page } = p;
@@ -40,10 +40,11 @@ test("one app: office sign-in → first-owner setup (the office password again) 
     await Promise.all([page.waitForNavigation(), setupFrame.click("#go")]);
     const f = await crmFrame(page);
     await settled(f);
-    assert.equal(await title(f), "Today");
+    assert.equal(await title(f), "Home");
     assert.equal(await page.$(".bar .nav"), null, "still one app");
-    // an owner with the office sign-in has the Dashboard tab
-    assert.ok(await f.$('.tabs [data-tab="dashboard"], .tabs a[href="#/dashboard"]'), "the Dashboard tab");
+    // the office's bar: Home · Schedule · Customers · Sales · Menu (the Dashboard's numbers are on Home, its views under Menu)
+    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Customers", "Sales", "Menu"]);
+    assert.equal(await f.$('.tabs [data-tab="dashboard"], .tabs [data-more]'), null, "no Dashboard tab, no More sheet");
     await p.clean();
   } finally {
     await p.close();
@@ -62,14 +63,16 @@ async function office(opts = {}, login = "olive", hash = "") {
 }
 const frameUrls = (page) => page.frames().map((x) => x.url()).filter((u) => /^https?:/.test(u));
 
-test("one app: the Dashboard tab switches its views in place and stays lit", async () => {
+test("one app: the Dashboard (Menu → Admin) switches its views in place; Menu stays lit", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    await f.click('#tabs [data-tab="dashboard"]');
+    await f.click('#tabs [data-tab="menu"]');
+    await settled(f, { hash: "#/menu" });
+    await f.click('.mtile[href="#/dashboard"]');
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
-    assert.equal(await f.getAttribute('#tabs [data-tab="dashboard"]', "aria-current"), "page", "the Dashboard tab is lit");
-    assert.equal(await backShown(f), false, "a tab root: no back arrow");
+    assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
+    assert.equal(await backShown(f), true, "back to the Menu");
     const dash = () => page.frames().find((x) => new URL(x.url()).pathname === "/dashboard");
     await page.waitForFunction(() => true);
     for (let i = 0; i < 50 && !(dash() && new URL(dash().url()).hash === "#overview"); i++) await page.waitForTimeout(100);
@@ -77,25 +80,39 @@ test("one app: the Dashboard tab switches its views in place and stays lit", asy
     await f.click('[data-view="money"]');
     for (let i = 0; i < 50 && new URL(dash().url()).hash !== "#money"; i++) await page.waitForTimeout(100);
     assert.equal(new URL(dash().url()).hash, "#money", "the frame switched view");
-    assert.equal(await hashOf(f), "#/dashboard", "in place: the CRM screen is still the Dashboard tab");
+    assert.equal(await hashOf(f), "#/dashboard", "in place: the CRM screen is still the Dashboard");
     assert.equal(await f.getAttribute('[data-view="money"]', "aria-pressed"), "true");
-    assert.equal(await f.getAttribute('#tabs [data-tab="dashboard"]', "aria-current"), "page");
+    assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page");
     // /dashboard/:view opens one view directly (old #money links land there)
     await goTo(f, "/dashboard/jobs");
     assert.equal(await f.getAttribute('[data-view="jobs"]', "aria-pressed"), "true");
     await shot(page, "core-dashboard");
+    // back from the Dashboard: the Menu
+    await goTo(f, "/menu");
+    await goTo(f, "/dashboard");
+    await f.click("#top-back");
+    await settled(f, { hash: "#/menu" });
     await p.clean();
   } finally { await p.close(); }
 });
 
-test("one app: a More tool (Lights) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
+test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    await f.click('#tabs [data-more]');
-    await f.waitForSelector(".sheet.on");
-    const labels = await f.$$eval(".sheet .menu a span", (els) => els.map((e) => e.textContent));
-    for (const want of ["Lights", "Follow-ups", "Purchases", "Giveaway", "Rotor"]) assert.ok(labels.includes(want), `More lists ${want}`);
-    await f.click('.sheet a[href="#/tools/lights"]');
+    await f.click('#tabs [data-tab="menu"]');
+    await settled(f, { hash: "#/menu" });
+    const sections = await f.$$eval(".menu-sec", (els) => els.map((e) => [e.querySelector(".section-h").textContent, [...e.querySelectorAll(".mtile .ml")].map((x) => x.textContent)]));
+    const of = (name) => (sections.find(([h]) => h === name) || [null, []])[1];
+    for (const want of ["Light Studio", "Purchases", "Giveaway", "Rotor"]) assert.ok(of("Office tools").includes(want), `Office tools lists ${want}: ${JSON.stringify(sections)}`);
+    for (const want of ["Leads & calls", "Quotes", "Tasks", "Follow-ups"]) assert.ok(of("Sales").includes(want), `Sales lists ${want}`);
+    for (const want of ["Schedule", "Jobs", "To book", "Plans", "Lights season"]) assert.ok(of("Work").includes(want), `Work lists ${want}`);
+    for (const want of ["Contacts", "Merge review", "Import from Rotor"]) assert.ok(of("Customers").includes(want), `Customers lists ${want}`);
+    for (const want of ["Outbox", "Templates", "Automations", "Approvals"]) assert.ok(of("Messages & automations").includes(want), `Messages lists ${want}`);
+    for (const want of ["Dashboard", "Activity", "Team", "Settings"]) assert.ok(of("Admin").includes(want), `Admin lists ${want}`);
+    assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
+    assert.deepEqual(await screenProblems(f), [], "the Menu passes the phone checks");
+    await shot(page, "core-menu");
+    await f.click('.mtile[href="#/tools/lights"]');
     await settled(f, { hash: "#/tools/lights" });
     assert.equal(await hashOf(f), "#/tools/lights");
     assert.equal(await title(f), "Lights");
@@ -133,7 +150,8 @@ test("one app: a tech never sees the office tools", async () => {
   const { p, page, f } = await office({}, "theo");
   try {
     const tabs = await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab));
-    assert.ok(!tabs.includes("dashboard") && !tabs.includes("more"), `a tech's tabs: ${tabs.join(", ")}`);
+    assert.ok(!tabs.includes("dashboard") && !tabs.includes("more") && !tabs.includes("menu") && !tabs.includes("home"), `a tech's tabs: ${tabs.join(", ")}`);
+    assert.equal(await title(f), "Today", "a tech keeps their own day");
     for (const path of ["/tools/lights", "/tools/rotor", "/dashboard", "/dashboard/money", "/legacy/customers", "/contacts"]) {
       await goTo(f, path);
       assert.match(await f.textContent("#view"), /Not for this login/, `${path} is not for a tech`);
@@ -224,7 +242,9 @@ test("sheets close on the close button, on a swipe down and on back", async () =
   try {
     const open = () => f.$$eval(".sheet", (els) => els.filter((e) => e.classList.contains("on")).length);
     const gone = async () => { for (let i = 0; i < 30 && (await f.$(".sheet")); i++) await page.waitForTimeout(50); return !(await f.$(".sheet")); };
-    // the close button on the create sheet
+    // the close button on the create sheet (Customers has the create button; Home has its quick actions)
+    assert.equal(await f.$("#fab"), null, "Home: the quick actions, no create button");
+    await goTo(f, "/contacts");
     await f.click("#fab");
     await f.waitForSelector(".sheet.on");
     assert.equal(await open(), 1);
@@ -233,7 +253,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await f.click(".sheet [data-sheet-x]");
     assert.ok(await gone(), "the close button closes it");
     // a swipe down from the sheet's head
-    await f.click("#tabs [data-more]");
+    await f.click("#fab");
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const o = await frameOffset(page, f);
@@ -242,7 +262,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await swipe(page, { x: o.x + h1.x, y: o.y + h1.y }, { x: o.x + h1.x, y: o.y + h1.y + 220 });
     assert.ok(await gone(), "a swipe down closes it");
     // a short drag springs back
-    await f.click("#tabs [data-more]");
+    await f.click("#fab");
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const h2 = await headAt();
@@ -261,7 +281,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
 test("every external and /p/ link opens a new tab", async () => {
   const { p, page, f } = await office({ office: true }, "olive");
   try {
-    const screens = ["/today", "/contacts", `/contacts/${seeded.contacts.customer}`, `/contacts/${seeded.contacts.lead}`, "/calls", `/enrollments/${seeded.enrollments.called}`, "/tasks", "/me", "/settings", "/settings/integrations", "/settings/lead-hooks", "/templates", "/outbox", "/import", "/team", "/tools/rotor", "/legacy/customers"];
+    const screens = ["/today", "/menu", "/contacts", `/contacts/${seeded.contacts.customer}`, `/contacts/${seeded.contacts.lead}`, "/calls", `/enrollments/${seeded.enrollments.called}`, "/tasks", "/me", "/settings", "/settings/integrations", "/settings/lead-hooks", "/templates", "/outbox", "/import", "/team", "/tools/rotor", "/legacy/customers"];
     const bad = [];
     for (const s of screens) {
       await goTo(f, s);
@@ -378,7 +398,7 @@ test("the first start on a slow line (2 s round trip, nothing kept yet) still ge
     await p.page.goto("/crm", { waitUntil: "commit", timeout: 30000 });
     await p.page.waitForSelector("#view [aria-busy=true]", { timeout: 30000 });
     await p.page.waitForFunction(() => { const v = document.getElementById("view"); return v && v.children.length && !v.querySelector("[aria-busy=true]"); }, null, { timeout: 60000 });
-    assert.equal(await p.page.textContent("#top-title"), "Today");
+    assert.equal(await p.page.textContent("#top-title"), "Home");
     assert.equal(await p.page.$("#view [data-retry]"), null, "no error card");
     srv.setLatency(0);
     await p.clean();
@@ -387,10 +407,11 @@ test("the first start on a slow line (2 s round trip, nothing kept yet) still ge
 
 // Every client route the modules' manifests register (generated: a new
 // screen is walked as it registers), as an owner with the office sign-in
-// and as a tech, at both phone sizes: no console errors, no CSP violation,
+// and as a tech, at both phone sizes and at 1440 x 900 and 1024 x 768 (the
+// desktop layout: the sidebar, list + detail): no console errors, no CSP violation,
 // no sideways scroll, 44 px tap targets, 16 px inputs, the tab bar fully on
 // screen above a 34 px home bar, links that leave in a new tab.
-test("every client route in the manifests, as owner and tech, at both phone sizes", async () => {
+test("every client route in the manifests, as owner and tech, at both phone sizes and on two desks", async () => {
   const { MANIFESTS } = await import("../../crm-app/modules/index.js");
   const routes = MANIFESTS.flatMap((m) => (m.routes || []).map((r) => r.path));
   // ids for the params, from the API as the owner
@@ -416,7 +437,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
   const missing = routes.filter((r) => fill(r).includes(":"));
   assert.deepEqual(missing, [], "every route's params have a fixture (add one when a module registers a new kind)");
   for (const [login, office] of [["olive", true], ["theo", false]]) {
-    for (const device of ["iphone13", "iphonese"]) {
+    for (const device of ["iphone13", "iphonese", "desk1440", "desk1024"]) {
       const p = await phone(browser, srv, { device, office });
       try {
         await signIn(p, login);

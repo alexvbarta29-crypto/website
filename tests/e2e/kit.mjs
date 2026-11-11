@@ -27,8 +27,12 @@ export const launch = () => playwright().chromium.launch();
 export const DEVICES = {
   iphone13: { viewport: { width: 390, height: 844 } },
   iphonese: { viewport: { width: 375, height: 667 } },
+  // the office desk and a small laptop or an iPad on its side: mouse, no touch, a desktop browser
+  desk1440: { viewport: { width: 1440, height: 900 }, desktop: true },
+  desk1024: { viewport: { width: 1024, height: 768 }, desktop: true },
 };
 export const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+export const DESK_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 export const OFFICE_PASSWORD = "test-password";
 
 // The office cookie the server sets for the office password (lights-auth.mjs derive()).
@@ -40,7 +44,8 @@ async function officeCookie(srv) {
 }
 
 export async function phone(browser, srv, { device = "iphone13", office = false, serviceWorkers = "allow" } = {}) {
-  const ctx = await browser.newContext({ ...DEVICES[device], deviceScaleFactor: 1, isMobile: true, hasTouch: true, userAgent: UA, serviceWorkers, baseURL: srv.url });
+  const d = DEVICES[device];
+  const ctx = await browser.newContext({ viewport: d.viewport, deviceScaleFactor: 1, isMobile: !d.desktop, hasTouch: !d.desktop, userAgent: d.desktop ? DESK_UA : UA, serviceWorkers, baseURL: srv.url });
   const outside = [];
   await ctx.route((url) => url.origin !== srv.url, (route) => { outside.push(route.request().url()); return route.abort(); });
   // every document, frames too: CSP violations are collected, never ignored.
@@ -111,7 +116,12 @@ export async function settled(frame, { hash, timeout = 10000 } = {}) {
     await frame.waitForFunction((h) => location.hash === h, hash, { timeout });
     await frame.evaluate(() => new Promise((ok) => setTimeout(ok, 30)));   // the hashchange task runs first
   }
-  await frame.waitForFunction(() => { const v = document.getElementById("view"); return v && v.children.length && !v.querySelector("[aria-busy=true]"); }, null, { timeout });
+  // (and, on a wide screen, the detail beside a list)
+  await frame.waitForFunction(() => {
+    const v = document.getElementById("view");
+    const p = document.getElementById("pane");
+    return v && v.children.length && !v.querySelector("[aria-busy=true]") && (!p || p.hidden || (p.children.length && !p.querySelector("[aria-busy=true]")));
+  }, null, { timeout });
 }
 // Closes the office's "Get the app" card (a person does once; it floats over the CRM's bottom edge).
 export async function noInstallCard(page) {
@@ -170,13 +180,13 @@ export async function screenProblems(frame) {
   return frame.evaluate(() => {
     const out = [];
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`scrolls sideways (${document.documentElement.scrollWidth} > ${innerWidth})`);
-    for (const el of document.querySelectorAll("#view a, #view button, #view select, #view input:not([type=checkbox]):not([type=radio]), .top button, .tabs .tab, .sheet a, .sheet button, .fab")) {
+    for (const el of document.querySelectorAll("#view a, #view button, #view select, #view input:not([type=checkbox]):not([type=radio]), #pane a, #pane button, #pane select, #pane input:not([type=checkbox]):not([type=radio]), .top button, .tabs .tab, .sheet a, .sheet button, .fab")) {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height || getComputedStyle(el).visibility === "hidden" || el.classList.contains("sr") || el.closest("[hidden]")) continue;
       const box = el.closest("label") ? el.closest("label").getBoundingClientRect() : r;
       if (box.height < 43.5 || box.width < 43.5) out.push(`small tap target ${el.tagName.toLowerCase()} "${(el.textContent || el.getAttribute("aria-label") || el.name || "").trim().slice(0, 24)}" ${Math.round(box.width)}x${Math.round(box.height)}`);
     }
-    for (const i of document.querySelectorAll("#view input:not([type=checkbox]):not([type=radio]), #view select, #view textarea, .sheet input:not([type=checkbox]):not([type=radio]), .sheet select, .sheet textarea")) {
+    for (const i of document.querySelectorAll("#view input:not([type=checkbox]):not([type=radio]), #view select, #view textarea, #pane input:not([type=checkbox]):not([type=radio]), #pane select, #pane textarea, .sheet input:not([type=checkbox]):not([type=radio]), .sheet select, .sheet textarea")) {
       if (i.offsetParent && !i.classList.contains("sr") && parseFloat(getComputedStyle(i).fontSize) < 16) out.push(`input under 16 px: ${i.name || i.id}`);
     }
     return out;

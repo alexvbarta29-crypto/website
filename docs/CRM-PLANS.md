@@ -23,7 +23,7 @@ the `money.cardStatus` service exists.
 
 ## What the office sees
 
-- **Plans** (More → Plans; `plans:read`, owners and the office): chips
+- **Plans** (Menu → Work → Plans; `plans:read`, owners and the office): chips
   Active, Waiting (signature or card), Paused, Ending, Due this month,
   Clawbacks, Cancelled, Ended, with counts; a search by name or plan. Each
   row: the customer, the plan, the next visit's month, autopay.
@@ -55,15 +55,16 @@ the `money.cardStatus` service exists.
 - **Plan visits to book** (`#/plans/due`): the visits due by this month or
   next that have nothing booked, grouped by town so a day in one town
   fills up; tap one to book its job.
-- **Lights season** (More → Lights season): the season's houses by status
+- **Lights season** (Menu → Work → Lights season): the season's houses by status
   (sold, install booked, installed, takedown booked, taken down, stored),
   feet of lights, houses that need a bin, and **Waiting for a yes**: last
   season's plan customers whose season isn't confirmed yet. A row's sheet
   opens the install or takedown job, saves the feet, adds a $0 warranty
   visit and, once the lights are taken down, the bin (taken down + bin =
   stored, and the property remembers the bin; no bin before that).
-- **Today**: plan visits to book, agreements not signed, agreement texts
-  to approve (owners), clawbacks to bill.
+- **Home** ("Needs you", docs/CRM.md): plan visits to book, agreements not
+  signed, agreement texts to approve (owners), clawbacks to bill, from the
+  module's attention and approvals rows (the Today card is `home: false`).
 - **Settings → Plans catalog & perks** (owners): each plan's visits a
   year, plan discount a visit, renewal months, billing, autopay default and
   perks; the cancel notice days and the late-cancel fee; the lights rebook

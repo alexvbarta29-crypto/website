@@ -22,8 +22,8 @@ export default {
     { path: "/settings/cadences/:id", load: () => import("./cadence.js"), title: "Cadence", perm: "cadences:configure", parent: "/settings/cadences" },
   ],
   nav: [
-    { where: "more", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
-    { where: "more", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
+    { where: "more", section: "sales", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
+    { where: "more", section: "sales", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
   ],
   creates: [
     { label: "Log a call", path: "/calls/log", perm: "sales:work", order: 30, icon: "phone" },
@@ -32,7 +32,8 @@ export default {
   contactTabs: [{ key: "sales", label: "Sales", order: 40, load: () => import("./contact-tab.js") }],
   visitActions: [],
   // one card on Today: calls due now and leads that need attention (the office), my tasks (everyone)
-  todayCards: [{ key: "sales", perm: "tasks:read", order: 20, load: () => import("./today-card.js") }],
+  // (home: false: on the office's Home the same counts are "Needs you" rows from the server's attention)
+  todayCards: [{ key: "sales", perm: "tasks:read", order: 20, home: false, load: () => import("./today-card.js") }],
   settings: [
     { label: "Cadences", path: "/settings/cadences", perm: "cadences:configure", icon: "phone", order: 40 },
   ],

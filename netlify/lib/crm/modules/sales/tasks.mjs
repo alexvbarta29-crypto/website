@@ -5,7 +5,7 @@
 // approvals. Tasks a cadence or a listener makes have ids derived from what
 // made them, so a retried listener never makes two.
 
-import { getRecord, createRecord, updateRecord, addActivity } from "../../../crm-store.mjs";
+import { getRecord, createRecord, updateRecord, addActivity, readIndex } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { nowIso, now, localDate, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
 import { ExistsError, NotFoundError, InputError } from "../../core/errors.mjs";
@@ -13,6 +13,13 @@ import { OPEN_TASK, TASK_KINDS, TASK_PRIORITIES, TASK_STATUSES } from "./types.m
 import { W, relRecords, nameOf } from "./common.mjs";
 
 // Creates a task once (a fixed id when `seed` is given). → the task record.
+// Home's "Needs you" row: the open tasks assigned to the person asking (one index read).
+export async function myOpenTasks(ctx = {}) {
+  const uid = ctx.user && ctx.user.id;
+  if (!uid) return 0;
+  return (await readIndex("tasks/open", "")).rows.filter((r) => (r.a || []).includes(uid)).length;
+}
+
 export async function createTask(data, ctx = {}, { seed } = {}) {
   const id = data.id || (seed ? deriveId("task", seed, "sales.task", 1) : undefined);
   try {

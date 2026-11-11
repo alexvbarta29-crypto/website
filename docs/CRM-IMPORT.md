@@ -52,7 +52,7 @@ not, ever goes into git.
    `--force`, writes files readable by their owner only, and prints counts
    only. `--print` counts and writes nothing. With `OFFICE_DATA_KEY` in the
    environment it also proves every chunk opens.
-3. **Make the run**: an owner opens **More → Import from Rotor → Start an
+3. **Make the run**: an owner opens **Menu → Customers → Import from Rotor → Start an
    import** and copies the upload key (shown once, `bimp_...`, good for 24
    hours, only for this run) and the command the sheet shows.
 4. **Upload**:
