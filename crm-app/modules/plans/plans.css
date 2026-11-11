@@ -1,0 +1,42 @@
+/* The plans screens (M3b): the list, one plan with its visits, visits due,
+   the lights season board, the catalog and agreement texts. House style
+   (design §0 rule 9): pill buttons, 20 px cards, 44 px tap targets, 16 px
+   inputs, numbers in tabular figures. */
+
+.pl-head{display:flex;flex-direction:column;gap:6px}
+.pl-head .top-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pl-head h2{font-size:22px;margin:0}
+.pl-head .who-link{font-weight:600;color:var(--ink);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.pl-acts{display:flex;flex-wrap:wrap;gap:8px}
+.pl-acts .btn{flex:1 1 calc(50% - 8px);min-width:0;padding:6px 12px;white-space:normal;line-height:1.15;text-align:center}
+.pl-acts .btn.primary{flex-basis:100%}
+.pl-acts .btn svg{width:18px;height:18px}
+.pl-facts{list-style:none;margin:0;padding:0}
+.pl-facts li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14.5px}
+.pl-facts li:first-child{border-top:0}
+.pl-facts .k{color:var(--ink-3);flex:none}
+.pl-facts .v{text-align:right;font-weight:600;overflow-wrap:anywhere;min-width:0}
+.pl-ords{list-style:none;margin:0;padding:0}
+.pl-ord{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 0;border-top:1px solid var(--line)}
+.pl-ord:first-child{border-top:0}
+.pl-ord .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--fill);display:flex;align-items:center;justify-content:center;font:800 14px/1 var(--head)}
+.pl-ord .t{flex:1;min-width:0}
+.pl-ord .t b{display:block;font-weight:600}
+.pl-ord .t small{display:block;color:var(--ink-3);font-size:13px}
+.pl-ord .p{flex:none;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.pl-ord .p .pill{margin-top:4px}
+.pl-ord .act{flex:none;min-height:44px;min-width:44px;padding:0 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink-2);font:600 13px/1 var(--text);display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.pl-term{margin:14px 0 4px;font:800 12px/1 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.pl-doc{white-space:pre-wrap;font-size:14px;line-height:1.5;max-height:340px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--fill)}
+.pl-town{margin:16px 4px 6px;font:800 13px/1 var(--head);color:var(--ink-2)}
+.pl-board{display:flex;flex-direction:column;gap:12px}
+.pl-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pl-cols .stat{padding:10px;border-radius:14px;background:var(--fill);text-align:center}
+.pl-cols .stat b{display:block;font:800 20px/1.1 var(--head);font-variant-numeric:tabular-nums}
+.pl-cols .stat small{font-size:12px;color:var(--ink-3)}
+.pl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pl-grid .field{margin:0}
+.pl-body{width:100%;min-height:320px;font:500 15px/1.5 var(--text);padding:12px;border:1.5px solid var(--line);border-radius:14px;resize:vertical}
+.pl-vars{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.pl-vars button{min-height:44px;padding:0 10px;border:1px solid var(--line);border-radius:999px;background:#fff;font:600 12.5px/1 var(--text);color:var(--ink-2)}
+@media (max-width:380px){.pl-grid{grid-template-columns:1fr}.pl-cols{grid-template-columns:repeat(2,minmax(0,1fr))}}

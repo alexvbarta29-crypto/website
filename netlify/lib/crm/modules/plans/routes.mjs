@@ -5,6 +5,7 @@
 //
 //   GET  /plans?status=&catalog=&contact=   · POST /plans (a run)
 //   GET  /plans/due?month=                   visits due without a visit (B12)
+//   GET  /plans/catalog                      the plan catalog and lights settings (for the office's forms)
 //   GET  /plans/:id · PATCH /plans/:id (If-Match: name, property, autopay, auto-renew, clawback billed/waived)
 //   POST /plans/:id/activate|pause|resume|skip|cancel|withdraw|renew   runs (one op each)
 //   POST /plans/:id/change-price {new_lines, effective_on}
@@ -62,6 +63,8 @@ async function createRoute(ctx) {
   const out = await createStaffPlan(ctx.body || {}, ctx);
   return { data: out, status: out.run_id ? 202 : 200 };
 }
+
+async function catalogRoute() { return { data: { catalog: await loadCatalog(), lights: await loadLights() } }; }
 
 async function dueRoute(ctx) { return { data: await plansDueList({ month: ctx.query.get("month") || undefined }) }; }
 
@@ -216,6 +219,7 @@ export const planRoutes = [
   R("GET", "/plans", "plans:read", "none", listRoute),
   R("POST", "/plans", "plans:write", "none", createRoute, { mode: "run", maxCalls: 40 }),
   R("GET", "/plans/due", "plans:read", "none", dueRoute, { maxCalls: 160 }),
+  R("GET", "/plans/catalog", "plans:read", "none", catalogRoute),
   R("POST", "/plans/request-signatures", "agreements:send", "none", requestSignaturesRoute, { mode: "run" }),
   R("GET", "/plans/:id", "plans:read", "required", getRoute, { maxCalls: 60 }),
   R("PATCH", "/plans/:id", "plans:write", "required", patchRoute),

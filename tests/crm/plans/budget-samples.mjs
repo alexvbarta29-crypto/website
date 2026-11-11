@@ -58,6 +58,7 @@ const season = async (fx) => {
 export default {
   "GET /plans": async (fx) => { await plan(fx); await plan(fx, { status: "pending" }); return { as: fx.owner, path: "/plans" }; },
   "POST /plans": async (fx) => ({ as: fx.owner, path: "/plans", body: { contact_id: (await contact()).id, catalog_key: "quarterly", lines: LINES.map(({ total_cents, ...l }) => l), discounts: [{ name: "Plan discount", type: "fixed", value: 10000 }] } }),
+  "GET /plans/catalog": (fx) => ({ as: fx.owner, path: "/plans/catalog" }),
   "GET /plans/due": async (fx) => { for (let i = 0; i < 3; i++) await plan(fx); return { as: fx.owner, path: "/plans/due" }; },
   "POST /plans/request-signatures": async (fx) => ({ as: fx.owner, path: "/plans/request-signatures", body: { plan_ids: [(await plan(fx)).id, (await plan(fx)).id] } }),
   "GET /plans/:id": async (fx) => ({ as: fx.owner, path: `/plans/${(await plan(fx)).id}` }),
