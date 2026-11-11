@@ -8,6 +8,7 @@
 //   GET  /plans/catalog                      the plan catalog and lights settings (for the office's forms)
 //   GET  /plans/:id · PATCH /plans/:id (If-Match: name, property, autopay, auto-renew, clawback billed/waived)
 //   POST /plans/:id/activate|pause|resume|skip|cancel|withdraw|renew   runs (one op each)
+//   POST /plans/:id/confirm-season {season}     a lights customer said yes to that season (a run: its install is made)
 //   POST /plans/:id/change-price {new_lines, effective_on}
 //   GET  /plans/:id/cancel-quote?requested_on=   the policy calculator, before confirming
 //   POST /plans/:id/send-agreement {channels}    the plan's agreement, made and sent
@@ -109,6 +110,7 @@ const actionRoute = (action) => async (ctx) => {
   if (action === "cancel") Object.assign(args, { reason: b.reason, requested_on: b.requested_on || undefined, note: b.note });
   if (action === "activate" && b.override_reason) args.override_reason = String(b.override_reason).slice(0, 300);
   if (action === "renew" && b.auto_renew !== undefined) args.auto_renew = b.auto_renew === true;
+  if (action === "confirm_season") args.season = Number(b.season);
   if (action === "cancel" && b.reason && !["price", "moving", "service", "not_needed", "other"].includes(b.reason)) throw new InputError("Pick a reason.", "reason");
   if (action === "cancel" && ctx.user && ctx.user.role !== "owner" && !String(b.note || "").trim()) throw new InputError("Add a note on why.", "note");
   return { data: await startAction(ctx.params.id, action, args, ctx), status: 202 };
@@ -163,10 +165,14 @@ async function templatePreviewRoute(ctx) {
   const cat = await loadCatalog();
   const key = cat.plans[b.catalog_key] ? b.catalog_key : "quarterly";
   const e = cat.plans[key];
+  // a made-up customer's plan of that kind (a lights plan: a season's install)
+  const lights = key === "lights_annual";
   const sample = {
-    name: e.name, frequency: e.frequency, visits_per_year: e.visits_per_year, term: { initial_months: e.initial_months }, perks: e.perks,
-    policy: { early_cancel_clawback_cents: e.clawback_cents, notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
-    lines: [{ id: "ln_s", title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 29500, total_cents: 29500, scope: { type: "all" } }],
+    name: e.name, kind: lights ? "lights_annual" : "recurring", catalog_key: key, frequency: e.frequency, visits_per_year: e.visits_per_year,
+    term: { initial_months: e.initial_months, renews_every_months: e.renews_every_months, auto_renew: true }, perks: e.perks, billing: { mode: e.billing, autopay: !!e.autopay },
+    policy: { notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
+    lines: [lights ? { id: "ln_s", title: "Christmas Light Installation", qty_milli: 150000, unit_cents: 800, total_cents: 120000, unit: "ft", scope: { type: "all" } }
+      : { id: "ln_s", title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 29500, total_cents: 29500, scope: { type: "all" } }],
     discounts: e.discount_per_visit_cents ? [{ id: "dc_s", name: "Plan discount", type: "fixed", value: e.discount_per_visit_cents, scope: { type: "all" } }] : [],
   };
   const text = renderBody({ body_md: b.body_md }, agreementVars(sample, { contact: { first_name: "Pat", last_name: "Example" }, company: await companyInfo(), catalog: cat }));
@@ -230,6 +236,7 @@ export const planRoutes = [
   R("POST", "/plans/:id/renew", "plans:write", "required", actionRoute("renew"), { mode: "run" }),
   R("POST", "/plans/:id/cancel", "plans:cancel", "required", actionRoute("cancel"), { mode: "run" }),
   R("POST", "/plans/:id/withdraw", "plans:cancel", "required", actionRoute("withdraw"), { mode: "run" }),
+  R("POST", "/plans/:id/confirm-season", "plans:write", "required", actionRoute("confirm_season"), { mode: "run" }),
   R("POST", "/plans/:id/change-price", "plans:write", "required", priceRoute),
   R("GET", "/plans/:id/cancel-quote", "plans:read", "required", cancelQuoteRoute),
   R("POST", "/plans/:id/send-agreement", "agreements:send", "required", sendAgreementRoute, { maxCalls: 50 }),

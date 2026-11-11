@@ -15,8 +15,8 @@
 //   the quotes seeds (price book, discount catalog), a draft quote for the
 //   fresh lead and one sent (dry-run, the Outbox) to the talked-to lead with
 //   a one-time and a quarterly option.
-// Plans (M3b): the agreement texts (four approved, the one-time lights text
-//   left for the owner), an active quarterly plan signed in person with its
+// Plans (M3b): the agreement texts (five approved, the one-time text with
+//   its owner checks left for the owner), an active quarterly plan signed in person with its
 //   visits' jobs, two waiting plans with their agreements sent (a portal
 //   link to the first), a lights plan with this season's install and
 //   takedown.
@@ -156,7 +156,12 @@ export async function seed({ contacts = 200 } = {}) {
 
   // plans (M3b)
   await AG.seedAgreementTemplates(AUTO);
-  for (const k of ["biannual", "quarterly", "monthly", "lights"]) await AG.approveTemplate(AG.seedTemplateId(k), ctxO);
+  // what the owner does: settle each draft's "Owner check" lines, then approve
+  for (const k of ["biannual", "quarterly", "monthly", "custom", "lights"]) {
+    const g = await store.getRecord("agreement_template", AG.seedTemplateId(k));
+    await AG.patchTemplate(g.data.id, { body_md: AG.withoutOwnerChecks(g.data.body_md) }, { ...ctxO, ifMatch: g.etag });
+    await AG.approveTemplate(g.data.id, ctxO);
+  }
   out.templates = { quarterly: AG.seedTemplateId("quarterly"), one_time: AG.seedTemplateId("one_time") };
   const planCustomer = async (first, n, town) => {
     const c = (await store.createRecord("contact", {

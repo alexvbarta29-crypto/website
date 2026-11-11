@@ -69,13 +69,40 @@ function agreementCard(s, ctx) {
   const st = p.agreement_status || "none";
   const send = ctx.can("agreements:send") && !["signed"].includes(st);
   return html`<section class="card"><h2>Agreement</h2>
-    <p>${AGREEMENT[st] || st}${a && a.sent_at && st !== "signed" ? ` · sent ${dateShort(a.sent_at)}` : ""}${a && a.signature ? ` · ${a.signature.name_typed}${a.signature.method === "in_person" ? " (in person)" : ""}, ${dateShort(a.signed_at)}` : ""}</p>
+    <p>${a && a.queued ? "Waiting in a bulk send (test and confirm it under Approvals)" : AGREEMENT[st] || st}${a && a.sent_at && st !== "signed" ? ` · sent ${dateShort(a.sent_at)}` : ""}${a && a.signature ? ` · ${a.signature.name_typed}${a.signature.method === "in_person" ? " (in person)" : ""}, ${dateShort(a.signed_at)}` : ""}</p>
     ${a && a.reminders && a.reminders.count ? html`<p class="small muted">${a.reminders.count} reminder${a.reminders.count === 1 ? "" : "s"} sent</p>` : ""}
     <div class="btn-row">
       ${send ? html`<button type="button" class="btn primary" data-act="send-agreement">${icon("send")}${a && ["sent", "viewed"].includes(a.status) ? "Send it again" : "Send to sign"}</button>` : ""}
       ${send ? html`<button type="button" class="btn" data-act="present-agreement">${icon("phone")}Sign on this phone</button>` : ""}
       ${a ? html`<button type="button" class="btn" ${attrs({ "data-read": a.id })}>${icon("doc")}Read it</button>` : ""}
     </div></section>`;
+}
+
+// A lights plan's seasons after the first wait for the customer's yes (the
+// September rebook text): no install is made before the office marks it.
+function seasonsToConfirm(p) {
+  if (p.kind !== "lights_annual" || !["active", "pending", "paused"].includes(p.status)) return [];
+  const yes = new Set(p.confirmed_seasons || []);
+  const out = new Set();
+  for (const o of p.ordinals || []) {
+    const y = Number(String(o.target_month).slice(0, 4));
+    if ((o.k || o.n) > 1 && o.status === "unscheduled" && !o.job_id && !yes.has(y)) out.add(y);
+  }
+  const now = new Date();
+  const upcoming = now.getMonth() >= 6 ? now.getFullYear() : null;
+  if (upcoming && !yes.has(upcoming) && !(p.ordinals || []).some((o) => Number(String(o.target_month).slice(0, 4)) === upcoming && (o.job_id || o.status !== "unscheduled"))) out.add(upcoming);
+  return [...out].sort();
+}
+function seasonsCard(s, ctx) {
+  const p = s.plan;
+  if (p.kind !== "lights_annual") return "";
+  const waiting = seasonsToConfirm(p);
+  const can = ctx.can("plans:write");
+  return html`<section class="card"><h2>Seasons</h2>
+    ${(s.seasons || []).length ? html`<ul class="pl-facts">${s.seasons.map((x) => html`<li><span class="k">${x.season}</span><span class="v"><a href="${"#/lights/" + x.season}">${SEASON[x.status] || x.status}${x.bin_id ? ` · bin ${x.bin_id}` : ""}</a></span></li>`)}</ul>` : ""}
+    ${waiting.length ? html`<p class="small muted">A new season goes on the schedule once the customer says yes (they get a text each September).</p>
+      ${can ? html`<div class="btn-row">${waiting.map((y) => html`<button type="button" class="btn" ${attrs({ "data-confirm-season": y })}>${icon("check")}They said yes to ${y}</button>`)}</div>` : html`<p>Waiting for ${waiting.join(", ")}.</p>`}` : ""}
+  </section>`;
 }
 
 function actions(s, ctx) {
@@ -113,11 +140,12 @@ export default {
         ${p.status === "paused" && p.pause ? html`<p class="note">Paused since ${dateShort(p.pause.from)}${p.pause.until ? `, back ${dateShort(p.pause.until)}` : ""}${p.pause.reason ? `: ${p.pause.reason}` : ""}.</p>` : ""}
         ${p.status === "cancelling" && p.cancel ? html`<p class="warn-box">Ends ${dateYear(p.cancel.effective_on)}${p.cancel.clawback_cents ? `. First-visit discount back: ${cents(p.cancel.clawback_cents)} (${p.cancel.clawback_state === "to_bill" ? "to bill, waiting for your OK" : p.cancel.clawback_state})` : ""}.</p>` : ""}
         ${p.import ? html`<p class="small muted">From Rotor: Rotor stays in charge of this plan until the switch.</p>` : ""}
+        ${p.held ? html`<p class="warn-box">Due to ${({ resume: "pick back up", renew: "renew", activate: "start", confirm_season: "go on" })[p.held.action] || p.held.action} since ${dateShort(p.held.since)}, but Rotor is still in charge of this customer, so the CRM doesn't book visits for them by itself. Do it here by hand.</p>` : ""}
       </section>
       ${acts.length ? html`<div class="pl-acts">${acts}</div>` : ""}
       <section class="card"><h2>Visits</h2>${visits(s, ctx)}</section>
       ${agreementCard(s, ctx)}
-      ${(s.seasons || []).length ? html`<section class="card"><h2>Christmas lights</h2><ul class="pl-facts">${s.seasons.map((x) => html`<li><span class="k">${x.season}</span><span class="v"><a href="${"#/lights/" + x.season}">${SEASON[x.status] || x.status}${x.bin_id ? ` · bin ${x.bin_id}` : ""}</a></span></li>`)}</ul></section>` : ""}
+      ${seasonsCard(s, ctx)}
       <section class="card"><h2>Terms</h2>${facts(s)}</section>
     </div>`;
   },
@@ -132,6 +160,11 @@ export default {
     "click [data-act=activate]": (e, el, ctx) => activateSheet(ctx),
     "click [data-act=cancel]": (e, el, ctx) => cancelSheet(ctx),
     "click [data-act=price]": (e, el, ctx) => priceSheet(ctx),
+    "click [data-confirm-season]": async (e, el, ctx) => {
+      const y = Number(el.dataset.confirmSeason);
+      if (!(await confirmSheet(`Their ${y} install and takedown are made, ready to book.`, { title: `They said yes to ${y}?`, yes: "Yes, make them" }))) return;
+      act(el, ctx, "confirm-season", { season: y }, `${y} is on`);
+    },
     "click [data-act=claw-billed]": (e, el, ctx) => clawback(ctx, "billed"),
     "click [data-act=claw-waive]": (e, el, ctx) => clawback(ctx, "waived"),
     "click [data-skip]": async (e, el, ctx) => {

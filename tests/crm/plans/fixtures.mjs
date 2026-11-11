@@ -54,10 +54,20 @@ export async function setup(now = TUE_0900, { approve = true } = {}) {
   return { t, owner, admin, tech };
 }
 
+// What an owner does in Settings → Agreement templates: reads each draft,
+// settles its "Owner check" lines (here: keeps the wording, deletes the
+// checks) and approves it.
+export async function approveDraft(key, owner) {
+  const id = AG.seedTemplateId(key);
+  await scope(async () => {
+    const g = await store.getRecord("agreement_template", id);
+    const body = AG.withoutOwnerChecks(g.data.body_md);
+    if (body !== g.data.body_md) await AG.patchTemplate(id, { body_md: body }, { write: () => AS(owner), ifMatch: g.etag });
+    await AG.approveTemplate(id, { write: () => AS(owner) });
+  });
+}
 export async function approveAll(owner) {
-  for (const key of ["biannual", "quarterly", "monthly", "lights", "one_time"]) {
-    await scope(() => AG.approveTemplate(AG.seedTemplateId(key), { write: () => AS(owner) }));
-  }
+  for (const key of ["biannual", "quarterly", "monthly", "custom", "lights", "one_time"]) await approveDraft(key, owner);
 }
 
 let n = 0;

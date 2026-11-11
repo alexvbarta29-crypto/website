@@ -1,6 +1,6 @@
 // Settings → Plans catalog & perks (design §9.2, §5.4 cfg/plans_catalog,
 // cfg/lights, D27, D29, D30; owners): each plan's visits a year, plan
-// discount, first-visit clawback, term, renewal, billing, autopay and
+// discount, renewal, billing, autopay and
 // perks; the cancel notice and the late-cancel fee; the lights rebook date;
 // and "Request signatures for N active plans" (imported plans have no
 // signature on file: one bulk run, test send and confirm first, D10).
@@ -35,7 +35,6 @@ export default {
           <div class="pl-grid">
             <label class="field"><span>Visits a year</span><input ${attrs({ name: `${k}.visits_per_year`, inputmode: "numeric", value: e.visits_per_year })}></label>
             <label class="field"><span>Discount a visit</span><input ${attrs({ name: `${k}.discount`, inputmode: "decimal", value: dollars(e.discount_per_visit_cents) })}></label>
-            <label class="field"><span>Early-cancel payback</span><input ${attrs({ name: `${k}.clawback`, inputmode: "decimal", value: dollars(e.clawback_cents) })}></label>
             <label class="field"><span>Renews every (months)</span><input ${attrs({ name: `${k}.renews`, inputmode: "numeric", value: e.renews_every_months })}></label>
           </div>
           <label class="field"><span>Billing</span><select ${attrs({ name: `${k}.billing` })}>${Object.entries(BILLING).map(([v, l]) => html`<option ${attrs({ value: v, selected: v === e.billing })}>${l}</option>`)}</select></label>
@@ -44,7 +43,8 @@ export default {
           <label class="check"><input ${attrs({ type: "checkbox", name: `${k}.rain`, checked: (e.perks || {}).rain_guarantee_days > 0 })}><span>${s.cat.perk_names.rain_guarantee}</span></label>
           <label class="check"><input ${attrs({ type: "checkbox", name: `${k}.hard_water`, checked: !!(e.perks || {}).hard_water })}><span>${s.cat.perk_names.hard_water}</span></label>`}
         </section>`; })}
-        <section class="card"><h2>Cancel policy</h2><div class="pl-grid">
+        <section class="card"><h2>Cancel policy</h2>
+          <p class="small muted">Cancelling in the first term after the first visit is done: the customer pays back the plan discount that visit got (each plan's own, worked out from what it was sold with).</p><div class="pl-grid">
           <label class="field"><span>Notice (days)</span><input ${attrs({ name: "notice_days", inputmode: "numeric", value: s.cat.notice_days })}></label>
           <label class="field"><span>Late-cancel fee</span><input ${attrs({ name: "late_fee", inputmode: "decimal", value: dollars(s.cat.late_cancel_fee_cents) })}></label>
         </div><p class="small muted">The fee is charged only when an owner approves it. Never when we move a visit.</p></section>
@@ -70,7 +70,7 @@ export default {
       const plans = {};
       for (const k of KEYS) {
         const p = {
-          visits_per_year: Number(f(`${k}.visits_per_year`).value), discount_per_visit_cents: readMoney(f(`${k}.discount`).value || "0"), clawback_cents: readMoney(f(`${k}.clawback`).value || "0"),
+          visits_per_year: Number(f(`${k}.visits_per_year`).value), discount_per_visit_cents: readMoney(f(`${k}.discount`).value || "0"),
           renews_every_months: Number(f(`${k}.renews`).value), billing: f(`${k}.billing`).value, autopay: f(`${k}.autopay`).checked,
         };
         if (k !== "lights_annual") p.perks = { touch_ups: f(`${k}.touch_ups`).checked, rain_guarantee_days: f(`${k}.rain`).checked ? (((s.cat.plans[k] || {}).perks || {}).rain_guarantee_days || 7) : 0, hard_water: f(`${k}.hard_water`).checked };

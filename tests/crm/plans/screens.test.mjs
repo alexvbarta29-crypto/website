@@ -176,3 +176,31 @@ test("new plan: the catalog fills the plan discount; quarterly asks for the inte
   assert.match(b, /data-pick/);
   assert.match(b, /name="disc" inputmode="decimal" value="50\.00"/);
 });
+
+test("review fixes on screen: a lights season waits for a yes, a held plan says so, a queued agreement isn't 'sent', owner checks block Approve", async () => {
+  const view = await load("plan");
+  const lights = planState({ seasons: [{ season: 2026, status: "stored", bin_id: "B-1" }] }, {
+    kind: "lights_annual", catalog_key: "lights_annual", name: "Christmas lights plan", visits_per_year: 1,
+    ordinals: [{ term: 1, n: 1, k: 1, target_month: "2026-11", status: "completed", total_cents: 75000 }, { term: 2, n: 1, k: 2, target_month: "2027-11", status: "unscheduled", total_cents: 120000 }],
+  });
+  const lh = text(view.render(lights, ctx()));
+  assert.match(lh, /data-confirm-season="2027"/);
+  assert.match(lh, /once the customer says yes/);
+  assert.doesNotMatch(text(view.render({ ...lights, plan: { ...lights.plan, confirmed_seasons: [2027] } }, ctx())), /data-confirm-season="2027"/);
+  assert.match(text(view.render(planState({}, { held: { action: "resume", since: "2026-11-24" } }), ctx())), /Rotor is still in charge of this customer/);
+  const queued = text(view.render(planState({ agreements: [{ id: "ag_00000000000000000001", title: "x", status: "draft", queued: true }] }, { agreement_status: "draft" }), ctx()));
+  assert.match(queued, /Waiting in a bulk send/);
+  const board = await load("lights");
+  const bh = text(board.render({ season: 2027, rows: [], counts: {}, footage_ft: 0, needs_bin: 0, to_confirm: [{ plan_id: "pl_1", contact_name: `Pat ${XSS}`, town: "Delano", plan_name: "Christmas lights plan" }] }, ctx()));
+  assert.ok(!bh.includes("<script>alert(1)"));
+  assert.match(bh, /Waiting for a yes · 1/);
+  assert.match(bh, /href="#\/plans\/pl_1"/);
+  const one = await load("template");
+  const t = { id: "at_1", name: "Quarterly", version: 1, approved: false, active: true, body_md: `## {{plan_name}}\n\n>> Owner check: confirm the fee ${XSS}\n\nText.`, applies_to: { catalog_keys: ["quarterly"] } };
+  const th = text(one.render({ t, etag: '"e"', preview: null }, ctx()));
+  assert.ok(!th.includes("<script>alert(1)"));
+  assert.match(th, /1 line needs your OK first/);
+  assert.doesNotMatch(th, /data-approve/, "no Approve while a check is left");
+  assert.match(th, /data-var="price_details"/);
+  assert.match(text(one.render({ t: { ...t, body_md: "## {{plan_name}}\n\nText." }, etag: '"e"', preview: null }, ctx())), /data-approve/);
+});

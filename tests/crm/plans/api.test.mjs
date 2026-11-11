@@ -84,11 +84,11 @@ test("agreement templates and agreements: list, preview, create, send by text an
   const { t, owner, admin } = await setup();
   try {
     const list = await t.api("/agreement-templates", { as: admin });
-    assert.equal(list.body.data.length, 5);
+    assert.equal(list.body.data.length, 6, "six texts: Custom has its own");
     assert.ok(list.body.data.every((x) => x.approved));
     const prev = await t.api("/agreement-templates/preview", { method: "POST", as: admin, body: { catalog_key: "biannual", body_md: "## Hi {{first_name}}\n\nYour {{plan_name}} at {{per_visit_price}}." } });
     assert.equal(prev.status, 200);
-    assert.equal(prev.body.data.text, "## Hi Pat\n\nYour Biannual plan at $245.00.");
+    assert.equal(prev.body.data.text, "## Hi Pat\n\nYour Biannual plan at $245.00 a visit.");
     assert.equal((await t.api("/agreement-templates", { method: "POST", as: admin, body: { key: "spring_special", name: "Spring", body_md: "x" } })).status, 403, "owners edit the texts");
     const made = await t.api("/agreement-templates", { method: "POST", as: owner, body: { key: "spring_special", name: "Spring special", body_md: "## {{plan_name}}\n\nThanks {{full_name}}!" } });
     assert.equal(made.status, 201, JSON.stringify(made.body));
