@@ -188,11 +188,13 @@ const onMyWay = async (ctx) => {
   const b = ctx.body || {};
   const eta = etaOf(b);
   const cid = clientIdOf(b);
-  if (cid && visit.on_my_way && visit.on_my_way.client_id === cid) return answer(ctx, visit.id, { text: visit.on_my_way.text || null, replay: true });
-  const at = nowIso();
+  const again = !!(cid && visit.on_my_way && visit.on_my_way.client_id === cid);
+  if (again && visit.on_my_way.text) return answer(ctx, visit.id, { text: visit.on_my_way.text, replay: true });
+  const at = again ? visit.on_my_way.at : nowIso();
   const geo = geoOf(b);
-  const r = await changeVisit(visit.id, "on_my_way", { ctx: W(ctx), mutate: (n) => ({ ...n, on_my_way: { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}), ...(geo ? { geo } : {}) } }) });
-  const text = await visitText(ctx, r.visit, "visit.on_my_way", eta, cid);
+  const r = again ? { visit } : await changeVisit(visit.id, "on_my_way", { ctx: W(ctx), mutate: (n) => ({ ...n, on_my_way: { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}), ...(geo ? { geo } : {}) } }) });
+  // a repeat whose text never went (a crash in between) sends it now; the send's marker keeps it to one
+  const text = await visitText(ctx, r.visit, "visit.on_my_way", again ? visit.on_my_way.eta_min : eta, cid);
   await updateRecord("visit", visit.id, (v) => (!v.on_my_way || v.on_my_way.at !== at ? null : { ...v, on_my_way: { ...v.on_my_way, text: { status: text.status, ...(text.reason ? { reason: text.reason } : {}) }, ...(text.outbox_id ? { message_id: text.outbox_id } : {}) } }), W(ctx)).catch(() => {});
   return answer(ctx, visit.id, { text });
 };
@@ -204,10 +206,10 @@ const runningLate = async (ctx) => {
   const eta = etaOf(b);
   const cid = clientIdOf(b);
   const had = (visit.running_late || []).find((x) => cid && x.client_id === cid);
-  if (had) return answer(ctx, visit.id, { text: had.text || null, replay: true });
-  const at = nowIso();
-  const r = await changeVisit(visit.id, "running_late", { ctx: W(ctx), mutate: (n) => ({ ...n, running_late: [...(n.running_late || []), { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}) }].slice(-20) }) });
-  const text = await visitText(ctx, r.visit, "visit.running_late", eta, cid);
+  if (had && had.text) return answer(ctx, visit.id, { text: had.text, replay: true });
+  const at = had ? had.at : nowIso();
+  const r = had ? { visit } : await changeVisit(visit.id, "running_late", { ctx: W(ctx), mutate: (n) => ({ ...n, running_late: [...(n.running_late || []), { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}) }].slice(-20) }) });
+  const text = await visitText(ctx, r.visit, "visit.running_late", had ? had.eta_min : eta, cid);
   await updateRecord("visit", visit.id, (v) => {
     const list = (v.running_late || []).map((x) => (x.at === at && x.by === ctx.user.id ? { ...x, text: { status: text.status, ...(text.reason ? { reason: text.reason } : {}) }, ...(text.outbox_id ? { message_id: text.outbox_id } : {}) } : x));
     return JSON.stringify(list) === JSON.stringify(v.running_late || []) ? null : { ...v, running_late: list };
@@ -250,8 +252,13 @@ async function pauseWork(ctx, visit, time, b) {
   const w = W(ctx);
   const running = await runningTimer(visit.id, uid);
   if (!running) {
-    const done = cid ? (await visitTimers(visit.id)).find((t) => t.end_client_id === cid) : null;
-    if (done) return answer(ctx, visit.id, { timer: timerOut(done), replay: true });
+    const list = cid ? await visitTimers(visit.id) : [];
+    const done = list.find((t) => t.end_client_id === cid);
+    if (done) {
+      // finish what a crash may have left: nobody's timer runs, so the visit is paused
+      if (visit.status === "in_progress" && !list.some((t) => !t.end_at)) await changeVisit(visit.id, "pause", { ctx: w });
+      return answer(ctx, visit.id, { timer: timerOut(done), replay: true });
+    }
     throw new ConflictError("Your timer isn't running.");
   }
   const seg = await stopSegment(running, { at: time.at, geo: geoOf(b), clientId: cid, untrusted: !time.trusted }, w);
@@ -270,6 +277,10 @@ async function completeWork(ctx, visit, time, b) {
   const w = W(ctx);
   if (visit.status === "completed") {
     // a double tap, a replay, or someone else on the visit finished it first
+    // (a timer a crash left running stops at the completion too)
+    const at = (visit.completion && visit.completion.at) || time.at;
+    const left = await stopRunning(visit.id, { at }, w);
+    if (left.length) await recomputeMinutes(visit.id, w);
     return answer(ctx, visit.id, { already: true });
   }
   const missing = checklistMissing(visit);
@@ -283,7 +294,14 @@ async function completeWork(ctx, visit, time, b) {
     }
   }
   const completion = { at: time.at, by: uid, ...(cid ? { client_id: cid } : {}), ...(sig ? { signature_file_id: sig } : {}), ...(time.trusted ? {} : { unverified: true }) };
-  await changeVisit(visit.id, "finish", { ctx: w, mutate: (n) => ({ ...n, completion }) });
+  try {
+    await changeVisit(visit.id, "finish", { ctx: w, mutate: (n) => ({ ...n, completion }) });
+  } catch (e) {
+    // someone else on the visit finished it a moment ago: the same answer as a second tap
+    const cur = e instanceof InputError && e.field === "transition" ? await getRecord("visit", visit.id) : null;
+    if (cur && cur.data.status === "completed") return answer(ctx, visit.id, { already: true });
+    throw e;
+  }
   const stopped = await stopRunning(visit.id, { at: time.at, untrusted: !time.trusted }, w);
   await recomputeMinutes(visit.id, w);
   return answer(ctx, visit.id, { stopped: stopped.length });
@@ -473,6 +491,7 @@ const linesRoute = async (ctx) => {
   const qty = Number(b.qty ?? 1);
   if (!Number.isFinite(qty) || qty <= 0 || qty > 1000) throw new InputError("Use a quantity from 1 to 1,000.", "qty");
   const qtyMilli = Math.round(qty * 1000);
+  if (qtyMilli < 1) throw new InputError("Use a quantity from 1 to 1,000.", "qty");
   const cid = needClientId(b);
   const { visit } = await fieldVisit(ctx, "visits:add_line");
   const pi = await getRecord("price_item", b.price_item_id);
@@ -494,7 +513,8 @@ const linesRoute = async (ctx) => {
       }],
     };
   }, W(ctx));
-  if (r.changed) await refreshVisits(visit.job_id, ctx).catch((e) => console.error(`crm:work: visits not refreshed (${safeErr(e)})`));
+  // what the job's visits copy (its services) follows; a no-op when it already does (a retry after a crash)
+  await refreshVisits(visit.job_id, ctx).catch((e) => console.error(`crm:work: visits not refreshed (${safeErr(e)})`));
   const prices = ctx.can("visits:prices", { type: "visit", record: visit });
   const line = (r.data.lines || []).find((l) => l.id === lineId);
   const out = line ? { id: line.id, title: line.title, qty_milli: line.qty_milli, ...(prices ? { unit_cents: line.unit_cents, total_cents: line.total_cents } : {}) } : null;
@@ -550,14 +570,14 @@ const clockRoute = async (ctx) => {
     const entry = await conflictEntry({ user, action: "clock_out", message: "There was no open shift to close.", time, clientId: cid }, w);
     return { status: 202, data: { pending_entry_id: entry.id, pending: true, reason: "conflict" } };
   }
-  // the work stops with the shift: this person's running timers pause
+  // the work stops with the shift: this person's running timers pause (a replay finishes what a crash left)
   let paused = 0;
-  if (r.closed) {
+  if (r.closed || r.replay) {
     const ix = await readIndex("timers", "active").catch(() => ({ rows: [] }));
     for (const row of ix.rows.filter((x) => (x.u || []).includes(user.id) && x.v)) {
       const t = await runningTimer(row.v, user.id);
       if (!t) continue;
-      await stopSegment(t, { at: r.sheet.end_at, untrusted: !time.trusted }, w);
+      await stopSegment(t, { at: r.sheet.end_at || time.at, untrusted: !time.trusted }, w);
       const vg = await getRecord("visit", row.v);
       const still = (await visitTimers(row.v)).filter((x) => !x.end_at);
       if (vg && vg.data.status === "in_progress" && !still.length) await changeVisit(row.v, "pause", { ctx: w }).catch((e) => console.error(`crm:work: visit not paused (${safeErr(e)})`));

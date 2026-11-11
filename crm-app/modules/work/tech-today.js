@@ -35,7 +35,10 @@ async function loadDay(ctx, date) {
   // keep copies for no signal: tomorrow's day, and each visit of this one
   if (!got.offline && online()) {
     setTimeout(() => {
-      if (!date || date === got.day.today) read(ctx, got.day.tomorrow).catch(() => {});
+      if (!date || date === got.day.today) {
+        read(ctx, got.day.tomorrow).catch(() => {});
+        ctx.api("/me/timesheets").catch(() => {});        // Time opens offline too
+      }
       prefetch(ctx, got.day.stops).catch(() => {});
     }, 50);
   }

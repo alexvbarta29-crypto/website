@@ -103,6 +103,22 @@ test("on my way and running late need signal: a replay is refused and nothing is
     assert.equal(t.stores.data.keys("rec/outbox/").length, 1, "one text");
     r = await post(t, tech, `/visits/${v.id}/running-late`, offline({ eta_min: 20 }));
     assert.equal(r.status, 409);
-    void clock;
+    // a crash between the visit's write and the text: the repeat sends it, once
+    const v2 = await visit(owner, await job(owner, await customer(owner)), { date: "2026-11-17", start: "12:00", end: "13:00", assignee_ids: [tech.id] });
+    const id2 = cid();
+    await store.updateRecord("visit", v2.id, (x) => ({ ...x, status: "en_route", on_my_way: { at: clock.nowIso(), by: tech.id, eta_min: 12, client_id: id2 } }), AS(tech));
+    r = await post(t, tech, `/visits/${v2.id}/on-my-way`, { eta_min: 12, client_id: id2 });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.data.text.status, "dry_run");
+    assert.match(r.body.data.text.hand.body, /about 12 minutes/);
+    r = await post(t, tech, `/visits/${v2.id}/on-my-way`, { eta_min: 12, client_id: id2 });
+    assert.equal(t.stores.data.keys("rec/outbox/").length, 2, "one text each visit");
+    // a crash between completing and stopping the timers: the repeat stops them
+    const v3 = await visit(owner, await job(owner, await customer(owner), { kind: "touch_up", lines: [{ title: "Touch-up", unit_cents: 0 }] }), { date: "2026-11-17", start: "14:00", end: "15:00", assignee_ids: [tech.id] });
+    await post(t, tech, `/visits/${v3.id}/timer`, live({ action: "start" }));
+    await store.updateRecord("visit", v3.id, (x) => ({ ...x, status: "completed", completion: { at: clock.nowIso(), by: tech.id } }), AS(tech));
+    r = await post(t, tech, `/visits/${v3.id}/complete`, live());
+    assert.equal(r.body.data.already, true);
+    assert.ok(timers(t).filter((x) => x.visit_id === v3.id).every((x) => x.end_at), "no timer left running");
   } finally { t.done(); }
 });

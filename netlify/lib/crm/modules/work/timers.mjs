@@ -27,6 +27,7 @@ import { now, nowMs, nowIso, localDate, localTime, zonedToUtc } from "../../core
 import { deriveId, newId, isId, idForRotor } from "../../core/ids.mjs";
 import { ConflictError, ExistsError, ParallelRunGuard } from "../../core/errors.mjs";
 import { notify } from "../../core/notify.mjs";
+import { wouldAct } from "../../core/activity.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { RowError } from "../contacts/import-rotor.mjs";
 import { rotorKey } from "../contacts/display.mjs";
@@ -178,7 +179,12 @@ async function closeForgotten(timer, visit, deadline, w) {
     // nobody's timer runs on it any more: the visit is paused, not "working"
     if (visit.status === "in_progress") {
       const still = (await visitTimers(visit.id)).filter(isOpenTimer);
-      if (!still.length) await changeVisit(visit.id, "pause", { ctx: w }).catch((e) => { if (!(e instanceof ParallelRunGuard)) console.error(`crm:work: visit not paused (${safeErr(e)})`); });
+      if (!still.length) {
+        await changeVisit(visit.id, "pause", { ctx: w }).catch(async (e) => {
+          if (e instanceof ParallelRunGuard) await wouldAct({ key: "work.timers", subject: visit, action: "pause", changes: { status: ["in_progress", "paused"] } }).catch(() => {});
+          else console.error(`crm:work: visit not paused (${safeErr(e)})`);
+        });
+      }
     }
   }
   // the shift around it is flagged for review

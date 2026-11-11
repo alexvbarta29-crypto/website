@@ -71,7 +71,7 @@ function stateCard(s, ctx) {
     if (v.status === "in_progress" && mine) big.push(html`<button type="button" class="btn" data-timer="pause">${icon("pause")}Pause</button>`);
     if (v.status === "in_progress" && !mine) big.push(html`<button type="button" class="btn" data-timer="start">${TICONS.play}Start my timer</button>`);
     if (v.status === "paused") big.push(html`<button type="button" class="btn" data-timer="start">${TICONS.play}Resume</button>`);
-    if (["en_route", "in_progress", "paused"].includes(v.status) || (v.status === "scheduled" && !missing.length)) {
+    if (["in_progress", "paused"].includes(v.status) || (["scheduled", "en_route"].includes(v.status) && !missing.length)) {
       big.push(html`<button type="button" class="${"btn " + (["in_progress", "paused"].includes(v.status) ? "primary" : "dark") + (big.length % 2 ? "" : " wide")}" data-complete ${attrs({ "aria-disabled": missing.length ? "true" : null })}>${icon("check")}Complete</button>`);
     }
     const small = [];
@@ -91,8 +91,8 @@ function stateCard(s, ctx) {
 }
 
 function sentNote(r) {
-  if (r.status === "sent" || r.status === "queued") return html`<p class="tf-sent">Texted the customer.</p>`;
-  if (r.status === "dry_run") {
+  if (r.status === "sent" || r.status === "queued" || (r.status === "already" && r.mode !== "dry_run")) return html`<p class="tf-sent">Texted the customer.</p>`;
+  if (r.status === "dry_run" || (r.status === "already" && r.mode === "dry_run")) {
     return html`<div class="tf-sent">Texts aren't switched on yet, so nothing went out.${r.hand ? html` Send it yourself:<div class="btn-row"><a class="btn" ${attrs({ href: smsHref(r.hand.to, r.hand.body) })}>${icon("text")}Open in Messages</a></div>` : ""}</div>`;
   }
   const why = { quiet_hours: "it's outside texting hours", opted_out: "they opted out of texts", no_consent: "they haven't agreed to texts", no_address: "there's no mobile number", turned_off: "these texts are turned off", paused: "the CRM is paused" }[r.reason] || r.reason || "it was held back";

@@ -96,9 +96,9 @@
 .tf-shift .num{font-weight:700}
 .tf-notes{margin:0 14px 12px 50px;padding:0;list-style:none;font-size:13px;color:var(--ink-2)}
 .tf-notes li{margin-top:4px;overflow-wrap:anywhere}
-.tf-money{display:grid;grid-template-columns:1fr auto;gap:8px 14px;margin:6px 0 0}
+.tf-money{display:grid;grid-template-columns:1fr auto;gap:8px 0;margin:6px 0 0}
 .tf-money dt{color:var(--ink-2)}
-.tf-money dd{margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.tf-money dd{margin:0;padding-left:14px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 .tf-money .tot{font-weight:800;font-size:17px;border-top:1px solid var(--line);padding-top:8px}
 
 /* ---------------------------------------------------------------- the office's Timesheets */
