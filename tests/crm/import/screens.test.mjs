@@ -63,6 +63,61 @@ test("a run: upload, team map, steps, the report with its downloads", async () =
   assert.match(stopped, /Stopped/);
 });
 
+test("the rest of an export: what can come in now, what waits and for which part, the button; a continuation's own screen", async () => {
+  const list = await load("list");
+  const run = await load("run");
+  const done = { id: RUN.id, status: "done", as_of: "2026-11-10", created_at: NOW, finished_at: NOW, summary: { created: 1265, updated: 3, conflicts: 0 } };
+  const ready = [{ phase: "money.invoices", label: "Invoices", module: "money", module_label: "Money", entity: "invoices", rows: 712 }, { phase: "money.payments", label: "Payments", module: "money", module_label: "Money", entity: "payments", rows: 688 }];
+  const waiting = [{ phase: "comms.messages", label: "Messages", module: "comms", module_label: "Messages", entity: "messages", rows: 10927, waiting_for: "comms" }];
+  const rest = { run: { id: RUN.id, as_of: "2026-11-10" }, ready, waiting, staging: "ok", keep_until: "2026-12-17T15:00:00.000Z", active: null, auto: true };
+  const html = text(list.render({ runs: [done], rest }, ctx));
+  assert.match(html, /The rest of this export/);
+  assert.match(html, /<dt>Money<\/dt><dd>1,400 rows<span class="im-steps">invoices, payments<\/span>/, "per part, each file's rows once");
+  assert.match(html, /<button type="button" class="btn primary" data-continue>Bring in the rest now<\/button>/);
+  assert.match(html, /by itself within the hour\. No upload, no key\./);
+  assert.match(html, /<dt>Messages<\/dt><dd>10,927 rows/);
+  assert.match(html, /until \w{3}, Dec 17/, "how long the rows are kept");
+  // off: the screen says so and still offers the button
+  const off = text(list.render({ runs: [done], rest: { ...rest, auto: false } }, ctx));
+  assert.match(off, /by itself is off \(Settings, Data\)/);
+  assert.match(off, /data-continue/);
+  // the rows were cleared: no button, a plain way on
+  const gone = text(list.render({ runs: [done], rest: { ...rest, staging: "cleared", keep_until: null } }, ctx));
+  assert.match(gone, /rows were cleared[^<]*Start a new import/);
+  assert.doesNotMatch(gone, /data-continue|Ready to bring in/);
+  assert.match(gone, /Not brought in<\/div>[\s\S]*<dt>Money<\/dt>[\s\S]*<dt>Messages<\/dt>/, "what never came in, whatever is live now");
+  // an import is running: a link to it, no second button
+  assert.doesNotMatch(text(list.render({ runs: [done], rest: { ...rest, active: "ir_00000000000000000009" } }, ctx)), /data-continue/);
+  // nothing left (or no import yet): no card
+  assert.doesNotMatch(text(list.render({ runs: [done], rest: { ...rest, ready: [], waiting: [] } }, ctx)), /The rest of this export/);
+  assert.doesNotMatch(text(list.render({ runs: [], rest: { run: null, ready: [], waiting: [] } }, ctx)), /The rest of this export/);
+  assert.doesNotMatch(text(list.render({ runs: [done], rest: null }, ctx)), /The rest of this export/);
+  // a continuation in the list, and its screen: what it continues, only its own steps, the chain's totals
+  const cont = { id: "ir_00000000000000000002", status: "done", as_of: "2026-11-10", created_at: NOW, finished_at: NOW, continues: RUN.id, summary: { created: 1400, updated: 0, conflicts: 0 } };
+  assert.match(text(list.render({ runs: [cont, done], rest: null }, ctx)), /More of this export · 1,400 added/);
+  const phases = [
+    { name: "contacts.customers", label: "Customers", status: "done", earlier: RUN.id, read: 0 },
+    { name: "money.invoices", label: "Invoices", status: "done", read: 712, created: 712, updated: 0, unchanged: 0, linked: 0, conflicted: 0, skipped: 0 },
+    { name: "comms.messages", label: "Messages", status: "waiting", waiting_label: "Messages", read: 0 },
+  ];
+  const report = { summary: { created: 1400, updated: 0, unchanged: 0, linked: 0, conflicts_open: 0, skipped: 0 }, waiting: [{ label: "Messages", rows: 10927, module_label: "Messages", entity: "messages" }],
+    continues: RUN.id, chain: { runs: [RUN.id, cont.id], totals: { read: 16000, created: 9100, updated: 12 } }, quality: { warnings: {} } };
+  const scr = text(run.render({ run: { ...RUN, ...cont, auto: true, conflicts: { open: 0, resolved: 0 } }, upload: null, phases, lane: { status: "done" }, team: null, report, rest: { ...rest, run: { id: cont.id }, ready: [] } }, ctx));
+  assert.match(scr, /Started by itself when a part of the CRM went live/);
+  assert.match(scr, /<h2>More of the export of Nov 10, 2026<\/h2>/);
+  assert.match(scr, /href="#\/import\/ir_00000000000000000001">The import it continues/);
+  assert.match(scr, /1 step was done by the import this one continues/);
+  assert.doesNotMatch(scr, /<span class="nm">Customers<\/span>/, "steps done earlier aren't listed as this run's");
+  assert.match(scr, /<span class="nm">Invoices<\/span>/);
+  assert.match(scr, /9,100 added and 12 updated from 16,000 rows/);
+  assert.match(scr, /Waiting for a part that isn&#39;t live yet|Waiting for a part that isn't live yet/);
+  assert.doesNotMatch(scr, /Upload<\/h2>|data-member|data-continue/, "no upload, no team map, nothing ready");
+  // an older import keeps its own report's list of what waited
+  const old = text(run.render({ run: { ...RUN, status: "done", finished_at: NOW }, upload: { chunks: 5, expected: 5, missing: [], missing_count: 0 }, phases: [], lane: null, team: null, report: { ...report, chain: null, continues: null }, rest: null }, ctx));
+  assert.match(old, /Waiting for a later part of the CRM/);
+  assert.equal(kit.byPart([{ label: "A", module: "m", entity: "x", rows: 0 }]).length, 0, "nothing waits where the export has no rows");
+});
+
 test("conflicts: the three values, escaped, and the two choices", async () => {
   const c = await load("conflicts");
   const html = text(c.render({ id: RUN.id, rows: [{ key: "ir_00000000000000000001--contact--ct_00000000000000000001--last_name", type: "contact", id: "ct_00000000000000000001", field: "last_name", label: "Pat <i>Example</i>", base: "Old", crm: "Human", rotor: "Rotor", status: "open" }], next: null, done: [] }, ctx));

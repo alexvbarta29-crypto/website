@@ -335,7 +335,9 @@ async function mapLead(r, ctx) {
   // the lead's deal (sales owns the type; written once it ships, §11.3 feature gates)
   if (getType("deal")) {
     const value = r.projected_value != null ? toCents(r.projected_value) : null;
-    out.records.push({ type: "deal", data: { id: idForRotor("deal", `lead:${r.id}`), contact_id: id, services, ...(value !== null ? { value_cents: value } : {}), status: "open", rotor: { lead_id: r.id } } });
+    // opened when Rotor made the lead: without it the type's default is the time of the import, another value on every run
+    const opened = r.created_at && !Number.isNaN(Date.parse(r.created_at)) ? { opened_at: new Date(r.created_at).toISOString() } : {};
+    out.records.push({ type: "deal", data: { id: idForRotor("deal", `lead:${r.id}`), contact_id: id, services, ...(value !== null ? { value_cents: value } : {}), status: "open", ...opened, rotor: { lead_id: r.id } } });
   } else if (services.length || r.projected_value != null) warnings.push("deal_waits_for_sales");
   if (r.follow_up_date && !getType("task")) warnings.push("follow_up_waits_for_sales");
   return out;
