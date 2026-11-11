@@ -168,7 +168,8 @@ async function hook(ctx, endpoint) {
   return { data: { applied: true } };
 }
 
+// maxCalls: applying a payment writes the payment, the invoice, the customer's stats, a saved card on their plans, and their events
 const route = (path, endpoint) => ({
-  method: "POST", path, auth: "hook", perm: null, subject: "none", mode: "inline", body: "raw", idempotent: false, maxBody: 512 * 1024, maxCalls: 90, handler: (ctx) => hook(ctx, endpoint),
+  method: "POST", path, auth: "hook", perm: null, subject: "none", mode: "inline", body: "raw", idempotent: false, maxBody: 512 * 1024, maxCalls: 180, handler: (ctx) => hook(ctx, endpoint),
 });
 export const webhookRoutes = [route("/hooks/stripe", "live"), route("/hooks/stripe-test", "test")];
