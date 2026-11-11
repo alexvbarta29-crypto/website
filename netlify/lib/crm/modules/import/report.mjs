@@ -23,7 +23,8 @@
 import { getRaw, putRaw, listKeys } from "../../../crm-store.mjs";
 import { nowIso } from "../../core/clock.mjs";
 import { typeOf } from "../../core/ids.mjs";
-import { csvCell } from "../../../referral-lib.mjs";
+import { csvCell, safeErr } from "../../../referral-lib.mjs";
+import { has, call } from "../../core/services.mjs";
 import { MODULE_LABELS, phaseLabel } from "./catalog.mjs";
 import { readChunk } from "./staging.mjs";
 
@@ -110,14 +111,21 @@ export async function buildReport(runId, state) {
   for await (const j of stagedRows(runId, state, "jobs")) if (j && j.id) jobIds.add(String(j.id));
   for await (const v of stagedRows(runId, state, "visits")) if (v && v.job_id && !jobIds.has(String(v.job_id))) integrity.visits_without_job += 1;
   const conflictsOpen = (await listKeys(conflictsPrefix(runId))).length;
+  // the CRM's side (Money, M5): what the imported invoices and payments add up to, against Rotor's
+  const moneyDone = ["money.invoices", "money.payments"].every((n) => phases.some((p) => p.name === n && (p.status === "done" || p.status === "empty")));
+  let crmMoney = null;
+  if (moneyDone && has("money.reconcileImport")) {
+    try { crmMoney = await call("money.reconcileImport", { runId, rotor: money }); } catch (e) { console.error(`crm:import: the money comparison was left out (${safeErr(e)})`); }
+  }
   const summary = {
     ...totals, conflicts_open: conflictsOpen, phases: state.plan.length,
     phases_done: phases.filter((p) => p.status === "done" || p.status === "empty").length, phases_waiting: waiting.length,
-    suppressed, merge_candidates: candidates, pass: conflictsOpen === 0, money_checked: false,
+    suppressed, merge_candidates: candidates, pass: conflictsOpen === 0 && (!crmMoney || crmMoney.ok === true), money_checked: !!crmMoney,
+    ...(crmMoney ? { money_ok: crmMoney.ok === true, money_diffs: (crmMoney.diffs || []).length, money_status_mismatches: crmMoney.status_mismatches || 0 } : {}),
   };
   const report = {
     v: 1, run_id: runId, as_of, generated_at: nowIso(), summary, phases, waiting,
-    money: { rotor: money, crm: null, note: "The CRM's side of the money comparison arrives with Money (M5)." },
+    money: { rotor: money, crm: crmMoney, note: crmMoney ? null : "The CRM's side of the money comparison is made once the invoices and payments steps have run." },
     integrity, quality: { warnings: quality, suppressions: suppressed, merge_candidates: candidates },
   };
   await putRaw(reportKey(runId), report);
@@ -153,6 +161,15 @@ export function reportCsv(report) {
   if (m.payments) {
     for (const k of ["count", "net_cents", "tips_cents", "refunds_cents", "failed", "unlinked"]) lines.push(csvLine(["money", "rotor", `payments.${k}`, m.payments[k]]));
     for (const g of ["by_method", "by_type", "by_year"]) for (const [k, v] of Object.entries(m.payments[g] || {})) lines.push(csvLine(["money", "rotor", `payments.${g}.${k}`, v]));
+  }
+  const c = report.money && report.money.crm;
+  if (c) {
+    lines.push(csvLine(["money", "crm", "invoices.count", c.invoices.count]));
+    lines.push(csvLine(["money", "crm", "invoices.total_cents", c.invoices.total_cents]));
+    for (const k of ["count", "net_cents", "tips_cents", "refunds_cents", "failed"]) lines.push(csvLine(["money", "crm", `payments.${k}`, c.payments[k]]));
+    lines.push(csvLine(["money", "crm", "reconciled", c.ok ? "yes" : "no"]));
+    for (const d of c.diffs || []) lines.push(csvLine(["money", "difference", d.metric, `rotor ${d.rotor} / crm ${d.crm}`]));
+    for (const x of c.mismatches || []) lines.push(csvLine(["money", "status", x.number, `rotor ${x.rotor_status} / crm ${x.crm_status}, balance ${x.balance_cents}`]));
   }
   for (const [k, v] of Object.entries(report.integrity || {})) lines.push(csvLine(["integrity", "", k, v]));
   for (const [k, v] of Object.entries((report.quality && report.quality.warnings) || {})) lines.push(csvLine(["quality", "", k, v]));

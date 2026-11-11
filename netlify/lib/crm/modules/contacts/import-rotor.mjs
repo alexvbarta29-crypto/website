@@ -523,8 +523,9 @@ export async function applyExtras(out, ctx = {}) {
   }
   for (const s of out.stats || []) {
     if (!statsPart(s.part)) continue;              // a part whose module has not shipped yet
-    await updateStats(s.contact_id, s.part, (cur) => deepMerge(cur, s.merge), ctx);
-    res.stats += 1;
+    // counted only when it changed something (an unchanged export rebuilds no index)
+    const r = await updateStats(s.contact_id, s.part, (cur) => deepMerge(cur, s.merge), ctx);
+    if (r && r.changed) res.stats += 1;
   }
   for (const m of out.mergeCandidates || []) {
     const c = await createCandidate(m.a, m.b, { reason: m.reason, confidence: m.confidence }, ctx);

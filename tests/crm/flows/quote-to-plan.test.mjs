@@ -4,7 +4,8 @@
 // plans.fromQuoteOption and the REAL work.createJobs: one plan, its
 // ordinals, a job per visit (the first visit's job in the to-book tray), the
 // agreement signed with the text the customer saw; a retried conversion
-// creates nothing twice. Money is not built yet, so it is hidden.
+// creates nothing twice. Money's part (deposits, the card gate) is hidden here:
+// tests/crm/flows/quote-to-invoice.test.mjs covers it.
 // Synthetic data only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,7 +18,8 @@ const AUTO = { by: "system:test", origin: "worker", actor_kind: "automation", re
 
 test("a customer's approval of a plan option makes one real plan with its visits' jobs, signed, once", async () => {
   const { t, owner } = await setup();
-  const off = fakeServices({ "money.createDepositInvoice": null });
+  // Quotes, Plans and Scheduling here; Money's deposit and card gate have their own flow (quote-to-invoice.test.mjs)
+  const off = fakeServices({ "money.createDepositInvoice": null, "money.cardStatus": null });
   try {
     await scope(() => AG.seedAgreementTemplates(AUTO));
     await scope(async () => {

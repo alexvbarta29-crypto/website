@@ -135,9 +135,10 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     assert.equal(r.run.status, "done");
     const rep = (await t.api(`/import/runs/${r.ir.id}/report`, { as: owner })).body.data;
     const w = Object.fromEntries(rep.waiting.map((x) => [x.phase, x]));
-    assert.equal(w["money.invoices"].waiting_for, "money");
-    assert.equal(w["money.invoices"].rows, ex.invoices.length, "the report says how many rows wait");
+    assert.equal(w["comms.messages"].waiting_for, "comms");
+    assert.equal(w["comms.messages"].rows, ex.messages.length, "the report says how many rows wait");
     assert.equal(w["comms.messages"].module_label, "Messages");
+    assert.ok(!w["money.invoices"] && !w["money.payments"], "Money (M5) runs its phases");
     assert.equal(w["fixture.after_payroll"].waiting_for, "payroll.payroll", "after a phase that isn't there: waits");
     // every phase the design expects from a module that hasn't registered it yet waits
     const { EXPECTED_PHASES } = await import("../../../netlify/lib/crm/modules/import/catalog.mjs");
@@ -155,7 +156,11 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     assert.equal(inv.total_cents, ex.invoices.reduce((s, x) => s + x.total_cents, 0));
     const refunds = ex.payments.filter((p) => p.payment_type === "refund" && p.status !== "failed").reduce((s, p) => s + p.total_amount_cents, 0);
     assert.equal(rep.money.rotor.payments.refunds_cents, refunds);
-    assert.equal(rep.money.crm, null);
+    // and the CRM's side (Money, M5): the imported invoices and payments add up to Rotor's, to the cent
+    assert.equal(rep.summary.money_checked, true);
+    assert.deepEqual(rep.money.crm.diffs, [], "no money difference");
+    assert.equal(rep.money.crm.invoices.total_cents, inv.total_cents);
+    assert.equal(rep.money.crm.ok, true);
     assert.ok(rep.integrity.timers_running >= 1);
     assert.ok(rep.quality.warnings.phone_twelve_digits >= 1, "data quality: the 12-digit phone");
     assert.ok(JSON.stringify(rep).indexOf("@example.com") === -1, "the report holds no email (counts only)");
