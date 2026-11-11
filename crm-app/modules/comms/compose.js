@@ -13,6 +13,5 @@ async function pick(ctx) {
 export default {
   async load() { ensureStyles(); return {}; },
   render: () => html`<div class="stack"><div class="card empty"><div class="art">${icon("text")}</div><h2>Who is it for?</h2><p>Pick a contact and their conversation opens.</p><div class="btn-row"><button type="button" class="btn primary" data-pick>Pick a contact</button></div></div></div>`,
-  mount(el, s, ctx) { if (!s.asked) { s.asked = true; pick(ctx); } },
   events: { "click [data-pick]": (e, el, ctx) => pick(ctx) },
 };

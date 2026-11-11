@@ -87,15 +87,24 @@ async function refresh(ctx) {
   Object.assign(ctx.state, r.data);
   repaint(ctx);
 }
-// Repaints without losing what is being typed.
-function repaint(ctx) {
+// Repaints without losing what is being typed or where the thread is
+// scrolled: at the newest message it stays there; after "earlier messages"
+// the one that was on top stays on top.
+const scroller = () => document.querySelector(".cm-thread");
+function repaint(ctx, { older = false } = {}) {
   const ta = document.querySelector("[data-compose] textarea");
   const focused = ta && document.activeElement === ta;
   const pos = focused ? ta.selectionStart : null;
   if (ta) ctx.state.draft = ta.value;
+  const sc = scroller();
+  const top = sc ? sc.scrollTop : 0;
+  const fromEnd = sc ? sc.scrollHeight - sc.scrollTop : 0;
+  const atEnd = !sc || fromEnd - sc.clientHeight < 80;
   ctx.rerender();
+  const now = scroller();
+  if (now) now.scrollTop = atEnd ? now.scrollHeight : older ? now.scrollHeight - fromEnd : top;
   const n = document.querySelector("[data-compose] textarea");
-  if (n && focused) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { /* not selectable */ } }
+  if (n && focused) { n.focus({ preventScroll: true }); try { n.setSelectionRange(pos, pos); } catch (e) { /* not selectable */ } }
 }
 
 async function send(ctx, payload) {
@@ -114,6 +123,8 @@ async function send(ctx, payload) {
     // a first real message makes the conversation: open it by its own address
     if (d.conversation_id && !isConv(s.id)) { ctx.go("/inbox/" + encodeURIComponent(d.conversation_id), { replace: true }); return; }
     await refresh(ctx);
+    const sc = scroller();
+    if (sc) sc.scrollTop = sc.scrollHeight;
   } catch (e) {
     // no signal: nothing is sent and nothing is queued; the words stay in the box
     toast(e && e.code === "offline" ? "No connection. A text needs signal: nothing was sent, try again when you have it." : (e && e.message) || "That didn't send. Try again.", { bad: true });
@@ -127,9 +138,10 @@ async function send(ctx, payload) {
 async function templates(ctx) {
   const s = ctx.state;
   const list = ((await ctx.api(`/templates?channel=${s.channel}`, { cache: false })).data || []).filter((t) => t.active !== false && t.category !== "staff");
+  const listBody = () => (list.length ? html`<ul class="list">${list.map((t) => html`<li><button type="button" class="row" data-tpl="${t.key}"><span class="who"><span class="nm">${t.name}</span><span class="sub">${t.category}</span></span><span class="chev" aria-hidden="true"></span></button></li>`)}</ul>` : html`<p class="muted">No templates for this channel yet.</p>`);
   const sh = sheet({
     title: "Templates",
-    body: list.length ? html`<ul class="list">${list.map((t) => html`<li><button type="button" class="row" data-tpl="${t.key}"><span class="who"><span class="nm">${t.name}</span><span class="sub">${t.category}</span></span><span class="chev" aria-hidden="true"></span></button></li>`)}</ul>` : html`<p class="muted">No templates for this channel yet.</p>`,
+    body: listBody(),
     events: {
       "click [data-tpl]": async (e, el) => {
         const key = el.dataset.tpl;
@@ -142,7 +154,7 @@ async function templates(ctx) {
           <div class="btn-row"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-use="${key}" ${attrs({ disabled: missing.length ? true : null })}>Send this</button></div>
         </div>`);
       },
-      "click [data-back]": () => { sh.close(); templates(ctx); },
+      "click [data-back]": () => sh.set(listBody()),
       "click [data-use]": async (e, el) => { sh.close(); await send(ctx, { template_key: el.dataset.use }); },
     },
   });
@@ -158,7 +170,9 @@ export default {
       // (a contact with no conversation yet has nothing to poll)
       live = c ? poll(`/conversations/${encodeURIComponent(c.id)}`, 10000, (data) => { Object.assign(ctx.state, data); repaint(ctx); }, { immediate: false }) : { stop() {} };
       live.for = ctx;
-      el.scrollTop = el.scrollHeight;
+      // a thread opens at its newest message
+      const sc = el.querySelector(".cm-thread");
+      if (sc) sc.scrollTop = sc.scrollHeight;
     }
   },
   unmount() { if (live) { live.stop(); live = null; } },
@@ -191,7 +205,7 @@ export default {
       const r = await ctx.api(`/conversations/${s.conversation.id}?before=${encodeURIComponent(s.next)}`, { cache: false });
       s.older = [...(r.data.messages || []), ...s.older];
       s.next = r.data.next;
-      repaint(ctx);
+      repaint(ctx, { older: true });
     },
     "click [data-whole]": async (e, el, ctx) => {
       const r = await ctx.api(`/messages/${encodeURIComponent(el.dataset.whole)}`, { cache: false });

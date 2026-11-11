@@ -3,7 +3,7 @@
 //
 //   GET  /inbox?filter=all|unread|needs_reply|leads|customers|mine&cursor=   the conversations (ETag/304 for the 30 s poll)
 //   GET  /inbox/contact/:id?channel=       a contact's threads, the thread on one channel, and what is waiting in the Outbox
-//   GET  /conversations/:id?before=&since= one thread, newest first (ETag/304 for the 10 s poll)
+//   GET  /conversations/:id?before=&since= one thread, newest first, and the contact's threads (ETag/304 for the 10 s poll)
 //   POST /conversations/:id/read           unread → 0
 //   POST /conversations/:id/done           { done: true | false }   handled (a new inbound reopens it)
 //   POST /conversations/:id/assign         { user_id | null }       the office only
@@ -116,7 +116,10 @@ async function conversation(ctx) {
   const since = ctx.query.get("since") || undefined;
   if (!before && ctx.req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { ETag: etag } });
   const c = await getRecord("contact", conv.contact_id);
-  return { data: await threadOf(ctx, conv, c ? c.data : null, { before, since, withPending: !before }), ...(before ? {} : { etag }) };
+  const data = await threadOf(ctx, conv, c ? c.data : null, { before, since, withPending: !before });
+  // the same person's other thread (texts ↔ email) is one tap away
+  if (!before && !since) data.threads = (await conversationsOf(conv.contact_id)).map((x) => convView(x, !sc.all));
+  return { data, ...(before ? {} : { etag }) };
 }
 
 // A contact's threads (the Messages tab), and the thread on one channel

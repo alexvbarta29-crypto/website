@@ -23,6 +23,8 @@ async function load(params, ctx) {
     const [t, p] = await Promise.all([ctx.api(`/templates?channel=${c.channel}`, { cache: false }), ctx.api(`/campaigns/${c.id}/preview`, { method: "POST", body: {} }).catch(() => null)]);
     s.templates = (t.data || []).filter((x) => x.active !== false && x.category !== "staff");
     s.preview = p ? p.data : null;
+    // (the preview is kept on the campaign: read its new version so the next save matches)
+    if (p) { const again = await ctx.api(`/campaigns/${c.id}`, { cache: false }); s.c = again.data; s.etag = again.etag; }
   } else if (!c.imported && c.run) {
     s.recipients = (await ctx.api(`/campaigns/${c.id}/recipients`, { cache: false }).catch(() => ({ data: [] }))).data;
   }
