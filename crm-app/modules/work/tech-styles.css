@@ -36,6 +36,9 @@
 .tf-wait{display:flex;align-items:center;gap:8px;margin:0;padding:10px 14px;border-radius:14px;background:var(--amber-bg);color:#6b4510;font-size:13.5px;font-weight:600}
 .tf-wait svg{width:18px;height:18px;flex:none}
 .tf-asof{margin:0;font-size:13px;color:var(--ink-3);text-align:center}
+/* no signal: the screen's one line says when its copy is from and what waits; the app's banner steps aside */
+.tf-off{background:var(--fill);color:var(--ink-2)}
+body:has(.tf-own-offline) #banner.is-offline{display:none}
 
 /* ---------------------------------------------------------------- the field panel on a visit */
 .tf-panel{display:flex;flex-direction:column;gap:12px}
@@ -47,6 +50,13 @@
 .tf-big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tf-big .btn{min-height:52px;padding:0 12px;white-space:normal;line-height:1.15;text-align:center}
 .tf-big .btn.wide{grid-column:1/-1}
+/* on a phone the big buttons ride in a bar over the tab bar: Start and On my way are never below the fold */
+@media (max-width:899px){
+  .tf-panel.has-bar{padding-bottom:132px}
+  .tf-panel.has-bar .tf-big{position:fixed;z-index:5;left:calc(12px + var(--left));right:calc(12px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 10px + var(--lift,0px));padding:10px;border-radius:24px;background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border:1px solid var(--line);box-shadow:0 10px 30px rgba(14,14,18,.14)}
+  .app.no-tabs .tf-panel.has-bar .tf-big{bottom:calc(var(--bottom) + 10px + var(--lift,0px))}
+  .tf-panel.has-bar .tf-big:empty{display:none}
+}
 .tf-small{display:flex;flex-wrap:wrap;gap:8px}
 .tf-small .btn{flex:1 1 40%;padding:0 12px}
 .tf-sent{margin:0;padding:10px 14px;border-radius:14px;background:var(--fill);font-size:13.5px}
@@ -113,3 +123,8 @@
 .tf-entries .m{flex:none;font-weight:700;font-variant-numeric:tabular-nums}
 .tf-entries .icon-btn{flex:none}
 .tf-pend .row{align-items:flex-start}
+.tf-pend .who{min-width:0}
+.tf-pend .sub{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.tf-held{display:flex;flex-wrap:wrap;gap:8px}
+.tf-held img{width:88px;height:88px;border-radius:12px;object-fit:cover;background:var(--mist)}
+.tf-said{margin:0;padding:10px 12px;border-radius:12px;background:var(--fill);font-size:14px;overflow-wrap:anywhere;white-space:pre-wrap}

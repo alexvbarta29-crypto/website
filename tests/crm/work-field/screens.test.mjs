@@ -25,11 +25,13 @@ const stop = (o = {}) => ({
   property: { address: { street1: "1 Example Ave", city: "Delano", state: "MN", zip: "55328" } }, badges: [{ key: "gate", label: "Gate code" }, { key: "first", label: "First visit" }],
   timers: [], job: { lines: [] }, ...o,
 });
+// the screen's state: the day it shows, with the phone's own today and its neighbours
+const st = (o = {}) => ({ tech: true, date: "2026-11-17", today: "2026-11-17", yesterday: "2026-11-16", tomorrow: "2026-11-18", ...o });
 const day = (stops = [stop()], o = {}) => ({ date: "2026-11-17", today: "2026-11-17", tomorrow: "2026-11-18", yesterday: "2026-11-16", clock: { open: null, week_minutes: 300 }, stops, ...o });
 
 test("Today (a tech): the clock bar, the day switcher, the visits in order with Directions, Call and Text; escaped; empty and offline", async () => {
   const card = await load("tech-today");
-  const h = text(card.render({ tech: true, day: day([stop(), stop({ n: 2, visit: { id: "vs_00000000000000000002", status: "completed" } })]), offline: false }, ctx()));
+  const h = text(card.render(st({ day: day([stop(), stop({ n: 2, visit: { id: "vs_00000000000000000002", status: "completed" } })]), offline: false }), ctx()));
   assert.ok(!h.includes("<script>alert(1)"), "escaped");
   assert.match(h, /Not clocked in/);
   assert.match(h, /data-clock="in"/);
@@ -41,20 +43,26 @@ test("Today (a tech): the clock bar, the day switcher, the visits in order with 
   assert.match(h, /Gate code/);
   assert.match(h, /2 visits, 1 to go/);
   assert.match(h, /data-day="2026-11-18"/);
-  const on = text(card.render({ tech: true, day: day([], { clock: { open: { start_at: "2026-11-17T14:00:00.000Z", category: "service" }, week_minutes: 0, near_ot: true } }) }, ctx()));
+  const on = text(card.render(st({ day: day([], { clock: { open: { start_at: "2026-11-17T14:00:00.000Z", category: "service" }, week_minutes: 0, near_ot: true } }) }), ctx()));
   assert.match(on, /On the clock/);
   assert.match(on, /data-clock="out"/);
   assert.match(on, /close to 40 h/);
   assert.match(on, /No visits today/);
-  const off = text(card.render({ tech: true, day: day([stop()], { waiting: 2 }), offline: true, as_of: "2026-11-17T13:42:00.000Z" }, ctx()));
-  assert.match(off, /No signal\. Your day as of 7:42 AM/);
-  assert.match(off, /2 changes wait for signal/);
+  const off = text(card.render(st({ day: day([stop()], { waiting: 2 }), offline: true, as_of: "2026-11-17T13:42:00.000Z" }), ctx()));
+  // one bar: when the copy is from (with its day when that isn't today) and what waits; the app's banner steps aside
+  assert.match(off, /No signal\. Your day as of (Tue, Nov 17, )?7:42 AM\. 2 changes wait; they go out by themselves\./);
+  assert.match(off, /class="tf-own-offline"/);
+  assert.equal((off.match(/class="tf-wait/g) || []).length, 1, "one bar");
   // an owner who goes out: "My visits", nothing loud when nothing's booked
-  const owner = text(card.render({ tech: false, day: day([]) }, ctx("owner")));
+  const owner = text(card.render(st({ tech: false, day: day([]) }), ctx("owner")));
   assert.match(owner, /My visits/);
   assert.match(owner, /Nothing booked for you today/);
   assert.equal(text(card.render({ none: true }, ctx("owner"))), "", "an owner who doesn't go out: nothing");
-  assert.match(text(card.render({ tech: true, error: "No signal, and no copy of this day on this phone yet." }, ctx())), /no copy of this day/);
+  // the morning after with no signal and no copy of today: said plainly, never another day shown as today
+  const none = text(card.render(st({ date: "2026-11-18", today: "2026-11-18", yesterday: "2026-11-17", tomorrow: "2026-11-19", error: "No signal, and today's list isn't on this phone yet. It loads when you have signal." }), ctx()));
+  assert.match(none, /Today, Wed, Nov 18/);
+  assert.match(none, /today(&#39;|')s list isn(&#39;|')t on this phone yet/);
+  assert.doesNotMatch(none, /tf-stop/);
 });
 
 test("the field panel: buttons by status, the checklist by kind, photos waiting on the phone, the work with or without prices", async () => {

@@ -48,7 +48,7 @@ test("items older than 6 days go to outbox-review once, never replayed; the rest
 
     const r = await outbox.replay();
     assert.deepEqual({ sent: r.sent, review: r.review, left: r.left }, { sent: 2, review: 1, left: 0 });
-    assert.deepEqual(seen, ["POST /api/crm/outbox-review", `POST /api/crm/visits/${v.id}/notes`, `POST /api/crm/visits/${v.id}/notes`]);
+    assert.deepEqual(seen, [`POST /api/crm/visits/${v.id}/notes`, `POST /api/crm/visits/${v.id}/notes`, "POST /api/crm/outbox-review"]);
     const after = await rec("visit", v.id);
     assert.equal(after.tech_notes, "Synthetic: first.\n\nSynthetic: second.", "in order, and the stale one was never applied");
     const pa = t.stores.data.keys("rec/pending_action/").map((k) => t.stores.data.json(k));

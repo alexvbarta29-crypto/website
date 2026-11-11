@@ -163,18 +163,35 @@ office gets **Timesheets** in More.
 
 The tech app works at a house with no signal (§2.5):
 
-- The service worker starts the app; Today shows the last good copy of the
-  day ("No signal. Your day as of 7:42 AM"). While there is signal the app
-  also keeps tomorrow's day and a copy of each of the day's visits (and its
-  timers), so a visit opens offline too.
+- The service worker starts the app; Today reads `/tech/day?date=` with
+  the phone's own today, so the last good copy of that day shows ("No
+  signal. Your day as of Tue, Nov 17, 7:42 PM": the copy's day when it isn't
+  today) and never yesterday's as today; with no copy of today it says so
+  plainly. While there is signal the app also keeps tomorrow's day and a
+  copy of each of the day's visits (and its timers), so the next morning
+  and a visit open offline too. One line says it (when the copy is from,
+  what waits); the app's own offline banner steps aside for it.
 - Every field change (timer, checklist, photo, note, line, incident,
   complete, no access, clock in and out) goes through `send()`: straight to
   the server when there is signal and nothing waits, else into the phone's
   outbox (`core/outbox.js`) with a client id, `queued_offline`, `queued_at`
-  and `client_at`; it replays in order when signal comes back (on `online`,
-  on focus and every 30 s). A direct attempt that timed out is queued too:
-  its client id makes it a no-op if it had landed. Once anything waits,
-  new changes queue behind it, so the order holds.
+  and `client_at`; it replays in order (a sequence number kept with the
+  items, never the phone's clock) when signal comes back (on `online`, on
+  focus and every 30 s). A direct attempt that timed out or met a 5xx is
+  queued too, under the same Idempotency-Key and client id, so it's a
+  no-op if it had landed. Once anything waits, new changes queue behind
+  it, so the order holds. Each replay says the phone's clock as it sends
+  (header `X-CRM-Sent-At`).
+- Every item belongs to the person who made it. A 401 (the session ran
+  out) stops the replay and keeps everything; the items wait for the next
+  sign-in on that phone: the same person's go out, anyone else's are
+  deleted unseen. Sign out warns "N changes haven't gone out yet" and
+  deletes them. When the phone's storage is full the change waits in the
+  page only and the tech is told plainly ("This phone is full; this change
+  isn't saved").
+- A photo has the time its size needs to go (10 s plus a second per
+  24 KB); one that can't get through holds back only its own visit's later
+  changes, never another visit's or the clock.
 - Photos travel as JSON (`POST /visits/:id/photos`, base64) so they wait in
   the same outbox, in order: the photo for a required item always lands
   before the completion that needs it.
@@ -184,8 +201,13 @@ The tech app works at a house with no signal (§2.5):
   When the outbox empties the screen reads the server again.
 - On my way and Running late never queue ("needs signal"): a late "on my
   way" is worse than none, and the server refuses a replayed one.
-- Items older than 6 days aren't replayed: they go once to
-  `POST /outbox-review` (core) as one pending action for the owners.
+- Items older than 6 days aren't replayed, and an item the server refuses
+  (a 4xx) isn't dropped: both go to `POST /outbox-review` (core) for the
+  owners, in batches under its caps (200 items, 8,000 characters an item,
+  512 KB a request), photo bytes left out; a week-old photo is first kept
+  on an entry for the office (`POST /visits/:id/photos` with `hold: true`).
+  A batch the server turns down for one item loses only that item, and the
+  tech is told.
 
 ## The rules
 
@@ -260,11 +282,37 @@ The tech app works at a house with no signal (§2.5):
   is a claim: a shift with it becomes a **pending entry** (status
   `pending_approval`, `pending.reason` = `queued_mismatch`, `too_old`,
   `future` or `no_device_time`), a timer segment is marked `unverified`.
+  A phone whose clock is off by more than 2 minutes (server time minus its
+  `X-CRM-Sent-At`) has its times moved by that much, and they wait for the
+  office the same way (`clock_skew`, `skew_ms` kept).
 - **Conflicts**: a replayed change the visit no longer allows (the office
-  cancelled it, the checklist wasn't done) is never forced: it becomes a
-  pending entry (`pending.reason: "conflict"`, the action, what the phone
-  said and when) and the answer is 202. A clock-out replay with no open
-  shift does the same. Live, the same is a plain refusal.
+  cancelled it, the checklist wasn't done, the job closed before an upsell
+  line came in) is never forced: it becomes a pending entry
+  (`pending.reason: "conflict"`, the action, what the phone said and when,
+  and its words or values in `pending.payload`) and the answer is 202. A
+  clock-out replay with no open shift does the same. Live, the same is a
+  plain refusal. The other reasons:
+  - `lost`: a replay for a visit the person lost meanwhile (given to
+    someone else, moved past the window, deleted). The entry keeps what the
+    phone sent (a photo is held on the entry, `pending.file_ids`, readable
+    by the office and the person); the answer and the person's view carry
+    nothing of the visit. An incident still becomes the owners' task.
+  - `moved`: a replay done on another local day than the visit's date
+    (the office moved it). Time, completion, no access, ticks and lines
+    wait; notes and photos go in (`applied: true`) and the office hears.
+  - `cancelled`: ticks, notes and photos on a cancelled visit go in
+    (`applied: true`) and the office hears.
+  - `overlap`: two phones of one person. A replayed clock-in over the open
+    shift, or a shift over a closed one, is kept as a pending entry (never
+    the open shift, never counted until approved); the phone's clock-out
+    names its shift (`shift_client_id`) and ends that entry, never another
+    phone's shift. A replayed timer start over a segment of the same person
+    on the visit is the same (its pause names it: `timer_client_id`); a
+    timer entry never counts as time.
+  - `stale`: a week-old photo held for the office (above).
+  The office hears once an hour per person and visit, and decides each on
+  Timesheets; an entry that only reports a change spans no time and is
+  marked seen.
 - **Locked weeks** (§5.8): a shift that closes into a week payroll locked
   (the `payroll.periodStatus` service, or a locked shift of the person's
   that week) never changes it: with `payroll.addAdjustment` it becomes
@@ -281,7 +329,12 @@ The tech app works at a house with no signal (§2.5):
 - **Shifts**: one open per person (`ptr/clock/{uid}`, a "one open"
   pointer). A shift forgotten on an earlier day is closed at its deadline
   before a new clock-in, so a stale pointer never blocks it. Clocking out
-  pauses the person's running timers.
+  pauses the person's running timers. A shift begun at or after 21:00 (an
+  evening's lights work) runs to its start + 6 h before `work.clock`
+  closes it, and is asked "Still clocked in?" an hour before that.
+- **Visit files**: a visit photo is a picture (JPEG, PNG, WebP by its magic
+  bytes); a PDF the office attaches is an attachment (`visit.attachments`),
+  never a photo, never shown to the customer.
 - **Weekly approval**: the office approves a person's week (closed shifts
   → approved, 20 a request); an edit says why and keeps `edits[]` (who,
   when, the field, before, after, why), and an edited approved shift needs
@@ -398,14 +451,18 @@ holiday calendar, and Route reads the company's base (`cfg/company.base`).
   short), 20:00 for one with no visit, or on a visit already done or
   cancelled, is closed at that deadline with `auto_closed`; the visit
   pauses when nobody's timer runs; the person and the office are told; the
-  shift is flagged `timer_auto_closed`. One Rotor still owns gets a
-  would- row.
+  shift is flagged `timer_auto_closed`. On a visit Rotor still owns (an
+  imported one, before cutover) the CRM's own segment closes but the visit
+  is never written: its `minutes_worked` and pause go to would- rows.
 - `work.clock` (M4b; fast lane, every pass, mutates): from
   `clock_flag_at` (19:00) one push "Still clocked in?" (kind
   `clock_reminder`); at the later of the day's last visit end + 2 h and
   `clock_autoclose_at` (21:00) the shift closes with `auto_closed` for
-  review (flag `auto_closed`), the person and the office told. A shift
-  from an earlier day is closed whenever the sweep finds it.
+  review (flag `auto_closed`), the person and the office told; a shift
+  begun at or after 21:00 runs to its start + 6 h (asked an hour before).
+  A shift from an earlier day is closed whenever the sweep finds it. The
+  office's "Approve the week" names the shifts the app closed before it
+  approves them.
 - Run kind `work.moveday` (bulk lane): the rain-day op (`move` → `push` →
   `notice`), resumable; a double tap on Move is the same run.
 - Listeners (`visit.*`, `job.completed/reopened/cancelled`): the pushes,

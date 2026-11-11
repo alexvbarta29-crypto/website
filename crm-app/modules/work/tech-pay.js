@@ -7,7 +7,7 @@
 
 import { html, icon, attrs } from "../../core/ui.js";
 import { money, dateShort, time as fmtTime } from "../../core/format.js";
-import { ensureStyles, hm, hours, CATEGORY } from "./tech-kit.js";
+import { ensureStyles, hm, hours, CATEGORY, offlineLine } from "./tech-kit.js";
 
 const addDays = (date, n) => new Date(Date.parse(date + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const periodQuery = () => { try { return new URLSearchParams(location.hash.split("?")[1] || "").get("period") || ""; } catch (e) { return ""; } };
@@ -26,7 +26,7 @@ export default {
     const cats = Object.entries(e.by_category || {});
     return html`<div class="stack">
       <div class="tf-weekbar"><a class="icon-btn" ${attrs({ href: `#/pay?period=${addDays(start, -7)}`, "aria-label": "Week before" })}>${icon("back")}</a><span class="d">${dateShort(start)} – ${dateShort(s.period.end_on)}</span><a class="icon-btn" ${attrs({ href: `#/pay?period=${addDays(start, 7)}`, "aria-label": "Next week" })}><span class="flip">${icon("back")}</span></a></div>
-      ${s.offline ? html`<p class="tf-asof">No signal. As of ${fmtTime(s.as_of)}.</p>` : ""}
+      ${offlineLine({ offline: s.offline, as_of: s.as_of, what: "Your pay" })}
       <div class="card">
         <div class="tf-total"><b>${money(e.total_cents || 0)}</b><span>estimate for the week<br>${hm(e.minutes || 0)} worked</span></div>
         <dl class="tf-money">

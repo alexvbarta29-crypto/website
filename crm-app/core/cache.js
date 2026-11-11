@@ -4,7 +4,7 @@
 // times out or the phone has no signal, and the screen shows "as of".
 // Signing out, a 401 and a new sign-in wipe it (and the service worker's
 // copy of the shell), so the next person on the phone sees nothing of the
-// last one's.
+// last one's. Unsent changes live in core/outbox.js, which keeps them per person.
 //
 // Every IndexedDB call is wrapped: private browsing, a full disk or an old
 // Safari just means no offline copy, never a broken screen.
@@ -70,5 +70,7 @@ export async function wipe() {
       await Promise.all(names.filter((n) => n === "crm-shell").map((n) => caches.delete(n)));
     }
   } catch (e) { /* no Cache Storage */ }
-  try { if (typeof indexedDB !== "undefined" && indexedDB.deleteDatabase) indexedDB.deleteDatabase("crm-outbox"); } catch (e) { /* none */ }
+  // the outbox (crm-outbox) is not here: unsent changes wait for the next
+  // sign-in on this phone, where they go out for the same person or are
+  // deleted unseen for anyone else (outbox.js claim()); Sign out deletes them
 }

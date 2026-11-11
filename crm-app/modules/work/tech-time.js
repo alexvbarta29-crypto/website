@@ -6,7 +6,7 @@
 
 import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
 import { dateShort, time as fmtTime, plural } from "../../core/format.js";
-import { ensureStyles, TICONS, hm, since, send, waiting, onDrained, waitingNote, dowOf, CATEGORY, STATUS, REASON } from "./tech-kit.js";
+import { ensureStyles, TICONS, hm, since, send, waiting, onDrained, offlineLine, FULL_NOTE, dowOf, CATEGORY, STATUS, REASON } from "./tech-kit.js";
 
 const addDays = (date, n) => new Date(Date.parse(date + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const weekQuery = () => { try { return new URLSearchParams(location.hash.split("?")[1] || "").get("week") || ""; } catch (e) { return ""; } };
@@ -15,13 +15,16 @@ async function load(params, ctx) {
   ensureStyles();
   const w = weekQuery();
   const r = await ctx.api(`/me/timesheets${w ? `?week=${encodeURIComponent(w)}` : ""}`);
-  const items = (await waiting()).filter((i) => i.path === "/clock");
+  const all = await waiting();
+  const items = all.filter((i) => i.path === "/clock");
   const data = r.data;
   let open = data.open;
-  for (const it of items) {
+  for (const it of all) {
     const b = it.body || {};
-    if (b.action === "in" && !open) open = { start_at: b.client_at, category: b.category || "service", status: "open", local: true };
-    if (b.action === "out") open = null;
+    if (it.path === "/clock" && b.action === "in" && !open) open = { start_at: b.client_at, category: b.category || "service", status: "open", local: true, client_id: b.client_id };
+    else if (it.path === "/clock" && b.action === "out") open = null;
+    // starting a timer clocks in (the shift takes the timer's client id)
+    else if (/\/timer$/.test(it.path) && b.action === "start" && !open) open = { start_at: b.client_at, category: "service", status: "open", local: true, client_id: b.client_id };
   }
   onDrained(() => ctx.refresh());
   return { ...data, open, waiting: items.length, offline: !!r.offline, as_of: r.as_of || null, me: ctx.user || {} };
@@ -52,8 +55,7 @@ export default {
     const thisWeek = !weekQuery();
     return html`<div class="stack">
       <div class="tf-weekbar"><a class="icon-btn" ${attrs({ href: `#/time?week=${addDays(ws, -7)}`, "aria-label": "Week before" })}>${icon("back")}</a><span class="d">${dateShort(ws)} – ${dateShort(s.week_end)}</span><a class="icon-btn" ${attrs({ href: `#/time?week=${addDays(ws, 7)}`, "aria-label": "Next week" })}><span class="flip">${icon("back")}</span></a></div>
-      ${s.offline ? html`<p class="tf-asof">No signal. As of ${fmtTime(s.as_of)}.</p>` : ""}
-      ${waitingNote(s.waiting)}
+      ${offlineLine({ offline: s.offline, as_of: s.as_of, waiting: s.waiting, what: "Your week" })}
       ${thisWeek ? (s.open
         ? html`<div class="card tf-clock on"><span class="who"><b>On the clock <span ${attrs({ "data-since": s.open.start_at })}>${hm(since(s.open.start_at))}</span></b><span>Since ${fmtTime(s.open.start_at)} · ${CATEGORY[s.open.category] || "Service"}</span></span><button type="button" class="btn dark" data-clock="out">Clock out</button></div>`
         : html`<div class="card tf-clock"><span class="who"><b>Not clocked in</b><span>Starting a visit's timer clocks you in too.</span></span><button type="button" class="btn primary" data-clock="in">${icon("time")}Clock in</button></div>`) : ""}
@@ -95,8 +97,10 @@ export default {
       }
       el.disabled = true;
       try {
-        const r = await send(ctx, "/clock", { action, ...(action === "in" ? { category } : {}) });
-        toast(r.queued ? "Saved on this phone. It goes out when you have signal." : action === "in" ? "Clocked in" : "Clocked out");
+        // a clock-out names the shift this phone knows is open (two phones: never the other one's)
+        const shift = action === "out" && ctx.state.open && ctx.state.open.client_id ? { shift_client_id: ctx.state.open.client_id } : {};
+        const r = await send(ctx, "/clock", { action, ...(action === "in" ? { category } : shift) });
+        toast(r.queued ? (r.saved === false ? FULL_NOTE : "Saved on this phone. It goes out when you have signal.") : r.data && r.data.pending ? r.data.message : action === "in" ? "Clocked in" : "Clocked out", r.saved === false || (r.data && r.data.pending) ? { bad: true, ms: 6000 } : undefined);
       } catch (err) { toast((err && err.message) || "That didn't work.", { bad: true }); }
       ctx.refresh();
     },
@@ -113,7 +117,7 @@ export default {
             sh.close();
             try {
               const r = await send(ctx, `/me/timesheets/${encodeURIComponent(id)}/notes`, { text });
-              toast(r.queued ? "Saved on this phone. It goes out when you have signal." : "Note saved");
+              toast(r.queued ? (r.saved === false ? FULL_NOTE : "Saved on this phone. It goes out when you have signal.") : "Note saved", r.saved === false ? { bad: true, ms: 6000 } : undefined);
             } catch (err) { toast((err && err.message) || "That didn't save.", { bad: true }); }
             ctx.refresh();
           },

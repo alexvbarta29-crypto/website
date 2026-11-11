@@ -14,7 +14,7 @@
 // date given: the server's today (the phone's clock may be off).
 
 import { getRecord, getRecords, listRel, getSetting } from "../../../crm-store.mjs";
-import { now, localDate, addLocalDays, isLocalDate } from "../../core/clock.mjs";
+import { now, nowIso, localDate, addLocalDays, isLocalDate } from "../../core/clock.mjs";
 import { isId } from "../../core/ids.mjs";
 import { InputError } from "../../core/errors.mjs";
 import { techView, TECH_WINDOW } from "../../core/perms.mjs";
@@ -119,7 +119,7 @@ export async function techDay(ctx, dateParam) {
     user: { id: uid, first_name: (user && user.first_name) || null, is_technician: !!(user && user.is_technician) },
     clock: { open: open ? techView("timesheet", open) : null, week_minutes: est.minutes, open_minutes: est.open_min, near_ot: est.near_ot, over_ot: est.over_ot },
     stops,
-    generated_at: new Date().toISOString(),
+    generated_at: nowIso(),
   };
 }
 

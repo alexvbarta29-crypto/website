@@ -71,25 +71,47 @@ export function weekParam(v) {
 
 // ------------------------------------------------------------ device times (§2.5)
 
-// → { at, trusted, source: "server" | "device", reason?, client_at?, queued_at? }
+// The phone's own clock when it sent a replay (the outbox puts it in a
+// header, X-CRM-Sent-At, so the body and its Idempotency-Key stay the same
+// on every try). → ms, or null
+export const SENT_AT_HEADER = "x-crm-sent-at";
+export function sentAtOf(ctx) {
+  const v = ctx && ctx.req && ctx.req.headers && typeof ctx.req.headers.get === "function" ? ctx.req.headers.get(SENT_AT_HEADER) : null;
+  const ms = v ? Date.parse(v) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+}
+
+// → { at, trusted, source: "server" | "device", reason?, client_at?, queued_at?, skew_ms? }
 // A live request (not queued offline) is recorded at the server's time.
-export function judgeTime(body = {}, t = nowMs()) {
+// sentAt (the phone's clock as it sent the replay) shows how far the
+// phone's clock is off: off by more than 2 minutes, its times are moved by
+// that much and the entry waits for the office (reason clock_skew).
+export function judgeTime(body = {}, t = nowMs(), { sentAt = null } = {}) {
   const server = { at: new Date(t).toISOString(), trusted: true, source: "server" };
   if (!body || body.queued_offline !== true) return server;
-  const ca = Date.parse(body.client_at);
-  const qa = Date.parse(body.queued_at);
+  let ca = Date.parse(body.client_at);
+  let qa = Date.parse(body.queued_at);
   const device = { source: "device", ...(Number.isFinite(ca) ? { client_at: new Date(ca).toISOString() } : {}), ...(Number.isFinite(qa) ? { queued_at: new Date(qa).toISOString() } : {}) };
+  const skew = Number.isFinite(sentAt) ? t - sentAt : 0;          // > 0: the phone's clock is behind
+  const skewed = Math.abs(skew) > TRUST_SKEW_MS;
+  if (skewed) {
+    device.skew_ms = skew;
+    if (Number.isFinite(ca)) ca += skew;
+    if (Number.isFinite(qa)) qa += skew;
+  }
   let reason = null;
   if (!Number.isFinite(ca) || !Number.isFinite(qa)) reason = "no_device_time";
   else if (Math.abs(ca - qa) >= TRUST_SKEW_MS) reason = "queued_mismatch";
   else if (ca > t + TRUST_SKEW_MS) reason = "future";
   else if (ca < t - TRUST_AGE_MS) reason = "too_old";
+  else if (skewed) reason = "clock_skew";
   if (!reason) return { ...device, at: new Date(Math.min(ca, t)).toISOString(), trusted: true };
-  // what the phone claims, kept for the office, but never outside the last 7 days
+  // what the phone claims (its clock set right), kept for the office, but never outside the last 7 days
   const claimed = Number.isFinite(ca) ? Math.max(t - TRUST_AGE_MS, Math.min(ca, t)) : t;
   return { ...device, at: new Date(claimed).toISOString(), trusted: false, reason };
 }
-export const deviceFields = (time) => (time && time.source === "device" ? { ...(time.client_at ? { client_at: time.client_at } : {}), ...(time.queued_at ? { queued_at: time.queued_at } : {}) } : {});
+export const timeOf = (ctx) => judgeTime((ctx && ctx.body) || {}, nowMs(), { sentAt: sentAtOf(ctx) });
+export const deviceFields = (time) => (time && time.source === "device" ? { ...(time.client_at ? { client_at: time.client_at } : {}), ...(time.queued_at ? { queued_at: time.queued_at } : {}), ...(time.skew_ms ? { skew_ms: time.skew_ms } : {}) } : {});
 
 // ------------------------------------------------------------ people
 
@@ -132,14 +154,17 @@ export async function lastVisitEnd(userId, date) {
 }
 
 // When a forgotten shift closes: the later of the day's last visit end +
-// timer_autoclose_after_min (2 h) and clock_autoclose_at (21:00), never
-// before the shift started. → ms
+// timer_autoclose_after_min (2 h) and clock_autoclose_at (21:00). A shift
+// begun at or after that hour (an evening's lights work) runs to its start
+// + LATE_SHIFT_MS (6 h, into the next day) instead. → ms
+export const LATE_SHIFT_MS = 6 * 3600000;
 export async function shiftDeadline(sheet, s) {
   const day = localDate(new Date(sheet.start_at));
+  const start = Date.parse(sheet.start_at);
   const autoclose = zonedToUtc(day, s.clock_autoclose_at || "21:00").getTime();
   const last = await lastVisitEnd(sheet.user_id, day);
   const afterVisits = last ? last + (s.timer_autoclose_after_min || 120) * 60000 : 0;
-  return Math.max(autoclose, afterVisits, Date.parse(sheet.start_at) + 60000);
+  return Math.max(start >= autoclose ? start + LATE_SHIFT_MS : autoclose, afterVisits, start + 60000);
 }
 
 // ------------------------------------------------------------ locked weeks (§5.8)
@@ -232,7 +257,50 @@ export async function autoCloseSheet(sheet, deadlineMs, w, reason = "forgotten")
 
 // ------------------------------------------------------------ clock in / out
 
-// time: judgeTime(); → { sheet, created?, already?, replay?, closed_forgotten? }
+// A replay is a change the phone made with no signal and sends now: its
+// time is the phone's (judgeTime), and it may disagree with what the
+// person did meanwhile on another phone.
+const isDevice = (time) => !!time && time.source === "device";
+
+// The person's shifts that overlap [fromMs, toMs) (an open one runs to
+// now), but not entries that only report a change (a conflict entry spans
+// no time) nor ones the office didn't count. → shifts
+export async function overlapping(userId, fromMs, toMs, { exceptId } = {}) {
+  const rows = await listRel("user-timesheets", userId, { from: tsKey(new Date(fromMs - DAY_MS)), to: tsKey(new Date(Math.max(fromMs, toMs))), limit: 60 }).catch(() => []);
+  const ids = rows.map((r) => r.id).filter((id) => id !== exceptId);
+  if (!ids.length) return [];
+  const t = nowMs();
+  return (await getRecords("timesheet", ids)).filter(Boolean).map((g) => g.data).filter((s) => {
+    if (s.deleted_at || s.user_id !== userId || s.status === "rejected") return false;
+    if (s.pending && s.pending.reason === "conflict") return false;
+    const a = Date.parse(s.start_at);
+    const b = s.end_at ? Date.parse(s.end_at) : s.status === "open" ? t : a;
+    return b > a && a < toMs && b > fromMs;
+  });
+}
+
+// A shift a phone sent that overlaps another of the person's (two phones,
+// or a replay after the person clocked in elsewhere): kept, with what the
+// phone said, as an entry pending the office's decision (reason overlap);
+// it never counts until approved. Its id is the one the shift would have
+// had, so the phone's clock-out finds it. → the entry
+async function overlapEntry(user, { category, time, clientId, withIds, geo, visitId }, w) {
+  const id = clientId ? deriveId("timesheet", `c:${clientId}`) : newId("timesheet");
+  try {
+    const r = await createRecord("timesheet", {
+      id, user_id: user.id, category, start_at: time.at, status: "pending_approval", notes: [], edits: [], received_at: nowIso(), ...deviceFields(time),
+      ...(clientId ? { client_id: clientId } : {}), ...(geo ? { start_geo: geo } : {}), ...(visitId ? { visit_id: visitId } : {}),
+      pending: { reason: "overlap", with: (withIds || []).slice(0, 6), start: { claimed: time.at, received: nowIso(), reason: time.trusted ? "overlap" : time.reason }, told: true },
+    }, w);
+    await tellOffice(user, { title: "Two shifts at once", body: `${firstName(user)}'s phone sent a shift that overlaps another of theirs. It waits on Timesheets.`, visitId: null, exceptId: id }, w);
+    return r.data;
+  } catch (e) {
+    if (!(e instanceof ExistsError)) throw e;
+    return (await getRecord("timesheet", id)).data;
+  }
+}
+
+// time: judgeTime(); → { sheet, created?, already?, replay?, pending?, closed_forgotten? }
 export async function clockIn(user, { category = "service", time, clientId = null, geo, visitId } = {}, w) {
   if (!CATEGORIES.includes(category)) throw new InputError("Pick service, sales or office.", "category");
   const id = clientId ? deriveId("timesheet", `c:${clientId}`) : newId("timesheet");
@@ -240,14 +308,26 @@ export async function clockIn(user, { category = "service", time, clientId = nul
     const had = await getRecord("timesheet", id);
     if (had) return { sheet: had.data, replay: true };
   }
+  const t = time || judgeTime({});
   let closedForgotten = null;
-  const open = await openSheetOf(user.id);
+  let open = await openSheetOf(user.id);
   if (open) {
     const s = await workSettings();
     const deadline = await shiftDeadline(open, s);
-    if (nowMs() < deadline) return { sheet: open, already: true };
-    // a shift forgotten on an earlier day never blocks clocking in (§3.7)
-    closedForgotten = await autoCloseSheet(open, deadline, w);
+    if (nowMs() >= deadline) {
+      // a shift forgotten on an earlier day never blocks clocking in (§3.7)
+      closedForgotten = await autoCloseSheet(open, deadline, w);
+      open = null;
+    }
+  }
+  if (open) {
+    // live: one shift at a time; a replay is another shift than the open one (another phone): the office decides
+    if (!isDevice(t)) return { sheet: open, already: true };
+    return { sheet: await overlapEntry(user, { category, time: t, clientId, withIds: [open.id], geo, visitId }, w), pending: true };
+  }
+  if (isDevice(t)) {
+    const over = await overlapping(user.id, Date.parse(t.at), nowMs());
+    if (over.length) return { sheet: await overlapEntry(user, { category, time: t, clientId, withIds: over.map((x) => x.id), geo, visitId }, w), pending: true };
   }
   const claim = await claimOpenPointer("clock", user.id, { id }, isOpenSheetId);
   if (!claim.ok) {
@@ -255,7 +335,6 @@ export async function clockIn(user, { category = "service", time, clientId = nul
     if (cur) return { sheet: cur.data, already: true };
     throw new ConflictError("Clocking in didn't go through. Try again.");
   }
-  const t = time || judgeTime({});
   const data = {
     id, user_id: user.id, category, start_at: t.at, status: "open", notes: [], edits: [], received_at: nowIso(), ...deviceFields(t),
     ...(clientId ? { client_id: clientId } : {}), ...(geo ? { start_geo: geo } : {}), ...(visitId ? { visit_id: visitId } : {}),
@@ -272,16 +351,49 @@ export async function clockIn(user, { category = "service", time, clientId = nul
   }
 }
 
-// → { sheet, closed?, replay?, none? }
-export async function clockOut(user, { time, clientId = null, geo } = {}, w) {
+// shiftClientId: the client id of the shift the phone believes it closes
+// (its own clock-in, or the timer start that clocked it in). A replay that
+// names another shift than the open one ends the phone's own (an overlap
+// entry waiting for the office), or disagrees and goes to the office.
+// → { sheet, closed?, replay?, none?, pending?, disagree?, other? (the phone's own shift, not the open one) }
+export async function clockOut(user, { time, clientId = null, geo, shiftClientId = null } = {}, w) {
   if (clientId) {
-    const recent = await listRel("user-timesheets", user.id, { limit: 6 }).catch(() => []);
+    const recent = await listRel("user-timesheets", user.id, { limit: 10 }).catch(() => []);
     const mine = (await getRecords("timesheet", recent.map((r) => r.id))).filter(Boolean).map((g) => g.data).find((x) => x.end_client_id === clientId);
     if (mine) return { sheet: mine, replay: true };
   }
-  const open = await openSheetOf(user.id);
-  if (!open) return { none: true };
   const t = time || judgeTime({});
+  const open = await openSheetOf(user.id);
+  if (isDevice(t) && shiftClientId) {
+    const sid = deriveId("timesheet", `c:${shiftClientId}`);
+    if (!open || open.id !== sid) {
+      const g = await getRecord("timesheet", sid);
+      const own = g && !g.data.deleted_at && g.data.user_id === user.id ? g.data : null;
+      if (own && own.status === "pending_approval" && !own.end_at) {
+        const end = new Date(Math.max(Date.parse(t.at), Date.parse(own.start_at))).toISOString();
+        // with its end known, a shift that turns out not to overlap anything (an earlier offline
+        // shift, replayed after another phone's began) is an ordinary one again when its times were
+        // taken; when they weren't, it waits for that reason instead
+        const free = own.pending && own.pending.reason === "overlap" && !(await overlapping(user.id, Date.parse(own.start_at), Date.parse(end), { exceptId: own.id })).length;
+        const startWhy = own.pending && own.pending.start && own.pending.start.reason !== "overlap" ? own.pending.start.reason : null;
+        const locked = free ? await periodLocked(user.id, own.start_at, { exceptId: own.id, ctx: w }) : false;
+        const clear = free && !startWhy && t.trusted && !locked;
+        const r = await updateRecord("timesheet", own.id, (x) => {
+          if (x.end_at || x.status !== "pending_approval") return null;
+          const base = { ...x, end_at: end, ...(clientId ? { end_client_id: clientId } : {}), ...(geo ? { end_geo: geo } : {}) };
+          if (clear) { const { pending: _p, ...rest } = base; return { ...rest, status: "closed", flags: [...new Set([...(x.flags || []), "overlap_cleared"])] }; }
+          const { with: _w, ...kept } = x.pending || {};
+          const why = free ? (locked ? "locked_period" : startWhy || t.reason || "overlap") : (x.pending && x.pending.reason) || "overlap";
+          return { ...base, pending: { ...(free ? kept : x.pending || {}), reason: why, ...(free && locked ? { locked: true } : {}), end: { claimed: end, received: nowIso(), reason: t.trusted ? why : t.reason } } };
+        }, w);
+        return { sheet: r.data, closed: true, pending: r.data.status === "pending_approval", other: true };
+      }
+      if (own || open) return { disagree: true, sheet: own || open };
+    }
+  }
+  if (!open) return { none: true };
+  // a replayed end before the open shift began isn't this shift's end
+  if (isDevice(t) && Date.parse(t.at) < Date.parse(open.start_at)) return { disagree: true, sheet: open };
   const sheet = await closeSheet(open, t.at, w, { extra: { ...(geo ? { end_geo: geo } : {}) }, untrusted: t.trusted ? null : t, endClientId: clientId || undefined });
   return { sheet, closed: true };
 }
@@ -295,26 +407,58 @@ export async function ensureClockedIn(user, time, clientId, w, { visitId } = {})
   return clockIn(user, { category: "service", time, clientId, visitId }, w);
 }
 
+// The office hears about offline work to check, once an hour per person
+// and visit (a queue of changes to one visit is one message).
+async function tellOffice(user, { title, body, visitId, exceptId }, w) {
+  const recent = await listRel("user-timesheets", user.id, { limit: 12 }).catch(() => []);
+  const since = nowMs() - 3600000;
+  const others = (await getRecords("timesheet", recent.map((r) => r.id))).filter(Boolean).map((g) => g.data)
+    .filter((x) => x.id !== exceptId && x.status === "pending_approval" && x.pending && x.pending.told && Date.parse(x.received_at || x.created_at) > since && (x.visit_id || null) === (visitId || null));
+  if (others.length) return false;
+  const office = await officeUsers().catch(() => []);
+  await notify(office.slice(0, 5), { kind: "approval", title, body, link: "/timesheets" }, w).catch(() => {});
+  return true;
+}
+
+// What an offline change said, kept on its entry so nothing the tech did is
+// lost (text, a checklist value, a line); never a customer's details.
+export function payloadOf(action, b = {}) {
+  const s = (v, n) => (v === undefined || v === null ? undefined : String(v).trim().slice(0, n) || undefined);
+  const out = {
+    notes: { text: s(b.text, 1000) }, incident: { text: s(b.text, 2000) }, no_access: { note: s(b.note, 500) },
+    checklist: { key: s(b.key, 80), done: b.done === true, value: typeof b.value === "number" ? b.value : s(b.value, 500) },
+    lines: { price_item_id: s(b.price_item_id, 40), qty: Number.isFinite(Number(b.qty)) ? Number(b.qty) : undefined },
+    photo: { tag: s(b.tag, 20), item: s(b.item, 80) },
+  }[action];
+  if (!out) return undefined;
+  const clean = Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined));
+  return Object.keys(clean).length ? clean : undefined;
+}
+
 // A pending entry for a replayed change that no longer fits (§2.5
 // "Conflicts"): kept for the office with what the phone said, never
-// applied over what happened since. → the entry
-export async function conflictEntry({ user, visit, action, message, time, clientId, item }, w) {
+// applied over what happened since (or, applied: true, applied but worth
+// a look: a tick on a visit the office cancelled). reason: conflict, overlap,
+// moved, cancelled, lost (the person wasn't on the visit any more: the
+// entry then holds no visit details) or stale. → the entry
+export async function conflictEntry({ user, visit, visitId, action, message, time, clientId, item, reason = "conflict", payload, applied = false, lost = false, extra }, w) {
   const id = clientId ? deriveId("timesheet", `c:${clientId}`, "conflict") : newId("timesheet");
   const had = await getRecord("timesheet", id);
   if (had) return had.data;
   const at = (time && time.at) || nowIso();
+  const vid = (visit && visit.id) || visitId || null;
   try {
     const r = await createRecord("timesheet", {
       id, user_id: user.id, category: "service", start_at: at, end_at: at, status: "pending_approval", notes: [], edits: [], received_at: nowIso(), ...deviceFields(time),
-      ...(visit ? { visit_id: visit.id } : {}),
+      ...(vid ? { visit_id: vid } : {}),
       pending: {
-        reason: "conflict", action: String(action || "change").slice(0, 30), detail: String(message || "").slice(0, 200), claimed: at, trusted: !!(time && time.trusted),
-        ...(visit ? { visit_status: visit.status, visit_date: visit.date, job_title: visit.job_title || undefined } : {}),
-        ...(item ? { item: String(item).slice(0, 120) } : {}),
+        reason, action: String(action || "change").slice(0, 30), detail: String(message || "").slice(0, 200), claimed: at, trusted: !!(time && time.trusted),
+        ...(visit && !lost ? { visit_status: visit.status, visit_date: visit.date, job_title: visit.job_title || undefined } : {}),
+        ...(item ? { item: String(item).slice(0, 120) } : {}), ...(payload ? { payload } : {}), ...(applied ? { applied: true } : {}), ...(extra || {}),
+        told: true,
       },
     }, w);
-    const office = await officeUsers().catch(() => []);
-    await notify(office.slice(0, 5), { kind: "approval", title: "Offline work to check", body: `${firstName(user)}'s offline ${String(action || "change").replace(/_/g, " ")} couldn't be applied. It waits on Timesheets.`, link: "/timesheets" }, w).catch(() => {});
+    await tellOffice(user, { title: "Offline work to check", body: `${firstName(user)}'s offline ${String(action || "change").replace(/_/g, " ")} ${applied ? "went in, but needs a look" : "couldn't be applied"}. It waits on Timesheets.`, visitId: vid, exceptId: id }, w);
     return r.data;
   } catch (e) {
     if (!(e instanceof ExistsError)) throw e;
@@ -628,7 +772,11 @@ export async function clockSweep(ctx = {}) {
       progress += 1;
       continue;
     }
-    if (!sheet.reminded_at && hhmm >= (s.clock_flag_at || "19:00")) {
+    // a shift begun after the reminder hour is asked about an hour before its own bound
+    const flag = s.clock_flag_at || "19:00";
+    const lateStart = localTime(new Date(sheet.start_at)) >= flag;
+    const due = lateStart ? t.getTime() >= Date.parse(sheet.start_at) + LATE_SHIFT_MS - 3600000 : started !== today || hhmm >= flag;
+    if (!sheet.reminded_at && due) {
       const r = await updateRecord("timesheet", sheet.id, (x) => (x.reminded_at || !isOpenSheet(x) ? null : { ...x, reminded_at: nowIso() }), w).catch(() => ({ changed: false }));
       if (r.changed) {
         await notify([sheet.user_id], { kind: "clock_reminder", title: "Still clocked in?", body: "Clock out when you're done for the day.", link: "/time" }, w).catch(() => {});

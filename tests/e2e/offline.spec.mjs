@@ -158,7 +158,9 @@ test("flight mode on halfway through a visit: timer, checklist, photos, a note a
     await f.click("[data-complete]");
     await f.waitForSelector(".tf-done", { timeout: 8000 });
     assert.match(await f.textContent(".tf-done"), /waiting for signal/);
-    assert.match(await f.textContent("[data-panel=field]"), /changes wait for signal/);
+    assert.match(await f.textContent("[data-panel=field]"), /\d+ changes wait/);
+    assert.equal(await f.$$eval(".tf-wait", (x) => x.length), 1, "one bar says it all");
+    assert.equal(await f.$eval("#banner", (b) => getComputedStyle(b).display), "none", "the app's offline banner steps aside for it");
     await shot(page, "offline-halfway-done");
     for (const x of await screenProblems(f)) assert.fail(`offline visit: ${x}`);
     const queued = await f.evaluate(async () => (await import("/crm-app/core/outbox.js")).list());
@@ -184,9 +186,52 @@ test("flight mode on halfway through a visit: timer, checklist, photos, a note a
     await f.waitForFunction(async () => (await import("/crm-app/core/outbox.js")).count().then((n) => n === 0), null, { timeout: 15000 });
     const sheets = await server(p, "/me/timesheets");
     assert.equal(sheets.pending.length, 0, "nothing for the office to decide: the phone's times were taken");
-    await f.waitForFunction(() => !/changes wait for signal/.test(document.querySelector("#view").textContent), null, { timeout: 15000 });
+    await f.waitForFunction(() => !/\d+ changes? waits?/.test(document.querySelector("#view").textContent), null, { timeout: 15000 });
     await shot(page, "offline-halfway-replayed");
     await p.clean();
+  } finally { await p.close(); }
+});
+
+// The phone's copies of the day, by date (core/cache.js: "{user}|/api/crm/tech/day?date=...").
+const dayCopies = (f) => f.evaluate(() => new Promise((res) => {
+  const r = indexedDB.open("crm-cache");
+  r.onsuccess = () => { const t = r.result.transaction("kv").objectStore("kv").getAllKeys(); t.onsuccess = () => res(t.result.map(String).filter((k) => /tech\/day/.test(k)).map((k) => (/date=([\d-]+)/.exec(k) || [])[1] || "none")); };
+  r.onerror = () => res([]);
+}));
+
+test("the next morning, opened with no signal: today's copy (kept the day before), never yesterday's shown as today", async () => {
+  const { p, page, f } = await open("tess", "iphonese");
+  try {
+    await f.waitForSelector(`.tf-stop a[href="#/visits/${seeded.visits[1]}"]`);
+    await keptOffline(page);
+    await precacheNew(page);
+    // the day is read by date, and tomorrow's copy is kept in the background
+    await waitFor(async () => (await dayCopies(f)).includes("2026-11-18"));
+    assert.ok(!(await dayCopies(f)).includes("none"), "never an undated copy");
+    // 7:30 the next morning, first open of the day, at a stop with no signal
+    await p.ctx.setOffline(true);
+    await page.clock.setSystemTime(Date.parse(srv.now()) + 22.5 * 3600000);
+    await page.goto("/office");
+    await page.waitForSelector("#off:not([hidden])", { timeout: 10000 });
+    let g = await crmFrame(page);
+    await g.waitForSelector(".tf-dayline", { timeout: 10000 });
+    assert.match(await g.textContent(".tf-dayline"), /Today, Wed, Nov 18/);
+    await g.waitForSelector(`.tf-stop a[href="#/visits/${seeded.visits[5]}"]`);
+    assert.equal(await g.$(`.tf-stop a[href="#/visits/${seeded.visits[1]}"]`), null, "yesterday's visits aren't today's");
+    assert.match(await g.textContent(".tf-today"), /No signal\. Your day as of Tue, Nov 17, /, "when the copy is from, with its day");
+    assert.equal(await g.$$eval(".tf-wait", (x) => x.length), 1);
+    await shot(page, "offline-next-morning");
+    // two days on, nothing kept for that day: said plainly, no other day in its place
+    await page.clock.setSystemTime(Date.parse(srv.now()) + 72 * 3600000);
+    await page.goto("/office");
+    await page.waitForSelector("#off:not([hidden])", { timeout: 10000 });
+    g = await crmFrame(page);
+    await g.waitForSelector(".tf-today .card.empty", { timeout: 10000 });
+    assert.match(await g.textContent(".tf-dayline"), /Today, Fri, Nov 20/);
+    assert.match(await g.textContent(".tf-today"), /today's list isn't on this phone yet/);
+    assert.equal(await g.$(".tf-stop"), null);
+    await shot(page, "offline-no-copy");
+    await p.ctx.setOffline(false);
   } finally { await p.close(); }
 });
 

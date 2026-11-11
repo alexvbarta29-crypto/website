@@ -19,7 +19,7 @@
 import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
 import { money, time as fmtTime, dateShort } from "../../core/format.js";
 import { capture, prepare } from "../../core/camera.js";
-import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, waitingNote, here, etaMinutes, toBase64, smsHref, online } from "./tech-kit.js";
+import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine } from "./tech-kit.js";
 
 const OPEN = ["scheduled", "en_route", "in_progress", "paused"];
 const TITLE = { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
@@ -85,8 +85,7 @@ function stateCard(s, ctx) {
       ${small.length ? html`<div class="tf-small">${small}</div>` : ""}`;
   }
   return html`<div class="card tf-state"><div class="tf-state-top"><h2>${TITLE[v.status] || v.status}</h2>${v.minutes_worked && v.status !== "completed" ? html`<span class="small muted">${hm(v.minutes_worked)} so far</span>` : ""}</div>
-    ${s.offline ? html`<p class="tf-asof">No signal. This visit as of ${fmtTime(s.as_of)}.</p>` : ""}
-    ${waitingNote(s.waiting)}
+    ${offlineLine({ offline: s.offline, as_of: s.as_of, waiting: s.waiting, what: "This visit" })}
     ${body}</div>`;
 }
 
@@ -152,7 +151,8 @@ function notesCard(s) {
 function render(s, ctx) {
   if (!s || !s.visit) return html``;
   const last = s.last ? html`<div class="card"><h2>Last time here <span class="muted small">${dateShort(s.last.date)}</span></h2><p class="wk-pre">${s.last.text}</p></div>` : "";
-  return html`<div class="tf-panel">${stateCard(s, ctx)}${last}${checklistCard(s)}${photosCard(s, ctx)}${workCard(s, ctx)}${notesCard(s)}</div>`;
+  // on a phone the big buttons sit in a bar over the tab bar, so Start and On my way are never below the fold
+  return html`<div class="${"tf-panel" + (OPEN.includes(s.visit.status) ? " has-bar" : "")}">${stateCard(s, ctx)}${last}${checklistCard(s)}${photosCard(s, ctx)}${workCard(s, ctx)}${notesCard(s)}</div>`;
 }
 
 // ------------------------------------------------------------ doing things
@@ -167,7 +167,7 @@ async function act(ctx, el, path, body, { method, ok, needsSignal, what, then } 
     toast((err && err.message) || "That didn't work.", { bad: true });
     return null;
   }
-  if (r.queued) toast("Saved on this phone. It goes out when you have signal.");
+  if (r.queued) toast(r.saved === false ? FULL_NOTE : "Saved on this phone. It goes out when you have signal.", r.saved === false ? { bad: true, ms: 6000 } : undefined);
   else if (r.data && r.data.pending) toast(r.data.message || "The office will look at this one.", { bad: true });
   else if (ok) toast(ok);
   if (then) then(r);
@@ -244,7 +244,9 @@ async function takePhoto(ctx, el, { tag, item }) {
 const events = {
   "click [data-timer]": (e, el, ctx) => {
     const action = el.dataset.timer;
-    act(ctx, el, `/visits/${vid(ctx)}/timer`, { action }, { ok: action === "start" ? "Timer started" : "Timer paused" });
+    // a pause names the segment this phone started (two phones: the server never stops the other one's)
+    const mine = action === "pause" ? myTimer(ctx.state, ctx.user && ctx.user.id) : null;
+    act(ctx, el, `/visits/${vid(ctx)}/timer`, { action, ...(mine && mine.client_id ? { timer_client_id: mine.client_id } : {}) }, { ok: action === "start" ? "Timer started" : "Timer paused" });
   },
   "click [data-complete]": async (e, el, ctx) => {
     const items = (ctx.state.visit.checklist && ctx.state.visit.checklist.items) || [];

@@ -30,7 +30,18 @@
 // time goes through judgeTime() (timesheets.mjs). A replayed change the
 // visit no longer allows (the office cancelled it, someone else finished
 // it) is never forced over what happened: it becomes an entry pending the
-// office's decision (202 { pending_entry_id }).
+// office's decision (202 { pending_entry_id }). The same for:
+//   - a replay for a visit the person lost meanwhile (given to someone
+//     else, moved out of the window, deleted): the entry keeps what the
+//     phone said (a note's text, a photo held on the entry) and the answer
+//     carries nothing of the visit (reason lost);
+//   - a replay done on another day than the visit's (the office moved it):
+//     time, completion, ticks and lines wait (reason moved); notes and
+//     photos go in and the office hears (applied);
+//   - ticks, notes and photos on a visit the office cancelled: they go in,
+//     and the office hears (reason cancelled, applied);
+//   - a timer a phone ran while another of the person's ran on the visit
+//     (two phones): reason overlap, as for shifts (timesheets.mjs).
 //
 // Photos: the bytes go through core/files.mjs (type from the magic bytes,
 // never the header) and are stored exactly as the phone sent them: the app
@@ -45,7 +56,7 @@ import { deriveId, isId } from "../../core/ids.mjs";
 import { InputError, NotFoundError, ConflictError, ForbiddenError, ExistsError } from "../../core/errors.mjs";
 import { techView, TECH_WINDOW } from "../../core/perms.mjs";
 import { call as callService, has as hasService } from "../../core/services.mjs";
-import { defineFileOwner, uploadFile, uploadThumb, fileView, MAX_THUMB_BYTES } from "../../core/files.mjs";
+import { defineFileOwner, uploadFile, uploadThumb, fileView, sniffType, INLINE_TYPES, MAX_THUMB_BYTES } from "../../core/files.mjs";
 import { automationDef, settingsFor, readAutomationsCfg } from "../../core/automations.mjs";
 import { quietRule, allowedNow } from "../../core/send.mjs";
 import { logAutomation } from "../../core/activity.mjs";
@@ -54,7 +65,7 @@ import { DEFAULT_CALENDAR } from "../../core/clock.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { checklistMissing, OPEN_VISIT } from "./states.mjs";
 import { changeVisit, W, refreshVisits } from "./office.mjs";
-import { judgeTime, clientIdOf, clockIn, clockOut, ensureClockedIn, conflictEntry, userRecord } from "./timesheets.mjs";
+import { timeOf, clientIdOf, clockIn, clockOut, ensureClockedIn, conflictEntry, payloadOf, userRecord } from "./timesheets.mjs";
 import { runningTimer, visitTimers, startSegment, stopSegment, stopRunning, recomputeMinutes } from "./timers.mjs";
 import { lastNotes } from "./techday.mjs";
 
@@ -73,16 +84,25 @@ function inWindow(v) {
   return v.date >= addLocalDays(today, -TECH_WINDOW.before) && v.date <= addLocalDays(today, TECH_WINDOW.after);
 }
 
+// A replay for a visit the person can't reach any more (see the top).
+class LostVisit extends Error {
+  constructor(visit) { super("That visit isn't there."); this.visit = visit; }
+}
+
 // The visit, for one of its people (see the top). → { visit, etag }
 export async function fieldVisit(ctx, perm = "visits:work") {
   const id = ctx.params.id;
   if (!isId(id, "visit")) throw new NotFoundError("That visit isn't there.");
   const got = await getRecord("visit", id);
-  if (!got || got.data.deleted_at) throw new NotFoundError("That visit isn't there.");
+  if (!got) throw new NotFoundError("That visit isn't there.");
   const v = got.data;
   const office = isOffice(ctx);
+  const on = !!ctx.user && (v.assignee_ids || []).includes(ctx.user.id);
+  // work a phone did with no signal on a visit since deleted, moved out of reach or given to someone else
+  if (replayed(ctx) && ctx.user && (v.deleted_at || !on || (!office && !inWindow(v)))) throw new LostVisit(v);
+  if (v.deleted_at) throw new NotFoundError("That visit isn't there.");
   if (!office && !inWindow(v)) throw new NotFoundError("That visit isn't there.");
-  if (!ctx.user || !(v.assignee_ids || []).includes(ctx.user.id)) {
+  if (!on) {
     if (office) throw new ConflictError("You're not on this visit. Add yourself on the schedule first.");
     throw new NotFoundError("That visit isn't there.");
   }
@@ -104,6 +124,50 @@ function geoOf(b) {
   return undefined;
 }
 
+const MESSAGES = {
+  conflict: "This change couldn't be applied as it was. The office will look at it.",
+  lost: "You're not on this visit any more. The office has what you sent.",
+  moved: "This visit was moved to another day. The office will look at what you sent.",
+  cancelled: "This visit was cancelled. It's saved, and the office will look at it.",
+  overlap: "Another timer or shift of yours covers that time. The office will look at it.",
+  queued_mismatch: "The office will check this time.", too_old: "The office will check this time.", future: "The office will check this time.",
+  no_device_time: "The office will check this time.", clock_skew: "This phone's clock is off. The office will check this time.", locked_period: "That week is already paid. The office will look at it.",
+  stale: "This was more than a week old. The office has it.",
+};
+const pendingOut = (entry, reason, extra = {}) => ({ status: 202, data: { pending_entry_id: entry.id, pending: true, reason, message: MESSAGES[reason] || MESSAGES.conflict, ...extra } });
+
+// An entry for the office (timesheets.mjs conflictEntry) about this request.
+function entryFor(ctx, visit, action, { reason = "conflict", message, time, applied = false, extra, item } = {}) {
+  return conflictEntry({
+    user: ctx.user, visit, visitId: visit && visit.id, action, message, time: time || timeOf(ctx), clientId: clientIdOf(ctx.body), reason,
+    payload: payloadOf(action, ctx.body || {}), applied, lost: reason === "lost", extra, item,
+  }, W(ctx));
+}
+
+// The visit, or the answer for a replay that can't reach it any more:
+// what the phone sent is kept on an entry and nothing of the visit goes back.
+async function reach(ctx, action, perm = "visits:work") {
+  try {
+    return await fieldVisit(ctx, perm);
+  } catch (e) {
+    if (!(e instanceof LostVisit)) throw e;
+    const entry = await entryFor(ctx, e.visit, action, { reason: "lost", message: e.visit.deleted_at ? "The visit was deleted." : "They weren't on this visit any more." });
+    return { answer: pendingOut(entry, "lost") };
+  }
+}
+
+// A replay done on another local day than the visit's date (the office moved it).
+const movedAway = (ctx, visit, time) => replayed(ctx) && localDate(new Date(time.at)) !== visit.date;
+const movedNote = (visit, time) => `Done on ${localDate(new Date(time.at))}; the visit is now on ${visit.date}.`;
+// A tick, note or photo that goes in but the office should see: on a
+// cancelled visit, or (notes and photos) one moved to another day.
+async function appliedNote(ctx, visit, action, time) {
+  if (!replayed(ctx)) return null;
+  if (visit.status === "cancelled") return entryFor(ctx, visit, action, { reason: "cancelled", message: "The visit was cancelled.", time, applied: true });
+  if (movedAway(ctx, visit, time)) return entryFor(ctx, visit, action, { reason: "moved", message: movedNote(visit, time), time, applied: true });
+  return null;
+}
+
 // A replayed change the visit no longer allows → a pending entry (§2.5).
 const CONFLICT_FIELDS = new Set(["transition", "checklist"]);
 async function guarded(ctx, visit, action, time, fn, { item } = {}) {
@@ -113,8 +177,8 @@ async function guarded(ctx, visit, action, time, fn, { item } = {}) {
     const conflict = e instanceof ConflictError || (e instanceof InputError && CONFLICT_FIELDS.has(e.field));
     if (!replayed(ctx) || !conflict) throw e;
     const latest = (await getRecord("visit", visit.id).catch(() => null)) || { data: visit };
-    const entry = await conflictEntry({ user: ctx.user, visit: latest.data, action, message: e.message, time, clientId: clientIdOf(ctx.body), item }, W(ctx));
-    return { status: 202, data: { pending_entry_id: entry.id, pending: true, reason: "conflict", message: "This change couldn't be applied as it was. The office will look at it." } };
+    const entry = await entryFor(ctx, latest.data, action, { message: e.message, time, item });
+    return pendingOut(entry, "conflict");
   }
 }
 
@@ -183,8 +247,8 @@ function etaOf(b) {
 }
 
 const onMyWay = async (ctx) => {
-  const { visit } = await fieldVisit(ctx);
   if (replayed(ctx)) throw new ConflictError("On my way needs signal. Nothing was sent.");
+  const { visit } = await fieldVisit(ctx);
   const b = ctx.body || {};
   const eta = etaOf(b);
   const cid = clientIdOf(b);
@@ -200,8 +264,8 @@ const onMyWay = async (ctx) => {
 };
 
 const runningLate = async (ctx) => {
-  const { visit } = await fieldVisit(ctx);
   if (replayed(ctx)) throw new ConflictError("Running late needs signal. Nothing was sent.");
+  const { visit } = await fieldVisit(ctx);
   const b = ctx.body || {};
   const eta = etaOf(b);
   const cid = clientIdOf(b);
@@ -227,6 +291,16 @@ async function startWork(ctx, visit, time, b) {
     const had = await getRecord("timer", deriveId("timer", `c:${cid}`));
     if (had) return answer(ctx, visit.id, { timer: timerOut(had.data), replay: true });
   }
+  if (time.source === "device") {
+    // a replay over a timer of this person's that ran on the visit meanwhile (another phone): the office decides
+    const t = nowMs();
+    const startMs = Date.parse(time.at);
+    const over = (await visitTimers(visit.id)).filter((x) => (x.user_ids || []).includes(uid) && (x.end_at ? Date.parse(x.end_at) : t) > startMs);
+    if (over.length) {
+      const entry = await entryFor(ctx, visit, "timer_start", { reason: "overlap", message: "Another timer of theirs ran on this visit then.", time, extra: { timer: { start: time.at }, with: over.map((x) => x.id).slice(0, 4) } });
+      return pendingOut(entry, "overlap");
+    }
+  }
   const running = await runningTimer(visit.id, uid);
   if (running) return answer(ctx, visit.id, { timer: timerOut(running), already: true });
   if (["scheduled", "en_route", "paused"].includes(visit.status)) {
@@ -243,13 +317,39 @@ async function startWork(ctx, visit, time, b) {
   const user = (await userRecord(uid)) || ctx.user;
   const clock = await ensureClockedIn(user, time, cid, w, { visitId: visit.id });
   const seg = await startSegment({ visit, userId: uid, time, clientId: cid, geo: geoOf(b) }, w);
-  return answer(ctx, visit.id, { timer: timerOut(seg.timer), clock: { open: sheetOut(clock.sheet), clocked_in: !!clock.created } });
+  return answer(ctx, visit.id, { timer: timerOut(seg.timer), clock: { open: clock.pending ? null : sheetOut(clock.sheet), clocked_in: !!clock.created, ...(clock.pending ? { pending_entry_id: clock.sheet.id } : {}) } });
+}
+
+// A replayed pause names the segment it stops (timer_client_id: the
+// client id of the start the phone made). When that isn't the running one:
+// the end of the phone's own segment, kept on its overlap entry, or a
+// disagreement for the office. → an answer, or null (pause the running one)
+async function pauseOther(ctx, visit, time, b) {
+  const uid = ctx.user.id;
+  const tcid = clientIdOf({ client_id: b.timer_client_id });
+  if (time.source !== "device" || !tcid) return null;
+  const g = await getRecord("timer", deriveId("timer", `c:${tcid}`));
+  const t = g && !g.data.deleted_at && (g.data.user_ids || []).includes(uid) ? g.data : null;
+  if (t && !t.end_at) return null;                                     // the phone's own segment runs: stop it
+  if (t && t.end_client_id && t.end_client_id === clientIdOf(b)) return answer(ctx, visit.id, { timer: timerOut(t), replay: true });
+  const eg = await getRecord("timesheet", deriveId("timesheet", `c:${tcid}`, "conflict"));
+  if (eg && eg.data.user_id === uid && eg.data.pending && eg.data.pending.timer) {
+    const r = await updateRecord("timesheet", eg.data.id, (x) => (x.pending && x.pending.timer && !x.pending.timer.end ? { ...x, pending: { ...x.pending, timer: { ...x.pending.timer, end: time.at } } } : null), W(ctx));
+    return pendingOut(r.data, "overlap");
+  }
+  if (t) {
+    const entry = await entryFor(ctx, visit, "timer_pause", { reason: "conflict", message: "That timer was already stopped.", time });
+    return pendingOut(entry, "conflict");
+  }
+  return null;
 }
 
 async function pauseWork(ctx, visit, time, b) {
   const uid = ctx.user.id;
   const cid = clientIdOf(b);
   const w = W(ctx);
+  const other = await pauseOther(ctx, visit, time, b);
+  if (other) return other;
   const running = await runningTimer(visit.id, uid);
   if (!running) {
     const list = cid ? await visitTimers(visit.id) : [];
@@ -307,30 +407,50 @@ async function completeWork(ctx, visit, time, b) {
   return answer(ctx, visit.id, { stopped: stopped.length });
 }
 
+// Time, completion and no access done on another day than the visit's
+// (the office moved it meanwhile) wait for the office. → an answer or null
+async function movedWait(ctx, visit, action, time) {
+  if (!movedAway(ctx, visit, time)) return null;
+  const entry = await entryFor(ctx, visit, action, { reason: "moved", message: movedNote(visit, time), time });
+  return pendingOut(entry, "moved");
+}
+
 const timerRoute = async (ctx) => {
   const b = ctx.body || {};
   const action = b.action;
   if (!["start", "pause", "finish"].includes(action)) throw new InputError("Start, pause or finish?", "action");
   needClientId(b);
-  const { visit } = await fieldVisit(ctx);
-  const time = judgeTime(b, nowMs());
+  const fv = await reach(ctx, `timer_${action}`);
+  if (fv.answer) return fv.answer;
+  const { visit } = fv;
+  const time = timeOf(ctx);
+  const moved = await movedWait(ctx, visit, `timer_${action}`, time);
+  if (moved) return moved;
   return guarded(ctx, visit, action, time, () => (action === "start" ? startWork(ctx, visit, time, b) : action === "pause" ? pauseWork(ctx, visit, time, b) : completeWork(ctx, visit, time, b)));
 };
 
 const completeRoute = async (ctx) => {
   const b = ctx.body || {};
   needClientId(b);
-  const { visit } = await fieldVisit(ctx);
-  const time = judgeTime(b, nowMs());
+  const fv = await reach(ctx, "complete");
+  if (fv.answer) return fv.answer;
+  const { visit } = fv;
+  const time = timeOf(ctx);
+  const moved = await movedWait(ctx, visit, "complete", time);
+  if (moved) return moved;
   return guarded(ctx, visit, "complete", time, () => completeWork(ctx, visit, time, b));
 };
 
 const noAccess = async (ctx) => {
   const b = ctx.body || {};
   needClientId(b);
-  const { visit } = await fieldVisit(ctx);
-  const time = judgeTime(b, nowMs());
+  const fv = await reach(ctx, "no_access");
+  if (fv.answer) return fv.answer;
+  const { visit } = fv;
+  const time = timeOf(ctx);
   if (visit.status === "no_access") return answer(ctx, visit.id, { already: true });
+  const moved = await movedWait(ctx, visit, "no_access", time);
+  if (moved) return moved;
   const note = str(b.note).slice(0, 500);
   return guarded(ctx, visit, "no_access", time, async () => {
     await changeVisit(visit.id, "no_access", { ctx: W(ctx), note: note || undefined });
@@ -356,7 +476,9 @@ const checklistRoute = async (ctx) => {
   const key = str(b.key);
   if (!key) throw new InputError("Which item?", "key");
   if (typeof b.done !== "boolean") throw new InputError("Done or not?", "done");
-  const { visit } = await fieldVisit(ctx);
+  const fv = await reach(ctx, "checklist");
+  if (fv.answer) return fv.answer;
+  const { visit } = fv;
   const item = ((visit.checklist && visit.checklist.items) || []).find((i) => i.key === key);
   if (!item) throw new InputError("That item isn't on this visit's checklist.", "key");
   let value;
@@ -370,9 +492,12 @@ const checklistRoute = async (ctx) => {
   } else if (b.done && item.kind === "photo") {
     throw new InputError("Take the photo for this one.", "key");
   }
-  const time = judgeTime(b, nowMs());
+  const time = timeOf(ctx);
   const closed = !OPEN_VISIT.includes(visit.status);
   if (closed && !replayed(ctx)) throw new ConflictError("This visit is closed.");
+  // a tick from the day before the office moved the visit belongs to that day, not the new one
+  const moved = await movedWait(ctx, visit, "checklist", time);
+  if (moved) return moved;
   const uid = ctx.user.id;
   await updateRecord("visit", visit.id, (v) => {
     if (!OPEN_VISIT.includes(v.status) && !b.done) return null;           // never undo an item on a closed visit
@@ -385,7 +510,8 @@ const checklistRoute = async (ctx) => {
     const next = { ...v, checklist: { ...(v.checklist || {}), items } };
     return JSON.stringify(next.checklist) === JSON.stringify(v.checklist) ? null : next;
   }, W(ctx));
-  return answer(ctx, visit.id);
+  const note = await appliedNote(ctx, visit, "checklist", time);
+  return answer(ctx, visit.id, note ? { pending_entry_id: note.id, noted: note.pending.reason } : {});
 };
 
 const notesRoute = async (ctx) => {
@@ -394,21 +520,38 @@ const notesRoute = async (ctx) => {
   if (!text) throw new InputError("Write the note.", "text");
   if (text.length > 1000) throw new InputError("Keep a note under 1,000 characters.", "text");
   const cid = needClientId(b);
-  const { visit } = await fieldVisit(ctx);
-  await updateRecord("visit", visit.id, (v) => {
-    if (cid && (v.note_ids || []).includes(cid)) return null;
-    const notes = v.tech_notes ? `${v.tech_notes}\n\n${text}` : text;
-    if (notes.length > 4000) throw new ConflictError("This visit's notes are full. Ask the office to tidy them.");
-    return { ...v, tech_notes: notes, ...(cid ? { note_ids: [...(v.note_ids || []), cid].slice(-50) } : {}) };
-  }, W(ctx));
-  return answer(ctx, visit.id);
+  const fv = await reach(ctx, "notes");
+  if (fv.answer) return fv.answer;
+  const { visit } = fv;
+  const time = timeOf(ctx);
+  // a note that doesn't fit any more is kept on an entry (guarded), never dropped
+  return guarded(ctx, visit, "notes", time, async () => {
+    await updateRecord("visit", visit.id, (v) => {
+      if (cid && (v.note_ids || []).includes(cid)) return null;
+      const notes = v.tech_notes ? `${v.tech_notes}\n\n${text}` : text;
+      if (notes.length > 4000) throw new ConflictError("This visit's notes are full. Ask the office to tidy them.");
+      return { ...v, tech_notes: notes, ...(cid ? { note_ids: [...(v.note_ids || []), cid].slice(-50) } : {}) };
+    }, W(ctx));
+    const note = await appliedNote(ctx, visit, "notes", time);
+    return answer(ctx, visit.id, note ? { pending_entry_id: note.id, noted: note.pending.reason } : {});
+  });
 };
 
-// A photo on the visit (and on its checklist item, when given). Idempotent:
-// the same file never shows twice, an item already done keeps its time.
+// A file on the visit. A photo (JPEG, PNG, WebP) goes on its photos (and
+// on its checklist item, when given); anything else (a PDF the office
+// attaches) is an attachment: never a photo, never shown to the customer.
+// Idempotent: the same file never shows twice, an item already done keeps
+// its time.
 export async function addPhoto(visitId, file, { item, by, at } = {}, w) {
   const tag = PHOTO_TAGS.includes(file.tag) ? file.tag : "other";
+  const image = INLINE_TYPES.has(file.content_type) && !file.download_only;
   const r = await updateRecord("visit", visitId, (v) => {
+    if (!image) {
+      const list = v.attachments || [];
+      if (list.some((a) => a.file_id === file.id)) return null;
+      if (list.length >= 50) throw new ConflictError("This visit has as many files as it can hold.");
+      return { ...v, attachments: [...list, { file_id: file.id, content_type: file.content_type, at: at || nowIso(), by, ...(file.caption ? { caption: file.caption } : {}) }] };
+    }
     const photos = v.photos || [];
     const has = photos.some((p) => p.file_id === file.id);
     let items = (v.checklist && v.checklist.items) || [];
@@ -441,25 +584,54 @@ function b64(s, field, max) {
   return bytes;
 }
 
+// A photo kept on an entry for the office instead of the visit: one of a
+// week-old queue (hold: true; the office reads it with the queue on
+// Approvals), or one for a visit the person can't reach any more. Its
+// bytes are never lost; the answer carries nothing of the visit.
+async function holdPhoto(ctx, visit, reason, { bytes, thumb, tag, time }) {
+  const message = reason === "stale" ? "Taken more than six days before it came in." : visit && visit.deleted_at ? "The visit was deleted." : "They weren't on this visit any more.";
+  const entry = await entryFor(ctx, visit, "photo", { reason, message, time });
+  const file = await uploadFile(ctx, { ownerType: "timesheet", ownerId: entry.id, kind: "photo", tag, declaredType: "image/jpeg", bytes, clientId: clientIdOf(ctx.body), takenAt: time.at });
+  if (thumb && !file.has_thumb) await uploadThumb(ctx, file.id, thumb).catch((e) => console.error(`crm:work: thumbnail not kept (${safeErr(e)})`));
+  return pendingOut(entry, reason, { file_id: file.id });
+}
+
 const photoRoute = async (ctx) => {
   const b = ctx.body || {};
   const tag = PHOTO_TAGS.includes(b.tag) ? b.tag : "other";
   const cid = clientIdOf(b);
   if (!cid) throw new InputError("A photo needs its client id.", "client_id");
   const bytes = b64(b.data, "data", MAX_PHOTO_BYTES);
+  // a visit photo is a picture (the type from its magic bytes, core/files.mjs): a PDF or anything else isn't one
+  if (!INLINE_TYPES.has(sniffType(bytes))) throw new InputError("That isn't a photo. Take it with the camera.", "data");
   const thumb = b.thumb ? b64(b.thumb, "thumb", MAX_THUMB_BYTES) : null;
-  const { visit } = await fieldVisit(ctx);
+  const time = timeOf(ctx);
+  if (replayed(ctx) && b.hold === true) {
+    if (!isId(ctx.params.id, "visit")) throw new NotFoundError("That visit isn't there.");
+    const g = await getRecord("visit", ctx.params.id);
+    const v = g ? g.data : null;
+    const mine = !!(v && !v.deleted_at && (v.assignee_ids || []).includes(ctx.user.id) && (isOffice(ctx) || inWindow(v)));
+    return holdPhoto(ctx, mine ? v : null, "stale", { bytes, thumb, tag, time });
+  }
+  let visit;
+  try {
+    ({ visit } = await fieldVisit(ctx));
+  } catch (e) {
+    if (!(e instanceof LostVisit)) throw e;
+    return holdPhoto(ctx, e.visit, "lost", { bytes, thumb, tag, time });
+  }
   const item = str(b.item) || undefined;
   if (item && !((visit.checklist && visit.checklist.items) || []).some((i) => i.key === item)) throw new InputError("That item isn't on this visit's checklist.", "item");
-  const time = judgeTime(b, nowMs());
   const caption = str(b.caption).slice(0, 200) || undefined;
   // the bytes as they came: the type from the magic bytes (core/files.mjs)
   const file = await uploadFile(ctx, { ownerType: "visit", ownerId: visit.id, kind: "photo", tag, caption, declaredType: "image/jpeg", bytes, clientId: cid, takenAt: time.at });
   let f = file;
   if (thumb && !file.has_thumb) f = await uploadThumb(ctx, file.id, thumb).catch((e) => { console.error(`crm:work: thumbnail not kept (${safeErr(e)})`); return file; });
-  await addPhoto(visit.id, f, { item, by: ctx.user.id, at: time.at }, W(ctx));
+  // a photo from the day before the office moved the visit doesn't tick the new day's item
+  await addPhoto(visit.id, f, { item: movedAway(ctx, visit, time) ? undefined : item, by: ctx.user.id, at: time.at }, W(ctx));
+  const note = await appliedNote(ctx, visit, "photo", time);
   const out = fileView(f);
-  return { status: 201, ...(await answer(ctx, visit.id, { photo: { id: out.id, tag, has_thumb: !!out.has_thumb, url: out.url, thumb_url: out.thumb_url || null } })) };
+  return { status: 201, ...(await answer(ctx, visit.id, { photo: { id: out.id, tag, has_thumb: !!out.has_thumb, url: out.url, thumb_url: out.thumb_url || null }, ...(note ? { pending_entry_id: note.id, noted: note.pending.reason } : {}) })) };
 };
 
 // Who may read and add a visit's files (core/files.mjs): the office, and a
@@ -470,6 +642,19 @@ defineFileOwner("visit", {
   async attach(visit, file, ctx) {
     const item = (ctx.body && typeof ctx.body.item === "string" && ctx.body.item) || (ctx.query && ctx.query.get && ctx.query.get("item")) || undefined;
     await addPhoto(visit.id, file, { item, by: ctx.user ? ctx.user.id : "office", at: file.taken_at || nowIso() }, ctx.write ? ctx.write() : W(ctx));
+  },
+});
+
+// Files an entry holds (a photo kept for the office, above): the office
+// reads them on Timesheets; the person who sent it sees it on their own.
+defineFileOwner("timesheet", {
+  canRead: (ctx, s) => ctx.can("time:edit_others") || (!!ctx.user && s.user_id === ctx.user.id),
+  canEdit: (ctx, s) => !!ctx.user && s.user_id === ctx.user.id && s.status === "pending_approval",
+  async attach(sheet, file, ctx) {
+    await updateRecord("timesheet", sheet.id, (x) => {
+      const ids = (x.pending && x.pending.file_ids) || [];
+      return ids.includes(file.id) ? null : { ...x, pending: { ...(x.pending || {}), file_ids: [...ids, file.id].slice(0, 10) } };
+    }, ctx.write ? ctx.write() : W(ctx));
   },
 });
 
@@ -485,6 +670,13 @@ const pricebookRoute = async (ctx) => {
   return { data: { items, prices } };
 };
 
+const lineOut = (ctx, visit, job, lineId) => {
+  const prices = ctx.can("visits:prices", { type: "visit", record: visit });
+  const line = (job.lines || []).find((l) => l.id === lineId);
+  const out = line ? { id: line.id, title: line.title, qty_milli: line.qty_milli, ...(prices ? { unit_cents: line.unit_cents, total_cents: line.total_cents } : {}) } : null;
+  return { line: out, ...(prices ? { totals: job.totals } : {}) };
+};
+
 const linesRoute = async (ctx) => {
   const b = ctx.body || {};
   if (!isId(b.price_item_id, "price_item")) throw new InputError("Pick what you added.", "price_item_id");
@@ -493,32 +685,44 @@ const linesRoute = async (ctx) => {
   const qtyMilli = Math.round(qty * 1000);
   if (qtyMilli < 1) throw new InputError("Use a quantity from 1 to 1,000.", "qty");
   const cid = needClientId(b);
-  const { visit } = await fieldVisit(ctx, "visits:add_line");
-  const pi = await getRecord("price_item", b.price_item_id);
-  if (!pi || pi.data.deleted_at || pi.data.active === false || pi.data.sellable === false) throw new InputError("That isn't in the price book.", "price_item_id");
+  const fv = await reach(ctx, "lines", "visits:add_line");
+  if (fv.answer) return fv.answer;
+  const { visit } = fv;
+  const time = timeOf(ctx);
   const lineId = `up_${deriveId("event", `line:${cid}`).slice(3, 15)}`;
   const jg = await getRecord("job", visit.job_id);
   if (!jg || jg.data.deleted_at) throw new NotFoundError("That visit's job isn't there.");
-  if (!["unscheduled", "scheduled", "in_progress"].includes(jg.data.status)) throw new ConflictError("This job is closed. Ask the office to add it.");
-  const at = nowIso();
-  const r = await updateRecord("job", visit.job_id, (j) => {
-    if ((j.lines || []).some((l) => l.id === lineId)) return null;
-    if ((j.lines || []).length >= 60) throw new ConflictError("This job has as many lines as it can hold.");
-    const it = pi.data;
-    return {
-      ...j,
-      lines: [...(j.lines || []), {
-        id: lineId, price_item_id: it.id, title: it.name, qty_milli: qtyMilli, unit_cents: it.unit_cents || 0, service_type: it.service_type, scope: { type: "all" },
-        upsell_user_id: ctx.user.id, upsell: { by: ctx.user.id, at, visit_id: visit.id },
-      }],
-    };
-  }, W(ctx));
-  // what the job's visits copy (its services) follows; a no-op when it already does (a retry after a crash)
-  await refreshVisits(visit.job_id, ctx).catch((e) => console.error(`crm:work: visits not refreshed (${safeErr(e)})`));
-  const prices = ctx.can("visits:prices", { type: "visit", record: visit });
-  const line = (r.data.lines || []).find((l) => l.id === lineId);
-  const out = line ? { id: line.id, title: line.title, qty_milli: line.qty_milli, ...(prices ? { unit_cents: line.unit_cents, total_cents: line.total_cents } : {}) } : null;
-  return { status: r.changed ? 201 : 200, data: { line: out, ...(prices ? { totals: r.data.totals } : {}) } };
+  // a repeat of a line that went in
+  if ((jg.data.lines || []).some((l) => l.id === lineId)) return { status: 200, data: lineOut(ctx, visit, jg.data, lineId) };
+  const moved = await movedWait(ctx, visit, "lines", time);
+  if (moved) return moved;
+  // an upsell queued offline that no longer fits (the job closed, the item went) waits for the office (guarded)
+  return guarded(ctx, visit, "lines", time, async () => {
+    const pi = await getRecord("price_item", b.price_item_id);
+    if (!pi || pi.data.deleted_at || pi.data.active === false || pi.data.sellable === false) {
+      if (replayed(ctx)) throw new ConflictError("That item isn't in the price book any more.");
+      throw new InputError("That isn't in the price book.", "price_item_id");
+    }
+    if (!OPEN_VISIT.includes(visit.status)) throw new ConflictError("This visit is closed. Ask the office to add it.");
+    if (!["unscheduled", "scheduled", "in_progress"].includes(jg.data.status)) throw new ConflictError("This job is closed. Ask the office to add it.");
+    const at = nowIso();
+    const r = await updateRecord("job", visit.job_id, (j) => {
+      if ((j.lines || []).some((l) => l.id === lineId)) return null;
+      if (!["unscheduled", "scheduled", "in_progress"].includes(j.status)) throw new ConflictError("This job is closed. Ask the office to add it.");
+      if ((j.lines || []).length >= 60) throw new ConflictError("This job has as many lines as it can hold.");
+      const it = pi.data;
+      return {
+        ...j,
+        lines: [...(j.lines || []), {
+          id: lineId, price_item_id: it.id, title: it.name, qty_milli: qtyMilli, unit_cents: it.unit_cents || 0, service_type: it.service_type, scope: { type: "all" },
+          upsell_user_id: ctx.user.id, upsell: { by: ctx.user.id, at, visit_id: visit.id },
+        }],
+      };
+    }, W(ctx));
+    // what the job's visits copy (its services) follows; a no-op when it already does (a retry after a crash)
+    await refreshVisits(visit.job_id, ctx).catch((e) => console.error(`crm:work: visits not refreshed (${safeErr(e)})`));
+    return { status: r.changed ? 201 : 200, data: lineOut(ctx, visit, r.data, lineId) };
+  });
 };
 
 // ------------------------------------------------------------ incidents (barta-rules §8)
@@ -530,7 +734,14 @@ const incidentRoute = async (ctx) => {
   if (text.length > 2000) throw new InputError("Keep it under 2,000 characters.", "text");
   const photos = Array.isArray(b.photo_ids) ? b.photo_ids.filter((x) => isId(x, "file")).slice(0, 10) : [];
   const cid = needClientId(b);
-  const { visit } = await fieldVisit(ctx, "incidents:create");
+  let visit;
+  try {
+    ({ visit } = await fieldVisit(ctx, "incidents:create"));
+  } catch (e) {
+    // an incident is never lost: one sent for a visit the person lost meanwhile still reaches the owners
+    if (!(e instanceof LostVisit)) throw e;
+    visit = e.visit;
+  }
   const id = deriveId("task", `c:${cid}`);
   const had = await getRecord("task", id);
   if (had) return { data: { task_id: id, replay: true } };
@@ -553,7 +764,7 @@ const clockRoute = async (ctx) => {
   const b = ctx.body || {};
   const action = b.action;
   if (!["in", "out"].includes(action)) throw new InputError("Clock in or out?", "action");
-  const time = judgeTime(b, nowMs());
+  const time = timeOf(ctx);
   const cid = needClientId(b);
   const user = (await userRecord(ctx.user.id)) || ctx.user;
   const w = W(ctx);
@@ -561,18 +772,23 @@ const clockRoute = async (ctx) => {
   if (action === "in") {
     const category = b.category === undefined ? "service" : b.category;
     const r = await clockIn(user, { category, time, clientId: cid, geo }, w);
+    // a replay over another shift of theirs (two phones): it waits for the office
+    if (r.pending) return pendingOut(r.sheet, "overlap", { open: null });
     return { status: r.created ? 201 : 200, data: { open: sheetOut(r.sheet), already: !!r.already, ...(r.closed_forgotten ? { closed_forgotten: sheetOut(r.closed_forgotten) } : {}) } };
   }
-  const r = await clockOut(user, { time, clientId: cid, geo }, w);
-  if (r.none) {
+  const r = await clockOut(user, { time, clientId: cid, geo, shiftClientId: clientIdOf({ client_id: b.shift_client_id }) }, w);
+  if (r.none || r.disagree) {
     if (!replayed(ctx)) throw new ConflictError("You're not clocked in.");
-    // a clock-out with no shift to close (§2.5 conflicts): for the office
-    const entry = await conflictEntry({ user, action: "clock_out", message: "There was no open shift to close.", time, clientId: cid }, w);
-    return { status: 202, data: { pending_entry_id: entry.id, pending: true, reason: "conflict" } };
+    // a clock-out with no shift to close, or not the one open (§2.5 conflicts): for the office
+    const entry = await conflictEntry({ user, action: "clock_out", message: r.none ? "There was no open shift to close." : "It didn't match the shift that was open.", time, clientId: cid, reason: r.none ? "conflict" : "overlap" }, w);
+    return pendingOut(entry, r.none ? "conflict" : "overlap", { closed: null, open: null });
   }
-  // the work stops with the shift: this person's running timers pause (a replay finishes what a crash left)
+  // the phone's own shift that waits for the office (it overlapped another, or its times weren't taken): its end is kept on the entry
+  if (r.pending) return pendingOut(r.sheet, (r.sheet.pending && r.sheet.pending.reason) || "overlap", { closed: sheetOut(r.sheet), open: null });
+  // the work stops with the shift: this person's running timers pause (a replay finishes what a crash left);
+  // never for the end of another phone's earlier shift, which isn't the work going on now
   let paused = 0;
-  if (r.closed || r.replay) {
+  if ((r.closed || r.replay) && !r.other && !(r.sheet && r.sheet.flags || []).includes("overlap_cleared")) {
     const ix = await readIndex("timers", "active").catch(() => ({ rows: [] }));
     for (const row of ix.rows.filter((x) => (x.u || []).includes(user.id) && x.v)) {
       const t = await runningTimer(row.v, user.id);

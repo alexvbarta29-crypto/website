@@ -18,7 +18,7 @@
 
 import { raw, html } from "../../core/ui.js";
 import { uuid } from "../../core/api.js";
-import { localDate } from "../../core/format.js";
+import { localDate, dateShort, time as fmtTime } from "../../core/format.js";
 import * as outbox from "../../core/outbox.js";
 
 let styled = false;
@@ -86,6 +86,8 @@ export const STATUS = { open: "On the clock", closed: "Done", pending_approval: 
 export const REASON = {
   queued_mismatch: "the phone's time didn't add up", too_old: "it was more than a week old", future: "the phone's clock was ahead",
   no_device_time: "the phone sent no time", conflict: "the visit had changed", locked_period: "that week is already paid",
+  clock_skew: "the phone's clock was off", overlap: "it overlaps other time of theirs", moved: "the visit was moved to another day",
+  cancelled: "the visit was cancelled", lost: "they weren't on the visit any more", stale: "it was more than six days old",
 };
 // "Pat Sample" → "Pat S."
 export function shortName(c) {
@@ -107,35 +109,42 @@ export class NeedsSignal extends Error {
   constructor(what = "This") { super(`${what} needs signal. Try again when you have some.`); this.code = "needs_signal"; }
 }
 
-// → { sent: true, data } | { queued: true }; throws the server's refusal.
+// → { sent: true, data } | { queued: true, saved }; throws the server's
+// refusal. No answer, a timeout or a 5xx: the change waits in the outbox
+// under the same Idempotency-Key (and client id), so one that landed is
+// never done twice. saved: false when the phone's storage is full (the
+// change waits in this page only: FULL_NOTE).
+export const FULL_NOTE = "This phone is full; this change isn't saved. Keep the app open until you have signal.";
 export async function send(ctx, path, body = {}, { method = "POST", needsSignal = false, what } = {}) {
   const client_at = new Date().toISOString();
   const full = { client_id: uuid(), ...body, client_at };
+  const key = uuid();
   const waiting = await outbox.count().catch(() => 0);
   if (needsSignal) {
     if (!online()) throw new NeedsSignal(what);
-    try { return { sent: true, data: (await ctx.api(path, { method, body: full, timeout: 8000 })).data }; } catch (e) {
+    try { return { sent: true, data: (await ctx.api(path, { method, body: full, timeout: 8000, idempotencyKey: key })).data }; } catch (e) {
       if (e && e.code === "offline") throw new NeedsSignal(what);
       throw e;
     }
   }
   if (online() && !waiting) {
     try {
-      const r = await ctx.api(path, { method, body: full, timeout: 6000 });
+      const r = await ctx.api(path, { method, body: full, timeout: outbox.timeoutFor(full), idempotencyKey: key });
       return { sent: true, data: r.data, status: r.status };
     } catch (e) {
-      if (!e || e.code !== "offline") throw e;
-      // no answer: it waits in the outbox (its client id makes a landed one a no-op on replay)
+      if (e && e.code !== "offline" && !(e.status >= 500)) throw e;
+      // no answer, or the server stumbled: it waits in the outbox (the client id and key make a landed one a no-op)
     }
   }
-  await outbox.enqueue({ method, path, body: { ...full, queued_offline: true, queued_at: client_at } });
+  const item = await outbox.enqueue({ method, path, key, body: { ...full, queued_offline: true, queued_at: client_at } });
   outbox.replay().catch(() => {});
-  return { queued: true };
+  return { queued: true, saved: item.saved !== false };
 }
 
 // The changes still waiting on this phone (oldest first), optionally for a path prefix.
+// (One the server turned down isn't laid over the screen: it waits for the office's review.)
 export async function waiting(prefix = "") {
-  const all = await outbox.list().catch(() => []);
+  const all = (await outbox.list().catch(() => [])).filter((i) => !i.refused);
   return prefix ? all.filter((i) => typeof i.path === "string" && i.path.startsWith(prefix)) : all;
 }
 
@@ -176,7 +185,7 @@ export function overlayVisit(visit, items = [], uid = null, timers = []) {
     const what = it.path.slice(prefix.length);
     if (what === "timer" && b.action === "start") {
       if (["scheduled", "en_route", "paused"].includes(v.status)) v.status = "in_progress";
-      if (!t.some((x) => !x.end_at && (x.user_ids || []).includes(uid))) t.push({ id: `local-${b.client_id}`, user_ids: [uid], start_at: at, local: true });
+      if (!t.some((x) => !x.end_at && (x.user_ids || []).includes(uid))) t.push({ id: `local-${b.client_id}`, client_id: b.client_id, user_ids: [uid], start_at: at, local: true });
     } else if (what === "timer" && b.action === "pause") {
       t = t.map((x) => (!x.end_at && (x.user_ids || []).includes(uid) ? { ...x, end_at: at, minutes: Math.max(0, Math.round((Date.parse(at) - Date.parse(x.start_at)) / 60000)) } : x));
       if (v.status === "in_progress" && !t.some((x) => !x.end_at)) v.status = "paused";
@@ -214,13 +223,13 @@ export function overlayDay(day, items = [], uid = null) {
     if (!it || it.path !== "/clock") continue;
     const b = it.body || {};
     const at = b.client_at || it.client_at;
-    if (b.action === "in" && !d.clock.open) d.clock.open = { start_at: at, category: b.category || "service", status: "open", local: true };
+    if (b.action === "in" && !d.clock.open) d.clock.open = { start_at: at, category: b.category || "service", status: "open", local: true, client_id: b.client_id };
     if (b.action === "out") d.clock.open = null;
   }
   // starting a timer clocks in
   if (!d.clock.open && items.some((it) => it && /\/timer$/.test(it.path) && it.body && it.body.action === "start")) {
     const it = items.find((x) => x && /\/timer$/.test(x.path) && x.body && x.body.action === "start");
-    d.clock.open = { start_at: it.body.client_at, category: "service", status: "open", local: true };
+    d.clock.open = { start_at: it.body.client_at, category: "service", status: "open", local: true, client_id: it.body.client_id };
   }
   d.waiting = items.length;
   return d;
@@ -279,3 +288,14 @@ export async function toBase64(blob) {
 }
 
 export const waitingNote = (n) => (n ? html`<p class="tf-wait">${TICONS.cloud}<span>${n === 1 ? "1 change waits" : `${n} changes wait`} for signal. They go out by themselves.</span></p>` : "");
+
+// "7:42 AM" today, "Tue, Nov 17, 7:42 PM" another day (the phone's day).
+export const asOfText = (iso) => (localDate(new Date(iso)) === deviceToday() ? fmtTime(iso) : `${dateShort(localDate(new Date(iso)))}, ${fmtTime(iso)}`);
+// The screen's one line for no signal (when its copy is from, and what
+// waits); with it on screen the app's own offline banner steps aside
+// (.tf-own-offline, tech-styles.css), so there is one bar, not three.
+export function offlineLine({ offline, as_of, waiting = 0, what = "Your day" } = {}) {
+  if (!offline) return waitingNote(waiting);
+  const n = waiting ? ` ${waiting === 1 ? "1 change waits" : `${waiting} changes wait`}; they go out by themselves.` : "";
+  return html`<p class="tf-wait tf-off"><i class="tf-own-offline" hidden></i>${TICONS.cloud}<span>No signal. ${what} as of ${as_of ? asOfText(as_of) : "the last time it loaded"}.${n}</span></p>`;
+}

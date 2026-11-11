@@ -21,8 +21,8 @@ import * as router from "./core/router.js";
 import * as nav from "./core/nav.js";
 import { edgeSwipe } from "./core/edge.js";
 import { api, get, on, signOut, compareVersions, setCacheOwner } from "./core/api.js";
-import { html, render, toast } from "./core/ui.js";
-import { time as fmtTime } from "./core/format.js";
+import { html, render, toast, confirmSheet } from "./core/ui.js";
+import { time as fmtTime, dateShort, localDate } from "./core/format.js";
 import { poll } from "./core/poll.js";
 import * as outbox from "./core/outbox.js";
 
@@ -51,14 +51,16 @@ let bannerKind = null;
 function showBanner(kind, content) {
   bannerKind = kind;
   render(banner, content);
-  banner.className = "banner" + (kind === "update" ? " warn" : "");
+  banner.className = "banner is-" + kind + (kind === "update" ? " warn" : "");
   banner.hidden = false;
 }
 function hideBanner(kind) { if (!kind || bannerKind === kind) { banner.hidden = true; bannerKind = null; } }
 
 function offlineBanner(asOf) {
-  // what works offline differs by screen (a tech's field work waits on the phone; office edits need signal): the screens say
-  showBanner("offline", html`<span>Offline${asOf ? ", as of " + fmtTime(asOf) : ""}.</span>`);
+  // what works offline differs by screen (a tech's field work waits on the phone; office edits need signal): the screens say;
+  // a screen that says it all in one line of its own hides this one (.is-offline, tech-styles.css)
+  const when = asOf ? (localDate(asOf) === localDate(new Date()) ? fmtTime(asOf) : `${dateShort(localDate(asOf))}, ${fmtTime(asOf)}`) : "";
+  showBanner("offline", html`<span>Offline${when ? ", as of " + when : ""}.</span>`);
 }
 function updateBanner() {
   if (bannerKind === "update") return;
@@ -101,8 +103,13 @@ document.addEventListener("click", (e) => {
 
 // ------------------------------------------------------------ sign out
 
+// Changes still waiting on this phone go with the sign-out (§2.5): the
+// person is told how many first (opts.warned: the screen already said).
 async function doSignOut(opts = {}) {
+  const n = await outbox.count().catch(() => 0);
+  if (n && !opts.warned && !(await confirmSheet(`${n === 1 ? "1 change hasn't" : `${n} changes haven't`} gone out yet. Signing out deletes ${n === 1 ? "it" : "them"} from this phone.`, { title: "Sign out anyway?", yes: "Sign out", danger: true }))) return;
   await signOut(opts);
+  await outbox.wipe().catch(() => {});
   if (framed) toShell({ type: "crm:signed_out" });
   location.replace("/crm/login");
 }
@@ -126,6 +133,9 @@ function start() {
   if (!boot || !session.user) { location.replace("/crm/login"); return; }
   // Offline copies are kept per person: another person's never shows here.
   setCacheOwner(session.user.id);
+  // Unsent changes on this phone: this person's go out; anyone else's are deleted unseen.
+  outbox.setUser(session.user.id);
+  const claimed = outbox.claim(session.user.id).catch(() => 0);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/crm-sw.js", { scope: "/crm" }).catch(() => {});
     navigator.serviceWorker.ready.then(keepShell).catch(() => {});
@@ -143,7 +153,7 @@ function start() {
   const bootEl = document.getElementById("boot");
   if (bootEl) bootEl.remove();
   router.start();
-  window.__crm = { session, signOut: doSignOut, version: APP_VERSION };
+  window.__crm = { session, signOut: doSignOut, unsent: () => outbox.count().catch(() => 0), version: APP_VERSION };
 
   // Fresh permissions (a cached shell may be older than a role change).
   get("/me", { cache: false }).then(({ data }) => {
@@ -164,8 +174,9 @@ function start() {
     toShell({ type: "crm:badge", inbox: data.inbox_unread || 0, attention: (data.attention || 0) + (data.approvals || 0), notifications: data.notifications || 0 });
   });
 
-  // Offline changes (the tech app, M4b) go out when there is signal.
-  outbox.start({ onRefused: (item, e) => toast(`A change made offline was refused: ${e.message}`, { bad: true, ms: 5000 }) });
+  // Offline changes (the tech app, M4b) go out when there is signal; one
+  // the server turns down goes to the office's review (outbox.js).
+  claimed.then(() => outbox.start({ onRefused: (item, e) => toast(`A change made offline wasn't accepted (${e.message}). The office will see it.`, { bad: true, ms: 6000 }) }));
 }
 
 try { start(); } catch (e) {

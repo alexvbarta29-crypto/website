@@ -53,7 +53,11 @@ export default {
   events: {
     "click [data-approve]": async (e, el, ctx) => {
       const uid = el.dataset.approve;
-      if (!(await confirmSheet(`Approve ${nameOf(ctx.state.people, uid)}'s finished shifts for this week? Open and waiting ones stay as they are.`, { title: "Approve the week", yes: "Approve" }))) return;
+      // shifts the app closed for them (a forgotten clock-out) are pointed out first
+      const week = (ctx.state.weeks || []).find((w) => w.user_id === uid);
+      const auto = ((week && week.entries) || []).filter((r) => r.st === "closed" && (r.ac || (r.fl || []).includes("timer_auto_closed")));
+      const autoNote = auto.length ? ` ${auto.length === 1 ? "One shift was" : `${auto.length} shifts were`} closed by the app, not by them: ${auto.map((r) => `${dowOf(r.s)} ${fmtTime(r.s)} – ${r.e ? fmtTime(r.e) : "?"}`).join("; ")}. Check ${auto.length === 1 ? "it" : "them"} first (tap the pencil to fix).` : "";
+      if (!(await confirmSheet(`Approve ${nameOf(ctx.state.people, uid)}'s finished shifts for this week? Open and waiting ones stay as they are.${autoNote}`, { title: auto.length ? "Approve, with shifts closed for them?" : "Approve the week", yes: auto.length ? "Approve anyway" : "Approve" }))) return;
       try {
         let r;
         let n = 0;
@@ -71,6 +75,14 @@ export default {
   },
 };
 
+// What the phone said, kept on the entry (a note's text, a checklist value, a line).
+function said(pend) {
+  const p = pend.payload;
+  if (!p) return "";
+  const bits = [p.text, p.note, p.key ? `${p.key}${p.value !== undefined ? `: ${p.value}` : ""}` : "", p.price_item_id ? `${p.qty || 1} × ${p.price_item_id}` : ""].filter(Boolean);
+  return bits.length ? html`<p class="tf-said">${bits.join("\n")}</p>` : "";
+}
+
 async function editSheet(ctx, id, { decide }) {
   let got;
   try { got = await ctx.api(`/timesheets/${encodeURIComponent(id)}`, { cache: false }); } catch (err) { toast(err.message || "That entry didn't load.", { bad: true }); return; }
@@ -78,11 +90,19 @@ async function editSheet(ctx, id, { decide }) {
   const date = localDate(t.start_at);
   const pend = t.pending || {};
   const who = nameOf(ctx.state.people, t.user_id);
+  // an entry that only reports an offline change (it spans no time): the office reads it and marks it seen
+  const notice = decide && !!pend.action && t.end_at === t.start_at;
   const s = sheet({
-    title: decide ? "Decide on this entry" : "Edit this entry",
+    title: notice ? "Offline work to check" : decide ? "Decide on this entry" : "Edit this entry",
     body: html`<form class="stack" id="tf-edit">
       <p class="small muted">${who} · ${dateShort(date)}${pend.reason ? ` · ${REASON[pend.reason] || "needs a look"}` : ""}${pend.detail ? `: ${pend.detail}` : ""}</p>
-      ${pend.action ? html`<p class="small">${`Their phone sent "${String(pend.action).replace(/_/g, " ")}"${pend.job_title ? ` on ${pend.job_title}` : ""} at ${fmtTime(pend.claimed || t.start_at)}.`}</p>` : ""}
+      ${pend.action ? html`<p class="small">${`Their phone sent "${String(pend.action).replace(/_/g, " ")}"${pend.job_title ? ` on ${pend.job_title}` : ""} at ${fmtTime(pend.claimed || t.start_at)}${pend.applied ? "; it went in" : ""}.`}</p>` : ""}
+      ${said(pend)}
+      ${(pend.file_ids || []).length ? html`<div class="tf-held">${pend.file_ids.map((fid) => html`<a ${attrs({ href: `/api/crm/files/${encodeURIComponent(fid)}`, target: "_blank", rel: "noopener" })}><img ${attrs({ src: `/api/crm/files/${encodeURIComponent(fid)}?thumb=1`, alt: "The photo they sent", loading: "lazy" })}></a>`)}</div>` : ""}
+      ${pend.timer ? html`<p class="small">Their timer: ${fmtTime(pend.timer.start)}${pend.timer.end ? ` – ${fmtTime(pend.timer.end)}` : ", no stop yet"}.</p>` : ""}
+      ${notice ? html`<p class="small muted">Nothing here counts as time. Fix the visit or the job if it needs it, then mark this seen.</p>
+        <input type="hidden" name="date" ${attrs({ value: date })}><input type="hidden" name="start" ${attrs({ value: hhmmOf(t.start_at) })}><input type="hidden" name="end" ${attrs({ value: hhmmOf(t.end_at) })}><input type="hidden" name="category" ${attrs({ value: t.category })}>
+        <div class="btn-row"><button type="submit" class="btn primary">${icon("check")}Seen it</button></div></form>` : html`
       <label class="field"><span>Day</span><input name="date" type="date" ${attrs({ value: date })} required></label>
       <div class="tf-small">
         <label class="field" style="flex:1 1 40%"><span>Start</span><input name="start" type="time" ${attrs({ value: hhmmOf(t.start_at) })} required></label>
@@ -92,7 +112,7 @@ async function editSheet(ctx, id, { decide }) {
       <label class="field"><span>Why it changed</span><input name="reason" type="text" maxlength="300" placeholder="Forgot to clock out at 4:30" autocomplete="off"></label>
       <div class="btn-row">
         ${decide ? html`<button type="button" class="btn danger" data-reject>Don't count it</button><button type="submit" class="btn primary">Approve</button>` : html`<button type="submit" class="btn primary">Save</button>`}
-      </div></form>`,
+      </div></form>`}`,
     events: {
       "submit #tf-edit": async (ev, f) => {
         ev.preventDefault();
@@ -113,7 +133,7 @@ async function editSheet(ctx, id, { decide }) {
             if (!Object.keys(body).length) { s.close(); return; }
             await ctx.api(`/timesheets/${encodeURIComponent(id)}`, { method: "PATCH", body: { ...body, reason }, ifMatch: got.etag });
           }
-          toast(decide ? "Approved" : "Saved");
+          toast(notice ? "Marked seen" : decide ? "Approved" : "Saved");
           s.close();
           ctx.refresh();
         } catch (err) {

@@ -160,8 +160,10 @@ export async function timersSweep(ctx = {}) {
       continue;
     }
     const w = typeof ctx.write === "function" ? ctx.write() : W(ctx);
+    // the segment is the CRM's own; a visit Rotor still owns only gets would- rows (§3.10)
+    const hands = visit && typeof ctx.mayAct === "function" && !ctx.mayAct(visit) ? { would: (action, changes) => ctx.would(visit, action, changes) } : null;
     try {
-      await closeForgotten(timer, visit, deadline, w);
+      await closeForgotten(timer, visit, deadline, w, { hands });
       progress += 1;
     } catch (e) {
       if (e instanceof ParallelRunGuard) { await ctx.would?.(timer, "close", { end_at: [null, new Date(deadline).toISOString()] }); continue; }
@@ -171,10 +173,14 @@ export async function timersSweep(ctx = {}) {
   return { done: true, progress, result: `${progress} timers closed` };
 }
 
-async function closeForgotten(timer, visit, deadline, w) {
+async function closeForgotten(timer, visit, deadline, w, { hands = null } = {}) {
   const closed = await stopSegment(timer, { at: new Date(deadline).toISOString(), auto: { at: nowIso(), reason: "stale" } }, w);
   const users = closed.user_ids || [];
-  if (visit) {
+  if (visit && hands) {
+    const m = minutesWorked(await visitTimers(visit.id));
+    if (m !== (visit.minutes_worked || 0)) await hands.would("change", { minutes_worked: [visit.minutes_worked ?? null, m] }).catch(() => {});
+    if (visit.status === "in_progress" && !(await visitTimers(visit.id)).some(isOpenTimer)) await hands.would("pause", { status: ["in_progress", "paused"] }).catch(() => {});
+  } else if (visit) {
     await recomputeMinutes(visit.id, w);
     // nobody's timer runs on it any more: the visit is paused, not "working"
     if (visit.status === "in_progress") {

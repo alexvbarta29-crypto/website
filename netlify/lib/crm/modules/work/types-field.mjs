@@ -109,7 +109,7 @@ export const timerRow = (r) => ({ v: r.visit_id || null, j: r.job_id || null, u:
 // One user-timers relation per person slot (a segment has at most a few).
 const userTimerRel = (i) => ({ rel: "user-timers", parent: (r) => (Array.isArray(r.user_ids) && r.user_ids[i]) || null, sort: (r) => sortOf(r.start_at) });
 
-export const TIMER_TECH_FIELDS = Object.freeze(["id", "type", "v", "wv", "visit_id", "job_id", "user_ids", "start_at", "end_at", "minutes", "auto_closed", "unverified", "created_at", "updated_at"]);
+export const TIMER_TECH_FIELDS = Object.freeze(["id", "type", "v", "wv", "visit_id", "job_id", "user_ids", "start_at", "end_at", "minutes", "auto_closed", "unverified", "client_id", "created_at", "updated_at"]);
 
 export const timerType = defineType({
   type: "timer",
@@ -179,7 +179,7 @@ export const sheetRow = (r) => ({
   ac: !!r.auto_closed, ed: (r.edits || []).length, fl: (r.flags || []).slice(0, 6), d: localDate(new Date(r.start_at)), why: r.pending && r.pending.reason ? String(r.pending.reason).slice(0, 30) : null, u: r.updated_at,
 });
 
-export const TIMESHEET_TECH_FIELDS = Object.freeze(["id", "type", "v", "wv", "user_id", "category", "start_at", "end_at", "minutes", "notes", "status", "auto_closed", "pending", "flags", "edits", "created_at", "updated_at"]);
+export const TIMESHEET_TECH_FIELDS = Object.freeze(["id", "type", "v", "wv", "user_id", "category", "start_at", "end_at", "minutes", "notes", "status", "auto_closed", "pending", "flags", "edits", "client_id", "created_at", "updated_at"]);
 
 export const timesheetType = defineType({
   type: "timesheet",

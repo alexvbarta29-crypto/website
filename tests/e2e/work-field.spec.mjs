@@ -183,17 +183,25 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
   const post = (path, body) => tech.ctx.request.post("/api/crm" + path, { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: randomUUID(), client_at: srv.now(), ...body } });
   const now = Date.parse(srv.now());
   let r = await post("/clock", { action: "out" });                      // whatever the other test left open
-  r = await post("/clock", { action: "in", queued_offline: true, client_at: new Date(now - 3 * 3600000).toISOString(), queued_at: new Date(now - 3 * 3600000).toISOString() });
-  assert.ok([200, 201].includes(r.status()), await r.text());
-  r = await post("/clock", { action: "out" });
-  assert.equal(r.status(), 200, await r.text());
+  // an early shift a phone kept with no signal (05:00 to 06:00 by its clock), replayed after the day's shift began:
+  // it waits as an overlap until its end is known, then it's an ordinary shift again
+  const inId = randomUUID();
+  const at = (h) => new Date(now - h * 3600000).toISOString();
+  r = await post("/clock", { action: "in", client_id: inId, queued_offline: true, client_at: at(5), queued_at: at(5) });
+  assert.ok([200, 201, 202].includes(r.status()), await r.text());
+  r = await post("/clock", { action: "out", shift_client_id: inId, queued_offline: true, client_at: at(4), queued_at: at(4) });
+  assert.ok([200, 202].includes(r.status()), await r.text());
+  assert.equal(JSON.parse(await r.text()).data.closed.status, "closed", "no overlap once its end is known");
   // and one the server couldn't take on its own (queued long after the claimed time)
   const tess = await phone(browser, srv);
   await signIn(tess, "tess");
   await tess.ctx.request.post("/api/crm/clock", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { action: "out", client_id: randomUUID(), client_at: srv.now() } });
-  r = await tess.ctx.request.post("/api/crm/clock", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { action: "in", client_id: randomUUID(), queued_offline: true, client_at: new Date(now - 2 * 3600000).toISOString(), queued_at: new Date(now - 3600000).toISOString() } });
-  assert.ok([200, 201].includes(r.status()), await r.text());
-  await tess.ctx.request.post("/api/crm/clock", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { action: "out", client_id: randomUUID(), client_at: srv.now() } });
+  const tessIn = randomUUID();
+  r = await tess.ctx.request.post("/api/crm/clock", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { action: "in", client_id: tessIn, queued_offline: true, client_at: at(7), queued_at: at(6.5) } });
+  assert.ok([200, 201, 202].includes(r.status()), await r.text());
+  r = await tess.ctx.request.post("/api/crm/clock", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { action: "out", client_id: randomUUID(), shift_client_id: tessIn, queued_offline: true, client_at: at(6), queued_at: at(6) } });
+  assert.ok([200, 202].includes(r.status()), await r.text());
+  assert.equal(JSON.parse(await r.text()).data.closed.pending.reason, "queued_mismatch", "it waits because of its time, not an overlap that wasn't one");
   await tech.close(); await tess.close();
 
   const { p, page, f } = await open("olive", "iphonese");
