@@ -72,6 +72,14 @@ export function restCard(rest) {
       <div class="section-h">Not brought in</div>${partRows(byPart([...(rest.ready || []), ...(rest.waiting || [])]))}
     </section>`;
   }
+  // a newer import was started since (and isn't what a continuation would go on from): this export is the older one
+  if (rest.blocked) {
+    return html`<section class="card" data-rest>
+      <h2>The rest of this export</h2>
+      <p class="warn-box">A newer import was started after this one and didn't finish. To bring in the rest, start a new import: this export's values would be older.</p>
+      <div class="section-h">Not brought in</div>${partRows(byPart([...(rest.ready || []), ...(rest.waiting || [])]))}
+    </section>`;
+  }
   return html`<section class="card" data-rest>
     <h2>The rest of this export</h2>
     ${ready.length ? html`<div class="section-h">Ready to bring in</div>${partRows(ready)}

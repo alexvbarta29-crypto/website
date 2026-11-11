@@ -76,6 +76,21 @@ import { buildReport, buildIdMapPart, IDMAP_BATCH } from "./report.mjs";
 // Tests turn these down to force many small steps.
 export const IMPORT_LIMITS = { minLeftMs: 25000, checkpointRows: 50, checkpointMs: 5000, stepRows: Infinity };
 export const RUN_KIND = "import";
+// A continuation is stepped by a lane run of its own kind: code from before
+// continuations existed doesn't know the kind and leaves the run alone (it
+// would step it as an upload with no staged rows and mark it done with nothing).
+export const RUN_KIND_CONTINUE = "import.continue";
+
+// A staged chunk the state lists that isn't there any more (the export's
+// rows were cleared): the step fails, the phase is never "done with nothing".
+export class StagingGone extends Error {
+  constructor(entity, chunk) { super(`staged chunk ${entity}/${chunk} is gone`); this.name = "StagingGone"; this.code = "staging_gone"; }
+}
+async function needChunk(state, entity, n) {
+  const chunk = await readChunk(stagingRunOf(state), entity, n);
+  if (!chunk || !Array.isArray(chunk.rows)) throw new StagingGone(entity, n);
+  return chunk;
+}
 export const stateKey = (runId) => `imp/${runId}/state`;
 
 // The import's write context: an import (exempt from the parallel-run
@@ -134,7 +149,8 @@ export function phasesSignature(names = registeredPhases().map((p) => p.name)) {
 
 // ------------------------------------------------------------ state
 
-const emptyPhase = () => ({ status: "pending", chunk: 0, row: 0, read: 0, skipped: {}, records: {}, kept_fields: 0, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, warnings: {}, errors: [] });
+// `none`: rows that were read and made nothing (skipped, or mapped to no record, patch or other write)
+const emptyPhase = () => ({ status: "pending", chunk: 0, row: 0, read: 0, none: 0, skipped: {}, records: {}, kept_fields: 0, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, warnings: {}, errors: [] });
 
 export async function loadState(runId, opts = {}) {
   const got = await getRaw(stateKey(runId), opts);
@@ -328,7 +344,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
     // a phase may look at all its rows once before the first one (the team map)
     if (typeof phase.prepare === "function") {
       const all = [];
-      for (const n of chunks) { const c = await readChunk(stagingRunOf(state), p.entity, n); for (const row of (c && c.rows) || []) all.push(row); }
+      for (const n of chunks) { const c = await needChunk(state, p.entity, n); for (const row of c.rows) all.push(row); }
       st.prepared = (await phase.prepare(all, mctx)) || null;
     }
     st.status = "running"; st.started_at = nowIso();
@@ -337,8 +353,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
   let rows = 0;
   let lastSave = nowMs();
   for (; st.chunk < chunks.length; st.chunk += 1, st.row = 0) {
-    const chunk = await readChunk(stagingRunOf(state), p.entity, chunks[st.chunk]);
-    const list = chunk && Array.isArray(chunk.rows) ? chunk.rows : [];
+    const list = (await needChunk(state, p.entity, chunks[st.chunk])).rows;
     for (; st.row < list.length; st.row += 1) {
       if ((budget && budget.left() < IMPORT_LIMITS.minLeftMs) || startedRows + rows >= IMPORT_LIMITS.stepRows) return { finished: false, rows };
       const raw = list[st.row];
@@ -348,16 +363,18 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
           if (isStorageError(e)) throw e;
           inc(st.skipped, "invalid");
           if (st.errors.length < 20) st.errors.push({ chunk: chunks[st.chunk], row: st.row, code: "invalid", field: e && e.field ? String(e.field).slice(0, 60) : null });
-          st.read += 1; rows += 1;
+          st.read += 1; rows += 1; st.none = (st.none || 0) + 1;
           continue;
         }
         const out = (await phase.map(row, mctx)) || {};
         const rid = rowIdOf(raw);
         await applyOutput(out, { runId, ph: st, ctx, source: rowSource(state.plan, p, rid), entity: p.entity, state, rank: Number.isInteger(phase.rank) ? phase.rank : undefined });
+        if (!["records", "pointers", "patches", "stats", "suppressions", "mergeCandidates"].some((k) => Array.isArray(out[k]) && out[k].length)) st.none = (st.none || 0) + 1;
       } catch (e) {
         if (isStorageError(e)) { e.rowsDone = rows; throw e; }        // the cursor still points at this row
         const code = rowCode(e);
         inc(st.skipped, code);
+        st.none = (st.none || 0) + 1;
         if (st.errors.length < 20) st.errors.push({ chunk: chunks[st.chunk], row: st.row, code, field: e && e.field ? String(e.field).slice(0, 60) : null });
         if (code === "error") console.error(`crm:import: a ${p.name} row failed (${safeErr(e)})`);
       }
@@ -442,10 +459,13 @@ async function importStep(run, rctx) {
     if (st) await afterDone(ir, st, holder);
   }
   if (ir.status !== "running") return { done: true, result: { status: ir.status } };
-  const state = (await loadState(runId)) || (await initState(ir));
+  let state = await loadState(runId);
+  // a continuation's state without its staging run was made by code that doesn't know continuations: start it over
+  if (state && ir.continues && !state.staging_run) state = null;
+  state = state || (await initState(ir));
   if (!state) {
     // a continuation whose continued run has no state any more: nothing to go on from
-    await updateRecord("import_run", runId, (r) => (r.status !== "running" ? null : { ...r, status: "failed", finished_at: nowIso() }), runCtx(holder));
+    await stopped(ir, "no_continued_state", holder);
     return { failed: "no_continued_state" };
   }
   const ctx = importCtx(holder, rctx.mode);
@@ -471,12 +491,22 @@ async function importStep(run, rctx) {
   } catch (e) {
     rows += e.rowsDone || 0;
     try { await saveState(state); } catch { /* the last saved cursor stands */ }
+    if (e instanceof StagingGone) {
+      // the export's rows were cleared under the run: trying again can't help
+      console.error(`crm:import: ${safeErr(e)}; the run stops`);
+      await queueReindex(state.types, holder).catch(() => {});
+      await stopped(ir, "staging_gone", holder);
+      return { failed: "staging_gone" };
+    }
     if (isStorageError(e) && rows > 0) {
       console.error(`crm:import: storage stopped a step after ${rows} rows; the next pass goes on (${safeErr(e)})`);
       return { progress: progress(), checkpoint: { stopped: true } };
     }
-    // the lane gives up after this try: the records written so far still get their lists
-    if ((run.attempts || 0) + 1 >= RUN_MAX_ATTEMPTS) await queueReindex(state.types, holder).catch(() => {});
+    // the lane gives up after this try: the records written so far still get their lists, the run says it stopped
+    if ((run.attempts || 0) + 1 >= RUN_MAX_ATTEMPTS) {
+      await queueReindex(state.types, holder).catch(() => {});
+      await stopped(ir, keySafe((e && (e.code || e.name)) || "error", 40), holder).catch(() => {});
+    }
     throw e;
   }
   const summary = state.report || {};
@@ -488,6 +518,21 @@ async function importStep(run, rctx) {
   return { done: true, progress: { done: total, total }, result: summary };
 }
 defineRun(RUN_KIND, { lane: "bulk", step: importStep, label: "Import from Rotor" });
+defineRun(RUN_KIND_CONTINUE, { lane: "bulk", step: importStep, label: "The rest of a Rotor export" });
+
+// A run that stops for good (the lane gave up, its staged rows are gone):
+// the import run says so (status "failed", `stopped: { code, at }`, a
+// finished_at, so its rows are cleaned up like any run's) instead of
+// "running" for ever, and the hooks tell the owners (continue.mjs).
+// Resume puts it back to running.
+const stopHooks = [];
+export function onRunStopped(fn) { if (!stopHooks.includes(fn)) stopHooks.push(fn); }
+export async function stopped(ir, code, holder = "import") {
+  const r = await updateRecord("import_run", ir.id, (x) => (x.status === "queued" || x.status === "running" ? { ...x, status: "failed", finished_at: nowIso(), stopped: { code: String(code || "error").slice(0, 40), at: nowIso() } } : null), runCtx(holder));
+  if (!r.changed) return r.data;
+  for (const fn of stopHooks) await fn(r.data, code).catch((e) => console.error(`crm:import: an after-stop step failed (${safeErr(e)})`));
+  return r.data;
+}
 
 // Called when a run is marked done: fn(importRun, state) (continue.mjs
 // tells the owners and keeps the staging it used). The run is stamped
@@ -512,7 +557,7 @@ export async function queueReindex(types, holder = "import") {
 
 // Queues the lane run for an import run (attempt n gives a fresh lane run on resume).
 export function startLaneRun(ir, ctx, attempt = 0) {
-  return createRun(RUN_KIND, { import_run_id: ir.id }, ctx, { id: deriveId("run", ir.id, "import.lane", attempt) });
+  return createRun(ir.continues ? RUN_KIND_CONTINUE : RUN_KIND, { import_run_id: ir.id }, ctx, { id: deriveId("run", ir.id, "import.lane", attempt) });
 }
 
 // For the Import screen: the plan with each phase's state (counts only).

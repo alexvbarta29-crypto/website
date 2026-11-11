@@ -156,7 +156,7 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
     assert.equal(rep00.integrity.timers_running, (await t.api(`/import/runs/${root}/report`, { as: owner })).body.data.integrity.timers_running, "the integrity counts are the first run's");
     await drain(t);
     assert.equal(notices(t).filter((n) => n.user_id === owner.id && n.link === `/import/${c0.id}` && /is in$/.test(n.title))[0].body,
-      `Timesheets and visit timers from your Rotor export of Nov 10 are in: ${ex.timesheets.length} timesheets, ${ex.visit_timers.length} visit timers.`);
+      `Timesheets and visit timers from your Rotor export of Nov 10 are in: ${ex.timesheets.length} timesheets, ${ex.visit_timers.length} timers.`, "in records made");
     for (const k of t.stores.data.keys("rec/notification/")) await store.deleteRaw(k);
     spy.restore(); spy = null;
     v = await rest(t, owner);
@@ -300,7 +300,8 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
     const fin2 = notices(t).filter((n) => n.user_id === owner.id && n.link === `/import/${c2id}`);
     assert.equal(notices(t).filter((n) => n.link === `/import/${c2id}`).length, 2, "both owners");
     assert.equal(fin2.length, 1, "asked for on the screen: one note, when it's done");
-    assert.match(fin2[0].body, /^Messages from your Rotor export of Nov 10 are in: \d+ messages\.$/);
+    assert.match(fin2[0].body, /^Messages from your Rotor export of Nov 10 are in: \d+ messages\.( \d+ rows? made nothing \(the report says why\)\.)?$/);
+    assert.equal(/made nothing/.test(fin2[0].body), msgs.length < ex.messages.length, "rows that made nothing are mentioned only when there are some");
 
     // ---- a fresh full import of the same export afterwards (days later): everything is found as it is
     spy.restore(); spy = null;
@@ -329,26 +330,27 @@ test("it refuses when the export's rows are gone, with a plain message; the rows
     const rawCount = () => t.stores.data.keys(`imp/${root}/raw/`).length;
     const had = rawCount();
     assert.ok(had > 10);
-    // day 20: Payroll goes live and a continuation is made; it sits in the queue (the lane is stuck) until day 60
+    // day 20: Payroll goes live and a continuation is made; it sits in the queue (the lane is busy) until day 45
     advance(days(20));
     ship("payroll.payroll", "payroll", "payroll");
     const c1 = (await go(t, owner)).body.data.run;
     assert.equal(Date.parse((await store.getRecord("import_run", root)).data.staging_used_at), Date.parse(r1.run.finished_at) + days(20), "making it stamps the rows as used");
-    advance(days(40));
+    advance(days(25));
     await gc();
-    assert.equal(rawCount(), had, "never under a continuation that reads them, whatever their age");
+    assert.equal(rawCount(), had, "kept under a continuation that reads them, 45 days after the upload");
     assert.equal((await runToEnd(t, owner, c1.id, { start: false })).run.status, "done");
     const used = (await store.getRecord("import_run", root)).data.staging_used_at;
-    assert.equal(Date.parse(used), Date.parse(r1.run.finished_at) + days(60), "finishing it stamps the last use");
-    // day 75: long after the upload finished, 15 days after its last use: kept
+    assert.equal(Date.parse(used), Date.parse(r1.run.finished_at) + days(45), "finishing it stamps the last use");
+    // day 60: long after the upload finished, 15 days after its last use: kept
     advance(days(15));
     await gc();
     assert.equal(rawCount(), had, "30 days from the last use, not from the upload");
     assert.equal((await rest(t, owner)).keep_until.slice(0, 10), new Date(Date.parse(used) + 30 * 86400000).toISOString().slice(0, 10));
-    // day 91: gone
+    // day 76: gone
     advance(days(16));
     await gc();
     assert.equal(rawCount(), 0, "cleared 30 days after the last use");
+    assert.ok((await store.getRecord("import_run", root)).data.staging_cleared_at, "the run says its rows were cleared");
     assert.ok(t.stores.data.has(`imp/${root}/state`) && t.stores.data.has(`imp/${c1.id}/report`), "the runs, their state and reports stay");
     // another part goes live too late for this export
     ship("comms.templates", "message_templates", "template");
@@ -381,7 +383,7 @@ test("the hourly check starts exactly one continuation, and none while one runs,
     const res = await Promise.all([runSweep(), runSweep(), runSweep()]);
     assert.equal(continuations(t).length, 1, JSON.stringify(res));
     const c1 = continuations(t)[0];
-    assert.equal(t.stores.data.keys("rec/run/").map((k) => t.stores.data.json(k)).filter((r) => r.kind === "import" && r.input.import_run_id === c1.id).length, 1, "one lane run");
+    assert.equal(t.stores.data.keys("rec/run/").map((k) => t.stores.data.json(k)).filter((r) => r.kind === "import.continue" && r.input.import_run_id === c1.id).length, 1, "one lane run of the continuation kind");
     // while it is queued or running: nothing more
     assert.equal((await runSweep()).result, "busy");
     await t.runWorker({ lane: "bulk" });
@@ -391,7 +393,7 @@ test("the hourly check starts exactly one continuation, and none while one runs,
     assert.equal(continuations(t).length, 1);
     await drain(t);
     assert.equal(notices(t).filter((n) => n.user_id === owner.id && /Bringing in/.test(n.title)).length, 1, "one start note");
-    assert.equal(notices(t).filter((n) => n.user_id === owner.id && /^Templates from your Rotor export of Nov 10 are in: \d+ templates\.$/.test(n.body)).length, 1);
+    assert.equal(notices(t).filter((n) => n.user_id === owner.id && /^Templates from your Rotor export of Nov 10 are in: \d+ fixture lates\.$/.test(n.body)).length, 1);
 
     // a new export is being uploaded (a key made within the day): the old one is left alone
     ship("fixture.campaigns", "campaigns", "campaign2");
@@ -423,7 +425,9 @@ test("a continuation whose lane run never got queued is queued by the next check
     const made = await store.withStoreScope({ deploy: DEPLOY(), requestId: "t" }, () => C.createContinuation({ auto: true }, SWEEP_CTX.write()));
     // the function died after the record was made: no lane run
     await store.updateRecord("import_run", made.run.id, (r) => { const n = { ...r }; delete n.lane_run_id; return n; }, { by: "import", origin: "import", actor_kind: "import", requestId: "t" });
-    for (const k of t.stores.data.keys("rec/run/")) if (t.stores.data.json(k).kind === "import" && t.stores.data.json(k).input.import_run_id === made.run.id) await store.deleteRaw(k);
+    for (const k of t.stores.data.keys("rec/run/")) if (t.stores.data.json(k).kind === "import.continue" && t.stores.data.json(k).input.import_run_id === made.run.id) await store.deleteRaw(k);
+    assert.equal((await runSweep()).result, "busy", "a start in progress has both within seconds: left alone at first");
+    advance(minutes(15));
     assert.equal((await runSweep()).result, "requeued");
     assert.equal((await runSweep()).result, "busy");
     assert.equal(continuations(t).length, 1);
@@ -504,9 +508,10 @@ test("a crash in the middle of a continuation resumes at the row that failed; no
     t.stores.data.clearHooks();
     const stuck = (await t.api(`/import/runs/${c.id}`, { as: owner })).body.data;
     assert.equal(stuck.lane.status, "failed");
-    assert.equal(stuck.run.status, "running");
-    assert.equal((await runSweep()).result, "busy", "a stopped continuation is resumed by a person, not doubled by the check");
-    assert.equal((await go(t, owner)).status, 409);
+    assert.equal(stuck.run.status, "failed", "the run says it stopped");
+    assert.equal(stuck.run.stopped.code, "blobstransienterror");
+    assert.equal((await runSweep()).result, "cancelled_before", "a stopped continuation is resumed by a person, not doubled by the check");
+    assert.equal(continuations(t).length, 1);
     // Resume: a fresh lane run at the saved cursor
     assert.equal((await t.api(`/import/runs/${c.id}/resume`, { method: "POST", as: owner, body: {} })).status, 200);
     runner.IMPORT_LIMITS.stepRows = Infinity;
@@ -594,24 +599,33 @@ test("what can run after a state: done phases count for `after`; a phase waits w
   assert.equal(runner.phasesSignature(["b", "a", "a"]), runner.phasesSignature(["a", "b"]));
 });
 
-test("the notes to the owners: plain words, counts only", () => {
+test("the notes to the owners: plain words, records made, counts only", () => {
   const run = { id: "ir_00000000000000000001", as_of: "2026-11-10", conflicts: { open: 0 } };
-  const ph = (read, skipped = {}) => ({ status: "done", read, skipped });
+  const ph = (read, records = {}, none = 0) => ({ status: "done", read, records, none });
   const state = (phases) => ({ plan: Object.keys(phases).map((name) => ({ name })), phases });
-  assert.equal(C.finishNotice(run, state({ "money.invoices": ph(712), "money.payments": ph(690, { invalid: 2 }), "contacts.customers": { status: "done", earlier: "ir_x", read: 0 } })).body,
-    "Invoices and payments from your Rotor export of Nov 10 are in: 712 invoices, 688 payments.");
-  assert.equal(C.finishNotice({ ...run, conflicts: { open: 3 } }, state({ "comms.messages": ph(10927) })).body,
+  assert.equal(C.finishNotice(run, state({ "money.invoices": ph(712, { invoice: { created: 712 } }), "money.payments": ph(690, { payment: { created: 688 } }, 2), "contacts.customers": { status: "done", earlier: "ir_x", read: 0 } })).body,
+    "Invoices and payments from your Rotor export of Nov 10 are in: 712 invoices, 688 payments. 2 rows made nothing (the report says why).");
+  assert.equal(C.finishNotice(run, state({ "work.timesheets": ph(85, { timesheet: { created: 85 } }), "work.timers": ph(197, { timer: { created: 197 } }) })).body,
+    "Timesheets and visit timers from your Rotor export of Nov 10 are in: 85 timesheets, 197 timers.", "what was made, by kind of record");
+  assert.equal(C.finishNotice({ ...run, conflicts: { open: 3 } }, state({ "comms.messages": ph(10927, { message: { created: 10927 } }) })).body,
     "Messages from your Rotor export of Nov 10 are in: 10,927 messages. 3 fields to settle on the Import screen.");
-  assert.equal(C.finishNotice(run, state({ "plans.lights": ph(4), "comms.templates": ph(45), "comms.campaigns": ph(31), "comms.pin_types": ph(9), "payroll.payroll": ph(6) })).body,
-    "Christmas lights seasons, message templates, campaigns and 2 more parts from your Rotor export of Nov 10 are in: 4 Christmas lights seasons, 45 message templates, 31 campaigns, 9 map pin types, and more.");
+  // one phase may make several kinds of record; several phases the same kind
+  assert.equal(C.finishNotice(run, state({ "plans.lights": ph(4, { plan: { created: 2 }, job: { created: 4, updated: 1 } }), "comms.templates": ph(45, { template: { created: 45 } }), "comms.campaigns": ph(31, { campaign: { created: 31 } }), "comms.pin_types": ph(9, { map_pin_type: { created: 9 } }), "payroll.payroll": ph(6, { payroll_entry: { created: 6 } }) })).body,
+    "Christmas lights seasons, message templates, campaigns and 2 more parts from your Rotor export of Nov 10 are in: 2 plans, 4 jobs, 45 templates, 31 campaigns, and more.");
+  // nothing made: said so, with what changed
+  assert.equal(C.finishNotice(run, state({ "money.invoices": ph(712, { invoice: { unchanged: 700, updated: 12 } }) })).body, "Invoices from your Rotor export of Nov 10 are checked: nothing new, 12 updated.");
+  assert.equal(C.finishNotice(run, state({ "payroll.payroll": ph(6, {}, 6) })).body, "Payroll from your Rotor export of Nov 10 is checked: nothing new. 6 rows made nothing (the report says why).");
   assert.match(C.finishNotice(run, state({ "money.invoices": ph(0) })).body, /^Nothing new was in your Rotor export of Nov 10/);
-  assert.equal(C.finishNotice({ id: run.id }, state({ "money.invoices": ph(1) })).body, "Invoices from your Rotor export are in: 1 invoice.");
-  assert.equal(C.finishNotice(run, state({ "payroll.payroll": ph(6) })).body, "Payroll from your Rotor export of Nov 10 is in: 6 payroll.");
-  assert.match(C.startNotice(run, [{ label: "Payroll" }]).body, /^Payroll from your Rotor export of Nov 10 is being brought in now\./);
+  assert.equal(C.finishNotice({ id: run.id }, state({ "money.invoices": ph(1, { invoice: { created: 1 } }) })).body, "Invoices from your Rotor export are in: 1 invoice.");
+  assert.equal(C.finishNotice(run, state({ "x.y": ph(3, { property: { created: 2 }, map_pin_type: { created: 1 }, address: { created: 3 } }) })).body, "Y from your Rotor export of Nov 10 is in: 2 properties, 1 map pin type, 3 addresses.");
   const s = C.startNotice(run, [{ label: "Invoices" }, { label: "Payments" }]);
   assert.equal(s.title, "Bringing in more of your Rotor export");
   assert.match(s.body, /^Invoices and payments from your Rotor export of Nov 10 are being brought in now\./);
-  for (const n of [s, C.finishNotice(run, state({ "money.invoices": ph(712) }))]) {
+  assert.match(C.startNotice(run, [{ label: "Payroll" }]).body, /^Payroll from your Rotor export of Nov 10 is being brought in now\./);
+  const stop = C.stoppedNotice({ ...run, continues: "ir_00000000000000000000", stopped: { code: "blobstransienterror" } });
+  assert.equal(stop.body, "Bringing in more of your Rotor export of Nov 10 stopped before it finished (storage kept failing). Open it and tap Resume: nothing done is done again.");
+  assert.equal(C.stoppedNotice({ ...run, stopped: { code: "staging_gone" } }).body, "The import of your Rotor export of Nov 10 stopped: that export's rows were cleared. Start a new import to bring in the rest.");
+  for (const n of [s, stop, C.finishNotice(run, state({ "money.invoices": ph(712, { invoice: { created: 712 } }) }))]) {
     assert.ok(n.title.length <= 80 && n.body.length <= 300 && /^\/import\/ir_/.test(n.link) && n.kind === "system");
     assert.ok(!n.body.includes("—"), "no em dash");
   }

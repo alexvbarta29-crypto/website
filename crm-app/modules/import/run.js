@@ -28,7 +28,9 @@ async function loadAll(id, ctx) {
   return { ...d, report };
 }
 
-const stopped = (s) => s.run.status === "running" && s.lane && (s.lane.status === "failed" || s.lane.status === "cancelled");
+// stopped for good: the lane gave up (the run says "failed"), or its lane run ended and the run doesn't know yet
+const stopped = (s) => s.run.status === "failed" || (s.run.status === "running" && !!s.lane && (s.lane.status === "failed" || s.lane.status === "cancelled"));
+const rowsGone = (s) => !!(s.run.stopped && s.run.stopped.code === "staging_gone");
 
 function uploadCard(s) {
   const u = s.upload;
@@ -132,10 +134,12 @@ export default {
         <div class="im-head"><h2>${r.continues ? `More of the ${exportLabel(r.as_of).replace(/^E/, "e").replace(/^R/, "R")}` : exportLabel(r.as_of)}</h2>${runPill(r, s.lane)}</div>
         <p class="small muted">${r.note ? r.note + " · " : ""}Made ${whenLabel(r.created_at)}${r.started_at ? " · started " + whenLabel(r.started_at) : ""}${r.finished_at ? " · finished " + whenLabel(r.finished_at) : ""}</p>
         ${r.continues ? html`<p class="small">${r.auto ? "Started by itself when a part of the CRM went live. " : ""}No upload, no key: it uses the rows of the export uploaded earlier. <a ${attrs({ href: "#/import/" + r.continues })}>The import it continues</a></p>` : ""}
-        ${stopped(s) ? html`<p class="warn-box">It stopped: storage kept failing. Resume goes on from where it stopped; nothing done is done again.</p>
-          <div class="btn-row"><button type="button" class="btn primary" data-resume>Resume</button></div>` : ""}
+        ${stopped(s) ? (rowsGone(s)
+          ? html`<p class="warn-box">It stopped: this export's rows were cleared before it could finish. Start a new import to bring in the rest.</p>`
+          : html`<p class="warn-box">It stopped: storage kept failing. Resume goes on from where it stopped; nothing done is done again.</p>
+          <div class="btn-row"><button type="button" class="btn primary" data-resume>Resume</button></div>`) : ""}
         ${LIVE.has(r.status) && !stopped(s) && r.status !== "uploading" ? html`<p class="small">${s.finish && s.finish !== "indexes" ? "Finishing: lists, the id map, the report…" : "Importing in the background. You can leave this screen."}</p>` : ""}
-        ${LIVE.has(r.status) ? html`<div class="btn-row"><button type="button" class="btn" data-cancel>Cancel this import</button></div>` : ""}
+        ${LIVE.has(r.status) || r.status === "failed" ? html`<div class="btn-row"><button type="button" class="btn" data-cancel>Cancel this import</button></div>` : ""}
       </section>
       ${r.status === "uploading" ? html`${teamCard(s)}${uploadCard(s)}` : html`${r.status === "done" ? html`${restCard(s.rest)}${reportCard(s)}` : ""}${phasesCard(s)}${teamCard(s)}`}
       ${r.status === "done" ? "" : html`<p class="small muted im-foot">Conflicts, the report and the id map are ready when the import is done.</p>`}

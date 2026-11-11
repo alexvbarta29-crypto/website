@@ -86,6 +86,10 @@ test("the rest of an export: what can come in now, what waits and for which part
   assert.match(gone, /rows were cleared[^<]*Start a new import/);
   assert.doesNotMatch(gone, /data-continue|Ready to bring in/);
   assert.match(gone, /Not brought in<\/div>[\s\S]*<dt>Money<\/dt>[\s\S]*<dt>Messages<\/dt>/, "what never came in, whatever is live now");
+  // a newer import was started since and didn't finish: this export is the older one; no button
+  const newer = text(list.render({ runs: [done], rest: { ...rest, blocked: "newer" } }, ctx));
+  assert.match(newer, /A newer import was started after this one/);
+  assert.doesNotMatch(newer, /data-continue|Ready to bring in/);
   // an import is running: a link to it, no second button
   assert.doesNotMatch(text(list.render({ runs: [done], rest: { ...rest, active: "ir_00000000000000000009" } }, ctx)), /data-continue/);
   // nothing left (or no import yet): no card
@@ -112,6 +116,15 @@ test("the rest of an export: what can come in now, what waits and for which part
   assert.match(scr, /9,100 added and 12 updated from 16,000 rows/);
   assert.match(scr, /Waiting for a part that isn&#39;t live yet|Waiting for a part that isn't live yet/);
   assert.doesNotMatch(scr, /Upload<\/h2>|data-member|data-continue/, "no upload, no team map, nothing ready");
+  // a continuation that stopped for good: Resume (and Cancel); when its rows were cleared, no Resume
+  const failed = { ...RUN, ...cont, status: "failed", finished_at: NOW, stopped: { code: "blobstransienterror" }, conflicts: { open: 0, resolved: 0 } };
+  const stoppedScr = text(run.render({ run: failed, upload: null, phases, lane: { status: "failed" }, team: null, report: null, rest: null }, ctx));
+  assert.match(stoppedScr, /<span class="pill red">Stopped<\/span>/);
+  assert.match(stoppedScr, /data-resume/);
+  assert.match(stoppedScr, /data-cancel/);
+  const goneScr = text(run.render({ run: { ...failed, stopped: { code: "staging_gone" } }, upload: null, phases, lane: { status: "failed" }, team: null, report: null, rest: null }, ctx));
+  assert.match(goneScr, /rows were cleared before it could finish/);
+  assert.doesNotMatch(goneScr, /data-resume/);
   // an older import keeps its own report's list of what waited
   const old = text(run.render({ run: { ...RUN, status: "done", finished_at: NOW }, upload: { chunks: 5, expected: 5, missing: [], missing_count: 0 }, phases: [], lane: null, team: null, report: { ...report, chain: null, continues: null }, rest: null }, ctx));
   assert.match(old, /Waiting for a later part of the CRM/);

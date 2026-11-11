@@ -12,9 +12,13 @@
 // whose staged rows it reads: it has no upload of its own); `auto` when the
 // hourly check started it. The run that holds staging keeps
 // `staging_used_at` (the last time a continuation used its rows: they are
-// kept 30 days from then). A finished run lists the phases that still wait
+// kept 30 days from then) and, once the clean-up took them,
+// `staging_cleared_at`. A finished run lists the phases that still wait
 // in `waiting` and keeps `phases_sig` (which phases were registered when
-// its plan was made).
+// its plan was made), `checked_sig` (the registered phases the hourly check
+// last found nothing to bring in for) and `auto_off_at` (a continuation of
+// it was cancelled or stopped: no other is started by itself). A run that
+// stopped for good is "failed" with `stopped: { code, at }`.
 
 import { defineType } from "../../core/registry.mjs";
 import { InputError } from "../../core/errors.mjs";
@@ -72,8 +76,12 @@ export const importRunRow = (r) => ({
   st: r.status, at: r.created_at, by: r.requested_by || "system", asof: r.as_of || null,
   ...(r.started_at ? { s: r.started_at } : {}), ...(r.finished_at ? { fin: r.finished_at } : {}),
   ...(r.summary ? { sum: { created: r.summary.created || 0, updated: r.summary.updated || 0, conflicts: r.conflicts ? r.conflicts.open || 0 : r.summary.conflicts_open || 0 } } : {}),
-  // a continuation: the run it continues and the run whose rows it reads; on that run, when its rows were last used
+  // a continuation: the run it continues and the run whose rows it reads; on that run, when its rows were last
+  // used and when the clean-up took them
   ...(r.continues ? { cont: r.continues } : {}), ...(r.staging_run ? { src: r.staging_run } : {}), ...(r.staging_used_at ? { use: r.staging_used_at } : {}),
+  ...(r.staging_cleared_at ? { clr: r.staging_cleared_at } : {}),
+  // an upload under way: until when its newest key works
+  ...(r.status === "uploading" && r.upload && r.upload.expires_at ? { kx: r.upload.expires_at } : {}),
   ...(r.status === "done" && Array.isArray(r.waiting) ? { w: r.waiting.length } : {}),
 });
 
