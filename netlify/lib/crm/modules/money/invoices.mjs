@@ -379,7 +379,9 @@ async function invoiceCompletedJob(job, actx, origin) {
   const slot = await jobInvoiceSlot(job.id).catch(() => null);
   if (slot && slot.invoice) return { result: "skipped:exists" };
   const c = await liveContact(job.contact_id);
-  if (!actx.mayAct({ record: job, contact: c })) {
+  // before the switch the worker bills only a sandboxed customer (a job typed in for one of Rotor's is left to Rotor)
+  const mode = await sysModeOf(actx.write());
+  if (!actx.mayAct({ record: job, contact: c }) || !(mode.system_of_record === "crm" || (!!c && sandboxed(c, c)))) {
     await actx.would(job, "invoice", { job_total_cents: [null, (job.totals && job.totals.total_cents) || 0] });
     return { result: "would-invoice" };
   }

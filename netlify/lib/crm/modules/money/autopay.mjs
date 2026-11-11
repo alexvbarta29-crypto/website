@@ -33,6 +33,7 @@ import { ordinalTotals } from "../plans/machine.mjs";
 import { moneySettings, liveContact, nameOf, mapLimit } from "./common.mjs";
 import { cycleInvoiceId, makeInvoice, linesFromJob, linesFromOrdinal } from "./invoices.mjs";
 import { cardFor } from "./cards.mjs";
+import { mayMoveMoney } from "./gate.mjs";
 import { chargeInvoice } from "./charge.mjs";
 
 export const runIdFor = (month) => deriveId("autopay_run", `run:${month}`);
@@ -67,7 +68,8 @@ export async function previewAutopay(month, { mode } = {}) {
   for (const [i, { plan, ords }] of due.entries()) {
     const amount = amountOf(plan, ords);
     const [contact, card] = facts[i];
-    const own = crm || sandboxed(plan, contact);
+    // before the switch only a sandboxed customer's plan is really billed (money/gate.mjs)
+    const own = crm || (!!contact && sandboxed(contact, contact));
     items.push({
       plan_id: plan.id, contact_id: plan.contact_id, contact_name: plan.contact_name || nameOf(contact), plan_name: plan.name, amount_cents: amount,
       visits: ords.map((o) => ({ term: o.term || 1, n: o.n, amount_cents: ordinalTotals(plan, o).total_cents })), autopay: !!(plan.billing && plan.billing.autopay), card: card.usable ? "ok" : card.status,
@@ -81,7 +83,7 @@ export async function previewAutopay(month, { mode } = {}) {
     month, at: nowIso(), items,
     totals: {
       plans: items.length, amount_cents: sum(() => true), charge_cents: sum((i) => i.would === "charge"), would_charge_cents: sum((i) => i.would === "would_charge"),
-      no_card: items.filter((i) => i.autopay && i.card !== "ok" && !i.paused).length, paused: items.filter((i) => i.paused).length, invoice_only: items.filter((i) => i.would === "invoice_only").length,
+      no_card: items.filter((i) => i.would === "skipped_no_card").length, paused: items.filter((i) => i.paused).length, invoice_only: items.filter((i) => i.would === "invoice_only").length,
     },
   };
 }
@@ -126,8 +128,8 @@ async function runItem(run, item, ctx) {
   const ords = dueOrdinals(plan, run.month);
   if (!have && !ords.length) return { result: "nothing_due" };
   if (!have && plan.status === "paused") return { result: "skipped_paused" };
-  // Rotor still owns this plan: report only, no invoice (§3.10)
-  if (!ctx.mayAct({ record: plan, contact })) {
+  // Rotor still owns this plan or this customer: report only, no invoice (§3.10)
+  if (!ctx.mayAct({ record: plan, contact }) || !(await mayMoveMoney(plan, { sor: ctx.mode && ctx.mode.system_of_record, contact }))) {
     await ctx.would(plan, "charge", { amount_cents: [null, item.amount_cents] });
     return { result: "would_charge" };
   }

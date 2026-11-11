@@ -16,7 +16,8 @@
 //                               Only with a real driver: in dry-run nothing is
 //                               known, so nothing is marked missing.
 
-import { getRecord, getRecords, updateRecord, updateStats, listRel, listKeys, readPointer, readIndex } from "../../../crm-store.mjs";
+import { getRecord, getRecords, updateRecord, updateStats, listRel, listKeys, readPointer, readIndex, updatePointerList } from "../../../crm-store.mjs";
+import { stripeKey } from "../contacts/display.mjs";
 import { isId } from "../../core/ids.mjs";
 import { now, localDate, addLocalDays } from "../../core/clock.mjs";
 import { emit } from "../../core/events.mjs";
@@ -37,6 +38,8 @@ export async function cardFor(contactId, plan = null) {
     usable, status: s.card_status || "none", payment_method_id: id, customer_id: bill.stripe_customer_id || s.crm_customer_id || (s.customer_ids || [])[0] || null,
     mandate_id: (pm && pm.id === id && pm.mandate_id) || bill.mandate_id || null, kind: (pm && pm.kind) || "card", brand: pm && pm.brand, last4: pm && pm.last4,
     exp_month: pm && pm.exp_month, exp_year: pm && pm.exp_year,
+    // where the method was saved: a practice card can't be charged for real, a test-mode card isn't in the live account
+    mode: (pm && pm.id === id && pm.mode) || (/^dry_/.test(String(id || "")) ? "dry_run" : null),
   };
 }
 
@@ -49,8 +52,12 @@ export async function cardStatus(contactId) {
 }
 
 // A method saved in Checkout. pm: { id, kind, brand, last4, exp_month,
-// exp_year, mandate_id }, customer_id (the CRM's own, or null in dry-run).
-export async function recordSavedMethod(contactId, pm, { customer_id, created_customer = false } = {}, ctx = {}) {
+// exp_year, mandate_id, mode: dry_run | test | live }; customer_id is the
+// Stripe customer of the CRM's OWN Checkout (one the CRM made, or Stripe
+// made for that Checkout; null in dry-run). It is remembered as the CRM's
+// (crm_created_ids): the only customers the CRM ever reads back or acts on
+// events for (the owner's rule: never touch one it didn't make).
+export async function recordSavedMethod(contactId, pm, { customer_id } = {}, ctx = {}) {
   if (!isId(contactId, "contact") || !pm || !pm.id) return null;
   const w = W(ctx);
   const r = await updateStats(contactId, "money", (p) => {
@@ -59,13 +66,14 @@ export async function recordSavedMethod(contactId, pm, { customer_id, created_cu
       ...STATS_DEFAULTS, ...p,
       stripe: {
         ...stripe, card_status: "on_file",
-        default_pm: { id: pm.id, kind: pm.kind === "us_bank_account" ? "us_bank_account" : "card", ...(pm.brand ? { brand: String(pm.brand).slice(0, 20) } : {}), ...(pm.last4 ? { last4: String(pm.last4).slice(-4) } : {}), ...(pm.exp_month ? { exp_month: pm.exp_month, exp_year: pm.exp_year } : {}), ...(pm.mandate_id ? { mandate_id: pm.mandate_id } : {}), saved_at: now().toISOString() },
-        ...(customer_id ? { crm_customer_id: customer_id, customer_ids: [...new Set([...(stripe.customer_ids || []), customer_id])] } : {}),
-        ...(created_customer && customer_id ? { crm_created_ids: [...new Set([...(stripe.crm_created_ids || []), customer_id])] } : {}),
+        default_pm: { id: pm.id, kind: pm.kind === "us_bank_account" ? "us_bank_account" : "card", ...(pm.brand ? { brand: String(pm.brand).slice(0, 20) } : {}), ...(pm.last4 ? { last4: String(pm.last4).slice(-4) } : {}), ...(pm.exp_month ? { exp_month: pm.exp_month, exp_year: pm.exp_year } : {}), ...(pm.mandate_id ? { mandate_id: pm.mandate_id } : {}), ...(pm.mode ? { mode: pm.mode } : {}), saved_at: now().toISOString() },
+        ...(customer_id ? { crm_customer_id: customer_id, customer_ids: [...new Set([...(stripe.customer_ids || []), customer_id])], crm_created_ids: [...new Set([...(stripe.crm_created_ids || []), customer_id])] } : {}),
       },
     };
     return JSON.stringify(next) === JSON.stringify(p) ? null : next;
   }, w);
+  // the customer id leads back to the contact (the weekly card check, a detached card after the switch)
+  if (customer_id) await updatePointerList("stripe-cus", stripeKey(customer_id), (ids) => (ids.includes(contactId) ? ids : [...ids, contactId]), w).catch((e) => console.error(`crm:money: a customer pointer wasn't written (${safeErr(e)})`));
   // every live plan of this contact that wants a card charges this one (§6.2)
   const rows = await listRel("contact-plans", contactId, { limit: 50 }).catch(() => []);
   for (const g of (await getRecords("plan", rows.map((x) => x.id))).filter(Boolean)) {

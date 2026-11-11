@@ -162,3 +162,24 @@ export const piObject = (id, inv, { status = "succeeded", amount, tip = 0, pm, a
 export async function saveCard(contact, pmId = "dry_pm_card_ok", ctx = AUTOMATION) {
   return scope(() => CARDS.recordSavedMethod(contact.id, { id: pmId, kind: /ach/.test(pmId) ? "us_bank_account" : "card", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2030 }, {}, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "test", ...(ctx.mode ? { mode: ctx.mode } : {}) }));
 }
+
+// A plan billed on the 1st with one visit due in `month` (made straight in
+// the store, as Plans would have left it). opts: { autopay, status, mode, as }.
+let pn = 0;
+export async function cyclePlan(as, contact, { month = "2026-12", autopay = true, status = "active", mode = "first_of_month", imported = false, cents = 29500 } = {}) {
+  pn += 1;
+  const data = {
+    contact_id: contact.id, contact_name: `${contact.first_name} ${contact.last_name}`, kind: "recurring", catalog_key: "biannual", name: "Biannual plan",
+    frequency: { interval: "month", count: 6 }, visits_per_year: 2, service_types: ["Residential Window Cleaning"],
+    lines: [{ id: "ln_e", title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: cents, total_cents: cents }],
+    discounts: [{ id: "dc_1", name: "Bi-Annual Discount", type: "fixed", value: 5000, scope: { type: "all" } }], status, pending_reasons: [],
+    term: { start_on: "2026-06-01", initial_months: 12, initial_end_on: "2027-05-31", current_term_n: 1, current_term_start: "2026-06-01", current_term_end: "2027-05-31", renews_every_months: 6, auto_renew: true, price_locked_until: "2027-05-31" },
+    billing: { mode, autopay, card_required: autopay }, perks: { touch_ups: false, rain_guarantee_days: 0, hard_water: false },
+    policy: { early_cancel_clawback_cents: 5000, notice_days: 7, late_cancel_fee_cents: 5000 },
+    ordinals: [{ term: 1, n: 1, k: 1, target_month: "2026-06", status: "completed", completed_on: "2026-06-10", gen: 0 }, { term: 1, n: 2, k: 2, target_month: month, status: "unscheduled", gen: 0 }],
+    cancelled_job_ids: [], agreement_status: imported ? "imported_unknown" : "signed", renewal: {}, origin: imported ? "import" : "staff",
+    ...(status === "paused" ? { pause: { from: "2026-11-01", reason: "Away", by: as.id || "system" } } : {}),
+    ...(imported ? { id: ids.idForRotor("plan", `rotor-pl-${pn}`), import: { run_id: "ir_00000000000000000001", at: "2026-11-08T00:00:00.000Z", hash: "0".repeat(64) }, rotor: { service_plan_id: `rotor-pl-${pn}` } } : {}),
+  };
+  return scope(async () => (await store.createRecord("plan", data, imported ? IMPORT : AS(as))).data);
+}

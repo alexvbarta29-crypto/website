@@ -99,6 +99,9 @@ defineOp("money.charge", {
           const card = await cardFor(inv.contact_id, plan);
           const pmId = input.payment_method_id || (inv.autopay && inv.autopay.payment_method_id) || card.payment_method_id;
           if (!pmId) return { refused: "no_card" };
+          // a practice card can't be charged for real, and a card saved in Stripe's test data isn't in the live account
+          const pmMode = pmId === card.payment_method_id ? card.mode : /^dry_/.test(String(pmId)) ? "dry_run" : null;
+          if (pmMode && pmMode !== p.mode) return { refused: "no_card" };
           const r = await p.impl.chargeSaved({
             customer_id: card.customer_id, payment_method_id: pmId, mandate_id: card.mandate_id || undefined, amount_cents: amount,
             description: `Invoice ${inv.number}`, metadata: { crm_invoice_id: inv.id, crm_contact_id: inv.contact_id, crm_attempt_id: att },

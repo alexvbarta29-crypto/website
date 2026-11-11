@@ -194,6 +194,9 @@ export async function expireSessionsOf(invoiceId, ctx = {}) {
 const metaOf = (o) => (o && o.metadata) || {};
 const idOf = (x) => (x && typeof x === "object" ? x.id : x || null);
 
+// Where a Stripe object lives: the practice driver, Stripe's test data, or the live account.
+const modeOf = (o, simulated) => (simulated ? "dry_run" : o && o.livemode === true ? "live" : o && o.livemode === false ? "test" : null);
+
 function pmFacts(pm) {
   if (!pm || typeof pm !== "object") return null;
   if (pm.type === "us_bank_account") return { id: pm.id, kind: "us_bank_account", brand: (pm.us_bank_account && pm.us_bank_account.bank_name) || "Bank", last4: pm.us_bank_account && pm.us_bank_account.last4 };
@@ -229,7 +232,7 @@ export async function applyPaymentIntent(pi, ctx = {}, { tip_cents, session_id, 
   if (out.transitioned === "failed") await markMethodFailed(inv.contact_id, ctx);
   // a card saved with the payment ("save this card for my plan")
   if (pm && pi.setup_future_usage === "off_session" && status !== "failed") {
-    await recordSavedMethod(inv.contact_id, { ...pm, mandate_id: pi.mandate || undefined }, { customer_id: idOf(pi.customer) }, ctx);
+    await recordSavedMethod(inv.contact_id, { ...pm, mandate_id: pi.mandate || undefined, mode: modeOf(pi, simulated) || undefined }, { customer_id: idOf(pi.customer) }, ctx);
   }
   return out;
 }
@@ -264,16 +267,14 @@ async function applySetupSession(session, ctx, { simulated } = {}) {
   return applySetupIntent({ ...si, metadata: { ...m, ...metaOf(si) } }, ctx, { simulated, customer_id: idOf(session.customer) });
 }
 
-export async function applySetupIntent(si, ctx = {}, { customer_id } = {}) {
+export async function applySetupIntent(si, ctx = {}, { customer_id, simulated } = {}) {
   const m = metaOf(si);
   if (!isId(m.crm_contact_id, "contact") || si.status !== "succeeded") return null;
   const pm = pmFacts(si.payment_method) || (typeof si.payment_method === "string" ? { id: si.payment_method, kind: "card" } : null);
   if (!pm) return null;
   const mandate = idOf(si.mandate);
-  const ptr = await findSetupPointer(m.crm_contact_id, customer_id || idOf(si.customer));
-  return recordSavedMethod(m.crm_contact_id, { ...pm, ...(mandate ? { mandate_id: mandate } : {}) }, { customer_id: customer_id || idOf(si.customer) || null, created_customer: !!(ptr && ptr.created_customer) }, ctx);
+  return recordSavedMethod(m.crm_contact_id, { ...pm, ...(mandate ? { mandate_id: mandate } : {}), mode: modeOf(si, simulated) || undefined }, { customer_id: customer_id || idOf(si.customer) || null }, ctx);
 }
-const findSetupPointer = async () => null;
 
 // ------------------------------------------------------------ the dry-run Checkout (/p/dry-checkout/:session)
 
