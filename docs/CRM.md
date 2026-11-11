@@ -25,7 +25,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | [CRM-IMPORT.md](CRM-IMPORT.md) | M2c | the Rotor export: pack, upload, phases, conflicts, report | live |
 | [CRM-QUOTES.md](CRM-QUOTES.md) | M3a | price book, pricing, quotes and portal approval | live |
 | [CRM-PLANS.md](CRM-PLANS.md) | M3b | care plans, agreements, Christmas lights seasons | live (in review) |
-| [CRM-WORK.md](CRM-WORK.md) | M4a, M4b | jobs, visits, scheduling (live); the tech app (building) |
+| [CRM-WORK.md](CRM-WORK.md) | M4a, M4b | jobs, visits, scheduling; the tech app | live; tech app building |
 | [CRM-MONEY.md](CRM-MONEY.md) | M5 | invoices, payments, tips, autopay | stub |
 | [CRM-COMMS.md](CRM-COMMS.md) | M6 | conversations, campaigns, reviews | stub |
 | [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
