@@ -41,7 +41,7 @@
 // number out.
 
 import { timingSafeEqual, createHash } from "node:crypto";
-import { getRecord, updateRecord, createRecord, readPointer, getSetting, hk } from "../../../crm-store.mjs";
+import { getRecord, updateRecord, createRecord, readPointer, getSetting, hk, currentScope } from "../../../crm-store.mjs";
 import { isId, newId } from "../../core/ids.mjs";
 import { nowIso } from "../../core/clock.mjs";
 import { ParallelRunGuard } from "../../core/errors.mjs";
@@ -224,7 +224,7 @@ export async function fetchMedia(h) {
   const m = got.data;
   const urls = Array.isArray(m.media_urls) ? m.media_urls : [];
   if (!urls.length || !m.media_pending) return { result: "skipped:nothing" };
-  const a = await adapter("sms", { mode: h.mode });
+  const a = await adapter("sms", { deploy: (currentScope() || {}).deploy, mode: h.mode });
   if (!a.impl || typeof a.impl.fetchMedia !== "function") return { result: "skipped:not_connected" };
   const have = new Set(m.attachment_file_ids || []);
   let stored = 0;

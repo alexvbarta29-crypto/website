@@ -235,13 +235,13 @@ export const reviewListeners = {
 
 // ------------------------------------------------------------ routes
 
-async function list() {
+async function list(ctx) {
   const ix = await readIndex("reviews", "");
   const rows = ix.rows.sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).slice(0, 100);
   const weekAgo = nowMs() - 7 * 86400000;
   const perTech = {};
   for (const r of ix.rows) if (r.m && Date.parse(r.at || 0) >= weekAgo) for (const t of r.t || []) perTech[t] = (perTech[t] || 0) + 1;
-  const a = await adapter("reviews", {}).catch(() => ({ mode: "dry_run" }));
+  const a = await adapter("reviews", { deploy: ctx.deploy }).catch(() => ({ mode: "dry_run" }));
   return { data: rows.map((r) => ({ id: r.id, reviewer_name: r.n, rating: r.r, created_at_gbp: r.at, matched: !!r.m, contact_id: r.m || null, suggestions: r.s })), meta: { per_tech_week: perTech, mode: a.mode, goal_per_tech_week: 2 } };
 }
 async function one(ctx) {

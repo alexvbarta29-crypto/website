@@ -15,7 +15,7 @@
 //   time and body hash, Postmark by the marker in its metadata. Found →
 //   done; not found → unknown (the owners are told; nothing is re-sent).
 
-import { getRecord } from "../../../crm-store.mjs";
+import { getRecord, currentScope } from "../../../crm-store.mjs";
 import { sendMessage, addressOf } from "../../core/send.mjs";
 import { isId } from "../../core/ids.mjs";
 import { adapter } from "../../adapters/index.mjs";
@@ -52,7 +52,7 @@ export async function settleTwilio(marker) {
   const contact = await contactOfMarker(marker);
   const to = contact ? addressOf(contact, "sms") : null;
   if (!to) return null;
-  const a = await adapter("sms", {}).catch(() => null);
+  const a = await adapter("sms", { deploy: (currentScope() || {}).deploy }).catch(() => null);
   if (!a || !a.impl || typeof a.impl.findSent !== "function" || a.mode === "dry_run") return null;
   try {
     const hit = await a.impl.findSent({ to, since: marker.at, bodySha256: marker.body_sha256 });
@@ -63,7 +63,7 @@ export async function settlePostmark(marker) {
   const contact = await contactOfMarker(marker);
   const to = contact ? addressOf(contact, "email") : null;
   if (!to) return null;
-  const a = await adapter("email", {}).catch(() => null);
+  const a = await adapter("email", { deploy: (currentScope() || {}).deploy }).catch(() => null);
   if (!a || !a.impl || typeof a.impl.findSent !== "function" || a.mode === "dry_run") return null;
   try {
     const hit = await a.impl.findSent({ to, metadata: { crm_marker: marker.metadata && marker.metadata.crm_marker } });
