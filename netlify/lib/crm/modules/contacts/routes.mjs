@@ -22,7 +22,7 @@ import { fail } from "../../core/http.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { CONSENT_CHANNELS, CONSENT_STATES, CONSENT_SOURCES, LIFECYCLES, SOURCES } from "./types.mjs";
 import { findMatches, createCandidate, resolveContact } from "./match.mjs";
-import { propertiesOf, ensureProperty, geocodeProperty } from "./properties.mjs";
+import { propertiesOf, ensureProperty, geocodeProperty, PROPERTIES_ON_SCREEN } from "./properties.mjs";
 import { startMerge, startBulk, runView } from "./merge.mjs";
 import { normalizePhone, normalizeEmail, normalizeAddress, dateLabel, collator, sortName, initial } from "./display.mjs";
 import { appendNote } from "./intake.mjs";
@@ -217,10 +217,10 @@ async function getRoute(ctx) {
   const got = await readable(ctx, ctx.params.id);
   const c = got.data;
   if (got.tech) {
-    const props = await propertiesOf(c.id);
+    const props = await propertiesOf(c.id, {}, { limit: PROPERTIES_ON_SCREEN });
     return { data: { contact: techView("contact", c), properties: props.map((p) => techView("property", p)) } };
   }
-  const [stats, properties] = await Promise.all([getRecord("contact_stats", c.id), propertiesOf(c.id)]);
+  const [stats, properties] = await Promise.all([getRecord("contact_stats", c.id), propertiesOf(c.id, {}, { limit: PROPERTIES_ON_SCREEN })]);
   return {
     data: {
       contact: view(c), stats: withDefaults(stats ? stats.data : {}), properties: properties.map(({ etag, ...p }) => view(p)),
@@ -376,7 +376,7 @@ async function flagsRoute(ctx) {
 
 async function listPropertiesRoute(ctx) {
   const got = await readable(ctx, ctx.params.id);
-  const props = await propertiesOf(got.data.id);
+  const props = await propertiesOf(got.data.id, {}, { limit: PROPERTIES_ON_SCREEN });
   return { data: props.map(({ etag, ...p }) => (got.tech ? techView("property", p) : view(p))) };
 }
 

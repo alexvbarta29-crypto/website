@@ -205,7 +205,17 @@ Today's "Possible duplicates" count comes from this module's attention row.
 `_plans` / `_visits` (row 10), `contacts.suppressions` (row 12: exact STOP
 replies, before any comms phase), `contacts.giveaway` and
 `contacts.referrals` (row 36). `placeholderContact()` (row 9) is for other
-modules' phases. Row 11 (the tag catalog) is derived from the contacts index
+modules' phases. Row 10's phases run before the phases that make
+placeholder contacts (opportunities, quotes, jobs, plans), so for an
+address whose contact the export doesn't list they make the placeholder
+and its pointer themselves: the property exists from the first import that
+sees it, and the quote or visit is made at it. They match an address
+against ALL of the contact's properties (`propertiesOf()` reads every one,
+in batches; a screen asks for the newest 16), and they patch the row's own
+quote, plan or visit with the property where an earlier import left it
+without one (a fill, applied also when that record is otherwise
+unchanged). Row 8 gives the lead's deal its `opened_at` (the lead's
+creation). Row 11 (the tag catalog) is derived from the contacts index
 (`tagCatalog()`), not stored. Besides `records`, `pointers` and
 `mergeCandidates`, a phase's output may carry `patches` (fill-only, list
 unions, CRM-owned fields), `stats` and `suppressions`; `applyExtras()`

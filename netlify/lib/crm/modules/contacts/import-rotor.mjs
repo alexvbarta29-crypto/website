@@ -365,31 +365,61 @@ export function placeholderContact(rotorId, { name, kind = "lead" } = {}) {
 
 // One address seen on a quote, a plan or a visit → the contact's property at
 // that street + ZIP (matched to what exists), else a new one.
-async function mapProperty({ contactRotorId, contactKind, propertyId, address, from }, ctx) {
-  const cid = (await lookup(ctx, contactKind || "customer", contactRotorId)) || (contactKind === "lead" ? null : await lookup(ctx, "lead", contactRotorId));
-  if (!cid) return { warnings: ["property_no_contact"] };
+//   - A contact the export doesn't list (an archived lead, a customer Rotor
+//     no longer has): these phases run before the ones that would make its
+//     placeholder (opportunities, quotes, jobs, plans), so the placeholder
+//     and its pointer are made here; otherwise the property would only
+//     appear on the NEXT import, after the quote or visit that needs it.
+//   - The row's own record (the quote, the plan, the visit: there from an
+//     earlier import) takes the property where it has none. A patch, so it
+//     is applied even when that record is otherwise unchanged.
+async function mapProperty({ contactRotorId, contactKind, contactName, propertyId, address, from, rowId }, ctx) {
+  const kind = contactKind === "lead" ? "lead" : "customer";
+  let cid = (await lookup(ctx, kind, contactRotorId)) || (kind === "lead" ? null : await lookup(ctx, "lead", contactRotorId));
   const a = normalizeAddress(address || {});
-  if (!a || !a.street1) return { warnings: ["property_no_address"] };
-  const key = addressKey(a);
-  const existing = (await propertiesOf(cid)).find((p) => addressKey(p.address) === key);
-  if (existing) {
-    return propertyId ? { patches: [{ type: "property", id: existing.id, fill: { "rotor.property_id": propertyId } }], pointers: [{ kind: "rotor/property", key: rotorKey(propertyId), value: { id: existing.id } }] } : {};
+  if (!a || !a.street1) return { warnings: [cid ? "property_no_address" : "property_no_contact"] };
+  const out = { records: [], pointers: [], patches: [], warnings: [] };
+  if (!cid) {
+    if (!ROTOR_ID.test(str(contactRotorId))) return { warnings: ["property_no_contact"] };
+    const ph = placeholderContact(str(contactRotorId), { name: contactName, kind });
+    out.records.push(ph);
+    out.pointers.push({ kind: `rotor/${kind}`, key: rotorKey(contactRotorId), value: { id: ph.data.id } });
+    out.warnings.push("placeholder");
+    cid = ph.data.id;
   }
-  const id = propertyId ? idForRotor("property", String(propertyId)) : idForRotor("property", `${cid}:${key}`);
-  return {
-    records: [{ type: "property", data: { id, contact_id: cid, label: "Property", address: a, access: {}, assets: {}, photo_ids: [], rotor: { ...(propertyId ? { property_id: propertyId } : {}), from } } }],
-    pointers: propertyId ? [{ kind: "rotor/property", key: rotorKey(propertyId), value: { id } }] : [],
-  };
+  const key = addressKey(a);
+  // every property of the contact (not only the newest few), read once per contact and step
+  const seen = ctx && ctx.cache ? (ctx.cache.properties ||= new Map()) : new Map();
+  const mine = out.records.length ? [] : seen.get(cid) || (await propertiesOf(cid));
+  seen.set(cid, mine);
+  const existing = mine.find((p) => addressKey(p.address) === key) || null;
+  const id = existing ? existing.id : propertyId ? idForRotor("property", String(propertyId)) : idForRotor("property", `${cid}:${key}`);
+  if (existing) {
+    if (propertyId) { out.patches.push({ type: "property", id, fill: { "rotor.property_id": propertyId } }); out.pointers.push({ kind: "rotor/property", key: rotorKey(propertyId), value: { id } }); }
+  } else {
+    out.records.push({ type: "property", data: { id, contact_id: cid, label: "Property", address: a, access: {}, assets: {}, photo_ids: [], rotor: { ...(propertyId ? { property_id: propertyId } : {}), from } } });
+    seen.delete(cid);                 // read again for the next row of this contact (this one is written after map() returns)
+    if (propertyId) out.pointers.push({ kind: "rotor/property", key: rotorKey(propertyId), value: { id } });
+  }
+  // the quote, plan or visit this row is (when an earlier import made it without a property)
+  const own = PROPERTY_OWNERS[from] && rowId !== undefined && rowId !== null ? await lookup(ctx, PROPERTY_OWNERS[from], rowId) : null;
+  if (own && getType(PROPERTY_OWNERS[from])) out.patches.push({ type: PROPERTY_OWNERS[from], id: own, fill: { property_id: id } });
+  return Object.fromEntries(Object.entries(out).filter(([, list]) => list.length));
 }
+// which record type a property source row is, by phase
+const PROPERTY_OWNERS = { quote: "quote", plan: "plan", visit: "visit" };
 
 const flatAddress = (o, prefix) => ({ street1: o[`${prefix}street1`] ?? o[`${prefix}street`], street2: o[`${prefix}street2`], city: o[`${prefix}city`], state: o[`${prefix}state`], zip: o[`${prefix}zip`] });
 
 export function normalizePropertySource(row) {
   const id = needId(row);
   const cfg = plain(row.jobs_config) ? row.jobs_config : row;
+  // the person's name, for a placeholder when the export doesn't list them (as the jobs' and plans' phases name theirs)
+  const who = plain(row.customer) ? row.customer : plain(row.contact) ? row.contact : null;
+  const name = who ? [clean(who.first_name), clean(who.last_name)].filter(Boolean).join(" ") || clean(who.company_name) || clean(who.name) : "";
   return {
     // plans and visits embed their customer as `customer: { id, ... }`; quotes say `contact_type` (rotor-ops §2.3, §4.3; rotor-money §1.1)
-    id, contact: str(row.customer_id || row.contact_id || row.lead_id || (plain(row.customer) ? row.customer.id : "")),
+    id, contact_name: name.slice(0, 160), contact: str(row.customer_id || row.contact_id || row.lead_id || (plain(row.customer) ? row.customer.id : "")),
     contact_kind: str(row.contact_type).toLowerCase() === "lead" || (row.lead_id && !row.customer_id) ? "lead" : "customer",
     property_id: row.property_id ?? cfg.property_id ?? null,
     address: plain(row.address) ? row.address : flatAddress(cfg, "property_"),
@@ -459,9 +489,9 @@ export const phases = [
   { name: "contacts.customers", entity: "customers", after: ["system.users"], normalize: normalizePerson, map: mapCustomer },
   { name: "contacts.quote_contacts", entity: "quote_contacts", after: ["contacts.customers"], normalize: normalizeQuoteContact, map: mapQuoteContact },
   { name: "contacts.leads", entity: "leads", after: ["contacts.quote_contacts"], normalize: normalizePerson, map: mapLead },
-  { name: "contacts.properties_quotes", entity: "quotes", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, propertyId: r.property_id, address: r.address, from: "quote" }, ctx) },
-  { name: "contacts.properties_plans", entity: "service_plans", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, propertyId: r.property_id, address: r.address, from: "plan" }, ctx) },
-  { name: "contacts.properties_visits", entity: "visits", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, propertyId: r.property_id, address: r.address, from: "visit" }, ctx) },
+  { name: "contacts.properties_quotes", entity: "quotes", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "quote", rowId: r.id }, ctx) },
+  { name: "contacts.properties_plans", entity: "service_plans", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "plan", rowId: r.id }, ctx) },
+  { name: "contacts.properties_visits", entity: "visits", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "visit", rowId: r.id }, ctx) },
   // written before any comms phase (M6's messages phase lists it in `after`)
   { name: "contacts.suppressions", entity: "messages", after: ["contacts.leads"], normalize: normalizeMessage, map: mapStop },
   { name: "contacts.giveaway", entity: "giveaway_entrants", after: ["contacts.leads"], normalize: normalizeEntrant, map: mapEntrant },
