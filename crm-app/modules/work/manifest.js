@@ -41,7 +41,16 @@ const office = {
 };
 
 // The field part (M4b owns this object, with work/visit-field.js and
-// work/tech-*.js; design §11.4).
+// work/tech-*.js; design §11.4, §9.3): the tech's Today (their day, in
+// route order, kept on the phone for a start with no signal), the field
+// panel on the Visit screen for whoever is on the visit, Time (clock in
+// and out, the week's shifts and timers), Pay (the week's hours and an
+// estimate at their rate) and, for the office, Timesheets (the week per
+// person, pending entries, approve the week). A technician's tabs are
+// Today, Inbox, Time, Pay and Me; owners and the office reach Time, Pay
+// and Timesheets from More. Like the office part, nothing here is imported
+// statically: a new file a phone hasn't cached must never stop the app
+// from starting offline.
 //
 // visitActions appear on the single Visit screen (work/visit.js, M4a):
 //   { key, label, when: "assignee" | "office" | "any", order?, perm?, icon?,
@@ -53,15 +62,34 @@ const office = {
 // ctx.state (the panel's own state), ctx.rerender() and ctx.refresh(). A
 // button module default-exports { run(data, ctx) } and runs on tap. Money's
 // "Collect payment" lives in the money manifest's visitActions the same way.
+// A panel may name the Visit screen's own cards it shows itself, which the
+// screen then leaves out: replaces: ["checklist", "lines", "notes"].
 const field = {
-  routes: [],
-  nav: [],
+  routes: [
+    { path: "/time", load: () => import("./tech-time.js"), title: "Time", perm: "time:own", parent: "/today" },
+    { path: "/pay", load: () => import("./tech-pay.js"), title: "Pay", perm: "payroll:read_own", parent: "/today" },
+    { path: "/timesheets", load: () => import("./tech-timesheets.js"), title: "Timesheets", perm: "time:edit_others", parent: "/today", skeleton: "list" },
+  ],
+  nav: [
+    { where: "more", section: "work", label: "Time", path: "/time", perm: "time:own", order: 26, icon: "time" },
+    { where: "more", section: "work", label: "Pay", path: "/pay", perm: "payroll:read_own", order: 27, icon: "pay" },
+    { where: "more", section: "work", label: "Timesheets", path: "/timesheets", perm: "time:edit_others", order: 28, icon: "clock" },
+  ],
   creates: [],
   contactTabs: [],
-  visitActions: [],
-  todayCards: [],
+  visitActions: [
+    { key: "field", label: "Your visit", when: "assignee", order: 10, perm: "visits:work", panel: true, replaces: ["checklist", "lines", "notes"], load: () => import("./visit-field.js") },
+  ],
+  // the person's own day: a tech's Today, and "My visits" with the clock
+  // on Home for owners and the office who go out on visits (nothing for
+  // one who doesn't); the time waiting for the office is Home's "Needs
+  // you" rows (the module's approvals), so that card is home: false
+  todayCards: [
+    { key: "field", perm: "time:own", order: 5, load: () => import("./tech-today.js") },
+    { key: "timesheets", perm: "time:edit_others", order: 16, home: false, load: () => import("./tech-timesheets-card.js") },
+  ],
   settings: [],
-  styles: [],
+  styles: ["./tech-styles.css"],
 };
 
 const merge = (k) => [...(office[k] || []), ...(field[k] || [])];
