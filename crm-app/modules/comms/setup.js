@@ -26,7 +26,7 @@ export default {
           ${step(s.sms.allowlist > 0, `The team's phones on the test list (${s.sms.allowlist} so far)`)}
           ${step(s.sms.effective === "test" || s.sms.effective === "live", "Texting set to Test (Settings → Integrations)")}
         </ul>
-        <p class="small">When the test number is set up in Twilio, paste these as its webhooks. The CRM never changes anything in Twilio itself, and Rotor keeps (763) 314-3400 until you move it.</p>
+        <p class="small">When the test number is set up in Twilio, paste these as its webhooks. The CRM never changes anything in Twilio itself, and Rotor keeps the business number until you move it.</p>
         <div class="small muted">A message comes in</div><div class="cm-url">${s.sms.inbound_url}</div>
         <div class="small muted">Delivery status</div><div class="cm-url">${s.sms.status_url}</div>
         <p class="small muted">${s.sms.advanced_opt_out ? "STOP, START and HELP are answered by Twilio's Advanced Opt-Out; the CRM records them. Remove YES from its opt-in words: Barta's texts ask people to reply YES for a quote." : "The CRM answers HELP itself (the help_reply template)."}</p>

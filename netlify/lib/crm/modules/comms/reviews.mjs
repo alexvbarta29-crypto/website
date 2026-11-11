@@ -43,7 +43,8 @@ export function validateReviews(v) {
 }
 
 const POLL_KEY = "sys/reviews-poll";
-const SKIP_KINDS = new Set(["touch_up", "callback", "warranty", "lights_warranty", "estimate"]);
+// (work/types.mjs JOB_KINDS: a touch-up, warranty work and a takedown are never a reason to ask)
+const SKIP_KINDS = new Set(["touch_up", "warranty", "lights_warranty", "lights_takedown"]);
 
 // ------------------------------------------------------------ matching
 
@@ -179,7 +180,7 @@ export const reviewSequence = {
     const got = await getRecord("job", p.job_id).catch(() => null);
     const job = got ? got.data : null;
     if (!job || job.status !== "completed") { await actx.log(p.job_id, "skipped:changed"); return { result: "skipped:changed" }; }
-    const lights = /^lights/.test(String(job.kind || p.kind || ""));
+    const lights = job.kind === "lights_install";
     if (SKIP_KINDS.has(job.kind) || (job.billable === false && !lights)) { await actx.log(job.id, "skipped:not_billable"); return { result: "skipped:not_billable" }; }
     const fact = { fact_at: job.completed_at || p.at, record: job };
     const e = actx.eligible(fact);
