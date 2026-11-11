@@ -57,7 +57,8 @@ function showBanner(kind, content) {
 function hideBanner(kind) { if (!kind || bannerKind === kind) { banner.hidden = true; bannerKind = null; } }
 
 function offlineBanner(asOf) {
-  showBanner("offline", html`<span>Offline${asOf ? ", as of " + fmtTime(asOf) : ""}. Changes need signal.</span>`);
+  // what works offline differs by screen (a tech's field work waits on the phone; office edits need signal): the screens say
+  showBanner("offline", html`<span>Offline${asOf ? ", as of " + fmtTime(asOf) : ""}.</span>`);
 }
 function updateBanner() {
   if (bannerKind === "update") return;

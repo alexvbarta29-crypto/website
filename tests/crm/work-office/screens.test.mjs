@@ -217,5 +217,5 @@ test("the manifest: the office part and the field part merge; every route loads 
   assert.ok(m.routes.some((r) => r.path === "/visits/:id"));
   assert.equal(typeof (await m.contactTabs[0].load()).default.render, "function");
   assert.equal(typeof (await m.todayCards[0].load()).default.load, "function");
-  assert.deepEqual(m.visitActions, [], "the office adds no visit action; M4b and Money do");
+  assert.deepEqual(m.visitActions.map((a) => a.key), ["field"], "the office adds no visit action; M4b's field panel is the work module's one");
 });
