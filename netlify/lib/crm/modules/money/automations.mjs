@@ -24,7 +24,7 @@
 
 import { getRecord, getSetting, readIndex, updateRecord } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
-import { now, nowIso, localDate, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
+import { now, nowIso, nowMs, localDate, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
 import { runAutomation } from "../../core/automations.mjs";
 import { createPortalLink } from "../../portal/core.mjs";
 import { formatCents } from "../../core/money.mjs";
@@ -151,7 +151,7 @@ export async function failedRun(input, actx) {
 
 // The open invoices due a reminder on `day` (pure over index rows and settings).
 export function overdueDue(rows, day, { overdue_every_days = 3, overdue_max = 5 } = {}) {
-  return rows.filter((r) => r.st === "open" && r.bal > 0 && !r.pr && !r.im && r.due && r.due < day && (r.rm || 0) < overdue_max && !(r.ch && Date.parse(r.ch) > Date.now()))
+  return rows.filter((r) => r.st === "open" && r.bal > 0 && !r.pr && !r.im && r.due && r.due < day && (r.rm || 0) < overdue_max && !(r.ch && Date.parse(r.ch) > nowMs()))
     .filter((r) => { const n = r.rm || 0; return day >= addLocalDays(r.due, 1 + n * overdue_every_days); });
 }
 

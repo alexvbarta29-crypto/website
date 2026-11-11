@@ -20,7 +20,7 @@
 // Every amount is integer cents (core/money.mjs); no float touches money.
 
 import { percentOfBps, splitCents, sumCents } from "../../core/money.mjs";
-import { localDate } from "../../core/clock.mjs";
+import { localDate, now, nowMs as clockMs } from "../../core/clock.mjs";
 
 export const PAY_STATUSES = Object.freeze(["pending", "processing", "succeeded", "failed", "canceled"]);
 export const TERMINAL = Object.freeze(["succeeded", "failed", "canceled"]);
@@ -99,7 +99,7 @@ export function derive(inv, { at } = {}) {
 
 // Derived flags (the index row and the API).
 export const isProcessing = (inv) => entries(inv).some((e) => e.status === "processing");
-export const isOverdue = (inv, today = localDate(new Date())) => inv.status === "open" && !!inv.due_on && inv.due_on < today && (inv.balance_cents || 0) > 0;
+export const isOverdue = (inv, today = localDate(now())) => inv.status === "open" && !!inv.due_on && inv.due_on < today && (inv.balance_cents || 0) > 0;
 export const isPartiallyPaid = (inv) => inv.status === "open" && (inv.paid_cents || 0) > 0 && (inv.paid_cents || 0) - (inv.refunded_cents || 0) < (inv.total_cents || 0);
 export function autopayFailed(inv) {
   const at = (inv.autopay && inv.autopay.attempts) || [];
@@ -108,7 +108,7 @@ export function autopayFailed(inv) {
 }
 export const chargingLive = (inv, nowMs) => !!(inv.charging && Date.parse(inv.charging.until) > nowMs);
 
-export function flags(inv, today, nowMs = Date.now()) {
+export function flags(inv, today, nowMs = clockMs()) {
   return { overdue: isOverdue(inv, today), partially_paid: isPartiallyPaid(inv), autopay_failed: autopayFailed(inv), processing: isProcessing(inv), charging: chargingLive(inv, nowMs) };
 }
 

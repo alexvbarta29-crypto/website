@@ -34,6 +34,9 @@ export const shortName = (c) => {
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.` : parts[0];
 };
 
+// What the customer still owes (Money's part of their stats, M5); 0 when Money has nothing on them.
+const openBalance = (stats) => { const n = stats && stats.money && stats.money.open_balance_cents; return Number.isSafeInteger(n) && n > 0 ? n : 0; };
+
 // The badges of one stop (pure).
 export function badgesFor({ visit, job, property, stats, plan, balance }) {
   const out = [];
@@ -105,7 +108,7 @@ export async function techDay(ctx, dateParam) {
       name: shortName(contact),
       property: prop && !prop.deleted_at ? techView("property", prop) : null,
       arrival: arrivalWindow(v, hours),
-      badges: badgesFor({ visit: v, job, property: prop, stats: S.get(v.contact_id), plan: plan ? { perks: Array.isArray(plan.perks) ? plan.perks.map((p) => String((p && p.label) || p)).slice(0, 4) : [] } : null }),
+      badges: badgesFor({ visit: v, job, property: prop, stats: S.get(v.contact_id), balance: openBalance(S.get(v.contact_id)), plan: plan ? { perks: Array.isArray(plan.perks) ? plan.perks.map((p) => String((p && p.label) || p)).slice(0, 4) : [] } : null }),
       timers: timers.map((t) => techView("timer", t)),
       last_notes: notes,
       prices,

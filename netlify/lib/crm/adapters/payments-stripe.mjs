@@ -27,6 +27,7 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { registerAdapter } from "./index.mjs";
+import { nowMs } from "../core/clock.mjs";
 
 export const STRIPE_API = "https://api.stripe.com/v1";
 export const STRIPE_VERSION = "2024-06-20";
@@ -224,7 +225,7 @@ export function stripeDriver(mode, opts = {}) {
 // Stripe-Signature: t=<unix>,v1=<hex>[,v1=...]. HMAC-SHA256 of `${t}.${raw}`
 // with the endpoint secret, compared in constant time, at most 5 minutes
 // old (either way). → the parsed event; throws on anything else.
-export function verifyWebhook(raw, header, secret, nowS = Math.floor(Date.now() / 1000)) {
+export function verifyWebhook(raw, header, secret, nowS = Math.floor(nowMs() / 1000)) {
   if (!secret || typeof secret !== "string") throw new Error("webhook: no secret");
   const parts = String(header || "").split(",").map((x) => x.trim().split("="));
   const t = Number((parts.find(([k]) => k === "t") || [])[1]);
@@ -241,7 +242,7 @@ export function verifyWebhook(raw, header, secret, nowS = Math.floor(Date.now() 
 }
 
 // A signature header for a body (tests and the owner's own checks).
-export function signWebhook(raw, secret, t = Math.floor(Date.now() / 1000)) {
+export function signWebhook(raw, secret, t = Math.floor(nowMs() / 1000)) {
   return `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${raw}`).digest("hex")}`;
 }
 

@@ -24,7 +24,7 @@
 
 import { getRecord, getRecords, updateRecord, createRecord, listRel, readIndex, addActivity } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
-import { now, nowIso, localDate, addLocalDays } from "../../core/clock.mjs";
+import { now, nowIso, nowMs, localDate, addLocalDays } from "../../core/clock.mjs";
 import { InputError, ConflictError, NotFoundError, ExistsError, BlobsTransientError } from "../../core/errors.mjs";
 import { defineOp, runOp } from "../../core/ops.mjs";
 import { emit } from "../../core/events.mjs";
@@ -344,7 +344,7 @@ export async function voidInvoice(id, { reason } = {}, ctx = {}) {
   const r = await updateRecord("invoice", id, (inv) => {
     if (inv.status === "void") return null;
     if (!["draft", "open"].includes(inv.status)) throw new ConflictError(inv.status === "paid" ? "A paid invoice can't be voided. Refund it first." : "This invoice can't be voided.");
-    if (inv.charging && Date.parse(inv.charging.until) > Date.now()) throw new ConflictError("A card charge is running on this invoice. Try again in a minute.");
+    if (inv.charging && Date.parse(inv.charging.until) > nowMs()) throw new ConflictError("A card charge is running on this invoice. Try again in a minute.");
     return { ...inv, status: "void", voided_at: nowIso(), void_reason: why.slice(0, 300) };
   }, W(ctx));
   await touchMoneyStats(r.data.contact_id, ctx);
