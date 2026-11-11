@@ -90,6 +90,10 @@ function newKeySheet(ctx) {
   });
 }
 
+// Changes made offline that haven't gone out yet go with a sign-out (§2.5): say how many.
+const unsent = () => (window.__crm && typeof window.__crm.unsent === "function" ? window.__crm.unsent() : Promise.resolve(0));
+const unsentNote = (n) => (n ? ` ${n === 1 ? "1 change hasn't" : `${n} changes haven't`} gone out yet; signing out deletes ${n === 1 ? "it" : "them"} from this phone.` : "");
+
 export default {
   title: "My account",
   async load(params, ctx) {
@@ -257,12 +261,14 @@ export default {
       try { await ctx.api(`/api-keys/${encodeURIComponent(btn.getAttribute("data-key-del"))}`, { method: "DELETE" }); toast("Revoked"); ctx.refresh(); } catch (err) { toast(err.message, { bad: true }); }
     },
     "click [data-act=out]": async () => {
-      if (!(await confirmSheet("You'll need your login and password to get back in.", { title: "Sign out of this phone?", yes: "Sign out", danger: true }))) return;
-      window.__crm.signOut();
+      const n = await unsent();
+      if (!(await confirmSheet(`You'll need your login and password to get back in.${unsentNote(n)}`, { title: "Sign out of this phone?", yes: "Sign out", danger: true }))) return;
+      window.__crm.signOut({ warned: true });
     },
     "click [data-act=out-all]": async () => {
-      if (!(await confirmSheet("Every phone and computer signed in as you gets signed out, this one too.", { title: "Sign out everywhere?", yes: "Sign out everywhere", danger: true }))) return;
-      window.__crm.signOut({ everywhere: true });
+      const n = await unsent();
+      if (!(await confirmSheet(`Every phone and computer signed in as you gets signed out, this one too.${unsentNote(n)}`, { title: "Sign out everywhere?", yes: "Sign out everywhere", danger: true }))) return;
+      window.__crm.signOut({ everywhere: true, warned: true });
     },
   },
 };

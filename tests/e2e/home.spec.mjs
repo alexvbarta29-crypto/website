@@ -349,7 +349,8 @@ test("on a desk: a tech gets their own sidebar (no sections, no search, no numbe
   const { p, page, f } = await home("theo", { device: "desk1440" });
   try {
     assert.equal(await title(f), "Today");
-    assert.deepEqual(await f.$$eval("#side .side-item .sl", (els) => els.map((e) => e.textContent)), ["Today", "Me"]);
+    // a tech's own bar as a sidebar: Today, Time and Pay (the tech app, M4b), Me
+    assert.deepEqual(await f.$$eval("#side .side-item .sl", (els) => els.map((e) => e.textContent)), ["Today", "Time", "Pay", "Me"]);
     assert.equal(await f.$("#side .side-grp"), null);
     assert.equal(await f.$("#top-q"), null, "no customer search for a tech");
     assert.equal(await f.$(".hm-kpi, .hm-hero"), null);
