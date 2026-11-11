@@ -2,13 +2,19 @@
 
 **One app: the CRM.** With a CRM sign-in (or the office password before the
 first owner exists, to set it up) `/office` is the CRM, full screen, with no
-tab row. The dashboards are the CRM's **Dashboard** tab (Overview, Money,
-Sales, Plans, Jobs, switched in place) and the office tools are in **More**:
-Lights, Follow-ups, Purchases, Giveaway and Rotor
-(`crm-app/modules/system/{dashboard,tool}.js`, routes `/dashboard`,
-`/dashboard/:view`, `/tools/:id`). They show only on a phone that also has
-the office sign-in (the client's pseudo-permission `office:tools`); each
-page checks the office cookie again on the server. Old tab links
+tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): the
+dashboard's key numbers and charts drawn in the CRM, today's visits and
+what needs you. The office's bar is Home · Schedule · Customers · Sales ·
+Menu; on a computer (900 px and up) the same app has a sidebar of every
+section, a search box and a New button. The full dashboards (Overview,
+Money, Sales, Plans, Jobs, switched in place) open from Home's "See more"
+and Menu → Admin → Dashboard, and the office tools are in Menu → Office
+tools: Light Studio, Purchases, Giveaway and Rotor (Follow-ups is under
+Menu → Sales) (`crm-app/modules/system/{dashboard,tool}.js`, routes
+`/dashboard`, `/dashboard/:view`, `/tools/:id`). They show only on a phone
+or computer that also has the office sign-in (the client's
+pseudo-permission `office:tools`); each page checks the office cookie again
+on the server. Old tab links
 (`/office#lights`, `#money`, ...) open the matching CRM screen
 (`IN_CRM` in netlify/lib/office-page.mjs), only with the office cookie, so a
 tool's own "sign in" bounce can never loop.
@@ -48,10 +54,11 @@ cookie **or** a CRM session:
 
 - **A CRM session** (with or without the office cookie): the one app, the
   CRM full screen. With the office cookie too (owners who typed the office
-  password once on this phone), the Dashboard tab and the office tools in
-  More; without it (techs, and Eric unless he has the office password) only
-  the CRM: a tech never sees a dashboard or an office tool, and an old
-  `#lights` link opens the CRM's Today.
+  password once on this phone), the dashboards behind Home's "See more"
+  and the office tools in Menu; without it (techs, and Eric unless he has
+  the office password) only the CRM, whose Home still shows the numbers to
+  the office (`reports:read`): a tech never sees a number, a dashboard or
+  an office tool, and an old `#lights` link opens the CRM's Today.
 - **The office password alone:** before the CRM has an owner, the CRM full
   screen with **Set up the CRM** (the first owner types the office password
   again, a name, a login and a password: automatic setup, nothing to add
@@ -74,7 +81,7 @@ CRM the phone's safe areas (frames don't get them) and the height of the
 bottom of its sheets above it). `npm run e2e` checks these on phone sizes
 (docs/CRM.md "Tests").
 
-**Where the Follow-ups wording comes from.** `/playbook` (More →
+**Where the Follow-ups wording comes from.** `/playbook` (Menu → Sales →
 Follow-ups) keeps its built-in texts until the CRM is set up; then each
 step shows the CRM's current wording of that text (Templates `cad_new_1..9`
 and `cad_est_1..5`, cached a minute), so an edit in the CRM shows on the
@@ -119,6 +126,11 @@ and no browser bar. No App Store needed.
   in once more the first time it opens.
 - **Android / Chrome:** open /office and tap Install on the "Get the app"
   card (or Chrome's menu → Install app).
+- **A computer (Chrome or Edge):** open /office and click Install on the
+  "Get the app" card (it says "Install Barta Office as an app on this
+  computer"), or the install icon in the address bar. It opens in its own
+  window with the desktop layout. `npm run e2e` (home.spec) asks Chrome
+  itself whether /office can be installed (no installability errors).
 
 A "Get the app" card shows in a browser tab until it's installed or closed
 with ×, and never inside the installed app. Every update to the site reaches

@@ -304,3 +304,29 @@ test("the office's Today cards are Home's server rows (home: false); new cards s
   const rows = R.allModules().flatMap((m) => [...m.attention.map((a) => a.key), ...m.approvals.map((a) => a.kind)]);
   for (const k of ["sales.attention", "sales.calls_due", "sales.tasks_mine", "plans.due", "agreements.unsigned", "agreement_templates", "plans.clawback", "work.stale"]) assert.ok(rows.includes(k), k);
 });
+
+test("the reports module's series (when it ships) takes over from the day its data starts; Rotor keeps the weeks before", async () => {
+  const S = await import("../../../netlify/lib/crm/core/services.mjs");
+  const asked = [];
+  const put = S.__swapServiceForTests("reports.series", async ({ metric, group, keys }) => {
+    asked.push(`${metric}/${group}/${keys.length}`);
+    const since = "2026-11-01";
+    return { since, values: Object.fromEntries(keys.filter((k) => (k.length === 7 ? `${k}-01` : k) >= since).map((k) => [k, metric === "leads" ? 7 : 123400])) };
+  });
+  try {
+    const d = (await t.api("/home", { as: fx.owner })).body.data.kpis;
+    assert.deepEqual(asked.sort(), ["collected/month/12", "collected/week/12", "leads/week/12"]);
+    const weeks = d.money.weekly;
+    assert.deepEqual(weeks.filter((w) => w.source === "crm").map((w) => [w.key, w.value]), [["2026-11-02", 123400], ["2026-11-09", 123400], ["2026-11-16", 123400]]);
+    assert.ok(weeks.filter((w) => w.key < "2026-11-01").every((w) => w.source === "rotor"), "the weeks before stay Rotor's");
+    assert.equal(d.money.monthly.find((m) => m.key === "2026-11").source, "crm");
+    assert.equal(d.money.monthly.find((m) => m.key === "2026-10").source, "rotor");
+    assert.equal(d.sales.leads.at(-1).value, 7);
+  } finally { put(); }
+  // a provider that fails leaves Rotor's series as they were
+  const put2 = S.__swapServiceForTests("reports.series", async () => { throw new Error("rollup missing"); });
+  try {
+    const d = (await t.api("/home", { as: fx.owner })).body.data.kpis;
+    assert.ok(d.money.weekly.every((w) => w.source === "rotor"));
+  } finally { put2(); }
+});

@@ -27,6 +27,7 @@ import { allModules } from "../../core/registry.mjs";
 import { officeSignedIn } from "../../core/auth.mjs";
 import { now, localDate, addLocalDays } from "../../core/clock.mjs";
 import { BudgetError } from "../../core/errors.mjs";
+import { has, call } from "../../core/services.mjs";
 import { listPendingActions } from "../../core/pending.mjs";
 import { waitingCount } from "../../core/bulk.mjs";
 import { readHealth, laneStatus } from "../../core/lanes.mjs";
@@ -139,10 +140,23 @@ async function numbers(ctx, today, modeP) {
     crm = crmNumbers({ today, jobsYear: jobsYear.rows, jobsOpen: jobsOpen.rows, quotesOpen: quotesOpen.rows, quotesYear: quotesYear.rows, plans: plans.rows, visits: visits.rows });
   }
   const rotor = snap.ok ? rotorNumbers(snap.data, today) : null;
-  const out = homeKpis({ rotor, crm, today });
+  const out = homeKpis({ rotor, crm, today, extra: await series(ctx, rotor) });
   // why the Rotor numbers are missing (the office's one setup step), never the key itself
   out.source.rotor_missing = snap.ok ? null : snap.reason;
   return out;
+}
+
+// The CRM's own money and lead series (the reports module's rollups, once
+// it provides "reports.series"): each takes over from the day its data
+// starts, the snapshot keeping the weeks and months before (mergeSeries).
+async function series(ctx, rotor) {
+  if (!rotor || !has("reports.series")) return {};
+  const ask = (metric, group, rows) => call("reports.series", { metric, group, keys: rows.map((r) => r.key) }, ctx).catch((e) => {
+    console.error(`crm:home: a series was left out (${safeErr(e)})`);
+    return null;
+  });
+  const [weekly, monthly, leads] = await Promise.all([ask("collected", "week", rotor.weekly), ask("collected", "month", rotor.monthly), ask("leads", "week", rotor.leads)]);
+  return { weekly, monthly, leads };
 }
 
 // ------------------------------------------------------------ GET /home
