@@ -114,6 +114,6 @@ test("a refund Stripe reports (charge.refunded) and the owner's own request are 
     const imported = await scope(() => store.createRecord("payment", { id: U.payId.client(uuid(900)), contact_id: rc.id, kind: "payment", method: "card", status: "succeeded", amount_cents: 20000, tip_cents: 0, received_on: "2026-10-01", import: { run_id: "ir_00000000000000000001", at: "2026-11-08T00:00:00.000Z", hash: "1".repeat(64) } }, IMPORT));
     const ro = await refund(t, owner, imported.data.id, 1000, 32);
     assert.equal(ro.status, 409);
-    assert.match(ro.body.error.message, /made in Rotor\. Refund it there/);
+    assert.match(ro.body.error.message, /still Rotor's until the switch/);
   } finally { t.done(); }
 });

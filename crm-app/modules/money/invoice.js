@@ -80,7 +80,8 @@ export default {
     const inv = s.invoice;
     const f = s.flags || {};
     const row = { st: inv.status, od: f.overdue, pp: f.partially_paid, af: f.autopay_failed, pr: f.processing, ex: inv.excess_cents };
-    const note = inv.status !== "open" ? "" : s.online === "not_yet" ? "Rotor still bills this customer: paying online and card charges open after the switch. You can still record cash or a check."
+    const note = s.rotor_owned ? "This invoice came from Rotor and is still Rotor's until the switch. It can be read here; change it in Rotor and the next import brings it over."
+      : inv.status !== "open" ? "" : s.online === "not_yet" ? "Rotor still bills this customer: paying online and card charges open after the switch. You can still record cash or a check."
       : s.online === "charging" ? "A card charge is running right now." : s.online === "processing" ? "A bank payment is clearing (a few days). No new charge or pay link until it does." : "";
     return html`<div class="stack">
       <section class="card mn-head">

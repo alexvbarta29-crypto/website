@@ -4,7 +4,7 @@
 // customer Rotor still bills can't be taken through it, whatever is asked.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, customer, testContact, importedCustomer, openInvoice, invoiceOf, recs, outbox, texts, drain, scope, store, saveCard, portalCookie, PJSON, IPHONE, IMPORT, AS, CO, CH, GATE, AUTOMATION } from "./fixtures.mjs";
+import { setup, customer, testContact, importedCustomer, openInvoice, invoiceOf, recs, outbox, texts, drain, scope, store, uuid, saveCard, portalCookie, PJSON, IPHONE, IMPORT, AS, CO, CH, GATE, AUTOMATION } from "./fixtures.mjs";
 
 const importedInvoice = (c) => scope(async () => (await store.createRecord("invoice", {
   number: "INV-0555", seq: "imported", n: 555, kind: "standard", contact_id: c.id, status: "open", issued_on: "2026-11-01", due_on: "2026-11-01",
@@ -37,6 +37,20 @@ test("the practice Checkout is refused for a customer Rotor still bills: an impo
       assert.equal(forged.status, 409);
       assert.equal(forged.body.error.code, "not_sandboxed");
     }
+    // Rotor's own invoice is read here and changed in Rotor: every button is off and every route says so
+    const seen = await t.api(`/invoices/${imp.id}`, { as: owner });
+    assert.equal(seen.body.data.rotor_owned, true);
+    assert.deepEqual(Object.values(seen.body.data.can), new Array(Object.keys(seen.body.data.can).length).fill(false));
+    for (const [path, body] of [["payments", { method: "cash", amount_cents: 29500, client_id: uuid(1) }], ["send", { channels: ["sms"] }], ["void", { reason: "Paid in Rotor" }], ["write-off", {}], ["charge", {}], ["issue", {}]]) {
+      const r = await t.api(`/invoices/${imp.id}/${path}`, { method: "POST", as: owner, body });
+      assert.equal(r.status, 409, path);
+      assert.match(r.body.error.message, /still Rotor's until the switch/, path);
+    }
+    assert.equal((await t.api(`/invoices/${imp.id}`, { method: "PATCH", as: owner, ifMatch: seen.body.data.etag, body: { office_note: "x" } })).status, 409);
+    assert.equal((await invoiceOf(imp.id)).wv, imp.wv, "untouched");
+    // the one the office typed in is theirs: cash can be written down on it, but its card button is off
+    const mine = await t.api(`/invoices/${typed.id}`, { as: owner });
+    assert.deepEqual([mine.body.data.rotor_owned, mine.body.data.can.record, mine.body.data.can.charge, mine.body.data.can.card_link], [false, true, false, false]);
     // no card charge either, by a person's tap or the worker; a card can't be added online
     await saveCard(c);
     const run = await t.api(`/invoices/${typed.id}/charge`, { method: "POST", as: owner, body: {} });

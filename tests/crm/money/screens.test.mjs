@@ -82,10 +82,15 @@ test("one invoice: lines, balance, the card, and only the buttons its state and 
   assert.match(h, /VISA ending 4242 · On file/);
   assert.match(h, /class="pill">Test<\/span>/, "a record made here is marked while Rotor is in charge");
   // an imported invoice before the switch: says why nothing online runs, offers no card button
-  const imp = text(view.render(state({ sandboxed: false, online: "not_yet", can: { send: false, record: true, charge: false, refund: false, void: false, write_off: false, card_link: false } }, { rotor: { status_raw: "sent" } }), ctx()));
-  assert.match(imp, /Rotor still bills this customer/);
-  assert.doesNotMatch(imp, /data-act="charge"|data-act="send"|data-act="void"/);
+  const imp = text(view.render(state({ sandboxed: false, online: "not_yet", rotor_owned: true, can: {} }, { rotor: { status_raw: "sent" } }), ctx()));
+  assert.match(imp, /still Rotor(&#39;|')s until the switch/);
+  assert.doesNotMatch(imp, /data-act=/, "read here, changed in Rotor");
   assert.match(imp, /From Rotor/);
+  // an invoice the office typed in for a customer Rotor still bills: cash can be written down, a card can't be charged
+  const typed = text(view.render(state({ sandboxed: true, online: "not_yet", can: { send: true, record: true, charge: false, card_link: false } }), ctx()));
+  assert.match(typed, /Rotor still bills this customer/);
+  assert.match(typed, /data-act="record"/);
+  assert.doesNotMatch(typed, /data-act="charge"/);
   // paid: nothing to collect; an overpayment asks for a decision
   const paid = text(view.render(state({ can: { refund: true } }, { status: "paid", balance_cents: 0, paid_cents: 30000, excess_cents: 2500 }), ctx()));
   assert.match(paid, /Overpaid/);
@@ -111,9 +116,10 @@ test("Payments and the contact's Money tab: the month's totals, practice payment
   assert.match(th, /\$25\.00<\/b><small>account credit \(\+\$10\.00 to decide\)/);
   assert.match(th, /href="#\/invoices\/new\/ct_00000000000000000001"/);
   assert.match(th, /VISA ending 4242 · Failed last time/);
-  assert.match(th, /data-credit/);
+  assert.match(th, /data-mn-credit/);
+  assert.equal(tab.events, undefined, "the Contact screen doesn't route a tab's taps: the tab listens for its own two buttons");
   const ro = text(tab.render({ id: CT, invoices: [], payments: [], more: {}, credit: { balance_cents: 0, rows: [] }, card: { status: "none" }, open_balance_cents: 0, can: {} }, ctx()));
-  assert.doesNotMatch(ro, /data-credit|New invoice|data-card-link/);
+  assert.doesNotMatch(ro, /data-mn-credit|New invoice|data-mn-card-link/);
   assert.match(ro, /No card on file/);
   assert.match(text(tab.render({ denied: true }, ctx())), /Not for this login/);
 });

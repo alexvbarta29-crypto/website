@@ -434,6 +434,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/schedule/route/:date/:user": { date: (await get(`/visits/${seeded.visits.tech}`)).visit.date, user: seeded.users.tech.id },
     "/quotes/:id": seeded.quotes.sent, "/quotes/:id/edit": seeded.quotes.draft, "/quotes/:id/lights": seeded.quotes.draft,
     "/plans/:id": seeded.plans.active, "/lights/:season": String(seeded.seasons.year), "/settings/agreement-templates/:id": seeded.templates.quarterly,
+    "/invoices/:id": seeded.money.invoices.open, "/autopay/:id": seeded.money.autopay,
   };
   await o.close();
   const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] && typeof ids[path] === "object" ? ids[path][name] : ids[path] ?? null) ?? m);

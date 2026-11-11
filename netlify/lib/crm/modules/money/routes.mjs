@@ -142,23 +142,35 @@ async function listPayments(ctx) {
 
 // ------------------------------------------------------------ one invoice
 
+// Until the switch, an invoice or payment the import brought in is Rotor's:
+// it is read here and changed there (a payment recorded on it in both
+// places would count twice after the next import). People aren't stopped by
+// the parallel-run guard, so the money routes say it themselves.
+const ROTOR_OWNS = "This one is still Rotor's until the switch. Change it in Rotor and the next import brings it over.";
+const rotorOwns = (rec, mode) => !!(rec && rec.import) && (mode && mode.system_of_record) !== "crm";
+async function assertOurs(ctx, rec) {
+  if (rotorOwns(rec, await ctx.sysMode())) throw new ConflictError(ROTOR_OWNS, { code: "rotor_owns" });
+}
+
 async function invoiceData(ctx, inv, etag) {
   const mode = await ctx.sysMode();
   const [pays, contact, card] = await Promise.all([paymentsOf(inv.id), liveContact(inv.contact_id), cardFor(inv.contact_id)]);
   const f = flagsOf(inv, today(), nowMs());
   const owner = ctx.can("invoices:void");
   const online = await payRefusal(inv, { sor: mode.system_of_record });
+  const ours = !rotorOwns(inv, mode);
+  const billable = !online || online.code !== "not_yet";          // before the switch a card is charged only for a sandboxed customer
   return {
-    invoice: view(inv), etag, flags: f, payments: pays.map(view),
+    invoice: view(inv), etag, flags: f, payments: pays.map(view), rotor_owned: !ours,
     contact: contact ? { id: contact.id, display_name: nameOf(contact), has_sms: (contact.phones || []).some((p) => p.sms !== false), has_email: (contact.emails || []).length > 0, test: !!(contact.flags && contact.flags.test) } : null,
     card: { status: card.status, usable: card.usable, brand: card.brand || null, last4: card.last4 || null, kind: card.kind },
     sandboxed: sandboxed(inv, contact), system_of_record: mode.system_of_record, online: online ? online.code : "ok",
     can: {
-      edit: ctx.can("invoices:write") && inv.status === "draft", issue: ctx.can("invoices:send") && inv.status === "draft", send: ctx.can("invoices:send") && inv.status === "open" && inv.balance_cents > 0,
-      record: ctx.can("payments:record") && inv.status === "open" && inv.balance_cents > 0 && !f.charging,
-      charge: ctx.can("payments:charge") && inv.status === "open" && inv.balance_cents > 0 && !f.charging && !f.processing,
-      refund: ctx.can("payments:refund"), void: owner && ["draft", "open"].includes(inv.status), write_off: owner && inv.status === "open",
-      card_link: ctx.can("invoices:send"),
+      edit: ours && ctx.can("invoices:write") && inv.status === "draft", issue: ours && ctx.can("invoices:send") && inv.status === "draft", send: ours && ctx.can("invoices:send") && inv.status === "open" && inv.balance_cents > 0,
+      record: ours && ctx.can("payments:record") && inv.status === "open" && inv.balance_cents > 0 && !f.charging,
+      charge: ours && billable && ctx.can("payments:charge") && inv.status === "open" && inv.balance_cents > 0 && !f.charging && !f.processing,
+      refund: ours && ctx.can("payments:refund"), void: ours && owner && ["draft", "open"].includes(inv.status), write_off: ours && owner && inv.status === "open",
+      card_link: ours && billable && ctx.can("invoices:send"),
     },
   };
 }
@@ -231,6 +243,7 @@ async function patchInvoice(ctx) {
   if (!ctx.ifMatch) throw new InputError("This change needs the version you edited (If-Match).", "if-match");
   const b = ctx.body || {};
   const g = await getInvoice(ctx.params.id);
+  await assertOurs(ctx, g.data);
   const patch = {};
   if (b.lines !== undefined) {
     if (g.data.status !== "draft") throw new ConflictError("Only a draft's lines can change. Void this one and make a new invoice.");
@@ -248,14 +261,14 @@ async function patchInvoice(ctx) {
 }
 
 const act = (fn) => async (ctx) => {
-  await getInvoice(ctx.params.id);
+  await assertOurs(ctx, (await getInvoice(ctx.params.id)).data);
   const inv = await fn(ctx);
   const g = await getInvoice(inv.id);
   return { data: await invoiceData(ctx, g.data, g.etag), etag: g.etag };
 };
 
 async function chargeRoute(ctx) {
-  await getInvoice(ctx.params.id);
+  await assertOurs(ctx, (await getInvoice(ctx.params.id)).data);
   const run = await startChargeRun(ctx.params.id, ctx.body || {}, ctx);
   return { status: 202, data: { run_id: run.id } };
 }
@@ -289,12 +302,14 @@ async function recordManual(ctx, inv, b, { visit } = {}) {
 async function recordRoute(ctx) {
   const g = await getInvoice(ctx.params.id);
   if (!officeMoney(ctx) && !(await techMayRead(ctx, g.data))) throw new NotFoundError("That invoice isn't here.");
+  await assertOurs(ctx, g.data);
   const out = await recordManual(ctx, g.data, ctx.body || {});
   if (!officeMoney(ctx)) return { status: out.created ? 201 : 200, data: { payment: techView("payment", out.payment), invoice: out.invoice ? techView("invoice", out.invoice.data) : null } };
   return { status: out.created ? 201 : 200, data: { payment: view(out.payment), invoice: out.invoice ? view(out.invoice.data) : null } };
 }
 
 async function refundRoute(ctx) {
+  await assertOurs(ctx, (await getPayment(ctx.params.id)).data);
   const out = await refundPayment(ctx.params.id, ctx.body || {}, ctx.write());
   return { status: 201, data: { refund: view(out.refund), payment: view(out.payment), invoice: out.invoice ? view(out.invoice) : null } };
 }
@@ -336,6 +351,7 @@ async function visitInvoice(ctx, v) {
   if (!jg || jg.data.deleted_at) throw new ConflictError("This visit has no job to bill.");
   const slot = await jobInvoiceSlot(jg.data.id);
   if (slot.invoice) {
+    await assertOurs(ctx, slot.invoice);
     if (slot.invoice.status === "draft") return issueInvoice(slot.invoice.id, { silent: true }, ctx.write());
     return slot.invoice;
   }

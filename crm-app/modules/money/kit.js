@@ -75,7 +75,7 @@ export const thisMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Ame
 
 // What the payments mode means, in the office's words.
 export const MODE = {
-  dry_run: ["Dry run", "Nothing is charged. Payments are practice only, on test contacts and records made in the CRM."],
+  dry_run: ["Dry run", "Nothing is charged. Payments are practice only, and only for test contacts and customers Rotor doesn't bill."],
   test: ["Test", "Stripe's test mode with the test key: no real money moves."],
   live: ["Live", "Real cards are charged."],
   off: ["Paused", "No payment can be made right now."],

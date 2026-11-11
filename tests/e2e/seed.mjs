@@ -221,6 +221,8 @@ export async function seed(opts = {}) {
     email: `legacy${i}@example.com`, phone: "+1763555" + String(1500 + i).padStart(4, "0"), status: i % 5 ? "active" : "inactive", source: SOURCES[i % SOURCES.length], assigned_to: [],
     address: { street1: `${500 + i} Example Ave`, street2: null, city: TOWNS[i % TOWNS.length], state: "MN", zip: "55328", country: "US" }, tags: [], notes: "", created_at: "2025-03-14T15:00:00+00:00",
   })) }));
+  // money (M5): invoices in every state, a test contact with a card and a visit, one of Rotor's invoices
+  out.money = await (await import("./money-seed.mjs")).seedMoney(out);
   if (opts.home) await homeDay(out, O, day);
   seeded = out;
   return out;
