@@ -55,8 +55,14 @@ export default {
       const uid = el.dataset.approve;
       if (!(await confirmSheet(`Approve ${nameOf(ctx.state.people, uid)}'s finished shifts for this week? Open and waiting ones stay as they are.`, { title: "Approve the week", yes: "Approve" }))) return;
       try {
-        const r = await ctx.api("/timesheets/approve", { method: "POST", body: { user_id: uid, week_start: ctx.state.week_start } });
-        toast(`${plural(r.data.approved, "shift")} approved${r.data.pending ? `; ${r.data.pending} still waiting` : ""}`);
+        let r;
+        let n = 0;
+        for (let i = 0; i < 5; i++) {
+          r = await ctx.api("/timesheets/approve", { method: "POST", body: { user_id: uid, week_start: ctx.state.week_start } });
+          n += r.data.approved;
+          if (!r.data.more) break;
+        }
+        toast(`${plural(n, "shift")} approved${r.data.pending ? `; ${r.data.pending} still waiting` : ""}`);
       } catch (err) { toast(err.message || "That didn't save.", { bad: true }); }
       ctx.refresh();
     },

@@ -448,7 +448,9 @@ export async function editSheet(id, body, ctx) {
 }
 
 // POST /timesheets/approve { user_id, week_start }: every closed shift of
-// that week → approved. Open and pending ones wait (counted).
+// that week → approved, up to APPROVE_BATCH a request (more: true asks
+// again; the app does). Open and pending ones wait (counted).
+export const APPROVE_BATCH = 20;
 export async function approveWeek(userId, weekStart, ctx) {
   if (!isId(userId, "user")) throw new InputError("Whose week?", "user_id");
   const ws = weekParam(weekStart);
@@ -456,12 +458,13 @@ export async function approveWeek(userId, weekStart, ctx) {
   const by = ctx.user ? ctx.user.id : "office";
   const at = nowIso();
   let approved = 0;
-  for (const s of sheets.filter((x) => x.status === "closed")) {
+  const closed = sheets.filter((x) => x.status === "closed");
+  for (const s of closed.slice(0, APPROVE_BATCH)) {
     const r = await updateRecord("timesheet", s.id, (x) => (x.status !== "closed" ? null : { ...x, status: "approved", approved_at: at, approved_by: by }), W(ctx));
     if (r.changed) approved += 1;
   }
   return {
-    week_start: ws, user_id: userId, approved,
+    week_start: ws, user_id: userId, approved, more: closed.length > APPROVE_BATCH,
     open: sheets.filter((x) => x.status === "open").length, pending: sheets.filter((x) => x.status === "pending_approval").length,
     already: sheets.filter((x) => x.status === "approved" || x.status === "locked").length,
   };
@@ -690,7 +693,7 @@ export const timesheetRoutes = [
   R("GET", "/timesheets", "time:edit_others", "none", officeList, { maxCalls: 30 }),
   R("GET", "/timesheets/:id", "time:edit_others", "required", officeOne),
   R("PATCH", "/timesheets/:id", "time:edit_others", "required", officeEdit, { maxCalls: 40 }),
-  R("POST", "/timesheets/approve", "time:edit_others", "none", officeApprove, { maxCalls: 160 }),
+  R("POST", "/timesheets/approve", "time:edit_others", "none", officeApprove, { maxCalls: 200 }),
   R("POST", "/timesheets/:id/decide", "time:edit_others", "required", officeDecide, { maxCalls: 60 }),
 ];
 
