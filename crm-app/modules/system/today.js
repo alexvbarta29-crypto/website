@@ -1,10 +1,9 @@
-// Today (design §9.2, §9.3): the date, a greeting, the bell (unread
-// notifications), the Approvals card (bulk sends and owner decisions
-// waiting), alerts from the workers for owners and the office, the
-// modules' cards (todayCards: calls due, leads that need attention...), and
-// quick links. The modules fill the rest as they land: Needs attention (M2+),
-// My visits with Clock in/out (M4b), Today's visits by tech (M4a), the
-// Money strip (M5). A tech sees their own day only.
+// Today (design §9.2, §9.3), one route for everyone: the office gets Home
+// (home.js: the numbers, today's visits, what needs them, quick actions;
+// loaded only for them), a tech gets their own day: the date, a greeting,
+// the bell (unread notifications), the workers' alerts, the modules' cards
+// (todayCards: my tasks...) and quick links. The tech app (M4b) fills in
+// My visits with Clock in/out. A tech sees their own day only.
 
 import { html, icon } from "../../core/ui.js";
 import { dateLong, plural, dateTime } from "../../core/format.js";
@@ -27,9 +26,16 @@ const greeting = (d) => {
   return h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
 };
 
+// The office's Home, or the tech's Today.
+const isOffice = (ctx) => !!ctx.user && ctx.user.role !== "tech";
+
 export default {
-  title: "Today",
+  title: (s) => (s && s.$home ? "Home" : "Today"),
   async load(params, ctx) {
+    if (isOffice(ctx)) {
+      const $home = (await import("./home.js")).default;
+      return { $home, hs: await $home.load(params, ctx) };
+    }
     const [badges, health, cards] = await Promise.all([
       ctx.api("/me/badges", { cache: false }).then((r) => r.data).catch(() => null),
       ctx.can("audit:read") ? ctx.api("/admin/health", { cache: false }).then((r) => r.data).catch(() => null) : null,
@@ -37,7 +43,10 @@ export default {
     ]);
     return { now: new Date(), user: ctx.user || {}, badges, health, cards };
   },
+  mount(view, s, ctx) { if (s.$home && s.$home.mount) { this._home = s.$home; s.$home.mount(view, s.hs, ctx); } },
+  unmount() { if (this._home) { const h = this._home; this._home = null; if (h.unmount) h.unmount(); } },
   render(s, ctx) {
+    if (s.$home) return s.$home.render(s.hs, ctx);
     const tech = s.user.role === "tech";
     const b = s.badges || {};
     const alerts = (s.health && s.health.alerts) || [];

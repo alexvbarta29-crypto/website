@@ -188,6 +188,31 @@ a.row:active,button.row:active{background:var(--fill)}
 .seg-bar .seg{flex:none;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink-2);font:600 14px/1 'General Sans',system-ui,sans-serif;text-decoration:none;white-space:nowrap}
 .seg-bar .seg.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--mist)}
+/* the switch between one tab's screens (Sales: Calls · Quotes · Tasks), under the header */
+.subnav{padding:8px calc(16px + var(--right)) 8px calc(16px + var(--left));z-index:4;overflow:visible}
+.subnav .seg-track{flex:1;display:flex;gap:2px;max-width:520px;margin:0 auto;padding:3px;border-radius:999px;background:rgba(22,22,27,.07)}
+.subnav .seg{flex:1 1 0;justify-content:center;border:0;background:none;color:var(--ink-2)}
+.subnav .seg.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(22,22,27,.14),0 1px 1px rgba(22,22,27,.06)}
+
+/* ------------------------------------------------------------ the Menu page (system/menu.js) */
+.menu-me{display:flex;align-items:center;gap:12px;min-height:68px;padding:12px 16px;color:inherit;text-decoration:none}
+.menu-me:active{background:var(--fill)}
+.menu-me .who{flex:1;min-width:0}
+.menu-me .nm{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-me .sub{display:block;font-size:13px;color:var(--ink-3)}
+.menu-sec .section-h{margin-top:8px}
+.menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mtile{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:98px;padding:14px 6px 12px;background:var(--card);border:1px solid var(--line);border-radius:18px;color:var(--ink);text-decoration:none;font:600 13px/1.25 var(--text);text-align:center;overflow-wrap:anywhere}
+.mtile:active{background:var(--fill)}
+.mtile .mi{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:var(--coral-wash);color:var(--coral-ink)}
+.mtile .mi svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sec-sales .mi{background:var(--blue-bg);color:var(--blue)}
+.sec-customers .mi,.sec-money .mi{background:var(--green-bg);color:#0b6b44}
+.sec-messages .mi{background:#efeafe;color:#5b3fd6}
+.sec-office .mi{background:var(--amber-bg);color:#7a4f12}
+.sec-admin .mi,.sec-more .mi{background:var(--fill-2);color:var(--ink-2)}
+.menu-out{margin-top:14px}
+@media (min-width:600px){.menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
 /* ------------------------------------------------------------ sign-in pages */
 body.page{min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
@@ -270,10 +295,23 @@ textarea.body{min-height:140px}
 @media (max-width:380px){.grid3{grid-template-columns:1fr 1fr}.daygrid{gap:8px 6px}}
 
 /* ------------------------------------------------------------ wider screens (§9.1) */
-/* At 900 px and up (an iPad, the office desk) the tab bar becomes a left
-   rail; the header and the screen sit to its right, content centred. */
+/* #view and #pane (list + detail) share one row; on a phone #pane is hidden. */
+.main{flex:1;min-height:0;display:flex}
+.main>.view{flex:1;min-width:0}
+.top-tools,.app-side{display:none}
+.pane-empty{min-height:60%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px 24px;text-align:center;color:var(--ink-3)}
+.pane-empty .art{width:56px;height:56px;border-radius:18px;background:var(--fill);display:grid;place-items:center;color:var(--ink-3)}
+.pane-empty .art svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pane-empty p{margin:0;font-weight:600}
+
+/* At 900 px and up (the office desk, an iPad) the CRM is a desktop app: a
+   sidebar (logo, Home, every Menu section as a group, who is signed in),
+   a header with search, New and the person's menu, and the screens using
+   the width. Without the sidebar (it failed to build) the tab bar is a
+   left rail, as before. From 1000 px a list (Contacts, Quotes) keeps its
+   place on the left while what you open shows beside it. */
 @media (min-width:900px){
-  :root{--rail-w:96px}
+  :root{--rail-w:96px;--side-w:228px}
   .app:not(.no-tabs){padding-left:var(--rail-w)}
   .tabs{top:0;right:auto;bottom:0;width:calc(var(--rail-w) + var(--left));height:auto;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:4px;padding:calc(var(--top) + 14px) 8px calc(var(--bottom) + 14px) calc(8px + var(--left));border-top:0;border-right:1px solid var(--line)}
   .tab{flex:none;max-width:none;min-height:64px;border-radius:16px}
@@ -281,11 +319,76 @@ textarea.body{min-height:140px}
   .tab .badge{left:calc(50% + 8px)}
   .toasts{bottom:calc(var(--bottom) + 24px + var(--lift,0px))}
   .fab{bottom:calc(var(--bottom) + 24px + var(--lift,0px))}
-  .view{padding-left:calc(24px + var(--left));padding-right:calc(24px + var(--right));padding-bottom:calc(var(--bottom) + 32px + var(--lift,0px))}
-  .view.flush{padding-bottom:0}
-  /* the title lines up with the centred content below it */
-  .app:not(.no-tabs) .top{padding-left:max(calc(16px + var(--left)), calc((100vw - var(--rail-w) - 760px) / 2 - 8px));padding-right:max(calc(16px + var(--right)), calc((100vw - var(--rail-w) - 760px) / 2))}
-  .view>.stack,.view>.wide,.view>.skel{max-width:760px;margin:0 auto}
+  .view{padding:24px calc(28px + var(--right)) calc(var(--bottom) + 40px + var(--lift,0px)) 28px}
+  .view.flush{padding:0}
+  .view>.stack,.view>.wide,.view>.skel{max-width:1120px;margin:0 auto}
+
+  /* the sidebar */
+  .app.has-side{padding-left:calc(var(--side-w) + var(--left))}
+  .app.has-side .tabs,.app.has-side .fab{display:none}
+  .app-side{position:absolute;z-index:6;left:0;top:0;bottom:0;width:calc(var(--side-w) + var(--left));display:flex;flex-direction:column;padding:var(--top) 0 var(--bottom) var(--left);background:#fff;border-right:1px solid var(--line)}
+  .side-logo{display:block;padding:22px 24px 14px}
+  .side-logo img{display:block;width:136px;height:auto}
+  .side-scroll{flex:1;min-height:0;overflow-y:auto;padding:6px 12px 16px;scrollbar-width:thin}
+  .side-item{position:relative;display:flex;align-items:center;gap:12px;min-height:40px;margin:1px 0;padding:0 12px;border-radius:12px;color:var(--ink-2);font:600 14px/1.2 var(--text);text-decoration:none}
+  .side-item svg{width:20px;height:20px;flex:none;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .side-item:hover{background:var(--fill)}
+  .side-item[aria-current="page"]{background:var(--coral-wash);color:var(--coral-ink)}
+  .side-item[aria-current="page"] svg{color:var(--coral)}
+  .side-item .sl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .side-item .badge{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--coral);color:#fff;font:600 11.5px/20px var(--text);text-align:center}
+  .side-grp{margin-top:14px}
+  .side-h{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:30px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--ink-3);font:800 11.5px/1 var(--head);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+  .side-h:hover{color:var(--ink-2)}
+  .side-chev{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s}
+  .side-grp.shut .side-chev{transform:rotate(-45deg)}
+  .side-grp.shut .side-items{display:none}
+  .side-me{display:flex;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid var(--line);color:inherit;text-decoration:none}
+  .side-me:hover{background:var(--mist)}
+  .side-me .avatar{width:36px;height:36px;font-size:13px}
+  .side-me .who{min-width:0}
+  .side-me .nm{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .side-me .sub{display:block;font-size:12.5px;color:var(--ink-3)}
+
+  /* the header: title, search, the screen's action, New, the person */
+  .app.has-side .top{min-height:calc(68px + var(--top));padding:var(--top) calc(24px + var(--right)) 0 20px;background:rgba(255,255,255,.92)}
+  .app.has-side .top-title{font-size:23px}
+  .top-tools{display:flex;align-items:center;gap:10px;margin-left:10px}
+  .top-find{margin-right:0}
+  .app.has-side .top-act{margin-left:10px}
+  .top-search{position:relative;display:flex;align-items:center;gap:8px;width:clamp(220px,28vw,380px);height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--mist);color:var(--ink-3)}
+  .top-search:focus-within{background:#fff;border-color:var(--coral);box-shadow:0 0 0 4px rgba(251,77,61,.12)}
+  .top-search svg{width:18px;height:18px;flex:none}
+  .top-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:500 16px/1 var(--text);color:var(--ink)}
+  .top-new{position:relative}
+  .top-new .btn{min-height:44px;height:44px;padding:0 18px}
+  .top-me{position:relative}
+  .top-av{width:44px;height:44px;border:0;border-radius:50%;background:var(--ink-2);color:#fff;font:800 14px/1 var(--head);cursor:pointer}
+  .pop{position:absolute;z-index:40;top:calc(100% + 8px);right:0;min-width:240px;max-height:min(70vh,520px);overflow-y:auto;padding:6px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 44px rgba(14,14,18,.16)}
+  .pop .menu a,.pop .menu button{min-height:44px;font-size:15px;padding:0 10px}
+  .pop .menu li+li{border-top:0}
+  .pop .menu a:hover,.pop .menu button:hover{background:var(--fill)}
+  .pop .who{display:flex;flex-direction:column;min-width:0}
+  .pop .who .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pop .who .sub{font-size:12.5px;font-weight:500;color:var(--ink-3)}
+  .search-pop{left:0;right:auto;width:max(100%,320px)}
+  .pop-who{margin:6px 10px 8px;display:flex;flex-direction:column;gap:2px}
+  .pop-who span{font-size:12.5px;color:var(--ink-3)}
+  .pop-empty{margin:10px 12px;color:var(--ink-3);font-size:14px}
+  .subnav{padding:10px 28px}
+  .subnav .seg-track{max-width:420px;margin:0}
+
+  /* sheets: a dialog in the middle, not a drawer across the desk */
+  .sheet{left:50%;right:auto;bottom:24px;width:min(600px,calc(100% - 48px));margin-left:calc(min(600px,100vw - 48px) / -2);border-radius:22px;max-height:calc(100% - 48px)}
+}
+@media (min-width:1200px){:root{--side-w:248px}}
+/* list + detail */
+@media (min-width:1000px){
+  .app.split #view{flex:0 0 clamp(320px,34%,440px);border-right:1px solid var(--line);padding:16px 16px 32px}
+  .app.split #view.flush{padding:0}
+  .app.split #view>.stack{max-width:none}
+  .app.split #pane{flex:1;min-width:0}
+  .app.split #view a[aria-current="true"]{background:var(--coral-wash)}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}

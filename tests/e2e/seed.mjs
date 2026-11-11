@@ -21,6 +21,13 @@
 //   link to the first), a lights plan with this season's install and
 //   takedown.
 //
+// seed({ home: true }) also makes today look like a real business day for
+// Home's screenshots (home.spec): one visit done, one under way, three more
+// this afternoon (one with two people), a pair of likely duplicates and a
+// phone's offline work waiting for the owner's OK. seed({ teamOnly: true })
+// makes only the team (Home before any CRM data: the empty state), and a
+// later seed() keeps those people.
+//
 
 const store = await import("../../netlify/lib/crm-store.mjs");
 const PW = await import("../../netlify/lib/crm/core/passwords.mjs");
@@ -46,7 +53,8 @@ const SOURCES = ["Website quote form", "Meta Ads", "Referral", "Returning Custom
 const AUTO = { by: "system:e2e", origin: "worker", actor_kind: "automation", requestId: "e2e-seed", mode: { system_of_record: "rotor", paused: false } };
 
 let seeded = null;
-export async function seed({ contacts = 200 } = {}) {
+export async function seed(opts = {}) {
+  const { contacts = 200 } = opts;
   if (seeded) return seeded;
   globalThis.__crmPbkdf2Iterations = 1000;
   const users = (await store.readIndex("users", "")).rows;
@@ -63,6 +71,7 @@ export async function seed({ contacts = 200 } = {}) {
   await person("tech", "theo", "Theo Tech", "tech", true, "#13a165");
   await person("tech2", "tess", "Tess Rowe", "tech", true, "#b7791f");
   await store.settledWrite(AUTH.BOOTSTRAP_KEY, { state: "done", user_id: out.users.owner.id, at: clock.nowIso() }, { onlyIfNew: true }).catch(() => {});
+  if (opts.teamOnly) return out;
   const O = { by: out.users.owner.id, origin: "api", actor_kind: "user", requestId: "e2e-seed" };
   const ctxO = { write: (x = {}) => ({ ...O, ...x }), user: { id: out.users.owner.id, role: "owner", name: "Olive Owner" } };
 
@@ -207,6 +216,40 @@ export async function seed({ contacts = 200 } = {}) {
     email: `legacy${i}@example.com`, phone: "+1763555" + String(1500 + i).padStart(4, "0"), status: i % 5 ? "active" : "inactive", source: SOURCES[i % SOURCES.length], assigned_to: [],
     address: { street1: `${500 + i} Example Ave`, street2: null, city: TOWNS[i % TOWNS.length], state: "MN", zip: "55328", country: "US" }, tags: [], notes: "", created_at: "2025-03-14T15:00:00+00:00",
   })) }));
+  if (opts.home) await homeDay(out, O, day);
   seeded = out;
   return out;
+}
+
+// Today as a real day (Home's screenshots): Theo's first visit done, Tess on
+// site at her first, three more this afternoon (Olive and Theo together at
+// one), a likely duplicate, offline work waiting for the owner's OK.
+async function homeDay(out, O, day) {
+  const MATCH = await import("../../netlify/lib/crm/modules/contacts/match.mjs");
+  const PA = await import("../../netlify/lib/crm/core/pending.mjs");
+  await WORK.changeVisit(out.visits[0], "office_complete", { ctx: O });
+  await WORK.changeVisit(out.visits[1], "start", { ctx: O });
+  const slots = [["Wayzata", "12:30", [out.users.owner.id, out.users.tech.id], 41500], ["Orono", "13:00", [out.users.tech2.id], 33500], ["Medina", "15:00", [out.users.tech.id], 26500]];
+  for (const [k, [town, start, who, cents]] of slots.entries()) {
+    const c = (await store.createRecord("contact", {
+      first_name: ["Morgan", "Reese", "Skyler"][k], last_name: "Afternoon", phones: [{ e164: "+1763555" + String(1950 + k).padStart(4, "0"), sms: true }],
+      emails: [{ address: `afternoon${k}@example.com` }], lifecycle: "customer", source: { source: "Referral" }, consent: { sms_service: { state: "granted", source: "website_form" } },
+      billing_address: { street1: `${960 + k} Example Ave`, city: town, state: "MN", zip: "55391" },
+    }, O)).data;
+    const p = (await store.createRecord("property", { contact_id: c.id, label: "Home", address: { street1: `${960 + k} Example Ave`, city: town, state: "MN", zip: "55391", country: "US" }, access: {} }, O)).data;
+    await store.updateRecord("contact", c.id, (x) => ({ ...x, primary_property_id: p.id }), O);
+    const [jobId] = await WORK.createJobs([{ contact_id: c.id, kind: "standard", lines: [{ title: k === 2 ? "Gutter cleaning" : "Exterior window cleaning", unit_cents: cents, service_type: k === 2 ? "Exterior Cleaning" : "Residential Window Cleaning" }] }], `e2e-home-${k}`, "manual", O);
+    const [hh, mm] = start.split(":").map(Number);
+    await WORK.createVisit({ job_id: jobId, date: day, start, end: `${String(hh + 2).padStart(2, "0")}:${String(mm).padStart(2, "0")}`, window: { type: "window", minutes: 120 }, assignee_ids: who }, O);
+  }
+  const twins = [];
+  for (const n of [0, 1]) {
+    twins.push((await store.createRecord("contact", {
+      first_name: "Jamie", last_name: "Twofold", phones: [{ e164: "+17635551960", sms: true }], emails: [{ address: n ? "jamie.twofold@example.com" : "jtwofold@example.com" }],
+      lifecycle: "lead", source: { source: n ? "Meta Ads" : "Website quote form" }, consent: { sms_service: { state: "granted", source: "website_form" } },
+      billing_address: { street1: "975 Example Ave", city: "Rogers", state: "MN", zip: "55374" },
+    }, O)).data);
+  }
+  await MATCH.createCandidate(twins[0].id, twins[1].id, { reason: "phone", confidence: "high" }, O);
+  await PA.createPendingAction({ kind: "outbox_review", title: "Theo's offline notes from last week", requested_by: out.users.tech.id, items: [] }, O);
 }

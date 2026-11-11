@@ -25,12 +25,17 @@ const office = {
     { path: "/settings/checklists", load: () => import("./office-checklists.js"), title: "Checklists", perm: "settings:general", parent: "/settings", skeleton: "list" },
     { path: "/settings/checklists/:id", load: () => import("./office-checklist.js"), title: "Checklist", perm: "settings:general", parent: "/settings/checklists" },
   ],
-  nav: [{ where: "more", label: "Jobs", path: "/jobs", perm: "schedule:write", order: 24, icon: "list" }],
+  nav: [
+    { where: "more", section: "work", label: "Schedule", path: "/schedule", perm: "schedule:read", order: 23, icon: "schedule" },
+    { where: "more", section: "work", label: "Jobs", path: "/jobs", perm: "schedule:write", order: 24, icon: "list" },
+    { where: "more", section: "work", label: "To book", path: "/schedule?view=tray", perm: "schedule:write", order: 25, icon: "clock" },
+  ],
   creates: [{ label: "New job", path: "/jobs/new", perm: "schedule:write", order: 25, icon: "schedule" }],
   contactTabs: [{ key: "work", label: "Work", order: 50, load: () => import("./office-contact-tab.js") }],
   visitActions: [],
   // today's visits by person, and jobs that need a look (the office)
-  todayCards: [{ key: "work", perm: "schedule:write", order: 15, load: () => import("./office-today-card.js") }],
+  // (home: false: Home has its own Today card from the same visits index, and the to-book and stale counts)
+  todayCards: [{ key: "work", perm: "schedule:write", order: 15, home: false, load: () => import("./office-today-card.js") }],
   settings: [{ label: "Checklists", path: "/settings/checklists", perm: "settings:general", icon: "check", order: 50 }],
   styles: ["./office-styles.css"],
 };
