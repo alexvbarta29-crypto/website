@@ -537,7 +537,9 @@ ${PROBE}
   const f = document.getElementById('crm');
   const off = document.getElementById('off');
 ${INSETS_JS}
-  const sync = () => { off.hidden = navigator.onLine !== false; postInsets(f, !off.hidden); };
+  // own: the CRM screen in the frame says "no signal" itself, with when its copy is from (one bar, not two)
+  let own = false;
+  const sync = () => { off.hidden = own || navigator.onLine !== false; postInsets(f, !off.hidden); };
   f.addEventListener('load', sync);
   window.addEventListener('resize', sync);
   window.addEventListener('offline', sync);
@@ -546,6 +548,7 @@ ${INSETS_JS}
   window.addEventListener('message', (e) => {
     if (e.origin !== location.origin || e.source !== f.contentWindow) return;
     if (e.data && e.data.type === 'crm:signed_out') location.replace('/office');
+    if (e.data && e.data.type === 'crm:offline') { own = e.data.own === true; sync(); }
   });
   sync();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/office-sw.js', { scope: '/office' }).catch(() => {});
