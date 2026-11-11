@@ -1075,8 +1075,24 @@ async function dirtyStale(sc, name, shard) {
   return !!(d && d.data && d.data.dirty_at && !d.data.clean_at);
 }
 
+// A read-only summary (Home, design §9.2) puts `ixMemo: new Map()` in its
+// store scope: each index blob is then read once for the whole request,
+// however many modules' counts ask for it, and its dirty marker is not read
+// (`stale: null`), so a dozen counts fit in one request's budget. Every
+// caller gets its own copy of the rows list.
 export async function readIndex(name, shard = "", opts = {}) {
   const sc = scopeOf(opts);
+  if (sc.ixMemo instanceof Map) {
+    const k = `${name}|${shard}`;
+    if (!sc.ixMemo.has(k)) {
+      sc.ixMemo.set(k, read(sc, "data", K.ix(name, shard)).then((got) => {
+        const blob = got && got.data ? got.data : emptyIndex(name, shard);
+        return { rows: flatten(name, blob.rows), etag: got ? got.etag : null, built_at: blob.built_at || null, stale: null };
+      }));
+    }
+    const got = await sc.ixMemo.get(k);
+    return { ...got, rows: got.rows.slice() };
+  }
   const [got, stale] = await Promise.all([read(sc, "data", K.ix(name, shard)), dirtyStale(sc, name, shard)]);
   const blob = got && got.data ? got.data : emptyIndex(name, shard);
   return { rows: flatten(name, blob.rows), etag: got ? got.etag : null, built_at: blob.built_at || null, stale };

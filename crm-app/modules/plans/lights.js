@@ -29,8 +29,11 @@ export default {
         <div class="stat"><b>${s.footage_ft.toLocaleString("en-US")}</b><small>feet</small></div>
         <div class="stat"><b>${s.needs_bin}</b><small>need a bin</small></div>
       </div>
+      ${(s.to_confirm || []).length ? html`<div class="section-h">Waiting for a yes · ${s.to_confirm.length}</div>
+        <p class="small muted">Last season's plan customers. Their ${s.season} install is made once they confirm (they get a text in September).</p>
+        <ul class="list">${s.to_confirm.map((r) => html`<li><a class="row" href="${"#/plans/" + encodeURIComponent(r.plan_id)}"><span class="ico">${icon("gift")}</span><span class="who"><span class="nm">${r.contact_name || "No name"}</span><span class="sub">${[r.town, r.plan_name].filter(Boolean).join(" · ")}</span></span><span class="chev" aria-hidden="true"></span></a></li>`)}</ul>` : ""}
       ${groups.length ? groups.map((st) => html`<div class="section-h">${SEASON[st]} · ${s.counts[st]}</div><ul class="list">${s.rows.filter((r) => r.status === st).map((r) => html`<li><button type="button" class="row" ${attrs({ "data-season": r.id })}><span class="ico">${icon("gift")}</span><span class="who"><span class="nm">${r.contact_name || "No name"}</span><span class="sub">${[r.town, r.footage_ft ? `${r.footage_ft} ft` : "", r.bin_id ? `bin ${r.bin_id}` : "", r.three_year ? "3-year" : ""].filter(Boolean).join(" · ")}</span></span><span class="chev" aria-hidden="true"></span></button></li>`)}</ul>`)
-        : emptyCard("No lights this season", "Lights quotes that are approved land here with their install and takedown.")}
+        : (s.to_confirm || []).length ? "" : emptyCard("No lights this season", "Lights quotes that are approved land here with their install and takedown.")}
     </div>`;
   },
   events: {
@@ -52,7 +55,7 @@ function seasonSheet(r, ctx) {
         <a class="btn" ${attrs({ href: `#/contacts/${encodeURIComponent(r.contact_id)}` })}>${icon("contacts")}Contact</a>
       </div>
       ${can ? html`<form class="form" data-bin novalidate>
-        <label class="field" data-field="bin_id"><span>Bin</span><input name="bin_id" maxlength="40" autocomplete="off" ${attrs({ value: r.bin_id || "" })}><small class="why" hidden></small></label>
+        ${["taken_down", "stored"].includes(r.status) ? html`<label class="field" data-field="bin_id"><span>Bin</span><input name="bin_id" maxlength="40" autocomplete="off" ${attrs({ value: r.bin_id || "" })}><small class="why" hidden></small></label>` : html`<p class="small muted">The bin goes on once the lights are taken down.</p>`}
         <label class="field" data-field="footage_ft"><span>Feet of lights</span><input name="footage_ft" inputmode="numeric" ${attrs({ value: r.footage_ft || "" })}><small class="why" hidden></small></label>
         <p class="err" data-form-err hidden></p>
         <button type="submit" class="btn primary block">Save</button>
@@ -66,7 +69,7 @@ function seasonSheet(r, ctx) {
         const btn = form.querySelector("[type=submit]");
         busy(btn, true);
         try {
-          await ctx.api(`/lights/installs/${encodeURIComponent(r.id)}`, { method: "PATCH", body: { bin_id: v.bin_id, ...(v.footage_ft ? { footage_ft: Number(v.footage_ft) } : {}) } });
+          await ctx.api(`/lights/installs/${encodeURIComponent(r.id)}`, { method: "PATCH", body: { ...(v.bin_id !== undefined ? { bin_id: v.bin_id } : {}), ...(v.footage_ft ? { footage_ft: Number(v.footage_ft) } : {}) } });
           sh.close(); toast(v.bin_id && r.status === "taken_down" ? "Stored" : "Saved"); ctx.refresh();
         } catch (err) { busy(btn, false); showError(form, err); }
       },

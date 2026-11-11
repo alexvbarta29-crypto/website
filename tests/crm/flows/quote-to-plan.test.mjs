@@ -20,7 +20,13 @@ test("a customer's approval of a plan option makes one real plan with its visits
   const off = fakeServices({ "money.createDepositInvoice": null });
   try {
     await scope(() => AG.seedAgreementTemplates(AUTO));
-    await scope(() => AG.approveTemplate(AG.seedTemplateId("quarterly"), { write: () => ({ by: owner.id, origin: "api", actor_kind: "user", requestId: "t" }) }));
+    await scope(async () => {
+      const id = AG.seedTemplateId("quarterly");
+      const own = { write: () => ({ by: owner.id, origin: "api", actor_kind: "user", requestId: "t" }) };
+      const g = await (await import("../../../netlify/lib/crm-store.mjs")).getRecord("agreement_template", id);
+      await AG.patchTemplate(id, { body_md: AG.withoutOwnerChecks(g.data.body_md) }, { ...own, ifMatch: g.etag });
+      await AG.approveTemplate(id, own);
+    });
     const { quote, version } = await sentQuote(t, owner, { options: [oneTime({ recommended: false }), quarterly({ recommended: true })] });
     const opt = version.options.find((o) => o.kind === "plan");
     const shown = version.plan_agreements[opt.id];

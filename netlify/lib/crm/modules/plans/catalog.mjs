@@ -9,8 +9,10 @@
 // Unlimited Touch-Ups, 7-Day Rain Guarantee, Free Hard Water Removal;
 // Monthly 12 exterior, $150 off, the same perks; Christmas lights annual
 // (install + takedown, billed after the install); Custom. Initial term 12
-// months, renewing every 6 / 3 / 1 / 12 months; the early-cancel clawback is
-// the first visit's plan discount; 7 days' notice; a $50 late-cancel fee.
+// months, renewing every 6 / 3 / 1 / 12 months (Custom: as often as it
+// comes); the early-cancel clawback is the plan discount the first visit
+// actually got (machine.mjs clawbackCents; clawback_cents here is only the
+// catalog's figure for reference); 7 days' notice; a $50 late-cancel fee.
 
 import { InputError } from "../../core/errors.mjs";
 import { isPlainObject } from "../../core/validate.mjs";
@@ -26,7 +28,7 @@ export const CATALOG_DEFAULTS = Object.freeze({
     quarterly: { name: "Quarterly plan", short: "Quarterly", visits_per_year: 4, frequency: { interval: "month", count: 3 }, discount_per_visit_cents: 10000, perks: { ...PERKS }, initial_months: 12, renews_every_months: 3, billing: "barta_standard", autopay: true, template_key: "quarterly", clawback_cents: 10000, interior_visits: [2], active: true },
     monthly: { name: "Monthly plan", short: "Monthly", visits_per_year: 12, frequency: { interval: "month", count: 1 }, discount_per_visit_cents: 15000, perks: { ...PERKS }, initial_months: 12, renews_every_months: 1, billing: "barta_standard", autopay: true, template_key: "monthly", clawback_cents: 15000, active: true },
     lights_annual: { name: "Christmas lights plan", short: "Christmas lights", visits_per_year: 1, frequency: { interval: "year", count: 1 }, discount_per_visit_cents: 0, perks: { ...NO_PERKS }, initial_months: 12, renews_every_months: 12, billing: "after_visit", autopay: false, template_key: "lights", clawback_cents: 0, active: true },
-    custom: { name: "Custom plan", short: "Custom", visits_per_year: 2, frequency: { interval: "month", count: 6 }, discount_per_visit_cents: 0, perks: { ...NO_PERKS }, initial_months: 12, renews_every_months: 6, billing: "barta_standard", autopay: false, template_key: "biannual", clawback_cents: 0, active: true },
+    custom: { name: "Custom plan", short: "Custom", visits_per_year: 2, frequency: { interval: "month", count: 6 }, discount_per_visit_cents: 0, perks: { ...NO_PERKS }, initial_months: 12, renews_every_months: 6, billing: "barta_standard", autopay: false, template_key: "custom", clawback_cents: 0, active: true },
   },
   notice_days: 7,
   late_cancel_fee_cents: 5000,
@@ -136,6 +138,8 @@ export function catalogWith(stored = {}) {
   const s = isPlainObject(stored) ? stored : {};
   const plans = {};
   for (const k of CATALOG_KEYS) plans[k] = { ...CATALOG_DEFAULTS.plans[k], ...((s.plans && s.plans[k]) || {}), perks: { ...CATALOG_DEFAULTS.plans[k].perks, ...(((s.plans && s.plans[k]) || {}).perks || {}) } };
+  // Custom once borrowed the Biannual text (a saved catalog may still say so): it has its own
+  if (plans.custom.template_key === "biannual") plans.custom.template_key = "custom";
   return {
     ...CATALOG_DEFAULTS, ...s, plans,
     perk_names: { ...CATALOG_DEFAULTS.perk_names, ...(s.perk_names || {}) },

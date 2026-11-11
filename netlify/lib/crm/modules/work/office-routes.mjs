@@ -28,7 +28,7 @@ import {
   createJobs, createVisit, changeVisit, cancelJob, reopenJob, completeJob, syncJob, liveContact, placeOf, W, workSettings, typesOfLines, refreshVisits,
 } from "./office.mjs";
 import { titleFromLines } from "./types.mjs";
-import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin } from "./office-schedule.mjs";
+import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows } from "./office-schedule.mjs";
 import { moveDayPreview, moveDayConfirm, runView } from "./office-moveday.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
@@ -119,7 +119,7 @@ const unscheduled = async (ctx) => {
   const month = str(ctx.query.get("month")) || localDate(now()).slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(month)) throw new InputError("Use a month like 2026-11.", "month");
   const ix = await readIndex("jobs", "open");
-  const rows = ix.rows.filter((r) => r.st === "unscheduled" && (!r.tm || r.tm <= month)).sort((a, b) => String(a.tm || "").localeCompare(String(b.tm || "")) || String(a.u).localeCompare(String(b.u)));
+  const rows = toBookRows(ix.rows, month);
   const later = ix.rows.filter((r) => r.st === "unscheduled" && r.tm && r.tm > month).length;
   return { data: { month, jobs: rows, later }, meta: { stale: ix.stale } };
 };

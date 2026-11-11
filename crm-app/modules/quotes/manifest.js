@@ -9,7 +9,8 @@
 export default {
   name: "quotes",
   routes: [
-    { path: "/quotes", load: () => import("./list.js"), title: "Quotes", perm: "quotes:read", parent: "/today", skeleton: "list" },
+    // split: on a wide screen a quote opens beside the list (core/router.js)
+    { path: "/quotes", load: () => import("./list.js"), title: "Quotes", perm: "quotes:read", parent: "/today", skeleton: "list", split: true },
     { path: "/quotes/new", load: () => import("./builder.js"), title: "New quote", perm: "quotes:write", parent: "/quotes" },
     { path: "/quotes/new/:contact", load: () => import("./builder.js"), title: "New quote", perm: "quotes:write", parent: "/contacts/:contact" },
     { path: "/quotes/:id", load: () => import("./view.js"), title: "Quote", perm: "quotes:read", parent: "/quotes" },
@@ -18,7 +19,7 @@ export default {
     { path: "/settings/pricing", load: () => import("./settings.js"), title: "Pricing & price book", perm: "settings:owner", parent: "/settings" },
     { path: "/settings/discounts", load: () => import("./discounts.js"), title: "Discounts", perm: "quotes:read", parent: "/settings" },
   ],
-  nav: [{ where: "more", label: "Quotes", path: "/quotes", perm: "quotes:read", order: 30, icon: "doc" }],
+  nav: [{ where: "more", section: "sales", label: "Quotes", path: "/quotes", perm: "quotes:read", order: 30, icon: "doc" }],
   creates: [{ label: "New quote", path: "/quotes/new", perm: "quotes:write", order: 20, icon: "doc" }],
   contactTabs: [{ key: "quotes", label: "Quotes", order: 45, load: () => import("./contact-tab.js") }],
   visitActions: [],

@@ -9,11 +9,14 @@
 // plan gets its agreement from the approved template (a plan whose template
 // isn't approved yet, or that is already signed, is skipped and counted);
 // then one link per person (scope agreement, 30 days) goes into the bulk
-// run's per-person variables; then the agreements are marked sent with the
-// bulk run's id (their reminders wait until that run went out).
+// run's per-person variables; then each agreement notes the bulk run
+// (queued: still a draft, so nothing counts it as sent). Only when the bulk
+// run actually sent a person's text does that agreement turn "sent"
+// (syncQueuedAgreements, the hourly plans.agreement_sends sweep); a cancelled
+// run, or a person it skipped, leaves the agreement a draft again.
 
 import { createHash } from "node:crypto";
-import { getRecord, updateRecord } from "../../../crm-store.mjs";
+import { getRecord, updateRecord, readIndex } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { now, localDate, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
 import { InputError, ConflictError, NotFoundError } from "../../core/errors.mjs";
@@ -84,17 +87,50 @@ async function step(run, rctx) {
     cp.j = 0;
     return { checkpoint: cp, progress: { done: ids.length, total: ids.length } };
   }
-  // mark: the agreements are sent through that bulk run
+  // mark: each agreement waits for that bulk run (queued, still a draft)
   const end = Math.min(cp.made.length, (cp.j || 0) + PER_STEP);
   for (; cp.j < end; cp.j += 1) {
     const m = cp.made[cp.j];
     try {
-      const r = await updateRecord("agreement", m.agreement_id, (a) => (a.bulk_run_id === cp.bulk_run_id || !["draft", "sent", "viewed"].includes(a.status) ? null : { ...a, status: a.status === "viewed" ? "viewed" : "sent", sent_at: now().toISOString(), sent_via: ["sms"], bulk_run_id: cp.bulk_run_id }), ctx);
-      if (r.data.plan_id) await notePlanAgreement(r.data.plan_id, r.data, ctx);
-    } catch (e) { console.error(`crm:plans: an agreement wasn't marked sent (${safeErr(e)})`); }
+      await updateRecord("agreement", m.agreement_id, (a) => (a.bulk_run_id === cp.bulk_run_id || a.status !== "draft" ? null : { ...a, bulk_run_id: cp.bulk_run_id, queued_at: now().toISOString() }), ctx);
+    } catch (e) { console.error(`crm:plans: an agreement wasn't marked queued (${safeErr(e)})`); }
   }
   if (cp.j < cp.made.length) return { checkpoint: cp, progress: { done: ids.length, total: ids.length } };
   return { done: true, result: { requested: cp.made.length, skipped: cp.skipped, bulk_run_id: cp.bulk_run_id }, checkpoint: cp, progress: { done: ids.length, total: ids.length } };
 }
 
 defineRun("plans.request_signatures", { lane: "fast", step, label: "Request agreement signatures" });
+
+// plans.agreement_sends (hourly): queued agreements follow their bulk run.
+// The person's text went out (or into the dry-run Outbox): sent, from the
+// time the run sent it. The run was cancelled or failed, or skipped that
+// person: back to a plain draft (the office can send it again).
+const SENT = ["sent", "dry_run", "queued", "delivered", "already"];
+export async function syncQueuedAgreements(ctx) {
+  const rows = (await readIndex("agreements", "pending")).rows.filter((r) => r.st === "draft" && isId(r.bk, "bulk_run"));
+  if (!rows.length) return { done: true, progress: 0 };
+  const runs = new Map();
+  for (const id of [...new Set(rows.map((r) => r.bk))].slice(0, 20)) runs.set(id, ((await getRecord("bulk_run", id).catch(() => null)) || {}).data || null);
+  let n = 0;
+  for (const r of rows) {
+    if (ctx.budget && ctx.budget.left() < 15000) return { done: false, progress: n };
+    if (!runs.has(r.bk)) continue;
+    const b = runs.get(r.bk);
+    const res = b && b.results && b.results[r.c];
+    const gone = !b || ["cancelled", "failed"].includes(b.status) || (res && !SENT.includes(res.s)) || (b.status === "sent" && !res);
+    if (!res && !gone) continue;
+    const at = (b && (b.finished_at || b.updated_at)) || now().toISOString();
+    const g = await getRecord("agreement", r.id);
+    if (!g || g.data.status !== "draft" || g.data.bulk_run_id !== r.bk) continue;
+    if (!ctx.mayAct({ record: g.data })) { await ctx.would({ record: g.data }, "update", { status: ["draft", gone ? "draft" : "sent"] }); continue; }
+    const u = await updateRecord("agreement", r.id, (a) => {
+      if (a.status !== "draft" || a.bulk_run_id !== r.bk) return null;
+      const { queued_at, ...rest } = a;
+      if (gone) { const { bulk_run_id, ...back } = rest; return back; }
+      return { ...rest, status: "sent", sent_at: at, sent_via: [b.channel || "sms"] };
+    }, ctx.write());
+    if (u.changed && u.data.plan_id) await notePlanAgreement(u.data.plan_id, u.data, ctx.write());
+    n += 1;
+  }
+  return { done: true, progress: n };
+}

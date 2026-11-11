@@ -15,7 +15,13 @@ const seeds = (fx) => scope(async () => {
   if (seeded) return;
   seeded = true;
   await AG.seedAgreementTemplates(AUTO);
-  for (const k of ["biannual", "quarterly", "monthly", "lights"]) await AG.approveTemplate(AG.seedTemplateId(k), { write: () => ({ ...W, by: fx.owner.id }) });
+  for (const k of ["biannual", "quarterly", "monthly", "lights"]) {
+    const id = AG.seedTemplateId(k);
+    const g = await store.getRecord("agreement_template", id);
+    const own = { write: () => ({ ...W, by: fx.owner.id }), ifMatch: g.etag };
+    await AG.patchTemplate(id, { body_md: AG.withoutOwnerChecks(g.data.body_md) }, own);
+    await AG.approveTemplate(id, own);
+  }
 });
 let n = 0;
 const contact = () => scope(async () => {
@@ -70,6 +76,7 @@ export default {
   "POST /plans/:id/renew": async (fx) => { const p = await plan(fx); await scope(() => store.updateRecord("plan", p.id, (x) => ({ ...x, status: "expired" }), W)); return { as: fx.owner, path: `/plans/${p.id}/renew`, body: {} }; },
   "POST /plans/:id/cancel": async (fx) => ({ as: fx.owner, path: `/plans/${(await plan(fx)).id}/cancel`, body: { reason: "price" } }),
   "POST /plans/:id/withdraw": async (fx) => { const p = await plan(fx); await scope(() => store.updateRecord("plan", p.id, (x) => ({ ...x, status: "cancelling", cancel: { requested_on: "2026-11-17", effective_on: "2026-11-24", reason: "price", clawback_cents: 0, by: fx.owner.id } }), W)); return { as: fx.owner, path: `/plans/${p.id}/withdraw`, body: {} }; },
+  "POST /plans/:id/confirm-season": async (fx) => ({ as: fx.owner, path: `/plans/${(await season(fx)).plan_id}/confirm-season`, body: { season: 2027 } }),
   "POST /plans/:id/change-price": async (fx) => ({ as: fx.owner, path: `/plans/${(await plan(fx)).id}/change-price`, body: { effective_on: "2027-11-17", new_lines: [{ title: "Exterior Window Cleaning", unit_cents: 31500 }] } }),
   "GET /plans/:id/cancel-quote": async (fx) => ({ as: fx.owner, path: `/plans/${(await plan(fx)).id}/cancel-quote` }),
   "POST /plans/:id/send-agreement": async (fx) => ({ as: fx.owner, path: `/plans/${(await plan(fx, { status: "pending" })).id}/send-agreement`, body: { channels: ["sms", "email"] } }),

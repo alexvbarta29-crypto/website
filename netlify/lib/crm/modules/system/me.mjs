@@ -19,10 +19,13 @@ import { publicUser } from "./types.mjs";
 
 export const SETTINGS_PUBLIC = Object.freeze({ company_name: "Barta Window Washing", time_zone: TZ });
 
-// The tab bar for a role (§9.1); the app shows a tab only once its screen exists.
+// The tab bar for a role (§9.1); the app shows a tab only once its screen
+// exists. The office: Home (the owner's dashboard: the numbers, today's
+// visits, what needs you) · Inbox (with comms, M6) · Schedule · Customers ·
+// Sales (Leads & calls, Quotes, Tasks) · Menu (every other screen, by
+// section). The office's Dashboard views are on Home and under Menu → Admin.
 export function navFor(user) {
-  // "dashboard" shows only on a phone with the office sign-in (office:tools).
-  return user && user.role === "tech" ? ["today", "inbox", "time", "pay", "me"] : ["today", "inbox", "contacts", "schedule", "dashboard", "more"];
+  return user && user.role === "tech" ? ["today", "inbox", "time", "pay", "me"] : ["home", "inbox", "schedule", "contacts", "sales", "menu"];
 }
 
 async function me(ctx) {
@@ -41,11 +44,13 @@ async function me(ctx) {
 }
 
 // Needs-attention counts the modules declare ({ perm, count(ctx) }, §11.3).
+// A row with badge: false (quotes waiting on the customer, calls due) is
+// listed on Home's "Needs you" but never lights the tab's dot.
 async function attentionCount(ctx) {
   let n = 0;
   for (const m of allModules()) {
     for (const a of m.attention || []) {
-      if (!a || typeof a.count !== "function" || (a.perm && !ctx.can(a.perm))) continue;
+      if (!a || typeof a.count !== "function" || a.badge === false || (a.perm && !ctx.can(a.perm))) continue;
       try { n += Math.max(0, Number(await a.count(ctx)) || 0); } catch { /* a module's count never breaks the badge */ }
     }
   }

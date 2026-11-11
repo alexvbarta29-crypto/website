@@ -1,8 +1,9 @@
 // M3b acceptance: sends to many people are bulk runs (design §5.7.4 "Bulk
 // sends", §11.4 "bulk.test.mjs"): request-signatures for 12 plans and 7
 // renewal notices on one day each become a bulk run (preview, test send and
-// an owner's confirm before anything goes out); lights.rebook creates a
-// ready-to-send run and sends nothing by itself.
+// an owner's confirm before anything goes out; an agreement counts as sent
+// only once the run sent it); lights.rebook creates a ready-to-send run and
+// sends nothing by itself, and a next season is made only once confirmed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setup, customer, importedCustomer, importedPlan, planOf, recOf, finishRun, drain, outbox, pin, scope, store, PL, CAT, AS } from "./fixtures.mjs";
@@ -37,20 +38,40 @@ test("request signatures for 12 imported plans: one bulk run with a link for eac
     await t.runWorker({ lane: "bulk" });
     assert.equal((await recOf("bulk_run", b.id)).status, "ready", "previewed, waiting for the test send");
     assert.equal(outbox(t).filter((o) => o.template_key === "agreement_sent").length, 0, "nothing sent");
-    // each plan has its agreement, sent through that run; the reminders wait until the run went out
+    // each plan has its agreement, queued on that run: still a draft (not
+    // "sent" while the run waits: Today, the hub and the reminders skip it)
     for (const p of plans) {
       const pl = await planOf(p.id);
       const ag = await recOf("agreement", pl.agreement_id);
-      assert.equal(ag.status, "sent");
+      assert.equal(ag.status, "draft", "queued, not sent");
       assert.equal(ag.bulk_run_id, b.id);
-      assert.equal(pl.agreement_status, "sent");
+      assert.notEqual(pl.agreement_status, "sent");
     }
+    const today = await t.api("/agreements?status=sent", { as: owner });
+    assert.equal(today.body.data.length, 0, "nothing counts as sent yet");
     // a second request for the same plans the same day is the same run
     const again = await t.api("/plans/request-signatures", { method: "POST", as: owner, body: { plan_ids: plans.map((p) => p.id) } });
     assert.equal(again.body.data.run_id, r.body.data.run_id);
     pin("2026-11-19T16:30:00Z");
     await drain(t, 2);
     assert.equal(outbox(t).filter((o) => o.template_key === "agreement_unsigned").length, 0, "no reminder for an agreement whose bulk run hasn't gone out");
+    // the owner tests and confirms: the run sends (dry-run), and the hourly
+    // plans.agreement_sends marks each agreement sent from then
+    const tester = await customer(owner, { flags: { test: true } });
+    const oT = await t.user("owner");
+    assert.equal((await t.api("/settings/messaging_test", { method: "PUT", as: oT, ifMatch: "new", body: { contact_id: tester.id } })).status, 200);
+    assert.equal((await t.api(`/bulk-runs/${b.id}/test`, { method: "POST", as: oT, body: {} })).status, 200);
+    assert.equal((await t.api(`/bulk-runs/${b.id}/confirm`, { method: "POST", as: oT, body: {} })).status, 200);
+    for (let i = 0; i < 3; i++) await t.runWorker({ lane: "bulk" });
+    assert.equal((await recOf("bulk_run", b.id)).status, "sent");
+    pin("2026-11-19T17:35:00Z");
+    await drain(t, 2);
+    for (const p of plans) {
+      const pl = await planOf(p.id);
+      const ag = await recOf("agreement", pl.agreement_id);
+      assert.equal(ag.status, "sent", "sent once the run sent it");
+      assert.equal(pl.agreement_status, "sent");
+    }
     // techs can't; an empty list is refused
     const o2 = await t.user("owner");
     assert.equal((await t.api("/plans/request-signatures", { method: "POST", as: await t.user("tech"), body: { plan_ids: [plans[0].id] } })).status, 403);
@@ -117,8 +138,19 @@ test("lights.rebook on Sept 1: a ready-to-send bulk run for last season's custom
     const confirm = bulkRuns(t, "lights.confirm");
     assert.equal(confirm.length, 1);
     assert.deepEqual(confirm[0].recipients, [three.id]);
-    // the 3-year customer's 2026 season: install and takedown jobs, the record
-    const s26 = t.stores.data.keys("rec/season_install/").map((k) => t.stores.data.json(k)).find((s) => s.season === 2026 && s.contact_id === three.id);
+    // the 3-year customer's 2026 season waits for their yes: no install made by itself
+    const s26of = () => t.stores.data.keys("rec/season_install/").map((k) => t.stores.data.json(k)).find((s) => s.season === 2026 && s.contact_id === three.id);
+    assert.equal(s26of(), undefined, "no season before the customer confirms");
+    await drain(t, 3);
+    assert.equal(s26of(), undefined, "the hourly backfill waits too");
+    const board = await t.api("/lights/seasons/2026", { as: await t.user("owner") });
+    assert.ok(board.body.data.to_confirm.some((x) => x.plan_id === plan.id), "the board lists it to confirm");
+    // the office marks it confirmed: the season, its install and takedown
+    const o3 = await t.user("owner");
+    const c = await t.api(`/plans/${plan.id}/confirm-season`, { method: "POST", as: o3, body: { season: 2026 } });
+    assert.equal(c.status, 202, JSON.stringify(c.body));
+    await finishRun(t, c.body.data.run_id);
+    const s26 = s26of();
     assert.ok(s26, "the next season's record");
     assert.ok(s26.install_job_id && s26.takedown_job_id);
     assert.equal((await recOf("job", s26.install_job_id)).totals.total_cents, 90000, "the 3-year discount was the first season's only");

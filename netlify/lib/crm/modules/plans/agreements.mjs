@@ -1,11 +1,12 @@
 // Plans module: agreement templates and agreements (design §5.4
 // "Agreements", §8.1 /p/agreement, decision D10).
 //
-//   templates      five drafts seeded once (texts.mjs); an owner edits and
+//   templates      six drafts seeded once (texts.mjs); an owner edits and
 //                  approves them (agreement_templates:edit). An edit after
-//                  approval is a new version that needs approving again.
+//                  approval is a new version that needs approving again; a
+//                  draft with an "Owner check" line left can't be approved.
 //                  Nothing is sent, or shown on a quote, from a template that
-//                  isn't approved.
+//                  isn't approved. Seed v2 upgrades the untouched first drafts.
 //   agreementForOption(quote, draft, option)  the plans.agreementForOption
 //                  service: the approved text for a quote's plan option,
 //                  frozen into the quote's version and signed with the quote
@@ -32,15 +33,22 @@ import { storeImportedFile, sniffType } from "../../core/files.mjs";
 import { notify, approvers } from "../../core/notify.mjs";
 import { formatCents } from "../../core/money.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { AGREEMENT_DRAFTS } from "./texts.mjs";
+import { AGREEMENT_DRAFTS, OWNER_CHECK, PREVIOUS_DRAFT_SHAS, PREVIOUS_TEMPLATE_BODIES, TEMPLATES as MESSAGE_TEMPLATES } from "./texts.mjs";
 import { templateApproved, OPEN_AGREEMENT } from "./types.mjs";
 import { loadCatalog, perksList, catalogWith } from "./catalog.mjs";
-import { cyclePrices, visitsPerYearOf } from "./machine.mjs";
+import { cyclePrices, regularPrices, visitsPerYearOf, clawbackCents } from "./machine.mjs";
 
 export const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 export const W = (ctx = {}) => (ctx && typeof ctx.write === "function" ? ctx.write() : { ...(ctx || {}) });
 export const MAX_SIGNATURE_BYTES = 200 * 1024;
-export const AGREEMENT_VARS = Object.freeze(["legal_name", "company_name", "full_name", "first_name", "last_name", "plan_name", "per_visit_price", "visits_per_year", "term_months", "perks_list", "clawback_amount", "notice_days", "late_cancel_fee", "company_phone", "company_email"]);
+export const AGREEMENT_VARS = Object.freeze([
+  "legal_name", "company_name", "full_name", "first_name", "last_name", "plan_name", "per_visit_price", "visits_per_year", "term_months", "perks_list", "clawback_amount",
+  "notice_days", "late_cancel_fee", "company_phone", "company_email",
+  // the agreement's own (not message variables): the plan's real terms
+  "price_details", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms",
+]);
+// The agreement's own variables, with a sample each (the template screen's chips).
+export const AGREEMENT_ONLY_VARS = Object.freeze(["price_details", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms"]);
 const strip = (r) => { if (!r) return r; const { _w, ...rest } = r; return rest; };
 
 // ------------------------------------------------------------ templates
@@ -62,10 +70,50 @@ export async function seedAgreementTemplates(ctx = {}) {
 // A template body's problems: unknown variables, broken braces (→ InputError).
 export function checkBody(body) {
   const { variables, errors } = parseTemplate(body, { field: "body_md" });
-  const bad = errors.find((e) => e.code !== "stop_text");
+  const bad = errors.find((e) => e.code !== "stop_text" && !(e.code === "unknown_variable" && AGREEMENT_ONLY_VARS.includes(e.variable)));
   if (bad) throw new InputError(bad.message, "body_md");
   const unknown = variables.find((v) => !AGREEMENT_VARS.includes(v));
   if (unknown) throw new InputError(`{{${unknown}}} isn't one of the agreement's variables.`, "body_md");
+}
+
+// The "Owner check" lines left in a body (texts.mjs): wording to confirm before approving.
+export const ownerChecksIn = (body) => String(body || "").split("\n").filter((l) => l.trim().startsWith(OWNER_CHECK)).map((l) => l.trim().slice(OWNER_CHECK.length).trim());
+export const withoutOwnerChecks = (body) => String(body || "").split("\n").filter((l) => !l.trim().startsWith(OWNER_CHECK)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+
+// Seed v2: the untouched first drafts become the current ones (a new
+// version, so an approval lapses and the owner reads them again), the
+// Custom text arrives, Biannual stops covering Custom, and the price-change
+// text loses its doubled "a visit". An owner's edits are never overwritten.
+export async function upgradeAgreementDrafts(ctx = {}) {
+  let upgraded = 0;
+  for (const d of AGREEMENT_DRAFTS) {
+    const id = seedTemplateId(d.key);
+    const g = await getRecord("agreement_template", id);
+    if (!g) {
+      try { await createRecord("agreement_template", { id, ...d, version: 1, active: true, seeded: true }, W(ctx)); upgraded += 1; } catch (e) { if (!(e instanceof ExistsError)) throw e; }
+      continue;
+    }
+    const t = g.data;
+    const stale = (PREVIOUS_DRAFT_SHAS[d.key] || []).includes(sha(t.body_md));
+    const keys = (t.applies_to && t.applies_to.catalog_keys) || [];
+    const fixKeys = keys.filter((k) => d.applies_to.catalog_keys.includes(k) || !AGREEMENT_DRAFTS.some((x) => x.key !== d.key && x.applies_to.catalog_keys.includes(k)));
+    if (!stale && fixKeys.length === keys.length) continue;
+    await updateRecord("agreement_template", id, (x) => {
+      const next = { ...x, applies_to: { ...(x.applies_to || {}), catalog_keys: fixKeys } };
+      if ((PREVIOUS_DRAFT_SHAS[d.key] || []).includes(sha(x.body_md))) { next.body_md = d.body_md; next.version = (x.version || 1) + 1; }
+      return next;
+    }, W(ctx));
+    upgraded += 1;
+  }
+  for (const [key, olds] of Object.entries(PREVIOUS_TEMPLATE_BODIES)) {
+    const def = MESSAGE_TEMPLATES.find((x) => x.key === key);
+    const tid = deriveId("template", "seed:template", "core", key);
+    const g = await getRecord("template", tid).catch(() => null);
+    if (!def || !g || !olds.includes(g.data.body)) continue;
+    await updateRecord("template", tid, (x) => (olds.includes(x.body) ? { ...x, body: def.body } : null), W(ctx));
+    upgraded += 1;
+  }
+  return { upgraded };
 }
 
 export async function listTemplates() {
@@ -86,7 +134,8 @@ export async function templateFor(catalogKey, { catalog, approvedOnly = true } =
   const cat = catalog || await loadCatalog();
   const key = cat.plans[catalogKey] && cat.plans[catalogKey].template_key;
   const rows = (await readIndex("agreement-templates", "")).rows.filter((r) => r.act !== false && (!approvedOnly || r.ap));
-  const pick = rows.find((r) => r.k === key) || rows.find((r) => (r.ck || []).includes(catalogKey));
+  // the catalog names the text: only that one (never another plan's text)
+  const pick = key ? rows.find((r) => r.k === key) : rows.find((r) => (r.ck || []).includes(catalogKey));
   if (!pick) return null;
   const g = await getRecord("agreement_template", pick.id);
   if (!g || g.data.deleted_at || (approvedOnly && !templateApproved(g.data))) return null;
@@ -115,6 +164,8 @@ export async function patchTemplate(id, body = {}, ctx) {
 
 export async function approveTemplate(id, ctx) {
   const g = await getTemplate(id);
+  const checks = ownerChecksIn(g.data.body_md);
+  if (checks.length) throw new ConflictError(`${checks.length === 1 ? "One line needs" : `${checks.length} lines need`} your OK first: each "Owner check" says what to confirm. Change the text if needed, delete the check, then approve.`, { code: "owner_checks" });
   const w = W(ctx);
   return updateRecord("agreement_template", id, (t) => (templateApproved(t) ? null : { ...t, approved_version: t.version, approved_at: nowIso(), approved_by: w.by }), w).then((r) => r.data || g.data);
 }
@@ -124,14 +175,103 @@ export async function approveTemplate(id, ctx) {
 const money = (c) => formatCents(Number.isSafeInteger(c) ? c : 0);
 const nameOf = (c) => (c ? c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.company_name || "" : "");
 
-// "$195.00" or "$195.00 a visit (visit 2 of each year: $60.00)" for a plan-like { lines, discounts, frequency, visits_per_year }.
-export function perVisitText(planLike) {
-  const prices = cyclePrices(planLike);
-  if (!prices.length) return money(0);
-  const first = prices[0];
-  if (prices.every((p) => p === first)) return money(first);
-  const odd = prices.map((p, i) => [i + 1, p]).filter(([, p]) => p !== first);
-  return `${money(first)} a visit (${odd.map(([i, p]) => `visit ${i} of each year: ${money(p)}`).join("; ")})`;
+const isLights = (p) => p.kind === "lights_annual" || p.catalog_key === "lights_annual";
+const unitOf = (p) => (isLights(p) ? "season" : "visit");
+const listWords = (ns) => (ns.length <= 1 ? ns.join("") : `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`);
+const oneLine = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+
+// The price of a plan-like { kind, lines, discounts, frequency,
+// visits_per_year } in words, exactly as its jobs will charge it: "$195.00 a
+// visit (visit 2 of each year: $60.00)", or with something for the first
+// visit only "first visit $145.00, then $245.00 a visit". Optional add-ons
+// not picked are left out (price_details lists them with their price).
+// { later: true }: a later year's price only (a renewal's price change).
+export function perVisitText(planLike, { later: laterOnly = false } = {}) {
+  const unit = unitOf(planLike);
+  const first = cyclePrices(planLike);
+  const later = regularPrices(planLike);
+  if (!later.length) return money(0);
+  const cycle = (prices) => {
+    const base = prices[0];
+    const odd = prices.map((p, i) => [i + 1, p]).filter(([, p]) => p !== base);
+    return `${money(base)} a ${unit}${odd.length ? ` (${odd.map(([i, p]) => `${unit} ${i} of each year: ${money(p)}`).join("; ")})` : ""}`;
+  };
+  const diffs = laterOnly ? [] : first.map((p, i) => [i + 1, p]).filter(([i, p]) => p !== later[i - 1]);
+  if (!diffs.length) return cycle(later);
+  return `${diffs.map(([i, p]) => (i === 1 ? `first ${unit} ${money(p)}` : `${unit} ${i} of your first year ${money(p)}`)).join(", ")}, then ${cycle(later)}`;
+}
+
+// Which visits a line or discount covers, in words.
+export function scopeWords(scope, planLike) {
+  const unit = unitOf(planLike);
+  const s = scope || { type: "all" };
+  if (s.type === "initial") return `your first ${unit}`;
+  if (s.type === "after_initial") return `every ${unit} after the first`;
+  if (s.type === "specific" && Array.isArray(s.visits) && s.visits.length) return `${unit}${s.visits.length > 1 ? "s" : ""} ${listWords([...s.visits].sort((a, b) => a - b))} of each year`;
+  return `every ${unit}`;
+}
+const lineCents = (l) => (Number.isSafeInteger(l.total_cents) ? l.total_cents : Math.round(((l.qty_milli ?? 1000) * (l.unit_cents || 0)) / 1000));
+
+// Each line with its price and the visits it's on, then each discount: the
+// breakdown the plan's jobs are priced from (§5.4), as "- " list lines.
+export function priceDetails(planLike) {
+  const out = [];
+  for (const l of planLike.lines || []) {
+    const extra = l.optional && l.selected !== true;
+    out.push(`- ${oneLine(l.title) || "Service"}${extra ? ", only if you add it on your quote" : ""}: ${money(lineCents(l))}, ${scopeWords(l.scope, planLike)}`);
+  }
+  for (const d of planLike.discounts || []) {
+    const amount = d.type === "percentage" ? `${(d.value / 100).toFixed(d.value % 100 ? 2 : 0)}% off` : `${money(d.value)} off`;
+    out.push(`- ${oneLine(d.name) || "Discount"}: ${amount} ${scopeWords(d.scope, planLike)}`);
+  }
+  return out.join("\n") || `- ${money(0)}`;
+}
+
+const renewMonths = (m) => (m === 1 ? "month" : m === 12 ? "year" : `${m} months`);
+// "twice a year, about every 6 months", "4 times a year, about every 3 months"
+export function visitSchedule(planLike) {
+  const vpy = planLike.visits_per_year || visitsPerYearOf(planLike.frequency);
+  const f = planLike.frequency || {};
+  const every = f.interval === "month" ? (f.count === 1 ? "month" : `${f.count} months`) : f.interval === "week" ? (f.count === 1 ? "week" : `${f.count} weeks`) : null;
+  if (vpy === 1) return "once a year";
+  if (vpy === 12 && every === "month") return "once a month, 12 times a year";
+  const times = vpy === 2 ? "twice a year" : `${vpy} times a year`;
+  return every ? `${times}, about every ${every}` : times;
+}
+
+// Renewal, as the plan does it (lights: the next season goes on the
+// schedule only once the customer confirms it, plans.mjs).
+export function renewalTerms(planLike) {
+  const t = planLike.term || {};
+  const auto = (t.auto_renew ?? planLike.auto_renew) !== false;
+  const every = t.renews_every_months || planLike.renews_every_months || 12;
+  if (isLights(planLike)) {
+    const months = t.initial_months || planLike.term_months || 12;
+    const contract = months >= 36 ? `Your plan is a ${Math.round(months / 12)}-season contract. ` : "";
+    if (!auto && !contract) return "Your plan covers this season. Want us back next year? Just tell us when we text you in September.";
+    return `${contract}Your plan carries on every year so your lights go back up each season without the hassle. Each September we text you about the coming season, and we put your install on the schedule once you confirm. Want to skip a season or stop? Just tell us then.`;
+  }
+  return auto ? `After that it renews every ${renewMonths(every)} until you cancel.` : "After that it ends, unless you choose to renew it.";
+}
+
+// Billing and autopay, as the plan has them (Money charges them, M5).
+export function billingTerms(planLike) {
+  const b = planLike.billing || {};
+  const mode = b.mode || planLike.billing_mode || "barta_standard";
+  const auto = !!(b.autopay ?? planLike.autopay);
+  const lights = isLights(planLike);
+  const pay = auto ? "charged" : "billed";
+  const card = auto ? "Keep a card or bank account on file for your plan. " : "";
+  const tail = auto ? "" : " We send you an invoice each time.";
+  if (lights) return `${card}Your install is ${pay} after it's done.${tail}`;
+  if (mode === "after_visit") return `${card}Each visit is ${pay} after it's done.${tail}`;
+  if (mode === "first_of_month") return `${card}Each visit is ${pay} on the 1st of the month it's scheduled in.${tail}`;
+  return `${card}Your first visit is ${pay} after it's done. After that, each visit is ${pay} on the 1st of the month it's scheduled in.${tail}`;
+}
+
+export function clawbackTerms(planLike) {
+  const c = clawbackCents(planLike);
+  return c > 0 ? `If your first visit is done, you pay back the plan discount that visit got (${money(c)}). That's it.` : "There's nothing to pay back.";
 }
 
 export async function companyInfo() {
@@ -144,12 +284,15 @@ export function agreementVars(planLike, { contact, company, catalog }) {
   const cat = catalog || catalogWith({});
   const vpy = planLike.visits_per_year || visitsPerYearOf(planLike.frequency);
   const perks = perksList(planLike.perks || {}, cat.perk_names);
+  const extras = (planLike.lines || []).some((l) => l.optional && l.selected !== true);
   return {
     legal_name: company.legal_name, company_name: company.name, company_phone: company.phone, company_email: company.email,
     full_name: nameOf(contact) || "the customer", first_name: (contact && contact.first_name) || "", last_name: (contact && contact.last_name) || "",
     plan_name: planLike.name || "plan", per_visit_price: perVisitText(planLike), visits_per_year: String(vpy), term_months: String((planLike.term && planLike.term.initial_months) || planLike.term_months || 12),
-    perks_list: perks || "none", clawback_amount: money((planLike.policy && planLike.policy.early_cancel_clawback_cents) || 0),
+    perks_list: perks || "none", clawback_amount: money(clawbackCents(planLike)), clawback_terms: clawbackTerms(planLike),
     notice_days: String((planLike.policy && planLike.policy.notice_days) ?? cat.notice_days), late_cancel_fee: money((planLike.policy && planLike.policy.late_cancel_fee_cents) ?? cat.late_cancel_fee_cents),
+    price_details: priceDetails(planLike), addon_note: extras ? " An add-on you pick is added to the visits it's on." : "",
+    visit_schedule: visitSchedule(planLike), renewal_terms: renewalTerms(planLike), billing_terms: billingTerms(planLike),
   };
 }
 
@@ -157,16 +300,29 @@ export function renderBody(template, vars) {
   return fill(template.body_md, vars).text.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-// A quote's plan option as a plan-like object (the customer picks add-ons
-// at approval, so the agreement prices the option without its optional lines).
+// A quote's plan option as a plan-like object. The customer picks add-ons on
+// the same page, after the text is frozen: the price leaves them out and
+// price_details lists each one with its price ("only if you add it").
 export function optionAsPlan(option, cat) {
   const p = option.plan || {};
-  const entry = cat.plans[p.catalog_key] || cat.plans.custom;
+  const key = cat.plans[p.catalog_key] ? p.catalog_key : "custom";
+  const entry = cat.plans[key];
+  const frequency = p.frequency || entry.frequency;
   return {
-    name: option.name || entry.name, lines: (option.lines || []).filter((l) => !l.optional), discounts: option.discounts || [],
-    frequency: p.frequency || entry.frequency, visits_per_year: p.visits_per_year || entry.visits_per_year, term_months: p.term_months || entry.initial_months,
-    perks: entry.perks, policy: { early_cancel_clawback_cents: entry.clawback_cents, notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
+    name: option.name || entry.name, kind: key === "lights_annual" ? "lights_annual" : "recurring", catalog_key: key,
+    lines: (option.lines || []).map((l) => (l.optional ? { ...l, selected: false } : l)), discounts: option.discounts || [],
+    frequency, visits_per_year: p.visits_per_year || entry.visits_per_year, term_months: p.term_months || entry.initial_months,
+    renews_every_months: renewEveryFor(key, frequency, entry), auto_renew: p.auto_renew !== false,
+    billing: { mode: p.billing || entry.billing, autopay: p.autopay === undefined ? !!entry.autopay : p.autopay === true },
+    perks: entry.perks, policy: { notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
   };
+}
+// How often a plan renews: the catalog's, but a Custom plan as often as it comes.
+export function renewEveryFor(key, frequency, entry) {
+  if (key !== "custom") return entry.renews_every_months;
+  const f = frequency || {};
+  if (f.interval === "month" && Number.isSafeInteger(f.count) && f.count >= 1 && f.count <= 12) return f.count;
+  return 12;
 }
 
 // The plans.agreementForOption service: (quote, version-or-draft, option, ctx)
@@ -209,7 +365,7 @@ export const agreementView = (a, { body = false } = {}) => ({
   template_key: a.template_key || null, template_version: a.template_version || null, source: a.source, sent_at: a.sent_at || null, sent_via: a.sent_via || [],
   viewed_at: a.viewed_at || null, signed_at: a.signed_at || null, reminders: a.reminders || { count: 0 }, body_sha256: a.body_sha256 || null,
   signature: a.signature ? { name_typed: a.signature.name_typed, method: a.signature.method, at: a.signature.at, drawn_file_id: a.signature.drawn_file_id || null, staff_user_id: a.signature.staff_user_id || null } : null,
-  imported: a.imported || null, voided_at: a.voided_at || null, created_at: a.created_at, ...(body ? { body_rendered: a.body_rendered } : {}),
+  imported: a.imported || null, voided_at: a.voided_at || null, created_at: a.created_at, queued: a.status === "draft" && !!a.bulk_run_id, ...(body ? { body_rendered: a.body_rendered } : {}),
 });
 
 // Keeps the plan's agreement summary (agreement_id, agreement_status) in step.

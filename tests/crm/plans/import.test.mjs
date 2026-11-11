@@ -59,7 +59,7 @@ test("templates, plans, series and lights from a Rotor export, twice", async () 
       assert.equal(rec.approved_version, undefined, "still a draft for the owner to approve (D10)");
       assert.equal(t.stores.data.json(`ptr/rotor/agreement-template/${rotorKey(r.id)}`).id, rec.id);
     }
-    assert.equal(t.stores.data.keys("rec/agreement_template/").length, 5, "no duplicates");
+    assert.equal(t.stores.data.keys("rec/agreement_template/").length, 6, "no duplicates (the five Rotor names and the CRM's Custom text)");
 
     // row 19: which Rotor plans became plans
     const plans = t.stores.data.keys("rec/plan/").map((k) => t.stores.data.json(k));

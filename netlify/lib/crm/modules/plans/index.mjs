@@ -21,11 +21,11 @@ import { localDate, now } from "../../core/clock.mjs";
 import { types } from "./types.mjs";
 import { CATALOG_DEFAULTS, LIGHTS_DEFAULTS, validateCatalog, validateLights } from "./catalog.mjs";
 import { TEMPLATES } from "./texts.mjs";
-import { agreementForOption, seedAgreementTemplates } from "./agreements.mjs";
+import { agreementForOption, seedAgreementTemplates, upgradeAgreementDrafts } from "./agreements.mjs";
 import { fromQuoteOption, listeners, touchPlanStats, W } from "./plans.mjs";
 import "./signatures.mjs";
 import { automations, sweeps } from "./automations.mjs";
-import { portalRoutes, onLoginRequested } from "./portal.mjs";
+import { portalRoutes, onLoginQueued } from "./portal.mjs";
 import { planRoutes } from "./routes.mjs";
 import { phases } from "./import-rotor.mjs";
 import { mcpTools } from "./mcp.mjs";
@@ -69,8 +69,9 @@ export default defineModule({
   },
   routes: planRoutes,
   portalRoutes,
-  events: { ...listeners, "portal.login_requested": { handler: onLoginRequested, mutates: false } },
-  emits: ["plan.activated", "plan.paused", "plan.cancelled", "plan.renewed", "agreement.signed", "agreement.sent", "portal.login_requested"],
+  events: listeners,
+  queue: { "plans.login": { handler: onLoginQueued, mutates: false } },
+  emits: ["plan.activated", "plan.paused", "plan.cancelled", "plan.renewed", "agreement.signed", "agreement.sent"],
   services: {
     // (quote, version, option, ctx) → { template_id, template_version, body_rendered, body_sha256 } | null
     "plans.agreementForOption": (quote, version, option) => agreementForOption(quote, version, option),
@@ -81,7 +82,8 @@ export default defineModule({
   sweeps,
   automations,
   templates: TEMPLATES,
-  seeds: [{ v: 1, run: seedAgreementTemplates }],
+  // v2: the untouched first drafts upgraded (plan-derived terms, owner checks), the Custom text
+  seeds: [{ v: 1, run: seedAgreementTemplates }, { v: 2, run: upgradeAgreementDrafts }],
   onMerge: onMergePlans,
   attention: [
     { key: "plans.due", label: "Plan visits to book", perm: "plans:read", count: dueCount, link: "#/plans/due" },

@@ -83,8 +83,11 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
   person; the schedule warns, never blocks.
 - **Contact → Work**: coming up, open jobs, recent visits, done and
   cancelled jobs, **New job**.
-- **Today** (the office): today's visits per person (tap: their route),
-  jobs to book, jobs that need a look.
+- **Home** (the office's first screen, docs/CRM.md): today's visits from
+  the visits index (`visitRows`), the to-book count by the tray's own rule
+  (`toBookRows` in office-schedule.mjs, which `GET /schedule/unscheduled`
+  uses too), stale jobs as a "Needs you" row. The office Today card
+  (today's visits per person) is `home: false`.
 - **Settings → Checklists** (`settings:general`): each list's name, on or
   off, which jobs get it (kinds of job, else services), its items (tick,
   photo, count, note; required or not). A job gets the first active list by

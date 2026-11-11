@@ -1,14 +1,20 @@
-// Client manifest of the core "system" module (design §11.3, §9.2): Today,
-// My account, Team, the first slice's Customers list (which the Contacts
-// tab opens until M2a's Contacts screen replaces it) and, since M1.3,
+// Client manifest of the core "system" module (design §11.3, §9.2): Home
+// (/today: the office's first screen, a tech's Today), the Menu page, My
+// account, Team, the first slice's Customers list (which the Contacts tab
+// opens until M2a's Contacts screen replaces it) and, since M1.3,
 // Settings, Automations, Templates, Outbox, Activity, Approvals and the
 // notifications bell. Screens load with dynamic import(). No data, keys or
 // customer names ever go in crm-app/ (§2.3).
+//
+// nav entries (where: "more") are the Menu's tiles; `section` puts each in
+// one of the Menu's sections (core/nav.js SECTIONS: work, sales, customers,
+// money, messages, office, admin; anything else lands in "More").
 
 export default {
   name: "system",
   routes: [
-    { path: "/today", load: () => import("./today.js"), title: "Today" },
+    { path: "/today", load: () => import("./today.js"), title: (u) => (u && u.role === "tech" ? "Today" : "Home") },
+    { path: "/menu", load: () => import("./menu.js"), title: "Menu" },
     { path: "/me", load: () => import("./me.js"), title: "My account", perm: "account:own", parent: "/today" },
     { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/today", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },
@@ -31,24 +37,26 @@ export default {
     { path: "/settings/data", load: () => import("./settings-data.js"), title: "Data", perm: "audit:read", parent: "/settings" },
     { path: "/settings/permissions", load: () => import("./settings-permissions.js"), title: "Team permissions", perm: "settings:owner", parent: "/settings" },
     // The office's dashboards and tools, inside the CRM (office sign-in only).
-    { path: "/dashboard", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools" },
+    // (Home's "See more" opens a view; Menu → Admin → Dashboard all of them)
+    { path: "/dashboard", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools", parent: "/menu" },
     { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Dashboard", perm: "office:tools", parent: "/dashboard" },
-    { path: "/tools/:id", load: () => import("./tool.js"), title: "Office tool", perm: "office:tools" },
+    { path: "/tools/:id", load: () => import("./tool.js"), title: "Office tool", perm: "office:tools", parent: "/menu" },
   ],
   nav: [
-    { where: "more", label: "Approvals", path: "/approvals", perm: "campaigns:send", order: 10, icon: "check" },
-    { where: "more", label: "Automations", path: "/automations", perm: "automations:configure", order: 60, icon: "bolt" },
-    { where: "more", label: "Templates", path: "/templates", perm: "templates:edit", order: 62, icon: "doc" },
-    { where: "more", label: "Outbox", path: "/outbox", perm: "outbox:read", order: 64, icon: "send" },
-    { where: "more", label: "Activity", path: "/activity", perm: "audit:read", order: 66, icon: "clock" },
-    { where: "more", label: "Lights", path: "/tools/lights", perm: "office:tools", order: 70, icon: "bulb" },
-    { where: "more", label: "Follow-ups", path: "/tools/followups", perm: "office:tools", order: 71, icon: "phone" },
-    { where: "more", label: "Purchases", path: "/tools/purchases", perm: "office:tools", order: 72, icon: "cart" },
-    { where: "more", label: "Giveaway", path: "/tools/giveaway", perm: "office:tools", order: 73, icon: "gift" },
-    { where: "more", label: "Rotor", path: "/tools/rotor", perm: "office:tools", order: 74, icon: "link" },
-    { where: "more", label: "Settings", path: "/settings", perm: "settings:general", order: 80, icon: "gear" },
-    { where: "more", label: "Team", path: "/team", perm: "users:manage", order: 90, icon: "team" },
-    { where: "more", label: "My account", path: "/me", perm: "account:own", order: 99, icon: "me" },
+    { where: "more", section: "messages", label: "Approvals", path: "/approvals", perm: "campaigns:send", order: 10, icon: "check" },
+    { where: "more", section: "messages", label: "Automations", path: "/automations", perm: "automations:configure", order: 60, icon: "bolt" },
+    { where: "more", section: "messages", label: "Templates", path: "/templates", perm: "templates:edit", order: 62, icon: "doc" },
+    { where: "more", section: "messages", label: "Outbox", path: "/outbox", perm: "outbox:read", order: 64, icon: "send" },
+    { where: "more", section: "admin", label: "Activity", path: "/activity", perm: "audit:read", order: 66, icon: "clock" },
+    { where: "more", section: "office", label: "Light Studio", path: "/tools/lights", perm: "office:tools", order: 70, icon: "bulb" },
+    { where: "more", section: "sales", label: "Follow-ups", path: "/tools/followups", perm: "office:tools", order: 71, icon: "text" },
+    { where: "more", section: "office", label: "Purchases", path: "/tools/purchases", perm: "office:tools", order: 72, icon: "cart" },
+    { where: "more", section: "office", label: "Giveaway", path: "/tools/giveaway", perm: "office:tools", order: 73, icon: "gift" },
+    { where: "more", section: "office", label: "Rotor", path: "/tools/rotor", perm: "office:tools", order: 74, icon: "link" },
+    { where: "more", section: "admin", label: "Dashboard", path: "/dashboard", perm: "office:tools", order: 65, icon: "chart" },
+    { where: "more", section: "admin", label: "Settings", path: "/settings", perm: "settings:general", order: 80, icon: "gear" },
+    { where: "more", section: "admin", label: "Team", path: "/team", perm: "users:manage", order: 90, icon: "team" },
+    { where: "more", section: "admin", label: "My account", path: "/me", perm: "account:own", order: 99, icon: "me" },
   ],
   creates: [],
   contactTabs: [],

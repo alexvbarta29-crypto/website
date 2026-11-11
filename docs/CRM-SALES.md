@@ -45,7 +45,11 @@ office's Follow-ups page, see below). Record types: `deal`, `cadence`,
   owners.
 - **A contact's Sales tab**: deals, follow-ups, tasks, and Start a
   follow-up.
-- **Today**: a card with calls due, overdue and leads that need attention.
+- **Home** (the office's first screen, docs/CRM.md): "Needs you" rows for
+  leads that need a call (`sales.attention`, lights the tab's dot), calls
+  due now (`sales.calls_due`) and tasks for you (`sales.tasks_mine`), both
+  `badge: false`. The Today card (calls due, overdue, attention, my tasks)
+  stays for a tech's Today (`home: false`).
 - **Settings → Cadences** (`cadences:configure`): each cadence (name, on
   or off, which sources join, tags that keep a lead out, what a reply does,
   what happens when a call window passes with no call, its steps: day,

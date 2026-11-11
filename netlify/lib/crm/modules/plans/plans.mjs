@@ -30,7 +30,10 @@ import { createHash } from "node:crypto";
 import { createRecord, getRecord, getRecords, updateRecord, readIndex, listRel, updateStats, addActivity } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { now, nowIso, localDate, addLocalDays } from "../../core/clock.mjs";
-import { InputError, NotFoundError, ConflictError, ExistsError, BlobsTransientError } from "../../core/errors.mjs";
+import { InputError, NotFoundError, ConflictError, ExistsError, BlobsTransientError, ParallelRunGuard } from "../../core/errors.mjs";
+import { guardActive } from "../../core/guard.mjs";
+import { sandboxed } from "../../core/context.mjs";
+import { readSysMode } from "../../core/settings.mjs";
 import { emit } from "../../core/events.mjs";
 import { defineOp, runOp, opIdFor, readOp } from "../../core/ops.mjs";
 import { defineRun, createRun } from "../../core/lanes.mjs";
@@ -43,8 +46,9 @@ import { LIVE_PLAN, OPEN_ORDINAL, validatePlanLine, validatePlanDiscount, CATALO
 import { loadCatalog } from "./catalog.mjs";
 import {
   firstTerm, termOrdinals, saleValue, ordinalLines, ordinalDiscounts, applyAction, respace, ordinalStatusForJob, termOver, monthOf, addMonthsYm, visitsPerYearOf,
+  clawbackCents, seasonConfirmed,
 } from "./machine.mjs";
-import { quoteAgreement, signedEffects, afterSigned, notePlanAgreement } from "./agreements.mjs";
+import { quoteAgreement, signedEffects, afterSigned, notePlanAgreement, renewEveryFor } from "./agreements.mjs";
 import { formatCents } from "../../core/money.mjs";
 import { planRow as planRowOf } from "./types.mjs";
 import { createSeason, seasonOfJob, syncSeason, seasonForInstallJob } from "./lights.mjs";
@@ -54,7 +58,9 @@ const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 const nameOf = (c) => (c ? c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.company_name || "" : "");
 const today = () => localDate(now());
 const typesOfLines = (lines = []) => [...new Set((lines || []).map((l) => String((l && l.service_type) || "").split("::")[0].trim()).filter(Boolean))].slice(0, 20);
-export const PLAN_ACTIONS = Object.freeze(["activate", "pause", "resume", "skip", "cancel", "withdraw", "renew", "expire", "cancel_effective"]);
+export const PLAN_ACTIONS = Object.freeze(["activate", "pause", "resume", "skip", "cancel", "withdraw", "renew", "expire", "cancel_effective", "confirm_season"]);
+// The actions after which visits may need jobs (the make_jobs step).
+export const MAKES_JOBS = Object.freeze(["activate", "resume", "renew", "withdraw", "confirm_season"]);
 export const LIGHTS_HORIZON_MONTHS = 3;
 
 export async function getPlan(id) {
@@ -87,7 +93,7 @@ export function buildPlan(spec, cat, { start_on }) {
   const frequency = spec.frequency || entry.frequency;
   const vpy = spec.visits_per_year || entry.visits_per_year || visitsPerYearOf(frequency);
   const months = spec.term_months || entry.initial_months;
-  const term = firstTerm({ start_on, initial_months: months, renews_every_months: entry.renews_every_months, auto_renew: spec.auto_renew !== false });
+  const term = firstTerm({ start_on, initial_months: months, renews_every_months: renewEveryFor(key, frequency, entry), auto_renew: spec.auto_renew !== false });
   const lines = (spec.lines || []).filter((l) => !(l.optional && l.selected !== true));
   const plan = {
     id: spec.id, contact_id: spec.contact_id, contact_name: spec.contact_name, ...(spec.property_id ? { property_id: spec.property_id } : {}), ...(spec.town ? { town: spec.town } : {}),
@@ -102,6 +108,8 @@ export function buildPlan(spec, cat, { start_on }) {
     renewal: { next_on: term.current_term_end }, ...(spec.sold_by ? { sold_by: spec.sold_by } : {}), origin: spec.origin || "staff",
   };
   if (plan.billing.autopay) plan.billing.card_required = true;
+  // the clawback is the plan discount visit 1 really gets (§5.4), not the catalog's figure
+  plan.policy.early_cancel_clawback_cents = clawbackCents(plan);
   plan.sale_value_cents = saleValue(plan);
   return plan;
 }
@@ -118,26 +126,43 @@ export function jobSpec(plan, o) {
 }
 
 // The ordinals that should have a job now: open, without one, in the
-// current term (a lights plan: only the season about to come).
+// current term (a lights plan: only the season about to come, and after
+// the first season only once the customer confirmed it).
 export function ordinalsNeedingJobs(plan, day = today()) {
   if (!["pending", "active", "cancelling"].includes(plan.status)) return [];
   const n = (plan.term && plan.term.current_term_n) || 1;
   const horizon = addMonthsYm(monthOf(day), LIGHTS_HORIZON_MONTHS);
-  return (plan.ordinals || []).filter((o) => (o.term || 1) === n && o.status === "unscheduled" && !o.job_id && (plan.kind !== "lights_annual" || o.target_month <= horizon));
+  return (plan.ordinals || []).filter((o) => (o.term || 1) === n && o.status === "unscheduled" && !o.job_id && (plan.kind !== "lights_annual" || (o.target_month <= horizon && seasonConfirmed(plan, o))));
 }
-const ordKey = (o) => `${o.term || 1}-${o.n}-g${o.gen || 0}`;
+export const ordKey = (o) => `${o.term || 1}-${o.n}-g${o.gen || 0}`;
 
 // Makes the missing jobs of a plan (work.createJobs, scope "plans"; a
 // lights season through the lights op) and writes their ids on the
-// ordinals. The work op's id comes from the plan and the ordinals' keys, so
-// a retry makes nothing twice. → job ids made or found.
+// ordinals. A retry never makes a second set: the plan first records the
+// batch it is about to make (jobs_pending: the work op's id and the
+// ordinals' keys), and a retry finishes THAT batch (the same op answers
+// with the same jobs) before anything else; a job whose visit no longer
+// needs one by then (skipped, paused) is cancelled. → job ids made or found.
 export async function ensureJobs(planId, ctx, { day = today() } = {}) {
   if (!has("work.createJobs")) return [];
   const g = await getRecord("plan", planId);
   if (!g) return [];
-  const plan = g.data;
-  const need = ordinalsNeedingJobs(plan, day);
+  let plan = g.data;
+  // work.createJobs guards on the CUSTOMER (§3.10): automation makes no
+  // job for a customer Rotor still owns, even on a plan the CRM made
+  if (!(await mayMakeJobs(plan, ctx))) throw new ParallelRunGuard("Rotor is still in charge of this customer.", { type: "job", action: "create", subject: plan.contact_id });
+  if (plan.jobs_pending && plan.kind !== "lights_annual") {
+    await finishPending(plan, ctx);
+    plan = (await getRecord("plan", planId)).data;
+  }
+  let need = ordinalsNeedingJobs(plan, day);
   if (!need.length) return [];
+  // a visit's own job may already exist (an older batch that died before it was noted): adopt it first
+  if (plan.kind !== "lights_annual" && await adoptOrphans(plan, ctx)) {
+    plan = (await getRecord("plan", planId)).data;
+    need = ordinalsNeedingJobs(plan, day);
+    if (!need.length) return [];
+  }
   const made = {};
   if (plan.kind === "lights_annual") {
     for (const o of need) {
@@ -151,10 +176,13 @@ export async function ensureJobs(planId, ctx, { day = today() } = {}) {
       if (out.install_job_id) made[ordKey(o)] = { job: out.install_job_id, season: out.season_id };
     }
   } else {
-    const keys = need.map(ordKey).join(",");
-    const opId = `plan-jobs--${plan.id}--${sha(keys).slice(0, 12)}`;
-    const ids = (await call("work.createJobs", need.map((o) => jobSpec(plan, o)), opId, "plans", ctx)) || [];
-    need.forEach((o, i) => { if (isId(ids[i], "job")) made[ordKey(o)] = { job: ids[i] }; });
+    const keys = need.map(ordKey);
+    const opId = `plan-jobs--${plan.id}--${sha(keys.join(",")).slice(0, 12)}`;
+    // the batch goes on the plan BEFORE the jobs exist (see above)
+    await updateRecord("plan", planId, (p) => (p.jobs_pending ? null : { ...p, jobs_pending: { op: opId, keys, at: nowIso() } }), W(ctx));
+    const cur = (await getRecord("plan", planId)).data;
+    if (!cur.jobs_pending || cur.jobs_pending.op !== opId) return finishPending(cur, ctx);
+    return finishPending(cur, ctx, need);
   }
   if (!Object.keys(made).length) return [];
   await updateRecord("plan", planId, (p) => {
@@ -171,6 +199,59 @@ export async function ensureJobs(planId, ctx, { day = today() } = {}) {
     return changed ? { ...p, ordinals, ...(sids.length ? { season_install_ids: sids.slice(-20) } : {}) } : null;
   }, W(ctx));
   return Object.values(made).map((m) => m.job);
+}
+
+// Whether this write context may make jobs for the plan's customer: a
+// person always; automation only for a sandboxed customer before cutover
+// (the same check work.createJobs makes, done first so nothing is recorded).
+export async function mayMakeJobs(plan, ctx) {
+  const w = W(ctx);
+  const mode = w.mode || await readSysMode().catch(() => null);
+  if (!guardActive({ ...w, mode })) return true;
+  const c = await getRecord("contact", plan.contact_id).catch(() => null);
+  return !!c && sandboxed(c.data, c.data);
+}
+
+// Finishes the batch recorded in plan.jobs_pending: the same work op (so
+// the same jobs, made or not yet), their ids on the ordinals that still
+// need them, the others cancelled, the batch cleared. → job ids kept.
+async function finishPending(plan, ctx, specsFor = null) {
+  const pend = plan.jobs_pending;
+  if (!pend) return [];
+  const byKey = new Map((plan.ordinals || []).map((o) => [ordKey(o), o]));
+  // the specs as the batch was planned (an ordinal skipped since still has its spec: the op may have made its job)
+  const ords = specsFor || pend.keys.map((k) => byKey.get(k) || ordinalFromKey(k, plan));
+  const ids = (await call("work.createJobs", ords.map((o) => jobSpec(plan, o)), pend.op, "plans", ctx)) || [];
+  const got = {};
+  pend.keys.forEach((k, i) => { if (isId(ids[i], "job")) got[k] = ids[i]; });
+  const orphans = [];
+  const kept = [];
+  await updateRecord("plan", plan.id, (p) => {
+    if (!p.jobs_pending || p.jobs_pending.op !== pend.op) return null;
+    orphans.length = 0;
+    kept.length = 0;
+    const ordinals = (p.ordinals || []).map((o) => {
+      const j = got[ordKey(o)];
+      if (!j) return o;
+      if (o.job_id === j) { kept.push(j); return o; }
+      if (o.job_id || o.status !== "unscheduled") return o;
+      kept.push(j);
+      return { ...o, job_id: j };
+    });
+    const used = new Set(ordinals.map((o) => o.job_id).filter(Boolean));
+    for (const j of Object.values(got)) if (!used.has(j)) orphans.push(j);
+    const { jobs_pending, ...rest } = p;
+    return { ...rest, ordinals, cancelled_job_ids: [...new Set([...(p.cancelled_job_ids || []), ...orphans])].slice(-200) };
+  }, W(ctx));
+  if (orphans.length && has("work.cancelJobs")) {
+    await call("work.cancelJobs", orphans, "plan visit no longer needs it", `${pend.op}--orphans`, ctx).catch((e) => console.error(`crm:plans: extra jobs not cancelled (${safeErr(e)})`));
+  }
+  return kept;
+}
+// An ordinal gone from the plan (a key in an old batch): enough of one to rebuild its job spec.
+function ordinalFromKey(key, plan) {
+  const [term, n] = key.split("-").map((x) => Number(x));
+  return { term, n, k: n, target_month: monthOf(today()), status: "unscheduled", gen: 0, _gone: true, _plan: plan.id };
 }
 
 // ------------------------------------------------------------ stats, timeline, events
@@ -409,7 +490,8 @@ defineOp("plans.act", {
             if (p.last_change && p.last_change.op === s.opId) { lc = p.last_change; return null; }
             const out = applyAction(p, input.action, input.args || {}, { today: today(), at, by: w.by });
             lc = { op: s.opId, action: input.action, wv: (p.wv || 0) + 1, at, event: out.event, to_cancel: out.to_cancel, notice: out.notice };
-            return { ...out.next, last_change: lc };
+            const { held, ...next } = out.next;
+            return { ...next, last_change: lc };
           }, s.ctx);
           return (r.data && r.data.last_change && r.data.last_change.op === s.opId) ? r.data.last_change : lc;
         },
@@ -428,8 +510,12 @@ defineOp("plans.act", {
       {
         name: "make_jobs",
         async run(s) {
-          if (!["activate", "resume", "renew", "withdraw"].includes(input.action)) return { made: 0 };
-          return { made: (await ensureJobs(input.plan_id, s.ctx)).length };
+          if (!MAKES_JOBS.includes(input.action)) return { made: 0 };
+          // a customer Rotor still owns: no jobs by automation (the hourly backfill writes the would- row)
+          try { return { made: (await ensureJobs(input.plan_id, s.ctx)).length }; } catch (e) {
+            if (e instanceof ParallelRunGuard) return { made: 0, guarded: true };
+            throw e;
+          }
         },
       },
       {
@@ -518,8 +604,31 @@ export async function automatedAction(plan, action, args, sctx, contact = null) 
     await sctx.would({ record: plan, contact }, action === "cancel_effective" ? "cancel" : action, { status: [plan.status, null] });
     return { would: true };
   }
+  // an action that leaves visits needing jobs (a resume after the pause took
+  // them off, a renewal's new term): only when jobs may be made for this
+  // customer, else nothing changes and the office is told once
+  if (MAKES_JOBS.includes(action) && has("work.createJobs")) {
+    let after = null;
+    try { after = applyAction(plan, action, args || {}, { today: today(), at: nowIso(), by: "automation" }).next; } catch { after = null; }
+    if (after && ordinalsNeedingJobs(after).length && !(await mayMakeJobs(plan, sctx))) {
+      const c = contact || ((await getRecord("contact", plan.contact_id).catch(() => null)) || {}).data || null;
+      await sctx.would({ record: plan, contact: c }, action, { status: [plan.status, after.status], jobs: ordinalsNeedingJobs(after).length });
+      await heldForRotor(plan, action, sctx);
+      return { would: true };
+    }
+  }
   const out = await runOp(actOpId(plan.id, action, plan.wv), "plans.act", { input: { plan_id: plan.id, action, args: args || {} }, ctx: sctx.write(), holder: String(sctx.sweep || "plans.auto").slice(0, 80) });
   return { status: out.status };
+}
+
+// An automated action held because Rotor owns the customer: the office
+// hears it once per plan and action (and does it by hand).
+async function heldForRotor(plan, action, sctx) {
+  if (plan.held && plan.held.action === action) return;
+  const r = await updateRecord("plan", plan.id, (p) => (p.held && p.held.action === action ? null : { ...p, held: { action, since: today() } }), sctx.write()).catch(() => null);
+  if (!r || !r.changed) return;
+  const words = { resume: "resume", renew: "renew", activate: "activate", withdraw: "keep going", confirm_season: "go on" }[action] || action;
+  await tellStaff(plan, "A plan waits for you", `${(plan.contact_name || "A customer").split(/\s+/)[0]}'s ${plan.name} is due to ${words}, but Rotor is still in charge of this customer, so its visits can't be booked automatically. Open the plan to do it by hand.`, sctx.write());
 }
 
 // PATCH /plans/:id/change-price: a new price from a date at least 30 days
@@ -737,9 +846,19 @@ export async function jobsBackfill(ctx) {
     const g = await getRecord("plan", r.id);
     if (!g) continue;
     const need = ordinalsNeedingJobs(g.data);
-    if (!need.length) continue;
-    if (!ctx.mayAct({ record: g.data })) { await ctx.would({ record: g.data }, "create", { jobs: need.length }); continue; }
-    n += (await ensureJobs(r.id, ctx.write())).length;
+    if (!need.length && !g.data.jobs_pending) continue;
+    // jobs are the customer's records: ask the guard about the customer, and
+    // a refusal for one plan never stops the pass (the others still get theirs)
+    if (!(await mayMakeJobs(g.data, ctx))) {
+      const c = ((await getRecord("contact", g.data.contact_id).catch(() => null)) || {}).data || null;
+      await ctx.would({ record: g.data, contact: c }, "create", { jobs: need.length });
+      continue;
+    }
+    try { n += (await ensureJobs(r.id, ctx.write())).length; } catch (e) {
+      if (e instanceof ParallelRunGuard) { await ctx.would({ record: g.data }, "create", { jobs: need.length }); continue; }
+      if (e instanceof BlobsTransientError) throw e;
+      console.error(`crm:plans: jobs for a plan not made (${safeErr(e)})`);
+    }
   }
   return { done: true, progress: n };
 }
@@ -754,7 +873,8 @@ export async function ordinalSync(ctx) {
     last = r.id;
     const g = await getRecord("plan", r.id);
     if (!g) continue;
-    const plan = g.data;
+    let plan = g.data;
+    if (!plan.jobs_pending && (await adoptOrphans(plan, ctx))) plan = (await getRecord("plan", r.id)).data;
     const withJobs = (plan.ordinals || []).filter((o) => isId(o.job_id, "job") && o.status !== "skipped");
     if (!withJobs.length) continue;
     const jobs = new Map((await getRecords("job", withJobs.map((o) => o.job_id))).filter(Boolean).map((x) => [x.data.id, x.data]));
@@ -783,6 +903,41 @@ export async function ordinalSync(ctx) {
     n += diff.length;
   }
   return { done: true, progress: n };
+}
+
+// Jobs carrying this plan's id that none of its visits points at (a batch
+// that died half way before jobs_pending existed, or one made twice): a
+// visit still waiting for a job adopts its own; any other is cancelled.
+// → true when the plan changed.
+export async function adoptOrphans(plan, ctx) {
+  const rel = await listRel("plan-jobs", plan.id, { limit: 200 }).catch(() => []);
+  const known = new Set([...(plan.ordinals || []).map((o) => o.job_id), ...(plan.cancelled_job_ids || [])].filter(Boolean));
+  const loose = rel.map((x) => x.id).filter((id) => isId(id, "job") && !known.has(id));
+  if (!loose.length) return false;
+  const jobs = (await getRecords("job", loose)).filter(Boolean).map((x) => x.data).filter((j) => j.plan_id === plan.id && !j.deleted_at && j.plan_ordinal && !["cancelled", "completed"].includes(j.status));
+  if (!jobs.length) return false;
+  if (typeof ctx.mayAct === "function" && !ctx.mayAct({ record: plan })) { await ctx.would({ record: plan }, "update", { orphan_jobs: jobs.length }); return false; }
+  const adopt = new Map();
+  const stray = [];
+  for (const j of jobs) {
+    const o = (plan.ordinals || []).find((x) => (x.term || 1) === (j.plan_ordinal.term || 1) && x.n === j.plan_ordinal.n);
+    const key = o ? ordKey(o) : null;
+    if (o && !o.job_id && o.status === "unscheduled" && !adopt.has(key) && j.status === "unscheduled") adopt.set(key, j.id);
+    else stray.push(j.id);
+  }
+  let changed = false;
+  if (adopt.size || stray.length) {
+    const r = await updateRecord("plan", plan.id, (p) => {
+      const ordinals = (p.ordinals || []).map((o) => (adopt.has(ordKey(o)) && !o.job_id && o.status === "unscheduled" ? { ...o, job_id: adopt.get(ordKey(o)) } : o));
+      return { ...p, ordinals, cancelled_job_ids: [...new Set([...(p.cancelled_job_ids || []), ...stray])].slice(-200) };
+    }, W(ctx));
+    changed = r.changed;
+  }
+  if (stray.length && has("work.cancelJobs")) {
+    await call("work.cancelJobs", stray, "plan visit no longer needs it", `plan-orphans--${plan.id}--${sha(stray.sort().join(",")).slice(0, 12)}`, W(ctx))
+      .catch((e) => console.error(`crm:plans: extra jobs not cancelled (${safeErr(e)})`));
+  }
+  return changed;
 }
 
 // ------------------------------------------------------------ reading
