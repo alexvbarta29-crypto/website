@@ -430,9 +430,13 @@ the key asked at a prompt; no start without `--start`; media uploaded,
 never fetched; pack → upload → run end to end with a throwaway key pair), `runner.test.mjs`
 (the gate: repeated passes, no row or finished phase done twice; a crash
 mid-phase; waiting phases; money sums; the audited id map; cancel and
-resume), `continue.test.mjs` (the rest of an export comes in as Money,
-then Messages go live: only the phases that waited run, nothing staged is
-read twice, invoices land on the contacts and jobs of the first run, the
+resume), `continue.test.mjs` (the rest of an export comes in as each part
+goes live: first the tech app's real timesheet and timer phases, hidden
+from the first run's plan with `runner.__hidePhasesForTests` as before
+their deploy, then Money, then Messages as fixtures: each time one
+continuation runs only the phases that waited and are registered now,
+nothing staged is read twice, timesheets find the first run's team map
+and timers its visits, invoices land on its contacts and jobs, the
 report's chain, the owners' notes, and a fresh full import days later
 writes nothing; the rows cleared; kept 30 days from the last use; the
 hourly check starts exactly one; the setting; paused; a crash mid-way and

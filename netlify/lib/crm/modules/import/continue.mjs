@@ -199,7 +199,7 @@ const exportName = (asOf) => (exportDay(asOf) ? `your Rotor export of ${exportDa
 const inSentence = (label) => (/^(Christmas|Rotor|STOP)\b/.test(label) ? label : label.charAt(0).toLowerCase() + label.slice(1));
 function listOf(labels, max = 4) {
   const shown = labels.length > max ? labels.slice(0, max - 1) : labels;
-  const parts = shown.map((l, i) => (i ? inSentence(l) : l));
+  const parts = shown.map((l, i) => (i ? inSentence(l) : l.charAt(0).toUpperCase() + l.slice(1)));
   if (labels.length > max) parts.push(`${labels.length - shown.length} more parts`);
   return parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
@@ -259,8 +259,8 @@ export async function continueSweep(ctx = {}) {
   if (ix.rows.some((r) => r.st === "uploading" && Date.parse(r.at) + UPLOAD_FRESH_MS > nowMs())) return { result: "upload_under_way" };
   const row = latestDone(ix.rows);
   if (!row) return { result: "no_run" };
-  // a continuation of this run that someone cancelled is not started again by itself (the button still does)
-  if (ix.rows.some((r) => r.cont === row.id && r.st === "cancelled")) return { result: "cancelled_before" };
+  // a continuation of this run that someone cancelled (or that failed) is not started again by itself (the button still does)
+  if (ix.rows.some((r) => r.cont === row.id && (r.st === "cancelled" || r.st === "failed"))) return { result: "cancelled_before" };
   const got = await getRecord("import_run", row.id);
   const prev = got && got.data;
   if (!prev) return { result: "no_run" };

@@ -89,7 +89,14 @@ const runCtx = (holder = "import") => ({ by: "import", origin: "import", actor_k
 
 // Every registered phase, with its module.
 export function registeredPhases() {
-  return allModules().flatMap((m) => (m.importPhases || []).map((p) => ({ ...p, module: m.name })));
+  return allModules().flatMap((m) => (m.importPhases || []).map((p) => ({ ...p, module: m.name }))).filter((p) => !hiddenPhases.has(p.name));
+}
+// Tests only: phases to treat as not registered, as before the deploy that
+// ships their module (the registry itself can't forget a module). Pass [] to undo.
+const hiddenPhases = new Set();
+export function __hidePhasesForTests(names = []) {
+  hiddenPhases.clear();
+  for (const n of names) hiddenPhases.add(n);
 }
 
 // The order phases run in: registered ones sorted by `after` (stable:
