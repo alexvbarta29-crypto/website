@@ -125,7 +125,7 @@ Portal (`/p/*` pages, `/api/portal/*` POSTs with `X-CRM-Portal`): GET
 agreement); GET /p/hub, GET /p/hub/agreements/:id, POST
 /api/portal/hub/agreements/:id/sign, POST /api/portal/hub/open (scope hub);
 GET /p/login and POST /api/portal/login (public: no session, rate limited);
-GET /p/sign/:token and POST /api/portal/sign/:token (present). The view
+GET /p/sign/:token and POST /api/portal/sign/:token/sign (present). The view
 beacon is kind `agreement`.
 
 Services: `plans.agreementForOption(quote, version, option)` (the approved
@@ -201,9 +201,12 @@ Runs: `plans.make` (a plan, its agreement, jobs, status), `plans.act`
 (a one-time lights job gets its season and takedown), `job.scheduled`,
 `job.completed`, `job.reopened`, `job.cancelled`, `visit.*` (the visits
 follow their jobs; the season follows its jobs), `agreement.signed` (the
-signature's follow-ups, then a pending plan activates), `card.saved`.
+signature's follow-ups, then a pending plan activates), `card.saved`,
+`portal.login_requested` (the "text me a link" text: a hub link, sent from
+the fast lane because a portal request has a small storage budget).
 Emits `plan.activated`, `plan.paused`, `plan.cancelled`, `plan.renewed`,
-`agreement.sent`, `agreement.signed`.
+`agreement.sent`, `agreement.signed`, `portal.login_requested` (the
+contact's id only).
 
 ## Automations
 

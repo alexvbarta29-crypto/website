@@ -9,7 +9,7 @@
 //   GET  /p/hub/agreements/:id · POST /api/portal/hub/agreements/:id/sign   the same, from the hub
 //   POST /api/portal/hub/open {kind: "quote", id}   a short link to one open quote → { location }
 //   GET  /p/login · POST /api/portal/login {phone}  public: "text me a link" (a hub link by text)
-//   GET  /p/sign/:token · POST /api/portal/sign/:token   in person on the staff phone (a present link)
+//   GET  /p/sign/:token · POST /api/portal/sign/:token/sign   in person on the staff phone (a present link)
 //   beacon "agreement": sent → viewed
 //
 // A document link never opens the hub (core's scope check); the hub needs a
@@ -27,8 +27,8 @@ import { clientIp, uaFamily } from "../../core/http.mjs";
 import { ipHash } from "../../core/sessions.mjs";
 import { has, call } from "../../core/services.mjs";
 import { sendMessage } from "../../core/send.mjs";
-import { definePortalBeacon, createPortalLink, linkKey } from "../../portal/core.mjs";
-import { safeErr } from "../../../referral-lib.mjs";
+import { definePortalBeacon, createPortalLink } from "../../portal/core.mjs";
+import { emit } from "../../core/events.mjs";
 import { agreementPage, hubPage, loginPage } from "./render.mjs";
 import { signAgreement, markViewed } from "./agreements.mjs";
 
@@ -142,12 +142,25 @@ export async function login(phone, { ip }, ctx = {}) {
     .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
   const c = recs[0];
   if (!c) return { ok: true, sent: false };
-  const link = await createPortalLink({ contact_id: c.id, scope: { kind: "hub" }, created_by: "portal:login" });
+  // the link and the text on the fast lane (a portal request has a small
+  // storage budget): the event carries the contact's id only
+  await emit("portal.login_requested", { id: c.id, wv: t, contact_id: c.id }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: ctx.requestId || "portal" });
+  return { ok: true, sent: true };
+}
+
+// The listener: a hub link and the text. A retried step makes another link
+// but never a second text (the marker is the event's).
+export async function onLoginRequested(event) {
+  const p = event.payload || {};
+  if (!isId(p.contact_id, "contact")) return { result: "skipped" };
+  const g = await getRecord("contact", p.contact_id).catch(() => null);
+  if (!g || g.data.deleted_at || g.data.merged_into) return { result: "skipped:gone" };
+  const link = await createPortalLink({ contact_id: p.contact_id, scope: { kind: "hub" }, created_by: "portal:login" });
   const r = await sendMessage({
-    contact_id: c.id, channel: "sms", template_key: "portal_login", vars: { portal_link: link.url }, origin: { kind: "system" }, category: "service",
-    marker_key: `portal-login--${linkKey(link.code).slice(4, 28)}`,
-  }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: ctx.requestId || "portal" }).catch((e) => { console.error(`crm:plans: login text not sent (${safeErr(e)})`); return null; });
-  return { ok: true, sent: !!r && ["sent", "dry_run", "queued", "scheduled"].includes(r.status) };
+    contact_id: p.contact_id, channel: "sms", template_key: "portal_login", vars: { portal_link: link.url }, origin: { kind: "system" }, category: "service",
+    marker_key: `portal-login--${String(event.event_id || `${p.contact_id}@${p.wv}`).replace(/[^a-z0-9._-]/gi, "-").slice(0, 60)}`,
+  }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "plans-login" });
+  return { result: r && r.status ? `sent:${r.status}` : "sent" };
 }
 
 // ------------------------------------------------------------ routes
@@ -228,7 +241,7 @@ export const portalRoutes = [
     },
   },
   {
-    method: "POST", path: "/api/portal/sign/:token", scope: "present", maxBody: 400 * 1024,
+    method: "POST", path: "/api/portal/sign/:token/sign", scope: "present", maxBody: 400 * 1024,
     handler: (p) => answer(p, async () => {
       const a = await presentAgreement(p);
       if (!a) return p.fail("not_found", "That agreement isn't here.", 404);

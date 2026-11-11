@@ -11,6 +11,8 @@ import { setup, customer, staffPlan, planOf, recOf, outbox, portalCookie, signat
 
 const codeIn = (text) => (String(text).match(/\/p\/([0-9A-Za-z]{10})/) || [])[1];
 const loginTexts = (t) => outbox(t).filter((o) => o.template_key === "portal_login");
+// the text goes out from the fast lane (the request only queues it)
+const texts = async (t) => { await drain(t, 2); return loginTexts(t).length; };
 const login = (t, phone, ip = "203.0.113.7") => t.portal("/api/portal/login", { method: "POST", headers: { ...PJSON, "x-nf-client-connection-ip": ip }, body: { phone } });
 const pretty = (e164) => `(${e164.slice(2, 5)}) ${e164.slice(5, 8)}-${e164.slice(8)}`;
 
@@ -27,27 +29,27 @@ test("/p/login: the same answer always; a text only for a number on file; 1 per 
     const first = await login(t, phone);
     assert.equal(first.status, 200, JSON.stringify(first.body));
     assert.equal(first.body.data.message, "If that number is on file, we texted you a link.");
-    assert.equal(loginTexts(t).length, 1, "a text with a hub link (the Outbox: dry-run)");
+    assert.equal(await texts(t), 1, "a text with a hub link (the Outbox: dry-run)");
     const unknown = await login(t, "(763) 555-0142");
     assert.equal(unknown.body.data.message, first.body.data.message, "an unknown number gets the same answer");
-    assert.equal(loginTexts(t).length, 1, "and no text");
+    assert.equal(await texts(t), 1, "and no text");
     assert.equal((await login(t, "12")).status, 400, "not a phone number");
     // again within 10 minutes: same answer, no second text
     advance(5 * 60 * 1000);
     assert.equal((await login(t, phone)).status, 200);
-    assert.equal(loginTexts(t).length, 1, "1 per 10 minutes");
+    assert.equal(await texts(t), 1, "1 per 10 minutes");
     advance(11 * 60 * 1000);
     await login(t, phone);
     advance(11 * 60 * 1000);
     await login(t, phone);
-    assert.equal(loginTexts(t).length, 3);
+    assert.equal(await texts(t), 3);
     advance(11 * 60 * 1000);
     assert.equal((await login(t, phone)).body.data.message, first.body.data.message);
-    assert.equal(loginTexts(t).length, 3, "3 a day");
+    assert.equal(await texts(t), 3, "3 a day");
     // the next day it works again
     pin("2026-11-18T15:00:00Z");
     await login(t, phone, "203.0.113.8");
-    assert.equal(loginTexts(t).length, 4);
+    assert.equal(await texts(t), 4);
   } finally { t.done(); }
 });
 
@@ -76,6 +78,7 @@ test("the hub needs a hub link or a login code; a quote or agreement link never 
     assert.equal((await t.portal("/api/portal/hub/open", { method: "POST", cookie: agCookie, headers: PJSON, body: { kind: "quote", id: "qt_00000000000000000001" } })).status, 401);
     // a login code (the texted hub link) opens it
     await login(t, pretty(contact.phones[0].e164));
+    await drain(t, 2);
     const code = codeIn(loginTexts(t)[0].body);
     assert.ok(code, "the text carries the link");
     const open = await t.portal("/api/portal/open", { method: "POST", headers: PJSON, body: { code } });
@@ -168,7 +171,7 @@ test("in person on the staff phone: one use, the staff member recorded; then the
     assert.match(page.text, /Hand the phone to Pat/);
     assert.equal(t.setCookies(page).length, 0, "no portal cookie");
     const token = url.split("/").pop();
-    const r = await t.portal(`/api/portal/sign/${token}`, { method: "POST", headers: PJSON, body: { body_sha256: ag.body_sha256, name_typed: "Pat Sample", agree: true, signature_png_b64: signature() } });
+    const r = await t.portal(`/api/portal/sign/${token}/sign`, { method: "POST", headers: PJSON, body: { body_sha256: ag.body_sha256, name_typed: "Pat Sample", agree: true, signature_png_b64: signature() } });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const a = await recOf("agreement", ag.id);
     assert.equal(a.signature.method, "in_person");

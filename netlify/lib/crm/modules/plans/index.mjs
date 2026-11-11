@@ -25,7 +25,7 @@ import { agreementForOption, seedAgreementTemplates } from "./agreements.mjs";
 import { fromQuoteOption, listeners, touchPlanStats, W } from "./plans.mjs";
 import "./signatures.mjs";
 import { automations, sweeps } from "./automations.mjs";
-import { portalRoutes } from "./portal.mjs";
+import { portalRoutes, onLoginRequested } from "./portal.mjs";
 import { planRoutes } from "./routes.mjs";
 import { phases } from "./import-rotor.mjs";
 import { mcpTools } from "./mcp.mjs";
@@ -69,8 +69,8 @@ export default defineModule({
   },
   routes: planRoutes,
   portalRoutes,
-  events: listeners,
-  emits: ["plan.activated", "plan.paused", "plan.cancelled", "plan.renewed", "agreement.signed", "agreement.sent"],
+  events: { ...listeners, "portal.login_requested": { handler: onLoginRequested, mutates: false } },
+  emits: ["plan.activated", "plan.paused", "plan.cancelled", "plan.renewed", "agreement.signed", "agreement.sent", "portal.login_requested"],
   services: {
     // (quote, version, option, ctx) → { template_id, template_version, body_rendered, body_sha256 } | null
     "plans.agreementForOption": (quote, version, option) => agreementForOption(quote, version, option),
