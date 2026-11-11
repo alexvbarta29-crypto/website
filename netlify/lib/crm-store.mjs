@@ -1135,6 +1135,40 @@ export async function applyIndexRow(name, shard, id, part, row, wv, opts = {}) {
   await markDirty(sc, name, shard);
 }
 
+// The same for several rows of one shard in ONE write (a campaign batch's
+// conversations, §5.7.5: one ix/inbox write per batch, not one per message).
+// entries: [{ id, part, row | null, wv }]; a row whose wv is not newer is
+// left as it is. On failure the shard is marked dirty for a rebuild.
+export async function applyIndexRows(name, shard, entries, opts = {}) {
+  const sc = scopeOf(opts);
+  const list = (entries || []).filter((e) => e && typeof e.id === "string" && typeof e.part === "string" && Number.isSafeInteger(e.wv));
+  if (!list.length) return;
+  const key = K.ix(name, shard);
+  try {
+    for (let i = 0; i < CAS_TRIES; i++) {
+      const cur = await read(sc, "data", key);
+      const blob = cur && cur.data ? cur.data : emptyIndex(name, shard);
+      const rows = { ...blob.rows };
+      let changed = false;
+      for (const e of list) {
+        const entry = { ...(rows[e.id] || {}) };
+        if (entry[e.part] && entry[e.part].wv >= e.wv) continue;
+        entry[e.part] = e.row ? { wv: e.wv, d: e.row } : { wv: e.wv, d: null, at: nowIso() };
+        rows[e.id] = entry;
+        changed = true;
+      }
+      if (!changed) return;
+      const next = { ...blob, rows: pruneTombstones(rows), updated_at: nowIso(), _w: nonce(sc) };
+      const w = await condWrite(sc, "data", key, next, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
+      if (w.ok) return;
+      await casJitter(i);
+    }
+  } catch (e) {
+    if (!(isTransient(e) || e instanceof UnknownOutcome || e instanceof BudgetError)) throw e;
+  }
+  await markDirty(sc, name, shard);
+}
+
 // Worker only: rebuilds an index from the records (§3.5), merging by wv with
 // whatever writers put there meanwhile, CAS on the blob, then clears the
 // dirty marker by CAS from the value read BEFORE the records were listed:
