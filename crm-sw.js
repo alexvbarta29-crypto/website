@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.11-8";
+const VERSION = "2026.11.11-9";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -51,7 +51,19 @@ const PRECACHE = [
   "/crm-app/modules/mcp/manifest.js",
   "/crm-app/modules/money/manifest.js",
   "/crm-app/modules/payroll/manifest.js",
+  "/crm-app/modules/plans/contact-tab.js",
+  "/crm-app/modules/plans/due.js",
+  "/crm-app/modules/plans/kit.js",
+  "/crm-app/modules/plans/lights.js",
+  "/crm-app/modules/plans/list.js",
   "/crm-app/modules/plans/manifest.js",
+  "/crm-app/modules/plans/new.js",
+  "/crm-app/modules/plans/plan.js",
+  "/crm-app/modules/plans/plans.css",
+  "/crm-app/modules/plans/settings.js",
+  "/crm-app/modules/plans/template.js",
+  "/crm-app/modules/plans/templates.js",
+  "/crm-app/modules/plans/today-card.js",
   "/crm-app/modules/quotes/builder.js",
   "/crm-app/modules/quotes/contact-tab.js",
   "/crm-app/modules/quotes/discounts.js",
@@ -115,6 +127,9 @@ const PRECACHE = [
   "/crm-app/modules/work/office-today-card.js",
   "/crm-app/modules/work/visit.js",
   "/crm-app/portal/core.js",
+  "/crm-app/portal/plans-agreement.js",
+  "/crm-app/portal/plans-hub.js",
+  "/crm-app/portal/plans-login.js",
   "/crm-app/portal/quotes-quote.js",
   "/crm-app/styles/crm.css",
   "/crm-app/version.js",
