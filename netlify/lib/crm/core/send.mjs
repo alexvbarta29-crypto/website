@@ -192,6 +192,20 @@ function writeCtxOf(ctx) {
 
 // ------------------------------------------------------------ the sender
 
+// Comms (M6) registers the function that turns a send that really reached a
+// provider (test or live, never dry-run) into a Message and its
+// Conversation (§5.7.1): fn(sent, ctx) → { message_id?, conversation_id? }.
+// A recorder that fails never fails the send (the provider already has it).
+let sentRecorder = null;
+export function setSentRecorder(fn) { sentRecorder = typeof fn === "function" ? fn : null; }
+async function recordSent(sent, ctx) {
+  if (!sentRecorder || !sent.contact) return {};
+  try { return (await sentRecorder(sent, ctx)) || {}; } catch (e) {
+    console.error(`crm:send: a sent ${sent.channel} was not recorded as a message (${safeErr(e)})`);
+    return {};
+  }
+}
+
 export async function sendMessage(msg, ctx = {}) {
   if (!msg || typeof msg !== "object") throw new InputError("Nothing to send.");
   const channel = msg.channel;
@@ -397,7 +411,7 @@ export async function sendMessage(msg, ctx = {}) {
 
     // test / live: the provider call, under `sending` (§7.3)
     const email = integrations.email || {};
-    await advance({ state: "sending", provider: channel === "sms" ? "twilio" : (email.provider || "postmark"), to_hk: toHk, body_sha256: sha(text), at: nowIso(), metadata: { crm_marker: marker._key } });
+    await advance({ state: "sending", provider: channel === "sms" ? "twilio" : (email.provider || "postmark"), to_hk: toHk, body_sha256: sha(text), at: nowIso(), metadata: { crm_marker: marker._key, ...(contact ? { contact_id: contact.id } : {}) } });
     let res;
     try {
       res = channel === "sms"
@@ -413,19 +427,22 @@ export async function sendMessage(msg, ctx = {}) {
       console.error(`crm:send: a ${channel} send is unclear (${safeErr(e)})`);
       return { status: "sending", marker_key: marker._key, mode: a.mode };
     }
+    const sent = { contact, channel, to, from: channel === "sms" ? number : (email.from || company.email || ""), text, subject: rendered.subject || "", html, origin, related: msg.related || {}, category, template_key: template ? template.key : null, marker_key: marker._key, footer_appended: footerAppended, segments, number, mode: a.mode };
     if (res.status === "failed" || res.status === "blocked") {
       await advance({ state: "failed", code: keySafe(res.error_code || res.status, 40) });
-      return { status: "failed", error_code: res.error_code || null, marker_key: marker._key, mode: a.mode };
+      const rec = await recordSent({ ...sent, status: "failed", error_code: res.error_code || res.status, provider_id: res.provider_id || null }, wctx);
+      return { status: "failed", error_code: res.error_code || null, marker_key: marker._key, mode: a.mode, ...rec };
     }
     await advance({ state: "done", result: res.status || "sent", provider_ref: res.provider_id || null });
     await noteSent(dup);
+    const rec = await recordSent({ ...sent, status: res.status === "queued" ? "queued" : "sent", provider_id: res.provider_id || null }, wctx);
     if (contact && statsPart("comms")) {
       await updateStats(contact.id, "comms", (p) => ({
         ...p, last_contacted_at: nowIso(),
         ...(channel === "sms" ? { first_sms: { ...(p.first_sms || {}), ...(p.first_sms && p.first_sms[number] ? {} : { [number]: nowIso() }) } } : {}),
       }), wctx).catch((e) => console.error(`crm:send: stats not updated (${safeErr(e)})`));
     }
-    return { status: res.status || "sent", provider_id: res.provider_id || null, marker_key: marker._key, mode: a.mode, footer_appended: footerAppended, segments };
+    return { status: res.status || "sent", provider_id: res.provider_id || null, marker_key: marker._key, mode: a.mode, footer_appended: footerAppended, segments, ...rec };
   }
 }
 

@@ -157,7 +157,8 @@ export const messageType = defineType({
   rotorFields: [],
   mirrored: true,
   audit: false,
-  techFields: ["id", "conversation_id", "contact_id", "channel", "direction", "subject", "body_text", "status", "blocked_reason", "error_code", "segments", "attachment_file_ids", "media_pending", "sent_at", "delivered_at", "origin", "provider"],
+  // (more, imported, has_html and attachments_missing are what a thread adds to a message it shows)
+  techFields: ["id", "conversation_id", "contact_id", "channel", "direction", "subject", "body_text", "status", "blocked_reason", "error_code", "segments", "attachment_file_ids", "media_pending", "sent_at", "delivered_at", "origin", "provider", "more", "imported", "has_html", "attachments_missing"],
   readPerm: "inbox:read",
   rels: [{ rel: "conv-messages", parent: (r) => r.conversation_id, sort: (r) => tsKey(new Date(Date.parse(r.sent_at || r.created_at) || 0)) }],
   pointers: [{ kind: "provider-msg", key: (r) => (r.provider_id && r.provider !== "rotor_import" ? providerKey(r.provider, r.provider_id) : null) }],
