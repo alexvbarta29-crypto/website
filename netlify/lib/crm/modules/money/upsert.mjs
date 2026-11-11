@@ -62,7 +62,8 @@ function fill(p, spec) {
   if (!(next.fee_cents > 0) && spec.fee_cents > 0) next.fee_cents = spec.fee_cents;
   if (spec.stripe) next.stripe = { ...(spec.stripe || {}), ...(p.stripe || {}), ...Object.fromEntries(Object.entries(spec.stripe).filter(([k, v]) => v && !(p.stripe && p.stripe[k]))) };
   if (spec.card && !p.card) next.card = spec.card;
-  if (spec.failure_code && !p.failure_code) next.failure_code = spec.failure_code;
+  // why it failed, only on a payment that did fail (a stale event never marks one that went through)
+  if (spec.failure_code && !p.failure_code && next.status === "failed") next.failure_code = spec.failure_code;
   if (!p.invoice_id && spec.invoice_id) next.invoice_id = spec.invoice_id;
   return next;
 }
@@ -99,7 +100,9 @@ export async function upsertPayment(spec, ctx = {}) {
   if (transitioned && EVENT_FOR[transitioned] && payment.kind === "payment") await emitSafe(EVENT_FOR[transitioned], eventPayload(payment), ctx);
   if (transitioned === "succeeded" && payment.kind === "refund") await emitSafe("payment.refunded", eventPayload(payment, { refund_of: payment.refund_of || null }), ctx);
   if (transitioned === "succeeded" && payment.kind === "payment") await addActivity(payment.contact_id, "payment.succeeded", payment.id, now()).catch(() => {});
-  await touchMoneyStats(payment.contact_id, ctx);
+  // lifetime paid moves once, with the write that made it succeed (practice payments never count)
+  const paidNow = transitioned === "succeeded" && !payment.simulated ? (payment.amount_cents || 0) + (payment.tip_cents || 0) : 0;
+  await touchMoneyStats(payment.contact_id, ctx, { lifetime_delta: payment.kind === "refund" ? -paidNow : paidNow });
   return { payment, created, transitioned, invoice };
 }
 

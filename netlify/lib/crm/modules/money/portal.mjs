@@ -18,7 +18,7 @@
 // exists for a session this module recorded, in dry-run, for a sandboxed
 // invoice or contact.
 
-import { getRecord, getRecords, listRel } from "../../../crm-store.mjs";
+import { getRecord, getRecords, listRel, withStoreScope, withBudget } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
 import { ConflictError, InputError, NotFoundError } from "../../core/errors.mjs";
 import { definePortalReturn } from "../../portal/core.mjs";
@@ -29,6 +29,14 @@ import { cardStatus } from "./cards.mjs";
 import { payments, mayMoveMoney } from "./gate.mjs";
 import { startInvoiceCheckout, startSetupCheckout, payRefusal, drySession, completeDryCheckout, resolveReturn } from "./checkout.mjs";
 import { renderInvoicePage, renderReceiptPage, renderCardPage, renderReturnPage, renderDryCheckout } from "./render.mjs";
+
+// Applying a payment writes the payment, the invoice, the customer's money
+// stats and their events: more storage calls than a portal page's 30. The
+// two places a portal request applies one (the practice Checkout's buttons,
+// the return page reading a session before Stripe's webhook lands) get
+// their own budget, as the staff routes that record payments do.
+const APPLY_CALLS = 160;
+const withApplyBudget = (fn) => withStoreScope({ budget: withBudget(8000, APPLY_CALLS) }, fn);
 
 // One invoice for this page: it must belong to the link's contact.
 async function invoiceFor(p, id) {
@@ -123,7 +131,7 @@ export const portalRoutes = [
     handler: (p) => answer(p, async () => {
       if (!(await dryOpen())) return p.fail("not_found", "Not found.", 404);
       const b = p.body || {};
-      const out = await completeDryCheckout(p.params.session, { action: String(b.action || ""), method: String(b.method || "card") }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "portal" });
+      const out = await withApplyBudget(() => completeDryCheckout(p.params.session, { action: String(b.action || ""), method: String(b.method || "card") }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "portal" }));
       if (out.error) return p.fail(out.error, out.message, 409);
       return p.json({ ok: true, data: { location: out.location } });
     }),
@@ -135,7 +143,7 @@ export const portalRoutes = [
 definePortalReturn(async ({ url, session, company, layout, portalPage }) => {
   const sid = url.searchParams.get("cs") || "";
   let result = null;
-  try { result = await resolveReturn(sid, session, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "portal" }); } catch (e) { console.error(`crm:money: the return page failed (${safeErr(e)})`); }
+  try { result = await withApplyBudget(() => resolveReturn(sid, session, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "portal" })); } catch (e) { console.error(`crm:money: the return page failed (${safeErr(e)})`); }
   if (!result) result = { kind: "pending", title: "Thank you", text: "We're confirming your payment. You'll get a receipt by text or email in a moment." };
   const { title, body } = renderReturnPage({ result });
   return portalPage(layout({ title, body, company, page: "return" }));

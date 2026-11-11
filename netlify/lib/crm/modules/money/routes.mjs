@@ -501,8 +501,9 @@ async function runRoute(ctx) {
 
 export const moneyRoutes = [
   R("GET", "/invoices", "invoices:read_all", "none", listInvoices),
-  R("POST", "/invoices", "invoices:write", "none", createInvoice, { maxCalls: 60 }),
-  R("POST", "/jobs/:id/invoice", "invoices:write", "required", invoiceJob, { maxCalls: 60 }),
+  // making an invoice is an op (number, record, credits, links, issue): its calls add up
+  R("POST", "/invoices", "invoices:write", "none", createInvoice, { maxCalls: 120 }),
+  R("POST", "/jobs/:id/invoice", "invoices:write", "required", invoiceJob, { maxCalls: 120 }),
   R("GET", "/invoices/:id", "invoices:read", "required", getOne, { maxCalls: 40 }),
   R("PATCH", "/invoices/:id", "invoices:write", "required", patchInvoice),
   R("POST", "/invoices/:id/issue", "invoices:send", "required", act((ctx) => issueInvoice(ctx.params.id, { channels: (ctx.body || {}).channels }, ctx.write())), { maxCalls: 50 }),
@@ -516,7 +517,8 @@ export const moneyRoutes = [
   R("POST", "/payments/:id/refund", "payments:refund", "required", refundRoute, { maxCalls: 60 }),
   R("GET", "/contacts/:id/credits", "invoices:read_all", "required", creditsRoute, { maxCalls: 120 }),
   R("POST", "/contacts/:id/credits", "credits:issue", "required", issueCreditRoute, { maxCalls: 130 }),
-  R("POST", "/credits/:id/keep", "credits:issue", "required", keepCreditRoute),
+  // the same people who could refund the extra decide to keep it (owners)
+  R("POST", "/credits/:id/keep", "payments:refund", "required", keepCreditRoute),
   R("POST", "/contacts/:id/card-link", "invoices:send", "required", cardLinkRoute, { maxCalls: 50 }),
   R("GET", "/money/contacts/:id", "invoices:read_all", "required", contactMoney, { maxCalls: 160 }),
   R("GET", "/money/summary", "invoices:read_all", "none", summary, { maxCalls: 40 }),
@@ -526,8 +528,9 @@ export const moneyRoutes = [
   R("GET", "/autopay/runs", "invoices:read_all", "none", runsRoute),
   R("GET", "/autopay/runs/:id", "invoices:read_all", "required", runRoute, { maxCalls: 250 }),
   R("GET", "/visits/:id/payment", "payments:record", "required", visitPayment),
-  R("POST", "/visits/:id/payments", "payments:record", "required", visitRecord, { maxCalls: 90, replaySafe: true }),
-  R("POST", "/visits/:id/pay-link", "payments:record", "required", visitPayLink, { maxCalls: 90, secret: true, idempotent: false }),
+  // the visit's invoice may be made and issued here first, then the payment recorded
+  R("POST", "/visits/:id/payments", "payments:record", "required", visitRecord, { maxCalls: 200, replaySafe: true }),
+  R("POST", "/visits/:id/pay-link", "payments:record", "required", visitPayLink, { maxCalls: 140, secret: true, idempotent: false }),
 ];
 
 export { ForbiddenError, mayMoveMoney, payments, isOverdue, isProcessing, sysModeOf, W };

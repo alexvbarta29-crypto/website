@@ -1,7 +1,8 @@
 // Money module: small shared pieces (settings, the write context, names,
 // numbers, the contact's money stats part).
 
-import { getSetting, getRecord, listRel, updateStats, getRaw } from "../../../crm-store.mjs";
+import { getSetting, getRecord, updateStats, getRaw, readIndex, listKeys } from "../../../crm-store.mjs";
+import { contactShard } from "../../core/stats.mjs";
 import { now, nowIso, localDate } from "../../core/clock.mjs";
 import { isId } from "../../core/ids.mjs";
 import { InputError } from "../../core/errors.mjs";
@@ -107,21 +108,68 @@ export const seqFor = (kind, sor) => (kind === "deposit" ? (sor === "crm" ? "dep
 
 export const STATS_DEFAULTS = Object.freeze({ lifetime_cents: 0, open_balance_cents: 0, stripe: { customer_ids: [], card_status: "none" } });
 
-// Works the contact's open balance and lifetime paid out again from the
-// relation rows (their values carry status, balance and amounts: one
-// listing each, no record reads).
-export async function touchMoneyStats(contactId, ctx = {}) {
+// What a contact owes: the balances of their open invoices (one read of the
+// open-invoices index; imported invoices count, the customer owes them too).
+const owedBy = (rows) => {
+  const m = new Map();
+  for (const r of rows) if (r.st === "open" && r.bal > 0 && r.c) m.set(r.c, (m.get(r.c) || 0) + r.bal);
+  return m;
+};
+
+// Brings the contact's money stats up to date after an invoice or payment
+// changed: the open balance is worked out again from the index; lifetime
+// paid moves by `lifetime_delta` (the payment that just went through, or
+// the refund). money.stats re-checks both from the indexes (below), so a
+// function that died in between is put right.
+export async function touchMoneyStats(contactId, ctx = {}, { lifetime_delta = 0 } = {}) {
   if (!isId(contactId, "contact")) return null;
-  const [inv, pay] = await Promise.all([
-    listRel("contact-invoices", contactId, { limit: 500 }).catch(() => []),
-    listRel("contact-payments", contactId, { limit: 1000 }).catch(() => []),
-  ]);
-  const open = inv.filter((r) => r.value && r.value.s === "open").reduce((s, r) => s + (r.value.b || 0), 0);
-  const life = pay.filter((r) => r.value && r.value.s === "succeeded" && !r.value.sim).reduce((s, r) => s + (r.value.k === "refund" ? -(r.value.a + (r.value.t || 0)) : r.value.a + (r.value.t || 0)), 0);
+  let open = null;
+  try { open = owedBy((await readIndex("invoices", "open")).rows).get(contactId) || 0; } catch { open = null; }
   return updateStats(contactId, "money", (p) => {
-    const next = { ...STATS_DEFAULTS, ...p, stripe: { ...STATS_DEFAULTS.stripe, ...((p && p.stripe) || {}) }, open_balance_cents: open, lifetime_cents: life };
+    const next = {
+      ...STATS_DEFAULTS, ...p, stripe: { ...STATS_DEFAULTS.stripe, ...((p && p.stripe) || {}) },
+      ...(open === null ? {} : { open_balance_cents: open }), lifetime_cents: Math.max(0, ((p && p.lifetime_cents) || 0) + (Number.isSafeInteger(lifetime_delta) ? lifetime_delta : 0)),
+    };
     return JSON.stringify(next) === JSON.stringify(p) ? null : next;
   }, W(ctx)).catch(() => null);
+}
+
+// money.stats (bulk lane; hourly for balances, and with lifetime paid from
+// money.reconcile each night): every contact's open balance (and lifetime
+// paid) worked out from the indexes and compared with what the contacts
+// index says; only the ones that differ are written. This is what gives
+// imported customers their balance after an import, and what repairs a
+// stats write that never landed. Derived data only (contact_stats).
+export async function refreshMoneyStats(ctx = {}, { lifetime = false } = {}) {
+  const [cx, open] = await Promise.all([readIndex("contacts", contactShard("ct_00000000000000000000")), readIndex("invoices", "open")]);
+  const owe = owedBy(open.rows);
+  let life = null;
+  if (lifetime) {
+    life = new Map();
+    const shards = [...new Set((await listKeys("ix/payments/").catch(() => [])).map((k) => k.slice("ix/payments/".length)).filter((s) => s && !s.includes("/")))];
+    for (const sh of shards) {
+      if (ctx.budget && ctx.budget.left() < 15000) { life = null; break; }
+      for (const r of (await readIndex("payments", sh)).rows) {
+        if (r.st !== "succeeded" || r.sim || !r.c) continue;
+        const v = (r.a || 0) + (r.tip || 0);
+        life.set(r.c, (life.get(r.c) || 0) + (r.k === "refund" ? -v : v));
+      }
+    }
+  }
+  const w = W(ctx);
+  let fixed = 0;
+  for (const row of cx.rows) {
+    const wantB = owe.get(row.id) || 0;
+    const wantL = life ? Math.max(0, life.get(row.id) || 0) : null;
+    if ((row.mb || 0) === wantB && (wantL === null || (row.ml || 0) === wantL)) continue;
+    if (ctx.budget && ctx.budget.left() < 8000) return { done: false, progress: fixed };
+    await updateStats(row.id, "money", (p) => {
+      const next = { ...STATS_DEFAULTS, ...p, stripe: { ...STATS_DEFAULTS.stripe, ...((p && p.stripe) || {}) }, open_balance_cents: wantB, ...(wantL === null ? {} : { lifetime_cents: wantL }) };
+      return JSON.stringify(next) === JSON.stringify(p) ? null : next;
+    }, w).catch(() => null);
+    fixed += 1;
+  }
+  return { progress: fixed, result: `${fixed} contact${fixed === 1 ? "" : "s"} brought up to date` };
 }
 
 export async function moneyStats(contactId) {

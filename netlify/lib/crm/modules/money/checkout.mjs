@@ -84,7 +84,9 @@ export async function startInvoiceCheckout(invoiceId, contactId, body = {}, ctx 
   if (why) throw new ConflictError(why.message, { code: why.code });
   const settings = await moneySettings();
   let tip;
-  try { tip = computeTip(inv.balance_cents, body.tip_choice ?? "0", body.custom_tip_cents, settings); } catch { throw new InputError("Pick a tip.", "tip_choice"); }
+  // a deposit or a fee takes no tip, whatever the page sent (the page doesn't offer one)
+  if (["deposit", "fee"].includes(inv.kind)) tip = { tip_cents: 0, capped: false };
+  else try { tip = computeTip(inv.balance_cents, body.tip_choice ?? "0", body.custom_tip_cents, settings); } catch { throw new InputError("Pick a tip.", "tip_choice"); }
   const p = await payments({ mode });
   if (!p.impl) throw new ConflictError("Online payment is paused right now. Call or text us.", { code: "paused" });
   const contact = await liveContact(inv.contact_id);

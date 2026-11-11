@@ -1,10 +1,9 @@
 // Money module: account credits and overpayments (design §5.6 "Credit",
 // "Overpayment"; D33).
 //
-// A contact's credit is a ledger of credit rows (rel/contact-credits, each
-// row's value carries its amount and status, so the balance is one
-// listing): issued credits (+, available), credits used on an invoice (−,
-// applied). An overpayment is held, not spendable, until an owner decides:
+// A contact's credit is a ledger of credit rows (rel/contact-credits lists
+// them; a contact has a handful): issued credits (+, available), credits
+// used on an invoice (−, applied). An overpayment is held, not spendable, until an owner decides:
 // keep it as credit for the next visit (→ available) or refund it (the
 // refund brings the invoice's excess, and so the row, to 0 → settled).
 //
@@ -13,7 +12,7 @@
 // (id derived from the invoice, amount = excess by CAS) and one approval
 // task for the owners. Before cutover it acts only for sandboxed invoices.
 
-import { getRecord, createRecord, updateRecord, listRel, addActivity } from "../../../crm-store.mjs";
+import { getRecord, getRecords, createRecord, updateRecord, listRel, addActivity } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { now } from "../../core/clock.mjs";
 import { ExistsError, InputError, ForbiddenError, NotFoundError, ConflictError } from "../../core/errors.mjs";
@@ -28,18 +27,20 @@ export const overpayCreditId = (invoiceId) => deriveId("credit", `over:${invoice
 export const overpayTaskId = (invoiceId) => deriveId("task", `over:${invoiceId}`, "money.overpay", 1);
 
 // The spendable credit: Σ available rows + Σ applied (negative) rows.
+async function creditRows(contactId) {
+  if (!isId(contactId, "contact")) return [];
+  const rows = await listRel("contact-credits", contactId, { limit: 200 });
+  return (await getRecords("credit", rows.map((r) => r.id))).filter((g) => g && !g.data.deleted_at).map((g) => g.data);
+}
+const spendable = (recs) => Math.max(0, recs.filter((c) => ["available", "applied"].includes(c.status || "available")).reduce((s, c) => s + (Number.isSafeInteger(c.amount_cents) ? c.amount_cents : 0), 0));
+
 export async function availableCredit(contactId) {
-  if (!isId(contactId, "contact")) return 0;
-  const rows = await listRel("contact-credits", contactId, { limit: 500 });
-  const n = rows.filter((r) => r.value && ["available", "applied"].includes(r.value.s)).reduce((s, r) => s + (Number.isSafeInteger(r.value.a) ? r.value.a : 0), 0);
-  return Math.max(0, n);
+  return spendable(await creditRows(contactId));
 }
 
 export async function creditsOf(contactId) {
-  const rows = await listRel("contact-credits", contactId, { limit: 200 });
-  const recs = [];
-  for (const r of rows.slice(0, 100)) { const g = await getRecord("credit", r.id).catch(() => null); if (g) recs.push(g.data); }
-  return { balance_cents: await availableCredit(contactId), held_cents: rows.filter((r) => r.value && r.value.s === "held").reduce((s, r) => s + (r.value.a || 0), 0), credits: recs };
+  const recs = await creditRows(contactId);
+  return { balance_cents: spendable(recs), held_cents: recs.filter((c) => c.status === "held").reduce((s, c) => s + (c.amount_cents || 0), 0), credits: recs };
 }
 
 // POST /contacts/:id/credits { kind, amount_cents, note, client_id } (credits:issue;

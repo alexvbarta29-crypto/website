@@ -23,7 +23,7 @@ import { defineModule } from "../../core/registry.mjs";
 import { readIndex, getRecord, updateRecord, listRel, currentScope } from "../../../crm-store.mjs";
 import { nowMs } from "../../core/clock.mjs";
 import { types } from "./types.mjs";
-import { MONEY_DEFAULTS, validateMoneySettings, STATS_DEFAULTS, today, touchMoneyStats, W, nameOf } from "./common.mjs";
+import { MONEY_DEFAULTS, validateMoneySettings, STATS_DEFAULTS, today, touchMoneyStats, refreshMoneyStats, W, nameOf } from "./common.mjs";
 import { onJobCompleted, invoiceBackfill } from "./invoices.mjs";
 import { onOverpay } from "./credits.mjs";
 import { cardStatus, verifyCards } from "./cards.mjs";
@@ -72,7 +72,7 @@ export default defineModule({
   types,
   statsParts: {
     // the money part of ContactStats (§5.1): lifetime paid, open balance, the card on file
-    money: { defaults: { ...STATS_DEFAULTS, stripe: { ...STATS_DEFAULTS.stripe } }, row: (p) => ({ mb: (p && p.open_balance_cents) || 0, mcs: (p && p.stripe && p.stripe.card_status) || "none" }) },
+    money: { defaults: { ...STATS_DEFAULTS, stripe: { ...STATS_DEFAULTS.stripe } }, row: (p) => ({ mb: (p && p.open_balance_cents) || 0, ml: (p && p.lifetime_cents) || 0, mcs: (p && p.stripe && p.stripe.card_status) || "none" }) },
   },
   settings: { money: { defaults: { ...MONEY_DEFAULTS }, validate: validateMoneySettings, perm: "settings:owner" } },
   routes: [...moneyRoutes, ...webhookRoutes],
@@ -102,6 +102,9 @@ export default defineModule({
     { key: "invoice.overdue", label: "Overdue reminders", lane: "fast", every: "daily", at_local: "10:00", mutates: false, run: (ctx) => overdueSweep(ctx) },
     { key: "card.expiring", label: "Cards about to expire", lane: "fast", every: "daily", at_local: "10:05", mutates: false, run: (ctx) => cardExpiringSweep(ctx) },
     { key: "money.reconcile", label: "Invoices against their payments", lane: "bulk", every: "daily", at_local: "03:30", mutates: true, run: (ctx) => reconcileSweep(ctx) },
+    // what each customer owes (hourly) and has paid in all (nightly), from the indexes: derived stats only
+    { key: "money.stats", label: "Customer balances", lane: "bulk", every: "hourly", mutates: false, run: (ctx) => refreshMoneyStats(ctx) },
+    { key: "money.stats_lifetime", label: "Customer lifetime totals", lane: "bulk", every: "daily", at_local: "03:40", mutates: false, run: (ctx) => refreshMoneyStats(ctx, { lifetime: true }) },
     { key: "payments.verify_cards", label: "Cards on file check", lane: "bulk", every: "weekly", dow: 1, at_local: "05:00", mutates: false, run: (ctx) => verifyCards(ctx) },
   ],
   automations,

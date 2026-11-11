@@ -41,8 +41,8 @@ export const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Ap
 export const PJSON = { "content-type": "application/json", "x-crm-portal": "1", origin: "https://www.bartawindowwashing.com", "user-agent": IPHONE };
 export const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
-export async function setup(now = TUE_0900) {
-  const t = await crmTest({ now });
+export async function setup(now = TUE_0900, { env = {} } = {}) {
+  const t = await crmTest({ now, env });
   globalThis.__crmSleepScale = 0.01;
   sweeps.clearSweepCache();
   sweeps.clearSeedCache();
@@ -112,6 +112,21 @@ export async function openInvoice(t, as, contact, { cents = 29500, job_ids, issu
   if (r.status !== 201) throw new Error("invoice failed: " + JSON.stringify(r.body));
   return r.body.data.invoice;
 }
+
+// A finished job whose invoice the worker made and issued (job.completed → Money). → { job, visit, invoice }
+export async function jobInvoice(t, as, contact, opts = {}) {
+  const { job, visit } = await finishedJob(t, as, contact, opts);
+  await drain(t);
+  const invoice = recs(t, "invoice").find((i) => (i.job_ids || []).includes(job.id));
+  if (!invoice) throw new Error("no invoice was made for the job");
+  return { job, visit, invoice };
+}
+
+// A Checkout Session as Stripe hands it back once paid (the webhook's re-fetch, the return page).
+export const sessionObject = (id, inv, pi, { tip = 0 } = {}) => ({
+  id, object: "checkout.session", mode: "payment", status: "complete", payment_status: pi.status === "succeeded" ? "paid" : "unpaid",
+  metadata: { crm_invoice_id: inv.id, crm_contact_id: inv.contact_id, tip_cents: String(tip) }, payment_intent: pi,
+});
 
 export const invoiceOf = async (id) => (await scope(() => store.getRecord("invoice", id))).data;
 export const paymentOf = async (id) => { const g = await scope(() => store.getRecord("payment", id)); return g ? g.data : null; };
