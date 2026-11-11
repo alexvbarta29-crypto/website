@@ -2,24 +2,15 @@
 // (home.js: the numbers, today's visits, what needs them, quick actions;
 // loaded only for them), a tech gets their own day: the date, a greeting,
 // the bell (unread notifications), the workers' alerts, the modules' cards
-// (todayCards: my tasks...) and quick links. The tech app (M4b) fills in
-// My visits with Clock in/out. A tech sees their own day only.
+// (todayCards: my tasks, and the tech app's day with Clock in/out, M4b) and
+// quick links. A tech sees their own day only ("No visits today" only when
+// no card has anything to show). The cards' drawing and wiring is shared
+// with Home (cards.js).
 
 import { html, icon } from "../../core/ui.js";
 import { dateLong, plural, dateTime } from "../../core/format.js";
 import * as router from "../../core/router.js";
-import { MANIFESTS } from "../index.js";
-
-// The modules' Today cards (manifest todayCards: { key, perm, order, load }):
-// each loads its own small summary (load(ctx) → state) and renders links
-// (render(state, ctx) → html``); one that fails is left out.
-async function moduleCards(ctx) {
-  const defs = MANIFESTS.flatMap((m) => m.todayCards || []).filter((c) => c && typeof c.load === "function" && (!c.perm || ctx.can(c.perm))).sort((a, b) => (a.order || 50) - (b.order || 50));
-  const out = await Promise.all(defs.map(async (c) => {
-    try { const mod = (await c.load()).default; return { mod, state: mod.load ? await mod.load(ctx) : {} }; } catch (e) { return null; }
-  }));
-  return out.filter(Boolean);
-}
+import { loadCards, drawCards, wireCards } from "./cards.js";
 
 const greeting = (d) => {
   const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }).format(d));
@@ -39,11 +30,15 @@ export default {
     const [badges, health, cards] = await Promise.all([
       ctx.api("/me/badges", { cache: false }).then((r) => r.data).catch(() => null),
       ctx.can("audit:read") ? ctx.api("/admin/health", { cache: false }).then((r) => r.data).catch(() => null) : null,
-      moduleCards(ctx),
+      loadCards(ctx),
     ]);
     return { now: new Date(), user: ctx.user || {}, badges, health, cards };
   },
-  mount(view, s, ctx) { if (s.$home && s.$home.mount) { this._home = s.$home; s.$home.mount(view, s.hs, ctx); } },
+  mount(view, s, ctx) {
+    if (s.$home) { if (s.$home.mount) { this._home = s.$home; s.$home.mount(view, s.hs, ctx); } return; }
+    // the cards' own events and mount, inside each card (redrawn on every paint)
+    wireCards(view, s.cards, ctx);
+  },
   unmount() { if (this._home) { const h = this._home; this._home = null; if (h.unmount) h.unmount(); } },
   render(s, ctx) {
     if (s.$home) return s.$home.render(s.hs, ctx);
@@ -53,7 +48,7 @@ export default {
     const stuck = s.health && s.health.status && (s.health.status.fast === "stuck" || s.health.status.bulk === "stuck");
     const mode = (s.health && s.health.mode) || {};
     // the modules' cards; one with something to show replaces "Nothing needs you"
-    const cards = (s.cards || []).map((c) => { try { return c.mod.render(c.state, ctx); } catch (e) { return ""; } });
+    const cards = drawCards(s.cards, ctx);
     const busy = cards.some((c) => String(c || "").trim() !== "");
     const links = [
       ctx.can("contacts:read_all") && router.has("/contacts") ? html`<a class="tile" href="#/contacts">${icon("contacts")}<span>Contacts</span></a>`
@@ -73,9 +68,9 @@ export default {
       ${stuck || alerts.length ? html`<a class="card alert" href="#/settings/data" style="display:block;text-decoration:none;color:inherit"><h2>Needs a look</h2>${stuck ? html`<p>A worker hasn't finished a pass in 3 hours.</p>` : ""}${alerts.slice(0, 3).map((a) => html`<p>${a.text}</p>`)}</a>` : ""}
       ${b.approvals && ctx.can("campaigns:send") ? html`<a class="tile" href="#/approvals">${icon("check")}<span>${plural(b.approvals, "approval")} waiting</span><span class="n">${b.approvals}</span></a>` : ""}
       ${cards}
-      ${tech
+      ${busy ? "" : tech
         ? html`<div class="card empty"><div class="art">${icon("today")}</div><h2>No visits today</h2><p>Your visits show up here, in route order, once scheduling moves into the CRM.</p></div>`
-        : busy ? "" : html`<div class="card empty"><div class="art">${icon("sun")}</div><h2>Nothing needs you right now</h2><p>Leads, replies, visits and money show up here as each part of the CRM goes live. Rotor is still in charge until the switch.</p></div>`}
+        : html`<div class="card empty"><div class="art">${icon("sun")}</div><h2>Nothing needs you right now</h2><p>Leads, replies, visits and money show up here as each part of the CRM goes live. Rotor is still in charge until the switch.</p></div>`}
       ${links.length ? html`<div class="section-h">Quick links</div><div class="links">${links}</div>` : ""}
     </div>`;
   },

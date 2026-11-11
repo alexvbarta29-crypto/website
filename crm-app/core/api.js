@@ -11,8 +11,11 @@
 // "Offline, as of 7:42 AM". Writes time out after 10 s (the offline outbox
 // for techs arrives in M1.3). A 401 wipes this phone's offline copies and
 // sends this frame (never the top window) to /crm/login, keeping the screen
-// it was on. Offline copies are keyed by the signed-in person (setCacheOwner),
-// so on a shared phone nobody reads the last person's copy.
+// it was on; the person's unsent changes stay in the outbox until the next
+// sign-in on this phone (core/outbox.js claim()). Offline copies are keyed
+// by the signed-in person (setCacheOwner), so on a shared phone nobody
+// reads the last person's copy. opts.headers adds request headers (the
+// outbox's X-CRM-Sent-At).
 
 import { APP_VERSION } from "../version.js";
 import * as cache from "./cache.js";
@@ -67,7 +70,7 @@ async function signedOut() {
 export async function api(path, opts = {}) {
   const method = (opts.method || "GET").toUpperCase();
   const url = "/api/crm" + path;
-  const headers = { "X-CRM": "1", "X-CRM-Client": APP_VERSION, Accept: "application/json" };
+  const headers = { ...(opts.headers || {}), "X-CRM": "1", "X-CRM-Client": APP_VERSION, Accept: "application/json" };
   const init = { method, credentials: "same-origin", headers };
   if (method !== "GET" && method !== "DELETE") {
     headers["Content-Type"] = "application/json";
@@ -78,7 +81,8 @@ export async function api(path, opts = {}) {
   if (opts.ifNoneMatch) headers["If-None-Match"] = opts.ifNoneMatch;
   const timeout = opts.timeout || (method === "GET" ? GET_TIMEOUT_MS : WRITE_TIMEOUT_MS);
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeout);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, timeout);
   init.signal = ctrl.signal;
   let res;
   try {
@@ -89,7 +93,9 @@ export async function api(path, opts = {}) {
       const hit = await cache.get(cacheKey(url));
       if (hit) { emit("offline", hit.at); return { data: hit.data, meta: hit.meta, etag: hit.etag, offline: true, as_of: hit.at }; }
     }
-    throw new OfflineError(0, { code: "offline", message: method === "GET" ? "No connection. Try again when you have signal." : "No connection. Nothing was saved; try again when you have signal." });
+    const err = new OfflineError(0, { code: "offline", message: method === "GET" ? "No connection. Try again when you have signal." : "No connection. Nothing was saved; try again when you have signal." });
+    if (timedOut) err.timedOut = true;      // the line was there but too slow (a big photo)
+    throw err;
   }
   clearTimeout(timer);
   if (res.status === 304) {

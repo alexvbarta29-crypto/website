@@ -21,7 +21,7 @@
 import { html, icon, attrs } from "../../core/ui.js";
 import { dateLong, dateShort, plural, dateTime, initials, clock } from "../../core/format.js";
 import * as router from "../../core/router.js";
-import { MANIFESTS } from "../index.js";
+import { loadCards, drawCards, wireCards } from "./cards.js";
 import { columns, srTable } from "./home-charts.js";
 
 // The stylesheet, loaded once; the screen waits for it (a second at most),
@@ -273,14 +273,10 @@ function moneyCard(s, ctx) {
 
 // The modules' own cards (manifest todayCards), but for those whose counts
 // are already "Needs you" rows here (home: false): a module that ships a
-// card of its own (Money's strip, say) shows up under Needs you.
-async function moduleCards(ctx) {
-  const defs = MANIFESTS.flatMap((m) => m.todayCards || []).filter((c) => c && c.home !== false && typeof c.load === "function" && (!c.perm || ctx.can(c.perm))).sort((a, b) => (a.order || 50) - (b.order || 50));
-  const out = await Promise.all(defs.map(async (c) => {
-    try { const mod = (await c.load()).default; return { mod, state: mod.load ? await mod.load(ctx) : {} }; } catch (e) { return null; }
-  }));
-  return out.filter(Boolean);
-}
+// card of its own (Money's strip, say; My visits with the clock for an
+// owner who goes out, M4b) shows up under Needs you. A card's own events
+// and mount work here as on a tech's Today (cards.js).
+const moduleCards = (ctx) => loadCards(ctx, (c) => c.home !== false);
 
 // ------------------------------------------------------------ the screen
 
@@ -314,7 +310,7 @@ export default {
       ${quick(ctx)}
       ${today(s, ctx)}
       ${needs(s)}
-      ${(s.cards || []).length ? html`<div class="hm-extra">${s.cards.map((c) => { try { return c.mod.render(c.state, ctx); } catch (e) { return ""; } })}</div>` : ""}
+      ${(s.cards || []).length ? html`<div class="hm-extra">${drawCards(s.cards, ctx)}</div>` : ""}
       ${kpiGrid(s, ctx, skip)}
       ${salesCard(s, ctx)}
       ${plansCard(s, ctx)}
@@ -323,7 +319,8 @@ export default {
       ${src ? html`<p class="foot-note hm-foot">${src}. Today's visits and what needs you are the CRM's own.</p>` : ""}
     </div>`;
   },
-  mount(view, s) {
+  mount(view, s, ctx) {
+    if (ctx) wireCards(view, s.cards, ctx);
     const k = s.home.kpis;
     const charts = [];
     const add = (key, spec) => {

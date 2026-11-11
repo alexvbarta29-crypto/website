@@ -73,7 +73,8 @@ test("one app: the Dashboard (Menu → Admin) switches its views in place; Menu 
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
     assert.equal(await backShown(f), true, "back to the Menu");
-    const dash = () => page.frames().find((x) => new URL(x.url()).pathname === "/dashboard");
+    // (a frame that hasn't loaded anything yet has no URL)
+    const dash = () => page.frames().find((x) => { try { return new URL(x.url()).pathname === "/dashboard"; } catch (e) { return false; } });
     await page.waitForFunction(() => true);
     for (let i = 0; i < 50 && !(dash() && new URL(dash().url()).hash === "#overview"); i++) await page.waitForTimeout(100);
     assert.equal(new URL(dash().url()).hash, "#overview");
@@ -338,8 +339,11 @@ test("cold start with no signal: after one online visit, /office opens the CRM s
     const g = await crmFrame(page);
     await g.waitForSelector("#tabs [data-tab]", { timeout: 10000 });
     assert.equal(await title(g), "Today", "the tech's Today, from the cached shell");
-    await g.waitForSelector("#banner:not([hidden])", { timeout: 10000 });
-    assert.match(await g.textContent("#banner"), /Offline/);
+    // "Offline": the app's banner, or the tech's Today's own line (which the banner steps aside for) once the tech app (M4b) is on the phone
+    await g.waitForFunction(() => {
+      const b = document.querySelector("#banner");
+      return !!document.querySelector(".tf-own-offline") || (!!b && !b.hidden && /Offline/.test(b.textContent));
+    }, null, { timeout: 10000 });
     await shot(page, "core-offline-start");
     // back online: the launcher goes to the real office by itself
     await p.ctx.setOffline(false);

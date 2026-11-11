@@ -25,8 +25,10 @@ export function actionsFor(data, can, manifests = MANIFESTS) {
 
 async function load(params, ctx) {
   ensureStyles();
-  const r = await ctx.api(`/visits/${encodeURIComponent(params.id)}`, { cache: false });
+  // the last good copy when there's no signal (the tech app works a visit offline, §2.5)
+  const r = await ctx.api(`/visits/${encodeURIComponent(params.id)}`);
   const data = r.data;
+  if (r.offline) { data.offline = true; data.as_of = r.as_of; }
   const users = officeView() ? await loadUsers(ctx).catch(() => []) : [];
   const acts = actionsFor(data, ctx.can);
   const panels = [];
@@ -35,7 +37,7 @@ async function load(params, ctx) {
     if (a.panel) {
       try {
         const mod = (await a.load()).default;
-        const p = { key: a.key, label: a.label, mod, state: null };
+        const p = { key: a.key, label: a.label, mod, state: null, replaces: Array.isArray(a.replaces) ? a.replaces : [] };
         p.ctx = { ...ctx, data, get state() { return p.state; }, set state(x) { p.state = x; }, rerender: () => ctx.rerender(), refresh: () => ctx.refresh() };
         p.state = mod.load ? await mod.load(data, p.ctx) : {};
         panels.push(p);
@@ -113,6 +115,8 @@ export default {
     const office = !!(s.can && s.can.office);
     const ph = s.contact && (s.contact.phones || []).find((p) => p.primary) || (s.contact && (s.contact.phones || [])[0]);
     const people = (s.people || []);
+    // cards a panel shows itself (the field panel: its own checklist, work and notes)
+    const shown = new Set(s.panels.filter((p) => !p.failed).flatMap((p) => p.replaces || []));
     return html`<div class="stack wk">
       <div class="card wk-head">
         <div class="wk-head-top"><div class="wk-when-big"><b>${dateLong(v.date)}</b><span>${slotText(v)}</span></div>${visitPill(v.status)}</div>
@@ -135,11 +139,11 @@ export default {
       </ul>
       ${office ? officeButtons(s) : ""}
       ${s.buttons.length ? html`<div class="btn-row wk-acts">${s.buttons.map((a) => html`<button type="button" class="btn" ${attrs({ "data-vact": a.key })}>${a.icon ? icon(a.icon) : ""}${a.label}</button>`)}</div>` : ""}
-      ${s.panels.map((p) => html`<section class="wk-panel" ${attrs({ "data-panel": p.key, "aria-label": p.label || p.key })}>${p.failed ? html`<div class="card empty"><h2>${p.label || "This part"} didn't load</h2><p>${p.failed}</p></div>` : p.mod.render(p.state || {}, p.ctx)}</section>`)}
       ${access(prop, j)}
-      ${lines(j, !!(s.can && s.can.prices))}
-      ${checklist(v)}
-      ${v.tech_notes ? html`<div class="card"><h2>Notes from the visit</h2><p class="wk-pre">${v.tech_notes}</p></div>` : ""}
+      ${s.panels.map((p) => html`<section class="wk-panel" ${attrs({ "data-panel": p.key, "aria-label": p.label || p.key })}>${p.failed ? html`<div class="card empty"><h2>${p.label || "This part"} didn't load</h2><p>${p.failed}</p></div>` : p.mod.render(p.state || {}, p.ctx)}</section>`)}
+      ${shown.has("lines") ? "" : lines(j, !!(s.can && s.can.prices))}
+      ${shown.has("checklist") ? "" : checklist(v)}
+      ${v.tech_notes && !shown.has("notes") ? html`<div class="card"><h2>Notes from the visit</h2><p class="wk-pre">${v.tech_notes}</p></div>` : ""}
       ${office && j && j.office_notes ? html`<div class="card"><h2>Office notes</h2><p class="wk-pre">${j.office_notes}</p></div>` : ""}
       ${s.reminders ? html`<div class="section-h">Texts and emails</div><ul class="list wk-rems">
         ${remindRow("Confirmation", s.reminders.confirm)}${remindRow("Reminder, 2 weeks before", s.reminders.d14)}${remindRow("Reminder, 2 days before", s.reminders.d2)}</ul>` : ""}
@@ -155,6 +159,7 @@ export default {
       const wrapped = {};
       for (const [k, fn] of Object.entries(p.mod.events)) wrapped[k] = (e, x) => fn(e, x, p.ctx);
       delegate(el, wrapped);
+      if (p.mod.mount) { try { p.mod.mount(el, p.state, p.ctx); } catch (e) { /* a panel's mount never breaks the visit */ } }
     }
   },
   events: {
