@@ -15,6 +15,11 @@
 //   the quotes seeds (price book, discount catalog), a draft quote for the
 //   fresh lead and one sent (dry-run, the Outbox) to the talked-to lead with
 //   a one-time and a quarterly option.
+// Plans (M3b): the agreement texts (four approved, the one-time lights text
+//   left for the owner), an active quarterly plan signed in person with its
+//   visits' jobs, two waiting plans with their agreements sent (a portal
+//   link to the first), a lights plan with this season's install and
+//   takedown.
 //
 
 const store = await import("../../netlify/lib/crm-store.mjs");
@@ -28,6 +33,10 @@ const clock = await import("../../netlify/lib/crm/core/clock.mjs");
 const WORK = await import("../../netlify/lib/crm/modules/work/office.mjs");
 const QSEED = await import("../../netlify/lib/crm/modules/quotes/seed.mjs");
 const Q = await import("../../netlify/lib/crm/modules/quotes/quotes.mjs");
+const AG = await import("../../netlify/lib/crm/modules/plans/agreements.mjs");
+const PL = await import("../../netlify/lib/crm/modules/plans/plans.mjs");
+const CAT = await import("../../netlify/lib/crm/modules/plans/catalog.mjs");
+const PORTAL = await import("../../netlify/lib/crm/portal/core.mjs");
 
 export const PASSWORD = "a long synthetic passphrase";
 const TOWNS = ["Delano", "Maple Plain", "Mound", "Waconia", "Orono", "Wayzata", "Medina", "Rogers", "Watertown", "Buffalo"];
@@ -144,6 +153,53 @@ export async function seed({ contacts = 200 } = {}) {
   out.quotes = { draft: (await Q.createQuote({ contact_id: a.id, options: options(), client_notes: "Thanks for having us out!" }, qctx)).data.id };
   out.quotes.sent = (await Q.createQuote({ contact_id: f.id, options: options() }, qctx)).data.id;
   await Q.sendQuote(out.quotes.sent, { channels: ["sms"] }, qctx);
+
+  // plans (M3b)
+  await AG.seedAgreementTemplates(AUTO);
+  for (const k of ["biannual", "quarterly", "monthly", "lights"]) await AG.approveTemplate(AG.seedTemplateId(k), ctxO);
+  out.templates = { quarterly: AG.seedTemplateId("quarterly"), one_time: AG.seedTemplateId("one_time") };
+  const planCustomer = async (first, n, town) => {
+    const c = (await store.createRecord("contact", {
+      first_name: first, last_name: "Planfolk", phones: [{ e164: "+1763555" + String(1700 + n).padStart(4, "0"), sms: true }], emails: [{ address: `${first.toLowerCase()}.planfolk@example.com` }],
+      lifecycle: "customer", source: { source: "Returning Customer" }, consent: { sms_service: { state: "granted", source: "website_form" } },
+      billing_address: { street1: `${900 + n} Example Ave`, city: town, state: "MN", zip: "55328" },
+    }, O)).data;
+    const pr = (await store.createRecord("property", { contact_id: c.id, label: "Home", address: { street1: `${900 + n} Example Ave`, city: town, state: "MN", zip: "55328", country: "US" }, access: {} }, O)).data;
+    await store.updateRecord("contact", c.id, (x) => ({ ...x, primary_property_id: pr.id }), O);
+    return { id: c.id, name: `${first} Planfolk`, property_id: pr.id, town };
+  };
+  const QLINES = [{ id: "ln_e", title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 29500, total_cents: 29500, service_type: "Residential Window Cleaning", scope: { type: "specific", visits: [1, 3, 4] } }, { id: "ln_i", title: "Interior Window Cleaning", qty_milli: 1000, unit_cents: 16000, total_cents: 16000, service_type: "Residential Window Cleaning", scope: { type: "specific", visits: [2] } }];
+  const QDISC = [{ id: "dc_p", name: "Quarterly plan discount", type: "fixed", value: 10000, scope: { type: "all" } }];
+  const makePlan = async (c, { status, catalog_key = "quarterly", lines = QLINES, discounts = QDISC }) => {
+    const p = PL.buildPlan({ contact_id: c.id, contact_name: c.name, property_id: c.property_id, town: c.town, catalog_key, lines, discounts, origin: "staff" }, CAT.catalogWith({}), { start_on: day });
+    delete p.id;
+    const r = await store.createRecord("plan", { ...p, status, pending_reasons: status === "pending" ? ["signature"] : [], agreement_status: "none" }, O);
+    await PL.ensureJobs(r.data.id, O);
+    return r.data.id;
+  };
+  out.plans = {};
+  const harper = await planCustomer("Harper", 0, "Mound");
+  out.contacts.plan = harper.id;
+  out.plans.active = await makePlan(harper, { status: "active" });
+  const agA = (await AG.agreementForPlan(out.plans.active, {}, ctxO)).data;
+  const signedA = await AG.signAgreement(agA.id, { body_sha256: agA.body_sha256, name_typed: "Harper Planfolk", agree: true }, { method: "in_person", staff_user_id: out.users.owner.id }, ctxO);
+  await AG.afterSigned(signedA.agreement, ctxO);
+  const waiting = async (first, n, town) => {
+    const c = await planCustomer(first, n, town);
+    const id = await makePlan(c, { status: "pending" });
+    const a = (await AG.agreementForPlan(id, {}, ctxO)).data;
+    await AG.sendAgreement(a.id, { channels: ["sms"] }, ctxO);
+    return { plan: id, agreement: a.id, contact: c.id };
+  };
+  const wa = await waiting("Finley", 1, "Waconia");
+  const wb = await waiting("Emerson", 2, "Orono");
+  out.plans.pending = wa.plan;
+  out.plans.present = wb.plan;
+  out.agreements = { pending: wa.agreement, present: wb.agreement };
+  out.portal = { agreement: `/p/${(await PORTAL.createPortalLink({ contact_id: wa.contact, scope: { kind: "agreement", id: wa.agreement }, created_by: out.users.owner.id })).code}` };
+  out.plans.lights = await makePlan(await planCustomer("Rowan", 3, "Wayzata"), { status: "active", catalog_key: "lights_annual", lines: [{ id: "ln_l", title: "Christmas Light Installation", qty_milli: 150000, unit_cents: 800, total_cents: 120000, unit: "ft", service_type: "Christmas Lights", description: "Roofline 150 ft. Colors: warm white", scope: { type: "all" } }], discounts: [] });
+  const lp = await store.getRecord("plan", out.plans.lights);
+  out.seasons = { year: (await store.getRecord("season_install", lp.data.season_install_ids[0])).data.season, id: lp.data.season_install_ids[0] };
 
   // the first slice's Customers list (/crm/legacy, /legacy/customers)
   await store.writeCustomerIndex(store.buildCustomerIndex({ exported_at: "2026-11-08", members: [], customers: Array.from({ length: 24 }, (_, i) => ({
