@@ -179,6 +179,11 @@ export const sheetRow = (r) => ({
   ac: !!r.auto_closed, ed: (r.edits || []).length, fl: (r.flags || []).slice(0, 6), d: localDate(new Date(r.start_at)), why: r.pending && r.pending.reason ? String(r.pending.reason).slice(0, 30) : null, u: r.updated_at,
 });
 
+// What waits for the office (a finished shift not yet approved, an entry
+// pending a decision) in one small index, whatever its month: the counts
+// behind Home's "Needs you" and the badge read it once (the request budget).
+export const sheetTodoShard = (r) => (!r.deleted_at && ["closed", "pending_approval"].includes(r.status) ? "" : null);
+
 export const TIMESHEET_TECH_FIELDS = Object.freeze(["id", "type", "v", "wv", "user_id", "category", "start_at", "end_at", "minutes", "notes", "status", "auto_closed", "pending", "flags", "edits", "client_id", "created_at", "updated_at"]);
 
 export const timesheetType = defineType({
@@ -189,7 +194,7 @@ export const timesheetType = defineType({
   rotorFields: ["user_id", "start_at", "end_at", "minutes", "category", "rotor"],
   techFields: [...TIMESHEET_TECH_FIELDS],
   readPerm: "time:edit_others",
-  indexes: [{ name: "timesheets", shard: sheetShard, row: sheetRow }],
+  indexes: [{ name: "timesheets", shard: sheetShard, row: sheetRow }, { name: "timesheets-todo", shard: sheetTodoShard, row: sheetRow }],
   rels: [{ rel: "user-timesheets", parent: (r) => r.user_id, sort: (r) => sortOf(r.start_at) }],
   pointers: [{ kind: "rotor/timesheet", key: (r) => (r.rotor && r.rotor.timesheet_id !== undefined && r.rotor.timesheet_id !== null ? rotorKey(r.rotor.timesheet_id) : null) }],
   summary: (r) => ({ id: r.id, user_id: r.user_id, start_at: r.start_at, end_at: r.end_at || null, status: r.status }),

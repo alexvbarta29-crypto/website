@@ -80,11 +80,13 @@ const field = {
   visitActions: [
     { key: "field", label: "Your visit", when: "assignee", order: 10, perm: "visits:work", panel: true, replaces: ["checklist", "lines", "notes"], load: () => import("./visit-field.js") },
   ],
-  // the person's own day (a tech's Today; "My visits" for owners and the
-  // office who go out on visits), and the time waiting for the office
+  // the person's own day: a tech's Today, and "My visits" with the clock
+  // on Home for owners and the office who go out on visits (nothing for
+  // one who doesn't); the time waiting for the office is Home's "Needs
+  // you" rows (the module's approvals), so that card is home: false
   todayCards: [
     { key: "field", perm: "time:own", order: 5, load: () => import("./tech-today.js") },
-    { key: "timesheets", perm: "time:edit_others", order: 16, load: () => import("./tech-timesheets-card.js") },
+    { key: "timesheets", perm: "time:edit_others", order: 16, home: false, load: () => import("./tech-timesheets-card.js") },
   ],
   settings: [],
   styles: ["./tech-styles.css"],

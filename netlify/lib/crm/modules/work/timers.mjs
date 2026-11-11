@@ -210,13 +210,6 @@ async function closeForgotten(timer, visit, deadline, w, { hands = null } = {}) 
   return closed;
 }
 
-// Count for Today: running segments past their deadline the office should look at.
-export async function forgottenCount() {
-  const ix = await readIndex("timers", "active");
-  const t = nowMs();
-  return ix.rows.filter((r) => Date.parse(r.s) + 10 * 3600000 < t).length;
-}
-
 // ------------------------------------------------------------ import phase 24 (§10.2): Rotor visit timers
 
 const ROTOR_ID = /^(?!\.+$)[A-Za-z0-9_.-]{1,64}$/;

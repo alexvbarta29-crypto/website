@@ -129,7 +129,8 @@ export async function send(ctx, path, body = {}, { method = "POST", needsSignal 
   }
   if (online() && !waiting) {
     try {
-      const r = await ctx.api(path, { method, body: full, timeout: outbox.timeoutFor(full), idempotencyKey: key });
+      // a short wait when there's signal (6 s; a photo up to 30 s): past it the change waits in the outbox, which gives it the time its size needs
+      const r = await ctx.api(path, { method, body: full, timeout: Math.min(30000, Math.max(6000, outbox.timeoutFor(full) - 4000)), idempotencyKey: key });
       return { sent: true, data: r.data, status: r.status };
     } catch (e) {
       if (e && e.code !== "offline" && !(e.status >= 500)) throw e;
@@ -291,6 +292,16 @@ export const waitingNote = (n) => (n ? html`<p class="tf-wait">${TICONS.cloud}<s
 
 // "7:42 AM" today, "Tue, Nov 17, 7:42 PM" another day (the phone's day).
 export const asOfText = (iso) => (localDate(new Date(iso)) === deviceToday() ? fmtTime(iso) : `${dateShort(localDate(new Date(iso)))}, ${fmtTime(iso)}`);
+// With the screen's own "no signal" line on it (offlineLine below), the
+// office shell around the app hides its offline bar too (netlify/lib/
+// office-page.mjs takes crm:offline): one bar, not three. Call from mount.
+export function tellShell(el) {
+  try {
+    if (!el || typeof window === "undefined" || window.parent === window) return;
+    window.parent.postMessage({ type: "crm:offline", own: !!el.querySelector(".tf-own-offline") }, location.origin);
+  } catch (e) { /* no shell */ }
+}
+
 // The screen's one line for no signal (when its copy is from, and what
 // waits); with it on screen the app's own offline banner steps aside
 // (.tf-own-offline, tech-styles.css), so there is one bar, not three.

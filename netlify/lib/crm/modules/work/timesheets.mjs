@@ -388,12 +388,12 @@ export async function clockOut(user, { time, clientId = null, geo, shiftClientId
         }, w);
         return { sheet: r.data, closed: true, pending: r.data.status === "pending_approval", other: true };
       }
-      if (own || open) return { disagree: true, sheet: own || open };
+      if (own || open) return { disagree: true, sheet: own || open, why: own ? "closed" : "other" };
     }
   }
   if (!open) return { none: true };
   // a replayed end before the open shift began isn't this shift's end
-  if (isDevice(t) && Date.parse(t.at) < Date.parse(open.start_at)) return { disagree: true, sheet: open };
+  if (isDevice(t) && Date.parse(t.at) < Date.parse(open.start_at)) return { disagree: true, sheet: open, why: "other" };
   const sheet = await closeSheet(open, t.at, w, { extra: { ...(geo ? { end_geo: geo } : {}) }, untrusted: t.trusted ? null : t, endClientId: clientId || undefined });
   return { sheet, closed: true };
 }
@@ -661,11 +661,9 @@ export async function officeWeek(weekStart, { userId } = {}) {
   const [ixs, users] = await Promise.all([Promise.all(months.map((m) => readIndex("timesheets", m))), readIndex("users", "")]);
   const rows = ixs.flatMap((ix) => ix.rows).filter((r) => (!userId || r.uid === userId));
   const inWeek = rows.filter((r) => Date.parse(r.s) >= from.getTime() && Date.parse(r.s) < to.getTime()).sort((a, b) => String(a.s).localeCompare(String(b.s)));
-  // entries pending a decision from any recent week (the office clears them wherever they are)
-  const pendingMonths = [...new Set([localDate(now()).slice(0, 7), addLocalDays(localDate(now()), -31).slice(0, 7), ...months])];
-  const pix = await Promise.all(pendingMonths.filter((m) => !months.includes(m)).map((m) => readIndex("timesheets", m)));
-  const pending = [...rows, ...pix.flatMap((ix) => ix.rows)].filter((r) => r.st === "pending_approval" && (!userId || r.uid === userId))
-    .filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i).sort((a, b) => String(a.s).localeCompare(String(b.s)));
+  // entries pending a decision from any week (the office clears them wherever they are)
+  const todo = await readIndex("timesheets-todo", "");
+  const pending = todo.rows.filter((r) => r.st === "pending_approval" && (!userId || r.uid === userId)).sort((a, b) => String(a.s).localeCompare(String(b.s)));
   const people = users.rows.filter((u) => u.status === "active" && (u.is_technician || inWeek.some((r) => r.uid === u.id)) && (!userId || u.id === userId))
     .map((u) => ({ id: u.id, name: u.name, first_name: u.first_name, color: u.color, role: u.role, is_technician: !!u.is_technician }));
   const per = people.map((p) => {
@@ -681,19 +679,16 @@ export async function officeWeek(weekStart, { userId } = {}) {
   return { week_start: ws, week_end: addLocalDays(ws, 6), people, weeks: per, pending, stale: ixs.some((ix) => ix.stale) };
 }
 
-// Counts for Today (approvals) and the badge.
+// Counts for Home's "Needs you" and the badge: one read of the small index
+// of what waits for the office (types-field.mjs "timesheets-todo").
 export async function pendingCount() {
-  const m = localDate(now()).slice(0, 7);
-  const prev = addLocalDays(`${m}-01`, -1).slice(0, 7);
-  const ix = await Promise.all([readIndex("timesheets", m), readIndex("timesheets", prev)]);
-  return ix.flatMap((x) => x.rows).filter((r) => r.st === "pending_approval").length;
+  const ix = await readIndex("timesheets-todo", "");
+  return ix.rows.filter((r) => r.st === "pending_approval").length;
 }
 export async function weeksToApprove() {
-  const m = localDate(now()).slice(0, 7);
-  const prev = addLocalDays(`${m}-01`, -1).slice(0, 7);
-  const ix = await Promise.all([readIndex("timesheets", m), readIndex("timesheets", prev)]);
+  const ix = await readIndex("timesheets-todo", "");
   const thisWeek = weekOf(localDate(now()));
-  const keys = new Set(ix.flatMap((x) => x.rows).filter((r) => r.st === "closed" && weekOf(r.d) < thisWeek).map((r) => `${r.uid}|${weekOf(r.d)}`));
+  const keys = new Set(ix.rows.filter((r) => r.st === "closed" && weekOf(r.d) < thisWeek).map((r) => `${r.uid}|${weekOf(r.d)}`));
   return keys.size;
 }
 

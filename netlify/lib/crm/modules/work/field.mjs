@@ -21,7 +21,7 @@
 import { types } from "./types-field.mjs";
 import { techDayRoutes } from "./techday.mjs";
 import { fieldVisitRoutes } from "./visit-actions.mjs";
-import { timersSweep, timerPhase, forgottenCount } from "./timers.mjs";
+import { timersSweep, timerPhase } from "./timers.mjs";
 import { timesheetRoutes, clockSweep, timesheetPhase, pendingCount, weeksToApprove } from "./timesheets.mjs";
 
 // Templates in Barta's voice (barta-rules §8): no "Reply STOP" (the sender
@@ -54,10 +54,11 @@ export default {
   ],
   templates: FIELD_TEMPLATES,
   pushKinds: ["clock_reminder"],
-  attention: [{ key: "work.timers", label: "Timers running for hours", perm: "time:edit_others", count: () => forgottenCount(), link: "#/timesheets" }],
+  // what waits for the office on Timesheets (Home's "Needs you" rows and the badge; both read one small index)
+  attention: [],
   approvals: [
-    { key: "work.time_entries", label: "Time entries to approve", perm: "time:edit_others", count: () => pendingCount(), link: "#/timesheets" },
-    { key: "work.time_weeks", label: "Timesheet weeks to approve", perm: "time:edit_others", count: () => weeksToApprove(), link: "#/timesheets" },
+    { kind: "work.time_entries", key: "work.time_entries", label: "Time entries to decide", perm: "time:edit_others", count: () => pendingCount(), link: "#/timesheets" },
+    { kind: "work.time_weeks", key: "work.time_weeks", label: "Timesheet weeks to approve", perm: "time:edit_others", count: () => weeksToApprove(), link: "#/timesheets" },
   ],
   exportTypes: ["timer", "timesheet"],
   importPhases: [timerPhase, timesheetPhase],

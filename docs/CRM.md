@@ -529,7 +529,7 @@ The manual path, for reference:
   person's id, name, role and permissions) that loads plain ES modules
   from `/crm-app/` (no build step). Tabs at the bottom: Home · Schedule ·
   Customers · Sales · Menu for owners and admins (Inbox appears when its
-  module ships); Today · Me for techs (Inbox, Time and Pay appear later).
+  module ships); Today · Time · Pay · Me for techs (Inbox appears with M6).
   See "Home and navigation" below. **My account**: name, mobile, password,
   the phones you're signed in on.
 - Inside the office the CRM is the **CRM** tab (the first tool); `/office#crm/<screen>`
@@ -667,8 +667,10 @@ it) and `GET /home` answers them with nothing in it.
 counts from index blobs only, never by listing records, and reads each
 index once for the whole request: its store scope carries `ixMemo`, which
 crm-store's `readIndex()` honours (no dirty marker read either). About 20
-storage calls cold (23 once the CRM's numbers are used), under the 25 of
-§2.2; `tests/crm/core/home.test.mjs` holds it there.
+storage calls cold (24 once the CRM's numbers are used, with the tech
+app's time rows), under the 25 of §2.2; `tests/crm/core/home.test.mjs`
+holds it there. `GET /me/badges` reads its counts in the same kind of
+scope, so every module's rows fit its budget too.
 
 **Adding to Home (modules).** A module's manifest `attention` and
 `approvals` rows (`{ key, label, perm, count(ctx), link }`) are Home's
@@ -676,7 +678,11 @@ Needs-you rows; `badge: false` lists a row on Home without lighting the
 tab's dot (calls due, quotes waiting, tasks for you). A client
 `todayCards` entry renders on Home under Needs you unless it says
 `home: false` (the sales, plans and work cards do: their counts are
-Needs-you rows). Money's and the inbox's rows arrive with their modules.
+Needs-you rows). One card lands there today: the tech app's My visits
+with the clock, for an owner or office person who goes out on visits.
+A card may have its own `events` and `mount` (delegated inside its
+wrapper, `modules/system/cards.js`), on Home as on a tech's Today.
+Money's and the inbox's rows arrive with their modules.
 
 ### The bar, the Sales switch and the Menu
 

@@ -130,6 +130,19 @@ test("Time, Pay and the office's Timesheets render; links stay in the frame; esc
   assert.match(h, /data-decide="ts_00000000000000000002"/);
   assert.match(h, /the phone&#39;s time didn&#39;t add up/);
   assert.match(h, /Closed for them · Edited · A timer was stopped/);
+  // "Approve the week" names the shifts the app closed before it approves them
+  const { approveAsk } = await import("../../../crm-app/modules/work/tech-timesheets.js");
+  const closed = { st: "closed", s: "2026-11-17T14:00:00.000Z", e: "2026-11-18T03:00:00.000Z" };
+  const ask = approveAsk("Theo", [{ ...closed, ac: true }, { ...closed, s: "2026-11-18T14:00:00.000Z", e: "2026-11-18T22:00:00.000Z" }, { ...closed, s: "2026-11-19T14:00:00.000Z", e: "2026-11-19T22:00:00.000Z", fl: ["timer_auto_closed"] }, { ...closed, st: "approved", ac: true }]);
+  assert.equal(ask.auto, 2);
+  assert.equal(ask.title, "Approve, with shifts closed for them?");
+  assert.equal(ask.yes, "Approve anyway");
+  assert.match(ask.text, /2 shifts were closed by the app, not by them: Tue 8:00 AM – 9:00 PM; Thu 8:00 AM – 4:00 PM\. Check them first/);
+  const plain = approveAsk("Theo", [closed]);
+  assert.deepEqual([plain.title, plain.yes, plain.auto], ["Approve the week", "Approve", 0]);
+  // an entry that only reports an offline change wraps on a phone (no ellipsis) and names its reason
+  const css = (await import("node:fs")).readFileSync(new URL("../../../crm-app/modules/work/tech-styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.tf-pend \.sub\{white-space:normal/);
   const card = await load("tech-timesheets-card");
   assert.equal(text(card.render({ data: { pending: [], weeks: [] } })), "");
   assert.match(text(card.render({ data: { pending: [{}], weeks: [{ to_approve: 1, open: 1 }] } })), /1 time entry to decide[\s\S]*1 week to approve[\s\S]*1 person on the clock/);

@@ -6,7 +6,7 @@
 // (the bell), and the inbox (0 until comms, M6).
 
 import { createHash } from "node:crypto";
-import { getRecord } from "../../../crm-store.mjs";
+import { getRecord, withStoreScope } from "../../../crm-store.mjs";
 import { NotFoundError } from "../../core/errors.mjs";
 import { permsFor } from "../../core/perms.mjs";
 import { TZ } from "../../core/clock.mjs";
@@ -61,11 +61,15 @@ async function attentionCount(ctx) {
 // the modules' approvals rows and bulk sends waiting for a test or a
 // confirm; attention from the modules' attention rows; notifications =
 // this person's unread ones; inbox_unread arrives with comms (M6).
+// The counts read as a summary (the store's ixMemo scope, as Home does):
+// each index once for the request, no dirty markers, so every module's
+// rows fit the budget however many there are (M4b's time rows put the
+// plain reads over it, and a count that runs out of budget reads as 0).
 async function badges(ctx) {
-  const [approvals, attention, notifications, bulk] = await Promise.all([
+  const [approvals, attention, notifications, bulk] = await withStoreScope({ ixMemo: new Map() }, () => Promise.all([
     approvalsCount(ctx), attentionCount(ctx), unreadCount(ctx.user.id),
     ctx.can("campaigns:send") ? waitingCount() : 0,
-  ]);
+  ]));
   const data = { inbox_unread: 0, attention, notifications, approvals: approvals + bulk };
   const etag = `"b-${createHash("sha256").update(JSON.stringify(data)).digest("hex").slice(0, 16)}"`;
   if (ctx.req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { ETag: etag } });

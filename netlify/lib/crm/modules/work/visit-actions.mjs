@@ -780,8 +780,10 @@ const clockRoute = async (ctx) => {
   if (r.none || r.disagree) {
     if (!replayed(ctx)) throw new ConflictError("You're not clocked in.");
     // a clock-out with no shift to close, or not the one open (§2.5 conflicts): for the office
-    const entry = await conflictEntry({ user, action: "clock_out", message: r.none ? "There was no open shift to close." : "It didn't match the shift that was open.", time, clientId: cid, reason: r.none ? "conflict" : "overlap" }, w);
-    return pendingOut(entry, r.none ? "conflict" : "overlap", { closed: null, open: null });
+    // (the phone's own shift already closed, by the app at its deadline say: the office sets the right end)
+    const why = r.none ? "conflict" : r.why === "closed" ? "conflict" : "overlap";
+    const entry = await conflictEntry({ user, action: "clock_out", message: r.none ? "There was no open shift to close." : r.why === "closed" ? "That shift was already closed." : "It didn't match the shift that was open.", time, clientId: cid, reason: why }, w);
+    return pendingOut(entry, why, { closed: null, open: null });
   }
   // the phone's own shift that waits for the office (it overlapped another, or its times weren't taken): its end is kept on the entry
   if (r.pending) return pendingOut(r.sheet, (r.sheet.pending && r.sheet.pending.reason) || "overlap", { closed: sheetOut(r.sheet), open: null });

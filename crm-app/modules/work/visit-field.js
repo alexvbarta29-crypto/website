@@ -19,7 +19,7 @@
 import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
 import { money, time as fmtTime, dateShort } from "../../core/format.js";
 import { capture, prepare } from "../../core/camera.js";
-import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine } from "./tech-kit.js";
+import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine, tellShell } from "./tech-kit.js";
 
 const OPEN = ["scheduled", "en_route", "in_progress", "paused"];
 const TITLE = { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
@@ -344,6 +344,7 @@ async function addLine(ctx) {
 }
 
 function mount(el) {
+  tellShell(el);
   // the running timer moves on while the visit is on screen
   const timer = setInterval(() => {
     if (!document.contains(el)) { clearInterval(timer); return; }

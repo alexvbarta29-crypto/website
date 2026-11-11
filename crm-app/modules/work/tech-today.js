@@ -15,7 +15,7 @@ import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
 import { dateShort, time as fmtTime, plural } from "../../core/format.js";
 import { directionsLink } from "../../core/map.js";
 import { slotText, visitPill } from "./office-kit.js";
-import { ensureStyles, TICONS, hm, since, send, waiting, overlayDay, prefetch, onDrained, offlineLine, primaryPhone, telHref, smsHref, online, deviceToday, CATEGORY, FULL_NOTE } from "./tech-kit.js";
+import { ensureStyles, TICONS, hm, since, send, waiting, overlayDay, prefetch, onDrained, offlineLine, primaryPhone, telHref, smsHref, online, deviceToday, tellShell, CATEGORY, FULL_NOTE } from "./tech-kit.js";
 
 const SHOW_DONE = ["completed", "no_access"];
 const addDays = (date, n) => new Date(Date.parse(date + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
@@ -30,13 +30,25 @@ async function read(ctx, date) {
 }
 
 async function loadDay(ctx, date) {
-  const today = deviceToday();
-  const want = date || today;
-  const days = { date: want, today, yesterday: addDays(today, -1), tomorrow: addDays(today, 1) };
+  let today = deviceToday();
+  let want = date || today;
+  let days = { date: want, today, yesterday: addDays(today, -1), tomorrow: addDays(today, 1) };
   let got;
   try { got = await read(ctx, want); } catch (e) {
-    const label = want === today ? "today" : want === days.tomorrow ? "tomorrow" : want === days.yesterday ? "yesterday" : "that day";
-    return { ...days, error: e && e.code === "offline" ? `No signal, and ${label === "that day" ? "that day's" : `${label}'s`} list isn't on this phone yet. It loads when you have signal.` : (e && e.message) || "Your day didn't load." };
+    let err = e;
+    if (!date && e && e.status === 400 && e.field === "date") {
+      // the phone's date is far off the server's: the server's own today, with signal only (never kept as this phone's copy of a day)
+      try {
+        const r = await ctx.api("/tech/day", { cache: false });
+        got = { day: r.data, offline: false, as_of: null };
+        today = r.data.today; want = r.data.date;
+        days = { date: want, today, yesterday: r.data.yesterday, tomorrow: r.data.tomorrow };
+      } catch (x) { err = x; }
+    }
+    if (!got) {
+      const label = want === today ? "today" : want === days.tomorrow ? "tomorrow" : want === days.yesterday ? "yesterday" : "that day";
+      return { ...days, error: err && err.code === "offline" ? `No signal, and ${label === "that day" ? "that day's" : `${label}'s`} list isn't on this phone yet. It loads when you have signal.` : (err && err.message) || "Your day didn't load." };
+    }
   }
   const items = await waiting();
   const day = overlayDay(got.day, items, ctx.user && ctx.user.id);
@@ -101,6 +113,7 @@ export default {
     },
   },
   mount(el) {
+    tellShell(el);
     // the "on the clock" time moves on while Today is on screen
     const tick = () => {
       if (!document.contains(el)) { clearInterval(timer); return; }

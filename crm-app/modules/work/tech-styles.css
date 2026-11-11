@@ -56,6 +56,8 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
   .tf-panel.has-bar .tf-big{position:fixed;z-index:5;left:calc(12px + var(--left));right:calc(12px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 10px + var(--lift,0px));padding:10px;border-radius:24px;background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border:1px solid var(--line);box-shadow:0 10px 30px rgba(14,14,18,.14)}
   .app.no-tabs .tf-panel.has-bar .tf-big{bottom:calc(var(--bottom) + 10px + var(--lift,0px))}
   .tf-panel.has-bar .tf-big:empty{display:none}
+  /* toasts sit above the bar, never on its buttons */
+  body:has(.tf-panel.has-bar .tf-big:not(:empty)) .toasts{bottom:calc(var(--tabs-h) + var(--bottom) + 98px + var(--lift,0px))}
 }
 .tf-small{display:flex;flex-wrap:wrap;gap:8px}
 .tf-small .btn{flex:1 1 40%;padding:0 12px}

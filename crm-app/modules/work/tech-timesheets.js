@@ -55,9 +55,8 @@ export default {
       const uid = el.dataset.approve;
       // shifts the app closed for them (a forgotten clock-out) are pointed out first
       const week = (ctx.state.weeks || []).find((w) => w.user_id === uid);
-      const auto = ((week && week.entries) || []).filter((r) => r.st === "closed" && (r.ac || (r.fl || []).includes("timer_auto_closed")));
-      const autoNote = auto.length ? ` ${auto.length === 1 ? "One shift was" : `${auto.length} shifts were`} closed by the app, not by them: ${auto.map((r) => `${dowOf(r.s)} ${fmtTime(r.s)} – ${r.e ? fmtTime(r.e) : "?"}`).join("; ")}. Check ${auto.length === 1 ? "it" : "them"} first (tap the pencil to fix).` : "";
-      if (!(await confirmSheet(`Approve ${nameOf(ctx.state.people, uid)}'s finished shifts for this week? Open and waiting ones stay as they are.${autoNote}`, { title: auto.length ? "Approve, with shifts closed for them?" : "Approve the week", yes: auto.length ? "Approve anyway" : "Approve" }))) return;
+      const ask = approveAsk(nameOf(ctx.state.people, uid), (week && week.entries) || []);
+      if (!(await confirmSheet(ask.text, { title: ask.title, yes: ask.yes }))) return;
       try {
         let r;
         let n = 0;
@@ -74,6 +73,20 @@ export default {
     "click [data-decide]": (e, el, ctx) => editSheet(ctx, el.dataset.decide, { decide: true }),
   },
 };
+
+// What "Approve the week" asks: when the app closed any of the week's
+// finished shifts itself (a forgotten clock-out, a timer it stopped), it
+// names them before they can be approved. → { title, text, yes, auto }
+export function approveAsk(name, entries = []) {
+  const auto = entries.filter((r) => r.st === "closed" && (r.ac || (r.fl || []).includes("timer_auto_closed")));
+  const base = `Approve ${name}'s finished shifts for this week? Open and waiting ones stay as they are.`;
+  if (!auto.length) return { title: "Approve the week", text: base, yes: "Approve", auto: 0 };
+  const list = auto.map((r) => `${dowOf(r.s)} ${fmtTime(r.s)} – ${r.e ? fmtTime(r.e) : "?"}`).join("; ");
+  return {
+    title: "Approve, with shifts closed for them?", yes: "Approve anyway", auto: auto.length,
+    text: `${base} ${auto.length === 1 ? "One shift was" : `${auto.length} shifts were`} closed by the app, not by them: ${list}. Check ${auto.length === 1 ? "it" : "them"} first (the pencil fixes the times).`,
+  };
+}
 
 // What the phone said, kept on the entry (a note's text, a checklist value, a line).
 function said(pend) {

@@ -29,7 +29,7 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 | `automations.mjs` | M4a | `visit.confirm`, the reminders, `work.stale`, `work.stats`, templates |
 | `import-rotor.mjs` | M4a | import phases `work.time_off`, `work.jobs`, `work.visits` |
 | `field.mjs` | M4b | composes the field part: routes, sweeps, the two manual automations, templates, import phases |
-| `types-field.mjs` | M4b | timer, timesheet: validation (minutes derived from the times), index rows, rels |
+| `types-field.mjs` | M4b | timer, timesheet: validation (minutes derived from the times), index rows (`timers/active`, `timesheets/{month}`, and `timesheets-todo`: what waits for the office, read once for Home's rows and the badge), rels |
 | `techday.mjs` | M4b | `GET /tech/day`, the day payload the phone keeps |
 | `visit-actions.mjs` | M4b | what the people on a visit do (texts, timer, checklist, photos, notes, lines, complete, no access, incident) and `POST /clock`; the `visit` file owner |
 | `timers.mjs` | M4b | segments, the `work.timers` sweep, import phase `work.timers` |
@@ -115,9 +115,10 @@ overlay of what waits, copies for no signal, Delano times),
   as claimed or with edited times, or doesn't count it; an entry that only
   reports an offline change shows what the phone sent (its words, a held
   photo) and is marked **Seen it**. Each shift's pencil edits the day,
-  start, end and category, always with a reason. Home shows how many
-  entries wait, weeks to approve and who is on the clock; the badge counts
-  them too.
+  start, end and category, always with a reason. Home's "Needs you" shows
+  how many entries wait and weeks to approve (the module's `approvals`
+  rows `work.time_entries` and `work.time_weeks`); the badge counts them
+  too.
 - **Settings → Checklists** (`settings:general`): each list's name, on or
   off, which jobs get it (kinds of job, else services), its items (tick,
   photo, count, note; required or not). A job gets the first active list by
@@ -178,7 +179,10 @@ The tech app works at a house with no signal (§2.5):
   plainly. While there is signal the app also keeps tomorrow's day and a
   copy of each of the day's visits (and its timers), so the next morning
   and a visit open offline too. One line says it (when the copy is from,
-  what waits); the app's own offline banner steps aside for it.
+  what waits): the app's own offline banner steps aside for it, and so
+  does the office shell's bar (the screen posts `crm:offline` to it). A
+  phone whose date is far off the server's gets the server's today while
+  it has signal.
 - Every field change (timer, checklist, photo, note, line, incident,
   complete, no access, clock in and out) goes through `send()`: straight to
   the server when there is signal and nothing waits, else into the phone's

@@ -106,7 +106,7 @@ test("cold start in flight mode: the day this phone kept, and a visit of it, ope
     await page.waitForTimeout(1500);                    // the day's visits are copied in the background
     await p.ctx.setOffline(true);
     await page.goto("/office");
-    await page.waitForSelector("#off:not([hidden])", { timeout: 10000 });
+    await page.waitForSelector("#off", { state: "attached", timeout: 10000 });      // the offline launcher
     const g = await crmFrame(page);
     await g.waitForSelector(`.tf-stop a[href="#/visits/${seeded.visits[1]}"]`, { timeout: 10000 });
     assert.equal(await title(g), "Today");
@@ -212,7 +212,7 @@ test("the next morning, opened with no signal: today's copy (kept the day before
     await p.ctx.setOffline(true);
     await page.clock.setSystemTime(Date.parse(srv.now()) + 22.5 * 3600000);
     await page.goto("/office");
-    await page.waitForSelector("#off:not([hidden])", { timeout: 10000 });
+    await page.waitForSelector("#off", { state: "attached", timeout: 10000 });      // the offline launcher
     let g = await crmFrame(page);
     await g.waitForSelector(".tf-dayline", { timeout: 10000 });
     assert.match(await g.textContent(".tf-dayline"), /Today, Wed, Nov 18/);
@@ -220,11 +220,14 @@ test("the next morning, opened with no signal: today's copy (kept the day before
     assert.equal(await g.$(`.tf-stop a[href="#/visits/${seeded.visits[1]}"]`), null, "yesterday's visits aren't today's");
     assert.match(await g.textContent(".tf-today"), /No signal\. Your day as of Tue, Nov 17, /, "when the copy is from, with its day");
     assert.equal(await g.$$eval(".tf-wait", (x) => x.length), 1);
+    // one bar: the app's banner and the office shell's bar both step aside for the screen's line
+    assert.equal(await g.$eval("#banner", (b) => getComputedStyle(b).display), "none");
+    await page.waitForFunction(() => document.getElementById("off").hidden === true, null, { timeout: 5000 });
     await shot(page, "offline-next-morning");
     // two days on, nothing kept for that day: said plainly, no other day in its place
     await page.clock.setSystemTime(Date.parse(srv.now()) + 72 * 3600000);
     await page.goto("/office");
-    await page.waitForSelector("#off:not([hidden])", { timeout: 10000 });
+    await page.waitForSelector("#off", { state: "attached", timeout: 10000 });      // the offline launcher
     g = await crmFrame(page);
     await g.waitForSelector(".tf-today .card.empty", { timeout: 10000 });
     assert.match(await g.textContent(".tf-dayline"), /Today, Fri, Nov 20/);

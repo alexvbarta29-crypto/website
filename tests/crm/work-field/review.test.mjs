@@ -229,6 +229,31 @@ test("R5 an earlier offline shift replayed after another phone's shift began: on
   } finally { t.done(); }
 });
 
+test("a clock-out kept offline that arrives after the app closed that shift: the real end waits for the office, the shift isn't rewritten", async () => {
+  const { t, tech } = await setup("2026-11-17T13:00:00Z"); // 07:00 Delano
+  try {
+    const inBody = live({ action: "in" });
+    assert.equal((await post(t, tech, "/clock", inBody)).status, 201);
+    advance(hours(9));                                             // 16:00: clocks out with no signal
+    const out = offline({ action: "out", shift_client_id: inBody.client_id }, clock.nowIso());
+    pin("2026-11-18T04:00:00Z");                                   // 22:00: the sweep closes the shift at 21:00
+    await TS.clockSweep({});
+    const closed = sheets(t)[0];
+    assert.equal(closed.status, "closed");
+    assert.ok(closed.auto_closed);
+    pin("2026-11-18T13:00:00Z");                                   // the next morning the phone has signal
+    const r = await post(t, tech, "/clock", out);
+    assert.equal(r.status, 202, JSON.stringify(r.body));
+    assert.equal(r.body.data.reason, "conflict");
+    const e = pending(t);
+    assert.equal(e.length, 1);
+    assert.equal(e[0].pending.action, "clock_out");
+    assert.equal(e[0].pending.claimed, "2026-11-17T22:00:00.000Z", "16:00, what the phone said");
+    assert.match(e[0].pending.detail, /already closed/);
+    assert.equal((await rec("timesheet", closed.id)).end_at, closed.end_at, "the shift itself is the office's to fix");
+  } finally { t.done(); }
+});
+
 test("R5 timers: a replayed start over a timer of the same person on the visit is an entry; its pause ends that entry, never the running timer", async () => {
   const { t, owner, tech } = await setup("2026-11-17T15:00:00Z");
   try {

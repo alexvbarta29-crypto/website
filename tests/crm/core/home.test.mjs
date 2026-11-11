@@ -300,9 +300,10 @@ test("the Menu: every manifest's Menu entry names a known section; an older shel
 test("the office's Today cards are Home's server rows (home: false); new cards still land on Home", async () => {
   const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
   const cards = MANIFESTS.flatMap((m) => (m.todayCards || []).map((c) => ({ ...c, module: m.name })));
-  assert.deepEqual(cards.filter((c) => c.home !== false).map((c) => c.module), [], "every card of today is covered by an attention row or Home's Today");
+  // one card lands on Home: My visits with the clock, for an owner or office person who goes out on visits (M4b; empty for one who doesn't)
+  assert.deepEqual(cards.filter((c) => c.home !== false).map((c) => `${c.module}:${c.key}`), ["work:field"], "every other card of today is covered by an attention row or Home's Today");
   const rows = R.allModules().flatMap((m) => [...m.attention.map((a) => a.key), ...m.approvals.map((a) => a.kind)]);
-  for (const k of ["sales.attention", "sales.calls_due", "sales.tasks_mine", "plans.due", "agreements.unsigned", "agreement_templates", "plans.clawback", "work.stale"]) assert.ok(rows.includes(k), k);
+  for (const k of ["sales.attention", "sales.calls_due", "sales.tasks_mine", "plans.due", "agreements.unsigned", "agreement_templates", "plans.clawback", "work.stale", "work.time_entries", "work.time_weeks"]) assert.ok(rows.includes(k), k);
 });
 
 test("the reports module's series (when it ships) takes over from the day its data starts; Rotor keeps the weeks before", async () => {

@@ -104,10 +104,13 @@ export async function claim(id) {
 
 // ------------------------------------------------------------ queueing
 
+// (read from the stored items once a page, then counted here: never a read of every photo for each new item)
 let lastSeq = 0;
+let seqRead = null;
 async function nextSeq() {
-  const top = (await all()).reduce((n, i) => Math.max(n, Number(i.seq) || 0), 0);
-  lastSeq = Math.max(lastSeq, top) + 1;
+  if (!seqRead) seqRead = all().then((items) => { lastSeq = Math.max(lastSeq, items.reduce((n, i) => Math.max(n, Number(i.seq) || 0), 0)); });
+  await seqRead;
+  lastSeq += 1;
   return lastSeq;
 }
 
