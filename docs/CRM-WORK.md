@@ -4,14 +4,17 @@ Milestones: M4a (office: scheduling) and M4b (field: the tech app). Design
 §3.3 (job, visit), §4.5-§4.6 (who sees what), §5.5, §5.7.4 `visit.*`, §7.6,
 §9.2 (Schedule, Route, Job, Visit, contact tab Work, Settings →
 Checklists), §10.2 rows 3, 22, 23, §11.4. Jobs, visits, the schedule,
-assignment, checklists, availability; timers, timesheets and the tech's day
-come with M4b.
+assignment, checklists, availability (M4a); the tech app: the tech's day,
+the field panel on a visit, timers, timesheets, clock in and out, the
+office's Timesheets and working with no signal (M4b; design §2.5, §5.5,
+§9.3, §10.2 rows 24 and 26). The field sections are marked (M4b).
 
 Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 (screens). Record types: `job`, `visit`, `checklist_template`, `time_off`
 (`types.mjs`, M4a); `timer`, `timesheet` (`types-field.mjs`, M4b). Tests:
 `tests/crm/work-office/` (M4a), `tests/crm/work-field/` (M4b), phone checks
-`tests/e2e/work-office.spec.mjs`.
+`tests/e2e/work-office.spec.mjs`, `work-field.spec.mjs` and
+`offline.spec.mjs`.
 
 | File | Track | What it holds |
 |---|---|---|
@@ -25,7 +28,19 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 | `office-routes.mjs` | M4a | the office API |
 | `automations.mjs` | M4a | `visit.confirm`, the reminders, `work.stale`, `work.stats`, templates |
 | `import-rotor.mjs` | M4a | import phases `work.time_off`, `work.jobs`, `work.visits` |
-| `field.mjs`, `types-field.mjs`, ... | M4b | the field part |
+| `field.mjs` | M4b | composes the field part: routes, sweeps, the two manual automations, templates, import phases |
+| `types-field.mjs` | M4b | timer, timesheet: validation (minutes derived from the times), index rows, rels |
+| `techday.mjs` | M4b | `GET /tech/day`, the day payload the phone keeps |
+| `visit-actions.mjs` | M4b | what the people on a visit do (texts, timer, checklist, photos, notes, lines, complete, no access, incident) and `POST /clock`; the `visit` file owner |
+| `timers.mjs` | M4b | segments, the `work.timers` sweep, import phase `work.timers` |
+| `timesheets.mjs` | M4b | shifts, device times, pending entries, weekly approval, the pay estimate, the `work.clock` sweep, the person's and the office's time routes, import phase `work.timesheets` |
+
+Client (M4b): `tech-today.js` (the person's day on Today), `visit-field.js`
+(the field panel on the Visit screen), `tech-time.js`, `tech-pay.js`,
+`tech-timesheets.js` (the office's Timesheets), `tech-timesheets-card.js`
+(time on the office's Today), `tech-kit.js` (sending online or later, the
+overlay of what waits, copies for no signal, Delano times),
+`tech-styles.css`.
 
 ## What the office sees
 
@@ -85,11 +100,92 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
   cancelled jobs, **New job**.
 - **Today** (the office): today's visits per person (tap: their route),
   jobs to book, jobs that need a look.
+- **Timesheets** (M4b; More, `time:edit_others`; `#/timesheets`): the week
+  (Sunday to Saturday) per person with each shift and its flags (closed for
+  them, edited, a timer stopped for them, on the clock, waiting), hours and
+  overtime, **Approve the week**; above it the entries **waiting for a
+  decision** from any recent week (a phone's time the server didn't take,
+  an offline change that no longer fit its visit, a week payroll locked):
+  **Decide** approves as claimed or with edited times, or doesn't count
+  it. Each shift's pencil edits the day, start, end and category, always
+  with a reason. Today shows how many entries wait, weeks to approve and
+  who is on the clock; the badge counts them too.
 - **Settings → Checklists** (`settings:general`): each list's name, on or
   off, which jobs get it (kinds of job, else services), its items (tick,
   photo, count, note; required or not). A job gets the first active list by
   order whose kinds include its kind, else (regular, touch-up, warranty)
   whose services match its lines. Visits copy the list when booked.
+
+## What a tech sees (M4b)
+
+A technician's tabs are **Today · Inbox · Time · Pay · Me** (Inbox arrives
+with Messages). Owners and the office who go out on visits (`is_technician`)
+get **My visits** on their Today and **Time** and **Pay** in More; the
+office gets **Timesheets** in More.
+
+- **Today** (`tech-today.js`, a Today card): the clock bar (**Clock in**, or
+  "On the clock 3 h 12 m" with **Clock out**; owners pick service, sales or
+  office), Yesterday · Today · Tomorrow, and the visits in the person's
+  route order: the time and arrival window, first name and last initial,
+  town, services, badges (plan member with perks, balance due, gate code,
+  pets, first visit, lights), the status; **Directions** (the maps app,
+  outside the frame), **Call**, **Text**. The day is the server's (the
+  phone's clock may be off).
+- **Visit** (`#/visits/:id`, M4a's screen): for anyone on the visit, the
+  **field panel** (`visit-field.js`, the `visitActions` panel "field") sits
+  under the crew's notes and shows the checklist, the work and the notes
+  itself (`replaces`): the status and the big buttons (**On my way**,
+  **Start**, **Pause**, **Resume**, **Complete**; **Running late**, **No
+  access**), the running timer, "last time here" (the newest finished
+  visit's notes at the place), the checklist to tick (a photo item is done
+  by its photo; a count or a note asks for it), photos (**Before**,
+  **After**, **Issue**; before and after are for the customer's history,
+  issue photos stay with the office), the work (prices only with
+  `visits:prices`) and **Add to the job** from the price book (credited to
+  the tech), notes, **Report an incident**. **Complete** waits until the
+  required items are done; it stops everyone's timer on the visit.
+- **On my way** asks how many minutes (from where the phone is to the
+  house, straight line × 1.3 at 35 mph; editable) and texts the customer
+  `on_my_way`; **Running late** texts `running_late` with a new time. Both
+  need signal. While texts are dry-run the panel says nothing went out and
+  offers **Open in Messages** with the words (without the opt-out line).
+- **Time** (`#/time`): this week (Sunday to Saturday) in hours a day, the
+  total with the open shift, a warning near and over 40 hours, the shifts
+  (flags: closed for you, edited by the office, waiting for the office),
+  the visit timers, **Clock in** / **Clock out**, **Add a note** to a shift.
+- **Pay** (`#/pay`): their own pay only, an estimate until payroll ships
+  (M7a): the week's hours, overtime over 40 hours at 1.5x, their rate (D3:
+  $20 an hour for service when none is set), regular and overtime pay;
+  time waiting for the office isn't counted; earlier weeks.
+- **Me**: My account (core).
+
+### With no signal
+
+The tech app works at a house with no signal (§2.5):
+
+- The service worker starts the app; Today shows the last good copy of the
+  day ("No signal. Your day as of 7:42 AM"). While there is signal the app
+  also keeps tomorrow's day and a copy of each of the day's visits (and its
+  timers), so a visit opens offline too.
+- Every field change (timer, checklist, photo, note, line, incident,
+  complete, no access, clock in and out) goes through `send()`: straight to
+  the server when there is signal and nothing waits, else into the phone's
+  outbox (`core/outbox.js`) with a client id, `queued_offline`, `queued_at`
+  and `client_at`; it replays in order when signal comes back (on `online`,
+  on focus and every 30 s). A direct attempt that timed out is queued too:
+  its client id makes it a no-op if it had landed. Once anything waits,
+  new changes queue behind it, so the order holds.
+- Photos travel as JSON (`POST /visits/:id/photos`, base64) so they wait in
+  the same outbox, in order: the photo for a required item always lands
+  before the completion that needs it.
+- The screens lay what waits over the last copy (`overlayVisit`,
+  `overlayDay`): ticks, notes, photos (from the phone), the timer,
+  completion and the clock show as done, with "N changes wait for signal".
+  When the outbox empties the screen reads the server again.
+- On my way and Running late never queue ("needs signal"): a late "on my
+  way" is worse than none, and the server refuses a replayed one.
+- Items older than 6 days aren't replayed: they go once to
+  `POST /outbox-review` (core) as one pending action for the owners.
 
 ## The rules
 
@@ -146,6 +242,70 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
   visits before writing anything: one Rotor still owns is skipped (in
   `skipped`) with one `would-cancel` row, never half cancelled. Every text and email is dry-run before cutover.
 
+### The field rules (M4b)
+
+- **Who**: every field route is for the visit's people, whatever their
+  role. Someone else gets 409 (the office: "add yourself first") or 404 (a
+  technician: ids can't be probed); a technician only inside [today − 7,
+  today + 30]. Answers to a technician carry each type's `techFields`
+  only; prices only with `visits:prices` (D11).
+- **Client ids**: every field write carries the phone's `client_id`; a
+  repeat (a double tap, a replay of a change that landed) is one change:
+  timers, shifts, incidents and photos get ids derived from it, notes,
+  lines and completions remember it.
+- **Device times** (`judgeTime`): a live request is recorded at the
+  server's time. A replay (`queued_offline`) is recorded at its
+  `client_at` only when `|client_at − queued_at| < 2 min`, `client_at` is
+  within the last 7 days and not ahead of the server; otherwise the time
+  is a claim: a shift with it becomes a **pending entry** (status
+  `pending_approval`, `pending.reason` = `queued_mismatch`, `too_old`,
+  `future` or `no_device_time`), a timer segment is marked `unverified`.
+- **Conflicts**: a replayed change the visit no longer allows (the office
+  cancelled it, the checklist wasn't done) is never forced: it becomes a
+  pending entry (`pending.reason: "conflict"`, the action, what the phone
+  said and when) and the answer is 202. A clock-out replay with no open
+  shift does the same. Live, the same is a plain refusal.
+- **Locked weeks** (§5.8): a shift that closes into a week payroll locked
+  (the `payroll.periodStatus` service, or a locked shift of the person's
+  that week) never changes it: with `payroll.addAdjustment` it becomes
+  status `adjusted` and an adjustment line in the next open period;
+  without it, a pending entry (`locked_period`). The owners are told.
+- **Timers**: one running segment per (visit, person)
+  (`ptr/timer/{visitId}--{uid}`). Start opens one (a booked, en-route or
+  paused visit goes in progress; a second person joins a visit already
+  under way) and clocks the person in (service) when they aren't; pause
+  closes theirs (the visit pauses when nobody's runs); finish / complete
+  closes everyone's at the completion time. `visit.minutes_worked` is the
+  sum of closed segments of a minute or more. A visit done without the
+  timer goes under way and done in one tap.
+- **Shifts**: one open per person (`ptr/clock/{uid}`, a "one open"
+  pointer). A shift forgotten on an earlier day is closed at its deadline
+  before a new clock-in, so a stale pointer never blocks it. Clocking out
+  pauses the person's running timers.
+- **Weekly approval**: the office approves a person's week (closed shifts
+  → approved, 20 a request); an edit says why and keeps `edits[]` (who,
+  when, the field, before, after, why), and an edited approved shift needs
+  approving again. Pending entries are decided one by one (approve as
+  claimed or with edited times, or don't count it).
+- **Texts**: `visit.on_my_way` and `visit.running_late` are manual
+  automations (Automations can turn them off or change the template); the
+  text is the person's (origin user) through `messages.sink`, category
+  service: consent, opt-outs and the opt-out footer as the sender does
+  them. Outside quiet hours' service window it is blocked, never
+  scheduled. Templates `on_my_way`, `running_late`: no "Reply STOP" (the
+  sender adds it), no em dashes.
+- **Photos**: through core's files (the type from the magic bytes),
+  stored exactly as sent. The app keeps a photo's EXIF, location included
+  (the owner's rule): a small JPEG goes up untouched, a big one is shrunk
+  to 2048 px with its EXIF and XMP put back (orientation upright).
+  `defineFileOwner("visit")`: the office reads and adds; a technician on
+  the visit inside the window too. A photo for a checklist item (`item`,
+  also `?item=` on `POST /files`) ticks it.
+- **Incident** (barta-rules §8): a task, kind incident, high priority, no
+  due date, reported today, for the owners, linked to the visit and job.
+- **Upsell lines**: from the price book (active, sellable, priced), added
+  to the job with `upsell_user_id` = the tech; the job's totals follow.
+
 ## Endpoints
 
 All `auth: "session"`. `schedule:read` lists (subject "none") need the
@@ -179,6 +339,31 @@ numbers journaled: a re-run creates nothing twice; plans and quotes use
 different scopes in one op without colliding) and `work.cancelJobs(job_ids,
 reason, opId, ctx) → { cancelled, skipped }`.
 
+### Field endpoints (M4b)
+
+All `auth: "session"`; the visit routes are `replaySafe` (an app one
+version old may still replay), except the texts.
+
+| Route | Perm | What |
+|---|---|---|
+| `GET /tech/day?date` | time:own | the person's day (window: today − 7 to + 30); no date: the server's today |
+| `POST /visits/:id/on-my-way` · `/running-late` | visits:work | `{eta_min, lat?, lng?}`; the text (needs signal) |
+| `POST /visits/:id/timer` | visits:work | `{action: start\|pause\|finish}` |
+| `GET /visits/:id/field` | visits:work | the visit's segments, whose runs, minutes, the last notes at the place |
+| `PATCH /visits/:id/checklist` | visits:work | `{key, done, value?}` |
+| `POST /visits/:id/notes` · `/photos` | visits:work | `{text}` · `{data, thumb?, tag, item?, caption?}` (base64, 3 MB) |
+| `GET /visits/:id/pricebook` · `POST /visits/:id/lines` | visits:add_line | what can be added · `{price_item_id, qty}` |
+| `POST /visits/:id/complete` · `/no-access` | visits:work | `{signature_file_id?}` · `{note}` |
+| `POST /visits/:id/incident` | incidents:create | `{text, photo_ids?}` |
+| `POST /clock` | time:own | `{action: in\|out, category?}` |
+| `GET /me/timesheets?week` · `POST /me/timesheets/:id/notes` | time:own | the person's week · a note on their shift |
+| `GET /me/pay?period` | payroll:read_own | the estimate (or `payroll.myPay` when payroll provides it) |
+| `GET /timesheets?week&user` · `GET/PATCH /timesheets/:id` | time:edit_others | the office's week and pending entries · one entry; edit with a reason (If-Match) |
+| `POST /timesheets/approve` · `/timesheets/:id/decide` | time:edit_others | `{user_id, week_start}` · `{decision: approve\|reject, start_at?, end_at?, reason?}` |
+
+Writes carry `client_id` (400 without one), and replays `queued_offline`,
+`queued_at` and `client_at`.
+
 ## Settings
 
 `cfg/work` (`settings:general`): `stale_in_progress_days` (2),
@@ -207,6 +392,20 @@ holiday calendar, and Route reads the company's base (`cfg/company.base`).
 - `work.stats` (bulk lane, daily 02:15): contacts whose next visit date went
   by get their `work` stats part worked out again (`nv` next visit, `ls`
   last service, `svc_d` service dates).
+- `work.timers` (M4b; fast lane, every pass, mutates): a segment still
+  running past its visit's end + `timer_autoclose_after_min` (2 h; never
+  before the visit's planned length + 2 h, so a late start isn't cut
+  short), 20:00 for one with no visit, or on a visit already done or
+  cancelled, is closed at that deadline with `auto_closed`; the visit
+  pauses when nobody's timer runs; the person and the office are told; the
+  shift is flagged `timer_auto_closed`. One Rotor still owns gets a
+  would- row.
+- `work.clock` (M4b; fast lane, every pass, mutates): from
+  `clock_flag_at` (19:00) one push "Still clocked in?" (kind
+  `clock_reminder`); at the later of the day's last visit end + 2 h and
+  `clock_autoclose_at` (21:00) the shift closes with `auto_closed` for
+  review (flag `auto_closed`), the person and the office told. A shift
+  from an earlier day is closed whenever the sweep finds it.
 - Run kind `work.moveday` (bulk lane): the rain-day op (`move` → `push` →
   `notice`), resumable; a double tap on Move is the same run.
 - Listeners (`visit.*`, `job.completed/reopened/cancelled`): the pushes,
@@ -224,6 +423,9 @@ holiday calendar, and Route reads the company's base (`cfg/company.base`).
   start time, so a time change inside the 2 days, whose confirmation is
   skipped that close, is reminded again at the new time). Imported future visits are eligible; a marker seeded from
   Rotor's own reminders stops a second one.
+- `visit.on_my_way`, `visit.running_late` (M4b; trigger manual, service):
+  a tech's tap sends them right away or not at all; the owner can turn
+  them off or change the template. Templates `on_my_way`, `running_late`.
 - At send time each step re-reads the visit: moved, cancelled or changed →
   skipped. Templates: `visit_confirm`, `visit_confirm_email`,
   `visit_reminder_14d`, `visit_reminder_14d_email`, `visit_reminder_2d`,
@@ -242,7 +444,14 @@ address, the job's visit list and schedule brought up to date). A re-run of
 the same export changes nothing. The phases read an export someone made;
 nothing calls Rotor.
 
-## Extension points (for M4b and Money)
+`work.timers` (M4b, after `work.visits` and `system.users`; visit timers:
+people from `assigned_to`, geo, minutes, segments with no visit kept, one
+still running closed at its deadline with `auto_closed`, reported) and
+`work.timesheets` (M4b, after `system.users`; shifts closed, `approved`
+when before Rotor's last payroll run (Oct 1), one still open closed at
+21:00 for review; no clock pointer is made).
+
+## Extension points
 
 - Server: `changeVisit(id, event, opts)` in `office.mjs` for every visit
   change (field events `on_my_way`, `running_late`, `start`, `pause`,
@@ -257,6 +466,19 @@ nothing calls Rotor.
   the Visit screen with its own state and events; a button runs
   `run(data, ctx)`. The work manifest keeps M4b's entries in its own `field`
   object.
+
+- Today cards (core, M4b): a module's Today card may have `events` and
+  `mount` (delegated inside its own wrapper); a tech's "No visits today"
+  shows only when no card has anything to show.
+- Visit panels (M4b): a `visitActions` panel may say which of the Visit
+  screen's cards it shows itself (`replaces: ["checklist", "lines",
+  "notes"]`) and may have `mount`; the Visit screen opens from the last
+  good copy when there's no signal (`data.offline`, `data.as_of`).
+- Payroll (M7a) services the field part calls when they exist:
+  `payroll.periodStatus({ user_id, at }) → "open" | "locked" | "paid"`,
+  `payroll.addAdjustment({ user_id, minutes, category, start_at, end_at,
+  timesheet_id, note }) → { id }`, `payroll.myPay({ user_id, period })`
+  (replaces the estimate behind `GET /me/pay`).
 
 ## Data rules
 
