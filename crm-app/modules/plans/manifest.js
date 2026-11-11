@@ -19,13 +19,13 @@ export default {
     { path: "/settings/agreement-templates/:id", load: () => import("./template.js"), title: "Agreement", perm: "plans:read", parent: "/settings/agreement-templates" },
   ],
   nav: [
-    { where: "more", label: "Plans", path: "/plans", perm: "plans:read", order: 32, icon: "schedule" },
-    { where: "more", label: "Lights season", path: "/lights", perm: "plans:read", order: 36, icon: "gift" },
+    { where: "more", section: "work", label: "Plans", path: "/plans", perm: "plans:read", order: 32, icon: "check" },
+    { where: "more", section: "work", label: "Lights season", path: "/lights", perm: "plans:read", order: 36, icon: "bulb" },
   ],
   creates: [{ label: "New plan", path: "/plans/new", perm: "plans:write", order: 22, icon: "schedule" }],
   contactTabs: [{ key: "plans", label: "Plans", order: 47, load: () => import("./contact-tab.js") }],
   visitActions: [],
-  todayCards: [{ key: "plans", perm: "plans:read", order: 25, load: () => import("./today-card.js") }],
+  todayCards: [{ key: "plans", perm: "plans:read", order: 25, home: false, load: () => import("./today-card.js") }],
   settings: [
     { label: "Plans catalog & perks", path: "/settings/plans", perm: "settings:owner", icon: "schedule", order: 34, owner: true },
     { label: "Agreement templates", path: "/settings/agreement-templates", perm: "plans:read", icon: "doc", order: 35 },

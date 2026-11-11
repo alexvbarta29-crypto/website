@@ -350,6 +350,9 @@ ${INSETS_JS}
       document.getElementById('install-how').hidden = true;
       document.getElementById('install-ios').hidden = false;
       card.hidden = false;
+    } else if (window.matchMedia && matchMedia('(pointer: fine)').matches) {
+      // a computer (Chrome, Edge): an app in its own window, not a home screen
+      document.getElementById('install-how').textContent = 'Install Barta Office as an app on this computer.';
     }
     let prompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {

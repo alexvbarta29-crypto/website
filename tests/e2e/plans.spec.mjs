@@ -120,7 +120,8 @@ for (const device of ["iphone13", "iphonese"]) {
       await shot(page, `plans-lights-${device}`);
       await f.click(`[data-season="${seeded.seasons.id}"]`);
       await sheetUp(f, /Rowan Planfolk/);
-      assert.ok(await f.$(".sheet.on input[name=bin_id]"));
+      assert.match(await f.textContent(".sheet.on"), /The bin goes on once the lights are taken down/, "no bin while the lights are up");
+      assert.equal(await f.$(".sheet.on input[name=bin_id]"), null);
       assert.deepEqual(await screenProblems(f), [], "the season sheet passes the phone checks");
       await shot(page, `plans-lights-sheet-${device}`);
       await closeSheet(f);

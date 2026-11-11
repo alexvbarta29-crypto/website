@@ -261,6 +261,11 @@ export function routeOrder(stops = [], base = null) {
 
 export const MAX_RANGE_DAYS = 42;
 
+// The "to book" tray of a month (jobs/open rows): jobs with no visit that
+// are due by then (no target month, or one up to it), oldest target first.
+export const toBookRows = (rows, month) => rows.filter((r) => r.st === "unscheduled" && (!r.tm || r.tm <= month))
+  .sort((a, b) => String(a.tm || "").localeCompare(String(b.tm || "")) || String(a.u).localeCompare(String(b.u)));
+
 // The months (yyyy-mm) a date range touches.
 export function monthsOf(from, to) {
   const out = [];

@@ -7,7 +7,9 @@ import { html, attrs, toast } from "../../core/ui.js";
 import { busy } from "../../core/forms.js";
 import { ensureStyles } from "./kit.js";
 
-const VARS = ["full_name", "plan_name", "per_visit_price", "visits_per_year", "term_months", "perks_list", "clawback_amount", "notice_days", "late_cancel_fee", "legal_name", "company_name", "company_phone"];
+const VARS = ["full_name", "plan_name", "price_details", "per_visit_price", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms", "visits_per_year", "term_months", "perks_list", "clawback_amount", "notice_days", "late_cancel_fee", "legal_name", "company_name", "company_phone"];
+const CHECK = ">> Owner check:";
+const checksIn = (body) => String(body || "").split("\n").filter((l) => l.trim().startsWith(CHECK)).map((l) => l.trim().slice(CHECK.length).trim());
 
 export default {
   title: (s) => (s && s.t ? s.t.name : "Agreement"),
@@ -21,7 +23,9 @@ export default {
     const edit = ctx.can("agreement_templates:edit");
     return html`<div class="stack">
       <section class="card"><p><span class="${"pill " + (t.approved ? "green" : "amber")}">${t.approved ? `Approved (version ${t.version})` : "Draft, needs owner approval"}</span></p>
-        ${!t.approved && edit ? html`<button type="button" class="btn primary block" data-approve>Approve this text</button>` : ""}</section>
+        ${checksIn(t.body_md).length ? html`<p class="warn-box">${checksIn(t.body_md).length} line${checksIn(t.body_md).length === 1 ? " needs" : "s need"} your OK first. Each line starting “${CHECK}” says what to confirm: change the wording if it's wrong, then delete the check line.</p>
+          <ul class="pl-checks">${checksIn(t.body_md).map((c) => html`<li>${c}</li>`)}</ul>` : ""}
+        ${!t.approved && edit && !checksIn(t.body_md).length ? html`<button type="button" class="btn primary block" data-approve>Approve this text</button>` : ""}</section>
       <form class="form" data-tpl novalidate>
         <label class="field"><span>Name</span><input name="name" maxlength="120" ${attrs({ value: t.name, readonly: !edit })}></label>
         ${edit ? html`<div class="pl-vars">${VARS.map((v) => html`<button type="button" ${attrs({ "data-var": v })}>${v}</button>`)}</div>` : ""}

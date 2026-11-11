@@ -223,8 +223,40 @@ export async function portalSession(req) {
 }
 
 // Whether a session's scope opens this page: the same kind and, for a
-// document, the same record. A document link never opens the hub.
-export const scopeAllows = (session, kind, id) => !!session && session.scope && session.scope.kind === kind && (!session.scope.id || session.scope.id === id);
+// document, the same record. A document link never opens the hub. A hub
+// session also opens the documents it was handed (grants: a quote opened
+// from the hub keeps the hub open, below).
+export const scopeAllows = (session, kind, id) => !!session && !!session.scope && (
+  (session.scope.kind === kind && (!session.scope.id || session.scope.id === id))
+  || (session.scope.kind === "hub" && Array.isArray(session.grants) && session.grants.some((g) => g && g.kind === kind && g.id === id && Date.parse(g.until) > nowMs())));
+
+// The live hub session a request carries (raw, for adding a grant), or null.
+async function hubSessionOf(req) {
+  const raw = readCookie(req, PORTAL_COOKIE);
+  const dot = raw.indexOf(".");
+  if (dot < 0) return null;
+  const contactId = raw.slice(0, dot);
+  const token = raw.slice(dot + 1);
+  if (!isId(contactId, "contact") || !TOKEN_RE.test(token)) return null;
+  const got = await getRaw(sessionKey(token)).catch(() => null);
+  const s = got && got.data;
+  if (!s || s.contact_id !== contactId || !s.scope || s.scope.kind !== "hub" || !(Date.parse(s.expires_at) > nowMs())) return null;
+  const link = await getRaw(`plk/${s.link}`).catch(() => null);
+  if (!link || !link.data || link.data.revoked_at) return null;
+  return { key: sessionKey(token), data: s, etag: got.etag };
+}
+
+// A document link opened from the hub (same contact): the hub session gets
+// a grant for it instead of being replaced by a document-only session, so
+// "back to my account" still works. → true when granted.
+async function grantToHub(req, link, code) {
+  const hub = await hubSessionOf(req);
+  if (!hub || hub.data.contact_id !== link.contact_id || !link.scope.id) return false;
+  const until = Math.min(Date.parse(hub.data.expires_at), link.expires_at ? Date.parse(link.expires_at) : Infinity);
+  const keep = (hub.data.grants || []).filter((g) => g && Date.parse(g.until) > nowMs() && !(g.kind === link.scope.kind && g.id === link.scope.id)).slice(-9);
+  const w = await settledWrite(hub.key, { ...hub.data, grants: [...keep, { kind: link.scope.kind, id: link.scope.id, link: sha(code), until: new Date(until).toISOString() }] }, { onlyIfMatch: hub.etag }).catch(() => ({ ok: false }));
+  return !!w.ok;
+}
 
 // ------------------------------------------------------------ the layout (§8.4)
 
@@ -376,8 +408,13 @@ async function open(req, url, context) {
   const { _etag, _key, ...value } = link;
   const day = value.day && value.day.date === today ? { date: today, n: value.day.n + 1 } : { date: today, n: 1 };
   await settledWrite(_key, { ...value, uses: (value.uses || 0) + 1, last_used_at: nowIso(), day }, { onlyIfMatch: _etag }).catch(() => {});
-  const cookie = await openSession(link, code, req, context);
   const to = scopePath(link.scope, code);
+  // opened from the customer's hub: the hub session keeps its cookie and gains this document
+  if (link.scope.kind !== "hub" && await grantToHub(req, link, code)) {
+    if (isForm) return new Response(null, { status: 303, headers: { ...PORTAL_HEADERS, Location: to } });
+    return pjson({ ok: true, data: { location: to } });
+  }
+  const cookie = await openSession(link, code, req, context);
   const headers = { ...PORTAL_HEADERS, "Set-Cookie": cookie };
   if (isForm) return new Response(null, { status: 303, headers: { ...headers, Location: to } });
   return pjson({ ok: true, data: { location: to } }, 200, { "Set-Cookie": cookie });

@@ -14,7 +14,9 @@
 // suppressions, bulk-run, messages, push, search and permissions routes,
 // the services bulk.create, notify.users and the default messages.sink,
 // the queue kinds for automations, scheduled sends and notifications, and
-// the templates.seed and notifications.prune sweeps.
+// the templates.seed and notifications.prune sweeps. Home (GET /home, the
+// owner's first screen: the numbers, today's visits, what needs you) reads
+// every module's attention and approvals rows and the Rotor snapshot.
 
 import { defineModule } from "../../core/registry.mjs";
 import { updateStats } from "../../../crm-store.mjs";
@@ -31,6 +33,7 @@ import { apiKeyRoutes } from "./apikeys.mjs";
 import { commsRoutes } from "./comms.mjs";
 import { searchRoutes } from "./search.mjs";
 import { permissionRoutes } from "./permissions.mjs";
+import { homeRoutes } from "./home.mjs";
 import { seedTemplates } from "../../core/templates.mjs";
 import { runEventAutomation, runSendStep } from "../../core/automations.mjs";
 import { runQueuedSend, coreMessagesSink } from "../../core/send.mjs";
@@ -46,7 +49,7 @@ export default defineModule({
   types,
   settings: systemSettings,
   routes: [...meRoutes, ...userRoutes, ...legacyRoutes, ...settingsRoutes, ...adminRoutes, ...auditRoutes, ...fileRoutes, ...pendingRoutes, ...apiKeyRoutes,
-    ...commsRoutes, ...searchRoutes, ...permissionRoutes],
+    ...commsRoutes, ...searchRoutes, ...permissionRoutes, ...homeRoutes],
   // the comms part of ContactStats (§5.1): written by core's sender in test/live mode
   // (first text per sending number, last contact); comms (M6) adds last_inbound_at
   statsParts: {

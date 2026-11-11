@@ -44,14 +44,27 @@ test("the approved text is frozen; fromQuoteOption with that signature makes the
     assert.equal(shown.body_sha256, sha(shown.body_rendered));
     assert.match(shown.body_rendered, /Quarterly plan service agreement/);
     assert.match(shown.body_rendered, /Pat Sample\d+/, "the customer's name");
-    assert.match(shown.body_rendered, /\$195\.00 a visit \(visit 2 of each year: \$60\.00\)/, "per-visit price without the optional add-ons");
+    assert.match(shown.body_rendered, /Your price: \$195\.00 a visit \(visit 2 of each year: \$60\.00\), locked in/, "the price without the add-ons the customer may pick");
+    // every add-on is listed with its own price, so whatever they pick, the text says what it costs
+    assert.match(shown.body_rendered, /- Screen Cleaning, only if you add it on your quote: \$100\.00, visits 1, 3 and 4 of each year/);
+    assert.match(shown.body_rendered, /- Track Detailing, only if you add it on your quote: \$64\.00, visits 1, 3 and 4 of each year/);
+    assert.match(shown.body_rendered, /- Exterior Window Cleaning: \$295\.00, visits 1, 3 and 4 of each year/);
+    assert.match(shown.body_rendered, /- Interior Window Cleaning: \$160\.00, visit 2 of each year/);
+    assert.match(shown.body_rendered, /- Quarterly plan discount: \$100\.00 off every visit/);
+    assert.match(shown.body_rendered, /An add-on you pick is added to the visits it's on\./);
     assert.match(shown.body_rendered, /Unlimited Touch-Ups, 7-Day Rain Guarantee and Free Hard Water Removal/);
-    assert.match(shown.body_rendered, /plan discount of \$100\.00/);
+    assert.match(shown.body_rendered, /you pay back the plan discount that visit got \(\$100\.00\)/);
+    assert.doesNotMatch(shown.body_rendered, /Owner check/, "an approved text has none left");
+    assert.doesNotMatch(shown.body_rendered, /a visit\)? a visit/, "never \"a visit\" twice");
     assert.match(shown.body_rendered, /BARTA WINDOW WASHING LLC/);
     assert.doesNotMatch(shown.body_rendered, /—|licensed|refund/i, "Barta's voice: no em dashes, insured not licensed, re-clean not refund");
     const out = await scope(() => services.call("plans.fromQuoteOption", quoteOf(c), version, opt, "convert--qt_0000000000000000000q--1", { signature: signatureFor(version, opt) }, portalCtx));
     assert.ok(out.plan_id && out.agreement_id);
     assert.equal(out.job_ids.length, 4, "a job per visit of the first term");
+    // the jobs bill what the text says: $195 + the $100 screens they picked on 1, 3, 4; $60 on visit 2
+    const totals = [];
+    for (const id of out.job_ids) totals.push((await recOf("job", id)).totals.total_cents);
+    assert.deepEqual(totals, [29500, 6000, 29500, 29500]);
     const ag = await recOf("agreement", out.agreement_id);
     assert.equal(ag.status, "signed");
     assert.equal(ag.source, "quote_approval");
@@ -118,13 +131,21 @@ test("D10: an unapproved template is never shown on a quote; an edit after appro
     assert.equal(await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt)), null, "drafts aren't shown");
     const id = AG.seedTemplateId("quarterly");
     assert.equal((await t.api(`/agreement-templates/${id}/approve`, { method: "POST", as: (await t.user("admin")), body: {} })).status, 403, "owners approve");
+    // a draft with "Owner check" lines can't be approved until the owner settles them
+    const early = await t.api(`/agreement-templates/${id}/approve`, { method: "POST", as: owner, body: {} });
+    assert.equal(early.status, 409);
+    assert.match(early.body.error.message, /Owner check/);
+    const g0 = await t.api(`/agreement-templates/${id}`, { as: owner });
+    assert.ok(AG.ownerChecksIn(g0.body.data.body_md).length >= 2);
+    const settled = await t.api(`/agreement-templates/${id}`, { method: "PATCH", as: owner, ifMatch: g0.headers.get("etag"), body: { body_md: AG.withoutOwnerChecks(g0.body.data.body_md) } });
+    assert.equal(settled.status, 200, JSON.stringify(settled.body));
     assert.equal((await t.api(`/agreement-templates/${id}/approve`, { method: "POST", as: owner, body: {} })).status, 200);
     const shown = await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt));
     assert.ok(shown);
     const g = await t.api(`/agreement-templates/${id}`, { as: owner });
     const edited = await t.api(`/agreement-templates/${id}`, { method: "PATCH", as: owner, ifMatch: g.headers.get("etag"), body: { body_md: `${g.body.data.body_md}\n\nOne more line.` } });
     assert.equal(edited.status, 200, JSON.stringify(edited.body));
-    assert.equal(edited.body.data.version, 2);
+    assert.equal(edited.body.data.version, 3);
     assert.equal(edited.body.data.approved, false);
     assert.equal(await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt)), null, "not shown until approved again");
     const bad = await t.api(`/agreement-templates/${id}`, { method: "PATCH", as: owner, ifMatch: edited.headers.get("etag"), body: { body_md: "Hi {{quote_link}}" } });

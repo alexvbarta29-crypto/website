@@ -1,7 +1,9 @@
 // Barta CRM client: the hash router (design §2.3, §2.4, §9.1).
 //
 // Routes come from the module manifests ({ path, load, title, perm,
-// parent }); paths are hashes inside the frame (#/team/us_...). A screen
+// parent }; title may be a function of the signed-in person, so one path
+// reads "Home" for the office and "Today" for a tech); paths are hashes
+// inside the frame (#/team/us_...). A screen
 // module default-exports
 //   { title?, load(params, ctx) → state, render(state, ctx) → html``,
 //     events?: { "click [data-act=x]": (event, el, ctx) => ... },
@@ -16,13 +18,19 @@
 // (and anything they put in ctx.keep) back when you return to them. Every
 // route change is posted to the office shell (crm:route) so /office#crm/...
 // mirrors it.
+//
+// List + detail on wide screens (§9.1): a list route that says `split:
+// true` (Contacts, Quotes) stays on the left, in #view, while the screens
+// under it (a contact, a quote, a new one) open in #pane beside it, the
+// list keeping its search and scroll and lighting the open row. Under
+// 1000 px (a phone) every screen is the whole view, as always.
 
 import { html, render, delegate, closeTopSheet, toast, sheet, icon } from "./ui.js";
 
 const routes = [];
 let stack = [];
-let current = null;          // { path, route, params, mod, state }
-let offEvents = null;
+let current = null;          // the screen in focus: { path, route, params, mod, state, ctx, el, off }
+let anchor = null;           // on a wide screen, the list beside it (in #view): the same shape
 let token = 0;
 let pendingReplace = null;
 let wentBack = false;
@@ -116,11 +124,41 @@ function onHash() {
 }
 
 export function start() {
+  // #view and, beside it on a wide screen, #pane (list + detail) in one row
+  const v = view();
+  if (v && !paneEl()) {
+    const main = document.createElement("div");
+    main.className = "main";
+    main.id = "main";
+    v.parentNode.insertBefore(main, v);
+    main.appendChild(v);
+    const pane = document.createElement("section");
+    pane.id = "pane";
+    pane.className = "view pane";
+    pane.tabIndex = -1;
+    pane.hidden = true;
+    pane.setAttribute("aria-label", "Details");
+    main.appendChild(pane);
+  }
   window.addEventListener("hashchange", onHash);
   onHash();
 }
 
 const view = () => document.getElementById("view");
+const paneEl = () => document.getElementById("pane");
+export const SPLIT_MEDIA = "(min-width: 1000px)";
+const wide = () => typeof matchMedia === "function" && matchMedia(SPLIT_MEDIA).matches && !!paneEl();
+// The list a path opens beside on a wide screen: itself when it is a split
+// list, else its nearest ancestor that is one; null on a phone.
+// (A list this person may not open is no list: a tech's own contact opens alone.)
+function splitOf(path, m) {
+  if (!wide()) return null;
+  const open = (r) => !!r.split && (!r.perm || env.can(r.perm) === true);
+  if (m.route.split) return open(m.route) ? path : null;
+  for (const p of chain(path).slice(1)) { const pm = match(p); if (pm && pm.route.split) return open(pm.route) ? p : null; }
+  return null;
+}
+const routeTitle = (route) => (typeof route.title === "function" ? route.title(env.user || {}) : route.title);
 
 function header(title, showBack, act) {
   const t = document.getElementById("top-title");
@@ -159,66 +197,132 @@ export function skeleton(kind = "card") {
 
 const errorView = (e) => html`<div class="stack"><div class="card empty"><div class="art">${icon("shield")}</div><h2>${e && e.code === "offline" ? "No connection" : "That didn't load"}</h2><p>${(e && e.message) || "Try again in a minute."}</p><div class="btn-row"><button type="button" class="btn primary" data-retry>Try again</button></div></div></div>`;
 
-async function show(path, { keepScroll = false } = {}) {
-  const my = ++token;
-  const v = view();
-  if (!v) return;
-  if (current && current.path) {
-    const k = keep.get(current.path) || {};
-    k.scrollTop = v.scrollTop;
-    keep.set(current.path, k);
-  }
-  if (offEvents) { offEvents(); offEvents = null; }
-  if (current && current.mod && current.mod.unmount) { try { current.mod.unmount(); } catch (e) { /* ignore */ } }
-  let m = match(path);
-  if (!m) { m = match("/today"); path = "/today"; }
-  if (!m) return;
+function teardown(rec) {
+  if (!rec) return;
+  if (rec.off) { rec.off(); rec.off = null; }
+  if (rec.mod && rec.mod.unmount) { try { rec.mod.unmount(); } catch (e) { /* ignore */ } }
+}
+const notForLogin = () => html`<div class="stack"><div class="card empty"><div class="art">${icon("shield")}</div><h2>Not for this login</h2><p>Ask an owner if you need this.</p></div></div>`;
+
+// Loads one screen into an element. The focus screen (the one the address
+// names) owns the header, the back arrow and the route message; the list
+// beside it on a wide screen (focus: false) only draws itself.
+async function mountScreen(el, path, m, { my, focus = true, keepScroll = false }) {
   const { route, params } = m;
+  const rec = { path, route, params, mod: null, el, off: null };
+  if (focus) current = rec;
   if (route.perm && !env.can(route.perm)) {
-    current = { path, route, params, mod: null };
-    header(route.title, canGoBack(), null);
-    render(v, html`<div class="stack"><div class="card empty"><div class="art">${icon("shield")}</div><h2>Not for this login</h2><p>Ask an owner if you need this.</p></div></div>`);
-    env.onRoute(path);
-    return;
+    el.classList.remove("flush");
+    render(el, notForLogin());
+    if (focus) { header(routeTitle(route), canGoBack(), null); env.onRoute(path); }
+    return rec;
   }
-  current = { path, route, params, mod: null };
-  header(route.title, canGoBack(), null);
+  if (focus) header(routeTitle(route), canGoBack(), null);
+  const v = el;
   if (!keepScroll) { v.classList.remove("flush"); render(v, skeleton(route.skeleton)); }
-  env.onRoute(path);
+  if (focus) env.onRoute(path);
   let mod, state;
   const ctx = screenCtx(path, params);
   try {
     mod = (await route.load()).default;
-    if (my !== token) return;
+    if (my !== token) return null;
     state = mod.load ? await mod.load(params, ctx) : {};
   } catch (e) {
-    if (my !== token) return;
-    if (e && e.status === 401) return;
-    render(v, errorView(e));
-    const btn = v.querySelector("[data-retry]");
-    if (btn) btn.addEventListener("click", () => show(path));
-    return;
+    if (my !== token) return null;
+    if (e && e.status === 401) return null;
+    render(el, errorView(e));
+    const btn = el.querySelector("[data-retry]");
+    if (btn) btn.addEventListener("click", () => show(currentPath()));
+    return rec;
   }
-  if (my !== token) return;
-  current = { path, route, params, mod, state, ctx };
+  if (my !== token) return null;
+  Object.assign(rec, { mod, state, ctx });
+  if (focus) current = rec;
   ctx.state = state;
   ctx.rerender = () => paint();
-  const title = typeof mod.title === "function" ? mod.title(state, ctx) : mod.title || route.title;
+  const title = typeof mod.title === "function" ? mod.title(state, ctx) : mod.title || routeTitle(route);
   const paint = () => {
-    v.classList.toggle("flush", !!mod.flush);
-    render(v, mod.render(ctx.state, ctx));
-    const act = mod.action ? mod.action(ctx.state, ctx) : null;
-    header(title, canGoBack(), act);
-    if (mod.mount) mod.mount(v, ctx.state, ctx);
+    el.classList.toggle("flush", !!mod.flush);
+    render(el, mod.render(ctx.state, ctx));
+    if (focus || current === rec) header(typeof mod.title === "function" ? mod.title(ctx.state, ctx) : title, canGoBack(), mod.action ? mod.action(ctx.state, ctx) : null);
+    if (mod.mount) mod.mount(el, ctx.state, ctx);
   };
   paint();
   if (mod.events) {
     const wrapped = {};
-    for (const [k, fn] of Object.entries(mod.events)) wrapped[k] = (e, el) => fn(e, el, ctx);
-    offEvents = delegate(v, wrapped);
+    for (const [k, fn] of Object.entries(mod.events)) wrapped[k] = (e, x) => fn(e, x, ctx);
+    rec.off = delegate(el, wrapped);
   }
   const k = keep.get(path);
-  v.scrollTop = (keepScroll || wentBack) && k ? k.scrollTop || 0 : 0;
-  wentBack = false;
-  if (!keepScroll) { try { v.focus({ preventScroll: true }); } catch (e) { /* old Safari */ } }
+  el.scrollTop = (keepScroll || wentBack) && k ? k.scrollTop || 0 : 0;
+  if (focus) {
+    wentBack = false;
+    if (!keepScroll) { try { el.focus({ preventScroll: true }); } catch (e) { /* old Safari */ } }
+  }
+  return rec;
+}
+
+// The open row of the list beside a detail is lit.
+function markOpen(path) {
+  const v = view();
+  if (!v) return;
+  for (const a of v.querySelectorAll('a[aria-current="true"]')) a.removeAttribute("aria-current");
+  if (!path) return;
+  for (const a of v.querySelectorAll("a[href]")) if (a.getAttribute("href") === "#" + path) a.setAttribute("aria-current", "true");
+}
+
+async function show(path, { keepScroll = false } = {}) {
+  const my = ++token;
+  const v = view();
+  if (!v) return;
+  let m = match(path);
+  if (!m) { m = match("/today"); path = "/today"; }
+  if (!m) return;
+  const pane = paneEl();
+  const listPath = splitOf(path, m);
+  // where the leaving screen was scrolled
+  if (current && current.path) {
+    const k = keep.get(current.path) || {};
+    k.scrollTop = (current.el || v).scrollTop;
+    keep.set(current.path, k);
+  }
+  // the list stays when the next screen opens beside the same list (unless it is what's refreshed)
+  const stay = !!listPath && !!anchor && anchor.path === listPath && !(keepScroll && current === anchor && path === listPath);
+  if (current && !(stay && current === anchor)) teardown(current);
+  if (anchor && !stay) { if (anchor !== current) teardown(anchor); anchor = null; }
+  const app = document.getElementById("app");
+  if (!listPath) {
+    if (app) app.classList.remove("split");
+    if (pane && !pane.hidden) { pane.hidden = true; render(pane, html``); }
+    anchor = null;
+    await mountScreen(v, path, m, { my, keepScroll });
+    return;
+  }
+  if (app) app.classList.add("split");
+  pane.hidden = false;
+  if (!stay) {
+    const lm = match(listPath);
+    anchor = null;
+    const rec = await mountScreen(v, listPath, lm, { my, focus: path === listPath, keepScroll: keepScroll && current && current.path === listPath });
+    if (!rec) return;
+    anchor = rec;
+  } else if (path === listPath) {
+    current = anchor;
+    header(typeof anchor.mod?.title === "function" ? anchor.mod.title(anchor.state, anchor.ctx) : (anchor.mod && anchor.mod.title) || routeTitle(anchor.route), canGoBack(), anchor.mod && anchor.mod.action ? anchor.mod.action(anchor.state, anchor.ctx) : null);
+    env.onRoute(path);
+  }
+  if (path === listPath) {
+    pane.classList.remove("flush");
+    const what = String(routeTitle(anchor.route) || "the list").toLowerCase();
+    render(pane, html`<div class="pane-empty"><div class="art">${icon("list")}</div><p>${`Pick one of the ${what} to see it here.`}</p></div>`);
+    markOpen(null);
+    return;
+  }
+  await mountScreen(pane, path, m, { my, keepScroll });
+  if (my === token) markOpen(path);
+}
+
+// Crossing 1000 px (a window resized, an iPad turned) draws the screen again.
+if (typeof matchMedia === "function") {
+  try { matchMedia(SPLIT_MEDIA).addEventListener("change", () => { if (current) show(current.path, { keepScroll: true }); }); } catch (e) { /* old Safari */ }
 }

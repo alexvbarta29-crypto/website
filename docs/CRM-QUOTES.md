@@ -15,10 +15,15 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
 
 ## What the office sees
 
-- **Quotes** (More → Quotes; `quotes:read`): chips Open (draft, sent,
+- **Quotes** (the Sales tab's Quotes switch, or Menu → Sales → Quotes;
+  `quotes:read`): chips Open (draft, sent,
   viewed, changes asked), Draft, Sent, Viewed, Changes asked, Approved,
   Booked, Declined, Archived, with counts; a search by name or number. Each
   row: name, number, sent / viewed when, the first-visit price, the status.
+  On a computer (1,000 px and up) a quote opens beside the list (`split`).
+- **Home** ("Needs you", docs/CRM.md): quote changes requested (lights the
+  tab's dot) and quotes waiting on the customer (`quotes.waiting`,
+  `badge: false`: the follow-up cadence chases them).
 - **A contact's Quotes tab**: that contact's quotes and **New quote**.
 - **New quote / Edit** (`quotes:write`), phone first:
   1. Who and where: the contact and one of their properties.

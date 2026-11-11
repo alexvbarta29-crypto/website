@@ -25,11 +25,11 @@ const pad2 = (n) => String(n).padStart(2, "0");
 // in the table throws: a plan is never moved by an event that doesn't apply.
 export const PLAN_STATES = Object.freeze({
   draft: Object.freeze({ submit: "pending", activate: "active", cancel: "cancelled" }),
-  pending: Object.freeze({ activate: "active", cancel: "cancelled" }),
+  pending: Object.freeze({ activate: "active", cancel: "cancelled", confirm_season: "pending" }),
   active: Object.freeze({
-    schedule: "active", skip: "active", pause: "paused", cancel: "cancelling", renewal_notice: "active", renew: "active", expire: "expired", change_price: "active",
+    schedule: "active", skip: "active", pause: "paused", cancel: "cancelling", renewal_notice: "active", renew: "active", expire: "expired", change_price: "active", confirm_season: "active",
   }),
-  paused: Object.freeze({ resume: "active", cancel: "cancelling", schedule: "paused" }),
+  paused: Object.freeze({ resume: "active", cancel: "cancelling", schedule: "paused", confirm_season: "paused" }),
   cancelling: Object.freeze({ cancel_effective: "cancelled", withdraw: "active", schedule: "cancelling" }),
   cancelled: Object.freeze({}),
   expired: Object.freeze({ renew: "active" }),
@@ -159,11 +159,47 @@ export function saleValue(plan) {
   return sumCents((plan.ordinals || []).filter((o) => (o.term || 1) === n && o.status !== "skipped" && o.status !== "cancelled").map((o) => ordinalTotals(plan, o).total_cents));
 }
 
-// The per-visit prices of the plan's yearly cycle, for the agreement text.
+// The per-visit prices of the plan's first year (visit 1 carries what's
+// "initial" only: a first-visit discount, the lights materials).
 export function cyclePrices(plan) {
   const vpy = Math.max(1, plan.visits_per_year || visitsPerYearOf(plan.frequency));
   return Array.from({ length: vpy }, (_, i) => ordinalTotals(plan, { term: 1, n: i + 1, k: i + 1 }).total_cents);
 }
+// The per-visit prices of a later year (a renewal term: nothing "initial").
+export function regularPrices(plan) {
+  const vpy = Math.max(1, plan.visits_per_year || visitsPerYearOf(plan.frequency));
+  return Array.from({ length: vpy }, (_, i) => ordinalTotals(plan, { term: 2, n: i + 1, k: vpy + i + 1 }).total_cents);
+}
+
+// A plan discount (the per-visit discount the plan is sold with, §5.4) as
+// opposed to a first-visit offer, Early Bird or the 3-year discount: the
+// quote engine's stack group "plan" or key plan_*, else its name.
+const NOT_PLAN = /first[\s-]*time|early[\s-]*bird|3[\s-]*year|three[\s-]*year|referral|coupon|giveaway/i;
+export function isPlanDiscount(d) {
+  if (!d || typeof d !== "object") return false;
+  const key = String(d.key || "");
+  if (NOT_PLAN.test(key) || NOT_PLAN.test(String(d.name || ""))) return false;
+  return d.stack_group === "plan" || /^plan_/.test(key) || /\bplan\b|bi-?annual|semi-?annual|quarterly|monthly/i.test(String(d.name || ""));
+}
+
+// The early-cancel clawback (§5.4): the plan discount the plan's first visit
+// actually got, whatever the catalog says (a plan sold with $80 off pays
+// back $80; one sold with none pays back nothing).
+export function clawbackCents(plan) {
+  const o = { term: 1, n: 1, k: 1 };
+  const subtotal = sumCents(ordinalLines(plan, o).map((l) => (Number.isSafeInteger(l.total_cents) ? l.total_cents : 0)));
+  if (subtotal <= 0) return 0;
+  const ds = ordinalDiscounts(plan, o).filter(isPlanDiscount);
+  const bp = Math.min(10000, ds.filter((d) => d.type === "percentage").reduce((s, d) => s + (d.value || 0), 0));
+  const fixed = ds.filter((d) => d.type === "fixed").reduce((s, d) => s + (d.value || 0), 0);
+  return Math.min(subtotal, roundHalfUp(subtotal * bp, 10000) + fixed);
+}
+
+// The season of a lights ordinal (its install's year).
+export const seasonOf = (o) => Number(String((o && o.target_month) || "").slice(0, 4)) || null;
+// A lights season after the plan's first waits for the customer to confirm
+// it (the September rebook text): no install is made before (§5.4, D30).
+export const seasonConfirmed = (plan, o) => plan.kind !== "lights_annual" || (o.k || o.n) <= 1 || (plan.confirmed_seasons || []).includes(seasonOf(o));
 
 // ------------------------------------------------------------ transitions' arithmetic
 
@@ -202,7 +238,7 @@ export function cancelQuote(plan, requestedOn) {
   const inside = requestedOn <= (t.initial_end_on || requestedOn);
   const effective_on = inside ? addLocalDays(requestedOn, Number.isInteger(policy.notice_days) ? policy.notice_days : 7) : (t.current_term_end || requestedOn);
   const first = (plan.ordinals || []).find((o) => (o.k || 0) === 1) || (plan.ordinals || [])[0];
-  const clawback_cents = inside && first && first.status === "completed" ? (policy.early_cancel_clawback_cents || 0) : 0;
+  const clawback_cents = inside && first && first.status === "completed" ? clawbackCents(plan) : 0;
   const open = (plan.ordinals || []).filter((o) => OPEN_ORDINAL.includes(o.status));
   const happen = open.filter((o) => o.status === "scheduled" && o.visit_date && o.visit_date <= effective_on);
   return {
@@ -385,6 +421,15 @@ export function applyAction(plan, action, args = {}, { today, at, by = "" } = {}
       checkPriceChange(plan, args.effective_on, today);
       if (!Array.isArray(args.new_lines) || !args.new_lines.length) throw new InputError("Add the new prices.", "new_lines");
       next.renewal = { ...(plan.renewal || {}), price_change: { new_lines: args.new_lines, effective_on: args.effective_on, set_by: by, set_at: at } };
+      break;
+    }
+    case "confirm_season": {
+      // the customer said yes to a lights season (the rebook text): its install can be made
+      if (plan.kind !== "lights_annual") throw new InputError("Only a Christmas lights plan has seasons to confirm.", "season");
+      const season = Number(args.season);
+      if (!Number.isSafeInteger(season) || season < 2020 || season > 2100) throw new InputError("Which season?", "season");
+      next.confirmed_seasons = [...new Set([...(plan.confirmed_seasons || []), season])].sort((a, b) => a - b).slice(-6);
+      next.ordinals = ords.map((o) => ((o.k || o.n) > 1 && seasonOf(o) === season && !o.confirmed_on ? { ...o, confirmed_on: today } : o));
       break;
     }
     case "schedule":

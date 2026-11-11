@@ -14,7 +14,9 @@
 // change it) and runs on from there. A local first owner works like
 // production's automatic setup: OFFICE_PASSWORD is "test-password" and
 // OFFICE_DATA_KEY is a throwaway key made at start (never the real one, so
-// the dashboard says it can't open its data). Nothing leaves this machine:
+// the dashboard says it can't open its data; Home reads a made-up Rotor
+// snapshot sealed for that key, tests/helpers/office-snapshot.mjs, as of
+// CRM_TEST_SNAPSHOT_AS_OF, Monday 2026-11-16). Nothing leaves this machine:
 // fetch() from the functions may only reach this server (no Rotor, no
 // Twilio, no Google), and the worker lanes run in-process every 2 s.
 import http from "node:http";
@@ -39,6 +41,8 @@ const store = await imp("netlify/lib/crm-store.mjs");
 const { deployContext } = await imp("netlify/lib/crm/core/context.mjs");
 await imp("netlify/lib/crm/modules/index.mjs");
 const lanes = await imp("netlify/lib/crm/core/lanes.mjs");
+const { sealedSnapshot } = await imp("tests/helpers/office-snapshot.mjs");
+globalThis.__crmOfficeSnapshot = sealedSnapshot(process.env.OFFICE_DATA_KEY, process.env.CRM_TEST_SNAPSHOT_AS_OF || "2026-11-16");
 const worker = await imp("netlify/lib/crm/core/worker.mjs");
 
 // The clock: START_AT, running on with real time (sessions, "due now").

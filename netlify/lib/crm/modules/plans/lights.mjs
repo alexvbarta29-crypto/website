@@ -21,7 +21,7 @@
 import { createRecord, getRecord, getRecords, updateRecord, readIndex, readPointer, claimPointer } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { now, localDate } from "../../core/clock.mjs";
-import { InputError, NotFoundError, ConflictError, ExistsError } from "../../core/errors.mjs";
+import { InputError, NotFoundError, ConflictError, ExistsError, ParallelRunGuard } from "../../core/errors.mjs";
 import { has, call } from "../../core/services.mjs";
 import { notify, approvers } from "../../core/notify.mjs";
 import { keySafe } from "../../core/text.mjs";
@@ -198,6 +198,8 @@ export async function patchSeason(id, body = {}, ctx) {
   if (body.bin_id !== undefined) {
     const b = String(body.bin_id || "").trim();
     if (b.length > 40) throw new InputError("Keep the bin under 40 characters.", "bin_id");
+    // the bin is the box the lights go in at takedown: not before they're down
+    if (b && !["taken_down", "stored"].includes(g.data.status)) throw new ConflictError("The bin goes on once the lights are taken down.", { code: "not_taken_down" });
     patch.bin_id = b || undefined;
   }
   if (body.footage_ft !== undefined) {
@@ -213,7 +215,7 @@ export async function patchSeason(id, body = {}, ctx) {
   const today = localDate(now());
   const r = await updateRecord("season_install", id, (s) => {
     const next = { ...s, ...patch };
-    if (patch.bin_id && ["taken_down", "takedown_scheduled", "installed"].includes(s.status)) { next.status = "stored"; next.stored_on = today; }
+    if (patch.bin_id && s.status === "taken_down") { next.status = "stored"; next.stored_on = today; }
     if (body.cancelled === true && !["taken_down", "stored"].includes(s.status)) next.status = "cancelled";
     for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
     return next;
@@ -252,7 +254,19 @@ export async function seasonBoard(season) {
     .sort((a, b) => String(a.contact_name).localeCompare(String(b.contact_name)));
   const by = {};
   for (const r of rows) by[r.status] = (by[r.status] || 0) + 1;
-  return { season: y, rows, counts: by, footage_ft: rows.filter((r) => r.status !== "cancelled").reduce((s, r) => s + (r.footage_ft || 0), 0), needs_bin: rows.filter((r) => r.status === "taken_down" && !r.bin_id).length };
+  return { season: y, rows, counts: by, footage_ft: rows.filter((r) => r.status !== "cancelled").reduce((s, r) => s + (r.footage_ft || 0), 0), needs_bin: rows.filter((r) => r.status === "taken_down" && !r.bin_id).length, to_confirm: await toConfirm(y, rows) };
+}
+
+// Lights plans whose season y waits for the customer's yes (no install is
+// made before, §5.4): a renewal's season not confirmed yet, or last
+// season's customer with nothing for this one.
+async function toConfirm(y, rows) {
+  const plans = (await readIndex("plans", "")).rows.filter((r) => r.k === "lights_annual" && ["active", "pending", "paused"].includes(r.st));
+  const have = new Set(rows.filter((r) => r.status !== "cancelled").map((r) => r.plan_id).filter(Boolean));
+  const last = new Set((await readIndex("lights", String(y - 1))).rows.filter((r) => r.pl && r.st !== "cancelled").map((r) => r.pl));
+  return plans.filter((r) => !have.has(r.id) && !(r.cs || []).includes(y) && ((r.wc || []).includes(y) || last.has(r.id)))
+    .map((r) => ({ plan_id: r.id, contact_id: r.c, contact_name: r.cn || "", town: r.tw || null, plan_name: r.nm }))
+    .sort((a, b) => a.contact_name.localeCompare(b.contact_name)).slice(0, 300);
 }
 
 // ------------------------------------------------------------ sweeps
@@ -274,12 +288,22 @@ export async function takedownDueSweep(ctx) {
     const g = await getRecord("season_install", r.id);
     if (!g || g.data.takedown_job_id) continue;
     const s = g.data;
-    if (!ctx.mayAct({ record: s })) { await ctx.would({ record: s }, "create", { takedown_job: 1 }); continue; }
     if (!has("work.createJobs")) continue;
-    const [tj] = await call("work.createJobs", [{
-      contact_id: s.contact_id, ...(s.property_id ? { property_id: s.property_id } : {}), kind: "lights_takedown", title: `Christmas lights takedown ${season}`,
-      lines: [{ ...TAKEDOWN_LINE }], discounts: [], target_month: takedownMonth(season, lights), season_install_id: s.id, ...(s.plan_id ? { plan_id: s.plan_id } : {}), billable: false,
-    }], `season-takedown--${s.id}`, "lights", ctx.write());
+    // a job is the customer's record: the guard asks about the customer, and
+    // one refusal never ends the pass (§3.10)
+    const cg = await getRecord("contact", s.contact_id).catch(() => null);
+    const contact = cg && cg.data;
+    if (!ctx.mayAct({ record: s }) || !ctx.mayAct({ record: contact || s, contact })) { await ctx.would({ record: s, contact }, "create", { takedown_job: 1 }); continue; }
+    let tj;
+    try {
+      [tj] = await call("work.createJobs", [{
+        contact_id: s.contact_id, ...(s.property_id ? { property_id: s.property_id } : {}), kind: "lights_takedown", title: `Christmas lights takedown ${season}`,
+        lines: [{ ...TAKEDOWN_LINE }], discounts: [], target_month: takedownMonth(season, lights), season_install_id: s.id, ...(s.plan_id ? { plan_id: s.plan_id } : {}), billable: false,
+      }], `season-takedown--${s.id}`, "lights", ctx.write());
+    } catch (e) {
+      if (e instanceof ParallelRunGuard) { await ctx.would({ record: s, contact }, "create", { takedown_job: 1 }); continue; }
+      throw e;
+    }
     await updateRecord("season_install", s.id, (x) => (x.takedown_job_id ? null : { ...x, takedown_job_id: tj }), ctx.write());
     made += 1;
     toBook += 1;

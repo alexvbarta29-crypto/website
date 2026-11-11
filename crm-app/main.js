@@ -147,7 +147,7 @@ function start() {
     onRoute: (path) => { nav.update(path); toShell({ type: "crm:route", path }); },
     signOut: doSignOut,
   });
-  nav.mount({ nav: session.nav, manifests: MANIFESTS, can, onSignOut: () => doSignOut() });
+  nav.mount({ nav: session.nav, manifests: MANIFESTS, can, onSignOut: () => doSignOut(), user: session.user });
   document.getElementById("top-back").addEventListener("click", () => router.back());
   edgeSwipe(() => router.back(), document);
   const bootEl = document.getElementById("boot");

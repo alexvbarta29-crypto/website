@@ -39,6 +39,8 @@ defineFileOwner("quote", {
 });
 
 const changesRequested = async () => (await readIndex("quotes", "open")).rows.filter((r) => r.st === "changes_requested").length;
+// sent or viewed, no answer yet (Home's "Needs you"; the follow-up cadence chases them, so no badge)
+const waitingOnCustomer = async () => (await readIndex("quotes", "open")).rows.filter((r) => r.st === "sent" || r.st === "viewed").length;
 
 export default defineModule({
   name: "quotes",
@@ -71,7 +73,10 @@ export default defineModule({
   templates: TEMPLATES,
   seeds: [{ v: 1, run: seedPriceBook }],
   onMerge: onMergeQuotes,
-  attention: [{ key: "quotes.changes_requested", label: "Quote changes requested", perm: "quotes:read", count: changesRequested, link: "#/quotes?status=changes_requested" }],
+  attention: [
+    { key: "quotes.changes_requested", label: "Quote changes requested", perm: "quotes:read", count: changesRequested, link: "#/quotes?status=changes_requested" },
+    { key: "quotes.waiting", label: "Quotes waiting on the customer", perm: "quotes:read", count: waitingOnCustomer, link: "#/quotes?status=sent", badge: false },
+  ],
   pushKinds: ["quote_approved", "changes_requested"],
   activityKinds: {
     "quote.sent": { label: "Quote sent", icon: "doc" },

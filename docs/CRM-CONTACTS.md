@@ -13,13 +13,15 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
 
 ## What the office sees
 
-- **Contacts** (the Contacts tab): instant search over every contact on
+- **Contacts** (the Customers tab): instant search over every contact on
   the phone (name, phone, email, street, tags; every word must match),
   chips All · Leads · Customers · Plan members · Former · Archived and the
   common sources, letter groups with a letter rail. Archived contacts only
   show under Archived. "Search notes and messages" runs a deeper search in
   the background. The first slice's Customers list stays one tap away at
-  the bottom until the Rotor import goes live.
+  the bottom until the Rotor import goes live. On a computer (1,000 px and
+  up) a contact opens beside the list, which keeps its search and scroll
+  (`split: true`, docs/CRM.md "Home and navigation").
 - **A contact**: Call · Text · Email · Directions, then Overview (how to
   reach them, texts and email consent, source, owner, tags, notes, and what
   other modules know: next visit, balance, plans), Activity (website
@@ -38,7 +40,7 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
 - **Property**: address and Directions, where it sits in the service area
   (distance from Delano, once Maps is live), access notes (gate code, pets,
   parking), the counts quotes reuse, the lights profile.
-- **Merge review** (More): possible duplicates, most certain first; each
+- **Merge review** (Menu → Customers): possible duplicates, most certain first; each
   pair stacked with the differing fields highlighted. Keep the first /
   Keep the second / Not the same person. Bulk: dismiss every unlikely pair
   (type DISMISS), merge every very likely pair whose first names match

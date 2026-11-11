@@ -23,7 +23,8 @@ import { TEMPLATES, seedCadences, addStepIds } from "./seed.mjs";
 import { SALES_DEFAULTS } from "./common.mjs";
 import { enroll, stopAll } from "./enroll.mjs";
 import { markDeal } from "./deals.mjs";
-import { SALES_STATS } from "./calls.mjs";
+import { myOpenTasks } from "./tasks.mjs";
+import { SALES_STATS, callsDueCount } from "./calls.mjs";
 import { listeners } from "./listeners.mjs";
 import { automations, sweeps, attentionCount } from "./automations.mjs";
 import { salesRoutes } from "./routes.mjs";
@@ -78,7 +79,12 @@ export default defineModule({
   templates: TEMPLATES,
   seeds: [{ v: 1, run: seedCadences }, { v: 2, run: addStepIds }],
   onMerge: onMergeSales,
-  attention: [{ key: "sales.attention", label: "Leads that need a call", perm: "sales:work", count: () => attentionCount(), link: "#/calls" }],
+  attention: [
+    { key: "sales.attention", label: "Leads that need a call", perm: "sales:work", count: () => attentionCount(), link: "#/calls" },
+    // Home's "Needs you" only (badge: false): the call list's due steps
+    { key: "sales.calls_due", label: "Calls due now", perm: "sales:work", count: () => callsDueCount(), link: "#/calls", badge: false },
+    { key: "sales.tasks_mine", label: "Tasks for you", perm: "tasks:read", count: (ctx) => myOpenTasks(ctx), link: "#/tasks", badge: false },
+  ],
   pushKinds: ["new_lead"],
   activityKinds: {
     "call.no_answer": { label: "Called: no answer", icon: "phone" },

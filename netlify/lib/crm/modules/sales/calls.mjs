@@ -452,6 +452,15 @@ export async function attention() {
   return attentionFrom({ rows: ix.rows, contacts: cx.rows, env, now: t });
 }
 
+// An active follow-up whose step is due now (a step waiting to be sent, no due time, or due).
+export const isDueNow = (r, t) => r.st === "active" && (!!r.pd || !r.due || Date.parse(r.due) <= t.getTime());
+
+// Home's "Needs you" row: calls due now (one index read).
+export async function callsDueCount() {
+  const t = now();
+  return (await readIndex("enrollments/active", "")).rows.filter((r) => isDueNow(r, t)).length;
+}
+
 // The Today card and the badge: due now, overdue, needs attention (two index reads).
 export async function callSummary() {
   const t = now();
@@ -459,7 +468,7 @@ export async function callSummary() {
   let due = 0, overdue = 0;
   for (const r of ix.rows) {
     if (r.st !== "active") continue;
-    if (r.pd || !r.due || Date.parse(r.due) <= t.getTime()) due += 1;
+    if (isDueNow(r, t)) due += 1;
     if (isOverdue(r, t)) overdue += 1;
   }
   const att = attentionFrom({ rows: ix.rows, env, now: t });

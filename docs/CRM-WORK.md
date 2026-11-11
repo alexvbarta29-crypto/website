@@ -98,18 +98,26 @@ overlay of what waits, copies for no signal, Delano times),
   person; the schedule warns, never blocks.
 - **Contact → Work**: coming up, open jobs, recent visits, done and
   cancelled jobs, **New job**.
-- **Today** (the office): today's visits per person (tap: their route),
-  jobs to book, jobs that need a look.
-- **Timesheets** (M4b; More, `time:edit_others`; `#/timesheets`): the week
+- **Home** (the office's first screen, docs/CRM.md): today's visits from
+  the visits index (`visitRows`), the to-book count by the tray's own rule
+  (`toBookRows` in office-schedule.mjs, which `GET /schedule/unscheduled`
+  uses too), stale jobs as a "Needs you" row. The office Today card
+  (today's visits per person) is `home: false`. An owner or office person
+  who goes out on visits gets **My visits** there (M4b: the clock bar and
+  their own day, the same card as a tech's Today), and the Timesheets card.
+- **Timesheets** (M4b; Menu, `time:edit_others`; `#/timesheets`): the week
   (Sunday to Saturday) per person with each shift and its flags (closed for
   them, edited, a timer stopped for them, on the clock, waiting), hours and
-  overtime, **Approve the week**; above it the entries **waiting for a
-  decision** from any recent week (a phone's time the server didn't take,
-  an offline change that no longer fit its visit, a week payroll locked):
-  **Decide** approves as claimed or with edited times, or doesn't count
-  it. Each shift's pencil edits the day, start, end and category, always
-  with a reason. Today shows how many entries wait, weeks to approve and
-  who is on the clock; the badge counts them too.
+  overtime, **Approve the week** (it names the shifts the app closed for
+  them first); above it the entries **waiting for a decision** from any
+  recent week (a phone's time the server didn't take, an offline change
+  that no longer fit its visit, a week payroll locked): **Decide** approves
+  as claimed or with edited times, or doesn't count it; an entry that only
+  reports an offline change shows what the phone sent (its words, a held
+  photo) and is marked **Seen it**. Each shift's pencil edits the day,
+  start, end and category, always with a reason. Home shows how many
+  entries wait, weeks to approve and who is on the clock; the badge counts
+  them too.
 - **Settings → Checklists** (`settings:general`): each list's name, on or
   off, which jobs get it (kinds of job, else services), its items (tick,
   photo, count, note; required or not). A job gets the first active list by

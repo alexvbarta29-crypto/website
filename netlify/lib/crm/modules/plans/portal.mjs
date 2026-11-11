@@ -19,7 +19,7 @@
 // hour per IP. GET pages never change anything.
 
 import { createHash, randomBytes } from "node:crypto";
-import { getRecord, getRecords, listRel, listKeys, putRaw, hk } from "../../../crm-store.mjs";
+import { getRecord, getRecords, listRel, listKeys, putRaw, hk, readPointer } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
 import { now, nowMs, localDate, tsKey, fromTsKey, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
 import { ConflictError, InputError, NotFoundError } from "../../core/errors.mjs";
@@ -28,7 +28,8 @@ import { ipHash } from "../../core/sessions.mjs";
 import { has, call } from "../../core/services.mjs";
 import { sendMessage } from "../../core/send.mjs";
 import { definePortalBeacon, createPortalLink } from "../../portal/core.mjs";
-import { emit } from "../../core/events.mjs";
+import { enqueue, kickWorker } from "../../core/queue.mjs";
+import { keySalt } from "../../core/context.mjs";
 import { agreementPage, hubPage, loginPage } from "./render.mjs";
 import { signAgreement, markViewed } from "./agreements.mjs";
 
@@ -118,47 +119,72 @@ export function phoneE164(raw) {
 const stamp = (prefix) => `${prefix}${tsKey(now())}-${randomBytes(4).toString("hex")}`;
 const timesOf = (keys) => keys.map((k) => /(\d{8}t\d{9}z)-[0-9a-f]+$/.exec(k)).filter(Boolean).map((m) => fromTsKey(m[1])).filter(Boolean).map((d) => d.getTime());
 
-// → { ok } | { ok: false, why: "ip" }; phone throttling never shows (the answer is the same).
-export async function login(phone, { ip }, ctx = {}) {
+// "Text me a link" (POST /api/portal/login). Every valid number that isn't
+// throttled costs exactly the same: the IP bucket, the number's bucket and
+// one queue item carrying only the number's keyed hash, then a lane kick the
+// request never waits for. Whether the number is on file is looked up later,
+// on the fast lane (onLoginQueued): nothing in the answer, its time or its
+// storage calls tells a number on file from one that isn't (§8.1).
+//   ip: 20 tries an hour (a salted key, a rolling hour); a number: one every
+//   10 minutes and 3 a day (rolling); a person: the same, however many
+//   numbers they have on file (the text goes to their mobile).
+// → { ok } | { ok: false, why: "ip" }; phone throttling never shows.
+const DAY_MS = 24 * 3600 * 1000;
+const ipKeyOf = (ip) => `thr/plogin-ip/${sha(`plogin|${ip || "none"}|${keySalt() || "dev-only"}`).slice(0, 32)}/`;
+const contactKeyOf = (id) => `thr/plogin-c/${sha(`plogin|${id}|${keySalt() || "dev-only"}`).slice(0, 32)}/`;
+const capped = (times, t) => times.some((x) => x > t - LOGIN_LIMITS.phone_gap_ms && x <= t) || times.filter((x) => x > t - DAY_MS && x <= t).length >= LOGIN_LIMITS.phone_per_day;
+const stampAt = (prefix, t) => `${prefix}${tsKey(new Date(t))}-${randomBytes(4).toString("hex")}`;
+
+export async function login(phone, { ip, waitUntil } = {}, ctx = {}) {
   const t = nowMs();
-  const ipKey = `thr/plogin-ip/${sha(`${ip || "none"}|${localDate(new Date(t))}`).slice(0, 32)}/`;
+  const at = new Date(t).toISOString();
+  const ipKey = ipKeyOf(ip);
   const ipTimes = timesOf(await listKeys(ipKey));
   if (ipTimes.filter((x) => x > t - 3600000).length >= LOGIN_LIMITS.ip_per_hour) return { ok: false, why: "ip" };
-  await putRaw(stamp(ipKey), { at: new Date(t).toISOString() });
+  await putRaw(stamp(ipKey), { at });
   const e164 = phoneE164(phone);
   if (!e164) throw new InputError("Enter your 10-digit mobile number.", "phone");
-  let key;
-  try { key = hk("phone", e164); } catch { return { ok: true, sent: false }; }
+  const key = hk("phone", e164);
   const pKey = `thr/plogin/${String(key).slice(0, 32)}/`;
-  const times = timesOf(await listKeys(pKey));
-  const today = localDate(new Date(t));
-  const todays = times.filter((x) => localDate(new Date(x)) === today);
-  if (times.some((x) => x > t - LOGIN_LIMITS.phone_gap_ms) || todays.length >= LOGIN_LIMITS.phone_per_day) return { ok: true, sent: false, throttled: true };
-  await putRaw(stamp(pKey), { at: new Date(t).toISOString() });
-  if (!has("contacts.findMatches")) return { ok: true, sent: false };
-  const matches = ((await call("contacts.findMatches", { phones: [e164] }, ctx)) || []).filter((m) => m.reason === "phone");
-  const recs = (await getRecords("contact", matches.map((m) => m.id))).filter(Boolean).map((g) => g.data)
-    .filter((c) => !c.deleted_at && !c.merged_into && c.lifecycle !== "archived" && !(c.flags && (c.flags.spam || c.flags.vendor)))
-    .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
-  const c = recs[0];
-  if (!c) return { ok: true, sent: false };
-  // the link and the text on the fast lane (a portal request has a small
-  // storage budget): the event carries the contact's id only
-  await emit("portal.login_requested", { id: c.id, wv: t, contact_id: c.id }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: ctx.requestId || "portal" });
-  return { ok: true, sent: true };
+  if (capped(timesOf(await listKeys(pKey)), t)) return { ok: true, throttled: true };
+  await putRaw(stamp(pKey), { at });
+  await enqueue("plans.login", null, {}, now(), { ns: "done", scope: "plogin", key: `${String(key).slice(0, 16)}-${tsKey(new Date(t))}-${randomBytes(4).toString("hex")}` }, { data: { phone_hk: key, at: t }, kick: false });
+  // wake the lane without holding the answer (never awaited)
+  kickWorker("fast", "plans.login", typeof waitUntil === "function" ? { waitUntil } : {}).catch(() => {});
+  return { ok: true };
 }
 
-// The listener: a hub link and the text. A retried step makes another link
-// but never a second text (the marker is the event's).
-export async function onLoginRequested(event) {
-  const p = event.payload || {};
-  if (!isId(p.contact_id, "contact")) return { result: "skipped" };
-  const g = await getRecord("contact", p.contact_id).catch(() => null);
-  if (!g || g.data.deleted_at || g.data.merged_into) return { result: "skipped:gone" };
-  const link = await createPortalLink({ contact_id: p.contact_id, scope: { kind: "hub" }, created_by: "portal:login" });
+// The queue item: who has that number (ptr/phone, surviving merges), at
+// most 3 texts a day each, a hub link and the text to their mobile.
+export async function onLoginQueued(h) {
+  const key = h.item && h.item.data && h.item.data.phone_hk;
+  if (typeof key !== "string" || !key) return { result: "skipped" };
+  const ptr = await readPointer("phone", key).catch(() => null);
+  const ids = (ptr && Array.isArray(ptr.ids) ? ptr.ids : []).filter((x) => isId(x, "contact")).slice(0, 10);
+  const people = new Map();
+  for (const id of ids) {
+    let cur = id;
+    for (let i = 0; i < 5 && isId(cur, "contact"); i++) {
+      const g = await getRecord("contact", cur).catch(() => null);
+      if (!g) break;
+      const next = g.data.merged_into || g.data.merging_into;
+      if (next && next !== cur) { cur = next; continue; }
+      people.set(g.data.id, g.data);
+      break;
+    }
+  }
+  const c = [...people.values()].filter((x) => !x.deleted_at && !x.merged_into && x.lifecycle !== "archived" && !(x.flags && (x.flags.spam || x.flags.vendor)))
+    .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0];
+  if (!c) return { result: "skipped:not_on_file" };
+  // the person's cap counts from when they asked (the item may run later)
+  const asked = Number.isSafeInteger(h.item.data.at) && h.item.data.at <= nowMs() ? h.item.data.at : nowMs();
+  const cKey = contactKeyOf(c.id);
+  if (capped(timesOf(await listKeys(cKey)), asked)) return { result: "skipped:capped" };
+  await putRaw(stampAt(cKey, asked), { at: new Date(asked).toISOString() });
+  const link = await createPortalLink({ contact_id: c.id, scope: { kind: "hub" }, created_by: "portal:login" });
   const r = await sendMessage({
-    contact_id: p.contact_id, channel: "sms", template_key: "portal_login", vars: { portal_link: link.url }, origin: { kind: "system" }, category: "service",
-    marker_key: `portal-login--${String(event.event_id || `${p.contact_id}@${p.wv}`).replace(/[^a-z0-9._-]/gi, "-").slice(0, 60)}`,
+    contact_id: c.id, channel: "sms", template_key: "portal_login", vars: { portal_link: link.url }, origin: { kind: "system" }, category: "service",
+    marker_key: `portal-login--${String((h.marker && h.marker.key) || key.slice(0, 16)).replace(/[^a-z0-9._-]/gi, "-").slice(0, 60)}`,
   }, { by: "portal", origin: "portal", actor_kind: "portal", requestId: "plans-login" });
   return { result: r && r.status ? `sent:${r.status}` : "sent" };
 }
@@ -227,7 +253,8 @@ export const portalRoutes = [
   {
     method: "POST", path: "/api/portal/login", scope: "public", maxBody: 2 * 1024,
     handler: (p) => answer(p, async () => {
-      const r = await login((p.body || {}).phone, { ip: clientIp(p.req, p.context) }, p.write());
+      const wait = p.context && typeof p.context.waitUntil === "function" ? (x) => p.context.waitUntil(x) : null;
+      const r = await login((p.body || {}).phone, { ip: clientIp(p.req, p.context), waitUntil: wait }, p.write());
       if (!r.ok) return p.fail("rate_limited", "Too many tries. Try again in an hour, or call us.", 429);
       return p.json({ ok: true, data: { message: LOGIN_ANSWER } });
     }),

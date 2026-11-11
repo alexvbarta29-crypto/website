@@ -32,6 +32,9 @@ export const SERVICE_CONTRACTS = Object.freeze({
   "money.createDepositInvoice": "money", // (quote, version, option, opId, ctx) → { invoice_id, checkout_url? }
   "money.cardStatus": "money",         // (contact_id, ctx) → { status, pm? }
   "reviews.isReviewed": "comms",       // (contact_id, ctx) → boolean
+  // Home's charts from the CRM's own rollups (M7b; design §5.9): ({ metric: "collected" | "leads",
+  // group: "week" | "month", keys: [Monday dates | yyyy-mm] }, ctx) → { since: "YYYY-MM-DD", values: { key: n } } | null
+  "reports.series": "reports",
 });
 
 const services = new Map();   // name → { fn, module }

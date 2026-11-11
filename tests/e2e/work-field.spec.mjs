@@ -207,17 +207,20 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
   const { p, page, f } = await open("olive", "iphonese");
   const problems = [];
   try {
-    // an owner who goes out on visits: My visits and the clock on Today
-    await f.waitForSelector(".tf-clock");
+    // an owner who goes out on visits: My visits and the clock on Home, and they work there (the card's own buttons)
+    await f.waitForSelector(".hm-extra .tf-clock");
     assert.match(await f.textContent("#view"), /My visits/);
-    await f.waitForSelector(".tiles, .links");
+    await f.click(".hm-extra [data-day]:nth-child(3)");
+    await f.waitForFunction(() => /Tomorrow, /.test((document.querySelector(".hm-extra .tf-dayline") || {}).textContent || ""));
+    await f.click(".hm-extra [data-day]:nth-child(2)");
+    await f.waitForFunction(() => /Today, /.test((document.querySelector(".hm-extra .tf-dayline") || {}).textContent || ""));
     await checks(f, page, "field-owner-today-iphonese", problems);
-    // More has Time, Pay and Timesheets
-    await f.click("#tabs [data-more]");
-    await f.waitForSelector(".sheet.on");
-    const labels = await f.$$eval(".sheet .menu a span", (els) => els.map((e) => e.textContent));
-    for (const want of ["Time", "Pay", "Timesheets"]) assert.ok(labels.includes(want), `More lists ${want}`);
-    await f.click('.sheet a[href="#/timesheets"]');
+    // the Menu has Time, Pay and Timesheets (Work)
+    await f.click('#tabs [data-tab="menu"]');
+    await settled(f, { hash: "#/menu" });
+    const labels = await f.$$eval(".menu-sec .mtile .ml", (els) => els.map((e) => e.textContent));
+    for (const want of ["Time", "Pay", "Timesheets"]) assert.ok(labels.includes(want), `the Menu lists ${want}`);
+    await f.click('.menu-sec a[href="#/timesheets"]');
     await settled(f, { hash: "#/timesheets" });
     await f.waitForSelector(`[data-approve="${seeded.users.tech.id}"]`);
     await f.waitForSelector("[data-decide]");

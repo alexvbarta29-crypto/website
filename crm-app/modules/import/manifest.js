@@ -13,7 +13,7 @@ export default {
     { path: "/import/:id/conflicts", load: () => import("./conflicts.js"), title: "Conflicts", perm: "import:run", parent: "/import/:id", skeleton: "list" },
   ],
   nav: [
-    { where: "more", label: "Import from Rotor", path: "/import", perm: "import:run", order: 86, icon: "data" },
+    { where: "more", section: "customers", label: "Import from Rotor", path: "/import", perm: "import:run", order: 86, icon: "data" },
   ],
   creates: [],
   contactTabs: [],

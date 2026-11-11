@@ -161,6 +161,7 @@ function validateOrdinal(v, f, { stored = false } = {}) {
     completed_on: dateOpt,
     billed_invoice_id: idOf("invoice"),
     gen: (x, ff) => int(x ?? 0, { field: ff, min: 0, max: 1000 }),
+    confirmed_on: dateOpt,
   }, { field: f }));
 }
 
@@ -220,6 +221,15 @@ export function validatePlan(data, { op } = {}) {
       };
     },
     renewal: (v) => (isObj(v) ? { ...v } : {}),
+    // lights seasons the customer confirmed (the next install is made only then)
+    confirmed_seasons: (v, f) => (v === undefined ? undefined : [...new Set(arr(v, (x, ff) => int(x, { field: ff, min: 2020, max: 2100 }), { field: f, max: 6 }))]),
+    // the job batch being made (plans.mjs ensureJobs): a retry finishes it
+    jobs_pending: (v, f) => {
+      if (v === undefined || v === null) return undefined;
+      if (!isObj(v) || typeof v.op !== "string" || !Array.isArray(v.keys) || v.keys.length > MAX_ORDINALS) throw new InputError("Expected the job batch.", f);
+      return { op: v.op.slice(0, 200), keys: v.keys.map((k) => String(k).slice(0, 40)), at: v.at };
+    },
+    held: (v) => (isObj(v) ? { action: String(v.action || "").slice(0, 30), since: v.since } : undefined),
     sale_value_cents: (v, f) => cents(v, f, { min: -1000000000, max: 1000000000 }),
     sold_by: strOpt(80),
     origin: strOpt(20),
@@ -251,8 +261,12 @@ export const planRow = (r) => {
     nx: nx ? nx.target_month : null, nxs: nx ? nx.status : null, due: firstDue(r), mj: missingJobs(r), ap: !!(r.billing && r.billing.autopay), cr: !!(r.billing && r.billing.card_required),
     ag: r.agreement_status || "none", te: (r.term && r.term.current_term_end) || null, eff: (r.cancel && r.cancel.effective_on) || null, pu: (r.pause && r.pause.until) || null,
     tw: r.town || null, sv: r.sale_value_cents || 0, cb: r.cancel && r.cancel.clawback_state === "to_bill" ? 1 : 0, im: r.import ? 1 : 0, at: r.created_at, u: r.updated_at,
+    ...(r.kind === "lights_annual" ? { cs: (r.confirmed_seasons || []).slice(-3), wc: waitingSeasons(r) } : {}), ...(r.held ? { hd: r.held.action } : {}),
   };
 };
+// A lights plan's seasons after the first that wait for the customer's yes.
+const waitingSeasons = (r) => [...new Set((r.ordinals || []).filter((o) => (o.k || o.n) > 1 && o.status === "unscheduled" && !o.job_id && !(r.confirmed_seasons || []).includes(Number(String(o.target_month).slice(0, 4))))
+  .map((o) => Number(String(o.target_month).slice(0, 4))))].slice(0, 3);
 
 export const planType = defineType({
   type: "plan",
@@ -368,7 +382,7 @@ export function validateAgreement(data, { op } = {}) {
 }
 
 export const agreementShard = (r) => (r.deleted_at || !OPEN_AGREEMENT.includes(r.status) ? null : "pending");
-export const agreementRow = (r) => ({ c: r.contact_id, cn: r.contact_name || "", pl: r.plan_id || null, st: r.status, sent: r.sent_at || null, vw: r.viewed_at || null, rc: (r.reminders && r.reminders.count) || 0, tk: r.template_key || null, t: r.title, at: r.created_at, u: r.updated_at });
+export const agreementRow = (r) => ({ c: r.contact_id, cn: r.contact_name || "", pl: r.plan_id || null, st: r.status, sent: r.sent_at || null, vw: r.viewed_at || null, rc: (r.reminders && r.reminders.count) || 0, tk: r.template_key || null, t: r.title, at: r.created_at, u: r.updated_at, ...(r.status === "draft" && r.bulk_run_id ? { bk: r.bulk_run_id } : {}) });
 
 export const agreementType = defineType({
   type: "agreement",

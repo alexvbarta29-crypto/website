@@ -31,7 +31,8 @@ import { has, call } from "../../core/services.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { noticeDue, monthOf } from "./machine.mjs";
 import { perVisitText } from "./agreements.mjs";
-import { plansDue, jobsBackfill, ordinalSync, ensureJobs } from "./plans.mjs";
+import { plansDue, jobsBackfill, ordinalSync } from "./plans.mjs";
+import { syncQueuedAgreements } from "./signatures.mjs";
 import { takedownDueSweep, claimRebook } from "./lights.mjs";
 import { loadLights } from "./catalog.mjs";
 
@@ -149,7 +150,7 @@ export async function renewalNoticeRun(input, actx) {
     const changes = pc && pc.effective_on && pc.effective_on <= addLocalDays(p.term.current_term_end, 1) && Array.isArray(pc.new_lines);
     const step = {
       contact_id: p.contact_id, subject: { type: "plan", id: p.id }, key: `${p.id}--t${p.term.current_term_n}`, related: { plan_id: p.id },
-      vars: { plan_name: p.name, due_date: dateWords(start), expires_on: changes ? dateWords(pc.effective_on) : null, per_visit_price: changes ? perVisitText({ ...p, lines: pc.new_lines }) : perVisitText(p) },
+      vars: { plan_name: p.name, due_date: dateWords(start), expires_on: changes ? dateWords(pc.effective_on) : null, per_visit_price: changes ? perVisitText({ ...p, lines: pc.new_lines }, { later: true }) : perVisitText(p, { later: true }) },
     };
     (changes ? priced : plain).push(step);
   }
@@ -199,12 +200,10 @@ export async function lightsRebookRun(input, actx) {
   if (rebook.length) {
     out.push(await call("bulk.create", { kind: "lights.rebook", title: `Christmas lights rebook ${season}`, recipients: rebook.slice(0, 2000), template_key: "lights_rebook", channel: "sms", vars: { season_year: String(season) }, related: { season }, requested_by: "automation:lights.rebook" }, actx.write()));
   }
-  // an active 3-year contract: the next season's record (install and takedown), and a confirmation for the owner to send
-  const confirmed = [];
-  for (const p of contracts) {
-    const r = await actx.mutate({ record: p }, "create", async () => ensureJobs(p.id, actx.write(), { day: `${season}-09-01` }), { season_install: 1 });
-    if (r.done) confirmed.push(p.contact_id);
-  }
+  // an active 3-year contract: a text that their lights are on the list. No
+  // install is made here: a season after the first goes on the schedule only
+  // once the customer confirms it (the office marks it on the plan, §5.4)
+  const confirmed = [...new Set(contracts.map((p) => p.contact_id))];
   if (confirmed.length) {
     out.push(await call("bulk.create", { kind: "lights.confirm", title: `Christmas lights ${season}: 3-year customers`, recipients: [...new Set(confirmed)], template_key: "lights_confirm", channel: "sms", vars: { season_year: String(season) }, related: { season }, requested_by: "automation:lights.rebook" }, actx.write()));
   }
@@ -252,6 +251,7 @@ export const sweeps = [
   { key: "agreement.unsigned", label: "Unsigned agreement reminders", lane: "fast", every: "daily", at_local: "10:00", mutates: true, run: (ctx) => unsignedSweep(ctx) },
   { key: "plan.renewal_notice", label: "Plan renewal notices", lane: "fast", every: "daily", at_local: "10:00", mutates: true, run: (ctx) => renewalSweep(ctx) },
   { key: "lights.rebook", label: "Christmas lights rebook", lane: "fast", every: "daily", at_local: "08:40", mutates: false, run: (ctx) => rebookSweep(ctx) },
+  { key: "plans.agreement_sends", label: "Agreements sent by a bulk run", lane: "fast", every: "hourly", mutates: true, run: (ctx) => syncQueuedAgreements(ctx) },
 ];
 
 export { monthOf };
