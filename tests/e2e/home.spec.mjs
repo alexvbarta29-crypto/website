@@ -355,6 +355,10 @@ test("on a desk: a tech gets their own sidebar (no sections, no search, no numbe
     assert.equal(await f.$(".hm-kpi, .hm-hero"), null);
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-desk-tech");
+    // a contact opens alone: the list beside it is the office's
+    await goTo(f, `/contacts/${seeded.contacts.customer}`);
+    assert.equal(await f.$eval("#pane", (el) => el.hidden), true, "no list beside a tech's contact");
+    assert.doesNotMatch(await f.textContent("#view"), /Not for this login[\s\S]*Not for this login/);
     await p.clean();
   } finally { await p.close(); }
 });

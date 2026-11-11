@@ -150,10 +150,12 @@ export const SPLIT_MEDIA = "(min-width: 1000px)";
 const wide = () => typeof matchMedia === "function" && matchMedia(SPLIT_MEDIA).matches && !!paneEl();
 // The list a path opens beside on a wide screen: itself when it is a split
 // list, else its nearest ancestor that is one; null on a phone.
+// (A list this person may not open is no list: a tech's own contact opens alone.)
 function splitOf(path, m) {
   if (!wide()) return null;
-  if (m.route.split) return path;
-  for (const p of chain(path).slice(1)) { const pm = match(p); if (pm && pm.route.split) return p; }
+  const open = (r) => !!r.split && (!r.perm || env.can(r.perm) === true);
+  if (m.route.split) return open(m.route) ? path : null;
+  for (const p of chain(path).slice(1)) { const pm = match(p); if (pm && pm.route.split) return open(pm.route) ? p : null; }
   return null;
 }
 const routeTitle = (route) => (typeof route.title === "function" ? route.title(env.user || {}) : route.title);
