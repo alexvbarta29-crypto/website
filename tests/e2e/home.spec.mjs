@@ -224,7 +224,7 @@ test("the Sales tab: Calls · Quotes · Tasks in one switch, the tab lit on each
       // the Menu: sections of large tiles, the tab lit on what it opens
       await f.click('#tabs [data-tab="menu"]');
       await settled(f, { hash: "#/menu" });
-      assert.deepEqual(await f.$$eval(".menu-sec .section-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Messages & automations", "Office tools", "Admin"]);
+      assert.deepEqual(await f.$$eval(".menu-sec .section-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-menu-${device}`);
       await fullShot(page, f, `home-menu-${device}-full`);
@@ -248,7 +248,7 @@ test("on a desk: the sidebar with every section, the header's search and New, Ho
       assert.equal(await title(f), "Home");
       assert.equal(await f.$eval("#tabs", (el) => getComputedStyle(el).display), "none", "no bottom bar on a desk");
       assert.ok(await f.isVisible("#side"), "the sidebar");
-      assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Messages & automations", "Office tools", "Admin"]);
+      assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
       assert.match(await f.textContent('#side [data-tab="home"] .badge'), /^\d+$/, "Home's badge");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");

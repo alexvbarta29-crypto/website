@@ -35,7 +35,7 @@ export const TUE_0900 = "2026-11-17T15:00:00Z";
 export const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1";
 export const PJSON = { "content-type": "application/json", "x-crm-portal": "1", origin: "https://www.bartawindowwashing.com", "user-agent": IPHONE };
 
-export async function setup(now = TUE_0900, { approve = true } = {}) {
+export async function setup(now = TUE_0900, { approve = true, money = false } = {}) {
   const t = await crmTest({ now });
   globalThis.__crmSleepScale = 0.01;
   sweeps.clearSweepCache();
@@ -49,8 +49,12 @@ export async function setup(now = TUE_0900, { approve = true } = {}) {
   await scope(() => WORK.seedChecklists({ write: () => AUTOMATION }));
   await scope(() => AG.seedAgreementTemplates(AUTOMATION));
   if (approve) await approveAll(owner);
+  // Plans on its own: "a card on file" is Money's gate (money.cardStatus), so
+  // it is hidden here unless a test asks for Money (tests/crm/money covers
+  // a plan that waits for its card and activates when one is saved)
+  const hide = money ? () => {} : fakeServices({ "money.cardStatus": null, "money.createDepositInvoice": null });
   const done = t.done.bind(t);
-  t.done = () => { delete globalThis.__crmSleepScale; done(); };
+  t.done = () => { hide(); delete globalThis.__crmSleepScale; done(); };
   return { t, owner, admin, tech };
 }
 

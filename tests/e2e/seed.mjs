@@ -223,6 +223,8 @@ export async function seed(opts = {}) {
   })) }));
   // Messages (M6): threads, campaigns, a review (tests/e2e/comms-seed.mjs)
   await (await import("./comms-seed.mjs")).seedComms(out, O);
+  // money (M5): invoices in every state, a test contact with a card and a visit, one of Rotor's invoices
+  out.money = await (await import("./money-seed.mjs")).seedMoney(out);
   if (opts.home) await homeDay(out, O, day);
   seeded = out;
   return out;
