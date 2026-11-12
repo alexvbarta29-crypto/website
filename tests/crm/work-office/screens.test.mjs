@@ -160,6 +160,9 @@ test("Schedule: Month is the default; the grid (Sunday first, chips in the team'
   assert.equal(c1.state.date, "2026-10-29");
   await new Promise((ok) => setTimeout(ok, 0));
   assert.deepEqual(reads, ["/schedule?month=2026-10&amounts=1"], "past the grid: the month before is read");
+  // a read that failed (no signal): a retry, never a broken screen
+  const failed = text(sch.render({ ...s, data: null }, ctx()));
+  assert.match(failed, /The schedule didn't load[\s\S]*data-view="month"[^>]*>Try again/);
 });
 
 test("Visit: the office's view (buttons by what the server allows, texts sent or would-send) and visitActions", async () => {

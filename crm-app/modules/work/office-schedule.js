@@ -335,6 +335,11 @@ export default {
   render(s, ctx) {
     if (s.denied) return html`<div class="stack"><div class="card empty"><div class="art">${icon("schedule")}</div><h2>Your day is on Today</h2><p>The full schedule is for the office.</p><div class="btn-row"><a class="btn primary" href="#/today">Open Today</a></div></div></div>`;
     const month = s.view === "month";
+    // a read that failed (no signal) leaves nothing to draw: say so, with a retry
+    if (!s.data && s.view !== "tray") {
+      return html`<div class="stack wk"><div class="wk-bar"><div class="wk-views" role="tablist" aria-label="View">${VIEWS.map(([k, label]) => html`<button type="button" class="wk-view" role="tab" ${attrs({ "data-view": k, "aria-selected": String(s.view === k) })}>${label}</button>`)}</div></div>
+        <div class="card empty"><div class="art">${icon("schedule")}</div><h2>The schedule didn't load</h2><p>Check the signal and try again.</p><div class="btn-row"><button type="button" class="btn primary" ${attrs({ "data-view": s.view })}>Try again</button></div></div></div>`;
+    }
     return html`<div class="${"stack wk" + (month ? " wk-wide" : "")}">
       <div class="wk-bar">
         <div class="wk-views" role="tablist" aria-label="View">${VIEWS.map(([k, label]) => html`<button type="button" class="wk-view" role="tab" ${attrs({ "data-view": k, "aria-selected": String(s.view === k) })}>${label}</button>`)}</div>
