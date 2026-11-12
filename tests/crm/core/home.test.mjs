@@ -205,13 +205,13 @@ test("badge: false rows are on Home but never light the tab's dot", async () => 
   assert.equal(badges.attention, badgeRows, "the dot counts the attention rows without badge: false");
 });
 
-test("the budget: a cold Home stays under 25 storage calls, each index read once", async () => {
+test("the budget: a cold Home stays well inside its call budget, each index read once", async () => {
   // a fresh instance: the session and permissions caches are empty
   (await import("../../../netlify/lib/crm/core/sessions.mjs")).clearSessionCache();
   (await import("../../../netlify/lib/crm/core/auth.mjs")).clearPermissionsCache();
   const { res, calls } = await counted("/home", { as: fx.owner, office: true });
   assert.equal(res.status, 200);
-  assert.ok(calls.length <= 25, `${calls.length} calls:\n${calls.join("\n")}`);
+  assert.ok(calls.length <= H.HOME_MAX_CALLS - 10, `${calls.length} calls:\n${calls.join("\n")}`);
   const reads = calls.filter((c) => c.includes(" ix/"));
   assert.equal(new Set(reads).size, reads.length, "no index read twice");
   assert.ok(!calls.some((c) => c.includes("ix-dirty/")), "no dirty markers (a summary doesn't say 'stale')");
@@ -228,7 +228,7 @@ test("after a Rotor import (or cutover) the CRM's own numbers take over, still i
     (await import("../../../netlify/lib/crm/core/auth.mjs")).clearPermissionsCache();
     const { res, calls } = await counted("/home", { as: fx.owner, office: true });
     assert.equal(res.status, 200);
-    assert.ok(calls.length <= 25, `${calls.length} calls:\n${calls.join("\n")}`);
+    assert.ok(calls.length <= H.HOME_MAX_CALLS - 10, `${calls.length} calls:\n${calls.join("\n")}`);
     const d = res.body.data.kpis;
     assert.equal(d.source.crm, true);
     const src = Object.fromEntries(d.tiles.map((x) => [x.key, x.source]));
