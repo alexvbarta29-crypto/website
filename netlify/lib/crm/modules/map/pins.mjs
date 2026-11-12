@@ -14,7 +14,7 @@
 //                                     address, the canvasser as owner; the follow-up the sales
 //                                     module's rules start); the pin then names the contact
 //   GET    /map/reverse?lat&lng       the address at a dropped pin (geocode.mjs)
-//   GET    /map/report?from&to&group  doors, conversations, leads, booked: per person, per day or
+//   GET    /map/report?preset|from&to&group  doors, conversations, leads, booked: per person, per day or
 //                                     week, per territory (pins count where they are)
 //
 // A knock: dropping a pin is one; "Knocked again" is another; changing a
@@ -135,7 +135,7 @@ export async function listPins(ctx) {
   for (const r of rows) {
     if (!inBbox(r.ln, r.la, box)) continue;
     const last = r.k && r.k.length ? r.k[r.k.length - 1] : null;
-    out.push({ id: r.id, la: r.la, ln: r.ln, t: r.t, o: r.o, c: r.c, ...(r.fu ? { fu: r.fu } : {}), ...(r.cv ? { lead: true } : {}), ...(last ? { d: last[0] } : {}), n: (r.k || []).length });
+    out.push({ id: r.id, la: r.la, ln: r.ln, t: r.t, o: r.o, c: r.c, ...(r.fu ? { fu: r.fu } : {}), ...(r.cv ? { lead: true } : {}), ...(r.a ? { a: r.a } : {}), ...(last ? { d: last[0] } : {}), n: (r.k || []).length });
     if (out.length >= MAX_PINS) break;
   }
   return { data: { pins: out, truncated: out.length >= MAX_PINS } };
@@ -347,19 +347,34 @@ export function buildReport(rows, { from, to, group = "day", territories = [], u
   };
 }
 
+// The report's presets, from the server's today (a phone's own date may be off).
+export function presetRange(key, t) {
+  switch (key) {
+    case "today": return { from: t, to: t, group: "day" };
+    case "week": return { from: weekStart(t), to: t, group: "day" };
+    case "last7": return { from: addLocalDays(t, -6), to: t, group: "day" };
+    case "month": return { from: t.slice(0, 8) + "01", to: t, group: "day" };
+    case "last30": return { from: addLocalDays(t, -29), to: t, group: "week" };
+    case "year": return { from: t.slice(0, 5) + "01-01", to: t, group: "week" };
+    default: return null;
+  }
+}
+
 export async function report(ctx) {
   const t = today();
-  const to = isLocalDate(ctx.query.get("to")) ? ctx.query.get("to") : t;
-  const from = isLocalDate(ctx.query.get("from")) ? ctx.query.get("from") : addLocalDays(to, -6);
+  const preset = presetRange(ctx.query.get("preset"), t);
+  const to = preset ? preset.to : isLocalDate(ctx.query.get("to")) ? ctx.query.get("to") : t;
+  const from = preset ? preset.from : isLocalDate(ctx.query.get("from")) ? ctx.query.get("from") : addLocalDays(to, -6);
   if (from > to) throw new InputError("The start is after the end.", "from");
   if ((Date.parse(to) - Date.parse(from)) / 86400000 > REPORT_DAYS) throw new InputError(`Pick at most ${REPORT_DAYS} days.`, "from");
-  const group = ctx.query.get("group") === "week" ? "week" : "day";
+  const g = ctx.query.get("group");
+  const group = g === "week" || g === "day" ? g : preset ? preset.group : "day";
   const tid = ctx.query.get("territory");
   const [rows, terr, users] = await Promise.all([pinRows(shardsFor(addLocalDays(from, -366), to).slice(-3)), readIndex("territories", ""), readIndex("users", "")]);
   const territories = terr.rows.filter((x) => x.act !== false && (!tid || x.id === tid));
   // a pin's shard is the year of its first knock, so a report also reads last year's shard
   const scoped = tid ? rows.filter((r) => territories.some((x) => pointInPolygon([r.ln, r.la], x.p))) : rows;
   const out = buildReport(scoped, { from, to, group, territories, users: users.rows });
-  return { data: { ...out, today: t, generated_at: nowIso(), ...(tid ? { territory: tid } : {}) } };
+  return { data: { ...out, today: t, generated_at: nowIso(), ...(preset ? { preset: ctx.query.get("preset") } : {}), ...(tid ? { territory: tid } : {}) } };
 }
 

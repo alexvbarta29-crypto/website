@@ -129,6 +129,9 @@ export async function teamMap(ctx) {
       visits: stops, current, next,
     };
   });
+  // who is out there first: a position, then on the clock, then the rest
+  const rank = (p) => (p.last ? 0 : p.clocked_in ? 1 : 2);
+  out.sort((a, b) => rank(a) - rank(b) || String(a.name).localeCompare(String(b.name)));
   return { data: { date, today: t, enabled: !!tm.enabled, every_s: tm.every_s, retention_days: tm.retention_days, sources: mapSources(), people: out } };
 }
 

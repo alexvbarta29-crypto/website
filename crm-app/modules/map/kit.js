@@ -29,6 +29,9 @@ export const MICONS = {
   undo: svg('<path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-2"/>'),
   info: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5v.01"/>'),
   door: svg('<rect x="6" y="3.5" width="12" height="17" rx="1.5"/><circle cx="14.5" cy="12.5" r="1"/>'),
+  arrow: svg('<path d="M20 4 4.5 10.8l6.8 1.9 1.9 6.8z"/>'),
+  filter: svg('<path d="M4 5h16l-6.2 7.6V19l-3.6-1.8v-4.6z"/>'),
+  satellite: svg('<path d="m8.5 8.5 3 3M12.5 4.5l7 7-2 2-7-7zM4.5 12.5l7 7 2-2-7-7z"/><path d="M15.5 15.5c1 1 1 2.6 0 3.6M18.5 13c2.2 2.2 2.2 5.4 0 7"/>'),
   people: svg('<circle cx="9" cy="9" r="3"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15.5 14.6c2.6-.3 4.4 1.2 5 4.4"/>'),
 };
 

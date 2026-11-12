@@ -1,5 +1,8 @@
-// Door to door (Menu → Sales → Door to door; docs/CRM-MAP.md): the knock
-// map. Customers and open leads are houses on the map (green, blue), pins
+// Door to door (Menu → Sales → Door to door, and "Map" as a top-level
+// screen, #/map; docs/CRM-MAP.md): the knock map, laid out like Rotor's: the
+// map is the whole screen, round buttons across the top-left (search,
+// locate, filter, street ↔ satellite; satellite first when a source is set
+// up), the controls in a floating bar at the bottom, details in sheets. Customers and open leads are houses on the map (green, blue), pins
 // are dots in their type's color, areas are drawn outlines (yours bold).
 //
 // - Tap a house: a sheet with the pin types as big buttons; one tap saves
@@ -28,6 +31,7 @@ import { ensureStyles, MICONS, overlayPins, colorOf, labelOf, swatch, addressLin
 const AREA_COLORS = ["#2563eb", "#db3a29", "#13a165", "#b7791f", "#7c4dff", "#0f766e", "#be185d"];
 let S = null;            // this screen's live state (one at a time)
 let lastView = null;     // where the map was, for coming back
+let lastAerial = null;   // street or satellite, as the person last chose (satellite first when there is one)
 
 const hashParam = (k) => { const q = (location.hash.split("?")[1] || ""); try { return new URLSearchParams(q).get(k); } catch (e) { return null; } };
 
@@ -49,21 +53,31 @@ async function load(params, ctx) {
 
 // ------------------------------------------------------------ drawing the layers
 
+// "today" is the server's (a phone's own date may be off)
+const todayOf = () => (S && S.start && S.start.today) || deviceToday();
+// What the filter shows (the round filter button): pin types, whose pins, customers, leads, areas.
+const shownPin = (p) => {
+  const F = S.filter;
+  if (!F.pins || F.hiddenTypes.has(p.t)) return false;
+  if (F.mine && p.c !== S.start.me.id) return false;
+  if (p.c && F.hiddenPeople.has(p.c)) return false;
+  return true;
+};
 function pinsShown() {
-  const today = deviceToday();
-  const rows = overlayPins(S.pins, S.items, S.start.me.id);
+  const today = todayOf();
+  const rows = overlayPins(S.pins, S.items, S.start.me.id).filter(shownPin);
   return mv.collection(rows.map((p) => mv.point(p.ln, p.la, { id: p.id, color: colorOf(S.start.types, p.t), due: !!(p.fu && p.fu <= today), pending: !!p.pending })));
 }
 function dueRows() {
-  const today = deviceToday();
+  const today = todayOf();
   return overlayPins(S.pins, S.items, S.start.me.id).filter((p) => p.fu && p.fu <= today).sort((a, b) => a.fu.localeCompare(b.fu));
 }
 function redraw(which = ["pins", "places", "areas"]) {
   if (!S || !S.map) return;
-  const L = S.layers;
-  if (which.includes("pins")) S.map.setData("pins", L.pins ? pinsShown() : mv.empty());
-  if (which.includes("places")) S.map.setData("places", L.places ? mv.collection(S.places.map((p) => mv.point(p.ln, p.la, { k: p.k, c: p.c || "", n: p.n || "", a: p.a || "" }))) : mv.empty());
-  if (which.includes("areas")) S.map.setData("areas", L.areas ? mv.collection(S.start.territories.map((t) => mv.polygon(t.polygon, { id: t.id, color: t.color || "#2563eb", mine: !!t.mine }))) : mv.empty());
+  const F = S.filter;
+  if (which.includes("pins")) S.map.setData("pins", pinsShown());
+  if (which.includes("places")) S.map.setData("places", mv.collection(S.places.filter((p) => (p.k === "lead" ? F.leads : F.customers)).map((p) => mv.point(p.ln, p.la, { k: p.k, c: p.c || "", n: p.n || "", a: p.a || "" }))));
+  if (which.includes("areas")) S.map.setData("areas", F.areas ? mv.collection(S.start.territories.map((t) => mv.polygon(t.polygon, { id: t.id, color: t.color || "#2563eb", mine: !!t.mine }))) : mv.empty());
 }
 function drawMe() {
   if (!S || !S.map) return;
@@ -79,14 +93,16 @@ function drawDrawing() {
 
 // ------------------------------------------------------------ the overlays
 
-function chips() {
-  const L = S.layers;
-  const chip = (k, label, on) => html`<button type="button" class="mp-chip" ${attrs({ "data-layer": k, "aria-pressed": String(!!on) })}>${label}</button>`;
-  return html`<div class="mp-chips" role="group" aria-label="Show on the map">
-    ${chip("pins", "Pins", L.pins)}${chip("places", "Customers", L.places)}${chip("areas", "Areas", L.areas)}
-    ${S.start.sources && S.start.sources.aerial ? html`<button type="button" class="mp-chip" ${attrs({ "data-aerial": "1", "aria-pressed": String(!!S.aerial) })}>Aerial</button>` : ""}
+// The round white buttons across the top-left (Rotor's layout): search, locate, filter, layers.
+export function fabs({ filtered = false, aerial = false, hasAerial = true } = {}) {
+  return html`<div class="mp-fabs" role="toolbar" aria-label="Map tools">
+    <button type="button" class="mp-fab" data-fab="search" aria-label="Search">${icon("search")}</button>
+    <button type="button" class="mp-fab" data-fab="locate" aria-label="Show where I am">${MICONS.arrow}</button>
+    <button type="button" class="${"mp-fab" + (filtered ? " on" : "")}" data-fab="filter" ${attrs({ "aria-label": filtered ? "Filter (some things are hidden)" : "Filter" })}>${MICONS.filter}</button>
+    ${hasAerial ? html`<button type="button" class="${"mp-fab" + (aerial ? " on" : "")}" data-fab="layers" ${attrs({ "aria-pressed": String(!!aerial), "aria-label": aerial ? "Satellite on: switch to streets" : "Streets on: switch to satellite" })}>${MICONS.satellite}</button>` : ""}
   </div>`;
 }
+const filtered = () => { const F = S.filter; return !F.pins || !F.customers || !F.leads || !F.areas || F.mine || F.hiddenTypes.size > 0 || F.hiddenPeople.size > 0; };
 
 function note() {
   const parts = [];
@@ -120,16 +136,15 @@ function bottom() {
     </div>${S.wake && !S.wake.supported ? html`<p class="mp-tiny">This phone can't keep the screen on: set Auto-Lock longer while knocking.</p>` : ""}</div>`;
   }
   return html`<div class="mp-bar"><div class="mp-bar-row">
-    <button type="button" class="mp-round" data-act="locate" aria-label="Show where I am">${MICONS.locate}</button>
     <button type="button" class="btn primary mp-big" data-act="knock">${MICONS.walk}Start knocking</button>
-    <button type="button" class="mp-round" data-act="more" aria-label="More">${icon("more")}</button>
+    <button type="button" class="mp-round" data-act="more" aria-label="More: report, areas, pin types">${icon("more")}</button>
   </div></div>`;
 }
 
 function paintOverlays(which = ["top", "note", "bottom"]) {
   if (!S || !S.el) return;
   const q = (sel) => S.el.querySelector(sel);
-  if (which.includes("top") && q("[data-top]")) render(q("[data-top]"), chips());
+  if (which.includes("top") && q("[data-top]")) render(q("[data-top]"), fabs({ filtered: filtered(), aerial: S.aerial, hasAerial: !!(S.start.sources && S.start.sources.aerial) }));
   if (which.includes("note") && q("[data-note]")) render(q("[data-note]"), note());
   if (which.includes("bottom") && q("[data-bottom]")) render(q("[data-bottom]"), bottom());
   const cross = q("[data-cross]");
@@ -137,6 +152,71 @@ function paintOverlays(which = ["top", "note", "bottom"]) {
   const cr = q("[data-credits]");
   if (cr) cr.textContent = mv.credits(S.start.sources, { aerial: S.aerial });
 }
+
+// ------------------------------------------------------------ search, filter, layers
+
+function searchSheet(ctx) {
+  const office = S.start.me.office;
+  const run = (q) => {
+    const t = String(q || "").trim().toLowerCase();
+    if (t.length < 2) return [];
+    const words = t.split(/\s+/);
+    const hit = (s) => { const x = String(s || "").toLowerCase(); return words.every((w) => x.includes(w)); };
+    const out = [];
+    for (const a of S.start.territories) if (hit(a.name)) out.push({ kind: "area", label: a.name, sub: "Area", id: a.id });
+    if (office) for (const p of S.places) if (hit(`${p.n} ${p.a}`)) out.push({ kind: "place", label: p.n || "Customer", sub: [p.k === "lead" ? "Lead" : "Customer", p.a].filter(Boolean).join(" · "), at: [p.ln, p.la], p });
+    for (const p of S.pins) if (p.a && hit(p.a)) out.push({ kind: "pin", label: p.a, sub: labelOf(S.start.types, p.t), at: [p.ln, p.la], id: p.id });
+    return out.slice(0, 25);
+  };
+  const list = (rows, q) => (rows.length ? html`<ul class="list mp-results">${rows.map((r, i) => html`<li><button type="button" class="row" ${attrs({ "data-hit": String(i) })}><span class="who"><span class="nm">${r.label}</span><span class="sub">${r.sub}</span></span></button></li>`)}</ul>` : html`<p class="muted small">${String(q || "").trim().length < 2 ? (office ? "A customer's name, a street, or an area." : "A street you knocked, or an area.") : "Nothing matches."}</p>`);
+  let rows = [];
+  const s = sheet({
+    title: "Search the map",
+    body: html`<label class="field"><span class="sr">Search</span><input type="search" name="q" autocomplete="off" ${attrs({ placeholder: office ? "Name, street or area" : "Street or area" })}></label><div data-results>${list([], "")}</div>`,
+    events: {
+      "input [name=q]": (e, input) => { rows = run(input.value); render(s.el.querySelector("[data-results]"), list(rows, input.value)); },
+      "click [data-hit]": (e, b) => {
+        const r = rows[Number(b.dataset.hit)];
+        s.close();
+        if (!r || !S.map) return;
+        if (r.kind === "area") { const a = S.start.territories.find((x) => x.id === r.id); if (a) S.map.fit(bboxOf(a.polygon)); return; }
+        S.map.flyTo(r.at, 18);
+        if (r.kind === "pin") setTimeout(() => openPin(ctx, r.id), 650);
+        if (r.kind === "place") setTimeout(() => openPlace(ctx, r.p, r.at), 650);
+      },
+    },
+  });
+  setTimeout(() => { const i = s.el.querySelector("[name=q]"); if (i) i.focus(); }, 50);
+}
+
+function filterSheet() {
+  const F = S.filter;
+  const people = S.start.people || [];
+  const box = (name, label, checked, extra = null) => html`<label class="check"><input ${attrs({ type: "checkbox", name, checked })}><span>${extra || ""}${label}</span></label>`;
+  const s = sheet({
+    title: "Show on the map",
+    body: html`<form data-filter>
+      ${box("pins", "Pins", F.pins)}${box("mine", "Only the pins I dropped", F.mine)}
+      ${box("customers", "Customers", F.customers, html`<span class="mp-key cust" aria-hidden="true"></span>`)}${box("leads", "Open leads", F.leads, html`<span class="mp-key lead" aria-hidden="true"></span>`)}${box("areas", "Areas", F.areas)}
+      <div class="section-h">Pin types</div>
+      ${S.start.types.map((t) => box("t_" + t.key, t.label, !F.hiddenTypes.has(t.key), swatch(t.color)))}
+      ${people.length ? html`<div class="section-h">Whose pins</div>${people.map((u) => box("u_" + u.id, u.name, !F.hiddenPeople.has(u.id)))}` : ""}
+      <div class="btn-row"><button type="button" class="btn" data-reset>Show everything</button></div>
+    </form>`,
+    events: {
+      "change input": (e, input) => {
+        const n = input.name;
+        if (["pins", "mine", "customers", "leads", "areas"].includes(n)) F[n] = input.checked;
+        else if (n.startsWith("t_")) { if (input.checked) F.hiddenTypes.delete(n.slice(2)); else F.hiddenTypes.add(n.slice(2)); }
+        else if (n.startsWith("u_")) { if (input.checked) F.hiddenPeople.delete(n.slice(2)); else F.hiddenPeople.add(n.slice(2)); }
+        redraw();
+        paintOverlays(["top"]);
+      },
+      "click [data-reset]": () => { S.filter = newFilter(); redraw(); paintOverlays(["top"]); s.close(); },
+    },
+  });
+}
+const newFilter = () => ({ pins: true, mine: false, customers: true, leads: true, areas: true, hiddenTypes: new Set(), hiddenPeople: new Set() });
 
 // ------------------------------------------------------------ pins: new
 
@@ -192,7 +272,7 @@ function newPin(ctx, lng, lat) {
           const r = await send(ctx, "/map/pins", { ...body2, client_id: client });
           st.saved = r;
           if (r.sent && r.data) {
-            S.pins.push({ id: r.data.id, la: r.data.lat, ln: r.data.lng, t: r.data.type_key, o: r.data.outcome, c: r.data.canvasser_id, ...(r.data.follow_up_on ? { fu: r.data.follow_up_on } : {}), d: deviceToday(), n: 1 });
+            S.pins.push({ id: r.data.id, la: r.data.lat, ln: r.data.lng, t: r.data.type_key, o: r.data.outcome, c: r.data.canvasser_id, ...(r.data.follow_up_on ? { fu: r.data.follow_up_on } : {}), ...(r.data.address && r.data.address.street1 ? { a: r.data.address.street1 } : {}), d: todayOf(), n: 1 });
             toast(`${labelOf(S.start.types, b.dataset.type)}${body2.address ? " · " + body2.address.street1 : ""}`);
           } else {
             S.items = await waiting("/map/pins").catch(() => S.items);
@@ -449,6 +529,7 @@ function moreSheet(ctx) {
       <a class="row" href="#/knock/report"><span class="ico">${icon("chart")}</span><span class="who"><span class="nm">Leaderboard and report</span><span class="sub">Doors, conversations, leads, booked</span></span></a>
       <a class="row" href="#/knock/areas"><span class="ico">${icon("map")}</span><span class="who"><span class="nm">Areas</span><span class="sub">${plural(S.start.territories.length, "area")}${S.start.territories.some((t) => t.mine) ? ", some yours" : ""}</span></span></a>
       ${S.start.me.manage ? html`<button type="button" class="row" data-draw><span class="ico">${MICONS.draw}</span><span class="who"><span class="nm">Draw an area</span><span class="sub">Tap its corners on the map</span></span></button>` : ""}
+      ${ctx.can("team_map:read") ? html`<a class="row" href="#/team-map"><span class="ico">${icon("team")}</span><span class="who"><span class="nm">Team map</span><span class="sub">Where the people on the clock are</span></span></a>` : ""}
       ${ctx.can("settings:general") ? html`<a class="row" href="#/settings/knock"><span class="ico">${icon("gear")}</span><span class="who"><span class="nm">Pin types</span><span class="sub">Names, colors, what each counts as</span></span></a>` : ""}
       <button type="button" class="row" data-credits-sheet><span class="ico">${MICONS.info}</span><span class="who"><span class="nm">Map credits and privacy</span><span class="sub">Where the map comes from</span></span></button>
     </div>`,
@@ -487,12 +568,12 @@ function dueSheet(ctx) {
 // ------------------------------------------------------------ the screen
 
 export default {
-  title: "Door to door",
+  // "Map" when it is the top-level screen (#/map)
+  title: (s, ctx) => (ctx && ctx.path === "/map" ? "Map" : "Door to door"),
   flush: true,
   load,
-  action: (s, ctx) => ({ label: "Report", run: () => ctx.go("/knock/report") }),
   render(s) {
-    return html`<div class="mp-screen mp-knock">
+    return html`<div class="mp-screen mp-full mp-knock">
       <div class="mp-map" data-map role="application" aria-label="Door-to-door map. Tap a house to drop a pin."></div>
       <div class="mp-cross" data-cross hidden aria-hidden="true"></div>
       <div class="mp-top" data-top></div>
@@ -507,7 +588,7 @@ export default {
     const mapEl = el.querySelector("[data-map]");
     S = {
       el, mapEl, ctx, start: s.start, pins: s.pins, places: s.places, items: s.items, offline: s.offline, as_of: s.as_of,
-      layers: { pins: true, places: true, areas: true }, aerial: false, knocking: false, follow: false, drawing: null, pos: null, map: null,
+      filter: newFilter(), aerial: lastAerial === null ? !!(s.start.sources && s.start.sources.aerial) : lastAerial && !!(s.start.sources && s.start.sources.aerial), knocking: false, follow: false, drawing: null, pos: null, map: null,
     };
     const mine = S;
     paintOverlays();
@@ -515,7 +596,7 @@ export default {
     const focus = area ? S.start.territories.find((t) => t.id === area) : null;
     const center = lastView ? { lng: lastView.lng, lat: lastView.lat } : S.start.center;
     try {
-      const m = await mv.createMap(mapEl, { sources: S.start.sources, center, zoom: lastView ? lastView.zoom : 15 });
+      const m = await mv.createMap(mapEl, { sources: S.start.sources, center, zoom: lastView ? lastView.zoom : 15, aerial: S.aerial });
       if (S !== mine) { m.remove(); return; }
       S.map = m;
       m.onTap(({ lng, lat, hit }) => {
@@ -558,9 +639,11 @@ export default {
   },
   unmount() { teardown(); },
   events: {
-    "click [data-layer]": (e, b) => { S.layers[b.dataset.layer] = !S.layers[b.dataset.layer]; redraw([b.dataset.layer]); paintOverlays(["top"]); },
-    "click [data-aerial]": () => { S.aerial = !S.aerial; if (S.map) S.map.setAerial(S.aerial); paintOverlays(["top"]); },
-    "click [data-act=locate]": async (e, b, ctx) => {
+    "click [data-fab=search]": (e, b, ctx) => searchSheet(ctx),
+    "click [data-fab=filter]": () => filterSheet(),
+    // street ↔ satellite, one tap (remembered while the app is open)
+    "click [data-fab=layers]": () => { S.aerial = lastAerial = !S.aerial; if (S.map) S.map.setAerial(S.aerial); paintOverlays(["top"]); paintOverlays([]); },
+    "click [data-fab=locate]": async (e, b, ctx) => {
       const pos = await mv.locateOnce();
       if (!pos || pos.denied) { toast(pos && pos.denied ? "Location is off for this app (Settings → Privacy → Location)." : "Couldn't find you just now.", { bad: true }); return; }
       S.pos = pos;

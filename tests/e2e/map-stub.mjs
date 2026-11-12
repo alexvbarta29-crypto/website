@@ -58,9 +58,19 @@ export function pngTile([r, g, b] = [96, 122, 82]) {
   const crc = (buf) => { let c = ~0; for (const x of buf) { c ^= x; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); } return ~c >>> 0; };
   const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
-  const row = Buffer.alloc(1 + w * 3);
-  for (let x = 0; x < w; x++) { row[1 + x * 3] = r + ((x * 7) % 11); row[2 + x * 3] = g + ((x * 5) % 9); row[3 + x * 3] = b; }
-  const raw = Buffer.concat(Array.from({ length: h }, () => row));
+  // fields and tree rows (a made-up texture, nothing real)
+  const rows = Array.from({ length: h }, (_, y) => {
+    const out = Buffer.alloc(1 + w * 3);
+    for (let x = 0; x < w; x++) {
+      const field = ((Math.floor(x / 64) + Math.floor(y / 48)) % 3) * 12;
+      const tree = (x * 13 + y * 7) % 23 < 5 ? -22 : 0;
+      out[1 + x * 3] = Math.max(0, r + field + tree + ((x * 7) % 11));
+      out[2 + x * 3] = Math.max(0, g + field / 2 + tree + ((y * 5) % 9));
+      out[3 + x * 3] = Math.max(0, b + tree / 2);
+    }
+    return out;
+  });
+  const raw = Buffer.concat(rows);
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
 

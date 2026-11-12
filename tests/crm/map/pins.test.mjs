@@ -83,7 +83,7 @@ test("dropping a pin: one knock now, its type's label and color kept; the same c
   // the index row the map reads: no note, no address
   const ix = JSON.stringify(t.stores.data.json("ix/pins/2026"));
   assert.match(ix, /"t":"interested"/);
-  assert.ok(!ix.includes("gutters") && !ix.includes("Example Ave"), "no note or address in the index");
+  assert.ok(!ix.includes("gutters") && !ix.includes("Delano"), "no note in the index, and of the address only the street (the map's search)");
 });
 
 test("a pin dropped with no signal arrives later once, at the phone's time; one with a week-old time is kept but marked unverified", async () => {

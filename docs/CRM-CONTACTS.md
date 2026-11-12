@@ -106,7 +106,9 @@ website for one person:
    upsert is fill-only, so a retry is safe);
 5. else create, id `deriveId(contact, intake--{hk}, n)`, a shadow while
    Rotor is in charge; a retried request that lost its lease lands on the
-   same id; when the only matches were archived, a merge candidate too;
+   same id; when the only matches were archived, a merge candidate too; a
+   new contact takes `owner_id` from the input when it names a user (a
+   door-to-door canvasser's lead, docs/CRM-MAP.md; a match keeps its owner);
 6. Rotor's lead id claims `ptr/rotor/lead/{id}`; without one the contact is
    marked `intake_pending_rotor` and the import links it by phone or email;
 7. a new lead (or a returning customer whose request changed their record:
@@ -186,7 +188,12 @@ Services: `contacts.intake`, `contacts.resolve`, `contacts.findMatches`,
   Scheduling and Plans stats parts; report-only on imported contacts before
   cutover).
 - `contacts.geocode` (bulk, every chunk, mutates derived fields only): up to
-  10 properties waiting for a map point. Dry-run or off: no call.
+  10 properties waiting for a map point. Dry-run or off: no call. (Until
+  Google Maps is live, the map module's `map.geocode` fills them from the
+  US Census Bureau's batch geocoder, source `census`; a door-to-door pin
+  converted to a lead gives its property the pin's point, source `pin`:
+  docs/CRM-MAP.md.) Every property with a map point is a row of the
+  `places` index (`{ c, la, ln, a }`), what the door-to-door map reads.
 - Listeners `job.completed`, `payment.succeeded`, `quote.converted`,
   `plan.activated` (mutates): a lead or former customer becomes a customer
   (report-only on imported contacts before cutover) and `customer_since` is

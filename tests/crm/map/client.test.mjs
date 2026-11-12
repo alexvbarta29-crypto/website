@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 
 const KIT = await import("../../../crm-app/modules/map/kit.js");
 const MAN = (await import("../../../crm-app/modules/map/manifest.js")).default;
-const REP = await import("../../../crm-app/modules/map/report.js");
+const PINS = await import("../../../netlify/lib/crm/modules/map/pins.mjs");
 const R = await import("../../../netlify/lib/crm/core/registry.mjs");
 await import("../../../netlify/lib/crm/modules/index.mjs");
 
@@ -39,7 +39,10 @@ test("the manifest: Door to door for canvass:use, the Team map for team_map:read
   for (const r of MAN.routes) assert.ok(!r.perm || perms.has(r.perm) || ["settings:general", "settings:owner"].includes(r.perm), r.path);
   assert.equal(MAN.routes.find((r) => r.path === "/knock").perm, "canvass:use");
   assert.equal(MAN.routes.find((r) => r.path === "/team-map").perm, "team_map:read");
-  assert.deepEqual(MAN.nav.map((n) => [n.section, n.label]), [["sales", "Door to door"], ["work", "Team map"]]);
+  assert.deepEqual(MAN.nav.filter((n) => n.where === "more").map((n) => [n.section, n.label]), [["sales", "Door to door"], ["work", "Team map"]]);
+  const top = MAN.routes.find((r) => r.path === "/map");
+  assert.ok(top && !top.parent && top.perm === "canvass:use", "Map works as a top-level screen");
+  assert.deepEqual(MAN.nav.filter((n) => n.where === "tab").map((n) => [n.key, n.path]), [["map", "/map"]]);
   assert.equal(typeof MAN.start, "function");
   const roles = Object.fromEntries(R.allPerms().filter((p) => p.module === "map").map((p) => [p.key, p.roles]));
   assert.deepEqual(roles["canvass:use"], { owner: true, admin: true, tech: false });
@@ -61,16 +64,17 @@ test("pins waiting on the phone are laid over the server's: a new one as a pendi
   assert.equal(pins[0].t, "not_home", "the server's rows aren't changed");
 });
 
-test("words and ranges: freshness, staleness, the report's presets, text on a color", () => {
+test("words and ranges: freshness, staleness, the report's presets (the server's today), text on a color", () => {
   assert.equal(KIT.freshness(30), "just now");
   assert.equal(KIT.freshness(125), "2 min ago");
   assert.equal(KIT.freshness(3 * 3600 + 120), "3 h 02 m ago");
   assert.equal(KIT.staleness(200, 120), "fresh");
   assert.equal(KIT.staleness(900, 120), "late");
   assert.equal(KIT.staleness(7200, 120), "old");
-  assert.deepEqual(REP.presetRange("week", "2026-11-19"), { from: "2026-11-15", to: "2026-11-19", group: "day" });
-  assert.deepEqual(REP.presetRange("month", "2026-11-19"), { from: "2026-11-01", to: "2026-11-19", group: "day" });
-  assert.deepEqual(REP.presetRange("last30", "2026-11-19").group, "week");
+  assert.deepEqual(PINS.presetRange("week", "2026-11-19"), { from: "2026-11-15", to: "2026-11-19", group: "day" });
+  assert.deepEqual(PINS.presetRange("month", "2026-11-19"), { from: "2026-11-01", to: "2026-11-19", group: "day" });
+  assert.deepEqual(PINS.presetRange("last30", "2026-11-19").group, "week");
+  assert.equal(PINS.presetRange("nonsense", "2026-11-19"), null);
   assert.equal(KIT.inkOn("#16161b"), "#fff");
   assert.equal(KIT.inkOn("#d0b116"), "#16161b");
   assert.equal(KIT.addressLine({ street1: "100 Example Ave", city: "Delano", state: "MN", zip: "55328" }), "100 Example Ave Delano, MN 55328");

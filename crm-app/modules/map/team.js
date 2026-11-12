@@ -1,5 +1,7 @@
 // Team map (Menu → Work → Team map; owners and the office, team_map:read;
-// docs/CRM-MAP.md): where each person on the clock is, how fresh that is,
+// docs/CRM-MAP.md), in the same full-screen layout as Door to door (round
+// buttons: find someone, show everyone, filter, street ↔ satellite; the
+// people as cards along the bottom): where each person on the clock is, how fresh that is,
 // their current or next visit and the day's route. Tap a person for their
 // day. It reads GET /map/team every 30 s while it's on screen.
 //
@@ -11,8 +13,8 @@ import { html, attrs, sheet, render, icon } from "../../core/ui.js";
 import { initials, dateShort, plural } from "../../core/format.js";
 import { poll } from "../../core/poll.js";
 import * as mv from "./mapview.js";
-import { ensureStyles, MICONS, freshness, staleness, bboxOf, deviceToday } from "./kit.js";
-import { creditsSheet } from "./knock.js";
+import { ensureStyles, MICONS, freshness, staleness, bboxOf, swatch } from "./kit.js";
+import { creditsSheet, fabs } from "./knock.js";
 
 let T = null;
 const STATUS = { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
@@ -38,12 +40,13 @@ function statusLine(p) {
 }
 const visitLine = (v) => [fmt12(v.s), v.name, v.town].filter(Boolean).join(" · ");
 
+const shown = () => (T.data.people || []).filter((p) => !T.hidden.has(p.id));
 function drawLayers() {
   if (!T || !T.map) return;
-  const people = T.data.people || [];
-  T.map.setData("trails", mv.collection(people.filter((p) => p.trail && p.trail.length > 1).map((p) => mv.line(p.trail.map((x) => [x[1], x[0]]), { color: p.color }))));
-  T.map.setData("routes", mv.collection(people.map((p) => { const pts = (p.visits || []).filter((v) => v.geo).map((v) => [v.geo[1], v.geo[0]]); return pts.length > 1 ? mv.line(pts, { color: p.color }) : null; })));
-  T.map.setData("stops", mv.collection(people.flatMap((p) => (p.visits || []).filter((v) => v.geo).map((v) => mv.point(v.geo[1], v.geo[0], { color: p.color, id: v.id })))));
+  const people = shown();
+  T.map.setData("trails", mv.collection(people.filter((p) => T.show.trails && p.trail && p.trail.length > 1).map((p) => mv.line(p.trail.map((x) => [x[1], x[0]]), { color: p.color }))));
+  T.map.setData("routes", mv.collection(people.filter(() => T.show.routes).map((p) => { const pts = (p.visits || []).filter((v) => v.geo).map((v) => [v.geo[1], v.geo[0]]); return pts.length > 1 ? mv.line(pts, { color: p.color }) : null; })));
+  T.map.setData("stops", mv.collection(people.filter(() => T.show.routes).flatMap((p) => (p.visits || []).filter((v) => v.geo).map((v) => mv.point(v.geo[1], v.geo[0], { color: p.color, id: v.id })))));
   // the people: our own 44 px buttons over the map
   const seen = new Set();
   for (const p of people) {
@@ -62,30 +65,79 @@ function drawLayers() {
   for (const [id, m] of T.markers) if (!seen.has(id)) { m.h.remove(); T.markers.delete(id); }
 }
 
-function list() {
+// The people, as a strip of cards along the bottom (tap one for their day).
+function strip() {
   const d = T.data;
-  const people = d.people || [];
-  return html`<div class="mp-team-list">
-    ${!d.enabled ? html`<div class="mp-off"><strong>The team map is off.</strong> ${T.ctx.can("settings:owner") ? html`<a href="#/settings/maps">Turn it on in Settings</a>` : "An owner can turn it on in Settings."}</div>` : ""}
+  const people = shown();
+  return html`${!d.enabled ? html`<div class="mp-off"><strong>The team map is off.</strong> ${T.ctx.can("settings:owner") ? html`<a href="#/settings/maps">Turn it on in Settings</a>` : "An owner can turn it on in Settings."}</div>` : ""}
     <ul class="mp-people">${people.map((p) => html`<li><button type="button" class="mp-prow" ${attrs({ "data-person": p.id })}>
       <span class="${"mp-ava is-" + (p.last ? staleness(p.last.age_s, d.every_s) : "none")}" style="${/^#[0-9a-f]{6}$/i.test(p.color || "") ? "background:" + p.color : ""}">${initials(p.name)}</span>
       <span class="who"><span class="nm">${p.name}</span><span class="sub">${statusLine(p)}</span>
       ${p.current ? html`<span class="sub">Now: ${visitLine(p.current)}</span>` : p.next ? html`<span class="sub">Next: ${visitLine(p.next)}</span>` : html`<span class="sub">${plural((p.visits || []).length, "visit")} ${d.date === d.today ? "today" : "that day"}</span>`}</span>
-    </button></li>`)}</ul>
-    ${people.length ? "" : html`<p class="muted small">Nobody goes out on visits yet.</p>`}
-  </div>`;
+    </button></li>`)}
+      <li><button type="button" class="mp-prow mp-help" data-help>${MICONS.info}<span class="who"><span class="nm">How it works</span><span class="sub">What's shared, and when</span></span></button></li>
+    </ul>
+    ${people.length ? "" : html`<p class="muted small">Nobody goes out on visits yet.</p>`}`;
 }
 
 function paint() {
   if (!T || !T.el) return;
   const box = T.el.querySelector("[data-list]");
-  if (box) render(box, list());
-  const day = T.el.querySelector("[data-day]");
-  if (day) render(day, html`<label class="mp-day"><span class="sr">Day</span><input type="date" name="day" ${attrs({ value: T.data.date, max: T.data.today, min: addDays(T.data.today, -(T.data.retention_days || 30)) })}></label>`);
+  if (box) render(box, strip());
+  const top = T.el.querySelector("[data-top]");
+  if (top) render(top, fabs({ filtered: T.hidden.size > 0 || !T.show.trails || !T.show.routes || T.data.date !== T.data.today, aerial: T.aerial, hasAerial: !!(T.data.sources && T.data.sources.aerial) }));
   const cr = T.el.querySelector("[data-credits]");
-  if (cr) cr.textContent = mv.credits(T.data.sources, {});
+  if (cr) cr.textContent = mv.credits(T.data.sources, { aerial: T.aerial });
   const n = T.el.querySelector("[data-note]");
-  if (n) render(n, T.offline ? html`<div class="mp-notes"><span class="mp-pill">No signal: as of ${T.as_of ? dateShort(String(T.as_of).slice(0, 10)) : "the last read"}</span></div>` : T.mapError ? html`<div class="mp-notes"><span class="mp-pill red">${T.mapError}</span></div>` : html``);
+  const notes = [];
+  if (T.data.date !== T.data.today) notes.push(html`<span class="mp-pill blue">${dateShort(T.data.date)}</span>`);
+  if (T.offline) notes.push(html`<span class="mp-pill">No signal: as of ${T.as_of ? dateShort(String(T.as_of).slice(0, 10)) : "the last read"}</span>`);
+  if (T.mapError) notes.push(html`<span class="mp-pill red">${T.mapError}</span>`);
+  if (n) render(n, notes.length ? html`<div class="mp-notes">${notes}</div>` : html``);
+}
+function fitAll() {
+  if (!T || !T.map) return;
+  const pts = shown().flatMap((p) => [...(p.last ? [[p.last.lng, p.last.lat]] : []), ...(p.visits || []).filter((v) => v.geo).map((v) => [v.geo[1], v.geo[0]])]);
+  const bb = bboxOf(pts);
+  if (bb) T.map.fit(bb, 15);
+}
+function searchPeople(ctx) {
+  const s = sheet({
+    title: "Find someone",
+    body: html`<ul class="list">${(T.data.people || []).map((p) => html`<li><button type="button" class="row" ${attrs({ "data-find": p.id })}><span class="who"><span class="nm">${p.name}</span><span class="sub">${statusLine(p)}</span></span></button></li>`)}</ul>`,
+    events: { "click [data-find]": (e, b) => { s.close(); showPerson(b.dataset.find); setTimeout(() => openPerson(ctx, b.dataset.find), 500); } },
+  });
+}
+function showPerson(id) {
+  const p = (T.data.people || []).find((x) => x.id === id);
+  if (!p || !T.map) return;
+  const pts = [...(p.trail || []).map((x) => [x[1], x[0]]), ...(p.visits || []).filter((v) => v.geo).map((v) => [v.geo[1], v.geo[0]])];
+  if (p.last) pts.push([p.last.lng, p.last.lat]);
+  const bb = bboxOf(pts);
+  if (bb) T.map.fit(bb, 16.5);
+}
+function filterTeam(ctx) {
+  const d = T.data;
+  const s = sheet({
+    title: "Show on the map",
+    body: html`<form data-tfilter>
+      <label class="check"><input ${attrs({ type: "checkbox", name: "trails", checked: T.show.trails })}><span>Where they've been today (trails)</span></label>
+      <label class="check"><input ${attrs({ type: "checkbox", name: "routes", checked: T.show.routes })}><span>Their visits and route</span></label>
+      <div class="section-h">People</div>
+      ${(d.people || []).map((p) => html`<label class="check"><input ${attrs({ type: "checkbox", name: "p_" + p.id, checked: !T.hidden.has(p.id) })}><span>${swatch(p.color)}${p.name}</span></label>`)}
+      <div class="section-h">Day</div>
+      <label class="field mp-day"><span class="sr">Day</span><input type="date" name="day" ${attrs({ value: d.date, max: d.today, min: addDays(d.today, -(d.retention_days || 30)) })}></label>
+    </form>`,
+    events: {
+      "change [type=checkbox]": (e, input) => {
+        if (input.name === "trails" || input.name === "routes") T.show[input.name] = input.checked;
+        else if (input.name.startsWith("p_")) { if (input.checked) T.hidden.delete(input.name.slice(2)); else T.hidden.add(input.name.slice(2)); }
+        drawLayers();
+        paint();
+      },
+      "change [name=day]": (e, input) => { const v = input.value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { s.close(); ctx.go(v === d.today ? "/team-map" : `/team-map?date=${v}`); } },
+    },
+  });
 }
 const addDays = (d, n) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -105,13 +157,7 @@ function openPerson(ctx, id) {
         ${(p.visits || []).length ? html`<a class="btn primary" ${attrs({ href: `#/schedule/route/${d.date}/${encodeURIComponent(p.id)}` })}>Open the route</a>` : ""}
       </div>`,
     events: {
-      "click [data-show]": (e, b) => {
-        const pts = [...(p.trail || []).map((x) => [x[1], x[0]]), ...(p.visits || []).filter((v) => v.geo).map((v) => [v.geo[1], v.geo[0]])];
-        if (p.last) pts.push([p.last.lng, p.last.lat]);
-        const bb = bboxOf(pts);
-        if (T && T.map && bb) T.map.fit(bb, 16.5);
-        b.closest(".sheet").querySelector("[data-sheet-x]").click();
-      },
+      "click [data-show]": (e, b) => { showPerson(p.id); b.closest(".sheet").querySelector("[data-sheet-x]").click(); },
     },
   });
 }
@@ -131,20 +177,18 @@ export default {
   title: "Team map",
   flush: true,
   load,
-  action: (s, ctx) => ({ label: "How it works", run: () => helpSheet() }),
   render() {
-    return html`<div class="mp-screen mp-team">
-      <div class="mp-team-map"><div class="mp-map" data-map role="application" aria-label="Team map"></div>
-        <div class="mp-top"><div class="mp-chips" data-day></div></div>
-        <div class="mp-note" data-note role="status"></div>
-        <p class="mp-credits" data-credits></p>
-      </div>
-      <aside class="mp-team-side" data-list aria-label="People"></aside>
+    return html`<div class="mp-screen mp-full mp-team">
+      <div class="mp-map" data-map role="application" aria-label="Team map"></div>
+      <div class="mp-top" data-top></div>
+      <div class="mp-note" data-note role="status"></div>
+      <p class="mp-credits" data-credits></p>
+      <div class="mp-bottom mp-strip" data-list aria-label="People"></div>
     </div>`;
   },
   async mount(el, s, ctx) {
     if (T) teardown();
-    T = { el, ctx, data: s.data, offline: s.offline, as_of: s.as_of, markers: new Map(), map: null };
+    T = { el, ctx, data: s.data, offline: s.offline, as_of: s.as_of, markers: new Map(), map: null, hidden: new Set(), show: { trails: true, routes: true }, aerial: false };
     const mine = T;
     paint();
     const people = (s.data.people || []).filter((p) => p.last);
@@ -177,7 +221,11 @@ export default {
   unmount() { teardown(); },
   events: {
     "click [data-person]": (e, b, ctx) => openPerson(ctx, b.dataset.person),
-    "change [name=day]": (e, input, ctx) => { const v = input.value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) ctx.go(v === deviceToday() ? "/team-map" : `/team-map?date=${v}`); },
+    "click [data-help]": () => helpSheet(),
+    "click [data-fab=search]": (e, b, ctx) => searchPeople(ctx),
+    "click [data-fab=locate]": () => fitAll(),
+    "click [data-fab=filter]": (e, b, ctx) => filterTeam(ctx),
+    "click [data-fab=layers]": () => { T.aerial = !T.aerial; if (T.map) T.map.setAerial(T.aerial); paint(); },
   },
 };
 

@@ -31,6 +31,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
 | [CRM-REPORTS.md](CRM-REPORTS.md) | M7b | rollups, the dashboard feed | stub |
 | [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's tools over the CRM | stub |
+| [CRM-MAP.md](CRM-MAP.md) | maps | Door to door (the knock map, pins, areas, convert to lead, the report) and the live Team map; the map stack, geocoding, outside hosts | live (in review) |
 
 The office side (tabs, the launcher for a start with no signal, web push,
 where the Follow-ups wording comes from): [OFFICE.md](OFFICE.md).
@@ -564,7 +565,8 @@ The manual path, for reference:
   pointer) has 40 px buttons and 34 px chips. Modules style only their own
   pieces on top of these. Light only.
 - **Security:** every CRM page sends `Content-Security-Policy` with
-  `script-src 'self'` and has no inline script; screens build markup only
+  `script-src 'self'` (and `connect-src` adds exactly the map hosts of
+  `core/map-sources.mjs`, docs/CRM-MAP.md) and has no inline script; screens build markup only
   through `html```, which escapes everything and refuses inline handlers,
   `javascript:` links and links that leave the CRM (those go through
   `openExternal()`: a new tab). A path is judged by where the browser would

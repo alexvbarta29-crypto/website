@@ -10,6 +10,8 @@ export default {
   name: "map",
   routes: [
     { path: "/knock", load: () => import("./knock.js"), title: "Door to door", perm: "canvass:use", parent: "/today" },
+    // "Map" as a top-level screen (a tab the person pins, the bar's switcher): no parent, no back arrow
+    { path: "/map", load: () => import("./knock.js"), title: "Map", perm: "canvass:use" },
     { path: "/knock/report", load: () => import("./report.js"), title: "Door-to-door report", perm: "canvass:use", parent: "/knock", skeleton: "list" },
     { path: "/knock/areas", load: () => import("./areas.js"), title: "Areas", perm: "canvass:use", parent: "/knock", skeleton: "list" },
     { path: "/team-map", load: () => import("./team.js"), title: "Team map", perm: "team_map:read", parent: "/today" },
@@ -17,6 +19,8 @@ export default {
     { path: "/settings/maps", load: () => import("./settings-maps.js"), title: "Maps and the team map", perm: "settings:owner", parent: "/settings" },
   ],
   nav: [
+    // for the bar's switcher (a pinnable "Map"): core's nav reads only "more" entries today, so this lists nowhere yet
+    { where: "tab", key: "map", label: "Map", path: "/map", perm: "canvass:use", order: 26, icon: "map" },
     { where: "more", section: "sales", label: "Door to door", path: "/knock", perm: "canvass:use", order: 26, icon: "map" },
     { where: "more", section: "work", label: "Team map", path: "/team-map", perm: "team_map:read", order: 27, icon: "team" },
   ],

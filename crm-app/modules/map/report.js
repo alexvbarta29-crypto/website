@@ -5,29 +5,16 @@
 
 import { html, attrs } from "../../core/ui.js";
 import { dateShort, plural } from "../../core/format.js";
-import { ensureStyles, deviceToday } from "./kit.js";
+import { ensureStyles } from "./kit.js";
 
-const addDays = (d, n) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
-const dow = (d) => new Date(d + "T12:00:00Z").getUTCDay();
-export function presetRange(key, today = deviceToday()) {
-  switch (key) {
-    case "today": return { from: today, to: today, group: "day" };
-    case "week": return { from: addDays(today, -dow(today)), to: today, group: "day" };
-    case "last7": return { from: addDays(today, -6), to: today, group: "day" };
-    case "month": return { from: today.slice(0, 8) + "01", to: today, group: "day" };
-    case "last30": return { from: addDays(today, -29), to: today, group: "week" };
-    case "year": return { from: today.slice(0, 5) + "01-01", to: today, group: "week" };
-    default: return null;
-  }
-}
 const PRESETS = [["today", "Today"], ["week", "This week"], ["last7", "Last 7 days"], ["month", "This month"], ["last30", "Last 30 days"], ["year", "This year"]];
 
 async function load(params, ctx) {
   ensureStyles();
   const k = ctx.keep;
   const preset = k.preset || "week";
-  const r = k.preset === "custom" && k.from && k.to ? { from: k.from, to: k.to, group: k.group || "day" } : presetRange(preset);
-  const q = new URLSearchParams({ from: r.from, to: r.to, group: k.group || r.group, ...(k.territory ? { territory: k.territory } : {}) });
+  // a preset is worked out from the server's today (the phone's date may be off)
+  const q = new URLSearchParams({ ...(preset === "custom" && k.from && k.to ? { from: k.from, to: k.to } : { preset }), ...(k.group ? { group: k.group } : {}), ...(k.territory ? { territory: k.territory } : {}) });
   const [rep, terr] = await Promise.all([ctx.api("/map/report?" + q.toString(), { cache: false }), ctx.api("/map/territories").catch(() => ({ data: [] }))]);
   return { rep: rep.data, preset, territories: terr.data || [], territory: k.territory || "" };
 }
@@ -75,7 +62,7 @@ export default {
       ctx.refresh();
     },
     "change [name=group]": (e, input, ctx) => {
-      if (ctx.keep.preset !== "custom") { const r = presetRange(ctx.keep.preset || "week"); Object.assign(ctx.keep, { preset: "custom", from: r.from, to: r.to }); }
+      if (ctx.keep.preset !== "custom") Object.assign(ctx.keep, { preset: "custom", from: ctx.state.rep.from, to: ctx.state.rep.to });
       ctx.keep.group = input.value;
       ctx.refresh();
     },

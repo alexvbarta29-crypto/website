@@ -145,11 +145,12 @@ function validatePin(data, { op, before } = {}) {
 const knockDate = (k) => localDate(new Date(k.at));
 // The year of the pin's first knock (its index shard).
 export const pinShard = (r) => (r && Array.isArray(r.knocks) && r.knocks[0] ? knockDate(r.knocks[0]) : localDate(r.created_at ? new Date(r.created_at) : now())).slice(0, 4);
-// Short keys keep the blob small (§3.5): no notes, no address.
+// Short keys keep the blob small (§3.5): no notes; the street only (the map's search).
 export const pinRow = (r) => ({
   la: r.lat, ln: r.lng, t: r.type_key, o: r.outcome, c: r.canvasser_id,
   k: (r.knocks || []).map((k) => [knockDate(k), k.by, k.outcome]),
   ...(r.follow_up_on ? { fu: r.follow_up_on } : {}),
+  ...(r.address && r.address.street1 ? { a: r.address.street1 } : {}),
   ...(r.contact_id ? { cv: localDate(new Date(r.converted_at || r.updated_at)), cb: r.converted_by || r.canvasser_id } : {}),
   u: r.updated_at,
 });
