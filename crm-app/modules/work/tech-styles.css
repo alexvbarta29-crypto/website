@@ -1,39 +1,39 @@
 /* The tech app (M4b): Today's day list and clock bar, the field panel on a
    visit (status and the big buttons, the checklist to tick, photos, notes,
-   the work), Time, Pay and the office's Timesheets. House style (design
-   §0 rule 9): pill buttons, 20 px cards, 44 px tap targets, 16 px inputs,
+   the work), Time, Pay and the office's Timesheets. House style (crm.css
+   tokens): 12 px cards, 10 px buttons, 44 px tap targets, 16 px inputs,
    tabular figures for times and money. */
 
 /* ---------------------------------------------------------------- Today: the clock and the day */
 .tf-clock{display:flex;align-items:center;gap:12px;padding:12px 14px 12px 16px}
 .tf-clock .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.tf-clock .who b{font:800 16px/1.2 var(--head)}
+.tf-clock .who b{font:700 16px/1.2 var(--head)}
 .tf-clock .who span{font-size:13px;color:var(--ink-3)}
 .tf-clock.on{border-color:#bfe8d3;background:var(--green-bg)}
-.tf-clock.on .who span{color:#0b6b44}
+.tf-clock.on .who span{color:var(--green-ink)}
 .tf-clock .btn{flex:none}
 .tf-days{display:flex;gap:8px}
 .tf-days .chip{flex:1 1 0;justify-content:center;padding:0 8px}
 .tf-dayline{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:6px 4px 0}
-.tf-dayline b{font:800 18px/1.2 var(--head)}
+.tf-dayline b{font:700 18px/1.2 var(--head)}
 .tf-dayline span{font-size:13px;color:var(--ink-3);text-align:right}
-.tf-stop{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.tf-stop{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-card);overflow:hidden}
 .tf-stop.done{opacity:.72}
 .tf-stop>a{display:flex;align-items:flex-start;gap:12px;padding:14px 14px 10px;color:inherit;text-decoration:none;min-height:60px}
-.tf-n{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;font:800 14px/1 var(--head);font-variant-numeric:tabular-nums}
+.tf-n{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;font:600 13px/1 var(--text);font-variant-numeric:tabular-nums}
 .tf-stop.done .tf-n{background:var(--green)}
 .tf-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.tf-body .nm{font:700 16px/1.25 var(--text);overflow-wrap:anywhere}
+.tf-body .nm{font:600 16px/1.25 var(--text);overflow-wrap:anywhere}
 .tf-body .when{font-size:14px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .tf-body .sub{font-size:13px;color:var(--ink-3);overflow-wrap:anywhere}
 .tf-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .tf-badges .pill{height:22px;font-size:11.5px}
 .tf-quick{display:flex;border-top:1px solid var(--line)}
-.tf-quick a,.tf-quick span{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;font:600 14px/1 var(--text);color:var(--ink-2);text-decoration:none}
+.tf-quick a,.tf-quick span{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;font:500 14px/1 var(--text);color:var(--ink-2);text-decoration:none}
 .tf-quick a+a,.tf-quick a+span,.tf-quick span+a{border-left:1px solid var(--line)}
 .tf-quick svg{width:18px;height:18px}
 .tf-quick a:active{background:var(--fill)}
-.tf-wait{display:flex;align-items:center;gap:8px;margin:0;padding:10px 14px;border-radius:14px;background:var(--amber-bg);color:#6b4510;font-size:13.5px;font-weight:600}
+.tf-wait{display:flex;align-items:center;gap:8px;margin:0;padding:10px 14px;border-radius:var(--r);background:var(--amber-bg);color:#6b4510;font-size:13.5px;font-weight:600}
 .tf-wait svg{width:18px;height:18px;flex:none}
 .tf-asof{margin:0;font-size:13px;color:var(--ink-3);text-align:center}
 /* no signal: the screen's one line says when its copy is from and what waits; the app's banner steps aside */
@@ -53,7 +53,7 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
 /* on a phone the big buttons ride in a bar over the tab bar: Start and On my way are never below the fold */
 @media (max-width:899px){
   .tf-panel.has-bar{padding-bottom:132px}
-  .tf-panel.has-bar .tf-big{position:fixed;z-index:5;left:calc(12px + var(--left));right:calc(12px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 10px + var(--lift,0px));padding:10px;border-radius:24px;background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border:1px solid var(--line);box-shadow:0 10px 30px rgba(14,14,18,.14)}
+  .tf-panel.has-bar .tf-big{position:fixed;z-index:5;left:calc(12px + var(--left));right:calc(12px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 10px + var(--lift,0px));padding:10px;border-radius:var(--r-xl);background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border:1px solid var(--line);box-shadow:0 10px 30px rgba(14,14,18,.14)}
   .app.no-tabs .tf-panel.has-bar .tf-big{bottom:calc(var(--bottom) + 10px + var(--lift,0px))}
   .tf-panel.has-bar .tf-big:empty{display:none}
   /* toasts sit above the bar, never on its buttons */
@@ -61,27 +61,27 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
 }
 .tf-small{display:flex;flex-wrap:wrap;gap:8px}
 .tf-small .btn{flex:1 1 40%;padding:0 12px}
-.tf-sent{margin:0;padding:10px 14px;border-radius:14px;background:var(--fill);font-size:13.5px}
+.tf-sent{margin:0;padding:10px 14px;border-radius:var(--r);background:var(--mist);border:1px solid var(--line);font-size:13.5px}
 .tf-sent .btn{margin-top:8px}
 .tf-items{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
 .tf-items>li+li{border-top:1px solid var(--line)}
 .tf-item{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:6px 0;border:0;background:none;text-align:left;cursor:pointer;color:inherit}
-.tf-item .box{flex:none;width:28px;height:28px;border-radius:9px;border:2px solid #d6d6db;display:grid;place-items:center;color:#fff;background:#fff}
+.tf-item .box{flex:none;width:26px;height:26px;border-radius:7px;border:1.5px solid #cfcfd6;display:grid;place-items:center;color:#fff;background:#fff}
 .tf-item.on .box{background:var(--green);border-color:var(--green)}
 .tf-item .box svg{width:18px;height:18px;stroke-width:2.6}
 .tf-item .lbl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:15.5px;font-weight:600}
 .tf-item .lbl small{font-size:12.5px;font-weight:500;color:var(--ink-3)}
 .tf-item .lbl small.req{color:var(--coral-ink)}
 .tf-item.on .lbl small.req{color:var(--ink-3)}
-.tf-item .act{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;background:var(--fill);font:600 13.5px/1 var(--text);color:var(--ink-2)}
+.tf-item .act{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:var(--r);border:1px solid var(--line-2);background:#fff;font:600 13.5px/1 var(--text);color:var(--ink-2)}
 .tf-item .act svg{width:18px;height:18px}
 .tf-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:10px}
-.tf-photo{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:var(--mist);display:grid;place-items:center;color:var(--ink-3);font-size:12px}
+.tf-photo{position:relative;aspect-ratio:1/1;border-radius:var(--r);overflow:hidden;background:var(--mist);display:grid;place-items:center;color:var(--ink-3);font-size:12px}
 .tf-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .tf-photo .tag{position:absolute;left:6px;bottom:6px;height:20px;padding:0 7px;border-radius:999px;background:rgba(22,22,27,.72);color:#fff;font:600 11px/20px var(--text)}
-.tf-photo.wait::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 2px var(--amber);border-radius:14px}
-.tf-missing{margin:0;padding:10px 14px;border-radius:14px;background:var(--red-bg);color:var(--coral-ink);font-size:13.5px;font-weight:600}
-.tf-done{margin:0;padding:10px 14px;border-radius:14px;background:var(--green-bg);color:#0b6b44;font-size:14px;font-weight:600}
+.tf-photo.wait::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 2px var(--amber);border-radius:var(--r)}
+.tf-missing{margin:0;padding:10px 14px;border-radius:var(--r);background:var(--red-bg);color:var(--red-ink);font-size:13.5px;font-weight:500}
+.tf-done{margin:0;padding:10px 14px;border-radius:var(--r);background:var(--green-bg);color:var(--green-ink);font-size:14px;font-weight:500}
 .tf-note-form{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .tf-qty{display:flex;align-items:center;gap:10px}
 .tf-qty input{width:96px}
@@ -93,25 +93,25 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
 
 /* ---------------------------------------------------------------- Time and Pay */
 .tf-weekbar{display:flex;align-items:center;gap:8px}
-.tf-weekbar .d{flex:1;text-align:center;font:800 16px/1.2 var(--head)}
-.tf-weekbar .icon-btn{background:#fff;border:1px solid var(--line)}
+.tf-weekbar .d{flex:1;text-align:center;font:700 17px/1.2 var(--head)}
+.tf-weekbar .icon-btn{background:#fff;border:1px solid var(--line-2);box-shadow:var(--sh-xs)}
 .tf-total{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .tf-total b{font:800 28px/1 var(--head);font-variant-numeric:tabular-nums}
 .tf-total span{font-size:13px;color:var(--ink-3);text-align:right}
 .tf-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:92px;margin-top:14px}
 .tf-bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
-.tf-bar i{display:block;width:100%;max-width:30px;min-height:3px;border-radius:7px 7px 3px 3px;background:var(--coral)}
+.tf-bar i{display:block;width:100%;max-width:28px;min-height:3px;border-radius:5px 5px 2px 2px;background:var(--coral)}
 .tf-bar.zero i{background:var(--line)}
 .tf-bar small{font:600 11px/1 var(--text);color:var(--ink-3)}
 .tf-shift .row{align-items:flex-start}
 .tf-shift .end{flex-direction:column;align-items:flex-end;gap:6px}
-.tf-shift .num{font-weight:700}
+.tf-shift .num{font-weight:600}
 .tf-notes{margin:0 14px 12px 50px;padding:0;list-style:none;font-size:13px;color:var(--ink-2)}
 .tf-notes li{margin-top:4px;overflow-wrap:anywhere}
 .tf-money{display:grid;grid-template-columns:1fr auto;gap:8px 0;margin:6px 0 0}
 .tf-money dt{color:var(--ink-2)}
 .tf-money dd{margin:0;padding-left:14px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
-.tf-money .tot{font-weight:800;font-size:17px;border-top:1px solid var(--line);padding-top:8px}
+.tf-money .tot{font-weight:600;font-size:17px;border-top:1px solid var(--line);padding-top:8px}
 
 /* ---------------------------------------------------------------- the office's Timesheets */
 .tf-person{display:flex;align-items:center;gap:10px}
@@ -122,11 +122,11 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
 .tf-entries .d{flex:none;width:44px;font:600 13px/1.2 var(--text);color:var(--ink-3)}
 .tf-entries .t{flex:1;min-width:0;font-size:14.5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .tf-entries .t small{display:block;font-size:12px;color:var(--ink-3)}
-.tf-entries .m{flex:none;font-weight:700;font-variant-numeric:tabular-nums}
+.tf-entries .m{flex:none;font-weight:600;font-variant-numeric:tabular-nums}
 .tf-entries .icon-btn{flex:none}
 .tf-pend .row{align-items:flex-start}
 .tf-pend .who{min-width:0}
 .tf-pend .sub{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .tf-held{display:flex;flex-wrap:wrap;gap:8px}
-.tf-held img{width:88px;height:88px;border-radius:12px;object-fit:cover;background:var(--mist)}
-.tf-said{margin:0;padding:10px 12px;border-radius:12px;background:var(--fill);font-size:14px;overflow-wrap:anywhere;white-space:pre-wrap}
+.tf-held img{width:88px;height:88px;border-radius:var(--r);object-fit:cover;background:var(--mist)}
+.tf-said{margin:0;padding:10px 12px;border-radius:var(--r);background:var(--mist);border:1px solid var(--line);font-size:14px;overflow-wrap:anywhere;white-space:pre-wrap}

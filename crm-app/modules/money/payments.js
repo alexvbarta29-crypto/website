@@ -29,7 +29,7 @@ export default {
       </div>
       ${methods.length > 1 || s.method ? html`<div class="chips" role="tablist"><button type="button" class="chip" data-method="" ${attrs({ "aria-pressed": String(!s.method) })}>All</button>${[...new Set([...methods, s.method].filter(Boolean))].map((m) => html`<button type="button" class="chip" ${attrs({ "data-method": m, "aria-pressed": String(s.method === m) })}>${METHOD[m] || m}${s.by[m] ? html` <span class="n">${money(s.by[m])}</span>` : ""}</button>`)}</div>` : ""}
       ${t.simulated ? html`<p class="foot-note">${t.simulated} practice payment${t.simulated === 1 ? "" : "s"} (marked "test") ${t.simulated === 1 ? "is" : "are"} listed but never counted.</p>` : ""}
-      ${s.rows.length ? html`<ul class="list">${s.rows.map((p) => paymentRow(p))}</ul>` : emptyCard("No payments this month", "Payments land here as they come in.")}
+      ${s.rows.length ? html`<ul class="list tbl">${s.rows.map((p) => paymentRow(p))}</ul>` : emptyCard("No payments this month", "Payments land here as they come in.")}
     </div>`;
   },
   events: {

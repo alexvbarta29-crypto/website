@@ -27,7 +27,9 @@ export default {
     const users = team(await loadUsers(ctx).catch(() => []));
     const contact = params.contact ? await contactOf(ctx, params.contact).catch(() => null) : null;
     const q = new URLSearchParams((typeof location !== "undefined" && location.hash.split("?")[1]) || "");
-    return { contact, users, people: [], book: q.get("book") === "1", client_id: uuid() };
+    // ?date= (the Schedule's day list books for its day)
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "") ? q.get("date") : addDays(today(), 1);
+    return { contact, users, people: [], book: q.get("book") === "1", date, client_id: uuid() };
   },
   render(s) {
     return html`<form class="form stack wk" id="wk-new-job" novalidate>
@@ -40,7 +42,7 @@ export default {
       <label class="field" data-field="office_notes"><span>Office notes</span><textarea name="office_notes" rows="2" maxlength="4000"></textarea><small class="why" hidden></small></label>
       <label class="check"><input type="checkbox" name="book" ${attrs({ checked: s.book })}><span>Book the first visit now</span></label>
       <div class="card wk-first" data-book-on ${attrs({ hidden: !s.book })}>
-        <label class="field" data-field="date"><span>Day</span><input type="date" name="date" ${attrs({ value: addDays(today(), 1) })}><small class="why" hidden></small></label>
+        <label class="field" data-field="date"><span>Day</span><input type="date" name="date" ${attrs({ value: s.date || addDays(today(), 1) })}><small class="why" hidden></small></label>
         <div class="grid2">
           <label class="field" data-field="start"><span>Start</span><input type="time" name="start" step="900" value="08:00"><small class="why" hidden></small></label>
           <label class="field" data-field="end"><span>End</span><input type="time" name="end" step="900" value="10:00"><small class="why" hidden></small></label>

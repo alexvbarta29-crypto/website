@@ -38,7 +38,7 @@ export default {
       <div class="chips" role="tablist" aria-label="Which jobs">${TABS.map(([k, label]) => html`<button type="button" class="chip" role="tab" ${attrs({ "data-tab": k, "aria-pressed": String(s.tab === k) })}>${label}</button>`)}</div>
       ${["done", "cancelled"].includes(s.tab) ? html`<div class="daybar"><button type="button" class="icon-btn" ${attrs({ "data-year": String(y - 1), "aria-label": "Year before" })}>${icon("back")}</button><span class="d">${s.year}</span><button type="button" class="icon-btn" ${attrs({ "data-year": String(y + 1), "aria-label": "Next year" })}><span class="flip">${icon("back")}</span></button></div>` : ""}
       <label class="field wk-filter"><span class="sr">Filter</span><input type="search" name="q" placeholder="Name, number or title" autocomplete="off" ${attrs({ value: s.q })}></label>
-      ${shown.length ? html`<ul class="list">${shown.map((r) => html`<li><a class="row" href="${"#/jobs/" + encodeURIComponent(r.id)}">
+      ${shown.length ? html`<ul class="list tbl">${shown.map((r) => html`<li><a class="row" href="${"#/jobs/" + encodeURIComponent(r.id)}">
         <span class="who"><span class="nm">${r.cn || "Customer"}</span><span class="sub">${r.n} · ${r.t}</span>
           <span class="sub">${[r.nv ? `next ${dateShort(r.nv)}` : r.tm && r.st === "unscheduled" ? `due ${r.tm}` : r.done ? `done ${dateShort(r.done)}` : null, r.k !== "standard" ? kindLabel(r.k) : null, r.stale ? STALE[r.stale] || r.stale : null].filter(Boolean).join(" · ")}</span></span>
         <span class="end wk-end">${r.bill !== false && r.tot ? html`<span class="small num">${money(r.tot)}</span>` : ""}${jobPill(r.st)}</span></a></li>`)}</ul>`
