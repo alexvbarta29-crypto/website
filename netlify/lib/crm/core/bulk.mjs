@@ -317,7 +317,13 @@ function alreadyAs(r) {
   return { ...r, status: "sent" };
 }
 
-async function sendStep(run, { budget, deploy, mode }) {
+// Comms (M6) wraps each batch so the conversations a batch of real sends
+// touches are written to the inbox index once, not once per message (§5.7.5).
+let batchScope = (fn) => fn();
+export function setBatchScope(fn) { batchScope = typeof fn === "function" ? fn : (f) => f(); }
+const sendStep = (run, rctx) => batchScope(() => sendBatch(run, rctx));
+
+async function sendBatch(run, { budget, deploy, mode }) {
   const b = await getBulkRun(run.input.bulk_id);
   if (b.status === "cancelled") return { done: true, result: { cancelled: true } };
   if (b.status !== "sending") return { done: true, result: { skipped: b.status } };

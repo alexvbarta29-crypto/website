@@ -89,7 +89,8 @@ test("events: one id per write counter, payload checked, undeclared events refus
   // the contacts module (M2a) also listens to job.completed (lead → customer)
   assert.ok(a.listeners.includes("listener-mod"));
   assert.equal(a.queued, true);
-  assert.equal(S.data.keys("q/").length, 3 * a.listeners.length, "one queue item per emission and listener");
+  // (and one per automation the event triggers: comms' review.sequence since M6)
+  assert.equal(S.data.keys("q/").length, 3 * (a.listeners.length + a.automations.length), "one queue item per emission and listener");
   assert.deepEqual(listenerMarker(a.event.event_id, "money"), { ns: "done", scope: "evt", key: `${a.event.event_id}--money` });
   await assert.rejects(emit("job.exploded", payload), RegistryError);
   await assert.rejects(emit("job.completed", { ...payload, total_cents: undefined }), /needs total_cents/);

@@ -1,5 +1,5 @@
 // Phone checks of Home (design §9.2 "Today" for owners; industry spec
-// 13.1), the office's new bar (Home · Schedule · Customers · Sales · Menu),
+// 13.1), the office's new bar (Home · Inbox · Schedule · Customers · Sales · Menu),
 // the Sales switch and the Menu, at iPhone 13 and SE sizes: the numbers
 // from the made-up Rotor snapshot the server seals for its throwaway key,
 // today's visits, "Needs you", quick actions, the charts, where each tap
@@ -56,7 +56,7 @@ test("before any CRM data: Rotor's numbers, a friendly empty Today, the office's
     try {
       assert.equal(await title(f), "Home");
       assert.ok(["", "#/today"].includes(await hashOf(f)), "the app opens on Home");
-      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Customers", "Sales", "Menu"]);
+      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Inbox", "Schedule", "Customers", "Sales", "Menu"]);
       assert.equal(await f.getAttribute('#tabs [data-tab="home"]', "aria-current"), "page");
       // money this month, from Rotor, with its weekly columns
       assert.match(await text(f, ".hm-hero"), /^Collected this month Nov 1–16 \$[\d,]+ /);
@@ -350,7 +350,7 @@ test("on a desk: a tech gets their own sidebar (no sections, no search, no numbe
   try {
     assert.equal(await title(f), "Today");
     // a tech's own bar as a sidebar: Today, Time and Pay (the tech app, M4b), Me
-    assert.deepEqual(await f.$$eval("#side .side-item .sl", (els) => els.map((e) => e.textContent)), ["Today", "Time", "Pay", "Me"]);
+    assert.deepEqual(await f.$$eval("#side .side-item .sl", (els) => els.map((e) => e.textContent)), ["Today", "Inbox", "Time", "Pay", "Me"]);
     assert.equal(await f.$("#side .side-grp"), null);
     assert.equal(await f.$("#top-q"), null, "no customer search for a tech");
     assert.equal(await f.$(".hm-kpi, .hm-hero"), null);

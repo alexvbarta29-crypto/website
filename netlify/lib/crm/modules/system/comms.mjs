@@ -248,7 +248,8 @@ export const commsRoutes = [
   r("POST", "/bulk-runs/:id/test", "campaigns:send", "required", testBulk, { maxCalls: 40 }),
   r("POST", "/bulk-runs/:id/confirm", "campaigns:send", "required", confirmBulk),
   r("POST", "/bulk-runs/:id/cancel", "campaigns:write", "required", cancelBulk),
-  r("POST", "/messages", "messages:send", "required", sendMessageRoute, { maxCalls: 40 }),
+  // (a send that really goes out is also recorded as a message in its thread: comms' recorder, M6)
+  r("POST", "/messages", "messages:send", "required", sendMessageRoute, { maxCalls: 90 }),
   r("GET", "/push/subscriptions", "account:own", "none", pushSubs),
   r("POST", "/push/subscriptions", "account:own", "none", addPushSub),
   r("DELETE", "/push/subscriptions/:hash", "account:own", "required", removePushSub),

@@ -137,7 +137,7 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     const w = Object.fromEntries(rep.waiting.map((x) => [x.phase, x]));
     assert.equal(w["money.invoices"].waiting_for, "money");
     assert.equal(w["money.invoices"].rows, ex.invoices.length, "the report says how many rows wait");
-    assert.equal(w["comms.messages"].module_label, "Messages");
+    assert.ok(!w["comms.messages"] && !w["comms.templates"] && !w["comms.campaigns"] && !w["comms.pin_types"], "Messages (M6) runs its phases");
     assert.equal(w["fixture.after_payroll"].waiting_for, "payroll.payroll", "after a phase that isn't there: waits");
     // every phase the design expects from a module that hasn't registered it yet waits
     const { EXPECTED_PHASES } = await import("../../../netlify/lib/crm/modules/import/catalog.mjs");

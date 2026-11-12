@@ -378,8 +378,10 @@ of the latest finished run and runs only what is still open
 
 Row 2 (roles) is the role mapping; row 3's time off waits for Scheduling
 (`work.time_off`) and crew ids stay on the visits Scheduling imports.
-Contacts' phases (rows 6-12, 36) are in docs/CRM-CONTACTS.md; M6's
-messages phase lists `contacts.suppressions` in its `after`.
+Contacts' phases (rows 6-12, 36) are in docs/CRM-CONTACTS.md. Messages,
+campaigns, message templates and pin types (rows 16, 32, 33, 35) are in
+docs/CRM-COMMS.md with the measured cost of the full message import; they
+run after `contacts.suppressions`.
 
 ## Endpoints
 

@@ -27,7 +27,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | [CRM-PLANS.md](CRM-PLANS.md) | M3b | care plans, agreements, Christmas lights seasons | live (in review) |
 | [CRM-WORK.md](CRM-WORK.md) | M4a, M4b | jobs, visits, scheduling; the tech app | live |
 | [CRM-MONEY.md](CRM-MONEY.md) | M5 | invoices, payments, tips, autopay | stub |
-| [CRM-COMMS.md](CRM-COMMS.md) | M6 | conversations, campaigns, reviews | stub |
+| [CRM-COMMS.md](CRM-COMMS.md) | M6 | the Inbox and conversations, inbound texts, campaigns, reviews, Rotor's messages | live (in review) |
 | [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
 | [CRM-REPORTS.md](CRM-REPORTS.md) | M7b | rollups, the dashboard feed | stub |
 | [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's tools over the CRM | stub |
@@ -1060,9 +1060,10 @@ The adapter layer picks dry-run, test or live per integration
 (`cfg/integrations`, Settings → Integrations): live only on the production
 deploy with the secrets, never paused, and before cutover live acts as
 test (staff numbers only). Automated sends to a contact Rotor still owns
-are always dry-run before cutover. Live Twilio and Postmark drivers arrive
-with Messages (M6); until then a live or test mode without its driver stays
-dry-run. **Dry-run writes only an outbox item and its `done-dry/` marker**:
+are always dry-run before cutover. The Twilio and Postmark drivers are
+Messages' (M6, docs/CRM-COMMS.md): without their keys a live or test mode
+stays dry-run, test reaches only the allowlisted staff phones, and the
+Twilio driver refuses live while Rotor is the system of record. **Dry-run writes only an outbox item and its `done-dry/` marker**:
 no message, conversation, stats or activity. Magic values test the failure
 paths: a text to (763) 555-0199 fails with 30007, email to
 bounce@example.com bounces, `dry_pm_decline`/`dry_pm_auth`/`dry_pm_ach`

@@ -107,10 +107,16 @@ test("the push gate: dry-run off production, off without the VAPID keys, live wi
   assert.equal(A.pushMode(prod, { push: { mode: "dry_run" } }, env), "dry_run");
   assert.equal(A.pushMode(prod, {}, { ...env, CRM_FORCE_DRY_RUN: "1" }), "dry_run");
   assert.equal(A.pushMode(prod, {}, env, { paused: true }), "off");
-  // texts and emails stay in the outbox until a driver exists, whatever the mode says
-  const a = A.adapterSync("sms", { deploy: prod, settings: { sms: { mode: "live" } }, env: { CRM_PRODUCTION: "1", TWILIO_ACCOUNT_SID: "x", TWILIO_AUTH_TOKEN: "y" }, mode: { system_of_record: "crm", paused: false } });
+  // an integration stays in the outbox until its driver exists, whatever the mode says (Meta has none yet)
+  const a = A.adapterSync("meta", { deploy: prod, settings: { meta: { mode: "live" } }, env: { CRM_PRODUCTION: "1", META_PAGE_TOKEN: "x", META_APP_SECRET: "y" }, mode: { system_of_record: "crm", paused: false } });
   assert.equal(a.mode, "dry_run");
   assert.equal(a.fallback, "no_driver");
+  // texts have their driver since Messages (M6): live only after cutover, capped to test before it, dry-run without the keys
+  const sms = (mode, env) => A.adapterSync("sms", { deploy: prod, settings: { sms: { mode: "live" } }, env: { CRM_PRODUCTION: "1", ...env }, mode }).mode;
+  const keys = { TWILIO_ACCOUNT_SID: "x", TWILIO_AUTH_TOKEN: "y" };
+  assert.equal(sms({ system_of_record: "crm", paused: false }, keys), "live");
+  assert.equal(sms({ system_of_record: "rotor", paused: false }, keys), "test");
+  assert.equal(sms({ system_of_record: "crm", paused: false }, {}), "dry_run");
 });
 
 test("a notification reaches the bell and every phone; a 410 deletes that phone's subscription", async () => {
