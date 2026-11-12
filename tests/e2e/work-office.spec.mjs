@@ -1,5 +1,7 @@
 // Phone checks of the scheduling screens (M4a; design §12.4, §9.2):
-// Schedule (day, week, list, to book), booking a visit from the tray with
+// Schedule (the month by default with the chosen day's list, then day,
+// week, list, to book; on a desk the list beside the grid and the arrow
+// keys), booking a visit from the tray with
 // the schedule's warnings, one visit (the office's buttons, the texts
 // that would have gone), moving it, a tech's route, the rain-day move up to
 // the notice waiting in Approvals, a new job, Time off and a checklist, at
@@ -35,15 +37,44 @@ async function checks(f, page, name, problems) {
 }
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`schedule (${device}): day, week, list, to book; book from the tray with warnings; open the visit`, async () => {
+  test(`schedule (${device}): the month first with the chosen day's list, then day, week, list, to book; book from the tray with warnings; open the visit`, async () => {
     const { p, page, f, errors } = await open("olive", device);
     const problems = [];
+    const reads = [];
+    page.on("request", (r) => { if (/\/api\/crm\/schedule(\?|$)/.test(r.url())) reads.push(r.url()); });
     try {
       // the server's day (its clock is pinned; the phone's is not)
       const day = (await (await p.ctx.request.get(`/api/crm/visits/${seeded.visits[0]}`, { headers: { "x-crm": "1" } })).json()).data.visit.date;
-      await goTo(f, `/schedule?date=${day}`);
+      const tomorrow = (await (await p.ctx.request.get(`/api/crm/visits/${seeded.visits[4]}`, { headers: { "x-crm": "1" } })).json()).data.visit.date;
+      // the tab opens on the month (nothing kept yet): one read for the whole grid, today chosen
+      await goTo(f, "/schedule");
       assert.equal(await title(f), "Schedule");
-      await f.waitForSelector(`[href="#/visits/${seeded.visits[0]}"]`);
+      await f.waitForSelector(".wk-mgrid");
+      assert.equal(await f.getAttribute("[data-view=month]", "aria-selected"), "true", "Month is the default");
+      assert.equal(await f.getAttribute(`[data-mday="${day}"]`, "aria-pressed"), "true", "today is chosen");
+      assert.equal(await f.getAttribute(`[data-mday="${day}"]`, "aria-current"), "date");
+      assert.equal(reads.length, 1, reads.join(" "));
+      assert.match(reads[0], /month=now&amounts=1/);
+      // the day's list: both techs' visits today, each opening the visit
+      await f.waitForSelector(`.wk-dayp [href="#/visits/${seeded.visits[0]}"]`);
+      assert.ok(await f.$(`.wk-dayp [href="#/visits/${seeded.visits[1]}"]`), "both techs' visits today");
+      assert.match(await f.textContent(".wk-dayp-h h2"), /· \d+ visits/);
+      assert.match(await f.textContent(".wk-dayp"), /\$\d/, "amounts for the office");
+      await checks(f, page, `work-schedule-month-${device}`, problems);
+      // tap another day: its list, no new read
+      await f.click(`[data-mday="${tomorrow}"]`);
+      await f.waitForSelector(`.wk-dayp [href="#/visits/${seeded.visits[4]}"]`);
+      assert.equal(await f.getAttribute(`[data-mday="${tomorrow}"]`, "aria-pressed"), "true");
+      assert.equal(await f.$(`.wk-dayp [href="#/visits/${seeded.visits[0]}"]`), null, "only that day's visits");
+      assert.equal(reads.length, 1, "picking a day inside the month never reads again");
+      await checks(f, page, `work-schedule-month-picked-${device}`, problems);
+      // a day with nothing: a calm empty state
+      const free = await f.$eval(".wk-mday:not(.out)", () => { const b = [...document.querySelectorAll(".wk-mday:not(.out)")].find((x) => !x.querySelector(".wk-mdots i")); return b ? b.dataset.mday : null; });
+      if (free) { await f.click(`[data-mday="${free}"]`); await f.waitForFunction(() => /Nothing booked/.test(document.querySelector(".wk-dayp").textContent)); }
+      // an old link to a day still opens the Day view
+      await goTo(f, `/schedule?view=day&date=${day}`);
+      await f.waitForSelector(`.list [href="#/visits/${seeded.visits[0]}"]`);
+      assert.equal(await f.getAttribute("[data-view=day]", "aria-selected"), "true");
       assert.ok(await f.$(`[href="#/visits/${seeded.visits[1]}"]`), "both techs' visits today");
       await checks(f, page, `work-schedule-day-${device}`, problems);
       // one tech: their visits, and their route
@@ -105,6 +136,47 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.deepEqual(after.lines, before.lines, "the lines are as they were");
         assert.equal(after.totals.total_cents, before.totals.total_cents);
       }
+      assert.deepEqual(problems, []);
+      assert.deepEqual(errors.filter((e) => !/favicon/.test(e)), [], "no console errors");
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
+for (const device of ["desk1440", "desk1024"]) {
+  test(`schedule on a desk (${device}): the month with the day's list ${device === "desk1440" ? "beside" : "under"} the grid, chips in the team's colors, the arrow keys`, async () => {
+    const { p, page, f, errors } = await open("olive", device, { office: true });
+    const problems = [];
+    const reads = [];
+    page.on("request", (r) => { if (/\/api\/crm\/schedule(\?|$)/.test(r.url())) reads.push(r.url()); });
+    try {
+      const day = (await (await p.ctx.request.get(`/api/crm/visits/${seeded.visits[0]}`, { headers: { "x-crm": "1" } })).json()).data.visit.date;
+      await goTo(f, `/schedule?date=${day}`);
+      await f.waitForSelector(".wk-mgrid .wk-mchip");
+      assert.equal(await f.getAttribute("[data-view=month]", "aria-selected"), "true");
+      const [grid, list] = await Promise.all([".wk-cal", ".wk-dayp"].map((sel) => f.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })));
+      if (device === "desk1440") assert.ok(list.x >= grid.x + grid.w && Math.abs(list.y - grid.y) < 2, "the list beside the grid");
+      else assert.ok(list.y >= grid.y + grid.h, "the list under the grid");
+      assert.equal(await f.$eval(".wk-mdots", (el) => getComputedStyle(el).display), "none", "chips, not dots, on a desk");
+      const chip = await f.$eval(`[data-mday="${day}"] .wk-mchip`, (el) => getComputedStyle(el).boxShadow);
+      assert.match(chip, /rgb/, "a chip carries its tech's color");
+      // the arrow keys move the chosen day, without a read inside the month
+      const n0 = reads.length;
+      await f.focus(`[data-mday="${day}"]`);
+      await page.keyboard.press("ArrowRight");
+      const next = new Date(Date.parse(day + "T12:00:00Z") + 86400000).toISOString().slice(0, 10);
+      await f.waitForFunction((d) => document.querySelector(`[data-mday="${d}"]`)?.getAttribute("aria-pressed") === "true" && document.activeElement?.dataset.mday === d, next);
+      await page.keyboard.press("ArrowLeft");
+      await f.waitForFunction((d) => document.activeElement?.dataset.mday === d, day);
+      assert.equal(reads.length, n0, "the keys never read inside the month");
+      // Page Down turns the month: one read
+      await page.keyboard.press("PageDown");
+      await f.waitForFunction(() => /^[A-Z][a-z]+ \d{4}$/.test(document.querySelector(".wk-mtitle")?.textContent || "") && document.activeElement?.dataset?.mday);
+      assert.equal(reads.length, n0 + 1);
+      await f.click("[data-cal=today]");
+      await f.waitForFunction((d) => document.querySelector(`[data-mday="${d}"]`)?.getAttribute("aria-pressed") === "true", day);
+      for (const x of await screenProblems(f)) problems.push(`${device}: ${x}`);
+      await shot(page, `work-schedule-month-${device}`);
       assert.deepEqual(problems, []);
       assert.deepEqual(errors.filter((e) => !/favicon/.test(e)), [], "no console errors");
       await p.clean();

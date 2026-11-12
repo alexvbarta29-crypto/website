@@ -28,7 +28,7 @@ import {
   createJobs, createVisit, changeVisit, cancelJob, reopenJob, completeJob, syncJob, liveContact, placeOf, W, workSettings, typesOfLines, refreshVisits,
 } from "./office.mjs";
 import { titleFromLines } from "./types.mjs";
-import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows } from "./office-schedule.mjs";
+import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows, monthGridRange, withAmounts } from "./office-schedule.mjs";
 import { moveDayPreview, moveDayConfirm, runView } from "./office-moveday.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
@@ -106,13 +106,21 @@ async function activeUsers(ids) {
 
 // ------------------------------------------------------------ the schedule
 
+// ?from&to (a day, a week, two weeks), or ?month=yyyy-mm|now: the month
+// view's whole grid in one read (Sunday first, the leading and trailing
+// days too). ?amounts=1 adds each visit's job total for people who may see
+// prices. `today` is the server's day (a phone's clock may be off).
 const schedule = async (ctx) => {
   const today = localDate(now());
-  const from = str(ctx.query.get("from")) || today;
-  const to = str(ctx.query.get("to")) || from;
+  let from = str(ctx.query.get("from")) || today;
+  let to = str(ctx.query.get("to")) || from;
+  const m = str(ctx.query.get("month"));
+  const month = m === "now" ? today.slice(0, 7) : m || null;
+  if (month) [from, to] = monthGridRange(month);
   const users = str(ctx.query.get("users")).split(",").filter((x) => isId(x, "user"));
   const data = await scheduleRange({ from, to, users });
-  return { data: { ...data, from, to }, meta: { stale: data.stale } };
+  if (ctx.query.get("amounts") === "1" && ctx.can("visits:prices")) data.visits = await withAmounts(data.visits, { from, to, today });
+  return { data: { ...data, from, to, today, ...(month ? { month } : {}) }, meta: { stale: data.stale } };
 };
 
 const unscheduled = async (ctx) => {

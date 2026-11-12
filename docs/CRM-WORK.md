@@ -35,6 +35,11 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 | `timers.mjs` | M4b | segments, the `work.timers` sweep, import phase `work.timers` |
 | `timesheets.mjs` | M4b | shifts, device times, pending entries, weekly approval, the pay estimate, the `work.clock` sweep, the person's and the office's time routes, import phase `work.timesheets` |
 
+Client (M4a): `office-schedule.js` (the Schedule: Month, Week, Day, List,
+To book), `office-kit.js`, `visit.js` (two columns from 1,200 px: the visit
+on the left; the customer, call, directions, the job, the buttons and the
+texts on the right), `office-styles.css`.
+
 Client (M4b): `tech-today.js` (the person's day on Today), `visit-field.js`
 (the field panel on the Visit screen), `tech-time.js`, `tech-pay.js`,
 `tech-timesheets.js` (the office's Timesheets), `tech-timesheets-card.js`
@@ -44,7 +49,26 @@ overlay of what waits, copies for no signal, Delano times),
 
 ## What the office sees
 
-- **Schedule** (bottom tab; `schedule:read`): **Day** (a day bar, a chip per
+- **Schedule** (bottom tab; `schedule:read`): **Month** (the default when
+  nothing is kept: the month as a grid, Sunday first, with the month's name,
+  arrows and **Today**, and the chip per person; each day shows its visits
+  as small chips (start time and the customer's short name, "8a Alex W.",
+  in the color of the first person on it; done ones outlined, cancelled
+  ones struck through) and "+N more" past three, or colored dots on a
+  phone; days outside the month are muted, today is coral, the chosen day
+  is ringed. Picking a day (a tap, or the arrow keys on a computer: a day,
+  a week, Home and End for the week's ends, Page Up and Page Down a month)
+  shows **that day's list** under the grid on a phone and beside it from
+  1,100 px: "Thursday, Nov 12 · 6 visits", **Open day** (the Day view),
+  **Route** (with one person chosen) and **Book** (New job booked for that
+  day), then a row per visit (the time and its end, the customer, the
+  address, the work, the status, the job's amount for people with
+  `visits:prices`, the people as colored initials) and per timed task,
+  each opening it; an empty day says so. The whole grid, the leading and
+  trailing days too, is one read (`GET /schedule?month=`); picking a day in
+  it never reads again. The month and the chosen day are kept like the
+  other views, and old links keep working (`?view=day&date=` opens that
+  day; `?date=` alone opens the month on it)), **Day** (a day bar, a chip per
   person, the day's visits and timed tasks (estimate visits, meetings) in
   time order; each visit shows its slot, the town and job, the people as
   colored initials and a warning badge: someone off, outside the hours, a
@@ -382,7 +406,8 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 
 | Route | Perm | What |
 |---|---|---|
-| `GET /schedule?from&to&users` | schedule:read | visits, timed tasks, time off and warnings for up to 42 days |
+| `GET /schedule?from&to&users` | schedule:read | visits, timed tasks, time off and warnings for up to 42 days; `today` is the server's day |
+| `GET /schedule?month=yyyy-mm\|now&amounts=1` | schedule:read | the month view's grid in one read (`monthGridRange`: the Sunday on or before the 1st to the Saturday on or after the last day, 28 to 42 days); `amounts=1` adds each visit's job total (`amt`, cents, from the jobs index: open jobs and the years closed ones are filed under; none for a no-charge job) for people with `visits:prices` |
 | `GET /schedule/unscheduled?month` | schedule:read | the tray: unscheduled jobs due by the month, and how many later |
 | `GET /schedule/check?date&start&end&users&visit&town` | schedule:read | warnings and hints for a slot |
 | `GET /schedule/route?date&user` · `POST /schedule/route` | read · write | a person's stops; Optimize (no `order`) or save an order |
