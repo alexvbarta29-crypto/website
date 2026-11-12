@@ -4,11 +4,15 @@
 // or the owner's choice), Start, the phases as they run (refreshed every
 // few seconds while it runs), the conflicts to settle, and once done the
 // report (counts, what waits for a module not built yet, Rotor's money,
-// data quality) with the report and id map downloads.
+// data quality) with the report and id map downloads. A continuation
+// ("the rest" of an export uploaded earlier) has no upload and no team
+// map: it says which import it continues and shows only its own steps. The
+// latest finished import also shows "The rest of this export" (what can
+// come in now, what still waits and for which part).
 
 import { html, icon, toast, confirmSheet, attrs } from "../../core/ui.js";
 import { money, dateTime } from "../../core/format.js";
-import { ensureStyles, runPill, phasePill, exportLabel, whenLabel, warnLabel, n } from "./kit.js";
+import { ensureStyles, runPill, phasePill, exportLabel, whenLabel, warnLabel, n, byPart, restCard, bringInRest } from "./kit.js";
 import { keySheet } from "./list.js";
 
 const ROLE = { owner: "Owner", admin: "Office", member: "Technician" };
@@ -24,7 +28,9 @@ async function loadAll(id, ctx) {
   return { ...d, report };
 }
 
-const stopped = (s) => s.run.status === "running" && s.lane && (s.lane.status === "failed" || s.lane.status === "cancelled");
+// stopped for good: the lane gave up (the run says "failed"), or its lane run ended and the run doesn't know yet
+const stopped = (s) => s.run.status === "failed" || (s.run.status === "running" && !!s.lane && (s.lane.status === "failed" || s.lane.status === "cancelled"));
+const rowsGone = (s) => !!(s.run.stopped && s.run.stopped.code === "staging_gone");
 
 function uploadCard(s) {
   const u = s.upload;
@@ -70,7 +76,9 @@ function teamCard(s) {
 }
 
 function phasesCard(s) {
-  const run = s.phases.filter((p) => p.status !== "waiting");
+  // a continuation lists its own steps; the ones an earlier import did aren't read again
+  const earlier = s.phases.filter((p) => p.earlier).length;
+  const run = s.phases.filter((p) => p.status !== "waiting" && !p.earlier);
   const waiting = s.phases.filter((p) => p.status === "waiting");
   if (!s.phases.length) return "";
   return html`<section class="card">
@@ -79,7 +87,8 @@ function phasesCard(s) {
       <div class="im-ph-top"><span class="nm">${p.label}</span>${phasePill(p)}</div>
       ${p.read || p.status === "running" || p.status === "done" ? html`<div class="sub">${n(p.read)} read · ${n(p.created)} added · ${n(p.updated)} updated · ${n(p.unchanged)} unchanged${p.linked ? ` · ${n(p.linked)} linked` : ""}${p.conflicted ? ` · ${n(p.conflicted)} to settle` : ""}${p.skipped ? ` · ${n(p.skipped)} skipped` : ""}</div>` : ""}
     </li>`)}</ul>
-    ${waiting.length ? html`<p class="small muted im-gap">Waiting for parts of the CRM that aren't built yet (a later import brings them in): ${[...new Set(waiting.map((p) => p.waiting_label).filter(Boolean))].join(", ")}.</p>` : ""}
+    ${earlier ? html`<p class="small muted im-gap">${n(earlier)} ${earlier === 1 ? "step was" : "steps were"} done by the import this one continues. Nothing of that is read again.</p>` : ""}
+    ${waiting.length ? html`<p class="small muted im-gap">Waiting for parts of the CRM that aren't built yet (they come in when that part goes live): ${[...new Set(waiting.map((p) => p.waiting_label).filter(Boolean))].join(", ")}.</p>` : ""}
   </section>`;
 }
 
@@ -90,21 +99,14 @@ function reportCard(s) {
   const tiles = [["Added", sum.created], ["Updated", sum.updated], ["Unchanged", sum.unchanged], ["Linked", sum.linked], ["To settle", s.run.conflicts ? s.run.conflicts.open : sum.conflicts_open], ["Skipped", sum.skipped]];
   const warns = Object.entries((rep.quality && rep.quality.warnings) || {}).filter(([, v]) => v).sort((a, b) => b[1] - a[1]).slice(0, 12);
   const m = (rep.money && rep.money.rotor) || null;
-  // what waits, per part of the CRM: each entity's rows counted once
-  const groups = new Map();
-  for (const w of rep.waiting || []) {
-    if (!w.rows) continue;
-    const k = w.module_label || w.module;
-    const g = groups.get(k) || { label: k, entities: new Map(), steps: [] };
-    g.entities.set(w.entity, w.rows);
-    g.steps.push(String(w.label || "").toLowerCase());
-    groups.set(k, g);
-  }
-  const waits = [...groups.values()].map((g) => ({ label: g.label, rows: [...g.entities.values()].reduce((a, b) => a + b, 0), steps: g.steps }));
+  // what waited when this import finished, per part of the CRM (the latest import shows it live, in "The rest of this export")
+  const waits = s.rest ? [] : byPart(rep.waiting);
+  const all = rep.chain && rep.chain.totals ? rep.chain.totals : null;
   const base = `/api/crm/import/runs/${encodeURIComponent(s.run.id)}`;
   return html`<section class="card">
     <h2>Report</h2>
     <div class="im-tiles">${tiles.map(([label, v]) => html`<div class="im-tile"><b>${n(v)}</b><span>${label}</span></div>`)}</div>
+    ${all ? html`<p class="small muted im-gap">With the ${rep.chain.runs.length > 2 ? "imports" : "import"} it continues, this export has brought in ${n(all.created)} added and ${n(all.updated)} updated from ${n(all.read)} rows.</p>` : ""}
     ${(s.run.conflicts && s.run.conflicts.open) ? html`<p class="warn-box im-gap">${n(s.run.conflicts.open)} ${s.run.conflicts.open === 1 ? "field" : "fields"} changed both here and in Rotor. <a ${attrs({ href: `#/import/${s.run.id}/conflicts` })}>Settle them</a></p>` : html`<p class="ok-box im-gap">Nothing to settle.</p>`}
     ${waits.length ? html`<div class="section-h">Waiting for a later part of the CRM</div>
       <dl class="kv">${waits.map((w) => html`<dt>${w.label}</dt><dd>${n(w.rows)} ${w.rows === 1 ? "row" : "rows"}<span class="im-steps">${w.steps.join(", ")}</span></dd>`)}</dl>` : ""}
@@ -129,14 +131,17 @@ export default {
     const r = s.run;
     return html`<div class="stack">
       <section class="card">
-        <div class="im-head"><h2>${exportLabel(r.as_of)}</h2>${runPill(r, s.lane)}</div>
+        <div class="im-head"><h2>${r.continues ? `More of the ${exportLabel(r.as_of).replace(/^E/, "e").replace(/^R/, "R")}` : exportLabel(r.as_of)}</h2>${runPill(r, s.lane)}</div>
         <p class="small muted">${r.note ? r.note + " · " : ""}Made ${whenLabel(r.created_at)}${r.started_at ? " · started " + whenLabel(r.started_at) : ""}${r.finished_at ? " · finished " + whenLabel(r.finished_at) : ""}</p>
-        ${stopped(s) ? html`<p class="warn-box">It stopped: storage kept failing. Resume goes on from where it stopped; nothing done is done again.</p>
-          <div class="btn-row"><button type="button" class="btn primary" data-resume>Resume</button></div>` : ""}
+        ${r.continues ? html`<p class="small">${r.auto ? "Started by itself when a part of the CRM went live. " : ""}No upload, no key: it uses the rows of the export uploaded earlier. <a ${attrs({ href: "#/import/" + r.continues })}>The import it continues</a></p>` : ""}
+        ${stopped(s) ? (rowsGone(s)
+          ? html`<p class="warn-box">It stopped: this export's rows were cleared before it could finish. Start a new import to bring in the rest.</p>`
+          : html`<p class="warn-box">It stopped: storage kept failing. Resume goes on from where it stopped; nothing done is done again.</p>
+          <div class="btn-row"><button type="button" class="btn primary" data-resume>Resume</button></div>`) : ""}
         ${LIVE.has(r.status) && !stopped(s) && r.status !== "uploading" ? html`<p class="small">${s.finish && s.finish !== "indexes" ? "Finishing: lists, the id map, the report…" : "Importing in the background. You can leave this screen."}</p>` : ""}
-        ${LIVE.has(r.status) ? html`<div class="btn-row"><button type="button" class="btn" data-cancel>Cancel this import</button></div>` : ""}
+        ${LIVE.has(r.status) || r.status === "failed" ? html`<div class="btn-row"><button type="button" class="btn" data-cancel>Cancel this import</button></div>` : ""}
       </section>
-      ${r.status === "uploading" ? html`${teamCard(s)}${uploadCard(s)}` : html`${r.status === "done" ? reportCard(s) : ""}${phasesCard(s)}${teamCard(s)}`}
+      ${r.status === "uploading" ? html`${teamCard(s)}${uploadCard(s)}` : html`${r.status === "done" ? html`${restCard(s.rest)}${reportCard(s)}` : ""}${phasesCard(s)}${teamCard(s)}`}
       ${r.status === "done" ? "" : html`<p class="small muted im-foot">Conflicts, the report and the id map are ready when the import is done.</p>`}
     </div>`;
   },
@@ -157,6 +162,7 @@ export default {
   },
   unmount() { stopWatch(); },
   events: {
+    "click [data-continue]": (e, el, ctx) => bringInRest(el, ctx),
     "click [data-start]": async (e, el, ctx) => {
       el.disabled = true;
       try { await ctx.api(`/import/runs/${encodeURIComponent(ctx.state.run.id)}/start`, { method: "POST", body: {} }); toast("Started"); ctx.refresh(); }

@@ -5,10 +5,13 @@
 // key, so it never lands in a shell history); a small run can also be
 // uploaded from this phone on the run's screen. The owner starts the run
 // on its screen once the upload is in and the team map looks right.
+// "The rest of this export": what the latest finished import left waiting
+// for parts of the CRM that weren't live, what of it can come in now, and
+// "Bring in the rest now" (no upload: the rows are still here).
 
 import { html, icon, sheet, toast, attrs } from "../../core/ui.js";
 import { field, readForm, clearErrors, showError, busy } from "../../core/forms.js";
-import { ensureStyles, runPill, exportLabel, whenLabel, n } from "./kit.js";
+import { ensureStyles, runPill, exportLabel, whenLabel, n, restCard, bringInRest } from "./kit.js";
 
 // The command shows no key: the script asks for it at a prompt that doesn't echo (never in the shell's history).
 export const UPLOAD_COMMAND = "node build/crm_import_upload.mjs ~/barta-private/import-pack --site https://www.bartawindowwashing.com";
@@ -41,8 +44,11 @@ export default {
   title: "Import from Rotor",
   async load(params, ctx) {
     ensureStyles();
-    const r = await ctx.api("/import/runs", { cache: false });
-    return { runs: r.data || [] };
+    const [r, rest] = await Promise.all([
+      ctx.api("/import/runs", { cache: false }),
+      ctx.api("/import/rest", { cache: false }).then((x) => x.data).catch(() => null),
+    ]);
+    return { runs: r.data || [], rest };
   },
   render(s) {
     const active = s.runs.find((r) => r.status === "queued" || r.status === "running");
@@ -54,15 +60,17 @@ export default {
           ? html`<a class="btn" ${attrs({ href: "#/import/" + active.id })}>See the import that's running</a>`
           : html`<button type="button" class="btn primary" data-start>${icon("plus")}Start an import</button>`}</div>
       </section>
+      ${restCard(s.rest)}
       <div class="section-h">Imports</div>
       ${s.runs.length ? html`<ul class="list">${s.runs.map((r) => html`<li><a class="row" ${attrs({ href: "#/import/" + r.id })}>
         <span class="who"><span class="nm">${exportLabel(r.as_of)}</span>
-          <span class="sub">${r.summary ? `${n(r.summary.created)} added · ${n(r.summary.updated)} updated` : "Started " + whenLabel(r.created_at)}</span></span>
+          <span class="sub">${r.continues ? "More of this export · " : ""}${r.summary ? `${n(r.summary.created)} added · ${n(r.summary.updated)} updated` : "Started " + whenLabel(r.created_at)}</span></span>
         <span class="end">${runPill({ status: r.status, conflicts: { open: r.summary ? r.summary.conflicts : 0 } })}<span class="chev">${icon("back")}</span></span>
       </a></li>`)}</ul>` : html`<div class="card empty"><div class="art">${icon("data")}</div><h2>No imports yet</h2><p>Start one, then upload the packed Rotor export with its key.</p></div>`}
     </div>`;
   },
   events: {
+    "click [data-continue]": (e, el, ctx) => bringInRest(el, ctx),
     "click [data-start]": (e, el, ctx) => {
       const s = sheet({
         title: "Start an import",

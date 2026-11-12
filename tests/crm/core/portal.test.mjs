@@ -205,8 +205,10 @@ test("the return page, pages that don't exist yet, and an XSS probe in the path"
   const ret = await t.portal("/p/return?cs=cs_test_x");
   assert.equal(ret.status, 200);
   assert.match(ret.text, /confirming your payment/);
-  const missing = await t.portal("/p/card");
-  assert.equal(missing.status, 404, "the card page arrives with Money");
+  // Money's card page needs its link's session; a page no module has yet is a 404
+  assert.equal((await t.portal("/p/card")).status, 401, "the card page opens only from its link");
+  const missing = await t.portal("/p/visits");
+  assert.equal(missing.status, 404, "past visits arrive later (P1)");
   assertPortalHeaders(missing, "404");
   const xss = await t.portal("/p/%3C%2Fscript%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E");
   assert.ok(!xss.text.includes("<script>alert(1)"));

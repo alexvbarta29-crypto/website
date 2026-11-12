@@ -16,6 +16,14 @@
 //   - pass/fail: no unresolved conflict (money: once Money ships).
 // Counts and codes only: the report holds no name, phone, email or address.
 //
+// A continuation's report (a run with `continues`, continue.mjs) counts
+// only what that run did, names the run it continues, and carries the
+// chain's totals (`chain`: every run from the first upload on, and their
+// sums); phases an earlier run finished are listed as done there
+// (`earlier`). Rotor's money and the integrity counts come from the staged
+// rows, which are the same rows: they are taken from the continued run's
+// report, not read again.
+//
 // The id map: every ptr/rotor/{type}/{rotorId} → CRM id, written in parts
 // imp/{runId}/idmap/{nnnn} at the end of the run and served as one CSV
 // (an owner download, audited).
@@ -23,7 +31,8 @@
 import { getRaw, putRaw, listKeys } from "../../../crm-store.mjs";
 import { nowIso } from "../../core/clock.mjs";
 import { typeOf } from "../../core/ids.mjs";
-import { csvCell } from "../../../referral-lib.mjs";
+import { csvCell, safeErr } from "../../../referral-lib.mjs";
+import { has, call } from "../../core/services.mjs";
 import { MODULE_LABELS, phaseLabel } from "./catalog.mjs";
 import { readChunk } from "./staging.mjs";
 
@@ -40,10 +49,11 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 // Every staged row of an entity (the report's money and integrity sums).
 async function* stagedRows(runId, state, entity) {
   for (const n of state.chunks[entity] || []) {
-    const c = await readChunk(runId, entity, n);
+    const c = await readChunk(state.staging_run || runId, entity, n);
     for (const row of (c && c.rows) || []) yield row;
   }
 }
+const TOTAL_KEYS = ["read", "created", "updated", "unchanged", "linked", "conflicted", "skipped", "kept_fields"];
 
 // Rotor's money, from the staged invoices and payments. Pure over rows.
 export async function moneyFromRows(invoices, payments) {
@@ -86,7 +96,7 @@ export async function buildReport(runId, state) {
     const st = state.phases[p.name] || {};
     const stagedRowsCount = state.rows && state.rows[p.entity] != null ? state.rows[p.entity] : null;
     const row = {
-      name: p.name, label: phaseLabel(p.name), module: p.module, entity: p.entity, status: st.status || "pending", waiting_for: st.waiting_for || null,
+      name: p.name, label: phaseLabel(p.name), module: p.module, entity: p.entity, status: st.status || "pending", waiting_for: st.waiting_for || null, ...(st.earlier ? { earlier: st.earlier } : {}),
       read: st.read || 0, records: st.records || {}, skipped: st.skipped || {}, pointers: st.pointers || {}, extras: st.extras || {}, warnings: st.warnings || {},
       errors: (st.errors || []).slice(0, 20), kept_fields: st.kept_fields || 0,
     };
@@ -102,22 +112,46 @@ export async function buildReport(runId, state) {
     candidates += (row.extras && row.extras.candidates) || 0;
     if (row.status === "waiting") waiting.push({ phase: p.name, label: row.label, module: p.module, module_label: MODULE_LABELS[st.waiting_for] || MODULE_LABELS[p.module] || null, waiting_for: st.waiting_for || p.module, entity: p.entity, chunks: (state.chunks[p.entity] || []).length, rows: stagedRowsCount });
   }
-  // Rotor's money and the integrity counts, from the staged rows
-  const money = await moneyFromRows(stagedRows(runId, state, "invoices"), stagedRows(runId, state, "payments"));
-  const integrity = { pointers_taken: pointersTaken, payments_without_invoice: money.payments.unlinked, timers_running: 0, visits_without_job: 0 };
-  for await (const t of stagedRows(runId, state, "visit_timers")) if (t && (t.is_active === true || (t.start && !t.end))) integrity.timers_running += 1;
-  const jobIds = new Set();
-  for await (const j of stagedRows(runId, state, "jobs")) if (j && j.id) jobIds.add(String(j.id));
-  for await (const v of stagedRows(runId, state, "visits")) if (v && v.job_id && !jobIds.has(String(v.job_id))) integrity.visits_without_job += 1;
+  // Rotor's money and the integrity counts, from the staged rows (a continuation reads the
+  // same rows as the run it continues: that run's sums stand)
+  const before = state.continues ? await readReport(state.continues) : null;
+  let money, integrity;
+  if (before && before.money && before.money.rotor && before.integrity) {
+    money = before.money.rotor;
+    integrity = { ...before.integrity, pointers_taken: (before.integrity.pointers_taken || 0) + pointersTaken };
+  } else {
+    money = await moneyFromRows(stagedRows(runId, state, "invoices"), stagedRows(runId, state, "payments"));
+    integrity = { pointers_taken: pointersTaken, payments_without_invoice: money.payments.unlinked, timers_running: 0, visits_without_job: 0 };
+    for await (const t of stagedRows(runId, state, "visit_timers")) if (t && (t.is_active === true || (t.start && !t.end))) integrity.timers_running += 1;
+    const jobIds = new Set();
+    for await (const j of stagedRows(runId, state, "jobs")) if (j && j.id) jobIds.add(String(j.id));
+    for await (const v of stagedRows(runId, state, "visits")) if (v && v.job_id && !jobIds.has(String(v.job_id))) integrity.visits_without_job += 1;
+  }
   const conflictsOpen = (await listKeys(conflictsPrefix(runId))).length;
+  const ran = phases.filter((p) => !p.earlier && (p.status === "done" || p.status === "empty"));
+  // the CRM's side (Money, M5): what the imported invoices and payments add up to, against Rotor's
+  const moneyDone = ["money.invoices", "money.payments"].every((n) => phases.some((p) => p.name === n && (p.status === "done" || p.status === "empty")));
+  let crmMoney = null;
+  if (moneyDone && has("money.reconcileImport")) {
+    try { crmMoney = await call("money.reconcileImport", { runId, rotor: money }); } catch (e) { console.error(`crm:import: the money comparison was left out (${safeErr(e)})`); }
+  }
   const summary = {
     ...totals, conflicts_open: conflictsOpen, phases: state.plan.length,
     phases_done: phases.filter((p) => p.status === "done" || p.status === "empty").length, phases_waiting: waiting.length,
-    suppressed, merge_candidates: candidates, pass: conflictsOpen === 0, money_checked: false,
+    ...(state.continues ? { phases_run: ran.length, continues: state.continues } : {}),
+    suppressed, merge_candidates: candidates, pass: conflictsOpen === 0 && (!crmMoney || crmMoney.ok === true), money_checked: !!crmMoney,
+    ...(crmMoney ? { money_ok: crmMoney.ok === true, money_diffs: (crmMoney.diffs || []).length, money_status_mismatches: crmMoney.status_mismatches || 0 } : {}),
   };
+  // the chain: the first upload and every continuation since, and what they did together
+  const was = before ? (before.chain && before.chain.totals) || before.summary || {} : {};
+  const chain = state.continues ? {
+    runs: [...(state.chain || [state.continues]), runId],
+    totals: Object.fromEntries(TOTAL_KEYS.map((k) => [k, num(was[k]) + totals[k]])),
+  } : null;
   const report = {
     v: 1, run_id: runId, as_of, generated_at: nowIso(), summary, phases, waiting,
-    money: { rotor: money, crm: null, note: "The CRM's side of the money comparison arrives with Money (M5)." },
+    ...(state.continues ? { continues: state.continues, staging_run: state.staging_run || null, chain } : {}),
+    money: { rotor: money, crm: crmMoney, note: crmMoney ? null : "The CRM's side of the money comparison is made once the invoices and payments steps have run." },
     integrity, quality: { warnings: quality, suppressions: suppressed, merge_candidates: candidates },
   };
   await putRaw(reportKey(runId), report);
@@ -136,8 +170,13 @@ export function reportCsv(report) {
   const lines = [csvLine(["section", "phase", "metric", "value"])];
   const s = report.summary || {};
   for (const [k, v] of Object.entries(s)) lines.push(csvLine(["summary", "", k, v]));
+  if (report.chain) {
+    lines.push(csvLine(["chain", "", "runs", report.chain.runs.join(" ")]));
+    for (const [k, v] of Object.entries(report.chain.totals || {})) lines.push(csvLine(["chain", "", k, v]));
+  }
   for (const p of report.phases || []) {
-    lines.push(csvLine(["phase", p.name, "status", p.status]));
+    lines.push(csvLine(["phase", p.name, "status", p.earlier ? `${p.status} (in ${p.earlier})` : p.status]));
+    if (p.earlier) continue;
     lines.push(csvLine(["phase", p.name, "read", p.read]));
     for (const [type, counts] of Object.entries(p.records || {})) for (const [k, v] of Object.entries(counts)) lines.push(csvLine(["phase", p.name, `${type}.${k}`, v]));
     for (const [k, v] of Object.entries(p.skipped || {})) lines.push(csvLine(["phase", p.name, `skipped.${k}`, v]));
@@ -153,6 +192,15 @@ export function reportCsv(report) {
   if (m.payments) {
     for (const k of ["count", "net_cents", "tips_cents", "refunds_cents", "failed", "unlinked"]) lines.push(csvLine(["money", "rotor", `payments.${k}`, m.payments[k]]));
     for (const g of ["by_method", "by_type", "by_year"]) for (const [k, v] of Object.entries(m.payments[g] || {})) lines.push(csvLine(["money", "rotor", `payments.${g}.${k}`, v]));
+  }
+  const c = report.money && report.money.crm;
+  if (c) {
+    lines.push(csvLine(["money", "crm", "invoices.count", c.invoices.count]));
+    lines.push(csvLine(["money", "crm", "invoices.total_cents", c.invoices.total_cents]));
+    for (const k of ["count", "net_cents", "tips_cents", "refunds_cents", "failed"]) lines.push(csvLine(["money", "crm", `payments.${k}`, c.payments[k]]));
+    lines.push(csvLine(["money", "crm", "reconciled", c.ok ? "yes" : "no"]));
+    for (const d of c.diffs || []) lines.push(csvLine(["money", "difference", d.metric, `rotor ${d.rotor} / crm ${d.crm}`]));
+    for (const x of c.mismatches || []) lines.push(csvLine(["money", "status", x.number, `rotor ${x.rotor_status} / crm ${x.crm_status}, balance ${x.balance_cents}`]));
   }
   for (const [k, v] of Object.entries(report.integrity || {})) lines.push(csvLine(["integrity", "", k, v]));
   for (const [k, v] of Object.entries((report.quality && report.quality.warnings) || {})) lines.push(csvLine(["quality", "", k, v]));

@@ -247,7 +247,9 @@ async function mapOpportunity(r, ctx) {
     status: "archived", stop_reason: "imported", step_n: best.n || 0, history,
     started_at: history[0].at, ended_at: history[history.length - 1].at,
     cur: { label: best.stage || "", action: null, rbs: false },
-    ...(owner ? { owner_id: owner } : {}),
+    // the owner the enrollment has stays (two opportunities of one contact on one board may name two people:
+    // each row setting its own would rewrite the enrollment on every import)
+    ...(prev && prev.owner_id ? {} : owner ? { owner_id: owner } : {}),
     rotor: {
       opportunity_ids: [...new Set(history.map((h) => h.opportunity_id))].sort(), pipeline_id: r.pipeline_id, stage_id: best.stage_id,
       status_raw: best.status_raw, ...(best.archived ? {} : { live_since: best.at }),

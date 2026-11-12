@@ -65,6 +65,9 @@ const HOOKS = [
   { re: /^\/import\/runs\/:id\//, kind: "upload key or owner" },           // the import upload (runs.mjs uploadAuth)
   { re: /^\/hooks\/cron$/, kind: "worker secret" },                         // the D39 cron fallback (x-crm-worker header)
   { re: /^\/hooks\/lead\/:token$/, kind: "lead token" },                    // the lead webhook (Zapier for Meta, D6)
+  { re: /^\/hooks\/twilio\/(sms|status)$/, kind: "twilio signature" },       // inbound texts and delivery statuses (comms/inbound.mjs; 403 until Twilio is connected)
+  { re: /^\/hooks\/email\/postmark$/, kind: "postmark token" },             // delivery, bounce and complaint webhooks (?token=)
+  { re: /^\/hooks\/stripe(-test)?$/, kind: "stripe signature" },            // Stripe's webhooks (M5): the endpoint's signing secret; closed (404) while payments are dry-run
 ];
 const hookKind = (r) => (HOOKS.find((h) => (!h.method || h.method === r.method) && h.re.test(r.path)) || {}).kind || null;
 const permKeys = () => new Set([...P.PERMISSION_KEYS, ...R.allPerms().map((p) => p.key)]);

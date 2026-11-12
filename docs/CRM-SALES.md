@@ -252,7 +252,8 @@ many rows names its import source, so the rows share one import base
 (docs/CRM-IMPORT.md, Field ownership): a cadence from its board and stages
 (`pipelines:board`), a deal or an enrollment from a contact's opportunities
 (`opportunities:fold`, rank 3: over the lead's deal values from
-`contacts.leads`, rank 2).
+`contacts.leads`, rank 2). A folded enrollment keeps the owner it has
+(two opportunities of one contact on one board may name two people).
 
 ## Data rules
 

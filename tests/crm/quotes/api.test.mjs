@@ -85,7 +85,7 @@ test("pricing endpoints: the builder's context, suggest by panes or square feet,
     assert.equal(ctx.status, 200);
     assert.ok(ctx.body.data.book.some((i) => i.key === "exterior"));
     assert.ok(ctx.body.data.discounts.some((d) => d.key === "first_time" && d.value === 5000));
-    assert.equal(ctx.body.data.features.deposits, false, "before Money, deposits are hidden (§11.3)");
+    assert.equal(ctx.body.data.features.deposits, (await import("../../../netlify/lib/crm/core/services.mjs")).has("money.createDepositInvoice"), "deposits show once Money provides them (§11.3)");
     assert.equal(ctx.body.data.can.pricebook, false);
     const s = await t.api("/pricing/suggest", { method: "POST", as: admin, body: { input: { services: ["windows_ext", "screens"], sqft: 3000, plan: "quarterly" } } });
     assert.equal(s.status, 200);

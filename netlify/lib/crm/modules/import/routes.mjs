@@ -16,6 +16,8 @@
 //   POST /import/runs/:id/user-map          import:run   { map: { rotorUserId: crmUserId | null } }
 //   POST /import/runs/:id/start             key/owner    → { run } (all chunks must be there)
 //   POST /import/runs/:id/resume · /cancel  import:run   → { run }
+//   GET  /import/rest                       import:run   the latest finished run: what can be brought in now, what still waits
+//   POST /import/continue                   import:run   "bring in the rest now": a continuation of that run → { run, phases }
 //   GET  /import/runs/:id/report · /report.csv · /idmap.csv   import:run (the id map download is audited)
 //   GET  /import/runs/:id/conflicts         import:run   ?after=&status=
 //   POST /import/conflicts/:key/resolve     import:run   { take: "rotor" | "crm" }
@@ -28,9 +30,10 @@ import { safeErr } from "../../../referral-lib.mjs";
 import { receiveChunk, receiveMedia, received, KeyMissing, SHA_RE, MAX_CHUNK_BYTES, MAX_MEDIA_BYTES } from "./staging.mjs";
 import { readReport, reportCsv, idMapCsv } from "./report.mjs";
 import {
-  createImportRun, rekey, loadRun, runDetail, uploadAuth, setManifest, startRun, resumeRun, cancelImport, setUserMap,
+  createImportRun, rekey, loadRun, runDetail, runView, uploadAuth, setManifest, startRun, resumeRun, cancelImport, setUserMap,
   listConflicts, resolveConflict, mediaHave, missingChunks,
 } from "./runs.mjs";
+import { restView, createContinuation } from "./continue.mjs";
 
 const ok = (data, extra = {}) => ({ data, ...extra });
 const notDone = () => new ConflictError("The report is ready when the import finishes.");
@@ -46,7 +49,7 @@ async function create(ctx) {
 async function list(ctx) {
   const ix = await readIndex("import-runs", "");
   const rows = ix.rows.slice().sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : a.id < b.id ? 1 : -1)).slice(0, 50);
-  return ok(rows.map((r) => ({ id: r.id, status: r.st, created_at: r.at, as_of: r.asof || null, started_at: r.s || null, finished_at: r.fin || null, summary: r.sum || null })));
+  return ok(rows.map((r) => ({ id: r.id, status: r.st, created_at: r.at, as_of: r.asof || null, started_at: r.s || null, finished_at: r.fin || null, summary: r.sum || null, continues: r.cont || null })));
 }
 
 async function detail(ctx) {
@@ -60,6 +63,19 @@ async function newKey(ctx) {
 async function userMap(ctx) {
   const b = ctx.body || {};
   return ok(await setUserMap(await loadRun(ctx.params.id), b.map, ctx.write()));
+}
+
+// What of the latest finished run's export can be brought in now, and what still waits.
+async function rest() {
+  return ok(await restView());
+}
+
+// "Bring in the rest now": a continuation of the latest finished run (no upload, no key).
+async function continueNow(ctx) {
+  const mode = await ctx.sysMode();
+  if (mode.paused) throw new ConflictError("The CRM is paused. Resume it in Settings, Data first.");
+  const made = await createContinuation({ auto: false }, ctx.write());
+  return ok({ run: runView(made.run), phases: made.phases.map((p) => ({ phase: p.phase, label: p.label, rows: p.rows })) }, { status: made.existed ? 200 : 201 });
 }
 
 async function resume(ctx) { return ok(await resumeRun(await loadRun(ctx.params.id), ctx.write())); }
@@ -168,6 +184,8 @@ const hook = (method, path, handler, more = {}) => ({ method, path, auth: "hook"
 export const importRoutes = [
   own("POST", "/import/runs", create, { secret: true, idempotent: false, maxCalls: 40 }),
   own("GET", "/import/runs", list),
+  own("GET", "/import/rest", rest, { maxCalls: 40 }),
+  own("POST", "/import/continue", continueNow, { mode: "run", idempotent: false, maxCalls: 60 }),
   own("GET", "/import/runs/:id", detail, { maxCalls: 40 }),
   own("POST", "/import/runs/:id/key", newKey, { secret: true, idempotent: false, subject: "required", maxCalls: 40 }),
   own("POST", "/import/runs/:id/user-map", userMap, { subject: "required", maxCalls: 40 }),

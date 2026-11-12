@@ -432,6 +432,8 @@ export async function assertNoPaidInvoice(job) {
   for (const iid of (job.invoice_ids || []).slice(0, 10)) {
     const inv = isId(iid, "invoice") ? await getRecord("invoice", iid) : null;
     if (inv && ["paid", "partially_paid"].includes(inv.data.status)) throw new ConflictError("This job has a paid invoice, so it can't be reopened.");
+    // Money (M5) keeps a part-paid invoice "open": money already taken on it holds the job the same way
+    if (inv && inv.data.status === "open" && (inv.data.paid_cents || 0) - (inv.data.refunded_cents || 0) > 0) throw new ConflictError("This job's invoice has a payment on it, so it can't be reopened. Refund the payment first.");
   }
 }
 

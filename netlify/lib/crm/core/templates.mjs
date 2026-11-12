@@ -175,8 +175,12 @@ export function renderTemplate(template, vars = {}, { company } = {}) {
 // ------------------------------------------------------------ email layout
 
 // Core's plain branded layout: paragraphs in a white card on mist, ink
-// text, links as coral buttons when a line is only a link.
+// text, links as coral buttons when a line is only a link. Comms (M6)
+// replaces it with its own (setEmailLayout: comms/email-layout.mjs).
+let emailLayout = null;
+export function setEmailLayout(fn) { emailLayout = typeof fn === "function" ? fn : null; }
 export function renderEmailHtml(text, { company } = {}) {
+  if (emailLayout) return emailLayout(text, { company });
   const name = esc((company && company.name) || "Barta Window Washing");
   const paras = String(text ?? "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).map((p) => {
     if (/^https:\/\/\S+$/.test(p)) return `<p style="margin:22px 0"><a href="${esc(p)}" style="display:inline-block;padding:13px 24px;border-radius:999px;background:#fb4d3d;color:#ffffff;font-weight:700;text-decoration:none">Open</a></p>`;

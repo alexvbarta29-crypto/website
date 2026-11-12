@@ -29,6 +29,17 @@
 // The finish steps: rebuild every index and relation family of the types
 // written (bulk writes skip index rows), the id map CSV, the report.
 //
+// A continuation (continue.mjs: "bring in the rest") is a run with
+// `continues`: it has no staging of its own. Its state starts from the
+// state of the run it continues: the same staged chunks (read from the run
+// that received them, state.staging_run), the same team map, and every
+// phase that run (or the runs before it) finished marked done with
+// `earlier: <that run>`, so it is never read again and counts as done for
+// the `after` lists of the phases that run now: the ones that waited for a
+// module and are registered today. Everything else is the same run:
+// sources come from today's whole plan, so a later full run finds the same
+// import bases and changes nothing.
+//
 // ctx for map(): { runId, idForRotor, lookup(type, rotorId) → crmId | null
 // (ptr/rotor/{type}/{rotorKey}, following merges for contacts), users:
 // Map<rotorUserId, crmUserId>, settings: { get(name) }, report: { warn(code) },
@@ -45,6 +56,7 @@
 // is (two phases folding one record give the same name). The rank comes
 // from the part before ":".
 
+import { createHash } from "node:crypto";
 import { getRecord, updateRecord, getRaw, putRaw, readPointer, claimPointer, updatePointerList, rebuildIndex, verifyRels, appendEvent, getSetting, listKeys } from "../../../crm-store.mjs";
 import { defineRun, createRun, RUN_MAX_ATTEMPTS } from "../../core/lanes.mjs";
 import { allModules, getType } from "../../core/registry.mjs";
@@ -64,6 +76,21 @@ import { buildReport, buildIdMapPart, IDMAP_BATCH } from "./report.mjs";
 // Tests turn these down to force many small steps.
 export const IMPORT_LIMITS = { minLeftMs: 25000, checkpointRows: 50, checkpointMs: 5000, stepRows: Infinity };
 export const RUN_KIND = "import";
+// A continuation is stepped by a lane run of its own kind: code from before
+// continuations existed doesn't know the kind and leaves the run alone (it
+// would step it as an upload with no staged rows and mark it done with nothing).
+export const RUN_KIND_CONTINUE = "import.continue";
+
+// A staged chunk the state lists that isn't there any more (the export's
+// rows were cleared): the step fails, the phase is never "done with nothing".
+export class StagingGone extends Error {
+  constructor(entity, chunk) { super(`staged chunk ${entity}/${chunk} is gone`); this.name = "StagingGone"; this.code = "staging_gone"; }
+}
+async function needChunk(state, entity, n) {
+  const chunk = await readChunk(stagingRunOf(state), entity, n);
+  if (!chunk || !Array.isArray(chunk.rows)) throw new StagingGone(entity, n);
+  return chunk;
+}
 export const stateKey = (runId) => `imp/${runId}/state`;
 
 // The import's write context: an import (exempt from the parallel-run
@@ -77,7 +104,14 @@ const runCtx = (holder = "import") => ({ by: "import", origin: "import", actor_k
 
 // Every registered phase, with its module.
 export function registeredPhases() {
-  return allModules().flatMap((m) => (m.importPhases || []).map((p) => ({ ...p, module: m.name })));
+  return allModules().flatMap((m) => (m.importPhases || []).map((p) => ({ ...p, module: m.name }))).filter((p) => !hiddenPhases.has(p.name));
+}
+// Tests only: phases to treat as not registered, as before the deploy that
+// ships their module (the registry itself can't forget a module). Pass [] to undo.
+const hiddenPhases = new Set();
+export function __hidePhasesForTests(names = []) {
+  hiddenPhases.clear();
+  for (const n of names) hiddenPhases.add(n);
 }
 
 // The order phases run in: registered ones sorted by `after` (stable:
@@ -106,9 +140,20 @@ export function phasePlan(registered = registeredPhases()) {
 
 const phaseByName = (name) => registeredPhases().find((p) => p.name === name) || null;
 
+// The registered phases as one short value. A finished run keeps the one
+// of its plan (`phases_sig`), so the hourly "bring in the rest" check knows
+// without reading the run's state that nothing was registered since.
+export function phasesSignature(names = registeredPhases().map((p) => p.name)) {
+  return createHash("sha256").update([...new Set(names)].sort().join("\n")).digest("hex").slice(0, 16);
+}
+
 // ------------------------------------------------------------ state
 
-const emptyPhase = () => ({ status: "pending", chunk: 0, row: 0, read: 0, skipped: {}, records: {}, kept_fields: 0, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, warnings: {}, errors: [] });
+// `none`: rows that were read and made nothing, for a reason the report gives (skipped, or mapped to no
+// record, patch or other write but a warning). A row mapped to nothing and no warning isn't one: its phase
+// had nothing to make of it (an invoice with no credit line), keeps it for its finish step (map pin
+// types) or wrote it itself (a message).
+const emptyPhase = () => ({ status: "pending", chunk: 0, row: 0, read: 0, none: 0, skipped: {}, records: {}, kept_fields: 0, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, warnings: {}, errors: [] });
 
 export async function loadState(runId, opts = {}) {
   const got = await getRaw(stateKey(runId), opts);
@@ -119,14 +164,59 @@ async function saveState(state) {
   await putRaw(stateKey(state.run_id), state);
 }
 
+// A phase a run doesn't have to do: finished (or empty) in this run or an earlier one of its chain.
+export const phaseDone = (st) => !!st && (st.status === "done" || st.status === "empty");
+// The run whose imp/{id}/raw/ holds the rows a state reads.
+export const stagingRunOf = (state) => (state && state.staging_run) || (state && state.run_id) || null;
+
 async function initState(ir) {
   const plan = phasePlan();
+  if (ir.continues) {
+    // a continuation: the continued run's rows and team, its finished phases carried as done
+    const prev = await loadState(ir.continues);
+    if (!prev) return null;
+    const state = {
+      v: 1, run_id: ir.id, as_of: ir.as_of || prev.as_of || null, plan, chunks: prev.chunks || {}, rows: prev.rows || {}, phases: {}, users: { ...(prev.users || {}) }, types: [],
+      continues: prev.run_id, staging_run: stagingRunOf(prev), chain: [...(prev.chain || []), prev.run_id].slice(-50),
+      finish: { step: "indexes", i: 0, cursor: 0 }, started_at: nowIso(),
+    };
+    for (const p of plan) {
+      const was = prev.phases && prev.phases[p.name];
+      state.phases[p.name] = phaseDone(was) ? { ...emptyPhase(), status: was.status, earlier: was.earlier || prev.run_id, finished_at: was.finished_at || null } : emptyPhase();
+    }
+    await saveState(state);
+    return state;
+  }
   const chunks = await stagedChunks(ir.id);
   const rows = Object.fromEntries(Object.entries((ir.manifest && ir.manifest.entities) || {}).map(([e, x]) => [e, x.rows]));
   const state = { v: 1, run_id: ir.id, as_of: ir.as_of || null, plan, chunks, rows, phases: {}, users: {}, types: [], finish: { step: "indexes", i: 0, cursor: 0 }, started_at: nowIso() };
   for (const p of plan) state.phases[p.name] = emptyPhase();
   await saveState(state);
   return state;
+}
+
+// What a plan could do after a state: for each phase not done in it, whether
+// it can run now (registered, and everything it comes after is done or can
+// run too) or still waits, and for what. Pure.
+// → [{ name, module, entity, ready, waiting_for }]
+export function restOf(plan, prevState) {
+  const done = new Set(plan.filter((p) => phaseDone(prevState && prevState.phases && prevState.phases[p.name])).map((p) => p.name));
+  const byName = new Map(plan.map((p) => [p.name, p]));
+  const ready = new Set();
+  const out = [];
+  for (const p of plan) {
+    if (done.has(p.name)) continue;
+    let waiting_for = null;
+    if (!p.registered) waiting_for = p.module;
+    else for (const d of p.after || []) {
+      const dep = byName.get(d);
+      if (!dep || !dep.registered) { waiting_for = d; break; }
+      if (!done.has(d) && !ready.has(d)) { waiting_for = (out.find((x) => x.name === d) || {}).waiting_for || d; break; }
+    }
+    if (!waiting_for) ready.add(p.name);
+    out.push({ name: p.name, module: p.module, entity: p.entity, ready: !waiting_for, waiting_for });
+  }
+  return out;
 }
 
 const inc = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
@@ -257,7 +347,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
     // a phase may look at all its rows once before the first one (the team map)
     if (typeof phase.prepare === "function") {
       const all = [];
-      for (const n of chunks) { const c = await readChunk(runId, p.entity, n); for (const row of (c && c.rows) || []) all.push(row); }
+      for (const n of chunks) { const c = await needChunk(state, p.entity, n); for (const row of c.rows) all.push(row); }
       st.prepared = (await phase.prepare(all, mctx)) || null;
     }
     st.status = "running"; st.started_at = nowIso();
@@ -266,8 +356,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
   let rows = 0;
   let lastSave = nowMs();
   for (; st.chunk < chunks.length; st.chunk += 1, st.row = 0) {
-    const chunk = await readChunk(runId, p.entity, chunks[st.chunk]);
-    const list = chunk && Array.isArray(chunk.rows) ? chunk.rows : [];
+    const list = (await needChunk(state, p.entity, chunks[st.chunk])).rows;
     for (; st.row < list.length; st.row += 1) {
       if ((budget && budget.left() < IMPORT_LIMITS.minLeftMs) || startedRows + rows >= IMPORT_LIMITS.stepRows) return { finished: false, rows };
       const raw = list[st.row];
@@ -277,16 +366,18 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
           if (isStorageError(e)) throw e;
           inc(st.skipped, "invalid");
           if (st.errors.length < 20) st.errors.push({ chunk: chunks[st.chunk], row: st.row, code: "invalid", field: e && e.field ? String(e.field).slice(0, 60) : null });
-          st.read += 1; rows += 1;
+          st.read += 1; rows += 1; st.none = (st.none || 0) + 1;
           continue;
         }
         const out = (await phase.map(row, mctx)) || {};
         const rid = rowIdOf(raw);
         await applyOutput(out, { runId, ph: st, ctx, source: rowSource(state.plan, p, rid), entity: p.entity, state, rank: Number.isInteger(phase.rank) ? phase.rank : undefined });
+        if (!["records", "pointers", "patches", "stats", "suppressions", "mergeCandidates"].some((k) => Array.isArray(out[k]) && out[k].length) && Array.isArray(out.warnings) && out.warnings.length) st.none = (st.none || 0) + 1;
       } catch (e) {
         if (isStorageError(e)) { e.rowsDone = rows; throw e; }        // the cursor still points at this row
         const code = rowCode(e);
         inc(st.skipped, code);
+        st.none = (st.none || 0) + 1;
         if (st.errors.length < 20) st.errors.push({ chunk: chunks[st.chunk], row: st.row, code, field: e && e.field ? String(e.field).slice(0, 60) : null });
         if (code === "error") console.error(`crm:import: a ${p.name} row failed (${safeErr(e)})`);
       }
@@ -365,8 +456,21 @@ async function importStep(run, rctx) {
   if (ir.status === "queued") {
     ir = (await updateRecord("import_run", runId, (r) => (r.status !== "queued" ? null : { ...r, status: "running", started_at: r.started_at || nowIso() }), runCtx(holder))).data;
   }
+  if (ir.status === "done" && !ir.noted_at) {
+    // marked done, but the function died before the after-run steps (the owners' note): do them now
+    const st = await loadState(runId);
+    if (st) await afterDone(ir, st, holder);
+  }
   if (ir.status !== "running") return { done: true, result: { status: ir.status } };
-  const state = (await loadState(runId)) || (await initState(ir));
+  let state = await loadState(runId);
+  // a continuation's state without its staging run was made by code that doesn't know continuations: start it over
+  if (state && ir.continues && !state.staging_run) state = null;
+  state = state || (await initState(ir));
+  if (!state) {
+    // a continuation whose continued run has no state any more: nothing to go on from
+    await stopped(ir, "no_continued_state", holder);
+    return { failed: "no_continued_state" };
+  }
   const ctx = importCtx(holder, rctx.mode);
   const budget = rctx.budget;
   const total = state.plan.length + 1;
@@ -390,19 +494,61 @@ async function importStep(run, rctx) {
   } catch (e) {
     rows += e.rowsDone || 0;
     try { await saveState(state); } catch { /* the last saved cursor stands */ }
+    if (e instanceof StagingGone) {
+      // the export's rows were cleared under the run: trying again can't help
+      console.error(`crm:import: ${safeErr(e)}; the run stops`);
+      await queueReindex(state.types, holder).catch(() => {});
+      await stopped(ir, "staging_gone", holder);
+      return { failed: "staging_gone" };
+    }
     if (isStorageError(e) && rows > 0) {
       console.error(`crm:import: storage stopped a step after ${rows} rows; the next pass goes on (${safeErr(e)})`);
       return { progress: progress(), checkpoint: { stopped: true } };
     }
-    // the lane gives up after this try: the records written so far still get their lists
-    if ((run.attempts || 0) + 1 >= RUN_MAX_ATTEMPTS) await queueReindex(state.types, holder).catch(() => {});
+    // the lane gives up after this try: the records written so far still get their lists, the run says it stopped
+    if ((run.attempts || 0) + 1 >= RUN_MAX_ATTEMPTS) {
+      await queueReindex(state.types, holder).catch(() => {});
+      await stopped(ir, keySafe((e && (e.code || e.name)) || "error", 40), holder).catch(() => {});
+    }
     throw e;
   }
   const summary = state.report || {};
-  await updateRecord("import_run", runId, (r) => (r.status === "cancelled" ? null : { ...r, status: "done", finished_at: nowIso(), summary, conflicts: { open: summary.conflicts_open || 0, resolved: (r.conflicts && r.conflicts.resolved) || 0 } }), runCtx(holder));
+  // the phases that still wait (the hourly "bring in the rest" check reads them from the record)
+  const waiting = state.plan.filter((p) => !phaseDone(state.phases[p.name])).map((p) => p.name).slice(0, 200);
+  const phases_sig = phasesSignature(state.plan.filter((p) => p.registered).map((p) => p.name));
+  const done = await updateRecord("import_run", runId, (r) => (r.status === "cancelled" ? null : { ...r, status: "done", finished_at: nowIso(), summary, waiting, phases_sig, conflicts: { open: summary.conflicts_open || 0, resolved: (r.conflicts && r.conflicts.resolved) || 0 } }), runCtx(holder));
+  if (done.data.status === "done") await afterDone(done.data, state, holder);
   return { done: true, progress: { done: total, total }, result: summary };
 }
 defineRun(RUN_KIND, { lane: "bulk", step: importStep, label: "Import from Rotor" });
+defineRun(RUN_KIND_CONTINUE, { lane: "bulk", step: importStep, label: "The rest of a Rotor export" });
+
+// A run that stops for good (the lane gave up, its staged rows are gone):
+// the import run says so (status "failed", `stopped: { code, at }`, a
+// finished_at, so its rows are cleaned up like any run's) instead of
+// "running" for ever, and the hooks tell the owners (continue.mjs).
+// Resume puts it back to running.
+const stopHooks = [];
+export function onRunStopped(fn) { if (!stopHooks.includes(fn)) stopHooks.push(fn); }
+export async function stopped(ir, code, holder = "import") {
+  const r = await updateRecord("import_run", ir.id, (x) => (x.status === "queued" || x.status === "running" ? { ...x, status: "failed", finished_at: nowIso(), stopped: { code: String(code || "error").slice(0, 40), at: nowIso() } } : null), runCtx(holder));
+  if (!r.changed) return r.data;
+  for (const fn of stopHooks) await fn(r.data, code).catch((e) => console.error(`crm:import: an after-stop step failed (${safeErr(e)})`));
+  return r.data;
+}
+
+// Called when a run is marked done: fn(importRun, state) (continue.mjs
+// tells the owners and keeps the staging it used). The run is stamped
+// `noted_at` afterwards; a step that finds a done run without it (the
+// function died in between) calls them again, so a note may come twice
+// but is never lost.
+const finishHooks = [];
+export function onRunDone(fn) { if (!finishHooks.includes(fn)) finishHooks.push(fn); }
+async function afterDone(ir, state, holder) {
+  if (ir.noted_at) return;
+  for (const fn of finishHooks) await fn(ir, state).catch((e) => console.error(`crm:import: an after-run step failed (${safeErr(e)})`));
+  await updateRecord("import_run", ir.id, (r) => (r.noted_at ? null : { ...r, noted_at: nowIso() }), runCtx(holder)).catch(() => null);
+}
 
 // A bulk "reindex" run for the indexes of the types a run wrote (a run
 // that stops before its finish steps: cancelled, or given up).
@@ -414,7 +560,7 @@ export async function queueReindex(types, holder = "import") {
 
 // Queues the lane run for an import run (attempt n gives a fresh lane run on resume).
 export function startLaneRun(ir, ctx, attempt = 0) {
-  return createRun(RUN_KIND, { import_run_id: ir.id }, ctx, { id: deriveId("run", ir.id, "import.lane", attempt) });
+  return createRun(ir.continues ? RUN_KIND_CONTINUE : RUN_KIND, { import_run_id: ir.id }, ctx, { id: deriveId("run", ir.id, "import.lane", attempt) });
 }
 
 // For the Import screen: the plan with each phase's state (counts only).
@@ -425,7 +571,7 @@ export function phaseView(state) {
     const rows = (state.chunks[p.entity] || []).length;
     const sum = (k) => Object.values(st.records || {}).reduce((s, r) => s + (r[k] || 0), 0);
     return {
-      name: p.name, label: phaseLabel(p.name), module: p.module, entity: p.entity, status: st.status, waiting_for: st.waiting_for || null, waiting_label: MODULE_LABELS[st.waiting_for] || MODULE_LABELS[String(st.waiting_for || "").split(".")[0]] || null,
+      name: p.name, label: phaseLabel(p.name), module: p.module, entity: p.entity, status: st.status, earlier: st.earlier || null, waiting_for: st.waiting_for || null, waiting_label: MODULE_LABELS[st.waiting_for] || MODULE_LABELS[String(st.waiting_for || "").split(".")[0]] || null,
       chunks: rows, read: st.read, created: sum("created"), updated: sum("updated"), unchanged: sum("unchanged"), linked: sum("linked") + sum("relinked"),
       conflicted: sum("conflicted"), skipped: Object.values(st.skipped || {}).reduce((s, n) => s + n, 0), started_at: st.started_at || null, finished_at: st.finished_at || null,
     };

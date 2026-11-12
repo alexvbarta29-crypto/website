@@ -4,7 +4,9 @@
 // everything" (every part of the latest snapshot), a CSV export of one kind
 // of record, rebuilding the lists, and pausing everything (owners, typed
 // PAUSE / RESUME: no text, email, charge or automation while paused; only
-// the switch that applies is offered).
+// the switch that applies is offered). Owners also choose here whether the
+// rest of a Rotor export is brought in by itself as each part of the CRM
+// goes live (the import module's setting, cfg/import; on by default).
 
 import { html, toast, confirmSheet, sheet, attrs } from "../../core/ui.js";
 import { ago, dateShort, plural, dateTime } from "../../core/format.js";
@@ -37,11 +39,12 @@ async function waitRun(ctx, id, onTick) {
 export default {
   title: "Data",
   async load(params, ctx) {
-    const [health, backups] = await Promise.all([
+    const [health, backups, imp] = await Promise.all([
       ctx.api("/admin/health", { cache: false }).then((r) => r.data),
       ctx.can("export:all") ? ctx.api("/admin/backups", { cache: false }).then((r) => r.data).catch(() => []) : [],
+      ctx.can("settings:owner") ? ctx.api("/settings/import", { cache: false }).then((r) => ({ on: (r.data.data || {}).auto_continue !== false, etag: r.data.etag || "new" })).catch(() => null) : null,
     ]);
-    return { health, backups, mode: (health && health.mode) || { paused: false } };
+    return { health, backups, imp, mode: (health && health.mode) || { paused: false } };
   },
   render(s, ctx) {
     const h = s.health || {};
@@ -71,7 +74,9 @@ export default {
       ${owner ? html`<div class="section-h">Owner switches</div>
         <div class="card"><p class="small">Pausing stops every text, email, charge and automation until you resume. A restore pauses on its own.</p>
           <div class="btn-row">${m.paused ? html`<button type="button" class="btn dark" data-resume>Resume</button>` : html`<button type="button" class="btn danger" data-pause>Pause everything</button>`}</div>
-          <div class="btn-row"><button type="button" class="btn" data-reindex>Rebuild the lists</button></div></div>` : ""}
+          <div class="btn-row"><button type="button" class="btn" data-reindex>Rebuild the lists</button></div></div>
+        ${s.imp ? html`<div class="card"><label class="check"><input ${attrs({ type: "checkbox", "data-auto-import": "", checked: s.imp.on })}><span>Bring in the rest of the Rotor export by itself as each part of the CRM goes live</span></label>
+          <p class="small">When a part goes live (invoices, messages, payroll), its share of the last import comes in from the rows already here: no new upload. You get a note when it starts and when it's done. Off: use the button on the Import screen.</p></div>` : ""}` : ""}
     </div>`;
   },
   events: {
@@ -114,6 +119,16 @@ export default {
       const w = await typed("RESUME", "Resume", "Texts, emails and automations start again.");
       if (!w) return;
       try { await ctx.api("/admin/resume", { method: "POST", body: { confirm: w } }); toast("Resumed"); ctx.refresh(); } catch (err) { toast(err.message, { bad: true }); }
+    },
+    "change [data-auto-import]": async (e, el, ctx) => {
+      const on = el.checked;
+      el.disabled = true;
+      try {
+        const r = await ctx.api("/settings/import", { method: "PUT", ifMatch: ctx.state.imp.etag, body: { auto_continue: on } });
+        ctx.state.imp = { on, etag: r.data.etag || ctx.state.imp.etag };
+        toast(on ? "On: the rest comes in by itself" : "Off");
+      } catch (err) { el.checked = !on; toast(err.message, { bad: true }); }
+      el.disabled = false;
     },
     "click [data-reindex]": async (e, el, ctx) => {
       if (!(await confirmSheet("Every list is rebuilt from the records in the background. It's safe at any time.", { title: "Rebuild the lists?", yes: "Rebuild" }))) return;

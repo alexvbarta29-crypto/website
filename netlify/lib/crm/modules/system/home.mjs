@@ -19,7 +19,8 @@
 // A technician gets the same answer with nothing in it (their own Today is
 // the tech app's). Counts come from index blobs, never from listing
 // records, and each index is read once for the whole request (crm-store's
-// ixMemo), so Home stays inside the request budget (§2.2: 25 calls, 8 s).
+// ixMemo). Every module adds one count, so Home has its own call budget
+// (HOME_MAX_CALLS, above the 25 of §2.2; still 8 s).
 // The snapshot is opened once per warm instance.
 
 import { withStoreScope, readIndex } from "../../../crm-store.mjs";
@@ -35,6 +36,11 @@ import { safeErr } from "../../../referral-lib.mjs";
 import { loadDashboard } from "../../../office-data.mjs";
 import { visitRows, toBookRows } from "../work/office-schedule.mjs";
 import { rotorNumbers, crmNumbers, homeKpis, weekStart } from "./home-kpis.mjs";
+
+// Home reads one index per module that shows a count, plus the session, the
+// mode and the month's visits: 23 with Money and Messages on Rotor's numbers,
+// a few more once the CRM's own numbers take over.
+export const HOME_MAX_CALLS = 40;
 
 // ------------------------------------------------------------ the Rotor snapshot
 
@@ -191,5 +197,5 @@ async function home(ctx) {
 }
 
 export const homeRoutes = [
-  { method: "GET", path: "/home", auth: "session", perm: "account:own", subject: "none", mode: "inline", handler: home },
+  { method: "GET", path: "/home", auth: "session", perm: "account:own", subject: "none", mode: "inline", maxCalls: HOME_MAX_CALLS, handler: home },
 ];

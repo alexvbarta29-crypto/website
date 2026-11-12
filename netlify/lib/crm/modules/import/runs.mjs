@@ -29,6 +29,7 @@ import { startLaneRun, loadState, phaseView, queueReindex } from "./runner.mjs";
 import { conflictsPrefix } from "./report.mjs";
 import { conflictKey, ibKey, setPath } from "./ownership.mjs";
 import { normalizeMember, proposeMap, userRows, memberPointers, NEW_USER } from "./users.mjs";
+import { restView, clearStoppedAlert, CLEARED_MESSAGE } from "./continue.mjs";
 
 export const UPLOAD_KEY_RE = /^bimp_[0-9A-Za-z]{32}$/;
 export const KEY_TTL_MS = 24 * 3600 * 1000;
@@ -53,6 +54,10 @@ export function runView(ir) {
     manifest: m ? { as_of: m.as_of, entities: Object.fromEntries(Object.entries(m.entities).map(([e, x]) => [e, { rows: x.rows, chunks: x.chunks.length }])), media: m.media || { count: 0, bytes: 0 } } : null,
     upload: ir.upload ? { last4: ir.upload.last4, expires_at: ir.upload.expires_at, expired: !(Date.parse(ir.upload.expires_at) > nowMs()) } : null,
     user_map: ir.user_map || {}, conflicts: ir.conflicts || { open: 0, resolved: 0 }, summary: ir.summary || null, lane_run_id: ir.lane_run_id || null,
+    // a continuation ("bring in the rest"): the finished run it goes on from; it has no upload of its own
+    continues: ir.continues || null, auto: ir.auto === true,
+    // a run that stopped for good (the lane gave up; its rows were cleared): why
+    stopped: ir.status === "failed" && ir.stopped ? { code: ir.stopped.code || "error", at: ir.stopped.at || null } : null,
   };
 }
 
@@ -167,10 +172,14 @@ export async function startRun(ir, ctx) {
 // before it finished: a fresh lane run picks up at the saved cursors.
 export async function resumeRun(ir, ctx) {
   if (!ACTIVE.has(ir.status) && ir.status !== "failed") throw new ConflictError("Only a stopped import can be resumed.");
+  if (ir.stopped && ir.stopped.code === "staging_gone") throw new ConflictError(CLEARED_MESSAGE);
   const lane = ir.lane_run_id ? await getRun(ir.lane_run_id).catch(() => null) : null;
-  if (lane && (lane.status === "queued" || lane.status === "running")) return runView(ir);
+  if (ACTIVE.has(ir.status) && lane && (lane.status === "queued" || lane.status === "running")) return runView(ir);
+  const ix = await readIndex("import-runs", "");
+  if (ix.rows.some((r) => r.id !== ir.id && ACTIVE.has(r.st))) throw new ConflictError("Another import is running. Wait for it to finish first.");
   const attempt = (ir.attempt || 0) + 1;
-  const r = await updateRecord("import_run", ir.id, (x) => ({ ...x, status: "running", attempt }), ctx);
+  const r = await updateRecord("import_run", ir.id, (x) => { const n = { ...x, status: "running", attempt }; delete n.stopped; delete n.finished_at; return n; }, ctx);
+  await clearStoppedAlert(ir.id);
   const run = await startLaneRun(r.data, ctx, attempt);
   const r2 = await updateRecord("import_run", ir.id, (x) => ({ ...x, lane_run_id: run.id }), ctx);
   return runView(r2.data);
@@ -178,8 +187,11 @@ export async function resumeRun(ir, ctx) {
 
 export async function cancelImport(ir, ctx) {
   if (["done", "cancelled"].includes(ir.status)) return runView(ir);
-  const r = await updateRecord("import_run", ir.id, (x) => (["done", "cancelled"].includes(x.status) ? null : { ...x, status: "cancelled", finished_at: nowIso() }), ctx);
+  const r = await updateRecord("import_run", ir.id, (x) => (["done", "cancelled"].includes(x.status) ? null : { ...x, status: "cancelled", finished_at: x.finished_at || nowIso() }), ctx);
   if (ir.lane_run_id) await cancelLaneRun(ir.lane_run_id, ctx).catch(() => null);
+  await clearStoppedAlert(ir.id);
+  // a continuation someone cancelled: the run it continued is not continued again by itself (the button still does)
+  if (ir.continues) await updateRecord("import_run", ir.continues, (x) => (x.auto_off_at ? null : { ...x, auto_off_at: nowIso() }), ctx).catch(() => null);
   // what the run wrote so far (bulk: no index rows) gets its lists back in the background
   const state = await loadState(ir.id).catch(() => null);
   if (state && state.types && state.types.length) await queueReindex(state.types, ctx.requestId).catch(() => null);
@@ -306,23 +318,27 @@ export async function mediaHave(hashes) {
   return out.sort();
 }
 
-// The run's screen in one answer: the run, upload status, phases, team map, lane.
+// The run's screen in one answer: the run, upload status, phases, team map,
+// lane; for the latest finished run also `rest` (what of its export can be
+// brought in now, what still waits and for which part: continue.mjs).
 export async function runDetail(ir) {
-  const [state, got, lane] = await Promise.all([
+  const [state, got, lane, rest] = await Promise.all([
     loadState(ir.id),
-    received(ir.id),
+    ir.continues ? { chunks: [], media: [] } : received(ir.id),
     ir.lane_run_id ? getRun(ir.lane_run_id).catch(() => null) : null,
+    ir.status === "done" ? restView().catch(() => null) : null,
   ]);
   const expected = manifestChunkNames(ir.manifest);
   const have = new Set(got.chunks);
-  const team = await memberMap(ir, state).catch(() => null);
+  const team = ir.continues ? null : await memberMap(ir, state).catch(() => null);
   return {
     run: runView(ir),
-    upload: { chunks: got.chunks.length, expected: expected.length, missing: expected.filter((n) => !have.has(n)).slice(0, 20), missing_count: expected.filter((n) => !have.has(n)).length, media: got.media.length, media_expected: (ir.manifest && ir.manifest.media && ir.manifest.media.count) || 0 },
+    upload: ir.continues ? null : { chunks: got.chunks.length, expected: expected.length, missing: expected.filter((n) => !have.has(n)).slice(0, 20), missing_count: expected.filter((n) => !have.has(n)).length, media: got.media.length, media_expected: (ir.manifest && ir.manifest.media && ir.manifest.media.count) || 0 },
     phases: phaseView(state),
     finish: state ? state.finish.step : null,
     lane: lane ? { status: lane.status, attempts: lane.attempts || 0, retry_at: lane.retry_at || null, error: lane.error || null, progress: lane.progress || null } : null,
     team,
+    rest: rest && rest.run && rest.run.id === ir.id ? rest : null,
   };
 }
 

@@ -29,7 +29,8 @@ fixtureModule({
   },
 });
 fixtureModule({ name: "flaky", onMerge: async () => { seen.flaky += 1; if (seen.flakyFail) { seen.flakyFail = false; throw new BlobsTransientError("storage blinked"); } } });
-fixtureModule({ name: "moneyfix", statsParts: { money: { defaults: { lifetime_cents: 0, open_balance_cents: 0, stripe: { customer_ids: [] } }, row: () => ({}) } } });
+// (a stand-in for the money stats part until Money, M5, registers the real one)
+if (!(await import("../../../netlify/lib/crm/core/registry.mjs")).statsPart("money")) fixtureModule({ name: "moneyfix", statsParts: { money: { defaults: { lifetime_cents: 0, open_balance_cents: 0, stripe: { customer_ids: [] } }, row: () => ({}) } } });
 
 async function runUntilDone(t, runId, max = 12) {
   for (let i = 0; i < max; i++) {

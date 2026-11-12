@@ -3,8 +3,8 @@
 // for the fields a conflict can be about, and how a value from either side
 // reads. No data here, only words (design §2.3).
 
-import { html } from "../../core/ui.js";
-import { dateYear, ago } from "../../core/format.js";
+import { html, toast, attrs } from "../../core/ui.js";
+import { dateYear, dateShort, ago } from "../../core/format.js";
 
 let styled = false;
 // The module's own stylesheet, once (CSP: style-src 'self').
@@ -38,6 +38,69 @@ export function phasePill(p) {
 }
 
 export const exportLabel = (asOf) => (asOf ? `Export of ${dateYear(asOf)}` : "Rotor export");
+
+// Steps that wait or are ready, per part of the CRM: each entity's rows
+// counted once (two steps may read the same file).
+// list: [{ label, module, module_label, entity, rows }] → [{ label, rows, steps: [words] }]
+export function byPart(list) {
+  const groups = new Map();
+  for (const w of list || []) {
+    if (!w.rows) continue;
+    const k = w.module_label || w.module;
+    const g = groups.get(k) || { label: k, entities: new Map(), steps: [] };
+    g.entities.set(w.entity, w.rows);
+    g.steps.push(String(w.label || "").toLowerCase());
+    groups.set(k, g);
+  }
+  return [...groups.values()].map((g) => ({ label: g.label, rows: [...g.entities.values()].reduce((a, b) => a + b, 0), steps: g.steps }));
+}
+const partRows = (parts) => html`<dl class="kv">${parts.map((w) => html`<dt>${w.label}</dt><dd>${n(w.rows)} ${w.rows === 1 ? "row" : "rows"}<span class="im-steps">${w.steps.join(", ")}</span></dd>`)}</dl>`;
+
+// "The rest of this export" (the latest finished import): what can be
+// brought in now (a part of the CRM went live since), what still waits and
+// for which part, and whether the CRM brings it in by itself. rest: GET
+// /import/rest. Nothing when the whole export is in.
+export function restCard(rest) {
+  if (!rest || !rest.run) return "";
+  const ready = byPart(rest.ready), waiting = byPart(rest.waiting);
+  if (!ready.length && !waiting.length) return "";
+  // the rows are gone: nothing can come in from this export any more, whatever is live
+  if (rest.staging === "cleared") {
+    return html`<section class="card" data-rest>
+      <h2>The rest of this export</h2>
+      <p class="warn-box">This export's rows were cleared (they are kept 30 days after their last use). Start a new import to bring in the rest.</p>
+      <div class="section-h">Not brought in</div>${partRows(byPart([...(rest.ready || []), ...(rest.waiting || [])]))}
+    </section>`;
+  }
+  // a newer import was started since (and isn't what a continuation would go on from): this export is the older one
+  if (rest.blocked) {
+    return html`<section class="card" data-rest>
+      <h2>The rest of this export</h2>
+      <p class="warn-box">A newer import was started after this one and didn't finish. To bring in the rest, start a new import: this export's values would be older.</p>
+      <div class="section-h">Not brought in</div>${partRows(byPart([...(rest.ready || []), ...(rest.waiting || [])]))}
+    </section>`;
+  }
+  return html`<section class="card" data-rest>
+    <h2>The rest of this export</h2>
+    ${ready.length ? html`<div class="section-h">Ready to bring in</div>${partRows(ready)}
+      ${rest.active
+        ? html`<p class="small muted im-gap">An import is running. <a ${attrs({ href: "#/import/" + rest.active })}>See it</a></p>`
+        : html`<p class="small muted im-gap">${rest.auto ? "The CRM brings this in by itself within the hour. No upload, no key." : "No upload, no key: it uses the rows already here."}</p>
+          <div class="btn-row"><button type="button" class="btn primary" data-continue>Bring in the rest now</button></div>`}` : ""}
+    ${waiting.length ? html`<div class="section-h">Waiting for a part that isn't live yet</div>${partRows(waiting)}
+      <p class="small muted im-gap">${rest.auto ? "Each comes in by itself when its part goes live" : "Bringing it in by itself is off (Settings, Data): use the button here when a part goes live"}${rest.keep_until ? `, as long as this export's rows are kept: until ${dateShort(rest.keep_until)}` : ""}. After that, a new import brings it in.</p>` : ""}
+  </section>`;
+}
+
+// "Bring in the rest now": a continuation of the latest finished import, then its screen.
+export async function bringInRest(el, ctx) {
+  el.disabled = true;
+  try {
+    const r = await ctx.api("/import/continue", { method: "POST", body: {} });
+    toast("Started. It runs in the background.");
+    ctx.go(`/import/${r.data.run.id}`);
+  } catch (err) { el.disabled = false; toast(err.message, { bad: true }); }
+}
 export const whenLabel = (iso) => (iso ? ago(iso) : "");
 export const n = (x) => Number(x || 0).toLocaleString("en-US");
 

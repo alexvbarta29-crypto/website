@@ -8,7 +8,10 @@ field ownership (a field someone changed in the CRM is never silently
 overwritten), identity resolution (a lead that Rotor converts stays one
 contact), conflicts the owner settles, a reconciliation report and an id
 map. Imports can be repeated as often as needed: weekly during the
-parallel run, daily before the switch-over, a last delta at cutover.
+parallel run, daily before the switch-over, a last delta at cutover. What
+an export holds for a part of the CRM that isn't built yet waits on the
+site and comes in by itself when that part goes live, without a new
+upload ("Bringing in the rest" below).
 
 Code: `netlify/lib/crm/modules/import/` (server), `crm-app/modules/import/`
 (screens), `build/crm_import_pack.mjs`, `build/crm_import_upload.mjs`.
@@ -102,6 +105,16 @@ files (media only go up with the script).
   last import: the value at the last import, the CRM's and Rotor's, and
   "Keep the CRM's" or "Take Rotor's". Everything else on the record has
   already taken Rotor's new values.
+- **The rest of this export** (on the list and on the latest finished
+  import): what of that export can be brought in now because a part of
+  the CRM went live since ("Ready to bring in", rows per part, **Bring in
+  the rest now**), what still waits and for which part, and until when the
+  export's rows are kept. An import that brings in the rest says which
+  import it continues, lists only its own steps, and has no upload and no
+  team map. If the rows are gone it says so: "This export's rows were
+  cleared. Start a new import to bring in the rest."
+- **Settings, Data** (owners): "Bring in the rest of the Rotor export by
+  itself as each part of the CRM goes live" (on unless turned off).
 
 ## Field ownership (§10.7)
 
@@ -235,6 +248,129 @@ Finish steps: rebuild the indexes and verify the relation families of the
 types written, write the id map in parts, write the report, mark the run
 done.
 
+## Bringing in the rest (continuations)
+
+A run leaves the phases of modules that aren't built yet **waiting**, and
+its staged rows stay. When such a module ships, nobody uploads anything
+again: a **continuation** is a new import run that reuses the staged rows
+of the latest finished run and runs only what is still open
+(`continue.mjs`).
+
+- **What it is.** An `import_run` with `continues` (the latest finished
+  run: the first upload, or the continuation before it), `staging_run`
+  (the run whose `imp/{id}/raw/` holds the rows; a continuation has no
+  upload, no key, no manifest of its own), the same `as_of`, and `auto`
+  when the hourly check started it. Its id is derived from the run it
+  continues, so two callers at the same moment make one run.
+- **What it runs.** Today's whole plan (`phasePlan()`), with every phase
+  the chain already finished marked done (`earlier: <run>`): those are
+  never read again, and they count as done for the `after` lists. So it
+  runs exactly the phases that waited and are registered now, plus the
+  phases that come after them; what still isn't registered keeps waiting
+  for the next continuation. The state starts from the continued run's
+  (`imp/{id}/state`): the same chunk list, row counts and team map
+  (`ctx.users`). Everything else is an ordinary run: pointers
+  (`ctx.lookup`) and import bases are the ones the earlier runs made, so a
+  later phase can patch or link records an earlier run created (an
+  invoice finds its contact and job and adds itself to the job; a message
+  finds its contact); writes, field ownership, conflicts
+  (`imp/{continuation}/conflicts/`), checkpoints, Resume and Cancel work
+  the same; one import at a time still holds (no new upload starts while
+  it runs, and it doesn't start while another run does).
+- **Sources stay the same.** A row's source comes from the whole plan
+  (the first phase of an entity owns `<entity>:<id>`, a later one adds
+  `~<phase>`), so a continuation and a later full run give a phase the
+  same source and the same import base: a fresh full import after any
+  number of continuations finds everything as it is and writes nothing.
+  A phase added later for an entity another phase already reads must come
+  after it (name it in `after`); `continue.test.mjs` pins the owner of
+  every entity already imported.
+- **The report** of a continuation counts what that run did
+  (`summary.phases_run`), names the run it continues (`continues`) and
+  carries the chain (`chain.runs`, `chain.totals`: every run since the
+  upload, summed). Phases done earlier are listed with `earlier`. Rotor's
+  money and the integrity counts come from the staged rows, which are the
+  same rows: they are taken from the continued run's report, so nothing
+  staged is read twice.
+- **Never an older export.** The base is the latest finished run, and it
+  is checked by the hourly check and by the button alike: when any import
+  that isn't of the same upload was started after that upload's import
+  (finished, cancelled or stopped: it may have brought newer values in
+  before it ended), or names a later export date, nothing more of the older
+  export is brought in ("A newer import was started after that export's
+  ..."; the card says so and offers no button). A new import brings the
+  rest in.
+- **By itself.** The sweep `import.continue` (bulk lane, hourly) starts a
+  continuation when the setting is on, the CRM isn't paused, no import is
+  queued or running, no new upload is under way (an uploading run whose
+  newest key still works), the base isn't an older export, the latest
+  finished run has open phases that can run now with rows staged for them,
+  and those rows are still there. If the setting can't be read it starts
+  nothing that hour: "on" is never assumed. It is cheap when there is
+  nothing to do: the runs' index, the setting and the latest run's record
+  (four reads). A finished run keeps `waiting` and `phases_sig` (the
+  registered phases of its plan), and the check stamps `checked_sig` on it
+  once it has looked at its state and found nothing to bring in for the
+  phases registered today. It tells the owners when it starts and when it
+  is done, in records made ("Timesheets and visit timers from your Rotor
+  export of Nov 10 are in: 85 timesheets, 197 timers."; rows that made
+  nothing, skipped or mapped to nothing but a warning, are mentioned only
+  when there are some): counts only, in the
+  app, push by each owner's choice (a note may come twice after a crash,
+  never not at all: the run is stamped `noted_at` once it went out). A
+  continuation an owner cancelled, or one that stopped, is not started
+  again by itself (`auto_off_at` on the run it continued; the button still
+  works). "Import conflicts to settle" (Home) counts the latest finished
+  import's conflicts and those of the imports it continues.
+- **On demand.** `POST /import/continue` ("Bring in the rest now") does
+  the same, whatever the setting says. It answers 409 with a plain message
+  when there is nothing to go on from: "Nothing new to bring in yet. The
+  rest of the export waits for parts of the CRM that aren't built.",
+  "That export's rows were cleared. Start a new import.", "A newer import
+  was started after that export's ...", "An import is already running.
+  Wait for it to finish first.", or that the CRM is paused.
+- **A run that stops for good** (any import, not only a continuation):
+  when the lane gives up after its 8 tries the import run is marked
+  `failed` with `stopped: { code, at }` and a `finished_at` (it no longer
+  says "running" for ever, no longer blocks new imports, and its staged
+  rows are cleaned up like any run's); the owners get "Rotor import
+  stopped", Settings, Data shows an alert (`import:{id}`) until it is
+  resumed, cancelled or done, and the screen offers Resume. The hourly
+  check and the nightly clean-up also catch a run whose lane run ended
+  failed or cancelled without the run being told, and queue a lane run for
+  one that never got one (after 10 minutes).
+- **Staged rows that are gone.** A chunk the run's state lists that reads
+  as missing FAILS the run at once (`stopped.code: "staging_gone"`, "that
+  export's rows were cleared", no Resume): a phase is never recorded done
+  with nothing read, so the next import still brings it in.
+- **How long the rows are kept.** 30 days from their last use: making and
+  finishing a continuation stamps `staging_used_at` on the run that holds
+  them. `import.staging_gc` leaves rows a queued or running continuation
+  reads (for at most 30 days from when it was made), stamps the run
+  `staging_cleared_at` BEFORE it deletes, and re-reads the runs index
+  before each run's deletes; a continuation stamps its use on the same
+  record before it is made and refuses when it finds the cleared stamp,
+  so the two can't cross. What a continuation's phase keeps under the
+  continuation's own `imp/{id}/raw/` (the messages step's summaries) is
+  deleted with the rows it read. A continuation needs every staged chunk
+  of the phases it would run; one missing chunk is "cleared".
+- **Older code.** A continuation is stepped by a lane run of its own kind
+  (`import.continue`): code from before this feature (a rollback, an old
+  instance still warm after the deploy) doesn't know the kind and leaves
+  it alone; it would have stepped it as an upload with no rows and marked
+  it done with nothing. Should older code step one anyway (Resume during a
+  rollback), this code never takes it as a base: a "done" continuation
+  without `phases_sig` is retired (cancelled, `old_version`) and the run
+  it continued is the base again; a state older code began (no
+  `staging_run`) is started over.
+- **For module authors.** A phase that waits needs nothing special: when
+  its module registers it, the next hourly check brings its rows in. Don't
+  switch a part of a mapper's output on whether another module exists (a
+  finished phase is not run again by a continuation): put that part in a
+  phase of its own that names the other module's phase in `after`. Give a
+  record every value it should have (a default taken from the clock is
+  another value on every run: the lead's deal names its `opened_at`).
+
 ## Phases this module owns (§10.2 rows 1-3)
 
 | Phase | Entity | What |
@@ -245,8 +381,10 @@ done.
 
 Row 2 (roles) is the role mapping; row 3's time off waits for Scheduling
 (`work.time_off`) and crew ids stay on the visits Scheduling imports.
-Contacts' phases (rows 6-12, 36) are in docs/CRM-CONTACTS.md; M6's
-messages phase lists `contacts.suppressions` in its `after`.
+Contacts' phases (rows 6-12, 36) are in docs/CRM-CONTACTS.md. Messages,
+campaigns, message templates and pin types (rows 16, 32, 33, 35) are in
+docs/CRM-COMMS.md with the measured cost of the full message import; they
+run after `contacts.suppressions`.
 
 ## Endpoints
 
@@ -263,6 +401,8 @@ messages phase lists `contacts.suppressions` in its `after`.
 | `POST /import/runs/:id/user-map` | `import:run` | `{ map: { rotorUserId: crmUserId \| "new" \| null } }` (null: back to the proposal); only while uploading |
 | `POST /import/runs/:id/start` | key or owner | every chunk the manifest lists must be there |
 | `POST /import/runs/:id/resume` · `/cancel` | `import:run` | |
+| `GET /import/rest` | `import:run` | the latest finished run: `{ run, ready, waiting, staging: "ok" \| "cleared", keep_until, active, auto }` (`ready` / `waiting`: `{ phase, label, module_label, entity, rows }`) |
+| `POST /import/continue` | `import:run` | "bring in the rest now": a continuation of the latest finished run → `{ run, phases }` (201; 409 with a plain message when there is nothing to go on from) |
 | `GET /import/runs/:id/report` · `/report.csv` · `/idmap.csv` | `import:run` | the id map download is audited (`idmap_download`) |
 | `GET /import/runs/:id/conflicts` | `import:run` | `?status=open&after=` |
 | `POST /import/conflicts/:key/resolve` | `import:run` | `{ take: "rotor" \| "crm" }` |
@@ -290,16 +430,26 @@ never fetches a media URL.
 
 ## Settings
 
-None.
+`import` (`cfg/import`, owners: `settings:owner`): `{ auto_continue }`,
+true unless an owner turns it off in Settings, Data: whether the rest of
+an export is brought in by itself as each part of the CRM goes live.
 
 ## Sweeps, queue kinds and listeners
 
 - `import.staging_gc` (bulk, daily 04:40, maintenance): the staged rows of
-  a run that finished more than 30 days ago are deleted (the run, its
-  report, conflicts and id map stay); a run still waiting for its upload
-  a week after its key ran out is cancelled ("abandoned") and its staged
-  rows deleted.
-- Run kinds `import` (bulk lane) and, after a stopped run, `reindex`.
+  a run are deleted 30 days after their last use (when it finished or
+  stopped, or when a continuation last used them), not while a
+  continuation made in the last 30 days that reads them is queued or
+  running (the run, its report, conflicts and id map stay); a run still
+  waiting for its upload a week after its key ran out is cancelled
+  ("abandoned") and its staged rows deleted; a run whose lane run ended
+  without it knowing is marked stopped.
+- Run kinds `import` and `import.continue` (bulk lane).
+- `import.continue` (bulk, hourly; not while paused; `mutates: true`: it
+  starts a run that writes): starts a continuation when a part of the CRM
+  went live since the latest finished import, and marks stuck runs stopped
+  (see "Bringing in the rest").
+- After a stopped or cancelled run: a `reindex` run for what it wrote.
 - Today: "Import conflicts to settle" (owners).
 
 ## Automations
@@ -329,7 +479,27 @@ the key asked at a prompt; no start without `--start`; media uploaded,
 never fetched; pack → upload → run end to end with a throwaway key pair), `runner.test.mjs`
 (the gate: repeated passes, no row or finished phase done twice; a crash
 mid-phase; waiting phases; money sums; the audited id map; cancel and
-resume), `users.test.mjs`, `screens.test.mjs`.
+resume), `continue.test.mjs` (the rest of an export comes in as each part
+goes live: the real phases of the tech app (timesheets, timers), then of
+Money, then of Messages, each hidden from the first run's plan with
+`runner.__hidePhasesForTests` as before their deploy: each time one
+continuation runs only the phases that waited (or that the first plan
+didn't know, `money.credits`) and are registered now, nothing staged is
+read twice, timesheets find the first run's team map and timers its
+visits, invoices land on its contacts and jobs, credits on its contacts,
+payments in their invoices, messages in conversations on its contacts,
+the money comparison in the report, the report's chain, the owners'
+notes, and a fresh full import days later writes nothing; the rows
+cleared, with the messages step's summaries; kept 30 days from the last
+use; the hourly check starts exactly one, also after a run that left
+nothing waiting; the setting; paused; a crash mid-way and Resume; the
+pinned source owners), `continue-guards.test.mjs` (never an
+older export after a newer import was started; the setting unreadable; a
+run the lane gives up on is marked stopped, told, alerted, cleaned up and
+resumable; a missing staged chunk fails the run; the clean-up and the
+button can't cross; the lane run kind and a continuation older code
+stepped; four reads in an idle hour), `users.test.mjs`,
+`screens.test.mjs`.
 
 The gate at full size: `CRM_IMPORT_FULL=1 node --test --test-name-pattern
 "the gate" tests/crm/import/runner.test.mjs` (14,268 synthetic rows, about

@@ -16,7 +16,7 @@
 // The geo, county, distance and tier are derived fields (never rotorFields),
 // so the parallel-run guard lets the sweep fill them on imported properties.
 
-import { listRel, getRecords, getRecord, createRecord, updateRecord, getSetting } from "../../../crm-store.mjs";
+import { listRel, getRecords, getRecord, createRecord, updateRecord, getSetting, currentScope } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { nowIso } from "../../core/clock.mjs";
 import { ExistsError, NotFoundError } from "../../core/errors.mjs";
@@ -26,11 +26,34 @@ import { safeErr } from "../../../referral-lib.mjs";
 
 export const GEOCODE_BATCH = 10;
 
-// The contact's properties, newest first (deleted ones dropped).
-export async function propertiesOf(contactId, opts = {}) {
-  const rows = await listRel("contact-properties", contactId, { limit: 50 }, opts);
-  const got = await getRecords("property", rows.map((r) => r.id).slice(0, 16), opts);
-  return got.filter((g) => g && !g.data.deleted_at && g.data.contact_id === contactId).map((g) => ({ ...g.data, etag: g.etag }));
+// How many of a contact's properties a screen shows (one request's storage budget).
+export const PROPERTIES_ON_SCREEN = 16;
+const PROPERTY_BATCH = 16;
+// storage calls a request keeps for what it does after reading the properties
+const CALLS_KEPT = 8;
+
+// The contact's properties, newest first (deleted ones dropped): ALL of
+// them, read in batches, so matching an address (ensureProperty, the
+// import) and moving them (a merge) never miss the ones past the first
+// screenful. `limit`: only the newest so many (the contact's screen).
+// Inside a request with a storage-call budget (25 by default) it reads the
+// newest 16 as it always did and then as many more batches as the budget
+// still allows (a request never fails because a contact has many
+// properties); background work (the import, a merge's run, sweeps) reads
+// them all.
+export async function propertiesOf(contactId, opts = {}, { limit = Infinity } = {}) {
+  const rows = await listRel("contact-properties", contactId, { limit: 5000 }, opts);
+  const ids = rows.map((r) => r.id).slice(0, Number.isFinite(limit) ? limit : rows.length);
+  const budget = (opts && opts.budget) || (currentScope() || {}).budget || null;
+  const callsLeft = () => (budget && Number.isFinite(budget.maxCalls) && typeof budget.calls === "function" ? budget.maxCalls - budget.calls() : Infinity);
+  const out = [];
+  for (let i = 0; i < ids.length; i += PROPERTY_BATCH) {
+    const batch = ids.slice(i, i + PROPERTY_BATCH);
+    if (i > 0 && callsLeft() < batch.length + CALLS_KEPT) break;
+    const got = await getRecords("property", batch, opts);
+    for (const g of got) if (g && !g.data.deleted_at && g.data.contact_id === contactId) out.push({ ...g.data, etag: g.etag });
+  }
+  return out;
 }
 
 // → property_id (an existing match by street + ZIP, else a new one). When the
@@ -39,10 +62,16 @@ export async function ensureProperty(contactId, address, ctx = {}) {
   const a = normalizeAddress(address);
   if (!a || !a.street1) return null;
   const key = addressKey(a);
-  const existing = await propertiesOf(contactId, ctx);
-  let found = existing.find((p) => addressKey(p.address) === key);
+  const id = deriveId("property", `contact:${contactId}`, "contacts.ensureProperty", key);
+  // the one this made before for that address (its id says so): no need to look through the others
+  const mine = await getRecord("property", id, ctx);
+  let existing = [];
+  let found = mine && !mine.data.deleted_at && mine.data.contact_id === contactId ? mine.data : null;
   if (!found) {
-    const id = deriveId("property", `contact:${contactId}`, "contacts.ensureProperty", key);
+    existing = await propertiesOf(contactId, ctx);
+    found = existing.find((p) => addressKey(p.address) === key);
+  }
+  if (!found) {
     try {
       found = (await createRecord("property", { id, contact_id: contactId, label: existing.length ? "Property" : "Home", address: a, access: {}, assets: {}, photo_ids: [] }, ctx)).data;
     } catch (e) {

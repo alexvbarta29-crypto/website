@@ -42,8 +42,8 @@ test("one app: office sign-in → first-owner setup (the office password again) 
     await settled(f);
     assert.equal(await title(f), "Home");
     assert.equal(await page.$(".bar .nav"), null, "still one app");
-    // the office's bar: Home · Schedule · Customers · Sales · Menu (the Dashboard's numbers are on Home, its views under Menu)
-    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Customers", "Sales", "Menu"]);
+    // the office's bar: Home · Inbox · Schedule · Customers · Sales · Menu (the Dashboard's numbers are on Home, its views under Menu)
+    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Inbox", "Schedule", "Customers", "Sales", "Menu"]);
     assert.equal(await f.$('.tabs [data-tab="dashboard"], .tabs [data-more]'), null, "no Dashboard tab, no More sheet");
     await p.clean();
   } finally {
@@ -434,6 +434,8 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/schedule/route/:date/:user": { date: (await get(`/visits/${seeded.visits.tech}`)).visit.date, user: seeded.users.tech.id },
     "/quotes/:id": seeded.quotes.sent, "/quotes/:id/edit": seeded.quotes.draft, "/quotes/:id/lights": seeded.quotes.draft,
     "/plans/:id": seeded.plans.active, "/lights/:season": String(seeded.seasons.year), "/settings/agreement-templates/:id": seeded.templates.quarterly,
+    "/inbox/:id": seeded.comms.tech, "/campaigns/:id": seeded.comms.campaign,
+    "/invoices/:id": seeded.money.invoices.open, "/autopay/:id": seeded.money.autopay,
   };
   await o.close();
   const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] && typeof ids[path] === "object" ? ids[path][name] : ids[path] ?? null) ?? m);

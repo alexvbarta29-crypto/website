@@ -12,6 +12,7 @@ import { permsFor } from "../../core/perms.mjs";
 import { TZ } from "../../core/clock.mjs";
 import { MIN_CLIENT } from "../../core/http.mjs";
 import { allModules } from "../../core/registry.mjs";
+import { has as hasService, call as callService } from "../../core/services.mjs";
 import { approvalsCount } from "../../core/pending.mjs";
 import { unreadCount } from "../../core/notify.mjs";
 import { waitingCount } from "../../core/bulk.mjs";
@@ -70,7 +71,9 @@ async function badges(ctx) {
     approvalsCount(ctx), attentionCount(ctx), unreadCount(ctx.user.id),
     ctx.can("campaigns:send") ? waitingCount() : 0,
   ]));
-  const data = { inbox_unread: 0, attention, notifications, approvals: approvals + bulk };
+  // conversations with something unread (comms, M6): its own count for this person
+  const inbox = hasService("comms.unread") ? await withStoreScope({ ixMemo: new Map() }, () => callService("comms.unread", ctx)).catch(() => 0) : 0;
+  const data = { inbox_unread: Math.max(0, Number(inbox) || 0), attention, notifications, approvals: approvals + bulk };
   const etag = `"b-${createHash("sha256").update(JSON.stringify(data)).digest("hex").slice(0, 16)}"`;
   if (ctx.req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { ETag: etag } });
   return { data, etag };
