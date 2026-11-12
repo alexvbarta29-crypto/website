@@ -4,4 +4,4 @@
 // PRECACHE); tests/crm/core/precache.test.mjs checks that all three agree.
 // The server sends it in the shell and refuses clients older than
 // MIN_CLIENT (netlify/lib/crm/core/http.mjs) with 426.
-export const APP_VERSION = "2026.11.12-1";
+export const APP_VERSION = "2026.11.12-2";
