@@ -56,7 +56,7 @@ test("the approved text is frozen; fromQuoteOption with that signature makes the
     assert.match(shown.body_rendered, /you pay back the plan discount that visit got \(\$100\.00\)/);
     assert.doesNotMatch(shown.body_rendered, /Owner check/, "an approved text has none left");
     assert.doesNotMatch(shown.body_rendered, /a visit\)? a visit/, "never \"a visit\" twice");
-    assert.match(shown.body_rendered, /BARTA WINDOW WASHING LLC/);
+    assert.match(shown.body_rendered, /This agreement is between Barta Window Washing LLC \("Barta Window Washing"/, "the legal name the owner gave (Nov 12)");
     assert.doesNotMatch(shown.body_rendered, /—|licensed|refund/i, "Barta's voice: no em dashes, insured not licensed, re-clean not refund");
     const out = await scope(() => services.call("plans.fromQuoteOption", quoteOf(c), version, opt, "convert--qt_0000000000000000000q--1", { signature: signatureFor(version, opt) }, portalCtx));
     assert.ok(out.plan_id && out.agreement_id);
@@ -131,21 +131,25 @@ test("D10: an unapproved template is never shown on a quote; an edit after appro
     assert.equal(await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt)), null, "drafts aren't shown");
     const id = AG.seedTemplateId("quarterly");
     assert.equal((await t.api(`/agreement-templates/${id}/approve`, { method: "POST", as: (await t.user("admin")), body: {} })).status, 403, "owners approve");
-    // a draft with "Owner check" lines can't be approved until the owner settles them
-    const early = await t.api(`/agreement-templates/${id}/approve`, { method: "POST", as: owner, body: {} });
+    // a draft with an "Owner check" line left (lights: how the crew hangs them) can't be approved until the owner settles it
+    const lid = AG.seedTemplateId("lights");
+    const early = await t.api(`/agreement-templates/${lid}/approve`, { method: "POST", as: owner, body: {} });
     assert.equal(early.status, 409);
     assert.match(early.body.error.message, /Owner check/);
-    const g0 = await t.api(`/agreement-templates/${id}`, { as: owner });
-    assert.ok(AG.ownerChecksIn(g0.body.data.body_md).length >= 2);
-    const settled = await t.api(`/agreement-templates/${id}`, { method: "PATCH", as: owner, ifMatch: g0.headers.get("etag"), body: { body_md: AG.withoutOwnerChecks(g0.body.data.body_md) } });
+    const g0 = await t.api(`/agreement-templates/${lid}`, { as: owner });
+    assert.equal(AG.ownerChecksIn(g0.body.data.body_md).length, 1);
+    const settled = await t.api(`/agreement-templates/${lid}`, { method: "PATCH", as: owner, ifMatch: g0.headers.get("etag"), body: { body_md: AG.withoutOwnerChecks(g0.body.data.body_md) } });
     assert.equal(settled.status, 200, JSON.stringify(settled.body));
+    assert.equal((await t.api(`/agreement-templates/${lid}/approve`, { method: "POST", as: owner, body: {} })).status, 200);
+    // the owner's answers (Nov 12) settled every check in the Quarterly draft: still a draft, the owner approves it as it is
+    assert.equal(await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt)), null, "not shown before the owner approves it");
     assert.equal((await t.api(`/agreement-templates/${id}/approve`, { method: "POST", as: owner, body: {} })).status, 200);
     const shown = await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt));
     assert.ok(shown);
     const g = await t.api(`/agreement-templates/${id}`, { as: owner });
     const edited = await t.api(`/agreement-templates/${id}`, { method: "PATCH", as: owner, ifMatch: g.headers.get("etag"), body: { body_md: `${g.body.data.body_md}\n\nOne more line.` } });
     assert.equal(edited.status, 200, JSON.stringify(edited.body));
-    assert.equal(edited.body.data.version, 3);
+    assert.equal(edited.body.data.version, 2);
     assert.equal(edited.body.data.approved, false);
     assert.equal(await scope(() => AG.agreementForOption(quoteOf(c), { options: [opt] }, opt)), null, "not shown until approved again");
     const bad = await t.api(`/agreement-templates/${id}`, { method: "PATCH", as: owner, ifMatch: edited.headers.get("etag"), body: { body_md: "Hi {{quote_link}}" } });

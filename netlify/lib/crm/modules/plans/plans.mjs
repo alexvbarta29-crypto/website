@@ -103,7 +103,7 @@ export function buildPlan(spec, cat, { start_on }) {
     service_types: spec.service_types && spec.service_types.length ? spec.service_types : typesOfLines(lines), lines, discounts: spec.discounts || [],
     status: "pending", pending_reasons: ["signature"], term,
     billing: { mode: BILLING_MODES.includes(spec.billing_mode) ? spec.billing_mode : entry.billing, autopay: spec.autopay === undefined ? !!entry.autopay : !!spec.autopay, card_required: !!spec.card_required },
-    perks: { ...entry.perks }, policy: { early_cancel_clawback_cents: entry.clawback_cents, notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
+    perks: { ...entry.perks }, policy: { early_cancel_clawback_cents: entry.clawback_cents, notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents, ...(key === "lights_annual" && months >= 36 ? { storage_fee_cents: cat.lights_storage_fee_cents } : {}) },
     ordinals: termOrdinals({ frequency, visits_per_year: vpy }, { term: 1, start: start_on, months }), cancelled_job_ids: [], agreement_status: "none",
     renewal: { next_on: term.current_term_end }, ...(spec.sold_by ? { sold_by: spec.sold_by } : {}), origin: spec.origin || "staff",
   };
@@ -170,7 +170,7 @@ export async function ensureJobs(planId, ctx, { day = today() } = {}) {
       const three = (plan.term && plan.term.initial_months >= 36) || (plan.discounts || []).some((d) => d.key === "three_year");
       const out = await createSeason({
         contact_id: plan.contact_id, property_id: plan.property_id, season, plan_id: plan.id, plan_ordinal: { term: o.term || 1, n: o.n }, quote_id: plan.quote_id, deal_id: plan.deal_id,
-        lines: ordinalLines(plan, o), discounts: ordinalDiscounts(plan, o), early_bird: (plan.discounts || []).some((d) => d.key === "early_bird") && o.k === 1, three_year: three,
+        lines: ordinalLines(plan, o), discounts: ordinalDiscounts(plan, o), early_bird: ordinalDiscounts(plan, o).some((d) => d.key === "early_bird"), three_year: three,
         ...(three ? { contract_season_n: Math.min(3, o.k || 1) } : {}),
       }, `plan-season--${plan.id}--${season}`, ctx);
       if (out.install_job_id) made[ordKey(o)] = { job: out.install_job_id, season: out.season_id };
@@ -529,7 +529,8 @@ defineOp("plans.act", {
           if (input.action === "activate") await tellStaff(plan, "Plan active", `${(plan.contact_name || "A customer").split(/\s+/)[0]}'s ${plan.name} is active.`, s.ctx);
           if (input.action === "pause" && lc.notice) await pausedNotice(plan, lc, s.ctx);
           if (input.action === "cancel" && plan.status === "cancelling" && plan.cancel && plan.cancel.clawback_cents > 0) {
-            await tellStaff(plan, "Clawback to bill", `${plan.name} was cancelled early: the first visit's plan discount (${formatCents(plan.cancel.clawback_cents)}) waits for your OK to bill.`, s.ctx);
+            const what = plan.cancel.storage_fee_cents ? `the storage fee for leaving the contract early (${formatCents(plan.cancel.clawback_cents)})` : `the first visit's plan discount (${formatCents(plan.cancel.clawback_cents)})`;
+            await tellStaff(plan, "Clawback to bill", `${plan.name} was cancelled early: ${what} waits for your OK to bill.`, s.ctx);
           }
           return { status: plan.status };
         },

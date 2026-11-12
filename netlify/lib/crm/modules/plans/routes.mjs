@@ -170,7 +170,7 @@ async function templatePreviewRoute(ctx) {
   const sample = {
     name: e.name, kind: lights ? "lights_annual" : "recurring", catalog_key: key, frequency: e.frequency, visits_per_year: e.visits_per_year,
     term: { initial_months: e.initial_months, renews_every_months: e.renews_every_months, auto_renew: true }, perks: e.perks, billing: { mode: e.billing, autopay: !!e.autopay },
-    policy: { notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
+    policy: { notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents, ...(lights ? { storage_fee_cents: cat.lights_storage_fee_cents } : {}) },
     lines: [lights ? { id: "ln_s", title: "Christmas Light Installation", qty_milli: 150000, unit_cents: 800, total_cents: 120000, unit: "ft", scope: { type: "all" } }
       : { id: "ln_s", title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 29500, total_cents: 29500, scope: { type: "all" } }],
     discounts: e.discount_per_visit_cents ? [{ id: "dc_s", name: "Plan discount", type: "fixed", value: e.discount_per_visit_cents, scope: { type: "all" } }] : [],

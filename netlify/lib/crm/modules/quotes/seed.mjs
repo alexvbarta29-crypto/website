@@ -6,16 +6,18 @@
 // 4-5) finds the same records whatever order things run in.
 //
 // Contradictions settled here (recorded in docs/CRM-QUOTES.md):
-//   - standard track detailing $8 per track (D26; barta-rules lists $5),
+//   - standard track detailing $5 per track, premium $15 (the owner, Nov 12;
+//     the first seed had D26's $8: seed v2 below moves an untouched one),
 //   - exterior 41-60 panes $395, not MiNT's $345 (barta-rules §1.1),
 //   - Interior (Upper Level) $12 per pane as its own item (D26),
 //   - soft washing, pressure washing, solar and commercial cleaning kept
 //     inactive for history (D40), Card Fee kept inactive (D32: no surcharge),
 //   - lights storage is "included in your price", never called a free perk.
 
-import { createRecord, getRecord } from "../../../crm-store.mjs";
+import { createRecord, getRecord, updateRecord, getRaw, putSetting, claimMarker, advanceMarker } from "../../../crm-store.mjs";
 import { deriveId } from "../../core/ids.mjs";
-import { ExistsError } from "../../core/errors.mjs";
+import { ExistsError, StaleError } from "../../core/errors.mjs";
+import { notify, approvers } from "../../core/notify.mjs";
 
 const SHOW_FLAT = { qty: false, unit: false, description: true };
 const SHOW_UNIT = { qty: true, unit: true, description: true };
@@ -26,8 +28,8 @@ export const SEED_PRICE_BOOK = Object.freeze([
   { key: "interior", name: "Interior Window Cleaning", category: "windows_int", service_type: "Residential Window Cleaning", unit: "flat", unit_cents: 0, engine: "interior_segments", description: "Interior glass hand-cleaned and squeegeed, sills and frames wiped down, drop cloths to protect your floors.", show: SHOW_FLAT, active: true, sellable: true },
   { key: "interior_upper", name: "Interior (Upper Level)", category: "windows_int", service_type: "Residential Window Cleaning", unit: "pane", unit_cents: 1200, engine: "manual", description: "Upper-level interior panes.", show: SHOW_UNIT, active: true, sellable: true },
   { key: "screens", name: "Screen Cleaning", category: "screens", service_type: "Residential Window Cleaning", unit: "screen", unit_cents: 500, description: "Screens removed, hand-washed, dried and put back in the right window. Torn screens aren't cleaned.", show: SHOW_UNIT, active: true, sellable: true },
-  { key: "tracks_standard", name: "Track Detailing", category: "tracks", service_type: "Residential Window Cleaning", unit: "track", unit_cents: 800, description: "Tracks brushed and vacuumed.", show: SHOW_UNIT, active: true, sellable: true },
-  { key: "tracks_premium", name: "Premium Track Detailing", category: "tracks", service_type: "Residential Window Cleaning", unit: "track", unit_cents: 1500, description: "Tracks brushed, vacuumed, wet-scrubbed, vacuumed again and wiped.", show: SHOW_UNIT, active: true, sellable: true },
+  { key: "tracks_standard", name: "Track Detailing", category: "tracks", service_type: "Residential Window Cleaning", unit: "track", unit_cents: 500, description: "A quick clean: tracks brushed, vacuumed and wiped if they need it.", show: SHOW_UNIT, active: true, sellable: true },
+  { key: "tracks_premium", name: "Premium Track Detailing", category: "tracks", service_type: "Residential Window Cleaning", unit: "track", unit_cents: 1500, description: "A deep clean: tracks scrubbed with a soap solution and a deep scrub brush, wet/dry vacuumed and wiped.", show: SHOW_UNIT, active: true, sellable: true },
   { key: "hard_water", name: "Hard Water Spot Treatment", category: "other", service_type: "Residential Window Cleaning", unit: "flat", unit_cents: 0, engine: "manual", description: "Hard-water spots treated on the glass.", show: SHOW_FLAT, active: true, sellable: true },
   { key: "gutters", name: "Gutter Cleaning", category: "gutters", service_type: "Exterior Cleaning", unit: "flat", unit_cents: 0, engine: "manual", description: "Gutters cleared by hand, downspouts flushed and tested, a free look at the roof and gutters with photos of anything that needs attention.", show: SHOW_FLAT, active: true, sellable: true },
   { key: "lights_install", name: "Christmas Light Installation", category: "lights", service_type: "Christmas Lights", unit: "ft", unit_cents: 800, engine: "lights_install_ft", description: "", show: SHOW_UNIT, active: true, sellable: true },
@@ -57,8 +59,9 @@ export const SEED_DISCOUNTS = Object.freeze([
   { key: "plan_biannual", name: "Biannual plan discount", type: "fixed", value: 5000, default_scope: { type: "all" }, sellable: true, plan_only: "biannual", stack_group: "plan", rotor_names: ["Bi-Annual Discount", "Bi-Annuall Discount", "Bi-Annuall", "Biannual Discount", "Semi-Annual Discount"] },
   { key: "plan_quarterly", name: "Quarterly plan discount", type: "fixed", value: 10000, default_scope: { type: "all" }, sellable: true, plan_only: "quarterly", stack_group: "plan", rotor_names: ["Quarterly Discount"] },
   { key: "plan_monthly", name: "Monthly plan discount", type: "fixed", value: 15000, default_scope: { type: "all" }, sellable: true, plan_only: "monthly", stack_group: "plan", rotor_names: ["Monthly Discount"] },
-  { key: "early_bird", name: "Early Bird", type: "percentage", value: 5000, default_scope: { type: "initial" }, sellable: true, rotor_names: ["EARLY Bird Discount", "Early Bird Discount", "Early Bird", "Early Brid", "Early Brid Discount"] },
-  { key: "three_year", name: "3-year contract", type: "fixed", value: 10000, default_scope: { type: "initial" }, sellable: true, rotor_names: ["3-Year Contract", "3 Year Contract", "3 Year Contract Discount"] },
+  // lights: both count every season (the owner, Nov 12), the 3-year contract is $200 off
+  { key: "early_bird", name: "Early Bird", type: "percentage", value: 5000, default_scope: { type: "all" }, sellable: true, rotor_names: ["EARLY Bird Discount", "Early Bird Discount", "Early Bird", "Early Brid", "Early Brid Discount"] },
+  { key: "three_year", name: "3-year contract", type: "fixed", value: 20000, default_scope: { type: "all" }, sellable: true, rotor_names: ["3-Year Contract", "3 Year Contract", "3 Year Contract Discount"] },
   { key: "google_review", name: "Google Review & Local Post", type: "fixed", value: 5000, default_scope: { type: "initial" }, sellable: true, rotor_names: ["Google Review & Local Post", "Google Review"] },
   { key: "service_offer", name: "Service Offer", type: "fixed", value: 5000, default_scope: { type: "initial" }, sellable: true, rotor_names: ["Service Offer"] },
   { key: "price_match", name: "Price match", type: "fixed", value: 0, default_scope: { type: "initial" }, sellable: true, typed_amount: true, rotor_names: ["Price match discount", "Price Match"] },
@@ -100,6 +103,110 @@ export async function seedPriceBook(sctx = {}) {
     made += await once("discount_def", seedDiscount(s.key), ctx);
   }
   return { made };
+}
+
+// ------------------------------------------------------------ seed v2: the owner's answers (Nov 12)
+
+// What the first seed wrote, field by field, for the values the owner's
+// answers changed: standard tracks $8 → $5 (and both track descriptions),
+// Early Bird and the 3-year contract every season, the 3-year $100 → $200.
+// The new values are the seed's own (SEED_PRICE_BOOK, SEED_DISCOUNTS).
+export const V1_ITEMS = Object.freeze({
+  tracks_standard: { unit_cents: 800, description: "Tracks brushed and vacuumed." },
+  tracks_premium: { description: "Tracks brushed, vacuumed, wet-scrubbed, vacuumed again and wiped." },
+});
+export const V1_DISCOUNTS = Object.freeze({
+  early_bird: { default_scope: { type: "initial" } },
+  three_year: { value: 10000, default_scope: { type: "initial" } },
+});
+// cfg/pricing: the stored copies of the defaults (a saved pricing page holds them all).
+export const V1_PRICING = Object.freeze([
+  { path: ["tracks", "standard_cents"], from: 800, to: 500, label: "Standard track detailing (the fallback price)", money: true },
+  { path: ["lights", "three_year_off_cents"], from: 10000, to: 20000, label: "3-year lights contract, off each season", money: true },
+]);
+
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+const dollars = (c) => `$${(c / 100).toFixed(2)}`;
+const at = (o, path) => path.reduce((x, k) => (x && typeof x === "object" ? x[k] : undefined), o);
+const setAt = (o, path, v) => { const out = JSON.parse(JSON.stringify(o)); let x = out; for (const k of path.slice(0, -1)) { if (!x[k] || typeof x[k] !== "object") x[k] = {}; x = x[k]; } x[path[path.length - 1]] = v; return out; };
+
+// One seeded record: each listed field moves to the seed's new value only
+// while it still holds the old seeded one (CAS: re-checked on the write).
+// A field someone changed stays theirs and is reported as kept.
+async function upgradeFields(type, id, olds, now, ctx, out, label) {
+  const g = await getRecord(type, id);
+  if (!g || g.data.deleted_at) return;
+  const changed = [];
+  for (const [f, old] of Object.entries(olds)) {
+    if (same(g.data[f], now[f])) continue;                 // already the new value (an owner set it, or a second run)
+    if (same(g.data[f], old)) changed.push(f);
+    else out.kept.push({ what: label, field: f, suggested: f === "unit_cents" || f === "value" ? dollars(now[f]) : f === "default_scope" ? "every season" : "new wording" });
+  }
+  if (!changed.length) return;
+  const r = await updateRecord(type, id, (x) => {
+    const fields = changed.filter((f) => same(x[f], olds[f]));
+    return fields.length ? { ...x, ...Object.fromEntries(fields.map((f) => [f, JSON.parse(JSON.stringify(now[f]))])) } : null;
+  }, ctx);
+  if (r.changed) out.upgraded.push(`${label}: ${changed.join(", ")}`);
+}
+
+// cfg/pricing: only a saved page holds these (an unsaved one reads the new
+// defaults by itself). A value still equal to the old default moves; one an
+// owner typed stays. Written with putSetting (validated, audited with a diff).
+async function upgradePricing(ctx, out) {
+  for (let i = 0; i < 3; i++) {
+    const cur = await getRaw("cfg/pricing");
+    if (!cur || !cur.data) return;
+    const { _w, updated_at, updated_by, ...stored } = cur.data;
+    let next = stored;
+    const moved = [];
+    const kept = [];
+    for (const c of V1_PRICING) {
+      const v = at(stored, c.path);
+      if (v === undefined || v === c.to) continue;
+      if (v === c.from) { next = setAt(next, c.path, c.to); moved.push(c.label); } else kept.push({ what: c.label, field: c.path.join("."), suggested: c.money ? dollars(c.to) : String(c.to) });
+    }
+    if (!moved.length) { out.kept.push(...kept); return; }
+    try {
+      await putSetting("pricing", next, { ...ctx, ifMatch: cur.etag });
+      out.upgraded.push(...moved);
+      out.kept.push(...kept);
+      return;
+    } catch (e) {
+      if (!(e instanceof StaleError)) throw e;      // an owner saved meanwhile: read theirs again
+    }
+  }
+  out.kept.push({ what: "Pricing settings", field: "busy", suggested: "check by hand" });
+}
+
+// system.seed v2. Idempotent: a second run finds the new values and changes
+// nothing. Only seeded records (never a quote, a plan or anything imported)
+// and the pricing page change; no rotorField is touched, so the parallel-run
+// guard has nothing to stop. What an owner had changed is left and the
+// owners get one notice with the suggested value (and it is in the result).
+export async function upgradeOwnerDecisions(sctx = {}) {
+  const ctx = typeof sctx.write === "function" ? sctx.write() : sctx;
+  const out = { upgraded: [], kept: [] };
+  for (const [key, olds] of Object.entries(V1_ITEMS)) {
+    const now = SEED_PRICE_BOOK.find((x) => x.key === key);
+    await upgradeFields("price_item", seedItemId(key), olds, now, ctx, out, now.name);
+  }
+  for (const [key, olds] of Object.entries(V1_DISCOUNTS)) {
+    const now = SEED_DISCOUNTS.find((x) => x.key === key);
+    await upgradeFields("discount_def", seedDiscountId(key), olds, now, ctx, out, now.name);
+  }
+  await upgradePricing(ctx, out);
+  // one notice, ever (a marker): a run again tells nobody twice
+  const claim = out.kept.length ? await claimMarker("done", "notice", "quotes--owner-decisions", { holder: sctx.holder || ctx.requestId || "seed", leaseMs: 60000 }) : null;
+  if (claim && claim.ok) {
+    const list = [...new Set(out.kept.map((k) => `${k.what} (${k.suggested})`))].join("; ");
+    await notify((await approvers().catch(() => [])).slice(0, 10), {
+      kind: "system", title: "New suggested prices",
+      body: `From the Nov 12 decisions. You had changed these, so yours stay: ${list}. Settings, Pricing & price book.`.slice(0, 300), link: "/settings/pricing",
+    }, ctx).catch((e) => console.error(`crm:quotes: the owners were not told about the suggested prices (${e && e.name})`));
+    await advanceMarker(claim.marker, { state: "done", result: `${out.kept.length} kept` });
+  }
+  return { upgraded: out.upgraded.length, kept: out.kept.length, items: out.upgraded.slice(0, 10), left: out.kept.map((k) => `${k.what}: ${k.field}`).slice(0, 10) };
 }
 
 // ------------------------------------------------------------ templates (core sender, D5: no STOP text)

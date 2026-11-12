@@ -16,8 +16,8 @@
 //   tierFromSqft(sqft, pricing)            phone quotes: square feet → the pane tier ("confirm panes on site")
 //   suggestLines(input, pricing, book)     a service checklist → engine-priced lines (+ warnings)
 //   suggestOption(input, pricing, book, defs)  the same for an option, with a plan's scopes and discount
-//   lightsLines(input, pricing)            per foot (install $8 + materials $2) or one package line
-//   lightsDiscounts(input, pricing)        Early Bird 50% before the deadline in effect, then 3-year $100
+//   lightsLines(input, pricing)            per foot (install $8 + materials $2) or one package line, every season
+//   lightsDiscounts(input, pricing)        Early Bird 50% (sold before the deadline in effect), then 3-year $200, every season
 //   lineTotal(line)                        override, else roundHalfUp(qty_milli × unit_cents, 1000)
 //   visitPrices(option, n, pricing)        per-visit prices of a term: percentages first, then fixed, never below the floor
 //   optionTotals(option, pricing)          visitPrices for an option (one-time: 1 visit; plan: its term)
@@ -39,14 +39,14 @@ export const PRICING_DEFAULTS = Object.freeze({
   over_7999_sqft: "manual",
   interior: { segment_panes: 20, per_segment_cents: 8000, max_panes: 100 },
   screens: { each_cents: 500, estimate_ratio: 0.5 },
-  tracks: { standard_cents: 800, premium_cents: 1500 },
+  tracks: { standard_cents: 500, premium_cents: 1500 },
   gutters: { mode: "manual", hint_cents: [10000, 29900] },
   pane_weights: { standard: 1, slider: 2, large: 2, sliding_door: 2, french: 0.4, front_door: 1, garage_small: 0 },
   pane_rounding: "ceil",
   plan_discount_per_visit_cents: { biannual: 5000, quarterly: 10000, monthly: 15000 },
   lights: {
     install_per_ft_cents: 800, materials_per_ft_cents: 200, early_bird_bp: 5000, season_start: "09-01",
-    deadlines: { 2026: ["2026-11-01", "2026-12-01"] }, three_year_off_cents: 10000, colors: ["warm_white", "red", "green"], client_cap: null,
+    deadlines: { 2026: ["2026-11-01", "2026-12-01"] }, three_year_off_cents: 20000, colors: ["warm_white", "red", "green"], client_cap: null,
   },
   discount_floor_cents: 0,
   tax_bp: 0,
@@ -323,8 +323,11 @@ export function earlyBirdDeadline(on, pricing) {
   return [...list].sort().find((x) => x >= d) || null;
 }
 
-// Early Bird 50% (before the deadline in effect `on`), then 3-year $100
-// (percentages apply first, then fixed: the engine's order, D30).
+// Early Bird 50% (sold before the deadline in effect `on`), then 3-year $200
+// (percentages apply first, then fixed: the engine's order, D30). Both count
+// EVERY season (the owner, Nov 12): the Early Bird is how the lights price is
+// shown (the list price is double, then 50% off), and a 3-year contract is
+// the same price all three seasons, so neither is a first-season offer.
 export function lightsDiscounts({ early_bird = false, three_year = false, on } = {}, pricing = {}, defs = []) {
   const p = pricingWith(pricing);
   const out = [];
@@ -333,12 +336,12 @@ export function lightsDiscounts({ early_bird = false, three_year = false, on } =
     const deadline = earlyBirdDeadline(on, p);
     if (deadline && p.lights.early_bird_bp > 0) {
       const d = def("early_bird");
-      out.push({ id: "dc_early_bird", ...(d ? { def_id: d.id } : {}), key: "early_bird", name: d ? d.name : "Early Bird", type: "percentage", value: p.lights.early_bird_bp, scope: { type: "initial" }, offer_until: deadline });
+      out.push({ id: "dc_early_bird", ...(d ? { def_id: d.id } : {}), key: "early_bird", name: d ? d.name : "Early Bird", type: "percentage", value: p.lights.early_bird_bp, scope: { type: "all" }, offer_until: deadline });
     }
   }
   if (three_year && p.lights.three_year_off_cents > 0) {
     const d = def("three_year");
-    out.push({ id: "dc_three_year", ...(d ? { def_id: d.id } : {}), key: "three_year", name: d ? d.name : "3-year contract", type: "fixed", value: p.lights.three_year_off_cents, scope: { type: "initial" } });
+    out.push({ id: "dc_three_year", ...(d ? { def_id: d.id } : {}), key: "three_year", name: d ? d.name : "3-year contract", type: "fixed", value: p.lights.three_year_off_cents, scope: { type: "all" } });
   }
   return out;
 }
@@ -463,8 +466,15 @@ export function suggestLines(input = {}, pricing = {}, book = [], { lineId } = {
   return { lines, warnings };
 }
 
+// The add-ons a plan doesn't carry onto its visits by itself (the owner,
+// Nov 12): screens, tracks and gutters go on a plan visit only when the
+// customer asks. On a plan option they cover the first visit (the one the
+// customer asked for on the quote); a later visit gets them when asked.
+export const ADDON_CATEGORIES = Object.freeze(["screens", "tracks", "gutters"]);
+
 // An option's lines, scoped for a plan (D27: the Quarterly interior visit is
-// ordinal 2; exterior on 1, 3 and 4), with the plan's per-visit discount.
+// ordinal 2, inside glass only; exterior on 1, 3 and 4), with the plan's
+// per-visit discount on every visit, the interior one too (the owner, Nov 12).
 // → { lines, discounts, warnings, plan? }
 export function suggestOption(input = {}, pricing = {}, book = [], defs = [], opts = {}) {
   const planKey = input.plan && Object.hasOwn(PLAN_CATALOG, input.plan) ? input.plan : null;
@@ -474,12 +484,14 @@ export function suggestOption(input = {}, pricing = {}, book = [], defs = [], op
   if (!planKey) return { lines, discounts: [], warnings };
   const cat = PLAN_CATALOG[planKey];
   if (planKey === "quarterly") {
-    // the interior visit (2) is interior only: screens, tracks and gutters go with the exterior visits (owner to confirm, barta-rules Q2/Q3)
+    // the interior visit (2) is inside glass only; the exterior visits are 1, 3 and 4
     for (const l of lines) {
-      if (["windows_ext", "screens", "tracks", "gutters"].includes(l.category)) l.scope = { type: "specific", visits: [1, 3, 4] };
+      if (l.category === "windows_ext") l.scope = { type: "specific", visits: [1, 3, 4] };
       if (l.category === "windows_int") l.scope = { type: "specific", visits: [2] };
     }
   }
+  // add-ons only when the customer asks: the visit they asked for, never every visit
+  if (planKey !== "lights_annual") for (const l of lines) if (ADDON_CATEGORIES.includes(l.category)) l.scope = { type: "initial" };
   const d = planDiscountFor(planKey, pricing, defs);
   return {
     lines, discounts: d ? [d] : [], warnings,
@@ -489,6 +501,8 @@ export function suggestOption(input = {}, pricing = {}, book = [], defs = [], op
 
 // Christmas lights: install $8/ft + materials $2/ft (or one package price),
 // plus the included takedown, storage and in-season warranty lines (D30).
+// Every line counts every season: a season after the first costs the same
+// as the first (the owner, Nov 12).
 export function lightsLines({ runs = [], package_cents, colors = [] } = {}, pricing = {}, book = [], { lineId } = {}) {
   const p = pricingWith(pricing);
   let n = 0;
@@ -509,7 +523,7 @@ export function lightsLines({ runs = [], package_cents, colors = [] } = {}, pric
     const iu = inst && isInt(inst.unit_cents) && inst.unit_cents > 0 ? inst.unit_cents : addOnUnit(book, "lights_install", p);
     const mu = mat && isInt(mat.unit_cents) && mat.unit_cents > 0 ? mat.unit_cents : addOnUnit(book, "lights_materials", p);
     out.push(lineFrom(inst, { id: id(), title: (inst && inst.name) || "Christmas Light Installation", qty_milli: totalMilli, unit_cents: iu, engine_cents: roundHalfUp(BigInt(totalMilli) * BigInt(iu), 1000n), category: "lights", unit: "ft", service_type: "Christmas Lights", description }));
-    out.push(lineFrom(mat, { id: id(), title: (mat && mat.name) || "Christmas Light Materials", qty_milli: totalMilli, unit_cents: mu, engine_cents: roundHalfUp(BigInt(totalMilli) * BigInt(mu), 1000n), category: "lights", unit: "ft", service_type: "Christmas Lights", description: "Commercial-grade C9 LED bulbs on a dark green strand.", scope: { type: "initial" } }));
+    out.push(lineFrom(mat, { id: id(), title: (mat && mat.name) || "Christmas Light Materials", qty_milli: totalMilli, unit_cents: mu, engine_cents: roundHalfUp(BigInt(totalMilli) * BigInt(mu), 1000n), category: "lights", unit: "ft", service_type: "Christmas Lights", description: "Commercial-grade C9 LED bulbs on a dark green strand." }));
   }
   if (out.length) {
     const td = itemFor(book, "lights_takedown", (i) => i.category === "lights" && /takedown/i.test(i.name));

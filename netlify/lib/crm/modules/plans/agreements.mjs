@@ -6,7 +6,10 @@
 //                  approval is a new version that needs approving again; a
 //                  draft with an "Owner check" line left can't be approved.
 //                  Nothing is sent, or shown on a quote, from a template that
-//                  isn't approved. Seed v2 upgrades the untouched first drafts.
+//                  isn't approved. Seed v2 upgrades the untouched first drafts;
+//                  seed v3 (the owner's answers, Nov 12) upgrades the untouched
+//                  ones again and gives an edited one the new draft as a
+//                  suggestion beside the owner's own text (never over it).
 //   agreementForOption(quote, draft, option)  the plans.agreementForOption
 //                  service: the approved text for a quote's plan option,
 //                  frozen into the quote's version and signed with the quote
@@ -23,10 +26,10 @@
 //                  and browser.
 
 import { createHash } from "node:crypto";
-import { createRecord, getRecord, updateRecord, readIndex, listRel, getRecords, getSetting, patchRecord } from "../../../crm-store.mjs";
+import { createRecord, getRecord, updateRecord, readIndex, listRel, getRecords, getSetting, patchRecord, getRaw, putSetting, claimMarker, advanceMarker } from "../../../crm-store.mjs";
 import { deriveId, isId, newId } from "../../core/ids.mjs";
 import { nowIso } from "../../core/clock.mjs";
-import { InputError, NotFoundError, ConflictError, ExistsError } from "../../core/errors.mjs";
+import { InputError, NotFoundError, ConflictError, ExistsError, StaleError } from "../../core/errors.mjs";
 import { emit } from "../../core/events.mjs";
 import { fill, parseTemplate, VARIABLES } from "../../core/templates.mjs";
 import { storeImportedFile, sniffType } from "../../core/files.mjs";
@@ -35,8 +38,8 @@ import { formatCents } from "../../core/money.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { AGREEMENT_DRAFTS, OWNER_CHECK, PREVIOUS_DRAFT_SHAS, PREVIOUS_TEMPLATE_BODIES, TEMPLATES as MESSAGE_TEMPLATES } from "./texts.mjs";
 import { templateApproved, OPEN_AGREEMENT } from "./types.mjs";
-import { loadCatalog, perksList, catalogWith } from "./catalog.mjs";
-import { cyclePrices, regularPrices, visitsPerYearOf, clawbackCents } from "./machine.mjs";
+import { loadCatalog, perksList, perksDetails, catalogWith } from "./catalog.mjs";
+import { cyclePrices, regularPrices, visitsPerYearOf, clawbackCents, isLightsContract, storageFeeCents } from "./machine.mjs";
 
 export const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 export const W = (ctx = {}) => (ctx && typeof ctx.write === "function" ? ctx.write() : { ...(ctx || {}) });
@@ -45,10 +48,10 @@ export const AGREEMENT_VARS = Object.freeze([
   "legal_name", "company_name", "full_name", "first_name", "last_name", "plan_name", "per_visit_price", "visits_per_year", "term_months", "perks_list", "clawback_amount",
   "notice_days", "late_cancel_fee", "company_phone", "company_email",
   // the agreement's own (not message variables): the plan's real terms
-  "price_details", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms",
+  "price_details", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms", "perks_details",
 ]);
 // The agreement's own variables, with a sample each (the template screen's chips).
-export const AGREEMENT_ONLY_VARS = Object.freeze(["price_details", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms"]);
+export const AGREEMENT_ONLY_VARS = Object.freeze(["price_details", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms", "perks_details"]);
 const strip = (r) => { if (!r) return r; const { _w, ...rest } = r; return rest; };
 
 // ------------------------------------------------------------ templates
@@ -84,8 +87,13 @@ export const withoutOwnerChecks = (body) => String(body || "").split("\n").filte
 // version, so an approval lapses and the owner reads them again), the
 // Custom text arrives, Biannual stops covering Custom, and the price-change
 // text loses its doubled "a visit". An owner's edits are never overwritten.
-export async function upgradeAgreementDrafts(ctx = {}) {
+// Seed v3 runs it again with { suggest: true } (upgradeOwnerDecisions): a
+// text an owner edited keeps their words and gets the current draft as
+// suggested_body_md (shown on the template's screen), once.
+// → { upgraded, suggested: [template names newly given a suggestion] }
+export async function upgradeAgreementDrafts(ctx = {}, { suggest = false } = {}) {
   let upgraded = 0;
+  const suggested = [];
   for (const d of AGREEMENT_DRAFTS) {
     const id = seedTemplateId(d.key);
     const g = await getRecord("agreement_template", id);
@@ -94,16 +102,28 @@ export async function upgradeAgreementDrafts(ctx = {}) {
       continue;
     }
     const t = g.data;
+    if (t.deleted_at) continue;
     const stale = (PREVIOUS_DRAFT_SHAS[d.key] || []).includes(sha(t.body_md));
     const keys = (t.applies_to && t.applies_to.catalog_keys) || [];
     const fixKeys = keys.filter((k) => d.applies_to.catalog_keys.includes(k) || !AGREEMENT_DRAFTS.some((x) => x.key !== d.key && x.applies_to.catalog_keys.includes(k)));
-    if (!stale && fixKeys.length === keys.length) continue;
-    await updateRecord("agreement_template", id, (x) => {
+    const suggestNow = suggest && !stale && t.body_md !== d.body_md && t.suggested_body_md !== d.body_md;
+    if (!stale && fixKeys.length === keys.length && !suggestNow) continue;
+    const r = await updateRecord("agreement_template", id, (x) => {
       const next = { ...x, applies_to: { ...(x.applies_to || {}), catalog_keys: fixKeys } };
-      if ((PREVIOUS_DRAFT_SHAS[d.key] || []).includes(sha(x.body_md))) { next.body_md = d.body_md; next.version = (x.version || 1) + 1; }
+      if ((PREVIOUS_DRAFT_SHAS[d.key] || []).includes(sha(x.body_md))) {
+        next.body_md = d.body_md;
+        next.version = (x.version || 1) + 1;
+        delete next.suggested_body_md;
+        delete next.suggested_at;
+      } else if (suggest && x.body_md !== d.body_md && x.suggested_body_md !== d.body_md) {
+        next.suggested_body_md = d.body_md;
+        next.suggested_at = nowIso();
+      }
       return next;
     }, W(ctx));
-    upgraded += 1;
+    if (!r.changed) continue;
+    if (r.data.suggested_body_md === d.body_md && t.suggested_body_md !== d.body_md && r.data.body_md !== d.body_md) suggested.push(t.name || d.name);
+    else upgraded += 1;
   }
   for (const [key, olds] of Object.entries(PREVIOUS_TEMPLATE_BODIES)) {
     const def = MESSAGE_TEMPLATES.find((x) => x.key === key);
@@ -113,12 +133,56 @@ export async function upgradeAgreementDrafts(ctx = {}) {
     await updateRecord("template", tid, (x) => (olds.includes(x.body) ? { ...x, body: def.body } : null), W(ctx));
     upgraded += 1;
   }
-  return { upgraded };
+  return { upgraded, suggested };
+}
+
+// The legal name on agreements, invoices and receipts (the owner, Nov 12).
+// cfg/company holds it only once the Company page was saved; a stored value
+// still equal to the old default moves, one an owner typed stays.
+export const LEGAL_NAME = "Barta Window Washing LLC";
+export const OLD_LEGAL_NAME = "BARTA WINDOW WASHING LLC";
+async function upgradeLegalName(ctx) {
+  for (let i = 0; i < 3; i++) {
+    const cur = await getRaw("cfg/company");
+    const v = cur && cur.data ? cur.data.legal_name : undefined;
+    if (v === undefined || v === LEGAL_NAME) return "current";
+    if (v !== OLD_LEGAL_NAME) return "kept";
+    const { _w, updated_at, updated_by, ...stored } = cur.data;
+    try {
+      await putSetting("company", { ...stored, legal_name: LEGAL_NAME }, { ...W(ctx), ifMatch: cur.etag });
+      return "upgraded";
+    } catch (e) {
+      if (!(e instanceof StaleError)) throw e;     // someone saved the page meanwhile: read theirs again
+    }
+  }
+  return "busy";
+}
+
+// Seed v3: the owner's answers of Nov 12 in the stored texts. Untouched
+// seeded drafts become the new ones (a new version: nothing is approved by
+// this, the owner approves each text in the app); an edited one keeps the
+// owner's words with the new draft as a suggestion; the legal name moves
+// when it was never changed. Idempotent (a second run changes nothing and
+// tells nobody). The owners get one notice listing what was left to them.
+export async function upgradeOwnerDecisions(ctx = {}) {
+  const out = await upgradeAgreementDrafts(ctx, { suggest: true });
+  const legal = await upgradeLegalName(ctx);
+  const parts = [];
+  if (out.suggested.length) parts.push(`New suggested wording for ${listWords(out.suggested)}: you had edited ${out.suggested.length === 1 ? "it" : "them"}, so your text stays until you pick.`);
+  if (legal === "kept") parts.push(`The legal name in Settings, Company stays as you typed it (suggested: ${LEGAL_NAME}).`);
+  // one notice, ever (a marker): a run again tells nobody twice
+  const claim = parts.length ? await claimMarker("done", "notice", "plans--owner-decisions", { holder: ctx.holder || W(ctx).requestId || "seed", leaseMs: 60000 }) : null;
+  if (claim && claim.ok) {
+    await notify((await approvers().catch(() => [])).slice(0, 10), { kind: "system", title: "New suggested agreement wording", body: parts.join(" ").slice(0, 300), link: "/settings/agreement-templates" }, W(ctx))
+      .catch((e) => console.error(`crm:plans: the owners were not told about the suggested wording (${safeErr(e)})`));
+    await advanceMarker(claim.marker, { state: "done", result: `${out.suggested.length} suggested, legal name ${legal}` });
+  }
+  return { upgraded: out.upgraded, suggested: out.suggested.length, legal_name: legal };
 }
 
 export async function listTemplates() {
   const ix = await readIndex("agreement-templates", "");
-  return ix.rows.map((r) => ({ id: r.id, key: r.k, name: r.nm, version: r.v, approved: r.ap, active: r.act, catalog_keys: r.ck || [], updated_at: r.u })).sort((a, b) => a.name.localeCompare(b.name));
+  return ix.rows.map((r) => ({ id: r.id, key: r.k, name: r.nm, version: r.v, approved: r.ap, active: r.act, catalog_keys: r.ck || [], suggested: !!r.sg, updated_at: r.u })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getTemplate(id) {
@@ -150,7 +214,9 @@ export async function createTemplate(body = {}, ctx) {
 }
 
 const TEMPLATE_FIELDS = ["name", "applies_to", "body_md", "active"];
-// PATCH: an edited body is a new version (the approval lapses until an owner approves it again).
+// PATCH: an edited body is a new version (the approval lapses until an owner
+// approves it again). A suggested draft (seed v3) goes once the owner saves
+// it as the text, or says to keep theirs ({ dismiss_suggestion: true }).
 export async function patchTemplate(id, body = {}, ctx) {
   await getTemplate(id);
   if (body.body_md !== undefined) checkBody(body.body_md);
@@ -158,6 +224,7 @@ export async function patchTemplate(id, body = {}, ctx) {
   return updateRecord("agreement_template", id, (t) => {
     const next = { ...t, ...patch };
     if (patch.body_md !== undefined && patch.body_md !== t.body_md) next.version = (t.version || 1) + 1;
+    if (body.dismiss_suggestion === true || (t.suggested_body_md && next.body_md === t.suggested_body_md)) { delete next.suggested_body_md; delete next.suggested_at; }
     return next;
   }, { ...W(ctx), ifMatch: ctx.ifMatch });
 }
@@ -246,10 +313,14 @@ export function renewalTerms(planLike) {
   const auto = (t.auto_renew ?? planLike.auto_renew) !== false;
   const every = t.renews_every_months || planLike.renews_every_months || 12;
   if (isLights(planLike)) {
-    const months = t.initial_months || planLike.term_months || 12;
-    const contract = months >= 36 ? `Your plan is a ${Math.round(months / 12)}-season contract. ` : "";
-    if (!auto && !contract) return "Your plan covers this season. Want us back next year? Just tell us when we text you in September.";
-    return `${contract}Your plan carries on every year so your lights go back up each season without the hassle. Each September we text you about the coming season, and we put your install on the schedule once you confirm. Want to skip a season or stop? Just tell us then.`;
+    // a 3-year contract: the same price every season, a storage fee to leave it early (the owner, Nov 12)
+    if (isLightsContract(planLike)) {
+      const n = Math.round((t.initial_months || planLike.term_months) / 12);
+      const fee = storageFeeCents(planLike);
+      return `Your plan is a ${n}-season contract at the same price every season. Each September we text you to set up the coming season's install. ${fee > 0 ? `If you cancel before the ${n} seasons are up, there's a ${money(fee)} storage fee. ` : ""}${auto ? `After the ${n} seasons, your plan carries on every year until you tell us to stop.` : `After the ${n} seasons, it ends unless you choose to renew it.`}`;
+    }
+    if (!auto) return "Your plan covers this season. Want us back next year? Just tell us when we text you in September.";
+    return "Your plan carries on every year so your lights go back up each season without the hassle. Each September we text you about the coming season, and we put your install on the schedule once you confirm. Want to skip a season or stop? Just tell us then.";
   }
   return auto ? `After that it renews every ${renewMonths(every)} until you cancel.` : "After that it ends, unless you choose to renew it.";
 }
@@ -276,7 +347,7 @@ export function clawbackTerms(planLike) {
 
 export async function companyInfo() {
   const c = await getSetting("company").catch(() => ({}));
-  return { name: (c && c.name) || "Barta Window Washing", legal_name: (c && c.legal_name) || "BARTA WINDOW WASHING LLC", phone: (c && c.phone) || "(763) 314-3400", email: (c && c.email) || "office@bartawindowwashing.com" };
+  return { name: (c && c.name) || "Barta Window Washing", legal_name: (c && c.legal_name) || LEGAL_NAME, phone: (c && c.phone) || "(763) 314-3400", email: (c && c.email) || "office@bartawindowwashing.com" };
 }
 
 // The variables of an agreement for a plan-like object (a plan, or a quote's plan option made into one).
@@ -289,7 +360,7 @@ export function agreementVars(planLike, { contact, company, catalog }) {
     legal_name: company.legal_name, company_name: company.name, company_phone: company.phone, company_email: company.email,
     full_name: nameOf(contact) || "the customer", first_name: (contact && contact.first_name) || "", last_name: (contact && contact.last_name) || "",
     plan_name: planLike.name || "plan", per_visit_price: perVisitText(planLike), visits_per_year: String(vpy), term_months: String((planLike.term && planLike.term.initial_months) || planLike.term_months || 12),
-    perks_list: perks || "none", clawback_amount: money(clawbackCents(planLike)), clawback_terms: clawbackTerms(planLike),
+    perks_list: perks || "none", perks_details: perksDetails(planLike.perks || {}, cat.perk_names), clawback_amount: money(clawbackCents(planLike)), clawback_terms: clawbackTerms(planLike),
     notice_days: String((planLike.policy && planLike.policy.notice_days) ?? cat.notice_days), late_cancel_fee: money((planLike.policy && planLike.policy.late_cancel_fee_cents) ?? cat.late_cancel_fee_cents),
     price_details: priceDetails(planLike), addon_note: extras ? " An add-on you pick is added to the visits it's on." : "",
     visit_schedule: visitSchedule(planLike), renewal_terms: renewalTerms(planLike), billing_terms: billingTerms(planLike),
@@ -314,7 +385,7 @@ export function optionAsPlan(option, cat) {
     frequency, visits_per_year: p.visits_per_year || entry.visits_per_year, term_months: p.term_months || entry.initial_months,
     renews_every_months: renewEveryFor(key, frequency, entry), auto_renew: p.auto_renew !== false,
     billing: { mode: p.billing || entry.billing, autopay: p.autopay === undefined ? !!entry.autopay : p.autopay === true },
-    perks: entry.perks, policy: { notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents },
+    perks: entry.perks, policy: { notice_days: cat.notice_days, late_cancel_fee_cents: cat.late_cancel_fee_cents, ...(key === "lights_annual" ? { storage_fee_cents: cat.lights_storage_fee_cents } : {}) },
   };
 }
 // How often a plan renews: the catalog's, but a Custom plan as often as it comes.

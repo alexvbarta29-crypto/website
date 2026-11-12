@@ -21,14 +21,23 @@
 // left (agreements.mjs approveTemplate): the owner keeps, changes or removes
 // the line it points at and then deletes the check. Seeded as drafts; none
 // can be sent, or shown on a quote, until an owner approves it (D10).
+//
+// The owner's answers (Nov 12) settled the legal name ("Barta Window Washing
+// LLC", Settings, Company), the $50 late cancel or reschedule fee (plans and
+// one-time jobs; no access and no notice counts; never when we move it),
+// what each perk covers ({{perks_details}}), the Monthly payback (the $150
+// plan discount, like Biannual $50 and Quarterly $100), Quarterly visit 2
+// (inside glass only, with the plan discount), add-ons only when asked, and
+// lights (the Early Bird and the 3-year $200 every season, the same price
+// all three seasons, a storage fee for leaving the contract early: all in
+// {{price_details}} and {{renewal_terms}}). One check is left: how the crew
+// hangs the lights.
 
 export const OWNER_CHECK = ">> Owner check:";
 
 const OPEN = `## {{plan_name}} service agreement
 
-This agreement is between {{legal_name}} ("{{company_name}}", "we", "us") and {{full_name}} ("you").
-
-${OWNER_CHECK} confirm the legal name (Settings, Company) is exactly the business's registered name.`;
+This agreement is between {{legal_name}} ("{{company_name}}", "we", "us") and {{full_name}} ("you").`;
 
 const GUARANTEE = `- Our 100% satisfaction guarantee: if anything isn't right, tell us and we'll come back and re-clean it for free.`;
 
@@ -38,15 +47,13 @@ const PRICE = `## Your price
 
 Your price: {{per_visit_price}}, locked in for the first {{term_months}} months.{{addon_note}}`;
 
-const LATE_FEE_CHECK = `${OWNER_CHECK} the late-cancel fee (Settings, Plans catalog & perks) isn't on the public website's terms yet. Keep it, change it, or take the fee sentence out.`;
+const LATE_FEE = (what) => `Cancelling or rescheduling with less than 24 hours' notice, or ${what} where we can't get in and weren't told, is a {{late_cancel_fee}} late cancellation fee.`;
 
 const REMINDERS = `## Reminders and rescheduling
 
 We text or email you about 2 weeks and again 2 days before each visit. We give you an arrival window, not an exact time.
 
-Need to move a visit? Just let us know at least 24 hours ahead. A cancel or reschedule with less than 24 hours' notice, or a visit where we can't get in and weren't told, may have a {{late_cancel_fee}} fee. There's never a fee when we're the ones moving a visit (rain, for example).
-
-${LATE_FEE_CHECK}`;
+Need to move a visit? Just let us know at least 24 hours ahead. ${LATE_FEE("a visit")} There's never a fee when we're the ones moving a visit (rain, for example).`;
 
 const PAYMENTS = `## Payments
 
@@ -56,13 +63,13 @@ const SKIPS = `## Skipped visits
 
 You can skip a visit. Skipping doesn't cancel your plan, and a skipped visit doesn't turn into a credit.`;
 
-const TERM = (extraCheck = "") => `## Term and renewal
+const TERM = `## Term and renewal
 
 Your plan starts with a {{term_months}}-month term at the price above. {{renewal_terms}} If your price ever changes after the first {{term_months}} months, we'll tell you in writing at least 30 days before.
 
 ## Cancelling in the first {{term_months}} months
 
-Give us {{notice_days}} days' notice in writing (a text or email is fine). {{clawback_terms}}${extraCheck ? `\n\n${extraCheck}` : ""}
+Give us {{notice_days}} days' notice in writing (a text or email is fine). {{clawback_terms}}
 
 ## Cancelling after the first {{term_months}} months
 
@@ -74,12 +81,16 @@ We're fully insured. You don't need to be home for exterior work as long as gate
 
 Questions? Call or text us at {{company_phone}}. Thanks for trusting us with your home!`;
 
-const PERKS_CHECK = `${OWNER_CHECK} say what each perk covers (what a touch-up includes, how much hard water removal is included), or keep the names only.`;
-
+// Add-ons ride on a visit only when the customer asks (the owner, Nov 12).
 const WINDOWS = (perks) => `## What you get
 
 - Window cleaning {{visit_schedule}}, with the services listed under Your price.
-${perks ? "- Plan perks: {{perks_list}}.\n" : ""}${GUARANTEE}${perks ? `\n\n${PERKS_CHECK}` : ""}`;
+- Want screens, tracks or gutters done too? Just ask and we'll add them to that visit.
+${perks ? "- Plan perks: {{perks_list}}.\n" : ""}${GUARANTEE}${perks ? `
+
+## Your plan perks
+
+{{perks_details}}` : ""}`;
 
 const SCHEDULING = (extra = "") => `## Scheduling
 
@@ -88,20 +99,19 @@ We book each visit with you ahead of time and confirm it by text.${extra}`;
 export const AGREEMENT_DRAFTS = Object.freeze([
   {
     key: "biannual", name: "Biannual plan agreement", applies_to: { catalog_keys: ["biannual"], service_types: ["Residential Window Cleaning"] },
-    body_md: [OPEN, WINDOWS(false), PRICE, SCHEDULING(), REMINDERS, PAYMENTS, SKIPS, TERM(), FINE].join("\n\n"),
+    body_md: [OPEN, WINDOWS(false), PRICE, SCHEDULING(), REMINDERS, PAYMENTS, SKIPS, TERM, FINE].join("\n\n"),
   },
   {
     key: "quarterly", name: "Quarterly plan agreement", applies_to: { catalog_keys: ["quarterly"], service_types: ["Residential Window Cleaning"] },
-    body_md: [OPEN, WINDOWS(true), PRICE, SCHEDULING(" Interior visits are always set up with you."), REMINDERS, PAYMENTS, SKIPS, TERM(), FINE].join("\n\n"),
+    body_md: [OPEN, WINDOWS(true), PRICE, SCHEDULING(" Your interior visit (visit 2 each year) is inside glass only, and we always set it up with you."), REMINDERS, PAYMENTS, SKIPS, TERM, FINE].join("\n\n"),
   },
   {
     key: "monthly", name: "Monthly plan agreement", applies_to: { catalog_keys: ["monthly"], service_types: ["Residential Window Cleaning"] },
-    body_md: [OPEN, WINDOWS(true), PRICE, SCHEDULING(), REMINDERS, PAYMENTS, SKIPS,
-      TERM(`${OWNER_CHECK} paying back the first visit's plan discount on a Monthly plan follows the Biannual and Quarterly rule; it isn't confirmed for Monthly yet.`), FINE].join("\n\n"),
+    body_md: [OPEN, WINDOWS(true), PRICE, SCHEDULING(), REMINDERS, PAYMENTS, SKIPS, TERM, FINE].join("\n\n"),
   },
   {
     key: "custom", name: "Custom plan agreement", applies_to: { catalog_keys: ["custom"], service_types: ["Residential Window Cleaning"] },
-    body_md: [OPEN, WINDOWS(false), PRICE, SCHEDULING(), REMINDERS, PAYMENTS, SKIPS, TERM(), FINE].join("\n\n"),
+    body_md: [OPEN, WINDOWS(false), PRICE, SCHEDULING(), REMINDERS, PAYMENTS, SKIPS, TERM, FINE].join("\n\n"),
   },
   {
     key: "lights", name: "Christmas light installation agreement", applies_to: { catalog_keys: ["lights_annual"], service_types: ["Christmas Lights"] },
@@ -114,9 +124,7 @@ export const AGREEMENT_DRAFTS = Object.freeze([
 
 {{price_details}}
 
-Your price: {{per_visit_price}}.{{addon_note}}
-
-${OWNER_CHECK} for a 3-year contract, confirm the price of seasons 2 and 3 (shown above without the first-season discounts and materials) and what happens if a customer stops before the 3 seasons are up.`, `## Scheduling
+Your price: {{per_visit_price}}.{{addon_note}}`, `## Scheduling
 
 We text you to set up your install date. Takedown happens in January; we'll text you before we come.`, `## Payments
 
@@ -124,9 +132,7 @@ We text you to set up your install date. Takedown happens in January; we'll text
 
 {{renewal_terms}}`, `## Late cancels
 
-A cancel or reschedule of an install or takedown with less than 24 hours' notice may have a {{late_cancel_fee}} fee. There's never a fee when we're the ones moving a visit.
-
-${LATE_FEE_CHECK}`, `## The fine print
+${LATE_FEE("an install or takedown")} There's never a fee when we're the ones moving a visit.`, `## The fine print
 
 We're fully insured. We hang your lights with clips along your roofline and gutters. We're not responsible for damage that was already there, or for old or loose gutters, shingles or trim.
 
@@ -140,30 +146,29 @@ Questions? Call or text us at {{company_phone}}. Thanks for trusting us with you
 
 This agreement is between {{legal_name}} ("{{company_name}}", "we", "us") and {{full_name}} ("you") for a one-time service.
 
-${OWNER_CHECK} confirm the legal name (Settings, Company) is exactly the business's registered name.
-
 ## What you get
 
 - The services on your quote, at the price on your quote.
 ${GUARANTEE}`, `## Scheduling and reminders
 
-We book your visit with you and text you a reminder before we come. We give you an arrival window, not an exact time. A cancel or reschedule with less than 24 hours' notice may have a {{late_cancel_fee}} fee. There's never a fee when we're the ones moving the visit.
-
-${LATE_FEE_CHECK}`, `## Payment
+We book your visit with you and text you a reminder before we come. We give you an arrival window, not an exact time. Need to move it? Just let us know at least 24 hours ahead. ${LATE_FEE("a visit")} There's never a fee when we're the ones moving the visit.`, `## Payment
 
 Payment is due when the work is done. We don't charge sales tax.`, FINE].join("\n\n"),
   },
 ]);
 
-// The sha256 of every earlier seeded body, by key: an untouched seeded text
-// is upgraded to the draft above (a new version the owner approves again);
-// a text an owner edited is never overwritten (agreements.mjs).
+// The sha256 of every earlier seeded body, by key (the first drafts of Nov
+// 10, then the plan-derived drafts of Nov 11): an untouched seeded text is
+// upgraded to the draft above (a new version the owner approves again); a
+// text an owner edited is never overwritten (agreements.mjs), it gets the
+// draft above as a suggestion instead.
 export const PREVIOUS_DRAFT_SHAS = Object.freeze({
-  biannual: ["6fe1b07643226d032641213707fe0db6806f4f9632331045b54e503899ec51be"],
-  quarterly: ["1ca8eb0f4ced507e8f41bfa1173c2511498dd82a9a553d643f0a08b120910e02"],
-  monthly: ["498ee549c7625a8e51127f00fdd4995a9423638b1a5e6da38eb809f83706fa6a"],
-  lights: ["c4c7a91d9b21438bd46e7768fc132dda2352fe43e34de111796620f8cd703953"],
-  one_time: ["925cf3c1a4a7eb60d11dd7244f09f0eadad3293e0638732a1e6fa41b30d94d29"],
+  biannual: ["6fe1b07643226d032641213707fe0db6806f4f9632331045b54e503899ec51be", "4cba101f5d481fb0ad6839d0dbb8c5ed01c081aeca14aebde0700d15378b33c8"],
+  quarterly: ["1ca8eb0f4ced507e8f41bfa1173c2511498dd82a9a553d643f0a08b120910e02", "aea6dfc930e2b14de9c20a73a064e47a3901187eef8a9231408eec7a2397314e"],
+  monthly: ["498ee549c7625a8e51127f00fdd4995a9423638b1a5e6da38eb809f83706fa6a", "5b2288512ad707cb34928400a7d2d6a8b3c5d9d8264c509c37b809f21404fdfa"],
+  custom: ["4cba101f5d481fb0ad6839d0dbb8c5ed01c081aeca14aebde0700d15378b33c8"],
+  lights: ["c4c7a91d9b21438bd46e7768fc132dda2352fe43e34de111796620f8cd703953", "676573420b41809994d2619a63bcc252108baca728f472acc484ba897bf47558"],
+  one_time: ["925cf3c1a4a7eb60d11dd7244f09f0eadad3293e0638732a1e6fa41b30d94d29", "3709a2156b7c9c032036a1b4eba149f91df626707bbdde4ce4b200b23f2e9775"],
 });
 // Message templates whose first body read wrong ("a visit" twice): the
 // built-in copy is replaced when it was never edited.

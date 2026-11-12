@@ -231,7 +231,7 @@ test("the seeded price book and discount catalog match barta-rules and D15/D26 (
     const book = (await t.api("/pricebook", { as: owner })).body.data;
     const by = Object.fromEntries(book.map((i) => [i.key, i]));
     assert.equal(by.screens.unit_cents, 500);
-    assert.equal(by.tracks_standard.unit_cents, 800, "D26");
+    assert.equal(by.tracks_standard.unit_cents, 500, "standard tracks $5 (the owner, Nov 12)");
     assert.equal(by.tracks_premium.unit_cents, 1500);
     assert.equal(by.interior_upper.unit_cents, 1200, "D26");
     assert.equal(by.lights_install.unit_cents, 800);

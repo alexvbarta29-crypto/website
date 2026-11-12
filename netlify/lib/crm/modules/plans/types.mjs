@@ -199,7 +199,10 @@ export function validatePlan(data, { op } = {}) {
     },
     policy: (v, f) => {
       const p = isObj(v) ? v : {};
-      return { ...p, early_cancel_clawback_cents: cents(p.early_cancel_clawback_cents, `${f}.early_cancel_clawback_cents`), notice_days: int(p.notice_days ?? 7, { field: `${f}.notice_days`, min: 0, max: 90 }), late_cancel_fee_cents: cents(p.late_cancel_fee_cents ?? 5000, `${f}.late_cancel_fee_cents`) };
+      return {
+        ...p, early_cancel_clawback_cents: cents(p.early_cancel_clawback_cents, `${f}.early_cancel_clawback_cents`), notice_days: int(p.notice_days ?? 7, { field: `${f}.notice_days`, min: 0, max: 90 }), late_cancel_fee_cents: cents(p.late_cancel_fee_cents ?? 5000, `${f}.late_cancel_fee_cents`),
+        ...(p.storage_fee_cents !== undefined ? { storage_fee_cents: cents(p.storage_fee_cents, `${f}.storage_fee_cents`) } : {}),
+      };
     },
     ordinals: (v, f) => arr(v, (o, of) => validateOrdinal(o, of, { stored }), { field: f, max: MAX_ORDINALS }),
     cancelled_job_ids: ids("job", 200),
@@ -218,6 +221,7 @@ export function validatePlan(data, { op } = {}) {
         ...v, requested_on: dateOpt(v.requested_on, `${f}.requested_on`), effective_on: dateOpt(v.effective_on, `${f}.effective_on`),
         reason: enumValue(v.reason, CANCEL_REASONS, { field: `${f}.reason`, stored: true }) || "other", note: str(v.note, { field: `${f}.note`, max: 500 }) || undefined,
         clawback_cents: cents(v.clawback_cents, `${f}.clawback_cents`), by: str(v.by, { field: `${f}.by`, max: 80 }) || "",
+        ...(v.storage_fee_cents !== undefined ? { storage_fee_cents: cents(v.storage_fee_cents, `${f}.storage_fee_cents`) } : {}),
       };
     },
     renewal: (v) => (isObj(v) ? { ...v } : {}),
@@ -313,10 +317,13 @@ export function validateAgreementTemplate(data, { op } = {}) {
     approved_by: strOpt(80),
     active: (v, f) => (v === undefined ? true : bool(v, { field: f })),
     seeded: (v, f) => (v === undefined ? undefined : bool(v, { field: f })),
+    // a newer seeded draft offered beside an owner's edited text (seed v3); never sent or approved by itself
+    suggested_body_md: (v, f) => (v === undefined || v === null || v === "" ? undefined : str(v, { field: f, max: 40000, trim: false })),
+    suggested_at: isoOpt,
   }));
 }
 export const templateApproved = (t) => !!t && t.active !== false && Number.isSafeInteger(t.approved_version) && t.approved_version === t.version;
-export const agreementTemplateRow = (r) => ({ k: r.key, nm: r.name, v: r.version || 1, ap: templateApproved(r), act: r.active !== false, ck: (r.applies_to && r.applies_to.catalog_keys) || [], u: r.updated_at });
+export const agreementTemplateRow = (r) => ({ k: r.key, nm: r.name, v: r.version || 1, ap: templateApproved(r), act: r.active !== false, ck: (r.applies_to && r.applies_to.catalog_keys) || [], ...(r.suggested_body_md ? { sg: 1 } : {}), u: r.updated_at });
 
 export const agreementTemplateType = defineType({
   type: "agreement_template",

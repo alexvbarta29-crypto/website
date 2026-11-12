@@ -160,7 +160,8 @@ export function saleValue(plan) {
 }
 
 // The per-visit prices of the plan's first year (visit 1 carries what's
-// "initial" only: a first-visit discount, the lights materials).
+// "initial" only: a first-visit discount; a lights plan made before Nov 12
+// also had its materials, Early Bird and 3-year discount there).
 export function cyclePrices(plan) {
   const vpy = Math.max(1, plan.visits_per_year || visitsPerYearOf(plan.frequency));
   return Array.from({ length: vpy }, (_, i) => ordinalTotals(plan, { term: 1, n: i + 1, k: i + 1 }).total_cents);
@@ -193,6 +194,20 @@ export function clawbackCents(plan) {
   const bp = Math.min(10000, ds.filter((d) => d.type === "percentage").reduce((s, d) => s + (d.value || 0), 0));
   const fixed = ds.filter((d) => d.type === "fixed").reduce((s, d) => s + (d.value || 0), 0);
   return Math.min(subtotal, roundHalfUp(subtotal * bp, 10000) + fixed);
+}
+
+// A Christmas lights contract (the 3-year plan: an initial term of 36 months
+// or more) and its early-exit storage fee (the owner, Nov 12: $400 when the
+// customer cancels inside the initial term). The plan carries the figure it
+// was sold with (policy.storage_fee_cents); a plan without one (imported, or
+// made before Nov 12) uses the owner's $400. Calculator, cancel and the
+// agreement text all read it here.
+export const LIGHTS_STORAGE_FEE_CENTS = 40000;
+export const isLightsContract = (plan) => !!plan && (plan.kind === "lights_annual" || plan.catalog_key === "lights_annual") && ((plan.term && plan.term.initial_months) || plan.term_months || 12) >= 36;
+export function storageFeeCents(plan) {
+  if (!isLightsContract(plan)) return 0;
+  const c = plan.policy && plan.policy.storage_fee_cents;
+  return Number.isSafeInteger(c) && c >= 0 ? c : LIGHTS_STORAGE_FEE_CENTS;
 }
 
 // The season of a lights ordinal (its install's year).
@@ -229,20 +244,23 @@ export function pausedOrdinals(plan, from, until = null) {
 
 // The cancel policy calculator (§5.4; GET /plans/:id/cancel-quote). Inside
 // the initial term: effective after notice_days, and the first visit's plan
-// discount comes back when that visit was done (a draft for the owner, never
-// charged by itself); after it: effective at the end of the current term,
-// visits up to then still happen and bill.
+// discount comes back when that visit was done; a lights contract left inside
+// its initial term adds its storage fee (both a draft for the owner, never
+// charged by itself; clawback_cents is the total, storage_fee_cents the
+// fee's part); after it: effective at the end of the current term, visits up
+// to then still happen and bill.
 export function cancelQuote(plan, requestedOn) {
   const t = plan.term || {};
   const policy = plan.policy || {};
   const inside = requestedOn <= (t.initial_end_on || requestedOn);
   const effective_on = inside ? addLocalDays(requestedOn, Number.isInteger(policy.notice_days) ? policy.notice_days : 7) : (t.current_term_end || requestedOn);
   const first = (plan.ordinals || []).find((o) => (o.k || 0) === 1) || (plan.ordinals || [])[0];
-  const clawback_cents = inside && first && first.status === "completed" ? clawbackCents(plan) : 0;
+  const fee = inside ? storageFeeCents(plan) : 0;
+  const clawback_cents = (inside && first && first.status === "completed" ? clawbackCents(plan) : 0) + fee;
   const open = (plan.ordinals || []).filter((o) => OPEN_ORDINAL.includes(o.status));
   const happen = open.filter((o) => o.status === "scheduled" && o.visit_date && o.visit_date <= effective_on);
   return {
-    inside_initial_term: inside, requested_on: requestedOn, effective_on, clawback_cents, notice_days: policy.notice_days ?? 7,
+    inside_initial_term: inside, requested_on: requestedOn, effective_on, clawback_cents, ...(fee ? { storage_fee_cents: fee } : {}), notice_days: policy.notice_days ?? 7,
     visits_still_happen: happen.length, visits_cancelled: open.length - happen.length, immediate: effective_on <= requestedOn,
   };
 }
@@ -371,7 +389,7 @@ export function applyAction(plan, action, args = {}, { today, at, by = "" } = {}
       const q = cancelQuote(plan, requested);
       next.cancel = {
         requested_on: requested, effective_on: q.effective_on, reason, ...(args.note ? { note: String(args.note).slice(0, 500) } : {}),
-        clawback_cents: q.clawback_cents, ...(q.clawback_cents > 0 ? { clawback_state: "to_bill" } : {}), inside_initial_term: q.inside_initial_term, by,
+        clawback_cents: q.clawback_cents, ...(q.storage_fee_cents ? { storage_fee_cents: q.storage_fee_cents } : {}), ...(q.clawback_cents > 0 ? { clawback_state: "to_bill" } : {}), inside_initial_term: q.inside_initial_term, by,
       };
       if (q.effective_on <= today) {
         const fin = applyAction(next, "cancel_effective", {}, { today, at, by });
