@@ -1,12 +1,12 @@
 /* The Import screens (M2c): runs, a run's upload, team, steps and report,
-   conflicts. House style (design §0 rule 9): pill buttons, 20 px cards,
-   44 px tap targets, 16 px inputs. */
+   conflicts. House style (crm.css tokens): 12 px cards, 10 px buttons,
+   44 px tap targets on a phone, 16 px inputs. */
 
 .im-gap{margin-top:12px}
 .im-foot{text-align:center;margin:4px 8px 0}
 .im-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .im-head h2,.im-head h3{margin:0;min-width:0;overflow-wrap:anywhere}
-.im-cmd{margin:8px 0 0;padding:10px 12px;border-radius:12px;background:var(--mist);border:1px solid var(--line);font:500 12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-all;user-select:all;-webkit-user-select:all}
+.im-cmd{margin:8px 0 0;padding:10px 12px;border-radius:var(--r);background:var(--mist);border:1px solid var(--line);font:500 12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-all;user-select:all;-webkit-user-select:all}
 
 /* upload from the phone */
 .im-phone{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
@@ -22,7 +22,7 @@
 .im-team .nm{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .im-team .sub{display:block;font-size:13px;color:var(--ink-3)}
 .im-team .end{flex:none}
-.im-sel{flex:1 1 170px;max-width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:14px;background:#fff;font-size:16px;color:var(--ink)}
+.im-sel{flex:1 1 170px;max-width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;font-size:16px;color:var(--ink)}
 
 /* steps */
 .im-phases{list-style:none;margin:10px 0 0;padding:0}
@@ -34,7 +34,7 @@
 
 /* report */
 .im-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-.im-tile{padding:10px 12px;border:1px solid var(--line);border-radius:16px;background:var(--mist);min-width:0}
+.im-tile{padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-lg);background:#fff;min-width:0}
 .im-tile b{display:block;font:800 21px/1.15 var(--head);overflow:hidden;text-overflow:ellipsis}
 .im-tile span{display:block;font-size:12.5px;color:var(--ink-3)}
 

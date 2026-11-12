@@ -41,7 +41,12 @@ let checklist = null;
 const checklists = async () => { if (!checklist) { await scope(() => OFF.seedChecklists({ write: () => W() })); checklist = (await store.readIndex("checklists", "")).rows[0]; } return checklist; };
 
 export default {
-  "GET /schedule": async (fx) => { await busyDay(fx); return { as: fx.owner, path: "/schedule?from=2026-11-23&to=2026-11-29" }; },
+  // the heaviest read: the month view's whole grid with job totals; December 2026's runs Nov 29 to Jan 2 (three visit shards, two years)
+  "GET /schedule": async (fx) => {
+    await busyDay(fx);
+    for (const date of ["2026-11-29", "2026-12-01", "2026-12-01", "2026-12-15", "2027-01-02"]) await visit(fx, { date });
+    return { as: fx.owner, path: "/schedule?month=2026-12&amounts=1" };
+  },
   "GET /schedule/unscheduled": async (fx) => { await job(); return { as: fx.owner, path: "/schedule/unscheduled" }; },
   "GET /schedule/check": async (fx) => ({ as: fx.owner, path: `/schedule/check?date=2026-11-24&start=09:00&end=11:00&users=${fx.tech.id}&town=Delano` }),
   "GET /schedule/route": async (fx) => ({ as: fx.owner, path: `/schedule/route?date=2026-11-24&user=${fx.tech.id}` }),

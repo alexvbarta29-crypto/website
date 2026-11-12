@@ -280,6 +280,16 @@ export function monthsOf(from, to) {
   return out;
 }
 
+// The month view's days (US layout): the Sunday on or before the 1st to the
+// Saturday on or after the last day, 4 to 6 weeks (never over MAX_RANGE_DAYS).
+export function monthGridRange(month) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month || ""))) throw new InputError("Use a month like 2026-11.", "month");
+  const [y, m] = month.split("-").map(Number);
+  const first = `${month}-01`;
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  return [addLocalDays(first, -dowOfDate(first)), addLocalDays(last, 6 - dowOfDate(last))];
+}
+
 export function checkRange(from, to) {
   if (!isLocalDate(from) || !isLocalDate(to)) throw new InputError("Use dates like 2026-11-17.", "from");
   if (to < from) throw new InputError("The range ends after it starts.", "to");
@@ -319,6 +329,21 @@ export async function scheduleRange({ from, to, users = [] }, opts = {}) {
     if (w.length) warnings[v.id] = w;
   }
   return { visits, tasks, time_off: timeOff, warnings, stale, hours: env.hours, calendar: env.calendar };
+}
+
+// Each visit's job total as `amt` in cents (the month view's day list, for
+// people who may see prices), from the jobs index only: open jobs and the
+// years closed jobs are filed under (the range's years up to this one).
+// A no-charge job, or one with no row yet, gets no amount.
+export async function withAmounts(visits, { from, to, today }, opts = {}) {
+  const want = new Set(visits.map((v) => v.j).filter(Boolean));
+  if (!want.size) return visits;
+  const thisYear = String(today).slice(0, 4);
+  const years = [...new Set([from.slice(0, 4), to.slice(0, 4), thisYear])].filter((y) => y <= thisYear);
+  const shards = await Promise.all(["open", ...years].map((s) => readIndex("jobs", s, opts)));
+  const tot = new Map();
+  for (const s of shards) for (const r of s.rows) if (want.has(r.id) && r.bill !== false && Number.isFinite(r.tot) && r.tot > 0) tot.set(r.id, r.tot);
+  return visits.map((v) => (tot.has(v.j) ? { ...v, amt: tot.get(v.j) } : v));
 }
 
 // Warnings and hints for one proposed slot (the schedule sheet asks while you pick).

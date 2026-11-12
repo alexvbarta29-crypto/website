@@ -3,7 +3,7 @@
 // the other warnings (never blocking), the booking hint and the tray.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, customer, job, visit, store, AS } from "./fixtures.mjs";
+import { setup, customer, job, visit, store, AS, SCH, OFF, LINES } from "./fixtures.mjs";
 
 const task = (as, fields) => store.createRecord("task", { title: "Estimate at the Example house", kind: "estimate_visit", priority: "medium", status: "open", ...fields }, AS(as));
 
@@ -89,5 +89,48 @@ test("the tray: unscheduled jobs due by the month (takedowns targeted for Januar
     assert.deepEqual(janR.body.data.jobs.map((r) => r.id).sort(), [now_.id, jan.id].sort());
     assert.equal(janR.body.data.jobs.find((r) => r.id === jan.id).k, "lights_takedown");
     assert.equal(janR.body.data.jobs.find((r) => r.id === jan.id).bill, false, "takedowns are not billed");
+  } finally { t.done(); }
+});
+
+test("the month view: GET /schedule?month= reads the whole grid (Sunday first, the leading and trailing days) in one request, with job totals for people who may see prices", async () => {
+  const { t, owner, admin, tech } = await setup();
+  try {
+    assert.deepEqual(SCH.monthGridRange("2026-11"), ["2026-11-01", "2026-12-05"], "November 2026 starts on a Sunday: five weeks");
+    assert.deepEqual(SCH.monthGridRange("2026-08"), ["2026-07-26", "2026-09-05"], "August 2026: six weeks, 42 days");
+    assert.deepEqual(SCH.monthGridRange("2026-02"), ["2026-02-01", "2026-02-28"], "February 2026: four weeks");
+    assert.deepEqual(SCH.monthGridRange("2027-03"), ["2027-02-28", "2027-04-03"], "a month over the DST change");
+    for (const bad of ["2026-13", "2026-1", "nope", ""]) assert.throws(() => SCH.monthGridRange(bad), /month like/);
+
+    const c = await customer(owner, {}, { town: "Mound" });
+    const lead = await visit(owner, await job(owner, c), { date: "2026-11-01", start: "09:00", end: "11:00", assignee_ids: [tech.id] });
+    const trail = await visit(owner, await job(owner, c, { lines: [{ ...LINES[0], unit_cents: 41000 }] }), { date: "2026-12-04", start: "13:00", end: "15:00", assignee_ids: [tech.id] });
+    const free = await visit(owner, await job(owner, c, { kind: "touch_up", lines: [{ title: "Touch-up", qty_milli: 1000, unit_cents: 0 }] }), { date: "2026-11-20" });
+    await visit(owner, await job(owner, c), { date: "2026-12-06" });            // the Sunday after the grid
+    await visit(owner, await job(owner, c), { date: "2026-10-31" });            // the Saturday before it
+
+    const r = await t.api("/schedule?month=2026-11&amounts=1", { as: owner });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const d = r.body.data;
+    assert.deepEqual([d.from, d.to, d.month, d.today], ["2026-11-01", "2026-12-05", "2026-11", "2026-11-17"]);
+    assert.deepEqual(d.visits.map((v) => v.id).sort(), [lead.id, trail.id, free.id].sort(), "the grid's days, the trailing week too");
+    const byId = Object.fromEntries(d.visits.map((v) => [v.id, v]));
+    assert.equal(byId[lead.id].amt, 29500, "the job's total");
+    assert.equal(byId[trail.id].amt, 41000);
+    assert.equal(byId[free.id].amt, undefined, "a no-charge job shows no amount");
+    // ?month=now is the server's month; without amounts=1 there are none
+    const now_ = await t.api("/schedule?month=now", { as: admin });
+    assert.deepEqual([now_.body.data.from, now_.body.data.to, now_.body.data.month], ["2026-11-01", "2026-12-05", "2026-11"]);
+    assert.ok(now_.body.data.visits.every((v) => v.amt === undefined));
+    // someone denied visit prices gets the month without them
+    const quiet = await t.user("admin", { denies: ["visits:prices"] });
+    const q = await t.api("/schedule?month=2026-11&amounts=1", { as: quiet });
+    assert.equal(q.status, 200);
+    assert.ok(q.body.data.visits.length === 3 && q.body.data.visits.every((v) => v.amt === undefined));
+    // a closed job is found in the year it closed
+    await OFF.changeVisit(lead.id, "office_complete", { ctx: AS(owner) });
+    const after = await t.api("/schedule?month=2026-11&amounts=1", { as: owner });
+    assert.equal(after.body.data.visits.find((v) => v.id === lead.id).amt, 29500, "done: from jobs/2026");
+    assert.equal((await t.api("/schedule?month=2026-13", { as: owner })).status, 400);
+    assert.equal((await t.api("/schedule?month=2026-11", { as: tech })).status, 403, "a tech never sees the office's schedule");
   } finally { t.done(); }
 });

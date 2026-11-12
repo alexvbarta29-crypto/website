@@ -176,15 +176,18 @@ export async function frameOffset(page, frame) {
 
 // The phone checks every screen passes (§9.4): no sideways scroll, tap
 // targets of 44 px, inputs of 16 px (no iOS zoom). → a list of problems.
+// A desk with a mouse (900 px and up, a fine pointer: never a phone or a
+// tablet) may have controls of 32 px; the CSS sizes them for the pointer.
 export async function screenProblems(frame) {
   return frame.evaluate(() => {
     const out = [];
+    const min = matchMedia("(min-width: 900px) and (hover: hover) and (pointer: fine)").matches ? 31.5 : 43.5;
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`scrolls sideways (${document.documentElement.scrollWidth} > ${innerWidth})`);
     for (const el of document.querySelectorAll("#view a, #view button, #view select, #view input:not([type=checkbox]):not([type=radio]), #pane a, #pane button, #pane select, #pane input:not([type=checkbox]):not([type=radio]), .top button, .tabs .tab, .sheet a, .sheet button, .fab")) {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height || getComputedStyle(el).visibility === "hidden" || el.classList.contains("sr") || el.closest("[hidden]")) continue;
       const box = el.closest("label") ? el.closest("label").getBoundingClientRect() : r;
-      if (box.height < 43.5 || box.width < 43.5) out.push(`small tap target ${el.tagName.toLowerCase()} "${(el.textContent || el.getAttribute("aria-label") || el.name || "").trim().slice(0, 24)}" ${Math.round(box.width)}x${Math.round(box.height)}`);
+      if (box.height < min || box.width < min) out.push(`small tap target ${el.tagName.toLowerCase()} "${(el.textContent || el.getAttribute("aria-label") || el.name || "").trim().slice(0, 24)}" ${Math.round(box.width)}x${Math.round(box.height)}`);
     }
     for (const i of document.querySelectorAll("#view input:not([type=checkbox]):not([type=radio]), #view select, #view textarea, #pane input:not([type=checkbox]):not([type=radio]), #pane select, #pane textarea, .sheet input:not([type=checkbox]):not([type=radio]), .sheet select, .sheet textarea")) {
       if (i.offsetParent && !i.classList.contains("sr") && parseFloat(getComputedStyle(i).fontSize) < 16) out.push(`input under 16 px: ${i.name || i.id}`);

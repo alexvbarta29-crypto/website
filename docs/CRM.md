@@ -71,7 +71,9 @@ where the Follow-ups wording comes from): [OFFICE.md](OFFICE.md).
   hand on port 8796 (sign in as olive, ada, theo or tess with "a long
   synthetic passphrase"). Chromium can't check what only WebKit does (the
   installed iPhone app, iOS zoom and safe areas): each gate still ends with
-  the §9.4 checklist on an iPhone.
+  the §9.4 checklist on an iPhone. The tap-target check (`screenProblems`
+  in `kit.mjs`) wants 44 px on a phone or a tablet and 32 px on a desk
+  with a mouse (900 px and up, a fine pointer).
 
 ### Releasing a client change
 
@@ -547,6 +549,20 @@ The manual path, for reference:
 - **Wider screens** (900 px and up: an iPad, the office desk): a desktop
   layout, the same code (see "Home and navigation"). Screens load behind
   grey skeletons, not spinners.
+- **The look** (`crm-app/styles/crm.css`, its tokens on `:root`): the
+  website's brand (coral #fb4d3d, AA text coral #d0331f, ink, mist, line;
+  self-hosted Cabinet Grotesk 700/800 and General Sans 400/500/600) with a
+  field-service app's treatment: a spacing and type scale, Cabinet Grotesk
+  800 only for page titles and big numbers and 700 for section titles,
+  General Sans for the rest with muted secondary text, tabular figures for
+  money, counts and times; white cards with a hairline border, a 12 px
+  radius and a soft shadow; 10 px rounded-rectangle buttons (a coral
+  primary whose white text is AA, `--coral-btn`; quiet white secondaries);
+  soft-filled status pills (green, amber, blue, red, grey) the same in
+  every module; a coral focus ring for the keyboard. A phone keeps 44 px
+  tap targets and 16 px inputs; a desk with a mouse (900 px and up, a fine
+  pointer) has 40 px buttons and 34 px chips. Modules style only their own
+  pieces on top of these. Light only.
 - **Security:** every CRM page sends `Content-Security-Policy` with
   `script-src 'self'` and has no inline script; screens build markup only
   through `html```, which escapes everything and refuses inline handlers,
@@ -700,13 +716,19 @@ Money's and the inbox's rows arrive with their modules.
 
 ### On a computer (900 px and up)
 
-- A **sidebar**: the logo, Home (and Inbox), then every Menu section as a
-  collapsible group (remembered on that browser), the current screen lit,
-  badges, and who is signed in.
-- The **header**: the title, a **search** box (`GET /search`: names,
-  phones, streets, Q-/INV- numbers; office only), the screen's own button,
-  **New** (the creates) and the person's menu (My account, Sign out).
-- Screens use the width (up to 1,120 px; Home up to 1,440 px as a grid:
+- A **sidebar** in the website's deep ink: the white logo, Home (and
+  Inbox), then every Menu section as a collapsible group under a small
+  label (remembered on that browser), the current screen lit with a coral
+  bar, badges, and who is signed in.
+- The slim white **header**: the title, a **search** box (`GET /search`:
+  names, phones, streets, Q-/INV- numbers; office only), the screen's own
+  button (white, so New is the one coral button), **New** (the creates)
+  and the person's menu (My account, Sign out).
+- Screens sit on the mist canvas and use the width (up to 1,160 px; the
+  Schedule's month up to 1,480 px with the day's list beside it from
+  1,100 px; a Visit in two columns from 1,200 px; full-width lists such as
+  Jobs, Plans and Payments read as a table from 1,100 px; Home up to
+  1,440 px as a grid:
   the month's tiles in a row, money beside money by month, today beside
   Needs you, Sales, Plans and Jobs side by side). Sheets are dialogs.
 - **List + detail** from 1,000 px: a list route marked `split: true`
