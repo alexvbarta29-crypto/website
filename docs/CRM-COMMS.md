@@ -124,9 +124,10 @@ Measured on the synthetic export at full scale (`tests/crm/fixtures/rotor-synthe
 | | |
 | --- | --- |
 | Messages / conversations | 10,927 / 2,294 (the synthetic export has about twice the real number of threads) |
-| Storage calls, first run | 46,864 (4.29 per message): about 39 minutes at 20 calls a second |
-| Bulk-lane passes | 69, each checkpointed (450 rows a step), every message written exactly once |
-| Second run, unchanged export | 4,991 reads, no writes |
+| Storage calls, first run | 46,890 (4.29 per message): about 39 minutes at 20 calls a second |
+| Bulk-lane passes | 70, each checkpointed (450 rows a step), every message written exactly once |
+| Second run, unchanged export | 4,991 reads (three per conversation, twelve side by side), no writes |
+| Estimate for the real export (about 1,240 threads) | about 36,000 calls, about 30 minutes |
 | Biggest inbox shard / biggest message | 613 KB / 18 KB |
 | Campaign audience preview over 1,265 contacts | 23 storage calls |
 
