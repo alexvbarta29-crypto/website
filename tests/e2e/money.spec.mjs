@@ -217,10 +217,10 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForFunction(() => [...document.querySelectorAll(".toast")].some((x) => /no test Stripe key yet/.test(x.textContent)), null, { timeout: 5000 });
       assert.equal((await api(p, "/money/status")).mode, "dry_run");
 
-      // Home: what's owed, in dollars, and the rows that need someone
+      // Home: the money this month only (what's owed is on Invoices; past due lights the tab's dot)
       await goTo(f, "/today");
-      await viewHas(f, /owed to you/);
-      assert.match(await f.textContent("#view"), /Invoices past due/);
+      await viewHas(f, /Money this month/);
+      assert.doesNotMatch(await f.textContent("#view"), /owed to you|Invoices past due/);
       await shot(page, `money-home-${device}`);
       await p.clean();
     } finally { await p.close(); }
