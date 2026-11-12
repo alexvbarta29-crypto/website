@@ -15,9 +15,9 @@
 // is up) and sits above the home indicator.
 //
 // On a computer or a tablet (900 px and up) the same pieces become a
-// desktop CRM: a left sidebar (the logo, Home, then every Menu section as
-// a collapsible group, the current screen lit, the badges, who is signed
-// in) and, in the header, a search box (GET /search: names, phones,
+// desktop CRM: a dark left sidebar (the white logo, Home, then every Menu
+// section as a collapsible group, the current screen lit with a coral bar,
+// the badges, who is signed in) and, in the header, a search box (GET /search: names, phones,
 // streets, Q-/INV- numbers), a New button (the same creates) and the
 // person's menu. CSS decides which set shows; one codebase.
 
@@ -232,7 +232,7 @@ function mountDesk() {
   side.setAttribute("aria-label", "CRM sections");
   const top = st.tabs.filter((t) => !t.more && (office ? ["home", "inbox"].includes(t.key) : t.key !== "menu"));
   const u = st.user || {};
-  render(side, html`<a class="side-logo" href="#/today"><img src="/assets/img/logo-bww.png" alt="Barta Window Washing" width="148" height="40"></a>
+  render(side, html`<a class="side-logo" href="#/today"><img src="/assets/img/logo-bww-white.png" alt="Barta Window Washing" width="128" height="35"></a>
     <div class="side-scroll">
       ${top.map((t) => sideItem(t.path, t.label, t.icon, t.key))}
       ${office ? menuSections().map((sec) => html`<section class="${"side-grp sec-" + sec.key + (shut.has(sec.key) ? " shut" : "")}" data-grp="${sec.key}">

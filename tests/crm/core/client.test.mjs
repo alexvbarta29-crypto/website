@@ -80,8 +80,14 @@ test("the stylesheet keeps the phone rules: 44 px buttons, 16 px inputs, loaded 
   assert.match(css, /\.banner button\{[^}]*min-height:44px/);
   assert.match(css, /\.copy-box input\{[^}]*font-size:16px/);
   const loaded = [...css.matchAll(/@font-face\{font-family:'([^']+)';[^}]*font-weight:(\d+)/g)].map((m) => m[1] + " " + m[2]);
-  assert.deepEqual(loaded.sort(), ["Cabinet Grotesk 800", "General Sans 500", "General Sans 600"]);
-  assert.doesNotMatch(css, /font(-weight)?:\s*(700|bold)\b/, "no weight that isn't loaded");
+  assert.deepEqual(loaded.sort(), ["Cabinet Grotesk 700", "Cabinet Grotesk 800", "General Sans 400", "General Sans 500", "General Sans 600"]);
+  // no weight that isn't loaded: General Sans stops at 600 (700 and 800 are Cabinet Grotesk's)
+  for (const f of ["crm-app/styles/crm.css"]) {
+    const text = readFileSync(f, "utf8");
+    assert.doesNotMatch(text, /font:\s*(700|800|900)[^;}]*var\(--text\)/, `${f}: General Sans has no 700 or 800 here`);
+    assert.doesNotMatch(text, /font(-weight)?:\s*(900|bold)\b/, `${f}: a weight that isn't loaded`);
+    for (const m of text.matchAll(/([^{}]*)\{([^}]*font-weight:\s*(700|800)[^}]*)\}/g)) assert.ok(!/var\(--text\)/.test(m[2]), `${f}: ${m[1].trim().slice(-50)} sets a General Sans weight over 600`);
+  }
   for (const m of css.matchAll(/font-size:(\d+(?:\.\d+)?)px/g)) {
     const before = css.slice(Math.max(0, m.index - 200), m.index);
     if (/(input|select|textarea)[^{}]*\{[^}]*$/.test(before)) assert.ok(Number(m[1]) >= 16, "an input under 16 px: " + before.slice(-60));
