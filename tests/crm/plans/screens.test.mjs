@@ -225,6 +225,10 @@ test("the owner's answers on screen (Nov 12): suggested wording beside an edited
   const view = await load("plan");
   const ending = text(view.render(planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx()));
   assert.match(ending, /Storage fee for leaving the contract early: \$400\.00 \(to bill, waiting for your OK\)/);
+  assert.match(ending, /Storage fee billed/);
+  assert.match(ending, /Waive storage fee/);
+  const ended = text(view.render(planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelled", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx()));
+  assert.match(ended, /Storage fee for leaving the contract early: \$400\.00, to bill, waiting for your OK\./, "still said once the plan has ended");
   const windows = text(view.render(planState({}, { status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 10000, clawback_state: "to_bill" } }), ctx()));
   assert.match(windows, /First-visit discount back: \$100\.00/);
   // Settings → Plans catalog: the storage fee and what the late fee covers

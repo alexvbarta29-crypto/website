@@ -118,8 +118,9 @@ function actions(s, ctx) {
   if (p.status === "cancelling" && c) b.push(html`<button type="button" class="btn primary" data-act="withdraw">Keep the plan</button>`);
   if (["active", "paused", "pending"].includes(p.status) && c) b.push(html`<button type="button" class="btn" data-act="cancel">Cancel plan</button>`);
   if (p.cancel && p.cancel.clawback_state === "to_bill" && c) {
-    b.push(html`<button type="button" class="btn" data-act="claw-billed">Clawback billed</button>`);
-    if (s.can && s.can.waive) b.push(html`<button type="button" class="btn" data-act="claw-waive">Waive clawback</button>`);
+    const fee = !!p.cancel.storage_fee_cents;
+    b.push(html`<button type="button" class="btn" data-act="claw-billed">${fee ? "Storage fee billed" : "Clawback billed"}</button>`);
+    if (s.can && s.can.waive) b.push(html`<button type="button" class="btn" data-act="claw-waive">${fee ? "Waive storage fee" : "Waive clawback"}</button>`);
   }
   return b;
 }
@@ -139,6 +140,7 @@ export default {
         ${p.status === "pending" ? html`<p class="warn-box">Waiting for the ${pendingText(p.pending_reasons) || "agreement"}.</p>` : ""}
         ${p.status === "paused" && p.pause ? html`<p class="note">Paused since ${dateShort(p.pause.from)}${p.pause.until ? `, back ${dateShort(p.pause.until)}` : ""}${p.pause.reason ? `: ${p.pause.reason}` : ""}.</p>` : ""}
         ${p.status === "cancelling" && p.cancel ? html`<p class="warn-box">Ends ${dateYear(p.cancel.effective_on)}${p.cancel.clawback_cents ? `. ${p.cancel.storage_fee_cents ? "Storage fee for leaving the contract early" : "First-visit discount back"}: ${cents(p.cancel.clawback_cents)} (${p.cancel.clawback_state === "to_bill" ? "to bill, waiting for your OK" : p.cancel.clawback_state})` : ""}.</p>` : ""}
+        ${p.status === "cancelled" && p.cancel && p.cancel.clawback_state === "to_bill" && p.cancel.clawback_cents ? html`<p class="warn-box">${p.cancel.storage_fee_cents ? "Storage fee for leaving the contract early" : "First-visit discount back"}: ${cents(p.cancel.clawback_cents)}, to bill, waiting for your OK.</p>` : ""}
         ${p.import ? html`<p class="small muted">From Rotor: Rotor stays in charge of this plan until the switch.</p>` : ""}
         ${p.held ? html`<p class="warn-box">Due to ${({ resume: "pick back up", renew: "renew", activate: "start", confirm_season: "go on" })[p.held.action] || p.held.action} since ${dateShort(p.held.since)}, but Rotor is still in charge of this customer, so the CRM doesn't book visits for them by itself. Do it here by hand.</p>` : ""}
       </section>
