@@ -176,6 +176,13 @@ test("a campaign: refused before its test send; a 25-recipient batch makes at mo
     const rows = Object.keys(S.json("ix/inbox/y2026").rows).length;
     assert.equal(rows, 26, "every conversation is in the list after that one write");
 
+    // the request died between the run's confirm and the campaign's own update: asking again starts nothing twice
+    await store.updateRecord("campaign", id, (x) => ({ ...x, status: "tested" }), W(owner.id));
+    const again = await t.api(`/campaigns/${id}/schedule`, { method: "POST", as: owner, body: { send_at: null } });
+    assert.deepEqual([again.status, again.body.data.status], [200, "sending"], "the campaign catches up with its run");
+    await t.runWorker({ lane: "bulk" });
+    assert.equal(net.calls.length, 26, "nobody is texted a second time");
+
     const done = await t.api(`/campaigns/${id}`, { as: owner });
     assert.equal(done.body.data.status, "sent");
     assert.equal(done.body.data.stats.sent, 25);
@@ -215,6 +222,8 @@ test("a campaign's schedule: editable until it starts, sent by the queue as the 
     assert.equal(t.stores.data.json(`rec/campaign/${id}`).status, "sending");
     assert.equal(t.stores.data.json(`rec/campaign/${id}`).confirmed_by, owner.id);
     await t.runWorker({ lane: "bulk" });
+    // the queue item died after the run's confirm: the campaign still says "scheduled"; opening it catches up, never back to a draft
+    await store.updateRecord("campaign", id, (x) => ({ ...x, status: "scheduled", send_at: "2026-11-17T16:00:00.000Z" }), W(owner.id));
     const done = await t.api(`/campaigns/${id}`, { as: owner });
     assert.equal(done.body.data.status, "sent");
     assert.equal(done.body.data.stats.dry_run, 3, "dry run: three Outbox items, nothing sent");

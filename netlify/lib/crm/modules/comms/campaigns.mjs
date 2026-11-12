@@ -156,6 +156,20 @@ export async function testCampaign(id, ctx) {
   return { status: "tested", campaign: r.data, send: { status: out.send.status, mode: out.send.mode, outbox_id: out.send.outbox_id || null } };
 }
 
+// The bulk run's confirm. A run that had already started (the request or the
+// queue item died between the confirm and the campaign's own update) is not
+// an error and is never started twice: the campaign only catches up.
+async function confirmRun(runId, ctx) {
+  try {
+    return await confirmBulkRun(runId, ctx);
+  } catch (e) {
+    if (!(e instanceof ConflictError)) throw e;
+    const b = await getBulkRun(runId).catch(() => null);
+    if (b && ["sending", "sent"].includes(b.status)) return b;
+    throw e;
+  }
+}
+
 // Send now ({ send_at: null }) or at a time. Refused before the test send.
 export async function scheduleCampaign(id, body, ctx) {
   const c = (await getCampaign(id)).data;
@@ -166,8 +180,8 @@ export async function scheduleCampaign(id, body, ctx) {
     return (await updateRecord("campaign", id, (x) => (x.status === "scheduled" ? { ...x, status: "tested", send_at: null } : null), ctx.write())).data;
   }
   if (raw === null || raw === undefined || raw === "") {
-    const b = await confirmBulkRun(c.bulk_run_id, ctx);
-    return (await updateRecord("campaign", id, (x) => ({ ...x, status: "sending", send_at: null, started_at: nowIso(), confirmed_by: ctx.user.id, stats: { recipients: (b.recipients || []).length } }), ctx.write())).data;
+    const b = await confirmRun(c.bulk_run_id, ctx);
+    return (await updateRecord("campaign", id, (x) => ({ ...x, status: "sending", send_at: null, started_at: b.confirmed_at || nowIso(), confirmed_by: b.confirmed_by || ctx.user.id, stats: { recipients: (b.recipients || []).length } }), ctx.write())).data;
   }
   const at = Date.parse(raw);
   if (!Number.isFinite(at) || at <= nowMs() + 60000 || at > nowMs() + 90 * 86400000) throw new InputError("Pick a time in the next 90 days.", "send_at");
@@ -193,7 +207,7 @@ export async function startCampaign(h) {
   if (!u || u.data.status !== "active") return { result: "skipped:no_user" };
   const write = () => ({ by, origin: "api", actor_kind: "user", requestId: h.ctx.requestId, mode: h.mode });
   try {
-    await confirmBulkRun(c.bulk_run_id, { user: u.data, write });
+    await confirmRun(c.bulk_run_id, { user: u.data, write });
   } catch (e) {
     if (!(e instanceof ConflictError)) throw e;
     // the template changed since the test (or the run is gone): back to a draft, never a blind send
@@ -218,6 +232,11 @@ export async function campaignWithRun(id, ctx) {
   let c = got.data;
   let etag = got.etag;
   const b = isId(c.bulk_run_id, "bulk_run") ? await getBulkRun(c.bulk_run_id).catch(() => null) : null;
+  // a run that started while the campaign still says "tested" (its own update never landed): catch up
+  if (b && ["tested", "scheduled"].includes(c.status) && ["sending", "sent"].includes(b.status)) {
+    const r = await updateRecord("campaign", id, (x) => (["tested", "scheduled"].includes(x.status) ? { ...x, status: "sending", send_at: null, started_at: b.confirmed_at || nowIso(), confirmed_by: b.confirmed_by || null } : null), { ...ctx.write(), audit: false });
+    c = r.data; etag = r.etag;
+  }
   if (b && c.status === "sending" && ["sent", "failed", "cancelled"].includes(b.status)) {
     const r = await updateRecord("campaign", id, (x) => (x.status === "sending" ? { ...x, status: b.status === "sent" ? "sent" : "cancelled", finished_at: b.finished_at || nowIso(), stats: b.stats || {} } : null), { ...ctx.write(), audit: false });
     c = r.data; etag = r.etag;

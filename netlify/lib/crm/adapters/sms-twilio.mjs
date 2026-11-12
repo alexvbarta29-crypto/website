@@ -117,7 +117,7 @@ export function twilioDriver(mode, { env = process.env } = {}) {
       try { u = new URL(url); } catch { return null; }
       if (!c || u.protocol !== "https:" || !/^(api|mms)\.twilio\.com$/.test(u.hostname)) return null;
       const res = await fetch(u.href, { headers: { authorization: c.auth }, signal: AbortSignal.timeout(TWILIO_TIMEOUT_MS) });
-      if (!res.ok) return null;
+      if (!res.ok || Number(res.headers.get("content-length") || 0) > max) return null;
       const bytes = new Uint8Array(await res.arrayBuffer());
       return bytes.length && bytes.length <= max ? bytes : null;
     },
