@@ -587,7 +587,7 @@ The manual path, for reference:
 | `POST /api/crm/auth/setup` | office cookie + `CRM_SETUP_CODE`, once | first owner |
 | `GET /api/crm/auth/invite/:token` · `POST /api/crm/auth/invite` | the link | set a password from an invite or reset link |
 | `GET /api/crm/me` · `/me/badges` | signed in | who am I, permissions, tabs · badge counts (approvals since M1.3; inbox and notifications when they ship) |
-| `GET /api/crm/home` | signed in (each part by its own permission; a tech gets nothing) | Home in one read: the numbers, today's visits, Needs you |
+| `GET /api/crm/home` | signed in (each part by its own permission; a tech gets nothing) | Home in one read: today's visits (or the next day's), the money this month, the bell's count |
 | `GET/POST /api/crm/users`, `GET/PATCH /users/:id` | owners (names only for schedule readers; yourself for name, phone, notifications) | the team |
 | `POST /users/:id/invite` · `reset` · `disable` · `enable` | owners | links and access |
 | `GET /users/:id/sessions` · `DELETE /users/:id/sessions/:hash` | yourself or owners | phones signed in |
@@ -625,80 +625,85 @@ errors with no stack or record data.
 ## Home and navigation (the office's first screen)
 
 The owner judges the CRM by the screen it opens on, so it opens on
-**Home**: the business at a glance, like Rotor's and Flyra's dashboards,
-in one scroll of cards on a phone and one grid on a computer.
+**Home**. After the first build ("your dashboards seem like there's just
+so much stuff"), Alex chose what it shows: **today's schedule** and **the
+money this month**, nothing more (Nov 12). The full dashboards stay one
+tap away (Money's "See more", Menu → Admin → Dashboard).
 
 ### What Home shows (owners and the office; `#/today`)
 
-- The date, a greeting and the bell.
-- **Money this month** (a dark card): collected so far, the year against
-  the same dates last year, and the weekly columns (12 weeks).
-- **Quick actions**: New lead, New quote, Book a visit (New job), Log a
-  call, each shown only with its permission.
-- **Today**: visits today, done, to book (the Schedule's tray), plan
-  visits due this month, then the day's visits in time order (time,
-  customer, town, the work, who goes, status), each opening the visit.
-- **Needs you**: one row per kind with its count, each opening its list:
-  leads that need a call, calls due, tasks for you, quote changes, quotes
-  waiting on the customer, unsigned agreements, plan visits to book,
-  requests waiting for an owner's OK, bulk sends waiting for a test,
-  agreement texts to approve, clawbacks to bill, possible duplicates,
-  stale jobs, import conflicts, system alerts. "You're all caught up"
-  when there's nothing.
-- **This month**: Jobs completed, Average ticket (goal $300+), Close rate
-  (goal 40-50%), Active plans ($ on the books), New leads (this week),
-  Quotes out; each tile opens the matching Dashboard view.
-- **Sales, Plans, Jobs** cards (new leads in 4 weeks, close rate, quotes
-  out and leads per week; active plans, on the books, visits to book and
-  the plan mix; jobs this month, not scheduled, visits today and the next
-  four weeks) and **Collected by month** (this year beside last year).
-  "See more" opens the Dashboard's view on a phone or computer with the
-  office sign-in, else the module's own screen.
+- A short header: the date, "Morning, {first name}" and the bell (unread
+  notifications).
+- **Today**: the day's visits in time order (time, customer, town, the
+  work, who goes as initials, status: Done, Working, On the way), each
+  opening the visit; "2 of 7 visits done" with a thin bar; **Schedule**
+  opens the day. On a day with nothing booked, "Nothing booked today" and
+  the next day that has visits with its list ("Next up: Monday · Nov 23 ·
+  7 visits"; "tomorrow", a weekday this coming week, else the date),
+  looked for in this month's visits and the next month's.
+- **Money this month**: collected so far (the big number, "collected Nov
+  1-16"), one line against the same point last year, and one chart:
+  collected per week this month (the month's Monday-to-Sunday weeks cut at
+  the 1st and the month's end, so the bars add up to the big number; weeks
+  still ahead are empty slots, never zeros). A tap, the pointer or the
+  arrow keys read a week ("$4,890 Nov 2-8"); every value is in a hidden
+  table too. "See more" opens the Dashboard's Money view on a phone or
+  computer with the office sign-in, else Payments; the line under it says
+  where the numbers come from ("From Rotor · updated Nov 16").
+- Under the two, only for an owner or office person marked "Goes out on
+  visits": **My visits** with the clock (the tech app's day, M4b; nothing,
+  and no read, for anyone else).
 
-Charts are drawn in the CRM (`home-charts.js`; no frame of /dashboard):
-coral columns on one baseline, last year in gray, a readout that follows a
-tap, the pointer or the arrow keys, and every value in a hidden table.
+A phone shows Today first, then the money; a computer from 1,200 px puts
+them side by side (Today the wider), a smaller one (a 1,024 px laptop)
+stacks them at the full width. Creating is the coral button on a phone
+and **New** in the header on a computer (the quick-action row is gone).
 
-**Where the numbers come from.** From the CRM's own records once they cover
-the business (a finished Rotor import, or the CRM is the system of
-record): jobs completed, average ticket (work completed ÷ billable jobs,
-§5.9), close rate (quotes won ÷ won + lost, this year), active plans, quotes
-out, visits ahead. Until then, and for money and weekly leads (the CRM
-keeps no payments until Money, M5, and no lead rollups until Reports,
-M7b), from the office dashboard's sealed Rotor snapshot
-(`loadDashboard()`, opened once per warm instance), labelled "From Rotor ·
-updated <date>". When the reports module provides the service
-`reports.series` (`{ metric, group, keys } → { since, values }`), its weeks
-and months replace Rotor's from the day its data starts. A number nobody
-has is left out, never shown as 0.
+**Not on Home any more:** the six KPI tiles, the quick actions, the
+"Collected by month" chart, the Sales, Plans and Jobs cards, the to-book
+and plan-visit counts, and the Needs-you list. What needs attention stays
+with **the bell and the tab's dot** (`GET /me/badges` counts every
+module's `attention` and `approvals` rows, as before) and each module's
+own screen (Calls, Quotes, Plans due, Invoices, Approvals, Merge review);
+where a module's doc says a row shows under Home's "Needs you", it now
+means these rows. The modules' other Today cards (Money's owed strip, the
+sales, plans and office cards) stay off Home.
 
-**Who sees what.** The numbers: `reports:read` (owners and the office) or
+**Where the money comes from.** While Rotor is the system of record it
+takes the payments, so Home shows the office dashboard's sealed Rotor
+snapshot (`loadDashboard()`, opened once per warm instance): this month,
+its 12 Monday weeks (a week that starts in the month is Rotor's own; the
+days before the month's first Monday are the month less those weeks) and
+the line "▲ 9% this year vs the same dates in 2025" (the snapshot has the
+year so far against the same dates a year earlier, not the month by day).
+After cutover (`sys/mode` `system_of_record: "crm"`) it is the CRM's own
+payments index (`payments/{yyyy-mm}`, counted as `GET /money/summary`
+counts revenue: succeeded payments less refunds, tips in, dry-run
+payments never), and the line compares this month so far with the same
+days a year earlier ("▲ 12% vs Nov 1-17, 2025 ($9,330)"). Against last
+year, not last month: a seasonal business always looks down in November
+against October. A number nobody has is left out, never shown as 0 (no
+year-earlier payments: no line). Without the office data key the card
+says so (`money_missing: "no-key"`).
+
+**Who sees what.** The money: `reports:read` (owners and the office) or
 a phone with the office sign-in, never a technician. Today's visits:
-`schedule:read` (unscoped). Each Needs-you row: its own permission. A
-technician's Today is unchanged (their own day; the tech app, M4b, fills
-it) and `GET /home` answers them with nothing in it.
+`schedule:read` (unscoped). A technician's Today is unchanged (their own
+day; the tech app) and `GET /home` answers them with nothing in it.
 
-**One read, inside the budget.** `GET /api/crm/home`
-(`netlify/lib/crm/modules/system/home.mjs`, pure parts in `home-kpis.mjs`)
-counts from index blobs only, never by listing records, and reads each
-index once for the whole request: its store scope carries `ixMemo`, which
-crm-store's `readIndex()` honours (no dirty marker read either). About 20
-storage calls cold (24 once the CRM's numbers are used, with the tech
-app's time rows), under the 25 of §2.2; `tests/crm/core/home.test.mjs`
-holds it there. `GET /me/badges` reads its counts in the same kind of
-scope, so every module's rows fit its budget too.
-
-**Adding to Home (modules).** A module's manifest `attention` and
-`approvals` rows (`{ key, label, perm, count(ctx), link }`) are Home's
-Needs-you rows; `badge: false` lists a row on Home without lighting the
-tab's dot (calls due, quotes waiting, tasks for you). A client
-`todayCards` entry renders on Home under Needs you unless it says
-`home: false` (the sales, plans and work cards do: their counts are
-Needs-you rows). One card lands there today: the tech app's My visits
-with the clock, for an owner or office person who goes out on visits.
-A card may have its own `events` and `mount` (delegated inside its
-wrapper, `modules/system/cards.js`), on Home as on a tech's Today.
-Money's and the inbox's rows arrive with their modules.
+**One read, cheap.** `GET /api/crm/home`
+(`netlify/lib/crm/modules/system/home.mjs`, the money's pure parts in
+`home-kpis.mjs`) answers `{ date, now, mode, today: { date, visits,
+counts: { visits, done }, next }, money, money_missing, notifications }`
+from index blobs only, each read once (its store scope carries `ixMemo`):
+8 storage calls cold (the session, the user, the auth epoch, the
+permissions, `sys/mode`, this month's visits, the users index, the bell's
+unread list), 10 once the CRM keeps the money (this month's payments and
+the same month's a year back), 9 on a day off at a month's end (next
+month's visits). It was 23 to 26, plus Home's own `/me/badges`,
+`/money/summary` and `/tech/day` (another 35); the client now makes the
+one request (and My visits' own, only for someone who goes out).
+`tests/crm/core/home.test.mjs` holds the exact list.
 
 ### The bar, the Sales switch and the Menu
 
@@ -711,8 +716,7 @@ Money's and the inbox's rows arrive with their modules.
   Work, Sales, Customers, Money, Messages & automations, Office tools,
   Admin (an entry without a known `section` lands in "More"). My account
   is the card at the top, Sign out at the bottom.
-- The coral create button is on Customers, Schedule and Sales (Home has
-  its quick actions).
+- The coral create button is on Home, Customers, Schedule and Sales.
 
 ### On a computer (900 px and up)
 
@@ -727,10 +731,8 @@ Money's and the inbox's rows arrive with their modules.
 - Screens sit on the mist canvas and use the width (up to 1,160 px; the
   Schedule's month up to 1,480 px with the day's list beside it from
   1,100 px; a Visit in two columns from 1,200 px; full-width lists such as
-  Jobs, Plans and Payments read as a table from 1,100 px; Home up to
-  1,440 px as a grid:
-  the month's tiles in a row, money beside money by month, today beside
-  Needs you, Sales, Plans and Jobs side by side). Sheets are dialogs.
+  Jobs, Plans and Payments read as a table from 1,100 px; Home with Today
+  beside the money from 1,200 px). Sheets are dialogs.
 - **List + detail** from 1,000 px: a list route marked `split: true`
   (Contacts, Quotes) stays on the left while what it opens (a contact, a
   quote, a new one) shows beside it, the list keeping its search and
@@ -739,12 +741,14 @@ Money's and the inbox's rows arrive with their modules.
 
 Code: `crm-app/modules/system/{home,home-charts,menu,today}.js`,
 `home.css`, `crm-app/core/{nav,router}.js`, `crm.css`. Tests:
-`tests/crm/core/home.test.mjs` (the numbers, who sees what, the budget,
-the extension points) and `tests/e2e/home.spec.mjs` (iPhone 13 and SE,
-1440 x 900 and 1024 x 768: Home on a real day and empty, the taps, a tech,
-the Sales switch, the Menu, the sidebar, search, list + detail, Chrome's
-installability check, the office password's tab row). The route walk in
-`core.spec` covers every screen at the two desk sizes too.
+`tests/crm/core/home.test.mjs` (the month's weeks, Rotor's and the CRM's
+money, who sees what, the day off, the exact storage calls, what Home no
+longer reads) and `tests/e2e/home.spec.mjs` (iPhone 13 and SE, 1440 x 900
+and 1024 x 768: Home on a real day, empty and on a day off, the chart's
+readout, See more, a tech, the Sales switch, the Menu, the sidebar,
+search, list + detail, Chrome's installability check, the office
+password's tab row). The route walk in `core.spec` covers every screen at
+the two desk sizes too.
 
 ## The platform engine (M1.3, part A)
 

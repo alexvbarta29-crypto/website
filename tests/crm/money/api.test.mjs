@@ -142,8 +142,8 @@ test("overdue reminders: the day after it's due, then every few days, a set numb
     await scope(() => store.createRecord("invoice", { number: "INV-0570", seq: "imported", n: 570, kind: "standard", contact_id: rc.id, status: "open", issued_on: "2026-10-01", due_on: "2026-10-01", lines: [{ id: "ln_1", kind: "service", description: "Windows", qty_milli: 1000, unit_cents: 18000, total_cents: 18000 }], import: { run_id: "ir_00000000000000000001", at: "2026-11-08T00:00:00.000Z", hash: "5".repeat(64) }, rotor: { status_raw: "overdue", total_cents_raw: 18000 } }, IMPORT));
     await drain(t);
     assert.equal(texts(t, "invoice_overdue").length, 0, "due today is not overdue");
-    // Home's rows: two unpaid of ours (Rotor's own invoice isn't the CRM's to chase), none overdue yet
-    const needs = async () => Object.fromEntries(((await t.api("/home", { as: owner, office: true })).body.data.needs || []).filter((r) => r.module === "money").map((r) => [r.key, r.count]));
+    // the attention rows: two unpaid of ours (Rotor's own invoice isn't the CRM's to chase), none overdue yet
+    const needs = () => scope(async () => { const out = {}; for (const a of R.getModule("money").attention) { const n = await a.count({}); if (n) out[a.key] = n; } return out; });
     assert.deepEqual(await needs(), { "invoices.unpaid": 2 });
     assert.equal((await t.api("/me/badges", { as: owner })).status, 200);
     advance(days(1) + hours(2));                               // Wed 11 AM: a day past due
