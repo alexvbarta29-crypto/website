@@ -1,5 +1,20 @@
 [
   {
+    "id": "17901143652399042",
+    "image": "assets/img/instagram/17901143652399042.jpg",
+    "type": "VIDEO",
+    "slides": [
+      {
+        "type": "VIDEO",
+        "image": "assets/img/instagram/17901143652399042.jpg",
+        "video": "assets/img/instagram/17901143652399042.mp4"
+      }
+    ],
+    "caption": "Christmas is right around the corner! Call Barta Window Washing today",
+    "permalink": "https://www.instagram.com/reel/DfoEVFAxmv3/",
+    "timestamp": "2026-11-12T03:16:01+0000"
+  },
+  {
     "id": "18135396784787753",
     "image": "assets/img/instagram/18135396784787753.jpg",
     "type": "VIDEO",
@@ -140,19 +155,5 @@
     "caption": "Nothing like some clean windows \ud83e\uddfc\ud83e\udd18",
     "permalink": "https://www.instagram.com/reel/Dc04roSyLaF/",
     "timestamp": "2026-09-03T13:13:21+0000"
-  },
-  {
-    "id": "17950840314027611",
-    "image": "assets/img/instagram/17950840314027611.jpg",
-    "type": "VIDEO",
-    "slides": [
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/17950840314027611.jpg"
-      }
-    ],
-    "caption": "Nothing better than a BARTA window wash.\ud83e\uddfc",
-    "permalink": "https://www.instagram.com/reel/DcgSvZiReN4/",
-    "timestamp": "2026-08-26T13:15:25+0000"
   }
 ]
