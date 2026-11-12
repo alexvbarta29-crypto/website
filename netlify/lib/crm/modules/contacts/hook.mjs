@@ -145,12 +145,23 @@ async function alertOneSide(which, deploy, lead = {}) {
   }
 }
 
+// A scan of a sign's or flyer's QR code (/q/..., sales signs.mjs) left the
+// first-party cookie barta_q; the quote form's request carries it here, and
+// the CRM's copy of the lead names the code. Rotor's request and payload are
+// never touched (lead.mjs builds them before this runs).
+const SCAN_COOKIE = /(?:^|;\s*)barta_q=([0-9a-z]{8}\.\d{9,11}\.[A-Za-z0-9_-]{16})(?:;|$)/;
+export function withScan(input, origin, req) {
+  if (origin !== "lead-form" || !input || !req || !req.headers || typeof req.headers.get !== "function") return input;
+  const m = SCAN_COOKIE.exec(req.headers.get("cookie") || "");
+  return m ? { ...input, qr_ref: m[1] } : input;
+}
+
 // The CRM write itself, in its own store scope and budget. → intakeLead's answer.
-async function writeCrm(deploy, input, origin, rotor) {
+async function writeCrm(deploy, input, origin, rotor, req) {
   const store = await import("../../../crm-store.mjs");
   await import("../index.mjs");
   const { intakeLead } = await import("./intake.mjs");
-  return store.withStoreScope({ deploy, budget: store.withBudget(INTAKE_BUDGET_MS, INTAKE_MAX_CALLS, { strict: false }), requestId: `intake-${origin}` }, () => intakeLead(input, { origin, rotor }));
+  return store.withStoreScope({ deploy, budget: store.withBudget(INTAKE_BUDGET_MS, INTAKE_MAX_CALLS, { strict: false }), requestId: `intake-${origin}` }, () => intakeLead(withScan(input, origin, req), { origin, rotor }));
 }
 
 // The CRM writes watchRotor started while Rotor was slow, by the input they wrote.
@@ -185,7 +196,7 @@ export function watchRotor(call, { req, context, input, origin, env = process.en
       const m = await mode;
       if (settled || (m !== "dual" && m !== "crm")) return;
       // Rotor is slow: the CRM gets the lead now; Rotor's answer still decides when it comes
-      const entry = { mode: m, write: writeCrm(deploy, input, origin, null).catch((e) => ({ ok: false, error: safe(e) })) };
+      const entry = { mode: m, write: writeCrm(deploy, input, origin, null, req).catch((e) => ({ ok: false, error: safe(e) })) };
       early.set(input, entry);
       const crm = await entry.write;
       if (settled || !crm.ok) return;     // the CRM failed: wait for Rotor, as before
@@ -213,7 +224,7 @@ export async function afterRotor({ req, context, input, origin, rotorOk, rotor =
       if (pre) crm = await pre.write;            // written while Rotor was slow (no Rotor id: the import links it)
       else {
         const info = typeof rotor === "function" ? await rotor() : rotor;
-        crm = await writeCrm(deploy, input, origin, info || null);
+        crm = await writeCrm(deploy, input, origin, info || null, req);
       }
     } catch (e) { crm = { ok: false, error: safe(e) }; }
     if (!crm.ok) console.error(`crm:intake: CRM write failed (${crm.error || "error"}, origin ${origin})`);

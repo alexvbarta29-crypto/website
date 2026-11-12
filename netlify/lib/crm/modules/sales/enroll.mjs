@@ -87,6 +87,8 @@ export async function enroll(contactId, cadenceKey, opts = {}, ctx = {}) {
         id, contact_id: contact.id, cadence_id: cadence.id, cadence_key: cadence.key, ...(deal ? { deal_id: deal.id } : {}),
         ...(isId(opts.quote_id, "quote") ? { quote_id: opts.quote_id } : {}), ...plan, history: [], started_at: at,
         contact_name: nameOf(contact), ...(isId(contact.owner_id, "user") ? { owner_id: contact.owner_id } : {}),
+        // a lead from a sign's or flyer's QR code says so on the call list (Signs & flyers)
+        ...(contact.source && contact.source.qr_code && contact.source.campaign ? { source_label: String(contact.source.campaign).slice(0, 120) } : {}),
       }, W(ctx));
       await addActivity(contact.id, "cadence.started", id, now()).catch(() => {});
     } catch (e) {

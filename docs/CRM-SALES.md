@@ -2,12 +2,15 @@
 
 Milestone: M2b (design §5.2, §5.7.4 `lead.*`, §7.6, §9.2, §10.2 rows 13-15,
 §11.4; decisions D7, D8, D12, D20-D22, D25). Deals, follow-up cadences and
-the leads in them (enrollments), calls, tasks and incidents.
+the leads in them (enrollments), calls, tasks and incidents; and Signs &
+flyers (QR codes on yard signs, door hangers and flyers, their scans and
+leads).
 
 Code: `netlify/lib/crm/modules/sales/` (server),
 `crm-app/modules/sales/` (screens), `netlify/functions/playbook.mjs` (the
-office's Follow-ups page, see below). Record types: `deal`, `cadence`,
-`enrollment`, `task`. Tests: `tests/crm/sales/`.
+office's Follow-ups page, see below), `netlify/functions/crm-q.mjs` (the
+signs' `/q/` codes). Record types: `deal`, `cadence`, `enrollment`,
+`task`, `qr_code`. Tests: `tests/crm/sales/`.
 
 ## What the office sees
 
@@ -50,11 +53,97 @@ office's Follow-ups page, see below). Record types: `deal`, `cadence`,
   due now (`sales.calls_due`) and tasks for you (`sales.tasks_mine`), both
   `badge: false`. The Today card (calls due, overdue, attention, my tasks)
   stays for a tech's Today (`home: false`).
+- **Signs & flyers** (Menu → Sales; `signs:manage`): QR codes for yard
+  signs, door hangers and flyers, their scans, leads, bookings and money.
+  See "Signs & flyers" below.
 - **Settings → Cadences** (`cadences:configure`): each cadence (name, on
   or off, which sources join, tags that keep a lead out, what a reply does,
   what happens when a call window passes with no call, its steps: day,
   window, action, text, read before sending, offer, archive the quote) and
   the sales settings. The texts' words live in Templates.
+
+## Signs & flyers (QR codes)
+
+Flyra's "QR code tracking for signs and flyers": a QR code for each yard
+sign, door hanger, flyer, the truck or a business card, what each scan
+brought in, and leads that say where they came from.
+
+**The screen** (Menu → Sales → **Signs & flyers**, `#/signs`;
+`signs:manage`, the module's own permission: owners and the office by
+default, never a technician; an owner can take it from the office in
+Settings → Team permissions):
+
+- The list: every code in use with its **scans, leads, booked and paid**,
+  the totals on top, the last scan; Retired codes under their own chip.
+- **New** (`#/signs/new`): a name ("Yard sign, Maple Grove", only the
+  office sees it), what it goes on (yard sign, door hanger, flyer, truck,
+  business card, something else), the town or area and the day it went up
+  (optional), and where it sends people: **the quote page** (the default)
+  or another page of the website (`/services/gutter-cleaning.html`,
+  `/landing/...`, `/`; never the CRM, the office, the portal or another
+  site).
+- **One code** (`#/signs/:id`): the QR code (level Q, for print that lives
+  outdoors), its short address (`bartawindowwashing.com/q/abcd2345`), where
+  it sends people, **Print it** at two sizes, an 18 × 24 in yard sign and a
+  quarter-page flyer (4.25 × 5.5 in), each as a picture (PNG, shared on a
+  phone) or an SVG for the print shop, with the code's name and short
+  address under it; the scans of the last 30 days, by kind of phone; the
+  leads (each opens the contact) with Booked and what they paid; Edit;
+  Retire (off the list; the code keeps working and counting, a sign may
+  still be out there).
+
+**The short path** `/q/{8 characters}` (`netlify/functions/crm-q.mjs`,
+`sales/signs-scan.mjs`, Netlify's rate limit in front): 8 characters a
+person can read and type (no 0/o, 1/l/i; about 40 bits, so codes can't be
+guessed), case doesn't matter, claimed by a pointer so two codes never
+share one, and never changed by an edit. A scan:
+
+- counts (a daily count for 120 days, first and last scan, iPhone /
+  Android / other) in `ptr/qr-stats/{id}` (compare-and-swap; backed up with
+  `ptr/`), after the answer when the platform allows;
+- answers 302 to the code's page with `?utm_source=qr&utm_medium={kind}&utm_campaign={code}`
+  and sets `barta_q` (first party, HttpOnly, Secure, Lax, 30 days): which
+  code and when, signed with the site's key salt;
+- keeps nothing personal: no IP address, no browser string. The rate limit
+  (30 counted scans a minute from one connection, then a "One moment" page
+  with Retry-After) keys a day-salted hash of the address under `thr/qr/`,
+  which the nightly sweep deletes after a day;
+- HEAD and link previews (the portal's bot list) go on uncounted, with no
+  cookie; an unknown or malformed code is a 404 page with a link to the
+  quote page; before the CRM's setup, or with storage down, every scan
+  still lands on the quote page (uncounted). A printed sign never breaks.
+
+**Leads from a code** (attribution in the CRM only; `lead.mjs` and
+everything Rotor gets stay byte for byte as they were): the quote form's
+POST to `/api/lead` carries the cookie; `contacts/hook.mjs` reads it
+(`withScan`, the quote form only) into the CRM's copy of the lead;
+`intake.mjs` asks `sales.qrResolve` (a signed, recent cookie of a code
+that's still there) and gives a new contact `source.campaign = "Yard sign:
+Maple Grove"` (the kind and the area, else the code's name) and
+`source.qr_code` (the code's id); `source.source` stays "Website quote
+form", so the new-lead follow-up starts as always. Then `sales.qrLead`
+counts the lead for the code (once per person). The label shows on the
+contact ("Yard sign: Maple Grove (QR code) · Website quote form · heard
+from Yard Sign"), on its deal (Source), on its follow-up and the call list
+("From Yard sign: Maple Grove"). Booked (a visit ahead or done, or a
+customer now) and paid (lifetime, practice money never counted) are worked
+out when the screen asks, from the contacts index, so they include what
+the CRM learns later (Money, the import). Only while Settings → Intake
+mode sends website leads to the CRM ("Rotor and the CRM"); before that the
+scans count and leads don't.
+
+Routes (all `signs:manage`): `GET /qr-codes?archived=1` (the list with
+numbers and totals), `POST /qr-codes` `{ name, kind, area?, placed_on?,
+dest: { kind: "quote" | "page", path? }, note?, client_id }` (the same
+request twice is one code), `GET /qr-codes/:id`, `PATCH /qr-codes/:id`
+(If-Match), `POST /qr-codes/:id/archive` · `/restore`. Record type
+`qr_code` (prefix `qr`, index `qr-codes`, pointer `qr-slug`). Services
+`sales.qrResolve`, `sales.qrLead`. Screens `crm-app/modules/sales/signs.js`,
+`sign.js`, `sign-form.js`, `signs-kit.js`. Tests:
+`tests/crm/sales/signs.test.mjs` (the codes and who may, `/q`: counts,
+404, rate limit, nothing personal, a sign that never breaks; a scan to a
+lead end to end through `lead.mjs`; the cookie's checks; the screens),
+`tests/e2e/signs.spec.mjs`.
 
 ## Cadences (seeded, `seed.mjs`)
 

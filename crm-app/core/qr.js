@@ -284,9 +284,10 @@ export function qrSvg(text, { margin = 4, label = "QR code to pay", ecl = "M" } 
 }
 
 // A printable sheet: the code (as big as fits, with its quiet zone) and up
-// to four lines of words under it. width × height are in "points" of the
-// viewBox (the print size sets the real size); lines: [{ text, size, bold }].
-export function qrPosterSvg(text, { ecl = "Q", width = 1800, height = 2400, lines = [], label = "QR code", pad = 0.06 } = {}) {
+// to four lines of words under it. width × height are the viewBox; physical
+// (["18in", "24in"]) is the size it prints at; lines: [{ text, size, bold }]
+// (size as a share of the width).
+export function qrPosterSvg(text, { ecl = "Q", width = 1800, height = 2400, physical = null, lines = [], label = "QR code", pad = 0.06 } = {}) {
   const q = qrMatrix(text, { ecl });
   const m = Math.round(Math.min(width, height) * pad);
   const words = lines.filter((l) => l && String(l.text || "").trim()).slice(0, 4);
@@ -301,7 +302,8 @@ export function qrPosterSvg(text, { ecl = "Q", width = 1800, height = 2400, line
     y += Math.round(fs * 1.2);
     return `<text x="${round(width / 2)}" y="${round(y)}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${fs}" font-weight="${l.bold ? 700 : 400}" fill="#000">${svgText(String(l.text).slice(0, 80))}</text>`;
   }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${svgText(label)}"><rect width="${width}" height="${height}" fill="#fff"/><path d="${pathOf(q, x0 + quiet * unit, y0 + quiet * unit, unit)}" fill="#000" shape-rendering="crispEdges"/>${out}</svg>`;
+  const size = Array.isArray(physical) && physical.every((x) => /^\d+(\.\d+)?(in|mm|cm)$/.test(String(x))) ? physical : [width, height];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${size[0]}" height="${size[1]}" role="img" aria-label="${svgText(label)}"><rect width="${width}" height="${height}" fill="#fff"/><path d="${pathOf(q, x0 + quiet * unit, y0 + quiet * unit, unit)}" fill="#000" shape-rendering="crispEdges"/>${out}</svg>`;
 }
 
 // ---- the browser (never imported by the server)
