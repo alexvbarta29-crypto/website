@@ -51,7 +51,7 @@ test("who may do what: the office reads and writes invoices, owners refund, void
     assert.equal((await t.api("/money/status", { as: owner })).body.data.settings.statement_descriptor, "BARTA WINDOWS");
     // every money route is a session route with a permission (the route guard reads the same table)
     const routes = R.allRoutes().filter((r) => /^\/(invoices|payments|autopay|money|credits)(\/|$)/.test(r.path));
-    assert.equal(routes.length, 21);
+    assert.equal(routes.length, 22);
     assert.ok(routes.every((r) => r.auth === "session" && typeof r.perm === "string" && r.perm.includes(":")));
   } finally { t.done(); }
 });
