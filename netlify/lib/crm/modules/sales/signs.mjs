@@ -74,7 +74,12 @@ function cleanDest(v, field = "dest") {
   if (kind === "quote") return { kind };
   return { kind, path: cleanPath(v.path, `${field}.path`) };
 }
-export const destPathOf = (code) => (code && code.dest && code.dest.kind === "page" && code.dest.path ? code.dest.path : QUOTE_PAGE);
+// (checked again here: whatever a record holds, a scan only ever goes to a public page of this site)
+export const destPathOf = (code) => {
+  const p = code && code.dest && code.dest.kind === "page" ? code.dest.path : null;
+  if (!p) return QUOTE_PAGE;
+  try { return cleanPath(p); } catch { return QUOTE_PAGE; }
+};
 // Where a scan goes: the page, with the source in the address (the site's analytics read utm_*).
 export const redirectOf = (code) => `${destPathOf(code)}?utm_source=qr&utm_medium=${encodeURIComponent(code.kind || "other")}&utm_campaign=${encodeURIComponent(code.slug)}`;
 export const shortUrl = (slug) => `${CANONICAL_ORIGIN}/q/${slug}`;
@@ -111,6 +116,8 @@ export const qrCodeType = defineType({
   rotorFields: [],
   techFields: ["id"],
   readPerm: PERM,
+  // never a shadow: a printed sign outlives the switch from Rotor (purge-shadow must not take its code away)
+  shadow: false,
   indexes: [{ name: "qr-codes", shard: (r) => (r.deleted_at ? null : ""), row: qrCodeRow }],
   // /q/{slug} finds its code through this pointer (claimed at create: two codes never share a path)
   pointers: [{ kind: "qr-slug", key: (r) => (SLUG_RE.test(String(r.slug || "")) ? r.slug : null) }],

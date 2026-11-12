@@ -49,6 +49,8 @@ test("a code: made by the office (a short unguessable path, the quote page by de
     const again = await t.api("/qr-codes", { method: "POST", as: admin, body: { client_id: uuid(1), name: "Yard sign, Maple Grove", kind: "yard_sign" } });
     assert.deepEqual([again.status, again.body.data.code.id], [200, c.id]);
     assert.equal(t.stores.data.keys("rec/qr_code/").length, 1);
+    // a code is never a shadow record: the owner's purge at the switch from Rotor leaves printed signs working
+    assert.equal(t.stores.data.json(`rec/qr_code/${c.id}`).shadow, undefined);
     // a door hanger to a service page; its label is its name when it has no area
     const d = await make(t, owner, { name: "Door hanger, Oct", kind: "door_hanger", dest: { kind: "page", path: "/services/Gutter-Cleaning.html" } }, 2);
     assert.deepEqual([d.dest_path, d.lead_label], ["/services/gutter-cleaning.html", "Door hanger, Oct"]);
@@ -121,6 +123,9 @@ test("/q/{code}: counted (when, the kind of phone) and sent on with the source; 
     const r2 = await scan(`/q/${d.slug.toUpperCase()}/`, { ua: ANDROID, ip: "192.0.2.50" });
     assert.equal(r2.headers.get("location"), `/services/gutter-cleaning.html?utm_source=qr&utm_medium=flyer&utm_campaign=${d.slug}`);
     assert.equal(stats(t, d.id).dev.android, 1);
+    // whatever a record holds, a scan only goes to a public page of the site
+    assert.equal(S.redirectOf({ slug: c.slug, kind: "flyer", dest: { kind: "page", path: "//evil.example/x" } }), `/get-quote.html?utm_source=qr&utm_medium=flyer&utm_campaign=${c.slug}`);
+    assert.equal(S.redirectOf({ slug: c.slug, kind: "flyer", dest: { kind: "page", path: "/crm/" } }).startsWith("/get-quote.html?"), true);
     // unknown or malformed: a 404 page that still points at the quote page
     for (const path of ["/q/abcd2345", "/q/short", "/q/", "/q/abcd2345/x", `/q/${c.slug}%3Cscript%3E`]) {
       const x = await scan(path);
