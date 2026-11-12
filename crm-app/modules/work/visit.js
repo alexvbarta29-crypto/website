@@ -117,7 +117,9 @@ export default {
     const people = (s.people || []);
     // cards a panel shows itself (the field panel: its own checklist, work and notes)
     const shown = new Set(s.panels.filter((p) => !p.failed).flatMap((p) => p.replaces || []));
-    return html`<div class="stack wk">
+    // two columns on a wide desk: the visit on the left, the people and places, buttons and texts on the
+    // right (a phone shows one column in the same order as before: wk-vmain/wk-vside are display:contents there)
+    return html`<div class="stack wk wk-vpage"><div class="wk-vmain">
       <div class="card wk-head">
         <div class="wk-head-top"><div class="wk-when-big"><b>${dateLong(v.date)}</b><span>${slotText(v)}</span></div>${visitPill(v.status)}</div>
         ${s.arrival && (v.date_only || (v.window && v.window.type === "anytime")) ? html`<p class="small muted">Customer was told: ${s.arrival}</p>` : ""}
@@ -130,6 +132,13 @@ export default {
         ${v.completion && v.completion.at && v.status === "completed" ? html`<p class="small muted">Done ${ago(v.completion.at)}${v.completion.office ? " (marked by the office)" : ""}</p>` : ""}
         ${v.moved_by_op ? html`<p class="small muted">Moved by a rain-day move.</p>` : ""}
       </div>
+      ${access(prop, j)}
+      ${s.panels.map((p) => html`<section class="wk-panel" ${attrs({ "data-panel": p.key, "aria-label": p.label || p.key })}>${p.failed ? html`<div class="card empty"><h2>${p.label || "This part"} didn't load</h2><p>${p.failed}</p></div>` : p.mod.render(p.state || {}, p.ctx)}</section>`)}
+      ${shown.has("lines") ? "" : lines(j, !!(s.can && s.can.prices))}
+      ${shown.has("checklist") ? "" : checklist(v)}
+      ${v.tech_notes && !shown.has("notes") ? html`<div class="card"><h2>Notes from the visit</h2><p class="wk-pre">${v.tech_notes}</p></div>` : ""}
+      ${office && j && j.office_notes ? html`<div class="card"><h2>Office notes</h2><p class="wk-pre">${j.office_notes}</p></div>` : ""}
+      </div><div class="wk-vside">
       <ul class="list wk-linkrows">
         ${s.contact ? html`<li><a class="row" ${attrs({ href: "#/contacts/" + encodeURIComponent(s.contact.id) })}>${icon("contacts")}<span class="who"><span class="nm">${s.contact.display_name}</span><span class="sub">Customer</span></span><span class="chev" aria-hidden="true"></span></a></li>` : ""}
         ${ph ? html`<li><a class="row" ${attrs({ href: "tel:" + String(ph.e164 || "").replace(/[^+\d]/g, "") })}>${icon("phone")}<span class="who"><span class="nm">${phone(ph.e164)}</span><span class="sub">Call</span></span></a></li>` : ""}
@@ -139,16 +148,10 @@ export default {
       </ul>
       ${office ? officeButtons(s) : ""}
       ${s.buttons.length ? html`<div class="btn-row wk-acts">${s.buttons.map((a) => html`<button type="button" class="btn" ${attrs({ "data-vact": a.key })}>${a.icon ? icon(a.icon) : ""}${a.label}</button>`)}</div>` : ""}
-      ${access(prop, j)}
-      ${s.panels.map((p) => html`<section class="wk-panel" ${attrs({ "data-panel": p.key, "aria-label": p.label || p.key })}>${p.failed ? html`<div class="card empty"><h2>${p.label || "This part"} didn't load</h2><p>${p.failed}</p></div>` : p.mod.render(p.state || {}, p.ctx)}</section>`)}
-      ${shown.has("lines") ? "" : lines(j, !!(s.can && s.can.prices))}
-      ${shown.has("checklist") ? "" : checklist(v)}
-      ${v.tech_notes && !shown.has("notes") ? html`<div class="card"><h2>Notes from the visit</h2><p class="wk-pre">${v.tech_notes}</p></div>` : ""}
-      ${office && j && j.office_notes ? html`<div class="card"><h2>Office notes</h2><p class="wk-pre">${j.office_notes}</p></div>` : ""}
-      ${s.reminders ? html`<div class="section-h">Texts and emails</div><ul class="list wk-rems">
+      ${s.reminders ? html`<div class="section-h wk-late">Texts and emails</div><ul class="list wk-rems wk-late">
         ${remindRow("Confirmation", s.reminders.confirm)}${remindRow("Reminder, 2 weeks before", s.reminders.d14)}${remindRow("Reminder, 2 days before", s.reminders.d2)}</ul>` : ""}
-      ${office && v.updated_at ? html`<p class="foot-note">Changed ${ago(v.updated_at)}</p>` : ""}
-    </div>`;
+      ${office && v.updated_at ? html`<p class="foot-note wk-late">Changed ${ago(v.updated_at)}</p>` : ""}
+    </div></div>`;
   },
   mount(view, s) {
     for (const p of s.panels || []) {

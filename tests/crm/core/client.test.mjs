@@ -5,7 +5,7 @@
 // it loads, a left rail on wide screens).
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { strictFetch } from "../../helpers/crm-fetch.mjs";
 
 const api = await import("../../../crm-app/core/api.js");
@@ -81,8 +81,8 @@ test("the stylesheet keeps the phone rules: 44 px buttons, 16 px inputs, loaded 
   assert.match(css, /\.copy-box input\{[^}]*font-size:16px/);
   const loaded = [...css.matchAll(/@font-face\{font-family:'([^']+)';[^}]*font-weight:(\d+)/g)].map((m) => m[1] + " " + m[2]);
   assert.deepEqual(loaded.sort(), ["Cabinet Grotesk 700", "Cabinet Grotesk 800", "General Sans 400", "General Sans 500", "General Sans 600"]);
-  // no weight that isn't loaded: General Sans stops at 600 (700 and 800 are Cabinet Grotesk's)
-  for (const f of ["crm-app/styles/crm.css"]) {
+  // no weight that isn't loaded: General Sans stops at 600 (700 and 800 are Cabinet Grotesk's), in the core and every module
+  for (const f of ["crm-app/styles/crm.css", ...readdirSync("crm-app/modules", { withFileTypes: true }).filter((d) => d.isDirectory()).flatMap((d) => readdirSync(`crm-app/modules/${d.name}`).filter((x) => x.endsWith(".css")).map((x) => `crm-app/modules/${d.name}/${x}`))]) {
     const text = readFileSync(f, "utf8");
     assert.doesNotMatch(text, /font:\s*(700|800|900)[^;}]*var\(--text\)/, `${f}: General Sans has no 700 or 800 here`);
     assert.doesNotMatch(text, /font(-weight)?:\s*(900|bold)\b/, `${f}: a weight that isn't loaded`);

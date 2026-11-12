@@ -1,10 +1,11 @@
 /* Comms screens (M6): the inbox rows, a thread's bubbles and composer, the
-   campaign builder. House style: ink, coral, mist, 20 px cards, pill buttons. */
+   campaign builder. House style (crm.css tokens): ink, coral, mist, 12 px cards,
+   10 px buttons. */
 .cm-row .nm{display:flex;align-items:center;gap:6px}
-.cm-row .nm b{font-weight:600;overflow:hidden;text-overflow:ellipsis}
-.cm-row.unread .nm b{font-weight:800}
-.cm-row.unread .sub{color:var(--ink);font-weight:600}
-.cm-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--coral)}
+.cm-row .nm b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.cm-row.unread .nm b{font-weight:600}
+.cm-row.unread .sub{color:var(--ink);font-weight:500}
+.cm-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--coral)}
 .cm-row .end{flex-direction:column;align-items:flex-end;gap:4px}
 .cm-ch{flex:none;display:inline-flex;width:16px;height:16px;color:var(--ink-3)}
 .cm-ch svg{width:16px;height:16px}
@@ -14,13 +15,13 @@
 .cm-thread>*{flex:none}
 .cm-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cm-head .who{flex:1;min-width:0}
-.cm-head .nm{display:block;font:800 18px/1.2 var(--head);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-head .nm{display:block;font:700 18px/1.2 var(--head);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cm-head .sub{display:block;font-size:13px;color:var(--ink-3)}
 .cm-msgs{display:flex;flex-direction:column;gap:8px;margin:4px 0}
 .cm-msg{display:flex;flex-direction:column;max-width:86%;align-items:flex-start}
 .cm-msg.out{align-self:flex-end;align-items:flex-end}
 .cm-msg .bubble{font-size:15px;line-height:1.4}
-.cm-msg.out .bubble{background:var(--ink);color:#fff;border-radius:18px 18px 6px 18px}
+.cm-msg.out .bubble{background:var(--ink);color:#fff;border-radius:16px 16px 6px 16px}
 .cm-msg.out .bubble.grey{background:#efeff2;color:var(--ink-2)}
 .cm-msg .bubble.failed{background:var(--red-bg);color:var(--coral-ink)}
 .cm-msg .bubble b{display:block;margin-bottom:4px}
@@ -30,19 +31,19 @@
 .cm-more{align-self:flex-start;min-height:44px;padding:0 4px}
 .cm-msg.out .cm-more{align-self:flex-end}
 .cm-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.cm-files a{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-size:13px;font-weight:600;text-decoration:none}
+.cm-files a{min-height:var(--ctl-sm);display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;color:var(--ink);font-size:13px;font-weight:500;text-decoration:none}
 .cm-compose{position:sticky;bottom:0;background:var(--mist);padding:10px 0 12px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);margin-top:6px}
-.cm-compose textarea{width:100%;min-height:52px;max-height:160px;padding:12px 14px;border:1.5px solid var(--line);border-radius:18px;background:#fff;font-size:16px;font-family:inherit;resize:none;outline:0}
-.cm-compose input[type=text]{width:100%;min-height:48px;padding:10px 14px;border:1.5px solid var(--line);border-radius:14px;background:#fff;font-size:16px;outline:0}
-.cm-compose textarea:focus,.cm-compose input:focus{border-color:var(--coral)}
+.cm-compose textarea{width:100%;min-height:52px;max-height:160px;padding:12px 14px;border:1px solid var(--line-2);border-radius:var(--r-lg);background:#fff;font-size:16px;font-family:inherit;resize:none;outline:0;box-shadow:var(--sh-xs)}
+.cm-compose input[type=text]{width:100%;min-height:46px;padding:10px 14px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;font-size:16px;outline:0}
+.cm-compose textarea:focus,.cm-compose input:focus{border-color:var(--coral);box-shadow:var(--focus)}
 .cm-compose .btn-row{justify-content:space-between;align-items:center}
 .cm-count{font-size:12px;color:var(--ink-3)}
 .cm-stars{color:#d99a00;letter-spacing:1px;font-size:15px}
 .cm-toggle{display:flex;flex-wrap:wrap;gap:8px}
 .cm-toggle .chip{margin:0}
 .cm-stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.cm-stat div{background:var(--mist);border-radius:14px;padding:10px 12px}
+.cm-stat div{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px}
 .cm-stat b{display:block;font:800 20px/1.1 var(--head);font-variant-numeric:tabular-nums}
 .cm-stat span{font-size:12px;color:var(--ink-3)}
-.cm-url{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;background:var(--mist);border-radius:12px;padding:10px 12px}
+.cm-url{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;background:var(--mist);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
 @media (min-width:900px){.cm-msg{max-width:70%}}
