@@ -29,7 +29,7 @@ export default {
     { label: "Log a call", path: "/calls/log", perm: "sales:work", order: 30, icon: "phone" },
     { label: "New task", path: "/tasks/new", perm: "sales:work", order: 40, icon: "check" },
   ],
-  contactTabs: [{ key: "sales", label: "Sales", order: 40, load: () => import("./contact-tab.js") }],
+  contactTabs: [{ key: "sales", label: "Sales", order: 40, place: "more", heading: "Follow-ups and tasks", perm: "sales:work", load: () => import("./contact-tab.js") }],
   visitActions: [],
   // one card on Today: calls due now and leads that need attention (the office), my tasks (everyone)
   // (home: false: on the office's Home the same counts are "Needs you" rows from the server's attention)

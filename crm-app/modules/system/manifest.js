@@ -14,7 +14,8 @@ export default {
   name: "system",
   routes: [
     { path: "/today", load: () => import("./today.js"), title: (u) => (u && u.role === "tech" ? "Today" : "Home") },
-    { path: "/menu", load: () => import("./menu.js"), title: "Menu" },
+    // the Menu is the top bar's button, not a tab: it has a back arrow (to where you were, or Home)
+    { path: "/menu", load: () => import("./menu.js"), title: "Menu", parent: "/today" },
     { path: "/me", load: () => import("./me.js"), title: "My account", perm: "account:own", parent: "/today" },
     { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/today", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },

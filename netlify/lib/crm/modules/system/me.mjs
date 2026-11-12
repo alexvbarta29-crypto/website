@@ -20,11 +20,13 @@ import { publicUser } from "./types.mjs";
 
 export const SETTINGS_PUBLIC = Object.freeze({ company_name: "Barta Window Washing", time_zone: TZ });
 
-// The tab bar for a role (§9.1); the app shows a tab only once its screen
+// The places for a role (§9.1); the app shows one only once its screen
 // exists. The office: Home (the owner's dashboard: the numbers, today's
 // visits, what needs you) · Inbox (with comms, M6) · Schedule · Customers ·
-// Sales (Leads & calls, Quotes, Tasks) · Menu (every other screen, by
-// section). The office's Dashboard views are on Home and under Menu → Admin.
+// Sales (Leads & calls, Quotes, Tasks) on the bar, and Menu (every other
+// screen, by section), which the app shows as a button at the top left of
+// the top bar, not as a sixth tab (crm-app/core/nav.js TABS.menu.top). The
+// office's Dashboard views are on Home and under Menu → Admin.
 export function navFor(user) {
   return user && user.role === "tech" ? ["today", "inbox", "time", "pay", "me"] : ["home", "inbox", "schedule", "contacts", "sales", "menu"];
 }

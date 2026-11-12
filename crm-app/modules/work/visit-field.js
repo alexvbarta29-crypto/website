@@ -20,6 +20,10 @@ import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
 import { money, time as fmtTime, dateShort } from "../../core/format.js";
 import { capture, prepare } from "../../core/camera.js";
 import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine, tellShell } from "./tech-kit.js";
+import { nextStep } from "./visit-step.js";
+
+// What a change made with no signal says (the layout report: "Saved, will send when online").
+export const SAVED_OFFLINE = "Saved, will send when online.";
 
 const OPEN = ["scheduled", "en_route", "in_progress", "paused"];
 const TITLE = { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
@@ -47,6 +51,17 @@ function myTimer(s, uid) {
 }
 const worked = (s) => (s.timers || []).reduce((n, t) => n + (t.end_at ? t.minutes || 0 : since(t.start_at)), 0);
 
+// The visit's next step for the Visit screen's one big button (visit-step.js;
+// work/visit.js draws it, fixed at the bottom on a phone, in the page's
+// header on a desk, and hands a tap back to runStep below).
+export function step(s, ctx) {
+  if (!s || !s.visit) return null;
+  const v = s.visit;
+  const missing = ((v.checklist && v.checklist.items) || []).filter((i) => i.required && !itemDone(i)).map((i) => i.label);
+  const collect = ctx && ctx.data && ctx.data.collect;
+  return nextStep({ status: v.status, missing, online: online(), collect });
+}
+
 function stateCard(s, ctx) {
   const v = s.visit;
   const uid = ctx.user && ctx.user.id;
@@ -55,6 +70,7 @@ function stateCard(s, ctx) {
   const missing = ((v.checklist && v.checklist.items) || []).filter((i) => i.required && !itemDone(i)).map((i) => i.label);
   const omw = v.on_my_way;
   const late = (v.running_late || [])[v.running_late ? v.running_late.length - 1 : 0];
+  const big = step(s, ctx);
   let body;
   if (v.status === "completed") {
     body = html`<p class="tf-done">Done${v.completion && v.completion.at ? ` at ${fmtTime(v.completion.at)}` : ""}${v.completion && v.completion.waiting ? " (on this phone, waiting for signal)" : ""}. ${hm(worked(s))} worked.</p>`;
@@ -65,26 +81,25 @@ function stateCard(s, ctx) {
   } else {
     const run = mine ? html`<div class="tf-run"><span ${attrs({ "data-since": mine.start_at })}>${hm(since(mine.start_at))}</span><small>Your timer, since ${fmtTime(mine.start_at)}${anyRunning && (s.timers || []).filter((t) => !t.end_at).length > 1 ? " · others are working too" : ""}</small></div>`
       : anyRunning ? html`<p class="small muted">Someone else on this visit is working. Start your own timer when you begin.</p>` : "";
-    const big = [];
-    if (v.status === "scheduled") big.push(html`<button type="button" class="btn" data-omw>${TICONS.car}On my way</button>`);
-    if (["scheduled", "en_route"].includes(v.status)) big.push(html`<button type="button" class="btn primary" data-timer="start">${TICONS.play}Start</button>`);
-    if (v.status === "in_progress" && mine) big.push(html`<button type="button" class="btn" data-timer="pause">${icon("pause")}Pause</button>`);
-    if (v.status === "in_progress" && !mine) big.push(html`<button type="button" class="btn" data-timer="start">${TICONS.play}Start my timer</button>`);
-    if (v.status === "paused") big.push(html`<button type="button" class="btn" data-timer="start">${TICONS.play}Resume</button>`);
-    if (["in_progress", "paused"].includes(v.status) || (["scheduled", "en_route"].includes(v.status) && !missing.length)) {
-      big.push(html`<button type="button" class="${"btn " + (["in_progress", "paused"].includes(v.status) ? "primary" : "dark") + (big.length % 2 ? "" : " wide")}" data-complete ${attrs({ "aria-disabled": missing.length ? "true" : null })}>${icon("check")}Complete</button>`);
-    }
+    // everything but the big button's step, smaller, in the card (the big one is never repeated here)
     const small = [];
-    if (["scheduled", "en_route"].includes(v.status)) small.push(html`<button type="button" class="btn" data-late>${TICONS.late}Running late</button>`);
-    if (["scheduled", "en_route"].includes(v.status)) small.push(html`<button type="button" class="btn" data-noaccess>${TICONS.lock}No access</button>`);
+    const open = ["scheduled", "en_route"].includes(v.status);
+    if (v.status === "scheduled" && big && big.key !== "omw") small.push(html`<button type="button" class="btn" data-omw>${TICONS.car}On my way</button>`);
+    if (v.status === "scheduled" && big && big.key !== "start") small.push(html`<button type="button" class="btn" data-timer="start">${TICONS.play}Start</button>`);
+    if (v.status === "in_progress" && mine) small.push(html`<button type="button" class="btn" data-timer="pause">${icon("pause")}Pause</button>`);
+    if (v.status === "in_progress" && !mine) small.push(html`<button type="button" class="btn" data-timer="start">${TICONS.play}Start my timer</button>`);
+    // done without the timer (the server starts and finishes it), or after a break
+    if ((open && !missing.length) || v.status === "paused") small.push(html`<button type="button" class="btn" data-complete ${attrs({ "aria-disabled": missing.length ? "true" : null })}>${icon("check")}Finish</button>`);
+    if (open) small.push(html`<button type="button" class="btn" data-late>${TICONS.late}Running late</button>`);
+    if (open) small.push(html`<button type="button" class="btn" data-noaccess>${TICONS.lock}No access</button>`);
     body = html`${run}
       ${omw ? html`<p class="small muted">On my way at ${fmtTime(omw.at)}, about ${omw.eta_min} min${late ? `; running late at ${fmtTime(late.at)}, about ${late.eta_min} min` : ""}.</p>` : ""}
       ${s.sent ? sentNote(s.sent) : ""}
-      <div class="tf-big">${big}</div>
+      ${big && big.note ? html`<p class="small muted">${big.note}</p>` : ""}
       ${missing.length && ["in_progress", "paused"].includes(v.status) ? html`<p class="tf-missing">Still to do before it's done: ${missing.join(", ")}.</p>` : ""}
       ${small.length ? html`<div class="tf-small">${small}</div>` : ""}`;
   }
-  return html`<div class="card tf-state"><div class="tf-state-top"><h2>${TITLE[v.status] || v.status}</h2>${v.minutes_worked && v.status !== "completed" ? html`<span class="small muted">${hm(v.minutes_worked)} so far</span>` : ""}</div>
+  return html`<div class="card tf-state" id="vf-state"><div class="tf-state-top"><h2>${TITLE[v.status] || v.status}</h2>${v.minutes_worked && v.status !== "completed" ? html`<span class="small muted">${hm(v.minutes_worked)} so far</span>` : ""}</div>
     ${offlineLine({ offline: s.offline, as_of: s.as_of, waiting: s.waiting, what: "This visit" })}
     ${body}</div>`;
 }
@@ -103,7 +118,7 @@ function checklistCard(s) {
   if (!items.length) return "";
   const done = items.filter(itemDone).length;
   const open = OPEN.includes(s.visit.status);
-  return html`<div class="card"><h2>Checklist <span class="muted small">${done} of ${items.length}</span></h2><ul class="tf-items">${items.map((i) => {
+  return html`<div class="card" id="vf-check"><h2>Checklist <span class="muted small">${done} of ${items.length}</span></h2><ul class="tf-items">${items.map((i) => {
     const ok = itemDone(i);
     const sub = i.kind === "count" && i.value !== undefined ? `Count: ${i.value}` : i.kind === "text" && i.value ? String(i.value) : i.kind === "photo" ? (ok ? "Photo taken" : "Take the photo") : "";
     const act = i.kind === "photo" ? (ok ? "" : html`<span class="act">${TICONS.camera}Photo</span>`) : i.kind === "count" ? html`<span class="act">${ok ? "Change" : "Count"}</span>` : i.kind === "text" ? html`<span class="act">${ok ? "Edit" : "Write"}</span>` : "";
@@ -116,7 +131,7 @@ function checklistCard(s) {
 function photosCard(s, ctx) {
   const photos = s.visit.photos || [];
   const can = s.visit.status !== "cancelled";
-  return html`<div class="card"><h2>Photos <span class="muted small">${photos.length}</span></h2>
+  return html`<div class="card" id="vf-photos"><h2>Photos <span class="muted small">${photos.length}</span></h2>
     ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => {
       const src = p.local ? p.thumb : `/api/crm/files/${encodeURIComponent(p.file_id)}?thumb=1`;
       return html`<span class="${"tf-photo" + (p.local ? " wait" : "")}">${src ? html`<img ${attrs({ src, alt: `${p.tag || "other"} photo`, loading: "lazy" })}>` : "Photo"}<span class="tag">${p.tag || "other"}</span></span>`;
@@ -151,8 +166,8 @@ function notesCard(s) {
 function render(s, ctx) {
   if (!s || !s.visit) return html``;
   const last = s.last ? html`<div class="card"><h2>Last time here <span class="muted small">${dateShort(s.last.date)}</span></h2><p class="wk-pre">${s.last.text}</p></div>` : "";
-  // on a phone the big buttons sit in a bar over the tab bar, so Start and On my way are never below the fold
-  return html`<div class="${"tf-panel" + (OPEN.includes(s.visit.status) ? " has-bar" : "")}">${stateCard(s, ctx)}${last}${checklistCard(s)}${photosCard(s, ctx)}${workCard(s, ctx)}${notesCard(s)}</div>`;
+  // (the next step is the Visit screen's one big button, at the bottom on a phone: step() above)
+  return html`<div class="tf-panel">${stateCard(s, ctx)}${last}${checklistCard(s)}${photosCard(s, ctx)}${workCard(s, ctx)}${notesCard(s)}</div>`;
 }
 
 // ------------------------------------------------------------ doing things
@@ -167,7 +182,7 @@ async function act(ctx, el, path, body, { method, ok, needsSignal, what, then } 
     toast((err && err.message) || "That didn't work.", { bad: true });
     return null;
   }
-  if (r.queued) toast(r.saved === false ? FULL_NOTE : "Saved on this phone. It goes out when you have signal.", r.saved === false ? { bad: true, ms: 6000 } : undefined);
+  if (r.queued) toast(r.saved === false ? FULL_NOTE : SAVED_OFFLINE, r.saved === false ? { bad: true, ms: 6000 } : undefined);
   else if (r.data && r.data.pending) toast(r.data.message || "The office will look at this one.", { bad: true });
   else if (ok) toast(ok);
   if (then) then(r);
@@ -241,28 +256,40 @@ async function takePhoto(ctx, el, { tag, item }) {
   await act(ctx, el, `/visits/${vid(ctx)}/photos`, body, { ok: "Photo saved" });
 }
 
+function timer(ctx, el, action) {
+  // a pause names the segment this phone started (two phones: the server never stops the other one's)
+  const mine = action === "pause" ? myTimer(ctx.state, ctx.user && ctx.user.id) : null;
+  return act(ctx, el, `/visits/${vid(ctx)}/timer`, { action, ...(mine && mine.client_id ? { timer_client_id: mine.client_id } : {}) }, { ok: action === "start" ? "Timer started" : "Timer paused" });
+}
+function complete(ctx, el) {
+  const items = (ctx.state.visit.checklist && ctx.state.visit.checklist.items) || [];
+  const missing = items.filter((i) => i.required && !itemDone(i)).map((i) => i.label);
+  if (missing.length) { toast(`Finish the checklist first: ${missing.join(", ")}.`, { bad: true }); return null; }
+  return act(ctx, el, `/visits/${vid(ctx)}/complete`, {}, { ok: "Done. Nice work." });
+}
+async function onMyWay(ctx, el) {
+  // texts the customer: never kept for later (a late "on my way" is worse than none)
+  if (!online()) { toast("On my way needs signal. Nothing was sent. Start works without it.", { bad: true }); ctx.rerender(); return; }
+  el.disabled = true;
+  const { eta, from } = await etaDefault(ctx);
+  el.disabled = false;
+  const n = await askNumber({ title: "On my way", label: "About how many minutes away?", value: eta, yes: "Text the customer", hint: "The customer gets a text with your first name and this time." });
+  if (!n) return;
+  await act(ctx, el, `/visits/${vid(ctx)}/on-my-way`, { eta_min: n, ...(from ? { lat: from[0], lng: from[1] } : {}) }, { needsSignal: true, what: "On my way", then: keepSent(ctx) });
+}
+
+// A tap on the Visit screen's big button (drawn outside this panel): the same as the panel's own buttons.
+export function runStep(key, ctx, el) {
+  if (key === "omw") return onMyWay(ctx, el);
+  if (key === "start" || key === "resume") return timer(ctx, el, "start");
+  if (key === "finish") return complete(ctx, el);
+  return null;
+}
+
 const events = {
-  "click [data-timer]": (e, el, ctx) => {
-    const action = el.dataset.timer;
-    // a pause names the segment this phone started (two phones: the server never stops the other one's)
-    const mine = action === "pause" ? myTimer(ctx.state, ctx.user && ctx.user.id) : null;
-    act(ctx, el, `/visits/${vid(ctx)}/timer`, { action, ...(mine && mine.client_id ? { timer_client_id: mine.client_id } : {}) }, { ok: action === "start" ? "Timer started" : "Timer paused" });
-  },
-  "click [data-complete]": async (e, el, ctx) => {
-    const items = (ctx.state.visit.checklist && ctx.state.visit.checklist.items) || [];
-    const missing = items.filter((i) => i.required && !itemDone(i)).map((i) => i.label);
-    if (missing.length) { toast(`Finish the checklist first: ${missing.join(", ")}.`, { bad: true }); return; }
-    act(ctx, el, `/visits/${vid(ctx)}/complete`, {}, { ok: "Done. Nice work." });
-  },
-  "click [data-omw]": async (e, el, ctx) => {
-    if (!online()) { toast("On my way needs signal. Nothing was sent.", { bad: true }); return; }
-    el.disabled = true;
-    const { eta, from } = await etaDefault(ctx);
-    el.disabled = false;
-    const n = await askNumber({ title: "On my way", label: "About how many minutes away?", value: eta, yes: "Text the customer", hint: "The customer gets a text with your first name and this time." });
-    if (!n) return;
-    await act(ctx, el, `/visits/${vid(ctx)}/on-my-way`, { eta_min: n, ...(from ? { lat: from[0], lng: from[1] } : {}) }, { needsSignal: true, what: "On my way", then: keepSent(ctx) });
-  },
+  "click [data-timer]": (e, el, ctx) => timer(ctx, el, el.dataset.timer),
+  "click [data-complete]": (e, el, ctx) => complete(ctx, el),
+  "click [data-omw]": (e, el, ctx) => onMyWay(ctx, el),
   "click [data-late]": async (e, el, ctx) => {
     if (!online()) { toast("Running late needs signal. Nothing was sent.", { bad: true }); return; }
     const n = await askNumber({ title: "Running late", label: "About how many minutes until you're there?", value: 20, yes: "Text the customer" });
@@ -343,8 +370,22 @@ async function addLine(ctx) {
   });
 }
 
-function mount(el) {
+// The big button's step depends on the signal (On my way needs it): draw it
+// again when the phone goes on or offline, while this visit is on screen.
+let onScreen = null;
+let netHooked = false;
+function hookNet() {
+  if (netHooked || typeof window === "undefined") return;
+  netHooked = true;
+  const again = () => { if (onScreen && document.contains(onScreen.el)) onScreen.ctx.rerender(); else onScreen = null; };
+  window.addEventListener("offline", again);
+  window.addEventListener("online", again);
+}
+
+function mount(el, state, ctx) {
   tellShell(el);
+  onScreen = ctx ? { el, ctx } : null;
+  hookNet();
   // the running timer moves on while the visit is on screen
   const timer = setInterval(() => {
     if (!document.contains(el)) { clearInterval(timer); return; }
@@ -352,4 +393,4 @@ function mount(el) {
   }, 30000);
 }
 
-export default { load, render, events, mount };
+export default { load, render, events, mount, step, runStep };

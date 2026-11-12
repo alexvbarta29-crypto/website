@@ -31,7 +31,7 @@ const office = {
     { where: "more", section: "work", label: "To book", path: "/schedule?view=tray", perm: "schedule:write", order: 25, icon: "clock" },
   ],
   creates: [{ label: "New job", path: "/jobs/new", perm: "schedule:write", order: 25, icon: "schedule" }],
-  contactTabs: [{ key: "work", label: "Work", order: 50, load: () => import("./office-contact-tab.js") }],
+  contactTabs: [{ key: "work", label: "Work", order: 50, place: "visits", perm: "schedule:read", load: () => import("./office-contact-tab.js") }],
   visitActions: [],
   // today's visits by person, and jobs that need a look (the office)
   // (home: false: Home has its own Today card from the same visits index, and the to-book and stale counts)
@@ -63,7 +63,12 @@ const office = {
 // button module default-exports { run(data, ctx) } and runs on tap. Money's
 // "Collect payment" lives in the money manifest's visitActions the same way.
 // A panel may name the Visit screen's own cards it shows itself, which the
-// screen then leaves out: replaces: ["checklist", "lines", "notes"].
+// screen then leaves out: replaces: ["checklist", "lines", "notes", "photos"].
+// A panel that works the visit names its next step for the screen's one big
+// button (On my way → Start → Finish; work/visit-step.js) with
+// step(state, ctx) → { key, label, attr } | null, and runs it with
+// runStep(key, ctx, el) when the button is tapped; Get paid, after Finish,
+// is Money's "Collect payment" (shown when something is owed).
 const field = {
   routes: [
     { path: "/time", load: () => import("./tech-time.js"), title: "Time", perm: "time:own", parent: "/today" },
@@ -78,7 +83,7 @@ const field = {
   creates: [],
   contactTabs: [],
   visitActions: [
-    { key: "field", label: "Your visit", when: "assignee", order: 10, perm: "visits:work", panel: true, replaces: ["checklist", "lines", "notes"], load: () => import("./visit-field.js") },
+    { key: "field", label: "Your visit", when: "assignee", order: 10, perm: "visits:work", panel: true, replaces: ["checklist", "lines", "notes", "photos"], load: () => import("./visit-field.js") },
   ],
   // the person's own day: a tech's Today, and "My visits" with the clock
   // on Home for owners and the office who go out on visits (nothing for

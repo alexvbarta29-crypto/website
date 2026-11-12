@@ -1,18 +1,43 @@
 // The single Visit screen (design §9.2 "Visit"; M4a owns it). The office
 // part: who, where, when, what the customer was told, the job's work, the
-// crew notes and access, the checklist, the texts that went (or would have
-// gone, in dry-run), and the office's buttons: Move or reassign, Mark done,
-// No access, Cancel, Reopen. Everything else arrives through the
+// crew notes and access, the checklist, the photos, the texts that went (or
+// would have gone, in dry-run), and the office's buttons: Move or reassign,
+// Mark done, No access, Cancel, Reopen. Everything else arrives through the
 // manifests' visitActions (contract in work/manifest.js): M4b's field
 // panel for an assignee, Money's "Collect payment". A technician reaches
 // only their own visits in the window the server allows; the server strips
 // what they may not see.
+//
+// Built around one big button (the layout report, Nov 2026): above the
+// content a row of labelled quick buttons, Call · Navigate · Photos ·
+// Checklist, always in that order and place (Navigate is never hidden when
+// there is an address); and one big coral button with the visit's next
+// step, On my way → Start → Finish → Get paid (work/visit-step.js), fixed
+// at the bottom of a phone above the tab bar, in the page's header on a
+// desk. A panel that works the visit names the step (its step(state, ctx))
+// and runs it (runStep(key, ctx, el)); Get paid is Money's "Collect
+// payment", shown only to someone who may collect when something is owed.
+// A change made with no signal says "Saved, will send when online".
 
 import { html, icon, attrs, toast, confirmSheet, delegate } from "../../core/ui.js";
+import { TICONS } from "./tech-kit.js";
 import { dateLong, money, dateTime, ago, phone } from "../../core/format.js";
 import { directionsLink } from "../../core/map.js";
 import { MANIFESTS } from "../index.js";
-import { ensureStyles, slotText, visitPill, kindLabel, faces, names, scheduleSheet, reasonSheet, loadUsers, officeView } from "./office-kit.js";
+import { ensureStyles as officeStyles, slotText, visitPill, kindLabel, faces, names, scheduleSheet, reasonSheet, loadUsers, officeView } from "./office-kit.js";
+import { owedFrom } from "./visit-step.js";
+
+// The office's stylesheet and the Visit's own (the quick row and the big button).
+let styled = false;
+function ensureStyles() {
+  officeStyles();
+  if (styled || typeof document === "undefined") return;
+  styled = true;
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.href = "/crm-app/modules/work/visit-styles.css";
+  document.head.appendChild(l);
+}
 
 const WHEN_OK = (a, data) => (a.when === "office" ? !!data.can.office : a.when === "assignee" ? !!data.can.assignee : true);
 
@@ -44,7 +69,56 @@ async function load(params, ctx) {
       } catch (e) { panels.push({ key: a.key, label: a.label, failed: (e && e.message) || "That didn't load." }); }
     } else buttons.push(a);
   }
+  // Get paid: Money's Collect payment, once the visit is done (as this phone shows it) and something is owed
+  const pay = buttons.find((a) => a.key === "money.collect");
+  const field = panels.find((p) => p.state && p.state.visit);
+  const status = field ? field.state.visit.status : data.visit.status;
+  data.collect = pay ? { key: pay.key, owed: false } : null;
+  if (pay && status === "completed") {
+    try { data.collect.owed = owedFrom((await ctx.api(`/visits/${encodeURIComponent(params.id)}/payment`, { timeout: 5000 })).data); } catch (e) { /* not known: no button */ }
+  }
   return { ...data, etag: r.etag, users, panels, buttons };
+}
+
+// The big button's step: the panel working the visit names it; for someone
+// not on it (the office), only Get paid once the visit is done and owed.
+export function bigStep(s) {
+  for (const p of s.panels || []) {
+    if (p.failed || !p.mod || typeof p.mod.step !== "function") continue;
+    const st = p.mod.step(p.state || {}, p.ctx);
+    return st ? { ...st, panel: p.key } : null;
+  }
+  const c = s.collect;
+  return c && c.owed && s.visit && s.visit.status === "completed" ? { key: "pay", label: "Get paid", attr: { "data-vact": c.key } } : null;
+}
+
+const STEP_ICON = { omw: () => TICONS.car, start: () => TICONS.play, resume: () => TICONS.play, finish: () => icon("check"), pay: () => icon("money") };
+
+// Call · Navigate · Photos · Checklist, then the big button. One row; CSS
+// puts the button at the bottom of a phone and beside the row on a desk.
+function actionHead(s, { ph, addr, where, photos, items, done, waiting }) {
+  const go = bigStep(s);
+  const q = (label, ic, sub, a) => html`<a class="vb-q" ${a}>${ic}<span class="vb-l">${label}</span>${sub ? html`<span class="vb-s">${sub}</span>` : ""}</a>`;
+  const off = (label, ic) => html`<span class="vb-q off" aria-disabled="true">${ic}<span class="vb-l">${label}</span></span>`;
+  return html`<div class="vb-head">
+    <nav class="vb-quick" aria-label="Quick actions">
+      ${ph ? q("Call", icon("phone"), "", attrs({ href: "tel:" + String(ph.e164 || "").replace(/[^+\d]/g, "") })) : off("Call", icon("phone"))}
+      ${addr ? q("Navigate", icon("map"), "", directionsLink(addr)) : where ? q("Navigate", icon("map"), "", directionsLink(where)) : off("Navigate", icon("map"))}
+      <button type="button" class="vb-q" data-jump="photos">${TICONS.camera}<span class="vb-l">Photos</span><span class="vb-s">${String(photos)}</span></button>
+      ${items ? html`<button type="button" class="vb-q" data-jump="check">${icon("check")}<span class="vb-l">Checklist</span><span class="vb-s">${`${done}/${items}`}</span></button>` : off("Checklist", icon("check"))}
+    </nav>
+    ${go ? html`<div class="vb-bar">
+      ${waiting ? html`<p class="vb-saved" role="status">${TICONS.cloud}<span>Saved, will send when online.</span></p>` : ""}
+      <button type="button" class="${"btn primary vb-go" + (go.blocked ? " blocked" : "")}" ${attrs({ "data-step": go.key, ...go.attr, "aria-disabled": go.blocked ? "true" : null })}>${(STEP_ICON[go.key] || (() => ""))()}${go.label}</button>
+    </div>` : ""}
+  </div>`;
+}
+
+// The visit's photos for the office (read only; the crew's panel shows its own).
+function photosCard(v) {
+  const photos = v.photos || [];
+  return html`<div class="card" id="vf-photos"><h2>Photos <span class="muted small">${photos.length}</span></h2>
+    ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => html`<span class="tf-photo">${p.file_id ? html`<img ${attrs({ src: `/api/crm/files/${encodeURIComponent(p.file_id)}?thumb=1`, alt: `${p.tag || "other"} photo`, loading: "lazy" })}>` : "Photo"}<span class="tag">${p.tag || "other"}</span></span>`)}</div>` : html`<p class="small muted">No photos yet. The crew's before and after photos show here.</p>`}</div>`;
 }
 
 function remindRow(label, m) {
@@ -72,7 +146,7 @@ function checklist(v) {
   const items = (v.checklist && v.checklist.items) || [];
   if (!items.length) return "";
   const done = items.filter(itemDone).length;
-  return html`<div class="card"><h2>Checklist <span class="muted small">${done} of ${items.length}</span></h2><ul class="wk-check">${items.map((i) => {
+  return html`<div class="card" id="vf-check"><h2>Checklist <span class="muted small">${done} of ${items.length}</span></h2><ul class="wk-check">${items.map((i) => {
     const ok = itemDone(i);
     return html`<li class="${ok ? "on" : ""}"><span class="box" aria-hidden="true">${ok ? icon("check") : ""}</span><span>${i.label}${i.required ? html` <span class="muted small">(required)</span>` : ""}</span></li>`;
   })}</ul></div>`;
@@ -117,9 +191,17 @@ export default {
     const people = (s.people || []);
     // cards a panel shows itself (the field panel: its own checklist, work and notes)
     const shown = new Set(s.panels.filter((p) => !p.failed).flatMap((p) => p.replaces || []));
+    // what the quick buttons count: the panel's copy when one works the visit (the phone's own changes on it)
+    const field = s.panels.find((p) => !p.failed && p.state && p.state.visit);
+    const fv = field ? field.state.visit : v;
+    const items = (fv.checklist && fv.checklist.items) || [];
+    // (Get paid on the big button is Money's Collect payment: not twice on screen)
+    const go = bigStep(s);
+    const side = s.buttons.filter((a) => !(go && go.key === "pay" && a.key === go.attr["data-vact"]));
+    const head = actionHead(s, { ph, addr, where, photos: (fv.photos || []).length, items: items.length, done: items.filter(itemDone).length, waiting: field ? field.state.waiting || 0 : 0 });
     // two columns on a wide desk: the visit on the left, the people and places, buttons and texts on the
     // right (a phone shows one column in the same order as before: wk-vmain/wk-vside are display:contents there)
-    return html`<div class="stack wk wk-vpage"><div class="wk-vmain">
+    return html`<div class="${"stack wk wk-vpage" + (go ? " vb-has-go" : "")}">${head}<div class="wk-vmain">
       <div class="card wk-head">
         <div class="wk-head-top"><div class="wk-when-big"><b>${dateLong(v.date)}</b><span>${slotText(v)}</span></div>${visitPill(v.status)}</div>
         ${s.arrival && (v.date_only || (v.window && v.window.type === "anytime")) ? html`<p class="small muted">Customer was told: ${s.arrival}</p>` : ""}
@@ -136,6 +218,7 @@ export default {
       ${s.panels.map((p) => html`<section class="wk-panel" ${attrs({ "data-panel": p.key, "aria-label": p.label || p.key })}>${p.failed ? html`<div class="card empty"><h2>${p.label || "This part"} didn't load</h2><p>${p.failed}</p></div>` : p.mod.render(p.state || {}, p.ctx)}</section>`)}
       ${shown.has("lines") ? "" : lines(j, !!(s.can && s.can.prices))}
       ${shown.has("checklist") ? "" : checklist(v)}
+      ${shown.has("photos") ? "" : photosCard(v)}
       ${v.tech_notes && !shown.has("notes") ? html`<div class="card"><h2>Notes from the visit</h2><p class="wk-pre">${v.tech_notes}</p></div>` : ""}
       ${office && j && j.office_notes ? html`<div class="card"><h2>Office notes</h2><p class="wk-pre">${j.office_notes}</p></div>` : ""}
       </div><div class="wk-vside">
@@ -147,7 +230,7 @@ export default {
         ${j && !office ? html`<li><div class="row">${icon("doc")}<span class="who"><span class="nm">${j.title}</span><span class="sub">The job</span></span></div></li>` : ""}
       </ul>
       ${office ? officeButtons(s) : ""}
-      ${s.buttons.length ? html`<div class="btn-row wk-acts">${s.buttons.map((a) => html`<button type="button" class="btn" ${attrs({ "data-vact": a.key })}>${a.icon ? icon(a.icon) : ""}${a.label}</button>`)}</div>` : ""}
+      ${side.length ? html`<div class="btn-row wk-acts">${side.map((a) => html`<button type="button" class="btn" ${attrs({ "data-vact": a.key })}>${a.icon ? icon(a.icon) : ""}${a.label}</button>`)}</div>` : ""}
       ${s.reminders ? html`<div class="section-h wk-late">Texts and emails</div><ul class="list wk-rems wk-late">
         ${remindRow("Confirmation", s.reminders.confirm)}${remindRow("Reminder, 2 weeks before", s.reminders.d14)}${remindRow("Reminder, 2 days before", s.reminders.d2)}</ul>` : ""}
       ${office && v.updated_at ? html`<p class="foot-note wk-late">Changed ${ago(v.updated_at)}</p>` : ""}
@@ -166,6 +249,18 @@ export default {
     }
   },
   events: {
+    // the big button: the panel working the visit runs its step; Get paid is Money's Collect payment ([data-vact] below)
+    "click [data-step]": (e, el, ctx) => {
+      const go = bigStep(ctx.state);
+      if (!go || go.key !== el.dataset.step || go.key === "pay") return;
+      if (go.blocked) { toast(`Finish the checklist first: ${go.blocked.join(", ")}.`, { bad: true }); return; }
+      const p = ctx.state.panels.find((x) => x.key === go.panel);
+      if (p && p.mod && typeof p.mod.runStep === "function") p.mod.runStep(go.key, p.ctx, el);
+    },
+    "click [data-jump]": (e, el) => {
+      const to = document.getElementById(el.dataset.jump === "photos" ? "vf-photos" : "vf-check");
+      if (to) to.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
     "click [data-move]": (e, el, ctx) => {
       const s = ctx.state;
       scheduleSheet(ctx, { visit: s.visit, etag: s.etag, town: s.visit.town, onDone: () => ctx.refresh() });

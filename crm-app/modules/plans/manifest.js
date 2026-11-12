@@ -23,7 +23,7 @@ export default {
     { where: "more", section: "work", label: "Lights season", path: "/lights", perm: "plans:read", order: 36, icon: "bulb" },
   ],
   creates: [{ label: "New plan", path: "/plans/new", perm: "plans:write", order: 22, icon: "schedule" }],
-  contactTabs: [{ key: "plans", label: "Plans", order: 47, load: () => import("./contact-tab.js") }],
+  contactTabs: [{ key: "plans", label: "Plans", order: 47, place: "plan", perm: "plans:read", load: () => import("./contact-tab.js") }],
   visitActions: [],
   todayCards: [{ key: "plans", perm: "plans:read", order: 25, home: false, load: () => import("./today-card.js") }],
   settings: [
