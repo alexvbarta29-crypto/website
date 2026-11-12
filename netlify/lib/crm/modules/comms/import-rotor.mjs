@@ -182,11 +182,19 @@ export async function mapCampaign(c, ctx) {
 
 const pinOf = (row) => (plain(row) && str(row.label) ? { rotor_id: str(row.id).slice(0, 64), label: str(row.label).slice(0, 40), color: /^#[0-9a-f]{3,8}$/i.test(str(row.color)) ? str(row.color) : "", active: row.is_active !== false } : null);
 const preparePins = (rows) => ({ types: rows.map(pinOf).filter(Boolean).slice(0, 50) });
+// A later export keeps what the door-to-door map added to a Rotor type (its
+// key and outcome, docs/CRM-MAP.md) and the types made in the CRM.
 async function finishPins(ctx) {
-  const types = (ctx.prepared && ctx.prepared.types) || [];
-  if (!types.length) return;
+  const fresh = (ctx.prepared && ctx.prepared.types) || [];
+  if (!fresh.length) return;
   const cur = await getSetting("pin_types");
-  if (JSON.stringify(cur.types || []) === JSON.stringify(types)) return;
+  const had = Array.isArray(cur.types) ? cur.types : [];
+  const byRotor = new Map(had.filter((t) => t && t.rotor_id).map((t) => [t.rotor_id, t]));
+  const types = [
+    ...fresh.map((t) => { const o = byRotor.get(t.rotor_id); return o ? { ...t, ...(o.key ? { key: o.key } : {}), ...(o.outcome ? { outcome: o.outcome } : {}) } : t; }),
+    ...had.filter((t) => t && !t.rotor_id && t.label),
+  ].slice(0, 50);
+  if (JSON.stringify(had) === JSON.stringify(types)) return;
   await putSetting("pin_types", { types }, { by: "import", origin: "import", actor_kind: "import", requestId: "import" });
 }
 

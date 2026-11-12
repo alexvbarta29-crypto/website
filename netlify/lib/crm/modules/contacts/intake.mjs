@@ -110,6 +110,8 @@ export function normalizeInput(input = {}, origin = "lead-form") {
     provider_lead_id: str(input.provider_lead_id).slice(0, 80) || null,
     consent: { sms_service: consent.sms_service === true, sms_marketing: consent.sms_marketing === true },
     note: str(input.notes || input.note).slice(0, 4000),
+    // who a new contact belongs to (a canvasser's door-to-door lead, docs/CRM-MAP.md); never changes an existing one
+    owner_id: isId(input.owner_id, "user") ? input.owner_id : null,
   };
 }
 
@@ -139,6 +141,7 @@ function newContact(n, origin, { rotorLeadId, pendingRotor }) {
     emails: n.email ? [{ address: n.email, label: "personal", primary: true }] : [],
     lifecycle: "lead", source: { ...n.source, captured_at: at }, tags: n.tags,
     notes: noteBlock(n, origin), consent, flags: {}, watcher_ids: [],
+    ...(n.owner_id ? { owner_id: n.owner_id } : {}),
     ...(n.address ? { billing_address: n.address } : {}),
     ...(rotorLeadId ? { rotor: { lead_ids: [rotorLeadId] } } : {}),
     ...(pendingRotor ? { intake_pending_rotor: pendingRotor } : {}),
