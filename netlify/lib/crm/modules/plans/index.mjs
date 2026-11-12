@@ -21,7 +21,7 @@ import { localDate, now } from "../../core/clock.mjs";
 import { types } from "./types.mjs";
 import { CATALOG_DEFAULTS, LIGHTS_DEFAULTS, validateCatalog, validateLights } from "./catalog.mjs";
 import { TEMPLATES } from "./texts.mjs";
-import { agreementForOption, seedAgreementTemplates, upgradeAgreementDrafts } from "./agreements.mjs";
+import { agreementForOption, seedAgreementTemplates, upgradeAgreementDrafts, upgradeOwnerDecisions } from "./agreements.mjs";
 import { fromQuoteOption, listeners, touchPlanStats, W } from "./plans.mjs";
 import "./signatures.mjs";
 import { automations, sweeps } from "./automations.mjs";
@@ -82,8 +82,9 @@ export default defineModule({
   sweeps,
   automations,
   templates: TEMPLATES,
-  // v2: the untouched first drafts upgraded (plan-derived terms, owner checks), the Custom text
-  seeds: [{ v: 1, run: seedAgreementTemplates }, { v: 2, run: upgradeAgreementDrafts }],
+  // v2: the untouched first drafts upgraded (plan-derived terms, owner checks), the Custom text;
+  // v3: the owner's Nov 12 answers in the untouched drafts (an edited one gets them as a suggestion) and the legal name
+  seeds: [{ v: 1, run: seedAgreementTemplates }, { v: 2, run: (ctx) => upgradeAgreementDrafts(ctx) }, { v: 3, run: upgradeOwnerDecisions }],
   onMerge: onMergePlans,
   attention: [
     { key: "plans.due", label: "Plan visits to book", perm: "plans:read", count: dueCount, link: "#/plans/due" },

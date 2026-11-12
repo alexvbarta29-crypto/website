@@ -152,9 +152,9 @@ test("M3: one source per add-on price: the price-book item (cfg only without one
   const book = SEED.SEED_PRICE_BOOK.map((i) => ({ ...i, id: SEED.seedItemId(i.key) }));
   const cfg = P.pricingWith({ screens: { each_cents: 600, estimate_ratio: 0.5 }, tracks: { standard_cents: 500, premium_cents: 2000 }, lights: { install_per_ft_cents: 900, materials_per_ft_cents: 300 } });
   const s = P.suggestLines({ services: ["screens", "tracks_standard", "tracks_premium"], panes_ext: 40, screens: 10, tracks: { standard: 10, premium: 2 } }, cfg, book);
-  assert.deepEqual(s.lines.map((l) => l.unit_cents), [500, 800, 1500], "the book's $5 screens, $8 tracks (D26, the seed), $15 premium");
-  const edited = book.map((i) => (i.key === "tracks_standard" ? { ...i, unit_cents: 500 } : i));
-  assert.equal(P.suggestLines({ services: ["tracks_standard"], tracks: { standard: 10 } }, P.PRICING_DEFAULTS, edited).lines[0].unit_cents, 500, "$5 standard tracks is one field: the item");
+  assert.deepEqual(s.lines.map((l) => l.unit_cents), [500, 500, 1500], "the book's $5 screens, $5 tracks (the owner, Nov 12), $15 premium");
+  const edited = book.map((i) => (i.key === "tracks_standard" ? { ...i, unit_cents: 600 } : i));
+  assert.equal(P.suggestLines({ services: ["tracks_standard"], tracks: { standard: 10 } }, P.PRICING_DEFAULTS, edited).lines[0].unit_cents, 600, "standard tracks is one field: the item");
   const lights = P.lightsLines({ runs: [{ label: "Roofline", feet: 100 }] }, cfg, book);
   assert.deepEqual(lights.slice(0, 2).map((l) => l.unit_cents), [800, 200]);
   // no item in the book: cfg's copy
@@ -194,7 +194,7 @@ test("M4: Early Bird after its deadline: not sent, not presented, not approved b
   } finally { f.restore(); t.done(); }
 });
 
-test("M5, M6: the 3-year discount only on a lights plan (never this season only); Early Bird, the 3-year discount and materials on the first season only", async () => {
+test("M5, M6: the 3-year discount only on a lights plan (never this season only); Early Bird, the 3-year discount and materials every season (the owner, Nov 12)", async () => {
   const { t, owner } = await setup();
   try {
     const one = await t.api("/pricing/lights", { method: "POST", as: owner, body: { runs: [{ label: "Roofline", feet: 150 }], every_season: false, three_year: true } });
@@ -204,14 +204,14 @@ test("M5, M6: the 3-year discount only on a lights plan (never this season only)
     const bad = await t.api("/quotes", { method: "POST", as: owner, body: { contact_id: c.id, options: [oneTime({ discounts: [{ key: "three_year", name: "3-year contract", type: "fixed", value: 10000, scope: { type: "initial" } }] })] } });
     assert.equal(bad.status, 400);
     assert.match(bad.body.error.message, /3-year discount is for a plan/);
-    // a 3-year lights plan with Early Bird: season 1 is $1,500 → 50% → −$100 = $650; seasons 2 and 3 are install only ($1,200)
+    // a 3-year lights plan with Early Bird: every season is $1,500 → 50% → −$200 = $550
     const r = await t.api("/pricing/lights", { method: "POST", as: owner, body: { runs: [{ label: "Roofline", feet: 150 }], early_bird: true, three_year: true } });
     assert.equal(r.status, 200);
-    assert.deepEqual(r.body.data.discounts.map((d) => d.scope.type), ["initial", "initial"]);
+    assert.deepEqual(r.body.data.discounts.map((d) => d.scope.type), ["all", "all"]);
     const plan = P.optionTotals({ kind: "plan", plan: r.body.data.plan, lines: r.body.data.lines, discounts: r.body.data.discounts }, P.PRICING_DEFAULTS);
-    assert.deepEqual(plan.per_visit_cents, [65000, 120000, 120000]);
-    const seed = SEED.SEED_DISCOUNTS.filter((d) => ["early_bird", "three_year"].includes(d.key)).map((d) => d.default_scope.type);
-    assert.deepEqual(seed, ["initial", "initial"]);
+    assert.deepEqual(plan.per_visit_cents, [55000, 55000, 55000]);
+    const seed = SEED.SEED_DISCOUNTS.filter((d) => ["early_bird", "three_year"].includes(d.key)).map((d) => [d.default_scope.type, d.value]);
+    assert.deepEqual(seed, [["all", 5000], ["all", 20000]]);
     // this season only: no plan, no 3-year
     const once = await t.api("/pricing/lights", { method: "POST", as: owner, body: { runs: [{ label: "Roofline", feet: 150 }], every_season: false } });
     assert.equal(once.body.data.plan, null);
@@ -280,7 +280,7 @@ test("M8: an engine or price-book price changes only as an override (permission 
   } finally { t.done(); }
 });
 
-test("minor: 10 free screens count only when the screens add-on is ticked; huge amounts are a 400; plan add-ons skip the interior visit", async () => {
+test("minor: 10 free screens count only when the screens add-on is ticked; huge amounts are a 400; plan add-ons only on the visit asked for", async () => {
   const { t, owner } = await setup();
   try {
     const scr = line({ title: "Screen Cleaning", qty_milli: 20000, unit_cents: 500, category: "screens", unit: "screen", optional: true });
@@ -304,10 +304,10 @@ test("minor: 10 free screens count only when the screens add-on is ticked; huge 
     assert.equal((await t.api("/quotes", { method: "POST", as: owner, body: { contact_id: c.id, options: [plan] } })).status, 400);
     assert.equal((await t.api("/pricing/totals", { method: "POST", as: owner, body: { option: plan } })).status, 400);
 
-    // quarterly: screens, tracks and gutters on the exterior visits, not the interior visit 2
+    // quarterly: screens, tracks and gutters only on the visit the customer asked for (the first), never the interior visit 2 (the owner, Nov 12)
     const book = SEED.SEED_PRICE_BOOK.map((i) => ({ ...i, id: SEED.seedItemId(i.key) }));
     const s = P.suggestOption({ services: ["windows_ext", "screens", "tracks_standard", "gutters"], panes_ext: 40, tracks: { standard: 6 }, gutters_cents: 15000, plan: "quarterly" }, P.PRICING_DEFAULTS, book, []);
-    for (const l of s.lines.filter((x) => ["screens", "tracks", "gutters"].includes(x.category))) assert.deepEqual(l.scope, { type: "specific", visits: [1, 3, 4] }, l.title);
+    for (const l of s.lines.filter((x) => ["screens", "tracks", "gutters"].includes(x.category))) assert.deepEqual(l.scope, { type: "initial" }, l.title);
   } finally { t.done(); }
 });
 

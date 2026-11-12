@@ -12,12 +12,16 @@
 // months, renewing every 6 / 3 / 1 / 12 months (Custom: as often as it
 // comes); the early-cancel clawback is the plan discount the first visit
 // actually got (machine.mjs clawbackCents; clawback_cents here is only the
-// catalog's figure for reference); 7 days' notice; a $50 late-cancel fee.
+// catalog's figure for reference); 7 days' notice; a $50 late cancel or
+// reschedule fee (plans and one-time jobs, the owner, Nov 12); a $400 storage
+// fee for leaving a 3-year lights contract inside its first 36 months.
+// What each perk covers (the owner, Nov 12) is perksDetails below.
 
 import { InputError } from "../../core/errors.mjs";
 import { isPlainObject } from "../../core/validate.mjs";
 import { getSetting } from "../../../crm-store.mjs";
 import { CATALOG_KEYS, BILLING_MODES, INTERVALS } from "./types.mjs";
+import { LIGHTS_STORAGE_FEE_CENTS } from "./machine.mjs";
 
 const PERKS = Object.freeze({ touch_ups: true, rain_guarantee_days: 7, hard_water: true });
 const NO_PERKS = Object.freeze({ touch_ups: false, rain_guarantee_days: 0, hard_water: false });
@@ -32,6 +36,7 @@ export const CATALOG_DEFAULTS = Object.freeze({
   },
   notice_days: 7,
   late_cancel_fee_cents: 5000,
+  lights_storage_fee_cents: LIGHTS_STORAGE_FEE_CENTS,
   perk_names: { touch_ups: "Unlimited Touch-Ups", rain_guarantee: "7-Day Rain Guarantee", hard_water: "Free Hard Water Removal" },
   // §10.2 row 20: Rotor's plan template ids (names unknown), kept for joins
   rotor_template_ids: [],
@@ -99,6 +104,7 @@ export function validateCatalog(v) {
   }
   if (src.notice_days !== undefined) { if (!isInt(src.notice_days) || src.notice_days < 0 || src.notice_days > 90) fail("From 0 to 90 days.", "notice_days"); out.notice_days = src.notice_days; }
   if (src.late_cancel_fee_cents !== undefined) out.late_cancel_fee_cents = cents(src.late_cancel_fee_cents, "late_cancel_fee_cents", 100000);
+  if (src.lights_storage_fee_cents !== undefined) out.lights_storage_fee_cents = cents(src.lights_storage_fee_cents, "lights_storage_fee_cents", 1000000);
   if (src.perk_names !== undefined) {
     if (!isPlainObject(src.perk_names)) fail("Expected the perk names.", "perk_names");
     out.perk_names = {};
@@ -145,6 +151,7 @@ export function catalogWith(stored = {}) {
     perk_names: { ...CATALOG_DEFAULTS.perk_names, ...(s.perk_names || {}) },
     notice_days: isInt(s.notice_days) ? s.notice_days : CATALOG_DEFAULTS.notice_days,
     late_cancel_fee_cents: isInt(s.late_cancel_fee_cents) ? s.late_cancel_fee_cents : CATALOG_DEFAULTS.late_cancel_fee_cents,
+    lights_storage_fee_cents: isInt(s.lights_storage_fee_cents) ? s.lights_storage_fee_cents : CATALOG_DEFAULTS.lights_storage_fee_cents,
   };
 }
 export async function loadCatalog() {
@@ -163,4 +170,17 @@ export function perksList(perks = {}, names = CATALOG_DEFAULTS.perk_names) {
   if (perks.hard_water) list.push(names.hard_water);
   if (list.length <= 1) return list.join("");
   return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+}
+
+// What each perk covers (the owner, Nov 12), one "- " line each, for the
+// agreement ({{perks_details}}). The names are the catalog's.
+export const HARD_WATER_PANES = 5;
+export function perksDetails(perks = {}, names = CATALOG_DEFAULTS.perk_names) {
+  const n = { ...CATALOG_DEFAULTS.perk_names, ...(names || {}) };
+  const out = [];
+  if (perks.touch_ups) out.push(`- ${n.touch_ups}: any glass on your plan, any time between visits. Spot something? Tell us and we'll come back and touch it up for free.`);
+  const days = perks.rain_guarantee_days;
+  if (days > 0) out.push(`- ${days === 7 ? n.rain_guarantee : `${days}-Day Rain Guarantee`}: if weather leaves spots on your exterior glass within ${days} days of a visit, we'll come back and touch it up for free.`);
+  if (perks.hard_water) out.push(`- ${n.hard_water}: a light hard-water spot treatment on up to ${HARD_WATER_PANES} panes each visit. More panes are an add-on, and deep or etched staining is quoted separately.`);
+  return out.join("\n") || "- This plan has no perks.";
 }

@@ -96,7 +96,7 @@ test("an option's totals: one-time is one visit; a plan its term (36 months of a
   assert.equal(P.optionTotals({ kind: "one_time", lines: [{ qty_milli: 1000, unit_cents: 29500 }] }, D).per_visit_cents.length, 1);
 });
 
-test("suggestions reproduce barta-rules §1.9: 40 panes in and out, screens estimated, tracks $8 (D26), gutters by hand", () => {
+test("suggestions reproduce barta-rules §1.9: 40 panes in and out, screens estimated, tracks $5 / premium $15 (the owner, Nov 12), gutters by hand", () => {
   const { lines, warnings } = P.suggestLines({ services: ["windows_ext", "windows_int", "screens", "tracks_standard", "tracks_premium", "gutters"], panes_ext: 40, panes_int: 38, tracks: { standard: 6, premium: 2 } }, D, book);
   const by = Object.fromEntries(lines.map((l) => [l.category + (l.title.includes("Premium") ? "_p" : ""), l]));
   assert.equal(by.windows_ext.total_cents, 29500);
@@ -105,7 +105,7 @@ test("suggestions reproduce barta-rules §1.9: 40 panes in and out, screens esti
   assert.equal(by.windows_int.total_cents, 16000);
   assert.equal(by.screens.qty_milli, 20000, "screens ~ half the panes");
   assert.equal(by.screens.total_cents, 10000);
-  assert.equal(by.tracks.total_cents, 4800, "6 × $8");
+  assert.equal(by.tracks.total_cents, 3000, "6 × $5");
   assert.equal(by.tracks_p.total_cents, 3000, "2 × $15");
   assert.equal(by.gutters.total_cents, 0);
   assert.ok(warnings.includes("count_screens_on_site"));
@@ -133,7 +133,7 @@ test("a plan option: Quarterly scopes (exterior 1, 3, 4; interior 2) and its $10
   assert.equal(P.suggestOption({ services: ["windows_ext"], panes_ext: 40 }, D, book, defs).discounts.length, 0, "one-time: no plan discount");
 });
 
-test("lights: $8 install + $2 materials per foot, or one package; Early Bird 50% only before the deadline in effect, then 3-year $100", () => {
+test("lights: $8 install + $2 materials per foot, or one package; Early Bird 50% sold only before the deadline in effect, then 3-year $200, both every season", () => {
   const lines = P.lightsLines({ runs: [{ label: "Roofline", feet: 120 }, { label: "Peaks", feet: 34.5 }], colors: ["warm_white", "red"] }, D, book);
   const inst = lines.find((l) => l.title === "Christmas Light Installation");
   const mat = lines.find((l) => l.title === "Christmas Light Materials");
@@ -152,11 +152,12 @@ test("lights: $8 install + $2 materials per foot, or one package; Early Bird 50%
   assert.equal(P.earlyBirdDeadline("2026-08-31", D), null, "before the season starts");
   assert.equal(P.earlyBirdDeadline("2027-10-01", D), null, "no deadline set for that season yet");
   const ds = P.lightsDiscounts({ early_bird: true, three_year: true, on: "2026-11-10" }, D, defs);
-  assert.deepEqual(ds.map((d) => [d.key, d.type, d.value]), [["early_bird", "percentage", 5000], ["three_year", "fixed", 10000]]);
+  assert.deepEqual(ds.map((d) => [d.key, d.type, d.value, d.scope.type]), [["early_bird", "percentage", 5000, "all"], ["three_year", "fixed", 20000, "all"]]);
   assert.equal(ds[0].offer_until, "2026-12-01");
   assert.deepEqual(P.lightsDiscounts({ early_bird: true, on: "2026-12-05" }, D, defs), [], "no Early Bird after the deadline");
   const total = P.visitPrices({ lines: [{ total_cents: inst.total_cents + mat.total_cents }], discounts: ds }, 1, D).first_cents;
-  assert.equal(total, 67250, "$1,545 → 50% → $772.50 → −$100");
+  assert.equal(total, 57250, "$1,545 → 50% → $772.50 → −$200");
+  assert.deepEqual(mat.scope, { type: "all" }, "the bulbs are in every season's price");
 });
 
 test("cfg/pricing: the validator keeps only what it checks and refuses nonsense", () => {

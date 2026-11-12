@@ -291,7 +291,7 @@ footer.foot a{color:var(--muted)}
 // One portal page. body: trusted HTML the caller built with esc() on every value.
 export function layout({ title, body, script, beacon, company = {}, page = "page" } = {}) {
   const name = esc(company.name || "Barta Window Washing");
-  const legal = esc(company.legal_name || "BARTA WINDOW WASHING LLC");
+  const legal = esc(company.legal_name || "Barta Window Washing LLC");
   const phone = esc(company.phone || "(763) 314-3400");
   const tel = esc(String(company.phone || "(763) 314-3400").replace(/\D/g, ""));
   const beaconAttrs = beacon && SCOPE_KINDS.includes(beacon.kind) ? ` data-beacon-kind="${esc(beacon.kind)}" data-beacon-id="${esc(beacon.id || "")}"` : "";

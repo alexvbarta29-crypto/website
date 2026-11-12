@@ -18,7 +18,7 @@ import { getRecord, updateRecord, readIndex } from "../../../crm-store.mjs";
 import { defineFileOwner } from "../../core/files.mjs";
 import { types } from "./types.mjs";
 import { PRICING_DEFAULTS, validatePricing, suggestOption, optionTotals, pricingWith } from "./pricing.mjs";
-import { seedPriceBook, TEMPLATES } from "./seed.mjs";
+import { seedPriceBook, upgradeOwnerDecisions, TEMPLATES } from "./seed.mjs";
 import { applyOffer, archiveForSales, onMergeQuotes, loadPricing, priceBook, discountDefs } from "./quotes.mjs";
 import { approvedVersion } from "./versions.mjs";
 import "./approve.mjs";
@@ -71,7 +71,8 @@ export default defineModule({
   sweeps,
   automations,
   templates: TEMPLATES,
-  seeds: [{ v: 1, run: seedPriceBook }],
+  // v2: the owner's Nov 12 answers on the untouched seeded prices (tracks $5, lights every season, 3-year $200)
+  seeds: [{ v: 1, run: seedPriceBook }, { v: 2, run: upgradeOwnerDecisions }],
   onMerge: onMergeQuotes,
   attention: [
     { key: "quotes.changes_requested", label: "Quote changes requested", perm: "quotes:read", count: changesRequested, link: "#/quotes?status=changes_requested" },

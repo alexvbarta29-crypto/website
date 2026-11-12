@@ -18,7 +18,7 @@ const { fakeServices } = await import("../../helpers/crm-fixtures.mjs");
 const TX = await import("../../../netlify/lib/crm/modules/plans/texts.mjs");
 const W8 = (u) => ({ write: () => AS(u) });
 const priceLine = (body) => (body.match(/^Your price:[^\n]*/m) || [""])[0];
-const company = { name: "Barta Window Washing", legal_name: "BARTA WINDOW WASHING LLC", phone: "(763) 314-3400" };
+const company = { name: "Barta Window Washing", legal_name: "Barta Window Washing LLC", phone: "(763) 314-3400" };
 
 test("B2a: add-ons picked on the quote page: the signed text prices them, and it, the approval and the jobs agree to the cent", async () => {
   const { t, owner } = await Q.setup();
@@ -142,23 +142,24 @@ test("B3: the clawback is the plan discount visit 1 got: calculator, cancel and 
   assert.match(AG.clawbackTerms({ lines: [EXT], discounts: [] }), /nothing to pay back/);
 });
 
-test("Owner checks: a draft can't be approved with one left; seed v2 upgrades an untouched first draft, never an owner's edit", async () => {
+test("Owner checks: a draft can't be approved with one left (only the lights one is left after Nov 12); seed v2 upgrades an untouched first draft, never an owner's edit", async () => {
   const { t, owner } = await setup(undefined, { approve: false });
   try {
     const drafts = TX.AGREEMENT_DRAFTS;
     assert.equal(drafts.length, 6);
     for (const d of drafts) {
-      assert.ok(AG.ownerChecksIn(d.body_md).length >= 1, `${d.key} marks what needs the owner's OK`);
+      // the owner's answers (Nov 12) settled every check but how the crew hangs the lights
+      assert.equal(AG.ownerChecksIn(d.body_md).length, d.key === "lights" ? 1 : 0, `${d.key}: the checks left`);
       assert.doesNotMatch(d.body_md, /—|licensed|refund/i);
       AG.checkBody(d.body_md);
     }
+    assert.match(AG.ownerChecksIn(drafts.find((d) => d.key === "lights").body_md)[0], /how the crew attaches the lights/);
     const lights = drafts.find((d) => d.key === "lights").body_md;
     assert.match(lights, /we'll come back and fix it for free/, "lights: fix, not re-clean");
     assert.doesNotMatch(lights, /windows, frames, screens or seals|re-clean/);
     assert.match(lights, /clips along your roofline and gutters/);
-    assert.match(drafts.find((d) => d.key === "monthly").body_md, /Owner check: paying back the first visit's plan discount on a Monthly plan/);
+    await assert.rejects(scope(() => AG.approveTemplate(AG.seedTemplateId("lights"), W8(owner))), (e) => e.code === "owner_checks");
     const id = AG.seedTemplateId("biannual");
-    await assert.rejects(scope(() => AG.approveTemplate(id, W8(owner))), (e) => e.code === "owner_checks");
     // an old installation: the first biannual draft, untouched and approved; an owner-edited quarterly
     const OLD = "## {{plan_name}} service agreement\n\nThis agreement is between {{legal_name}} (\"{{company_name}}\", \"we\", \"us\") and {{full_name}} (\"you\").\n\n## What you get\n\n- Exterior window cleaning twice a year, about every 6 months.\n- Your price: {{per_visit_price}} a visit, locked in for the first {{term_months}} months.\n- Our 100% satisfaction guarantee: if anything isn't right, tell us and we'll come back and re-clean it for free.\n\n## Scheduling\n\nWe come out about every 6 months. We book each visit with you ahead of time and confirm it by text.\n\n## Reminders and rescheduling\n\nWe text or email you about 2 weeks and again 2 days before each visit. We give you an arrival window, not an exact time.\n\nNeed to move a visit? Just let us know at least 24 hours ahead. A cancel or reschedule with less than 24 hours' notice, or a visit where we can't get in and weren't told, may have a {{late_cancel_fee}} fee. There's never a fee when we're the ones moving a visit (rain, for example).\n\n## Payments\n\nKeep a card or bank account on file for your plan. Your first visit is charged after it's done. After that, each visit is charged on the 1st of the month it's scheduled in. We don't charge sales tax.\n\n## Skipped visits\n\nYou can skip a visit. Skipping doesn't cancel your plan, and a skipped visit doesn't turn into a credit.\n\n## Term and renewal\n\nYour plan starts with a {{term_months}}-month term at the price above. After that it renews every 6 months until you cancel. If your price ever changes after the first {{term_months}} months, we'll tell you in writing at least 30 days before.\n\n## Cancelling in the first {{term_months}} months\n\nGive us {{notice_days}} days' notice in writing (a text or email is fine). If your first visit is done, you pay back that visit's plan discount of {{clawback_amount}}. That's it.\n\n## Cancelling after the first {{term_months}} months\n\nCancel any time. It takes effect at the end of your current renewal term, and visits until then still happen and are billed.\n\n## The fine print\n\nWe're fully insured. You don't need to be home for exterior work as long as gates are unlocked; we set up interior visits with you. We're not responsible for damage that was already there, or for old or defective windows, frames, screens or seals.\n\nQuestions? Call or text us at {{company_phone}}. Thanks for trusting us with your home!";
     await scope(() => store.updateRecord("agreement_template", id, (x) => ({ ...x, body_md: OLD, version: 1, approved_version: 1, applies_to: { catalog_keys: ["biannual", "custom"], service_types: [] } }), AS(owner)));
