@@ -5,7 +5,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setup, testContact, openInvoice, invoiceOf, recs, drain, scope, portalCookie, PJSON, uuid, piObject, sessionObject, CO, CR, HOOK } from "./fixtures.mjs";
 
-const needs = async (t, as) => ((await t.api("/home", { as, office: true })).body.data.needs || []).filter((r) => r.module === "money").map((r) => [r.key, r.count]);
+// the module's attention and approval rows, as the tab's dot counts them (Home no longer lists them)
+const needs = () => scope(async () => {
+  const m = (await import("../../../netlify/lib/crm/core/registry.mjs")).getModule("money");
+  const out = [];
+  for (const a of [...m.attention, ...m.approvals]) { const n = await a.count({}); if (n) out.push([a.key || a.kind, n]); }
+  return out;
+});
 
 async function overpaid(t, owner) {
   const c = await testContact(owner);
@@ -44,7 +50,7 @@ test("a stale link paid after cash: the invoice shows the extra, a held credit r
     assert.match(tasks[0].title, /Overpaid \$295\.00 on SINV-0001: refund or keep as credit/);
     // a held credit is not spendable: the next invoice doesn't take it
     assert.equal((await scope(() => CR.availableCredit(inv.contact_id))), 0);
-    // Home: an owner sees it under Needs you; the Invoices list has its chip
+    // an owner's approval row (the tab's dot); the Invoices list has its chip
     assert.deepEqual(await needs(t, owner), [["money.overpayment", 1]]);
     const list = await t.api("/invoices?status=overpaid", { as: owner });
     assert.deepEqual(list.body.data.map((r) => [r.id, r.ex]), [[inv.id, 29500]]);

@@ -11,7 +11,7 @@
 // sections, built from the manifests' `nav: [{ where: "more", section,
 // ... }]` entries (sections below; an entry without one lands in "More").
 // The coral create button lists the manifests' `creates` on Customers,
-// Schedule and Sales (and a tech's Today; Home has its quick actions). The bar hides while an input has focus (the keyboard
+// Schedule, Sales and Home (and a tech's Today). The bar hides while an input has focus (the keyboard
 // is up) and sits above the home indicator.
 //
 // On a computer or a tablet (900 px and up) the same pieces become a
@@ -42,8 +42,8 @@ export const TABS = Object.freeze({
   dashboard: { label: "Dashboard", paths: ["/dashboard"], icon: "chart" },
   more: { label: "More", more: true, icon: "more" },
 });
-// (Home has its own quick actions row in the button's place)
-const CREATE_ON = new Set(["today", "contacts", "schedule", "sales"]);
+// (the coral create button on a phone; a computer has New in the header)
+const CREATE_ON = new Set(["today", "home", "contacts", "schedule", "sales"]);
 
 // The Menu's sections, in order (a nav entry's `section`; unknown → "more").
 export const SECTIONS = Object.freeze([
