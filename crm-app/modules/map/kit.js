@@ -48,7 +48,7 @@ export function inkOn(hex) {
   if (!m) return "#fff";
   const h = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1];
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? "#16161b" : "#fff";
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.179 ? "#16161b" : "#fff";
 }
 export const swatch = (color) => html`<span class="mp-sw" style="${"background:" + (/^#[0-9a-f]{3,8}$/i.test(color || "") ? color : "#808080")}" aria-hidden="true"></span>`;
 

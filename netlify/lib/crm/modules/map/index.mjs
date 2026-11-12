@@ -85,7 +85,9 @@ export default defineModule({
     R("GET", "/map/pins/:id", "canvass:use", "required", getPin),
     R("PATCH", "/map/pins/:id", "canvass:use", "required", updatePin, { replaySafe: true }),
     R("DELETE", "/map/pins/:id", "canvass:use", "required", deletePin),
-    R("POST", "/map/pins/:id/convert", "canvass:use", "required", convertPin),
+    // intake (a lease, the matches, the contact, its property, a deal and the follow-up when the sales rules start one) plus
+    // the pin: about 100 storage calls with a follow-up, like the money routes that make invoices
+    R("POST", "/map/pins/:id/convert", "canvass:use", "required", convertPin, { maxCalls: 120 }),
     R("GET", "/map/reverse", "canvass:use", "none", reverse),
     R("GET", "/map/report", "canvass:use", "none", report),
     R("GET", "/map/territories", "canvass:use", "none", listTerritories),
@@ -95,7 +97,8 @@ export default defineModule({
     R("DELETE", "/map/territories/:id", "canvass:manage", "required", deleteTerritory),
     R("GET", "/map/sharing", "time:own", "none", sharingRoute),
     R("POST", "/map/position", "time:own", "none", postPosition),
-    R("GET", "/map/team", "team_map:read", "none", teamMap),
+    // a day blob per person who shares (up to 20) beside three indexes
+    R("GET", "/map/team", "team_map:read", "none", teamMap, { maxCalls: 40 }),
     R("POST", "/map/team/forget", "settings:owner", "none", forgetPositions),
     R("GET", "/map/geocode", "settings:owner", "none", geocodeStatus),
     R("POST", "/map/geocode", "settings:owner", "none", geocodeNow),
