@@ -17,6 +17,6 @@ export default {
     return html`<div class="stack"><p class="small muted">Drafts written from Barta's rules. An owner reads, edits and approves each one before it can go to a customer.</p>
       <ul class="list">${s.rows.map((t) => html`<li><a class="row" href="${"#/settings/agreement-templates/" + encodeURIComponent(t.id)}"><span class="ico">${icon("doc")}</span>
         <span class="who"><span class="nm">${t.name}</span><span class="sub">${(t.catalog_keys || []).map((k) => PLAN_NAMES[k] || k).join(", ") || "Not used by a plan"} · version ${t.version}</span></span>
-        <span class="end"><span class="${"pill " + (t.approved ? "green" : t.active ? "amber" : "")}">${t.approved ? "Approved" : t.active ? "Needs approval" : "Off"}</span><span class="chev" aria-hidden="true"></span></span></a></li>`)}</ul></div>`;
+        <span class="end">${t.suggested ? html`<span class="pill amber">New wording</span>` : ""}<span class="${"pill " + (t.approved ? "green" : t.active ? "amber" : "")}">${t.approved ? "Approved" : t.active ? "Needs approval" : "Off"}</span><span class="chev" aria-hidden="true"></span></span></a></li>`)}</ul></div>`;
   },
 };

@@ -1,13 +1,15 @@
 // One agreement text (design §9.2 Settings → Agreement templates, D10): the
 // body with its variable chips and a preview with a made-up customer; an
 // owner saves (a changed text is a new version that needs approving again)
-// and approves. Others read it.
+// and approves. Others read it. A text the owner had edited may carry newer
+// suggested wording (the owner's answers of Nov 12): "Use it" puts it in the
+// box to read and save, "Keep mine" puts the suggestion away.
 
 import { html, attrs, toast } from "../../core/ui.js";
 import { busy } from "../../core/forms.js";
 import { ensureStyles } from "./kit.js";
 
-const VARS = ["full_name", "plan_name", "price_details", "per_visit_price", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms", "visits_per_year", "term_months", "perks_list", "clawback_amount", "notice_days", "late_cancel_fee", "legal_name", "company_name", "company_phone"];
+const VARS = ["full_name", "plan_name", "price_details", "per_visit_price", "addon_note", "visit_schedule", "renewal_terms", "billing_terms", "clawback_terms", "visits_per_year", "term_months", "perks_list", "perks_details", "clawback_amount", "notice_days", "late_cancel_fee", "legal_name", "company_name", "company_phone"];
 const CHECK = ">> Owner check:";
 const checksIn = (body) => String(body || "").split("\n").filter((l) => l.trim().startsWith(CHECK)).map((l) => l.trim().slice(CHECK.length).trim());
 
@@ -26,6 +28,9 @@ export default {
         ${checksIn(t.body_md).length ? html`<p class="warn-box">${checksIn(t.body_md).length} line${checksIn(t.body_md).length === 1 ? " needs" : "s need"} your OK first. Each line starting “${CHECK}” says what to confirm: change the wording if it's wrong, then delete the check line.</p>
           <ul class="pl-checks">${checksIn(t.body_md).map((c) => html`<li>${c}</li>`)}</ul>` : ""}
         ${!t.approved && edit && !checksIn(t.body_md).length ? html`<button type="button" class="btn primary block" data-approve>Approve this text</button>` : ""}</section>
+      ${t.suggested_body_md ? html`<section class="card"><p class="warn-box">New suggested wording is available (from the owner's answers of Nov 12). You had edited this text, so yours stays until you pick.</p>
+        <details class="pl-sg"><summary>Read the suggested wording</summary><div class="pl-doc">${t.suggested_body_md}</div></details>
+        ${edit ? html`<div class="btn-row"><button type="button" class="btn primary" data-use-suggested>Use it</button><button type="button" class="btn" data-keep-mine>Keep mine</button></div>` : ""}</section>` : ""}
       <form class="form" data-tpl novalidate>
         <label class="field"><span>Name</span><input name="name" maxlength="120" ${attrs({ value: t.name, readonly: !edit })}></label>
         ${edit ? html`<div class="pl-vars">${VARS.map((v) => html`<button type="button" ${attrs({ "data-var": v })}>${v}</button>`)}</div>` : ""}
@@ -60,6 +65,19 @@ export default {
         await ctx.api(`/agreement-templates/${encodeURIComponent(ctx.state.t.id)}`, { method: "PATCH", ifMatch: ctx.state.etag, body: { name: form.elements.name.value, body_md: form.elements.body_md.value } });
         toast("Saved"); ctx.refresh();
       } catch (er) { busy(btn, false); err.textContent = er.status === 412 ? "Someone else just saved this text. Reload it." : er.message; err.hidden = false; }
+    },
+    // the suggestion goes in the box; saving it makes it the text (a new version to approve)
+    "click [data-use-suggested]": (e, el, ctx) => {
+      const ta = document.querySelector("textarea[name=body_md]");
+      if (!ta) return;
+      ta.value = ctx.state.t.suggested_body_md;
+      ta.focus();
+      toast("The suggested wording is in the box. Read it, then Save.");
+    },
+    "click [data-keep-mine]": async (e, el, ctx) => {
+      busy(el, true);
+      try { await ctx.api(`/agreement-templates/${encodeURIComponent(ctx.state.t.id)}`, { method: "PATCH", ifMatch: ctx.state.etag, body: { dismiss_suggestion: true } }); toast("Kept your text"); ctx.refresh(); }
+      catch (err) { busy(el, false); toast(err.status === 412 ? "Someone else just saved this text. Reload it." : err.message, { bad: true }); }
     },
     "click [data-approve]": async (e, el, ctx) => {
       busy(el, true);

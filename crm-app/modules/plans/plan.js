@@ -138,7 +138,7 @@ export default {
         <p class="small muted">${[p.town, c.phone && phone(c.phone)].filter(Boolean).join(" · ")}</p>
         ${p.status === "pending" ? html`<p class="warn-box">Waiting for the ${pendingText(p.pending_reasons) || "agreement"}.</p>` : ""}
         ${p.status === "paused" && p.pause ? html`<p class="note">Paused since ${dateShort(p.pause.from)}${p.pause.until ? `, back ${dateShort(p.pause.until)}` : ""}${p.pause.reason ? `: ${p.pause.reason}` : ""}.</p>` : ""}
-        ${p.status === "cancelling" && p.cancel ? html`<p class="warn-box">Ends ${dateYear(p.cancel.effective_on)}${p.cancel.clawback_cents ? `. First-visit discount back: ${cents(p.cancel.clawback_cents)} (${p.cancel.clawback_state === "to_bill" ? "to bill, waiting for your OK" : p.cancel.clawback_state})` : ""}.</p>` : ""}
+        ${p.status === "cancelling" && p.cancel ? html`<p class="warn-box">Ends ${dateYear(p.cancel.effective_on)}${p.cancel.clawback_cents ? `. ${p.cancel.storage_fee_cents ? "Storage fee for leaving the contract early" : "First-visit discount back"}: ${cents(p.cancel.clawback_cents)} (${p.cancel.clawback_state === "to_bill" ? "to bill, waiting for your OK" : p.cancel.clawback_state})` : ""}.</p>` : ""}
         ${p.import ? html`<p class="small muted">From Rotor: Rotor stays in charge of this plan until the switch.</p>` : ""}
         ${p.held ? html`<p class="warn-box">Due to ${({ resume: "pick back up", renew: "renew", activate: "start", confirm_season: "go on" })[p.held.action] || p.held.action} since ${dateShort(p.held.since)}, but Rotor is still in charge of this customer, so the CRM doesn't book visits for them by itself. Do it here by hand.</p>` : ""}
       </section>
@@ -240,7 +240,7 @@ async function cancelSheet(ctx) {
         <li><span class="k">Ends</span><span class="v">${q.immediate ? "Today" : dateYear(q.effective_on)}</span></li>
         <li><span class="k">Why then</span><span class="v">${q.inside_initial_term ? `${q.notice_days} days' notice in the first term` : "The end of this renewal term"}</span></li>
         <li><span class="k">Visits still happening</span><span class="v">${q.visits_still_happen}</span></li>
-        <li><span class="k">First-visit discount back</span><span class="v">${q.clawback_cents ? `${cents(q.clawback_cents)} (a draft for an owner's OK)` : "None"}</span></li>
+        <li><span class="k">${q.storage_fee_cents ? "Storage fee (3-year contract)" : "First-visit discount back"}</span><span class="v">${q.clawback_cents ? `${cents(q.clawback_cents)} (a draft for an owner's OK)` : "None"}</span></li>
       </ul></div>
       <label class="field" data-field="reason"><span>Why</span><select name="reason">${CANCEL_REASONS.map(([v, l]) => html`<option ${attrs({ value: v })}>${l}</option>`)}</select></label>
       <label class="field" data-field="note"><span>${owner ? "Note (optional)" : "Note"}</span><input name="note" maxlength="500" autocomplete="off"><small class="why" hidden></small></label>

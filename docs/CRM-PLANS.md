@@ -32,7 +32,8 @@ the `money.cardStatus` service exists.
 - **New plan** (`plans:write`): for a customer who signs up without a
   quote. The plan from the catalog (its visits a year and plan discount
   fill in), the price of a visit (quarterly: exterior on visits 1, 3, 4 and
-  interior on visit 2), the start, the term, autopay. The plan waits for
+  interior on visit 2, inside glass only, each with the plan discount), the
+  start, the term, autopay. The plan waits for
   its agreement; its first term's jobs are made at once. A retry never
   makes two (client id).
 - **A plan**: status, the customer, why it waits; the visits by term, each
@@ -76,11 +77,15 @@ the `money.cardStatus` service exists.
   Monthly, Custom, Christmas lights, one-time) with their state. An owner
   edits a text (variable chips, a preview with a made-up customer) and
   approves it; any change is a new version that needs approving again.
-  Lines starting ">> Owner check:" mark wording nobody has confirmed (the
-  legal name, the late-cancel fee, what each perk covers, the Monthly
-  payback, lights' 3-year seasons 2 and 3 and early exit, how lights are
-  hung); a text can't be approved while one is left. Nothing is sent, or
-  shown on a quote, from a text that isn't approved.
+  Lines starting ">> Owner check:" mark wording nobody has confirmed; a
+  text can't be approved while one is left. The owner's answers of Nov 12
+  settled all but one (the legal name, the $50 late cancel fee, what each
+  perk covers, the Monthly payback, lights' 3-year seasons and early exit):
+  only the lights text still has one (how the crew hangs the lights). A
+  text the owner had edited keeps the owner's words and shows **New
+  suggested wording** beside them (Use it puts it in the box to read and
+  save, Keep mine puts it away; the list marks it "New wording"). Nothing
+  is sent, or shown on a quote, from a text that isn't approved.
 
 Technicians see none of this (`plans:*` is office only). Their visits come
 from the jobs a plan makes, like any other job.
@@ -167,9 +172,14 @@ through the same runs).
   `visits_per_year × initial_months / 12` of them; a renewal term
   `visits_per_year × renews_every_months / 12`. Lines and discounts carry a
   scope: all, initial (visit 1 of the first term only), after_initial, or
-  specific visits (by their place in the year). Early Bird, the 3-year
-  discount and the lights materials are initial: renewals never bring them
-  back. Quarterly add-ons go on the exterior visits 1, 3, 4.
+  specific visits (by their place in the year). A lights plan's lines,
+  Early Bird and 3-year discount cover every season, so seasons 2 and 3 of
+  a 3-year plan cost what season 1 costs (the owner, Nov 12; lights plans
+  made earlier keep the first-season scopes they were sold with). Add-ons
+  (screens, tracks, gutters) sold with a plan cover its first visit only:
+  later visits get them when the customer asks. Quarterly visit 2 is the
+  interior visit (inside glass only) and gets the plan discount like the
+  others.
 - Each visit gets its job (kind `standard`; lights `lights_install` and
   `lights_takedown`, warranty `lights_warranty`) through `work.createJobs`
   with scope "plans"; booking a visit re-spaces the later unbooked ones;
@@ -190,9 +200,14 @@ through the same runs).
   clawback: a quote's plan discount or a staff plan's, never a first-visit
   offer, Early Bird or the 3-year discount; the calculator, the cancel and
   the agreement text all use the same figure) as a draft "to bill" for an
-  owner's OK, billed or waived. The
-  late-cancel fee is only ever charged with an owner's OK, never when we
-  move a visit.
+  owner's OK, billed or waived. A 3-year lights contract cancelled inside
+  its first 36 months adds the storage fee ($400, `policy.storage_fee_cents`,
+  from the catalog when the plan is made; a contract without one uses
+  $400) the same way (`cancel.storage_fee_cents`; the plan screen says
+  "Storage fee for leaving the contract early"). The $50 late cancel or
+  reschedule fee (less than 24 hours' notice, or no access and no notice;
+  plans and one-time jobs alike) is only ever charged with an owner's OK,
+  never when we move a visit.
 - Price change: not inside the price lock (the first term), at least 30
   days out, from the next renewal; the customer gets a notice with it.
 - Rotor owns imported plans until the switch: listeners and sweeps acting
@@ -220,8 +235,15 @@ through the same runs).
   as it comes), billing (`barta_standard`,
   `after_visit`, `first_of_month`), autopay default, agreement template
   key, perks (touch-ups, rain guarantee days, hard water), interior visits;
-  `notice_days` (7), `late_cancel_fee_cents` (5000), `perk_names`,
-  `rotor_template_ids` (from the import).
+  `notice_days` (7), `late_cancel_fee_cents` (5000),
+  `lights_storage_fee_cents` (40000), `perk_names`, `rotor_template_ids`
+  (from the import).
+- What each perk covers (the owner, Nov 12; the agreement's
+  `{{perks_details}}`, Quarterly and Monthly only): Unlimited Touch-Ups,
+  any glass on the plan, any time between visits; 7-Day Rain Guarantee,
+  weather spots on exterior glass within 7 days, a free touch-up; Free
+  Hard Water Removal, a light spot treatment on up to 5 panes a visit,
+  more is an add-on and deep or etched staining is quoted separately.
 - `cfg/lights` (owners): `rebook_on` ("09-01"), `install_by` ("12-15"),
   `takedown_month` (1), `client_cap` (none).
 
@@ -249,7 +271,14 @@ signature's follow-ups, then a pending plan activates), `card.saved`.
 Emits `plan.activated`, `plan.paused`, `plan.cancelled`, `plan.renewed`,
 `agreement.sent`, `agreement.signed`. Seeds: v1 the six drafts, v2 the
 untouched first drafts upgraded to the current ones (a new version for the
-owner to approve again), the Custom text, and the price-change text.
+owner to approve again), the Custom text, and the price-change text; v3
+(the owner's answers of Nov 12) the same for every earlier seeded draft
+(`PREVIOUS_DRAFT_SHAS`: Nov 10 and Nov 11), never approving anything; a
+draft an owner edited keeps their text and gets `suggested_body_md`; a
+saved Settings → Company page still holding "BARTA WINDOW WASHING LLC"
+moves to "Barta Window Washing LLC" (`putSetting`, journaled), a legal name
+someone typed stays. The owners get one notice (a marker: never twice)
+naming what was left to them. Idempotent.
 
 ## Automations
 
@@ -285,12 +314,12 @@ A second run of an unchanged export changes nothing.
 
 ## Owner actions
 
-1. Read the six agreement texts (Settings → Agreement templates), settle
-   each "Owner check" line (keep, change or remove the wording it points
-   at, then delete the check) and approve them. Until then, plan options on
-   quotes show no agreement and Send to sign is refused. A text approved
-   before this version was upgraded to a new version and needs approving
-   again (the prices and terms it states were not always right).
+1. Read the six agreement texts (Settings → Agreement templates) and
+   approve them. Only the lights text still has an "Owner check" (how the
+   crew attaches the lights): keep, change or remove that wording, delete
+   the check, then approve. A text you had edited shows the Nov 12 wording
+   as a suggestion: use it or keep yours. Until a text is approved, plan
+   options on quotes show no agreement and Send to sign is refused.
 2. Check the catalog numbers and the lights dates (Settings → Plans
    catalog & perks).
 3. When ready, Request signatures for the imported plans; test the bulk
