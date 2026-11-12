@@ -322,8 +322,8 @@ const made = (n, type) => `${count(n)} ${n === 1 ? String(type).replace(/_/g, " 
 
 // What they read when it is done, in records made: "Invoices and payments
 // from your Rotor export of Nov 10 are in: 712 invoices, 688 payments."
-// Rows that made nothing (skipped, or nothing to make of them) are
-// mentioned only when there are some.
+// Rows that made nothing (skipped, or mapped to nothing but a warning:
+// runner.mjs `none`) are mentioned only when there are some.
 export function finishNotice(run, state) {
   const ran = (state.plan || []).map((p) => ({ label: phaseLabel(p.name), st: state.phases[p.name] || {} })).filter((x) => !x.st.earlier && x.st.status === "done" && (x.st.read || 0) > 0);
   const conflicts = (run.conflicts && run.conflicts.open) || 0;
@@ -409,7 +409,8 @@ export async function continueSweep(ctx = {}) {
   const prev = base.rec;
   // a continuation of this run that someone cancelled, or that stopped, is not started again by itself (the button still does)
   if (prev.auto_off_at) return { result: "cancelled_before" };
-  if (Array.isArray(prev.waiting) && !prev.waiting.length) return { result: "complete" };
+  // (a run that left nothing waiting is looked at too when the registered phases changed: a phase added
+  // since, for rows it staged, can run now)
   const sig = phasesSignature();
   if (prev.phases_sig === sig || prev.checked_sig === sig) return { result: "nothing_new" };
   let made;

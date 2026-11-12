@@ -314,7 +314,8 @@ of the latest finished run and runs only what is still open
   phases registered today. It tells the owners when it starts and when it
   is done, in records made ("Timesheets and visit timers from your Rotor
   export of Nov 10 are in: 85 timesheets, 197 timers."; rows that made
-  nothing are mentioned only when there are some): counts only, in the
+  nothing, skipped or mapped to nothing but a warning, are mentioned only
+  when there are some): counts only, in the
   app, push by each owner's choice (a note may come twice after a crash,
   never not at all: the run is stamped `noted_at` once it went out). A
   continuation an owner cancelled, or one that stopped, is not started
@@ -349,8 +350,10 @@ of the latest finished run and runs only what is still open
   `staging_cleared_at` BEFORE it deletes, and re-reads the runs index
   before each run's deletes; a continuation stamps its use on the same
   record before it is made and refuses when it finds the cleared stamp,
-  so the two can't cross. A continuation needs every staged chunk of the
-  phases it would run; one missing chunk is "cleared".
+  so the two can't cross. What a continuation's phase keeps under the
+  continuation's own `imp/{id}/raw/` (the messages step's summaries) is
+  deleted with the rows it read. A continuation needs every staged chunk
+  of the phases it would run; one missing chunk is "cleared".
 - **Older code.** A continuation is stepped by a lane run of its own kind
   (`import.continue`): code from before this feature (a rollback, an old
   instance still warm after the deploy) doesn't know the kind and leaves
@@ -477,16 +480,20 @@ never fetched; pack → upload → run end to end with a throwaway key pair), `r
 (the gate: repeated passes, no row or finished phase done twice; a crash
 mid-phase; waiting phases; money sums; the audited id map; cancel and
 resume), `continue.test.mjs` (the rest of an export comes in as each part
-goes live: first the tech app's real timesheet and timer phases, hidden
-from the first run's plan with `runner.__hidePhasesForTests` as before
-their deploy, then Money, then Messages as fixtures: each time one
-continuation runs only the phases that waited and are registered now,
-nothing staged is read twice, timesheets find the first run's team map
-and timers its visits, invoices land on its contacts and jobs, the
-report's chain, the owners' notes, and a fresh full import days later
-writes nothing; the rows cleared; kept 30 days from the last use; the
-hourly check starts exactly one; the setting; paused; a crash mid-way and
-Resume; the pinned source owners), `continue-guards.test.mjs` (never an
+goes live: the real phases of the tech app (timesheets, timers), then of
+Money, then of Messages, each hidden from the first run's plan with
+`runner.__hidePhasesForTests` as before their deploy: each time one
+continuation runs only the phases that waited (or that the first plan
+didn't know, `money.credits`) and are registered now, nothing staged is
+read twice, timesheets find the first run's team map and timers its
+visits, invoices land on its contacts and jobs, credits on its contacts,
+payments in their invoices, messages in conversations on its contacts,
+the money comparison in the report, the report's chain, the owners'
+notes, and a fresh full import days later writes nothing; the rows
+cleared, with the messages step's summaries; kept 30 days from the last
+use; the hourly check starts exactly one, also after a run that left
+nothing waiting; the setting; paused; a crash mid-way and Resume; the
+pinned source owners), `continue-guards.test.mjs` (never an
 older export after a newer import was started; the setting unreadable; a
 run the lane gives up on is marked stopped, told, alerted, cleaned up and
 resumable; a missing staged chunk fails the run; the clean-up and the

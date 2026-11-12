@@ -149,7 +149,10 @@ export function phasesSignature(names = registeredPhases().map((p) => p.name)) {
 
 // ------------------------------------------------------------ state
 
-// `none`: rows that were read and made nothing (skipped, or mapped to no record, patch or other write)
+// `none`: rows that were read and made nothing, for a reason the report gives (skipped, or mapped to no
+// record, patch or other write but a warning). A row mapped to nothing and no warning isn't one: its phase
+// had nothing to make of it (an invoice with no credit line), keeps it for its finish step (map pin
+// types) or wrote it itself (a message).
 const emptyPhase = () => ({ status: "pending", chunk: 0, row: 0, read: 0, none: 0, skipped: {}, records: {}, kept_fields: 0, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, warnings: {}, errors: [] });
 
 export async function loadState(runId, opts = {}) {
@@ -369,7 +372,7 @@ async function runPhase(p, state, { runId, budget, ctx, ir, startedRows }) {
         const out = (await phase.map(row, mctx)) || {};
         const rid = rowIdOf(raw);
         await applyOutput(out, { runId, ph: st, ctx, source: rowSource(state.plan, p, rid), entity: p.entity, state, rank: Number.isInteger(phase.rank) ? phase.rank : undefined });
-        if (!["records", "pointers", "patches", "stats", "suppressions", "mergeCandidates"].some((k) => Array.isArray(out[k]) && out[k].length)) st.none = (st.none || 0) + 1;
+        if (!["records", "pointers", "patches", "stats", "suppressions", "mergeCandidates"].some((k) => Array.isArray(out[k]) && out[k].length) && Array.isArray(out.warnings) && out.warnings.length) st.none = (st.none || 0) + 1;
       } catch (e) {
         if (isStorageError(e)) { e.rowsDone = rows; throw e; }        // the cursor still points at this row
         const code = rowCode(e);

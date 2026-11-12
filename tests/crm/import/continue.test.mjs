@@ -2,28 +2,31 @@
 // import, a continuation run brings its part of the SAME export in from the
 // rows that are still staged: no upload, no key. Synthetic data only.
 //
-// Two kinds of parts "ship" here in the middle of a test:
-//   - the tech app's real phases (work.timesheets, work.timers): hidden
-//     from the plan at first (runner.__hidePhasesForTests), as on
-//     production, where the first import finished before the deploy that
-//     registered them, then shown;
-//   - Money, Messages, Payroll and the rest, which aren't built: fixtures
-//     registered under the names the design expects (money.invoices,
-//     comms.messages, payroll.payroll, ...), so before that the run lists
-//     them as waiting for Money, Messages, Payroll. The registry lives for
-//     the whole file: a phase one test registers runs in the later tests'
-//     first runs, so every test that needs a part to "go live" uses a name
-//     no earlier test registered.
+// The parts that "ship" here in the middle of a test are the REAL phases, as
+// on production, where the first import finished before the deploys that
+// registered the tech app (work.timesheets, work.timers), Money
+// (money.invoices, money.credits, money.payments) and Messages
+// (comms.templates, comms.campaigns, comms.messages, comms.pin_types): they
+// are hidden from the plan at first (runner.__hidePhasesForTests, through
+// notShipped() below; every test that hides some shows them all again at its
+// end), then shown. A hidden phase the catalog names waits for its module;
+// money.credits, which the catalog doesn't name, isn't in the first run's
+// plan at all and still runs when Money ships.
+//
+// Payroll isn't built: payroll.payroll is a fixture, and so are the
+// stand-ins of the later tests (fixture.* names). The registry lives for the
+// whole file: a fixture one test registers runs in the later tests' first
+// runs, so every test that needs a fixture part to "go live" uses a name no
+// earlier test registered.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, stageRun, runToEnd, importExport, store, runner, generate, ids } from "./fixtures.mjs";
+import { setup, runToEnd, importExport, store, runner, generate, ids } from "./fixtures.mjs";
 import { fixtureModule, fixtureType } from "../../helpers/crm-fixtures.mjs";
 import { advance, minutes, hours, days } from "../../helpers/crm-clock.mjs";
 
 const { getModule, allModules } = await import("../../../netlify/lib/crm/core/registry.mjs");
 const C = await import("../../../netlify/lib/crm/modules/import/continue.mjs");
 const { deployContext } = await import("../../../netlify/lib/crm/core/context.mjs");
-const { rotorKey } = await import("../../../netlify/lib/crm/modules/contacts/display.mjs");
 const lanes = await import("../../../netlify/lib/crm/core/lanes.mjs");
 
 const sweepOf = (key) => getModule("import").sweeps.find((s) => s.key === key);
@@ -33,53 +36,29 @@ const runSweep = (key = "import.continue", ctx = SWEEP_CTX) => store.withStoreSc
 const runsOf = (t) => t.stores.data.keys("rec/import_run/").map((k) => t.stores.data.json(k));
 const continuations = (t) => runsOf(t).filter((r) => r.continues);
 const notices = (t) => t.stores.data.keys("rec/notification/").map((k) => t.stores.data.json(k));
+const recs = (t, type) => t.stores.data.keys(`rec/${type}/`).map((k) => t.stores.data.json(k));
 const rest = async (t, owner) => (await t.api("/import/rest", { as: owner })).body.data;
 const go = (t, who) => t.api("/import/continue", { method: "POST", as: who, body: {} });
 
-// ------------------------------------------------------------ the parts that go live later (fixtures)
+// ------------------------------------------------------------ the parts that go live later
 
-// Stand-ins for Money's and Messages' types: the real names, any fields.
-const TYPES = {
-  invoice: fixtureType("invoice", "in", { mirrored: true, rotorFields: ["number", "status", "total_cents", "contact_id", "job_id", "rotor"], example: () => ({ number: 1, total_cents: 100 }) }),
-  payment: fixtureType("payment", "pm", { mirrored: true, rotorFields: ["amount_cents", "invoice_id", "contact_id", "rotor"], example: () => ({ amount_cents: 100 }) }),
-  message: fixtureType("message", "ms", { mirrored: true, rotorFields: ["contact_id", "direction", "channel", "rotor"], example: () => ({ direction: "outbound" }) }),
-  generic: fixtureType("fixture_late", "zl", { rotorFields: ["label", "rotor"], example: () => ({ label: "Sample" }) }),
-};
+// The real phases of the parts that shipped after the first import.
+const TECH = ["work.timesheets", "work.timers"];
+const MONEY = ["money.invoices", "money.credits", "money.payments"];
+const COMMS = ["comms.templates", "comms.campaigns", "comms.messages", "comms.pin_types"];
+// The parts (lists of phase names) not deployed yet: their phases are left out of the plan. notShipped() = all live.
+const notShipped = (...parts) => runner.__hidePhasesForTests(parts.flat());
+
+// Stand-ins for parts that aren't built: a type of their own, nothing a real module declares.
+const LATE = fixtureType("fixture_late", "zl", { rotorFields: ["label", "rotor"], example: () => ({ label: "Sample" }) });
 let typesRegistered = false;
-const lateTypes = () => { if (typesRegistered) return []; typesRegistered = true; return Object.values(TYPES); };
-
-// Money, as its import will work: an invoice finds its customer and its job
-// through the pointers an EARLIER run made, and links itself on the job.
-const mapInvoice = async (r, ctx) => {
-  const contact = r.customer && r.customer.id ? await ctx.lookup("customer", r.customer.id) : null;
-  const job = r.job && r.job.id ? await ctx.lookup("job", r.job.id) : null;
-  const id = ids.idForRotor("invoice", r.id);
-  return {
-    records: [{ type: "invoice", data: { id, number: r.invoice_number, status: r.status, total_cents: r.total_cents, ...(contact ? { contact_id: contact } : {}), ...(job ? { job_id: job } : {}), rotor: { invoice_id: r.id } } }],
-    pointers: [{ kind: "rotor/invoice", key: rotorKey(r.id), value: { id } }],
-    patches: job ? [{ type: "job", id: job, add: { invoice_ids: [id] } }] : [],
-    warnings: [...(contact ? [] : ["invoice_no_contact"]), ...(r.job && r.job.id && !job ? ["invoice_no_job"] : [])],
-  };
-};
-const mapPayment = async (r, ctx) => {
-  const invoice = r.invoice_id ? await ctx.lookup("invoice", r.invoice_id) : null;
-  const contact = r.customer_id ? await ctx.lookup("customer", r.customer_id) : null;
-  return { records: [{ type: "payment", data: { id: ids.idForRotor("payment", r.id), amount_cents: r.total_amount_cents, ...(invoice ? { invoice_id: invoice } : {}), ...(contact ? { contact_id: contact } : {}), rotor: { payment_id: r.id } } }], warnings: r.invoice_id && !invoice ? ["payment_no_invoice"] : [] };
-};
-const mapMessage = async (r, ctx) => {
-  const contact = await ctx.lookup(r.contact_type, r.contact_id);
-  if (!contact) return { warnings: ["message_no_contact"] };
-  return { records: [{ type: "message", data: { id: ids.idForRotor("message", r.id), contact_id: contact, direction: r.direction, channel: r.channel, rotor: { message_id: r.id } } }] };
-};
+const lateTypes = () => { if (typesRegistered) return []; typesRegistered = true; return [LATE]; };
 const mapGeneric = (kind) => async (r) => ({ records: [{ type: "fixture_late", data: { id: ids.idForRotor("fixture_late", `${kind}:${r.id}`), label: String(r.name || r.line_label || r.id), rotor: { [`${kind}_id`]: String(r.id) } } }] });
 const pass = (r) => r;
-
-const shipMoney = () => fixtureModule({ types: lateTypes(), importPhases: [
-  { name: "money.invoices", entity: "invoices", after: ["contacts.leads", "work.jobs"], normalize: pass, map: mapInvoice },
-  { name: "money.payments", entity: "payments", after: ["money.invoices"], normalize: pass, map: mapPayment },
-] });
-const shipMessages = () => fixtureModule({ types: lateTypes(), importPhases: [{ name: "comms.messages", entity: "messages", after: ["contacts.suppressions"], normalize: pass, map: mapMessage }] });
 const ship = (name, entity, kind) => fixtureModule({ types: lateTypes(), importPhases: [{ name, entity, after: ["system.users"], normalize: pass, map: mapGeneric(kind) }] });
+// Payroll goes live (once in the file: by the first test that needs it)
+let payrollShipped = false;
+const shipPayroll = () => { if (!payrollShipped) { payrollShipped = true; ship("payroll.payroll", "payroll", "payroll"); } };
 
 // Counts map() calls per phase on every registered phase (call it after the fixtures of the test are registered).
 function spyPhases() {
@@ -92,8 +71,11 @@ function spyPhases() {
   }
   return { calls, restore: () => undo.forEach((f) => f()) };
 }
-// The staged chunks read since `from` (an index into the store's call log), by entity.
-const rawReads = (t, from = 0) => t.stores.data.calls.slice(from).filter((c) => /^get/.test(c.op) && /^imp\/[a-z]{2}_[0-9a-z]{20}\/raw\//.test(c.key || "")).map((c) => c.key.split("/")[3]);
+// What was read under imp/{run}/raw/ since `from` (an index into the store's call log): [run id, entity] per read.
+const rawReads = (t, from = 0) => t.stores.data.calls.slice(from).filter((c) => /^get/.test(c.op) && /^imp\/[a-z]{2}_[0-9a-z]{20}\/raw\//.test(c.key || "")).map((c) => [c.key.split("/")[1], c.key.split("/")[3]]);
+// The staged entities a run read (those of the upload `root`), and anything else read under a raw/.
+const stagedRead = (reads, root) => [...new Set(reads.filter(([run]) => run === root).map(([, e]) => e))].sort();
+const otherRead = (reads, root) => [...new Set(reads.filter(([run]) => run !== root).map(([run, e]) => `${run}/${e}`))].sort();
 const drain = async (t) => { for (let i = 0; i < 4; i++) { await t.runWorker({ lane: "fast" }); } };
 
 // ------------------------------------------------------------ the story
@@ -103,15 +85,21 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
   let spy = null;
   try {
     const ex = generate({ scale: 0.03, seed: 51 });
-    // the first import, as on production: it finished before the tech app (timesheets, visit timers) was
-    // deployed; Money and Messages aren't built
-    runner.__hidePhasesForTests(["work.timesheets", "work.timers"]);
+    // one invoice with a gift card on it (Rotor's credits are only what invoice lines show: money.credits, row 30)
+    const gift = ex.invoices.find((i) => i.customer && i.line_items.every((l) => l.total_cents !== undefined));
+    gift.line_items.push({ kind: "credit", title: "Gift Card", quantity: 1, unit_price_cents: -500, total_cents: -500 });
+    gift.subtotal_cents -= 500;
+    gift.total_cents -= 500;
+    // the first import, as on production: it finished before the tech app (timesheets, visit timers), Money and
+    // Messages were deployed; Payroll isn't built
+    notShipped(TECH, MONEY, COMMS);
     const r1 = await importExport(t, owner, ex);
     assert.equal(r1.run.status, "done");
     const root = r1.ir.id;
     const rec1 = (await store.getRecord("import_run", root)).data;
-    assert.ok(["work.timesheets", "work.timers", "money.invoices", "comms.messages"].every((n) => rec1.waiting.includes(n)), "the finished run lists what still waits");
-    assert.equal(t.stores.data.keys("rec/timesheet/").length + t.stores.data.keys("rec/timer/").length, 0);
+    assert.deepEqual([...rec1.waiting].sort(), [...TECH, "money.invoices", "money.payments", ...COMMS, "payroll.payroll"].sort(),
+      "the finished run lists what still waits: the catalog's phases of the parts not shipped (money.credits isn't one of them)");
+    for (const type of ["timesheet", "timer", "invoice", "credit", "payment", "message", "conversation", "campaign"]) assert.equal(recs(t, type).length, 0, type);
     let v = await rest(t, owner);
     assert.equal(v.run.id, root);
     assert.deepEqual(v.ready, []);
@@ -123,7 +111,7 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
 
     // ---- the tech app is deployed: its phases are registered. The next hourly pass of the bulk lane starts
     // ONE continuation that runs exactly those two; Money, Messages and Payroll keep waiting
-    runner.__hidePhasesForTests([]);
+    notShipped(MONEY, COMMS);
     spy = spyPhases();
     v = await rest(t, owner);
     assert.deepEqual(v.ready.map((x) => [x.phase, x.module_label, x.rows]), [["work.timesheets", "Scheduling", ex.timesheets.length], ["work.timers", "Scheduling", ex.visit_timers.length]]);
@@ -140,14 +128,17 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
     assert.deepEqual(Object.entries(st0.phases).filter(([, p]) => p.read > 0).map(([n]) => n).sort(), ["work.timers", "work.timesheets"]);
     assert.deepEqual(Object.keys(spy.calls).sort(), ["work.timers", "work.timesheets"], "no other phase mapped a row");
     assert.deepEqual([spy.calls["work.timesheets"], spy.calls["work.timers"]], [ex.timesheets.length, ex.visit_timers.length]);
-    assert.deepEqual([...new Set(rawReads(t, mark0))].sort(), ["timesheets", "visit_timers"], "only their staged rows were read");
+    const reads0 = rawReads(t, mark0);
+    assert.deepEqual(stagedRead(reads0, root), ["timesheets", "visit_timers"], "only their staged rows were read");
+    assert.deepEqual(otherRead(reads0, root), []);
     assert.ok(["money.invoices", "money.payments", "comms.messages", "payroll.payroll"].every((n) => st0.phases[n].status === "waiting"), "the rest keeps waiting");
+    assert.equal(st0.phases["money.credits"], undefined, "a phase of a part not shipped that the catalog doesn't name isn't in the plan");
     // the real mappers found what the FIRST run made: the team map (a timesheet's person), the visits (a timer's visit)
-    const sheets = t.stores.data.keys("rec/timesheet/").map((k) => t.stores.data.json(k));
+    const sheets = recs(t, "timesheet");
     assert.equal(sheets.length, ex.timesheets.length);
     assert.ok(sheets.every((x) => t.stores.data.has(`rec/user/${x.user_id}`)), "each timesheet on a person the first run mapped");
     assert.ok(!st0.phases["work.timesheets"].warnings.timesheet_user_unknown, "the first run's team map was used");
-    const timers = t.stores.data.keys("rec/timer/").map((k) => t.stores.data.json(k));
+    const timers = recs(t, "timer");
     assert.equal(timers.length, ex.visit_timers.length);
     assert.ok(timers.filter((x) => x.visit_id).length > 0 && timers.filter((x) => x.visit_id).every((x) => t.stores.data.has(`rec/visit/${x.visit_id}`)), "each timer on a visit the first run imported");
     const rep00 = (await t.api(`/import/runs/${c0.id}/report`, { as: owner })).body.data;
@@ -173,12 +164,13 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
     assert.equal((await runSweep()).result, "nothing_new");
     assert.equal(continuations(t).length, 1);
 
-    // ---- later, Money goes live (another deploy): the next hourly pass starts a second continuation, for Money only
-    shipMoney();
+    // ---- later, Money goes live (another deploy): the next hourly pass starts a second continuation, for Money
+    // only: its three phases, the credits one included, which the first run's plan didn't know
+    notShipped(COMMS);
     spy = spyPhases();
     v = await rest(t, owner);
-    assert.deepEqual(v.ready.map((x) => x.phase), ["money.invoices", "money.payments"]);
-    assert.ok(v.ready.every((x) => x.module_label === "Money"), "the part's name comes from the phase, whoever registered it");
+    assert.deepEqual(v.ready.map((x) => [x.phase, x.rows]), [["money.invoices", ex.invoices.length], ["money.credits", ex.invoices.length], ["money.payments", ex.payments.length]]);
+    assert.ok(v.ready.every((x) => x.module_label === "Money"), "the part's name comes from the phase, named in the catalog or not");
     assert.ok(!v.waiting.some((w) => w.module_label === "Money"));
     const before = new Map(t.stores.data.keys("").map((k) => [k, t.stores.data.etagOf(k)]));
     const mark = t.stores.data.calls.length;
@@ -193,61 +185,79 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
     assert.equal(c1.upload, undefined, "no upload, no key");
     const done1 = await runToEnd(t, owner, c1.id, { start: false });
     assert.equal(done1.run.status, "done");
-    // only the phases that waited and are registered now ran; nothing done before was read again
+    // only the phases that waited (or weren't planned) and are registered now ran; nothing done before was read again
     const st1 = await runner.loadState(c1.id);
     const ran = Object.entries(st1.phases).filter(([, p]) => p.read > 0).map(([n]) => n).sort();
-    assert.deepEqual(ran, ["money.invoices", "money.payments"]);
-    assert.deepEqual(Object.keys(spy.calls).sort(), ["money.invoices", "money.payments"], "no other phase mapped a row");
-    assert.equal(spy.calls["money.invoices"], ex.invoices.length);
-    assert.equal(spy.calls["money.payments"], ex.payments.length);
-    assert.deepEqual([...new Set(rawReads(t, mark))].sort(), ["invoices", "payments"], "only the staged rows of those phases were read (the report re-read nothing)");
+    assert.deepEqual(ran, [...MONEY].sort());
+    assert.deepEqual(Object.keys(spy.calls).sort(), [...MONEY].sort(), "no other phase mapped a row");
+    assert.deepEqual([spy.calls["money.invoices"], spy.calls["money.credits"], spy.calls["money.payments"]], [ex.invoices.length, ex.invoices.length, ex.payments.length], "the credits step reads every invoice row again");
+    const reads1 = rawReads(t, mark);
+    assert.deepEqual(stagedRead(reads1, root), ["invoices", "payments"], "only the staged rows of those phases were read (the report re-read nothing)");
+    assert.deepEqual(otherRead(reads1, root), []);
     assert.equal(st1.phases["contacts.customers"].status, "done");
     assert.equal(st1.phases["contacts.customers"].earlier, root, "done in the first run");
     assert.equal(st1.phases["contacts.customers"].read, 0);
     assert.equal(st1.phases["work.timers"].earlier, c0.id, "done in the first continuation");
     assert.equal(st1.phases["work.timers"].read, 0);
+    assert.equal(st1.phases["money.credits"].earlier, undefined);
     assert.equal(st1.phases["comms.messages"].status, "waiting");
     assert.equal(st1.staging_run, root);
     assert.deepEqual(st1.users, (await runner.loadState(root)).users, "the team map of the first run");
     // the invoices landed on the contacts and jobs the FIRST run made (its pointers), and linked themselves on the jobs
-    const invoices = t.stores.data.keys("rec/invoice/").map((k) => t.stores.data.json(k));
+    const invoices = recs(t, "invoice");
     assert.equal(invoices.length, ex.invoices.length);
-    assert.ok(invoices.every((i) => i.contact_id && t.stores.data.has(`rec/contact/${i.contact_id}`)), "each invoice on a contact from the first run");
-    const withJob = invoices.filter((i) => i.job_id);
+    assert.ok(invoices.every((i) => before.has(`rec/contact/${i.contact_id}`)), "each invoice on a contact from the first run");
+    assert.ok(!st1.phases["money.invoices"].warnings.invoice_placeholder_contact);
+    const withJob = invoices.filter((i) => i.job_ids.length);
     assert.ok(withJob.length > 0);
-    for (const i of withJob.slice(0, 20)) assert.ok(t.stores.data.json(`rec/job/${i.job_id}`).invoice_ids.includes(i.id), "the job from the first run now names its invoice");
-    assert.equal(st1.phases["money.invoices"].extras.patched, withJob.length, "one patch per invoice with a job");
-    const payments = t.stores.data.keys("rec/payment/").map((k) => t.stores.data.json(k));
+    for (const i of withJob) assert.ok(before.has(`rec/job/${i.job_ids[0]}`) && t.stores.data.json(`rec/job/${i.job_ids[0]}`).invoice_ids.includes(i.id), "the job from the first run now names its invoice");
+    assert.equal(st1.phases["money.invoices"].extras.patched, withJob.length, "one patch per invoice with a job (a new invoice's status patch changes nothing)");
+    // the gift card: a settled credit on the first run's contact, for the invoice this run made
+    const credits = recs(t, "credit");
+    assert.deepEqual(credits.map((c) => [c.applied_invoice_id, c.amount_cents, c.status, c.kind]), [[ids.idForRotor("invoice", gift.id), 500, "settled", "imported"]]);
+    assert.ok(before.has(`rec/contact/${credits[0].contact_id}`));
+    // the payments found the invoices this run made, and went into their applied maps
+    const payments = recs(t, "payment");
     assert.equal(payments.length, ex.payments.length);
-    assert.ok(payments.filter((p) => p.invoice_id).length > 0 && payments.filter((p) => p.invoice_id).every((p) => t.stores.data.has(`rec/invoice/${p.invoice_id}`)));
+    assert.ok(payments.every((p) => before.has(`rec/contact/${p.contact_id}`)), "each payment on a contact from the first run");
+    const linked = payments.filter((p) => p.invoice_id);
+    assert.ok(linked.length > 0 && linked.every((p) => t.stores.data.json(`rec/invoice/${p.invoice_id}`).applied[p.id]));
+    assert.equal(st1.phases["money.payments"].extras.patched, linked.length);
     // nothing an earlier phase owns was rewritten: contacts, properties, their bases and pointers are untouched
     const touched = t.stores.data.keys("").filter((k) => before.get(k) !== t.stores.data.etagOf(k) && /^(rec\/(contact|property|user|quote|plan|visit|deal|enrollment)\/|ib\/(contact|property|user|quote|plan|visit|job)\/|ptr\/rotor\/(customer|lead|job|quote)\/)/.test(k));
     assert.deepEqual(touched, []);
     // the jobs the invoices patched are listed again (bulk writes, then the run's own index rebuild)
-    assert.ok(st1.types.includes("job") && st1.types.includes("invoice"));
-    // the report: this run's counts, the run it continues, the chain's totals; Rotor's money as before
+    assert.ok(["job", "invoice", "credit", "payment"].every((x) => st1.types.includes(x)), JSON.stringify(st1.types));
+    // the report: this run's counts, the run it continues, the chain's totals; Rotor's money as before, and now
+    // the CRM's side of it (both money steps have run)
     const rep = (await t.api(`/import/runs/${c1.id}/report`, { as: owner })).body.data;
     const rep0 = (await t.api(`/import/runs/${root}/report`, { as: owner })).body.data;
     assert.equal(rep.continues, c0.id);
     assert.deepEqual(rep.chain.runs, [root, c0.id, c1.id]);
-    assert.equal(rep.summary.created, ex.invoices.length + ex.payments.length);
-    assert.equal(rep.summary.read, ex.invoices.length + ex.payments.length);
-    assert.equal(rep.summary.phases_run, 2);
+    assert.equal(rep.summary.created, ex.invoices.length + credits.length + ex.payments.length);
+    assert.equal(rep.summary.read, 2 * ex.invoices.length + ex.payments.length);
+    assert.equal(rep.summary.phases_run, 3);
     assert.equal(rep.chain.totals.created, rep0.summary.created + rep00.summary.created + rep.summary.created, "added to the totals of the runs before it");
     assert.equal(rep.chain.totals.read, rep0.summary.read + rep00.summary.read + rep.summary.read);
     assert.deepEqual(rep.money.rotor, rep0.money.rotor);
+    assert.deepEqual([rep0.summary.money_checked, rep00.summary.money_checked, rep.summary.money_checked], [false, false, true], "the comparison is made once the invoices and payments steps have run");
+    assert.deepEqual([rep.money.crm.ok, rep.money.crm.diffs, rep.summary.pass], [true, [], true], "the CRM's money adds up to Rotor's");
+    assert.deepEqual([rep.money.crm.invoices.count, rep.money.crm.invoices.total_cents, rep.money.crm.payments.count], [ex.invoices.length, rep.money.rotor.invoices.total_cents, ex.payments.length]);
     assert.equal(rep.phases.find((p) => p.name === "contacts.customers").earlier, root);
     assert.ok(!rep.waiting.some((w) => w.phase.startsWith("money.")) && rep.waiting.some((w) => w.phase === "comms.messages"));
-    assert.equal(rep.summary.phases_waiting, rep0.summary.phases_waiting - 4);
+    assert.deepEqual([rep00.summary.phases_waiting, rep.summary.phases_waiting], [rep0.summary.phases_waiting - 2, rep0.summary.phases_waiting - 4]);
     const csv = (await t.api(`/import/runs/${c1.id}/report.csv`, { as: owner })).text;
     assert.match(csv, new RegExp(`chain,,runs,${root} ${c0.id} ${c1.id}`));
+    assert.match(csv, /money,crm,reconciled,yes/);
     // the owners were told when it started and when it was done (in the app; push by their choice)
     await drain(t);
     const told = notices(t).filter((n) => n.user_id === owner.id).sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
     assert.equal(told.length, 2);
-    assert.match(told.find((n) => /Bringing in/.test(n.title)).body, /^Invoices and payments from your Rotor export of Nov 10 are being brought in now\./);
+    assert.match(told.find((n) => /Bringing in/.test(n.title)).body, /^Invoices, credits and payments from your Rotor export of Nov 10 are being brought in now\./);
     const fin = told.find((n) => /is in$/.test(n.title));
-    assert.equal(fin.body, `Invoices and payments from your Rotor export of Nov 10 are in: ${ex.invoices.length} invoices, ${ex.payments.length} payments.`);
+    // an invoice with no credit line is nothing for the credits step to make, not a row that made nothing
+    assert.equal(st1.phases["money.credits"].none, 0);
+    assert.equal(fin.body, `Invoices, credits and payments from your Rotor export of Nov 10 are in: ${ex.invoices.length} invoices, 1 credit, ${ex.payments.length} payments.`);
     assert.equal(fin.link, `/import/${c1.id}`);
     assert.ok(notices(t).every((n) => !/@|\+1763|Example Ave/.test(n.body)), "counts only");
     assert.ok((await store.getRecord("import_run", c1.id)).data.noted_at, "the after-run steps are stamped done");
@@ -268,12 +278,13 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
 
     // ---- Messages goes live; the owner doesn't wait for the hour: "Bring in the rest now"
     spy.restore();
-    shipMessages();
+    notShipped();
     spy = spyPhases();
+    const before2 = new Set(t.stores.data.keys(""));
     const mark2 = t.stores.data.calls.length;
     const made = await go(t, owner);
     assert.equal(made.status, 201, JSON.stringify(made.body));
-    assert.deepEqual(made.body.data.phases.map((p) => [p.phase, p.rows]), [["comms.messages", ex.messages.length]]);
+    assert.deepEqual(made.body.data.phases.map((p) => [p.phase, p.rows]), [["comms.templates", ex.message_templates.length], ["comms.campaigns", ex.campaigns.length], ["comms.messages", ex.messages.length], ["comms.pin_types", ex.map_pin_types.length]]);
     const c2id = made.body.data.run.id;
     assert.equal(made.body.data.run.continues, c1.id, "it goes on from the latest finished run");
     assert.equal((await go(t, owner)).status, 409, "one import at a time");
@@ -283,39 +294,68 @@ test("the rest of an export comes in by itself as each part goes live: the tech 
     const c2 = (await store.getRecord("import_run", c2id)).data;
     assert.equal(c2.staging_run, root, "still the rows of the one upload");
     assert.equal(c2.auto, undefined);
-    assert.deepEqual(Object.keys(spy.calls), ["comms.messages"]);
-    assert.deepEqual([...new Set(rawReads(t, mark2))], ["messages"]);
+    assert.deepEqual(Object.keys(spy.calls).sort(), [...COMMS].sort());
+    const reads2 = rawReads(t, mark2);
+    assert.deepEqual(stagedRead(reads2, root), ["campaigns", "map_pin_types", "message_templates", "messages"]);
+    assert.deepEqual(otherRead(reads2, root), [`${c2id}/comms-conv`], "and the messages step's own summaries, kept under this run");
     const st2 = await runner.loadState(c2id);
     assert.equal(st2.phases["money.invoices"].earlier, c1.id, "done in the continuation before");
+    assert.equal(st2.phases["money.credits"].earlier, c1.id);
     assert.equal(st2.phases["work.timesheets"].earlier, c0.id);
     assert.equal(st2.phases["contacts.customers"].earlier, root);
     assert.deepEqual(st2.chain, [root, c0.id, c1.id]);
-    const msgs = t.stores.data.keys("rec/message/").map((k) => t.stores.data.json(k));
-    assert.ok(msgs.length > 0 && msgs.every((m) => t.stores.data.has(`rec/contact/${m.contact_id}`)), "messages on the contacts of the first run");
-    assert.ok(Object.keys(t.stores.data.json(`ib/message/${msgs[0].id}`).sources)[0].endsWith("~comms.messages"), "the same source a full run gives (the opt-out phase reads messages first)");
+    // every message written once, in a conversation per contact and channel, on the contacts of the first run
+    // (or on a placeholder for a contact the export doesn't have, made now)
+    const msgs = recs(t, "message");
+    assert.equal(msgs.length, ex.messages.length);
+    const convs = recs(t, "conversation");
+    assert.ok(convs.length > 0 && msgs.every((m) => t.stores.data.has(`rec/conversation/${m.conversation_id}`) && t.stores.data.has(`rec/contact/${m.contact_id}`)));
+    const placeholders = t.stores.data.keys("rec/contact/").filter((k) => !before2.has(k)).map((k) => t.stores.data.json(k));
+    assert.ok(placeholders.every((c) => c.flags.placeholder));
+    assert.ok(msgs.every((m) => before2.has(`rec/contact/${m.contact_id}`) || placeholders.some((c) => c.id === m.contact_id)), "messages on the contacts of the first run");
+    assert.equal(t.stores.data.keys("ib/message/").length, 0, "a message is written once: no import base");
+    assert.ok(Object.keys(t.stores.data.json(`ib/conversation/${convs[0].id}`).sources)[0].endsWith("~comms.messages"), "the same source a full run gives (the opt-out phase reads messages first)");
+    // the templates and the campaign; the pin types the step's finish keeps in the settings
+    const tpls = recs(t, "template").filter((x) => x.rotor);
+    assert.equal(tpls.length, ex.message_templates.filter((x) => !x.is_example).length);
+    assert.equal(recs(t, "campaign").length, ex.campaigns.length);
+    assert.equal(t.stores.data.json("cfg/pin_types").types.length, ex.map_pin_types.length);
     const rep2 = (await t.api(`/import/runs/${c2id}/report`, { as: owner })).body.data;
     assert.deepEqual(rep2.chain.runs, [root, c0.id, c1.id, c2id]);
     assert.equal(rep2.chain.totals.created, rep.chain.totals.created + rep2.summary.created);
+    assert.equal(rep2.quality.warnings.messages_written, ex.messages.length, "the report counts the messages the step wrote itself");
     await drain(t);
     const fin2 = notices(t).filter((n) => n.user_id === owner.id && n.link === `/import/${c2id}`);
     assert.equal(notices(t).filter((n) => n.link === `/import/${c2id}`).length, 2, "both owners");
     assert.equal(fin2.length, 1, "asked for on the screen: one note, when it's done");
-    assert.match(fin2[0].body, /^Messages from your Rotor export of Nov 10 are in: \d+ messages\.( \d+ rows? made nothing \(the report says why\)\.)?$/);
-    assert.equal(/made nothing/.test(fin2[0].body), msgs.length < ex.messages.length, "rows that made nothing are mentioned only when there are some");
+    // in records made (the messages are counted in their conversations); the rows that made nothing are Rotor's
+    // example templates, which the report names, not the messages or the pin types
+    const examples = ex.message_templates.filter((x) => x.is_example).length;
+    assert.deepEqual([tpls.length, ex.campaigns.length, placeholders.length, convs.length, examples], [26, 1, 1, 67, 19], "(this export)");
+    assert.equal(fin2[0].body, "Message templates, campaigns, messages and map pin types from your Rotor export of Nov 10 are in: 26 templates, 1 campaign, 1 contact, 67 conversations. 19 rows made nothing (the report says why).");
+    assert.deepEqual(COMMS.map((n) => st2.phases[n].none), [examples, 0, 0, 0]);
+    assert.equal(rep2.quality.warnings.template_rotor_example_skipped, examples);
 
     // ---- a fresh full import of the same export afterwards (days later): everything is found as it is
     spy.restore(); spy = null;
     advance(days(3));
+    // the sweeps those days brought due run first (Money's daily customer lifetime totals fill in the money stats
+    // of the contacts the continuation gave payments): what is looked at below is what the import writes
+    for (let i = 0; i < 2; i++) await t.runWorker({ lane: "bulk" });
+    assert.ok(t.stores.data.keys("rec/contact_stats/").some((k) => (t.stores.data.json(k).money || {}).lifetime_cents > 0));
     const snap = new Map(t.stores.data.keys("").map((k) => [k, t.stores.data.etagOf(k)]));
     const r4 = await importExport(t, owner, ex);
     assert.equal(r4.run.status, "done");
     assert.deepEqual([r4.run.summary.created, r4.run.summary.updated, r4.run.summary.linked, r4.run.summary.conflicts_open], [0, 0, 0, 0], "all unchanged");
     const st4 = await runner.loadState(r4.ir.id);
     assert.ok(st4.phases["money.invoices"].read === ex.invoices.length && !st4.phases["money.invoices"].earlier, "a full run reads everything itself");
-    const rewritten = t.stores.data.keys("").filter((k) => snap.get(k) !== t.stores.data.etagOf(k) && /^(rec\/(?!import_run|run|event|notification)|ib\/|ptr\/rotor\/|rel\/|ix\/(?!import-runs|runs))/.test(k));
-    assert.deepEqual(rewritten, [], "no record, base, pointer, relation or list was written");
+    assert.ok(st4.phases["money.credits"].read === ex.invoices.length && st4.phases["comms.messages"].read === ex.messages.length);
+    const rewritten = t.stores.data.keys("").filter((k) => snap.get(k) !== t.stores.data.etagOf(k) && /^(rec\/(?!import_run|run|event|notification)|ib\/|ptr\/rotor\/|rel\/|ix\/(?!import-runs|runs)|cfg\/pin_types)/.test(k));
+    assert.deepEqual(rewritten, [], "no record, base, pointer, relation, list or setting was written");
+    const rep4 = (await t.api(`/import/runs/${r4.ir.id}/report`, { as: owner })).body.data;
+    assert.deepEqual([rep4.money.crm.ok, rep4.money.crm.invoices, rep4.money.crm.payments], [rep.money.crm.ok, rep.money.crm.invoices, rep.money.crm.payments], "the same money comparison as the continuation's");
     assert.equal(r4.run.continues, undefined);
-  } finally { runner.__hidePhasesForTests([]); if (spy) spy.restore(); t.done(); }
+  } finally { notShipped(); if (spy) spy.restore(); t.done(); }
 });
 
 // ------------------------------------------------------------ staging
@@ -324,15 +364,16 @@ test("it refuses when the export's rows are gone, with a plain message; the rows
   const { t, owner } = await setup({ now: "2026-11-17T15:00:00Z" });
   try {
     const ex = generate({ scale: 0.02, seed: 52 });
+    notShipped(COMMS);
     const r1 = await importExport(t, owner, ex);
     const root = r1.ir.id;
     const gc = () => runSweep("import.staging_gc", { budget: null });
     const rawCount = () => t.stores.data.keys(`imp/${root}/raw/`).length;
     const had = rawCount();
     assert.ok(had > 10);
-    // day 20: Payroll goes live and a continuation is made; it sits in the queue (the lane is busy) until day 45
+    // day 20: Messages goes live and a continuation is made; it sits in the queue (the lane is busy) until day 45
     advance(days(20));
-    ship("payroll.payroll", "payroll", "payroll");
+    notShipped();
     const c1 = (await go(t, owner)).body.data.run;
     assert.equal(Date.parse((await store.getRecord("import_run", root)).data.staging_used_at), Date.parse(r1.run.finished_at) + days(20), "making it stamps the rows as used");
     advance(days(25));
@@ -341,33 +382,40 @@ test("it refuses when the export's rows are gone, with a plain message; the rows
     assert.equal((await runToEnd(t, owner, c1.id, { start: false })).run.status, "done");
     const used = (await store.getRecord("import_run", root)).data.staging_used_at;
     assert.equal(Date.parse(used), Date.parse(r1.run.finished_at) + days(45), "finishing it stamps the last use");
+    // the messages step kept its summaries (addresses, previews) under the continuation's own raw/, beside nothing else
+    const ownRaw = () => t.stores.data.keys(`imp/${c1.id}/raw/`);
+    assert.ok(ownRaw().length > 0 && ownRaw().every((k) => k.startsWith(`imp/${c1.id}/raw/comms-conv/`)), JSON.stringify(ownRaw()));
     // day 60: long after the upload finished, 15 days after its last use: kept
     advance(days(15));
     await gc();
     assert.equal(rawCount(), had, "30 days from the last use, not from the upload");
+    assert.ok(ownRaw().length > 0);
     assert.equal((await rest(t, owner)).keep_until.slice(0, 10), new Date(Date.parse(used) + 30 * 86400000).toISOString().slice(0, 10));
-    // day 76: gone
+    // day 76: gone, and the continuation's summaries with them
     advance(days(16));
     await gc();
     assert.equal(rawCount(), 0, "cleared 30 days after the last use");
+    assert.deepEqual(ownRaw(), [], "what the continuation's phases kept beside the rows goes with them");
     assert.ok((await store.getRecord("import_run", root)).data.staging_cleared_at, "the run says its rows were cleared");
-    assert.ok(t.stores.data.has(`imp/${root}/state`) && t.stores.data.has(`imp/${c1.id}/report`), "the runs, their state and reports stay");
+    assert.ok(t.stores.data.has(`imp/${root}/state`) && t.stores.data.has(`imp/${c1.id}/state`) && t.stores.data.has(`imp/${c1.id}/report`), "the runs, their state and reports stay");
     // another part goes live too late for this export
-    ship("comms.templates", "message_templates", "template");
+    shipPayroll();
     const v = await rest(t, owner);
     assert.equal(v.staging, "cleared");
-    assert.ok(v.ready.some((x) => x.phase === "comms.templates"));
+    assert.ok(v.ready.some((x) => x.phase === "payroll.payroll"));
     const res = await go(t, owner);
     assert.equal(res.status, 409);
     assert.equal(res.body.error.message, "That export's rows were cleared. Start a new import.");
     assert.equal((await runSweep()).result, "cleared");
     assert.equal(continuations(t).length, 1, "nothing was started");
     // one chunk missing is the same as all of them (a half-cleared export is never imported)
+    notShipped(["comms.campaigns"]);
     const r2 = await importExport(t, owner, ex);
-    ship("comms.campaigns", "campaigns", "campaign");
+    notShipped();
+    assert.ok((await rest(t, owner)).ready.some((x) => x.phase === "comms.campaigns"));
     await store.deleteRaw(t.stores.data.keys(`imp/${r2.ir.id}/raw/campaigns/`)[0]);
     assert.equal((await go(t, owner)).body.error.message, C.CLEARED_MESSAGE);
-  } finally { t.done(); }
+  } finally { notShipped(); t.done(); }
 });
 
 // ------------------------------------------------------------ the hourly check
@@ -376,8 +424,12 @@ test("the hourly check starts exactly one continuation, and none while one runs,
   const { t, owner } = await setup({ now: "2026-11-17T15:00:00Z" });
   try {
     const ex = generate({ scale: 0.02, seed: 53 });
-    await importExport(t, owner, ex);
+    // every part the catalog names is live (Payroll too): the import leaves nothing waiting
+    shipPayroll();
+    const r1 = await importExport(t, owner, ex);
+    assert.deepEqual((await store.getRecord("import_run", r1.ir.id)).data.waiting, []);
     advance(minutes(10));
+    // a phase added since, for rows it staged: the hourly check still looks (once: the registered phases changed)
     ship("fixture.templates", "message_templates", "template2");
     // three passes at once (two bulk invocations and a cron fallback): one run
     const res = await Promise.all([runSweep(), runSweep(), runSweep()]);
@@ -439,8 +491,11 @@ test("the setting (owners only) stops the hourly check; the button still works; 
   const { t, owner, admin, tech1 } = await setup({ now: "2026-11-17T15:00:00Z" });
   try {
     const ex = generate({ scale: 0.02, seed: 54 });
+    notShipped(["comms.pin_types"]);
     await importExport(t, owner, ex);
-    ship("comms.pin_types", "map_pin_types", "pin");
+    // the map pin types step goes live
+    notShipped();
+    assert.equal(t.stores.data.has("cfg/pin_types"), false);
     // only an owner reads or changes it
     for (const who of [admin, tech1]) {
       assert.equal((await t.api("/settings/import", { as: who })).status, 403);
@@ -459,7 +514,7 @@ test("the setting (owners only) stops the hourly check; the button still works; 
     assert.equal(continuations(t).length, 0);
     const v = await rest(t, owner);
     assert.equal(v.auto, false);
-    assert.ok(v.ready.length > 0, "the screen still offers it");
+    assert.deepEqual(v.ready.map((x) => [x.phase, x.rows]), [["comms.pin_types", ex.map_pin_types.length]], "the screen still offers it");
     // a paused CRM (after a restore): neither the check nor the button
     const sys = await import("../../../netlify/lib/crm/core/settings.mjs");
     await sys.updateSysMode((m) => ({ ...m, paused: true, paused_reason: "restore" }));
@@ -477,7 +532,8 @@ test("the setting (owners only) stops the hourly check; the button still works; 
     await t.runWorker({ lane: "bulk" });
     assert.equal(continuations(t).length, 1);
     assert.equal((await runToEnd(t, owner, continuations(t)[0].id, { start: false })).run.status, "done");
-  } finally { t.done(); }
+    assert.equal(t.stores.data.json("cfg/pin_types").types.length, ex.map_pin_types.length, "the step's finish kept them, in the continuation");
+  } finally { notShipped(); t.done(); }
 });
 
 // ------------------------------------------------------------ crashes

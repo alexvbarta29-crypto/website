@@ -33,6 +33,9 @@ defineFileOwner("import_run", {
 // 30 days after their last use: when the run finished (or stopped), or when
 // a continuation ("bring in the rest") last used them (`staging_used_at`);
 // the run, its state, report, conflicts and id map stay.
+//   - A continuation stages no rows, but a phase may keep working files
+//     under the run's own imp/{id}/raw/ (comms.messages' summaries, with
+//     addresses and previews): they are deleted with the rows it read.
 //   - Rows a queued or running continuation reads are left alone, for at
 //     most 30 days from when that continuation was made: a run that is
 //     stuck never holds them for ever. Before that, runs whose lane run
@@ -83,6 +86,8 @@ async function stagingGc(ctx) {
     const got = await updateRecord("import_run", r.id, (x) => (x.staging_cleared_at || !due(x) ? null : { ...x, staging_cleared_at: nowIso() }), GC_CTX);
     if (!got.data.staging_cleared_at) continue;
     if (!(await drop(r.id))) return { done: false, progress: removed };
+    // what its continuations' phases kept under their own raw/ (the messages step's summaries) goes with the rows
+    for (const c of fresh.filter((x) => x.src === r.id)) if (!(await drop(c.id))) return { done: false, progress: removed };
   }
   return { progress: removed };
 }
