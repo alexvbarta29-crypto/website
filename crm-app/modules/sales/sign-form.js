@@ -11,6 +11,8 @@ import { uuid } from "../../core/api.js";
 import { ensureStyles } from "./kit.js";
 import { KINDS, PAGES } from "./signs-kit.js";
 
+const DESTS = [{ value: "quote", label: "The quote page" }, { value: "page", label: "Another page of the website" }];
+
 export function formBody(c = {}, { isNew = true, note = "" } = {}) {
   const page = c.dest && c.dest.kind === "page";
   return html`<form class="form" data-sign-form novalidate>
@@ -18,15 +20,11 @@ export function formBody(c = {}, { isNew = true, note = "" } = {}) {
     ${field({ label: "Name", name: "name", value: c.name || "", required: true, maxlength: 80, placeholder: "Yard sign, Maple Grove", hint: "Only the office sees it (and it prints under the code)." })}
     ${select({ label: "What it goes on", name: "kind", value: c.kind || "yard_sign", options: KINDS })}
     <div class="grid2">${field({ label: "Town or area (optional)", name: "area", value: c.area || "", maxlength: 60, placeholder: "Maple Grove" })}${dateField({ label: "Put up on (optional)", name: "placed_on", value: c.placed_on || "" })}</div>
-    <fieldset class="field sg-dest" data-field="dest"><span>Where it sends people</span>
-      <label class="check"><input ${attrs({ type: "radio", name: "dest_kind", value: "quote", checked: !page })}><span>The quote page, with the code as the lead's source</span></label>
-      <label class="check"><input ${attrs({ type: "radio", name: "dest_kind", value: "page", checked: page })}><span>Another page of the website</span></label>
-      <div data-path ${attrs({ hidden: !page })}>
-        <label class="field" data-field="dest.path"><span>Page</span><input ${attrs({ name: "dest_path", value: page ? c.dest.path : "/services/gutter-cleaning.html", list: "sg-pages", inputmode: "url", autocapitalize: "none", autocomplete: "off", maxlength: 120 })}><small>A page of bartawindowwashing.com, like /services/gutter-cleaning.html.</small><small class="why" hidden></small></label>
-        <datalist id="sg-pages">${PAGES.map(([p, l]) => html`<option ${attrs({ value: p })}>${l}</option>`)}</datalist>
-      </div>
-      <small class="why" hidden></small>
-    </fieldset>
+    ${select({ label: "Where it sends people", name: "dest_kind", value: page ? "page" : "quote", options: DESTS, hint: "The quote page fills in the code as the lead's source." })}
+    <div data-path ${attrs({ hidden: !page })}>
+      <label class="field" data-field="dest.path"><span>Page</span><input ${attrs({ name: "dest_path", value: page ? c.dest.path : "/services/gutter-cleaning.html", list: "sg-pages", inputmode: "url", autocapitalize: "none", autocomplete: "off", maxlength: 120 })}><small>A page of bartawindowwashing.com, like /services/gutter-cleaning.html.</small><small class="why" hidden></small></label>
+      <datalist id="sg-pages">${PAGES.map(([p, l]) => html`<option ${attrs({ value: p })}>${l}</option>`)}</datalist>
+    </div>
     <label class="field" data-field="note"><span>Note (optional)</span><input ${attrs({ name: "note", value: note || "", maxlength: 300, placeholder: "On the corner of Maple and 5th" })}><small class="why" hidden></small></label>
     <button type="submit" class="btn primary block">${isNew ? "Make the code" : "Save"}</button>
   </form>`;
@@ -45,7 +43,7 @@ export default {
   load: () => { ensureStyles(); return { clientId: uuid() }; },
   render: () => formBody({}, { isNew: true }),
   events: {
-    "change [name=dest_kind]": (e, el) => { const f = el.closest("form"); f.querySelector("[data-path]").hidden = f.dest_kind.value !== "page"; },
+    "change [name=dest_kind]": (e, el) => { el.closest("form").querySelector("[data-path]").hidden = el.value !== "page"; },
     "submit [data-sign-form]": async (e, form, ctx) => {
       e.preventDefault(); clearErrors(form);
       const body = readCode(readForm(form));

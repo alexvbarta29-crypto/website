@@ -42,7 +42,7 @@ export default {
       <section class="card sg-code">
         <div class="sg-qr">${raw(qrSvg(c.url, { ecl: "Q", label: `QR code for ${c.name}` }))}</div>
         <p class="sg-short">${c.short}</p>
-        <p class="small muted">Sends people to ${pageLabel(c.dest_path)} (${c.dest_path}).</p>
+        <p class="small muted">${c.dest && c.dest.kind === "page" ? `Sends people to ${pageLabel(c.dest_path)} (${c.dest_path}).` : "Sends people to the quote page, with the code as the lead's source."}</p>
         <div class="btn-row"><button type="button" class="btn" data-copy>${icon("copy")}Copy the link</button></div>
       </section>
       <section class="card"><h2>Print it</h2>
@@ -85,7 +85,7 @@ export default {
         title: "Edit the code",
         body: formBody(ctx.state.code, { isNew: false, note: ctx.state.note }),
         events: {
-          "change [name=dest_kind]": (ev, input) => { const f = input.closest("form"); f.querySelector("[data-path]").hidden = f.dest_kind.value !== "page"; },
+          "change [name=dest_kind]": (ev, input) => { input.closest("form").querySelector("[data-path]").hidden = input.value !== "page"; },
           "submit form": async (ev, form) => {
             ev.preventDefault(); clearErrors(form);
             const body = readCode(readForm(form));

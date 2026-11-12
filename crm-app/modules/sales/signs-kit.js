@@ -4,7 +4,7 @@
 // quarter-page flyer: the code big, its name and short address under it).
 // No data here, only how things read (design §2.3).
 
-import { html } from "../../core/ui.js";
+import { html, attrs } from "../../core/ui.js";
 import { money } from "../../core/format.js";
 import { qrPosterSvg, svgToPngBlob, saveFile } from "../../core/qr.js";
 
@@ -15,7 +15,7 @@ export const KINDS = [
 export const kindLabel = (k) => (KINDS.find((x) => x.value === k) || { label: "QR code" }).label;
 // Pages of the website a code can open (any other page of the site can be typed in).
 export const PAGES = [
-  ["/get-quote.html", "Get a quote (the default)"], ["/", "Home page"],
+  ["/get-quote.html", "the quote page"], ["/", "the home page"],
   ["/services/exterior-window-cleaning.html", "Exterior window cleaning"], ["/services/interior-window-cleaning.html", "Interior window cleaning"],
   ["/services/gutter-cleaning.html", "Gutter cleaning"], ["/services/christmas-light-installation.html", "Christmas lights"],
   ["/services/solar-panel-cleaning.html", "Solar panel cleaning"], ["/services/commercial-cleaning.html", "Commercial cleaning"],
@@ -24,11 +24,13 @@ export const PAGES = [
 ];
 export const pageLabel = (p) => (PAGES.find(([x]) => x === p) || [p, p])[1];
 
+// Whole dollars in the small tiles ("$1,185"); the leads list keeps the cents.
+const dollars = (cents) => `$${Math.round((cents || 0) / 100).toLocaleString("en-US")}`;
 export const numbers = (c, { big = false } = {}) => html`<div class="${"sg-nums" + (big ? " big" : "")}">
   <div><b>${c.scans}</b><small>${c.scans === 1 ? "scan" : "scans"}</small></div>
   <div><b>${c.leads}</b><small>${c.leads === 1 ? "lead" : "leads"}</small></div>
   <div><b>${c.booked}</b><small>booked</small></div>
-  <div><b>${money(c.revenue_cents || 0)}</b><small>paid</small></div>
+  <div ${attrs({ title: money(c.revenue_cents || 0) })}><b>${dollars(c.revenue_cents)}</b><small>paid</small></div>
 </div>`;
 
 // The print sizes: the viewBox in points and the size it prints at.

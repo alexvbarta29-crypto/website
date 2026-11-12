@@ -284,7 +284,7 @@ test("the screens: the list with each code's numbers, one code with its QR to pr
   const list = (await import("../../../crm-app/modules/sales/signs.js")).default;
   const out = String(list.render({ tab: "active", codes: [code], meta: { totals: { scans: 12, leads: 3, booked: 1, revenue_cents: 29500 }, archived_count: 2 } }, ctx));
   assert.match(out, /href="#\/signs\/qr_00000000000000000001"/);
-  assert.match(out, /<b>12<\/b><small>scans<\/small>[\s\S]*<b>3<\/b><small>leads<\/small>[\s\S]*<b>1<\/b><small>booked<\/small>[\s\S]*<b>\$295\.00<\/b><small>paid<\/small>/);
+  assert.match(out, /<b>12<\/b><small>scans<\/small>[\s\S]*<b>3<\/b><small>leads<\/small>[\s\S]*<b>1<\/b><small>booked<\/small>[\s\S]*title="\$295\.00"><b>\$295<\/b><small>paid<\/small>/, "whole dollars in the tiles, the cents on hover");
   assert.match(out, /Yard sign · Maple Grove · placed/);
   assert.match(out, /Retired <span class="n">2<\/span>/);
   assert.doesNotMatch(out, /<script>/);
@@ -307,7 +307,8 @@ test("the screens: the list with each code's numbers, one code with its QR to pr
   assert.match(kit.printSvg(code, "flyer"), /viewBox="0 0 1275 1650" width="4.25in" height="5.5in"/);
   const form = (await import("../../../crm-app/modules/sales/sign-form.js"));
   const f = String(form.formBody({}, { isNew: true }));
-  assert.match(f, /name="name"[\s\S]*name="kind"[\s\S]*name="area"[\s\S]*name="placed_on"[\s\S]*value="quote" checked[\s\S]*name="dest_path"/);
+  assert.match(f, /name="name"[\s\S]*name="kind"[\s\S]*name="area"[\s\S]*name="placed_on"[\s\S]*name="dest_kind"[\s\S]*value="quote" selected[\s\S]*data-path hidden[\s\S]*name="dest_path"/);
+  assert.match(String(form.formBody({ dest: { kind: "page", path: "/reviews.html" } }, { isNew: false })), /value="page" selected[\s\S]*<div data-path >[\s\S]*value="\/reviews\.html"/);
   assert.deepEqual(form.readCode({ name: "A", kind: "flyer", dest_kind: "page", dest_path: " /reviews.html " }), { name: "A", kind: "flyer", area: "", placed_on: "", note: "", dest: { kind: "page", path: "/reviews.html" } });
   const M = (await import("../../../crm-app/modules/sales/manifest.js")).default;
   assert.ok(M.nav.some((n) => n.path === "/signs" && n.section === "sales" && n.perm === "signs:manage"));

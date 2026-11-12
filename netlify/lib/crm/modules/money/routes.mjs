@@ -46,7 +46,7 @@ import { previewAutopay, listRuns, nextMonth, thisMonth, MONTH_RE } from "./auto
 import { resolvePayments, payments, mayMoveMoney } from "./gate.mjs";
 import { cardLink } from "./automations.mjs";
 import { payRefusal } from "./checkout.mjs";
-import { qrPayLink, qrRefusal, noteQrShown } from "./scan.mjs";
+import { qrPayLink, qrRefusal, noteQrShown, STAFF as STAFF_QR } from "./scan.mjs";
 
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 const view = (r) => { const { _w, ...rest } = r || {}; return rest; };
@@ -402,6 +402,9 @@ async function invoicePayQr(ctx) {
 // so nothing is texted), then the same code.
 async function visitPayLink(ctx) {
   const v = await visitFor(ctx, ctx.params.id);
+  // a customer Rotor still bills: the reason, before any invoice is made for a code nobody could pay
+  const sor = (await ctx.sysMode()).system_of_record;
+  if (!(await mayMoveMoney(v, { sor }))) throw new ConflictError(STAFF_QR.not_yet, { code: "not_yet" });
   const inv = await visitInvoice(ctx, v);
   if (inv.status === "paid" || (inv.status === "open" && !(inv.balance_cents > 0))) throw new ConflictError(inv.status === "paid" ? "This visit is already paid." : "There's nothing to pay on this visit.", { code: inv.status === "paid" ? "paid" : "nothing" });
   return payQrAnswer(ctx, inv);

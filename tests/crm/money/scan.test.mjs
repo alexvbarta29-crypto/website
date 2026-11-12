@@ -125,9 +125,11 @@ test("who may show it: the office from the Invoice screen; a tech only on Collec
     // a customer Rotor still bills: the tech's screen says so instead of a code
     const robin = await importedCustomer();
     const rv = await bookedJob(owner, robin, { techs: [tech] });
+    const before = recs(t, "invoice").length;
     const refused = await t.api(`/visits/${rv.visit.id}/pay-link`, { method: "POST", as: tech, body: {} });
     assert.equal(refused.status, 409);
     assert.match(refused.body.error.message, /Rotor still bills this customer/);
+    assert.equal(recs(t, "invoice").length, before, "no invoice made for a code nobody could pay");
   } finally { t.done(); }
 });
 

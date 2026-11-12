@@ -29,7 +29,7 @@ export function codeView(link, { back = false, check = true, save = false } = {}
     <div class="mn-scan-code">${raw(qrSvg(link.url, { label: SCAN_WORDS, ecl: "M" }))}</div>
     <p class="mn-scan-say">${SCAN_WORDS}</p>
     <p class="small muted mn-scan-note">They can add a tip there.${link.expires_at ? ` The code works until ${until(link.expires_at)}.` : ""}</p>
-    ${save ? html`<div class="btn-row mn-scan-save"><button type="button" class="btn" data-qr-png>Save as picture (PNG)</button><button type="button" class="btn" data-qr-svg>Save as SVG</button></div>` : ""}
+    ${save ? html`<div class="btn-row mn-scan-save"><button type="button" class="btn" data-qr-png aria-label="Save the code as a picture (PNG) for a printed invoice">Save PNG</button><button type="button" class="btn" data-qr-svg aria-label="Save the code as an SVG for a printed invoice">Save SVG</button></div>` : ""}
     <div class="btn-row mn-scan-acts">${back ? html`<button type="button" class="btn" data-back>Back</button>` : ""}${check ? html`<button type="button" class="btn primary" data-check>Did it go through?</button>` : ""}</div>
   </div>`;
 }

@@ -34,7 +34,7 @@ export const isQrLink = (link) => !!link && typeof link.created_by === "string" 
 
 // What the staff screen says instead of a QR. The customer's page says its
 // own words (checkout.mjs payRefusal); these are for the person holding the phone.
-const STAFF = {
+export const STAFF = Object.freeze({
   rotor_owns: "This invoice is still Rotor's until the switch, so it has no pay code here.",
   draft: "This invoice is a draft. Send it or issue it first.",
   paid: "This invoice is paid. Nothing to scan.",
@@ -45,7 +45,7 @@ const STAFF = {
   charging: "A card charge is running on this invoice right now. Check again in a minute.",
   processing: "A bank payment is clearing for this invoice (a few days). No pay code until it does.",
   paused: "Online payment is paused right now. Take cash or a check.",
-};
+});
 export async function qrRefusal(inv, sor) {
   if (!inv || inv.deleted_at) return { code: "missing", message: "That invoice isn't here." };
   if (inv.import && sor !== "crm") return { code: "rotor_owns", message: STAFF.rotor_owns };
