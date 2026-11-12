@@ -21,7 +21,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | Page | Milestone | What it covers | Status |
 |---|---|---|---|
 | [CRM-CONTACTS.md](CRM-CONTACTS.md) | M2a | people, properties, intake from the website and Meta, merge review | live |
-| [CRM-SALES.md](CRM-SALES.md) | M2b | deals, follow-up cadences, Leads & calls, tasks, the Follow-ups wording | live |
+| [CRM-SALES.md](CRM-SALES.md) | M2b | deals, follow-up cadences, Leads & calls, tasks, the Follow-ups wording, Signs & flyers (QR codes, `/q/`) | live |
 | [CRM-IMPORT.md](CRM-IMPORT.md) | M2c | the Rotor export: pack, upload, phases, conflicts, report | live |
 | [CRM-QUOTES.md](CRM-QUOTES.md) | M3a | price book, pricing, quotes and portal approval | live |
 | [CRM-PLANS.md](CRM-PLANS.md) | M3b | care plans, agreements, Christmas lights seasons | live (in review) |
