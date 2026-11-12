@@ -60,7 +60,7 @@ export default {
         </section>
         <section class="card"><h2>Christmas lights</h2>
           <div class="grid2">${addOnField(s, "li", "lights_install", "Install, per foot")}${addOnField(s, "lm", "lights_materials", "Materials, per foot")}</div>
-          <div class="grid2"><label class="field"><span>Early Bird, percent off</span><input ${attrs({ name: "eb", inputmode: "numeric", value: c.lights.early_bird_bp / 100 })}></label>${moneyField("3-year contract, off", "ty", c.lights.three_year_off_cents)}</div>
+          <div class="grid2"><label class="field"><span>Early Bird, percent off</span><input ${attrs({ name: "eb", inputmode: "numeric", value: c.lights.early_bird_bp / 100 })}></label>${moneyField("3-year contract, off each season", "ty", c.lights.three_year_off_cents)}</div>
           ${[now, next].map((y) => html`<div class="grid2"><label class="field"><span>${y} first deadline</span><input ${attrs({ type: "date", name: `dl1_${y}`, value: dl(y)[0] || "", min: `${y}-01-01`, max: `${y}-12-31` })}></label><label class="field"><span>${y} final deadline</span><input ${attrs({ type: "date", name: `dl2_${y}`, value: dl(y)[1] || "", min: `${y}-01-01`, max: `${y}-12-31` })}></label></div>`)}
         </section>
         <section class="card"><h2>Quotes</h2>
@@ -90,7 +90,7 @@ export default {
         const d = [f[`dl1_${y}`].value, f[`dl2_${y}`].value].filter(Boolean).sort();
         if (d.length) deadlines[y] = d; else delete deadlines[y];
       }
-      c.lights = { ...c.lights, early_bird_bp: Math.round((Number(f.eb.value) || 0) * 100), three_year_off_cents: m("ty", 10000), deadlines };
+      c.lights = { ...c.lights, early_bird_bp: Math.round((Number(f.eb.value) || 0) * 100), three_year_off_cents: m("ty", 20000), deadlines };
       c.quote_expiry_days = parseInt(f.exp.value, 10) || 30;
       c.auto_convert = f.auto.checked;
       // the add-ons that changed: their price-book items

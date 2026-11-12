@@ -112,10 +112,12 @@ test("lights quote, pricing settings, discounts: render and escape", async () =>
   const lights = await load("lights");
   const cx = { pricing: P.PRICING_DEFAULTS, early_bird_deadline: "2026-12-01" };
   const lh = text(lights.render({ id: "qt_1", cx, runs: [{ label: "Roofline", feet: "120" }], pkg: "", usePkg: false, colors: ["warm_white"], early: true, three: false, every: true, warnings: [],
-    preview: { lines: P.lightsLines({ runs: [{ label: "Roofline", feet: 120 }] }, P.PRICING_DEFAULTS), discounts: [{ name: "Early Bird", type: "percentage", value: 5000 }] } }, ctx()));
-  assert.match(lh, /Early Bird 50% off \(until Tue, Dec 1\)/);
+    preview: { lines: P.lightsLines({ runs: [{ label: "Roofline", feet: 120 }] }, P.PRICING_DEFAULTS), discounts: [{ name: "Early Bird", type: "percentage", value: 5000, scope: { type: "all" } }], plan: { catalog_key: "lights_annual", visits_per_year: 1, term_months: 12 } } }, ctx()));
+  assert.match(lh, /Early Bird 50% off every season \(book by Tue, Dec 1\)/);
+  assert.match(lh, /3-year contract \(\$200 off every season\)/);
   assert.match(lh, /Christmas Light Installation/);
   assert.match(lh, /\$600\.00/, "120 ft × $10 = $1,200, 50% off");
+  assert.match(lh, /Each season[\s\S]*The same price every season\./, "the bulbs and the offers count every season (the owner, Nov 12)");
   const once = text(lights.render({ id: "qt_1", cx, runs: [{ label: "Roofline", feet: "120" }], pkg: "", usePkg: false, colors: [], early: false, three: true, every: false, warnings: [], preview: null }, ctx()));
   assert.match(once, /data-three="1" disabled/, "this season only: no 3-year contract");
   assert.match(once, /for every season only/);

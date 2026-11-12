@@ -204,3 +204,37 @@ test("review fixes on screen: a lights season waits for a yes, a held plan says 
   assert.match(th, /data-var="price_details"/);
   assert.match(text(one.render({ t: { ...t, body_md: "## {{plan_name}}\n\nText." }, etag: '"e"', preview: null }, ctx())), /data-approve/);
 });
+
+test("the owner's answers on screen (Nov 12): suggested wording beside an edited text, the lights storage fee, the late fee for one-time jobs too", async () => {
+  const list = await load("templates");
+  const lh = text(list.render({ rows: [{ id: "at_1", name: "Quarterly", version: 3, approved: true, active: true, catalog_keys: ["quarterly"], suggested: true }, { id: "at_2", name: "Biannual", version: 3, approved: false, active: true, catalog_keys: ["biannual"], suggested: false }] }, ctx()));
+  assert.equal((lh.match(/New wording/g) || []).length, 1, "only the text with a suggestion says so");
+  const one = await load("template");
+  const t = { id: "at_1", name: "Quarterly", version: 3, approved: true, active: true, body_md: "## Ours", suggested_body_md: `## New ${XSS}`, applies_to: { catalog_keys: ["quarterly"] } };
+  const oh = text(one.render({ t, etag: '"e"', preview: null }, ctx()));
+  assert.ok(!oh.includes("<script>alert(1)"));
+  assert.match(oh, /New suggested wording is available/);
+  assert.match(oh, /data-use-suggested/);
+  assert.match(oh, /data-keep-mine/);
+  assert.match(oh, /data-var="perks_details"/);
+  const ro = text(one.render({ t, etag: '"e"', preview: null }, ctx(["plans:read"])));
+  assert.match(ro, /New suggested wording is available/);
+  assert.doesNotMatch(ro, /data-use-suggested|data-keep-mine/, "only an owner picks");
+  assert.doesNotMatch(text(one.render({ t: { ...t, suggested_body_md: undefined }, etag: '"e"', preview: null }, ctx())), /suggested wording/);
+  // a 3-year lights plan ending early: the storage fee, said as one
+  const view = await load("plan");
+  const ending = text(view.render(planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx()));
+  assert.match(ending, /Storage fee for leaving the contract early: \$400\.00 \(to bill, waiting for your OK\)/);
+  assert.match(ending, /Storage fee billed/);
+  assert.match(ending, /Waive storage fee/);
+  const ended = text(view.render(planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelled", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx()));
+  assert.match(ended, /Storage fee for leaving the contract early: \$400\.00, to bill, waiting for your OK\./, "still said once the plan has ended");
+  const windows = text(view.render(planState({}, { status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 10000, clawback_state: "to_bill" } }), ctx()));
+  assert.match(windows, /First-visit discount back: \$100\.00/);
+  // Settings → Plans catalog: the storage fee and what the late fee covers
+  const CAT = await import("../../../netlify/lib/crm/modules/plans/catalog.mjs");
+  const settings = await load("settings");
+  const sh = text(settings.render({ cat: CAT.catalogWith({}), catEtag: "new", lights: { ...CAT.LIGHTS_DEFAULTS }, lightsEtag: "new", unsigned: [] }, ctx()));
+  assert.match(sh, /name="storage_fee" inputmode="decimal" value="400\.00"/);
+  assert.match(sh, /on a plan or a one-time job/);
+});

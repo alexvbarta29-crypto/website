@@ -64,7 +64,7 @@ export function renderInvoicePage({ invoice: inv, payments = [], contact, compan
   const options = (settings.tip_options_bp || [0, 1000, 1500, 2000]).filter((b) => Number.isSafeInteger(b));
   const tipsOn = !refusal && !paid && !closed && !draft && inv.kind !== "deposit" && inv.kind !== "fee";
   const head = `<p class="eyebrow">${inv.kind === "deposit" ? "Deposit" : "Invoice"} ${esc(inv.number)}</p><h1>${paid ? "Paid. Thank you!" : closed ? "This invoice is closed" : `${first ? esc(first) + ", here's" : "Here's"} your ${inv.kind === "deposit" ? "deposit" : "invoice"}`}</h1>
-    <p>${esc(company.legal_name || "BARTA WINDOW WASHING LLC")}${inv.issued_on ? ` · ${esc(dayWords(inv.issued_on))}` : ""}${!paid && !closed && inv.due_on ? ` · due ${esc(dayWords(inv.due_on))}` : ""}</p>`;
+    <p>${esc(company.legal_name || "Barta Window Washing LLC")}${inv.issued_on ? ` · ${esc(dayWords(inv.issued_on))}` : ""}${!paid && !closed && inv.due_on ? ` · due ${esc(dayWords(inv.due_on))}` : ""}</p>`;
   const totals = `<div class="tot"><span>Total</span><b>${esc(money(inv.total_cents))}</b></div>
     ${(inv.paid_cents || 0) - (inv.refunded_cents || 0) > 0 ? `<div class="tot"><span>Paid</span><b>−${esc(money((inv.paid_cents || 0) - (inv.refunded_cents || 0)))}</b></div>` : ""}
     <div class="tot big"><span>${paid ? "Balance" : "Balance due"}</span><b data-balance="${esc(String(inv.balance_cents || 0))}">${esc(money(inv.balance_cents))}</b></div>`;
@@ -96,7 +96,7 @@ export function renderInvoicePage({ invoice: inv, payments = [], contact, compan
 export function renderReceiptPage({ payment: p, invoice, company = {}, back }) {
   const total = (p.amount_cents || 0) + (p.tip_cents || 0);
   const how = `${METHOD[p.method] || "Payment"}${p.card && p.card.last4 ? ` ending ${p.card.last4}` : ""}`;
-  const body = `${MONEY_STYLE}<section class="card"><p class="eyebrow">Receipt</p><h1>Thank you!</h1><p>${esc(company.legal_name || "BARTA WINDOW WASHING LLC")}</p>
+  const body = `${MONEY_STYLE}<section class="card"><p class="eyebrow">Receipt</p><h1>Thank you!</h1><p>${esc(company.legal_name || "Barta Window Washing LLC")}</p>
     <dl class="kv"><dt>Paid on</dt><dd>${esc(dayWords(p.received_on))}</dd>${invoice ? `<dt>Invoice</dt><dd>${esc(invoice.number)}</dd>` : ""}<dt>Paid with</dt><dd>${esc(how)}</dd>
     <dt>For your service</dt><dd>${esc(money(p.amount_cents))}</dd>${p.tip_cents ? `<dt>Tip for the crew</dt><dd>${esc(money(p.tip_cents))}</dd>` : ""}
     ${p.refunded_cents ? `<dt>Refunded</dt><dd>−${esc(money(p.refunded_cents))}</dd>` : ""}</dl>

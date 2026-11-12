@@ -334,7 +334,7 @@ export const CORE_SETTINGS = Object.freeze({
   company: {
     perm: "settings:general",
     defaults: {
-      name: "Barta Window Washing", legal_name: "BARTA WINDOW WASHING LLC", phone: "(763) 314-3400",
+      name: "Barta Window Washing", legal_name: "Barta Window Washing LLC", phone: "(763) 314-3400",
       email: "office@bartawindowwashing.com", website: "https://www.bartawindowwashing.com",
       base: { label: "Delano shop", lat: 45.0419, lng: -93.7891 },
     },

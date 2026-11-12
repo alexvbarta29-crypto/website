@@ -1,7 +1,8 @@
 // Settings → Plans catalog & perks (design §9.2, §5.4 cfg/plans_catalog,
 // cfg/lights, D27, D29, D30; owners): each plan's visits a year, plan
 // discount, renewal, billing, autopay and
-// perks; the cancel notice and the late-cancel fee; the lights rebook date;
+// perks; the cancel notice and the late-cancel fee; the lights rebook date
+// and the storage fee for leaving a 3-year lights contract early;
 // and "Request signatures for N active plans" (imported plans have no
 // signature on file: one bulk run, test send and confirm first, D10).
 
@@ -47,11 +48,12 @@ export default {
           <p class="small muted">Cancelling in the first term after the first visit is done: the customer pays back the plan discount that visit got (each plan's own, worked out from what it was sold with).</p><div class="pl-grid">
           <label class="field"><span>Notice (days)</span><input ${attrs({ name: "notice_days", inputmode: "numeric", value: s.cat.notice_days })}></label>
           <label class="field"><span>Late-cancel fee</span><input ${attrs({ name: "late_fee", inputmode: "decimal", value: dollars(s.cat.late_cancel_fee_cents) })}></label>
-        </div><p class="small muted">The fee is charged only when an owner approves it. Never when we move a visit.</p></section>
+        </div><p class="small muted">Less than 24 hours' notice, or no access and no notice, on a plan or a one-time job. The fee is charged only when an owner approves it. Never when we move a visit.</p></section>
         <section class="card"><h2>Christmas lights</h2><div class="pl-grid">
           <label class="field"><span>Rebook text (MM-DD)</span><input ${attrs({ name: "rebook_on", value: s.lights.rebook_on, maxlength: 5 })}></label>
           <label class="field"><span>Installs by (MM-DD)</span><input ${attrs({ name: "install_by", value: s.lights.install_by, maxlength: 5 })}></label>
-        </div><p class="small muted">On the rebook date the CRM prepares one bulk text for last season's customers. Nothing goes out until you test and confirm it.</p></section>
+          <label class="field"><span>3-year contract: storage fee to leave early</span><input ${attrs({ name: "storage_fee", inputmode: "decimal", value: dollars(s.cat.lights_storage_fee_cents) })}></label>
+        </div><p class="small muted">The storage fee applies when a 3-year customer cancels inside the 36 months; like a clawback, it waits for an owner's OK. On the rebook date the CRM prepares one bulk text for last season's customers. Nothing goes out until you test and confirm it.</p></section>
         <p class="err" data-form-err hidden></p>
         <button type="submit" class="btn primary block">Save</button>
       </form>
@@ -79,7 +81,7 @@ export default {
       const btn = form.querySelector("[type=submit]");
       busy(btn, true);
       try {
-        await ctx.api("/settings/plans_catalog", { method: "PUT", ifMatch: s.catEtag, body: { ...s.cat, plans: { ...s.cat.plans, ...Object.fromEntries(KEYS.map((k) => [k, { ...(s.cat.plans[k] || {}), ...plans[k] }])) }, notice_days: Number(f("notice_days").value), late_cancel_fee_cents: readMoney(f("late_fee").value || "0") } });
+        await ctx.api("/settings/plans_catalog", { method: "PUT", ifMatch: s.catEtag, body: { ...s.cat, plans: { ...s.cat.plans, ...Object.fromEntries(KEYS.map((k) => [k, { ...(s.cat.plans[k] || {}), ...plans[k] }])) }, notice_days: Number(f("notice_days").value), late_cancel_fee_cents: readMoney(f("late_fee").value || "0"), lights_storage_fee_cents: readMoney(f("storage_fee").value || "0") } });
         await ctx.api("/settings/lights", { method: "PUT", ifMatch: s.lightsEtag, body: { ...s.lights, rebook_on: f("rebook_on").value.trim(), install_by: f("install_by").value.trim() } });
         toast("Saved"); ctx.refresh();
       } catch (er) { busy(btn, false); err.textContent = er.status === 412 ? "Someone else just saved these. Reload and try again." : er.message; err.hidden = false; }

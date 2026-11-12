@@ -38,8 +38,12 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
      monthly). Anything else comes from the price book.
   4. **Price it**: the engine fills a one-time option and, with a plan,
      a plan option next to it (quarterly: exterior on visits 1, 3, 4,
-     interior on visit 2, the plan discount every visit). Warnings say what
-     to confirm on site (screens estimated, over the last tier, sq ft only).
+     interior on visit 2, inside glass only, and the plan discount every
+     visit, visit 2 too). Screens, tracks and gutters on a plan option go
+     on the first visit only (the visit the customer asked for): a plan
+     never carries them onto its other visits; a later visit gets them
+     when the customer asks. Warnings say what to confirm on site (screens
+     estimated, over the last tier, sq ft only).
   5. Options (up to 3, one recommended): lines from the price book or
      custom, each with which visits it covers, optional add-ons the
      customer can tick; discounts from the catalog (or a typed amount for a
@@ -49,18 +53,20 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
      quantity of a tier line) changes only that way, so the line sheet
      locks those fields (a recount of screens or tracks is fine). A plan's
      own discount goes only on that plan, the 3-year contract only on a
-     plan, and on a Quarterly plan screens, tracks and gutters go with the
-     exterior visits (1, 3, 4), not the interior visit 2.
+     plan, and on a plan screens, tracks and gutters go on the visit the
+     customer asked for (the engine scopes them to the first visit).
   6. Notes for the customer, notes for the office, photos and the Light
      Studio mockup.
   The card and deposit section is hidden until the Money module (M5).
 - **Lights quote** (`#/quotes/:id/lights`): runs in feet from Light Studio,
-  or one package price; colors; Early Bird (until the deadline in effect),
-  3-year contract (every season only: the box is off for "this season
-  only", and the server refuses it); every season (a lights plan) or this
-  season only. Early Bird, the 3-year discount and the materials (the
-  bulbs) count on the first season only; later seasons are the install.
-  "Add to the quote" puts it on the quote as its own option.
+  or one package price; colors; Early Bird (sold until the deadline in
+  effect), 3-year contract ($200 off; every season only: the box is off for
+  "this season only", and the server refuses it); every season (a lights
+  plan) or this season only. The Early Bird 50% is how the lights price is
+  shown (the list price is double, then half off) and counts every season;
+  the 3-year $200 counts every season too, and the bulbs are in every
+  season's price, so each season costs the same as the first (the owner,
+  Nov 12). "Add to the quote" puts it on the quote as its own option.
 - **A quote**: number, status, who, where, good through; the timeline
   (made, sent, opened, changes asked, approved, booked); the actions its
   status allows: **Send** (text and/or email), **Present to customer**,
@@ -199,17 +205,35 @@ cents: $275 / $295 / $395 / $495 / $595 up to 20 / 40 / 60 / 80 / 100),
 `sqft_tiers`, `interior.per_segment_cents` ($80 per 20 panes),
 `screens.estimate_ratio`, `pane_weights`,
 `plan_discount_per_visit_cents.{biannual, quarterly, monthly}` ($50 /
-$100 / $150), `lights.{early_bird_bp, deadlines, three_year_off_cents,
-colors}`,
+$100 / $150), `lights.{early_bird_bp, deadlines, three_year_off_cents
+($200 off each season), colors}`,
 `discount_floor_cents` (a visit's floor, $0), `quote_expiry_days` (30),
 `auto_convert` (true). A change applies to the
 next quote; sent and imported quotes keep their prices.
 
 The add-ons priced per unit are their price-book items (one source):
-`screens` $5, `tracks_standard` $8 (D26), `tracks_premium` $15,
-`lights_install` $8 and `lights_materials` $2 a foot. cfg/pricing's
-`screens.each_cents`, `tracks.*` and `lights.*_per_ft_cents` are only a
-fallback for a book without that item.
+`screens` $5, `tracks_standard` $5 (light brush, vacuum, a wipe if needed),
+`tracks_premium` $15 (soap solution, deep scrub brush, wet/dry vacuum,
+wipe), `lights_install` $8 and `lights_materials` $2 a foot (the list
+price the Early Bird halves). cfg/pricing's `screens.each_cents`, `tracks.*`
+and `lights.*_per_ft_cents` are only a fallback for a book without that
+item.
+
+## Seeds
+
+- v1: the price book and the discount catalog, once each (an owner's
+  edits are never overwritten).
+- v2 (the owner's answers of Nov 12): on a live CRM, the seeded values
+  those answers changed move only where they still hold the first seed's
+  value: standard tracks $8 → $5 and both track descriptions, the Early
+  Bird's and the 3-year contract's default scope to every season, the
+  3-year $100 → $200, and on a saved Settings → Pricing page
+  `tracks.standard_cents` and `lights.three_year_off_cents` (through
+  `putSetting`: validated, in the settings journal with a diff). A value
+  someone changed stays theirs; the owners get one notice ("New suggested
+  prices") naming each, and the run's result lists them. Idempotent; it
+  touches no quote, plan or imported record (Rotor's quotes keep their
+  prices and scopes).
 
 ## Sweeps, queue kinds and listeners
 
