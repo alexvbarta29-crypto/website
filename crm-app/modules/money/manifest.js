@@ -24,7 +24,7 @@ export default {
     { where: "more", section: "money", label: "Autopay", path: "/autopay", perm: "invoices:read_all", order: 44, icon: "clock" },
   ],
   creates: [{ label: "New invoice", path: "/invoices/new", perm: "invoices:write", order: 27, icon: "money" }],
-  contactTabs: [{ key: "money", label: "Money", order: 55, load: () => import("./contact-tab.js") }],
+  contactTabs: [{ key: "money", label: "Money", title: "Invoices and payments", order: 55, place: "docs", perm: "invoices:read_all", load: () => import("./contact-tab.js") }],
   // on the single Visit screen (work/visit.js): the office and the visit's own techs
   visitActions: [{ key: "money.collect", label: "Collect payment", when: "any", perm: "payments:record", order: 30, icon: "money", load: () => import("./visit-collect.js") }],
   // the money strip on Home (amounts; the counts are Needs-you rows, declared on the server)

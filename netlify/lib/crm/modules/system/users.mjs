@@ -88,7 +88,7 @@ async function addUser(ctx) {
   return { status: 201, data: publicUser(created.data, { full: true }), etag: created.etag };
 }
 
-const SELF_FIELDS = ["name", "first_name", "last_name", "phone", "notify"];
+const SELF_FIELDS = ["name", "first_name", "last_name", "phone", "notify", "tabs"];
 const MANAGE_FIELDS = [...SELF_FIELDS, "email", "login", "role", "is_technician", "color", "grants", "denies", "pay", "availability"];
 const AUTH_FIELDS = ["role", "grants", "denies"];
 

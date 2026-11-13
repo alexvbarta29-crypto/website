@@ -26,31 +26,29 @@ for (const device of ["iphone13", "iphonese"]) {
     try {
       await f.click('#tabs [data-tab="contacts"]');
       await settled(f, { hash: "#/contacts" });
-      assert.equal(await title(f), "Contacts");
+      assert.equal(await title(f), "Customers");
       assert.match(await f.textContent("#ct-count"), /^2\d\d contacts/, "the 200 seeded people and the leads");
       assert.deepEqual(await screenProblems(f), [], "the list passes the phone checks");
       await shot(page, `contacts-list-${device}`);
       // search: by phone digits, then by name (one row each)
       const search = async (q, name) => {
         await f.fill("#ct-q", q);
-        await f.waitForFunction((n) => document.querySelectorAll("#ct-list a.row").length === 1 && document.getElementById("ct-list").textContent.includes(n), name, { timeout: 5000 });
+        await f.waitForFunction((n) => document.querySelectorAll("#ct-list .cc").length === 1 && document.getElementById("ct-list").textContent.includes(n), name, { timeout: 5000 });
       };
       await search("555-1902", "Blair Calledonce");
       await search("Newlead", "Avery Newlead");
-      await tap(page, f, "#ct-list a.row");
+      await tap(page, f, "#ct-list .cc-top");
       await settled(f, { hash: `#/contacts/${seeded.contacts.lead}` });
       assert.match(await f.textContent("#view"), /Avery Newlead/);
       assert.deepEqual(await screenProblems(f), [], "the contact passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `contacts-contact-${device}`);
-      // its tabs: Activity, Properties, then the Sales tab (M2b)
-      for (const tab of ["activity", "properties", "sales"]) {
-        await f.click(`#view [data-tab="${tab}"]`);
-        await f.waitForFunction((t) => document.querySelector(`#view [data-tab="${t}"]`).getAttribute("aria-pressed") === "true", tab);
-        await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 });
-      }
-      assert.match(await f.textContent("#view"), /New lead/i, "the Sales tab shows the follow-up");
-      assert.deepEqual(await screenProblems(f), [], "the Sales tab passes the phone checks");
+      // one page of sections (Nov 2026), no sideways tabs: Activity, Properties and the Sales section (M2b) all there
+      await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 });
+      for (const id of ["ct-sec-properties", "ct-sec-mod-sales", "ct-sec-activity"]) assert.ok(await f.$(`#${id}`), id);
+      assert.equal(await f.$("#view [role=tablist]"), null, "no tabs");
+      assert.match(await f.textContent("#ct-sec-mod-sales"), /New lead/i, "the Sales section shows the follow-up");
+      assert.deepEqual(await screenProblems(f), [], "the Sales section passes the phone checks");
       await shot(page, `contacts-sales-tab-${device}`);
       // back keeps the search
       await f.click("#top-back");

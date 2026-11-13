@@ -1,5 +1,8 @@
-// The contact's Plans tab (design §9.2 Contact): this contact's plans,
-// agreements waiting to be signed, Christmas lights seasons, and New plan.
+// The contact's plans (design §9.2 Contact; the "Service plan" section of
+// the contact page since the Nov 2026 layout, kept apart from one-time
+// jobs): this contact's plans, agreements waiting to be signed, Christmas
+// lights seasons, and New plan. header() gives the contact page its plan
+// badge ("Quarterly plan", "Christmas lights plan +1").
 
 import { html, icon } from "../../core/ui.js";
 import { ensureStyles, planRow, SEASON } from "./kit.js";
@@ -13,6 +16,14 @@ export default {
       ctx.api(`/agreements?contact=${encodeURIComponent(params.id)}`, { cache: false }),
     ]);
     return { id: params.id, rows: plans.data || [], agreements: (ags.data || []).filter((a) => ["sent", "viewed", "draft"].includes(a.status)) };
+  },
+  // the plan badge: the live plan's name (a second one as "+1"), or the one waiting to be signed
+  header(s) {
+    const rows = s.rows || [];
+    const live = rows.filter((r) => ["active", "cancelling", "paused"].includes(r.st));
+    if (live.length) return { plan: `${live[0].nm || "Plan"}${live.length > 1 ? ` +${live.length - 1}` : ""}` };
+    const waiting = rows.find((r) => r.st === "pending");
+    return waiting ? { plan: `${waiting.nm || "Plan"}, not signed yet` } : {};
   },
   render(s, ctx) {
     if (s.denied) return html`<div class="card empty"><h2>Not for this login</h2><p>Plans are for the office.</p></div>`;

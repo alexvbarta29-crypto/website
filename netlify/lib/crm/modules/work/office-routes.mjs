@@ -263,7 +263,7 @@ const jobs = async (ctx) => {
 async function contactJobs(contactId) {
   const rel = await listRel("contact-jobs", contactId, { limit: 40 });
   const got = (await getRecords("job", rel.map((r) => r.id))).filter(Boolean).map((g) => g.data).filter((j) => !j.deleted_at && j.contact_id === contactId);
-  return got.map((j) => ({ id: j.id, number_label: j.number_label, title: j.title, kind: j.kind, status: j.status, totals: j.totals, schedule: j.schedule || {}, target_month: j.target_month || null, visit_ids: j.visit_ids || [], created_at: j.created_at, completed_at: j.completed_at || null }));
+  return got.map((j) => ({ id: j.id, number_label: j.number_label, title: j.title, kind: j.kind, status: j.status, totals: j.totals, schedule: j.schedule || {}, target_month: j.target_month || null, visit_ids: j.visit_ids || [], created_at: j.created_at, completed_at: j.completed_at || null, plan_id: j.plan_id || null }));
 }
 
 // GET /work/contacts/:id: the contact's Work tab: jobs and their visits.
@@ -276,7 +276,8 @@ const contactWork = async (ctx) => {
   const today = localDate(now());
   const upcoming = visits.filter((v) => OPEN_VISIT.includes(v.status) && v.date >= today).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
   const past = visits.filter((v) => !(OPEN_VISIT.includes(v.status) && v.date >= today)).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start)).slice(0, 20);
-  const slim = (v) => ({ id: v.id, job_id: v.job_id, date: v.date, start: v.start, end: v.end, window: v.window, status: v.status, assignee_ids: v.assignee_ids || [], job_title: v.job_title, job_number: v.job_number, date_only: v.date_only === true });
+  // (plan_id: the contact page keeps a plan's visits apart from one-time work)
+  const slim = (v) => ({ id: v.id, job_id: v.job_id, date: v.date, start: v.start, end: v.end, window: v.window, status: v.status, assignee_ids: v.assignee_ids || [], job_title: v.job_title, job_number: v.job_number, date_only: v.date_only === true, plan_id: v.plan_id || null });
   return { data: { contact: { id: contact.id, display_name: contact.display_name }, jobs: list.map(({ visit_ids, ...j }) => j), upcoming: upcoming.map(slim), past: past.map(slim) } };
 };
 

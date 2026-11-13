@@ -193,8 +193,9 @@ test("the person's cards: their order first, then the defaults; a card they can'
   assert.deepEqual(K.normalizeBoard(null, "techs", "2026-11").rows, []);
 });
 
-test("the tab bar: Home · Inbox · Schedule · Customers · Sales · Menu for the office; techs keep theirs", () => {
-  assert.deepEqual(navFor({ role: "owner" }), ["home", "inbox", "schedule", "contacts", "sales", "menu"]);
+test("the tab bar: Home · Schedule · Inbox · Customers · Sales · Menu for the office; techs keep theirs", () => {
+  assert.deepEqual(navFor({ role: "owner" }), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+  assert.deepEqual(navFor({ role: "admin" }), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
   assert.deepEqual(navFor({ role: "tech" }), ["today", "inbox", "time", "pay", "me"]);
 });
 
@@ -239,7 +240,7 @@ test("an owner's Home: the header, Clock in, Money and Today on; the others offe
   const d = res.body.data;
   assert.equal(d.date, TODAY);
   assert.equal(d.user.first_name, "Olive");
-  assert.deepEqual(d.layout, [{ key: "clock", on: true }, { key: "money", on: true }, { key: "agenda", on: true }, { key: "inbox", on: false }, { key: "tasks", on: false }, { key: "goals", on: false }], "no leaderboard without the reports module's service");
+  assert.deepEqual(d.layout, [{ key: "clock", on: true }, { key: "money", on: true }, { key: "agenda", on: true }, { key: "leaderboard", on: false }, { key: "inbox", on: false }, { key: "tasks", on: false }, { key: "goals", on: false }], "the leaderboard is offered (the reports module's service is merged), off");
   assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "clock", "money"], "a card that is off isn't computed");
   assert.deepEqual(d.cards.clock, { minutes: 0, open: null });
   // money: Rotor's numbers until cutover, this month
@@ -295,10 +296,17 @@ test("Edit Home: the person's cards on, off and in their order, saved per person
   const save = (as, cards) => t.api("/home/layout", { method: "PUT", as, body: { cards } });
   const r = await save(fx.owner, [{ key: "tasks", on: true }, { key: "agenda", on: true }, { key: "money", on: true }, { key: "clock", on: false }, { key: "inbox", on: true }, { key: "goals", on: true }, { key: "leaderboard", on: true }]);
   assert.equal(r.status, 200, JSON.stringify(r.body));
-  assert.deepEqual(r.body.data.layout.map((c) => `${c.key}:${c.on}`), ["tasks:true", "agenda:true", "money:true", "clock:false", "inbox:true", "goals:true"], "the leaderboard isn't open to them (no service): dropped");
+  assert.deepEqual(r.body.data.layout.map((c) => `${c.key}:${c.on}`), ["tasks:true", "agenda:true", "money:true", "clock:false", "inbox:true", "goals:true", "leaderboard:true"]);
   const d = await home(fx.owner);
-  assert.deepEqual(d.layout.filter((c) => c.on).map((c) => c.key), ["tasks", "agenda", "money", "inbox", "goals"]);
-  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "money", "tasks"], "the clock is off: not read");
+  assert.deepEqual(d.layout.filter((c) => c.on).map((c) => c.key), ["tasks", "agenda", "money", "inbox", "goals", "leaderboard"]);
+  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "leaderboard", "money", "tasks"], "the clock is off: not read");
+  assert.ok(Array.isArray(d.cards.leaderboard.rows), "the reports module's own rows");
+  // without the reports module's service the card isn't open to them: dropped
+  const hide = S.__swapServiceForTests("reports.leaderboard", null);
+  try {
+    const r2 = await save(fx.owner, [{ key: "tasks", on: true }, { key: "leaderboard", on: true }]);
+    assert.ok(!r2.body.data.layout.some((c) => c.key === "leaderboard"));
+  } finally { hide(); }
   assert.ok(Array.isArray(d.cards.tasks.items) && d.cards.tasks.can_add);
   assert.ok(Array.isArray(d.cards.inbox.items));
   assert.deepEqual(d.cards.goals, { month: "2026-11", revenue: null, jobs: null, can_edit: true });
@@ -399,7 +407,11 @@ test("the agenda's own read: a week and a month; a day with nothing booked is em
 });
 
 test("the leaderboard waits for the reports module's service: hidden without it, its rows with it", async () => {
-  assert.equal((await t.api("/home/leaderboard", { as: fx.owner })).status, 404);
+  const hide = S.__swapServiceForTests("reports.leaderboard", null);
+  try {
+    assert.equal((await t.api("/home/leaderboard", { as: fx.owner })).status, 404);
+    assert.ok(!(await home(fx.owner)).layout.some((c) => c.key === "leaderboard"), "hidden without the service");
+  } finally { hide(); }
   const asked = [];
   const put = S.__swapServiceForTests("reports.leaderboard", async (q) => { asked.push(q.board); return { rows: [{ user_id: fx.owner.id, name: "Olive Owner", value_cents: 120000, count: 2 }] }; });
   try {
@@ -415,7 +427,10 @@ test("the leaderboard waits for the reports module's service: hidden without it,
     put();
     await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [] } });
   }
-  assert.ok(!(await home(fx.owner)).layout.some((c) => c.key === "leaderboard"), "gone again with the service");
+  // the reports module's own answer: rows Home reads (name, colour, the money, a short note)
+  const real = await t.api("/home/leaderboard?board=techs", { as: fx.owner });
+  assert.equal(real.status, 200, JSON.stringify(real.body));
+  assert.ok(Array.isArray(real.body.data.rows) && real.body.data.rows.every((x) => x.name && typeof x.value === "number"));
 });
 
 test("the snapshot is opened once per warm instance, and a missing key says why without numbers", async () => {
@@ -449,4 +464,27 @@ test("Home keeps the modules' Today cards off; Edit Home is in My account; the M
   assert.equal(today.title({ role: "owner" }), "Home");
   assert.equal(today.title({ role: "tech" }), "Today");
   assert.ok(sys.routes.some((r) => r.path === "/dashboard/:view"), "the full dashboards stay (Money's See more)");
+});
+
+// ------------------------------------------------------------ the client's navigation
+
+test("the Menu: every manifest's Menu entry names a known section; an older shell's bar becomes today's", async () => {
+  const nav = await import("../../../crm-app/core/nav.js");
+  const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
+  const known = new Set(nav.SECTIONS.map(([k]) => k));
+  const entries = MANIFESTS.flatMap((m) => (m.nav || []).filter((n) => n.where === "more").map((n) => ({ ...n, module: m.name })));
+  assert.ok(entries.length >= 20);
+  assert.deepEqual(entries.filter((n) => !known.has(n.section)).map((n) => `${n.module}: ${n.label}`), [], "each entry says its section");
+  for (const want of ["work", "sales", "customers", "messages", "office", "admin"]) assert.ok(entries.some((n) => n.section === want), want);
+  assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+  assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
+  assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));
+  for (const key of navFor({ role: "owner" })) assert.ok(nav.TABS[key], `a tab for ${key}`);
+  assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/pipeline", "/leads", "/calls", "/quotes", "/tasks"]);
+  const sys = MANIFESTS.find((m) => m.name === "system");
+  assert.ok(sys.routes.some((r) => r.path === "/menu"));
+  // the Dashboard is out of the bar, still reachable (Money's "See more", Menu → Admin, old office links)
+  assert.ok(!navFor({ role: "owner" }).includes("dashboard"));
+  assert.ok(sys.routes.some((r) => r.path === "/dashboard/:view"));
+  assert.ok(entries.some((n) => n.path === "/dashboard" && n.section === "admin"));
 });

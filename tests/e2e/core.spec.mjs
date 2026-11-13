@@ -42,8 +42,8 @@ test("one app: office sign-in → first-owner setup (the office password again) 
     await settled(f);
     assert.equal(await title(f), "Home");
     assert.equal(await page.$(".bar .nav"), null, "still one app");
-    // the office's bar: Home · Inbox · Schedule · Customers · Sales · Menu (the Dashboard's numbers are on Home, its views under Menu)
-    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Inbox", "Schedule", "Customers", "Sales", "Menu"]);
+    // the office's bar (Nov 2026): Home · Schedule · Inbox · Customers · Sales · Menu (the Dashboard's numbers are on Home, its views in the Menu)
+    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
     assert.equal(await f.$('.tabs [data-tab="dashboard"], .tabs [data-more]'), null, "no Dashboard tab, no More sheet");
     await p.clean();
   } finally {
@@ -63,12 +63,14 @@ async function office(opts = {}, login = "olive", hash = "") {
 }
 const frameUrls = (page) => page.frames().map((x) => x.url()).filter((u) => /^https?:/.test(u));
 
-test("one app: the Dashboard (Menu → Admin) switches its views in place; Menu stays lit", async () => {
+test("one app: the Dashboard (Menu → Reports) switches its views in place; Menu stays lit", async () => {
   const { p, page, f } = await office({ office: true });
   try {
+    // the Menu is a sheet (Flyra's): its Reports row opens the Dashboard
+    await noInstallCard(page);
     await f.click('#tabs [data-tab="menu"]');
-    await settled(f, { hash: "#/menu" });
-    await f.click('.mtile[href="#/dashboard"]');
+    await f.waitForSelector(".menu-sheet.on");
+    await f.click('.menu-sheet a[href="#/dashboard"]');
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
@@ -100,20 +102,19 @@ test("one app: the Dashboard (Menu → Admin) switches its views in place; Menu 
 test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    await f.click('#tabs [data-tab="menu"]');
-    await settled(f, { hash: "#/menu" });
-    const sections = await f.$$eval(".menu-sec", (els) => els.map((e) => [e.querySelector(".section-h").textContent, [...e.querySelectorAll(".mtile .ml")].map((x) => x.textContent)]));
-    const of = (name) => (sections.find(([h]) => h === name) || [null, []])[1];
-    for (const want of ["Light Studio", "Purchases", "Giveaway", "Rotor"]) assert.ok(of("Office tools").includes(want), `Office tools lists ${want}: ${JSON.stringify(sections)}`);
-    for (const want of ["Leads & calls", "Quotes", "Tasks", "Follow-ups"]) assert.ok(of("Sales").includes(want), `Sales lists ${want}`);
-    for (const want of ["Schedule", "Jobs", "To book", "Plans", "Lights season"]) assert.ok(of("Work").includes(want), `Work lists ${want}`);
-    for (const want of ["Contacts", "Merge review", "Import from Rotor"]) assert.ok(of("Customers").includes(want), `Customers lists ${want}`);
-    for (const want of ["Outbox", "Templates", "Automations", "Approvals"]) assert.ok(of("Messages & automations").includes(want), `Messages lists ${want}`);
-    for (const want of ["Dashboard", "Activity", "Team", "Settings"]) assert.ok(of("Admin").includes(want), `Admin lists ${want}`);
+    // the Menu page (old #/menu links; Rotor's More): every screen once, in groups, Sign out at the bottom
+    await goTo(f, "/menu");
+    const groups = await f.$$eval(".menu-page .ms-grp", (els) => els.map((e) => [(e.querySelector(".ms-h") || {}).textContent || "", [...e.querySelectorAll(".ms-l")].map((x) => x.textContent)]));
+    const all = await f.$$eval(".menu-page .ms-l, .menu-page .ms-tile span", (els) => els.map((e) => e.textContent));
+    const of = (name) => (groups.find(([h]) => h === name) || [null, []])[1];
+    for (const want of ["Light Studio", "Purchases", "Giveaway", "Rotor"]) assert.ok(of("Office tools").includes(want), `Office tools lists ${want}: ${JSON.stringify(groups)}`);
+    for (const want of ["Home", "Schedule", "Inbox", "Customers", "Leads", "Pipeline", "Quotes", "Plans", "Leaderboard", "My performance", "Visits", "Reports", "Automations",
+      "Leads & calls", "Tasks", "Follow-ups", "Jobs", "To book", "Lights season", "Merge review", "Import from Rotor", "Outbox", "Templates", "Approvals", "Activity", "Team", "Tab bar", "Settings"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
+    assert.equal(new Set(all).size, all.length, "each once");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
     assert.deepEqual(await screenProblems(f), [], "the Menu passes the phone checks");
     await shot(page, "core-menu");
-    await f.click('.mtile[href="#/tools/lights"]');
+    await f.click('.menu-page a[href="#/tools/lights"]');
     await settled(f, { hash: "#/tools/lights" });
     assert.equal(await hashOf(f), "#/tools/lights");
     assert.equal(await title(f), "Lights");
@@ -199,13 +200,13 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     // the list keeps its search and scroll when you come back
     await f.fill("#ct-q", "example");
     await page.waitForTimeout(400);
-    const rows = await f.$$("#ct-list a.row");
+    const rows = await f.$$("#ct-list a.cc-top");
     assert.ok(rows.length > 10, `the search finds people (${rows.length})`);
     await f.evaluate(() => { document.getElementById("ct-scroll").scrollTop = 300; });
     await page.waitForTimeout(150);
     const scrolled = await f.evaluate(() => document.getElementById("ct-scroll").scrollTop);
-    const row = await f.$$eval("#ct-list a.row", (as) => { const a = as.find((x) => x.getBoundingClientRect().top > 220); return a.getAttribute("href"); });
-    await tap(page, f, `#ct-list a.row[href="${row}"]`);
+    const row = await f.$$eval("#ct-list a.cc-top", (as) => { const a = as.find((x) => x.getBoundingClientRect().top > 220); return a.getAttribute("href"); });
+    await tap(page, f, `#ct-list a.cc-top[href="${row}"]`);
     await settled(f, { hash: row });
     // the edge swipe: a touch from the left edge, 170 px to the right
     const o = await frameOffset(page, f);
@@ -215,7 +216,7 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     const back = await f.evaluate(() => document.getElementById("ct-scroll").scrollTop);
     assert.ok(Math.abs(back - scrolled) < 40, `the scroll is kept (${back} vs ${scrolled})`);
     // a swipe that starts away from the edge does nothing
-    await tap(page, f, `#ct-list a.row[href="${row}"]`);
+    await tap(page, f, `#ct-list a.cc-top[href="${row}"]`);
     await settled(f, { hash: row });
     await swipe(page, { x: o.x + 120, y: o.y + 420 }, { x: o.x + 300, y: o.y + 430 });
     await page.waitForTimeout(400);
@@ -243,10 +244,10 @@ test("sheets close on the close button, on a swipe down and on back", async () =
   try {
     const open = () => f.$$eval(".sheet", (els) => els.filter((e) => e.classList.contains("on")).length);
     const gone = async () => { for (let i = 0; i < 30 && (await f.$(".sheet")); i++) await page.waitForTimeout(50); return !(await f.$(".sheet")); };
-    // the close button on the create sheet (Customers has the create button; Home has its quick actions)
-    assert.equal(await f.$("#fab"), null, "Home: the quick actions, no create button");
+    // the close button on the Menu sheet (Nov 2026: the + is an overlay, the Menu a sheet)
+    assert.equal(!!(await f.$("#fab")), true, "Home: the + button");
     await goTo(f, "/contacts");
-    await f.click("#fab");
+    await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".sheet.on");
     assert.equal(await open(), 1);
     assert.deepEqual(await screenProblems(f), [], "the sheet passes the phone checks");
@@ -254,7 +255,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await f.click(".sheet [data-sheet-x]");
     assert.ok(await gone(), "the close button closes it");
     // a swipe down from the sheet's head
-    await f.click("#fab");
+    await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const o = await frameOffset(page, f);
@@ -263,7 +264,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await swipe(page, { x: o.x + h1.x, y: o.y + h1.y }, { x: o.x + h1.x, y: o.y + h1.y + 220 });
     assert.ok(await gone(), "a swipe down closes it");
     // a short drag springs back
-    await f.click("#fab");
+    await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const h2 = await headAt();
@@ -368,9 +369,9 @@ test("the office tells the CRM frame its safe areas (office:insets)", async () =
       return { top: cs.getPropertyValue("--sat").trim(), bottom: cs.getPropertyValue("--sab").trim(), tabsPad: getComputedStyle(document.getElementById("tabs")).paddingBottom, tabsBottom: Math.round(tabs.bottom), h: innerHeight, topPad: getComputedStyle(document.querySelector(".top")).paddingTop };
     });
     assert.equal(got.top, "47px", "solo: the CRM's own top bar takes the notch");
-    assert.equal(got.tabsPad, "34px", "the tab bar sits above the home bar");
+    // the floating pill (Nov 2026) sits 10 px above the home bar
     assert.equal(got.topPad, "47px");
-    assert.equal(got.tabsBottom, got.h, "the tab bar is fully on screen");
+    assert.equal(got.tabsBottom, got.h - 34 - 10, "the tab bar floats above the home bar, fully on screen");
     await shot(page, "core-insets");
     await p.clean();
   } finally { await p.close(); }
@@ -464,8 +465,8 @@ test("every client route in the manifests, as owner and tech, at both phone size
           const where = `${login} ${device} ${r}`;
           for (const x of await screenProblems(f)) problems.push(`${where}: ${x}`);
           for (const x of await badLinks(f)) problems.push(`${where}: a link that leaves in this tab ${x}`);
-          const bar = await f.evaluate(() => { const t = document.getElementById("tabs"); if (!t || t.offsetParent === null || getComputedStyle(t).display === "none") return null; const b = t.getBoundingClientRect(); return { bottom: b.bottom, h: innerHeight, pad: getComputedStyle(t).paddingBottom }; });
-          if (bar && (bar.bottom > bar.h + 0.5 || bar.pad !== "34px")) problems.push(`${where}: the tab bar is not fully above the home bar (${JSON.stringify(bar)})`);
+          const bar = await f.evaluate(() => { const t = document.getElementById("tabs"); if (!t || t.offsetParent === null || getComputedStyle(t).display === "none") return null; const b = t.getBoundingClientRect(); return { bottom: b.bottom, h: innerHeight }; });
+          if (bar && bar.bottom > bar.h - 34 + 0.5) problems.push(`${where}: the tab bar is not fully above the home bar (${JSON.stringify(bar)})`);
           await shot(p.page, `route-${login}-${device}${path.replace(/[/:]/g, "_").replace(/_[a-z]{2}_[0-9a-z]{20}/g, "_id")}`);
         }
         await p.clean();

@@ -8,6 +8,9 @@ export default {
   name: "sales",
   routes: [
     { path: "/calls", load: () => import("./calls.js"), title: "Leads & calls", perm: "sales:work", parent: "/today", skeleton: "list" },
+    // the Sales tab's first screens (the Nov 2026 layout, after Rotor's): Pipeline, then Leads
+    { path: "/pipeline", load: () => import("./pipeline.js"), title: "Pipeline", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/leads", load: () => import("./leads.js"), title: "Leads", perm: "sales:work", parent: "/today", skeleton: "list" },
     { path: "/calls/log", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/calls" },
     { path: "/calls/log/:contact", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/contacts/:contact" },
     { path: "/enrollments/:id", load: () => import("./enrollment.js"), title: "Follow-up", perm: "sales:work", parent: "/calls" },
@@ -26,6 +29,8 @@ export default {
     { path: "/signs/:id", load: () => import("./sign.js"), title: "Code", perm: "signs:manage", parent: "/signs" },
   ],
   nav: [
+    { where: "more", section: "sales", label: "Pipeline", path: "/pipeline", perm: "sales:work", order: 18, icon: "pipeline" },
+    { where: "more", section: "sales", label: "Leads", path: "/leads", perm: "sales:work", order: 19, icon: "target" },
     { where: "more", section: "sales", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
     { where: "more", section: "sales", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
     { where: "more", section: "sales", label: "Signs & flyers", path: "/signs", perm: "signs:manage", order: 24, icon: "grid" },
@@ -34,7 +39,7 @@ export default {
     { label: "Log a call", path: "/calls/log", perm: "sales:work", order: 30, icon: "phone" },
     { label: "New task", path: "/tasks/new", perm: "sales:work", order: 40, icon: "check" },
   ],
-  contactTabs: [{ key: "sales", label: "Sales", order: 40, load: () => import("./contact-tab.js") }],
+  contactTabs: [{ key: "sales", label: "Sales", order: 40, place: "more", heading: "Follow-ups and tasks", perm: "sales:work", load: () => import("./contact-tab.js") }],
   visitActions: [],
   // one card on Today: calls due now and leads that need attention (the office), my tasks (everyone)
   // (home: false: on the office's Home the same counts are "Needs you" rows from the server's attention)

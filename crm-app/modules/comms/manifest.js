@@ -7,7 +7,7 @@
 export default {
   name: "comms",
   routes: [
-    { path: "/inbox", load: () => import("./inbox.js"), title: "Inbox", perm: "inbox:read", skeleton: "list", split: true },
+    { path: "/inbox", load: () => import("./inbox.js"), title: "Messages", perm: "inbox:read", skeleton: "list", split: true },
     { path: "/inbox/new", load: () => import("./compose.js"), title: "Text someone", perm: "contacts:read_all", parent: "/inbox" },
     { path: "/inbox/:id", load: () => import("./thread.js"), title: "Conversation", perm: "inbox:read", parent: "/inbox" },
     { path: "/campaigns", load: () => import("./campaigns.js"), title: "Campaigns", perm: "campaigns:write", parent: "/menu", skeleton: "list" },
@@ -20,7 +20,7 @@ export default {
     { where: "more", section: "messages", label: "Reviews", path: "/reviews", perm: "reviews:match", order: 30, icon: "check" },
   ],
   creates: [{ label: "Text someone", path: "/inbox/new", perm: "contacts:read_all", order: 50, icon: "text" }],
-  contactTabs: [{ key: "messages", label: "Messages", order: 70, load: () => import("./contact-tab.js") }],
+  contactTabs: [{ key: "messages", label: "Messages", order: 70, place: "aside", perm: "inbox:read", load: () => import("./contact-tab.js") }],
   visitActions: [],
   todayCards: [],
   settings: [{ label: "Texting, email & reviews", path: "/settings/texting", perm: "settings:messaging", icon: "text", order: 47 }],

@@ -27,12 +27,18 @@ export const statusText = (m) => (m.status === "blocked" && m.blocked_reason ? `
 export const isBad = (m) => ["failed", "undelivered", "blocked"].includes(m.status);
 export const ORIGIN = { automation: "automatic", cadence: "follow-up", campaign: "campaign", system: "automatic" };
 
-export const convRow = (c) => html`<li><a class="${"row cm-row" + (c.unread ? " unread" : "")}" href="${"#/inbox/" + encodeURIComponent(c.id)}">
-  <span class="avatar" aria-hidden="true">${initials(c.contact_name)}</span>
+// A pastel circle per person (the colour follows the name; Rotor's inbox).
+const PASTEL = [["#e3ecfb", "#1d4ed8"], ["#e3f5ea", "#0b6b44"], ["#efe8fb", "#5b3fd6"], ["#fdf0dc", "#7a4f12"], ["#fde6e3", "#b42318"], ["#e2f3f4", "#0e6b73"]];
+const pastel = (name) => { let h = 0; for (const ch of String(name || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PASTEL[h % PASTEL.length]; };
+export const convRow = (c) => {
+  const [bg, fg] = pastel(c.contact_name);
+  return html`<li><a class="${"row cm-row" + (c.unread ? " unread" : "")}" href="${"#/inbox/" + encodeURIComponent(c.id)}">
+  <span class="avatar cm-av" aria-hidden="true" ${attrs({ style: `background:${bg};color:${fg}` })}>${initials(c.contact_name)}</span>
   <span class="who"><span class="nm"><b>${c.contact_name || "Someone"}</b>${c.channel === "email" ? html`<span class="cm-ch" title="Email">${icon("mail")}</span>` : ""}</span>
     <span class="sub">${c.last_direction === "out" ? "You: " : ""}${c.last_preview || "No messages yet"}</span></span>
-  <span class="end"><span class="small muted">${c.last_at ? ago(c.last_at) : ""}</span>${c.unread ? html`<span class="cm-dot" role="img" ${attrs({ "aria-label": `${c.unread} unread` })}></span>` : c.needs_reply ? html`<span class="pill amber">Needs reply</span>` : ""}</span>
+  <span class="end"><span class="small muted">${c.last_at ? ago(c.last_at) : ""}</span>${c.unread ? html`<span class="cm-n" role="img" ${attrs({ "aria-label": `${c.unread} unread` })}>${c.unread > 99 ? "99+" : String(c.unread)}</span>` : c.needs_reply ? html`<span class="pill amber">Needs reply</span>` : ""}</span>
 </a></li>`;
+};
 
 // One message as a bubble. o: { expanded: Set of ids whose whole text is loaded }
 export function bubble(m) {

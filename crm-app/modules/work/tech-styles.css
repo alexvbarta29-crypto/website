@@ -47,18 +47,7 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
 .tf-state-top h2{flex:1;margin:0}
 .tf-run{font:800 30px/1 var(--head);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .tf-run small{display:block;margin-top:4px;font:500 13px/1.3 var(--text);color:var(--ink-3)}
-.tf-big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tf-big .btn{min-height:52px;padding:0 12px;white-space:normal;line-height:1.15;text-align:center}
-.tf-big .btn.wide{grid-column:1/-1}
-/* on a phone the big buttons ride in a bar over the tab bar: Start and On my way are never below the fold */
-@media (max-width:899px){
-  .tf-panel.has-bar{padding-bottom:132px}
-  .tf-panel.has-bar .tf-big{position:fixed;z-index:5;left:calc(12px + var(--left));right:calc(12px + var(--right));bottom:calc(var(--tabs-h) + var(--bottom) + 10px + var(--lift,0px));padding:10px;border-radius:var(--r-xl);background:rgba(255,255,255,.96);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border:1px solid var(--line);box-shadow:0 10px 30px rgba(14,14,18,.14)}
-  .app.no-tabs .tf-panel.has-bar .tf-big{bottom:calc(var(--bottom) + 10px + var(--lift,0px))}
-  .tf-panel.has-bar .tf-big:empty{display:none}
-  /* toasts sit above the bar, never on its buttons */
-  body:has(.tf-panel.has-bar .tf-big:not(:empty)) .toasts{bottom:calc(var(--tabs-h) + var(--bottom) + 98px + var(--lift,0px))}
-}
+/* (the visit's next step is the Visit screen's one big button: visit-styles.css) */
 .tf-small{display:flex;flex-wrap:wrap;gap:8px}
 .tf-small .btn{flex:1 1 40%;padding:0 12px}
 .tf-sent{margin:0;padding:10px 14px;border-radius:var(--r);background:var(--mist);border:1px solid var(--line);font-size:13.5px}

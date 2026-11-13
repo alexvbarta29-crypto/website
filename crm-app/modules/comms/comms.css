@@ -47,3 +47,17 @@
 .cm-stat span{font-size:12px;color:var(--ink-3)}
 .cm-url{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;background:var(--mist);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
 @media (min-width:900px){.cm-msg{max-width:70%}}
+
+/* ---------------------------------------------------------------- Messages (inbox.js; Flyra's header, Rotor's rows) */
+.cm-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;border-radius:999px;background:var(--mist-2);color:var(--ink-3)}
+.cm-search svg{width:19px;height:19px;flex:none}
+.cm-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:400 16px/1 var(--text);color:var(--ink)}
+.cm-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.cm-seg{flex:1 1 230px;display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--mist-2)}
+.cm-seg button{flex:1 0 auto;min-width:44px;min-height:44px;padding:0 10px;border:0;border-radius:999px;background:none;color:var(--ink-3);font:500 14px/1 var(--text);cursor:pointer}
+.cm-seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(18,18,21,.12)}
+.cm-unread{display:flex;align-items:center;gap:2px;font:500 14px/1 var(--text);color:var(--ink-2)}
+.cm-kind select{width:100%;min-height:46px;padding:0 40px 0 16px;border:1px solid var(--line-2);border-radius:var(--r-lg);background:#fff;font:500 16px/1 var(--text);color:var(--ink);-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.cm-list .cm-row{min-height:72px}
+.cm-av{width:46px;height:46px;font-size:15px}
+.cm-n{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 12px/22px var(--text);text-align:center}

@@ -213,10 +213,10 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
     await checks(f, page, "field-owner-today-iphonese", problems);
     // the Menu has Time, Pay and Timesheets (Work)
     await f.click('#tabs [data-tab="menu"]');
-    await settled(f, { hash: "#/menu" });
-    const labels = await f.$$eval(".menu-sec .mtile .ml", (els) => els.map((e) => e.textContent));
+    await f.waitForSelector(".menu-sheet.on");
+    const labels = await f.$$eval(".menu-sheet .ms-l", (els) => els.map((e) => e.textContent));
     for (const want of ["Time", "Pay", "Timesheets"]) assert.ok(labels.includes(want), `the Menu lists ${want}`);
-    await f.click('.menu-sec a[href="#/timesheets"]');
+    await f.click('.menu-sheet a[href="#/timesheets"]');
     await settled(f, { hash: "#/timesheets" });
     await f.waitForSelector(`[data-approve="${seeded.users.tech.id}"]`);
     await f.waitForSelector("[data-decide]");

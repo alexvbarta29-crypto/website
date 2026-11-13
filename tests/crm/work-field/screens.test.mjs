@@ -70,7 +70,9 @@ test("the field panel: buttons by status, the checklist by kind, photos waiting 
   const c = (data = {}) => ({ ...ctx(), data: { job: { lines: [{ id: "ln_1", title: `Screens ${XSS}`, qty_milli: 12000, total_cents: 6000 }], totals: { total_cents: 35500 } }, can: { prices: true }, ...data } });
   let h = text(panel.render({ visit: visitOf(), timers: [], waiting: 0 }, c()));
   assert.ok(!h.includes("<script>alert(1)"));
-  assert.match(h, /data-omw/);
+  // On my way is the Visit screen's big button (step); the card keeps the rest, Start among them
+  assert.equal(panel.step({ visit: visitOf() }, c()).key, "omw");
+  assert.doesNotMatch(h, /data-omw/, "the big button's step isn't repeated in the card");
   assert.match(h, /data-timer="start"/);
   assert.match(h, /data-late/);
   assert.match(h, /data-noaccess/);
@@ -82,6 +84,7 @@ test("the field panel: buttons by status, the checklist by kind, photos waiting 
   // working: the timer and Pause, and what's still to do
   h = text(panel.render({ visit: visitOf({ status: "in_progress" }), timers: [{ id: "tm_1", user_ids: [UID], start_at: "2026-11-17T14:00:00.000Z" }], waiting: 1 }, c()));
   assert.match(h, /data-timer="pause"/);
+  assert.deepEqual(panel.step({ visit: visitOf({ status: "in_progress" }) }, c()).blocked.length, 2, "Finish waits for the required items");
   assert.match(h, /data-since="2026-11-17T14:00:00.000Z"/);
   assert.match(h, /Still to do before it's done: Walk/);
   assert.match(h, /1 change waits for signal/);
@@ -93,7 +96,8 @@ test("the field panel: buttons by status, the checklist by kind, photos waiting 
   assert.match(h, /src="data:image\/jpeg;base64,AAAA"/);
   assert.match(h, /src="\/api\/crm\/files\/fl_00000000000000000001\?thumb=1"/);
   assert.match(h, /tf-photo wait/);
-  assert.match(h, /data-timer="start"[^>]*>[\s\S]*?Resume/);
+  assert.equal(panel.step({ visit: visitOf({ status: "paused" }) }, c()).label, "Resume");
+  assert.match(h, /data-complete[^>]*>[\s\S]*?Finish/, "Finish one tap away after a break");
   // no prices: titles and quantities only
   h = text(panel.render({ visit: visitOf(), timers: [] }, c({ job: { lines: [{ id: "ln_1", title: "Screens", qty_milli: 12000 }] }, can: { prices: false } })));
   assert.doesNotMatch(h, /\$/);

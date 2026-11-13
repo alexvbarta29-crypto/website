@@ -1,7 +1,9 @@
-// The contact's Sales tab (design §9.2 Contact → Sales): their follow-ups,
-// deals and tasks, the last call, and links to log a call, start a
-// follow-up or add a task. (A contact tab renders inside the Contact screen,
-// so everything here is a link to a sales screen.)
+// The contact's sales (design §9.2 Contact → Sales; the "Follow-ups and
+// tasks" section of the contact page since the Nov 2026 layout): their
+// follow-ups, deals and tasks, the last call, and links to log a call,
+// start a follow-up or add a task. (It renders inside the Contact screen,
+// so everything here is a link to a sales screen.) queued() tells the
+// contact page's "About to be sent" the follow-up texts and emails due.
 
 import { html, icon } from "../../core/ui.js";
 import { dateShort, money, ago } from "../../core/format.js";
@@ -13,6 +15,11 @@ export default {
     if (!ctx.can("sales:work")) return { denied: true };
     const r = await ctx.api(`/sales/contacts/${encodeURIComponent(params.id)}`, { cache: false });
     return r.data;
+  },
+  // a follow-up's next step that sends something (a text or an email), when it's due
+  queued(s) {
+    return (s.enrollments || []).filter((e) => e.status === "active" && e.next_due_at && e.cur && ["text", "email"].includes(e.cur.action))
+      .map((e) => ({ at: e.next_due_at, label: `${e.cur.action === "email" ? "Follow-up email" : "Follow-up text"}${e.cur.label ? `: ${e.cur.label}` : ""}`, sub: `${e.cadence_name || "Follow-up"}${e.cur.rbs ? " · you check it first" : ""}`, href: "#/enrollments/" + encodeURIComponent(e.id), icon: e.cur.action === "email" ? "mail" : "text" }));
   },
   render(s) {
     if (s.denied) return html`<div class="card empty"><h2>Not for this login</h2><p>Sales is for the office.</p></div>`;
