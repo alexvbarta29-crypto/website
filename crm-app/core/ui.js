@@ -407,5 +407,16 @@ export const ICONS = {
   grid: svg('<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>'),
   sales: svg('<path d="M4 19.5h16"/><path d="M5.5 15.5l4.5-4.5 3.5 3 5.5-6.5"/><path d="M15 7.5h4v4"/>'),
   truck: svg('<path d="M3 6.5h11v9.5H3zM14 10h3.8l3.2 3.3V16H14"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/>'),
+  // the Nov 2026 phone shell (core/nav.js)
+  menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  trophy: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4l.5 3.5h-5z"/>'),
+  target: svg('<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/>'),
+  pipeline: svg('<rect x="4" y="4" width="6" height="6" rx="1.6"/><rect x="14" y="14" width="6" height="6" rx="1.6"/><path d="M7 10v3.5A2.5 2.5 0 0 0 9.5 16H14"/>'),
+  filter: svg('<path d="M4 5h16l-6.2 7.6V19l-3.6-1.8v-4.6z"/>'),
+  bug: svg('<rect x="7.5" y="7.5" width="9" height="12.5" rx="4.5"/><path d="M12 11v9M9 7.5A3 3 0 0 1 15 7.5M3.5 12h4M16.5 12h4M4.5 18l3-1.5M19.5 18l-3-1.5M4.5 7l3 1.5M19.5 7l-3 1.5"/>'),
+  tabbar: svg('<rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M3.5 15h17M8 17h.01M12 17h.01M16 17h.01"/>'),
+  swap: svg('<path d="M5 8.5h13l-3.5-3.5M19 15.5H6l3.5 3.5"/>'),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
+  trend: svg('<path d="M4 16.5l5-5 4 3.5 7-7.5"/><path d="M15 7.5h5v5"/>'),
 };
 export const icon = (name) => ICONS[name] || raw("");

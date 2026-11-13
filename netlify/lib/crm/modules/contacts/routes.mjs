@@ -221,9 +221,12 @@ async function getRoute(ctx) {
     return { data: { contact: techView("contact", c), properties: props.map((p) => techView("property", p)) } };
   }
   const [stats, properties] = await Promise.all([getRecord("contact_stats", c.id), propertiesOf(c.id, {}, { limit: PROPERTIES_ON_SCREEN })]);
+  // what they owe and have spent only for someone who may see money (the contact page's header numbers)
+  const st = withDefaults(stats ? stats.data : {});
+  if (!ctx.can("invoices:read_all")) delete st.money;
   return {
     data: {
-      contact: view(c), stats: withDefaults(stats ? stats.data : {}), properties: properties.map(({ etag, ...p }) => view(p)),
+      contact: view(c), stats: st, properties: properties.map(({ etag, ...p }) => view(p)),
       // filled by their modules as they ship (§11.3 feature gates)
       deals: [], enrollments: [], plans: [], open_invoices: [], next_visits: [], pending_automations: [],
     },

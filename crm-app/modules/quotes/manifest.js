@@ -21,7 +21,7 @@ export default {
   ],
   nav: [{ where: "more", section: "sales", label: "Quotes", path: "/quotes", perm: "quotes:read", order: 30, icon: "doc" }],
   creates: [{ label: "New quote", path: "/quotes/new", perm: "quotes:write", order: 20, icon: "doc" }],
-  contactTabs: [{ key: "quotes", label: "Quotes", order: 45, load: () => import("./contact-tab.js") }],
+  contactTabs: [{ key: "quotes", label: "Quotes", order: 45, place: "docs", perm: "quotes:read", load: () => import("./contact-tab.js") }],
   visitActions: [],
   todayCards: [],
   settings: [

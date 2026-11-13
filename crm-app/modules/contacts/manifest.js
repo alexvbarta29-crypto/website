@@ -9,7 +9,7 @@ export default {
   name: "contacts",
   routes: [
     // split: on a wide screen (1000 px and up) a contact opens beside the list (core/router.js)
-    { path: "/contacts", load: () => import("./list.js"), title: "Contacts", perm: "contacts:read_all", skeleton: "list", split: true },
+    { path: "/contacts", load: () => import("./list.js"), title: "Customers", perm: "contacts:read_all", skeleton: "list", split: true },
     { path: "/contacts/new", load: () => import("./edit.js"), title: "New lead", perm: "contacts:write", parent: "/contacts" },
     { path: "/contacts/:id", load: () => import("./contact.js"), title: "Contact", perm: "contacts:read", parent: "/contacts" },
     { path: "/contacts/:id/edit", load: () => import("./edit.js"), title: "Edit contact", perm: "contacts:write", parent: "/contacts/:id" },

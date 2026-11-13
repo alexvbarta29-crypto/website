@@ -175,6 +175,27 @@ overlay of what waits, copies for no signal, Delano times),
   reopen a job with a paid invoice).
   M4b's field panel and Money's "Collect payment" arrive through
   `visitActions` (below).
+  Since the Nov 2026 layout the Visit is built around **one big button**
+  (`visit-step.js`): above the content a row of labelled quick buttons,
+  **Call · Navigate · Photos · Checklist**, always in that order and place
+  (Navigate is never hidden when there is an address; Photos and Checklist
+  jump to their cards and show their counts), and one big coral button
+  (#db3a29, 58 px) fixed at the bottom of a phone above the tab bar and
+  the home indicator, in the page's header on a desk, with the visit's next
+  step: **On my way** (scheduled) → **Start** (en route) → **Finish** (under
+  way; it says what the checklist still needs instead of hiding) →
+  **Get paid** (done: Money's Collect payment, only for someone with
+  `payments:record` when `GET /visits/:id/payment` says something is owed).
+  After a break it offers **Resume**. Only transitions `states.mjs` holds;
+  the field panel's own buttons (Start without texting, Pause, Start my
+  timer, Finish without the timer, Running late, No access) stay in its
+  card. Someone not on the visit (the office) gets only Get paid. The office
+  sees the visit's photos too (read only).
+- **Visits** (Menu; `#/visits`, `GET /visits?date=`): one day's visits as
+  cards (Rotor's): the customer, which visit of the job (n/m), the time,
+  the minutes worked, the job's amount, a red $ while its invoice is open,
+  the status (Not started, In progress, Finished); arrows for the day
+  before and after; the server's today by default.
 - **Job** (`#/jobs/:id`): title, number, kind, status, total; rows for the
   customer and directions; its visits; the work; notes. **Book** (top),
   **Edit** (title, kind, due month, the lines, notes), **Mark done** (its
@@ -255,6 +276,10 @@ office gets **Timesheets** in More.
   `visits:prices`) and **Add to the job** from the price book (credited to
   the tech), notes, **Report an incident**. **Complete** waits until the
   required items are done; it stops everyone's timer on the visit.
+- The status card keeps everything but the big button's step (Start without
+  texting, Pause or Start my timer, Finish without the timer or after a
+  break, Running late, No access); the big button runs the panel's step
+  (`step()`, `runStep()`).
 - **On my way** asks how many minutes (from where the phone is to the
   house, straight line × 1.3 at 35 mph; editable) and texts the customer
   `on_my_way`; **Running late** texts `running_late` with a new time. Both
@@ -313,6 +338,13 @@ The tech app works at a house with no signal (§2.5):
   `overlayDay`): ticks, notes, photos (from the phone), the timer,
   completion and the clock show as done, with "N changes wait for signal".
   When the outbox empties the screen reads the server again.
+- The big button with no signal: On my way waits (it texts the customer),
+  so the button offers **Start**, which works like the rest; a change kept
+  on the phone toasts **"Saved, will send when online."** and the line
+  shows by the button until the outbox has sent it; Finish, ticks, notes
+  and photos the same (`tests/crm/work-field/visit-step.test.mjs`,
+  `tests/e2e/layout.spec.mjs`). Get paid needs signal (a payment is never
+  kept for later).
 - On my way and Running late never queue ("needs signal"): a late "on my
   way" is worse than none, and the server refuses a replayed one.
 - Items older than 6 days aren't replayed, and an item the server refuses
@@ -501,7 +533,8 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 | `POST /visits/:id/cancel` · `/mark-no-access` · `/done` · `/reopen` | schedule:write | the office's changes (`/visits/:id/no-access` is left for the tech app) |
 | `GET/POST /time-off` · `PATCH/DELETE /time-off/:id` | read · write | whole days (`date`, `end_date`) or part of a day (`date`, `start`, `end`) |
 | `GET /checklists` · `GET/PATCH /checklists/:id` · `POST /checklists` | read · settings:general | Settings → Checklists |
-| `GET /work/contacts/:id` | schedule:read | the contact's Work tab |
+| `GET /work/contacts/:id` | schedule:read | the contact page's work section (jobs and visits carry `plan_id`) |
+| `GET /visits?date=` | schedule:read | the Visits list: a day's visits as cards (n/m, time, minutes worked, amount, unpaid, status); the server's today by default |
 
 Services for other modules (§11.3): `work.createJobs(jobs, opId, scope,
 ctx) → job_ids` (ids `deriveId("job", opId, "work.createJobs@" + scope, n)`,
@@ -690,8 +723,16 @@ when before Rotor's last payroll run (Oct 1), one still open closed at
   shows only when no card has anything to show.
 - Visit panels (M4b): a `visitActions` panel may say which of the Visit
   screen's cards it shows itself (`replaces: ["checklist", "lines",
-  "notes"]`) and may have `mount`; the Visit screen opens from the last
-  good copy when there's no signal (`data.offline`, `data.as_of`).
+  "notes", "photos"]`) and may have `mount`; the Visit screen opens from the
+  last good copy when there's no signal (`data.offline`, `data.as_of`). A
+  panel that works the visit names the big button's step with
+  `step(state, ctx) → { key, label, attr } | null` and runs it with
+  `runStep(key, ctx, el)`; `ctx.data.collect` is `{ key, owed }` for Get
+  paid.
+- The contact page's work section (`office-contact-tab.js`, place
+  `visits`): `header()` gives the next visit; `queued()` the visit
+  reminders still to go out. `GET /work/contacts/:id` carries `plan_id` on
+  jobs and visits so a plan's work is marked and kept apart.
 - Payroll (M7a) services the field part calls when they exist:
   `payroll.periodStatus({ user_id, at }) → "open" | "locked" | "paid"`,
   `payroll.addAdjustment({ user_id, minutes, category, start_at, end_at,

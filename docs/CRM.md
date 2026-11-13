@@ -530,9 +530,10 @@ The manual path, for reference:
 
 - `/crm` is the **app shell**: a data-free page (only the signed-in
   person's id, name, role and permissions) that loads plain ES modules
-  from `/crm-app/` (no build step). Tabs at the bottom: Home · Schedule ·
-  Customers · Sales · Menu for owners and admins (Inbox appears when its
-  module ships); Today · Time · Pay · Me for techs (Inbox appears with M6).
+  from `/crm-app/` (no build step). A floating tab bar at the bottom: Home ·
+  Schedule · Inbox · Customers · Sales · Menu for owners and admins (or the
+  places each person picked, Menu → Tab bar); Today · Inbox · Time · Pay ·
+  Me for techs.
   See "Home and navigation" below. **My account**: name, mobile, password,
   the phones you're signed in on.
 - Inside the office the CRM is the **CRM** tab (the first tool); `/office#crm/<screen>`
@@ -744,26 +745,72 @@ open tasks). The cards' own reads: `GET /home/money?metric=&period=&from=
 &date=`, `GET /home/leaderboard?board=`, `PUT /home/layout { cards }`.
 `tests/crm/core/home.test.mjs` holds the exact list.
 
-### The bar, the Sales switch and the Menu
+### The bar, the Sales switch, the Menu and the + (Nov 2026: the best of Rotor's and Flyra's phone apps)
 
-- Owners and the office: **Home · Inbox (M6) · Schedule · Customers · Sales
-  · Menu**. Sales is Leads & calls with **Calls · Quotes · Tasks** in a
-  switch under the header (the tab stays lit on each). A shell cached
-  before this bar (Dashboard and More tabs) shows the new one.
-- **Menu** (`#/menu`) is a full page of sections with large tiles, built
-  from the manifests' `nav: [{ where: "more", section, ... }]` entries:
+- The phone's bar floats: a light pill inset from the screen's edges and
+  10 px above the home indicator, with small labels under the icons
+  (Flyra) and the current place in coral on a soft round highlight. Owners
+  and the office: **Home · Schedule · Inbox · Customers · Sales · Menu**
+  (`me.mjs` `navFor`). Each person may pick up to five places of their
+  own, from Home, Schedule, Inbox, Customers, Sales, Leads, Pipeline,
+  Visits, Leaderboard, Map (when the maps module is there), Quotes, Plans
+  and Invoices (**Menu → Tab bar**, `#/tab-bar`; saved on their user
+  record as `tabs`, `PATCH /users/:id`, so it follows them to every
+  phone); the Menu is always last. A module offers a place with a nav
+  entry `{ where: "tab", key, path, label, icon }` (the Map does); a
+  pinned place's screen is top-level (no back arrow). A tech's bar is
+  Today · Inbox · Time · Pay · Me. A shell cached before Home (Dashboard
+  and More tabs) shows the new bar.
+- **Sales** is **Pipeline · Leads · Calls · Quotes · Tasks** in a switch
+  under the header (the tab stays lit on each): Pipeline and Leads after
+  Rotor's (docs/CRM-SALES.md), Calls is Leads & calls.
+- **Menu** is a sheet from the bottom (Flyra's): a large "Menu" title,
+  round buttons (report a problem: a task for the owners; the person's
+  initials: My account), the latest reply nobody has read ("{name}
+  replied ... Reply"), then rounded groups: Home, Schedule, Inbox,
+  Customers, Leads, Pipeline; Quotes | Plans side by side; My performance,
+  Leaderboard, Visits, Map, Reports (the Dashboard), Automations; every
+  other Menu section (the manifests' `nav: [{ where: "more", section }]`:
   Work, Sales, Customers, Money, Messages & automations, Office tools,
-  Admin (an entry without a known `section` lands in "More"). My account
-  is the card at the top, Sign out at the bottom.
-- The coral create button is on Customers, Schedule and Sales (the shell's
-  tab bar is moving to a floating pill with its own + button).
+  Admin; an entry without a known section lands in "More"), each screen
+  once; then Tab bar and Settings (`core/nav.js`: `openMenuSheet`, `menuGroups`).
+  The Menu's button is lit on the screens it lists. `#/menu` is the same
+  as a page (Rotor's "More": your card with Edit, the groups, a coral Sign
+  out, the app's version).
+- **+** (Rotor's): a round coral button beside the bar on every screen
+  with the bar. It blurs the screen, puts a search at the top ("Search
+  customers, jobs, tasks...": `GET /search`) and stacks the things to
+  make above it as white pills with round icons: Customer, Lead, Quote,
+  Job, Plan, Invoice, Task (each only for someone who may); it turns into
+  an ×.
+- **Top-level screens** (a tab's own, or one the Menu lists) have a large
+  bold title on the left and round white buttons on the right: search on
+  a tab's own screens, and a coral + for that place's own "new" (a
+  customer, a job, a text, a lead, a quote, a plan, an invoice). Deeper
+  screens keep the back arrow. The office's Home has its own header (the
+  avatar, Welcome back, the bell), so on a phone the bar's title steps
+  aside there (`.own-head`; the h1 stays for screen readers). Screens shown this way: **Customers** as
+  cards (docs/CRM-CONTACTS.md), **Messages** (the Inbox, docs/CRM-COMMS.md),
+  **Visits** (docs/CRM-WORK.md), **Leaderboard** and **My performance**
+  (docs/CRM-REPORTS.md).
+- **What moved**: once per person on each phone or computer (kept in
+  localStorage under their id; a browser that keeps nothing never shows
+  it), one line under the top bar: "New tab bar: Menu holds everything
+  else, + makes anything new." ("Home, Schedule, Inbox, Customers and Sales
+  now lead the sidebar..." on a desk); "Got it" or the Menu and it's gone.
+  A tech's bar didn't change: nothing to say.
+- Code: `crm-app/core/nav.js`, `crm.css` (the shell block);
+  tests: `tests/crm/core/nav.test.mjs`, `tests/e2e/layout.spec.mjs`.
 
 ### On a computer (900 px and up)
 
-- A **sidebar** in the website's deep ink: the white logo, Home (and
-  Inbox), then every Menu section as a collapsible group under a small
-  label (remembered on that browser), the current screen lit with a coral
-  bar, badges, and who is signed in.
+- A **sidebar** in the website's deep ink: the white logo, the phone bar's
+  places first in the same order (Home, Schedule, Inbox, Customers, Sales;
+  Sales lit on Pipeline, Leads, Calls, Quotes and Tasks), a divider, then
+  every Menu section as a collapsible group under a small label
+  (remembered on that browser) less what those places already open,
+  **Settings** and **Team** at the bottom above who is signed in. Labels
+  always show; the current screen is lit with a coral bar; badges.
 - The slim white **header**: the title, a **search** box (`GET /search`:
   names, phones, streets, Q-/INV- numbers; office only), the screen's own
   button (white, so New is the one coral button), **New** (the creates)

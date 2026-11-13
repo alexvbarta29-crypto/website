@@ -27,6 +27,7 @@ import { isPlainObject } from "../../core/validate.mjs";
 import { types } from "./types.mjs";
 import field from "./field.mjs";
 import { workRoutes } from "./office-routes.mjs";
+import { visitListRoutes } from "./visit-list.mjs";
 import "./office-moveday.mjs";
 import {
   createJobs, cancelJobs, listeners, statsParts, onMergeWork, seedChecklists, WORK_DEFAULTS,
@@ -66,7 +67,7 @@ const office = {
   types,
   statsParts,
   settings: { work: { defaults: { ...WORK_DEFAULTS }, validate: validateWork, perm: "settings:general" } },
-  routes: workRoutes,
+  routes: [...workRoutes, ...visitListRoutes],
   events: listeners,
   emits: [
     "job.created", "job.scheduled", "job.completed", "job.reopened", "job.cancelled",

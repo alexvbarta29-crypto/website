@@ -28,21 +28,67 @@
 .notice svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .notice .chev{margin-left:auto}
 
-/* ---------------------------------------------------------------- one contact */
-.ct-head{display:flex;align-items:center;gap:14px}
-.ct-head .avatar{width:52px;height:52px;font-size:18px}
-.ct-head h2{font:800 24px/1.12 var(--head);letter-spacing:-.015em;overflow-wrap:anywhere}
-.ct-head .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.ct-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}
-.ct-acts a,.ct-acts span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;box-shadow:var(--sh-xs);color:var(--ink);text-decoration:none;font:600 12.5px/1 var(--text)}
-.ct-acts a svg{color:var(--coral-ink)}
-.ct-acts a:active{background:var(--mist-2)}
-.ct-acts span{background:var(--mist);color:var(--ink-3);box-shadow:none}
+/* ---------------------------------------------------------------- one contact (contact.js)
+   The header answers a phone call (name, town, plan badge, three numbers,
+   Call · Text · Quote · Book); the rest is one page of headed sections on a
+   phone; from 680 px of room (a container query: the contact may sit beside
+   the list) the sections and the activity get two columns, and on a desk the
+   header stays put while the page scrolls. */
+.ct-page{container:ct / inline-size}
+.ct-hero{display:flex;flex-direction:column;gap:14px}
+.ct-id{display:flex;align-items:center;gap:14px;min-width:0}
+.ct-id .avatar{width:52px;height:52px;font-size:18px}
+.ct-id .who{min-width:0}
+.ct-id h2{margin:0;font:800 24px/1.12 var(--head);letter-spacing:-.015em;overflow-wrap:anywhere}
+.ct-town{margin:3px 0 0!important;color:var(--ink-2)!important;font-weight:500}
+.ct-id .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.pill.ct-plan{background:var(--green-bg);color:var(--green-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pill.ct-plan svg{flex:none}
+.ct-nums{display:flex;gap:8px;margin:0}
+.ct-num{flex:1 1 0;min-width:0;padding:8px 9px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--mist)}
+.ct-num dt{font:500 11.5px/1.2 var(--text);color:var(--ink-3)}
+.ct-num dd{margin:4px 0 0;font:800 19px/1.1 var(--head);letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-num.bad dd{color:var(--coral-ink)}
+.ct-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ct-acts>a,.ct-acts>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:0 4px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;box-shadow:var(--sh-xs);color:var(--ink);text-decoration:none;font:600 13px/1 var(--text)}
+.ct-acts>a svg{color:var(--coral-ink)}
+.ct-acts>a:active{background:var(--mist-2)}
+.ct-acts>span{background:var(--mist);color:var(--ink-3);box-shadow:none}
 .ct-acts svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-/* the contact's tabs: a tab bar with a coral underline, not a row of buttons */
-.ct-tabs{gap:0;margin-top:2px;padding-top:0;padding-bottom:0;border-bottom:1px solid var(--line)}
-.ct-tabs .chip{min-height:44px;padding:0 12px;border:0;border-bottom:2px solid transparent;border-radius:0;margin-bottom:-1px;background:none;box-shadow:none;color:var(--ink-3);font-weight:500}
-.ct-tabs .chip[aria-pressed="true"]{background:none;color:var(--ink);font-weight:600;border-bottom-color:var(--coral)}
+/* the sections: one column on a phone (the columns are display:contents) */
+.ct-cols,.ct-main,.ct-aside{display:contents}
+.ct-sec{display:flex;flex-direction:column;gap:10px;scroll-margin-top:12px}
+.ct-sec-h{margin:12px 2px 0;font:700 18px/1.2 var(--head);color:var(--ink)}
+.ct-sub-h{margin:6px 2px 8px;font:600 12px/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.ct-mod{scroll-margin-top:12px}
+.ct-mod+.ct-mod{margin-top:6px}
+.ct-mod .stack{gap:10px}
+.ct-mod .section-h{margin:12px 2px 6px;font-size:14px}
+.ct-mod .stack>.section-h:first-child,.ct-mod .stack>.btn-row:first-child+.section-h{margin-top:4px}
+.ct-mod .btn-row{margin-top:0}
+/* one coral button per screen: inside a section a module's own "New ..." is a quiet one, its own width */
+.ct-mod .btn.primary{background:#fff;border-color:var(--line-2);color:var(--ink);box-shadow:var(--sh-xs)}
+.ct-mod .btn.primary svg{color:var(--coral-ink)}
+.ct-mod .btn-row .btn,.ct-mod .sl-tab-acts .btn,.ct-mod .mn-acts .btn{flex:0 1 auto}
+.ct-mod .card.empty{padding:18px 16px}
+/* the service plan, kept apart from one-time work: a green edge on its rows */
+.ct-sec-plan .list{box-shadow:inset 3px 0 0 var(--green),var(--sh-card)}
+.ct-sec .card h3{margin:0 0 8px;font:700 16px/1.25 var(--head)}
+.ct-card-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ct-card-h h3{flex:1;margin:0!important}
+.ct-access{display:block;margin-top:3px;font-size:13px;line-height:1.35;color:var(--ink-2);white-space:normal;overflow-wrap:anywhere}
+.ct-props .row{align-items:flex-start}
+.ct-props .row .end{align-self:center}
+.ct-none{margin:0 2px}
+.ct-fine{margin:0 2px}
+.ct-loading{display:flex;flex-direction:column;gap:10px}
+.ct-failed{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ct-failed p{flex:1;margin:0}
+/* a long list: the latest few, then "Show all" */
+.ct-clipped>li:nth-child(n+5){display:none}
+.ct-more{align-self:flex-start;margin-top:8px}
+.ct-sec>.card.ct-clip{padding:4px 16px}
+.ct-queued .row{min-height:56px}
 .ct-pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font:400 15px/1.5 var(--text)}
 .ct-lines{display:flex;flex-direction:column;gap:2px}
 .ct-line{display:flex;align-items:center;gap:10px;min-height:44px;color:inherit;text-decoration:none;border-radius:var(--r-sm)}
@@ -88,10 +134,46 @@
 .side h3 a{display:inline-flex;align-items:center;min-height:44px}
 @media (min-width:900px){
   .ct-rail{bottom:24px}
-  .ct-tabs{margin-left:0;margin-right:0;padding-left:0;padding-right:0}
   .ct-acts{display:flex;flex-wrap:wrap;gap:8px}
-  .ct-acts a,.ct-acts span{flex-direction:row;min-height:var(--ctl-h);padding:0 14px;font-size:14px}
+  .ct-acts>a,.ct-acts>span{flex-direction:row;gap:8px;min-height:var(--ctl-h);padding:0 16px;font-size:14px}
   .ct-acts svg{width:18px;height:18px}
   .ct-bar{background:var(--mist);border-bottom:0}
+  /* the header stays put while the page scrolls under it */
+  .ct-hero{position:sticky;top:-16px;z-index:4;box-shadow:0 -20px 0 4px var(--mist),var(--sh-raise)}
+  .ct-sec{scroll-margin-top:220px}
+  .ct-mod{scroll-margin-top:220px}
 }
-@media (hover:hover) and (pointer:fine){.ct-acts a:hover{background:var(--mist)}.ct-tabs .chip:hover{background:none;color:var(--ink)}}
+/* room for two columns: the sections, and messages with the activity beside them */
+@container ct (min-width:680px){
+  .ct-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:20px;row-gap:14px;align-items:center}
+  .ct-acts{grid-column:1 / -1}
+  .ct-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,37%);gap:16px;align-items:start}
+  .ct-main,.ct-aside{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .ct-aside .ct-sec-h,.ct-main>.ct-sec:first-child .ct-sec-h{margin-top:0}
+}
+@container ct (min-width:1100px){
+  .ct-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto}
+  .ct-acts{grid-column:auto}
+}
+@media (hover:hover) and (pointer:fine){.ct-acts>a:hover{background:var(--mist)}}
+
+/* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's) */
+.cc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cc{border:1px solid var(--line);border-radius:var(--r-xl);background:var(--card);box-shadow:var(--sh-card);overflow:hidden}
+.cc-top{display:flex;align-items:center;gap:10px;min-height:62px;padding:12px 14px 12px 16px;color:var(--ink);text-decoration:none}
+.cc-top:active{background:var(--mist)}
+.cc-nm{flex:1;min-width:0;font:600 17px/1.25 var(--text);overflow-wrap:anywhere}
+.cc-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:64%}
+.cc-st,.cc-svc{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;font:600 13px/1 var(--text);white-space:nowrap}
+.cc-st{background:var(--grey-bg);color:var(--grey-ink)}
+.cc-st.green{background:var(--green-bg);color:var(--green-ink)}
+.cc-st.blue{background:var(--blue-bg);color:var(--blue-ink)}
+.cc-st.amber{background:var(--amber-bg);color:var(--amber-ink)}
+.cc-svc{max-width:170px;overflow:hidden;text-overflow:ellipsis;background:var(--mist-2);color:var(--ink-2);font-weight:500}
+.cc-band{display:flex;align-items:center;gap:22px;min-height:64px;padding:8px 12px 8px 16px;background:var(--mist);border-top:1px solid var(--line)}
+.cc-k{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cc-k small{font:500 11.5px/1 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.cc-k b{font:600 16px/1.1 var(--text);white-space:nowrap}
+.cc-acts{margin-left:auto;display:flex;gap:8px}
+.cc-acts .rnd{background:#fff;box-shadow:0 0 0 1px var(--line-2)}
+.ct-grp .ct-ltr{margin-bottom:2px}

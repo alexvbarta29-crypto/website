@@ -156,7 +156,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     try {
       await goTo(f, "/menu");
       assert.match(await f.textContent("#view"), /Sales[\s\S]*Signs & flyers/);
-      await f.click("a.mtile[href='#/signs']");
+      await f.click("#view a[href='#/signs']");
       await settled(f, { hash: "#/signs" });
       assert.equal(await title(f), "Signs & flyers");
       let text = await f.textContent("#view");

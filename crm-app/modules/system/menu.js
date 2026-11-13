@@ -1,26 +1,25 @@
-// Menu (design §9.1): every screen the bottom bar doesn't hold, as one
-// page of labelled sections with large tiles (Work, Sales, Customers,
-// Money, Messages & automations, Office tools, Admin), built from the
-// manifests' nav entries (core/nav.js menuSections), so a module's screens
-// show up in their section as the module ships. Sign out at the bottom.
+// Menu (design §9.1; the Nov 2026 layout, after Rotor's "More" page): the
+// same places as the Menu sheet (core/nav.js openMenuSheet, menuGroups) as a
+// page: your card (initials, name, the company, Edit → My account), then
+// rounded rows with round grey icons by group, then a coral Sign out and
+// the app's version. The tab bar's Menu button opens the sheet; old links
+// to #/menu and a desk land here.
 
-import { html, icon } from "../../core/ui.js";
-import { initials } from "../../core/format.js";
-import { menuSections, signOut } from "../../core/nav.js";
+import { html, icon, attrs } from "../../core/ui.js";
+import { initials, roleLabel } from "../../core/format.js";
+import { menuGroups, signOut, menuRows } from "../../core/nav.js";
+import { APP_VERSION } from "../../version.js";
 
 export default {
   title: "Menu",
-  // My account is the card at the top, not a tile
-  load() { return { sections: menuSections().map((sec) => ({ ...sec, items: sec.items.filter((n) => n.path !== "/me") })).filter((sec) => sec.items.length) }; },
+  load() { return { groups: menuGroups() }; },
   render(s, ctx) {
     const u = ctx.user || {};
     return html`<div class="stack menu-page">
-      <a class="card menu-me" href="#/me"><span class="avatar" style="${/^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : ""}">${initials(u.name)}</span><span class="who"><span class="nm">${u.name || "My account"}</span><span class="sub">${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Team"} · My account</span></span><span class="chev" aria-hidden="true"></span></a>
-      ${s.sections.map((sec) => html`<section class="${"menu-sec sec-" + sec.key}" aria-label="${sec.label}">
-        <div class="section-h">${sec.label}</div>
-        <div class="menu-grid">${sec.items.map((n) => html`<a class="mtile" href="${"#" + n.path}"><span class="mi">${icon(n.icon || "list")}</span><span class="ml">${n.label}</span></a>`)}</div>
-      </section>`)}
-      <button type="button" class="btn danger block menu-out" data-signout>${icon("out")}Sign out of this phone</button>
+      <a class="card menu-me" href="#/me"><span class="avatar" ${attrs({ style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null })}>${initials(u.name)}</span><span class="who"><span class="nm">${u.name || "My account"}</span><span class="sub">${roleLabel(u.role) || "Team"}, Barta Window Washing</span></span><span class="menu-edit">${icon("doc")}Edit</span></a>
+      ${menuRows(s.groups)}
+      <button type="button" class="btn primary block menu-out" data-signout>${icon("out")}Sign out of this phone</button>
+      <p class="foot-note">Version ${APP_VERSION}</p>
     </div>`;
   },
   events: {

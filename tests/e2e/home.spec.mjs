@@ -65,7 +65,7 @@ test("before any CRM data: the header, Clock in, Rotor's money and a calm empty 
     try {
       assert.equal(await title(f), "Home");
       assert.ok(["", "#/today"].includes(await hashOf(f)), "the app opens on Home");
-      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Inbox", "Schedule", "Customers", "Sales", "Menu"]);
+      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
       assert.match(await text(f, ".hm-head"), /^OO Welcome back, Olive Tuesday, November 17$/);
       assert.deepEqual(await cards(f), ["clock", "money", "agenda"], "the default cards, in order");
       assert.equal(await has(f, GONE), false, "nothing of the old Home");
@@ -78,6 +78,13 @@ test("before any CRM data: the header, Clock in, Rotor's money and a calm empty 
       // Today: nothing yet
       assert.match(await text(f, ".hm-c-agenda"), /^Daily Weekly Monthly Tuesday, November 17 0 items Nothing scheduled for today/);
       assert.equal(await has(f, ".hm-edit [data-hm=edit]"), true, "Edit Home at the bottom");
+      // creating is the shell's round + (Nov 2026: it blurs the screen, search on top, the things to make above it)
+      assert.ok(await f.isVisible("#fab"), "the + on Home");
+      await f.click("#fab");
+      await f.waitForSelector(".qk.on");
+      assert.match(await f.textContent(".qk"), /Lead/);
+      await page.keyboard.press("Escape");
+      await f.waitForFunction(() => !document.querySelector(".qk"));
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `home-empty-${device}`);
@@ -240,13 +247,13 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
   try {
     await f.click(".hm-edit [data-hm=edit]");
     await f.waitForSelector(".sheet.on .hm-edit-list");
-    assert.deepEqual(await f.$$eval(".sheet.on .hm-edit-list li", (els) => els.map((e) => `${e.dataset.key}:${e.querySelector("input").checked}`)), ["clock:true", "money:true", "agenda:true", "inbox:false", "tasks:false", "goals:false"], "no Leaderboard until the reports module brings it");
+    assert.deepEqual(await f.$$eval(".sheet.on .hm-edit-list li", (els) => els.map((e) => `${e.dataset.key}:${e.querySelector("input").checked}`)), ["clock:true", "money:true", "agenda:true", "leaderboard:false", "inbox:false", "tasks:false", "goals:false"], "the Leaderboard offered (the reports module brings it), off");
     assert.deepEqual(await screenProblems(f), [], "the sheet's targets");
     await shot(page, "home-edit-iphone13");
     for (const k of ["inbox", "tasks", "goals"]) await f.check(`.sheet.on li[data-key="${k}"] input`);
     await f.uncheck('.sheet.on li[data-key="clock"] input');
-    // Goals up to the top: three taps
-    for (let i = 0; i < 5; i++) await f.click('.sheet.on li[data-key="goals"] [data-mv="-1"]');
+    // Goals up to the top
+    for (let i = 0; i < 6; i++) await f.click('.sheet.on li[data-key="goals"] [data-mv="-1"]');
     await f.click(".sheet.on [data-save]");
     await f.waitForFunction(() => !document.querySelector(".sheet.on"));
     await f.waitForFunction(() => document.querySelector('.hm-grid > [data-card="goals"]'));
@@ -295,7 +302,7 @@ test("the office without the office sign-in: the money (reports:read), See more 
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");
     await goTo(f, "/menu");
-    assert.equal(await has(f, '.mtile[href="#/dashboard"]'), false, "no Dashboard in the Menu either");
+    assert.equal(await has(f, '#view a[href="#/dashboard"]'), false, "no Dashboard in the Menu either");
     await p.clean();
   } finally { await p.close(); }
 });
@@ -322,18 +329,18 @@ test("a tech never sees Home: their own Today, and /home tells them nothing", as
   }
 });
 
-test("the Sales tab: Calls · Quotes · Tasks in one switch, the tab lit on each; the Menu's sections", async () => {
+test("the Sales tab: Pipeline · Leads · Calls · Quotes · Tasks in one switch, the tab lit on each; the Menu sheet", async () => {
   await day();
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
     try {
       await f.click('#tabs [data-tab="sales"]');
-      await settled(f, { hash: "#/calls" });
-      assert.equal(await title(f), "Leads & calls");
-      assert.deepEqual(await f.$$eval("#subnav .seg", (els) => els.map((e) => e.textContent)), ["Calls", "Quotes", "Tasks"]);
-      assert.equal(await f.getAttribute('#subnav [href="#/calls"]', "aria-current"), "page");
-      await shot(page, `home-sales-calls-${device}`);
-      for (const [path, name] of [["/quotes", "Quotes"], ["/tasks", "Tasks"]]) {
+      await settled(f, { hash: "#/pipeline" });
+      assert.equal(await title(f), "Pipeline");
+      assert.deepEqual(await f.$$eval("#subnav .seg", (els) => els.map((e) => e.textContent)), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
+      assert.equal(await f.getAttribute('#subnav [href="#/pipeline"]', "aria-current"), "page");
+      await shot(page, `home-sales-pipeline-${device}`);
+      for (const [path, name] of [["/leads", "Leads"], ["/calls", "Leads & calls"], ["/quotes", "Quotes"], ["/tasks", "Tasks"]]) {
         await f.click(`#subnav [href="#${path}"]`);
         await settled(f, { hash: "#" + path });
         assert.equal(await title(f), name);
@@ -347,14 +354,14 @@ test("the Sales tab: Calls · Quotes · Tasks in one switch, the tab lit on each
       await goTo(f, `/quotes/${seeded.quotes.sent}`);
       assert.equal(await f.$eval("#subnav", (el) => el.hidden), true);
       assert.equal(await f.getAttribute('#tabs [data-tab="sales"]', "aria-current"), "page");
-      // the Menu: sections of large tiles, the tab lit on what it opens
+      // the Menu: a sheet of rounded groups (Flyra's), the tab lit on what it opens
       await f.click('#tabs [data-tab="menu"]');
-      await settled(f, { hash: "#/menu" });
-      assert.deepEqual(await f.$$eval(".menu-sec .section-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
+      await f.waitForSelector(".menu-sheet.on");
+      assert.deepEqual(await f.$$eval(".menu-sheet .ms-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
+      assert.deepEqual(await f.$$eval(".menu-sheet .ms-grp:first-of-type .ms-l", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Customers", "Leads", "Pipeline"]);
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-menu-${device}`);
-      await fullShot(page, f, `home-menu-${device}-full`);
-      await f.click('.mtile[href="#/plans"]');
+      await f.click('.menu-sheet a[href="#/plans"]');
       await settled(f, { hash: "#/plans" });
       assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the Menu's");
       await p.clean();
@@ -374,7 +381,10 @@ test("on a desk: the sidebar, search and New; the clock across, Money beside Tod
       assert.equal(await title(f), "Home");
       assert.equal(await f.$eval("#tabs", (el) => getComputedStyle(el).display), "none", "no bottom bar on a desk");
       assert.ok(await f.isVisible("#side"), "the sidebar");
+      // the phone bar's places first, in its order, then the groups, then Settings and Team (Nov 2026)
+      assert.deepEqual(await f.$$eval("#side .side-main .sl", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales"]);
       assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
+      assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings", "Team"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");
       assert.deepEqual(await cards(f), ["clock", "money", "agenda"]);
@@ -422,17 +432,17 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     // search the list; open another from it: the list keeps its words, the pane changes
     await f.fill("#ct-q", "Workday");
     await page.waitForTimeout(400);
-    const other = await f.$$eval("#ct-list a.row", (as) => as.map((a) => a.getAttribute("href")));
+    const other = await f.$$eval("#ct-list a.cc-top", (as) => as.map((a) => a.getAttribute("href")));
     assert.ok(other.length >= 4, `the list filters (${other.length})`);
-    await f.click(`#ct-list a.row[href="${other[1]}"]`);
+    await f.click(`#ct-list a.cc-top[href="${other[1]}"]`);
     await settled(f, { hash: other[1] });
     assert.equal(await f.inputValue("#ct-q"), "Workday", "the list kept its search");
-    assert.equal(await f.getAttribute(`#ct-list a.row[href="${other[1]}"]`, "aria-current"), "true", "the open row is lit");
+    assert.equal(await f.getAttribute(`#ct-list a.cc-top[href="${other[1]}"]`, "aria-current"), "true", "the open card is lit");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-desk-contacts-split");
     // back to the list alone: the pane asks what to open
     await goTo(f, "/contacts");
-    assert.match(await f.textContent("#pane"), /Pick one of the contacts/);
+    assert.match(await f.textContent("#pane"), /Pick one of the customers/);
     // Quotes too
     await goTo(f, `/quotes/${seeded.quotes.sent}`);
     assert.ok(await f.$('#view [data-chip]'), "the quotes list on the left");

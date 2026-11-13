@@ -14,7 +14,30 @@ signs' `/q/` codes). Record types: `deal`, `cadence`, `enrollment`,
 
 ## What the office sees
 
-- **Leads & calls** (nav; `sales:work`): today's calls in the day's windows
+- **Pipeline** (the Sales tab's first screen, `#/pipeline`; Nov 2026, after
+  Rotor's): a pipeline is one of the follow-up cadences (Rotor's imported
+  pipelines, like Referrals, are board-only cadences) and its stages are
+  the cadence's steps or board stages. A dropdown picks the pipeline; a
+  list / board toggle (coral when on). List: a card per open follow-up
+  with the name, the status (Open, Paused), the type (Lead, Customer), the
+  stage, VALUE (the open deal) and DUE, and round Call, Text and a black
+  convert (⇄: start a quote, book a job, make them a customer). Board: a
+  column per stage ("New 57 · $0"; "No opportunities" when empty)
+  scrolling sideways, cards with a blue edge, the name, Open, the type and
+  the amount. **Move on** (a card's button, or dragging it to the next
+  column on a desk) marks its step done by hand (`POST
+  /enrollments/:id/advance`), as the follow-up screen does; one stage at a
+  time; a board-only pipeline's stages stay as Rotor had them. From `GET
+  /cadences`, `GET /cadences/:id`, `GET /enrollments?cadence=`, `GET
+  /deals` and the contacts index (no new route).
+- **Leads** (`#/leads`, Rotor's): every lead as a card: the name, a
+  priority pill (their open task's priority, when one has it), a stage
+  pill (the follow-up's step, else the deal's status, else New), a band
+  with PV (the open deal's potential value) and FOLLOW UP (the next due
+  day, or "-"), round Call, Text and convert; a search box. Code:
+  `crm-app/modules/sales/{pipeline,leads}.js`; tests:
+  `tests/crm/sales/leads-pipeline.test.mjs`.
+- **Leads & calls** (the Sales switch's Calls; nav; `sales:work`): today's calls in the day's windows
   (9-10, 12-1, 4-5), overdue first, then texts waiting to be sent by hand,
   paused follow-ups and leads that need attention. Each row: name, town,
   step ("Day 1 · Call 2 of 3"), when it's due. **Call** opens `tel:` and
