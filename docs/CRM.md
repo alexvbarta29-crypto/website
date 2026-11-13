@@ -67,7 +67,10 @@ where the Follow-ups wording comes from): [OFFICE.md](OFFICE.md).
   `core.spec` walks the one app, back and the edge swipe, sheets, the
   offline start, links that leave, the insets message, a 2 s round trip and
   every client route of the manifests at iPhone 13 and SE sizes;
-  `contacts.spec` and `sales.spec` their modules' flows. `E2E_SHOTS=<dir>`
+  `signin.spec` the sign-in page (Team sign-in only, Forgot password, the
+  office cookie with an owner's sign-in, a desk with nothing but the CRM)
+  at iPhone 13 and a 1440 desk; `contacts.spec` and `sales.spec` their
+  modules' flows. `E2E_SHOTS=<dir>`
   saves screenshots. `node tests/e2e/server.mjs` runs the seeded server by
   hand on port 8796 (sign in as olive, ada, theo or tess with "a long
   synthetic passphrase"). Chromium can't check what only WebKit does (the
@@ -450,17 +453,38 @@ production branch should build.
   owner-only settings, voids, refunds, payroll runs and the team), **tech**
   (their own visits, time and pay). An owner can also tick a person as
   "goes out on visits".
-- **The office password** keeps opening the office tools (Lights,
-  Purchases, Follow-ups, Giveaway, the dashboards) and the Customers list.
-  With a CRM sign-in, `/office` is the CRM full screen (one app); on a
-  phone that also has the office cookie the dashboards are its Dashboard
-  tab and the tools are in More (docs/OFFICE.md). A CRM sign-in alone
-  (techs) opens the CRM only.
-- **Owners get both with one sign-in (D14):** Team sign-in has an optional
-  "Office password" field. Filled in by an owner (the roles in the
-  owner-only setting `cfg/auth.office_cookie_roles`, default owners only)
-  with the right office password, it also sets the office cookie on that
-  phone. The CRM never stores the office password or its token.
+- **The CRM sign-in is the only way in** (the owner, Nov 2026). `/office`
+  signed out, or with only the office cookie, is Team sign-in (login and
+  password, nothing else) with **Forgot password?**; with a CRM sign-in it
+  is the CRM full screen (one app; on a computer nothing but the CRM's own
+  sidebar and top bar). docs/OFFICE.md "Who sees what".
+- **Owners and the office get the office tools with their sign-in** (this
+  replaced D14's optional office password field and its
+  `cfg/auth.office_cookie_roles` setting, which is no longer read): every
+  sign-in of an owner or an admin (Team sign-in, setup, an invite or reset
+  link, Forgot password) also sets the office cookie `barta_office`, the
+  CRM-issued form (an HMAC over the person, the time and the office
+  password's digest, good for 30 days and issued afresh on every visit to
+  `/office`; `netlify/lib/lights-auth.mjs`), so the dashboards and Lights,
+  Purchases, Follow-ups and Giveaway open inside the CRM and every tool
+  page's own office-cookie check passes. Techs never get it (their sign-in
+  clears one). Signing out, here or everywhere, clears it. The CRM never
+  stores the office password, its token or an issued cookie.
+- **Forgot password** (`POST /api/crm/auth/forgot`): the login, the
+  **office password** and a new password twice. A right office password
+  and a login that is on set the new password (the same rules and hashing
+  as everywhere), end that person's other sessions (their epoch moves),
+  sign them in here, tell the other owners in the bell ("Alex reset their
+  password with the office password") and write `password_reset_office`
+  to their audit log. A wrong office password, an unknown login and a
+  turned-off one all get "That didn't match."; tries are throttled in
+  sign-in's own buckets (per login and phone, per address) and the office
+  password is compared in constant time. A reset link still out is used up.
+- **The office password's remaining uses:** first-owner setup and Forgot
+  password. It still opens the tool pages directly for a browser holding
+  its own cookie (and the old tab row only while the CRM's storage is
+  down), but never the CRM. Its form on `/office` is throttled like
+  sign-in too.
 - **Sessions** last a year at most and end after 60 days without use; "Sign
   out everywhere", a password change, a role change, a reset or turning a
   login off signs that person out on every phone within seconds.
@@ -515,9 +539,10 @@ The manual path, for reference:
    one-time **invite link** (7 days) to send by text or AirDrop. Opening it
    asks for a password; then they add Barta Office to their home screen
    and use **Team sign-in** there (the installed app keeps its own
-   sign-in). Forgotten password: Team → the person → **Password reset
-   link** (it signs them out and the old password stops working until they
-   use it). Invite and reset links are kept only as a hash: never in an
+   sign-in). Forgotten password: **Forgot password?** on the sign-in page
+   (the login, the office password and a new password; see "Who signs in
+   how"), or Team → the person → **Password reset link** (it signs them
+   out and the old password stops working until they use it). Invite and reset links are kept only as a hash: never in an
    idempotency record or anywhere else in Blobs (their routes are `secret`,
    so a retry makes a fresh link). **Turn off their login** ends their
    access at once.
@@ -567,7 +592,10 @@ The manual path, for reference:
   text, a soft teal glow behind Home's top), **Light** (Rotor's: iOS
   grouped grey #f2f2f7, white cards with a very soft shadow and no hard
   border) or **Automatic** (the phone's own setting, live). `html[data-theme]`
-  picks the set (dark when nothing is set); the sign-in pages stay light.
+  picks the set (dark when nothing is set); the CRM's own sign-in pages
+  (`/crm/login`, setup, invite links) stay light, while `/office`'s
+  sign-in page (the one everybody sees) follows this phone's choice, dark
+  by default.
   The Menu's sun button and My account → Appearance switch it; the office
   shell around the frame matches its backdrop and status bar color
   (`crm:theme`). Text is at least 4.5:1 in both. Rounded cards (18-20 px),
@@ -590,17 +618,18 @@ The manual path, for reference:
   the like are refused. Every write needs the `X-CRM: 1` header and a
   same-site (or absent) `Origin`, and JSON when it has a body (a `DELETE`
   has none), so another site can't post with your cookie.
-- **Signed in with only the office password** (Jacob before his invite,
-  or anyone without a login): the CRM tab shows Team sign-in with an
-  **Open the Customers list** button; the old list still opens on the
-  office cookie.
+- **Only the office cookie** (no CRM sign-in): `/office` shows Team
+  sign-in; the CRM's own sign-in page (`/crm/login`) keeps an **Open the
+  Customers list** button, and the old list still opens on the office
+  cookie.
 
 ### Endpoints (all JSON, `{ ok, data }` or `{ ok: false, error: { code, message } }`)
 
 | Route | Who | What |
 |---|---|---|
-| `POST /api/crm/auth/login` | anyone (throttled) | `{login, password, office_password?, to?}` → signs in |
-| `POST /api/crm/auth/logout` · `logout-all` | signed in | this phone · every phone |
+| `POST /api/crm/auth/login` | anyone (throttled) | `{login, password, to?}` → signs in (owners and admins: the office cookie too) |
+| `POST /api/crm/auth/forgot` | anyone (throttled) | `{login, office_password, password, again?, to?}` → a new password, signed in, other phones signed out |
+| `POST /api/crm/auth/logout` · `logout-all` | signed in | this phone · every phone (both clear the office cookie) |
 | `POST /api/crm/auth/password` | signed in | `{current, next}`; other phones signed out |
 | `POST /api/crm/auth/setup` | office cookie + `CRM_SETUP_CODE`, once | first owner |
 | `GET /api/crm/auth/invite/:token` · `POST /api/crm/auth/invite` | the link | set a password from an invite or reset link |
@@ -634,7 +663,7 @@ errors with no stack or record data.
   `PRECACHE` and `VERSION` in `crm-sw.js`; `--check` only checks), and
   raise `MIN_CLIENT` in `core/http.mjs` only when old apps must stop.
   `tests/crm/core/precache.test.mjs` fails when they disagree.
-- Tests: `tests/crm/core/{auth,perms,router,csp,precache,client}.test.mjs`,
+- Tests: `tests/crm/core/{auth,signin-office,perms,router,csp,precache,client}.test.mjs`,
   `tests/office.test.mjs`, `tests/crm.test.mjs`,
   `tests/crm-import.test.mjs`, with the harness
   `tests/helpers/crm-http.mjs` (fresh memory stores, pinned clock, strict

@@ -196,7 +196,7 @@ test("a POST to a /crm page answers 405 with the private headers", async () => {
   }
 });
 
-test("Team sign-in with the office cookie leaves out the optional office password and links the Customers list", async () => {
+test("Team sign-in is login and password (no office password field), links Forgot password, and with the office cookie links the Customers list", async () => {
   // Regression (M1.2 review): someone with only the office password had no
   // way to the Customers list once the CRM was set up.
   t = await crmTest();
@@ -208,8 +208,10 @@ test("Team sign-in with the office cookie leaves out the optional office passwor
   assert.doesNotMatch(inOffice.text, /office_password/);
   assertNoInlineScript(inOffice.text, "login in office");
   const plain = await t.page("/crm/login");
-  assert.match(plain.text, /name="office_password"/, "elsewhere D14's optional field is there");
+  assert.doesNotMatch(plain.text, /office_password/, "D14's optional field is gone: owners get the office tools with the sign-in");
   assert.doesNotMatch(plain.text, /\/crm\/legacy/);
+  assert.match(plain.text, /<a href="\/office#forgot" target="_top">Forgot password\?<\/a>/, "the whole window goes to /office's Forgot password");
+  assertNoInlineScript(plain.text, "login");
   // the setup page's way to the list is a full-size button, not a small inline link
   const t2setup = (await import("../../../netlify/lib/crm/core/shell-html.mjs")).setupHtml();
   assert.match(t2setup, /<a class="btn block" href="\/crm\/legacy">Open the Customers list<\/a>/);

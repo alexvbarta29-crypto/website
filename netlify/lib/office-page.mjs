@@ -1,13 +1,15 @@
 // Barta Office: one app, served at /office by netlify/functions/office.mjs.
-// One row of tabs across the top: the dashboard's views (Overview, Money,
-// Sales, Plans, Jobs) and then the office tools, the CRM first. The
-// dashboard is one frame that switches view by its #hash; each tool loads
-// in its own frame the first time it's opened and stays open, so switching
-// tabs never loses work.
+// SOLO mode (every CRM sign-in, and the office password before the first
+// owner exists): the CRM fills the screen, with no header, logo or tab row;
+// on a computer (900 px and up) not even the "Get the app" card, so the
+// CRM's own sidebar and top bar are all there is. The old tab row (the
+// dashboard's views, then the office tools, the CRM first) is left only
+// for the office password while the CRM's storage can't be used at all
+// (office.mjs). The dashboard is one frame that switches view by its #hash;
+// each tool loads in its own frame the first time it's opened and stays
+// open, so switching tabs never loses work.
 //
-// Who sees what (design §2.4): the office password's cookie opens every
-// tab. A CRM sign-in alone (techs, and anyone without the office password)
-// gets SOLO mode: no tab row, the CRM fills the screen. The CRM tab talks to
+// Who sees what (design §2.4): the CRM frame talks to
 // this page with postMessage (same origin only, both sides check):
 //   from the CRM:  crm:route {path} (mirrored into #crm/<path>),
 //                  crm:badge {inbox, attention, notifications} (a dot on the tab),
@@ -26,8 +28,8 @@
 // Deep links: /office#crm opens the tab, /office#crm/<path> opens that CRM
 // screen. Below 860 px the logo row hides while the CRM tab is open.
 //
-// The signed-out page offers Team sign-in (the CRM's own logins) next to the
-// office password; the installed app opens on Team sign-in. /office/launch
+// The signed-out page is Team sign-in (the CRM's own logins) with Forgot
+// password; before the first owner, the office password (setup). /office/launch
 // is the data-free launcher office-sw.js keeps for a cold start with no
 // signal (§2.5).
 
@@ -125,6 +127,17 @@ ${LINKS.map((l) => `    <a class="tab" href="${esc(l.href)}" target="_blank" rel
 <meta name="theme-color" content="#f4f4f6">
 ${APP_HEAD}
 <title>Barta Office</title>
+${solo ? `<script>
+(() => {
+  // the CRM's Light or Dark on this phone (core/nav.js "crm-theme"), before the frame says so: no light flash behind a dark CRM
+  let v = null;
+  try { v = localStorage.getItem('crm-theme'); } catch (e) { /* nothing kept */ }
+  const light = v === 'light' || (v === 'auto' && window.matchMedia && !matchMedia('(prefers-color-scheme: dark)').matches);
+  const c = light ? '#f2f2f7' : '#111214';
+  document.documentElement.style.setProperty('--mist', c);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', c);
+})();
+</script>` : ""}
 <style>
 ${FONTS}
 :root{color-scheme:light;--ink:#16161b;--slate:#3b3b42;--muted:#67676f;--line:#ececee;--coral:#fb4d3d;--mist:#f4f4f6}
@@ -152,6 +165,8 @@ iframe[hidden]{display:none}
 /* "Get the app" card: only in a browser tab, never inside the installed app. */
 .install{position:fixed;z-index:20;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(440px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:12px 10px 12px 12px;background:#fff;border:1px solid #ececee;border-radius:20px;box-shadow:0 18px 48px rgba(14,14,18,.16)}
 .install[hidden]{display:none}
+/* a computer is the CRM alone: no card at all (phones only) */
+@media (min-width:900px){.install{display:none!important}}
 /* above the CRM's own tab bar, never over it */
 body.compact .install,body.solo .install{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px)}
 .install img{width:44px;height:44px;border-radius:11px;flex:none}
@@ -345,21 +360,21 @@ ${INSETS_JS}
   function postOverlay() {
     const f = frames.crm;
     if (!f || !f.contentWindow || !f.dataset.loaded) return;
-    const bottom = card && !card.hidden ? Math.round(card.getBoundingClientRect().height) + 12 : 0;
+    const bottom = card && !card.hidden && card.getClientRects().length ? Math.round(card.getBoundingClientRect().height) + 12 : 0;
     try { f.contentWindow.postMessage({ type: 'office:overlay', bottom }, location.origin); } catch (e) { /* not ready */ }
   }
   new MutationObserver(postOverlay).observe(card, { attributes: true, attributeFilter: ['hidden'] });
   const hide = (forGood) => { card.hidden = true; if (forGood) store.set('barta-office-install', 'no'); };
   document.getElementById('install-x').addEventListener('click', () => hide(true));
-  if (!installed && store.get('barta-office-install') !== 'no') {
+  // Phones only: a computer (a mouse, or 900 px and up) gets the CRM alone;
+  // Chrome's own install button in the address bar still installs it there.
+  const desk = !!(window.matchMedia && (matchMedia('(pointer: fine)').matches || matchMedia('(min-width: 900px)').matches));
+  if (!installed && !desk && store.get('barta-office-install') !== 'no') {
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (ios) {
       document.getElementById('install-how').hidden = true;
       document.getElementById('install-ios').hidden = false;
       card.hidden = false;
-    } else if (window.matchMedia && matchMedia('(pointer: fine)').matches) {
-      // a computer (Chrome, Edge): an app in its own window, not a home screen
-      document.getElementById('install-how').textContent = 'Install Barta Office as an app on this computer.';
     }
     let prompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -385,129 +400,162 @@ ${INSETS_JS}
 // The full office (office cookie), rendered once.
 export const OFFICE_HTML = officeHtml();
 
-// The signed-out /office page: Team sign-in (one login per person, the
-// CRM's) and the office password. `team` = the CRM is set up, so Team
-// sign-in can work; `error` goes with the office-password form.
+// The signed-out /office page, in the CRM's own look (dark by default, the
+// phone's Light / Dark / Automatic choice from localStorage "crm-theme",
+// the system font, Barta's coral). `team` = the CRM is set up: Team
+// sign-in (login + password) is the only way in, with Forgot password
+// (login, the office password, a new password twice; POST
+// /api/crm/auth/forgot). Before the first owner exists (`team` false) the
+// office password opens the CRM's setup screen instead; `error` goes with
+// that form. /office#forgot opens Forgot password directly.
 export function officeLoginHtml({ error = "", team = true } = {}) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 ${APP_HEAD}
-<meta name="theme-color" content="#f7f7f8">
-<title>Barta Office</title>
+<meta name="theme-color" content="#111214">
+<title>Sign in · Barta Office</title>
+<script>
+(() => {
+  // the CRM's theme on this phone (core/nav.js): dark unless Light, or Automatic and the phone is light
+  let v = null;
+  try { v = localStorage.getItem('crm-theme'); } catch (e) { /* nothing kept */ }
+  const light = v === 'light' || (v === 'auto' && window.matchMedia && !matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f2f2f7');
+})();
+</script>
 <style>
-${FONTS}
-:root{color-scheme:light}
+:root{color-scheme:dark;--ink:#f5f5f7;--ink-3:#9a9aa2;--muted:#a1a1a8;--line:#2a2b2f;--line-2:#36373c;--mist:#111214;--card:#1b1c1f;--input:#111214;--coral:#fb4d3d;--coral-ink:#ff6b5a;--coral-btn:#db3a29;--coral-btn-2:#c7311f;--ring:rgba(251,77,61,.35);--bad-bg:rgba(255,99,82,.15);--bad-line:rgba(255,99,82,.35);--bad-ink:#ff8a7a;--sh:0 20px 50px rgba(0,0,0,.45);--sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+html[data-theme="light"]{color-scheme:light;--ink:#111114;--ink-3:#636366;--muted:#636366;--line:#e5e5ea;--line-2:#d8d8de;--mist:#f2f2f7;--card:#fff;--input:#fff;--coral-ink:#d0331f;--ring:rgba(251,77,61,.22);--bad-bg:#fdecea;--bad-line:rgba(208,51,31,.25);--bad-ink:#b42318;--sh:0 20px 50px rgba(18,18,21,.08),0 6px 16px rgba(18,18,21,.05)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:#f7f7f8;color:#121215;font:500 16px/1.5 'General Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
-.card{width:100%;max-width:380px;background:#fff;border:1px solid #ececee;border-radius:28px;padding:30px 24px 26px;box-shadow:0 20px 50px rgba(13,27,42,.10),0 8px 20px rgba(13,27,42,.06)}
-.logo{display:block;width:160px;height:auto;margin:0 0 20px}
-h1{margin:0;font:800 1.7rem/1.1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:-.015em}
-p{margin:8px 0 18px;color:#67676f}
-.seg{display:flex;gap:4px;padding:4px;margin:0 0 18px;background:#f1f1f3;border-radius:999px}
-.seg[hidden]{display:none}
-.seg button{flex:1;min-height:44px;border:0;border-radius:999px;background:none;color:#3b3b42;font:600 14px/1 'General Sans',system-ui,sans-serif;cursor:pointer}
-.seg button[aria-pressed="true"]{background:#fff;color:#16161b;box-shadow:0 1px 3px rgba(13,27,42,.12)}
-form[hidden]{display:none}
-label{display:block;font:800 .78rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#67676f;margin:14px 0 8px}
-input[type=password],input[type=text]{width:100%;font:inherit;font-size:1.05rem;padding:13px 16px;min-height:48px;border:1.5px solid #ececee;border-radius:14px;background:#f7f7f8;outline:0}
-input:focus{border-color:#fb4d3d;background:#fff;box-shadow:0 0 0 4px rgba(251,77,61,.12)}
-input.user{position:absolute;left:0;top:0;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border:0!important;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.card{position:relative}
-button.go{margin-top:18px;width:100%;min-height:52px;border:0;border-radius:999px;padding:16px;font:800 1rem/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.045em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#fb4d3d,#ff6a3d);box-shadow:0 14px 38px rgba(251,77,61,.34);cursor:pointer}
-button.go:disabled{opacity:.6}
-details{margin-top:14px;border-top:1px solid #ececee;padding-top:6px}
-summary{min-height:44px;display:flex;align-items:center;font-weight:600;font-size:.95rem;color:#3b3b42;cursor:pointer}
-summary small{color:#85858d;font-weight:500;margin-left:4px}
-.hint{margin:0 0 4px;font-size:.88rem}
-.err{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:#fff5f3;border:1px solid rgba(208,51,31,.25);color:#d0331f;font-size:.92rem}
-.err[hidden]{display:none}
-.err.ok{background:#fff8e6;border-color:rgba(183,121,31,.3);color:#7a4f12}
-.foot{margin:16px 0 0;font-size:.88rem;color:#85858d}
+html,body{margin:0;min-height:100%}
+body{min-height:100vh;min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));background:var(--mist);color:var(--ink);font:400 15px/1.45 var(--sys);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+@media (min-height:640px){body{align-items:center}}
+[hidden]{display:none!important}
+.card{position:relative;width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 24px 24px;box-shadow:var(--sh)}
+.mark{display:flex;align-items:center;gap:12px;margin:0 0 20px}
+.mark img{width:44px;height:44px;border-radius:11px;flex:none}
+.mark span{font:600 15px/1.2 var(--sys);color:var(--muted)}
+h1{margin:0;font:700 28px/1.1 var(--sys);letter-spacing:-.02em}
+.lead{margin:8px 0 18px;color:var(--muted)}
+form{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font:500 13px/1.2 var(--sys);color:var(--ink-3)}
+.field small{color:var(--ink-3);font-size:12.5px}
+.field input{width:100%;min-height:46px;padding:10px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--input);color:var(--ink);font:400 16px/1.3 var(--sys);outline:0;-webkit-appearance:none;appearance:none}
+.field input:focus{border-color:var(--coral);box-shadow:0 0 0 3px var(--ring)}
+.user{position:absolute;left:0;top:0;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border:0!important;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.go{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:4px;padding:0 18px;border:1px solid var(--coral-btn);border-radius:999px;background:var(--coral-btn);color:#fff;font:600 16px/1.1 var(--sys);cursor:pointer}
+.go:active{background:var(--coral-btn-2)}
+.go:disabled{opacity:.6;cursor:default}
+.linkish{align-self:center;min-height:44px;padding:0 8px;border:0;background:none;color:var(--coral-ink);font:600 15px/1 var(--sys);cursor:pointer}
+.err{padding:10px 14px;border-radius:12px;background:var(--bad-bg);border:1px solid var(--bad-line);color:var(--bad-ink);font-size:14px;font-weight:500}
+.foot{margin:14px 0 0;font-size:13px;color:var(--ink-3);text-align:center}
+@media (min-width:900px) and (hover:hover) and (pointer:fine){.go:hover{background:var(--coral-btn-2)}.linkish:hover{text-decoration:underline}}
 </style></head><body>
 <main class="card">
-<img class="logo" src="/assets/img/logo-bww.png" alt="Barta Window Washing" width="160" height="43">
-<h1>Barta Office</h1>
-<p id="say">Sign in to open the office tools. This browser will remember you.</p>
-<div class="seg" id="seg" role="group" aria-label="How to sign in" hidden>
-  <button type="button" data-mode="team" aria-pressed="false">Team sign-in</button>
-  <button type="button" data-mode="office" aria-pressed="true">Office password</button>
-</div>
-<form id="team" novalidate hidden>
+<div class="mark"><img src="${APP_ICON}" alt="" width="44" height="44"><span>Barta Office</span></div>
+<section id="sign" ${team ? "" : "hidden"}>
+<h1>Sign in</h1>
+<p class="lead">Use your own login and password.</p>
+<form id="team" novalidate>
   <div class="err" id="team-err" role="alert" hidden></div>
-  <label for="t-login">Login</label>
-  <input id="t-login" type="text" name="login" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next">
-  <label for="t-pw">Password</label>
-  <input id="t-pw" type="password" name="password" autocomplete="current-password" enterkeyhint="go">
-  <details id="t-more"><summary>Office password <small>(optional)</small></summary>
-    <p class="hint">Also opens Lights, Purchases and the dashboards on this phone. Owners only.</p>
-    <input id="t-office" type="password" name="office_password" autocomplete="off" aria-label="Office password">
-  </details>
+  <label class="field"><span>Login</span><input id="t-login" type="text" name="login" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>
+  <label class="field"><span>Password</span><input id="t-pw" type="password" name="password" autocomplete="current-password" enterkeyhint="go"></label>
   <button type="submit" class="go" id="t-go">Sign in</button>
-  <p class="foot">Forgot your password? Ask Alex or Jacob for a reset link.</p>
+  <button type="button" class="linkish" id="to-forgot">Forgot password?</button>
 </form>
+</section>
+<section id="forgot-box" hidden>
+<h1>Forgot password</h1>
+<p class="lead">Type your login, the office password and a new password. You'll be signed in here and signed out everywhere else.</p>
+<form id="forgot" novalidate>
+  <div class="err" id="forgot-err" role="alert" hidden></div>
+  <label class="field"><span>Login</span><input id="f-login" type="text" name="login" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>
+  <label class="field"><span>Office password</span><input id="f-office" type="password" name="office_password" autocomplete="off" enterkeyhint="next"></label>
+  <label class="field"><span>New password</span><input id="f-pw" type="password" name="password" autocomplete="new-password" minlength="10" enterkeyhint="next"><small>At least 10 characters. A short sentence works well.</small></label>
+  <label class="field"><span>Type it again</span><input id="f-again" type="password" name="again" autocomplete="new-password" enterkeyhint="go"></label>
+  <button type="submit" class="go" id="f-go">Set password and sign in</button>
+  <button type="button" class="linkish" id="to-team">Back to sign-in</button>
+</form>
+</section>
+<section id="setup" ${team ? "hidden" : ""}>
+<h1>Set up the CRM</h1>
+<p class="lead">Type the office password to make the first owner's login.</p>
 <form id="office" method="post" action="/office">
 ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 <input class="user" type="text" name="username" value="Barta" autocomplete="username" tabindex="-1" aria-hidden="true" readonly>
-<label for="pw">Office password</label>
-<input id="pw" type="password" name="password" autocomplete="current-password" required${error ? " autofocus" : ""}>
+<label class="field"><span>Office password</span><input id="pw" type="password" name="password" autocomplete="current-password" required${error ? " autofocus" : ""}></label>
 <button type="submit" class="go">Open</button>
 </form>
+</section>
+<p class="foot">This browser will remember you.</p>
 </main>
 <script>
 (() => {
   const TEAM = ${team ? "true" : "false"};
-  const ERROR = ${error ? "true" : "false"};
   const $ = (id) => document.getElementById(id);
-  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } } };
   $('office').addEventListener('submit', (e) => { if (location.hash) e.target.action = e.target.getAttribute('action') + location.hash; });
   if (!TEAM) return;
-  const seg = $('seg');
-  seg.hidden = false;
-  const installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
-  function mode(m) {
-    $('team').hidden = m !== 'team';
-    $('office').hidden = m !== 'office';
-    seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-    store.set('barta-office-signin', m);
+  // where to land after: this page again (with its #screen, never #forgot)
+  const dest = () => '/office' + (location.hash === '#forgot' ? '' : location.hash);
+  const open = (to) => {
+    const at = to.indexOf('#');
+    const path = at < 0 ? to : to.slice(0, at);
+    if (path === location.pathname) { history.replaceState(null, '', at < 0 ? path : to); location.reload(); } else location.href = to;
+  };
+  function view(which) {
+    $('sign').hidden = which !== 'sign';
+    $('forgot-box').hidden = which !== 'forgot';
+    const first = which === 'forgot' ? $('f-login') : $('t-login');
+    if (which === 'forgot' && !$('f-login').value) $('f-login').value = $('t-login').value.trim();
+    (which === 'forgot' && $('f-login').value ? $('f-office') : first).focus();
   }
-  seg.addEventListener('click', (e) => { const b = e.target.closest('button[data-mode]'); if (b) mode(b.dataset.mode); });
-  mode(ERROR ? 'office' : installed ? 'team' : (store.get('barta-office-signin') || 'office'));
-  const err = $('team-err');
-  const say = (t) => { err.classList.remove('ok'); err.textContent = t; err.hidden = !t; };
-  $('team').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  $('to-forgot').addEventListener('click', () => { history.replaceState(null, '', '#forgot'); view('forgot'); });
+  $('to-team').addEventListener('click', () => { history.replaceState(null, '', location.pathname); view('sign'); });
+  function sayIn(box, t) { box.textContent = t || ''; box.hidden = !t; }
+  async function post(path, body) {
+    const res = await fetch('/api/crm/auth/' + path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CRM': '1' }, body: JSON.stringify(body) });
+    let out = null;
+    try { out = await res.json(); } catch (x) { /* not JSON */ }
+    if (res.ok && out && out.ok) return out.data || {};
+    throw new Error((out && out.error && out.error.message) || (res.status === 429 ? 'Too many tries. Wait a little, then try again.' : "That didn't work (" + res.status + "). Try again."));
+  }
+  function wire(form, err, btn, build, path) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let body;
+      try { body = build(); } catch (x) { sayIn(err, x.message); return; }
+      btn.disabled = true;
+      sayIn(err, '');
+      try {
+        const data = await post(path, body);
+        open((data && data.to) || '/office');
+        return;
+      } catch (x) {
+        sayIn(err, x && x.message === 'Failed to fetch' ? 'No connection. Try again.' : (x && x.message) || "That didn't work. Try again.");
+      }
+      btn.disabled = false;
+    });
+  }
+  wire($('team'), $('team-err'), $('t-go'), () => {
     const login = $('t-login').value.trim();
     const password = $('t-pw').value;
-    if (!login || !password) { say('Type your login and password.'); return; }
-    const go = $('t-go');
-    go.disabled = true;
-    say('');
-    try {
-      const res = await fetch('/api/crm/auth/login', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CRM': '1' }, body: JSON.stringify({ login, password, office_password: $('t-office').value || undefined, to: '/office' + location.hash }) });
-      let body = null;
-      try { body = await res.json(); } catch (x) { /* not JSON */ }
-      if (res.ok && body && body.ok) {
-        const to = (body.data && body.data.to) || '/office';
-        const at = to.indexOf('#');
-        // Already on that page (only the #hash differs): reload so it sees the new sign-in.
-        const open = () => { if ((at < 0 ? to : to.slice(0, at)) === location.pathname) { if (at >= 0) location.hash = to.slice(at + 1); location.reload(); } else location.href = to; };
-        if (body.data && body.data.office_cookie === false) {
-          // Signed in to the CRM, but the optional office password didn't take: say so before the CRM opens alone.
-          say("You're signed in. The office password wasn't right (or isn't for your login), so only the CRM opens on this phone.");
-          err.classList.add('ok');
-          setTimeout(open, 3500);
-          return;
-        }
-        open();
-        return;
-      }
-      say((body && body.error && body.error.message) || 'Sign-in failed (' + res.status + '). Try again.');
-    } catch (x) {
-      say('No connection. Try again.');
-    }
-    go.disabled = false;
-  });
+    if (!login || !password) throw new Error('Type your login and password.');
+    return { login, password, to: dest() };
+  }, 'login');
+  wire($('forgot'), $('forgot-err'), $('f-go'), () => {
+    const login = $('f-login').value.trim();
+    const office = $('f-office').value;
+    const pw = $('f-pw').value;
+    if (!login) throw new Error('Type your login.');
+    if (!office) throw new Error('Type the office password.');
+    if (pw.length < 10) throw new Error('Use at least 10 characters.');
+    if (pw !== $('f-again').value) throw new Error("The two passwords don't match.");
+    return { login, office_password: office, password: pw, again: $('f-again').value, to: dest() };
+  }, 'forgot');
+  if (location.hash === '#forgot') view('forgot'); else $('t-login').focus();
 })();
 </script>
 </body></html>`;

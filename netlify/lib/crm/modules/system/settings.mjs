@@ -4,8 +4,11 @@
 // moves sys/auth-epoch, so every warm instance re-reads it within seconds
 // (core/settings.mjs saveSettingFor); loadPermissions() fails closed.
 //
-//   cfg/auth        { office_cookie_roles: ["owner"] }  which roles' Team
-//                   sign-in may also set the office cookie (D14)
+//   cfg/auth        { office_cookie_roles: ["owner"] }  D14's roles: no
+//                   longer read (Nov 2026: owners and the office get the
+//                   office cookie with every sign-in, techs never;
+//                   core/auth.mjs OFFICE_ROLES); kept so a saved document
+//                   still opens
 //   cfg/permissions { roles: { admin: { "invoices:void": true }, tech: {...} } }
 //                   overrides of the D18 role defaults; owner-only
 //                   permissions can never be given to admin or tech
