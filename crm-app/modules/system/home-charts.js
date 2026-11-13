@@ -1,26 +1,17 @@
-// Home's one chart (the Money card: collected or scheduled as a running
-// total over a period, ARR as its level each day), drawn in the CRM itself. One series in coral (#fb4d3d, the house
-// color) as a 2 px smooth line with a faint wash under it, a light dashed
-// grid (the owner's pick), three or four clean ticks, a few x labels that
-// never collide, labels in ink (never in the series color), and a readout
-// above the plot with a marker that follows a tap, a drag, the pointer or
-// the arrow keys (the latest point to start with). A null value (a day
-// still ahead) breaks the line and is never read out. Every value is also
-// in a table for screen readers (srTable).
-//
-//   const c = lineChart(el, { rows, value: (r) => r.value, fmt, axis, read, readout, start? })
-//   c.destroy()
-//
-// rows [{ key, label, value|null }]; fmt(v) → "$4,320" (the readout),
-// axis(v) → "$4K" (the ticks); read(row) → the readout's second line. Drawn
-// at the element's own size (its CSS height, else spec.height) and again
-// whenever that changes (a ResizeObserver), so text never scales.
+// Home's chart, drawn in the CRM itself: the Money card's (Rotor's, the
+// owner's Nov 13 ask): Collected in coral and Scheduled in grey per day of
+// a week or a month, smooth lines (monotone: a day of $0 never dips under
+// the baseline), a dashed grid, $ ticks at the left, a few dates under it
+// that never collide, a readout on tap. Labels in ink, never in a series
+// color. Every value is also in a table for screen readers (srTable).
+// Drawn at the element's own size (its CSS height, else spec.height) and
+// again whenever that changes (a ResizeObserver), so text never scales.
 
 import { html, render } from "../../core/ui.js";
 
-// 0 and up to three clean steps (1, 2, 2.5 or 5 × 10^k) whose top is the
+// 0 and up to three (or `most`) clean steps (1, 2, 2.5 or 5 × 10^k) whose top is the
 // least headroom over the data: 22,700 → 0, 10K, 20K, 30K; 16 → 0, 10, 20.
-export function ticks(max, { whole = false } = {}) {
+export function ticks(max, { whole = false, most = 3 } = {}) {
   if (!(max > 0)) return [0, 1, 2];
   let best = null;
   for (const least of [2, 1]) {
@@ -29,7 +20,7 @@ export function ticks(max, { whole = false } = {}) {
         const step = m * 10 ** k;
         if (whole && !Number.isInteger(step)) continue;
         const n = Math.ceil(max / step - 1e-9);
-        if (n < least || n > 3) continue;
+        if (n < least || n > most) continue;
         if (!best || n * step < best.top || (n * step === best.top && n > best.n)) best = { step, n, top: n * step };
       }
     }
@@ -58,76 +49,92 @@ export function smoothPath(pts) {
   return d;
 }
 
-export function lineChart(el, spec) {
-  const rows = spec.rows || [];
-  const value = spec.value || ((r) => r.value);
-  const has = (i) => i >= 0 && i < rows.length && value(rows[i]) !== null && value(rows[i]) !== undefined;
-  const filled = rows.map((_, i) => i).filter(has);
-  // today's point when the period has one (scheduled runs past today), else the latest
-  const start = spec.start ? rows.findIndex((r) => r.key === spec.start) : -1;
-  let sel = has(start) ? start : filled.length ? filled[filled.length - 1] : -1;
+// Rotor's Money chart: the period's days across, Collected (coral) and
+// Scheduled (grey) as smooth lines on one $ scale, a dashed grid both ways,
+// the $ ticks at the left, a date every few days (Nov 1, Nov 7, Nov 13, ...),
+// a dot on each line and a readout for the day under a tap, a drag, the
+// pointer or the arrow keys (today's, or the latest, to start with).
+//
+//   const c = pairChart(el, { keys, label(i), series: [{ cls, dot, values, join? }], axis, onRead(i), start?, height? })
+//   c.destroy()
+//
+// keys: the period's days (YYYY-MM-DD); values: one per key, null where a
+// series has no point. A null breaks a line, unless the series is `join`
+// (Rotor's weekly points: drawn through the days that have one).
+// onRead(i) fills the readout for day i (the caller's words).
+export function pairChart(el, spec) {
+  const keys = spec.keys || [];
+  const n = keys.length;
+  const series = (spec.series || []).map((x) => ({ ...x, values: x.values || [] }));
+  const val = (s, i) => (s.values[i] === null || s.values[i] === undefined ? null : Number(s.values[i]));
+  const any = (i) => i >= 0 && i < n && series.some((s) => val(s, i) !== null);
+  const filled = keys.map((_, i) => i).filter(any);
+  const start = spec.start ? keys.indexOf(spec.start) : -1;
+  // today's day, else the latest point on or before it (a weekly point's week), else the latest
+  const before = spec.start ? filled.filter((i) => keys[i] <= spec.start) : [];
+  let sel = any(start) ? start : before.length ? before[before.length - 1] : filled.length ? filled[filled.length - 1] : -1;
   let width = 0, height = 0, geo = null;
-  const readEl = spec.readout || null;
 
   function draw() {
     const W = Math.max(160, Math.floor(el.clientWidth));
     width = el.clientWidth;
     height = el.clientHeight;
-    const H = Math.max(100, Math.floor(el.clientHeight) || spec.height || 160);
-    const top = 8, band = 22;
-    const vals = filled.map((i) => value(rows[i]));
-    const max = Math.max(0, ...vals);
-    const tk = ticks(max, { whole: !!spec.whole });
+    const H = Math.max(110, Math.floor(el.clientHeight) || spec.height || 180);
+    const top = 8, band = 26;
+    const max = Math.max(0, ...series.flatMap((s) => s.values.map((_, i) => val(s, i) || 0)));
+    const tk = ticks(max, { most: 4 });
     const top1 = tk[tk.length - 1];
-    const gutter = Math.max(...tk.map((v) => spec.axis(v).length)) * 6.4 + 10;
-    const x0 = gutter, x1 = W - 4, y1 = H - band;
-    const n = rows.length;
+    const gutter = Math.max(...tk.map((v) => spec.axis(v).length)) * 6.6 + 12;
+    const x0 = gutter, x1 = W - 6, y1 = H - band;
     const x = (i) => (n <= 1 ? (x0 + x1) / 2 : x0 + ((x1 - x0) * i) / (n - 1));
     const y = (v) => y1 - (Math.max(0, v || 0) / top1) * (y1 - top);
-    // runs of points with values (a null breaks the line)
-    const runs = [];
-    let cur = [];
-    rows.forEach((r, i) => { if (has(i)) cur.push([x(i), y(value(r))]); else if (cur.length) { runs.push(cur); cur = []; } });
-    if (cur.length) runs.push(cur);
-    const lines = runs.map((p) => smoothPath(p));
-    const areas = runs.filter((p) => p.length > 1).map((p) => `${smoothPath(p)}L${fix(p[p.length - 1][0])},${y1}L${fix(p[0][0])},${y1}Z`);
-    // x labels: as many as fit (about 52 px each), evenly spaced, the last one kept
-    const fit = Math.max(2, Math.floor((x1 - x0) / 56));
-    const every = Math.max(1, Math.ceil(n / fit));
-    const labels = rows.map((r, i) => i).filter((i) => i % every === 0);
+    const paths = series.map((s) => {
+      const runs = [];
+      let cur = [];
+      for (let i = 0; i < n; i++) {
+        const v = val(s, i);
+        if (v !== null) cur.push([x(i), y(v)]);
+        else if (!s.join && cur.length) { runs.push(cur); cur = []; }
+      }
+      if (cur.length) runs.push(cur);
+      return { cls: s.cls, d: runs.map((p) => smoothPath(p)).join("") };
+    });
+    // a date every 6 days on a month (Rotor's Nov 1, 7, 13, 19, 25), every day or every other on a week
+    let every = n > 14 ? 6 : 1;
+    while (n > 1 && ((x1 - x0) / (n - 1)) * every < 46) every++;
+    const marks = keys.map((_, i) => i).filter((i) => i % every === 0);
     render(el, html`<svg class="hc-svg" width="${W}" height="${H}" viewBox="${`0 0 ${W} ${H}`}" aria-hidden="true">
-      ${tk.map((v) => html`<line class="${v === 0 ? "hc-base" : "hc-grid"}" x1="${x0}" x2="${x1}" y1="${fix(y(v)) + 0.5}" y2="${fix(y(v)) + 0.5}"/>
-        <text class="hc-t" x="0" y="${fix(y(v) + 3.5)}">${spec.axis(v)}</text>`)}
-      ${areas.map((d) => html`<path class="hc-area" d="${d}"/>`)}
-      ${lines.map((d) => html`<path class="hc-line" d="${d}"/>`)}
+      ${marks.map((i) => html`<line class="hc-vgrid" x1="${fix(x(i)) + 0.5}" x2="${fix(x(i)) + 0.5}" y1="${top}" y2="${y1}"/>`)}
+      ${tk.map((v) => html`<line class="hc-grid dash" x1="${x0}" x2="${x1}" y1="${fix(y(v)) + 0.5}" y2="${fix(y(v)) + 0.5}"/>
+        <text class="hc-t" x="${x0 - 8}" y="${fix(y(v) + 4)}" text-anchor="end">${spec.axis(v)}</text>`)}
+      ${paths.map((p) => (p.d ? html`<path class="${p.cls}" d="${p.d}"/>` : ""))}
       <line class="hc-cross" x1="0" x2="0" y1="${top}" y2="${y1}" visibility="hidden"/>
-      <circle class="hc-dot" r="4.5" cx="0" cy="0" visibility="hidden"/>
-      ${labels.map((i) => html`<text class="hc-t" x="${fix(Math.min(Math.max(x(i), x0 + 18), W - 22))}" y="${H - 6}" text-anchor="middle">${rows[i].label}</text>`)}
+      ${series.map((s) => html`<circle class="${`hc-dot ${s.dot || ""}`}" r="4.5" cx="0" cy="0" visibility="hidden"/>`)}
+      ${marks.map((i) => html`<text class="hc-t" x="${fix(Math.min(Math.max(x(i), x0 + 16), W - 20))}" y="${H - 6}" text-anchor="middle">${spec.label(i)}</text>`)}
     </svg>`);
-    geo = { x, y, x0, x1, n };
+    geo = { x, y, x0, x1 };
   }
 
   function show(i) {
     if (!filled.length || !geo) return;
-    sel = has(i) ? i : filled.reduce((b, j) => (b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b), -1);
-    const r = rows[sel];
-    const cx = fix(geo.x(sel)), cy = fix(geo.y(value(r)));
-    const cross = el.querySelector(".hc-cross"), dot = el.querySelector(".hc-dot");
+    sel = any(i) ? i : filled.reduce((b, j) => (b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b), -1);
+    const cx = fix(geo.x(sel));
+    const cross = el.querySelector(".hc-cross");
     if (cross) { cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible"); }
-    if (dot) { dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("visibility", "visible"); }
-    if (readEl) {
-      const b = readEl.querySelector("b");
-      const s = readEl.querySelector("span");
-      if (b) b.textContent = spec.fmt(value(r) || 0);
-      if (s) s.textContent = spec.read ? spec.read(r) : r.label;
-    }
+    el.querySelectorAll(".hc-dot").forEach((dot, k) => {
+      const v = series[k] ? val(series[k], sel) : null;
+      if (v === null) { dot.setAttribute("visibility", "hidden"); return; }
+      dot.setAttribute("cx", cx);
+      dot.setAttribute("cy", fix(geo.y(v)));
+      dot.setAttribute("visibility", "visible");
+    });
+    if (spec.onRead) spec.onRead(sel);
   }
   const step = (d) => { const k = filled.indexOf(sel) + d; if (k >= 0 && k < filled.length) show(filled[k]); };
   const at = (e) => {
     if (!geo) return sel;
-    const box = el.getBoundingClientRect();
-    const px = e.clientX - box.left;
-    return geo.n <= 1 ? 0 : Math.round(((px - geo.x0) / (geo.x1 - geo.x0)) * (geo.n - 1));
+    const px = e.clientX - el.getBoundingClientRect().left;
+    return n <= 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((px - geo.x0) / (geo.x1 - geo.x0)) * (n - 1))));
   };
   const onPointer = (e) => show(at(e));
   const onKey = (e) => {

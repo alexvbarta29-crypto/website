@@ -4,16 +4,21 @@
 // server per person (ptr/home/{userId}). Pure parts in home-kpis.mjs.
 //
 //   GET /home                      the header, the person's cards in order and the data of the ones shown
-//   GET /home/money?metric=&period=&from=&to=   the Money card: collected | scheduled | arr, a period
+//   GET /home/money?period=week|month&date=      the Money card (Rotor's): Collected and Scheduled for the week or month of a day
+//   GET /home/money?metric=&period=&from=&to=   one metric (collected | scheduled | arr) over a period (older clients)
 //   GET /home/agenda?view=&date=   the Agenda: day | week | month
 //   GET /home/leaderboard?board=   sales | techs (the reports module's service, when it is there)
 //   PUT /home/layout { cards }     Edit Home
 //
 // The cards (each only for who may see it; a card that is off costs no read):
 //   clock        Timesheet: today's hours and Clock in / out (time:own)
-//   money        Collected (Rotor's snapshot until cutover, the CRM's
-//                payments after), Scheduled (the CRM's visits) or ARR (the
-//                CRM's live plans): reports:read or the office sign-in
+//   money        Rotor's card (Nov 13): Week | Month, Collected and
+//                Scheduled side by side, both per day on one chart, and the
+//                ARR under it. Collected is the CRM's payments after cutover
+//                or while the latest Rotor import is 3 days old or less (it
+//                brings Rotor's payments in), else Rotor's snapshot;
+//                Scheduled the CRM's visits, ARR its live plans:
+//                reports:read or the office sign-in
 //   agenda       the day's (week's, month's) visits, and open tasks with no
 //                due date (schedule:read; the tasks with tasks:read)
 //   leaderboard  "reports.leaderboard" (another track's service): hidden while it is missing
@@ -25,8 +30,8 @@
 // work (is_technician). Edit Home shows, hides and orders them.
 // What needs attention is the bell's and the tab's dot (GET /me/badges).
 // A technician gets nothing here (their own Today is the tech app's).
-// Every index is read once per request (crm-store's ixMemo): 12 storage
-// calls cold for the default cards on Rotor's numbers.
+// Every index is read once per request (crm-store's ixMemo): 18 storage
+// calls cold for the default cards on Rotor's numbers (19 with a fresh import).
 
 import { withStoreScope, readIndex, readPointer, getRaw, settledWrite, K, getSetting } from "../../../crm-store.mjs";
 import { officeSignedIn } from "../../core/auth.mjs";
@@ -37,7 +42,8 @@ import { InputError, StaleError, ForbiddenError, NotFoundError } from "../../cor
 import { safeErr } from "../../../referral-lib.mjs";
 import { loadDashboard } from "../../../office-data.mjs";
 import {
-  periodOf, PERIODS, monthsOf, rotorCollected, crmCollected, scheduledDays, arrDays, moneyCard, clockToday, agendaRange, AGENDA_VIEWS, AGENDA_MAX,
+  periodOf, PERIODS, monthsOf, rotorCollected, crmCollected, scheduledDays, arrDays, arrOn, moneyCard, clockToday, agendaRange, AGENDA_VIEWS, AGENDA_MAX,
+  latestImport, pairPeriod, PAIR_PERIODS, moneyPair,
   agendaOf, tasksOf, inboxOf, layoutOf, validateLayout, GOALS_DEFAULTS, validateGoals, jobsDoneIn, normalizeBoard,
 } from "./home-kpis.mjs";
 
@@ -115,6 +121,31 @@ async function money(ctx, { metric = "collected", p, today, mode, goals = null }
   return moneyCard({ metric, p, series, source: "rotor", asOf: snap.data.as_of, goals });
 }
 
+// Collected for Rotor's card: the CRM's payments per day after cutover, or
+// while the latest finished Rotor import is fresh (through that import's
+// day: later days are null, never $0); else Rotor's snapshot.
+// → { collected, source, asOf, missing }
+async function collectedFor({ p, today, mode }) {
+  const crm = !!(mode && mode.system_of_record === "crm");
+  const imp = crm ? null : latestImport(await ix("import-runs", ""), today);
+  if (crm || (imp && imp.fresh)) {
+    const through = crm || imp.date > today ? today : imp.date;
+    const end = through < p.to ? through : p.to;
+    const rows = end < p.from ? [] : (await Promise.all(monthsOf(p.from, end).map((m) => ix("payments", m)))).flat();
+    return { collected: crmCollected(rows, p, through), source: crm ? "crm" : "import", asOf: crm ? null : imp.date, missing: null };
+  }
+  const snap = officeSnapshot();
+  // why Rotor's numbers are missing (the office's one setup step), never the key itself
+  if (!snap.ok) return { collected: null, source: "rotor", asOf: null, missing: snap.reason || "missing" };
+  return { collected: rotorCollected(snap.data, p, today), source: "rotor", asOf: snap.data.as_of, missing: null };
+}
+
+async function moneyBoth(ctx, { p, today, mode, col = null }) {
+  const [c, visits, jobs, plans] = await Promise.all([col || collectedFor({ p, today, mode }), visitsIn(p.from, p.to), jobsFor(p.from, p.to), ix("plans", "")]);
+  const arr = plans.length ? arrOn(plans, today) : null;
+  return { ...moneyPair({ p, collected: c.collected, scheduled: scheduledDays(visits, jobs, p), source: c.source, asOf: c.asOf, arr, missing: c.missing }), updated_at: now().toISOString() };
+}
+
 async function agenda(ctx, view, date) {
   const range = agendaRange(view, date);
   const [visits, users] = await Promise.all([visitsIn(range.from, range.to), ix("users", "")]);
@@ -171,20 +202,20 @@ async function home(ctx) {
     ]);
     const layout = layoutOf(saved, available, { clock: !!ctx.user.is_technician });
     const on = new Set(layout.filter((c) => c.on).map((c) => c.key));
-    const needGoals = on.has("money") || on.has("goals");
-    const goals = needGoals ? await getSetting("goals").catch(() => ({ ...GOALS_DEFAULTS })) : null;
-    const month = periodOf("month", today);
+    const goals = on.has("goals") ? await getSetting("goals").catch(() => ({ ...GOALS_DEFAULTS })) : null;
+    const month = pairPeriod("month", today);
     const cards = {};
     const jobs = [];
     if (on.has("clock")) jobs.push(ix("timesheets", today.slice(0, 7)).then((rows) => { cards.clock = clockToday(rows, ctx.user.id, today, t.getTime()); }));
-    const moneyP = on.has("money") || on.has("goals") ? money(ctx, { metric: "collected", p: month, today, mode, goals }) : null;
-    if (on.has("money")) jobs.push(moneyP.then((m) => { cards.money = m; }));
+    // this month's Collected, once for the card and the goals
+    const colP = on.has("money") || on.has("goals") ? collectedFor({ p: month, today, mode }) : null;
+    if (on.has("money")) jobs.push(moneyBoth(ctx, { p: month, today, mode, col: colP }).then((m) => { cards.money = m; }));
     const taskList = (on.has("agenda") || on.has("tasks")) && ctx.can("tasks:read") ? tasks(ctx) : null;
     if (on.has("agenda")) jobs.push(Promise.all([agenda(ctx, "day", today), taskList]).then(([a, tl]) => { cards.agenda = { ...a, tasks: tl ? tl.filter((x) => !x.due) : null }; }));
     if (on.has("tasks")) jobs.push(taskList.then((tl) => { cards.tasks = { items: tl, can_add: ctx.can("sales:work") }; }));
     if (on.has("inbox")) jobs.push(ix("inbox", "open").then((rows) => { cards.inbox = { items: inboxOf(rows) }; }));
     if (on.has("leaderboard")) jobs.push(leaderboard(ctx, "sales", today).then((b) => { cards.leaderboard = b; }));
-    if (on.has("goals")) jobs.push(moneyP.then((m) => goalsCard(ctx, { today, mode, goals, collected: m.total })).then((g) => { cards.goals = g; }));
+    if (on.has("goals")) jobs.push(colP.then((c) => goalsCard(ctx, { today, mode, goals, collected: c.collected ? c.collected.total : null })).then((g) => { cards.goals = g; }));
     await Promise.all(jobs);
     return {
       data: {
@@ -202,7 +233,19 @@ async function home(ctx) {
 async function moneyRoute(ctx) {
   if (!seesMoney(ctx)) throw new ForbiddenError("Money isn't open to this login.");
   const q = ctx.query;
-  const metric = q.get("metric") || "collected";
+  // Rotor's card: the week or month of a day
+  if (!q.get("metric")) {
+    const kind = q.get("period") || "month";
+    if (!PAIR_PERIODS.includes(kind)) throw new InputError("Week or month?", "period");
+    return withStoreScope({ ixMemo: new Map() }, async () => {
+      const today = localDate(now());
+      const date = q.get("date") || today;
+      if (!isLocalDate(date) || Math.abs(Date.parse(date) - Date.parse(today)) > 5 * 366 * 86400000) throw new InputError("Which day?", "date");
+      const mode = await ctx.sysMode().catch(() => null);
+      return { data: await moneyBoth(ctx, { p: pairPeriod(kind, date), today, mode }) };
+    });
+  }
+  const metric = q.get("metric");
   if (!["collected", "scheduled", "arr"].includes(metric)) throw new InputError("Collected, scheduled or ARR?", "metric");
   const period = q.get("period") || "month";
   if (!PERIODS.includes(period)) throw new InputError("Pick a period.", "period");

@@ -2,12 +2,14 @@
 // Home with the best of Flyra's, as cards each person picks with Edit
 // Home), the office's bar, the Sales switch and the Menu, at iPhone 13 and
 // SE sizes and 1440 x 900 and 1024 x 768: the header, Clock in (in and
-// out), the Money card (Collected | Scheduled | ARR, the period menu, a
-// custom range, the chart's readout, goals), Today (Daily | Weekly |
+// out), the Money card (Rotor's: Week | Month, the arrows, share and fold,
+// Collected and Scheduled side by side, both lines per day, the readout,
+// where Collected comes from, the ARR under it), Today (Daily | Weekly |
 // Monthly, tasks without a due date), Edit Home (on, off, order, from My
 // account too), the optional cards, the empty state before any CRM data,
 // and a tech who never sees Home. The money is the made-up Rotor snapshot
-// the server seals for its throwaway key. No console errors, no CSP
+// the server seals for its throwaway key, then (the real day) a made-up
+// Rotor import of two days ago with its payments. No console errors, no CSP
 // violations, no sideways scroll, 44 px targets. E2E_SHOTS=<dir> saves the
 // screenshots.
 import { test, before, after } from "node:test";
@@ -53,10 +55,12 @@ const cards = (f) => f.$$eval(".hm-grid > [data-card]", (els) => els.map((e) => 
 const GONE = ".hm-kpi, .hm-qa, .hm-quick, .hm-hero, .hm-needs, .hm-need, [data-chart=weekly], [data-chart=monthly], [data-chart=weeks]";
 // the screen is drawn again (a card's own read finished)
 const idle = (f) => f.waitForFunction(() => !document.querySelector('#view [aria-busy="true"]'));
-async function pickPeriod(f, label) {
-  await f.click('[data-hm="period"]');
-  await f.click(`.hm-menu button:text-is("${label}")`);
-  await idle(f);
+// the Money card's own read finished, its label
+async function moneyTo(f, sel) {
+  const was = await text(f, ".hm-mper");
+  await f.click(sel);
+  await f.waitForFunction((w) => { const h = document.querySelector(".hm-mper"); return h && h.textContent !== w && !document.querySelector('.hm-pair[aria-busy="true"]'); }, was);
+  return text(f, ".hm-mper");
 }
 
 test("before any CRM data: the header, Clock in, Rotor's money and a calm empty Today", async () => {
@@ -72,11 +76,12 @@ test("before any CRM data: the header, Clock in, Rotor's money and a calm empty 
       assert.equal(await has(f, GONE), false, "nothing of the old Home");
       // Clock in
       assert.match(await text(f, ".hm-c-clock"), /^Timesheet 0h 0m Choose a role when you clock in Clock In$/i);
-      // Money: Rotor's numbers, this month, with AVG and PEAK and the chart
-      assert.match(await text(f, ".hm-c-money"), /^Collected Scheduled ARR 1M November \$10,453 Avg \/ day \$653 Peak week \$4,890 /i);
-      assert.equal(await f.getAttribute('[data-hm="period"]', "aria-label"), "Period: This month");
-      assert.match(await text(f, ".hm-c-money .hm-foot"), /^From Rotor · updated Nov 16 See more$/);
-      assert.equal(await f.$$eval('[data-chart="money"] .hc-line', (x) => x.length), 1);
+      // Money: Rotor's card, this month; no import yet, so Collected is Rotor's snapshot and its weeks (Scheduled summed to the same weeks)
+      assert.match(await text(f, ".hm-c-money"), /^Week Month November 2026 Collected \$10,453 Scheduled \$0 Week of Nov 16 Collected \$780 Scheduled \$0 /);
+      assert.equal(await f.getAttribute('[data-hm="m-period"][data-v="month"]', "aria-pressed"), "true");
+      assert.equal(await text(f, ".hm-c-money .hm-mfoot"), "From Rotor · updated Nov 16");
+      assert.equal(await text(f, ".hm-money .hm-arr"), "See more", "no plans yet: no ARR");
+      assert.equal(await f.$$eval('[data-chart="money"] .hc-line', (x) => x.length), 2);
       // Today: nothing yet
       assert.match(await text(f, ".hm-c-agenda"), /^Today Tue, Nov 17 · 0 items Daily Weekly Monthly Nothing scheduled for today/);
       assert.equal(await has(f, ".hm-edit [data-hm=edit]"), true, "Edit Home at the bottom");
@@ -238,59 +243,95 @@ test("Monthly at iPhone 13 and SE, dark and light: the calendar fits, a day pick
   }
 });
 
-test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the readout, See more", async () => {
+test("Money (Rotor's card): Collected and Scheduled per day from the import, the readout, Week | Month and the arrows, share, fold, ARR, both themes", async () => {
+  await day();
+  for (const device of DEVICES) {
+    const { p, page, f } = await home("olive", { device, office: true });
+    try {
+      await f.evaluate(() => { document.documentElement.dataset.theme = "light"; });
+      assert.match(await text(f, ".hm-c-money"), /^Week Month November 2026 Collected \$[\d,]+ Scheduled \$[\d,]+ Nov 17 Collected - Scheduled \$[\d,]+ /, "per day; today is after the import: '-' for Collected");
+      assert.equal(await text(f, ".hm-c-money .hm-mfoot"), "From Rotor's import of Nov 15");
+      assert.match(await text(f, ".hm-money .hm-arr"), /^ARR \$[\d,]+ · See more$/);
+      // the chart: both lines, the dashed grid, $ at the left, Nov 1, 7, 13, 19, 25 under it
+      assert.equal(await f.$$eval('[data-chart="money"] .hc-line.c', (x) => x.length), 1);
+      assert.equal(await f.$$eval('[data-chart="money"] .hc-line.s', (x) => x.length), 1);
+      assert.deepEqual(await f.$$eval('[data-chart="money"] text[text-anchor="middle"]', (els) => els.map((e) => e.textContent)), ["Nov 1", "Nov 7", "Nov 13", "Nov 19", "Nov 25"]);
+      assert.equal(await f.$$eval('[data-chart="money"] .hc-vgrid', (x) => x.length), 5);
+      const ticks = await f.$$eval('[data-chart="money"] text[text-anchor="end"]', (els) => els.map((e) => e.textContent));
+      assert.ok(ticks.length >= 3 && ticks[0] === "$0" && ticks.every((x) => /^\$[\d.]+K?$/.test(x)), ticks.join(" "));
+      const [card, pair] = await Promise.all([f.$eval(".hm-c-money", (e) => e.getBoundingClientRect().toJSON()), f.$$eval(".hm-pv", (els) => els.map((e) => e.getBoundingClientRect().toJSON()))]);
+      assert.ok(Math.abs(pair[0].y - pair[1].y) < 1 && pair[1].x >= pair[0].x + pair[0].width - 1 && pair[1].x + pair[1].width <= card.x + card.width, "Collected and Scheduled side by side");
+      assert.deepEqual(await screenProblems(f), []);
+      // (the shell's one-time "New look" note off the screenshots)
+      await f.evaluate(() => { const t = document.getElementById("toasts"); if (t) t.style.visibility = "hidden"; });
+      await shot(page, `home-money-${device}-light`);
+      await f.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+      await page.waitForTimeout(150);
+      await shot(page, `home-money-${device}-dark`);
+      await p.clean();
+    } finally { await p.close(); }
+  }
+  const { p, page, f } = await home("olive", { device: "iphone13", office: true });
+  try {
+    // the readout: today to start; the keys and a tap move it
+    await f.focus('[data-chart="money"]');
+    await page.keyboard.press("Home");
+    assert.match(await text(f, "#read-money"), /^Nov 1 Collected \$[\d,]+ Scheduled \$[\d,]+$/);
+    await page.keyboard.press("ArrowRight");
+    assert.match(await text(f, "#read-money"), /^Nov 2 Collected \$[\d,]+ Scheduled \$[\d,]+$/);
+    const box = await f.$eval('[data-chart="money"]', (e) => e.getBoundingClientRect().toJSON());
+    await f.click('[data-chart="money"]', { position: { x: box.width - 8, y: 40 } });
+    assert.match(await text(f, "#read-money"), /^Nov 30 Collected - Scheduled \$[\d,]+$/);
+    assert.equal(await f.$$eval('[data-chart="money"] .hc-dot[visibility="visible"]', (x) => x.length), 1, "a dot on the line that has the day");
+    // share: the phone's share sheet gets a short summary
+    await f.evaluate(() => { Object.defineProperty(navigator, "share", { configurable: true, value: async (d) => { window.__shared = d; } }); });
+    const collected = await text(f, ".hm-pv:first-child b"), scheduled = await text(f, ".hm-pv:last-child b");
+    await f.click('[data-hm="m-share"]');
+    await f.waitForFunction(() => window.__shared);
+    assert.equal(await f.evaluate(() => window.__shared.text), `November 2026: Collected ${collected}, Scheduled ${scheduled}`);
+    // the arrows: October, back, December (ahead of the import: '-')
+    assert.equal(await moneyTo(f, '[data-hm="m-move"][data-v="-1"]'), "October 2026");
+    assert.equal(await f.getAttribute('[data-hm="m-move"][data-v="-1"]', "aria-label"), "Previous month");
+    assert.equal(await moneyTo(f, '[data-hm="m-move"][data-v="1"]'), "November 2026");
+    assert.equal(await moneyTo(f, '[data-hm="m-move"][data-v="1"]'), "December 2026");
+    assert.match(await text(f, ".hm-pair"), /^Collected - Scheduled \$[\d,]+$/);
+    // Week: this week, then the one before (the import's last week, per day)
+    assert.equal(await moneyTo(f, '[data-hm="m-period"][data-v="week"]'), "Nov 30 – Dec 6", "Week opens on the period on screen (the week of its 1st)");
+    assert.equal(await moneyTo(f, '[data-hm="m-period"][data-v="month"]'), "November 2026", "the month of the week's Monday");
+    assert.equal(await moneyTo(f, '[data-hm="m-period"][data-v="week"]'), "Nov 16 – 22", "today's week: today is in November");
+    assert.equal(await f.getAttribute('[data-hm="m-move"][data-v="1"]', "aria-label"), "Next week");
+    assert.equal(await moneyTo(f, '[data-hm="m-move"][data-v="-1"]'), "Nov 9 – 15");
+    assert.match(await text(f, ".hm-pair"), /^Collected \$[\d,]+ Scheduled \$[\d,]+$/);
+    assert.equal(await f.$$eval('[data-chart="money"] text[text-anchor="middle"]', (els) => els.length) >= 3, true);
+    assert.deepEqual(await screenProblems(f), []);
+    await shot(page, "home-money-week-iphone13");
+    // fold: just the numbers, remembered on this phone
+    await f.click('[data-hm="m-fold"]');
+    assert.equal(await has(f, '[data-chart="money"]'), false);
+    assert.equal(await f.getAttribute('[data-hm="m-fold"]', "aria-expanded"), "false");
+    await goTo(f, "/menu");
+    await goTo(f, "/today");
+    assert.equal(await has(f, '[data-chart="money"]'), false, "still folded");
+    assert.match(await text(f, ".hm-pair"), /^Collected \$[\d,]+ Scheduled \$[\d,]+$/);
+    await f.click('[data-hm="m-fold"]');
+    assert.equal(await has(f, '[data-chart="money"]'), true);
+    // See more: the Dashboard's Money view (this phone has the office sign-in)
+    await f.click(".hm-money .hm-more");
+    await settled(f, { hash: "#/dashboard/money" });
+    assert.equal(await backShown(f), true);
+    await p.clean();
+  } finally { await p.close(); }
+});
+
+test("Money: the older one-metric read still answers (Collected | Scheduled | ARR, a period)", async () => {
   await day();
   const { p, page, f } = await home("olive", { device: "iphone13", office: true });
   try {
-    // the readout starts on the latest point and follows the keys
-    const first = await text(f, "#read-money");
-    assert.match(first, /^\$10,453 \$780 week of Nov 16, so far$/, "the running total (the big number), then the week's own amount");
-    await f.focus('[data-chart="money"]');
-    await page.keyboard.press("Home");
-    assert.match(await text(f, "#read-money"), /^\$[\d,]+ \$4,890 week of Nov 2$/);
-    await page.keyboard.press("End");
-    assert.equal(await text(f, "#read-money"), first);
-    const ys = await f.$$eval('[data-chart="money"] .hc-line', (els) => els.map((e) => e.getAttribute("d")));
-    const ends = ys[0].match(/-?[\d.]+,-?[\d.]+/g).map((p) => Number(p.split(",")[1]));
-    assert.ok(ends.at(-1) <= Math.min(...ends) + 0.5, "the line climbs to its end (no dive at a partial week)");
-    // Scheduled: the CRM's visits, per day
-    await f.click('[data-hm="metric"][data-v="scheduled"]');
-    await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /1M November \$[\d,]+ Avg \/ day \$[\d,]+ Peak day \$[\d,]+/i);
-    assert.match(await text(f, ".hm-c-money .hm-foot"), /^Updated \d+:\d\d [AP]M See more$/);
-    assert.match(await text(f, "#read-money"), /^\$[\d,]+ \$[\d,]+ Nov 17$/, "the readout starts on today");
-    await shot(page, "home-money-scheduled-iphone13");
-    // ARR with its change over the period
-    await f.click('[data-hm="metric"][data-v="arr"]');
-    await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /1M Annual recurring revenue \$[\d,]+ Change [+−]?\$[\d,]+/i);
-    // the period menu: This year, Last 3 months, This week, a custom range
-    await f.click('[data-hm="metric"][data-v="collected"]');
-    await idle(f);
-    await f.click('[data-hm="period"]');
-    assert.deepEqual(await f.$$eval(".hm-menu button", (els) => els.map((e) => e.textContent.trim())), ["This week", "This month", "Last 3 months", "This year", "Custom range…"]);
-    assert.deepEqual(await screenProblems(f), [], "the menu's targets");
-    await shot(page, "home-money-menu-iphone13");
-    await f.click('.hm-menu button:text-is("This year")');
-    await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /1Y 2026 \$[\d,]+ Avg \/ day \$[\d,]+ Peak month \$[\d,]+/i);
-    await pickPeriod(f, "Last 3 months");
-    assert.match(await text(f, ".hm-c-money"), /3M September – November \$[\d,]+/i);
-    await pickPeriod(f, "This week");
-    assert.match(await text(f, ".hm-c-money"), /1W Nov 16 – 22 \$[\d,]+/i);
-    await f.click('[data-hm="period"]');
-    await f.click('[data-hm="custom"]');
-    await f.waitForSelector(".sheet.on [data-range]");
-    await f.fill('.sheet.on input[name="from"]', "2026-11-01");
-    await f.fill('.sheet.on input[name="to"]', "2026-11-10");
-    await f.click('.sheet.on [data-range] button[type="submit"]');
-    await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /Custom Nov 1 – 10 - /i, "Rotor's snapshot has no custom range: '-'");
-    await pickPeriod(f, "This month");
-    // See more: the Dashboard's Money view (this phone has the office sign-in)
-    await f.click(".hm-c-money .hm-more");
-    await settled(f, { hash: "#/dashboard/money" });
-    assert.equal(await backShown(f), true);
+    for (const [metric, period] of [["collected", "month"], ["scheduled", "year"], ["arr", "3m"]]) {
+      const r = await p.ctx.request.get(`/api/crm/home/money?metric=${metric}&period=${period}`, { headers: { "x-crm": "1" } });
+      assert.equal(r.status(), 200);
+      assert.equal((await r.json()).data.metric, metric);
+    }
     await p.clean();
   } finally { await p.close(); }
 });
@@ -338,7 +379,7 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
     await f.waitForFunction(() => !document.querySelector(".sheet.on"));
     await f.waitForFunction(() => document.querySelector('.hm-grid > [data-card="goals"]'));
     assert.deepEqual(await cards(f), ["goals", "money", "leaderboard", "agenda", "inbox", "tasks"]);
-    // Goals: an owner adds them; progress here and under Money
+    // Goals: an owner adds them; progress here
     assert.match(await text(f, ".hm-c-goals"), /^Goals Add No goals yet Tap Add/);
     await f.click('.hm-c-goals [data-hm="goals"]');
     await f.waitForSelector(".sheet.on [data-goals]");
@@ -346,8 +387,10 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
     await f.fill('.sheet.on input[name="jobs"]', "60");
     await f.click('.sheet.on [data-goals] button[type="submit"]');
     await f.waitForFunction(() => /Revenue this month/.test((document.querySelector(".hm-c-goals") || {}).textContent || ""));
-    assert.match(await text(f, ".hm-c-goals"), /^Goals Edit Revenue this month \$10,453 of \$25,000 42% Jobs this month \d+ of 60 \d+%$/);
-    assert.match(await text(f, ".hm-c-money .hm-goal"), /^42% of the \$25,000 goal$/);
+    const collected = await text(f, ".hm-pv:first-child b");
+    const pct = Math.round((Number(collected.replace(/[$,]/g, "")) / 25000) * 100);
+    assert.match(await text(f, ".hm-c-goals"), new RegExp(`^Goals Edit Revenue this month \\$${collected.slice(1)} of \\$25,000 ${pct}% Jobs this month \\d+ of 60 \\d+%$`), "the month's Collected, as the Money card counts it");
+    assert.equal(await has(f, ".hm-c-money .hm-goal"), false, "Rotor's card has no goal line");
     // Tasks: Upcoming ▾ and Add; Inbox: the latest conversations
     assert.equal(await f.getAttribute(".hm-c-tasks .hm-chip", "href"), "#/tasks/new");
     await f.selectOption('.hm-c-tasks select', "all");
@@ -377,7 +420,7 @@ test("the office without the office sign-in: the money (reports:read), See more 
   const { p, page, f } = await home("ada", { device: "iphone13" });
   try {
     assert.deepEqual((await cards(f)).slice(0, 2), ["money", "leaderboard"], "no clock for someone who doesn't go out on visits");
-    assert.equal(await f.getAttribute(".hm-c-money .hm-more", "href"), "#/payments", "no Dashboard without the office sign-in");
+    assert.equal(await f.getAttribute(".hm-money .hm-more", "href"), "#/payments", "no Dashboard without the office sign-in");
     assert.ok(!(await f.$$eval("#view a[href]", (els) => els.map((e) => e.getAttribute("href")))).some((h) => h.startsWith("#/dashboard")));
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");

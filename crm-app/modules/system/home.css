@@ -1,9 +1,9 @@
 /* Home (system/home.js), Flyra's (Nov 13: "make it look more like
-   Flyra"): the greeting small and grey, the first name big and bold, the
-   money on the canvas right under them (Collected | Scheduled | ARR, "1M ⌄",
-   the month, the big number with AVG and PEAK, the line chart, "Updated
-   5:49 PM"), then Flyra's cards: a title, round arrows or a segmented
-   switch, quiet empty states. In the dark (the default) a soft teal-black
+   Flyra"): the greeting small and grey, the first name big and bold, then
+   the cards: the money is Rotor's card (Nov 13: Week | Month, round arrows,
+   share and fold, Collected and Scheduled side by side, both lines on one
+   dashed-grid chart, the ARR under it), the others Flyra's: a title,
+   round arrows or a segmented switch, quiet empty states. In the dark (the default) a soft teal-black
    glow behind the top, as Flyra's; in the light Rotor's grey canvas and
    white cards. Every color is a crm.css token. 44 px targets on a phone;
    room at the bottom for the floating tab bar and its + button. */
@@ -83,47 +83,50 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-pill:active{background:var(--coral-btn-2)}
 .hm-pill svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
 
-/* ------------------------------------------------------------ Money (on the canvas, Flyra's) */
-.hm-sky{position:relative;min-width:0;padding:0 4px}
-.hm-sky .hm-row2{margin-bottom:22px}
-.hm-sky .hm-seg button{padding:0 16px}
-.hm-menu-wrap{position:relative;flex:none}
-.hm-period{display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:0 4px 0 10px;border:0;background:none;color:var(--ink-2);font:500 19px/1 var(--text);cursor:pointer;white-space:nowrap}
-.hm-period svg{width:20px;height:20px;stroke-width:1.8}
-/* Flyra's period menu: a dark glass card, a tick on the chosen one */
-.hm-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:250px;margin:0;padding:8px;list-style:none;background:var(--pop-bg);border:1px solid var(--glass-line);border-radius:26px;box-shadow:var(--sh-pop)}
-.hm-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 14px;border:0;border-radius:14px;background:none;color:var(--ink);font:400 18px/1 var(--text);letter-spacing:-.01em;text-align:left;cursor:pointer}
-.hm-menu button:active,.hm-menu button:hover{background:var(--fill)}
-.hm-menu .ck{width:22px;display:grid;place-items:center;color:var(--ink)}
-.hm-menu .ck svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
-.hm-menu .sep{margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
-.hm-menu .sep button{padding-left:14px}
-.hm-sky>.hm-eyebrow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-money-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:8px}
-.hm-big{font:700 40px/1.05 var(--head);letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums}
-.hm-stats{flex:none;display:flex;gap:22px;text-align:right;padding-bottom:2px}
-.hm-stats span{display:block;font:500 12.5px/1.2 var(--text);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
-.hm-stats b{display:block;margin-top:6px;font:600 18px/1.1 var(--text);font-variant-numeric:tabular-nums}
-.hm-stats b.up{color:var(--green-ink)}
-.hm-stats b.down{color:var(--red-ink)}
-.hm-goal{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:14px;color:var(--ink-3)}
-.hm-goal .hm-track{flex:1;max-width:220px}
+/* ------------------------------------------------------------ Money (Rotor's card) */
+.hm-money{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hm-mtop{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.hm-mtop .hm-seg{flex:none}
+.hm-mtop .hm-seg button{padding:0 13px}
+/* round buttons drawn 36 px inside 44 px targets, so four sit beside Week | Month */
+.hm-mtools{flex:none;display:flex;margin-right:-5px}
+.hm-c-money .hm-mtools .hm-round{width:44px;height:44px;background:none;border:0;box-shadow:none}
+.hm-c-money .hm-mtools .hm-round+.hm-round{margin-left:-4px}
+.hm-mtools .hm-round::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--fill-2);border:1px solid var(--rnd-line);box-shadow:var(--rnd-sh)}
+html[data-theme="light"] .hm-mtools .hm-round::before{background:var(--rnd-bg)}
+.hm-mtools .hm-round svg{position:relative;width:18px;height:18px}
+.hm-mper{margin:12px 2px 0;font:500 14px/1.2 var(--text);letter-spacing:0;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:14px}
+.hm-pv{min-width:0;padding-right:12px}
+.hm-pv+.hm-pv{padding:0 0 0 18px;border-left:1px solid var(--line)}
+.hm-pv span{display:block;font:500 16px/1.2 var(--text);color:var(--ink-3)}
+.hm-pv b{display:block;margin-top:10px;font:700 32px/1.05 var(--head);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.hm-pair.long .hm-pv b{font-size:26px}
+.hm-mfoot{justify-content:flex-start;margin:12px 0 -6px}
+/* the ARR under the card */
+.hm-arr{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin:0 6px;font-size:15px;color:var(--ink-3)}
+.hm-arr b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 
-/* the chart: Flyra's quiet grid, the line in coral */
-.hc-head{display:flex;justify-content:flex-end;min-height:22px;margin:18px 0 6px}
-.hc-read{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:14px;white-space:nowrap}
-.hc-read b{font:600 15px/1.2 var(--text);color:var(--ink);font-variant-numeric:tabular-nums}
-.hc-read span{color:var(--ink-3);overflow:hidden;text-overflow:ellipsis}
+/* the chart: a dashed grid both ways, Collected coral, Scheduled grey */
+.hc-read2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;min-height:20px;margin:20px 0 8px;font-size:13.5px;color:var(--ink-3)}
+.hc-read2 .d{font-weight:600;color:var(--ink);white-space:nowrap}
+.hc-read2 .k{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.hc-read2 i{display:inline-block;width:12px;height:3px;border-radius:2px;background:var(--coral);transform:translateY(-3px)}
+.hc-read2 .s i{background:var(--ink-3)}
+.hc-read2 b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
 .hc{position:relative;height:200px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.hc.hc-pair{height:190px}
 .hc:focus-visible{outline:2px solid var(--coral);outline-offset:4px}
 .hc svg.hc-svg{display:block;fill:none;stroke:none;overflow:visible}
 .hc-grid{stroke:var(--line);stroke-width:1}
+.hc-grid.dash,.hc-vgrid{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 4}
 .hc-base{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
 .hc-t{fill:var(--ink-3);font:400 12px/1 var(--text);font-variant-numeric:tabular-nums}
 .hc-line{fill:none;stroke:var(--coral);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.hc-area{fill:rgba(251,77,61,.045)}
+.hc-line.s{stroke:var(--ink-3);stroke-width:1.5}
 .hc-cross{stroke:var(--line-2);stroke-width:1}
-.hc-dot{fill:var(--coral);stroke:var(--mist);stroke-width:2}
+.hc-dot{fill:var(--coral);stroke:var(--card);stroke-width:2}
+.hc-dot.s{fill:var(--ink-3)}
 
 /* ------------------------------------------------------------ Today (the agenda) */
 .hm-ag-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px}
@@ -242,11 +245,10 @@ a.hm-item:active{background:var(--fill-2)}
   .hm-seg button{padding:0 11px;font-size:15px}
   .hm-ag-top .hm-seg button{padding:0 9px}
   .hm-cd .n{width:38px;height:38px;font-size:19px}
-  .hm-sky .hm-seg button{padding:0 12px}
-  .hm-big{font-size:35px}
-  .hm-stats{gap:14px}
+  .hm-mtop .hm-seg button{padding:0 11px;font-size:15px}
+  .hm-pv b{font-size:29px}
+  .hm-pair.long .hm-pv b{font-size:24px}
   .hm-hello h2{font-size:36px}
-  .hm-period{font-size:17px}
 }
 
 /* ------------------------------------------------------------ a computer (900 px and up) */
@@ -257,13 +259,14 @@ a.hm-item:active{background:var(--fill-2)}
   .hm-card{padding:24px}
   /* the clock a bar on top; the money is a card again beside the others */
   .hm-c-clock{order:-1}
-  .hm-sky{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);padding:24px;box-shadow:var(--sh-card)}
   .hm-head{padding-top:4px}
   .hm-hello h2{font-size:32px}
   .hm-seg button{min-height:38px}
   .hm-round{width:40px;height:40px}
-  .hm-chip,.hm-period,.hm-more,.hm-tasks-h,.hm-select select{min-height:40px}
-  .hm-round:hover,.hm-menu button:hover{background:var(--fill)}
+  .hm-chip,.hm-more,.hm-tasks-h,.hm-select select{min-height:40px}
+  .hm-round:hover{background:var(--fill)}
+  .hm-c-money .hm-mtools .hm-round{width:40px;height:40px}
+  .hm-mtools .hm-round:hover::before{background:var(--fill)}
   a.hm-item:hover,a.hm-task:hover{background:var(--fill-2)}
   a.hm-conv:hover{background:var(--fill)}
   .hc{height:200px}

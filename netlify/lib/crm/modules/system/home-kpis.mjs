@@ -7,7 +7,9 @@
 //   crmCollected(rows, p, today)            the CRM's payments, per day (after cutover)
 //   scheduledDays(visits, jobs, p)          the value of the visits booked, per day
 //   arrDays(plans, p, today)                annual recurring revenue of the live plans, per day
-//   moneyCard({ metric, p, series, ... })   → the Money card (total, AVG / PEAK or CHANGE, goal)
+//   moneyCard({ metric, p, series, ... })   → one metric over a period (the older Collected | Scheduled | ARR card)
+//   latestImport(runs, today)               the newest finished Rotor import and whether it is fresh (3 days)
+//   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart
 //   clockToday(rows, uid, today, nowMs)     the Timesheet card: today's minutes, the open shift
 //   agendaOf(visits, users, p)              the Agenda's rows (Daily · Weekly · Monthly)
 //   tasksOf(rows, user, { all })            open tasks (the Agenda's "without due date", the Tasks card)
@@ -15,12 +17,14 @@
 //   layoutOf(saved, available)              the person's cards, in their order
 //   validateGoals(v)                        the owners' monthly goals (settings document "goals")
 //
-// Money says where it comes from: Rotor's snapshot until cutover (no
-// per-day numbers there: its weeks, or its months for a year, carry the
-// chart), the CRM's own payments index after (counted as GET
-// /money/summary counts revenue). Scheduled and ARR are the CRM's own
-// visits and plans. Nothing invents a zero: a number nobody has is null
-// (the screen shows "-").
+// Money says where it comes from. Collected: the CRM's own payments index
+// (counted as GET /money/summary counts revenue) after cutover, and before
+// it too while the latest finished Rotor import is 3 days old or less (the
+// import brings Rotor's payments in, so the CRM has them per day);
+// otherwise Rotor's sealed snapshot (no per-day numbers there: its weeks,
+// or its months for a year, carry the chart). Scheduled and ARR are the
+// CRM's own visits and plans. Nothing invents a zero: a number nobody has
+// is null (the screen shows "-").
 
 import { addLocalDays, dowOfDate, localDate, isLocalDate } from "../../core/clock.mjs";
 import { InputError } from "../../core/errors.mjs";
@@ -219,6 +223,65 @@ export function moneyCard({ metric, p, series, source, asOf = null, goals = null
   const target = goals && num(goals.revenue_month_cents);
   if (metric === "collected" && p.period === "month" && target > 0 && out.total !== null) out.goal = { target, value: out.total, pct: pct(out.total, target) };
   return out;
+}
+
+// ------------------------------------------------------------ Rotor's Money card (Nov 13)
+
+// Rotor's own Home: Week | Month with arrows, Collected and Scheduled side
+// by side, one chart with both lines per day. Collected per day needs the
+// CRM's payments: after cutover, or while the latest finished Rotor import
+// (it brings Rotor's payments in) is IMPORT_FRESH_DAYS old or less.
+export const IMPORT_FRESH_DAYS = 3;
+export const PAIR_PERIODS = Object.freeze(["week", "month"]);
+// import-runs index rows (st, asof = the export's day, fin) → { date, age, fresh } | null
+export function latestImport(rows, today) {
+  let best = null;
+  for (const r of list(rows)) {
+    if (!r || r.st !== "done") continue;
+    const d = isLocalDate(r.asof) ? r.asof : localOf(r.fin);
+    if (isLocalDate(d) && (!best || d > best)) best = d;
+  }
+  if (!best) return null;
+  const age = Math.max(0, daysBetween(best, today));
+  return { date: best, age, fresh: age <= IMPORT_FRESH_DAYS };
+}
+// The week (Monday first) or the month that holds a day; a month says its year.
+export function pairPeriod(kind, date) {
+  const p = periodOf(kind === "week" ? "week" : "month", date);
+  return p.period === "month" ? { ...p, label: `${p.label} ${p.from.slice(0, 4)}` } : p;
+}
+// Daily points summed into the period's weeks (a week that began before the
+// period counts from its first day), for a chart whose Collected is weekly.
+export function byWeek(points, p) {
+  const m = new Map();
+  for (const x of list(points)) {
+    if (!x || x.value === null || x.value === undefined) continue;
+    const w = weekStart(x.key);
+    const k = w < p.from ? p.from : w;
+    m.set(k, (m.get(k) || 0) + x.value);
+  }
+  return [...m].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, value]) => {
+    const end = addLocalDays(weekStart(k), 6);
+    return { key: k, label: dayLabel(k), from: k, to: end > p.to ? p.to : end, value };
+  });
+}
+const pointOf = (x) => ({ key: x.key, label: x.label, from: x.from || x.key, to: x.to || x.key, value: x.value === undefined ? null : x.value });
+// → { period, from, to, label, grain, collected: { total, points }, scheduled: { total, points }, arr, source, as_of, missing }
+// grain "day": both lines per day; "week": Rotor's snapshot weeks, Scheduled summed to the same weeks so
+// the two lines share one scale. A Collected with no days counted yet is null, not $0.
+export function moneyPair({ p, collected, scheduled, source, asOf = null, arr = null, missing = null }) {
+  const c = collected || { total: null, grain: null, points: [] };
+  const s = scheduled || { total: null, points: [] };
+  const weekly = c.grain === "week" && list(c.points).length > 1;
+  const cPoints = c.grain === "day" || weekly ? list(c.points).map(pointOf) : [];
+  let cTotal = num(c.total);
+  if (c.grain === "day" && cPoints.every((x) => x.value === null)) cTotal = null;
+  return {
+    period: p.period, from: p.from, to: p.to, label: p.label, grain: weekly ? "week" : "day",
+    collected: { total: cTotal, points: cPoints },
+    scheduled: { total: num(s.total), points: (weekly ? byWeek(s.points, p) : list(s.points)).map(pointOf) },
+    arr: num(arr), source, as_of: asOf, missing,
+  };
 }
 
 // ------------------------------------------------------------ the Timesheet card
