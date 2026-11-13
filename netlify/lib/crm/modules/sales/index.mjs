@@ -12,7 +12,8 @@
 // consent.changed, message.inbound, call.logged), automations.mjs (lead.ack,
 // lead.alert, lead.attention and the sweeps), routes.mjs (the API),
 // import-rotor.mjs (import phases), playbook.mjs (the office Follow-ups
-// page's wording), mcp.mjs (Claude's sales tools).
+// page's wording), mcp.mjs (Claude's sales tools), signs.mjs and
+// signs-scan.mjs (Signs & flyers: QR codes, /q/{code}, scans and leads).
 
 import { defineModule } from "../../core/registry.mjs";
 import { InputError } from "../../core/errors.mjs";
@@ -31,6 +32,7 @@ import { salesRoutes } from "./routes.mjs";
 import { onMergeSales } from "./merge.mjs";
 import { phases } from "./import-rotor.mjs";
 import { mcpTools } from "./mcp.mjs";
+import { signsPart } from "./signs.mjs";
 
 function validateSales(v) {
   const src = isPlainObject(v) ? v : {};
@@ -55,6 +57,8 @@ function validateSales(v) {
 
 export default defineModule({
   name: "sales",
+  // Signs & flyers (signs.mjs): QR codes for yard signs, door hangers and flyers, their scans and leads
+  parts: [signsPart],
   types,
   statsParts: {
     // the sales part of ContactStats (§5.1): written by calls and texts

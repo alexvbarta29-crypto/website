@@ -92,6 +92,8 @@ export default {
   // the worst case: the visit's invoice doesn't exist yet, so it is made and issued, then the payment recorded
   "POST /visits/:id/payments": async (fx) => { const { visit: v } = await visit(fx, await customer(), [fx.tech, fx.spare]); return { as: fx.tech, path: `/visits/${v.id}/payments`, body: { method: "cash", amount_cents: 29500, tip_cents: 2000, client_id: uuid(6) } }; },
   "POST /visits/:id/pay-link": async (fx) => { const { visit: v } = await visit(fx, await customer(), [fx.tech]); return { as: fx.tech, path: `/visits/${v.id}/pay-link`, body: {} }; },
+  // scan to pay from the Invoice screen: a customer with history, an open invoice part paid
+  "POST /invoices/:id/pay-qr": async (fx) => { const c = await busy(fx); const inv = await invoice(fx, { contact: c }); await payment(fx, inv, { cents: 5000 }); return { as: fx.owner, path: `/invoices/${inv.id}/pay-qr`, body: {} }; },
   // closed unless payments run in that mode (dry run here): the answer is 404 before anything is read
   "POST /hooks/stripe": () => ({ path: "/hooks/stripe", csrf: false, raw: "{}", headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=" + "0".repeat(64) } }),
   "POST /hooks/stripe-test": () => ({ path: "/hooks/stripe-test", csrf: false, raw: "{}", headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=" + "0".repeat(64) } }),

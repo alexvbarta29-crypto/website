@@ -12,7 +12,7 @@ const { emit, eventId, listenerMarker, EVENTS } = await import("../../../netlify
 const { RegistryError, ServiceMissing } = await import("../../../netlify/lib/crm/core/errors.mjs");
 const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
 
-const NAMES = ["system", "contacts", "sales", "import", "quotes", "plans", "work", "money", "comms", "payroll", "reports", "mcp"];
+const NAMES = ["system", "contacts", "sales", "import", "quotes", "plans", "work", "money", "comms", "payroll", "reports", "mcp", "map"];
 const route = (extra = {}) => ({ method: "GET", path: "/x", auth: "session", perm: "x:read", subject: "none", mode: "inline", handler: async () => ({}), ...extra });
 const fn = async () => {};
 

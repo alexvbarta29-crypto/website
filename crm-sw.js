@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.12-5";
+const VERSION = "2026.11.13-3";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -25,6 +25,7 @@ const PRECACHE = [
   "/crm-app/core/outbox.js",
   "/crm-app/core/pickers.js",
   "/crm-app/core/poll.js",
+  "/crm-app/core/qr.js",
   "/crm-app/core/router.js",
   "/crm-app/core/signature.js",
   "/crm-app/core/signin.js",
@@ -58,6 +59,18 @@ const PRECACHE = [
   "/crm-app/modules/import/manifest.js",
   "/crm-app/modules/import/run.js",
   "/crm-app/modules/index.js",
+  "/crm-app/modules/map/areas.js",
+  "/crm-app/modules/map/kit.js",
+  "/crm-app/modules/map/knock.js",
+  "/crm-app/modules/map/manifest.js",
+  "/crm-app/modules/map/map.css",
+  "/crm-app/modules/map/mapview.js",
+  "/crm-app/modules/map/report.js",
+  "/crm-app/modules/map/settings-knock.js",
+  "/crm-app/modules/map/settings-maps.js",
+  "/crm-app/modules/map/sharing.js",
+  "/crm-app/modules/map/team.js",
+  "/crm-app/modules/map/today-card.js",
   "/crm-app/modules/mcp/manifest.js",
   "/crm-app/modules/money/autopay-run.js",
   "/crm-app/modules/money/autopay.js",
@@ -68,6 +81,7 @@ const PRECACHE = [
   "/crm-app/modules/money/kit.js",
   "/crm-app/modules/money/manifest.js",
   "/crm-app/modules/money/money.css",
+  "/crm-app/modules/money/pay-qr.js",
   "/crm-app/modules/money/payments.js",
   "/crm-app/modules/money/qr.js",
   "/crm-app/modules/money/settings.js",
@@ -109,6 +123,10 @@ const PRECACHE = [
   "/crm-app/modules/sales/log.js",
   "/crm-app/modules/sales/manifest.js",
   "/crm-app/modules/sales/sales.css",
+  "/crm-app/modules/sales/sign-form.js",
+  "/crm-app/modules/sales/sign.js",
+  "/crm-app/modules/sales/signs-kit.js",
+  "/crm-app/modules/sales/signs.js",
   "/crm-app/modules/sales/task.js",
   "/crm-app/modules/sales/tasks.js",
   "/crm-app/modules/sales/today-card.js",
@@ -171,6 +189,9 @@ const PRECACHE = [
   "/crm-app/portal/plans-login.js",
   "/crm-app/portal/quotes-quote.js",
   "/crm-app/styles/crm.css",
+  "/crm-app/vendor/maplibre-gl/maplibre-gl-csp-worker.js",
+  "/crm-app/vendor/maplibre-gl/maplibre-gl-csp.js",
+  "/crm-app/vendor/maplibre-gl/maplibre-gl.css",
   "/crm-app/version.js",
 ];
 const ASSETS = [

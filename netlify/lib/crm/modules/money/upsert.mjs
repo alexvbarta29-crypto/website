@@ -65,6 +65,8 @@ function fill(p, spec) {
   // why it failed, only on a payment that did fail (a stale event never marks one that went through)
   if (spec.failure_code && !p.failure_code && next.status === "failed") next.failure_code = spec.failure_code;
   if (!p.invoice_id && spec.invoice_id) next.invoice_id = spec.invoice_id;
+  // the pay code it started from (the session's completion can come after Stripe's payment event)
+  if (spec.via && !p.via) next.via = spec.via;
   return next;
 }
 

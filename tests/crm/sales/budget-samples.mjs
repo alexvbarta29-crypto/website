@@ -35,6 +35,20 @@ const enrolled = async (key = "new_lead", opts = {}) => {
 const etagOf = (type, id) => scope(async () => (await store.getRecord(type, id)).etag);
 const task = async (fx, extra = {}) => scope(async () => (await store.createRecord("task", { title: "Budget task", kind: "todo", priority: "medium", status: "open", assignee_ids: [fx.tech.id], ...extra }, W)).data);
 const cadenceId = async (key) => { await seeds(); return SEED.seedCadenceId(key); };
+// Signs & flyers: codes with scans and leads (a season's worth: 24 codes, a few leads each)
+const SIGNS = await import("../../../netlify/lib/crm/modules/sales/signs.mjs");
+let codes = null;
+const signCodes = () => scope(async () => {
+  if (codes) return codes;
+  codes = [];
+  for (let i = 0; i < 24; i++) {
+    const c = (await store.createRecord("qr_code", { name: `Yard sign ${i + 1}`, kind: i % 3 ? "yard_sign" : "door_hanger", area: "Delano", slug: SIGNS.newSlug(), dest: { kind: "quote" } }, W)).data;
+    for (let k = 0; k < 3; k++) await SIGNS.countScan(c.id, k % 2 ? "ios" : "android");
+    codes.push(c);
+  }
+  for (let k = 0; k < 6; k++) await SIGNS.qrLead({ code_id: codes[0].id, contact_id: (await lead()).id });
+  return codes;
+});
 
 export default {
   "GET /calls/list": async (fx) => { await enrolled(); return { as: fx.owner, path: "/calls/list" }; },
@@ -77,4 +91,10 @@ export default {
   "POST /tasks/:id/done": async (fx) => ({ as: fx.tech, path: `/tasks/${(await task(fx)).id}/done`, body: {} }),
   "POST /incidents": (fx) => ({ as: fx.tech, path: "/incidents", body: { title: "Cracked storm window", notes: "Seen on arrival." } }),
   "GET /sales/contacts/:id": async (fx) => { const { c } = await enrolled(); await task(fx, { contact_id: c.id }); return { as: fx.owner, path: `/sales/contacts/${c.id}` }; },
+  "GET /qr-codes": async (fx) => { await signCodes(); return { as: fx.owner, path: "/qr-codes" }; },
+  "POST /qr-codes": (fx) => ({ as: fx.owner, path: "/qr-codes", body: { client_id: "00000000-0000-4000-8000-000000700001", name: "Door hanger, Nov", kind: "door_hanger", area: "Mound", placed_on: "2026-11-10" } }),
+  "GET /qr-codes/:id": async (fx) => ({ as: fx.owner, path: `/qr-codes/${(await signCodes())[0].id}` }),
+  "PATCH /qr-codes/:id": async (fx) => { const c = (await signCodes())[1]; return { as: fx.owner, path: `/qr-codes/${c.id}`, ifMatch: await etagOf("qr_code", c.id), body: { area: "Delano East", dest: { kind: "page", path: "/services/gutter-cleaning.html" } } }; },
+  "POST /qr-codes/:id/archive": async (fx) => ({ as: fx.owner, path: `/qr-codes/${(await signCodes())[2].id}/archive`, body: {} }),
+  "POST /qr-codes/:id/restore": async (fx) => ({ as: fx.owner, path: `/qr-codes/${(await signCodes())[2].id}/restore`, body: {} }),
 };

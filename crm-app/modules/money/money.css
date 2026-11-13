@@ -61,3 +61,29 @@
 .mn-strip small{font-size:12.5px;color:var(--ink-3)}
 .mn-strip .bad b{color:var(--red-ink)}
 @media (max-width:359px){.mn-strip{grid-template-columns:1fr 1fr}}
+
+/* Scan to pay (pay-qr.js): the pay code full screen, black on white, big
+   enough to scan from arm's length; the same on a phone and on the desk. */
+.sheet.mn-full{top:0;max-height:none;border-radius:0;background:#fff}
+.sheet.mn-full .sheet-head{padding-top:calc(var(--top) + 6px)}
+.sheet.mn-full .grab{display:none}
+.sheet.mn-full .sheet-body{display:flex;flex-direction:column}
+.sheet.mn-full .sheet-body > .mn-scan{margin:auto 0}
+.mn-scan{gap:8px;padding:4px 0 8px;text-align:center;color:#000}
+.mn-scan p{margin:0}
+.mn-scan-amt{font:800 40px/1.05 var(--head);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#000}
+.mn-scan-who{font:600 17px/1.3 var(--text);color:#000;overflow-wrap:anywhere}
+.mn-scan-code{width:min(88vw,calc(100vh - 370px),460px);min-width:200px;max-width:100%}
+.mn-qr .mn-scan-code svg{display:block;width:100%;height:auto;border-radius:0;background:#fff}
+.mn-scan-say{font:700 19px/1.3 var(--head);color:#000}
+.mn-scan-why{font-size:16px;line-height:1.45;color:var(--ink-2);max-width:420px}
+.mn-scan-note{max-width:420px}
+.mn-scan-none .mn-scan-amt{font-size:28px}
+.mn-scan .btn-row{justify-content:center;flex-wrap:wrap;width:100%}
+.mn-scan .btn-row{margin-top:6px}
+.mn-scan .btn-row .btn{flex:1 1 0;min-width:0;max-width:280px}
+@media (min-width:900px){
+  .sheet.mn-full,.sheet.mn-full.on{top:0;left:0;right:0;bottom:0;width:auto;margin:0;max-height:none;border-radius:0;transform:none}
+  .sheet.mn-full .sheet-body{padding:16px 32px 28px}
+  .mn-scan-code{width:min(60vh,520px)}
+}

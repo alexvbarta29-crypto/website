@@ -373,7 +373,8 @@ export const enrollmentRow = (r) => {
     sid: r.step_id || null, sv: r.steps_v || 0,
     rbs: !!cur.rbs, due: r.next_due_at || null, de: r.due_end || null, st: r.status, pd: r.pending ? r.pending.kind : null, pn: r.pending ? r.pending.n : null,
     ph: (r.pending && r.pending.hold_until) || null,
-    dl: r.deal_id || null, sa: r.started_at || null, lt: r.last_touch_at || null, ps: r.paused_at || null, pr: r.paused_reason || null, ow: r.owner_id || null, u: r.updated_at,
+    dl: r.deal_id || null, sa: r.started_at || null, lt: r.last_touch_at || null, ps: r.paused_at || null, pr: r.paused_reason || null, ow: r.owner_id || null,
+    ...(r.source_label ? { sl: r.source_label } : {}), u: r.updated_at,
   };
 };
 

@@ -310,7 +310,8 @@ function validateProperty(data, { op, before } = {}) {
     geo: (v, f) => {
       if (v === undefined || v === null) return undefined;
       if (!isObj(v) || !Number.isFinite(v.lat) || !Number.isFinite(v.lng) || Math.abs(v.lat) > 90 || Math.abs(v.lng) > 180) throw new InputError("That isn't a map point.", f);
-      return { ...v, source: enumValue(v.source, ["google", "manual"], { field: `${f}.source`, stored: true }) || "manual", at: isoTime(v.at, { field: `${f}.at` }) || nowIso() };
+      // census: the batch geocoder; pin: a door-to-door pin dropped at the house (docs/CRM-MAP.md)
+      return { ...v, source: enumValue(v.source, ["google", "manual", "census", "pin"], { field: `${f}.source`, stored: true }) || "manual", at: isoTime(v.at, { field: `${f}.at` }) || nowIso() };
     },
     county: (v, f) => str(v, { field: f, max: 60 }) || undefined,
     town_tier: (v, f) => enumValue(v, TOWN_TIERS, { field: f, stored }) || "unknown",
@@ -342,6 +343,9 @@ function validateProperty(data, { op, before } = {}) {
 }
 
 export const propertyRow = (r) => ({ c: r.contact_id, lb: r.label, a: addressOneLine(r.address) });
+// Every property with a map point (the door-to-door map's customers and leads, docs/CRM-MAP.md): one blob.
+export const placeShard = (r) => (r && r.geo && Number.isFinite(r.geo.lat) && Number.isFinite(r.geo.lng) ? "" : null);
+export const placeRow = (r) => ({ c: r.contact_id, la: Math.round(r.geo.lat * 1e6) / 1e6, ln: Math.round(r.geo.lng * 1e6) / 1e6, a: addressOneLine({ street1: r.address && r.address.street1, city: r.address && r.address.city }) });
 
 export const propertyType = defineType({
   type: "property",
@@ -351,6 +355,7 @@ export const propertyType = defineType({
   rotorFields: ["label", "address", "rotor"],
   techFields: ["id", "contact_id", "label", "address", "geo", "access", "assets", "lights", "photo_ids", "town_tier"],
   readPerm: "contacts:read",
+  indexes: [{ name: "places", shard: placeShard, row: placeRow }],
   rels: [
     { rel: "contact-properties", parent: (r) => r.contact_id, sort: (r) => tsKey(new Date(Date.parse(r.created_at) || 0)) },
     // properties still waiting for a map point: the contacts.geocode sweep walks these (§7.6)
