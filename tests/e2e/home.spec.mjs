@@ -247,13 +247,13 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
   try {
     await f.click(".hm-edit [data-hm=edit]");
     await f.waitForSelector(".sheet.on .hm-edit-list");
-    assert.deepEqual(await f.$$eval(".sheet.on .hm-edit-list li", (els) => els.map((e) => `${e.dataset.key}:${e.querySelector("input").checked}`)), ["clock:true", "money:true", "agenda:true", "inbox:false", "tasks:false", "goals:false"], "no Leaderboard until the reports module brings it");
+    assert.deepEqual(await f.$$eval(".sheet.on .hm-edit-list li", (els) => els.map((e) => `${e.dataset.key}:${e.querySelector("input").checked}`)), ["clock:true", "money:true", "agenda:true", "leaderboard:false", "inbox:false", "tasks:false", "goals:false"], "the Leaderboard offered (the reports module brings it), off");
     assert.deepEqual(await screenProblems(f), [], "the sheet's targets");
     await shot(page, "home-edit-iphone13");
     for (const k of ["inbox", "tasks", "goals"]) await f.check(`.sheet.on li[data-key="${k}"] input`);
     await f.uncheck('.sheet.on li[data-key="clock"] input');
-    // Goals up to the top: three taps
-    for (let i = 0; i < 5; i++) await f.click('.sheet.on li[data-key="goals"] [data-mv="-1"]');
+    // Goals up to the top
+    for (let i = 0; i < 6; i++) await f.click('.sheet.on li[data-key="goals"] [data-mv="-1"]');
     await f.click(".sheet.on [data-save]");
     await f.waitForFunction(() => !document.querySelector(".sheet.on"));
     await f.waitForFunction(() => document.querySelector('.hm-grid > [data-card="goals"]'));
