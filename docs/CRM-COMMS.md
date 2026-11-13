@@ -88,7 +88,7 @@ The CRM only reads Google reviews. It never replies and never posts: public word
 | Name | Who | What |
 | --- | --- | --- |
 | `reviews` | `settings:messaging` | `link` (the review page), `match_days` (21), `ask_again_days` (180) |
-| `pin_types` | `settings:general` | Rotor's map pin types, kept for a later knock map |
+| `pin_types` | `settings:general` | Rotor's map pin types: the door-to-door map's (docs/CRM-MAP.md); each also keeps its `key` and `outcome`, and a later export keeps those and the types made in the CRM |
 | `integrations` (core) | owners | `sms.mode`, `sms.test_from`, `sms.test_allowlist`, `sms.advanced_opt_out`, `email.mode`, `email.from`, `email.test_allowlist`, `reviews.mode` |
 | `messaging_test` (core) | owners | the test contact every campaign's test goes to |
 | `comms.reply_keywords` (core `comms`) | `settings:messaging` | words that tag the contact and note the notification; none by default |

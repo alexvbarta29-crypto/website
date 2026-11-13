@@ -14,6 +14,7 @@ import comms from "./comms/manifest.js";
 import payroll from "./payroll/manifest.js";
 import reports from "./reports/manifest.js";
 import mcp from "./mcp/manifest.js";
+import map from "./map/manifest.js";
 
-export const MANIFESTS = Object.freeze([system, contacts, sales, importMod, quotes, plans, work, money, comms, payroll, reports, mcp]);
+export const MANIFESTS = Object.freeze([system, contacts, sales, importMod, quotes, plans, work, money, comms, payroll, reports, mcp, map]);
 export default MANIFESTS;
