@@ -2,13 +2,14 @@
 
 **One app: the CRM.** With a CRM sign-in (or the office password before the
 first owner exists, to set it up) `/office` is the CRM, full screen, with no
-tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): the
-dashboard's key numbers and charts drawn in the CRM, today's visits and
-what needs you. The office's bar is Home · Schedule · Customers · Sales ·
+tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): two
+things, the owner's choice, today's schedule (who goes where, what's
+done) and the money this month (collected so far, against last year, one
+chart per week). The office's bar is Home · Schedule · Customers · Sales ·
 Menu; on a computer (900 px and up) the same app has a sidebar of every
 section, a search box and a New button. The full dashboards (Overview,
-Money, Sales, Plans, Jobs, switched in place) open from Home's "See more"
-and Menu → Admin → Dashboard, and the office tools are in Menu → Office
+Money, Sales, Plans, Jobs, switched in place) open from the money card's
+"See more" and Menu → Admin → Dashboard, and the office tools are in Menu → Office
 tools: Light Studio, Purchases, Giveaway and Rotor (Follow-ups is under
 Menu → Sales) (`crm-app/modules/system/{dashboard,tool}.js`, routes
 `/dashboard`, `/dashboard/:view`, `/tools/:id`). They show only on a phone
@@ -54,11 +55,12 @@ cookie **or** a CRM session:
 
 - **A CRM session** (with or without the office cookie): the one app, the
   CRM full screen. With the office cookie too (owners who typed the office
-  password once on this phone), the dashboards behind Home's "See more"
-  and the office tools in Menu; without it (techs, and Eric unless he has
-  the office password) only the CRM, whose Home still shows the numbers to
-  the office (`reports:read`): a tech never sees a number, a dashboard or
-  an office tool, and an old `#lights` link opens the CRM's Today.
+  password once on this phone), the dashboards behind the money card's
+  "See more" and the office tools in Menu; without it (techs, and Eric
+  unless he has the office password) only the CRM, whose Home still shows
+  the money to the office (`reports:read`; "See more" opens Payments): a
+  tech never sees a number, a dashboard or an office tool, and an old
+  `#lights` link opens the CRM's Today.
 - **The office password alone:** before the CRM has an owner, the CRM full
   screen with **Set up the CRM** (the first owner types the office password
   again, a name, a login and a password: automatic setup, nothing to add

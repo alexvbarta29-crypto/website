@@ -1,11 +1,12 @@
-// Phone checks of Home (design §9.2 "Today" for owners; industry spec
-// 13.1), the office's bar (Home · Schedule · Inbox · Customers · Sales · Menu),
-// the Sales switch and the Menu, at iPhone 13 and SE sizes: the numbers
-// from the made-up Rotor snapshot the server seals for its throwaway key,
-// today's visits, "Needs you", quick actions, the charts, where each tap
-// goes, the empty state before any CRM data, and a tech who never sees the
-// numbers. No console errors, no CSP violations, no sideways scroll, 44 px
-// targets. E2E_SHOTS=<dir> saves the screenshots.
+// Phone and desk checks of Home (the owner's Nov 12 choice: today's
+// schedule and the money this month, nothing more), the office's bar
+// (Home · Inbox · Schedule · Customers · Sales · Menu), the Sales switch and
+// the Menu, at iPhone 13 and SE sizes and 1440 x 900 and 1024 x 768: the
+// money from the made-up Rotor snapshot the server seals for its throwaway
+// key, today's visits, a day with nothing booked ("Next up"), the chart,
+// where each tap goes, the empty state before any CRM data, and a tech who
+// never sees the money. No console errors, no CSP violations, no sideways
+// scroll, 44 px targets. E2E_SHOTS=<dir> saves the screenshots.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { start } from "./server.mjs";
@@ -22,8 +23,9 @@ after(async () => { await browser?.close(); await srv?.close(); });
 const DEVICES = ["iphone13", "iphonese"];
 
 // The CRM inside /office for this phone, on Home.
-async function home(login, { device = "iphone13", office = false } = {}) {
+async function home(login, { device = "iphone13", office = false, before: prep = null } = {}) {
   const p = await phone(browser, srv, { device, office });
+  if (prep) await prep(p);
   await signIn(p, login);
   await p.page.goto("/office");
   const f = await crmFrame(p.page);
@@ -48,9 +50,12 @@ async function backHome(f) {
   await f.click("#top-back");
   await f.waitForFunction(() => document.getElementById("top-title").textContent === "Home" && !document.querySelector("#view [aria-busy=true]") && document.querySelector(".hm"));
 }
-const tiles = (f) => f.$$eval(".hm-kpi .hm-label", (els) => els.map((e) => e.textContent.replace(/\s+/g, " ").trim()));
+const cards = (f) => f.$$eval(".hm-grid > section h3", (els) => els.map((e) => e.textContent.trim()));
+// what Home no longer has: the KPI tiles, the quick actions, the dark money card, the month chart, Needs you
+const GONE = ".hm-kpi, .hm-qa, .hm-quick, .hm-hero, .hm-needs, .hm-need, .hm-sales, .hm-plans, .hm-jobs, [data-chart=monthly], [data-chart=leads], [data-chart=visits]";
+const MONEY = /^Money this month \$[\d,]+ collected Nov 1–16 ▲ \d+% up this year vs the same dates in 2025 Per week \$[\d,]+ Nov 16, so far /;
 
-test("before any CRM data: Rotor's numbers, a friendly empty Today, the office's new bar", async () => {
+test("before any CRM data: Rotor's money, a calm empty Today, the office's bar and the create button", async () => {
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
     try {
@@ -58,16 +63,25 @@ test("before any CRM data: Rotor's numbers, a friendly empty Today, the office's
       assert.ok(["", "#/today"].includes(await hashOf(f)), "the app opens on Home");
       assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
       assert.equal(await f.getAttribute('#tabs [data-tab="home"]', "aria-current"), "page");
-      // money this month, from Rotor, with its weekly columns
-      assert.match(await text(f, ".hm-hero"), /^Collected this month Nov 1–16 \$[\d,]+ /);
-      assert.match(await text(f, ".hm-hero"), /From Rotor · updated Nov 16/);
-      assert.equal(await f.$$eval('[data-chart="weekly"] .hc-col', (x) => x.length), 12);
-      assert.deepEqual(await tiles(f), ["Jobs completed", "Average ticket", "Close rate", "Active plans", "New leads", "Quotes out"]);
-      assert.match(await text(f, ".hm-sec-h"), /^This month From Rotor · updated Nov 16$/i);
-      // the day: nothing booked yet, said kindly
-      assert.match(await text(f, ".hm-today"), /No visits booked today/);
-      assert.match(await text(f, ".hm-today .hm-stats"), /^0 visits 0 done 0 to book 0 plan visits due$/);
-      assert.ok(await f.$(".hm-needs"), "Needs you is there");
+      // two cards, Today first
+      assert.deepEqual(await cards(f), ["Today", "Money this month"]);
+      assert.equal(!!(await f.$(GONE)), false, "nothing else");
+      // the day: nothing booked, said calmly
+      assert.equal(await text(f, ".hm-today"), "Today Schedule Nothing booked today Nothing on the schedule in the next few weeks.");
+      // the money, from Rotor: the month, the year against last year, the weeks so far and the empty slots still ahead
+      assert.match(await text(f, ".hm-money"), MONEY);
+      assert.match(await text(f, ".hm-money .hm-more-row"), /^From Rotor · updated Nov 16 See more$/);
+      assert.equal(await f.$eval(".hm-cmp", (el) => Math.round(el.getBoundingClientRect().height) <= 24), true, "the comparison on one line");
+      assert.equal(await f.$$eval('[data-chart="weeks"] .hc-col', (x) => x.length), 6);
+      assert.equal(await f.$$eval('[data-chart="weeks"] .hc-col path', (x) => x.length), 4, "Nov 1, 2, 9 and 16 so far; the 23rd and the 30th still ahead");
+      // creating is the coral button (the quick actions are gone)
+      assert.ok(await f.isVisible("#fab"), "the create button on Home");
+      // (the Nov 2026 shell: the round + blurs the screen, search on top, the things to make above it)
+      await f.click("#fab");
+      await f.waitForSelector(".qk.on");
+      assert.match(await f.textContent(".qk"), /Lead/);
+      await page.keyboard.press("Escape");
+      await f.waitForFunction(() => !document.querySelector(".qk"));
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `home-empty-${device}`);
@@ -86,33 +100,33 @@ async function day() {
   return seeded;
 }
 
-test("an owner's Home on a real day: the numbers, today's visits, what needs them, at both sizes", async () => {
+const visitRows = (f, sel = ".hm-today .hm-visits .hv-row") => f.$$eval(sel, (els) => els.map((e) => ({ href: e.getAttribute("href"), t: e.querySelector(".hv-time").textContent.replace(/\s+/g, " ").trim(), who: e.querySelector(".nm").textContent, sub: e.querySelector(".sub").textContent, av: e.querySelectorAll(".hv-av").length, ini: [...e.querySelectorAll(".hv-av")].map((a) => a.textContent), pill: (e.querySelector(".pill") || {}).textContent || "" })));
+const minutes = (t) => { const m = /^(\d+):(\d+) (AM|PM)$/.exec(t); return m ? ((Number(m[1]) % 12) + (m[3] === "PM" ? 12 : 0)) * 60 + Number(m[2]) : 9999; };
+
+test("an owner's Home on a real day: today's visits in time order, how many are done, the money, at both sizes", async () => {
   await day();
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
     try {
       assert.equal(await title(f), "Home");
       assert.match(await text(f, ".hm-head"), /^Tuesday, November 17 Morning, Olive/i, "the server's day and hour");
-      // quick actions: each opens its create screen
-      assert.deepEqual(await f.$$eval(".hm-qa", (els) => els.map((e) => [e.textContent.trim(), e.getAttribute("href")])), [["New lead", "#/leads/new"], ["New quote", "#/quotes/new"], ["Book a visit", "#/jobs/new"], ["Log a call", "#/calls/log"]]);
-      assert.ok(await f.$("#fab"), "the round + beside the bar (Rotor's), as on every screen with the bar");
-      // today: seven visits in time order, who and where, one done, one under way
-      const rows = await f.$$eval(".hm-visits .hv-row", (els) => els.map((e) => ({ href: e.getAttribute("href"), t: e.querySelector(".hv-time").textContent.replace(/\s+/g, " ").trim(), who: e.querySelector(".nm").textContent, sub: e.querySelector(".sub").textContent, av: e.querySelectorAll(".hv-av").length, pill: (e.querySelector(".pill") || {}).textContent || "" })));
+      assert.deepEqual(await cards(f), ["Today", "Money this month"]);
+      assert.equal(!!(await f.$(GONE)), false);
+      // today: seven visits in time order with time, customer, town and the work, who goes (initials), status
+      const rows = await visitRows(f);
       assert.equal(rows.length, 7);
-      assert.ok(rows.every((r) => /^#\/visits\/vs_/.test(r.href) && r.who && r.sub && r.av >= 1), JSON.stringify(rows));
+      assert.ok(rows.every((r) => /^#\/visits\/vs_/.test(r.href) && r.who && / · /.test(r.sub) && r.av >= 1 && r.ini.every((i) => /^[A-Z]{1,2}$/.test(i))), JSON.stringify(rows));
+      assert.deepEqual(rows.map((r) => minutes(r.t)), [...rows.map((r) => minutes(r.t))].sort((a, b) => a - b), "in time order");
       assert.deepEqual(rows.map((r) => r.pill).filter(Boolean).sort(), ["Done", "Working"]);
       assert.ok(rows.some((r) => r.av === 2), "Olive and Theo together at one");
-      assert.match(await text(f, ".hm-today .hm-stats"), /^7 visits 1 done \d+ to book \d+ plan visits due$/);
-      // needs you: a row per kind, each with its count
-      const needs = await f.$$eval(".hm-need", (els) => els.map((e) => [e.querySelector(".nl").textContent, e.getAttribute("href")]));
-      for (const [label, href] of [["Calls due now", "#/calls"], ["Possible duplicates", "#/merge"], ["Requests waiting for your OK", "#/approvals"], ["Plan visits to book", "#/plans/due"], ["Unsigned agreements", "#/plans?status=pending"], ["Quotes waiting on the customer", "#/quotes?status=sent"], ["Tasks for you", "#/tasks"]]) {
-        assert.ok(needs.some(([l, h]) => l === label && h === href), `${label} → ${href} in ${JSON.stringify(needs)}`);
-      }
-      // the cards and their charts, drawn here (no frame of the dashboard)
-      for (const chart of ["weekly", "leads", "visits", "monthly"]) assert.ok(await f.$(`[data-chart="${chart}"] svg .hc-col`), `the ${chart} chart`);
-      assert.equal(await f.$$eval('[data-chart="monthly"] .hc-col', (x) => x.length), 12);
+      assert.equal(await text(f, ".hm-progress"), "1 of 7 visits done");
+      assert.equal(await f.getAttribute(".hm-today .hm-card-h .hm-more", "href"), "#/schedule");
+      // the money card as before the day began (Rotor's numbers)
+      assert.match(await text(f, ".hm-money"), MONEY);
+      assert.equal(await f.getAttribute(".hm-money .hm-more-row", "href"), "#/dashboard/money", "See more: the full dashboards (this phone has the office sign-in)");
+      // Olive goes out on visits: her own day with the clock, under the two cards
+      assert.ok(!!(await f.$(".hm-extra .tf-clock")), "My visits");
       assert.equal(page.frames().filter((x) => /\/dashboard/.test(x.url())).length, 0, "no dashboard frame on Home");
-      assert.deepEqual(await f.$$eval(".hm-card .hm-card-h h3", (els) => els.map((e) => e.firstChild.textContent.trim())), ["Today", "Needs you", "Sales", "Plans", "Jobs", "Collected by month"]);
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `home-owner-${device}`);
@@ -122,73 +136,107 @@ test("an owner's Home on a real day: the numbers, today's visits, what needs the
   }
 });
 
-test("taps: a chart column reads out, a tile opens its Dashboard view, a visit opens, Needs you opens its list", async () => {
+test("taps: the chart reads each week, See more opens the Money dashboard, a visit opens, Schedule opens the day", async () => {
   await day();
   const { p, page, f } = await home("olive", { device: "iphonese", office: true });
   try {
-    // the readout starts on the latest week and follows a tap (and the arrow keys)
-    const before = await text(f, "#read-weekly");
-    const box = await (await f.$('[data-chart="weekly"]')).boundingBox();
-    await f.click('[data-chart="weekly"]', { position: { x: box.width * 0.45, y: box.height / 2 } });
-    const after = await text(f, "#read-weekly");
-    assert.notEqual(after, before, `the readout moved (${before} → ${after})`);
-    assert.match(after, /^\$[\d,]+ week of [A-Z][a-z]{2} \d+$/);
-    await shot(page, "home-chart-tap-iphonese");
-    await f.focus('[data-chart="weekly"]');
+    // the readout starts on the latest week and follows a tap (and the arrow keys); a week still ahead reads the latest
+    const before = await text(f, "#read-weeks");
+    assert.match(before, /^\$[\d,]+ Nov 16, so far$/);
+    const box = await (await f.$('[data-chart="weeks"]')).boundingBox();
+    const x0 = Number(await f.$eval('[data-chart="weeks"]', (el) => el.dataset.x0));
+    const slot = Number(await f.$eval('[data-chart="weeks"]', (el) => el.dataset.slot));
+    await f.click('[data-chart="weeks"]', { position: { x: x0 + slot * 1.5, y: box.height / 2 } });
+    assert.match(await text(f, "#read-weeks"), /^\$[\d,]+ Nov 2–8$/);
+    await f.click('[data-chart="weeks"]', { position: { x: x0 + slot * 5.5, y: box.height / 2 } });
+    assert.equal(await text(f, "#read-weeks"), before, "Nov 30 is ahead: the latest week reads");
+    await f.focus('[data-chart="weeks"]');
+    await page.keyboard.press("Home");
+    assert.match(await text(f, "#read-weeks"), /^\$[\d,]+ Nov 1$/);
+    await page.keyboard.press("ArrowRight");
+    assert.match(await text(f, "#read-weeks"), /Nov 2–8$/);
     await page.keyboard.press("End");
-    assert.equal(await text(f, "#read-weekly"), before, "End: the latest week again");
-    // a KPI tile → the Dashboard's view (this phone has the office sign-in)
-    await f.click('.hm-kpi[href="#/dashboard/sales"]');
-    await settled(f, { hash: "#/dashboard/sales" });
-    assert.equal(await f.getAttribute('[data-view="sales"]', "aria-pressed"), "true");
+    assert.equal(await text(f, "#read-weeks"), before);
+    await shot(page, "home-chart-tap-iphonese");
+    // See more → the Dashboard's Money view (this phone has the office sign-in)
+    await f.click(".hm-money .hm-more-row");
+    await settled(f, { hash: "#/dashboard/money" });
+    assert.equal(await f.getAttribute('[data-view="money"]', "aria-pressed"), "true");
     assert.equal(await backShown(f), true);
     await backHome(f);
     // a visit
     const visit = await f.getAttribute(".hm-visits .hv-row", "href");
     await f.click(`.hm-visits .hv-row[href="${visit}"]`);
     await settled(f, { hash: visit });
-    assert.match(await f.textContent("#view"), /Robin Workday|Alex Workday|Workday|Afternoon/, "the visit's screen");
+    assert.match(await f.textContent("#view"), /Workday|Afternoon/, "the visit's screen");
     await backHome(f);
-    // a Needs you row
-    await f.click('.hm-need[href="#/merge"]');
-    await settled(f, { hash: "#/merge" });
-    assert.equal(await title(f), "Merge review");
+    // the Schedule
+    await f.click('.hm-today .hm-more[href="#/schedule"]');
+    await settled(f, { hash: "#/schedule" });
+    assert.equal(await title(f), "Schedule");
     await p.clean();
   } finally { await p.close(); }
 });
 
-test("the office without the office sign-in: the numbers (reports:read), See more opens the CRM's own screens", async () => {
+test("a day with nothing booked: a calm note and the next day with visits (Next up: Monday)", async () => {
+  await day();
+  // the server's answer as on a Tuesday off with the visits on Monday the 23rd (the server's own day-off logic: home.test.mjs)
+  const dayOff = async (p) => p.ctx.route((url) => url.pathname === "/api/crm/home", async (route) => {
+    const res = await route.fetch();
+    const body = await res.json();
+    const t = body.data.today;
+    body.data.today = { date: t.date, visits: [], counts: { visits: 0, done: 0 }, next: { date: "2026-11-23", days: 6, count: t.visits.length, visits: t.visits.map((v) => ({ ...v, status: "scheduled" })) } };
+    await route.fulfill({ response: res, json: body });
+  });
+  for (const device of DEVICES) {
+    const { p, page, f } = await home("olive", { device, office: true, before: dayOff });
+    try {
+      assert.match(await text(f, ".hm-today"), /^Today Schedule Nothing booked today Next up: Monday Nov 23 · 7 visits 8:00 AM /);
+      assert.equal(!!(await f.$(".hm-progress")), false, "no 'done' line on a day off");
+      const rows = await visitRows(f);
+      assert.equal(rows.length, 7);
+      assert.ok(rows.every((r) => !r.pill), "nothing done yet on a day ahead");
+      assert.deepEqual(await screenProblems(f), []);
+      await shot(page, `home-dayoff-${device}`);
+      await p.clean();
+    } finally { await p.close(); }
+  }
+});
+
+test("the office without the office sign-in: the money (reports:read), See more opens Payments", async () => {
   await day();
   const { p, page, f } = await home("ada", { device: "iphone13" });
   try {
     assert.equal(await title(f), "Home");
-    assert.ok((await tiles(f)).includes("Close rate"));
-    const more = await f.$$eval(".hm-more", (els) => els.map((e) => e.getAttribute("href")).filter(Boolean));
+    assert.deepEqual(await cards(f), ["Today", "Money this month"]);
+    assert.match(await text(f, ".hm-money"), MONEY);
+    const more = await f.$$eval("#view a[href]", (els) => els.map((e) => e.getAttribute("href")));
     assert.ok(!more.some((h) => h.startsWith("#/dashboard")), `no Dashboard links without the office sign-in: ${more.join(", ")}`);
-    assert.ok(more.includes("#/calls") && more.includes("#/plans") && more.includes("#/schedule"), more.join(", "));
+    assert.equal(await f.getAttribute(".hm-money .hm-more-row", "href"), "#/payments", "the CRM's own Payments instead");
+    assert.equal(!!(await f.$(".hm-extra")), false, "Ada doesn't go out on visits: no My visits");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");
     await goTo(f, "/menu");
-    assert.equal(await f.$('.mtile[href="#/dashboard"]'), null, "no Dashboard in the Menu either");
-    assert.equal(await f.$('.mtile[href="#/tools/lights"]'), null, "nor the office tools");
+    assert.equal(!!(await f.$('.mtile[href="#/dashboard"]')), false, "no Dashboard in the Menu either");
+    assert.equal(!!(await f.$('.mtile[href="#/tools/lights"]')), false, "nor the office tools");
     await p.clean();
   } finally { await p.close(); }
 });
 
-test("a tech never sees the numbers: their own Today, and /home tells them nothing", async () => {
+test("a tech never sees the money: their own Today, and /home tells them nothing", async () => {
   await day();
   for (const device of DEVICES) {
     const { p, page, f } = await home("theo", { device, office: true });
     try {
       assert.equal(await title(f), "Today");
-      assert.equal(await f.$(".hm, .hm-kpi, .hm-hero, [data-chart]"), null, "no Home");
-      assert.doesNotMatch(await f.textContent("#view"), /\$\d|Collected|Close rate|Active plans/);
+      assert.equal(!!(await f.$(".hm, .hm-money, .hm-today, [data-chart]")), false, "no Home");
+      assert.doesNotMatch(await f.textContent("#view"), /\$\d|Collected|collected|Money this month/);
       const tabs = await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab));
       assert.ok(!tabs.includes("home") && !tabs.includes("menu") && !tabs.includes("sales"), tabs.join(", "));
       const res = await p.ctx.request.get("/api/crm/home", { headers: { "x-crm": "1" } });
       assert.equal(res.status(), 200);
       const d = (await res.json()).data;
-      assert.deepEqual([d.kpis, d.today, d.needs], [null, null, []]);
+      assert.deepEqual([d.money, d.today, d.notifications], [null, null, null]);
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-tech-${device}`);
       await p.clean();
@@ -240,7 +288,7 @@ test("the Sales tab: Pipeline · Leads · Calls · Quotes · Tasks in one switch
 
 const box = (f, sel) => f.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; });
 
-test("on a desk: the sidebar with every section, the header's search and New, Home as a grid of cards", async () => {
+test("on a desk: the sidebar with every section, the header's search and New, Today beside the money (over it at 1024)", async () => {
   await day();
   for (const device of ["desk1440", "desk1024"]) {
     const { p, page, f } = await home("olive", { device, office: true });
@@ -253,23 +301,26 @@ test("on a desk: the sidebar with every section, the header's search and New, Ho
       assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
       assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings", "Team"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
-      assert.match(await f.textContent('#side [data-tab="home"] .badge'), /^\d+$/, "Home's badge");
+      assert.match(await f.textContent('#side [data-tab="home"] .badge'), /^\d+$/, "Home's badge (what needs attention)");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");
       assert.equal(await f.$eval("#fab", (el) => getComputedStyle(el).display).catch(() => "none"), "none", "New is in the header");
-      // the grid: the month's tiles in a row (six at 1440, three at 1024), money beside money by month, today beside what needs you
-      const tiles = await f.$$eval(".hm-kpi", (els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-      const perRow = tiles.filter((y) => y === tiles[0]).length;
-      assert.equal(perRow, device === "desk1440" ? 6 : 3, `tiles per row: ${tiles.join(",")}`);
-      const [hero, money, today, needs, sales, plans, jobs] = await Promise.all([".hm-hero", ".hm-money", ".hm-today", ".hm-needs", ".hm-sales", ".hm-plans", ".hm-jobs"].map((s) => box(f, s)));
-      assert.equal(hero.y, money.y, "money beside money by month");
-      assert.ok(money.x > hero.x + hero.w - 1);
-      assert.equal(today.y, needs.y, "today beside what needs you");
-      assert.ok(sales.y === plans.y && plans.y === jobs.y, "Sales, Plans and Jobs side by side");
-      // the charts use their cards' width and stay inside them
-      for (const c of ["weekly", "monthly", "leads", "visits"]) {
-        const [card, svg] = await Promise.all([box(f, `[data-chart="${c}"]`), box(f, `[data-chart="${c}"] svg`)]);
-        assert.ok(Math.abs(card.w - svg.w) <= 2, `${c}: ${svg.w} in ${card.w}`);
+      assert.deepEqual(await cards(f), ["Today", "Money this month"]);
+      assert.equal(!!(await f.$(GONE)), false);
+      // at 1440 Today (the wider) beside the money; at 1024 Today over the money, both the full width
+      const [today, money, grid] = await Promise.all([".hm-today", ".hm-money", ".hm-grid"].map((s) => box(f, s)));
+      if (device === "desk1440") {
+        assert.equal(today.y, money.y, "side by side");
+        assert.ok(money.x >= today.x + today.w, "the money on the right");
+        assert.ok(today.w > money.w && money.w >= 340, `widths ${today.w} / ${money.w}`);
+      } else {
+        assert.ok(money.y >= today.y + today.h, "Today first, the money under it");
+        assert.ok(today.w === grid.w && money.w === grid.w, `widths ${today.w} / ${money.w} in ${grid.w}`);
       }
+      assert.ok(grid.w <= 1160, `Home's width ${grid.w}`);
+      assert.equal(await f.$eval(".hm-cmp", (el) => Math.round(el.getBoundingClientRect().height) <= 24), true, "the comparison on one line");
+      // the chart uses its card's width and stays inside it
+      const [chart, svg] = await Promise.all([box(f, '[data-chart="weeks"]'), box(f, '[data-chart="weeks"] svg')]);
+      assert.ok(Math.abs(chart.w - svg.w) <= 2 && chart.x >= money.x && chart.x + chart.w <= money.x + money.w, `the chart: ${svg.w} in ${chart.w}`);
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-desk-${device}`);
       await fullShot(page, f, `home-desk-${device}-full`);
@@ -342,29 +393,33 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
   try {
     await goTo(q.f, `/contacts/${seeded.contacts.customer}`);
     assert.equal(await q.f.$eval("#pane", (el) => el.hidden), true);
-    assert.equal(await q.f.$("#view #ct-q"), null);
+    assert.equal(!!(await q.f.$("#view #ct-q")), false);
     await q.p.clean();
   } finally { await q.p.close(); }
 });
 
-test("on a desk: a tech gets their own sidebar (no sections, no search, no numbers)", async () => {
+test("on a desk: a tech gets their own sidebar (no sections, no search, no money)", async () => {
   await day();
-  const { p, page, f } = await home("theo", { device: "desk1440" });
-  try {
-    assert.equal(await title(f), "Today");
-    // a tech's own bar as a sidebar: Today, Time and Pay (the tech app, M4b), Me
-    assert.deepEqual(await f.$$eval("#side .side-item .sl", (els) => els.map((e) => e.textContent)), ["Today", "Inbox", "Time", "Pay", "Me"]);
-    assert.equal(await f.$("#side .side-grp"), null);
-    assert.equal(await f.$("#top-q"), null, "no customer search for a tech");
-    assert.equal(await f.$(".hm-kpi, .hm-hero"), null);
-    assert.deepEqual(await screenProblems(f), []);
-    await shot(page, "home-desk-tech");
-    // a contact opens alone: the list beside it is the office's
-    await goTo(f, `/contacts/${seeded.contacts.customer}`);
-    assert.equal(await f.$eval("#pane", (el) => el.hidden), true, "no list beside a tech's contact");
-    assert.doesNotMatch(await f.textContent("#view"), /Not for this login[\s\S]*Not for this login/);
-    await p.clean();
-  } finally { await p.close(); }
+  for (const device of ["desk1440", "desk1024"]) {
+    const { p, page, f } = await home("theo", { device });
+    try {
+      assert.equal(await title(f), "Today");
+      // a tech's own bar as a sidebar: Today, Time and Pay (the tech app, M4b), Me
+      assert.deepEqual(await f.$$eval("#side .side-item .sl", (els) => els.map((e) => e.textContent)), ["Today", "Inbox", "Time", "Pay", "Me"]);
+      assert.equal(!!(await f.$("#side .side-grp")), false);
+      assert.equal(!!(await f.$("#top-q")), false, "no customer search for a tech");
+      assert.equal(!!(await f.$(".hm, .hm-money, [data-chart]")), false);
+      assert.deepEqual(await screenProblems(f), []);
+      await shot(page, `home-desk-tech-${device}`);
+      if (device === "desk1440") {
+        // a contact opens alone: the list beside it is the office's
+        await goTo(f, `/contacts/${seeded.contacts.customer}`);
+        assert.equal(await f.$eval("#pane", (el) => el.hidden), true, "no list beside a tech's contact");
+        assert.doesNotMatch(await f.textContent("#view"), /Not for this login[\s\S]*Not for this login/);
+      }
+      await p.clean();
+    } finally { await p.close(); }
+  }
 });
 
 test("on a desk: /office installs as an app (Chrome's own check), and the office password alone keeps its tab row", async () => {
@@ -391,7 +446,7 @@ test("on a desk: /office installs as an app (Chrome's own check), and the office
     const cdp = await p.ctx.newCDPSession(page);
     const { installabilityErrors } = await cdp.send("Page.getInstallabilityErrors");
     assert.deepEqual(installabilityErrors.map((e) => e.errorId), []);
-    assert.equal(await page.$(".bar .nav"), null, "one app");
+    assert.equal(!!(await page.$(".bar .nav")), false, "one app");
     await shot(page, "home-desk-office-crm");
     await p.clean();
   } finally { await p.close(); }

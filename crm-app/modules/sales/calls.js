@@ -30,7 +30,7 @@ function card(r, s) {
   const meta = [`Lead ${age(r.started_at)}`, r.last_touch_at ? `last touch ${ago(r.last_touch_at)}` : "not touched yet"].join(" · ");
   return html`<li class="${"sl-card" + (late ? " late" : "")}">
     <a class="sl-top" href="${"#/enrollments/" + encodeURIComponent(r.id)}">
-      <span class="who"><span class="nm">${r.name}</span><span class="sub">${sub}</span><span class="sub">${meta}</span></span>
+      <span class="who"><span class="nm">${r.name}</span><span class="sub">${sub}</span><span class="sub">${meta}</span>${r.source_label ? html`<span class="sub sl-src">From ${r.source_label}</span>` : ""}</span>
       <span class="when">${r.status === "paused" ? "Paused" : r.due ? html`${late ? "Overdue" : winLabel(r)}${late ? html`<br>${dueLabel(r.due)}` : ""}` : "Now"}</span>
     </a>
     ${r.pending ? html`<button type="button" class="sl-pending" ${attrs({ "data-pending": r.id })}>${icon("text")}${pendingLabel(r.pending, r.hold_until)}</button>` : ""}

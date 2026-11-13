@@ -1,14 +1,16 @@
 // "Collect payment" on the Visit screen (design §9.2 Visit, §5.6): for the
 // office and the visit's own techs. Shows what is left on the visit's
-// invoice, records cash or a check, or shows a QR code the customer scans
-// to pay by card on their own phone (a tip and all). A payment is never
-// kept for later: it needs signal, and the sheet says so.
+// invoice, records cash or a check, or shows the pay code full screen for
+// the customer to scan and pay by card on their own phone (a tip and all;
+// pay-qr.js). A payment is never kept for later: it needs signal, and the
+// sheet says so.
 
-import { html, raw, attrs, sheet, toast } from "../../core/ui.js";
+import { html, attrs, sheet, toast } from "../../core/ui.js";
 import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
 import { money } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import { ensureStyles } from "./kit.js";
+import { codeView, refusedView, keepAwake, QR_ICON } from "./pay-qr.js";
 
 const offline = (e) => !!e && (e.code === "offline" || e.status === 0 || e.name === "OfflineError");
 const NEEDS_SIGNAL = "Taking a payment needs signal. Nothing was recorded: try again when you're back online.";
@@ -18,11 +20,7 @@ function body(p, mode, link) {
   const bal = inv && Number.isSafeInteger(inv.balance_cents) ? inv.balance_cents : null;
   if (inv && inv.status === "paid") return html`<p class="ok">This visit is paid${inv.number ? ` (${inv.number})` : ""}. Nothing to collect.</p>`;
   if (!inv && !p.can.make) return html`<p class="muted">${p.billable === false ? "This kind of visit isn't billed." : "There's nothing to collect on this visit."}</p>`;
-  if (mode === "qr" && link) {
-    return html`<div class="mn-qr">${raw(link.svg)}<p><b>${money(link.balance_cents)}</b> · ${link.number}</p>
-      <p class="small muted">The customer points their phone's camera at this and pays on their own phone. They can add a tip there.</p>
-      <div class="btn-row"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-check>Did it go through?</button></div></div>`;
-  }
+  if (mode === "qr" && link) return link.refused ? refusedView(link.refused, { back: true }) : codeView(link, { back: true });
   return html`<form class="form" data-collect novalidate>
     <p>${bal !== null ? html`Left to pay: <b class="num">${money(bal)}</b>${inv.number ? ` (${inv.number})` : ""}` : p.job_total_cents ? html`The visit comes to <b class="num">${money(p.job_total_cents)}</b>.` : "The invoice is made when you take the payment."}</p>
     <div class="mn-seg" role="group" aria-label="How they paid">
@@ -33,7 +31,7 @@ function body(p, mode, link) {
     <label class="field" data-field="tip_cents"><span>Tip, if they gave one</span><input name="tip" inputmode="decimal" autocomplete="off" placeholder="0.00"><small class="why" hidden></small></label>
     <label class="field" data-field="reference"><span>Check number</span><input name="reference" inputmode="numeric" autocomplete="off" maxlength="20"><small class="why" hidden></small></label>
     <p class="err" data-form-err hidden></p>
-    <div class="btn-row"><button type="submit" class="btn primary">Record it</button><button type="button" class="btn" data-qr>Pay by card (QR)</button></div>
+    <div class="btn-row"><button type="submit" class="btn primary">Record it</button><button type="button" class="btn" data-qr>${QR_ICON}Pay by card (QR)</button></div>
     <p class="small muted">Needs signal: a payment is never saved for later.</p>
   </form>`;
 }
@@ -48,9 +46,17 @@ export default {
     if (p.offline) { toast(NEEDS_SIGNAL, { bad: true }); return; }
     const clientId = uuid();
     let link = null;
+    let release = () => {};
+    // the code full screen (scan to pay); Back puts the form back
+    const showCode = (on) => {
+      sh.el.classList.toggle("mn-full", on);
+      release();
+      release = on && link && !link.refused ? keepAwake() : () => {};
+    };
     const sh = sheet({
       title: "Collect payment",
       body: body(p, "form"),
+      onClose: () => release(),
       events: {
         "submit [data-collect]": async (e, form) => {
           e.preventDefault();
@@ -74,17 +80,22 @@ export default {
           busy(el, true);
           try {
             const r = await ctx.api(`${path}/pay-link`, { method: "POST", body: {} });
-            const { qrSvg } = await import("./qr.js");
-            link = { ...r.data, svg: qrSvg(r.data.url, { label: "Scan to pay" }) };
-            sh.set(body(p, "qr", link));
-          } catch (err) { busy(el, false); showError(el.closest("form"), offline(err) ? { message: NEEDS_SIGNAL } : err); }
+            link = r.data;
+          } catch (err) {
+            busy(el, false);
+            if (offline(err) || err.status !== 409) { showError(el.closest("form"), offline(err) ? { message: NEEDS_SIGNAL } : err); return; }
+            // paid meanwhile, Rotor still bills them...: the screen says so instead of a code
+            link = { refused: err.message };
+          }
+          sh.set(body(p, "qr", link));
+          showCode(true);
         },
-        "click [data-back]": () => sh.set(body(p, "form")),
+        "click [data-back]": () => { showCode(false); sh.set(body(p, "form")); },
         "click [data-check]": async (e, el) => {
           busy(el, true);
           try {
             p = (await ctx.api(`${path}/payment`, { cache: false })).data;
-            if (p.invoice && p.invoice.status === "paid") { sh.close(); toast("Paid. Thank you!"); ctx.refresh(); return; }
+            if (p.invoice && p.invoice.status === "paid") { showCode(false); sh.close(); toast("Paid. Thank you!"); ctx.refresh(); return; }
             busy(el, false);
             toast("Not yet. Give it a few seconds after they finish.");
           } catch (err) { busy(el, false); toast(offline(err) ? NEEDS_SIGNAL : err.message || "That didn't load.", { bad: true }); }
