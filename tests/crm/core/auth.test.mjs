@@ -149,35 +149,9 @@ test("`to` must stay on /office or /crm; anything else becomes /office#crm", asy
   assert.ok(owner);
 });
 
-test("D14: the office password on Team sign-in sets barta_office only for an allowed role and the right password", async () => {
-  t = await crmTest();
-  const owner = await t.user("owner", { login: "olive" });
-  const tech = await t.user("tech", { login: "theo" });
-  await t.bootstrap(owner);
-  const office = process.env.OFFICE_PASSWORD;
-  // owner + right office password
-  let r = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD, office_password: office } });
-  assert.equal(r.status, 200);
-  assert.equal(r.body.data.office_cookie, true);
-  assert.equal(t.cookieFrom(r, "barta_office"), officeCookie(), "the same cookie POST /office sets");
-  // owner + wrong office password: CRM sign-in only
-  r = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD, office_password: "not it" } });
-  assert.equal(r.status, 200);
-  assert.equal(r.body.data.office_cookie, false);
-  assert.equal(t.cookieFrom(r, "barta_office"), null);
-  // a tech with the right office password: not allowed
-  r = await t.auth("/auth/login", { body: { login: "theo", password: PASSWORD, office_password: office } });
-  assert.equal(r.status, 200);
-  assert.equal(r.body.data.office_cookie, false);
-  assert.equal(t.cookieFrom(r, "barta_office"), null);
-  // no office password: nothing about it
-  r = await t.auth("/auth/login", { body: { login: "olive", password: PASSWORD } });
-  assert.equal(r.body.data.office_cookie, null);
-  // the owner may allow admins too (cfg/auth); nothing about the token is stored
-  assert.ok(!dump(t).includes(derive(office)));
-  assert.ok(!dump(t).includes(office));
-  assert.ok(tech);
-});
+// D14's optional office password on Team sign-in is gone (Nov 2026): the
+// office cookie now comes with every owner's and admin's sign-in; see
+// signin-office.test.mjs.
 
 test("sessions: idle and absolute expiry with the pinned clock; disabled users are signed out", async () => {
   t = await crmTest();

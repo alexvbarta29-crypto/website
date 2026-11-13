@@ -291,14 +291,13 @@ test("every external and /p/ link opens a new tab", async () => {
       for (const l of await badLinks(f)) bad.push(`${s}: ${l}`);
     }
     assert.deepEqual(bad, []);
-    // the office shell's own links (the office password alone keeps the tab row once the CRM has owners)
+    // the office password alone once the CRM has owners: Team sign-in only (no tab row, no links out)
     const q = await phone(browser, srv, { office: true });
     try {
       await q.page.goto("/office");
-      assert.ok(await q.page.$(".bar .nav"), "the office password alone: the tab row");
-      const links = await q.page.$$eval(".bar a[href^=http]", (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
-      assert.ok(links.length >= 1);
-      for (const l of links) { assert.equal(l.target, "_blank", l.href); assert.match(l.rel, /noopener/); }
+      await q.page.waitForSelector("#team");
+      assert.equal(await q.page.$(".bar, [data-tool]"), null, "no tab row");
+      assert.deepEqual(await q.page.$$eval("a[href^=http]", (as) => as.map((a) => a.href)), []);
       await q.clean();
     } finally { await q.close(); }
     await p.clean();

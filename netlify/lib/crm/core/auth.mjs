@@ -14,15 +14,27 @@
 //   as done. No office token is ever stored.
 // - Sign-in (§4.8): throttle first, then PBKDF2 (a dummy hash for an unknown
 //   login, so timing and wording never say whether a login exists).
-// - D14 (§2.4): an optional office password on the Team sign-in sets
-//   barta_office exactly as POST /office does, for the roles in
-//   cfg/auth.office_cookie_roles (default ["owner"]).
+// - The office cookie with the sign-in (the owner, Nov 2026: "have the sign
+//   in be the only thing allowing you in"; replaces D14's optional office
+//   password field): every CRM sign-in of an owner or the office (admin)
+//   also sets barta_office, the CRM-issued form (lights-auth.mjs
+//   crmOfficeCookie), so the dashboards and office tools open with no
+//   second password. Techs never get it (a tech's sign-in clears one).
+//   Signing out clears it.
+// - Forgot password (POST /auth/forgot): the login, the office password
+//   (the owners' shared secret that also opens setup) and a new password.
+//   Throttled like sign-in, the office password compared in constant time,
+//   one answer ("That didn't match.") for a wrong office password, an
+//   unknown login and a turned-off one. A match sets the password, signs
+//   the person out everywhere else, signs them in here, tells the other
+//   owners (the bell) and is audited.
 // - Invites and resets: a one-time link {userId}.{token}; only the token's
 //   sha256 is kept on the user, for 7 days.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { signedIn as officeSignedIn, derive, sha256 as officeSha, same, expected, cookieFor as officeCookieFor, ONE_YEAR } from "../../lights-auth.mjs";
+import { signedIn as officeSignedIn, derive, sha256 as officeSha, same, expected, crmOfficeCookie, clearOfficeCookie } from "../../lights-auth.mjs";
 import { getRecord, readPointer, createRecord, updateRecord, getRaw, settledWrite, appendEvent, getSetting } from "../../crm-store.mjs";
+import { notify, approvers } from "./notify.mjs";
 import { InputError, ForbiddenError, ConflictError, ExistsError } from "./errors.mjs";
 import { nowIso, nowMs } from "./clock.mjs";
 import { newId, isId } from "./ids.mjs";
@@ -41,6 +53,13 @@ export const BOOTSTRAP_KEY = "sys/bootstrap";
 export const INVITE_DAYS = 7;
 export const BOOTSTRAP_STALE_MS = 2 * 60 * 1000;
 export const BAD_LOGIN = "That login or password isn't right.";
+export const NO_MATCH = "That didn't match.";
+// Who gets the office cookie with their CRM sign-in.
+export const OFFICE_ROLES = Object.freeze(["owner", "admin"]);
+export const officeRole = (u) => !!u && u.status === "active" && OFFICE_ROLES.includes(u.role);
+// The office cookie a sign-in sets: the CRM-issued one for an owner or the
+// office; for anyone else, a clear of whatever this browser holds.
+export const officeCookieOnSignIn = (u, req) => (officeRole(u) ? crmOfficeCookie(u.id) : officeSignedIn(req) ? clearOfficeCookie() : null);
 
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 const sameSecret = (a, b) => {
@@ -246,25 +265,18 @@ async function login(ctx) {
   } catch { /* the sign-in still counts */ }
   const ses = await createSession(fresh, ctx.req, ctx.context);
   cookies.push(ses.cookie);
-  // D14: the office password also opens the office tools on this phone.
-  let office = null;
-  if (typeof b.office_password === "string" && b.office_password) {
-    let roles = ["owner"];
-    try { const a = await getSetting("auth"); if (Array.isArray(a.office_cookie_roles)) roles = a.office_cookie_roles; } catch { /* defaults */ }
-    office = false;
-    if (roles.includes(fresh.role) && b.office_password.length <= 256) {
-      const token = derive(b.office_password);
-      if (same(officeSha(token), expected())) { office = true; cookies.push(officeCookieFor(token, ONE_YEAR)); }
-    }
-  }
-  await auditAuth(fresh.id, "sign_in", ctx, { office: office === true });
+  // Owners and the office: the office tools open with this sign-in too.
+  const office = officeRole(fresh);
+  cookies.push(officeCookieOnSignIn(fresh, ctx.req));
+  await auditAuth(fresh.id, "sign_in", ctx, { office });
   return { data: { ...(await signedInAs(fresh)), to, office_cookie: office }, cookies };
 }
 
+// Signing out closes the office tools on this browser too.
 async function logout(ctx) {
   await revokeSession(ctx.sessionHash).catch(() => {});
   await auditAuth(ctx.user.id, "sign_out", ctx);
-  return { data: { to: "/crm/login" }, cookies: [clearSessionCookie()] };
+  return { data: { to: "/crm/login" }, cookies: [clearSessionCookie(), clearOfficeCookie()] };
 }
 
 async function logoutAll(ctx) {
@@ -272,7 +284,7 @@ async function logoutAll(ctx) {
   forgetUser(ctx.user.id);
   await bumpAuthEpoch("sign_out_all");
   await auditAuth(ctx.user.id, "sign_out_all", ctx);
-  return { data: { to: "/crm/login" }, cookies: [clearSessionCookie()] };
+  return { data: { to: "/crm/login" }, cookies: [clearSessionCookie(), clearOfficeCookie()] };
 }
 
 async function changePassword(ctx) {
@@ -374,7 +386,7 @@ async function setup(ctx) {
   await recordSuccess(who).catch(() => {});
   const ses = await createSession(created.data, ctx.req, ctx.context);
   await auditAuth(uid, "setup", ctx);
-  return { status: 201, data: { ...(await signedInAs(created.data)), to: "/office#crm" }, cookies: [ses.cookie] };
+  return { status: 201, data: { ...(await signedInAs(created.data)), to: "/office#crm" }, cookies: [ses.cookie, officeCookieOnSignIn(created.data, ctx.req)] };
 }
 
 async function inviteInfo(ctx) {
@@ -400,7 +412,61 @@ async function acceptInvite(ctx) {
   if ((t.user.invite.kind || "invite") === "reset") await bumpAuthEpoch("reset");
   const ses = await createSession(r.data, ctx.req, ctx.context);
   await auditAuth(t.user.id, t.user.invite.kind === "reset" ? "password_reset" : "invite_accepted", ctx);
-  return { data: { ...(await signedInAs(r.data)), to: "/crm" }, cookies: [ses.cookie] };
+  return { data: { ...(await signedInAs(r.data)), to: "/crm" }, cookies: [ses.cookie, officeCookieOnSignIn(r.data, ctx.req)] };
+}
+
+// Forgot password: login + the office password + a new one (see the top).
+// The rules that need nothing about the person are checked first; the
+// throttle comes BEFORE the PBKDF2 work; known and unknown logins make the
+// same reads (userByLogin) and the same office-password derivation, and get
+// the same answer.
+async function forgot(ctx) {
+  const b = ctx.body || {};
+  const typed = String(b.login ?? "").trim().toLowerCase().slice(0, 64);
+  const officePw = typeof b.office_password === "string" ? b.office_password : "";
+  const next = typeof b.password === "string" ? b.password : "";
+  if (!typed) throw new InputError("Type your login.", "login");
+  if (!officePw) throw new InputError("Type the office password.", "office_password");
+  checkPolicy(next, { login: typed });
+  if (typeof b.again === "string" && b.again !== next) throw new InputError("The two passwords don't match.", "again");
+  const to = safeTo(b.to);
+  const cookies = [];
+  const device = deviceId(ctx.req);
+  if (!device) cookies.push(newDeviceCookie().cookie);
+  const who = { login: typed, device, ip: clientIp(ctx.req, ctx.context) };
+  const th = await checkThrottle(who);
+  if (!th.ok) {
+    const wait = th.retry_after_s;
+    const words = wait >= 120 ? `${Math.ceil(wait / 60)} minutes` : `${wait} seconds`;
+    return withCookies(fail("throttled", `Too many tries. Wait ${words}, then try again.`, 429, { headers: { "Retry-After": String(wait) }, details: { retry_after_s: wait } }), cookies);
+  }
+  const user = await userByLogin(typed);
+  const right = officePw.length <= 256 && same(officeSha(derive(officePw)), expected());
+  if (!right || !user || user.status !== "active") {
+    await recordFailure(who).catch(() => {});
+    if (user) later(ctx, auditAuth(user.id, "password_reset_office_failed", ctx));
+    return withCookies(fail("no_match", NO_MATCH, 401), cookies);
+  }
+  checkPolicy(next, { login: user.login, name: user.name });
+  await recordSuccess(who).catch(() => {});
+  const pw = await hashPassword(next);
+  const r = await updateRecord("user", user.id, (u) => {
+    if (u.status !== "active") return null;
+    const { invite, ...rest } = u;   // a reset link still out is used up too
+    return { ...rest, password: pw, session_epoch: (u.session_epoch || 0) + 1, last_sign_in_at: nowIso() };
+  }, writeCtx(ctx, user.id));
+  if (!r.changed) return withCookies(fail("no_match", NO_MATCH, 401), cookies);
+  forgetUser(user.id);
+  await bumpAuthEpoch("forgot");
+  const ses = await createSession(r.data, ctx.req, ctx.context);
+  cookies.push(ses.cookie, officeCookieOnSignIn(r.data, ctx.req));
+  await auditAuth(user.id, "password_reset_office", ctx);
+  const first = r.data.first_name || String(r.data.name || r.data.login).split(" ")[0];
+  try {
+    const owners = (await approvers()).filter((id) => id !== user.id).slice(0, 10);
+    await notify(owners, { kind: "system", title: `${first} reset their password with the office password`, body: "If that wasn't them, change the office password and check Team.", link: `/team/${user.id}` }, { by: user.id });
+  } catch (e) { /* the reset stands; the audit has it */ }
+  return { data: { ...(await signedInAs(r.data)), to, office_cookie: officeRole(r.data) }, cookies };
 }
 
 // Routes served by crm-auth.mjs (paths under /api/crm). `account:own` is the
@@ -414,4 +480,5 @@ export const AUTH_ROUTES = Object.freeze([
   route("POST", "/auth/setup", "public", null, setup, { maxCalls: 50, idempotent: false }),
   route("GET", "/auth/invite/:token", "public", null, inviteInfo),
   route("POST", "/auth/invite", "public", null, acceptInvite, { maxCalls: 40, idempotent: false }),
+  route("POST", "/auth/forgot", "public", null, forgot, { maxCalls: 40, idempotent: false }),
 ]);

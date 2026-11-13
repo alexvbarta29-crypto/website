@@ -1,12 +1,16 @@
-// GET /office — Barta Office: the office's tools on one page with tabs
-// (the dashboards, the CRM, Christmas Lights, Follow-ups, Purchases,
-// Giveaway, plus a Rotor link). See docs/OFFICE.md.
+// GET /office — Barta Office: one app, the CRM, full screen. See docs/OFFICE.md.
 //
-// Signed in (design §2.4) = the office password's cookie (lights-auth.mjs,
-// which opens every tool) OR a CRM session (each person's own login). With
-// only a CRM session the page is SOLO mode: the CRM fills the screen and no
-// other tool is offered. Signed out, the page offers Team sign-in next to
-// the office password.
+// The CRM sign-in is the only way in (the owner, Nov 2026). With a CRM
+// session the page is the CRM alone (solo mode: no header, no tab row);
+// owners and the office (admin) also hold the office cookie, issued with
+// their sign-in and renewed here on every visit, so the dashboards and
+// office tools open inside the CRM; a tech's is cleared. Signed out, or
+// with only the office cookie, the page is Team sign-in, with Forgot
+// password (the office password stands in for a reset link). Before the
+// CRM has its first owner, the office password opens the CRM's setup
+// screen (the only sign-in that can work then). Only when the CRM's storage
+// can't be used at all does the office password still open the old tab row,
+// so the tools are never locked away by an outage.
 //
 // GET /office/launch is the data-free launcher the office service worker
 // keeps for a cold start with no signal (office-sw.js, §2.5): public, no
@@ -15,12 +19,13 @@
 // Not linked from the site and never indexed.
 
 import { officeHtml, officeLoginHtml, launcherHtml } from "../lib/office-page.mjs";
-import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor } from "../lib/lights-auth.mjs";
+import { ONE_YEAR, derive, sha256, same, expected, readCookie, passwordSignedIn, crmOfficeUser, crmOfficeCookie, clearOfficeCookie, cookieFor } from "../lib/lights-auth.mjs";
 import { deployContext } from "../lib/crm/core/context.mjs";
 import { withStoreScope, withBudget } from "../lib/crm-store.mjs";
-import { lookupSession } from "../lib/crm/core/sessions.mjs";
-import { storeBlocked, setupDone } from "../lib/crm/core/auth.mjs";
-import { pageMethodNotAllowed } from "../lib/crm/core/http.mjs";
+import { lookupSession, deviceId } from "../lib/crm/core/sessions.mjs";
+import { checkThrottle, recordFailure } from "../lib/crm/core/throttle.mjs";
+import { storeBlocked, setupDone, officeRole } from "../lib/crm/core/auth.mjs";
+import { pageMethodNotAllowed, clientIp } from "../lib/crm/core/http.mjs";
 import { safeErr } from "../lib/referral-lib.mjs";
 
 export const config = { path: ["/office", "/office/", "/office/launch"] };
@@ -39,19 +44,29 @@ const page = (body, status = 200, extra = {}) =>
 // stores are open here). Never throws: the office password keeps working
 // whatever the CRM's storage does.
 async function crmState(req, context) {
+  const got = await withCrm(req, context, async () => {
+    const session = await lookupSession(req);
+    if (session) return { session, ready: true, usable: true };
+    return { session: null, ready: await setupDone(), usable: true };
+  });
+  return got || { session: null, ready: false, usable: false };
+}
+// Runs fn in the CRM's store scope; null when the CRM's storage can't be used.
+async function withCrm(req, context, fn) {
   try {
     const deploy = deployContext(req, context);
-    if (storeBlocked(deploy)) return { session: null, ready: false, usable: false };
-    return await withStoreScope({ deploy, budget: withBudget(4000, 8), requestId: "office" }, async () => {
-      const session = await lookupSession(req);
-      if (session) return { session, ready: true, usable: true };
-      return { session: null, ready: await setupDone(), usable: true };
-    });
+    if (storeBlocked(deploy)) return null;
+    return await withStoreScope({ deploy, budget: withBudget(4000, 8), requestId: "office" }, fn);
   } catch (e) {
-    console.error("office: couldn't check the CRM sign-in (" + safeErr(e) + ")");
-    return { session: null, ready: false, usable: false };
+    console.error("office: couldn't reach the CRM (" + safeErr(e) + ")");
+    return null;
   }
 }
+// The office password is also the key to Forgot password, so its own form
+// is throttled like sign-in (core/throttle.mjs): its own bucket per phone
+// (a login nobody can have, so it lands in a hashed key) and the address's
+// bucket shared with sign-in. Without the CRM's storage it isn't counted.
+const officeTry = (req, context) => ({ login: "office password", device: deviceId(req), ip: clientIp(req, context) });
 
 export default async (req, context) => {
   const path = new URL(req.url).pathname;
@@ -60,25 +75,45 @@ export default async (req, context) => {
     return new Response(launcherHtml(), { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "same-origin", "X-Frame-Options": "DENY" } });
   }
   if (req.method === "POST") {
+    // The office password: before the first owner exists it opens setup
+    // (and, with the CRM's storage down, the old tab row). Afterwards the
+    // cookie it sets opens no part of /office by itself (Team sign-in).
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
-    const token = pw ? derive(pw) : "";
+    const who = officeTry(req, context);
+    const gate = await withCrm(req, context, () => checkThrottle(who));
+    if (gate && !gate.ok) {
+      const { ready } = await crmState(req, context);
+      const wait = gate.retry_after_s >= 120 ? `${Math.ceil(gate.retry_after_s / 60)} minutes` : `${gate.retry_after_s} seconds`;
+      return page(officeLoginHtml({ error: `Too many tries. Wait ${wait}, then try again.`, team: ready }), 429, { "Retry-After": String(gate.retry_after_s) });
+    }
+    const token = pw && pw.length <= 256 ? derive(pw) : "";
     if (token && same(sha256(token), expected())) {
       return new Response(null, { status: 303, headers: { ...headers, Location: "/office", "Set-Cookie": cookieFor(token, ONE_YEAR) } });
     }
+    await withCrm(req, context, () => recordFailure(who));
     const { ready } = await crmState(req, context);
     return page(officeLoginHtml({ error: "That password isn't right. Try again.", team: ready }), 401);
   }
   if (req.method !== "GET" && req.method !== "HEAD") return pageMethodNotAllowed("GET, HEAD, POST");
   const crm = await crmState(req, context);
-  if (signedIn(req)) {
-    // One app: with a CRM sign-in (or before the first owner exists, to set
-    // it up) the CRM fills the screen and holds the dashboards and office
-    // tools. The office password alone, once the CRM has owners, keeps the
-    // tab row, so nobody without a CRM login is locked out of the tools.
-    const solo = !!crm.session || (crm.usable && !crm.ready);
-    return page(officeHtml({ solo, office: true }), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
+  const byPassword = passwordSignedIn(req);
+  const issuedTo = byPassword ? null : crmOfficeUser(req);
+  if (crm.session) {
+    // One app: the CRM fills the screen. Owners and the office get a fresh
+    // office cookie (the tools inside the CRM); anyone else loses theirs.
+    const user = crm.session.user;
+    const office = officeRole(user);
+    const set = office ? crmOfficeCookie(user.id) : byPassword || issuedTo ? clearOfficeCookie() : null;
+    return page(officeHtml({ solo: true, office }), 200, set ? { "Set-Cookie": set } : {});
   }
-  if (crm.session) return page(officeHtml({ solo: true }));
-  return page(officeLoginHtml({ team: crm.ready }));
+  if (byPassword && (!crm.usable || !crm.ready)) {
+    // Before the first owner: the CRM's setup screen, full screen. With the
+    // CRM's storage down: the old tab row, so the tools stay reachable.
+    return page(officeHtml({ solo: crm.usable, office: true }), 200, { "Set-Cookie": cookieFor(readCookie(req), ONE_YEAR) });
+  }
+  // Signed out, or the office cookie alone once the CRM has owners: Team
+  // sign-in. A CRM-issued office cookie without its CRM session (signed
+  // out elsewhere, turned off) is cleared, unless the CRM couldn't be asked.
+  return page(officeLoginHtml({ team: crm.ready }), 200, issuedTo && crm.usable ? { "Set-Cookie": clearOfficeCookie() } : {});
 };

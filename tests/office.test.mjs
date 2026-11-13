@@ -53,8 +53,8 @@ test("every tab points at a page that exists", () => {
 test("signed out, /office shows the sign-in page, not the tools", async () => {
   const body = await (await office(new Request("https://x.test/office"))).text();
   assert.match(body, /autocomplete="current-password"/);
-  assert.match(body, /class="logo" src="\/assets\/img\/logo-bww\.png"/);
-  assert.doesNotMatch(body, /data-tool=/);
+  assert.match(body, /<div class="mark"><img src="\/assets\/img\/app\/office-icon-180\.v2\.png"/);
+  assert.doesNotMatch(body, /data-tool=|logo-bww|Cabinet Grotesk|General Sans/, "the CRM's look: the system font, no website chrome");
 });
 
 test("one office sign-in opens the lights tool and the playbook too", async () => {
@@ -104,25 +104,43 @@ test("a CRM sign-in alone gets solo mode: the CRM fills the screen, no dashboard
   assert.match(gone.text, /autocomplete="current-password"/);
 });
 
-test("the signed-out page offers Team sign-in once the CRM is set up, and only the office password before", async () => {
+test("the signed-out page is Team sign-in once the CRM is set up (no office password tab), and only the office password before", async () => {
   t = await crmTest();
   let r = await t.office("/office");
   assert.match(r.text, /const TEAM = false;/, "before setup: office password only");
+  assert.match(r.text, /<section id="setup" >/);
+  assert.match(r.text, /<section id="sign" hidden>/);
+  assert.match(r.text, /<form id="office" method="post" action="\/office">/);
   const owner = await t.user("owner");
   await t.bootstrap(owner);
   r = await t.office("/office");
   assert.match(r.text, /const TEAM = true;/);
-  assert.match(r.text, /Team sign-in/);
-  assert.match(r.text, /fetch\('\/api\/crm\/auth\/login'/);
+  assert.match(r.text, /<section id="sign" >/);
+  assert.match(r.text, /<section id="setup" hidden>/);
+  assert.match(r.text, /<h1>Sign in<\/h1>/);
+  assert.match(r.text, /fetch\('\/api\/crm\/auth\/' \+ path/);
   assert.match(r.text, /'X-CRM': '1'/);
-  assert.match(r.text, /Forgot your password\? Ask Alex or Jacob for a reset link\./);
-  assert.match(r.text, /installed \? 'team'/, "the installed app opens on Team sign-in");
+  assert.match(r.text, /}, 'login'\);/);
+  // no Office password tab and no optional office password on Team sign-in
+  assert.doesNotMatch(r.text, /data-mode=|id="seg"|id="t-office"|office_password: \$\('t-office'\)/);
+  const team = r.text.slice(r.text.indexOf('<form id="team"'), r.text.indexOf("</form>", r.text.indexOf('<form id="team"')));
+  assert.doesNotMatch(team, /office/i, "Team sign-in is login and password");
+  // Forgot password: login, the office password, a new password twice
+  assert.match(r.text, /<button type="button" class="linkish" id="to-forgot">Forgot password\?<\/button>/);
+  for (const id of ["f-login", "f-office", "f-pw", "f-again"]) assert.match(r.text, new RegExp(`id="${id}"`), id);
+  assert.match(r.text, /}, 'forgot'\);/);
+  assert.match(r.text, /location\.hash === '#forgot'/, "/office#forgot opens it directly");
+  // the CRM's look: dark by default, the phone's own choice from crm-theme, the system font
+  assert.match(r.text, /localStorage\.getItem\('crm-theme'\)/);
+  assert.match(r.text, /:root\{color-scheme:dark;/);
+  assert.match(r.text, /-apple-system,BlinkMacSystemFont/);
+  assert.doesNotMatch(r.text, /\u2014/, "no em dashes");
   // the office keeps working when the CRM's store does not (production without its settings)
   const prod = await t.office("/office", { context: { deploy: { context: "production" } } });
   assert.equal(prod.status, 200);
   assert.match(prod.text, /const TEAM = false;/);
   const full = await t.office("/office", { office: true, context: { deploy: { context: "production" } } });
-  assert.match(full.text, /data-tool="crm"/);
+  assert.match(full.text, /data-tool="crm"/, "only with the CRM's storage down: the old tab row");
 });
 
 test("/office/launch is public, data-free and re-checked on every load", async () => {
@@ -272,37 +290,39 @@ test("POST to /office/launch answers 405 with the private headers", async () => 
   }
 });
 
-test("the office keeps the CRM's screen across tab switches, tells Team sign-in's D14 refusal, and lifts the CRM's toasts above its card", async () => {
+test("the office keeps the CRM's screen across tab switches and lifts the CRM's toasts above its card (phones only)", async () => {
   // Regressions (M1.2 review): back on the CRM tab the office hash dropped
-  // to #crm; a wrong office password on Team sign-in opened solo mode with
-  // no word why; the "Get the app" card hid the CRM's toasts.
+  // to #crm; the "Get the app" card hid the CRM's toasts.
   const full = await (await office(new Request("https://x.test/office", { headers: signedIn }))).text();
   assert.match(full, /let crmPath = '';/);
   assert.match(full, /crmPath = m\.path\.charAt\(0\) === '\/' \? m\.path : '\/' \+ m\.path;/, "every crm:route is remembered, on any tab");
   assert.match(full, /const want = '#' \+ id \+ \(tool\.id === 'crm' \? \(sub \|\| crmPath\) : ''\);/, "back on the CRM tab: #crm/<its screen>");
   assert.match(full, /type: 'office:overlay', bottom/);
-  t = await crmTest();
-  const owner = await t.user("owner");
-  await t.bootstrap(owner);
-  const out = await t.office("/office");
-  assert.match(out.text, /body\.data\.office_cookie === false/);
-  assert.match(out.text, /The office password wasn't right/);
+  // a computer is the CRM alone: no "Get the app" card (CSS and script), so nothing to lift
+  assert.match(full, /@media \(min-width:900px\)\{\.install\{display:none!important\}\}/);
+  assert.match(full, /if \(!installed && !desk && store\.get\('barta-office-install'\) !== 'no'\)/);
+  assert.match(full, /card\.getClientRects\(\)\.length/);
+  assert.doesNotMatch(full, /Install Barta Office as an app on this computer/);
   const main = readFileSync("crm-app/main.js", "utf8");
   assert.match(main, /m\.type === "office:overlay"/);
   assert.match(readFileSync("crm-app/styles/crm.css", "utf8"), /\.toasts\{[^}]*var\(--lift,0px\)/);
 });
 
-test("one app: the office password alone opens the CRM to set it up, and keeps the tabs once the CRM has owners", async () => {
+test("one app: the office password alone opens the CRM to set it up; once the CRM has owners it opens Team sign-in, never the tabs", async () => {
   t = await crmTest();
   // before the first owner exists: the CRM fills the screen (its setup screen)
   let r = await t.office("/office", { office: true });
   assert.match(r.text, /<body class="solo">/);
   assert.match(r.text, /"src":"\/crm"/);
-  // after setup, without a CRM sign-in: the tab row, so nobody is locked out of the tools
+  assert.match(r.text, /localStorage\.getItem\('crm-theme'\)/, "the backdrop starts in the CRM's theme");
+  // after setup, without a CRM sign-in: Team sign-in, no tab row
   const owner = await t.user("owner");
   await t.bootstrap(owner);
   r = await t.office("/office", { office: true });
-  assert.doesNotMatch(r.text, /<body class="solo">/);
-  assert.match(r.text, /data-tool="lights"/);
-  assert.match(r.text, /data-tool="crm"/);
+  assert.doesNotMatch(r.text, /<body class="solo">|data-tool=|class="bar"/);
+  assert.match(r.text, /const TEAM = true;/);
+  // with a CRM sign-in: the CRM alone, no header, logo or tab row
+  r = await t.office("/office", { as: owner, office: true });
+  assert.match(r.text, /<body class="solo">/);
+  assert.doesNotMatch(r.text, /class="bar"|class="brand"|<button[^>]*data-tool=/);
 });
