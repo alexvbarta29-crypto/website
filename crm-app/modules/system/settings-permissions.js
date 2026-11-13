@@ -1,13 +1,13 @@
 // Settings → Team permissions (design §4.5, §4.12, D14, D18; owners only).
 // What the office (admin) and technicians may do by default, one row per
 // permission: Yes, Own (techs: only their own visits' records) or No. Owner
-// permissions are fixed and can never be given away. Which roles' Team
-// sign-in may also open the office tools (D14). Saving applies on every
+// permissions are fixed and can never be given away. The office tools come
+// with the sign-in of owners and the office, never techs (core/auth.mjs; no
+// setting since Nov 2026, D14's roles are gone). Saving applies on every
 // phone within seconds; nobody is signed out. A person's own grants and
 // denies are on their Team page.
 
 import { html, attrs, toast } from "../../core/ui.js";
-import { loadDoc } from "./kit.js";
 
 const VAL = { true: "Yes", own: "Own", false: "No" };
 const asKey = (v) => (v === true ? "true" : v === "own" ? "own" : "false");
@@ -23,7 +23,6 @@ export default {
     const groups = new Map();
     for (const p of s.catalog) { if (!groups.has(p.group)) groups.set(p.group, []); groups.get(p.group).push(p); }
     const cur = (role, p) => (s.roles[role] && Object.hasOwn(s.roles[role], p.key) ? s.roles[role][p.key] : p.defaults[role]);
-    const roles = (s.auth && s.auth.office_cookie_roles) || ["owner"];
     const cell = (role, p) => {
       if (p.owner_only) return html`<span class="lock">Owners</span>`;
       const v = cur(role, p);
@@ -37,12 +36,8 @@ export default {
         <tbody>${list.map((p) => html`<tr><td>${p.label}</td><td>${cell("admin", p)}</td><td>${cell("tech", p)}</td></tr>`)}</tbody></table>
       </div></div>`)}
       <button type="button" class="btn primary block" data-save-perms>Save permissions</button>
-      <div class="section-h">Office tools with Team sign-in</div>
-      <form class="card form" id="office-roles">
-        <p class="small">Whose Team sign-in may also open Lights, Purchases and the dashboards, when they type the office password once on that phone.</p>
-        ${["owner", "admin", "tech"].map((r) => html`<label class="check"><input ${attrs({ type: "checkbox", name: r, checked: roles.includes(r) })}><span>${r === "owner" ? "Owners" : r === "admin" ? "Office" : "Technicians"}</span></label>`)}
-        <button type="submit" class="btn dark block">Save</button>
-      </form>
+      <div class="section-h">Office tools</div>
+      <div class="note">Owners and the office get Lights, Purchases, the Giveaway and the dashboards with their own sign-in. Technicians never do.</div>
     </div>`;
   },
   events: {
@@ -68,17 +63,6 @@ export default {
         if (err.status === 412) { toast("Someone else just changed these. Showing the latest.", { bad: true }); ctx.refresh(); } else toast(err.message, { bad: true });
       }
       btn.disabled = false;
-    },
-    "submit #office-roles": async (e, form, ctx) => {
-      e.preventDefault();
-      const roles = ["owner", "admin", "tech"].filter((r) => form.querySelector(`[name=${r}]`).checked);
-      try {
-        const doc = await loadDoc(ctx, "auth").catch(() => ({ name: "auth", etag: ctx.state.auth_etag || "new", data: ctx.state.auth }));
-        const r = await ctx.api("/settings/auth", { method: "PUT", body: { ...doc.data, office_cookie_roles: roles }, ifMatch: doc.etag || "new" });
-        ctx.state.auth = r.data.data;
-        ctx.state.auth_etag = r.data.etag;
-        toast("Saved");
-      } catch (err) { toast(err.message, { bad: true }); }
     },
   },
 };

@@ -1,8 +1,13 @@
 # Barta Office (/office)
 
-**One app: the CRM.** With a CRM sign-in (or the office password before the
-first owner exists, to set it up) `/office` is the CRM, full screen, with no
-tab row. It looks like Flyra's iPhone app (Rotor's where Flyra shows
+**One app: the CRM, and its sign-in is the only way in** (the owner, Nov
+2026: "When I'm on the desktop version I want it to be a legit CRM. Remove
+all the headers and have the sign in be the only thing allowing you into
+the CRM"). With a CRM sign-in (or the office password before the first
+owner exists, to set it up) `/office` is the CRM, full screen, with no
+header, logo bar or tab row; on a computer (900 px and up) not even the
+"Get the app" card, so the CRM's own sidebar and top bar are all there is.
+It looks like Flyra's iPhone app (Rotor's where Flyra shows
 nothing), dark by default with a Light / Dark / Automatic choice per phone
 (the Menu's sun button, My account → Appearance), in the iPhone's own font
 and Barta's coral (docs/CRM.md "What the app is", the look). It opens on
@@ -25,18 +30,22 @@ place) open from the money card's "See more" and Menu → Reports, and the
 office tools are in Menu → Office
 tools: Light Studio, Purchases, Giveaway and Rotor (Follow-ups is under
 Menu → Sales) (`crm-app/modules/system/{dashboard,tool}.js`, routes
-`/dashboard`, `/dashboard/:view`, `/tools/:id`). They show only on a phone
-or computer that also has the office sign-in (the client's
-pseudo-permission `office:tools`); each page checks the office cookie again
-on the server. Old tab links
+`/dashboard`, `/dashboard/:view`, `/tools/:id`). Owners and the office
+(admin) get them with their own CRM sign-in, no second password: the
+sign-in also sets the office cookie (below); techs never get it. The
+client's pseudo-permission `office:tools` is "an owner or admin whose
+browser holds the office cookie", and each tool page still checks the
+office cookie on the server. Old tab links
 (`/office#lights`, `#money`, ...) open the matching CRM screen
 (`IN_CRM` in netlify/lib/office-page.mjs), only with the office cookie, so a
 tool's own "sign in" bounce can never loop.
 
-The tab layout below remains for the office password alone once the CRM has
-owners (someone without a CRM login is never locked out of the tools), and
-when the CRM's storage is unavailable. Your logo sits at the top, with one
-row of tabs under it (beside it on a computer):
+The tab layout below is gone for everyday use: the office password alone
+no longer opens it once the CRM has owners (it shows Team sign-in). It is
+kept only as an emergency path while the CRM's storage can't be used at all
+(then Team sign-in can't work either, and the office password still opens
+the tools). Your logo sits at the top, with one row of tabs under it
+(beside it on a computer):
 
 - **Overview · Money · Sales · Plans · Jobs**: the dashboards (docs/DASHBOARD.md)
 - **CRM** → `/crm` (Barta's own CRM, each person's own login; see docs/CRM.md).
@@ -62,30 +71,59 @@ tool's own logo, footer and sign-out are hidden (the `css` for each tool in
 
 ## Who sees what, sign-in and setup
 
-The CRM has its own logins (one per person); the office password opens the
-office tools. `office.mjs` counts a request as signed in with the office
-cookie **or** a CRM session:
+The CRM sign-in (each person's own login) is the only way in. `office.mjs`:
 
-- **A CRM session** (with or without the office cookie): the one app, the
-  CRM full screen. With the office cookie too (owners who typed the office
-  password once on this phone), the dashboards behind the money card's
-  "See more" and the office tools in Menu; without it (techs, and Eric
-  unless he has the office password) only the CRM, whose Home still shows
-  the money to the office (`reports:read`; "See more" opens Payments): a
-  tech never sees a number, a dashboard or an office tool, and an old
-  `#lights` link opens the CRM's Today.
-- **The office password alone:** before the CRM has an owner, the CRM full
-  screen with **Set up the CRM** (the first owner types the office password
-  again, a name, a login and a password: automatic setup, nothing to add
-  in Netlify; docs/CRM.md "First owner"); after that, the tab row above.
-- **Signed out:** the sign-in page has **Team sign-in** (login + password)
-  next to **Office password**. The installed app opens on Team sign-in.
-  Owners can type the office password into Team sign-in's optional field
-  to open both at once; if it isn't right (or isn't for that login), the
-  page says so for a few seconds before the CRM opens on its own.
+- **A CRM session:** the one app, the CRM full screen. **Owners and the
+  office (admin)** also get the office cookie with the sign-in (and a fresh
+  one on every visit to `/office`), so the dashboards behind the money
+  card's "See more" and the office tools in the Menu open with no second
+  password. **Techs** get only the CRM: a tech's sign-in or visit clears an
+  office cookie that browser held, a tech never sees a number, a dashboard
+  or an office tool, and an old `#lights` link opens the CRM's Today.
+- **Signed out, or the office cookie alone:** the sign-in page, in the
+  CRM's look (dark by default, or the phone's Light / Dark / Automatic
+  choice from My account; the phone's own font, Barta's coral): **Login**,
+  **Password**, **Sign in**, and **Forgot password?** (below). There is no
+  "Office password" tab and no optional office password field any more. A
+  CRM-issued office cookie whose session is gone (signed out elsewhere,
+  login turned off) is cleared here.
+- **Before the CRM has an owner:** the page asks only for the office
+  password (Team sign-in can't work yet); it opens the CRM full screen with
+  **Set up the CRM** (the first owner types the office password again, a
+  name, a login and a password: automatic setup, nothing to add in Netlify;
+  docs/CRM.md "First owner"). This form is throttled like sign-in.
+
+**Forgot password?** On the sign-in page (and linked from the CRM's own
+sign-in page, `/office#forgot`): your login, the **office password** (the
+owners' shared secret), a new password and the same again. If the office
+password is right and the login is on, the new password is set (the usual
+rules: at least 10 characters, not your login or name), you're signed out
+on every other phone and signed in here, the other owners get a bell
+notice ("Alex reset their password with the office password") and it is in
+the audit log. Anything wrong (the office password, an unknown login, a
+login that's turned off) gets the same answer, "That didn't match.", and
+tries are throttled like sign-in (they count in sign-in's buckets). Owners
+can still send a reset link from Team.
+
+**The office cookie at sign-in.** `barta_office` (path `/`, HttpOnly, a
+year in the browser, like the office password's): for a CRM sign-in its
+value is `c1.{userId}.{issued}.{mac}`, an HMAC the server alone can make
+(a key derived from the CRM's key salt) over the person, the time and the
+office password's digest. The server takes it for 30 days from `issued`;
+`/office` issues a fresh one on every visit with a CRM session (a tool's
+own "sign in" bounce lands there too), so nobody active ever notices, and a
+login that's turned off or a role changed to tech loses the tools within
+30 days even on a browser that never opens `/office` again. Changing the
+office password signs these out too. Signing out (this phone or
+everywhere) clears it. Outside production with no key salt (a deploy
+preview) the key is random per function instance, so the tools inside the
+CRM may not open there. Code: `netlify/lib/lights-auth.mjs`
+(`crmOfficeToken`, `signedIn` takes either form), `core/auth.mjs`
+(`OFFICE_ROLES`, `officeCookieOnSignIn`).
 
 If the CRM's storage can't be used, the office password still opens the tab
-row, with the customer list one tap away, so nothing used today disappears.
+row, with the customer list one tap away, so the tools never disappear in an
+outage.
 
 The office and the CRM frame talk with `postMessage` (same origin only):
 the CRM tells the office where it is (`/office#crm/<screen>` stays in step,
@@ -118,13 +156,18 @@ phone.
 
 ## One password
 
-One office password, asked for only at `/office`, opens everything:
-`/lights` and `/playbook` send a signed-out visitor to `/office` instead of
-asking for a password themselves, and the giveaway (and referral) dashboards
-accept the same sign-in instead of their admin key. The password is the owner's chosen one (kept only as a PBKDF2
-digest in `netlify/lib/lights-auth.mjs`), or `OFFICE_PASSWORD` in Netlify if
-set. The year-long cookie (`barta_office`, path `/`) renews on every visit.
-Changing the password signs every device out. The dashboards' admin key
+The office password is now the owners' shared master secret, used in two
+places: **setting up the CRM** (before the first owner exists) and
+**Forgot password**. Day to day nobody types it: owners and the office get
+the office cookie with their own sign-in. `/lights` and `/playbook` send a
+signed-out visitor to `/office` instead of asking for a password
+themselves, and the giveaway (and referral) dashboards accept the office
+cookie instead of their admin key. The password is the owner's chosen one
+(kept only as a PBKDF2 digest in `netlify/lib/lights-auth.mjs`), or
+`OFFICE_PASSWORD` in Netlify if set. A cookie made from the password itself
+(older phones, setup) still opens the tool pages directly as before, but
+not `/office` once the CRM has owners. Changing the password signs every
+office cookie out, the sign-in's too. The dashboards' admin key
 (`REFERRAL_ADMIN_KEY`) still works on its own too.
 
 Not linked from the site and never indexed. To add a tool, add it to `TOOLS`
@@ -141,14 +184,15 @@ and no browser bar. No App Store needed.
   in once more the first time it opens.
 - **Android / Chrome:** open /office and tap Install on the "Get the app"
   card (or Chrome's menu → Install app).
-- **A computer (Chrome or Edge):** open /office and click Install on the
-  "Get the app" card (it says "Install Barta Office as an app on this
-  computer"), or the install icon in the address bar. It opens in its own
-  window with the desktop layout. `npm run e2e` (home.spec) asks Chrome
-  itself whether /office can be installed (no installability errors).
+- **A computer (Chrome or Edge):** open /office and click the install icon
+  in the address bar (no card on a computer: the CRM is the whole window).
+  It opens in its own window with the desktop layout. `npm run e2e`
+  (home.spec) asks Chrome itself whether /office can be installed (no
+  installability errors).
 
-A "Get the app" card shows in a browser tab until it's installed or closed
-with ×, and never inside the installed app. Every update to the site reaches
+On a phone, a "Get the app" card shows in a browser tab until it's
+installed or closed with ×, and never inside the installed app; on a
+computer (a mouse, or 900 px and up) it never shows. Every update to the site reaches
 the app on its own; there is nothing to reinstall.
 
 Pieces:

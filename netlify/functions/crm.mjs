@@ -17,7 +17,7 @@
 import { deployContext, canonicalRedirect, autoSetup } from "../lib/crm/core/context.mjs";
 import { withStoreScope, withBudget } from "../lib/crm-store.mjs";
 import { lookupSession, deviceId, newDeviceCookie } from "../lib/crm/core/sessions.mjs";
-import { officeSignedIn, missingSetup, storeBlocked, setupDone, inviteTarget, loadPermissions } from "../lib/crm/core/auth.mjs";
+import { officeSignedIn, officeRole, missingSetup, storeBlocked, setupDone, inviteTarget, loadPermissions } from "../lib/crm/core/auth.mjs";
 import { can, permsFor } from "../lib/crm/core/perms.mjs";
 import { htmlPage, legacyPage, pageMethodNotAllowed, scriptHash, redirect, safeTo, withCookies, MIN_CLIENT } from "../lib/crm/core/http.mjs";
 import { shellHtml, loginHtml, setupHtml, setupNeededHtml, inviteHtml, messageHtml } from "../lib/crm/core/shell-html.mjs";
@@ -62,7 +62,10 @@ async function shell(req) {
   const s = await lookupSession(req);
   if (s) {
     const permissions = await loadPermissions();
-    return htmlPage(shellHtml({ user: s.user, perms: permsFor(s.user, permissions), nav: navFor(s.user), office: officeSignedIn(req), minClient: MIN_CLIENT }), 200, { "X-CRM-Shell": "1" });
+    // office:tools (the dashboards and office tools) = the office cookie,
+    // for owners and the office only: a tech never sees them.
+    const office = officeRole(s.user) && officeSignedIn(req);
+    return htmlPage(shellHtml({ user: s.user, perms: permsFor(s.user, permissions), nav: navFor(s.user), office, minClient: MIN_CLIENT }), 200, { "X-CRM-Shell": "1" });
   }
   if (!(await setupDone())) {
     if (officeSignedIn(req)) return redirect("/crm/setup");
@@ -82,8 +85,7 @@ async function login(req, url) {
     return htmlPage(messageHtml({ title: "Not set up yet", text: "An owner sets up the CRM from Barta Office first.", links: [LINK_OFFICE] }));
   }
   // With the office cookie (inside /office, or someone who only has the
-  // office password) the page links the Customers list and leaves out the
-  // optional office password (already open on this phone).
+  // office password) the page links the Customers list.
   const res = htmlPage(loginHtml({ to, office: officeSignedIn(req) }));
   // The device id the sign-in throttle counts per phone (§4.8).
   return deviceId(req) ? res : withCookies(res, [newDeviceCookie().cookie]);

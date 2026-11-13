@@ -95,17 +95,8 @@ if (page.page === "login") {
     const password = val(f, "password");
     if (!login) throw new Error("Type your login.");
     if (!password) throw new Error("Type your password.");
-    const office = val(f, "office_password");
-    return { login, password, ...(office ? { office_password: office } : {}), to: page.to || "/crm" };
-  }, "/auth/login", (data) => {
-    if (data.office_cookie === false) {
-      // Signed in to the CRM; the optional office password didn't take.
-      say("You're signed in. The office password wasn't right (or isn't for your login), so the other office tools stay closed on this phone.");
-      setTimeout(() => go(data.to || page.to || "/crm"), 3000);
-      return;
-    }
-    go(data.to || page.to || "/crm");
-  });
+    return { login, password, to: page.to || "/crm" };
+  }, "/auth/login", (data) => go(data.to || page.to || "/crm"));
   const login = $("login");
   if (login && !login.value) login.focus();
 }

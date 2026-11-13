@@ -58,10 +58,11 @@ ${boot("crm-boot", data)}
 const card = (inner, cls = "") => `<body class="crm page"><main class="card${cls ? " " + cls : ""}"><img class="logo" src="${LOGO}" alt="Barta Window Washing" width="148" height="40">${inner}</main>`;
 
 // Team sign-in (/crm/login). `to` is where to go after (checked server-side
-// again on POST). `office` = this browser already has the office cookie:
-// the optional office password (D14) is left out, since the office tools
-// are already open here, and the Customers list (which the office cookie
-// opens, §3.15) is one tap away.
+// again on POST). An owner's or the office's sign-in also opens the office
+// tools (core/auth.mjs). Forgot password lives on /office's sign-in page
+// (/office#forgot, the whole window). `office` = this browser has the
+// office cookie: the Customers list (which the office cookie opens, §3.15)
+// is one tap away.
 export function loginHtml({ to = "/crm", notice = "", office = false } = {}) {
   return `${HEAD("Sign in · Barta CRM")}${card(`
 <h1>Team sign-in</h1>
@@ -71,16 +72,11 @@ ${notice ? `<div class="note" role="status">${esc(notice)}</div>` : ""}
   <div class="err" id="err" role="alert" hidden></div>
   <label class="field"><span>Login</span><input name="login" id="login" type="text" inputmode="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" required></label>
   <label class="field"><span>Password</span><input name="password" id="password" type="password" autocomplete="current-password" enterkeyhint="go" required></label>
-${office ? "" : `  <details class="more" id="office-more">
-    <summary>Office password <small>(optional)</small></summary>
-    <p class="hint">Also opens Lights, Purchases and the dashboards on this phone. Owners only.</p>
-    <label class="field"><span>Office password</span><input name="office_password" id="office_password" type="password" autocomplete="off"></label>
-  </details>
-`}  <button type="submit" class="btn primary block" id="go">Sign in</button>
+  <button type="submit" class="btn primary block" id="go">Sign in</button>
 </form>
 ${office ? `<p class="also">No login yet? The office password still opens the customer list.</p>
 <a class="btn block" href="/crm/legacy">Open the Customers list</a>
-` : ""}<p class="foot">Forgot your password? Ask Alex or Jacob for a reset link.</p>
+` : ""}<p class="foot"><a href="/office#forgot" target="_top">Forgot password?</a></p>
 ${boot("crm-page", { page: "login", to })}${pageScript}`)}</body></html>`;
 }
 

@@ -377,7 +377,8 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
     for (let i = 0; i < 6; i++) await f.click('.sheet.on li[data-key="goals"] [data-mv="-1"]');
     await f.click(".sheet.on [data-save]");
     await f.waitForFunction(() => !document.querySelector(".sheet.on"));
-    await f.waitForFunction(() => document.querySelector('.hm-grid > [data-card="goals"]'));
+    // the grid is drawn again in the saved order (Goals was already on: wait for the order, not the card)
+    await f.waitForFunction(() => { const c = document.querySelector(".hm-grid > [data-card]"); return c && c.dataset.card === "goals"; });
     assert.deepEqual(await cards(f), ["goals", "money", "leaderboard", "agenda", "inbox", "tasks"]);
     // Goals: an owner adds them; progress here
     assert.match(await text(f, ".hm-c-goals"), /^Goals Add No goals yet Tap Add/);
@@ -415,17 +416,16 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
   } finally { await q.close(); }
 });
 
-test("the office without the office sign-in: the money (reports:read), See more opens Payments, goals for owners only", async () => {
+test("the office (admin): the money (reports:read), and the Dashboard with her own sign-in (no office password)", async () => {
   await day();
   const { p, page, f } = await home("ada", { device: "iphone13" });
   try {
     assert.deepEqual((await cards(f)).slice(0, 2), ["money", "leaderboard"], "no clock for someone who doesn't go out on visits");
-    assert.equal(await f.getAttribute(".hm-money .hm-more", "href"), "#/payments", "no Dashboard without the office sign-in");
-    assert.ok(!(await f.$$eval("#view a[href]", (els) => els.map((e) => e.getAttribute("href")))).some((h) => h.startsWith("#/dashboard")));
+    assert.match(await f.getAttribute(".hm-money .hm-more", "href"), /^#\/dashboard/, "her sign-in opens the dashboards too");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");
     await goTo(f, "/menu");
-    assert.equal(await has(f, '#view a[href="#/dashboard"]'), false, "no Dashboard in the Menu either");
+    assert.equal(await has(f, '#view a[href="#/dashboard"]'), true, "the Dashboard in the Menu");
     await p.clean();
   } finally { await p.close(); }
 });
@@ -621,22 +621,21 @@ test("on a desk: a tech gets their own sidebar (no sections, no search, no money
   }
 });
 
-test("on a desk: /office installs as an app (Chrome's own check), and the office password alone keeps its tab row", async () => {
+test("on a desk: /office installs as an app (Chrome's own check), and the office password alone opens only Team sign-in", async () => {
   await day();
-  // the office password alone: the old desktop layout, a row of tabs
+  // the office password alone: Team sign-in, no tab row (the CRM sign-in is the only way in)
   const o = await phone(browser, srv, { device: "desk1440", office: true });
   try {
     await o.page.goto("/office");
-    await o.page.waitForSelector(".bar .nav");
-    const tabs = await o.page.$$eval(".bar .nav [data-tool]", (els) => els.map((e) => e.textContent.trim()));
-    assert.ok(tabs.length >= 4, `the tab row: ${tabs.join(", ")}`);
+    await o.page.waitForSelector("#team");
+    assert.equal(await o.page.$(".bar, [data-tool]"), null, "no tab row");
     const cdp = await o.ctx.newCDPSession(o.page);
     const { installabilityErrors } = await cdp.send("Page.getInstallabilityErrors");
     assert.deepEqual(installabilityErrors.map((e) => e.errorId), [], "Chrome can install /office");
     const { url, errors } = await cdp.send("Page.getAppManifest");
     assert.ok(url.endsWith("/office.webmanifest"));
     assert.deepEqual(errors, []);
-    await shot(o.page, "home-desk-office-tabs");
+    await shot(o.page, "home-desk-office-signin");
     await o.clean();
   } finally { await o.close(); }
   // with a CRM sign-in: the CRM fills the window, sidebar and all, and installs from there too
@@ -646,6 +645,7 @@ test("on a desk: /office installs as an app (Chrome's own check), and the office
     const { installabilityErrors } = await cdp.send("Page.getInstallabilityErrors");
     assert.deepEqual(installabilityErrors.map((e) => e.errorId), []);
     assert.equal(!!(await page.$(".bar .nav")), false, "one app");
+    assert.equal(await page.isVisible("#install"), false, "no Get the app card on a computer");
     await shot(page, "home-desk-office-crm");
     await p.clean();
   } finally { await p.close(); }
