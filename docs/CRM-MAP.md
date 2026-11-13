@@ -3,11 +3,14 @@
 Two Flyra-style map screens on one interactive map: **Door to door** (the
 knock map: pins, pin types, areas, Convert to lead, the leaderboard and
 canvassing report) and the live **Team map** (where the people on the
-clock are). Both are laid out like Rotor's phone map: the map is the whole
-screen (under the status bar and the floating tab bar), round white
-buttons across the top-left (**search**, **locate**, **filter**,
-**street ↔ satellite**), the controls in a floating bar at the bottom,
-details in sheets that slide up.
+clock are). Both are laid out like Rotor's phone map, in Flyra's look
+(Nov 13): the map is the whole screen (under the status bar and Flyra's
+floating tab bar, where the Map is the fourth place; satellite first when
+the aerial is on), round glass buttons across the top-left (**search**,
+**locate**, **filter**, **street ↔ satellite**), the controls in a
+floating glass bar just above the tab bar, details in sheets that slide
+up. With the streets style unreachable the blank map takes the theme's
+color (`--map-blank`).
 
 Code: `netlify/lib/crm/modules/map/` (server), `crm-app/modules/map/`
 (screens), `crm-app/vendor/maplibre-gl/` (the map library),

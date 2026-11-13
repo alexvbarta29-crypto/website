@@ -530,10 +530,10 @@ The manual path, for reference:
 
 - `/crm` is the **app shell**: a data-free page (only the signed-in
   person's id, name, role and permissions) that loads plain ES modules
-  from `/crm-app/` (no build step). A floating tab bar at the bottom: Home ·
-  Schedule · Inbox · Customers · Sales · Menu for owners and admins (or the
-  places each person picked, Menu → Tab bar); Today · Inbox · Time · Pay ·
-  Me for techs.
+  from `/crm-app/` (no build step). A floating tab bar at the bottom
+  (Flyra's): Home · Schedule · Inbox · Map · Menu for owners and admins (or
+  the places each person picked, Menu → Tab bar); Today · Inbox · Time ·
+  Pay · Me for techs.
   See "Home and navigation" below. **My account**: name, mobile, password,
   the phones you're signed in on.
 - Inside the office the CRM is the **CRM** tab (the first tool); `/office#crm/<screen>`
@@ -551,20 +551,35 @@ The manual path, for reference:
 - **Wider screens** (900 px and up: an iPad, the office desk): a desktop
   layout, the same code (see "Home and navigation"). Screens load behind
   grey skeletons, not spinners.
-- **The look** (`crm-app/styles/crm.css`, its tokens on `:root`): the
-  website's brand (coral #fb4d3d, AA text coral #d0331f, ink, mist, line;
-  self-hosted Cabinet Grotesk 700/800 and General Sans 400/500/600) with a
-  field-service app's treatment: a spacing and type scale, Cabinet Grotesk
-  800 only for page titles and big numbers and 700 for section titles,
-  General Sans for the rest with muted secondary text, tabular figures for
-  money, counts and times; white cards with a hairline border, a 12 px
-  radius and a soft shadow; 10 px rounded-rectangle buttons (a coral
-  primary whose white text is AA, `--coral-btn`; quiet white secondaries);
-  soft-filled status pills (green, amber, blue, red, grey) the same in
-  every module; a coral focus ring for the keyboard. A phone keeps 44 px
-  tap targets and 16 px inputs; a desk with a mouse (900 px and up, a fine
-  pointer) has 40 px buttons and 34 px chips. Modules style only their own
-  pieces on top of these. Light only.
+- **The look** (`crm-app/styles/crm.css`, every color a token; Nov 13
+  2026, the owner: "make it look more like Flyra"): Flyra's iPhone app
+  first, Rotor's where Flyra shows nothing, in Barta's coral (#fb4d3d; AA
+  text coral #d0331f in the light, #ff6b5a in the dark; the button fill
+  `--coral-btn` #db3a29 keeps white text AA). The iPhone's own font (San
+  Francisco: `-apple-system, BlinkMacSystemFont, "SF Pro Text", ...`; no
+  web fonts in the app, the public website keeps Cabinet Grotesk and
+  General Sans) on the iOS scale: large titles 34 px bold, rows 17 px,
+  secondary 15 px grey, small caps labels 12-13 px spaced, tabular figures
+  for money, counts and times. **Two themes**, chosen per phone or
+  computer (localStorage `crm-theme`; `core/nav.js` `applyTheme`,
+  `pickTheme`): **Dark** (Flyra's, the default: a near-black canvas
+  #111214, cards #1b1c1f with a subtle border, a dark glass bar, light
+  text, a soft teal glow behind Home's top), **Light** (Rotor's: iOS
+  grouped grey #f2f2f7, white cards with a very soft shadow and no hard
+  border) or **Automatic** (the phone's own setting, live). `html[data-theme]`
+  picks the set (dark when nothing is set); the sign-in pages stay light.
+  The Menu's sun button and My account → Appearance switch it; the office
+  shell around the frame matches its backdrop and status bar color
+  (`crm:theme`). Text is at least 4.5:1 in both. Rounded cards (18-20 px),
+  pill buttons (a coral primary; quiet secondaries), Rotor's filled pills
+  (Active green, a priority orange, the stage grey with a hairline) and
+  soft status pills the same in every module; Flyra's segmented switches
+  (a dark track, the chosen one lighter); round buttons (44 px, Flyra's
+  dark ones with a hairline, Rotor's white ones with a soft shadow); a
+  coral focus ring for the keyboard. A phone keeps 44 px tap targets and
+  16 px inputs; a desk with a mouse (900 px and up, a fine pointer) has 40
+  px buttons and 34 px chips. Modules style only their own pieces, on the
+  tokens.
 - **Security:** every CRM page sends `Content-Security-Policy` with
   `script-src 'self'` (and `connect-src` adds exactly the map hosts of
   `core/map-sources.mjs`, docs/CRM-MAP.md) and has no inline script; screens build markup only
@@ -636,22 +651,29 @@ added with **Edit Home**. The full dashboards stay one tap away (Money's
 
 ### What Home shows (owners and the office; `#/today`)
 
-Top to bottom, on a light grey canvas with big white cards (24 px corners,
-soft shadows), round white small buttons and segmented controls with a
-white active pill:
+Flyra's Home (Nov 13): the greeting and the name big, the money right on
+the canvas under them (no card), then Flyra's cards (a title, round arrows
+or a segmented switch, quiet empty states); in the dark a soft teal glow
+behind the top, in the light Rotor's grey canvas and white cards. Top to
+bottom, in the person's order (Edit Home):
 
-- **The header**: the person's avatar (initials in their color), "Welcome
-  back, {first name}", the date, and the bell (unread notifications).
-- **Clock in** (anyone with `time:own`): a coral clock tile, TIMESHEET
+- **The header**: "Good morning" / "Good afternoon" / "Good evening" small
+  and grey, the first name big and bold, and the bell (unread
+  notifications) as a round button.
+- **Clock in** (anyone with `time:own`; on by default only for someone who
+  goes out on visits, `is_technician`, anyone else adds it in Edit Home;
+  right under the money): a coral clock tile, TIMESHEET
   with a dot (green while on the clock), today's hours big ("0h 0m",
   finished shifts that count plus the open one so far, moving on while
   Home is open), a short line ("Choose a role when you clock in" / "On the
   clock since 8:02 AM · Office"), the coral **Clock In** / **Clock Out**
   pill (`POST /clock`, the tech app's own clock; Clock In asks Service,
   Sales or Office first) and a round button to Time.
-- **Money** (`reports:read` or the office sign-in): **Collected |
-  Scheduled | ARR**, a period menu (**This week, This month** (the
-  default), **Last 3 months, This year, Custom range…**), the big number
+- **Money** (`reports:read` or the office sign-in), on the canvas:
+  **Collected | Scheduled | ARR** in Flyra's switch, the period as Flyra's
+  "1M ⌄" (1W, 1M, 3M, 1Y, Custom; the menu says **This week, This month**
+  (the default), **Last 3 months, This year, Custom range…**), the month
+  (or range) in small caps, the big number
   with **AVG / DAY** and **PEAK** (day, week or month: the finest the
   numbers have) or, for ARR, **CHANGE** over the period (green when up),
   the month's revenue goal as a thin bar when one is set, one line chart
@@ -659,9 +681,10 @@ white active pill:
   or the arrow keys, starting on today; every value in a hidden table)
   and "Updated 5:49 PM" or "From Rotor · updated Nov 16" with "See more"
   (the Dashboard's Money view with the office sign-in, else Payments).
-- **Today** (`schedule:read`): **Daily | Weekly | Monthly** with ‹ ›, the
-  date ("Tuesday, November 17"; "Nov 16 – 22"; "November 2026") and "n
-  items", then each visit as a row with a color bar (the first person's
+- **Today** (`schedule:read`; Flyra's card): "Today" (or the date: "Monday,
+  November 23"; "Nov 16 – 22"; "November 2026") with "Tue, Nov 17 · n
+  items" under it and round ‹ › arrows, **Daily | Weekly | Monthly**, then
+  each visit as a row with a color bar (the first person's
   color), the customer, "Job · 8:00 AM – 12:00 PM" (Plan visit, Lights
   install... and Done / Working / On the way), the people's initials
   overlapping, the start time (hidden under 420 px: the line has it) and
@@ -669,7 +692,7 @@ white active pill:
   **TASKS WITHOUT DUE DATE n**, folding (remembered on the phone): open
   tasks with no due date with their status pill, the whole team's for an
   owner, anyone else's own.
-- Added with Edit Home:
+- On by default too (Flyra's Home), each one off in Edit Home:
   - **Leaderboard** ("November Leaderboard", **Sales | Techs**: sales =
     plans and quotes sold with their ARR, techs = jobs done with their $),
     only when the reports module provides the service
@@ -680,19 +703,23 @@ white active pill:
     first.
   - **Tasks** (`tasks:read`): **Upcoming ▾** (Overdue, No due date, All)
     and **Add**.
-  - **Goals** (who sees the money): the owners' monthly **revenue** and
+  - **Goals** (who sees the money; no card around it while empty, as
+    Flyra's): the owners' monthly **revenue** and
     **jobs** goals with progress (jobs: Rotor's paid jobs until cutover,
     the CRM's completed jobs after). Owners **Add** or **Edit** them
     there (settings document `goals`, owners only, `PUT /settings/goals`).
 - **Edit Home** (a button at the bottom, and My account → Edit Home,
   `#/today?edit=1`): each card on or off and moved up or down, saved per
-  person on the server (`ptr/home/{userId}`). Default: Clock in, Money,
-  Today. A card the person can't have is never offered.
+  person on the server (`ptr/home/{userId}`). Default (Flyra's): Money,
+  the Leaderboard, Today, Inbox, Tasks and Goals, with Clock in under the
+  money for someone who goes out on visits. A card the person can't have
+  is never offered.
 
 A phone shows the cards in the person's order, with room at the bottom
-for the shell's floating tab bar and its + button. From 1,100 px the
-clock is a bar across and the other cards sit two to a row in order (a
-1,024 px laptop: one column). Creating is the shell's New / + button.
+for the shell's floating tab bar and its + button. On a computer the money
+is a card like the others and the clock a bar on top; from 1,100 px the
+other cards sit two to a row in order (a 1,024 px laptop: one column).
+Creating is the shell's New / + button.
 
 **Not on Home any more:** the KPI tiles, the quick actions, "Collected by
 month", the Sales, Plans and Jobs cards and the Needs-you list. What needs
@@ -736,77 +763,99 @@ technician's Today is unchanged (their own day; the tech app) and `GET
 home.mjs`, pure parts in `home-kpis.mjs`) answers `{ date, now, user,
 mode, notifications, layout: [{ key, on }], cards: { ... } }` with the
 data of the cards that are on only (a card that is off costs no read),
-each index once per request (`ixMemo`): 12 storage calls cold for the
+each index once per request (`ixMemo`): 16 storage calls cold for the
 defaults on Rotor's numbers (the session, the user, the auth epoch, the
 permissions, the layout pointer, `sys/mode`, the bell's unread list,
-`cfg/goals`, this month's timesheets, visits and the users index, the
-open tasks). The cards' own reads: `GET /home/money?metric=&period=&from=
+`cfg/goals`, this month's visits and the users index, the open tasks, the
+inbox's open conversations, and the plans and this year's and the open
+quotes behind the Leaderboard; this month's timesheets too when the clock
+is on). The cards' own reads: `GET /home/money?metric=&period=&from=
 &to=` (a year of Scheduled is about 20 calls), `GET /home/agenda?view=
 &date=`, `GET /home/leaderboard?board=`, `PUT /home/layout { cards }`.
 `tests/crm/core/home.test.mjs` holds the exact list.
 
-### The bar, the Sales switch, the Menu and the + (Nov 2026: the best of Rotor's and Flyra's phone apps)
+### The bar, the Menu and the + (Nov 2026: Flyra's phone app first)
 
-- The phone's bar floats: a light pill inset from the screen's edges and
-  10 px above the home indicator, with small labels under the icons
-  (Flyra) and the current place in coral on a soft round highlight. Owners
-  and the office: **Home · Schedule · Inbox · Customers · Sales · Menu**
-  (`me.mjs` `navFor`). Each person may pick up to five places of their
-  own, from Home, Schedule, Inbox, Customers, Sales, Leads, Pipeline,
-  Visits, Leaderboard, Map (when the maps module is there), Quotes, Plans
-  and Invoices (**Menu → Tab bar**, `#/tab-bar`; saved on their user
-  record as `tabs`, `PATCH /users/:id`, so it follows them to every
-  phone); the Menu is always last. A module offers a place with a nav
-  entry `{ where: "tab", key, path, label, icon }` (the Map does); a
-  pinned place's screen is top-level (no back arrow). A tech's bar is
-  Today · Inbox · Time · Pay · Me. A shell cached before Home (Dashboard
-  and More tabs) shows the new bar.
-- **Sales** is **Pipeline · Leads · Calls · Quotes · Tasks** in a switch
-  under the header (the tab stays lit on each): Pipeline and Leads after
-  Rotor's (docs/CRM-SALES.md), Calls is Leads & calls.
+- The phone's bar is **Flyra's**: a glass pill floating just above the
+  home indicator (dark in the dark, white in the light), inset from the
+  screen's edges, five places with labels under the icons, the current one
+  on a lighter round highlight with its icon coral; a round glass **+**
+  beside it. Owners and the office: **Home · Schedule · Inbox · Map ·
+  Menu** (`me.mjs` `OFFICE_NAV`, `navFor`; the Map shows for whoever may
+  open it, `canvass:use`). Customers, Leads, Pipeline, Quotes, Plans and
+  the rest are in the Menu. Each person may pick up to five places of
+  their own, from Home, Schedule, Inbox, Customers, Sales, Leads,
+  Pipeline, Visits, Leaderboard, Map, Quotes, Plans and Invoices (**Menu
+  → Tab bar**, `#/tab-bar`; saved on their user record as `tabs`, `PATCH
+  /users/:id`, so it follows them to every phone; "Back to the standard
+  bar" is Flyra's again); the Menu is always last; six places go
+  icon-only (Rotor's: the current one coral with a dot under it). A module
+  offers a place with a nav entry `{ where: "tab", key, path, label, icon
+  }` (the Map does). A tech's bar is Today · Inbox · Time · Pay · Me. A
+  shell cached before Home (Dashboard and More tabs) shows the standard bar.
+- **Sales**, for someone who pins it on their bar, is still **Pipeline ·
+  Leads · Calls · Quotes · Tasks** in a switch under the header (the tab
+  stays lit on each). Opened from the Menu, Pipeline and Leads have no
+  switch: Calls, Quotes and Tasks are in the Menu.
 - **Menu** is a sheet from the bottom (Flyra's): a large "Menu" title,
-  round buttons (report a problem: a task for the owners; the person's
-  initials: My account), the latest reply nobody has read ("{name}
-  replied ... Reply"), then rounded groups: Home, Schedule, Inbox,
-  Customers, Leads, Pipeline; Quotes | Plans side by side; My performance,
-  Leaderboard, Visits, Map, Reports (the Dashboard), Automations; every
-  other Menu section (the manifests' `nav: [{ where: "more", section }]`:
-  Work, Sales, Customers, Money, Messages & automations, Office tools,
-  Admin; an entry without a known section lands in "More"), each screen
-  once; then Tab bar and Settings (`core/nav.js`: `openMenuSheet`, `menuGroups`).
-  The Menu's button is lit on the screens it lists. `#/menu` is the same
-  as a page (Rotor's "More": your card with Edit, the groups, a coral Sign
-  out, the app's version).
-- **+** (Rotor's): a round coral button beside the bar on every screen
-  with the bar. It blurs the screen, puts a search at the top ("Search
-  customers, jobs, tasks...": `GET /search`) and stacks the things to
-  make above it as white pills with round icons: Customer, Lead, Quote,
-  Job, Plan, Invoice, Task (each only for someone who may); it turns into
-  an ×.
-- **Top-level screens** (a tab's own, or one the Menu lists) have a large
-  bold title on the left and round white buttons on the right: search on
-  a tab's own screens, and a coral + for that place's own "new" (a
-  customer, a job, a text, a lead, a quote, a plan, an invoice). Deeper
-  screens keep the back arrow. The office's Home has its own header (the
-  avatar, Welcome back, the bell), so on a phone the bar's title steps
-  aside there (`.own-head`; the h1 stays for screen readers). Screens shown this way: **Customers** as
-  cards (docs/CRM-CONTACTS.md), **Messages** (the Inbox, docs/CRM-COMMS.md),
-  **Visits** (docs/CRM-WORK.md), **Leaderboard** and **My performance**
+  round buttons (report a problem: a task for the owners; the **sun**:
+  Light, Dark or Automatic on this device; the person's initials: My
+  account), the latest reply nobody has read ("{name} replied 4 days ago",
+  two lines of it, Reply), then rounded groups with plain icons: Home,
+  Schedule, Inbox, Customers, Leads, Pipeline; Quotes | Plans side by side
+  (Flyra's Estimates | Subscriptions); My performance, Leaderboard, Visits,
+  Map, Reports (the Dashboard), Automations; every other Menu section (the
+  manifests' `nav: [{ where: "more", section }]`: Work, Sales, Customers,
+  Money, Messages & automations, Office tools, Admin; an entry without a
+  known section lands in "More"), each screen once; then Tab bar and
+  Settings (`core/nav.js`: `openMenuSheet`, `menuGroups`). The Menu's
+  button is lit on the screens it lists. `#/menu` is the same as a page
+  (Rotor's "More": your card with Edit, the groups, a coral Sign out, the
+  app's version).
+- **+** (Flyra's, with Rotor's search): the round glass + beside the bar
+  on every screen with the bar. The screen dims, a search sits at the top
+  ("Search customers, jobs, tasks...": `GET /search`) and the things to
+  make stack above the + as glass pills with round icons, in Flyra's
+  order: Customer, Lead, Invoice, Quote (Flyra's Estimate), Plan (its
+  Subscription), Job, Task (each only for someone who may; no Expense);
+  the + becomes an ×.
+- **Top-level screens** (a tab's own, or one the Menu lists: opened from
+  another top-level screen they have no back button) have a 34 px bold
+  title on the left and round buttons on the right: the screen's own
+  (`screenButtons`: Rotor's search, filter and archived on Customers;
+  search and filter on Leads; search on the Pipeline; Flyra's calls and
+  filter on Messages) and a coral + for that place's own "new" (a
+  customer, a job, a text, a lead, a quote, a plan, an invoice). No search
+  bars, chip rows, counts, letter strips or banners under the title on a
+  phone: the round search button opens the field in place, the filter
+  button a sheet with the chips (and "possible duplicates"). Deeper
+  screens have a round back button. Home and the Schedule have their own
+  big headers, so on a phone the bar's title steps aside there
+  (`.own-head`; the h1 stays for screen readers), and a contact's page
+  has the round back button alone. Screens shown this way: **Customers**
+  and **Leads** as Rotor's two-tone cards (docs/CRM-CONTACTS.md,
+  docs/CRM-SALES.md), the **Pipeline**, **Messages** (Flyra's: the
+  search, All | Customers | Leads and Unread; docs/CRM-COMMS.md), the
+  **Schedule** (Flyra's, docs/CRM-WORK.md), **Visits**, the **Map** (full
+  screen under the floating bar), **Leaderboard** and **My performance**
   (docs/CRM-REPORTS.md).
 - **What moved**: once per person on each phone or computer (kept in
-  localStorage under their id; a browser that keeps nothing never shows
-  it), one line under the top bar: "New tab bar: Menu holds everything
-  else, + makes anything new." ("Home, Schedule, Inbox, Customers and Sales
-  now lead the sidebar..." on a desk); "Got it" or the Menu and it's gone.
-  A tech's bar didn't change: nothing to say.
-- Code: `crm-app/core/nav.js`, `crm.css` (the shell block);
-  tests: `tests/crm/core/nav.test.mjs`, `tests/e2e/layout.spec.mjs`.
+  localStorage under their id, `crm-moved-3`; a browser that keeps nothing
+  never shows it), a toast, never a banner over the screen: "New look:
+  Customers, Leads and Pipeline are in the Menu." ("Home, Schedule, Inbox
+  and Map now lead the sidebar..." on a desk). It never pushes another
+  toast aside: with one showing it waits for the next start. A tech's bar
+  didn't change: nothing to say.
+- Code: `crm-app/core/nav.js` (the bar, the Menu, the +, `screenButtons`,
+  the theme), `crm.css` (the tokens and the shell block); tests:
+  `tests/crm/core/nav.test.mjs`, `tests/e2e/layout.spec.mjs`.
 
 ### On a computer (900 px and up)
 
 - A **sidebar** in the website's deep ink: the white logo, the phone bar's
-  places first in the same order (Home, Schedule, Inbox, Customers, Sales;
-  Sales lit on Pipeline, Leads, Calls, Quotes and Tasks), a divider, then
+  places first in the same order (Home, Schedule, Inbox, Map), then
+  Customers and Sales (Sales lit on Pipeline, Leads, Calls, Quotes and
+  Tasks), a divider, then
   every Menu section as a collapsible group under a small label
   (remembered on that browser) less what those places already open,
   **Settings** and **Team** at the bottom above who is signed in. Labels
