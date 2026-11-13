@@ -105,6 +105,15 @@ login that's turned off) gets the same answer, "That didn't match.", and
 tries are throttled like sign-in (they count in sign-in's buckets). Owners
 can still send a reset link from Team.
 
+**Guessing the office password.** Every form that takes it (this page,
+`/lights`, `/playbook`, Forgot password, setup) is throttled the same way:
+per phone, per address, and 40 wrong tries in an hour from anywhere stop
+every one of them for an hour ("Too many tries. Wait ..."). With the CRM's
+storage down a new office-password sign-in waits ("Sign-in can't be
+checked right now"); phones already signed in keep their tools. This
+limits online guessing; it doesn't make a short password hard to guess
+from a leaked copy. See docs/CRM.md "The office password's remaining uses".
+
 **The office cookie at sign-in.** `barta_office` (path `/`, HttpOnly, a
 year in the browser, like the office password's): for a CRM sign-in its
 value is `c1.{userId}.{issued}.{mac}`, an HMAC the server alone can make

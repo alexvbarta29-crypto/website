@@ -483,8 +483,15 @@ production branch should build.
 - **The office password's remaining uses:** first-owner setup and Forgot
   password. It still opens the tool pages directly for a browser holding
   its own cookie (and the old tab row only while the CRM's storage is
-  down), but never the CRM. Its form on `/office` is throttled like
-  sign-in too.
+  down), but never the CRM. Every place that takes it (`/office`'s form,
+  `/lights`, `/playbook`, Forgot password, setup) checks it through one
+  helper, `netlify/lib/office-password.mjs`: the place's own bucket, the
+  address's (shared with sign-in) and the office password's global bucket
+  (`thr/office/`: 40 wrong tries in an hour from anywhere and every place
+  refuses it for an hour; one address alone, at 30, can't trip it). When
+  the CRM's storage can't count the tries (production without its
+  settings, Blobs down) the password isn't checked at all ("Sign-in can't
+  be checked right now"): a browser already holding the cookie keeps it.
 - **Sessions** last a year at most and end after 60 days without use; "Sign
   out everywhere", a password change, a role change, a reset or turning a
   login off signs that person out on every phone within seconds.
