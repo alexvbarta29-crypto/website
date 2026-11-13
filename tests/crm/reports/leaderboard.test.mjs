@@ -103,6 +103,31 @@ test("the service for Home's card, the period ranges, and a technician gets no l
   } finally { t.done(); }
 });
 
+test("Home's card asks by board and month: rows with a name, a colour, a count, the money and a short note", async () => {
+  const { t, olive, theo, mk, contact } = await world();
+  try {
+    const [a, b] = [await contact(1), await contact(2)];
+    await mk("quote", { contact_id: a.id, status: "approved", sold_by: olive.id, ...plan(78000) });
+    await mk("quote", { contact_id: b.id, status: "approved", sold_by: olive.id, ...plan(39000) });
+    await mk("quote", { contact_id: b.id, status: "approved", sold_by: olive.id });
+    await mk("job", { number: 911, contact_id: a.id, status: "completed", completed_at: NOW, assignee_ids: [theo.id], lines: line(40000) });
+    const call = (input) => store.withStoreScope({ requestId: "t" }, () => S.call("reports.leaderboard", input));
+    const s = await call({ board: "sales", period: "month", month: "2026-11" });
+    assert.deepEqual([s.metric, s.from, s.to], ["revenue", "2026-11-01", "2026-11-17"], "this month: from the 1st to today");
+    assert.equal(s.rows.length, 1, "only the people with something to show");
+    const o = s.rows[0];
+    assert.deepEqual([o.user_id, o.name, o.count, o.value_cents, o.note, o.rank], [olive.id, "Olive Owner", 3, 78000 + 39000 + 29500, "2 plans sold, 1 job sold", 1]);
+    assert.ok("color" in o);
+    const k = await call({ board: "techs", month: "2026-11" });
+    assert.deepEqual([k.rows[0].user_id, k.rows[0].count, k.rows[0].value_cents, k.rows[0].note], [theo.id, 1, 40000, "1 job done"]);
+    const oct = await call({ board: "sales", month: "2026-10" });
+    assert.deepEqual([oct.from, oct.to, oct.rows.length], ["2026-10-01", "2026-10-31", 0], "a past month: the whole month, nobody sold");
+    assert.deepEqual((await call({ board: "sales", from: "2026-11-02", to: "2026-11-03" })).from, "2026-11-02", "from and to win");
+    await assert.rejects(() => call({ board: "nope" }), /sales or the techs/);
+    await assert.rejects(() => call({ board: "sales", month: "2026-13" }), /month/);
+  } finally { t.done(); }
+});
+
 test("My performance: what I sold by day from the 1st, jobs and plans, the average job, ARR, the streak and this month's days", async () => {
   const { t, olive, mk, contact } = await world();
   try {

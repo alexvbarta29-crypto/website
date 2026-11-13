@@ -15,7 +15,8 @@ export default defineModule({
   types,
   routes: leaderboardRoutes,
   services: {
-    // ({ metric, from, to }) → { metric, from, to, people, unassigned }
+    // ({ metric, from, to }) or Home's ({ board: sales | techs, period, month, from, to })
+    //   → { metric, from, to, people, unassigned, rows: [{ user_id, name, color, count, value_cents, note }] }
     "reports.leaderboard": (input) => leaderboard(input || {}),
   },
 });

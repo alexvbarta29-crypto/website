@@ -42,10 +42,19 @@ The CRM build rules (docs/CRM.md, "Modules") ask this file to stay current with:
 
 - `reports.leaderboard({ metric, from, to })` → `{ metric, from, to,
   people: [{ id, name, first_name, initials, color, role, sales,
-  sold_cents, avg_cents, plans, signed, signed_pct, agreements, autopay,
-  arr_cents, jobs, visits, done_cents, value, rank }], unassigned }`
-  (metric: sales, revenue, avg, agreements, autopay, techs). The
-  Leaderboard and Home's card (`has()`/`call()`) use it.
+  sold_cents, plans_sold, jobs_sold, avg_cents, plans, signed, signed_pct,
+  agreements, autopay, arr_cents, jobs, visits, done_cents, value, rank }],
+  unassigned, rows }` (metric: sales, revenue, avg, agreements, autopay,
+  techs). The Leaderboard uses `people`.
+- Home's card (`has()`/`call()`) asks the same service as
+  `{ board: "sales" | "techs", period, month: "yyyy-mm", from, to }`:
+  board sales is the sold money (a plan's yearly amount, else the first
+  visit), techs the jobs done in dollars; `from`/`to` win, then `month`
+  (that calendar month, up to today), then `period` (default this month).
+  It reads `rows: [{ user_id, name, first_name, initials, color, count,
+  value_cents, arr_cents, note, rank }]`: only the people with something
+  to show, best first, the note a short line ("2 plans sold, 1 job sold",
+  "5 jobs done"). Both shapes come back on every call.
 
 ## Endpoints
 

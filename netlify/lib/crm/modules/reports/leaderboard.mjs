@@ -3,10 +3,17 @@
 // service, `reports.leaderboard`, that the Leaderboard screen, My
 // performance and Home's card (has()/call()) all use:
 //
-//   reports.leaderboard({ metric, from, to }) → { metric, from, to, people: [person], unassigned }
+//   reports.leaderboard({ metric, from, to }) → { metric, from, to, people: [person], unassigned, rows: [row] }
 //     metric  sales | revenue | avg | agreements | autopay | techs
 //     person  { id, name, first_name, initials, color, sales, sold_cents, avg_cents, plans, signed,
-//               signed_pct, agreements, autopay, arr_cents, jobs, visits, done_cents, value, rank }
+//               signed_pct, agreements, autopay, arr_cents, jobs, visits, done_cents, value, rank,
+//               plans_sold, jobs_sold }
+//   Home's card asks the other way and gets the same answer:
+//     ({ board: "sales" | "techs", period: "today" | "week" | "month" | "year", month: "yyyy-mm", from, to })
+//     board sales = the sold money (a plan's yearly amount, else the first visit), techs = jobs done $;
+//     from/to win, then month (that calendar month, up to today), then period (default this month)
+//     row     { user_id, name, first_name, initials, color, count, value_cents, arr_cents, note, rank }
+//             the people with something to show, best first ("2 plans sold, 1 job sold", "5 jobs done")
 //
 // Where the numbers come from (indexes only, each read once; imported Rotor
 // records count the same as the CRM's own):
@@ -84,19 +91,48 @@ async function people() {
   return { us, who };
 }
 
+// Home's card names a board, a period or a month; the screens name a metric and dates.
+const BOARD = { sales: "revenue", techs: "techs" };
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const nextMonth = (m) => { const [y, mm] = m.split("-").map(Number); return mm === 12 ? `${y + 1}-01` : `${y}-${String(mm + 1).padStart(2, "0")}`; };
+export function boardInput(input = {}, today = localDate(now())) {
+  const metric = input.metric || (input.board ? BOARD[input.board] : null) || "revenue";
+  if (input.board && !BOARD[input.board] && !input.metric) throw new InputError("Pick the sales or the techs board.", "board");
+  if (input.from && input.to) return { metric, from: input.from, to: input.to };
+  if (input.month) {
+    if (!MONTH.test(input.month)) throw new InputError("Pick a month.", "month");
+    const from = `${input.month}-01`, last = addLocalDays(`${nextMonth(input.month)}-01`, -1);
+    const to = last < today ? last : today;   // this month: up to today
+    return { metric, from, to: to < from ? from : to };
+  }
+  if (input.period && !PERIODS.includes(input.period)) throw new InputError("Pick today, this week, this month or this year.", "period");
+  return { metric, ...periodRange(input.period || "month", today) };
+}
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+// The short line under a name on Home's card.
+function noteOf(p, metric) {
+  if (metric === "techs") return [p.jobs ? `${plural(p.jobs, "job", "jobs")} done` : "", p.visits && !p.jobs ? `${plural(p.visits, "visit", "visits")} done` : ""].filter(Boolean).join(", ");
+  return [p.plans_sold ? `${plural(p.plans_sold, "plan", "plans")} sold` : "", p.jobs_sold ? `${plural(p.jobs_sold, "job", "jobs")} sold` : ""].filter(Boolean).join(", ");
+}
+const rowOf = (p, metric) => ({
+  user_id: p.id, name: p.name, first_name: p.first_name, initials: p.initials, color: p.color,
+  count: metric === "techs" ? p.jobs : p.sales, value_cents: metric === "techs" ? p.done_cents : p.sold_cents,
+  arr_cents: p.arr_cents, note: noteOf(p, metric), rank: p.rank,
+});
+
 const blank = (u) => ({
   id: u ? u.id : null, name: u ? u.name || u.login : "Unassigned", first_name: u ? u.first_name || String(u.name || "").split(/\s+/)[0] : "Unassigned",
   initials: u ? initials(u.name || u.login) : "?", color: u ? u.color || null : null, role: u ? u.role : null,
-  sales: 0, sold_cents: 0, avg_cents: 0, plans: 0, signed: 0, signed_pct: null, agreements: 0, autopay: 0, arr_cents: 0, jobs: 0, visits: 0, done_cents: 0,
+  sales: 0, sold_cents: 0, plans_sold: 0, jobs_sold: 0, avg_cents: 0, plans: 0, signed: 0, signed_pct: null, agreements: 0, autopay: 0, arr_cents: 0, jobs: 0, visits: 0, done_cents: 0,
 });
 
 const VALUE = {
   sales: (p) => p.sales, revenue: (p) => p.sold_cents, avg: (p) => p.avg_cents, agreements: (p) => p.agreements, autopay: (p) => p.autopay, techs: (p) => p.done_cents,
 };
 
-export async function leaderboard({ metric = "revenue", from, to } = {}) {
+export async function leaderboard(input = {}) {
+  const { metric, ...r } = boardInput(input);
   if (!METRICS.includes(metric)) throw new InputError("Pick one of the board's measures.", "metric");
-  const r = from && to ? { from, to } : periodRange("month");
   if (!DATE.test(r.from) || !DATE.test(r.to) || r.to < r.from) throw new InputError("Pick a period.", "from");
   const { us, who } = await people();
   const board = new Map(us.filter((u) => u.role !== "tech" || metric === "techs" || u.is_technician).map((u) => [u.id, blank(u)]));
@@ -122,6 +158,7 @@ export async function leaderboard({ metric = "revenue", from, to } = {}) {
       const p = get(who(q.by));
       p.sales += 1;
       p.sold_cents += soldValue(q);
+      if (Number.isSafeInteger(q.annual) && q.annual > 0) p.plans_sold += 1; else p.jobs_sold += 1;
     }
     // a plan is credited to the seller of that customer's latest sold quote
     const sellerOf = new Map();
@@ -144,7 +181,8 @@ export async function leaderboard({ metric = "revenue", from, to } = {}) {
   list.sort((a, b) => b.value - a.value || b.sales - a.sales || String(a.name).localeCompare(String(b.name)));
   list.forEach((p, i) => { p.rank = i + 1; });
   none.rank = list.length + 1;
-  return { metric, from: r.from, to: r.to, people: list, unassigned: none };
+  const shown = list.filter((p) => p.value > 0 || (metric === "techs" ? p.jobs || p.visits : p.sales));
+  return { metric, from: r.from, to: r.to, people: list, unassigned: none, rows: shown.map((p) => rowOf(p, metric)) };
 }
 
 // My performance: what this person sold in the period, by day, and the streak.
