@@ -85,6 +85,9 @@ p.small>a.linkish{display:inline-block;min-height:0;padding:14px 0;margin:-14px 
 @media (prefers-reduced-motion:reduce){ .sl-card{transition:none} }
 
 /* ---------------------------------------------------------------- Leads and Pipeline (Nov 2026; Rotor's cards and board) */
+.ld-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;border-radius:999px;background:var(--mist-2);color:var(--ink-3)}
+.ld-search svg{width:19px;height:19px;flex:none}
+.ld-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:400 16px/1 var(--text);color:var(--ink)}
 .lc{border:1px solid var(--line);border-radius:var(--r-xl);background:var(--card);box-shadow:var(--sh-card);overflow:hidden}
 .lc-top{display:flex;align-items:center;gap:10px;min-height:62px;padding:12px 14px 12px 16px;color:var(--ink);text-decoration:none}
 .lc-top:active{background:var(--mist)}

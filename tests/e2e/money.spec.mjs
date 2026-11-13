@@ -180,9 +180,8 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await title(f), /Autopay/);
       assert.deepEqual(await screenProblems(f), []);
 
-      // the contact's Money tab
-      await goTo(f, `/contacts/${M.contacts.test}`);
-      await f.click("[data-tab=money]");
+      // the contact's Money section (an old Money tab link jumps to it)
+      await goTo(f, `/contacts/${M.contacts.test}?tab=money`);
       await viewHas(f, /Card on file/);
       text = await f.textContent("#view");
       assert.match(text, /open balance/);

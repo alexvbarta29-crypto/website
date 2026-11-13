@@ -374,7 +374,7 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     await shot(page, "home-desk-contacts-split");
     // back to the list alone: the pane asks what to open
     await goTo(f, "/contacts");
-    assert.match(await f.textContent("#pane"), /Pick one of the contacts/);
+    assert.match(await f.textContent("#pane"), /Pick one of the customers/);
     // Quotes too
     await goTo(f, `/quotes/${seeded.quotes.sent}`);
     assert.ok(await f.$('#view [data-chip]'), "the quotes list on the left");

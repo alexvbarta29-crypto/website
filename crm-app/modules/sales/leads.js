@@ -50,7 +50,7 @@ export default {
     const q = s.q.trim().toLowerCase();
     const list = q ? s.cards.filter((c) => c.name.toLowerCase().includes(q)) : s.cards;
     return html`<div class="stack sl-leads">
-      <label class="cm-search">${icon("search")}<span class="sr">Search leads</span><input type="search" data-lq ${attrs({ value: s.q, placeholder: "Search leads", autocomplete: "off" })}></label>
+      <label class="ld-search">${icon("search")}<span class="sr">Search leads</span><input type="search" data-lq ${attrs({ value: s.q, placeholder: "Search leads", autocomplete: "off" })}></label>
       <p class="small muted">${list.length === 1 ? "1 lead" : `${list.length} leads`}</p>
       ${list.length ? html`<ul class="cc-list">${list.slice(0, 200).map(leadCard)}</ul>` : html`<div class="card empty"><h2>No leads${q ? " match" : " yet"}</h2><p>New website requests and leads you add show here.</p></div>`}
     </div>`;
