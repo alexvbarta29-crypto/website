@@ -33,7 +33,7 @@ import { apiKeyRoutes } from "./apikeys.mjs";
 import { commsRoutes } from "./comms.mjs";
 import { searchRoutes } from "./search.mjs";
 import { permissionRoutes } from "./permissions.mjs";
-import { homeRoutes } from "./home.mjs";
+import { homeRoutes, homeSettings } from "./home.mjs";
 import { seedTemplates } from "../../core/templates.mjs";
 import { runEventAutomation, runSendStep } from "../../core/automations.mjs";
 import { runQueuedSend, coreMessagesSink } from "../../core/send.mjs";
@@ -47,7 +47,7 @@ import "../../core/worker.mjs";
 export default defineModule({
   name: "system",
   types,
-  settings: systemSettings,
+  settings: { ...systemSettings, ...homeSettings },
   routes: [...meRoutes, ...userRoutes, ...legacyRoutes, ...settingsRoutes, ...adminRoutes, ...auditRoutes, ...fileRoutes, ...pendingRoutes, ...apiKeyRoutes,
     ...commsRoutes, ...searchRoutes, ...permissionRoutes, ...homeRoutes],
   // the comms part of ContactStats (§5.1): written by core's sender in test/live mode
