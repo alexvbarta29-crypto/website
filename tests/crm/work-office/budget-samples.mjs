@@ -42,6 +42,8 @@ const checklists = async () => { if (!checklist) { await scope(() => OFF.seedChe
 
 export default {
   // the heaviest read: the month view's whole grid with job totals; December 2026's runs Nov 29 to Jan 2 (three visit shards, two years)
+  // the Visits list (the Nov 2026 layout): a busy day's cards
+  "GET /visits": async (fx) => { await busyDay(fx); return { as: fx.owner, path: "/visits?date=2026-11-24" }; },
   "GET /schedule": async (fx) => {
     await busyDay(fx);
     for (const date of ["2026-11-29", "2026-12-01", "2026-12-01", "2026-12-15", "2027-01-02"]) await visit(fx, { date });

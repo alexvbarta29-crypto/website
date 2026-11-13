@@ -42,9 +42,9 @@ export const TABS = Object.freeze({
   contacts: { label: "Customers", paths: ["/contacts", "/legacy/customers"], icon: "contacts" },
   schedule: { label: "Schedule", paths: ["/schedule"], icon: "schedule" },
   // one tab, several screens: the switch under the header goes between them (Pipeline once its screen exists)
-  sales: { label: "Sales", group: [["/pipeline", "Pipeline"], ["/calls", "Leads"], ["/quotes", "Quotes"], ["/tasks", "Tasks"]], icon: "pipeline" },
+  sales: { label: "Sales", group: [["/pipeline", "Pipeline"], ["/leads", "Leads"], ["/calls", "Calls"], ["/quotes", "Quotes"], ["/tasks", "Tasks"]], icon: "pipeline" },
   // places a person may put on their own bar instead (Menu → Tab bar)
-  leads: { label: "Leads", paths: ["/calls"], icon: "target" },
+  leads: { label: "Leads", paths: ["/leads"], icon: "target" },
   pipeline: { label: "Pipeline", paths: ["/pipeline"], icon: "pipeline" },
   visits: { label: "Visits", paths: ["/visits"], icon: "truck" },
   leaderboard: { label: "Leaders", paths: ["/leaderboard"], icon: "trophy" },
@@ -290,7 +290,7 @@ export function menuGroups() {
   const seen = new Set();
   const take = (list) => list.filter(Boolean).filter((x) => (seen.has(x.path) ? false : seen.add(x.path)));
   const groups = [
-    { key: "places", items: take([item("/today", st.user && st.user.role === "tech" ? "Today" : "Home", "home"), item("/schedule", "Schedule", "schedule"), item("/inbox", "Inbox", "inbox"), item("/contacts", "Customers", "contacts"), item("/calls", "Leads", "target"), item("/pipeline", "Pipeline", "pipeline")]) },
+    { key: "places", items: take([item("/today", st.user && st.user.role === "tech" ? "Today" : "Home", "home"), item("/schedule", "Schedule", "schedule"), item("/inbox", "Inbox", "inbox"), item("/contacts", "Customers", "contacts"), item("/leads", "Leads", "target"), item("/pipeline", "Pipeline", "pipeline")]) },
     { key: "docs", two: true, items: take([item("/quotes", "Quotes", "doc"), item("/plans", "Plans", "swap")]) },
     { key: "perf", items: take([item("/performance", "My performance", "trend"), item("/leaderboard", "Leaderboard", "trophy"), item("/visits", "Visits", "truck"), item("/map", "Map", "map"), fromNav("/dashboard") ? item("/dashboard", "Reports", "chart") : null, fromNav("/automations") ? item("/automations", "Automations", "bolt") : null]) },
   ];

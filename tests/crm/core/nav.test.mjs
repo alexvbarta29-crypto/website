@@ -28,7 +28,7 @@ test("the office's bar: Home · Schedule · Inbox · Customers · Sales · Menu,
   assert.equal(p.menu.key, "menu");
   assert.equal(nav.isTabRoot("/menu"), false, "the Menu page has a back arrow");
   assert.equal(nav.isTabRoot("/schedule"), true);
-  assert.deepEqual(nav.TABS.sales.group.map(([, l]) => l), ["Pipeline", "Leads", "Quotes", "Tasks"]);
+  assert.deepEqual(nav.TABS.sales.group.map(([, l]) => l), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
   const t = nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
   assert.deepEqual(t.bar.map((x) => x.label), ["Today", "Inbox", "Time", "Pay", "Me"]);
   assert.equal(t.menu, null, "no Menu for a tech");
@@ -73,7 +73,7 @@ test("the desk's sidebar: the bar's places first in the bar's order, then the fo
   const groups = p.side.groups.map((g) => g.key);
   assert.deepEqual(groups, ["work", "sales", "customers", "money", "messages", "office", "admin"].filter((k) => groups.includes(k)), "the Menu's order");
   const paths = p.side.groups.flatMap((g) => g.items.map((n) => n.path));
-  for (const taken of ["/schedule", "/contacts", "/calls", "/quotes", "/tasks", "/settings", "/team", "/me"]) assert.ok(!paths.includes(taken), `${taken} isn't repeated in a group`);
+  for (const taken of ["/schedule", "/contacts", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/settings", "/team", "/me"]) assert.ok(!paths.includes(taken), `${taken} isn't repeated in a group`);
   assert.ok(paths.includes("/schedule?view=tray"), "To book stays under Work");
   assert.ok(paths.includes("/visits") && paths.includes("/leaderboard"), "the new screens are reachable on a desk");
   assert.deepEqual(p.side.bottom.map((n) => n.label), ["Settings", "Team"]);
@@ -83,7 +83,7 @@ test("the desk's sidebar: the bar's places first in the bar's order, then the fo
 test("the Menu sheet's groups (Flyra's order), each place once; the + offers what this person may make", () => {
   planFor("owner");
   const g = nav.menuGroups();
-  assert.deepEqual(g[0].items.map((n) => n.label), ["Home", "Schedule", "Inbox", "Customers", "Leads", ...(router.has("/pipeline") ? ["Pipeline"] : [])]);
+  assert.deepEqual(g[0].items.map((n) => n.label), ["Home", "Schedule", "Inbox", "Customers", "Leads", "Pipeline"]);
   assert.equal(g[1].two, true);
   assert.deepEqual(g[1].items.map((n) => n.label), ["Quotes", "Plans"]);
   assert.ok(["My performance", "Leaderboard", "Visits"].every((l) => g[2].items.some((n) => n.label === l)));

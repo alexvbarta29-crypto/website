@@ -8,6 +8,9 @@ export default {
   name: "sales",
   routes: [
     { path: "/calls", load: () => import("./calls.js"), title: "Leads & calls", perm: "sales:work", parent: "/today", skeleton: "list" },
+    // the Sales tab's first screens (the Nov 2026 layout, after Rotor's): Pipeline, then Leads
+    { path: "/pipeline", load: () => import("./pipeline.js"), title: "Pipeline", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/leads", load: () => import("./leads.js"), title: "Leads", perm: "sales:work", parent: "/today", skeleton: "list" },
     { path: "/calls/log", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/calls" },
     { path: "/calls/log/:contact", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/contacts/:contact" },
     { path: "/enrollments/:id", load: () => import("./enrollment.js"), title: "Follow-up", perm: "sales:work", parent: "/calls" },
@@ -22,6 +25,8 @@ export default {
     { path: "/settings/cadences/:id", load: () => import("./cadence.js"), title: "Cadence", perm: "cadences:configure", parent: "/settings/cadences" },
   ],
   nav: [
+    { where: "more", section: "sales", label: "Pipeline", path: "/pipeline", perm: "sales:work", order: 18, icon: "pipeline" },
+    { where: "more", section: "sales", label: "Leads", path: "/leads", perm: "sales:work", order: 19, icon: "target" },
     { where: "more", section: "sales", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
     { where: "more", section: "sales", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
   ],

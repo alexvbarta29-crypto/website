@@ -36,21 +36,23 @@ for (const device of ["iphone13", "iphonese"]) {
       // the Inbox: its own tab, the unanswered lead on top
       await f.click('#tabs [data-tab="inbox"]');
       await settled(f, { hash: "#/inbox" });
-      assert.equal(await title(f), "Inbox");
+      assert.equal(await title(f), "Messages");
       assert.match(await text(f), new RegExp(c.names.lead), "the lead's text is in the Inbox");
       assert.match(await text(f), /30 windows/, "with its latest words");
       if (first) assert.ok(await f.$(`a[href="#/inbox/${c.open}"].unread`), "unread until someone opens it");
       assert.deepEqual(await screenProblems(f), [], "the Inbox passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `comms-inbox-${device}`);
-      await f.click('[data-filter="needs_reply"]');
-      await f.waitForFunction(() => document.querySelector('[data-filter="needs_reply"]').getAttribute("aria-pressed") === "true");
+      await f.selectOption("[data-kind]", "needs_reply");
+      await f.waitForFunction(() => document.querySelector("[data-kind]").value === "needs_reply" && !document.querySelector("#view [aria-busy=true]"));
+      await f.waitForTimeout(400);
       // (the second phone comes after the first marked it done)
       if (first) assert.match(await text(f), new RegExp(c.names.lead));
       else assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "done on the other phone: no longer waiting");
       assert.doesNotMatch(await text(f), /All done for today/, "a handled thread does not need a reply");
-      await f.click('[data-filter="all"]');
-      await f.waitForFunction(() => document.querySelector('[data-filter="all"]').getAttribute("aria-pressed") === "true");
+      await f.selectOption("[data-kind]", "all");
+      await f.waitForFunction(() => document.querySelector("[data-kind]").value === "all");
+      await f.waitForTimeout(400);
 
       // the thread: bubbles, where they came from, and that texting is off
       await f.click(`a[href="#/inbox/${c.open}"]`);
@@ -109,8 +111,7 @@ for (const device of ["iphone13", "iphonese"]) {
 
       // the contact's Messages tab
       await goTo(f, `/contacts/${c.customer}`);
-      await f.click('#view [data-tab="messages"]');
-      await f.waitForFunction(() => document.querySelector('#view [data-tab="messages"]').getAttribute("aria-pressed") === "true" && !!document.querySelector("#view .cm-msgs"));
+      await f.waitForFunction(() => !!document.querySelector("#ct-mod-messages .cm-msgs"), null, { timeout: 10000 });
       assert.match(await text(f), /Texts · 6/);
       assert.match(await text(f), /Email · 1/);
       assert.ok(await f.$(`#view a[href="#/inbox/${c.conversation}"]`));
@@ -142,7 +143,8 @@ test("comms: a tech's inbox holds only the people on their own visits", async ()
     assert.match(await text(f), /side gate/);
     assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "nobody else's lead");
     assert.equal(await f.$$eval("#view .cm-row", (els) => els.length), 1);
-    assert.deepEqual(await f.$$eval("#view [data-filter]", (els) => els.map((e) => e.dataset.filter)), ["all", "unread", "needs_reply"], "no office chips");
+    assert.equal(await f.$("#view [data-seg]"), null, "no Customers / Leads for a tech");
+    assert.deepEqual(await f.$$eval("#view [data-kind] option", (els) => els.map((e) => e.value)), ["all", "needs_reply"], "no Mine for a tech");
     assert.equal(await f.$("#top-action:not([hidden])"), null, "no New for a tech");
     assert.deepEqual(await screenProblems(f), [], "a tech's Inbox passes the phone checks");
     await shot(page, "comms-inbox-tech");

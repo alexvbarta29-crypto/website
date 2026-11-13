@@ -283,7 +283,7 @@ test("the Menu: every manifest's Menu entry names a known section; an older shel
   assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
   assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));
   for (const key of navFor({ role: "owner" })) assert.ok(nav.TABS[key], `a tab for ${key}`);
-  assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/pipeline", "/calls", "/quotes", "/tasks"]);
+  assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/pipeline", "/leads", "/calls", "/quotes", "/tasks"]);
   // Home is /today: old #/today links, every screen's parent and the default route keep working
   const sys = MANIFESTS.find((m) => m.name === "system");
   const today = sys.routes.find((r) => r.path === "/today");
