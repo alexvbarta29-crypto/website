@@ -574,16 +574,18 @@ function jumpTo(ctx, v) {
   if (s.view === "month") { if (loaded(s, v.d)) pick(ctx, v.d); else goDate(ctx, v.d); } else if (!(s.data && v.d >= s.data.from && v.d <= s.data.to)) goDate(ctx, v.d);
   openPanel(ctx, v.id, hooks(ctx));
 }
-// Map of the day: each person's route that day (the live map joins this later).
+// Map of the day: the live Team map (the maps module, team_map:read; today
+// and the days it keeps) and each person's route that day.
 function mapSheet(ctx) {
   const s = ctx.state;
   const d = s.date || todayOf(s);
   const visits = ((s.data && s.data.visits) || []).filter((v) => v.d === d && !DEAD.includes(v.st));
   const ppl = s.users.filter((u) => visits.some((v) => (v.a || []).includes(u.id)) && (!s.tech || u.id === s.tech));
+  const team = ctx.can && ctx.can("team_map:read") && d <= todayOf(s) ? (d === todayOf(s) ? "#/team-map" : `#/team-map?date=${d}`) : null;
   sheet({
     title: `Map of ${dateShort(d)}`,
-    body: ppl.length ? html`<p class="small muted">Each person's stops in drive order, with directions.</p><ul class="list">${ppl.map((u) => html`<li><a class="row" href="${`#/schedule/route/${d}/${encodeURIComponent(u.id)}`}"><span class="wk-dot big" ${attrs({ style: `background:${u.color || "#4a4a52"}` })}></span><span class="who"><span class="nm">${u.name}</span><span class="sub">${plural(visits.filter((v) => (v.a || []).includes(u.id)).length, "stop")}</span></span><span class="chev" aria-hidden="true"></span></a></li>`)}</ul>`
-      : html`<p class="muted">Nobody has a stop on ${dateShort(d)}.</p>`,
+    body: html`${team ? html`<div class="btn-row"><a class="btn primary block" href="${team}">${I.pin}Open the team map</a></div>` : ""}${ppl.length ? html`<p class="small muted">Each person's stops in drive order, with directions.</p><ul class="list">${ppl.map((u) => html`<li><a class="row" href="${`#/schedule/route/${d}/${encodeURIComponent(u.id)}`}"><span class="wk-dot big" ${attrs({ style: `background:${u.color || "#4a4a52"}` })}></span><span class="who"><span class="nm">${u.name}</span><span class="sub">${plural(visits.filter((v) => (v.a || []).includes(u.id)).length, "stop")}</span></span><span class="chev" aria-hidden="true"></span></a></li>`)}</ul>`
+      : html`<p class="muted">Nobody has a stop on ${dateShort(d)}.</p>`}`,
   });
 }
 
