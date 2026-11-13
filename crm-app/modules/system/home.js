@@ -7,10 +7,11 @@
 //
 //   "Good evening", the first name, the bell
 //   Clock in     TIMESHEET, today's hours, Clock In / Clock Out (POST /clock)
-//   Money        Collected | Scheduled | ARR, a period (This week, This
-//                month, Last 3 months, This year, Custom range), the big
-//                number with AVG / PEAK (or CHANGE for ARR), the month's
-//                goal, one line chart, where the numbers come from
+//   Money        Rotor's card (the owner's Nov 13 ask): Week | Month, the
+//                round ‹ › arrows, share and fold; Collected and Scheduled
+//                side by side; one chart with both lines per day (Collected
+//                coral, Scheduled grey) and a readout on tap; where
+//                Collected comes from; under the card the ARR and See more
 //   Today        Daily | Weekly | Monthly with arrows, the visits (a color
 //                bar per tech, customer, "Job · 8:00 AM – 12:00 PM", who,
 //                the time), and TASKS WITHOUT DUE DATE (folds); Monthly is
@@ -26,7 +27,7 @@ import { html, icon, attrs, toast, sheet, delegate } from "../../core/ui.js";
 import { dateLong, dateShort, plural, dateTime, initials, clock, time as fmtTime, ago, localDate } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import * as router from "../../core/router.js";
-import { lineChart, srTable, cumulative } from "./home-charts.js";
+import { pairChart, srTable } from "./home-charts.js";
 
 // The stylesheet, loaded once; the screen waits for it (a second at most),
 // so its first paint is already laid out and the chart measures its card.
@@ -62,7 +63,6 @@ export const usdShort = (cents) => {
   if (Math.abs(d) >= 1000) return `$${+(d / 1000).toFixed(d % 1000 ? 1 : 0)}K`;
   return `$${Math.round(d)}`;
 };
-const signed = (cents) => (cents === null || cents === undefined ? "-" : (cents > 0 ? "+" : "") + usd(cents));
 // "0h 0m"
 export const hoursMin = (min) => { const m = Math.max(0, Math.round(Number(min) || 0)); return `${Math.floor(m / 60)}h ${m % 60}m`; };
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -91,6 +91,7 @@ const LOCAL = {
   "chevron-up": svg(html`<path d="m6 15 6-6 6 6"/>`),
   "chevron-left": svg(html`<path d="m15 6-6 6 6 6"/>`),
   "chevron-right": svg(html`<path d="m9 6 6 6-6 6"/>`),
+  share: svg(html`<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>`),
 };
 const ic = (name) => LOCAL[name] || icon(name);
 const avatar = (p, cls = "hm-av") => html`<span class="${cls}" ${attrs({ style: colorOk(p.color) ? `background:${p.color}` : null, title: p.name || null })} aria-hidden="true">${initials(p.name || p.first_name)}</span>`;
@@ -105,7 +106,7 @@ const open = (ctx, path) => {
 // ------------------------------------------------------------ the cards' names (Edit Home)
 
 const CARD_NAMES = { clock: "Clock in", money: "Money", agenda: "Today", leaderboard: "Leaderboard", inbox: "Inbox", tasks: "Tasks", goals: "Goals" };
-const CARD_NOTES = { clock: "Today's hours and the clock", money: "Collected, scheduled and ARR", agenda: "Visits and tasks without a due date", leaderboard: "Sales and techs this month", inbox: "The latest conversations", tasks: "Upcoming and overdue tasks", goals: "Monthly revenue and jobs goals" };
+const CARD_NOTES = { clock: "Today's hours and the clock", money: "Collected and scheduled by week or month, and ARR", agenda: "Visits and tasks without a due date", leaderboard: "Sales and techs this month", inbox: "The latest conversations", tasks: "Upcoming and overdue tasks", goals: "Monthly revenue and jobs goals" };
 
 // ------------------------------------------------------------ Clock in
 
@@ -153,86 +154,110 @@ async function clockAction(action, ctx) {
   ctx.refresh();
 }
 
-// ------------------------------------------------------------ Money
+// ------------------------------------------------------------ Money (Rotor's card)
 
-const METRICS = [["collected", "Collected"], ["scheduled", "Scheduled"], ["arr", "ARR"]];
-const PERIOD_NAMES = { week: "This week", month: "This month", "3m": "Last 3 months", year: "This year", custom: "Custom range" };
-// Flyra's short period on the button ("1M ⌄"); the menu says it in words
-const PERIOD_SHORT = { week: "1W", month: "1M", "3m": "3M", year: "1Y", custom: "Custom" };
 const MISSING = {
   "no-key": "Rotor's numbers show here once the office data key is set in Netlify (OFFICE_DATA_KEY).",
   "bad-key": "Rotor's numbers can't be opened with this site's office data key. Re-seal the dashboard snapshot (docs/DASHBOARD.md).",
 };
-const PEAK = { day: "Peak day", week: "Peak week", month: "Peak month" };
-
+// a segmented switch (Week | Month, Daily | Weekly | Monthly, Sales | Techs)
 const seg = (name, items, current, label, cls = "") => html`<div class="${"hm-seg" + (cls ? " " + cls : "")}" role="group" aria-label="${label}">${items.map(([k, l]) => html`<button type="button" class="${k === current ? "on" : ""}" ${attrs({ "data-hm": name, "data-v": k, "aria-pressed": k === current ? "true" : "false" })}>${l}</button>`)}</div>`;
+const MONEY_PERIODS = [["week", "Week"], ["month", "Month"]];
+const FOLD_MONEY = "barta-home-money-folded";
+const moneyFolded = () => { try { return localStorage.getItem(FOLD_MONEY) === "1"; } catch (e) { return false; } };
+// where Collected comes from (Scheduled and ARR are always the CRM's own)
+export function moneyNote(m) {
+  if (!m || m.loading) return "";
+  if (m.source === "import") return m.as_of ? `From Rotor's import of ${day(m.as_of)}` : "From Rotor's import";
+  if (m.source === "rotor") return m.as_of ? `From Rotor · updated ${day(m.as_of)}` : "From Rotor";
+  return m.updated_at ? `Updated ${fmtTime(m.updated_at)}` : "";
+}
+// the period's days, and each line's value on them (null where it has no point)
+export function moneySeries(m) {
+  const keys = [];
+  for (let d = m.from; d && d <= m.to && keys.length < 62; d = addDays(d, 1)) keys.push(d);
+  const on = (pts) => { const by = new Map((pts || []).map((x) => [x.key, x])); return keys.map((k) => (by.has(k) && by.get(k).value !== null && by.get(k).value !== undefined ? by.get(k).value : null)); };
+  return { keys, collected: on(m.collected && m.collected.points), scheduled: on(m.scheduled && m.scheduled.points) };
+}
+// a weekly point's words ("week of Nov 9"), a day's ("Nov 13")
+const pointWords = (m, k) => (m.grain === "week" ? `Week of ${day(k)}` : day(k));
+export const shareText = (m) => `${m.label}: Collected ${usd(m.collected && m.collected.total)}, Scheduled ${usd(m.scheduled && m.scheduled.total)}`;
 
 function moneyCard(s, ctx) {
   const m = s.home.cards.money;
   if (!m) return "";
   const ui = s.ui.money;
   const more = open(ctx, "/dashboard/money") || open(ctx, "/payments");
-  const pts = (m.points || []).filter((x) => x.value !== null && x.value !== undefined);
-  const chart = !m.loading && pts.length > 1 && pts.some((x) => x.value !== 0);
-  const src = m.source === "rotor" ? (m.as_of ? `From Rotor · updated ${day(m.as_of)}` : "From Rotor") : m.updated_at ? `Updated ${fmtTime(m.updated_at)}` : "";
-  const stats = m.metric === "arr"
-    ? html`<div class="hm-stats"><div><span>Change</span><b class="${m.change > 0 ? "up" : m.change < 0 ? "down" : ""}">${signed(m.change)}</b></div></div>`
-    : html`<div class="hm-stats"><div><span>Avg / day</span><b>${usd(m.avg)}</b></div><div><span>${PEAK[m.grain] || "Peak"}</span><b>${m.peak ? usd(m.peak.value) : "-"}</b></div></div>`;
-  return html`<section class="hm-c-money hm-sky" data-card="money" aria-label="Money">
-    <div class="hm-row2">
-      ${seg("metric", METRICS, ui.metric, "What to show")}
-      <div class="hm-menu-wrap"><button type="button" class="hm-period" data-hm="period" aria-haspopup="true" aria-expanded="${ui.menu ? "true" : "false"}" ${attrs({ "aria-label": `Period: ${ui.period === "custom" ? "Custom range" : PERIOD_NAMES[ui.period]}` })}>${PERIOD_SHORT[ui.period] || "1M"}${ic("chevron-down")}</button>
-        ${ui.menu ? html`<ul class="hm-menu" role="menu">${["week", "month", "3m", "year"].map((k) => html`<li><button type="button" role="menuitemradio" ${attrs({ "data-hm": "pick-period", "data-v": k, "aria-checked": ui.period === k ? "true" : "false" })}><span class="ck" aria-hidden="true">${ui.period === k ? icon("check") : ""}</span>${PERIOD_NAMES[k]}</button></li>`)}<li class="sep"><button type="button" role="menuitem" data-hm="custom">Custom range…</button></li></ul>` : ""}
+  const loading = !!m.loading;
+  const c = m.collected || {}, sc = m.scheduled || {};
+  const ser = loading ? null : moneySeries(m);
+  const drawn = !!ser && [...ser.collected, ...ser.scheduled].some((v) => v);
+  const word = ui.period === "week" ? "week" : "month";
+  const note = moneyNote(m);
+  const big = (v) => (loading ? "…" : usd(v));
+  const long = !loading && [c.total, sc.total].some((v) => usd(v).length > 7);
+  return html`<div class="hm-money" data-card="money">
+    <section class="hm-card hm-c-money" aria-labelledby="hm-m-h">
+      <div class="hm-mtop">
+        ${seg("m-period", MONEY_PERIODS, ui.period, "Week or month")}
+        <div class="hm-mtools">
+          <button type="button" class="hm-round" data-hm="m-move" data-v="-1" aria-label="${`Previous ${word}`}">${ic("chevron-left")}</button>
+          <button type="button" class="hm-round" data-hm="m-move" data-v="1" aria-label="${`Next ${word}`}">${ic("chevron-right")}</button>
+          <button type="button" class="hm-round" data-hm="m-share" aria-label="Share these numbers">${ic("share")}</button>
+          <button type="button" class="hm-round" data-hm="m-fold" aria-expanded="${ui.folded ? "false" : "true"}" aria-label="${ui.folded ? "Show the chart" : "Fold the chart"}">${ic(ui.folded ? "chevron-down" : "chevron-up")}</button>
+        </div>
       </div>
-    </div>
-    <div class="hm-eyebrow">${m.metric === "arr" ? "Annual recurring revenue" : m.label}</div>
-    <div class="hm-money-row"><div class="hm-big" ${attrs({ "aria-busy": m.loading ? "true" : null })}>${m.loading ? "…" : usd(m.total)}</div>${m.loading ? "" : stats}</div>
-    ${m.goal ? html`<div class="hm-goal"><span class="hm-track" aria-hidden="true"><span class="hm-fill" ${attrs({ style: `width:${Math.min(100, Math.max(0, m.goal.pct || 0))}%` })}></span></span><span>${m.goal.pct}% of the ${usd(m.goal.target)} goal</span></div>` : ""}
-    ${m.missing ? html`<p class="hm-note">${MISSING[m.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
-    ${chart ? html`<div class="hc-head"><span class="hc-read" id="read-money" aria-live="polite"><b></b> <span></span></span></div>
-      <div class="hc" data-chart="money" tabindex="0" role="group" aria-label="${`${METRICS.find((x) => x[0] === m.metric)[1]} over ${m.label}. Arrow keys read each point.`}"></div>
-      ${m.metric === "arr"
-        ? srTable(`ARR, ${m.label}`, ["Day", "ARR"], pts.map((x) => [x.label, usd(x.value)]))
-        : srTable(`${METRICS.find((x) => x[0] === m.metric)[1]}, ${m.label}`, [m.grain === "month" ? "Month" : m.grain === "week" ? "Week of" : "Day", "Amount", "Running total"], cumulative(m.points, m.total).filter((x) => x.value !== null).map((x) => [x.label, usd(x.own), usd(x.value)]))}`
-      : m.loading || m.missing || m.total === null ? "" : html`<p class="hm-note">${m.metric === "arr" ? "No plans have started yet." : m.metric === "scheduled" ? "Nothing booked in this period." : "Nothing collected yet in this period."}</p>`}
-    <div class="hm-foot"><span>${src}</span>${more ? html`<a class="hm-more" href="${more}">See more</a>` : ""}</div>
-  </section>`;
+      <h3 class="hm-mper" id="hm-m-h">${m.label || ""}</h3>
+      <div class="${"hm-pair" + (long ? " long" : "")}" ${attrs({ "aria-busy": loading ? "true" : null })}>
+        <div class="hm-pv"><span>Collected</span><b>${big(c.total)}</b></div>
+        <div class="hm-pv"><span>Scheduled</span><b>${big(sc.total)}</b></div>
+      </div>
+      ${m.missing ? html`<p class="hm-note">${MISSING[m.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
+      ${ui.folded || loading ? "" : drawn ? html`<div class="hc-read2" id="read-money" aria-live="polite"><span class="d"></span><span class="k c"><i aria-hidden="true"></i>Collected <b></b></span><span class="k s"><i aria-hidden="true"></i>Scheduled <b></b></span></div>
+        <div class="hc hc-pair" data-chart="money" tabindex="0" role="group" aria-label="${`Collected and scheduled, ${m.label}. Arrow keys read each ${m.grain === "week" ? "week" : "day"}.`}"></div>
+        ${srTable(`Collected and scheduled, ${m.label}`, [m.grain === "week" ? "Week of" : "Day", "Collected", "Scheduled"], ser.keys.map((k, i) => [k, i]).filter(([, i]) => ser.collected[i] !== null || (ser.scheduled[i] !== null && (m.grain === "week" || ser.scheduled[i] !== 0))).map(([k, i]) => [day(k), ser.collected[i] === null ? "-" : usd(ser.collected[i]), ser.scheduled[i] === null ? "-" : usd(ser.scheduled[i])]))}`
+        : m.missing ? "" : html`<p class="hm-note">Nothing collected or booked in this ${word}.</p>`}
+      ${note ? html`<div class="hm-foot hm-mfoot"><span>${note}</span></div>` : ""}
+    </section>
+    ${m.arr !== null && m.arr !== undefined ? html`<p class="hm-arr"><span>ARR <b>${usd(m.arr)}</b></span>${more ? html`<span aria-hidden="true"> · </span><a class="hm-more" href="${more}">See more</a>` : ""}</p>`
+      : more ? html`<p class="hm-arr"><a class="hm-more" href="${more}">See more</a></p>` : ""}
+  </div>`;
 }
 
 async function loadMoney(s, ctx) {
   const ui = s.ui.money;
-  const q = new URLSearchParams({ metric: ui.metric, period: ui.period, ...(ui.period === "custom" ? { from: ui.from, to: ui.to } : {}) });
   const my = (s.moneyToken = (s.moneyToken || 0) + 1);
-  s.home.cards.money = { ...(s.home.cards.money || {}), metric: ui.metric, loading: true };
+  s.home.cards.money = { ...(s.home.cards.money || {}), loading: true };
   ctx.rerender();
   try {
-    const r = await ctx.api(`/home/money?${q}`, { cache: false });
+    const r = await ctx.api(`/home/money?${new URLSearchParams({ period: ui.period, date: ui.date })}`, { cache: false });
     if (my === s.moneyToken) s.home.cards.money = r.data;
   } catch (e) {
-    if (my === s.moneyToken) { s.home.cards.money = { ...s.home.cards.money, loading: false, total: null, points: [] }; toast((e && e.message) || "That didn't load.", { bad: true }); }
+    if (my === s.moneyToken) { s.home.cards.money = { ...s.home.cards.money, loading: false, collected: { total: null, points: [] }, scheduled: { total: null, points: [] } }; toast((e && e.message) || "That didn't load.", { bad: true }); }
   }
   if (my === s.moneyToken) ctx.rerender();
 }
-
-function customRange(s, ctx) {
-  const today = localDate(s.now);
-  const sh = sheet({
-    title: "Custom range",
-    body: html`<form class="form" data-range>
-      <label class="field"><span>First day</span><input type="date" name="from" required value="${s.ui.money.from || addDays(today, -29)}" max="${today}"></label>
-      <label class="field"><span>Last day</span><input type="date" name="to" required value="${s.ui.money.to || today}"></label>
-      <button type="submit" class="btn primary block">Show</button></form>`,
-    events: {
-      "submit [data-range]": (e, f) => {
-        e.preventDefault();
-        const from = f.elements.from.value, to = f.elements.to.value;
-        if (!from || !to || to < from) { toast("The last day comes after the first.", { bad: true }); return; }
-        Object.assign(s.ui.money, { period: "custom", from, to, menu: false });
-        sh.close();
-        loadMoney(s, ctx);
-      },
-    },
-  });
+// Week | Month keeps today when it is in the period on screen, else that period's first day
+function pickMoneyPeriod(s, ctx, kind) {
+  const m = s.home.cards.money || {};
+  const t = localDate(s.now);
+  s.ui.money.period = kind;
+  s.ui.money.date = m.from && t >= m.from && t <= m.to ? t : m.from || t;
+  loadMoney(s, ctx);
+}
+function moveMoney(s, ctx, dir) {
+  const m = s.home.cards.money || {};
+  const from = m.from || localDate(s.now);
+  s.ui.money.date = s.ui.money.period === "week" ? addDays(monday(from), 7 * dir) : addMonths(from, dir);
+  loadMoney(s, ctx);
+}
+async function shareMoney(m) {
+  if (!m || m.loading) return;
+  const text = shareText(m);
+  try {
+    if (typeof navigator !== "undefined" && navigator.share) { await navigator.share({ title: "Money", text }); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("Copied"); } catch (e) { toast(text); }
 }
 
 // ------------------------------------------------------------ Today (the agenda)
@@ -424,7 +449,7 @@ async function editGoals(ctx) {
     body: html`<form class="form" data-goals>
       <label class="field"><span>Revenue a month ($)</span><input type="number" name="revenue" inputmode="numeric" min="1" step="1" value="${g.revenue_month_cents ? String(Math.round(g.revenue_month_cents / 100)) : ""}" placeholder="No goal"></label>
       <label class="field"><span>Jobs completed a month</span><input type="number" name="jobs" inputmode="numeric" min="1" step="1" value="${g.jobs_month ? String(g.jobs_month) : ""}" placeholder="No goal"></label>
-      <p class="small">Leave one empty for no goal. Progress shows on the Goals card, and the revenue goal under Money for this month.</p>
+      <p class="small">Leave one empty for no goal. Progress shows on the Goals card.</p>
       <button type="submit" class="btn primary block">Save goals</button></form>`,
     events: {
       "submit [data-goals]": async (e, f) => {
@@ -494,7 +519,7 @@ export default {
     h.cards = h.cards || {};
     return {
       now, user: ctx.user || {}, home: h,
-      ui: { money: { metric: "collected", period: "month", menu: false }, taskFilter: "upcoming", tasksOpen: remembered() },
+      ui: { money: { period: "month", date: localDate(now), folded: moneyFolded() }, taskFilter: "upcoming", tasksOpen: remembered() },
       edit: typeof location !== "undefined" && /[?&]edit=1\b/.test(location.hash),
     };
   },
@@ -523,12 +548,18 @@ export default {
     off.push(delegate(root, {
       "click [data-hm]": (e, el) => {
         const what = el.dataset.hm, v = el.dataset.v;
-        if (what !== "period" && what !== "pick-period" && s.ui.money.menu) s.ui.money.menu = false;
         if (what === "clock") return clockAction(el.dataset.act, ctx);
-        if (what === "metric") { if (s.ui.money.metric !== v) { s.ui.money.metric = v; loadMoney(s, ctx); } return; }
-        if (what === "period") { s.ui.money.menu = !s.ui.money.menu; ctx.rerender(); return; }
-        if (what === "pick-period") { s.ui.money.menu = false; s.ui.money.period = v; loadMoney(s, ctx); return; }
-        if (what === "custom") { s.ui.money.menu = false; ctx.rerender(); customRange(s, ctx); return; }
+        if (what === "m-period") { if (s.ui.money.period !== v) pickMoneyPeriod(s, ctx, v); return; }
+        if (what === "m-move") { moveMoney(s, ctx, Number(v)); return; }
+        if (what === "m-share") { shareMoney(s.home.cards.money); return; }
+        if (what === "m-fold") {
+          s.ui.money.folded = !s.ui.money.folded;
+          try { localStorage.setItem(FOLD_MONEY, s.ui.money.folded ? "1" : "0"); } catch (x) { /* no storage */ }
+          ctx.rerender();
+          const b = view.querySelector('[data-hm="m-fold"]');
+          if (b) b.focus({ preventScroll: true });
+          return;
+        }
         if (what === "view") {
           const a = s.home.cards.agenda;
           if (a.view === v) return;
@@ -552,21 +583,25 @@ export default {
         if (what === "edit") { editHome(s, ctx); return; }
       },
       "change [data-hm-change]": (e, el) => { if (el.dataset.hmChange === "task-filter") { s.ui.taskFilter = el.value; ctx.rerender(); } },
-      // a tap anywhere else closes the period menu
-      "click": (e) => { if (s.ui.money.menu && !e.target.closest(".hm-menu-wrap")) { s.ui.money.menu = false; ctx.rerender(); } },
     }));
     // the chart
     const m = s.home.cards.money;
     const el = root.querySelector('[data-chart="money"]');
-    if (m && el) {
-      // Rotor's week or month that runs past its snapshot's day is "so far"
-      const sofar = (x) => (m.as_of && x.to > m.as_of ? ", so far" : "");
-      const when = (x) => (m.grain === "week" ? `week of ${x.label}${sofar(x)}` : m.grain === "month" ? `${x.label}${sofar(x)}` : x.label);
-      // Collected and Scheduled climb as a running total (the readout: the total so far, then that bucket's own amount); ARR is its level each day
-      const run = m.metric !== "arr";
-      const rows = run ? cumulative(m.points, m.total) : m.points;
-      const read = run ? (x) => `${usd(x.own)} ${when(x)}` : when;
-      off.push(lineChart(el, { rows, fmt: usd, axis: usdShort, read, readout: root.querySelector("#read-money"), height: 168, start: localDate(s.now) }).destroy);
+    if (m && el && !m.loading) {
+      const ser = moneySeries(m);
+      const rd = root.querySelector("#read-money");
+      const put = (sel, v) => { const b = rd && rd.querySelector(sel); if (b) b.textContent = v; };
+      const onRead = (i) => {
+        put(".d", pointWords(m, ser.keys[i]));
+        put(".c b", ser.collected[i] === null ? "-" : usd(ser.collected[i]));
+        put(".s b", ser.scheduled[i] === null ? "-" : usd(ser.scheduled[i]));
+      };
+      // Rotor's weekly Collected is drawn through its weeks; so is Scheduled then (one scale)
+      const join = m.grain === "week";
+      off.push(pairChart(el, {
+        keys: ser.keys, label: (i) => day(ser.keys[i]), axis: usdShort, onRead, height: 190, start: localDate(s.now),
+        series: [{ cls: "hc-line s", dot: "s", values: ser.scheduled, join }, { cls: "hc-line c", dot: "c", values: ser.collected, join }],
+      }).destroy);
     }
     // the clock's hours move on while Home is on screen
     const hours = root.querySelector(".hm-hours[data-since]");

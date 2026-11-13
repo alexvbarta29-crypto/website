@@ -24,7 +24,9 @@
 // seed({ home: true }) also makes today look like a real business day for
 // Home's screenshots (home.spec): one visit done, one under way, three more
 // this afternoon (one with two people), a pair of likely duplicates and a
-// phone's offline work waiting for the owner's OK. seed({ teamOnly: true })
+// phone's offline work waiting for the owner's OK, and a finished Rotor
+// import of two days ago with the payments it brought in (made up), so
+// Home's Money card counts Collected per day. seed({ teamOnly: true })
 // makes only the team (Home before any CRM data: the empty state), and a
 // later seed() keeps those people.
 //
@@ -261,4 +263,13 @@ async function homeDay(out, O, day) {
   }
   await MATCH.createCandidate(twins[0].id, twins[1].id, { reason: "phone", confidence: "high" }, O);
   await PA.createPendingAction({ kind: "outbox_review", title: "Theo's offline notes from last week", requested_by: out.users.tech.id, items: [] }, O);
+  // a Rotor import finished two days ago (counts only) and this month's payments it brought in (synthetic amounts)
+  const asOf = clock.addLocalDays(day, -2);
+  await store.createRecord("import_run", { status: "done", as_of: asOf, requested_by: "system" }, O);
+  const PAID = [[-15, 42500], [-14, 18000], [-13, 31000], [-11, 9500], [-10, 52000], [-9, 26500], [-8, 61000], [-7, 14000], [-6, 37500], [-4, 22000], [-3, 48000], [-2, 19500]];
+  for (const [k, [ago, cents]] of PAID.entries()) {
+    const on = clock.addLocalDays(day, ago);
+    if (on.slice(0, 7) !== day.slice(0, 7)) continue;
+    await store.createRecord("payment", { contact_id: out.contacts.customer, kind: "payment", method: k % 3 ? "check" : "card", status: "succeeded", amount_cents: cents, received_on: on, reference: `e2e-${k + 1}` }, O);
+  }
 }
