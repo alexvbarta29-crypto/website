@@ -46,8 +46,11 @@ export default {
     await busyDay(fx);
     for (const date of ["2026-11-29", "2026-12-01", "2026-12-01", "2026-12-15", "2027-01-02"]) await visit(fx, { date });
     return { as: fx.owner, path: "/schedule?month=2026-12&amounts=1" };
+    // (a day with pay=1&sales=1 reads fewer shards than the month: weather.test / capacity.test cover it)
   },
   "GET /schedule/unscheduled": async (fx) => { await job(); return { as: fx.owner, path: "/schedule/unscheduled" }; },
+  // the forecast: settings, the point and the grid from the cache (no call outside a Netlify deploy; weather.test.mjs runs the cold path with a mocked NWS)
+  "GET /schedule/weather": async (fx) => ({ as: fx.owner, path: "/schedule/weather" }),
   "GET /schedule/check": async (fx) => ({ as: fx.owner, path: `/schedule/check?date=2026-11-24&start=09:00&end=11:00&users=${fx.tech.id}&town=Delano` }),
   "GET /schedule/route": async (fx) => ({ as: fx.owner, path: `/schedule/route?date=2026-11-24&user=${fx.tech.id}` }),
   "POST /schedule/route": async (fx) => { await busyDay(fx); return { as: fx.owner, path: "/schedule/route", body: { date: "2026-11-24", user_id: fx.tech.id } }; },
