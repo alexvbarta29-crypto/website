@@ -378,7 +378,7 @@ export function weekBoard(s, ctx) {
 // ------------------------------------------------------------ Day and 3 Day (Rotor's layout)
 
 const CHECK = raw('<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.3 2.6 2.6 5-5.2"/></svg>');
-const MIN_BLOCK = 46;                   // a block is never shorter than a thumb (44 px)
+const MIN_BLOCK = 58;                   // a block is never shorter than a thumb (44 px) and holds three lines
 const sumAmt = (list) => list.reduce((n, v) => n + (Number.isFinite(v.amt) ? v.amt : 0), 0);
 const dollars = (c) => money(c).replace(/\.00$/, "");
 // The current time in minutes of the day in the company's zone (the red line).
