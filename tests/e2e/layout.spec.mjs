@@ -141,13 +141,19 @@ test("a tech's bar is the tech app's: Today · Inbox · Time · Pay · Me, no Me
 });
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`the contact page answers a call (${device}): name, town, three numbers, Call · Text · Quote · Book, one page of sections`, async () => {
+  test(`the contact page answers a call (${device}): Flyra's top (name, since, rows, the action bar), the details with three numbers, one page of sections`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, `/contacts/${seeded.contacts.plan}`);
       await f.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
       assert.deepEqual(await f.$$eval(".ct-num dt", (els) => els.map((e) => e.textContent)), ["Balance owed", "Lifetime spend", "Next visit"]);
-      assert.deepEqual(await f.$$eval(".ct-acts > *", (els) => els.map((e) => e.textContent.trim())), ["Call", "Text", "Quote", "Book"]);
+      // Flyra's lead page: the action bar Call · Message · Quote · Book (Mark lost on a lead with an open deal)
+      assert.deepEqual(await f.$$eval(".ct-acts > *", (els) => els.map((e) => e.textContent.trim())), ["Call", "Message", "Quote", "Book"]);
+      assert.match(await f.textContent(".ct-hero .ct-since"), /^Customer since [A-Z][a-z]{2} \d+, \d{4}$/);
+      assert.deepEqual(await f.$$eval(".ct-reach .lb", (els) => els.map((e) => e.textContent)), ["Mobile", "Email", "Address"]);
+      assert.match(await f.textContent("#ct-sum h3"), /Customer details/);
+      assert.equal(await f.isVisible("#top-back"), true, "the round back button");
+      assert.ok((await box(f, "#top-title")).w <= 1, "alone at the top: the name is the page's big title (the h1 stays for screen readers)");
       assert.match(await f.textContent(".ct-hero .ct-plan"), /plan/i, "the plan badge");
       const order = await f.$$eval("#view .ct-sec", (els) => els.map((e) => e.id));
       const want = ["ct-sec-visits", "ct-sec-plan", "ct-sec-docs", "ct-sec-properties", "ct-sec-queued", "ct-sec-mod-sales", "ct-sec-details", "ct-sec-aside", "ct-sec-activity"].filter((x) => order.includes(x));

@@ -157,7 +157,7 @@ async function clockAction(action, ctx) {
 const METRICS = [["collected", "Collected"], ["scheduled", "Scheduled"], ["arr", "ARR"]];
 const PERIOD_NAMES = { week: "This week", month: "This month", "3m": "Last 3 months", year: "This year", custom: "Custom range" };
 // Flyra's short period on the button ("1M ⌄"); the menu says it in words
-const PERIOD_SHORT = { week: "1W", month: "1M", "3m": "3M", year: "YTD", custom: "Custom" };
+const PERIOD_SHORT = { week: "1W", month: "1M", "3m": "3M", year: "1Y", custom: "Custom" };
 const MISSING = {
   "no-key": "Rotor's numbers show here once the office data key is set in Netlify (OFFICE_DATA_KEY).",
   "bad-key": "Rotor's numbers can't be opened with this site's office data key. Re-seal the dashboard snapshot (docs/DASHBOARD.md).",

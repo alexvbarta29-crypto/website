@@ -202,7 +202,7 @@ test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the r
     await shot(page, "home-money-menu-iphone13");
     await f.click('.hm-menu button:text-is("This year")');
     await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /YTD 2026 \$[\d,]+ Avg \/ day \$[\d,]+ Peak month \$[\d,]+/i);
+    assert.match(await text(f, ".hm-c-money"), /1Y 2026 \$[\d,]+ Avg \/ day \$[\d,]+ Peak month \$[\d,]+/i);
     await pickPeriod(f, "Last 3 months");
     assert.match(await text(f, ".hm-c-money"), /3M September – November \$[\d,]+/i);
     await pickPeriod(f, "This week");

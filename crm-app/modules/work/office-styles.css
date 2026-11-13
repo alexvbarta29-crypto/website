@@ -449,9 +449,11 @@
 .wk-lline:first-child{border-top:0}
 .wk-nowline{position:absolute;left:0;right:0;z-index:3;height:2px;margin-top:-1px;background:#e5483a;pointer-events:none}
 .wk-nowdot{position:absolute;right:-6px;z-index:5;width:11px;height:11px;margin-top:-5px;border-radius:50%;background:#e5483a}
-.wk-blk{position:absolute;z-index:1;display:flex;flex-direction:column;gap:1px;min-width:0;padding:5px 7px 5px 9px;overflow:hidden;border-radius:8px;background:color-mix(in srgb,var(--c,#85858d) 16%,var(--card));box-shadow:inset 3px 0 0 var(--c,#85858d),0 1px 2px rgba(18,18,21,.06);color:var(--ink);font:500 12px/1.25 var(--text);text-decoration:none}
-.wk-blk .nm{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.wk-blk .tw,.wk-blk .tm{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-blk{position:absolute;z-index:1;display:flex;flex-direction:column;gap:2px;min-width:0;padding:6px 8px 6px 11px;overflow:hidden;border-radius:10px;background:color-mix(in srgb,var(--c,#85858d) 10%,var(--card-2));border:1px solid var(--card-line);box-shadow:inset 4px 0 0 var(--c,#85858d);color:var(--ink);font:400 12.5px/1.25 var(--text);text-decoration:none}
+.wk-blk .nm{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-blk .nm .pr{font-weight:400;font-size:13px;color:var(--ink-3)}
+.wk-blk .tw,.wk-blk .tm{font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-blk .tm{color:var(--ink-3)}
 .wk-blk .st{display:flex;flex-wrap:wrap;gap:4px}
 .wk-blk .st .pill{height:19px;padding:0 7px;font-size:11px}
 .wk-blk .ft{display:flex;align-items:center;gap:6px;margin-top:auto}
@@ -530,7 +532,10 @@
   .wk-fpill button{display:grid;place-items:center;min-width:44px;height:44px;padding:0 6px;border:0;border-radius:999px;background:none;color:var(--ink);cursor:pointer}
   .wk-fpill button:active{background:var(--fill-2)}
   .wk-fpill svg{width:22px;height:22px;stroke-width:2}
-  .wk-farrows{flex:none;margin-top:6px}
+  .wk-fright{flex:none;display:flex;align-items:center;gap:10px;margin-top:6px}
+  .wk-ftoday{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--ink-2);font:400 18px/1 var(--text);cursor:pointer}
+  .wk-ftoday svg{width:18px;height:18px;color:var(--ink-3)}
+  .wk-ftotal{font-weight:600;color:var(--coral-ink)}
   .wk-farrows button{min-width:46px}
   .wk-ftools button.on{color:var(--coral-ink)}
   .wk-frow2{display:flex;align-items:center;gap:10px}

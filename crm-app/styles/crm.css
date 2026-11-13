@@ -195,7 +195,7 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
   .app.big-top .top-act .btn{border-radius:999px}
   /* Home's own header stands in for the title (the h1 stays for screen readers) */
   .app.own-head .top{min-height:var(--top);background:transparent}
-  .app.own-head .top-title{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:-1px}
+  .app.own-head .top-title{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:-1px}
   .app.own-head .top-rnd,.app.own-head .top-act{display:none}
 }
 /* the + overlay (Flyra's): the screen dims, the things to make stack above

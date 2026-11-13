@@ -261,25 +261,37 @@ function head(s, ctx) {
 // cards). A desk keeps Rotor's head and the segmented views (head above).
 const FLY_VIEWS = [["day:tech", "Day"], ["week", "Week"], ["month", "Month"], ["day:tech*", "Technician"], ["day:sales", "Sales rep"], ["list", "List"], ["3day", "3 Day"]];
 const MONTH_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", day: "numeric" });
-const WEEKDAY_SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+const WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" });
 function flyLabel(s) {
   if (s.view === "day") return s.by === "sales" ? "Sales rep" : "Day";
   return (VIEWS.find(([k]) => k === s.view) || [null, s.view === "tray" ? "To book" : "Month"])[1];
+}
+// "Today", "Tomorrow", "Yesterday", else the weekday (the date is the line under it)
+export function dayTitle(d, t) {
+  if (d === t) return "Today";
+  if (d === addDays(t, 1)) return "Tomorrow";
+  if (d === addDays(t, -1)) return "Yesterday";
+  return WEEKDAY_LONG.format(new Date(d + "T12:00:00Z"));
 }
 function flyHead(s, ctx) {
   const t = todayOf(s);
   const ym = s.view === "month" ? s.cal : s.view === "tray" ? s.month : String(s.date || t).slice(0, 7);
   const mid = new Date((ym || t.slice(0, 7)) + "-15T12:00:00Z");
   const day = s.view === "day" && s.date;
-  const title = day ? (s.date === t ? "Today" : WEEKDAY_SHORT.format(new Date(s.date + "T12:00:00Z"))) : s.view === "tray" ? "To book" : `${MONTH_SHORT.format(mid)} ${String(ym).slice(0, 4)}`;
+  const title = day ? dayTitle(s.date, t) : s.view === "tray" ? "To book" : `${MONTH_SHORT.format(mid)} ${String(ym).slice(0, 4)}`;
   const sub = day ? MONTH_DAY.format(new Date(s.date + "T12:00:00Z")) : "";
+  // the day's total (Flyra's "November 13 · $195"), for someone who sees prices
+  const total = day && prices(ctx) && s.data ? (s.data.visits || []).filter((v) => v.d === s.date && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
+  // back to today (Flyra's "↺ Today") when the screen is somewhere else
+  const away = s.view === "month" ? !!s.cal && s.cal !== t.slice(0, 7) : s.view !== "tray" && !!s.date && s.date !== t;
   const tb = s.view === "month" && s.toBook && s.toBook.month === s.cal ? s.toBook.n : null;
   const step = s.view === "month" ? "data-cal" : s.view === "day" ? "data-day" : s.view === "3day" ? "data-day3" : s.view === "tray" ? null : "data-week";
   const arrows = step ? html`<div class="wk-fpill wk-farrows" role="group" aria-label="Earlier or later">
       <button type="button" ${attrs({ [step]: s.view === "tray" ? null : "-1", "aria-label": "Earlier" })}>${icon("chevleft")}</button><button type="button" ${attrs({ [step]: "1", "aria-label": "Later" })}>${icon("chevright")}</button></div>` : "";
   const label = flyLabel(s);
   return html`<div class="wk-fly">
-    <div class="wk-frow1"><button type="button" class="wk-ftitle" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${title}${sub ? ", " + sub : ""}: pick a month or a day` })}><span class="t">${title}</span>${sub ? html`<span class="s">${sub}</span>` : ""}</button>${arrows}</div>
+    <div class="wk-frow1"><button type="button" class="wk-ftitle" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${title}${sub ? ", " + sub : ""}: pick a month or a day` })}><span class="t">${title}</span>${sub ? html`<span class="s">${sub}${total ? html` · <b class="wk-ftotal num">${money(total).replace(/\.00$/, "")}</b>` : ""}</span>` : ""}</button>
+      <span class="wk-fright">${away ? html`<button type="button" class="wk-ftoday" data-ftoday>${icon("undo")}Today</button>` : ""}${arrows}</span></div>
     <div class="wk-frow2">
       <div class="wk-fmenu-wrap"><button type="button" class="wk-fpill wk-fview" data-vmenu ${attrs({ "aria-haspopup": "true", "aria-expanded": String(!!s.vmenu) })}>${label}${icon("chevdown")}</button>
         ${s.vmenu ? html`<ul class="wk-fmenu" role="menu">${FLY_VIEWS.map(([k, l]) => { const on = k === "day:tech" ? s.view === "day" && s.by !== "sales" && !s.byTech : k === "day:tech*" ? s.view === "day" && s.by !== "sales" && !!s.byTech : k === "day:sales" ? s.view === "day" && s.by === "sales" : s.view === k; return html`<li><button type="button" role="menuitemradio" ${attrs({ "data-fview": k, "aria-checked": String(on) })}><span class="ck" aria-hidden="true">${on ? icon("check") : ""}</span>${l}</button></li>`; })}
@@ -833,6 +845,7 @@ export default {
       if (s.view === "month") { s.cal = s.date ? s.date.slice(0, 7) : null; s.data = null; }
       reload(ctx);
     },
+    "click [data-ftoday]": (e, el, ctx) => { const s = ctx.state; if (s.view === "month") s.cal = null; s.date = null; reload(ctx); },
     "click [data-day3]": (e, el, ctx) => { const s = ctx.state; s.date = addDays(s.date, 3 * Number(el.dataset.day3)); reload(ctx); },
     // a tap anywhere else closes the view menu
     "click": (e, el, ctx) => { if (ctx.state.vmenu && !e.target.closest(".wk-fmenu-wrap")) { ctx.state.vmenu = false; paint(ctx); } },

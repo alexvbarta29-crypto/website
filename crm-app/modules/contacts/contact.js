@@ -33,10 +33,23 @@
 //
 // A technician sees only what the server gives them: the name, the numbers
 // to call and the properties of their visits.
+//
+// The Nov 13 look (Flyra's lead page): a round back button alone on top;
+// the avatar, the name big and "Lead since Nov 12, 2026" (or "Customer
+// since"), an Edit pill; plain rows with grey labels (Mobile with round
+// Message and Call buttons, Email, the Address on two lines with a round
+// Directions button); a satellite view of the property (the map module's
+// keyless aerial, centred on its map point, when there is one and the
+// person may open the map; a street-level photo would need a Google or
+// Apple key: STREET_PHOTO below, not built); Flyra's action bar (Call ·
+// Message · Quote · Book, or Mark lost on a lead with an open deal); then
+// "Lead details" / "Customer details" (the deal's value, the follow-up and
+// its step, the source; the plan, the balance owed and lifetime spend for
+// someone who may see money, the next visit) and the sections as cards.
 
 import { html, icon, sheet, toast, attrs, openExternal, confirmSheet } from "../../core/ui.js";
 import { field, select, readForm, clearErrors, showError, busy } from "../../core/forms.js";
-import { dateShort, dateTime, money, ago, localDate } from "../../core/format.js";
+import { dateShort, dateTime, dateYear, money, ago, localDate } from "../../core/format.js";
 import { pickContact } from "../../core/pickers.js";
 import { directionsUrl } from "../../core/map.js";
 import { has as hasRoute, currentPath } from "../../core/router.js";
@@ -149,7 +162,7 @@ function fromSections(s, ctx) {
   const out = {};
   for (const r of s.secs || []) {
     if (!r.mod || typeof r.mod.header !== "function" || !r.state || r.state.denied) continue;
-    try { Object.assign(out, Object.fromEntries(Object.entries(r.mod.header(r.state, r.ctx) || {}).filter(([, v]) => v))); } catch (e) { /* a section never breaks the header */ }
+    try { Object.assign(out, Object.fromEntries(Object.entries(r.mod.header(r.state, r.ctx) || {}).filter(([, v]) => v !== null && v !== undefined && v !== ""))); } catch (e) { /* a section never breaks the header */ }
   }
   return out;
 }
@@ -173,37 +186,127 @@ export function headerNumbers(s, can, extra = {}) {
   return out;
 }
 
+// A street-level photo of the property (Flyra's Apple Maps look) needs a
+// paid key (Google Street View or Apple MapKit). Not built: an owner who
+// adds one would fill this in (docs/CRM-CONTACTS.md). Until then the page
+// shows the keyless aerial view instead.
+export const STREET_PHOTO = null;
+
+const since = (s) => {
+  const c = s.contact;
+  const st = s.stats && s.stats.contacts;
+  if (c.lifecycle === "customer" || c.lifecycle === "former_customer") return `${c.lifecycle === "customer" ? "Customer" : "Former customer, a customer"} since ${dateYear((st && st.customer_since) || c.created_at)}`;
+  if (c.lifecycle === "lead") return `Lead since ${dateYear(c.created_at)}`;
+  return c.created_at ? `Added ${dateYear(c.created_at)}` : "";
+};
+const two = (a) => (a ? [[a.street1, a.street2].filter(Boolean).join(", "), [a.city, [a.state, a.zip].filter(Boolean).join(", ")].filter(Boolean).join(", ")].filter(Boolean) : []);
+
 function header(s, ctx) {
   const c = s.contact;
   const id = encodeURIComponent(c.id);
   const ph = (c.phones || []).find((p) => p.primary) || (c.phones || [])[0];
   const em = (c.emails || []).find((e) => e.primary) || (c.emails || [])[0];
   const prop = (s.properties || []).find((p) => p.id === c.primary_property_id) || (s.properties || [])[0];
-  const where = prop ? addressLine(prop.address) : addressLine(c.billing_address);
+  const addr = prop ? prop.address : c.billing_address;
+  const where = addressLine(addr);
   const flags = c.flags || {};
   const facts = s.tech ? {} : fromSections(s, ctx);
   const plan = facts.plan || ((s.stats && s.stats.plans && (s.stats.plans.active_plan_ids || []).length) ? "On a plan" : "");
-  const act = (label, ic, a) => html`<a ${a}>${icon(ic)}<span>${label}</span></a>`;
+  const act = (label, ic, a, cls = "") => html`<a ${a} ${attrs({ class: cls || null })}>${icon(ic)}<span>${label}</span></a>`;
   const off = (label, ic) => html`<span aria-disabled="true">${icon(ic)}<span>${label}</span></span>`;
   const acts = [
-    ph ? act("Call", "phone", attrs({ href: telHref(ph.e164) })) : off("Call", "phone"),
-    ph && ph.sms !== false ? act("Text", "text", attrs({ href: smsHref(ph.e164) })) : off("Text", "text"),
+    ph ? act("Call", "call", attrs({ href: telHref(ph.e164) })) : off("Call", "call"),
+    ph && ph.sms !== false ? act("Message", "chat", attrs({ href: smsHref(ph.e164) })) : off("Message", "chat"),
   ];
-  if (!s.tech && ctx.can("quotes:write") && hasRoute("/quotes/new/" + id)) acts.push(act("Quote", "doc", attrs({ href: "#/quotes/new/" + id })));
-  if (!s.tech && ctx.can("schedule:write") && hasRoute("/jobs/new/" + id)) acts.push(act("Book", "schedule", attrs({ href: "#/jobs/new/" + id })));
+  if (!s.tech && ctx.can("quotes:write") && hasRoute("/quotes/new/" + id)) acts.push(act("Quote", "clipboard", attrs({ href: "#/quotes/new/" + id })));
+  // a lead with an open deal: Flyra's Mark lost (the deal's own screen asks why); anyone else: Book
+  if (!s.tech && c.lifecycle === "lead" && facts.deal_id && ctx.can("sales:work")) acts.push(act("Mark lost", "close", attrs({ href: "#/deals/" + encodeURIComponent(facts.deal_id) }), "lost"));
+  else if (!s.tech && ctx.can("schedule:write") && hasRoute("/jobs/new/" + id)) acts.push(act("Book", "schedule", attrs({ href: "#/jobs/new/" + id })));
   if (acts.length < 4) acts.push(em ? act("Email", "mail", attrs({ href: mailHref(em.address) })) : off("Email", "mail"));
   if (acts.length < 4) acts.push(where ? act("Directions", "map", openExternal(directionsUrl(where))) : off("Directions", "map"));
-  const nums = s.tech ? [] : headerNumbers(s, ctx.can, facts);
-  const t = town(s);
+  const lines = two(addr);
+  const geo = prop && prop.geo && Number.isFinite(prop.geo.lat) && Number.isFinite(prop.geo.lng) ? prop.geo : null;
+  const photo = !s.tech && geo && ctx.can("canvass:use") && hasRoute("/map");
   return html`<section class="card ct-hero" id="ct-hero" aria-label="${c.display_name || "Contact"}">
     <div class="ct-id">${avatar(c.display_name)}<div class="who">
       <h2>${c.display_name || "No name"}</h2>
-      ${t ? html`<p class="ct-town">${t}</p>` : ""}
-      <div class="pills">${plan ? html`<span class="pill ct-plan">${icon("schedule")}${plan}</span>` : ""}${c.lifecycle ? lifecyclePill(c.lifecycle) : ""}${flags.vip ? html`<span class="pill ink">VIP</span>` : ""}${flags.test ? html`<span class="pill blue">Test contact</span>` : ""}${flags.do_not_service ? html`<span class="pill red">Do not service</span>` : ""}</div>
-    </div></div>
-    ${nums.length ? html`<dl class="ct-nums">${nums.map((n) => html`<div class="${"ct-num" + (n.bad ? " bad" : "")}" ${attrs({ "data-num": n.key })}><dt>${n.label}</dt><dd class="num">${n.value}</dd></div>`)}</dl>` : ""}
+      ${since(s) ? html`<p class="ct-since">${since(s)}</p>` : ""}
+      <div class="pills">${plan ? html`<span class="pill ct-plan">${icon("schedule")}${plan}</span>` : ""}${c.lifecycle && c.lifecycle !== "lead" && c.lifecycle !== "customer" ? lifecyclePill(c.lifecycle) : ""}${flags.vip ? html`<span class="pill ink">VIP</span>` : ""}${flags.test ? html`<span class="pill blue">Test contact</span>` : ""}${flags.do_not_service ? html`<span class="pill red">Do not service</span>` : ""}</div>
+    </div>${!s.tech && ctx.can("contacts:write") ? html`<a class="ct-edit" href="${"#/contacts/" + id + "/edit"}">Edit</a>` : ""}</div>
+    <div class="ct-reach">
+      ${ph ? html`<div class="ct-rrow"><div class="v"><span class="lb">${ph.label && ph.label !== "mobile" ? ph.label[0].toUpperCase() + ph.label.slice(1) : "Mobile"}</span><span class="num">${phoneText(ph.e164)}</span></div>
+        <span class="ct-rbtns">${ph.sms !== false ? html`<a class="rnd" ${attrs({ href: smsHref(ph.e164), "aria-label": `Text ${c.display_name || ""}` })}>${icon("chat")}</a>` : ""}<a class="rnd" ${attrs({ href: telHref(ph.e164), "aria-label": `Call ${c.display_name || ""}` })}>${icon("call")}</a></span></div>` : ""}
+      ${em ? html`<div class="ct-rrow"><div class="v"><span class="lb">Email</span><a class="ct-rlink" ${attrs({ href: mailHref(em.address) })}>${em.address}</a></div></div>` : ""}
+      ${lines.length ? html`<div class="ct-rrow"><div class="v"><span class="lb">Address</span><span>${lines[0]}</span>${lines[1] ? html`<span class="sub">${lines[1]}</span>` : ""}</div>
+        <span class="ct-rbtns"><a class="rnd" ${openExternal(directionsUrl(geo || where))} ${attrs({ "aria-label": "Directions" })}>${icon("route")}</a></span></div>` : ""}
+    </div>
+    ${photo ? html`<div class="ct-photo" ${attrs({ "data-photo": `${geo.lat},${geo.lng}`, role: "img", "aria-label": `Satellite view of ${lines[0] || "the property"}` })}><span class="ct-photo-l">Satellite</span></div>` : ""}
     <div class="ct-acts">${acts}</div>
   </section>`;
+}
+
+// "Lead details" / "Customer details" (Flyra's card): label and value rows.
+function summary(s, ctx) {
+  if (s.tech) return "";
+  const c = s.contact;
+  const facts = fromSections(s, ctx);
+  const lead = c.lifecycle === "lead";
+  // (a lead's money is all "-": its card keeps the deal, the follow-up and the next visit)
+  const nums = headerNumbers(s, ctx.can, facts).filter((n) => !lead || n.key === "next");
+  const src = (c.source && c.source.source) || "";
+  const rows = [];
+  if (lead) {
+    if (ctx.can("sales:work")) rows.push(["Value", facts.deal_value === undefined || facts.deal_value === null ? "-" : money(facts.deal_value).replace(/\.00$/, "")], ["Pipeline", facts.pipeline || "-"], ["Stage", facts.stage || "New"]);
+  } else if (facts.plan) rows.push(["Plan", facts.plan]);
+  return html`<section class="card ct-sum" id="ct-sum" aria-labelledby="ct-sum-h">
+    <div class="ct-card-h"><h3 id="ct-sum-h">${lead ? "Lead details" : "Customer details"}</h3>${ctx.can("contacts:write") ? html`<a class="ct-edit" href="${"#/contacts/" + encodeURIComponent(c.id) + "/edit"}">Edit</a>` : ""}</div>
+    <dl class="ct-rows">${rows.map(([k, v]) => html`<div class="ct-drow"><dt>${k}</dt><dd>${v}</dd></div>`)}
+      ${nums.map((n) => html`<div class="${"ct-num" + (n.bad ? " bad" : "")}" ${attrs({ "data-num": n.key })}><dt>${n.label}</dt><dd class="num">${n.value}</dd></div>`)}
+      <div class="ct-drow"><dt>Source</dt><dd>${src || "Not known"}</dd></div></dl>
+  </section>`;
+}
+
+// The property's satellite view (the map module's aerial tiles, keyless by
+// default: USGS). The tiles are fetched (the CSP lets the map's hosts in
+// connect-src) and shown as blob: images, so nothing else is allowed in.
+let aerialP = null;
+const aerialOf = (ctx) => (aerialP || (aerialP = ctx.api("/map/knock").then((r) => (r.data && r.data.sources && r.data.sources.aerial) || null).catch(() => { aerialP = null; return null; })));
+async function paintPhoto(el, ctx) {
+  if (!el || el.dataset.painted) return;
+  el.dataset.painted = "1";
+  const [lat, lng] = el.dataset.photo.split(",").map(Number);
+  const a = await aerialOf(ctx);
+  if (!a || !a.tiles || typeof fetch !== "function") { el.remove(); return; }
+  const z = Math.min(Number(a.maxzoom) || 16, 18);
+  const n = 2 ** z;
+  const r = (lat * Math.PI) / 180;
+  const wx = ((lng + 180) / 360) * n * 256;
+  const wy = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n * 256;
+  const scale = z >= 18 ? 1 : 2;
+  const W = el.clientWidth || 360, H = el.clientHeight || 190;
+  const x0 = wx - W / scale / 2, y0 = wy - H / scale / 2;
+  const urls = [];
+  let ok = 0;
+  const jobs = [];
+  for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W / scale) / 256); tx++) {
+    for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H / scale) / 256); ty++) {
+      const url = a.tiles.replace("{z}", z).replace("{x}", tx).replace("{y}", ty);
+      jobs.push(fetch(url, { credentials: "omit" }).then((res) => (res.ok ? res.blob() : null)).then((b) => {
+        if (!b || !el.isConnected) return;
+        const u = URL.createObjectURL(b);
+        urls.push(u);
+        const img = document.createElement("img");
+        img.alt = "";
+        img.src = u;
+        img.style.cssText = `left:${Math.round((tx * 256 - x0) * scale)}px;top:${Math.round((ty * 256 - y0) * scale)}px;width:${256 * scale}px;height:${256 * scale}px`;
+        el.prepend(img);
+        ok++;
+      }).catch(() => {}));
+    }
+  }
+  await Promise.all(jobs);
+  if (!ok && el.isConnected) el.remove();
+  setTimeout(() => urls.forEach((u) => URL.revokeObjectURL(u)), 60000);
 }
 
 // ------------------------------------------------------------ the sections
@@ -488,6 +591,7 @@ export default {
     return html`<div class="${"stack ct-page" + (s.tech ? " tech" : "")}">
       ${s.offline ? html`<div class="note">Offline: this is the last copy on this phone.</div>` : ""}
       ${header(s, ctx)}
+      ${summary(s, ctx)}
       <div class="ct-cols"><div class="ct-main">${main}</div>${aside ? html`<div class="ct-aside">${aside}</div>` : ""}</div>
       ${!s.tech && s.contact.updated_at ? html`<p class="foot-note">Changed ${ago(s.contact.updated_at)}</p>` : ""}
     </div>`;
@@ -500,6 +604,7 @@ export default {
       if (!s.tech) loadActivity(ctx);
     }
     clipLists(view, ctx);
+    paintPhoto(view.querySelector(".ct-photo[data-photo]"), ctx);
     // an old tab link: to its section, once it's there
     if (s.jump && !s.jumped) {
       const r = (s.secs || []).find((x) => x.key === s.jump);
