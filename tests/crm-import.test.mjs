@@ -493,8 +493,8 @@ test("a malformed office cookie is just signed out (401), never a crash", async 
   assert.equal(readCookie(new Request(URL_, { headers: { cookie: "a=b; barta_office=abc%20d" } })), "abc d", "good values still decode");
 });
 
-test("the repo holds no customer data: netlify/data has only the dashboard snapshot, and the seal script refuses to write inside the repo", () => {
-  assert.deepEqual(readdirSync("netlify/data"), ["office-dashboard.sealed.mjs"]);
+test("the repo holds no customer data: netlify/data has only the two sealed files (dashboard snapshot, office password check), and the seal script refuses to write inside the repo", () => {
+  assert.deepEqual(readdirSync("netlify/data"), ["office-dashboard.sealed.mjs", "office-password.sealed.mjs"]);
   assert.equal(existsSync("netlify/data/crm-import.sealed.mjs"), false);
   // The guard, with symlinks and not-yet-existing folders in mind.
   assert.equal(insideRepo(path.join(ROOT, "netlify/data/crm-import.sealed.json")), true);
@@ -515,7 +515,7 @@ test("the repo holds no customer data: netlify/data has only the dashboard snaps
     assert.equal(refused.status, 2);
     assert.match(refused.stderr, /inside the repo/);
     assert.equal(existsSync("netlify/data/crm-import.sealed.json"), false);
-    assert.deepEqual(readdirSync("netlify/data"), ["office-dashboard.sealed.mjs"]);
+    assert.deepEqual(readdirSync("netlify/data").sort(), ["office-dashboard.sealed.mjs", "office-password.sealed.mjs"]);
     const noOut = run(tmp);
     assert.equal(noOut.status, 2);
     assert.match(noOut.stderr, /usage/);

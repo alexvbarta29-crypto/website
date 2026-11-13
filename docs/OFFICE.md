@@ -170,6 +170,8 @@ not `/office` once the CRM has owners. Changing the password signs every
 office cookie out, the sign-in's too. The dashboards' admin key
 (`REFERRAL_ADMIN_KEY`) still works on its own too.
 
+**Changing the office password without Netlify:** `OFFICE_NEW_PASSWORD='...' node build/office_password.mjs` seals the new password's check to the office key into `netlify/data/office-password.sealed.mjs` (the repo is public; only the site's server, holding `OFFICE_DATA_KEY`, can open it, so nobody can test guesses offline). Order: `OFFICE_PASSWORD` in Netlify if set, else the sealed check, else the built-in digest. Commit and deploy; every office cookie (and every CRM-issued one) then signs out once.
+
 Not linked from the site and never indexed. To add a tool, add it to `TOOLS`
 in `office-page.mjs`; to add a dashboard view, add it to `VIEWS` and to the
 views in `netlify/lib/dashboard-page.mjs`.

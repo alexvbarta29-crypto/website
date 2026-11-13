@@ -20,7 +20,7 @@
 //                                               --exclude-ref, every commit of B
 //
 // It fails (exit 1) on:
-//   - anything in netlify/data/ except office-dashboard.sealed.mjs; any .jsonl or *.sealed.json
+//   - anything in netlify/data/ except office-dashboard.sealed.mjs and office-password.sealed.mjs (both sealed to the office key); any .jsonl or *.sealed.json
 //     file, also compressed (.jsonl.gz); spreadsheets and archives (.csv .tsv .xlsx .xls .numbers
 //     .ods .zip .gz .7z ...) outside assets/ unless EXPORT_FILES_ALLOWED names them
 //   - a phone number outside 555 and the business's own numbers ((763) 314-3400, (763) 309-9790,
@@ -44,7 +44,7 @@ import { fileURLToPath } from "node:url";
 // The folders design §12.5 names. The scan now reads every text file in the
 // repository, these included (a customer list saved anywhere must fail).
 export const SCAN_DIRS = ["netlify", "crm-app", "tests", "docs", "build"];
-export const DATA_DIR_ALLOWED = ["office-dashboard.sealed.mjs"];
+export const DATA_DIR_ALLOWED = ["office-dashboard.sealed.mjs", "office-password.sealed.mjs"];
 // Exact repo-relative paths of spreadsheets or archives that are allowed
 // (none today; a synthetic fixture would be added here by name).
 export const EXPORT_FILES_ALLOWED = [];

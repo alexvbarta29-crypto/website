@@ -23,6 +23,8 @@
 import { pbkdf2Sync, createHash, createHmac, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
 import { keySalt } from "./crm/core/context.mjs";
 import { nowMs } from "./crm/core/clock.mjs";
+import { open, privateKey } from "./office-data.mjs";
+import SEALED_PW from "../data/office-password.sealed.mjs";
 
 const SALT = "barta-light-studio-v1";
 const ITERATIONS = 210000;
@@ -35,10 +37,32 @@ export const derive = (pw) => pbkdf2Sync(String(pw), SALT, ITERATIONS, 32, "sha2
 export const sha256 = (s) => createHash("sha256").update(String(s)).digest("hex");
 export const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
+// The office password's check, in order: the OFFICE_PASSWORD env var; else the
+// sealed one (netlify/data/office-password.sealed.mjs, written by
+// build/office_password.mjs: the repo is public, so the check is committed
+// ENCRYPTED to the office key and only the site's server, holding
+// OFFICE_DATA_KEY, can open it; nobody can try guesses against it offline);
+// else the built-in digest above.
 let envCache = null;
+let sealedCache = null; // { key, check }
+function sealedCheck(env = process.env) {
+  if (!SEALED_PW || !SEALED_PW.data) return null;
+  const raw = String(env.OFFICE_DATA_KEY || "");
+  if (sealedCache && sealedCache.key === raw) return sealedCache.check;
+  let check = null;
+  const key = privateKey(env);
+  if (key && key !== "bad") {
+    try {
+      const got = open(SEALED_PW, key);
+      if (got && /^[0-9a-f]{64}$/.test(String(got.check || ""))) check = got.check;
+    } catch { check = null; }
+  }
+  sealedCache = { key: raw, check };
+  return check;
+}
 export function expected() {
   const pw = String(process.env.OFFICE_PASSWORD || "");
-  if (!pw) return DEFAULT_CHECK;
+  if (!pw) return sealedCheck() || DEFAULT_CHECK;
   if (!envCache || envCache.pw !== pw) envCache = { pw, check: sha256(derive(pw)) };
   return envCache.check;
 }
