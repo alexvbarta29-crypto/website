@@ -40,129 +40,86 @@ test("office-kit: slot text, windows, ranges, lines read back", () => {
   assert.equal(kit.readLines(form([li("", "20", "1")])).error.message, "Line 1 needs a name.");
 });
 
-test("Schedule: day (visits and tasks in time order, warnings, faces), week grid, list, the tray; escaped", async () => {
+test("Schedule: Day as a column per person (Unassigned first, done of all, money, done struck through, unpaid $, the time line), Sales rep, 3 Day, week, list, the tray; escaped", async () => {
   const sch = await load("office-schedule");
   const data = {
-    visits: [vrow(), vrow({ id: "vs_00000000000000000002", s: "13:00", e: "14:00", w: { t: "exact", m: 0 }, a: [] }), vrow({ id: "vs_00000000000000000003", s: "10:30", e: "11:30", st: "cancelled" })],
+    visits: [
+      vrow({ amt: 29500 }), vrow({ id: "vs_00000000000000000002", s: "13:00", e: "14:00", w: { t: "exact", m: 0 }, a: [] }), vrow({ id: "vs_00000000000000000003", s: "10:30", e: "11:30", st: "cancelled" }),
+      vrow({ id: "vs_00000000000000000004", s: "10:00", e: "12:00", a: [U2], st: "completed", amt: 41000, pd: 0, cn: "Done Customer" }),
+      vrow({ id: "vs_00000000000000000005", s: "14:00", e: "16:00", a: [U2], st: "completed", amt: 10000, pd: 1, cn: "Paid Customer" }),
+    ],
     tasks: [{ id: "tk_00000000000000000001", kind: "estimate_visit", title: `Estimate ${XSS}`, date: "2026-11-24", start: "11:00", end: "12:00", a: [U1], cn: "Sam Sample" }],
-    warnings: { vs_00000000000000000001: [{ code: "time_off", message: "Theo is off." }] }, stale: false,
+    warnings: { vs_00000000000000000001: [{ code: "time_off", message: "Theo is off." }] }, stale: false, hours: { 2: ["08:00", "18:00"] },
+    sales: [{ id: "tk_00000000000000000002", kind: "call", title: "Call back", date: "2026-11-24", start: "09:30", end: "10:00", a: [U1], cn: "Lee Sample" }, { id: "tk_00000000000000000003", kind: "estimate_visit", title: "Estimate", date: "2026-11-24", start: "13:00", end: "14:00", a: [], cn: "" }],
   };
-  const s = { view: "day", date: "2026-11-24", tech: null, month: "2026-11", users, data, tray: null };
+  const s = { view: "day", by: "tech", date: "2026-11-24", today: "2026-11-24", nowMin: 12 * 60, tech: null, month: "2026-11", users, data, tray: null, cards: { name: true, service: true, price: true, address: false, hideCancelled: false } };
   const h = text(sch.render(s, ctx()));
   assert.ok(!h.includes("<script>alert(1)"), "escaped");
+  assert.match(h, /aria-selected="true"[^>]*>Day</, "Day lit");
+  for (const v of ["Month", "List", "Day", "3 Day", "Week"]) assert.match(h, new RegExp(`role="tab"[^>]*>${v}<`), v);
+  assert.match(h, /data-sday="2026-11-22"[\s\S]*data-sday="2026-11-28"/, "the week strip, Sunday first");
+  assert.match(h, /class="wk-sday today sel"[^>]*data-sday="2026-11-24"/, "today chosen, in the coral circle");
+  assert.ok(h.indexOf("Unassigned") < h.indexOf("Theo Tech") && h.indexOf("Theo Tech") < h.indexOf("Tess"), "Unassigned first, then each person");
+  assert.match(h, /title="0 of 1 visit done">0\/1</, "Theo: done of all");
+  assert.match(h, /title="2 of 2 visits done">2\/2</, "Tess: both done");
+  assert.match(h, /\$510 \/ \$510/, "Tess's money: done of all");
+  assert.match(h, /\$0 \/ \$295/, "Theo's money");
   assert.match(h, /href="#\/visits\/vs_00000000000000000001"/);
-  assert.match(h, /href="#\/tasks\/tk_00000000000000000001"/);
-  assert.ok(h.indexOf("vs_00000000000000000001") < h.indexOf("vs_00000000000000000003") && h.indexOf("vs_00000000000000000003") < h.indexOf("tk_00000000000000000001") && h.indexOf("tk_00000000000000000001") < h.indexOf("vs_00000000000000000002"), "in time order");
-  assert.match(h, /title="Theo is off\."/, "the warning");
-  assert.match(h, /Nobody yet/, "an unassigned visit says so");
-  assert.match(h, /2 visits/, "cancelled visits don't count");
+  assert.doesNotMatch(h, /vs_00000000000000000003/, "cancelled visits are left out of the columns");
+  assert.match(h, /class="wk-blk done"[^>]*href="#\/visits\/vs_00000000000000000004"[\s\S]*?class="wk-unpaid"/, "done and not paid: the red $");
+  const paid = h.slice(h.indexOf("vs_00000000000000000005"), h.indexOf("vs_00000000000000000005") + 1200);
+  assert.doesNotMatch(paid.split("</a>")[0], /wk-unpaid/, "done and paid: no $");
+  assert.match(h, /class="wk-nowline" style="top:240px"/, "the red line at noon (8 AM is the top, 60 px an hour)");
+  assert.match(h, /title="Theo is off\."/, "the warning on its block");
+  assert.match(h, /href="#\/tasks\/tk_00000000000000000001"/, "timed tasks on their person's column");
   assert.match(h, /href="#\/schedule\/move-day\?date=2026-11-24"/);
-  // one tech: their route
+  assert.match(h, /href="#\/schedule\/time-off"/);
+  assert.match(h, /data-by="tech" aria-pressed="true">Technician/);
+  // no prices: no money in the heads or on the blocks
+  const quiet = text(sch.render(s, ctx(["schedule:read", "schedule:write"])));
+  assert.doesNotMatch(quiet, /\$295|\$510|wk-unpaid/);
+  // one person (the Who button): their column only, their route, and a chip to show everyone
   const one = text(sch.render({ ...s, tech: U1 }, ctx()));
   assert.match(one, /href="#\/schedule\/route\/2026-11-24\/us_0000000000000000000t"/);
-  assert.doesNotMatch(one, /vs_00000000000000000002/, "only their visits");
+  assert.doesNotMatch(one, /vs_00000000000000000002|Unassigned/, "only their visits");
+  assert.match(one, /data-tech="" aria-label="Showing Theo: show everyone"/);
+  // the cards show what the gear says
+  const bare = text(sch.render({ ...s, cards: { name: false, service: true, price: false, address: true, hideCancelled: false } }, ctx()));
+  assert.doesNotMatch(bare.split("wk-cols")[1], /class="nm">Pat /, "no customer name on the cards");
+  assert.match(bare, /class="nm">Exterior window cleaning</, "the service leads instead");
+  assert.match(bare, /1 Example Ave, Delano/, "the address");
+  assert.doesNotMatch(bare, /<b class="num">\$295<\/b>/, "no price on the cards");
+  // Sales rep: the sales side's appointments by person (Unassigned first)
+  const sales = text(sch.render({ ...s, by: "sales" }, ctx()));
+  assert.match(sales, /data-by="sales" aria-pressed="true">Sales rep/);
+  assert.match(sales, /href="#\/tasks\/tk_00000000000000000002"[^>]*>[\s\S]*Lee Sample[\s\S]*Call/);
+  assert.match(sales, /href="#\/tasks\/tk_00000000000000000003"/);
+  assert.doesNotMatch(sales, /href="#\/visits\//, "no visits in the sales columns");
+  // 3 Day: three days, the heads open a day
+  const three = text(sch.render({ ...s, view: "3day", data: { ...data, visits: [...data.visits, vrow({ id: "vs_00000000000000000009", d: "2026-11-26", cn: "Later Customer" })] } }, ctx()));
+  assert.match(three, /data-goday="2026-11-24"[\s\S]*data-goday="2026-11-25"[\s\S]*data-goday="2026-11-26"/);
+  assert.match(three, /class="wk-sday today sel"[^>]*data-sday="2026-11-24"[\s\S]*class="wk-sday span"[^>]*data-sday="2026-11-25"/, "the three days marked on the strip");
+  assert.match(three, /vs_00000000000000000009/);
   const wk = text(sch.render({ ...s, view: "week", data: { ...data, visits: [vrow({ d: "2026-11-23" }), vrow({ d: "2026-11-24" }), vrow({ d: "2026-11-24", a: [U2] })] } }, ctx()));
   assert.match(wk, /data-goday="2026-11-24" data-gotech="us_0000000000000000000t"/);
+  assert.match(wk, /Sun, Nov 22 – Sat, Nov 28/, "a week starts on Sunday, as the month");
   assert.ok(!wk.includes("<script>alert(1)"));
+  const list = text(sch.render({ ...s, view: "list", data: { ...data, from: "2026-11-24" } }, ctx()));
+  assert.match(list, /data-sday="2026-11-24"/, "the strip on List");
+  assert.match(list, /class="row wk-visit[^"]*" href="#\/visits\/vs_00000000000000000001" data-vopen=/);
+  const hidden = text(sch.render({ ...s, view: "list", cards: { ...s.cards, hideCancelled: true }, data: { ...data, from: "2026-11-24" } }, ctx()));
+  assert.doesNotMatch(hidden, /vs_00000000000000000003/, "Hide cancelled jobs");
+  assert.match(list, /vs_00000000000000000003/);
   const tray = text(sch.render({ ...s, view: "tray", tray: { month: "2026-11", jobs: [{ id: "jb_00000000000000000009", n: "S-000009", cn: `Lee ${XSS}`, t: "Lights takedown", k: "lights_takedown", tm: "2026-11" }], later: 3 } }, ctx()));
   assert.match(tray, /data-book="jb_00000000000000000009"/);
   assert.match(tray, /Lights takedown \(no charge\)/);
   assert.match(tray, /3 more jobs due after November 2026/);
   assert.ok(!tray.includes("<script>alert(1)"));
   assert.match(text(sch.render({ denied: true }, ctx())), /Your day is on Today[\s\S]*href="#\/today"/);
-  assert.equal(sch.action(s, { ...ctx(), go: () => {} }).label, "Book", "the top button books; Time off sits with the day's buttons");
-  assert.match(h, /href="#\/schedule\/time-off"/);
-});
-
-test("Schedule: Month is the default; the grid (Sunday first, chips in the team's colors, +N more, today and the chosen day) and the chosen day's list; picking a day never reads again", async () => {
-  const sch = await load("office-schedule");
-  const M = await import("../../../crm-app/modules/work/office-schedule.js");
-  // the grid agrees with the server's range (monthGridRange in office-schedule.mjs)
-  const SRV = await import("../../../netlify/lib/crm/modules/work/office-schedule.mjs");
-  for (const ym of ["2026-02", "2026-08", "2026-11", "2026-12", "2027-03"]) {
-    const g = M.monthGrid(ym);
-    assert.deepEqual([g.start, g.end], SRV.monthGridRange(ym), ym);
-    assert.equal(g.days.length % 7, 0);
-    assert.equal(new Date(g.start + "T12:00:00Z").getUTCDay(), 0, "Sunday first");
-  }
-  assert.deepEqual([M.shortTime("08:00"), M.shortTime("12:30"), M.shortTime("13:00"), M.shortTime("00:15")], ["8a", "12:30p", "1p", "12:15a"]);
-  assert.deepEqual([M.shortName("Alex Workday"), M.shortName("Cher"), M.shortName("")], ["Alex W.", "Cher", "Customer"]);
-  assert.equal(M.panelDay("2026-11-12"), "Thursday, Nov 12");
-
-  // the default view, and the one read: the month with job totals (the server's today chosen)
-  const calls = [];
-  const api = async (path) => { calls.push(path); if (path === "/users") return { data: users }; return { data: { from: "2026-11-01", to: "2026-12-05", month: "2026-11", today: "2026-11-17", visits: [], tasks: [], warnings: {} } }; };
-  globalThis.location = { hash: "#/schedule" };
-  const c0 = { ...ctx(), api, keep: {} };
-  const s0 = await sch.load({}, c0);
-  assert.equal(s0.view, "month", "Month when nothing is kept");
-  assert.deepEqual(calls.filter((x) => x.startsWith("/schedule")), ["/schedule?month=now&amounts=1"], "one read for the whole grid");
-  assert.deepEqual([s0.cal, s0.date, s0.today], ["2026-11", "2026-11-17", "2026-11-17"]);
-  // old links keep their view; ?date= alone opens the month on that day
-  globalThis.location = { hash: "#/schedule?view=day&date=2026-11-24" };
-  assert.equal((await sch.load({}, { ...ctx(), api, keep: {} })).view, "day");
-  globalThis.location = { hash: "#/schedule?date=2026-11-24" };
-  const s1 = await sch.load({}, { ...ctx(), api, keep: {} });
-  assert.deepEqual([s1.view, s1.date, s1.cal], ["month", "2026-11-24", "2026-11"]);
-  delete globalThis.location;
-
-  const many = ["08:00", "09:00", "10:00", "11:00", "13:00"].map((st, i) => vrow({ id: `vs_0000000000000000010${i}`, d: "2026-11-12", s: st, e: "10:00", a: [i % 2 ? U2 : U1], amt: 30000 + i * 100, cn: i ? `Casey Sample${i}` : `Pat ${XSS}`, ad: "1 Example Ave, Delano", st: i === 3 ? "cancelled" : i === 4 ? "completed" : "scheduled" }));
-  const data = { kind: "month", from: "2026-11-01", to: "2026-12-05", month: "2026-11", today: "2026-11-17",
-    visits: [...many, vrow({ id: "vs_00000000000000000200", d: "2026-12-03", cn: "Drew Trailing" }), vrow({ id: "vs_00000000000000000201", d: "2026-11-17", cn: "Toni Today", a: [U2] })],
-    tasks: [{ id: "tk_00000000000000000009", kind: "estimate_visit", title: "Estimate", date: "2026-11-12", start: "15:00", end: "16:00", a: [U1] }], warnings: {} };
-  const s = { view: "month", cal: "2026-11", date: "2026-11-12", today: "2026-11-17", tech: null, month: "2026-11", users, data, tray: null };
-  const h = text(sch.render(s, ctx()));
-  assert.ok(!h.includes("<script>alert(1)"), "escaped");
-  assert.equal((h.match(/data-mday="/g) || []).length, 35, "five weeks of November 2026");
-  assert.match(h, /aria-selected="true"[^>]*>Month</, "Month lit");
-  assert.match(h, /November 2026/);
-  assert.match(h, /data-mday="2026-11-12" aria-pressed="true"/, "the chosen day");
-  assert.match(h, /class="wk-mday today[^"]*"[^>]*data-mday="2026-11-17"[^>]*aria-current="date"/, "today marked");
-  assert.match(h, /class="wk-mday out[^"]*"[^>]*data-mday="2026-12-03"/, "the trailing days are muted");
-  assert.match(h, /<b class="num">8a<\/b> Pat /, "a chip: time and short name");
-  assert.match(h, /style="--c:#2563eb"/, "in the tech's color");
-  assert.match(h, /\+4 more/, "six things on the 12th: two chips, then +4 more");
-  // the day's list: time window, name, address, service, people, status, amount; tasks too; open the day, book that day
-  assert.match(h, /Thursday, Nov 12<span class="wk-dayp-n"> · 4 visits, 1 task/, "the head (a cancelled visit doesn't count)");
-  for (const v of many) assert.match(h, new RegExp(`class="wk-drow[^"]*" href="#/visits/${v.id}"`));
-  assert.match(h, /<b>8:00 AM<\/b><small>to 10:00 AM<\/small>/);
-  assert.match(h, /1 Example Ave, Delano/);
-  assert.match(h, /Exterior window cleaning/);
-  assert.match(h, /\$300<\/b>/, "the amount, for people who may see prices");
-  assert.match(h, /class="wk-drow dead"/);
-  assert.match(h, /class="wk-drow done"/);
-  assert.match(h, /href="#\/tasks\/tk_00000000000000000009"/);
-  assert.match(h, /data-goday="2026-11-12" data-gotech=""/, "Open day");
-  assert.match(h, /href="#\/jobs\/new\?book=1&amp;date=2026-11-12"/, "Book that day");
-  const noMoney = text(sch.render(s, ctx(["schedule:read"])));
-  assert.doesNotMatch(noMoney, /\$300/, "no amounts without visits:prices");
-  assert.doesNotMatch(noMoney, /book=1/, "no Book without schedule:write");
-  // one tech: their chips and list, and their route
-  const one = text(sch.render({ ...s, tech: U2 }, ctx()));
-  assert.doesNotMatch(one, /vs_00000000000000000100"/);
-  assert.match(one, /href="#\/schedule\/route\/2026-11-12\/us_0000000000000000000u"/);
-  // an empty day: a calm empty state
-  const empty = text(sch.render({ ...s, date: "2026-11-14" }, ctx()));
-  assert.match(empty, /Nothing booked/);
-  assert.match(empty, /No visits on Sat, Nov 14\./);
-
-  // picking a day inside the grid repaints without a read; the arrow keys move it and turn the month at its edge
-  let painted = 0;
-  const reads = [];
-  const c1 = { ...ctx(), state: { ...s }, keep: {}, rerender: () => { painted += 1; }, api: async (path) => { reads.push(path); return { data: { ...data, from: "2026-11-29", to: "2027-01-02", month: "2026-12", visits: [] } }; } };
-  sch.events["click [data-mday]"]({}, { dataset: { mday: "2026-11-30" } }, c1);
-  sch.events["click [data-mday]"]({}, { dataset: { mday: "2026-12-04" } }, c1);
-  assert.deepEqual([painted, reads.length, c1.state.date, c1.keep.date], [2, 0, "2026-12-04", "2026-12-04"], "no read inside the grid");
-  const key = (k, d) => sch.events["keydown [data-mday]"]({ key: k, preventDefault() {} }, { dataset: { mday: d } }, c1);
-  key("ArrowLeft", "2026-12-04");
-  assert.deepEqual([c1.state.date, reads.length], ["2026-12-03", 0]);
-  key("ArrowUp", "2026-11-05");
-  assert.equal(c1.state.date, "2026-10-29");
-  await new Promise((ok) => setTimeout(ok, 0));
-  assert.deepEqual(reads, ["/schedule?month=2026-10&amounts=1"], "past the grid: the month before is read");
-  // a read that failed (no signal): a retry, never a broken screen
-  const failed = text(sch.render({ ...s, data: null }, ctx()));
-  assert.match(failed, /The schedule didn't load[\s\S]*data-view="month"[^>]*>Try again/);
+  assert.equal(sch.action(s, { ...ctx(), go: () => {} }).label, "Book", "the top button books");
+  // the head: the month to pick, and the round buttons
+  for (const b of ["data-mpick", "data-search", "data-mapday", "data-jump", "data-filter", "data-cards"]) assert.match(h, new RegExp(b), b);
+  assert.match(h, /<span class="short">Nov<\/span>/);
 });
 
 test("Visit: the office's view (buttons by what the server allows, texts sent or would-send) and visitActions", async () => {

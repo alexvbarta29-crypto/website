@@ -17,6 +17,9 @@
 //                                 miles, never placing a visit after one
 //                                 whose arrival window ends earlier
 //   scheduleRange(...)            visits, timed tasks and time off for days
+//   capacityOf(from, to, env)     how many visits each day can take (the
+//                                 crew's number, less whoever is off; 0
+//                                 when closed), for the month's fill bars
 
 import { readIndex, getRecords, getSetting } from "../../../crm-store.mjs";
 import { DEFAULT_HOURS, DEFAULT_CALENDAR, isHoliday, thanksgiving, dowOfDate, addLocalDays, localDate, localTime, isLocalDate, zonedToUtc } from "../../core/clock.mjs";
@@ -127,6 +130,28 @@ export function taskSlot(row) {
   const date = localDate(s);
   const endDate = localDate(e);
   return { id: row.id, kind: row.k, title: row.t || "", date, start: localTime(s), end: endDate === date ? localTime(e) : "23:59", a: row.a || [], c: row.c || null, cn: row.cn || "" };
+}
+
+// The Day view's "Sales rep" columns: open sales tasks with a time on
+// from..to (estimate visits, meetings, calls and follow-ups to make, and
+// personal blocks), as { id, kind, title, date, start, end, a, c, cn, pr,
+// do }. A call or follow-up with no end takes 30 minutes; one due at
+// midnight has no real time (do: true, "anytime that day").
+export const SALES_KINDS = Object.freeze(["estimate_visit", "meeting", "call", "follow_up", "personal"]);
+export function salesSlots(rows = [], from, to) {
+  const out = [];
+  for (const r of rows) {
+    if (!r || !SALES_KINDS.includes(r.k) || !r.due) continue;
+    const s = new Date(r.due);
+    if (!Number.isFinite(s.getTime())) continue;
+    const date = localDate(s);
+    if (date < from || date > to) continue;
+    const start = localTime(s);
+    const e = r.end ? new Date(r.end) : null;
+    const end = e && Number.isFinite(e.getTime()) && e > s ? (localDate(e) === date ? localTime(e) : "23:59") : fromMin(Math.min(23 * 60 + 59, toMin(start) + 30));
+    out.push({ id: r.id, kind: r.k, title: r.t || "", date, start, end, a: r.a || [], c: r.c || null, cn: r.cn || "", pr: r.pr || null, ...(start === "00:00" && !r.end ? { do: true } : {}) });
+  }
+  return out.sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start));
 }
 
 // Warnings for a slot (never blocking): [{ code, user_id?, ref?, message }].
@@ -257,6 +282,46 @@ export function routeOrder(stops = [], base = null) {
   return { order, no_geo: noGeo, miles: Math.round(miles * 10) / 10 };
 }
 
+// ------------------------------------------------------------ how full a day is
+
+// The people a day's capacity counts: active technicians.
+export const crewOf = (userRows = []) => userRows.filter((u) => u && u.is_technician && (u.status === undefined || u.status === "active")).map((u) => u.id);
+
+// Who is off for a whole working day: an all-day time off, or one that
+// covers the day's hours (an "available" exception never counts).
+export function offOn(date, timeOff = [], hours = DEFAULT_HOURS, calendar = DEFAULT_CALENDAR) {
+  const span = hoursOn(date, hours, calendar);
+  if (!span) return [];
+  const open = zonedToUtc(date, span[0]).getTime(), close = zonedToUtc(date, span[1]).getTime();
+  const out = new Set();
+  for (const t of timeOff || []) {
+    if (!t || t.av || !t.uid) continue;
+    const s = Date.parse(t.s), e = t.e ? Date.parse(t.e) : Infinity;
+    if (Number.isFinite(s) && s <= open && e >= close) out.add(t.uid);
+  }
+  return [...out];
+}
+
+// How many visits each day of from..to can take: { per_day, per_person,
+// days: { date: n }, off: { date: [user ids] } }. per_day is the crew's
+// number (cfg/work.visits_per_day); a closed day or a holiday takes 0; a
+// day someone on the crew is off takes their share less (the crew's
+// number times the share still working, rounded). per_person (one
+// person's share, at least 1) is what the bar measures when the schedule
+// shows one person.
+export function capacityOf(from, to, { perDay = 8, crew = [], timeOff = [], hours = DEFAULT_HOURS, calendar = DEFAULT_CALENDAR } = {}) {
+  const n = Math.max(1, Math.round(Number(perDay) || 8));
+  const size = crew.length;
+  const out = { per_day: n, per_person: Math.max(1, Math.round(n / Math.max(1, size))), days: {}, off: {} };
+  for (let d = from, guard = 0; d <= to && guard < 62; d = addLocalDays(d, 1), guard++) {
+    if (!hoursOn(d, hours, calendar)) { out.days[d] = 0; continue; }
+    const off = size ? offOn(d, timeOff, hours, calendar).filter((u) => crew.includes(u)) : [];
+    if (off.length) out.off[d] = off;
+    out.days[d] = size ? Math.round((n * (size - off.length)) / size) : n;
+  }
+  return out;
+}
+
 // ------------------------------------------------------------ reads
 
 export const MAX_RANGE_DAYS = 42;
@@ -309,7 +374,8 @@ export async function calendarEnv(opts = {}) {
 
 // Everything the schedule shows for a range of days, with each visit's
 // warnings. users: user ids to keep (empty = everyone).
-export async function scheduleRange({ from, to, users = [] }, opts = {}) {
+// sales: also the sales tasks with a time (salesSlots), from the same read.
+export async function scheduleRange({ from, to, users = [], sales = false }, opts = {}) {
   checkRange(from, to);
   const [{ rows, stale }, tasksIx, offIx, env] = await Promise.all([visitRows(from, to, opts), readIndex("tasks/open", "", opts), readIndex("time-off", "", opts), calendarEnv(opts)]);
   const want = (a) => !users.length || (a || []).some((u) => users.includes(u));
@@ -328,22 +394,46 @@ export async function scheduleRange({ from, to, users = [] }, opts = {}) {
     const w = slotWarnings({ date: v.d, start: v.s, end: v.e, assignee_ids: v.a || [], visit_id: v.id }, { visits: byDay.get(v.d) || [], tasks: tasks.filter((t) => t.date === v.d), timeOff, users: userMap, ...env });
     if (w.length) warnings[v.id] = w;
   }
-  return { visits, tasks, time_off: timeOff, warnings, stale, hours: env.hours, calendar: env.calendar };
+  return { visits, tasks, time_off: timeOff, warnings, stale, hours: env.hours, calendar: env.calendar, ...(sales ? { sales: salesSlots(tasksIx.rows, from, to).filter((t) => !users.length || want(t.a)) } : {}) };
 }
 
 // Each visit's job total as `amt` in cents (the month view's day list, for
 // people who may see prices), from the jobs index only: open jobs and the
 // years closed jobs are filed under (the range's years up to this one).
 // A no-charge job, or one with no row yet, gets no amount.
-export async function withAmounts(visits, { from, to, today }, opts = {}) {
+// openRows: the jobs/open rows when the caller already read them.
+export async function withAmounts(visits, { from, to, today, openRows }, opts = {}) {
   const want = new Set(visits.map((v) => v.j).filter(Boolean));
   if (!want.size) return visits;
   const thisYear = String(today).slice(0, 4);
   const years = [...new Set([from.slice(0, 4), to.slice(0, 4), thisYear])].filter((y) => y <= thisYear);
-  const shards = await Promise.all(["open", ...years].map((s) => readIndex("jobs", s, opts)));
+  const shards = await Promise.all([...(openRows ? [] : ["open"]), ...years].map((s) => readIndex("jobs", s, opts)));
+  if (openRows) shards.push({ rows: openRows });
   const tot = new Map();
   for (const s of shards) for (const r of s.rows) if (want.has(r.id) && r.bill !== false && Number.isFinite(r.tot) && r.tot > 0) tot.set(r.id, r.tot);
   return visits.map((v) => (tot.has(v.j) ? { ...v, amt: tot.get(v.j) } : v));
+}
+
+// Paid or not for each finished visit with an amount (the Day view's red
+// $): `pd` 1 when its job's invoice is paid, 0 when one is still owed or
+// none was made yet. Read from Money's invoices index (open, and the years
+// closed ones are filed under); without Money there are no rows and no marks.
+export async function withPaid(visits, { today }, opts = {}) {
+  const done = visits.filter((v) => v.st === "completed" && v.amt > 0 && v.j);
+  if (!done.length) return visits;
+  const want = new Set(done.map((v) => v.j));
+  const thisYear = String(today).slice(0, 4);
+  const years = [...new Set([...done.map((v) => String(v.d).slice(0, 4)), thisYear])].filter((y) => /^\d{4}$/.test(y) && y <= thisYear);
+  const shards = await Promise.all(["open", ...years].map((sh) => readIndex("invoices", sh, opts).catch(() => ({ rows: [] }))));
+  const state = new Map();
+  for (const sh of shards) {
+    for (const r of sh.rows || []) {
+      if (!r || !r.j || !want.has(r.j) || ["void", "uncollectible"].includes(r.st)) continue;
+      if (["draft", "open"].includes(r.st) && (r.bal || 0) > 0) state.set(r.j, "due");
+      else if (r.st === "paid" && state.get(r.j) !== "due") state.set(r.j, "paid");
+    }
+  }
+  return visits.map((v) => (v.st === "completed" && v.amt > 0 && v.j ? { ...v, pd: state.get(v.j) === "paid" ? 1 : 0 } : v));
 }
 
 // Warnings and hints for one proposed slot (the schedule sheet asks while you pick).

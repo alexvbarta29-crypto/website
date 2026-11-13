@@ -49,6 +49,11 @@ function validateWork(v) {
   num("default_duration_min", 15, 720);
   num("confirm_skip_within_days", 0, 14);
   num("late_cancel_hours", 0, 168);
+  num("visits_per_day", 1, 60);
+  if (src.weather !== undefined) {
+    if (typeof src.weather !== "boolean") throw new InputError("Yes or no.", "weather");
+    out.weather = src.weather;
+  }
   for (const k of ["clock_flag_at", "clock_autoclose_at"]) {
     if (src[k] === undefined) continue;
     if (!isLocalTime(src[k])) throw new InputError("Use a time like 19:00.", k);
