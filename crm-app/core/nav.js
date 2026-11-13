@@ -246,6 +246,8 @@ export function update(path) {
   const big = atRoot || (!active && st.more.some((n) => n.path === path));
   const app = document.getElementById("app");
   if (app) app.classList.toggle("big-top", big);
+  // the office's Home brings its own header (the avatar, Welcome back, the bell): the bar's title steps aside on a phone
+  if (app) app.classList.toggle("own-head", path === "/today" && !st.tabs.some((t) => t.key === "today"));
   drawRound(active || (big ? { key: placeOf(path) } : null), big);
   let fab = document.getElementById("fab");
   const creates = quickCreates(st.creates, st.can);

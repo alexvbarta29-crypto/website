@@ -787,7 +787,9 @@ open tasks). The cards' own reads: `GET /home/money?metric=&period=&from=
   bold title on the left and round white buttons on the right: search on
   a tab's own screens, and a coral + for that place's own "new" (a
   customer, a job, a text, a lead, a quote, a plan, an invoice). Deeper
-  screens keep the back arrow. Screens shown this way: **Customers** as
+  screens keep the back arrow. The office's Home has its own header (the
+  avatar, Welcome back, the bell), so on a phone the bar's title steps
+  aside there (`.own-head`; the h1 stays for screen readers). Screens shown this way: **Customers** as
   cards (docs/CRM-CONTACTS.md), **Messages** (the Inbox, docs/CRM-COMMS.md),
   **Visits** (docs/CRM-WORK.md), **Leaderboard** and **My performance**
   (docs/CRM-REPORTS.md).
