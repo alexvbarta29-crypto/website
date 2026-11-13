@@ -13,6 +13,13 @@
 //   which locks for 1 hour after 20 failures in an hour.
 // - Per IP: thr/ip/{sha256(ip + daily salt)}/: 30 failures in an hour and
 //   that IP is refused for an hour.
+// - The office password (one shared secret, so guesses from many addresses
+//   add up): a check made with `office: true` (lib/office-password.mjs, every
+//   place that takes the office password) also counts in thr/office/, 40
+//   failures in an hour from anywhere and every office-password check is
+//   refused for an hour. 40 is above one address's 30, so a single address
+//   alone never trips it. A good password writes no ok marker there: the
+//   failures only age out.
 //
 // Every counted failure is its own small blob, {bucket}/f-{tsKey}-{rand}
 // (a fresh key, so failures landing at the same moment from 30 function
@@ -41,6 +48,9 @@ export const NEW_LOCK_MS = 60 * 60 * 1000;
 export const IP_WINDOW_MS = 60 * 60 * 1000;
 export const IP_LIMIT = 30;
 export const IP_LOCK_MS = 60 * 60 * 1000;
+export const OFFICE_WINDOW_MS = 60 * 60 * 1000;
+export const OFFICE_LIMIT = 40;
+export const OFFICE_LOCK_MS = 60 * 60 * 1000;
 // Older failures can't change a bucket's state (a window plus its lock).
 export const LOOKBACK_MS = 2 * 60 * 60 * 1000 + 60 * 1000;
 
@@ -55,6 +65,7 @@ export const loginKey = (login) => {
 };
 // Bucket prefixes (each ends in "/": one bucket never lists another).
 export const loginBucketKey = (login, device) => `thr/login/${loginKey(login)}--${device || "new"}/`;
+export const OFFICE_BUCKET = "thr/office/";
 export const ipBucketKey = (ip, salt = keySalt() || "dev-only") => `thr/ip/${sha(`${ip}|${localDate(new Date(nowMs()))}|${salt}`).slice(0, 32)}/`;
 
 // The delay after `fails` failures inside the window (0 = none yet).
@@ -78,6 +89,7 @@ const lockStep = (windowMs, limit, lockMs) => (b, t) => {
 };
 const newStep = lockStep(NEW_WINDOW_MS, NEW_LIMIT, NEW_LOCK_MS);
 const ipStep = lockStep(IP_WINDOW_MS, IP_LIMIT, IP_LOCK_MS);
+const officeStep = lockStep(OFFICE_WINDOW_MS, OFFICE_LIMIT, OFFICE_LOCK_MS);
 
 const KEY_RE = /\/(f|ok)-(\d{8}t\d{9}z)(?:-[a-z0-9]+)?$/;
 
@@ -102,10 +114,17 @@ export function bucketState(keys, step, t = nowMs()) {
 
 const waitOf = (b, t) => (b && b.next > t ? b.next - t : 0);
 
-// → { ok: true } | { ok: false, retry_after_s, why: "login" | "ip" }
-export async function checkThrottle({ login, device, ip }, opts = {}) {
+// → { ok: true } | { ok: false, retry_after_s, why: "office" | "ip" | "login" }
+// `office: true` adds the office password's global bucket.
+export async function checkThrottle({ login, device, ip, office = false }, opts = {}) {
   const t = nowMs();
-  const [lk, ik] = await Promise.all([listKeys(loginBucketKey(login, device), {}, opts), listKeys(ipBucketKey(ip), {}, opts)]);
+  const [lk, ik, ok] = await Promise.all([
+    listKeys(loginBucketKey(login, device), {}, opts),
+    listKeys(ipBucketKey(ip), {}, opts),
+    office ? listKeys(OFFICE_BUCKET, {}, opts) : [],
+  ]);
+  const officeWait = office ? waitOf(bucketState(ok, officeStep, t), t) : 0;
+  if (officeWait > 0) return { ok: false, retry_after_s: Math.ceil(officeWait / 1000), why: "office" };
   const ipWait = waitOf(bucketState(ik, ipStep, t), t);
   if (ipWait > 0) return { ok: false, retry_after_s: Math.ceil(ipWait / 1000), why: "ip" };
   const loginWait = waitOf(bucketState(lk, device ? deviceStep : newStep, t), t);
@@ -115,14 +134,16 @@ export async function checkThrottle({ login, device, ip }, opts = {}) {
 
 const mark = (prefix, kind, t) => `${prefix}${kind}-${tsKey(new Date(t))}${kind === "f" ? "-" + randomBytes(5).toString("hex") : ""}`;
 
-// Counts one failed sign-in against the login/device and the IP: one new
-// blob each, so parallel failures never overwrite each other.
-export async function recordFailure({ login, device, ip }, opts = {}) {
+// Counts one failed sign-in against the login/device and the IP (and, with
+// `office: true`, the office password's global bucket): one new blob each,
+// so parallel failures never overwrite each other.
+export async function recordFailure({ login, device, ip, office = false }, opts = {}) {
   const t = nowMs();
   const at = new Date(t).toISOString();
   await Promise.all([
     putRaw(mark(loginBucketKey(login, device), "f", t), { at }, {}, opts),
     putRaw(mark(ipBucketKey(ip), "f", t), { at }, {}, opts),
+    ...(office ? [putRaw(mark(OFFICE_BUCKET, "f", t), { at }, {}, opts)] : []),
   ]);
 }
 

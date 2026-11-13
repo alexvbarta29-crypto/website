@@ -1,8 +1,14 @@
 // /playbook — the password-protected office follow-up playbook.
-import { test } from "node:test";
+import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
 process.env.OFFICE_PASSWORD = "test-password";
+// The password form is throttled in the CRM's store (lib/office-password.mjs):
+// every test runs on fresh memory stores with the clock pinned.
+const { crmTest } = await import("./helpers/crm-http.mjs");
+let t;
+beforeEach(async () => { t = await crmTest(); });
+afterEach(() => { t.done(); t = null; });
 const playbook = (await import("../netlify/functions/playbook.mjs")).default;
 
 const get = (cookie) => playbook(new Request("https://x.test/playbook", { headers: cookie ? { cookie } : {} }));

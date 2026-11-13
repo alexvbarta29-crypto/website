@@ -15,7 +15,8 @@
 // is exactly the built-in one.
 
 import { PLAYBOOK_HTML } from "../lib/playbook-page.mjs";
-import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor, toOffice } from "../lib/playbook-auth.mjs";
+import { ONE_YEAR, readCookie, signedIn, cookieFor, toOffice } from "../lib/playbook-auth.mjs";
+import { officePasswordForm, tooManyText, DOWN_TEXT } from "../lib/office-password.mjs";
 
 export const config = { path: ["/playbook", "/playbook/"] };
 
@@ -80,15 +81,17 @@ export default async (req, context) => {
   if (req.method === "POST") {
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
-    const check = expected();
-    if (!check) return html(loginPage("The playbook isn't set up yet: add OFFICE_PASSWORD in Netlify."), 503);
-    const token = pw ? derive(pw) : "";
-    if (token && same(sha256(token), check)) {
+    // Throttled like the office's own form, and refused (never unthrottled)
+    // while the CRM's storage can't count the tries (lib/office-password.mjs).
+    const r = await officePasswordForm(req, context, pw, { requestId: "playbook" });
+    if (r.ok) {
       return new Response(null, {
         status: 303,
-        headers: { ...baseHeaders, Location: "/playbook", "Set-Cookie": cookieFor(token, ONE_YEAR) },
+        headers: { ...baseHeaders, Location: "/playbook", "Set-Cookie": cookieFor(r.token, ONE_YEAR) },
       });
     }
+    if (r.status === 429) return html(loginPage(tooManyText(r.retry_after_s)), 429, { "Retry-After": String(r.retry_after_s) });
+    if (r.status === 503) return html(loginPage(DOWN_TEXT), 503);
     return html(loginPage("That password isn't right. Try again."), 401);
   }
   if (req.method !== "GET" && req.method !== "HEAD") {

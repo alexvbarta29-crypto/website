@@ -1,8 +1,14 @@
 // /lights — the password-protected Barta Light Studio page.
-import { test } from "node:test";
+import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
 process.env.OFFICE_PASSWORD = "test-password";
+// The password form is throttled in the CRM's store (lib/office-password.mjs):
+// every test runs on fresh memory stores with the clock pinned.
+const { crmTest } = await import("./helpers/crm-http.mjs");
+let t;
+beforeEach(async () => { t = await crmTest(); });
+afterEach(() => { t.done(); t = null; });
 const lights = (await import("../netlify/functions/lights.mjs")).default;
 
 const get = (cookie) => lights(new Request("https://x.test/lights", { headers: cookie ? { cookie } : {} }));
