@@ -124,6 +124,9 @@ export default {
         <button type="submit" class="btn dark block">Change password</button>
       </form>
 
+      ${u.role !== "tech" ? html`<div class="section-h">Home</div>
+      <ul class="list"><li><a class="row" href="#/today?edit=1">${icon("home")}<span class="who"><span class="nm">Edit Home</span><span class="sub">Pick your cards and their order</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li></ul>` : ""}
+
       <div class="section-h">Notifications</div>
       <form class="card form" id="notify-form">
         <p class="small">They always show under the bell on Today. Tick the ones you also want on your phone.</p>

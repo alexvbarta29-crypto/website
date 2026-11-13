@@ -2,11 +2,12 @@
 
 **One app: the CRM.** With a CRM sign-in (or the office password before the
 first owner exists, to set it up) `/office` is the CRM, full screen, with no
-tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): two
-things, the owner's choice, today's schedule (who goes where, what's
-done) and the money this month (collected so far, against last year, one
-chart per week). The office's bar is Home · Schedule · Customers · Sales ·
-Menu; on a computer (900 px and up) the same app has a sidebar of every
+tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): Rotor's
+phone Home with the best of Flyra's, as cards each person picks with Edit
+Home: Clock in, Money (Collected, Scheduled or ARR over a period) and
+Today (the day's, week's or month's visits and tasks without a due date)
+by default, and a Leaderboard, Inbox, Tasks and Goals to add. The office's
+bar is Home · Schedule · Customers · Sales · Menu; on a computer (900 px and up) the same app has a sidebar of every
 section, a search box and a New button. The full dashboards (Overview,
 Money, Sales, Plans, Jobs, switched in place) open from the money card's
 "See more" and Menu → Admin → Dashboard, and the office tools are in Menu → Office

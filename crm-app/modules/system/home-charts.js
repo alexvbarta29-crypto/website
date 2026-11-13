@@ -1,25 +1,22 @@
-// Home's one chart (collected per week this month), drawn in the CRM
-// itself. The dataviz rules: one series in coral (#fb4d3d, the house
-// color), columns at most 24 px wide with 4 px rounded tops on one
-// baseline, hairline solid gridlines, three clean ticks, labels in ink
-// (never in the series color), x labels that never collide, and a readout
-// above the plot that follows a tap, a drag, the pointer or the arrow keys
-// (the latest week with money to start with). A slot whose value is null
-// (a week still ahead) keeps its place and label but draws nothing and is
-// never read out. Every value is also in a table for screen readers.
+// Home's one chart (the Money card: collected or scheduled as a running
+// total over a period, ARR as its level each day), drawn in the CRM itself. One series in coral (#fb4d3d, the house
+// color) as a 2 px smooth line with a faint wash under it, a light dashed
+// grid (the owner's pick), three or four clean ticks, a few x labels that
+// never collide, labels in ink (never in the series color), and a readout
+// above the plot with a marker that follows a tap, a drag, the pointer or
+// the arrow keys (the latest point to start with). A null value (a day
+// still ahead) breaks the line and is never read out. Every value is also
+// in a table for screen readers (srTable).
 //
-//   const c = columns(el, { rows, value: (r) => r.value, fmt, axis, read })
+//   const c = lineChart(el, { rows, value: (r) => r.value, fmt, axis, read, readout, start? })
 //   c.destroy()
 //
-// rows [{ key, label, ... }]; fmt(v) → "$4,320" (the readout), axis(v) →
-// "$4K" (the ticks); read(row) → the readout's second line. Drawn at the
-// element's own size (its CSS height, else spec.height) and again whenever
-// that changes (a ResizeObserver), so text never scales.
+// rows [{ key, label, value|null }]; fmt(v) → "$4,320" (the readout),
+// axis(v) → "$4K" (the ticks); read(row) → the readout's second line. Drawn
+// at the element's own size (its CSS height, else spec.height) and again
+// whenever that changes (a ResizeObserver), so text never scales.
 
 import { html, render } from "../../core/ui.js";
-
-// Colors live in home.css (.hc-cur coral, the selected column a step
-// darker, hairline gridlines, ink-3 labels).
 
 // 0 and up to three clean steps (1, 2, 2.5 or 5 × 10^k) whose top is the
 // least headroom over the data: 22,700 → 0, 10K, 20K, 30K; 16 → 0, 10, 20.
@@ -41,63 +38,84 @@ export function ticks(max, { whole = false } = {}) {
   return Array.from({ length: best.n + 1 }, (_, i) => Math.round(best.step * i * 1000) / 1000);
 }
 
-// A column with a rounded data end, square at the baseline.
-function colPath(x, y, w, base) {
-  const h = base - y;
-  if (h <= 0.5) return "";
-  const r = Math.min(4, w / 2, h);
-  return `M${x},${base}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${base}Z`;
-}
 const fix = (n) => Math.round(n * 10) / 10;
 
-export function columns(el, spec) {
+// A smooth path through points (monotone cubic: it never overshoots, so a
+// day of $0 never dips below the baseline).
+export function smoothPath(pts) {
+  if (!pts.length) return "";
+  if (pts.length === 1) return `M${fix(pts[0][0])},${fix(pts[0][1])}`;
+  const n = pts.length;
+  const dx = [], m = [], t = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = pts[i + 1][0] - pts[i][0]; m[i] = (pts[i + 1][1] - pts[i][1]) / (dx[i] || 1); }
+  t[0] = m[0]; t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (3 * (dx[i - 1] + dx[i])) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]);
+  let d = `M${fix(pts[0][0])},${fix(pts[0][1])}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3;
+    d += `C${fix(pts[i][0] + h)},${fix(pts[i][1] + h * t[i])} ${fix(pts[i + 1][0] - h)},${fix(pts[i + 1][1] - h * t[i + 1])} ${fix(pts[i + 1][0])},${fix(pts[i + 1][1])}`;
+  }
+  return d;
+}
+
+export function lineChart(el, spec) {
   const rows = spec.rows || [];
   const value = spec.value || ((r) => r.value);
   const has = (i) => i >= 0 && i < rows.length && value(rows[i]) !== null && value(rows[i]) !== undefined;
   const filled = rows.map((_, i) => i).filter(has);
-  let sel = filled.length ? filled[filled.length - 1] : -1;
-  let width = 0, height = 0;
+  // today's point when the period has one (scheduled runs past today), else the latest
+  const start = spec.start ? rows.findIndex((r) => r.key === spec.start) : -1;
+  let sel = has(start) ? start : filled.length ? filled[filled.length - 1] : -1;
+  let width = 0, height = 0, geo = null;
   const readEl = spec.readout || null;
 
   function draw() {
-    const W = Math.max(120, Math.floor(el.clientWidth));
+    const W = Math.max(160, Math.floor(el.clientWidth));
     width = el.clientWidth;
     height = el.clientHeight;
-    const H = Math.max(80, Math.floor(el.clientHeight) || spec.height || 128);
-    const top = 6, band = 22;
-    const max = Math.max(0, ...filled.map((i) => value(rows[i]) || 0));
+    const H = Math.max(100, Math.floor(el.clientHeight) || spec.height || 160);
+    const top = 8, band = 22;
+    const vals = filled.map((i) => value(rows[i]));
+    const max = Math.max(0, ...vals);
     const tk = ticks(max, { whole: !!spec.whole });
     const top1 = tk[tk.length - 1];
-    const gutter = Math.max(...tk.map((v) => spec.axis(v).length)) * 6.4 + 8;
-    const x0 = gutter, x1 = W, y1 = H - band;
-    const y = (v) => y1 - ((v || 0) / top1) * (y1 - top);
-    const n = Math.max(1, rows.length);
-    const slot = (x1 - x0) / n;
-    const bw = Math.min(24, slot * 0.56);
-    const labelW = Math.max(...rows.map((r) => String(r.label).length)) * 6 + 8;
-    const every = Math.max(1, Math.ceil(labelW / slot));
-    const bars = rows.map((r, i) => {
-      const cx = x0 + slot * i + slot / 2;
-      return { i, cx, b: has(i) ? colPath(fix(cx - bw / 2), fix(y(value(r))), fix(bw), y1) : "" };
-    });
+    const gutter = Math.max(...tk.map((v) => spec.axis(v).length)) * 6.4 + 10;
+    const x0 = gutter, x1 = W - 4, y1 = H - band;
+    const n = rows.length;
+    const x = (i) => (n <= 1 ? (x0 + x1) / 2 : x0 + ((x1 - x0) * i) / (n - 1));
+    const y = (v) => y1 - (Math.max(0, v || 0) / top1) * (y1 - top);
+    // runs of points with values (a null breaks the line)
+    const runs = [];
+    let cur = [];
+    rows.forEach((r, i) => { if (has(i)) cur.push([x(i), y(value(r))]); else if (cur.length) { runs.push(cur); cur = []; } });
+    if (cur.length) runs.push(cur);
+    const lines = runs.map((p) => smoothPath(p));
+    const areas = runs.filter((p) => p.length > 1).map((p) => `${smoothPath(p)}L${fix(p[p.length - 1][0])},${y1}L${fix(p[0][0])},${y1}Z`);
+    // x labels: as many as fit (about 52 px each), evenly spaced, the last one kept
+    const fit = Math.max(2, Math.floor((x1 - x0) / 56));
+    const every = Math.max(1, Math.ceil(n / fit));
+    const labels = rows.map((r, i) => i).filter((i) => i % every === 0);
     render(el, html`<svg class="hc-svg" width="${W}" height="${H}" viewBox="${`0 0 ${W} ${H}`}" aria-hidden="true">
       ${tk.map((v) => html`<line class="${v === 0 ? "hc-base" : "hc-grid"}" x1="${x0}" x2="${x1}" y1="${fix(y(v)) + 0.5}" y2="${fix(y(v)) + 0.5}"/>
         <text class="hc-t" x="0" y="${fix(y(v) + 3.5)}">${spec.axis(v)}</text>`)}
-      ${bars.map((b) => html`<g class="${"hc-col" + (b.i === sel ? " on" : "")}" data-i="${b.i}">${b.b ? html`<path class="hc-cur" d="${b.b}"/>` : ""}</g>`)}
-      ${bars.filter((b) => (n - 1 - b.i) % every === 0).map((b) => html`<text class="${"hc-t" + (has(b.i) ? "" : " hc-ahead")}" x="${fix(Math.min(Math.max(b.cx, x0 + labelW / 2 - 4), W - labelW / 2 + 4))}" y="${H - 6}" text-anchor="middle">${rows[b.i].label}</text>`)}
+      ${areas.map((d) => html`<path class="hc-area" d="${d}"/>`)}
+      ${lines.map((d) => html`<path class="hc-line" d="${d}"/>`)}
+      <line class="hc-cross" x1="0" x2="0" y1="${top}" y2="${y1}" visibility="hidden"/>
+      <circle class="hc-dot" r="4.5" cx="0" cy="0" visibility="hidden"/>
+      ${labels.map((i) => html`<text class="hc-t" x="${fix(Math.min(Math.max(x(i), x0 + 18), W - 22))}" y="${H - 6}" text-anchor="middle">${rows[i].label}</text>`)}
     </svg>`);
-    el.dataset.x0 = String(x0);
-    el.dataset.slot = String(slot);
+    geo = { x, y, x0, x1, n };
   }
 
-  // the nearest slot with a value (a tap on a week still ahead reads the latest one)
-  const nearest = (i) => filled.reduce((best, j) => (best < 0 || Math.abs(j - i) < Math.abs(best - i) ? j : best), -1);
   function show(i) {
-    if (!filled.length) return;
-    sel = has(i) ? i : nearest(i);
-    el.querySelectorAll(".hc-col").forEach((g) => g.classList.toggle("on", Number(g.dataset.i) === sel));
+    if (!filled.length || !geo) return;
+    sel = has(i) ? i : filled.reduce((b, j) => (b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b), -1);
+    const r = rows[sel];
+    const cx = fix(geo.x(sel)), cy = fix(geo.y(value(r)));
+    const cross = el.querySelector(".hc-cross"), dot = el.querySelector(".hc-dot");
+    if (cross) { cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible"); }
+    if (dot) { dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("visibility", "visible"); }
     if (readEl) {
-      const r = rows[sel];
       const b = readEl.querySelector("b");
       const s = readEl.querySelector("span");
       if (b) b.textContent = spec.fmt(value(r) || 0);
@@ -105,13 +123,12 @@ export function columns(el, spec) {
     }
   }
   const step = (d) => { const k = filled.indexOf(sel) + d; if (k >= 0 && k < filled.length) show(filled[k]); };
-
   const at = (e) => {
+    if (!geo) return sel;
     const box = el.getBoundingClientRect();
-    const x = e.clientX - box.left - Number(el.dataset.x0 || 0);
-    return Math.floor(x / Number(el.dataset.slot || 1));
+    const px = e.clientX - box.left;
+    return geo.n <= 1 ? 0 : Math.round(((px - geo.x0) / (geo.x1 - geo.x0)) * (geo.n - 1));
   };
-  // a tap or a drag on a phone, the pointer on a desk
   const onPointer = (e) => show(at(e));
   const onKey = (e) => {
     if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
@@ -131,6 +148,23 @@ export function columns(el, spec) {
     redraw,
     destroy() { if (ro) ro.disconnect(); el.removeEventListener("pointerdown", onPointer); el.removeEventListener("pointermove", onPointer); el.removeEventListener("keydown", onKey); },
   };
+}
+
+// The running total of a period's buckets (the Money card's Collected and
+// Scheduled lines climb to the big number, so a partial week or day never
+// reads as a crash). Each point keeps its own amount as `own`; a bucket
+// with no value (still ahead) stays a gap. What the period's total holds
+// beyond its buckets (Rotor's days before the period's first Monday) is
+// folded into the first point, so the line ends at the total.
+export function cumulative(points, total = null) {
+  const sum = (points || []).reduce((a, p) => a + (p.value === null || p.value === undefined ? 0 : p.value), 0);
+  const lead = total !== null && total !== undefined && total - sum > 0 ? total - sum : 0;
+  let run = lead;
+  return (points || []).map((p) => {
+    if (p.value === null || p.value === undefined) return { ...p, own: null, value: null };
+    run += p.value;
+    return { ...p, own: p.value, value: run };
+  });
 }
 
 // A hidden table of every value (screen readers; the chart itself is aria-hidden).

@@ -207,13 +207,9 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
   const { p, page, f } = await open("olive", "iphonese");
   const problems = [];
   try {
-    // an owner who goes out on visits: My visits and the clock on Home, and they work there (the card's own buttons)
-    await f.waitForSelector(".hm-extra .tf-clock");
-    assert.match(await f.textContent("#view"), /My visits/);
-    await f.click(".hm-extra [data-day]:nth-child(3)");
-    await f.waitForFunction(() => /Tomorrow, /.test((document.querySelector(".hm-extra .tf-dayline") || {}).textContent || ""));
-    await f.click(".hm-extra [data-day]:nth-child(2)");
-    await f.waitForFunction(() => /Today, /.test((document.querySelector(".hm-extra .tf-dayline") || {}).textContent || ""));
+    // an owner who goes out on visits: the clock on Home (Home's Clock in card; the day itself is on Time and the Schedule)
+    await f.waitForSelector('.hm-c-clock [data-hm="clock"]');
+    assert.match(await f.textContent(".hm-c-clock"), /Timesheet/i);
     await checks(f, page, "field-owner-today-iphonese", problems);
     // the Menu has Time, Pay and Timesheets (Work)
     await f.click('#tabs [data-tab="menu"]');
