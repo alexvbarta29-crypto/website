@@ -28,8 +28,9 @@ import {
   createJobs, createVisit, changeVisit, cancelJob, reopenJob, completeJob, syncJob, liveContact, placeOf, W, workSettings, typesOfLines, refreshVisits,
 } from "./office.mjs";
 import { titleFromLines } from "./types.mjs";
-import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows, monthGridRange, withAmounts } from "./office-schedule.mjs";
+import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows, monthGridRange, withAmounts, withPaid, capacityOf, crewOf } from "./office-schedule.mjs";
 import { moveDayPreview, moveDayConfirm, runView } from "./office-moveday.mjs";
+import { scheduleWeather } from "./weather.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
 const view = (r) => { if (!r) return r; const { _w, _etag, ...rest } = r; return rest; };
@@ -110,6 +111,13 @@ async function activeUsers(ids) {
 // view's whole grid in one read (Sunday first, the leading and trailing
 // days too). ?amounts=1 adds each visit's job total for people who may see
 // prices. `today` is the server's day (a phone's clock may be off).
+// Every answer carries `capacity` (how many visits each day can take, for
+// the fill bars) and `defaults` (a new visit's length and arrival window,
+// for a booking dropped on a day); a month also carries `to_book` (the
+// tray's count of jobs due by that month). ?pay=1 with amounts (not for a
+// month) adds `pd` to finished visits: their job is paid (1) or not (0).
+// ?sales=1 (not a month; with tasks:read) adds `sales`: the sales tasks
+// with a time (the Day view's "Sales rep" columns).
 const schedule = async (ctx) => {
   const today = localDate(now());
   let from = str(ctx.query.get("from")) || today;
@@ -118,10 +126,20 @@ const schedule = async (ctx) => {
   const month = m === "now" ? today.slice(0, 7) : m || null;
   if (month) [from, to] = monthGridRange(month);
   const users = str(ctx.query.get("users")).split(",").filter((x) => isId(x, "user"));
-  const data = await scheduleRange({ from, to, users });
-  if (ctx.query.get("amounts") === "1" && ctx.can("visits:prices")) data.visits = await withAmounts(data.visits, { from, to, today });
-  return { data: { ...data, from, to, today, ...(month ? { month } : {}) }, meta: { stale: data.stale } };
+  const data = await scheduleRange({ from, to, users, sales: ctx.query.get("sales") === "1" && !month && ctx.can("tasks:read") });
+  const [usersIx, work, openIx] = await Promise.all([readIndex("users", ""), workSettings(), month ? readIndex("jobs", "open") : null]);
+  const prices = ctx.query.get("amounts") === "1" && ctx.can("visits:prices");
+  if (prices) data.visits = await withAmounts(data.visits, { from, to, today, openRows: openIx ? openIx.rows : undefined });
+  // ?pay=1 (a day or three): whether each finished visit's job is paid, for the red $
+  if (prices && ctx.query.get("pay") === "1" && !month) data.visits = await withPaid(data.visits, { today });
+  const capacity = capacityOf(from, to, { perDay: work.visits_per_day, crew: crewOf(usersIx.rows), timeOff: data.time_off, hours: data.hours, calendar: data.calendar });
+  const extra = { capacity, defaults: { duration_min: work.default_duration_min, window_min: work.default_window_minutes }, weather: work.weather !== false };
+  if (month) extra.to_book = toBookRows(openIx.rows, month).length;
+  return { data: { ...data, ...extra, from, to, today, ...(month ? { month } : {}) }, meta: { stale: data.stale || !!(openIx && openIx.stale) } };
 };
+
+// The next days' forecast for the schedule (weather.mjs): never an error.
+const weather = async (ctx) => ({ data: await scheduleWeather({ deploy: ctx.deploy }) });
 
 const unscheduled = async (ctx) => {
   const month = str(ctx.query.get("month")) || localDate(now()).slice(0, 7);
@@ -612,6 +630,7 @@ const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path,
 export const workRoutes = [
   R("GET", "/schedule", "schedule:read", "none", schedule, { maxCalls: 40 }),
   R("GET", "/schedule/unscheduled", "schedule:read", "none", unscheduled),
+  R("GET", "/schedule/weather", "schedule:read", "none", weather, { maxCalls: 12 }),
   R("GET", "/schedule/check", "schedule:read", "none", check, { maxCalls: 30 }),
   R("GET", "/schedule/route", "schedule:read", "none", routeGet),
   R("POST", "/schedule/route", "schedule:write", "none", routePost, { maxCalls: 200, budgetMs: 8000 }),

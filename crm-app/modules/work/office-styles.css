@@ -1,8 +1,10 @@
 /* The scheduling screens (M4a): the schedule's view switch, the month grid
-   and its day list, the rows and week grid, the team's colored faces, the
-   book / move sheet, the Visit and Job heads, the route's stops, the lines
-   and checklist editors. House style (crm.css tokens): 12 px cards,
-   10 px buttons, 44 px tap targets on a phone, 16 px inputs. */
+   (how full each day is, the forecast, the days nobody closed) and its day
+   list, the rows and week grid, the desk's board, lanes, tray, side panel
+   and undo bar, the team's colored faces, the book / move sheet, the Visit
+   and Job heads, the route's stops, the lines and checklist editors. House
+   style (crm.css tokens): 12 px cards, 10 px buttons, 44 px tap targets on
+   a phone (32 px with a mouse), 16 px inputs. */
 
 /* ---------------------------------------------------------------- people */
 .wk-faces{display:inline-flex;flex-direction:row-reverse;justify-content:flex-end}
@@ -19,6 +21,8 @@
 .wk-views{display:flex;gap:2px;padding:3px;border-radius:var(--r);background:var(--mist-2);border:1px solid var(--line)}
 .wk-view{flex:1 1 0;min-width:0;min-height:var(--ctl-sm);padding:0 6px;border:0;border-radius:var(--r-sm);background:none;color:var(--ink-3);font:500 14px/1 var(--text);white-space:nowrap;cursor:pointer}
 .wk-view[aria-selected="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(18,18,21,.1),0 1px 1px rgba(18,18,21,.04)}
+.wk-view{position:relative}
+.wk-vbadge{position:absolute;top:-7px;right:-3px;z-index:1;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 10.5px/17px var(--text);text-align:center;box-shadow:0 0 0 2px var(--mist-2)}
 .wk-bar .chips{margin-top:0}
 
 /* ---------------------------------------------------------------- the month */
@@ -34,7 +38,7 @@
 .wk-mdow span{padding:7px 0;text-align:center;font:600 11px/1 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .wk-mweek{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .wk-mweek+.wk-mweek{border-top:1px solid var(--line)}
-.wk-mday{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;min-height:54px;padding:5px 2px 6px;border:0;border-left:1px solid var(--line);border-radius:0;background:#fff;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.wk-mday{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;min-height:66px;padding:5px 3px 6px;border:0;border-left:1px solid var(--line);border-radius:0;background:#fff;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
 .wk-mday:first-child{border-left:0}
 .wk-mday.wkend{background:#fcfcfd}
 .wk-mday.out{background:var(--mist)}
@@ -45,11 +49,49 @@
 .wk-mday.today .wk-mnum{color:var(--coral-ink);font-weight:600}
 .wk-mday.sel .wk-mnum{background:var(--ink);color:#fff;font-weight:600}
 .wk-mday.today.sel .wk-mnum{background:var(--coral-btn);color:#fff}
-.wk-mdots{display:flex;align-items:center;justify-content:center;gap:3px;min-height:7px}
-.wk-mdots i{display:block;width:6px;height:6px;border-radius:50%;background:var(--c,#85858d)}
-.wk-mdots em{font:600 10px/1 var(--text);font-style:normal;color:var(--ink-3);margin-left:1px}
-.wk-mday.out .wk-mdots{opacity:.55}
+/* a phone's cell: the number, the forecast under it, then the count and the fill bar */
+.wk-mtop{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;max-width:100%}
+.wk-mopen{position:absolute;top:6px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px #fff}
+.wk-mday.out .wk-mopen{opacity:.7}
+.wk-wx{display:inline-flex;align-items:center;gap:1px;min-width:0;max-width:100%;color:var(--ink-3);white-space:nowrap}
+.wk-wx svg{flex:none;width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wk-wx b{font:600 10.5px/1 var(--text);color:var(--ink-2)}
+.wk-wx em{display:none}
+.wk-mfill{width:100%;min-height:9px;margin-top:auto;padding:0 2px}
+.wk-mday.out .wk-mfill,.wk-mday.out .wk-wx{opacity:.55}
 .wk-mchips{display:none}
+/* the fill bar: how full a day is against what the crew can do */
+.wk-fill{display:flex;align-items:center;gap:3px;width:100%;min-width:0}
+.wk-fcount{flex:none;min-width:6px;font:600 10px/1 var(--text);color:var(--ink-2);text-align:right}
+.wk-fcount:empty{display:none}
+.wk-fbar{flex:1;display:block;min-width:0;height:4px;border-radius:2px;background:var(--mist-2);box-shadow:inset 0 0 0 1px rgba(18,18,21,.05);overflow:hidden}
+.wk-fbar i{display:block;height:100%;border-radius:2px;background:var(--green)}
+.lvl-busy .wk-fbar i{background:var(--amber)}
+.lvl-full .wk-fbar i,.lvl-over .wk-fbar i{background:var(--coral)}
+.lvl-shut .wk-fbar i{background:repeating-linear-gradient(135deg,var(--amber) 0 3px,#e8c486 3px 6px)}
+.lvl-shut .wk-fcount{color:var(--amber-ink)}
+.lvl-over .wk-fcount,.lvl-full .wk-fcount{color:var(--coral-ink)}
+/* the forecast's colors */
+.wx-sun{color:#c27c0e}
+.wx-partly{color:#a7741a}
+.wx-rain,.wx-storm{color:var(--blue)}
+.wx-snow{color:#4f7bc4}
+.wx-cloud,.wx-fog,.wx-wind{color:var(--ink-3)}
+.wk-wxline{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:13.5px;font-weight:500}
+.wk-wxline svg{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.wk-wxline span{color:var(--ink-2)}
+.wk-daywx{margin:-4px 0 0;text-align:center}
+/* under the grid: what the bars and marks mean, and Change */
+.wk-mfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 10px 8px 14px;border-top:1px solid var(--line)}
+.wk-mfoot p{margin:0;display:flex;flex-wrap:wrap;gap:4px 14px;min-width:0}
+.wk-mkey{display:inline-flex;align-items:center;gap:6px}
+.wk-mkey .wk-fbar{flex:none;width:22px}
+.wk-mkey .wk-fbar i{width:62%}
+.wk-mkey .wk-mopen{position:static;box-shadow:none}
+/* the month's "N to book" (the tray): beside the count; the page head already names the month on a phone */
+.wk-mtobook{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 12px;border:1px solid var(--amber-bg);border-radius:999px;background:var(--amber-bg);color:var(--amber-ink);font:600 13px/1 var(--text);cursor:pointer;white-space:nowrap}
+.wk-mtobook svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2}
+@media (max-width:899px){.wk-mtitle{display:none}.wk-mcount{font-size:13.5px}}
 
 /* the chosen day's list: under the grid on a phone, beside it on a computer */
 .wk-dayp{padding:0;overflow:hidden;scroll-margin-top:12px}
@@ -57,6 +99,13 @@
 .wk-dayp-h h2{margin:0;font:700 17px/1.3 var(--head)}
 .wk-dayp-n{font:500 14px/1.3 var(--text);color:var(--ink-3);letter-spacing:0}
 .wk-dayp-acts{display:flex;flex-wrap:wrap;gap:6px}
+.wk-dayp-acts .btn svg{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.wk-dayp-info{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:-4px}
+.wk-dayp-cap{font-size:13px;font-weight:600;color:var(--green-ink)}
+.wk-dayp-cap.lvl-busy{color:var(--amber-ink)}
+.wk-dayp-cap.lvl-full,.wk-dayp-cap.lvl-over{color:var(--coral-ink)}
+.wk-dayp-cap.lvl-shut,.wk-dayp-cap.lvl-closed{color:var(--amber-ink)}
+.wk-dayp-open{margin:-4px 0 0;padding:6px 10px;border-radius:var(--r-sm);background:var(--amber-bg);color:var(--amber-ink);font-size:13px;font-weight:500}
 .wk-drows{list-style:none;margin:0;padding:0}
 .wk-drows>li+li{border-top:1px solid var(--line)}
 .wk-drow{display:flex;align-items:flex-start;gap:12px;min-height:64px;padding:12px 16px;color:inherit;text-decoration:none}
@@ -201,7 +250,15 @@
   .wk-mday{align-items:stretch;gap:3px;min-height:112px;padding:6px 6px 8px}
   .wk-mweek:last-child .wk-mday{min-height:104px}
   .wk-mnum{align-self:flex-start;min-width:26px;height:26px;font-size:13px}
-  .wk-mdots{display:none}
+  .wk-mtop{flex-direction:row;align-items:center;gap:4px;width:100%}
+  .wk-mopen{position:static;flex:none;width:8px;height:8px;box-shadow:none}
+  .wk-mtop .wk-wx{margin-left:auto;gap:2px}
+  .wk-mtop .wk-wx svg{width:15px;height:15px}
+  .wk-mtop .wk-wx b{font-size:11.5px}
+  .wk-mtop .wk-wx em{display:inline;margin-left:3px;font:600 10.5px/1 var(--text);font-style:normal;color:var(--blue-ink)}
+  .wk-mfill{padding:2px 2px 0}
+  .wk-fcount{font-size:10.5px}
+  .wk-mtobook{min-height:32px;margin-right:auto;padding:0 10px;font-size:12.5px}
   .wk-mchips{display:flex;flex-direction:column;gap:3px;min-width:0}
   .wk-mchip{display:block;min-width:0;padding:1px 6px 1px 8px;border-radius:5px;background:var(--mist-2);background:color-mix(in srgb,var(--c,#85858d) 13%,#fff);box-shadow:inset 2px 0 0 var(--c,#85858d);font:500 11.5px/17px var(--text);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .wk-mchip b{font-weight:600;color:var(--ink-2)}
@@ -240,4 +297,216 @@
   .wk-vside .wk-acts .btn{width:100%;flex:none}
   .wk-vside .section-h{margin:4px 2px -6px}
   .wk-vside .foot-note{margin-top:0;text-align:left}
+}
+
+/* ---------------------------------------------------------------- the desk: board, lanes, tray, side panel, undo
+   (1,100 px and up; a phone and a small laptop keep the lists above) */
+.wk-desk,.wk-deskonly,.wk-side,.wk-undo,.wk-dtray{display:none}
+@media (min-width:1100px){
+  .wk-phone,.wk-phoneonly{display:none}
+  .wk-deskonly{display:inline}
+  .wk-desk,.wk-dgrid.with-tray{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
+  .wk-dtray{display:flex}
+  .wk-drop{transition:background .12s var(--ease),box-shadow .12s var(--ease)}
+  .wk-drop.over{background:var(--coral-wash)!important;box-shadow:inset 0 0 0 2px var(--coral-ring)}
+  .lifted{opacity:.45}
+  [draggable="true"]{cursor:grab}
+  [draggable="true"]:active{cursor:grabbing}
+
+  /* Week: a row per person, a column per day */
+  .wk-board{padding:0;overflow:hidden}
+  .wk-brow{display:grid;grid-template-columns:132px repeat(7,minmax(0,1fr))}
+  .wk-brow+.wk-brow{border-top:1px solid var(--line)}
+  .wk-bhead{background:var(--mist)}
+  .wk-bwho{display:flex;align-items:center;gap:8px;min-width:0;padding:10px 12px;font-weight:600;font-size:13.5px}
+  .wk-bwho .nm{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-bday{display:flex;flex-direction:column;align-items:stretch;gap:5px;min-height:56px;padding:7px 8px 8px;border:0;border-left:1px solid var(--line);background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+  .wk-bday:hover{background:var(--mist-2)}
+  .wk-bdn{display:flex;align-items:baseline;gap:5px;min-width:0;font:600 12px/1 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+  .wk-bdn b{font-size:15px;color:var(--ink);letter-spacing:0}
+  .wk-bdn .wk-wx{margin-left:auto;align-self:center;text-transform:none;letter-spacing:0}
+  .wk-bdn .wk-wx svg{width:15px;height:15px}
+  .wk-bdn .wk-wx b{font-size:11.5px}
+  .wk-bday.today .wk-bdn b{color:var(--coral-ink)}
+  .wk-bcell{display:flex;flex-direction:column;gap:4px;min-width:0;min-height:76px;padding:6px;border-left:1px solid var(--line)}
+  .wk-bcell.today{background:#fffaf9}
+  .wk-bchip{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:5px;min-width:0;min-height:32px;padding:4px 7px 4px 9px;border-radius:6px;background:color-mix(in srgb,var(--c,#85858d) 12%,#fff);box-shadow:inset 3px 0 0 var(--c,#85858d);color:var(--ink);font:500 12px/1.25 var(--text);text-decoration:none}
+  .wk-bchip:hover{background:color-mix(in srgb,var(--c,#85858d) 20%,#fff)}
+  .wk-bchip b{font-weight:600;color:var(--ink-2)}
+  .wk-bchip .nm{min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-bchip small{flex-basis:100%;min-width:0;font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-bchip.done{background:#fff;box-shadow:inset 0 0 0 1px var(--line),inset 3px 0 0 var(--c,#85858d);color:var(--ink-3)}
+  .wk-bchip.task{background:var(--mist-2);box-shadow:inset 3px 0 0 #85858d;color:var(--ink-2)}
+
+  /* the To book tray beside them */
+  .wk-dtray{position:sticky;top:0;flex-direction:column;gap:8px;max-height:calc(100vh - 160px);padding:14px}
+  .wk-dtray-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .wk-dtray-h h2{margin:0;font:700 16px/1.2 var(--head)}
+  .wk-dtray>p{margin:0}
+  .wk-dtray-b{display:flex;flex-direction:column;gap:8px}
+  .wk-tcards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0}
+  .wk-tcard{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;box-shadow:var(--sh-xs)}
+  .wk-tcard:hover{border-color:#d3d3d9}
+  .wk-tcard .who{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .wk-tcard .nm{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-tcard .sub{font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-tcard .sub:empty{display:none}
+  .wk-tcard .btn{align-self:flex-start}
+  .wk-dtray-none{display:flex;align-items:center;gap:8px;margin:4px 0;color:var(--green-ink);font-weight:500}
+  .wk-dtray-none svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+
+  /* the visit's side panel: over the right of the schedule, the schedule still in reach */
+  .wk-side{position:fixed;z-index:8;top:calc(var(--top,0px) + 76px);right:20px;bottom:20px;width:400px;display:flex;flex-direction:column;padding:0;overflow:hidden;box-shadow:var(--sh-pop);border-color:var(--line-2);animation:wk-side-in .16s var(--ease)}
+  .wk-side-h{display:flex;align-items:center;gap:10px;padding:12px 8px 12px 20px;border-bottom:1px solid var(--line)}
+  .wk-side-h h2{flex:1;min-width:0;margin:0;font:700 19px/1.25 var(--head);overflow-wrap:anywhere}
+  .wk-side-h h2:focus{outline:0}
+  .wk-side-x{flex:none;font-size:16px;color:var(--ink-3)}
+  .wk-side-b{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding:16px 20px 20px}
+  .wk-side-kv{grid-template-columns:72px 1fr;gap:10px 14px}
+  .wk-side-kv dd{display:flex;flex-direction:column;gap:2px}
+  .wk-side-kv dd.wk-who{flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px}
+  .wk-side-kv .sub{font-size:13px;font-weight:400;color:var(--ink-3)}
+  .wk-side-big{font-weight:600}
+  .wk-side-sec{display:flex;flex-direction:column;gap:6px;padding-top:14px;border-top:1px solid var(--line)}
+  .wk-side-sec h3{margin:0;font:700 14px/1.2 var(--head);color:var(--ink-2)}
+  .wk-side-sec p{margin:0}
+  .wk-side-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
+  .wk-side-acts .btn{flex:1 1 40%}
+  .wk-side-acts .btn.primary{flex-basis:100%}
+  .wk-side-b .sk{margin:4px 0}
+
+  /* the undo bar: what changed, and Undo */
+  .wk-undo{position:fixed;z-index:9;left:calc(50% + var(--side-w,0px) / 2);bottom:24px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:min(640px,calc(100% - 48px));padding:6px 6px 6px 18px;border-radius:var(--r-lg);background:var(--ink);color:#fff;font-size:14px;font-weight:500;box-shadow:var(--sh-pop);animation:toast-in .2s var(--ease)}
+  .wk-sided .wk-undo{left:calc((100% + var(--side-w,0px) - 440px) / 2)}
+  .wk-undo span{min-width:0}
+  .wk-undo .btn{flex:none;background:#fff;border-color:#fff;color:var(--ink)}
+  .wk-undo .wk-undo-x{flex:none;width:34px;height:34px;color:rgba(255,255,255,.7)}
+  .wk-undo .wk-undo-x:hover{background:rgba(255,255,255,.1)}
+}
+@keyframes wk-side-in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+
+/* ---------------------------------------------------------------- Rotor's head, views and week strip; Flyra's sheets */
+.wk-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.wk-title{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;min-width:0;min-height:44px;padding:0 4px 0 2px;border:0;border-radius:var(--r);background:none;color:var(--ink);text-align:left;cursor:pointer}
+.wk-tname{display:inline-flex;align-items:center;gap:3px;font:800 28px/1.05 var(--head);letter-spacing:-.02em;white-space:nowrap}
+.wk-tname .long{display:none}
+.wk-tname svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;color:var(--ink-2)}
+.wk-tyear{font:600 12.5px/1 var(--text);color:var(--ink-3)}
+.wk-tyear.same{display:none}
+.wk-tools{flex:none;display:flex;align-items:center;padding:2px;border:1px solid var(--line-2);border-radius:999px;background:#fff;box-shadow:var(--sh-raise)}
+.wk-round{position:relative;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:none;color:var(--ink);cursor:pointer}
+.wk-round:active{background:var(--fill)}
+.wk-round svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.wk-round.on{color:var(--coral-ink)}
+.wk-round.on::after{content:"";position:absolute;top:9px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--coral);box-shadow:0 0 0 2px #fff}
+.wk-views{background:#fff}
+@media (max-width:899px){.wk-view{padding:0 2px}}
+.wk-who-on{display:flex}
+.wk-who-on .chip{gap:8px}
+/* the week strip */
+.wk-strip{display:flex;align-items:center;gap:4px;margin:0 -4px}
+.wk-sarrow{display:none}
+.wk-sdays{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.wk-sday{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;min-height:60px;padding:4px 0;border:0;border-radius:var(--r);background:none;color:var(--ink);font:inherit;cursor:pointer}
+.wk-sday span{font:600 12px/1 var(--text);color:var(--ink-3)}
+.wk-sday b{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;font:600 17px/1 var(--text)}
+.wk-sday.span b{background:var(--mist-2)}
+.wk-sday.sel b{background:var(--ink);color:#fff}
+.wk-sday.today b{background:var(--coral-btn);color:#fff}
+.wk-sday.today.sel b{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--coral-ring)}
+.wk-sday:focus-visible{outline:2px solid var(--coral);outline-offset:-2px}
+/* Day: Technician / Sales rep, the forecast */
+.wk-dbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wk-by{display:flex;gap:6px}
+.wk-daywx{margin:0}
+.wk-dgrid{display:block;min-width:0}
+/* the columns: a time grid with a column per person (Day) or per day (3 Day) */
+.wk-cols{--colw:calc((100vw - 32px - 50px) / 2);padding:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.wk-cols.three{--colw:calc((100vw - 32px - 50px) / 3)}
+.wk-cgrid{display:grid;grid-template-columns:48px repeat(var(--lanes,1),minmax(var(--colw),1fr));min-width:min-content}
+.wk-gut{position:sticky;left:0;z-index:4;padding:6px 4px;background:#fff;border-right:1px solid var(--line);font-size:11px;text-align:right}
+.wk-ghead{border-bottom:1px solid var(--line)}
+.wk-ghours{padding:0}
+.wk-chead{display:flex;flex-direction:column;gap:3px;min-width:0;padding:8px 10px 0;border-bottom:1px solid var(--line);border-left:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;text-align:left}
+.wk-cname{display:flex;align-items:center;gap:6px;min-width:0;font-weight:600;font-size:14px}
+.wk-cname .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-chead.nobody .nm{color:var(--ink-2)}
+.wk-cnum{flex:none;font-size:12.5px;font-weight:600;color:var(--ink-3)}
+.wk-cmoney{align-self:flex-end;font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.wk-cbar{display:flex;height:3px;margin:3px -10px 0;background:var(--line-2)}
+.wk-cbar i{display:block;height:100%}
+.wk-cbar i.d{background:var(--green)}
+.wk-cbar i.g{background:var(--blue)}
+.wk-dhead{cursor:pointer;border-top:0;border-right:0}
+.wk-dhead .nm b{font-size:15px}
+.wk-dhead.today .nm b{color:var(--coral-ink)}
+.wk-dhead .wk-wx{margin-left:auto}
+.wk-lany{display:flex;flex-direction:column;gap:4px;min-width:0;min-height:44px;padding:4px;border-left:1px solid var(--line);border-bottom:1px solid var(--line)}
+.wk-lhour{position:absolute;right:6px;margin-top:-7px;font:500 11px/14px var(--text);color:var(--ink-3);white-space:nowrap}
+.wk-lhour:first-child{margin-top:2px}
+.wk-lane{position:relative;min-width:0;border-left:1px solid var(--line)}
+.wk-lline{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--line)}
+.wk-lline:first-child{border-top:0}
+.wk-nowline{position:absolute;left:0;right:0;z-index:3;height:2px;margin-top:-1px;background:#e5483a;pointer-events:none}
+.wk-nowdot{position:absolute;right:-6px;z-index:5;width:11px;height:11px;margin-top:-5px;border-radius:50%;background:#e5483a}
+.wk-blk{position:absolute;z-index:1;display:flex;flex-direction:column;gap:2px;min-width:0;padding:5px 7px 5px 9px;overflow:hidden;border-radius:8px;background:color-mix(in srgb,var(--c,#85858d) 16%,#fff);box-shadow:inset 3px 0 0 var(--c,#85858d),0 1px 2px rgba(18,18,21,.06);color:var(--ink);font:500 12px/1.25 var(--text);text-decoration:none}
+.wk-blk .nm{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-blk .tw,.wk-blk .tm{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-blk .st{display:flex;flex-wrap:wrap;gap:4px}
+.wk-blk .st .pill{height:19px;padding:0 7px;font-size:11px}
+.wk-blk .ft{display:flex;align-items:center;gap:6px;margin-top:auto}
+.wk-blk .ft b{font-weight:600;font-size:12.5px}
+.wk-unpaid{margin-left:auto;font:700 16px/1 var(--head);font-style:normal;color:var(--red-ink)}
+.wk-done{display:grid;place-items:center;margin-left:auto}
+.wk-unpaid+.wk-done{margin-left:0}
+.wk-done svg{width:18px;height:18px;fill:none;stroke:var(--green);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wk-blk.done{background:color-mix(in srgb,var(--c,#85858d) 7%,#fff);color:var(--ink-3)}
+.wk-blk.done .nm,.wk-blk.done .tw{text-decoration:line-through;color:var(--ink-3)}
+.wk-blk.done .tm,.wk-blk.done .ft b{color:var(--ink-3)}
+.wk-blk.task{background:var(--mist-2);box-shadow:inset 3px 0 0 #85858d;color:var(--ink-2)}
+.wk-blk.sale{background:color-mix(in srgb,var(--c,#85858d) 12%,#fff);box-shadow:inset 3px 0 0 var(--c,#85858d);background-image:repeating-linear-gradient(135deg,transparent 0 8px,rgba(255,255,255,.55) 8px 12px)}
+.wk-blk.compact{padding:4px 5px 4px 7px}
+.wk-blk.group{align-items:flex-start;border:0;background:var(--mist-2);box-shadow:inset 3px 0 0 var(--ink-3);text-align:left;cursor:pointer}
+.wk-blk.compact .nm{font-size:12px}
+.wk-lany .wk-bchip{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:5px;min-height:44px;padding:4px 7px 4px 9px;border-radius:6px;background:color-mix(in srgb,var(--c,#85858d) 12%,#fff);box-shadow:inset 3px 0 0 var(--c,#85858d);color:var(--ink);font:500 12px/1.25 var(--text);text-decoration:none}
+.wk-lany .wk-bchip small{flex-basis:100%;font-size:11px;color:var(--ink-3)}
+.wk-sany{padding:12px}
+.wk-sany h3{margin:0 0 8px;font:700 15px/1.2 var(--head)}
+/* the month's day list: Flyra's Open day, and Add job on an empty day */
+.wk-dayp-t{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.wk-openday{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--coral-ink);font:600 15px/1 var(--text);cursor:pointer;white-space:nowrap}
+.wk-openday span{font-size:20px;line-height:1}
+.wk-dempty .btn{margin-top:4px}
+/* the sheets */
+.wk-mpicker{display:flex;flex-direction:column;gap:14px}
+.wk-months{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.wk-months .chip{justify-content:center}
+.wk-months .chip.now{color:var(--coral-ink);font-weight:600}
+.wk-months .chip[aria-pressed="true"]{color:#fff}
+.wk-jumpf{padding-top:14px;border-top:1px solid var(--line)}
+.wk-whos{flex-direction:column;align-items:stretch}
+.wk-whos .chip{justify-content:flex-start}
+.wk-cardopts{display:flex;flex-direction:column;gap:4px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.wk-cardopts:last-of-type{border-bottom:0}
+@media (min-width:900px){
+  .wk-tname{font-size:30px}
+  .wk-tname .long{display:inline}
+  .wk-tname .short{display:none}
+  .wk-tyear,.wk-tyear.same{display:none}
+  .wk-tylong{color:var(--ink-3)}
+  .wk-cols{--colw:170px}
+  .wk-cols.three{--colw:0px}
+  .wk-strip{margin:0}
+  .wk-sarrow{display:grid;flex:none}
+  .wk-sday{min-height:56px}
+}
+@media (min-width:900px) and (hover:hover) and (pointer:fine){
+  .wk-round{width:40px;height:40px}
+  .wk-round:hover{background:var(--mist)}
+  .wk-sday:hover b{background:var(--mist-2)}
+  .wk-sday.sel:hover b{background:var(--ink)}
+  .wk-sday.today:hover b{background:var(--coral-btn)}
+  .wk-openday{min-height:34px}
+  .wk-openday:hover{text-decoration:underline}
+  .wk-blk:hover{filter:brightness(.97)}
 }
