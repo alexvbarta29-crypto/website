@@ -23,7 +23,8 @@
 //   Signing out clears it.
 // - Forgot password (POST /auth/forgot): the login, the office password
 //   (the owners' shared secret that also opens setup) and a new password.
-//   Throttled like sign-in, the office password compared in constant time,
+//   Throttled like sign-in plus the office password's global bucket
+//   (lib/office-password.mjs), the office password compared in constant time,
 //   one answer ("That didn't match.") for a wrong office password, an
 //   unknown login and a turned-off one. A match sets the password, signs
 //   the person out everywhere else, signs them in here, tells the other
@@ -32,7 +33,8 @@
 //   sha256 is kept on the user, for 7 days.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { signedIn as officeSignedIn, derive, sha256 as officeSha, same, expected, crmOfficeCookie, clearOfficeCookie } from "../../lights-auth.mjs";
+import { signedIn as officeSignedIn, crmOfficeCookie, clearOfficeCookie } from "../../lights-auth.mjs";
+import { checkOfficePassword, tooManyText } from "../../office-password.mjs";
 import { getRecord, readPointer, createRecord, updateRecord, getRaw, settledWrite, appendEvent, getSetting } from "../../crm-store.mjs";
 import { notify, approvers } from "./notify.mjs";
 import { InputError, ForbiddenError, ConflictError, ExistsError } from "./errors.mjs";
@@ -329,13 +331,23 @@ async function setup(ctx) {
   if (await setupDone()) return gone(SETUP_DONE);
   const ip = clientIp(ctx.req, ctx.context);
   const who = { login: "setup", device: deviceId(ctx.req), ip };
-  const th = await checkThrottle(who);
-  if (!th.ok) return fail("throttled", "Too many tries. Wait a few minutes, then try again.", 429, { headers: { "Retry-After": String(th.retry_after_s) } });
   const typed = typeof b.setup_code === "string" ? b.setup_code : "";
-  const good = byOffice ? typed !== "" && same(officeSha(derive(typed)), expected()) : sameSecret(typed.trim(), code);
-  if (!good) {
-    await recordFailure(who).catch(() => {});
-    throw new InputError(byOffice ? "That office password isn't right." : "That setup code isn't right.", "setup_code");
+  const throttled = (s) => fail("throttled", "Too many tries. Wait a few minutes, then try again.", 429, { headers: { "Retry-After": String(s) } });
+  if (byOffice) {
+    // The office password typed again: its own throttled check (office-password.mjs).
+    const r = await checkOfficePassword(typed, who, { settle: false });
+    if (r.retry_after_s) return throttled(r.retry_after_s);
+    if (!r.ok) {
+      await recordFailure({ ...who, office: true }).catch(() => {});
+      throw new InputError("That office password isn't right.", "setup_code");
+    }
+  } else {
+    const th = await checkThrottle(who);
+    if (!th.ok) return throttled(th.retry_after_s);
+    if (!sameSecret(typed.trim(), code)) {
+      await recordFailure(who).catch(() => {});
+      throw new InputError("That setup code isn't right.", "setup_code");
+    }
   }
   // Everything typed is checked BEFORE the claim, with the user type's own
   // rules (name 60, first and last 40, login, password policy).
@@ -434,16 +446,17 @@ async function forgot(ctx) {
   const device = deviceId(ctx.req);
   if (!device) cookies.push(newDeviceCookie().cookie);
   const who = { login: typed, device, ip: clientIp(ctx.req, ctx.context) };
-  const th = await checkThrottle(who);
-  if (!th.ok) {
-    const wait = th.retry_after_s;
-    const words = wait >= 120 ? `${Math.ceil(wait / 60)} minutes` : `${wait} seconds`;
-    return withCookies(fail("throttled", `Too many tries. Wait ${words}, then try again.`, 429, { headers: { "Retry-After": String(wait) }, details: { retry_after_s: wait } }), cookies);
+  // The office password's throttled check (office-password.mjs): this
+  // login's bucket, the address's and the office password's global one. It
+  // settles here: a right office password for a wrong login fails too.
+  const office = await checkOfficePassword(officePw, who, { settle: false });
+  if (office.retry_after_s) {
+    const wait = office.retry_after_s;
+    return withCookies(fail("throttled", tooManyText(wait), 429, { headers: { "Retry-After": String(wait) }, details: { retry_after_s: wait } }), cookies);
   }
   const user = await userByLogin(typed);
-  const right = officePw.length <= 256 && same(officeSha(derive(officePw)), expected());
-  if (!right || !user || user.status !== "active") {
-    await recordFailure(who).catch(() => {});
+  if (!office.ok || !user || user.status !== "active") {
+    await recordFailure({ ...who, office: true }).catch(() => {});
     if (user) later(ctx, auditAuth(user.id, "password_reset_office_failed", ctx));
     return withCookies(fail("no_match", NO_MATCH, 401), cookies);
   }

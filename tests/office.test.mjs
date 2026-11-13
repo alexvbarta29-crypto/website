@@ -58,6 +58,7 @@ test("signed out, /office shows the sign-in page, not the tools", async () => {
 });
 
 test("one office sign-in opens the lights tool and the playbook too", async () => {
+  t = await crmTest();
   const res = await office(new Request("https://x.test/office", {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "password=test-password",
   }));
@@ -72,6 +73,7 @@ test("one office sign-in opens the lights tool and the playbook too", async () =
 });
 
 test("wrong office password is refused", async () => {
+  t = await crmTest();
   const res = await office(new Request("https://x.test/office", {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "password=nope",
   }));

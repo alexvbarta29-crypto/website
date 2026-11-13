@@ -9,8 +9,10 @@
 // password (the office password stands in for a reset link). Before the
 // CRM has its first owner, the office password opens the CRM's setup
 // screen (the only sign-in that can work then). Only when the CRM's storage
-// can't be used at all does the office password still open the old tab row,
-// so the tools are never locked away by an outage.
+// can't be used at all does the office password's cookie still open the old
+// tab row, so the tools stay open on the phones already signed in. A new
+// office-password sign-in waits for the storage then: every try is counted
+// there (lib/office-password.mjs), and an uncounted try is never checked.
 //
 // GET /office/launch is the data-free launcher the office service worker
 // keeps for a cold start with no signal (office-sw.js, §2.5): public, no
@@ -19,13 +21,13 @@
 // Not linked from the site and never indexed.
 
 import { officeHtml, officeLoginHtml, launcherHtml } from "../lib/office-page.mjs";
-import { ONE_YEAR, derive, sha256, same, expected, readCookie, passwordSignedIn, crmOfficeUser, crmOfficeCookie, clearOfficeCookie, cookieFor } from "../lib/lights-auth.mjs";
+import { ONE_YEAR, readCookie, passwordSignedIn, crmOfficeUser, crmOfficeCookie, clearOfficeCookie, cookieFor } from "../lib/lights-auth.mjs";
+import { officePasswordForm, tooManyText, DOWN_TEXT } from "../lib/office-password.mjs";
 import { deployContext } from "../lib/crm/core/context.mjs";
 import { withStoreScope, withBudget } from "../lib/crm-store.mjs";
-import { lookupSession, deviceId } from "../lib/crm/core/sessions.mjs";
-import { checkThrottle, recordFailure } from "../lib/crm/core/throttle.mjs";
+import { lookupSession } from "../lib/crm/core/sessions.mjs";
 import { storeBlocked, setupDone, officeRole } from "../lib/crm/core/auth.mjs";
-import { pageMethodNotAllowed, clientIp } from "../lib/crm/core/http.mjs";
+import { pageMethodNotAllowed } from "../lib/crm/core/http.mjs";
 import { safeErr } from "../lib/referral-lib.mjs";
 
 export const config = { path: ["/office", "/office/", "/office/launch"] };
@@ -63,10 +65,11 @@ async function withCrm(req, context, fn) {
   }
 }
 // The office password is also the key to Forgot password, so its own form
-// is throttled like sign-in (core/throttle.mjs): its own bucket per phone
-// (a login nobody can have, so it lands in a hashed key) and the address's
-// bucket shared with sign-in. Without the CRM's storage it isn't counted.
-const officeTry = (req, context) => ({ login: "office password", device: deviceId(req), ip: clientIp(req, context) });
+// is throttled like sign-in (lib/office-password.mjs, core/throttle.mjs): its
+// own bucket per phone, the address's bucket shared with sign-in and the
+// office password's global bucket. Without the CRM's storage the tries can't
+// be counted, so the password isn't checked (fail closed): a browser that
+// already holds the office cookie keeps the old tab row.
 
 export default async (req, context) => {
   const path = new URL(req.url).pathname;
@@ -80,19 +83,13 @@ export default async (req, context) => {
     // cookie it sets opens no part of /office by itself (Team sign-in).
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
-    const who = officeTry(req, context);
-    const gate = await withCrm(req, context, () => checkThrottle(who));
-    if (gate && !gate.ok) {
-      const { ready } = await crmState(req, context);
-      const wait = gate.retry_after_s >= 120 ? `${Math.ceil(gate.retry_after_s / 60)} minutes` : `${gate.retry_after_s} seconds`;
-      return page(officeLoginHtml({ error: `Too many tries. Wait ${wait}, then try again.`, team: ready }), 429, { "Retry-After": String(gate.retry_after_s) });
+    const r = await officePasswordForm(req, context, pw, { requestId: "office" });
+    if (r.ok) {
+      return new Response(null, { status: 303, headers: { ...headers, Location: "/office", "Set-Cookie": cookieFor(r.token, ONE_YEAR) } });
     }
-    const token = pw && pw.length <= 256 ? derive(pw) : "";
-    if (token && same(sha256(token), expected())) {
-      return new Response(null, { status: 303, headers: { ...headers, Location: "/office", "Set-Cookie": cookieFor(token, ONE_YEAR) } });
-    }
-    await withCrm(req, context, () => recordFailure(who));
     const { ready } = await crmState(req, context);
+    if (r.status === 429) return page(officeLoginHtml({ error: tooManyText(r.retry_after_s), team: ready }), 429, { "Retry-After": String(r.retry_after_s) });
+    if (r.status === 503) return page(officeLoginHtml({ error: DOWN_TEXT, team: ready }), 503);
     return page(officeLoginHtml({ error: "That password isn't right. Try again.", team: ready }), 401);
   }
   if (req.method !== "GET" && req.method !== "HEAD") return pageMethodNotAllowed("GET, HEAD, POST");

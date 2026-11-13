@@ -8,7 +8,8 @@
 // Password and cookie: netlify/lib/lights-auth.mjs.
 
 import { LIGHTS_HTML } from "../lib/lights-page.mjs";
-import { ONE_YEAR, derive, sha256, same, expected, readCookie, signedIn, cookieFor, toOffice } from "../lib/lights-auth.mjs";
+import { ONE_YEAR, readCookie, signedIn, cookieFor, toOffice } from "../lib/lights-auth.mjs";
+import { officePasswordForm, tooManyText, DOWN_TEXT } from "../lib/office-password.mjs";
 
 export const config = { path: ["/lights", "/lights/"] };
 
@@ -75,19 +76,21 @@ export function withMapsKey(page) {
   return page.replace("<body>", "<body>" + tag);
 }
 
-export default async (req) => {
+export default async (req, context) => {
   if (req.method === "POST") {
     let pw = "";
     try { pw = String((await req.formData()).get("password") || ""); } catch { pw = ""; }
-    const check = expected();
-    if (!check) return html(loginPage("Light Studio isn't set up yet: add OFFICE_PASSWORD in Netlify."), 503);
-    const token = pw ? derive(pw) : "";
-    if (token && same(sha256(token), check)) {
+    // Throttled like the office's own form, and refused (never unthrottled)
+    // while the CRM's storage can't count the tries (lib/office-password.mjs).
+    const r = await officePasswordForm(req, context, pw, { requestId: "lights" });
+    if (r.ok) {
       return new Response(null, {
         status: 303,
-        headers: { ...baseHeaders, Location: "/lights", "Set-Cookie": cookieFor(token, ONE_YEAR) },
+        headers: { ...baseHeaders, Location: "/lights", "Set-Cookie": cookieFor(r.token, ONE_YEAR) },
       });
     }
+    if (r.status === 429) return html(loginPage(tooManyText(r.retry_after_s)), 429, { "Retry-After": String(r.retry_after_s) });
+    if (r.status === 503) return html(loginPage(DOWN_TEXT), 503);
     return html(loginPage("That password isn't right. Try again."), 401);
   }
   if (req.method !== "GET" && req.method !== "HEAD") {
