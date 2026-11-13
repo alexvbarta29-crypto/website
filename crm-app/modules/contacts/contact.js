@@ -94,7 +94,7 @@ function overview(s, ctx) {
       <p class="small muted" style="margin-top:8px">An opt-out (STOP) is per number and always wins; see Settings → Messaging.</p>
     </section>
     <section class="card"><h2>About</h2><dl class="kv">
-      <dt>Source</dt><dd>${src.source || "Not known"}${src.channel ? ` · heard from ${src.channel}` : ""}</dd>
+      <dt>Source</dt><dd>${src.qr_code && src.campaign ? `${src.campaign} (QR code) · ${src.source || "Website quote form"}` : src.source || "Not known"}${src.channel ? ` · heard from ${src.channel}` : ""}</dd>
       ${src.form || src.ad ? html`<dt>Meta</dt><dd>${[src.form, src.ad, src.campaign].filter(Boolean).join(" · ")}</dd>` : ""}
       ${src.county ? html`<dt>County</dt><dd>${src.county}</dd>` : ""}
       ${src.promo_code || src.referral_code ? html`<dt>Code</dt><dd>${src.referral_code || src.promo_code}</dd>` : ""}

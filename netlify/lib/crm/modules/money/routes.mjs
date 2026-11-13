@@ -19,6 +19,7 @@
 //   GET  /money/status · POST /money/payments-mode   settings:owner      Settings → Payments
 //   GET  /autopay/preview?month= · GET /autopay/runs · GET /autopay/runs/:id   invoices:read_all
 //   GET  /visits/:id/payment · POST /visits/:id/payments · POST /visits/:id/pay-link   payments:record (a tech: own visit)
+//   POST /invoices/:id/pay-qr                        invoices:send       scan to pay: a fresh pay link for the QR on the Invoice screen
 // cfg/money is an owner-only settings page through the core settings routes.
 
 import { getRecord, getRecords, listRel, readIndex, updateRecord, getSettingWithEtag, putSetting } from "../../../crm-store.mjs";
@@ -43,8 +44,9 @@ import { creditsOf, issueCredit, releaseCredit } from "./credits.mjs";
 import { cardFor, cardStatus, plansWithoutCard } from "./cards.mjs";
 import { previewAutopay, listRuns, nextMonth, thisMonth, MONTH_RE } from "./autopay.mjs";
 import { resolvePayments, payments, mayMoveMoney } from "./gate.mjs";
-import { invoiceLink, cardLink } from "./automations.mjs";
+import { cardLink } from "./automations.mjs";
 import { payRefusal } from "./checkout.mjs";
+import { qrPayLink, qrRefusal, noteQrShown, STAFF as STAFF_QR } from "./scan.mjs";
 
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 const view = (r) => { const { _w, ...rest } = r || {}; return rest; };
@@ -171,6 +173,8 @@ async function invoiceData(ctx, inv, etag) {
       charge: ours && billable && ctx.can("payments:charge") && inv.status === "open" && inv.balance_cents > 0 && !f.charging && !f.processing,
       refund: ours && ctx.can("payments:refund"), void: ours && owner && ["draft", "open"].includes(inv.status), write_off: ours && owner && inv.status === "open",
       card_link: ours && billable && ctx.can("invoices:send"),
+      // scan to pay: the QR the customer pays from (the screen says why when there is none)
+      qr: ours && ctx.can("invoices:send") && inv.status === "open" && inv.balance_cents > 0,
     },
   };
 }
@@ -373,13 +377,37 @@ async function visitRecord(ctx) {
   return { status: out.created ? 201 : 200, data: { payment: tech ? techView("payment", out.payment) : view(out.payment), invoice: out.invoice ? (tech ? techView("invoice", out.invoice.data) : view(out.invoice.data)) : null } };
 }
 
-// A pay link for the QR on the tech's phone (the customer scans it and pays on theirs).
+// Scan to pay (scan.mjs): a fresh pay link for the QR the customer scans
+// with their own phone. The answer is what the full-screen code shows: the
+// link, how long it works, the number, what's left, the customer's first
+// name. Shown again, it is a new link (links are kept only as a hash).
+async function payQrAnswer(ctx, inv) {
+  const why = await qrRefusal(inv, (await ctx.sysMode()).system_of_record);
+  if (why) throw new ConflictError(why.message, { code: why.code });
+  const by = ctx.user ? ctx.user.id : "system";
+  const [link, contact] = await Promise.all([qrPayLink(inv, by), liveContact(inv.contact_id)]);
+  // on the invoice's history (best effort: the code works whether or not this lands)
+  await noteQrShown(inv.id, by, ctx.write()).catch((e) => console.error(`crm:money: a pay code show wasn't noted (${e && (e.code || e.name)})`));
+  return { status: 201, data: { url: link.url, expires_at: link.expires_at, number: inv.number, balance_cents: inv.balance_cents, first_name: (contact && contact.first_name) || null } };
+}
+
+// POST /invoices/:id/pay-qr (the Invoice screen's "Show QR to pay")
+async function invoicePayQr(ctx) {
+  const g = await getInvoice(ctx.params.id);
+  return payQrAnswer(ctx, g.data);
+}
+
+// The QR on Collect payment: the visit's invoice (made and issued here
+// first when the worker hasn't yet; the customer is standing right there,
+// so nothing is texted), then the same code.
 async function visitPayLink(ctx) {
   const v = await visitFor(ctx, ctx.params.id);
+  // a customer Rotor still bills: the reason, before any invoice is made for a code nobody could pay
+  const sor = (await ctx.sysMode()).system_of_record;
+  if (!(await mayMoveMoney(v, { sor }))) throw new ConflictError(STAFF_QR.not_yet, { code: "not_yet" });
   const inv = await visitInvoice(ctx, v);
-  if (inv.status !== "open" || !(inv.balance_cents > 0)) throw new ConflictError(inv.status === "paid" ? "This visit is already paid." : "There's nothing to pay on this visit.");
-  const link = await invoiceLink(inv, ctx.user ? ctx.user.id : "system");
-  return { status: 201, data: { url: link.url, expires_at: link.expires_at, number: inv.number, balance_cents: inv.balance_cents } };
+  if (inv.status === "paid" || (inv.status === "open" && !(inv.balance_cents > 0))) throw new ConflictError(inv.status === "paid" ? "This visit is already paid." : "There's nothing to pay on this visit.", { code: inv.status === "paid" ? "paid" : "nothing" });
+  return payQrAnswer(ctx, inv);
 }
 
 // ------------------------------------------------------------ credits, the card link, the contact's tab
@@ -546,7 +574,9 @@ export const moneyRoutes = [
   R("GET", "/visits/:id/payment", "payments:record", "required", visitPayment),
   // the visit's invoice may be made and issued here first, then the payment recorded
   R("POST", "/visits/:id/payments", "payments:record", "required", visitRecord, { maxCalls: 200, replaySafe: true }),
-  R("POST", "/visits/:id/pay-link", "payments:record", "required", visitPayLink, { maxCalls: 140, secret: true, idempotent: false }),
+  R("POST", "/visits/:id/pay-link", "payments:record", "required", visitPayLink, { maxCalls: 160, secret: true, idempotent: false }),
+  // the answer carries a fresh bearer link: never kept for replay
+  R("POST", "/invoices/:id/pay-qr", "invoices:send", "required", invoicePayQr, { maxCalls: 60, secret: true, idempotent: false }),
 ];
 
 export { ForbiddenError, mayMoveMoney, payments, isOverdue, isProcessing, sysModeOf, W };

@@ -69,6 +69,7 @@ export default {
         <div class="row" style="padding:0;min-height:0"><h2 style="flex:1;margin:0">${d.title}</h2>${dealPill(d.status)}</div>
         <dl class="kv sl-kv" style="margin-top:10px">
           ${s.contact ? html`<dt>Contact</dt><dd><a class="linkish" href="${"#/contacts/" + encodeURIComponent(s.contact.id)}">${s.contact.name}</a></dd>` : ""}
+          ${d.source && (d.source.campaign || d.source.source) ? html`<dt>Source</dt><dd>${d.source.qr_code && d.source.campaign ? `${d.source.campaign} (QR code)` : d.source.source}</dd>` : ""}
           <dt>Value</dt><dd class="num">${d.value_cents != null ? money(d.value_cents) : "Not quoted yet"}</dd>
           ${(d.services || []).length ? html`<dt>Services</dt><dd>${d.services.join(", ")}</dd>` : ""}
           <dt>Opened</dt><dd>${dateShort(d.opened_at)}</dd>

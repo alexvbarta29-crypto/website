@@ -103,6 +103,18 @@ function validateAutopay(v) {
   });
 }
 
+// Where a payment started: "qr" = the customer scanned the pay code (scan.mjs).
+export const VIAS = Object.freeze(["qr"]);
+function validateQr(v) {
+  if (!isObj(v)) return undefined;
+  const n = (x) => (Number.isSafeInteger(x) && x >= 0 ? Math.min(x, 100000) : 0);
+  const at = (x) => (typeof x === "string" && !Number.isNaN(Date.parse(x)) ? new Date(x).toISOString() : undefined);
+  return clean({
+    shown: n(v.shown), last_shown_at: at(v.last_shown_at), last_shown_by: typeof v.last_shown_by === "string" && v.last_shown_by ? v.last_shown_by.slice(0, 80) : undefined,
+    opened: n(v.opened), first_opened_at: at(v.first_opened_at), last_opened_at: at(v.last_opened_at),
+  });
+}
+
 export function validateInvoice(data, { op } = {}) {
   const stored = op === "update";
   const out = shape(data, {
@@ -141,7 +153,10 @@ export function validateInvoice(data, { op } = {}) {
       id: String(s.id || "").slice(0, 200), expires_at: s.expires_at, status: ["open", "complete", "expired"].includes(s.status) ? s.status : "open",
       amount_cents: Number.isSafeInteger(s.amount_cents) ? s.amount_cents : undefined, tip_cents: Number.isSafeInteger(s.tip_cents) ? s.tip_cents : undefined,
       save_card: s.save_card === true ? true : undefined, created_at: s.created_at, dry: s.dry === true ? true : undefined,
+      via: VIAS.includes(s.via) ? s.via : undefined,
     })) : []),
+    // scan to pay (scan.mjs): how often the office showed the pay code, and when the customer's phone opened it
+    qr: (v) => validateQr(v),
     autopay: (v) => validateAutopay(v),
     reminders: (v) => { const r = isObj(v) ? v : {}; return clean({ count: int(r.count ?? 0, { min: 0, max: 100 }) || 0, last_at: typeof r.last_at === "string" ? r.last_at : undefined }); },
     customer_note: (v, f) => str(v, { field: f, max: 1000, trim: false }) || undefined,
@@ -243,6 +258,7 @@ export function validatePayment(data, { op } = {}) {
     card: (v) => (isObj(v) ? clean({ brand: v.brand ? String(v.brand).slice(0, 20) : undefined, last4: /^\d{4}$/.test(String(v.last4 || "")) ? String(v.last4) : undefined, kind: v.kind === "us_bank_account" ? "us_bank_account" : v.kind ? "card" : undefined }) : undefined),
     failure_code: strOpt(60),
     simulated: (v) => (v === true ? true : undefined),
+    via: (v) => (VIAS.includes(v) ? v : undefined),
     recorded_by: (v, f) => str(v, { field: f, max: 80 }) || "system",
     note: (v, f) => str(v, { field: f, max: 500, trim: false }) || undefined,
   });
@@ -259,7 +275,7 @@ export const paymentShard = (r) => (r.deleted_at ? null : String(r.received_on |
 export const paymentRow = (r) => ({
   c: r.contact_id, cn: r.contact_name || "", inv: r.invoice_id || null, inn: r.invoice_number || null, k: r.kind, m: r.method, st: r.status, a: r.amount_cents || 0, tip: r.tip_cents || 0,
   fee: r.fee_cents || 0, rf: r.refunded_cents || 0, on: r.received_on, sim: r.simulated ? 1 : 0, im: r.import ? 1 : 0, sh: r.shadow ? 1 : 0, rm: (r.rotor && r.rotor.method_raw) || null, ry: r.rotor && r.rotor.payment_date ? String(r.rotor.payment_date).slice(0, 4) : null,
-  pmk: r.stripe && r.stripe.payment_method_id && /^dry_pm_/.test(r.stripe.payment_method_id) ? r.stripe.payment_method_id : null, u: r.updated_at,
+  pmk: r.stripe && r.stripe.payment_method_id && /^dry_pm_/.test(r.stripe.payment_method_id) ? r.stripe.payment_method_id : null, ...(r.via === "qr" ? { vq: 1 } : {}), u: r.updated_at,
 });
 
 export const paymentType = defineType({

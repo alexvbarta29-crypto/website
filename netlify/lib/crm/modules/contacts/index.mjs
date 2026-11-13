@@ -46,7 +46,8 @@ export default defineModule({
     // (contact_id, address, ctx) → property_id
     "contacts.ensureProperty": (cid, address, ctx) => ensureProperty(cid, address, ctx),
   },
-  needs: ["sales.enroll"],
+  // optional (Signs & flyers): a lead from a sign's QR code names it
+  needs: ["sales.enroll", "sales.qrResolve", "sales.qrLead"],
   sweeps: [
     { key: "contacts.stats", label: "Contact stats and lifecycle", lane: "bulk", every: "daily", at_local: "02:30", mutates: true, run: runContactStats },
     { key: "contacts.geocode", label: "Map points for properties", lane: "bulk", every: "pass", mutates: true, run: runGeocode },

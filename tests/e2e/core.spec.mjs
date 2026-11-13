@@ -425,6 +425,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
   const en = await get(`/enrollments/${seeded.enrollments.lead}`);
   const props = await get(`/contacts/${seeded.contacts.first}/properties`);
   const run = await (await o.ctx.request.post("/api/crm/import/runs", { headers: { "x-crm": "1", "content-type": "application/json" }, data: {} })).json();
+  const sign = await (await o.ctx.request.post("/api/crm/qr-codes", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-000000510001", name: "Yard sign, Delano", kind: "yard_sign", area: "Delano" } })).json();
   const ids = {
     "/contacts/:id": seeded.contacts.lead, "/contacts/:id/edit": seeded.contacts.lead, "/properties/:id": (props.properties || props || [])[0]?.id,
     "/team/:id": seeded.users.admin.id, "/templates/:id": (await get("/templates"))[0].id, "/enrollments/:id": seeded.enrollments.lead,
@@ -436,6 +437,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/plans/:id": seeded.plans.active, "/lights/:season": String(seeded.seasons.year), "/settings/agreement-templates/:id": seeded.templates.quarterly,
     "/inbox/:id": seeded.comms.tech, "/campaigns/:id": seeded.comms.campaign,
     "/invoices/:id": seeded.money.invoices.open, "/autopay/:id": seeded.money.autopay,
+    "/signs/:id": sign.data.code.id,
   };
   await o.close();
   const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] && typeof ids[path] === "object" ? ids[path][name] : ids[path] ?? null) ?? m);

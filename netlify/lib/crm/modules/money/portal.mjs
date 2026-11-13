@@ -21,7 +21,7 @@
 import { getRecord, getRecords, listRel, withStoreScope, withBudget } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
 import { ConflictError, InputError, NotFoundError } from "../../core/errors.mjs";
-import { definePortalReturn } from "../../portal/core.mjs";
+import { definePortalReturn, definePortalBeacon } from "../../portal/core.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { moneySettings, liveContact, sysModeOf } from "./common.mjs";
 import { paymentsOf } from "./invoices.mjs";
@@ -29,6 +29,7 @@ import { cardStatus } from "./cards.mjs";
 import { payments, mayMoveMoney } from "./gate.mjs";
 import { startInvoiceCheckout, startSetupCheckout, payRefusal, drySession, completeDryCheckout, resolveReturn } from "./checkout.mjs";
 import { renderInvoicePage, renderReceiptPage, renderCardPage, renderReturnPage, renderDryCheckout } from "./render.mjs";
+import { viaQr, noteQrOpened } from "./scan.mjs";
 
 // Applying a payment writes the payment, the invoice, the customer's money
 // stats and their events: more storage calls than a portal page's 30. The
@@ -65,8 +66,10 @@ async function invoicePage(p) {
   const mode = await sysModeOf({});
   const [pays, contact, settings, gate, plan] = await Promise.all([paymentsOf(inv.id), liveContact(inv.contact_id), moneySettings(), payments({ mode }), hasCardPlan(inv.contact_id)]);
   const refusal = ["open"].includes(inv.status) ? await payRefusal(inv, { sor: mode.system_of_record }) : null;
-  const { title, body } = renderInvoicePage({ invoice: inv, payments: pays, contact, company: p.company, settings, refusal: refusal || (!gate.impl ? { code: "paused", message: "Online payment is paused right now. Call or text us." } : null), plan, dry: gate.mode === "dry_run" });
-  return p.portalPage(p.layout({ title, body, script: "money-invoice.js", company: p.company, page: "invoice" }));
+  // opened from the pay code at the door: Barta's name and the amount first, and the open goes on the invoice's history (the beacon, after load)
+  const scan = await viaQr(p.session, inv.id);
+  const { title, body } = renderInvoicePage({ invoice: inv, payments: pays, contact, company: p.company, settings, refusal: refusal || (!gate.impl ? { code: "paused", message: "Online payment is paused right now. Call or text us." } : null), plan, dry: gate.mode === "dry_run", scan });
+  return p.portalPage(p.layout({ title, body, script: "money-invoice.js", company: p.company, page: "invoice", ...(scan ? { beacon: { kind: "invoice", id: inv.id } } : {}) }));
 }
 
 async function receiptPage(p, paymentId, invoice) {
@@ -107,7 +110,8 @@ export const portalRoutes = [
       const b = p.body || {};
       const custom = b.custom_tip_cents === undefined || b.custom_tip_cents === null || b.custom_tip_cents === "" ? undefined : Number(b.custom_tip_cents);
       if (custom !== undefined && !Number.isSafeInteger(custom)) throw new InputError("Enter the tip as dollars and cents.", "custom_tip_cents");
-      const out = await startInvoiceCheckout(p.params.id, p.contact_id, { tip_choice: b.tip_choice, custom_tip_cents: custom, save_card: b.save_card === true || b.save_card === "true" }, p.write());
+      const via = (await viaQr(p.session, p.params.id)) ? "qr" : undefined;
+      const out = await startInvoiceCheckout(p.params.id, p.contact_id, { tip_choice: b.tip_choice, custom_tip_cents: custom, save_card: b.save_card === true || b.save_card === "true" }, p.write(), { via });
       return p.json({ ok: true, data: { url: out.url, tip_cents: out.tip_cents } });
     }),
   },
@@ -137,6 +141,16 @@ export const portalRoutes = [
     }),
   },
 ];
+
+// The invoice page's view beacon (POST /api/portal/beacon, after the page
+// loaded; core checks the session's scope first): only a page opened from
+// the pay code sends one, and only a session whose link really is a pay
+// code's counts, once per couple of minutes (scan.mjs). Never fails the page.
+definePortalBeacon("invoice", async ({ id, session, write }) => {
+  try {
+    if (await viaQr(session, id)) await noteQrOpened(id, write());
+  } catch (e) { console.error(`crm:money: a pay code open wasn't noted (${safeErr(e)})`); }
+});
 
 // /p/return?cs=: resolved on the server with the portal cookie (no portal
 // token ever goes to Stripe).

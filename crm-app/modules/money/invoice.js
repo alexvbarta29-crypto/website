@@ -11,6 +11,7 @@ import { busy, readForm, showError, clearErrors, readMoney } from "../../core/fo
 import { money, dateShort, dateTime } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import { ensureStyles, statusPill, KIND, METHOD, PAY_STATUS, CARD, waitRun } from "./kit.js";
+import { openPayQr, QR_ICON } from "./pay-qr.js";
 
 async function load(params, ctx) {
   ensureStyles();
@@ -37,7 +38,7 @@ function payments(s, ctx) {
     const refund = p.kind === "refund";
     const left = p.total_cents - (p.refunded_cents || 0);
     const what = `${refund ? "Refund" : METHOD[p.method] || p.method}${p.card && p.card.last4 ? ` ending ${p.card.last4}` : ""}${p.reference ? ` · ${p.reference}` : ""}`;
-    return html`<div class="mn-pay"><span class="t"><b>${what}</b><small>${dateShort(p.received_on)}${p.tip_cents && !refund ? ` · tip ${money(p.tip_cents)}` : ""}${p.refund_reason ? ` · ${p.refund_reason}` : ""}${p.failure_code ? ` · ${String(p.failure_code).replace(/_/g, " ")}` : ""}${p.simulated ? " · test" : ""}</small></span>
+    return html`<div class="mn-pay"><span class="t"><b>${what}</b><small>${dateShort(p.received_on)}${p.tip_cents && !refund ? ` · tip ${money(p.tip_cents)}` : ""}${p.via === "qr" ? " · scanned the pay code" : ""}${p.refund_reason ? ` · ${p.refund_reason}` : ""}${p.failure_code ? ` · ${String(p.failure_code).replace(/_/g, " ")}` : ""}${p.simulated ? " · test" : ""}</small></span>
       <span class="p">${refund ? "−" : ""}${money(p.total_cents)}<br><span class="${"pill " + (refund ? "" : cls)}">${refund ? "Refund" : words}</span></span>
       ${!refund && p.status === "succeeded" && left > 0 && s.can.refund ? html`<button type="button" class="act" ${attrs({ "data-refund": p.id, "data-left": String(left) })}>Refund</button>` : ""}</div>`;
   })}</div></section>`;
@@ -49,6 +50,10 @@ function history(inv) {
   if (inv.due_on && inv.status === "open") rows.push(["Due", dateShort(inv.due_on)]);
   if (inv.sent_at) rows.push(["Sent", `${dateTime(inv.sent_at)}${(inv.sent_via || []).length ? ` by ${(inv.sent_via || []).map((c) => (c === "sms" ? "text" : "email")).join(" and ")}` : ""}`]);
   if (inv.reminders && inv.reminders.count) rows.push(["Reminders", `${inv.reminders.count}, the last ${dateShort(inv.reminders.last_at)}`]);
+  // scan to pay: when the code was shown, and when the customer's phone opened it
+  const q = inv.qr || {};
+  if (q.shown) rows.push(["Pay code shown", `${q.shown === 1 ? "once" : `${q.shown} times`}${q.last_shown_at ? `, the last ${dateTime(q.last_shown_at)}` : ""}`]);
+  if (q.opened) rows.push(["Opened from the code", `${q.opened === 1 ? dateTime(q.last_opened_at) : `${q.opened} times, the last ${dateTime(q.last_opened_at)}`}`]);
   if (inv.paid_at && inv.status === "paid") rows.push(["Paid", dateShort(inv.paid_at)]);
   if (inv.voided_at) rows.push(["Void", `${dateShort(inv.voided_at)}${inv.void_reason ? `: ${inv.void_reason}` : ""}`]);
   for (const a of ((inv.autopay && inv.autopay.attempts) || []).slice(-4)) rows.push([`Card try ${a.n || ""}`.trim(), `${dateShort(a.at)}: ${a.result === "succeeded" ? "went through" : a.result === "processing" ? "clearing" : a.result === "failed" ? `failed${a.code ? ` (${String(a.code).replace(/_/g, " ")})` : ""}` : a.result}`]);
@@ -63,6 +68,7 @@ function actions(s) {
   const b = [
     c.issue ? html`<button type="button" class="btn primary" data-act="send">${icon("send")}Send to the customer</button>` : "",
     c.send ? html`<button type="button" class="btn primary" data-act="send">${icon("send")}${inv.sent_at ? "Send again" : "Send"}</button>` : "",
+    c.qr ? html`<button type="button" class="btn" data-act="qr">${QR_ICON}Show QR to pay</button>` : "",
     c.record ? html`<button type="button" class="btn" data-act="record">${icon("money")}Record a payment</button>` : "",
     c.charge ? html`<button type="button" class="btn" data-act="charge">${icon("pay")}Charge the card</button>` : "",
     c.card_link && inv.status === "open" ? html`<button type="button" class="btn" data-act="card-link">${icon("link")}Text a card link</button>` : "",
@@ -104,6 +110,16 @@ export default {
   events: {
     "click [data-act=send]": (e, el, ctx) => sendSheet(ctx),
     "click [data-act=record]": (e, el, ctx) => recordSheet(ctx),
+    "click [data-act=qr]": (e, el, ctx) => {
+      const id = encodeURIComponent(ctx.state.invoice.id);
+      openPayQr({
+        save: true,
+        fetch: () => ctx.api(`/invoices/${id}/pay-qr`, { method: "POST", body: {} }),
+        check: async () => (await ctx.api(`/invoices/${id}`, { cache: false })).data.invoice.status === "paid",
+        // the history shows the code was shown (and, once they pay, the payment)
+        onClose: () => ctx.refresh(),
+      });
+    },
     "click [data-act=charge]": async (e, el, ctx) => {
       const s = ctx.state;
       const card = s.card && s.card.last4 ? `the ${String(s.card.brand || "card").toUpperCase()} ending ${s.card.last4}` : "the card on file";
