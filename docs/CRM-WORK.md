@@ -453,7 +453,8 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 | `POST /visits/:id/cancel` · `/mark-no-access` · `/done` · `/reopen` | schedule:write | the office's changes (`/visits/:id/no-access` is left for the tech app) |
 | `GET/POST /time-off` · `PATCH/DELETE /time-off/:id` | read · write | whole days (`date`, `end_date`) or part of a day (`date`, `start`, `end`) |
 | `GET /checklists` · `GET/PATCH /checklists/:id` · `POST /checklists` | read · settings:general | Settings → Checklists |
-| `GET /work/contacts/:id` | schedule:read | the contact's Work tab |
+| `GET /work/contacts/:id` | schedule:read | the contact page's work section (jobs and visits carry `plan_id`) |
+| `GET /visits?date=` | schedule:read | the Visits list: a day's visits as cards (n/m, time, minutes worked, amount, unpaid, status); the server's today by default |
 
 Services for other modules (§11.3): `work.createJobs(jobs, opId, scope,
 ctx) → job_ids` (ids `deriveId("job", opId, "work.createJobs@" + scope, n)`,
