@@ -64,6 +64,8 @@ export const MAX_JOBS_PER_CALL = 60;
 export const WORK_DEFAULTS = Object.freeze({
   stale_in_progress_days: 2, timer_autoclose_after_min: 120, reopen_days: 7, clock_flag_at: "19:00", clock_autoclose_at: "21:00",
   default_window_minutes: 120, default_duration_min: 120, confirm_skip_within_days: 2, late_cancel_hours: 24,
+  // the Schedule: how full a day is (visits the whole crew can do in a day) and the forecast on it
+  visits_per_day: 8, weather: true,
 });
 
 // ------------------------------------------------------------ small helpers

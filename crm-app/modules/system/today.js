@@ -1,6 +1,6 @@
 // Today (design §9.2, §9.3), one route for everyone: the office gets Home
-// (home.js: today's schedule and the money this month; loaded only for
-// them), a tech gets their own day: the date, a greeting,
+// (home.js: the cards each person picks, Clock in, Money and Today by
+// default; loaded only for them), a tech gets their own day: the date, a greeting,
 // the bell (unread notifications), the workers' alerts, the modules' cards
 // (todayCards: my tasks, and the tech app's day with Clock in/out, M4b) and
 // quick links. A tech sees their own day only ("No visits today" only when

@@ -1,102 +1,220 @@
-/* Home (system/home.js): the office's first screen, two calm cards (Today,
-   Money this month). The house style (crm.css tokens): Cabinet Grotesk 800
-   for the big number and 700 for the cards' titles, General Sans for the
-   rest, coral accents, 12 px cards on the mist canvas, 44 px targets on a
-   phone. The chart's marks are drawn by home-charts.js, their colors are
-   here. */
+/* Home (system/home.js): Rotor's phone Home with the best of Flyra's. A
+   light grey canvas, big white cards (24 px corners, soft shadows), round
+   white small buttons, segmented controls with a white active pill, coral
+   for what you tap (Clock In, the chart's line). The house tokens
+   (crm.css): Cabinet Grotesk 800 for the big numbers and titles, General
+   Sans for the rest. 44 px targets on a phone; room at the bottom for the
+   shell's floating tab bar and its + button. */
 
-.hm{gap:14px}
-.hm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:0}
-.hm-head .hello{margin:2px 2px 0;min-width:0}
-.hm-head .bell{flex:none;background:#fff;border:1px solid var(--line-2);box-shadow:var(--sh-xs)}
+#view:has(> .stack.hm){background:#f1f1f4}
+.hm{gap:16px;padding-bottom:calc(112px + var(--bottom,0px))}
+.hm-card{position:relative;background:#fff;border-radius:24px;padding:20px;box-shadow:0 1px 2px rgba(18,18,21,.04),0 10px 30px rgba(18,18,21,.06);min-width:0}
+.hm-grid{display:flex;flex-direction:column;gap:16px;min-width:0}
 .hm-alert{display:block;text-decoration:none;color:inherit}
-.hm-grid{display:flex;flex-direction:column;gap:14px;min-width:0}
-.hm-dim{font:500 13px/1 var(--text);color:var(--ink-3);letter-spacing:0;margin-left:4px}
-.hm-more{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:44px;margin:-10px -6px -10px 0;padding:0 6px;border-radius:var(--r-sm);color:var(--coral-ink);font:600 13.5px/1 var(--text);text-decoration:none;white-space:nowrap}
-.hm-more::after{content:"";width:6px;height:6px;border-right:1.75px solid currentColor;border-bottom:1.75px solid currentColor;transform:rotate(-45deg);margin-left:2px}
-.hm-more-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;margin:12px -18px -16px;padding:0 18px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px;text-decoration:none}
-.hm-more-row .hm-more{margin:0}
-.hm-more-row>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-a.hm-more-row:active{background:var(--fill)}
-.hm-note{margin:4px 0 0;font-size:14px;color:var(--ink-3)}
 
-/* ------------------------------------------------------------ the cards */
-.hm-card{padding:16px 18px}
-.hm-card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:28px;margin-bottom:6px}
-.hm-card-h h3{font:700 18px/1.2 var(--head);min-width:0}
+/* ------------------------------------------------------------ the header */
+.hm-head{display:flex;align-items:center;gap:14px;padding:4px 2px 2px}
+.hm-hello{flex:1;min-width:0}
+.hm-hello h2{font:800 25px/1.12 var(--head);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-hello .date{margin-top:3px;font:500 15px/1.2 var(--text);color:var(--ink-3)}
+.hm-av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--ink-2);color:#fff;font:600 11px/1 var(--text);letter-spacing:.02em;box-shadow:0 0 0 2px #fff}
+.hm-av.lg{width:52px;height:52px;font:800 18px/1 var(--head);box-shadow:0 2px 8px rgba(18,18,21,.12)}
+.hm-av.sm{width:30px;height:30px}
 
-/* Today */
-.hm-progress{display:flex;align-items:center;gap:10px;margin:0 0 6px}
-.hm-done{font:500 13.5px/1.3 var(--text);color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
-.hm-track{flex:none;width:72px;height:6px;border-radius:999px;background:var(--mist-2);overflow:hidden}
-.hm-fill{display:block;height:100%;border-radius:999px;background:var(--green)}
-.hm-visits{list-style:none;margin:2px -18px -6px;padding:0}
-.hm-visits li+li .hv-row{border-top:1px solid var(--line)}
-.hv-row{display:flex;align-items:center;gap:12px;min-height:60px;padding:9px 18px;color:inherit;text-decoration:none}
-a.hv-row:active{background:var(--fill)}
-.hv-time{flex:none;width:46px;display:flex;flex-direction:column;align-items:flex-start}
-.hv-time b{font:600 15px/1.1 var(--text);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-.hv-time small{font:500 11px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
-.hv-row .who{flex:1;min-width:0}
-.hv-row .nm{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hv-row .sub{display:block;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hv-row.done .hv-time b,.hv-row.done .nm{color:var(--ink-3)}
-.hv-row .pill{flex:none;height:22px;padding:0 8px;font-size:11.5px}
-.hv-people{flex:none;display:flex}
-.hv-av{position:relative;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--ink-2);color:#fff;font:600 10.5px/1 var(--text);letter-spacing:.02em;box-shadow:0 0 0 2px #fff}
-.hv-av+.hv-av{margin-left:-5px}
-.hv-av.none{background:var(--fill-2);color:var(--ink-3)}
-.hm-empty{display:flex;align-items:center;gap:12px;margin-top:4px;padding:12px 14px;border-radius:var(--r-lg);background:var(--mist);border:1px solid var(--line)}
-.hm-empty .art{flex:none;width:40px;height:40px;border-radius:var(--r);display:grid;place-items:center;background:var(--amber-bg);color:var(--amber)}
+/* round white small buttons */
+.hm-round{position:relative;flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#fff;border:0;color:var(--ink-2);box-shadow:0 1px 2px rgba(18,18,21,.06),0 4px 14px rgba(18,18,21,.08);cursor:pointer;text-decoration:none}
+.hm-round svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hm-round:active{background:var(--mist)}
+.hm-round.bell .badge{position:absolute;top:3px;right:3px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral);color:#fff;font:600 10.5px/17px var(--text);text-align:center;box-shadow:0 0 0 2px #fff}
+
+/* a card's top row: a segmented control (or a title) and its buttons */
+.hm-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;min-width:0}
+.hm-bar h3{font:700 19px/1.2 var(--head);min-width:0}
+.hm-bar-end{display:flex;align-items:center;gap:8px}
+.hm-seg{display:inline-flex;gap:2px;padding:4px;border-radius:999px;background:#ececf0;min-width:0}
+.hm-seg button{min-height:44px;padding:0 14px;border:0;border-radius:999px;background:none;color:var(--ink-3);font:600 15px/1 var(--text);cursor:pointer;white-space:nowrap}
+.hm-seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(18,18,21,.1)}
+.hm-seg.full{display:flex;width:100%;margin-bottom:14px}
+.hm-seg.full button{flex:1;padding:0 6px}
+.hm-row2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin:-4px 0 0}
+.hm-arrows{flex:none;display:flex;gap:8px}
+.hm-eyebrow{display:flex;align-items:center;gap:8px;font:600 12px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.hm-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:0;background:#ececf0;color:var(--ink);font:600 14.5px/1 var(--text);text-decoration:none;cursor:pointer}
+.hm-chip svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9}
+.hm-more{flex:none;display:inline-flex;align-items:center;min-height:44px;color:var(--coral-ink);font:600 14px/1 var(--text);text-decoration:none;white-space:nowrap}
+.hm-more::after{content:"";width:6px;height:6px;margin-left:6px;border-right:1.75px solid currentColor;border-bottom:1.75px solid currentColor;transform:rotate(-45deg)}
+.hm-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 -8px;font-size:13px;color:var(--ink-3)}
+.hm-foot>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-note{margin:10px 0 0;font-size:14px;color:var(--ink-3)}
+.hm-more-row{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:8px;color:var(--coral-ink);font-weight:600;font-size:14px;text-decoration:none}
+.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:18px 8px 8px}
+.hm-empty .art{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--mist-2);color:var(--ink-3);margin-bottom:6px}
 .hm-empty .art svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.hm-empty>div{flex:1;min-width:0}
-.hm-empty b{display:block;font-weight:600}
-.hm-empty p{margin:2px 0 0;font-size:13.5px;color:var(--ink-3)}
-.hm-next-h{margin:16px 0 2px;font:600 14px/1.3 var(--text);color:var(--ink-2)}
+.hm-empty b{font:600 16px/1.3 var(--text)}
+.hm-empty p{margin:0;font-size:14px;color:var(--ink-3)}
+.hm-track{display:block;height:6px;border-radius:999px;background:#ececf0;overflow:hidden}
+.hm-fill{display:block;height:100%;border-radius:999px;background:var(--coral)}
 
-/* Money this month */
-.hm-big{font:800 44px/1.05 var(--head);letter-spacing:-.02em;margin:4px 0 2px}
-.hm-sub{margin:0;font-size:13.5px;color:var(--ink-3)}
-.hm-cmp{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:12px 0 0;font-size:13.5px;line-height:1.3;color:var(--ink-2)}
-.hm-delta{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 8px;border-radius:999px;font:600 12px/1 var(--text);white-space:nowrap;font-variant-numeric:tabular-nums}
-.hm-delta.up{background:var(--green-bg);color:var(--green-ink)}
-.hm-delta.down{background:var(--red-bg);color:var(--red-ink)}
+/* ------------------------------------------------------------ Clock in */
+.hm-clock{display:flex;align-items:flex-start;gap:16px}
+.hm-tile{flex:none;width:60px;height:60px;border-radius:18px;display:grid;place-items:center;background:var(--coral-wash);color:var(--coral);box-shadow:inset 0 0 0 1px rgba(251,77,61,.12)}
+.hm-tile svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hm-clock-main{flex:1;min-width:0}
+.hm-dot{width:8px;height:8px;border-radius:50%;background:#a3a3ab}
+.hm-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
+.hm-hours{margin-top:4px;font:800 36px/1.05 var(--head);letter-spacing:-.02em}
+.hm-line{margin:6px 0 0;font-size:14.5px;color:var(--ink-3)}
+.hm-clock-act{display:flex;justify-content:flex-end;margin-top:14px}
+.hm-pill{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 17px/1 var(--text);cursor:pointer;box-shadow:0 6px 16px rgba(208,51,31,.24)}
+.hm-pill:active{background:var(--coral-btn-2)}
+.hm-pill svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
 
-/* ------------------------------------------------------------ the chart */
-.hc-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:16px 0 6px;min-height:20px}
-.hc-title{font:500 12.5px/1.2 var(--text);color:var(--ink-3)}
-.hc-read{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:12.5px;white-space:nowrap}
-.hc-read b{font:600 14px/1.2 var(--text);color:var(--ink);font-variant-numeric:tabular-nums}
+/* ------------------------------------------------------------ Money */
+.hm-menu-wrap{position:relative;flex:none}
+.hm-period{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px 0 10px;border:0;background:none;color:var(--ink-2);font:600 15px/1 var(--text);cursor:pointer;white-space:nowrap}
+.hm-period svg{width:16px;height:16px}
+.hm-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:220px;margin:0;padding:6px;list-style:none;background:#fff;border-radius:18px;box-shadow:0 4px 12px rgba(18,18,21,.08),0 18px 40px rgba(18,18,21,.16)}
+.hm-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:none;color:var(--ink);font:500 15.5px/1 var(--text);text-align:left;cursor:pointer}
+.hm-menu button:active,.hm-menu button:hover{background:var(--mist)}
+.hm-menu .ck{width:18px;display:grid;place-items:center;color:var(--coral-ink)}
+.hm-menu .ck svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2}
+.hm-menu .sep{margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
+.hm-row2 .hm-eyebrow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-money-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:4px}
+.hm-big{font:800 42px/1.05 var(--head);letter-spacing:-.02em;white-space:nowrap}
+.hm-stats{flex:none;display:flex;gap:14px;text-align:right;padding-bottom:4px}
+.hm-stats span{display:block;font:600 10.5px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.hm-stats b{display:block;margin-top:4px;font:600 17px/1.1 var(--text);font-variant-numeric:tabular-nums}
+.hm-stats b.up{color:var(--green-ink)}
+.hm-stats b.down{color:var(--red-ink)}
+.hm-goal{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--ink-3)}
+.hm-goal .hm-track{flex:1;max-width:220px}
+
+/* the chart */
+.hc-head{display:flex;justify-content:flex-end;min-height:22px;margin:14px 0 4px}
+.hc-read{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:13px;white-space:nowrap}
+.hc-read b{font:600 14.5px/1.2 var(--text);color:var(--ink);font-variant-numeric:tabular-nums}
 .hc-read span{color:var(--ink-3);overflow:hidden;text-overflow:ellipsis}
-.hc{position:relative;height:132px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.hc{position:relative;height:168px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
 .hc:focus-visible{outline:2px solid var(--coral);outline-offset:4px}
 .hc svg.hc-svg{display:block;fill:none;stroke:none;overflow:visible}
-.hc-grid{stroke:var(--line);stroke-width:1}
-.hc-base{stroke:#d4d4da;stroke-width:1}
-.hc-t{fill:var(--ink-3);font:500 10.5px/1 var(--text);font-variant-numeric:tabular-nums}
-.hc-t.hc-ahead{fill:#a9a9b1}
-.hc-cur{fill:var(--coral)}
-.hc-col.on .hc-cur{fill:var(--coral-ink)}
+.hc-grid{stroke:#e2e2e8;stroke-width:1;stroke-dasharray:3 4}
+.hc-base{stroke:#d4d4da;stroke-width:1;stroke-dasharray:3 4}
+.hc-t{fill:var(--ink-3);font:500 11px/1 var(--text);font-variant-numeric:tabular-nums}
+.hc-line{fill:none;stroke:var(--coral);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hc-area{fill:rgba(251,77,61,.08)}
+.hc-cross{stroke:#c9c9d1;stroke-width:1}
+.hc-dot{fill:var(--coral);stroke:#fff;stroke-width:2}
 
+/* ------------------------------------------------------------ Today (the agenda) */
+.hm-ag-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 14px}
+.hm-ag-head .t{min-width:0}
+.hm-ag-head h3{font:800 20px/1.15 var(--head);letter-spacing:-.015em;text-wrap:balance}
+.hm-ag-head .t>span{display:block;margin-top:2px;font-size:14px;color:var(--ink-3)}
+.hm-day{margin:14px 4px 8px;font:600 13px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+.hm-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.hm-item{position:relative;display:flex;align-items:center;gap:10px;min-height:68px;padding:12px 14px 12px 20px;border-radius:18px;background:#f6f6f8;color:inherit;text-decoration:none;overflow:hidden}
+.hm-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bar,#b9b9c2)}
+a.hm-item:active{background:#efeff2}
+.hm-item .who{flex:1;min-width:0}
+.hm-item .who b{display:block;font:600 16.5px/1.25 var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-item .who small{display:block;margin-top:3px;font-size:14px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-item.done .who b,.hm-item.done .hm-time{color:var(--ink-3)}
+.hm-avs{flex:none;display:flex}
+.hm-avs .hm-av+.hm-av{margin-left:-7px}
+.hm-time{flex:none;font:500 14.5px/1 var(--text);color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hm-item .chev{margin-left:2px}
+.hm-tasks{margin-top:18px}
+.hm-tasks-h{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;padding:0 6px;border:0;background:none;color:var(--ink-3);font:600 12.5px/1 var(--text);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.hm-tasks-h b{margin-left:8px;color:var(--coral-ink)}
+.hm-tasks-h svg{width:18px;height:18px}
+.hm-task-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.hm-task{display:flex;align-items:center;gap:10px;min-height:56px;padding:10px 16px;border-radius:16px;background:#f6f6f8;color:inherit;text-decoration:none}
+.hm-task .who{flex:1;min-width:0}
+.hm-task .who b{display:block;font:600 15.5px/1.3 var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-task .who small{display:block;font-size:13px;color:var(--ink-3)}
+.hm-task .who small.late{color:var(--red-ink)}
+.hm-task .pill{flex:none}
+
+/* ------------------------------------------------------------ Leaderboard, Inbox, Tasks, Goals */
+.hm-c-board .hm-bar h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-board{list-style:none;margin:0;padding:0}
+.hm-board li{display:flex;align-items:center;gap:12px;min-height:60px;padding:6px 2px}
+.hm-board li+li{border-top:1px solid var(--line)}
+.hm-board .rank{width:18px;font:700 16px/1 var(--head);text-align:center;color:var(--ink-2)}
+.hm-board .hm-av{width:40px;height:40px;font-size:13px}
+.hm-board .who{flex:1;min-width:0}
+.hm-board .who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-board .who small{display:block;font-size:13.5px;color:var(--ink-3)}
+.hm-board .val{flex:none;font:600 16px/1 var(--text);font-variant-numeric:tabular-nums}
+.hm-board .val small{font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+.hm-convs{list-style:none;margin:0;padding:0}
+.hm-conv{display:flex;align-items:center;gap:12px;min-height:62px;padding:8px 2px;color:inherit;text-decoration:none}
+.hm-convs li+li .hm-conv{border-top:1px solid var(--line)}
+.hm-conv .hm-av{width:40px;height:40px;font-size:13px}
+.hm-conv .who{flex:1;min-width:0}
+.hm-conv .who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-conv .who small{display:block;font-size:13.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-conv.unread .who b{font-weight:700}
+.hm-conv .end{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12px;color:var(--ink-3)}
+.hm-unread{width:9px;height:9px;border-radius:50%;background:var(--coral)}
+.hm-select{position:relative;display:inline-flex;align-items:center;color:var(--ink-2)}
+.hm-select select{appearance:none;-webkit-appearance:none;min-height:44px;padding:0 26px 0 8px;border:0;background:none;color:var(--ink-2);font:600 16px/1 var(--text);cursor:pointer}
+.hm-select svg{position:absolute;right:4px;width:16px;height:16px;pointer-events:none}
+.hm-goals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px}
+.hm-goal-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.hm-goal-h span{font-weight:600}
+.hm-goal-h b{font:600 16px/1 var(--text);font-variant-numeric:tabular-nums}
+.hm-goal-h small{font-weight:500;color:var(--ink-3)}
+.hm-pct{display:block;margin-top:6px;font-size:12.5px;color:var(--ink-3)}
+
+/* ------------------------------------------------------------ Edit Home */
+.hm-edit{display:flex;justify-content:center;margin-top:4px}
+.hm-edit .hm-chip{background:#fff;box-shadow:0 1px 2px rgba(18,18,21,.06),0 4px 14px rgba(18,18,21,.07)}
+/* (the sheets live outside .hm) */
+.hm-edit-list{list-style:none;margin:12px 0 16px;padding:0;display:flex;flex-direction:column;gap:8px}
+.hm-edit-list li{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:16px;background:var(--mist)}
+.hm-switch{flex:1;display:flex;align-items:center;gap:12px;min-height:48px;min-width:0;cursor:pointer}
+.hm-switch input{flex:none;width:22px;height:22px;accent-color:var(--coral-btn)}
+.hm-switch .who{min-width:0}
+.hm-switch b{display:block;font-weight:600}
+.hm-switch small{display:block;font-size:13px;color:var(--ink-3)}
+.hm-edit-list .hm-round.sm{width:44px;height:44px;box-shadow:0 1px 2px rgba(18,18,21,.08)}
+.hm-edit-list .hm-round svg{width:18px;height:18px}
+.hm-pick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.hm-pick .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;text-align:left}
+.hm-pick small{font-weight:400;color:var(--ink-3)}
+
+/* a phone: the second line has the time, so the right-hand time steps aside for the name */
+@media (max-width:419px){
+  .hm-item .hm-time{display:none}
+}
 @media (max-width:380px){
-  .hm-big{font-size:40px}
+  .hm-seg button{padding:0 11px;font-size:14.5px}
+  .hm-big{font-size:36px}
+  .hm-stats{gap:12px}
+  .hm-hello h2{font-size:23px}
 }
 
 /* ------------------------------------------------------------ a computer (900 px and up) */
-/* The greeting over the two cards: side by side from 1,200 px (Today the
-   wider), one over the other below that (a 1,024 px laptop: the money card
-   would be too narrow for its line and chart beside Today). */
 @media (min-width:900px){
-  .hm{gap:18px}
-  .hm-grid{gap:18px}
-  .hm-card{padding:18px 22px}
-  .hm-visits{margin-left:-22px;margin-right:-22px}
-  .hv-row{padding-left:22px;padding-right:22px}
-  .hm-more-row{margin-left:-22px;margin-right:-22px;margin-bottom:-18px;padding:0 22px}
-  a.hv-row:hover,a.hm-more-row:hover{background:var(--mist)}
-  .hm-big{font-size:48px}
-  .hc{height:150px}
+  .view>.stack.hm{max-width:1160px}
+  .hm{gap:20px;padding-bottom:32px}
+  .hm-card{padding:24px}
+  .hm-seg button{min-height:38px}
+  .hm-round{width:40px;height:40px}
+  .hm-chip,.hm-period,.hm-more,.hm-tasks-h,.hm-select select{min-height:40px}
+  .hm-round:hover,.hm-menu button:hover{background:var(--mist)}
+  a.hm-item:hover,a.hm-task:hover{background:#efeff2}
+  a.hm-conv:hover{background:var(--mist)}
+  .hc{height:200px}
+  .hm-ag-head h3{font-size:22px}
+  .hm-stats{gap:18px}
 }
-@media (min-width:1200px){
-  .hm-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr);align-items:start}
+/* from 1,100 px two columns: the clock a bar across, then the cards side by side in their order */
+@media (min-width:1100px){
+  .hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+  .hm-c-clock{grid-column:1/-1;display:flex;align-items:center;gap:18px}
+  .hm-c-clock .hm-clock{flex:1;align-items:center}
+  .hm-c-clock .hm-clock-act{margin-top:0}
 }

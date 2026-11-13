@@ -322,6 +322,10 @@ const fileGate = (how) => (a, p, fx) => {
   return !!spec && !!spec[how](asCtx(a), owner.data);
 };
 const GATES = {
+  // Home's Money card: the people who see money (reports:read; the office sign-in too, which no actor here has)
+  "GET /home/money": (a) => a.user.role !== "tech" && P.can(a.user, "reports:read"),
+  // the leaderboard waits for the reports module's service (another track): 404 until then
+  "GET /home/leaderboard": () => false,
   "GET /settings/:name": (a, p) => P.can(a.user, p.setting.perm),
   "PUT /settings/:name": (a, p) => P.can(a.user, p.setting.perm),
   // the type's readPerm (audit:read without one), unscoped or for this one record (§4.6)

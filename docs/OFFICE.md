@@ -2,18 +2,20 @@
 
 **One app: the CRM.** With a CRM sign-in (or the office password before the
 first owner exists, to set it up) `/office` is the CRM, full screen, with no
-tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): two
-things, the owner's choice, today's schedule (who goes where, what's
-done) and the money this month (collected so far, against last year, one
-chart per week). The office's bar is a floating pill, Home · Schedule ·
-Inbox · Customers · Sales · Menu (each person may pick their own: Menu →
-Tab bar), with a round coral + beside it; the Menu is a sheet of every
-other screen (docs/CRM.md "The bar, the Sales switch, the Menu and the
-+"). On a computer (900 px and up) the same app has a sidebar (the same
-places first, then every section, Settings and Team at the bottom), a
-search box and a New button. The full dashboards (Overview, Money, Sales,
-Plans, Jobs, switched in place) open from the money card's "See more" and
-Menu → Reports, and the office tools are in Menu → Office
+tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): Rotor's
+phone Home with the best of Flyra's, as cards each person picks with Edit
+Home: Clock in, Money (Collected, Scheduled or ARR over a period) and
+Today (the day's, week's or month's visits and tasks without a due date)
+by default, and a Leaderboard, Inbox, Tasks and Goals to add. The office's
+bar is a floating pill, Home · Schedule · Inbox · Customers · Sales · Menu
+(each person may pick their own: Menu → Tab bar), with a round coral +
+beside it; the Menu is a sheet of every other screen (docs/CRM.md "The
+bar, the Sales switch, the Menu and the +"). On a computer (900 px and
+up) the same app has a sidebar (the same places first, then every
+section, Settings and Team at the bottom), a search box and a New button.
+The full dashboards (Overview, Money, Sales, Plans, Jobs, switched in
+place) open from the money card's "See more" and Menu → Reports, and the
+office tools are in Menu → Office
 tools: Light Studio, Purchases, Giveaway and Rotor (Follow-ups is under
 Menu → Sales) (`crm-app/modules/system/{dashboard,tool}.js`, routes
 `/dashboard`, `/dashboard/:view`, `/tools/:id`). They show only on a phone

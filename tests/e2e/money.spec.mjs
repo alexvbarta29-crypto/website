@@ -216,9 +216,9 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForFunction(() => [...document.querySelectorAll(".toast")].some((x) => /no test Stripe key yet/.test(x.textContent)), null, { timeout: 5000 });
       assert.equal((await api(p, "/money/status")).mode, "dry_run");
 
-      // Home: the money this month only (what's owed is on Invoices; past due lights the tab's dot)
+      // Home: the Money card (Collected | Scheduled | ARR); what's owed is on Invoices, past due lights the tab's dot
       await goTo(f, "/today");
-      await viewHas(f, /Money this month/);
+      await viewHas(f, /Collected[\s\S]*Scheduled[\s\S]*ARR/);
       assert.doesNotMatch(await f.textContent("#view"), /owed to you|Invoices past due/);
       await shot(page, `money-home-${device}`);
       await p.clean();

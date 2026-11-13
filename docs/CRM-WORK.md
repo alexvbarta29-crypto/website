@@ -26,6 +26,7 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 | `office-moveday.mjs` | M4a | the rain-day move (preview, op, run) |
 | `office-sync.mjs` | M4a | the `work.sync` and `work.summaries` sweeps (jobs in step with their visits; visits' copies) |
 | `office-routes.mjs` | M4a | the office API |
+| `weather.mjs` | Schedule | the forecast on the schedule: the National Weather Service read and cached on the server (`GET /schedule/weather`) |
 | `automations.mjs` | M4a | `visit.confirm`, the reminders, `work.stale`, `work.stats`, templates |
 | `import-rotor.mjs` | M4a | import phases `work.time_off`, `work.jobs`, `work.visits` |
 | `field.mjs` | M4b | composes the field part: routes, sweeps, the two manual automations, templates, import phases |
@@ -35,10 +36,14 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 | `timers.mjs` | M4b | segments, the `work.timers` sweep, import phase `work.timers` |
 | `timesheets.mjs` | M4b | shifts, device times, pending entries, weekly approval, the pay estimate, the `work.clock` sweep, the person's and the office's time routes, import phase `work.timesheets` |
 
-Client (M4a): `office-schedule.js` (the Schedule: Month, Week, Day, List,
-To book), `office-kit.js`, `visit.js` (two columns from 1,200 px: the visit
-on the left; the customer, call, directions, the job, the buttons and the
-texts on the right), `office-styles.css`.
+Client (M4a): `office-schedule.js` (the Schedule: Month, List, Day, 3 Day,
+Week and To book, the head and its sheets), `office-board.js` (the desk's
+Week board, the Day and 3 Day time grids, the To book tray, drag and drop,
+undo, how full a day is, what the cards show), `office-vpanel.js` (the
+visit's side panel, Move, Assign), `office-weather.js` (the forecast's
+icons and words), `office-kit.js`, `visit.js` (two columns from 1,200 px:
+the visit on the left; the customer, call, directions, the job, the buttons
+and the texts on the right), `office-styles.css`.
 
 Client (M4b): `tech-today.js` (the person's day on Today), `visit-field.js`
 (the field panel on the Visit screen), `tech-time.js`, `tech-pay.js`,
@@ -49,37 +54,110 @@ overlay of what waits, copies for no signal, Delano times),
 
 ## What the office sees
 
-- **Schedule** (bottom tab; `schedule:read`): **Month** (the default when
-  nothing is kept: the month as a grid, Sunday first, with the month's name,
-  arrows and **Today**, and the chip per person; each day shows its visits
-  as small chips (start time and the customer's short name, "8a Alex W.",
-  in the color of the first person on it; done ones outlined, cancelled
-  ones struck through) and "+N more" past three, or colored dots on a
-  phone; days outside the month are muted, today is coral, the chosen day
-  is ringed. Picking a day (a tap, or the arrow keys on a computer: a day,
-  a week, Home and End for the week's ends, Page Up and Page Down a month)
-  shows **that day's list** under the grid on a phone and beside it from
-  1,100 px: "Thursday, Nov 12 · 6 visits", **Open day** (the Day view),
-  **Route** (with one person chosen) and **Book** (New job booked for that
-  day), then a row per visit (the time and its end, the customer, the
-  address, the work, the status, the job's amount for people with
-  `visits:prices`, the people as colored initials) and per timed task,
-  each opening it; an empty day says so. The whole grid, the leading and
-  trailing days too, is one read (`GET /schedule?month=`); picking a day in
-  it never reads again. The month and the chosen day are kept like the
-  other views, and old links keep working (`?view=day&date=` opens that
-  day; `?date=` alone opens the month on it)), **Day** (a day bar, a chip per
-  person, the day's visits and timed tasks (estimate visits, meetings) in
-  time order; each visit shows its slot, the town and job, the people as
-  colored initials and a warning badge: someone off, outside the hours, a
-  holiday, two things at once), **Week** (each person's count of visits per
-  day; tap a day to open it), **List** (the next 14 days) and **To book**
-  (jobs with no visit, due by the month: plan visits and takedowns once
-  their month comes; **Book** opens the book sheet). From a day: one
-  person's **Route**, **Rain day** and **Time off**. The top button is
-  **Book** (a new job with its first visit).
-  A technician holds `schedule:read` only as "own": the tab is the office's,
-  their day lives on Today (M4b).
+- **Schedule** (bottom tab; `schedule:read`), laid out like Rotor's phone
+  schedule with Flyra's extras (the owner's choice, Nov 12-13):
+  - **The head**: the month as a big title ("Nov ▾" on a phone, "November
+    2026 ▾" on a computer; tap: a month picker with Today and any day), and
+    round buttons: **Find** (a visit by customer, address, town or job
+    number among what's on screen; on a desk it opens in the side panel),
+    **Map of the day** (each person's Route that day, with its sketch and
+    Google Maps; the live team map joins it later), **Go to a date**
+    (a day, or Today), **Who** (everyone or one person; a chip under the
+    views shows everyone again) and the **gear**: Flyra's "Show on cards"
+    (Customer name, Service, Price with `visits:prices`, Address) and
+    "Hide cancelled jobs", saved per person on that device (localStorage
+    `crm-sched-cards:<user id>`) and applied to every view's chips, rows and
+    blocks.
+  - **The views**: Month (the default when nothing is kept) · List · Day ·
+    3 Day · Week, with a **week strip** on List, Day and 3 Day (Sunday
+    first; today in a coral circle, the chosen day in ink, 3 Day's other two
+    shaded; tap a day; swipe for another week on a phone, the arrows or the
+    arrow keys on a computer). To book (the tray) opens from the month's
+    "N to book". Old links keep working (`?view=day&date=`, `?date=` alone
+    opens the month on it, `?view=tray`), and `?visit=` opens a visit's
+    panel (a phone: the Visit screen).
+  - **Month**: the grid (Sunday first), one read (`GET
+    /schedule?month=`), each day showing **how full it is**: the count and
+    a thin bar against what the crew can do that day (green, amber from
+    75%, coral full or over; striped amber for visits on a closed day or a
+    holiday; one person shown: their share), the **forecast** for the next
+    7 days (an icon and the high; the chance of rain or snow when it's 40%
+    or more), an amber mark on a **past day with visits nobody closed**
+    (booked, on the way or under way), and on a computer the chips (start
+    time and the customer, in the color of the first person on it; "+N
+    more" past three). Under the grid: what the bar and the mark mean, the
+    forecast's source, and **Change** (`settings:general`: the crew's
+    visits a day, the forecast on or off). The card's head: the month's
+    count, **N to book** (the tray's own rule, `toBookRows`), Today and the
+    arrows. Picking a day (a tap, or the arrow keys on a computer: a day, a
+    week, Home and End, Page Up and Page Down a month) shows **that day's
+    list** under the grid on a phone and beside it from 1,100 px: "Thursday,
+    Nov 12 · 6 visits" and Flyra's **Open day ›**, the day's forecast and
+    "5 of 8 booked", "2 visits here aren't marked done yet" on a past day,
+    **Route** (one person), **Book** and **Move this day** (the rain-day
+    move, today and later), then a row per visit (the time, the customer,
+    the address, the work, the status, the amount, the people) and timed
+    task; an empty day says "No jobs on Thu, Nov 12" with **Add job** (New
+    job booked for that day). Picking a day inside the grid never reads
+    again.
+  - **Day**: **Technician** (the default): a column per person, Unassigned
+    first, on a time grid (the open hours, stretched to every visit), each
+    head with the name, visits done of all ("2/3"), money done of all
+    ("$1,105 / $1,500", only with `visits:prices`) and a thin bar (done
+    green, under way blue); each visit a block in its person's color with
+    the customer, the town, the service, the time, the status and the
+    amount (as the gear says); done ones faded and struck through with a
+    check, a red **$** when the job isn't paid (Money's invoices index:
+    an open invoice with a balance, or none yet); timed tasks on their
+    person's column; a red line at the server's current time today. More
+    than two columns scroll sideways on a phone (the hours stay). **Sales
+    rep**: the same columns for the sales side: each owner's and office
+    person's estimate visits, meetings, calls and follow-ups with a time
+    (open tasks, `?sales=1`, `tasks:read`), Unassigned first; those due "any
+    time" listed under the grid. Under it: Route (one person), Rain day,
+    Time off, Today.
+  - **3 Day**: three days side by side on the same grid, each visit in its
+    first person's color; each day's head (weekday, date, forecast, done of
+    all, the money) opens that Day. On a phone, more than two visits at once
+    in a day show as one block ("3 visits, 10a to 12p") that opens the day.
+  - **Week** (Sunday first, as the month): on a phone each person's count
+    of visits per day (tap a day to open it); on a desk a board (below).
+    **List**: the next 14 days from the chosen day as an agenda.
+    **To book**: jobs with no visit, due by the month (plan visits and
+    takedowns once their month comes); **Book** opens the book sheet.
+  - **On a desk (1,100 px and up)**: a click on a visit (the month's day
+    list, Week, Day, 3 Day, List, Find) opens a **side panel** instead of
+    leaving: the customer, when (and the arrival window), where, the work
+    and job number, who, the status, the amount (`visits:prices`), the
+    crew's access and notes, the visit's notes, the office notes, and
+    **Open visit**, **Move** (the book / move sheet), **Assign** (the
+    people only, with the warnings while you pick), **Navigate** and
+    **Call**. Esc or ✕ closes it (a sheet on top closes first; focus goes
+    back to the visit); the frame's address and the office shell's become
+    `#/schedule?…&visit=<id>`, so the link can be shared. **Week** is a
+    board (a row per person and Unassigned, a column per day with its fill
+    and forecast) and **Day** and **3 Day** are the grids above; a visit
+    that hasn't started **drags** to another day (the board keeps its
+    time), another time (the grids snap to 15 minutes) or onto another
+    person's row or column (that person replaces the one it was dragged
+    from; onto Unassigned takes them off); a job from the **To book tray**
+    beside them drags onto a day (the person's first free slot that day in
+    the open hours, else the opening time) or a time on a column (the
+    default length and arrival window). A drop runs the same checks as the
+    sheets: `GET /schedule/check` first (any warning is asked: "Tess is
+    off. Go ahead anyway?"), then a fresh `GET /visits/:id` (a visit someone
+    changed meanwhile is never moved on old information) and `PATCH` with
+    If-Match, or `POST /visits` with a client id. An **undo bar** says what
+    changed ("Pat S. moved to Wed, Nov 25 at 8:00 AM, now with Tess.") for
+    12 seconds: Undo puts a move or assignment back while nobody changed it
+    since, and cancels a booking (the job goes back to To book). A visit
+    under way only changes people (Assign). The keyboard way is the
+    panel's Move and Assign and the tray's Book. A phone has no drag: a
+    tap opens the visit, as before.
+  From a day: one person's **Route**, **Rain day** and **Time off**. The top
+  button is **Book** (a new job with its first visit). A technician holds
+  `schedule:read` only as "own": the tab is the office's ("Your day is on
+  Today"), and every schedule route answers them 403.
 - **The book / move sheet**: day, start, end, what the customer is told
   (a 2-hour or 1-hour arrival window, an exact time, anytime that day) and
   who goes. While you pick, `GET /schedule/check` shows the warnings (never
@@ -440,6 +518,8 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 |---|---|---|
 | `GET /schedule?from&to&users` | schedule:read | visits, timed tasks, time off and warnings for up to 42 days; `today` is the server's day |
 | `GET /schedule?month=yyyy-mm\|now&amounts=1` | schedule:read | the month view's grid in one read (`monthGridRange`: the Sunday on or before the 1st to the Saturday on or after the last day, 28 to 42 days); `amounts=1` adds each visit's job total (`amt`, cents, from the jobs index: open jobs and the years closed ones are filed under; none for a no-charge job) for people with `visits:prices` |
+| `GET /schedule?…&pay=1&sales=1` | schedule:read | every answer also carries `capacity` (`per_day`, `per_person`, `days` {date: visits it can take}, `off` {date: [user ids off all day]}), `defaults` (`duration_min`, `window_min`), `weather` (on or off) and `now_min` (the server's time of day); a month carries `to_book`; `pay=1` with amounts (not a month) adds `pd` (1 paid, 0 not) to finished visits; `sales=1` (not a month, `tasks:read`) adds `sales` (open estimate visits, meetings, calls, follow-ups and personal blocks with a time) |
+| `GET /schedule/weather` | schedule:read | the next 7 days' forecast `{ days: { date: { hi, lo, pop, icon, text } }, as_of, state: ok \| stale \| off \| none, source }`; never an error |
 | `GET /schedule/unscheduled?month` | schedule:read | the tray: unscheduled jobs due by the month, and how many later |
 | `GET /schedule/check?date&start&end&users&visit&town` | schedule:read | warnings and hints for a slot |
 | `GET /schedule/route?date&user` · `POST /schedule/route` | read · write | a person's stops; Optimize (no `order`) or save an order |
@@ -493,8 +573,52 @@ Writes carry `client_id` (400 without one), and replays `queued_offline`,
 `timer_autoclose_after_min` (120), `reopen_days` (7), `clock_flag_at`
 ("19:00"), `clock_autoclose_at` ("21:00"), `default_window_minutes` (120),
 `default_duration_min` (120), `confirm_skip_within_days` (2),
-`late_cancel_hours` (24). The schedule also reads `cfg/hours` and the
-holiday calendar, and Route reads the company's base (`cfg/company.base`).
+`late_cancel_hours` (24), `visits_per_day` (8: the visits the whole crew
+can do in a day, what the month's bars fill against; Schedule → Change),
+`weather` (true: the forecast on the schedule). The schedule also reads
+`cfg/hours` and the holiday calendar, and Route reads the company's base
+(`cfg/company.base`).
+
+**How full a day is** (`capacityOf` in office-schedule.mjs): a closed day
+(the hours) or a holiday takes 0; otherwise `visits_per_day`, less the share
+of each active technician off the whole working day (an all-day time off,
+or one covering the day's hours; an "available" exception never counts):
+the crew's number × the share still working, rounded. One person's share
+(`per_person`) is the crew's number over the technicians, at least 1.
+
+## The forecast (api.weather.gov)
+
+The schedule's weather comes from the **National Weather Service API**,
+host **`api.weather.gov`** (free, no key, no account), read on the server
+only (`weather.mjs`, `GET /schedule/weather`): the app's CSP is unchanged
+and a phone never calls it.
+
+- What is sent: the forecast point only, the service area's center
+  (Settings → Service area, else the company's base), rounded to 4
+  decimals; no customer, address or person. The request carries
+  `User-Agent: BartaCRM/1.0 (https://www.bartawindowwashing.com; schedule
+  forecast)` (NWS asks for one; no email) and `Accept:
+  application/geo+json`.
+- Two calls, each cached in storage and in the warm instance:
+  `GET /points/{lat},{lng}` (the forecast office and grid; kept 30 days in
+  `sys/weather-point/{lat}_{lng}`) and `GET /gridpoints/{office}/{x},{y}/forecast`
+  (kept 3 hours per office and grid in `sys/weather/{office}-{x}-{y}`).
+  The forecast URL is built from the office and grid, never taken from the
+  answer. Each call has 3.5 s (less when the request's 8 s budget is
+  running out); one refresh at a time per instance; the route's storage
+  budget is 12 calls.
+- Calls go out only on a Netlify deploy (production, a deploy preview or a
+  branch deploy) with `cfg/work.weather` on; local dev and tests (context
+  "dev") never call: they serve what a cache already holds (the phone
+  checks put a synthetic answer there).
+- A failure (a timeout, a 4xx or 5xx, a shape we don't know) answers no
+  days (never an error) and isn't tried again for 15 minutes; a forecast
+  already kept keeps showing, marked stale. The days are each date's
+  daytime period (this evening: tonight's): the high, the low, the chance
+  of precipitation, the words, and an icon (sun, partly, cloud, rain, snow,
+  storm, fog, wind; rain, or snow at or below 32°F, when the chance is 40%
+  or more).
+- Turning it off: Schedule → Change → "Show the forecast" (cfg/work.weather).
 
 ## Sweeps, queue kinds and listeners
 
