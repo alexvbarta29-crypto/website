@@ -98,8 +98,8 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await g.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab)), ["home", "schedule", "inbox", "contacts", "visits", "menu"]);
       assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "contacts", "visits", "menu"], "kept on the server");
       await g.click("[data-standard]");
-      await toastSays(g, /saved/);
-      assert.deepEqual(await g.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab)), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+      await g.waitForFunction(() => [...document.querySelectorAll("#tabs [data-tab]")].map((e) => e.dataset.tab).join() === "home,schedule,inbox,contacts,sales,menu", null, { timeout: 8000 });
+      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "contacts", "sales", "menu"], "the standard bar again");
       await p.clean();
     } finally { await p.close(); }
   });

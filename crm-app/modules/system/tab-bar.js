@@ -8,17 +8,18 @@
 
 import { html, icon, toast, attrs } from "../../core/ui.js";
 import { TABS, setTabs } from "../../core/nav.js";
-import { has } from "../../core/router.js";
+import { match } from "../../core/router.js";
 
 export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "leads", "pipeline", "visits", "leaderboard", "map", "quotes", "plans", "invoices"]);
 export const STANDARD = Object.freeze(["home", "schedule", "inbox", "contacts", "sales"]);
 const MAX = 5;
 const LABEL = { leaderboard: "Leaderboard" };
 const pathOf = (k) => (TABS[k].paths ? TABS[k].paths[0] : TABS[k].group[0][0]);
+// a place whose screen is there and that this person may open
 const usable = (k, ctx) => {
   const t = TABS[k];
   const paths = t.paths || t.group.map(([p]) => p);
-  return paths.some((p) => has(p));
+  return paths.some((p) => { const m = match(p); return !!m && (!m.route.perm || ctx.can(m.route.perm)); });
 };
 
 export default {
@@ -61,8 +62,9 @@ async function save(ctx, tabs) {
   const s = ctx.state;
   s.saving = true;
   try {
-    const r = await ctx.api(`/users/${encodeURIComponent(s.id)}`, { method: "PATCH", body: { tabs }, ifMatch: s.etag });
-    s.etag = r.etag || s.etag;
+    await ctx.api(`/users/${encodeURIComponent(s.id)}`, { method: "PATCH", body: { tabs }, ifMatch: s.etag });
+    // the record's new version, for the next change
+    s.etag = (await ctx.api("/me", { cache: false })).data.etag;
     setTabs([...(tabs && tabs.length ? tabs : STANDARD), "menu"]);
     if (!tabs) s.picked = [...STANDARD];
     toast("Your tab bar is saved.");
