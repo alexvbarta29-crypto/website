@@ -156,3 +156,24 @@
   .ct-acts{grid-column:auto}
 }
 @media (hover:hover) and (pointer:fine){.ct-acts>a:hover{background:var(--mist)}}
+
+/* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's) */
+.cc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cc{border:1px solid var(--line);border-radius:var(--r-xl);background:var(--card);box-shadow:var(--sh-card);overflow:hidden}
+.cc-top{display:flex;align-items:center;gap:10px;min-height:62px;padding:12px 14px 12px 16px;color:var(--ink);text-decoration:none}
+.cc-top:active{background:var(--mist)}
+.cc-nm{flex:1;min-width:0;font:600 17px/1.25 var(--text);overflow-wrap:anywhere}
+.cc-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:64%}
+.cc-st,.cc-svc{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;font:600 13px/1 var(--text);white-space:nowrap}
+.cc-st{background:var(--grey-bg);color:var(--grey-ink)}
+.cc-st.green{background:var(--green-bg);color:var(--green-ink)}
+.cc-st.blue{background:var(--blue-bg);color:var(--blue-ink)}
+.cc-st.amber{background:var(--amber-bg);color:var(--amber-ink)}
+.cc-svc{max-width:170px;overflow:hidden;text-overflow:ellipsis;background:var(--mist-2);color:var(--ink-2);font-weight:500}
+.cc-band{display:flex;align-items:center;gap:22px;min-height:64px;padding:8px 12px 8px 16px;background:var(--mist);border-top:1px solid var(--line)}
+.cc-k{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cc-k small{font:500 11.5px/1 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.cc-k b{font:600 16px/1.1 var(--text);white-space:nowrap}
+.cc-acts{margin-left:auto;display:flex;gap:8px}
+.cc-acts .rnd{background:#fff;box-shadow:0 0 0 1px var(--line-2)}
+.ct-grp .ct-ltr{margin-bottom:2px}

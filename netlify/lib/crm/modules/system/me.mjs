@@ -16,19 +16,23 @@ import { has as hasService, call as callService } from "../../core/services.mjs"
 import { approvalsCount } from "../../core/pending.mjs";
 import { unreadCount } from "../../core/notify.mjs";
 import { waitingCount } from "../../core/bulk.mjs";
-import { publicUser } from "./types.mjs";
+import { publicUser, TAB_CHOICES } from "./types.mjs";
 
 export const SETTINGS_PUBLIC = Object.freeze({ company_name: "Barta Window Washing", time_zone: TZ });
 
-// The places for a role (§9.1); the app shows one only once its screen
-// exists. The office: Home (the owner's dashboard: the numbers, today's
-// visits, what needs you) · Inbox (with comms, M6) · Schedule · Customers ·
-// Sales (Leads & calls, Quotes, Tasks) on the bar, and Menu (every other
-// screen, by section), which the app shows as a button at the top left of
-// the top bar, not as a sixth tab (crm-app/core/nav.js TABS.menu.top). The
-// office's Dashboard views are on Home and under Menu → Admin.
+// The tab bar for a role (§9.1; the Nov 2026 layout, after Rotor's and
+// Flyra's phone apps); the app shows a tab only once its screen exists. The
+// office: Home (the owner's dashboard) · Schedule · Inbox (with comms, M6) ·
+// Customers · Sales (Pipeline / Leads & calls, Quotes, Tasks) · Menu (a
+// sheet of every other screen, by section). The office's Dashboard views
+// are on Home and in the Menu.
+// A person who picked their own tab bar (Menu → Tab bar, users.tabs) gets
+// those places, then the Menu.
+export const OFFICE_NAV = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "menu"]);
 export function navFor(user) {
-  return user && user.role === "tech" ? ["today", "inbox", "time", "pay", "me"] : ["home", "inbox", "schedule", "contacts", "sales", "menu"];
+  if (user && user.role === "tech") return ["today", "inbox", "time", "pay", "me"];
+  const own = user && Array.isArray(user.tabs) ? user.tabs.filter((k) => TAB_CHOICES.includes(k)).slice(0, 5) : [];
+  return own.length ? [...new Set(own), "menu"] : [...OFFICE_NAV];
 }
 
 async function me(ctx) {

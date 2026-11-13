@@ -114,9 +114,9 @@ test("a provider's series takes over from the day its data starts; Rotor keeps t
   assert.deepEqual(months.map((r) => [r.cur, r.source]), [[5, "rotor"], [7, "crm"]]);
 });
 
-test("the tab bar: Home · Inbox · Schedule · Customers · Sales · Menu for the office; techs keep theirs", () => {
-  assert.deepEqual(navFor({ role: "owner" }), ["home", "inbox", "schedule", "contacts", "sales", "menu"]);
-  assert.deepEqual(navFor({ role: "admin" }), ["home", "inbox", "schedule", "contacts", "sales", "menu"]);
+test("the tab bar: Home · Schedule · Inbox · Customers · Sales · Menu for the office; techs keep theirs", () => {
+  assert.deepEqual(navFor({ role: "owner" }), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+  assert.deepEqual(navFor({ role: "admin" }), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
   assert.deepEqual(navFor({ role: "tech" }), ["today", "inbox", "time", "pay", "me"]);
 });
 
@@ -279,11 +279,11 @@ test("the Menu: every manifest's Menu entry names a known section; an older shel
   assert.ok(entries.length >= 20);
   assert.deepEqual(entries.filter((n) => !known.has(n.section)).map((n) => `${n.module}: ${n.label}`), [], "each entry says its section");
   for (const want of ["work", "sales", "customers", "messages", "office", "admin"]) assert.ok(entries.some((n) => n.section === want), want);
-  assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "inbox", "schedule", "contacts", "sales", "menu"]);
+  assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
   assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
   assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));
   for (const key of navFor({ role: "owner" })) assert.ok(nav.TABS[key], `a tab for ${key}`);
-  assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/calls", "/quotes", "/tasks"]);
+  assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/pipeline", "/calls", "/quotes", "/tasks"]);
   // Home is /today: old #/today links, every screen's parent and the default route keep working
   const sys = MANIFESTS.find((m) => m.name === "system");
   const today = sys.routes.find((r) => r.path === "/today");

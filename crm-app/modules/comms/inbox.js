@@ -1,20 +1,43 @@
-// Inbox (design §9.2 "Inbox", §5.7.1 "Keeping screens fresh"): every
-// conversation, newest first, with who needs a reply; chips All · Unread ·
-// Needs reply · Leads · Customers · Mine. It refreshes every 30 s while on
-// screen. A technician sees only the people on their own visits.
+// Inbox, titled Messages (design §9.2 "Inbox", §5.7.1 "Keeping screens
+// fresh"; the Nov 2026 layout, after Flyra's header and Rotor's rows):
+// every conversation, newest first; a search field over the names and the
+// last words; All | Customers | Leads; an Unread switch; and a dropdown for
+// All messages · Needs reply · Mine. Rows: a pastel initials circle, the
+// name, the last words, the time and a coral count of unread. It refreshes
+// every 30 s while on screen. A technician sees only the people on their
+// own visits (and only All and Unread).
 
-import { html, attrs } from "../../core/ui.js";
+import { html, attrs, icon, render } from "../../core/ui.js";
 import { poll } from "../../core/poll.js";
-import { ensureStyles, FILTERS, convRow, emptyCard } from "./kit.js";
+import { ensureStyles, convRow, emptyCard } from "./kit.js";
 
 let live = null;
-const url = (s) => `/inbox?filter=${encodeURIComponent(s.filter)}`;
+// The server answers one filter at a time: the narrowest asked for goes to
+// it, the rest is applied here. → the server's filter
+export const serverFilter = (v) => (v.unread ? "unread" : v.kind !== "all" ? v.kind : v.seg !== "all" ? v.seg : "all");
+export function shown(rows, v) {
+  const q = String(v.q || "").trim().toLowerCase();
+  return rows.filter((c) => (!v.unread || c.unread) && (v.seg === "all" || (v.seg === "leads" ? c.lifecycle === "lead" : c.lifecycle !== "lead"))
+    && (v.kind !== "needs_reply" || c.needs_reply) && (!q || `${c.contact_name || ""} ${c.last_preview || ""}`.toLowerCase().includes(q)));
+}
+const url = (s) => `/inbox?filter=${encodeURIComponent(serverFilter(s))}`;
 
 async function load(params, ctx) {
   ensureStyles();
-  const filter = ctx.keep.filter || "all";
-  const r = await ctx.api(url({ filter }), { cache: false });
-  return { filter, rows: r.data || [], next: (r.meta || {}).next_cursor || null, office: ctx.can("contacts:read_all") };
+  const k = ctx.keep;
+  const v = { seg: k.seg || "all", unread: !!k.unread, kind: k.kind || "all", q: k.q || "" };
+  const r = await ctx.api(url(v), { cache: false });
+  return { ...v, filter: serverFilter(v), rows: r.data || [], next: (r.meta || {}).next_cursor || null, office: ctx.can("contacts:read_all") };
+}
+async function refetch(ctx) {
+  const s = ctx.state;
+  for (const key of ["seg", "unread", "kind", "q"]) ctx.keep[key] = s[key];
+  const r = await ctx.api(url(s), { cache: false });
+  s.filter = serverFilter(s);
+  s.rows = r.data || [];
+  s.next = (r.meta || {}).next_cursor || null;
+  ctx.rerender();
+  watch(ctx); live.for = ctx;
 }
 
 function watch(ctx) {
@@ -27,27 +50,38 @@ function watch(ctx) {
 }
 
 export default {
+  title: "Messages",
   load,
-  action: (s, ctx) => (ctx.can("contacts:read_all") ? { label: "New", run: () => ctx.go("/inbox/new") } : null),
   render(s) {
-    const chips = s.office ? FILTERS : FILTERS.filter(([k]) => ["all", "unread", "needs_reply"].includes(k));
-    return html`<div class="stack">
-      <div class="chips" role="tablist">${chips.map(([k, label]) => html`<button type="button" class="chip" ${attrs({ "data-filter": k, "aria-pressed": String(s.filter === k) })}>${label}</button>`)}</div>
-      ${s.rows.length ? html`<ul class="list">${s.rows.map(convRow)}</ul>${s.next ? html`<button type="button" class="btn block" data-more>Show older</button>` : ""}`
-        : emptyCard("inbox", s.filter === "all" ? "No conversations yet" : "Nothing here", s.filter === "all" ? (s.office ? "Texts and emails with customers show up here. Rotor's history arrives with the import." : "Texts with the people on your visits show up here.") : "Pick another chip.")}
+    const list = shown(s.rows, s);
+    const segs = s.office ? [["all", "All"], ["customers", "Customers"], ["leads", "Leads"]] : [];
+    return html`<div class="stack cm-inbox">
+      <label class="cm-search">${icon("search")}<span class="sr">Search messages</span><input type="search" data-q ${attrs({ value: s.q, placeholder: "Search messages", autocomplete: "off", enterkeyhint: "search" })}></label>
+      <div class="cm-filters">
+        ${segs.length ? html`<div class="cm-seg" role="group" aria-label="Who">${segs.map(([k, l]) => html`<button type="button" ${attrs({ "data-seg": k, "aria-pressed": String(s.seg === k) })}>${l}</button>`)}</div>` : ""}
+        <label class="cm-unread"><span>Unread</span><button type="button" class="switch" role="switch" data-unread ${attrs({ "aria-checked": String(!!s.unread), "aria-label": "Only unread" })}></button></label>
+      </div>
+      <label class="cm-kind"><span class="sr">Which messages</span><select data-kind>${[["all", "All Messages"], ["needs_reply", "Needs reply"], ...(s.office ? [["mine", "Mine"]] : [])].map(([k, l]) => html`<option ${attrs({ value: k, selected: s.kind === k })}>${l}</option>`)}</select></label>
+      ${list.length ? html`<ul class="list cm-list">${list.map(convRow)}</ul>${s.next ? html`<button type="button" class="btn block" data-more>Show older</button>` : ""}`
+        : emptyCard("inbox", s.filter === "all" && !s.q && s.seg === "all" ? "No conversations yet" : "Nothing here", s.filter === "all" && !s.q && s.seg === "all" ? (s.office ? "Texts and emails with customers show up here. Rotor's history arrives with the import." : "Texts with the people on your visits show up here.") : "Try another filter.")}
     </div>`;
   },
   mount(el, s, ctx) { if (!live || live.for !== ctx) { watch(ctx); live.for = ctx; } },
   unmount() { if (live) { live.stop(); live = null; } },
   events: {
-    "click [data-filter]": async (e, el, ctx) => {
-      ctx.keep.filter = el.dataset.filter;
-      ctx.state.filter = el.dataset.filter;
-      const r = await ctx.api(url(ctx.state), { cache: false });
-      ctx.state.rows = r.data || [];
-      ctx.state.next = (r.meta || {}).next_cursor || null;
-      ctx.rerender();
-      watch(ctx); live.for = ctx;
+    "click [data-seg]": (e, el, ctx) => { ctx.state.seg = el.dataset.seg; refetch(ctx); },
+    "click [data-unread]": (e, el, ctx) => { ctx.state.unread = !ctx.state.unread; refetch(ctx); },
+    "change [data-kind]": (e, el, ctx) => { ctx.state.kind = el.value; refetch(ctx); },
+    "input [data-q]": (e, el, ctx) => {
+      ctx.state.q = el.value;
+      ctx.keep.q = el.value;
+      clearTimeout(ctx.state.qt);
+      // the list only, so the field keeps its focus and caret
+      ctx.state.qt = setTimeout(() => {
+        const box = document.querySelector(".cm-inbox .cm-list");
+        const list = shown(ctx.state.rows, ctx.state);
+        if (box && list.length) render(box, html`${list.map(convRow)}`); else ctx.rerender();
+      }, 120);
     },
     "click [data-more]": async (e, el, ctx) => {
       const r = await ctx.api(`${url(ctx.state)}&cursor=${encodeURIComponent(ctx.state.next)}`, { cache: false });

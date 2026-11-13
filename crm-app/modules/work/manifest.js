@@ -22,11 +22,14 @@ const office = {
     { path: "/jobs/:id", load: () => import("./office-job.js"), title: "Job", perm: "schedule:read", parent: "/jobs" },
     // the office opens visits from the Schedule; a tech's way back from a deep link lands on its "Open Today" card
     { path: "/visits/:id", load: () => import("./visit.js"), title: "Visit", perm: "schedule:read", parent: "/schedule" },
+    // a day's visits as cards (the Menu's Visits; Rotor's Visits screen)
+    { path: "/visits", load: () => import("./visits.js"), title: "Visits", perm: "schedule:read", parent: "/today", skeleton: "list" },
     { path: "/settings/checklists", load: () => import("./office-checklists.js"), title: "Checklists", perm: "settings:general", parent: "/settings", skeleton: "list" },
     { path: "/settings/checklists/:id", load: () => import("./office-checklist.js"), title: "Checklist", perm: "settings:general", parent: "/settings/checklists" },
   ],
   nav: [
     { where: "more", section: "work", label: "Schedule", path: "/schedule", perm: "schedule:read", order: 23, icon: "schedule" },
+    { where: "more", section: "work", label: "Visits", path: "/visits", perm: "schedule:read", order: 23.5, icon: "truck" },
     { where: "more", section: "work", label: "Jobs", path: "/jobs", perm: "schedule:write", order: 24, icon: "list" },
     { where: "more", section: "work", label: "To book", path: "/schedule?view=tray", perm: "schedule:write", order: 25, icon: "clock" },
   ],

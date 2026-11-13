@@ -13,6 +13,11 @@ import { shape, str, enumValue, bool, email, phoneE164, int, arr, isoTime } from
 // rec/contact_stats/{contactId}: envelope + one part per owning module.
 // Written only by crm-store updateStats(); never a user edit, never imported
 // (rotorFields empty), never shown to a tech (techFields = id only).
+// The places a person may put on their phone's tab bar (the Nov 2026 layout;
+// crm-app/core/nav.js TABS has each; one whose screen isn't there yet, like
+// the Map before its module, simply doesn't show).
+export const TAB_CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "leads", "pipeline", "visits", "leaderboard", "map", "quotes", "plans", "invoices"]);
+
 export const contactStatsType = defineType({
   type: "contact_stats",
   prefix: null,
@@ -107,6 +112,8 @@ function validateUser(data, { op } = {}) {
     denies: (v, f) => arr(v, permKey, { field: f, max: 100 }),
     pay: (v, f) => validatePay(v, f),
     notify: (v, f) => validateNotify(v, f),
+    // the phone's tab bar this person picked (Menu → Tab bar): up to five places, Menu always after them
+    tabs: (v, f) => (v === undefined || v === null ? undefined : [...new Set(arr(v, (x, ff) => enumValue(x, TAB_CHOICES, { field: ff, required: true }), { field: f, max: 5 }))]),
     availability: (v, f) => arr(v, (x, ff) => {
       if (!x || typeof x !== "object") throw new InputError("Expected a time range.", ff);
       return { ...x, dow: int(x.dow, { field: `${ff}.dow`, min: 0, max: 6, required: true }), start: str(x.start, { field: `${ff}.start`, max: 5, required: true }), end: str(x.end, { field: `${ff}.end`, max: 5, required: true }) };
@@ -155,6 +162,7 @@ export function publicUser(u, { full = false } = {}) {
     if (u.email) out.email = u.email;
     if (u.phone) out.phone = u.phone;
     out.notify = u.notify || DEFAULT_NOTIFY;
+    out.tabs = Array.isArray(u.tabs) ? u.tabs : null;
     out.grants = u.grants || [];
     out.denies = u.denies || [];
     out.pay = u.pay || DEFAULT_PAY;

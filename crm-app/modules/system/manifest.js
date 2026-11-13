@@ -17,6 +17,8 @@ export default {
     // the Menu is the top bar's button, not a tab: it has a back arrow (to where you were, or Home)
     { path: "/menu", load: () => import("./menu.js"), title: "Menu", parent: "/today" },
     { path: "/me", load: () => import("./me.js"), title: "My account", perm: "account:own", parent: "/today" },
+    // Menu → Tab bar: the places on this person's phone bar (users.tabs)
+    { path: "/tab-bar", load: () => import("./tab-bar.js"), title: "Tab bar", perm: "account:own", parent: "/today", skeleton: "list" },
     { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/today", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },
     { path: "/legacy/customers", load: () => import("./legacy.js"), title: "Customers", perm: "contacts:read_all" },
@@ -58,6 +60,7 @@ export default {
     { where: "more", section: "admin", label: "Settings", path: "/settings", perm: "settings:general", order: 80, icon: "gear" },
     { where: "more", section: "admin", label: "Team", path: "/team", perm: "users:manage", order: 90, icon: "team" },
     { where: "more", section: "admin", label: "My account", path: "/me", perm: "account:own", order: 99, icon: "me" },
+    { where: "more", section: "admin", label: "Tab bar", path: "/tab-bar", perm: "account:own", order: 97, icon: "tabbar" },
   ],
   creates: [],
   contactTabs: [],

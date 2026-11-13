@@ -54,7 +54,28 @@ const rowHtml = (r) => html`<li><a class="row" href="${"#/contacts/" + encodeURI
   <span class="who"><span class="nm">${r.n || "No name"}</span><span class="sub">${[r.p && r.p[0] ? phoneText(r.p[0]) : (r.e && r.e[0]) || "", r.c].filter(Boolean).join(" · ") || "No phone or email"}</span></span>
   <span class="end">${r.lc === "customer" ? "" : lifecyclePill(r.lc)}<span class="chev" aria-hidden="true"></span></span>
 </a></li>`;
-const groupHtml = (g) => html`<section class="ct-grp" data-l="${g.l}"><h3 class="ct-ltr">${g.l}</h3><ul class="list">${g.rows.map(rowHtml)}</ul></section>`;
+
+// A customer as a card (the Nov 2026 layout, after Rotor's Customers): the
+// name, a status pill (Active, Lead, ...), the plan or service, a lower band
+// with FREQUENCY (the plan's, "One-time" for a customer without one) and
+// SINCE (customer since, or added), and round call and text buttons.
+const STATUS = { customer: ["Active", "green"], lead: ["Lead", "blue"], former_customer: ["Former", "amber"], archived: ["Archived", ""] };
+const FREQ = { quarterly: "Quarterly", biannual: "Biannual", monthly: "Monthly", lights_annual: "Annual", custom: "Custom" };
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const since = (d) => (typeof d === "string" && /^\d{4}-\d{2}/.test(d) ? `${MONTHS[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4) === String(new Date().getFullYear()) ? Number(d.slice(8, 10)) || "" : d.slice(0, 4)}`.trim() : "-");
+export function cardHtml(r, plans = new Map()) {
+  const [st, tone] = STATUS[r.lc] || [r.lc || "Lead", ""];
+  const plan = plans.get(r.id);
+  const service = plan ? plan.nm : (r.tg || []).find((t) => /light|window|gutter|wash/i.test(t)) || "";
+  const phone = r.p && r.p[0] ? String(r.p[0]).replace(/[^\d+]/g, "") : "";
+  const freq = plan ? FREQ[plan.ck] || "Plan" : r.lc === "customer" ? "One-time" : "-";
+  return html`<li class="cc"><a class="cc-top" href="${"#/contacts/" + encodeURIComponent(r.id)}">
+    <span class="cc-nm">${r.n || "No name"}</span><span class="cc-pills"><span ${attrs({ class: "cc-st " + tone })}>${st}</span>${service ? html`<span class="cc-svc">${service}</span>` : ""}</span></a>
+    <div class="cc-band"><span class="cc-k"><small>Frequency</small><b>${freq}</b></span><span class="cc-k"><small>Since</small><b>${since(r.cs)}</b></span>
+      <span class="cc-acts">${phone ? html`<a class="rnd" ${attrs({ href: "tel:" + (phone.length === 10 ? "+1" + phone : phone), "aria-label": `Call ${r.n || ""}` })}>${icon("phone")}</a><a class="rnd" ${attrs({ href: "sms:" + (phone.length === 10 ? "+1" + phone : phone), "aria-label": `Text ${r.n || ""}` })}>${icon("text")}</a>` : ""}</span></div></li>`;
+}
+let plansOf = new Map();
+const groupHtml = (g) => html`<section class="ct-grp" data-l="${g.l}"><h3 class="ct-ltr">${g.l}</h3><ul class="cc-list">${g.rows.map((r) => cardHtml(r, plansOf))}</ul></section>`;
 
 // The most used sources (chips after the lifecycle ones).
 function topSources(rows, n = 5) {
@@ -132,7 +153,7 @@ function jumpTo(view, s, clientY) {
 }
 
 export default {
-  title: "Contacts",
+  title: "Customers",
   flush: true,
   async load(params, ctx) {
     ensureStyles();
@@ -140,6 +161,14 @@ export default {
     let dupes = 0;
     if (ctx.can("contacts:merge")) {
       try { const m = await ctx.api("/merge-candidates?status=pending", { cache: false }); dupes = (m.meta && m.meta.total) || 0; } catch (e) { dupes = 0; }
+    }
+    // the plans (their names and how often) for the cards: one read of the plans list, when this person may see plans
+    if (ctx.can("plans:read")) {
+      try {
+        const p = await ctx.api("/plans");
+        plansOf = new Map();
+        for (const x of p.data || []) if (x.c && !plansOf.has(x.c) && ["active", "cancelling", "paused", "pending"].includes(x.st)) plansOf.set(x.c, x);
+      } catch (e) { /* the cards say what they know */ }
     }
     return { ix, dupes, q: ctx.keep.q || "", chip: ctx.keep.chip || "", src: ctx.keep.src || "", sources: topSources(ix.rows) };
   },
