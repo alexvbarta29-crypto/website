@@ -9,7 +9,7 @@ import { field, readForm, clearErrors, showError, busy, select, checkbox } from 
 import { ago, phone, roleLabel, initials, dateShort } from "../../core/format.js";
 import { APP_VERSION } from "../../version.js";
 import { MODE_LABEL } from "./kit.js";
-import { CHOICES as THEMES, choice as themeChoice, set as setTheme } from "../../core/theme.js";
+import { THEMES, themeChoice, setTheme } from "../../core/nav.js";
 
 // The notification settings people see (user.notify keys) and who sees each.
 const NOTIFY = [

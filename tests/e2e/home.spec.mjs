@@ -65,18 +65,20 @@ test("before any CRM data: the header, Clock in, Rotor's money and a calm empty 
     try {
       assert.equal(await title(f), "Home");
       assert.ok(["", "#/today"].includes(await hashOf(f)), "the app opens on Home");
-      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
-      assert.match(await text(f, ".hm-head"), /^OO Welcome back, Olive Tuesday, November 17$/);
-      assert.deepEqual(await cards(f), ["clock", "money", "agenda"], "the default cards, in order");
+      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Map", "Menu"]);
+      // Flyra's Home: the greeting, the first name big; the money on the canvas, then the cards
+      assert.match(await text(f, ".hm-head"), /^Good morning Olive/);
+      assert.deepEqual(await cards(f), ["money", "clock", "leaderboard", "agenda", "inbox", "tasks", "goals"], "the default cards, in order (the clock: Olive goes out on visits)");
       assert.equal(await has(f, GONE), false, "nothing of the old Home");
       // Clock in
       assert.match(await text(f, ".hm-c-clock"), /^Timesheet 0h 0m Choose a role when you clock in Clock In$/i);
       // Money: Rotor's numbers, this month, with AVG and PEAK and the chart
-      assert.match(await text(f, ".hm-c-money"), /^Collected Scheduled ARR November This month \$10,453 Avg \/ day \$653 Peak week \$4,890 /i);
+      assert.match(await text(f, ".hm-c-money"), /^Collected Scheduled ARR 1M November \$10,453 Avg \/ day \$653 Peak week \$4,890 /i);
+      assert.equal(await f.getAttribute('[data-hm="period"]', "aria-label"), "Period: This month");
       assert.match(await text(f, ".hm-c-money .hm-foot"), /^From Rotor · updated Nov 16 See more$/);
       assert.equal(await f.$$eval('[data-chart="money"] .hc-line', (x) => x.length), 1);
       // Today: nothing yet
-      assert.match(await text(f, ".hm-c-agenda"), /^Daily Weekly Monthly Tuesday, November 17 0 items Nothing scheduled for today/);
+      assert.match(await text(f, ".hm-c-agenda"), /^Today Tue, Nov 17 · 0 items Daily Weekly Monthly Nothing scheduled for today/);
       assert.equal(await has(f, ".hm-edit [data-hm=edit]"), true, "Edit Home at the bottom");
       // creating is the shell's round + (Nov 2026: it blurs the screen, search on top, the things to make above it)
       assert.ok(await f.isVisible("#fab"), "the + on Home");
@@ -108,10 +110,10 @@ test("an owner's Home on a real day: today's visits with a bar per tech, who and
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
     try {
-      assert.deepEqual(await cards(f), ["clock", "money", "agenda"]);
+      assert.deepEqual((await cards(f)).slice(0, 2), ["money", "clock"]);
       const rows = await f.$$eval(".hm-c-agenda .hm-item", (els) => els.map((e) => ({ href: e.getAttribute("href"), name: e.querySelector(".who b").textContent, line: e.querySelector(".who small").textContent, av: e.querySelectorAll(".hm-av").length, time: e.querySelector(".hm-time").textContent, timeShown: getComputedStyle(e.querySelector(".hm-time")).display !== "none", bar: e.style.getPropertyValue("--bar") })));
       assert.equal(rows.length, 7);
-      assert.match(await text(f, ".hm-ag-head"), /^Tuesday, November 17 7 items$/);
+      assert.match(await text(f, ".hm-ag-head"), /^Today Tue, Nov 17 · 7 items$/);
       assert.ok(rows.every((r) => /^#\/visits\/vs_/.test(r.href) && r.name && /^(Job|Plan visit|Lights [a-z]+) · \d+:\d\d( [AP]M)? – \d+:\d\d [AP]M/.test(r.line) && r.av >= 1 && /^\d+:\d\d [AP]M$/.test(r.time) && /^#[0-9a-f]{6}$/i.test(r.bar)), JSON.stringify(rows));
       assert.ok(rows.some((r) => / · Done$/.test(r.line)) && rows.some((r) => / · Working$/.test(r.line)), "what's done and what's under way");
       assert.ok(rows.some((r) => r.av === 2), "Olive and Theo together at one");
@@ -156,7 +158,7 @@ test("Today: Weekly and Monthly, the arrows, and a visit opens", async () => {
     await shot(page, "home-agenda-iphonese");
     // the Home tab starts over on today
     await f.click('#tabs [data-tab="home"]');
-    await f.waitForFunction(() => /Tuesday, November 17/.test((document.querySelector(".hm-ag-head") || {}).textContent || ""));
+    await f.waitForFunction(() => /Today/.test((document.querySelector(".hm-ag-head") || {}).textContent || ""));
     const visit = await f.getAttribute(".hm-c-agenda .hm-item", "href");
     await f.click(`.hm-c-agenda .hm-item[href="${visit}"]`);
     await settled(f, { hash: visit });
@@ -183,14 +185,14 @@ test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the r
     // Scheduled: the CRM's visits, per day
     await f.click('[data-hm="metric"][data-v="scheduled"]');
     await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /November This month \$[\d,]+ Avg \/ day \$[\d,]+ Peak day \$[\d,]+/i);
+    assert.match(await text(f, ".hm-c-money"), /1M November \$[\d,]+ Avg \/ day \$[\d,]+ Peak day \$[\d,]+/i);
     assert.match(await text(f, ".hm-c-money .hm-foot"), /^Updated \d+:\d\d [AP]M See more$/);
     assert.match(await text(f, "#read-money"), /^\$[\d,]+ \$[\d,]+ Nov 17$/, "the readout starts on today");
     await shot(page, "home-money-scheduled-iphone13");
     // ARR with its change over the period
     await f.click('[data-hm="metric"][data-v="arr"]');
     await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /Annual recurring revenue This month \$[\d,]+ Change [+−]?\$[\d,]+/i);
+    assert.match(await text(f, ".hm-c-money"), /1M Annual recurring revenue \$[\d,]+ Change [+−]?\$[\d,]+/i);
     // the period menu: This year, Last 3 months, This week, a custom range
     await f.click('[data-hm="metric"][data-v="collected"]');
     await idle(f);
@@ -200,11 +202,11 @@ test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the r
     await shot(page, "home-money-menu-iphone13");
     await f.click('.hm-menu button:text-is("This year")');
     await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /2026 This year \$[\d,]+ Avg \/ day \$[\d,]+ Peak month \$[\d,]+/i);
+    assert.match(await text(f, ".hm-c-money"), /YTD 2026 \$[\d,]+ Avg \/ day \$[\d,]+ Peak month \$[\d,]+/i);
     await pickPeriod(f, "Last 3 months");
-    assert.match(await text(f, ".hm-c-money"), /September – November Last 3 months \$[\d,]+/i);
+    assert.match(await text(f, ".hm-c-money"), /3M September – November \$[\d,]+/i);
     await pickPeriod(f, "This week");
-    assert.match(await text(f, ".hm-c-money"), /Nov 16 – 22 This week \$[\d,]+/i);
+    assert.match(await text(f, ".hm-c-money"), /1W Nov 16 – 22 \$[\d,]+/i);
     await f.click('[data-hm="period"]');
     await f.click('[data-hm="custom"]');
     await f.waitForSelector(".sheet.on [data-range]");
@@ -212,7 +214,7 @@ test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the r
     await f.fill('.sheet.on input[name="to"]', "2026-11-10");
     await f.click('.sheet.on [data-range] button[type="submit"]');
     await idle(f);
-    assert.match(await text(f, ".hm-c-money"), /Nov 1 – 10 Custom - /i, "Rotor's snapshot has no custom range: '-'");
+    assert.match(await text(f, ".hm-c-money"), /Custom Nov 1 – 10 - /i, "Rotor's snapshot has no custom range: '-'");
     await pickPeriod(f, "This month");
     // See more: the Dashboard's Money view (this phone has the office sign-in)
     await f.click(".hm-c-money .hm-more");
@@ -226,6 +228,12 @@ test("Clock in from Home (a role first), the hours run, Clock out", async () => 
   await day();
   const { p, page, f } = await home("ada", { device: "iphonese" });
   try {
+    // (Ada doesn't go out on visits: the clock is off until she adds it with Edit Home)
+    assert.equal(await has(f, ".hm-c-clock"), false);
+    const put = await p.ctx.request.put("/api/crm/home/layout", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { cards: [{ key: "money", on: true }, { key: "clock", on: true }] } });
+    assert.equal(put.status(), 200);
+    await goTo(f, "/menu");
+    await goTo(f, "/today");
     await f.click('.hm-c-clock [data-hm="clock"]');
     await f.waitForSelector(".sheet.on [data-role]");
     assert.deepEqual(await f.$$eval(".sheet.on [data-role] b", (els) => els.map((e) => e.textContent)), ["Service", "Sales", "Office"]);
@@ -237,6 +245,7 @@ test("Clock in from Home (a role first), the hours run, Clock out", async () => 
     await shot(page, "home-clocked-in-iphonese");
     await f.click('.hm-c-clock [data-hm="clock"]');
     await f.waitForFunction(() => /Clock In/.test((document.querySelector(".hm-c-clock") || {}).textContent || ""));
+    assert.equal((await p.ctx.request.put("/api/crm/home/layout", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { cards: [] } })).status(), 200);
     await p.clean();
   } finally { await p.close(); }
 });
@@ -247,7 +256,7 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
   try {
     await f.click(".hm-edit [data-hm=edit]");
     await f.waitForSelector(".sheet.on .hm-edit-list");
-    assert.deepEqual(await f.$$eval(".sheet.on .hm-edit-list li", (els) => els.map((e) => `${e.dataset.key}:${e.querySelector("input").checked}`)), ["clock:true", "money:true", "agenda:true", "leaderboard:false", "inbox:false", "tasks:false", "goals:false"], "the Leaderboard offered (the reports module brings it), off");
+    assert.deepEqual(await f.$$eval(".sheet.on .hm-edit-list li", (els) => els.map((e) => `${e.dataset.key}:${e.querySelector("input").checked}`)), ["money:true", "clock:true", "leaderboard:true", "agenda:true", "inbox:true", "tasks:true", "goals:true"], "Flyra's Home: every card on (the clock: Olive goes out on visits)");
     assert.deepEqual(await screenProblems(f), [], "the sheet's targets");
     await shot(page, "home-edit-iphone13");
     for (const k of ["inbox", "tasks", "goals"]) await f.check(`.sheet.on li[data-key="${k}"] input`);
@@ -257,7 +266,7 @@ test("Edit Home: turn cards on, order them, save; Goals, Tasks and Inbox; from M
     await f.click(".sheet.on [data-save]");
     await f.waitForFunction(() => !document.querySelector(".sheet.on"));
     await f.waitForFunction(() => document.querySelector('.hm-grid > [data-card="goals"]'));
-    assert.deepEqual(await cards(f), ["goals", "money", "agenda", "inbox", "tasks"]);
+    assert.deepEqual(await cards(f), ["goals", "money", "leaderboard", "agenda", "inbox", "tasks"]);
     // Goals: an owner adds them; progress here and under Money
     assert.match(await text(f, ".hm-c-goals"), /^Goals Add No goals yet Tap Add/);
     await f.click('.hm-c-goals [data-hm="goals"]');
@@ -296,7 +305,7 @@ test("the office without the office sign-in: the money (reports:read), See more 
   await day();
   const { p, page, f } = await home("ada", { device: "iphone13" });
   try {
-    assert.deepEqual(await cards(f), ["clock", "money", "agenda"]);
+    assert.deepEqual((await cards(f)).slice(0, 2), ["money", "leaderboard"], "no clock for someone who doesn't go out on visits");
     assert.equal(await f.getAttribute(".hm-c-money .hm-more", "href"), "#/payments", "no Dashboard without the office sign-in");
     assert.ok(!(await f.$$eval("#view a[href]", (els) => els.map((e) => e.getAttribute("href")))).some((h) => h.startsWith("#/dashboard")));
     assert.deepEqual(await screenProblems(f), []);
@@ -329,31 +338,24 @@ test("a tech never sees Home: their own Today, and /home tells them nothing", as
   }
 });
 
-test("the Sales tab: Pipeline · Leads · Calls · Quotes · Tasks in one switch, the tab lit on each; the Menu sheet", async () => {
+test("Pipeline and Leads from the Menu (top-level: no switch, no back button); the Sales switch for someone who pins Sales; the Menu sheet", async () => {
   await day();
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
     try {
-      await f.click('#tabs [data-tab="sales"]');
-      await settled(f, { hash: "#/pipeline" });
-      assert.equal(await title(f), "Pipeline");
-      assert.deepEqual(await f.$$eval("#subnav .seg", (els) => els.map((e) => e.textContent)), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
-      assert.equal(await f.getAttribute('#subnav [href="#/pipeline"]', "aria-current"), "page");
-      await shot(page, `home-sales-pipeline-${device}`);
-      for (const [path, name] of [["/leads", "Leads"], ["/calls", "Leads & calls"], ["/quotes", "Quotes"], ["/tasks", "Tasks"]]) {
-        await f.click(`#subnav [href="#${path}"]`);
+      for (const [path, name] of [["/pipeline", "Pipeline"], ["/leads", "Leads"]]) {
+        await f.click('#tabs [data-tab="menu"]');
+        await f.waitForSelector(".menu-sheet.on");
+        await f.click(`.menu-sheet a[href="#${path}"]`);
         await settled(f, { hash: "#" + path });
         assert.equal(await title(f), name);
-        assert.equal(await f.getAttribute('#tabs [data-tab="sales"]', "aria-current"), "page", `Sales lit on ${path}`);
-        assert.equal(await backShown(f), false, `${path} is one of the tab's screens: no back arrow`);
-        assert.ok(await f.$("#fab"), "the create button on Sales");
+        assert.equal(await f.$eval("#subnav", (el) => el.hidden), true, "no Pipeline · Leads · Calls · Quotes · Tasks switch");
+        assert.equal(await backShown(f), false, `${path}, from the Menu, is top-level: no back button`);
+        assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu is lit on what it opens");
+        assert.ok(await f.$("#fab"), "the create button");
         assert.deepEqual(await screenProblems(f), []);
+        await shot(page, `home-menu-${path.slice(1)}-${device}`);
       }
-      await shot(page, `home-sales-tasks-${device}`);
-      // a screen under it keeps the tab lit and hides the switch
-      await goTo(f, `/quotes/${seeded.quotes.sent}`);
-      assert.equal(await f.$eval("#subnav", (el) => el.hidden), true);
-      assert.equal(await f.getAttribute('#tabs [data-tab="sales"]', "aria-current"), "page");
       // the Menu: a sheet of rounded groups (Flyra's), the tab lit on what it opens
       await f.click('#tabs [data-tab="menu"]');
       await f.waitForSelector(".menu-sheet.on");
@@ -364,6 +366,22 @@ test("the Sales tab: Pipeline · Leads · Calls · Quotes · Tasks in one switch
       await f.click('.menu-sheet a[href="#/plans"]');
       await settled(f, { hash: "#/plans" });
       assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the Menu's");
+      // someone who pins Sales on their own bar (Menu → Tab bar) still gets its switch
+      await goTo(f, "/tab-bar");
+      await f.click('[data-pick="map"]');
+      await f.click('[data-pick="sales"]');
+      await f.click("[data-save]");
+      await f.waitForSelector('#tabs [data-tab="sales"]');
+      await f.click('#tabs [data-tab="sales"]');
+      await settled(f, { hash: "#/pipeline" });
+      assert.deepEqual(await f.$$eval("#subnav .seg", (els) => els.map((e) => e.textContent)), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
+      await f.click('#subnav [href="#/tasks"]');
+      await settled(f, { hash: "#/tasks" });
+      assert.equal(await f.getAttribute('#tabs [data-tab="sales"]', "aria-current"), "page", "Sales lit on Tasks");
+      assert.equal(await backShown(f), false);
+      await goTo(f, "/tab-bar");
+      await f.click("[data-standard]");
+      await f.waitForFunction(() => [...document.querySelectorAll("#tabs [data-tab]")].map((e) => e.dataset.tab).join() === "home,schedule,inbox,map,menu", null, { timeout: 8000 });
       await p.clean();
     } finally { await p.close(); }
   }
@@ -382,18 +400,20 @@ test("on a desk: the sidebar, search and New; the clock across, Money beside Tod
       assert.equal(await f.$eval("#tabs", (el) => getComputedStyle(el).display), "none", "no bottom bar on a desk");
       assert.ok(await f.isVisible("#side"), "the sidebar");
       // the phone bar's places first, in its order, then the groups, then Settings and Team (Nov 2026)
-      assert.deepEqual(await f.$$eval("#side .side-main .sl", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales"]);
+      assert.deepEqual(await f.$$eval("#side .side-main .sl", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Map", "Customers", "Sales"]);
       assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
       assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings", "Team"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");
-      assert.deepEqual(await cards(f), ["clock", "money", "agenda"]);
-      const [clock, money, agenda, grid] = await Promise.all([".hm-c-clock", ".hm-c-money", ".hm-c-agenda", ".hm-grid"].map((s) => box(f, s)));
+      assert.deepEqual((await cards(f)).slice(0, 4), ["money", "clock", "leaderboard", "agenda"]);
+      const [clock, money, agenda, grid, board] = await Promise.all([".hm-c-clock", ".hm-c-money", ".hm-c-agenda", ".hm-grid", ".hm-c-board"].map((s) => box(f, s)));
       assert.ok(grid.w <= 1160, `Home's width ${grid.w}`);
       if (device === "desk1440") {
-        assert.equal(clock.w, grid.w, "the clock a bar across");
-        assert.equal(money.y, agenda.y, "Money beside Today");
-        assert.ok(agenda.x >= money.x + money.w);
+        assert.equal(clock.w, grid.w, "the clock a bar across, on top");
+        assert.ok(money.y >= clock.y + clock.h);
+        assert.equal(money.y, board.y, "Money beside the Leaderboard");
+        assert.ok(board.x >= money.x + money.w);
+        assert.ok(agenda.y > money.y);
       } else {
         assert.ok(money.y >= clock.y + clock.h && agenda.y >= money.y + money.h, "one over the other");
       }

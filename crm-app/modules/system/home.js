@@ -177,7 +177,7 @@ function moneyCard(s, ctx) {
   const stats = m.metric === "arr"
     ? html`<div class="hm-stats"><div><span>Change</span><b class="${m.change > 0 ? "up" : m.change < 0 ? "down" : ""}">${signed(m.change)}</b></div></div>`
     : html`<div class="hm-stats"><div><span>Avg / day</span><b>${usd(m.avg)}</b></div><div><span>${PEAK[m.grain] || "Peak"}</span><b>${m.peak ? usd(m.peak.value) : "-"}</b></div></div>`;
-  return html`<section class="hm-c-money hm-hero" data-card="money" aria-label="Money">
+  return html`<section class="hm-c-money hm-sky" data-card="money" aria-label="Money">
     <div class="hm-row2">
       ${seg("metric", METRICS, ui.metric, "What to show")}
       <div class="hm-menu-wrap"><button type="button" class="hm-period" data-hm="period" aria-haspopup="true" aria-expanded="${ui.menu ? "true" : "false"}" ${attrs({ "aria-label": `Period: ${ui.period === "custom" ? "Custom range" : PERIOD_NAMES[ui.period]}` })}>${PERIOD_SHORT[ui.period] || "1M"}${ic("chevron-down")}</button>

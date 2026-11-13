@@ -1,4 +1,4 @@
-// Menu → Tab bar (the Nov 2026 layout, after Flyra): each person picks up
+// Menu → Tab bar (the Nov 2026 look, Flyra's): each person picks up
 // to five places for their phone's tab bar from the main screens (Home,
 // Schedule, Inbox, Customers, Sales, Leads, Pipeline, Visits, Leaderboard,
 // Map, Quotes, Plans, Invoices: only those they may open and whose screen
@@ -7,11 +7,12 @@
 // follows them to every phone; "Back to the standard bar" clears it.
 
 import { html, icon, toast, attrs } from "../../core/ui.js";
-import { TABS, setTabs } from "../../core/nav.js";
+import { TABS, setTabs, STANDARD as BAR } from "../../core/nav.js";
 import { match } from "../../core/router.js";
 
 export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "leads", "pipeline", "visits", "leaderboard", "map", "quotes", "plans", "invoices"]);
-export const STANDARD = Object.freeze(["home", "schedule", "inbox", "contacts", "sales"]);
+// the standard bar (Flyra's: Home · Schedule · Inbox · Map), the Menu after it
+export const STANDARD = Object.freeze(BAR.filter((k) => k !== "menu"));
 const MAX = 5;
 const LABEL = { leaderboard: "Leaderboard" };
 const pathOf = (k) => (TABS[k].paths ? TABS[k].paths[0] : TABS[k].group[0][0]);
@@ -28,7 +29,7 @@ export default {
     const me = await ctx.api("/me", { cache: false });
     const u = me.data.user;
     const mine = Array.isArray(u.tabs) && u.tabs.length ? u.tabs : STANDARD;
-    return { id: u.id, etag: me.data.etag, picked: mine.filter((k) => CHOICES.includes(k)), choices: CHOICES.filter((k) => usable(k, ctx)), saving: false };
+    return { id: u.id, etag: me.data.etag, picked: mine.filter((k) => CHOICES.includes(k) && usable(k, ctx)), choices: CHOICES.filter((k) => usable(k, ctx)), saving: false };
   },
   render(s) {
     const n = s.picked.length;

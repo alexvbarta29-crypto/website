@@ -25,7 +25,7 @@ import { html, render, toast, confirmSheet } from "./core/ui.js";
 import { time as fmtTime, dateShort, localDate } from "./core/format.js";
 import { poll } from "./core/poll.js";
 import * as outbox from "./core/outbox.js";
-import { apply as applyTheme } from "./core/theme.js";
+import { applyTheme } from "./core/nav.js";
 
 // Light, Dark or Automatic (this device's choice; Dark by default), before anything draws.
 applyTheme();
