@@ -69,7 +69,7 @@ function drawLayers() {
 function strip() {
   const d = T.data;
   const people = shown();
-  return html`${!d.enabled ? html`<div class="mp-off"><strong>The team map is off.</strong> ${T.ctx.can("settings:owner") ? html`<a href="#/settings/maps">Turn it on in Settings</a>` : "An owner can turn it on in Settings."}</div>` : ""}
+  return html`${!d.enabled ? html`<div class="mp-off"><strong>The team map is off.</strong> ${T.ctx.can("settings:owner") ? html`<a class="btn small" href="#/settings/maps">Turn it on in Settings</a>` : "An owner can turn it on in Settings."}</div>` : ""}
     <ul class="mp-people">${people.map((p) => html`<li><button type="button" class="mp-prow" ${attrs({ "data-person": p.id })}>
       <span class="${"mp-ava is-" + (p.last ? staleness(p.last.age_s, d.every_s) : "none")}" style="${/^#[0-9a-f]{6}$/i.test(p.color || "") ? "background:" + p.color : ""}">${initials(p.name)}</span>
       <span class="who"><span class="nm">${p.name}</span><span class="sub">${statusLine(p)}</span>

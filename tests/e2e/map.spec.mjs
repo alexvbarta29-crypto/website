@@ -42,6 +42,8 @@ async function locate(p) {
 const api = async (p, path) => (await (await p.ctx.request.get("/api/crm" + path, { headers: { "x-crm": "1" } })).json()).data;
 const sheetUp = (f, re) => f.waitForFunction((src) => { const h = document.querySelector(".sheet.on h2"); return !!h && new RegExp(src).test(h.textContent); }, re.source, { timeout: 8000 });
 const sheetGone = (f) => f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 8000 });
+// a screenshot once a sheet has finished sliding up
+const sheetShot = async (page, name) => { await page.waitForTimeout(400); await shot(page, name); };
 const closeSheet = async (f) => { await f.click(".sheet.on [data-sheet-x]"); await sheetGone(f); };
 // the map drew its style and our layers
 const mapReady = async (f) => {
@@ -88,7 +90,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       assert.match(await f.textContent(".sheet.on"), /Pins[\s\S]*Customers[\s\S]*Open leads[\s\S]*Areas[\s\S]*Pin types[\s\S]*Not home[\s\S]*Whose pins/);
       for (const n of ["pins", "customers", "leads", "areas"]) await f.click(`.sheet.on [name=${n}]`);
       assert.deepEqual(await screenProblems(f), []);
-      await shot(page, `map-knock-filter-${device}`);
+      await sheetShot(page, `map-knock-filter-${device}`);
       await closeSheet(f);
       assert.match(await f.getAttribute("[data-fab=filter]", "class"), /\bon\b/);
       const before = (await api(p, "/map/pins")).pins.length;
@@ -96,7 +98,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       await sheetUp(f, /New pin/);
       assert.match(await f.textContent(".sheet.on"), /Not home[\s\S]*Interested[\s\S]*Booked/);
       assert.deepEqual(await screenProblems(f), []);
-      await shot(page, `map-knock-new-pin-${device}`);
+      await sheetShot(page, `map-knock-new-pin-${device}`);
       await f.click('.sheet.on [data-type="interested"]');
       await sheetGone(f);
       const after1 = (await api(p, "/map/pins")).pins;
@@ -127,7 +129,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       await f.fill(".sheet.on [name=street1]", "250 Example Ave");
       await f.fill(".sheet.on [name=city]", "Delano");
       assert.deepEqual(await screenProblems(f), []);
-      await shot(page, `map-knock-convert-${device}`);
+      await sheetShot(page, `map-knock-convert-${device}`);
       await f.click(".sheet.on [type=submit]");
       // the office lands on the new lead
       await f.waitForFunction(() => /^#\/contacts\/ct_/.test(location.hash), null, { timeout: 10000 });
@@ -190,7 +192,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       await sheetUp(f, /Theo Tech/);
       assert.match(await f.textContent(".sheet.on"), /Today[\s\S]*W\.[\s\S]*Booked[\s\S]*Open the route/);
       assert.deepEqual(await screenProblems(f), []);
-      await shot(page, `map-team-person-${device}`);
+      await sheetShot(page, `map-team-person-${device}`);
       await closeSheet(f);
       assert.equal(await f.$$eval("[data-top] .mp-fab", (b) => b.length), 4);
       await f.click("[data-help]");
@@ -295,7 +297,7 @@ test("drawing an area (desk): More → Draw an area, three corners, Done, a name
     await sheetUp(f, /New area/);
     await f.fill(".sheet.on [name=name]", "Lake blocks");
     await f.click(`.sheet.on [name="p_${seeded.users.tech.id}"]`);
-    await shot(page, "map-draw-area-desk1440");
+    await sheetShot(page, "map-draw-area-desk1440");
     await f.click(".sheet.on [type=submit]");
     await sheetGone(f);
     const areas = await api(p, "/map/territories");

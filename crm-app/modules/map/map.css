@@ -78,7 +78,7 @@
 
 /* the team map: the people as cards along the bottom */
 .mp-strip{left:0;right:0}
-.mp-strip .mp-off{margin:0 12px 8px}
+.mp-strip .mp-off{margin:0 12px 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .mp-team .mp-people{flex-direction:row;overflow-x:auto;scrollbar-width:none;padding:2px 12px 4px;-webkit-overflow-scrolling:touch}
 .mp-team .mp-people::-webkit-scrollbar{display:none}
 .mp-team .mp-people>li{flex:none;width:min(280px,78vw)}
