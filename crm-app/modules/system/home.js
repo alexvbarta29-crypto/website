@@ -23,7 +23,7 @@ import { html, icon, attrs, toast, sheet, delegate } from "../../core/ui.js";
 import { dateLong, dateShort, plural, dateTime, initials, clock, time as fmtTime, ago, localDate } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import * as router from "../../core/router.js";
-import { lineChart, srTable } from "./home-charts.js";
+import { lineChart, srTable, cumulative } from "./home-charts.js";
 
 // The stylesheet, loaded once; the screen waits for it (a second at most),
 // so its first paint is already laid out and the chart measures its card.
@@ -183,7 +183,9 @@ function moneyCard(s, ctx) {
     ${m.missing ? html`<p class="hm-note">${MISSING[m.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
     ${chart ? html`<div class="hc-head"><span class="hc-read" id="read-money" aria-live="polite"><b></b> <span></span></span></div>
       <div class="hc" data-chart="money" tabindex="0" role="group" aria-label="${`${METRICS.find((x) => x[0] === m.metric)[1]} over ${m.label}. Arrow keys read each point.`}"></div>
-      ${srTable(`${METRICS.find((x) => x[0] === m.metric)[1]}, ${m.label}`, [m.grain === "month" ? "Month" : m.grain === "week" ? "Week of" : "Day", "Amount"], pts.map((x) => [x.label, usd(x.value)]))}`
+      ${m.metric === "arr"
+        ? srTable(`ARR, ${m.label}`, ["Day", "ARR"], pts.map((x) => [x.label, usd(x.value)]))
+        : srTable(`${METRICS.find((x) => x[0] === m.metric)[1]}, ${m.label}`, [m.grain === "month" ? "Month" : m.grain === "week" ? "Week of" : "Day", "Amount", "Running total"], cumulative(m.points, m.total).filter((x) => x.value !== null).map((x) => [x.label, usd(x.own), usd(x.value)]))}`
       : m.loading || m.missing || m.total === null ? "" : html`<p class="hm-note">${m.metric === "arr" ? "No plans have started yet." : m.metric === "scheduled" ? "Nothing booked in this period." : "Nothing collected yet in this period."}</p>`}
     <div class="hm-foot"><span>${src}</span>${more ? html`<a class="hm-more" href="${more}">See more</a>` : ""}</div>
   </section>`;
@@ -487,8 +489,12 @@ export default {
     if (m && el) {
       // Rotor's week or month that runs past its snapshot's day is "so far"
       const sofar = (x) => (m.as_of && x.to > m.as_of ? ", so far" : "");
-      const read = (x) => (m.grain === "week" ? `week of ${x.label}${sofar(x)}` : m.grain === "month" ? `${x.label}${sofar(x)}` : x.label);
-      off.push(lineChart(el, { rows: m.points, fmt: usd, axis: usdShort, read, readout: root.querySelector("#read-money"), height: 168, start: localDate(s.now) }).destroy);
+      const when = (x) => (m.grain === "week" ? `week of ${x.label}${sofar(x)}` : m.grain === "month" ? `${x.label}${sofar(x)}` : x.label);
+      // Collected and Scheduled climb as a running total (the readout: the total so far, then that bucket's own amount); ARR is its level each day
+      const run = m.metric !== "arr";
+      const rows = run ? cumulative(m.points, m.total) : m.points;
+      const read = run ? (x) => `${usd(x.own)} ${when(x)}` : when;
+      off.push(lineChart(el, { rows, fmt: usd, axis: usdShort, read, readout: root.querySelector("#read-money"), height: 168, start: localDate(s.now) }).destroy);
     }
     // the clock's hours move on while Home is on screen
     const hours = root.querySelector(".hm-hours[data-since]");

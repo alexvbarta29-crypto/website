@@ -119,6 +119,18 @@ test("ARR: each live plan's term value scaled to a year; the change over the per
   assert.equal(K.arrDays([], K.periodOf("month", TODAY), TODAY), null);
 });
 
+test("the Money line is a running total: it climbs to the big number, a partial last bucket never dives, gaps stay gaps", async () => {
+  const { cumulative } = await import("../../../crm-app/modules/system/home-charts.js");
+  const snap = syntheticSnapshot("2026-11-16");
+  const month = K.rotorCollected(snap, K.periodOf("month", TODAY), TODAY);
+  const run = cumulative(month.points, month.total);
+  assert.deepEqual(run.map((p) => p.own), month.points.map((p) => p.value), "each point keeps its own amount");
+  assert.equal(run.at(-1).value, month.total, "the line ends at the big number (Nov 1, before the first Monday, folded into the first point)");
+  for (let i = 1; i < run.length; i++) assert.ok(run[i].value >= run[i - 1].value, "never down");
+  const days = cumulative([{ value: 100 }, { value: 0 }, { value: 50 }, { value: null }], 150);
+  assert.deepEqual(days.map((p) => [p.value, p.own]), [[100, 100], [100, 0], [150, 50], [null, null]]);
+});
+
 // ------------------------------------------------------------ pure: the other cards
 
 test("the clock: today's finished shifts and the open one so far; nobody else's", () => {

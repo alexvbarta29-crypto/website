@@ -1,5 +1,5 @@
-// Home's one chart (the Money card: collected, scheduled or ARR over a
-// period), drawn in the CRM itself. One series in coral (#fb4d3d, the house
+// Home's one chart (the Money card: collected or scheduled as a running
+// total over a period, ARR as its level each day), drawn in the CRM itself. One series in coral (#fb4d3d, the house
 // color) as a 2 px smooth line with a faint wash under it, a light dashed
 // grid (the owner's pick), three or four clean ticks, a few x labels that
 // never collide, labels in ink (never in the series color), and a readout
@@ -148,6 +148,23 @@ export function lineChart(el, spec) {
     redraw,
     destroy() { if (ro) ro.disconnect(); el.removeEventListener("pointerdown", onPointer); el.removeEventListener("pointermove", onPointer); el.removeEventListener("keydown", onKey); },
   };
+}
+
+// The running total of a period's buckets (the Money card's Collected and
+// Scheduled lines climb to the big number, so a partial week or day never
+// reads as a crash). Each point keeps its own amount as `own`; a bucket
+// with no value (still ahead) stays a gap. What the period's total holds
+// beyond its buckets (Rotor's days before the period's first Monday) is
+// folded into the first point, so the line ends at the total.
+export function cumulative(points, total = null) {
+  const sum = (points || []).reduce((a, p) => a + (p.value === null || p.value === undefined ? 0 : p.value), 0);
+  const lead = total !== null && total !== undefined && total - sum > 0 ? total - sum : 0;
+  let run = lead;
+  return (points || []).map((p) => {
+    if (p.value === null || p.value === undefined) return { ...p, own: null, value: null };
+    run += p.value;
+    return { ...p, own: p.value, value: run };
+  });
 }
 
 // A hidden table of every value (screen readers; the chart itself is aria-hidden).

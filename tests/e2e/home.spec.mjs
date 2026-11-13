@@ -164,18 +164,21 @@ test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the r
   try {
     // the readout starts on the latest point and follows the keys
     const first = await text(f, "#read-money");
-    assert.match(first, /^\$[\d,]+ week of Nov 16, so far$/);
+    assert.match(first, /^\$10,453 \$780 week of Nov 16, so far$/, "the running total (the big number), then the week's own amount");
     await f.focus('[data-chart="money"]');
     await page.keyboard.press("Home");
-    assert.match(await text(f, "#read-money"), /week of Nov 2$/);
+    assert.match(await text(f, "#read-money"), /^\$[\d,]+ \$4,890 week of Nov 2$/);
     await page.keyboard.press("End");
     assert.equal(await text(f, "#read-money"), first);
+    const ys = await f.$$eval('[data-chart="money"] .hc-line', (els) => els.map((e) => e.getAttribute("d")));
+    const ends = ys[0].match(/-?[\d.]+,-?[\d.]+/g).map((p) => Number(p.split(",")[1]));
+    assert.ok(ends.at(-1) <= Math.min(...ends) + 0.5, "the line climbs to its end (no dive at a partial week)");
     // Scheduled: the CRM's visits, per day
     await f.click('[data-hm="metric"][data-v="scheduled"]');
     await idle(f);
     assert.match(await text(f, ".hm-c-money"), /November This month \$[\d,]+ Avg \/ day \$[\d,]+ Peak day \$[\d,]+/i);
     assert.match(await text(f, ".hm-c-money .hm-foot"), /^Updated \d+:\d\d [AP]M See more$/);
-    assert.match(await text(f, "#read-money"), /^\$[\d,]+ Nov 17$/, "the readout starts on today");
+    assert.match(await text(f, "#read-money"), /^\$[\d,]+ \$[\d,]+ Nov 17$/, "the readout starts on today");
     await shot(page, "home-money-scheduled-iphone13");
     // ARR with its change over the period
     await f.click('[data-hm="metric"][data-v="arr"]');
