@@ -243,8 +243,8 @@ test("sheets close on the close button, on a swipe down and on back", async () =
   try {
     const open = () => f.$$eval(".sheet", (els) => els.filter((e) => e.classList.contains("on")).length);
     const gone = async () => { for (let i = 0; i < 30 && (await f.$(".sheet")); i++) await page.waitForTimeout(50); return !(await f.$(".sheet")); };
-    // the close button on the create sheet (Home and Customers have the create button)
-    assert.equal(!!(await f.$("#fab")), true, "Home: the create button (no quick actions)");
+    // the close button on the create sheet (Customers has the create button; Home has its quick actions)
+    assert.equal(await f.$("#fab"), null, "Home: the quick actions, no create button");
     await goTo(f, "/contacts");
     await f.click("#fab");
     await f.waitForSelector(".sheet.on");
