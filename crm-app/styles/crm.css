@@ -128,12 +128,14 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
 
 /* ------------------------------------------------------------ the phone shell (Nov 2026: Rotor's and Flyra's)
+   (The pill and the + stay where they are under the office's "Get the app"
+   card, which floats just above them; --lift raises what sits higher.)
    A floating pill tab bar with small labels, inset from the edges and above
    the home indicator; the round coral + beside it; large titles and round
    buttons on top-level screens; the + overlay and the Menu sheet
-   (core/nav.js, core/quick.js). A desk keeps the sidebar (below). */
+   (core/nav.js). A desk keeps the sidebar (below). */
 :root{--pill-h:62px;--fab-d:58px}
-.tabs.pill{align-items:stretch;left:calc(8px + var(--left));right:calc(8px + var(--right) + var(--fab-d) + 6px);bottom:calc(var(--bottom) + 10px + var(--lift,0px));height:var(--pill-h);padding:4px 3px;gap:0;border:1px solid rgba(22,22,27,.06);border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 10px 30px rgba(18,18,21,.14),0 2px 6px rgba(18,18,21,.06)}
+.tabs.pill{align-items:stretch;left:calc(8px + var(--left));right:calc(8px + var(--right) + var(--fab-d) + 6px);bottom:calc(var(--bottom) + 10px);height:var(--pill-h);padding:4px 3px;gap:0;border:1px solid rgba(22,22,27,.06);border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 10px 30px rgba(18,18,21,.14),0 2px 6px rgba(18,18,21,.06)}
 .app.no-fab .tabs.pill{right:calc(8px + var(--right))}
 .tabs.pill .tab{height:100%;max-width:none;gap:2px;padding:4px 0 3px;border-radius:999px;font:600 10.5px/1.1 var(--text);color:var(--ink-3);letter-spacing:-.01em}
 .tabs.pill.six .tab{font-size:9.5px;font-weight:500;letter-spacing:-.03em}
@@ -144,7 +146,7 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .tabs.pill .tab[aria-current="page"]::before{display:none}
 .tabs.pill .tab .badge{top:1px;left:calc(50% + 4px)}
 .tabs.pill .tab:active{background:var(--fill)}
-.fab{right:calc(8px + var(--right));bottom:calc(var(--bottom) + 12px + var(--lift,0px));width:var(--fab-d);height:var(--fab-d);border-radius:50%}
+.fab{right:calc(8px + var(--right));bottom:calc(var(--bottom) + 12px);width:var(--fab-d);height:var(--fab-d);border-radius:50%}
 /* the large title of a top-level screen, with round buttons on the right */
 .top-rnd{display:none}
 .rnd{flex:none;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(18,18,21,.1),0 1px 2px rgba(18,18,21,.06);cursor:pointer;text-decoration:none;font:700 14px/1 var(--head)}
@@ -172,7 +174,7 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .qk.on .qk-pill{transform:none}
 .qk-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--mist-2);color:var(--ink)}
 .qk-ic svg{width:21px;height:21px}
-.qk-x{position:absolute;right:calc(8px + var(--right));bottom:calc(var(--bottom) + 12px + var(--lift,0px));display:grid;place-items:center;width:var(--fab-d);height:var(--fab-d);border:0;border-radius:50%;background:var(--coral-btn);color:#fff;box-shadow:0 6px 16px rgba(208,51,31,.32);cursor:pointer}
+.qk-x{position:absolute;right:calc(8px + var(--right));bottom:calc(var(--bottom) + 12px);display:grid;place-items:center;width:var(--fab-d);height:var(--fab-d);border:0;border-radius:50%;background:var(--coral-btn);color:#fff;box-shadow:0 6px 16px rgba(208,51,31,.32);cursor:pointer}
 .qk-x svg{width:24px;height:24px;stroke-width:2.4}
 body.qk-on .fab{visibility:hidden}
 /* the Menu sheet (Flyra): a large title, round buttons, the latest reply, rounded groups */

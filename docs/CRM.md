@@ -736,7 +736,7 @@ one request (and My visits' own, only for someone who goes out).
   other Menu section (the manifests' `nav: [{ where: "more", section }]`:
   Work, Sales, Customers, Money, Messages & automations, Office tools,
   Admin; an entry without a known section lands in "More"), each screen
-  once; then Tab bar and Settings (`core/quick.js`, `nav.js menuGroups`).
+  once; then Tab bar and Settings (`core/nav.js`: `openMenuSheet`, `menuGroups`).
   The Menu's button is lit on the screens it lists. `#/menu` is the same
   as a page (Rotor's "More": your card with Edit, the groups, a coral Sign
   out, the app's version).
@@ -760,7 +760,7 @@ one request (and My visits' own, only for someone who goes out).
   else, + makes anything new." ("Home, Schedule, Inbox, Customers and Sales
   now lead the sidebar..." on a desk); "Got it" or the Menu and it's gone.
   A tech's bar didn't change: nothing to say.
-- Code: `crm-app/core/{nav,quick}.js`, `crm.css` (the shell block);
+- Code: `crm-app/core/nav.js`, `crm.css` (the shell block);
   tests: `tests/crm/core/nav.test.mjs`, `tests/e2e/layout.spec.mjs`.
 
 ### On a computer (900 px and up)

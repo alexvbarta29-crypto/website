@@ -67,6 +67,7 @@ test("one app: the Dashboard (Menu → Reports) switches its views in place; Men
   const { p, page, f } = await office({ office: true });
   try {
     // the Menu is a sheet (Flyra's): its Reports row opens the Dashboard
+    await noInstallCard(page);
     await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".menu-sheet.on");
     await f.click('.menu-sheet a[href="#/dashboard"]');
@@ -199,13 +200,13 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     // the list keeps its search and scroll when you come back
     await f.fill("#ct-q", "example");
     await page.waitForTimeout(400);
-    const rows = await f.$$("#ct-list a.row");
+    const rows = await f.$$("#ct-list a.cc-top");
     assert.ok(rows.length > 10, `the search finds people (${rows.length})`);
     await f.evaluate(() => { document.getElementById("ct-scroll").scrollTop = 300; });
     await page.waitForTimeout(150);
     const scrolled = await f.evaluate(() => document.getElementById("ct-scroll").scrollTop);
-    const row = await f.$$eval("#ct-list a.row", (as) => { const a = as.find((x) => x.getBoundingClientRect().top > 220); return a.getAttribute("href"); });
-    await tap(page, f, `#ct-list a.row[href="${row}"]`);
+    const row = await f.$$eval("#ct-list a.cc-top", (as) => { const a = as.find((x) => x.getBoundingClientRect().top > 220); return a.getAttribute("href"); });
+    await tap(page, f, `#ct-list a.cc-top[href="${row}"]`);
     await settled(f, { hash: row });
     // the edge swipe: a touch from the left edge, 170 px to the right
     const o = await frameOffset(page, f);
@@ -215,7 +216,7 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     const back = await f.evaluate(() => document.getElementById("ct-scroll").scrollTop);
     assert.ok(Math.abs(back - scrolled) < 40, `the scroll is kept (${back} vs ${scrolled})`);
     // a swipe that starts away from the edge does nothing
-    await tap(page, f, `#ct-list a.row[href="${row}"]`);
+    await tap(page, f, `#ct-list a.cc-top[href="${row}"]`);
     await settled(f, { hash: row });
     await swipe(page, { x: o.x + 120, y: o.y + 420 }, { x: o.x + 300, y: o.y + 430 });
     await page.waitForTimeout(400);
@@ -243,10 +244,10 @@ test("sheets close on the close button, on a swipe down and on back", async () =
   try {
     const open = () => f.$$eval(".sheet", (els) => els.filter((e) => e.classList.contains("on")).length);
     const gone = async () => { for (let i = 0; i < 30 && (await f.$(".sheet")); i++) await page.waitForTimeout(50); return !(await f.$(".sheet")); };
-    // the close button on the create sheet (Home and Customers have the create button)
-    assert.equal(!!(await f.$("#fab")), true, "Home: the create button (no quick actions)");
+    // the close button on the Menu sheet (Nov 2026: the + is an overlay, the Menu a sheet)
+    assert.equal(!!(await f.$("#fab")), true, "Home: the + button");
     await goTo(f, "/contacts");
-    await f.click("#fab");
+    await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".sheet.on");
     assert.equal(await open(), 1);
     assert.deepEqual(await screenProblems(f), [], "the sheet passes the phone checks");
@@ -254,7 +255,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await f.click(".sheet [data-sheet-x]");
     assert.ok(await gone(), "the close button closes it");
     // a swipe down from the sheet's head
-    await f.click("#fab");
+    await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const o = await frameOffset(page, f);
@@ -263,7 +264,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await swipe(page, { x: o.x + h1.x, y: o.y + h1.y }, { x: o.x + h1.x, y: o.y + h1.y + 220 });
     assert.ok(await gone(), "a swipe down closes it");
     // a short drag springs back
-    await f.click("#fab");
+    await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const h2 = await headAt();

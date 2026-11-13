@@ -1,5 +1,5 @@
 // Menu (design §9.1; the Nov 2026 layout, after Rotor's "More" page): the
-// same places as the Menu sheet (core/quick.js; nav.js menuGroups) as a
+// same places as the Menu sheet (core/nav.js openMenuSheet, menuGroups) as a
 // page: your card (initials, name, the company, Edit → My account), then
 // rounded rows with round grey icons by group, then a coral Sign out and
 // the app's version. The tab bar's Menu button opens the sheet; old links
@@ -7,8 +7,7 @@
 
 import { html, icon, attrs } from "../../core/ui.js";
 import { initials, roleLabel } from "../../core/format.js";
-import { menuGroups, signOut } from "../../core/nav.js";
-import { menuRows } from "../../core/quick.js";
+import { menuGroups, signOut, menuRows } from "../../core/nav.js";
 import { APP_VERSION } from "../../version.js";
 
 export default {

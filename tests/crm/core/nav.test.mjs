@@ -14,7 +14,7 @@ const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
 const router = await import("../../../crm-app/core/router.js");
 router.register(MANIFESTS);
 const nav = await import("../../../crm-app/core/nav.js");
-const quick = await import("../../../crm-app/core/quick.js");
+const quick = nav;
 const { navFor, OFFICE_NAV } = await import("../../../netlify/lib/crm/modules/system/me.mjs");
 const { ROLE_DEFAULTS, roleDefault } = await import("../../../netlify/lib/crm/core/perms.mjs");
 await import("../../../netlify/lib/crm/modules/index.mjs");   // the modules' own permissions (the map's canvass:use)

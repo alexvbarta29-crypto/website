@@ -364,12 +364,12 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     // search the list; open another from it: the list keeps its words, the pane changes
     await f.fill("#ct-q", "Workday");
     await page.waitForTimeout(400);
-    const other = await f.$$eval("#ct-list a.row", (as) => as.map((a) => a.getAttribute("href")));
+    const other = await f.$$eval("#ct-list a.cc-top", (as) => as.map((a) => a.getAttribute("href")));
     assert.ok(other.length >= 4, `the list filters (${other.length})`);
-    await f.click(`#ct-list a.row[href="${other[1]}"]`);
+    await f.click(`#ct-list a.cc-top[href="${other[1]}"]`);
     await settled(f, { hash: other[1] });
     assert.equal(await f.inputValue("#ct-q"), "Workday", "the list kept its search");
-    assert.equal(await f.getAttribute(`#ct-list a.row[href="${other[1]}"]`, "aria-current"), "true", "the open row is lit");
+    assert.equal(await f.getAttribute(`#ct-list a.cc-top[href="${other[1]}"]`, "aria-current"), "true", "the open card is lit");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-desk-contacts-split");
     // back to the list alone: the pane asks what to open
