@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.13-5";
+const VERSION = "2026.11.13-6";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -111,7 +111,11 @@ const PRECACHE = [
   "/crm-app/modules/quotes/quotes.css",
   "/crm-app/modules/quotes/settings.js",
   "/crm-app/modules/quotes/view.js",
+  "/crm-app/modules/reports/kit.js",
+  "/crm-app/modules/reports/leaderboard.js",
   "/crm-app/modules/reports/manifest.js",
+  "/crm-app/modules/reports/performance.js",
+  "/crm-app/modules/reports/reports.css",
   "/crm-app/modules/sales/cadence.js",
   "/crm-app/modules/sales/cadences.js",
   "/crm-app/modules/sales/calls.js",
@@ -120,8 +124,10 @@ const PRECACHE = [
   "/crm-app/modules/sales/enroll.js",
   "/crm-app/modules/sales/enrollment.js",
   "/crm-app/modules/sales/kit.js",
+  "/crm-app/modules/sales/leads.js",
   "/crm-app/modules/sales/log.js",
   "/crm-app/modules/sales/manifest.js",
+  "/crm-app/modules/sales/pipeline.js",
   "/crm-app/modules/sales/sales.css",
   "/crm-app/modules/sales/sign-form.js",
   "/crm-app/modules/sales/sign.js",
@@ -152,6 +158,7 @@ const PRECACHE = [
   "/crm-app/modules/system/settings-messaging.js",
   "/crm-app/modules/system/settings-permissions.js",
   "/crm-app/modules/system/settings.js",
+  "/crm-app/modules/system/tab-bar.js",
   "/crm-app/modules/system/team.js",
   "/crm-app/modules/system/template.js",
   "/crm-app/modules/system/templates.js",
@@ -182,7 +189,10 @@ const PRECACHE = [
   "/crm-app/modules/work/tech-timesheets.js",
   "/crm-app/modules/work/tech-today.js",
   "/crm-app/modules/work/visit-field.js",
+  "/crm-app/modules/work/visit-step.js",
+  "/crm-app/modules/work/visit-styles.css",
   "/crm-app/modules/work/visit.js",
+  "/crm-app/modules/work/visits.js",
   "/crm-app/portal/core.js",
   "/crm-app/portal/money-card.js",
   "/crm-app/portal/money-dry.js",

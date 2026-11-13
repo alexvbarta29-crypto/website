@@ -302,7 +302,7 @@ test("the office without the office sign-in: the money (reports:read), See more 
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");
     await goTo(f, "/menu");
-    assert.equal(await has(f, '.mtile[href="#/dashboard"]'), false, "no Dashboard in the Menu either");
+    assert.equal(await has(f, '#view a[href="#/dashboard"]'), false, "no Dashboard in the Menu either");
     await p.clean();
   } finally { await p.close(); }
 });
