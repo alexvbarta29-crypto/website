@@ -1,9 +1,11 @@
 // Home (the owner's Nov 12 choice: Rotor's phone Home with the best of
 // Flyra's, as cards each person shows, hides and orders): GET /home, the
 // cards' own reads and Edit Home, and the pure parts (home-kpis.mjs). Who
-// gets which card, where the money comes from (Rotor's snapshot until
-// cutover, the CRM's payments after; Scheduled and ARR from the CRM's
-// visits and plans), the clock, the agenda, goals, the leaderboard service
+// gets which card, where the money comes from (the Money card is Rotor's:
+// Week | Month, Collected and Scheduled side by side per day; Collected is
+// the CRM's payments after cutover or while the latest Rotor import is 3
+// days old or less, else Rotor's snapshot; Scheduled and ARR from the
+// CRM's visits and plans), the clock, the agenda, goals, the leaderboard service
 // gate, and the request budget (a card that is off costs no read).
 // Synthetic data only (tests/e2e/seed.mjs, tests/helpers/office-snapshot.mjs).
 import { test, before, after } from "node:test";
@@ -133,6 +135,40 @@ test("the Money line is a running total: it climbs to the big number, a partial 
 
 // ------------------------------------------------------------ pure: the other cards
 
+test("Rotor's Money card (pure): the latest finished import and its age, the week or month of a day, Rotor's weeks", () => {
+  // the newest finished import by its export's day (else the day it finished); an unfinished one never counts
+  const runs = [{ id: "ir_a", st: "done", asof: "2026-11-09", fin: "2026-11-09T20:00:00Z" }, { id: "ir_b", st: "done", fin: "2026-11-14T03:00:00Z" }, { id: "ir_c", st: "running", asof: "2026-11-17" }, { id: "ir_d", st: "failed", asof: "2026-11-16" }];
+  assert.deepEqual(K.latestImport(runs, TODAY), { date: "2026-11-13", age: 4, fresh: false }, "finished 9 PM Nov 13 in Delano: 4 days old");
+  assert.deepEqual(K.latestImport([...runs, { id: "ir_e", st: "done", asof: "2026-11-14" }], TODAY), { date: "2026-11-14", age: 3, fresh: true }, "3 days old is fresh");
+  assert.equal(K.latestImport([{ st: "cancelled", asof: "2026-11-17" }, null, "x"], TODAY), null);
+  assert.equal(K.latestImport([], TODAY), null);
+  assert.equal(K.IMPORT_FRESH_DAYS, 3);
+  // the period of a day: Monday's week, or the month with its year
+  assert.deepEqual(K.pairPeriod("month", "2026-10-09"), { period: "month", from: "2026-10-01", to: "2026-10-31", label: "October 2026" });
+  assert.deepEqual(K.pairPeriod("week", "2026-11-01"), { period: "week", from: "2026-10-26", to: "2026-11-01", label: "Oct 26 – Nov 1" });
+  // Rotor's weekly Collected: Scheduled is summed to the same weeks (one scale); a week that began before the month counts from the 1st
+  const p = K.pairPeriod("month", TODAY);
+  const days = K.dates(p.from, p.to).map((d) => ({ key: d, label: K.dayLabel(d), value: d === "2026-11-01" ? 100 : d === "2026-11-03" ? 200 : d === "2026-11-08" ? 50 : d === "2026-11-30" ? 7 : 0 }));
+  assert.deepEqual(K.byWeek(days, p).map((x) => [x.key, x.to, x.value]), [["2026-11-01", "2026-11-01", 100], ["2026-11-02", "2026-11-08", 250], ["2026-11-09", "2026-11-15", 0], ["2026-11-16", "2026-11-22", 0], ["2026-11-23", "2026-11-29", 0], ["2026-11-30", "2026-11-30", 7]]);
+  const snap = syntheticSnapshot("2026-11-16");
+  const weekly = K.moneyPair({ p, collected: K.rotorCollected(snap, p, TODAY), scheduled: { total: 357, points: days }, source: "rotor", asOf: "2026-11-16", arr: 480000 });
+  assert.equal(weekly.grain, "week");
+  assert.deepEqual(weekly.collected.points.map((x) => x.key), ["2026-11-02", "2026-11-09", "2026-11-16"]);
+  assert.equal(weekly.collected.total, Math.round(snap.revenue.this_month * 100));
+  assert.deepEqual([weekly.scheduled.total, weekly.scheduled.points.length, weekly.arr, weekly.source, weekly.as_of, weekly.label], [357, 6, 480000, "rotor", "2026-11-16", "November 2026"]);
+  // per day (the CRM's payments): both lines per day; Rotor's one week total has no points; nothing counted yet is null, not $0
+  const daily = K.moneyPair({ p, collected: K.crmCollected([{ st: "succeeded", k: "payment", a: 5000, on: "2026-11-03" }], p, "2026-11-13"), scheduled: { total: 357, points: days }, source: "import", asOf: "2026-11-13" });
+  assert.equal(daily.grain, "day");
+  assert.equal(daily.collected.points.length, 30);
+  assert.deepEqual([daily.collected.total, daily.collected.points[2].value, daily.collected.points[12].value, daily.collected.points[13].value], [5000, 5000, 0, null], "through the import's day");
+  const wk = K.pairPeriod("week", TODAY);
+  const one = K.moneyPair({ p: wk, collected: K.rotorCollected(snap, wk, TODAY), scheduled: { total: 0, points: [] }, source: "rotor" });
+  assert.deepEqual([one.grain, one.collected.points], ["day", []]);
+  assert.equal(one.collected.total, Math.round(snap.revenue.weekly.find((w) => w.key === "2026-11-16").value * 100));
+  const ahead = K.moneyPair({ p: K.pairPeriod("month", "2026-12-05"), collected: K.crmCollected([], K.pairPeriod("month", "2026-12-05"), "2026-11-13"), scheduled: null, source: "import" });
+  assert.deepEqual([ahead.collected.total, ahead.scheduled.total, ahead.arr], [null, null, null]);
+});
+
 test("the clock: today's finished shifts and the open one so far; nobody else's", () => {
   const now = Date.parse("2026-11-17T18:00:00Z");
   const rows = [
@@ -250,11 +286,15 @@ test("an owner's Home (Flyra's): the header, Money, the Leaderboard, Today, Inbo
   assert.deepEqual(d.layout, [{ key: "money", on: true }, { key: "clock", on: false }, { key: "leaderboard", on: true }, { key: "agenda", on: true }, { key: "inbox", on: true }, { key: "tasks", on: true }, { key: "goals", on: true }], "the leaderboard is offered (the reports module's service is merged), on");
   assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "leaderboard", "money", "tasks"], "a card that is off isn't computed");
   assert.equal(d.cards.clock, undefined, "the clock is off: not read");
-  // money: Rotor's numbers until cutover, this month
+  // money: Rotor's card, this month: Collected from Rotor's snapshot (no import yet) by its weeks, Scheduled per week with it, the ARR
   const m = d.cards.money;
-  assert.deepEqual([m.metric, m.period, m.source, m.as_of, m.label], ["collected", "month", "rotor", "2026-11-16", "November"]);
-  assert.equal(m.total, Math.round(syntheticSnapshot("2026-11-16").revenue.this_month * 100));
-  assert.equal(m.goal, null, "no goal set");
+  assert.deepEqual([m.period, m.from, m.to, m.source, m.as_of, m.label, m.grain], ["month", "2026-11-01", "2026-11-30", "rotor", "2026-11-16", "November 2026", "week"]);
+  assert.equal(m.collected.total, Math.round(syntheticSnapshot("2026-11-16").revenue.this_month * 100));
+  assert.ok(m.collected.points.length > 1 && m.collected.points.every((x) => x.key >= m.from && x.key <= m.to));
+  assert.ok(m.scheduled.total > 0, "the seed's jobs have prices");
+  assert.equal(m.scheduled.total, sum(m.scheduled.points.map((x) => x.value)));
+  assert.ok(m.arr > 0, "the seed's live plans");
+  assert.equal(m.goal, undefined, "no goal on the card (the Goals card has it)");
   // today: the seed's four visits, with who goes, and the open tasks without a due date
   const a = d.cards.agenda;
   assert.deepEqual([a.view, a.date, a.count], ["day", TODAY, 4]);
@@ -277,28 +317,30 @@ test("who sees what: the money needs reports:read or the office sign-in; a techn
   assert.ok(denied.cards.agenda, "the schedule still");
   assert.equal((await t.api("/home/money", { as: fx.noReports })).status, 403);
   const withOffice = await home(fx.noReports, { office: true });
-  assert.ok(withOffice.cards.money && withOffice.cards.money.total > 0, "the office sign-in opens the office dashboard's numbers");
+  assert.ok(withOffice.cards.money && withOffice.cards.money.collected.total > 0, "the office sign-in opens the office dashboard's numbers");
   for (const office of [false, true]) {
     const res = await t.api("/home", { as: fx.tech, office });
     assert.equal(res.status, 200);
     assert.deepEqual({ ...res.body.data, now: null }, { date: TODAY, now: null, user: null, mode: null, notifications: null, layout: [], cards: {} }, "a technician never gets Home");
     assert.equal((await t.api("/home/money", { as: fx.tech, office })).status, 403);
+    assert.equal((await t.api("/home/money?period=week", { as: fx.tech, office })).status, 403);
     assert.equal((await t.api("/home/layout", { method: "PUT", as: fx.tech, body: { cards: [] } })).status, 400);
   }
   assert.equal((await t.api("/home", { office: true })).status, 401, "the office cookie alone is not a CRM sign-in");
 });
 
-test("the budget: a cold default Home is 16 storage calls, each read once, nothing for the cards that are off", async () => {
+test("the budget: a cold default Home is 18 storage calls, each read once, nothing for the cards that are off", async () => {
   await cold();
   const { res, calls } = await counted("/home", { as: fx.owner, office: true });
   assert.equal(res.status, 200);
   const keys = calls.map((c) => c.replace(/^\S+ /, "").replace(/us_\w+\/?$/, "{user}").replace(/^ses\/\w+$/, "ses/{id}")).sort();
-  // (Flyra's Home: the inbox's open index for Inbox; the plans and quotes for the Leaderboard's sales; the clock is off: no timesheets)
-  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/inbox/open", "ix/plans", "ix/quotes/2026", "ix/quotes/open", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
-  assert.ok(keys.length <= 16, `${keys.length} calls`);
+  // (Flyra's Home: the inbox's open index for Inbox; the plans and quotes for the Leaderboard's sales; the clock is off: no timesheets;
+  // Rotor's Money card: the import runs (is the latest fresh?), the month's visits shared with Today, the jobs for their value, the plans for the ARR)
+  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/import-runs", "ix/inbox/open", "ix/jobs/2026", "ix/jobs/open", "ix/plans", "ix/quotes/2026", "ix/quotes/open", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
+  assert.ok(keys.length <= 18, `${keys.length} calls`);
   assert.equal(new Set(calls).size, calls.length, "nothing read twice");
   assert.ok(!calls.some((c) => c.includes("ix-dirty/")), "no dirty markers");
-  for (const gone of ["ix/jobs/open", "ix/sales-attention", "ix/merge-candidates", "sys/health", "ix/import-runs"]) assert.ok(!calls.some((c) => c.endsWith(" " + gone)), `${gone} is not read`);
+  for (const gone of ["ix/sales-attention", "ix/merge-candidates", "sys/health", "ix/payments/2026-11"]) assert.ok(!calls.some((c) => c.endsWith(" " + gone)), `${gone} is not read`);
 });
 
 test("Edit Home: the person's cards on, off and in their order, saved per person; the others' untouched", async () => {
@@ -334,13 +376,75 @@ test("goals: owners set a monthly revenue and jobs goal; the Money card shows th
   assert.equal(put.status, 200, JSON.stringify(put.body));
   assert.equal((await t.api("/settings/goals", { method: "PUT", as: fx.owner, ifMatch: put.body.data.etag, body: { revenue_month_cents: -1 } })).status, 400);
   const m = (await home(fx.owner)).cards.money;
-  assert.deepEqual([m.goal.target, m.goal.value], [2500000, m.total]);
-  assert.equal(m.goal.pct, Math.round((m.total / 2500000) * 100));
+  assert.equal(m.goal, undefined, "Rotor's card has no goal line");
   await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [{ key: "goals", on: true }] } });
   const g = (await home(fx.owner)).cards.goals;
-  assert.deepEqual([g.revenue.target, g.revenue.value, g.jobs.target], [2500000, m.total, 60]);
+  assert.deepEqual([g.revenue.target, g.revenue.value, g.jobs.target], [2500000, m.collected.total, 60], "the month's Collected, as the Money card counts it");
   assert.equal(g.jobs.value, syntheticSnapshot("2026-11-16").revenue.monthly.find((x) => x.key === "2026-11").jobs, "Rotor's paid jobs until cutover");
   await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [] } });
+});
+
+test("Rotor's card's own read: Week | Month of any day (the arrows), both lines; bad input refused; inside its budget", async () => {
+  const get = async (q) => t.api(`/home/money?${new URLSearchParams(q)}`, { as: fx.owner });
+  const month = (await get({ period: "month" })).body.data;
+  assert.deepEqual([month.period, month.from, month.label, month.source], ["month", "2026-11-01", "November 2026", "rotor"]);
+  const week = (await get({ period: "week", date: TODAY })).body.data;
+  assert.deepEqual([week.from, week.to, week.label, week.grain], ["2026-11-16", "2026-11-22", "Nov 16 – 22", "day"]);
+  assert.equal(week.collected.total, Math.round(syntheticSnapshot("2026-11-16").revenue.weekly.find((w) => w.key === "2026-11-16").value * 100), "Rotor's week total, no points");
+  assert.deepEqual(week.collected.points, []);
+  assert.equal(week.scheduled.points.length, 7);
+  assert.equal(week.scheduled.total, sum(week.scheduled.points.map((x) => x.value)));
+  const oct = (await get({ period: "month", date: "2026-10-31" })).body.data;
+  assert.deepEqual([oct.from, oct.to, oct.label], ["2026-10-01", "2026-10-31", "October 2026"]);
+  assert.equal(oct.collected.total, Math.round(syntheticSnapshot("2026-11-16").revenue.monthly.find((x) => x.key === "2026-10").cur * 100), "the previous month from Rotor's months");
+  const dec = (await get({ period: "month", date: "2026-12-01" })).body.data;
+  assert.equal(dec.collected.total, null, "a month ahead of Rotor's snapshot: '-'");
+  assert.equal((await get({ period: "year" })).status, 400);
+  assert.equal((await get({ period: "week", date: "tomorrow" })).status, 400);
+  assert.equal((await get({ period: "week", date: "2040-01-01" })).status, 400);
+  await cold();
+  const { res, calls } = await counted("/home/money?period=month&date=2026-10-15", { as: fx.owner });
+  assert.equal(res.status, 200);
+  assert.ok(calls.length <= 14, `${calls.length} calls`);
+});
+
+test("Collected follows the latest Rotor import: per day from the CRM's payments while it is 3 days old or less, Rotor's snapshot after", async () => {
+  const O = { by: "system:test", origin: "api", actor_kind: "user", requestId: "home-import", mode: { system_of_record: "rotor", paused: false } };
+  const contact = fx.world.contacts.customer;
+  let run;
+  await store.withStoreScope({ requestId: "home-import" }, async () => {
+    // a finished import of the Nov 14 export (synthetic: counts only) and the payments it brought in
+    run = (await store.createRecord("import_run", { status: "done", as_of: "2026-11-14", requested_by: "system" }, O)).data;
+    for (const [on, cents, extra] of [["2026-11-04", 41000, {}], ["2026-11-12", 9000, { tip_cents: 500 }], ["2026-11-12", 2000, { kind: "refund" }], ["2026-11-13", 6600, { simulated: true }], ["2026-10-30", 9900, {}]]) {
+      await store.createRecord("payment", { contact_id: contact, kind: "payment", method: "check", status: "succeeded", amount_cents: cents, received_on: on, ...extra }, O);
+    }
+  });
+  try {
+    await cold();
+    const { res, calls } = await counted("/home", { as: fx.owner, office: true });
+    const m = res.body.data.cards.money;
+    assert.deepEqual([m.source, m.as_of, m.grain], ["import", "2026-11-14", "day"]);
+    assert.equal(m.collected.total, 41000 + 9500 - 2000, "as /money/summary counts: refunds out, tips in, dry-run never");
+    assert.equal(m.collected.points.length, 30);
+    assert.deepEqual(["2026-11-04", "2026-11-12", "2026-11-14", "2026-11-15"].map((k) => m.collected.points.find((x) => x.key === k).value), [41000, 7500, 0, null], "through the import's day");
+    assert.equal(m.scheduled.points.length, 30, "Scheduled per day");
+    assert.deepEqual(res.body.data.cards.goals.revenue, { target: 2500000, value: m.collected.total }, "the Goals card counts the same");
+    // one more read (this month's payments), still each once
+    assert.ok(calls.some((c) => c.endsWith(" ix/payments/2026-11")));
+    assert.ok(calls.length <= 19, `${calls.length} calls`);
+    assert.equal(new Set(calls).size, calls.length);
+    // October through the arrows: the CRM's payments too
+    const oct = (await t.api("/home/money?period=month&date=2026-10-01", { as: fx.owner })).body.data;
+    assert.deepEqual([oct.source, oct.collected.total], ["import", 9900]);
+    // four days old: back to Rotor's snapshot and its weeks
+    pin("2026-11-18T15:00:00Z");
+    const stale = (await home(fx.owner)).cards.money;
+    assert.deepEqual([stale.source, stale.as_of, stale.grain], ["rotor", "2026-11-16", "week"]);
+  } finally {
+    pin("2026-11-17T15:00:00Z");
+    await store.withStoreScope({ requestId: "home-import" }, () => store.updateRecord("import_run", run.id, (r) => ({ ...r, status: "cancelled" }), O));
+  }
+  assert.equal((await home(fx.owner)).cards.money.source, "rotor");
 });
 
 test("the Money card's reads: Scheduled from the CRM's visits, ARR from its plans, Collected by period; bad input refused", async () => {
@@ -383,9 +487,14 @@ test("after cutover the collected money is the CRM's own payments, by day", asyn
   await setMode("crm");
   try {
     const m = (await home(fx.owner)).cards.money;
-    assert.deepEqual([m.source, m.total, m.grain], ["crm", 30000 + 13800 - 5000, "day"]);
-    assert.equal(m.points.find((p) => p.key === "2026-11-16").value, 13800);
+    assert.deepEqual([m.source, m.as_of, m.grain], ["crm", null, "day"]);
+    // (the import test's payments are in the CRM too: Nov 4 and 12)
+    assert.equal(m.collected.total, 30000 + 13800 - 5000 + 41000 + 9500 - 2000);
+    assert.equal(m.collected.points.find((p) => p.key === "2026-11-16").value, 13800);
+    assert.equal(m.collected.points.find((p) => p.key === "2026-11-18").value, null, "a day ahead");
     assert.ok(m.updated_at);
+    const old = (await t.api("/home/money?metric=collected&period=month", { as: fx.owner })).body.data;
+    assert.equal(old.total, m.collected.total, "the older one-metric read agrees");
   } finally { await setMode("rotor"); }
 });
 
@@ -455,7 +564,8 @@ test("the snapshot is opened once per warm instance, and a missing key says why 
   delete process.env.OFFICE_DATA_KEY;
   try {
     const d = await home(fx.owner);
-    assert.deepEqual([d.cards.money.total, d.cards.money.missing], [null, "no-key"]);
+    assert.deepEqual([d.cards.money.collected.total, d.cards.money.missing, d.cards.money.source], [null, "no-key", "rotor"]);
+    assert.ok(d.cards.money.scheduled.total > 0, "Scheduled is the CRM's own");
     assert.ok(!JSON.stringify(d).includes(KEY.slice(0, 12)));
   } finally {
     process.env.OFFICE_DATA_KEY = saved;
