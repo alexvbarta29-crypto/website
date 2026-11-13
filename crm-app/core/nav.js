@@ -379,12 +379,18 @@ export function seenMoved(uid = me()) {
 }
 // Whether this person gets the note: the office (a Menu that moved), once.
 export const wantsMoved = (uid = me()) => !!menuDest() && !movedSeen(uid);
-// (Said once as a toast, never a banner over the screen: then it is seen.)
+// (Said once as a toast, never a banner over the screen: then it is seen.
+// It never pushes another toast aside: with one showing it waits for the
+// next start.)
 function whatMoved() {
   if (!wantsMoved()) return;
   const desk = !!document.getElementById("side") && typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches;
-  seenMoved();
-  setTimeout(() => toast(desk ? MOVED_TEXT.desk : MOVED_TEXT.phone, { ms: 5000 }), 1200);
+  setTimeout(() => {
+    const box = document.getElementById("toasts");
+    if (!box || box.firstChild || !wantsMoved()) return;
+    seenMoved();
+    toast(desk ? MOVED_TEXT.desk : MOVED_TEXT.phone, { ms: 5000 });
+  }, 500);
 }
 
 // ------------------------------------------------------------ the desktop chrome

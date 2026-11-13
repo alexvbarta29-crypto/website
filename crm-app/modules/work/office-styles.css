@@ -577,6 +577,6 @@
   .wk-dempty span{font-size:17px}
   .wk-dempty .btn.primary{min-height:52px;padding:0 26px;font-size:17px}
   /* Day (Flyra's): the date is the title; the week strip and the chips step aside (the view pill has them) */
-  .wk .wk-strip{display:none}
+  .wk-v-day .wk-strip,.wk-v-3day .wk-strip{display:none}
   .wk .wk-dbar .wk-by{display:none}
 }

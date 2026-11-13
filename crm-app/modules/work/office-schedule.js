@@ -757,7 +757,7 @@ export default {
         <div class="card empty"><div class="art">${icon("schedule")}</div><h2>The schedule didn't load</h2><p>Check the signal and try again.</p><div class="btn-row"><button type="button" class="btn primary" ${attrs({ "data-view": s.view })}>Try again</button></div></div></div>`;
     }
     const wideView = month || ["week", "day", "3day"].includes(s.view);
-    return html`<div class="${"stack wk" + (wideView ? " wk-wide" : "") + (s.panel ? " wk-sided" : "")}">
+    return html`<div class="${"stack wk wk-v-" + s.view + (wideView ? " wk-wide" : "") + (s.panel ? " wk-sided" : "")}">
       ${flyHead(s, ctx)}
       ${head(s, ctx)}
       <div class="wk-bar">${viewTabs(s)}</div>

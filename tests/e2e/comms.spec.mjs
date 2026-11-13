@@ -43,14 +43,16 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "the Inbox passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `comms-inbox-${device}`);
-      await f.selectOption("[data-kind]", "needs_reply");
+      // (a phone: All messages · Needs reply · Mine is the filter sheet behind the round filter button, Flyra's)
+      const pickKind = async (k) => { await f.click('#top-rnd [data-own="filter"]'); await f.waitForSelector(".sheet.on [data-k]"); assert.deepEqual(await screenProblems(f), [], "the filter sheet"); await f.click(`.sheet.on [data-k="${k}"]`); };
+      await pickKind("needs_reply");
       await f.waitForFunction(() => document.querySelector("[data-kind]").value === "needs_reply" && !document.querySelector("#view [aria-busy=true]"));
       await f.waitForTimeout(400);
       // (the second phone comes after the first marked it done)
       if (first) assert.match(await text(f), new RegExp(c.names.lead));
       else assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "done on the other phone: no longer waiting");
       assert.doesNotMatch(await text(f), /All done for today/, "a handled thread does not need a reply");
-      await f.selectOption("[data-kind]", "all");
+      await pickKind("all");
       await f.waitForFunction(() => document.querySelector("[data-kind]").value === "all");
       await f.waitForTimeout(400);
 
