@@ -13,7 +13,8 @@
 //                goal, one line chart, where the numbers come from
 //   Today        Daily | Weekly | Monthly with arrows, the visits (a color
 //                bar per tech, customer, "Job · 8:00 AM – 12:00 PM", who,
-//                the time), and TASKS WITHOUT DUE DATE (folds)
+//                the time), and TASKS WITHOUT DUE DATE (folds); Monthly is
+//                a month calendar (dots per day) and the picked day's visits
 //   (added in Edit Home) Leaderboard (the reports module's, when it is
 //                there), Inbox, Tasks (Upcoming ▾, Add), Goals (owners add)
 //   Edit Home    show, hide and order the cards
@@ -256,13 +257,61 @@ function agendaRow(v, ctx) {
   const cls = "hm-item" + (v.status === "completed" ? " done" : "");
   return html`<li>${href ? html`<a class="${cls}" href="${href}" ${attrs({ style: `--bar:${bar}` })}>${body}</a>` : html`<div class="${cls}" ${attrs({ style: `--bar:${bar}` })}>${body}</div>`}</li>`;
 }
+// Monthly (the owner's Nov 13 ask, Rotor's look): a month calendar, Sunday
+// first, each day's number with up to three dots (a dot a visit, in its
+// tech's color), today a coral circle, the chosen day outlined; under it the
+// chosen day's visits. Picking a day draws again from the month already read.
+const DOW = ["S", "M", "T", "W", "T", "F", "S"];
+const dowOf = (ymd) => new Date(ymd + "T12:00:00Z").getUTCDay();
+// the days on the grid: the Sunday on or before the 1st to the Saturday on or after the last
+export function monthCells(ym) {
+  const first = `${ym}-01`, last = addDays(addMonths(first, 1), -1);
+  const out = [];
+  for (let d = addDays(first, -dowOf(first)); d <= addDays(last, 6 - dowOf(last)); d = addDays(d, 1)) out.push(d);
+  return out;
+}
+// the chosen day: the one tapped in this month, else today when it's in it, else the first day with visits, else the 1st
+export function monthPick(picked, ym, today, items) {
+  if (picked && picked.slice(0, 7) === ym) return picked;
+  if (today && today.slice(0, 7) === ym) return today;
+  const first = (items || []).find((v) => v && String(v.date).slice(0, 7) === ym);
+  return first ? first.date : `${ym}-01`;
+}
+const barOf = (v) => { const p = (v.people || [])[0]; return p && colorOk(p.color) ? p.color : "#b9b9c2"; };
+function agendaMonth(s, ctx, a) {
+  const ym = String(a.date || a.from).slice(0, 7);
+  const items = a.loading ? [] : (a.items || []).filter((v) => String(v.date).slice(0, 7) === ym);
+  const by = new Map();
+  for (const v of items) { if (!by.has(v.date)) by.set(v.date, []); by.get(v.date).push(v); }
+  const t = localDate(s.now);
+  const pick = monthPick(s.ui.agDay, ym, t, items);
+  const title = `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+  const cell = (d) => {
+    if (d.slice(0, 7) !== ym) return html`<span class="hm-cd out" aria-hidden="true"><span class="n">${Number(d.slice(8, 10))}</span></span>`;
+    const on = by.get(d) || [];
+    const cls = "hm-cd" + (d === t ? " today" : "") + (d === pick ? " sel" : "");
+    return html`<button type="button" class="${cls}" ${attrs({ "data-hm": "ag-day", "data-v": d, "aria-pressed": d === pick ? "true" : "false", "aria-current": d === t ? "date" : null, "aria-label": `${dateLong(d)}: ${on.length ? plural(on.length, "item") : "nothing booked"}${d === t ? ", today" : ""}` })}>
+      <span class="n">${Number(d.slice(8, 10))}</span><span class="dots" aria-hidden="true">${on.slice(0, 3).map((v) => html`<i ${attrs({ style: `--c:${barOf(v)}` })}></i>`)}</span></button>`;
+  };
+  const list = by.get(pick) || [];
+  return html`<div class="hm-ag-top">${seg("view", VIEWS, a.view, "Daily, weekly or monthly")}
+      <div class="hm-arrows"><button type="button" class="hm-round" data-hm="ag-move" data-v="-1" aria-label="Previous month">${ic("chevron-left")}</button><button type="button" class="hm-round" data-hm="ag-move" data-v="1" aria-label="Next month">${ic("chevron-right")}</button></div></div>
+    <div class="hm-ag-head hm-ag-month"><h3 id="hm-ag-h">${title}</h3><span>${a.loading ? "…" : plural(a.count || 0, "item")}</span></div>
+    <div class="hm-cal" role="group" aria-label="${title}: pick a day">
+      <div class="hm-cal-dow" aria-hidden="true">${DOW.map((x) => html`<span>${x}</span>`)}</div>
+      <div class="hm-cal-days">${monthCells(ym).map(cell)}</div>
+    </div>
+    ${a.loading ? html`<p class="hm-note" aria-busy="true">Loading…</p>` : html`<div class="hm-selday" aria-live="polite">
+      <h4 class="hm-selh"><span class="d">${dateShort(pick)}</span><span class="sr"> · </span><span class="c">${plural(list.length, "item")}</span></h4>
+      ${list.length ? html`<ul class="hm-items">${list.map((v) => agendaRow(v, ctx))}</ul>` : html`<div class="hm-empty hm-empty-day"><b>Nothing booked</b><p>No visits on ${dateShort(pick)}.</p></div>`}</div>`}`;
+}
 function agendaCard(s, ctx) {
   const a = s.home.cards.agenda;
   if (!a) return "";
   const items = a.items || [];
   let rows;
   if (a.view === "day") rows = html`<ul class="hm-items">${items.map((v) => agendaRow(v, ctx))}</ul>`;
-  else {
+  else if (a.view === "week") {
     const days = [...new Set(items.map((v) => v.date))];
     rows = days.map((d) => html`<h4 class="hm-day">${dateShort(d)}</h4><ul class="hm-items">${items.filter((v) => v.date === d).map((v) => agendaRow(v, ctx))}</ul>`);
   }
@@ -270,11 +319,11 @@ function agendaCard(s, ctx) {
   const openT = s.ui.tasksOpen;
   const word = a.view === "day" ? (a.date === localDate(s.now) ? "today" : "that day") : a.view === "week" ? "that week" : "that month";
   const today = a.view === "day" && a.date === localDate(s.now);
-  return html`<section class="hm-card hm-c-agenda" data-card="agenda" aria-labelledby="hm-ag-h">
-    <div class="hm-ag-head"><div class="t"><h3 id="hm-ag-h">${today ? "Today" : agendaTitle(a)}</h3><span>${today ? `${dateShort(a.date)} · ` : ""}${a.loading ? "…" : plural(a.count || 0, "item")}</span></div>
+  return html`<section class="${"hm-card hm-c-agenda" + (a.view === "month" ? " hm-ag-m" : "")}" data-card="agenda" aria-labelledby="hm-ag-h">
+    ${a.view === "month" ? agendaMonth(s, ctx, a) : html`<div class="hm-ag-head"><div class="t"><h3 id="hm-ag-h">${today ? "Today" : agendaTitle(a)}</h3><span>${today ? `${dateShort(a.date)} · ` : ""}${a.loading ? "…" : plural(a.count || 0, "item")}</span></div>
       <div class="hm-arrows"><button type="button" class="hm-round" data-hm="ag-move" data-v="-1" aria-label="Earlier">${ic("chevron-left")}</button><button type="button" class="hm-round" data-hm="ag-move" data-v="1" aria-label="Later">${ic("chevron-right")}</button></div></div>
     ${seg("view", VIEWS, a.view, "Daily, weekly or monthly", "full")}
-    ${a.loading ? html`<p class="hm-note" aria-busy="true">Loading…</p>` : items.length ? rows : html`<div class="hm-empty"><span class="art">${icon("cal12")}</span><b>Nothing scheduled for ${word}</b><p>Your jobs and tasks will appear here.</p></div>`}
+    ${a.loading ? html`<p class="hm-note" aria-busy="true">Loading…</p>` : items.length ? rows : html`<div class="hm-empty"><span class="art">${icon("cal12")}</span><b>Nothing scheduled for ${word}</b><p>Your jobs and tasks will appear here.</p></div>`}`}
     ${(a.count || 0) > items.length ? html`<a class="hm-more-row" href="${open(ctx, "/schedule") || "#/schedule"}">${plural(a.count - items.length, "more visit")} on the Schedule</a>` : ""}
     ${tasks && tasks.length ? html`<div class="hm-tasks">
       <button type="button" class="hm-tasks-h" data-hm="tasks-fold" aria-expanded="${openT ? "true" : "false"}"><span>Tasks without due date <b>${tasks.length}</b></span>${ic(openT ? "chevron-up" : "chevron-down")}</button>
@@ -304,6 +353,7 @@ async function loadAgenda(s, ctx, view, date) {
 }
 function moveAgenda(s, ctx, dir) {
   const a = s.home.cards.agenda;
+  s.ui.agDay = null;
   const d = a.view === "month" ? addMonths(a.date, dir) : a.view === "week" ? addDays(monday(a.date), 7 * dir) : addDays(a.date, dir);
   loadAgenda(s, ctx, a.view, d);
 }
@@ -479,7 +529,22 @@ export default {
         if (what === "period") { s.ui.money.menu = !s.ui.money.menu; ctx.rerender(); return; }
         if (what === "pick-period") { s.ui.money.menu = false; s.ui.money.period = v; loadMoney(s, ctx); return; }
         if (what === "custom") { s.ui.money.menu = false; ctx.rerender(); customRange(s, ctx); return; }
-        if (what === "view") { const a = s.home.cards.agenda; if (a.view !== v) loadAgenda(s, ctx, v, a.date); return; }
+        if (what === "view") {
+          const a = s.home.cards.agenda;
+          if (a.view === v) return;
+          // from Monthly, Daily and Weekly open on the day picked on the calendar
+          const d = a.view === "month" && a.from ? monthPick(s.ui.agDay, String(a.date || a.from).slice(0, 7), localDate(s.now), a.items) : a.date;
+          s.ui.agDay = null;
+          loadAgenda(s, ctx, v, d);
+          return;
+        }
+        if (what === "ag-day") {
+          // the month is already read: only the list under the calendar changes
+          s.ui.agDay = v;
+          ctx.rerender();
+          if (!e.detail) { const b = view.querySelector(`[data-hm="ag-day"][data-v="${v}"]`); if (b) b.focus({ preventScroll: true }); }
+          return;
+        }
         if (what === "ag-move") { moveAgenda(s, ctx, Number(v)); return; }
         if (what === "tasks-fold") { s.ui.tasksOpen = !s.ui.tasksOpen; try { localStorage.setItem(FOLD_KEY, s.ui.tasksOpen ? "1" : "0"); } catch (x) { /* no storage */ } ctx.rerender(); return; }
         if (what === "board") { loadBoard(s, ctx, v); return; }

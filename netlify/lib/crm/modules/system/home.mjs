@@ -37,7 +37,7 @@ import { InputError, StaleError, ForbiddenError, NotFoundError } from "../../cor
 import { safeErr } from "../../../referral-lib.mjs";
 import { loadDashboard } from "../../../office-data.mjs";
 import {
-  periodOf, PERIODS, monthsOf, rotorCollected, crmCollected, scheduledDays, arrDays, moneyCard, clockToday, agendaRange, AGENDA_VIEWS,
+  periodOf, PERIODS, monthsOf, rotorCollected, crmCollected, scheduledDays, arrDays, moneyCard, clockToday, agendaRange, AGENDA_VIEWS, AGENDA_MAX,
   agendaOf, tasksOf, inboxOf, layoutOf, validateLayout, GOALS_DEFAULTS, validateGoals, jobsDoneIn, normalizeBoard,
 } from "./home-kpis.mjs";
 
@@ -118,7 +118,7 @@ async function money(ctx, { metric = "collected", p, today, mode, goals = null }
 async function agenda(ctx, view, date) {
   const range = agendaRange(view, date);
   const [visits, users] = await Promise.all([visitsIn(range.from, range.to), ix("users", "")]);
-  return { view, date, ...range, ...agendaOf(visits, users, range) };
+  return { view, date, ...range, ...agendaOf(visits, users, range, AGENDA_MAX[view]) };
 }
 
 const allTasks = (ctx) => ctx.user.role === "owner";
