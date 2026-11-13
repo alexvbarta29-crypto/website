@@ -196,7 +196,8 @@ for (const [device, login, n] of [["iphone13", "theo", 2], ["iphonese", "tess", 
       assert.ok(await f.$(".vb-saved"), "Saved, will send when online, by the button");
       await f.click('[data-item="gate_closed"]');
       await f.waitForSelector('[data-item="gate_closed"][aria-pressed="true"]');
-      await f.click(".vb-go");
+      // (a blocked Finish says what's left; it is aria-disabled, so the click is forced)
+      await f.click(".vb-go", { force: true });
       await toastSays(f, /Finish the checklist first/);
       await shot(page, `layout-visit-offline-${device}`);
       assert.equal((await server(p, `/visits/${id}`)).visit.status, "scheduled", "the server hasn't heard yet");

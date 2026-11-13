@@ -97,9 +97,15 @@ export function plan({ nav, manifests, can, user = null }) {
   st.user = user || null;
   st.more = manifests.flatMap((m) => (m.nav || []).filter((n) => n.where === "more")).filter((n) => allowed(n.perm) && routeOk(n.path)).sort((a, b) => (a.order || 50) - (b.order || 50));
   st.creates = manifests.flatMap((m) => m.creates || []).filter((c) => allowed(c.perm) && routeOk(c.path)).sort((a, b) => (a.order || 50) - (b.order || 50));
+  // places a module offers for the bar (nav: [{ where: "tab", key, path, label?, icon? }], e.g. the Map)
+  const extra = {};
+  for (const n of manifests.flatMap((m) => (m.nav || []).filter((x) => x && x.where === "tab" && x.key && x.path))) {
+    if (!TABS[n.key] && !extra[n.key]) extra[n.key] = { label: n.label || n.key, paths: [n.path], icon: n.icon || "list" };
+  }
+  st.extraTabs = extra;
   st.tabs = [];
   for (const key of normalize(nav)) {
-    const t = TABS[key];
+    const t = TABS[key] || extra[key];
     if (!t) continue;
     if (t.more) { st.tabs.push({ key, ...t, roots: [] }); continue; }
     if (t.group) {

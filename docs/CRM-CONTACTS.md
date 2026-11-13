@@ -13,7 +13,10 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
 
 ## What the office sees
 
-- **Contacts** (the Customers tab): instant search over every contact on
+- **Customers** (the Customers tab; the list was titled Contacts): each
+  person a card (Rotor's): the name, a status pill (Active, Lead, Former),
+  their plan or service, a band with FREQUENCY (the plan's, or One-time)
+  and SINCE (customer since), round Call and Text buttons. Instant search over every contact on
   the phone (name, phone, email, street, tags; every word must match),
   chips All · Leads · Customers · Plan members · Former · Archived and the
   common sources, letter groups with a letter rail. Archived contacts only
@@ -22,13 +25,36 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
   the bottom until the Rotor import goes live. On a computer (1,000 px and
   up) a contact opens beside the list, which keeps its search and scroll
   (`split: true`, docs/CRM.md "Home and navigation").
-- **A contact**: Call · Text · Email · Directions, then Overview (how to
-  reach them, texts and email consent, source, owner, tags, notes, and what
-  other modules know: next visit, balance, plans), Activity (website
-  requests with the words they typed, notes, edits, merges) and
-  Properties; other modules add tabs (Sales, Work, Money, Messages).
-  Edit, Add note, Merge with…, Pause automated texts, Archive / Restore,
-  and for owners "Mark as test contact".
+- **A contact** (Nov 2026: the screen open while a customer is on the
+  line, so its top answers the call). The header: the name, the town, a
+  plan badge ("Quarterly plan", "Christmas lights plan +1", or "..., not
+  signed yet"), three numbers (**Balance owed**, **Lifetime spend**, **Next
+  visit**; "-" when not known; the money two only with
+  `invoices:read_all`, and `GET /contacts/:id` leaves `stats.money` out for
+  anyone else) and four buttons, **Call · Text · Quote · Book** (Email and
+  Directions take Quote's and Book's places for someone who may not quote
+  or book). The numbers come from the contact's stats (one read, the
+  contact's own route budget); a nearer next visit from the work section.
+  Then ONE scrolling page of headed sections, no sideways tabs, in this
+  order: **Upcoming visits** (work: the visits ahead, a plan's marked
+  "Plan"; one-time jobs; recent visits); **Service plan** (plans, apart
+  from one-time work, a green edge); **Quotes and invoices** (quotes, then
+  invoices and payments); **Properties** with their access notes (gate
+  code, pets, stories, parking, notes); **About to be sent** (what the
+  modules know is queued: the visit reminders still to go out at their
+  default 10:00 two weeks and two days before, the follow-up texts and
+  emails due; "Automated texts are paused" when they are); **Follow-ups and
+  tasks** (sales); **Details** (notes, how to reach them, texts and email
+  consent, about: source, owner, customer since, Rotor link; Edit, Merge
+  with…, Pause automated texts, Archive / Restore, owners' "Mark as test
+  contact"); **Messages** and **Activity** (calls, texts, visits, payments,
+  website requests and notes in one list). A long list shows the latest
+  four and **Show all**. With 680 px of room (a container query: a contact
+  may sit beside the list) the messages and activity get their own column,
+  and on a desk the header stays put while the page scrolls. Old links to
+  a tab (`#/contacts/{id}?tab=money`, or a tab remembered from before)
+  scroll to its section. A technician sees the header (name, town, Call,
+  Text, Email, Directions) and the properties of their visits.
 - **New lead** (the coral + button): name, phones, email, address, where
   they came from, how they heard, tags, text consent, notes. A phone or an
   email already on file (or the same name and ZIP) shows **Possible
@@ -236,3 +262,22 @@ Synthetic fixtures only (placeholder names, `555` numbers, `example.com`
 emails); logs carry counts and codes, never a name, phone, email, address
 or amount tied to a person. No key holds phone digits or an email
 (`tests/crm/contacts/keys.test.mjs`).
+
+## The contact page's sections (extension point)
+
+A module adds a section through its client manifest's `contactTabs` (the
+name stays from the tabs it replaced):
+`{ key, label, order, load, place?, heading?, title?, perm? }`.
+`place` is one of `visits`, `plan`, `docs` (several modules share it:
+each gets a small heading, `title` else `label`), `aside` (beside the
+activity on a wide screen) or `more` (a section of its own after "About
+to be sent", headed `heading` else `label`); `perm` keeps it from someone
+who may not see it. The module default-exports `{ load(params, ctx),
+render(state, ctx), header?(state) → { plan?, next_visit? },
+queued?(state) → [{ at, label, sub?, href?, icon? }] }`; a state of
+`{ denied: true }` leaves the section out; `ctx.section` is true; setting
+`ctx.state.tabMod = null` and calling `ctx.rerender()` loads that section
+again. Today: work (visits), plans (plan), quotes and money (docs), sales
+(more: "Follow-ups and tasks"), comms (aside: "Messages"). Code:
+`crm-app/modules/contacts/contact.js` (`contactSections`, `headerNumbers`);
+tests: `tests/crm/contacts/sections.test.mjs`, `tests/e2e/layout.spec.mjs`.
