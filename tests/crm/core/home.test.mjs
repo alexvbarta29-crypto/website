@@ -163,6 +163,11 @@ test("the agenda: a day, a week or a month of visits in time order with who goes
   assert.deepEqual(day.items.map((v) => [v.id, v.kind]), [["vs_1", "Plan visit"], ["vs_2", "Job"], ["vs_3", "Lights install"]]);
   assert.deepEqual(day.items[0].people.map((p) => [p.first_name, p.color]), [["Theo", "#0a7d55"], ["", null]]);
   assert.equal(K.agendaOf(visits, users, K.agendaRange("week", TODAY)).count, 4);
+  // Monthly's calendar gets the whole month (a busy one too), so every day has its dots and its list
+  const busy = Array.from({ length: 300 }, (_, i) => ({ id: `vs_b${i}`, d: `2026-11-${String((i % 30) + 1).padStart(2, "0")}`, s: "09:00", e: "10:00", cn: "Pat Example", st: "scheduled", a: ["us_a"] }));
+  const month = K.agendaOf(busy, users, K.agendaRange("month", TODAY), K.AGENDA_MAX.month);
+  assert.deepEqual([month.count, month.items.length, new Set(month.items.map((v) => v.date)).size], [300, 300, 30]);
+  assert.equal(K.agendaOf(busy, users, K.agendaRange("month", TODAY), K.AGENDA_MAX.day).items.length, 120, "a day or a week keeps its 120");
   const me = { id: "us_me" };
   const tasks = [
     { id: "tk_1", t: "Call back", st: "open", due: null, a: ["us_me"], u: "2026-11-10" },
