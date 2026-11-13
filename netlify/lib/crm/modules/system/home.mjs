@@ -20,7 +20,9 @@
 //   inbox        the latest conversations, unread first (inbox:read)
 //   tasks        open tasks (tasks:read): an owner's whole team's, anyone else's own
 //   goals        the owners' monthly revenue and jobs goals (settings "goals")
-// The first three are on by default; the others are added in Edit Home.
+// On by default (Flyra's Home): the money, the leaderboard, today, the
+// inbox, tasks and goals; the clock for someone who clocks in for field
+// work (is_technician). Edit Home shows, hides and orders them.
 // What needs attention is the bell's and the tab's dot (GET /me/badges).
 // A technician gets nothing here (their own Today is the tech app's).
 // Every index is read once per request (crm-store's ixMemo): 12 storage
@@ -167,7 +169,7 @@ async function home(ctx) {
       readPointer("home", ctx.user.id).catch(() => null),
       unreadCount(ctx.user.id).catch((e) => { console.error(`crm:home: the bell's count was left out (${safeErr(e)})`); return null; }),
     ]);
-    const layout = layoutOf(saved, available);
+    const layout = layoutOf(saved, available, { clock: !!ctx.user.is_technician });
     const on = new Set(layout.filter((c) => c.on).map((c) => c.key));
     const needGoals = on.has("money") || on.has("goals");
     const goals = needGoals ? await getSetting("goals").catch(() => ({ ...GOALS_DEFAULTS })) : null;
@@ -236,7 +238,7 @@ async function saveLayout(ctx) {
   for (let i = 0; i < 4; i++) {
     const cur = await getRaw(key);
     const w = await settledWrite(key, { cards: keep, at: now().toISOString() }, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
-    if (w.ok) return { data: { layout: layoutOf({ cards: keep }, [...available]) } };
+    if (w.ok) return { data: { layout: layoutOf({ cards: keep }, [...available], { clock: !!ctx.user.is_technician }) } };
   }
   throw new StaleError(null, null, "Home kept changing. Try again.");
 }

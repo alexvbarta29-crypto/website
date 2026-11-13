@@ -11,7 +11,9 @@
 // this page with postMessage (same origin only, both sides check):
 //   from the CRM:  crm:route {path} (mirrored into #crm/<path>),
 //                  crm:badge {inbox, attention, notifications} (a dot on the tab),
-//                  crm:signed_out (reload), crm:push_request {key} (the
+//                  crm:signed_out (reload), crm:theme {canvas} (the CRM's
+//                  Light or Dark: the backdrop and the status bar follow it),
+//                  crm:push_request {key} (the
 //                  office shows its own "Allow notifications" card: iOS lets
 //                  only the top document of the installed app ask)
 //   to the CRM:    office:insets {top,right,bottom,left} (safe areas: iframes
@@ -283,6 +285,11 @@ ${INSETS_JS}
       location.reload();
     } else if (m.type === 'crm:push_request' && typeof m.key === 'string') {
       askPush(m.key);
+    } else if (m.type === 'crm:theme' && SOLO && /^#[0-9a-f]{6}$/i.test(m.canvas || '')) {
+      // the CRM's Light or Dark (the CRM alone on the screen): the backdrop and the status bar match it
+      document.documentElement.style.setProperty('--mist', m.canvas);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', m.canvas);
     }
   });
 

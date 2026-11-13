@@ -13,10 +13,15 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
 
 ## What the office sees
 
-- **Customers** (the Customers tab; the list was titled Contacts): each
-  person a card (Rotor's): the name, a status pill (Active, Lead, Former),
-  their plan or service, a band with FREQUENCY (the plan's, or One-time)
-  and SINCE (customer since), round Call and Text buttons. Instant search over every contact on
+- **Customers** (Menu → Customers; the list was titled Contacts): each
+  person a two-tone card (Rotor's): the name, a filled status pill (Active
+  green, Lead blue, Former orange), their plan or service in a grey pill,
+  a lower band with FREQUENCY (the plan's, or One-time) and SINCE (customer
+  since), round Call and Text buttons. On a phone the header has Rotor's
+  round buttons (search, filter, archived, the coral +): the search field
+  opens in place, the chips, the count and "possible duplicates" are in
+  the filter sheet, and there are no letter headings or letter rail; a
+  desk keeps them all on screen. Instant search over every contact on
   the phone (name, phone, email, street, tags; every word must match),
   chips All · Leads · Customers · Plan members · Former · Archived and the
   common sources, letter groups with a letter rail. Archived contacts only
@@ -26,15 +31,35 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
   up) a contact opens beside the list, which keeps its search and scroll
   (`split: true`, docs/CRM.md "Home and navigation").
 - **A contact** (Nov 2026: the screen open while a customer is on the
-  line, so its top answers the call). The header: the name, the town, a
-  plan badge ("Quarterly plan", "Christmas lights plan +1", or "..., not
-  signed yet"), three numbers (**Balance owed**, **Lifetime spend**, **Next
-  visit**; "-" when not known; the money two only with
+  line, so its top answers the call; Nov 13: laid out like **Flyra's lead
+  page**). On a phone the round back button sits alone at the top; then
+  the avatar, the name big and "Lead since Nov 12, 2026" / "Customer since
+  ..." with an **Edit** pill, a plan badge ("Quarterly plan", "Christmas
+  lights plan +1", or "..., not signed yet"); plain rows with grey labels:
+  **Mobile** (round Message and Call buttons), **Email**, **Address** on
+  two lines (a round Directions button); the property **from above** (the
+  map module's keyless aerial, USGS by default, centred on the property's
+  map point with a coral dot and a small "Satellite" label, for someone
+  who may open the map, `canvass:use`; the tiles are fetched through the
+  map's `connect-src` hosts and shown as `blob:` images, so the CSP needs
+  nothing new; no map point or no tiles: no picture); Flyra's **action
+  bar**, four cells with thin lines between: **Call · Message · Quote ·
+  Book** (**Mark lost**, red, on a lead with an open deal: it opens the
+  deal, whose screen asks why; Email and Directions take Quote's and
+  Book's places for someone who may not quote or book); then **Lead
+  details** (the open deal's Value, the follow-up as Pipeline and its
+  step as Stage, the next visit, the Source) or **Customer details** (the
+  plan, **Balance owed**, **Lifetime spend**, **Next visit**, the Source),
+  a card with an Edit pill. "-" when not known; the money two only with
   `invoices:read_all`, and `GET /contacts/:id` leaves `stats.money` out for
-  anyone else) and four buttons, **Call · Text · Quote · Book** (Email and
-  Directions take Quote's and Book's places for someone who may not quote
-  or book). The numbers come from the contact's stats (one read, the
-  contact's own route budget); a nearer next visit from the work section.
+  anyone else. The numbers come from the contact's stats (one read, the
+  contact's own route budget); a nearer next visit from the work section,
+  the deal and follow-up from the sales section (its `header()`). On a
+  computer the header stays compact (the name, the plan, the buttons; the
+  rows are in Details). **A street-level photo** (Flyra shows Apple Maps'
+  Look Around) needs a paid key: an owner who adds a Google Street View or
+  Apple MapKit key could have it built where `STREET_PHOTO` sits in
+  `crm-app/modules/contacts/contact.js` (owner action; not built).
   Then ONE scrolling page of headed sections, no sideways tabs, in this
   order: **Upcoming visits** (work: the visits ahead, a plan's marked
   "Plan"; one-time jobs; recent visits); **Service plan** (plans, apart

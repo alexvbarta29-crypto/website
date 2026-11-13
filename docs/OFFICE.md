@@ -2,17 +2,24 @@
 
 **One app: the CRM.** With a CRM sign-in (or the office password before the
 first owner exists, to set it up) `/office` is the CRM, full screen, with no
-tab row. It opens on **Home** (docs/CRM.md "Home and navigation"): Rotor's
-phone Home with the best of Flyra's, as cards each person picks with Edit
-Home: Clock in, Money (Collected, Scheduled or ARR over a period) and
-Today (the day's, week's or month's visits and tasks without a due date)
-by default, and a Leaderboard, Inbox, Tasks and Goals to add. The office's
-bar is a floating pill, Home · Schedule · Inbox · Customers · Sales · Menu
-(each person may pick their own: Menu → Tab bar), with a round coral +
-beside it; the Menu is a sheet of every other screen (docs/CRM.md "The
-bar, the Sales switch, the Menu and the +"). On a computer (900 px and
-up) the same app has a sidebar (the same places first, then every
-section, Settings and Team at the bottom), a search box and a New button.
+tab row. It looks like Flyra's iPhone app (Rotor's where Flyra shows
+nothing), dark by default with a Light / Dark / Automatic choice per phone
+(the Menu's sun button, My account → Appearance), in the iPhone's own font
+and Barta's coral (docs/CRM.md "What the app is", the look). It opens on
+**Home** (docs/CRM.md "Home and navigation"): Flyra's Home, "Good evening"
+and the name big, the money (Collected, Scheduled or ARR over a period) on
+the canvas, then cards each person shows, hides and orders with Edit
+Home: the Leaderboard, Today (the day's, week's or month's visits and
+tasks without a due date), Inbox, Tasks and Goals, with Clock in for
+someone who goes out on visits. The office's bar is Flyra's floating glass
+pill, Home · Schedule · Inbox · Map · Menu (each person may pick their
+own: Menu → Tab bar), with a round + beside it; the Menu is a sheet of
+every other screen, Customers, Leads and Pipeline among them (docs/CRM.md
+"The bar, the Menu and the +"). On a computer (900 px and up) the same app
+has a sidebar (the same places first, then Customers and Sales, then
+every section, Settings and Team at the bottom), a search box and a New
+button. In solo mode the office shell's backdrop and status bar color
+follow the CRM's Light or Dark (`crm:theme`).
 The full dashboards (Overview, Money, Sales, Plans, Jobs, switched in
 place) open from the money card's "See more" and Menu → Reports, and the
 office tools are in Menu → Office

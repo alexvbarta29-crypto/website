@@ -9,6 +9,7 @@
 
 import { html, icon, attrs, sheet, toast } from "../../core/ui.js";
 import { money, dateShort } from "../../core/format.js";
+import { screenButtons } from "../../core/nav.js";
 import { ensureStyles, telHref } from "./kit.js";
 
 const PRIO = { high: ["High", "red"], medium: ["Medium", "orange"], low: ["Low", "grey"] };
@@ -32,7 +33,11 @@ export function leadCards(ix = [], { enrollments = [], deals = [], tasks = [] } 
 export const leadCard = (l) => html`<li class="lc"><a class="lc-top" ${attrs({ href: "#/contacts/" + encodeURIComponent(l.id) })}>
   <span class="lc-nm">${l.name}</span><span class="lc-pills">${l.priority ? html`<span ${attrs({ class: "lc-pr " + (PRIO[l.priority] || PRIO.medium)[1] })}>${(PRIO[l.priority] || PRIO.medium)[0]}</span>` : ""}<span class="lc-stage">${l.paused ? "Paused" : l.stage}</span></span></a>
   <div class="lc-band"><span class="cc-k"><small>PV</small><b>${l.pv === null ? "-" : money(l.pv).replace(/\.00$/, "")}</b></span><span class="cc-k"><small>Follow up</small><b>${l.follow ? dateShort(l.follow) : "-"}</b></span>
-    <span class="cc-acts">${l.phone ? html`<a class="rnd" ${attrs({ href: telHref(l.phone), "aria-label": `Call ${l.name}` })}>${icon("phone")}</a><a class="rnd" ${attrs({ href: "sms:" + l.phone, "aria-label": `Text ${l.name}` })}>${icon("text")}</a>` : ""}<button type="button" class="rnd ink" ${attrs({ "data-convert": l.id, "aria-label": `Convert ${l.name}` })}>${icon("swap")}</button></span></div></li>`;
+    <span class="cc-acts">${l.phone ? html`<a class="rnd" ${attrs({ href: telHref(l.phone), "aria-label": `Call ${l.name}` })}>${icon("call")}</a><a class="rnd" ${attrs({ href: "sms:" + l.phone, "aria-label": `Text ${l.name}` })}>${icon("chat")}</a>` : ""}<button type="button" class="rnd ink" ${attrs({ "data-convert": l.id, "aria-label": `Convert ${l.name}` })}>${icon("swap")}</button></span></div></li>`;
+
+// The filter sheet's choices (what the cards already say).
+const SHOW = [["", "All"], ["follow", "With a follow-up"], ["new", "New"], ["paused", "Paused"]];
+const shown = (s) => s.cards.filter((c) => (s.show === "follow" ? !!c.follow : s.show === "new" ? c.stage === "New" : s.show === "paused" ? c.paused : true));
 
 export default {
   title: "Leads",
@@ -44,16 +49,30 @@ export default {
       ctx.can("sales:work") ? ctx.api("/deals", { cache: false }).then((r) => r.data || []).catch(() => []) : [],
       ctx.api("/tasks", { cache: false }).then((r) => ((r.data && (r.data.all || r.data.items)) || (Array.isArray(r.data) ? r.data : []))).catch(() => []),
     ]);
-    return { cards: leadCards(ix, { enrollments: enr, deals, tasks: tasks.map((t) => ({ c: t.c || t.contact_id, pr: t.pr || t.priority })) }), q: ctx.keep.q || "" };
+    return { cards: leadCards(ix, { enrollments: enr, deals, tasks: tasks.map((t) => ({ c: t.c || t.contact_id, pr: t.pr || t.priority })) }), q: ctx.keep.q || "", show: ctx.keep.show || "", find: !!ctx.keep.find || !!ctx.keep.q };
   },
   render(s) {
     const q = s.q.trim().toLowerCase();
-    const list = q ? s.cards.filter((c) => c.name.toLowerCase().includes(q)) : s.cards;
+    const list = shown(s).filter((c) => !q || c.name.toLowerCase().includes(q));
     return html`<div class="stack sl-leads">
-      <label class="ld-search">${icon("search")}<span class="sr">Search leads</span><input type="search" data-lq ${attrs({ value: s.q, placeholder: "Search leads", autocomplete: "off" })}></label>
-      <p class="small muted">${list.length === 1 ? "1 lead" : `${list.length} leads`}</p>
+      <label class="${"ld-search" + (s.find ? " open" : "")}">${icon("search")}<span class="sr">Search leads</span><input type="search" data-lq ${attrs({ value: s.q, placeholder: "Search leads", autocomplete: "off" })}></label>
+      <p class="small muted ld-count">${list.length === 1 ? "1 lead" : `${list.length} leads`}${s.show ? ` · ${SHOW.find(([k]) => k === s.show)[1]}` : ""}</p>
       ${list.length ? html`<ul class="cc-list">${list.slice(0, 200).map(leadCard)}</ul>` : html`<div class="card empty"><h2>No leads${q ? " match" : " yet"}</h2><p>New website requests and leads you add show here.</p></div>`}
     </div>`;
+  },
+  // (a phone: Rotor's round buttons on top; the search opens in place, the filter is a sheet)
+  mount(view, s, ctx) {
+    screenButtons([
+      { key: "find", icon: "search", label: "Search leads", on: s.find, expanded: s.find },
+      { key: "filter", icon: "filter", label: s.show ? "Filter (on)" : "Filter", on: !!s.show },
+    ], (key) => {
+      if (key === "find") { s.find = !s.find || !!s.q; ctx.keep.find = s.find; ctx.rerender(); if (s.find) { const i = document.querySelector("[data-lq]"); if (i) i.focus(); } return; }
+      const sh = sheet({
+        title: "Show",
+        body: html`<div class="chips wrap" role="group" aria-label="Show">${SHOW.map(([k, l]) => html`<button type="button" class="chip" ${attrs({ "data-show": k, "aria-pressed": String(s.show === k) })}>${l}</button>`)}</div>`,
+        events: { "click [data-show]": (e, b) => { s.show = ctx.keep.show = b.dataset.show; sh.close(); ctx.rerender(); } },
+      });
+    });
   },
   events: {
     "input [data-lq]": (e, el, ctx) => {

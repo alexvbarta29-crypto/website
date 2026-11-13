@@ -79,7 +79,14 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForSelector(".wk-mgrid");
       assert.equal(await f.getAttribute("[data-view=month]", "aria-selected"), "true", "Month is the default");
       assert.deepEqual(await f.$$eval(".wk-view", (b) => b.map((x) => x.textContent.trim())), ["Month", "List", "Day", "3 Day", "Week"], "Rotor's views");
-      for (const b of ["data-mpick", "data-search", "data-mapday", "data-jump", "data-filter", "data-cards"]) assert.ok(await f.$(`.wk-top [${b}]`), b);
+      // a phone's head is Flyra's: the big title (pick a month or a day), the < > pill, the view pill, the tools pill (find, who, Show on cards)
+      for (const b of ["data-mpick", "data-cal", "data-vmenu", "data-search", "data-filter", "data-cards"]) assert.ok(await f.isVisible(`.wk-fly [${b}]`), b);
+      assert.match(await f.textContent(".wk-fly .wk-ftitle"), /^[A-Z][a-z]{2} \d{4}$/, "Nov 2026");
+      assert.equal(await f.isVisible(".wk-top"), false, "Rotor's head is a desk's");
+      await f.click("[data-vmenu]");
+      assert.deepEqual(await f.$$eval(".wk-fmenu [data-fview]", (b) => b.map((x) => x.textContent.trim())), ["Day", "Week", "Month", "Technician", "Sales rep", "List", "3 Day"], "Flyra's views, and ours");
+      assert.ok(await f.$(".wk-fmenu [data-mapday]"), "Map of the day");
+      await f.click("[data-vmenu]");
       assert.equal(await f.getAttribute(`[data-mday="${day}"]`, "aria-pressed"), "true", "today is chosen");
       assert.equal(await f.getAttribute(`[data-mday="${day}"]`, "aria-current"), "date");
       assert.equal(reads.length, 1, reads.join(" "));
@@ -113,7 +120,7 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.ok(await f.$(`.wk-dayp a[href="#/jobs/new?book=1&date=${free}"]`), "Add job on that day");
       }
       // the gear: what the cards show, saved for this person
-      await f.click("[data-cards]");
+      await f.click("[data-cards] >> visible=true");
       await sheetUp(f, /Show on cards/);
       await checks(f, page, `work-schedule-cards-${device}`, problems);
       await f.click(".sheet [name=address]");
@@ -122,7 +129,7 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(JSON.parse(await f.evaluate(() => Object.entries(localStorage).find(([k]) => k.startsWith("crm-sched-cards:"))[1])).address, true);
       // search: a visit on screen by its customer
       await f.click(`[data-mday="${day}"]`);
-      await f.click("[data-search]");
+      await f.click("[data-search] >> visible=true");
       await sheetUp(f, /Find a visit/);
       await f.fill(".sheet [name=q]", "workday");
       await f.waitForSelector(".sheet [data-vjump]");
@@ -139,33 +146,38 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.ok(await f.$(".wk-cols .wk-nowline"), "the current time");
       assert.equal(await f.$eval(".wk-cols", (el) => el.scrollWidth > el.clientWidth), true, "more than two columns scroll sideways");
       await checks(f, page, `work-schedule-day-${device}`, problems);
-      await f.click("[data-by=sales]");
+      // (a phone: Technician and Sales rep are in the view pill's menu, Flyra's)
+      assert.match(await f.textContent(".wk-fly .wk-ftitle"), /Today|[A-Z][a-z]{2}, [A-Z][a-z]{2} \d+/);
+      await f.click("[data-vmenu]");
+      await f.click('[data-fview="day:sales"]');
       await f.waitForFunction(() => document.querySelector("[data-by=sales]")?.getAttribute("aria-pressed") === "true");
       await checks(f, page, `work-schedule-sales-${device}`, problems);
-      await f.click("[data-by=tech]");
+      await f.click("[data-vmenu]");
+      await f.click('[data-fview="day:tech*"]');
       await f.waitForFunction(() => document.querySelector("[data-by=tech]")?.getAttribute("aria-pressed") === "true");
       // Who: one tech, their column and their route
-      await f.click("[data-filter]");
+      await f.click("[data-filter] >> visible=true");
       await sheetUp(f, /Who to show/);
       await f.click(`.sheet [data-tech="${seeded.users.tech.id}"]`);
       await sheetGone(f);
       await f.waitForFunction((id) => !document.querySelector(`.wk-cols [href="#/visits/${id}"]`), seeded.visits[1]);
       await f.waitForSelector(`[href^="#/schedule/route/"]`);
       await f.click(".wk-who-on [data-tech]");
-      await f.click("[data-view='3day']");
+      const view = async (v) => { await f.click("[data-vmenu]"); await f.click(`[data-fview="${v}"]`); };
+      await view("3day");
       await f.waitForSelector(".wk-cols.three");
       await checks(f, page, `work-schedule-3day-${device}`, problems);
-      await f.click("[data-view=week]");
+      await view("week");
       await f.waitForSelector(".wk-week");
       await checks(f, page, `work-schedule-week-${device}`, problems);
-      await f.click("[data-view=list]");
+      await view("list");
       await f.waitForSelector(".section-h");
       assert.ok(await f.$(".wk-strip"), "the strip on List");
       await checks(f, page, `work-schedule-list-${device}`, problems);
       // the tray, from the month's "to book"
-      await f.click("[data-view=month]");
-      await f.waitForSelector("[data-totray]");
-      await f.click("[data-totray]");
+      await view("month");
+      await f.waitForSelector("[data-totray] >> visible=true");
+      await f.click("[data-totray] >> visible=true");
       await f.waitForSelector(`[data-book="${seeded.jobs[7]}"]`);             // the lights takedown due this month
       await checks(f, page, `work-schedule-tray-${device}`, problems);
       if (device === "iphone13") {

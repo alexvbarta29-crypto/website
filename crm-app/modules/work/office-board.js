@@ -420,12 +420,12 @@ function block(s, v, { uid, top, a, pack, canDrag, prices, compact = false }) {
     "data-vopen": v.id, draggable: dr ? "true" : "false", "data-drag": dr ? v.id : false, "data-from": dr && uid !== undefined ? uid : false, "data-timed": dr ? "1" : false,
     style: `${pos};--c:${colorOf(s.users, uid ? [uid] : v.a)}`, title: `${v.cn || "Customer"}, ${clock(v.s)} to ${clock(v.e)}${v.town ? `, ${v.town}` : ""}`,
   })}>
-    <span class="nm">${compact ? bits.short : bits.title}</span>
-    ${bits.where && !compact ? html`<span class="tw">${bits.where}</span>` : ""}
+    <span class="nm">${compact ? bits.short : bits.title}${bits.price && !compact ? html` <small class="pr num">${bits.price}</small>` : ""}</span>
     ${bits.service && !compact ? html`<span class="tw">${bits.service}</span>` : ""}
-    <span class="tm num">${compact ? shortTime(v.s) : `${clock(v.s)} - ${clock(v.e)}`}</span>
+    ${bits.where && !compact ? html`<span class="tw">${bits.where}</span>` : ""}
+    <span class="tm num">${compact ? shortTime(v.s) : v.do ? "Anytime" : `${clock(v.s)} - ${clock(v.e)}`}</span>
     ${compact ? "" : html`<span class="st">${visitPill(v.st)}${v.st === "scheduled" && w && w.length ? html`<span class="pill amber" ${attrs({ title: w.map((x) => x.message).join(" ") })}>${icon("bell")}${w.length}</span>` : ""}</span>`}
-    <span class="ft">${bits.price && !compact ? html`<b class="num">${bits.price}</b>` : ""}${unpaid ? html`<i class="wk-unpaid" ${attrs({ title: "Not paid yet" })}>$</i>` : ""}${done ? html`<i class="wk-done" ${attrs({ title: "Done" })}>${CHECK}</i>` : ""}</span>
+    <span class="ft">${unpaid ? html`<i class="wk-unpaid" ${attrs({ title: "Not paid yet" })}>$</i>` : ""}${done ? html`<i class="wk-done" ${attrs({ title: "Done" })}>${CHECK}</i>` : ""}</span>
   </a>`;
 }
 

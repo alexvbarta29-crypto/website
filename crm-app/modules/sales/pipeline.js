@@ -15,6 +15,7 @@ import { html, icon, attrs, sheet, toast } from "../../core/ui.js";
 import { money, dateShort } from "../../core/format.js";
 import { ensureStyles, telHref } from "./kit.js";
 import { convertSheet } from "./leads.js";
+import { screenButtons } from "../../core/nav.js";
 
 const $ = (c) => money(c || 0).replace(/\.00$/, "");
 const phoneOf = (r) => (r && r.p && r.p[0] ? (String(r.p[0]).length === 10 ? "+1" + r.p[0] : String(r.p[0])) : "");
@@ -37,9 +38,9 @@ export function board(cadence, rows = [], { deals = [], index = [] } = {}) {
 }
 
 const listCard = (c) => html`<li class="lc" ${attrs({ "data-card": c.id })}><a class="lc-top" ${attrs({ href: "#/enrollments/" + encodeURIComponent(c.id) })}>
-  <span class="lc-nm">${c.name}</span><span class="lc-pills"><span ${attrs({ class: "pp-st" + (c.status === "Paused" ? " paused" : "") })}>${c.status}</span><span class="lc-stage">${c.type}</span>${c.stage ? html`<span class="pp-stage">${c.stage}</span>` : ""}</span></a>
+  <span class="lc-nm">${c.name}</span><span class="lc-pills"><span ${attrs({ class: "pp-st" + (c.status === "Paused" ? " paused" : "") })}>${c.status}</span><span class="lc-stage">${c.type}</span></span>${c.stage ? html`<span class="lc-row2"><span class="pp-stage">${c.stage}</span></span>` : ""}</a>
   <div class="lc-band"><span class="cc-k"><small>Value</small><b>${$(c.value)}</b></span><span class="cc-k"><small>Due</small><b>${c.due ? dateShort(c.due) : "-"}</b></span>
-    <span class="cc-acts">${c.phone ? html`<a class="rnd" ${attrs({ href: telHref(c.phone), "aria-label": `Call ${c.name}` })}>${icon("phone")}</a><a class="rnd" ${attrs({ href: "sms:" + c.phone, "aria-label": `Text ${c.name}` })}>${icon("text")}</a>` : ""}<button type="button" class="rnd ink" ${attrs({ "data-convert": c.contact_id, "aria-label": `Convert ${c.name}` })}>${icon("swap")}</button></span></div></li>`;
+    <span class="cc-acts">${c.phone ? html`<a class="rnd" ${attrs({ href: telHref(c.phone), "aria-label": `Call ${c.name}` })}>${icon("call")}</a><a class="rnd" ${attrs({ href: "sms:" + c.phone, "aria-label": `Text ${c.name}` })}>${icon("chat")}</a>` : ""}<button type="button" class="rnd ink" ${attrs({ "data-convert": c.contact_id, "aria-label": `Convert ${c.name}` })}>${icon("swap")}</button></span></div></li>`;
 
 const boardCard = (c, movable) => html`<li class="pp-card" ${attrs({ "data-card": c.id, draggable: movable ? "true" : null })}><a ${attrs({ href: "#/enrollments/" + encodeURIComponent(c.id) })}>
   <span class="pp-top"><span class="pp-nm">${c.name}</span><span ${attrs({ class: "pp-st" + (c.status === "Paused" ? " paused" : "") })}>${c.status}</span></span>
@@ -51,19 +52,21 @@ export default {
     ensureStyles();
     const cads = (await ctx.api("/cadences")).data || [];
     const pick = cads.find((c) => c.id === ctx.keep.pipe) || cads.find((c) => c.active) || cads[0] || null;
-    if (!pick) return { cads, pick: null, stages: [], view: ctx.keep.view || "list" };
+    if (!pick) return { cads, pick: null, stages: [], view: ctx.keep.view || "list", q: "" };
     const [cad, rows, deals, ix] = await Promise.all([
       ctx.api(`/cadences/${encodeURIComponent(pick.id)}`).then((r) => r.data.cadence),
       ctx.api(`/enrollments?cadence=${encodeURIComponent(pick.key)}`, { cache: false }).then((r) => r.data || []),
       ctx.api("/deals", { cache: false }).then((r) => r.data || []).catch(() => []),
       ctx.api("/contacts/index").then((r) => (r.data && r.data.rows) || []).catch(() => []),
     ]);
-    return { cads, pick, board_only: !!cad.board_only, stages: board(cad, rows, { deals, index: ix }), view: ctx.keep.view || "list" };
+    return { cads, pick, board_only: !!cad.board_only, stages: board(cad, rows, { deals, index: ix }), view: ctx.keep.view || "list", q: ctx.keep.q || "", find: !!ctx.keep.q };
   },
   render(s) {
     const movable = !s.board_only;
-    const cards = s.stages.flatMap((st) => st.cards);
+    const q = String(s.q || "").trim().toLowerCase();
+    const cards = s.stages.flatMap((st) => st.cards).filter((c) => !q || c.name.toLowerCase().includes(q));
     return html`<div class="stack pp-page">
+      <label class="${"ld-search" + (s.find ? " open" : "")}">${icon("search")}<span class="sr">Search this pipeline</span><input type="search" data-pq ${attrs({ value: s.q || "", placeholder: "Search this pipeline", autocomplete: "off" })}></label>
       <div class="pp-bar">
         <label class="pp-pick"><span class="sr">Pipeline</span><select data-pipe>${s.cads.map((c) => html`<option ${attrs({ value: c.id, selected: !!s.pick && c.id === s.pick.id })}>${c.name}</option>`)}</select></label>
         <div class="pp-toggle" role="group" aria-label="View"><button type="button" ${attrs({ "data-view": "list", "aria-pressed": String(s.view === "list"), "aria-label": "List" })}>${icon("list")}</button><button type="button" ${attrs({ "data-view": "board", "aria-pressed": String(s.view === "board"), "aria-label": "Board" })}>${icon("grid")}</button></div>
@@ -76,6 +79,12 @@ export default {
     </div>`;
   },
   mount(view, s, ctx) {
+    // (a phone: Rotor's round search button on top; the field opens in place)
+    screenButtons([{ key: "find", icon: "search", label: "Search this pipeline", on: s.find, expanded: s.find }], () => {
+      s.find = !s.find || !!s.q;
+      ctx.rerender();
+      if (s.find) { const i = document.querySelector("[data-pq]"); if (i) i.focus(); }
+    });
     const b = view.querySelector("[data-board]");
     if (!b || s.board_only) return;
     let dragging = null;
@@ -90,6 +99,11 @@ export default {
     });
   },
   events: {
+    "input [data-pq]": (e, el, ctx) => {
+      ctx.state.q = ctx.keep.q = el.value;
+      clearTimeout(ctx.state.t);
+      ctx.state.t = setTimeout(() => { const pos = el.selectionStart; ctx.rerender(); const i = document.querySelector("[data-pq]"); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (x) { /* fine */ } } }, 150);
+    },
     "change [data-pipe]": (e, el, ctx) => { ctx.keep.pipe = el.value; ctx.refresh(); },
     "click [data-view]": (e, el, ctx) => { ctx.keep.view = el.dataset.view; ctx.state.view = el.dataset.view; ctx.rerender(); },
     "click [data-convert]": (e, el, ctx) => convertSheet(ctx, el.dataset.convert),

@@ -301,12 +301,16 @@ export function normalizeBoard(r, board, month) {
 
 // ------------------------------------------------------------ the person's cards
 
-export const CARDS = Object.freeze(["clock", "money", "agenda", "leaderboard", "inbox", "tasks", "goals"]);
-export const DEFAULT_ON = Object.freeze(["clock", "money", "agenda"]);
+// Flyra's Home (Nov 13, "make it look more like Flyra"): the money, then
+// the Leaderboard, Today, Inbox, Tasks and Goals. The clock sits under the
+// money and is on by default only for someone who clocks in for field work
+// (is_technician; `clock: true`), anyone else adds it in Edit Home.
+export const CARDS = Object.freeze(["money", "clock", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
+export const DEFAULT_ON = Object.freeze(["money", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
 // The saved order first (cards no longer open to this person dropped),
 // then any card they may have that the saved list doesn't name (on when
 // it is one of the defaults). → [{ key, on }]
-export function layoutOf(saved, available) {
+export function layoutOf(saved, available, { clock = false } = {}) {
   const can = new Set(available);
   const out = [];
   const seen = new Set();
@@ -315,7 +319,7 @@ export function layoutOf(saved, available) {
     seen.add(c.key);
     out.push({ key: c.key, on: c.on !== false });
   }
-  for (const k of CARDS) if (can.has(k) && !seen.has(k)) out.push({ key: k, on: DEFAULT_ON.includes(k) });
+  for (const k of CARDS) if (can.has(k) && !seen.has(k)) out.push({ key: k, on: k === "clock" ? !!clock : DEFAULT_ON.includes(k) });
   return out;
 }
 // A layout as sent by Edit Home. → { cards: [{ key, on }] }

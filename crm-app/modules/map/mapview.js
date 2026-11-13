@@ -20,6 +20,12 @@
 const BASE = "/crm-app/vendor/maplibre-gl/";
 export const LIB = { js: BASE + "maplibre-gl-csp.js", worker: BASE + "maplibre-gl-csp-worker.js", css: BASE + "maplibre-gl.css" };
 export const BLANK_STYLE = Object.freeze({ version: 8, sources: {}, layers: [{ id: "mp-bg", type: "background", paint: { "background-color": "#eef0eb" } }] });
+// the blank map in the app's theme (crm.css --map-blank: the dark canvas in the dark)
+const blankStyle = () => {
+  let c = "";
+  try { c = getComputedStyle(document.body).getPropertyValue("--map-blank").trim(); } catch (e) { /* no document */ }
+  return /^#[0-9a-f]{6}$/i.test(c) ? { ...BLANK_STYLE, layers: [{ id: "mp-bg", type: "background", paint: { "background-color": c } }] } : BLANK_STYLE;
+};
 const HIT_PX = 22;   // half of a 44 px tap target around a pin
 
 let libP = null;
@@ -98,8 +104,9 @@ export async function createMap(el, { sources, center, zoom = 15, aerial = false
   const taps = [];
   const state = { aerial, blank: false, loaded: false };
   const online = typeof navigator === "undefined" || navigator.onLine !== false;
-  const style = online && sources && sources.streets && sources.streets.style ? sources.streets.style : BLANK_STYLE;
-  state.blank = style === BLANK_STYLE;
+  const streets = online && sources && sources.streets && sources.streets.style;
+  const style = streets ? sources.streets.style : blankStyle();
+  state.blank = !streets;
   let map;
   try {
     map = new gl.Map({
@@ -133,7 +140,7 @@ export async function createMap(el, { sources, center, zoom = 15, aerial = false
   function toBlank() {
     if (state.blank) return;
     state.blank = true;
-    try { map.setStyle(BLANK_STYLE); } catch (e) { /* removed */ }
+    try { map.setStyle(blankStyle()); } catch (e) { /* removed */ }
   }
   // a style that never answers (a slow line): the blank one after 9 s
   const slow = setTimeout(() => { if (!state.loaded) toBlank(); }, 9000);

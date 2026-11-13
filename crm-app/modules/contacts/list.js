@@ -5,8 +5,14 @@
 // headings and a letter rail. Long lists render 60 rows at once and the
 // rest in chunks, so a thousand contacts open at once on an older iPhone.
 // Coming back keeps the search, the chips and the scroll position.
+// On a phone (the Nov 2026 look, Rotor's Customers): only the large title
+// and round buttons on top (search, filter, archived, the coral +); the
+// search field opens in place, the chips, the count and "possible
+// duplicates" are in the filter sheet, and the cards run without letter
+// headings or a letter rail. A desk keeps them all on screen.
 
-import { html, icon, render, attrs, toast } from "../../core/ui.js";
+import { html, icon, render, attrs, toast, sheet } from "../../core/ui.js";
+import { screenButtons } from "../../core/nav.js";
 import { ensureStyles, contactsIndex, lifecyclePill, phoneText, emptyCard, followRun } from "./kit.js";
 import { time as fmtTime } from "../../core/format.js";
 
@@ -72,7 +78,7 @@ export function cardHtml(r, plans = new Map()) {
   return html`<li class="cc"><a class="cc-top" href="${"#/contacts/" + encodeURIComponent(r.id)}">
     <span class="cc-nm">${r.n || "No name"}</span><span class="cc-pills"><span ${attrs({ class: "cc-st " + tone })}>${st}</span>${service ? html`<span class="cc-svc">${service}</span>` : ""}</span></a>
     <div class="cc-band"><span class="cc-k"><small>Frequency</small><b>${freq}</b></span><span class="cc-k"><small>Since</small><b>${since(r.cs)}</b></span>
-      <span class="cc-acts">${phone ? html`<a class="rnd" ${attrs({ href: "tel:" + (phone.length === 10 ? "+1" + phone : phone), "aria-label": `Call ${r.n || ""}` })}>${icon("phone")}</a><a class="rnd" ${attrs({ href: "sms:" + (phone.length === 10 ? "+1" + phone : phone), "aria-label": `Text ${r.n || ""}` })}>${icon("text")}</a>` : ""}</span></div></li>`;
+      <span class="cc-acts">${phone ? html`<a class="rnd" ${attrs({ href: "tel:" + (phone.length === 10 ? "+1" + phone : phone), "aria-label": `Call ${r.n || ""}` })}>${icon("call")}</a><a class="rnd" ${attrs({ href: "sms:" + (phone.length === 10 ? "+1" + phone : phone), "aria-label": `Text ${r.n || ""}` })}>${icon("chat")}</a>` : ""}</span></div></li>`;
 }
 let plansOf = new Map();
 const groupHtml = (g) => html`<section class="ct-grp" data-l="${g.l}"><h3 class="ct-ltr">${g.l}</h3><ul class="cc-list">${g.rows.map((r) => cardHtml(r, plansOf))}</ul></section>`;
@@ -152,6 +158,59 @@ function jumpTo(view, s, clientY) {
   }
 }
 
+// The phone's round buttons: search (the field opens in place), filter (a
+// sheet: the chips, the sources, the count, duplicates to review), archived.
+function roundButtons(view, s, ctx) {
+  const filtered = !!(s.chip && s.chip !== "archived") || !!s.src;
+  screenButtons([
+    { key: "find", icon: "search", label: "Search customers", on: s.find, expanded: s.find },
+    { key: "filter", icon: "filter", label: filtered ? "Filter (on)" : "Filter", on: filtered, badge: s.dupes || 0 },
+    { key: "archived", icon: "archive", label: "Archived", on: s.chip === "archived", pressed: s.chip === "archived" },
+  ], (key) => {
+    if (key === "find") {
+      s.find = !s.find || !!s.q;
+      ctx.keep.find = s.find;
+      const bar = view.querySelector(".ct-bar");
+      if (bar) bar.classList.toggle("open", s.find);
+      roundButtons(view, s, ctx);
+      if (s.find) { const q = view.querySelector("#ct-q"); if (q) q.focus(); }
+      return;
+    }
+    if (key === "archived") { pick(view, s, ctx, { chip: s.chip === "archived" ? "" : "archived" }); return; }
+    if (key === "filter") filterSheet(view, s, ctx);
+  });
+}
+function pick(view, s, ctx, { chip = s.chip, src = s.src } = {}) {
+  s.chip = chip;
+  s.src = src;
+  ctx.keep.chip = chip;
+  ctx.keep.src = src;
+  ctx.keep.scroll = 0;
+  view.querySelectorAll("[data-chip]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.chip === s.chip)));
+  view.querySelectorAll("[data-src]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.src === s.src)));
+  paintList(view, s, ctx);
+  const sc = view.querySelector("#ct-scroll");
+  if (sc) sc.scrollTop = 0;
+  roundButtons(view, s, ctx);
+}
+function filterSheet(view, s, ctx) {
+  const n = filter(s.ix.rows, s).length;
+  const sh = sheet({
+    title: "Show",
+    body: html`<div class="ct-filter">
+      <div class="chips wrap" role="group" aria-label="Show">${CHIPS.map(([v, label]) => html`<button type="button" class="chip" ${attrs({ "data-f-chip": v, "aria-pressed": String(s.chip === v) })}>${label}</button>`)}</div>
+      ${s.sources.length ? html`<h3 class="ms-h">Source</h3><div class="chips wrap" role="group" aria-label="Source">${s.sources.map((src) => html`<button type="button" class="chip" ${attrs({ "data-f-src": src, "aria-pressed": String(s.src === src) })}>${src}</button>`)}</div>` : ""}
+      <p class="muted small">${n} ${n === 1 ? "contact" : "contacts"}</p>
+      ${s.dupes ? html`<a class="notice" href="#/merge" data-f-go>${icon("contacts")}<span>${s.dupes} possible ${s.dupes === 1 ? "duplicate" : "duplicates"} to review</span><span class="chev" aria-hidden="true"></span></a>` : ""}
+    </div>`,
+    events: {
+      "click [data-f-chip]": (e, b) => { pick(view, s, ctx, { chip: b.dataset.fChip === s.chip && b.dataset.fChip ? "" : b.dataset.fChip }); sh.close(); },
+      "click [data-f-src]": (e, b) => { pick(view, s, ctx, { src: s.src === b.dataset.fSrc ? "" : b.dataset.fSrc }); sh.close(); },
+      "click [data-f-go]": () => sh.close(),
+    },
+  });
+}
+
 export default {
   title: "Customers",
   flush: true,
@@ -170,11 +229,11 @@ export default {
         for (const x of p.data || []) if (x.c && !plansOf.has(x.c) && ["active", "cancelling", "paused", "pending"].includes(x.st)) plansOf.set(x.c, x);
       } catch (e) { /* the cards say what they know */ }
     }
-    return { ix, dupes, q: ctx.keep.q || "", chip: ctx.keep.chip || "", src: ctx.keep.src || "", sources: topSources(ix.rows) };
+    return { ix, dupes, q: ctx.keep.q || "", chip: ctx.keep.chip || "", src: ctx.keep.src || "", sources: topSources(ix.rows), find: !!ctx.keep.find || !!ctx.keep.q };
   },
   render(s, ctx) {
     return html`<div class="ct-screen">
-      <div class="ct-bar">
+      <div class="${"ct-bar" + (s.find ? " open" : "")}">
         <label class="ct-search">${icon("search")}<span class="sr">Search contacts</span><input id="ct-q" type="search" ${attrs({ value: s.q, placeholder: "Name, phone, email or street", autocomplete: "off", autocapitalize: "none", spellcheck: "false", enterkeyhint: "search" })}><button type="button" class="clear" data-clear aria-label="Clear the search" ${attrs({ hidden: !s.q })}>✕</button></label>
         <div class="chips" role="group" aria-label="Show">
           ${CHIPS.map(([v, label]) => html`<button type="button" class="chip" ${attrs({ "data-chip": v, "aria-pressed": String(s.chip === v) })}>${label}</button>`)}
@@ -196,6 +255,7 @@ export default {
   },
   mount(view, s, ctx) {
     paintList(view, s, ctx);
+    roundButtons(view, s, ctx);
     const scroll = view.querySelector("#ct-scroll");
     if (ctx.keep.scroll) { if (s.finish) s.finish(); scroll.scrollTop = ctx.keep.scroll; }
     scroll.addEventListener("scroll", () => { ctx.keep.scroll = scroll.scrollTop; }, { passive: true });

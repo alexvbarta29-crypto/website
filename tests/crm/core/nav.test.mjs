@@ -1,11 +1,12 @@
-// The phone shell and the sidebar (the Nov 2026 layout: the best of Rotor's
-// and Flyra's phone apps): the office's bar is Home · Schedule · Inbox ·
-// Customers · Sales · Menu (the Menu last, a sheet, not a page), each person
-// may pick up to five places of their own (saved on their user record), the
-// desk's sidebar leads with the same places in the same order then the
-// folded groups and Settings and Team at the bottom, the Menu sheet's
-// groups follow Flyra's order, the + offers what the person may make, and
-// the "What moved" note shows once per person.
+// The phone shell and the sidebar (the Nov 2026 look: Flyra's phone app
+// first): the office's bar is Flyra's, Home · Schedule · Inbox · Map · Menu
+// (the Menu last, a sheet, not a page), each person may pick up to five
+// places of their own (saved on their user record), the desk's sidebar
+// leads with the same places in the same order (then Customers and Sales),
+// then the folded groups and Settings and Team at the bottom, the Menu
+// sheet's groups follow Flyra's order and its places are top-level, the +
+// offers what the person may make in Flyra's order, and the "What moved"
+// note shows once per person.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { crmTest } from "../../helpers/crm-http.mjs";
@@ -22,18 +23,20 @@ await import("../../../netlify/lib/crm/modules/index.mjs");   // the modules' ow
 const canOf = (role, office = true) => (p) => (p === "office:tools" ? office && role === "owner" : roleDefault(role, p) === true);
 const planFor = (role, user = {}) => nav.plan({ nav: navFor({ role, ...user }), manifests: MANIFESTS, can: canOf(role), user: { id: "us_0000000000000000000a", role, name: "Pat Example", ...user } });
 
-test("the office's bar: Home · Schedule · Inbox · Customers · Sales · Menu, the Menu last and a sheet; a tech's is unchanged", () => {
+test("the office's bar: Home · Schedule · Inbox · Map · Menu (Flyra's), the Menu last and a sheet; a tech's is unchanged", () => {
   const p = planFor("owner");
-  assert.deepEqual(p.bar.map((t) => t.label), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
+  assert.deepEqual(p.bar.map((t) => t.label), ["Home", "Schedule", "Inbox", "Map", "Menu"]);
   assert.equal(p.bar[p.bar.length - 1].sheet, true, "the Menu opens the sheet");
   assert.equal(p.menu.key, "menu");
   assert.equal(nav.isTabRoot("/menu"), false, "the Menu page has a back arrow");
   assert.equal(nav.isTabRoot("/schedule"), true);
+  assert.equal(nav.isTabRoot("/contacts"), true, "Customers, from the Menu, is top-level: no back button");
+  assert.equal(nav.isTabRoot("/contacts/new"), false);
   assert.deepEqual(nav.TABS.sales.group.map(([, l]) => l), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
   const t = nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
   assert.deepEqual(t.bar.map((x) => x.label), ["Today", "Inbox", "Time", "Pay", "Me"]);
   assert.equal(t.menu, null, "no Menu for a tech");
-  assert.deepEqual(OFFICE_NAV, ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+  assert.deepEqual(OFFICE_NAV, ["home", "schedule", "inbox", "map", "menu"]);
 });
 
 test("each person's own tab bar: up to five of the main places, the Menu always last; unknown ones dropped", () => {
@@ -72,7 +75,7 @@ test("the tab bar is saved on the person's own record (PATCH /users/:id { tabs }
 
 test("the desk's sidebar: the bar's places first in the bar's order, then the folded groups less those, Settings and Team at the bottom", () => {
   const p = planFor("owner");
-  assert.deepEqual(p.side.top.map((t) => t.label), ["Home", "Schedule", "Inbox", "Customers", "Sales"]);
+  assert.deepEqual(p.side.top.map((t) => t.label), ["Home", "Schedule", "Inbox", "Map", "Customers", "Sales"], "the bar's places, then Customers and Sales");
   const groups = p.side.groups.map((g) => g.key);
   assert.deepEqual(groups, ["work", "sales", "customers", "money", "messages", "office", "admin"].filter((k) => groups.includes(k)), "the Menu's order");
   const paths = p.side.groups.flatMap((g) => g.items.map((n) => n.path));
@@ -94,7 +97,7 @@ test("the Menu sheet's groups (Flyra's order), each place once; the + offers wha
   const all = g.flatMap((x) => x.items.map((n) => n.path));
   assert.equal(new Set(all).size, all.length, "each once");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Customer", "Lead", "Quote", "Job", "Plan", "Invoice", "Task"]);
+  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Customer", "Lead", "Invoice", "Quote", "Plan", "Job", "Task"], "Flyra's order");
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });
 

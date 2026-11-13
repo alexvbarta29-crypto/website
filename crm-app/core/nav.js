@@ -2,19 +2,22 @@
 // switch and the sidebar (design §9.1; the Nov 2026 layout: Rotor's and
 // Flyra's phone apps, the best of both).
 //
-// The phone: a floating pill bar inset from the screen's edges, above the
-// home indicator, with small labels under the icons (Flyra) and the current
-// place in coral on a soft round highlight. The office's default bar is
-// Home · Schedule · Inbox · Customers · Sales · Menu; each person may pick up
-// to five places of their own (Menu → Tab bar, saved on their user record:
-// users.tabs; me.mjs navFor), the Menu always last. A tech's bar is Today ·
+// The phone (Nov 2026, "make it look more like Flyra"): Flyra's floating
+// glass pill inset from the screen's edges, just above the home indicator,
+// with labels under the icons and the current place on a lighter round
+// highlight (its icon coral). The office's default bar is Flyra's: Home ·
+// Schedule · Inbox · Map · Menu (Customers, Leads, Pipeline and the rest are
+// in the Menu); each person may pick up to five places of their own (Menu →
+// Tab bar, saved on their user record: users.tabs; me.mjs navFor), the Menu
+// always last; six places go icon-only (Rotor's). A tech's bar is Today ·
 // Inbox · Time · Pay · Me, as before. A tab shows only once a module has
-// registered its screen (Map arrives with its module). The Menu is not a
-// page: its button opens a sheet of every other screen (openMenuSheet below).
-// Beside the pill, a round coral + (Rotor) blurs the screen and offers a
-// search and the things to make (openQuick below). Top-level screens get a
-// large title on the left and round buttons on the right (search, and a
-// coral + for that screen's own "new"); deeper screens keep a back arrow.
+// registered its screen (Map arrives with its module, for whoever may open
+// it). The Menu is not a page: its button opens a sheet of every other
+// screen (openMenuSheet below). Beside the pill, a round glass + dims the
+// screen and stacks the things to make above it, with a search on top
+// (openQuick below). Top-level screens get a large title on the left and
+// round buttons on the right (search, and a coral + for that screen's own
+// "new"); deeper screens get a round back button.
 // The Sales tab is Pipeline (when its screen exists), Leads & calls, Quotes
 // and Tasks, one tap apart in a switch under the header. The bar hides
 // while an input has focus (the keyboard is up). A one-time "What moved"
@@ -37,9 +40,9 @@ import * as router from "./router.js";
 export const TABS = Object.freeze({
   home: { label: "Home", paths: ["/today"], icon: "home" },
   today: { label: "Today", paths: ["/today"], icon: "today" },
-  inbox: { label: "Inbox", paths: ["/inbox"], icon: "inbox" },
+  inbox: { label: "Inbox", paths: ["/inbox"], icon: "mail" },
   contacts: { label: "Customers", paths: ["/contacts", "/legacy/customers"], icon: "contacts" },
-  schedule: { label: "Schedule", paths: ["/schedule"], icon: "schedule" },
+  schedule: { label: "Schedule", paths: ["/schedule"], icon: "cal12" },
   // one tab, several screens: the switch under the header goes between them (Pipeline once its screen exists)
   sales: { label: "Sales", group: [["/pipeline", "Pipeline"], ["/leads", "Leads"], ["/calls", "Calls"], ["/quotes", "Quotes"], ["/tasks", "Tasks"]], icon: "pipeline" },
   // places a person may put on their own bar instead (Menu → Tab bar)
@@ -79,11 +82,13 @@ const routeOk = (path) => {
   return !!m && allowed(m.route.perm);
 };
 
+// The office's standard bar (me.mjs OFFICE_NAV): Flyra's.
+export const STANDARD = Object.freeze(["home", "schedule", "inbox", "map", "menu"]);
 // The office's bar from a shell cached before Home (Today · Inbox · Contacts ·
 // Schedule · Dashboard · More) is today's bar; a tech's is unchanged.
 export function normalize(nav) {
   const list = Array.isArray(nav) ? nav : [];
-  return list.includes("more") || list.includes("dashboard") ? ["home", "schedule", "inbox", "contacts", "sales", "menu"] : list;
+  return list.includes("more") || list.includes("dashboard") ? [...STANDARD] : list;
 }
 
 // What this person gets (no DOM; the tests call it with the router's
@@ -102,20 +107,23 @@ export function plan({ nav, manifests, can, user = null }) {
     if (!TABS[n.key] && !extra[n.key]) extra[n.key] = { label: n.label || n.key, paths: [n.path], icon: n.icon || "list" };
   }
   st.extraTabs = extra;
-  st.tabs = [];
-  for (const key of normalize(nav)) {
-    const t = TABS[key] || extra[key];
-    if (!t) continue;
-    if (t.more) { st.tabs.push({ key, ...t, roots: [] }); continue; }
-    if (t.group) {
-      const segs = t.group.filter(([p]) => routeOk(p));
-      if (segs.length) st.tabs.push({ key, ...t, path: segs[0][0], roots: segs.map(([p]) => p), segs });
-      continue;
-    }
-    const path = t.paths.find(routeOk);
-    if (path) st.tabs.push({ key, ...t, path, roots: [path] });
-  }
+  st.tabs = normalize(nav).map((key) => placeTab(key, extra)).filter(Boolean);
+  // the screens the Menu lists are top-level too (a large title, no back button when you came from another top-level screen)
+  st.menuPaths = menuDest() ? new Set(menuGroups().flatMap((g) => g.items.map((n) => n.path.split("?")[0]))) : new Set();
   return { bar: barTabs(), menu: menuDest(), side: sideLayout() };
+}
+
+// A place of the bar, with the screens it stands for (null when none is open to this person).
+function placeTab(key, extra = st.extraTabs || {}) {
+  const t = TABS[key] || extra[key];
+  if (!t) return null;
+  if (t.more) return { key, ...t, roots: [] };
+  if (t.group) {
+    const segs = t.group.filter(([p]) => routeOk(p));
+    return segs.length ? { key, ...t, path: segs[0][0], roots: segs.map(([p]) => p), segs } : null;
+  }
+  const path = t.paths.find(routeOk);
+  return path ? { key, ...t, path, roots: [path] } : null;
 }
 
 // mount({ nav: ["home", ...], manifests, can, onSignOut, user })
@@ -153,7 +161,12 @@ export function mount({ nav, manifests, can, onSignOut, user }) {
 // The bar: every place, the Menu last (a button: it opens the sheet).
 const barTabs = () => st.tabs;
 const menuDest = () => st.tabs.find((t) => t.sheet) || null;
-export const isTabRoot = (path) => st.tabs.some((t) => !t.sheet && (t.roots || []).includes(path));
+const tabRoot = (path) => st.tabs.some((t) => !t.sheet && (t.roots || []).includes(path));
+const topLevel = (path) => tabRoot(path) || (!!st.menuPaths && st.menuPaths.has(path));
+// A tab's own screen never shows a back button; nor does one the Menu lists
+// when it was opened from another top-level screen (Home → Menu → Customers),
+// while from deeper in (a contact → its payments) the round back button stays.
+export const isTabRoot = (path) => tabRoot(path) || (topLevel(path) && (() => { const p = router.previous ? router.previous() : null; return !p || topLevel(p.split("?")[0]); })());
 
 function drawBar() {
   const box = document.getElementById("tabs");
@@ -197,10 +210,21 @@ function drawRound(active, big) {
   if (!r) return;
   if (!big) { render(r, html``); return; }
   const own = active && (PLACE_NEW[active.key] || []).find((p) => st.creates.some((c) => c.path === p) || (p === "/contacts/new" && st.can("contacts:write") && routeOk(p)));
-  // search on the tabs' own screens; a coral + where the place makes something of its own
-  const search = st.can("contacts:read_all") && !!active && st.tabs.includes(active);
-  render(r, html`${search ? html`<button type="button" class="rnd" data-rnd-search aria-label="Search">${icon("search")}</button>` : ""}
-    ${own ? html`<a class="rnd coral" ${attrs({ href: "#" + own, "aria-label": "New" })}>${icon("plus")}</a>` : ""}`);
+  // the screen's own round buttons (screenButtons: search, filter, ...), then a coral + where the place makes something of its own
+  render(r, html`<span class="rnd-own"></span>${own ? html`<a class="rnd coral" ${attrs({ href: "#" + own, "aria-label": "New" })}>${icon("plus")}</a>` : ""}`);
+}
+
+// A top-level screen's own round buttons in the header on a phone (Rotor's
+// and Flyra's: search, filter, archive, a call log...), before the coral +.
+// A screen calls it from mount(): [{ key, icon, label, on?, badge? }] and
+// what a tap does. A desk has its own header (they don't show there).
+export function screenButtons(list = [], onTap = () => {}) {
+  const r = document.getElementById("top-rnd");
+  if (!r) return;
+  let box = r.querySelector(".rnd-own");
+  if (!box) { box = document.createElement("span"); box.className = "rnd-own"; r.prepend(box); }
+  render(box, html`${list.map((b) => html`<button type="button" class="${"rnd" + (b.on ? " on" : "")}" ${attrs({ "data-own": b.key, "aria-label": b.label, "aria-pressed": b.pressed === undefined ? null : String(!!b.pressed), "aria-expanded": b.expanded === undefined ? null : String(!!b.expanded) })}>${icon(b.icon)}${b.badge ? html`<span class="badge">${b.badge > 99 ? "99+" : b.badge}</span>` : ""}</button>`)}`);
+  box.onclick = (e) => { const b = e.target.closest("[data-own]"); if (b) onTap(b.dataset.own, b, e); };
 }
 
 // Marks the tab of the current screen; shows the switch and the create button where they belong.
@@ -247,7 +271,8 @@ export function update(path) {
   const app = document.getElementById("app");
   if (app) app.classList.toggle("big-top", big);
   // the office's Home brings its own header (the avatar, Welcome back, the bell): the bar's title steps aside on a phone
-  if (app) app.classList.toggle("own-head", path === "/today" && !st.tabs.some((t) => t.key === "today"));
+  // (and so does the Schedule, Flyra's: its big title and pills are its own)
+  if (app) app.classList.toggle("own-head", (path === "/today" && !st.tabs.some((t) => t.key === "today")) || (path === "/schedule" && !!menuDest()));
   drawRound(active || (big ? { key: placeOf(path) } : null), big);
   let fab = document.getElementById("fab");
   const creates = quickCreates(st.creates, st.can);
@@ -334,10 +359,10 @@ function openMore() {
 // computer (kept in localStorage under their id; a browser that keeps
 // nothing never shows it, rather than showing it every time). A tech's bar
 // didn't change: nothing to say.
-export const MOVED_KEY = "crm-moved-2";
+export const MOVED_KEY = "crm-moved-3";
 export const MOVED_TEXT = Object.freeze({
-  phone: "New tab bar: Menu holds everything else, + makes anything new.",
-  desk: "Home, Schedule, Inbox, Customers and Sales now lead the sidebar. Everything else is where it was.",
+  phone: "New look: Customers, Leads and Pipeline are in the Menu.",
+  desk: "Home, Schedule, Inbox and Map now lead the sidebar. Everything else is where it was.",
 });
 const movedKey = (uid) => (uid ? `${MOVED_KEY}:${uid}` : null);
 const me = () => (st.user && st.user.id) || null;
@@ -354,18 +379,18 @@ export function seenMoved(uid = me()) {
 }
 // Whether this person gets the note: the office (a Menu that moved), once.
 export const wantsMoved = (uid = me()) => !!menuDest() && !movedSeen(uid);
+// (Said once as a toast, never a banner over the screen: then it is seen.
+// It never pushes another toast aside: with one showing it waits for the
+// next start.)
 function whatMoved() {
-  if (!wantsMoved() || document.getElementById("moved")) return;
-  const banner = document.getElementById("banner");
-  if (!banner) return;
+  if (!wantsMoved()) return;
   const desk = !!document.getElementById("side") && typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches;
-  const el = document.createElement("div");
-  el.id = "moved";
-  el.className = "moved";
-  el.setAttribute("role", "status");
-  render(el, html`<span class="moved-t">${desk ? MOVED_TEXT.desk : MOVED_TEXT.phone}</span><button type="button" class="moved-x" data-moved-x>Got it</button>`);
-  el.addEventListener("click", (e) => { if (e.target.closest("[data-moved-x]")) seenMoved(); });
-  banner.after(el);
+  setTimeout(() => {
+    const box = document.getElementById("toasts");
+    if (!box || box.firstChild || !wantsMoved()) return;
+    seenMoved();
+    toast(desk ? MOVED_TEXT.desk : MOVED_TEXT.phone, { ms: 5000 });
+  }, 500);
 }
 
 // ------------------------------------------------------------ the desktop chrome
@@ -390,9 +415,14 @@ const sideItem = (path, label, ic, key, paths) => html`<a class="side-item" href
 // what those places already open; Settings and Team at the bottom (above
 // who is signed in; My account is that card).
 export const SIDE_BOTTOM = Object.freeze(["/settings", "/team"]);
+// (A desk keeps Customers and Sales near the top too, after the bar's places,
+// now that the phone's bar is Flyra's and has them in its Menu.)
+export const DESK_PLACES = Object.freeze(["contacts", "sales"]);
 export function sideLayout() {
-  const top = barTabs().filter((t) => !t.more && !t.sheet);
+  let top = barTabs().filter((t) => !t.more && !t.sheet);
   if (!menuDest()) return { top, groups: [], bottom: [] };
+  const have = new Set(top.flatMap((t) => [t.key, ...(t.roots || [])]));
+  top = top.concat(DESK_PLACES.map((k) => placeTab(k)).filter((t) => t && !have.has(t.key) && !(t.roots || []).some((r) => have.has(r))));
   const taken = new Set(top.flatMap((t) => t.roots || []));
   const groups = menuSections()
     .map((sec) => ({ ...sec, items: sec.items.filter((n) => !taken.has(n.path) && !SIDE_BOTTOM.includes(n.path) && n.path !== "/me") }))
@@ -519,11 +549,12 @@ function searchBox() {
 // (They live here, not in a file of their own, so a phone that starts with
 // no signal has them in the app it already keeps.)
 
-// The + sheet's things to make, in the owner's order, from the manifests' creates
+// The + sheet's things to make, in Flyra's order (its Estimate is our Quote,
+// its Subscription our Plan; no Expense), from the manifests' creates
 // (which nav.js already kept to this person's permissions and routes).
 const MAKE = [
-  ["/contacts/new", "Customer", "contacts", "contacts:write"], ["/leads/new", "Lead", "target"], ["/quotes/new", "Quote", "doc"], ["/jobs/new", "Job", "schedule"],
-  ["/plans/new", "Plan", "swap"], ["/invoices/new", "Invoice", "money"], ["/tasks/new", "Task", "check"],
+  ["/contacts/new", "Customer", "userplus", "contacts:write"], ["/leads/new", "Lead", "target"], ["/invoices/new", "Invoice", "receipt"], ["/quotes/new", "Quote", "clipboard"],
+  ["/plans/new", "Plan", "swap"], ["/jobs/new", "Job", "hammer"], ["/tasks/new", "Task", "check"],
 ];
 export function quickCreates(creates = [], can = () => false) {
   const have = new Set(creates.map((c) => c.path));
@@ -610,8 +641,6 @@ export function searchInto(form, input, out) {
 
 // ------------------------------------------------------------ the Menu sheet
 
-const avatarStyle = (u) => (u && /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null);
-
 export function menuRows(groups) {
   return html`${groups.map((g) => (g.two
     ? html`<div class="ms-two">${g.items.map((n) => html`<a class="ms-tile" ${attrs({ href: "#" + n.path })} data-close>${icon(n.icon || "list")}<span>${n.label}</span></a>`)}</div>`
@@ -626,13 +655,14 @@ export function openMenuSheet({ user = {}, can = () => false, groups = [] } = {}
     events: {
       "click [data-close]": () => s.close(),
       "click [data-bug]": () => { s.close(); reportProblem(); },
+      "click [data-theme-btn]": () => { s.close(); pickTheme(); },
     },
   });
   s.el.classList.add("menu-sheet");
   const head = s.el.querySelector(".sheet-head");
   const btns = document.createElement("div");
   btns.className = "ms-btns";
-  render(btns, html`${can("tasks:write") ? html`<button type="button" class="rnd" data-bug aria-label="Report a problem">${icon("bug")}</button>` : ""}<a class="rnd ms-me" href="#/me" data-close ${attrs({ style: avatarStyle(user), "aria-label": `${user.name || "My account"}: my account` })}>${initials(user.name)}</a>`);
+  render(btns, html`${can("tasks:write") ? html`<button type="button" class="rnd" data-bug aria-label="Report a problem">${icon("bug")}</button>` : ""}<button type="button" class="rnd" data-theme-btn aria-label="Light or dark">${icon("sun")}</button><a class="rnd ms-me" href="#/me" data-close ${attrs({ "aria-label": `${user.name || "My account"}: my account` })}>${initials(user.name)}</a>`);
   head.insertBefore(btns, head.querySelector("[data-sheet-x]"));
   // the latest reply nobody has read yet, one tap from its thread
   if (can("inbox:read")) {
@@ -642,7 +672,7 @@ export function openMenuSheet({ user = {}, can = () => false, groups = [] } = {}
       if (!c || !box) return;
       render(box, html`<a class="ms-replycard" ${attrs({ href: "#/inbox/" + encodeURIComponent(c.id) })} data-close>
         <span class="ms-av">${initials(c.contact_name)}</span>
-        <span class="who"><span class="nm">${c.contact_name || "Someone"} replied ${c.last_at ? ago(c.last_at) : ""}</span><span class="sub">${c.last_preview || ""}</span></span>
+        <span class="who"><span class="nm">${c.contact_name || "Someone"} replied${c.last_at ? html` <small>${ago(c.last_at)}</small>` : ""}</span><span class="sub">${c.last_preview || ""}</span></span>
         <span class="ms-go">Reply</span></a>`);
       box.hidden = false;
     }).catch(() => {});
@@ -671,4 +701,85 @@ function reportProblem() {
       },
     },
   });
+}
+
+// ------------------------------------------------------------ Light, Dark or Automatic
+//
+// Light, Dark or Automatic (the owner, Nov 2026: Flyra's
+// dark look first, Rotor's light one a tap away). The choice belongs to the
+// phone or computer it was made on (localStorage "crm-theme"; a browser
+// that keeps nothing gets the default, Dark). crm.css holds every color as
+// a token and html[data-theme] picks the set: "light", or dark otherwise.
+// Automatic follows the phone's own setting and changes with it. The
+// office shell around the frame (/office) hears crm:theme and matches its
+// own background and status bar color.
+//
+//   applyTheme()       at start (main.js), before the first screen draws
+//   themeChoice()      "light" | "dark" | "auto"
+//   setTheme(v)        saves and applies
+//   pickTheme()        the sheet: Light · Dark · Automatic (the Menu's sun
+//                      button and My account)
+
+export const THEME_KEY = "crm-theme";
+export const THEMES = Object.freeze([["light", "Light"], ["dark", "Dark"], ["auto", "Automatic"]]);
+export const DEFAULT_THEME = "dark";
+// the canvas of each (the status bar and the frame behind the app match it)
+export const CANVAS = Object.freeze({ light: "#f2f2f7", dark: "#111214" });
+
+let mem = null;   // a browser that keeps nothing: the choice lasts until the page closes
+const known = (v) => THEMES.some(([k]) => k === v);
+export function themeChoice() {
+  let v = null;
+  try { v = localStorage.getItem(THEME_KEY); } catch (e) { /* nothing kept here */ }
+  return known(v) ? v : known(mem) ? mem : DEFAULT_THEME;
+}
+
+const media = () => (typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null);
+// What shows now: an explicit choice, or the phone's own setting for Automatic.
+export function resolveTheme(v = themeChoice(), systemDark = !!(media() && media().matches)) {
+  if (v === "light" || v === "dark") return v;
+  return systemDark ? "dark" : "light";
+}
+
+let listening = false;
+export function applyTheme() {
+  if (typeof document === "undefined") return DEFAULT_THEME;
+  const t = resolveTheme();
+  document.documentElement.dataset.theme = t;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", CANVAS[t]);
+  try { if (window.parent !== window) window.parent.postMessage({ type: "crm:theme", theme: t, canvas: CANVAS[t] }, location.origin); } catch (e) { /* no shell */ }
+  const m = media();
+  if (m && !listening) {
+    listening = true;
+    const onChange = () => { if (themeChoice() === "auto") applyTheme(); };
+    if (m.addEventListener) m.addEventListener("change", onChange); else if (m.addListener) m.addListener(onChange);
+  }
+  return t;
+}
+
+export function setTheme(v) {
+  if (!known(v)) return applyTheme();
+  mem = v;
+  try { localStorage.setItem(THEME_KEY, v); } catch (e) { /* this browser keeps nothing: for now only */ }
+  return applyTheme();
+}
+
+// The sheet: Light · Dark · Automatic, the current one ticked.
+export function pickTheme({ onPick } = {}) {
+  const now = themeChoice();
+  const s = sheet({
+    title: "Appearance",
+    body: html`<ul class="menu theme-pick" role="radiogroup" aria-label="Appearance">${THEMES.map(([k, l]) => html`<li><button type="button" role="radio" ${attrs({ "data-theme-pick": k, "aria-checked": k === now ? "true" : "false" })}>${icon(k === "light" ? "sun" : k === "dark" ? "moon" : "auto")}<span>${l}</span>${k === now ? html`<span class="theme-ck">${icon("check")}</span>` : ""}</button></li>`)}</ul>
+      <p class="small muted">Automatic follows this phone's own setting. Saved on this device.</p>`,
+    events: {
+      "click [data-theme-pick]": (e, b) => {
+        setTheme(b.dataset.themePick);
+        s.close();
+        toast(`${THEMES.find(([k]) => k === b.dataset.themePick)[1]} on this device`);
+        if (onPick) onPick(themeChoice());
+      },
+    },
+  });
+  return s;
 }
