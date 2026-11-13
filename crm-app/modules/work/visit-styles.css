@@ -8,7 +8,7 @@
 
 .vb-head{order:0;display:flex;flex-direction:column;gap:12px}
 .vb-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.vb-q{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:62px;padding:7px 4px 6px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;box-shadow:var(--sh-xs);color:var(--ink);font:600 13px/1.1 var(--text);text-decoration:none;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.vb-q{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:62px;padding:7px 4px 6px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--card);box-shadow:var(--sh-xs);color:var(--ink);font:600 13px/1.1 var(--text);text-decoration:none;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .vb-q svg{width:22px;height:22px;flex:none;color:var(--coral-ink);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .vb-q .vb-l{white-space:nowrap}
 .vb-q .vb-s{position:absolute;top:5px;right:6px;min-width:18px;padding:0 4px;border-radius:999px;background:var(--grey-bg);color:var(--ink-2);font:600 10.5px/16px var(--text);font-variant-numeric:tabular-nums}
@@ -19,8 +19,8 @@
 .vb-bar{display:flex;flex-direction:column;gap:6px}
 .vb-go{gap:10px;font-size:16.5px;letter-spacing:.005em}
 .vb-go svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
-.vb-go.blocked{background:#e7958b;border-color:#e7958b;box-shadow:none}
-.vb-saved{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;padding:8px 12px;border-radius:var(--r);background:var(--amber-bg);color:#6b4510;font-size:13.5px;font-weight:600}
+.vb-go.blocked{background:color-mix(in srgb,var(--coral-btn) 50%,var(--card));border-color:transparent;box-shadow:none}
+.vb-saved{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;padding:8px 12px;border-radius:var(--r);background:var(--amber-bg);color:var(--amber-ink);font-size:13.5px;font-weight:600}
 .vb-saved svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 /* a phone: the big button rides at the bottom, over the content, under the thumb */
@@ -38,7 +38,7 @@
 
 /* a desk: one header row, the quick buttons on the left, the next step on the right */
 @media (min-width:900px){
-  .vb-head{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-card)}
+  .vb-head{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-card)}
   .vb-quick{display:flex;flex-wrap:wrap;gap:8px}
   .vb-q{flex-direction:row;gap:8px;min-height:var(--ctl-h);padding:0 14px;font-size:14px}
   .vb-q svg{width:18px;height:18px}
@@ -51,7 +51,7 @@
   .view>.stack.wk-vpage>.vb-head{grid-column:1 / -1}
 }
 @media (hover:hover) and (pointer:fine){
-  .vb-q:not(.off):hover{background:var(--mist);border-color:#d3d3d9}
+  .vb-q:not(.off):hover{background:var(--mist);border-color:var(--line-2)}
 }
 
 /* ---------------------------------------------------------------- the Visits list (work/visits.js; Rotor's) */

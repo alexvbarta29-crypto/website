@@ -1,188 +1,207 @@
-/* Home (system/home.js): Rotor's phone Home with the best of Flyra's. A
-   light grey canvas, big white cards (24 px corners, soft shadows), round
-   white small buttons, segmented controls with a white active pill, coral
-   for what you tap (Clock In, the chart's line). The house tokens
-   (crm.css): Cabinet Grotesk 800 for the big numbers and titles, General
-   Sans for the rest. 44 px targets on a phone; room at the bottom for the
-   shell's floating tab bar and its + button. */
+/* Home (system/home.js), Flyra's (Nov 13: "make it look more like
+   Flyra"): the greeting small and grey, the first name big and bold, the
+   money on the canvas right under them (Collected | Scheduled | ARR, "1M ⌄",
+   the month, the big number with AVG and PEAK, the line chart, "Updated
+   5:49 PM"), then Flyra's cards: a title, round arrows or a segmented
+   switch, quiet empty states. In the dark (the default) a soft teal-black
+   glow behind the top, as Flyra's; in the light Rotor's grey canvas and
+   white cards. Every color is a crm.css token. 44 px targets on a phone;
+   room at the bottom for the floating tab bar and its + button. */
 
-#view:has(> .stack.hm){background:#f1f1f4}
-.hm{gap:16px}
-.hm-card{position:relative;background:#fff;border-radius:24px;padding:20px;box-shadow:0 1px 2px rgba(18,18,21,.04),0 10px 30px rgba(18,18,21,.06);min-width:0}
-.hm-grid{display:flex;flex-direction:column;gap:16px;min-width:0}
+#view:has(> .stack.hm){background:var(--hero) top/100% 760px no-repeat local,var(--mist)}
+.app.own-head .top{background:var(--hero-top)}
+.hm{gap:22px}
+.hm-card{position:relative;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);padding:18px;box-shadow:var(--sh-card);min-width:0}
+.hm-card.hm-plain{background:none;border-color:transparent;box-shadow:none;padding-left:4px;padding-right:4px}
+.hm-grid{display:flex;flex-direction:column;gap:22px;min-width:0}
 .hm-alert{display:block;text-decoration:none;color:inherit}
 
-/* ------------------------------------------------------------ the header */
-.hm-head{display:flex;align-items:center;gap:14px;padding:4px 2px 2px}
+/* ------------------------------------------------------------ the header: "Good evening", the name */
+.hm-head{display:flex;align-items:flex-start;gap:14px;padding:18px 4px 0}
 .hm-hello{flex:1;min-width:0}
-.hm-hello h2{font:800 25px/1.12 var(--head);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-hello .date{margin-top:3px;font:500 15px/1.2 var(--text);color:var(--ink-3)}
-.hm-av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--ink-2);color:#fff;font:600 11px/1 var(--text);letter-spacing:.02em;box-shadow:0 0 0 2px #fff}
-.hm-av.lg{width:52px;height:52px;font:800 18px/1 var(--head);box-shadow:0 2px 8px rgba(18,18,21,.12)}
+.hm-greet{margin:0;font:500 18px/1.2 var(--text);letter-spacing:-.01em;color:var(--ink-3)}
+.hm-hello h2{margin-top:4px;font:700 40px/1.08 var(--head);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-head .bell{margin-top:4px}
+.hm-av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--avatar-bg);color:#fff;font:600 11px/1 var(--text);letter-spacing:.02em;box-shadow:0 0 0 2px var(--card)}
+.hm-av:not([style]){color:var(--avatar-ink)}
 .hm-av.sm{width:30px;height:30px}
+/* Flyra's outlined initials */
+.hm-av.ol{background:var(--card-2);box-shadow:inset 0 0 0 1px var(--line-2);color:var(--ink)}
 
-/* round white small buttons */
-.hm-round{position:relative;flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#fff;border:0;color:var(--ink-2);box-shadow:0 1px 2px rgba(18,18,21,.06),0 4px 14px rgba(18,18,21,.08);cursor:pointer;text-decoration:none}
-.hm-round svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.hm-round:active{background:var(--mist)}
-.hm-round.bell .badge{position:absolute;top:3px;right:3px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral);color:#fff;font:600 10.5px/17px var(--text);text-align:center;box-shadow:0 0 0 2px #fff}
+/* round small buttons (the arrows, Edit Home's up and down) */
+.hm-round{position:relative;flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--fill-2);border:1px solid var(--rnd-line);color:var(--ink);box-shadow:var(--rnd-sh);cursor:pointer;text-decoration:none}
+html[data-theme="light"] .hm-round{background:var(--rnd-bg)}
+.hm-round svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hm-round:active{transform:scale(.96)}
 
-/* a card's top row: a segmented control (or a title) and its buttons */
-.hm-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;min-width:0}
-.hm-bar h3{font:700 19px/1.2 var(--head);min-width:0}
+/* a card's top row: a title and its switch or buttons */
+.hm-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;min-width:0}
+.hm-bar h3{font:500 19px/1.2 var(--head);letter-spacing:-.02em;min-width:0}
+.hm-bar .hm-seg button{padding:0 12px;font-size:15.5px}
 .hm-bar-end{display:flex;align-items:center;gap:8px}
-.hm-seg{display:inline-flex;gap:2px;padding:4px;border-radius:999px;background:#ececf0;min-width:0}
-.hm-seg button{min-height:44px;padding:0 14px;border:0;border-radius:999px;background:none;color:var(--ink-3);font:600 15px/1 var(--text);cursor:pointer;white-space:nowrap}
-.hm-seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(18,18,21,.1)}
-.hm-seg.full{display:flex;width:100%;margin-bottom:14px}
+/* Flyra's segmented switch: a dark track, the chosen one lighter */
+.hm-seg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--seg-track);border:1px solid var(--card-line);min-width:0}
+.hm-card .hm-seg{background:var(--fill-2);border-color:transparent}
+.hm-seg button{min-height:44px;padding:0 15px;border:0;border-radius:999px;background:none;color:var(--ink-2);font:500 16px/1 var(--text);letter-spacing:-.01em;cursor:pointer;white-space:nowrap}
+.hm-seg button.on{background:var(--seg-on);color:var(--seg-on-ink);box-shadow:var(--seg-on-sh)}
+.hm-seg.full{display:flex;width:100%;margin:0 0 16px}
 .hm-seg.full button{flex:1;padding:0 6px}
-.hm-row2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin:-4px 0 0}
-.hm-arrows{flex:none;display:flex;gap:8px}
-.hm-eyebrow{display:flex;align-items:center;gap:8px;font:600 12px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
-.hm-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:0;background:#ececf0;color:var(--ink);font:600 14.5px/1 var(--text);text-decoration:none;cursor:pointer}
+.hm-row2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.hm-arrows{flex:none;display:flex;gap:10px}
+.hm-eyebrow{display:flex;align-items:center;gap:8px;font:500 13px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.hm-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid var(--rnd-line);background:var(--fill-2);color:var(--ink);font:500 16px/1 var(--text);text-decoration:none;cursor:pointer;box-shadow:var(--rnd-sh)}
+html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-chip svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9}
-.hm-more{flex:none;display:inline-flex;align-items:center;min-height:44px;color:var(--coral-ink);font:600 14px/1 var(--text);text-decoration:none;white-space:nowrap}
+.hm-more{flex:none;display:inline-flex;align-items:center;min-height:44px;color:var(--coral-ink);font:500 15px/1 var(--text);text-decoration:none;white-space:nowrap}
 .hm-more::after{content:"";width:6px;height:6px;margin-left:6px;border-right:1.75px solid currentColor;border-bottom:1.75px solid currentColor;transform:rotate(-45deg)}
-.hm-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 -8px;font-size:13px;color:var(--ink-3)}
+.hm-foot{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin:6px 0 -8px;font-size:14px;color:var(--ink-3)}
 .hm-foot>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-note{margin:10px 0 0;font-size:14px;color:var(--ink-3)}
-.hm-more-row{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:8px;color:var(--coral-ink);font-weight:600;font-size:14px;text-decoration:none}
-.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:18px 8px 8px}
-.hm-empty .art{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--mist-2);color:var(--ink-3);margin-bottom:6px}
-.hm-empty .art svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.hm-empty b{font:600 16px/1.3 var(--text)}
-.hm-empty p{margin:0;font-size:14px;color:var(--ink-3)}
-.hm-track{display:block;height:6px;border-radius:999px;background:#ececf0;overflow:hidden}
+.hm-note{margin:10px 0 0;font-size:15px;color:var(--ink-3)}
+.hm-more-row{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:8px;color:var(--coral-ink);font-weight:500;font-size:15px;text-decoration:none}
+/* Flyra's empty states: a quiet icon, a line in white, a line in grey */
+.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:34px 12px 26px}
+.hm-empty .art{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--fill-2);color:var(--ink-3);margin-bottom:6px}
+.hm-empty .art.plain{background:none}
+.hm-empty .art.plain svg{width:34px;height:34px}
+.hm-empty .art svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.hm-empty b{font:500 18px/1.3 var(--text);letter-spacing:-.01em}
+.hm-empty p{margin:2px 0 0;font-size:16px;line-height:1.4;color:var(--ink-3);max-width:320px}
+.hm-track{display:block;height:6px;border-radius:999px;background:var(--fill-2);overflow:hidden}
 .hm-fill{display:block;height:100%;border-radius:999px;background:var(--coral)}
 
-/* ------------------------------------------------------------ Clock in */
+/* ------------------------------------------------------------ Clock in (a Flyra card) */
 .hm-clock{display:flex;align-items:flex-start;gap:16px}
-.hm-tile{flex:none;width:60px;height:60px;border-radius:18px;display:grid;place-items:center;background:var(--coral-wash);color:var(--coral);box-shadow:inset 0 0 0 1px rgba(251,77,61,.12)}
-.hm-tile svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hm-tile{flex:none;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:var(--coral-wash);color:var(--coral)}
+.hm-tile svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .hm-clock-main{flex:1;min-width:0}
-.hm-dot{width:8px;height:8px;border-radius:50%;background:#a3a3ab}
+.hm-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
 .hm-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
-.hm-hours{margin-top:4px;font:800 36px/1.05 var(--head);letter-spacing:-.02em}
-.hm-line{margin:6px 0 0;font-size:14.5px;color:var(--ink-3)}
+.hm-hours{margin-top:4px;font:700 34px/1.05 var(--head);letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.hm-line{margin:6px 0 0;font-size:15px;color:var(--ink-3)}
 .hm-clock-act{display:flex;justify-content:flex-end;margin-top:14px}
-.hm-pill{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 17px/1 var(--text);cursor:pointer;box-shadow:0 6px 16px rgba(208,51,31,.24)}
+.hm-pill{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 26px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 17px/1 var(--text);cursor:pointer;box-shadow:0 6px 16px rgba(208,51,31,.24)}
 .hm-pill:active{background:var(--coral-btn-2)}
 .hm-pill svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
 
-/* ------------------------------------------------------------ Money */
+/* ------------------------------------------------------------ Money (on the canvas, Flyra's) */
+.hm-hero{position:relative;min-width:0;padding:0 4px}
+.hm-hero .hm-row2{margin-bottom:22px}
+.hm-hero .hm-seg button{padding:0 16px}
 .hm-menu-wrap{position:relative;flex:none}
-.hm-period{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px 0 10px;border:0;background:none;color:var(--ink-2);font:600 15px/1 var(--text);cursor:pointer;white-space:nowrap}
-.hm-period svg{width:16px;height:16px}
-.hm-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:220px;margin:0;padding:6px;list-style:none;background:#fff;border-radius:18px;box-shadow:0 4px 12px rgba(18,18,21,.08),0 18px 40px rgba(18,18,21,.16)}
-.hm-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:none;color:var(--ink);font:500 15.5px/1 var(--text);text-align:left;cursor:pointer}
-.hm-menu button:active,.hm-menu button:hover{background:var(--mist)}
-.hm-menu .ck{width:18px;display:grid;place-items:center;color:var(--coral-ink)}
-.hm-menu .ck svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2}
-.hm-menu .sep{margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
-.hm-row2 .hm-eyebrow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-money-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:4px}
-.hm-big{font:800 42px/1.05 var(--head);letter-spacing:-.02em;white-space:nowrap}
-.hm-stats{flex:none;display:flex;gap:14px;text-align:right;padding-bottom:4px}
-.hm-stats span{display:block;font:600 10.5px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
-.hm-stats b{display:block;margin-top:4px;font:600 17px/1.1 var(--text);font-variant-numeric:tabular-nums}
+.hm-period{display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:0 4px 0 10px;border:0;background:none;color:var(--ink-2);font:500 19px/1 var(--text);cursor:pointer;white-space:nowrap}
+.hm-period svg{width:20px;height:20px;stroke-width:1.8}
+/* Flyra's period menu: a dark glass card, a tick on the chosen one */
+.hm-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:250px;margin:0;padding:8px;list-style:none;background:var(--pop-bg);border:1px solid var(--glass-line);border-radius:26px;box-shadow:var(--sh-pop)}
+.hm-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 14px;border:0;border-radius:14px;background:none;color:var(--ink);font:400 18px/1 var(--text);letter-spacing:-.01em;text-align:left;cursor:pointer}
+.hm-menu button:active,.hm-menu button:hover{background:var(--fill)}
+.hm-menu .ck{width:22px;display:grid;place-items:center;color:var(--ink)}
+.hm-menu .ck svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
+.hm-menu .sep{margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
+.hm-menu .sep button{padding-left:14px}
+.hm-hero>.hm-eyebrow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-money-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:8px}
+.hm-big{font:700 40px/1.05 var(--head);letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hm-stats{flex:none;display:flex;gap:22px;text-align:right;padding-bottom:2px}
+.hm-stats span{display:block;font:500 12.5px/1.2 var(--text);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.hm-stats b{display:block;margin-top:6px;font:600 18px/1.1 var(--text);font-variant-numeric:tabular-nums}
 .hm-stats b.up{color:var(--green-ink)}
 .hm-stats b.down{color:var(--red-ink)}
-.hm-goal{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--ink-3)}
+.hm-goal{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:14px;color:var(--ink-3)}
 .hm-goal .hm-track{flex:1;max-width:220px}
 
-/* the chart */
-.hc-head{display:flex;justify-content:flex-end;min-height:22px;margin:14px 0 4px}
-.hc-read{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:13px;white-space:nowrap}
-.hc-read b{font:600 14.5px/1.2 var(--text);color:var(--ink);font-variant-numeric:tabular-nums}
+/* the chart: Flyra's quiet grid, the line in coral */
+.hc-head{display:flex;justify-content:flex-end;min-height:22px;margin:18px 0 6px}
+.hc-read{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:14px;white-space:nowrap}
+.hc-read b{font:600 15px/1.2 var(--text);color:var(--ink);font-variant-numeric:tabular-nums}
 .hc-read span{color:var(--ink-3);overflow:hidden;text-overflow:ellipsis}
-.hc{position:relative;height:168px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.hc{position:relative;height:200px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
 .hc:focus-visible{outline:2px solid var(--coral);outline-offset:4px}
 .hc svg.hc-svg{display:block;fill:none;stroke:none;overflow:visible}
-.hc-grid{stroke:#e2e2e8;stroke-width:1;stroke-dasharray:3 4}
-.hc-base{stroke:#d4d4da;stroke-width:1;stroke-dasharray:3 4}
-.hc-t{fill:var(--ink-3);font:500 11px/1 var(--text);font-variant-numeric:tabular-nums}
-.hc-line{fill:none;stroke:var(--coral);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.hc-area{fill:rgba(251,77,61,.08)}
-.hc-cross{stroke:#c9c9d1;stroke-width:1}
-.hc-dot{fill:var(--coral);stroke:#fff;stroke-width:2}
+.hc-grid{stroke:var(--line);stroke-width:1}
+.hc-base{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
+.hc-t{fill:var(--ink-3);font:400 12px/1 var(--text);font-variant-numeric:tabular-nums}
+.hc-line{fill:none;stroke:var(--coral);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.hc-area{fill:rgba(251,77,61,.045)}
+.hc-cross{stroke:var(--line-2);stroke-width:1}
+.hc-dot{fill:var(--coral);stroke:var(--mist);stroke-width:2}
 
 /* ------------------------------------------------------------ Today (the agenda) */
-.hm-ag-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 14px}
+.hm-ag-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px}
 .hm-ag-head .t{min-width:0}
-.hm-ag-head h3{font:800 20px/1.15 var(--head);letter-spacing:-.015em;text-wrap:balance}
-.hm-ag-head .t>span{display:block;margin-top:2px;font-size:14px;color:var(--ink-3)}
-.hm-day{margin:14px 4px 8px;font:600 13px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+.hm-ag-head h3{font:500 20px/1.2 var(--head);letter-spacing:-.02em;text-wrap:balance}
+.hm-ag-head .t>span{display:block;margin-top:3px;font-size:15px;color:var(--ink-3)}
+.hm-day{margin:16px 4px 8px;font:500 13px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em}
 .hm-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.hm-item{position:relative;display:flex;align-items:center;gap:10px;min-height:68px;padding:12px 14px 12px 20px;border-radius:18px;background:#f6f6f8;color:inherit;text-decoration:none;overflow:hidden}
-.hm-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bar,#b9b9c2)}
-a.hm-item:active{background:#efeff2}
+.hm-item{position:relative;display:flex;align-items:center;gap:10px;min-height:68px;padding:12px 14px 12px 20px;border-radius:16px;background:var(--card-2);border:1px solid var(--card-line);color:inherit;text-decoration:none;overflow:hidden}
+.hm-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bar,#8e8e96)}
+a.hm-item:active{background:var(--fill-2)}
 .hm-item .who{flex:1;min-width:0}
-.hm-item .who b{display:block;font:600 16.5px/1.25 var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-item .who small{display:block;margin-top:3px;font-size:14px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-item .who b{display:block;font:500 17px/1.25 var(--text);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-item .who small{display:block;margin-top:3px;font-size:15px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-item.done .who b,.hm-item.done .hm-time{color:var(--ink-3)}
 .hm-avs{flex:none;display:flex}
 .hm-avs .hm-av+.hm-av{margin-left:-7px}
-.hm-time{flex:none;font:500 14.5px/1 var(--text);color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hm-avs .hm-av{box-shadow:0 0 0 2px var(--card-2)}
+.hm-time{flex:none;font:400 15px/1 var(--text);color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .hm-item .chev{margin-left:2px}
-.hm-tasks{margin-top:18px}
-.hm-tasks-h{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;padding:0 6px;border:0;background:none;color:var(--ink-3);font:600 12.5px/1 var(--text);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.hm-tasks{margin-top:20px}
+.hm-tasks-h{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;padding:0 4px;border:0;background:none;color:var(--ink-3);font:500 13px/1 var(--text);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
 .hm-tasks-h b{margin-left:8px;color:var(--coral-ink)}
 .hm-tasks-h svg{width:18px;height:18px}
 .hm-task-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
-.hm-task{display:flex;align-items:center;gap:10px;min-height:56px;padding:10px 16px;border-radius:16px;background:#f6f6f8;color:inherit;text-decoration:none}
+.hm-task{display:flex;align-items:center;gap:10px;min-height:56px;padding:10px 16px;border-radius:16px;background:var(--card-2);border:1px solid var(--card-line);color:inherit;text-decoration:none}
 .hm-task .who{flex:1;min-width:0}
-.hm-task .who b{display:block;font:600 15.5px/1.3 var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-task .who small{display:block;font-size:13px;color:var(--ink-3)}
+.hm-task .who b{display:block;font:500 16.5px/1.3 var(--text);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-task .who small{display:block;font-size:14px;color:var(--ink-3)}
 .hm-task .who small.late{color:var(--red-ink)}
 .hm-task .pill{flex:none}
 
-/* ------------------------------------------------------------ Leaderboard, Inbox, Tasks, Goals */
+/* ------------------------------------------------------------ Leaderboard, Inbox, Tasks, Goals (Flyra's cards) */
 .hm-c-board .hm-bar h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-board{list-style:none;margin:0;padding:0}
-.hm-board li{display:flex;align-items:center;gap:12px;min-height:60px;padding:6px 2px}
+.hm-board li{display:flex;align-items:center;gap:14px;min-height:64px;padding:8px 0}
 .hm-board li+li{border-top:1px solid var(--line)}
-.hm-board .rank{width:18px;font:700 16px/1 var(--head);text-align:center;color:var(--ink-2)}
-.hm-board .hm-av{width:40px;height:40px;font-size:13px}
+.hm-board .rank{width:16px;font:500 18px/1 var(--text);text-align:center;color:var(--ink)}
+.hm-board .hm-av{width:44px;height:44px;font-size:15px;font-weight:500}
 .hm-board .who{flex:1;min-width:0}
-.hm-board .who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-board .who small{display:block;font-size:13.5px;color:var(--ink-3)}
-.hm-board .val{flex:none;font:600 16px/1 var(--text);font-variant-numeric:tabular-nums}
-.hm-board .val small{font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+.hm-board .who b{display:block;font:500 17px/1.25 var(--text);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-board .who small{display:block;margin-top:2px;font-size:15px;color:var(--ink-3)}
+.hm-board .val{flex:none;font:500 17px/1 var(--text);font-variant-numeric:tabular-nums}
+.hm-board .val small{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--ink-3)}
 .hm-convs{list-style:none;margin:0;padding:0}
-.hm-conv{display:flex;align-items:center;gap:12px;min-height:62px;padding:8px 2px;color:inherit;text-decoration:none}
+.hm-conv{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0;color:inherit;text-decoration:none}
 .hm-convs li+li .hm-conv{border-top:1px solid var(--line)}
-.hm-conv .hm-av{width:40px;height:40px;font-size:13px}
+.hm-conv .hm-av{width:44px;height:44px;font-size:15px;font-weight:500}
 .hm-conv .who{flex:1;min-width:0}
-.hm-conv .who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-conv .who small{display:block;font-size:13.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-conv.unread .who b{font-weight:700}
-.hm-conv .end{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12px;color:var(--ink-3)}
+.hm-conv .who b{display:block;font:500 17px/1.25 var(--text);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-conv .who small{display:block;font-size:15px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-conv.unread .who b{font-weight:600}
+.hm-conv .end{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:13px;color:var(--ink-3)}
 .hm-unread{width:9px;height:9px;border-radius:50%;background:var(--coral)}
-.hm-select{position:relative;display:inline-flex;align-items:center;color:var(--ink-2)}
-.hm-select select{appearance:none;-webkit-appearance:none;min-height:44px;padding:0 26px 0 8px;border:0;background:none;color:var(--ink-2);font:600 16px/1 var(--text);cursor:pointer}
-.hm-select svg{position:absolute;right:4px;width:16px;height:16px;pointer-events:none}
+.hm-select{position:relative;display:inline-flex;align-items:center;color:var(--ink-3)}
+.hm-select select{appearance:none;-webkit-appearance:none;min-height:44px;padding:0 28px 0 8px;border:0;background:none;color:var(--ink-3);font:400 19px/1 var(--text);cursor:pointer}
+.hm-select svg{position:absolute;right:4px;width:18px;height:18px;pointer-events:none}
 .hm-goals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px}
 .hm-goal-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
-.hm-goal-h span{font-weight:600}
+.hm-goal-h span{font-weight:500}
 .hm-goal-h b{font:600 16px/1 var(--text);font-variant-numeric:tabular-nums}
-.hm-goal-h small{font-weight:500;color:var(--ink-3)}
-.hm-pct{display:block;margin-top:6px;font-size:12.5px;color:var(--ink-3)}
+.hm-goal-h small{font-weight:400;color:var(--ink-3)}
+.hm-pct{display:block;margin-top:6px;font-size:13px;color:var(--ink-3)}
 
 /* ------------------------------------------------------------ Edit Home */
 .hm-edit{display:flex;justify-content:center;margin-top:4px}
-.hm-edit .hm-chip{background:#fff;box-shadow:0 1px 2px rgba(18,18,21,.06),0 4px 14px rgba(18,18,21,.07)}
 /* (the sheets live outside .hm) */
 .hm-edit-list{list-style:none;margin:12px 0 16px;padding:0;display:flex;flex-direction:column;gap:8px}
-.hm-edit-list li{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:16px;background:var(--mist)}
+.hm-edit-list li{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:16px;background:var(--fill)}
 .hm-switch{flex:1;display:flex;align-items:center;gap:12px;min-height:48px;min-width:0;cursor:pointer}
 .hm-switch input{flex:none;width:22px;height:22px;accent-color:var(--coral-btn)}
 .hm-switch .who{min-width:0}
-.hm-switch b{display:block;font-weight:600}
-.hm-switch small{display:block;font-size:13px;color:var(--ink-3)}
-.hm-edit-list .hm-round.sm{width:44px;height:44px;box-shadow:0 1px 2px rgba(18,18,21,.08)}
+.hm-switch b{display:block;font-weight:500}
+.hm-switch small{display:block;font-size:13.5px;color:var(--ink-3)}
+.hm-edit-list .hm-round.sm{width:44px;height:44px;box-shadow:none}
 .hm-edit-list .hm-round svg{width:18px;height:18px}
 .hm-pick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.hm-pick .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;text-align:left}
+.hm-pick .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;text-align:left;border-radius:16px}
 .hm-pick small{font-weight:400;color:var(--ink-3)}
 
 /* a phone: the second line has the time, so the right-hand time steps aside for the name */
@@ -190,26 +209,32 @@ a.hm-item:active{background:#efeff2}
   .hm-item .hm-time{display:none}
 }
 @media (max-width:380px){
-  .hm-seg button{padding:0 11px;font-size:14.5px}
-  .hm-big{font-size:36px}
-  .hm-stats{gap:12px}
-  .hm-hello h2{font-size:23px}
+  .hm-seg button{padding:0 11px;font-size:15px}
+  .hm-hero .hm-seg button{padding:0 12px}
+  .hm-big{font-size:35px}
+  .hm-stats{gap:14px}
+  .hm-hello h2{font-size:36px}
+  .hm-period{font-size:17px}
 }
 
 /* ------------------------------------------------------------ a computer (900 px and up) */
 @media (min-width:900px){
+  #view:has(> .stack.hm){background:var(--mist)}
   .view>.stack.hm{max-width:1160px}
   .hm{gap:20px;padding-bottom:32px}
   .hm-card{padding:24px}
+  /* the money is a card again beside the others */
+  .hm-hero{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);padding:24px;box-shadow:var(--sh-card)}
+  .hm-head{padding-top:4px}
+  .hm-hello h2{font-size:32px}
   .hm-seg button{min-height:38px}
   .hm-round{width:40px;height:40px}
   .hm-chip,.hm-period,.hm-more,.hm-tasks-h,.hm-select select{min-height:40px}
-  .hm-round:hover,.hm-menu button:hover{background:var(--mist)}
-  a.hm-item:hover,a.hm-task:hover{background:#efeff2}
-  a.hm-conv:hover{background:var(--mist)}
+  .hm-round:hover,.hm-menu button:hover{background:var(--fill)}
+  a.hm-item:hover,a.hm-task:hover{background:var(--fill-2)}
+  a.hm-conv:hover{background:var(--fill)}
   .hc{height:200px}
   .hm-ag-head h3{font-size:22px}
-  .hm-stats{gap:18px}
 }
 /* from 1,100 px two columns: the clock a bar across, then the cards side by side in their order */
 @media (min-width:1100px){

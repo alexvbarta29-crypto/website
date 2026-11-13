@@ -73,6 +73,8 @@ const parse = () => {
 
 export const currentPath = () => (current ? current.path : parse());
 export const depth = () => stack.length;
+// the screen before this one on the stack (nav.js: a screen the Menu lists is top-level when you came from another)
+export const previous = () => (stack.length > 1 ? stack[stack.length - 2] : null);
 
 // A path and its parents, nearest first: ["/team/us_..", "/team", "/today"].
 export function chain(path) {

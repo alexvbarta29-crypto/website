@@ -177,7 +177,9 @@ test("the agenda: a day, a week or a month of visits in time order with who goes
 
 test("the person's cards: their order first, then the defaults; a card they can't have is dropped", () => {
   const all = ["clock", "money", "agenda", "inbox", "tasks", "goals"];
-  assert.deepEqual(K.layoutOf(null, all), [{ key: "clock", on: true }, { key: "money", on: true }, { key: "agenda", on: true }, { key: "inbox", on: false }, { key: "tasks", on: false }, { key: "goals", on: false }]);
+  // Flyra's Home: the money, then the cards; the clock only for someone who clocks in for field work
+  assert.deepEqual(K.layoutOf(null, all), [{ key: "money", on: true }, { key: "clock", on: false }, { key: "agenda", on: true }, { key: "inbox", on: true }, { key: "tasks", on: true }, { key: "goals", on: true }]);
+  assert.deepEqual(K.layoutOf(null, all, { clock: true }).slice(0, 2), [{ key: "money", on: true }, { key: "clock", on: true }], "a technician-owner gets the clock");
   assert.deepEqual(K.layoutOf({ cards: [{ key: "tasks", on: true }, { key: "money", on: false }, { key: "leaderboard", on: true }] }, ["money", "agenda", "tasks"]),
     [{ key: "tasks", on: true }, { key: "money", on: false }, { key: "agenda", on: true }], "the leaderboard isn't open to them; agenda wasn't saved: its default");
   assert.deepEqual(K.validateLayout({ cards: [{ key: "agenda" }, { key: "agenda", on: false }, { key: "money", on: false }] }), { cards: [{ key: "agenda", on: true }, { key: "money", on: false }] });
@@ -193,9 +195,9 @@ test("the person's cards: their order first, then the defaults; a card they can'
   assert.deepEqual(K.normalizeBoard(null, "techs", "2026-11").rows, []);
 });
 
-test("the tab bar: Home · Schedule · Inbox · Customers · Sales · Menu for the office; techs keep theirs", () => {
-  assert.deepEqual(navFor({ role: "owner" }), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
-  assert.deepEqual(navFor({ role: "admin" }), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+test("the tab bar: Home · Schedule · Inbox · Map · Menu for the office (Flyra's); techs keep theirs", () => {
+  assert.deepEqual(navFor({ role: "owner" }), ["home", "schedule", "inbox", "map", "menu"]);
+  assert.deepEqual(navFor({ role: "admin" }), ["home", "schedule", "inbox", "map", "menu"]);
   assert.deepEqual(navFor({ role: "tech" }), ["today", "inbox", "time", "pay", "me"]);
 });
 
@@ -234,15 +236,15 @@ async function setMode(sor) {
 }
 const home = async (as, opts = {}) => (await t.api("/home", { as, ...opts })).body.data;
 
-test("an owner's Home: the header, Clock in, Money and Today on; the others offered in Edit Home, off", async () => {
+test("an owner's Home (Flyra's): the header, Money, the Leaderboard, Today, Inbox, Tasks and Goals on; the clock offered, off for someone who doesn't clock in", async () => {
   const res = await t.api("/home", { as: fx.owner });
   assert.equal(res.status, 200, JSON.stringify(res.body));
   const d = res.body.data;
   assert.equal(d.date, TODAY);
   assert.equal(d.user.first_name, "Olive");
-  assert.deepEqual(d.layout, [{ key: "clock", on: true }, { key: "money", on: true }, { key: "agenda", on: true }, { key: "leaderboard", on: false }, { key: "inbox", on: false }, { key: "tasks", on: false }, { key: "goals", on: false }], "the leaderboard is offered (the reports module's service is merged), off");
-  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "clock", "money"], "a card that is off isn't computed");
-  assert.deepEqual(d.cards.clock, { minutes: 0, open: null });
+  assert.deepEqual(d.layout, [{ key: "money", on: true }, { key: "clock", on: false }, { key: "leaderboard", on: true }, { key: "agenda", on: true }, { key: "inbox", on: true }, { key: "tasks", on: true }, { key: "goals", on: true }], "the leaderboard is offered (the reports module's service is merged), on");
+  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "leaderboard", "money", "tasks"], "a card that is off isn't computed");
+  assert.equal(d.cards.clock, undefined, "the clock is off: not read");
   // money: Rotor's numbers until cutover, this month
   const m = d.cards.money;
   assert.deepEqual([m.metric, m.period, m.source, m.as_of, m.label], ["collected", "month", "rotor", "2026-11-16", "November"]);
@@ -281,15 +283,17 @@ test("who sees what: the money needs reports:read or the office sign-in; a techn
   assert.equal((await t.api("/home", { office: true })).status, 401, "the office cookie alone is not a CRM sign-in");
 });
 
-test("the budget: a cold default Home is 12 storage calls, each read once, nothing for the cards that are off", async () => {
+test("the budget: a cold default Home is 16 storage calls, each read once, nothing for the cards that are off", async () => {
   await cold();
   const { res, calls } = await counted("/home", { as: fx.owner, office: true });
   assert.equal(res.status, 200);
   const keys = calls.map((c) => c.replace(/^\S+ /, "").replace(/us_\w+\/?$/, "{user}").replace(/^ses\/\w+$/, "ses/{id}")).sort();
-  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/tasks/open", "ix/timesheets/2026-11", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
+  // (Flyra's Home: the inbox's open index for Inbox; the plans and quotes for the Leaderboard's sales; the clock is off: no timesheets)
+  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/inbox/open", "ix/plans", "ix/quotes/2026", "ix/quotes/open", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
+  assert.ok(keys.length <= 16, `${keys.length} calls`);
   assert.equal(new Set(calls).size, calls.length, "nothing read twice");
   assert.ok(!calls.some((c) => c.includes("ix-dirty/")), "no dirty markers");
-  for (const gone of ["ix/inbox/open", "ix/jobs/open", "ix/plans", "ix/sales-attention", "ix/merge-candidates", "sys/health", "ix/import-runs"]) assert.ok(!calls.some((c) => c.endsWith(" " + gone)), `${gone} is not read`);
+  for (const gone of ["ix/jobs/open", "ix/sales-attention", "ix/merge-candidates", "sys/health", "ix/import-runs"]) assert.ok(!calls.some((c) => c.endsWith(" " + gone)), `${gone} is not read`);
 });
 
 test("Edit Home: the person's cards on, off and in their order, saved per person; the others' untouched", async () => {
@@ -311,12 +315,12 @@ test("Edit Home: the person's cards on, off and in their order, saved per person
   assert.ok(Array.isArray(d.cards.inbox.items));
   assert.deepEqual(d.cards.goals, { month: "2026-11", revenue: null, jobs: null, can_edit: true });
   // another person's Home is their own
-  assert.deepEqual((await home(fx.admin)).layout.filter((c) => c.on).map((c) => c.key), ["clock", "money", "agenda"]);
+  assert.deepEqual((await home(fx.admin)).layout.filter((c) => c.on).map((c) => c.key), ["money", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
   // hostile input
   assert.equal((await save(fx.owner, [{ key: "../../etc" }])).status, 400);
   assert.equal((await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: "all" } })).status, 400);
   // back to the defaults for the tests below
-  assert.equal((await save(fx.owner, [{ key: "clock", on: true }, { key: "money", on: true }, { key: "agenda", on: true }])).status, 200);
+  assert.equal((await save(fx.owner, [{ key: "money", on: true }, { key: "clock", on: true }, { key: "agenda", on: true }])).status, 200);
 });
 
 test("goals: owners set a monthly revenue and jobs goal; the Money card shows the revenue's progress", async () => {
@@ -381,6 +385,8 @@ test("after cutover the collected money is the CRM's own payments, by day", asyn
 });
 
 test("the clock: Clock in from Home shows the open shift; Clock out adds its minutes to today's", async () => {
+  // (off by default for an owner who doesn't go out on visits: Edit Home turns it on)
+  assert.equal((await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [{ key: "money", on: true }, { key: "clock", on: true }] } })).status, 200);
   try {
     const cin = await t.api("/clock", { method: "POST", as: fx.owner, body: { action: "in", category: "sales", client_id: randomUUID(), client_at: "2026-11-17T15:00:00Z" } });
     assert.ok([200, 201].includes(cin.status), JSON.stringify(cin.body));
@@ -415,13 +421,14 @@ test("the leaderboard waits for the reports module's service: hidden without it,
   const asked = [];
   const put = S.__swapServiceForTests("reports.leaderboard", async (q) => { asked.push(q.board); return { rows: [{ user_id: fx.owner.id, name: "Olive Owner", value_cents: 120000, count: 2 }] }; });
   try {
-    assert.ok((await home(fx.owner)).layout.some((c) => c.key === "leaderboard" && !c.on), "offered, off until added");
+    assert.ok((await home(fx.owner)).layout.some((c) => c.key === "leaderboard"), "offered");
     await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [{ key: "leaderboard", on: true }] } });
     const b = (await home(fx.owner)).cards.leaderboard;
     assert.deepEqual([b.board, b.title, b.rows[0].name, b.rows[0].value, b.rows[0].note], ["sales", "November Leaderboard", "Olive Owner", 120000, "2 sold"]);
     const techs = (await t.api("/home/leaderboard?board=techs", { as: fx.owner })).body.data;
     assert.equal(techs.board, "techs");
-    assert.deepEqual(asked, ["sales", "techs"]);
+    assert.deepEqual(asked.slice(-2), ["sales", "techs"]);
+    assert.ok(asked.every((b) => b === "sales" || b === "techs"));
     assert.ok(!(await home(fx.noReports)).layout.some((c) => c.key === "leaderboard"), "money people only");
   } finally {
     put();
@@ -476,7 +483,7 @@ test("the Menu: every manifest's Menu entry names a known section; an older shel
   assert.ok(entries.length >= 20);
   assert.deepEqual(entries.filter((n) => !known.has(n.section)).map((n) => `${n.module}: ${n.label}`), [], "each entry says its section");
   for (const want of ["work", "sales", "customers", "messages", "office", "admin"]) assert.ok(entries.some((n) => n.section === want), want);
-  assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "contacts", "sales", "menu"]);
+  assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "map", "menu"]);
   assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
   assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));
   for (const key of navFor({ role: "owner" })) assert.ok(nav.TABS[key], `a tab for ${key}`);

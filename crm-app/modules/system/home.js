@@ -1,9 +1,11 @@
-// Home: the first screen the office sees (the owner's Nov 12 choice: Rotor's
-// phone Home with the best of Flyra's, as cards each person shows, hides
-// and orders with Edit Home, saved on the server). One read (GET /home)
-// brings the header and the data of the cards that are on:
+// Home: the first screen the office sees (the owner's Nov 12 choice, cards
+// each person shows, hides and orders with Edit Home, saved on the server;
+// Nov 13: "make it look more like Flyra", so Flyra's Home: the greeting and
+// the name big, the money on the canvas under them, then Flyra's cards).
+// One read (GET /home) brings the header and the data of the cards that
+// are on:
 //
-//   the avatar, "Welcome back, {first name}", the date, the bell
+//   "Good evening", the first name, the bell
 //   Clock in     TIMESHEET, today's hours, Clock In / Clock Out (POST /clock)
 //   Money        Collected | Scheduled | ARR, a period (This week, This
 //                month, Last 3 months, This year, Custom range), the big
@@ -76,6 +78,9 @@ export function timeRange(start, end) {
   return ap === bp ? `${at} – ${bt} ${bp}` : `${a} – ${b}`;
 }
 const colorOk = (c) => /^#[0-9a-f]{6}$/i.test(c || "");
+// Flyra's greeting, by the hour in the company's zone
+const HOUR = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" });
+export const greeting = (d) => { const h = Number(HOUR.format(d instanceof Date ? d : new Date(d))) % 24; return h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
 // Home's own small icons (the shared set has no chevrons or play/stop)
 const svg = (d) => html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const LOCAL = {
@@ -151,6 +156,8 @@ async function clockAction(action, ctx) {
 
 const METRICS = [["collected", "Collected"], ["scheduled", "Scheduled"], ["arr", "ARR"]];
 const PERIOD_NAMES = { week: "This week", month: "This month", "3m": "Last 3 months", year: "This year", custom: "Custom range" };
+// Flyra's short period on the button ("1M ⌄"); the menu says it in words
+const PERIOD_SHORT = { week: "1W", month: "1M", "3m": "3M", year: "YTD", custom: "Custom" };
 const MISSING = {
   "no-key": "Rotor's numbers show here once the office data key is set in Netlify (OFFICE_DATA_KEY).",
   "bad-key": "Rotor's numbers can't be opened with this site's office data key. Re-seal the dashboard snapshot (docs/DASHBOARD.md).",
@@ -170,14 +177,14 @@ function moneyCard(s, ctx) {
   const stats = m.metric === "arr"
     ? html`<div class="hm-stats"><div><span>Change</span><b class="${m.change > 0 ? "up" : m.change < 0 ? "down" : ""}">${signed(m.change)}</b></div></div>`
     : html`<div class="hm-stats"><div><span>Avg / day</span><b>${usd(m.avg)}</b></div><div><span>${PEAK[m.grain] || "Peak"}</span><b>${m.peak ? usd(m.peak.value) : "-"}</b></div></div>`;
-  return html`<section class="hm-card hm-c-money" data-card="money" aria-label="Money">
-    ${seg("metric", METRICS, ui.metric, "What to show", "full")}
+  return html`<section class="hm-c-money hm-hero" data-card="money" aria-label="Money">
     <div class="hm-row2">
-      <div class="hm-eyebrow">${m.metric === "arr" ? "Annual recurring revenue" : m.label}</div>
-      <div class="hm-menu-wrap"><button type="button" class="hm-period" data-hm="period" aria-haspopup="true" aria-expanded="${ui.menu ? "true" : "false"}">${ui.period === "custom" ? "Custom" : PERIOD_NAMES[ui.period]}${ic("chevron-down")}</button>
+      ${seg("metric", METRICS, ui.metric, "What to show")}
+      <div class="hm-menu-wrap"><button type="button" class="hm-period" data-hm="period" aria-haspopup="true" aria-expanded="${ui.menu ? "true" : "false"}" ${attrs({ "aria-label": `Period: ${ui.period === "custom" ? "Custom range" : PERIOD_NAMES[ui.period]}` })}>${PERIOD_SHORT[ui.period] || "1M"}${ic("chevron-down")}</button>
         ${ui.menu ? html`<ul class="hm-menu" role="menu">${["week", "month", "3m", "year"].map((k) => html`<li><button type="button" role="menuitemradio" ${attrs({ "data-hm": "pick-period", "data-v": k, "aria-checked": ui.period === k ? "true" : "false" })}><span class="ck" aria-hidden="true">${ui.period === k ? icon("check") : ""}</span>${PERIOD_NAMES[k]}</button></li>`)}<li class="sep"><button type="button" role="menuitem" data-hm="custom">Custom range…</button></li></ul>` : ""}
       </div>
     </div>
+    <div class="hm-eyebrow">${m.metric === "arr" ? "Annual recurring revenue" : m.label}</div>
     <div class="hm-money-row"><div class="hm-big" ${attrs({ "aria-busy": m.loading ? "true" : null })}>${m.loading ? "…" : usd(m.total)}</div>${m.loading ? "" : stats}</div>
     ${m.goal ? html`<div class="hm-goal"><span class="hm-track" aria-hidden="true"><span class="hm-fill" ${attrs({ style: `width:${Math.min(100, Math.max(0, m.goal.pct || 0))}%` })}></span></span><span>${m.goal.pct}% of the ${usd(m.goal.target)} goal</span></div>` : ""}
     ${m.missing ? html`<p class="hm-note">${MISSING[m.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
@@ -262,11 +269,12 @@ function agendaCard(s, ctx) {
   const tasks = a.tasks;
   const openT = s.ui.tasksOpen;
   const word = a.view === "day" ? (a.date === localDate(s.now) ? "today" : "that day") : a.view === "week" ? "that week" : "that month";
+  const today = a.view === "day" && a.date === localDate(s.now);
   return html`<section class="hm-card hm-c-agenda" data-card="agenda" aria-labelledby="hm-ag-h">
-    ${seg("view", VIEWS, a.view, "Daily, weekly or monthly", "full")}
-    <div class="hm-ag-head"><div class="t"><h3 id="hm-ag-h">${agendaTitle(a)}</h3><span>${a.loading ? "…" : plural(a.count || 0, "item")}</span></div>
+    <div class="hm-ag-head"><div class="t"><h3 id="hm-ag-h">${today ? "Today" : agendaTitle(a)}</h3><span>${today ? `${dateShort(a.date)} · ` : ""}${a.loading ? "…" : plural(a.count || 0, "item")}</span></div>
       <div class="hm-arrows"><button type="button" class="hm-round" data-hm="ag-move" data-v="-1" aria-label="Earlier">${ic("chevron-left")}</button><button type="button" class="hm-round" data-hm="ag-move" data-v="1" aria-label="Later">${ic("chevron-right")}</button></div></div>
-    ${a.loading ? html`<p class="hm-note" aria-busy="true">Loading…</p>` : items.length ? rows : html`<div class="hm-empty"><span class="art">${icon("schedule")}</span><b>Nothing scheduled for ${word}</b><p>Visits show up here as they're booked.</p></div>`}
+    ${seg("view", VIEWS, a.view, "Daily, weekly or monthly", "full")}
+    ${a.loading ? html`<p class="hm-note" aria-busy="true">Loading…</p>` : items.length ? rows : html`<div class="hm-empty"><span class="art">${icon("cal12")}</span><b>Nothing scheduled for ${word}</b><p>Your jobs and tasks will appear here.</p></div>`}
     ${(a.count || 0) > items.length ? html`<a class="hm-more-row" href="${open(ctx, "/schedule") || "#/schedule"}">${plural(a.count - items.length, "more visit")} on the Schedule</a>` : ""}
     ${tasks && tasks.length ? html`<div class="hm-tasks">
       <button type="button" class="hm-tasks-h" data-hm="tasks-fold" aria-expanded="${openT ? "true" : "false"}"><span>Tasks without due date <b>${tasks.length}</b></span>${ic(openT ? "chevron-up" : "chevron-down")}</button>
@@ -309,7 +317,7 @@ function leaderboardCard(s, ctx) {
   const full = open(ctx, "/leaderboard");
   return html`<section class="hm-card hm-c-board" data-card="leaderboard" aria-labelledby="hm-lb-h">
     <div class="hm-bar"><h3 id="hm-lb-h">${b.title || "Leaderboard"}</h3>${seg("board", [["sales", "Sales"], ["techs", "Techs"]], b.board || "sales", "Sales or techs")}</div>
-    ${rows.length ? html`<ol class="hm-board">${rows.map((r) => html`<li><span class="rank">${r.rank}</span>${avatar(r)}<span class="who"><b>${r.name || "Someone"}</b>${r.note ? html`<small>${r.note}</small>` : ""}</span><span class="val">${usd(r.value)}${r.unit ? html` <small>${r.unit}</small>` : ""}</span></li>`)}</ol>`
+    ${rows.length ? html`<ol class="hm-board">${rows.map((r) => html`<li><span class="rank">${r.rank}</span>${avatar({ name: r.name }, "hm-av ol")}<span class="who"><b>${r.name || "Someone"}</b>${r.note ? html`<small>${r.note}</small>` : ""}</span><span class="val">${usd(r.value)}${r.unit ? html` <small>${r.unit}</small>` : ""}</span></li>`)}</ol>`
       : html`<div class="hm-empty"><span class="art">${icon("chart")}</span><b>Nobody on the board yet</b><p>${b.board === "techs" ? "Jobs done this month show here." : "Plans and quotes sold this month show here."}</p></div>`}
     ${full ? html`<div class="hm-foot"><span></span><a class="hm-more" href="${full}">See the leaderboard</a></div>` : ""}
   </section>`;
@@ -322,8 +330,8 @@ function inboxCard(s, ctx) {
   const all = open(ctx, "/inbox");
   return html`<section class="hm-card hm-c-inbox" data-card="inbox" aria-labelledby="hm-in-h">
     <div class="hm-bar"><h3 id="hm-in-h">Inbox</h3>${all ? html`<a class="hm-more" href="${all}">Open</a>` : ""}</div>
-    ${items.length ? html`<ul class="hm-convs">${items.map((v) => { const href = open(ctx, `/inbox/${v.id}`); const body = html`${avatar({ name: v.name })}<span class="who"><b>${v.name}</b><small>${v.preview}</small></span><span class="end"><small>${v.at ? ago(v.at) : ""}</small>${v.unread ? html`<span class="hm-unread" aria-label="${`${v.unread} unread`}"></span>` : ""}</span>`; return html`<li>${href ? html`<a class="${"hm-conv" + (v.unread ? " unread" : "")}" href="${href}">${body}</a>` : html`<div class="hm-conv">${body}</div>`}</li>`; })}</ul>`
-      : html`<div class="hm-empty"><span class="art">${icon("inbox")}</span><b>No recent conversations</b><p>New conversations will appear here.</p></div>`}
+    ${items.length ? html`<ul class="hm-convs">${items.map((v) => { const href = open(ctx, `/inbox/${v.id}`); const body = html`${avatar({ name: v.name }, "hm-av ol")}<span class="who"><b>${v.name}</b><small>${v.preview}</small></span><span class="end"><small>${v.at ? ago(v.at) : ""}</small>${v.unread ? html`<span class="hm-unread" aria-label="${`${v.unread} unread`}"></span>` : ""}</span>`; return html`<li>${href ? html`<a class="${"hm-conv" + (v.unread ? " unread" : "")}" href="${href}">${body}</a>` : html`<div class="hm-conv">${body}</div>`}</li>`; })}</ul>`
+      : html`<div class="hm-empty"><span class="art plain">${icon("inbox")}</span><b>No recent conversations</b><p>New conversations will appear here.</p></div>`}
   </section>`;
 }
 
@@ -350,10 +358,10 @@ function goalsCard(s, ctx) {
   const rows = [];
   if (g.revenue) rows.push(["Revenue this month", g.revenue.value, g.revenue.target, usd]);
   if (g.jobs) rows.push(["Jobs this month", g.jobs.value, g.jobs.target, (n) => (n === null || n === undefined ? "-" : Number(n).toLocaleString("en-US"))]);
-  return html`<section class="hm-card hm-c-goals" data-card="goals" aria-labelledby="hm-gl-h">
+  return html`<section class="${"hm-card hm-c-goals" + (rows.length ? "" : " hm-plain")}" data-card="goals" aria-labelledby="hm-gl-h">
     <div class="hm-bar"><h3 id="hm-gl-h">Goals</h3>${g.can_edit ? html`<button type="button" class="hm-chip" data-hm="goals">${rows.length ? "Edit" : "Add"}</button>` : ""}</div>
     ${rows.length ? html`<ul class="hm-goals">${rows.map(([label, v, target, fmt]) => { const p = v === null || v === undefined ? null : Math.round((v / target) * 100); return html`<li><div class="hm-goal-h"><span>${label}</span><b>${fmt(v)} <small>of ${fmt(target)}</small></b></div><span class="hm-track" aria-hidden="true"><span class="hm-fill" ${attrs({ style: `width:${Math.min(100, Math.max(0, p || 0))}%` })}></span></span><small class="hm-pct">${p === null ? "Not counted yet" : `${p}%`}</small></li>`; })}</ul>`
-      : html`<div class="hm-empty"><b>No goals yet</b><p>${g.can_edit ? "Tap Add to set a monthly revenue or jobs goal and track progress here." : "An owner can set a monthly revenue or jobs goal."}</p></div>`}
+      : html`<div class="hm-empty"><b>No goals yet</b><p>${g.can_edit ? "Tap Add to set a revenue or jobs goal and track progress here." : "An owner can set a monthly revenue or jobs goal."}</p></div>`}
   </section>`;
 }
 
@@ -448,9 +456,8 @@ export default {
     const shown = (s.home.layout || []).filter((c) => c.on && DRAW[c.key] && s.home.cards[c.key]);
     return html`<div class="stack hm">
       <header class="hm-head">
-        ${avatar({ name: u.name || first, first_name: first, color: u.color }, "hm-av lg")}
-        <div class="hm-hello"><h2>Welcome back, ${first}</h2><div class="date">${dateLong(s.now)}</div></div>
-        <a class="hm-round bell" href="#/notifications" aria-label="${n ? `Notifications, ${n} new` : "Notifications"}">${icon("bell")}${n ? html`<span class="badge">${n > 99 ? "99+" : n}</span>` : ""}</a>
+        <div class="hm-hello"><p class="hm-greet">${greeting(s.now)}</p><h2>${first}</h2><span class="sr">${dateLong(s.now)}</span></div>
+        <a class="rnd bell" href="#/notifications" aria-label="${n ? `Notifications, ${n} new` : "Notifications"}">${icon("bell")}${n ? html`<span class="badge">${n > 99 ? "99+" : n}</span>` : ""}</a>
       </header>
       ${mode.paused ? html`<a class="card alert hm-alert" href="#/settings/data"><h2>The CRM is paused</h2><p>${mode.paused_reason === "restore" ? "A backup was restored. " : ""}Nothing is texted, emailed, charged or automated${mode.paused_at ? ` since ${dateTime(mode.paused_at)}` : ""}. An owner resumes it on Settings → Data.</p></a>` : ""}
       <div class="hm-grid">${shown.map((c) => DRAW[c.key](s, ctx))}</div>

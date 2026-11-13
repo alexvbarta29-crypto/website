@@ -418,5 +418,21 @@ export const ICONS = {
   swap: svg('<path d="M5 8.5h13l-3.5-3.5M19 15.5H6l3.5 3.5"/>'),
   close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
   trend: svg('<path d="M4 16.5l5-5 4 3.5 7-7.5"/><path d="M15 7.5h5v5"/>'),
+  // the Nov 2026 look (Flyra's icons): the bar's calendar with its date, the + menu's, the theme's
+  cal12: svg('<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9h17M8 2.8v3.4M16 2.8v3.4"/><path d="M8.6 13.2l1.4-1v5.6M13.3 13.4c.3-.8 1-1.2 1.7-1.2 1 0 1.6.7 1.6 1.5 0 .7-.4 1.2-1 1.8l-2.4 2.3h3.5" stroke-width="1.4"/>'),
+  userplus: svg('<circle cx="10" cy="8" r="3.5"/><path d="M3.5 19.5c.7-3.4 3.3-5.2 6.5-5.2 1.3 0 2.5.3 3.5.9"/><circle cx="17.5" cy="17" r="3.8"/><path d="M17.5 15.2v3.6M15.7 17h3.6"/>'),
+  receipt: svg('<path d="M7 3.5h10a1.5 1.5 0 0 1 1.5 1.5v15.5l-2.5-1.5-2.5 1.5-2.5-1.5-2.5 1.5-2.5-1.5V5A1.5 1.5 0 0 1 7 3.5z" transform="translate(-.5 0)"/><path d="M9 8.5h6M9 12h6M9 15.5h3.5"/>'),
+  clipboard: svg('<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><rect x="9" y="3" width="6" height="3.2" rx="1.2"/><path d="M9.5 10.5h5M9.5 13.5h5M9.5 16.5h3.5"/>'),
+  hammer: svg('<path d="M13.5 6.5 4.8 15.2a1.8 1.8 0 0 0 2.5 2.5L16 9"/><path d="M11.5 4.5c2.8-1.2 5.5-.6 7.5 1.5l1.5 1.5-2.5 2.5-1.5-1.5-1.5 1.5-3-3 1.5-1.5z"/>'),
+  moon: svg('<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>'),
+  auto: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/>'),
+  chevdown: svg('<path d="m6 9 6 6 6-6"/>'),
+  chevleft: svg('<path d="m15 6-6 6 6 6"/>'),
+  chevright: svg('<path d="m9 6 6 6-6 6"/>'),
+  archive: svg('<rect x="3.5" y="4.5" width="17" height="4.5" rx="1.2"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4"/>'),
+  call: svg('<path d="M6.6 3.5h2.6l1.4 4-2 1.5a12 12 0 0 0 6.4 6.4l1.5-2 4 1.4v2.6a2 2 0 0 1-2.2 2A16 16 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/>'),
+  chat: svg('<path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3v-3H5A1.5 1.5 0 0 1 3.5 16V7A1.5 1.5 0 0 1 5 5.5z"/>'),
+  compose: svg('<path d="M11 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5v-5"/><path d="M17.5 3.5a2 2 0 0 1 3 3L12 15l-4 1 1-4z"/>'),
+  people: svg('<circle cx="8" cy="8.5" r="3"/><circle cx="16" cy="8.5" r="3"/><path d="M2.5 19c.5-3 2.8-4.6 5.5-4.6 1.6 0 3 .6 4 1.6 1-1 2.4-1.6 4-1.6 2.7 0 5 1.6 5.5 4.6"/>'),
 };
 export const icon = (name) => ICONS[name] || raw("");

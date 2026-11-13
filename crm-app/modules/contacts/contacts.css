@@ -5,11 +5,11 @@
 
 /* ---------------------------------------------------------------- the list */
 .ct-screen{flex:1;min-height:0;display:flex;flex-direction:column}
-.ct-bar{flex:none;padding:10px calc(16px + var(--right)) 6px calc(16px + var(--left));background:#fff;border-bottom:1px solid var(--line)}
+.ct-bar{flex:none;padding:10px calc(16px + var(--right)) 6px calc(16px + var(--left));background:var(--card);border-bottom:1px solid var(--line)}
 .ct-search{position:relative;display:flex;align-items:center}
 .ct-search svg{position:absolute;left:13px;width:18px;height:18px;color:var(--ink-3);pointer-events:none}
-.ct-search input{width:100%;min-height:44px;padding:10px 44px 10px 40px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--mist);font-size:16px;outline:0;-webkit-appearance:none;appearance:none;transition:border-color .15s var(--ease),box-shadow .15s var(--ease),background .15s var(--ease)}
-.ct-search input:focus{background:#fff;border-color:var(--coral);box-shadow:var(--focus)}
+.ct-search input{width:100%;min-height:46px;padding:10px 44px 10px 42px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--mist);color:var(--ink);font-size:17px;outline:0;-webkit-appearance:none;appearance:none;transition:border-color .15s var(--ease),box-shadow .15s var(--ease),background .15s var(--ease)}
+.ct-search input:focus{background:var(--card);border-color:var(--coral);box-shadow:var(--focus)}
 .ct-search .clear{position:absolute;right:0;top:0;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:var(--r);background:none;color:var(--ink-3);font-size:16px;cursor:pointer}
 .ct-bar .chips{margin-top:8px}
 .ct-count{margin:6px 2px 0;font-size:12.5px;color:var(--ink-3)}
@@ -21,10 +21,10 @@
 .ct-body{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
 .ct-rail{position:absolute;z-index:3;right:var(--right);top:8px;bottom:84px;width:44px;display:flex;flex-direction:column;justify-content:center;align-items:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
 .ct-rail span{flex:0 1 16px;min-height:0;font:600 10.5px/16px var(--text);color:var(--coral-ink)}
-.ct-rail span.off{color:#c3c3c9}
-.ct-rail.live{background:rgba(22,22,27,.05);border-radius:var(--r) 0 0 var(--r)}
+.ct-rail span.off{color:var(--ink-3);opacity:.45}
+.ct-rail.live{background:var(--fill);border-radius:var(--r) 0 0 var(--r)}
 .ct-row-pills{display:flex;gap:6px;align-items:center}
-.notice{display:flex;align-items:center;gap:10px;min-height:48px;margin:0 0 10px;padding:10px 14px;border-radius:var(--r-lg);background:var(--amber-bg);border:1px solid #f3dca6;color:#6b4510;text-decoration:none;font-weight:500}
+.notice{display:flex;align-items:center;gap:10px;min-height:48px;margin:0 0 10px;padding:10px 14px;border-radius:var(--r-lg);background:var(--amber-bg);border:1px solid var(--amber-bg);color:var(--amber-ink);text-decoration:none;font-weight:500}
 .notice svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .notice .chev{margin-left:auto}
 
@@ -39,7 +39,7 @@
 .ct-id{display:flex;align-items:center;gap:14px;min-width:0}
 .ct-id .avatar{width:52px;height:52px;font-size:18px}
 .ct-id .who{min-width:0}
-.ct-id h2{margin:0;font:800 24px/1.12 var(--head);letter-spacing:-.015em;overflow-wrap:anywhere}
+.ct-id h2{margin:0;font:700 24px/1.12 var(--head);letter-spacing:-.015em;overflow-wrap:anywhere}
 .ct-town{margin:3px 0 0!important;color:var(--ink-2)!important;font-weight:500}
 .ct-id .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
 .pill.ct-plan{background:var(--green-bg);color:var(--green-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis}
@@ -47,10 +47,10 @@
 .ct-nums{display:flex;gap:8px;margin:0}
 .ct-num{flex:1 1 0;min-width:0;padding:8px 9px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--mist)}
 .ct-num dt{font:500 11.5px/1.2 var(--text);color:var(--ink-3)}
-.ct-num dd{margin:4px 0 0;font:800 19px/1.1 var(--head);letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-num dd{margin:4px 0 0;font:700 19px/1.1 var(--head);letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ct-num.bad dd{color:var(--coral-ink)}
 .ct-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.ct-acts>a,.ct-acts>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:0 4px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;box-shadow:var(--sh-xs);color:var(--ink);text-decoration:none;font:600 13px/1 var(--text)}
+.ct-acts>a,.ct-acts>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:0 4px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--card);box-shadow:var(--sh-xs);color:var(--ink);text-decoration:none;font:600 13px/1 var(--text)}
 .ct-acts>a svg{color:var(--coral-ink)}
 .ct-acts>a:active{background:var(--mist-2)}
 .ct-acts>span{background:var(--mist);color:var(--ink-3);box-shadow:none}
@@ -67,7 +67,7 @@
 .ct-mod .stack>.section-h:first-child,.ct-mod .stack>.btn-row:first-child+.section-h{margin-top:4px}
 .ct-mod .btn-row{margin-top:0}
 /* one coral button per screen: inside a section a module's own "New ..." is a quiet one, its own width */
-.ct-mod .btn.primary{background:#fff;border-color:var(--line-2);color:var(--ink);box-shadow:var(--sh-xs)}
+.ct-mod .btn.primary{background:var(--card);border-color:var(--line-2);color:var(--ink);box-shadow:var(--sh-xs)}
 .ct-mod .btn.primary svg{color:var(--coral-ink)}
 .ct-mod .btn-row .btn,.ct-mod .sl-tab-acts .btn,.ct-mod .mn-acts .btn{flex:0 1 auto}
 .ct-mod .card.empty{padding:18px 16px}
@@ -157,23 +157,43 @@
 }
 @media (hover:hover) and (pointer:fine){.ct-acts>a:hover{background:var(--mist)}}
 
-/* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's) */
-.cc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.cc{border:1px solid var(--line);border-radius:var(--r-xl);background:var(--card);box-shadow:var(--sh-card);overflow:hidden}
-.cc-top{display:flex;align-items:center;gap:10px;min-height:62px;padding:12px 14px 12px 16px;color:var(--ink);text-decoration:none}
-.cc-top:active{background:var(--mist)}
-.cc-nm{flex:1;min-width:0;font:600 17px/1.25 var(--text);overflow-wrap:anywhere}
-.cc-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:64%}
-.cc-st,.cc-svc{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;font:600 13px/1 var(--text);white-space:nowrap}
-.cc-st{background:var(--grey-bg);color:var(--grey-ink)}
-.cc-st.green{background:var(--green-bg);color:var(--green-ink)}
-.cc-st.blue{background:var(--blue-bg);color:var(--blue-ink)}
-.cc-st.amber{background:var(--amber-bg);color:var(--amber-ink)}
-.cc-svc{max-width:170px;overflow:hidden;text-overflow:ellipsis;background:var(--mist-2);color:var(--ink-2);font-weight:500}
-.cc-band{display:flex;align-items:center;gap:22px;min-height:64px;padding:8px 12px 8px 16px;background:var(--mist);border-top:1px solid var(--line)}
-.cc-k{display:flex;flex-direction:column;gap:3px;min-width:0}
-.cc-k small{font:500 11.5px/1 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
-.cc-k b{font:600 16px/1.1 var(--text);white-space:nowrap}
-.cc-acts{margin-left:auto;display:flex;gap:8px}
-.cc-acts .rnd{background:#fff;box-shadow:0 0 0 1px var(--line-2)}
+/* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's two-tone cards, in both themes) */
+.cc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.cc{border:1px solid var(--card-line);border-radius:var(--r-lg);background:var(--card);box-shadow:var(--sh-card);overflow:hidden}
+html[data-theme="light"] .cc{border-color:var(--line)}
+.cc-top{display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 16px 12px 18px;color:var(--ink);text-decoration:none}
+.cc-top:active{background:var(--fill)}
+.cc-nm{flex:1;min-width:0;font:400 17.5px/1.25 var(--text);letter-spacing:-.02em;overflow-wrap:anywhere}
+.cc-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:64%}
+.cc-st,.cc-svc{display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:999px;font:400 15px/1 var(--text);letter-spacing:-.01em;white-space:nowrap}
+/* Rotor's filled pills: Active green, a lead blue; the plan grey with a hairline */
+.cc-st{background:var(--pill-grey);color:var(--on-pill-grey);box-shadow:inset 0 0 0 1px var(--pill-grey-line)}
+.cc-st.green{background:var(--pill-green);color:var(--on-pill-green);box-shadow:none}
+.cc-st.blue{background:var(--blue);color:#fff;box-shadow:none}
+html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
+.cc-st.amber{background:var(--pill-orange);color:var(--on-pill-orange);box-shadow:none}
+.cc-svc{max-width:170px;overflow:hidden;text-overflow:ellipsis;background:var(--pill-grey);color:var(--on-pill-grey);box-shadow:inset 0 0 0 1px var(--pill-grey-line)}
+.cc-band{display:flex;align-items:center;gap:26px;min-height:64px;padding:8px 14px 8px 18px;background:var(--card-2);border-top:1px solid var(--line)}
+.cc-k{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cc-k small{font:400 12.5px/1 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.cc-k b{font:400 17px/1.15 var(--text);letter-spacing:-.02em;white-space:nowrap}
+.cc-acts{margin-left:auto;display:flex;gap:10px}
+.cc-acts .rnd{background:var(--card);border:1px solid var(--line-2);box-shadow:none}
+.cc-acts .rnd svg{width:20px;height:20px}
 .ct-grp .ct-ltr{margin-bottom:2px}
+/* the filter sheet (a phone's): the chips that sit under the search on a desk */
+.ct-filter{display:flex;flex-direction:column;gap:12px}
+.chips.wrap{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
+.ct-filter .notice{margin:4px 0 0}
+/* a phone (Rotor's Customers): the title and round buttons only; the search opens in place */
+@media (max-width:899px){
+  .ct-bar{border-bottom:0;background:var(--mist);padding-top:4px;padding-bottom:8px}
+  .ct-bar:not(.open){display:none}
+  .ct-bar .chips,.ct-bar .ct-count{display:none}
+  .ct-search input{border-radius:999px;background:var(--card);border-color:var(--card-line)}
+  .ct-rail{display:none!important}
+  .ct-scroll.has-rail{padding-right:calc(16px + var(--right))}
+  .ct-ltr{display:none}
+  .ct-scroll>.notice{display:none}
+  .ct-scroll{padding-top:6px}
+}

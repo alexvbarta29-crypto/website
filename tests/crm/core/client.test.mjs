@@ -73,20 +73,22 @@ test("screens load behind a skeleton, never a spinner", async () => {
   assert.match(readFileSync("netlify/lib/crm/core/shell-html.mjs", "utf8"), /<div class="skel" id="boot"/);
 });
 
-test("the stylesheet keeps the phone rules: 44 px buttons, 16 px inputs, loaded weights only, a left rail from 900 px", () => {
+test("the stylesheet keeps the phone rules: 44 px buttons, 16 px inputs, the iPhone's own font, a left rail from 900 px", () => {
   const css = readFileSync("crm-app/styles/crm.css", "utf8");
   // Regressions (M1.2 review): the update banner's button was 36 px with a
   // synthesized 700; the link field was 14 px (iOS zooms); no wide layout.
   assert.match(css, /\.banner button\{[^}]*min-height:44px/);
   assert.match(css, /\.copy-box input\{[^}]*font-size:16px/);
-  const loaded = [...css.matchAll(/@font-face\{font-family:'([^']+)';[^}]*font-weight:(\d+)/g)].map((m) => m[1] + " " + m[2]);
-  assert.deepEqual(loaded.sort(), ["Cabinet Grotesk 700", "Cabinet Grotesk 800", "General Sans 400", "General Sans 500", "General Sans 600"]);
-  // no weight that isn't loaded: General Sans stops at 600 (700 and 800 are Cabinet Grotesk's), in the core and every module
+  // the Nov 2026 look (Rotor's and Flyra's): the phone's own font (San Francisco on an iPhone), nothing to load
+  assert.deepEqual([...css.matchAll(/@font-face/g)], [], "no web fonts in the app");
+  assert.match(css, /--sys:-apple-system,BlinkMacSystemFont,"SF Pro Text"/);
+  assert.match(css, /--text:var\(--sys\)/);
+  assert.match(css, /--head:var\(--sys\)/);
+  // no weight the system font doesn't have, in the core and every module
   for (const f of ["crm-app/styles/crm.css", ...readdirSync("crm-app/modules", { withFileTypes: true }).filter((d) => d.isDirectory()).flatMap((d) => readdirSync(`crm-app/modules/${d.name}`).filter((x) => x.endsWith(".css")).map((x) => `crm-app/modules/${d.name}/${x}`))]) {
     const text = readFileSync(f, "utf8");
-    assert.doesNotMatch(text, /font:\s*(700|800|900)[^;}]*var\(--text\)/, `${f}: General Sans has no 700 or 800 here`);
-    assert.doesNotMatch(text, /font(-weight)?:\s*(900|bold)\b/, `${f}: a weight that isn't loaded`);
-    for (const m of text.matchAll(/([^{}]*)\{([^}]*font-weight:\s*(700|800)[^}]*)\}/g)) assert.ok(!/var\(--text\)/.test(m[2]), `${f}: ${m[1].trim().slice(-50)} sets a General Sans weight over 600`);
+    assert.doesNotMatch(text, /Cabinet Grotesk|General Sans/, `${f}: the app uses the phone's own font`);
+    assert.doesNotMatch(text, /font(-weight)?:\s*(900|bold)\b/, `${f}: a weight the app doesn't use`);
   }
   for (const m of css.matchAll(/font-size:(\d+(?:\.\d+)?)px/g)) {
     const before = css.slice(Math.max(0, m.index - 200), m.index);
