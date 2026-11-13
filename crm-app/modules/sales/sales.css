@@ -83,3 +83,36 @@ p.small>a.linkish{display:inline-block;min-height:0;padding:14px 0;margin:-14px 
   .sl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
 }
 @media (prefers-reduced-motion:reduce){ .sl-card{transition:none} }
+
+/* Signs & flyers (signs.js, sign.js, sign-form.js): QR codes on yard signs,
+   door hangers and flyers, what each brought in. */
+.sg-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0 4px}
+.sg-nums div{min-width:0;padding:6px 8px;border-radius:var(--r);background:var(--mist)}
+.sg-nums b{display:block;font:700 15px/1.2 var(--head);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.sg-nums small{display:block;font-size:12px;color:var(--ink-3)}
+.sg-nums.big div{padding:10px 12px}
+.sg-nums.big b{font-size:20px}
+.sg-total h2{margin:0 0 2px}
+.sg-row .who{min-width:0}
+.sg-head .top-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sg-head h2{margin:0;font:800 22px/1.15 var(--head);letter-spacing:-.015em}
+.sg-head .sub{margin:4px 0 6px;color:var(--ink-3)}
+.sg-code{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.sg-qr{width:min(70vw,260px);background:#fff}
+.sg-qr svg{display:block;width:100%;height:auto}
+.sg-short{margin:0;font:600 15px/1.3 var(--text);color:var(--ink);overflow-wrap:anywhere}
+.sg-print{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.sg-print:first-of-type{border-top:0}
+.sg-print > span:first-child{font-weight:600;min-width:0}
+.sg-print .btn-row{margin:0}
+.sg-h3{margin:16px 0 8px;font:700 14px/1.2 var(--head);color:var(--ink-2)}
+.sg-days{display:flex;align-items:flex-end;gap:2px;height:64px;padding:0 0 2px;border-bottom:1px solid var(--line-2)}
+.sg-days span{flex:1;min-width:0;border-radius:2px 2px 0 0;background:var(--line)}
+.sg-days span.on{background:var(--coral)}
+.sg-days-axis{display:flex;justify-content:space-between;margin:4px 0 10px;font-size:12px;color:var(--ink-3)}
+.sg-kv{margin-top:6px}
+.sg-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sl-src{color:var(--ink-2)!important;font-weight:500}
+@media (max-width:380px){.sg-nums b{font-size:14px}.sg-nums.big b{font-size:17px}}
+
+@media (min-width:900px){.sg-row .sg-nums{max-width:620px}}

@@ -14,7 +14,8 @@ const { LEGACY_SCRIPTS } = await import("../../../netlify/lib/crm-page.mjs");
 const { html, raw, attrs, openExternal, isSafeUrl, UnsafeHtml, escapeHtml } = await import("../../../crm-app/core/ui.js");
 const { writeCustomerIndex, buildCustomerIndex } = await import("../../../netlify/lib/crm-store.mjs");
 
-const EXACT = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'";
+// connect-src: the map hosts of core/map-sources.mjs's defaults (OpenFreeMap's streets, USGS aerial), exactly (docs/CRM-MAP.md)
+const EXACT = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://basemap.nationalmap.gov; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'";
 
 let t;
 afterEach(() => { if (t) t.done(); t = null; });
@@ -134,7 +135,9 @@ test("client code builds markup only through ui.js (no innerHTML, eval or inline
   const walk = (d) => { for (const n of readdirSync(d)) { const f = path.join(d, n); if (statSync(f).isDirectory()) walk(f); else if (f.endsWith(".js")) files.push(f); } };
   walk("crm-app");
   assert.ok(files.length > 10);
-  for (const f of files) {
+  // vendored third-party code (crm-app/vendor/: MapLibre GL JS, byte for byte as published,
+  // its hashes pinned in tests/crm/map/client.test.mjs) is not ours to rewrite
+  for (const f of files.filter((x) => !x.split(path.sep).includes("vendor"))) {
     const src = readFileSync(f, "utf8");
     if (!f.endsWith(path.join("core", "ui.js"))) assert.doesNotMatch(src, /\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=/, f);
     assert.doesNotMatch(src, /\beval\(|new Function\(|document\.write\(/, f);

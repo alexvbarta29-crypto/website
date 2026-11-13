@@ -375,7 +375,7 @@ export function buildCallList({ rows, contacts, cadences, now: t, date, env }) {
     const row = {
       id: r.id, contact_id: r.c, name: c.n || r.cn || "No name", phone: e164((c.p || [])[0]), town: c.c || "", cadence: cad.n || r.cad, cadence_key: r.cad,
       n: r.n, label: r.lbl, action: r.act, rbs: !!r.rbs, due: r.due, due_end: r.de, status: r.st, pending: r.pd || null, started_at: r.sa, last_touch_at: r.lt,
-      paused_at: r.ps, paused_reason: r.pr, deal_id: r.dl, ...(r.ph ? { hold_until: r.ph } : {}),
+      paused_at: r.ps, paused_reason: r.pr, deal_id: r.dl, ...(r.ph ? { hold_until: r.ph } : {}), ...(r.sl ? { source_label: r.sl } : {}),
     };
     row.overdue = r.st === "active" && isOverdue(r, t);
     if (r.st === "paused") { out.paused.push(row); continue; }

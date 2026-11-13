@@ -15,7 +15,8 @@
 // sign-in on this phone (core/outbox.js claim()). Offline copies are keyed
 // by the signed-in person (setCacheOwner), so on a shared phone nobody
 // reads the last person's copy. opts.headers adds request headers (the
-// outbox's X-CRM-Sent-At).
+// outbox's X-CRM-Sent-At). on("wrote", fn) hears every write the server
+// took: { method, path, body } (the team map's location sharing).
 
 import { APP_VERSION } from "../version.js";
 import * as cache from "./cache.js";
@@ -114,6 +115,8 @@ export async function api(path, opts = {}) {
   }
   const out = { data: body.data, meta: body.meta, etag: res.headers.get("ETag") || undefined };
   if (method === "GET" && opts.cache !== false && cacheKey(url)) cache.put(cacheKey(url), out).catch(() => {});
+  // a change the server took (live or replayed from the outbox): modules may react (the team map's clock-in and visit positions)
+  if (method !== "GET") emit("wrote", { method, path, body: opts.body });
   return out;
 }
 

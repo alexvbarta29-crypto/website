@@ -217,10 +217,10 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForFunction(() => [...document.querySelectorAll(".toast")].some((x) => /no test Stripe key yet/.test(x.textContent)), null, { timeout: 5000 });
       assert.equal((await api(p, "/money/status")).mode, "dry_run");
 
-      // Home: what's owed, in dollars, and the rows that need someone
+      // Home: the money this month only (what's owed is on Invoices; past due lights the tab's dot)
       await goTo(f, "/today");
-      await viewHas(f, /owed to you/);
-      assert.match(await f.textContent("#view"), /Invoices past due/);
+      await viewHas(f, /Money this month/);
+      assert.doesNotMatch(await f.textContent("#view"), /owed to you|Invoices past due/);
       await shot(page, `money-home-${device}`);
       await p.clean();
     } finally { await p.close(); }
@@ -246,7 +246,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet.on [data-qr]");
       await f.waitForSelector(".sheet.on .mn-qr svg", { timeout: 15000 });
       sheet = await f.textContent(".sheet.on");
-      assert.match(sheet, /\$2[57][05]\.00 · SINV-\d{4}/, "what's left on the visit (less any account credit the customer had)");
+      assert.match(sheet, /\$2[57][05]\.00[\s\S]*Terry · SINV-\d{4}[\s\S]*Scan with your phone camera to pay/, "what's left on the visit (less any account credit the customer had), the first name, the words to scan");
       const box = await f.$eval(".sheet.on .mn-qr svg", (s) => { const b = s.getBoundingClientRect(); return { w: b.width, h: b.height, vw: innerWidth }; });
       assert.ok(box.w >= 200 && Math.abs(box.w - box.h) < 1 && box.w <= box.vw, `a square code big enough to scan (${JSON.stringify(box)})`);
       assert.deepEqual(await screenProblems(f), [], "the QR sheet passes the phone checks");
