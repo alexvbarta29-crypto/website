@@ -254,6 +254,45 @@ function head(s, ctx) {
   </div>`;
 }
 
+// A phone's head (Flyra's, Nov 13): the big title ("Nov 2026"; "Today" and
+// the date under it on a day), the < > pill at the right; under it the view
+// pill (Month ⌄: Day, Week, Month, Technician, Sales rep, List, 3 Day, and
+// Map of the day) and the round tools pill (find a visit, who, Show on
+// cards). A desk keeps Rotor's head and the segmented views (head above).
+const FLY_VIEWS = [["day:tech", "Day"], ["week", "Week"], ["month", "Month"], ["day:tech*", "Technician"], ["day:sales", "Sales rep"], ["list", "List"], ["3day", "3 Day"]];
+const MONTH_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", day: "numeric" });
+const WEEKDAY_SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+function flyLabel(s) {
+  if (s.view === "day") return s.by === "sales" ? "Sales rep" : "Day";
+  return (VIEWS.find(([k]) => k === s.view) || [null, s.view === "tray" ? "To book" : "Month"])[1];
+}
+function flyHead(s, ctx) {
+  const t = todayOf(s);
+  const ym = s.view === "month" ? s.cal : s.view === "tray" ? s.month : String(s.date || t).slice(0, 7);
+  const mid = new Date((ym || t.slice(0, 7)) + "-15T12:00:00Z");
+  const day = s.view === "day" && s.date;
+  const title = day ? (s.date === t ? "Today" : WEEKDAY_SHORT.format(new Date(s.date + "T12:00:00Z"))) : s.view === "tray" ? "To book" : `${MONTH_SHORT.format(mid)} ${String(ym).slice(0, 4)}`;
+  const sub = day ? MONTH_DAY.format(new Date(s.date + "T12:00:00Z")) : "";
+  const tb = s.view === "month" && s.toBook && s.toBook.month === s.cal ? s.toBook.n : null;
+  const step = s.view === "month" ? "data-cal" : s.view === "day" ? "data-day" : s.view === "3day" ? "data-day3" : s.view === "tray" ? null : "data-week";
+  const arrows = step ? html`<div class="wk-fpill wk-farrows" role="group" aria-label="Earlier or later">
+      <button type="button" ${attrs({ [step]: s.view === "tray" ? null : "-1", "aria-label": "Earlier" })}>${icon("chevleft")}</button><button type="button" ${attrs({ [step]: "1", "aria-label": "Later" })}>${icon("chevright")}</button></div>` : "";
+  const label = flyLabel(s);
+  return html`<div class="wk-fly">
+    <div class="wk-frow1"><button type="button" class="wk-ftitle" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${title}${sub ? ", " + sub : ""}: pick a month or a day` })}><span class="t">${title}</span>${sub ? html`<span class="s">${sub}</span>` : ""}</button>${arrows}</div>
+    <div class="wk-frow2">
+      <div class="wk-fmenu-wrap"><button type="button" class="wk-fpill wk-fview" data-vmenu ${attrs({ "aria-haspopup": "true", "aria-expanded": String(!!s.vmenu) })}>${label}${icon("chevdown")}</button>
+        ${s.vmenu ? html`<ul class="wk-fmenu" role="menu">${FLY_VIEWS.map(([k, l]) => { const on = k === "day:tech" ? s.view === "day" && s.by !== "sales" && !s.byTech : k === "day:tech*" ? s.view === "day" && s.by !== "sales" && !!s.byTech : k === "day:sales" ? s.view === "day" && s.by === "sales" : s.view === k; return html`<li><button type="button" role="menuitemradio" ${attrs({ "data-fview": k, "aria-checked": String(on) })}><span class="ck" aria-hidden="true">${on ? icon("check") : ""}</span>${l}</button></li>`; })}
+          <li class="sep"><button type="button" role="menuitem" data-mapday>${icon("map")}Map of the day</button></li>${tb ? html`<li><button type="button" role="menuitem" data-totray>${icon("clock")}${tb} to book</button></li>` : ""}</ul>` : ""}</div>
+      <div class="wk-fpill wk-ftools" role="group" aria-label="Schedule tools">
+        <button type="button" data-search aria-label="Find a visit">${icon("search")}</button>
+        <button type="button" ${attrs({ class: s.tech ? "on" : null, "data-filter": "", "aria-label": `Who: ${s.tech ? names(s.users, [s.tech]) : "Everyone"}`, "aria-pressed": String(!!s.tech) })}>${icon("people")}</button>
+        <button type="button" data-cards aria-label="Show on cards">${icon("gear")}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function viewTabs(s) {
   return html`<div class="wk-views" role="tablist" aria-label="View">${VIEWS.map(([k, label]) => html`<button type="button" class="wk-view" role="tab" ${attrs({ "data-view": k, "aria-selected": String(s.view === k) })}>${label}</button>`)}</div>`;
 }
@@ -374,6 +413,7 @@ function monthView(s, ctx) {
       </div>
       <div class="wk-mfoot">
         <p class="small muted">${perDay ? html`<span class="wk-mkey"><span class="wk-fbar"><i></i></span>Booked of ${perDay} a day${s.tech ? ` for ${names(s.users, [s.tech])}` : ""}</span>` : ""}<span class="wk-mkey"><i class="wk-mopen"></i>Not marked done</span>${s.wx && Object.keys(s.wx.days || {}).length ? html`<span class="wk-mkey">Forecast: National Weather Service</span>` : ""}</p>
+        ${tb ? html`<button type="button" class="wk-ftobook" data-totray ${attrs({ "aria-label": `${tb} ${tb === 1 ? "job" : "jobs"} to book: open To book` })}><span class="num">${tb}</span> to book<span aria-hidden="true"> ›</span></button>` : ""}
         ${ctx && ctx.can && ctx.can("settings:general") ? html`<button type="button" class="btn small" data-schedset>${icon("gear")}Change</button>` : ""}
       </div>
     </div>
@@ -713,11 +753,12 @@ export default {
     const month = s.view === "month";
     // a read that failed (no signal) leaves nothing to draw: say so, with a retry
     if (!s.data && s.view !== "tray") {
-      return html`<div class="stack wk">${head(s, ctx)}<div class="wk-bar">${viewTabs(s)}</div>
+      return html`<div class="stack wk">${flyHead(s, ctx)}${head(s, ctx)}<div class="wk-bar">${viewTabs(s)}</div>
         <div class="card empty"><div class="art">${icon("schedule")}</div><h2>The schedule didn't load</h2><p>Check the signal and try again.</p><div class="btn-row"><button type="button" class="btn primary" ${attrs({ "data-view": s.view })}>Try again</button></div></div></div>`;
     }
     const wideView = month || ["week", "day", "3day"].includes(s.view);
     return html`<div class="${"stack wk" + (wideView ? " wk-wide" : "") + (s.panel ? " wk-sided" : "")}">
+      ${flyHead(s, ctx)}
       ${head(s, ctx)}
       <div class="wk-bar">${viewTabs(s)}</div>
       ${STRIP.includes(s.view) && s.date ? weekStrip(s) : ""}
@@ -779,6 +820,22 @@ export default {
     if (keysOn && typeof document !== "undefined") { document.removeEventListener("keydown", onKey); keysOn = false; }
   },
   events: {
+    // a phone's view pill (Flyra's menu): Day, Week, Month, Technician, Sales rep, List, 3 Day
+    "click [data-vmenu]": (e, el, ctx) => { ctx.state.vmenu = !ctx.state.vmenu; paint(ctx); },
+    "click [data-fview]": (e, el, ctx) => {
+      const s = ctx.state;
+      const [view, by] = el.dataset.fview.split(":");
+      s.vmenu = false;
+      s.byTech = el.dataset.fview === "day:tech*";
+      if (view === "day") s.by = by === "sales" ? "sales" : "tech";
+      if (s.view === view && view !== "day") { paint(ctx); return; }
+      s.view = view;
+      if (s.view === "month") { s.cal = s.date ? s.date.slice(0, 7) : null; s.data = null; }
+      reload(ctx);
+    },
+    "click [data-day3]": (e, el, ctx) => { const s = ctx.state; s.date = addDays(s.date, 3 * Number(el.dataset.day3)); reload(ctx); },
+    // a tap anywhere else closes the view menu
+    "click": (e, el, ctx) => { if (ctx.state.vmenu && !e.target.closest(".wk-fmenu-wrap")) { ctx.state.vmenu = false; paint(ctx); } },
     "click [data-view]": (e, el, ctx) => {
       const s = ctx.state;
       s.view = el.dataset.view;

@@ -9,6 +9,7 @@ import { field, readForm, clearErrors, showError, busy, select, checkbox } from 
 import { ago, phone, roleLabel, initials, dateShort } from "../../core/format.js";
 import { APP_VERSION } from "../../version.js";
 import { MODE_LABEL } from "./kit.js";
+import { CHOICES as THEMES, choice as themeChoice, set as setTheme } from "../../core/theme.js";
 
 // The notification settings people see (user.notify keys) and who sees each.
 const NOTIFY = [
@@ -127,6 +128,10 @@ export default {
       ${u.role !== "tech" ? html`<div class="section-h">Home</div>
       <ul class="list"><li><a class="row" href="#/today?edit=1">${icon("home")}<span class="who"><span class="nm">Edit Home</span><span class="sub">Pick your cards and their order</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li></ul>` : ""}
 
+      <div class="section-h">Appearance</div>
+      <div class="card me-theme"><div class="seg-track me-seg" role="radiogroup" aria-label="Appearance">${THEMES.map(([k, l]) => html`<button type="button" role="radio" class="${"seg" + (themeChoice() === k ? " on" : "")}" ${attrs({ "data-theme-set": k, "aria-checked": String(themeChoice() === k) })}>${l}</button>`)}</div>
+        <p class="small muted">Dark is Flyra's look, Light is Rotor's. Automatic follows this phone. Saved on this device.</p></div>
+
       <div class="section-h">Notifications</div>
       <form class="card form" id="notify-form">
         <p class="small">They always show under the bell on Today. Tick the ones you also want on your phone.</p>
@@ -170,6 +175,7 @@ export default {
     </div>`;
   },
   events: {
+    "click [data-theme-set]": (e, b, ctx) => { setTheme(b.dataset.themeSet); ctx.rerender(); },
     "submit #me-form": async (e, form, ctx) => {
       e.preventDefault();
       clearErrors(form);

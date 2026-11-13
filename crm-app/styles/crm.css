@@ -37,7 +37,7 @@
   --glass:rgba(255,255,255,.82);--glass-line:rgba(18,18,21,.06);--glass-sh:0 10px 30px rgba(18,18,21,.12),0 2px 6px rgba(18,18,21,.05);
   --tab-on:rgba(18,18,21,.07);--seg-track:#e9e9ee;--seg-on:#fff;--seg-on-ink:#111114;--seg-on-sh:0 1px 3px rgba(18,18,21,.12),0 1px 1px rgba(18,18,21,.04);
   --sheet-bg:#f2f2f7;--pop-bg:#fff;--input-bg:#fff;--scrim:rgba(10,10,12,.42);--dim:rgba(236,236,240,.55);
-  --avatar-bg:#3a3a3f;--avatar-ink:#fff;--hero:linear-gradient(180deg,#f2f2f7 0%,#f2f2f7 100%);--hero-top:#f2f2f7;
+  --avatar-bg:#3a3a3f;--avatar-ink:#fff;--map-blank:#eef0eb;--hero:linear-gradient(180deg,#f2f2f7 0%,#f2f2f7 100%);--hero-top:#f2f2f7;
   /* type: the iPhone's own */
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --head:var(--sys);
@@ -79,7 +79,7 @@ html:not([data-theme="light"]) body.crm:not(.page){
   --glass:rgba(30,31,34,.78);--glass-line:rgba(255,255,255,.1);--glass-sh:0 10px 30px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
   --tab-on:rgba(255,255,255,.12);--seg-track:#1d1e21;--seg-on:#48494d;--seg-on-ink:#fff;--seg-on-sh:none;
   --sheet-bg:#111214;--pop-bg:#202124;--input-bg:#1b1c1f;--scrim:rgba(0,0,0,.6);--dim:rgba(0,0,0,.62);
-  --avatar-bg:#2c2d31;--avatar-ink:#f5f5f7;--hero:linear-gradient(180deg,#1b2b33 0%,#151d22 300px,#111214 560px);--hero-top:#1b2b33;
+  --avatar-bg:#2c2d31;--avatar-ink:#f5f5f7;--map-blank:#1d2420;--hero:linear-gradient(180deg,#1b2b33 0%,#151d22 300px,#111214 560px);--hero-top:#1b2b33;
   --sh-xs:none;--sh-card:none;--sh-raise:0 8px 24px rgba(0,0,0,.4);--sh-pop:0 16px 40px rgba(0,0,0,.55);
   --card-line:#2a2b2f;
 }
@@ -657,3 +657,8 @@ textarea.body{min-height:140px}
   .app.big-top .top:has(.rnd-own>.rnd:nth-child(3)) .top-title{font-size:27px;letter-spacing:-.02em}
   .app.big-top .top:has(.rnd-own>.rnd:nth-child(3)) .top-rnd{gap:6px}
 }
+/* My account → Appearance: Light · Dark · Automatic (core/theme.js) */
+.me-theme{display:flex;flex-direction:column;gap:10px}
+.me-seg{display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--seg-track);border:1px solid var(--card-line)}
+.me-seg .seg{flex:1 1 0;min-height:44px;border:0;border-radius:999px;background:none;color:var(--ink-2);font:500 16px/1 var(--text);cursor:pointer}
+.me-seg .seg.on{background:var(--seg-on);color:var(--seg-on-ink);font-weight:600;box-shadow:var(--seg-on-sh)}

@@ -39,26 +39,31 @@
 .ct-id{display:flex;align-items:center;gap:14px;min-width:0}
 .ct-id .avatar{width:52px;height:52px;font-size:18px}
 .ct-id .who{min-width:0}
-.ct-id h2{margin:0;font:700 24px/1.12 var(--head);letter-spacing:-.015em;overflow-wrap:anywhere}
+.ct-id h2{margin:0;font:700 26px/1.12 var(--head);letter-spacing:-.025em;overflow-wrap:anywhere}
 .ct-town{margin:3px 0 0!important;color:var(--ink-2)!important;font-weight:500}
 .ct-id .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-.pill.ct-plan{background:var(--green-bg);color:var(--green-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pill.ct-plan{background:var(--pill-green);color:var(--on-pill-green);max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .pill.ct-plan svg{flex:none}
 .ct-nums{display:flex;gap:8px;margin:0}
-.ct-num{flex:1 1 0;min-width:0;padding:8px 9px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--mist)}
-.ct-num dt{font:500 11.5px/1.2 var(--text);color:var(--ink-3)}
-.ct-num dd{margin:4px 0 0;font:700 19px/1.1 var(--head);letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-num{flex:1 1 0;min-width:0;padding:10px 12px 11px;border:1px solid var(--card-line);border-radius:14px;background:var(--card-2)}
+.ct-num dt{font:500 11.5px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.ct-num dd{margin:5px 0 0;font:600 19px/1.1 var(--head);letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ct-num.bad dd{color:var(--coral-ink)}
 .ct-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.ct-acts>a,.ct-acts>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:0 4px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--card);box-shadow:var(--sh-xs);color:var(--ink);text-decoration:none;font:600 13px/1 var(--text)}
-.ct-acts>a svg{color:var(--coral-ink)}
-.ct-acts>a:active{background:var(--mist-2)}
-.ct-acts>span{background:var(--mist);color:var(--ink-3);box-shadow:none}
+.ct-acts>a,.ct-acts>span{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;min-height:84px;padding:0 4px;border:0;background:none;box-shadow:none;color:var(--ink);text-decoration:none;font:500 14px/1 var(--text)}
+.ct-acts>a::before,.ct-acts>span::before{content:"";display:block;width:56px;height:56px;border-radius:50%;background:var(--rnd-bg);border:1px solid var(--rnd-line);box-shadow:var(--rnd-sh)}
+.ct-acts>a:first-child::before{background:var(--coral-btn);border-color:transparent}
+.ct-acts>a:first-child svg{color:#fff!important}
+.ct-acts>a svg,.ct-acts>span svg{position:absolute;top:17px;left:50%;margin-left:-11px;width:22px!important;height:22px!important}
+.ct-acts>a svg{color:var(--ink)}
+.ct-acts>a:active::before{transform:scale(.96)}
+.ct-acts>span{color:var(--ink-3)}
+.ct-acts>span::before{opacity:.5;box-shadow:none}
 .ct-acts svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 /* the sections: one column on a phone (the columns are display:contents) */
 .ct-cols,.ct-main,.ct-aside{display:contents}
 .ct-sec{display:flex;flex-direction:column;gap:10px;scroll-margin-top:12px}
-.ct-sec-h{margin:12px 2px 0;font:700 18px/1.2 var(--head);color:var(--ink)}
+.ct-sec-h{margin:14px 4px 0;font:600 20px/1.2 var(--head);letter-spacing:-.02em;color:var(--ink)}
 .ct-sub-h{margin:6px 2px 8px;font:600 12px/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
 .ct-mod{scroll-margin-top:12px}
 .ct-mod+.ct-mod{margin-top:6px}
@@ -73,7 +78,7 @@
 .ct-mod .card.empty{padding:18px 16px}
 /* the service plan, kept apart from one-time work: a green edge on its rows */
 .ct-sec-plan .list{box-shadow:inset 3px 0 0 var(--green),var(--sh-card)}
-.ct-sec .card h3{margin:0 0 8px;font:700 16px/1.25 var(--head)}
+.ct-sec .card h3{margin:0 0 8px;font:600 17px/1.25 var(--head);letter-spacing:-.02em}
 .ct-card-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .ct-card-h h3{flex:1;margin:0!important}
 .ct-access{display:block;margin-top:3px;font-size:13px;line-height:1.35;color:var(--ink-2);white-space:normal;overflow-wrap:anywhere}
@@ -135,8 +140,10 @@
 @media (min-width:900px){
   .ct-rail{bottom:24px}
   .ct-acts{display:flex;flex-wrap:wrap;gap:8px}
-  .ct-acts>a,.ct-acts>span{flex-direction:row;gap:8px;min-height:var(--ctl-h);padding:0 16px;font-size:14px}
-  .ct-acts svg{width:18px;height:18px}
+  .ct-acts>a,.ct-acts>span{flex-direction:row;align-items:center;gap:8px;min-height:var(--ctl-h);padding:0 16px;border:1px solid var(--line-2);border-radius:999px;background:var(--card);font-size:14px}
+  .ct-acts>a::before,.ct-acts>span::before{display:none}
+  .ct-acts>a svg,.ct-acts>span svg{position:static;margin:0;width:18px!important;height:18px!important}
+  .ct-acts>a:first-child svg{color:var(--coral-ink)!important}
   .ct-bar{background:var(--mist);border-bottom:0}
   /* the header stays put while the page scrolls under it */
   .ct-hero{position:sticky;top:-16px;z-index:4;box-shadow:0 -20px 0 4px var(--mist),var(--sh-raise)}
@@ -155,7 +162,7 @@
   .ct-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto}
   .ct-acts{grid-column:auto}
 }
-@media (hover:hover) and (pointer:fine){.ct-acts>a:hover{background:var(--mist)}}
+@media (hover:hover) and (pointer:fine){.ct-acts>a:hover{background:var(--fill)}}
 
 /* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's two-tone cards, in both themes) */
 .cc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}

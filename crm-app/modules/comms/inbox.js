@@ -6,8 +6,12 @@
 // name, the last words, the time and a coral count of unread. It refreshes
 // every 30 s while on screen. A technician sees only the people on their
 // own visits (and only All and Unread).
+// The Nov 13 look (Flyra's Messages): round buttons on top (the calls, a
+// filter sheet with All messages · Needs reply · Mine, and the coral + to
+// text someone), the search, All | Customers | Leads and Unread under it.
 
-import { html, attrs, icon, render } from "../../core/ui.js";
+import { html, attrs, icon, render, sheet } from "../../core/ui.js";
+import { screenButtons } from "../../core/nav.js";
 import { poll } from "../../core/poll.js";
 import { ensureStyles, convRow, emptyCard } from "./kit.js";
 
@@ -61,12 +65,27 @@ export default {
         ${segs.length ? html`<div class="cm-seg" role="group" aria-label="Who">${segs.map(([k, l]) => html`<button type="button" ${attrs({ "data-seg": k, "aria-pressed": String(s.seg === k) })}>${l}</button>`)}</div>` : ""}
         <label class="cm-unread"><span>Unread</span><button type="button" class="switch" role="switch" data-unread ${attrs({ "aria-checked": String(!!s.unread), "aria-label": "Only unread" })}></button></label>
       </div>
-      <label class="cm-kind"><span class="sr">Which messages</span><select data-kind>${[["all", "All Messages"], ["needs_reply", "Needs reply"], ...(s.office ? [["mine", "Mine"]] : [])].map(([k, l]) => html`<option ${attrs({ value: k, selected: s.kind === k })}>${l}</option>`)}</select></label>
+      <label class="cm-kind cm-kind-desk"><span class="sr">Which messages</span><select data-kind>${[["all", "All Messages"], ["needs_reply", "Needs reply"], ...(s.office ? [["mine", "Mine"]] : [])].map(([k, l]) => html`<option ${attrs({ value: k, selected: s.kind === k })}>${l}</option>`)}</select></label>
       ${list.length ? html`<ul class="list cm-list">${list.map(convRow)}</ul>${s.next ? html`<button type="button" class="btn block" data-more>Show older</button>` : ""}`
         : emptyCard("inbox", s.filter === "all" && !s.q && s.seg === "all" ? "No conversations yet" : "Nothing here", s.filter === "all" && !s.q && s.seg === "all" ? (s.office ? "Texts and emails with customers show up here. Rotor's history arrives with the import." : "Texts with the people on your visits show up here.") : "Try another filter.")}
     </div>`;
   },
-  mount(el, s, ctx) { if (!live || live.for !== ctx) { watch(ctx); live.for = ctx; } },
+  mount(el, s, ctx) {
+    if (!live || live.for !== ctx) { watch(ctx); live.for = ctx; }
+    // a phone: Flyra's round buttons (the calls, the filter sheet); the coral + texts someone
+    const kinds = [["all", "All Messages"], ["needs_reply", "Needs reply"], ...(s.office ? [["mine", "Mine"]] : [])];
+    screenButtons([
+      ...(ctx.can("sales:work") ? [{ key: "calls", icon: "call", label: "Calls" }] : []),
+      { key: "filter", icon: "filter", label: s.kind !== "all" ? "Which messages (on)" : "Which messages", on: s.kind !== "all" },
+    ], (key) => {
+      if (key === "calls") { location.hash = "/calls"; return; }
+      const sh = sheet({
+        title: "Show",
+        body: html`<ul class="menu theme-pick" role="radiogroup" aria-label="Which messages">${kinds.map(([k, l]) => html`<li><button type="button" role="radio" ${attrs({ "data-k": k, "aria-checked": String(s.kind === k) })}><span>${l}</span>${s.kind === k ? html`<span class="theme-ck">${icon("check")}</span>` : ""}</button></li>`)}</ul>`,
+        events: { "click [data-k]": (e, b) => { sh.close(); s.kind = b.dataset.k; refetch(ctx); } },
+      });
+    });
+  },
   unmount() { if (live) { live.stop(); live = null; } },
   events: {
     "click [data-seg]": (e, el, ctx) => { ctx.state.seg = el.dataset.seg; refetch(ctx); },

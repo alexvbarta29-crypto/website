@@ -3,7 +3,7 @@
    44 px targets (56 px for the buttons a canvasser hits while walking),
    the thumb's half of the screen for the controls, light only. */
 
-.mp-screen{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#eef0eb}
+.mp-screen{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--map-blank)}
 /* (more specific than the map library's own .maplibregl-map{position:relative}) */
 .mp-screen .mp-map{position:absolute;inset:0;width:auto;height:auto}
 .mp-map canvas{outline:0}
@@ -11,7 +11,7 @@
 .mp-top>*{pointer-events:auto}
 /* the round white buttons across the top-left (search, locate, filter, layers) */
 .mp-fabs{display:inline-flex;gap:12px}
-.mp-fab{width:52px;height:52px;border-radius:50%;border:0;background:var(--card);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(18,18,21,.18),0 0 0 1px rgba(18,18,21,.04);cursor:pointer}
+.mp-fab{width:52px;height:52px;border-radius:50%;border:1px solid var(--glass-line);background:var(--glass);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--glass-sh);cursor:pointer}
 .mp-fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .mp-fab.on{background:var(--solid);color:var(--on-solid)}
 .mp-fab:active{transform:scale(.96)}
@@ -23,16 +23,16 @@
 .mp-pill.red{background:var(--red-bg);color:var(--red-ink)}
 .mp-pill.green{background:var(--green-bg);color:var(--green-ink)}
 .mp-pill.blue{background:var(--blue-bg);color:var(--blue-ink)}
-.mp-pill-btn{min-height:44px;padding:0 14px;border:1px solid #f0c98a;border-radius:999px;background:var(--amber-bg);color:var(--amber-ink);font:600 14px/1 var(--text);box-shadow:var(--sh-raise);cursor:pointer}
+.mp-pill-btn{min-height:44px;padding:0 14px;border:1px solid var(--amber-bg);border-radius:999px;background:var(--amber-bg);color:var(--amber-ink);font:600 14px/1 var(--text);box-shadow:var(--sh-raise);cursor:pointer}
 .mp-bottom{position:absolute;left:10px;right:10px;bottom:calc(10px + var(--lift,0px));z-index:3;pointer-events:none}
 .mp-bottom>*{pointer-events:auto}
-.mp-bar{background:var(--top-bg);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--sh-pop);padding:10px}
+.mp-bar{background:var(--glass);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);border:1px solid var(--glass-line);border-radius:28px;box-shadow:var(--glass-sh);padding:8px}
 .mp-bar-row{display:flex;align-items:center;gap:10px}
 .mp-bar-row .btn{flex:1 1 auto}
 .mp-big{flex:1 1 auto;min-height:56px!important;font:700 17px/1 var(--head)!important;letter-spacing:.2px}
 .mp-big svg,.mp-round svg,.mp-bar .btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .mp-round{flex:none;width:56px;height:56px;border-radius:50%;border:1px solid var(--line-2);background:var(--card);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-xs)}
-.mp-round[aria-pressed="true"]{background:var(--blue-bg);border-color:#b8cbfb;color:var(--blue-ink)}
+.mp-round[aria-pressed="true"]{background:var(--blue-bg);border-color:var(--blue-bg);color:var(--blue-ink)}
 .mp-round svg{width:24px;height:24px}
 .mp-draw-say{margin:0 4px 8px;font:600 14px/1.35 var(--text);color:var(--ink-2)}
 .mp-tiny{margin:6px 4px 0;font-size:12px;color:var(--muted)}
@@ -40,13 +40,13 @@
 .mp-cross::before,.mp-cross::after{content:"";position:absolute;background:#db3a29;box-shadow:0 0 0 1.5px var(--card)}
 .mp-cross::before{left:19px;top:0;width:2px;height:40px}
 .mp-cross::after{top:19px;left:0;height:2px;width:40px}
-.mp-credits{position:absolute;left:12px;bottom:calc(98px + var(--lift,0px));z-index:2;max-width:calc(100% - 24px);margin:0;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.82);color:var(--ink-3);font:500 10.5px/1.3 var(--text);pointer-events:none}
+.mp-credits{position:absolute;left:12px;bottom:calc(98px + var(--lift,0px));z-index:2;max-width:calc(100% - 24px);margin:0;padding:2px 6px;border-radius:5px;background:var(--glass);color:var(--ink-3);font:500 10.5px/1.3 var(--text);pointer-events:none}
 .mp-credits:empty{display:none}
 
 /* sheets */
 .mp-types{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
 .mp-type{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border:1px solid var(--line-2);border-radius:var(--r-lg);background:var(--card);color:var(--ink);font:600 15.5px/1.2 var(--text);text-align:left;cursor:pointer}
-.mp-type[aria-pressed="true"]{border:2px solid var(--ink);padding:7px 11px}
+.mp-type[aria-pressed="true"]{border:2px solid var(--coral);padding:7px 11px}
 .mp-type:active{background:var(--mist)}
 .mp-sw{flex:none;display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(22,22,27,.25)}
 .mp-addr-line{margin:2px 0 6px;font:500 15px/1.35 var(--text);color:var(--ink-2)}
@@ -173,4 +173,12 @@
 }
 @media (min-width:900px) and (hover:hover) and (pointer:fine){
     .mp-type{min-height:48px}
+}
+
+/* Flyra's map (Nov 13): the map runs under the floating tab bar; the tools are glass */
+@media (max-width:899px){
+  .view.flush:has(>.mp-screen),.view.flush:has(.mp-screen.mp-full){padding-bottom:0}
+  .app:not(.no-tabs) .mp-screen .mp-bottom{bottom:calc(var(--bar-gap) + var(--pill-h) + 12px + var(--lift,0px))}
+  .app:not(.no-tabs) .mp-screen .mp-credits{bottom:calc(var(--bar-gap) + var(--pill-h) + 100px + var(--lift,0px))}
+  .mp-top{top:calc(12px + var(--top))}
 }
