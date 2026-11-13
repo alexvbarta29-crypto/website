@@ -223,6 +223,14 @@ export async function intakeLead(input, { origin = "lead-form", rotor = null, by
     return { ok: false, created: false, error: "invalid", ...(e instanceof InputError && e.field ? { field: e.field } : {}) };
   }
   if (!n.phone && !n.email) return { ok: false, created: false, error: "no_contact" };
+  // a scan of a sign's or flyer's QR code before the form (sales: Signs &
+  // flyers, through contacts/hook.mjs): the lead's source names the code
+  let scan = null;
+  if (input.qr_ref && origin === "lead-form" && has("sales.qrResolve")) {
+    try { scan = await call("sales.qrResolve", String(input.qr_ref).slice(0, 80)); } catch (e) { console.error(`crm:intake: the scan wasn't read (${safeErr(e)})`); }
+    if (scan && scan.code_id) Object.assign(n.source, { campaign: String(scan.label || "").slice(0, 120) || undefined, qr_code: scan.code_id });
+    else scan = null;
+  }
   const holder = `intake.${requestId || nonce()}`;
   let lease = null;
   let addrHk;
@@ -357,6 +365,8 @@ export async function intakeLead(input, { origin = "lead-form", rotor = null, by
       await emit("lead.created", { id: contact.id, wv: contact.wv, contact_id: contact.id, origin, source: n.source.source }, ctx)
         .catch((e) => console.error(`crm:intake: lead.created not queued (${safeErr(e)})`));
     }
+    // the code the person scanned counts this lead (once per person; numbers only, no record changes)
+    if (scan && has("sales.qrLead")) await call("sales.qrLead", { code_id: scan.code_id, contact_id: contact.id }, ctx).catch((e) => console.error(`crm:intake: the scan's lead wasn't counted (${safeErr(e)})`));
     return out;
   } catch (e) {
     console.error(`crm:intake: failed (${safeErr(e)})`);

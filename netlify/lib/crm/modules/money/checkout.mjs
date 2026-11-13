@@ -74,8 +74,11 @@ export async function payRefusal(inv, { sor } = {}) {
 }
 
 // POST /api/portal/invoices/:id/checkout { tip_choice, custom_tip_cents?, save_card }
-// → { url } (409 while a charge or a bank payment is in flight).
-export async function startInvoiceCheckout(invoiceId, contactId, body = {}, ctx = {}) {
+// → { url } (409 while a charge or a bank payment is in flight). opts.via
+// "qr": the page was opened from the pay code (the portal decides it from
+// the session's link, never from the request), kept with the session so the
+// payment says so.
+export async function startInvoiceCheckout(invoiceId, contactId, body = {}, ctx = {}, { via } = {}) {
   const g = isId(invoiceId, "invoice") ? await getRecord("invoice", invoiceId) : null;
   if (!g || g.data.contact_id !== contactId) throw new NotFoundError("That invoice isn't here.");
   const inv = g.data;
@@ -108,12 +111,13 @@ export async function startInvoiceCheckout(invoiceId, contactId, body = {}, ctx 
   await claimPointer("checkout", sessionKey(s.session_id), {
     id: inv.id, kind: "payment", contact_id: inv.contact_id, amount_cents: inv.balance_cents, tip_cents: tip.tip_cents, save_card: saveCard,
     expires_at: expires, status: "open", dry: p.mode === "dry_run", sid: p.mode === "dry_run" ? s.session_id : undefined, ach: methods.includes("us_bank_account"),
+    ...(via === "qr" ? { via: "qr" } : {}),
   });
   // recorded on the invoice; a charge that started meanwhile expires it at once
   let raced = false;
   await updateRecord("invoice", inv.id, (x) => {
     if (chargingLive(x, nowMs())) { raced = true; return null; }
-    return { ...x, checkout_sessions: [...(x.checkout_sessions || []).filter((c) => c.status === "open" || c.status === "complete").slice(-15), { id: s.session_id, expires_at: expires, status: "open", amount_cents: inv.balance_cents, tip_cents: tip.tip_cents, ...(saveCard ? { save_card: true } : {}), created_at: nowIso(), ...(p.mode === "dry_run" ? { dry: true } : {}) }] };
+    return { ...x, checkout_sessions: [...(x.checkout_sessions || []).filter((c) => c.status === "open" || c.status === "complete").slice(-15), { id: s.session_id, expires_at: expires, status: "open", amount_cents: inv.balance_cents, tip_cents: tip.tip_cents, ...(saveCard ? { save_card: true } : {}), created_at: nowIso(), ...(p.mode === "dry_run" ? { dry: true } : {}), ...(via === "qr" ? { via: "qr" } : {}) }] };
   }, W(ctx));
   if (raced) {
     await expireOne(p, s.session_id).catch(() => {});
@@ -207,7 +211,7 @@ const PI_STATUS = { succeeded: "succeeded", processing: "processing", canceled: 
 
 // A PaymentIntent the CRM made (its metadata names the invoice), applied as
 // it is now. → the upsert result | null (not ours).
-export async function applyPaymentIntent(pi, ctx = {}, { tip_cents, session_id, simulated } = {}) {
+export async function applyPaymentIntent(pi, ctx = {}, { tip_cents, session_id, simulated, via } = {}) {
   const m = metaOf(pi);
   const invoiceId = m.crm_invoice_id;
   if (!isId(invoiceId, "invoice")) return null;
@@ -227,7 +231,7 @@ export async function applyPaymentIntent(pi, ctx = {}, { tip_cents, session_id, 
     stripe: { payment_intent_id: pi.id, ...(typeof pi.latest_charge === "string" ? { charge_id: pi.latest_charge } : pi.latest_charge && pi.latest_charge.id ? { charge_id: pi.latest_charge.id } : {}), ...(session_id ? { checkout_session_id: session_id } : {}), ...(m.crm_attempt_id ? { attempt_id: m.crm_attempt_id } : {}), ...(pm ? { payment_method_id: pm.id } : {}) },
     ...(pm ? { card: { brand: pm.brand, last4: pm.last4, kind: pm.kind } } : {}),
     ...(status === "failed" && pi.last_payment_error ? { failure_code: String(pi.last_payment_error.decline_code || pi.last_payment_error.code || "failed").slice(0, 60) } : {}),
-    ...(simulated ? { simulated: true } : {}), recorded_by: "stripe",
+    ...(simulated ? { simulated: true } : {}), ...(via === "qr" ? { via: "qr" } : {}), recorded_by: "stripe",
   }, ctx);
   if (out.transitioned === "failed") await markMethodFailed(inv.contact_id, ctx);
   // a card saved with the payment ("save this card for my plan")
@@ -254,7 +258,9 @@ export async function applyCheckoutSession(session, ctx = {}, { simulated } = {}
   const pi = session.payment_intent;
   if (pi && typeof pi === "object") {
     const tip = Number.isSafeInteger(Number(m.tip_cents)) ? Number(m.tip_cents) : 0;
-    out = await applyPaymentIntent({ ...pi, metadata: { ...metaOf(session), ...metaOf(pi) } }, ctx, { tip_cents: tip, session_id: session.id, simulated });
+    // a session started from the pay code: the payment says so (scan.mjs)
+    const ptr = await readSession(session.id).catch(() => null);
+    out = await applyPaymentIntent({ ...pi, metadata: { ...metaOf(session), ...metaOf(pi) } }, ctx, { tip_cents: tip, session_id: session.id, simulated, via: ptr && ptr.via === "qr" ? "qr" : undefined });
   }
   return out;
 }

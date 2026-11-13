@@ -23,6 +23,13 @@ export async function openDealOf(contactId) {
   return deals.find((d) => OPEN_DEAL.includes(d.status)) || null;
 }
 
+// Where a deal came from: the contact's source, and the sign or flyer whose
+// QR code they scanned first (Signs & flyers: "Yard sign: Maple Grove").
+const sourceOf = (contact) => (contact.source ? {
+  source: contact.source.source,
+  ...(contact.source.qr_code && contact.source.campaign ? { campaign: contact.source.campaign, qr_code: contact.source.qr_code } : {}),
+} : undefined);
+
 // The contact's open deal, or a new one (id derived from `seed`, so two
 // requests racing for the same lead make one deal). → the deal record.
 export async function ensureDeal(contact, { seed, services, source, quote_id } = {}, ctx = {}) {
@@ -31,7 +38,7 @@ export async function ensureDeal(contact, { seed, services, source, quote_id } =
   const id = deriveId("deal", seed || `deal--${contact.id}`, "sales.deal", 1);
   try {
     const rec = await createRecord("deal", {
-      id, contact_id: contact.id, services: services || [], source: source || (contact.source ? { source: contact.source.source } : undefined),
+      id, contact_id: contact.id, services: services || [], source: source || sourceOf(contact),
       status: "open", quote_ids: quote_id ? [quote_id] : [], job_ids: [], plan_ids: [], history: [], opened_at: nowIso(), last_activity_at: nowIso(),
       contact_name: nameOf(contact), ...(isId(contact.owner_id, "user") ? { owner_id: contact.owner_id } : {}),
     }, W(ctx));

@@ -71,9 +71,11 @@ Menu → **Money**: Invoices, Payments, Autopay. (Money has no bottom tab.)
 - **Contact → Money**: open balance, account credit, the card on file,
   invoices, payments; New invoice, Add credit, Text a card link.
 - **Visit → Collect payment** (the office and the visit's own techs):
-  what's left, cash or a check with a tip, or a QR code the customer scans
-  to pay by card on their own phone. A payment needs signal: it is never
-  kept for later.
+  what's left, cash or a check with a tip, or the pay code full screen for
+  the customer to scan and pay by card on their own phone (see "Scan to
+  pay"). A payment needs signal: it is never kept for later.
+- **Invoice → Show QR to pay** (the office): the same pay code, full
+  screen, and saved as a picture (PNG) or SVG for a printed invoice.
 - **Home**: Needs-you rows "Card payments that failed", "Invoices past
   due", "Invoices waiting to be paid", and for owners "Overpayments to
   refund or keep"; a strip with what's owed, what's past due and what came
@@ -82,6 +84,59 @@ Menu → **Money**: Invoices, Payments, Autopay. (Money has no bottom tab.)
 - **Settings → Payments** (owners): the mode and why, which Stripe keys
   Netlify has (kinds only, never a value), the webhook addresses, how many
   of Rotor's events were ignored, and the money settings below.
+
+## Scan to pay
+
+Flyra's "scan to pay", without Tap to Pay (a web app can't, D38): the
+customer pays at the door on their own phone.
+
+- **Where**: Invoice → **Show QR to pay** (`invoices:send`: owners and the
+  office) and Visit → Collect payment → **Pay by card (QR)**
+  (`payments:record`: the office, and a tech only on their own visit in
+  their ±7/30-day window; the visit's invoice is made and issued first,
+  silently, when the worker hasn't yet).
+- **What it shows**: full screen, black on white, as big as the screen
+  allows (scannable from arm's length): what's due, the customer's first
+  name and the invoice number, "Scan with your phone camera to pay", and
+  until when the code works. The screen stays awake while it shows (where
+  the browser can). "Did it go through?" reads the invoice again. On the
+  Invoice screen the code also saves as a picture (PNG, shared on a phone)
+  or an SVG for a printed invoice.
+- **What the code is**: the customer's own pay link, exactly like the one
+  the invoice text carries: `/p/{10 characters}` with scope `invoice`
+  (that one invoice; never the account page, the card page or another
+  invoice), the same lifetime (cfg/portal `invoice_after_paid_days` + 60
+  days), kept only as a hash. It is made fresh each time it is shown
+  (links are never stored, so they can't be shown twice) and marked as the
+  code's (`created_by: "qr:{who}"`). Drawn on the phone by
+  `crm-app/core/qr.js` (no outside service; level M, version 4 for a pay
+  link).
+- **No code to scan** (the screen says why instead): a draft ("Send it or
+  issue it first"), paid, voided, written off, nothing left, Rotor's own
+  invoice, a customer Rotor still bills ("paying by card opens after the
+  switch. Take cash or a check"), a card charge running, a bank payment
+  clearing, online payment paused. The routes answer 409 with those words
+  and make no link.
+- **The pay page from a scan**: Barta's name and what's due come first,
+  then Pay, then the details (phone layout, as every portal page). Paying
+  is the money module's as always: the practice Checkout until the owner
+  connects keys, and before the switch only for sandboxed customers.
+- **What's recorded** (so the owner sees scan-to-pay use): the invoice's
+  `qr` (`shown`, `last_shown_at`, `last_shown_by`, `opened`,
+  `first_opened_at`, `last_opened_at`), shown in its History as "Pay code
+  shown" and "Opened from the code". An open is the page's beacon (a POST
+  after it loads, never the GET: link previews count nothing), counted once
+  per 2 minutes, and only for a session whose link really is a code's
+  (`scan.mjs viaQr`, also through the account page's grants). A Checkout
+  started there carries `via: "qr"` on its session and its payment
+  (decided from the session's link, never from the request); the payment
+  row says "scanned the pay code" and the payments index row has `vq: 1`.
+
+Code: `netlify/lib/crm/modules/money/scan.mjs`, routes in `routes.mjs`,
+the page in `render.mjs`/`portal.mjs`; screens `crm-app/modules/money/pay-qr.js`,
+`invoice.js`, `visit-collect.js`; the encoder `crm-app/core/qr.js`.
+Tests: `tests/crm/money/scan.test.mjs`, `tests/crm/core/qr.test.mjs`,
+`tests/e2e/money.spec.mjs`.
 
 ## What the customer sees
 
@@ -176,7 +231,8 @@ Staff API (`/api/crm/...`; session, permission in brackets):
 | GET `/money/contacts/:id` · `/money/summary` [invoices:read_all] | the contact's tab; a period's money |
 | GET `/money/status` · POST `/money/payments-mode` [settings:owner] | the mode; `{ mode: dry_run\|test\|live\|off }` |
 | GET `/autopay/preview` · `/autopay/runs` · `/autopay/runs/:id` [invoices:read_all] | `?month=` |
-| GET `/visits/:id/payment` · POST `/visits/:id/payments` · `/visits/:id/pay-link` [payments:record] | Collect payment (a tech: their own visits only) |
+| GET `/visits/:id/payment` · POST `/visits/:id/payments` · `/visits/:id/pay-link` [payments:record] | Collect payment (a tech: their own visits only); pay-link → `{ url, expires_at, number, balance_cents, first_name }` (409 with the reason when there's no code) |
+| POST `/invoices/:id/pay-qr` [invoices:send] | scan to pay on the Invoice screen: the same answer; never kept for replay |
 
 Webhooks (Stripe's signature; open only while payments run in that mode):
 POST `/api/crm/hooks/stripe` (live), `/api/crm/hooks/stripe-test` (test).

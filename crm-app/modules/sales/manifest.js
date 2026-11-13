@@ -1,7 +1,7 @@
 // Client manifest of the "sales" module (M2b, design §11.3, §9.2): Leads &
 // calls (the call list), one follow-up, one deal, starting a follow-up,
-// logging a call, Tasks and one task, the contact's Sales tab, a Today card
-// and Settings → Cadences. Screens load with dynamic import(). No data,
+// logging a call, Tasks and one task, the contact's Sales tab, a Today card,
+// Settings → Cadences, and Signs & flyers (QR codes for signs and flyers). Screens load with dynamic import(). No data,
 // keys or customer names ever go in crm-app/ (§2.3).
 
 export default {
@@ -20,10 +20,15 @@ export default {
     { path: "/tasks/:id", load: () => import("./task.js"), title: "Task", perm: "tasks:read", parent: "/tasks" },
     { path: "/settings/cadences", load: () => import("./cadences.js"), title: "Cadences", perm: "cadences:configure", parent: "/settings", skeleton: "list" },
     { path: "/settings/cadences/:id", load: () => import("./cadence.js"), title: "Cadence", perm: "cadences:configure", parent: "/settings/cadences" },
+    // Signs & flyers: QR codes for yard signs, door hangers and flyers, their scans and leads (owners and the office)
+    { path: "/signs", load: () => import("./signs.js"), title: "Signs & flyers", perm: "signs:manage", parent: "/today", skeleton: "list" },
+    { path: "/signs/new", load: () => import("./sign-form.js"), title: "New code", perm: "signs:manage", parent: "/signs" },
+    { path: "/signs/:id", load: () => import("./sign.js"), title: "Code", perm: "signs:manage", parent: "/signs" },
   ],
   nav: [
     { where: "more", section: "sales", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
     { where: "more", section: "sales", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
+    { where: "more", section: "sales", label: "Signs & flyers", path: "/signs", perm: "signs:manage", order: 24, icon: "grid" },
   ],
   creates: [
     { label: "Log a call", path: "/calls/log", perm: "sales:work", order: 30, icon: "phone" },

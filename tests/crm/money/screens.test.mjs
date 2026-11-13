@@ -242,5 +242,5 @@ test("the QR code: a real symbol (format and version bits per the standard), the
   assert.match(svg, /fill="#fff"/);
   assert.match(svg, /fill="#000"/);
   assert.doesNotMatch(svg, /<pay>|"to"/, "the label can't break out of its attribute");
-  assert.throws(() => qr.qrMatrix("x".repeat(2000)), RangeError);
+  assert.throws(() => qr.qrMatrix("x".repeat(3000)), RangeError, "more than a version 40 symbol holds");
 });

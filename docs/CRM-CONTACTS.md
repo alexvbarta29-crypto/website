@@ -85,6 +85,14 @@ about 40 ms more on a cold start (none on a warm one).
 Turn it on when the first contacts import is in: Settings → Intake mode →
 "Rotor and the CRM".
 
+A quote form sent after a scan of a sign's or flyer's QR code (Sales →
+Signs & flyers, docs/CRM-SALES.md) carries the `barta_q` cookie the scan
+left; `hook.mjs` (`withScan`, the quote form only) hands it to the CRM's
+copy of the lead, and intake gives a new contact `source.campaign` ("Yard
+sign: Maple Grove") and `source.qr_code` through the sales services
+`sales.qrResolve` / `sales.qrLead`. Rotor's request is built before and
+never sees it.
+
 ## Intake (`intake.mjs`)
 
 `intakeLead(input, { origin, rotor })` → `{ ok, contact_id, created,

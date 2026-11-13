@@ -57,10 +57,14 @@ export const TEMPLATES = Object.freeze([
 const INVOICE_TPL = { sms: "invoice_sent", email: "invoice_sent_email" };
 const RECEIPT_TPL = { sms: "payment_receipt", email: "payment_receipt_email" };
 
-export async function invoiceLink(inv, by = "automation:invoice") {
+// An invoice link lasts until cfg/portal's invoice_after_paid_days (90) plus 60 days from today.
+export async function invoiceLinkExpiry() {
   const portal = await getSetting("portal").catch(() => ({}));
   const days = (portal && portal.lifetimes && portal.lifetimes.invoice_after_paid_days) || 90;
-  return createPortalLink({ contact_id: inv.contact_id, scope: { kind: "invoice", id: inv.id }, expires_at: zonedToUtc(addLocalDays(today(), days + 60), "23:59").toISOString(), created_by: by });
+  return zonedToUtc(addLocalDays(today(), days + 60), "23:59").toISOString();
+}
+export async function invoiceLink(inv, by = "automation:invoice") {
+  return createPortalLink({ contact_id: inv.contact_id, scope: { kind: "invoice", id: inv.id }, expires_at: await invoiceLinkExpiry(), created_by: by });
 }
 export const cardLink = (contactId, by = "automation:card") => createPortalLink({ contact_id: contactId, scope: { kind: "card" }, created_by: by });
 export const receiptLink = (p, by = "automation:receipt") => createPortalLink({ contact_id: p.contact_id, scope: { kind: "receipt", id: p.id }, created_by: by });

@@ -38,6 +38,9 @@ export const MONEY_STYLE = `<style>
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:8px 0 0;font-size:15.5px}.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
 .test{padding:10px 14px;border-radius:14px;background:#16161b;color:#fff;font-weight:600;font-size:14px;margin:0 0 14px}
 .stack{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.scan-head{text-align:center;padding:20px 18px 18px}.scan-head .who{margin:0 0 4px;font:800 15px/1.2 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.02em;color:var(--ink)}
+.scan-head .due-amt{margin:4px 0 2px;font:800 44px/1.05 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.scan-head p{margin:0}
 @media print{.noprint{display:none!important}.tot.big{border-top:1px solid #000}}
 </style>`;
 
@@ -56,7 +59,9 @@ function paymentsHtml(pays, invoiceId) {
 }
 
 // /p/invoice/:id. opts: { invoice, payments, contact, company, settings, refusal (why Pay is off, or null), plan (has a plan that takes a card), dry }
-export function renderInvoicePage({ invoice: inv, payments = [], contact, company = {}, settings = {}, refusal, plan, dry }) {
+// scan: the page was opened from the pay code at the door (scan.mjs): the
+// company's name and what's due come first, then Pay, then the details.
+export function renderInvoicePage({ invoice: inv, payments = [], contact, company = {}, settings = {}, refusal, plan, dry, scan = false }) {
   const first = String((contact && contact.first_name) || "").trim();
   const paid = inv.status === "paid";
   const closed = ["void", "uncollectible"].includes(inv.status);
@@ -86,10 +91,13 @@ export function renderInvoicePage({ invoice: inv, payments = [], contact, compan
       <button class="btn block" type="button" data-pay-btn>Pay ${esc(money(inv.balance_cents))}</button>
       <p class="small muted" style="margin-top:10px">You'll pay on a secure page run by Stripe. We never see your card number.</p></div>`;
   }
-  const body = `${MONEY_STYLE}<section class="card">${head}
+  const details = `<section class="card">${head}
     <ul class="lines">${(inv.lines || []).map(lineHtml).join("")}</ul>${totals}${paymentsHtml(payments, inv.id)}
-    ${inv.customer_note ? `<p style="margin-top:14px;color:var(--ink)">${esc(inv.customer_note)}</p>` : ""}</section>
-    <section class="card">${pay}<div class="row noprint"><button class="btn ghost" type="button" data-print>View or print</button><a class="btn ghost" href="tel:+1${esc(String(company.phone || "7633143400").replace(/\D/g, "").slice(-10))}">Call us</a></div></section>`;
+    ${inv.customer_note ? `<p style="margin-top:14px;color:var(--ink)">${esc(inv.customer_note)}</p>` : ""}</section>`;
+  const payCard = `<section class="card">${pay}<div class="row noprint"><button class="btn ghost" type="button" data-print>View or print</button><a class="btn ghost" href="tel:+1${esc(String(company.phone || "7633143400").replace(/\D/g, "").slice(-10))}">Call us</a></div></section>`;
+  const atDoor = scan && !paid && !closed && !draft;
+  const scanHead = atDoor ? `<section class="card scan-head" data-scan><p class="who">${esc(company.name || "Barta Window Washing")}</p><p class="small muted">${inv.kind === "deposit" ? "Deposit" : "Invoice"} ${esc(inv.number)}${first ? ` for ${esc(first)}` : ""}</p><p class="due-amt">${esc(money(inv.balance_cents))}</p><p class="small muted">due today</p></section>` : "";
+  const body = `${MONEY_STYLE}${atDoor ? `${scanHead}${payCard}${details}` : `${details}${payCard}`}`;
   return { title: `${inv.kind === "deposit" ? "Deposit" : "Invoice"} ${inv.number}`, body };
 }
 
