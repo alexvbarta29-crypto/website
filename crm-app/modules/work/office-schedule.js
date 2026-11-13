@@ -113,6 +113,7 @@ async function fetchView(ctx, s) {
   const extra = s.view === "day" || s.view === "3day" ? `&amounts=1&pay=1${s.view === "day" && s.by === "sales" ? "&sales=1" : ""}` : s.view === "list" ? "&amounts=1" : "";
   const r = await ctx.api(`/schedule?from=${from}&to=${to}${extra}`, { cache: false });
   s.today = r.data.today || s.today;
+  if (Number.isInteger(r.data.now_min)) s.nowMin = r.data.now_min;     // the server's time (the red line)
   s.data = { ...r.data, from, to };
 }
 

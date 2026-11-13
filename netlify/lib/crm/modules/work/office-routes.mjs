@@ -17,7 +17,7 @@
 
 import { getRecord, getRecords, createRecord, updateRecord, readIndex, softDelete, getRaw, listRel } from "../../../crm-store.mjs";
 import { isId, newId, deriveId } from "../../core/ids.mjs";
-import { now, nowIso, localDate, addLocalDays, zonedToUtc, isLocalDate, isLocalTime } from "../../core/clock.mjs";
+import { now, nowIso, localDate, localTime, addLocalDays, zonedToUtc, isLocalDate, isLocalTime } from "../../core/clock.mjs";
 import { InputError, NotFoundError, ConflictError, ExistsError } from "../../core/errors.mjs";
 import { techView, TECH_WINDOW } from "../../core/perms.mjs";
 import { keySafe } from "../../core/text.mjs";
@@ -135,7 +135,9 @@ const schedule = async (ctx) => {
   const capacity = capacityOf(from, to, { perDay: work.visits_per_day, crew: crewOf(usersIx.rows), timeOff: data.time_off, hours: data.hours, calendar: data.calendar });
   const extra = { capacity, defaults: { duration_min: work.default_duration_min, window_min: work.default_window_minutes }, weather: work.weather !== false };
   if (month) extra.to_book = toBookRows(openIx.rows, month).length;
-  return { data: { ...data, ...extra, from, to, today, ...(month ? { month } : {}) }, meta: { stale: data.stale || !!(openIx && openIx.stale) } };
+  // now_min: the server's time of day (the Day view's red line; a phone's clock may be off)
+  const t = localTime(now());
+  return { data: { ...data, ...extra, from, to, today, now_min: Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)), ...(month ? { month } : {}) }, meta: { stale: data.stale || !!(openIx && openIx.stale) } };
 };
 
 // The next days' forecast for the schedule (weather.mjs): never an error.
