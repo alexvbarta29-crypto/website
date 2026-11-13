@@ -67,10 +67,17 @@ defineFileOwner("message", {
   canEdit: () => false,
 });
 
+// (key and outcome: the door-to-door map's stable key and what a knock of
+// this type counts as, docs/CRM-MAP.md; kept when given)
+const PIN_OUTCOMES = ["not_home", "talked", "interested", "not_interested", "booked", "skip"];
 function validatePinTypes(v) {
   const list = v && Array.isArray(v.types) ? v.types : [];
   if (list.length > 50) throw new InputError("Up to 50 pin types.", "types");
-  return { types: list.map((t) => ({ rotor_id: String((t && t.rotor_id) || "").slice(0, 64), label: String((t && t.label) || "").slice(0, 40), color: String((t && t.color) || "").slice(0, 9), active: !(t && t.active === false) })).filter((t) => t.label) };
+  return { types: list.map((t) => ({
+    rotor_id: String((t && t.rotor_id) || "").slice(0, 64), label: String((t && t.label) || "").slice(0, 40), color: String((t && t.color) || "").slice(0, 9), active: !(t && t.active === false),
+    ...(t && typeof t.key === "string" && /^[a-z0-9_-]{1,40}$/.test(t.key) ? { key: t.key } : {}),
+    ...(t && PIN_OUTCOMES.includes(t.outcome) ? { outcome: t.outcome } : {}),
+  })).filter((t) => t.label) };
 }
 
 // Built-in templates (§5.7.3). Barta's Review 1/2/3 and the personal ask
@@ -96,7 +103,7 @@ export default defineModule({
     reviews: { defaults: { review_left_at: null, last_sequence_at: null, sequence: null }, row: (p) => ({ rv: (p && p.review_left_at) || null, rsq: (p && p.last_sequence_at) || null }) },
   },
   settings: {
-    // Rotor's eight map pin types (§10.2 row 35), kept for a later knock map
+    // Rotor's eight map pin types (§10.2 row 35): the door-to-door map's (docs/CRM-MAP.md)
     pin_types: { defaults: { types: [] }, validate: validatePinTypes, perm: "settings:general" },
     reviews: { defaults: { ...REVIEWS_DEFAULTS }, validate: validateReviews, perm: "settings:messaging" },
   },

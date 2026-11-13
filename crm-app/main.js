@@ -174,6 +174,13 @@ function start() {
     toShell({ type: "crm:badge", inbox: data.inbox_unread || 0, attention: (data.attention || 0) + (data.approvals || 0), notifications: data.notifications || 0 });
   });
 
+  // A module's background part (the team map's location sharing, docs/CRM-MAP.md):
+  // each manifest's start({ api, on, can, user }) once; one that fails never stops the app.
+  for (const m of MANIFESTS) {
+    if (typeof m.start !== "function") continue;
+    try { m.start({ api, on, can, user: session.user }); } catch (e) { /* a module's background part failed */ }
+  }
+
   // Offline changes (the tech app, M4b) go out when there is signal; one
   // the server turns down goes to the office's review (outbox.js).
   claimed.then(() => outbox.start({ onRefused: (item, e) => toast(`A change made offline wasn't accepted (${e.message}). The office will see it.`, { bad: true, ms: 6000 }) }));

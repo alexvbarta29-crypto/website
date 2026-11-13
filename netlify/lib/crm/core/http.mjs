@@ -4,7 +4,7 @@
 // - Headers: private HTML (no-store, noindex, same-origin referrer,
 //   SAMEORIGIN framing: the shell lives inside /office) and JSON.
 // - The CSP every /crm page sends (§2.3): script-src 'self', no inline
-//   script. The legacy Customers page (moved unchanged from the first slice
+//   script; connect-src also the map hosts (core/map-sources.mjs). The legacy Customers page (moved unchanged from the first slice
 //   to /crm/legacy until M2a replaces it) keeps its inline scripts, so its
 //   CSP lists their sha256 hashes instead of 'unsafe-inline': the hashes of
 //   its fixed script sources (crm-page.mjs LEGACY_SCRIPTS), computed once,
@@ -16,6 +16,7 @@
 // - Post-sign-in destinations: only /office... or /crm... (§4.11).
 
 import { createHash } from "node:crypto";
+import { mapHosts } from "./map-sources.mjs";
 
 // The oldest client (crm-app/version.js APP_VERSION) the API still serves,
 // and the one below it that offline-outbox (replaySafe) routes still accept,
@@ -34,7 +35,20 @@ export function compareVersions(a, b) {
   return 0;
 }
 
-export const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'";
+// connect-src adds exactly the map hosts of core/map-sources.mjs (the street
+// map and the aerial view the env picks; docs/CRM-MAP.md): the vendored
+// map library fetches its style, tiles and fonts from them. Nothing else
+// leaves 'self'; the map's worker is a file of ours (worker-src 'self').
+export const cspFor = (env = process.env) => `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'${mapHosts(env).map((h) => " " + h).join("")}; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'`;
+// The CSP with the default map sources (the legacy page's base, and what the tests pin).
+export const CSP = cspFor({});
+// The CSP for this deploy's env, worked out once per env.
+let cspMemo = { key: null, value: CSP };
+export function currentCsp(env = process.env) {
+  const key = [env.CRM_MAP_STREETS, env.CRM_MAP_AERIAL, env.CRM_MAP_STREETS_KEY ? 1 : 0, env.CRM_MAP_AERIAL_KEY ? 1 : 0].join("|");
+  if (cspMemo.key !== key) cspMemo = { key, value: cspFor(env) };
+  return cspMemo.value;
+}
 
 export const PRIVATE_HEADERS = Object.freeze({
   "Cache-Control": "private, no-store",
@@ -77,7 +91,7 @@ export const cspWithHashes = (hashes) => (hashes.length ? CSP.replace("script-sr
 
 // A /crm HTML page with the strict CSP.
 export function htmlPage(body, status = 200, extra = {}) {
-  return new Response(body, { status, headers: { ...HTML_HEADERS, "Content-Security-Policy": CSP, ...extra } });
+  return new Response(body, { status, headers: { ...HTML_HEADERS, "Content-Security-Policy": currentCsp(), ...extra } });
 }
 // A legacy page: exactly the given inline script hashes (fixed at module
 // load from the page's static script sources) are allowed, nothing else.
