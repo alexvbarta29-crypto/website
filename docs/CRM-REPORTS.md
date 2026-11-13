@@ -12,13 +12,15 @@ The CRM build rules (docs/CRM.md, "Modules") ask this file to stay current with:
 ## The leaderboard and My performance (Nov 2026)
 
 - **Leaderboard** (`#/leaderboard`; the Menu, or a tab; `reports:read`, so
-  never a technician's list): Rotor's podium. A period (Today, This week,
+  never a technician's list): Rotor's podium, in Flyra's cards and the
+  app's two themes. A period (Today, This week,
   This month, This year) and the measure: Sales, Revenue, Avg,
   Agreements, Auto-pay, Techs. The top three on a podium (initials), then
   every rep: rank, name, "n sales · x% signed" and the amount; you are
   outlined in coral; Unassigned last when it has anything.
 - **My performance** (`#/performance`; the Menu; anyone, their own):
-  Flyra's. "Sold in November" with the big amount (or "Nothing sold this
+  Flyra's (its dark card with a soft glow at the top right and "Barta" in
+  the corner). "Sold in November" with the big amount (or "Nothing sold this
   month"), the running total from the 1st to today as a line, three tiles
   (Jobs: $ and how many; Plans: $ and how many; Average job and the yearly
   plan money, ARR), the streak (days in a row with a sale) with this

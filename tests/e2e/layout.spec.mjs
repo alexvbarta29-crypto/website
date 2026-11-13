@@ -1,7 +1,9 @@
-// Phone and desk checks of the Nov 2026 layout (the best of Rotor's and
-// Flyra's phone apps; the layout report): the floating pill bar with labels
-// and the round +, the Menu sheet, the + overlay with search, large titles,
-// a person's own tab bar, the one-time "What moved" note; the contact page
+// Phone and desk checks of the Nov 2026 layout (Flyra's phone app first,
+// Rotor's where Flyra shows nothing; the layout report): Flyra's floating
+// glass bar with labels (Home · Schedule · Inbox · Map · Menu) and the round
+// +, the Menu sheet (Customers, Leads, Pipeline are there, top-level), the +
+// overlay with search, large titles, a person's own tab bar, the one-time
+// "What moved" toast, Dark by default and Light from the Menu; the contact page
 // that answers a call (header numbers and buttons, one page of sections, two
 // columns and a header that stays put on a desk); the Visit's one big button
 // (fixed at the bottom, On my way → Start → Finish, Start with no signal,
@@ -36,10 +38,12 @@ async function server(p, apiPath) {
 }
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`the phone shell (${device}): the pill bar, What moved once, the Menu sheet, the + with search, large titles, my own tab bar`, async () => {
+  test(`the phone shell (${device}): Flyra's bar, What moved once, the Menu sheet, the + with search, large titles, my own tab bar, Light and Dark`, async () => {
     const { p, page, f } = await open("olive", device, { office: true, keepMoved: true });
     try {
-      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector(".tl").textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
+      assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector(".tl").textContent)), ["Home", "Schedule", "Inbox", "Map", "Menu"]);
+      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "dark", "Flyra's dark look first");
+      assert.equal(await f.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(17, 18, 20)", "the near-black canvas");
       const bar = await box(f, "#tabs");
       const fab = await box(f, "#fab");
       const vh = await f.evaluate(() => innerHeight);
@@ -47,16 +51,16 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.ok(fab.x >= bar.right, "the round + beside it, on the right");
       assert.ok(Math.abs((fab.y + fab.h / 2) - (bar.y + bar.h / 2)) < 4, "level with the bar");
       assert.equal(await f.getAttribute('#tabs [data-tab="home"]', "aria-current"), "page");
-      // What moved: once
-      assert.match(await f.textContent("#moved"), /New tab bar/);
+      // What moved: once, as a toast (never a banner over Home)
+      await toastSays(f, /New look: Customers, Leads and Pipeline are in the Menu/);
+      assert.equal(await f.$("#moved"), null, "no banner");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `layout-shell-home-${device}`);
-      await f.click("[data-moved-x]");
-      assert.equal(await f.$("#moved"), null);
       await page.reload();
       const g = await crmFrame(page);
       await settled(g);
-      assert.equal(await g.$("#moved"), null, "not again on this phone");
+      await g.waitForTimeout(1600);
+      assert.doesNotMatch(await g.evaluate(() => (document.querySelector(".toasts") || {}).textContent || ""), /New look/, "not again on this phone");
       // the Menu: a sheet of groups, not a page
       await g.click('#tabs [data-tab="menu"]');
       await g.waitForSelector(".menu-sheet.on");
@@ -73,33 +77,53 @@ for (const device of ["iphone13", "iphonese"]) {
       // the +: the screen blurs, search on top, the things to make above the +
       await g.click("#fab");
       await g.waitForSelector(".qk.on");
-      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Customer", "Lead", "Quote", "Job", "Plan", "Invoice", "Task"]);
+      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Customer", "Lead", "Invoice", "Quote", "Plan", "Job", "Task"], "Flyra's order");
       await g.fill("#qk-q", "Newlead");
       await g.waitForSelector(".qk-res:not([hidden]) a", { timeout: 5000 });
       assert.deepEqual(await screenProblems(g), [], "the + overlay passes the phone checks");
       await shot(page, `layout-plus-${device}`);
       await g.click(".qk-x");
       await g.waitForFunction(() => !document.querySelector(".qk"));
-      // large titles and round buttons on a tab's own screen; a back arrow deeper in
-      await g.click('#tabs [data-tab="contacts"]');
+      // large titles and round buttons on a screen the Menu opens (top-level: no back button); a back arrow deeper in
+      await g.click('#tabs [data-tab="menu"]');
+      await g.waitForSelector(".menu-sheet.on");
+      await g.click('.menu-sheet a[href="#/contacts"]');
       await settled(g, { hash: "#/contacts" });
       assert.equal(await title(g), "Customers");
       assert.ok(await g.evaluate(() => document.getElementById("app").classList.contains("big-top")));
+      assert.equal(await g.isVisible("#top-back"), false, "top-level: no back button");
       assert.ok(await g.isVisible("#top-rnd .rnd.coral"), "a coral + for a new customer");
+      assert.deepEqual(await g.$$eval("#top-rnd .rnd-own .rnd", (els) => els.map((e) => e.dataset.own)), ["find", "filter", "archived"], "Rotor's round buttons: search, filter, archived");
+      assert.equal(await g.isVisible("#ct-q"), false, "no search bar under the title until the round search button asks");
+      await g.click('#top-rnd [data-own="find"]');
+      assert.equal(await g.isVisible("#ct-q"), true);
       assert.ok(await g.$("#ct-list .cc .cc-band"), "customers as cards");
       assert.deepEqual(await screenProblems(g), []);
       await shot(page, `layout-customers-${device}`);
       // my own tab bar
       await goTo(g, "/tab-bar");
-      await g.click('[data-pick="sales"]');
+      await g.click('[data-pick="map"]');
       await g.click('[data-pick="visits"]');
       await g.click("[data-save]");
       await toastSays(g, /saved/);
-      assert.deepEqual(await g.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab)), ["home", "schedule", "inbox", "contacts", "visits", "menu"]);
-      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "contacts", "visits", "menu"], "kept on the server");
+      assert.deepEqual(await g.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab)), ["home", "schedule", "inbox", "visits", "menu"]);
+      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "visits", "menu"], "kept on the server");
       await g.click("[data-standard]");
-      await g.waitForFunction(() => [...document.querySelectorAll("#tabs [data-tab]")].map((e) => e.dataset.tab).join() === "home,schedule,inbox,contacts,sales,menu", null, { timeout: 8000 });
-      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "contacts", "sales", "menu"], "the standard bar again");
+      await g.waitForFunction(() => [...document.querySelectorAll("#tabs [data-tab]")].map((e) => e.dataset.tab).join() === "home,schedule,inbox,map,menu", null, { timeout: 8000 });
+      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "map", "menu"], "the standard bar again");
+      // Light (Rotor's) from the Menu's sun button, on this phone; Dark again
+      await g.click('#tabs [data-tab="menu"]');
+      await g.waitForSelector(".menu-sheet.on");
+      await g.click(".menu-sheet [data-theme-btn]");
+      await g.click('[data-theme-pick="light"]');
+      assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "light");
+      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(242, 242, 247)", "iOS grouped grey");
+      assert.deepEqual(await screenProblems(g), []);
+      await page.reload();
+      const h = await crmFrame(page);
+      await settled(h);
+      assert.equal(await h.evaluate(() => document.documentElement.dataset.theme), "light", "kept on this phone");
+      await h.evaluate(() => localStorage.setItem("crm-theme", "dark"));
       await p.clean();
     } finally { await p.close(); }
   });
@@ -117,13 +141,19 @@ test("a tech's bar is the tech app's: Today · Inbox · Time · Pay · Me, no Me
 });
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`the contact page answers a call (${device}): name, town, three numbers, Call · Text · Quote · Book, one page of sections`, async () => {
+  test(`the contact page answers a call (${device}): Flyra's top (name, since, rows, the action bar), the details with three numbers, one page of sections`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, `/contacts/${seeded.contacts.plan}`);
       await f.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
       assert.deepEqual(await f.$$eval(".ct-num dt", (els) => els.map((e) => e.textContent)), ["Balance owed", "Lifetime spend", "Next visit"]);
-      assert.deepEqual(await f.$$eval(".ct-acts > *", (els) => els.map((e) => e.textContent.trim())), ["Call", "Text", "Quote", "Book"]);
+      // Flyra's lead page: the action bar Call · Message · Quote · Book (Mark lost on a lead with an open deal)
+      assert.deepEqual(await f.$$eval(".ct-acts > *", (els) => els.map((e) => e.textContent.trim())), ["Call", "Message", "Quote", "Book"]);
+      assert.match(await f.textContent(".ct-hero .ct-since"), /^Customer since [A-Z][a-z]{2} \d+, \d{4}$/);
+      assert.deepEqual(await f.$$eval(".ct-reach .lb", (els) => els.map((e) => e.textContent)), ["Mobile", "Email", "Address"]);
+      assert.match(await f.textContent("#ct-sum h3"), /Customer details/);
+      assert.equal(await f.isVisible("#top-back"), true, "the round back button");
+      assert.ok((await box(f, "#top-title")).w <= 1, "alone at the top: the name is the page's big title (the h1 stays for screen readers)");
       assert.match(await f.textContent(".ct-hero .ct-plan"), /plan/i, "the plan badge");
       const order = await f.$$eval("#view .ct-sec", (els) => els.map((e) => e.id));
       const want = ["ct-sec-visits", "ct-sec-plan", "ct-sec-docs", "ct-sec-properties", "ct-sec-queued", "ct-sec-mod-sales", "ct-sec-details", "ct-sec-aside", "ct-sec-activity"].filter((x) => order.includes(x));

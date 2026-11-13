@@ -54,10 +54,26 @@ overlay of what waits, copies for no signal, Delano times),
 
 ## What the office sees
 
-- **Schedule** (bottom tab; `schedule:read`), laid out like Rotor's phone
-  schedule with Flyra's extras (the owner's choice, Nov 12-13):
-  - **The head**: the month as a big title ("Nov ▾" on a phone, "November
-    2026 ▾" on a computer; tap: a month picker with Today and any day), and
+- **Schedule** (bottom tab; `schedule:read`). On a phone it is **Flyra's**
+  (Nov 13, "make it look more like Flyra"): a big title ("Nov 2026"; on a
+  day "Today", "Tomorrow", "Yesterday" or the weekday, with the date under
+  it and the day's total in coral for someone with `visits:prices`, "November
+  13 · $195"; tap: a month picker with Today and any day), the **< >**
+  pill at the right (and "↺ Today" beside it when the screen is somewhere
+  else), the **view pill** ("Month ⌄": Day, Week, Month, Technician, Sales
+  rep, List, 3 Day, then Map of the day and To book) and the **tools
+  pill** (Find, Who, and the gear: Show on cards). The month is Flyra's
+  plain grid (the chosen day outlined in coral, today's number coral; how
+  full each day is and the forecast stay, small), then "Tue, Nov 17 ·
+  Open day ›" and the day's jobs as cards, or "No jobs on ..." and Add
+  job; "6 to book ›" under the grid. A visit on Day is Flyra's block: a
+  colored left bar, the customer bold with the price after it in grey,
+  the service, the time window. The week strip and the Technician | Sales
+  rep chips step aside on Day and 3 Day (the view pill has them). A
+  computer keeps the layout below, laid out like Rotor's phone schedule
+  with Flyra's extras (the owner's choice, Nov 12-13):
+  - **The head**: the month as a big title ("November 2026 ▾" on a
+    computer; tap: a month picker with Today and any day), and
     round buttons: **Find** (a visit by customer, address, town or job
     number among what's on screen; on a desk it opens in the side panel),
     **Map of the day** (each person's Route that day, with its sketch and

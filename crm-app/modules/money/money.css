@@ -6,14 +6,14 @@
 .mn-end{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
 .mn-amt{font-weight:600;font-variant-numeric:tabular-nums}
 .mn-tot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.mn-tot .stat{padding:12px 14px;border-radius:var(--r-lg);background:#fff;border:1px solid var(--line);box-shadow:var(--sh-card);min-width:0}
-.mn-tot .stat b{display:block;font:800 20px/1.15 var(--head);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mn-tot .stat{padding:12px 14px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-card);min-width:0}
+.mn-tot .stat b{display:block;font:700 20px/1.15 var(--head);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .mn-tot .stat small{font-size:12.5px;color:var(--ink-3)}
 .mn-tot .stat.bad b{color:var(--red-ink)}
 .mn-head{display:flex;flex-direction:column;gap:6px}
 .mn-head .top-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.mn-head h2{font:800 22px/1.15 var(--head);letter-spacing:-.015em;margin:0}
-.mn-head .big{font:800 30px/1.1 var(--head);letter-spacing:-.015em;font-variant-numeric:tabular-nums;margin:2px 0}
+.mn-head h2{font:700 22px/1.15 var(--head);letter-spacing:-.015em;margin:0}
+.mn-head .big{font:700 30px/1.1 var(--head);letter-spacing:-.015em;font-variant-numeric:tabular-nums;margin:2px 0}
 .mn-head .who-link{font-weight:600;color:var(--ink);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
 .mn-lines{list-style:none;margin:0;padding:0}
 .mn-lines li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14.5px}
@@ -34,30 +34,30 @@
 .mn-pay .t b{display:block;font-weight:600}
 .mn-pay .t small{display:block;color:var(--ink-3);font-size:13px;overflow-wrap:anywhere}
 .mn-pay .p{flex:none;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
-.mn-pay .act{flex:none;min-height:var(--ctl-sm);min-width:44px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;color:var(--ink-2);font:600 13px/1 var(--text);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--sh-xs)}
+.mn-pay .act{flex:none;min-height:var(--ctl-sm);min-width:44px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--card);color:var(--ink-2);font:600 13px/1 var(--text);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--sh-xs)}
 .mn-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .mn-grid .field{margin:0}
 .mn-newline{display:grid;grid-template-columns:minmax(0,1fr) 108px 44px;gap:8px;align-items:end;margin:0 0 8px}
 .mn-newline .field{margin:0}
-.mn-newline .rm{min-height:46px;min-width:44px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;color:var(--ink-2);font:500 18px/1 var(--text)}
+.mn-newline .rm{min-height:46px;min-width:44px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--card);color:var(--ink-2);font:500 18px/1 var(--text)}
 .mn-month{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .mn-month b{font:700 18px/1.2 var(--head)}
 .mn-month .btn{min-width:44px;padding:0 14px}
-.mn-test{padding:10px 14px;border-radius:var(--r);background:var(--ink);color:#fff;font-weight:500;font-size:14px}
+.mn-test{padding:10px 14px;border-radius:var(--r);background:var(--solid);color:var(--on-solid);font-weight:500;font-size:14px}
 .mn-mode{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.mn-mode .big{font:800 24px/1.1 var(--head)}
+.mn-mode .big{font:700 24px/1.1 var(--head)}
 .mn-qr{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0}
 .mn-qr svg{width:min(72vw,280px);height:auto;background:#fff;border-radius:var(--r-lg)}
 .mn-qr .url{font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere;text-align:center}
 .mn-seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 4px}
 .mn-seg label{position:relative}
 .mn-seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0}
-.mn-seg span{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:var(--r);box-shadow:inset 0 0 0 1px var(--line-2);background:#fff;font-weight:500}
-.mn-seg input:checked+span{box-shadow:inset 0 0 0 2px var(--coral);background:#fff5f3;font-weight:600}
+.mn-seg span{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:var(--r);box-shadow:inset 0 0 0 1px var(--line-2);background:var(--card);font-weight:500}
+.mn-seg input:checked+span{box-shadow:inset 0 0 0 2px var(--coral);background:var(--coral-wash);font-weight:600}
 .mn-seg input:focus-visible+span{outline:2px solid var(--coral);outline-offset:2px}
 .mn-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.mn-strip a{display:block;padding:12px 14px;border-radius:var(--r-lg);background:#fff;border:1px solid var(--line);box-shadow:var(--sh-card);text-decoration:none;color:var(--ink);min-height:64px;min-width:0}
-.mn-strip b{display:block;font:800 18px/1.15 var(--head);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mn-strip a{display:block;padding:12px 14px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-card);text-decoration:none;color:var(--ink);min-height:64px;min-width:0}
+.mn-strip b{display:block;font:700 18px/1.15 var(--head);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .mn-strip small{font-size:12.5px;color:var(--ink-3)}
 .mn-strip .bad b{color:var(--red-ink)}
 @media (max-width:359px){.mn-strip{grid-template-columns:1fr 1fr}}
@@ -71,7 +71,7 @@
 .sheet.mn-full .sheet-body > .mn-scan{margin:auto 0}
 .mn-scan{gap:8px;padding:4px 0 8px;text-align:center;color:#000}
 .mn-scan p{margin:0}
-.mn-scan-amt{font:800 40px/1.05 var(--head);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#000}
+.mn-scan-amt{font:700 40px/1.05 var(--head);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#000}
 .mn-scan-who{font:600 17px/1.3 var(--text);color:#000;overflow-wrap:anywhere}
 .mn-scan-code{width:min(88vw,calc(100vh - 370px),460px);min-width:200px;max-width:100%}
 .mn-qr .mn-scan-code svg{display:block;width:100%;height:auto;border-radius:0;background:#fff}

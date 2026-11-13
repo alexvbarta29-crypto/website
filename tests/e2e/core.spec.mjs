@@ -42,8 +42,8 @@ test("one app: office sign-in → first-owner setup (the office password again) 
     await settled(f);
     assert.equal(await title(f), "Home");
     assert.equal(await page.$(".bar .nav"), null, "still one app");
-    // the office's bar (Nov 2026): Home · Schedule · Inbox · Customers · Sales · Menu (the Dashboard's numbers are on Home, its views in the Menu)
-    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Customers", "Sales", "Menu"]);
+    // the office's bar (Nov 2026, Flyra's): Home · Schedule · Inbox · Map · Menu (the Dashboard's numbers are on Home, its views in the Menu)
+    assert.deepEqual(await f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.querySelector("span").textContent)), ["Home", "Schedule", "Inbox", "Map", "Menu"]);
     assert.equal(await f.$('.tabs [data-tab="dashboard"], .tabs [data-more]'), null, "no Dashboard tab, no More sheet");
     await p.clean();
   } finally {
@@ -74,7 +74,7 @@ test("one app: the Dashboard (Menu → Reports) switches its views in place; Men
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
-    assert.equal(await backShown(f), true, "back to the Menu");
+    assert.equal(await backShown(f), false, "a screen the Menu lists is top-level (Flyra's): no back button");
     // (a frame that hasn't loaded anything yet has no URL)
     const dash = () => page.frames().find((x) => { try { return new URL(x.url()).pathname === "/dashboard"; } catch (e) { return false; } });
     await page.waitForFunction(() => true);
@@ -197,7 +197,8 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     await settled(f, { hash: "#/contacts" });
     assert.equal(await hashOf(f), "#/contacts", "back from a deep link goes to the declared parent");
     assert.equal(await backShown(f), false, "a tab root has no back arrow");
-    // the list keeps its search and scroll when you come back
+    // the list keeps its search and scroll when you come back (a phone: the round search button opens the field)
+    if (!(await f.isVisible("#ct-q"))) await f.click('#top-rnd [data-own="find"]');
     await f.fill("#ct-q", "example");
     await page.waitForTimeout(400);
     const rows = await f.$$("#ct-list a.cc-top");
@@ -369,9 +370,9 @@ test("the office tells the CRM frame its safe areas (office:insets)", async () =
       return { top: cs.getPropertyValue("--sat").trim(), bottom: cs.getPropertyValue("--sab").trim(), tabsPad: getComputedStyle(document.getElementById("tabs")).paddingBottom, tabsBottom: Math.round(tabs.bottom), h: innerHeight, topPad: getComputedStyle(document.querySelector(".top")).paddingTop };
     });
     assert.equal(got.top, "47px", "solo: the CRM's own top bar takes the notch");
-    // the floating pill (Nov 2026) sits 10 px above the home bar
+    // the floating pill (Nov 2026, Flyra's) sits just above the home bar
     assert.equal(got.topPad, "47px");
-    assert.equal(got.tabsBottom, got.h - 34 - 10, "the tab bar floats above the home bar, fully on screen");
+    assert.equal(got.tabsBottom, got.h - 34 - 4, "the tab bar floats above the home bar, fully on screen");
     await shot(page, "core-insets");
     await p.clean();
   } finally { await p.close(); }

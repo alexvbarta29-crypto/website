@@ -16,6 +16,14 @@ export default {
     const r = await ctx.api(`/sales/contacts/${encodeURIComponent(params.id)}`, { cache: false });
     return r.data;
   },
+  // what the contact page's "Lead details" shows (Flyra's): the open deal's
+  // value (and its id, for Mark lost), the follow-up and the step it is on
+  header(s) {
+    if (!s || s.denied) return {};
+    const d = (s.deals || []).find((x) => ["open", "quoted"].includes(x.status));
+    const e = (s.enrollments || []).find((x) => ["active", "paused"].includes(x.status));
+    return { deal_id: d ? d.id : null, deal_value: d && Number.isSafeInteger(d.value_cents) ? d.value_cents : d ? 0 : null, pipeline: e ? e.cadence_name || null : null, stage: e ? (e.cur && e.cur.label) || null : null };
+  },
   // a follow-up's next step that sends something (a text or an email), when it's due
   queued(s) {
     return (s.enrollments || []).filter((e) => e.status === "active" && e.next_due_at && e.cur && ["text", "email"].includes(e.cur.action))

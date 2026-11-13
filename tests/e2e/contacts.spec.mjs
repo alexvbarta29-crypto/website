@@ -24,13 +24,18 @@ for (const device of ["iphone13", "iphonese"]) {
   test(`contacts (${device}): open the list, search, open a contact and its Sales tab`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
-      await f.click('#tabs [data-tab="contacts"]');
+      // (Customers is in the Menu now: Flyra's bar is Home · Schedule · Inbox · Map · Menu)
+      await f.click('#tabs [data-tab="menu"]');
+      await f.waitForSelector(".menu-sheet.on");
+      await f.click('.menu-sheet a[href="#/contacts"]');
       await settled(f, { hash: "#/contacts" });
       assert.equal(await title(f), "Customers");
       assert.match(await f.textContent("#ct-count"), /^2\d\d contacts/, "the 200 seeded people and the leads");
       assert.deepEqual(await screenProblems(f), [], "the list passes the phone checks");
       await shot(page, `contacts-list-${device}`);
-      // search: by phone digits, then by name (one row each)
+      // search (Rotor's round search button opens the field in place): by phone digits, then by name (one row each)
+      assert.equal(await f.isVisible("#ct-q"), false, "no search bar under the title");
+      await f.click('#top-rnd [data-own="find"]');
       const search = async (q, name) => {
         await f.fill("#ct-q", q);
         await f.waitForFunction((n) => document.querySelectorAll("#ct-list .cc").length === 1 && document.getElementById("ct-list").textContent.includes(n), name, { timeout: 5000 });

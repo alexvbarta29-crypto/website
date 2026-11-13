@@ -25,6 +25,10 @@ import { html, render, toast, confirmSheet } from "./core/ui.js";
 import { time as fmtTime, dateShort, localDate } from "./core/format.js";
 import { poll } from "./core/poll.js";
 import * as outbox from "./core/outbox.js";
+import { applyTheme } from "./core/nav.js";
+
+// Light, Dark or Automatic (this device's choice; Dark by default), before anything draws.
+applyTheme();
 
 const framed = (() => { try { return window.parent !== window; } catch (e) { return true; } })();
 const toShell = (msg) => { if (framed) { try { window.parent.postMessage(msg, location.origin); } catch (e) { /* no shell */ } } };
