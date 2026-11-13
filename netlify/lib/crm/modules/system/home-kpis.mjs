@@ -241,6 +241,8 @@ export function clockToday(rows, uid, today, nowMs) {
 // ------------------------------------------------------------ the Agenda
 
 export const AGENDA_VIEWS = Object.freeze(["day", "week", "month"]);
+// how many visits a view sends: Monthly's calendar needs every day's (its dots and the picked day's list)
+export const AGENDA_MAX = Object.freeze({ day: 120, week: 120, month: 600 });
 // → { from, to }
 export function agendaRange(view, date) {
   if (view === "week") { const f = weekStart(date); return { from: f, to: addLocalDays(f, 6) }; }

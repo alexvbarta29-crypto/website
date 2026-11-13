@@ -130,6 +130,36 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-ag-head .t{min-width:0}
 .hm-ag-head h3{font:500 20px/1.2 var(--head);letter-spacing:-.02em;text-wrap:balance}
 .hm-ag-head .t>span{display:block;margin-top:3px;font-size:15px;color:var(--ink-3)}
+/* Monthly (Rotor's): the switch and the arrows on one row, the month big,
+   Sunday-first days with up to three dots in the techs' colors, today a
+   coral circle, the picked day outlined, a line, then that day's visits */
+.hm-ag-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 18px;min-width:0}
+.hm-ag-top .hm-seg{flex:0 1 auto;min-width:0}
+.hm-ag-top .hm-seg button{flex:1 1 auto;padding:0 14px;min-width:0}
+.hm-ag-top .hm-arrows{gap:8px}
+.hm-ag-month{align-items:baseline;margin-bottom:12px}
+.hm-ag-month h3{font:700 27px/1.15 var(--head);letter-spacing:-.03em;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-ag-month>span{flex:none;font-size:16px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.hm-cal{margin:0 -8px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.hm-cal-dow,.hm-cal-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.hm-cal-dow span{display:block;padding:4px 0 8px;text-align:center;font:500 14px/1 var(--text);color:var(--ink-3)}
+.hm-cd{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;min-height:56px;padding:4px 0 6px;border:0;background:none;color:var(--ink);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hm-cd .n{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:500 20px/1 var(--text);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.hm-cd .dots{display:flex;justify-content:center;gap:3px;height:6px}
+.hm-cd .dots i{width:6px;height:6px;border-radius:50%;background:var(--c,#b9b9c2)}
+.hm-cd.out{cursor:default}
+.hm-cd.out .n{color:var(--ink-3);opacity:.5}
+button.hm-cd:active .n{background:var(--fill-2)}
+.hm-cd.sel .n{box-shadow:inset 0 0 0 1.5px var(--ink-2)}
+.hm-cd.today .n{background:var(--coral-wash);color:var(--coral-ink);font-weight:600;box-shadow:inset 0 0 0 1px var(--coral-ring)}
+.hm-cd.today.sel .n{box-shadow:inset 0 0 0 1.5px var(--coral)}
+.hm-cd:focus-visible{outline:0}
+.hm-cd:focus-visible .n{outline:2px solid var(--coral);outline-offset:2px}
+.hm-selday{margin-top:16px}
+.hm-selh{display:flex;align-items:baseline;gap:12px;margin:0 4px 12px;font:500 14px/1.2 var(--text)}
+.hm-selh .d{text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3)}
+.hm-selh .c{color:var(--ink-3);font-weight:400;font-size:15px}
+.hm-empty-day{padding:18px 12px 12px}
 .hm-day{margin:16px 4px 8px;font:500 13px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em}
 .hm-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .hm-item{position:relative;display:flex;align-items:center;gap:10px;min-height:68px;padding:12px 14px 12px 20px;border-radius:16px;background:var(--card-2);border:1px solid var(--card-line);color:inherit;text-decoration:none;overflow:hidden}
@@ -210,6 +240,8 @@ a.hm-item:active{background:var(--fill-2)}
 }
 @media (max-width:380px){
   .hm-seg button{padding:0 11px;font-size:15px}
+  .hm-ag-top .hm-seg button{padding:0 9px}
+  .hm-cd .n{width:38px;height:38px;font-size:19px}
   .hm-sky .hm-seg button{padding:0 12px}
   .hm-big{font-size:35px}
   .hm-stats{gap:14px}
@@ -236,6 +268,10 @@ a.hm-item:active{background:var(--fill-2)}
   a.hm-conv:hover{background:var(--fill)}
   .hc{height:200px}
   .hm-ag-head h3{font-size:22px}
+  .hm-ag-month h3{font-size:27px}
+  .hm-cal{margin:0}
+  button.hm-cd:hover .n{background:var(--fill)}
+  .hm-cd.today .n{background:var(--coral-wash)}
 }
 /* from 1,100 px two columns: the clock a bar across, then the cards side by side in their order */
 @media (min-width:1100px){

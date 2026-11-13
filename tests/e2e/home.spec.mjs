@@ -147,7 +147,49 @@ test("Today: Weekly and Monthly, the arrows, and a visit opens", async () => {
     await f.click('[data-hm="view"][data-v="month"]');
     await idle(f);
     assert.match(await text(f, ".hm-ag-head"), /^November 2026 \d+ items$/);
-    // Daily keeps the day it was on (the Monday the arrows reached); back a day
+    // Monthly is a calendar (the owner's Nov 13 ask): the switch and the arrows on one row, Sunday first
+    assert.equal(await has(f, ".hm-c-agenda .hm-ag-top .hm-seg + .hm-arrows"), true);
+    assert.equal(await has(f, ".hm-c-agenda .hm-day"), false, "no long list of the month");
+    assert.deepEqual(await f.$$eval(".hm-cal-dow span", (els) => els.map((e) => e.textContent)), ["S", "M", "T", "W", "T", "F", "S"]);
+    const cal = await f.$$eval(".hm-cal-days > *", (els) => els.map((e) => ({ tag: e.tagName, d: e.dataset.v || "", n: e.querySelector(".n").textContent, dots: e.querySelectorAll(".dots i").length, today: e.classList.contains("today"), sel: e.getAttribute("aria-pressed") === "true", label: e.getAttribute("aria-label") || "", w: e.getBoundingClientRect().width, h: e.getBoundingClientRect().height })));
+    assert.equal(cal.length, 35, "Sun Nov 1 to Sat Dec 5");
+    const inMonth = cal.filter((c) => c.tag === "BUTTON");
+    assert.deepEqual([inMonth.length, inMonth[0].d, inMonth[29].d, cal.slice(30).map((c) => c.n).join(" ")], [30, "2026-11-01", "2026-11-30", "1 2 3 4 5"]);
+    assert.ok(inMonth.every((c) => c.w >= 44 && c.h >= 44), "44 px days");
+    assert.deepEqual(cal.filter((c) => c.today).map((c) => [c.d, c.sel]), [["2026-11-17", true]], "today, picked first");
+    assert.equal(cal.find((c) => c.d === "2026-11-17").dots, 3, "seven visits today: three dots");
+    assert.match(await text(f, ".hm-selh"), /^TUE, NOV 17 · 7 items$/);
+    assert.equal((await f.$$(".hm-selday .hm-item")).length, 7);
+    // a tap on another day lists that day's visits only, from the month already read
+    let asked = 0;
+    const onReq = (r) => { if (r.url().includes("/home/agenda")) asked++; };
+    page.on("request", onReq);
+    const next = inMonth.find((c) => c.d === "2026-11-18");
+    const n18 = Number(next.label.match(/(\d+) items?/)[1]);
+    assert.ok(next.dots === Math.min(3, n18) && n18 >= 1, next.label);
+    await f.click('[data-hm="ag-day"][data-v="2026-11-18"]');
+    assert.match(await text(f, ".hm-selh"), new RegExp(`^WED, NOV 18 · ${n18} items?$`));
+    assert.equal(await f.getAttribute('[data-hm="ag-day"][data-v="2026-11-18"]', "aria-pressed"), "true");
+    assert.equal(await f.getAttribute('[data-hm="ag-day"][data-v="2026-11-17"]', "aria-pressed"), "false");
+    const picked = await f.$$eval(".hm-selday .hm-item", (els) => els.map((e) => e.getAttribute("href")).sort());
+    assert.equal(picked.length, n18);
+    const empty = inMonth.find((c) => !c.dots && c.d > "2026-11-18");
+    await f.click(`[data-hm="ag-day"][data-v="${empty.d}"]`);
+    assert.match(await text(f, ".hm-selday"), /· 0 items Nothing booked No visits on /);
+    assert.equal(asked, 0, "picking a day reads nothing");
+    page.off("request", onReq);
+    assert.deepEqual(await screenProblems(f), []);
+    await f.click('[data-hm="ag-day"][data-v="2026-11-18"]');
+    // Daily opens on the day picked, with the same visits
+    await f.click('[data-hm="view"][data-v="day"]');
+    await idle(f);
+    assert.match(await text(f, ".hm-ag-head"), /^Wednesday, November 18 /);
+    assert.deepEqual(await f.$$eval(".hm-c-agenda .hm-item", (els) => els.map((e) => e.getAttribute("href")).sort()), picked);
+    // the arrows from the Monday the week reached; back a day
+    await f.click('[data-hm="view"][data-v="week"]');
+    await idle(f);
+    await f.click('[data-hm="ag-move"][data-v="1"]');
+    await idle(f);
     await f.click('[data-hm="view"][data-v="day"]');
     await idle(f);
     assert.match(await text(f, ".hm-ag-head"), /^Monday, November 23 /);
@@ -165,6 +207,35 @@ test("Today: Weekly and Monthly, the arrows, and a visit opens", async () => {
     assert.match(await f.textContent("#view"), /Workday|Afternoon/, "the visit's screen");
     await p.clean();
   } finally { await p.close(); }
+});
+
+test("Monthly at iPhone 13 and SE, dark and light: the calendar fits, a day picked, no sideways scroll", async () => {
+  await day();
+  for (const device of DEVICES) {
+    const { p, page, f } = await home("olive", { device, office: true });
+    try {
+      await f.click('[data-hm="view"][data-v="month"]');
+      await idle(f);
+      await f.click('[data-hm="ag-day"][data-v="2026-11-18"]');
+      await f.$eval(".hm-c-agenda", (el) => { el.scrollIntoView({ block: "start" }); document.getElementById("view").scrollTop -= 12; });
+      await f.waitForFunction(() => !document.querySelector("#toasts .toast"), null, { timeout: 8000 });   // the "New look" note, gone
+      for (const theme of ["dark", "light"]) {
+        await f.evaluate((t) => { document.documentElement.dataset.theme = t; }, theme);
+        await page.waitForTimeout(150);
+        const look = await f.evaluate(() => {
+          const q = (s) => getComputedStyle(document.querySelector(s));
+          const card = document.querySelector(".hm-c-agenda").getBoundingClientRect();
+          const days = document.querySelector(".hm-cal-days").getBoundingClientRect();
+          return { today: q(".hm-cd.today .n").color, num: q('.hm-cd[data-v="2026-11-02"] .n').color, top: document.querySelector(".hm-ag-top").scrollWidth <= document.querySelector(".hm-ag-top").clientWidth, inCard: days.left >= card.left && days.right <= card.right };
+        });
+        assert.notEqual(look.today, look.num, "today in coral");
+        assert.ok(look.top && look.inCard, JSON.stringify(look));
+        assert.deepEqual(await screenProblems(f), []);
+        await shot(page, `home-month-${device}-${theme}`);
+      }
+      await p.clean();
+    } finally { await p.close(); }
+  }
 });
 
 test("Money: Collected | Scheduled | ARR, the period menu, a custom range, the readout, See more", async () => {
