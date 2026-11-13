@@ -16,9 +16,10 @@ router.register(MANIFESTS);
 const nav = await import("../../../crm-app/core/nav.js");
 const quick = await import("../../../crm-app/core/quick.js");
 const { navFor, OFFICE_NAV } = await import("../../../netlify/lib/crm/modules/system/me.mjs");
-const { ROLE_DEFAULTS } = await import("../../../netlify/lib/crm/core/perms.mjs");
+const { ROLE_DEFAULTS, roleDefault } = await import("../../../netlify/lib/crm/core/perms.mjs");
+await import("../../../netlify/lib/crm/modules/index.mjs");   // the modules' own permissions (the map's canvass:use)
 
-const canOf = (role, office = true) => (p) => (p === "office:tools" ? office && role === "owner" : !!ROLE_DEFAULTS[role][p]);
+const canOf = (role, office = true) => (p) => (p === "office:tools" ? office && role === "owner" : roleDefault(role, p) === true);
 const planFor = (role, user = {}) => nav.plan({ nav: navFor({ role, ...user }), manifests: MANIFESTS, can: canOf(role), user: { id: "us_0000000000000000000a", role, name: "Pat Example", ...user } });
 
 test("the office's bar: Home · Schedule · Inbox · Customers · Sales · Menu, the Menu last and a sheet; a tech's is unchanged", () => {
@@ -42,7 +43,9 @@ test("each person's own tab bar: up to five of the main places, the Menu always 
   assert.deepEqual(navFor({ role: "tech", tabs: ["home"] }), ["today", "inbox", "time", "pay", "me"], "a tech's bar is the tech app's");
   // a place whose screen isn't there yet (the Map before its module) simply doesn't show
   const p = planFor("owner", { tabs: ["home", "visits", "leaderboard", "map"] });
-  assert.deepEqual(p.bar.map((t) => t.key), ["home", "visits", "leaderboard", ...(router.has("/map") ? ["map"] : []), "menu"]);
+  assert.deepEqual(p.bar.map((t) => t.key), ["home", "visits", "leaderboard", ...(router.has("/map") && canOf("owner")("canvass:use") ? ["map"] : []), "menu"]);
+  assert.ok(router.has("/map"), "the Map is there (the maps module) and may be a tab (where: tab)");
+  assert.equal(nav.isTabRoot("/map"), p.bar.some((t) => t.key === "map"), "a pinned Map is a top-level screen: no back arrow");
 });
 
 test("the tab bar is saved on the person's own record (PATCH /users/:id { tabs }) and comes back with /me", async () => {
