@@ -49,7 +49,9 @@ export const LAYOUT = Object.freeze([
     ["/automations", "Automations", "bolt", "automations"],
     ["/settings/cadences", "Follow-up cadences", "phone", "follow-ups"],
     ["/settings/messaging", "Quiet hours & opt-out", "text", "quiet hours"],
-    ["/settings/texting", "Texting & email setup", "mail", "texting"]]],
+    ["/settings/texting", "Texting & email setup", "mail", "texting"],
+    ["/approvals", "Approvals", "check", "approvals"],
+    ["/outbox", "Outbox (not sent)", "send", "outbox"]]],
   ["payments", "Payments", "receipt", "green", [
     ["/settings/payments", "Payments & card fees", "money", "payments and card fees"]]],
   ["connections", "Connections", "plug", "red", [

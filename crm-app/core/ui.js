@@ -24,6 +24,13 @@
 // formRow(), toggle(), quickRow(), actionSheet() and sheetPage(). Each
 // returns html`` (actionSheet and sheetPage open a sheet); what a tap does is
 // the screen's own events on the data-* the helper puts there.
+//
+// And the list and board patterns (K0, the Rotor guide; scratchpad
+// simplify/guide-gaps.md §0): tileRow() (the tile is the filter), listRow()
+// and listCard() (two-line rows, one action, a long press for "..."),
+// board(), boardCard() and moveSheet() (swiped columns with a stage strip),
+// filterSheet(), periodChip() and periodSheet(), stepper(), stickyCta(),
+// dragList() and emptyCard().
 
 import { money as fmtMoney } from "./format.js";
 
@@ -543,10 +550,11 @@ export function pillBtn(label, { icon: ic = null, tone = "grey", wide = false, h
 // Segmented tabs: seg([["details", "Details"], ["activity", "Activity"]], "details", { name: "tab" }).
 // Items may be { key, label, count?, href? } (an href makes it a link, a route's own tabs). A tap is
 // the screen's "click [data-seg=tab]" (el.dataset.key); arrow keys move along (ui.js, below).
-// black: the plan editor's black "on" segment.
-export function seg(items, on, { name = "tab", black = false, label = "" } = {}) {
+// black: the plan editor's black "on" segment. scroll: 5 or 6 tabs (Marketing, Analytics) keep their
+// own width and the track scrolls sideways.
+export function seg(items, on, { name = "tab", black = false, label = "", scroll = false } = {}) {
   const list = (items || []).filter(Boolean).map((x) => (Array.isArray(x) ? { key: x[0], label: x[1] } : x));
-  return html`<div class="${"rs-seg" + (black ? " black" : "")}" role="tablist" ${attrs({ "aria-label": label || null })}>${list.map((it) => {
+  return html`<div class="${"rs-seg" + (black ? " black" : "") + (scroll ? " scroll" : "")}" role="tablist" ${attrs({ "aria-label": label || null })}>${list.map((it) => {
     const sel = String(it.key) === String(on);
     const a = { class: "rs-seg-b", role: "tab", "aria-selected": sel ? "true" : "false", tabindex: sel ? "0" : "-1", "data-seg": name, "data-key": String(it.key) };
     const inner = html`<span class="rs-seg-t">${it.label}</span>${it.count !== undefined && it.count !== null ? html`<span class="n">${String(it.count)}</span>` : ""}`;
@@ -777,4 +785,386 @@ if (typeof document !== "undefined") {
     const again = root.querySelector(`.rs-seg-b[data-seg="${CSS.escape(name)}"][data-key="${CSS.escape(key)}"]`) || next;
     try { again.focus(); } catch (x) { /* gone */ }
   });
+}
+
+
+// ------------------------------------------------------------ the list and board patterns (K0, Nov 2026)
+//
+// The Rotor guide's phone patterns (scratchpad simplify/guide-gaps.md §0),
+// each defined once: a top-level list screen is Title, the section's tabs
+// (core/nav.js sectionTabs), a tileRow() and then listRow()s in a
+// listCard(), or a board(). Markup only, like the rest of the kit: a tap is
+// the screen's own events on the data-* asked for. Two things work for every
+// screen at once (listeners here, at the end): a long press (or a right
+// click) on anything with data-hold sends it an "rs-hold" event (the screen
+// listens with "rs-hold [data-...]") and swallows the click that follows;
+// a board's stage strip scrolls to its column and follows the swipe.
+
+const isHtml = (v) => !!v && v[SAFE] === true;
+// A pill from a word ("Paid"), { label, tone }, or ready html.
+const pillOf = (p) => (!p ? "" : isHtml(p) ? p : typeof p === "object" ? statusPill(p.label, p.tone || pillTone(p.label)) : statusPill(String(p)));
+const holdAttrs = (hold) => (hold ? { "data-hold": "", ...dataOf(hold) } : {});
+const roundAction = (a) => (a ? rnd(a.icon || "chevright", a.label || "Open", { tone: a.tone ?? "grey", sm: true, href: a.href, ext: a.ext, data: a.data, popup: !!a.popup }) : "");
+
+// The stat tile row (Rotor's tiles, one compact row that scrolls sideways):
+// a caps label, the count, an optional $ under it. The tile IS the filter: a
+// tap is the screen's "click [data-tile=<name>]" (el.dataset.key), and the
+// tile that is `on` is drawn outlined (aria-pressed). An info tile (ARR) is
+// not a button. big: Home's Reminders (larger numbers).
+// tileRow([{ key, label, value, money?, tone?: "red"|"green"|"amber", info?, href? | data? }], { name, on, label, big })
+export function tileRow(items, { name = "tile", on = null, label = "", big = false } = {}) {
+  const list = (items || []).filter(Boolean);
+  const isOn = (t) => !t.info && on !== null && on !== undefined && String(t.key) === String(on);
+  return html`<div class="${"rs-tiles" + (big ? " big" : "")}" role="group" ${attrs({ "aria-label": label || null })}><div class="rs-tiles-in">${list.map((t) => {
+    const v = t.value === undefined || t.value === null || t.value === "" ? "-" : String(t.value);
+    const inner = html`<span class="rs-tile-l">${t.label}</span><span class="rs-tile-v num">${v}</span>${t.money !== undefined && t.money !== null && t.money !== "" ? html`<span class="rs-tile-m num">${kitMoney(t.money)}</span>` : ""}`;
+    const cls = "rs-tile" + (t.tone ? " " + t.tone : "") + (t.info ? " info" : "");
+    if (t.info) return html`<div class="${cls}">${inner}</div>`;
+    const a = { class: cls, "data-tile": name, "data-key": String(t.key), ...dataOf(t.data) };
+    if (t.href) return html`<a ${attrs({ href: t.href, ...a, "aria-current": isOn(t) ? "true" : null })}>${inner}</a>`;
+    return html`<button type="button" ${attrs({ ...a, "aria-pressed": isOn(t) ? "true" : "false" })}>${inner}</button>`;
+  })}</div></div>`;
+}
+// What a tap on a tile makes the filter: that tile, or back to `all` when it was already on.
+export const tileToggle = (on, key, all = "all") => (String(on) === String(key) ? all : key);
+
+// The two-line row (Row2): line 1 the name and the key $ on the right; line 2 the number · date ·
+// detail (and a small tag) with the status pill on the right; at most ONE trailing round action
+// (call, ▷, ✓); a long press opens the row's "..." (hold: the data-* the screen's "rs-hold" listens on).
+// edge: "red" (overdue) | "amber" | "green"; initials: a grey circle before the name.
+// listRow({ title, amount?, sub?, pill?, tag?, href? | data?, action?: { icon, label, tone?, href | data }, edge?, initials?, hold? })
+export function listRow({ title = "", amount = null, sub = "", pill = null, tag = null, href = null, data = null, action = null, edge = null, initials = null, hold = null } = {}) {
+  const amt = amount === null || amount === undefined || amount === "" ? "" : html`<span class="rs-lr-m num">${kitMoney(amount)}</span>`;
+  const inner = html`${initials ? html`<span class="rs-av rs-lr-av" aria-hidden="true">${initials}</span>` : ""}<span class="rs-lr-a">
+    <span class="rs-lr-1"><span class="rs-lr-t">${title}</span>${amt}</span>
+    ${sub || tag || pill ? html`<span class="rs-lr-2"><span class="rs-lr-s">${sub || ""}${tag ? html`<span class="rs-tag">${tag}</span>` : ""}</span>${pillOf(pill)}</span>` : ""}</span>`;
+  const main = href ? html`<a ${attrs({ class: "rs-lr-main", href, ...dataOf(data) })}>${inner}</a>`
+    : data ? html`<button type="button" ${attrs({ class: "rs-lr-main", ...dataOf(data) })}>${inner}</button>`
+      : html`<span class="rs-lr-main">${inner}</span>`;
+  return html`<li ${attrs({ class: "rs-lrow" + (edge ? " edge-" + edge : ""), ...holdAttrs(hold) })}>${main}${action ? html`<span class="rs-acts">${roundAction(action)}</span>` : ""}</li>`;
+}
+// The card the rows sit in (or one line saying there is nothing).
+export function listCard(rows, { empty = "Nothing here yet.", label = "" } = {}) {
+  const list = (rows || []).filter(Boolean);
+  if (!list.length) return html`<div class="rs-card"><p class="rs-empty">${empty}</p></div>`;
+  return html`<ul class="rs-card flush rs-list" ${attrs({ "aria-label": label || null })}>${list}</ul>`;
+}
+
+// A kanban board on a phone: a stage strip of pills with counts (a tap jumps to the column), the
+// columns about 86% of the screen wide, scroll-snapped and swiped sideways. Moving a card is its
+// Move pill (or a long press): the screen opens moveSheet(). Drag stays a desk thing (none here).
+// board({ name, columns: [{ key, label, count?, amount?, cards: [boardCard(...)], empty? }], on, label })
+export function board({ name = "board", columns = [], on = null, label = "" } = {}) {
+  const cols = (columns || []).filter(Boolean);
+  const cur = on !== null && on !== undefined ? String(on) : cols.length ? String(cols[0].key) : "";
+  const n = (c) => (c.count !== undefined && c.count !== null ? c.count : (c.cards || []).filter(Boolean).length);
+  return html`<div class="rs-board" ${attrs({ "data-board": name, "data-on": cur, role: "region", "aria-label": label || null })}>
+    <div class="rs-strip" role="group" ${attrs({ "aria-label": label ? label + ": stages" : "Stages" })}>${cols.map((c) => html`<button type="button" ${attrs({ class: "rs-strip-b", "data-board-jump": name, "data-key": String(c.key), "aria-pressed": String(c.key) === cur ? "true" : "false" })}><span>${c.label}</span><span class="n num">${String(n(c))}</span></button>`)}</div>
+    <div class="rs-cols">${cols.map((c) => {
+      const cards = (c.cards || []).filter(Boolean);
+      return html`<section class="rs-col" ${attrs({ "data-col": String(c.key), "aria-label": c.label })}><header class="rs-col-h"><h3>${c.label}</h3><span class="rs-col-n num">${String(n(c))}${c.amount !== undefined && c.amount !== null && c.amount !== "" ? ` · ${kitMoney(c.amount)}` : ""}</span></header>
+        <div class="rs-col-cards">${cards.length ? cards : html`<p class="rs-empty">${c.empty || "Nothing here"}</p>`}</div></section>`;
+    })}</div></div>`;
+}
+// A board's card: the title and a pill, a grey line, a meta line (initials, a date); a Move pill
+// (move: { label?, data }) and at most one round action; edge "red" for overdue; done: struck through.
+// boardCard({ title, pill?, sub?, meta?, edge?, href? | data?, move?, action?, hold?, done? })
+export function boardCard({ title = "", pill = null, sub = "", meta = "", edge = null, href = null, data = null, move = null, action = null, hold = null, done = false } = {}) {
+  const inner = html`<span class="rs-bc-1"><span class="rs-bc-t">${title}</span>${pillOf(pill)}</span>${sub ? html`<span class="rs-bc-s">${sub}</span>` : ""}${meta ? html`<span class="rs-bc-m">${meta}</span>` : ""}`;
+  const main = href ? html`<a ${attrs({ class: "rs-bc-main", href, ...dataOf(data) })}>${inner}</a>`
+    : data ? html`<button type="button" ${attrs({ class: "rs-bc-main", ...dataOf(data) })}>${inner}</button>`
+      : html`<span class="rs-bc-main">${inner}</span>`;
+  const mv = asLink(move);
+  return html`<article ${attrs({ class: "rs-bcard" + (edge ? " edge-" + edge : "") + (done ? " done" : ""), ...holdAttrs(hold) })}>${main}${mv || action ? html`<div class="rs-bc-acts">${mv ? pillBtn(mv.label || "Move", { icon: "swap", href: mv.href, data: mv.data, aria: mv.aria || `Move ${title}` }) : ""}${roundAction(action)}</div>` : ""}</article>`;
+}
+// Scrolls each board in `root` to its `on` column (a screen's mount(), after drawing).
+export function boardMount(root) {
+  if (!root || !root.querySelectorAll) return;
+  for (const b of root.querySelectorAll(".rs-board[data-on]")) boardJump(b, b.dataset.on, false);
+}
+function boardJump(b, key, smooth = true) {
+  const cols = b.querySelector(".rs-cols");
+  const col = cols && [...cols.children].find((c) => c.dataset.col === String(key));
+  if (!col) return;
+  const pad = parseFloat(getComputedStyle(cols).paddingLeft) || 0;
+  const left = col.offsetLeft - cols.offsetLeft - pad;
+  if (cols.scrollTo) cols.scrollTo({ left, behavior: smooth ? "smooth" : "auto" }); else cols.scrollLeft = left;
+  boardLight(b, key);
+}
+function boardLight(b, key) {
+  if (b.dataset.on === String(key) && b.querySelector('.rs-strip-b[aria-pressed="true"]')) return;
+  b.dataset.on = String(key);
+  for (const p of b.querySelectorAll(".rs-strip-b")) {
+    const on = p.dataset.key === String(key);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+    if (on) { const s = p.parentElement; const l = p.offsetLeft - 16; if (l < s.scrollLeft || p.offsetLeft + p.offsetWidth > s.scrollLeft + s.clientWidth) s.scrollLeft = Math.max(0, l); }
+  }
+}
+
+// Move a card: the stages as a list, the current one ticked. → Promise<the picked key, or null
+// (closed, or the current one picked)>. stages: [[key, label], ...] or [{ key, label, count?, hint? }].
+export function moveSheet(title, stages = [], current = null) {
+  const list = (stages || []).filter(Boolean).map((x) => (Array.isArray(x) ? { key: x[0], label: x[1] } : x));
+  return new Promise((resolve) => {
+    let answered = false;
+    const s = sheet({
+      title: title || "Move to",
+      className: "rs-actions rs-move",
+      body: html`<ul class="rs-act-g" role="radiogroup" ${attrs({ "aria-label": title || "Move to" })}>${list.map((x, i) => {
+        const on = current !== null && current !== undefined && String(x.key) === String(current);
+        return html`<li><button type="button" ${attrs({ class: "rs-act", role: "radio", "aria-checked": on ? "true" : "false", "data-move-to": String(i) })}><span class="rs-act-ic">${on ? icon("check") : html`<span class="rs-dot" aria-hidden="true"></span>`}</span><span class="rs-act-l">${x.label}</span>${x.count !== undefined && x.count !== null ? html`<span class="rs-act-h num">${String(x.count)}</span>` : x.hint ? html`<span class="rs-act-h">${x.hint}</span>` : ""}</button></li>`;
+      })}</ul>`,
+      onClose: () => { if (!answered) resolve(null); },
+      events: {
+        "click [data-move-to]": (e, el) => {
+          const x = list[Number(el.dataset.moveTo)];
+          answered = true;
+          s.close();
+          resolve(!x || (current !== null && current !== undefined && String(x.key) === String(current)) ? null : x.key);
+        },
+      },
+    });
+  });
+}
+
+// The date range chip ("This month ⌄") and its sheet: This week, This month, Last month, Last 3
+// months, This year, Custom (two days). A period is a key or { key, from, to } (custom).
+export const PERIODS = Object.freeze([["week", "This week"], ["month", "This month"], ["last_month", "Last month"], ["3m", "Last 3 months"], ["year", "This year"], ["custom", "Custom"]]);
+const pAdd = (d, n) => new Date(Date.parse(d + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+const pMonth = (d) => `${d.slice(0, 7)}-01`;
+const pPrevMonth = (d) => { const [y, m] = d.split("-").map(Number); return m === 1 ? `${y - 1}-12-01` : `${y}-${String(m - 1).padStart(2, "0")}-01`; };
+const P_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const pDay = (d) => `${P_MON[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8, 10))}`;
+// The first and last day of a period (weeks start on Monday), for `today` (YYYY-MM-DD, the company's day).
+export function periodRange(period, today) {
+  const p = typeof period === "string" ? { key: period } : period || {};
+  const k = p.key || "month";
+  if (k === "custom" && p.from && p.to) return { from: p.from, to: p.to };
+  if (k === "week") return { from: pAdd(today, -((new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7)), to: today };
+  if (k === "last_month") return { from: pPrevMonth(today), to: pAdd(pMonth(today), -1) };
+  if (k === "3m") return { from: pPrevMonth(pPrevMonth(today)), to: today };
+  if (k === "year") return { from: `${today.slice(0, 4)}-01-01`, to: today };
+  return { from: pMonth(today), to: today };
+}
+// "This month", or a custom span: "Nov 1 - 17, 2026", "Oct 19 - Nov 2, 2026".
+export function periodLabel(period) {
+  const p = typeof period === "string" ? { key: period } : period || {};
+  if (p.key === "custom" && p.from && p.to) {
+    const a = p.from, b = p.to;
+    if (a.slice(0, 4) !== b.slice(0, 4)) return `${pDay(a)}, ${a.slice(0, 4)} - ${pDay(b)}, ${b.slice(0, 4)}`;
+    if (a === b) return `${pDay(a)}, ${a.slice(0, 4)}`;
+    return a.slice(0, 7) === b.slice(0, 7) ? `${pDay(a)} - ${Number(b.slice(8, 10))}, ${b.slice(0, 4)}` : `${pDay(a)} - ${pDay(b)}, ${b.slice(0, 4)}`;
+  }
+  return (PERIODS.find(([k]) => k === (p.key || "month")) || PERIODS[1])[1];
+}
+// periodChip(period, { name }): the screen's "click [data-period=<name>]" opens periodSheet().
+export function periodChip(period, { name = "period", label = "Dates" } = {}) {
+  return html`<button type="button" ${attrs({ class: "rs-pchip", "data-period": name, "aria-haspopup": "dialog", "aria-label": `${label}: ${periodLabel(period)}` })}><span>${periodLabel(period)}</span>${icon("chevdown")}</button>`;
+}
+// → Promise<{ key, from?, to? } or null>. Custom asks for two days (the last after the first).
+export function periodSheet(current = "month", { title = "Dates", custom = true, max = null } = {}) {
+  const cur = typeof current === "string" ? { key: current } : current || { key: "month" };
+  const keys = PERIODS.filter(([k]) => custom || k !== "custom");
+  return new Promise((resolve) => {
+    let answered = false;
+    let showCustom = cur.key === "custom";
+    const draw = () => html`<ul class="rs-act-g" role="radiogroup" ${attrs({ "aria-label": title })}>${keys.map(([k, l]) => html`<li><button type="button" ${attrs({ class: "rs-act", role: "radio", "aria-checked": k === (showCustom ? "custom" : cur.key) ? "true" : "false", "data-period-pick": k })}><span class="rs-act-ic">${k === (showCustom ? "custom" : cur.key) ? icon("check") : html`<span class="rs-dot" aria-hidden="true"></span>`}</span><span class="rs-act-l">${l}</span>${k === "custom" && cur.key === "custom" ? html`<span class="rs-act-h">${periodLabel(cur)}</span>` : ""}</button></li>`)}</ul>
+      ${showCustom ? html`<form class="rs-card rs-frows rs-pdays" data-period-days novalidate>
+        ${formRow("First day", html`<input type="date" name="from" ${attrs({ value: cur.from || "", max, required: true, "aria-label": "First day" })}>`)}
+        ${formRow("Last day", html`<input type="date" name="to" ${attrs({ value: cur.to || "", max, required: true, "aria-label": "Last day" })}>`)}
+        <p class="rs-sub rs-perr" data-period-err hidden></p>
+        <div class="rs-li-cta">${html`<button type="submit" class="rs-pb red wide"><span>Show</span></button>`}</div></form>` : ""}`;
+    const s = sheet({
+      title, className: "rs-actions rs-period", body: draw(),
+      onClose: () => { if (!answered) resolve(null); },
+      events: {
+        "click [data-period-pick]": (e, el) => {
+          const k = el.dataset.periodPick;
+          if (k === "custom") { showCustom = true; s.set(draw()); const f = s.body.querySelector("input[name=from]"); if (f) f.focus(); return; }
+          answered = true; s.close(); resolve({ key: k });
+        },
+        "submit [data-period-days]": (e, f) => {
+          e.preventDefault();
+          const from = f.elements.from.value, to = f.elements.to.value;
+          const err = f.querySelector("[data-period-err]");
+          if (!from || !to || to < from) { err.textContent = "The last day comes after the first."; err.hidden = false; return; }
+          answered = true; s.close(); resolve({ key: "custom", from, to });
+        },
+      },
+    });
+  });
+}
+
+// The filter sheet: chip groups (several), radio and sort (one), on/off rows and a period, then
+// Reset and the red "Show N" (count: a number, or a function of the values being picked).
+// → Promise<the new values, or null when closed>. A group may name its `default` (Reset goes back to it).
+// filterSheet({ title, groups: [{ key, label, type: "chips"|"radio"|"toggle"|"period"|"sort", options: [[value, label]] }], values, count })
+export function filterSheet({ title = "Filter", groups = [], values = {}, count = null } = {}) {
+  const gs = (groups || []).filter(Boolean).map((g) => ({ ...g, options: (g.options || []).map((o) => (Array.isArray(o) ? { value: o[0], label: o[1] } : o)) }));
+  const empty = (g) => (g.default !== undefined ? JSON.parse(JSON.stringify(g.default)) : g.type === "chips" ? [] : g.type === "toggle" ? false : g.type === "period" ? "month" : null);
+  const start = () => Object.fromEntries(gs.map((g) => [g.key, values && values[g.key] !== undefined ? JSON.parse(JSON.stringify(values[g.key])) : empty(g)]));
+  let v = start();
+  const n = () => (typeof count === "function" ? count(v) : count);
+  const pressed = (g, val) => (g.type === "chips" ? (v[g.key] || []).map(String).includes(String(val)) : String(v[g.key]) === String(val));
+  const draw = () => html`${gs.map((g) => html`<section class="rs-fgrp">${sectionLabel(g.label)}${g.type === "toggle"
+    ? html`<div class="rs-card rs-frows">${formRow(g.text || g.label, toggle(!!v[g.key], { data: { "f-toggle": g.key }, label: g.text || g.label }))}</div>`
+    : g.type === "period"
+      ? html`<div class="rs-chips">${periodChip(v[g.key], { name: "f-" + g.key, label: g.label })}</div>`
+      : html`<div class="rs-chips" ${attrs({ role: g.type === "chips" ? "group" : "radiogroup", "aria-label": g.label })}>${g.options.map((o) => html`<button type="button" ${attrs({ class: "rs-chip", "data-f-group": g.key, "data-f-val": String(o.value), role: g.type === "chips" ? null : "radio", "aria-pressed": g.type === "chips" ? String(pressed(g, o.value)) : null, "aria-checked": g.type === "chips" ? null : String(pressed(g, o.value)) })}>${g.type === "sort" && pressed(g, o.value) ? icon("check") : ""}${o.label}</button>`)}</div>`}</section>`)}`;
+  const foot = () => { const c = n(); return html`${pillBtn("Reset", { data: { "f-reset": true } })}<button type="button" class="rs-pb red rs-fshow" data-f-show>${c === null || c === undefined ? "Show" : `Show ${c}`}</button>`; };
+  return new Promise((resolve) => {
+    let answered = false;
+    const s = sheet({
+      title, className: "rs-actions rs-filter", body: html`<div class="rs-fbody">${draw()}</div><div class="rs-ffoot">${foot()}</div>`,
+      onClose: () => { if (!answered) resolve(null); },
+      events: {
+        "click [data-f-val]": (e, el) => {
+          const g = gs.find((x) => x.key === el.dataset.fGroup);
+          const o = g && g.options.find((x) => String(x.value) === el.dataset.fVal);
+          if (!o) return;
+          if (g.type === "chips") { const cur = (v[g.key] || []).filter((x) => String(x) !== String(o.value)); v[g.key] = cur.length === (v[g.key] || []).length ? [...cur, o.value] : cur; }
+          else v[g.key] = String(v[g.key]) === String(o.value) && g.type === "radio" && g.default === undefined ? null : o.value;
+          redraw(`[data-f-group="${g.key}"][data-f-val="${CSS.escape(String(o.value))}"]`);
+        },
+        "click [data-f-toggle]": (e, el) => { v[el.dataset.fToggle] = !v[el.dataset.fToggle]; redraw(`[data-f-toggle="${el.dataset.fToggle}"]`); },
+        "click [data-period]": async (e, el) => {
+          const key = el.dataset.period.replace(/^f-/, "");
+          const p = await periodSheet(v[key]);
+          if (p) { v[key] = p.key === "custom" ? p : p.key; redraw(`[data-period="f-${key}"]`); }
+        },
+        "click [data-f-reset]": () => { v = Object.fromEntries(gs.map((g) => [g.key, empty(g)])); redraw("[data-f-reset]"); },
+        "click [data-f-show]": () => { answered = true; s.close(); resolve(v); },
+      },
+    });
+    function redraw(focusSel) {
+      s.set(html`<div class="rs-fbody">${draw()}</div><div class="rs-ffoot">${foot()}</div>`);
+      const again = focusSel && s.body.querySelector(focusSel);
+      if (again) { try { again.focus({ preventScroll: true }); } catch (x) { /* gone */ } }
+    }
+  });
+}
+
+// The status track (Payroll: Open → Approved → Paid → Closed): steps before `on` ticked, `on`
+// solid, the rest grey. stepper([["open", "Open"], ...] or [{ key, label }], "approved", { label })
+export function stepper(steps, on, { label = "Status" } = {}) {
+  const list = (steps || []).filter(Boolean).map((x) => (Array.isArray(x) ? { key: x[0], label: x[1] } : x));
+  const at = list.findIndex((x) => String(x.key) === String(on));
+  return html`<ol class="rs-steps" ${attrs({ "aria-label": label })}>${list.map((x, i) => html`<li ${attrs({ class: "rs-step" + (i < at ? " done" : i === at ? " on" : ""), "aria-current": i === at ? "step" : null })}><span class="rs-step-d" aria-hidden="true">${i < at ? icon("check") : String(i + 1)}</span><span class="rs-step-l">${x.label}</span>${i < at ? html`<span class="sr">, done</span>` : ""}</li>`)}</ol>`;
+}
+
+// The one big step of an action screen (the visit's step, Dialer's "Call next", Payroll's
+// "Approve period"): a red pill fixed above the tab bar on a phone, at the end of the page on a desk.
+// One per screen. stickyCta("Call next", { data: { "call-next": true }, icon: "call", tone: "red" | "solid" })
+export function stickyCta(label, { data = null, href = null, tone = "red", icon: ic = null, disabled = false, aria = null } = {}) {
+  return html`<div class="rs-cta">${pillBtn(label, { tone, wide: true, icon: ic, href, data, disabled, aria })}</div>`;
+}
+
+// One empty state for every list: a grey round icon, a line in bold, a line of help, one pill.
+// emptyCard({ icon, title, text?, action?: { label, href | data, icon? } })
+export function emptyCard({ icon: ic = "list", title = "Nothing here yet", text = "", action = null } = {}) {
+  const a = asLink(action);
+  return html`<div class="rs-card rs-emptycard"><span class="rs-ci" aria-hidden="true">${icon(ic)}</span><b>${title}</b>${text ? html`<p class="rs-sub">${text}</p>` : ""}${a ? pillBtn(a.label || "Add", { icon: a.icon || "plus", tone: "solid", href: a.href, data: a.data }) : ""}</div>`;
+}
+
+// Reordering a list (Customize Tabs' drag, for any list: the Power Dialer's queue): each row has
+// data-drag-key and a dragHandle(); drag the handle (or hold the row) and the row moves under the
+// finger; the arrow keys on a handle move it one place. On a drop, onDrop([keys in order]).
+// → a function that stops listening. dragHandle(key, label) is the 44 px handle.
+export const dragHandle = (key, label = "Move") => html`<button type="button" ${attrs({ class: "rs-drag", "data-drag-handle": String(key), "aria-label": `${label}. Use the up and down arrows.` })}>${icon("drag")}</button>`;
+export function dragList(root, onDrop = () => {}) {
+  if (!root) return () => {};
+  let drag = null, hold = null;
+  const rowOf = (el) => (el && el.closest ? el.closest("[data-drag-key]") : null);
+  const order = (list) => [...list.children].map((x) => x.dataset && x.dataset.dragKey).filter((x) => x !== undefined);
+  const begin = (li, e) => { drag = { li, list: li.parentElement, id: e.pointerId }; li.classList.add("dragging"); try { li.setPointerCapture(e.pointerId); } catch (x) { /* fine */ } };
+  const down = (e) => {
+    const li = rowOf(e.target);
+    if (!li || !root.contains(li) || e.button > 0) return;
+    if (e.target.closest("[data-drag-handle]")) { e.preventDefault(); begin(li, e); return; }
+    if (e.target.closest("button, a, input, select, textarea")) return;
+    const x0 = e.clientX, y0 = e.clientY;
+    clearTimeout(hold && hold.t);
+    hold = { x0, y0, t: setTimeout(() => { hold = null; begin(li, e); }, 450) };
+  };
+  const move = (e) => {
+    if (hold && Math.hypot(e.clientX - hold.x0, e.clientY - hold.y0) > 8) { clearTimeout(hold.t); hold = null; }
+    if (!drag || e.pointerId !== drag.id) return;
+    e.preventDefault();
+    let before = null;
+    for (const x of [...drag.list.children].filter((c) => c !== drag.li && c.dataset && c.dataset.dragKey !== undefined)) { const r = x.getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { before = x; break; } }
+    if (before !== drag.li.nextElementSibling) drag.list.insertBefore(drag.li, before);
+  };
+  const up = (e) => {
+    if (hold) { clearTimeout(hold.t); hold = null; }
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    const { li, list } = drag;
+    drag = null;
+    li.classList.remove("dragging");
+    onDrop(order(list));
+  };
+  const key = (e) => {
+    const h = e.target.closest && e.target.closest("[data-drag-handle]");
+    if (!h || !root.contains(h) || !["ArrowUp", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    const li = rowOf(h);
+    const sib = e.key === "ArrowUp" ? li.previousElementSibling : li.nextElementSibling;
+    if (!sib || !sib.dataset || sib.dataset.dragKey === undefined) return;
+    const k = h.dataset.dragHandle;
+    li.parentElement.insertBefore(li, e.key === "ArrowUp" ? sib : sib.nextElementSibling);
+    onDrop(order(li.parentElement));
+    const again = root.querySelector(`[data-drag-handle="${CSS.escape(k)}"]`) || h;
+    try { again.focus(); } catch (x) { /* gone */ }
+  };
+  root.addEventListener("pointerdown", down);
+  root.addEventListener("pointermove", move, { passive: false });
+  root.addEventListener("pointerup", up);
+  root.addEventListener("pointercancel", up);
+  root.addEventListener("keydown", key);
+  return () => { for (const [t, f] of [["pointerdown", down], ["pointermove", move], ["pointerup", up], ["pointercancel", up], ["keydown", key]]) root.removeEventListener(t, f); };
+}
+
+// For every screen at once: a long press (or a right click) on [data-hold] sends "rs-hold" to it
+// and swallows the click that follows; a board's strip jumps to its column and follows a swipe.
+if (typeof document !== "undefined") {
+  let t = null, x0 = 0, y0 = 0, firedAt = 0;
+  const HOLD_MS = 550;
+  const fire = (el) => {
+    firedAt = Date.now();
+    el.dispatchEvent(new CustomEvent("rs-hold", { bubbles: true }));
+  };
+  document.addEventListener("pointerdown", (e) => {
+    const el = e.target && e.target.closest ? e.target.closest("[data-hold]") : null;
+    clearTimeout(t); t = null;
+    // (a press on the row's own round button or pill is that button's)
+    if (!el || e.button > 0 || e.target.closest(".rnd, .rs-pb, .rs-drag")) return;
+    x0 = e.clientX; y0 = e.clientY;
+    t = setTimeout(() => { t = null; fire(el); }, HOLD_MS);
+  }, true);
+  document.addEventListener("pointermove", (e) => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) { clearTimeout(t); t = null; } }, true);
+  for (const ev of ["pointerup", "pointercancel"]) document.addEventListener(ev, () => { clearTimeout(t); t = null; }, true);
+  document.addEventListener("contextmenu", (e) => {
+    const el = e.target && e.target.closest ? e.target.closest("[data-hold]") : null;
+    if (!el) return;
+    e.preventDefault();
+    if (Date.now() - firedAt > 800) fire(el);
+  }, true);
+  document.addEventListener("click", (e) => {
+    if (firedAt && Date.now() - firedAt < 700 && e.target && e.target.closest && e.target.closest("[data-hold]")) { e.preventDefault(); e.stopPropagation(); firedAt = 0; }
+    const j = e.target && e.target.closest ? e.target.closest("[data-board-jump]") : null;
+    if (j) { const b = j.closest(".rs-board"); if (b) boardJump(b, j.dataset.key); }
+  }, true);
+  let raf = 0;
+  document.addEventListener("scroll", (e) => {
+    const cols = e.target;
+    if (!cols || !cols.classList || !cols.classList.contains("rs-cols") || raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const b = cols.closest(".rs-board");
+      if (!b) return;
+      const mid = cols.scrollLeft + cols.clientWidth * 0.3;
+      let best = null;
+      for (const c of cols.children) { if (c.offsetLeft - cols.offsetLeft <= mid) best = c; }
+      if (best) boardLight(b, best.dataset.col);
+    });
+  }, true);
 }

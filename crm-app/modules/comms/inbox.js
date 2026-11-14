@@ -1,4 +1,4 @@
-// Inbox, titled Messages (design §9.2 "Inbox", §5.7.1 "Keeping screens
+// Inbox (titled Inbox to match the drawer, K0 of the Rotor guide; it was Messages) (design §9.2 "Inbox", §5.7.1 "Keeping screens
 // fresh"; the Nov 2026 layout, after Flyra's header and Rotor's rows):
 // every conversation, newest first; a search field over the names and the
 // last words; All | Customers | Leads; an Unread switch; and a dropdown for
@@ -54,7 +54,7 @@ function watch(ctx) {
 }
 
 export default {
-  title: "Messages",
+  title: "Inbox",
   load,
   render(s) {
     const list = shown(s.rows, s);

@@ -74,7 +74,7 @@ test("one app: the Dashboard (drawer → Analytics → Reports → Office dashbo
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
-    assert.equal(await backShown(f), false, "the Dashboard is a drawer screen (Analytics) too: top-level from Reports");
+    assert.equal(await backShown(f), true, "the Dashboard sits in Analytics' \"...\": a back button to Reports");
     // (a frame that hasn't loaded anything yet has no URL)
     const dash = () => page.frames().find((x) => { try { return new URL(x.url()).pathname === "/dashboard"; } catch (e) { return false; } });
     await page.waitForFunction(() => true);
@@ -102,15 +102,15 @@ test("one app: the Dashboard (drawer → Analytics → Reports → Office dashbo
 test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu page (old #/menu links): the drawer's rows as a page, every list open, Sign out at the bottom
+    // the Menu page (old #/menu links): the drawer's sections as a page, each one's tabs and "..." screens under it, Sign out at the bottom
     await goTo(f, "/menu");
     const groups = await f.$$eval(".menu-page .menu-rows > .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(":scope > li > .dr-row .dr-l, :scope > li > .dr-sub > .dr-h .dr-l")].map((x) => x.textContent)));
     assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]], JSON.stringify(groups));
     // (a page has the room: every list open under its row's name)
     const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
-    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Customers", "Service", "Financials", "Map", "Analytics", "Marketing"]);
-    for (const want of ["Customers", "Merge review", "Jobs", "Plans", "Lights season", "Quotes", "Light Studio", "Invoices", "Purchases", "Leaderboard", "My performance", "Reports",
-      "Outbox", "Approvals", "Giveaway", "Campaigns"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
+    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Pipelines", "Service", "Financials", "Map", "Analytics", "Marketing"]);
+    for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Purchases", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
+      "Outbox (not sent)", "Approvals", "Giveaway", "Signs & flyers", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
     for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
     assert.ok(await f.$('.menu-page a[href="#/settings"]'), "the gear");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");

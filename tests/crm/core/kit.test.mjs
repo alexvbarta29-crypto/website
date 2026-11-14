@@ -182,3 +182,91 @@ test("every class the kit draws has its look in crm.css; Customize Tabs and the 
   assert.match(CSS, /--card:#1b1c1f;--card-2:#232428;/);
   assert.match(CSS, /--seg-track:#1d1e21;--seg-on:#48494d;/);
 });
+
+// ------------------------------------------------------------ K0: the list and board patterns (the Rotor guide §0)
+
+test("tileRow: the tile is the filter (aria-pressed on the one that is on), info tiles aren't buttons, money, tones, links", () => {
+  const { tileRow, tileToggle } = ui;
+  const t = h(tileRow([{ key: "all", label: "All", value: 82 }, { key: "overdue", label: "Overdue", value: 3, money: 67500, tone: "red" }, { key: "arr", label: "ARR", value: "$12,480", info: true }, { key: "x", label: "Empty" }], { name: "inv", on: "overdue", label: "Invoices" }));
+  assert.match(t, /^<div class="rs-tiles" role="group" aria-label="Invoices"><div class="rs-tiles-in">/);
+  assert.match(t, /<button type="button" class="rs-tile" data-tile="inv" data-key="all" aria-pressed="false"><span class="rs-tile-l">All<\/span><span class="rs-tile-v num">82<\/span><\/button>/);
+  assert.match(t, /class="rs-tile red" data-tile="inv" data-key="overdue" aria-pressed="true">[\s\S]*<span class="rs-tile-m num">\$675\.00<\/span>/);
+  assert.match(t, /<div class="rs-tile info"><span class="rs-tile-l">ARR<\/span><span class="rs-tile-v num">\$12,480<\/span><\/div>/, "info: not tappable");
+  assert.match(t, /data-key="x" aria-pressed="false"><span class="rs-tile-l">Empty<\/span><span class="rs-tile-v num">-<\/span>/, "no value: -");
+  assert.match(h(tileRow([{ key: "a", label: "A", value: 1, href: "#/tasks?due=today" }], { on: "a", big: true })), /^<div class="rs-tiles big"[\s\S]*<a href="#\/tasks\?due=today" class="rs-tile" data-tile="tile" data-key="a" aria-current="true">/);
+  assert.equal(tileToggle("overdue", "overdue"), "all", "a tap on the tile that is on clears it");
+  assert.equal(tileToggle("all", "sent"), "sent");
+  assert.equal(tileToggle("sent", "sent", null), null);
+  assert.match(h(tileRow([{ key: "<b>", label: "<i>x</i>", value: "<script>" }])), /data-key="&lt;b&gt;"[\s\S]*&lt;i&gt;x&lt;\/i&gt;[\s\S]*&lt;script&gt;/, "escaped");
+});
+
+test("listRow and listCard: two lines, the $ and the pill on the right, one round action, a red edge, a long press", () => {
+  const { listRow, listCard } = ui;
+  const r = h(listRow({ title: "Quinn Talkedto", amount: 22500, sub: "INV-100201 · due Nov 13", tag: "Plan", pill: "Overdue", href: "#/invoices/inv_1", edge: "red", action: { icon: "chat", label: "Text a reminder", data: { remind: "inv_1" } }, hold: { "row-more": "inv_1" } }));
+  assert.match(r, /^<li class="rs-lrow edge-red" data-hold="" data-row-more="inv_1"><a class="rs-lr-main" href="#\/invoices\/inv_1">/);
+  assert.match(r, /<span class="rs-lr-1"><span class="rs-lr-t">Quinn Talkedto<\/span><span class="rs-lr-m num">\$225\.00<\/span><\/span>/);
+  assert.match(r, /<span class="rs-lr-2"><span class="rs-lr-s">INV-100201 · due Nov 13<span class="rs-tag">Plan<\/span><\/span><span class="pill red">Overdue<\/span><\/span>/);
+  assert.match(r, /<span class="rs-acts"><button type="button" class="rnd grey sm" aria-label="Text a reminder" data-remind="inv_1">/, "one trailing round action");
+  assert.match(h(listRow({ title: "x", pill: { label: "Owes $40", tone: "red" }, initials: "QT", data: { open: "c1" } })), /^<li class="rs-lrow"><button type="button" class="rs-lr-main" data-open="c1"><span class="rs-av rs-lr-av" aria-hidden="true">QT<\/span>[\s\S]*<span class="pill red">Owes \$40<\/span>/);
+  assert.match(h(listRow({ title: "x", pill: ui.statusPill("Signed") })), /<span class="pill green">Signed<\/span>/, "ready html");
+  assert.doesNotMatch(h(listRow({ title: "Only a name" })), /rs-lr-2|rs-acts|data-hold/, "nothing it wasn't given");
+  assert.match(h(listCard([listRow({ title: "a" }), null, listRow({ title: "b" })], { label: "Invoices" })), /^<ul class="rs-card flush rs-list" aria-label="Invoices"><li class="rs-lrow">[\s\S]*<li class="rs-lrow">/);
+  assert.equal(h(listCard([], { empty: "No invoices yet." })), '<div class="rs-card"><p class="rs-empty">No invoices yet.</p></div>');
+  assert.throws(() => listRow({ title: "x", href: "javascript:alert(1)" }), UnsafeHtml);
+});
+
+test("board and boardCard: the stage strip with counts, the columns, the card's Move pill, overdue and done", () => {
+  const { board, boardCard } = ui;
+  const card = h(boardCard({ title: "Avery Newlead", pill: "High", sub: "Website · $0", meta: "Created Nov 14", edge: "red", href: "#/contacts/ct_1", move: { data: { move: "ct_1" } }, action: { icon: "call", label: "Call Avery", tone: "red", href: "tel:+17635550100" }, hold: { card: "ct_1" } }));
+  assert.match(card, /^<article class="rs-bcard edge-red" data-hold="" data-card="ct_1"><a class="rs-bc-main" href="#\/contacts\/ct_1"><span class="rs-bc-1"><span class="rs-bc-t">Avery Newlead<\/span><span class="pill fill-orange">High<\/span><\/span><span class="rs-bc-s">Website · \$0<\/span><span class="rs-bc-m">Created Nov 14<\/span><\/a>/);
+  assert.match(card, /<div class="rs-bc-acts"><button type="button" class="rs-pb" aria-label="Move Avery Newlead" data-move="ct_1">[\s\S]*<span>Move<\/span><\/button><a href="tel:\+17635550100" class="rnd red sm" aria-label="Call Avery">/);
+  assert.match(h(boardCard({ title: "Old task", done: true })), /^<article class="rs-bcard done"><span class="rs-bc-main">/);
+  const b = h(board({ name: "leads", label: "Leads", on: "contacted", columns: [{ key: "new", label: "New", count: 503, cards: [card] }, { key: "contacted", label: "Contacted", cards: [], amount: 45000 }] }));
+  assert.match(b, /^<div class="rs-board" data-board="leads" data-on="contacted" role="region" aria-label="Leads">/);
+  assert.match(b, /<button type="button" class="rs-strip-b" data-board-jump="leads" data-key="new" aria-pressed="false"><span>New<\/span><span class="n num">503<\/span><\/button>/);
+  assert.match(b, /data-key="contacted" aria-pressed="true"><span>Contacted<\/span><span class="n num">0<\/span>/, "a count from the cards when none is given");
+  assert.match(b, /<section class="rs-col" data-col="contacted" aria-label="Contacted"><header class="rs-col-h"><h3>Contacted<\/h3><span class="rs-col-n num">0 · \$450\.00<\/span><\/header>\s*<div class="rs-col-cards"><p class="rs-empty">Nothing here<\/p><\/div>/);
+  assert.match(h(board({ columns: [{ key: "a", label: "A", cards: [] }] })), /data-board="board" data-on="a"/, "the first column when none is on");
+});
+
+test("periods: the ranges (weeks from Monday), the labels, the chip; stepper, the sticky step, the empty card, scrolling tabs, the drag handle", () => {
+  const { periodRange, periodLabel, periodChip, PERIODS, stepper, stickyCta, emptyCard, seg, dragHandle } = ui;
+  assert.deepEqual(PERIODS.map(([, l]) => l), ["This week", "This month", "Last month", "Last 3 months", "This year", "Custom"]);
+  assert.deepEqual(periodRange("week", "2026-11-14"), { from: "2026-11-09", to: "2026-11-14" }, "Saturday: from Monday");
+  assert.deepEqual(periodRange("week", "2026-11-16"), { from: "2026-11-16", to: "2026-11-16" }, "a Monday");
+  assert.deepEqual(periodRange("month", "2026-11-14"), { from: "2026-11-01", to: "2026-11-14" });
+  assert.deepEqual(periodRange("last_month", "2026-01-14"), { from: "2025-12-01", to: "2025-12-31" }, "across a year");
+  assert.deepEqual(periodRange("3m", "2026-03-04"), { from: "2026-01-01", to: "2026-03-04" });
+  assert.deepEqual(periodRange("year", "2026-11-14"), { from: "2026-01-01", to: "2026-11-14" });
+  assert.deepEqual(periodRange({ key: "custom", from: "2026-10-19", to: "2026-11-02" }, "2026-11-14"), { from: "2026-10-19", to: "2026-11-02" });
+  assert.deepEqual(periodRange(null, "2026-11-14"), { from: "2026-11-01", to: "2026-11-14" }, "nothing: this month");
+  assert.equal(periodLabel("3m"), "Last 3 months");
+  assert.equal(periodLabel({ key: "custom", from: "2026-11-01", to: "2026-11-17" }), "Nov 1 - 17, 2026");
+  assert.equal(periodLabel({ key: "custom", from: "2026-10-19", to: "2026-11-02" }), "Oct 19 - Nov 2, 2026");
+  assert.equal(periodLabel({ key: "custom", from: "2025-12-01", to: "2026-01-04" }), "Dec 1, 2025 - Jan 4, 2026");
+  assert.match(h(periodChip("month", { name: "inv" })), /^<button type="button" class="rs-pchip" data-period="inv" aria-haspopup="dialog" aria-label="Dates: This month"><span>This month<\/span><svg/);
+  const st = h(stepper([["open", "Open"], ["approved", "Approved"], ["paid", "Paid"], ["closed", "Closed"]], "approved", { label: "Pay period" }));
+  assert.match(st, /^<ol class="rs-steps" aria-label="Pay period"><li class="rs-step done"><span class="rs-step-d" aria-hidden="true"><svg[\s\S]*Open<\/span><span class="sr">, done<\/span><\/li><li class="rs-step on" aria-current="step"><span class="rs-step-d" aria-hidden="true">2<\/span><span class="rs-step-l">Approved<\/span><\/li><li class="rs-step">/);
+  assert.match(h(stickyCta("Call next", { data: { "call-next": true }, icon: "call" })), /^<div class="rs-cta"><button type="button" class="rs-pb red wide" data-call-next=""><svg[\s\S]*<span>Call next<\/span><\/button><\/div>$/);
+  assert.match(h(emptyCard({ icon: "money", title: "No payouts yet", text: "Payouts show here once Stripe is connected.", action: { label: "Settings", href: "#/settings/payments" } })), /^<div class="rs-card rs-emptycard"><span class="rs-ci" aria-hidden="true"><svg[\s\S]*<b>No payouts yet<\/b><p class="rs-sub">Payouts show here once Stripe is connected\.<\/p><a href="#\/settings\/payments" class="rs-pb solid">/);
+  assert.match(h(seg([["a", "A"], ["b", "B"]], "a", { scroll: true })), /^<div class="rs-seg scroll" role="tablist"\s*>/);
+  assert.match(h(dragHandle("q1", "Move Quinn")), /^<button type="button" class="rs-drag" data-drag-handle="q1" aria-label="Move Quinn\. Use the up and down arrows\.">/);
+});
+
+test("K0's classes all have their look in crm.css, both themes from the tokens", () => {
+  const { tileRow, listRow, listCard, board, boardCard, stepper, stickyCta, emptyCard, periodChip, seg, dragHandle } = ui;
+  const out = [
+    tileRow([{ key: "a", label: "A", value: 1, tone: "red", money: 1 }, { key: "b", label: "B", info: true }], { big: true, on: "a" }),
+    listCard([listRow({ title: "x", amount: 1, sub: "y", tag: "t", pill: "Paid", edge: "red", initials: "XY", action: { icon: "call", label: "c" }, href: "#/x" })]),
+    board({ columns: [{ key: "a", label: "A", cards: [boardCard({ title: "x", pill: "New", sub: "y", meta: "z", edge: "red", done: true, move: { data: { m: 1 } }, data: { o: 1 } })] }, { key: "b", label: "B", cards: [] }] }),
+    stepper([["a", "A"], ["b", "B"], ["c", "C"]], "b"), stickyCta("Go"), emptyCard({ title: "x", text: "y", action: { label: "z", data: { z: 1 } } }), periodChip("week"), seg([["a", "A"]], "a", { scroll: true }), dragHandle("a"),
+  ].map(String).join("");
+  const classes = new Set([...out.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)));
+  const missing = [...classes].filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, "\\-")}(?![\\w-])`).test(CSS));
+  assert.deepEqual(missing, []);
+  for (const c of ["rs-cols", "rs-col-cards", "rs-strip-b", "rs-chip", "rs-chips", "rs-ffoot", "rs-fshow", "rs-where", "sec-more", "tb-bell", "at-home", "subnav.sec"]) assert.match(CSS, new RegExp(`\\.${c.replace(".", "\\.")}\\b`), c);
+  assert.match(CSS, /\.rs-col\{flex:0 0 86vw/, "a column is about 86% of a phone");
+  assert.match(CSS, /scroll-snap-type:x mandatory/, "columns snap");
+  assert.match(CSS, /\.rs-tile\[aria-pressed="true"\]/, "the tile that is on is outlined");
+  assert.doesNotMatch(CSS, /\.rs-tile\{[^}]*#[0-9a-f]{6}/i, "tiles use the tokens");
+});

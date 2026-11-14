@@ -36,7 +36,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // the Inbox: its own tab, the unanswered lead on top
       await f.click('#tabs [data-tab="inbox"]');
       await settled(f, { hash: "#/inbox" });
-      assert.equal(await title(f), "Messages");
+      assert.equal(await title(f), "Inbox", "titled Inbox, like the drawer");
       assert.match(await text(f), new RegExp(c.names.lead), "the lead's text is in the Inbox");
       assert.match(await text(f), /30 windows/, "with its latest words");
       if (first) assert.ok(await f.$(`a[href="#/inbox/${c.open}"].unread`), "unread until someone opens it");

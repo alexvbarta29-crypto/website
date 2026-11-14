@@ -468,22 +468,28 @@ test("Pipeline and Leads from the drawer (top-level: no switch, no back button);
         assert.deepEqual(await screenProblems(f), []);
         await shot(page, `home-menu-${path.slice(1)}-${device}`);
       }
-      // the drawer: Rotor's four groups, every screen once, Settings the gear
+      // the drawer: Rotor's four groups of sections (no sub-lists), Settings the gear
       await openDrawer(f);
       assert.deepEqual(await f.$$eval(".drawer .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(".dr-l")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
-      const listed = await drawerLabels(f);
-      for (const want of ["Jobs", "Plans", "Quotes", "Invoices", "Payments", "Reports", "Leaderboard", "Campaigns", "Merge review", "Team map", "Door to door"]) assert.ok(listed.includes(want), `${want} in the drawer`);
+      assert.equal(await f.$(".drawer [data-dr-sub]"), null, "no sub-lists");
       assert.ok(await f.$('.drawer a[href="#/settings"]'), "the gear");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-menu-${device}`);
       await drawerGo(f, "/plans", { open: false });
       await settled(f, { hash: "#/plans" });
-      assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the drawer's");
-      // someone who pins Sales on their own bar (Customize Tabs) still gets its switch
+      assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the drawer's (Service)");
+      assert.equal(await f.getAttribute('#subnav [data-seg="sec"][data-key="plans"]', "aria-selected"), "true", "Service's tabs, Plans on");
+      // someone who pinned Sales on their own bar (before K0; Customize Tabs no longer offers it) keeps its switch
       await goTo(f, "/tab-bar");
-      await f.click('[data-ctb-out="map"]');
-      await f.click('[data-ctb-in="sales"]');
-      await f.click("[data-save]");
+      assert.equal(await f.$('[data-ctb-in="sales"]'), null, "Sales is no longer offered");
+      const cookie = (await p.ctx.cookies()).map((c) => `${c.name}=${c.value}`).join("; ");
+      const me = await (await fetch(srv.url + "/api/crm/me", { headers: { cookie, "x-crm": "1" } })).json();
+      const put = await fetch(srv.url + `/api/crm/users/${me.data.user.id}`, { method: "PATCH", headers: { cookie, "x-crm": "1", "content-type": "application/json", "if-match": me.data.etag }, body: JSON.stringify({ tabs: ["home", "schedule", "inbox", "sales"] }) });
+      assert.equal(put.status, 200);
+      // (as the app does after Customize Tabs saves: this shell's bar again, from what the server keeps)
+      const nav = await (await fetch(srv.url + "/api/crm/me", { headers: { cookie, "x-crm": "1" } })).json();
+      assert.deepEqual(nav.data.nav, ["home", "schedule", "inbox", "sales", "menu"], "kept on the server");
+      await f.evaluate(async (tabs) => (await import("/crm-app/core/nav.js")).setTabs(tabs), nav.data.nav);
       await f.waitForSelector('#tabs [data-tab="sales"]');
       await f.click('#tabs [data-tab="sales"]');
       await settled(f, { hash: "#/pipeline" });

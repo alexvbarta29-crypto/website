@@ -9,11 +9,34 @@
 import {
   html, icon, toast, rnd, statusPill, pillTap, pillBtn, seg, cardHead, sectionLabel, statGrid, contactRows,
   personCard, addressCard, lineItems, notesBox, disclosure, formRow, formRows, toggle, quickRow, actionSheet, sheetPage,
+  tileRow, tileToggle, listRow, listCard, board, boardCard, boardMount, moveSheet, filterSheet, periodChip, periodSheet,
+  stepper, stickyCta, emptyCard, dragList, dragHandle,
 } from "../../core/ui.js";
 import { applyTheme } from "../../core/nav.js";
 
 const PILLS = ["Booked", "Sent", "Active", "Paid", "Signed", "To book", "Pending", "Overdue", "Lost", "Draft", "Medium", "High priority"];
 const SAY = (what) => toast(`${what} (the kit only shows it)`);
+
+// The list and board patterns (K0): made-up people, nothing read or written.
+const INVOICES = [
+  { id: "a", name: "Quinn Talkedto", no: "INV-100201", due: "due Nov 13", cents: 22500, st: "Overdue" },
+  { id: "b", name: "Robin Workday", no: "INV-100202", due: "due Nov 20", cents: 35500, st: "Sent", tag: "Plan" },
+  { id: "c", name: "Jamie Example", no: "INV-100203", due: "paid Nov 10", cents: 19500, st: "Paid" },
+  { id: "d", name: "Pat Sample", no: "INV-100204", due: "draft", cents: 16000, st: "Draft" },
+];
+const STAGES = [["new", "New"], ["contacted", "Contacted"], ["quoted", "Quoted"], ["follow_up", "Follow-Up"], ["sold", "Sold"]];
+const CARDS = [
+  { id: "l1", name: "Avery Newlead", stage: "new", src: "Website · $0", meta: "Created Nov 14 · Follow-up Nov 16", pri: "High" },
+  { id: "l2", name: "Casey Caller", stage: "new", src: "Referral · $450", meta: "Created Nov 12 · Last contact Nov 13" },
+  { id: "l3", name: "Quinn Talkedto", stage: "contacted", src: "Door to door · $195", meta: "Created Nov 10 · Follow-up Nov 18" },
+  { id: "l4", name: "Drew Quoted", stage: "quoted", src: "Website · $780", meta: "Quote viewed 2 h ago", overdue: true },
+];
+const FILTERS = [
+  { key: "status", label: "Status", type: "chips", options: [["overdue", "Overdue"], ["sent", "Sent"], ["paid", "Paid"], ["draft", "Draft"]] },
+  { key: "plan", label: "Billed by a plan", type: "toggle", text: "Only plan invoices" },
+  { key: "period", label: "Created", type: "period" },
+  { key: "sort", label: "Sort", type: "sort", default: "due", options: [["due", "Due date"], ["total", "Total"], ["name", "Name"]] },
+];
 
 // the "..." of this page: what a lead's sheet would hold, red rows last
 function moreGroups() {
@@ -48,7 +71,10 @@ function openPage() {
 export default {
   title: "Kit",
   load(params, ctx) {
-    return { theme: document.documentElement.dataset.theme === "light" ? "light" : "dark", tab: ctx.keep.tab || "details", view: "service", auto: true };
+    return {
+      theme: document.documentElement.dataset.theme === "light" ? "light" : "dark", tab: ctx.keep.tab || "details", view: "service", auto: true,
+      mk: "workflows", tile: "all", period: "month", col: "new", cards: CARDS.map((c) => ({ ...c })), order: ["Avery Newlead", "Casey Caller", "Quinn Talkedto"], filter: {},
+    };
   },
   tools: () => [{ icon: "edit", label: "Edit", run: () => SAY("Edit") }, { icon: "share", label: "Share", run: () => SAY("Share") }],
   more: () => moreGroups(),
@@ -116,6 +142,30 @@ export default {
       <div class="rs-card rs-dashed"><div class="rs-row"><b>To book (6)</b>${pillBtn("Schedule", { tone: "solid", data: tap("Schedule") })}</div></div>
       ${formRows([formRow("Auto-Pay", toggle(s.auto, { data: { "kit-auto": true }, label: "Auto-Pay" }), { hint: "Visa ending 4242" }), formRow("Billing", html`<select name="billing" aria-label="Billing"><option>When each visit is done</option><option>The 1st of the month</option></select>`)])}
 
+      ${sectionLabel("Lists and boards (K0)")}
+      ${seg(["Workflows", "Campaigns", "Reviews", "Referrals", "Forms", "Templates"].map((l) => [l.toLowerCase(), l]), s.mk, { name: "mk", label: "Marketing", scroll: true })}
+      ${tileRow([
+        { key: "all", label: "All", value: INVOICES.length },
+        { key: "overdue", label: "Overdue", value: 1, money: 22500, tone: "red" },
+        { key: "sent", label: "Sent", value: 1, money: 35500 },
+        { key: "paid", label: "Paid", value: 1, money: 19500 },
+        { key: "draft", label: "Draft", value: 1 },
+        { key: "arr", label: "ARR", value: "$12,480", info: true },
+      ], { name: "kit", on: s.tile, label: "Invoices" })}
+      <div class="rs-row kit-rnds">${periodChip(s.period, { name: "kit" })}${pillBtn("Filter", { icon: "filter", data: { "kit-filter": true } })}</div>
+      ${listCard(INVOICES.filter((x) => s.tile === "all" || x.st.toLowerCase() === s.tile).map((x) => listRow({
+        title: x.name, amount: x.cents, sub: `${x.no} · ${x.due}`, tag: x.tag || null, pill: x.st, href: "#/kit", edge: x.st === "Overdue" ? "red" : null,
+        action: x.st === "Overdue" ? { icon: "chat", label: `Text ${x.name} a reminder`, data: tap("Text a reminder") } : null, hold: { "kit-row": x.id },
+      })), { label: "Invoices", empty: "No invoices match." })}
+      ${board({ name: "kit", label: "Leads", on: s.col, columns: STAGES.map(([k, l]) => ({ key: k, label: l, cards: s.cards.filter((c) => c.stage === k).map((c) => boardCard({
+        title: c.name, pill: c.pri ? statusPill(c.pri) : null, sub: c.src, meta: c.meta, edge: c.overdue ? "red" : null, href: "#/kit",
+        move: { data: { "kit-move": c.id } }, action: { icon: "call", label: `Call ${c.name}`, tone: "red", data: tap("Call") }, hold: { "kit-card": c.id },
+      })) })) })}
+      <div class="rs-card">${stepper([["open", "Open"], ["approved", "Approved"], ["paid", "Paid"], ["closed", "Closed"]], "approved", { label: "Pay period" })}</div>
+      ${emptyCard({ icon: "money", title: "No payouts yet", text: "Payouts show here once Stripe is connected (Settings › Payments).", action: { label: "Payments settings", data: tap("Payments settings"), icon: "gear" } })}
+      <ul class="rs-card flush rs-list" data-kit-drag aria-label="Queue">${s.order.map((k) => html`<li class="rs-lrow" data-drag-key="${k}"><span class="rs-lr-main"><span class="rs-lr-a"><span class="rs-lr-1"><span class="rs-lr-t">${k}</span></span></span></span>${dragHandle(k, "Move " + k)}</li>`)}</ul>
+      <div class="kit-cta">${stickyCta("Approve period", { data: tap("Approve period"), icon: "check" })}</div>
+
       ${sectionLabel("Sheets")}
       <div class="rs-row">${pillBtn("Action sheet", { icon: "more", data: { "kit-actions": true } })}${pillBtn("Sheet page", { icon: "doc", tone: "solid", data: { "kit-page": true } })}</div>
 
@@ -132,7 +182,26 @@ export default {
     "change [data-notes]": () => toast("Notes saved (the kit only shows it)"),
     "click [data-kit-actions]": () => actionSheet("Job S-000001", [[{ label: "Book a visit", icon: "cal", run: () => SAY("Book a visit") }, { label: "Mark done", icon: "check", run: () => SAY("Mark done") }], [{ label: "Cancel job", icon: "close", danger: true, run: () => SAY("Cancel job") }, { label: "Open customer", icon: "user", href: "#/kit" }]]),
     "click [data-kit-page]": () => openPage(),
+    "click [data-seg=mk]": (e, el, ctx) => { ctx.state.mk = el.dataset.key; ctx.rerender(); },
+    "click [data-tile=kit]": (e, el, ctx) => { ctx.state.tile = tileToggle(ctx.state.tile, el.dataset.key, "all"); ctx.rerender(); },
+    "click [data-period=kit]": async (e, el, ctx) => { const p = await periodSheet(ctx.state.period); if (p) { ctx.state.period = p.key === "custom" ? p : p.key; ctx.rerender(); } },
+    "click [data-kit-filter]": async (e, el, ctx) => {
+      const v = await filterSheet({ title: "Filter invoices", groups: FILTERS, values: ctx.state.filter, count: (x) => INVOICES.filter((i) => !(x.status || []).length || x.status.includes(i.st.toLowerCase())).length });
+      if (v) { ctx.state.filter = v; SAY("Filter applied"); }
+    },
+    "click [data-kit-move]": async (e, el, ctx) => {
+      const c = ctx.state.cards.find((x) => x.id === el.dataset.kitMove);
+      const to = c && await moveSheet(`Move ${c.name}`, STAGES.map(([k, l]) => ({ key: k, label: l, count: ctx.state.cards.filter((x) => x.stage === k).length })), c.stage);
+      if (to) { c.stage = to; ctx.state.col = to; ctx.rerender(); toast(`${c.name} moved`); }
+    },
+    "rs-hold [data-kit-row]": (e, el) => actionSheet("Invoice", [[{ label: "Text a reminder", icon: "chat", run: () => SAY("Text a reminder") }, { label: "Open customer", icon: "user", run: () => SAY("Open customer") }], [{ label: "Void", icon: "close", danger: true, run: () => SAY("Void") }]]),
+    "rs-hold [data-kit-card]": (e, el, ctx) => { const c = ctx.state.cards.find((x) => x.id === el.dataset.kitCard); if (c) actionSheet(c.name, [[{ label: "Move to...", icon: "swap", run: () => el.querySelector("[data-kit-move]").click() }, { label: "Call", icon: "call", run: () => SAY("Call") }]]); },
+  },
+  mount(view, s, ctx) {
+    boardMount(view);
+    if (this._stop) this._stop();
+    this._stop = dragList(view.querySelector("[data-kit-drag]"), (order) => { s.order = order; toast("New order kept (the kit only shows it)"); });
   },
   // the theme came back to this device's own choice
-  unmount() { applyTheme(); },
+  unmount() { applyTheme(); if (this._stop) { this._stop(); this._stop = null; } },
 };

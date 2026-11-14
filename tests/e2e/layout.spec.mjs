@@ -58,10 +58,11 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await f.$eval("#fab", (e) => getComputedStyle(e).backgroundImage.includes("gradient")), true, "red");
       assert.equal(await f.getAttribute('#tabs [data-tab="home"]', "aria-current"), "page");
       // the top bar of a top-level screen: the hamburger, search, the time, help, the person
-      for (const sel of ["#top-bar [data-tb-menu]", "#top-bar [data-tb-search]", "#tb-time", "#top-bar [data-tb-help]", "#top-bar [data-tb-me]"]) assert.ok(await f.isVisible(sel), sel);
+      for (const sel of ["#top-bar [data-tb-menu]", "#top-bar [data-tb-search]", "#top-bar [data-tb-help]", "#top-bar [data-tb-me]"]) assert.ok(await f.isVisible(sel), sel);
+      assert.equal(await f.isVisible("#tb-time"), device === "iphone13", "the time, which steps aside under 390 px");
       assert.match(await f.textContent("#tb-time"), /^\d{1,2}:\d{2} [AP]M$/);
       // What moved: once, as a toast (never a banner over Home)
-      await toastSays(f, /The Menu is a drawer now/);
+      await toastSays(f, /Rotor's sections now/);
       assert.equal(await f.$("#moved"), null, "no banner");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `layout-shell-home-${device}`);
@@ -69,24 +70,26 @@ for (const device of ["iphone13", "iphonese"]) {
       const g = await crmFrame(page);
       await settled(g);
       await g.waitForTimeout(1600);
-      assert.doesNotMatch(await g.evaluate(() => (document.querySelector(".toasts") || {}).textContent || ""), /The Menu is a drawer/, "not again on this phone");
-      // the drawer: from the left, four groups, a dot for a row with its own list, the gear
+      assert.doesNotMatch(await g.evaluate(() => (document.querySelector(".toasts") || {}).textContent || ""), /Rotor's sections now/, "not again on this phone");
+      // the drawer: from the left, four groups of sections (no sub-lists), the gear
       await openDrawer(g);
       const dr = await box(g, ".drawer");
       assert.ok(dr.x === 0 && dr.w >= 220 && dr.w <= 300 && dr.h >= vh - 1, `a left drawer, full height (${JSON.stringify(dr)})`);
       assert.equal(await g.$$eval(".drawer .dr-grp", (els) => els.length), 4, "four groups");
       assert.ok(await g.$('.drawer a[href="#/settings"]'), "the gear: Settings");
       await shot(page, `layout-drawer-${device}`);
-      await g.click('.drawer [data-dr-sub="analytics"]');
-      assert.ok(await g.isVisible(".drawer [data-dr-back]"), "‹ Analytics");
-      await g.click('.drawer a[href="#/leaderboard"]');
+      // Analytics' Leaderboard: the section, then its round "..."
+      await drawerGo(g, "/leaderboard", { open: false });
       await settled(g, { hash: "#/leaderboard" });
-      await g.waitForFunction(() => !document.querySelector(".drawer"));
       assert.equal(await g.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu is lit on what the drawer opens");
       assert.ok(await g.$(".rp-row"), "the Leaderboard's reps");
       assert.deepEqual(await screenProblems(g), []);
       await shot(page, `layout-leaderboard-${device}`);
-      // the hamburger opens it too; X, Escape and a tap outside close it
+      // (a section's "..." screen sits deeper: a back button, no top bar)
+      assert.equal(await g.isVisible("#top-back"), true);
+      // the hamburger of a top-level screen opens it too; X, Escape and a tap outside close it
+      await g.click("#top-back");
+      await settled(g, { hash: "#/reports" });
       await g.click("#top-bar [data-tb-menu]");
       await g.waitForSelector(".drawer.on");
       await page.keyboard.press("Escape");
@@ -94,7 +97,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // the +: the screen blurs, search on top, the things to make above the +
       await g.click("#fab");
       await g.waitForSelector(".qk.on");
-      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead or customer", "Quote", "Job", "Invoice", "Plan", "Task"], "one list, the most used first");
+      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead or customer", "Quote", "Job", "Task", "Invoice", "Plan"], "one list, the most used first");
       await g.fill("#qk-q", "Newlead");
       await g.waitForSelector(".qk-res:not([hidden]) a", { timeout: 5000 });
       assert.deepEqual(await screenProblems(g), [], "the + overlay passes the phone checks");
@@ -228,10 +231,11 @@ for (const device of ["desk1440", "desk1024"]) {
       assert.deepEqual(await screenProblems(f), []);
       await f.evaluate((h) => { document.querySelector(h).scrollTop = 0; }, holder);
       await shot(page, `layout-contact-${device}`);
-      // the sidebar is the drawer: Service folds open in place
+      // the sidebar is the drawer's sections: Service opens on its first tab, Jobs a tab of it
       assert.ok(await f.isVisible('#side [data-path="/today"]'));
-      await f.click('#side [data-grp="service"] .side-h');
-      assert.ok(await f.isVisible('#side a[href="#/jobs"]'), "Jobs under Service");
+      await f.click('#side [data-sec="service"]');
+      await settled(f, { hash: "#/quotes" });
+      assert.ok(await f.isVisible('#subnav a[href="#/jobs"]'), "Jobs, a tab of Service");
       await goTo(f, `/visits/${seeded.visits[2]}`);
       const q = await box(f, ".vb-quick");
       const go = await box(f, ".vb-head");
