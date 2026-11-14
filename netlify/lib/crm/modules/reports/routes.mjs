@@ -20,7 +20,7 @@ import { rebuild, today } from "./rollup.mjs";
 import { dashboardRaw } from "./dashboard-raw.mjs";
 
 const R = (method, path, perm, handler, extra = {}) => ({ method, path, auth: "session", perm, subject: "none", mode: "inline", handler, ...extra });
-const q = (ctx) => ({ from: ctx.query.get("from") || undefined, to: ctx.query.get("to") || undefined, group: ctx.query.get("group") || undefined });
+const q = (ctx) => ({ from: ctx.query.get("from") || undefined, to: ctx.query.get("to") || undefined, group: ctx.query.get("group") || undefined, range: ctx.query.get("range") || undefined });
 const csvLine = (cells) => cells.map((c) => csvCell(c)).join(",");
 
 async function one(ctx) {

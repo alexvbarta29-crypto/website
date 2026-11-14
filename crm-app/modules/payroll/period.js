@@ -84,7 +84,7 @@ export default {
         const t = s.totals[person.id] || {};
         const mine = (s.lines || []).filter((l) => l.user_id === person.id);
         return html`<section class="card py-person">
-          <div class="top"><span class="who"><span class="nm">${person.name}</span><span class="sub">${MODEL[t.model_applied] || String(t.model_applied || "").replace(/_/g, " ")}${t.rate_is_standard ? " · standard $20 rate" : ""}</span></span><b class="amt">${dollars(t.total_cents)}</b></div>
+          <div class="py-top"><span class="who"><span class="nm">${person.name}</span><span class="sub">${MODEL[t.model_applied] || String(t.model_applied || "").replace(/_/g, " ")}${t.rate_is_standard ? " · standard $20 rate" : ""}</span></span><b class="amt">${dollars(t.total_cents)}</b></div>
           ${totalsGrid(t)}
           ${t.adjustments_cents ? html`<p class="py-note">Bonuses and adjustments: ${dollars(t.adjustments_cents)}</p>` : ""}
           ${t.pending_minutes ? html`<p class="py-note">${hrs(t.pending_minutes / 60)} waits for the office and isn't counted.</p>` : ""}

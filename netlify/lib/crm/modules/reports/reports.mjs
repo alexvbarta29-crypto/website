@@ -36,10 +36,23 @@ const METHOD = { card: "Card", ach: "Bank (ACH)", cash: "Cash", check: "Check", 
 
 // ------------------------------------------------------------ ranges
 
+// A named range, from the server's today (the screen sends the name, so a phone's clock never matters).
+export const RANGES = Object.freeze(["week", "month", "last_month", "3m", "year", "12m"]);
+export function namedRange(name, t = today()) {
+  const firstOf = (d) => `${d.slice(0, 7)}-01`;
+  const prevFirst = (d) => firstOf(addLocalDays(firstOf(d), -1));
+  if (name === "week") return { from: addLocalDays(t, -((dowOfDate(t) + 6) % 7)), to: t };
+  if (name === "last_month") return { from: prevFirst(t), to: addLocalDays(firstOf(t), -1) };
+  if (name === "3m") return { from: prevFirst(prevFirst(t)), to: t };
+  if (name === "year") return { from: `${t.slice(0, 4)}-01-01`, to: t };
+  if (name === "12m") return { from: addLocalDays(t, -364), to: t };
+  return { from: firstOf(t), to: t };
+}
 export function rangeOf(q = {}) {
   const t = today();
-  const from = q.from || `${t.slice(0, 7)}-01`;
-  const to = q.to || t;
+  const named = !q.from && !q.to && RANGES.includes(q.range) ? namedRange(q.range, t) : null;
+  const from = named ? named.from : q.from || `${t.slice(0, 7)}-01`;
+  const to = named ? named.to : q.to || t;
   if (!isLocalDate(from) || !isLocalDate(to)) throw new InputError("Pick the first and the last day.", "from");
   if (to < from) throw new InputError("The last day comes after the first.", "to");
   const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;

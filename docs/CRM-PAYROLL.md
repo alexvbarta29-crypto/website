@@ -38,7 +38,7 @@ Tests: `tests/crm/payroll/` (`compute.test.mjs` hand-worked weeks,
   for the office, their own scoreboard row (revenue per hour, reviews,
   upsells, callbacks against the goals), the four weeks before, and "My
   pay sheet" (printable). Week arrows move a week at a time.
-- **Settings → Payroll** (`#/settings/payroll`, owners): overtime after how
+- **Settings → Team & permissions → Payroll & pay rates** (`#/settings/payroll`, owners): overtime after how
   many hours and at what rate, how a job's commission is shared, one- or
   two-week periods, who is on the scoreboard; and each person's pay: the
   model, hourly rates for service, sales and office time, commission rates

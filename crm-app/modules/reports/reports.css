@@ -94,6 +94,6 @@ html:not([data-theme="light"]) .pf-card{--pf-glow:rgba(70,105,125,.28)}
 .rp-table th{text-align:left;font:500 12px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:6px 8px 8px 0;white-space:nowrap}
 .rp-table td{padding:10px 8px 10px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
 .rp-table td.n,.rp-table th.n{text-align:right;white-space:nowrap}
-.rp-table td a{color:var(--coral-ink);display:inline-block;min-height:24px}
+.rp-table td a{color:var(--coral-ink);display:inline-flex;align-items:center;min-height:44px}
 .rp-foot{margin:0 4px;font-size:13.5px;color:var(--ink-3)}
 .sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

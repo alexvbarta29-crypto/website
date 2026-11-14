@@ -12,13 +12,13 @@ Record types: none (derived `ix/reports/daily/{yyyy-mm}` documents).
 Tests: `tests/crm/reports/` (`reports.test.mjs`, `leaderboard.test.mjs`,
 `budget-samples.mjs`).
 
-## The Reports screen (`#/reports`, Menu → Reports; `reports:read`)
+## The Reports screen (`#/reports`, Menu → Money → Reports, Home's Money "See more"; `reports:read`)
 
 Owners and the office (a technician's "own" `reports:read` opens no
 report). Tabs (scroll sideways on a phone): **Revenue · Sales · Leads ·
 Plans · Jobs · Team · Owed · Payroll** (Payroll only with
 `payroll:read_all`). A date range (This week, This month, Last month, Last
-3 months, This year, Last 12 months, or any days up to a year) and By day /
+3 months, This year, Last 12 months, worked out from the server's today; or any days up to a year) and By day /
 week / month (Auto picks: up to a month by day, up to three by week, else
 by month). Each tile shows the number, the period of the same length just
 before it (▲/▼ and "was …", green when it moved the good way) or its goal
@@ -99,7 +99,7 @@ Aggregates only: no customer names.
 the picture live with `buildSnapshot(dashboardRaw(today))`, kept in memory
 10 minutes. If the CRM can't answer (its stores not set up, an error) the
 sealed snapshot is shown, so the Dashboard tab never breaks. The owner
-flips it on **Settings → Dashboard numbers** (`#/settings/dashboard`).
+flips it on **Settings → Import & data → Dashboard numbers** (`#/settings/dashboard`). The office dashboard itself (`#/dashboard`) is no Menu row of its own any more: Reports opens it ("Office dashboard", for anyone with the office tools), and old `/office#money` links still land on its views.
 
 ## Services
 

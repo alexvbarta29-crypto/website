@@ -33,6 +33,10 @@ export function rangeDates(key, today, keep = {}) {
   return { from: monthStart(today), to: today };
 }
 
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dd = (d) => `${MON[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8, 10))}`;
+// "Nov 1 – 17, 2026", "Oct 19 – Nov 2, 2026", "Dec 1, 2025 – Jan 4, 2026"
+export const spanOf = (a, b) => (a.slice(0, 4) !== b.slice(0, 4) ? `${dd(a)}, ${a.slice(0, 4)} – ${dd(b)}, ${b.slice(0, 4)}` : a === b ? `${dd(a)}, ${a.slice(0, 4)}` : a.slice(0, 7) === b.slice(0, 7) ? `${dd(a)} – ${Number(b.slice(8, 10))}, ${b.slice(0, 4)}` : `${dd(a)} – ${dd(b)}, ${b.slice(0, 4)}`);
 const dollars = (c) => money(c || 0).replace(/\.00$/, "");
 const short = (v) => (v >= 1000000 ? `$${(v / 1000000).toFixed(1).replace(/\.0$/, "")}M` : v >= 1000 ? `$${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "")}K` : `$${Math.round(v)}`);
 export function fmt(v, unit) {
@@ -64,8 +68,8 @@ async function load(params, ctx) {
   if (asked && TABS.some(([x]) => x === asked) && asked !== k.asked) { k.tab = asked; k.asked = asked; }
   const tab = k.tab || "revenue";
   const range = k.range || "month";
-  const { from, to } = rangeDates(range, today, k);
-  const qs = `from=${from}&to=${to}${k.group ? `&group=${k.group}` : ""}`;
+  // a named range is worked out on the server (its today); custom days are sent as they are
+  const qs = `${range === "custom" && k.from && k.to ? `from=${k.from}&to=${k.to}` : `range=${range === "custom" ? "month" : range}`}${k.group ? `&group=${k.group}` : ""}`;
   const r = await ctx.api(`/reports/${tab}?${qs}`, { cache: false });
   return { rep: r.data, tab, range, group: k.group || "", qs, payroll: ctx.can("payroll:read_all"), office: ctx.can("office:tools") };
 }
@@ -80,10 +84,10 @@ export default {
     return html`<div class="stack rp-page rp-reports">
       <div class="chips rp-chips rp-tabs" role="tablist" aria-label="Report">${tabs.map(([k, l]) => html`<button type="button" class="chip" role="tab" ${attrs({ "data-tab": k, "aria-selected": String(s.tab === k), "aria-pressed": String(s.tab === k) })}>${l}</button>`)}</div>
       ${live ? html`<p class="rp-when">Right now · open invoices</p>` : html`<div class="rp-bar rp-range">
-        <label class="rp-sel"><span class="sr">Dates</span><select data-range>${RANGES.map(([k, l]) => html`<option ${attrs({ value: k, selected: s.range === k })}>${k === "custom" && s.range === "custom" ? `${r.from} to ${r.to}` : l}</option>`)}</select></label>
+        <label class="rp-sel"><span class="sr">Dates</span><select data-range>${RANGES.map(([k, l]) => html`<option ${attrs({ value: k, selected: s.range === k })}>${k === "custom" && s.range === "custom" ? spanOf(r.from, r.to) : l}</option>`)}</select></label>
         ${(r.series || []).length ? html`<label class="rp-sel"><span class="sr">Group</span><select data-group>${GROUPS.map(([k, l]) => html`<option ${attrs({ value: k, selected: s.group === k })}>${l}</option>`)}</select></label>` : ""}
       </div>
-      <p class="rp-when">${r.from} to ${r.to} · against ${r.prev.from} to ${r.prev.to}</p>`}
+      <p class="rp-when">${spanOf(r.from, r.to)} · against ${spanOf(r.prev.from, r.prev.to)}</p>`}
       <div class="rp-tiles">${(r.tiles || []).map((t) => { const d = delta(t); const good = d && !d.flat ? (t.lower ? !d.up : d.up) : null; return html`<div class="rp-tile">
         <span class="l">${t.label}</span><b class="num">${fmt(t.value, t.unit)}</b>
         <span class="sub">${d ? html`<span ${attrs({ class: "dl " + (good === null ? "" : good ? "good" : "bad") })}>${d.up ? "▲" : d.flat ? "" : "▼"} ${d.text}</span> <span>was ${fmt(t.prev, t.unit)}</span>` : t.note ? t.note : t.target !== undefined ? `goal ${Array.isArray(t.target) ? `${t.target[0]}-${t.target[1]}%` : t.unit === "cents" ? dollars(t.target) : `${t.lower ? "under " : ""}${t.target}${t.unit === "pct" ? "%" : ""}`}` : ""}</span>
