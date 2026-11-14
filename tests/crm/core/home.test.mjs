@@ -628,10 +628,12 @@ test("the drawer: every manifest's Menu entry has its place; an older shell's ba
   const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
   const entries = MANIFESTS.flatMap((m) => (m.nav || []).filter((n) => n.where === "more").map((n) => ({ ...n, module: m.name })));
   assert.ok(entries.length >= 20);
-  // every Menu entry has one place: a drawer row (core/nav.js DRAWER), the Settings hub, or (Settings, My account, the Tab bar) its own button
-  const placed = new Set([...nav.DRAWER.flat().flatMap((it) => (it.sub ? it.sub.map(([p]) => p) : [it.path])), "/knock", ...nav.IN_SETTINGS, "/settings", "/me", "/tab-bar"]);
+  // every Menu entry has one place: a section (core/nav.js SECTIONS: a tab or its "..."), a link in its own screen
+  // (IN_SCREEN), the person's sheet (ME_ROWS), the Settings hub, or (Settings, My account, the Tab bar) its own button
+  const placed = new Set([...nav.SECTIONS.flatMap((x) => [x.path, ...(x.tabs || []).map((t) => t[2]), ...(x.more || []).map(([p]) => p)]), "/knock", ...Object.keys(nav.IN_SCREEN), ...nav.ME_ROWS.map(([p]) => p), ...nav.IN_SETTINGS, "/settings", "/me", "/tab-bar"]);
   assert.deepEqual(entries.filter((n) => !placed.has(n.path)).map((n) => `${n.module}: ${n.label}`), [], "each entry has its place");
-  assert.deepEqual(nav.DRAWER.map((g) => g.map((it) => it.label)), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
+  const groups = [0, 1, 2, 3].map((g) => nav.SECTIONS.filter((x) => x.group === g).map((x) => x.label));
+  assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
   assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "map", "menu"]);
   assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
   assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));
@@ -642,5 +644,5 @@ test("the drawer: every manifest's Menu entry has its place; an older shell's ba
   // Reports (M7b) is drawer → Analytics → Reports and Money's "See more"; the office dashboards open from it (and old office links)
   assert.ok(!navFor({ role: "owner" }).includes("dashboard"));
   assert.ok(sys.routes.some((r) => r.path === "/dashboard/:view"));
-  assert.ok(nav.DRAWER[3][0].sub.some(([p, l]) => p === "/reports" && l === "Reports"));
+  assert.equal(nav.SECTIONS.find((x) => x.key === "analytics").path, "/reports", "Analytics opens Reports");
 });

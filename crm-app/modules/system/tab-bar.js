@@ -20,7 +20,11 @@ import { TABS, setTabs, STANDARD as BAR } from "../../core/nav.js";
 import { match } from "../../core/router.js";
 import { api } from "../../core/api.js";
 
-export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "leads", "pipeline", "leaderboard", "map", "quotes", "plans", "invoices"]);
+// (Sales, the Pipeline · Leads · Calls · Quotes · Tasks switch, is no longer offered: the drawer's
+// sections do that job, and Pipelines, Leads and Tasks can be pinned on their own. Whoever pinned
+// it keeps it until they take it off.)
+export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "leads", "pipeline", "leaderboard", "map", "quotes", "plans", "invoices"]);
+const KEPT = Object.freeze(["sales"]);
 // the standard bar (Home · Schedule · Inbox · Map), the Menu after it
 export const STANDARD = Object.freeze(BAR.filter((k) => k !== "menu"));
 export const MAX = 5;
@@ -40,7 +44,7 @@ async function current(can) {
   // (a pinned Visits is the Schedule now)
   const mine = Array.isArray(u.tabs) && u.tabs.length ? [...new Set(u.tabs.map((k) => (k === "visits" ? "schedule" : k)))] : [...STANDARD];
   const choices = CHOICES.filter((k) => usable(k, can));
-  const picked = mine.filter((k) => choices.includes(k)).slice(0, MAX);
+  const picked = mine.filter((k) => choices.includes(k) || (KEPT.includes(k) && usable(k, can))).slice(0, MAX);
   return { id: u.id, etag: me.data.etag, picked, rest: choices.filter((k) => !picked.includes(k)) };
 }
 

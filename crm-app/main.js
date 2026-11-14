@@ -187,7 +187,7 @@ function start() {
   // Badges: one cheap read every 30 s while the app is on screen (304 when nothing changed).
   poll("/me/badges", 30000, (data) => {
     if (!data) return;
-    nav.setBadges({ inbox: data.inbox_unread || 0, today: (data.attention || 0) + (data.approvals || 0) + (data.notifications || 0) });
+    nav.setBadges({ inbox: data.inbox_unread || 0, today: (data.attention || 0) + (data.approvals || 0) + (data.notifications || 0), notifications: data.notifications || 0 });
     toShell({ type: "crm:badge", inbox: data.inbox_unread || 0, attention: (data.attention || 0) + (data.approvals || 0), notifications: data.notifications || 0 });
   });
 

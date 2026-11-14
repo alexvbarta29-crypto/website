@@ -3,20 +3,21 @@
 // owner's "make it like Rotor": Rotor's phone app, with everything the desk
 // can do).
 //
-// The drawer (Rotor's desktop-style menu, Nov 2026): the Menu tab and the
-// round hamburger of a top-level screen open it from the left. Our logo and
-// an X on top; four groups split by thin lines: Home, Inbox, Schedule |
-// Customers, Leads, Pipelines, Power Dialer | Service, Financials, Tasks,
-// Map | Analytics, Marketing. A row with a dot opens its own list inside the
-// drawer ("‹ Service" goes back): Service (jobs, visits, quotes, plans,
-// lights...), Financials, Analytics, Marketing, and Customers or Map when
-// the person has two screens there. DRAWER below is the one place that says
-// where each screen sits and what it is called; a row shows only when its
-// screen is there and this person may open it; a module's Menu entry it
-// doesn't name lands in a last group, so every screen stays one or two taps
-// away. The settings gear sits alone at the bottom (Tab bar for someone
-// without Settings). #/menu draws the same drawer as a page; on a computer
-// the sidebar is the same drawer, its lists folding open in place.
+// The drawer (Rotor's left menu; K0 of the Rotor guide, Nov 2026): the Menu
+// tab and the round hamburger of a top-level screen open it from the left.
+// Our logo and an X on top; four groups split by thin lines: Home, Inbox,
+// Schedule | Customers, Leads, Pipelines, Power Dialer | Service,
+// Financials, Tasks, Map | Analytics, Marketing. There are no sub-lists: a
+// row opens its section on the tab used there last, and the section's tabs
+// (Service: Requests · Quotes · Jobs · Plans) sit under the screen's title;
+// its rare screens sit in its round "...". SECTIONS below is the one place
+// that says where each screen lives and what it is called (the drawer, the
+// desk's sidebar and every section's tabs read it); a row or tab shows only
+// when its screen is there and this person may open it; a module's Menu
+// entry no section names lands in a last group, so every screen stays one
+// or two taps away. The settings gear sits alone at the bottom (Customize
+// Tabs for someone without Settings). #/menu draws the same sections as a
+// page, every tab listed; on a computer the sidebar is the same rows.
 //
 // The phone bar (Rotor's): a floating glass pill, icons only (the labels
 // stay for screen readers), the current icon red with a dot under it, red
@@ -30,9 +31,10 @@
 //
 // The top bar of a top-level screen (a tab's, or one the drawer lists): a
 // round hamburger on the left; on the right the round search (the + overlay's
-// search), the time, a round help (Report a problem, What moved, the
-// calendar feed) and the person's initials (My account, Light or dark,
-// Customize Tabs, Sign out). The screen's large title sits under it with its
+// search), the time (hidden under 390 px), the bell (#/notifications; Home
+// has its own), a round help (Where do I go to..., Report a problem, What
+// moved, the calendar feed) and the person's initials (My account, My time,
+// My pay, My performance, Light or dark, Customize Tabs, Sign out). The screen's large title sits under it with its
 // own round buttons (search, filter, and a coral + for that screen's "new");
 // deeper screens get a round back button. The Sales tab (for someone who
 // pins it) is Pipeline, Leads, Calls, Quotes and Tasks, one tap apart in a
@@ -46,7 +48,7 @@
 // names, phones, streets, Q-/INV- numbers), a New button (the same creates)
 // and the person's menu. CSS decides which set shows; one codebase.
 
-import { html, render, sheet, icon, attrs, toast, rnd, actionSheet } from "./ui.js";
+import { html, render, sheet, icon, attrs, toast, rnd, actionSheet, seg } from "./ui.js";
 import { initials, time as fmtTime } from "./format.js";
 import { api } from "./api.js";
 import * as router from "./router.js";
@@ -79,35 +81,44 @@ export const TABS = Object.freeze({
 // What each place's own "new" is (the coral + in a top-level screen's header; else the + sheet).
 const PLACE_NEW = { contacts: ["/contacts/new", "/leads/new"], schedule: ["/jobs/new"], inbox: ["/inbox/new"], sales: ["/leads/new"], leads: ["/leads/new"], pipeline: ["/leads/new"], quotes: ["/quotes/new"], plans: ["/plans/new"], invoices: ["/invoices/new"] };
 
-// The drawer: four groups, in order. A row is { key, label, icon, path } or,
-// with a dot, { key, label, icon, sub: [[path, label, icon], ...] } (its own
-// list; one that only one screen of is open to this person is that screen;
-// `main` names the screen the row stands for then, keeping the row's name).
-// A module's Menu entry for the same path decides who may see it (and its
-// icon); else the route's permission. A path may carry a query (a view).
-export const DRAWER = Object.freeze([
-  [
-    { key: "home", label: "Home", icon: "home", path: "/today" },
-    { key: "inbox", label: "Inbox", icon: "inbox", path: "/inbox", count: "inbox" },
-    { key: "schedule", label: "Schedule", icon: "cal12", path: "/schedule" },
-  ],
-  [
-    { key: "customers", label: "Customers", icon: "contacts", main: "/contacts", sub: [["/contacts", "Customers", "contacts"], ["/merge", "Merge review", "copy"]] },
-    { key: "leads", label: "Leads", icon: "target", path: "/leads" },
-    { key: "pipelines", label: "Pipelines", icon: "pipeline", path: "/pipeline" },
-    { key: "dialer", label: "Power Dialer", icon: "phone", path: "/calls" },
-  ],
-  [
-    { key: "service", label: "Service", icon: "hammer", sub: [["/jobs", "Jobs", "list"], ["/schedule?view=list", "Visits", "cal"], ["/schedule?view=tray", "To book", "clock"], ["/quotes", "Quotes", "doc"], ["/plans", "Plans", "swap"], ["/plans/due", "Plan visits to book", "cal"], ["/lights", "Lights season", "bulb"], ["/tools/lights", "Light Studio", "bulb"], ["/team-map", "Team map", "team"], ["/time", "Time", "time"], ["/timesheets", "Timesheets", "clock"], ["/pay", "Pay", "pay"]] },
-    { key: "financials", label: "Financials", icon: "money", sub: [["/invoices", "Invoices", "receipt"], ["/payments", "Payments", "money"], ["/autopay", "Autopay", "clock"], ["/payroll", "Payroll", "pay"], ["/tools/purchases", "Purchases", "cart"]] },
-    { key: "tasks", label: "Tasks", icon: "check", path: "/tasks" },
-    { key: "map", label: "Map", icon: "map", main: "/map", sub: [["/map", "Door to door", "map"], ["/team-map", "Team map", "team"]] },
-  ],
-  [
-    { key: "analytics", label: "Analytics", icon: "chart", sub: [["/reports", "Reports", "chart"], ["/dashboard", "Dashboard", "grid"], ["/leaderboard", "Leaderboard", "trophy"], ["/performance", "My performance", "trend"]] },
-    { key: "marketing", label: "Marketing", icon: "send", sub: [["/campaigns", "Campaigns", "send"], ["/approvals", "Approvals", "check"], ["/reviews", "Reviews", "check"], ["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"], ["/outbox", "Outbox", "send"], ["/templates", "Message templates", "doc"], ["/automations", "Automations", "bolt"], ["/settings/cadences", "Follow-up cadences", "phone"]] },
-  ],
+// SECTIONS (K0, the Rotor guide: scratchpad simplify/guide-gaps.md §1): the
+// one table that says where every screen lives. Rotor's left menu is the
+// drawer (four groups, `group` 0 to 3) and the desk's sidebar; Rotor's tabs
+// are each section's tabs (sectionTabs: a segmented row under the title, each
+// tab a link). A row opens its section on the tab this person used there last
+// (localStorage crm-sec:<uid>:<key>); there are no sub-lists. A section's rare
+// screens sit in its round "..." (`more`: the title row of each of its tabs).
+//   tabs: [[key, label, path, view?]]  a view is ?view=<view> (?<param>= when
+//         the section names a `param`); a tab with a view shows once its route
+//         declares it (manifest route `views: ["list", "board"]`), and a tab
+//         whose route doesn't exist yet (Requests, Payouts...) waits for it.
+//         No tabs: the section is its `path`.
+//   own:  the screen draws its own tabs (the Schedule's head): no row of them here.
+//   count: the badge key (setBadges) the drawer row shows.
+// A tab or row shows only when its screen is there and this person may open
+// it; tabs left with one (or none) draw no row of tabs. A module's Menu entry
+// no section names lands in a last group, so nothing is ever lost.
+export const SECTIONS = Object.freeze([
+  { key: "home", group: 0, label: "Home", icon: "home", path: "/today" },
+  { key: "inbox", group: 0, label: "Inbox", icon: "inbox", path: "/inbox", count: "inbox", more: [["/outbox", "Outbox (not sent)", "send"], ["/approvals", "Approvals", "check"]] },
+  { key: "schedule", group: 0, label: "Schedule", icon: "cal12", path: "/schedule", own: true, tabs: [["list", "List", "/schedule", "list"], ["day", "Day", "/schedule", "day"], ["3day", "3 Day", "/schedule", "3day"], ["week", "Week", "/schedule", "week"]] },
+  { key: "customers", group: 1, label: "Customers", icon: "contacts", path: "/contacts" },
+  { key: "leads", group: 1, label: "Leads", icon: "target", path: "/leads", tabs: [["list", "List", "/leads", "list"], ["board", "Board", "/leads", "board"]] },
+  { key: "pipelines", group: 1, label: "Pipelines", icon: "pipeline", path: "/pipeline", tabs: [["list", "List", "/pipeline", "list"], ["board", "Board", "/pipeline", "board"]], more: [["/settings/cadences", "Manage pipelines", "gear"]] },
+  { key: "dialer", group: 1, label: "Power Dialer", icon: "phone", path: "/calls", tabs: [["dialer", "Dialer", "/calls"], ["queue", "Queue", "/calls/queue"], ["logs", "Call logs", "/calls/logs"]] },
+  { key: "service", group: 2, label: "Service", icon: "hammer", path: "/jobs", tabs: [["requests", "Requests", "/requests"], ["quotes", "Quotes", "/quotes"], ["jobs", "Jobs", "/jobs"], ["plans", "Plans", "/plans"]], more: [["/tools/lights", "Light Studio", "bulb"]] },
+  { key: "financials", group: 2, label: "Financials", icon: "money", path: "/invoices", count: "overdue", tabs: [["invoices", "Invoices", "/invoices"], ["payments", "Payments", "/payments"], ["payouts", "Payouts", "/payouts"], ["payroll", "Payroll", "/payroll"]], more: [["/autopay", "Autopay run", "clock"], ["/timesheets", "Timesheets", "clock"], ["/tools/purchases", "Purchases", "cart"]] },
+  { key: "tasks", group: 2, label: "Tasks", icon: "check", path: "/tasks", count: "tasks_overdue", tabs: [["board", "Board", "/tasks", "board"], ["list", "List", "/tasks", "list"]] },
+  { key: "map", group: 2, label: "Map", icon: "map", path: "/map", more: [["/team-map", "Team map", "team"]] },
+  { key: "analytics", group: 3, label: "Analytics", icon: "chart", path: "/reports", param: "tab", tabs: [["overview", "Overview", "/reports", "overview"], ["sales", "Sales", "/reports", "sales"], ["technicians", "Technicians", "/reports", "technicians"], ["meta", "Meta", "/reports", "meta"], ["dashboards", "Dashboards", "/reports", "dashboards"]], more: [["/dashboard", "Office dashboard", "grid"], ["/leaderboard", "Leaderboard", "trophy"]] },
+  { key: "marketing", group: 3, label: "Marketing", icon: "send", path: "/automations", tabs: [["workflows", "Workflows", "/automations"], ["campaigns", "Campaigns", "/campaigns"], ["reviews", "Reviews", "/reviews"], ["referrals", "Referrals", "/referrals"], ["forms", "Forms", "/forms"], ["templates", "Templates", "/templates"]], more: [["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"]] },
 ]);
+// Screens whose home is inside another screen (a link there, not a row here): Merge review in
+// the Customers list (its notice and filter sheet, when there are duplicates); Lights season on
+// the Plans list (its tile).
+export const IN_SCREEN = Object.freeze({ "/merge": "/contacts", "/lights": "/plans" });
+// The person's own screens: their initials' sheet (meSheet), not the drawer.
+export const ME_ROWS = Object.freeze([["/time", "My time", "time"], ["/pay", "My pay", "pay"], ["/performance", "My performance", "trend"]]);
 // Set up once: in the Settings hub (system/settings.js) for whoever may open
 // Settings (the drawer may list them too: Marketing's templates and
 // automations); anyone else finds them in the drawer's last group.
@@ -119,7 +130,7 @@ const GONE = new Set(["/visits", "/tools/followups", "/settings", "/me", "/tab-b
 // Two paths, one screen: the bar's Map is Door to door.
 const SAME = Object.freeze({ "/knock": "/map" });
 
-let st = { tabs: [], more: [], creates: [], can: () => false, onSignOut: () => {}, badges: {}, user: null };
+let st = { tabs: [], more: [], creates: [], can: () => false, onSignOut: () => {}, badges: {}, user: null, menuPaths: new Set(), secPaths: new Set(), secMore: new Set() };
 
 const allowed = (perm) => !perm || st.can(perm);
 // a nav path may carry a query (#/schedule?view=tray): its route decides
@@ -158,8 +169,12 @@ export function plan({ nav, manifests, can, user = null }) {
   }
   st.extraTabs = extra;
   st.tabs = normalize(nav).map((key) => placeTab(key, extra)).filter(Boolean);
-  // the screens the Menu lists are top-level too (a large title, no back button when you came from another top-level screen)
-  st.menuPaths = menuDest() ? drawerPaths() : new Set();
+  // the screens the Menu lists are top-level too (a large title, no back button when you came from another top-level screen);
+  // a section's "..." screens light the Menu but sit deeper (a back button)
+  const groups = menuDest() ? drawerGroups() : [];
+  st.menuPaths = menuDest() ? drawerPaths(groups) : new Set();
+  st.secPaths = sectionPaths(groups);
+  st.secMore = morePaths(groups);
   return { bar: barTabs(), menu: menuDest(), side: sideLayout() };
 }
 
@@ -258,9 +273,17 @@ function mountRound() {
   r.addEventListener("click", (e) => {
     if (e.target.closest("[data-rnd-search]")) openQuick({ creates: [], search: true, can: st.can });
     else if (e.target.closest("[data-rnd-new]") && !e.target.closest("a")) openQuick({ creates: quickCreates(st.creates, st.can), search: st.can("contacts:read_all"), can: st.can });
+    else { const m = e.target.closest("[data-sec-more]"); if (m) sectionMore(m.dataset.secMore); }
   });
 }
-function drawRound(active, big) {
+// A section's round "..." (its rare screens: the Outbox under Inbox, Purchases under Financials...).
+export function sectionMore(key) {
+  const sec = sectionByKey(key);
+  const rows = moreOf(sec);
+  if (!sec || !rows.length) return null;
+  return actionSheet(sec.label, [rows.map((m) => ({ label: m.label, icon: m.icon, href: "#" + m.path, data: { "sec-go": m.path } }))]);
+}
+function drawRound(active, big, sec = null) {
   const r = document.getElementById("top-rnd");
   if (!r) return;
   const app = document.getElementById("app");
@@ -270,7 +293,9 @@ function drawRound(active, big) {
   // the screen's own round buttons (screenButtons: search, filter, ...), then a coral + where the place makes something of its own
   // (the coral + is the screen's "new": on a phone the header's own New button steps aside, one way to make it)
   if (app && own) app.classList.add("own-new");
-  render(r, html`<span class="rnd-own"></span>${own ? html`<a class="rnd coral" ${attrs({ href: "#" + own, "aria-label": "New" })}>${icon("plus")}</a>` : ""}`);
+  // the section's "..." (Rotor's: search, filter, "...", then the +), also on a desk
+  const more = sec && moreOf(sec).length ? html`<span class="sec-more">${rnd("more", `More in ${sec.label}`, { popup: true, data: { "sec-more": sec.key } })}</span>` : "";
+  render(r, html`<span class="rnd-own"></span>${more}${own ? html`<a class="rnd coral" ${attrs({ href: "#" + own, "aria-label": "New" })}>${icon("plus")}</a>` : ""}`);
 }
 
 // A top-level screen's own round buttons in the header on a phone (Rotor's
@@ -337,24 +362,35 @@ export function update(path) {
   let lit = null;
   for (const p of router.chain(path)) { lit = items.find((a) => holds(a, p)) || null; if (lit) break; }
   for (const a of items) { if (a === lit) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }
-  if (lit) { const g = lit.closest(".side-grp"); if (g && g.classList.contains("shut")) toggleGroup(g, false); }
+  // a section's tab on show: remember it (the drawer opens the section there next time)
+  const at = menuDest() ? sectionAt(path) : null;
+  if (at && at.cur) { rememberTab(at.sec, at.cur.key); sideHref(at.sec); }
   const sub = document.getElementById("subnav");
   if (sub) {
+    // the Sales switch for whoever pinned Sales; else the section's own tabs (two or more)
     const segs = atRoot && active.segs && active.segs.length > 1 ? active.segs : null;
-    sub.hidden = !segs;
+    const secSeg = !segs && at && !at.sec.own && at.tabs.length > 1 ? at : null;
+    sub.hidden = !segs && !secSeg;
+    sub.classList.toggle("sec", !!secSeg);
     if (segs) {
       sub.setAttribute("aria-label", active.label);
       render(sub, html`<div class="seg-track">${segs.map(([p, label]) => html`<a class="${"seg" + (p === path ? " on" : "")}" href="${"#" + p}" ${attrs({ "aria-current": p === path ? "page" : false })}>${label}</a>`)}</div>`);
+    } else if (secSeg) {
+      sub.setAttribute("aria-label", secSeg.sec.label);
+      render(sub, sectionTabs(secSeg.sec, secSeg.cur && secSeg.cur.key));
     } else render(sub, html``);
   }
   // a top-level screen (a tab's, or one the Menu lists): the large title, the round buttons and the +
-  const big = atRoot || (!active && inMenu(path));
+  // (a section's "..." screens sit deeper: a back button and the plain title)
+  const big = atRoot || (!active && inMenu(path) && !st.secMore.has(path));
   const app = document.getElementById("app");
   if (app) app.classList.toggle("big-top", big);
+  // Home brings its own bell: the top bar's steps aside there
+  if (app) app.classList.toggle("at-home", path === "/today");
   // the office's Home brings its own header (the avatar, Welcome back, the bell): the bar's title steps aside on a phone
   // (and so does the Schedule, Flyra's: its big title and pills are its own)
   if (app) app.classList.toggle("own-head", (path === "/today" && !st.tabs.some((t) => t.key === "today")) || (path === "/schedule" && !!menuDest()));
-  drawRound(active || (big ? { key: placeOf(path) } : null), big);
+  drawRound(active || (big ? { key: placeOf(path) } : null), big, at ? at.sec : null);
   let fab = document.getElementById("fab");
   const creates = quickCreates(st.creates, st.can);
   // (Rotor: the + is always beside the bar)
@@ -373,18 +409,33 @@ export function update(path) {
   } else if (!want && fab) fab.remove();
 }
 // A screen the Menu lists (or a module's Menu entry): top-level, and it lights the Menu button.
-const inMenu = (p) => (!!st.menuPaths && st.menuPaths.has(p)) || st.more.some((n) => n.path === p);
+const inMenu = (p) => (!!st.menuPaths && st.menuPaths.has(p)) || (!!st.secPaths && st.secPaths.has(p)) || st.more.some((n) => n.path === p);
 // The place (a TABS key) a path is the screen of.
 const placeOf = (path) => (Object.entries(TABS).find(([, t]) => (t.paths || []).includes(path) || (t.group || []).some(([p]) => p === path)) || [null])[0];
 
-export function setBadges({ inbox = 0, today = 0 } = {}) {
-  st.badges = { inbox, today };
+// setBadges({ inbox, today, notifications, ...any count a section names }): the bar, the sidebar,
+// the drawer's rows (when it opens next) and the top bar's bell.
+export function setBadges(b = {}) {
+  st.badges = { ...b, inbox: b.inbox || 0, today: b.today || 0, notifications: b.notifications || 0 };
+  const { inbox, today } = st.badges;
   // the office's Home is the tech's Today: one count, whichever tab this bar has
   for (const [key, n] of [["inbox", inbox], ["today", today], ["home", today]]) {
-    for (const b of document.querySelectorAll(`#tabs [data-tab="${key}"] .badge, #side [data-tab="${key}"] .badge`)) {
-      b.hidden = !n;
-      b.textContent = n > 99 ? "99+" : String(n);
+    for (const el of document.querySelectorAll(`#tabs [data-tab="${key}"] .badge, #side [data-tab="${key}"] .badge`)) {
+      el.hidden = !n;
+      el.textContent = n > 99 ? "99+" : String(n);
     }
+  }
+  for (const el of document.querySelectorAll("#side [data-count] .badge")) {
+    const n = Number(st.badges[el.parentNode.dataset.count]) || 0;
+    el.hidden = !n;
+    el.textContent = n > 99 ? "99+" : String(n);
+  }
+  const bell = document.querySelector("#top-bar [data-tb-bell]");
+  if (bell) {
+    const n = st.badges.notifications;
+    const badge = bell.querySelector(".badge");
+    if (badge) { badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n); }
+    bell.setAttribute("aria-label", n ? `Notifications, ${n} new` : "Notifications");
   }
 }
 
@@ -396,39 +447,111 @@ function visible(path) {
 }
 const hasSettings = () => routeOk("/settings") && st.more.some((n) => n.path === "/settings");
 
-// The drawer's groups for this person (pure: the tests call it with the
-// router's routes registered): [[{ key, label, icon, path?, paths, sub? }]],
-// each row only when one of its screens is open to them, a row with one
-// screen left a plain link; a last group holds a module's Menu entry no row
-// names (and the setup screens for someone without Settings). The office
-// only: a tech has no drawer.
+// ------------------------------------------------------------ sections (SECTIONS above)
+
+// A section's tabs as { key, label, path, view, param } (one, its own path, when it has none).
+const tabsOf = (sec) => (sec.tabs && sec.tabs.length ? sec.tabs : [[sec.key, sec.label, sec.path]]).map(([key, label, path, view]) => ({ key, label, path, view: view || null, param: sec.param || "view" }));
+// A tab's link: its path, and its view as a query (#/leads?view=board).
+export const tabHref = (t) => t.path + (t.view ? `?${t.param || "view"}=${encodeURIComponent(t.view)}` : "");
+// A tab with a view shows once its screen draws that view (the route's `views`).
+const viewOk = (t) => { if (!t.view) return true; const m = router.match(t.path); return !!m && Array.isArray(m.route.views) && m.route.views.includes(t.view); };
+// The paths that belong to a section: its own, its tabs', its "..."'s (and the Map's other name).
+const ownPaths = (sec) => {
+  const out = new Set([sec.path, ...tabsOf(sec).map((t) => t.path), ...(sec.more || []).map(([p]) => p)]);
+  for (const [alias, same] of Object.entries(SAME)) if (out.has(same)) out.add(alias);
+  return out;
+};
+// The tabs this person gets. None open: the section's own path; else its first "..." screen.
+export function openTabs(sec) {
+  if (!sec) return [];
+  const tabs = tabsOf(sec).filter((t) => visible(t.path) && viewOk(t));
+  if (tabs.length) return tabs;
+  if (visible(sec.path)) return [{ key: sec.key, label: sec.label, path: sec.path, view: null, param: "view" }];
+  const m = (sec.more || []).find(([p]) => visible(p));
+  return m ? [{ key: sec.key, label: sec.label, path: m[0], view: null, param: "view" }] : [];
+}
+// Its "..." screens this person may open (not one that stands in as its tab).
+export function moreOf(sec, tabs = openTabs(sec)) {
+  const taken = new Set(tabs.map((t) => t.path));
+  return (sec && sec.more ? sec.more : []).filter(([p]) => visible(p) && !taken.has(p)).map(([path, label, ic]) => ({ path, label, icon: ((st.navAll || []).find((n) => n.path === path) || {}).icon || ic }));
+}
+export const sectionByKey = (key) => SECTIONS.find((x) => x.key === key) || null;
+// The section a screen belongs to (the nearest up its parent chain), or null.
+export function sectionOf(path) {
+  const chain = router.chain(String(path || "").split("?")[0]);
+  for (const p of chain) { const sec = SECTIONS.find((x) => ownPaths(x).has(p)); if (sec) return sec; }
+  return null;
+}
+// Which tab of `tabs` is on show at `path` (the query picks a view; none: the first one there).
+function tabAt(tabs, path, query = currentQuery()) {
+  const here = tabs.filter((t) => t.path === path);
+  if (!here.length) return null;
+  const want = query.get(here[0].param || "view");
+  return here.find((t) => t.view && t.view === want) || here.find((t) => !t.view) || here[0];
+}
+const currentQuery = () => { try { return new URLSearchParams((typeof location !== "undefined" && location.hash.split("?")[1]) || ""); } catch (e) { return new URLSearchParams(""); } };
+// A section's tab screen on show: { sec, tabs, cur }, or null.
+export function sectionAt(path, query) {
+  for (const sec of SECTIONS) {
+    const tabs = openTabs(sec);
+    if (tabs.some((t) => t.path === path)) return { sec, tabs, cur: tabAt(tabs, path, query) };
+  }
+  return null;
+}
+
+// The tab used last in each section, per person, on this device.
+export const SEC_KEY = "crm-sec";
+const secKey = (key) => `${SEC_KEY}:${(st.user && st.user.id) || "anon"}:${key}`;
+export function lastTab(sec, tabs = openTabs(sec)) {
+  let k = null;
+  try { k = localStorage.getItem(secKey(sec.key)); } catch (e) { /* nothing kept here */ }
+  return tabs.find((t) => t.key === k) || tabs[0] || null;
+}
+export function rememberTab(sec, tabKey) {
+  try { localStorage.setItem(secKey(sec.key), String(tabKey)); } catch (e) { /* this browser keeps nothing */ }
+}
+
+// The section's tabs as a row of segmented links (the shell draws it under
+// the title of each tab's screen; a screen that draws its own, the
+// Schedule's, calls it). Nothing when this person has fewer than two.
+export function sectionTabs(key, on = null) {
+  const sec = typeof key === "string" ? sectionByKey(key) : key;
+  const tabs = openTabs(sec);
+  if (tabs.length < 2) return html``;
+  const cur = on !== null && on !== undefined ? on : typeof location === "undefined" ? null : (tabAt(tabs, router.currentPath()) || {}).key;
+  return seg(tabs.map((t) => ({ key: t.key, label: t.label, href: "#" + tabHref(t) })), cur, { name: "sec", label: sec.label, scroll: tabs.length > 4 });
+}
+
+// The drawer's rows for this person (pure: the tests call it with the
+// router's routes registered), in its four groups: [[{ key, label, icon,
+// path (the tab to open: the last used), tab, paths (the tabs' screens),
+// tabs, more, count }]]; a row only when one of its screens is open to them.
+// A last group holds a module's Menu entry no section names (and the setup
+// screens for someone without Settings). The office only: a tech has no drawer.
 export function drawerGroups() {
   if (!menuDest()) return [];
   const settings = hasSettings();
-  const named = new Set();
-  const mapBoth = visible("/map") && visible("/team-map");
-  const groups = DRAWER.map((g) => g.map((it) => {
-    if (!it.sub) {
-      for (const p of [it.path]) named.add(p.split("?")[0]);
-      return visible(it.path) ? { key: it.key, label: it.label, icon: it.icon, path: it.path, paths: [it.path.split("?")[0]], count: it.count || null } : null;
-    }
-    for (const [p] of it.sub) named.add(p.split("?")[0]);
-    // the Team map sits under Map when the person has both, else under Service
-    const sub = it.sub.filter(([p]) => visible(p) && !(it.key === "service" && p === "/team-map" && mapBoth))
-      .map(([path, label, ic]) => ({ path, label, icon: ((st.navAll || []).find((n) => n.path === path) || {}).icon || ic }));
-    if (!sub.length) return null;
-    if (sub.length === 1) {
-      const only = sub[0];
-      return { key: it.key, label: it.main && only.path === it.main ? it.label : only.label, icon: it.main && only.path === it.main ? it.icon : only.icon, path: only.path, paths: [only.path.split("?")[0]] };
-    }
-    return { key: it.key, label: it.label, icon: it.icon, sub, paths: [...new Set(sub.map((x) => x.path.split("?")[0]))] };
-  }).filter(Boolean)).filter((g) => g.length);
-  for (const [p, same] of Object.entries(SAME)) if (named.has(same)) named.add(p);
-  // what no row names: a module's own Menu entry (and, for someone without Settings, the setup screens)
+  const named = new Set([...ME_ROWS.map(([p]) => p), ...Object.keys(IN_SCREEN)]);
+  const groups = [];
+  for (const sec of SECTIONS) {
+    for (const p of ownPaths(sec)) named.add(p);
+    const tabs = openTabs(sec);
+    if (!tabs.length) continue;
+    const last = lastTab(sec, tabs);
+    const row = {
+      key: sec.key, label: sec.label, icon: sec.icon, path: tabHref(last), tab: last.key,
+      paths: [...new Set(tabs.map((t) => t.path))],
+      tabs: tabs.map((t) => ({ key: t.key, label: t.label, path: tabHref(t), base: t.path })),
+      more: moreOf(sec, tabs), count: sec.count || null,
+    };
+    (groups[sec.group] = groups[sec.group] || []).push(row);
+  }
+  const out = groups.filter((g) => g && g.length);
+  // what no section names: a module's own Menu entry (and, for someone without Settings, the setup screens)
   const rest = st.more.filter((n) => !named.has(n.path) && !GONE.has(n.path) && !(settings && IN_SETTINGS.includes(n.path)))
-    .map((n) => ({ key: "x" + n.path, label: n.label, icon: n.icon || "list", path: n.path, paths: [n.path] }));
-  if (rest.length) groups.push(rest);
-  return groups;
+    .map((n) => ({ key: "x" + n.path, label: n.label, icon: n.icon || "list", path: n.path, paths: [n.path], tabs: [{ key: "x", label: n.label, path: n.path, base: n.path }], more: [], count: null }));
+  if (rest.length) out.push(rest);
+  return out;
 }
 // The gear at the bottom: Settings, or Customize Tabs for someone without Settings.
 export function drawerGear() {
@@ -436,8 +559,11 @@ export function drawerGear() {
   if (hasSettings()) return { path: "/settings", label: "Settings" };
   return routeOk("/tab-bar") ? { tabs: true, label: "Customize Tabs" } : null;
 }
-// Every screen the drawer opens (they are top-level: a large title, no back button from another top-level screen).
-const drawerPaths = () => { const g = drawerGear(); return new Set([...drawerGroups().flat().flatMap((it) => it.paths), ...(g && g.path ? [g.path] : [])]); };
+// Every screen the drawer opens: each section's tabs (they are top-level: a large title, no back
+// button from another top-level screen); and every screen a section holds, "..." too (they light the Menu).
+const drawerPaths = (groups = drawerGroups()) => { const g = drawerGear(); return new Set([...groups.flat().flatMap((it) => it.paths), ...(g && g.path ? [g.path] : [])]); };
+const sectionPaths = (groups) => new Set(groups.flat().flatMap((it) => [...it.paths, ...it.more.map((m) => m.path), ...(SECTIONS.find((x) => x.key === it.key) ? [...ownPaths(SECTIONS.find((x) => x.key === it.key))] : [])]));
+const morePaths = (groups) => new Set(groups.flat().flatMap((it) => it.more.map((m) => m.path)));
 export const signOut = () => st.onSignOut();
 
 function openMore() {
@@ -464,10 +590,10 @@ function openMore() {
 // computer (kept in localStorage under their id; a browser that keeps
 // nothing never shows it, rather than showing it every time). A tech's bar
 // didn't change: nothing to say.
-export const MOVED_KEY = "crm-moved-5";
+export const MOVED_KEY = "crm-moved-6";
 export const MOVED_TEXT = Object.freeze({
-  phone: "The Menu is a drawer now, like Rotor's: Service, Financials, Analytics and Marketing open their own lists. Old links still work.",
-  desk: "The sidebar is Rotor's now: Service, Financials, Analytics and Marketing fold open in place. Old links still work.",
+  phone: "The menu is Rotor's sections now: each opens on the tab you used last, with its tabs across the top. Old links still work.",
+  desk: "The sidebar is Rotor's sections now: each opens on the tab you used last, with its tabs across the top. Old links still work.",
 });
 const movedKey = (uid) => (uid ? `${MOVED_KEY}:${uid}` : null);
 const me = () => (st.user && st.user.id) || null;
@@ -500,27 +626,21 @@ function whatMoved() {
 
 // ------------------------------------------------------------ the desktop chrome
 
-// A list of the sidebar (Service, Financials...) folds open in place; the
-// ones a person opened stay open on this computer.
-const OPEN_KEY = "crm-side-open";
-const openGroups = () => { try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || "[]")); } catch (e) { return new Set(); } };
-function toggleGroup(g, shut) {
-  g.classList.toggle("shut", shut);
-  const b = g.querySelector(".side-h");
-  if (b) b.setAttribute("aria-expanded", String(!shut));
-  try {
-    const set = openGroups();
-    if (shut) set.delete(g.dataset.grp); else set.add(g.dataset.grp);
-    localStorage.setItem(OPEN_KEY, JSON.stringify([...set]));
-  } catch (e) { /* a private window: shut every time */ }
+// The sidebar's rows are the drawer's sections (no lists to fold): each opens
+// its section on the tab used last; the row of the screen on show is lit.
+const sideItem = (path, label, ic, key, paths, { sec = null, count = null } = {}) => html`<a class="side-item" href="${"#" + path}" ${attrs({ "data-path": path.split("?")[0], "data-paths": paths && paths.length > 1 ? paths.join(" ") : null, "data-tab": key || null, "data-sec": sec, "data-count": !key && count ? count : null })}>${icon(ic || "list")}<span class="sl">${label}</span>${key || count ? html`<span class="badge" hidden></span>` : ""}</a>`;
+// A section's row follows the tab used last.
+function sideHref(sec) {
+  const a = typeof document !== "undefined" ? document.querySelector(`#side [data-sec="${sec.key}"]`) : null;
+  const t = a && lastTab(sec);
+  if (t) a.setAttribute("href", "#" + tabHref(t));
 }
-
-const sideItem = (path, label, ic, key, paths) => html`<a class="side-item" href="${"#" + path}" ${attrs({ "data-path": path.split("?")[0] === path ? path : null, "data-paths": paths && paths.length > 1 ? paths.join(" ") : null, "data-tab": key || null })}>${icon(ic || "list")}<span class="sl">${label}</span>${key ? html`<span class="badge" hidden></span>` : ""}</a>`;
+// Everything a row lights: its tabs, its "..." screens and the screens under them (the chain decides).
+const rowLit = (it) => { const sec = SECTIONS.find((x) => x.key === it.key); return [...new Set([...it.paths, ...(sec ? [...ownPaths(sec)] : it.paths)])]; };
 
 // What the sidebar holds (pure, for the tests): for the office, the
-// drawer's groups (a row with its own list folds open in place) and
-// Settings at the bottom (above who is signed in; My account is that card);
-// for a tech, the bar's places.
+// drawer's groups and Settings at the bottom (above who is signed in; My
+// account is that card); for a tech, the bar's places.
 export const SIDE_BOTTOM = Object.freeze(["/settings"]);
 export function sideLayout() {
   const top = barTabs().filter((t) => !t.more && !t.sheet);
@@ -534,19 +654,13 @@ const BADGE_KEY = { home: "home", inbox: "inbox" };
 function mountDesk() {
   const app = document.getElementById("app");
   if (!app || document.getElementById("side")) return;
-  const opened = openGroups();
   const side = document.createElement("nav");
   side.id = "side";
   side.className = "app-side";
   side.setAttribute("aria-label", "CRM sections");
   const { top, groups, bottom } = sideLayout();
   const u = st.user || {};
-  const row = (it) => (it.sub
-    ? html`<section class="${"side-grp sec-" + it.key + (opened.has(it.key) ? "" : " shut")}" data-grp="${it.key}">
-        <button type="button" class="side-h" ${attrs({ "aria-expanded": String(opened.has(it.key)) })}>${icon(it.icon)}<span class="sl">${it.label}</span><span class="side-chev" aria-hidden="true"></span></button>
-        <div class="side-items">${it.sub.map((n) => sideItem(n.path, n.label, n.icon))}</div>
-      </section>`
-    : sideItem(it.path, it.label, it.icon, BADGE_KEY[it.key] || null));
+  const row = (it) => sideItem(it.path, it.label, it.icon, BADGE_KEY[it.key] || null, rowLit(it), { sec: it.key.startsWith("x") ? null : it.key, count: it.count });
   render(side, html`<a class="side-logo" href="#/today"><img src="/assets/img/logo-bww-white.png" alt="Barta Window Washing" width="128" height="35"></a>
     <div class="side-scroll">
       ${top.length ? html`<div class="side-main">${top.map((t) => sideItem(t.path, t.label, t.icon, t.key, t.roots))}</div>` : ""}
@@ -556,10 +670,6 @@ function mountDesk() {
     <a class="side-me" href="#/me"><span class="avatar" ${attrs({ style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null })}>${initials(u.name)}</span><span class="who"><span class="nm">${u.name || "My account"}</span><span class="sub">${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></span></a>`);
   app.appendChild(side);
   app.classList.add("has-side");
-  side.addEventListener("click", (e) => {
-    const h = e.target.closest(".side-h");
-    if (h) toggleGroup(h.closest(".side-grp"), !h.closest(".side-grp").classList.contains("shut"));
-  });
 
   // the header's tools: search, New, the person's menu
   const topBar = document.getElementById("top");
@@ -743,41 +853,36 @@ export function searchInto(form, input, out) {
 //
 // openDrawer() slides it in from the left over a dimmed, blurred screen;
 // the X, a tap outside, a swipe to the left, Escape or going anywhere
-// closes it. A row with a dot shows its own list in its place ("‹ Service"
-// goes back). drawerList() is the same rows for the #/menu page.
+// closes it. Each row opens its section on the tab used last (no lists:
+// the section's tabs do that job). drawerList() is the same rows for the
+// #/menu page, where every section's tabs and "..." screens show under it.
 
-// The row of the screen on show (the nearest up its parent chain), and the list it sits in.
+// The row of the screen on show: its section, or a last-group row.
 function currentRow(groups) {
-  const chain = router.chain(router.currentPath());
-  for (const p of chain) {
-    for (const it of groups.flat()) {
-      if (it.sub) { const x = it.sub.find((n) => n.path === p); if (x) return { row: it, sub: x }; }
-      else if (it.path === p) return { row: it, sub: null };
-    }
-  }
-  return { row: null, sub: null };
+  const path = router.currentPath();
+  const sec = sectionOf(path);
+  const rows = groups.flat();
+  if (sec) { const r = rows.find((it) => it.key === sec.key); if (r) return r; }
+  for (const p of router.chain(path)) { const r = rows.find((it) => it.paths.includes(p)); if (r) return r; }
+  return null;
 }
 
-// The rows (html): the groups split by thin lines, or one row's own list.
-// expand: every list open in place, under its row's name (the #/menu page has the room).
-export function drawerList(groups, { open = null, expand = false } = {}) {
+// The rows (html): the groups split by thin lines.
+// expand: every section's tabs and "..." screens under its name (the #/menu page has the room).
+export function drawerList(groups, { expand = false } = {}) {
   const cur = currentRow(groups);
-  const n = st.badges.inbox || 0;
-  const link = (it, on) => html`<a class="dr-row" ${attrs({ href: "#" + it.path, "aria-current": on ? "page" : null, "data-dr-go": it.path })}><span class="dr-ic">${icon(it.icon || "list")}</span><span class="dr-l">${it.label}</span>${it.count === "inbox" && n ? html`<span class="dr-n">${n > 99 ? "99+" : String(n)}</span>` : ""}</a>`;
-  const row = (it) => (it.sub
-    ? html`<button type="button" class="dr-row" ${attrs({ "data-dr-sub": it.key, "aria-current": cur.row === it ? "true" : null })}><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span><span class="dr-dot" aria-hidden="true"></span><span class="sr">, ${it.sub.length} screens</span></button>`
-    : link(it, cur.row === it));
+  const n = (it) => (it.count ? Number(st.badges[it.count]) || 0 : 0);
+  const link = (it, on) => html`<a class="dr-row" ${attrs({ href: "#" + it.path, "aria-current": on ? "page" : null, "data-dr-go": it.path, "data-dr-sec": it.key, "data-dr-paths": [...new Set([...(it.paths || []), ...(it.more || []).map((m) => m.path)])].join(" ") })}><span class="dr-ic">${icon(it.icon || "list")}</span><span class="dr-l">${it.label}</span>${n(it) ? html`<span class="dr-n">${n(it) > 99 ? "99+" : String(n(it))}</span>` : ""}</a>`;
   if (expand) {
-    return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${it.sub
-      ? html`<div class="dr-sub" ${attrs({ "data-dr-list": it.key })}><h3 class="dr-h"><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span></h3><ul class="dr-in">${it.sub.map((x) => html`<li>${link(x, cur.sub === x)}</li>`)}</ul></div>`
-      : link(it, cur.row === it)}</li>`)}</ul>`)}`;
+    const sub = (x, on) => html`<a class="dr-row" ${attrs({ href: "#" + x.path, "aria-current": on ? "page" : null })}><span class="dr-ic">${icon(x.icon || "list")}</span><span class="dr-l">${x.label}</span></a>`;
+    const here = router.currentPath();
+    return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${it.tabs.length > 1 || it.more.length
+      ? html`<div class="dr-sub" ${attrs({ "data-dr-list": it.key })}><h3 class="dr-h"><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span></h3><ul class="dr-in">${[
+        ...it.tabs.map((t) => html`<li>${sub({ path: t.path, label: t.label, icon: it.icon }, t.base === here)}</li>`),
+        ...it.more.map((m) => html`<li>${sub(m, m.path === here)}</li>`)]}</ul></div>`
+      : link(it, cur === it)}</li>`)}</ul>`)}`;
   }
-  const list = open ? groups.flat().find((it) => it.key === open && it.sub) : null;
-  if (list) {
-    return html`<button type="button" class="dr-row dr-back" data-dr-back><span class="dr-ic">${icon("chevleft")}</span><span class="dr-l">${list.label}</span></button>
-      <ul class="dr-grp" ${attrs({ "aria-label": list.label })}>${list.sub.map((x) => html`<li>${link(x, cur.sub === x)}</li>`)}</ul>`;
-  }
-  return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${row(it)}</li>`)}</ul>`)}`;
+  return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${link(it, cur === it)}</li>`)}</ul>`)}`;
 }
 // The gear at the bottom (Settings, or Customize Tabs for someone without Settings).
 export function drawerFoot() {
@@ -809,9 +914,7 @@ export function openDrawer() {
   el.tabIndex = -1;
   render(el, html`<div class="dr-head">${drawerLogo()}${rnd("close", "Close the menu", { tone: "grey", sm: true, data: { "dr-x": true } })}</div><div class="dr-body"></div><div class="dr-foot">${drawerFoot()}</div>`);
   const body = el.querySelector(".dr-body");
-  let open = null;
-  const draw = () => render(body, drawerList(drawerGroups(), { open }));
-  draw();
+  render(body, drawerList(drawerGroups()));
   layer.appendChild(back);
   layer.appendChild(el);
   document.body.classList.add("dr-on");
@@ -835,9 +938,6 @@ export function openDrawer() {
   back.addEventListener("click", close);
   el.addEventListener("click", (e) => {
     if (e.target.closest("[data-dr-x]")) { close(); return; }
-    const sub = e.target.closest("[data-dr-sub]");
-    if (sub) { open = sub.dataset.drSub; draw(); const b = body.querySelector("[data-dr-back]"); if (b) b.focus(); return; }
-    if (e.target.closest("[data-dr-back]")) { const k = open; open = null; draw(); const b = body.querySelector(`[data-dr-sub="${k}"]`); if (b) b.focus(); return; }
     if (e.target.closest("[data-dr-tabs]")) { close(); openCustomizeTabs(); return; }
     // the screen already on show: just close
     const go = e.target.closest("a[href]");
@@ -906,6 +1006,7 @@ function mountTopBar() {
   render(bar, html`${rnd("menu", "Menu", { data: { "tb-menu": true }, popup: true })}<span class="tb-gap"></span>
     ${st.can("contacts:read_all") ? rnd("search", "Search", { data: { "tb-search": true }, popup: true }) : ""}
     <span class="tb-time num" id="tb-time" aria-hidden="true"></span>
+    ${routeOk("/notifications") ? html`<a class="rnd tb-bell" href="#/notifications" data-tb-bell aria-label="Notifications">${icon("bell")}<span class="badge" hidden></span></a>` : ""}
     ${rnd("help", "Help", { data: { "tb-help": true }, popup: true })}
     <button type="button" class="rnd tb-av" data-tb-me aria-haspopup="dialog" ${attrs({ "aria-label": `${u.name || "My account"}: account`, style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color};color:#fff` : null })}>${initials(u.name)}</button>`);
   top.insertBefore(bar, top.firstChild);
@@ -920,9 +1021,10 @@ function mountTopBar() {
   setInterval(tick, 15000);
 }
 
-// The round help: Report a problem, What moved, the calendar feed.
+// The round help: Where do I go to..., Report a problem, What moved, the calendar feed.
 export function helpSheet() {
   return actionSheet("Help", [[
+    { label: "Where do I go to...", icon: "map", run: () => whereSheet(), data: { where: true } },
     st.can("tasks:write") && { label: "Report a problem", icon: "bug", run: () => reportProblem(), data: { bug: true } },
     { label: "What moved", icon: "help", hint: "the new menu", run: () => movedSheet(), data: { moved: true } },
     routeOk("/calendar-feed") && { label: "Calendar feed help", icon: "today", href: "#/calendar-feed" },
@@ -934,6 +1036,7 @@ export function meSheet() {
   const theme = (THEMES.find(([k]) => k === themeChoice()) || [null, ""])[1];
   return actionSheet(u.name || "My account", [
     [routeOk("/me") && { label: "My account", icon: "me", href: "#/me" },
+      ...ME_ROWS.map(([path, label, ic]) => routeOk(path) && { label, icon: ic, href: "#" + path, data: { "me-go": path } }),
       { label: "Light or dark", icon: "sun", hint: theme, run: () => pickTheme(), data: { "theme-btn": true } },
       routeOk("/tab-bar") && { label: "Customize Tabs", icon: "tabbar", run: () => openCustomizeTabs(), data: { "tabs-btn": true } }],
     [{ label: "Sign out of this phone", icon: "out", danger: true, run: () => st.onSignOut(), data: { signout: true } }],
@@ -943,7 +1046,33 @@ function movedSheet() {
   return sheet({
     title: "What moved",
     body: html`<div class="moved-sheet"><p>${MOVED_TEXT.phone}</p>
-      <ul class="moved-list"><li>The Menu tab and the round button top left open the menu, like Rotor's.</li><li>Jobs, visits, quotes and plans are under Service; invoices, payments and payroll under Financials; reports under Analytics; campaigns, reviews and templates under Marketing.</li><li>Settings is the gear at the bottom of the menu.</li><li>Your tabs: hold the bar, or your initials, then Customize Tabs.</li></ul></div>`,
+      <ul class="moved-list"><li>The Menu tab and the round button top left open the menu, like Rotor's. Each row opens its section on the tab you used last.</li><li>Quotes, jobs and plans are tabs under Service; invoices, payments and payroll under Financials; workflows, campaigns, reviews and templates under Marketing.</li><li>Rarer screens sit in a section's round ... button: the Outbox under Inbox, Timesheets and Purchases under Financials, the Leaderboard under Analytics.</li><li>Your own time, pay and performance are under your initials.</li><li>Settings is the gear at the bottom of the menu. Your tabs: hold the bar, or your initials, then Customize Tabs.</li></ul></div>`,
+  });
+}
+
+// "Where do I go to...": the Rotor guide's answers, as this app's taps (guide-gaps §2.17).
+export const WHERE = Object.freeze([
+  ["See what's due today", "Home tab"],
+  ["Reply to a customer text or email", "Inbox tab"],
+  ["Make anything new", "The red + beside the tab bar"],
+  ["Look up a customer's history", "Round search, then the name; or Menu › Customers"],
+  ["Work new leads", "Menu › Pipelines (opens the last one you used)"],
+  ["Make calls back to back", "Menu › Power Dialer"],
+  ["See or move the crew's visits", "Schedule tab › Week; hold a visit to move it"],
+  ["Find a job that needs a date", "Schedule › To book; or Menu › Service › Jobs"],
+  ["Check whether a quote was viewed or approved", "Menu › Service › Quotes"],
+  ["Check unsigned plan agreements", "Menu › Service › Plans"],
+  ["Chase unpaid invoices", "Menu › Financials › Invoices"],
+  ["Run payroll", "Menu › Financials › Payroll"],
+  ["See new reviews", "Menu › Marketing › Reviews, or the bell"],
+  ["Change an automatic text", "Menu › Marketing › Workflows; or Settings › Messages"],
+  ["Add a team member", "Settings › Team, then +"],
+]);
+function whereSheet() {
+  return sheet({
+    title: "Where do I go to...",
+    className: "rs-actions",
+    body: html`<ul class="rs-act-g rs-where">${WHERE.map(([task, path]) => html`<li><b>${task}</b><span>${path}</span></li>`)}</ul>`,
   });
 }
 
