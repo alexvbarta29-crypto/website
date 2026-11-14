@@ -8,7 +8,8 @@
 // [today − 7, today + 30] window (§4.6). Answers to a technician carry the
 // visit's techFields only.
 //
-//   POST  /visits/:id/on-my-way {eta_min, lat?, lng?}       text on_my_way (needs signal: never replayed)
+//   POST  /visits/:id/on-my-way {eta_min, lat?, lng?}       text on_my_way (needs signal: never replayed),
+//                                                            with the tracking link (track.mjs) when it's on
 //   POST  /visits/:id/running-late {eta_min}                 text running_late (needs signal)
 //   POST  /visits/:id/timer {action: start|pause|finish}     segments; start clocks in when clocked out
 //   GET   /visits/:id/field                                  the visit's segments (who is working, minutes)
@@ -68,6 +69,7 @@ import { changeVisit, W, refreshVisits } from "./office.mjs";
 import { timeOf, clientIdOf, clockIn, clockOut, ensureClockedIn, conflictEntry, payloadOf, userRecord } from "./timesheets.mjs";
 import { runningTimer, visitTimers, startSegment, stopSegment, stopRunning, recomputeMinutes } from "./timers.mjs";
 import { lastNotes } from "./techday.mjs";
+import { trackLinkFor, TRACK_TEMPLATE } from "./track.mjs";
 
 export const MAX_PHOTO_BYTES = 3000000;          // a photo sent as JSON (base64 ≈ 4 MB), under Netlify's 6 MB request cap
 export const PHOTO_MAX_BODY = 4700000;
@@ -199,10 +201,14 @@ const TEXTS = {
 // A person's text to the visit's customer, now or never (a late "on my
 // way" is worse than none): outside quiet hours it is blocked, not
 // scheduled. → { status, mode?, reason?, outbox_id?, hand? }
-async function visitText(ctx, visit, key, eta, clientId) {
+async function visitText(ctx, visit, key, eta, clientId, { link } = {}) {
   const def = automationDef(key);
   const cfg = await readAutomationsCfg();
   const settings = def ? settingsFor(def, cfg) : { enabled: true, template_keys: [TEXTS[key]] };
+  // the tracking link (work/track.mjs): the built-in text gets the version with the link;
+  // a template the owner picked instead gets the link as {{portal_link}}
+  const picked = (settings.template_keys || [])[0] || TEXTS[key];
+  const template = link && picked === TEXTS[key] ? TRACK_TEMPLATE : picked;
   if (cfg.paused || settings.enabled === false) return { status: "off", reason: cfg.paused ? "paused" : "turned_off" };
   const [messaging, calendar] = await Promise.all([getSetting("messaging").catch(() => ({})), getSetting("calendar").catch(() => DEFAULT_CALENDAR)]);
   if (!allowedNow(quietRule("service", "user", (messaging && messaging.quiet) || {}, calendar || DEFAULT_CALENDAR))) {
@@ -211,8 +217,8 @@ async function visitText(ctx, visit, key, eta, clientId) {
   }
   const user = await userRecord(ctx.user.id).catch(() => null);
   const msg = {
-    contact_id: visit.contact_id, channel: "sms", template_key: (settings.template_keys || [])[0] || TEXTS[key], category: "service",
-    vars: { tech_first_name: firstName(user || ctx.user) || "Your tech", eta_minutes: String(eta) },
+    contact_id: visit.contact_id, channel: "sms", template_key: template, category: "service",
+    vars: { tech_first_name: firstName(user || ctx.user) || "Your tech", eta_minutes: String(eta), ...(link ? { portal_link: link.url } : {}) },
     related: { visit_id: visit.id, job_id: visit.job_id }, origin: { kind: "user", user_id: ctx.user.id },
     marker_key: `${key === "visit.on_my_way" ? "omw" : "late"}-${clientId || ctx.requestId}`,
   };
@@ -257,10 +263,12 @@ const onMyWay = async (ctx) => {
   const at = again ? visit.on_my_way.at : nowIso();
   const geo = geoOf(b);
   const r = again ? { visit } : await changeVisit(visit.id, "on_my_way", { ctx: W(ctx), mutate: (n) => ({ ...n, on_my_way: { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}), ...(geo ? { geo } : {}) } }) });
+  // the customer's "on the way" page (work/track.mjs): the same tap makes the same link
+  const link = await trackLinkFor({ visit: r.visit, userId: ctx.user.id, at, tapKey: cid || at });
   // a repeat whose text never went (a crash in between) sends it now; the send's marker keeps it to one
-  const text = await visitText(ctx, r.visit, "visit.on_my_way", again ? visit.on_my_way.eta_min : eta, cid);
-  await updateRecord("visit", visit.id, (v) => (!v.on_my_way || v.on_my_way.at !== at ? null : { ...v, on_my_way: { ...v.on_my_way, text: { status: text.status, ...(text.reason ? { reason: text.reason } : {}) }, ...(text.outbox_id ? { message_id: text.outbox_id } : {}) } }), W(ctx)).catch(() => {});
-  return answer(ctx, visit.id, { text });
+  const text = await visitText(ctx, r.visit, "visit.on_my_way", again ? visit.on_my_way.eta_min : eta, cid, { link });
+  await updateRecord("visit", visit.id, (v) => (!v.on_my_way || v.on_my_way.at !== at ? null : { ...v, on_my_way: { ...v.on_my_way, text: { status: text.status, ...(text.reason ? { reason: text.reason } : {}) }, ...(text.outbox_id ? { message_id: text.outbox_id } : {}), ...(link ? { track: true } : {}) } }), W(ctx)).catch(() => {});
+  return answer(ctx, visit.id, { text, ...(link ? { track_url: link.url } : {}) });
 };
 
 const runningLate = async (ctx) => {

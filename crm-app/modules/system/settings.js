@@ -22,7 +22,7 @@ export const LAYOUT = Object.freeze([
   ["team", "Team & permissions", [["/team", "Team", "team"], ["/settings/permissions", "Permissions", "shield"]]],
   ["pricing", "Pricing & services", [["/settings/pricing", "Prices & price book", "money"], ["/settings/discounts", "Discounts", "money"]]],
   ["plans", "Plans & agreements", [["/settings/plans", "Plans & perks", "swap"], ["/settings/agreement-templates", "Agreements", "doc"]]],
-  ["schedule", "Schedule", [["/settings/hours", "Hours & holidays", "clock"], ["/settings/schedule", "Crew & forecast", "truck"], ["/settings/checklists", "Checklists", "check"]]],
+  ["schedule", "Schedule", [["/settings/hours", "Hours & holidays", "clock"], ["/settings/schedule", "Crew & forecast", "truck"], ["/settings/checklists", "Checklists", "check"], ["/settings/tracking", "Tracking link", "route"]]],
   ["messages", "Messages & automations", [["/templates", "Message templates", "doc"], ["/automations", "Automations", "bolt"], ["/settings/cadences", "Follow-up cadences", "phone"], ["/settings/messaging", "Quiet hours & opt-out", "text"], ["/settings/texting", "Texting & email setup", "mail"]]],
   ["payments", "Payments", [["/settings/payments", "Payments & card fees", "money"]]],
   ["maps", "Maps & door to door", [["/settings/knock", "Door to door", "map"], ["/settings/maps", "Maps & team map", "map"]]],
