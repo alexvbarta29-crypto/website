@@ -10,6 +10,7 @@
 //   POST /plans/:id/activate|pause|resume|skip|cancel|withdraw|renew   runs (one op each)
 //   POST /plans/:id/confirm-season {season}     a lights customer said yes to that season (a run: its install is made)
 //   POST /plans/:id/change-price {new_lines, effective_on}
+//   POST /plans/:id/edit {changes, preview?}     frequency, length, renewal, start, billing (a run; preview: what changes)
 //   GET  /plans/:id/cancel-quote?requested_on=   the policy calculator, before confirming
 //   POST /plans/:id/send-agreement {channels}    the plan's agreement, made and sent
 //   POST /plans/request-signatures {plan_ids}    a run that ends in a bulk run
@@ -29,7 +30,7 @@ import { loadCatalog, loadLights } from "./catalog.mjs";
 import { cancelQuote, ordinalTotals, monthOf } from "./machine.mjs";
 import { templateApproved } from "./types.mjs";
 import {
-  getPlan, listPlans, plansDueList, createStaffPlan, startAction, changePrice, patchPlan, readiness,
+  getPlan, listPlans, plansDueList, createStaffPlan, startAction, changePrice, patchPlan, readiness, startEdit,
 } from "./plans.mjs";
 import {
   listTemplates, getTemplate, createTemplate, patchTemplate, approveTemplate, listAgreements, getAgreement, agreementView, agreementForPlan, sendAgreement, voidAgreement,
@@ -119,6 +120,11 @@ const actionRoute = (action) => async (ctx) => {
 async function priceRoute(ctx) {
   const r = await changePrice(ctx.params.id, ctx.body || {}, ctx);
   return { data: strip(r.data), etag: r.etag };
+}
+
+async function editRoute(ctx) {
+  const out = await startEdit(ctx.params.id, ctx.body || {}, ctx);
+  return { data: out, status: out.run_id ? 202 : 200 };
 }
 
 async function cancelQuoteRoute(ctx) {
@@ -238,6 +244,7 @@ export const planRoutes = [
   R("POST", "/plans/:id/withdraw", "plans:cancel", "required", actionRoute("withdraw"), { mode: "run" }),
   R("POST", "/plans/:id/confirm-season", "plans:write", "required", actionRoute("confirm_season"), { mode: "run" }),
   R("POST", "/plans/:id/change-price", "plans:write", "required", priceRoute),
+  R("POST", "/plans/:id/edit", "plans:write", "required", editRoute, { mode: "run", maxCalls: 90 }),
   R("GET", "/plans/:id/cancel-quote", "plans:read", "required", cancelQuoteRoute),
   R("POST", "/plans/:id/send-agreement", "agreements:send", "required", sendAgreementRoute, { maxCalls: 50 }),
   R("GET", "/agreement-templates", "plans:read", "none", templatesRoute),

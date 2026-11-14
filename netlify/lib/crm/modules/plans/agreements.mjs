@@ -445,9 +445,15 @@ export async function notePlanAgreement(planId, agreement, ctx) {
   return updateRecord("plan", planId, (p) => {
     if (p.agreement_id && p.agreement_id !== agreement.id && agreement.status === "void") return null;
     const status = agreement.status === "void" ? "none" : agreement.status;
-    if (p.agreement_id === agreement.id && p.agreement_status === status) return null;
+    // a new agreement signed after the terms changed: the plan's agreement is current again
+    const fresh = agreement.status === "signed" && p.agreement_stale && p.agreement_stale.agreement_id !== agreement.id;
+    if (p.agreement_id === agreement.id && p.agreement_status === status && !fresh) return null;
     if (agreement.status === "void" && p.agreement_id !== agreement.id) return null;
-    return { ...p, agreement_id: agreement.status === "void" ? undefined : agreement.id, agreement_status: status };
+    // the old signed one stays the plan's until a new one is signed (a draft or a void one doesn't replace it)
+    if (p.agreement_stale && p.agreement_status === "signed" && agreement.status === "void") return null;
+    const next = { ...p, agreement_id: agreement.status === "void" ? undefined : agreement.id, agreement_status: status };
+    if (fresh) delete next.agreement_stale;
+    return next;
   }, W(ctx)).catch((e) => { if (e instanceof NotFoundError) return null; throw e; });
 }
 
@@ -460,14 +466,16 @@ export async function agreementForPlan(planId, { template_id, client_id } = {}, 
   if (plan.agreement_id && !template_id) {
     const cur = await getRecord("agreement", plan.agreement_id);
     if (cur && OPEN_AGREEMENT.includes(cur.data.status)) return cur;
-    if (cur && cur.data.status === "signed") throw new ConflictError("This plan's agreement is already signed.", { code: "signed" });
+    // a signed one stays on file; a new one only when the terms changed since (plan.agreement_stale)
+    if (cur && cur.data.status === "signed" && !plan.agreement_stale) throw new ConflictError("This plan's agreement is already signed.", { code: "signed" });
   }
   const cat = await loadCatalog();
   const t = template_id ? (await getTemplate(template_id)).data : await templateFor(plan.catalog_key, { catalog: cat, approvedOnly: false });
   if (!t) throw new ConflictError("There's no agreement template for this plan yet.", { code: "no_template" });
   if (!templateApproved(t)) throw new ConflictError(`An owner approves the "${t.name}" text first (Settings → Agreement templates).`, { code: "template_not_approved" });
   const contact = (await getRecord("contact", plan.contact_id) || {}).data;
-  const body = renderBody(t, agreementVars(plan, { contact, company: await companyInfo(), catalog: cat }));
+  const notes = String(plan.agreement_notes || "").trim();
+  const body = renderBody(t, agreementVars(plan, { contact, company: await companyInfo(), catalog: cat })) + (notes ? `\n\n## Notes\n\n${notes}` : "");
   const id = client_id ? deriveId("agreement", `c:${client_id}`) : newId("agreement");
   let r;
   try {

@@ -458,3 +458,127 @@ export function applyAction(plan, action, args = {}, { today, at, by = "" } = {}
   next.sale_value_cents = saleValue(next);
   return { next, to_cancel: [...new Set(to_cancel)], event, notice };
 }
+
+// ------------------------------------------------------------ editing a plan's terms (Nov 2026)
+
+// The owner, Nov 14 (copy Rotor): a plan's frequency, agreement length,
+// renewal, start date and billing mode stay editable after it's made. The
+// rule for its visits (planEdit below), in one place:
+//   - done, booked, skipped and cancelled visits are never touched (nor is a
+//     visit whose job got booked while the plan still says "to book": the
+//     caller passes those jobs in `booked`);
+//   - the current term's visits still to book are made again for the new
+//     terms: their jobs are cancelled (to_cancel) and new visits follow the
+//     last visit kept by one interval (the term's start when none), never
+//     before this month, up to the term's end, as many as the new terms hold
+//     less the visits kept;
+//   - a signed agreement is never edited: when the edit changes what it says
+//     (how often, how long, renewal, billing, discounts) the plan is marked
+//     as needing a new one (agreement_stale); an unsigned one is replaced
+//     (the caller voids it).
+// Pure: the caller checks the plan's status, Rotor's guard and permissions.
+export const EDIT_FIELDS = Object.freeze(["frequency", "term_months", "auto_renew", "start_on", "billing_mode", "discounts"]);
+// The fields an agreement's text shows (its visit schedule, term, renewal, billing, price).
+export const AGREEMENT_FIELDS = Object.freeze(["frequency", "term_months", "auto_renew", "billing_mode", "discounts"]);
+const SCHEDULE_FIELDS = ["frequency", "term_months", "start_on"];
+const dateOfOrd = (o) => o.visit_date || o.completed_on || `${o.target_month}-15`;
+const sameJson = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+// planEdit(plan, changes, { today, booked: Set<job id> }) → { next, to_cancel,
+// fields: [{ field, from, to }], visits: { kept, removed, added, months },
+// schedule, stale }. changes: already validated values for any of
+// EDIT_FIELDS; one equal to the plan's is dropped (an edit of nothing is
+// fields: []).
+export function planEdit(plan, changes = {}, { today, booked = new Set() } = {}) {
+  const t = plan.term || {};
+  const was = {
+    frequency: plan.frequency || null, term_months: t.initial_months || 12, auto_renew: t.auto_renew !== false, start_on: t.start_on || null,
+    billing_mode: (plan.billing && plan.billing.mode) || "barta_standard", discounts: plan.discounts || [],
+  };
+  const want = {};
+  for (const f of EDIT_FIELDS) if (changes[f] !== undefined && !sameJson(changes[f], was[f])) want[f] = changes[f];
+  const fields = Object.keys(want).map((field) => ({ field, from: was[field], to: want[field] }));
+  const empty = { next: plan, to_cancel: [], fields: [], visits: { kept: 0, removed: 0, added: 0, months: [] }, schedule: false, stale: false };
+  if (!fields.length) return empty;
+  const live = ["pending", "active"].includes(plan.status);
+  const lights = plan.kind === "lights_annual";
+  const schedule = SCHEDULE_FIELDS.some((f) => want[f] !== undefined);
+  if (!["pending", "active", "paused", "cancelling"].includes(plan.status)) throw Object.assign(new InputError(`A ${plan.status} plan can't change.`, "status"), { code: "transition" });
+  if ((schedule || want.discounts !== undefined) && !live) throw Object.assign(new InputError(plan.status === "paused" ? "A paused plan's visits stay as they are. Resume it first." : "This plan is ending: its visits stay as they are.", "status"), { code: "transition" });
+  if (lights && schedule) throw new InputError("A Christmas lights plan keeps its seasons. Cancel it and sell a new one to change them.", "frequency");
+  const n = t.current_term_n || 1;
+  const term = plan.ordinals || [];
+  const mine = term.filter((o) => (o.term || 1) === n);
+  const keptHere = mine.filter((o) => o.status !== "unscheduled" || (o.job_id && booked.has(o.job_id)));
+  if (want.term_months !== undefined && n > 1) throw new InputError(`The first term is over: the plan now renews every ${t.renews_every_months || 12} months. Change how often instead.`, "term_months");
+  if (want.start_on !== undefined && (n > 1 || term.some((o) => o.status !== "unscheduled" || (o.job_id && booked.has(o.job_id))))) throw new InputError("A visit is already booked or done, so the start date stays. Change how often instead.", "start_on");
+  if (want.discounts !== undefined && (plan.agreement_status === "signed" || plan.status !== "pending" || term.some((o) => o.status === "completed"))) throw new InputError("Discounts change only before the agreement is signed. After that, change the price (it starts at a renewal).", "discounts");
+
+  const next = { ...plan };
+  if (want.billing_mode !== undefined) next.billing = { ...(plan.billing || {}), mode: want.billing_mode };
+  if (want.discounts !== undefined) next.discounts = want.discounts;
+  let nt = { ...t };
+  if (want.auto_renew !== undefined) nt.auto_renew = want.auto_renew;
+  if (want.frequency !== undefined) {
+    next.frequency = want.frequency;
+    next.visits_per_year = visitsPerYearOf(want.frequency);
+    if (plan.catalog_key === "custom" && want.frequency.interval === "month" && want.frequency.count <= 12) nt.renews_every_months = want.frequency.count;
+  }
+  if (want.start_on !== undefined) {
+    const months = want.term_months !== undefined ? want.term_months : nt.initial_months || 12;
+    const ft = firstTerm({ start_on: want.start_on, initial_months: months, renews_every_months: nt.renews_every_months || 12, auto_renew: nt.auto_renew });
+    nt = { ...nt, ...ft };
+  } else if (want.term_months !== undefined) {
+    const end = termEnd(nt.start_on, want.term_months);
+    const lastKept = keptHere.map(dateOfOrd).sort().pop();
+    if (end < today) throw new InputError("That length would have ended already.", "term_months");
+    if (lastKept && end < lastKept) throw new InputError("A visit kept on the plan falls after that end. Pick a longer length.", "term_months");
+    nt = { ...nt, initial_months: want.term_months, initial_end_on: end, current_term_end: end, price_locked_until: t.price_locked_until === t.initial_end_on ? end : t.price_locked_until };
+  }
+  next.term = nt;
+  if (nt.current_term_end !== t.current_term_end) next.renewal = { ...(plan.renewal || {}), next_on: nt.current_term_end };
+
+  let to_cancel = [];
+  const visits = { kept: keptHere.length, removed: 0, added: 0, months: [] };
+  if (schedule) {
+    const removed = mine.filter((o) => !keptHere.includes(o));
+    to_cancel = removed.map((o) => o.job_id).filter(Boolean);
+    const others = term.filter((o) => (o.term || 1) !== n);
+    const freq = next.frequency;
+    const months = n === 1 ? nt.initial_months || 12 : Math.max(1, monthsBetween(nt.current_term_start, addLocalDays(nt.current_term_end, 1)));
+    const count = Math.max(0, visitsInTerm(next.visits_per_year || visitsPerYearOf(freq), months) - keptHere.length);
+    const anchor = keptHere.map(dateOfOrd).sort().pop();
+    let first = anchor ? addInterval(anchor, freq, 1) : nt.current_term_start;
+    if (monthOf(first) < monthOf(today)) first = today;
+    const endMonth = monthOf(nt.current_term_end);
+    const freeN = removed.map((o) => o.n).sort((a, b) => a - b);
+    const freeK = removed.map((o) => o.k || o.n).sort((a, b) => a - b);
+    let maxN = Math.max(0, ...keptHere.map((o) => o.n), ...removed.map((o) => o.n));
+    let maxk = Math.max(maxK(term), 0);
+    const gen = Math.max(0, ...term.map((o) => o.gen || 0)) + 1;
+    const fresh = [];
+    for (let i = 0; i < count; i++) {
+      const m = monthOf(addInterval(first, freq, i));
+      if (m > endMonth) break;
+      const nn = freeN.length ? freeN.shift() : ++maxN;
+      const kk = freeK.length ? freeK.shift() : ++maxk;
+      fresh.push({ term: n, n: nn, k: kk, target_month: m, status: "unscheduled", gen });
+    }
+    // n follows the visits' order inside the term (the scopes count by it): the new ones by date
+    const byN = [...fresh].sort((a, b) => a.n - b.n);
+    fresh.sort((a, b) => (a.target_month < b.target_month ? -1 : a.target_month > b.target_month ? 1 : 0)).forEach((o, i) => { o.n = byN[i].n; o.k = byN[i].k; });
+    next.ordinals = [...others, ...keptHere, ...fresh].sort((a, b) => ((a.term || 1) - (b.term || 1)) || (a.n - b.n));
+    for (const o of fresh) {
+      if (!ordinalLines(next, o).length) throw new InputError(`Visit ${o.n} would have nothing on it: the plan's lines are set for certain visits only. Change the price so a line applies to all visits first.`, "frequency");
+    }
+    visits.removed = removed.length;
+    visits.added = fresh.length;
+    visits.months = fresh.map((o) => o.target_month);
+    next.cancelled_job_ids = [...new Set([...(plan.cancelled_job_ids || []), ...to_cancel])].slice(-200);
+  }
+  next.policy = { ...(plan.policy || {}), early_cancel_clawback_cents: clawbackCents(next) };
+  next.sale_value_cents = saleValue(next);
+  const stale = plan.agreement_status === "signed" && AGREEMENT_FIELDS.some((f) => want[f] !== undefined);
+  if (stale) next.agreement_stale = { since: today, fields: AGREEMENT_FIELDS.filter((f) => want[f] !== undefined || (plan.agreement_stale && (plan.agreement_stale.fields || []).includes(f))), agreement_id: (plan.agreement_stale && plan.agreement_stale.agreement_id) || plan.agreement_id || null };
+  return { next, to_cancel: [...new Set(to_cancel)], fields, visits, schedule, stale };
+}
