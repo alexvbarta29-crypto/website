@@ -108,7 +108,7 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]], JSON.stringify(groups));
     // (a page has the room: every list open under its row's name)
     const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
-    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Pipelines", "Service", "Financials", "Map", "Analytics", "Marketing"]);
+    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Leads", "Pipelines", "Power Dialer", "Service", "Financials", "Tasks", "Map", "Analytics", "Marketing"]);
     for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Purchases", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
       "Outbox (not sent)", "Approvals", "Giveaway", "Signs & flyers", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
     for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
@@ -224,13 +224,13 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     if (!(await f.isVisible("#ct-q"))) await f.click('#top-rnd [data-own="find"]');
     await f.fill("#ct-q", "example");
     await page.waitForTimeout(400);
-    const rows = await f.$$("#ct-list a.cc-top");
+    const rows = await f.$$("#ct-list a.rs-lr-main");
     assert.ok(rows.length > 10, `the search finds people (${rows.length})`);
     await f.evaluate(() => { document.getElementById("ct-scroll").scrollTop = 300; });
     await page.waitForTimeout(150);
     const scrolled = await f.evaluate(() => document.getElementById("ct-scroll").scrollTop);
-    const row = await f.$$eval("#ct-list a.cc-top", (as) => { const a = as.find((x) => x.getBoundingClientRect().top > 220); return a.getAttribute("href"); });
-    await tap(page, f, `#ct-list a.cc-top[href="${row}"]`);
+    const row = await f.$$eval("#ct-list a.rs-lr-main", (as) => { const a = as.find((x) => x.getBoundingClientRect().top > 220); return a.getAttribute("href"); });
+    await tap(page, f, `#ct-list a.rs-lr-main[href="${row}"]`);
     await settled(f, { hash: row });
     // the edge swipe: a touch from the left edge, 170 px to the right
     const o = await frameOffset(page, f);
@@ -240,7 +240,7 @@ test("back arrow and edge swipe follow the stack, and the declared parent from a
     const back = await f.evaluate(() => document.getElementById("ct-scroll").scrollTop);
     assert.ok(Math.abs(back - scrolled) < 40, `the scroll is kept (${back} vs ${scrolled})`);
     // a swipe that starts away from the edge does nothing
-    await tap(page, f, `#ct-list a.cc-top[href="${row}"]`);
+    await tap(page, f, `#ct-list a.rs-lr-main[href="${row}"]`);
     await settled(f, { hash: row });
     await swipe(page, { x: o.x + 120, y: o.y + 420 }, { x: o.x + 300, y: o.y + 430 });
     await page.waitForTimeout(400);
