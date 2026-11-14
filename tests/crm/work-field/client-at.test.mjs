@@ -141,6 +141,8 @@ test("a replay into a week payroll locked: an adjustment pay line in the next op
 
 test("before payroll ships: a locked week (its shifts locked) keeps a late replay as a pending entry and tells the owners", async () => {
   const { t, owner, tech } = await setup("2026-11-24T15:00:00Z");
+  // as if the payroll module weren't there (it is since M7a: tests/crm/payroll/api.test.mjs covers that path)
+  const restore = fakeServices({ "payroll.periodStatus": null, "payroll.addAdjustment": null, "payroll.myPay": null });
   try {
     await store.createRecord("timesheet", { user_id: tech.id, category: "service", start_at: "2026-11-17T14:00:00.000Z", end_at: "2026-11-17T22:00:00.000Z", status: "locked", notes: [], edits: [] }, AS(owner));
     await post(t, tech, "/clock", offline({ action: "in" }, "2026-11-19T14:00:00.000Z"));
@@ -153,5 +155,5 @@ test("before payroll ships: a locked week (its shifts locked) keeps a late repla
     // approving it would change the locked week: refused until payroll can take an adjustment
     const d = await post(t, owner, `/timesheets/${s.id}/decide`, { decision: "approve" });
     assert.equal(d.status, 409, JSON.stringify(d.body));
-  } finally { t.done(); }
+  } finally { restore(); t.done(); }
 });
