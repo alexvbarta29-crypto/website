@@ -164,8 +164,9 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await f.textContent("#view"), /On the clock/);
       await checks(f, page, `field-time-${device}`, problems);
       await goTo(f, "/pay");
-      await f.waitForSelector(".tf-money");
-      assert.match(await f.textContent("#view"), /Estimate/);
+      // payroll's own view (M7a): the pay so far, line by line
+      await f.waitForSelector("[data-my-pay]");
+      assert.match(await f.textContent("#view"), /So far this period/);
       await checks(f, page, `field-pay-${device}`, problems);
       await goTo(f, "/me");
       await checks(f, page, `field-me-${device}`, problems);
