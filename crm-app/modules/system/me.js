@@ -131,6 +131,7 @@ export default {
       <div class="section-h">Appearance</div>
       <div class="card me-theme"><div class="seg-track me-seg" role="radiogroup" aria-label="Appearance">${THEMES.map(([k, l]) => html`<button type="button" role="radio" class="${"seg" + (themeChoice() === k ? " on" : "")}" ${attrs({ "data-theme-set": k, "aria-checked": String(themeChoice() === k) })}>${l}</button>`)}</div>
         <p class="small muted">Dark is Flyra's look, Light is Rotor's. Automatic follows this phone. Saved on this device.</p></div>
+      ${ctx.can("schedule:read") ? html`<ul class="list"><li><a class="row" href="#/calendar-feed">${icon("today")}<span class="who"><span class="nm">Calendar feed</span><span class="sub">Your visits in Google or Apple Calendar</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li></ul>` : ""}
 
       <div class="section-h">Notifications</div>
       <form class="card form" id="notify-form">
@@ -156,7 +157,7 @@ export default {
         <div class="card">
           <p class="small">For Claude (MCP) and command-line tools. Each key can do only what you can, and anything that texts, emails or charges waits for an owner's OK.</p>
           ${s.keys.length ? html`<ul class="list">${s.keys.map((k) => html`<li><div class="row">${icon("key")}<span class="who"><span class="nm">${k.name}</span><span class="sub">${k.kind} · …${k.last4} · ${k.last_used_at ? "used " + ago(k.last_used_at) : "never used"}${k.expires_at ? " · expires " + dateShort(k.expires_at) : ""}</span></span><span class="end"><button type="button" class="btn danger" data-key-del="${k.id}">Revoke</button></span></div></li>`)}</ul>` : ""}
-          <div class="btn-row"><button type="button" class="btn dark" data-key-new>${icon("plus")}New key</button></div>
+          <div class="btn-row"><button type="button" class="btn dark" data-key-new>${icon("plus")}New key</button><a class="btn" href="#/settings/claude">${icon("plug")}Connect Claude</a></div>
         </div>` : ""}
 
       <div class="section-h">Signed in on</div>
