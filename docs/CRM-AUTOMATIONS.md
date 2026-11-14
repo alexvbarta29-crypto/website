@@ -17,7 +17,7 @@ and `flow_run` (`ar`). Settings document `flows`.
 | Part | What it holds |
 |---|---|
 | **When** (trigger) | An event: a new lead comes in, a tag is added (which tag), a quote is sent, approved or declined, a visit is booked, starts or is finished, a job is completed, an invoice is sent or paid, a plan starts, renews or is cancelled, a review comes in. Or a daily check at a time on chosen days: an invoice is N days overdue, a plan is N days from renewal, a task is due today, or **On a schedule** (everyone in the contacts list who matches the conditions). Not yet: a birthday (contacts keep no such date). |
-| **Only if** (conditions, all must hold) | Lead source, tags, town, owner, lead or customer, service (the record's, else the services they were quoted), plan type, has a plan, amount (the quote's first visit, the invoice's balance, the plan's sale value), the record's status, they replied (after the run started), has a quote, left a review, weekday or weekend, a time of day, a date window (month and day, across New Year too). |
+| **Only if** (conditions, all must hold) | Lead source, tags, town, owner, lead or customer, service (the record's, else the services they were quoted), plan type, has a plan, amount (the quote's first visit, the invoice's balance, the plan's sale value), the record's status (in the words its own screens use: a quote's "Changes asked", a job's "To book", a plan's "Ending"; `STATUS_LABELS` in the catalog), they replied (after the run started), has a quote, left a review, weekday or weekend, a time of day, a date window (month and day, across New Year too). |
 | **Then** (steps, in order) | Send a text or an email from a template; make a task for the contact's owner, the owners, the office or one person (due in N days); add or remove a tag; move the deal (open, quoted, won, lost, abandoned); assign an owner; tell the team (the bell and push); start a follow-up cadence; stop if a condition is true. Up to 12 steps. |
 | **Wait** (each step) | N minutes, hours or days, then optionally a time of day ("3 days, then 10:00"), then optionally moved into business hours (Settings → Hours & holidays, holidays skipped). Minutes and hours are elapsed time; days keep the wall clock across DST (1 day from Saturday 10:00 before the fall-back night is Sunday 10:00, 25 hours later). The sender still applies quiet hours to texts and emails. |
 | **Stop when** | Any of these conditions ends the run. Checked before every step and again right before every text or email goes (the engine's `recheck`). |
@@ -79,8 +79,13 @@ twice (the daily text limit below still holds).
 - **Daily text limit**: at most `cfg/flows.max_texts_per_day` (2) automated
   texts to one customer a day, counting every automation: these
   (`flowt/{date}/{contact}/…` claims, made when the text is due) and the
-  built-in ones (their dry-run texts in the Outbox). Over it, the text is
-  skipped (`skipped:daily_cap` in the log).
+  built-in ones: their dry-run texts in the Outbox and, once texting is
+  live, the texts they really sent (the Messages the sender records, found
+  through the customer's `sms.out` activity rows of that day; a failed
+  send, a person's text and these automations' own texts are not counted
+  there). One listing each of the claims, the Outbox rows and the activity
+  rows of that customer's day, then only the records they name. Over it,
+  the text is skipped (`skipped:daily_cap` in the log).
 - **Per-customer limit**: the automation's own "not again within N days"
   (`flowc/{flow}/{contact}/…` rows, one per start).
 - **Loop guard**: an event caused by an automation's own step never starts
