@@ -101,6 +101,17 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await f.$("[data-move]"), null, "no office buttons for a tech");
       assert.equal(await f.$$eval(".wk-check", (x) => x.length), 0, "the panel shows the checklist itself");
       await checks(f, page, `field-visit-${device}`, problems);
+      // Rotor's visit page for the crew: the date in the header, Pricing with + Add to the job, and the "..." with the crew's rows
+      assert.match(await title(f), /^Visit · /);
+      assert.ok(await f.$("[data-panel=field] .tf-work [data-addline]"), "+ Add to the job on the Pricing card");
+      await f.click("#top-more");
+      await f.waitForSelector(".sheet.on .rs-act");
+      const rows = await f.$$eval(".sheet.on .rs-act-l", (x) => x.map((e) => e.textContent));
+      for (const r of ["Running late", "No access", "Report an incident"]) assert.ok(rows.includes(r), r);
+      assert.ok(!rows.includes("Cancel visit") && !rows.includes("Move or reassign"), "no office rows");
+      await checks(f, page, `field-visit-more-${device}`, problems);
+      await f.click(".sheet.on [data-sheet-x]");
+      await f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
 
       // on my way: texts aren't switched on, so the words to send by hand
       await f.click("[data-omw]");

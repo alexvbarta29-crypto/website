@@ -916,7 +916,15 @@ export default {
       if (press) clearTimeout(press.t);
       const id = el.dataset.vopen;
       press = { id, x: e.clientX, y: e.clientY, fired: false };
-      press.t = setTimeout(() => { if (!press || press.id !== id) return; press.fired = true; try { navigator.vibrate && navigator.vibrate(12); } catch (x) { /* fine */ } pressSheet(ctx, id); }, LONG_PRESS_MS);
+      press.t = setTimeout(() => {
+        if (!press || press.id !== id) return;
+        press.fired = true;
+        // the click that ends this press is eaten (above); a later tap opens visits again
+        const p0 = press;
+        document.addEventListener("pointerup", () => setTimeout(() => { if (press === p0) press = null; }, 350), { once: true, capture: true });
+        try { navigator.vibrate && navigator.vibrate(12); } catch (x) { /* fine */ }
+        pressSheet(ctx, id);
+      }, LONG_PRESS_MS);
     },
     "pointermove [data-vopen]": (e) => { if (press && !press.fired && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) { clearTimeout(press.t); press = null; } },
     "pointerup [data-vopen]": () => { if (press && !press.fired) { clearTimeout(press.t); press = null; } },
