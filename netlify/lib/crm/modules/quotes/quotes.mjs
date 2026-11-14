@@ -263,6 +263,26 @@ async function openDealOf(contactId) {
 // ------------------------------------------------------------ create, edit, duplicate
 
 // POST /quotes. A client id makes a double tap (or an offline replay) one quote.
+// The builder's measure (how the house was counted), kept on the quote so an
+// approved quote can fill its property's counts (contacts assets.mjs) and an
+// edit reopens with them: { mode, windows {type: n}, panes_ext, panes_int,
+// sqft, services {key: bool}, counts {key: "n"}, plan }. Anything else is dropped.
+export function cleanMeasure(m) {
+  if (!m || typeof m !== "object" || Array.isArray(m)) return undefined;
+  const n = (v, max = 100000) => (Number.isSafeInteger(v) && v >= 0 && v <= max ? v : undefined);
+  const out = { mode: m.mode === "sqft" ? "sqft" : "panes" };
+  if (m.windows && typeof m.windows === "object") {
+    const w = {};
+    for (const [k, v] of Object.entries(m.windows).slice(0, 12)) if (/^[a-z_]{1,20}$/.test(k) && n(Number(v), 999) !== undefined) w[k] = Number(v);
+    out.windows = w;
+  }
+  for (const k of ["panes_ext", "panes_int", "sqft"]) if (n(m[k]) !== undefined) out[k] = m[k];
+  if (m.services && typeof m.services === "object") out.services = Object.fromEntries(Object.entries(m.services).slice(0, 12).filter(([k]) => /^[a-z_]{1,24}$/.test(k)).map(([k, v]) => [k, v === true]));
+  if (m.counts && typeof m.counts === "object") out.counts = Object.fromEntries(Object.entries(m.counts).slice(0, 12).filter(([k, v]) => /^[a-z_]{1,24}$/.test(k) && (typeof v === "string" || typeof v === "number")).map(([k, v]) => [k, String(v).slice(0, 12)]));
+  if (typeof m.plan === "string" && /^[a-z_]{0,20}$/.test(m.plan)) out.plan = m.plan;
+  return out;
+}
+
 export async function createQuote(body = {}, ctx) {
   const contact = await contactFor(body.contact_id);
   const id = body.client_id ? deriveId("quote", `c:${String(body.client_id).slice(0, 80)}`) : undefined;
@@ -289,6 +309,7 @@ export async function createQuote(body = {}, ctx) {
     ...(deal_id ? { deal_id } : {}), options, agreement: { require_card: false, deposit: { type: "none", value: 0 }, ...(body.agreement || {}) },
     client_notes: body.client_notes || "", internal_notes: body.internal_notes || "", photo_ids: [], mockup_file_ids: [], sent_via: [], approvals_count: 0, versions_n: 0,
     sold_by: (ctx.user && ctx.user.id) || "system", services: servicesOf(options), offers: [],
+    ...(cleanMeasure(body.measure) ? { measure: cleanMeasure(body.measure) } : {}),
   };
   data.number_label = numberLabel(data);
   try {
@@ -311,6 +332,7 @@ export async function patchQuote(id, body = {}, ctx) {
   const [pricing, defs, book] = await Promise.all([loadPricing(), discountDefs().catch(() => []), priceBook().catch(() => [])]);
   const patch = {};
   for (const k of EDITABLE) if (body[k] !== undefined) patch[k] = body[k];
+  if (patch.measure !== undefined) patch.measure = cleanMeasure(patch.measure) || null;
   for (const k of ["photo_ids", "mockup_file_ids"]) if (patch[k] !== undefined) patch[k] = await ownFiles(patch[k], q0, k);
   if (patch.property_id !== undefined) patch.property_id = await checkProperty(patch.property_id, q0.contact_id) || null;
   if (patch.deal_id !== undefined && patch.deal_id !== null) {
@@ -325,6 +347,7 @@ export async function patchQuote(id, body = {}, ctx) {
     if (["approved", "converted", "archived", "declined"].includes(q.status)) throw new ConflictError("This quote changed. Reload it.");
     const next = { ...q, ...patch };
     if (patch.property_id === null) delete next.property_id;
+    if (patch.measure === null) delete next.measure;
     if (options) { next.options = options; next.services = servicesOf(options); }
     if (["sent", "viewed", "changes_requested"].includes(q.status)) next.status = "draft";
     return next;

@@ -26,7 +26,12 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
   `badge: false`: the follow-up cadence chases them).
 - **A contact's Quotes tab**: that contact's quotes and **New quote**.
 - **New quote / Edit** (`quotes:write`), phone first:
-  1. Who and where: the contact and one of their properties.
+  1. Who and where: the contact and one of their properties. A property
+     with counts (docs/CRM-CONTACTS.md "Counts for quoting") fills the
+     measure, the services, the counts and the plan ("Filled from the
+     property's counts"); picking another property refills them. The
+     property's **Re-quote** opens the builder that way and prices it at
+     once (one tap).
   2. Measure: **Count panes** (a counter per window type with its weight
      from `pane_weights`: standard 1, slider 2, large 2, sliding door 2,
      French 0.4, front door 1, small garage window free; the total rounds
@@ -289,6 +294,10 @@ Against the M2c runner (docs/CRM-IMPORT.md):
   never goes below the floor.
 - Quote numbers: `SQ-0001` (shadow numbers) until the CRM is the system of
   record, then `Q-n` from the shared sequence.
+- The builder's measure (`measure`: mode, windows by type, panes, square
+  feet, services, counts, plan) is kept on the quote from its first save
+  (`cleanMeasure`: anything else is dropped), so an approved quote can fill
+  its property's counts and an edit reopens with them.
 - An approved quote never changes; a sent quote edited goes back to draft
   and the next send freezes a new version (an unchanged quote reuses its
   version).

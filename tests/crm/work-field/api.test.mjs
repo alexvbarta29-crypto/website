@@ -39,10 +39,11 @@ test("on my way: the visit goes en route and the customer's text lands in the Ou
     const text = r.body.data.text;
     assert.equal(text.status, "dry_run");
     assert.equal(text.hand.to, c.phones[0].e164);
-    assert.match(text.hand.body, /^Hi Pat, it's Theo with Barta Window Washing\. I'm on my way and should be there in about 20 minutes\.$/);
+    // with the tracking link (work/track.mjs; tests/crm/work-field/track.test.mjs)
+    assert.match(text.hand.body, /^Hi Pat, it's Theo with Barta Window Washing\. I'm on my way and should be there in about 20 minutes\. Follow along here: https:\/\/www\.bartawindowwashing\.com\/p\/track\/[0-9A-Za-z]{10}$/);
     const ob = outbox(t);
     assert.equal(ob.length, 1);
-    assert.equal(ob[0].template_key, "on_my_way");
+    assert.equal(ob[0].template_key, "on_my_way_track");
     assert.equal(ob[0].category, "service");
     assert.match(ob[0].body, /Reply STOP to opt out\.$/, "the sender adds the footer on a first text, never the template");
     assert.doesNotMatch(text.hand.body, /STOP/, "the words to send by hand leave it out");

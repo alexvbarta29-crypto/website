@@ -20,6 +20,7 @@ import { tsKey, nowIso } from "../../core/clock.mjs";
 import { InputError } from "../../core/errors.mjs";
 import { shape, str, notes as notesText, enumValue, bool, arr, isoTime, int } from "../../core/validate.mjs";
 import { contactShard } from "../../core/stats.mjs";
+import { ASSET_COUNTS, WINDOW_KEYS, SERVICE_KEYS, PLAN_KEYS } from "./assets.mjs";
 import { displayName, normalizePhone, normalizeEmail, phoneDigits, normalizeAddress, addressOneLine } from "./display.mjs";
 
 export const KINDS = Object.freeze(["person", "business"]);
@@ -298,7 +299,16 @@ export const contactType = defineType({
 
 // ------------------------------------------------------------ property
 
-const ASSET_KEYS = ["sqft", "panes_ext", "panes_int", "screens", "tracks", "stories", "french_panes", "gutter_ft", "downspouts", "roofline_ft"];
+// a property's counts for quoting (assets.mjs: what each one is, how a quote fills them)
+const ASSET_KEYS = ASSET_COUNTS;
+const windowCounts = (v, f) => {
+  if (v === undefined || v === null) return undefined;
+  if (!isObj(v)) throw new InputError("Expected counts by window type.", f);
+  const out = {};
+  for (const k of WINDOW_KEYS) if (v[k] !== undefined && v[k] !== null && v[k] !== "") out[k] = int(v[k], { field: `${f}.${k}`, min: 0, max: 999 });
+  for (const k of Object.keys(out)) if (!out[k]) delete out[k];
+  return Object.keys(out).length ? out : undefined;
+};
 
 function validateProperty(data, { op, before } = {}) {
   const stored = op === "update";
@@ -336,6 +346,18 @@ function validateProperty(data, { op, before } = {}) {
       if (v !== undefined && v !== null && !isObj(v)) throw new InputError("Expected counts.", f);
       for (const k of ASSET_KEYS) if (a[k] !== undefined) a[k] = int(a[k], { field: `${f}.${k}`, min: 0, max: 100000 });
       if (a.notes !== undefined) a.notes = str(a.notes, { field: `${f}.notes`, max: 2000, trim: false }) || undefined;
+      a.windows = windowCounts(a.windows, `${f}.windows`);
+      a.windows_int = windowCounts(a.windows_int, `${f}.windows_int`);
+      if (a.services !== undefined) a.services = arr(a.services, (x) => (SERVICE_KEYS.includes(x) ? x : null), { field: `${f}.services`, max: 10 }).filter(Boolean);
+      if (a.plan !== undefined) {
+        a.plan = a.plan === null || a.plan === "" ? "none" : a.plan;
+        // a plan key this code doesn't know is kept only when it was already stored
+        if (![...PLAN_KEYS, "none"].includes(a.plan) && !(before && before.assets && before.assets.plan === a.plan)) throw new InputError("Pick biannual, quarterly, monthly or none.", `${f}.plan`);
+      }
+      if (a.from !== undefined && a.from !== null) {
+        if (!isObj(a.from)) throw new InputError("Expected where the counts came from.", `${f}.from`);
+        a.from = { kind: enumValue(a.from.kind, ["quote", "manual"], { field: `${f}.from.kind`, stored: true }) || "manual", ...(isId(a.from.quote_id, "quote") ? { quote_id: a.from.quote_id } : {}), at: isoTime(a.from.at, { field: `${f}.from.at` }) || nowIso(), ...(typeof a.from.by === "string" ? { by: a.from.by.slice(0, 80) } : {}) };
+      }
       for (const k of Object.keys(a)) if (a[k] === undefined || a[k] === null) delete a[k];
       return a;
     },

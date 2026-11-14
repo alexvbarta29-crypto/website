@@ -51,21 +51,39 @@ async function load(params, ctx) {
     };
   }
   const s = { ...base, isNew: true, contact: null, properties: [], property_id: "", options: [], client_notes: "", internal_notes: "", agreement: { require_card: false, deposit: { type: "none", value: 0 } }, photo_ids: [], mockup_file_ids: [] };
-  if (params.contact) await setContact(s, ctx, params.contact);
+  // Re-quote (the property's "Re-quote" button): #/quotes/new/<contact>?property=<id>&requote=1
+  const q = new URLSearchParams((typeof location !== "undefined" && location.hash.split("?")[1]) || "");
+  if (params.contact) await setContact(s, ctx, params.contact, q.get("property") || "");
+  if (q.get("requote") === "1" && s.started) s.autoPrice = true;
   return s;
 }
 
-async function setContact(s, ctx, id) {
+async function setContact(s, ctx, id, propertyId = "") {
   const r = await ctx.api(`/contacts/${encodeURIComponent(id)}`, { cache: false });
   const c = r.data.contact;
   s.contact = { id: c.id, name: c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "Contact", phone: (c.phones && c.phones[0] && c.phones[0].e164) || "" };
   s.properties = (r.data.properties || []).map((p) => ({ id: p.id, label: p.label, address: [p.address && p.address.street1, p.address && p.address.city].filter(Boolean).join(", "), assets: p.assets || {} }));
-  const prop = s.properties.find((p) => p.id === c.primary_property_id) || s.properties[0];
+  const prop = s.properties.find((p) => p.id === propertyId) || s.properties.find((p) => p.id === c.primary_property_id) || s.properties[0];
   s.property_id = prop ? prop.id : "";
-  if (prop && prop.assets) {
-    if (prop.assets.sqft) { s.measure.mode = "sqft"; s.measure.sqft = String(prop.assets.sqft); }
-    if (prop.assets.panes_ext) { s.measure.mode = "panes"; s.measure.windows = { ...s.measure.windows, standard: prop.assets.panes_ext }; }
-  }
+  await startFrom(s, ctx, prop);
+}
+
+// The property's counts (contacts' assets.mjs): what was counted on it or on
+// its last approved quote fills the measure, the services and the counts.
+async function startFrom(s, ctx, prop) {
+  s.started = false;
+  if (!prop || !prop.assets || !Object.keys(prop.assets).length) return;
+  try {
+    const r = await ctx.api(`/properties/${encodeURIComponent(prop.id)}/requote`, { cache: false });
+    const st = r.data && r.data.start;
+    if (!st) return;
+    s.measure = { ...s.measure, ...st.measure, windows: { ...s.measure.windows, ...(st.measure && st.measure.windows) } };
+    s.services = { ...st.services };
+    s.counts = { ...st.counts };
+    s.plan = st.plan;
+    s.started = !!st.ready;
+    s.countedFrom = r.data.counted_from || null;
+  } catch (e) { /* the counts are a head start, never a blocker */ }
 }
 
 // ------------------------------------------------------------ measuring
@@ -90,6 +108,7 @@ function measureCard(s) {
   const m = s.measure;
   const t = sqftTier(s);
   return html`<section class="card"><h2>Measure</h2>
+    ${s.started ? html`<p class="small muted" data-counted>Filled from the property's counts${s.countedFrom && s.countedFrom.kind === "quote" ? " (its last approved quote)" : ""}. Change anything that's different.</p>` : ""}
     <div class="qb-seg" role="group" aria-label="How to measure">
       <button type="button" ${attrs({ "data-mode": "panes", "aria-pressed": String(m.mode === "panes") })}>Count panes</button>
       <button type="button" ${attrs({ "data-mode": "sqft", "aria-pressed": String(m.mode === "sqft") })}>By square feet</button>
@@ -193,6 +212,13 @@ function whoCard(s) {
 export default {
   title: (s) => (s && !s.isNew ? `Edit ${s.number}` : "New quote"),
   load,
+  // a re-quote prices itself as it opens (one tap from the property)
+  mount(el, s, ctx) {
+    if (!s || !s.autoPrice) return;
+    s.autoPrice = false;
+    const btn = el.querySelector("[data-price]");
+    if (btn) priceIt(btn, ctx);
+  },
   render(s) {
     if (s.status && ["approved", "converted"].includes(s.status)) return html`<div class="stack"><div class="card empty"><h2>This quote is approved</h2><p>An approved quote doesn't change. Duplicate it to make a new one.</p></div></div>`;
     return html`<div class="qb">
@@ -238,7 +264,12 @@ export default {
     "input [data-o]": (e, el, ctx) => optField(ctx, el, false),
     "change [data-o]": (e, el, ctx) => optField(ctx, el, true),
     "input [data-f]": (e, el, ctx) => { ctx.state[el.dataset.f] = el.value; },
-    "change [data-f]": (e, el, ctx) => { ctx.state[el.dataset.f] = el.value; },
+    "change [data-f]": async (e, el, ctx) => {
+      ctx.state[el.dataset.f] = el.value;
+      if (el.dataset.f !== "property_id" || !ctx.state.isNew) return;
+      await startFrom(ctx.state, ctx, ctx.state.properties.find((p) => p.id === el.value));
+      ctx.rerender();
+    },
     "change [data-ag]": (e, el, ctx) => {
       const a = ctx.state.agreement;
       if (el.dataset.ag === "require_card") a.require_card = el.checked;

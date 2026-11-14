@@ -1390,7 +1390,11 @@ single use, 15 minutes). Headers: no-store, noindex,
 `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, a strict CSP with
 only `/crm-app/portal/*.js` scripts. The pages themselves (quote,
 agreement, invoice, card, hub) arrive with their modules through
-`portalRoutes`.
+`portalRoutes`. The customer's account (`/p/hub`, `/p/visits`,
+`/p/history`, `/p/plan`, `/p/request`, `/p/visits/:id/reschedule`,
+`/p/account`: `portal/account.mjs`, registered by plans; docs/CRM-PLANS.md)
+and the "on the way" page (`/p/track/:code`: `portal/track.mjs`, registered
+by work; docs/CRM-WORK.md "The tracking link") live beside the frame.
 
 ### Endpoints added in part B
 

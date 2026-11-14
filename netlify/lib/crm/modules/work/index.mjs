@@ -14,6 +14,7 @@
 //     the reminders, work.stale, work.stats, templates), import-rotor.mjs
 //     (§10.2 rows 3, 22, 23)
 //   field (M4b): field.mjs and its files (timers, timesheets, the tech's day)
+//   track: track.mjs (On my way's tracking link; the page is portal/track.mjs)
 //
 // The tech app's extension points: changeVisit(id, event, opts) in
 // office.mjs (every visit change, the field events included, goes through
@@ -26,6 +27,7 @@ import { isLocalTime } from "../../core/clock.mjs";
 import { isPlainObject } from "../../core/validate.mjs";
 import { types } from "./types.mjs";
 import field from "./field.mjs";
+import track from "./track.mjs";
 import { workRoutes } from "./office-routes.mjs";
 import { visitListRoutes } from "./visit-list.mjs";
 import "./office-moveday.mjs";
@@ -99,5 +101,5 @@ const office = {
 
 export default defineModule({
   name: "work",
-  parts: [office, field],
+  parts: [office, field, track],
 });
