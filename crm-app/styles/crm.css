@@ -18,7 +18,7 @@
 :root{
   color-scheme:light;
   /* color (light: Rotor's) */
-  --ink:#111114;--ink-2:#3a3a3f;--ink-3:#636366;--muted:#636366;--line:#e5e5ea;--line-2:#d8d8de;--mist:#f2f2f7;--mist-2:#e9e9ee;--card:#fff;--card-2:#f7f7f9;
+  --ink:#111114;--ink-2:#3a3a3f;--ink-3:#636366;--muted:#636366;--line:#e5e5ea;--line-2:#d8d8de;--mist:#f2f2f7;--mist-2:#e9e9ee;--card:#fff;--card-2:#f2f2f7;
   --fill:rgba(22,22,27,.045);--fill-2:rgba(22,22,27,.085);
   --coral:#fb4d3d;--coral-2:#ff6a3d;--coral-ink:#d0331f;--coral-wash:rgba(251,77,61,.09);--coral-ring:rgba(251,77,61,.22);
   --coral-btn:#db3a29;--coral-btn-2:#c7311f;           /* a button's fill: white text on it is AA (4.5:1) */
@@ -35,9 +35,11 @@
   /* surfaces of the shell */
   --top-bg:rgba(242,242,247,.92);--rnd-bg:#fff;--rnd-line:transparent;--rnd-sh:0 4px 14px rgba(18,18,21,.08),0 1px 3px rgba(18,18,21,.06);
   --glass:rgba(255,255,255,.82);--glass-line:rgba(18,18,21,.06);--glass-sh:0 10px 30px rgba(18,18,21,.12),0 2px 6px rgba(18,18,21,.05);
-  --tab-on:rgba(18,18,21,.07);--seg-track:#e9e9ee;--seg-on:#fff;--seg-on-ink:#111114;--seg-on-sh:0 1px 3px rgba(18,18,21,.12),0 1px 1px rgba(18,18,21,.04);
+  --tab-on:rgba(18,18,21,.07);--seg-track:#e3e3e8;--seg-on:#fff;--seg-on-ink:#111114;--seg-on-sh:0 1px 3px rgba(18,18,21,.12),0 1px 1px rgba(18,18,21,.04);
   --sheet-bg:#f2f2f7;--pop-bg:#fff;--input-bg:#fff;--scrim:rgba(10,10,12,.42);--dim:rgba(236,236,240,.55);
   --avatar-bg:#3a3a3f;--avatar-ink:#fff;--map-blank:#eef0eb;--hero:linear-gradient(180deg,#f2f2f7 0%,#f2f2f7 100%);--hero-top:#f2f2f7;
+  /* the Rotor-style kit (Nov 2026): caps labels, the grey pill button, the red + */
+  --label:#6e6e73;--fill-pill:#ececf0;--fab-red:linear-gradient(180deg,#ef4b32 0%,#db3a29 100%);
   /* type: the iPhone's own */
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --head:var(--sys);
@@ -65,7 +67,7 @@
 /* Dark (Flyra's): the app's default; the sign-in pages stay light. */
 html:not([data-theme="light"]) body.crm:not(.page){
   color-scheme:dark;
-  --ink:#f5f5f7;--ink-2:#d1d1d6;--ink-3:#9a9aa2;--muted:#a1a1a8;--line:#2a2b2f;--line-2:#36373c;--mist:#111214;--mist-2:#26272b;--card:#1b1c1f;--card-2:#222327;
+  --ink:#f5f5f7;--ink-2:#d1d1d6;--ink-3:#9a9aa2;--muted:#a1a1a8;--line:#2a2b2f;--line-2:#36373c;--mist:#111214;--mist-2:#26272b;--card:#1b1c1f;--card-2:#232428;
   --fill:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.1);
   --coral-ink:#ff6b5a;--coral-wash:rgba(251,77,61,.16);--coral-ring:rgba(251,77,61,.35);
   --green:#34c759;--green-ink:#4cd486;--green-bg:rgba(52,199,89,.15);
@@ -82,6 +84,7 @@ html:not([data-theme="light"]) body.crm:not(.page){
   --avatar-bg:#2c2d31;--avatar-ink:#f5f5f7;--map-blank:#1d2420;--hero:linear-gradient(180deg,#1b2b33 0%,#151d22 300px,#111214 560px);--hero-top:#1b2b33;
   --sh-xs:none;--sh-card:none;--sh-raise:0 8px 24px rgba(0,0,0,.4);--sh-pop:0 16px 40px rgba(0,0,0,.55);
   --card-line:#2a2b2f;
+  --label:#9a9aa2;--fill-pill:#2c2c30;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -678,3 +681,223 @@ textarea.body{min-height:140px}
 .oc-h{display:flex;align-items:flex-start;gap:10px;font-size:var(--fs-lg,18px);line-height:1.35}
 .oc-h svg{flex:none;width:22px;height:22px;margin-top:2px}
 .oc-act{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ------------------------------------------------------------ the Tab bar page's preview (system/tab-bar.js) */
+.tb-prev{display:flex;align-items:center;justify-content:space-around;gap:2px;min-height:62px;padding:6px 8px;border:1px solid var(--glass-line);border-radius:999px;background:var(--glass);box-shadow:var(--glass-sh)}
+.tb-chip{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink-3);font:500 11px/1.1 var(--text)}
+.tb-chip svg{flex:none;width:22px;height:22px}
+.tb-chip span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-chip.menu{color:var(--ink)}
+.tb-n{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--coral-btn);color:#fff;font:600 13px/1 var(--text)}
+.tb-n.off{background:none;box-shadow:inset 0 0 0 1.5px var(--line-2)}
+
+/* ------------------------------------------------------------ the Rotor-style kit (Nov 2026)
+   One look for the phone screens (helpers in core/ui.js, the header
+   contract in core/router.js, every piece on #/kit): white cards on the iOS
+   grey in light (Rotor's), dark cards with a hairline in dark (Flyra's);
+   round icon buttons (a 38 px circle in a 44 px box), segmented tabs, pills,
+   the stat card, contact rows, line items, the notes box, the "..." action
+   sheet and full-height sheet pages. Red is the one accent: the call
+   button, the +, the primary step, destructive rows. */
+.rs-page{display:flex;flex-direction:column;gap:12px}
+.rs-card{min-width:0;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-card);color:var(--ink)}
+.rs-card.flush{padding:0;overflow:hidden}
+.rs-label{margin:10px 4px -4px;font:600 12px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--label)}
+.rs-empty{margin:0;color:var(--muted);font-size:15px}
+.rs-dashed{background:transparent;border:1.5px dashed var(--line-2);box-shadow:none}
+.rs-sat{position:relative;height:150px;border-radius:var(--r-lg);overflow:hidden;background:var(--map-blank);border:1px solid var(--card-line)}
+.rs-sub{color:var(--muted);font-size:14px}
+.rs-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rs-pills{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+/* the big name with a pill on the right (lead, customer) */
+.rs-name{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.rs-name h2{min-width:0;font:700 30px/1.1 var(--head);letter-spacing:-.02em;overflow-wrap:anywhere}
+.rs-name>.pill{flex:none;margin-top:6px}
+/* top cards: "Total" and the big amount; an inset row ("Invoice SINV-0003 · Paid ›") */
+.rs-kv{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.rs-kv>span:first-child{color:var(--muted);font-size:14px}
+.rs-amt{font:700 32px/1.1 var(--head);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rs-amt.green{color:var(--green-ink)}
+.rs-inset{display:flex;align-items:center;gap:8px;min-height:44px;margin-top:10px;padding:0 12px;border-radius:12px;background:var(--card-2);color:var(--ink);text-decoration:none;font-size:15px}
+.rs-inset .chev{margin-left:auto}
+/* round buttons: tones and the small one (38 px drawn inside its 44 px box) */
+.rnd.red{background:var(--coral-btn);border-color:transparent;color:#fff;box-shadow:none}
+.rnd.grey{background:var(--card-2);border-color:transparent;color:var(--ink);box-shadow:none}
+.rnd.sm{isolation:isolate;background:none;border:0;box-shadow:none}
+.rnd.sm::before{content:"";position:absolute;inset:3px;z-index:-1;border-radius:50%;background:var(--rnd-bg);border:1px solid var(--rnd-line);box-shadow:var(--rnd-sh)}
+.rnd.sm.grey::before{background:var(--card-2);border-color:transparent;box-shadow:none}
+.rnd.sm.red::before{background:var(--coral-btn);border-color:transparent;box-shadow:none}
+.rnd.sm.on::before{background:var(--solid);border-color:transparent}
+.rnd.sm.on{color:var(--on-solid)}
+.rnd.sm svg{width:19px;height:19px}
+.rnd:disabled{opacity:.45;cursor:default}
+.rnd .badge{z-index:1}
+.rs-acts{flex:none;display:flex;align-items:center;margin-right:-3px}
+/* a pill that is a button (the owner pill), and pill buttons ("+ Visit", "+ Item", Create Invoice) */
+.pill.wh{background:var(--card);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line-2)}
+.pill.wh svg{width:13px;height:13px}
+.rs-pilltap{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer}
+.rs-pb{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--fill-pill);color:var(--ink);font:600 15px/1 var(--text);text-decoration:none;white-space:nowrap;cursor:pointer}
+.rs-pb svg{flex:none;width:16px;height:16px;stroke-width:2.2}
+.rs-pb.solid{background:var(--solid);color:var(--on-solid)}
+.rs-pb.red{background:var(--coral-btn);color:#fff}
+.rs-pb.wide{display:flex;width:100%;min-height:48px;font-size:16px}
+.rs-pb:disabled{opacity:.5;cursor:default}
+.rs-pb:active,.rs-pilltap:active .pill{filter:brightness(.94)}
+/* the segmented control: a 44 px track, the "on" segment raised inside it */
+.rs-seg{display:flex;padding:0 3px;border-radius:12px;background:var(--seg-track)}
+.rs-seg-b{position:relative;isolation:isolate;flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 8px;border:0;border-radius:9px;background:none;color:var(--ink-2);font:500 15px/1.1 var(--text);text-decoration:none;white-space:nowrap;cursor:pointer}
+.rs-seg-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rs-seg-b[aria-selected="true"]{color:var(--seg-on-ink);font-weight:600}
+.rs-seg-b[aria-selected="true"]::before{content:"";position:absolute;inset:3px 0;z-index:-1;border-radius:9px;background:var(--seg-on);box-shadow:var(--seg-on-sh)}
+.rs-seg.black .rs-seg-b[aria-selected="true"]{color:var(--on-solid)}
+.rs-seg.black .rs-seg-b[aria-selected="true"]::before{background:var(--solid);box-shadow:none}
+.rs-seg-b .n{font-variant-numeric:tabular-nums;font-weight:500;opacity:.7}
+.rs-seg-b:focus-visible{outline-offset:-3px}
+/* a card's head: title, count, the grey round pencil and + */
+.rs-ch{display:flex;align-items:center;gap:8px;min-height:44px;margin:-6px -3px 2px 0}
+.rs-ch h3{min-width:0;font:600 18px/1.25 var(--head);letter-spacing:-.02em;overflow-wrap:anywhere}
+.rs-ch-n{flex:none;color:var(--muted);font-size:14px}
+.rs-ch-end{flex:none;display:flex;align-items:center;margin-left:auto}
+/* the stat card */
+.rs-stat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 6px;padding:14px 8px;text-align:center}
+.rs-stat-c{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;padding:0;border:0;border-radius:10px;background:none;color:inherit;font:inherit;text-decoration:none}
+a.rs-stat-c,button.rs-stat-c{min-height:44px;cursor:pointer}
+.rs-stat-c.wide{grid-column:span 2}
+.rs-stat-l{font:600 12px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--label)}
+.rs-stat-v{max-width:100%;font:600 16px/1.25 var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-stat-v.red{color:var(--red-ink)}
+.rs-stat-v.green{color:var(--green-ink)}
+/* contact rows */
+.rs-crows{list-style:none;margin:0;padding:2px 13px 2px 16px}
+.rs-crow{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0}
+.rs-crow+.rs-crow{border-top:1px solid var(--line)}
+.rs-ci{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--card-2);color:var(--ink-2)}
+.rs-ci svg{width:19px;height:19px}
+.rs-cv{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:44px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;text-decoration:none}
+a.rs-cv,button.rs-cv{cursor:pointer}
+.rs-cl{font:600 12px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--label)}
+.rs-cval{font-size:16px;line-height:1.3;overflow-wrap:anywhere}
+.rs-csub{font-size:14px;color:var(--muted)}
+/* the person card and the address card */
+.rs-person,.rs-addr{display:flex;align-items:center;gap:8px;padding:10px 13px 10px 16px}
+.rs-pl{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:44px;color:inherit;text-decoration:none}
+.rs-av{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--card-2);color:var(--ink);font:700 15px/1 var(--head)}
+.rs-pw{min-width:0;display:flex;flex-direction:column;gap:2px}
+.rs-pn{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-ps{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+/* line items */
+.rs-lines{display:flex;flex-direction:column}
+.rs-li-list{list-style:none;margin:0;padding:0}
+.rs-li-list>li+li{border-top:1px solid var(--line)}
+.rs-li{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:10px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;text-decoration:none}
+a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
+.rs-li-a{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rs-li-t{font-weight:500;overflow-wrap:anywhere}
+.rs-li-s{font-size:13.5px;color:var(--muted)}
+.rs-li-m{flex:none;font-weight:600}
+.rs-li-add{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0}
+.rs-li-sum{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);color:var(--ink-2)}
+.rs-li-tot{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 0 4px;border-top:1px solid var(--line);font:600 17px/1.2 var(--head)}
+.rs-li-tot .num{font-size:20px}
+.rs-li-tot .paid{color:var(--green-ink)}
+.rs-paid{margin:0;color:var(--green-ink);font-weight:600;font-size:14px;text-align:right}
+.rs-li-cta{padding-top:10px}
+/* the notes box */
+.rs-notes{display:block;width:100%;min-height:76px;padding:12px 14px;border:0;border-radius:12px;background:var(--card-2);color:var(--ink);font:400 16px/1.45 var(--text);resize:vertical;outline:0}
+.rs-notes::placeholder{color:var(--muted)}
+.rs-notes:focus{box-shadow:var(--focus)}
+/* a disclosure row: "Sold by · Olive Owner ›" */
+.rs-disc{display:flex;align-items:center;gap:8px;width:100%;min-height:52px;padding:6px 16px;color:var(--ink);font:400 16px/1.3 var(--text);text-align:left;text-decoration:none;cursor:pointer}
+.rs-dl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rs-dl b{font-weight:600}
+.rs-ds{font-size:14px;color:var(--muted)}
+/* form rows (editors): label left, the control right; a switch is red when on */
+.rs-frows{padding:0 0 0 16px}
+.rs-frow{display:flex;align-items:center;gap:12px;min-height:52px;padding:4px 12px 4px 0}
+.rs-frow+.rs-frow{border-top:1px solid var(--line)}
+.rs-fl{flex:0 0 40%;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:16px;color:var(--ink)}
+.rs-fl small{font-size:13px;color:var(--muted)}
+.rs-fc{flex:1;min-width:0;display:flex;justify-content:flex-end}
+.rs-fc select,.rs-fc input{width:100%;min-width:0;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:var(--card-2);color:var(--ink);font-size:16px;text-align:right;-webkit-appearance:none;appearance:none}
+.rs-fc select{text-align-last:right}
+.rs-frow .switch[aria-checked="true"]::before{background:var(--coral-btn)}
+/* the labelled quick row (visit, invoice) */
+.rs-qrow{display:flex;justify-content:space-around;gap:6px}
+.rs-q{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:2px 0;border:0;background:none;color:var(--ink);font:500 13px/1.2 var(--text);text-decoration:none;cursor:pointer}
+.rs-q-c{position:relative;display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--rnd-bg);border:1px solid var(--rnd-line);box-shadow:var(--rnd-sh)}
+.rs-q-c svg{width:23px;height:23px}
+.rs-q.red .rs-q-c{background:var(--coral-btn);border-color:transparent;color:#fff;box-shadow:none}
+.rs-q .badge{position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 11px/19px var(--text);text-align:center}
+.rs-q-l{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-q:disabled{opacity:.45}
+/* the "..." action sheet: grouped inset lists, red rows last */
+.sheet.rs-actions,.sheet.rs-sheetpage{background:var(--sheet-bg)}
+.rs-actions .sheet-head,.rs-sheetpage .sheet-head{border-bottom:0;padding:6px 12px 6px 20px}
+.rs-actions .sheet-head h2,.rs-sheetpage .sheet-head h2{font:700 22px/1.2 var(--head);letter-spacing:-.02em}
+.rs-actions .sheet-x,.rs-sheetpage .sheet-x{border:1px solid var(--rnd-line);background:var(--rnd-bg);box-shadow:var(--rnd-sh);color:var(--ink)}
+.rs-actions .sheet-body{display:flex;flex-direction:column;gap:10px;padding:4px 16px 20px}
+.rs-act-g{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--card-line);border-radius:16px;overflow:hidden}
+.rs-act-g li+li{border-top:1px solid var(--line)}
+.rs-act{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:0 14px;border:0;background:none;color:var(--ink);font:400 16px/1.2 var(--text);text-align:left;text-decoration:none;cursor:pointer}
+.rs-act-ic{flex:none;display:grid;place-items:center;color:var(--ink-2)}
+.rs-act-ic svg{width:20px;height:20px}
+.rs-act-l{flex:1;min-width:0}
+.rs-act-h{flex:none;max-width:45%;font-size:13px;color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-act.danger,.rs-act.danger .rs-act-ic{color:var(--red-ink)}
+.rs-act:active{background:var(--fill)}
+.rs-act:disabled{opacity:.45;cursor:default}
+.rs-act:focus-visible{outline-offset:-2px}
+/* the full-height sheet page: grab bar, title, the red Done pill, a segmented control on top */
+.sheet.rs-sheetpage{height:calc(100% - var(--top) - 10px);max-height:none;border-radius:26px 26px 0 0}
+.rs-done{flex:none;min-height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 16px/1 var(--text);cursor:pointer}
+.rs-done:disabled{opacity:.6}
+.rs-sheetpage .sheet-body{display:flex;flex-direction:column;gap:12px;padding:6px 16px 24px}
+.rs-sp-pane{display:flex;flex-direction:column;gap:12px}
+/* the detail header (router.js header(): a screen with tools() or more()): round back, the
+   title centred, up to two round icons and the round "..." on the right */
+.top-act .rnd{flex:none}
+@media (max-width:899px){
+  .app:not(.big-top) .top.rs-top{display:grid;grid-template-columns:minmax(max-content,1fr) minmax(0,max-content) minmax(max-content,1fr);align-items:center;column-gap:8px}
+  .app:not(.big-top) .top.rs-top>*{grid-row:1}
+  .app:not(.big-top) .top.rs-top .top-back{grid-column:1;justify-self:start}
+  .app:not(.big-top) .top.rs-top .top-title{grid-column:2;padding:0;text-align:center;font:600 17px/1.25 var(--head);letter-spacing:-.02em}
+  .app:not(.big-top) .top.rs-top .top-act{grid-column:3;justify-self:end;gap:10px}
+  .app:not(.big-top) .top.rs-top .top-rnd{display:none}
+}
+@media (min-width:900px){
+  .sheet.rs-sheetpage{height:min(780px,calc(100% - 64px));border-radius:var(--r-xl)}
+  .app.has-side .top-act .rnd{width:38px;height:38px;box-shadow:none}
+}
+@media (hover:hover) and (pointer:fine){
+  .rs-act:hover,a.rs-li:hover,button.rs-li:hover,.rs-disc:hover,a.rs-cv:hover,button.rs-cv:hover,a.rs-stat-c:hover,button.rs-stat-c:hover{background:var(--fill)}
+  .rs-seg-b:not([aria-selected="true"]):hover{color:var(--ink)}
+}
+/* the floating tab bar, Rotor's (the shell opts in with .rs-shell on #app; Track A's shell work):
+   icon-only glass pill, the current icon red with a dot under it, red badges; the red round + */
+@media (max-width:899px){
+  .app.rs-shell{--fab-d:62px}
+  .app.rs-shell .tabs.pill .tab .tl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .app.rs-shell .tabs.pill .tab{color:var(--ink-2)}
+  .app.rs-shell .tabs.pill .tab svg{width:26px;height:26px}
+  .app.rs-shell .tabs.pill .tab[aria-current="page"]{background:none;color:var(--coral)}
+  .app.rs-shell .tabs.pill .tab[aria-current="page"]::after{content:"";position:absolute;left:50%;bottom:6px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--coral)}
+  .app.rs-shell .tabs.pill .tab .badge{box-shadow:0 0 0 2px var(--mist)}
+  .app.rs-shell .fab{border:0;background:var(--fab-red);color:#fff;box-shadow:0 8px 20px rgba(219,58,41,.4);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .app.rs-shell .fab svg{width:28px;height:28px}
+}
+/* #/kit's still picture of that bar */
+.rs-bar-demo{display:flex;align-items:center;gap:10px}
+.rs-bar-demo .bar{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-around;height:62px;padding:0 8px;border:1px solid var(--glass-line);border-radius:31px;background:var(--glass);box-shadow:var(--glass-sh)}
+.rs-bar-demo .bt{position:relative;display:grid;place-items:center;color:var(--ink-2)}
+.rs-bar-demo .bt svg{width:26px;height:26px}
+.rs-bar-demo .bt.on{color:var(--coral)}
+.rs-bar-demo .bt.on::after{content:"";position:absolute;left:50%;bottom:-9px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--coral)}
+.rs-bar-demo .bt .badge{position:absolute;top:-7px;right:-11px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 11px/18px var(--text);text-align:center;box-shadow:0 0 0 2px var(--mist)}
+.rs-bar-demo .fabx{flex:none;display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:var(--fab-red);color:#fff;box-shadow:0 8px 20px rgba(219,58,41,.4)}
+.rs-bar-demo .fabx svg{width:28px;height:28px;stroke-width:2.4}
+/* #/kit's own bits (system/ui-kit.js) */
+.kit-p{margin:10px 0 2px;color:var(--ink-2)}
+.kit-grow{flex:1;min-width:0}
+.kit-rnds{justify-content:flex-start;gap:8px}
+.kit-rnds+.kit-rnds{margin-top:12px}

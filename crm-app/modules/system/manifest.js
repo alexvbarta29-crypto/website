@@ -46,6 +46,8 @@ export default {
     { path: "/dashboard", load: () => import("./dashboard.js"), title: "Office dashboard", perm: "office:tools", parent: "/reports" },
     { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Office dashboard", perm: "office:tools", parent: "/dashboard" },
     { path: "/tools/:id", load: () => import("./tool.js"), title: "Office tool", perm: "office:tools", parent: "/menu" },
+    // the Rotor-style kit, every piece in both themes (owners and the office; in no menu: the screen tracks open it by hand)
+    { path: "/kit", load: () => import("./ui-kit.js"), title: "Kit", perm: "settings:general", parent: "/settings" },
   ],
   nav: [
     { where: "more", section: "messages", label: "Approvals", path: "/approvals", perm: "campaigns:send", order: 10, icon: "check" },
