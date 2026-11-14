@@ -69,7 +69,7 @@ export default {
     "input [data-q]": (e, el, ctx) => {
       ctx.state.q = el.value; ctx.keep.q = el.value;
       clearTimeout(ctx.keep.timer);
-      ctx.keep.timer = setTimeout(() => { const pos = el.selectionStart; ctx.rerender(); const n = document.querySelector("[data-q]"); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (err) { /* type=search */ } } }, 180);
+      ctx.keep.timer = setTimeout(() => { if (!el.isConnected) return; const pos = el.selectionStart; ctx.rerender(); const n = document.querySelector("[data-q]"); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (err) { /* type=search */ } } }, 180);
     },
   },
 };
