@@ -101,6 +101,7 @@ export default defineModule({
     "plan.paused": { label: "Plan paused", icon: "schedule" },
     "plan.cancelled": { label: "Plan cancelled", icon: "doc" },
     "plan.renewed": { label: "Plan renewed", icon: "check" },
+    "plan.changed": { label: "Plan terms changed", icon: "schedule" },
   },
   exportTypes: ["plan", "agreement_template", "agreement", "season_install"],
   mcpTools,

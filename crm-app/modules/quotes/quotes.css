@@ -107,3 +107,30 @@
 .check.sub{margin-left:34px;font-size:14px;color:var(--ink-2)}
 .form input:disabled{background:var(--fill);color:var(--ink-3);border-color:transparent}
 .qb-photos .ph-tile{aspect-ratio:1;border:1px solid var(--line);background:var(--fill)}
+/* two-line list rows (quotes, plans, invoices use the same shape) */
+.c-rows,.rs-card.flush.c-rows{list-style:none;margin:0;padding:0 0 0 16px}
+.c-rows>li+li .c-row{border-top:1px solid var(--line)}
+.c-row{display:flex;flex-direction:column;gap:4px;min-height:60px;justify-content:center;padding:10px 16px 10px 0;color:var(--ink);text-decoration:none}
+.c-l1,.c-l2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.c-l1 b{font-weight:650;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.c-l1 .num{flex:none;font-weight:600}
+.c-sub{color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.c-l2 .pill{flex:none}
+.c-row:active{background:var(--card-2)}
+/* the quote page, Rotor's look (Nov 2026) */
+.qt-top{display:flex;flex-direction:column;gap:8px}
+.qt-what{margin:0;font:600 16px/1.3 var(--text)}
+.qt-sub{margin:-4px 0 0;text-align:right}
+.qt-top-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.qt-opt2{display:flex;flex-direction:column;gap:8px}
+.qt-opt2 .rs-sub,.qt-page .rs-card p{margin:0}
+.qt-value{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:var(--card-2);font-weight:600}
+.qt-value .rs-label{margin:0}
+.qt-h3{margin:0 0 6px;font:650 18px/1.2 var(--head)}
+.qt-page .note{margin:0}
+/* the quote editor: segments on top, a red Save at the bottom */
+.qb-segbar{position:sticky;top:0;z-index:2;padding:4px 0 8px;background:var(--mist)}
+.qb .rs-frows .qb-step input{text-align:center}
+.rs-li-sum .num,.rs-li-m{white-space:nowrap}
+.qt-seen{align-items:center}
+.qt-seen .rs-label{margin:0}

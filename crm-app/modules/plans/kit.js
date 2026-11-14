@@ -23,6 +23,8 @@ export const REASONS = { signature: "agreement to sign", card: "card on file" };
 export const pendingText = (rs) => (rs || []).map((r) => REASONS[r] || r).join(" and ");
 export const PLAN_NAMES = { biannual: "Biannual", quarterly: "Quarterly", monthly: "Monthly", lights_annual: "Christmas lights", custom: "Custom" };
 export const BILLING = { barta_standard: "First visit when it's done, then the 1st of each visit's month", after_visit: "After each visit", first_of_month: "The 1st of each visit's month" };
+// The billing select's short words (the long ones above under it, as a hint).
+export const BILLING_SHORT = { barta_standard: "Standard", after_visit: "After each visit", first_of_month: "1st of the month" };
 export const ORD = { unscheduled: ["", "To book"], scheduled: ["blue", "Booked"], completed: ["green", "Done"], skipped: ["", "Skipped"], cancelled: ["red", "Cancelled"] };
 export const AGREEMENT = { none: "Not sent", draft: "Not sent yet", sent: "Sent, not signed", viewed: "Opened, not signed", signed: "Signed", imported_unknown: "From Rotor (no signature on file)" };
 export const SEASON = { sold: "Sold", install_scheduled: "Install booked", installed: "Installed", takedown_scheduled: "Takedown booked", taken_down: "Taken down", stored: "Stored", cancelled: "Cancelled" };

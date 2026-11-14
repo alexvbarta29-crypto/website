@@ -64,27 +64,38 @@ test("Quotes list and the contact's tab: chips with counts, rows escaped", async
   assert.match(text(tab.render({ denied: true }, ctx())), /Not for this login/);
 });
 
+// The quote page (Rotor's look, Nov 2026): Options and Activity, and the round ...'s rows written as their
+// data-* hooks and labels (they open in a sheet, not in the page).
+const hooks = (r) => Object.entries(r.data || {}).map(([k, v]) => ` data-${k}="${v}"`).join("");
+const whole = (view, s, c) => ["options", "activity"].map((tab) => text(view.render({ ...s, tab }, c))).join("\n")
+  + view.more(s, c).flat().filter(Boolean).map((r) => `<li${hooks(r)}>${r.label}</li>`).join("");
+
 test("a quote: status, timeline, the customer's version, the actions its status allows; escaped", async () => {
   const view = await load("view");
   const q = { id: "qt_00000000000000000001", number_label: "SQ-0001", status: "viewed", contact_id: "ct_1", contact_name: `Pat ${XSS}`, created_at: NOW, sent_at: NOW, sent_via: ["sms"], viewed_at: NOW, expires_on: "2026-12-10", current_version_id: "qv_00000000000000000001", options: [option(), plan()], client_notes: `Thanks ${XSS}` };
   const s = { quote: q, contact: { name: `Pat ${XSS}`, phone: "+17635550100" }, properties: [], versions: [{ id: "qv_1", n: 1, sent_at: NOW, sent_via: ["sms"] }], current_version: { id: "qv_1", n: 1, options: [option(), plan()] }, convertible: false, sms_mode: "dry_run" };
-  const h = text(view.render(s, ctx()));
+  const h = whole(view, s, ctx());
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /data-act="send"/);
   assert.match(h, /data-act="present"/);
   assert.match(h, /Approved by phone/);
   assert.match(h, /href="\/api\/crm\/quotes\/qt_00000000000000000001\/preview" target="_blank" rel="noopener"/);
   assert.match(h, /What the customer sees \(version 1\)/);
+  assert.equal(view.title(s), "Quote SQ-0001");
+  assert.ok(view.tools(s, ctx()).some((t) => t && t.icon === "edit"), "the round pencil edits it");
+  assert.match(h, /data-act="decline"[^>]*>Mark declined/);
+  assert.match(h, /data-act="archive"[^>]*>Archive/);
+  assert.match(h, /data-act="duplicate"/);
   assert.match(h, /Opened by the customer/);
   // read-only for someone without write or send
-  const ro = text(view.render(s, ctx(["quotes:read"])));
+  const ro = whole(view, s, ctx(["quotes:read"]));
   assert.doesNotMatch(ro, /data-act="send"|data-act="archive"/);
   // approved, waiting for Scheduling: says so instead of a broken button
-  const ap = text(view.render({ ...s, quote: { ...q, status: "approved", approved_at: NOW, approval: { option_id: "op_a", method: "phone" } }, convertible: false }, ctx()));
+  const ap = whole(view, { ...s, quote: { ...q, status: "approved", approved_at: NOW, approval: { option_id: "op_a", method: "phone" } }, convertible: false }, ctx());
   assert.match(ap, /be made into a job from here yet/);
   assert.doesNotMatch(ap, /data-act="convert"/);
-  assert.match(text(view.render({ ...s, quote: { ...q, status: "approved", approved_at: NOW, approval: { option_id: "op_a" } }, convertible: true }, ctx())), /data-act="convert"/);
-  assert.match(text(view.render({ ...s, quote: { ...q, status: "changes_requested", change_message: `Add the garage ${XSS}` } }, ctx())), /They asked for changes/);
+  assert.match(whole(view, { ...s, quote: { ...q, status: "approved", approved_at: NOW, approval: { option_id: "op_a" } }, convertible: true }, ctx()), /data-act="convert"/);
+  assert.match(whole(view, { ...s, quote: { ...q, status: "changes_requested", change_message: `Add the garage ${XSS}` } }, ctx()), /They asked for changes/);
 });
 
 test("the builder: who, measure (panes or square feet), services, options with lines, discounts and totals; deposits hidden before Money", async () => {
@@ -95,15 +106,18 @@ test("the builder: who, measure (panes or square feet), services, options with l
     measure: { mode: "panes", windows: { standard: 30, french: 3 }, sqft: "", panes_int: "" }, services: { windows_ext: true, screens: true }, counts: {}, plan: "quarterly", warnings: ["count_screens_on_site"], tab: 1,
     options: [option(), plan()], client_notes: "", internal_notes: "", agreement: { require_card: false, deposit: { type: "none", value: 0 } }, photo_ids: [], mockup_file_ids: [],
   };
-  const h = text(b.render(s, ctx()));
+  // the editor's segments (Rotor's look, Nov 2026): Measure, Price, Extras; every field still there
+  const segs = (st) => ["measure", "price", "extras"].map((seg) => text(b.render({ ...st, seg }, ctx()))).join("\n");
+  const h = segs(s);
   assert.ok(!h.includes("<script>alert(1)"));
+  assert.match(text(b.render(s, ctx())), /aria-selected="true" tabindex="0" data-seg="qb" data-key="price"/, "an existing quote opens on Price");
   assert.match(h, /data-panes>32</, "30 standard + 3 French × 0.4 → 32");
   assert.match(h, /Screens are estimated at half the panes/);
   assert.match(h, /Visits 1, 3, 4/);
   assert.match(h, /\$195\.00 · \$60\.00 · \$195\.00 · \$195\.00/, "per-visit prices of the quarterly option");
   assert.doesNotMatch(h, /Card and deposit/, "hidden before Money (§11.3)");
-  assert.match(text(b.render({ ...s, cx: { ...cx, features: { deposits: true } } }, ctx())), /Card and deposit/);
-  const sq = text(b.render({ ...s, measure: { ...s.measure, mode: "sqft", sqft: "3200" } }, ctx()));
+  assert.match(segs({ ...s, cx: { ...cx, features: { deposits: true } } }), /Card and deposit/);
+  const sq = segs({ ...s, measure: { ...s.measure, mode: "sqft", sqft: "3200" } });
   assert.match(sq, /Up to 40 panes \(2500 to 3499 sq ft\)\. Confirm the panes on site\./);
   assert.match(text(b.render({ ...s, status: "approved" }, ctx())), /An approved quote doesn't change/);
 });

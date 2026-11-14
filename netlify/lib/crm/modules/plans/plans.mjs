@@ -42,13 +42,14 @@ import { notify, approvers } from "../../core/notify.mjs";
 import { sendMessage } from "../../core/send.mjs";
 import { keySafe } from "../../core/text.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { LIVE_PLAN, OPEN_ORDINAL, validatePlanLine, validatePlanDiscount, CATALOG_KEYS, BILLING_MODES } from "./types.mjs";
+import { LIVE_PLAN, OPEN_ORDINAL, validatePlanLine, validatePlanDiscount, CATALOG_KEYS, BILLING_MODES, INTERVALS } from "./types.mjs";
 import { loadCatalog } from "./catalog.mjs";
 import {
   firstTerm, termOrdinals, saleValue, ordinalLines, ordinalDiscounts, applyAction, respace, ordinalStatusForJob, termOver, monthOf, addMonthsYm, visitsPerYearOf,
-  clawbackCents, seasonConfirmed,
+  clawbackCents, seasonConfirmed, planEdit, EDIT_FIELDS,
 } from "./machine.mjs";
-import { quoteAgreement, signedEffects, afterSigned, notePlanAgreement, renewEveryFor } from "./agreements.mjs";
+import { quoteAgreement, signedEffects, afterSigned, notePlanAgreement, renewEveryFor, voidAgreement } from "./agreements.mjs";
+import { wouldAct } from "../../core/activity.mjs";
 import { formatCents } from "../../core/money.mjs";
 import { planRow as planRowOf } from "./types.mjs";
 import { createSeason, seasonOfJob, syncSeason, seasonForInstallJob } from "./lights.mjs";
@@ -642,7 +643,7 @@ export async function changePrice(planId, body = {}, ctx) {
   return updateRecord("plan", planId, (p) => applyAction(p, "change_price", { new_lines: lines, effective_on: body.effective_on }, { today: today(), at, by: w.by }).next, { ...w, ifMatch: ctx.ifMatch });
 }
 
-// PATCH /plans/:id: what the office edits by hand (name, property, autopay, auto-renew, clawback handled).
+// PATCH /plans/:id: what the office edits by hand (name, property, autopay, auto-renew, notes, agreement notes, clawback handled).
 export async function patchPlan(planId, body = {}, ctx) {
   await getPlan(planId);
   const w = W(ctx);
@@ -652,6 +653,9 @@ export async function patchPlan(planId, body = {}, ctx) {
     if (isId(body.property_id, "property")) next.property_id = body.property_id;
     if (typeof body.autopay === "boolean") next.billing = { ...p.billing, autopay: body.autopay, card_required: body.autopay ? true : p.billing.card_required };
     if (typeof body.auto_renew === "boolean") next.term = { ...p.term, auto_renew: body.auto_renew };
+    // the plan's notes (the office's) and the notes the next agreement carries (never a signed one's)
+    if (typeof body.notes === "string") next.notes = body.notes.trim().slice(0, 2000) || undefined;
+    if (typeof body.agreement_notes === "string") next.agreement_notes = body.agreement_notes.trim().slice(0, 1000) || undefined;
     if (body.clawback === "billed" || body.clawback === "waived") {
       if (!p.cancel || !p.cancel.clawback_cents) throw new ConflictError("There's no clawback on this plan.");
       if (body.clawback === "waived" && !ctx.can("fees:waive")) throw new ConflictError("Waiving needs the fees permission.");
@@ -661,6 +665,196 @@ export async function patchPlan(planId, body = {}, ctx) {
     return next;
   }, { ...w, ifMatch: ctx.ifMatch });
 }
+
+// ------------------------------------------------------------ editing the terms (POST /plans/:id/edit)
+
+// The owner, Nov 14: frequency, agreement length, renewal, start date and
+// billing mode stay editable after a plan is made (and its discounts until
+// the agreement is signed). The visits' rule is machine.mjs planEdit. A
+// preview (POST /plans/:id/edit with preview: true) answers what would
+// change, for the confirm sheet; the edit itself is a run around the op
+// "plans.edit" (op id from the plan's version and the change: a double tap
+// or a retry is one op): the record, the unsigned agreement voided, the
+// visits' old jobs cancelled, the new ones made. An imported plan Rotor is
+// still in charge of changes nothing: a would-update row says what would have.
+
+const FREQ_MONTHS = [1, 2, 3, 4, 6, 12];
+// The body's changes, checked. → { frequency?, term_months?, auto_renew?, start_on?, billing_mode?, discounts? }
+export function editChanges(body = {}) {
+  const c = body && typeof body.changes === "object" && body.changes && !Array.isArray(body.changes) ? body.changes : {};
+  const out = {};
+  for (const k of Object.keys(c)) if (!EDIT_FIELDS.includes(k)) throw new InputError("That can't be changed here.", k);
+  if (c.frequency !== undefined) {
+    const f = c.frequency;
+    if (!f || typeof f !== "object" || !INTERVALS.includes(f.interval) || !Number.isSafeInteger(f.count) || f.count < 1 || f.count > 52) throw new InputError("How often?", "frequency");
+    if (f.interval === "month" && !FREQ_MONTHS.includes(f.count)) throw new InputError("Every 1, 2, 3, 4, 6 or 12 months.", "frequency");
+    if (f.interval !== "month") throw new InputError("Pick how many months apart.", "frequency");
+    out.frequency = { interval: f.interval, count: f.count };
+  }
+  if (c.term_months !== undefined) {
+    const m = Number(c.term_months);
+    if (!Number.isSafeInteger(m) || m < 12 || m > 60) throw new InputError("A length from 12 to 60 months.", "term_months");
+    out.term_months = m;
+  }
+  if (c.auto_renew !== undefined) {
+    if (typeof c.auto_renew !== "boolean") throw new InputError("Renews: on or off.", "auto_renew");
+    out.auto_renew = c.auto_renew;
+  }
+  if (c.start_on !== undefined) {
+    const d = c.start_on;
+    if (typeof d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(d + "T12:00:00Z")) || d < addLocalDays(today(), -31) || d > addLocalDays(today(), 366)) throw new InputError("A start date from a month ago to a year out.", "start_on");
+    out.start_on = d;
+  }
+  if (c.billing_mode !== undefined) {
+    if (!BILLING_MODES.includes(c.billing_mode)) throw new InputError("Pick how it's billed.", "billing_mode");
+    out.billing_mode = c.billing_mode;
+  }
+  if (c.discounts !== undefined) {
+    if (!Array.isArray(c.discounts) || c.discounts.length > 20) throw new InputError("Expected the discounts.", "discounts");
+    out.discounts = c.discounts.map((d, i) => validatePlanDiscount({ id: (d && typeof d.id === "string" && /^[a-z0-9_]{2,40}$/i.test(d.id)) ? d.id : `dc_e${i + 1}`, ...d }, `discounts.${i}`));
+  }
+  if (!Object.keys(out).length) throw new InputError("Nothing to change.", "changes");
+  return out;
+}
+
+// The jobs of the term's visits still to book that got a visit since (the
+// plan follows its jobs a moment later): those visits are kept as booked.
+async function bookedJobs(plan) {
+  const n = (plan.term && plan.term.current_term_n) || 1;
+  const ids = (plan.ordinals || []).filter((o) => (o.term || 1) === n && o.status === "unscheduled" && isId(o.job_id, "job")).map((o) => o.job_id).slice(0, 60);
+  const jobs = (await getRecords("job", ids)).filter(Boolean).map((g) => g.data);
+  return new Set(jobs.filter((j) => j.status !== "unscheduled" || (j.visit_ids || []).length).map((j) => j.id));
+}
+
+// Whether Rotor is still in charge of this plan (an imported, not sandboxed plan before the switch).
+async function rotorOwns(plan, ctx) {
+  if (!plan.import) return false;
+  const w = W(ctx);
+  const mode = w.mode || await readSysMode().catch(() => ({ system_of_record: "rotor" }));
+  if (mode && mode.system_of_record === "crm") return false;
+  const c = await getRecord("contact", plan.contact_id).catch(() => null);
+  return !sandboxed(plan, c && c.data);
+}
+
+const scalar = (v) => (v && typeof v === "object" ? JSON.stringify(v).slice(0, 120) : v);
+// What the confirm sheet lists. → { fields, visits, cancel_jobs, agreement, would? }
+function editSummary(plan, out, would = false) {
+  const st = plan.agreement_status;
+  const agreement = !out.fields.some((f) => ["frequency", "term_months", "auto_renew", "billing_mode", "discounts"].includes(f.field)) ? "same"
+    : st === "signed" ? "needs_new" : ["draft", "sent", "viewed"].includes(st) ? "replaced" : "none";
+  return { fields: out.fields, visits: out.visits, cancel_jobs: out.to_cancel.length, agreement, sale_value_cents: out.next.sale_value_cents, ...(would ? { would: true } : {}) };
+}
+
+export const editOpId = (planId, wv, changes) => opIdFor(`plan-edit--${planId}--${sha(JSON.stringify(changes)).slice(0, 10)}`, Number.isSafeInteger(wv) && wv > 0 ? wv : 1);
+
+// POST /plans/:id/edit. → preview: the summary; else { run_id, summary } or { would: true, summary }.
+export async function startEdit(planId, body = {}, ctx) {
+  const g = await getPlan(planId);
+  if (ctx.ifMatch && g.etag !== ctx.ifMatch && !body.preview) throw new ConflictError("Someone else just changed this plan. Look again.", { code: "stale" });
+  const plan = g.data;
+  const changes = editChanges(body);
+  if (plan.jobs_pending) throw new ConflictError("Its visits are being made right now. Try again in a minute.", { code: "busy" });
+  const out = planEdit(plan, changes, { today: today(), booked: await bookedJobs(plan) });
+  if (!out.fields.length) throw new InputError("Nothing to change.", "changes");
+  const owned = await rotorOwns(plan, ctx);
+  const summary = editSummary(plan, out, owned);
+  if (body.preview) return { preview: true, summary };
+  if (owned) {
+    // the parallel-run guard (§0 rule 12): Rotor's plan stays as Rotor has it
+    const changesRow = Object.fromEntries(out.fields.map((f) => [f.field, [scalar(f.from), scalar(f.to)]]));
+    await wouldAct({ key: "plans.edit", subject: plan, action: "update", changes: changesRow }, { requestId: W(ctx).requestId });
+    return { would: true, summary };
+  }
+  const opId = editOpId(plan.id, plan.wv, changes);
+  const runId = deriveId("run", opId, "plans.edit", 0);
+  await createRun("plans.edit", { op_id: opId, plan_id: plan.id, changes }, W(ctx), { id: runId });
+  return { run_id: runId, summary };
+}
+
+defineOp("plans.edit", {
+  steps(input) {
+    return [
+      {
+        name: "record",
+        async run(s) {
+          const g = await getRecord("plan", input.plan_id);
+          if (!g) throw new NotFoundError("That plan isn't there.");
+          if (g.data.last_change && g.data.last_change.op === s.opId) return g.data.last_change;
+          const booked = await bookedJobs(g.data);
+          const w = W(s.ctx);
+          const at = nowIso();
+          let lc = null;
+          const r = await updateRecord("plan", input.plan_id, (p) => {
+            if (p.last_change && p.last_change.op === s.opId) { lc = p.last_change; return null; }
+            if (p.jobs_pending) throw new ConflictError("Its visits are being made right now. Try again in a minute.", { code: "busy" });
+            const out = planEdit(p, input.changes, { today: today(), booked });
+            lc = { op: s.opId, action: "edit", wv: (p.wv || 0) + 1, at, by: w.by, fields: out.fields.map((f) => f.field), to_cancel: out.to_cancel, schedule: out.schedule, stale: out.stale, agreement_status: p.agreement_status, agreement_id: p.agreement_id || null };
+            return { ...out.next, last_change: lc };
+          }, s.ctx);
+          return (r.data && r.data.last_change && r.data.last_change.op === s.opId) ? r.data.last_change : lc;
+        },
+      },
+      {
+        name: "agreement",
+        async run(s) {
+          // an unsigned agreement says the old terms: it's voided (the next send makes one with the new terms)
+          const lc = s.out.record || {};
+          const words = (lc.fields || []).some((f) => ["frequency", "term_months", "auto_renew", "billing_mode", "discounts"].includes(f));
+          if (!words || !isId(lc.agreement_id, "agreement") || !["draft", "sent", "viewed"].includes(lc.agreement_status)) return { voided: null };
+          try { await voidAgreement(lc.agreement_id, { reason: "The plan's terms changed" }, s.ctx); } catch (e) { if (!(e instanceof ConflictError) && !(e instanceof NotFoundError)) throw e; return { voided: null }; }
+          return { voided: lc.agreement_id };
+        },
+      },
+      {
+        name: "cancel_jobs",
+        async run(s) {
+          const ids = ((s.out.record || {}).to_cancel || []).filter((x) => isId(x, "job"));
+          if (!ids.length || !has("work.cancelJobs")) return { cancelled: 0 };
+          const out = (await call("work.cancelJobs", ids, "plan terms changed", s.opId, s.ctx)) || {};
+          return { cancelled: (out.cancelled || []).length };
+        },
+      },
+      {
+        name: "make_jobs",
+        async run(s) {
+          if (!(s.out.record || {}).schedule) return { made: 0 };
+          try { return { made: (await ensureJobs(input.plan_id, s.ctx)).length }; } catch (e) {
+            if (e instanceof ParallelRunGuard) return { made: 0, guarded: true };
+            throw e;
+          }
+        },
+      },
+      {
+        name: "effects",
+        async run(s) {
+          const plan = (await getRecord("plan", input.plan_id)).data;
+          await addActivity(plan.contact_id, "plan.changed", plan.id).catch(() => {});
+          await touchPlanStats(plan.contact_id, s.ctx);
+          return { status: plan.status };
+        },
+      },
+    ];
+  },
+});
+
+defineRun("plans.edit", {
+  lane: "fast", label: "Change a plan's terms",
+  async step(run, rctx) {
+    const i = run.input || {};
+    let out;
+    try {
+      out = await runOp(i.op_id, "plans.edit", { input: { plan_id: i.plan_id, changes: i.changes || {} }, ctx: personCtx(run, rctx), holder: `plans.${run.id}` });
+    } catch (e) {
+      const j = await readOp(i.op_id).catch(() => null);
+      if (!j || j.status !== "failed") throw e;
+      out = { status: "failed", error: j.error };
+    }
+    if (out.status === "failed") return { failed: (out.error && out.error.code) || "failed", result: { status: "failed", message: (out.error && out.error.message) || null } };
+    if (out.status !== "done") return { progress: { done: 0, total: 1 } };
+    const p = await getRecord("plan", i.plan_id);
+    return { done: true, result: { status: p ? p.data.status : null, plan_id: i.plan_id, action: "edit" }, progress: { done: 1, total: 1 } };
+  },
+});
 
 // ------------------------------------------------------------ listeners
 

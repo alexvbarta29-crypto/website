@@ -87,3 +87,29 @@
   .sheet.mn-full .sheet-body{padding:16px 32px 28px}
   .mn-scan-code{width:min(60vh,520px)}
 }
+/* two-line list rows (quotes, plans, invoices use the same shape) */
+.c-rows,.rs-card.flush.c-rows{list-style:none;margin:0;padding:0 0 0 16px}
+.c-rows>li+li .c-row{border-top:1px solid var(--line)}
+.c-row{display:flex;flex-direction:column;gap:4px;min-height:60px;justify-content:center;padding:10px 16px 10px 0;color:var(--ink);text-decoration:none}
+.c-l1,.c-l2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.c-l1 b{font-weight:650;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.c-l1 .num{flex:none;font-weight:600}
+.c-sub{color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.c-l2 .pill{flex:none}
+.c-row:active{background:var(--card-2)}
+.rs-li-sum .num,.rs-li-m{white-space:nowrap}
+/* the invoice page, Rotor's look (Nov 2026) */
+.mn-top{display:flex;flex-direction:column;gap:8px}
+.mn-page .rs-card p{margin:0}
+.mn-page .rs-card p.warn-box{margin:4px 0 0}
+.mn-actrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mn-actrow .rs-qrow{flex:1;justify-content:flex-end;gap:14px;min-width:0}
+.mn-actrow .rs-q{flex:0 0 64px}
+.mn-sums{display:flex;flex-direction:column}
+.mn-note{margin-top:8px!important}
+.mn-paycard{display:flex;flex-direction:column;gap:10px}
+.mn-cardline{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600}
+.mn-cardline svg{width:22px;height:22px;flex:none}
+.mn-more summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;color:var(--ink-2)}
+.mn-new-go{display:flex;flex-direction:column;gap:8px}
+.mn-new .rs-card{display:flex;flex-direction:column;gap:8px}

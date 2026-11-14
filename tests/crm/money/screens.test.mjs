@@ -50,8 +50,11 @@ test("Invoices: totals in dollars, chips with counts, rows escaped and worded by
   const h = text(list.render({ rows, counts: { open: 3, overdue: 1, failed: 1 }, totals: { open_cents: 69000, overdue_cents: 10000 }, chip: "open", q: "", more: false }, ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /href="#\/invoices\/in_00000000000000000001"/);
-  assert.match(h, /\$690\.00<\/b><small>waiting to be paid/);
-  assert.match(h, /class="stat bad"><b>\$100\.00/);
+  assert.match(h, /Waiting<\/span><span class="rs-stat-v">\$690\.00/, "the stat card (Rotor's look, Nov 2026)");
+  assert.match(h, /Past due<\/span><span class="rs-stat-v red">\$100\.00/);
+  assert.match(h, /Paid this month/);
+  assert.match(h, /data-list-more/, "Payments, Autopay and Export behind the round ...");
+  assert.match(h, /class="c-row"/, "two-line rows");
   assert.match(h, /Open <span class="n">3<\/span>/);
   assert.match(h, /Card failed <span class="n">1<\/span>/);
   assert.doesNotMatch(h, /data-chip="overpaid"/, "a chip with nothing in it stays out of the way");
@@ -70,10 +73,9 @@ test("one invoice: lines, balance, the card, and only the buttons its state and 
   const view = await load("invoice");
   const h = text(view.render(state({ payments: [{ id: PM, kind: "payment", method: "card", status: "succeeded", total_cents: 11000, amount_cents: 10000, tip_cents: 1000, refunded_cents: 0, received_on: "2026-11-11", card: { last4: "4242" }, simulated: true }] }, { paid_cents: 10000, tips_cents: 1000, balance_cents: 17500 }), ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
-  assert.match(h, /Invoice INV-0610/);
-  assert.match(h, /class="big">\$175\.00/);
+  assert.match(h, /Balance due<\/span><span class="rs-amt">\$175\.00/);
   assert.match(h, /−\$20\.00/);
-  assert.match(h, /Tips for the crew<\/span><span class="a">\$10\.00/);
+  assert.match(h, /Tips for the crew<\/span><span class="num">\$10\.00/);
   assert.match(h, /data-act="send"/);
   assert.match(h, /data-act="record"/);
   assert.match(h, /data-act="charge"/);
@@ -94,9 +96,15 @@ test("one invoice: lines, balance, the card, and only the buttons its state and 
   // paid: nothing to collect; an overpayment asks for a decision
   const paid = text(view.render(state({ can: { refund: true } }, { status: "paid", balance_cents: 0, paid_cents: 30000, excess_cents: 2500 }), ctx()));
   assert.match(paid, /Overpaid/);
-  assert.match(paid, /data-act="keep"/);
+  assert.match(paid, /keep it as credit/, "the overpayment says what to decide");
+  assert.ok(view.more(state({ can: { refund: true } }, { status: "paid", balance_cents: 0, paid_cents: 30000, excess_cents: 2500 }), ctx()).flat().some((r) => r && r.data && r.data.act === "keep"), "Keep the extra as credit in the ...");
   assert.doesNotMatch(paid, /data-act="record"/);
-  assert.equal(view.title(state()), "INV-0610");
+  assert.equal(view.title(state()), "Invoice INV-0610");
+  // the round ...: what the state allows, red rows for Write off and Void, each with its old data-act
+  const rows = view.more(state(), ctx()).flat().filter(Boolean);
+  for (const a of ["send", "card-link", "charge", "record", "write-off", "void"]) assert.ok(rows.some((r) => r.data && r.data.act === a), a);
+  assert.ok(rows.filter((r) => r.danger).every((r) => ["write-off", "void"].includes(r.data.act)));
+  assert.equal(view.more(state({ can: {} }), ctx()).flat().filter((r) => r && r.data).length, 0, "Rotor's invoice: nothing to do but open the customer or the job");
 });
 
 test("Payments and the contact's Money tab: the month's totals, practice payments marked, credit and the card", async () => {
