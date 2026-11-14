@@ -25,6 +25,7 @@ import { html, render, toast, confirmSheet } from "./core/ui.js";
 import { time as fmtTime, dateShort, localDate } from "./core/format.js";
 import { poll } from "./core/poll.js";
 import * as outbox from "./core/outbox.js";
+import { openPhoto } from "./core/camera.js";
 import { applyTheme } from "./core/nav.js";
 
 // Light, Dark or Automatic (this device's choice; Dark by default), before anything draws.
@@ -95,6 +96,17 @@ window.addEventListener("message", (e) => {
     document.documentElement.style.setProperty("--lift", (Number.isFinite(n) && n >= 0 && n < 400 ? n : 0) + "px");
   }
   else if (m.type === "office:show" && typeof m.path === "string" && m.path.startsWith("/")) router.go(m.path);
+});
+
+// A photo tile (camera.js photoTile): the whole photo in a sheet, not a new tab.
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest("a[data-photo-full]");
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  const url = a.getAttribute("data-photo-full") || "";
+  if (!/^\/api\/crm\/files\/[A-Za-z0-9_-]+$/.test(url)) return;
+  e.preventDefault();
+  const img = a.querySelector("img");
+  openPhoto(url, (img && img.getAttribute("alt")) || "Photo");
 });
 
 // Links the phone hands to an app (maps:) leave through the top window.

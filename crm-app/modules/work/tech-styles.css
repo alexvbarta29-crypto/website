@@ -118,4 +118,5 @@ body:has(.tf-own-offline) #banner.is-offline{display:none}
 .tf-pend .sub{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .tf-held{display:flex;flex-wrap:wrap;gap:8px}
 .tf-held img{width:88px;height:88px;border-radius:var(--r);object-fit:cover;background:var(--mist)}
+.tf-held .ph-tile{width:88px;height:88px}
 .tf-said{margin:0;padding:10px 12px;border-radius:var(--r);background:var(--mist);border:1px solid var(--line);font-size:14px;overflow-wrap:anywhere;white-space:pre-wrap}

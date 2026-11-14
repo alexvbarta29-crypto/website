@@ -4,6 +4,7 @@
 // A technician sees their own task and moves it along (started, done).
 
 import { html, attrs, toast } from "../../core/ui.js";
+import { photoTile } from "../../core/camera.js";
 import { field, select, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { dateField, timeField, pickContact } from "../../core/pickers.js";
 import { dateShort, dateTime } from "../../core/format.js";
@@ -73,7 +74,7 @@ export default {
       <fieldset class="field" style="border:0;padding:0;margin:0"><span>Who does it</span><div class="sl-people">${s.users.map((u) => html`<label class="check"><input ${attrs({ type: "checkbox", name: `who_${u.id}`, checked: (t.assignee_ids || []).includes(u.id) })}><span>${u.name}</span></label>`)}</div></fieldset>
       ${s.isNew ? "" : select({ label: "Status", name: "status", value: t.status, options: STATUSES })}
       <label class="field" data-field="notes"><span>Notes</span><textarea name="notes" rows="4" maxlength="4000">${t.notes || ""}</textarea><small class="why" hidden></small></label>
-      ${(t.photo_ids || []).length ? html`<div class="field"><span>Photos from the customer</span><div class="sl-photos">${t.photo_ids.map((id) => html`<a ${attrs({ href: `/api/crm/files/${encodeURIComponent(id)}`, target: "_blank", rel: "noopener" })}><img ${attrs({ src: `/api/crm/files/${encodeURIComponent(id)}`, alt: "A photo the customer sent", loading: "lazy", width: 96, height: 96 })}></a>`)}</div></div>` : ""}
+      ${(t.photo_ids || []).length ? html`<div class="field"><span>Photos from the customer</span><div class="sl-photos">${t.photo_ids.map((id) => photoTile(id, { alt: "A photo the customer sent" }))}</div></div>` : ""}
       <button type="submit" class="btn primary block">${s.isNew ? "Add task" : "Save"}</button>
       ${!s.isNew && t.status !== "done" ? html`<button type="button" class="btn block" data-status="done">Mark done</button>` : ""}
     </form>`;

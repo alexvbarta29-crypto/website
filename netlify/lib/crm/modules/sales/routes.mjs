@@ -274,7 +274,7 @@ const tasksRoute = async (ctx) => {
   const ix = await readIndex("tasks/open", "");
   const me = assignee === "me" ? ctx.user.id : assignee;
   const rows = ix.rows.filter((r) => (!me || (r.a || []).includes(me)) && (!kind || r.k === kind) && (!status || r.st === status));
-  return { data: rows.map(rowView), meta: { total: rows.length, stale: ix.stale } };
+  return { data: rows.map((r) => ({ ...rowView(r), ...(r.ph ? { photo_id: r.ph, photos_n: r.pn || 1 } : {}) })), meta: { total: rows.length, stale: ix.stale } };
 };
 
 // A person's own open tasks (techs: theirs only, contacts as §4.6 allows).

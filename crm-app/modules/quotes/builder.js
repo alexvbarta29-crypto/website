@@ -15,7 +15,7 @@ import { busy, readMoney } from "../../core/forms.js";
 import { pickContact, pickFrom } from "../../core/pickers.js";
 import { money, phone } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
-import { capture, uploadPhoto } from "../../core/camera.js";
+import { capture, uploadPhoto, photoTile } from "../../core/camera.js";
 import {
   ensureStyles, WINDOW_TYPES, SERVICES, PLAN_NAMES, PLAN_FREQ, BILLING, warningText, scopeWords, parseVisits, qtyText, toMilli, lineTotal,
   optionTotals, discountText, visitsOf,
@@ -196,7 +196,7 @@ function extrasCard(s) {
     <label class="field"><span>Deposit value</span><input ${attrs({ "data-ag": "deposit_value", inputmode: "decimal", value: s.agreement.deposit.type === "fixed" ? (s.agreement.deposit.value / 100).toFixed(2) : s.agreement.deposit.type === "percent" ? String(s.agreement.deposit.value / 100) : "" })}></label></div>
   </section>` : ""}
   ${!s.isNew ? html`<section class="card"><h2>Photos and mockups</h2>
-    ${[...s.mockup_file_ids, ...s.photo_ids].length ? html`<div class="qb-photos">${[...s.mockup_file_ids, ...s.photo_ids].map((id) => html`<img ${attrs({ src: `/api/crm/files/${encodeURIComponent(id)}?thumb=1`, alt: "A photo on this quote", loading: "lazy" })}>`)}</div>` : html`<p class="small muted">The customer sees these on the quote.</p>`}
+    ${[...s.mockup_file_ids, ...s.photo_ids].length ? html`<div class="qb-photos">${[...s.mockup_file_ids, ...s.photo_ids].map((id) => photoTile(id, { alt: "A photo on this quote" }))}</div>` : html`<p class="small muted">The customer sees these on the quote.</p>`}
     <div class="qb-add"><button type="button" class="btn" data-photo="photo">${icon("phone")}Add a photo</button><button type="button" class="btn" data-photo="mockup">${icon("sun")}Add a mockup</button></div>
   </section>` : ""}`;
 }
