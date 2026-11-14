@@ -90,7 +90,20 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
   office instead).
 - **Property**: address and Directions, where it sits in the service area
   (distance from Delano, once Maps is live), access notes (gate code, pets,
-  parking), the counts quotes reuse, the lights profile.
+  parking), **Counts for quoting**, the lights profile.
+- **Counts for quoting** (`assets.mjs`, `property.assets`): windows by type
+  outside and inside (standard, slider, large, sliding door, French, front
+  door, small garage: the builder's types), the weighted pane totals the
+  engine prices (`panes_ext`, `panes_int`), screens, tracks and premium
+  tracks, stories, square feet, gutter feet, downspouts, roofline feet for
+  lights, the ladder, notes (ladder, access), the services and plan last
+  quoted, and where they came from (`from`: by hand, or the approved quote).
+  **Edit counts** (`contacts:write`) saves them with the totals worked out
+  from the windows. An approved quote fills them by itself (`quote.approved`:
+  the builder's measure and the approved option's ticked lines; stories,
+  gutters, the ladder and the notes stay as counted). **Re-quote**
+  (`quotes:write`) opens a new quote for the property already measured,
+  ticked and priced (one tap): `#/quotes/new/<contact>?property=<id>&requote=1`.
 - **Merge review** (Menu → Customers): possible duplicates, most certain first; each
   pair stacked with the differing fields highlighted. Keep the first /
   Keep the second / Not the same person. Bulk: dismiss every unlikely pair
@@ -220,6 +233,7 @@ stays there.
 | `PATCH /contacts/:id/flags` | owners | `{ test }`: a test contact (the bulk-send test contact needs one) |
 | `GET/POST /contacts/:id/properties`, `GET/PATCH /properties/:id` | `contacts:read` / `contacts:write` | a new address goes back in line for a map point |
 | `POST /properties/:id/geocode` | `contacts:write` | Google once Maps is live; `{ skipped: "dry_run" }` before |
+| `GET /properties/:id/requote` | `quotes:write` | what a new quote for the property starts from: `{ start: { measure, services, counts, plan, ready }, assets, counted_from }` |
 | `GET /merge-candidates` | `contacts:merge` | pending pairs with both contacts' rows |
 | `POST /merge-candidates/:id/merge` · `/dismiss` · `/merge-candidates/bulk` · `/contacts/:id/merge` | `contacts:merge` | merges run in the background (`GET /runs/:id`) |
 | `POST /hooks/lead/:token` | the token | Zapier's Meta lead → intake → `{ ok: true }` and nothing more, so a token can't tell whether a number is on file (401 for a wrong or revoked token) |
@@ -257,6 +271,9 @@ Services: `contacts.intake`, `contacts.resolve`, `contacts.findMatches`,
   `plan.activated` (mutates): a lead or former customer becomes a customer
   (report-only on imported contacts before cutover) and `customer_since` is
   set.
+- Listener `quote.approved` (mutates): the property's counts from the
+  approved quote (`assets.mjs` `onQuoteApproved`); a would- row on a
+  property the import brought in, before cutover.
 
 ## Automations
 

@@ -239,3 +239,11 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
   .ct-page{gap:20px}
   .ct-page .ct-sec-h{font-size:21px}
 }
+
+/* Property → Counts for quoting (windows by type, outside and inside) */
+.pr-win{width:100%;border-collapse:collapse;margin:4px 0 10px;font-size:15px}
+.pr-win th,.pr-win td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+.pr-win thead th{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pr-win td.num,.pr-win thead th+th{text-align:right;font-variant-numeric:tabular-nums}
+.pr-win-edit td{width:28%}
+.pr-win-edit input{width:100%;min-height:44px;font-size:16px;text-align:right}

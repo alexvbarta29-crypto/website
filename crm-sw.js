@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.14-4";
+const VERSION = "2026.11.14-5";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -192,6 +192,7 @@ const PRECACHE = [
   "/crm-app/modules/work/office-today-card.js",
   "/crm-app/modules/work/office-vpanel.js",
   "/crm-app/modules/work/office-weather.js",
+  "/crm-app/modules/work/settings-tracking.js",
   "/crm-app/modules/work/tech-kit.js",
   "/crm-app/modules/work/tech-pay.js",
   "/crm-app/modules/work/tech-styles.css",
@@ -203,6 +204,7 @@ const PRECACHE = [
   "/crm-app/modules/work/visit-step.js",
   "/crm-app/modules/work/visit-styles.css",
   "/crm-app/modules/work/visit.js",
+  "/crm-app/portal/account.js",
   "/crm-app/portal/core.js",
   "/crm-app/portal/money-card.js",
   "/crm-app/portal/money-dry.js",
@@ -211,6 +213,7 @@ const PRECACHE = [
   "/crm-app/portal/plans-hub.js",
   "/crm-app/portal/plans-login.js",
   "/crm-app/portal/quotes-quote.js",
+  "/crm-app/portal/track.js",
   "/crm-app/styles/crm.css",
   "/crm-app/vendor/maplibre-gl/maplibre-gl-csp-worker.js",
   "/crm-app/vendor/maplibre-gl/maplibre-gl-csp.js",

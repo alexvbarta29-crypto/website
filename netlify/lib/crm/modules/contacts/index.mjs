@@ -5,7 +5,7 @@
 // Files: types.mjs (contact, property, merge_candidate), display.mjs (names,
 // phones, addresses, the service-area tier; the legacy list's helpers live
 // here too), match.mjs (resolve, findMatches, merge candidates), intake.mjs
-// (intakeLead), hook.mjs (the website's dual-write after Rotor),
+// (intakeLead), assets.mjs (a property's counts for quoting), hook.mjs (the website's dual-write after Rotor),
 // webhook.mjs (POST /hooks/lead/:token and its tokens), merge.mjs (the
 // merge op and runs), properties.mjs (ensureProperty, geocoding),
 // stats.mjs (the contacts stats part, lifecycle), routes.mjs (the API),
@@ -23,6 +23,7 @@ import { ensureProperty, runGeocode } from "./properties.mjs";
 import { onMergeContacts } from "./merge.mjs";
 import { statsParts, lifecycleListeners, runContactStats } from "./stats.mjs";
 import { phases } from "./import-rotor.mjs";
+import { onQuoteApproved, requoteRoute } from "./assets.mjs";
 
 async function pendingCandidates() {
   const ix = await readIndex("merge-candidates", "");
@@ -33,8 +34,13 @@ export default defineModule({
   name: "contacts",
   types,
   statsParts,
-  routes: [...contactRoutes, ...webhookRoutes],
-  events: lifecycleListeners,
+  routes: [
+    ...contactRoutes, ...webhookRoutes,
+    // what a new quote for the property starts from (assets.mjs): the builder prices it in one tap
+    { method: "GET", path: "/properties/:id/requote", auth: "session", perm: "quotes:write", subject: "required", mode: "inline", handler: requoteRoute },
+  ],
+  // the property's counts follow an approved quote (assets.mjs)
+  events: { ...lifecycleListeners, "quote.approved": { handler: onQuoteApproved, mutates: true } },
   emits: ["lead.created", "contact.merged", "consent.changed"],
   services: {
     // (input, { origin, rotor? }, ctx) → { ok, contact_id, created, deal_id?, enrollment_id? } (§6.8)

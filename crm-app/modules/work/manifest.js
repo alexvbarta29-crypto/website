@@ -26,6 +26,8 @@ const office = {
     { path: "/visits", redirect: "/schedule?view=list", title: "Schedule", perm: "schedule:read" },
     { path: "/settings/checklists", load: () => import("./office-checklists.js"), title: "Checklists", perm: "settings:general", parent: "/settings", skeleton: "list" },
     { path: "/settings/checklists/:id", load: () => import("./office-checklist.js"), title: "Checklist", perm: "settings:general", parent: "/settings/checklists" },
+    // On my way's tracking link (cfg/tracking): on or off, the vehicles
+    { path: "/settings/tracking", load: () => import("./settings-tracking.js"), title: "Tracking link", perm: "settings:general", parent: "/settings" },
   ],
   nav: [
     { where: "more", section: "work", label: "Schedule", path: "/schedule", perm: "schedule:read", order: 23, icon: "schedule" },
@@ -37,7 +39,10 @@ const office = {
   // today's visits by person, and jobs that need a look (the office)
   // (home: false: Home has its own Today card from the same visits index, and the to-book and stale counts)
   todayCards: [{ key: "work", perm: "schedule:write", order: 15, home: false, load: () => import("./office-today-card.js") }],
-  settings: [{ label: "Checklists", path: "/settings/checklists", perm: "settings:general", icon: "check", order: 50 }],
+  settings: [
+    { label: "Checklists", path: "/settings/checklists", perm: "settings:general", icon: "check", order: 50 },
+    { label: "Tracking link", path: "/settings/tracking", perm: "settings:general", icon: "route", order: 51 },
+  ],
   styles: ["./office-styles.css"],
 };
 

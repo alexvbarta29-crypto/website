@@ -207,8 +207,10 @@ test("the return page, pages that don't exist yet, and an XSS probe in the path"
   assert.match(ret.text, /confirming your payment/);
   // Money's card page needs its link's session; a page no module has yet is a 404
   assert.equal((await t.portal("/p/card")).status, 401, "the card page opens only from its link");
-  const missing = await t.portal("/p/visits");
-  assert.equal(missing.status, 404, "past visits arrive later (P1)");
+  // (/p/visits is the customer's account now, portal/account.mjs: tests/crm/plans/account.test.mjs)
+  assert.equal((await t.portal("/p/visits")).status, 401, "the account's visits open only from a hub link");
+  const missing = await t.portal("/p/nothing-here");
+  assert.equal(missing.status, 404, "a page no module has");
   assertPortalHeaders(missing, "404");
   const xss = await t.portal("/p/%3C%2Fscript%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E");
   assert.ok(!xss.text.includes("<script>alert(1)"));
