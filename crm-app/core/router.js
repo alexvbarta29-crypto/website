@@ -191,7 +191,7 @@ export function headerKit(mod, state, ctx) {
   const hasMore = more.some((g) => (Array.isArray(g) ? g : [g]).some(Boolean));
   const now = () => (ctx && ctx.state !== undefined ? ctx.state : state);
   const sheetTitle = () => { try { return mod.moreTitle ? mod.moreTitle(now(), ctx) : null; } catch (e) { return null; } };
-  return { tools, hasMore, open: () => mod.more(now(), ctx) || [], sheetTitle };
+  return { tools, hasMore, open: () => { try { return mod.more(now(), ctx) || []; } catch (e) { toast("That menu didn't open. Try again.", { bad: true }); return []; } }, sheetTitle };
 }
 
 function header(title, showBack, act, kit = null) {
