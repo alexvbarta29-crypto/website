@@ -146,7 +146,8 @@ test("conditions over a record and its contact", () => {
 test("the events the builder adds: a visit starts (Scheduling), a tag is added (Contacts)", async () => {
   const { visitEventFor } = await import("../../../netlify/lib/crm/modules/work/office.mjs");
   assert.equal(visitEventFor("start", { status: "scheduled", date: "2026-11-17" }, { status: "in_progress", date: "2026-11-17" }), "visit.started");
-  assert.equal(visitEventFor("start", { status: "in_progress", date: "2026-11-17" }, { status: "in_progress", date: "2026-11-17" }), null, "a second tech joining isn't a new start");
+  assert.equal(visitEventFor("start", { status: "en_route", date: "2026-11-17" }, { status: "in_progress", date: "2026-11-17" }), "visit.started");
+  assert.equal(visitEventFor("start", { status: "paused", date: "2026-11-17" }, { status: "in_progress", date: "2026-11-17" }), null, "a resume after a pause isn't a new start");
   const { addedTags } = await import("../../../netlify/lib/crm/modules/contacts/tags.mjs");
   assert.deepEqual(addedTags(["VIP", "Gutters"], ["vip", "Gutters", "Lights"]), ["Lights"], "case aside, only what's new");
   const { EVENT_TRIGGERS } = C;

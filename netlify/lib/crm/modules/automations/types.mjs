@@ -21,6 +21,7 @@ import { cleanFlow } from "./catalog.mjs";
 export const RUN_STATUSES = Object.freeze(["running", "waiting", "done", "stopped", "skipped", "failed"]);
 export const STEP_STATUSES = Object.freeze(["pending", "waiting", "done", "queued", "would", "skipped", "bulk", "failed", "held"]);
 const sortOf = (iso) => tsKey(new Date(Date.parse(iso || 0) || 0));
+const FLOW_ID_RE = /^af_[0-9a-hjkmnp-tv-z]{20}$/;
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 
 function validateFlow(data, { op } = {}) {
@@ -49,7 +50,8 @@ export const flowType = defineType({
 function validateRun(data, { op } = {}) {
   const stored = op === "update";
   const out = shape(data, {
-    flow_id: (v, f) => { if (!isId(v, "flow")) throw new InputError("A run belongs to an automation.", f); return v; },
+    // the prefix by shape (a validator loaded without the registry, as an older deploy's is, knows no "af")
+    flow_id: (v, f) => { if (!FLOW_ID_RE.test(String(v))) throw new InputError("A run belongs to an automation.", f); return v; },
     flow_name: (v, f) => str(v, { field: f, max: 80 }),
     status: (v, f) => enumValue(v, RUN_STATUSES, { field: f, stored }) || "running",
     contact_id: (v, f) => (v === undefined || v === null ? undefined : isId(v, "contact") ? v : (() => { throw new InputError("That isn't a contact.", f); })()),
