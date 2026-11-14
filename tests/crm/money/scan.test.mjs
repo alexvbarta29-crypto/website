@@ -235,6 +235,7 @@ test("the staff screens: Show QR to pay on an open invoice, the code full screen
   const out = String(inv.default.render(base, ctx));
   // Rotor's look (Nov 2026): a round QR beside Send, and Show QR to pay in the round ...
   assert.match(out, /data-act="qr"[^>]*>[\s\S]*?<span class="rs-q-l">QR<\/span>/);
+  assert.match(out, /aria-label="Show QR to pay" data-act="qr"/, "the round QR keeps the full name for a screen reader");
   assert.ok(inv.default.more(base, ctx).flat().some((r) => r && r.label === "Show QR to pay" && r.data.act === "qr"));
   assert.match(out, /Pay code shown<\/dt><dd>2 times, the last/);
   assert.match(out, /Opened from the code<\/dt><dd>/);

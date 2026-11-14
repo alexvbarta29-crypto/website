@@ -578,14 +578,17 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     // Quotes too
     await goTo(f, `/quotes/${seeded.quotes.sent}`);
     assert.ok(await f.$('#view [data-chip]'), "the quotes list on the left");
-    assert.match(await f.textContent("#pane"), /SQ-|Q-/);
+    assert.ok(await f.$("#pane .qt-page"), "the quote beside it");
+    assert.match(await title(f), /^Quote (SQ-|Q-)/, "the quote's number heads the screen");
+    assert.equal(await f.isVisible("#top-title"), true);
     await shot(page, "home-desk-quotes-split");
     // narrower than 1000 px: one screen at a time again
     await page.setViewportSize({ width: 960, height: 800 });
     await f.waitForFunction(() => document.getElementById("pane").hidden && !document.getElementById("app").classList.contains("split"));
     assert.equal(await hashOf(f), `#/quotes/${seeded.quotes.sent}`);
     await settled(f);
-    assert.match(await f.textContent("#view"), /SQ-|Q-/, "the quote fills the view");
+    await f.waitForSelector("#view .qt-page", { timeout: 10000 }); // the quote fills the view
+    assert.match(await title(f), /^Quote (SQ-|Q-)/);
     await p.clean();
   } finally { await p.close(); }
   // a phone: the contact alone, the pane never shows

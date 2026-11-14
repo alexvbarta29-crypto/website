@@ -140,6 +140,8 @@ test("notesBox, disclosure, form rows, toggle, quickRow", () => {
   assert.match(q, /^<div class="rs-qrow"><a href="tel:\+17635550100" class="rs-q"><span class="rs-q-c"><svg/);
   assert.match(q, /<button type="button" class="rs-q" data-photos=""><span class="rs-q-c"><svg[^]*?<span class="badge">2<\/span><\/span><span class="rs-q-l">Photos<\/span>/);
   assert.match(q, /data-external="top" class="rs-q"/);
+  assert.doesNotMatch(q, /aria-label/, "the label is the name unless one is given");
+  assert.match(h(quickRow([{ icon: "qr", label: "QR", aria: "Show QR to pay", data: { act: "qr" } }])), /<button type="button" class="rs-q" aria-label="Show QR to pay" data-act="qr">/);
 });
 
 test("the router's header contract: at most two tools, the ... only with rows, asked again on the tap", () => {

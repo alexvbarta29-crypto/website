@@ -186,9 +186,13 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
       // Re-quote: the builder opens filled from the counts and prices itself
       await f.click("[data-requote]");
-      await f.waitForFunction(() => /Filled from the property's counts/.test(document.getElementById("view").textContent), null, { timeout: 10000 });
       await f.waitForFunction(() => /Quarterly plan/.test(document.getElementById("view").textContent) && document.querySelectorAll(".qb-lines li").length > 0, null, { timeout: 15000 });
       assert.equal(await title(f), "New quote");
+      assert.equal(await f.getAttribute('[data-seg=qb][data-key=price]', "aria-selected"), "true", "priced, it shows the Price segment");
+      // the counts it was priced from sit under Measure
+      await f.click('[data-seg=qb][data-key=measure]');
+      await f.waitForSelector("[data-panes]", { timeout: 5000 });
+      assert.match(await f.textContent("#view"), /Filled from the property's counts/);
       assert.match(await f.textContent("[data-panes]"), /^38$/, "the weighted panes from the counted windows");
       assert.deepEqual(await screenProblems(f), [], "the re-quote passes");
       await shot(p.page, `portal-requote-${device}`);

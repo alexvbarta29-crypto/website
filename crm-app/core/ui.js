@@ -668,10 +668,11 @@ export const toggle = (on, { data = null, label = null, disabled = false } = {})
 
 // The labelled quick row (visit: Call · Navigate · Photos · Checklist; invoice: QR · Record · Card):
 // 56 px round buttons with a label under each and an optional count badge.
+// aria: the full name when the short label alone would be vague ("QR" → "Show QR to pay").
 export function quickRow(items) {
   return html`<div class="rs-qrow">${(items || []).filter(Boolean).map((q) => {
     const inner = html`<span class="rs-q-c">${icon(q.icon)}${q.badge ? html`<span class="badge">${String(q.badge)}</span>` : ""}</span><span class="rs-q-l">${q.label}</span>`;
-    const a = { class: "rs-q" + (q.tone ? " " + q.tone : ""), ...dataOf(q.data) };
+    const a = { class: "rs-q" + (q.tone ? " " + q.tone : ""), "aria-label": q.aria || null, ...dataOf(q.data) };
     if (q.ext) return html`<a ${openExternal(q.ext)} ${attrs(a)}>${inner}</a>`;
     if (q.href) return html`<a ${attrs({ href: q.href, ...a })}>${inner}</a>`;
     return html`<button type="button" ${attrs({ ...a, disabled: !!q.disabled })}>${inner}</button>`;

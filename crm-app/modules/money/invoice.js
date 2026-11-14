@@ -117,9 +117,9 @@ function actionRow(s) {
   const inv = s.invoice;
   const send = c.issue || c.send;
   const q = [
-    c.qr && { icon: "qr", label: "QR", data: { act: "qr" } },
-    c.record && { icon: "money", label: "Record", data: { act: "record" } },
-    c.charge && s.card && s.card.last4 && { icon: "pay", label: "Card", data: { act: "charge" } },
+    c.qr && { icon: "qr", label: "QR", aria: "Show QR to pay", data: { act: "qr" } },
+    c.record && { icon: "money", label: "Record", aria: "Record a payment", data: { act: "record" } },
+    c.charge && s.card && s.card.last4 && { icon: "pay", label: "Card", aria: "Charge the card", data: { act: "charge" } },
   ].filter(Boolean);
   if (!send && !q.length) return "";
   return html`<div class="mn-actrow">${send ? pillBtn(c.issue ? "Send to the customer" : inv.sent_at ? "Send again" : "Send", { tone: "solid", icon: "send", data: { act: "send" } }) : ""}${q.length ? quickRow(q) : ""}</div>`;
