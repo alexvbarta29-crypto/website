@@ -331,6 +331,51 @@ export const MAX_RANGE_DAYS = 42;
 export const toBookRows = (rows, month) => rows.filter((r) => r.st === "unscheduled" && (!r.tm || r.tm <= month))
   .sort((a, b) => String(a.tm || "").localeCompare(String(b.tm || "")) || String(a.u).localeCompare(String(b.u)));
 
+// The Pending jobs page (guide-gaps S8b, the same rule as To book): jobs with no visit due in the
+// months the dates touch, and those with no month (due whenever); with overdue, also the ones due before.
+export function pendingRows(rows, from, to, { overdue = false } = {}) {
+  const a = from.slice(0, 7), b = to.slice(0, 7);
+  return rows.filter((r) => r.st === "unscheduled" && (r.tm ? r.tm <= b && (overdue || r.tm >= a) : true))
+    .sort((x, y) => String(x.tm || "").localeCompare(String(y.tm || "")) || String(x.u).localeCompare(String(y.u)));
+}
+
+// The time blocks (time_off kind block, S8a) in a range, as the Day grid draws them. Pure.
+export function blocksOf(timeOff = [], from, to) {
+  const out = [];
+  for (const t of timeOff) {
+    if (t.k !== "block" || !t.e) continue;
+    const date = localDate(new Date(t.s));
+    if (date < from || date > to) continue;
+    out.push({ id: t.id, user_id: t.uid, date, start: localTime(new Date(t.s)), end: localTime(new Date(t.e)), label: t.r || "Blocked" });
+  }
+  return out;
+}
+
+// The holidays in a range with their names ({ "2026-11-26": "Thanksgiving" }). Pure.
+export function holidaysIn(from, to, calendar = DEFAULT_CALENDAR) {
+  const out = {};
+  for (let d = from, i = 0; d <= to && i < 62; d = addLocalDays(d, 1), i++) {
+    if (!isHoliday(d, calendar)) continue;
+    out[d] = d === thanksgiving(Number(d.slice(0, 4))) ? "Thanksgiving" : d.slice(5) === "12-25" ? "Christmas" : "Closed";
+  }
+  return out;
+}
+
+// Every person's stops on one day (the Map tab, S8d): [{ user_id, stops: [{ id, n, cn, town, s, e, geo }] }]
+// in each person's drive order, plus the visits with nobody on them and those without a map point. Pure.
+export function dayRoutes(rows, props = new Map()) {
+  const live = rows.filter((r) => !["cancelled", "no_access"].includes(r.st));
+  const geoOf = (r) => { if (Array.isArray(r.geo)) return r.geo; const p = props.get(r.pr); return p && p.geo && Number.isFinite(p.geo.lat) && Number.isFinite(p.geo.lng) ? [p.geo.lat, p.geo.lng] : null; };
+  const no = (o, uid) => (typeof o === "number" ? o : o && typeof o === "object" && Number.isInteger(o[uid]) ? o[uid] : 999);
+  const people = [...new Set(live.flatMap((r) => r.a || []))];
+  const routes = people.map((uid) => ({
+    user_id: uid,
+    stops: live.filter((r) => (r.a || []).includes(uid)).sort((x, y) => no(x.o, uid) - no(y.o, uid) || String(x.s).localeCompare(String(y.s)))
+      .map((r, i) => ({ id: r.id, n: i + 1, cn: r.cn || "", town: r.town || "", s: r.do ? null : r.s, e: r.do ? null : r.e, st: r.st, geo: geoOf(r) })),
+  }));
+  return { routes, no_person: live.filter((r) => !(r.a || []).length).length, no_address: live.filter((r) => !geoOf(r)).length };
+}
+
 // The months (yyyy-mm) a date range touches.
 export function monthsOf(from, to) {
   const out = [];

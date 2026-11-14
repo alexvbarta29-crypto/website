@@ -437,7 +437,8 @@ function grid(s, ctx, lanes, { day, days, compact = false }) {
   const timedAll = lanes.flatMap((l) => l.visits.filter((v) => !v.do));
   const tasksAll = lanes.flatMap((l) => l.tasks || []);
   const span = hoursSpan(s.data.hours, day || days[0]);
-  const [a, b] = dayBounds([...timedAll, ...tasksAll.map((x) => ({ s: x.start, e: x.end }))], span);
+  const blocksAll = lanes.flatMap((l) => l.blocks || []);
+  const [a, b] = dayBounds([...timedAll, ...tasksAll.map((x) => ({ s: x.start, e: x.end })), ...blocksAll.map((x) => ({ s: x.start, e: x.end }))], span);
   const hours = Array.from({ length: (b - a) / 60 }, (_, i) => a + i * 60);
   const nowLine = Number.isFinite(s.nowMin) && s.nowMin >= a && s.nowMin <= b ? s.nowMin : null;
   const anyRow = lanes.some((l) => l.visits.some((v) => v.do));
@@ -458,6 +459,7 @@ function grid(s, ctx, lanes, { day, days, compact = false }) {
     return html`<div class="${"wk-lane wk-drop" + (today && nowLine !== null ? " now" : "")}" ${attrs({ "data-drop": "", "data-dday": l.date, "data-user": l.user, "data-top": String(a), style: `height:${(b - a) * PX_PER_MIN}px` })}>
       ${hours.map((h) => html`<span class="wk-lline" ${attrs({ style: `top:${(h - a) * PX_PER_MIN}px` })}></span>`)}
       ${today && nowLine !== null ? html`<span class="wk-nowline" ${attrs({ style: `top:${(nowLine - a) * PX_PER_MIN}px` })}></span>` : ""}
+      ${(l.blocks || []).map((x) => { const f0 = toMin(x.start), t0 = Math.max(toMin(x.end), f0 + MIN_BLOCK); return f0 === null ? "" : html`<span class="wk-tblock" ${attrs({ style: `top:${(f0 - a) * PX_PER_MIN}px;height:${(t0 - f0) * PX_PER_MIN - 2}px`, title: `${x.label}, ${clock(x.start)} to ${clock(x.end)}` })}><span class="nm">${x.label}</span><span class="tm num">${shortTime(x.start)} to ${shortTime(x.end)}</span></span>`; })}
       ${timed.map((v) => block(s, v, { uid: l.user, top: a, pack, canDrag, prices, compact }))}
       ${[...crowded.values()].map((g) => html`<button type="button" class="wk-blk group" ${attrs({ "data-goday": l.date, "data-gotech": s.tech || "", style: `top:${(g.from - a) * PX_PER_MIN}px;height:${(g.to - g.from) * PX_PER_MIN - 2}px;left:2px;width:calc(100% - 4px)`, "aria-label": `${plural(g.n, "visit")} from ${clock(fromMin(g.from))}: open the day` })}><span class="nm">${plural(g.n, "visit")}</span><span class="tm num">${shortTime(fromMin(g.from))} to ${shortTime(fromMin(g.to))}</span></button>`)}
       ${(l.tasks || []).map((x) => {
@@ -495,6 +497,7 @@ export function dayColumns(s, ctx) {
     const list = visits.filter((v) => mine(v.a, id));
     return {
       date: d, user: id, visits: list, tasks: id ? tasks.filter((x) => (x.a || []).includes(id)) : [],
+      blocks: id ? ((s.data && s.data.blocks) || []).filter((x) => x.date === d && x.user_id === id) : [],
       head: colHead(u ? u.name : "Unassigned", columnStats(list), { prices, color: u ? u.color || "#4a4a52" : null, cls: u ? "" : "nobody" }),
     };
   });

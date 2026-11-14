@@ -644,3 +644,16 @@
 .wk-jrow:active{background:var(--fill)}
 @media (hover:hover) and (pointer:fine){.wk-jrow:hover{background:var(--fill)}}
 @media (min-width:900px){.view>.stack.wk-jobs{max-width:820px}}
+
+/* the Rotor guide's Schedule (guide-gaps SC7, SC10-SC12): time blocks, holidays, the Map tab */
+.wk-tblock{position:absolute;left:2px;right:2px;z-index:0;display:flex;flex-direction:column;gap:2px;padding:4px 6px;border-radius:8px;overflow:hidden;color:var(--ink-2);font-size:12px;background:repeating-linear-gradient(135deg,var(--fill) 0 6px,transparent 6px 12px);border:1px dashed var(--line-2)}
+.wk-tblock .nm{font-weight:600}
+.wk-hol{display:inline-block;padding:1px 6px;border-radius:999px;background:rgba(255,149,0,.16);color:#c76a00;font-size:11px;font-weight:600}
+html[data-theme="dark"] .wk-hol{color:#ffb357}
+.wk-sday.hol b{color:#c76a00}
+.wk-week th.hol .wk-hol{display:block;margin-top:2px;padding:0 3px}
+.wk-mapv{display:flex;flex-direction:column;gap:10px}
+.wk-mapchips{flex-wrap:wrap}
+.wk-mapchips .rs-chip[aria-pressed="false"]{opacity:.5}
+.wk-mapcard{padding:8px}
+.wk-maps{width:100%;height:auto;display:block}
