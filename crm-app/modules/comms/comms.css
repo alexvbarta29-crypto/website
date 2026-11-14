@@ -91,3 +91,17 @@ html:not([data-theme="light"]) .cm-av{background:var(--card-2)!important;color:v
 .cm-files .chip .linkish{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
 .cm-files .chip svg{width:16px;height:16px}
 .cm-panel .cm-create .rs-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+/* Reviews: the star spread (Flyra's), the actions, the add sheet's stars */
+.cm-dist{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.cm-dist-r{display:grid;grid-template-columns:40px 1fr 32px;align-items:center;gap:8px;font-size:13px}
+.cm-dist-b{height:8px;border-radius:999px;background:var(--fill-2);overflow:hidden}
+.cm-dist-b i{display:block;height:100%;background:var(--amber);border-radius:999px}
+.cm-dist-n{text-align:right;color:var(--ink-2)}
+.cm-rv-acts{display:flex;flex-wrap:wrap;gap:8px}
+.cm-starpick{border:0;padding:0;margin:0;display:flex;gap:6px;flex-wrap:wrap}
+.cm-starpick legend{font-size:14px;margin-bottom:6px}
+.cm-starpick label{position:relative;display:inline-flex}
+.cm-starpick input{position:absolute;opacity:0;width:1px;height:1px}
+.cm-starpick span{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line-2);border-radius:var(--r);font-weight:600}
+.cm-starpick input:checked+span{background:var(--solid);color:var(--on-solid);border-color:var(--solid)}
+.cm-starpick input:focus-visible+span{box-shadow:var(--focus)}

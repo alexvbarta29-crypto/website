@@ -273,4 +273,5 @@ export const reviewType = defineType({
   example: () => ({ gbp_review_id: "sample-review-1", reviewer_name: "Pat E.", rating: 5, comment_excerpt: "Spotless windows.", created_at_gbp: "2026-11-16T15:00:00.000Z", suggestions: [] }),
 });
 
-export const types = [conversationType, messageType, campaignType, reviewType];
+import { ratingType } from "./ratings.mjs";
+export const types = [conversationType, messageType, campaignType, reviewType, ratingType];

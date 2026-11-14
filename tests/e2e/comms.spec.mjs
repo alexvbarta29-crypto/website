@@ -288,6 +288,35 @@ test("comms: Reviews (match a review to its customer) and the setup page", async
   try {
     await goTo(f, "/reviews");
     assert.equal(await title(f), "Reviews");
+    // star ratings: tiles that ARE the filter, the spread, a low one to call back
+    assert.deepEqual(await f.$$eval("#view [data-tile=rv]", (els) => els.map((e) => e.dataset.key)), ["all", "needs_follow_up", "public"]);
+    assert.match(await text(f), /Star ratings are built and off until the switch/);
+    assert.ok(await f.$(".cm-dist"), "the spread of stars");
+    assert.match(await text(f), /Google ✓/);
+    await f.click('#view [data-tile=rv][data-key="needs_follow_up"]');
+    await f.waitForFunction(() => { const b = document.querySelector('#view [data-tile=rv][data-key="needs_follow_up"]'); return b && b.getAttribute("aria-pressed") === "true"; }, null, { timeout: 8000 });
+    assert.equal(await f.$$eval("#view [data-rating]", (els) => els.length), 1);
+    await f.click(`#view [data-rating="${c.ratings.low}"]`);
+    await f.waitForSelector(".sheet.on [data-fu]");
+    await f.waitForFunction(() => /garage/.test(document.querySelector(".sheet.on [data-rt-words]").textContent));
+    assert.deepEqual(await screenProblems(f), [], "a rating's sheet passes the phone checks");
+    await shot(page, "comms-rating-sheet");
+    await f.click(".sheet.on [data-fu]");
+    await toastSays(f, /followed up/);
+    await sheetGone(f);
+    await f.waitForFunction(() => !document.querySelector("#view [data-rating]"), null, { timeout: 8000 });
+    await f.click('#view [data-tile=rv][data-key="needs_follow_up"]');
+    await f.waitForSelector("#view [data-rv-add]");
+    await f.click("#view [data-rv-add]");
+    await sheetUp(f, /Add a review/);
+    assert.deepEqual(await screenProblems(f), [], "the add sheet passes the phone checks");
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
+    await f.click("#view [data-rv-board]");
+    await sheetUp(f, /Review leaderboard/);
+    assert.match(await text(f, ".sheet.on"), /2 ratings/);
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
     assert.match(await text(f), /aren't being read here yet/, "reading Google reviews is off until an owner switches it on");
     assert.match(await text(f), /1 to check/);
     assert.deepEqual(await screenProblems(f), [], "Reviews passes the phone checks");
@@ -299,7 +328,13 @@ test("comms: Reviews (match a review to its customer) and the setup page", async
     await shot(page, "comms-review-sheet");
     await f.click(`.sheet [data-sug="${c.customer}"]`);
     await toastSays(f, /Matched/);
-    await f.waitForFunction(() => /Matched/.test((document.querySelector("#view .pill.green") || {}).textContent || ""), null, { timeout: 8000 });
+    await f.waitForFunction(() => /Matched/.test((document.querySelector("#view [data-review] .pill.green") || {}).textContent || ""), null, { timeout: 8000 });
+
+    await goTo(f, "/settings/reviews");
+    assert.equal(await title(f), "Reviews");
+    assert.match(await text(f), /Every rating/);
+    assert.deepEqual(await screenProblems(f), [], "the review settings pass the phone checks");
+    await shot(page, "comms-review-settings");
 
     await goTo(f, "/settings/texting");
     assert.equal(await title(f), "Texting, email & reviews");

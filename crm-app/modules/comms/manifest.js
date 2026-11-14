@@ -16,6 +16,7 @@ export default {
     { path: "/settings/texting", load: () => import("./setup.js"), title: "Texting, email & reviews", perm: "settings:messaging", parent: "/settings" },
     { path: "/settings/inboxes", load: () => import("./inboxes.js"), title: "Team inboxes", perm: "settings:messaging", parent: "/inbox", skeleton: "list" },
     { path: "/settings/numbers", load: () => import("./numbers.js"), title: "Business numbers", perm: "settings:messaging", parent: "/settings" },
+    { path: "/settings/reviews", load: () => import("./review-settings.js"), title: "Reviews", perm: "settings:messaging", parent: "/settings" },
     { path: "/settings/muted", load: () => import("./muted.js"), title: "Muted contacts", perm: "consent:edit", parent: "/settings", skeleton: "list" },
   ],
   nav: [
@@ -30,6 +31,7 @@ export default {
     { label: "Texting, email & reviews", path: "/settings/texting", perm: "settings:messaging", icon: "text", order: 47 },
     { label: "Business numbers", path: "/settings/numbers", perm: "settings:messaging", icon: "phone", order: 48 },
     { label: "Muted contacts", path: "/settings/muted", perm: "consent:edit", icon: "pause", order: 49 },
+    { label: "Reviews", path: "/settings/reviews", perm: "settings:messaging", icon: "star", order: 50 },
   ],
   styles: ["./comms.css"],
 };

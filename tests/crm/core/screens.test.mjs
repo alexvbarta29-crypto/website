@@ -173,7 +173,7 @@ test("Settings groups (pure): every LAYOUT row in exactly one group, nothing los
   assert.deepEqual(rows.business, ["Company details", "Service area", "Hours & holidays", "Tracking link"]);
   assert.deepEqual(rows.team, ["Team", "Permissions", "Payroll & pay rates"]);
   assert.deepEqual(rows.services, ["Prices & price book", "Discounts", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
-  assert.deepEqual(rows.messages, ["Message templates", "Automatic messages", "Follow-up cadences", "Quiet hours & opt-out", "Texting & email setup", "Business numbers", "Muted contacts", "Approvals", "Outbox (not sent)"]);
+  assert.deepEqual(rows.messages, ["Message templates", "Automatic messages", "Follow-up cadences", "Quiet hours & opt-out", "Texting & email setup", "Business numbers", "Muted contacts", "Reviews", "Approvals", "Outbox (not sent)"]);
   assert.deepEqual(rows.payments, ["Payments & card fees"]);
   assert.deepEqual(rows.connections, ["Integrations", "Claude connector", "Where website leads go", "Facebook lead forms", "Maps & team map", "Door to door"]);
   assert.deepEqual(rows.data, ["Import from Rotor", "Switch from Rotor", "Data & backups", "Dashboard numbers", "Activity log", "Rotor's first customer list", "Open Rotor"]);

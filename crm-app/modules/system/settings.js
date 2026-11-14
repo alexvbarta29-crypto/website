@@ -52,6 +52,7 @@ export const LAYOUT = Object.freeze([
     ["/settings/texting", "Texting & email setup", "mail", "texting"],
     ["/settings/numbers", "Business numbers", "phone", "numbers"],
     ["/settings/muted", "Muted contacts", "pause", "muted"],
+    ["/settings/reviews", "Reviews", "star", "reviews"],
     ["/approvals", "Approvals", "check", "approvals"],
     ["/outbox", "Outbox (not sent)", "send", "outbox"]]],
   ["payments", "Payments", "receipt", "green", [

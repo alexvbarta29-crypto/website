@@ -42,6 +42,7 @@ import { emailLayout } from "./email-layout.mjs";
 import { campaignRoutes, startCampaign } from "./campaigns.mjs";
 import { reviewRoutes, reviewSequence, reviewListeners, pollReviews, isReviewed, validateReviews, REVIEWS_DEFAULTS } from "./reviews.mjs";
 import { setupRoutes } from "./setup.mjs";
+import { ratingRoutes, portalRoutes } from "./ratings.mjs";
 import { INBOXES_DEFAULTS, validateInboxes, ENGAGEMENT_DEFAULTS, validateEngagement, SMS_PRICING_DEFAULTS, validateSmsPricing } from "./inboxes.mjs";
 import { mcpTools } from "./mcp.mjs";
 
@@ -119,7 +120,9 @@ export default defineModule({
     engagement: { defaults: { ...ENGAGEMENT_DEFAULTS, numbers: [] }, validate: validateEngagement, perm: "settings:messaging" },
     sms_pricing: { defaults: { ...SMS_PRICING_DEFAULTS }, validate: validateSmsPricing, perm: "settings:messaging" },
   },
-  routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...setupRoutes, ...hookRoutes],
+  routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...ratingRoutes, ...setupRoutes, ...hookRoutes],
+  // the customer's star page (in-app ratings, off until the switch)
+  portalRoutes,
   events: reviewListeners,
   emits: ["message.inbound", "review.matched"],
   queue: {
@@ -159,7 +162,7 @@ export default defineModule({
     "email.history": { label: "Emails in Rotor (imported)", icon: "mail" },
     "review.matched": { label: "Left a Google review", icon: "check" },
   },
-  exportTypes: ["conversation", "message", "campaign", "review"],
+  exportTypes: ["conversation", "message", "campaign", "review", "rating"],
   mcpTools,
   importPhases: phases,
 });
