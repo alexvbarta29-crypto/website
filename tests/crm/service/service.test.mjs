@@ -215,3 +215,41 @@ test("GET /plans: the Plans tab's Projected ARR (Home's math) and after agreemen
     assert.equal((await t.api(`/plans?contact=${c.id}`, { as: owner })).body.meta.arr, undefined, "the contact's tab doesn't need it");
   } finally { t.done(); }
 });
+
+test("the Save center (S38, Q4): an admin's cancel becomes a request the team works; owners cancel; the Plans tile and Home's reminders count it", async () => {
+  const { t, owner, admin, tech } = await setup();
+  try {
+    const { planType } = await import("../../../netlify/lib/crm/modules/plans/types.mjs");
+    const SV = await import("../../../netlify/lib/crm/modules/plans/save.mjs");
+    const c = await customer(owner);
+    const ex = planType.example();
+    const plan = (await store.createRecord("plan", { ...ex, contact_id: c.id, status: "active", pending_reasons: [], ordinals: [{ term: 1, n: 1, k: 1, target_month: "2026-12", status: "unscheduled" }] }, AS(owner))).data;
+    assert.equal((await t.api(`/plans/${plan.id}/cancel`, { method: "POST", as: admin, body: { reason: "price", note: "Too much" } })).status, 409, "not an admin");
+    assert.equal((await t.api(`/plans/${plan.id}/cancel-request`, { method: "POST", as: admin, body: { reason: "nope" } })).status, 400);
+    assert.equal((await t.api(`/plans/${plan.id}/cancel-request`, { method: "POST", as: tech, body: { reason: "price" } })).status, 403);
+    const r = await t.api(`/plans/${plan.id}/cancel-request`, { method: "POST", as: admin, body: { reason: "price", note: "Neighbor pays less" } });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const cr = r.body.data.plan.cancel_request;
+    assert.equal(cr.status, "open");
+    assert.equal(cr.priority, "high", "a visit due next month");
+    assert.equal((await t.api(`/plans/${plan.id}/cancel-request`, { method: "POST", as: admin, body: { reason: "price" } })).body.data.existed, true, "one open request");
+    const save = await t.api("/plans/save", { as: owner });
+    assert.deepEqual(save.body.data.map((x) => x.id), [plan.id]);
+    assert.deepEqual(save.body.meta.tiles, { open: 1, high: 1 });
+    assert.equal((await t.api("/plans", { as: owner })).body.data[0].sr, 2, "the Plans tile Cancel requests (red when high)");
+    const w1 = await t.api(`/plans/${plan.id}/cancel-request`, { method: "PATCH", as: admin, body: { steps_done: ["call", "why"] } });
+    assert.equal(w1.body.data.plan.cancel_request.status, "contacted");
+    const w2 = await t.api(`/plans/${plan.id}/cancel-request`, { method: "PATCH", as: admin, body: { offer: "change_frequency" } });
+    assert.equal(w2.body.data.plan.cancel_request.status, "offered");
+    assert.equal((await t.api(`/plans/${plan.id}/cancel-request`, { method: "PATCH", as: admin, body: { offer: "free_money" } })).status, 400);
+    const rem = await SV.planReminders();
+    assert.equal(rem.boxes[0].lists.find((x) => x.key === "save").count, 1);
+    const w3 = await t.api(`/plans/${plan.id}/cancel-request`, { method: "PATCH", as: admin, body: { status: "saved" } });
+    assert.equal(w3.body.data.plan.cancel_request.status, "saved");
+    assert.ok(w3.body.data.plan.cancel_request.outcome_at);
+    assert.equal((await t.api(`/plans/${plan.id}/cancel-request`, { method: "PATCH", as: admin, body: { status: "cancelled" } })).status, 409, "closed");
+    assert.equal((await t.api("/plans/save", { as: owner })).body.data.length, 0);
+    assert.equal(SV.savePriority({ ordinals: [], billing: { autopay: false } }, "2026-11-17"), "normal");
+    assert.equal(SV.savePriority({ ordinals: [], billing: { autopay: true } }, "2026-11-27"), "high", "an autopay charge on the 1st within 7 days");
+  } finally { t.done(); }
+});

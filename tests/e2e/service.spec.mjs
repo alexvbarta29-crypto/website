@@ -161,6 +161,43 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
       await p.clean();
     } finally { await p.close(); }
   });
+
+  test(`a plan (${device}, ${theme}): this year, the history strip, each visit's cost; an admin asks to cancel and the team saves it`, async () => {
+    const { p, page, f } = await open("ada", device, theme);
+    const problems = [];
+    try {
+      const id = device === "iphone13" ? seeded.plans.active : seeded.plans.lights;
+      await goTo(f, `/plans/${id}`);
+      await f.waitForSelector(".sv-strip");
+      assert.match(await f.textContent(".pl-page"), /This year[\s\S]*How often[\s\S]*Next visit/);
+      assert.match(await f.textContent(".sv-strip"), /Sold/);
+      await checks(f, page, `service-plan-${device}-${theme}`, problems);
+      await f.click("#top-more");
+      await sheetUp(f, /./);
+      const rows = await f.$$eval(".sheet.on .rs-act-l", (x) => x.map((e) => e.textContent));
+      assert.ok(rows.includes("Ask to cancel") && !rows.includes("Cancel plan"), "an admin asks (Q4)");
+      await f.click(".sheet.on [data-act=ask-cancel]");
+      await sheetUp(f, /Ask to cancel/);
+      await f.selectOption(".sheet.on [name=reason]", "price");
+      await f.fill(".sheet.on [name=note]", "Found a cheaper guy.");
+      await f.click(".sheet.on [data-ask-cancel] [type=submit]");
+      await sheetGone(f);
+      await f.waitForSelector(".pl-save");
+      assert.match(await f.textContent(".pl-save"), /Wants to cancel[\s\S]*Found a cheaper guy/);
+      await checks(f, page, `service-plan-save-${device}-${theme}`, problems);
+      await f.click('.pl-save [data-save-step="call"]');
+      await f.waitForSelector('.pl-save [data-save-step="call"][aria-checked="true"]');
+      await f.click('.pl-save [data-save-offer="pause"]');
+      await f.waitForSelector('.pl-save [data-save-offer="pause"][aria-checked="true"]');
+      assert.match(await f.textContent(".pl-save"), /Offered/);
+      await f.click('.pl-save [data-save-out="saved"]');
+      await sheetUp(f, /Saved/);
+      await f.click(".sheet.on [data-a=yes]");
+      await f.waitForFunction(() => !document.querySelector(".pl-save"));
+      assert.deepEqual(problems, []);
+      await p.clean();
+    } finally { await p.close(); }
+  });
 }
 
 test("a desk at 1440: the Jobs tiles and a request page still lay out", async () => {

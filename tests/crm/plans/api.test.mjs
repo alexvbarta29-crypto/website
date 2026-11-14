@@ -62,8 +62,8 @@ test("the clawback: a cancel inside the first year after visit 1 was done waits 
     await scope(() => WORK.createVisit({ job_id: plan.ordinals[0].job_id, date: "2026-11-18", start: "09:00", end: "11:00", assignee_ids: [] }, { write: () => AS(owner) }));
     await scope(() => WORK.completeJob(plan.ordinals[0].job_id, { write: () => AS(owner) }));
     await drain(t, 3);
-    assert.equal((await t.api(`/plans/${plan.id}/cancel`, { method: "POST", as: admin, body: { reason: "moving" } })).status, 400, "an admin adds a note");
-    const c = await t.api(`/plans/${plan.id}/cancel`, { method: "POST", as: admin, body: { reason: "moving", note: "Selling the house" } });
+    assert.equal((await t.api(`/plans/${plan.id}/cancel`, { method: "POST", as: admin, body: { reason: "moving", note: "Selling the house" } })).status, 409, "an admin sends a cancel request (the Save center); owners cancel");
+    const c = await t.api(`/plans/${plan.id}/cancel`, { method: "POST", as: owner, body: { reason: "moving", note: "Selling the house" } });
     await finishRun(t, c.body.data.run_id);
     let p = await planOf(plan.id);
     assert.equal(p.cancel.clawback_cents, 10000);

@@ -11,7 +11,8 @@
 //   POST /plans/:id/confirm-season {season}     a lights customer said yes to that season (a run: its install is made)
 //   POST /plans/:id/change-price {new_lines, effective_on}
 //   POST /plans/:id/edit {changes, preview?}     frequency, length, renewal, start, billing (a run; preview: what changes)
-//   GET  /plans/:id/cancel-quote?requested_on=   the policy calculator, before confirming
+//   GET  /plans/:id/cancel-quote?requested_on=   the policy calculator, before confirming (POST cancel: owners only, Q4)
+//   POST|PATCH /plans/:id/cancel-request · GET /plans/save   the Save center (save.mjs)
 //   POST /plans/:id/send-agreement {channels}    the plan's agreement, made and sent
 //   POST /plans/request-signatures {plan_ids}    a run that ends in a bulk run
 //   GET  /agreement-templates · GET/PATCH /agreement-templates/:id · POST /agreement-templates
@@ -24,7 +25,7 @@ import { getRecord, getRecords, listRel, readIndex } from "../../../crm-store.mj
 import { arrOn } from "../system/home-kpis.mjs";
 import { isId } from "../../core/ids.mjs";
 import { now, localDate } from "../../core/clock.mjs";
-import { InputError, NotFoundError } from "../../core/errors.mjs";
+import { InputError, NotFoundError, ConflictError } from "../../core/errors.mjs";
 import { has, call } from "../../core/services.mjs";
 import { adapter } from "../../adapters/index.mjs";
 import { loadCatalog, loadLights } from "./catalog.mjs";
@@ -41,6 +42,7 @@ import { presentLink } from "./portal.mjs";
 import { startRequestSignatures } from "./signatures.mjs";
 import { seasonBoard, patchSeason, addWarranty, getSeason } from "./lights.mjs";
 import { propertiesOf } from "../contacts/properties.mjs";
+import { requestCancel, workSave, saveList } from "./save.mjs";
 
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 export const features = () => ({ jobs: has("work.createJobs"), money: has("money.cardStatus"), bulk: has("bulk.create") });
@@ -130,7 +132,8 @@ const actionRoute = (action) => async (ctx) => {
   if (action === "renew" && b.auto_renew !== undefined) args.auto_renew = b.auto_renew === true;
   if (action === "confirm_season") args.season = Number(b.season);
   if (action === "cancel" && b.reason && !["price", "moving", "service", "not_needed", "other"].includes(b.reason)) throw new InputError("Pick a reason.", "reason");
-  if (action === "cancel" && ctx.user && ctx.user.role !== "owner" && !String(b.note || "").trim()) throw new InputError("Add a note on why.", "note");
+  // the owner's pick (guide-gaps Q4): owners cancel right away; anyone else sends a cancel request the team tries to save first
+  if (action === "cancel" && ctx.user && ctx.user.role !== "owner") throw new ConflictError("Send a cancel request instead. An owner cancels the plan.", { code: "save_center" });
   return { data: await startAction(ctx.params.id, action, args, ctx), status: 202 };
 };
 
@@ -249,6 +252,9 @@ export const planRoutes = [
   R("POST", "/plans", "plans:write", "none", createRoute, { mode: "run", maxCalls: 40 }),
   R("GET", "/plans/due", "plans:read", "none", dueRoute, { maxCalls: 160 }),
   R("GET", "/plans/catalog", "plans:read", "none", catalogRoute),
+  R("GET", "/plans/save", "plans:read", "none", async () => { const r = await saveList(); return { data: r.rows, meta: { tiles: r.tiles } }; }),
+  R("POST", "/plans/:id/cancel-request", "plans:write", "required", async (ctx) => { const r = await requestCancel(ctx.params.id, ctx.body || {}, ctx); return { status: r.existed ? 200 : 201, data: r }; }),
+  R("PATCH", "/plans/:id/cancel-request", "plans:write", "required", async (ctx) => ({ data: await workSave(ctx.params.id, ctx.body || {}, ctx) })),
   R("POST", "/plans/request-signatures", "agreements:send", "none", requestSignaturesRoute, { mode: "run" }),
   R("GET", "/plans/:id", "plans:read", "required", getRoute, { maxCalls: 80 }),
   R("PATCH", "/plans/:id", "plans:write", "required", patchRoute),

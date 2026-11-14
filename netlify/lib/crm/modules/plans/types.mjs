@@ -35,6 +35,10 @@ export const BILLING_MODES = Object.freeze(["barta_standard", "after_visit", "fi
 export const ORDINAL_STATUSES = Object.freeze(["unscheduled", "scheduled", "completed", "skipped", "cancelled"]);
 export const OPEN_ORDINAL = Object.freeze(["unscheduled", "scheduled"]);
 export const CANCEL_REASONS = Object.freeze(["price", "moving", "service", "not_needed", "other"]);
+// The Save center: a cancel request's state, the offers, the steps the team works through.
+export const SAVE_STATUSES = Object.freeze(["open", "contacted", "offered", "saved", "cancelled"]);
+export const SAVE_OFFERS = Object.freeze(["discount", "change_frequency", "pause", "move_visit"]);
+export const SAVE_STEPS = Object.freeze([["call", "Call them"], ["why", "Ask why"], ["offer", "Make an offer"], ["note", "Write down what they said"], ["decide", "Decide"]]);
 export const INTERVALS = Object.freeze(["month", "year", "week", "day"]);
 export const SCOPE_TYPES = Object.freeze(["all", "initial", "after_initial", "specific"]);
 export const AGREEMENT_STATUSES = Object.freeze(["draft", "sent", "viewed", "signed", "declined", "void"]);
@@ -223,6 +227,17 @@ export function validatePlan(data, { op } = {}) {
         reason: enumValue(v.reason, CANCEL_REASONS, { field: `${f}.reason`, stored: true }) || "other", note: str(v.note, { field: `${f}.note`, max: 500 }) || undefined,
         clawback_cents: cents(v.clawback_cents, `${f}.clawback_cents`), by: str(v.by, { field: `${f}.by`, max: 80 }) || "",
         ...(v.storage_fee_cents !== undefined ? { storage_fee_cents: cents(v.storage_fee_cents, `${f}.storage_fee_cents`) } : {}),
+      };
+    },
+    // the Save center (guide-gaps S38): a cancel the team tries to save first
+    cancel_request: (v, f) => {
+      if (v === undefined || v === null) return undefined;
+      if (!isObj(v)) throw new InputError("Expected the cancel request.", f);
+      return {
+        ...v, reason: enumValue(v.reason, CANCEL_REASONS, { field: `${f}.reason`, stored: true }) || "other", note: str(v.note, { field: `${f}.note`, max: 500 }) || undefined,
+        priority: v.priority === "high" ? "high" : "normal", status: enumValue(v.status, SAVE_STATUSES, { field: `${f}.status`, stored: true }) || "open",
+        offer: v.offer && SAVE_OFFERS.includes(v.offer) ? v.offer : undefined, steps_done: (Array.isArray(v.steps_done) ? v.steps_done : []).filter((x) => SAVE_STEPS.some(([k]) => k === x)),
+        by: str(v.by, { field: `${f}.by`, max: 80 }) || "", at: isoOpt(v.at, `${f}.at`), outcome_at: isoOpt(v.outcome_at, `${f}.outcome_at`),
       };
     },
     renewal: (v) => (isObj(v) ? { ...v } : {}),

@@ -254,3 +254,26 @@ test("the owner's answers on screen (Nov 12): suggested wording beside an edited
   assert.match(sh, /name="storage_fee" inputmode="decimal" value="400\.00"/);
   assert.match(sh, /on a plan or a one-time job/);
 });
+
+test("Flyra's plan page (SP5-SP7) and the Save center (SP9): this year done of all, the history strip, each visit's cost; an open cancel request; owners cancel, others ask", async () => {
+  const view = await load("plan");
+  const P = await import("../../../crm-app/modules/plans/plan.js");
+  const s = planState();
+  const h = text(view.render(s, ctx()));
+  assert.ok(!h.includes("<script>alert(1)"));
+  assert.match(h, /This year<\/span><span class="rs-stat-v">1 of \d/);
+  assert.match(h, /class="sv-strip"[\s\S]*Sold[\s\S]*Visit 1 · /);
+  assert.match(h, /What each visit costs[\s\S]*Visit 2 · Feb 2027<\/span><span class="rs-tile-v num">\$60\.00/);
+  assert.equal(String(P.historyStrip(s)).includes("Done"), true);
+  const owner = view.more(s, ctx()).flat().filter(Boolean).map((r) => r.label);
+  assert.ok(owner.includes("Cancel plan") && !owner.includes("Ask to cancel"), "an owner cancels");
+  const admin = view.more(s, ctx(null, "admin")).flat().filter(Boolean).map((r) => r.label);
+  assert.ok(admin.includes("Ask to cancel") && !admin.includes("Cancel plan"), "anyone else asks (Q4)");
+  const asked = planState({}, { cancel_request: { at: NOW, reason: "price", note: `Cheaper ${XSS}`, priority: "high", status: "offered", offer: "pause", steps_done: ["call"] } });
+  const ah = text(view.render(asked, ctx(null, "admin")));
+  assert.ok(!ah.includes("<script>alert(1)"));
+  assert.match(ah, /Wants to cancel[\s\S]*Offered[\s\S]*High priority/);
+  assert.match(ah, /data-save-offer="pause" aria-checked="true"|aria-checked="true" data-save-offer="pause"/);
+  assert.match(ah, /data-save-out="saved"/);
+  assert.ok(!view.more(asked, ctx(null, "admin")).flat().filter(Boolean).some((r) => r.label === "Ask to cancel"), "one open request");
+});

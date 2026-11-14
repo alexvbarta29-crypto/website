@@ -21,7 +21,11 @@ async function setup(fx) {
     const closing = await mk(3);
     const closed = await mk(4, { status: "closed", closed_reason: "spam", closed_at: "2026-11-16T20:00:00.000Z" });
     const patchme = await store.getRecord("request", (await mk(5)).id);
-    return { done, fresh, conv, closing, closed, patchme };
+    const { planType } = await import("../../../netlify/lib/crm/modules/plans/types.mjs");
+    const ex = planType.example();
+    const plan = (await store.createRecord("plan", { ...ex, contact_id: fx.contact.id, status: "active", pending_reasons: [] }, w)).data;
+    const asked = (await store.createRecord("plan", { ...ex, contact_id: fx.contact.id, status: "active", pending_reasons: [], cancel_request: { at: "2026-11-16T20:00:00.000Z", by: fx.owner.id, reason: "price", priority: "normal", status: "open", steps_done: [] } }, w)).data;
+    return { done, fresh, conv, closing, closed, patchme, plan, asked };
   });
   return made;
 }
@@ -40,5 +44,8 @@ export default {
   "POST /requests/:id/assessed": async (fx) => ({ as: fx.owner, path: `/requests/${(await setup(fx)).fresh.id}/assessed`, body: {} }),
   "POST /requests/:id/convert": async (fx) => ({ as: fx.owner, path: `/requests/${(await setup(fx)).conv.id}/convert`, body: { to: "job" } }),
   "POST /requests/:id/close": async (fx) => ({ as: fx.owner, path: `/requests/${(await setup(fx)).closing.id}/close`, body: { reason: "no_answer" } }),
+  "GET /plans/save": async (fx) => { await setup(fx); return { as: fx.owner, path: "/plans/save" }; },
+  "POST /plans/:id/cancel-request": async (fx) => ({ as: fx.admin, path: `/plans/${(await setup(fx)).plan.id}/cancel-request`, body: { reason: "price" } }),
+  "PATCH /plans/:id/cancel-request": async (fx) => ({ as: fx.admin, path: `/plans/${(await setup(fx)).asked.id}/cancel-request`, body: { steps_done: ["call"] } }),
   "POST /requests/:id/reopen": async (fx) => ({ as: fx.owner, path: `/requests/${(await setup(fx)).closed.id}/reopen`, body: {} }),
 };

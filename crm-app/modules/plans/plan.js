@@ -17,8 +17,9 @@
 
 import {
   html, attrs, icon, sheet, toast, confirmSheet, openExternal, seg, cardHead, sectionLabel, statGrid, personCard, addressCard, lineItems, notesBox,
-  formRow, formRows, toggle, pillBtn, statusPill as kitPill, sheetPage, render,
+  formRow, formRows, toggle, pillBtn, statusPill as kitPill, sheetPage, render, tileRow,
 } from "../../core/ui.js";
+import { ensureStyles as svStyles } from "../service/kit.js";
 import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
 import { money, dateShort, dateYear, phone, localDate } from "../../core/format.js";
 import { dateField } from "../../core/pickers.js";
@@ -28,6 +29,7 @@ import {
 
 async function load(params, ctx) {
   ensureStyles();
+  svStyles();
   const r = await ctx.api(`/plans/${encodeURIComponent(params.id)}`, { cache: false });
   return { ...r.data, etag: r.etag || r.data.etag, tab: ctx.keep.tab || "service" };
 }
@@ -80,6 +82,60 @@ function topCard(s) {
     ${p.agreement_stale ? html`<p class="warn-box" data-stale>The terms changed after the agreement was signed. The signed one stays on file; send a new one from Agree.</p>` : ""}
     ${p.import ? html`<p class="small muted">From Rotor: Rotor stays in charge of this plan until the switch.</p>` : ""}
     ${p.held ? html`<p class="warn-box">Due to ${({ resume: "pick back up", renew: "renew", activate: "start", confirm_season: "go on" })[p.held.action] || p.held.action} since ${dateShort(p.held.since)}, but Rotor is still in charge of this customer, so the CRM doesn't book visits for them by itself. Do it here by hand.</p>` : ""}
+  </section>`;
+}
+
+// ------------------------------------------------------------ Flyra's plan page (the Rotor guide's SP5-SP7, SP9)
+
+const termOrds = (p) => { const n = (p.term && p.term.current_term_n) || 1; return (p.ordinals || []).filter((o) => (o.term || 1) === n && !["skipped", "cancelled"].includes(o.status)); };
+const thisMonth = () => localDate(new Date()).slice(0, 7);
+// The stats: this term's visits done of all, how often, a year of visits ($), the next visit, the card.
+export function planStats(s) {
+  const p = s.plan;
+  const term = termOrds(p);
+  const done = term.filter((o) => o.status === "completed").length;
+  const next = term.filter((o) => ["unscheduled", "scheduled"].includes(o.status)).sort((a, b) => String(a.target_month).localeCompare(String(b.target_month)))[0];
+  const year = term.reduce((a, o) => a + (o.total_cents || 0), 0);
+  return statGrid([
+    { label: "This year", value: `${done} of ${term.length}` }, { label: "How often", value: freqText(p.frequency) || "-" },
+    { label: "A year", value: year ? money(year).replace(/\.00$/, "") : "-" }, { label: "Next visit", value: next ? monthLabel(next.target_month) : "-" },
+    { label: "Card on file", value: s.features ? cardLine(s) : "-", wide: true },
+  ], { label: "This plan" });
+}
+// The history strip: Sold, then each visit of the term (done green, a month gone by red, booked, to book).
+export function historyStrip(s) {
+  const p = s.plan;
+  const m = thisMonth();
+  const pips = [html`<span class="sv-pip done"><b>Sold</b><span>${dateShort((p.term && p.term.start_on) || p.created_at) || "-"}</span></span>`];
+  for (const o of termOrds(p).slice().sort((a, b) => String(a.target_month).localeCompare(String(b.target_month)))) {
+    const late = o.status === "unscheduled" && o.target_month < m;
+    const word = o.status === "completed" ? "Done" : late ? "Past due" : o.status === "scheduled" ? "Booked" : "To book";
+    pips.push(html`<span class="${"sv-pip" + (o.status === "completed" ? " done green" : late ? " red" : "")}"><b>${word}</b><span>${`Visit ${o.n} · ${monthLabel(o.target_month)}`}</span></span>`);
+  }
+  if (p.cancel && p.cancel.effective_on) pips.push(html`<span class="sv-pip red"><b>Ends</b><span>${dateShort(p.cancel.effective_on)}</span></span>`);
+  return html`<div class="sv-strip" role="list" aria-label="The plan's history">${pips.map((x) => html`<span role="listitem">${x}</span>`)}</div>`;
+}
+// What each visit still to come costs (info tiles).
+export function visitCosts(s) {
+  const left = termOrds(s.plan).filter((o) => ["unscheduled", "scheduled"].includes(o.status)).sort((a, b) => String(a.target_month).localeCompare(String(b.target_month))).slice(0, 8);
+  if (!left.length) return "";
+  return html`${sectionLabel("What each visit costs")}${tileRow(left.map((o) => ({ key: `${o.term || 1}:${o.n}`, label: `Visit ${o.n} · ${monthLabel(o.target_month)}`, value: money(o.total_cents || 0), info: true })), { name: "pl-cost", label: "What each visit costs" })}`;
+}
+const SAVE_WORDS = { open: "New", contacted: "Contacted", offered: "Offered", saved: "Saved", cancelled: "Still cancelling" };
+const SAVE_STEPS = [["call", "Call them"], ["why", "Ask why"], ["offer", "Make an offer"], ["note", "Write down what they said"], ["decide", "Decide"]];
+const SAVE_OFFERS = [["discount", "A discount"], ["change_frequency", "Change how often"], ["pause", "Pause"], ["move_visit", "Move a visit"]];
+// The Save center card (S38): the steps as a checklist, the offer chips, Saved or Still cancel.
+function saveCard(s, ctx) {
+  const cr = s.plan.cancel_request;
+  if (!cr || !["open", "contacted", "offered"].includes(cr.status)) return "";
+  const w = ctx.can("plans:write");
+  const reason = (CANCEL_REASONS.find(([k]) => k === cr.reason) || [0, cr.reason])[1];
+  return html`<section class="rs-card pl-save">${cardHead("Wants to cancel")}
+    <div class="rs-row"><span class="rs-pills">${kitPill(SAVE_WORDS[cr.status] || cr.status, cr.priority === "high" ? "red" : "amber")}${cr.priority === "high" ? kitPill("High priority", "red") : ""}</span><span class="rs-sub">${dateShort(cr.at)}</span></div>
+    <p class="rs-sub">Why: ${reason}${cr.note ? `. ${cr.note}` : ""}</p>
+    <ul class="rs-frows pl-steps">${SAVE_STEPS.map(([k, l]) => html`<li>${formRow(l, toggle((cr.steps_done || []).includes(k), { data: { "save-step": k }, label: l, disabled: !w }))}</li>`)}</ul>
+    <div class="rs-chips" role="radiogroup" aria-label="Offer">${SAVE_OFFERS.map(([k, l]) => html`<button type="button" ${attrs({ class: "rs-chip", role: "radio", "aria-checked": String(cr.offer === k), "data-save-offer": k, disabled: !w })}>${l}</button>`)}</div>
+    ${w ? html`<div class="sv-acts">${pillBtn("Saved", { tone: "solid", icon: "check", data: { "save-out": "saved" } })}${pillBtn(ctx.user && ctx.user.role === "owner" ? "Still cancel" : "They still want out", { icon: "close", data: { "save-out": "cancelled" } })}</div>` : ""}
   </section>`;
 }
 
@@ -303,7 +359,8 @@ function moreRows(s, ctx) {
       claw && s.can && s.can.waive && { label: fee ? "Waive storage fee" : "Waive clawback", icon: "close", run: () => clawback(ctx, "waived"), data: { act: "claw-waive" } },
       { label: "Open customer", icon: "user", href: "#/contacts/" + encodeURIComponent(p.contact_id) },
     ],
-    [["active", "paused", "pending"].includes(p.status) && c && { label: "Cancel plan", icon: "close", danger: true, hint: "see what it costs first", run: () => cancelSheet(ctx), data: { act: "cancel" } }],
+    [["active", "paused", "pending"].includes(p.status) && c && ctx.user && ctx.user.role === "owner" && { label: "Cancel plan", icon: "close", danger: true, hint: "see what it costs first", run: () => cancelSheet(ctx), data: { act: "cancel" } },
+      ["active", "paused", "pending"].includes(p.status) && w && !(ctx.user && ctx.user.role === "owner") && !(p.cancel_request && ["open", "contacted", "offered"].includes(p.cancel_request.status)) && { label: "Ask to cancel", icon: "close", danger: true, hint: "the team tries to save it", run: () => askCancel(ctx), data: { act: "ask-cancel" } }],
   ];
 }
 
@@ -318,7 +375,10 @@ export default {
   render(s, ctx) {
     const counts = { schedule: (s.plan.ordinals || []).filter((o) => o.status === "unscheduled").length };
     return html`<div class="rs-page pl-page">
-      ${topCard(s)}${person(s)}
+      ${topCard(s)}${saveCard(s, ctx)}${person(s)}
+      ${planStats(s)}
+      ${historyStrip(s)}
+      ${visitCosts(s)}
       ${seg(TABS.map(([k, l]) => ({ key: k, label: l, count: k === "schedule" && counts.schedule ? counts.schedule : null })), s.tab, { name: "plan", black: true, label: "Plan" })}
       <div class="rs-sp-pane" data-tab-pane>${s.tab === "agree" ? agreePane(s, ctx) : s.tab === "schedule" ? schedulePane(s, ctx) : servicePane(s, ctx)}</div>
     </div>`;
@@ -334,8 +394,50 @@ export default {
     "change [data-notes]": (e, el, ctx) => saveNotes(el, ctx),
     "click [data-confirm-season]": (e, el, ctx) => confirmSeason(el, ctx, Number(el.dataset.confirmSeason)),
     "click [data-skip]": (e, el, ctx) => skip(el, ctx),
+    "click [data-save-step]": (e, el, ctx) => { const cr = ctx.state.plan.cancel_request || {}; const k = el.dataset.saveStep; const done = new Set(cr.steps_done || []); if (done.has(k)) done.delete(k); else done.add(k); saveWork(ctx, { steps_done: [...done] }); },
+    "click [data-save-offer]": (e, el, ctx) => { const cr = ctx.state.plan.cancel_request || {}; saveWork(ctx, { offer: cr.offer === el.dataset.saveOffer ? null : el.dataset.saveOffer }); },
+    "click [data-save-out]": async (e, el, ctx) => {
+      const out = el.dataset.saveOut;
+      if (!(await confirmSheet(out === "saved" ? "They're staying. The request closes and the plan goes on." : ctx.user && ctx.user.role === "owner" ? "Close the request, then cancel the plan (you'll see what it costs first)." : "Close the request. An owner cancels the plan.", { title: out === "saved" ? "Saved" : "Still cancelling", yes: "Yes" }))) return;
+      await saveWork(ctx, { status: out }, out === "saved" ? "Saved" : "Closed");
+      if (out === "cancelled" && ctx.user && ctx.user.role === "owner") cancelSheet(ctx);
+    },
   },
 };
+
+// ------------------------------------------------------------ the Save center
+
+async function saveWork(ctx, body, ok = "Saved") {
+  try {
+    const r = await ctx.api(`/plans/${encodeURIComponent(ctx.state.plan.id)}/cancel-request`, { method: "PATCH", body });
+    ctx.state.plan = { ...ctx.state.plan, cancel_request: r.data.plan.cancel_request };
+    if (ok) toast(ok);
+    ctx.rerender();
+  } catch (err) { toast(err.message || "That didn't save.", { bad: true }); ctx.refresh(); }
+}
+function askCancel(ctx) {
+  const p = ctx.state.plan;
+  const sh = sheet({
+    title: "Ask to cancel",
+    body: html`<form class="form" data-ask-cancel novalidate>
+      <div class="err" data-form-err hidden></div>
+      <p class="small muted">The team tries to save it first (the Save center). An owner cancels if they still want out.</p>
+      <label class="field" data-field="reason"><span>Why</span><select name="reason">${CANCEL_REASONS.map(([k, l]) => html`<option ${attrs({ value: k })}>${l}</option>`)}</select><small class="why" hidden></small></label>
+      <label class="field" data-field="note"><span>What they said</span><textarea name="note" rows="3" maxlength="500"></textarea><small class="why" hidden></small></label>
+      <button type="submit" class="btn primary block">Send the request</button></form>`,
+    events: {
+      "submit [data-ask-cancel]": async (e, form) => {
+        e.preventDefault();
+        clearErrors(form);
+        const v = readForm(form);
+        const btn = form.querySelector("[type=submit]");
+        busy(btn, true);
+        try { await ctx.api(`/plans/${encodeURIComponent(p.id)}/cancel-request`, { method: "POST", body: { reason: v.reason, note: v.note } }); sh.close(); toast("Sent to the Save center"); ctx.refresh(); }
+        catch (err) { busy(btn, false); showError(form, err); }
+      },
+    },
+  });
+}
 
 // ------------------------------------------------------------ small actions
 
