@@ -121,6 +121,11 @@ test("templates, plans, series and lights from a Rotor export, twice", async () 
     const ix = await store.withStoreScope({ requestId: "t" }, () => store.readIndex("plans", ""));
     assert.equal(ix.rows.length, recurring + lights);
     assert.ok(ix.rows.every((r) => r.k !== "one_time_series"));
+    // the sale value is priced from the lines as stored (it was $0 for every imported plan); Home's ARR reads a year of prices
+    const M = await import("../../../netlify/lib/crm/modules/plans/machine.mjs");
+    for (const p of plans) assert.equal(p.sale_value_cents, M.saleValue(p), "sale value as stored");
+    assert.ok(plans.filter((p) => p.sale_value_cents > 0).length > plans.length / 2);
+    for (const r of ix.rows) assert.equal(r.ay, M.yearValue(plans.find((p) => p.id === r.id)));
     // row 20: plan template ids kept for joins
     const cat = t.stores.data.json("cfg/plans_catalog");
     assert.ok(cat && cat.rotor_template_ids.length > 0);

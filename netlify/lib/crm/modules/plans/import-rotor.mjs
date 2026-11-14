@@ -154,6 +154,8 @@ export function planLine(l, i) {
   return {
     id, title: (fixMojibake(str(l.title)) || "Service").slice(0, 160), ...(str(l.description) ? { description: str(l.description).slice(0, 1000) } : {}),
     qty_milli: l.use_unit_pricing ? qty : 1000, unit_cents: l.use_unit_pricing ? (unit || 0) : (unit || 0), override: { cents: per === null ? 0 : per, reason: "imported" },
+    // the stored line's total (validatePlanLine's: the override): the plan's sale value is priced from it before it's stored
+    total_cents: per === null ? 0 : per,
     // Rotor's prices count a client-optional line: it is on the plan as sold, so it comes in ticked
     scope: scopeOf(l.jobSchedule), ...(l.client_optional === true ? { optional: true, selected: true } : {}), ...(parent ? { service_type: parent.slice(0, 120) } : {}),
     ...(l.use_unit_pricing && /ft|feet|foot/i.test(`${l.title} ${l.unit || ""}`) ? { unit: "ft" } : {}),

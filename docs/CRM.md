@@ -782,11 +782,17 @@ and the Schedule.
 - **Scheduled**: the CRM's visits in the period (live ones), each
   carrying its job's total on the job's first visit (`jobs/open` and the
   closed shards of the period's years).
-- **ARR**: the CRM's live plans (active, cancelling, paused): each plan's
-  current term value scaled to a year (a first term is 12 months; a plan
-  whose term ends more than a year after it was made has been renewed:
-  the catalog's renewal months), counted from the day it was made to the
-  day a cancellation takes effect. No plans at all: "-".
+- **ARR**: the CRM's live plans (active, cancelling, paused) that recur:
+  one year of each plan's visit prices (the plans index's `ay`: in a
+  first term the first year as sold, which is Rotor's sale value; a
+  3-year lights contract counts one season; after a renewal the regular
+  prices), counted from the day it was made to the day a cancellation
+  takes effect. Left out: a lights plan sold for one season that doesn't
+  renew (Rotor's One-Time lights), a plan that doesn't renew once its
+  term has ended, and the hidden one-time series (Rotor's One-Time
+  containers). An index row from before Nov 14 (no `ay` until the
+  nightly list check or the next import rebuilds it) falls back to its
+  term's sale value scaled to a year. No plans at all: "-".
 A number nobody has is left out ("-"), never shown as 0. Without the
 office data key the card says so (`money_missing`).
 
