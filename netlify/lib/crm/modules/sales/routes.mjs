@@ -124,7 +124,8 @@ const loseDealRoute = async (ctx) => {
 
 const enrollmentsRoute = async (ctx) => {
   const status = str(ctx.query.get("status"));
-  const cadence = str(ctx.query.get("cadence"));
+  // "all": every pipeline (Pipelines' All pipelines, S14c)
+  const cadence = str(ctx.query.get("cadence")) === "all" ? "" : str(ctx.query.get("cadence"));
   const contact = str(ctx.query.get("contact"));
   if (contact) {
     if (!isId(contact, "contact")) throw new InputError("That isn't a contact.", "contact");
@@ -164,7 +165,7 @@ const enrollRoute = async (ctx) => {
   if (!isId(b.contact_id, "contact")) throw new InputError("Pick a contact.", "contact_id");
   if (!/^[a-z][a-z0-9_]{1,39}$/.test(str(b.cadence_key))) throw new InputError("Pick a cadence.", "cadence_key");
   await ctx.sysMode();
-  const id = await enroll(b.contact_id, str(b.cadence_key), { quote_id: isId(b.quote_id, "quote") ? b.quote_id : undefined }, ctx);
+  const id = await enroll(b.contact_id, str(b.cadence_key), { quote_id: isId(b.quote_id, "quote") ? b.quote_id : undefined, board: true }, ctx);
   if (!id) throw new ConflictError("That cadence can't take this contact (it is off, a board only, or the contact is archived).");
   const out = await enrollmentDetail(id, ctx);
   return { status: 201, ...out };

@@ -22,6 +22,7 @@ import { shape, str, notes as notesText, enumValue, bool, arr, isoTime, int } fr
 import { contactShard } from "../../core/stats.mjs";
 import { ASSET_COUNTS, WINDOW_KEYS, SERVICE_KEYS, PLAN_KEYS } from "./assets.mjs";
 import { displayName, normalizePhone, normalizeEmail, phoneDigits, normalizeAddress, addressOneLine } from "./display.mjs";
+import { LEAD_STAGES, storedStage } from "./leadstage.mjs";
 
 export const KINDS = Object.freeze(["person", "business"]);
 export const LIFECYCLES = Object.freeze(["lead", "customer", "former_customer", "archived"]);
@@ -229,6 +230,12 @@ export function validateContact(data, { op, before } = {}) {
     },
     consent: (v, f) => validateConsent(v, f),
     automations_paused: (v, f) => validatePaused(v, f),
+    // a lead's stage (S13, leadstage.mjs): by hand, or from the import
+    lead_stage: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, LEAD_STAGES, { field: f, stored })),
+    lead_stage_at: (v, f) => isoTime(v, { field: f }),
+    lead_stage_by_hand: (v, f) => (v === undefined || v === null ? undefined : bool(v, { field: f }) || undefined),
+    // when a lead became a customer (the About card's "was a lead from ...")
+    converted_at: (v, f) => isoTime(v, { field: f }),
     flags: (v, f) => validateFlags(v, f),
     merging_into: (v, f) => contactId(v, f),
     merged_into: (v, f) => contactId(v, f),
@@ -242,6 +249,8 @@ export function validateContact(data, { op, before } = {}) {
   if (out.lifecycle !== "archived" && out.archived_reason && !stored) delete out.archived_reason;
   if (!out.lifecycle_at) out.lifecycle_at = before && before.lifecycle === out.lifecycle && before.lifecycle_at ? before.lifecycle_at : nowIso();
   if (before && before.lifecycle !== out.lifecycle) out.lifecycle_at = nowIso();
+  if (before && before.lifecycle === "lead" && out.lifecycle === "customer" && !out.converted_at) out.converted_at = out.lifecycle_at;
+  if (out.lead_stage && (!before || before.lead_stage !== out.lead_stage) && !(data && data.lead_stage_at && (!before || data.lead_stage_at !== before.lead_stage_at))) out.lead_stage_at = nowIso();
   if (out.id && out.merged_into === out.id) throw new InputError("A contact can't be merged into itself.", "merged_into");
   return out;
 }
@@ -262,6 +271,11 @@ export function contactRow(r) {
     ...(r.priority ? { pr: r.priority } : {}),
     // when the contact came in (Rotor's date for an imported one): the reports' leads and customers by source (M7b)
     ca: r.created_at || null,
+    // the Leads board (S13): the stage stored by hand or by the import, and since when
+    ...(storedStage(r) ? { lst: storedStage(r), lsa: r.lead_stage_at || null } : {}),
+    // automated texts paused (the Customers list and the contact's Mute row, S11 mu); converted from a lead (S11)
+    ...(r.automations_paused && r.automations_paused.sms ? { mu: 1 } : {}),
+    ...(r.converted_at ? { cva: r.converted_at } : {}),
     ...(Object.keys(fl).length ? { fl } : {}), u: r.updated_at,
   };
 }

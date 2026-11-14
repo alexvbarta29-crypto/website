@@ -29,6 +29,7 @@ import { SALES_STATS, callsDueCount } from "./calls.mjs";
 import { listeners } from "./listeners.mjs";
 import { automations, sweeps, attentionCount } from "./automations.mjs";
 import { salesRoutes } from "./routes.mjs";
+import { boardRoutes } from "./board.mjs";
 import { onMergeSales } from "./merge.mjs";
 import { phases } from "./import-rotor.mjs";
 import { mcpTools } from "./mcp.mjs";
@@ -65,7 +66,7 @@ export default defineModule({
     sales: { defaults: { ...SALES_STATS }, row: (p) => ({ slc: (p && p.last_called_at) || null }) },
   },
   settings: { sales: { defaults: { ...SALES_DEFAULTS }, validate: validateSales, perm: "cadences:configure" } },
-  routes: salesRoutes,
+  routes: [...boardRoutes, ...salesRoutes],
   events: listeners,
   emits: ["call.logged"],
   services: {

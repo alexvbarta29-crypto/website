@@ -21,6 +21,7 @@ import { revokeLinks } from "../../portal/core.mjs";
 import { fail } from "../../core/http.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { CONSENT_CHANNELS, CONSENT_STATES, CONSENT_SOURCES, LIFECYCLES, SOURCES, PRIORITIES } from "./types.mjs";
+import { LEAD_STAGES } from "./leadstage.mjs";
 import { findMatches, createCandidate, resolveContact } from "./match.mjs";
 import { propertiesOf, ensureProperty, geocodeProperty, PROPERTIES_ON_SCREEN } from "./properties.mjs";
 import { startMerge, startBulk, runView } from "./merge.mjs";
@@ -249,6 +250,7 @@ async function patchRoute(ctx) {
   const patch = {};
   for (const k of EDITABLE) if (b[k] !== undefined) patch[k] = b[k];
   if (patch.priority !== undefined) patch.priority = checkPriority(patch.priority);
+  if (b.lead_stage !== undefined) Object.assign(patch, stagePatch(b.lead_stage));
   if (patch.lifecycle !== undefined && !["lead", "customer", "former_customer"].includes(patch.lifecycle)) throw new InputError("Archive and restore have their own buttons.", "lifecycle");
   if (b.phones !== undefined) patch.phones = phoneList(b);
   if (b.emails !== undefined) patch.emails = emailList(b);
@@ -261,7 +263,20 @@ async function patchRoute(ctx) {
     return next;
   }), { ...ctx.write(), ifMatch: ctx.ifMatch });
   if (r.changed && patch.tags !== undefined) await emitTagged(before.data, r.data, ctx);
+  if (r.changed && patch.lead_stage !== undefined) await emitStage(before.data, r.data, ctx);
   return { data: { contact: view(r.data) }, etag: r.etag };
+}
+
+// A lead's stage set by a person (S13): one of Rotor's seven; null or "" goes back to the derived one.
+function stagePatch(v) {
+  if (v === null || v === "") return { lead_stage: undefined, lead_stage_by_hand: undefined, lead_stage_at: nowIso() };
+  if (!LEAD_STAGES.includes(v)) throw new InputError("Pick one of the stages.", "lead_stage");
+  return { lead_stage: v, lead_stage_by_hand: true };
+}
+async function emitStage(before, after, ctx) {
+  if ((before.lead_stage || null) === (after.lead_stage || null)) return;
+  await emit("contact.lead_stage_changed", { id: after.id, wv: after.wv, contact_id: after.id, from: before.lead_stage || null, to: after.lead_stage || null }, ctx.write())
+    .catch((e) => console.error(`crm:contacts: contact.lead_stage_changed not queued (${safeErr(e)})`));
 }
 
 async function previousLifecycle(id) {
