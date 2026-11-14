@@ -13,8 +13,9 @@
 // money.credits, which the catalog doesn't name, isn't in the first run's
 // plan at all and still runs when Money ships.
 //
-// Payroll isn't built: payroll.payroll is a fixture, and so are the
-// stand-ins of the later tests (fixture.* names). The registry lives for the
+// Payroll shipped (M7a) after this file was written: its real phase is
+// hidden until a test "ships" it (shipPayroll), like a part not deployed
+// yet; the stand-ins of the later tests are fixtures (fixture.* names). The registry lives for the
 // whole file: a fixture one test registers runs in the later tests' first
 // runs, so every test that needs a fixture part to "go live" uses a name no
 // earlier test registered.
@@ -47,7 +48,10 @@ const TECH = ["work.timesheets", "work.timers"];
 const MONEY = ["money.invoices", "money.credits", "money.payments"];
 const COMMS = ["comms.templates", "comms.campaigns", "comms.messages", "comms.pin_types"];
 // The parts (lists of phase names) not deployed yet: their phases are left out of the plan. notShipped() = all live.
-const notShipped = (...parts) => runner.__hidePhasesForTests(parts.flat());
+let payrollLive = false;
+let hidden = [];
+const notShipped = (...parts) => { hidden = parts.flat(); runner.__hidePhasesForTests([...hidden, ...(payrollLive ? [] : ["payroll.payroll"])]); };
+notShipped();
 
 // Stand-ins for parts that aren't built: a type of their own, nothing a real module declares.
 const LATE = fixtureType("fixture_late", "zl", { rotorFields: ["label", "rotor"], example: () => ({ label: "Sample" }) });
@@ -57,8 +61,7 @@ const mapGeneric = (kind) => async (r) => ({ records: [{ type: "fixture_late", d
 const pass = (r) => r;
 const ship = (name, entity, kind) => fixtureModule({ types: lateTypes(), importPhases: [{ name, entity, after: ["system.users"], normalize: pass, map: mapGeneric(kind) }] });
 // Payroll goes live (once in the file: by the first test that needs it)
-let payrollShipped = false;
-const shipPayroll = () => { if (!payrollShipped) { payrollShipped = true; ship("payroll.payroll", "payroll", "payroll"); } };
+const shipPayroll = () => { if (!payrollLive) { payrollLive = true; runner.__hidePhasesForTests(hidden); } };
 
 // Counts map() calls per phase on every registered phase (call it after the fixtures of the test are registered).
 function spyPhases() {

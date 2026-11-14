@@ -103,4 +103,4 @@ async function mapPayroll(r, ctx) {
   };
 }
 
-export const payrollPhase = { name: "payroll.payroll", entity: "payroll", after: ["system.users", "work.jobs", "work.timesheets"], normalize: normalizePayroll, prepare: preparePayroll, map: mapPayroll };
+export const payrollPhase = { name: "payroll.payroll", entity: "payroll", after: ["system.users"], normalize: normalizePayroll, prepare: preparePayroll, map: mapPayroll };
