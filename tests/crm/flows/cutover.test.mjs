@@ -285,6 +285,8 @@ test("rollback within 48 hours, then cutover--2 re-seats the numbers above the o
     assert.equal(items.preview, "todo", "the preview must be approved again");
     for (let i = 0; i < 2; i++) await t.runWorker({ lane: "fast" });
     assert.ok(t.stores.data.keys("rec/notification/").map((k) => t.stores.data.json(k)).some((x) => x.title === "Back on Rotor"));
+    // rollback texting on while back on Rotor (the next switch turns it off)
+    assert.equal((await t.api("/cutover/manual-live", { method: "POST", as: owner, body: { on: true } })).status, 200);
 
     // ---- Rotor issued numbers meanwhile: a newer import brings jobs 885-890 (885, 886 were the CRM's) and INV-0610..0612
     for (const num of [887, 888, 889, 890]) await imp("job", { number: num, seq: "job", number_label: String(num).padStart(7, "0"), contact_id: w.D.id });
@@ -301,6 +303,7 @@ test("rollback within 48 hours, then cutover--2 re-seats the numbers above the o
     assert.equal(again.status, 202, JSON.stringify(again.body));
     assert.equal(again.body.data.op_id, "cutover--2", "a new op, never the first one again");
     await stepUntilDone(t);
+    assert.equal((await store.getSetting("integrations")).sms.manual_live, false, "the switch ends rollback texting");
     const m2 = (await store.getRaw("sys/mode")).data;
     assert.equal(m2.system_of_record, "crm");
     assert.equal(m2.cutover_n, 2);
@@ -404,4 +407,82 @@ test("the reminder text's date: Rotor's words → the visit date", () => {
   assert.equal(C.reminderDate("REMINDER: Barta Window Washing is scheduled for tomorrow between 8:00 and 10:00 AM.", "2027-01-03"), "2027-01-04");
   assert.equal(C.reminderDate("Thanks!", "2027-01-03"), null);
   assert.deepEqual(PV.sweepRuns("2027-01-04T15:45:00Z", "10:00").map((r) => r.day), ["2027-01-04", "2027-01-05", "2027-01-06"], "the 10:00 batches of 72 hours from 09:45");
+});
+
+// A Twilio stand-in for the rollback texting test: Messages.json answers with a made-up SID.
+function twilioStandIn() {
+  const saved = globalThis.fetch;
+  const calls = [];
+  let k = 0;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (!/^https:\/\/api\.twilio\.com\/2010-04-01\/Accounts\/AC[0-9a-f]+\/Messages\.json$/.test(url)) return saved(input, init);
+    calls.push({ url, method: init.method, form: new URLSearchParams(String(init.body || "")) });
+    return Response.json({ sid: "SM" + String(++k).padStart(32, "0"), status: "queued" }, { status: 201 });
+  };
+  return { calls, restore() { globalThis.fetch = saved; } };
+}
+
+test("rollback texting: back on Rotor, an owner turns on texting by hand; only a person's hand-typed text to one customer goes out live, audited", async () => {
+  const t = await crmTest({ now: MON_0900, env: ENV });
+  const net = twilioStandIn();
+  try {
+    const owner = await t.user("owner");
+    const admin = await t.user("admin");
+    const w = await world(t, owner);
+    await green(t, owner);
+    await previewNow(t, owner);
+    await t.api("/cutover/approve-preview", { method: "POST", as: owner, body: {} });
+    // never before a rollback: the CRM in charge sends live anyway, and before any switch Rotor has the number
+    assert.equal((await t.api("/cutover/manual-live", { method: "POST", as: owner, body: { on: true } })).status, 409);
+    assert.equal((await t.api("/cutover/run", { method: "POST", as: owner, body: { confirm: "SWITCH TO CRM" } })).status, 202);
+    await stepUntilDone(t);
+    assert.equal((await t.api("/cutover/manual-live", { method: "POST", as: owner, body: { on: true } })).status, 409, "the CRM is in charge");
+    advance(hours(2));
+    assert.equal((await t.api("/cutover/rollback", { method: "POST", as: owner, body: { confirm: "SWITCH BACK TO ROTOR" } })).status, 202);
+    await stepUntilDone(t, "cutover.rollback");
+    let v = (await t.api("/cutover", { as: owner })).body.data;
+    assert.deepEqual(v.manual_live, { on: false, rolled_back: true, sms_live: true }, "shown on the page, off until an owner turns it on");
+
+    // off: a person's text is test mode (staff phones only), so it doesn't reach the customer
+    const typed = (body, as = owner, extra = {}) => t.api("/messages", { method: "POST", as, body: { contact_id: w.B.id, channel: "sms", body, ...extra } });
+    const before = await typed("Hi Robin, this is Alex. Are we still on for Wednesday?");
+    assert.equal(before.status, 200, JSON.stringify(before.body));
+    assert.deepEqual([before.body.data.mode, before.body.data.status, before.body.data.blocked_reason], ["test", "blocked", "test_mode_recipient"]);
+
+    // owners only, a yes or no
+    assert.equal((await t.api("/cutover/manual-live", { method: "POST", as: admin, body: { on: true } })).status, 403);
+    assert.equal((await t.api("/cutover/manual-live", { method: "POST", as: owner, body: { on: "yes" } })).status, 400);
+    const on = await t.api("/cutover/manual-live", { method: "POST", as: owner, body: { on: true } });
+    assert.equal(on.status, 200, JSON.stringify(on.body));
+    assert.equal(on.body.data.manual_live.on, true);
+    assert.equal((await store.getSetting("integrations")).sms.manual_live, true);
+    assert.ok(t.stores.data.keys("evt/sys/cutover/").some((k) => k.includes("manual_live_on")), "audited: who turned it on, when");
+
+    // on: the hand-typed text goes out live, from the main number, marked on its message
+    const live = await typed("Hi Robin, this is Alex. Are we still on for Wednesday?", owner, { client_id: "rollback-text-0001" });
+    assert.equal(live.status, 200, JSON.stringify(live.body));
+    assert.equal(live.body.data.mode, "live");
+    assert.equal(net.calls.length, 1);
+    assert.equal(net.calls[0].form.get("To"), w.B.phones[0].e164);
+    assert.equal(net.calls[0].form.get("From"), "+17633143400");
+    const msg = (await store.getRecord("message", live.body.data.message_id)).data;
+    assert.deepEqual([msg.direction, msg.origin.kind, msg.origin.user_id, msg.origin.manual_live], ["out", "user", owner.id, true]);
+    // a template a person picks, an automated send, a staff phone send: as before (test mode or dry run)
+    const tpl = await t.api("/messages", { method: "POST", as: owner, body: { contact_id: w.B.id, channel: "sms", template_key: "cutover_quote" } });
+    assert.deepEqual([tpl.body.data.mode, tpl.body.data.blocked_reason], ["test", "test_mode_recipient"], "a template isn't hand-typed");
+    const { sendMessage } = await import("../../../netlify/lib/crm/core/send.mjs");
+    const auto = await store.withStoreScope({ requestId: "t" }, () => sendMessage({ contact_id: w.B.id, channel: "sms", body: "Reminder text", origin: { kind: "automation", id: "visit.reminder_2d" }, category: "service" }, { ...AUTOMATION, deploy: { ctx: "production", prod: true } }));
+    assert.equal(auto.mode, "dry_run", "every automation stays off");
+    assert.equal(net.calls.length, 1, "nothing else reached Twilio");
+
+    // off again: back to test mode
+    assert.equal((await t.api("/cutover/manual-live", { method: "POST", as: owner, body: { on: false } })).status, 200);
+    assert.ok(t.stores.data.keys("evt/sys/cutover/").some((k) => k.includes("manual_live_off")));
+    const after = await typed("One more question for you.");
+    assert.deepEqual([after.body.data.mode, after.body.data.blocked_reason], ["test", "test_mode_recipient"]);
+    assert.equal(net.calls.length, 1);
+    v = (await t.api("/cutover", { as: owner })).body.data;
+    assert.equal(v.manual_live.on, false);
+  } finally { net.restore(); t.done(); }
 });

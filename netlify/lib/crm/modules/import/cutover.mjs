@@ -46,6 +46,14 @@
 //   - In-flight documents (D37): quotes sent in the last 30 days, open
 //     invoices Rotor issued and unsigned agreements, each list a bulk run
 //     (test send + an owner's confirm) pointing the customer to the portal.
+//   - Rollback texting (§10.9): the number can't move back to Rotor
+//     quickly, so while rolled back an owner may turn on
+//     cfg/integrations.sms.manual_live (POST /cutover/manual-live): a
+//     person's hand-typed text to one customer from the CRM inbox goes out
+//     live (core/send.mjs manualLive); every automation, template, bulk run
+//     and campaign stays as it is. Each change is an event on
+//     evt/sys/cutover/ (and the settings document's own history); the next
+//     switch turns it off again.
 
 import { getRaw, settledWrite, readIndex, listKeys, getRecords, listRel, setSequence, getSettingWithEtag, putSetting, deleteRaw, appendEvent } from "../../../crm-store.mjs";
 import { defineOp, runOp, readOp } from "../../core/ops.mjs";
@@ -189,7 +197,30 @@ export async function checklist({ deploy, env = process.env, state, mode } = {})
   auto("preview", "Preview approved", "The switch-over preview is approved (made on the final import)", current && !!p.approved_at,
     !p ? "Make the preview." : p.status !== "done" ? "The preview is being made." : !current ? "Make the preview again: a newer import finished, or it's more than a day old." : !p.approved_at ? "Look at the counts and approve them." : null);
   const ready = items.every((i) => i.state !== "todo");
-  return { items, ready, rehearsal: !prod, mode: { system_of_record: sys.system_of_record || "rotor", cutover_n: sys.cutover_n || 0, cutover_at: sys.cutover_at || null, paused: !!sys.paused }, import: imp };
+  const sms = (integrations && integrations.sms) || {};
+  return {
+    items, ready, rehearsal: !prod, mode: { system_of_record: sys.system_of_record || "rotor", cutover_n: sys.cutover_n || 0, cutover_at: sys.cutover_at || null, rolled_back_at: sys.rolled_back_at || null, paused: !!sys.paused }, import: imp,
+    // rollback texting: shown on the page while rolled back (or while it is still on)
+    manual_live: { on: sms.manual_live === true, rolled_back: rolledBack(sys), sms_live: integrationState("sms", integrations, deploy, env) === "ok" },
+  };
+}
+
+// Rotor is the system of record again after a switch (a rollback).
+export const rolledBack = (sys) => !!sys && sys.system_of_record !== "crm" && !!sys.rolled_back_at;
+
+// POST /cutover/manual-live { on }: rollback texting, owners only (cutover:run).
+// On only while rolled back; off any time. The settings document keeps its own
+// history; the event says who turned it on or off and when.
+export async function setManualLive(on, ctx) {
+  if (typeof on !== "boolean") throw new InputError("Yes or no.", "on");
+  const sys = await readSysMode();
+  if (on && !rolledBack(sys)) throw new ConflictError("Texting by hand from the CRM while back on Rotor is only for a rollback.");
+  const cur = await getSettingWithEtag("integrations");
+  const was = !!(cur.data && cur.data.sms && cur.data.sms.manual_live === true);
+  if (was === on) return { on, changed: false };
+  await mergeSetting("integrations", (x) => ({ ...x, sms: { ...(x.sms || {}), manual_live: on } }), ctx);
+  await appendEvent("sys", "cutover", { action: on ? "manual_live_on" : "manual_live_off", by: ctx.by || "system", origin: "api" });
+  return { on, changed: true };
 }
 
 export async function setTick(key, done, ctx) {
@@ -428,6 +459,8 @@ defineOp("cutover", {
       await mergeSetting("automations", (a) => ({ ...a, effective_from: input.at }), s.ctx);
       const intake = has("contacts.intake") ? await mergeSetting("intake", (x) => (x.mode === "crm" ? null : { ...x, mode: "crm" }), s.ctx) : null;
       const dash = await mergeSetting("dashboard", (x) => (x.source === "crm" ? null : { ...x, source: "crm" }), s.ctx);
+      // rollback texting ends with the switch: everything is the CRM's again
+      await mergeSetting("integrations", (x) => (x.sms && x.sms.manual_live === true ? { ...x, sms: { ...x.sms, manual_live: false } } : null), s.ctx);
       return { effective_from: input.at, intake: intake ? intake.mode : null, dashboard: dash ? dash.source : null };
     }),
     step("mode", async (s) => {

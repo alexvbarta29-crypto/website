@@ -11,14 +11,18 @@
 //   - no secrets → failed "not_configured", and no request;
 //   - test: only a number on cfg/integrations.sms.test_allowlist (staff
 //     phones), and only from the separate test number (sms.test_from);
-//   - live: refused while Rotor is the system of record (sys/mode).
+//   - live: refused while Rotor is the system of record (sys/mode), except
+//     a send the sender marks manualLive (rollback texting, design §10.9:
+//     a person's hand-typed text during a rollback), and only when the
+//     stored state agrees: sys/mode.rolled_back_at is set and
+//     cfg/integrations.sms.manual_live is on.
 //
 // It only ever sends a message (POST …/Messages.json) or looks one up (GET
 // …/Messages.json). It never buys, hosts or configures a number, never
 // touches a Messaging Service and never registers a webhook: Rotor's
 // provider owns the real texting number until the owner moves it (D1).
 //
-//   send({ to, body, from, markerKey }) → { status: "queued" | "sent" | "failed" | "blocked", provider_id?, error_code?, segments }
+//   send({ to, body, from, markerKey, manualLive? }) → { status: "queued" | "sent" | "failed" | "blocked", provider_id?, error_code?, segments }
 //   findSent({ to, since, bodySha256 }) → { provider_id, status } | null
 //   verifySignature(url, params, signature, token) → boolean   (X-Twilio-Signature, HMAC-SHA1)
 
@@ -64,7 +68,7 @@ export function twilioDriver(mode, { env = process.env } = {}) {
   if (!["test", "live"].includes(mode)) throw new TypeError("twilio: test or live");
   const refuse = (code) => ({ status: "blocked", error_code: code, segments: 0 });
 
-  async function gate(to, from) {
+  async function gate(to, from, manualLive = false) {
     const c = creds(env);
     if (!c) return { no: { status: "failed", error_code: "not_configured", segments: 0 } };
     if (!E164.test(String(to || ""))) return { no: { status: "failed", error_code: "bad_number", segments: 0 } };
@@ -75,14 +79,16 @@ export function twilioDriver(mode, { env = process.env } = {}) {
       if (!cfg.test_from || from !== cfg.test_from) return { no: refuse("test_number_missing") };
     } else {
       const sys = await getRaw("sys/mode");          // a failed read throws: never "live" by default
-      if (!sys || !sys.data || sys.data.system_of_record !== "crm") return { no: refuse("rotor_in_charge") };
+      const crm = !!(sys && sys.data && sys.data.system_of_record === "crm");
+      const rollbackTexting = !crm && manualLive === true && !!(sys && sys.data && sys.data.rolled_back_at) && cfg.manual_live === true;
+      if (!crm && !rollbackTexting) return { no: refuse("rotor_in_charge") };
     }
     return { c };
   }
 
   return {
-    async send({ to, body, from, markerKey } = {}) {
-      const g = await gate(to, from);
+    async send({ to, body, from, markerKey, manualLive } = {}) {
+      const g = await gate(to, from, manualLive === true);
       if (g.no) return g.no;
       const form = new URLSearchParams({ To: to, Body: String(body ?? "") });
       if (/^MG[0-9a-f]{32}$/i.test(String(from || ""))) form.set("MessagingServiceSid", from);

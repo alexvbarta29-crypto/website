@@ -4,7 +4,9 @@
 // hours, approved by the owner), the in-flight documents (each list a bulk
 // run to test and confirm), the switch (typed SWITCH TO CRM, enabled only
 // when every item is green), going back within 48 hours (typed SWITCH BACK
-// TO ROTOR) and what was done when. Nothing here touches Rotor: what changes
+// TO ROTOR), texting by hand while back on Rotor (rollback texting: an
+// owner's switch, only while rolled back) and what was done when. Nothing
+// here touches Rotor: what changes
 // Rotor (its automations, the texting number) is done by the owner there and
 // ticked here. Refreshed every few seconds while a preview or the switch runs.
 
@@ -96,6 +98,18 @@ export function switchCard(s) {
   </section>`;
 }
 
+// Rollback texting (cfg/integrations.sms.manual_live): shown while rolled back, or while it is still on.
+export function manualLiveCard(s) {
+  const m = s.manual_live;
+  if (!m || (!m.rolled_back && !m.on)) return "";
+  return html`<section class="card">
+    <div class="im-head"><h2>Texting while back on Rotor</h2>${m.on ? html`<span class="pill green">On</span>` : html`<span class="pill">Off</span>`}</div>
+    <p class="small muted">Your texting number is at Twilio now, so Rotor can't text from it. With this on, a text you type yourself in the CRM inbox to one customer goes out for real. Every automation, template, bulk send and campaign stays off until you switch to the CRM again.</p>
+    ${m.sms_live ? "" : html`<p class="warn-box">Texting isn't connected live (Settings, Integrations), so nothing goes out yet.</p>`}
+    <div class="btn-row">${m.on ? html`<button type="button" class="btn" data-manual-live="off">Turn it off</button>` : html`<button type="button" class="btn primary" data-manual-live="on" ${attrs({ disabled: !m.rolled_back })}>Turn it on</button>`}</div>
+  </section>`;
+}
+
 function activeCard(s) {
   if (!s.active) return "";
   return html`<section class="card"><h2>${s.active.kind === "rollback" ? "Going back to Rotor" : "Switching"}</h2><p>Working in the background. You can leave this screen.</p></section>`;
@@ -152,7 +166,7 @@ export default {
         <p class="small muted">Nothing here changes Rotor. What has to change in Rotor (its automations, the texting number, cancelling it) you do there and tick here.</p>
       </section>
       ${activeCard(s)}
-      ${s.mode.system_of_record === "crm" ? html`${switchCard(s)}${historyCard(s)}` : html`${checklistCard(s)}${previewCard(s)}${inFlightCard(s.in_flight)}${listCard(s)}${switchCard(s)}${historyCard(s)}`}
+      ${s.mode.system_of_record === "crm" ? html`${switchCard(s)}${historyCard(s)}` : html`${manualLiveCard(s)}${checklistCard(s)}${previewCard(s)}${inFlightCard(s.in_flight)}${listCard(s)}${switchCard(s)}${historyCard(s)}`}
     </div>`;
   },
   mount(v, s, ctx) {
@@ -177,6 +191,16 @@ export default {
         ctx.state = { ...r.data, in_flight: ctx.state.in_flight };
         ctx.rerender();
       } catch (err) { toast(err.message, { bad: true }); ctx.refresh(); }
+    },
+    "click [data-manual-live]": async (e, el, ctx) => {
+      el.disabled = true;
+      const on = el.dataset.manualLive === "on";
+      try {
+        const r = await ctx.api("/cutover/manual-live", { method: "POST", body: { on } });
+        ctx.state = { ...r.data, in_flight: ctx.state.in_flight };
+        ctx.rerender();
+        toast(on ? "Texts you type go out for real" : "Texting by hand is off");
+      } catch (err) { el.disabled = false; toast(err.message, { bad: true }); }
     },
     "click [data-preview]": async (e, el, ctx) => {
       el.disabled = true;

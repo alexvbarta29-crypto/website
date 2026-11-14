@@ -416,3 +416,48 @@ test("marketing quiet hours with no day saved: the setting is refused, and a win
   assert.equal(r.status, "blocked");
   assert.equal(r.blocked_reason, "quiet_hours");
 });
+
+test("rollback texting (manualLive): only a person's hand-typed text to one customer, from a session, during a rollback, with the owner's switch on", () => {
+  const user = "us_0000000000000000000a";
+  const ok = { channel: "sms", origin: { kind: "user", user_id: user }, template: null, category: "personal", contact: { id: "ct_0000000000000000000a" }, staffSend: false, queued: false, ctxOrigin: "api",
+    sys: { system_of_record: "rotor", rolled_back_at: "2027-01-05T15:00:00.000Z", paused: false }, integrations: { sms: { manual_live: true } } };
+  assert.equal(S.manualLive(ok), true);
+  const no = (change, why) => assert.equal(S.manualLive({ ...ok, ...change }), false, why);
+  no({ integrations: { sms: { manual_live: false } } }, "the owner's switch is off");
+  no({ integrations: {} }, "no setting");
+  no({ sys: { system_of_record: "rotor" } }, "never rolled back: before the first switch Rotor has the number");
+  no({ sys: { system_of_record: "crm", rolled_back_at: "2027-01-05T15:00:00.000Z" } }, "the CRM in charge sends by its own gate");
+  no({ sys: { ...ok.sys, paused: true } }, "paused");
+  no({ template: { key: "cutover_quote" } }, "a template isn't hand-typed");
+  no({ category: "marketing" }, "marketing");
+  no({ category: "service" }, "a service message");
+  no({ origin: { kind: "automation", id: "visit.reminder_2d" } }, "an automation");
+  for (const kind of ["cadence", "campaign", "system", "inbound", "import"]) no({ origin: { kind } }, kind);
+  no({ origin: { kind: "user" } }, "nobody named");
+  no({ ctxOrigin: "mcp" }, "Claude's connector types for itself");
+  no({ queued: true }, "a queued or scheduled send");
+  no({ staffSend: true }, "a staff phone");
+  no({ contact: null }, "no customer");
+  no({ channel: "email" }, "email isn't the moved number");
+});
+
+test("the Twilio live driver: refused while Rotor is in charge, unless the send is rollback texting and the stored state agrees", async () => {
+  const t = await crmTest({ env: { ...PROD_ENV, TWILIO_ACCOUNT_SID: "AC" + "0123456789abcdef".repeat(2), TWILIO_AUTH_TOKEN: "test-auth-token-not-real" } });
+  const saved = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => { calls.push(String(url)); return Response.json({ sid: "SM" + "0".repeat(32), status: "queued" }, { status: 201 }); };
+  try {
+    const { twilioDriver } = await import("../../../netlify/lib/crm/adapters/sms-twilio.mjs");
+    const d = twilioDriver("live");
+    const send = (o = {}) => store.withStoreScope({ requestId: "t" }, () => d.send({ to: "+17635550123", body: "Hi", from: "+17633143400", markerKey: "done/send/x", ...o }));
+    assert.equal((await send({ manualLive: true })).error_code, "rotor_in_charge", "no rollback yet");
+    await store.settledWrite("sys/mode", { system_of_record: "rotor", paused: false, cutover_n: 1, rolled_back_at: "2027-01-05T15:00:00.000Z" }, { onlyIfNew: true });
+    assert.equal((await send({ manualLive: true })).error_code, "rotor_in_charge", "rolled back, but the owner's switch is off");
+    const cur = await store.getSettingWithEtag("integrations");
+    await store.putSetting("integrations", { ...cur.data, sms: { ...cur.data.sms, manual_live: true } }, { by: "system", origin: "worker", actor_kind: "user", requestId: "t" });
+    assert.equal((await send()).error_code, "rotor_in_charge", "a send not marked as rollback texting");
+    assert.equal(calls.length, 0);
+    assert.equal((await send({ manualLive: true })).status, "queued");
+    assert.equal(calls.length, 1);
+  } finally { globalThis.fetch = saved; t.done(); }
+});

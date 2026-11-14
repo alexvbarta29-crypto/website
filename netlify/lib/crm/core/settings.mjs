@@ -216,7 +216,8 @@ export const INTEGRATION_MODES = Object.freeze(["off", "dry_run", "test", "live"
 const INTEGRATIONS = ["sms", "email", "payments", "maps", "reviews", "meta", "push"];
 const E164 = /^\+1[2-9]\d{2}[2-9]\d{6}$/;
 const INTEGRATION_FIELDS = {
-  sms: ["mode", "number", "from", "test_from", "advanced_opt_out", "test_allowlist"],
+  // manual_live: rollback texting (design §10.9, core/send.mjs manualLive), owners only like the whole document
+  sms: ["mode", "number", "from", "test_from", "advanced_opt_out", "test_allowlist", "manual_live"],
   email: ["mode", "provider", "from", "reply_to", "test_allowlist"],
 };
 function validateIntegrations(v) {
@@ -239,6 +240,7 @@ function validateIntegrations(v) {
       if (k === "sms" && i[f] === "") i[f] = null;
     }
     if (k === "sms") i.advanced_opt_out = yesNo(i.advanced_opt_out, "sms.advanced_opt_out");
+    if (k === "sms") i.manual_live = yesNo(i.manual_live, "sms.manual_live");
     if (k === "email") {
       i.provider = text(i.provider, "email.provider", 30);
       i.from = text(i.from, "email.from", 160);
@@ -363,7 +365,7 @@ export const CORE_SETTINGS = Object.freeze({
     perm: "settings:owner",
     // push reaches staff phones only, so it may be live once the VAPID keys exist (§5.7.7); the rest stay dry-run until the owner connects them (§11.1 rule 7)
     defaults: {
-      sms: { mode: "dry_run", number: "+17633143400", from: null, test_from: null, advanced_opt_out: true, test_allowlist: [] },
+      sms: { mode: "dry_run", number: "+17633143400", from: null, test_from: null, advanced_opt_out: true, test_allowlist: [], manual_live: false },
       email: { mode: "dry_run", provider: "postmark", from: "Barta Window Washing <office@bartawindowwashing.com>", reply_to: "office@bartawindowwashing.com", test_allowlist: [] },
       payments: { mode: "dry_run" }, maps: { mode: "dry_run" }, reviews: { mode: "dry_run" }, meta: { mode: "dry_run" }, push: { mode: "live" },
     },

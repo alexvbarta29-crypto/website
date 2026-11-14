@@ -125,3 +125,22 @@ test("Import from Rotor leads to the daily import and, for owners, the switch-ov
   assert.doesNotMatch(office, /href="#\/cutover"/, "only who may switch sees the way to it");
   assert.match(office, /Set it up/);
 });
+
+test("rollback texting on the switch page: only while rolled back (or still on), an owner's on and off, no em dash", async () => {
+  const s = await load("cutover-checklist");
+  assert.doesNotMatch(text(s.render(base(), ctx)), /Texting while back on Rotor/, "not before any switch");
+  const off = text(s.render(base({ mode: { system_of_record: "rotor", cutover_n: 1, cutover_at: NOW, rolled_back_at: NOW }, manual_live: { on: false, rolled_back: true, sms_live: true } }), ctx));
+  assert.match(off, /Texting while back on Rotor/);
+  assert.match(off, /<button type="button" class="btn primary" data-manual-live="on"\s*>Turn it on<\/button>/);
+  assert.match(off, /Every automation, template, bulk send and campaign stays off/);
+  assert.doesNotMatch(off, /isn't connected live/);
+  const on = text(s.render(base({ mode: { system_of_record: "rotor", cutover_n: 1, cutover_at: NOW, rolled_back_at: NOW }, manual_live: { on: true, rolled_back: true, sms_live: false } }), ctx));
+  assert.match(on, /data-manual-live="off"/);
+  assert.match(on, /<span class="pill green">On<\/span>/);
+  assert.match(on, /Texting isn't connected live/);
+  for (const h of [off, on]) assert.doesNotMatch(h, /—/);
+  const rb = await load("cutover-runbook");
+  const steps = text(rb.render({}, ctx));
+  assert.match(steps, /turn on Texting while back on Rotor/);
+  assert.doesNotMatch(steps, /—/);
+});
