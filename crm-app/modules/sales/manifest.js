@@ -7,7 +7,11 @@
 export default {
   name: "sales",
   routes: [
-    { path: "/calls", load: () => import("./calls.js"), title: "Calls", perm: "sales:work", parent: "/today", skeleton: "list" },
+    // the Power Dialer (guide-gaps §2.8): Dialer · Queue (the follow-up call list is its built-in queue) · Call logs
+    { path: "/calls", load: () => import("./dialer.js"), title: "Power Dialer", perm: "sales:work", parent: "/today", skeleton: "card" },
+    { path: "/calls/queue", load: () => import("./queue.js"), title: "Queue", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/calls/logs", load: () => import("./call-logs.js"), title: "Call logs", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/settings/call-scripts", load: () => import("./scripts.js"), title: "Call scripts", perm: "settings:messaging", parent: "/settings" },
     // the Sales tab's first screens (the Nov 2026 layout, after Rotor's): Pipeline, then Leads
     { path: "/pipeline", load: () => import("./pipeline.js"), title: "Pipeline", perm: "sales:work", parent: "/today", skeleton: "list", views: ["list", "board"] },
     { path: "/leads", load: () => import("./leads.js"), title: "Leads", perm: "sales:work", parent: "/today", skeleton: "list", views: ["list", "board"] },

@@ -27,8 +27,9 @@ for (const device of ["iphone13", "iphonese"]) {
   test(`sales (${device}): Calls, log a call, send the text by hand`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
-      await goTo(f, "/calls");
-      assert.equal(await title(f), "Calls");
+      // (the follow-up call list is the Power Dialer's Queue tab now, its built-in Follow-up calls queue)
+      await goTo(f, "/calls/queue");
+      assert.equal(await title(f), "Queue");
       assert.deepEqual(await screenProblems(f), [], "the call list passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `sales-calls-${device}`);
@@ -226,3 +227,58 @@ test("the Rotor guide's sales screens on a desk (desk1440): Leads board, Tasks b
     await p.clean();
   } finally { await p.close(); }
 });
+
+// The Power Dialer (guide-gaps §2.8): Dialer · Queue · Call logs. The Dialer works the follow-up calls one
+// person at a time (Skip, Previous, Log how it went, the script); a named queue from the New leads; the
+// Call logs' tiles and the call just logged. Both phones, both themes; nothing dials or sends.
+for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["iphone13", "light"], ["iphonese", "dark"]]) {
+  test(`the Power Dialer (${device}, ${theme}): Dialer, Queue, Call logs`, async () => {
+    const { p, page, f: f0 } = await open("olive", device);
+    try {
+      const f = await themed(page, f0, theme);
+      await goTo(f, "/calls");
+      await f.waitForSelector(".dl-page");
+      assert.equal(await title(f), "Power Dialer");
+      assert.deepEqual(await f.$$eval('#subnav [data-seg="sec"]', (els) => els.map((e) => e.dataset.key)), ["dialer", "queue", "logs"], "Dialer | Queue | Call logs");
+      assert.match(await f.textContent(".dl-top"), /Calling from: this phone/);
+      assert.ok(await f.$(".dl-script details"), "the call script");
+      assert.ok(await f.$('.rs-cta a[href^="tel:"]'), "the sticky Call dials from this phone");
+      assert.deepEqual(await screenProblems(f), [], "the Dialer");
+      await shot(page, `g2-dialer-${device}-${theme}`);
+      if (device === "iphone13" && theme === "dark") {
+        const first = await f.textContent(".dl-name b");
+        await f.click('[data-dl-step="skip"]');
+        await f.waitForFunction((n) => document.querySelector(".dl-name b").textContent !== n, first);
+        await f.click('[data-dl-step="prev"]');
+        await f.waitForFunction((n) => document.querySelector(".dl-name b").textContent === n, first);
+        // log how it went: the outcome sheet, then the next person
+        await f.click("[data-dl-log]");
+        await sheetUp(f, /How did it go/);
+        await f.click('.sheet.on [data-outcome="voicemail"]');
+        await f.waitForFunction(() => /Saved|In the Outbox|text/i.test((document.querySelector(".toasts") || {}).textContent || ""), null, { timeout: 8000 });
+        // a named queue: New leads
+        await f.click('#top-rnd [data-own="more"]');
+        await f.waitForSelector(".sheet.on .rs-act");
+        await f.click('.sheet.on .rs-act:has-text("New queue")');
+        await f.waitForSelector('.sheet.on [data-pick="\\"leads:new\\""]');
+        await f.click('.sheet.on [data-pick="\\"leads:new\\""]');
+        await f.waitForFunction(() => /New leads/.test((document.querySelector(".dl-top") || {}).textContent || ""), null, { timeout: 8000 });
+        // the Queue tab shows it, rows with a drag handle
+        await goTo(f, "/calls/queue");
+        await f.waitForSelector(".dl-queue .rs-drag");
+        assert.deepEqual(await screenProblems(f), [], "a named queue");
+        await shot(page, `g2-dialer-queue-${device}`);
+        // the Call logs: the voicemail just logged
+        await goTo(f, "/calls/logs");
+        await f.waitForSelector(".dl-logs .rs-tiles");
+        assert.match(await f.textContent(".dl-logs"), /Voicemail/);
+      }
+      await goTo(f, "/calls/logs");
+      await f.waitForSelector(".dl-logs .rs-tiles");
+      assert.match(await f.textContent(".dl-logs .rs-tiles"), /Total calls[\s\S]*Calls per hour/);
+      assert.deepEqual(await screenProblems(f), [], "the Call logs");
+      await shot(page, `g2-call-logs-${device}-${theme}`);
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}

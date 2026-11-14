@@ -106,7 +106,8 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   assert.deepEqual(tabs("service"), ["Quotes", "Jobs", "Plans"]);
   assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payroll"]);
   assert.deepEqual(tabs("marketing"), ["Workflows", "Campaigns", "Reviews", "Templates"]);
-  for (const k of ["home", "inbox", "schedule", "customers", "dialer", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
+  for (const k of ["home", "inbox", "schedule", "customers", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
+  assert.deepEqual(tabs("dialer"), ["Dialer", "Queue", "Call logs"], "the Power Dialer's three tabs");
   // (Track 2: Leads and Pipelines draw List | Board, Tasks Board | List)
   assert.deepEqual(tabs("leads"), ["List", "Board"]);
   assert.deepEqual(tabs("pipelines"), ["List", "Board"]);
