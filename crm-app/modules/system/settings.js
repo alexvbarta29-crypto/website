@@ -19,14 +19,14 @@ import { pickTheme } from "../../core/nav.js";
 // [key, section title, [[path, label, icon], ...]]; "#theme" is the Light or dark picker (per device).
 export const LAYOUT = Object.freeze([
   ["company", "Company", [["/settings/company", "Company details", "building"], ["/settings/service-area", "Service area", "map"]]],
-  ["team", "Team & permissions", [["/team", "Team", "team"], ["/settings/permissions", "Permissions", "shield"]]],
+  ["team", "Team & permissions", [["/team", "Team", "team"], ["/settings/permissions", "Permissions", "shield"], ["/settings/payroll", "Payroll & pay rates", "pay"]]],
   ["pricing", "Pricing & services", [["/settings/pricing", "Prices & price book", "money"], ["/settings/discounts", "Discounts", "money"]]],
   ["plans", "Plans & agreements", [["/settings/plans", "Plans & perks", "swap"], ["/settings/agreement-templates", "Agreements", "doc"]]],
   ["schedule", "Schedule", [["/settings/hours", "Hours & holidays", "clock"], ["/settings/schedule", "Crew & forecast", "truck"], ["/settings/checklists", "Checklists", "check"]]],
   ["messages", "Messages & automations", [["/templates", "Message templates", "doc"], ["/automations", "Automations", "bolt"], ["/settings/cadences", "Follow-up cadences", "phone"], ["/settings/messaging", "Quiet hours & opt-out", "text"], ["/settings/texting", "Texting & email setup", "mail"]]],
   ["payments", "Payments", [["/settings/payments", "Payments & card fees", "money"]]],
   ["maps", "Maps & door to door", [["/settings/knock", "Door to door", "map"], ["/settings/maps", "Maps & team map", "map"]]],
-  ["data", "Import & data", [["/import", "Import from Rotor", "data"], ["/settings/integrations", "Integrations", "plug"], ["/settings/intake", "Where website leads go", "contacts"], ["/settings/lead-hooks", "Facebook lead forms", "plug"], ["/settings/data", "Data & backups", "data"], ["/activity", "Activity log", "clock"], ["/legacy/customers", "Rotor's first customer list", "contacts"], ["/tools/rotor", "Open Rotor", "link"]]],
+  ["data", "Import & data", [["/import", "Import from Rotor", "data"], ["/settings/integrations", "Integrations", "plug"], ["/settings/intake", "Where website leads go", "contacts"], ["/settings/lead-hooks", "Facebook lead forms", "plug"], ["/settings/data", "Data & backups", "data"], ["/settings/dashboard", "Dashboard numbers", "chart"], ["/activity", "Activity log", "clock"], ["/legacy/customers", "Rotor's first customer list", "contacts"], ["/tools/rotor", "Open Rotor", "link"]]],
   ["look", "Appearance", [["#theme", "Light or dark", "sun"], ["/tab-bar", "Tab bar", "tabbar"]]],
 ]);
 const KEYS = new Set(LAYOUT.map(([k]) => k));

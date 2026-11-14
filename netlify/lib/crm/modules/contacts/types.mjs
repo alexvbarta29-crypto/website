@@ -254,6 +254,8 @@ export function contactRow(r) {
     e: (r.emails || []).map((e) => e.address).filter(Boolean),
     a: a ? addressOneLine({ street1: a.street1, city: a.city }) : "", c: a ? a.city || "" : "", z: a ? a.zip || "" : "",
     lc: r.lifecycle || "lead", src: (r.source && r.source.source) || "", tg: r.tags || [], o: r.owner_id || null,
+    // when the contact came in (Rotor's date for an imported one): the reports' leads and customers by source (M7b)
+    ca: r.created_at || null,
     ...(Object.keys(fl).length ? { fl } : {}), u: r.updated_at,
   };
 }

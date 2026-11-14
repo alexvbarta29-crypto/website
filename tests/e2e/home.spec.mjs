@@ -315,10 +315,10 @@ test("Money (Rotor's card): Collected and Scheduled per day from the import, the
     assert.match(await text(f, ".hm-pair"), /^Collected \$[\d,]+ Scheduled \$[\d,]+$/);
     await f.click('[data-hm="m-fold"]');
     assert.equal(await has(f, '[data-chart="money"]'), true);
-    // See more: the Dashboard's Money view (this phone has the office sign-in)
+    // See more: Reports' Revenue (M7b)
     await f.click(".hm-money .hm-more");
-    await settled(f, { hash: "#/dashboard/money" });
-    assert.equal(await backShown(f), true);
+    await settled(f, { hash: "#/reports?tab=revenue" });
+    assert.equal(await backShown(f), false, "Reports is a Menu screen: top-level");
     await p.clean();
   } finally { await p.close(); }
 });
@@ -421,11 +421,11 @@ test("the office (admin): the money (reports:read), and the Dashboard with her o
   const { p, page, f } = await home("ada", { device: "iphone13" });
   try {
     assert.deepEqual((await cards(f)).slice(0, 2), ["money", "leaderboard"], "no clock for someone who doesn't go out on visits");
-    assert.match(await f.getAttribute(".hm-money .hm-more", "href"), /^#\/dashboard/, "her sign-in opens the dashboards too");
+    assert.match(await f.getAttribute(".hm-money .hm-more", "href"), /^#\/reports/, "her sign-in opens Reports (the dashboards open from it)");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");
     await goTo(f, "/menu");
-    assert.equal(await has(f, '#view a[href="#/dashboard"]'), true, "the Dashboard in the Menu");
+    assert.equal(await has(f, '#view a[href="#/reports"]'), true, "Reports in the Menu");
     await p.clean();
   } finally { await p.close(); }
 });

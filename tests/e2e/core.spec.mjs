@@ -63,18 +63,21 @@ async function office(opts = {}, login = "olive", hash = "") {
 }
 const frameUrls = (page) => page.frames().map((x) => x.url()).filter((u) => /^https?:/.test(u));
 
-test("one app: the Dashboard (Menu → Reports) switches its views in place; Menu stays lit", async () => {
+test("one app: the Dashboard (Menu → Reports → Office dashboard) switches its views in place; Menu stays lit", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu is a sheet (Flyra's): its Reports row opens the Dashboard
+    // the Menu is a sheet (Flyra's): its Reports row opens Reports (M7b), which opens the office Dashboard
     await noInstallCard(page);
     await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".menu-sheet.on");
-    await f.click('.menu-sheet a[href="#/dashboard"]');
+    assert.equal(await f.$('.menu-sheet a[href="#/dashboard"]'), null, "the Dashboard is no second Menu row");
+    await f.click('.menu-sheet a[href="#/reports"]');
+    await settled(f, { hash: "#/reports" });
+    await f.click("[data-office-dashboard]");
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
-    assert.equal(await backShown(f), false, "a screen the Menu lists is top-level (Flyra's): no back button");
+    assert.equal(await backShown(f), true, "the Dashboard sits under Reports: a back button");
     // (a frame that hasn't loaded anything yet has no URL)
     const dash = () => page.frames().find((x) => { try { return new URL(x.url()).pathname === "/dashboard"; } catch (e) { return false; } });
     await page.waitForFunction(() => true);
@@ -441,7 +444,10 @@ test("every client route in the manifests, as owner and tech, at both phone size
   const props = await get(`/contacts/${seeded.contacts.first}/properties`);
   const run = await (await o.ctx.request.post("/api/crm/import/runs", { headers: { "x-crm": "1", "content-type": "application/json" }, data: {} })).json();
   const sign = await (await o.ctx.request.post("/api/crm/qr-codes", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-000000510001", name: "Yard sign, Delano", kind: "yard_sign", area: "Delano" } })).json();
+  // a pay period (M7a): last week's
+  const week = await (await o.ctx.request.post("/api/crm/payroll/periods", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { start_on: "2026-11-08" } })).json();
   const ids = {
+    "/payroll/:id": week.data && week.data.period ? week.data.period.id : null,
     "/contacts/:id": seeded.contacts.lead, "/contacts/:id/edit": seeded.contacts.lead, "/properties/:id": (props.properties || props || [])[0]?.id,
     "/team/:id": seeded.users.admin.id, "/templates/:id": (await get("/templates"))[0].id, "/enrollments/:id": seeded.enrollments.lead,
     "/deals/:id": (en.enrollment || en).deal_id, "/tasks/:id": seeded.tasks.tech, "/settings/cadences/:id": (await get("/cadences"))[0].id,

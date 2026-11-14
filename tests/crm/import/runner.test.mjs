@@ -125,6 +125,8 @@ test("a crash mid-phase resumes at the row that failed; a lost checkpoint redoes
 test("phases of modules not built yet wait (and say how many rows wait); a phase after a waiting one waits too", async () => {
   // a module that registers a phase depending on Payroll's (which isn't there)
   fixtureModule({ importPhases: [{ name: "fixture.after_payroll", entity: "payroll", after: ["payroll.payroll"], normalize: (r) => r, map: async () => ({}) }] });
+  // Payroll shipped (M7a): hidden here, as a part that isn't deployed yet
+  runner.__hidePhasesForTests(["payroll.payroll"]);
   const plan = runner.phasePlan();
   assert.ok(plan.findIndex((p) => p.name === "system.users") < plan.findIndex((p) => p.name === "contacts.customers"), "after: system.users");
   assert.ok(plan.findIndex((p) => p.name === "contacts.leads") < plan.findIndex((p) => p.name === "contacts.suppressions"));
@@ -178,7 +180,8 @@ test("phases of modules not built yet wait (and say how many rows wait); a phase
     const evts = t.stores.data.keys(`evt/import_run/${r.ir.id}/`);
     assert.ok(evts.some((k) => k.includes("--idmap_download--")), "the download is audited");
     assert.ok(evts.some((k) => k.includes("--phase_done--")), "one summary event per phase");
-  } finally { t.done(); }
+  } finally {
+    runner.__hidePhasesForTests([]); t.done(); }
 });
 
 test("cancel, and resume after the lane gave up; only one import at a time; the screen's run detail", async () => {

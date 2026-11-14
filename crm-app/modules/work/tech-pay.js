@@ -18,9 +18,13 @@ export default {
     ensureStyles();
     const p = periodQuery();
     const r = await ctx.api(`/me/pay${p ? `?period=${encodeURIComponent(p)}` : ""}`);
-    return { ...r.data, offline: !!r.offline, as_of: r.as_of || null };
+    const s = { ...r.data, offline: !!r.offline, as_of: r.as_of || null };
+    // payroll (M7a) answers with the real pay: its own view draws it
+    if (s.payroll) { s.view = (await import("../payroll/pay-view.js")).default; if (s.view.load) await s.view.load(s, ctx); }
+    return s;
   },
-  render(s) {
+  render(s, ctx) {
+    if (s.view) return s.view.render(s, ctx);
     const e = s.estimate || {};
     const start = s.period && s.period.start_on;
     const cats = Object.entries(e.by_category || {});
