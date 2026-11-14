@@ -90,7 +90,7 @@ function optionsPane(s) {
   return html`${q.status === "changes_requested" && q.change_message ? html`<section class="rs-card"><h3 class="qt-h3">They asked for changes</h3><p class="bubble">${q.change_message}</p></section>` : ""}
     ${q.status === "declined" && q.decline_reason ? html`<section class="rs-card"><h3 class="qt-h3">Declined</h3><p>${q.decline_reason}</p></section>` : ""}
     ${waiting(s)}
-    ${sectionLabel(v ? `What the customer sees (version ${v.n})` : "Options (not sent yet)")}
+    <div class="rs-row qt-seen">${sectionLabel(v ? `What the customer sees (version ${v.n})` : "Options (not sent yet)")}${q.current_version_id ? html`<a class="rs-pb" ${attrs({ href: `/api/crm/quotes/${encodeURIComponent(q.id)}/preview`, target: "_blank", rel: "noopener" })}>${icon("share")}<span>Customer view</span></a>` : ""}</div>
     ${options.length ? options.map((o) => optionCard(chosen(s, o))) : emptyCard("No options yet", "Edit the quote to price it.")}
     ${q.client_notes ? html`<section class="rs-card">${cardHead("Note to the customer")}<p class="preview">${q.client_notes}</p></section>` : ""}
     ${q.internal_notes ? html`<section class="rs-card">${cardHead("Office note")}<p class="preview">${q.internal_notes}</p></section>` : ""}`;

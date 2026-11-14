@@ -132,3 +132,5 @@
 .qb-segbar{position:sticky;top:0;z-index:2;padding:4px 0 8px;background:var(--mist)}
 .qb .rs-frows .qb-step input{text-align:center}
 .rs-li-sum .num,.rs-li-m{white-space:nowrap}
+.qt-seen{align-items:center}
+.qt-seen .rs-label{margin:0}

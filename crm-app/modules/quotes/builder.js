@@ -223,7 +223,6 @@ export default {
   render(s) {
     if (s.status && ["approved", "converted"].includes(s.status)) return html`<div class="stack"><div class="card empty"><h2>This quote is approved</h2><p>An approved quote doesn't change. Duplicate it to make a new one.</p></div></div>`;
     const on = s.seg || (!s.isNew && s.options.length ? "price" : "measure");
-    s.seg = on;
     return html`<div class="qb">
       <div class="qb-segbar">${seg([{ key: "measure", label: "Measure" }, { key: "price", label: "Price", count: s.options.length || null }, { key: "extras", label: "Extras" }], on, { name: "qb", black: true, label: "Quote" })}</div>
       ${on === "price" ? optionsCard(s) : on === "extras" ? extrasCard(s) : html`${whoCard(s)}${measureCard(s)}${servicesCard(s)}`}

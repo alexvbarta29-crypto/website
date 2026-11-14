@@ -207,6 +207,7 @@ function agreementCard(a, ctx) {
     <div class="rs-row"><span class="pl-ag-t"><b>Service Agreement</b><span class="rs-sub">Created ${dateShort(a.created_at)}${a.sent_at ? ` · sent ${dateShort(a.sent_at)}` : ""}</span></span>${kitPill(words, tone)}</div>
     ${a.signature ? html`<p class="rs-sub">${a.signature.name_typed}${a.signature.method === "in_person" ? " (in person)" : ""}, ${dateShort(a.signed_at)}</p>` : ""}
     ${a.reminders && a.reminders.count ? html`<p class="rs-sub">${a.reminders.count} reminder${a.reminders.count === 1 ? "" : "s"} sent</p>` : ""}
+    ${a.queued ? html`<p class="rs-sub">Waiting in a bulk send (test and confirm it under Approvals)</p>` : ""}
     ${a.imported ? html`<p class="rs-sub">From Rotor (no signature on file)</p>` : ""}
     <div class="pl-ag-acts">
       ${canSend ? pillBtn("Email", { icon: "mail", data: { "send-ch": `email:${a.id}` } }) : ""}
