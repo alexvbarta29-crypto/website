@@ -30,7 +30,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | [CRM-COMMS.md](CRM-COMMS.md) | M6 | the Inbox and conversations, inbound texts, campaigns, reviews, Rotor's messages | live (in review) |
 | [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
 | [CRM-REPORTS.md](CRM-REPORTS.md) | M7b | rollups, the dashboard feed | stub |
-| [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's tools over the CRM | stub |
+| [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's MCP connector over the CRM (reads, Rotor-compatible reports, asks an owner approves; how to connect claude.ai) and the calendar feed (iCal) | built (in review) |
 | [CRM-MAP.md](CRM-MAP.md) | maps | Door to door (the knock map, pins, areas, convert to lead, the report) and the live Team map; the map stack, geocoding, outside hosts | live (in review) |
 
 The office side (tabs, the launcher for a start with no signal, web push,
@@ -1214,8 +1214,8 @@ night with nothing new reads no file record.
   owner-only backup kind is the one exception for `export:all`. Each key
   has a rate (120 calls a minute; path keys 30): one small blob per call
   under `thr/key/{keyId}/`, counted by one listing; over it answers 429
-  with Retry-After. The "path" kind is hidden in the app until the MCP
-  connector (M7c).
+  with Retry-After. Path keys are made on Settings → Claude connector
+  (M7c, [CRM-MCP.md](CRM-MCP.md)).
 - Audit: `GET /api/crm/audit?date=&user=&type=` (who did what that day),
   `GET /audit/event?key=`, `GET /records/{type}/{id}/history`.
 
