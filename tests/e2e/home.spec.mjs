@@ -15,7 +15,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { start } from "./server.mjs";
-import { launch, phone, signIn, crmFrame, goTo, settled, title, hashOf, backShown, screenProblems, badLinks, shot, noInstallCard } from "./kit.mjs";
+import { launch, phone, signIn, crmFrame, goTo, settled, title, hashOf, backShown, screenProblems, badLinks, shot, noInstallCard, drawerGo, openDrawer, drawerLabels } from "./kit.mjs";
 
 let srv, browser, team, seeded;
 before(async () => {
@@ -425,7 +425,7 @@ test("the office (admin): the money (reports:read), and the Dashboard with her o
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-admin-iphone13");
     await goTo(f, "/menu");
-    assert.equal(await has(f, '#view a[href="#/reports"]'), true, "Reports in the Menu");
+    assert.equal(await has(f, '#view a[href="#/reports"]'), true, "Reports in the Menu (Analytics)");
     await p.clean();
   } finally { await p.close(); }
 });
@@ -452,42 +452,37 @@ test("a tech never sees Home: their own Today, and /home tells them nothing", as
   }
 });
 
-test("Pipeline and Leads from the Menu (top-level: no switch, no back button); the Sales switch for someone who pins Sales; the Menu sheet", async () => {
+test("Pipeline and Leads from the drawer (top-level: no switch, no back button); the Sales switch for someone who pins Sales; the drawer", async () => {
   await day();
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
     try {
       for (const [path, name] of [["/pipeline", "Pipeline"], ["/leads", "Leads"]]) {
-        await f.click('#tabs [data-tab="menu"]');
-        await f.waitForSelector(".menu-sheet.on");
-        await f.click(`.menu-sheet a[href="#${path}"]`);
+        await drawerGo(f, path);
         await settled(f, { hash: "#" + path });
         assert.equal(await title(f), name);
         assert.equal(await f.$eval("#subnav", (el) => el.hidden), true, "no Pipeline · Leads · Calls · Quotes · Tasks switch");
-        assert.equal(await backShown(f), false, `${path}, from the Menu, is top-level: no back button`);
+        assert.equal(await backShown(f), false, `${path}, from the drawer, is top-level: no back button`);
         assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu is lit on what it opens");
         assert.ok(await f.$("#fab"), "the create button");
         assert.deepEqual(await screenProblems(f), []);
         await shot(page, `home-menu-${path.slice(1)}-${device}`);
       }
-      // the Menu: a sheet of five rounded groups (Flyra's) and Settings, nothing the bar holds, the tab lit on what it opens
-      await f.click('#tabs [data-tab="menu"]');
-      await f.waitForSelector(".menu-sheet.on");
-      assert.deepEqual(await f.$$eval(".menu-sheet .ms-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Marketing & messages"]);
-      assert.deepEqual(await f.$$eval(".menu-sheet .ms-grp:nth-of-type(2) .ms-l", (els) => els.map((e) => e.textContent)).then((x) => x.slice(0, 5)), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
-      const listed = await f.$$eval(".menu-sheet .ms-l", (els) => els.map((e) => e.textContent));
-      assert.equal(new Set(listed).size, listed.length, "each once");
-      assert.ok(!listed.includes("Home") && !listed.includes("Schedule") && !listed.includes("Inbox"), "not what the bar holds");
-      assert.equal(listed[listed.length - 1], "Settings");
+      // the drawer: Rotor's four groups, every screen once, Settings the gear
+      await openDrawer(f);
+      assert.deepEqual(await f.$$eval(".drawer .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(".dr-l")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
+      const listed = await drawerLabels(f);
+      for (const want of ["Jobs", "Plans", "Quotes", "Invoices", "Payments", "Reports", "Leaderboard", "Campaigns", "Merge review", "Team map", "Door to door"]) assert.ok(listed.includes(want), `${want} in the drawer`);
+      assert.ok(await f.$('.drawer a[href="#/settings"]'), "the gear");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-menu-${device}`);
-      await f.click('.menu-sheet a[href="#/plans"]');
+      await drawerGo(f, "/plans", { open: false });
       await settled(f, { hash: "#/plans" });
-      assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the Menu's");
-      // someone who pins Sales on their own bar (Menu → Tab bar) still gets its switch
+      assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the drawer's");
+      // someone who pins Sales on their own bar (Customize Tabs) still gets its switch
       await goTo(f, "/tab-bar");
-      await f.click('[data-pick="map"]');
-      await f.click('[data-pick="sales"]');
+      await f.click('[data-ctb-out="map"]');
+      await f.click('[data-ctb-in="sales"]');
       await f.click("[data-save]");
       await f.waitForSelector('#tabs [data-tab="sales"]');
       await f.click('#tabs [data-tab="sales"]');
@@ -517,9 +512,8 @@ test("on a desk: the sidebar, search and New; the clock across, Money beside Tod
       assert.equal(await title(f), "Home");
       assert.equal(await f.$eval("#tabs", (el) => getComputedStyle(el).display), "none", "no bottom bar on a desk");
       assert.ok(await f.isVisible("#side"), "the sidebar");
-      // the phone bar's places first, in its order, then the Menu's five groups, then Settings (Nov 2026)
-      assert.deepEqual(await f.$$eval("#side .side-main .sl", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Map"]);
-      assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Marketing & messages"]);
+      // the drawer's four groups (Rotor's), its lists folding open in place, then Settings (Nov 2026)
+      assert.deepEqual(await f.$$eval("#side .side-main", (els) => els.map((g) => [...g.querySelectorAll(":scope > .side-item .sl, :scope > .side-grp > .side-h .sl")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
       assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");

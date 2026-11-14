@@ -202,3 +202,43 @@ export async function shot(page, name) {
   mkdirSync(process.env.E2E_SHOTS, { recursive: true });
   await page.screenshot({ path: `${process.env.E2E_SHOTS}/${name}.png` });
 }
+
+// The drawer (Rotor's menu, Nov 2026): the Menu tab opens it from the left.
+export async function openDrawer(frame) {
+  await frame.click('#tabs [data-tab="menu"]');
+  await frame.waitForSelector(".drawer.on");
+  await frame.waitForTimeout(260);
+}
+// Opens a screen from the drawer: the row itself, or its row in a list (Service, Financials...) first.
+export async function drawerGo(frame, path, { open = true } = {}) {
+  if (open) await openDrawer(frame);
+  const sel = `.drawer a[href="#${path}"]`;
+  if (!(await frame.$(sel))) {
+    const key = await frame.evaluate(async (p) => {
+      for (const k of [...document.querySelectorAll(".drawer [data-dr-sub]")].map((x) => x.dataset.drSub)) {
+        const b = document.querySelector(`.drawer [data-dr-sub="${k}"]`);
+        b.click();
+        await new Promise((r) => setTimeout(r, 30));
+        if (document.querySelector(`.drawer a[href="#${p}"]`)) return b.dataset.drSub;
+        const back = document.querySelector(".drawer [data-dr-back]");
+        if (back) back.click();
+        await new Promise((r) => setTimeout(r, 30));
+      }
+      return null;
+    }, path);
+    if (!key) throw new Error(`${path} is not in the drawer`);
+  }
+  await frame.click(sel);
+}
+// Every row of the drawer, its lists opened: [label, ...]
+export const drawerLabels = (frame) => frame.evaluate(async () => {
+  const out = [...document.querySelectorAll(".drawer .dr-l")].map((e) => e.textContent);
+  for (const k of [...document.querySelectorAll(".drawer [data-dr-sub]")].map((b) => b.dataset.drSub)) {
+    document.querySelector(`.drawer [data-dr-sub="${k}"]`).click();
+    await new Promise((r) => setTimeout(r, 30));
+    out.push(...[...document.querySelectorAll(".drawer .dr-grp .dr-l")].map((e) => e.textContent));
+    document.querySelector(".drawer [data-dr-back]").click();
+    await new Promise((r) => setTimeout(r, 30));
+  }
+  return out;
+});

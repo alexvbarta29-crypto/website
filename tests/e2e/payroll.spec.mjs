@@ -30,7 +30,7 @@ for (const device of ["iphone13", "desk1440"]) {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, "/menu");
-      assert.match(await f.textContent("#view"), /Work[\s\S]*Payroll/);
+      assert.match(await f.textContent("#view"), /Financials[\s\S]*Payroll/);
       await goTo(f, "/payroll");
       assert.equal(await title(f), "Payroll");
       await viewHas(f, /Crew scoreboard/);

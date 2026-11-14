@@ -174,14 +174,17 @@ test("#/kit is for owners and the office: a tech sees Not for this login; it is 
   } finally { await o.p.close(); }
 });
 
-test("the Tab bar page's preview is a bar of small icons again (it had no CSS)", async () => {
+test("#/tab-bar is Customize Tabs as a page: one list, the MORE MENU line, small icons, round − and +, drag handles", async () => {
   const { p, page, f } = await open("olive", "iphone13");
   try {
     await goTo(f, "/tab-bar");
-    const bar = await box(f, ".tb-prev");
-    assert.ok(bar.h <= 80, `one row (${bar.h} px)`);
-    const icons = await f.$$eval(".tb-chip svg", (els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
-    assert.ok(icons.length >= 2 && icons.every((w) => w <= 24), `small icons: ${icons}`);
+    const line = await box(f, "[data-ctb-line]");
+    const rows = await f.$$eval(".ctb-row", (els) => els.map((e) => e.dataset.k));
+    assert.ok(rows.length >= 6 && line.h <= 60, `${rows.length} rows, the line ${line.h} px`);
+    const icons = await f.$$eval(".ctb-ic svg", (els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
+    assert.ok(icons.every((w) => w <= 24), `small icons: ${icons}`);
+    assert.equal(await f.$$eval("[data-ctb-out]", (els) => els.length), 4, "the standard bar's four above the line");
+    assert.ok((await f.$$eval("[data-ctb-drag]", (els) => els.length)) === rows.length, "a handle on every row");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "kit-tab-bar");
     await p.clean();

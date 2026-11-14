@@ -950,3 +950,7 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
 .set-sec.shut .side-chev{transform:rotate(-45deg)}
 .set-sec.shut:not(.found) .set-list{display:none}
 .set-none{margin:6px 4px}
+/* #/menu: every list of the drawer open under its row's name */
+.dr-h{display:flex;align-items:center;gap:12px;min-height:40px;margin:6px 0 0;padding:0 10px;font:600 13px/1.2 var(--text);letter-spacing:.05em;text-transform:uppercase;color:var(--label)}
+.dr-h .dr-ic{color:var(--label)}
+.dr-in{list-style:none;margin:0 0 4px;padding:0 0 0 22px}

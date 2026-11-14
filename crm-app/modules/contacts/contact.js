@@ -44,7 +44,7 @@
 // A technician sees only what the server gives them: the name, the numbers
 // to call and the properties of their visits.
 
-import { html, icon, sheet, toast, attrs, openExternal, confirmSheet, rnd, seg, cardHead, sectionLabel, statGrid, contactRows, statusPill, pillTap, notesBox, disclosure, addressCard } from "../../core/ui.js";
+import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, statGrid, contactRows, statusPill, pillTap, notesBox, disclosure, addressCard } from "../../core/ui.js";
 import { field, select, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { dateShort, dateTime, dateYear, money, ago, localDate } from "../../core/format.js";
 import { pickContact, pickFrom } from "../../core/pickers.js";

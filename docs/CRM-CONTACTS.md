@@ -333,21 +333,61 @@ emails); logs carry counts and codes, never a name, phone, email, address
 or amount tied to a person. No key holds phone digits or an email
 (`tests/crm/contacts/keys.test.mjs`).
 
-## The contact page's sections (extension point)
+## The contact page's cards (extension point)
 
-A module adds a section through its client manifest's `contactTabs` (the
-name stays from the tabs it replaced):
-`{ key, label, order, load, place?, heading?, title?, perm? }`.
-`place` is one of `visits`, `plan`, `docs` (several modules share it:
-each gets a small heading, `title` else `label`), `aside` (beside the
-activity on a wide screen) or `more` (a section of its own after "About
-to be sent", headed `heading` else `label`); `perm` keeps it from someone
-who may not see it. The module default-exports `{ load(params, ctx),
-render(state, ctx), header?(state) → { plan?, next_visit? },
-queued?(state) → [{ at, label, sub?, href?, icon? }] }`; a state of
-`{ denied: true }` leaves the section out; `ctx.section` is true; setting
-`ctx.state.tabMod = null` and calling `ctx.rerender()` loads that section
-again. Today: work (visits), plans (plan), quotes and money (docs), sales
-(more: "Follow-ups and tasks"), comms (aside: "Messages"). Code:
-`crm-app/modules/contacts/contact.js` (`contactSections`, `headerNumbers`);
-tests: `tests/crm/contacts/sections.test.mjs`, `tests/e2e/layout.spec.mjs`.
+The contact page is Rotor's lead and customer page (Nov 2026): the name with
+a pill (the lead's priority, else the deal's stage), white pills (plan,
+owner, "Lead since"), Details | Activity, the stat card, CONTACT rows with
+round call, text, copy and navigate, the satellite, then cards with a round
+`+`; every other action is in the header's round `...` (`more()` in
+`contact.js`; Archive and Mark lost red at the end). A module adds its part
+through its client manifest's `contactTabs` (the name stays from the tabs it
+replaced): `{ key, label, order, load, place?, heading?, title?, perm? }`.
+The module default-exports `{ load(params, ctx), cards?(state, ctx),
+actions?(state, ctx), render(state, ctx), header?(state) → { plan?,
+next_visit?, deal_id?, deal_status?, stage?, pipeline?, follow_up?,
+enrollment_id? }, queued?(state) → [{ at, label, sub?, href?, icon? }] }`:
+
+- `cards()` → `[{ key, tab: "details" | "activity", title, add?: { label,
+  href | data }, edit?, count?, body | null, empty? }]`: one card each (the
+  round `+` is `add`; a `null` body shows the one-line `empty`). The page
+  sorts them in Rotor's order (`LEAD_ORDER`, `CUSTOMER_ORDER`,
+  `ACTIVITY_ORDER`); the first card of a module carries `#ct-mod-<key>`.
+- `actions()` → `[{ key, label, icon, href | run, data?, hint?, danger? }]`:
+  rows of the `...`, grouped by `key` (call, follow, task / quote, book,
+  plan, invoice, credit, cardlink; a lead's follow-up group first, a
+  customer's booking group first).
+- A module without `cards()` shows its `render()` as one card (Activity for
+  `place: "aside"`).
+
+A state of `{ denied: true }` leaves the module out; `ctx.section` is true
+and `ctx.contact` is the contact; setting `ctx.state.tabMod = null` and
+calling `ctx.rerender()` loads that part again. Old `?tab=` links open the
+module's card. Today: work (Visits), plans (Plan), quotes (Quotes), money
+(Invoices, and a customer's Payment), sales (Follow-ups, Tasks; Calls and
+Deals on Activity), comms (Messages on Activity). Code:
+`crm-app/modules/contacts/contact.js` (`contactSections`, `headerNumbers`,
+`topPill`); tests: `tests/crm/contacts/sections.test.mjs`,
+`tests/crm/contacts/screens.test.mjs`, `tests/e2e/layout.spec.mjs`,
+`tests/e2e/contacts.spec.mjs`.
+
+## A lead's priority
+
+`contact.priority`: `low`, `medium` or `high` (Rotor's Low / Medium / High,
+the owner's Nov 2026 "copy Rotor"), optional. Set from the lead editor and
+the lead page's `...` (PATCH `/contacts/:id { priority }`, `null` clears
+it; anything else is a 400); the pill right of the lead's name; on the
+contacts index as `pr`, so the Leads list shows it as its pill (before an
+open task's priority or the "High priority" tag) and filters by it. The
+Rotor import sets it from the lead's own priority when it makes the lead
+(and fills it when the lead joins a customer); it is not a Rotor-owned
+field, so a later import never undoes a person's change. Rotor's
+`rotor.priority` and the "High priority" tag stay as they were.
+
+One-time backfill for leads imported before this field existed (an owner
+runs it by hand, once; nothing runs it automatically): for each contact
+whose `rotor.priority` is `low`, `medium` or `high` and that has no
+`priority`, set `priority` to it (PATCH `/contacts/:id` with the record's
+version, or a script over `rec/contact/*` with `updateRecord`). It is safe
+to run twice (it only fills an empty field), touches nothing Rotor sees,
+and a contact someone already gave a priority keeps theirs.

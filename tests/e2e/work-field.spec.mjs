@@ -11,7 +11,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { start } from "./server.mjs";
-import { launch, phone, signIn, crmFrame, goTo, settled, title, badLinks, screenProblems, shot, noInstallCard } from "./kit.mjs";
+import { launch, phone, signIn, crmFrame, goTo, settled, title, badLinks, screenProblems, shot, noInstallCard, openDrawer, drawerLabels, drawerGo } from "./kit.mjs";
 
 let srv, browser, seeded;
 before(async () => { srv = await start(); seeded = await srv.seed(); browser = await launch(); });
@@ -212,12 +212,11 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
     await f.waitForSelector('.hm-c-clock [data-hm="clock"]');
     assert.match(await f.textContent(".hm-c-clock"), /Timesheet/i);
     await checks(f, page, "field-owner-today-iphonese", problems);
-    // the Menu has Time, Pay and Timesheets (Work)
-    await f.click('#tabs [data-tab="menu"]');
-    await f.waitForSelector(".menu-sheet.on");
-    const labels = await f.$$eval(".menu-sheet .ms-l", (els) => els.map((e) => e.textContent));
-    for (const want of ["Time", "Pay", "Timesheets"]) assert.ok(labels.includes(want), `the Menu lists ${want}`);
-    await f.click('.menu-sheet a[href="#/timesheets"]');
+    // the drawer has Time, Pay and Timesheets (Service)
+    await openDrawer(f);
+    const labels = await drawerLabels(f);
+    for (const want of ["Time", "Pay", "Timesheets"]) assert.ok(labels.includes(want), `the drawer lists ${want}`);
+    await drawerGo(f, "/timesheets", { open: false });
     await settled(f, { hash: "#/timesheets" });
     await f.waitForSelector(`[data-approve="${seeded.users.tech.id}"]`);
     await f.waitForSelector("[data-decide]");

@@ -134,6 +134,8 @@
   .ct-seg{display:none}
   .ct-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,38%);gap:16px;align-items:start}
   .ct-pane.off{display:flex}
+  /* the narrow Activity column: a row's name before its time */
+  [data-pane="activity"] .row .end>.small{display:none}
 }
 
 /* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's two-tone cards, in both themes) */

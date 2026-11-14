@@ -63,9 +63,10 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     const { p, page, f, stub } = await open("olive", device, { geo: false });
     try {
       await goTo(f, "/menu");
-      // the bar holds Map (Door to door), so the Menu does not repeat it
+      // the bar holds Map (Door to door); the Menu (the drawer) has it too
       assert.ok(await f.$('a[href="#/map"], a[href="#/knock"]'), "Door to door is reachable from the bar or the Menu");
-      assert.match(await f.textContent("#view"), /Work[\s\S]*Team map/);
+      // (the drawer's Map row: Door to door and the Team map, a list of its own)
+      assert.match(await f.textContent("#view"), /Door to door[\s\S]*Team map/);
       await goTo(f, "/knock");
       assert.equal(await title(f), "Door to door");
       await mapReady(f);

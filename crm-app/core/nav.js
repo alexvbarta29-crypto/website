@@ -759,13 +759,19 @@ function currentRow(groups) {
 }
 
 // The rows (html): the groups split by thin lines, or one row's own list.
-export function drawerList(groups, { open = null } = {}) {
+// expand: every list open in place, under its row's name (the #/menu page has the room).
+export function drawerList(groups, { open = null, expand = false } = {}) {
   const cur = currentRow(groups);
   const n = st.badges.inbox || 0;
   const link = (it, on) => html`<a class="dr-row" ${attrs({ href: "#" + it.path, "aria-current": on ? "page" : null, "data-dr-go": it.path })}><span class="dr-ic">${icon(it.icon || "list")}</span><span class="dr-l">${it.label}</span>${it.count === "inbox" && n ? html`<span class="dr-n">${n > 99 ? "99+" : String(n)}</span>` : ""}</a>`;
   const row = (it) => (it.sub
     ? html`<button type="button" class="dr-row" ${attrs({ "data-dr-sub": it.key, "aria-current": cur.row === it ? "true" : null })}><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span><span class="dr-dot" aria-hidden="true"></span><span class="sr">, ${it.sub.length} screens</span></button>`
     : link(it, cur.row === it));
+  if (expand) {
+    return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${it.sub
+      ? html`<div class="dr-sub" ${attrs({ "data-dr-list": it.key })}><h3 class="dr-h"><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span></h3><ul class="dr-in">${it.sub.map((x) => html`<li>${link(x, cur.sub === x)}</li>`)}</ul></div>`
+      : link(it, cur.row === it)}</li>`)}</ul>`)}`;
+  }
   const list = open ? groups.flat().find((it) => it.key === open && it.sub) : null;
   if (list) {
     return html`<button type="button" class="dr-row dr-back" data-dr-back><span class="dr-ic">${icon("chevleft")}</span><span class="dr-l">${list.label}</span></button>
@@ -783,7 +789,8 @@ export function drawerFoot() {
 export const drawerLogo = () => html`<a class="dr-logo" href="#/today" data-dr-go="/today"><img class="lg-l" src="/assets/img/logo-bww.png" alt="Barta Window Washing" width="128" height="35"><img class="lg-d" src="/assets/img/logo-bww-white.png" alt="Barta Window Washing" width="128" height="35"></a>`;
 
 let drawerClose = null;
-export function closeDrawer() { if (drawerClose) drawerClose(); }
+// → true when it was open (the edge swipe closes it before going back)
+export function closeDrawer() { if (!drawerClose) return false; drawerClose(); return true; }
 
 export function openDrawer() {
   if (drawerClose) return drawerClose;
