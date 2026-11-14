@@ -28,7 +28,7 @@ const unknownKeys = (obj, allowed, what) => {
 // ---------------------------------------------------------------- types
 
 const TYPE_KEYS = new Set(["type", "prefix", "idType", "v", "validate", "migrate", "rotorFields", "mirrored", "indexes", "rels",
-  "pointers", "summary", "techFields", "example", "shadow", "audit", "readPerm"]);
+  "pointers", "summary", "techFields", "example", "shadow", "audit", "readPerm", "importZeroIsEmpty"]);
 
 export function defineType(def) {
   if (!isObj(def)) fail("defineType: expected an object");
@@ -70,12 +70,16 @@ export function defineType(def) {
   if (def.summary !== undefined && !isFn(def.summary)) fail(`${where}: summary must be a function`);
   // readPerm: the permission that reads one record of this type (its history, §4.12); scoped checks pass the record
   if (def.readPerm !== undefined && !(typeof def.readPerm === "string" && /^[a-z_]+:[a-z_]+$/.test(def.readPerm))) fail(`${where}: readPerm must be "resource:action"`);
+  // importZeroIsEmpty: fields outside rotorFields where a stored 0 counts as nothing for the import's fill (a derived
+  // value an older import stored as 0: the plan's sale value); a non-zero value is never replaced
+  const zero = def.importZeroIsEmpty === undefined ? [] : def.importZeroIsEmpty;
+  if (!Array.isArray(zero) || zero.some((f) => typeof f !== "string" || def.rotorFields.includes(f))) fail(`${where}: importZeroIsEmpty is a list of fields outside rotorFields`);
   return Object.freeze({
     type: t, prefix: def.prefix, idType: def.idType || t, v: def.v, validate: def.validate, migrate: Object.freeze({ ...migrate }),
     rotorFields: Object.freeze([...def.rotorFields]), techFields: Object.freeze([...def.techFields]), example: def.example,
     mirrored, indexes: Object.freeze(indexes), rels: Object.freeze(rels), pointers: Object.freeze(pointers),
     summary: def.summary || ((r) => ({ id: r.id })), shadow: def.shadow !== false, audit: def.audit !== false,
-    readPerm: def.readPerm || null,
+    readPerm: def.readPerm || null, importZeroIsEmpty: Object.freeze([...zero]),
   });
 }
 

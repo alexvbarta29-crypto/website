@@ -8,7 +8,7 @@
 // nothing and makes nothing twice.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, importExport, generate, store } from "../import/fixtures.mjs";
+import { setup, importExport, generate, store, runner } from "../import/fixtures.mjs";
 
 const { idForRotor } = await import("../../../netlify/lib/crm/core/ids.mjs");
 const { rotorKey } = await import("../../../netlify/lib/crm/modules/contacts/display.mjs");
@@ -121,6 +121,11 @@ test("templates, plans, series and lights from a Rotor export, twice", async () 
     const ix = await store.withStoreScope({ requestId: "t" }, () => store.readIndex("plans", ""));
     assert.equal(ix.rows.length, recurring + lights);
     assert.ok(ix.rows.every((r) => r.k !== "one_time_series"));
+    // the sale value is priced from the lines as stored (it was $0 for every imported plan); Home's ARR reads a year of prices
+    const M = await import("../../../netlify/lib/crm/modules/plans/machine.mjs");
+    for (const p of plans) assert.equal(p.sale_value_cents, M.saleValue(p), "sale value as stored");
+    assert.ok(plans.filter((p) => p.sale_value_cents > 0).length > plans.length / 2);
+    for (const r of ix.rows) assert.equal(r.ay, M.yearValue(plans.find((p) => p.id === r.id)));
     // row 20: plan template ids kept for joins
     const cat = t.stores.data.json("cfg/plans_catalog");
     assert.ok(cat && cat.rotor_template_ids.length > 0);
@@ -150,4 +155,55 @@ test("templates, plans, series and lights from a Rotor export, twice", async () 
     assert.equal(t.stores.data.keys("rec/job/").length, jobs, "no takedown twice");
     for (const [k, v] of Object.entries(snap)) assert.equal(JSON.stringify(t.stores.data.json(k)), v, `${k} unchanged`);
   } finally { t.done(); }
+});
+
+test("a plan an older import stored at $0 is repaired by the next import (audited, its index row refreshed); a person's value stays; another import changes nothing", async () => {
+  const M = await import("../../../netlify/lib/crm/modules/plans/machine.mjs");
+  const { t, owner } = await setup();
+  try {
+    await store.withStoreScope({ requestId: "t" }, () => AG.seedAgreementTemplates(AUTO));
+    const ex = generate({ scale: 0.06, seed: 31 });
+    assert.equal((await importExport(t, owner, ex)).run.status, "done");
+    const D = t.stores.data;
+    const priced = D.keys("rec/plan/").map((k) => D.json(k)).filter((p) => M.saleValue(p) > 0);
+    assert.ok(priced.length >= 3);
+    const [person, ...zeroed] = priced;
+    // the live CRM before Nov 14: every imported plan stored $0, and its index row had no ay/ar/tm and sv 0
+    for (const p of zeroed) await D.setJSON(`rec/plan/${p.id}`, { ...p, sale_value_cents: 0 });
+    await D.setJSON(`rec/plan/${person.id}`, { ...person, sale_value_cents: 12345 });
+    const ix = D.json("ix/plans");
+    for (const e of Object.values(ix.rows)) for (const part of Object.values(e)) if (part.d) { delete part.d.ay; delete part.d.ar; delete part.d.tm; part.d.sv = 0; }
+    await D.setJSON("ix/plans", ix);
+    // the safety net before any import: the index derivation falls back to the lines' value
+    const { planRow } = await import("../../../netlify/lib/crm/modules/plans/types.mjs");
+    assert.equal(planRow({ ...zeroed[0], sale_value_cents: 0 }).sv, M.saleValue(zeroed[0]));
+    assert.equal(planRow({ ...person, sale_value_cents: 12345 }).sv, 12345);
+
+    const second = await importExport(t, owner, ex);
+    assert.equal(second.run.status, "done");
+    const st = await runner.loadState(second.ir.id);
+    assert.equal(st.phases["plans.plans"].records.plan.updated, zeroed.length, "the zeroed plans, nothing else");
+    for (const p of zeroed) {
+      const got = D.json(`rec/plan/${p.id}`);
+      assert.equal(got.sale_value_cents, M.saleValue(got), "0 → the lines' value");
+      assert.ok(got.sale_value_cents > 0);
+      // audited like any import fill: the record names this run, the phase counts it updated (its summary event)
+      assert.equal(got.import.run_id, second.ir.id);
+    }
+    assert.equal(D.json(`rec/plan/${person.id}`).sale_value_cents, 12345, "a non-zero value is never replaced");
+    // every index row is fresh right after the import (no Rebuild lists): the repaired ones and the others
+    const rows = (await store.withStoreScope({ requestId: "t" }, () => store.readIndex("plans", ""))).rows;
+    assert.ok(rows.length > zeroed.length);
+    for (const r of rows) {
+      const rec = D.json(`rec/plan/${r.id}`);
+      assert.deepEqual([r.sv, r.ay, r.ar, r.tm], [M.saleValueOf(rec), M.yearValue(rec), rec.term.auto_renew === false ? 0 : 1, rec.term.initial_months || 12], r.id);
+    }
+
+    // another import changes nothing
+    const before = new Map(D.keys("rec/plan/").map((k) => [k, D.etagOf(k)]));
+    const ixEtag = D.etagOf("ix/plans");
+    assert.equal((await importExport(t, owner, ex)).run.status, "done");
+    for (const [k, e] of before) assert.equal(D.etagOf(k), e, `${k} unchanged`);
+    assert.equal(D.etagOf("ix/plans"), ixEtag, "the index untouched");
+  } finally { await t.done?.(); }
 });
