@@ -69,7 +69,7 @@ test("the preview: per day and per automation, seeds, the floor, numbers; sample
       { key: "visit.reminder_2d", label: "Reminder 2 days before", kind: "daily", enabled: true, by_day: [{ ...z, texts: 1 }, z, z, z], total: { ...z, texts: 1 }, note: null, samples: ["REMINDER: Hi <Robin>, see you Tue"] },
       { key: "lead.ack", label: "Thank a new lead by text", kind: "on_activity", enabled: true, by_day: [z, z, z, z], total: z, note: "Only when a new lead comes in after the switch", samples: [] },
     ],
-    seeds: { reminder: 2, overdue: 1, receipt: 1, agreement: 1, unmatched: { reminder: 1 } }, floor: { imported_completed_jobs: 4, imported_invoices: 7 }, sequences: { dry_sends: 3, follow_ups: 2 }, numbers: { job: 885, invoice: 610, quote: 18641 },
+    seeds: { reminder: 2, overdue: 1, receipt: 1, agreement: 1, unmatched: { reminder: 1 } }, floor: { imported_completed_jobs: 4, imported_invoices: 7, imported_unsigned_agreements: 2 }, sequences: { dry_sends: 3, follow_ups: 2 }, numbers: { job: 885, invoice: 610, quote: 18641 },
   };
   const h = text(s.render({ state: { status: "done", approved_at: null }, result }, ctx));
   assert.match(h, /Mon Jan 4/);
@@ -79,6 +79,7 @@ test("the preview: per day and per automation, seeds, the floor, numbers; sample
   assert.match(h, /INV-0610/);
   assert.match(h, /Q-18641/);
   assert.match(h, /4 jobs Rotor completed this past week: never asked/);
+  assert.match(h, /2 agreements Rotor sent: no automatic reminders/);
   assert.match(h, /7 open invoices from Rotor: never reminded/);
   assert.match(h, /Only when a new lead comes in/);
   assert.match(h, /Not matched/);
@@ -123,4 +124,23 @@ test("Import from Rotor leads to the daily import and, for owners, the switch-ov
   const office = text(list.render({ runs: [], rest: null, auto: { key: null }, cutover: false }, ctx));
   assert.doesNotMatch(office, /href="#\/cutover"/, "only who may switch sees the way to it");
   assert.match(office, /Set it up/);
+});
+
+test("rollback texting on the switch page: only while rolled back (or still on), an owner's on and off, no em dash", async () => {
+  const s = await load("cutover-checklist");
+  assert.doesNotMatch(text(s.render(base(), ctx)), /Texting while back on Rotor/, "not before any switch");
+  const off = text(s.render(base({ mode: { system_of_record: "rotor", cutover_n: 1, cutover_at: NOW, rolled_back_at: NOW }, manual_live: { on: false, rolled_back: true, sms_live: true } }), ctx));
+  assert.match(off, /Texting while back on Rotor/);
+  assert.match(off, /<button type="button" class="btn primary" data-manual-live="on"\s*>Turn it on<\/button>/);
+  assert.match(off, /Every automation, template, bulk send and campaign stays off/);
+  assert.doesNotMatch(off, /isn't connected live/);
+  const on = text(s.render(base({ mode: { system_of_record: "rotor", cutover_n: 1, cutover_at: NOW, rolled_back_at: NOW }, manual_live: { on: true, rolled_back: true, sms_live: false } }), ctx));
+  assert.match(on, /data-manual-live="off"/);
+  assert.match(on, /<span class="pill green">On<\/span>/);
+  assert.match(on, /Texting isn't connected live/);
+  for (const h of [off, on]) assert.doesNotMatch(h, /—/);
+  const rb = await load("cutover-runbook");
+  const steps = text(rb.render({}, ctx));
+  assert.match(steps, /turn on Texting while back on Rotor/);
+  assert.doesNotMatch(steps, /—/);
 });

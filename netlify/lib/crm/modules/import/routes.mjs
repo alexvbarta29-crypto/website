@@ -37,6 +37,7 @@
 //   POST /cutover/run                       { confirm: "SWITCH TO CRM" } → { run_id, op_id } (op/cutover--{n})
 //   POST /cutover/rollback                  { confirm: "SWITCH BACK TO ROTOR" } → { run_id, op_id } (first 48 hours)
 //   GET  /cutover/in-flight · POST /cutover/in-flight/:kind   quotes | invoices | agreements → a bulk run
+//   POST /cutover/manual-live               { on } rollback texting: a person's hand-typed texts go live (only while rolled back)
 
 import { auditRead } from "../../core/audit.mjs";
 import { InputError, ConflictError } from "../../core/errors.mjs";
@@ -51,7 +52,7 @@ import {
 } from "./runs.mjs";
 import { restView, createContinuation } from "./continue.mjs";
 import { autoKeyView, createAutoKey, revokeAutoKey, autoRun } from "./autokey.mjs";
-import { cutoverView, setTick, startCutover, startRollback, inFlightView, makeInFlightRun } from "./cutover.mjs";
+import { cutoverView, setTick, setManualLive, startCutover, startRollback, inFlightView, makeInFlightRun } from "./cutover.mjs";
 import { startPreview, readPreview, approvePreview } from "./cutover-preview.mjs";
 
 const ok = (data, extra = {}) => ({ data, ...extra });
@@ -212,6 +213,10 @@ async function tick(ctx) {
   await setTick(b.key, b.done, ctx.write());
   return ok(await cutoverView(ctx));
 }
+async function manualLiveRoute(ctx) {
+  await setManualLive(ctx.body && ctx.body.on, ctx.write());
+  return ok(await cutoverView(ctx));
+}
 async function preview(ctx) {
   const mode = await ctx.sysMode();
   if (mode.system_of_record === "crm") throw new ConflictError("The CRM is in charge already: the preview is for before the switch.");
@@ -262,6 +267,7 @@ export const importRoutes = [
   cut("GET", "/cutover", cutView, { maxCalls: 30 }),
   cut("POST", "/cutover/check", cutView, { maxCalls: 30 }),
   cut("POST", "/cutover/ticks", tick, { maxCalls: 40 }),
+  cut("POST", "/cutover/manual-live", manualLiveRoute, { maxCalls: 45 }),
   cut("POST", "/cutover/preview", preview, { mode: "run", idempotent: false, maxCalls: 40 }),
   cut("GET", "/cutover/preview", previewGet),
   cut("POST", "/cutover/approve-preview", approve, { maxCalls: 40 }),

@@ -112,6 +112,46 @@ test("who is not asked: touch-ups and unbilled work, an imported job, someone as
   } finally { t.done(); }
 });
 
+test("after the switch: a job Rotor scheduled that the CRM completes is asked; one completed before the switch never is; none while rolled back to Rotor", async () => {
+  const t = await crmTest({});
+  try {
+    const SWITCH = "2026-11-17T14:00:00.000Z";
+    const setMode = (sor) => scope(async () => {
+      const cur = await store.getRaw("sys/mode");
+      await store.settledWrite("sys/mode", { system_of_record: sor, paused: false, cutover_n: 1, cutover_at: SWITCH }, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
+    });
+    await scope(() => store.putSetting("automations", { effective_from: SWITCH }, { by: "system", origin: "worker", actor_kind: "user", requestId: "test" }));
+    await setMode("crm");
+    // imported (Rotor's) jobs: one the CRM completes an hour after the switch, one Rotor completed before it
+    const a = await scope(() => seedContact(6));
+    const b = await scope(() => seedContact(7));
+    const after = await completedJob(a, { completed_at: "2026-11-17T15:00:00.000Z" }, IMPORT);
+    const before = await completedJob(b, { completed_at: "2026-11-17T13:00:00.000Z" }, IMPORT);
+    assert.ok(after.import || after.created_by === "import", "the job is an imported one");
+    await completed(after);
+    await completed(before);
+    await run(t);
+    assert.deepEqual(queued(t).map((x) => [x.v.data.contact_id, x.v.data.template_key]), [[a.id, "review_1"], [a.id, "review_2"], [a.id, "review_3"]], "only the job completed after the switch");
+    const log = t.stores.data.keys("alog/").join("\n");
+    assert.match(log, new RegExp(`review\\.sequence--${before.id}--skipped-before_floor`));
+    // rolled back to Rotor (the floor stays): an imported job completed in the CRM is not asked
+    await setMode("rotor");
+    const c = await scope(() => seedContact(8));
+    const rolled = await completedJob(c, { completed_at: "2026-11-17T15:30:00.000Z" }, IMPORT);
+    await completed(rolled);
+    await run(t);
+    assert.ok(!queued(t).some((x) => x.v.data.contact_id === c.id));
+    assert.match(t.stores.data.keys("alog/").join("\n"), new RegExp(`review\\.sequence--${rolled.id}--skipped-imported`));
+    // and before any switch (no floor) an imported job never was
+    const { checkEligible, automationDef } = await import("../../../netlify/lib/crm/core/automations.mjs");
+    const def = await scope(() => automationDef("review.sequence"));
+    assert.equal(checkEligible(def, {}, {}, { fact_at: "2026-11-17T15:00:00.000Z", record: after }, { crm: true }).reason, "imported", "no floor: never");
+    assert.equal(checkEligible(def, {}, { effective_from: SWITCH }, { fact_at: "2026-11-17T15:00:00.000Z", record: after }, { crm: true }).ok, true);
+    assert.equal(checkEligible(def, {}, { effective_from: SWITCH }, { fact_at: "2026-11-17T15:00:00.000Z", record: after }).reason, "imported", "the guard's view unknown: never");
+    assert.equal(t.fetchCalls().length, 0);
+  } finally { t.done(); }
+});
+
 test("Google reviews are read, suggested and matched by a person: the match stops the sequence, credits the techs and feeds reviews.isReviewed", async () => {
   const t = await crmTest({ env: { ...PROD_ENV, GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "secret", GOOGLE_REFRESH_TOKEN: "refresh", ACCOUNT_ID: "111", LOCATION_ID: "222" } });
   const net = mockFetch([

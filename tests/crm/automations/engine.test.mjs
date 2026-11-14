@@ -172,6 +172,33 @@ test("Rotor's customers: would- rows, nothing changed, texts only in the Outbox"
   assert.deepEqual(outbox().map((o) => o.mode), ["dry_run", "dry_run"]);
 });
 
+test("the daily cap counts the built-in automations' real texts once texting is live (the Messages the sender records), not a person's, a failed one or a flow's twice", async () => {
+  const owner = await setup();
+  const c = await scope(() => seedContact(1));
+  const { recordMessage } = await import("../../../netlify/lib/crm/modules/comms/conversations.mjs");
+  const contact = (await scope(() => store.getRecord("contact", c.id))).data;
+  const sent = (origin, status = "sent", at) => scope(() => recordMessage({ contact, channel: "sms", direction: "out", from: "+17633143400", to: contact.phones[0].e164, body_text: "Hi from Barta", status, provider: "twilio", provider_id: `SM${Math.random().toString(16).slice(2, 12)}`, origin, ...(at ? { sent_at: at } : {}) }, { by: "system", origin: "worker", actor_kind: "automation", requestId: "t" }));
+  await sent({ kind: "automation", id: "visit.reminder_2d" });                   // a real reminder this morning: counts
+  await sent({ kind: "user", user_id: owner.id });                               // a person's text: not automated
+  await sent({ kind: "automation", id: "lead.ack" }, "failed");                  // never reached them
+  await sent({ kind: "automation", id: "flow.service" });                        // a flow's: counted through its claim, not twice
+  await sent({ kind: "automation", id: "lead.ack" }, "sent", "2026-11-16T20:00:00.000Z"); // yesterday
+  assert.equal(await scope(() => EN.textsToday(c.id)), 1, "only today's real built-in text");
+  // two flows want to text them today: the cap (2) leaves room for one
+  await makeFlow(owner, { name: "First", trigger: { type: "contact.tagged", tag: "A" }, steps: [{ type: "text", template_key: "flow_quote_day3" }], limits: { per_contact_days: 0 } });
+  await makeFlow(owner, { name: "Second", trigger: { type: "contact.tagged", tag: "A" }, steps: [{ type: "text", template_key: "flow_review_ask" }], limits: { per_contact_days: 0 } });
+  await emitTagged(c, ["A"], 2);
+  await drain(6);
+  assert.equal(outbox().filter((o) => o.origin && String(o.origin.id).startsWith("flow.")).length, 1, "the live reminder and one of these");
+  assert.ok((await log("flow.service")).some((r) => r.result === "skipped:daily_cap"));
+  // dry run and live together: a built-in dry-run text in the Outbox counts as well
+  await scope(() => store.createRecord("outbox", { kind: "sms", mode: "dry_run", to_masked: "x", contact_id: c.id, body: "Thanks!", related: {}, origin: { kind: "automation", id: "lead.ack" }, simulated: { status: "sent" }, day: "2026-11-17" }, { by: "system", origin: "worker", actor_kind: "automation", requestId: "t" }));
+  assert.equal(await scope(() => EN.textsToday(c.id)), 3, "1 live, 1 dry run, 1 flow claim");
+  // the next day starts at zero
+  pin("2026-11-18T16:00:00Z");
+  assert.equal(await scope(() => EN.textsToday(c.id)), 0);
+});
+
 test("loop guard: a flow's own change never starts it again; two flows feeding each other stop after 3 a day", async () => {
   const owner = await setup();
   const c = await scope(() => store.createRecord("contact", { first_name: "Loop", last_name: "Example", phones: [{ e164: "+17635550170", sms: true, primary: true }], lifecycle: "lead", tags: [] }, W8(owner.id)));

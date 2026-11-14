@@ -32,7 +32,7 @@ export function conditionRow(c, p, cat, ch, subject, where) {
     case "tag": value = inp(`${p}_value`, v, "Tag", { type: "text", list: "au-tags", maxlength: 40, autocomplete: "off" }); break;
     case "user": value = c.op === "none" ? "" : sel(`${p}_value`, v, [{ value: "", label: "Pick someone" }, ...ch.users.map((u) => ({ value: u.id, label: u.name }))], "Person"); break;
     case "enum": value = sel(`${p}_value`, v, field.options, "Value"); break;
-    case "status": value = sel(`${p}_value`, v, (cat.statuses[subject] || []).map((s) => ({ value: s, label: s.replace(/_/g, " ") })), "Status"); break;
+    case "status": value = sel(`${p}_value`, v, (cat.statuses[subject] || []).map((s) => ({ value: s, label: ((cat.status_labels || {})[subject] || {})[s] || s.replace(/_/g, " ") })), "Status"); break;
     case "money": value = inp(`${p}_value`, Number.isInteger(v) ? String(v) : "", "Dollars", { type: "text", inputmode: "numeric", maxlength: 9 }); break;
     case "time_range": value = html`${inp(`${p}_value`, (v || [])[0] || "09:00", "From", { type: "time" })}${inp(`${p}_v2`, (v || [])[1] || "17:00", "To", { type: "time" })}`; break;
     case "date_range": value = html`${inp(`${p}_value`, md((v || [])[0]), "From", { type: "date" })}${inp(`${p}_v2`, md((v || [])[1]), "To", { type: "date" })}`; break;

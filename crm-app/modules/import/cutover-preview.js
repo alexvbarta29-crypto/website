@@ -2,8 +2,9 @@
 // owners): per automation and day, the texts, emails, invoices and charges
 // the CRM would send from the switch to 72 hours after it; sample texts;
 // what Rotor already sent (seeded, so not sent again); what the floor keeps
-// out (imported jobs never asked for a review, imported invoices never
-// reminded); what waits in dry-run and is cancelled; the next numbers; the
+// out (jobs Rotor completed never asked for a review, imported invoices
+// never reminded, agreements Rotor sent never reminded automatically);
+// what waits in dry-run and is cancelled; the next numbers; the
 // in-flight documents. Approve on the Switch from Rotor page.
 
 import { html, attrs } from "../../core/ui.js";
@@ -76,6 +77,7 @@ export default {
         <h2>Kept out</h2>
         <dl class="kv"><dt>Review requests</dt><dd>${n(r.floor.imported_completed_jobs)} ${r.floor.imported_completed_jobs === 1 ? "job" : "jobs"} Rotor completed this past week: never asked</dd>
           <dt>Overdue reminders</dt><dd>${n(r.floor.imported_invoices)} open ${r.floor.imported_invoices === 1 ? "invoice" : "invoices"} from Rotor: never reminded (they go in the in-flight list)</dd>
+          <dt>Unsigned agreement reminders</dt><dd>${n(r.floor.imported_unsigned_agreements)} ${r.floor.imported_unsigned_agreements === 1 ? "agreement" : "agreements"} Rotor sent: no automatic reminders (the in-flight list re-requests them once)</dd>
           <dt>Waiting in dry-run</dt><dd>${n(r.sequences.dry_sends)} queued ${r.sequences.dry_sends === 1 ? "send" : "sends"} and ${n(r.sequences.follow_ups)} ${r.sequences.follow_ups === 1 ? "follow-up" : "follow-ups"}: cancelled at the switch, never resumed</dd></dl>
       </section>
       <section class="card">

@@ -64,9 +64,42 @@ the steps below.
 | Before 09:45 | In Rotor, switch off its workflows yourself (new-lead text, reminders, overdue texts) and tick that box. Then, in one sitting, tap **Switch to the CRM** and type **SWITCH TO CRM**. |
 | Right after | Smoke tests: a text and an email to your test contact, the one-dollar live charge and its refund, a website test lead, a text and a STOP from a staff phone, a push to each owner. |
 | 10:00 | The first reminder batch goes out from the CRM. Watch the Outbox, the automation log and Settings → Data today. |
-| First 48 hours | If something is badly wrong: **Switch back to Rotor** (type **SWITCH BACK TO ROTOR**). The CRM goes back to report-only. Turn Rotor's workflows back on. What the CRM made meanwhile is listed on the page for you to enter in Rotor. |
+| First 48 hours | If something is badly wrong: **Switch back to Rotor** (type **SWITCH BACK TO ROTOR**). The CRM goes back to report-only. Turn Rotor's workflows back on. What the CRM made meanwhile is listed on the page for you to enter in Rotor. The number stays at Twilio, so Rotor can't text from it: turn on **Texting while back on Rotor** (below) to answer customers from the CRM inbox. |
 | Until Jan 11 | Check Rotor's inbox twice a day for replies that landed before the number moved. |
 | Feb 3 | Cancel Rotor yourself, only after the last messages import (keep Rotor readable at least 30 days). |
+
+## Texting while back on Rotor (rollback texting)
+
+The texting number can't move back to Rotor quickly. After a rollback the
+switch page shows a card, **Texting while back on Rotor**, off until an
+owner turns it on (`cfg/integrations.sms.manual_live`, design §10.9):
+
+- **On**: a text someone types themselves in the CRM (the inbox or a
+  contact's Text button), to one customer, goes out for real from
+  314-3400. Replies keep landing in the CRM inbox (they do anyway while
+  Twilio is connected).
+- **Never live, on or off**: every automation (reminders, review requests,
+  follow-ups, custom automations), a template someone picks, a scheduled
+  text, a bulk send, a campaign, anything sent through Claude's connector.
+  They stay in the Outbox or in test mode (staff phones only) like before
+  the switch.
+- It only works during a rollback: before the first switch Rotor has the
+  number, and once the CRM is in charge everything goes out by its own
+  rules. Owners only; turning it on before a rollback is refused. The next
+  switch (`cutover--{n+1}`) turns it off again.
+- Each change is an event on the switch-over's history (`evt/sys/cutover/`,
+  `manual_live_on` / `manual_live_off`, who and when) and in the settings
+  document's own history; each text sent this way is a Message with
+  `origin.manual_live: true` and the person who typed it.
+
+How it is enforced (for the integrator): `core/send.mjs` `manualLive()`
+(pure: SMS, origin `user` with a user id, a session request (`api`), not
+queued, no template, category `personal`, one contact, `sys/mode`
+`rolled_back_at` set and Rotor in charge, the setting on) lets the send
+use the gate as it stands with the CRM in charge (live only with the live
+setting, the live keys and the production site), and the Twilio driver
+checks again for itself: it sends while Rotor is in charge only a send
+marked `manualLive` while the stored `sys/mode` and setting agree.
 
 ## What the preview tells you
 
@@ -78,10 +111,17 @@ leave out:
   the date they name), overdue texts (the invoice they name), receipts (the
   payment that day) and agreement reminders count as sent;
 - anything the import brought in that was done or due before the switch:
-  jobs Rotor completed are never asked for a review, and Rotor's invoices
-  are never sent overdue reminders (they go in the in-flight list instead);
+  jobs Rotor completed are never asked for a review, Rotor's invoices
+  are never sent overdue reminders, and agreements Rotor sent get no
+  automatic unsigned reminders (both go in the in-flight list instead: the
+  switch-day re-request is their one);
 - follow-ups and sends that were waiting in dry-run: they are cancelled at
   the switch, never resumed.
+
+Jobs Rotor scheduled are counted with review requests: once the CRM
+completes them after the switch, the customer is asked like for any CRM
+job. An agreement the CRM sends after the switch gets its daily reminders
+(up to 7) as usual.
 
 It also shows the next job, invoice and quote numbers (they continue after
 Rotor's), and lists the automations that only run on new activity (a new
@@ -172,7 +212,9 @@ live send.
 `cutover_at`) runs `rollback--{n}`: `sys/mode` back to rotor, intake
 `dual`, the dashboard on Rotor, the list of invoices, quotes and visits made
 or changed since the switch (indexes only) for re-entry in Rotor, and the
-`rotor_off` tick and the preview's approval cleared. A later switch is
+`rotor_off` tick and the preview's approval cleared. Rollback texting stays
+off until an owner turns it on (above); the switch's `settings` step turns
+it off again. A later switch is
 `cutover--{n+1}`: a newer import first, the checklist again, and the
 numbers step re-seats each sequence above every number taken meanwhile
 (Rotor's, through the import, and the CRM's own).
@@ -200,6 +242,7 @@ stored on a record): they send the customer to `/p/login`.
 | `POST /cutover/run` | `{ confirm: "SWITCH TO CRM" }` → 202 `{ run_id, op_id, n }` |
 | `POST /cutover/rollback` | `{ confirm: "SWITCH BACK TO ROTOR" }` → 202 `{ run_id, op_id, n }` |
 | `GET /cutover/in-flight` · `POST /cutover/in-flight/:kind` | the lists; a bulk run for one |
+| `POST /cutover/manual-live` | `{ on }` rollback texting; on only while rolled back (409 otherwise) |
 
 ### Not built here (on purpose)
 

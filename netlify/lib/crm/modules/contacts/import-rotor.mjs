@@ -30,7 +30,8 @@ import { getType, statsPart } from "../../core/registry.mjs";
 import { maskPhone } from "../../core/text.mjs";
 import { setSuppression } from "../../core/suppressions.mjs";
 import { fixMojibake, normalizePhone, normalizeEmail, normalizeAddress, addressKey, normName, rotorKey, stripeKey } from "./display.mjs";
-import { SOURCES, cleanTags } from "./types.mjs";
+import { SOURCES, cleanTags, validateAddress } from "./types.mjs";
+import { InputError } from "../../core/errors.mjs";
 import { contactsAt, createCandidate } from "./match.mjs";
 import { propertiesOf } from "./properties.mjs";
 
@@ -172,6 +173,75 @@ export function normalizePerson(row) {
   };
 }
 
+// ------------------------------------------------------------ optional fields that fail the checks
+
+// A row whose optional field doesn't pass the type's checks (a 2-character
+// ZIP, an email or a second phone that isn't one) imports without that field
+// and the report counts it as `field_dropped_<field>` (the field's name,
+// never its value). A required field (the record's id, a contact's name,
+// phone or email, a property's address, its contact) is never dropped: the
+// runner refuses the row as before.
+const OPTIONAL = {
+  contact: [/^billing_address\.[a-z0-9_]+$/, /^billing_address$/, /^phones\.\d+$/, /^emails\.\d+$/, /^watcher_ids\.\d+$/, /^owner_id$/,
+    /^source\.(form|ad|campaign|county|channel|referral_code|promo_code|raw|landing_page)$/, /^tags\.\d+$/, /^notes$/, /^primary_property_id$/],
+  property: [/^address\.(zip|street2)$/, /^label$/],
+};
+const ADDRESS_OPTIONAL = /^(zip|street2|city)$/;
+// "phones.1.label" → "phones.1", "billing_address.zip" → itself (the longest prefix the list allows)
+function droppable(field, list) {
+  const parts = String(field || "").split(".");
+  for (let i = parts.length; i >= 1; i--) { const path = parts.slice(0, i).join("."); if (list.some((re) => re.test(path))) return path; }
+  return null;
+}
+function dropPath(o, path) {
+  const ks = path.split(".");
+  let x = o;
+  for (const k of ks.slice(0, -1)) { x = x == null ? undefined : x[k]; if (x == null) return; }
+  const last = ks[ks.length - 1];
+  if (Array.isArray(x) && /^\d+$/.test(last)) x.splice(Number(last), 1); else delete x[last];
+}
+const dropCode = (path) => `field_dropped_${path.replace(/\.\d+(?=\.|$)/g, "")}`;
+
+// An address without the parts that fail validateAddress (the ZIP first). → address | null
+export function salvageAddress(address, warnings, prefix = "billing_address") {
+  if (!address) return address;
+  const a = { ...address };
+  for (let i = 0; i < 4; i++) {
+    try { validateAddress(a, prefix); return normalizeAddress(a) ? a : null; } catch (e) {
+      const k = e instanceof InputError && String(e.field || "").startsWith(prefix + ".") ? String(e.field).slice(prefix.length + 1) : null;
+      if (!k || !ADDRESS_OPTIONAL.test(k) || a[k] === undefined || a[k] === "") throw e;
+      if (k === "zip") a.zip = ""; else delete a[k];
+      warnings.push(dropCode(`${prefix}.${k}`));
+    }
+  }
+  return a;
+}
+
+// A mapped record without the optional fields its type refuses. → the record
+export function salvageRecord(rec, warnings) {
+  const list = rec && OPTIONAL[rec.type];
+  const def = list ? getType(rec.type) : null;
+  if (!def) return rec;
+  const data = JSON.parse(JSON.stringify(rec.data));
+  for (let i = 0; i < 12; i++) {
+    try { def.validate(JSON.parse(JSON.stringify(data)), { op: "create" }); break; } catch (e) {
+      const path = e instanceof InputError ? droppable(e.field, list) : null;
+      if (!path) break;                      // required, or not a field error: the runner refuses the row
+      dropPath(data, path);
+      warnings.push(dropCode(path));
+    }
+  }
+  return { ...rec, data };
+}
+// map() → its output with every contact and property record salvaged
+const salvaged = (map) => async (r, ctx) => {
+  const out = await map(r, ctx);
+  if (!out || !Array.isArray(out.records) || !out.records.length) return out;
+  const warnings = Array.isArray(out.warnings) ? out.warnings : (out.warnings = []);
+  out.records = out.records.map((rec) => salvageRecord(rec, warnings));
+  return out;
+};
+
 // ------------------------------------------------------------ shared mapping
 
 async function lookup(ctx, type, rid) {
@@ -187,7 +257,7 @@ function personFields(r, ctx, warnings) {
   const email = normalizeEmail(r.email);
   if (!email && str(r.email)) warnings.push("email_invalid");
   const repaired = [];
-  const address = normalizeAddress(r.address || {}, { repaired });
+  const address = salvageAddress(normalizeAddress(r.address || {}, { repaired }), warnings);
   for (const x of repaired) warnings.push(`address_${x}`);
   const src = canonicalSource(r.source);
   const facts = parseLeadNotes(r.notes);
@@ -397,9 +467,10 @@ export function placeholderContact(rotorId, { name, kind = "lead" } = {}) {
 async function mapProperty({ contactRotorId, contactKind, contactName, propertyId, address, from, rowId }, ctx) {
   const kind = contactKind === "lead" ? "lead" : "customer";
   let cid = (await lookup(ctx, kind, contactRotorId)) || (kind === "lead" ? null : await lookup(ctx, "lead", contactRotorId));
-  const a = normalizeAddress(address || {});
-  if (!a || !a.street1) return { warnings: [cid ? "property_no_address" : "property_no_contact"] };
   const out = { records: [], pointers: [], patches: [], warnings: [] };
+  let a;
+  try { a = salvageAddress(normalizeAddress(address || {}), out.warnings, "address"); } catch { a = null; }
+  if (!a || !a.street1) return { warnings: [...out.warnings, cid ? "property_no_address" : "property_no_contact"] };
   if (!cid) {
     if (!ROTOR_ID.test(str(contactRotorId))) return { warnings: ["property_no_contact"] };
     const ph = placeholderContact(str(contactRotorId), { name: contactName, kind });
@@ -507,12 +578,12 @@ async function mapReferral(r) {
 // ------------------------------------------------------------ the phases
 
 export const phases = [
-  { name: "contacts.customers", entity: "customers", after: ["system.users"], normalize: normalizePerson, map: mapCustomer },
+  { name: "contacts.customers", entity: "customers", after: ["system.users"], normalize: normalizePerson, map: salvaged(mapCustomer) },
   // customers' rows first: a converted lead's pointer names its customer before contacts.leads reads the lead
   { name: "contacts.quote_contacts", entity: "quote_contacts", after: ["contacts.customers"], normalize: normalizeQuoteContact, map: (r, ctx) => (r.kind === "lead" ? {} : mapQuoteContact(r, ctx)) },
   // the same rows for leads: a lead's contact is made by contacts.leads, after the converted-lead pointers above
   { name: "contacts.quote_contacts_leads", entity: "quote_contacts", after: ["contacts.leads"], normalize: normalizeQuoteContact, map: (r, ctx) => (r.kind === "lead" ? mapQuoteContact(r, ctx) : {}) },
-  { name: "contacts.leads", entity: "leads", after: ["contacts.quote_contacts"], normalize: normalizePerson, map: mapLead },
+  { name: "contacts.leads", entity: "leads", after: ["contacts.quote_contacts"], normalize: normalizePerson, map: salvaged(mapLead) },
   { name: "contacts.properties_quotes", entity: "quotes", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "quote", rowId: r.id }, ctx) },
   { name: "contacts.properties_plans", entity: "service_plans", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "plan", rowId: r.id }, ctx) },
   { name: "contacts.properties_visits", entity: "visits", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "visit", rowId: r.id }, ctx) },

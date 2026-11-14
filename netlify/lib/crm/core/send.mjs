@@ -15,7 +15,11 @@
 //      email) → blocked no_address;
 //   3. the mode (adapters/index.mjs): dry-run unless the integration is
 //      live; before cutover, automated sends to a contact that is not
-//      sandboxed are always dry-run (the parallel-run guard, §5.7.4);
+//      sandboxed are always dry-run (the parallel-run guard, §5.7.4).
+//      Rollback texting (§10.9): back on Rotor after a switch, with the
+//      number already at Twilio, cfg/integrations.sms.manual_live (owners)
+//      lets a person's hand-typed text to one customer, sent from the
+//      CRM's screens, go out live (manualLive below); nothing else does;
 //   4. the suppression list (sup/{channel}/{hk}) → opted_out; consent for
 //      the category (§5.7.2: marketing SMS needs "granted", service SMS and
 //      marketing email only not "revoked") → no_consent; a contact's
@@ -153,6 +157,21 @@ export function needsFooter({ category, firstSms = {}, number, footer = {} }) {
   return !(firstSms && firstSms[number]);
 }
 
+// Rollback texting (§10.9): whether this send may go out live while Rotor is
+// the system of record again. Only a person's hand-typed text (no template)
+// to one customer, sent from the CRM's own screens (an api session: not
+// Claude's connector, not a queued or scheduled send), during a rollback
+// (sys/mode.rolled_back_at), with cfg/integrations.sms.manual_live on. The
+// integration's own gate still decides (live mode, live keys, production);
+// every automated, templated, bulk, campaign or staff send keeps the mode
+// it had. Pure.
+export function manualLive({ channel, origin, template, category, contact, staffSend, queued, ctxOrigin, sys, integrations }) {
+  if (channel !== "sms" || !origin || origin.kind !== "user" || !isId(origin.user_id, "user")) return false;
+  if (template || staffSend || queued || !contact || category !== "personal" || ctxOrigin !== "api") return false;
+  if (!sys || sys.system_of_record === "crm" || !sys.rolled_back_at || sys.paused) return false;
+  return !!(integrations && integrations.sms && integrations.sms.manual_live === true);
+}
+
 // ------------------------------------------------------------ helpers
 
 // sys/mode for this send. A failed read throws (BlobsTransientError → 503
@@ -266,6 +285,13 @@ export async function sendMessage(msg, ctx = {}) {
   if (automated && sys.system_of_record !== "crm" && a.mode !== "dry_run" && !(contact && sandboxed(contact, contact))) {
     a = { kind: channel, mode: "dry_run", impl: dryRun[channel], guarded: true };
   }
+  // rollback texting: the gate as it stands with the CRM in charge (live only with the live setting, keys and production)
+  let manual = false;
+  if (!automated && manualLive({ channel, origin, template, category, contact, staffSend, queued: !!h, ctxOrigin: ctx.origin, sys, integrations })) {
+    const live = adapterSync(channel, { deploy, settings: integrations, mode: { ...sys, system_of_record: "crm" } });
+    if (live.mode === "live") { a = live; manual = true; }
+  }
+  const sendOrigin = manual ? { ...origin, manual_live: true } : origin;
   const ns = a.mode === "dry_run" ? "done-dry" : "done";
   if (h && h.marker && h.marker.ns !== ns) return { status: "skipped", reason: "mode_changed", mode: a.mode };
 
@@ -283,7 +309,7 @@ export async function sendMessage(msg, ctx = {}) {
 
   const base = {
     kind: channel, to, to_hk: toHk || undefined, contact_id: contact ? contact.id : undefined, contact_label: contactLabel(contact) || undefined, related: msg.related || {},
-    subject_ref: msg.subject_ref, origin, category, template_key: template ? template.key : undefined,
+    subject_ref: msg.subject_ref, origin: sendOrigin, category, template_key: template ? template.key : undefined,
   };
   const blocked = async (reason) => {
     let outbox = null;
@@ -415,7 +441,7 @@ export async function sendMessage(msg, ctx = {}) {
     let res;
     try {
       res = channel === "sms"
-        ? await a.impl.send({ to, body: text, from: number, markerKey: marker._key })
+        ? await a.impl.send({ to, body: text, from: number, markerKey: marker._key, ...(manual ? { manualLive: true } : {}) })
         : await a.impl.send({
           to, from: email.from || `${company.name || "Barta Window Washing"} <${company.email || "office@bartawindowwashing.com"}>`, replyTo: email.reply_to || company.email,
           subject: rendered.subject, text, html, stream: category === "marketing" ? "broadcast" : "outbound",
@@ -427,7 +453,7 @@ export async function sendMessage(msg, ctx = {}) {
       console.error(`crm:send: a ${channel} send is unclear (${safeErr(e)})`);
       return { status: "sending", marker_key: marker._key, mode: a.mode };
     }
-    const sent = { contact, channel, to, from: channel === "sms" ? number : (email.from || company.email || ""), text, subject: rendered.subject || "", html, origin, related: msg.related || {}, category, template_key: template ? template.key : null, marker_key: marker._key, footer_appended: footerAppended, segments, number, mode: a.mode };
+    const sent = { contact, channel, to, from: channel === "sms" ? number : (email.from || company.email || ""), text, subject: rendered.subject || "", html, origin: sendOrigin, related: msg.related || {}, category, template_key: template ? template.key : null, marker_key: marker._key, footer_appended: footerAppended, segments, number, mode: a.mode };
     if (res.status === "failed" || res.status === "blocked") {
       await advance({ state: "failed", code: keySafe(res.error_code || res.status, 40) });
       const rec = await recordSent({ ...sent, status: "failed", error_code: res.error_code || res.status, provider_id: res.provider_id || null }, wctx);
@@ -442,7 +468,7 @@ export async function sendMessage(msg, ctx = {}) {
         ...(channel === "sms" ? { first_sms: { ...(p.first_sms || {}), ...(p.first_sms && p.first_sms[number] ? {} : { [number]: nowIso() }) } } : {}),
       }), wctx).catch((e) => console.error(`crm:send: stats not updated (${safeErr(e)})`));
     }
-    return { status: res.status || "sent", provider_id: res.provider_id || null, marker_key: marker._key, mode: a.mode, footer_appended: footerAppended, segments, ...rec };
+    return { status: res.status || "sent", provider_id: res.provider_id || null, marker_key: marker._key, mode: a.mode, footer_appended: footerAppended, segments, ...(manual ? { manual_live: true } : {}), ...rec };
   }
 }
 

@@ -3,7 +3,7 @@
 // An automation is code (trigger, timing, conditions, action) declared by
 // the module that owns its trigger, in its manifest:
 //   automations: [{ key, trigger: "event:<name>" | "sweep" | "manual", category,
-//                   imported: "no" | "eligible" | "yes", mutates, defaults, label, run(input, actx), recheck? }]
+//                   imported: "no" | "eligible" | "after_switch" | "yes", mutates, defaults, label, run(input, actx), recheck? }]
 // This engine gives it settings, eligibility, markers, the guard and the run log:
 //
 // - Settings: cfg/automations.{key} = { enabled, channels, template_keys,
@@ -14,8 +14,11 @@
 //   fact is at or after the floor (cfg/automations.effective_from, written
 //   by cutover; a per-automation effective_from overrides it); it was not
 //   created by the import, unless the automation says imported: "eligible"
-//   (and then only for subjects still in the future: visit reminders) or
-//   "yes"; and its step's marker is not final.
+//   (and then only for subjects still in the future: visit reminders),
+//   "after_switch" (and then only for a fact at or after a floor that is set,
+//   while the CRM is the system of record: a job Rotor scheduled that the
+//   CRM completes after the switch is asked for a review) or "yes"; and its
+//   step's marker is not final.
 // - Sends: actx.send(step) never sends inline. It queues one
 //   "automation.send" item per channel under the step's marker
 //   ({ns}/{automation}/{step key}; done-dry/ while the channel is dry-run,
@@ -96,14 +99,17 @@ export function settingsFor(def, cfg = {}) {
   return { ...ENGINE_DEFAULTS, ...(def.defaults || {}), ...own };
 }
 
-// Eligibility (§5.7.4, pure). fact: { fact_at, record, future }.
-export function checkEligible(def, settings, cfg, { fact_at, record, future } = {}) {
+// Eligibility (§5.7.4, pure). fact: { fact_at, record, future }; opts.crm:
+// the CRM is the system of record (the guard's view; false when unknown).
+export function checkEligible(def, settings, cfg, { fact_at, record, future } = {}, { crm = false } = {}) {
   const floor = settings.effective_from || (cfg && cfg.effective_from) || null;
   if (floor && fact_at && Date.parse(fact_at) < Date.parse(floor)) return { ok: false, reason: "before_floor" };
   const imported = !!record && (record.created_by === "import" || !!record.import);
   if (imported) {
     if (def.imported === "yes") return { ok: true };
     if (def.imported === "eligible") return future === true ? { ok: true } : { ok: false, reason: "imported_past" };
+    // a fact the CRM recorded after the switch (the floor is passed above): never without a floor, never while Rotor leads
+    if (def.imported === "after_switch") return crm === true && floor && fact_at && !Number.isNaN(Date.parse(fact_at)) ? { ok: true } : { ok: false, reason: "imported" };
     return { ok: false, reason: "imported" };
   }
   return { ok: true };
@@ -133,7 +139,7 @@ export function automationContext(def, { mode, settings, cfg, requestId, deploy 
   const actx = {
     // the deploy decides the marker namespace (done/ vs done-dry/): the worker's store scope has it
     ...base, automation: def.key, settings, cfg, deploy: deploy || (currentScope() || {}).deploy,
-    eligible: (fact) => checkEligible(def, settings, cfg, fact),
+    eligible: (fact) => checkEligible(def, settings, cfg, fact, { crm: !!(base.guard && base.guard.crm) }),
     send: (step) => queueSend(def, actx, step),
     async sendMany(steps, opts = {}) {
       const list = (steps || []).filter((s) => s && isId(s.contact_id, "contact"));
@@ -176,7 +182,7 @@ async function queueSend(def, actx, step = {}) {
   if (!isId(step.contact_id, "contact")) throw new InputError("A send needs a contact.", "contact_id");
   const subject = step.subject && step.subject.id ? step.subject : { type: "contact", id: step.contact_id };
   if (step.fact_at !== undefined || step.record) {
-    const e = checkEligible(def, s, actx.cfg, step);
+    const e = checkEligible(def, s, actx.cfg, step, { crm: !!(actx.guard && actx.guard.crm) });
     if (!e.ok) { await actx.log(subject.id, `skipped:${e.reason}`); return { queued: false, reason: e.reason }; }
   }
   const contact = await contactOf(step);

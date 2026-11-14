@@ -186,3 +186,51 @@ test("re-running an unchanged customer is a no-op for the extras (idempotent)", 
     void PERSON;
   } finally { done(); }
 });
+
+test("a customer row with a bad optional field imports without it (a 2-character ZIP); a missing name, phone and email is still refused", async () => {
+  const { S, done } = fresh();
+  try {
+    const p = phase("contacts.customers");
+    const row = { id: uuid(60), first_name: "Dana", last_name: "Example", phone: "7635550260", email: "dana.example@example.com", status: "active", source: "Website", address: { street1: "60 Example Ave", city: "Delano", state: "MN", zip: "55" } };
+    const out = await p.map(p.normalize(row), ctx);
+    assert.ok(out.warnings.includes("field_dropped_billing_address.zip"), "the report names the field, never the value");
+    const ph = { records: {}, skipped: {}, warnings: {}, pointers: { claimed: 0, listed: 0, taken: 0 }, extras: { patched: 0, stats: 0, suppressed: 0, candidates: 0 }, kept_fields: 0, errors: [] };
+    await (await import("../../../netlify/lib/crm/modules/import/runner.mjs")).applyOutput(out, { runId: "ir_00000000000000000001", ph, ctx: IMPORT, source: `customers:${row.id}`, entity: "customers", state: { types: [] } });
+    assert.deepEqual(Object.keys(ph.warnings).filter((k) => k.startsWith("invalid_")), [], "nothing refused");
+    assert.equal(ph.warnings["field_dropped_billing_address.zip"], 1);
+    const c = await contact(ids.idForRotor("contact", uuid(60)));
+    assert.equal(c.first_name, "Dana");
+    assert.equal(c.phones[0].e164, "+17635550260");
+    assert.equal(c.emails[0].address, "dana.example@example.com");
+    assert.equal(c.billing_address.street1, "60 Example Ave");
+    assert.equal(c.billing_address.zip, "", "the ZIP is left out, the rest of the address kept");
+    const prop = (await store.getRecord("property", c.primary_property_id)).data;
+    assert.equal(prop.address.street1, "60 Example Ave", "its property too");
+
+    // a required field: nothing to salvage, the runner refuses the row as before
+    const bare = await p.map(p.normalize({ id: uuid(61), first_name: "", last_name: "", status: "active", source: "Website" }), ctx);
+    const ph2 = { ...ph, records: {}, warnings: {} };
+    await (await import("../../../netlify/lib/crm/modules/import/runner.mjs")).applyOutput(bare, { runId: "ir_00000000000000000001", ph: ph2, ctx: IMPORT, source: `customers:${uuid(61)}`, entity: "customers", state: { types: [] } });
+    assert.equal(ph2.records.contact.invalid, 1);
+    assert.equal(S.data.keys(`rec/contact/${ids.idForRotor("contact", uuid(61))}`).length, 0);
+  } finally { done(); }
+});
+
+test("salvageRecord drops only the optional fields a contact refuses (a second phone, an email), one warning each", () => {
+  const warnings = [];
+  const rec = { type: "contact", data: { id: ids.idForRotor("contact", uuid(62)), kind: "person", first_name: "Lee", last_name: "Sample", lifecycle: "customer",
+    phones: [{ e164: "+17635550262", label: "mobile", primary: true }, { e164: "12", label: "home" }], emails: [{ address: "not an email" }],
+    billing_address: { street1: "62 Example Ave", city: "Delano", state: "MN", zip: "5" }, tags: [], notes: "" } };
+  const out = I.salvageRecord(rec, warnings);
+  assert.deepEqual(out.data.phones.map((x) => x.e164), ["+17635550262"]);
+  assert.deepEqual(out.data.emails, []);
+  assert.equal(out.data.billing_address.zip, undefined);
+  assert.deepEqual(warnings.sort(), ["field_dropped_billing_address.zip", "field_dropped_emails", "field_dropped_phones"]);
+  assert.equal(rec.data.phones.length, 2, "the mapped record itself is untouched");
+  // nothing optional left to drop: the record comes back for the runner to refuse
+  const none = [];
+  const bad = I.salvageRecord({ type: "contact", data: { id: ids.idForRotor("contact", uuid(63)), first_name: "", last_name: "", phones: [{ e164: "12" }] } }, none);
+  assert.deepEqual(bad.data.phones, []);
+  assert.deepEqual(none, ["field_dropped_phones"]);
+  assert.equal(I.salvageRecord({ type: "deal", data: { x: 1 } }, []).data.x, 1, "other types pass through");
+});

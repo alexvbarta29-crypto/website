@@ -32,8 +32,10 @@
 //   record moves on.
 // - Caps at send time (recheck): no more than cfg/flows.max_texts_per_day
 //   automated texts to one contact in a day, counting every automation's
-//   (flowt/ claims for these, the Outbox's dry-run automation texts for the
-//   built-in ones).
+//   (flowt/ claims for these; for the built-in ones their dry-run texts in
+//   the Outbox and, once texting is live, the texts they really sent: the
+//   Messages the sender records, found through the contact's activity rows
+//   of that day).
 // - simulate(): what a test run on one record would do, step by step, with
 //   no writes at all.
 
@@ -122,16 +124,33 @@ const tooSoon = (flow, lastMs) => {
   return !!lastMs && days > 0 && nowMs() - lastMs < days * 86400000;
 };
 
+// A built-in automation's text (these flows count their own through flowt/).
+const builtInAuto = (origin) => !!origin && origin.kind === "automation" && !String(origin.id || "").startsWith("flow.");
+const SMS_OUT = "sms.out--";
+
 // Automated texts to a contact today: these flows' claims plus the built-in
-// automations' dry-run texts in the Outbox. claim: this send's own key.
+// automations' texts: dry-run ones in the Outbox, real ones in the Messages
+// the sender records (live texting; comms writes an `sms.out` activity row
+// for each). Reads: the claims, the contact's Outbox rows and activity rows
+// of the day (one listing each), then only the records those name, in one
+// batch each (none on a quiet day). claim: this send's own key.
 export async function textsToday(contactId, claim = null) {
   const date = localDate(now());
-  const mine = await listKeys(`flowt/${date}/${contactId}/`);
+  const from = tsKey(startOfLocalDay(now()));
+  const [mine, rows, act] = await Promise.all([
+    listKeys(`flowt/${date}/${contactId}/`),
+    listRel("contact-outbox", contactId, { from, limit: 40 }),
+    listRel("contact-activity", contactId, { from, limit: 80 }),
+  ]);
   const own = mine.filter((k) => !claim || !k.endsWith(`/${keySafe(claim, 120)}`)).length;
-  const rows = await listRel("contact-outbox", contactId, { from: tsKey(startOfLocalDay(now())), limit: 40 });
-  const items = rows.length ? await getRecords("outbox", rows.map((r) => r.id)) : [];
-  const builtIn = items.filter((g) => g && g.data && g.data.kind === "sms" && g.data.mode === "dry_run" && g.data.origin && g.data.origin.kind === "automation" && !String(g.data.origin.id || "").startsWith("flow.")).length;
-  return own + builtIn;
+  const sentIds = act.filter((r) => r.id.startsWith(SMS_OUT)).map((r) => r.id.slice(SMS_OUT.length)).filter((id) => isId(id, "message"));
+  const [items, msgs] = await Promise.all([
+    rows.length ? getRecords("outbox", rows.map((r) => r.id)) : [],
+    sentIds.length ? getRecords("message", sentIds) : [],
+  ]);
+  const dry = items.filter((g) => g && g.data && g.data.kind === "sms" && g.data.mode === "dry_run" && builtInAuto(g.data.origin)).length;
+  const live = msgs.filter((g) => g && g.data && g.data.direction === "out" && g.data.channel === "sms" && g.data.status !== "failed" && builtInAuto(g.data.origin)).length;
+  return own + dry + live;
 }
 
 async function claimText(contactId, claim, max) {

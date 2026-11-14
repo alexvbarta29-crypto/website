@@ -332,6 +332,23 @@ row (a mapper bug, a value the type refuses, a taken pointer) is skipped
 with a code, never the run. A function killed between checkpoints redoes
 at most those rows, which changes nothing twice.
 
+**An optional field that fails the checks is dropped, not the row.** The
+contacts phases (customers, leads, and the properties from quotes, plans
+and visits) run each contact and property record through its type's
+validator before it is written; an optional field it refuses (a 2-character
+ZIP, an email or a second phone that isn't one, an owner who isn't on the
+team, a source detail that is too long) is left out and the row imports.
+The report counts it as `field_dropped_<field>` ("Imported without a field
+that did not pass: ZIP"), the field's name only, never its value. A
+required field is never dropped (the record's id, a contact's name, phone
+or email, a property's address or contact): that row is refused
+(`invalid_contact_<field>`) as before. When an earlier import refused a
+customer's row, the jobs and plans phases made the customer's placeholder
+at the id the customer's pointer names (`job_contact_missing_placeholder`,
+`plan_contact_missing_placeholder`); the next import's good row lands on
+that same id and the placeholder rule below fills it in place (one
+contact, the flag cleared, the lifecycle and archived reason Rotor's).
+
 ctx for `map()`: `{ runId, idForRotor, lookup, users (Map of Rotor user id
 → CRM user id), settings.get(name), report.warn(code), cache, phase,
 prepared }`. A phase may have `prepare(rows, ctx)`: it runs once, before

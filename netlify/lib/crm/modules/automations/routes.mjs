@@ -20,7 +20,7 @@ import { fromTsKey, now, nowIso } from "../../core/clock.mjs";
 import { keySafe } from "../../core/text.mjs";
 import { listTemplates } from "../../core/templates.mjs";
 import { contactShard } from "../../core/stats.mjs";
-import { cleanFlow, summarize, TRIGGERS, FIELDS, OPS, STEP_TYPES, SERVICES, PLAN_TYPES, LIFECYCLES, STATUSES, DEAL_STAGES, WHO, RECIPES, NOT_YET, WAIT_UNITS, MAX_STEPS } from "./catalog.mjs";
+import { cleanFlow, summarize, TRIGGERS, FIELDS, OPS, STEP_TYPES, SERVICES, PLAN_TYPES, LIFECYCLES, STATUSES, STATUS_LABELS, DEAL_STAGES, WHO, RECIPES, NOT_YET, WAIT_UNITS, MAX_STEPS } from "./catalog.mjs";
 import { simulate, flowSettings, FLOW_SETTINGS } from "./engine.mjs";
 
 const r = (method, path, handler, more = {}) => ({ method, path, auth: "session", perm: "automations:configure", subject: path.includes(":id") ? "required" : "none", mode: "inline", handler, ...more });
@@ -99,7 +99,7 @@ const CATALOG = Object.freeze({
   triggers: Object.entries(TRIGGERS).map(([key, t]) => ({ key, label: t.label, group: t.group, subject: t.subject, schedule: !!t.schedule, option: t.option || null })),
   not_yet: NOT_YET, fields: Object.entries(FIELDS).map(([key, f]) => ({ key, ...f })), ops: OPS,
   steps: Object.entries(STEP_TYPES).map(([key, s]) => ({ key, label: s.label })), services: SERVICES, plan_types: PLAN_TYPES, lifecycles: LIFECYCLES,
-  statuses: STATUSES, deal_stages: DEAL_STAGES, who: WHO, wait_units: Object.keys(WAIT_UNITS), max_steps: MAX_STEPS,
+  statuses: STATUSES, status_labels: STATUS_LABELS, deal_stages: DEAL_STAGES, who: WHO, wait_units: Object.keys(WAIT_UNITS), max_steps: MAX_STEPS,
 });
 
 async function list() {

@@ -14,13 +14,16 @@
 //   invoice.overdue           the 10:00 sweep: the CRM's own open invoices
 //       due on or after the floor; imported invoices never (the floor)
 //   agreement.unsigned        the 10:00 sweep: sent and unsigned agreements,
-//       one a day, at most 7, seeded days skipped
+//       one a day, at most 7, seeded days skipped; the ones Rotor sent before
+//       the switch never (the floor: the in-flight re-request is their one)
 //   plan.renewal_notice       the 10:00 sweep, 30 days before the term
 //       ends; imported plans never; more than the bulk threshold on one day
 //       is a bulk run for an owner to confirm (counted apart)
 //   review.sequence           jobs on the schedule in the window, if
-//       completed: the CRM's own billable ones get step 1 (and step 2 when
-//       its day 3 falls in the window); imported jobs never (the floor)
+//       completed: billable ones get step 1 (and step 2 when its day 3
+//       falls in the window), imported ones too (Rotor scheduled them, the
+//       CRM completes them after the switch); jobs completed before the
+//       switch never (the floor)
 //   money.autopay             a 1st of the month in the window: the
 //       charges, invoices and receipts its preview lists
 //   event automations         only on new activity after the switch
@@ -182,7 +185,7 @@ async function unsigned(def, settings, ctx) {
   const runs = sweepRuns(ctx.at, "10:00");
   const P = await plansLists();
   const samples = [];
-  let imported = 0;
+  const kept = new Set();
   const count = new Map();
   for (const run of runs) {
     let list;
@@ -192,6 +195,8 @@ async function unsigned(def, settings, ctx) {
       list = (await getRecords("agreement", rows.map((r) => r.id))).filter(Boolean).map((g) => g.data);
     }
     for (const a of list) {
+      // the floor: an agreement Rotor sent before the switch gets no automatic reminder
+      if (!checkEligible(def, settings, ctx.cfg, { fact_at: a.sent_at, record: a }, { crm: true }).ok) { kept.add(a.id); continue; }
       // the projection's own reminders count toward the 7 (the sweep's count moves as it sends)
       const done = count.get(a.id) || 0;
       if (((a.reminders && a.reminders.count) || 0) + done >= 7) continue;
@@ -199,11 +204,11 @@ async function unsigned(def, settings, ctx) {
       if (ctx.seeds.has(key) || await finalLive(key)) { ctx.skipped.seeded += 1; continue; }
       count.set(a.id, done + 1);
       by[run.i].texts += 1;
-      if (a.import || a.created_by === "import") imported += 1;
       if (samples.length < 3) { const s = await sample("agreement_unsigned", null); if (s) samples.push(s); }
     }
   }
-  return { by, samples, note: imported ? `${imported} of these are for agreements Rotor sent (the CRM goes on reminding them)` : null };
+  ctx.floor.imported_unsigned_agreements = kept.size;
+  return { by, samples, note: kept.size ? `${kept.size} ${kept.size === 1 ? "agreement" : "agreements"} Rotor sent: no automatic reminders (the switch-day re-request in the in-flight list is their one)` : null };
 }
 
 async function renewals(def, settings, ctx) {
@@ -241,20 +246,22 @@ async function reviewsOf(def, settings, ctx) {
   const jobIds = [...new Set(rows.map((r) => r.j).filter((j) => isId(j, "job")))];
   const jobs = new Map((await getRecords("job", jobIds)).filter(Boolean).map((g) => [g.data.id, g.data]));
   const asked = new Set();
-  let importedKept = 0;
+  let importedAsked = 0;
   for (const r of rows) {
     const j = jobs.get(r.j);
     if (!j || asked.has(j.id) || (j.billable === false && j.kind !== "lights_install")) continue;
     asked.add(j.id);
     const i = ctx.days.indexOf(r.d);
     const doneAt = zonedToUtc(r.d, (r.e && /^\d{2}:\d{2}$/.test(r.e)) ? r.e : "15:00").toISOString();
-    const e = checkEligible(def, settings, ctx.cfg, { fact_at: doneAt, record: j });
-    if (!e.ok) { if (e.reason === "imported") importedKept += 1; continue; }
+    // after the switch the CRM is the system of record: a job Rotor scheduled is asked once the CRM completes it
+    const e = checkEligible(def, settings, ctx.cfg, { fact_at: doneAt, record: j }, { crm: true });
+    if (!e.ok) continue;
+    if (j.import || j.created_by === "import") importedAsked += 1;
     if (i >= 0) by[i].texts += 1;
     const d3 = ctx.days.indexOf(addLocalDays(r.d, 3));
     if (d3 >= 0) by[d3].texts += 1;
   }
-  return { by, samples: [], note: `If the scheduled jobs are completed. ${importedKept ? `${importedKept} imported ${importedKept === 1 ? "job is" : "jobs are"} never asked. ` : ""}Jobs completed before the switch are never asked.` };
+  return { by, samples: [], note: `If the scheduled jobs are completed. ${importedAsked ? `${importedAsked} of these ${importedAsked === 1 ? "is a job" : "are jobs"} Rotor scheduled: asked once the CRM completes ${importedAsked === 1 ? "it" : "them"}. ` : ""}Jobs completed before the switch are never asked.` };
 }
 
 async function autopay(ctx) {
@@ -290,7 +297,7 @@ export async function computePreview(at) {
   const cfg = { ...cfg0, effective_from: at };               // the floor the switch writes
   const w = windowDays(at);
   const seeds = await seedPlan(at);
-  const ctx = { at, start: w.start, days: w.days, cfg, seeds: new Set(seeds.markers.map((m) => m.key)), floor: { imported_completed_jobs: 0, imported_invoices: 0, invoices_before_floor: 0 }, skipped: { seeded: 0 } };
+  const ctx = { at, start: w.start, days: w.days, cfg, seeds: new Set(seeds.markers.map((m) => m.key)), floor: { imported_completed_jobs: 0, imported_invoices: 0, invoices_before_floor: 0, imported_unsigned_agreements: 0 }, skipped: { seeded: 0 } };
   const automations = [];
   for (const def of allAutomations().slice().sort((a, b) => a.key.localeCompare(b.key))) {
     const settings = settingsFor(def, cfg0);

@@ -156,3 +156,28 @@ test("the events the builder adds: a visit starts (Scheduling), a tag is added (
   const { EVENTS } = await import("../../../netlify/lib/crm/core/events.mjs");
   for (const e of EVENT_TRIGGERS) assert.ok(Object.hasOwn(EVENTS, e) || R.isEmitted(e), `${e} is an event some module emits`);
 });
+
+test("status pickers and sentences use each module's words for its statuses, never a raw value", async () => {
+  const kits = {
+    quote: (await import("../../../crm-app/modules/quotes/kit.js")).STATUS,
+    invoice: (await import("../../../crm-app/modules/money/kit.js")).STATUS,
+    plan: (await import("../../../crm-app/modules/plans/kit.js")).STATUS,
+    visit: (await import("../../../crm-app/modules/work/office-kit.js")).VISIT_STATUS,
+    job: (await import("../../../crm-app/modules/work/office-kit.js")).JOB_STATUS,
+    contact: (await import("../../../crm-app/modules/contacts/kit.js")).LIFECYCLE,
+  };
+  for (const [subject, words] of Object.entries(kits)) assert.deepEqual(C.STATUS_LABELS[subject], words, `${subject}: the same words as its screens`);
+  for (const [subject, list] of Object.entries(C.STATUSES)) {
+    for (const v of list) {
+      const label = C.statusLabel(subject, v);
+      assert.ok(C.STATUS_LABELS[subject][v], `${subject}.${v} has a label`);
+      assert.doesNotMatch(label, /_/);
+      assert.match(label, /^[A-Z]/);
+    }
+  }
+  assert.equal(C.statusLabel("quote", "changes_requested"), "Changes asked");
+  assert.equal(C.statusLabel("task", "in_progress"), "Started");
+  assert.equal(C.statusLabel("nothing", "some_value"), "some value", "an unknown kind falls back to words");
+  assert.equal(C.conditionPhrase({ field: "status", op: "is", value: "converted" }, { subject: "quote" }), "the quote is booked");
+  assert.equal(C.conditionPhrase({ field: "status", op: "is_not", value: "uncollectible" }, { subject: "invoice" }), "the invoice isn't written off");
+});

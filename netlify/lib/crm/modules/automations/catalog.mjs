@@ -87,6 +87,20 @@ export const STATUSES = Object.freeze({
   task: ["open", "in_progress", "waiting", "done", "cancelled"],
   contact: ["lead", "customer", "former_customer"],
 });
+// The words each module's screens use for its statuses (quotes, money and
+// plans kit.js STATUS, work office-kit.js VISIT_STATUS and JOB_STATUS, the
+// task screen, contacts LIFECYCLE; tests/crm/automations/units.test.mjs
+// checks they agree), so a picker never shows a raw value.
+export const STATUS_LABELS = Object.freeze({
+  quote: { draft: "Draft", sent: "Sent", viewed: "Viewed", changes_requested: "Changes asked", approved: "Approved", converted: "Booked", declined: "Declined", archived: "Archived" },
+  visit: { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" },
+  job: { unscheduled: "To book", scheduled: "Booked", in_progress: "Under way", completed: "Done", cancelled: "Cancelled" },
+  invoice: { draft: "Draft", open: "Open", paid: "Paid", void: "Void", uncollectible: "Written off" },
+  plan: { draft: "Draft", pending: "Waiting", active: "Active", paused: "Paused", cancelling: "Ending", cancelled: "Cancelled", expired: "Ended" },
+  task: { open: "Open", in_progress: "Started", waiting: "Waiting", done: "Done", cancelled: "Cancelled" },
+  contact: { lead: "Lead", customer: "Customer", former_customer: "Former customer", archived: "Archived" },
+});
+export const statusLabel = (subject, value) => (STATUS_LABELS[subject] && STATUS_LABELS[subject][value]) || String(value || "").replace(/_/g, " ");
 
 // type: what value the condition takes; ops: what it may say; of: whose field.
 export const FIELDS = Object.freeze({
@@ -323,7 +337,7 @@ export function conditionPhrase(c, labels = {}) {
     case "plan_type": return `the plan ${OPS[c.op]} ${(PLAN_TYPES.find((x) => x.value === c.value) || {}).label.toLowerCase()}`;
     case "has_plan": return c.op === "yes" ? "they have a plan" : "they have no plan";
     case "amount": return `the amount ${OPS[c.op]} $${c.value}`;
-    case "status": return `${labels.subject ? `the ${labels.subject}` : "it"} ${c.op === "is" ? "is" : "isn't"} ${String(c.value).replace(/_/g, " ")}`;
+    case "status": return `${labels.subject ? `the ${labels.subject}` : "it"} ${c.op === "is" ? "is" : "isn't"} ${statusLabel(labels.subject, c.value).toLowerCase()}`;
     case "replied": return c.op === "yes" ? "they reply" : "they haven't replied";
     case "quoted": return c.op === "yes" ? "they have a quote" : "there's no quote yet";
     case "reviewed": return c.op === "yes" ? "they leave a review" : "they haven't left a review";
