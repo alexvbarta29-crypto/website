@@ -32,6 +32,43 @@ test("Claude connector: both ways in, the key shown once, the keys and the tools
   assert.doesNotMatch(noAsk, /Make a key that can ask/, "nothing to ask with: no asking key");
 });
 
+test("Claude connector: connect claude.ai with approvals, the connected apps with Disconnect", async () => {
+  const s = await load("claude");
+  const base = { info: INFO, keys: [], scopes: { read: [], write: [], defaults: [] }, made: null };
+  const none = text(s.render(base, ctx()));
+  assert.match(none, /claude\.ai \(can ask for approvals\)/);
+  assert.match(none, /value="https:\/\/www\.bartawindowwashing\.com\/api\/crm\/mcp"/, "the address to paste");
+  assert.match(none, /Tap Connect\. Sign in with your CRM login/);
+  assert.match(none, /Nothing connected yet/);
+  const g = { id: "ak_00000000000000000009", app: "Claude", goes_back_to: "claude.ai", scope: "crm:read crm:ask", can_ask: true, created_at: NOW, last_used_at: null, user_id: "us_00000000000000000001", person: "Olive" };
+  const one = text(s.render({ ...base, grants: [g, { ...g, id: "ak_00000000000000000008", can_ask: false, app: "Claude <script>", last_used_at: NOW }] }, ctx()));
+  assert.match(one, /Olive · Can ask · via claude\.ai/);
+  assert.match(one, /Look up only/);
+  assert.match(one, /data-disconnect="ak_00000000000000000009"/);
+  assert.doesNotMatch(one, /<script>/, "an app's name is text");
+});
+
+test("Connect Claude (consent): who asks, where it goes back, look up always, ask when it can; expired link", async () => {
+  const s = await load("connect");
+  const info = { client_name: "Claude", goes_back_to: "claude.ai", claude: true, scopes: ["crm:read", "crm:ask"], wants_ask: true, can_ask: true, expires_at: NOW, you: "Olive" };
+  const h = text(s.render({ rid: "bcrq_" + "0".repeat(32), info, ask: true }));
+  assert.match(h, /<b>Claude<\/b> wants to connect to Barta CRM as Olive/);
+  assert.match(h, /go back to <b>claude\.ai<\/b>/);
+  assert.match(h, /Look things up/);
+  assert.match(h, /data-ask checked/);
+  assert.match(h, /waits under Approvals until an owner taps Approve/);
+  assert.match(h, /data-allow/);
+  assert.match(h, /data-deny/);
+  const loop = text(s.render({ rid: "x", info: { ...info, claude: false, goes_back_to: "an app on this computer", client_name: "<img src=x>" }, ask: true }));
+  assert.match(loop, /Only allow this if you just started it on this computer/);
+  assert.doesNotMatch(loop, /<img src=x>/);
+  const noAsk = text(s.render({ rid: "x", info: { ...info, can_ask: false }, ask: false }));
+  assert.match(noAsk, /data-ask disabled|disabled data-ask|data-ask[^>]*disabled/);
+  assert.match(noAsk, /Your account can(&#39;|')t ask for changes/);
+  const gone = text(s.render({ rid: "x", gone: "This sign-in link has expired. Start again from Claude." }));
+  assert.match(gone, /This link has expired/);
+});
+
 test("Calendar feed: off, on, and the link once with Google and Apple steps", async () => {
   const s = await load("calendar");
   const off = text(s.render({ feed: { on: false, scope: null, last4: null, created_at: null, can_all: false }, made: null }));

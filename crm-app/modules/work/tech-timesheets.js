@@ -10,6 +10,7 @@
 import { html, icon, attrs, toast, sheet, confirmSheet } from "../../core/ui.js";
 import { dateShort, time as fmtTime, plural, localDate } from "../../core/format.js";
 import { ensureStyles, TICONS, hm, dowOf, hhmmOf, isoFromLocal, CATEGORY, REASON } from "./tech-kit.js";
+import { photoTile } from "../../core/camera.js";
 
 const addDays = (date, n) => new Date(Date.parse(date + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const weekQuery = () => { try { return new URLSearchParams(location.hash.split("?")[1] || "").get("week") || ""; } catch (e) { return ""; } };
@@ -111,7 +112,7 @@ async function editSheet(ctx, id, { decide }) {
       <p class="small muted">${who} · ${dateShort(date)}${pend.reason ? ` · ${REASON[pend.reason] || "needs a look"}` : ""}${pend.detail ? `: ${pend.detail}` : ""}</p>
       ${pend.action ? html`<p class="small">${`Their phone sent "${String(pend.action).replace(/_/g, " ")}"${pend.job_title ? ` on ${pend.job_title}` : ""} at ${fmtTime(pend.claimed || t.start_at)}${pend.applied ? "; it went in" : ""}.`}</p>` : ""}
       ${said(pend)}
-      ${(pend.file_ids || []).length ? html`<div class="tf-held">${pend.file_ids.map((fid) => html`<a ${attrs({ href: `/api/crm/files/${encodeURIComponent(fid)}`, target: "_blank", rel: "noopener" })}><img ${attrs({ src: `/api/crm/files/${encodeURIComponent(fid)}?thumb=1`, alt: "The photo they sent", loading: "lazy" })}></a>`)}</div>` : ""}
+      ${(pend.file_ids || []).length ? html`<div class="tf-held">${pend.file_ids.map((fid) => photoTile(fid, { alt: "The photo they sent" }))}</div>` : ""}
       ${pend.timer ? html`<p class="small">Their timer: ${fmtTime(pend.timer.start)}${pend.timer.end ? ` – ${fmtTime(pend.timer.end)}` : ", no stop yet"}.</p>` : ""}
       ${notice ? html`<p class="small muted">Nothing here counts as time. Fix the visit or the job if it needs it, then mark this seen.</p>
         <input type="hidden" name="date" ${attrs({ value: date })}><input type="hidden" name="start" ${attrs({ value: hhmmOf(t.start_at) })}><input type="hidden" name="end" ${attrs({ value: hhmmOf(t.end_at) })}><input type="hidden" name="category" ${attrs({ value: t.category })}>

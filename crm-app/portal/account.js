@@ -8,7 +8,7 @@
 // - [data-open-kind]: an open quote or invoice opens through a fresh short
 //   link (POST /api/portal/hub/open), the hub session keeps working.
 // - Request work: photos are shrunk on the phone (1600 px, JPEG) before
-//   they go, at most 3.
+//   they go, at most 3, each with a 400 px copy the office's lists show.
 // - Your info: the text and email switches save as they're flipped.
 
 import { portalPost } from "./core.js";
@@ -18,6 +18,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const uuid = () => (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}-${Math.random().toString(16).slice(2, 10)}`);
 const MAX_PHOTOS = 3;
 const MAX_SIDE = 1600;
+const THUMB_SIDE = 400;
 
 function say(box, msg) { if (box) { box.textContent = msg || ""; box.hidden = !msg; } }
 
@@ -41,20 +42,27 @@ function openButtons() {
   });
 }
 
-// A photo from the phone, shrunk to MAX_SIDE and sent as JPEG base64 (no "data:" prefix).
+// The image drawn at most `side` px on its longest side, as JPEG base64 (no "data:" prefix).
+function jpegOf(img, side, quality) {
+  const k = Math.min(1, side / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.naturalWidth * k));
+  c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const data = c.toDataURL("image/jpeg", quality);
+  return { b64: data.slice(data.indexOf(",") + 1), url: data };
+}
+
+// A photo from the phone, shrunk to MAX_SIDE and sent as JPEG base64, with its THUMB_SIDE thumbnail.
 function shrink(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const k = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-      const c = document.createElement("canvas");
-      c.width = Math.max(1, Math.round(img.naturalWidth * k));
-      c.height = Math.max(1, Math.round(img.naturalHeight * k));
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const full = jpegOf(img, MAX_SIDE, 0.82);
+      const thumb = jpegOf(img, THUMB_SIDE, 0.75);
       URL.revokeObjectURL(url);
-      const data = c.toDataURL("image/jpeg", 0.82);
-      resolve({ b64: data.slice(data.indexOf(",") + 1), preview: data });
+      resolve({ b64: full.b64, thumb: thumb.b64, preview: thumb.url });
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That photo couldn't be read. Try another one.")); };
     img.src = url;
@@ -68,6 +76,7 @@ function requestForm() {
   const previews = $("[data-photo-previews]", form);
   const input = $("[data-photos]", form);
   const photos = [];
+  const thumbs = [];
   const clientId = uuid();
   if (input) input.addEventListener("change", async () => {
     say(err, "");
@@ -76,6 +85,7 @@ function requestForm() {
       try {
         const p = await shrink(f);
         photos.push(p.b64);
+        thumbs.push(p.thumb);
         const im = document.createElement("img");
         im.src = p.preview;
         im.alt = `Photo ${photos.length}`;
@@ -96,7 +106,7 @@ function requestForm() {
     try {
       await portalPost("/api/portal/requests", {
         client_id: clientId, services, notes, timing: form.elements.timing ? form.elements.timing.value : undefined,
-        ...(form.elements.property_id ? { property_id: form.elements.property_id.value } : {}), photos,
+        ...(form.elements.property_id ? { property_id: form.elements.property_id.value } : {}), photos, thumbs,
       }, { timeout: 45000 });
       location.replace("/p/request?sent=1");
     } catch (x) {

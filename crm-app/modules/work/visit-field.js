@@ -18,7 +18,7 @@
 
 import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
 import { money, time as fmtTime, dateShort } from "../../core/format.js";
-import { capture, prepare } from "../../core/camera.js";
+import { capture, prepare, photoTile } from "../../core/camera.js";
 import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine, tellShell } from "./tech-kit.js";
 import { nextStep } from "./visit-step.js";
 
@@ -133,7 +133,8 @@ function photosCard(s, ctx) {
   const can = s.visit.status !== "cancelled";
   return html`<div class="card" id="vf-photos"><h2>Photos <span class="muted small">${photos.length}</span></h2>
     ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => {
-      const src = p.local ? p.thumb : `/api/crm/files/${encodeURIComponent(p.file_id)}?thumb=1`;
+      if (!p.local && p.file_id) return photoTile(p.file_id, { alt: `${p.tag || "other"} photo`, tag: p.tag || "other", cls: "tf-photo" });
+      const src = p.local ? p.thumb : null;
       return html`<span class="${"tf-photo" + (p.local ? " wait" : "")}">${src ? html`<img ${attrs({ src, alt: `${p.tag || "other"} photo`, loading: "lazy" })}>` : "Photo"}<span class="tag">${p.tag || "other"}</span></span>`;
     })}</div>` : html`<p class="small muted">No photos yet. Before and after photos show in the customer's visit history; issue photos stay with the office.</p>`}
     ${can ? html`<div class="tf-small" style="margin-top:12px">

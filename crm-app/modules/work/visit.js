@@ -21,6 +21,7 @@
 
 import { html, icon, attrs, toast, confirmSheet, delegate } from "../../core/ui.js";
 import { TICONS } from "./tech-kit.js";
+import { photoTile } from "../../core/camera.js";
 import { dateLong, money, dateTime, ago, phone } from "../../core/format.js";
 import { directionsLink } from "../../core/map.js";
 import { MANIFESTS } from "../index.js";
@@ -118,7 +119,7 @@ function actionHead(s, { ph, addr, where, photos, items, done, waiting }) {
 function photosCard(v) {
   const photos = v.photos || [];
   return html`<div class="card" id="vf-photos"><h2>Photos <span class="muted small">${photos.length}</span></h2>
-    ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => html`<span class="tf-photo">${p.file_id ? html`<img ${attrs({ src: `/api/crm/files/${encodeURIComponent(p.file_id)}?thumb=1`, alt: `${p.tag || "other"} photo`, loading: "lazy" })}>` : "Photo"}<span class="tag">${p.tag || "other"}</span></span>`)}</div>` : html`<p class="small muted">No photos yet. The crew's before and after photos show here.</p>`}</div>`;
+    ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => (p.file_id ? photoTile(p.file_id, { alt: `${p.tag || "other"} photo`, tag: p.tag || "other", cls: "tf-photo" }) : html`<span class="tf-photo">Photo<span class="tag">${p.tag || "other"}</span></span>`))}</div>` : html`<p class="small muted">No photos yet. The crew's before and after photos show here.</p>`}</div>`;
 }
 
 function remindRow(label, m) {

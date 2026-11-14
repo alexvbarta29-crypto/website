@@ -16,6 +16,7 @@
 
 import { APP_VERSION } from "../version.js";
 import { uuid } from "./api.js";
+import { html, attrs, sheet } from "./ui.js";
 
 export const MAX_SIDE = 2048;
 export const QUALITY = 0.82;
@@ -216,4 +217,22 @@ export async function uploadPhoto({ ownerType, ownerId, kind = "photo", tag, cap
     try { await postBytes(`/files/${encodeURIComponent(out.file.id)}/thumb`, p.thumb); } catch (e) { /* the full photo is what matters */ }
   }
   return out;
+}
+
+// ------------------------------------------------------------ showing photos
+
+// Lists show the small copy (?thumb=1: the 400 px thumbnail, or the photo
+// itself when it has none: photos from before thumbnails); a tap opens the
+// whole photo in a sheet (main.js), so it loads only when someone asks.
+export const fileUrl = (id) => `/api/crm/files/${encodeURIComponent(id)}`;
+export const thumbUrl = (id) => `${fileUrl(id)}?thumb=1`;
+
+// One photo tile: the thumbnail, linking to the full photo. o: { alt, tag, cls }
+export function photoTile(id, { alt = "Photo", tag = "", cls = "" } = {}) {
+  return html`<a ${attrs({ class: ("ph-tile " + cls).trim(), href: fileUrl(id), "data-photo-full": fileUrl(id), "aria-label": `Open ${alt.toLowerCase()}` })}><img ${attrs({ src: thumbUrl(id), alt, loading: "lazy", decoding: "async" })}>${tag ? html`<span class="tag">${tag}</span>` : ""}</a>`;
+}
+
+// The whole photo, in a sheet (✕, swipe down, Escape).
+export function openPhoto(url, alt = "Photo") {
+  return sheet({ title: alt, body: html`<div class="ph-full"><img ${attrs({ src: url, alt, decoding: "async" })}></div>` });
 }

@@ -1,14 +1,17 @@
-// Automations (design §9.2, §5.7.4): the built-in catalog. Each one: on or
-// off, when it runs, what it sends, and the last 7 days (sent, dry run,
-// skipped, "would have" while Rotor is in charge). Tap one for its
-// settings (channels, delay, time of day, templates) and today's log.
-// Automations of modules that haven't shipped show "Arrives with ...".
-// Before the switch-over everything that would reach a customer goes to
-// the Outbox instead. automations:configure (owners and the office).
+// Automations (design §9.2, §5.7.4): first your own (the builder,
+// modules/automations: each one on or off, its sentence, how many runs and
+// the last; New automation from scratch or from a starter; the limits every
+// one shares), then the built-in catalog. Each built-in: on or off, when it
+// runs, what it sends, and the last 7 days (sent, dry run, skipped, "would
+// have" while Rotor is in charge). Tap one for its settings (channels,
+// delay, time of day, templates) and today's log. Automations of modules
+// that haven't shipped show "Arrives with ...". Before the switch-over
+// everything that would reach a customer goes to the Outbox instead.
+// automations:configure (owners and the office).
 
 import { html, attrs, icon, sheet, toast, confirmSheet } from "../../core/ui.js";
 import { readForm, busy, checkbox, field, clearErrors, showError } from "../../core/forms.js";
-import { time as fmtTime } from "../../core/format.js";
+import { time as fmtTime, dateTime } from "../../core/format.js";
 import { reasonLabel } from "./kit.js";
 
 const last7 = (l) => {
@@ -74,11 +77,72 @@ async function logSheet(a, ctx) {
   });
 }
 
+// New automation: from scratch, or one of the starters (created off).
+function newSheet(s, ctx) {
+  const make = async (body) => {
+    try {
+      const r = await ctx.api("/automations/flows", { method: "POST", body });
+      sh.close();
+      toast("Made (off until you turn it on)");
+      ctx.go(`/automations/flow/${r.data.flow.id}`);
+    } catch (err) { toast(err.message, { bad: true }); }
+  };
+  const sh = sheet({
+    title: "New automation",
+    body: html`<div class="stack">
+      <button type="button" class="btn primary block" data-scratch>${icon("plus")}Start from scratch</button>
+      <div class="section-h">Or start from</div>
+      <ul class="au-recipes">${(s.flows.recipes || []).map((x) => html`<li><button type="button" ${attrs({ "data-recipe": x.key })}><b>${x.label}</b><span>${x.blurb}</span></button></li>`)}</ul>
+    </div>`,
+    events: {
+      "click [data-scratch]": () => make({ name: "New automation", trigger: { type: "quote.sent" }, steps: [{ type: "task", title: "Follow up", assign: "owner", wait: { n: 1, unit: "days" } }] }),
+      "click [data-recipe]": (e, el) => make({ recipe: el.getAttribute("data-recipe") }),
+    },
+  });
+}
+
+// The limits every custom automation shares (Settings document "flows").
+async function limitsSheet(s, ctx) {
+  let etag = "new";
+  let cur = s.flows.settings || {};
+  try { const g = await ctx.api("/settings/flows", { cache: false }); etag = g.etag || (g.data && g.data.etag) || "new"; cur = { ...cur, ...((g.data && g.data.data) || {}) }; } catch (e) { /* the defaults */ }
+  const sh = sheet({
+    title: "Limits for your automations",
+    body: html`<form class="form" data-limits>
+      <div class="err" data-form-err hidden></div>
+      ${field({ label: "Automated texts to one customer a day (every automation together)", name: "max_texts_per_day", value: String(cur.max_texts_per_day ?? 2), inputmode: "numeric", maxlength: 2 })}
+      ${field({ label: "Starts of one automation a day before it switches itself off", name: "max_runs_per_day", value: String(cur.max_runs_per_day ?? 200), inputmode: "numeric", maxlength: 4 })}
+      <button type="submit" class="btn primary block">Save</button>
+    </form>`,
+    events: {
+      "submit [data-limits]": async (e, form) => {
+        e.preventDefault(); clearErrors(form);
+        const v = readForm(form);
+        const btn = form.querySelector("button[type=submit]"); busy(btn, true);
+        try {
+          await ctx.api("/settings/flows", { method: "PUT", ifMatch: etag, body: { max_texts_per_day: Number(v.max_texts_per_day), max_runs_per_day: Number(v.max_runs_per_day) } });
+          toast("Saved"); sh.close(); ctx.refresh();
+        } catch (err) { busy(btn, false); showError(form, err); }
+      },
+    },
+  });
+}
+
+const flowRow = (f) => html`<li><div class="row">
+  <a class="who" style="text-decoration:none;color:inherit" ${attrs({ href: `#/automations/flow/${f.id}` })}>
+    <span class="nm two">${f.name}</span><span class="sub two">${f.summary || ""}</span>
+    <span class="sub">${f.runs ? `${f.runs} run${f.runs === 1 ? "" : "s"}` : "No runs yet"}${f.last_run_at ? ` · last ${dateTime(f.last_run_at)}` : ""}${f.auto_paused ? " · switched itself off" : ""}${f.problems && f.problems.length ? " · needs a fix" : ""}</span>
+  </a>
+  <span class="end"><button type="button" class="switch" role="switch" ${attrs({ "aria-checked": String(!!f.enabled), "aria-label": `${f.name} on or off`, "data-flow-toggle": f.id })}></button></span>
+</div></li>`;
+
 export default {
   title: "Automations",
   async load(params, ctx) {
-    const [r, t] = await Promise.all([ctx.api("/automations", { cache: false }), ctx.api("/templates").catch(() => ({ data: [] }))]);
-    return { ...r.data, templates: t.data || [] };
+    const [r, t, fl] = await Promise.all([ctx.api("/automations", { cache: false }), ctx.api("/templates").catch(() => ({ data: [] })), ctx.api("/automations/flows", { cache: false }).catch(() => null)]);
+    if (fl && typeof document !== "undefined") import("../automations/kit.js").then((k) => k.ensureStyles()).catch(() => {});
+    // the builder's own sending automations are the engine's, not something to switch here
+    return { ...r.data, automations: r.data.automations.filter((a) => !String(a.key).startsWith("flow.")), templates: t.data || [], flows: fl ? fl.data : null };
   },
   action(s, ctx) {
     return { label: s.paused ? "Resume all" : "Pause all", run: async () => {
@@ -98,11 +162,28 @@ export default {
     return html`<div class="stack">
       ${s.paused ? html`<div class="warn-box">Every automation is paused.</div>` : ""}
       <div class="note">Until the switch-over, anything an automation would send to a customer goes to the Outbox instead, and changes to records Rotor owns are only reported ("would have").</div>
+      ${s.flows ? html`<div class="section-h">Your automations</div>
+        ${s.flows.flows.length ? html`<ul class="list">${s.flows.flows.map(flowRow)}</ul>` : html`<p class="small muted">"When this happens, if that, then do these steps." Make your own, or start from one of ours.</p>`}
+        <div class="btn-row"><button type="button" class="btn primary" data-new-flow>${icon("plus")}New automation</button><button type="button" class="btn" data-limits-open>Limits</button></div>
+        <div class="section-h">Built in</div>` : ""}
       ${live.length ? html`<ul class="list">${live.map(row)}</ul>` : ""}
       ${later.length ? html`<div class="section-h">Arriving with the next parts</div><ul class="list">${later.map((a) => html`<li><div class="row"><span class="ico">${icon("bolt")}</span><span class="who"><span class="nm two">${a.label}</span><span class="sub two">${a.when}</span><span class="sub two">${a.action}</span></span><span class="end"><span class="pill">${a.arrives_with}</span></span></div></li>`)}</ul>` : ""}
     </div>`;
   },
   events: {
+    "click [data-new-flow]": (e, el, ctx) => newSheet(ctx.state, ctx),
+    "click [data-limits-open]": (e, el, ctx) => limitsSheet(ctx.state, ctx),
+    "click [data-flow-toggle]": async (e, el, ctx) => {
+      const id = el.getAttribute("data-flow-toggle");
+      const on = el.getAttribute("aria-checked") !== "true";
+      el.disabled = true;
+      try {
+        await ctx.api(`/automations/flows/${encodeURIComponent(id)}/${on ? "resume" : "pause"}`, { method: "POST", body: {} });
+        el.setAttribute("aria-checked", String(on));
+        toast(on ? "On" : "Paused");
+      } catch (err) { toast(err.message, { bad: true }); }
+      el.disabled = false;
+    },
     "click [data-toggle]": async (e, el, ctx) => {
       const key = el.getAttribute("data-toggle");
       const on = el.getAttribute("aria-checked") !== "true";

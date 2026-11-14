@@ -1,0 +1,37 @@
+/* The automation builder (Messages & automations → Automations): the
+   editor's cards, rows and the plain-English sentence. House style:
+   crm.css tokens, 44 px controls on a phone. */
+.au-sum{border:1.5px solid var(--card-line);border-radius:var(--r-lg);background:var(--fill-2);padding:14px 16px;font:500 17px/1.4 var(--text);color:var(--ink);letter-spacing:-.01em}
+.au-sum .k{display:block;margin-bottom:4px;font:600 12.5px/1.2 var(--text);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.au-probs{margin:8px 0 0;padding:0 0 0 18px;color:var(--red-ink);font-size:15px}
+.au-card{display:flex;flex-direction:column;gap:10px}
+.au-card>h2{display:flex;align-items:center;gap:8px;margin:0}
+.au-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.au-row .field{margin:0}
+.au-row .au-v{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.au-row .au-v>.field:only-child{grid-column:1/-1}
+.au-row .au-x{grid-column:1/-1;justify-self:end}
+.au-step{display:flex;flex-direction:column;gap:10px;padding:12px;border:1.5px solid var(--card-line);border-radius:var(--r-lg);background:var(--card)}
+.au-step .hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.au-step .hd b{font:700 17px/1.2 var(--head)}
+.au-step .hd .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.au-wait{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end;padding:10px;border-radius:var(--r);background:var(--fill-2)}
+.au-wait .field{margin:0}
+.au-wait .check{grid-column:1/-1;margin:0}
+.au-days{display:flex;flex-wrap:wrap;gap:6px}
+.au-days .chip{min-height:44px}
+.au-arrow{align-self:center;color:var(--ink-3);font:600 14px/1 var(--text)}
+.au-acts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.au-acts .btn{min-width:0}
+.au-out{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.au-out li{padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.au-out .t{display:flex;justify-content:space-between;gap:8px;align-items:center;font:600 16px/1.3 var(--text)}
+.au-out .d{margin:4px 0 0;color:var(--ink-2);font-size:15px}
+.au-out blockquote{margin:8px 0 0;padding:10px 12px;border-left:3px solid var(--coral-btn);background:var(--fill-2);border-radius:8px;white-space:pre-wrap;font-size:15px}
+.au-recipes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.au-recipes button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;min-height:56px;padding:12px 14px;border:1px solid var(--card-line);border-radius:var(--r-lg);background:var(--card);text-align:left;color:var(--ink);font:inherit;cursor:pointer}
+.au-recipes b{font:700 17px/1.2 var(--head)}
+.au-recipes span{color:var(--ink-3);font-size:15px}
+#au-f{max-width:880px}
+@media (min-width:600px){.au-wait{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr)}}
+@media (min-width:900px){.au-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) auto;align-items:end}.au-row .au-v{grid-column:auto}.au-row .au-x{grid-column:auto}}

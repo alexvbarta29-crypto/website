@@ -367,6 +367,22 @@ They read an export someone made; Rotor itself is never called.
 - `plans.lights` (row 25): each lights plan's season (the year of its
   install job, the status from that job, the feet from the per-foot
   lines) and, for this season's installs, a January takedown job (D9).
+  One season per place and year: when a customer has two or more lights
+  plans for the same house and year (an empty One-Time container left
+  beside the real plan, or a second plan for more lights), the plan whose
+  install got furthest leads the season (installed, then scheduled, then
+  sold; a plan with no job last), then the active one, then the oldest.
+  The others are named on it (`rotor.also_service_plan_ids`,
+  `also_install_job_ids`; a second install stays a job of its own plan),
+  one takedown is made for the house, and a season an earlier import made
+  for one of the other plans is taken over (its plan and install move to
+  the lead unless someone changed them in the CRM).
+- A plan (or job) whose customer's own row was refused (a 2-character ZIP
+  on the Nov 13 export: the customer's pointer is claimed, its contact
+  never written) gets the customer's placeholder at that same contact id,
+  so the plan, its season, its takedown and the quote and deal that name
+  it all sit on the customer's contact; the customer's row fills it in
+  once it imports.
 
 A second run of an unchanged export changes nothing.
 

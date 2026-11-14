@@ -4,6 +4,9 @@
 //   POST /api/crm/mcp/:key     the key in the path (a "path" key: read-only,
 //                              30 calls a minute; for claude.ai connectors,
 //                              which cannot send a header)
+//   POST /api/crm/mcp          Authorization: Bearer bcat_…  (an OAuth access
+//                              token, oauth.mjs: claude.ai with the asking
+//                              tools; acts like a header key of its grant)
 //   GET  /api/crm/mcp/connect  (signed in) what the connector screen shows
 //
 // JSON-RPC 2.0 over Streamable HTTP with plain JSON answers, like
@@ -32,6 +35,7 @@ import { keyMay } from "./invoke.mjs";
 import { requestAction, registerExecutor, issueConfirmToken, useConfirmToken } from "./actions.mjs";
 import { wrapUntrusted, UNTRUSTED_NOTE } from "./untrusted.mjs";
 import { tools as ownTools } from "./tools.mjs";
+import { lookupAccessToken, resourceMetadataUrl, requestInfo, approve, deny, listGrants, deleteGrant } from "./oauth.mjs";
 
 export const PROTOCOL = "2025-03-26";
 export const SUPPORTED_PROTOCOLS = Object.freeze(["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"]);
@@ -173,7 +177,10 @@ export async function handleMessage(ctx, m) {
 }
 
 const rpcJson = (body, status = 200, headers = {}) => new Response(body === null ? null : JSON.stringify(body), { status, headers: { ...(body === null ? {} : { "Content-Type": "application/json" }), ...headers } });
-const unauthorized = (msg = "Unauthorized") => rpcJson(rpcError(null, -32001, msg), 401, { "WWW-Authenticate": 'Bearer realm="barta-crm"' });
+// The 401 tells an OAuth client where to start (RFC 9728, the MCP authorization spec).
+const unauthorized = (ctx, msg = "Unauthorized", { invalid = false } = {}) => rpcJson(rpcError(null, -32001, msg), 401, {
+  "WWW-Authenticate": `Bearer realm="barta-crm", resource_metadata="${resourceMetadataUrl(ctx)}"${invalid ? ', error="invalid_token"' : ""}`,
+});
 
 // The key, as authenticate() finds it for a header; a path key by hand.
 async function keyFromPath(raw) {
@@ -188,7 +195,7 @@ async function keyFromPath(raw) {
 }
 
 async function serve(ctx, who) {
-  if (!who || !who.user || !who.apiKey || who.apiKey.kind === "backup") return unauthorized("That key doesn't work here. Make one in the CRM: Settings → Claude connector.");
+  if (!who || !who.user || !who.apiKey || who.apiKey.kind === "backup") return unauthorized(ctx, "That key doesn't work here. Make one in the CRM: Settings → Claude connector.", { invalid: !!(who && who.presented) });
   Object.assign(ctx, { user: who.user, apiKey: who.apiKey });
   try { ctx.permissions = await loadPermissions(); } catch (e) {
     console.error(`crm:mcp: permissions not read (${safeErr(e)})`);
@@ -207,14 +214,16 @@ async function serve(ctx, who) {
   return r ? rpcJson(r) : rpcJson(null, 202);
 }
 
+const BEARER = /^Bearer\s+(\S+)$/i;
 async function headerRoute(ctx) {
   let who;
-  try { who = await authenticate(ctx.req, "key"); } catch (e) {
+  const presented = (BEARER.exec(ctx.req.headers.get("authorization") || "") || [])[1] || "";
+  try { who = presented.startsWith("bcat_") ? await lookupAccessToken(ctx, presented) : await authenticate(ctx.req, "key"); } catch (e) {
     if (e instanceof RateLimited) return rpcJson(rpcError(null, -32029, e.message), 429, { "Retry-After": String(e.retryAfterS || 60) });
     throw e;
   }
   if (who && who.apiKey && who.apiKey.kind === "path") who = null;   // a path key belongs in the path (and stays read-only there)
-  return serve(ctx, who);
+  return serve(ctx, who || (presented ? { presented: true } : null));
 }
 async function pathRoute(ctx) {
   let who;
@@ -225,13 +234,16 @@ async function pathRoute(ctx) {
   return serve(ctx, who);
 }
 
+// The permissions the asking tools need (what "can ask" adds to a key or a connection).
+export const askPermsAll = () => [...new Set(allTools().filter((t) => t.effect !== "read" && t.perm).map((t) => t.perm))].sort();
+
 // GET /mcp/connect: the connector screen (Settings → Claude connector).
 async function connectInfo(ctx) {
   const list = allTools();
   const byEffect = (pred) => list.filter(pred).map((t) => t.name).sort();
   return {
     data: {
-      url: `${CANONICAL_ORIGIN}/api/crm/mcp`, path_url_template: `${CANONICAL_ORIGIN}/api/crm/mcp/{key}`, protocol: PROTOCOL,
+      url: `${CANONICAL_ORIGIN}/api/crm/mcp`, oauth: true, path_url_template: `${CANONICAL_ORIGIN}/api/crm/mcp/{key}`, protocol: PROTOCOL,
       tools: { read: byEffect((t) => t.effect === "read"), ask: byEffect((t) => t.effect !== "read") },
       // the scopes the "ask for approvals" preset ticks: what the asking tools need and this person holds
       ask_scopes: [...new Set(list.filter((t) => t.effect !== "read" && t.perm && ctx.holds(t.perm) === true).map((t) => t.perm))].sort(),
@@ -244,6 +256,12 @@ export const mcpRoutes = [
   R("POST", "/mcp", headerRoute),
   R("POST", "/mcp/:key", pathRoute),
   { method: "GET", path: "/mcp/connect", auth: "session", perm: "api_keys:own", subject: "none", mode: "inline", handler: connectInfo },
+  // OAuth (oauth.mjs): the consent screen and Settings' connected apps; a person signed in to the CRM
+  { method: "GET", path: "/mcp/oauth/requests/:rid", auth: "session", perm: "api_keys:own", subject: "none", mode: "inline", handler: (ctx) => requestInfo(ctx, askPermsAll()) },
+  { method: "POST", path: "/mcp/oauth/requests/:rid/approve", auth: "session", perm: "api_keys:own", subject: "none", mode: "inline", idempotent: false, secret: true, handler: (ctx) => approve(ctx, askPermsAll()) },
+  { method: "POST", path: "/mcp/oauth/requests/:rid/deny", auth: "session", perm: "api_keys:own", subject: "none", mode: "inline", idempotent: false, secret: true, handler: deny },
+  { method: "GET", path: "/mcp/oauth/grants", auth: "session", perm: "api_keys:own", subject: "none", mode: "inline", handler: listGrants },
+  { method: "DELETE", path: "/mcp/oauth/grants/:id", auth: "session", perm: "api_keys:own", subject: "none", mode: "inline", handler: deleteGrant },
 ];
 
 // tests

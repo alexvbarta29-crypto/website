@@ -31,6 +31,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
 | [CRM-REPORTS.md](CRM-REPORTS.md) | M7b | rollups, the dashboard feed | stub |
 | [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's MCP connector over the CRM (reads, Rotor-compatible reports, asks an owner approves; how to connect claude.ai) and the calendar feed (iCal) | built (in review) |
+| [CRM-AUTOMATIONS.md](CRM-AUTOMATIONS.md) | builder | your own automations: triggers, conditions, steps with waits, stop conditions, a test run, run history, the caps and the loop guard | built (in review) |
 | [CRM-MAP.md](CRM-MAP.md) | maps | Door to door (the knock map, pins, areas, convert to lead, the report) and the live Team map; the map stack, geocoding, outside hosts | live (in review) |
 
 The office side (tabs, the launcher for a start with no signal, web push,
@@ -1162,7 +1163,15 @@ Upload `POST /api/crm/files?owner_type=&owner_id=&kind=&tag=` with the raw
 bytes (≤ 4,000,000; JPEG, PNG, WebP or PDF); the type comes from the magic
 bytes, never the header. Download `GET /api/crm/files/{id}[?thumb=1]`:
 `nosniff`, `Content-Security-Policy: sandbox`, inline for images and
-`attachment` for PDFs and anything else, ETag and 304. Imported media
+`attachment` for PDFs and anything else, ETag and 304. Thumbnails: the
+phone makes a 400 px JPEG beside every photo (`core/camera.js`; the
+customer's request photos too, `portal/account.js`) and sends it to
+`POST /api/crm/files/{id}/thumb` (or with the photo: visits, held photos,
+portal requests), magic-byte checked, ≤ 400 KB. Lists, tasks, visits and
+the portal's history show `?thumb=1`; a tap opens the whole photo in a
+sheet (`photoTile()`/`openPhoto()`). A photo without a thumbnail (older
+ones) answers `?thumb=1` with the photo itself (`X-CRM-Thumb: original`,
+cached an hour); a PDF or download-only file without one is 404. Imported media
 outside the allowlist (HTML, SVG, unknown) is stored download-only and
 served as `application/octet-stream` attachments. Who may read and edit
 follows the owner record, declared by its module with
@@ -1251,9 +1260,11 @@ approvals and the workers' alerts.
   day; tap one for the whole message. Beside it, the **automation log**:
   sent, dry-run, skipped and the **would have** rows (what an automation
   would have changed on a record Rotor still owns).
-- **Automations**: the built-in catalog (design §5.7.4). Each one on or
-  off, its channels, delay, time of day and templates, the last 7 days and
-  today's log. Automations of modules that haven't shipped show "Arrives
+- **Automations**: your own first (the builder: "when this happens, if
+  that, then these steps after a wait", with a test run and run history;
+  [CRM-AUTOMATIONS.md](CRM-AUTOMATIONS.md)), then the built-in catalog
+  (design §5.7.4). Each built-in on or off, its channels, delay, time of
+  day and templates, the last 7 days and today's log. Automations of modules that haven't shipped show "Arrives
   with Sales / Scheduling / ...". **Pause all** stops every automation
   (people's own messages still go).
 - **Templates**: the library by category; the editor has variable chips,

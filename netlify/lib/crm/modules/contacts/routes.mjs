@@ -26,6 +26,7 @@ import { propertiesOf, ensureProperty, geocodeProperty, PROPERTIES_ON_SCREEN } f
 import { startMerge, startBulk, runView } from "./merge.mjs";
 import { normalizePhone, normalizeEmail, normalizeAddress, dateLabel, collator, sortName, initial } from "./display.mjs";
 import { appendNote } from "./intake.mjs";
+import { emitTagged } from "./tags.mjs";
 
 const SHARD = () => contactShard("ct_00000000000000000000");
 const str = (v) => (v == null ? "" : String(v)).trim();
@@ -250,6 +251,7 @@ async function patchRoute(ctx) {
     if (flags) { next.flags = { ...(rec.flags || {}) }; for (const [k, v] of Object.entries(flags)) { if (v) next.flags[k] = true; else delete next.flags[k]; } }
     return next;
   }), { ...ctx.write(), ifMatch: ctx.ifMatch });
+  if (r.changed && patch.tags !== undefined) await emitTagged(before.data, r.data, ctx);
   return { data: { contact: view(r.data) }, etag: r.etag };
 }
 

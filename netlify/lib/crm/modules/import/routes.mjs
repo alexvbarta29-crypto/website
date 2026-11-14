@@ -21,6 +21,22 @@
 //   GET  /import/runs/:id/report · /report.csv · /idmap.csv   import:run (the id map download is audited)
 //   GET  /import/runs/:id/conflicts         import:run   ?after=&status=
 //   POST /import/conflicts/:key/resolve     import:run   { take: "rotor" | "crm" }
+//
+// The automatic daily import (autokey.mjs):
+//   GET    /import/auto-key                 import:run   the key that works (never its value), earlier ones, the latest automatic imports
+//   POST   /import/auto-key                 import:run   { name? } → { key (shown once), record }; the one before stops working
+//   DELETE /import/auto-key/:id             import:run   revokes it
+//   POST   /import/auto/runs                the automatic import key ONLY   { manifest, note? } → { run, upload_key } (201)
+//
+// The switch from Rotor (cutover.mjs, cutover-preview.mjs; cutover:run, owners):
+//   GET  /cutover · POST /cutover/check     the checklist, the preview's state, history, rollback window
+//   POST /cutover/ticks                     { key, done } an item only the owner can confirm
+//   POST /cutover/preview                   { at? } → { run_id } (a bulk-lane run)
+//   GET  /cutover/preview                   the latest preview: counts per automation and day, samples
+//   POST /cutover/approve-preview
+//   POST /cutover/run                       { confirm: "SWITCH TO CRM" } → { run_id, op_id } (op/cutover--{n})
+//   POST /cutover/rollback                  { confirm: "SWITCH BACK TO ROTOR" } → { run_id, op_id } (first 48 hours)
+//   GET  /cutover/in-flight · POST /cutover/in-flight/:kind   quotes | invoices | agreements → a bulk run
 
 import { auditRead } from "../../core/audit.mjs";
 import { InputError, ConflictError } from "../../core/errors.mjs";
@@ -34,6 +50,9 @@ import {
   listConflicts, resolveConflict, mediaHave, missingChunks,
 } from "./runs.mjs";
 import { restView, createContinuation } from "./continue.mjs";
+import { autoKeyView, createAutoKey, revokeAutoKey, autoRun } from "./autokey.mjs";
+import { cutoverView, setTick, startCutover, startRollback, inFlightView, makeInFlightRun } from "./cutover.mjs";
+import { startPreview, readPreview, approvePreview } from "./cutover-preview.mjs";
 
 const ok = (data, extra = {}) => ({ data, ...extra });
 const notDone = () => new ConflictError("The report is ready when the import finishes.");
@@ -176,9 +195,48 @@ async function start(ctx, a) {
   }
 }
 
+// ------------------------------------------------------------ the automatic daily import
+
+async function autoKeyGet() { return ok(await autoKeyView()); }
+async function autoKeyMake(ctx) {
+  const b = ctx.body || {};
+  return ok(await createAutoKey({ name: b.name }, ctx.write()), { status: 201 });
+}
+async function autoKeyRevoke(ctx) { return ok(await revokeAutoKey(ctx.params.id, ctx.write())); }
+
+// ------------------------------------------------------------ the switch from Rotor
+
+const cutView = async (ctx) => ok(await cutoverView(ctx));
+async function tick(ctx) {
+  const b = ctx.body || {};
+  await setTick(b.key, b.done, ctx.write());
+  return ok(await cutoverView(ctx));
+}
+async function preview(ctx) {
+  const mode = await ctx.sysMode();
+  if (mode.system_of_record === "crm") throw new ConflictError("The CRM is in charge already: the preview is for before the switch.");
+  return ok(await startPreview({ at: ctx.body && ctx.body.at }, ctx.write()), { status: 202 });
+}
+async function previewGet() {
+  const p = await readPreview();
+  return ok(p);
+}
+async function approve(ctx) {
+  await approvePreview(ctx.write());
+  return ok(await cutoverView(ctx));
+}
+async function runSwitch(ctx) { return ok(await startCutover({ confirm: ctx.body && ctx.body.confirm }, { ...ctx.write(), deploy: ctx.deploy }), { status: 202 }); }
+async function runRollback(ctx) { return ok(await startRollback({ confirm: ctx.body && ctx.body.confirm }, ctx.write()), { status: 202 }); }
+async function inFlight() { return ok(await inFlightView()); }
+async function inFlightMake(ctx) {
+  const out = await makeInFlightRun(ctx.params.kind, ctx.write());
+  return ok(out, { status: out.existed ? 200 : 201 });
+}
+
 // ------------------------------------------------------------ the table
 
 const own = (method, path, handler, more = {}) => ({ method, path, auth: "session", perm: "import:run", subject: "none", mode: "inline", handler, ...more });
+const cut = (method, path, handler, more = {}) => ({ method, path, auth: "session", perm: "cutover:run", subject: "none", mode: "inline", handler, ...more });
 const hook = (method, path, handler, more = {}) => ({ method, path, auth: "hook", perm: null, subject: "required", mode: "inline", idempotent: false, handler, ...more });
 
 export const importRoutes = [
@@ -196,6 +254,21 @@ export const importRoutes = [
   own("GET", "/import/runs/:id/idmap.csv", idmapCsvRoute, { subject: "required", maxCalls: 40 }),
   own("GET", "/import/runs/:id/conflicts", conflicts, { subject: "required", maxCalls: 60 }),
   own("POST", "/import/conflicts/:key/resolve", resolve, { subject: "required", maxCalls: 40 }),
+  own("GET", "/import/auto-key", autoKeyGet),
+  own("POST", "/import/auto-key", autoKeyMake, { secret: true, idempotent: false, maxCalls: 40 }),
+  own("DELETE", "/import/auto-key/:id", autoKeyRevoke, { subject: "required", maxCalls: 40 }),
+  // the automatic import key, and only it (autokey.mjs checks it): makes a run and answers its one-run upload key
+  hook("POST", "/import/auto/runs", autoRun, { subject: "none", secret: true, maxCalls: 50 }),
+  cut("GET", "/cutover", cutView, { maxCalls: 30 }),
+  cut("POST", "/cutover/check", cutView, { maxCalls: 30 }),
+  cut("POST", "/cutover/ticks", tick, { maxCalls: 40 }),
+  cut("POST", "/cutover/preview", preview, { mode: "run", idempotent: false, maxCalls: 40 }),
+  cut("GET", "/cutover/preview", previewGet),
+  cut("POST", "/cutover/approve-preview", approve, { maxCalls: 40 }),
+  cut("POST", "/cutover/run", runSwitch, { mode: "run", idempotent: false, maxCalls: 60 }),
+  cut("POST", "/cutover/rollback", runRollback, { mode: "run", idempotent: false, maxCalls: 40 }),
+  cut("GET", "/cutover/in-flight", inFlight),
+  cut("POST", "/cutover/in-flight/:kind", inFlightMake, { subject: "required", idempotent: false, maxCalls: 50 }),
   hook("GET", "/import/upload", upload(whoami, { session: false }), { body: "none" }),
   hook("PUT", "/import/runs/:id/manifest", upload(putManifest), { maxCalls: 40 }),
   hook("PUT", "/import/runs/:id/chunks/:name", upload(putChunk), { body: "raw", maxBody: MAX_CHUNK_BYTES, budgetMs: 9000 }),

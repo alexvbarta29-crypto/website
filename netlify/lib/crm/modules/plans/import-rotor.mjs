@@ -30,12 +30,17 @@
 //   plans.lights (row 25)  each lights plan's season: the year of its
 //        install job, the status from that job, the feet from the per-foot
 //        lines; for this season's installs a takedown job in January (D9).
+//        One season per place and year (the season pointer): several lights
+//        plans there share it, led by leadOf() (furthest install, active,
+//        oldest), the others named in its `rotor`; one takedown.
+//   A plan whose customer pointer names a contact never written (the
+//   customer row was refused) gets the customer's placeholder at that id.
 //
 // map() gives the same output for the same input, so an unchanged export
 // changes nothing on a re-run (the takedown jobs come from an op whose id
 // is the Rotor plan's: made once).
 
-import { getRecord, getRecords, listRel, getRaw, putSetting } from "../../../crm-store.mjs";
+import { getRecord, getRecords, listRel, getRaw, putSetting, readPointer } from "../../../crm-store.mjs";
 import { idForRotor, isId } from "../../core/ids.mjs";
 import { now, localDate, addLocalDays } from "../../core/clock.mjs";
 import { has, call } from "../../core/services.mjs";
@@ -46,6 +51,7 @@ import { AGREEMENT_DRAFTS } from "./texts.mjs";
 import { seedTemplateId } from "./agreements.mjs";
 import { termEnd, addMonthsDate, monthOf, saleValue, visitsPerYearOf, monthsBetween } from "./machine.mjs";
 import { TAKEDOWN_LINE } from "./lights.mjs";
+import { seasonKey } from "./types.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
 const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
@@ -198,6 +204,23 @@ async function contactFor(ctx, rid) {
   return null;
 }
 
+// The customer's contact for a plan row: the one its pointer names. A
+// pointer can name a contact that was never written (the customer's own row
+// was refused, e.g. a 2-character ZIP: the pointer is claimed, the record
+// isn't); the plan, its season and its takedown then pointed at nothing
+// ("That contact isn't there anymore"). That contact is made here as the
+// customer's placeholder AT THE SAME ID, so the quote, the deal and the plan
+// that already name it are attached to the right contact, and the customer's
+// own row fills it in (rank over a placeholder) once it imports.
+// → { contactId, placeholder: record | null }
+export async function customerContact(ctx, rid, name) {
+  const id = await contactFor(ctx, rid);
+  if (id && (await getRecord("contact", id))) return { contactId: id, placeholder: null };
+  const ph = placeholderContact(rid, { name, kind: "customer" });
+  if (id && isId(id, "contact")) ph.data.id = id;
+  return { contactId: ph.data.id, placeholder: ph, dangling: !!id };
+}
+
 // The quote the plan came from: the same line-item ids, else the same
 // customer approved within 60 s of the plan's creation (rotor-money §7.1).
 async function quoteFor(contactId, lines, createdAt) {
@@ -267,15 +290,14 @@ async function mapPlan(r, ctx) {
   const out = { records: [], pointers: [], patches: [], stats: [], warnings };
   const oneTime = oneTimeOf(r);
   if (oneTime && !r.lights && r.jobs.length <= 1) return { records: (await jobsWithDiscounts(r, ctx)).records, warnings: ["one_time_container"] };
-  let contactId = await contactFor(ctx, r.customer);
-  if (!contactId) {
-    const ph = placeholderContact(r.customer, { name: r.customer_name, kind: "customer" });
-    out.records.push(ph);
-    out.pointers.push({ kind: "rotor/customer", key: rotorKey(r.customer), value: { id: ph.data.id } });
-    contactId = ph.data.id;
-    warnings.push("plan_placeholder_contact");
+  const who = await customerContact(ctx, r.customer, r.customer_name);
+  const contactId = who.contactId;
+  if (who.placeholder) {
+    out.records.push(who.placeholder);
+    if (!who.dangling) out.pointers.push({ kind: "rotor/customer", key: rotorKey(r.customer), value: { id: contactId } });
+    warnings.push(who.dangling ? "plan_contact_missing_placeholder" : "plan_placeholder_contact");
   }
-  const contact = ((await getRecord("contact", contactId)) || {}).data || null;
+  const contact = ((await getRecord("contact", contactId)) || {}).data || (who.placeholder ? who.placeholder.data : null);
   const cat = catalogWith(ctx && ctx.settings ? await ctx.settings.get("plans_catalog").catch(() => ({})) : {});
   const key = oneTime && !r.lights ? "custom" : catalogOf(r);
   const entry = cat.plans[key];
@@ -375,34 +397,100 @@ const SEASON_OF_JOB = { completed: "installed", scheduled: "install_scheduled", 
 // The season takedowns are made for: this year's installs (D9: the 2026 ones in January 2027).
 export const takedownSeason = (day = localDate(now())) => (Number(day.slice(5, 7)) >= 7 ? Number(day.slice(0, 4)) : Number(day.slice(0, 4)) - 1);
 
+const lookupJob = async (ctx, rid) => (ctx && typeof ctx.lookup === "function" ? await ctx.lookup("job", rid) : null) || idForRotor("job", rid);
+
+// One lights plan's season: its install job (the plan's first), the year of
+// that job (else of the plan's start: its local start day), the status from the job.
+async function seasonOfPlan(plan, firstRotorJobId, startDay, ctx) {
+  const jobId = firstRotorJobId ? await lookupJob(ctx, firstRotorJobId) : null;
+  const jg = jobId ? await getRecord("job", jobId) : null;
+  const job = jg ? jg.data : null;
+  const date = job ? (job.schedule && job.schedule.first_on) || (job.completed_at ? localDate(new Date(job.completed_at)) : null) || (job.target_month ? `${job.target_month}-15` : null) : null;
+  const season = Number((date || startDay || localDate(now())).slice(0, 4));
+  return { plan, job, season, status: job ? SEASON_OF_JOB[job.status] || "sold" : "sold", rid: plan.rotor && plan.rotor.service_plan_id, first: firstRotorJobId || null };
+}
+
+// Which of several lights plans on one place and year leads its season: the
+// one whose install got furthest (installed, then scheduled, then sold; a
+// plan with no job last, a cancelled install after that), then the active
+// plan, then the oldest, then Rotor's id. The same answer whichever row asks.
+const STATUS_RANK = { installed: 0, install_scheduled: 1, sold: 2, cancelled: 4 };
+const PLAN_RANK = { active: 0, expired: 1, cancelled: 2 };
+export function leadOf(group) {
+  const rank = (x) => [x.job ? STATUS_RANK[x.status] ?? 3 : 3.5, PLAN_RANK[x.plan.status] ?? 1, String(x.plan.created_at || ""), String(x.rid || "")];
+  return [...group].sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
+    for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] < rb[i] ? -1 : 1;
+    return 0;
+  })[0];
+}
+
+// The contact's other lights plans that land on the same place and year
+// (two Rotor lights plans for one house and season: an empty container left
+// beside the real one, or a second plan for more lights). They share ONE
+// season (the season pointer is per place and year); the lead plan writes it.
+async function seasonGroup(me, ctx) {
+  const key = seasonKey({ property_id: me.plan.property_id, contact_id: me.plan.contact_id, season: me.season });
+  const rows = await listRel("contact-plans", me.plan.contact_id, { limit: 200 }).catch(() => []);
+  const others = (await getRecords("plan", rows.map((x) => x.id).filter((id) => id !== me.plan.id))).filter(Boolean).map((g) => g.data)
+    .filter((p) => p.kind === "lights_annual" && !p.deleted_at && p.rotor && p.rotor.service_plan_id);
+  const group = [me];
+  for (const p of others) {
+    const x = await seasonOfPlan(p, (p.rotor.job_ids || [])[0], p.term && p.term.start_on, ctx);
+    if (seasonKey({ property_id: p.property_id, contact_id: p.contact_id, season: x.season }) === key) group.push(x);
+  }
+  return { key, group };
+}
+
 async function mapLights(r, ctx) {
   if (!r.lights) return {};
   const planId = (ctx && typeof ctx.lookup === "function" ? await ctx.lookup("plan", r.id) : null) || idForRotor("plan", r.id);
   const pg = await getRecord("plan", planId);
   if (!pg) return { warnings: ["lights_no_plan"] };
-  const plan = pg.data;
+  const me = await seasonOfPlan(pg.data, r.jobs[0] ? r.jobs[0].id : null, dayOf(r.start_date), ctx);
+  me.rid = r.id;
+  const { key, group } = await seasonGroup(me, ctx);
+  const lead = group.length > 1 ? leadOf(group) : me;
+  if (lead.plan.id !== me.plan.id) return { warnings: ["lights_season_shared"] };
+  const { plan, job, season, status } = me;
   const first = r.jobs[0];
-  const jobId = first ? ((ctx && typeof ctx.lookup === "function" ? await ctx.lookup("job", first.id) : null) || idForRotor("job", first.id)) : null;
-  const jg = jobId ? await getRecord("job", jobId) : null;
-  const job = jg ? jg.data : null;
-  const date = job ? (job.schedule && job.schedule.first_on) || (job.completed_at ? localDate(new Date(job.completed_at)) : null) || (job.target_month ? `${job.target_month}-15` : null) : null;
-  const season = Number((date || dayOf(r.start_date) || localDate(now())).slice(0, 4));
-  const status = job ? SEASON_OF_JOB[job.status] || "sold" : "sold";
-  const id = idForRotor("season_install", `${r.id}:${season}`);
+  const also = group.filter((x) => x !== me).sort((a, b) => String(a.rid).localeCompare(String(b.rid)));
+  // the season already on this place and year (an earlier import's, from one
+  // of these plans) keeps its id, so a re-run updates it instead of
+  // tripping over its own pointer
+  let id = idForRotor("season_install", `${r.id}:${season}`);
+  let takeOver = null;
+  if (also.length) {
+    const held = await readPointer("season", key).catch(() => null);
+    const cur = held && isId(held.id, "season_install") ? await getRecord("season_install", held.id) : null;
+    if (cur && cur.data.rotor && group.some((x) => x.rid === cur.data.rotor.service_plan_id)) {
+      id = cur.data.id;
+      // its plan and install (not the import's own fields) move to the lead,
+      // unless someone in the CRM pointed it elsewhere meanwhile
+      if (cur.data.plan_id !== plan.id) takeOver = { type: "season_install", id, only_if: { plan_id: also.map((x) => x.plan.id) }, set: { plan_id: plan.id, ...(job ? { install_job_id: job.id } : {}), ...(job && job.status === "completed" && job.completed_at ? { installed_on: localDate(new Date(job.completed_at)) } : {}) } };
+    }
+  }
+  const footage = Math.max(footageOfRows(r.lines_raw), ...also.map((x) => footageOfLines(x.plan.lines)));
+  const discounts = [plan, ...also.map((x) => x.plan)].flatMap((p) => p.discounts || []);
   const data = {
     id, contact_id: plan.contact_id, contact_name: plan.contact_name, ...(plan.property_id ? { property_id: plan.property_id } : {}), ...(plan.town ? { town: plan.town } : {}),
-    season, plan_id: plan.id, status, ...(job ? { install_job_id: job.id } : {}), warranty_job_ids: [], footage_ft: footageOfRows(r.lines_raw), colors: [], design_file_ids: [],
-    early_bird: (plan.discounts || []).some((d) => /early/i.test(d.name)), three_year: (plan.discounts || []).some((d) => /3-?\s?year/i.test(d.name)),
+    season, plan_id: plan.id, status, ...(job ? { install_job_id: job.id } : {}), warranty_job_ids: [], footage_ft: footage, colors: [], design_file_ids: [],
+    early_bird: discounts.some((d) => /early/i.test(d.name)), three_year: discounts.some((d) => /3-?\s?year/i.test(d.name)),
     ...(job && job.status === "completed" && job.completed_at ? { installed_on: localDate(new Date(job.completed_at)) } : {}),
-    rotor: { service_plan_id: r.id, ...(first ? { install_job_id: first.id } : {}) },
+    rotor: {
+      service_plan_id: r.id, ...(first ? { install_job_id: first.id } : {}),
+      ...(also.length ? { also_service_plan_ids: also.map((x) => x.rid), also_install_job_ids: also.map((x) => x.first).filter(Boolean) } : {}),
+    },
   };
-  const out = { records: [], pointers: [], warnings: [] };
+  const out = { records: [], pointers: [], warnings: also.length ? ["lights_season_merged"] : [] };
   // D9: this season's installs get a takedown job in January (made once: the op id is the Rotor plan's)
   if (season === takedownSeason() && status !== "cancelled" && has("work.createJobs")) {
     const lights = { takedown_month: 1, ...((ctx && ctx.settings ? await ctx.settings.get("lights").catch(() => ({})) : {}) || {}) };
     const existing = await getRecord("season_install", id);
     const had = existing && existing.data.takedown_job_id;
+    const contact = await getRecord("contact", plan.contact_id);
     if (had) data.takedown_job_id = had;
+    else if (!contact || contact.data.deleted_at) out.warnings.push("takedown_contact_missing");
     else {
       const [tj] = await call("work.createJobs", [{
         contact_id: plan.contact_id, ...(plan.property_id ? { property_id: plan.property_id } : {}), kind: "lights_takedown", title: `Christmas lights takedown ${season}`,
@@ -413,8 +501,15 @@ async function mapLights(r, ctx) {
     }
   }
   out.records.push({ type: "season_install", data });
+  if (takeOver) out.patches = [takeOver];
   return out;
 }
+
+// The feet on a plan's stored lines (the per-foot lines the import made).
+const footageOfLines = (lines) => {
+  const ft = (lines || []).filter((l) => l.unit === "ft").map((l) => Math.round((l.qty_milli || 0) / 1000)).filter((x) => x > 0);
+  return ft.length ? Math.max(...ft) : 0;
+};
 
 // ------------------------------------------------------------ the phases
 

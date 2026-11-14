@@ -106,3 +106,4 @@
 @media (max-width:380px){.qt-row .ico{display:none}}
 .check.sub{margin-left:34px;font-size:14px;color:var(--ink-2)}
 .form input:disabled{background:var(--fill);color:var(--ink-3);border-color:transparent}
+.qb-photos .ph-tile{aspect-ratio:1;border:1px solid var(--line);background:var(--fill)}

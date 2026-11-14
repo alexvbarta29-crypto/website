@@ -260,6 +260,9 @@ const isOwnTask = (ctx, t) => ctx.can("tasks:read", { type: "task", record: t })
 
 const rowView = (r) => ({ id: r.id, title: r.t, kind: r.k, priority: r.pr, status: r.st, due_at: r.due, end_at: r.end, contact_id: r.c, contact_name: r.cn, assignee_ids: r.a || [], reported_on: r.rep, enrollment_id: r.en, updated_at: r.u });
 
+// The office's rows also carry the customer's first photo (its thumbnail shows in the list).
+const officeRowView = (r) => ({ ...rowView(r), ...(r.ph ? { photo_id: r.ph, photos_n: r.pn || 1 } : {}) });
+
 const tasksRoute = async (ctx) => {
   const assignee = str(ctx.query.get("assignee"));
   const kind = str(ctx.query.get("kind"));
@@ -274,14 +277,15 @@ const tasksRoute = async (ctx) => {
   const ix = await readIndex("tasks/open", "");
   const me = assignee === "me" ? ctx.user.id : assignee;
   const rows = ix.rows.filter((r) => (!me || (r.a || []).includes(me)) && (!kind || r.k === kind) && (!status || r.st === status));
-  return { data: rows.map(rowView), meta: { total: rows.length, stale: ix.stale } };
+  return { data: rows.map(officeRowView), meta: { total: rows.length, stale: ix.stale } };
 };
 
 // A person's own open tasks (techs: theirs only, contacts as §4.6 allows).
 const myTasksRoute = async (ctx) => {
   const ix = await readIndex("tasks/open", "");
-  const rows = ix.rows.filter((r) => (r.a || []).includes(ctx.user.id)).map(rowView);
-  if (ctx.holds("tasks:read") === true) return { data: rows };
+  const mine = ix.rows.filter((r) => (r.a || []).includes(ctx.user.id));
+  if (ctx.holds("tasks:read") === true) return { data: mine.map(officeRowView) };
+  const rows = mine.map(rowView);
   const visible = rows.some((r) => r.contact_id) ? await techVisibleContacts(ctx.user.id) : new Set();
   return { data: rows.map((r) => (r.contact_id && visible.has(r.contact_id) ? r : { ...r, contact_id: null, contact_name: "" })) };
 };

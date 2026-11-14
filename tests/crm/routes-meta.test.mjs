@@ -63,6 +63,7 @@ const DEBUG = process.env.CRM_MATRIX_DEBUG;   // a file path: the whole matrix, 
 const HOOKS = [
   { method: "GET", re: /^\/import\/upload$/, kind: "upload key" },           // the upload script asks what its key is for
   { re: /^\/import\/runs\/:id\//, kind: "upload key or owner" },           // the import upload (runs.mjs uploadAuth)
+  { method: "POST", re: /^\/import\/auto\/runs$/, kind: "automatic import key" }, // the daily import makes its run (M8, autokey.mjs); nobody here holds one
   { re: /^\/hooks\/cron$/, kind: "worker secret" },                         // the D39 cron fallback (x-crm-worker header)
   { re: /^\/hooks\/lead\/:token$/, kind: "lead token" },                    // the lead webhook (Zapier for Meta, D6)
   { re: /^\/hooks\/twilio\/(sms|status)$/, kind: "twilio signature" },       // inbound texts and delivery statuses (comms/inbound.mjs; 403 until Twilio is connected)

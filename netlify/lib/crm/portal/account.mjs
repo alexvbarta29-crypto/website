@@ -32,7 +32,7 @@ import { deriveId, isId } from "../core/ids.mjs";
 import { now, nowMs, nowIso, localDate, addLocalDays, zonedToUtc, tsKey, fromTsKey, isLocalDate } from "../core/clock.mjs";
 import { ConflictError, ExistsError, InputError, NotFoundError } from "../core/errors.mjs";
 import { maskPhone, maskEmail } from "../core/text.mjs";
-import { deliveryHeaders, defineFileOwner, uploadFile, INLINE_TYPES, sniffType } from "../core/files.mjs";
+import { deliveryHeaders, defineFileOwner, uploadFile, uploadThumb, INLINE_TYPES, sniffType, MAX_THUMB_BYTES } from "../core/files.mjs";
 import { emit } from "../core/events.mjs";
 import { notify } from "../core/notify.mjs";
 import { has, call } from "../core/services.mjs";
@@ -45,8 +45,8 @@ import { hubPage, visitsPage, historyPage, planPage, requestPage, reschedulePage
 
 const SCRIPT = "account.js";
 export const REQUEST_LIMITS = Object.freeze({ per_day: 5, photos: 3, photo_bytes: 1500000 });
-export const REQUEST_MAX_BODY = 4700000;
-export const REQUEST_CALLS = 90;
+export const REQUEST_MAX_BODY = 5000000;
+export const REQUEST_CALLS = 110;
 const OPEN_VISIT = ["scheduled", "en_route", "in_progress", "paused"];
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim().slice(0, max);
@@ -259,6 +259,16 @@ function photoBytes(s, i) {
   return bytes;
 }
 
+// A thumbnail is a small JPEG (the magic bytes say so; uploadThumb checks
+// again), or nothing: a bad one never stops the request.
+function thumbBytes(s, i) {
+  if (typeof s !== "string" || !s) return null;
+  const b64 = s.replace(/^data:image\/jpeg;base64,/, "");
+  if (!/^[A-Za-z0-9+/=\s]+$/.test(b64) || b64.length > Math.ceil(MAX_THUMB_BYTES / 3) * 4 + 8) return null;
+  const bytes = Buffer.from(b64, "base64");
+  return bytes.length && bytes.length <= MAX_THUMB_BYTES && sniffType(bytes) === "image/jpeg" ? bytes : null;
+}
+
 // POST /api/portal/requests { client_id, services[], timing?, notes?, property_id?, photos?[] }
 export async function requestWork(p) {
   const b = p.body || {};
@@ -271,6 +281,8 @@ export async function requestWork(p) {
   const photos = (Array.isArray(b.photos) ? b.photos : []).slice(0, REQUEST_LIMITS.photos + 1);
   if (photos.length > REQUEST_LIMITS.photos) throw new InputError(`Up to ${REQUEST_LIMITS.photos} photos.`, "photos");
   const bytes = photos.map(photoBytes);
+  // the phone's small copy of each photo (about 400 px), for the office's lists; optional
+  const thumbs = Array.isArray(b.thumbs) ? b.thumbs.slice(0, photos.length).map((x, i) => thumbBytes(x, i)) : [];
   const contact = await contactOf(p.contact_id);
   if (!contact || contact.deleted_at) return p.fail("signed_out", "Open your link again.", 401);
   let propertyLabel = "";
@@ -295,7 +307,9 @@ export async function requestWork(p) {
   // the photos ride on the task (owner "task"), each once (its client id)
   const ids = [];
   for (const [i, raw] of bytes.entries()) {
-    const f = await uploadFile({ portalContactId: contact.id, write: () => w }, { ownerType: "task", ownerId: task.id, kind: "photo", declaredType: "image/jpeg", bytes: raw, clientId: `${cid}-p${i}` });
+    const fctx = { portalContactId: contact.id, write: () => w };
+    const f = await uploadFile(fctx, { ownerType: "task", ownerId: task.id, kind: "photo", declaredType: "image/jpeg", bytes: raw, clientId: `${cid}-p${i}` });
+    if (thumbs[i] && !f.has_thumb) await uploadThumb(fctx, f.id, thumbs[i]).catch((e) => console.error(`crm:portal: a thumbnail wasn't kept (${safeErr(e)})`));
     ids.push(f.id);
   }
   if (ids.length) await updateRecord("task", task.id, (x) => { const have = new Set(x.photo_ids || []); return ids.every((id) => have.has(id)) ? null : { ...x, photo_ids: [...new Set([...(x.photo_ids || []), ...ids])].slice(0, 10) }; }, w);

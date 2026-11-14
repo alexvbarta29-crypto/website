@@ -414,7 +414,8 @@ The tech app works at a house with no signal (§2.5):
   `scheduled` visit moves; people can change until it's done. Every change
   goes through `changeVisit(id, event, opts)` and emits one event
   (`visit.scheduled`, `.rescheduled`, `.assigned`, `.cancelled`,
-  `.completed`, `.no_access`) with the previous people, date and start.
+  `.completed`, `.no_access`, and `.started` on a visit's first start, for
+  the automation builder) with the previous people, date and start.
 - **A visit write and its job's sync are two writes.** The visit write
   carries the event it makes (`last_event`: name, the write's `wv`, the
   payload's extra fields). The same request sent again (same `client_id`,

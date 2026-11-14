@@ -332,6 +332,11 @@ follow-up), `abandon_days` (30), `day_cutoff` ("17:00"), `ack_delay_min`
 All of them send through the core sender: dry-run until cutover (the text
 lands in the Outbox and nowhere else).
 
+For the automation builder (docs/CRM-AUTOMATIONS.md): `sales.createTask(task
+fields, { seed }, ctx)` (a task made once per seed, on the contact's
+timeline) and `sales.dealOf(contact_id)` (the open deal, else the newest);
+"move the deal" calls `sales.markDeal` with `force`.
+
 ## Parallel run (before cutover)
 
 Every automated path (listeners, sweeps, automations, task steps, and the

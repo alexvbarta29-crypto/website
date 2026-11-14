@@ -442,6 +442,8 @@ export function validateTask(data, { op, before } = {}) {
 export const taskRow = (r) => ({
   t: r.title, k: r.kind, pr: r.priority, st: r.status, due: r.due_at || null, end: r.end_at || null, c: r.contact_id || null, cn: r.contact_name || "",
   a: r.assignee_ids || [], rep: r.reported_on || null, en: r.enrollment_id || null, u: r.updated_at,
+  // the first photo the customer sent with a request (its thumbnail shows in the office's list)
+  ...((r.photo_ids || []).length ? { ph: r.photo_ids[0], pn: r.photo_ids.length } : {}),
 });
 
 export const taskType = defineType({

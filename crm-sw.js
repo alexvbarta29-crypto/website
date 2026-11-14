@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.14-5";
+const VERSION = "2026.11.14-6";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -31,6 +31,11 @@ const PRECACHE = [
   "/crm-app/core/signin.js",
   "/crm-app/core/ui.js",
   "/crm-app/main.js",
+  "/crm-app/modules/automations/automations.css",
+  "/crm-app/modules/automations/editor.js",
+  "/crm-app/modules/automations/kit.js",
+  "/crm-app/modules/automations/manifest.js",
+  "/crm-app/modules/automations/runs.js",
   "/crm-app/modules/comms/campaign.js",
   "/crm-app/modules/comms/campaigns.js",
   "/crm-app/modules/comms/comms.css",
@@ -52,7 +57,11 @@ const PRECACHE = [
   "/crm-app/modules/contacts/merge.js",
   "/crm-app/modules/contacts/property.js",
   "/crm-app/modules/contacts/quick.js",
+  "/crm-app/modules/import/auto-key.js",
   "/crm-app/modules/import/conflicts.js",
+  "/crm-app/modules/import/cutover-checklist.js",
+  "/crm-app/modules/import/cutover-preview.js",
+  "/crm-app/modules/import/cutover-runbook.js",
   "/crm-app/modules/import/import.css",
   "/crm-app/modules/import/kit.js",
   "/crm-app/modules/import/list.js",
@@ -73,6 +82,7 @@ const PRECACHE = [
   "/crm-app/modules/map/today-card.js",
   "/crm-app/modules/mcp/calendar.js",
   "/crm-app/modules/mcp/claude.js",
+  "/crm-app/modules/mcp/connect.js",
   "/crm-app/modules/mcp/manifest.js",
   "/crm-app/modules/money/autopay-run.js",
   "/crm-app/modules/money/autopay.js",

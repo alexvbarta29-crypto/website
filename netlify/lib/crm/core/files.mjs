@@ -181,12 +181,26 @@ export async function uploadThumb(ctx, id, bytes) {
   return r.data;
 }
 
-// GET /files/:id[?thumb=1]: the bytes, with the headers above.
+// A file that may stand in for its own thumbnail: a photo made before
+// thumbnails (or whose thumbnail never arrived) is shown whole.
+export const thumbFallsBack = (file) => !file.has_thumb && !file.download_only && INLINE_TYPES.has(file.content_type);
+
+// GET /files/:id[?thumb=1]: the bytes, with the headers above. ?thumb=1 of
+// a photo without a thumbnail answers the photo itself (older photos);
+// anything else without one is 404.
 export async function serveFile(ctx, id, { thumb = false } = {}) {
   const file = await loadFile(id);
   const { spec, record } = await loadOwner(file.owner.type, file.owner.id);
   if (!(await spec.canRead(ctx, record))) throw new ForbiddenError("You don't have access to that.");
-  if (thumb && !file.has_thumb) throw new NotFoundError("That file has no thumbnail.");
+  if (thumb && !file.has_thumb) {
+    if (!thumbFallsBack(file)) throw new NotFoundError("That file has no thumbnail.");
+    thumb = false;
+    const ifNoneMatch = ctx.req.headers.get("if-none-match") || undefined;
+    const got = await getFileStream(id, { thumb: false, ifNoneMatch });
+    if (!got) throw new NotFoundError("That file's bytes aren't there.");
+    const headers = { ...deliveryHeaders(file, { etag: got.etag || ifNoneMatch }), "Cache-Control": "private, max-age=3600", "X-CRM-Thumb": "original" };
+    return new Response(got.notModified ? null : got.stream, { status: got.notModified ? 304 : 200, headers });
+  }
   const ifNoneMatch = ctx.req.headers.get("if-none-match") || undefined;
   const got = await getFileStream(id, { thumb, ifNoneMatch });
   if (!got) throw new NotFoundError("That file's bytes aren't there.");

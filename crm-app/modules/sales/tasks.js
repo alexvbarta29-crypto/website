@@ -3,6 +3,7 @@
 // technician sees their own tasks only.
 
 import { html, icon, attrs, toast } from "../../core/ui.js";
+import { thumbUrl } from "../../core/camera.js";
 import { dateShort, time, plural } from "../../core/format.js";
 import { ensureStyles, emptyCard, taskKindLabel, PRIORITY } from "./kit.js";
 
@@ -39,7 +40,7 @@ function rows(list) {
     <a class="row" href="${"#/tasks/" + encodeURIComponent(t.id)}">
       <span class="${"ico" + (t.priority === "high" ? " coral" : "")}">${icon(t.kind === "incident" ? "shield" : t.kind === "estimate_visit" ? "schedule" : t.kind === "call" ? "phone" : "check")}</span>
       <span class="who"><span class="nm">${t.title}</span><span class="sub">${[t.contact_name, when(t)].filter(Boolean).join(" · ")}</span></span>
-      <span class="end">${t.priority === "high" ? html`<span class="pill red">${PRIORITY.high}</span>` : ""}</span>
+      <span class="end">${t.photo_id ? html`<span class="sl-thumb"><img ${attrs({ src: thumbUrl(t.photo_id), alt: t.photos_n > 1 ? `${t.photos_n} photos from the customer` : "A photo from the customer", loading: "lazy", decoding: "async" })}>${t.photos_n > 1 ? html`<b>${String(t.photos_n)}</b>` : ""}</span>` : ""}${t.priority === "high" ? html`<span class="pill red">${PRIORITY.high}</span>` : ""}</span>
     </a>
     <button type="button" class="sl-done" ${attrs({ "data-done": t.id, "aria-label": "Done: " + t.title })}>${icon("check")}</button>
   </li>`)}</ul>`;
