@@ -1,6 +1,6 @@
 // Menu → Tab bar (the Nov 2026 look, Flyra's): each person picks up
 // to five places for their phone's tab bar from the main screens (Home,
-// Schedule, Inbox, Customers, Sales, Leads, Pipeline, Visits, Leaderboard,
+// Schedule, Inbox, Customers, Sales, Leads, Pipeline, Leaderboard,
 // Map, Quotes, Plans, Invoices: only those they may open and whose screen
 // is there), in the order they tick them; the Menu always comes last. Saved
 // on their own user record (PATCH /users/:id { tabs }, If-Match), so it
@@ -10,7 +10,7 @@ import { html, icon, toast, attrs } from "../../core/ui.js";
 import { TABS, setTabs, STANDARD as BAR } from "../../core/nav.js";
 import { match } from "../../core/router.js";
 
-export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "leads", "pipeline", "visits", "leaderboard", "map", "quotes", "plans", "invoices"]);
+export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "sales", "leads", "pipeline", "leaderboard", "map", "quotes", "plans", "invoices"]);
 // the standard bar (Flyra's: Home · Schedule · Inbox · Map), the Menu after it
 export const STANDARD = Object.freeze(BAR.filter((k) => k !== "menu"));
 const MAX = 5;
@@ -28,7 +28,8 @@ export default {
   async load(params, ctx) {
     const me = await ctx.api("/me", { cache: false });
     const u = me.data.user;
-    const mine = Array.isArray(u.tabs) && u.tabs.length ? u.tabs : STANDARD;
+    // (a pinned Visits is the Schedule now)
+    const mine = Array.isArray(u.tabs) && u.tabs.length ? [...new Set(u.tabs.map((k) => (k === "visits" ? "schedule" : k)))] : STANDARD;
     return { id: u.id, etag: me.data.etag, picked: mine.filter((k) => CHOICES.includes(k) && usable(k, ctx)), choices: CHOICES.filter((k) => usable(k, ctx)), saving: false };
   },
   render(s) {

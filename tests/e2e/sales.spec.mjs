@@ -24,11 +24,11 @@ const sheetUp = (f, re) => f.waitForFunction((src) => { const h = document.query
 const sheetGone = async (f) => f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`sales (${device}): Leads & calls, log a call, send the text by hand`, async () => {
+  test(`sales (${device}): Calls, log a call, send the text by hand`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, "/calls");
-      assert.equal(await title(f), "Leads & calls");
+      assert.equal(await title(f), "Calls");
       assert.deepEqual(await screenProblems(f), [], "the call list passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `sales-calls-${device}`);

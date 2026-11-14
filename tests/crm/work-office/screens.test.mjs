@@ -258,6 +258,7 @@ test("the manifest: the office part and the field part merge; every route loads 
   const m = (await import("../../../crm-app/modules/work/manifest.js")).default;
   assert.equal(m.name, "work");
   for (const r of m.routes) {
+    if (r.redirect) continue;   // an old link (Visits) opening the Schedule's List
     const mod = (await r.load()).default;
     assert.equal(typeof mod.render, "function", r.path);
   }

@@ -49,7 +49,7 @@ export const CADENCE_TEXTS = Object.freeze({
 
 // Rotor's new-lead auto-text (rotor-comms §7.2), without the footer Rotor added.
 export const LEAD_ACK_TEXT = "Hi {{first_name|}}! Thanks for reaching out to BARTA Window Washing. I’d love to learn a little more about what you’re looking to have done and get you an accurate quote. When would be a good time for a quick call?";
-export const STAFF_NEW_LEAD_TEXT = "New lead: {{first_name|Someone}} in {{town|the area}}. Open Leads & calls in the CRM to call them.";
+export const STAFF_NEW_LEAD_TEXT = "New lead: {{first_name|Someone}} in {{town|the area}}. Open Calls in the CRM to call them.";
 
 const NEW_NAMES = ["Day 1 call 1 text", "Day 1 call 2 text", "Day 1 call 3 text", "Day 2 call 4 text", "Day 2 call 5 text", "Day 2 call 6 text", "Day 3 call 7 text", "Day 3 call 8 text", "Day 3 call 9 text"];
 const EST_NAMES = ["Estimate day 1 morning", "Estimate day 1 evening", "Estimate day 2 ($50 off)", "Estimate day 3 (10 free screens)", "Estimate day 4 (archive)"];

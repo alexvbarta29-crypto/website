@@ -30,7 +30,6 @@
 
 import { html, icon, attrs, toast, sheet, sheetOpen, raw, render } from "../../core/ui.js";
 import { dateShort, dateLong, plural, money, clock } from "../../core/format.js";
-import { busy } from "../../core/forms.js";
 import {
   ensureStyles, officeView, today, addDays, dow, dowShort, dayNum, dayLabel, isDate, slotText, range, visitPill, faces, names, loadUsers, team,
   kindLabel, scheduleSheet, emptyCard, toMin,
@@ -110,7 +109,7 @@ async function fetchView(ctx, s) {
     s.today = r.data.today || s.today;
   }
   const [from, to] = rangeOf(s.view, s.date);
-  const extra = s.view === "day" || s.view === "3day" ? `&amounts=1&pay=1${s.view === "day" && s.by === "sales" ? "&sales=1" : ""}` : s.view === "list" ? "&amounts=1" : "";
+  const extra = s.view === "day" || s.view === "3day" ? `&amounts=1&pay=1${s.view === "day" && s.by === "sales" ? "&sales=1" : ""}` : s.view === "list" ? "&amounts=1&pay=1" : "";
   const r = await ctx.api(`/schedule?from=${from}&to=${to}${extra}`, { cache: false });
   s.today = r.data.today || s.today;
   if (Number.isInteger(r.data.now_min)) s.nowMin = r.data.now_min;     // the server's time (the red line)
@@ -201,11 +200,13 @@ function visitRow(s, v, ctx) {
   const w = (s.data.warnings || {})[v.id];
   const t0 = v.do ? "Day" : v.s;
   const b = cardBits(v, s.cards, { prices: prices(ctx) });
+  // (the List is also the old Visits screen: a finished visit whose job isn't paid gets the red $)
+  const unpaid = v.st === "completed" && !!b.price && v.amt > 0 && v.pd === 0;
   return html`<li><a class="row wk-visit ${DEAD.includes(v.st) ? "dead" : ""}" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vopen": v.id })}>
     <span class="wk-time num">${v.do ? html`<b>Any</b>` : html`<b>${t0}</b><small>${v.e}</small>`}</span>
     <span class="who"><span class="nm">${b.title}</span><span class="sub">${[b.where, b.service || (s.cards && s.cards.service === false ? "" : v.jn)].filter(Boolean).join(" · ")}</span>
       <span class="sub">${slotText(v)}</span></span>
-    <span class="end wk-end">${b.price ? html`<b class="wk-amt num">${b.price}</b>` : ""}${faces(s.users, v.a)}${v.st === "scheduled" ? warnBadge(w) : visitPill(v.st)}</span>
+    <span class="end wk-end">${unpaid ? html`<i class="wk-unpaid" ${attrs({ title: "Not paid yet", "aria-label": "Not paid yet" })}>$</i>` : ""}${b.price ? html`<b class="wk-amt num">${b.price}</b>` : ""}${faces(s.users, v.a)}${v.st === "scheduled" ? warnBadge(w) : visitPill(v.st)}</span>
   </a></li>`;
 }
 
@@ -681,43 +682,8 @@ async function onDrop(ctx, d, t) {
 }
 const DND = dndEvents(onDrop);
 
-// Schedule settings (cfg/work): how many visits a day the crew can do, and the forecast on or off.
-async function settingsSheet(ctx) {
-  let doc;
-  try { const r = await ctx.api("/settings/work", { cache: false }); doc = { data: r.data.data || {}, etag: r.data.etag || "new" }; } catch (e) { toast(e.message || "That didn't load.", { bad: true }); return; }
-  const sh = sheet({
-    title: "Schedule settings",
-    body: html`<form class="form" id="wk-sset" novalidate>
-      <div class="err" data-form-err hidden></div>
-      <label class="field" data-field="visits_per_day"><span>Visits a day the whole crew can do</span><input type="number" name="visits_per_day" min="1" max="60" step="1" inputmode="numeric" ${attrs({ value: String(doc.data.visits_per_day || 8) })}><small class="hint">The month's bars fill against this. A day someone is off counts their share less.</small></label>
-      <label class="check"><input type="checkbox" name="weather" ${attrs({ checked: doc.data.weather !== false })}><span>Show the forecast on the schedule (from the National Weather Service, for the service area's center)</span></label>
-      <button type="submit" class="btn primary block">Save</button>
-    </form>`,
-    events: {
-      "submit #wk-sset": async (e, form) => {
-        e.preventDefault();
-        const err = form.querySelector("[data-form-err]");
-        err.hidden = true;
-        const n = Number(form.querySelector("[name=visits_per_day]").value);
-        if (!Number.isInteger(n) || n < 1 || n > 60) { err.textContent = "Use a whole number from 1 to 60."; err.hidden = false; return; }
-        const btn = form.querySelector("[type=submit]");
-        busy(btn, true, "Saving…");
-        try {
-          await ctx.api("/settings/work", { method: "PUT", body: { ...doc.data, visits_per_day: n, weather: form.querySelector("[name=weather]").checked }, ifMatch: doc.etag });
-          sh.close();
-          toast("Saved");
-          ctx.state.wx = null;
-          delete ctx.keep.wx;
-          reload(ctx);
-        } catch (x) {
-          busy(btn, false);
-          err.textContent = x.status === 412 ? "Someone else just changed these settings. Close this and try again." : x.message || "That didn't save.";
-          err.hidden = false;
-        }
-      },
-    },
-  });
-}
+// Schedule settings (cfg/work: the crew's visits a day, the forecast) are in
+// Settings → Schedule → Crew & forecast (system/settings-general.js), one place.
 
 // Esc closes the panel (a sheet on top closes first: core/ui.js handles that one).
 let keyCtx = null;
@@ -792,6 +758,8 @@ export default {
       if (wide()) openPanel(ctx, id, hooks(ctx, { url: false }));
       else { ctx.go(`/visits/${encodeURIComponent(id)}`, { replace: true }); return; }
     }
+    // (the forecast turned off in Settings: a kept copy goes too)
+    if (s.data && s.data.weather === false && s.wx) { s.wx = null; delete ctx.keep.wx; }
     if (["month", "week", "day", "3day"].includes(s.view) && s.data && s.data.weather !== false && !s.wx && !s.wxBusy) fetchWeather(ctx);
     if (["week", "day", "3day"].includes(s.view) && !(s.view === "day" && s.by === "sales") && wide() && canWrite(ctx) && s.date && (!s.dtray || s.dtray.month !== s.date.slice(0, 7)) && !s.dtrayBusy) fetchDeskTray(ctx);
     if (s.panel && s.panel.focus && !s.panel.loading) {
@@ -873,7 +841,7 @@ export default {
     "click [data-book]": (e, el, ctx) => {
       scheduleSheet(ctx, { job_id: el.dataset.book, title: "Book a visit", onDone: () => refreshAll(ctx) });
     },
-    "click [data-schedset]": (e, el, ctx) => settingsSheet(ctx),
+    "click [data-schedset]": (e, el, ctx) => ctx.go("/settings/schedule"),
     // the head's buttons
     "click [data-mpick]": (e, el, ctx) => monthSheet(ctx),
     "click [data-search]": (e, el, ctx) => searchSheet(ctx),

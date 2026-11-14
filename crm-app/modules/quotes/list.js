@@ -4,6 +4,7 @@
 // search and scroll (the router's keep).
 
 import { html, attrs } from "../../core/ui.js";
+import { findButton, findOpen } from "../../core/nav.js";
 import { ensureStyles, CHIPS, OPEN, quoteRow, emptyCard } from "./kit.js";
 
 async function load(params, ctx) {
@@ -22,15 +23,16 @@ function visible(s) {
 export default {
   load,
   action: (s, ctx) => (ctx.can("quotes:write") ? { label: "New", run: () => ctx.go("/quotes/new") } : null),
-  render(s) {
+  render(s, ctx) {
     const count = (k) => (k === "open" ? OPEN.reduce((a, x) => a + (s.counts[x] || 0), 0) : s.counts[k] || 0);
     const rows = visible(s);
     return html`<div class="stack">
-      <label class="field"><span class="sr">Search quotes</span><input type="search" data-q placeholder="Name or number" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
+      <label class="${"field find-field" + (findOpen(s, ctx) ? " open" : "")}"><span class="sr">Search quotes</span><input type="search" data-q placeholder="Name or number" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
       <div class="chips" role="tablist">${CHIPS.filter(([k]) => k === "open" || count(k) > 0 || k === s.chip).map(([k, label]) => html`<button type="button" class="chip" ${attrs({ "data-chip": k, "aria-pressed": String(s.chip === k) })}>${label} <span class="n">${count(k)}</span></button>`)}</div>
       ${rows.length ? html`<ul class="list">${rows.map(quoteRow)}</ul>` : emptyCard(s.chip === "open" ? "No open quotes" : "Nothing here", s.chip === "open" ? "Tap New to price a house." : "Pick another chip.")}
     </div>`;
   },
+  mount(view, s, ctx) { findButton(view, ctx, "Search quotes"); },
   events: {
     "click [data-chip]": (e, el, ctx) => { ctx.state.chip = el.dataset.chip; ctx.keep.chip = el.dataset.chip; ctx.rerender(); },
     "input [data-q]": (e, el, ctx) => {

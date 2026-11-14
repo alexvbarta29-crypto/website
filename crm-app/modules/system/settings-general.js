@@ -1,5 +1,8 @@
-// Settings → Company, Hours & holidays, Service area (design §9.2, §4.12:
-// settings:general, owners and the office). Each saves its whole document
+// Settings → Company, Hours & holidays, Service area, and Crew & forecast
+// (the schedule's cfg/work: the visits a day the whole crew can do, which
+// the month's bars fill against, and the forecast on or off; its "Change"
+// button opens this) (design §9.2, §4.12: settings:general, owners and the
+// office). Each saves its whole document
 // with If-Match; someone else's save in between shows the latest instead.
 
 import { html, attrs, toast, icon } from "../../core/ui.js";
@@ -8,7 +11,7 @@ import { dateShort } from "../../core/format.js";
 import { loadDoc, saveDoc } from "./kit.js";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const sectionOf = (path) => (path.endsWith("/hours") ? "hours" : path.endsWith("/service-area") ? "area" : "company");
+const sectionOf = (path) => (path.endsWith("/hours") ? "hours" : path.endsWith("/service-area") ? "area" : path.endsWith("/schedule") ? "crew" : "company");
 const list = (s) => String(s || "").split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
 
 function company(s) {
@@ -68,6 +71,16 @@ function area(s) {
   </form>`;
 }
 
+function crew(s) {
+  const w = s.work.data;
+  return html`<form class="card form" id="f" novalidate>
+    <div class="err" data-form-err hidden></div>
+    <label class="field" data-field="visits_per_day"><span>Visits a day the whole crew can do</span><input type="number" name="visits_per_day" min="1" max="60" step="1" inputmode="numeric" ${attrs({ value: String(w.visits_per_day || 8) })}><small class="hint">The Schedule's month fills each day against this. A day someone is off counts their share less.</small></label>
+    ${checkbox({ label: "Show the forecast on the Schedule (National Weather Service)", name: "weather", checked: w.weather !== false })}
+    <button type="submit" class="btn primary block">Save</button>
+  </form>`;
+}
+
 const num = (v) => (String(v || "").trim() === "" ? undefined : Number(v));
 
 export default {
@@ -78,10 +91,11 @@ export default {
       return { section, hours: h, calendar: cal, dates: [...(cal.data.dates || [])] };
     }
     if (section === "area") return { section, area: await loadDoc(ctx, "service_area") };
+    if (section === "crew") return { section, work: await loadDoc(ctx, "work") };
     return { section, company: await loadDoc(ctx, "company") };
   },
   render(s) {
-    return html`<div class="stack">${s.section === "hours" ? hours(s) : s.section === "area" ? area(s) : company(s)}</div>`;
+    return html`<div class="stack">${s.section === "hours" ? hours(s) : s.section === "area" ? area(s) : s.section === "crew" ? crew(s) : company(s)}</div>`;
   },
   events: {
     "change [data-day]": (e, el, ctx) => {
@@ -110,6 +124,10 @@ export default {
         if (s.section === "company") {
           const base = { label: v.base_label || undefined, lat: num(v.base_lat), lng: num(v.base_lng) };
           await saveDoc(ctx, s.company, { ...s.company.data, name: v.name, legal_name: v.legal_name, phone: v.phone, email: v.email, website: v.website, base });
+        } else if (s.section === "crew") {
+          const n = Number(v.visits_per_day);
+          if (!Number.isInteger(n) || n < 1 || n > 60) { busy(btn, false); showError(form, { message: "Use a whole number from 1 to 60." }); return; }
+          await saveDoc(ctx, s.work, { ...s.work.data, visits_per_day: n, weather: !!v.weather });
         } else if (s.section === "hours") {
           const h = {};
           for (let i = 0; i < 7; i++) h[String(i)] = form.querySelector(`[name=open_${i}]`).checked ? [form.querySelector(`[name=from_${i}]`).value, form.querySelector(`[name=to_${i}]`).value] : null;

@@ -1,7 +1,10 @@
 // Barta CRM client: the hash router (design §2.3, §2.4, §9.1).
 //
 // Routes come from the module manifests ({ path, load, title, perm,
-// parent }; title may be a function of the signed-in person, so one path
+// parent }, or { path, redirect, perm } for an old link whose screen was
+// merged into another: it opens that one in its place, so bookmarks and
+// pinned links keep working; redirect is a path, or a function of the
+// params that returns one); title may be a function of the signed-in person, so one path
 // reads "Home" for the office and "Today" for a tech); paths are hashes
 // inside the frame (#/team/us_...). A screen
 // module default-exports
@@ -62,6 +65,8 @@ export function match(path) {
   return null;
 }
 export const has = (path) => !!match(path);
+// Where an old (merged) route sends you, query and all: "/schedule?view=list".
+export const redirectOf = (m) => (typeof m.route.redirect === "function" ? m.route.redirect(m.params) : fill(m.route.redirect, m.params));
 
 const fill = (pattern, params) => pattern.replace(/:([a-z_]+)/gi, (_, n) => encodeURIComponent(params[n] ?? ""));
 const parse = () => {
@@ -112,7 +117,8 @@ export function refresh() { if (current) show(current.path, { keepScroll: true }
 
 function onHash() {
   const path = parse();
-  if (pendingReplace && path === pendingReplace) {
+  // (a replace may carry a query, #/schedule?view=list: the path is what the stack keeps)
+  if (pendingReplace && path === pendingReplace.split("?")[0]) {
     pendingReplace = null;
     if (stack.length) stack[stack.length - 1] = path; else stack.push(path);
   } else if (stack.length >= 2 && stack[stack.length - 2] === path) {
@@ -280,6 +286,7 @@ async function show(path, { keepScroll = false } = {}) {
   let m = match(path);
   if (!m) { m = match("/today"); path = "/today"; }
   if (!m) return;
+  if (m.route.redirect) { go(redirectOf(m), { replace: true }); return; }
   const pane = paneEl();
   const listPath = splitOf(path, m);
   // where the leaving screen was scrolled

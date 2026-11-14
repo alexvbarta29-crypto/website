@@ -163,7 +163,7 @@ export function waitSheet(ctx, who, next, { done } = {}) {
           await ctx.api("/tasks", { method: "POST", body: {
             title: `Text ${who.name || "the lead"}`.slice(0, 160), kind: "follow_up", priority: "medium", due_at: next.hold_until,
             ...(who.contact_id ? { contact_id: who.contact_id } : {}), ...(ctx.user && ctx.user.id ? { assignee_ids: [ctx.user.id] } : {}),
-            notes: "The follow-up text waited for the morning. Open the lead on Leads & calls to send it.",
+            notes: "The follow-up text waited for the morning. Open the lead on Calls to send it.",
           } });
           s.close(); toast(`OK, a reminder at ${time(next.hold_until)}.`); if (done) done();
         } catch (err) { busy(b, false); toast(err.message, { bad: true }); }
