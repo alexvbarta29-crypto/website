@@ -6,8 +6,8 @@
 // reports.rollup sweep), reports.mjs (revenue, sales, leads, plans, jobs,
 // team, owed, payroll; compare to the period before; CSV), dashboard-raw.mjs
 // (the raw.json keys build/office_dashboard.mjs reads, from the CRM),
-// routes.mjs (the API), leaderboard.mjs (the Leaderboard, My performance
-// and Home's card: the service `reports.leaderboard`).
+// routes.mjs (the API), leaderboard.mjs (the Leaderboard and My performance:
+// the service `reports.leaderboard`).
 
 import { defineModule } from "../../core/registry.mjs";
 import { InputError } from "../../core/errors.mjs";

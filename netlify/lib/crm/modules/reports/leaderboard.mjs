@@ -1,40 +1,51 @@
 // Reports module: the leaderboard and "My performance" (the Nov 2026
 // layout, after Rotor's Leaderboard and Flyra's My performance pages). One
 // service, `reports.leaderboard`, that the Leaderboard screen, My
-// performance and Home's card (has()/call()) all use:
+// performance and any module (has()/call()) use (Home dropped its card on
+// Nov 14):
 //
 //   reports.leaderboard({ metric, from, to }) → { metric, from, to, people: [person], unassigned, rows: [row] }
 //     metric  sales | revenue | avg | agreements | autopay | techs
 //     person  { id, name, first_name, initials, color, sales, sold_cents, avg_cents, plans, signed,
 //               signed_pct, agreements, autopay, arr_cents, jobs, visits, done_cents, value, rank,
 //               plans_sold, jobs_sold }
-//   Home's card asks the other way and gets the same answer:
+//   or asked by board (Home's old card) and the same answer comes back:
 //     ({ board: "sales" | "techs", period: "today" | "week" | "month" | "year", month: "yyyy-mm", from, to })
-//     board sales = the sold money (a plan's yearly amount, else the first visit), techs = jobs done $;
+//     board sales = the sold money (recurring plans' ARR, jobs' first visits), techs = jobs done $;
 //     from/to win, then month (that calendar month, up to today), then period (default this month)
 //     row     { user_id, name, first_name, initials, color, count, value_cents, arr_cents, note, rank }
 //             the people with something to show, best first ("2 plans sold, 1 job sold", "5 jobs done")
 //
 // Where the numbers come from (indexes only, each read once; imported Rotor
-// records count the same as the CRM's own):
-//   sold      a quote approved or turned into work (quotes index: the "open"
-//             shard holds the approved, a year's shard the converted), on
-//             the day it last changed, credited to its seller (sold_by: a
-//             user id, or for an imported quote Rotor's rep name, matched to
-//             a person by name; anyone else is "Unassigned"); its value is
-//             the plan's yearly amount for a plan option, else the first visit
-//   plans     plans set up in the period (plans index), credited to the
-//             seller of that customer's sold quote; signed = its agreement
-//             signed; autopay = on autopay; ARR = the plan's sale value
+// records count the same as the CRM's own). The owner's Nov 14 check: the
+// board once dated a sale by the quote's last change (every Rotor import
+// touches every quote, so November held all-time sales) and called the sold
+// money, first visits included, ARR. Now:
+//   sold day  a quote's sale (approved_at, else converted_at: the index's
+//             `sd`); a plan's its creation (an imported plan keeps Rotor's)
+//   jobs sold quotes approved or turned into work in the period whose chosen
+//             option is not a plan (the index's `pk`), worth the first visit;
+//             a plan sold for one season that doesn't renew (Rotor's
+//             One-Time lights) counts as a job too, worth its sale value
+//   plans sold the recurring plans (Home's recursOn) made in the period and
+//             not cancelled or expired, credited to the plan's seller
+//             (sold_by, the index's `sb`; an imported plan's matched Rotor
+//             rep), else the seller of that customer's latest sold quote;
+//             ARR = the same per-plan year Home's ARR counts (planArr: the
+//             index's `ay`, a 3-year lights term one season a year)
+//   sold      jobs sold + plans sold, worth first visits + ARR
 //   techs     jobs finished in the period (jobs index, the year's shard),
 //             their total split between the people on them, and visits done
 //             (visits index, the months' shards)
-// No record is read, only indexes: about 6 to 10 storage calls whatever the
-// period (a year of visits is 12 month shards, read only for "techs").
+// A plan quote counts once, as its plan (the plans index), never also as a
+// quote. No record is read, only indexes: about 6 to 10 storage calls
+// whatever the period (a year of visits is 12 month shards, read only for
+// "techs").
 
 import { readIndex } from "../../../crm-store.mjs";
 import { now, localDate, addLocalDays, dowOfDate } from "../../core/clock.mjs";
 import { InputError } from "../../core/errors.mjs";
+import { planArr, recursOn } from "../system/home-kpis.mjs";
 
 export const METRICS = Object.freeze(["sales", "revenue", "avg", "agreements", "autopay", "techs"]);
 export const PERIODS = Object.freeze(["today", "week", "month", "year"]);
@@ -65,8 +76,26 @@ const months = (from, to) => {
 const years = (from, to) => [...new Set([from.slice(0, 4), to.slice(0, 4)])];
 const rows = async (name, shard) => { try { return (await readIndex(name, shard)).rows || []; } catch { return []; } };
 
-// A sold quote's value: the plan's yearly amount, else the first visit.
-export const soldValue = (q) => (Number.isSafeInteger(q.annual) && q.annual > 0 ? q.annual : Number.isSafeInteger(q.first) ? q.first : 0);
+// The day a quote was sold. A row from before Nov 14 has no `sd` until the
+// nightly list check rebuilds it: an imported quote's last change is the
+// import itself, so its creation (Rotor's); the CRM's own its last change.
+export function soldOn(q) {
+  if (q.sd) return dayOf(q.sd);
+  return dayOf(q.sd === undefined && !q.im ? q.u || q.at : q.at);
+}
+// The chosen option is a plan (counted as its plan, from the plans index).
+export const isPlanQuote = (q) => (q.pk !== undefined ? q.pk === 1 : Number.isSafeInteger(q.annual) || (Array.isArray(q.k) && q.k.length > 0 && q.k.every((x) => x === "plan")));
+// A job quote's value: the first visit.
+export const jobValue = (q) => (Number.isSafeInteger(q.first) && q.first > 0 ? q.first : 0);
+// A plan made (sold) and still standing: → { day, recurring, arr, value } | null
+const PLAN_SOLD = new Set(["pending", "active", "cancelling", "paused"]);
+export function planSale(pl) {
+  const day = dayOf(pl.at);
+  if (!day || !PLAN_SOLD.has(pl.st)) return null;
+  const recurring = recursOn(pl, day);
+  const arr = recurring ? planArr(pl) : 0;
+  return { day, recurring, arr, value: recurring ? arr : Math.max(0, Math.round(Number(pl.sv) || 0)) };
+}
 
 // The sold quotes in the range (and every sold quote, for crediting plans by customer).
 async function soldQuotes(from, to) {
@@ -74,7 +103,13 @@ async function soldQuotes(from, to) {
   const all = (await Promise.all(shards.map((s) => rows("quotes", s)))).flat().filter((q) => SOLD.includes(q.st));
   const seen = new Set();
   const uniq = all.filter((q) => (seen.has(q.id) ? false : seen.add(q.id)));
-  return { inRange: uniq.filter((q) => inRange(dayOf(q.u || q.at), from, to)), all: uniq };
+  return { inRange: uniq.filter((q) => inRange(soldOn(q), from, to)), all: uniq };
+}
+// Who sold a plan: its own seller, else the seller of that customer's latest sold quote.
+function planSeller(all, who) {
+  const byCustomer = new Map();
+  for (const q of [...all].sort((a, b) => String(soldOn(a) || "").localeCompare(String(soldOn(b) || "")))) if (q.c) byCustomer.set(q.c, who(q.by));
+  return (pl) => who(pl.sb) || byCustomer.get(pl.c) || null;
 }
 
 // The people who can be on the board, and who a sold_by names.
@@ -155,19 +190,21 @@ export async function leaderboard(input = {}) {
   } else {
     const [{ inRange: sold, all }, plans] = await Promise.all([soldQuotes(r.from, r.to), rows("plans", "")]);
     for (const q of sold) {
+      if (isPlanQuote(q)) continue;   // counted as its plan
       const p = get(who(q.by));
       p.sales += 1;
-      p.sold_cents += soldValue(q);
-      if (Number.isSafeInteger(q.annual) && q.annual > 0) p.plans_sold += 1; else p.jobs_sold += 1;
+      p.jobs_sold += 1;
+      p.sold_cents += jobValue(q);
     }
-    // a plan is credited to the seller of that customer's latest sold quote
-    const sellerOf = new Map();
-    for (const q of [...all].sort((a, b) => String(a.u || "").localeCompare(String(b.u || "")))) if (q.c) sellerOf.set(q.c, who(q.by));
+    const sellerOf = planSeller(all, who);
     for (const pl of plans) {
-      if (!inRange(dayOf(pl.at), r.from, r.to) || pl.st === "cancelled") continue;
-      const p = get(sellerOf.get(pl.c) || null);
+      const sale = planSale(pl);
+      if (!sale || !inRange(sale.day, r.from, r.to)) continue;
+      const p = get(sellerOf(pl));
+      p.sales += 1;
+      p.sold_cents += sale.value;
+      if (sale.recurring) { p.plans_sold += 1; p.arr_cents += sale.arr; } else p.jobs_sold += 1;
       p.plans += 1;
-      p.arr_cents += pl.sv || 0;
       if (pl.ag === "signed") { p.signed += 1; p.agreements += 1; }
       if (pl.ap) p.autopay += 1;
     }
@@ -191,19 +228,23 @@ export async function performance(userId, { period = "month", today = localDate(
   const r = periodRange(period, today);
   const { who } = await people();
   const [{ inRange: sold, all }, plans] = await Promise.all([soldQuotes(r.from, r.to), rows("plans", "")]);
-  const mine = sold.filter((q) => who(q.by) === userId);
   const byDay = new Map();
-  let jobsC = 0, jobsN = 0, plansC = 0, plansN = 0, arr = 0;
-  for (const q of mine) {
-    const d = dayOf(q.u || q.at);
-    const v = soldValue(q);
+  let jobsC = 0, jobsN = 0, plansC = 0, plansN = 0, arr = 0, count = 0;
+  for (const q of sold) {
+    if (isPlanQuote(q) || who(q.by) !== userId) continue;
+    const v = jobValue(q);
+    const d = soldOn(q);
     byDay.set(d, (byDay.get(d) || 0) + v);
-    if (Number.isSafeInteger(q.annual) && q.annual > 0) { plansC += v; plansN += 1; arr += q.annual; } else { jobsC += v; jobsN += 1; }
+    jobsC += v; jobsN += 1; count += 1;
   }
-  // plans set up for the customers this person sold to count as their plans too
-  const myCustomers = new Set(all.filter((q) => who(q.by) === userId).map((q) => q.c).filter(Boolean));
-  const myPlans = plans.filter((p) => myCustomers.has(p.c) && inRange(dayOf(p.at), r.from, r.to) && p.st !== "cancelled");
-  if (!plansN && myPlans.length) { plansN = myPlans.length; plansC = myPlans.reduce((n, p) => n + (p.sv || 0), 0); arr = plansC; }
+  const sellerOf = planSeller(all, who);
+  for (const pl of plans) {
+    const sale = planSale(pl);
+    if (!sale || !inRange(sale.day, r.from, r.to) || sellerOf(pl) !== userId) continue;
+    byDay.set(sale.day, (byDay.get(sale.day) || 0) + sale.value);
+    count += 1;
+    if (sale.recurring) { plansC += sale.arr; plansN += 1; arr += sale.arr; } else { jobsC += sale.value; jobsN += 1; }
+  }
   // the running total, day by day from the start to today
   const series = [];
   let run = 0;
@@ -216,7 +257,7 @@ export async function performance(userId, { period = "month", today = localDate(
   for (let d = monthStart, i = 0; d <= today && i < 31; d = addLocalDays(d, 1), i++) grid.push({ d, sale: !!byDay.get(d) });
   const total = jobsC + plansC;
   return {
-    period, from: r.from, to: r.to, sold_cents: total, count: mine.length, series,
+    period, from: r.from, to: r.to, sold_cents: total, count, series,
     jobs: { cents: jobsC, count: jobsN }, plans: { cents: plansC, count: plansN }, avg_cents: jobsN ? Math.round(jobsC / jobsN) : null, arr_cents: arr,
     streak: { days: streak, grid, with_sale: grid.filter((g) => g.sale).length },
   };
