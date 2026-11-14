@@ -19,7 +19,8 @@
 //           other, Imported-Data → imported; a refund row → kind refund;
 //           amount = total − tip; the fee; the reference masked (digit runs
 //           of 8 or more, R24); payment_date → received_on; the tip split
-//           equally across the job's techs; a payment with no customer goes
+//           equally across the job's techs (a "tip" row is a tip paid on its
+//           own: amount 0, the whole sum its tip); a payment with no customer goes
 //           on one placeholder contact so the sums still add up. Each
 //           payment lands in its invoice's applied map (a patch), from which
 //           paid, balance and status are derived.
@@ -96,7 +97,8 @@ export function lineKind(label, given, cents) {
 // One Rotor line (either shape) → an invoice line.
 export function mapLine(l, i) {
   if (!plain(l)) throw new RowError(`line_items.${i}`);
-  const label = (fixMojibake(str(l.description || l.title)) || "Service").slice(0, 300);
+  const details = fixMojibake(str(l.details));
+  const label = ((fixMojibake(str(l.description || l.title)) || "Service") + (details ? `: ${details}` : "")).slice(0, 300);
   const q = Number(l.quantity ?? 1);
   const qty = Number.isFinite(q) && q >= 0 ? Math.round(q * 1000) : 1000;
   let unit, total;
@@ -226,12 +228,14 @@ export function normalizePayment(row) {
   const status = str(row.status).toLowerCase();
   if (!["succeeded", "failed"].includes(status)) throw new RowError("status");
   const type = str(row.payment_type || "invoice").toLowerCase();
-  if (!["invoice", "refund"].includes(type)) throw new RowError("payment_type");
+  // "tip": a tip paid on its own after the invoice (the whole amount is the tip)
+  if (!["invoice", "refund", "tip"].includes(type)) throw new RowError("payment_type");
   const methodRaw = str(row.payment_method);
   const method = METHOD_MAP[methodRaw.toLowerCase()];
   if (!method) throw new RowError("payment_method");
   const total = intOf(row.total_amount_cents ?? 0, "total_amount_cents");
-  const tip = intOf(row.tip_cents ?? 0, "tip_cents");
+  const tipRaw = intOf(row.tip_cents ?? 0, "tip_cents");
+  const tip = type === "tip" && !tipRaw ? total : tipRaw;
   if (tip > total) throw new RowError("tip_cents");
   const on = dateOf(row.payment_date) || dateOf(row.created_at);
   if (!on) throw new RowError("payment_date");
@@ -267,7 +271,7 @@ async function mapPayment(r, ctx) {
   const jobId = (await lookup("job", r.job)) || (inv && (inv.job_ids || [])[0]) || null;
   const planId = await lookup("plan", r.plan);
   let tipSplit = [];
-  if (r.tip_cents > 0 && r.type === "invoice" && isId(jobId, "job")) {
+  if (r.tip_cents > 0 && r.type !== "refund" && isId(jobId, "job")) {
     const jg = await getRecord("job", jobId);
     tipSplit = splitTip(r.tip_cents, (jg && jg.data.assignee_ids) || []);
     if (!tipSplit.length) warnings.push("payment_tip_unassigned");
@@ -343,7 +347,7 @@ export async function reconcile({ rotor } = {}) {
       pay.tips_cents += r.tip;
       if (!r.inv) pay.unlinked += 1;
       inc(pay.by_method, String(r.rm).slice(0, 30), r.a);
-      inc(pay.by_type, refund ? "refund" : "invoice", r.a + r.tip);
+      inc(pay.by_type, refund ? "refund" : r.rt === "tip" ? "tip" : "invoice", r.a + r.tip);
       const y = String(r.ry || r.on || "").slice(0, 4);          // Rotor's own (UTC) year, as its report buckets it
       if (/^\d{4}$/.test(y)) inc(pay.by_year, y, r.a);
     }

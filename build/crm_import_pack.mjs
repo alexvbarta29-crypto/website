@@ -15,6 +15,11 @@
 // What it does:
 //   1. checks every *.jsonl parses (one JSON object a line), dedupes rows by
 //      `id` (Rotor's paging can repeat a row; the last copy wins) and counts;
+//      Rotor's own file names become the import's (availability.jsonl →
+//      member_availability, payroll_rate_settings.json → rate_settings),
+//      contacts.jsonl (a repeat of customers and leads) is left out, and
+//      without a quote_contacts.jsonl its rows are made from the contact
+//      each quote row carries (consent, Stripe id, converted lead, notes);
 //   2. splits each entity into chunks of at most ~2.9 MB of JSON and seals
 //      each with the office public key (build/office-dashboard-public.pem,
 //      X25519 + AES-256-GCM, netlify/lib/office-data.mjs seal()): every
@@ -97,6 +102,74 @@ export function readEntity(file, entity) {
   return { rows: [...byId.values(), ...noId], lines, dupes };
 }
 
+// Rotor's own file names for entities the import knows by another name: the
+// 2026-11-13 export saved the team's weekly hours as availability.jsonl and
+// the pay rates as one JSON object, payroll_rate_settings.json.
+export const ENTITY_ALIASES = Object.freeze({ availability: "member_availability" });
+export const JSON_ENTITIES = Object.freeze({ payroll_rate_settings: "rate_settings" });
+// Files no import step reads, left out of the pack (less customer data on the
+// move): Rotor's contact list repeats every row of customers.jsonl and leads.jsonl.
+export const SKIPPED_ENTITIES = Object.freeze({ contacts: "repeats customers.jsonl and leads.jsonl" });
+
+// The fields of a quote's embedded contact the quote-contacts step reads
+// (consent, Stripe id, the lead a customer was converted from, muted
+// channels, notes, Rotor's lead priority and stage, the Meta lead form).
+// Nothing else of the contact (its address, phone and email are in
+// customers.jsonl and leads.jsonl) is copied.
+const QC_FIELDS = ["id", "created_at", "updated_at", "messaging_config", "muted_channels", "stripe_customer_id", "converted_from_lead_id", "notes", "priority", "stage", "last_called_at"];
+const META_FIELDS = ["ad_id", "ad_name", "adset_id", "form_id", "form_name", "page_id", "external_source", "created_time"];
+
+// Rotor's quote rows carry their contact (`quote.contact`): when the export
+// has no quote_contacts.jsonl of its own, its rows are made from those, one
+// per contact (the newest copy wins). → rows
+export function quoteContactsOf(quotes) {
+  const byId = new Map();
+  for (const q of quotes || []) {
+    const c = q && q.contact;
+    if (!c || typeof c !== "object" || Array.isArray(c) || c.id === undefined || c.id === null || c.id === "") continue;
+    const k = String(c.id);
+    const prev = byId.get(k);
+    if (prev && String(prev.updated_at || "") > String(c.updated_at || "")) continue;
+    const row = { contact_type: String(q.contact_type || "").toLowerCase() === "lead" ? "lead" : "customer" };
+    for (const f of QC_FIELDS) if (c[f] !== undefined) row[f] = c[f];
+    const meta = c.sync && typeof c.sync === "object" && c.sync.meta && typeof c.sync.meta === "object" ? c.sync.meta : null;
+    if (meta) row.sync = { meta: Object.fromEntries(META_FIELDS.filter((f) => meta[f] !== undefined && meta[f] !== null).map((f) => [f, meta[f]])) };
+    byId.set(k, row);
+  }
+  return [...byId.values()];
+}
+
+// Every entity of an export folder, under the names the import knows.
+// → { entities: { name: { rows, dupes, from } }, skipped: { file entity: rows } }
+export function readExport(exportDir) {
+  const files = readdirSync(exportDir).filter((f) => f.endsWith(".jsonl")).sort();
+  const entities = {};
+  const skipped = {};
+  for (const f of files) {
+    const fileEntity = f.slice(0, -".jsonl".length);
+    if (!ENTITY_RE.test(fileEntity)) throw new PackError(`a file name the import can't use (${f.length > 60 ? "too long" : f})`);
+    const entity = ENTITY_ALIASES[fileEntity] || fileEntity;
+    const { rows, dupes, lines } = readEntity(path.join(exportDir, f), entity);
+    if (SKIPPED_ENTITIES[fileEntity]) { skipped[fileEntity] = lines; continue; }
+    if (entities[entity]) throw new PackError(`two files hold ${entity}`);
+    entities[entity] = { rows, dupes, from: f };
+  }
+  for (const [base, entity] of Object.entries(JSON_ENTITIES)) {
+    const file = path.join(exportDir, `${base}.json`);
+    if (!existsSync(file) || entities[entity]) continue;
+    let obj;
+    try { obj = JSON.parse(readFileSync(file, "utf8")); } catch { throw new PackError(`${base}.json doesn't parse as JSON`); }
+    const rows = Array.isArray(obj) ? obj : [obj];
+    if (rows.some((r) => !r || typeof r !== "object" || Array.isArray(r))) throw new PackError(`${base}.json isn't a JSON object`);
+    entities[entity] = { rows, dupes: 0, from: `${base}.json` };
+  }
+  if (!entities.quote_contacts && entities.quotes) {
+    const rows = quoteContactsOf(entities.quotes.rows);
+    if (rows.length) entities.quote_contacts = { rows, dupes: 0, from: "quotes.jsonl" };
+  }
+  return { entities, skipped };
+}
+
 // Rows → chunks of at most `limit` bytes of JSON. → [[rows], ...]
 export function chunkRows(rows, entity, limit = CHUNK_BYTES) {
   const out = [];
@@ -142,21 +215,19 @@ export function readMedia(exportDir) {
 export function pack(exportDir, outDir, { asOf, publicKeyPem, force = false, print = false, env = process.env, now = () => new Date(), inside = (p) => insideAnyWorktree(p) } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(asOf || ""))) throw new PackError("--as-of must be YYYY-MM-DD");
   if (!existsSync(exportDir) || !statSync(exportDir).isDirectory()) throw new PackError("the export folder doesn't exist");
-  const files = readdirSync(exportDir).filter((f) => f.endsWith(".jsonl")).sort();
-  if (!files.length) throw new PackError("the export folder holds no .jsonl files");
+  if (!readdirSync(exportDir).some((f) => f.endsWith(".jsonl"))) throw new PackError("the export folder holds no .jsonl files");
+  const read = readExport(exportDir);
   const entities = {};
   const plan = [];
-  for (const f of files) {
-    const entity = f.slice(0, -".jsonl".length);
-    if (!ENTITY_RE.test(entity)) throw new PackError(`a file name the import can't use (${f.length > 60 ? "too long" : f})`);
-    const { rows, dupes } = readEntity(path.join(exportDir, f), entity);
+  for (const entity of Object.keys(read.entities).sort()) {
+    const { rows, dupes, from } = read.entities[entity];
     const chunks = chunkRows(rows, entity);
-    entities[entity] = { rows: rows.length, chunks: chunks.length, dupes };
+    entities[entity] = { rows: rows.length, chunks: chunks.length, dupes, ...(from !== `${entity}.jsonl` ? { from } : {}) };
     plan.push({ entity, chunks });
   }
   const media = readMedia(exportDir);
   const mediaSummary = { count: media.list.length, bytes: media.list.reduce((s, m) => s + m.bytes, 0), skipped_big: media.skipped_big, invalid: media.invalid, missing: media.missing };
-  if (print) return { as_of: asOf, entities, media: mediaSummary, written: false };
+  if (print) return { as_of: asOf, entities, skipped: read.skipped, media: mediaSummary, written: false };
 
   checkTargets(outDir, inside);
   if (existsSync(path.join(outDir, "manifest.json"))) {
@@ -185,7 +256,7 @@ export function pack(exportDir, outDir, { asOf, publicKeyPem, force = false, pri
   for (const m of media.list) writePrivate(path.join(outDir, "media", m.url_sha256), readFileSync(m.file));
   writePrivate(path.join(outDir, "media.json"), JSON.stringify(media.list.map(({ url_sha256, source, ref_id, bytes }) => ({ url_sha256, source, ref_id, bytes }))));
   writePrivate(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 1));
-  return { as_of: asOf, entities, media: mediaSummary, written: true };
+  return { as_of: asOf, entities, skipped: read.skipped, media: mediaSummary, written: true };
 }
 
 export function parseArgs(args) {
@@ -219,7 +290,7 @@ export function main(argv = process.argv.slice(2), { env = process.env, log = co
     const r = pack(exportDir, outDir, { asOf: a.asOf, publicKeyPem, force: a.force, print: a.print, env, inside });
     const rows = Object.values(r.entities).reduce((s, e) => s + e.rows, 0);
     const chunks = Object.values(r.entities).reduce((s, e) => s + e.chunks, 0);
-    log(JSON.stringify({ as_of: r.as_of, entities: Object.fromEntries(Object.entries(r.entities).map(([k, v]) => [k, { rows: v.rows, chunks: v.chunks, ...(v.dupes ? { duplicates_dropped: v.dupes } : {}) }])), media: r.media }, null, 1));
+    log(JSON.stringify({ as_of: r.as_of, entities: Object.fromEntries(Object.entries(r.entities).map(([k, v]) => [k, { rows: v.rows, chunks: v.chunks, ...(v.dupes ? { duplicates_dropped: v.dupes } : {}), ...(v.from ? { from: v.from } : {}) }])), ...(Object.keys(r.skipped || {}).length ? { not_packed: r.skipped } : {}), media: r.media }, null, 1));
     log(r.written ? `packed ${rows} rows in ${chunks} sealed chunks and ${r.media.count} media files` : `would pack ${rows} rows in ${chunks} chunks (nothing written)`);
     return 0;
   } catch (e) {

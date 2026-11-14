@@ -18,8 +18,12 @@
 //           an override "imported"; unit prices kept; the legacy total_price
 //           × visits ignored (lines are recomputed from their own price);
 //           Rotor line ids kept verbatim (the quote → plan join key);
-//           jobSchedule → scope; client_optional → optional; discounts →
-//           AppliedDiscount[]; status mapped (+ viewed when viewed_at); the
+//           jobSchedule → scope; client_optional → optional and ticked
+//           (Rotor's total counts it); discounts → AppliedDiscount[] (every
+//           multi entry, whatever `enabled` says: it only switches the old
+//           single discount); jobs_config.notes that differ from the
+//           client's notes → the office notes ("Job notes (Rotor): ...");
+//           status mapped (+ viewed when viewed_at); the
 //           number kept; the contact's deal (a new one when it has none);
 //           the engine's first-visit total compared with Rotor's `total`
 //           (a difference is a report warning; stored prices never change)
@@ -149,13 +153,16 @@ function normalizeLine(l, i) {
 }
 
 // The five discount shapes (rotor-money §1.3) → [{ name, type, value_raw, scope }].
+// `enabled` is the switch of the old single discount (`type` + `value`)
+// only: Rotor applies every `multi` entry whatever it says (the 2026-11-13
+// export has quotes with `enabled: false` and a multi discount, and their
+// `total` takes it off), so the multi list is read first and on its own.
 export function discountEntries(d) {
   if (!d || Array.isArray(d) || !plain(d)) return [];
-  if (d.enabled === false) return [];
   const multi = Array.isArray(d.multi) ? d.multi : [];
   const fromMulti = multi.filter(plain).map((m) => ({ name: str(m.name), type: m.type === "percentage" ? "percentage" : "fixed", value_raw: m.value, scope: scopeOf(m.jobSchedule) }));
   if (fromMulti.length) return fromMulti.filter((x) => (toCents(x.value_raw) || 0) > 0);
-  if (d.type && (toCents(d.value) || 0) > 0) return [{ name: "", type: d.type === "percentage" ? "percentage" : "fixed", value_raw: d.value, scope: { type: "all" } }];
+  if (d.enabled !== false && d.type && (toCents(d.value) || 0) > 0) return [{ name: "", type: d.type === "percentage" ? "percentage" : "fixed", value_raw: d.value, scope: { type: "all" } }];
   return [];
 }
 
@@ -175,10 +182,13 @@ export function normalizeQuote(row) {
     id, number, status: str(row.status) || "draft", archived: row.archived === true, contact_id, contact_type: ct,
     service_types: svc, service_length_months: Number.isInteger(row.service_length_months) ? row.service_length_months : null, billing_mode: str(row.billing_mode) || null,
     total_raw: row.total ?? null, lines, discounts: discountEntries(cfg.discounts), frequency: freq,
-    agreement: ag ? { template_id: ag.template_id ? str(ag.template_id) : null, require_card: ag.require_card === true } : null,
+    agreement: ag ? { template_id: ag.template_id ? str(ag.template_id) : null, require_card: ag.require_card === true, ...(typeof ag.auto_advance === "boolean" ? { auto_advance: ag.auto_advance } : {}) } : null,
     photos: (Array.isArray(cfg.photos) ? cfg.photos : []).filter((p) => plain(p) && typeof p.url === "string" && /^https?:\/\//.test(p.url)).map((p) => p.url).slice(0, 10),
     plan_template_id: cfg.plan_template_id ? str(cfg.plan_template_id) : null, property_id: cfg.property_id ?? null,
     client_notes: row.client_notes == null ? (cfg.notes == null ? "" : String(cfg.notes)) : String(row.client_notes), internal_notes: row.internal_notes == null ? "" : String(row.internal_notes),
+    // the notes Rotor puts on the jobs a quote becomes, when they say something the client's notes don't
+    job_notes: cfg.notes != null && row.client_notes != null && str(cfg.notes) && str(cfg.notes) !== str(row.client_notes) ? String(cfg.notes).slice(0, 2000) : "",
+    created_by: row.created_by ? str(row.created_by) : null,
     sent_at: iso(row.sent_at), viewed_at: iso(row.viewed_at), approved_at: iso(row.approved_at), rejected_at: iso(row.rejected_at),
     modification_requested_at: iso(row.modification_requested_at), modification_message: row.modification_message == null ? null : String(row.modification_message).slice(0, 2000),
     sold_by: row.sold_by ? str(row.sold_by) : null, created_at: iso(row.created_at),
@@ -299,6 +309,13 @@ async function lookupContact(ctx, type, rid) {
   return p && isId(p.id, "contact") ? p.id : null;
 }
 
+// The quote's office notes, with the notes Rotor keeps for the jobs when they differ from the client's.
+export function internalNotes(r) {
+  const own = r.internal_notes || "";
+  if (!r.job_notes) return own.slice(0, 4000);
+  return `${own}${own.trim() ? "\n\n" : ""}Job notes (Rotor): ${r.job_notes}`.slice(0, 4000);
+}
+
 const unitOf = (key) => ({ screens: "screen", tracks_standard: "track", tracks_premium: "track", lights_install: "ft", lights_materials: "ft", interior_upper: "pane" })[key] || "flat";
 
 async function mapQuote(r, ctx = {}) {
@@ -331,7 +348,8 @@ async function mapQuote(r, ctx = {}) {
       scope: l.scope, category: (key && ITEM_CATEGORY[key]) || "other", unit: l.custom_cents !== null ? "flat" : unitOf(key), show: l.show,
       ...(ptr && isId(ptr.id, "price_item") ? { price_item_id: ptr.id } : {}),
       ...(svc ? { service_type: svc.slice(0, 80) } : {}), ...(tierRaw ? { tier: tierRaw.split("::")[1].slice(0, 80) } : {}),
-      ...(l.optional ? { optional: true } : {}),
+      // Rotor's total counts a client-optional line: it is on the quote as sold, so it comes in ticked
+      ...(l.optional ? { optional: true, selected: true } : {}),
       ...(l.upsell_user_id && ctx.users && ctx.users.get(l.upsell_user_id) ? { upsell_user_id: ctx.users.get(l.upsell_user_id) } : {}),
     };
     if (l.custom_cents !== null) line.override = { cents: l.custom_cents, reason: "imported", by: "import", ...(r.created_at ? { at: r.created_at } : {}) };
@@ -385,7 +403,7 @@ async function mapQuote(r, ctx = {}) {
     ...(propertyId ? { property_id: propertyId } : {}), deal_id: dealId, status: finalStatus, options: [option],
     ...(["approved", "converted"].includes(finalStatus) ? { selected_option_id: "op_rotor" } : {}),
     agreement: { require_card: !!(r.agreement && r.agreement.require_card), deposit: { type: "none", value: 0 } },
-    client_notes: r.client_notes.slice(0, 4000), internal_notes: r.internal_notes.slice(0, 4000),
+    client_notes: r.client_notes.slice(0, 4000), internal_notes: internalNotes(r),
     photo_ids: r.photos.map((u) => idForRotor("file", sha(u))), mockup_file_ids: [], sent_via: [],
     ...(r.sent_at ? { sent_at: r.sent_at } : {}), ...(r.viewed_at ? { viewed_at: r.viewed_at } : {}),
     ...(r.approved_at ? { approved_at: r.approved_at, approval: { option_id: "op_rotor", at: r.approved_at, method: "portal", name_typed: "" } } : {}),
@@ -401,6 +419,8 @@ async function mapQuote(r, ctx = {}) {
       total_dollars_raw: r.total_raw === null ? null : Number(r.total_raw), ...(r.billing_mode ? { billing_mode_raw: r.billing_mode } : {}),
       ...(r.service_length_months ? { service_length_months: r.service_length_months } : {}), ...(r.frequency && r.frequency.name ? { frequency_name: r.frequency.name } : {}),
       ...(r.sold_by && !isId(sold, "user") ? { sold_by: r.sold_by } : {}),
+      ...(r.agreement && typeof r.agreement.auto_advance === "boolean" ? { agreement_auto_advance: r.agreement.auto_advance } : {}),
+      ...(r.created_by ? (isId(users.get(r.created_by), "user") ? { created_by_user_id: users.get(r.created_by) } : { created_by: r.created_by }) : {}),
     },
   };
   data.number_label = numberLabel(data);

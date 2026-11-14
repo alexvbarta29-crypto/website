@@ -30,7 +30,10 @@ test("pure: titles → price items, Rotor's spelling → the discount catalog, t
   assert.deepEqual(I.discountEntries({ type: "fixed", value: 0, enabled: false }), []);
   assert.deepEqual(I.discountEntries({ enabled: true, type: "fixed", value: 50 }).map((d) => [d.type, d.value_raw]), [["fixed", 50]]);
   assert.equal(I.discountEntries({ multi: [{ name: "Quarterly Discount", type: "fixed", value: 100, jobSchedule: { type: "all" } }, { type: "percentage", value: 50 }] }).length, 2);
-  assert.deepEqual(I.discountEntries({ multi: [{ name: "x", type: "fixed", value: 50 }], enabled: false }), []);
+  // `enabled` switches the old single discount only: Rotor takes every multi entry off (the 2026-11-13 export)
+  assert.deepEqual(I.discountEntries({ multi: [{ name: "x", type: "fixed", value: 50 }], enabled: false }).map((d) => [d.name, d.type, d.value_raw]), [["x", "fixed", 50]]);
+  assert.deepEqual(I.discountEntries({ enabled: false, type: "fixed", value: 50 }), []);
+  assert.deepEqual(I.discountEntries({ enabled: false, multi: [{ name: "Zero", type: "fixed", value: 0 }], type: "fixed", value: 0 }), []);
   assert.equal(I.toMilli("1.5"), 1500);
   assert.equal(I.toMilli(154.5), 154500);
   assert.equal(I.toMilli("0.0005"), 1);
@@ -72,15 +75,19 @@ test("the synthetic export: every quote imported with Rotor's number and prices,
           assert.equal(m.total_cents, Math.round(l.custom_price * 100), "dollars → cents, the legacy total_price × visits ignored");
         } else assert.equal(m.total_cents, Math.round(l.quantity * l.unit_price * 100));
         if (l.jobSchedule.type === "specific") assert.deepEqual(m.scope, { type: "specific", visits: l.jobSchedule.selectedJobs });
-        if (l.client_optional) assert.equal(m.optional, true);
+        if (l.client_optional) { assert.equal(m.optional, true); assert.equal(m.selected, true, "Rotor's total counts an optional line"); }
       }
-      assert.ok(Number.isSafeInteger(o.totals.first_cents));
+      // the quote's own totals are Rotor's `total` (visit 1: its lines less its discounts)
+      assert.equal(o.totals.first_cents, Math.round(row.total * 100), `Q-${row.quote_number} totals Rotor's`);
+      const entries = I.discountEntries(row.jobs_config.discounts);
+      assert.equal(o.discounts.length, entries.length, "every discount Rotor takes off");
     }
-    // the report: engine vs Rotor differences counted (stored prices never changed)
+    assert.ok(ex.quotes.some((q) => q.jobs_config.discounts && q.jobs_config.discounts.enabled === false && (q.jobs_config.discounts.multi || []).length), "the export has a multi discount with enabled: false");
+    // the report: no engine-vs-Rotor difference left
     const rep = (await t.api(`/import/runs/${r.ir.id}/report`, { as: owner })).body.data;
     const ph = rep.phases.find((p) => p.name === "quotes.quotes");
     assert.ok(ph, JSON.stringify(rep.phases.map((p) => p.name)));
-    assert.ok((ph.warnings.quote_total_differs || 0) > 0, "differences are reported");
+    assert.equal(ph.warnings.quote_total_differs || 0, 0, "every quote totals Rotor's");
     // price book: template ids attached to the seeded items, each id to one item
     const book = t.stores.data.keys("rec/price_item/").map((k) => t.stores.data.json(k));
     const attached = book.flatMap((i) => i.rotor_template_ids || []);
