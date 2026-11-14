@@ -128,17 +128,36 @@ flips it on **Settings → Rotor & data → Dashboard numbers** (`#/settings/das
   week, This month, This year) and Share (the phone's share sheet, else a
   copied summary).
 - Where the numbers come from (`leaderboard.mjs`; indexes only, about 6
-  to 10 storage calls): **sold** is a quote approved or turned into work
-  (the quotes index's "open" shard and the year's), on the day it last
-  changed, credited to its seller (`sold_by`: a user id, or for an
-  imported quote Rotor's rep name, matched to a person by name or first
-  name; anyone else is Unassigned); its value is the plan's yearly amount
-  for a plan option, else the first visit. **Plans** set up in the period
-  are credited to the seller of that customer's latest sold quote
-  (signed: the agreement signed; autopay; ARR: the plan's sale value).
-  **Techs**: jobs finished in the period (the jobs index's year), their
-  total split between the people on them, and visits done (the visits
-  index's months). Imported Rotor records count like the CRM's own.
+  to 10 storage calls). The owner's Nov 14 check found Home's "November
+  Leaderboard" showing all-time counts and an "ARR" that summed to three
+  times the business's whole ARR: a sale was dated by the quote's last
+  change (every Rotor import rewrites every quote, so the month held every
+  sale ever), and the sold money (plans' yearly amount plus every job's
+  first visit) was labelled ARR. Now:
+  - **Jobs sold**: quotes approved or turned into work (the quotes
+    index's "open" shard and the year's) whose chosen option is not a plan
+    (the index's `pk`), on the day they were **sold** (`sd`: approved_at,
+    else converted_at; a row from before Nov 14 without `sd`, until the
+    nightly list check rebuilds it: an imported quote's creation, a CRM
+    quote's last change), worth the first visit, credited to the seller
+    (`sold_by`: a user id, or for an imported quote Rotor's rep name,
+    matched by name or first name; anyone else is Unassigned).
+  - **Plans sold**: the plans index's plans made in the period (`at`: an
+    imported plan keeps Rotor's creation day), not cancelled or expired,
+    that recur (Home's `recursOn`), credited to the plan's own seller
+    (`sb`: its `sold_by`, an imported plan's matched Rotor rep), else the
+    seller of that customer's latest sold quote. Their **ARR** is Home's
+    per-plan year (`planArr`: the index's `ay`; a 3-year lights term is
+    one season a year). A plan sold for one season that doesn't renew
+    (Rotor's One-Time lights) is a job sold, worth its sale value. A plan
+    quote counts once, as its plan.
+  - **Sold** = jobs sold + plans sold, worth first visits + ARR; signed,
+    autopay and % signed are of the plans sold.
+  - **Techs**: jobs finished in the period (the jobs index's year), their
+    total split between the people on them, and visits done (the visits
+    index's months). Imported Rotor records count like the CRM's own.
+- Home no longer has a Leaderboard card (Nov 14); the board is Analytics'
+  "..." (`#/leaderboard`).
 
 ## Services (the leaderboard)
 
@@ -148,10 +167,10 @@ flips it on **Settings → Rotor & data → Dashboard numbers** (`#/settings/das
   agreements, autopay, arr_cents, jobs, visits, done_cents, value, rank }],
   unassigned, rows }` (metric: sales, revenue, avg, agreements, autopay,
   techs). The Leaderboard uses `people`.
-- Home's card (`has()`/`call()`) asks the same service as
+- Asked by board (Home's old card; any module through `has()`/`call()`):
   `{ board: "sales" | "techs", period, month: "yyyy-mm", from, to }`:
-  board sales is the sold money (a plan's yearly amount, else the first
-  visit), techs the jobs done in dollars; `from`/`to` win, then `month`
+  board sales is the sold money (recurring plans' ARR, jobs' first
+  visits), techs the jobs done in dollars; `from`/`to` win, then `month`
   (that calendar month, up to today), then `period` (default this month).
   It reads `rows: [{ user_id, name, first_name, initials, color, count,
   value_cents, arr_cents, note, rank }]`: only the people with something
