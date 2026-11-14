@@ -32,6 +32,8 @@ export default {
     { path: "/outbox", load: () => import("./outbox.js"), title: "Outbox", perm: "outbox:read", parent: "/today", skeleton: "list" },
     { path: "/activity", load: () => import("./activity.js"), title: "Activity log", perm: "audit:read", parent: "/settings", skeleton: "list" },
     { path: "/settings", load: () => import("./settings.js"), title: "Settings", perm: "settings:general", parent: "/today", skeleton: "list" },
+    // one group of the hub (Business, Team, ... This phone): its rows (settings.js LAYOUT)
+    { path: "/settings/g/:key", load: () => import("./settings-group.js"), title: "Settings", perm: "settings:general", parent: "/settings", skeleton: "list" },
     { path: "/settings/company", load: () => import("./settings-general.js"), title: "Company", perm: "settings:general", parent: "/settings" },
     { path: "/settings/hours", load: () => import("./settings-general.js"), title: "Hours & holidays", perm: "settings:general", parent: "/settings" },
     { path: "/settings/service-area", load: () => import("./settings-general.js"), title: "Service area", perm: "settings:general", parent: "/settings" },

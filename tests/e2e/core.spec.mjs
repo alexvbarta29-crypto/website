@@ -123,18 +123,21 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     for (let i = 0; i < 50 && !frameUrls(page).some((u) => new URL(u).pathname === "/lights"); i++) await page.waitForTimeout(100);
     assert.ok(frameUrls(page).some((u) => new URL(u).pathname === "/lights"), "the Lights page loads in a frame");
     await shot(page, "core-tool-lights");
-    // Settings: one hub; the setup screens and Rotor live there
+    // Settings: one hub of eight groups (the owner: "just make it more organized"); the setup screens and Rotor live in them
     await goTo(f, "/settings");
-    const heads = await f.$$eval("#view .set-hub .section-h", (els) => els.map((e) => e.textContent));
-    assert.deepEqual(heads, ["Company", "Team & permissions", "Pricing & services", "Plans & agreements", "Schedule", "Messages & automations", "Payments", "Maps & door to door", "Import & data", "Appearance", "About"]);
-    // the rare sections start folded (a row with the count); the search finds a row in one
-    assert.equal(await f.isVisible('#view a[href="#/import"]'), false, "Import & data folded");
+    const groups = await f.$$eval("#view .set-groups [data-group] .nm", (els) => els.map((e) => e.textContent));
+    assert.deepEqual(groups, ["Business", "Team", "Services & pricing", "Messages", "Payments", "Connections", "Rotor & data", "This phone"]);
+    // the search lists every row, flat, across the groups
     await f.fill("#view [data-set-q]", "import");
-    assert.equal(await f.isVisible('#view a[href="#/import"]'), true, "found");
+    assert.equal(await f.isVisible('#view .set-res a[href="#/import"]'), true, "found");
     assert.equal(await f.isVisible('#view a[href="#/settings/company"]'), false, "the rest filtered out");
     await f.fill("#view [data-set-q]", "");
-    await f.click('#view [data-fold="data"]');
-    for (const path of ["/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/tools/rotor", "/settings/schedule"]) assert.ok(await f.$(`#view a[href="#${path}"]`), `Settings opens ${path}`);
+    const inGroup = { "/templates": "messages", "/automations": "messages", "/team": "team", "/activity": "data", "/import": "data", "/tab-bar": "phone", "/tools/rotor": "data", "/settings/schedule": "services" };
+    for (const [path, key] of Object.entries(inGroup)) {
+      await goTo(f, `/settings/g/${key}`);
+      assert.ok(await f.$(`#view .set-grp a[href="#${path}"]`), `Settings → ${key} opens ${path}`);
+    }
+    await goTo(f, "/settings");
     assert.deepEqual(await screenProblems(f), [], "Settings passes the phone checks");
     await shot(page, "core-settings");
     // an old link to a merged screen opens the one it became
@@ -463,7 +466,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/jobs/:id": seeded.jobs.tech, "/visits/:id": seeded.visits.tech, "/settings/checklists/:id": (await get("/checklists"))[0].id,
     "/schedule/route/:date/:user": { date: (await get(`/visits/${seeded.visits.tech}`)).visit.date, user: seeded.users.tech.id },
     "/quotes/:id": seeded.quotes.sent, "/quotes/:id/edit": seeded.quotes.draft, "/quotes/:id/lights": seeded.quotes.draft,
-    "/plans/:id": seeded.plans.active, "/lights/:season": String(seeded.seasons.year), "/settings/agreement-templates/:id": seeded.templates.quarterly,
+    "/plans/:id": seeded.plans.active, "/lights/:season": String(seeded.seasons.year), "/settings/agreement-templates/:id": seeded.templates.quarterly, "/settings/g/:key": "business",
     "/inbox/:id": seeded.comms.tech, "/campaigns/:id": seeded.comms.campaign,
     "/invoices/:id": seeded.money.invoices.open, "/autopay/:id": seeded.money.autopay,
     "/signs/:id": sign.data.code.id,

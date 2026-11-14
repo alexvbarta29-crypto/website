@@ -49,20 +49,39 @@ test("Outbox, Activity, Approvals, Notifications and Today render their rows", a
 test("Settings screens, Automations, Templates and My account render for an owner", async () => {
   const settings = await load("settings");
   const hub = text(settings.render({ health: { status: { fast: "ok", bulk: "ok" }, lanes: {} } }, ctx()));
-  // one hub, plain sections, each setting once (the Nov 2026 tidy-up)
-  const heads = [...hub.matchAll(/class="section-h">([^<]+)</g)].map((m) => m[1].replace(/&amp;/g, "&"));
-  assert.deepEqual(heads, ["Company", "Team & permissions", "Pricing & services", "Plans & agreements", "Schedule", "Messages & automations", "Payments", "Maps & door to door", "Import & data", "Appearance", "About"]);
-  const links = [...hub.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  // the hub: a short list of groups (the owner's "just make it more organized"), each opening its own page
+  const groupRows = [...hub.matchAll(/data-group="([a-z]+)"[^>]*>.*?class="nm">([^<]+)<\/span><span class="sub">([^<]+)</g)].map((m) => [m[1], m[2].replace(/&amp;/g, "&"), m[3]]);
+  assert.deepEqual(groupRows.map(([k]) => k), ["business", "team", "services", "messages", "payments", "connections", "data", "phone"]);
+  assert.deepEqual(groupRows.map(([, l]) => l), ["Business", "Team", "Services & pricing", "Messages", "Payments", "Connections", "Rotor & data", "This phone"]);
+  assert.equal(groupRows[1][2], "Team, permissions, payroll", "a grey line naming what is inside");
+  for (const [, , cap] of groupRows) assert.ok(cap.length <= 34, `one line on an iPhone SE: ${cap}`);
+  assert.match(hub, /href="#\/settings\/g\/business" data-group="business"/, "a group opens its page");
+  assert.match(hub, /href="#\/settings\/payments" data-group="payments"/, "a group with one row opens that screen");
+  assert.doesNotMatch(hub, /data-fold|set-sec/, "no folding: the groups replace it");
+  assert.match(hub, /class="rs-label">About</);
+  // the search list: every row once, hidden until something is typed, each with its group's name
+  const res = hub.slice(hub.indexOf("set-res"), hub.indexOf("set-groups"));
+  const links = [...res.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(links).size, links.length, "each setting in one place");
   for (const p of ["/settings/permissions", "/team", "/templates", "/automations", "/settings/cadences", "/settings/schedule", "/import", "/activity", "/tab-bar"]) assert.ok(links.includes(p), p);
-  assert.match(hub, /data-theme-row/, "Light or dark");
-  assert.doesNotMatch(hub, /Arriving with later parts/);
+  assert.match(res, /data-theme-row/, "Light or dark");
+  assert.match(res, /<li data-label="discounts" data-in="services" data-grp="services &amp; pricing" hidden>/);
+  const found = text(settings.render({ health: null, q: "disc" }, ctx()));
+  assert.match(found, /<li data-label="discounts" data-in="services" data-grp="services &amp; pricing"><a class="row set-row" href="#\/settings\/discounts">.*?<span class="sub">Services &amp; pricing<\/span>/, "a result shows, with its group");
+  assert.match(found, /class="set-groups" hidden/, "the groups step aside while searching");
   const office = text(settings.render({ health: null }, ctx(["settings:general"])));
-  assert.doesNotMatch(office, /href="#\/settings\/permissions"/, "owner-only sections hidden from the office");
+  assert.doesNotMatch(office, /href="#\/settings\/permissions"/, "owner-only rows hidden from the office");
+  assert.doesNotMatch(office, /data-group="team"/, "a group with nothing to open is hidden");
+
+  const group = await load("settings-group");
   const S = await import("../../../crm-app/modules/system/settings.js");
-  const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
-  const named = new Set(S.LAYOUT.flatMap(([, , rows]) => rows.map(([p]) => p)));
-  assert.deepEqual(MANIFESTS.flatMap((m) => m.settings || []).filter((x) => !named.has(x.path)).map((x) => x.path), [], "every module's setting has its section");
+  const page = text(group.render({ key: "services", group: S.group(() => true, "services") }));
+  assert.equal(group.title({ group: S.group(() => true, "services") }), "Services & pricing");
+  assert.deepEqual([...page.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), ["/settings/pricing", "/settings/discounts", "/settings/plans", "/settings/agreement-templates", "/settings/checklists", "/settings/schedule"]);
+  assert.match(page, /<ul class="list set-list" aria-label="Services &amp; pricing">/, "one inset card");
+  assert.match(page, /Owner<\/span>/, "the owners' rows say so");
+  assert.match(text(group.render({ key: "nope", group: null })), /Nothing in this group for your login/);
+  assert.match(text(group.render({ key: "phone", group: S.group(() => true, "phone") })), /data-theme-row/);
 
   const general = await load("settings-general");
   const doc = (data) => ({ name: "x", data, etag: '"1"' });
@@ -140,4 +159,63 @@ test("M1.3 review: names instead of ids, the hours grid's Open column, rows that
   const m = text(messaging.render({ messaging: doc({ quiet: {}, footer: {} }), comms: doc({ reply_keywords: { enabled: false } }), test: { ...doc({ contact_id: "ct_01m7aaaaaaaaaaaaaaaa" }), labels: { contact_id: "Tess Tester" } }, words: [] }, ctx()));
   assert.match(m, /Tess Tester/);
   assert.doesNotMatch(visible(m), /ct_01m7/);
+});
+
+test("Settings groups (pure): every LAYOUT row in exactly one group, nothing lost, each role sees what it may open", async () => {
+  const S = await import("../../../crm-app/modules/system/settings.js");
+  const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
+  const { ROLE_DEFAULTS } = await import("../../../netlify/lib/crm/core/perms.mjs");
+  const paths = S.LAYOUT.flatMap(([, , , , rows]) => rows.map(([p]) => p));
+  assert.equal(new Set(paths).size, paths.length, "each row in one group");
+  assert.deepEqual(S.LAYOUT.map(([k]) => k), ["business", "team", "services", "messages", "payments", "connections", "data", "phone"]);
+  // the target hub's rows, by group
+  const rows = Object.fromEntries(S.LAYOUT.map(([k, , , , r]) => [k, r.map(([, l]) => l)]));
+  assert.deepEqual(rows.business, ["Company details", "Service area", "Hours & holidays", "Tracking link"]);
+  assert.deepEqual(rows.team, ["Team", "Permissions", "Payroll & pay rates"]);
+  assert.deepEqual(rows.services, ["Prices & price book", "Discounts", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
+  assert.deepEqual(rows.messages, ["Message templates", "Automations", "Follow-up cadences", "Quiet hours & opt-out", "Texting & email setup"]);
+  assert.deepEqual(rows.payments, ["Payments & card fees"]);
+  assert.deepEqual(rows.connections, ["Integrations", "Claude connector", "Where website leads go", "Facebook lead forms", "Maps & team map", "Door to door"]);
+  assert.deepEqual(rows.data, ["Import from Rotor", "Switch from Rotor", "Data & backups", "Dashboard numbers", "Activity log", "Rotor's first customer list", "Open Rotor"]);
+  assert.deepEqual(rows.phone, ["Light or dark", "Tab bar", "Calendar feed"]);
+  // every module's settings entry is named (so none lands at a group's end by accident)
+  assert.deepEqual(MANIFESTS.flatMap((m) => m.settings || []).filter((x) => !paths.includes(x.path)).map((x) => x.path), [], "every module's setting has its group");
+  // every row is a screen some module registers (nothing points nowhere)
+  const all = S.groups(() => true);
+  const shown = all.flatMap((g) => g.items.map((x) => x.path));
+  assert.deepEqual(shown.slice().sort(), paths.slice().sort(), "everyone-may: every row shows, in one group each");
+  for (const g of all) assert.ok(g.caption && g.caption.length <= 34, `${g.key}: ${g.caption}`);
+
+  // a module's entry LAYOUT doesn't name: its section's group (old keys too), else Business's end; never lost
+  const extra = { name: "x", routes: [{ path: "/x/a" }, { path: "/x/b" }, { path: "/x/c" }, { path: "/x/d", perm: "settings:owner" }, { path: "/x/e" }], settings: [
+    { label: "Old maps key", path: "/x/a", section: "maps" }, { label: "Old look key", path: "/x/b", section: "look" },
+    { label: "No section", path: "/x/c" }, { label: "Owners only", path: "/x/d", perm: "settings:owner", section: "data" }, { label: "New key", path: "/x/e", section: "messages" }] };
+  const withX = S.groups((p) => p !== "settings:owner", [...MANIFESTS, extra]);
+  const where = (p) => (withX.find((g) => g.items.some((x) => x.path === p)) || {}).key;
+  assert.equal(where("/x/a"), "connections");
+  assert.equal(where("/x/b"), "phone");
+  assert.equal(where("/x/c"), "business");
+  assert.equal(where("/x/e"), "messages");
+  assert.equal(where("/x/d"), undefined, "a row this person may not open is not shown");
+  const biz = withX.find((g) => g.key === "business").items.map((x) => x.path);
+  assert.equal(biz[biz.length - 1], "/x/c", "at the group's end");
+
+  // the roles (the permission defaults, §4.5)
+  const as = (role) => S.groups((p) => ROLE_DEFAULTS[role][p]);
+  const keys = (gs) => gs.map((g) => g.key);
+  const has = (gs, p) => gs.some((g) => g.items.some((x) => x.path === p));
+  const owner = as("owner");
+  assert.deepEqual(keys(owner), ["business", "team", "services", "messages", "payments", "connections", "data", "phone"], "the owner sees all eight");
+  for (const p of ["/settings/permissions", "/settings/payroll", "/settings/payments", "/cutover", "/import", "/team"]) assert.ok(has(owner, p), p);
+  assert.ok(owner.find((g) => g.key === "team").items.find((x) => x.path === "/settings/permissions").owner, "Owner badge");
+  const admin = as("admin");
+  assert.deepEqual(keys(admin), ["business", "services", "messages", "connections", "data", "phone"], "no Team or Payments for an admin");
+  for (const p of ["/settings/permissions", "/settings/payroll", "/settings/payments", "/settings/pricing", "/cutover", "/import", "/team", "/settings/integrations"]) assert.ok(!has(admin, p), `admin: ${p}`);
+  for (const p of ["/templates", "/settings/discounts", "/activity", "/settings/data", "/calendar-feed"]) assert.ok(has(admin, p), `admin: ${p}`);
+  assert.ok(admin.every((g) => g.items.every((x) => !x.owner)), "no owner-only row for an admin");
+  const tech = as("tech");
+  assert.deepEqual(tech.map((g) => [g.key, g.items.map((x) => x.path)]), [["phone", ["#theme", "/tab-bar"]]], "a tech: only this phone (and the hub itself is not theirs)");
+  assert.notEqual(ROLE_DEFAULTS.tech["settings:general"], true);
+  assert.equal(S.group((p) => ROLE_DEFAULTS.tech[p], "team"), null);
+  assert.equal(S.group(() => true, "nope"), null);
 });

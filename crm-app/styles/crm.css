@@ -930,26 +930,24 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
 .kit-rnds{justify-content:flex-start;gap:8px}
 .kit-rnds+.kit-rnds{margin-top:12px}
 /* ------------------------------------------------------------ the Settings hub (system/settings.js): iOS's look
-   a search field on top; each row a small coloured tile, the label, a chevron; rare sections folded */
+   a search field on top; the groups (a coloured tile, the name, a grey line of what is inside, a chevron) in
+   inset cards; a group's page (settings-group.js) is its rows in one card; typing lists every row, flat */
 .set-find{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-radius:12px;background:var(--seg-track);color:var(--ink-3)}
 .set-find svg{flex:none;width:18px;height:18px}
 .set-find input{flex:1;min-width:0;min-height:44px;border:0;outline:0;background:none;color:var(--ink);font:400 16px/1 var(--text);-webkit-appearance:none;appearance:none}
 .set-find:focus-within{box-shadow:var(--focus)}
-.set-hub .section-h{margin:14px 4px 6px}
-.set-sec{display:flex;flex-direction:column}
+.set-groups{display:flex;flex-direction:column;gap:20px;margin-top:4px}
+.set-groups[hidden],.set-res[hidden]{display:none}
 .set-list{padding-left:0}
 .set-row{min-height:50px;padding:6px 14px 6px 12px;gap:12px}
 .set-row .nm{font-size:16px;font-weight:400}
+.set-row .sub{font-size:14px;line-height:1.3;color:var(--muted)}
+.set-grp-row{min-height:58px}
+.set-grp-row .nm{font-weight:500}
 .set-ic{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;color:#fff}
 .set-ic svg{width:18px;height:18px;stroke-width:2}
 .set-ic.blue{background:#2f7cf6}.set-ic.green{background:#2fa44f}.set-ic.amber{background:#e89a16}.set-ic.red{background:#e5483a}.set-ic.teal{background:#1f9aa8}.set-ic.purple{background:#7a5af5}.set-ic.grey{background:#8e8e93}
 .set-own{background:var(--fill-2);color:var(--ink-2)}
-.set-fold{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:6px 0 0;padding:0 14px 0 0;border:0;border-radius:12px;background:none;color:var(--ink-3);cursor:pointer;text-align:left}
-.set-fold .section-h{flex:1;margin:8px 4px 6px}
-.set-cnt{font:500 14px/1 var(--text);color:var(--muted)}
-.set-fold .side-chev{width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
-.set-sec.shut .side-chev{transform:rotate(-45deg)}
-.set-sec.shut:not(.found) .set-list{display:none}
 .set-none{margin:6px 4px}
 /* #/menu: every list of the drawer open under its row's name */
 .dr-h{display:flex;align-items:center;gap:12px;min-height:40px;margin:6px 0 0;padding:0 10px;font:600 13px/1.2 var(--text);letter-spacing:.05em;text-transform:uppercase;color:var(--label)}
