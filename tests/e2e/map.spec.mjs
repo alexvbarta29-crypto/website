@@ -65,8 +65,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       await goTo(f, "/menu");
       // the bar holds Map (Door to door); the Menu (the drawer) has it too
       assert.ok(await f.$('a[href="#/map"], a[href="#/knock"]'), "Door to door is reachable from the bar or the Menu");
-      // (the drawer's Map row: Door to door and the Team map, a list of its own)
-      assert.match(await f.textContent("#view"), /Door to door[\s\S]*Team map/);
+      // (K0: the drawer has no sub-lists any more; the Team map is in the Map section's "...")
       await goTo(f, "/knock");
       assert.equal(await title(f), "Door to door");
       await mapReady(f);
@@ -89,7 +88,8 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       // the filter hides what's on the map (and a tap on an empty spot then drops a pin)
       await f.click("[data-fab=filter]");
       await sheetUp(f, /Show on the map/);
-      assert.match(await f.textContent(".sheet.on"), /Pins[\s\S]*Customers[\s\S]*Open leads[\s\S]*Areas[\s\S]*Pin types[\s\S]*Not home[\s\S]*Whose pins/);
+      // (guide-gaps M3-M5: Layers, with former customers and inactive areas, then the office's Filter)
+      assert.match(await f.textContent(".sheet.on"), /Pins[\s\S]*Layers[\s\S]*Active customers[\s\S]*Former customers[\s\S]*Open leads[\s\S]*Active areas[\s\S]*Inactive areas[\s\S]*Filter[\s\S]*Came in[\s\S]*Lead source[\s\S]*Service[\s\S]*Pin types[\s\S]*Not home[\s\S]*Whose pins/);
       for (const n of ["pins", "customers", "leads", "areas"]) await f.click(`.sheet.on [name=${n}]`);
       assert.deepEqual(await screenProblems(f), []);
       await sheetShot(page, `map-knock-filter-${device}`);
