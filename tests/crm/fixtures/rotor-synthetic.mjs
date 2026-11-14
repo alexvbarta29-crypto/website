@@ -11,7 +11,7 @@
 //   const ex = generate({ scale: 0.05, seed: 1 });   // { [entity]: rows[] }, also ex.media: [{ index row, bytes }]
 //   writeExport(dir, { scale: 1 });                  // writes dir/<entity>.jsonl (+ dir/media/ with media: true)
 //
-//   node tests/crm/fixtures/rotor-synthetic.mjs <out-dir> [--scale 1] [--seed 7] [--media] [--no-site-stores]
+//   node tests/crm/fixtures/rotor-synthetic.mjs <out-dir> [--scale 1] [--seed 7] [--media] [--no-site-stores] [--rotor-layout]
 //
 // At --scale 1 the counts match the 2026-11-09/10 export (gaps.md §4):
 // 780 customers, 485 leads, 183 quote contact rows, 980 opportunities,
@@ -119,6 +119,40 @@ const SMS_OUT = [
   "Your invoice is ready. You can pay securely here: https://example.com/pay - thank you!",
 ];
 const SMS_IN = ["Sounds good, see you then", "Thank you!", "Can we move it to Thursday afternoon? Something came up at work.", "Yes please", "The gate code is on file, the dog will be inside.", "How much would it be to add the screens?"];
+
+// ------------------------------------------------------------ Rotor's own prices
+
+// How Rotor prices visit k of a quote or plan (checked against the real
+// 2026-11-13 export: every quote's `total` is visit 1, a plan's
+// `sale_value` is the sum over its contract's visits, an open job's
+// `due_amount` is its lines less the plan discounts for its place by job
+// number): the lines that cover k (a custom price, or unit price ×
+// quantity; client-optional lines count), less every `multi` discount that
+// covers k whatever `enabled` says (`enabled` only switches the old single
+// `type` + `value` discount), percentages first, never below $0. In cents.
+const coversVisit = (js, k) => {
+  const t = (js && js.type) || "all";
+  if (t === "initial") return k === 1;
+  if (t === "after_initial") return k > 1;
+  if (t === "specific") return Array.isArray(js.selectedJobs) && js.selectedJobs.includes(k);
+  return true;
+};
+export function rotorDiscounts(d) {
+  if (!d || Array.isArray(d) || typeof d !== "object") return [];
+  if (Array.isArray(d.multi) && d.multi.length) return d.multi;
+  return d.enabled === true && d.type && d.value ? [{ type: d.type, value: d.value, jobSchedule: { type: "all" } }] : [];
+}
+const cents = (dollars) => Math.round(Number(dollars || 0) * 100);
+export function rotorLineCents(l) {
+  return l.use_unit_pricing ? Math.round(Number(l.quantity || 0) * cents(l.unit_price)) : cents(l.custom_price ?? l.total_price);
+}
+export function rotorVisitCents(lines, discounts, k = 1) {
+  const base = (lines || []).filter((l) => coversVisit(l.jobSchedule, k)).reduce((s, l) => s + rotorLineCents(l), 0);
+  const ds = rotorDiscounts(discounts).filter((m) => coversVisit(m.jobSchedule, k));
+  const pct = ds.filter((m) => m.type === "percentage").reduce((s, m) => s + Number(m.value || 0), 0);
+  const fixed = ds.filter((m) => m.type !== "percentage").reduce((s, m) => s + cents(m.value), 0);
+  return Math.max(0, base - Math.round((base * Math.min(100, pct)) / 100) - fixed);
+}
 
 // ------------------------------------------------------------ the generator
 
@@ -237,6 +271,30 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     out.quote_contacts.push(row);
   }
 
+  // The contact Rotor's quote rows carry (`quote.contact`, the 2026-11-13
+  // export's only copy of consent, Stripe ids and converted-lead ids): the
+  // quote contact row where there is one, else the customer or lead.
+  const qcById = new Map(out.quote_contacts.map((q) => [q.id, q]));
+  function quoteContactOf(c, type, i) {
+    const lead = type === "lead";
+    // a contact with no quote contact row gets the same kinds of values, made from its id (no draw from the seeded stream)
+    const h = createHash("sha256").update(String(c.id)).digest("hex");
+    const n = parseInt(h.slice(0, 6), 16);
+    const qc = qcById.get(c.id) || {
+      messaging_config: n % 4 === 0 ? {} : { sms: { opted_in: n % 13 !== 2, first_sms_sent: true, first_sms_sent_date: iso(Date.parse("2026-10-01T16:16:24.305Z") + (n % 40) * day) } },
+      muted_channels: [], ...(lead ? {} : { stripe_customer_id: n % 6 < 5 ? `cus_${h.slice(6, 20)}` : null, converted_from_lead_id: n % 5 === 1 ? archivedLeadIds[n % archivedLeadIds.length] : null }),
+    };
+    return {
+      id: c.id, created_at: c.created_at, updated_at: c.created_at, archived: false, notes: c.notes ?? null, tags: c.tags || [], phone: c.phone, email: c.email,
+      ...(lead ? { name: c.name, priority: c.priority, stage: c.stage, status: "New", lead_source: c.source, follow_up_date: c.follow_up_date ?? null }
+        : { first_name: c.first_name, last_name: c.last_name, source: c.source, status: c.status, billing_same_as_property: true }),
+      messaging_config: qc.messaging_config || {}, muted_channels: qc.muted_channels || [], stripe_customer_id: qc.stripe_customer_id ?? null, converted_from_lead_id: qc.converted_from_lead_id ?? null,
+      last_called_at: i % 5 === 1 ? iso(Date.parse("2026-10-20T16:00:00Z") + i * 3600000) : null,
+      sync: lead && c.source === "Meta Ads" && i % 2 ? { meta: { ad_id: "ad-sample-1", ad_name: "Sample Ad", adset_id: "adset-sample-1", form_id: "form-sample-1", form_name: "Sample Form", page_id: "page-sample-1", external_source: "meta", raw_field_data: { first_name: "x", email: "x@example.com" } } } : {},
+      photos: {}, documents: {},
+    };
+  }
+
   // ---- pipelines (row 13), opportunities (row 14), tasks (row 15)
   const PIPES = [["New Lead - No Estimate Yet", 9], ["Estimate Sent", 5], ["Referrals", 4], ["Christmas Lights", 6]];
   for (const [k, [name, stages]] of PIPES.entries()) {
@@ -254,7 +312,7 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
       id: r.uuid(), name: contact ? (contact.name || `${contact.first_name} ${contact.last_name}`) : i % 3 ? `${FIRST[i % FIRST.length]} Archived` : "Opportunity from Lead",
       pipeline_id: p.id, stage_id: st.id, status: r.pick(["Open", "Open", "Open", "Won", "Lost", "Abandoned"]), value: i % 40 === 0 ? 0 : null,
       assigned_to: i % 6 === 0 ? [owner(r.int(0, 1))] : [], contact_id: contact ? contact.id : archivedLeadIds[i % archivedLeadIds.length], contact_type: kind === "customer" ? "customer" : "lead",
-      notes: i % 41 === 0 ? "" : null, archived: i % 4 === 0, created_at: isoMicros(Date.parse("2026-09-05T12:00:00Z") + i * 3600000, r),
+      notes: i % 82 === 41 ? "Wants a call after 5" : i % 41 === 0 ? "" : null, archived: i % 4 === 0, created_at: isoMicros(Date.parse("2026-09-05T12:00:00Z") + i * 3600000, r),
     });
   }
   for (let i = 0; i < N.tasks; i++) {
@@ -286,13 +344,15 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     };
   };
   const discountShape = (n) => {
-    const entry = { name: n % 5 === 2 ? undefined : DISCOUNT_NAMES[n % DISCOUNT_NAMES.length], type: n % 9 === 0 ? "percentage" : "fixed", value: n % 9 === 0 ? 50 : [50, 100][n % 2], jobSchedule: { type: "all" } };
+    const entry = { name: n % 5 === 2 ? undefined : DISCOUNT_NAMES[n % DISCOUNT_NAMES.length], type: n % 9 === 0 ? "percentage" : "fixed", value: n % 9 === 0 ? 50 : [50, 100][n % 2],
+      jobSchedule: n % 18 === 7 ? { type: "initial" } : n % 18 === 13 ? { type: "after_initial" } : { type: "all" } };
     switch (n % 6) {
       case 0: return [];
       case 1: return { multi: [entry] };
       case 2: return { enabled: true, type: "fixed", value: 50 };
       case 3: return { enabled: true, multi: [entry], type: "fixed", value: 0 };
-      case 4: return { enabled: true, multi: [entry] };
+      // Rotor applies a multi discount even when `enabled` (the old single discount's switch) is false
+      case 4: return n % 12 === 10 ? { enabled: false, multi: [entry], type: "fixed", value: 0 } : { enabled: true, multi: [entry] };
       default: return null;
     }
   };
@@ -309,15 +369,16 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     out.quotes.push({
       id: r.uuid(), quote_number: 9408 + i * 23, status, archived: false, contact_id: c.id, contact_type: isLead ? "lead" : "customer",
       service_types: [...new Set(lines.flatMap((l) => l.service_type || []))].slice(0, 2), service_length_months: i % 3 === 0 ? 12 : i % 17 === 1 ? 36 : null,
-      billing_mode: freq && freq.name !== "One-Time" ? "start_of_month" : "after_jobs", total: Math.round(lines.reduce((s, l) => s + (l.use_unit_pricing ? l.quantity * l.unit_price : l.custom_price), 0) * 100) / 100,
+      billing_mode: freq && freq.name !== "One-Time" ? "start_of_month" : "after_jobs", total: rotorVisitCents(lines, discountShape(i), 1) / 100,
+      contact: quoteContactOf(c, isLead ? "lead" : "customer", i),
       jobs_config: {
-        line_items: lines, discounts: discountShape(i), frequency: freq, notes: i % 3 === 0 ? "Thanks for choosing us!" : undefined,
+        line_items: lines, discounts: discountShape(i), frequency: freq, notes: i % 3 === 0 ? (i % 9 === 0 ? "Crew: use the side gate." : "Thanks for choosing us!") : undefined,
         ...(i % 2 ? { property_id: 320000 + i, same_as_customer_address: !own } : {}),
         ...(own ? { property_street1: `${7 + i} Lake Rd`, property_street2: "", property_city: "Mound", property_state: i % 18 === 5 ? "32" : "MN", property_zip: "55364", property_country: "US" } : {}),
         ...(i > N.quotes * 0.7 ? { agreement: { template_id: null, auto_advance: true, require_card: i % 4 === 0 }, photos: i % 40 === 1 ? [{ url: `https://example.com/storage/v1/object/public/photos/x/${r.uuid()}.jpg`, path: "x.jpg", thumb_url: `https://example.com/storage/v1/object/public/photos/x/t.jpg`, thumb_path: "t.jpg" }] : [], service_types: [] } : {}),
         ...(i % 25 === 3 ? { plan_template_id: r.uuid() } : {}),
       },
-      internal_notes: i % 4 ? null : "", client_notes: i % 5 === 0 ? "A 50% deposit holds your install date." : null,
+      internal_notes: i % 4 ? null : "", client_notes: i % 5 === 0 ? "A 50% deposit holds your install date." : i % 3 === 0 && i % 9 !== 0 ? "Thanks for choosing us!" : null,
       sent_at: status !== "draft" ? iso(created + 3600000) : null, viewed_at: ["approved", "converted", "modification_requested"].includes(status) || i % 6 === 1 ? iso(created + 7200000) : null,
       approved_at: ["approved", "converted"].includes(status) ? iso(created + day) : null, rejected_at: status === "rejected" ? iso(created + day) : null,
       modification_requested_at: status === "modification_requested" ? iso(created + day) : null, modification_message: status === "modification_requested" ? "Can you skip the screens?" : null,
@@ -364,10 +425,34 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     out.jobs.push({
       id: j.id, job_number: String(7 + i).padStart(7, "0"), status: j.status, start_date: iso(start), end_date: iso(j.status === "Pending" && i % 2 ? start : start + 3 * 3600000),
       assigned_to: i < N.jobs * 0.6 ? j.assigned_to : [], customer: { id: j.customer.id, first_name: j.customer.first_name, last_name: j.customer.last_name, company_name: j.customer.company_name },
-      service_plan_id: plan ? plan.id : null, line_items: lines, due_amount: j.status === "Completed" ? 0 : -50, notes: i % 19 === 0 ? "Gate code on file. Dog is friendly." : i < N.jobs * 0.5 ? null : "",
+      service_plan_id: plan ? plan.id : null, line_items: lines, due_amount: 0, notes: i % 19 === 0 ? "Gate code on file. Dog is friendly." : i < N.jobs * 0.5 ? null : "",
       created_at: isoMicros(i < N.jobs * 0.6 ? Date.parse("2026-08-20T17:18:04Z") : start - 10 * day, r),
     });
   }
+  // Rotor's own figures for the plans and their jobs: a job's due amount is
+  // its lines less the plan discounts for its place by job number (0 once
+  // paid), a plan's sale value the sum over its contract's visits; some
+  // plans list their jobs out of job-number order, as Rotor's do
+  const jobById = new Map(out.jobs.map((j) => [j.id, j]));
+  const VPY = { "Semi-Annual": 2, Quarterly: 4, Monthly: 12, Annual: 1 };
+  for (const [i, p] of out.service_plans.entries()) {
+    const discounts = p.jobs_config.discounts;
+    const mine = p.jobs.map((x) => jobById.get(x.id)).filter(Boolean).sort((a, b) => Number(a.job_number) - Number(b.job_number));
+    mine.forEach((j, k) => {
+      if (j.status === "Completed") return;
+      const base = j.line_items.reduce((s, l) => s + Math.round(Number(l.total_price || 0) * 100), 0);
+      const ds = rotorDiscounts(discounts).filter((m) => coversVisit(m.jobSchedule, k + 1));
+      const pct = ds.filter((m) => m.type === "percentage").reduce((s, m) => s + Number(m.value || 0), 0);
+      const fixed = ds.filter((m) => m.type !== "percentage").reduce((s, m) => s + Math.round(Number(m.value || 0) * 100), 0);
+      j.due_amount = Math.max(0, base - Math.round((base * Math.min(100, pct)) / 100) - fixed) / 100;
+    });
+    const lightsPlan = p.service_types.includes("Christmas Lights");
+    const years = !p.end_date && rotorDiscounts(discounts).some((m) => /3[\s-]*year/i.test(m.name || "")) ? 3 : 1;
+    const visits = p.service_frequency === "One-Time" && !lightsPlan ? Math.max(1, p.jobs.length) : (VPY[p.service_frequency] || 1) * years;
+    p.sale_value = Array.from({ length: visits }, (_, k) => rotorVisitCents(p.jobs_config.line_items, discounts, k + 1)).reduce((s, x) => s + x, 0) / 100;
+    if (i % 7 === 3 && p.jobs.length > 1) p.jobs.reverse();
+  }
+  for (const j of out.jobs) if (!out.service_plans.some((p) => p.id === j.service_plan_id && p.jobs.some((x) => x.id === j.id)) && j.status !== "Completed") j.due_amount = j.line_items.reduce((s, l) => s + Math.round(Number(l.total_price || 0) * 100), 0) / 100;
   for (let i = 0; i < N.visits; i++) {
     const j = out.jobs[i % out.jobs.length];
     const c = j.customer;
@@ -421,7 +506,7 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     const planDisc = i % 37 === 5;
     const lines = imported
       ? [{ title: "Exterior Window Cleaning", quantity: 1, unit_price: (sub + (planDisc ? 5000 : 0)) / 100, total_price: (sub + (planDisc ? 5000 : 0)) / 100 }]
-      : [{ kind: "service", title: "Window Cleaning", quantity: 1, unit_price_cents: sub, total_cents: sub },
+      : [{ kind: "service", title: "Window Cleaning", quantity: 1, unit_price_cents: sub, total_cents: sub, ...(i % 23 === 2 ? { details: "Front and back" } : {}) },
         ...(i % 29 === 4 ? [{ kind: "credit", title: "Referral Credit", quantity: 1, unit_price_cents: -2500, total_cents: -2500 }] : []),
         ...(i % 31 === 6 ? [{ kind: "service", title: "Card Fee", quantity: 1, unit_price_cents: 300, total_cents: 300 }] : []),
         ...(i % 33 === 7 ? [{ kind: "discount", title: `Already Paid - Deposit D-${100000 + i}`, quantity: 1, unit_price_cents: -1000, total_cents: -1000 }] : []),
@@ -440,11 +525,12 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
     const inv = out.invoices[i % out.invoices.length];
     const refund = i % 98 === 7;
     const method = refund ? "stripe" : METHODS[i % METHODS.length];
-    const tip = !refund && i % 14 === 3 ? 2500 : 0;
+    const tipOnly = !refund && i % 250 === 17;          // a tip paid on its own after the invoice
+    const tip = tipOnly ? 1500 : !refund && i % 14 === 3 ? 2500 : 0;
     const unlinked = i % 170 === 11;
     out.payments.push({
-      id: r.uuid(), status: i % 300 === 13 ? "failed" : "succeeded", payment_type: refund ? "refund" : "invoice", payment_method: method, currency: "usd",
-      total_amount_cents: inv.total_cents + tip, tip_cents: tip, processing_fee_cents: method === "stripe" && !refund ? Math.round(inv.total_cents * 0.029) + 30 : 0,
+      id: r.uuid(), status: i % 300 === 13 ? "failed" : "succeeded", payment_type: refund ? "refund" : tipOnly ? "tip" : "invoice", payment_method: method, currency: "usd",
+      total_amount_cents: tipOnly ? tip : inv.total_cents + tip, tip_cents: tip, processing_fee_cents: method === "stripe" && !refund ? Math.round(inv.total_cents * 0.029) + 30 : 0,
       payment_date: method === "Imported-Data" ? inv.due_date.slice(0, 10) + "T12:00:00+00:00" : iso(Date.parse(inv.created_at) + 3600000),
       reference_number: method === "check" ? (i % 2 ? String(r.int(100, 99999)) : `Chk ${r.int(100, 999)} acct ${r.int(10000000, 99999999)}`) : null,
       customer_id: inv.customer.id, customer: inv.customer, invoice_id: unlinked ? null : inv.id, invoice: unlinked ? null : { invoice_number: inv.invoice_number },
@@ -531,14 +617,39 @@ export function generate({ scale = 0.05, seed = 1, siteStores = true, media = fa
   return out;
 }
 
+// The files of the real 2026-11-13 export (layout "rotor"): Rotor's own
+// names (availability.jsonl, the pay rates as one JSON object in
+// payroll_rate_settings.json), its contact list (contacts.jsonl, a repeat of
+// customers and leads with `type`), and no quote_contacts.jsonl (each quote
+// row carries its contact). → { [file name]: text }
+export function rotorLayout(ex) {
+  const files = {};
+  const jsonl = (rows) => rows.map((x) => JSON.stringify(x)).join("\n") + (rows.length ? "\n" : "");
+  for (const [entity, rows] of Object.entries(ex)) {
+    if (entity === "quote_contacts") continue;
+    if (entity === "rate_settings") {
+      const strip = ({ type, ...rest }) => rest;
+      files["payroll_rate_settings.json"] = JSON.stringify({ hourly_rates: rows.filter((x) => x.type === "hourly").map(strip), commission_rates: rows.filter((x) => x.type === "commission").map(strip), commission_rate_modifiers: [] });
+      continue;
+    }
+    files[`${entity === "member_availability" ? "availability" : entity}.jsonl`] = jsonl(rows);
+  }
+  files["contacts.jsonl"] = jsonl([...ex.customers.map((c) => ({ ...c, type: "customer" })), ...ex.leads.map((l) => ({ ...l, type: "lead" }))]);
+  return files;
+}
+
 // Writes the export: dir/<entity>.jsonl for every entity (empty files for
-// empty tables, like the real export), dir/media/ with media: true.
+// empty tables, like the real export), dir/media/ with media: true; with
+// layout: "rotor", the file names and shapes of the real 2026-11-13 export.
 // → { counts: { [entity]: rows }, media: n }
 export function writeExport(dir, opts = {}) {
   const ex = generate(opts);
   mkdirSync(dir, { recursive: true });
   const counts = {};
-  for (const [entity, rows] of Object.entries(ex)) {
+  if (opts.layout === "rotor") {
+    for (const [name, text] of Object.entries(rotorLayout(ex))) writeFileSync(path.join(dir, name), text);
+    for (const [entity, rows] of Object.entries(ex)) counts[entity] = rows.length;
+  } else for (const [entity, rows] of Object.entries(ex)) {
     writeFileSync(path.join(dir, `${entity}.jsonl`), rows.map((x) => JSON.stringify(x)).join("\n") + (rows.length ? "\n" : ""));
     counts[entity] = rows.length;
   }
@@ -557,8 +668,8 @@ if (isMain) {
   const args = process.argv.slice(2);
   const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
   const dir = args.find((a, i) => !a.startsWith("--") && !["--scale", "--seed"].includes(args[i - 1]));
-  if (!dir) { console.error("usage: node tests/crm/fixtures/rotor-synthetic.mjs <out-dir> [--scale 1] [--seed 7] [--media] [--no-site-stores]"); process.exit(2); }
+  if (!dir) { console.error("usage: node tests/crm/fixtures/rotor-synthetic.mjs <out-dir> [--scale 1] [--seed 7] [--media] [--no-site-stores] [--rotor-layout]"); process.exit(2); }
   if (existsSync(dir) && readdirSync(dir).length) { console.error("Refusing: the output folder is not empty."); process.exit(2); }
-  const res = writeExport(dir, { scale: Number(opt("--scale", "0.05")), seed: Number(opt("--seed", "1")), media: args.includes("--media"), siteStores: !args.includes("--no-site-stores") });
+  const res = writeExport(dir, { scale: Number(opt("--scale", "0.05")), seed: Number(opt("--seed", "1")), media: args.includes("--media"), siteStores: !args.includes("--no-site-stores"), ...(args.includes("--rotor-layout") ? { layout: "rotor" } : {}) });
   console.log(JSON.stringify({ written: dir, counts: res.counts, media: res.media }, null, 2));
 }

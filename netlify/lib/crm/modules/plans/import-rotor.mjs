@@ -16,9 +16,13 @@
 //        quantity, never the plan-wide total), ids kept; the five discount
 //        shapes; billing (after_jobs → after_visit, start_of_month →
 //        first_of_month), autopay, auto-renew; status (active, cancelled
-//        with its date and reason, else expired); the term from the dates;
-//        ordinals from jobs[] in order (target months from the jobs, which
-//        get the plan's id and their ordinal); the quote by identical line
+//        with its date and reason, else expired); the term from the dates
+//        (else from a contract discount: "3-Year Contract" is 36 months);
+//        ordinals from the jobs in job-number order, Rotor's visit order
+//        (target months from the jobs, which get the plan's id and their
+//        ordinal, and the plan's discounts for their place as a partial
+//        record: Rotor takes them off each job's price; a one-time
+//        container's jobs too); the quote by identical line
 //        ids, else the same customer approved within 60 s. Row 20: the plan
 //        template ids go to cfg/plans_catalog.rotor_template_ids. Row 21:
 //        signed agreements aren't exposed: imported plans say
@@ -114,6 +118,7 @@ export function normalizePlan(row) {
     active: row.active === true, cancelled: row.cancelled === true, cancelled_at: iso(row.cancelled_at), cancelled_reason: str(row.cancelled_reason),
     start_date: iso(row.start_date), end_date: iso(row.end_date), billing_mode: str(row.billing_mode), is_auto_pay: row.is_auto_pay === true, auto_renew: row.auto_renew === true,
     sold_by: row.sold_by ? str(row.sold_by) : null, sale_value: row.sale_value ?? null, lines_raw: (cfg.line_items || []).filter(plain).slice(0, 50), discounts_raw: cfg.discounts ?? [],
+    notes: typeof cfg.notes === "string" ? fixMojibake(cfg.notes).trim().slice(0, 2000) : "", monthly_price: typeof row.monthly_price === "number" ? row.monthly_price : null,
     property_id: cfg.property_id ?? null, plan_template_id: cfg.plan_template_id ? str(cfg.plan_template_id).slice(0, 64) : null, jobs, created_at: iso(row.created_at),
   };
 }
@@ -143,7 +148,8 @@ export function planLine(l, i) {
   return {
     id, title: (fixMojibake(str(l.title)) || "Service").slice(0, 160), ...(str(l.description) ? { description: str(l.description).slice(0, 1000) } : {}),
     qty_milli: l.use_unit_pricing ? qty : 1000, unit_cents: l.use_unit_pricing ? (unit || 0) : (unit || 0), override: { cents: per === null ? 0 : per, reason: "imported" },
-    scope: scopeOf(l.jobSchedule), ...(l.client_optional === true ? { optional: true, selected: false } : {}), ...(parent ? { service_type: parent.slice(0, 120) } : {}),
+    // Rotor's prices count a client-optional line: it is on the plan as sold, so it comes in ticked
+    scope: scopeOf(l.jobSchedule), ...(l.client_optional === true ? { optional: true, selected: true } : {}), ...(parent ? { service_type: parent.slice(0, 120) } : {}),
     ...(l.use_unit_pricing && /ft|feet|foot/i.test(`${l.title} ${l.unit || ""}`) ? { unit: "ft" } : {}),
   };
 }
@@ -171,6 +177,17 @@ export function planDiscounts(raw) {
     const value = type === "percentage" ? Math.max(0, Math.min(10000, Math.round(Number(d.value) * 100) || 0)) : Math.max(0, toCents(d.value ?? 0) || 0);
     return { id: `dc_r${i + 1}`, name: (fixMojibake(str(d.name)) || "Discount").slice(0, 120), type, value, scope: scopeOf(d.jobSchedule) };
   });
+}
+
+// A plan without an end date runs a year, or as long as its contract
+// discount says: Rotor's sale value of a lights plan sold with the 3-year
+// contract discount is three seasons.
+export function termMonthsOf(discounts = []) {
+  const names = discounts.map((d) => String(d.name || ""));
+  if (names.some((n) => /\b(5|five)[\s-]*y(ea)?r/i.test(n))) return 60;
+  if (names.some((n) => /\b(3|three)[\s-]*y(ea)?r/i.test(n))) return 36;
+  if (names.some((n) => /\b(2|two)[\s-]*y(ea)?r/i.test(n))) return 24;
+  return 12;
 }
 
 async function contactFor(ctx, rid) {
@@ -208,11 +225,48 @@ export function termAt(start, months, renew, autoRenew, day) {
   return { n: n + 1, start: s, end: e, initialEnd };
 }
 
+// The discounts a plan row puts on its k-th job (Rotor takes them off each
+// job's price: the job's due amount is its lines less these), each then
+// covering its one job.
+export function jobDiscountsOf(discounts, k) {
+  return discounts.filter((d) => d.value > 0 && coversK(d.scope, k)).map((d) => ({ ...d, scope: { type: "all" } }));
+}
+const coversK = (s, k) => {
+  const t = (s && s.type) || "all";
+  if (t === "initial") return k === 1;
+  if (t === "after_initial") return k > 1;
+  if (t === "specific") return Array.isArray(s.visits) && s.visits.includes(k);
+  return true;
+};
+
+// The jobs a plan row lists, as the jobs phase made them, in Rotor's visit
+// order (by job number: jobs[] is not always in that order, and the scope of
+// a "first visit" discount follows the job numbers), each with the plan's
+// discounts for its place: partial records (the job's `discounts` only), so
+// the import's field ownership keeps a discount someone changed in the
+// CRM. Plan or no plan (a one-time container), the jobs carry them.
+// → { rows: [{ j, id, g }] in visit order, records }
+async function jobsWithDiscounts(r, ctx) {
+  const ids = [];
+  for (const j of r.jobs) ids.push((ctx && typeof ctx.lookup === "function" ? await ctx.lookup("job", j.id) : null) || idForRotor("job", j.id));
+  const got = await getRecords("job", ids);
+  const numberOf = (g) => (g && Number.isSafeInteger(g.data.number) ? g.data.number : Infinity);
+  const rows = r.jobs.map((j, i) => ({ j, id: ids[i], g: got[i] || null, i })).sort((a, b) => numberOf(a.g) - numberOf(b.g) || a.i - b.i);
+  const discounts = planDiscounts(r.discounts_raw);
+  const records = [];
+  rows.forEach(({ g }, i) => {
+    if (!g) return;
+    const { _w, _etag, ...job } = g.data;
+    records.push({ type: "job", data: { ...job, discounts: jobDiscountsOf(discounts, i + 1) }, fields: ["discounts"] });
+  });
+  return { rows, records };
+}
+
 async function mapPlan(r, ctx) {
   const warnings = [];
   const out = { records: [], pointers: [], patches: [], stats: [], warnings };
   const oneTime = oneTimeOf(r);
-  if (oneTime && !r.lights && r.jobs.length <= 1) return { warnings: ["one_time_container"] };
+  if (oneTime && !r.lights && r.jobs.length <= 1) return { records: (await jobsWithDiscounts(r, ctx)).records, warnings: ["one_time_container"] };
   let contactId = await contactFor(ctx, r.customer);
   if (!contactId) {
     const ph = placeholderContact(r.customer, { name: r.customer_name, kind: "customer" });
@@ -230,22 +284,21 @@ async function mapPlan(r, ctx) {
   const lines = r.lines_raw.map(planLine);
   const discounts = planDiscounts(r.discounts_raw);
   const start = dayOf(r.start_date) || dayOf(r.created_at) || localDate(now());
-  let months = 12;
+  let months = termMonthsOf(discounts);
   const end = dayOf(r.end_date);
   if (end && end > start) months = Math.max(1, Math.min(60, Math.round(monthsBetween(monthOf(start), monthOf(end)) || 12)));
   const renew = key === "custom" ? Math.max(1, Math.min(60, frequency.interval === "month" ? frequency.count : frequency.interval === "year" ? 12 * frequency.count : 12)) : entry.renews_every_months;
   const day = localDate(now());
   const t = termAt(start, months, renew, r.auto_renew && !oneTime, day);
   const id = idForRotor("plan", r.id);
-  // ordinals from jobs[] in order: target months from the jobs the jobs phase brought in
-  const jobIds = [];
-  for (const j of r.jobs) jobIds.push((ctx && typeof ctx.lookup === "function" ? await ctx.lookup("job", j.id) : null) || idForRotor("job", j.id));
-  const jobs = await getRecords("job", jobIds);
+  // ordinals from the jobs in visit order: target months from the jobs the jobs phase brought in
+  const withDiscounts = await jobsWithDiscounts(r, ctx);
+  const jobIds = withDiscounts.rows.map((x) => x.id);
   const ordinals = [];
   const termOf = (d) => (!d || d <= t.initialEnd ? 1 : termAt(start, months, renew, true, d).n);
   const perTerm = {};
-  r.jobs.forEach((j, i) => {
-    const job = jobs[i] && jobs[i].data;
+  withDiscounts.rows.forEach(({ j, g }, i) => {
+    const job = g && g.data;
     const date = job ? (job.schedule && (job.schedule.first_on || job.schedule.last_on)) || (job.completed_at ? localDate(new Date(job.completed_at)) : null) || (job.target_month ? `${job.target_month}-15` : null) : null;
     const target = date ? monthOf(date) : monthOf(addMonthsDate(start, Math.round((12 / vpy) * i)));
     const term = termOf(date || `${target}-15`);
@@ -278,11 +331,13 @@ async function mapPlan(r, ctx) {
     rotor: {
       service_plan_id: r.id, ...(r.plan_template_id ? { plan_template_id: r.plan_template_id } : {}), billing_mode_raw: r.billing_mode, is_auto_pay: r.is_auto_pay,
       sale_value_dollars: r.sale_value, service_frequency: r.frequency_name, active: r.active, job_ids: r.jobs.map((j) => j.id),
+      ...(r.notes ? { notes: r.notes } : {}), ...(r.monthly_price !== null ? { monthly_price_dollars: r.monthly_price } : {}),
     },
     ...(r.created_at ? { created_at: r.created_at } : {}),
   };
   data.sale_value_cents = saleValue(data);
   out.records.push({ type: "plan", data });
+  out.records.push(...withDiscounts.records);
   out.pointers.push({ kind: "rotor/plan", key: rotorKey(r.id), value: { id } });
   if (status === "active" && data.kind !== "one_time_series") {
     // only when the stats part lacks it (an unchanged re-run writes nothing)

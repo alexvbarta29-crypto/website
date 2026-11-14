@@ -47,6 +47,8 @@ export const MARKATE_BATCH_2 = "2026-07-29T21:49:46";
 export const MAIN_NUMBER = "+17633143400";
 export const STOP_WORDS = Object.freeze(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE"]);
 export const COUPON_OPTIN_TAG = "Giveaway - Coupon Opt-In";
+// Rotor's lead priority: "medium" on nearly every lead, so only a high one shows (as a tag); both stay in rotor.priority
+export const HIGH_PRIORITY_TAG = "High priority";
 
 // ------------------------------------------------------------ pure helpers
 
@@ -166,6 +168,7 @@ export function normalizePerson(row) {
     status: opt(row, "status", 40), source: opt(row, "source", 120), assigned_to: assigned, address: addr, tags,
     notes: opt(row, "notes", 20000), created_at: opt(row, "created_at", 40), service_type: opt(row, "service_type", 200),
     projected_value: row.projected_value ?? null, follow_up_date: opt(row, "follow_up_date", 40), stage: opt(row, "stage", 80),
+    priority: typeof row.priority === "string" ? row.priority.trim().toLowerCase().slice(0, 20) : "",
   };
 }
 
@@ -248,18 +251,31 @@ async function mapCustomer(r, ctx) {
 export function normalizeQuoteContact(row) {
   const id = needId(row);
   const ms = plain(row.messaging_config) && plain(row.messaging_config.sms) ? row.messaging_config.sms : {};
+  const meta = plain(row.sync) && plain(row.sync.meta) ? row.sync.meta : {};
+  const isoOf = (v) => (v && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
   return {
     id, kind: str(row.type || row.contact_type).toLowerCase() === "lead" ? "lead" : "customer",
     stripe_customer_id: str(row.stripe_customer_id) || null, sms_opted_in: ms.opted_in === true,
-    first_sms_sent_date: str(row.first_sms_sent_date) || null, converted_from_lead_id: str(row.converted_from_lead_id) || null,
+    // Rotor keeps the first text's date inside messaging_config.sms (older notes had it on the row)
+    first_sms_sent_date: str(ms.first_sms_sent_date || row.first_sms_sent_date) || null, converted_from_lead_id: str(row.converted_from_lead_id) || null,
     muted_channels: Array.isArray(row.muted_channels) ? row.muted_channels.map((x) => str(x).toLowerCase()).filter((x) => x === "sms" || x === "email") : [],
+    notes: typeof row.notes === "string" ? row.notes.slice(0, 20000) : "", last_called_at: isoOf(row.last_called_at),
+    meta: { form: clean(meta.form_name).slice(0, 120), ad: clean(meta.ad_name).slice(0, 120) },
   };
 }
 
 async function mapQuoteContact(r, ctx) {
   const id = (await lookup(ctx, r.kind, r.id)) || (r.kind === "customer" ? idForRotor("contact", r.id) : null);
   if (!id) return { warnings: ["quote_contact_unknown"] };
-  const out = { patches: [], pointers: [], stats: [], warnings: [] };
+  const out = { patches: [], pointers: [], stats: [], mergeCandidates: [], warnings: [] };
+  // what the quote's copy of the contact holds that customers.jsonl doesn't: its notes (Rotor's
+  // customer list leaves some out), the Meta lead form and ad, when someone last called them
+  const fill = {};
+  if (r.notes.trim()) fill.notes = r.notes.slice(0, 10000);
+  if (r.meta.form) fill["source.form"] = r.meta.form;
+  if (r.meta.ad) fill["source.ad"] = r.meta.ad;
+  if (Object.keys(fill).length) out.patches.push({ type: "contact", id, fill });
+  if (r.last_called_at) out.stats.push({ contact_id: id, part: "sales", merge: { last_called_at: r.last_called_at } });
   // two patches: the grant only where consent is still unknown; the muted channels whatever consent says
   if (r.sms_opted_in) out.patches.push({ type: "contact", id, set: { "consent.sms_service": consentGrant("import") }, only_if: { "consent.sms_service.state": ["unknown", undefined] } });
   const paused = {};
@@ -272,6 +288,10 @@ async function mapQuoteContact(r, ctx) {
   if (r.first_sms_sent_date && !Number.isNaN(Date.parse(r.first_sms_sent_date))) out.stats.push({ contact_id: id, part: "comms", merge: { first_sms: { [MAIN_NUMBER]: new Date(r.first_sms_sent_date).toISOString() } } });
   // a converted lead: its Rotor lead id names this contact, so the leads phase updates it in place (§10.3)
   if (r.converted_from_lead_id && ROTOR_ID.test(r.converted_from_lead_id)) {
+    // an earlier import made the lead a contact of its own (its row came before Rotor's conversion was
+    // known): the owner is offered the merge, the lead's history is never moved behind their back
+    const had = await lookup(ctx, "lead", r.converted_from_lead_id);
+    if (had && had !== id) out.mergeCandidates.push({ a: id, b: had, reason: "name", confidence: "high" });
     out.pointers.push({ kind: "rotor/lead", key: rotorKey(r.converted_from_lead_id), value: { id } });
     out.patches.push({ type: "contact", id, add: { "rotor.lead_ids": [r.converted_from_lead_id] }, fill: { "rotor.converted_from_lead_id": r.converted_from_lead_id } });
   }
@@ -326,7 +346,8 @@ async function mapLead(r, ctx) {
       data: {
         id, ...p.data, lifecycle: spam || p.data.flags.test ? "archived" : "lead",
         ...(spam ? { archived_reason: "spam", flags: { ...p.data.flags, spam: true } } : p.data.flags.test ? { archived_reason: "test" } : {}),
-        rotor: { lead_ids: [r.id], source_raw: p.src.raw, status_raw: r.status || r.stage || "", tags_raw: r.tags },
+        ...(r.priority === "high" ? { tags: cleanTags([...p.data.tags, HIGH_PRIORITY_TAG].slice(0, 30), "tags") } : {}),
+        rotor: { lead_ids: [r.id], source_raw: p.src.raw, status_raw: r.status || r.stage || "", tags_raw: r.tags, ...(r.priority ? { priority: r.priority } : {}), ...(r.stage ? { stage: r.stage } : {}) },
         ...(r.created_at && !Number.isNaN(Date.parse(r.created_at)) ? { created_at: new Date(r.created_at).toISOString() } : {}),
       },
     });
@@ -487,7 +508,10 @@ async function mapReferral(r) {
 
 export const phases = [
   { name: "contacts.customers", entity: "customers", after: ["system.users"], normalize: normalizePerson, map: mapCustomer },
-  { name: "contacts.quote_contacts", entity: "quote_contacts", after: ["contacts.customers"], normalize: normalizeQuoteContact, map: mapQuoteContact },
+  // customers' rows first: a converted lead's pointer names its customer before contacts.leads reads the lead
+  { name: "contacts.quote_contacts", entity: "quote_contacts", after: ["contacts.customers"], normalize: normalizeQuoteContact, map: (r, ctx) => (r.kind === "lead" ? {} : mapQuoteContact(r, ctx)) },
+  // the same rows for leads: a lead's contact is made by contacts.leads, after the converted-lead pointers above
+  { name: "contacts.quote_contacts_leads", entity: "quote_contacts", after: ["contacts.leads"], normalize: normalizeQuoteContact, map: (r, ctx) => (r.kind === "lead" ? mapQuoteContact(r, ctx) : {}) },
   { name: "contacts.leads", entity: "leads", after: ["contacts.quote_contacts"], normalize: normalizePerson, map: mapLead },
   { name: "contacts.properties_quotes", entity: "quotes", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "quote", rowId: r.id }, ctx) },
   { name: "contacts.properties_plans", entity: "service_plans", after: ["contacts.leads"], normalize: normalizePropertySource, map: (r, ctx) => mapProperty({ contactRotorId: r.contact, contactKind: r.contact_kind, contactName: r.contact_name, propertyId: r.property_id, address: r.address, from: "plan", rowId: r.id }, ctx) },

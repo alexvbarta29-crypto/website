@@ -269,8 +269,14 @@ Against the M2c runner (docs/CRM-IMPORT.md):
   `sales.opportunities`, `quotes.discounts`): quotes with their options,
   lines (ids kept), discounts and status; prices stay as Rotor had them
   (`override.reason: "imported"`); Rotor's one option per quote becomes a
-  one-time or plan option by its frequency; a warning
-  `quote_total_differs` when our first-visit total doesn't match Rotor's.
+  one-time or plan option by its frequency; every discount Rotor takes off
+  (each `multi` entry whatever `enabled` says: `enabled` only switches the
+  old single `type` + `value` discount; line- and visit-scoped, percent
+  and fixed, named or "Discount"); a client-optional line comes in ticked
+  (Rotor's total counts it); job notes that differ from the client's go
+  in the office notes ("Job notes (Rotor): ..."); a warning
+  `quote_total_differs` when our first-visit total doesn't match Rotor's
+  (none on the 2026-11-13 export: 423 of 423 match).
   Imported quotes get no frozen versions. A contact with no deal gets
   one. An
   unchanged re-run writes nothing. Imported quotes carry `rotor_id`, are

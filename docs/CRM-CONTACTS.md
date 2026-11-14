@@ -266,7 +266,13 @@ Today's "Possible duplicates" count comes from this module's attention row.
 ## Import phases (design §10.2)
 
 `import-rotor.mjs` exports `phases` for M2c's runner:
-`contacts.customers` (row 6), `contacts.quote_contacts` (row 7),
+`contacts.customers` (row 6), `contacts.quote_contacts` (row 7: customers'
+rows, before the leads, so a converted lead's pointer names its customer;
+`contacts.quote_contacts_leads` does the leads' rows after
+`contacts.leads`; both fill the contact's empty notes, the Meta lead form
+and ad into `source.form` / `source.ad`, and Rotor's last call into the
+sales stats; a converted lead an earlier import made a contact of its own
+becomes a high-confidence merge candidate, never a silent move),
 `contacts.leads` (row 8), `contacts.properties_quotes` /
 `_plans` / `_visits` (row 10), `contacts.suppressions` (row 12: exact STOP
 replies, before any comms phase), `contacts.giveaway` and
@@ -281,7 +287,8 @@ in batches; a screen asks for the newest 16), and they patch the row's own
 quote, plan or visit with the property where an earlier import left it
 without one (a fill, applied also when that record is otherwise
 unchanged). Row 8 gives the lead's deal its `opened_at` (the lead's
-creation). Row 11 (the tag catalog) is derived from the contacts index
+creation) and keeps Rotor's `priority` and `stage` in `rotor` (a high
+priority also as the tag "High priority"). Row 11 (the tag catalog) is derived from the contacts index
 (`tagCatalog()`), not stored. Besides `records`, `pointers` and
 `mergeCandidates`, a phase's output may carry `patches` (fill-only, list
 unions, CRM-owned fields), `stats` and `suppressions`; `applyExtras()`

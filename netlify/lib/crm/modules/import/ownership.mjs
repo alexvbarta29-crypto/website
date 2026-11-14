@@ -64,6 +64,10 @@
 //     Rotor's becomes a conflict; another source is "new".
 //   - Fields outside rotorFields that the mapped record carries are filled
 //     only where the record has nothing; the rest of the record is the CRM's.
+//   - A partial record ({ type, data, fields: [...] }) speaks only about the
+//     rotorFields it names (the rules above, per field), fills nothing else
+//     and never creates a record: the plan discounts a plan row puts on the
+//     jobs another phase made.
 //
 // Ranks: SOURCE_RANK by entity (customers and opportunities 3, leads 2,
 // anything else 1, a placeholder row 0); a phase may say `rank` itself.
@@ -276,7 +280,12 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
   if (!def) return { outcome: "waiting", type };
   const data = rec.data || {};
   if (!isId(data.id) || typeOf(data.id) !== (def.prefix ? type : def.idType)) return { outcome: "invalid", type, field: "id" };
-  const fields = def.rotorFields;
+  // a partial record (`fields`: the rotorFields this source speaks about, like
+  // the plan discounts a plan row puts on its jobs) merges only those; the
+  // record's own hash (`import.hash`) always covers every rotorField
+  const all = def.rotorFields;
+  const partial = Array.isArray(rec.fields);
+  const fields = partial ? all.filter((f) => rec.fields.includes(f)) : all;
   let norm;
   try { norm = normalized(def, data, ctx); } catch (e) {
     if (e instanceof InputError) return { outcome: "invalid", type, id: data.id, field: e.field || null };
@@ -290,11 +299,12 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
   const at = nowIso();
 
   let got = await getRecord(type, data.id);
+  if (!got && partial) return { outcome: "missing", type, id: data.id };     // a partial record never makes one
   if (!got) {
     try {
       const created = await createRecord(type, { ...data, import: { run_id: runId, at, source: src, hash: hashN, src: { [src]: hashN } } }, ctx);
       await writeBase(type, data.id, { primary: src, sources: { [src]: { fields: mapped, hash: hashN, rank: myRank, run_id: runId, at } } });
-      await settleHash(type, fields, created.data, ctx);
+      await settleHash(type, all, created.data, ctx);
       return { outcome: "created", type, id: data.id };
     } catch (e) {
       if (!(e instanceof ExistsError) || !e.id) throw e;   // a taken pointer (not the record) is the row's problem
@@ -321,7 +331,7 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
     else baseDirty = true;
   }
   let primary = (ib && ib.primary) || (cur.import && cur.import.source) || null;
-  const untouchedSinceImport = !!(cur.import && cur.import.hash && hashFields(pickFields(cur, fields)) === cur.import.hash);
+  const untouchedSinceImport = !!(cur.import && cur.import.hash && hashFields(pickFields(cur, all)) === cur.import.hash);
   // the record's own values as a base, for the fields this source speaks about
   const recordAsBase = (extra = []) => pickFields(cur, fields.filter((f) => mapped[f] !== undefined || extra.includes(f)));
 
@@ -380,7 +390,7 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
     const next = clone(r);
     for (const f of plan.changed) setPath(next, f, plan.next[f]);
     // outside rotorFields: fill only what the record doesn't have (a placeholder row fills nothing)
-    if (!placeholderRow) {
+    if (!placeholderRow && !partial) {
       for (const [k, v] of Object.entries(norm)) if (!ENVELOPE.has(k) && !fields.includes(k) && !fields.some((f) => f.startsWith(k + ".")) && empty(r[k]) && !empty(v)) next[k] = clone(v);
     }
     const clearFlag = !placeholderRow && !!(r.flags && r.flags.placeholder === true) && (!!takeover || myRank > 0 && nextPrimary === src);
@@ -389,12 +399,12 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
     if (takeover) delete srcTags[takeover];
     const sameImport = r.import && r.import.source === nextPrimary && canonJson(r.import.src || {}) === canonJson(srcTags);
     if (!plan.changed.length && sameImport && !clearFlag && canonJson({ ...next, import: null }) === canonJson({ ...r, import: null })) return null;
-    next.import = { run_id: runId, at, source: nextPrimary, src: srcTags, hash: hashFields(pickFields(next, fields)) };
+    next.import = { run_id: runId, at, source: nextPrimary, src: srcTags, hash: hashFields(pickFields(next, all)) };
     return next;
   }, ctx);
   sources[src] = { fields: plan.base, hash: hashFields(plan.base), rank: myRank, run_id: runId, at };
   if (!ib || baseDirty || canonJson({ p: ib.primary, s: ib.sources }) !== canonJson({ p: nextPrimary, s: sources })) await writeBase(type, id, { primary: nextPrimary, sources });
-  if (res.changed) await settleHash(type, fields, res.data, ctx);
+  if (res.changed) await settleHash(type, all, res.data, ctx);
   const conflicts = plan.conflicts;
   for (const f of conflicts) {
     await putRaw(conflictKey(runId, type, id, f), {
