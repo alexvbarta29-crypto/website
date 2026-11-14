@@ -342,6 +342,8 @@ export function visitEventFor(event, before, after) {
   if (event === "cancel") return before.status === "cancelled" ? null : "visit.cancelled";
   if (event === "no_access") return "visit.no_access";
   if (event === "finish" || event === "office_complete") return "visit.completed";
+  // a tech starts the visit's timer (the automation builder's "a visit starts")
+  if (event === "start" && before.status !== "in_progress") return "visit.started";
   if (before.date !== after.date || before.start !== after.start || before.end !== after.end) return "visit.rescheduled";
   if (JSON.stringify([...(before.assignee_ids || [])].sort()) !== JSON.stringify([...(after.assignee_ids || [])].sort())) return "visit.assigned";
   return null;

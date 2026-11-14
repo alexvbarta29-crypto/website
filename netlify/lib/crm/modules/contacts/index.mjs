@@ -12,6 +12,7 @@
 // import-rotor.mjs (the import phases).
 
 import { defineModule } from "../../core/registry.mjs";
+import { tagContact, setOwner } from "./tags.mjs";
 import { readIndex } from "../../../crm-store.mjs";
 import "../../adapters/maps-google.mjs";
 import { types } from "./types.mjs";
@@ -41,7 +42,7 @@ export default defineModule({
   ],
   // the property's counts follow an approved quote (assets.mjs)
   events: { ...lifecycleListeners, "quote.approved": { handler: onQuoteApproved, mutates: true } },
-  emits: ["lead.created", "contact.merged", "consent.changed"],
+  emits: ["lead.created", "contact.merged", "consent.changed", "contact.tagged"],
   services: {
     // (input, { origin, rotor? }, ctx) → { ok, contact_id, created, deal_id?, enrollment_id? } (§6.8)
     "contacts.intake": intakeService,
@@ -51,6 +52,9 @@ export default defineModule({
     "contacts.findMatches": (q, ctx) => findMatches(q, ctx),
     // (contact_id, address, ctx) → property_id
     "contacts.ensureProperty": (cid, address, ctx) => ensureProperty(cid, address, ctx),
+    // the automation builder (modules/automations, tags.mjs): (contact_id, { add?, remove? }, ctx) and (contact_id, user_id, ctx)
+    "contacts.tag": (cid, change, ctx) => tagContact(cid, change || {}, ctx || {}),
+    "contacts.setOwner": (cid, uid, ctx) => setOwner(cid, uid, ctx || {}),
   },
   // optional (Signs & flyers): a lead from a sign's QR code names it
   needs: ["sales.enroll", "sales.qrResolve", "sales.qrLead"],
