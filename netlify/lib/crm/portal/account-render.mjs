@@ -23,7 +23,7 @@ export const ACCOUNT_STYLE = `${PLANS_STYLE}<style>
 .tile{display:flex;flex-direction:column;justify-content:space-between;gap:6px;min-height:84px;padding:14px;border-radius:16px;background:var(--mist);color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;line-height:1.25}
 .tile small{display:block;font-weight:500;color:var(--muted);font-size:13px}
 .tile.hot{background:#fff1ef;color:var(--coral-ink)}
-.visit{padding:12px 0;border-top:1px solid var(--line)}.visit:first-child{border-top:0;padding-top:2px}
+.visit{padding:12px 0;border-top:1px solid var(--line)}.visit:first-child,h1+.visit,h2+.visit{border-top:0;padding-top:2px}
 .visit .when{font:800 18px/1.2 'Cabinet Grotesk',system-ui,sans-serif;margin:0 0 2px;color:var(--ink)}
 .visit p{margin:0 0 2px;font-size:15px}
 .visit .row{margin-top:8px}
@@ -36,7 +36,8 @@ export const ACCOUNT_STYLE = `${PLANS_STYLE}<style>
 .field textarea,.field select{width:100%;min-height:48px;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;font:500 16px/1.4 'General Sans',system-ui,sans-serif;background:#fff;color:var(--ink)}
 .field textarea{min-height:110px;resize:vertical}
 .field small{color:var(--muted);font-size:13px}
-.picks{display:grid;grid-template-columns:1fr;gap:2px;margin:4px 0 6px}
+.picks{display:grid;grid-template-columns:1fr;gap:0;margin:4px 0 6px}.picks .check{margin:0;align-items:center}
+.file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
 .prefs .check{justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line);margin:0}.prefs .check:first-child{border-top:0}
 .prefs .check span{flex:1}.prefs .check span small{display:block;color:var(--muted);font-size:13px}
 .addphotos{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
@@ -64,7 +65,7 @@ export function hubPage({ contact, visits, invoices, agreements, quotes, plans }
   const first = String((contact && (contact.first_name || contact.display_name)) || "").trim().split(/\s+/)[0] || "";
   const next = visits[0];
   const nextCard = next
-    ? `<section class="card" data-next><h2>Next visit</h2>${visitBlock(next)}${visits.length > 1 ? `<p class="small" style="margin-top:10px"><a href="/p/visits">${esc(plural(visits.length - 1, "more visit", "more visits"))} coming up</a></p>` : ""}</section>`
+    ? `<section class="card" data-next><h2>Next visit</h2>${visitBlock(next)}${visits.length > 1 ? `<div class="row"><a class="btn ghost" href="/p/visits">${esc(plural(visits.length - 1, "more visit", "more visits"))} coming up</a></div>` : ""}</section>`
     : `<section class="card" data-next><h2>Next visit</h2><p>Nothing on the schedule right now.</p><div class="row"><a class="btn" href="/p/request">Request work</a></div></section>`;
   const pay = invoices.length ? `<section class="card" data-pay><h2>To pay</h2><ul class="items">${invoices.map((i) => `<li><button class="item" type="button" data-open-kind="invoice" data-open-id="${esc(i.id)}"><span class="t"><b>Invoice ${esc(i.number)}</b><small class="money">${esc(money(i.balance_cents))} due${i.due ? ` by ${esc(dayWords(i.due))}` : ""}</small></span><span class="go">Pay</span></button></li>`).join("")}</ul></section>` : "";
   const sign = agreements.length ? `<section class="card"><h2>To sign</h2><ul class="items">${agreements.map((a) => `<li><a class="item" href="/p/hub/agreements/${esc(encodeURIComponent(a.id))}"><span class="t"><b>${esc(a.title)}</b><small>Read and sign</small></span><span class="go">Open</span></a></li>`).join("")}</ul></section>` : "";
@@ -155,7 +156,7 @@ export function requestPage({ properties, done }) {
 ${props}
 <label class="field"><span>When</span><select name="timing">${TIMING.map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select></label>
 <label class="field"><span>Anything we should know?</span><textarea name="notes" maxlength="2000" placeholder="Number of windows, a ladder spot, a dog in the yard..."></textarea></label>
-<div class="field"><span>Photos (up to 3)</span><small>A photo of the house or the problem spot helps us price it.</small><div class="addphotos" data-photo-previews></div><input type="file" accept="image/*" multiple data-photos style="font-size:16px"></div>
+<div class="field"><span>Photos (up to 3)</span><small>A photo of the house or the problem spot helps us price it.</small><div class="addphotos" data-photo-previews></div><label class="btn ghost block"><input class="file" type="file" accept="image/*" multiple data-photos>Add a photo</label></div>
 <p class="err" data-error hidden></p>
 <button class="btn block" type="submit" data-send>Send request</button>
 </form></section>`,

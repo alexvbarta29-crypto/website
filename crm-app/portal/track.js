@@ -18,11 +18,11 @@ function el(name, attrs = {}, parent) {
   return n;
 }
 
-// A round scale for the distance: the ring is 0.25, 0.5, 1, 2, 5, 10 or 20 miles.
+// A round scale for the distance, so the dot sits inside the ring: 0.25 to 50 miles.
 function scaleOf(m) {
   const miles = Math.max(m, 300) / 1609.344;
-  const steps = [0.25, 0.5, 1, 2, 5, 10, 20, 50];
-  return steps.find((s) => s >= miles * 1.15) || steps[steps.length - 1];
+  const steps = [0.25, 0.5, 1, 1.5, 2, 3, 5, 10, 20, 50];
+  return steps.find((s) => s >= miles) || steps[steps.length - 1];
 }
 
 function drawMap(box, east, north, dist, color) {
