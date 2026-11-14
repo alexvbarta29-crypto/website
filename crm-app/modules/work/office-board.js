@@ -486,7 +486,9 @@ export function dayColumns(s, ctx) {
   const d = s.date;
   const visits = (s.data.visits || []).filter((v) => v.d === d && !DEAD.includes(v.st));
   const tasks = (s.data.tasks || []).filter((x) => x.date === d);
-  const people = lanePeople(s, visits);
+  // the people with work that day first (a phone sees two columns before it scrolls), the team's order kept otherwise
+  const busy = (u) => visits.some((v) => (v.a || []).includes(u.id)) || tasks.some((x) => (x.a || []).includes(u.id));
+  const people = lanePeople(s, visits).map((u, i) => ({ u, i, b: busy(u) ? 0 : 1 })).sort((x, y) => x.b - y.b || x.i - y.i).map((x) => x.u);
   const prices = !!(ctx && ctx.can && ctx.can("visits:prices"));
   const mine = (ids, uid) => (uid ? (ids || []).includes(uid) : !(ids || []).length);
   const lanes = [...(s.tech ? [] : [{ id: NOBODY, u: null }]), ...people.map((u) => ({ id: u.id, u }))].map(({ id, u }) => {
