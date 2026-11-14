@@ -69,6 +69,11 @@ test("discovery: the 401 names the resource metadata; the documents list PKCE S2
     assert.equal(asm.registration_endpoint, `${HOST}/api/crm/auth/oauth/register`);
     assert.deepEqual(asm.scopes_supported, ["crm:read", "crm:ask"]);
     assert.equal((await meta(new Request(`${HOST}/.well-known/oauth-authorization-server/elsewhere`), {})).status, 404);
+    // a browser-based client's preflight
+    const pre = await auth(t, "/auth/oauth/token", { method: "OPTIONS", headers: { origin: "https://claude.ai", "access-control-request-method": "POST" } });
+    assert.equal(pre.status, 204);
+    assert.equal(pre.headers.get("access-control-allow-origin"), "*");
+    assert.match(pre.headers.get("access-control-allow-methods"), /POST/);
   } finally { t.done(); }
 });
 

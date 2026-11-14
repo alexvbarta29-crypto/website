@@ -46,6 +46,11 @@ test("a request's photos keep the phone's thumbnail; the list and ?thumb=1 use i
     assert.equal(tb.headers.get("x-content-type-options"), "nosniff");
     assert.equal(tb.headers.get("content-security-policy"), "sandbox");
     assert.deepEqual(await bytesOf(tb), PHOTO());
+    // three photos, each with its thumbnail, fit the request's storage budget
+    const three = await postP(t, "/api/portal/requests", ck, { client_id: randomUUID(), services: ["screens"], photos: [b64(PHOTO()), b64(PHOTO()), b64(PHOTO())], thumbs: [b64(THUMB()), b64(THUMB()), b64(THUMB())] });
+    assert.equal(three.status, 201, JSON.stringify(three.body));
+    const t3 = tasks(t).find((x) => x.id === three.body.data.request_id);
+    assert.ok(t3.photo_ids.every((id) => t.stores.data.json(`rec/file/${id}`).has_thumb), "every thumbnail kept");
     // the office's task list: the first photo and how many
     const list = await t.api("/tasks", { as: owner });
     const row = list.body.data.find((x) => x.id === task.id);
