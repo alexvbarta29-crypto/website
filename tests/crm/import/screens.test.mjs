@@ -14,7 +14,8 @@ const NOW = "2026-11-17T15:00:00.000Z";
 const RUN = { id: "ir_00000000000000000001", status: "uploading", as_of: "2026-11-10", note: "weekly", created_at: NOW, upload: { last4: "abcd", expires_at: "2026-11-18T15:00:00.000Z", expired: false }, manifest: { as_of: "2026-11-10" }, conflicts: { open: 0, resolved: 0 } };
 
 test("the manifest: owners only, under More and Settings", () => {
-  assert.deepEqual(manifest.routes.map((r) => [r.path, r.perm]), [["/import", "import:run"], ["/import/:id", "import:run"], ["/import/:id/conflicts", "import:run"]]);
+  assert.deepEqual(manifest.routes.map((r) => [r.path, r.perm]), [["/import", "import:run"], ["/import/:id", "import:run"], ["/import/:id/conflicts", "import:run"],
+    ["/import/auto", "import:run"], ["/cutover", "cutover:run"], ["/cutover/preview", "cutover:run"], ["/cutover/runbook", "cutover:run"]]);
   assert.equal(manifest.nav[0].perm, "import:run");
   assert.equal(manifest.settings[0].owner, true);
 });

@@ -56,6 +56,8 @@ export function runView(ir) {
     user_map: ir.user_map || {}, conflicts: ir.conflicts || { open: 0, resolved: 0 }, summary: ir.summary || null, lane_run_id: ir.lane_run_id || null,
     // a continuation ("bring in the rest"): the finished run it goes on from; it has no upload of its own
     continues: ir.continues || null, auto: ir.auto === true,
+    // made by the automatic daily import key (autokey.mjs)
+    automatic: !!ir.auto_key_id,
     // a run that stopped for good (the lane gave up; its rows were cleared): why
     stopped: ir.status === "failed" && ir.stopped ? { code: ir.stopped.code || "error", at: ir.stopped.at || null } : null,
   };
@@ -70,7 +72,8 @@ export async function loadRun(id) {
 
 // ------------------------------------------------------------ create
 
-export async function createImportRun({ manifest, note } = {}, ctx) {
+// extra: { auto_key_id } for a run the automatic import key made (autokey.mjs).
+export async function createImportRun({ manifest, note } = {}, ctx, extra = {}) {
   const m = manifest ? checkManifest(manifest) : null;
   const ix = await readIndex("import-runs", "");
   if (ix.rows.some((r) => ACTIVE.has(r.st))) throw new ConflictError("An import is already running. Wait for it to finish (or cancel it) first.");
@@ -81,6 +84,7 @@ export async function createImportRun({ manifest, note } = {}, ctx) {
   const rec = await createRecord("import_run", {
     id, status: "uploading", ...(m ? { as_of: m.as_of, manifest: m } : {}), ...(note ? { note: String(note).slice(0, 200) } : {}),
     upload: { key_hash: hash, last4: key.slice(-4), expires_at }, user_map: {}, conflicts: { open: 0, resolved: 0 }, requested_by: ctx.by || "system", attempt: 0,
+    ...(isId(extra.auto_key_id, "import_key") ? { auto_key_id: extra.auto_key_id } : {}),
   }, ctx);
   await claimPointer("import-key", hash, { id, expires_at });
   return { run: runView(rec.data), upload_key: key };

@@ -7,7 +7,8 @@
 // on its screen once the upload is in and the team map looks right.
 // "The rest of this export": what the latest finished import left waiting
 // for parts of the CRM that weren't live, what of it can come in now, and
-// "Bring in the rest now" (no upload: the rows are still here).
+// "Bring in the rest now" (no upload: the rows are still here). M8: the
+// automatic daily import (its key) and the way to the switch from Rotor.
 
 import { html, icon, sheet, toast, attrs } from "../../core/ui.js";
 import { field, readForm, clearErrors, showError, busy } from "../../core/forms.js";
@@ -44,11 +45,12 @@ export default {
   title: "Import from Rotor",
   async load(params, ctx) {
     ensureStyles();
-    const [r, rest] = await Promise.all([
+    const [r, rest, auto] = await Promise.all([
       ctx.api("/import/runs", { cache: false }),
       ctx.api("/import/rest", { cache: false }).then((x) => x.data).catch(() => null),
+      ctx.api("/import/auto-key", { cache: false }).then((x) => x.data).catch(() => null),
     ]);
-    return { runs: r.data || [], rest };
+    return { runs: r.data || [], rest, auto, cutover: typeof ctx.can === "function" ? ctx.can("cutover:run") : false };
   },
   render(s) {
     const active = s.runs.find((r) => r.status === "queued" || r.status === "running");
@@ -60,7 +62,13 @@ export default {
           ? html`<a class="btn" ${attrs({ href: "#/import/" + active.id })}>See the import that's running</a>`
           : html`<button type="button" class="btn primary" data-start>${icon("plus")}Start an import</button>`}</div>
       </section>
+      ${s.cutover ? html`<section class="card"><h2>Switch from Rotor</h2><p class="small muted">The checklist, the preview of the first 72 hours, the switch, and going back within 48 hours.</p><div class="btn-row"><a class="btn" href="#/cutover">${icon("bolt")}Open the switch-over</a></div></section>` : ""}
       ${restCard(s.rest)}
+      <section class="card">
+        <div class="im-head"><h2>Automatic daily import</h2>${s.auto ? (s.auto.key ? html`<span class="pill green">On</span>` : html`<span class="pill">Off</span>`) : ""}</div>
+        <p class="small muted">A key a scheduled job uses to bring Rotor's newest export in every day. It can only start an import.</p>
+        <div class="btn-row"><a class="btn" href="#/import/auto">${icon("key")}${s.auto && s.auto.key ? "See the key" : "Set it up"}</a></div>
+      </section>
       <div class="section-h">Imports</div>
       ${s.runs.length ? html`<ul class="list">${s.runs.map((r) => html`<li><a class="row" ${attrs({ href: "#/import/" + r.id })}>
         <span class="who"><span class="nm">${exportLabel(r.as_of)}</span>

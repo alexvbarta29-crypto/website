@@ -8,7 +8,10 @@
 // team phases, §10.2 rows 1-3), report.mjs (the reconciliation report and
 // the id map), runs.mjs (runs, upload keys, the user map, conflicts),
 // continue.mjs ("bring in the rest": continuation runs, the hourly check,
-// the setting), routes.mjs (the API).
+// the setting), routes.mjs (the API). M8: autokey.mjs (the automatic
+// daily import key, record type import_key), cutover.mjs (the checklist,
+// the switch and rollback ops, in-flight documents), cutover-preview.mjs
+// (what would go out in the first 72 hours).
 
 import { defineModule } from "../../core/registry.mjs";
 import { defineFileOwner } from "../../core/files.mjs";
@@ -19,6 +22,9 @@ import { importRoutes } from "./routes.mjs";
 import { userPhases } from "./users.mjs";
 import "./runner.mjs";
 import { continueSweep, reconcile, latestDone, IMPORT_SETTING_DEFAULTS, validateImportSetting, STAGING_KEEP_DAYS } from "./continue.mjs";
+import { importKeyType } from "./autokey.mjs";
+import { TEMPLATES as CUTOVER_TEMPLATES } from "./cutover.mjs";
+import "./cutover-preview.mjs";
 
 export { STAGING_KEEP_DAYS };
 
@@ -108,8 +114,10 @@ async function conflictsWaiting() {
 
 export default defineModule({
   name: "import",
-  types,
+  types: [...types, importKeyType],
   routes: importRoutes,
+  // the in-flight documents' texts at the switch (cutover.mjs)
+  templates: CUTOVER_TEMPLATES,
   importPhases: userPhases,
   // cfg/import: whether the rest of an export is brought in by itself as modules go live (owners)
   settings: { import: { defaults: { ...IMPORT_SETTING_DEFAULTS }, validate: validateImportSetting, perm: "settings:owner" } },

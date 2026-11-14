@@ -46,3 +46,25 @@
 .im-conflict h3{font-size:17px}
 .im-conflict h3 a{display:inline-flex;align-items:center;min-height:44px;color:inherit}
 .im-steps{display:block;font-weight:500;font-size:13px;color:var(--ink-3)}
+
+/* the switch from Rotor (M8): checklist rows, tick boxes, the preview's table */
+.co-list{list-style:none;margin:6px 0 0;padding:0}
+.co-item{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 0}
+.co-item+.co-item{border-top:1px solid var(--line)}
+.co-item .who{flex:1 1 auto;min-width:0}
+.co-item .nm{display:block;font-weight:600;overflow-wrap:anywhere}
+.co-item .sub{display:block;margin-top:2px;font-size:13px;color:var(--ink-3);overflow-wrap:anywhere}
+.co-item .end{flex:none}
+.co-tick{flex:1 1 auto;min-width:0;align-items:center}
+.co-tick input{width:24px;height:24px;margin:0}
+.co-btn{min-height:44px;padding:0 14px;font-size:14px}
+.co-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;table-layout:fixed}
+.co-table th,.co-table td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.co-table th:first-child,.co-table td:first-child{text-align:left;width:38%;overflow-wrap:anywhere}
+.co-table th{font:600 12px/1.2 var(--text);color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
+.co-table tr.co-sum td{font-weight:700;border-bottom:none}
+.co-sample{margin:6px 0 0;padding:10px 12px;border-radius:var(--r);background:var(--mist);border:1px solid var(--line);font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.co-steps{margin:8px 0 0;padding-left:22px}
+.co-steps li{margin:0 0 12px;line-height:1.45}
+.co-steps b{font-family:var(--head)}
+.co-steps a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;font-weight:600;color:var(--coral-ink)}
