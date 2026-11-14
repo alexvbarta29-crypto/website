@@ -1,6 +1,7 @@
 # CRM module: import
 
-Milestone: M2c (design §10.1-10.8, §10.10, §11.4); M8 adds the cutover.
+Milestone: M2c (design §10.1-10.8, §10.10, §11.4); M8 adds the automatic
+daily import (below) and the switch from Rotor ([CRM-CUTOVER.md](CRM-CUTOVER.md)).
 The Rotor import framework: a Rotor export is packed and sealed on the
 integrator's computer, uploaded with a key bound to one run, staged on the
 site, and turned into CRM records phase by phase on the bulk lane, with
@@ -14,8 +15,9 @@ site and comes in by itself when that part goes live, without a new
 upload ("Bringing in the rest" below).
 
 Code: `netlify/lib/crm/modules/import/` (server), `crm-app/modules/import/`
-(screens), `build/crm_import_pack.mjs`, `build/crm_import_upload.mjs`.
-Record type: `import_run` (`ir_`). Tests: `tests/crm/import/`, with the
+(screens), `build/crm_import_pack.mjs`, `build/crm_import_upload.mjs`,
+`build/crm_media_copy.mjs` (switch day). Record types: `import_run` (`ir_`),
+`import_key` (`ik_`, the automatic import key). Tests: `tests/crm/import/`, with the
 synthetic Rotor export generator `tests/crm/fixtures/rotor-synthetic.mjs`.
 
 ## The whole path, for the integrator
@@ -36,7 +38,10 @@ not, ever goes into git.
    quote-contacts steps read (see "Field by field").
    The media fetch script (not repo code) saves message attachments and
    quote photos in `<export>/media/` with `media/index.jsonl`
-   (`{url_sha256, source, ref_id, name, content_type, bytes, file}`).
+   (`{url_sha256, source, ref_id, name, content_type, bytes, file}`). On
+   switch day `build/crm_media_copy.mjs ... --switch-day` does the same from
+   the export's URL list, with checksums and retries (see "The photo copy
+   tool" below).
    The giveaway and referral stores (row 36) go in as
    `giveaway_entrants.jsonl` and `referrals.jsonl` when they are exported
    too; without them those two steps say "nothing to import".
@@ -89,6 +94,78 @@ not, ever goes into git.
 A small pack can also go up from a phone: on the run's screen, "Upload a
 small pack from this phone" takes `manifest.json` and the `.sealed.json`
 files (media only go up with the script).
+
+## Automatic daily import
+
+During the last weeks of the parallel run the CRM is brought up to date
+every day (design §10.9 "daily delta imports") without anyone making an
+upload key:
+
+- **The key.** An owner opens Settings → Import & data → Import from Rotor →
+  **Automatic daily import** and taps Make the key. It is `bauto_` + 40
+  base62 characters, shown once, stored only as its SHA-256 (the record
+  `rec/import_key/{id}`: name, last four, who made it, uses, last use, and
+  the pointer `ptr/import-auto-key/{sha256}` while it works). One works at a
+  time: making a new one revokes the old; Revoke stops it at once. Making,
+  revoking and every use are record writes (audited: the Audit screen and the
+  key's history); a refused use is an event on the key too
+  (`refused`: `busy`, `older_export`, `paused`, `too_many_today`,
+  `bad_manifest`).
+- **What it can do: one thing.** `POST /import/auto/runs` with `Authorization:
+  Bearer bauto_...` and `{ manifest, note? }` makes an import run (the run
+  carries `auto_key_id`) and answers `{ run, upload_key }`: that run's own
+  one-run upload key (`bimp_`, 24 hours, the upload routes of that run only),
+  with which the pack is uploaded and the run started like any other. The
+  automatic key reads nothing of the CRM's data and opens no other route: it
+  is neither an API key (`bcrm_`) nor an upload key, so every other route's
+  credential check refuses it (401), and the run's upload routes take only
+  the run's own key (`autokey.test.mjs` calls every registered route with it).
+- **Its limits.** One import at a time (as always); never an export older
+  than the newest finished import (`as_of` before it: 409; an older export
+  could only take values back); at most 4 runs a day per key; nothing while
+  the CRM is paused.
+- **The script.** `build/crm_import_upload.mjs` takes the automatic key like
+  an upload key (`--key-file FILE` outside every worktree, `CRM_UPLOAD_KEY`,
+  or the hidden prompt). With it the script makes the run itself, uploads
+  the pack with the one-run key it got back and starts the run (`--no-start`
+  leaves the start to an owner). Neither key is ever printed. Run again
+  after an interruption, it makes a new run (within the day's 4) rather than
+  going on with the first; an upload nobody finished is cleaned up after a
+  week like any other.
+- **The owners** get "Daily Rotor import done" with the counts when each
+  automatic import finishes (and, like every import, a note if one stops).
+- **What a newer export does.** The ordinary full-import rules: new rows are
+  added, Rotor's changes to rows it already sent are applied field by field
+  (a field someone changed in the CRM and Rotor changed too is a conflict),
+  nothing is deleted. A daily export may be a whole export or only what
+  changed since the last one; either way rows it doesn't hold are left as
+  they are.
+- **The scheduled job lives outside this repository** (on the integrator's
+  computer, next to `~/barta-private/`): every day it exports Rotor through
+  the connector **read-only** (list and get calls only, never a create,
+  update, send or delete), customers last, packs it with
+  `build/crm_import_pack.mjs --as-of <today>`, then runs
+  `node build/crm_import_upload.mjs ~/barta-private/import-pack --site https://www.bartawindowwashing.com --key-file ~/barta-private/auto-import-key.txt`.
+  Nothing in it touches Rotor beyond reading.
+
+## The photo copy tool (switch day)
+
+`build/crm_media_copy.mjs <export-dir> --urls <media-urls.jsonl>
+--switch-day [--allow-host HOST] [--max-mb 25]` downloads the photos and
+attachments Rotor keeps in its file storage into `<export-dir>/media/`, the
+folder the pack reads. It is a build script (the site never fetches a URL)
+and is run once, on switch day (runbook in CRM-CUTOVER.md); it **refuses to
+run without `--switch-day`** and refuses an export folder or URL list inside
+any worktree. The URL list is one JSON object a line: `{ url, source:
+"message_attachment" | "quote_photo", ref_id, name? }`. Each file is saved as
+`media/<sha256 of the URL>` and listed in `media/index.jsonl` as `{
+url_sha256, source, ref_id, name, content_type, bytes, file, sha256 }`. https
+only, file-storage hosts only (`*.supabase.co`, `*.supabase.in`, or each
+`--allow-host`), never Rotor's app or API (`getrotor.com`), at most
+`--max-mb` a file, 4 at a time, 3 tries on a network error, a 429 or a 5xx;
+a failure is counted (by checksum and code), never fatal. Run again, it
+keeps every file whose bytes still match their checksum and fetches the
+rest. It prints counts only.
 
 ## What the office sees
 
@@ -667,6 +744,11 @@ run after `contacts.suppressions`.
 | `GET /import/runs/:id/report` · `/report.csv` · `/idmap.csv` | `import:run` | the id map download is audited (`idmap_download`) |
 | `GET /import/runs/:id/conflicts` | `import:run` | `?status=open&after=` |
 | `POST /import/conflicts/:key/resolve` | `import:run` | `{ take: "rotor" \| "crm" }` |
+| `GET /import/auto-key` | `import:run` | the key that works (`{ id, name, last4, created_at, last_used_at, uses }`, never its hash), earlier keys, the latest automatic imports |
+| `POST /import/auto-key` | `import:run` | `{ name? }` → `{ key, record }` (201; the key once; the one before stops working) |
+| `DELETE /import/auto-key/:id` | `import:run` | revokes it |
+| `POST /import/auto/runs` | the automatic import key only | `{ manifest, note? }` → `{ run, upload_key }` (201) |
+| `/cutover/...` | `cutover:run` | the switch from Rotor: [CRM-CUTOVER.md](CRM-CUTOVER.md) |
 
 The upload key is not an API key: it is `bimp_` + 32 base62 characters,
 stored only as its SHA-256 (on the run and as `ptr/import-key/{sha256}`),
@@ -712,10 +794,14 @@ an export is brought in by itself as each part of the CRM goes live.
   (see "Bringing in the rest").
 - After a stopped or cancelled run: a `reindex` run for what it wrote.
 - Today: "Import conflicts to settle" (owners).
+- M8 run kinds: `cutover.preview`, `cutover.switch`, `cutover.rollback`
+  (bulk lane; CRM-CUTOVER.md); op kinds `cutover` and `cutover.rollback`.
 
 ## Automations
 
-None.
+None. Templates (M8): `cutover_quote`, `cutover_invoice`,
+`cutover_agreement`, `cutover_new_number` (the in-flight documents at the
+switch, sent only as bulk runs an owner tests and confirms).
 
 ## Tests
 
@@ -765,7 +851,15 @@ run the lane gives up on is marked stopped, told, alerted, cleaned up and
 resumable; a missing staged chunk fails the run; the clean-up and the
 button can't cross; the lane run kind and a continuation older code
 stepped; four reads in an idle hour), `users.test.mjs`,
-`screens.test.mjs`.
+`screens.test.mjs`. M8: `autokey.test.mjs` (owners only; shown once, stored
+hashed, audited; every other route refuses the key and answers no record;
+one run at a time, never an older export, the day's limit, paused,
+revoked; the upload script makes, uploads and starts the run with
+`--key-file`; a newer export updates and adds; the owners' note),
+`media-copy.test.mjs` (no `--switch-day`, no run; worktree paths refused;
+https file storage only; checksums, retries, resume; the pack takes the
+files), `cutover-screens.test.mjs`, and `tests/crm/flows/{cutover,rehearsal}.test.mjs`
+(CRM-CUTOVER.md).
 
 The gate at full size: `CRM_IMPORT_FULL=1 node --test --test-name-pattern
 "the gate" tests/crm/import/runner.test.mjs` (14,268 synthetic rows, about

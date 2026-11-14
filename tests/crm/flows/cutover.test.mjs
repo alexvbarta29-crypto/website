@@ -89,7 +89,8 @@ async function stepUntilDone(t, kind = "cutover.switch") {
   for (let i = 0; i < 10; i++) {
     await t.runWorker({ lane: "bulk" });
     const runs = t.stores.data.keys("rec/run/").map((k) => t.stores.data.json(k)).filter((r) => r.kind === kind);
-    if (runs.length && runs.every((r) => r.status === "done")) return runs;
+    // every run of the kind finished, one of them done (an earlier try may have failed)
+    if (runs.length && runs.every((r) => ["done", "failed"].includes(r.status)) && runs.some((r) => r.status === "done")) return runs;
   }
   throw new Error(`${kind} did not finish`);
 }
@@ -332,6 +333,36 @@ test("a crash in the middle of the switch: the op resumes where it stopped and m
       assert.equal(t.stores.data.keys("done/visit.reminder_2d/").length, seeded, "nothing seeded twice");
       assert.equal((await store.getRaw("seq/job")).data.next, 885);
       assert.equal((await store.getRaw("sys/mode")).data.system_of_record, "crm");
+    } finally { restore(); }
+  } finally { t.done(); }
+});
+
+test("a switch that stops for good can be tried again: a new op, never the failed journal; Rotor stays in charge meanwhile", async () => {
+  const t = await crmTest({ now: MON_0900, env: ENV });
+  try {
+    const owner = await t.user("owner");
+    const w = await world(t, owner);
+    await green(t, owner);
+    await previewNow(t, owner);
+    await t.api("/cutover/approve-preview", { method: "POST", as: owner, body: {} });
+    await store.createRecord("enrollment", { ...make("enrollment"), contact_id: w.B.id, status: "active" }, W(owner)).catch(() => null);
+    let broken = true;
+    const restore = services.__swapServiceForTests("sales.stopAll", async () => { if (broken) throw new Error("a bug in a follow-up"); return 0; });
+    try {
+      assert.equal((await t.api("/cutover/run", { method: "POST", as: owner, body: { confirm: "SWITCH TO CRM" } })).status, 202);
+      for (let i = 0; i < 4; i++) await t.runWorker({ lane: "bulk" });
+      assert.equal((await store.getRaw("op/cutover--1")).data.status, "failed");
+      assert.equal(((await store.getRaw("sys/mode")) || { data: {} }).data.system_of_record || "rotor", "rotor", "a failed switch leaves Rotor in charge");
+      const v = (await t.api("/cutover", { as: owner })).body.data;
+      assert.equal(v.active, null);
+      assert.equal(v.history[0].status, "failed");
+      broken = false;
+      const again = await t.api("/cutover/run", { method: "POST", as: owner, body: { confirm: "SWITCH TO CRM" } });
+      assert.equal(again.status, 202, JSON.stringify(again.body));
+      assert.equal(again.body.data.op_id, "cutover--1.r2");
+      await stepUntilDone(t);
+      assert.equal((await store.getRaw("sys/mode")).data.system_of_record, "crm");
+      assert.equal((await store.getRaw("sys/mode")).data.cutover_n, 1);
     } finally { restore(); }
   } finally { t.done(); }
 });

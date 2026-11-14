@@ -5,7 +5,8 @@
 // Screens load with dynamic import(). No data, keys or customer names ever
 // go in crm-app/ (§2.3). M8: the automatic daily import key (auto-key.js)
 // and the switch from Rotor (cutover-checklist.js, cutover-preview.js,
-// cutover-runbook.js; owners: cutover:run).
+// cutover-runbook.js; owners: cutover:run), reached from Import from Rotor
+// (Settings → Import & data) until the Settings hub's layout names it.
 
 export default {
   name: "import",
@@ -27,7 +28,6 @@ export default {
   todayCards: [],
   settings: [
     { label: "Import from Rotor", path: "/import", perm: "import:run", icon: "data", order: 92, owner: true },
-    { label: "Switch from Rotor", path: "/cutover", perm: "cutover:run", icon: "bolt", order: 93, owner: true },
   ],
   styles: ["./import.css"],
 };

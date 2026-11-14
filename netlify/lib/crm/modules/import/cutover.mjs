@@ -504,6 +504,13 @@ const opStep = (kind) => async (run, rctx) => {
     out = await runOp(opId, kind, { holder: run.id, input, ctx: { ...(actor || SYSTEM), requestId: run.id, ...(rctx.mode ? { mode: rctx.mode } : {}) } });
   } catch (e) {
     if (transient(e)) return { progress: { done: 0, total: null } };     // the op stays running: the next pass goes on
+    // a step that failed for good failed the op (core/ops.mjs): the switch says so at once, and a new try is a new op
+    const j = await readOp(opId).catch(() => null);
+    if (j && j.status === "failed") {
+      await finishHistory(opId, { status: "failed" });
+      console.error(`crm:import: the ${kind} op stopped (${safeErr(e)})`);
+      return { failed: (j.error && j.error.code) || "failed" };
+    }
     throw e;
   } finally { stepBudget = null; }
   if (out.status === "running") return { progress: { done: 0, total: null } };
@@ -542,6 +549,18 @@ async function activeOpRun(st) {
   return op && op.status === "running" ? h : null;
 }
 
+// The op id for this switch (or rollback): its natural id, unless an op by that id
+// stopped for good (failed), in which case the next try is a new op (…--n.r2,
+// .r3): its steps are safe to run again, and a failed journal never answers for it.
+async function freshOpId(base) {
+  for (let k = 1; k < 20; k++) {
+    const id = k === 1 ? base : `${base}.r${k}`;
+    const op = await readOp(id).catch(() => null);
+    if (!op || op.status !== "failed") return id;
+  }
+  throw new ConflictError("This switch failed too many times. Look at Settings, Data before trying again.");
+}
+
 // POST /cutover/run: the gate (every item green, SWITCH TO CRM), then the op on the bulk lane.
 export async function startCutover({ confirm } = {}, ctx) {
   if (confirm !== CONFIRM_SWITCH) throw new InputError(`Type ${CONFIRM_SWITCH} to confirm.`, "confirm");
@@ -554,7 +573,7 @@ export async function startCutover({ confirm } = {}, ctx) {
   const red = list.items.filter((i) => i.state === "todo");
   if (red.length) throw new ConflictError(`${red.length} ${red.length === 1 ? "item on the checklist isn't" : "items on the checklist aren't"} done yet.`, { details: { todo: red.map((i) => i.key) } });
   const n = (mode.cutover_n || 0) + 1;
-  const opId = `cutover--${n}`;
+  const opId = await freshOpId(`cutover--${n}`);
   const input = { n, at: nowIso(), by: ctx.by };
   const actor = { by: ctx.by, origin: "api", actor_kind: "user" };
   const run = await createRun("cutover.switch", { op_id: opId, input, actor }, ctx, { id: deriveId("run", opId, "cutover.lane", 0) });
@@ -573,7 +592,7 @@ export async function startRollback({ confirm } = {}, ctx) {
   const st = await readCutover();
   if (await activeOpRun(st)) throw new ConflictError("A switch is already under way.");
   const n = mode.cutover_n || 1;
-  const opId = `rollback--${n}`;
+  const opId = await freshOpId(`rollback--${n}`);
   const input = { n, at: nowIso(), since: mode.cutover_at, by: ctx.by };
   const actor = { by: ctx.by, origin: "api", actor_kind: "user" };
   const run = await createRun("cutover.rollback", { op_id: opId, input, actor }, ctx, { id: deriveId("run", opId, "cutover.lane", 0) });

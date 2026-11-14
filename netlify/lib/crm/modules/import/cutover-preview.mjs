@@ -172,24 +172,34 @@ async function overdue(def, settings, ctx) {
   return { by, samples };
 }
 
+// The plans module's own lists of what its 10:00 sweeps would remind (reads only), when it is here.
+async function plansLists() {
+  try { const m = await import("../plans/automations.mjs"); return { unsignedDue: m.unsignedDue, renewalsDue: m.renewalsDue }; } catch { return null; }
+}
+
 async function unsigned(def, settings, ctx) {
   const by = ctx.days.map(() => zero());
   const runs = sweepRuns(ctx.at, "10:00");
-  const rows = (await readIndex("agreements", "pending").catch(() => ({ rows: [] }))).rows.filter((r) => ["sent", "viewed"].includes(r.st) && r.sent);
-  const recs = new Map((await getRecords("agreement", rows.map((r) => r.id))).filter(Boolean).map((g) => [g.data.id, g.data]));
-  const count = new Map(rows.map((r) => [r.id, r.rc || 0]));
+  const P = await plansLists();
   const samples = [];
   let imported = 0;
+  const count = new Map();
   for (const run of runs) {
-    for (const r of rows) {
-      if (!(localDate(new Date(Date.parse(r.sent))) < run.day) || count.get(r.id) >= 7) continue;
-      const a = recs.get(r.id);
-      if (a && a.bulk_run_id && r.st === "draft") continue;
-      const key = `done/agreement.unsigned/${r.id}--${run.day}`;
+    let list;
+    if (P) list = await P.unsignedDue(run.day);
+    else {
+      const rows = (await readIndex("agreements", "pending").catch(() => ({ rows: [] }))).rows.filter((r) => ["sent", "viewed"].includes(r.st) && r.sent && localDate(new Date(Date.parse(r.sent))) < run.day && (r.rc || 0) < 7);
+      list = (await getRecords("agreement", rows.map((r) => r.id))).filter(Boolean).map((g) => g.data);
+    }
+    for (const a of list) {
+      // the projection's own reminders count toward the 7 (the sweep's count moves as it sends)
+      const done = count.get(a.id) || 0;
+      if (((a.reminders && a.reminders.count) || 0) + done >= 7) continue;
+      const key = `done/agreement.unsigned/${a.id}--${run.day}`;
       if (ctx.seeds.has(key) || await finalLive(key)) { ctx.skipped.seeded += 1; continue; }
-      count.set(r.id, count.get(r.id) + 1);
+      count.set(a.id, done + 1);
       by[run.i].texts += 1;
-      if (a && (a.import || a.created_by === "import")) imported += 1;
+      if (a.import || a.created_by === "import") imported += 1;
       if (samples.length < 3) { const s = await sample("agreement_unsigned", null); if (s) samples.push(s); }
     }
   }
@@ -199,18 +209,16 @@ async function unsigned(def, settings, ctx) {
 async function renewals(def, settings, ctx) {
   const by = ctx.days.map(() => zero());
   const runs = sweepRuns(ctx.at, "10:00");
-  const rows = (await readIndex("plans", "").catch(() => ({ rows: [] }))).rows.filter((r) => r.st === "active" && r.te && !r.im);
-  const recs = new Map((await getRecords("plan", rows.map((r) => r.id))).filter(Boolean).map((g) => [g.data.id, g.data]));
+  const P = await plansLists();
+  if (!P) return { by, samples: [], note: "Not previewed: Plans isn't here." };
   const threshold = await getRaw("cfg/messaging").then((g) => (g && g.data && Number.isInteger(g.data.bulk_threshold) ? g.data.bulk_threshold : 5)).catch(() => 5);
   const sent = new Set();
   let bulk = 0;
   const channels = Array.isArray(settings.channels) && settings.channels.length ? settings.channels : ["sms"];
   for (const run of runs) {
-    const due = rows.filter((r) => run.day >= addLocalDays(r.te, -30) && run.day <= r.te && !sent.has(r.id)).filter((r) => {
-      const p = recs.get(r.id);
-      return p && p.auto_renew !== false && !((p.renewal || {}).notice_term === (p.term || {}).current_term_n);
-    });
-    for (const r of due) sent.add(r.id);
+    // imported plans are never sent a notice (Rotor sends its own); each plan once per term
+    const due = (await P.renewalsDue(run.day)).filter((p) => !p.import && !sent.has(p.id));
+    for (const p of due) sent.add(p.id);
     if (due.length > threshold) { bulk += due.length; continue; }
     by[run.i].texts += channels.includes("sms") ? due.length : 0;
     by[run.i].emails += channels.includes("email") ? due.length : 0;

@@ -82,8 +82,8 @@ export function switchCard(s) {
   if (crm) {
     const rb = s.rollback || {};
     return html`<section class="card">
-      <h2>The CRM is in charge</h2>
-      <p>Since ${dateTime(s.mode.cutover_at)}. Texts, emails and charges go out from the CRM for each integration you connected.</p>
+      <h2>Since the switch</h2>
+      <p>The CRM has been in charge since ${dateTime(s.mode.cutover_at)}. Texts, emails and charges go out from the CRM for each integration you connected.</p>
       ${rb.allowed ? html`<p class="small muted">Until ${dateTime(rb.until)} you can go back to Rotor: the CRM goes back to report-only, you turn Rotor's automations back on, and what the CRM made since the switch is listed for you to enter in Rotor.</p>
         <div class="btn-row"><button type="button" class="btn danger" data-rollback ${attrs({ disabled: busyNow(s) })}>Switch back to Rotor</button></div>` : html`<p class="small muted">The 48 hours to go back to Rotor are over.</p>`}
     </section>`;

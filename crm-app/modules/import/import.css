@@ -67,3 +67,4 @@
 .co-steps{margin:8px 0 0;padding-left:22px}
 .co-steps li{margin:0 0 12px;line-height:1.45}
 .co-steps b{font-family:var(--head)}
+.co-steps a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;font-weight:600;color:var(--coral-ink)}

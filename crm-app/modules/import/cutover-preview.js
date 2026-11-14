@@ -23,7 +23,7 @@ const cell = (x) => {
   if (x.emails) parts.push(`${n(x.emails)} email`);
   if (x.invoices) parts.push(`${n(x.invoices)} inv`);
   if (x.charges) parts.push(`${n(x.charges)} chg`);
-  return parts.length ? parts.join(" · ") : "0";
+  return parts.length ? parts.join(" · ") : "None";
 };
 
 function dayTable(r) {
