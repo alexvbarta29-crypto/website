@@ -479,7 +479,7 @@ const showValue = (field, v) => {
   if (field === "term_months") return `${v} months`;
   if (field === "auto_renew") return v ? "Yes" : "No";
   if (field === "start_on") return dateYear(v);
-  if (field === "billing_mode") return BILLING[v] || v;
+  if (field === "billing_mode") return BILLING_SHORT[v] || v;
   if (field === "discounts") return (v || []).length ? v.map((d) => `${d.name} ${discText(d)}`).join(", ") : "None";
   return String(v);
 };

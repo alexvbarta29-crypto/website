@@ -1,4 +1,5 @@
-// The quote builder (design §9.2 "Quote builder"), phone first:
+// The quote builder (design §9.2 "Quote builder"), phone first, in Rotor's
+// black segments Measure | Price | Extras (Nov 2026; Price it moves to Price):
 //   who and where → measure (the pane counter with Barta's weights, or By
 //   square feet for a phone quote: "confirm panes on site") → services →
 //   Price it (the engine's lines, with tier labels; a plan option beside
@@ -10,7 +11,7 @@
 //   you type (the server recomputes everything on save). Deposits and
 //   "require card" appear once Money (M5) is there (§11.3).
 
-import { html, attrs, icon, sheet, toast, confirmSheet, render } from "../../core/ui.js";
+import { html, attrs, icon, sheet, toast, confirmSheet, render, seg } from "../../core/ui.js";
 import { busy, readMoney } from "../../core/forms.js";
 import { pickContact, pickFrom } from "../../core/pickers.js";
 import { money, phone } from "../../core/format.js";
@@ -221,12 +222,16 @@ export default {
   },
   render(s) {
     if (s.status && ["approved", "converted"].includes(s.status)) return html`<div class="stack"><div class="card empty"><h2>This quote is approved</h2><p>An approved quote doesn't change. Duplicate it to make a new one.</p></div></div>`;
+    const on = s.seg || (!s.isNew && s.options.length ? "price" : "measure");
+    s.seg = on;
     return html`<div class="qb">
-      ${whoCard(s)}${measureCard(s)}${servicesCard(s)}${optionsCard(s)}${extrasCard(s)}
+      <div class="qb-segbar">${seg([{ key: "measure", label: "Measure" }, { key: "price", label: "Price", count: s.options.length || null }, { key: "extras", label: "Extras" }], on, { name: "qb", black: true, label: "Quote" })}</div>
+      ${on === "price" ? optionsCard(s) : on === "extras" ? extrasCard(s) : html`${whoCard(s)}${measureCard(s)}${servicesCard(s)}`}
       <div class="qb-bar"><button type="button" class="btn primary" data-save>${s.isNew ? "Save quote" : "Save"}</button></div>
     </div>`;
   },
   events: {
+    "click [data-seg=qb]": (e, el, ctx) => { ctx.state.seg = el.dataset.key; ctx.rerender(); const v = document.getElementById("view"); if (v) v.scrollTop = 0; },
     "click [data-pick]": async (e, el, ctx) => { const c = await pickContact(ctx.api, { title: "Who is it for?" }); if (!c) return; await setContact(ctx.state, ctx, c.id); ctx.rerender(); },
     "click [data-mode]": (e, el, ctx) => { ctx.state.measure.mode = el.dataset.mode; ctx.rerender(); },
     "click [data-inc]": (e, el, ctx) => step(ctx, el.dataset.inc, 1),
@@ -353,6 +358,7 @@ async function priceIt(el, ctx) {
     s.warnings = [...new Set([...one.warnings, ...((plan && plan.warnings) || [])])];
     if (s.measure.mode === "panes") s.measure.panes_ext = one.panes_ext;
     s.tab = 0;
+    s.seg = "price";
     ctx.rerender();
   } catch (err) { busy(el, false); toast(err.message, { bad: true }); }
 }

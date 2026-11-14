@@ -83,3 +83,4 @@
 .pl-page .rs-card p,.rs-sheetpage .pl-ag p,.rs-sheetpage .pl-auto p,.rs-sheetpage .pl-top p{margin:0}
 .pl-page .rs-card p.warn-box,.pl-page .rs-card p.note{margin:4px 0 0}
 .pl-skip{border:0;background:none;color:var(--muted);font:600 15px/1 var(--text);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.rs-li-sum .num,.rs-li-m{white-space:nowrap}

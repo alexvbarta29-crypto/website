@@ -5,7 +5,15 @@
 
 import { html, attrs } from "../../core/ui.js";
 import { findButton, findOpen } from "../../core/nav.js";
-import { ensureStyles, CHIPS, OPEN, quoteRow, emptyCard } from "./kit.js";
+import { money, ago, dateShort } from "../../core/format.js";
+import { ensureStyles, CHIPS, OPEN, statusPill, emptyCard } from "./kit.js";
+
+// Two lines (Rotor's list): the customer and the first-visit price; the number, when it went out, the status.
+export function quoteRow2(r) {
+  return html`<li><a class="c-row" href="${"#/quotes/" + encodeURIComponent(r.id)}">
+    <span class="c-l1"><b>${r.cn || "No name"}</b><span class="num">${r.first !== null && r.first !== undefined ? money(r.first) : ""}</span></span>
+    <span class="c-l2"><span class="c-sub">${r.n} · ${r.sent ? `sent ${ago(r.sent)}` : `made ${dateShort(r.at || r.u)}`}${r.viewed ? ` · viewed ${ago(r.viewed)}` : ""}</span>${statusPill(r.st)}</span></a></li>`;
+}
 
 async function load(params, ctx) {
   ensureStyles();
@@ -29,7 +37,7 @@ export default {
     return html`<div class="stack">
       <label class="${"field find-field" + (findOpen(s, ctx) ? " open" : "")}"><span class="sr">Search quotes</span><input type="search" data-q placeholder="Name or number" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
       <div class="chips" role="tablist">${CHIPS.filter(([k]) => k === "open" || count(k) > 0 || k === s.chip).map(([k, label]) => html`<button type="button" class="chip" ${attrs({ "data-chip": k, "aria-pressed": String(s.chip === k) })}>${label} <span class="n">${count(k)}</span></button>`)}</div>
-      ${rows.length ? html`<ul class="list">${rows.map(quoteRow)}</ul>` : emptyCard(s.chip === "open" ? "No open quotes" : "Nothing here", s.chip === "open" ? "Tap New to price a house." : "Pick another chip.")}
+      ${rows.length ? html`<ul class="rs-card flush c-rows">${rows.map(quoteRow2)}</ul>` : emptyCard(s.chip === "open" ? "No open quotes" : "Nothing here", s.chip === "open" ? "Tap New to price a house." : "Pick another chip.")}
     </div>`;
   },
   mount(view, s, ctx) { findButton(view, ctx, "Search quotes"); },

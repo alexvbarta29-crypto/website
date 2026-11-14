@@ -1,14 +1,16 @@
-// One quote (design §9.2 "Quote view"): its status and what happened when
+// One quote (design §9.2 "Quote view"; Rotor's look, Nov 2026: a top card
+// with the price, Send and Present, the customer, Options | Activity, the
+// round pencil (Edit) and "..." for the rest): its status and what happened when
 // (sent, viewed, approved...), the customer's view of the version they
 // have, the versions, the linked deal, plan or jobs; and what to do next:
 // Edit, Send (text and/or email), Present to customer (a single-use page
 // opened on this phone), Approve by phone, Convert, Archive, Restore,
 // Decline, Duplicate, Preview as the customer sees it.
 
-import { html, attrs, icon, sheet, toast, confirmSheet, openExternal } from "../../core/ui.js";
+import { html, attrs, icon, sheet, toast, confirmSheet, openExternal, seg, cardHead, sectionLabel, personCard, lineItems, pillBtn, disclosure, statusPill as kitPill } from "../../core/ui.js";
 import { busy } from "../../core/forms.js";
 import { money, dateShort, dateTime, ago, phone } from "../../core/format.js";
-import { ensureStyles, statusPill, optionSummary, waitRun, STATUS, emptyCard, optionTotals, lineTotal } from "./kit.js";
+import { ensureStyles, statusPill, waitRun, STATUS, emptyCard, optionTotals, lineTotal, headline, visitsOf, scopeWords, discountText, PLAN_FREQ } from "./kit.js";
 
 async function load(params, ctx) {
   ensureStyles();
@@ -28,25 +30,8 @@ function timeline(q) {
   return ev.filter(([, at]) => at).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
 }
 
-function actions(s, ctx) {
-  const q = s.quote;
-  const st = q.status;
-  const w = ctx.can("quotes:write");
-  const send = ctx.can("quotes:send");
-  const b = [];
-  if (["draft", "changes_requested"].includes(st) && w) b.push(html`<a class="btn primary" href="${"#/quotes/" + encodeURIComponent(q.id) + "/edit"}">${icon("doc")}Edit</a>`);
-  if (["draft", "sent", "viewed", "changes_requested"].includes(st) && send) b.push(html`<button type="button" class="btn ${st === "draft" || st === "changes_requested" ? "" : "primary"}" data-act="send">${icon("send")}${q.sent_at ? "Send again" : "Send"}</button>`);
-  if (["draft", "sent", "viewed", "changes_requested"].includes(st) && send) b.push(html`<button type="button" class="btn" data-act="present">${icon("phone")}Present to customer</button>`);
-  if (["draft", "sent", "viewed", "changes_requested"].includes(st) && w) b.push(html`<button type="button" class="btn" data-act="phone">${icon("check")}Approved by phone</button>`);
-  if (["sent", "viewed"].includes(st) && w) b.push(html`<a class="btn" href="${"#/quotes/" + encodeURIComponent(q.id) + "/edit"}">${icon("doc")}Edit</a>`);
-  if (st === "approved" && w && s.convertible) b.push(html`<button type="button" class="btn primary" data-act="convert">${icon("check")}Book it</button>`);
-  if (["archived", "declined"].includes(st) && w) b.push(html`<button type="button" class="btn primary" data-act="restore">Restore</button>`);
-  if (["sent", "viewed", "changes_requested", "draft"].includes(st) && w) b.push(html`<button type="button" class="btn" data-act="decline">Declined</button>`);
-  if (st !== "converted" && st !== "archived" && w) b.push(html`<button type="button" class="btn" data-act="archive">Archive</button>`);
-  if (w) b.push(html`<button type="button" class="btn" data-act="duplicate">${icon("copy")}Duplicate</button>`);
-  if (q.current_version_id) b.push(html`<a class="btn" ${attrs({ href: `/api/crm/quotes/${encodeURIComponent(q.id)}/preview`, target: "_blank", rel: "noopener" })}>Customer view</a>`);
-  return b;
-}
+const editable = (st) => ["draft", "changes_requested", "sent", "viewed"].includes(st);
+const sendable = (st) => ["draft", "sent", "viewed", "changes_requested"].includes(st);
 
 function waiting(s) {
   const q = s.quote;
@@ -57,55 +42,135 @@ function waiting(s) {
   return html`<p class="note">${plan ? "This plan option can't be made into a plan from here yet." : "This can't be made into a job from here yet."} The approval is saved.</p>`;
 }
 
+const optionsOf = (s) => ((s.current_version && s.current_version.options) || s.quote.options || []);
+const chosen = (s, o) => ["approved", "converted"].includes(s.quote.status) && s.quote.approval && s.quote.approval.option_id === o.id && s.quote.approval.totals
+  ? { ...o, totals: s.quote.approval.totals, recommended: false, chosen: true } : o;
+
+// The top card: status pills, good through, the headline price, Send and Present.
+function topCard(s, ctx) {
+  const q = s.quote;
+  const st = q.status;
+  const opts = optionsOf(s).map((o) => chosen(s, o));
+  const lead = opts.find((o) => o.chosen) || opts.find((o) => o.recommended) || opts[0];
+  const h = lead ? headline(lead) : null;
+  const send = ctx.can("quotes:send") && sendable(st);
+  const w = ctx.can("quotes:write");
+  return html`<section class="rs-card qt-top">
+    <div class="rs-row"><span class="rs-pills">${statusPill(st)}${q.viewed_at && st === "sent" ? kitPill("Viewed") : ""}</span>${q.expires_on && ["sent", "viewed"].includes(st) ? html`<span class="rs-sub">Good through ${dateShort(q.expires_on)}</span>` : ""}</div>
+    ${lead ? html`<p class="qt-what">${lead.name}${lead.chosen ? " (chosen)" : ""}</p>` : ""}
+    <div class="rs-kv"><span>${h ? (h.unit === "total" ? "Total" : h.unit === "a visit" ? "A visit" : "First visit") : "Total"}</span><span class="rs-amt">${h ? h.main : money(0)}</span></div>
+    ${h && h.sub ? html`<p class="rs-sub qt-sub">${h.sub}</p>` : ""}
+    ${st === "draft" && q.current_version_id ? html`<p class="warn-box">Changed since it was sent. The customer still sees version ${s.current_version ? s.current_version.n : ""} until you send it again.</p>` : ""}
+    ${send || (st === "approved" && w && s.convertible) ? html`<div class="qt-top-acts">
+      ${st === "approved" && w && s.convertible ? pillBtn("Book it", { tone: "solid", icon: "check", data: { act: "convert" } }) : ""}
+      ${send ? pillBtn(q.sent_at ? "Send again" : "Send", { tone: "solid", icon: "send", data: { act: "send" } }) : ""}
+      ${send ? pillBtn("Present", { icon: "phone", data: { act: "present" }, aria: "Present to customer on this phone" }) : ""}
+    </div>` : ""}
+  </section>`;
+}
+
+function optionCard(o) {
+  const t = o.totals || optionTotals(o);
+  const plan = o.kind === "plan";
+  const v = visitsOf(o);
+  const lines = (o.lines || []).map((l) => ({ title: l.optional ? `${l.title} (add-on)` : l.title, sub: [l.scope && l.scope.type !== "all" ? scopeWords(l.scope) : "", l.override ? l.override.reason : "", (l.qty_milli || 1000) !== 1000 ? `${(l.qty_milli || 0) / 1000} × ${money(l.unit_cents)}` : ""].filter(Boolean).join(" · "), amount: lineTotal(l) === 0 ? "Included" : lineTotal(l) }));
+  return html`<section class="rs-card qt-opt2">
+    <div class="rs-ch"><h3>${o.name}</h3><span class="rs-ch-end">${o.recommended ? kitPill("Recommended", "fill-green") : ""}${o.chosen ? kitPill("Chosen", "green") : ""}</span></div>
+    ${plan && o.plan ? html`<p class="rs-sub">${PLAN_FREQ[o.plan.catalog_key] || ""}${o.plan.term_months ? ` · ${o.plan.term_months} months` : ""}</p>` : ""}
+    ${lineItems(lines, { discounts: (o.discounts || []).map((d) => ({ label: d.name + (d.scope && d.scope.type !== "all" ? ` (${scopeWords(d.scope)})` : ""), amount: discountText(d) })), total: plan ? t.first_cents : t.first_cents, totalLabel: plan ? (new Set(t.per_visit_cents).size <= 1 ? "Each visit" : "First visit") : "Total" })}
+    ${plan ? html`<div class="qt-value"><span class="rs-label">Plan value</span><span>${v.year} visit${v.year === 1 ? "" : "s"} a year · avg ${money(Math.round((t.annual_cents || 0) / Math.max(1, v.year)))} · ${money(t.annual_cents)}</span></div>` : ""}
+    ${plan && t.per_visit_cents && new Set(t.per_visit_cents).size > 1 ? html`<p class="rs-sub">${t.per_visit_cents.slice(0, v.year).map((c, i) => `Visit ${i + 1}: ${money(c)}`).join(" · ")}</p>` : ""}
+  </section>`;
+}
+
+function optionsPane(s) {
+  const q = s.quote;
+  const v = s.current_version;
+  const options = optionsOf(s);
+  return html`${q.status === "changes_requested" && q.change_message ? html`<section class="rs-card"><h3 class="qt-h3">They asked for changes</h3><p class="bubble">${q.change_message}</p></section>` : ""}
+    ${q.status === "declined" && q.decline_reason ? html`<section class="rs-card"><h3 class="qt-h3">Declined</h3><p>${q.decline_reason}</p></section>` : ""}
+    ${waiting(s)}
+    ${sectionLabel(v ? `What the customer sees (version ${v.n})` : "Options (not sent yet)")}
+    ${options.length ? options.map((o) => optionCard(chosen(s, o))) : emptyCard("No options yet", "Edit the quote to price it.")}
+    ${q.client_notes ? html`<section class="rs-card">${cardHead("Note to the customer")}<p class="preview">${q.client_notes}</p></section>` : ""}
+    ${q.internal_notes ? html`<section class="rs-card">${cardHead("Office note")}<p class="preview">${q.internal_notes}</p></section>` : ""}`;
+}
+
+function activityPane(s) {
+  const q = s.quote;
+  const ct = q.converted_to || {};
+  const links = [
+    ct.plan_id && disclosure("Plan", { value: "Open the plan", href: "#/plans/" + encodeURIComponent(ct.plan_id) }),
+    ...(ct.job_ids || []).slice(0, 4).map((j, i) => disclosure("Job", { value: (ct.job_ids || []).length > 1 ? `${i + 1} of ${ct.job_ids.length}` : "Open the job", href: "#/jobs/" + encodeURIComponent(j) })),
+  ].filter(Boolean);
+  return html`${links.length ? html`${sectionLabel("Booked as")}${links}` : ""}
+    <section class="rs-card">${cardHead("What happened")}<ul class="qt-timeline">${timeline(q).map(([w, at], i, all) => html`<li><span class="${"dot" + (i === all.length - 1 ? " on" : "")}"></span><span class="w">${w}</span><span class="when">${dateTime(at)}</span></li>`)}</ul></section>
+    ${(s.versions || []).length ? html`<section class="rs-card">${cardHead("Versions", { count: String(s.versions.length) })}<ul class="qt-timeline">${s.versions.map((x) => html`<li><span class="dot"></span><span class="w">Version ${x.n}${(x.sent_via || []).length ? ` · ${x.sent_via.map((ch) => (ch === "sms" ? "text" : "email")).join(" + ")}` : " · in person"}</span><span class="when">${ago(x.sent_at)}</span></li>`)}</ul></section>` : ""}`;
+}
+
+function moreRows(s, ctx) {
+  const q = s.quote;
+  const st = q.status;
+  const w = ctx.can("quotes:write");
+  const send = ctx.can("quotes:send") && sendable(st);
+  const id = encodeURIComponent(q.id);
+  return [
+    [
+      send && { label: q.sent_at ? "Send again" : "Send", icon: "send", run: () => sendSheet(ctx), data: { act: "send" } },
+      send && { label: "Present to customer", icon: "phone", hint: "on this phone", run: () => present(null, ctx), data: { act: "present" } },
+      sendable(st) && w && { label: "Approved by phone", icon: "check", run: () => phoneSheet(ctx), data: { act: "phone" } },
+      st === "approved" && w && s.convertible && { label: "Book it", icon: "check", run: () => runAction(null, ctx, `/quotes/${id}/convert`, "Booked"), data: { act: "convert" } },
+    ],
+    [
+      editable(st) && w && { label: "Edit", icon: "edit", href: `#/quotes/${id}/edit`, data: { act: "edit" } },
+      w && { label: "Duplicate", icon: "copy", hint: "a new draft", run: () => duplicate(null, ctx), data: { act: "duplicate" } },
+      q.current_version_id && { label: "Customer view", icon: "share", hint: "opens a tab", run: () => window.open(`/api/crm/quotes/${id}/preview`, "_blank", "noopener"), data: { act: "preview" } },
+      { label: "Open customer", icon: "user", href: "#/contacts/" + encodeURIComponent(q.contact_id) },
+    ],
+    [
+      ["archived", "declined"].includes(st) && w && { label: "Restore", icon: "undo", hint: "back to draft", run: () => simple(null, ctx, "restore", "Back to draft"), data: { act: "restore" } },
+      sendable(st) && w && { label: "Mark declined", icon: "close", danger: true, run: () => declineSheet(ctx), data: { act: "decline" } },
+      st !== "converted" && st !== "archived" && w && { label: "Archive", icon: "trash", danger: true, run: () => archive(null, ctx), data: { act: "archive" } },
+    ],
+  ];
+}
+
+async function archive(el, ctx) {
+  if (!(await confirmSheet("The customer's link stops taking approvals, and any follow-up offers end.", { title: "Archive this quote?", yes: "Archive" }))) return;
+  simple(el, ctx, "archive", "Archived");
+}
+async function duplicate(el, ctx) {
+  busy(el, true);
+  try {
+    const r = await ctx.api(`/quotes/${encodeURIComponent(ctx.state.quote.id)}/duplicate`, { method: "POST", body: {} });
+    toast("Copied to a new draft");
+    ctx.go(`/quotes/${encodeURIComponent(r.data.id)}/edit`);
+  } catch (err) { busy(el, false); toast(err.message, { bad: true }); }
+}
+
 export default {
-  title: (s) => (s && s.quote ? s.quote.number_label : "Quote"),
+  title: (s) => (s && s.quote ? `Quote ${s.quote.number_label}` : "Quote"),
   load,
+  tools: (s, ctx) => [editable(s.quote.status) && ctx.can("quotes:write") && { icon: "edit", label: "Edit the quote", href: `#/quotes/${encodeURIComponent(s.quote.id)}/edit`, data: { "edit-quote": true } }],
+  more: (s, ctx) => moreRows(s, ctx),
+  moreTitle: (s) => (s && s.quote ? `Quote ${s.quote.number_label}` : "Quote"),
   render(s, ctx) {
     const q = s.quote;
     const c = s.contact || {};
-    const v = s.current_version;
-    const options = (v && v.options) || q.options || [];
     const prop = (s.properties || []).find((p) => p.id === q.property_id);
-    return html`<div class="stack">
-      <section class="card qt-head">
-        <div class="top-line"><h2>${q.number_label}</h2>${statusPill(q.status)}</div>
-        <a class="who-link" href="${"#/contacts/" + encodeURIComponent(q.contact_id)}">${c.name || q.contact_name || "Contact"}</a>
-        <p class="small muted">${[prop && prop.address, c.phone && phone(c.phone)].filter(Boolean).join(" · ")}</p>
-        ${q.expires_on && ["sent", "viewed"].includes(q.status) ? html`<p class="small">Good through ${dateShort(q.expires_on)}</p>` : ""}
-        ${q.status === "draft" && q.current_version_id ? html`<p class="warn-box">Changed since it was sent. The customer still sees version ${v ? v.n : ""} until you send it again.</p>` : ""}
-      </section>
-      ${q.status === "changes_requested" && q.change_message ? html`<section class="card alert"><h2>They asked for changes</h2><p class="bubble">${q.change_message}</p></section>` : ""}
-      ${q.status === "declined" && q.decline_reason ? html`<section class="card"><h2>Declined</h2><p>${q.decline_reason}</p></section>` : ""}
-      ${waiting(s)}
-      <div class="qt-acts">${actions(s, ctx)}</div>
-      ${q.converted_to && (q.converted_to.plan_id || (q.converted_to.job_ids || []).length) ? html`<section class="card"><h2>Booked as</h2><p>${q.converted_to.plan_id ? "A plan" : ""}${q.converted_to.plan_id && (q.converted_to.job_ids || []).length ? " and " : ""}${(q.converted_to.job_ids || []).length ? `${q.converted_to.job_ids.length} job${q.converted_to.job_ids.length === 1 ? "" : "s"}` : ""}.</p></section>` : ""}
-      <div class="section-h">${v ? `What the customer sees (version ${v.n})` : "Options (not sent yet)"}</div>
-      ${options.length ? html`<div class="qt-opts side">${options.map((o) => optionSummary(["approved", "converted"].includes(q.status) && q.approval && q.approval.option_id === o.id && q.approval.totals ? { ...o, totals: q.approval.totals, recommended: false, name: `${o.name} (chosen)` } : o))}</div>` : emptyCard("No options yet", "Edit the quote to price it.")}
-      ${q.client_notes ? html`<section class="card"><h2>Note to the customer</h2><p class="preview">${q.client_notes}</p></section>` : ""}
-      ${q.internal_notes ? html`<section class="card"><h2>Office note</h2><p class="preview">${q.internal_notes}</p></section>` : ""}
-      <section class="card"><h2>What happened</h2><ul class="qt-timeline">${timeline(q).map(([w, at], i, all) => html`<li><span class="${"dot" + (i === all.length - 1 ? " on" : "")}"></span><span class="w">${w}</span><span class="when">${dateTime(at)}</span></li>`)}</ul></section>
-      ${(s.versions || []).length ? html`<section class="card"><h2>Versions</h2><ul class="qt-timeline">${s.versions.map((x) => html`<li><span class="dot"></span><span class="w">Version ${x.n}${(x.sent_via || []).length ? ` · ${x.sent_via.map((ch) => (ch === "sms" ? "text" : "email")).join(" + ")}` : " · in person"}</span><span class="when">${ago(x.sent_at)}</span></li>`)}</ul></section>` : ""}
+    const tab = s.tab || ctx.keep.tab || "options";
+    return html`<div class="rs-page qt-page">
+      ${topCard(s, ctx)}
+      ${personCard({ name: c.name || q.contact_name || "Contact", sub: [prop && prop.address, c.phone && phone(c.phone)].filter(Boolean).join(" · "), href: "#/contacts/" + encodeURIComponent(q.contact_id), call: c.phone ? "tel:" + c.phone : null, text: c.phone ? "sms:" + c.phone : null })}
+      ${seg([["options", "Options"], ["activity", "Activity"]], tab, { name: "quote", label: "Quote" })}
+      ${tab === "activity" ? activityPane(s) : optionsPane(s)}
     </div>`;
   },
   events: {
+    "click [data-seg=quote]": (e, el, ctx) => { ctx.state.tab = ctx.keep.tab = el.dataset.key; ctx.rerender(); },
     "click [data-act=send]": (e, el, ctx) => sendSheet(ctx),
     "click [data-act=present]": (e, el, ctx) => present(el, ctx),
-    "click [data-act=phone]": (e, el, ctx) => phoneSheet(ctx),
     "click [data-act=convert]": (e, el, ctx) => runAction(el, ctx, `/quotes/${encodeURIComponent(ctx.state.quote.id)}/convert`, "Booked"),
-    "click [data-act=archive]": async (e, el, ctx) => {
-      if (!(await confirmSheet("The customer's link stops taking approvals, and any follow-up offers end.", { title: "Archive this quote?", yes: "Archive" }))) return;
-      simple(el, ctx, "archive", "Archived");
-    },
-    "click [data-act=restore]": (e, el, ctx) => simple(el, ctx, "restore", "Back to draft"),
-    "click [data-act=decline]": (e, el, ctx) => declineSheet(ctx),
-    "click [data-act=duplicate]": async (e, el, ctx) => {
-      busy(el, true);
-      try {
-        const r = await ctx.api(`/quotes/${encodeURIComponent(ctx.state.quote.id)}/duplicate`, { method: "POST", body: {} });
-        toast("Copied to a new draft");
-        ctx.go(`/quotes/${encodeURIComponent(r.data.id)}/edit`);
-      } catch (err) { busy(el, false); toast(err.message, { bad: true }); }
-    },
   },
 };
 
@@ -209,8 +274,7 @@ function phoneSheet(ctx) {
         const o = options.find((x) => x.id === option.value);
         const selected_line_ids = o ? [...ticked(form, o)] : [];
         sh.close();
-        const btn = document.querySelector("[data-act=phone]");
-        await runAction(btn, ctx, `/quotes/${encodeURIComponent(s.quote.id)}/approve`, "Approved", { option_id: option.value, by_phone: true, selected_line_ids, name_typed: form.elements.name_typed.value.trim() });
+        await runAction(null, ctx, `/quotes/${encodeURIComponent(s.quote.id)}/approve`, "Approved", { option_id: option.value, by_phone: true, selected_line_ids, name_typed: form.elements.name_typed.value.trim() });
       },
     },
   });
