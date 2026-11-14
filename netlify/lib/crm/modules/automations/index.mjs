@@ -13,7 +13,7 @@ import { InputError } from "../../core/errors.mjs";
 import { isPlainObject } from "../../core/validate.mjs";
 import { types } from "./types.mjs";
 import { EVENT_TRIGGERS, TEMPLATES } from "./catalog.mjs";
-import { onEvent, runStep, dailySweep, SEND_DEFS, FLOW_SETTINGS } from "./engine.mjs";
+import { onEvent, runStep, dailySweep, pruneSweep, SEND_DEFS, FLOW_SETTINGS } from "./engine.mjs";
 import { flowRoutes } from "./routes.mjs";
 
 function validateFlowSettings(v) {
@@ -39,7 +39,10 @@ export default defineModule({
   routes: flowRoutes,
   events: listeners,
   queue: { "flow.step": { handler: runStep, mutates: true } },
-  sweeps: [{ key: "flows.daily", label: "Daily automations", lane: "fast", every: "pass", mutates: true, run: (ctx) => dailySweep(ctx) }],
+  sweeps: [
+    { key: "flows.daily", label: "Daily automations", lane: "fast", every: "pass", mutates: true, run: (ctx) => dailySweep(ctx) },
+    { key: "flows.prune", label: "Old daily text counts", lane: "bulk", every: "daily", at_local: "03:40", mutates: false, maintenance: true, run: () => pruneSweep() },
+  ],
   automations: SEND_DEFS,
   templates: TEMPLATES,
   needs: ["notify.users", "sales.createTask", "sales.dealOf", "sales.markDeal", "sales.enroll", "contacts.tag", "contacts.setOwner"],

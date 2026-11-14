@@ -286,3 +286,19 @@ test("daily trigger: once a day at its time; more than 5 people becomes a bulk r
   assert.equal(runsOf(flow.id).length, 1);
   assert.ok((await log(EN.flowKey(flow.id))).some((r) => r.result === "skipped:nobody"));
 });
+
+test("a record that says no is skipped, not retried; old daily text counts are pruned", async () => {
+  const owner = await setup();
+  const gone = await scope(() => seedContact(1, { merged_into: "ct_00000000000000000009" }));
+  const flow = await makeFlow(owner, { name: "Tag", trigger: { type: "contact.tagged", tag: "T" }, steps: [{ type: "tag_add", tag: "Seen" }] });
+  await emitTagged(gone, ["T"]);
+  await drain(4);
+  const run = runsOf(flow.id)[0];
+  assert.equal(run.status, "done");
+  assert.equal(run.steps[0].result, "skipped:conflict");
+  assert.equal(t.stores.data.keys("q/").length, 0, "no retries left in the queue");
+  await scope(() => store.putRaw("flowt/2026-11-10/ct_00000000000000000001/x", { at: "2026-11-10T15:00:00.000Z" }, { onlyIfNew: true }));
+  await scope(() => store.putRaw("flowt/2026-11-17/ct_00000000000000000001/y", { at: "2026-11-17T15:00:00.000Z" }, { onlyIfNew: true }));
+  await scope(() => EN.pruneSweep());
+  assert.deepEqual(t.stores.data.keys("flowt/"), ["flowt/2026-11-17/ct_00000000000000000001/y"]);
+});

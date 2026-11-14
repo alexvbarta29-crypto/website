@@ -37,10 +37,10 @@
 // - simulate(): what a test run on one record would do, step by step, with
 //   no writes at all.
 
-import { getRecord, getRecords, createRecord, updateRecord, listRel, listKeys, readIndex, getSetting, claimMarker, advanceMarker } from "../../../crm-store.mjs";
+import { getRecord, getRecords, createRecord, updateRecord, listRel, listKeys, readIndex, getSetting, claimMarker, advanceMarker, deleteRaw } from "../../../crm-store.mjs";
 import { now, nowIso, nowMs, localDate, localTime, localDow, tsKey, fromTsKey, startOfLocalDay, addLocalDays, zonedToUtc, nextAllowed, DEFAULT_HOURS, DEFAULT_CALENDAR } from "../../core/clock.mjs";
 import { isId, deriveId } from "../../core/ids.mjs";
-import { ExistsError, ParallelRunGuard } from "../../core/errors.mjs";
+import { ExistsError, ParallelRunGuard, InputError, ConflictError, NotFoundError } from "../../core/errors.mjs";
 import { keySafe } from "../../core/text.mjs";
 import { enqueue } from "../../core/queue.mjs";
 import { automationCtx, writeOnceRaw, logAutomation } from "../../core/activity.mjs";
@@ -380,6 +380,18 @@ export async function dailySweep(sctx) {
   return { progress };
 }
 
+// Sweep "flows.prune" (bulk, daily): the daily text claims (flowt/) of days
+// before yesterday go; they only count today's texts.
+export async function pruneSweep() {
+  const keep = addLocalDays(localDate(now()), -1);
+  const { directories } = await listKeys("flowt/", { directories: true });
+  let n = 0;
+  for (const d of directories.map((x) => x.replace(/\/+$/, "").replace(/^flowt\//, "")).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && x < keep)) {
+    for (const k of await listKeys(`flowt/${d}/`)) { await deleteRaw(k); n += 1; }
+  }
+  return { result: `pruned:${n}`, progress: n ? 1 : 0 };
+}
+
 // ------------------------------------------------------------ steps
 
 async function usersIndex() {
@@ -557,6 +569,8 @@ export async function runStep(h) {
         results.push(await doStep(step, x.m, x.f, { ...run, step: i }, actx, actx.write()));
       } catch (e) {
         if (e instanceof ParallelRunGuard) { await ctxBase.would(x.m.c, step.type, undefined); results.push(`would-${step.type}`); continue; }
+        // the record says no (merged away, a rule it keeps): this one is skipped, never retried
+        if (e instanceof InputError || e instanceof ConflictError || e instanceof NotFoundError) { results.push(`skipped:${keySafe(e.name.replace(/Error$/, "").toLowerCase(), 20)}`); continue; }
         throw e;
       }
     }

@@ -26,13 +26,15 @@ import { simulate, flowSettings, FLOW_SETTINGS } from "./engine.mjs";
 const r = (method, path, handler, more = {}) => ({ method, path, auth: "session", perm: "automations:configure", subject: path.includes(":id") ? "required" : "none", mode: "inline", handler, ...more });
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 
-// Names for the plain-English sentence and the pickers.
-async function choices() {
+// Names for the plain-English sentence and the pickers (lists: the tags,
+// sources and towns in use, from the contacts list; only the screens that
+// show pickers read it).
+async function choices({ lists = false } = {}) {
   const [tpls, users, cads, contacts] = await Promise.all([
     listTemplates().catch(() => []),
     readIndex("users", "").then((x) => x.rows).catch(() => []),
     readIndex("cadences", "").then((x) => x.rows).catch(() => []),
-    readIndex("contacts", contactShard("ct_00000000000000000000")).then((x) => x.rows).catch(() => []),
+    lists ? readIndex("contacts", contactShard("ct_00000000000000000000")).then((x) => x.rows).catch(() => []) : [],
   ]);
   const templates = tpls.filter((t) => t.category !== "staff" && t.active !== false).map((t) => ({ key: t.key, name: t.name, channel: t.channel, category: t.category }));
   const people = users.filter((u) => u.status === "active").map((u) => ({ id: u.id, name: u.name, role: u.role }));
@@ -133,8 +135,9 @@ async function create(ctx) {
 // ?catalog=1: with what the editor's pickers offer
 async function one(ctx) {
   const got = await live(ctx.params.id);
-  const [ch, counts] = await Promise.all([choices(), runsCount(got.data.id)]);
-  const extra = ctx.query.get("catalog") === "1" ? { catalog: CATALOG, choices: ch } : {};
+  const editor = ctx.query.get("catalog") === "1";
+  const [ch, counts] = await Promise.all([choices({ lists: editor }), runsCount(got.data.id)]);
+  const extra = editor ? { catalog: CATALOG, choices: ch } : {};
   return { data: { flow: { ...view(got.data, ch), ...counts }, ...extra }, etag: got.etag };
 }
 

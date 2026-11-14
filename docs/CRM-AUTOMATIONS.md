@@ -114,6 +114,11 @@ twice (the daily text limit below still holds).
   step) and gives `contacts.tag` and `contacts.setOwner`; Sales gives
   `sales.createTask` and `sales.dealOf`; Scheduling emits `visit.started`
   when a tech starts a visit's timer.
+- A step a record refuses (a contact merged away, a rule the record keeps)
+  is skipped for that record (`skipped:conflict`, `skipped:input`), never
+  retried; a store or network failure retries like any queue item.
+- `flows.prune` (bulk lane, daily 03:40): the daily text claims of days
+  before yesterday go.
 - Restores: `flowc/` and `flowt/` are not in the nightly snapshot; after a
   restore the per-customer and daily limits start fresh.
 
@@ -121,11 +126,11 @@ twice (the daily text limit below still holds).
 
 | Route | What |
 |---|---|
-| `GET /automations/flows` | the list (on/off, runs, last run, sentence, problems), starters, the catalog, choices (templates, people, cadences, tags, sources, towns), the limits |
+| `GET /automations/flows` | the list (on/off, runs, last run, sentence, problems), starters, the catalog, choices (templates, people, cadences), the limits |
 | `POST /automations/flows` | `{ recipe }` or a definition → a new automation (off) |
 | `POST /automations/flows/check` | `{ flow }` → `{ summary, problems }` (never a 400) |
 | `POST /automations/flows/test` | `{ flow, contact_id }` → what would happen (no writes) |
-| `GET /automations/flows/:id[?catalog=1]` | one (with the editor's catalog) |
+| `GET /automations/flows/:id[?catalog=1]` | one (with the editor's catalog and choices, plus the tags, sources and towns in use) |
 | `PATCH /automations/flows/:id` | If-Match; a definition |
 | `POST /automations/flows/:id/pause` · `resume` · `duplicate` | |
 | `DELETE /automations/flows/:id` | soft delete |
