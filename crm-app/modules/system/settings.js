@@ -58,7 +58,7 @@ export function sections(can, manifests = MANIFESTS) {
 
 const row = (x) => (x.path === "#theme"
   ? html`<li><button type="button" class="row" data-theme-row><span class="ico">${icon(x.icon)}</span><span class="who"><span class="nm">${x.label}</span><span class="sub">This device</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></button></li>`
-  : html`<li><a class="row" ${attrs({ href: "#" + x.path })}><span class="ico">${icon(x.icon || "gear")}</span><span class="who"><span class="nm">${x.label}</span>${x.owner ? html`<span class="sub">Owners only</span>` : ""}</span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li>`);
+  : html`<li><a class="row" ${attrs({ href: "#" + x.path })}><span class="ico">${icon(x.icon || "gear")}</span><span class="who"><span class="nm">${x.label}</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li>`);
 
 export default {
   title: "Settings",

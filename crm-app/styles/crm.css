@@ -193,6 +193,8 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
   .app.big-top .top-title{padding-left:2px;font-size:34px;line-height:1.1;letter-spacing:-.025em}
   .app.big-top .top-rnd{display:flex;gap:8px;margin-left:4px}
   .app.big-top .top-act .btn{border-radius:999px}
+  /* the coral + is the screen's own "new": no second New button beside it */
+  .app.big-top.own-new .top-act{display:none}
   /* a list's search waits behind the round search button (nav.js findButton) */
   .app.big-top .find-field:not(.open){display:none}
   /* Home's own header stands in for the title (the h1 stays for screen readers) */

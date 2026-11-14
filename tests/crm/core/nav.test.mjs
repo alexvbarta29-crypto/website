@@ -37,6 +37,7 @@ test("the office's bar: Home · Schedule · Inbox · Map · Menu (Flyra's), the 
   const t = nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
   assert.deepEqual(t.bar.map((x) => x.label), ["Today", "Inbox", "Time", "Pay", "Me"]);
   assert.equal(t.menu, null, "no Menu for a tech");
+  assert.ok(!nav.menuGroups().flatMap((g) => g.items.map((n) => n.path)).includes("/tab-bar"), "a tech's bar is the tech app's: no Tab bar");
   assert.deepEqual(OFFICE_NAV, ["home", "schedule", "inbox", "map", "menu"]);
 });
 

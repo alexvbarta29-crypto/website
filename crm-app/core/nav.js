@@ -238,9 +238,13 @@ function mountRound() {
 function drawRound(active, big) {
   const r = document.getElementById("top-rnd");
   if (!r) return;
+  const app = document.getElementById("app");
+  if (app) app.classList.remove("own-new");
   if (!big) { render(r, html``); return; }
   const own = active && (PLACE_NEW[active.key] || []).find((p) => st.creates.some((c) => c.path === p) || (p === "/contacts/new" && st.can("contacts:write") && routeOk(p)));
   // the screen's own round buttons (screenButtons: search, filter, ...), then a coral + where the place makes something of its own
+  // (the coral + is the screen's "new": on a phone the header's own New button steps aside, one way to make it)
+  if (app && own) app.classList.add("own-new");
   render(r, html`<span class="rnd-own"></span>${own ? html`<a class="rnd coral" ${attrs({ href: "#" + own, "aria-label": "New" })}>${icon("plus")}</a>` : ""}`);
 }
 
@@ -379,6 +383,8 @@ export function menuSections() {
   }
   for (const n of st.more) {
     if (named.has(n.path) || GONE.has(n.path) || (settings && IN_SETTINGS.includes(n.path))) continue;
+    // (a bar nobody may change, a tech's: no Tab bar)
+    if (n.path === "/tab-bar" && !menuDest()) continue;
     add(OLD_SECTION[n.section] || "more", { path: n.path, label: n.label, icon: n.icon });
   }
   return groups.filter((g) => g.items.length);
