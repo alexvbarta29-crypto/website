@@ -53,16 +53,21 @@ export function delta(t) {
 const cell = (t, i, v) => ((t.money || []).includes(i) ? (v === null || v === undefined ? "-" : dollars(v)) : (t.pctCols || []).includes(i) || (i > 0 && t.head[i] === "Share") ? (v === null || v === undefined ? "-" : `${v}%`) : v === null || v === undefined || v === "" ? "-" : String(v));
 const LINK = { invoice: (id) => `#/invoices/${id}`, pay_period: (id) => `#/payroll/${id}` };
 
+const hashQuery = (name) => { try { return new URLSearchParams(location.hash.split("?")[1] || "").get(name) || ""; } catch (e) { return ""; } };
+
 async function load(params, ctx) {
   ensureStyles();
   const today = localDate();
   const k = ctx.keep;
+  // #/reports?tab=revenue (Home's "See more") opens that report
+  const asked = hashQuery("tab");
+  if (asked && TABS.some(([x]) => x === asked) && asked !== k.asked) { k.tab = asked; k.asked = asked; }
   const tab = k.tab || "revenue";
   const range = k.range || "month";
   const { from, to } = rangeDates(range, today, k);
   const qs = `from=${from}&to=${to}${k.group ? `&group=${k.group}` : ""}`;
   const r = await ctx.api(`/reports/${tab}?${qs}`, { cache: false });
-  return { rep: r.data, tab, range, group: k.group || "", qs, payroll: ctx.can("payroll:read_all") };
+  return { rep: r.data, tab, range, group: k.group || "", qs, payroll: ctx.can("payroll:read_all"), office: ctx.can("office:tools") };
 }
 
 let chart = null;
@@ -94,7 +99,7 @@ export default {
           <tbody>${t.rows.map((row, ri) => html`<tr>${row.map((v, i) => (i === 0 && t.links && t.links[0] && t.ids && t.ids[ri] && (t.links[0] !== "pay_period" || s.payroll) ? html`<td><a ${attrs({ href: LINK[t.links[0]](t.ids[ri]) })}>${cell(t, i, v)}</a></td>` : html`<td ${attrs({ class: i ? "n" : "" })}>${cell(t, i, v)}</td>`))}</tr>`)}</tbody></table></div>`
           : html`<p>Nothing in these dates.</p>`}
       </section>`)}
-      <div class="btn-row"><a class="btn" ${attrs({ href: `/api/crm/reports/${r.name}.csv?${s.qs}`, download: "" })}>Export CSV</a></div>
+      <div class="btn-row"><a class="btn" ${attrs({ href: `/api/crm/reports/${r.name}.csv?${s.qs}`, download: "" })}>Export CSV</a>${s.office ? html`<a class="btn" href="#/dashboard" data-office-dashboard>Office dashboard</a>` : ""}</div>
       <p class="rp-foot">Collected is money in (payments and tips, less refunds) on the day it came in; practice payments and test customers never count. Work completed is billable jobs finished, after discounts.</p>
     </div>`;
   },

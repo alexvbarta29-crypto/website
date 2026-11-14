@@ -81,7 +81,7 @@ test("a quote: status, timeline, the customer's version, the actions its status 
   assert.doesNotMatch(ro, /data-act="send"|data-act="archive"/);
   // approved, waiting for Scheduling: says so instead of a broken button
   const ap = text(view.render({ ...s, quote: { ...q, status: "approved", approved_at: NOW, approval: { option_id: "op_a", method: "phone" } }, convertible: false }, ctx()));
-  assert.match(ap, /Turning this into a job arrives with Scheduling/);
+  assert.match(ap, /be made into a job from here yet/);
   assert.doesNotMatch(ap, /data-act="convert"/);
   assert.match(text(view.render({ ...s, quote: { ...q, status: "approved", approved_at: NOW, approval: { option_id: "op_a" } }, convertible: true }, ctx())), /data-act="convert"/);
   assert.match(text(view.render({ ...s, quote: { ...q, status: "changes_requested", change_message: `Add the garage ${XSS}` } }, ctx())), /They asked for changes/);

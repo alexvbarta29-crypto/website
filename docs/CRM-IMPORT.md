@@ -28,6 +28,12 @@ not, ever goes into git.
    entity (`members.jsonl`, `customers.jsonl`, `leads.jsonl`,
    `quote_contacts.jsonl`, `messages.jsonl`, ...; the list is in
    `catalog.mjs` `ENTITIES` and design §10.1), customers exported last.
+   Rotor's own file names are fine: the pack reads `availability.jsonl` as
+   `member_availability`, `payroll_rate_settings.json` (one JSON object) as
+   `rate_settings`, leaves `contacts.jsonl` out (it repeats customers and
+   leads), and without a `quote_contacts.jsonl` makes its rows from the
+   contact every quote row carries (`quote.contact`), copying only what the
+   quote-contacts steps read (see "Field by field").
    The media fetch script (not repo code) saves message attachments and
    quote photos in `<export>/media/` with `media/index.jsonl`
    (`{url_sha256, source, ref_id, name, content_type, bytes, file}`).
@@ -39,7 +45,9 @@ not, ever goes into git.
    node build/crm_import_pack.mjs ~/barta-private/rotor-export ~/barta-private/import-pack --as-of 2026-11-10
    ```
    Checks every `*.jsonl` parses (one JSON object a line), drops repeated
-   rows by `id` (the last copy wins; Rotor's paging repeats rows), splits
+   rows by `id` (the last copy wins; Rotor's paging repeats rows), names
+   the entities as the import knows them (above; the printed counts say
+   `from` for a renamed or made file and `not_packed` for a file left out), splits
    each entity into chunks of at most ~2.9 MB of JSON, seals each with the
    office public key (`build/office-dashboard-public.pem`, X25519 +
    AES-256-GCM: only the site's `OFFICE_DATA_KEY` opens them; every sealed
@@ -55,7 +63,7 @@ not, ever goes into git.
    `--force`, writes files readable by their owner only, and prints counts
    only. `--print` counts and writes nothing. With `OFFICE_DATA_KEY` in the
    environment it also proves every chunk opens.
-3. **Make the run**: an owner opens **Menu → Customers → Import from Rotor → Start an
+3. **Make the run**: an owner opens **Settings → Import & data → Import from Rotor → Start an
    import** and copies the upload key (shown once, `bimp_...`, good for 24
    hours, only for this run) and the command the sheet shows.
 4. **Upload**:
@@ -164,6 +172,17 @@ may set `rank` itself. So a lead row still in
 converted it) never turns its customer back into a lead, and a contact the
 owner kept after merging two Rotor customers keeps its own values (the
 merged-away row's source is recorded and stays quiet).
+
+A **partial record** (`{ type, data, fields: ["discounts"] }`) speaks only
+about the rotorFields it names: the rules above apply to those fields
+alone, nothing else of the record is filled, the record's own
+`import.hash` still covers all its rotorFields, and a partial record never
+creates one (outcome `missing`). Plans use it for the plan discounts each
+plan row puts on the jobs `work.jobs` made (source
+`service_plans:<id>~plans.plans`): the job's discounts follow Rotor, a
+discount someone set on the job in the CRM stays (a conflict when Rotor
+changes it too), and the jobs row, which never speaks about discounts,
+leaves them alone.
 
 Two kinds of fields never conflict: `rotor` (the import's own bag of Rotor
 ids and raw values: S's changed values win where the bag still holds S's
@@ -371,6 +390,248 @@ of the latest finished run and runs only what is still open
   record every value it should have (a default taken from the clock is
   another value on every run: the lead's deal names its `opened_at`).
 
+## Field by field (the 2026-11-13 export)
+
+Every field of every entity file, and where it lands. **new** marks what
+the fidelity pass (branch `crm/import-fidelity`) added or corrected; the
+rest was mapped before. "dropped" says why. Keys only, never a value.
+Counts measured on the real export with a script outside the repository
+that prints counts only.
+
+**members** → `user` (`system.users`): `user_id` (the team map, `ptr/rotor/user`),
+`name` / `first_name` / `last_name` (matching, a new user's name), `role`
+(a new user's role); all of it in `user.rotor`. `email`: dropped (logins
+are by name; the owner sends invite links).
+
+**availability.jsonl → member_availability** (`system.availability`;
+**new**: the pack reads Rotor's file name, before it nothing read it):
+`user_id`, `weekly_availability[]` (`day_of_week`, `start_time`,
+`end_time`) → `user.availability` where empty; `is_technician` on a user
+the import made. `name`, `email`, `first_name`, `last_name`: dropped
+(repeat members).
+
+**payroll_rate_settings.json → rate_settings** (`system.rates`; **new**:
+the pack reads the JSON object): `hourly_rates[]` (`user_id`, `category`,
+`rate_cents_per_hour`) and `commission_rates[]` (`user_id`, `category`,
+`rate` → basis points) fill a rate still 0. `id`, `company_id`,
+`created_at`, `updated_at`, `commission_rate_modifiers` (empty): dropped.
+
+**availability_exceptions** (0 rows) → `time_off`; **crews** (0 rows):
+a visit's `crew_id` is kept as `visit.crew_rotor_id`; **map_pins** (0
+rows): no phase (map pins are the CRM's own).
+
+**customers** → `contact` + its "Home" `property` (`contacts.customers`):
+`id`, `first_name`, `last_name`, `company_name`, `email`, `phone`,
+`address.*` (billing address and the property), `status` (inactive →
+former customer + tag "Rotor inactive"; `rotor.status_raw`), `source`
+(the controlled list; `rotor.source_raw`; facts in the notes →
+`source.form` / `ad` / `campaign` / `county` / `channel` /
+`referral_code`), `assigned_to` (owner, watchers), `tags`
+(`rotor.tags_raw`), `notes`, `created_at`.
+
+**leads** → `contact` + its `deal` (`contacts.leads`), a follow-up `task`
+(`sales.lead_follow_ups`): `id`, `name`, `email`, `phone`, `address.*`,
+`source`, `tags`, `notes`, `assigned_to`, `created_at`, `service_type`
+(deal services), `projected_value` (deal value), `follow_up_date` (task);
+**new**: `priority` → `rotor.priority` and, when high, the tag "High
+priority"; `stage` → `rotor.stage` (also `rotor.status_raw`).
+
+**contacts.jsonl**: not packed (Rotor's contact list: every row repeats a
+row of customers.jsonl or leads.jsonl; checked: 995 of 995).
+
+**quote_contacts** (**new**: made by the pack from `quotes[].contact`, one
+per contact; before it the export had no such file, so none of this came
+in) → patches on the contact (`contacts.quote_contacts` for customers,
+before the leads; **new** `contacts.quote_contacts_leads` for leads, after
+them): `messaging_config.sms.opted_in` → `consent.sms_service`;
+`messaging_config.sms.first_sms_sent_date` → the comms stats' first text
+(**new**: read where Rotor keeps it); `muted_channels` →
+`automations_paused`; `stripe_customer_id` → money stats and
+`ptr/stripe-cus`; `converted_from_lead_id` → `ptr/rotor/lead`,
+`rotor.lead_ids` (**new**: a high-confidence merge candidate when an
+earlier import made the lead a contact of its own); **new**: `notes` fill
+empty notes (Rotor's customer list leaves some out: 43 contacts), `sync.meta.form_name`
+/ `ad_name` → `source.form` / `source.ad` where empty, `last_called_at` →
+the sales stats' `last_called_at`, `priority`, `stage`. Not copied by the
+pack: name, phone, email, address, tags, source, status (repeat
+customers / leads), `billing_*` (empty in the export), `sale_value`,
+`ltv`, `contract_length_months`, `service_frequency`, `service_type(s)`,
+`projected_value` (Rotor's derived figures; the CRM works out its own),
+`photos.attachments` (job photos as Rotor storage URLs: the media fetch
+covers message attachments and quote photos only; a follow-up),
+`documents` (empty), `sync.meta.raw_field_data` (the Meta form's answers:
+repeat name, email, phone, address), `location` (the CRM geocodes),
+`muted_at` / `muted_by` / `payment_provider` (empty), `user_id`,
+`created_by`, `assigned_to_v2` (repeat `assigned_to`),
+`follow_up_due_emitted_at`, `archived*`, `deleted_at`, `inactive_at`,
+`company_id` (Rotor bookkeeping).
+
+**pipelines** → the seeded `cadence` (`sales.pipelines`): `id`, `name`,
+`position` (`cadence.rotor`). `description`, `assigned_to`, `company_id`,
+timestamps: dropped (the CRM's cadences carry their own).
+**pipeline_stages** (`sales.pipeline_stages`): `id`, `pipeline_id`, `name`,
+`position` → the cadence's stage → step map; timestamps dropped.
+
+**opportunities** → the contact's `deal` and `enrollment`
+(`sales.opportunities`): `id`, `contact_id`, `contact_type`,
+`pipeline_id`, `stage_id`, `status`, `archived`, `created_at`,
+`assigned_to` (enrollment owner), `value` (deal value), `name` (a
+placeholder's name); **new**: `notes` → the deal history row's `note`.
+
+**tasks** → `task` (`sales.tasks`): `id`, `name` (title, kind), `status`,
+`priority`, `notes`, `due_date`, `end_date`, `contact_id`, `contact_type`,
+`assigned_to`, `user_id` (`rotor.creator_id`), `created_at`. `position`:
+dropped (Rotor's board order).
+
+**quotes** → `quote` with one option (`quotes.quotes`), the price book
+(`quotes.price_book`), the discount catalog (`quotes.discounts`), the
+property (`contacts.properties_quotes`):
+`id`, `quote_number`, `status` (+ `viewed_at` → viewed), `archived`,
+`contact_id`, `contact_type`, `service_types`, `service_length_months`
+(plan term), `billing_mode` (plan billing; `rotor.billing_mode_raw`),
+`total` (checked against the option's first-visit total;
+`rotor.total_dollars_raw`), `sold_by`, `created_at`, `sent_at`,
+`viewed_at`, `approved_at`, `rejected_at`, `modification_requested_at`,
+`modification_message`, `client_notes`, `internal_notes`;
+`jobs_config.line_items[]`: `id` (kept verbatim), `title`, `description`,
+`quantity`, `unit_price`, `custom_price`, `use_custom_price`,
+`use_unit_pricing`, `template_id` (price item), `service_type` (service
+type, tier), `jobSchedule` (scope), `upsell_user_id`, `show_quantity`,
+`show_unit_price`, `show_description`, `client_optional` (optional;
+**new**: ticked, Rotor's total counts it: 2 quotes); `total_price` (the
+legacy total × visits: ignored, the line is priced from its own price),
+`measurement_fields` (labels empty), `photo` (null), `is_active`,
+`company_id`, `created_at`, `job_id`, `applyToAllJobs`,
+`show_measurement_fields`: dropped;
+`jobs_config.discounts` (`multi[]`: `name`, `type`, `value`,
+`jobSchedule`; the old single `enabled` / `type` / `value`) → the
+option's discounts, percent and fixed, scoped per visit, named or
+"Discount", matched to the catalog (Early Bird, plan per-visit
+discounts, ...) (**new**: every `multi` entry whatever `enabled` says:
+`enabled` only switches the old single discount; 8 quotes had lost theirs);
+`jobs_config.frequency` (one-time or plan option); `plan_template_id`,
+`agreement.template_id` (`rotor`); `agreement.require_card` (agreement,
+plan autopay); **new**: `agreement.auto_advance` → `rotor`;
+`jobs_config.notes` (the client's notes when there are none; **new**: when
+they differ, the office notes "Job notes (Rotor): ...": 3 quotes);
+`jobs_config.photos[].url` (photo files, when the media fetch saved them;
+`thumb_*`, `path`: dropped, the CRM makes its own); `property_id`,
+`property_*`, `same_as_customer_address` (the property); **new**:
+`created_by` → `rotor.created_by_user_id`; `jobs_config.service_types`:
+dropped (repeats `service_types`); `contact`: quote_contacts (above).
+Real export: **423 of 423 quotes total Rotor's `total`** (305 with
+discounts), 0 mismatched; before: 413 matched, 10 mismatched (8 multi
+discounts with `enabled: false` dropped, 2 optional lines unticked).
+
+**service_plans** → `plan` (`plans.plans`), the lights `season_install`
+(`plans.lights`), the property (`contacts.properties_plans`), and the
+plan's discounts on its jobs: `id`, `customer` (`id`; names for a
+placeholder), `service_frequency`, `interval`, `interval_count`,
+`service_type(s)`, `active`, `cancelled`, `cancelled_at`,
+`cancelled_reason`, `start_date`, `end_date` (term; **new**: without an
+end date, a contract discount's years: Rotor's sale value of a lights plan
+with "3-Year Contract" is three seasons: 11 plans), `billing_mode`,
+`is_auto_pay`, `auto_renew`, `sold_by`, `sale_value`
+(`rotor.sale_value_dollars`), `created_at`; `jobs[]` (`id`, `status`) →
+ordinals (**new**: in Rotor's visit order, by job number: jobs[] isn't
+always in that order) and each job's plan; **new**: the plan's
+`jobs_config.discounts` for each job's place → that job's `discounts` (a
+partial record; one-time containers too): Rotor takes them off the job's
+price (its `due_amount`); `jobs_config.line_items` (lines per visit;
+**new**: client-optional ticked), `jobs_config.discounts` (the plan's),
+`jobs_config.property_*` (the property), `plan_template_id` (catalog,
+`rotor`); **new**: `jobs_config.notes`, `monthly_price` → `rotor`.
+Dropped: `name` (always empty), `job_count`, `payment_count` (derived),
+`jobs[].assigned_to` (jobs.jsonl and visits carry it),
+`jobs_config.as_quote`, `jobs_config.assigned_to` (empty),
+`jobs_config.same_as_customer_address`, `jobs_config.service_type`
+(repeat). Real export: **131 of 131 plans' visit prices over their term
+add up to Rotor's `sale_value`** (before: 120; the 11 three-season lights
+plans counted one season).
+
+**jobs** → `job` (`work.jobs`): `id`, `job_number`, `status`,
+`start_date`, `end_date`, `customer`, `service_plan_id`, `line_items[]`
+(`id`, `title`, `description`, `quantity`, `unit_price`, `custom_price`,
+`total_price` (the job's own), `service_type`, `template_id`,
+`upsell_user_id`, `show_*`), `notes` (crew notes), `assigned_to` and
+`due_amount` (`rotor`), `created_at`; discounts: from the plan (above,
+**new**). Dropped: lines' `jobSchedule`, `measurement_fields`,
+`is_active`, `company_id`, `applyToAllJobs` (a job is one visit). Real
+export: of the 236 jobs with something due, 215 total exactly Rotor's
+`due_amount` (before: 44); 19 differ because a payment is on them (Rotor's
+due amount is the balance), 2 for a reason the export doesn't show (no
+invoice, no payment).
+
+**visits** → `visit` (`work.visits`): `id`, `job_id`, `start`, `end`,
+`status`, `arrival_window`, `is_anytime`, `ordering`, `crew_id`,
+`job.assigned_to` (assignees), `address` (the property), `service_type`,
+`customer`. `job.job_number` / `job.status`: repeat the job.
+
+**visit_timers** → `timer`, **timesheets** → `timesheet` (`work.timers`,
+`work.timesheets`): every field (`is_active` and `duration_minutes` are
+worked out).
+
+**payroll**: waits for Payroll (staged; it comes in by itself when that
+part ships).
+
+**invoices** → `invoice`, `credit` (`money.invoices`, `money.credits`):
+`id`, `invoice_number`, `status`, `subtotal_cents`, `tax_amount_cents`,
+`total_cents`, `due_date`, `sent_at`, `paid_at` (`rotor`), `created_at`,
+`customer`, `job`, `service_plan_id`, `line_items[]` (`title` /
+`description`, `quantity`, `unit_price` / `unit_amount`, `total_price`,
+`kind`; **new**: `details` follow the description), `notes` (office
+note). `terms` (empty), `currency` (usd), the native lines' builder fields
+(`jobSchedule`, `company_id`, ...): dropped.
+
+**payments** → `payment` (`money.payments`): every field but `currency`
+and `updated_at`; **new**: `payment_type` "tip" (a tip paid on its own:
+before, the row was refused) → a $0 payment with its tip.
+
+**messages**, **message_templates**, **campaigns**, **map_pin_types** →
+docs/CRM-COMMS.md (every field but messages' `contact_ref_id`, Rotor's
+numeric twin of `contact_id`, and pin types' `icon`, the CRM's own).
+**agreement_templates** → `agreement_template` (`id`, `name`,
+`service_type`, `is_active`).
+
+## A new import after the mapping changed
+
+A fresh import (a new upload) runs every phase over every row. Whether a
+record is written is decided on the **mapped** values, never on Rotor's
+row: per source, the import base holds what the mapping made last time,
+so when the mapping changes, the mapped value differs from the base and
+the ownership rules apply field by field: a field nobody changed in the
+CRM since takes the new value; a field someone changed is a conflict on
+the Conflicts screen (their value stays); a field outside rotorFields is
+filled only where empty. So no mapping version is needed, and the same
+export (the same `as_of`) can be imported again; a third run writes
+nothing (`fidelity.test.mjs` runs the old mapping, edits, the new mapping
+and the same export again). What does NOT re-map: a continuation ("Bring
+in the rest") never re-runs a finished phase, and the "never an older
+export" check refuses one after a newer import; patches and stats only
+fill what is empty (a value already there stays).
+
+The live CRM holds the 2026-11-13 import (`ir_01m7a81k4a6hy0p2xvg9`),
+made by the old pack and mapping. To bring the fixed mapping in:
+
+1. Deploy this branch.
+2. Pack the same 2026-11-13 export again with this pack script (a new
+   output folder, or `--force`): it now carries `quote_contacts` (made
+   from the quote rows), `member_availability` and `rate_settings`.
+3. The owner starts an import (Import from Rotor → Start an import, a new
+   upload key), the pack is uploaded, the owner checks the team map and
+   taps Start.
+4. Then: the report shows the quotes, plans and jobs updated (on a copy of
+   the real export in memory: 13 quotes updated, 345 of the 814 jobs
+   given their plan's discounts (the jobs' discount base set on all 814:
+   "linked"), 0 conflicts with nobody's edits in between, the money
+   comparison 0 differences); the **Conflicts** screen lists only fields
+   someone changed in the CRM since Nov 13 that the new mapping changes
+   (Keep the CRM's / Take Rotor's); **Possible duplicates** lists about
+   119 high-confidence pairs: customers Rotor converted from a lead whose
+   opportunities the first import put on a placeholder contact (117 with
+   the same first name: "Merge every high-confidence pair with the same
+   first name", then look at the rest).
+
 ## Phases this module owns (§10.2 rows 1-3)
 
 | Phase | Entity | What |
@@ -471,6 +732,11 @@ after the start; abandoned uploads; dot-only ids and keys; a cancelled or
 given-up run's records are listed; symlinked pack folders; the scan flags
 pack media), `identity.test.mjs` (dual-write lead → conversion → one contact
 with all its history; placeholders; ids need no `created_at`),
+`fidelity.test.mjs` (the real export's layout packs into everything the
+import reads; that layout imported in full; partial records; the old
+mapping, people's edits, then the new mapping on the same export: the
+newly mapped values in, the edits kept, one conflict, then nothing; a
+converted lead an earlier import kept apart becomes a merge candidate),
 `week.test.mjs` (a simulated week of every sweep, then the same export:
 0 conflicts, rotorFields byte-identical, nothing mirrored created),
 `upload.test.mjs` (keys for one run only, 24 hours, upload routes only;
@@ -505,7 +771,11 @@ The gate at full size: `CRM_IMPORT_FULL=1 node --test --test-name-pattern
 "the gate" tests/crm/import/runner.test.mjs` (14,268 synthetic rows, about
 25 bulk passes, under 15 s in memory; by default the gate runs scale 0.1).
 The generator alone: `node tests/crm/fixtures/rotor-synthetic.mjs <out-dir>
---scale 1 --media` (the folder must be empty; keep it outside the repo).
+--scale 1 --media` (the folder must be empty; keep it outside the repo;
+`--rotor-layout` writes the real 2026-11-13 export's file names and
+shapes). Its quotes' `total`, plans' `sale_value` and open jobs'
+`due_amount` are Rotor's own (`rotorVisitCents()`: the rule measured on
+the real export), so the tests compare the CRM's totals with Rotor's.
 At scale 1 it matches the real export's size: about 40 MB, of which
 messages are about 34 MB (10,927 rows; outbound emails are whole HTML
 documents of 12-16 KB, like Rotor's).

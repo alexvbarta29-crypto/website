@@ -63,18 +63,21 @@ async function office(opts = {}, login = "olive", hash = "") {
 }
 const frameUrls = (page) => page.frames().map((x) => x.url()).filter((u) => /^https?:/.test(u));
 
-test("one app: the Dashboard (Menu → Reports) switches its views in place; Menu stays lit", async () => {
+test("one app: the Dashboard (Menu → Reports → Office dashboard) switches its views in place; Menu stays lit", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu is a sheet (Flyra's): its Reports row opens the Dashboard
+    // the Menu is a sheet (Flyra's): its Reports row opens Reports (M7b), which opens the office Dashboard
     await noInstallCard(page);
     await f.click('#tabs [data-tab="menu"]');
     await f.waitForSelector(".menu-sheet.on");
-    await f.click('.menu-sheet a[href="#/dashboard"]');
+    assert.equal(await f.$('.menu-sheet a[href="#/dashboard"]'), null, "the Dashboard is no second Menu row");
+    await f.click('.menu-sheet a[href="#/reports"]');
+    await settled(f, { hash: "#/reports" });
+    await f.click("[data-office-dashboard]");
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
-    assert.equal(await backShown(f), false, "a screen the Menu lists is top-level (Flyra's): no back button");
+    assert.equal(await backShown(f), true, "the Dashboard sits under Reports: a back button");
     // (a frame that hasn't loaded anything yet has no URL)
     const dash = () => page.frames().find((x) => { try { return new URL(x.url()).pathname === "/dashboard"; } catch (e) { return false; } });
     await page.waitForFunction(() => true);
@@ -102,14 +105,16 @@ test("one app: the Dashboard (Menu → Reports) switches its views in place; Men
 test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu page (old #/menu links; Rotor's More): every screen once, in groups, Sign out at the bottom
+    // the Menu page (old #/menu links; Rotor's More): five groups and Settings, every screen once, Sign out at the bottom
     await goTo(f, "/menu");
     const groups = await f.$$eval(".menu-page .ms-grp", (els) => els.map((e) => [(e.querySelector(".ms-h") || {}).textContent || "", [...e.querySelectorAll(".ms-l")].map((x) => x.textContent)]));
     const all = await f.$$eval(".menu-page .ms-l, .menu-page .ms-tile span", (els) => els.map((e) => e.textContent));
     const of = (name) => (groups.find(([h]) => h === name) || [null, []])[1];
-    for (const want of ["Light Studio", "Purchases", "Giveaway", "Rotor"]) assert.ok(of("Office tools").includes(want), `Office tools lists ${want}: ${JSON.stringify(groups)}`);
-    for (const want of ["Home", "Schedule", "Inbox", "Customers", "Leads", "Pipeline", "Quotes", "Plans", "Leaderboard", "My performance", "Visits", "Reports", "Automations",
-      "Leads & calls", "Tasks", "Follow-ups", "Jobs", "To book", "Lights season", "Merge review", "Import from Rotor", "Outbox", "Templates", "Approvals", "Activity", "Team", "Tab bar", "Settings"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
+    assert.deepEqual(groups.map(([h]) => h), ["Work", "Sales", "Customers", "Money", "Marketing & messages", ""], JSON.stringify(groups));
+    assert.ok(of("Sales").includes("Light Studio") && of("Money").includes("Purchases") && of("Marketing & messages").includes("Giveaway"), JSON.stringify(groups));
+    for (const want of ["Customers", "Leads", "Pipeline", "Calls", "Quotes", "Plans", "Leaderboard", "My performance", "Reports",
+      "Tasks", "Jobs", "Lights season", "Merge review", "Outbox", "Approvals", "Settings"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
+    for (const gone of ["Home", "Schedule", "Inbox", "Visits", "To book", "Follow-ups", "Leads & calls", "Templates", "Automations", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is on the bar, merged, or in Settings: ${all.join(", ")}`);
     assert.equal(new Set(all).size, all.length, "each once");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
     assert.deepEqual(await screenProblems(f), [], "the Menu passes the phone checks");
@@ -121,6 +126,17 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     for (let i = 0; i < 50 && !frameUrls(page).some((u) => new URL(u).pathname === "/lights"); i++) await page.waitForTimeout(100);
     assert.ok(frameUrls(page).some((u) => new URL(u).pathname === "/lights"), "the Lights page loads in a frame");
     await shot(page, "core-tool-lights");
+    // Settings: one hub; the setup screens and Rotor live there
+    await goTo(f, "/settings");
+    const heads = await f.$$eval("#view .set-hub .section-h", (els) => els.map((e) => e.textContent));
+    assert.deepEqual(heads, ["Company", "Team & permissions", "Pricing & services", "Plans & agreements", "Schedule", "Messages & automations", "Payments", "Maps & door to door", "Import & data", "Appearance", "About"]);
+    for (const path of ["/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/tools/rotor", "/settings/schedule"]) assert.ok(await f.$(`#view a[href="#${path}"]`), `Settings opens ${path}`);
+    assert.deepEqual(await screenProblems(f), [], "Settings passes the phone checks");
+    await shot(page, "core-settings");
+    // an old link to a merged screen opens the one it became
+    await f.evaluate(() => { location.hash = "/visits"; });
+    for (let i = 0; i < 50 && !(await hashOf(f)).startsWith("#/schedule"); i++) await page.waitForTimeout(100);
+    assert.equal(await hashOf(f), "#/schedule?view=list", "Visits is the Schedule's List");
     await goTo(f, "/tools/rotor");
     assert.deepEqual(await badLinks(f), []);
     // a new tab (this harness stops the request itself, so Rotor never sees it)
@@ -418,7 +434,8 @@ test("the first start on a slow line (2 s round trip, nothing kept yet) still ge
 // screen above a 34 px home bar, links that leave in a new tab.
 test("every client route in the manifests, as owner and tech, at both phone sizes and on two desks", async () => {
   const { MANIFESTS } = await import("../../crm-app/modules/index.js");
-  const routes = MANIFESTS.flatMap((m) => (m.routes || []).map((r) => r.path));
+  // (an old link that redirects, #/visits, is checked where it lands)
+  const routes = MANIFESTS.flatMap((m) => (m.routes || []).filter((r) => !r.redirect).map((r) => r.path));
   // ids for the params, from the API as the owner
   const o = await phone(browser, srv);
   await signIn(o, "olive");

@@ -315,9 +315,9 @@ test("Money (Rotor's card): Collected and Scheduled per day from the import, the
     assert.match(await text(f, ".hm-pair"), /^Collected \$[\d,]+ Scheduled \$[\d,]+$/);
     await f.click('[data-hm="m-fold"]');
     assert.equal(await has(f, '[data-chart="money"]'), true);
-    // See more: the Dashboard's Money view (this phone has the office sign-in)
+    // See more: Reports' Revenue (M7b)
     await f.click(".hm-money .hm-more");
-    await settled(f, { hash: "#/dashboard/money" });
+    await settled(f, { hash: "#/reports?tab=revenue" });
     assert.equal(await backShown(f), true);
     await p.clean();
   } finally { await p.close(); }
@@ -470,11 +470,15 @@ test("Pipeline and Leads from the Menu (top-level: no switch, no back button); t
         assert.deepEqual(await screenProblems(f), []);
         await shot(page, `home-menu-${path.slice(1)}-${device}`);
       }
-      // the Menu: a sheet of rounded groups (Flyra's), the tab lit on what it opens
+      // the Menu: a sheet of five rounded groups (Flyra's) and Settings, nothing the bar holds, the tab lit on what it opens
       await f.click('#tabs [data-tab="menu"]');
       await f.waitForSelector(".menu-sheet.on");
-      assert.deepEqual(await f.$$eval(".menu-sheet .ms-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
-      assert.deepEqual(await f.$$eval(".menu-sheet .ms-grp:first-of-type .ms-l", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Customers", "Leads", "Pipeline"]);
+      assert.deepEqual(await f.$$eval(".menu-sheet .ms-h", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Marketing & messages"]);
+      assert.deepEqual(await f.$$eval(".menu-sheet .ms-grp:nth-of-type(2) .ms-l", (els) => els.map((e) => e.textContent)).then((x) => x.slice(0, 5)), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
+      const listed = await f.$$eval(".menu-sheet .ms-l", (els) => els.map((e) => e.textContent));
+      assert.equal(new Set(listed).size, listed.length, "each once");
+      assert.ok(!listed.includes("Home") && !listed.includes("Schedule") && !listed.includes("Inbox"), "not what the bar holds");
+      assert.equal(listed[listed.length - 1], "Settings");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-menu-${device}`);
       await f.click('.menu-sheet a[href="#/plans"]');
@@ -513,10 +517,10 @@ test("on a desk: the sidebar, search and New; the clock across, Money beside Tod
       assert.equal(await title(f), "Home");
       assert.equal(await f.$eval("#tabs", (el) => getComputedStyle(el).display), "none", "no bottom bar on a desk");
       assert.ok(await f.isVisible("#side"), "the sidebar");
-      // the phone bar's places first, in its order, then the groups, then Settings and Team (Nov 2026)
-      assert.deepEqual(await f.$$eval("#side .side-main .sl", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Map", "Customers", "Sales"]);
-      assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Messages & automations", "Office tools", "Admin"]);
-      assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings", "Team"]);
+      // the phone bar's places first, in its order, then the Menu's five groups, then Settings (Nov 2026)
+      assert.deepEqual(await f.$$eval("#side .side-main .sl", (els) => els.map((e) => e.textContent)), ["Home", "Schedule", "Inbox", "Map"]);
+      assert.deepEqual(await f.$$eval("#side .side-h span:first-child", (els) => els.map((e) => e.textContent)), ["Work", "Sales", "Customers", "Money", "Marketing & messages"]);
+      assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");
       assert.deepEqual((await cards(f)).slice(0, 4), ["money", "clock", "leaderboard", "agenda"]);
@@ -538,7 +542,7 @@ test("on a desk: the sidebar, search and New; the clock across, Money beside Tod
       await fullShot(page, f, `home-desk-${device}-full`);
       // New and the person's menu
       await f.click("#top-new");
-      assert.deepEqual(await f.$$eval("#new-pop a span", (els) => els.map((e) => e.textContent)).then((x) => x.slice(0, 2)), ["New lead", "New quote"]);
+      assert.deepEqual(await f.$$eval("#new-pop a span", (els) => els.map((e) => e.textContent)).then((x) => x.slice(0, 3)), ["Lead or customer", "Quote", "Job"], "the same list as the phone's +");
       await page.keyboard.press("Escape");
       await p.clean();
     } finally { await p.close(); }

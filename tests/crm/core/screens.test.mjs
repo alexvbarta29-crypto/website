@@ -42,14 +42,27 @@ test("Outbox, Activity, Approvals, Notifications and Today render their rows", a
   const today = await load("today");
   const td = text(today.render({ now: new Date(NOW), user: { first_name: "Olive", role: "owner" }, badges: { notifications: 3, approvals: 2 }, health: { status: { fast: "stuck", bulk: "ok" }, alerts: [{ text: "No off-site copy" }] } }, ctx()));
   assert.match(td, /2 approvals waiting/);
-  assert.match(td, /hasn't finished a pass/);
+  assert.match(td, /background work hasn't finished/);
   assert.match(td, /Notifications, 3 new/);
 });
 
 test("Settings screens, Automations, Templates and My account render for an owner", async () => {
   const settings = await load("settings");
-  assert.match(text(settings.render({ health: { status: { fast: "ok", bulk: "ok" }, lanes: {} } }, ctx())), /Team permissions/);
-  assert.doesNotMatch(text(settings.render({ health: null }, ctx(["settings:general"]))), /Team permissions/, "owner-only sections hidden from the office");
+  const hub = text(settings.render({ health: { status: { fast: "ok", bulk: "ok" }, lanes: {} } }, ctx()));
+  // one hub, plain sections, each setting once (the Nov 2026 tidy-up)
+  const heads = [...hub.matchAll(/class="section-h">([^<]+)</g)].map((m) => m[1].replace(/&amp;/g, "&"));
+  assert.deepEqual(heads, ["Company", "Team & permissions", "Pricing & services", "Plans & agreements", "Schedule", "Messages & automations", "Payments", "Maps & door to door", "Import & data", "Appearance", "About"]);
+  const links = [...hub.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(new Set(links).size, links.length, "each setting in one place");
+  for (const p of ["/settings/permissions", "/team", "/templates", "/automations", "/settings/cadences", "/settings/schedule", "/import", "/activity", "/tab-bar"]) assert.ok(links.includes(p), p);
+  assert.match(hub, /data-theme-row/, "Light or dark");
+  assert.doesNotMatch(hub, /Arriving with later parts/);
+  const office = text(settings.render({ health: null }, ctx(["settings:general"])));
+  assert.doesNotMatch(office, /href="#\/settings\/permissions"/, "owner-only sections hidden from the office");
+  const S = await import("../../../crm-app/modules/system/settings.js");
+  const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
+  const named = new Set(S.LAYOUT.flatMap(([, , rows]) => rows.map(([p]) => p)));
+  assert.deepEqual(MANIFESTS.flatMap((m) => m.settings || []).filter((x) => !named.has(x.path)).map((x) => x.path), [], "every module's setting has its section");
 
   const general = await load("settings-general");
   const doc = (data) => ({ name: "x", data, etag: '"1"' });

@@ -40,7 +40,9 @@ test("jobs, visits and time off from a Rotor export, twice", async () => {
     const rl = rj.line_items[0];
     assert.equal(line.id, rl.id, "the line id kept");
     assert.equal(line.total_cents, Math.round(Number(rl.total_price) * 100));
-    assert.equal(j0.totals.total_cents, j0.lines.reduce((s, l) => s + l.total_cents, 0));
+    // the job's total: its lines less the discounts its plan row puts on it (Plans' phase), as Rotor's due amount says
+    assert.equal(j0.totals.subtotal_cents, j0.lines.reduce((s, l) => s + l.total_cents, 0));
+    for (const r of ex.jobs.filter((x) => x.status !== "Completed")) assert.equal(jobs.find((j) => j.rotor.job_id === r.id).totals.total_cents, Math.round(r.due_amount * 100));
     assert.ok(jobs.some((j) => j.crew_notes.includes("Gate code")), "notes → crew notes");
     assert.ok(jobs.every((j) => !j.office_notes));
     assert.ok(jobs.filter((j) => j.status === "unscheduled").every((j) => /^\d{4}-\d{2}$/.test(j.target_month)), "pending jobs are due in their month");

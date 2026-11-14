@@ -292,7 +292,9 @@ paid and balance are worked out here and compared: the import report's
 money section must show no difference in count or cents by status, method
 and year (`money.reconcileImport`; a difference fails the report).
 Payments with no customer or invoice go on one placeholder contact so the
-sums still add up. A second run of the same export changes nothing.
+sums still add up. A `tip` row (a tip paid on its own after the invoice)
+is a payment of $0 with that tip (and a tip in the comparison's by-type
+sums); an invoice line's `details` follow its description. A second run of the same export changes nothing.
 
 ## Owner actions
 

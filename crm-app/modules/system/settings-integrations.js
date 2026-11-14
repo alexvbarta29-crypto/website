@@ -22,7 +22,7 @@ function integrations(s) {
   const st = s.status.integrations;
   const set = s.doc.data;
   return html`<div class="stack">
-    <div class="note">Rotor is still in charge: nothing reaches a customer before the switch-over. Live acts as test (staff only), and texts and emails stay in the outbox until the Messages part of the CRM connects them.${s.status.force_dry_run ? " CRM_FORCE_DRY_RUN is on." : ""}${s.status.paused ? " The CRM is paused." : ""}</div>
+    <div class="note">Rotor is still in charge: nothing reaches a customer before the switch-over. Live acts as test (staff only), and texts and emails wait in the Outbox.${s.status.force_dry_run ? " Sending is held off for this whole site." : ""}${s.status.paused ? " The CRM is paused." : ""}</div>
     <form class="stack" id="f" novalidate>
       <div class="err" data-form-err hidden></div>
       ${Object.keys(NAMES).map((k) => {

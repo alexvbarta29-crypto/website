@@ -157,6 +157,7 @@ export function normalizeOpportunity(row) {
     id, name: opt(row, "name", 160) || "", pipeline_id: needId(row, "pipeline_id"), stage_id: needId(row, "stage_id"), status,
     value: row.value === null || row.value === undefined ? null : row.value, assigned_to: (row.assigned_to || []).map(str).filter(Boolean),
     contact_id: needId(row, "contact_id"), contact_type: contactType, archived: row.archived === true, created_at: opt(row, "created_at", 40),
+    notes: typeof row.notes === "string" ? row.notes.trim().slice(0, 500) : "",
   };
 }
 
@@ -218,6 +219,7 @@ async function mapOpportunity(r, ctx) {
   };
   const dealHist = [...(base.history || []).filter((h) => h.opportunity_id !== r.id), {
     at, kind: "rotor_opportunity", pipeline: rr.name || cadence.name, stage, status_raw: r.status, opportunity_id: r.id, ...(r.archived ? { archived: true } : {}),
+    ...(r.notes ? { note: r.notes } : {}),
   }].sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-MAX_DEAL_HISTORY);
   const status = dealStatusFrom(dealHist, base.status);
   const deal = {
