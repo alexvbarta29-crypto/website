@@ -792,7 +792,12 @@ and the Schedule.
   term has ended, and the hidden one-time series (Rotor's One-Time
   containers). An index row from before Nov 14 (no `ay` until the
   nightly list check or the next import rebuilds it) falls back to its
-  term's sale value scaled to a year. No plans at all: "-".
+  term's sale value scaled to a year. No plans at all: "-". Imports
+  before Nov 14 stored every plan's sale value as $0: the plans index
+  (and so the leaderboard, the nightly MRR, the dashboard and the MCP
+  reports) reads the lines' value when the stored one is 0, and the next
+  Rotor import fills the 0 (`importZeroIsEmpty`: never a non-zero value)
+  and rebuilds the plans index as it finishes.
 A number nobody has is left out ("-"), never shown as 0. Without the
 office data key the card says so (`money_missing`).
 

@@ -158,6 +158,9 @@ export function saleValue(plan) {
   const n = (plan.term && plan.term.current_term_n) || 1;
   return sumCents((plan.ordinals || []).filter((o) => (o.term || 1) === n && o.status !== "skipped" && o.status !== "cancelled").map((o) => ordinalTotals(plan, o).total_cents));
 }
+// The stored sale value, or the lines' when it is 0 (every plan the Rotor
+// import made before Nov 14 stored 0; the next import repairs them).
+export const saleValueOf = (plan) => (plan && Number(plan.sale_value_cents)) || saleValue(plan || {});
 
 // The per-visit prices of the plan's first year (visit 1 carries what's
 // "initial" only: a first-visit discount; a lights plan made before Nov 12

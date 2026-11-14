@@ -41,6 +41,9 @@ test("manifests are validated", () => {
   assert.throws(() => R.defineType({ type: "thing", prefix: "th", v: 1, validate: fn, techFields: [], example: fn }), /rotorFields is required/);
   assert.throws(() => R.defineType({ type: "thing", prefix: "th", v: 1, validate: fn, rotorFields: [], example: fn }), /techFields is required/);
   assert.throws(() => R.defineType({ type: "thing", prefix: "th", v: 1, validate: fn, rotorFields: [], techFields: [] }), /example\(\) is required/);
+  assert.throws(() => R.defineType({ type: "thing", prefix: "th", v: 1, validate: fn, rotorFields: ["a"], techFields: [], example: fn, importZeroIsEmpty: ["a"] }), /outside rotorFields/);
+  assert.deepEqual(R.defineType({ type: "thing", prefix: "th", v: 1, validate: fn, rotorFields: ["a"], techFields: [], example: fn, importZeroIsEmpty: ["b"] }).importZeroIsEmpty, ["b"]);
+  assert.deepEqual(R.getType("plan").importZeroIsEmpty, ["sale_value_cents"]);
   assert.ok(R.defineModule({ name: "t13", routes: [route({ auth: "public", perm: null })] }));
 });
 
