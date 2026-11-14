@@ -11,6 +11,8 @@
 //   untrusted.mjs customer-written text wrapped as untrusted_customer_text
 //   reports.mjs   report_invoices, report_payments, report_jobs, report_visits, report_service_plans
 //   calendar.mjs  GET/POST/PATCH/DELETE /calendar-feed, GET /cal/:token (text/calendar)
+//   oauth.mjs     OAuth 2.1 for claude.ai (register, authorize → the consent
+//                 screen, token, revoke; the connected apps in Settings)
 //
 // docs/CRM-MCP.md says how the owner connects Claude and subscribes a calendar.
 
@@ -19,10 +21,14 @@ import { types } from "./types.mjs";
 import { mcpRoutes } from "./server.mjs";
 import { calendarRoutes } from "./calendar.mjs";
 import { tools } from "./tools.mjs";
+import { cleanup } from "./oauth.mjs";
 
 export default defineModule({
   name: "mcp",
   types,
   routes: [...mcpRoutes, ...calendarRoutes],
   mcpTools: tools,
+  sweeps: [
+    { key: "mcp.oauth_cleanup", label: "Claude connections clean-up", lane: "fast", every: "daily", at_local: "03:25", mutates: false, maintenance: true, run: (ctx) => cleanup(ctx) },
+  ],
 });

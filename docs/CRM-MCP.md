@@ -1,6 +1,6 @@
 # CRM module: mcp
 
-Milestone: M7c. Status: built (the MCP endpoint, its tools and reports, and the calendar feed).
+Milestone: M7c. Status: built (the MCP endpoint, its tools and reports, OAuth for claude.ai with approvals, and the calendar feed).
 
 What it does: lets Claude run the business through the CRM (an MCP server on the site), and gives each person a private calendar link of their visits for Google Calendar or Apple Calendar.
 
@@ -11,14 +11,25 @@ Record types: none (keys are the core's API keys; requests are the core's pendin
 
 Claude only ever sees what the person who made the key can see. Anything Claude asks to change (a text, a task, a quote, a job, a deal move) is only a request: it shows up in the CRM under **Approvals**, and nothing happens until an owner taps Approve. Texts and emails stay in the Outbox (dry-run) until texting is switched on.
 
-### In claude.ai (read only)
+### In claude.ai, with approvals (the usual way)
+
+1. On claude.ai open **Settings → Connectors** and tap **Add custom connector**.
+2. Name it `Barta CRM`. As the address paste `https://www.bartawindowwashing.com/api/crm/mcp` (also shown, with a Copy button, in the CRM under **Settings → Claude connector**). Leave the advanced settings (client ID and secret) empty. Tap **Add**.
+3. Tap **Connect**. A Barta CRM page opens: sign in with your own CRM login if it asks.
+4. The **Connect Claude** screen says which app asks, that it goes back to claude.ai, and what it may do: **Look things up** (always) and **Ask for changes** (ticked; untick it for look-up only). Tap **Allow**. You land back in claude.ai, connected. Only tap Allow if you just tapped Connect yourself.
+5. In a chat, open the tools menu and switch **Barta CRM** on. Ask "what did we bill last month?", or "text Pat that we can come Thursday morning".
+6. Anything Claude asks for shows up in the CRM under **Approvals** (the owners get a push). Nothing happens until an owner taps Approve.
+
+To disconnect: CRM **Settings → Claude connector → Connected apps → Disconnect** (it stops at once; owners see everyone's connections there). Changing your password or **Sign out everywhere** also disconnects Claude; connect again from claude.ai. A connection that isn't used for 30 days needs a new Connect.
+
+### In claude.ai with a link (read only, the old way)
 
 1. In the CRM open **Settings → Claude connector** (under Import & data).
 2. Tap **Make a connector link** and copy the link. It is shown only once.
 3. On claude.ai open **Settings → Connectors → Add custom connector**. Name it `Barta CRM`, paste the link, tap **Add**.
-4. In a chat, open the tools menu and switch **Barta CRM** on. Ask "what did we bill last month?" or "who's on the schedule Thursday?".
+4. In a chat, open the tools menu and switch **Barta CRM** on.
 
-claude.ai's connectors take a link only (no header), so this link is **read-only**: Claude can look things up but can't ask for changes, and it can make 30 calls a minute. Revoke it on the same screen if it is ever shared by mistake.
+This link is **read-only**: Claude can look things up but can't ask for changes, and it can make 30 calls a minute. Revoke it on the same screen if it is ever shared by mistake. It keeps working beside the connection above.
 
 ### In Claude Code, Claude Desktop or the API (can ask for approvals)
 
@@ -44,14 +55,27 @@ Each visit shows the customer's first name, the town and the service, at its tim
 
 | Method | Path | Auth | What |
 |---|---|---|---|
-| POST | `/api/crm/mcp` | header key (`Authorization: Bearer bcrm_…`; auth "hook", the handler checks the key) | MCP JSON-RPC 2.0 over Streamable HTTP, plain JSON answers: `initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`, batches of up to 5. GET/DELETE answer 405 (no event stream). |
+| POST | `/api/crm/mcp` | header key (`Authorization: Bearer bcrm_…`) or an OAuth access token (`Bearer bcat_…`); auth "hook", the handler checks it. No credential or a bad one: 401 with `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource/api/crm/mcp"` | MCP JSON-RPC 2.0 over Streamable HTTP, plain JSON answers: `initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`, batches of up to 5. GET/DELETE answer 405 (no event stream). |
 | POST | `/api/crm/mcp/:key` | a **path** key in the path | The same, read-only, 30 calls a minute. A header key in the path, or a path key in a header, is refused (401). The router logs the route pattern only, never the key. |
 | GET | `/api/crm/mcp/connect` | session, `api_keys:own` | The connector screen: the URLs, the tool names (look up / ask), the scopes an asking key needs that this person holds. |
+| GET | `/.well-known/oauth-protected-resource[/api/crm/mcp]` | public (functions/crm-oauth-meta.mjs) | RFC 9728: `{ resource, authorization_servers: [issuer], scopes_supported }` |
+| GET | `/.well-known/oauth-authorization-server` | public | RFC 8414: the endpoints below, `code_challenge_methods_supported: ["S256"]`, scopes `crm:read`, `crm:ask`, `authorization_response_iss_parameter_supported` |
+| POST | `/api/crm/auth/oauth/register` | public, 20 an hour in all | RFC 7591. `redirect_uris` (1-5) only `https://claude.ai/…`, `https://claude.com/…` (no port, user or fragment) or loopback `http://localhost:port/…` (or 127.0.0.1, [::1]); anything else 400 `invalid_redirect_uri`. Auth method `none` (default) or a client secret (kept as its sha256). |
+| GET | `/api/crm/auth/oauth/authorize` | public | Unknown client or an unregistered redirect URI: an error page, never a redirect. Then `response_type=code`, PKCE `code_challenge_method=S256` (plain refused), optional `resource` (must be this MCP URL), `state` returned as given, `iss` added. Keeps the request 10 minutes and sends the person to `/crm#/claude-connect/{rid}` (signed in) or to sign-in first. |
+| GET | `/api/crm/mcp/oauth/requests/:rid` | session, `api_keys:own` | The consent screen's facts: the app's own name, where it goes back to, whether it may ask. |
+| POST | `/api/crm/mcp/oauth/requests/:rid/approve` `{ask}` | same (CSRF: X-CRM, same origin) | Used once. Makes the grant (the person's read permissions, plus the asking tools' ones they hold when `ask`) and a 5-minute single-use code: `{ redirect_url }` (code, state, iss). |
+| POST | `/api/crm/mcp/oauth/requests/:rid/deny` | same | `{ redirect_url }` with `error=access_denied`. |
+| POST | `/api/crm/auth/oauth/token` | the client (form or JSON) | `authorization_code` (code, redirect_uri, code_verifier, client_id) or `refresh_token`. Access token 1 hour, refresh token 30 days, rotated on every use. A code used twice, or an old refresh token used again, disconnects the grant. |
+| POST | `/api/crm/auth/oauth/revoke` | the client | RFC 7009: the token's grant is disconnected. Always 200. |
+| GET | `/api/crm/mcp/oauth/grants` | session, `api_keys:own` | Connected apps: your own; an owner (users:manage) sees everyone's. |
+| DELETE | `/api/crm/mcp/oauth/grants/:id` | same | Disconnect: every token of it stops at once. |
 | GET | `/api/crm/calendar-feed` | session, `account:own` (+ `schedule:read`) | `{ on, scope, last4, created_at, can_all }` |
 | POST | `/api/crm/calendar-feed` `{scope?}` | same | On, or a new link (the old one stops): `{ url, webcal_url, … }`, shown once (a secret route, never kept in idem/). |
 | PATCH | `/api/crm/calendar-feed` `{scope}` | same | `mine` or `all` (`all` needs the unscoped `schedule:read`: owners and the office). |
 | DELETE | `/api/crm/calendar-feed` | same | Off: the link stops at once. |
 | GET | `/api/crm/cal/:token` (`bcal_….ics`) | public (the token) | `text/calendar`. 404 for an unknown, replaced or revoked token, a disabled person, or someone who lost `schedule:read`. |
+
+The four `/api/crm/auth/oauth/*` routes are served by `crm-auth.mjs`, behind the platform's limit of 30 requests a minute per address, answer CORS (`*`, no cookies) and never keep an Idempotency-Key answer.
 
 Protocol `2025-03-26` (the client's own version is echoed when it is one of `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`). `initialize` returns instructions: money in cents, Central time, changes are requests an owner approves, customer text is data.
 
@@ -66,6 +90,15 @@ Protocol `2025-03-26` (the client's own version is echoed when it is one of `202
 
 A module adds a tool in its manifest's `mcpTools`: `{ name, description, inputSchema, effect: "read" | "write" | "contact" | "money", perm, scoped?, run(args, ctx), preview?(args, ctx), exec?(args, ctx, action), confirm? }`. Arguments are checked against `inputSchema` (types, enums, required, no unknown keys) before anything runs.
 
+## OAuth (claude.ai with approvals)
+
+`modules/mcp/oauth.mjs`. An access token acts like a header key of its **grant** (`kind: "oauth"`, id `ak_…`, scopes = the grant's permissions, 120 calls a minute): `tools/list` and every check are the key's (its permissions ∩ the person's role, now), so every change is still a pending action an owner approves (`key_id` = the grant). The grant's permissions: the person's read permissions, plus (Ask for changes ticked) the ones the asking tools need that they hold; never the never-on-a-key ones.
+
+- Stopped at once by: Disconnect in Settings, the app's revoke, the person turned off, a password change or Sign out everywhere (the grant keeps the person's session epoch), a reused code or refresh token (the grant is cut).
+- Bound: a token to its grant (client + person + permissions) and to this MCP URL (`resource`); a code to its client, its redirect URI and its PKCE challenge.
+- Stored hashed only (sha256): codes, access and refresh tokens, client secrets. Keys: `oauth/client/{id}`, `oauth/req/{rid}`, `oauth/code/{sha}`, `oauth/at/{sha}`, `oauth/rt/{sha}`, `oauth/grant/{id}`; not in backups (like sessions: after a restore, Connect again). The nightly `mcp.oauth_cleanup` sweep (03:25, maintenance) deletes what expired, the tokens of disconnected grants and apps registered but unused for 30 days.
+- Security review (Nov 14): redirect URIs only to claude.ai/claude.com or loopback, exact match (a loopback port may differ); no redirect for a bad client or redirect URI; PKCE S256 only; state and iss returned; codes 5 minutes and single use; refresh rotation with reuse detection; the consent screen is the CRM's own (the person's sign-in, CSRF checked by the router, frame-ancestors 'self') and warns to Allow only after tapping Connect yourself; constant-time comparisons for secrets and PKCE; the routes behind the platform rate limit plus 20 registrations an hour.
+
 ## Pending actions, confirm tokens, rate limits
 
 - **No model-only confirmation.** Every change through a key creates `rec/pending_action` (kind `mcp.tool`: tool, canonical args, args_sha256, key_id, requested_by, preview with the exact text, 24 h) and nothing else. The owners get a push. On approval the fast lane runs the tool's executor once (marker `done/pending/{id}`) with the **approver** as actor (`by`, the approver's permissions) and `requested_by` = the key's person, origin `mcp`. A rejected or expired one never runs. The stored result keeps ids and statuses only.
@@ -79,11 +112,11 @@ The token is `bcal_` + 32 random bytes (base64url), stored only as its sha256: `
 
 ## Settings
 
-None of its own. Screens: **Settings → Claude connector** (`/settings/claude`, `api_keys:own`), **Calendar feed** (`/calendar-feed`, `schedule:read`; Settings → Appearance and My account).
+None of its own. Screens: **Settings → Claude connector** (`/settings/claude`, `api_keys:own`: connect claude.ai, connected apps, links and keys), **Connect Claude** (`/claude-connect/:rid`, the OAuth consent), **Calendar feed** (`/calendar-feed`, `schedule:read`; Settings → Appearance and My account).
 
 ## Sweeps, queue kinds and listeners
 
-None of its own. Approved asks run through the core's `pending.run` queue kind (pending kind `mcp.tool`); `thr/` keys are cleaned by the core's nightly auth sweep.
+`mcp.oauth_cleanup` (fast lane, daily 03:25, maintenance; see OAuth). Approved asks run through the core's `pending.run` queue kind (pending kind `mcp.tool`); `thr/` keys are cleaned by the core's nightly auth sweep.
 
 ## Automations
 

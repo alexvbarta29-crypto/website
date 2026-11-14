@@ -1162,7 +1162,15 @@ Upload `POST /api/crm/files?owner_type=&owner_id=&kind=&tag=` with the raw
 bytes (≤ 4,000,000; JPEG, PNG, WebP or PDF); the type comes from the magic
 bytes, never the header. Download `GET /api/crm/files/{id}[?thumb=1]`:
 `nosniff`, `Content-Security-Policy: sandbox`, inline for images and
-`attachment` for PDFs and anything else, ETag and 304. Imported media
+`attachment` for PDFs and anything else, ETag and 304. Thumbnails: the
+phone makes a 400 px JPEG beside every photo (`core/camera.js`; the
+customer's request photos too, `portal/account.js`) and sends it to
+`POST /api/crm/files/{id}/thumb` (or with the photo: visits, held photos,
+portal requests), magic-byte checked, ≤ 400 KB. Lists, tasks, visits and
+the portal's history show `?thumb=1`; a tap opens the whole photo in a
+sheet (`photoTile()`/`openPhoto()`). A photo without a thumbnail (older
+ones) answers `?thumb=1` with the photo itself (`X-CRM-Thumb: original`,
+cached an hour); a PDF or download-only file without one is 404. Imported media
 outside the allowlist (HTML, SVG, unknown) is stored download-only and
 served as `application/octet-stream` attachments. Who may read and edit
 follows the owner record, declared by its module with
