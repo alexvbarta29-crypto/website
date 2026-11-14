@@ -1090,6 +1090,8 @@ export const WHERE = Object.freeze([
   ["Chase unpaid invoices", "Menu › Financials › Invoices"],
   ["Run payroll", "Menu › Financials › Payroll"],
   ["See new reviews", "Menu › Marketing › Reviews, or the bell"],
+  ["Text a lot of people at once", "Menu › Marketing › Campaigns › New text blast; or Leads' ..."],
+  ["Set up a team inbox", "Inbox tab › ... › Team inboxes"],
   ["Change an automatic text", "Menu › Marketing › Workflows; or Settings › Messages"],
   ["Add a team member", "Settings › Team, then +"],
 ]);
