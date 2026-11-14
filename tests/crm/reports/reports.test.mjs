@@ -193,7 +193,8 @@ test("the night's rollup keeps the active plans and each new lead's time to firs
     await scope(() => RU.rebuild("2026-11-01", "2026-11-30"));
     const [again] = await scope(() => RU.daysIn("2026-11-16", "2026-11-16"));
     assert.equal(again.active_plans_eod, 1);
-    const series = await scope(() => S.call("reports.series", { metric: "collected", group: "month", keys: ["2026-10", "2026-11"] }));
+    const RP = await import("../../../netlify/lib/crm/modules/reports/reports.mjs");
+    const series = await scope(() => RP.seriesFor({ metric: "collected", group: "month", keys: ["2026-10", "2026-11"] }));
     assert.deepEqual(series.values, { "2026-10": 0, "2026-11": 76500 + 12300 });
     void t;
   } finally { t.done(); }

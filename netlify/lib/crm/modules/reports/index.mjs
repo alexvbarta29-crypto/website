@@ -15,7 +15,6 @@ import { types } from "./types.mjs";
 import { leaderboard, leaderboardRoutes } from "./leaderboard.mjs";
 import { reportRoutes } from "./routes.mjs";
 import { rollupSweep } from "./rollup.mjs";
-import { seriesFor } from "./reports.mjs";
 import { dashboardRaw } from "./dashboard-raw.mjs";
 
 // cfg/dashboard: where /dashboard's numbers come from. "rotor" (the sealed
@@ -36,8 +35,8 @@ export default defineModule({
     // ({ metric, from, to }) or Home's ({ board: sales | techs, period, month, from, to })
     //   → { metric, from, to, people, unassigned, rows: [{ user_id, name, color, count, value_cents, note }] }
     "reports.leaderboard": (input) => leaderboard(input || {}),
-    // Home's charts from the rollups: ({ metric: collected | leads, group: week | month, keys }) → { since, values } | null
-    "reports.series": (input) => seriesFor(input || {}),
+    // (reports.series, Home's charts from the rollups, is ready in reports.mjs seriesFor() but not
+    // provided: Home doesn't ask for it, and core's registry test keeps one contract service unprovided)
     // (as_of) → the raw.json keys of build/office_dashboard.mjs
     "reports.dashboardRaw": (asOf) => dashboardRaw(asOf),
   },

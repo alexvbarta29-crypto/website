@@ -53,3 +53,47 @@ html:not([data-theme="light"]) .pf-card{--pf-glow:rgba(70,105,125,.28)}
 .pf-grid i{display:block;aspect-ratio:1/1;border-radius:6px;background:var(--fill-2)}
 .pf-grid i.on{background:var(--coral-btn)}
 @media (min-width:900px){.rp-page,.pf-page{max-width:720px!important}}
+/* Reports (M7b): tabs, the date range, tiles with the period before, the
+   chart (drawn like Home's, home-charts.js) and tables that scroll inside
+   their card on a phone. */
+.rp-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px}
+.rp-tabs::-webkit-scrollbar{display:none}
+.rp-tabs .chip{flex:none;min-height:44px}
+.rp-range{justify-content:flex-start;flex-wrap:wrap}
+.rp-range .rp-sel select{min-height:44px;font-size:16px}
+.rp-when{margin:0 4px;font-size:14px;color:var(--ink-3)}
+.rp-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:700px){.rp-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.rp-tile{display:flex;flex-direction:column;gap:4px;min-width:0;padding:14px;border:1px solid var(--card-line);border-radius:var(--r-lg);background:var(--card);box-shadow:var(--sh-card)}
+.rp-tile .l{font-size:14px;color:var(--ink-3)}
+.rp-tile b{font:600 24px/1.1 var(--head);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-tile .sub{font-size:13px;color:var(--ink-3);line-height:1.35}
+.rp-tile .dl{font-weight:600}
+.rp-tile .dl.good{color:var(--green-ink)}
+.rp-tile .dl.bad{color:var(--red-ink)}
+.rp-chart .hc-read2{margin:2px 0 8px}
+.rp-chart .hc{position:relative;height:190px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.rp-chart .hc:focus-visible{outline:2px solid var(--coral);outline-offset:4px}
+.rp-chart svg.hc-svg{display:block;fill:none;stroke:none;overflow:visible}
+.rp-chart .hc-grid{stroke:var(--line);stroke-width:1}
+.rp-chart .hc-grid.dash,.rp-chart .hc-vgrid{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 4}
+.rp-chart .hc-t{fill:var(--ink-3);font:400 12px/1 var(--text);font-variant-numeric:tabular-nums}
+.rp-chart .hc-line{fill:none;stroke:var(--coral);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.rp-chart .hc-line.s{stroke:var(--ink-3);stroke-width:1.5}
+.rp-chart .hc-cross{stroke:var(--line-2);stroke-width:1}
+.rp-chart .hc-dot{fill:var(--coral);stroke:var(--card);stroke-width:2}
+.rp-chart .hc-dot.s{fill:var(--ink-3)}
+.rp-chart .hc-read2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;min-height:20px;font-size:13.5px;color:var(--ink-3)}
+.rp-chart .hc-read2 .d{font-weight:600;color:var(--ink);white-space:nowrap}
+.rp-chart .hc-read2 .k{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.rp-chart .hc-read2 i{display:inline-block;width:12px;height:3px;border-radius:2px;background:var(--coral);transform:translateY(-3px)}
+.rp-chart .hc-read2 .s i{background:var(--ink-3)}
+.rp-chart .hc-read2 b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.rp-scroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
+.rp-table table{width:100%;border-collapse:collapse;font-size:15px}
+.rp-table th{text-align:left;font:500 12px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:6px 8px 8px 0;white-space:nowrap}
+.rp-table td{padding:10px 8px 10px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.rp-table td.n,.rp-table th.n{text-align:right;white-space:nowrap}
+.rp-table td a{color:var(--coral-ink);display:inline-block;min-height:24px}
+.rp-foot{margin:0 4px;font-size:13.5px;color:var(--ink-3)}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

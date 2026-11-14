@@ -324,7 +324,7 @@ export function menuGroups() {
   const groups = [
     { key: "places", items: take([item("/today", st.user && st.user.role === "tech" ? "Today" : "Home", "home"), item("/schedule", "Schedule", "schedule"), item("/inbox", "Inbox", "inbox"), item("/contacts", "Customers", "contacts"), item("/leads", "Leads", "target"), item("/pipeline", "Pipeline", "pipeline")]) },
     { key: "docs", two: true, items: take([item("/quotes", "Quotes", "doc"), item("/plans", "Plans", "swap")]) },
-    { key: "perf", items: take([item("/performance", "My performance", "trend"), item("/leaderboard", "Leaderboard", "trophy"), item("/visits", "Visits", "truck"), item("/map", "Map", "map"), fromNav("/dashboard") ? item("/dashboard", "Reports", "chart") : null, fromNav("/automations") ? item("/automations", "Automations", "bolt") : null]) },
+    { key: "perf", items: take([item("/performance", "My performance", "trend"), item("/leaderboard", "Leaderboard", "trophy"), item("/visits", "Visits", "truck"), item("/map", "Map", "map"), item("/reports", "Reports", "chart"), fromNav("/automations") ? item("/automations", "Automations", "bolt") : null]) },
   ];
   const last = take([item("/tab-bar", "Tab bar", "tabbar"), fromNav("/settings") ? item("/settings", "Settings", "gear") : null]);
   for (const sec of menuSections()) {

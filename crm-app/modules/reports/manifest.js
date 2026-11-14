@@ -4,22 +4,26 @@
 // No data, keys or customer names ever go in crm-app/ (§2.3).
 //
 // Since the Nov 2026 layout: the Leaderboard (Rotor's podium) and My
-// performance (Flyra's), both from the service reports.leaderboard.
+// performance (Flyra's), both from the service reports.leaderboard. M7b:
+// Reports (Menu → Reports) and Settings → Dashboard numbers.
 
 export default {
   name: "reports",
   routes: [
     { path: "/leaderboard", load: () => import("./leaderboard.js"), title: "Leaderboard", perm: "reports:read", parent: "/today" },
     { path: "/performance", load: () => import("./performance.js"), title: "My performance", perm: "account:own", parent: "/today" },
+    { path: "/reports", load: () => import("./reports.js"), title: "Reports", perm: "reports:read", parent: "/today" },
+    { path: "/settings/dashboard", load: () => import("./settings-dashboard.js"), title: "Dashboard numbers", perm: "settings:owner", parent: "/settings" },
   ],
   nav: [
     { where: "more", section: "sales", label: "Leaderboard", path: "/leaderboard", perm: "reports:read", order: 34, icon: "trophy" },
     { where: "more", section: "sales", label: "My performance", path: "/performance", perm: "account:own", order: 35, icon: "trend" },
+    { where: "more", section: "money", label: "Reports", path: "/reports", perm: "reports:read", order: 39, icon: "chart" },
   ],
   creates: [],
   contactTabs: [],
   visitActions: [],
   todayCards: [],
-  settings: [],
+  settings: [{ label: "Dashboard numbers", path: "/settings/dashboard", perm: "settings:owner", icon: "chart", order: 64, owner: true }],
   styles: ["./reports.css"],
 };
