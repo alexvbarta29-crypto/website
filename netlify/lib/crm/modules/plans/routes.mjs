@@ -20,7 +20,8 @@
 //   POST /agreements/:id/send · /void · /present
 //   GET  /lights/seasons/:season · PATCH /lights/installs/:id · POST /lights/installs/:id/warranty
 
-import { getRecord, getRecords, listRel } from "../../../crm-store.mjs";
+import { getRecord, getRecords, listRel, readIndex } from "../../../crm-store.mjs";
+import { arrOn } from "../system/home-kpis.mjs";
 import { isId } from "../../core/ids.mjs";
 import { now, localDate } from "../../core/clock.mjs";
 import { InputError, NotFoundError } from "../../core/errors.mjs";
@@ -59,7 +60,12 @@ async function listRoute(ctx) {
     if (["active", "cancelling"].includes(r.st) && r.due && r.due <= month) counts.due = (counts.due || 0) + 1;
     if (r.cb) counts.clawback = (counts.clawback || 0) + 1;
   }
-  return { data: rows, meta: { counts } };
+  if (q.get("contact")) return { data: rows, meta: { counts } };
+  // the Plans tab's tiles (guide-gaps S16): Projected ARR (Home's math), and the plans whose last autopay try failed
+  const today = localDate(now());
+  const failed = new Set((await readIndex("invoices", "open").catch(() => ({ rows: [] }))).rows.filter((x) => x.af && x.pl && x.st === "open").map((x) => x.pl));
+  const out = rows.map((r) => (failed.has(r.id) ? { ...r, pf: 1 } : r));
+  return { data: out, meta: { counts, arr: arrOn(all, today), failed: failed.size, today } };
 }
 
 async function createRoute(ctx) {

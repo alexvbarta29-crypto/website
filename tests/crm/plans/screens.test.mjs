@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const load = async (name) => (await import(`../../../crm-app/modules/plans/${name}.js`)).default;
+const L = await import("../../../crm-app/modules/plans/list.js");
 const M = (await import("../../../crm-app/modules/plans/manifest.js")).default;
 const kit = await import("../../../crm-app/modules/plans/kit.js");
 const ctx = (perms = null, role = "owner") => ({ can: (p) => (perms ? perms.includes(p) : true), user: { id: "us_00000000000000000001", role }, keep: {}, path: "/x", params: {} });
@@ -51,18 +52,25 @@ test("the manifest: routes with permissions and parents, More → Plans and Ligh
   assert.deepEqual(M.settings.map((s) => s.path), ["/settings/plans", "/settings/agreement-templates"]);
 });
 
-test("Plans list and the contact's tab: chips with counts, rows escaped, waiting plans say what for", async () => {
+test("Plans list (Rotor's tiles) and the contact's tab: tiles with counts, ARR, rows escaped, waiting plans say what for", async () => {
   const list = await load("list");
-  const rows = [row(), row({ id: "pl_00000000000000000002", cn: "Sam Sample", st: "pending", pr: ["signature"], nx: null })];
-  const h = text(list.render({ rows, counts: { active: 1, pending: 1, due: 1 }, chip: "active", q: "", special: null }, ctx()));
+  const rows = [row({ ag: "signed", ay: 118000 }), row({ id: "pl_00000000000000000002", cn: "Sam Sample", st: "pending", pr: ["signature"], nx: null }), row({ id: "pl_00000000000000000003", cn: "Fay Failed", pf: 1, ap: false, ag: "signed" })];
+  const base = { rows, arr: 123400, month: "2026-11", tile: "active", q: "" };
+  const h = text(list.render(base, ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /href="#\/plans\/pl_00000000000000000001"/);
-  assert.match(h, /Active <span class="n">1<\/span>/);
-  assert.match(h, /next Dec 2026 · Auto-Pay/);
-  assert.match(h, /class="c-row"/, "two-line rows");
+  assert.match(h, /Projected ARR<\/span><span class="rs-tile-v num">\$1,234<\/span>/, "ARR: info, Home's math from the server");
+  assert.match(h, /data-key="active"[^>]*><span class="rs-tile-l">Active<\/span><span class="rs-tile-v num">2</);
+  assert.match(h, /data-key="failed"[^>]*><span class="rs-tile-l">Failed payments<\/span><span class="rs-tile-v num">1</);
+  assert.match(h, /data-key="autopay_off"[^>]*><span class="rs-tile-l">Autopay off<\/span><span class="rs-tile-v num">1</);
+  assert.match(h, /\$1,180\.00\/yr/, "the plan's year");
+  assert.match(h, /next Dec 2026 · Autopay/);
+  assert.match(h, /class="rs-lrow/, "two-line rows");
   assert.doesNotMatch(h, /Sam Sample/, "a waiting plan isn't under Active");
-  assert.match(text(list.render({ rows, counts: { active: 1, pending: 1 }, chip: "pending", q: "", special: null }, ctx())), /waiting for agreement to sign/);
-  assert.match(text(list.render({ rows, counts: { active: 1 }, chip: "active", q: "nobody", special: null }, ctx())), /Nothing here|No active plans/);
+  assert.match(text(list.render({ ...base, tile: "signature" }, ctx())), /waiting for agreement to sign/);
+  assert.match(text(list.render({ ...base, tile: "failed" }, ctx())), /Fay Failed/);
+  assert.match(text(list.render({ ...base, q: "nobody" }, ctx())), /Nothing here|No active plans/);
+  assert.equal(L.planTiles({ st: "active", ag: "signed", ap: true, aa: 1 }, "2026-11").includes("after"), true, "after agreement");
   const tab = await load("contact-tab");
   const th = text(tab.render({ id: "ct_1", rows, agreements: [{ id: "ag_1", plan_id: "pl_00000000000000000002", title: `Agreement ${XSS}`, status: "viewed" }] }, ctx()));
   assert.ok(!th.includes("<script>alert(1)"));

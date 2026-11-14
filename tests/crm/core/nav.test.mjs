@@ -103,11 +103,11 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   const tabs = (k) => row(k).tabs.map((t) => t.label);
   const more = (k) => row(k).more.map((m) => m.label);
   // the tabs that exist today (Requests, Payouts, Referrals, Forms, Queue and Call logs wait for their screens)
-  assert.deepEqual(tabs("service"), ["Quotes", "Jobs", "Plans"]);
+  assert.deepEqual(tabs("service"), ["Requests", "Quotes", "Jobs", "Plans"]);
   assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payroll"]);
   assert.deepEqual(tabs("marketing"), ["Workflows", "Campaigns", "Reviews", "Templates"]);
   for (const k of ["home", "inbox", "schedule", "customers", "leads", "pipelines", "dialer", "tasks", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
-  assert.deepEqual([row("service").path, row("financials").path, row("marketing").path, row("analytics").path, row("dialer").path], ["/quotes", "/invoices", "/automations", "/reports", "/calls"], "the first open tab");
+  assert.deepEqual([row("service").path, row("financials").path, row("marketing").path, row("analytics").path, row("dialer").path], ["/requests", "/invoices", "/automations", "/reports", "/calls"], "the first open tab");
   // the rare screens in a section's "..."
   assert.deepEqual(more("inbox"), ["Outbox (not sent)", "Approvals"]);
   assert.deepEqual(more("financials"), ["Autopay run", "Timesheets", "Purchases"]);
@@ -230,23 +230,23 @@ test("sections: the screen's section up its parent chain; the tab used last, per
     assert.equal(nav.sectionOf("/autopay/ap_1").key, "financials");
     assert.equal(nav.sectionOf("/settings/company").key, "home", "Settings hangs off Home");
     const at = nav.sectionAt("/plans", new URLSearchParams(""));
-    assert.deepEqual([at.sec.key, at.cur.key, at.tabs.length], ["service", "plans", 3]);
+    assert.deepEqual([at.sec.key, at.cur.key, at.tabs.length], ["service", "plans", 4]);
     assert.equal(nav.sectionAt("/autopay"), null, "a \"...\" screen is no tab");
     const row = () => nav.drawerGroups().flat().find((it) => it.key === "service");
-    assert.equal(row().path, "/quotes", "first time: the first tab");
+    assert.equal(row().path, "/requests", "first time: the first tab");
     nav.rememberTab(nav.sectionByKey("service"), "plans");
     assert.equal(store.get("crm-sec:us_0000000000000000000a:service"), "plans", "crm-sec:<uid>:<key>");
     assert.equal(row().path, "/plans", "then the tab used last");
     // another person on the same phone has their own
     nav.plan({ nav: navFor({ role: "owner" }), manifests: MANIFESTS, can: canOf("owner"), user: { id: "us_other", role: "owner" } });
-    assert.equal(row().path, "/quotes");
+    assert.equal(row().path, "/requests");
     // a remembered tab that is no longer open: the first again
-    store.set("crm-sec:us_other:service", "requests");
-    assert.equal(row().path, "/quotes");
+    store.set("crm-sec:us_other:service", "gone");
+    assert.equal(row().path, "/requests");
     // a browser that keeps nothing: the first, and nothing breaks
     globalThis.localStorage = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     nav.rememberTab(nav.sectionByKey("service"), "jobs");
-    assert.equal(row().path, "/quotes");
+    assert.equal(row().path, "/requests");
   } finally { delete globalThis.localStorage; }
 });
 
@@ -283,7 +283,7 @@ test("Customize Tabs: up to five above the line, the rest under MORE MENU; + and
 test("the + and the desk's New: one list, the most used first, each once", () => {
   planFor("owner");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8)");
+  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8)");
   assert.deepEqual(quick.quickCreates([...creates, { path: "/requests/new", label: "Request" }], canOf("owner")).map((c) => c.label).slice(3, 5), ["Request", "Task"], "Request once a module offers its create");
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });

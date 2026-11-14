@@ -273,6 +273,8 @@ export const planRow = (r) => {
     nx: nx ? nx.target_month : null, nxs: nx ? nx.status : null, due: firstDue(r), mj: missingJobs(r), ap: !!(r.billing && r.billing.autopay), cr: !!(r.billing && r.billing.card_required),
     ag: r.agreement_status || "none", te: (r.term && r.term.current_term_end) || null, eff: (r.cancel && r.cancel.effective_on) || null, pu: (r.pause && r.pause.until) || null,
     tw: r.town || null, sv: saleValueOf(r), ay: yearValue(r), ar: r.term && r.term.auto_renew === false ? 0 : 1, tm: (r.term && r.term.initial_months) || 12, cb: r.cancel && r.cancel.clawback_state === "to_bill" ? 1 : 0, im: r.import ? 1 : 0, at: r.created_at, u: r.updated_at,
+    // after agreement (guide-gaps S16): the first term is over and the plan goes on
+    aa: r.term && (r.term.current_term_n || 1) > 1 ? 1 : 0, ...(r.cancel_request && ["open", "contacted", "offered"].includes(r.cancel_request.status) ? { sr: r.cancel_request.priority === "high" ? 2 : 1 } : {}),
     ...(r.kind === "lights_annual" ? { cs: (r.confirmed_seasons || []).slice(-3), wc: waitingSeasons(r) } : {}), ...(r.held ? { hd: r.held.action } : {}),
   };
 };
