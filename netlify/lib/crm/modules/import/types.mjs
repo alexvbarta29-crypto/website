@@ -63,6 +63,11 @@ function validateImportRun(data, { op } = {}) {
       if (typeof v !== "string" || !/^[0-9a-f]{16}$/.test(v)) throw new InputError("That isn't a phase signature.", f);
       return v;
     },
+    auto_key_id: (v, f) => {
+      if (v === undefined || v === null || v === "") return undefined;
+      if (!isId(v, "import_key")) throw new InputError("That isn't an import key.", f);
+      return v;
+    },
     waiting: (v, f) => {
       if (v === undefined || v === null) return undefined;
       if (!Array.isArray(v) || v.length > 200 || v.some((x) => typeof x !== "string" || !/^[a-z0-9_.-]{1,80}$/.test(x))) throw new InputError("A list of phase names.", f);
@@ -83,6 +88,8 @@ export const importRunRow = (r) => ({
   // an upload under way: until when its newest key works
   ...(r.status === "uploading" && r.upload && r.upload.expires_at ? { kx: r.upload.expires_at } : {}),
   ...(r.status === "done" && Array.isArray(r.waiting) ? { w: r.waiting.length } : {}),
+  // made by the automatic daily import key (autokey.mjs)
+  ...(r.auto_key_id ? { ak: r.auto_key_id } : {}),
 });
 
 export const importRunType = defineType({
