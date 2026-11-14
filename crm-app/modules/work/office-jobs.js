@@ -13,6 +13,7 @@ import { html, attrs, icon, tileRow, tileToggle, listRow, listCard, actionSheet,
 import { findButton, findOpen } from "../../core/nav.js";
 import { money, dateShort, plural } from "../../core/format.js";
 import { ensureStyles, officeView, kindLabel, STALE, loadUsers, userById, reasonSheet } from "./office-kit.js";
+import { ensureStyles as svStyles } from "../service/kit.js";
 
 const JOB_WORD = { unscheduled: "To book", scheduled: "Booked", in_progress: "Under way", completed: "Done", cancelled: "Cancelled" };
 const JOB_TONE = { unscheduled: "amber", scheduled: "blue", in_progress: "amber", completed: "green", cancelled: "red" };
@@ -33,6 +34,7 @@ export default {
   title: "Jobs",
   async load(params, ctx) {
     ensureStyles();
+    svStyles();
     if (!officeView()) return { denied: true };
     const q = new URLSearchParams((typeof location !== "undefined" && location.hash.split("?")[1]) || "");
     const asked = OLD[q.get("status")] || (q.get("tile") && /^[a-z_]+$/.test(q.get("tile")) ? q.get("tile") : null);

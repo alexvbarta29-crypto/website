@@ -99,7 +99,7 @@ export async function requestDetail(id) {
   const property = p && !p.data.deleted_at ? { id: p.data.id, label: p.data.label, address: p.data.address } : null;
   return {
     data: {
-      request: view(r), contact, property,
+      request: view(r), contact, property, today: localDate(now()),
       assessment: r.assessment ? { ...r.assessment, user_name: assessor ? assessor.data.name : null, task_status: task ? task.data.status : null } : null,
     },
     etag: g.etag,

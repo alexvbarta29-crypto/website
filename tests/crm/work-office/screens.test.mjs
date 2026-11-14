@@ -358,3 +358,37 @@ test("Jobs list (Rotor's): the tiles with counts and $, Row2 rows, Due when owed
   assert.doesNotMatch(h, /data-job-start="jb_00000000000000000001"/);
   assert.match(h, /data-job-more="jb_00000000000000000002"/, "a long press holds the rest");
 });
+
+test("the job page's extras (the Rotor guide's SX2, SX4, SX11-SX13): balance due, time on site, the status track, the visit's step pills, the plan banner, the quick actions", async () => {
+  const job = await import("../../../crm-app/modules/work/office-job.js");
+  const page = job.default;
+  globalThis.window = { __crm: { session: { perms: { "schedule:read": true } } } };
+  try {
+    const me = "us_00000000000000000001";
+    const j = { id: "jb_1", number_label: "S-000009", title: "Windows", kind: "standard", status: "scheduled", plan_id: "pl_1", plan_ordinal: { term: 1, n: 2 }, lines: [{ title: "Windows", total_cents: 29500, qty_milli: 1000, unit_cents: 29500, measure: { value: 24, unit: "panes" } }], totals: { total_cents: 29500, discount_cents: 0, subtotal_cents: 29500 }, updated_at: "2026-11-17T15:00:00.000Z" };
+    const visits = [{ id: "vs_1", date: "2026-11-17", start: "08:00", end: "10:00", status: "en_route", assignee_ids: [me], minutes_worked: 0 }, { id: "vs_0", date: "2026-11-10", start: "08:00", end: "09:00", status: "completed", assignee_ids: [me], minutes_worked: 85 }];
+    const plan = { id: "pl_1", name: `Quarterly ${XSS}`, status: "active", visits_per_year: 4, ordinals: [{ n: 3, target_month: "2027-02", status: "unscheduled" }], notes: "Gate code 4411" };
+    const s = { job: j, visits, contact: { id: "ct_1", display_name: "Pat", phones: [], emails: [{ address: "pat@example.com" }] }, property: null, users, invoices: [], plan, can: { write: true, complete: true, cancel: true, add_visit: true } };
+    const h = text(page.render(s, ctx()));
+    assert.ok(!h.includes("<script>alert(1)"));
+    assert.match(h, /Balance due<\/span><span class="rs-stat-v">\$295\.00/, "no invoice yet: the total is what's due");
+    assert.match(h, /Time on site<\/span><span class="rs-stat-v">1 h 25 m/);
+    assert.match(h, /class="rs-step on" aria-current="step"><span class="rs-step-d" aria-hidden="true">2<\/span><span class="rs-step-l">On my way/, "the track: on the way");
+    assert.match(h, /data-v-start="vs_1"/, "Start for the visit's own people");
+    assert.match(h, /data-v-move="vs_1"/, "Reschedule for the office");
+    assert.match(h, /data-v-note="vs_1"/);
+    assert.doesNotMatch(h, /data-v-move="vs_0"/, "a done visit has no step pills");
+    assert.match(h, /Visit 2 of 4 · next Feb 2027 · Active/, "the plan banner");
+    assert.match(h, /Plan notes[\s\S]*Gate code 4411/);
+    assert.match(h, /24 panes · 1 × \$295\.00/, "the line's measure");
+    assert.match(h, /href="mailto:pat@example\.com"/);
+    // done and invoiced: the quick actions
+    const done = { ...s, job: { ...j, status: "completed" }, visits: [{ ...visits[1] }], invoices: [{ id: "in_1", n: "INV-1", st: "open", tot: 29500, bal: 29500 }] };
+    const labels = page.more(done, { ...ctx(), can: () => true }).flat().filter(Boolean).map((r) => r.label);
+    for (const l of ["Text a pay link", "Ask for a review now", "Ask for a tip", "Book a callback"]) assert.ok(labels.includes(l), l);
+    const dh = text(page.render(done, ctx()));
+    assert.match(dh, /Balance due<\/span><span class="rs-stat-v red">\$295\.00/, "owed after it's done: red");
+    assert.match(dh, /class="rs-step on" aria-current="step"><span class="rs-step-d" aria-hidden="true">4<\/span><span class="rs-step-l">Done/);
+    assert.equal(job.trackAt({ ...done, invoices: [{ id: "in_1", st: "paid", tot: 29500, bal: 0 }] }), "paid");
+  } finally { delete globalThis.window; }
+});

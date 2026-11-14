@@ -83,7 +83,7 @@ function assessSheet(ctx) {
     title: a.date ? "Move the assessment" : "Schedule an assessment",
     body: html`<form class="form" data-assess-f novalidate>
       <div class="err" data-form-err hidden></div>
-      <label class="field" data-field="date"><span>Day</span><input type="date" name="date" required ${attrs({ value: a.date || addDays(today(), 1), min: today() })}><small class="why" hidden></small></label>
+      <label class="field" data-field="date"><span>Day</span><input type="date" name="date" required ${attrs({ value: a.date || addDays(s.today || today(), 1), min: s.today || today() })}><small class="why" hidden></small></label>
       <div class="sv-two"><label class="field" data-field="start"><span>From</span><input type="time" name="start" step="900" required ${attrs({ value: a.start || "10:00" })}><small class="why" hidden></small></label>
       <label class="field" data-field="end"><span>To</span><input type="time" name="end" step="900" required ${attrs({ value: a.end || "10:30" })}><small class="why" hidden></small></label></div>
       <label class="field" data-field="user_id"><span>Who goes</span><select name="user_id">${people.map((u) => html`<option ${attrs({ value: u.id, selected: u.id === who })}>${u.name}</option>`)}</select><small class="why" hidden></small></label>

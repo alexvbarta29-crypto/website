@@ -27,3 +27,8 @@
 .sv-pip.done { opacity: .75; }
 .sv-pip.red b { color: var(--red, #e5484d); }
 .sv-pip.green b { color: var(--green, #2f9e44); }
+/* the single-visit card is a row: the step pills wrap onto their own line under it */
+.wk-visits.one:has(.sv-vacts) { flex-wrap: wrap; }
+.wk-visits.one > .sv-vacts { flex: 0 0 100%; padding-left: 44px; }
+/* the job's track on a phone: five steps, the words wrap under their dots instead of cutting off */
+.sv-track .rs-step-l { white-space: normal; text-align: center; overflow: visible; font-size: 12px; line-height: 1.15; }
