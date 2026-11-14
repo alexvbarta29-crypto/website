@@ -40,7 +40,7 @@
 // list keeping its search and scroll and lighting the open row. Under
 // 1000 px (a phone) every screen is the whole view, as always.
 
-import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, actionSheet } from "./ui.js";
+import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, actionSheet, skeletonRows } from "./ui.js";
 
 const routes = [];
 let stack = [];
@@ -230,14 +230,11 @@ function screenCtx(path, params, extra = {}) {
 }
 
 // What a screen shows while it loads: a skeleton, never a spinner (§9.4).
-// A route may declare skeleton: "list" (rows, for list screens); the
-// default is a card.
+// A route may declare skeleton: "list" (rows, for list screens: the kit's
+// skeleton rows in one bordered card, Flyra's); the default is a card.
 export function skeleton(kind = "card") {
   const lines = html`<span class="sk h"></span><span class="sk w90"></span><span class="sk w70"></span>`;
-  if (kind === "list") {
-    const row = html`<li class="sk-row"><span class="sk dot"></span><span class="sk-lines"><span class="sk w50"></span><span class="sk w30"></span></span></li>`;
-    return html`<div class="skel" aria-busy="true" aria-label="Loading"><span class="sk h"></span><ul class="list">${[row, row, row, row, row]}</ul></div>`;
-  }
+  if (kind === "list") return html`<div class="skel" aria-busy="true" aria-label="Loading">${skeletonRows(7, { busy: false })}</div>`;
   return html`<div class="skel" aria-busy="true" aria-label="Loading"><div class="card">${lines}</div><div class="card"><span class="sk w70"></span><span class="sk w50"></span></div></div>`;
 }
 
@@ -345,8 +342,10 @@ async function show(path, { keepScroll = false } = {}) {
     await mountScreen(v, path, m, { my, keepScroll });
     return;
   }
-  if (app) app.classList.add("split");
-  pane.hidden = false;
+  // (a list alone fills the screen, a table on a desk; the detail opens beside it once a row is picked)
+  const detail = path !== listPath;
+  if (app) app.classList.toggle("split", detail);
+  pane.hidden = !detail;
   if (!stay) {
     const lm = match(listPath);
     anchor = null;
@@ -360,8 +359,7 @@ async function show(path, { keepScroll = false } = {}) {
   }
   if (path === listPath) {
     pane.classList.remove("flush");
-    const what = String(routeTitle(anchor.route) || "the list").toLowerCase();
-    render(pane, html`<div class="pane-empty"><div class="art">${icon("list")}</div><p>${`Pick one of the ${what} to see it here.`}</p></div>`);
+    render(pane, html``);
     markOpen(null);
     return;
   }

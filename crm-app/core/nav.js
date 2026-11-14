@@ -42,13 +42,17 @@
 // one-time "What moved" note (whatMoved below) says it once per person.
 //
 // On a computer or a tablet (900 px and up) the same pieces become a
-// desktop CRM: a dark left sidebar (the white logo, the drawer's groups,
-// Settings and who is signed in at the bottom, the current screen lit with
-// a coral bar, the badges) and, in the header, a search box (GET /search:
-// names, phones, streets, Q-/INV- numbers), a New button (the same creates)
-// and the person's menu. CSS decides which set shows; one codebase.
+// desktop CRM, Flyra's (Polish 3, Nov 2026): a 64 px light icon rail (the
+// logo mark, the drawer's groups as icons with their labels as tooltips,
+// Settings and a toggle that shows the labels at the bottom, the current
+// icon on a white tile, the badges) and a top bar across the page (the
+// company, the wide search in the middle: GET /search, names, phones,
+// streets, Q-/INV- numbers; + Create with the same creates as the phone's +;
+// the bell, help and the person's menu). The screen's own header is then
+// the page's: the plain title, a back button, its one action. CSS decides
+// which set shows; one codebase.
 
-import { html, render, sheet, icon, attrs, toast, rnd, actionSheet, seg } from "./ui.js";
+import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg } from "./ui.js";
 import { initials, time as fmtTime } from "./format.js";
 import { api } from "./api.js";
 import * as router from "./router.js";
@@ -256,7 +260,7 @@ export function setTabs(nav) {
   plan({ nav, manifests: st.manifests, can: st.can, user: st.user });
   drawBar();
   const side = document.getElementById("side");
-  if (side) { side.remove(); const f = document.getElementById("top-find"); const t = document.getElementById("top-tools"); if (f) f.remove(); if (t) t.remove(); }
+  if (side) { side.remove(); const d = document.getElementById("deskbar"); if (d) d.remove(); }
   mountDesk();
   setBadges(st.badges);
   update(router.currentPath());
@@ -430,8 +434,7 @@ export function setBadges(b = {}) {
     el.hidden = !n;
     el.textContent = n > 99 ? "99+" : String(n);
   }
-  const bell = document.querySelector("#top-bar [data-tb-bell]");
-  if (bell) {
+  for (const bell of document.querySelectorAll("#top-bar [data-tb-bell], #deskbar [data-db-bell]")) {
     const n = st.badges.notifications;
     const badge = bell.querySelector(".badge");
     if (badge) { badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n); }
@@ -652,6 +655,18 @@ export function sideLayout() {
 // the badge a row carries (Home: what needs you; Inbox: unread)
 const BADGE_KEY = { home: "home", inbox: "inbox" };
 
+// The rail's logo: our two coral slashes on the ink tile (the favicon's mark), drawn here so a
+// phone with no signal has it.
+const MARK = raw('<svg class="side-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#111116"/><g fill="#fb4d3d" stroke="none" transform="translate(32 32) scale(1.05) translate(-36.5 -32)"><path d="M27 14 H38 L27 50 H16 Z"/><path d="M46 14 H57 L46 50 H35 Z"/></g></svg>');
+// The rail shows its labels (the toggle at its foot), remembered on this device.
+export const RAIL_KEY = "crm-rail";
+const railOpen = () => { try { return localStorage.getItem(RAIL_KEY) === "open"; } catch (e) { return false; } };
+
+// The desk (900 px and up, Flyra's): a 64 px icon rail on the left (the logo, the drawer's
+// sections in their groups, Settings and the toggle that shows the labels at its foot; a label is
+// a tooltip on hover and keyboard focus) and a top bar across the page (the company, the wide
+// search in the middle, + Create, the bell, help and the person). The screen's own header (#top)
+// is then the page's: the plain title, a back button, the screen's one action.
 function mountDesk() {
   const app = document.getElementById("app");
   if (!app || document.getElementById("side")) return;
@@ -662,33 +677,49 @@ function mountDesk() {
   const { top, groups, bottom } = sideLayout();
   const u = st.user || {};
   const row = (it) => sideItem(it.path, it.label, it.icon, BADGE_KEY[it.key] || null, rowLit(it), { sec: it.key.startsWith("x") ? null : it.key, count: it.count });
-  render(side, html`<a class="side-logo" href="#/today"><img src="/assets/img/logo-bww-white.png" alt="Barta Window Washing" width="128" height="35"></a>
+  const open = railOpen();
+  render(side, html`<a class="side-logo" href="#/today" aria-label="Barta Window Washing, Home">${MARK}<span class="side-word">Barta</span></a>
     <div class="side-scroll">
       ${top.length ? html`<div class="side-main">${top.map((t) => sideItem(t.path, t.label, t.icon, t.key, t.roots))}</div>` : ""}
       ${groups.map((g, i) => html`${i ? html`<div class="side-div" role="separator"></div>` : ""}<div class="side-main">${g.map(row)}</div>`)}
     </div>
     ${bottom.length ? html`<div class="side-foot">${bottom.map((n) => sideItem(n.path, n.label, n.icon))}</div>` : ""}
-    <a class="side-me" href="#/me"><span class="avatar" ${attrs({ style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null })}>${initials(u.name)}</span><span class="who"><span class="nm">${u.name || "My account"}</span><span class="sub">${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></span></a>`);
+    <button type="button" class="side-pin" data-side-pin ${attrs({ "aria-pressed": open ? "true" : "false", "aria-label": "Show labels" })}>${icon("panel")}<span class="pl" aria-hidden="true">Hide labels</span></button>`);
   app.appendChild(side);
   app.classList.add("has-side");
+  app.classList.toggle("rail-open", open);
+  railTips(side);
+  side.querySelector("[data-side-pin]").addEventListener("click", (e) => {
+    const on = !app.classList.contains("rail-open");
+    app.classList.toggle("rail-open", on);
+    e.currentTarget.setAttribute("aria-pressed", String(on));
+    try { localStorage.setItem(RAIL_KEY, on ? "open" : "shut"); } catch (x) { /* private mode */ }
+  });
 
-  // the header's tools: search, New, the person's menu
-  const topBar = document.getElementById("top");
-  const tools = document.createElement("div");
-  tools.id = "top-tools";
-  tools.className = "top-tools";
+  // the top bar: the company, the search, + Create, the bell, help, the person
+  const bar = document.createElement("div");
+  bar.id = "deskbar";
+  bar.className = "deskbar";
   const canSearch = st.can("contacts:read_all");
-  // search before the screen's own action button, New and the person after it
   const find = document.createElement("div");
   find.id = "top-find";
-  find.className = "top-tools top-find";
-  render(find, canSearch ? html`<form class="top-search" role="search" id="top-search" autocomplete="off">${icon("search")}<label class="sr" for="top-q">Search</label><input id="top-q" type="search" placeholder="Search customers or Q-1234" ${attrs({ autocomplete: "off", spellcheck: "false" })}><div class="pop search-pop" id="search-pop" hidden></div></form>` : html``);
+  find.className = "top-tools top-find db-find";
+  render(find, canSearch ? html`<form class="top-search" role="search" id="top-search" autocomplete="off">${icon("search")}<label class="sr" for="top-q">Search</label><input id="top-q" type="search" placeholder="Search anything: a name, a phone, a street, Q-1234" ${attrs({ autocomplete: "off", spellcheck: "false" })}><div class="pop search-pop" id="search-pop" hidden></div></form>` : html``);
+  const tools = document.createElement("div");
+  tools.id = "top-tools";
+  tools.className = "top-tools db-end";
   const makes = quickCreates(st.creates, st.can);
-  render(tools, html`${makes.length ? html`<div class="top-new"><button type="button" class="btn primary" id="top-new" aria-haspopup="true" aria-expanded="false">${icon("plus")}New</button><div class="pop" id="new-pop" hidden><ul class="menu">${makes.map((c) => html`<li><a href="${"#" + c.path}">${icon(c.icon || "plus")}<span>${c.label}</span></a></li>`)}</ul></div></div>` : ""}
-    <div class="top-me"><button type="button" class="top-av" id="top-me" aria-haspopup="true" aria-expanded="false" ${attrs({ "aria-label": `${u.name || "My account"}: account menu`, style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null })}>${initials(u.name)}</button><div class="pop" id="me-pop" hidden><p class="pop-who"><b>${u.name || ""}</b><span>${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></p><ul class="menu"><li><a href="#/me">${icon("me")}<span>My account</span></a></li><li><button type="button" class="danger" data-signout>${icon("out")}<span>Sign out</span></button></li></ul></div></div>`);
-  topBar.insertBefore(find, document.getElementById("top-act"));
-  topBar.appendChild(tools);
-  const pops = () => [...topBar.querySelectorAll(".top-tools .pop")];
+  const avStyle = /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null;
+  render(tools, html`${makes.length ? html`<div class="top-new"><button type="button" class="btn" id="top-new" aria-haspopup="true" aria-expanded="false">${icon("plus")}Create</button><div class="pop" id="new-pop" hidden><ul class="menu">${makes.map((c) => html`<li><a href="${"#" + c.path}">${icon(c.icon || "plus")}<span>${c.label}</span></a></li>`)}</ul></div></div>` : ""}
+    ${routeOk("/notifications") ? html`<a class="db-ic" href="#/notifications" data-db-bell aria-label="Notifications">${icon("bell")}<span class="badge" hidden></span></a>` : ""}
+    <button type="button" class="db-ic" data-db-help aria-haspopup="dialog" aria-label="Help">${icon("help")}</button>
+    <div class="top-me"><button type="button" class="top-av" id="top-me" aria-haspopup="true" aria-expanded="false" ${attrs({ "aria-label": `${u.name || "My account"}: account menu`, style: avStyle })}>${initials(u.name)}</button><div class="pop" id="me-pop" hidden><p class="pop-who"><b>${u.name || ""}</b><span>${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></p><ul class="menu"><li><a href="#/me">${icon("me")}<span>My account</span></a></li>${ME_ROWS.filter(([path]) => routeOk(path)).map(([path, label, ic]) => html`<li><a href="${"#" + path}">${icon(ic)}<span>${label}</span></a></li>`)}<li><button type="button" data-theme-pop>${icon("sun")}<span>Light or dark</span></button></li><li><button type="button" class="danger" data-signout>${icon("out")}<span>Sign out</span></button></li></ul></div></div>`);
+  render(bar, html`<div class="db-co"><span class="db-mark" aria-hidden="true">B</span><span>Barta Window Washing</span></div>`);
+  bar.appendChild(find);
+  bar.appendChild(tools);
+  const topBar = document.getElementById("top");
+  app.insertBefore(bar, topBar);
+  const pops = () => [...bar.querySelectorAll(".top-tools .pop")];
   const closePops = (except) => { for (const p of pops()) if (p !== except) { p.hidden = true; const b = p.parentNode.querySelector("[aria-expanded]"); if (b) b.setAttribute("aria-expanded", "false"); } };
   const toggle = (btn, pop) => { const open = pop.hidden; closePops(pop); pop.hidden = !open; btn.setAttribute("aria-expanded", String(open)); };
   find.addEventListener("click", (e) => { if (e.target.closest(".pop a")) { closePops(); const q = document.getElementById("top-q"); if (q) q.value = ""; } });
@@ -697,6 +728,8 @@ function mountDesk() {
     if (nb) { toggle(nb, document.getElementById("new-pop")); return; }
     const mb = e.target.closest("#top-me");
     if (mb) { toggle(mb, document.getElementById("me-pop")); return; }
+    if (e.target.closest("[data-db-help]")) { closePops(); helpSheet(); return; }
+    if (e.target.closest("[data-theme-pop]")) { closePops(); pickTheme(); return; }
     if (e.target.closest("[data-signout]")) { closePops(); st.onSignOut(); return; }
     if (e.target.closest(".pop a")) { closePops(); const q = document.getElementById("top-q"); if (q && e.target.closest(".search-pop")) q.value = ""; }
   });
@@ -704,6 +737,40 @@ function mountDesk() {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePops(); });
   window.addEventListener("hashchange", () => closePops());
   if (canSearch) searchBox();
+}
+
+// The rail's tooltips: the row's label beside it on hover or keyboard focus while the labels are hidden.
+function railTips(side) {
+  let tip = document.getElementById("side-tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.id = "side-tip";
+    tip.className = "side-tip";
+    tip.setAttribute("aria-hidden", "true");
+    tip.hidden = true;
+    document.body.appendChild(tip);
+  }
+  const hide = () => { tip.hidden = true; };
+  const show = (e) => {
+    const el = e.target.closest && e.target.closest("a, button");
+    const app = document.getElementById("app");
+    if (!el || !side.contains(el) || (app && app.classList.contains("rail-open"))) return hide();
+    const l = el.querySelector(".sl");
+    const text = (l ? l.textContent : el.getAttribute("aria-label")) || "";
+    const n = el.querySelector(".badge:not([hidden])");
+    if (!text) return hide();
+    tip.textContent = n ? `${text} (${n.textContent})` : text;
+    const r = el.getBoundingClientRect();
+    tip.hidden = false;
+    tip.style.left = Math.round(side.getBoundingClientRect().right + 8) + "px";
+    tip.style.top = Math.round(r.top + r.height / 2 - tip.offsetHeight / 2) + "px";
+  };
+  side.addEventListener("mouseover", show);
+  side.addEventListener("focusin", (e) => { if (e.target.matches && e.target.matches(":focus-visible")) show(e); });
+  side.addEventListener("mouseleave", hide);
+  side.addEventListener("focusout", hide);
+  side.addEventListener("click", hide);
+  side.addEventListener("scroll", hide, true);
 }
 
 // The header's search: as you type, the people and the document numbers it finds.
@@ -1122,7 +1189,7 @@ export const THEME_KEY = "crm-theme";
 export const THEMES = Object.freeze([["light", "Light"], ["dark", "Dark"], ["auto", "Automatic"]]);
 export const DEFAULT_THEME = "dark";
 // the canvas of each (the status bar and the frame behind the app match it)
-export const CANVAS = Object.freeze({ light: "#f2f2f7", dark: "#111214" });
+export const CANVAS = Object.freeze({ light: "#f6f6f8", dark: "#111214" });
 
 let mem = null;   // a browser that keeps nothing: the choice lasts until the page closes
 const known = (v) => THEMES.some(([k]) => k === v);

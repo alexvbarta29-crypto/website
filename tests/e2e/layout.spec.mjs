@@ -140,7 +140,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await g.click(".sheet.on [data-theme-btn]");
       await g.click('[data-theme-pick="light"]');
       assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "light");
-      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(242, 242, 247)", "iOS grouped grey");
+      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(246, 246, 248)", "a faint grey canvas (Polish 3)");
       assert.deepEqual(await screenProblems(g), []);
       await page.reload();
       const h = await crmFrame(page);
