@@ -105,3 +105,11 @@ html:not([data-theme="light"]) .cm-av{background:var(--card-2)!important;color:v
 .cm-starpick span{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line-2);border-radius:var(--r);font-weight:600}
 .cm-starpick input:checked+span{background:var(--solid);color:var(--on-solid);border-color:var(--solid)}
 .cm-starpick input:focus-visible+span{box-shadow:var(--focus)}
+/* the composer's chips stay one row that scrolls sideways (the thread keeps its room) */
+.cm-quick{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 -2px;padding:0 2px}
+.cm-quick::-webkit-scrollbar{display:none}
+.cm-quick .chip{flex:none;white-space:nowrap}
+.cm-compose .rs-seg{margin:0}
+.cm-mute .rs-frow{padding-left:14px}
+.cm-mute .rs-fl{flex:1;min-width:0}
+.cm-mute .switch{flex:none}

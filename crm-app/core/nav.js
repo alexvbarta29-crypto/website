@@ -542,7 +542,8 @@ export function sectionTabs(key, on = null) {
   const tabs = openTabs(sec);
   if (tabs.length < 2) return html``;
   const cur = on !== null && on !== undefined ? on : typeof location === "undefined" ? null : (tabAt(tabs, router.currentPath()) || {}).key;
-  return seg(tabs.map((t) => ({ key: t.key, label: t.label, href: "#" + tabHref(t) })), cur, { name: "sec", label: sec.label, scroll: tabs.length > 4 });
+  // (5 tabs, or 4 long names like Marketing's: the row scrolls sideways rather than cut the names)
+  return seg(tabs.map((t) => ({ key: t.key, label: t.label, href: "#" + tabHref(t) })), cur, { name: "sec", label: sec.label, scroll: tabs.length > 4 || tabs.map((t) => t.label).join("").length > 26 });
 }
 
 // The drawer's rows for this person (pure: the tests call it with the

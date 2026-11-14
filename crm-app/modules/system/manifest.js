@@ -42,6 +42,7 @@ export default {
     { path: "/settings/integrations", load: () => import("./settings-integrations.js"), title: "Integrations", perm: "settings:owner", parent: "/settings" },
     { path: "/settings/intake", load: () => import("./settings-integrations.js"), title: "Intake mode", perm: "settings:owner", parent: "/settings" },
     { path: "/settings/data", load: () => import("./settings-data.js"), title: "Data & backups", perm: "audit:read", parent: "/settings" },
+    { path: "/settings/portal", load: () => import("./settings-portal.js"), title: "Client portal", perm: "settings:owner", parent: "/settings" },
     { path: "/settings/permissions", load: () => import("./settings-permissions.js"), title: "Permissions", perm: "settings:owner", parent: "/settings" },
     // The office's dashboards and tools, inside the CRM (office sign-in only).
     // (the office dashboard, Rotor's snapshot: Reports opens it; old #money links land on a view)
@@ -80,6 +81,7 @@ export default {
     { label: "Integrations", path: "/settings/integrations", perm: "settings:owner", icon: "plug", order: 80, owner: true },
     { label: "Intake mode", path: "/settings/intake", perm: "settings:owner", icon: "contacts", order: 82, owner: true },
     { label: "Data & backups", path: "/settings/data", perm: "audit:read", icon: "data", order: 90 },
+    { label: "Client portal", path: "/settings/portal", perm: "settings:owner", icon: "receipt", order: 56, owner: true },
   ],
   styles: [],
 };

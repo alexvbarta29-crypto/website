@@ -300,8 +300,8 @@ async function panel(ctx) {
   const ph = (c.phones || [])[0];
   const em = (c.emails || [])[0];
   const rows = [
-    ph && ph.e164 && { label: "Mobile", value: fmtPhone(ph.e164), actions: [{ icon: "call", label: "Call", href: "tel:" + ph.e164 }] },
-    em && em.address && { label: "Email", value: em.address, actions: [{ icon: "mail", label: "Email", href: "mailto:" + em.address }] },
+    ph && ph.e164 && { icon: "phone", label: "Mobile", value: fmtPhone(ph.e164), actions: [{ icon: "call", label: "Call", href: "tel:" + ph.e164 }] },
+    em && em.address && { icon: "mail", label: "Email", value: em.address, actions: [{ icon: "mail", label: "Email", href: "mailto:" + em.address }] },
   ].filter(Boolean);
   const muted = !!(c.automations_paused && c.automations_paused.sms);
   const creates = [
@@ -314,7 +314,7 @@ async function panel(ctx) {
   const body = () => html`<div class="stack cm-panel">
     ${statGrid(items, { label: c.lifecycle === "lead" ? "Lead details" : "Customer details" })}
     ${rows.length ? contactRows(rows) : ""}
-    ${ctx.can("consent:edit") ? html`<div class="rs-card rs-frows"><div class="rs-frow"><span class="rs-fl">Mute automated texts<small>${muted ? `Muted: ${c.automations_paused.sms.reason || ""}` : "Reminders and follow-ups skip them; your own texts still go."}</small></span>${toggle(muted, { data: { mute: true }, label: "Mute automated texts" })}</div></div>` : ""}
+    ${ctx.can("consent:edit") ? html`<div class="rs-card rs-frows cm-mute"><div class="rs-frow"><span class="rs-fl">Mute automated texts<small>${muted ? `Muted: ${c.automations_paused.sms.reason || ""}` : "Reminders and follow-ups skip them; your own texts still go."}</small></span>${toggle(muted, { data: { mute: true }, label: "Mute automated texts" })}</div></div>` : ""}
     ${creates.length ? html`<div class="cm-create"><span class="rs-label">Create</span><div class="rs-pills">${creates.map(([l, href]) => pillBtn(l, { icon: "plus", href, tone: "grey" }))}</div></div>` : ""}
     ${pillBtn("Open customer", { icon: "user", href: `#/contacts/${c.id}`, wide: true, tone: "solid" })}
   </div>`;

@@ -38,7 +38,7 @@ test("the star page: 1 to 5 stars once per link, Google's link at every rating, 
     assert.match(page.text, /How did we do\?/);
     assert.match(page.text, /comms-review\.js/);
     assert.doesNotMatch(page.text, /<script>(?!<\/script>)/, "no inline script (CSP)");
-    assert.doesNotMatch(page.text, /—/, "no em dashes");
+    assert.doesNotMatch(page.text, /\u2014/, "no em dashes");
     // another job's page: not with this link
     assert.equal((await t.portal(`/p/review/${ids.newId("job")}`, { headers: { cookie } })).status, 401);
     // a portal POST needs the portal header

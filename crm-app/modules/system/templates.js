@@ -1,8 +1,10 @@
 // Templates (design §9.2, §5.7.3): the library by category (service,
 // marketing, personal, staff), text and email, built-in ones marked.
-// Tap one to edit it; New makes one. templates:edit.
+// Tap one to edit it; New makes one. templates:edit. Marketing's fourth tab
+// (the Rotor guide's K11): All · Texts · Email as tiles that are the filter;
+// a text blast's own words live on its campaign, not in this list.
 
-import { html, icon, attrs } from "../../core/ui.js";
+import { html, icon, attrs, tileRow, tileToggle } from "../../core/ui.js";
 
 const CATS = [["service", "Service"], ["marketing", "Marketing"], ["personal", "Personal"], ["staff", "Staff only"]];
 const CH = [["", "All"], ["sms", "Texts"], ["email", "Emails"]];
@@ -11,13 +13,13 @@ export default {
   title: "Templates",
   async load(params, ctx) {
     const r = await ctx.api("/templates", { cache: false });
-    return { rows: r.data || [], channel: ctx.keep.channel || "" };
+    return { rows: (r.data || []).filter((t) => !/^blast(fu)?_/.test(t.key || "")), channel: ctx.keep.channel || "" };
   },
   action(s, ctx) { return { label: "New", run: () => ctx.go("/templates/new") }; },
   render(s) {
     const rows = s.rows.filter((t) => !s.channel || t.channel === s.channel);
     return html`<div class="stack">
-      <div class="chips" role="group" aria-label="Show">${CH.map(([v, l]) => html`<button type="button" class="chip" ${attrs({ "aria-pressed": String(s.channel === v), "data-ch": v })}>${l} <span class="n">${s.rows.filter((t) => !v || t.channel === v).length}</span></button>`)}</div>
+      ${tileRow(CH.map(([v, l]) => ({ key: v || "all", label: l, value: s.rows.filter((t) => !v || t.channel === v).length })), { name: "tpl", on: s.channel || "all", label: "Show" })}
       ${CATS.map(([cat, label]) => {
         const list = rows.filter((t) => t.category === cat);
         if (!list.length) return "";
@@ -29,8 +31,9 @@ export default {
     </div>`;
   },
   events: {
-    "click [data-ch]": (e, el, ctx) => {
-      ctx.state.channel = el.getAttribute("data-ch");
+    "click [data-tile=tpl]": (e, el, ctx) => {
+      const k = tileToggle(ctx.state.channel || "all", el.dataset.key, "all");
+      ctx.state.channel = k === "all" ? "" : k;
       ctx.keep.channel = ctx.state.channel;
       ctx.rerender();
     },

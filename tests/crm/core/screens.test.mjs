@@ -56,7 +56,7 @@ test("Settings screens, Automations, Templates and My account render for an owne
   assert.equal(groupRows[1][2], "Team, permissions, payroll", "a grey line naming what is inside");
   for (const [, , cap] of groupRows) assert.ok(cap.length <= 34, `one line on an iPhone SE: ${cap}`);
   assert.match(hub, /href="#\/settings\/g\/business" data-group="business"/, "a group opens its page");
-  assert.match(hub, /href="#\/settings\/payments" data-group="payments"/, "a group with one row opens that screen");
+  assert.match(hub, /href="#\/settings\/g\/payments" data-group="payments"/, "Payments now holds two rows (Client portal): its own page");
   assert.doesNotMatch(hub, /data-fold|set-sec/, "no folding: the groups replace it");
   assert.match(hub, /class="rs-label">About</);
   // the search list: every row once, hidden until something is typed, each with its group's name
@@ -174,7 +174,7 @@ test("Settings groups (pure): every LAYOUT row in exactly one group, nothing los
   assert.deepEqual(rows.team, ["Team", "Permissions", "Payroll & pay rates"]);
   assert.deepEqual(rows.services, ["Prices & price book", "Discounts", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
   assert.deepEqual(rows.messages, ["Message templates", "Automatic messages", "Follow-up cadences", "Quiet hours & opt-out", "Texting & email setup", "Business numbers", "Muted contacts", "Reviews", "Approvals", "Outbox (not sent)"]);
-  assert.deepEqual(rows.payments, ["Payments & card fees"]);
+  assert.deepEqual(rows.payments, ["Payments & card fees", "Client portal"]);
   assert.deepEqual(rows.connections, ["Integrations", "Claude connector", "Where website leads go", "Facebook lead forms", "Maps & team map", "Door to door"]);
   assert.deepEqual(rows.data, ["Import from Rotor", "Switch from Rotor", "Data & backups", "Dashboard numbers", "Activity log", "Rotor's first customer list", "Open Rotor"]);
   assert.deepEqual(rows.phone, ["Light or dark", "Tab bar", "Calendar feed"]);

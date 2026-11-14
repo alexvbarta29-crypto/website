@@ -56,7 +56,8 @@ export const LAYOUT = Object.freeze([
     ["/approvals", "Approvals", "check", "approvals"],
     ["/outbox", "Outbox (not sent)", "send", "outbox"]]],
   ["payments", "Payments", "receipt", "green", [
-    ["/settings/payments", "Payments & card fees", "money", "payments and card fees"]]],
+    ["/settings/payments", "Payments & card fees", "money", "payments and card fees"],
+    ["/settings/portal", "Client portal", "receipt", "client portal"]]],
   ["connections", "Connections", "plug", "red", [
     ["/settings/integrations", "Integrations", "plug", "integrations"],
     ["/settings/claude", "Claude connector", "plug", "Claude"],

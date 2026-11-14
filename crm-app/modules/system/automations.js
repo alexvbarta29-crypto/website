@@ -157,7 +157,7 @@ export function shownRows(s) {
 const flowRow = (x) => {
   const f = x.flow;
   const draft = !!(f.problems && f.problems.length);
-  return html`<li ${attrs({ class: "au-row", "data-hold": "", "data-flow-more": f.id })}><div class="row">
+  return html`<li ${attrs({ class: "wf-row", "data-hold": "", "data-flow-more": f.id })}><div class="row">
   <a class="who" style="text-decoration:none;color:inherit" ${attrs({ href: `#/automations/flow/${f.id}` })}>
     <span class="nm two">${f.name}</span><span class="sub two">${f.summary || ""}</span>
     <span class="sub au-st">${statusPill(draft ? "Draft" : f.enabled ? "Active" : "Off", draft ? "amber" : f.enabled ? "green" : "grey")} ${f.runs ? `${f.runs} run${f.runs === 1 ? "" : "s"}` : "No runs yet"}${f.last_run_at ? ` · last ${dateTime(f.last_run_at)}` : ""}${f.auto_paused ? " · switched itself off" : ""}</span>
@@ -167,7 +167,7 @@ const flowRow = (x) => {
 };
 const builtRow = (x) => {
   const a = x.a;
-  return html`<li class="au-row"><div class="row">
+  return html`<li class="wf-row"><div class="row">
     <button type="button" class="who linkish" style="text-decoration:none;color:inherit;text-align:left" data-open="${a.key}">
       <span class="nm two">${a.label}</span><span class="sub two">${a.when || a.trigger || ""}${a.action ? " → " + a.action : ""}</span><span class="sub au-st">${statusPill("Built in", "grey")} ${last7(a.last7)}</span>
     </button>
