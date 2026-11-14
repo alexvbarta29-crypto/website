@@ -4,6 +4,7 @@
 // chip, search and scroll; on a wide screen an invoice opens beside it.
 
 import { html, attrs } from "../../core/ui.js";
+import { findButton, findOpen } from "../../core/nav.js";
 import { money } from "../../core/format.js";
 import { ensureStyles, CHIPS, invoiceRow, emptyCard } from "./kit.js";
 
@@ -29,7 +30,7 @@ const EMPTY = {
 export default {
   load,
   action: (s, ctx) => (ctx.can("invoices:write") ? { label: "New", run: () => ctx.go("/invoices/new") } : null),
-  render(s) {
+  render(s, ctx) {
     const count = (k) => s.counts[k] || 0;
     const rows = visible(s);
     const [t, p] = EMPTY[s.chip] || ["Nothing here", "Pick another chip."];
@@ -38,13 +39,14 @@ export default {
         <div class="stat"><b>${money(s.totals.open_cents || 0)}</b><small>waiting to be paid</small></div>
         <div class="${"stat" + (s.totals.overdue_cents ? " bad" : "")}"><b>${money(s.totals.overdue_cents || 0)}</b><small>past due</small></div>
       </div>
-      <label class="field"><span class="sr">Search invoices</span><input type="search" data-q placeholder="Name or invoice number" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
+      <label class="${"field find-field" + (findOpen(s, ctx) ? " open" : "")}"><span class="sr">Search invoices</span><input type="search" data-q placeholder="Name or invoice number" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
       <div class="chips" role="tablist">${CHIPS.filter(([k]) => ["open", "overdue", "draft", "paid"].includes(k) || count(k) > 0 || k === s.chip).map(([k, label]) => html`<button type="button" class="chip" ${attrs({ "data-chip": k, "aria-pressed": String(s.chip === k) })}>${label}${["paid", "void"].includes(k) && s.chip !== k ? "" : html` <span class="n">${count(k)}</span>`}</button>`)}</div>
       ${rows.length ? html`<ul class="list">${rows.map(invoiceRow)}</ul>` : emptyCard(t, p)}
       ${s.more ? html`<p class="foot-note">Showing the newest 500. Search by name or number to find an older one.</p>` : ""}
       <div class="links"><a class="tile" href="#/payments">Payments</a><a class="tile" href="#/autopay">Autopay</a></div>
     </div>`;
   },
+  mount(view, s, ctx) { findButton(view, ctx, "Search invoices"); },
   events: {
     "click [data-chip]": (e, el, ctx) => { ctx.keep.chip = el.dataset.chip; ctx.refresh(); },
     "input [data-q]": (e, el, ctx) => {

@@ -1,5 +1,5 @@
-// Client manifest of the "sales" module (M2b, design §11.3, §9.2): Leads &
-// calls (the call list), one follow-up, one deal, starting a follow-up,
+// Client manifest of the "sales" module (M2b, design §11.3, §9.2): Calls
+// (the call list: today's follow-up steps), one follow-up, one deal, starting a follow-up,
 // logging a call, Tasks and one task, the contact's Sales tab, a Today card,
 // Settings → Cadences, and Signs & flyers (QR codes for signs and flyers). Screens load with dynamic import(). No data,
 // keys or customer names ever go in crm-app/ (§2.3).
@@ -7,7 +7,7 @@
 export default {
   name: "sales",
   routes: [
-    { path: "/calls", load: () => import("./calls.js"), title: "Leads & calls", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/calls", load: () => import("./calls.js"), title: "Calls", perm: "sales:work", parent: "/today", skeleton: "list" },
     // the Sales tab's first screens (the Nov 2026 layout, after Rotor's): Pipeline, then Leads
     { path: "/pipeline", load: () => import("./pipeline.js"), title: "Pipeline", perm: "sales:work", parent: "/today", skeleton: "list" },
     { path: "/leads", load: () => import("./leads.js"), title: "Leads", perm: "sales:work", parent: "/today", skeleton: "list" },
@@ -31,7 +31,7 @@ export default {
   nav: [
     { where: "more", section: "sales", label: "Pipeline", path: "/pipeline", perm: "sales:work", order: 18, icon: "pipeline" },
     { where: "more", section: "sales", label: "Leads", path: "/leads", perm: "sales:work", order: 19, icon: "target" },
-    { where: "more", section: "sales", label: "Leads & calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
+    { where: "more", section: "sales", label: "Calls", path: "/calls", perm: "sales:work", order: 20, icon: "phone" },
     { where: "more", section: "sales", label: "Tasks", path: "/tasks", perm: "tasks:read", order: 22, icon: "check" },
     { where: "more", section: "sales", label: "Signs & flyers", path: "/signs", perm: "signs:manage", order: 24, icon: "grid" },
   ],

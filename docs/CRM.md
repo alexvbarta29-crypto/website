@@ -21,7 +21,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | Page | Milestone | What it covers | Status |
 |---|---|---|---|
 | [CRM-CONTACTS.md](CRM-CONTACTS.md) | M2a | people, properties, intake from the website and Meta, merge review | live |
-| [CRM-SALES.md](CRM-SALES.md) | M2b | deals, follow-up cadences, Leads & calls, tasks, the Follow-ups wording, Signs & flyers (QR codes, `/q/`) | live |
+| [CRM-SALES.md](CRM-SALES.md) | M2b | deals, follow-up cadences, Calls, tasks, the Follow-ups wording, Signs & flyers (QR codes, `/q/`) | live |
 | [CRM-IMPORT.md](CRM-IMPORT.md) | M2c | the Rotor export: pack, upload, phases, conflicts, report | live |
 | [CRM-QUOTES.md](CRM-QUOTES.md) | M3a | price book, pricing, quotes and portal approval | live |
 | [CRM-PLANS.md](CRM-PLANS.md) | M3b | care plans, agreements, Christmas lights seasons | live (in review) |
@@ -564,7 +564,7 @@ The manual path, for reference:
   person's id, name, role and permissions) that loads plain ES modules
   from `/crm-app/` (no build step). A floating tab bar at the bottom
   (Flyra's): Home · Schedule · Inbox · Map · Menu for owners and admins (or
-  the places each person picked, Menu → Tab bar); Today · Inbox · Time ·
+  the places each person picked, Settings → Tab bar); Today · Inbox · Time ·
   Pay · Me for techs.
   See "Home and navigation" below. **My account**: name, mobile, password,
   the phones you're signed in on.
@@ -683,7 +683,7 @@ The owner judges the CRM by the screen it opens on, so it opens on
 so much stuff"), Alex chose Rotor's phone Home with the best of Flyra's
 (Nov 12), as **cards each person picks**: a few by default, the rest
 added with **Edit Home**. The full dashboards stay one tap away (Money's
-"See more", Menu → Admin → Dashboard).
+"See more", Menu → Money → Reports).
 
 ### What Home shows (owners and the office; `#/today`)
 
@@ -821,10 +821,11 @@ is on). The cards' own reads: `GET /home/money?metric=&period=&from=
   open it, `canvass:use`). Customers, Leads, Pipeline, Quotes, Plans and
   the rest are in the Menu. Each person may pick up to five places of
   their own, from Home, Schedule, Inbox, Customers, Sales, Leads,
-  Pipeline, Visits, Leaderboard, Map, Quotes, Plans and Invoices (**Menu
-  → Tab bar**, `#/tab-bar`; saved on their user record as `tabs`, `PATCH
-  /users/:id`, so it follows them to every phone; "Back to the standard
-  bar" is Flyra's again); the Menu is always last; six places go
+  Pipeline, Leaderboard, Map, Quotes, Plans and Invoices (**Settings →
+  Appearance → Tab bar**, `#/tab-bar`; saved on their user record as
+  `tabs`, `PATCH /users/:id`, so it follows them to every phone; "Back to
+  the standard bar" is Flyra's again; a Visits pinned before the tidy-up
+  is the Schedule); the Menu is always last; six places go
   icon-only (Rotor's: the current one coral with a dot under it). A module
   offers a place with a nav entry `{ where: "tab", key, path, label, icon
   }` (the Map does). A tech's bar is Today · Inbox · Time · Pay · Me. A
@@ -832,35 +833,66 @@ is on). The cards' own reads: `GET /home/money?metric=&period=&from=
 - **Sales**, for someone who pins it on their bar, is still **Pipeline ·
   Leads · Calls · Quotes · Tasks** in a switch under the header (the tab
   stays lit on each). Opened from the Menu, Pipeline and Leads have no
-  switch: Calls, Quotes and Tasks are in the Menu.
+  switch: Calls, Quotes and Tasks are in the Menu's Sales group.
 - **Menu** is a sheet from the bottom (Flyra's): a large "Menu" title,
   round buttons (report a problem: a task for the owners; the **sun**:
   Light, Dark or Automatic on this device; the person's initials: My
   account), the latest reply nobody has read ("{name} replied 4 days ago",
-  two lines of it, Reply), then rounded groups with plain icons: Home,
-  Schedule, Inbox, Customers, Leads, Pipeline; Quotes | Plans side by side
-  (Flyra's Estimates | Subscriptions); My performance, Leaderboard, Visits,
-  Map, Reports (the Dashboard), Automations; every other Menu section (the
-  manifests' `nav: [{ where: "more", section }]`: Work, Sales, Customers,
-  Money, Messages & automations, Office tools, Admin; an entry without a
-  known section lands in "More"), each screen once; then Tab bar and
-  Settings (`core/nav.js`: `openMenuSheet`, `menuGroups`). The Menu's
-  button is lit on the screens it lists. `#/menu` is the same as a page
-  (Rotor's "More": your card with Edit, the groups, a coral Sign out, the
-  app's version).
+  two lines of it, Reply), then **five groups and Settings** (the owner,
+  Nov 2026: "concise but full of capabilities"; `core/nav.js` `MENU` is the
+  one place that says where each screen sits and what it is called):
+  - **Work**: Schedule, Jobs, Plans, Lights season, Team map, Timesheets,
+    Time, Pay
+  - **Sales**: Pipeline, Leads, Calls, Quotes, Tasks, Door to door, Light
+    Studio, Leaderboard, My performance
+  - **Customers**: Customers, Merge review
+  - **Money**: Invoices, Payments, Autopay, Reports (the dashboards),
+    Purchases
+  - **Marketing & messages**: Inbox, Campaigns, Approvals, Reviews, Signs
+    & flyers, Giveaway, Outbox
+  - then **Settings** (or Tab bar, for someone who may not open Settings).
+
+  Each screen is listed once, under one name, only for whoever may open it,
+  and never when the bar already holds it (Home, Schedule, Inbox and Map
+  on the standard bar; the bar's Map is Door to door). The setup screens
+  (Message templates, Automations, Team, Activity log, Import from Rotor,
+  Tab bar, Rotor) are in the Settings hub (below) for whoever may open
+  Settings, and in the Menu for anyone else who may open them. A module's
+  Menu entry (`nav: [{ where: "more", section }]`) decides who sees a
+  screen; one `MENU` doesn't name lands under its section's group (an
+  unknown one under More). The Menu's button is lit on the screens it
+  lists (`openMenuSheet`, `menuGroups`, `menuSections`). `#/menu` is the
+  same as a page (Rotor's "More": your card with Edit, the groups, a coral
+  Sign out, the app's version).
+- **Merged in the Nov 2026 tidy-up** (old links keep working: a route may
+  be `{ path, redirect }`, and the router opens the screen it became in its
+  place): Visits → the Schedule's List (`#/visits` redirects to
+  `#/schedule?view=list`; the List shows the red $ on a finished visit
+  whose job isn't paid); To book → a Schedule view (its "N to book"
+  button); Leads & calls → Calls (the Sales switch's name); Follow-ups
+  (the office's playbook page, `#/tools/followups`) → a row on Settings →
+  Follow-up cadences; Dashboard → Reports (Money); Templates, Automations,
+  Team, Activity, Import from Rotor, Tab bar and Rotor → Settings; the
+  schedule's own "Schedule settings" sheet → Settings → Schedule → Crew &
+  forecast (`#/settings/schedule`; the month's "Change" opens it); Rotor's
+  first customer list (`#/legacy/customers`) → Settings → Import & data.
 - **+** (Flyra's, with Rotor's search): the round glass + beside the bar
   on every screen with the bar. The screen dims, a search sits at the top
   ("Search customers, jobs, tasks...": `GET /search`) and the things to
-  make stack above the + as glass pills with round icons, in Flyra's
-  order: Customer, Lead, Invoice, Quote (Flyra's Estimate), Plan (its
-  Subscription), Job, Task (each only for someone who may; no Expense);
-  the + becomes an ×.
+  make stack above the + as glass pills with round icons, the most used
+  first: Lead or customer (the full form; someone who may not use it, a
+  tech at a door, gets the quick Lead), Quote, Job, Invoice, Plan, Task
+  (each only for someone who may; `quickCreates`). The desk's **New** is
+  the same list. Log a call and Text someone are their own screens' +
+  (Calls, the Inbox). The + becomes an ×.
 - **Top-level screens** (a tab's own, or one the Menu lists: opened from
   another top-level screen they have no back button) have a 34 px bold
   title on the left and round buttons on the right: the screen's own
   (`screenButtons`: Rotor's search, filter and archived on Customers;
   search and filter on Leads; search on the Pipeline; Flyra's calls and
-  filter on Messages) and a coral + for that place's own "new" (a
+  filter on Messages; search on Quotes, Plans, Invoices and Jobs:
+  `findButton`, the field marked `find-field`) and a coral + for that
+  place's own "new" (a
   customer, a job, a text, a lead, a quote, a plan, an invoice). No search
   bars, chip rows, counts, letter strips or banners under the title on a
   phone: the round search button opens the field in place, the filter
@@ -872,34 +904,62 @@ is on). The cards' own reads: `GET /home/money?metric=&period=&from=
   and **Leads** as Rotor's two-tone cards (docs/CRM-CONTACTS.md,
   docs/CRM-SALES.md), the **Pipeline**, **Messages** (Flyra's: the
   search, All | Customers | Leads and Unread; docs/CRM-COMMS.md), the
-  **Schedule** (Flyra's, docs/CRM-WORK.md), **Visits**, the **Map** (full
+  **Schedule** (Flyra's, docs/CRM-WORK.md), the **Map** (full
   screen under the floating bar), **Leaderboard** and **My performance**
   (docs/CRM-REPORTS.md).
 - **What moved**: once per person on each phone or computer (kept in
-  localStorage under their id, `crm-moved-3`; a browser that keeps nothing
-  never shows it), a toast, never a banner over the screen: "New look:
-  Customers, Leads and Pipeline are in the Menu." ("Home, Schedule, Inbox
-  and Map now lead the sidebar..." on a desk). It never pushes another
+  localStorage under their id, `crm-moved-4`; a browser that keeps nothing
+  never shows it), a toast, never a banner over the screen: "The Menu is
+  tidier: five groups, and every setting in Settings. Old links still
+  work." ("The sidebar is tidier: ..." on a desk). It never pushes another
   toast aside: with one showing it waits for the next start. A tech's bar
   didn't change: nothing to say.
 - Code: `crm-app/core/nav.js` (the bar, the Menu, the +, `screenButtons`,
   the theme), `crm.css` (the tokens and the shell block); tests:
   `tests/crm/core/nav.test.mjs`, `tests/e2e/layout.spec.mjs`.
 
+### Settings: one hub (`#/settings`)
+
+Every setting is in exactly one place, in plain sections
+(`crm-app/modules/system/settings.js` `LAYOUT`, the one place that says
+which screen sits where and what it is called):
+
+| Section | Rows |
+|---|---|
+| Company | Company details, Service area |
+| Team & permissions | Team, Permissions (owners) |
+| Pricing & services | Prices & price book (owners), Discounts |
+| Plans & agreements | Plans & perks (owners), Agreements |
+| Schedule | Hours & holidays, Crew & forecast (the visits a day the crew can do, the forecast on or off), Checklists |
+| Messages & automations | Message templates, Automations, Follow-up cadences (with the Follow-ups page), Quiet hours & opt-out, Texting & email setup |
+| Payments | Payments & card fees (owners) |
+| Maps & door to door | Door to door, Maps & team map (owners) |
+| Import & data | Import from Rotor, Integrations, Where website leads go, Facebook lead forms, Data & backups, Activity log, Rotor's first customer list, Open Rotor |
+| Appearance | Light or dark (this device), Tab bar |
+
+A row shows when its screen is there and this person may open it (the
+module's settings entry or Menu entry decides, else the route's
+permission). A module's settings entry `LAYOUT` doesn't name lands in its
+`section` (one of the keys above) or under More. Then About: the app
+version, whether the background work runs, and that Rotor is in charge
+until the switch-over. The screens it opens have Settings as their parent
+(the back button). Tests: `tests/crm/core/screens.test.mjs` (the sections,
+each setting once, every module's setting placed).
+
 ### On a computer (900 px and up)
 
 - A **sidebar** in the website's deep ink: the white logo, the phone bar's
-  places first in the same order (Home, Schedule, Inbox, Map), then
-  Customers and Sales (Sales lit on Pipeline, Leads, Calls, Quotes and
-  Tasks), a divider, then
-  every Menu section as a collapsible group under a small label
-  (remembered on that browser) less what those places already open,
-  **Settings** and **Team** at the bottom above who is signed in. Labels
-  always show; the current screen is lit with a coral bar; badges.
+  places first in the same order (Home, Schedule, Inbox, Map), a divider,
+  then the Menu's five groups (Work, Sales, Customers, Money, Marketing &
+  messages) as collapsible groups under a small label (remembered on that
+  browser) less what those places already open, **Settings** at the
+  bottom above who is signed in (Team is in Settings). The same places as
+  the phone, nothing twice. Labels always show; the current screen is lit
+  with a coral bar; badges.
 - The slim white **header**: the title, a **search** box (`GET /search`:
   names, phones, streets, Q-/INV- numbers; office only), the screen's own
-  button (white, so New is the one coral button), **New** (the creates)
-  and the person's menu (My account, Sign out).
+  button (white, so New is the one coral button), **New** (the same list
+  as the phone's +) and the person's menu (My account, Sign out).
 - Screens sit on the mist canvas and use the width (up to 1,160 px; the
   Schedule's month up to 1,480 px with the day's list beside it from
   1,100 px; a Visit in two columns from 1,200 px; full-width lists such as

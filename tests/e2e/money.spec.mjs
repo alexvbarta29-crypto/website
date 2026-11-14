@@ -72,6 +72,8 @@ for (const device of ["iphone13", "iphonese"]) {
       await viewHas(f, /Onyx Moneyfolk/);
       await f.click("[data-chip=open]");
       await viewHas(f, /Marlow Moneyfolk/);
+      // (on a phone the search waits behind the round search button)
+      if (!(await f.isVisible("[data-q]"))) await f.click('#top-rnd [data-own="find"]');
       await f.fill("[data-q]", "indigo");
       await f.waitForFunction(() => !/Marlow Moneyfolk/.test(document.getElementById("view").textContent), null, { timeout: 5000 });
       await f.fill("[data-q]", "");

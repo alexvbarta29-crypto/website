@@ -54,7 +54,7 @@ function waiting(s) {
   const v = s.current_version;
   const o = v && q.approval ? (v.options || []).find((x) => x.id === q.approval.option_id) : null;
   const plan = o && o.kind === "plan";
-  return html`<p class="note">${plan ? "Turning a plan option into a plan arrives with Plans." : "Turning this into a job arrives with Scheduling."} The approval is saved.</p>`;
+  return html`<p class="note">${plan ? "This plan option can't be made into a plan from here yet." : "This can't be made into a job from here yet."} The approval is saved.</p>`;
 }
 
 export default {

@@ -593,11 +593,12 @@ test("Home keeps the modules' Today cards off; Edit Home is in My account; the M
 test("the Menu: every manifest's Menu entry names a known section; an older shell's bar becomes today's", async () => {
   const nav = await import("../../../crm-app/core/nav.js");
   const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
-  const known = new Set(nav.SECTIONS.map(([k]) => k));
   const entries = MANIFESTS.flatMap((m) => (m.nav || []).filter((n) => n.where === "more").map((n) => ({ ...n, module: m.name })));
   assert.ok(entries.length >= 20);
-  assert.deepEqual(entries.filter((n) => !known.has(n.section)).map((n) => `${n.module}: ${n.label}`), [], "each entry says its section");
-  for (const want of ["work", "sales", "customers", "messages", "office", "admin"]) assert.ok(entries.some((n) => n.section === want), want);
+  // every Menu entry has one place: a Menu group (core/nav.js MENU), the Settings hub, or (Settings, My account) its own button
+  const placed = new Set([...Object.values(nav.MENU).flat().map(([p]) => p), ...nav.IN_SETTINGS, "/settings", "/me"]);
+  assert.deepEqual(entries.filter((n) => !placed.has(n.path)).map((n) => `${n.module}: ${n.label}`), [], "each entry has its place");
+  assert.deepEqual(nav.SECTIONS.map(([, l]) => l), ["Work", "Sales", "Customers", "Money", "Marketing & messages", "More"]);
   assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "map", "menu"]);
   assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
   assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));
@@ -605,8 +606,8 @@ test("the Menu: every manifest's Menu entry names a known section; an older shel
   assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/pipeline", "/leads", "/calls", "/quotes", "/tasks"]);
   const sys = MANIFESTS.find((m) => m.name === "system");
   assert.ok(sys.routes.some((r) => r.path === "/menu"));
-  // the Dashboard is out of the bar, still reachable (Money's "See more", Menu → Admin, old office links)
+  // the dashboards are Reports: out of the bar, still reachable (Money's "See more", Menu → Money → Reports, old office links)
   assert.ok(!navFor({ role: "owner" }).includes("dashboard"));
   assert.ok(sys.routes.some((r) => r.path === "/dashboard/:view"));
-  assert.ok(entries.some((n) => n.path === "/dashboard" && n.section === "admin"));
+  assert.ok(nav.MENU.money.some(([p, l]) => p === "/dashboard" && l === "Reports"));
 });

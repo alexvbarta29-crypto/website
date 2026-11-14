@@ -1,4 +1,4 @@
-// Leads & calls (design §9.2): today's follow-up steps by window (9-10,
+// Calls (design §9.2): today's follow-up steps by window (9-10,
 // 12-1, 4-5), overdue ones on top in red. Tabs: Due now · Later today ·
 // Paused · Needs attention. Call dials (tel:) and first notes a provisional
 // "calling" (it holds the thank-you text off); when the phone comes back to
@@ -82,7 +82,7 @@ const count = (s, k) => (k === "attention" ? s.counts.attention : (s[k] || []).l
 const find = (s, id) => [...s.due, ...s.later, ...s.upcoming, ...s.paused].find((r) => r.id === id);
 
 export default {
-  title: "Leads & calls",
+  title: "Calls",
   load,
   render(s) {
     return html`<div class="stack">

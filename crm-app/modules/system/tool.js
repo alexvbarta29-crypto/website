@@ -40,7 +40,7 @@ export default {
   },
   render(state) {
     const t = state.tool;
-    if (!t) return html`<div class="stack"><div class="card empty"><div class="art">${icon("shield")}</div><h2>No such tool</h2><p>Open More to see the office tools.</p></div></div>`;
+    if (!t) return html`<div class="stack"><div class="card empty"><div class="art">${icon("shield")}</div><h2>No such tool</h2><p>Open the Menu to see the office tools.</p></div></div>`;
     if (t.href) {
       return html`<div class="stack"><div class="card empty"><div class="art">${icon("link")}</div><h2>${t.title}</h2><p>Rotor opens in a new tab. It stays in charge of texts, invoices and payments until the switch.</p><a class="btn primary block" ${openExternal(t.href)}>Open ${t.title}</a></div></div>`;
     }

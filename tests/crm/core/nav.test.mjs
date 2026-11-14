@@ -1,12 +1,13 @@
 // The phone shell and the sidebar (the Nov 2026 look: Flyra's phone app
-// first): the office's bar is Flyra's, Home · Schedule · Inbox · Map · Menu
-// (the Menu last, a sheet, not a page), each person may pick up to five
-// places of their own (saved on their user record), the desk's sidebar
-// leads with the same places in the same order (then Customers and Sales),
-// then the folded groups and Settings and Team at the bottom, the Menu
-// sheet's groups follow Flyra's order and its places are top-level, the +
-// offers what the person may make in Flyra's order, and the "What moved"
-// note shows once per person.
+// first; the tidy-up: "concise but full of capabilities"): the office's bar
+// is Flyra's, Home · Schedule · Inbox · Map · Menu (the Menu last, a sheet,
+// not a page), each person may pick up to five places of their own (saved
+// on their user record; a pinned Visits is the Schedule now), the Menu is
+// five groups (Work, Sales, Customers, Money, Marketing & messages) and
+// Settings, each screen once and never what the bar holds, the setup
+// screens in Settings, the desk's sidebar is the same places then the same
+// groups with Settings at the bottom, the + and the desk's New are one list
+// (the most used first), and the "What moved" note shows once per person.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { crmTest } from "../../helpers/crm-http.mjs";
@@ -36,17 +37,20 @@ test("the office's bar: Home · Schedule · Inbox · Map · Menu (Flyra's), the 
   const t = nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
   assert.deepEqual(t.bar.map((x) => x.label), ["Today", "Inbox", "Time", "Pay", "Me"]);
   assert.equal(t.menu, null, "no Menu for a tech");
+  assert.ok(!nav.menuGroups().flatMap((g) => g.items.map((n) => n.path)).includes("/tab-bar"), "a tech's bar is the tech app's: no Tab bar");
   assert.deepEqual(OFFICE_NAV, ["home", "schedule", "inbox", "map", "menu"]);
 });
 
 test("each person's own tab bar: up to five of the main places, the Menu always last; unknown ones dropped", () => {
-  assert.deepEqual(navFor({ role: "owner", tabs: ["home", "visits", "leaderboard", "leads", "map"] }), ["home", "visits", "leaderboard", "leads", "map", "menu"]);
+  assert.deepEqual(navFor({ role: "owner", tabs: ["home", "pipeline", "leaderboard", "leads", "map"] }), ["home", "pipeline", "leaderboard", "leads", "map", "menu"]);
+  assert.deepEqual(navFor({ role: "owner", tabs: ["home", "visits", "schedule", "leads"] }), ["home", "schedule", "leads", "menu"], "a pinned Visits is the Schedule now (once)");
+  assert.deepEqual(nav.normalize(["home", "visits", "map", "menu"]), ["home", "schedule", "map", "menu"], "a cached bar too");
   assert.deepEqual(navFor({ role: "admin", tabs: ["schedule", "nope", "schedule"] }), ["schedule", "menu"]);
   assert.deepEqual(navFor({ role: "owner", tabs: [] }), OFFICE_NAV, "none picked: the standard bar");
   assert.deepEqual(navFor({ role: "tech", tabs: ["home"] }), ["today", "inbox", "time", "pay", "me"], "a tech's bar is the tech app's");
   // a place whose screen isn't there yet (the Map before its module) simply doesn't show
-  const p = planFor("owner", { tabs: ["home", "visits", "leaderboard", "map"] });
-  assert.deepEqual(p.bar.map((t) => t.key), ["home", "visits", "leaderboard", ...(router.has("/map") && canOf("owner")("canvass:use") ? ["map"] : []), "menu"]);
+  const p = planFor("owner", { tabs: ["home", "pipeline", "leaderboard", "map"] });
+  assert.deepEqual(p.bar.map((t) => t.key), ["home", "pipeline", "leaderboard", ...(router.has("/map") && canOf("owner")("canvass:use") ? ["map"] : []), "menu"]);
   assert.ok(router.has("/map"), "the Map is there (the maps module) and may be a tab (where: tab)");
   assert.equal(nav.isTabRoot("/map"), p.bar.some((t) => t.key === "map"), "a pinned Map is a top-level screen: no back arrow");
 });
@@ -60,7 +64,7 @@ test("the tab bar is saved on the person's own record (PATCH /users/:id { tabs }
     let r = await t.api(`/users/${owner.id}`, { as: owner, method: "PATCH", ifMatch: me.body.data.etag, body: { tabs: ["home", "visits", "leads"] } });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const again = await t.api("/me", { as: owner });
-    assert.deepEqual(again.body.data.nav, ["home", "visits", "leads", "menu"]);
+    assert.deepEqual(again.body.data.nav, ["home", "schedule", "leads", "menu"], "an old pinned Visits comes back as the Schedule");
     assert.deepEqual(again.body.data.user.tabs, ["home", "visits", "leads"]);
     r = await t.api(`/users/${owner.id}`, { as: owner, method: "PATCH", ifMatch: again.body.data.etag, body: { tabs: ["home", "a", "b", "c", "d", "e"] } });
     assert.equal(r.status, 400, "six, or one that isn't a place: refused");
@@ -73,31 +77,46 @@ test("the tab bar is saved on the person's own record (PATCH /users/:id { tabs }
   } finally { t.done(); }
 });
 
-test("the desk's sidebar: the bar's places first in the bar's order, then the folded groups less those, Settings and Team at the bottom", () => {
+test("the desk's sidebar: the bar's places first in the bar's order, then the Menu's five groups less those, Settings at the bottom", () => {
   const p = planFor("owner");
-  assert.deepEqual(p.side.top.map((t) => t.label), ["Home", "Schedule", "Inbox", "Map", "Customers", "Sales"], "the bar's places, then Customers and Sales");
-  const groups = p.side.groups.map((g) => g.key);
-  assert.deepEqual(groups, ["work", "sales", "customers", "money", "messages", "office", "admin"].filter((k) => groups.includes(k)), "the Menu's order");
+  assert.deepEqual(p.side.top.map((t) => t.label), ["Home", "Schedule", "Inbox", "Map"], "the bar's places");
+  assert.deepEqual(p.side.groups.map((g) => g.label), ["Work", "Sales", "Customers", "Money", "Marketing & messages"]);
   const paths = p.side.groups.flatMap((g) => g.items.map((n) => n.path));
-  for (const taken of ["/schedule", "/contacts", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/settings", "/team", "/me"]) assert.ok(!paths.includes(taken), `${taken} isn't repeated in a group`);
-  assert.ok(paths.includes("/schedule?view=tray"), "To book stays under Work");
-  assert.ok(paths.includes("/visits") && paths.includes("/leaderboard"), "the new screens are reachable on a desk");
-  assert.deepEqual(p.side.bottom.map((n) => n.label), ["Settings", "Team"]);
-  assert.deepEqual(planFor("admin").side.bottom.map((n) => n.label), ["Settings"], "Team is the owners'");
+  assert.equal(new Set(paths).size, paths.length, "each screen once");
+  for (const taken of ["/today", "/schedule", "/inbox", "/map", "/knock", "/settings", "/team", "/me", "/templates", "/automations", "/activity", "/import", "/tab-bar", "/visits", "/schedule?view=tray", "/tools/followups"]) assert.ok(!paths.includes(taken), `${taken} isn't in a group`);
+  for (const there of ["/contacts", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/jobs", "/plans", "/invoices", "/payments", "/campaigns", "/leaderboard"]) assert.ok(paths.includes(there), `${there} is reachable on a desk`);
+  assert.deepEqual(p.side.bottom.map((n) => n.label), ["Settings"]);
+  assert.deepEqual(planFor("admin").side.bottom.map((n) => n.label), ["Settings"]);
 });
 
-test("the Menu sheet's groups (Flyra's order), each place once; the + offers what this person may make", () => {
+test("the Menu: five groups and Settings, each screen once under one name, none the bar holds; setup screens in Settings", () => {
   planFor("owner");
   const g = nav.menuGroups();
-  assert.deepEqual(g[0].items.map((n) => n.label), ["Home", "Schedule", "Inbox", "Customers", "Leads", "Pipeline"]);
-  assert.equal(g[1].two, true);
-  assert.deepEqual(g[1].items.map((n) => n.label), ["Quotes", "Plans"]);
-  assert.ok(["My performance", "Leaderboard", "Visits"].every((l) => g[2].items.some((n) => n.label === l)));
-  assert.deepEqual(g[g.length - 1].items.map((n) => n.label), ["Tab bar", "Settings"]);
+  assert.deepEqual(g.map((x) => x.label || x.key), ["Work", "Sales", "Customers", "Money", "Marketing & messages", "you"]);
+  assert.deepEqual(g[g.length - 1].items.map((n) => n.label), ["Settings"]);
   const all = g.flatMap((x) => x.items.map((n) => n.path));
   assert.equal(new Set(all).size, all.length, "each once");
+  const labels = g.flatMap((x) => x.items.map((n) => n.label));
+  assert.equal(new Set(labels).size, labels.length, "no two with one name");
+  for (const gone of ["/schedule", "/inbox", "/map", "/knock", "/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/visits", "/tools/followups", "/dashboard/money"]) assert.ok(!all.includes(gone), `${gone} isn't in the Menu`);
+  assert.deepEqual(g[1].items.slice(0, 5).map((n) => n.label), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"], "Sales: the Sales tab's screens first");
+  assert.ok(g[3].items.some((n) => n.path === "/dashboard" && n.label === "Reports"), "the dashboards are Reports, under Money");
+  for (const x of all) assert.equal(nav.isTabRoot(x.split("?")[0]), true, `${x}: a Menu screen is top-level`);
+  // someone who can't open Settings still finds a setup screen they may open (here: templates) in the Menu
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => x !== "settings:general" && canOf("admin")(x), user: { id: "us_b", role: "admin" } });
+  const g2 = nav.menuGroups().flatMap((x) => x.items.map((n) => n.path));
+  assert.ok(g2.includes("/templates") && g2.includes("/automations"), "not hidden from someone without Settings");
+  assert.ok(!g2.includes("/settings"));
+  // a pinned bar without Home: Home leads the Menu
+  planFor("owner", { tabs: ["pipeline", "contacts"] });
+  assert.equal(nav.menuGroups()[0].items[0].path, "/today");
+  assert.ok(nav.menuGroups().flatMap((x) => x.items.map((n) => n.path)).includes("/schedule"), "the Schedule, off the bar, is under Work");
+});
+
+test("the + and the desk's New: one list, the most used first, each once", () => {
+  planFor("owner");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Customer", "Lead", "Invoice", "Quote", "Plan", "Job", "Task"], "Flyra's order");
+  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Invoice", "Plan", "Task"]);
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });
 

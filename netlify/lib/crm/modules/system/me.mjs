@@ -31,7 +31,8 @@ export const SETTINGS_PUBLIC = Object.freeze({ company_name: "Barta Window Washi
 export const OFFICE_NAV = Object.freeze(["home", "schedule", "inbox", "map", "menu"]);
 export function navFor(user) {
   if (user && user.role === "tech") return ["today", "inbox", "time", "pay", "me"];
-  const own = user && Array.isArray(user.tabs) ? user.tabs.filter((k) => TAB_CHOICES.includes(k)).slice(0, 5) : [];
+  // (a pinned Visits is the Schedule's List now: the Schedule)
+  const own = user && Array.isArray(user.tabs) ? [...new Set(user.tabs.filter((k) => TAB_CHOICES.includes(k)).map((k) => (k === "visits" ? "schedule" : k)))].slice(0, 5) : [];
   return own.length ? [...new Set(own), "menu"] : [...OFFICE_NAV];
 }
 

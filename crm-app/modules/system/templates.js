@@ -23,9 +23,9 @@ export default {
         if (!list.length) return "";
         return html`<div><div class="section-h">${label}</div><ul class="list">${list.map((t) => html`<li>${t.id
           ? html`<a class="row" href="${"#/templates/" + encodeURIComponent(t.id)}"><span class="ico">${icon(t.channel === "email" ? "mail" : "text")}</span><span class="who"><span class="nm">${t.name}</span><span class="sub mono">${t.key}</span></span><span class="end">${t.built_in ? html`<span class="pill">Built-in</span>` : ""}${t.active ? "" : html`<span class="pill red">Off</span>`}<span class="chev" aria-hidden="true"></span></span></a>`
-          : html`<div class="row"><span class="ico">${icon("doc")}</span><span class="who"><span class="nm">${t.name}</span><span class="sub">Added by the next worker pass</span></span></div>`}</li>`)}</ul></div>`;
+          : html`<div class="row"><span class="ico">${icon("doc")}</span><span class="who"><span class="nm">${t.name}</span><span class="sub">Being added</span></span></div>`}</li>`)}</ul></div>`;
       })}
-      ${rows.length ? "" : html`<div class="card empty"><div class="art">${icon("doc")}</div><h2>No templates yet</h2><p>Each part of the CRM brings its own (reminders, receipts, review requests); Barta's Rotor templates come over with the import. Tap New to write one.</p></div>`}
+      ${rows.length ? "" : html`<div class="card empty"><div class="art">${icon("doc")}</div><h2>No templates yet</h2><p>Reminders, receipts and review requests come built in, and Rotor's come over with the import. Tap New to write one.</p></div>`}
     </div>`;
   },
   events: {

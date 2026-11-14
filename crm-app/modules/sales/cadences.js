@@ -4,7 +4,9 @@
 // up, when a late step ends its follow-up, the day's cut-off for new leads,
 // and how long the thank-you text waits for a call. Texts 5 and 8 of the
 // new-lead follow-up are worded like the website (D25); one tap puts the
-// playbook's older words back (or the website's again).
+// playbook's older words back (or the website's again). The office's
+// Follow-ups page (the playbook, /tools/followups) opens from here: it was
+// its own Menu entry, the same follow-ups.
 
 import { html, icon, toast, attrs } from "../../core/ui.js";
 import { field, readForm, clearErrors, showError, busy } from "../../core/forms.js";
@@ -74,7 +76,7 @@ export default {
     ]);
     return { list: list.data || [], sales, ack, reworded: words };
   },
-  render(s) {
+  render(s, ctx) {
     const v = s.sales.data;
     return html`<div class="stack">
       <ul class="list">${s.list.map((c) => html`<li><a class="row" href="${"#/settings/cadences/" + encodeURIComponent(c.id)}">
@@ -82,6 +84,7 @@ export default {
         <span class="who"><span class="nm">${c.name}</span><span class="sub">${c.board_only ? "Board only" : `${c.steps} steps · starts when: ${ENTRY[c.entry_on] || c.entry_on}`}${c.unattended === "text_anyway" ? " · texts if nobody calls" : ""}</span></span>
         <span class="end">${c.active ? html`<span class="pill green">On</span>` : html`<span class="pill">Off</span>`}<span class="chev" aria-hidden="true"></span></span></a></li>`)}</ul>
       ${reworded(s)}
+      ${ctx && ctx.can && ctx.can("office:tools") ? html`<ul class="list"><li><a class="row" href="#/tools/followups"><span class="ico">${icon("text")}</span><span class="who"><span class="nm">Follow-ups page</span><span class="sub">Every step's call and text, for calling by hand</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li></ul>` : ""}
       ${s.ack ? html`<p class="small muted">The thank-you text to a new website lead (lead.ack) waits ${s.ack.settings ? s.ack.settings.delay : 5} minutes for a call during business hours: change it on <a class="linkish" href="#/automations">Automations</a>.</p>` : ""}
       <form class="card form" id="sales-f" novalidate>
         <div class="err" data-form-err hidden></div>

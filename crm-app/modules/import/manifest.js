@@ -8,7 +8,7 @@
 export default {
   name: "import",
   routes: [
-    { path: "/import", load: () => import("./list.js"), title: "Import from Rotor", perm: "import:run", parent: "/today", skeleton: "list" },
+    { path: "/import", load: () => import("./list.js"), title: "Import from Rotor", perm: "import:run", parent: "/settings", skeleton: "list" },
     { path: "/import/:id", load: () => import("./run.js"), title: "Import", perm: "import:run", parent: "/import" },
     { path: "/import/:id/conflicts", load: () => import("./conflicts.js"), title: "Conflicts", perm: "import:run", parent: "/import/:id", skeleton: "list" },
   ],

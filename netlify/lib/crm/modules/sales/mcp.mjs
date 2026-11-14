@@ -17,7 +17,7 @@ const brief = (r) => ({ enrollment_id: r.id, contact_id: r.contact_id, name: r.n
 export const mcpTools = [
   {
     name: "sales_call_list", effect: "read", perm: "sales:work",
-    description: "Leads to call now and later today, grouped as the Leads & calls screen shows them.",
+    description: "Leads to call now and later today, grouped as the Calls screen shows them.",
     inputSchema: { type: "object", properties: { date: { type: "string", description: "YYYY-MM-DD (default today)" } }, additionalProperties: false },
     run: async (input = {}) => {
       const d = await callList({ date: input.date });

@@ -18,19 +18,22 @@ Home: the Leaderboard, Today (the day's, week's or month's visits and
 tasks without a due date), Inbox, Tasks and Goals, with Clock in for
 someone who goes out on visits. The office's bar is Flyra's floating glass
 pill, Home · Schedule · Inbox · Map · Menu (each person may pick their
-own: Menu → Tab bar), with a round + beside it; the Menu is a sheet of
-every other screen, Customers, Leads and Pipeline among them (docs/CRM.md
-"The bar, the Menu and the +"). On a computer (900 px and up) the same app
-has a sidebar (the same places first, then Customers and Sales, then
-every section, Settings and Team at the bottom), a search box and a New
-button. In solo mode the office shell's backdrop and status bar color
+own: Settings → Appearance → Tab bar), with a round + beside it; the Menu
+is a sheet of five groups (Work, Sales, Customers, Money, Marketing &
+messages) and Settings, every screen once (docs/CRM.md "The bar, the Menu
+and the +"); every setting is in one Settings hub (docs/CRM.md
+"Settings: one hub"). On a computer (900 px and up) the same app has a
+sidebar (the same places first, then the same five groups, Settings at
+the bottom), a search box and a New button. In solo mode the office shell's backdrop and status bar color
 follow the CRM's Light or Dark (`crm:theme`).
 The full dashboards (Overview, Money, Sales, Plans, Jobs, switched in
-place) open from the money card's "See more" and Menu → Reports, and the
-office tools are in Menu → Office
-tools: Light Studio, Purchases, Giveaway and Rotor (Follow-ups is under
-Menu → Sales) (`crm-app/modules/system/{dashboard,tool}.js`, routes
-`/dashboard`, `/dashboard/:view`, `/tools/:id`). Owners and the office
+place) are **Reports**: they open from the money card's "See more" and
+Menu → Money → Reports. The office tools sit with the work they serve:
+Light Studio in Menu → Sales, Purchases in Menu → Money, Giveaway in
+Menu → Marketing & messages, Rotor in Settings → Import & data, and
+Follow-ups on Settings → Follow-up cadences
+(`crm-app/modules/system/{dashboard,tool}.js`, routes `/dashboard`,
+`/dashboard/:view`, `/tools/:id`). Owners and the office
 (admin) get them with their own CRM sign-in, no second password: the
 sign-in also sets the office cookie (below); techs never get it. The
 client's pseudo-permission `office:tools` is "an owner or admin whose
@@ -143,8 +146,8 @@ CRM the phone's safe areas (frames don't get them) and the height of the
 bottom of its sheets above it). `npm run e2e` checks these on phone sizes
 (docs/CRM.md "Tests").
 
-**Where the Follow-ups wording comes from.** `/playbook` (Menu → Sales →
-Follow-ups) keeps its built-in texts until the CRM is set up; then each
+**Where the Follow-ups wording comes from.** `/playbook` (Settings →
+Follow-up cadences → Follow-ups page) keeps its built-in texts until the CRM is set up; then each
 step shows the CRM's current wording of that text (Templates `cad_new_1..9`
 and `cad_est_1..5`, cached a minute), so an edit in the CRM shows on the
 page within a minute. Details: docs/CRM-SALES.md "The Follow-ups page".
