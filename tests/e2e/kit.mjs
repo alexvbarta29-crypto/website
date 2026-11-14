@@ -209,36 +209,23 @@ export async function openDrawer(frame) {
   await frame.waitForSelector(".drawer.on");
   await frame.waitForTimeout(260);
 }
-// Opens a screen from the drawer: the row itself, or its row in a list (Service, Financials...) first.
+// Opens a screen from the drawer (K0, no sub-lists): its section's row, then
+// the section's tab under the title, or the section's round "..." and its row.
 export async function drawerGo(frame, path, { open = true } = {}) {
   if (open) await openDrawer(frame);
-  const sel = `.drawer a[href="#${path}"]`;
-  if (!(await frame.$(sel))) {
-    const key = await frame.evaluate(async (p) => {
-      for (const k of [...document.querySelectorAll(".drawer [data-dr-sub]")].map((x) => x.dataset.drSub)) {
-        const b = document.querySelector(`.drawer [data-dr-sub="${k}"]`);
-        b.click();
-        await new Promise((r) => setTimeout(r, 30));
-        if (document.querySelector(`.drawer a[href="#${p}"]`)) return b.dataset.drSub;
-        const back = document.querySelector(".drawer [data-dr-back]");
-        if (back) back.click();
-        await new Promise((r) => setTimeout(r, 30));
-      }
-      return null;
-    }, path);
-    if (!key) throw new Error(`${path} is not in the drawer`);
-  }
-  await frame.click(sel);
+  const direct = `.drawer a.dr-row[href="#${path}"]`;
+  if (await frame.$(direct)) { await frame.click(direct); return; }
+  const key = await frame.evaluate((p) => { const a = [...document.querySelectorAll(".drawer [data-dr-paths]")].find((x) => x.dataset.drPaths.split(" ").includes(p)); return a ? a.dataset.drSec : null; }, path);
+  if (!key) throw new Error(`${path} is not in the drawer`);
+  const href = await frame.getAttribute(`.drawer [data-dr-sec="${key}"]`, "href");
+  await frame.click(`.drawer [data-dr-sec="${key}"]`);
+  await frame.waitForFunction(() => !document.querySelector(".drawer"));
+  await settled(frame, { hash: href });
+  const tab = `#subnav a[href="#${path}"]`;
+  if (await frame.$(tab)) { await frame.click(tab); return; }
+  await frame.click("#top-rnd [data-sec-more]");
+  await frame.waitForSelector(`.sheet.on a[href="#${path}"]`);
+  await frame.click(`.sheet.on a[href="#${path}"]`);
 }
-// Every row of the drawer, its lists opened: [label, ...]
-export const drawerLabels = (frame) => frame.evaluate(async () => {
-  const out = [...document.querySelectorAll(".drawer .dr-l")].map((e) => e.textContent);
-  for (const k of [...document.querySelectorAll(".drawer [data-dr-sub]")].map((b) => b.dataset.drSub)) {
-    document.querySelector(`.drawer [data-dr-sub="${k}"]`).click();
-    await new Promise((r) => setTimeout(r, 30));
-    out.push(...[...document.querySelectorAll(".drawer .dr-grp .dr-l")].map((e) => e.textContent));
-    document.querySelector(".drawer [data-dr-back]").click();
-    await new Promise((r) => setTimeout(r, 30));
-  }
-  return out;
-});
+// The drawer's rows: [label, ...]
+export const drawerLabels = (frame) => frame.evaluate(() => [...document.querySelectorAll(".drawer .dr-l")].map((e) => e.textContent));

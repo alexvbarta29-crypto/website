@@ -59,8 +59,8 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.equal(await f.$eval(".rs-crow .rnd.red", (el) => getComputedStyle(el, "::before").backgroundColor), "rgb(219, 58, 41)", `${theme}: the red call button`);
         assert.deepEqual(await screenProblems(f), [], `${theme}: no sideways scroll, 44 px targets, 16 px inputs`);
         assert.deepEqual(await badLinks(f), []);
-        // nothing sticks out of its card or the screen
-        const wide = await f.evaluate(() => [...document.querySelectorAll("#view *")].filter((el) => { const r = el.getBoundingClientRect(); return r.width && (r.right > innerWidth + 0.5 || r.left < -0.5); }).map((el) => el.className || el.tagName).slice(0, 5));
+        // nothing sticks out of its card or the screen (the rows that scroll sideways clip what is past the edge: tabs, tiles, a board)
+        const wide = await f.evaluate(() => [...document.querySelectorAll("#view *")].filter((el) => { const r = el.getBoundingClientRect(); return r.width && !el.parentElement.closest(".rs-seg.scroll, .rs-tiles-in, .rs-strip, .rs-cols") && (r.right > innerWidth + 0.5 || r.left < -0.5); }).map((el) => el.className || el.tagName).slice(0, 5));
         assert.deepEqual(wide, [], `${theme}: nothing past the screen's edge`);
         await shot(page, `kit-${theme}-${device}`);
         await f.evaluate(() => { document.getElementById("view").scrollTop = 1e6; });

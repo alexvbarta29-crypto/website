@@ -265,7 +265,7 @@ test("K0's classes all have their look in crm.css, both themes from the tokens",
   const missing = [...classes].filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, "\\-")}(?![\\w-])`).test(CSS));
   assert.deepEqual(missing, []);
   for (const c of ["rs-cols", "rs-col-cards", "rs-strip-b", "rs-chip", "rs-chips", "rs-ffoot", "rs-fshow", "rs-where", "sec-more", "tb-bell", "at-home", "subnav.sec"]) assert.match(CSS, new RegExp(`\\.${c.replace(".", "\\.")}\\b`), c);
-  assert.match(CSS, /\.rs-col\{flex:0 0 86%/, "a column is about 86% of a phone");
+  assert.match(CSS, /\.rs-col\{flex:0 0 86vw/, "a column is about 86% of a phone");
   assert.match(CSS, /scroll-snap-type:x mandatory/, "columns snap");
   assert.match(CSS, /\.rs-tile\[aria-pressed="true"\]/, "the tile that is on is outlined");
   assert.doesNotMatch(CSS, /\.rs-tile\{[^}]*#[0-9a-f]{6}/i, "tiles use the tokens");

@@ -1006,7 +1006,7 @@ a.rs-lr-main,button.rs-lr-main{cursor:pointer}
 .rs-strip-b[aria-pressed="true"] .n{color:inherit;opacity:.75}
 .rs-cols{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:0 16px 6px;scroll-padding:0 16px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
 .rs-cols::-webkit-scrollbar{display:none}
-.rs-col{flex:0 0 86%;min-width:0;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:var(--r-lg);background:var(--card-2);scroll-snap-align:start}
+.rs-col{flex:0 0 86vw;max-width:420px;min-width:0;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:var(--r-lg);background:var(--card-2);scroll-snap-align:start}
 .rs-col-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2px 4px 0}
 .rs-col-h h3{min-width:0;font:600 16px/1.25 var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rs-col-n{flex:none;font-size:13.5px;color:var(--muted)}
@@ -1095,6 +1095,7 @@ a.rs-bc-main,button.rs-bc-main{cursor:pointer}
 .rs-where span{font-size:14px;color:var(--muted)}
 @media (min-width:900px){
   .subnav.sec{padding:12px 32px 4px;border-bottom:0}
+  .subnav.sec .rs-seg{margin:0 auto}
   .app.big-top .top-rnd{display:flex;align-items:center;margin-left:8px}
   .app.big-top .top-rnd>:not(.sec-more){display:none}
   .app.has-side .top-rnd .rnd{width:38px;height:38px;box-shadow:none}

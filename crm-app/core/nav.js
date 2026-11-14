@@ -466,7 +466,8 @@ export function openTabs(sec) {
   if (!sec) return [];
   const tabs = tabsOf(sec).filter((t) => visible(t.path) && viewOk(t));
   if (tabs.length) return tabs;
-  if (visible(sec.path)) return [{ key: sec.key, label: sec.label, path: sec.path, view: null, param: "view" }];
+  // (its label is the screen's own title: the #/menu page lists "Reports" under Analytics)
+  if (visible(sec.path)) { const m = router.match(sec.path); return [{ key: sec.key, label: m && typeof m.route.title === "string" ? m.route.title : sec.label, path: sec.path, view: null, param: "view" }]; }
   const m = (sec.more || []).find(([p]) => visible(p));
   return m ? [{ key: sec.key, label: sec.label, path: m[0], view: null, param: "view" }] : [];
 }
@@ -760,9 +761,10 @@ function searchBox() {
 // (a tech at a door) gets the quick lead instead. From the manifests'
 // creates (which nav.js already kept to this person's permissions and
 // routes).
+// (The Rotor guide's order, F8: Request shows once a module registers its create, /requests/new.)
 const MAKE = [
   ["/contacts/new", "Lead or customer", "userplus", "contacts:write"], ["/leads/new", "Lead", "target"], ["/quotes/new", "Quote", "clipboard"], ["/jobs/new", "Job", "hammer"],
-  ["/invoices/new", "Invoice", "receipt"], ["/plans/new", "Plan", "swap"], ["/tasks/new", "Task", "check"],
+  ["/requests/new", "Request", "flag"], ["/tasks/new", "Task", "check"], ["/invoices/new", "Invoice", "receipt"], ["/plans/new", "Plan", "swap"],
 ];
 // (Log a call and Text someone are their own screens' +: Calls, the Inbox.)
 export function quickCreates(creates = [], can = () => false) {

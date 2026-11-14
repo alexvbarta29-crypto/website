@@ -223,10 +223,14 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
     await f.waitForSelector('.hm-c-clock [data-hm="clock"]');
     assert.match(await f.textContent(".hm-c-clock"), /Timesheet/i);
     await checks(f, page, "field-owner-today-iphonese", problems);
-    // the drawer has Time, Pay and Timesheets (Service)
+    // My time and My pay under the person's initials; Timesheets in Financials' "..."
+    await f.click("#top-bar [data-tb-me]");
+    await f.waitForSelector('.sheet.on [data-me-go="/time"]');
+    assert.ok(await f.$('.sheet.on [data-me-go="/pay"]'), "My pay");
+    await f.click(".sheet.on [data-sheet-x]");
+    await f.waitForFunction(() => !document.querySelector(".sheet"));
     await openDrawer(f);
-    const labels = await drawerLabels(f);
-    for (const want of ["Time", "Pay", "Timesheets"]) assert.ok(labels.includes(want), `the drawer lists ${want}`);
+    assert.ok((await drawerLabels(f)).includes("Financials"));
     await drawerGo(f, "/timesheets", { open: false });
     await settled(f, { hash: "#/timesheets" });
     await f.waitForSelector(`[data-approve="${seeded.users.tech.id}"]`);

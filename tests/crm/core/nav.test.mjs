@@ -283,7 +283,8 @@ test("Customize Tabs: up to five above the line, the rest under MORE MENU; + and
 test("the + and the desk's New: one list, the most used first, each once", () => {
   planFor("owner");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Invoice", "Plan", "Task"]);
+  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8)");
+  assert.deepEqual(quick.quickCreates([...creates, { path: "/requests/new", label: "Request" }], canOf("owner")).map((c) => c.label).slice(3, 5), ["Request", "Task"], "Request once a module offers its create");
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });
 
