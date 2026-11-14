@@ -155,7 +155,7 @@ for (const device of ["iphone13", "iphonese"]) {
         await g.click("#top-bar [data-tb-help]");
         await g.waitForSelector(".sheet.on [data-where]");
         await g.click(".sheet.on [data-where]");
-        await g.waitForFunction(() => document.querySelectorAll(".sheet.on .rs-where li").length === 15);
+        await g.waitForFunction(() => document.querySelectorAll(".sheet.on .rs-where li").length === 17);
         assert.match(await g.textContent(".sheet.on .rs-where"), /Run payroll\s*Menu › Financials › Payroll/);
         assert.deepEqual(await screenProblems(g), []);
         await shot(page, `shell-where-${device}-${theme}`);
