@@ -112,3 +112,15 @@ test("the automatic daily import: the key's last four only, revoke, the latest a
   assert.match(mod.AUTO_COMMAND, /--key-file/);
   assert.doesNotMatch(mod.AUTO_COMMAND, /bauto_|CRM_UPLOAD_KEY/, "the key never goes on a command line");
 });
+
+test("Import from Rotor leads to the daily import and, for owners, the switch-over", async () => {
+  const list = await load("list");
+  const on = text(list.render({ runs: [], rest: null, auto: { key: { id: "ik_00000000000000000001" } }, cutover: true }, ctx));
+  assert.match(on, /href="#\/import\/auto"/);
+  assert.match(on, /See the key/);
+  assert.match(on, /<span class="pill green">On<\/span>/);
+  assert.match(on, /href="#\/cutover"/);
+  const office = text(list.render({ runs: [], rest: null, auto: { key: null }, cutover: false }, ctx));
+  assert.doesNotMatch(office, /href="#\/cutover"/, "only who may switch sees the way to it");
+  assert.match(office, /Set it up/);
+});

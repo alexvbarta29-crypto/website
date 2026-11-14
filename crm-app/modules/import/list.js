@@ -62,11 +62,12 @@ export default {
           ? html`<a class="btn" ${attrs({ href: "#/import/" + active.id })}>See the import that's running</a>`
           : html`<button type="button" class="btn primary" data-start>${icon("plus")}Start an import</button>`}</div>
       </section>
+      ${s.cutover ? html`<section class="card"><h2>Switch from Rotor</h2><p class="small muted">The checklist, the preview of the first 72 hours, the switch, and going back within 48 hours.</p><div class="btn-row"><a class="btn" href="#/cutover">${icon("bolt")}Open the switch-over</a></div></section>` : ""}
       ${restCard(s.rest)}
       <section class="card">
         <div class="im-head"><h2>Automatic daily import</h2>${s.auto ? (s.auto.key ? html`<span class="pill green">On</span>` : html`<span class="pill">Off</span>`) : ""}</div>
         <p class="small muted">A key a scheduled job uses to bring Rotor's newest export in every day. It can only start an import.</p>
-        <div class="btn-row"><a class="btn" href="#/import/auto">${icon("key")}${s.auto && s.auto.key ? "See the key" : "Set it up"}</a>${s.cutover ? html`<a class="btn" href="#/cutover">${icon("bolt")}Switch from Rotor</a>` : ""}</div>
+        <div class="btn-row"><a class="btn" href="#/import/auto">${icon("key")}${s.auto && s.auto.key ? "See the key" : "Set it up"}</a></div>
       </section>
       <div class="section-h">Imports</div>
       ${s.runs.length ? html`<ul class="list">${s.runs.map((r) => html`<li><a class="row" ${attrs({ href: "#/import/" + r.id })}>
