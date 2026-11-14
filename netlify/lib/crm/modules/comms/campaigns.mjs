@@ -33,6 +33,8 @@ import { createBulkRun, getBulkRun, testBulkRun, confirmBulkRun, cancelBulkRun, 
 import { enqueue } from "../../core/queue.mjs";
 import { cleanAudience, MAX_CAMPAIGN_RECIPIENTS, CHANNELS } from "./types.mjs";
 import { evaluateAudience, audienceChoices } from "./audience.mjs";
+import { campaignStats, totalsOf, statsFor, upsertBlastTemplate, blastKey, costOf, parseCsvAudience, winners } from "./blast.mjs";
+import { SMS_PRICING_DEFAULTS } from "./inboxes.mjs";
 
 export const RECENT_DAYS = 3;
 const EDITABLE = ["draft", "tested", "scheduled"];
@@ -74,7 +76,7 @@ export async function audienceOf(campaign) {
   });
 }
 
-const FIELDS = ["name", "description", "channel", "template_key", "audience"];
+const FIELDS = ["name", "description", "channel", "template_key", "audience", "followup", "media_file_ids"];
 async function clean(b, base = {}) {
   const out = { ...base };
   for (const f of FIELDS) if (b[f] !== undefined) out[f] = b[f];
@@ -94,8 +96,9 @@ async function clean(b, base = {}) {
 
 export async function createCampaign(body, ctx) {
   const b = body || {};
-  const data = await clean({ channel: "sms", description: "", audience: {}, ...b });
-  const rec = await createRecord("campaign", { ...data, status: "draft", test: {}, stats: {}, created_by_name: ctx.user ? ctx.user.name : "" }, ctx.write());
+  const blast = b.kind === "blast";
+  const data = await clean({ channel: "sms", description: "", audience: {}, ...b, ...(blast ? { channel: "sms", template_key: undefined } : {}) });
+  const rec = await createRecord("campaign", { ...data, ...(blast ? { kind: "blast", body: "" } : {}), status: "draft", test: {}, stats: {}, created_by_name: ctx.user ? ctx.user.name : "" }, ctx.write());
   return rec;
 }
 
@@ -105,8 +108,15 @@ export async function patchCampaign(id, body, ctx) {
   const c = got.data;
   if (c.rotor) throw new ConflictError("This campaign came from Rotor. It is history and can't be changed.");
   if (!EDITABLE.includes(c.status)) throw new ConflictError("This campaign already started.");
-  const next = await clean(body || {}, { name: c.name, description: c.description, channel: c.channel, template_key: c.template_key, audience: c.audience });
-  const changed = next.channel !== c.channel || next.template_key !== c.template_key || JSON.stringify(next.audience) !== JSON.stringify(c.audience || {});
+  const b = { ...(body || {}) };
+  // a text blast: its words are its own marketing template (always texts)
+  if (c.kind === "blast") {
+    delete b.template_key; delete b.channel;
+    if (b.body !== undefined && String(b.body).trim() !== String(c.body || "").trim()) b.template_key = await upsertBlastTemplate(blastKey(c.id), `Text blast: ${c.name}`, b.body, ctx.write());
+  }
+  const next = await clean(b, { name: c.name, description: c.description, channel: c.channel, template_key: c.template_key, audience: c.audience, followup: c.followup, media_file_ids: c.media_file_ids });
+  if (c.kind === "blast" && b.body !== undefined) next.body = String(b.body).trim();
+  const changed = next.channel !== c.channel || next.template_key !== c.template_key || JSON.stringify(next.audience) !== JSON.stringify(c.audience || {}) || (c.kind === "blast" && next.body !== undefined && next.body !== (c.body || ""));
   if (changed && c.status === "scheduled") throw new ConflictError("Take it off the schedule first, then change it.");
   const r = await updateRecord("campaign", id, (x) => ({ ...x, ...next, ...(changed ? { status: "draft", test: {}, audience_preview: null, bulk_run_id: null } : {}) }), { ...ctx.write(), ifMatch: ctx.ifMatch });
   if (changed && isId(c.bulk_run_id, "bulk_run")) await cancelBulkRun(c.bulk_run_id, ctx).catch(() => {});
@@ -129,8 +139,11 @@ export async function previewCampaign(id, ctx) {
     }
   }
   const preview = { count: a.count, matched: a.matched, at: nowIso(), excluded: a.excluded, unsupported: a.unsupported, over_limit: a.count > MAX_CAMPAIGN_RECIPIENTS };
+  // the cost line (Flyra's): texts per person, about what one person and everyone costs
+  const pricing = { ...SMS_PRICING_DEFAULTS, ...((await getSetting("sms_pricing").catch(() => null)) || {}) };
+  const cost = c.channel === "sms" && t ? costOf(c.kind === "blast" ? c.body : t.body, a.count, pricing, { picture: (c.media_file_ids || []).length > 0 }) : null;
   if (EDITABLE.includes(c.status) && !c.rotor) await updateRecord("campaign", id, (x) => ({ ...x, audience_preview: preview }), { ...ctx.write(), audit: false });
-  return { ...preview, samples, category: t ? t.category : null, consent_note: t && t.category === "marketing" && c.channel === "sms" ? "Only people who agreed to marketing texts get this one. They are counted when the test is prepared." : null, choices: audienceChoices(a.rows) };
+  return { ...preview, cost, samples, category: t ? t.category : null, consent_note: t && t.category === "marketing" && c.channel === "sms" ? "Only people who agreed to marketing texts get this one. They are counted when the test is prepared." : null, choices: audienceChoices(a.rows) };
 }
 
 // "Send test": fixes the audience as a bulk run, lets the bulk lane prepare
@@ -181,7 +194,9 @@ export async function scheduleCampaign(id, body, ctx) {
   }
   if (raw === null || raw === undefined || raw === "") {
     const b = await confirmRun(c.bulk_run_id, ctx);
-    return (await updateRecord("campaign", id, (x) => ({ ...x, status: "sending", send_at: null, started_at: b.confirmed_at || nowIso(), confirmed_by: b.confirmed_by || ctx.user.id, stats: { recipients: (b.recipients || []).length } }), ctx.write())).data;
+    const done = (await updateRecord("campaign", id, (x) => ({ ...x, status: "sending", send_at: null, started_at: b.confirmed_at || nowIso(), confirmed_by: b.confirmed_by || ctx.user.id, stats: { recipients: (b.recipients || []).length } }), ctx.write())).data;
+    await queueFollowup(done);
+    return done;
   }
   const at = Date.parse(raw);
   if (!Number.isFinite(at) || at <= nowMs() + 60000 || at > nowMs() + 90 * 86400000) throw new InputError("Pick a time in the next 90 days.", "send_at");
@@ -214,8 +229,16 @@ export async function startCampaign(h) {
     await updateRecord("campaign", c.id, (x) => (x.status === "scheduled" ? { ...x, status: "draft", send_at: null, test: {} } : null), write());
     return { result: "skipped:needs_test" };
   }
-  await updateRecord("campaign", c.id, (x) => (x.status === "scheduled" ? { ...x, status: "sending", started_at: nowIso(), confirmed_by: by } : null), write());
+  const up = await updateRecord("campaign", c.id, (x) => (x.status === "scheduled" ? { ...x, status: "sending", started_at: nowIso(), confirmed_by: by } : null), write());
+  if (up.changed) await queueFollowup(up.data);
   return { result: "started" };
+}
+
+// The follow-up to who didn't reply: due after_hours after the start (blast.mjs startFollowup).
+async function queueFollowup(c) {
+  const fu = c.followup || {};
+  if (!fu.on || !fu.body || !c.started_at) return;
+  await enqueue("campaign.followup", { type: "campaign", id: c.id }, {}, new Date(Date.parse(c.started_at) + fu.after_hours * 3600000), { ns: "done", scope: "campaign", key: `${c.id}--fu` }, { data: { campaign_id: c.id, by: c.confirmed_by || null } });
 }
 
 export async function cancelCampaign(id, ctx) {
@@ -249,6 +272,7 @@ export const campaignView = (c, run) => ({
   status: c.status, test: c.test || {}, send_at: c.send_at || null, started_at: c.started_at || null, finished_at: c.finished_at || null,
   stats: run && run.stats && Object.keys(run.stats).length ? run.stats : c.stats || {}, imported: !!c.rotor, rotor: c.rotor ? { number: c.rotor.number || null, campaign_id: c.rotor.campaign_id } : null,
   created_at: c.created_at, run: run ? { id: run.id, status: run.status, preview: run.preview, recipients: run.recipients } : null,
+  kind: c.kind || null, body: c.body || "", followup: c.followup || null, media_file_ids: c.media_file_ids || [], csv: c.csv || null, followup_run_id: c.followup_run_id || null,
 });
 
 // Drafts and tested campaigns waiting for someone (Home's approvals row).
@@ -270,6 +294,34 @@ async function list() {
 }
 const create = async (ctx) => { const rec = await createCampaign(ctx.body, ctx); return { status: 201, data: campaignView(rec.data, null), etag: rec.etag }; };
 const one = async (ctx) => { const x = await campaignWithRun(ctx.params.id, ctx); return { data: campaignView(x.campaign, x.run), etag: x.etag }; };
+
+// Rotor's Campaigns tiles: per campaign and in total over the year's sent ones (at most 40).
+async function statsRoute(ctx) {
+  const ix = await readIndex("campaigns", "");
+  const yearAgo = nowMs() - 365 * 86400000;
+  const rows = ix.rows.filter((r) => !r.ro && ["sending", "sent"].includes(r.st) && Date.parse(r.fa || r.at || 0) >= yearAgo)
+    .sort((a, b) => String(b.fa || b.at || "").localeCompare(String(a.fa || a.at || ""))).slice(0, 40);
+  const got = await getRecords("campaign", rows.map((r) => r.id));
+  const per = {};
+  for (const g of got) if (g && g.data) per[g.data.id] = await campaignStats(g.data);
+  return { data: { totals: totalsOf(Object.values(per)), per } };
+}
+const oneStats = async (ctx) => ({ data: await campaignStats((await getCampaign(ctx.params.id)).data) });
+const winnersRoute = async () => ({ data: await winners((await readIndex("campaigns", "")).rows) });
+
+// A CSV of people (with a consent column) becomes the audience: the ones it names who agreed.
+async function csvRoute(ctx) {
+  const got = await getCampaign(ctx.params.id);
+  const c = got.data;
+  if (c.rotor) throw new ConflictError("This campaign came from Rotor. It is history and can't be changed.");
+  if (!["draft", "tested"].includes(c.status)) throw new ConflictError("This campaign already started.");
+  const ix = await memo(() => readIndex("contacts", ""));
+  const out = parseCsvAudience((ctx.body || {}).csv, ix.rows);
+  if (!out.used) throw new InputError("Nobody in that file agreed to texts and is in the CRM.", "csv");
+  const r = await patchCampaign(c.id, { audience: { include_ids: out.ids } }, { ...ctx, ifMatch: got.etag });
+  const saved = (await updateRecord("campaign", c.id, (x) => ({ ...x, csv: { rows: out.rows, used: out.used, no_consent: out.left.no_consent, unknown: out.left.unknown, at: nowIso() } }), ctx.write())).data;
+  return { data: { ...campaignView(saved, null), csv: saved.csv }, etag: r.etag };
+}
 const patch = async (ctx) => { const rec = await patchCampaign(ctx.params.id, ctx.body, ctx); return { data: campaignView(rec.data, null), etag: rec.etag }; };
 const preview = async (ctx) => ({ data: await previewCampaign(ctx.params.id, ctx) });
 async function test(ctx) {
@@ -290,6 +342,8 @@ async function recipients(ctx) {
 }
 
 export const campaignRoutes = [
+  r("GET", "/campaigns/stats", "campaigns:write", "none", statsRoute, { maxCalls: 20 }),
+  r("GET", "/campaigns/winners", "campaigns:write", "none", winnersRoute, { maxCalls: 20 }),
   r("GET", "/campaigns", "campaigns:write", "none", list),
   r("POST", "/campaigns", "campaigns:write", "none", create),
   r("GET", "/campaigns/:id", "campaigns:write", "required", one, { maxCalls: 40 }),
@@ -299,4 +353,6 @@ export const campaignRoutes = [
   r("POST", "/campaigns/:id/schedule", "campaigns:send", "required", schedule, { maxCalls: 60 }),
   r("POST", "/campaigns/:id/cancel", "campaigns:write", "required", cancel, { maxCalls: 60 }),
   r("GET", "/campaigns/:id/recipients", "campaigns:write", "required", recipients, { maxCalls: 40 }),
+  r("GET", "/campaigns/:id/stats", "campaigns:write", "required", oneStats, { maxCalls: 40 }),
+  r("POST", "/campaigns/:id/audience/csv", "campaigns:write", "required", csvRoute, { maxCalls: 20, maxBody: 420000 }),
 ];

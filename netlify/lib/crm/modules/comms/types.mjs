@@ -212,6 +212,21 @@ function validateCampaign(data, { op } = {}) {
       if (!Array.isArray(v) || v.length > MAX_CAMPAIGN_RECIPIENTS || v.some((x) => !isId(x, "contact"))) throw new InputError(`At most ${MAX_CAMPAIGN_RECIPIENTS} people in one campaign.`, f);
       return [...new Set(v)];
     },
+    // the text blast (blast.mjs): its words, a picture, a follow-up to who didn't reply, what a CSV gave
+    kind: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, ["blast"], { field: f, stored })),
+    body: (v, f) => (v === undefined || v === null ? undefined : str(v, { field: f, max: 1600, trim: false })),
+    media_file_ids: (v, f) => { if (v === undefined || v === null) return undefined; if (!Array.isArray(v) || v.length > 1 || v.some((x) => !isId(x, "file"))) throw new InputError("One picture.", f); return v; },
+    followup: (v, f) => {
+      const o = obj(v, f);
+      if (!o) return undefined;
+      const h = o.after_hours === undefined || o.after_hours === null || o.after_hours === "" ? 48 : Number(o.after_hours);
+      if (!Number.isInteger(h) || h < 12 || h > 336) throw new InputError("Between 12 hours and 14 days.", `${f}.after_hours`);
+      const body = str(o.body ?? "", { field: `${f}.body`, max: 1600, trim: false });
+      if (o.on === true && !body.trim()) throw new InputError("Write the follow-up text.", `${f}.body`);
+      return { on: o.on === true, after_hours: h, body };
+    },
+    csv: obj,
+    followup_run_id: idOf("bulk_run", false),
     rotor: obj,
   });
 }

@@ -282,6 +282,46 @@ test("comms: Campaigns: Rotor's history, a draft with its audience, the test sen
   } finally { await p.close(); }
 });
 
+for (const device of ["iphone13", "iphonese"]) {
+  test(`comms (${device}): Campaigns' tiles and a text blast (words, the cost, a CSV with consent, a follow-up)`, async () => {
+    const { p, page, f } = await open("olive", device);
+    const c = seeded.comms;
+    try {
+      await goTo(f, "/campaigns");
+      assert.equal(await f.$$eval("#view .rs-tiles .rs-tile", (els) => els.length), 7, "Sent · Response · Job revenue · ARR · Open · Click · Bounce");
+      assert.match(await text(f, "#view .rs-tiles"), /Open\s*-[\s\S]*Click\s*-/, "open and click wait for email tracking");
+      assert.deepEqual(await screenProblems(f), [], "Campaigns passes the phone checks");
+      await f.click('#view a[href="#/campaigns/new?kind=blast"]');
+      await f.waitForFunction(() => /^#\/campaigns\/cm_/.test(location.hash), null, { timeout: 8000 });
+      await settled(f);
+      await f.waitForSelector("[data-body]");
+      await f.fill("[data-body]", "Hi there, spring window cleanings are open this week. Reply YES and we'll find you a time.");
+      await f.waitForFunction(() => /characters · 1 text each/.test(document.querySelector("[data-cost]").textContent));
+      await f.$eval("[data-body]", (el) => el.dispatchEvent(new Event("change", { bubbles: true })));
+      await f.waitForFunction(() => /about/.test((document.querySelector("[data-cost]") || {}).textContent || "") || !!document.querySelector("[data-test]"), null, { timeout: 8000 });
+      // a CSV with a consent column: only who agreed
+      const me = await p.ctx.request.get(`/api/crm/contacts/${c.customer}`, { headers: { "x-crm": "1" } });
+      const phone = (await me.json()).data.contact.phones[0].e164;
+      const [fc] = await Promise.all([page.waitForEvent("filechooser"), f.click("[data-csv]")]);
+      await fc.setFiles({ name: "people.csv", mimeType: "text/csv", buffer: Buffer.from(`Name,Phone,Consent\nA,${phone},yes\nB,7635550999,yes\nC,7635550998,no\n`) });
+      await toastSays(f, /1 people from the file/);
+      await f.waitForFunction(() => /From the CSV: 1 of 3 people, 1 left out with no consent, 1 not in the CRM/.test(document.getElementById("view").textContent), null, { timeout: 8000 });
+      // a follow-up to who didn't reply
+      await f.click("[data-fu-on]");
+      await f.waitForSelector("[data-fu-body]", { timeout: 8000 });
+      assert.deepEqual(await screenProblems(f), [], "the text blast passes the phone checks");
+      await shot(page, `comms-blast-${device}`);
+      await f.click("[data-blast-win]");
+      await sheetUp(f, /past winner/);
+      assert.deepEqual(await screenProblems(f), [], "the past winners sheet");
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
+      assert.deepEqual(p.outside, [], "nothing asked for another host");
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
 test("comms: Reviews (match a review to its customer) and the setup page", async () => {
   const { p, page, f } = await open("olive", "iphonese");
   const c = seeded.comms;

@@ -43,6 +43,7 @@ import { campaignRoutes, startCampaign } from "./campaigns.mjs";
 import { reviewRoutes, reviewSequence, reviewListeners, pollReviews, isReviewed, validateReviews, REVIEWS_DEFAULTS } from "./reviews.mjs";
 import { setupRoutes } from "./setup.mjs";
 import { ratingRoutes, portalRoutes } from "./ratings.mjs";
+import { startFollowup } from "./blast.mjs";
 import { INBOXES_DEFAULTS, validateInboxes, ENGAGEMENT_DEFAULTS, validateEngagement, SMS_PRICING_DEFAULTS, validateSmsPricing } from "./inboxes.mjs";
 import { mcpTools } from "./mcp.mjs";
 
@@ -67,6 +68,11 @@ defineFileOwner("message", {
     return ctx.can("inbox:read", { type: "message", record: msg, visible: (await techVisibleContacts(ctx.user.id)).has(msg.contact_id) });
   },
   canEdit: () => false,
+});
+// A text blast's picture (kept on the campaign until picture texts are set up): who builds campaigns.
+defineFileOwner("campaign", {
+  canRead: async (ctx) => !!ctx.can("campaigns:write"),
+  canEdit: async (ctx, c) => !!ctx.can("campaigns:write") && !(c && c.rotor),
 });
 // A picture or PDF the office attaches to a text or email (the composer's
 // paperclip): held on the person's conversation until it goes with a
@@ -130,6 +136,8 @@ export default defineModule({
     "media.fetch": { handler: fetchMedia, mutates: true },
     // a scheduled campaign's start: the confirm of its bulk run, as the person who scheduled it
     "campaign.start": { handler: startCampaign, mutates: true },
+    // a text blast's follow-up to who didn't reply: its own bulk run, waiting for a test and a confirm
+    "campaign.followup": { handler: startFollowup, mutates: true },
   },
   services: {
     // (message, ctx) → { status, outbox_id?, message_id?, conversation_id? }: replaces core's default (§11.3)
