@@ -19,6 +19,7 @@ const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const UNIT_LABEL = { minutes: "Minutes", hours: "Hours", days: "Days" };
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const STRUCTURAL = /(_field|_op|_type)$/;
+const cap = (x) => String(x || "").charAt(0).toUpperCase() + String(x || "").slice(1);
 
 async function load(params, ctx) {
   ensureStyles();
@@ -36,7 +37,7 @@ function triggerCard(s) {
   const groups = [...new Set(s.cat.triggers.map((x) => x.group))];
   const tr = s.f.trigger;
   return html`<section class="card form au-card">
-    <h2>${icon("bolt")}When</h2>
+    <h2>When</h2>
     <label class="field" data-field="trigger.type"><span>What starts it</span><select name="t_type">${groups.map((g) => html`<optgroup ${attrs({ label: g })}>${s.cat.triggers.filter((x) => x.group === g).map((x) => html`<option ${attrs({ value: x.key, selected: x.key === tr.type })}>${x.label}</option>`)}</optgroup>`)}</select><small class="why" hidden></small></label>
     ${t.option === "tag" ? field({ label: "The tag", name: "t_tag", value: tr.tag || "", list: "au-tags", maxlength: 40, autocomplete: "off" }) : ""}
     ${t.option === "days" ? field({ label: t.key === "plan.renewing" ? "Days before the renewal" : "Days overdue", name: "t_days", value: String(tr.days ?? (t.key === "plan.renewing" ? 30 : 1)), inputmode: "numeric", maxlength: 3 }) : ""}
@@ -78,10 +79,10 @@ function stepCard(s, st, i, n) {
     <div class="au-wait">
       ${field({ label: "Wait", name: `${p}_wn`, value: String(w.n || 0), inputmode: "numeric", maxlength: 4 })}
       ${select({ label: "Of", name: `${p}_wu`, value: w.unit, options: s.cat.wait_units.map((u) => ({ value: u, label: UNIT_LABEL[u] || u })) })}
-      ${field({ label: "Then at", name: `${p}_at`, type: "time", value: st.at || "" })}
+      ${field({ label: "At (time of day)", name: `${p}_at`, type: "time", value: st.at || "" })}
       ${checkbox({ label: "In business hours", name: `${p}_bh`, checked: !!st.business_hours })}
     </div>
-    ${select({ label: "Then", name: `${p}_type`, value: st.type, options: s.cat.steps.map((x) => ({ value: x.key, label: x.label })) })}
+    ${select({ label: "Do this", name: `${p}_type`, value: st.type, options: s.cat.steps.map((x) => ({ value: x.key, label: x.label })) })}
     ${stepParams(s, st, i)}
   </div>`;
 }
@@ -181,7 +182,7 @@ function testSheet(ctx, out) {
       <div class="note">Nothing was written and nothing was sent. This is what would happen if it started now.</div>
       <p class="small"><b>${d.starts ? "It would start." : "It wouldn't start:"}</b> ${d.conditions.filter((c) => !c.ok).map((c) => c.phrase).join(", ")}</p>
       ${d.notes.map((n) => html`<p class="small muted">${n}</p>`)}
-      <ol class="au-out">${d.steps.map((st, i) => { const o = OUTCOME[st.outcome] || [st.outcome, ""]; return html`<li><div class="t"><span>${i + 1}. ${st.phrase}</span><span ${attrs({ class: `pill ${o[1]}` })}>${o[0]}</span></div>
+      <ol class="au-out">${d.steps.map((st, i) => { const o = OUTCOME[st.outcome] || [st.outcome, ""]; return html`<li><div class="t"><span>${i + 1}. ${cap(st.phrase)}</span><span ${attrs({ class: `pill ${o[1]}` })}>${o[0]}</span></div>
         <p class="d">${dateTime(st.at)}${st.quiet ? " (after quiet hours)" : ""}</p>${st.detail ? html`<p class="d">${st.detail}</p>` : ""}${st.body ? html`<blockquote>${st.body}</blockquote>` : ""}</li>`; })}</ol>
     </div>`,
   });

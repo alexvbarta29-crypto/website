@@ -221,10 +221,11 @@ async function runs(ctx) {
   const page = rows.filter((x) => !before || x.sortKey < before).slice(0, 20);
   const got = await getRecords("flow_run", page.map((x) => x.id));
   const ids = [...new Set(got.map((g) => g && g.data && g.data.contact_id).filter((c) => isId(c, "contact")))];
-  const contacts = await getRecords("contact", ids);
+  const [contacts, tpls] = await Promise.all([getRecords("contact", ids), listTemplates().catch(() => [])]);
   const names = Object.fromEntries(contacts.filter(Boolean).map((g) => [g.data.id, g.data.display_name || [g.data.first_name, g.data.last_name].filter(Boolean).join(" ")]));
   return {
     data: {
+      templates: Object.fromEntries(tpls.map((x) => [x.key, x.name])),
       runs: got.filter((g) => g && g.data).map((g) => ({ ...runView(g.data), contact_name: names[g.data.contact_id] || null })),
       next: rows.length > page.length && page.length ? page[page.length - 1].sortKey : null,
     },
@@ -248,8 +249,8 @@ async function oneRun(ctx) {
       if (m) { sends.push({ step: i, state: m.state, result: m.result || null, dry: !!(dry && dry.data && !(real && real.data)) }); break; }
     }
   }
-  const contact = isId(run.contact_id, "contact") ? await getRecord("contact", run.contact_id).catch(() => null) : null;
-  return { data: { run: { ...runView(run), contact_name: contact ? contact.data.display_name || null : null, out_reasons: run.out || {}, sends } } };
+  const [contact, tpls] = await Promise.all([isId(run.contact_id, "contact") ? getRecord("contact", run.contact_id).catch(() => null) : null, listTemplates().catch(() => [])]);
+  return { data: { run: { ...runView(run), contact_name: contact ? contact.data.display_name || null : null, out_reasons: run.out || {}, sends }, templates: Object.fromEntries(tpls.map((x) => [x.key, x.name])) } };
 }
 
 export const flowRoutes = [
