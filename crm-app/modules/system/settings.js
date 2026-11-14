@@ -40,7 +40,8 @@ export function sections(can, manifests = MANIFESTS) {
   const open = (path) => {
     if (path === "#theme") return true;
     const own = settings.find((x) => x.path === path) || navs.find((x) => x.path === path);
-    const r = routes.find((x) => x.path === path);
+    // (exactly, else a route with a param: /tools/rotor is /tools/:id)
+    const r = routes.find((x) => x.path === path) || routes.find((x) => x.path.includes(":") && new RegExp("^" + x.path.replace(/:[a-z_]+/gi, "[^/]+") + "$").test(path));
     if (!r) return false;
     return own ? !own.perm || can(own.perm) === true : !r.perm || can(r.perm) === true;
   };

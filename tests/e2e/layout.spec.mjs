@@ -52,7 +52,7 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.ok(Math.abs((fab.y + fab.h / 2) - (bar.y + bar.h / 2)) < 4, "level with the bar");
       assert.equal(await f.getAttribute('#tabs [data-tab="home"]', "aria-current"), "page");
       // What moved: once, as a toast (never a banner over Home)
-      await toastSays(f, /New look: Customers, Leads and Pipeline are in the Menu/);
+      await toastSays(f, /The Menu is tidier: five groups, and every setting in Settings/);
       assert.equal(await f.$("#moved"), null, "no banner");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `layout-shell-home-${device}`);
@@ -60,7 +60,7 @@ for (const device of ["iphone13", "iphonese"]) {
       const g = await crmFrame(page);
       await settled(g);
       await g.waitForTimeout(1600);
-      assert.doesNotMatch(await g.evaluate(() => (document.querySelector(".toasts") || {}).textContent || ""), /New look/, "not again on this phone");
+      assert.doesNotMatch(await g.evaluate(() => (document.querySelector(".toasts") || {}).textContent || ""), /The Menu is tidier/, "not again on this phone");
       // the Menu: a sheet of groups, not a page
       await g.click('#tabs [data-tab="menu"]');
       await g.waitForSelector(".menu-sheet.on");
@@ -103,11 +103,12 @@ for (const device of ["iphone13", "iphonese"]) {
       // my own tab bar
       await goTo(g, "/tab-bar");
       await g.click('[data-pick="map"]');
-      await g.click('[data-pick="visits"]');
+      await g.click('[data-pick="quotes"]');
       await g.click("[data-save]");
       await toastSays(g, /saved/);
-      assert.deepEqual(await g.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab)), ["home", "schedule", "inbox", "visits", "menu"]);
-      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "visits", "menu"], "kept on the server");
+      assert.deepEqual(await g.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab)), ["home", "schedule", "inbox", "quotes", "menu"]);
+      assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "quotes", "menu"], "kept on the server");
+      assert.equal(await g.$('[data-pick="visits"]'), null, "Visits is the Schedule's List now: not a place of its own");
       await g.click("[data-standard]");
       await g.waitForFunction(() => [...document.querySelectorAll("#tabs [data-tab]")].map((e) => e.dataset.tab).join() === "home,schedule,inbox,map,menu", null, { timeout: 8000 });
       assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "map", "menu"], "the standard bar again");
