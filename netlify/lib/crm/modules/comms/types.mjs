@@ -288,5 +288,43 @@ export const reviewType = defineType({
   example: () => ({ gbp_review_id: "sample-review-1", reviewer_name: "Pat E.", rating: 5, comment_excerpt: "Spotless windows.", created_at_gbp: "2026-11-16T15:00:00.000Z", suggestions: [] }),
 });
 
-import { ratingType } from "./ratings.mjs";
+// ------------------------------------------------------------ rating (in-app stars, ratings.mjs)
+
+export const RATING_SOURCES = Object.freeze(["app", "manual"]);
+export const LOW_STARS = 3;
+
+function validateRating(data, { op } = {}) {
+  const stored = op === "update";
+  return shape(data, {
+    contact_id: idOf("contact", false),
+    job_id: idOf("job", false),
+    name: (v, f) => str(v ?? "", { field: f, max: 80 }),
+    stars: (v, f) => int(v, { field: f, min: 1, max: 5, required: true }),
+    comment: (v, f) => (v === undefined || v === null || v === "" ? undefined : truncate(String(v).trim(), 1000)),
+    crew_ids: (v, f) => { if (v === undefined || v === null) return []; if (!Array.isArray(v) || v.some((x) => !isId(x, "user"))) throw new InputError("People on the team.", f); return v.slice(0, 10); },
+    source: (v, f) => enumValue(v || "app", RATING_SOURCES, { field: f, stored }),
+    public_clicked: (v, f) => bool(v ?? false, { field: f }),
+    public_clicked_at: (v) => (v ? String(v).slice(0, 30) : undefined),
+    follow_up: (v) => (v && typeof v === "object" ? { ...(isId(v.task_id, "task") ? { task_id: v.task_id } : {}), ...(v.done_at ? { done_at: String(v.done_at).slice(0, 30) } : {}), ...(isId(v.done_by, "user") ? { done_by: v.done_by } : {}) } : undefined),
+    rated_at: (v) => (v ? String(v).slice(0, 30) : undefined),
+  });
+}
+export const ratingRow = (r) => ({
+  c: r.contact_id || null, n: r.name || "", s: r.stars, at: r.rated_at || r.created_at, j: r.job_id || null, t: r.crew_ids || [], src: r.source || "app",
+  pc: !!r.public_clicked, cm: !!r.comment, fu: r.stars <= LOW_STARS && !(r.follow_up && r.follow_up.done_at),
+});
+export const ratingType = defineType({
+  type: "rating",
+  prefix: "rt",
+  v: 1,
+  validate: validateRating,
+  rotorFields: [],
+  techFields: ["id", "stars"],
+  readPerm: "reviews:read",
+  shadow: false,
+  indexes: [{ name: "ratings", shard: () => "", row: ratingRow }],
+  summary: (r) => ({ id: r.id, stars: r.stars }),
+  example: () => ({ contact_id: "ct_0000000000000000000a", name: "Pat E.", stars: 5, comment: "Spotless windows.", crew_ids: [], source: "app", public_clicked: false, rated_at: "2026-11-17T15:00:00.000Z" }),
+});
+
 export const types = [conversationType, messageType, campaignType, reviewType, ratingType];

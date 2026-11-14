@@ -11,7 +11,7 @@
 // the people who didn't reply (its own bulk send, tested and confirmed like
 // this one). /campaigns/new?kind=blast makes one.
 
-import { html, attrs, icon, toast, confirmSheet, sheet, tileRow, pillBtn, toggle as switchOf } from "../../core/ui.js";
+import { html, attrs, icon, toast, confirmSheet, sheet, tileRow, pillBtn, render, toggle as switchOf } from "../../core/ui.js";
 import { dateTime, money } from "../../core/format.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
 import { ensureStyles, reasonText } from "./kit.js";
@@ -78,7 +78,7 @@ function blastWords(s) {
   return html`<section class="card stack"><h2>What it says</h2>
       <label class="field"><span>Your text</span><textarea name="body" data-body rows="5" maxlength="1600" ${attrs({ disabled: locked ? true : null, placeholder: "Hi {{first_name|there}}, spring window cleanings are open..." })}>${c.body || ""}</textarea>
         <small>The opt-out line is added for you. Only people who agreed to marketing texts get it.</small></label>
-      ${costLine(s, c.body)}
+      <div data-cost-box>${costLine(s, c.body)}</div>
       <div class="cm-toggle">${VARS.map(([k, l]) => html`<button type="button" class="chip" ${attrs({ "data-var": k, disabled: locked ? true : null })}>+ ${l}</button>`)}</div>
       <div class="rs-pills">${pillBtn((c.media_file_ids || []).length ? "Picture added" : "Add picture", { icon: "camera", data: { "blast-pic": true }, disabled: locked })}${pillBtn("Start from a past winner", { icon: "trophy", data: { "blast-win": true }, disabled: locked })}</div>
       ${(c.media_file_ids || []).length ? html`<p class="small muted">The picture goes with the texts once picture texts are set up; until then the blast is a dry run in the Outbox.</p>` : ""}
@@ -223,7 +223,7 @@ export default {
       if (await act(ctx, "cancel", {}, "Cancelled.")) ctx.refresh();
     },
     "click [data-refresh]": (e, el, ctx) => ctx.refresh(),
-    "input [data-body]": (e, el, ctx) => { const box = document.querySelector("[data-cost]"); if (box) box.outerHTML = String(costLine(ctx.state, el.value)); },
+    "input [data-body]": (e, el, ctx) => { const box = document.querySelector("[data-cost-box]"); if (box) render(box, costLine(ctx.state, el.value)); },
     "change [data-body]": (e, el, ctx) => save(ctx, { body: el.value }),
     "click [data-var]": (e, el, ctx) => {
       const ta = document.querySelector("[data-body]");
