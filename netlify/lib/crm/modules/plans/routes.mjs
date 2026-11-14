@@ -24,7 +24,7 @@ import { getRecord, getRecords, listRel } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
 import { now, localDate } from "../../core/clock.mjs";
 import { InputError, NotFoundError } from "../../core/errors.mjs";
-import { has } from "../../core/services.mjs";
+import { has, call } from "../../core/services.mjs";
 import { adapter } from "../../adapters/index.mjs";
 import { loadCatalog, loadLights } from "./catalog.mjs";
 import { cancelQuote, ordinalTotals, monthOf } from "./machine.mjs";
@@ -39,6 +39,7 @@ import {
 import { presentLink } from "./portal.mjs";
 import { startRequestSignatures } from "./signatures.mjs";
 import { seasonBoard, patchSeason, addWarranty, getSeason } from "./lights.mjs";
+import { propertiesOf } from "../contacts/properties.mjs";
 
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 export const features = () => ({ jobs: has("work.createJobs"), money: has("money.cardStatus"), bulk: has("bulk.create") });
@@ -81,6 +82,14 @@ async function getRoute(ctx) {
     loadCatalog(),
   ]);
   const c = contact && contact.data;
+  // the editor's rows (Nov 2026): the service address and the others to pick, who sold it, the card on file
+  const [props, seller, card] = await Promise.all([
+    c ? propertiesOf(c.id, {}, { limit: 8 }).catch(() => []) : [],
+    isId(plan.sold_by, "user") ? getRecord("user", plan.sold_by).catch(() => null) : null,
+    has("money.cardStatus") && c ? call("money.cardStatus", c.id, {}).catch(() => null) : null,
+  ]);
+  const addr = (p) => { const a = p.address || {}; return { id: p.id, label: p.label || "", line1: a.street1 || "", line2: [a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") }; };
+  const sellerName = seller && seller.data ? [seller.data.first_name, seller.data.last_name].filter(Boolean).join(" ") || seller.data.display_name || null : null;
   const jobsBy = new Map(jobs.filter(Boolean).map((j) => [j.data.id, j.data]));
   const ordinals = (plan.ordinals || []).map((o) => {
     const j = o.job_id ? jobsBy.get(o.job_id) : null;
@@ -90,6 +99,8 @@ async function getRoute(ctx) {
     data: {
       plan: { ...plan, ordinals }, etag: g.etag,
       contact: c ? { id: c.id, name: c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" "), phone: ((c.phones || [])[0] || {}).e164 || null, email: ((c.emails || [])[0] || {}).address || null } : null,
+      properties: props.map(addr), property: (props.find((x) => x.id === plan.property_id) && addr(props.find((x) => x.id === plan.property_id))) || null,
+      sold_by_name: sellerName, card: card ? { status: card.status, ...(card.pm ? { brand: card.pm.brand, last4: card.pm.last4, kind: card.pm.kind } : {}) } : null,
       agreements, seasons: seasons.filter(Boolean).map((s) => strip(s.data)), catalog_entry: cat.plans[plan.catalog_key] || null, perk_names: cat.perk_names,
       readiness: plan.status === "pending" ? await readiness(plan, ctx) : [], features: features(), sms_mode: await modeOf("sms"),
       can: { write: ctx.can("plans:write"), cancel: ctx.can("plans:cancel"), send: ctx.can("agreements:send"), waive: ctx.can("fees:waive") },
@@ -233,7 +244,7 @@ export const planRoutes = [
   R("GET", "/plans/due", "plans:read", "none", dueRoute, { maxCalls: 160 }),
   R("GET", "/plans/catalog", "plans:read", "none", catalogRoute),
   R("POST", "/plans/request-signatures", "agreements:send", "none", requestSignaturesRoute, { mode: "run" }),
-  R("GET", "/plans/:id", "plans:read", "required", getRoute, { maxCalls: 60 }),
+  R("GET", "/plans/:id", "plans:read", "required", getRoute, { maxCalls: 80 }),
   R("PATCH", "/plans/:id", "plans:write", "required", patchRoute),
   R("POST", "/plans/:id/activate", "plans:write", "required", actionRoute("activate"), { mode: "run", maxCalls: 30 }),
   R("POST", "/plans/:id/pause", "plans:write", "required", actionRoute("pause"), { mode: "run" }),

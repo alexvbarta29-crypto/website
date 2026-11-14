@@ -5,7 +5,16 @@
 
 import { html, attrs } from "../../core/ui.js";
 import { findButton, findOpen } from "../../core/nav.js";
-import { ensureStyles, CHIPS, planRow, emptyCard } from "./kit.js";
+import { money } from "../../core/format.js";
+import { ensureStyles, CHIPS, statusPill, pendingText, monthLabel, emptyCard } from "./kit.js";
+
+// Two lines (Rotor's list): the customer and the plan's value; the plan, what's next, Auto-Pay and the status.
+export function planRow2(r) {
+  const extra = r.st === "pending" ? `waiting for ${pendingText(r.pr) || "the agreement"}` : r.nx ? `next ${monthLabel(r.nx)}` : "";
+  return html`<li><a class="c-row" href="${"#/plans/" + encodeURIComponent(r.id)}">
+    <span class="c-l1"><b>${r.cn || "No name"}</b><span class="num">${money(r.sv || 0)}</span></span>
+    <span class="c-l2"><span class="c-sub">${r.nm}${extra ? ` · ${extra}` : ""}${r.ap ? " · Auto-Pay" : ""}</span>${statusPill(r.st)}</span></a></li>`;
+}
 
 async function load(params, ctx) {
   ensureStyles();
@@ -27,10 +36,10 @@ export default {
   render(s, ctx) {
     const count = (k) => s.counts[k] || 0;
     const rows = visible(s);
-    return html`<div class="stack">
+    return html`<div class="stack rs-list">
       <label class="${"field find-field" + (findOpen(s, ctx) ? " open" : "")}"><span class="sr">Search plans</span><input type="search" data-q placeholder="Name or plan" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
       <div class="chips" role="tablist">${CHIPS.filter(([k]) => ["active", "pending", "due"].includes(k) || count(k) > 0 || k === s.chip).map(([k, label]) => html`<button type="button" class="chip" ${attrs({ "data-chip": k, "aria-pressed": String(s.chip === k) })}>${label} <span class="n">${count(k)}</span></button>`)}</div>
-      ${rows.length ? html`<ul class="list tbl">${rows.map(planRow)}</ul>` : emptyCard(s.chip === "active" ? "No active plans yet" : "Nothing here", s.chip === "active" ? "Plans sold on a quote land here once they're signed." : "Pick another chip.")}
+      ${rows.length ? html`<ul class="rs-card flush c-rows">${rows.map(planRow2)}</ul>` : emptyCard(s.chip === "active" ? "No active plans yet" : "Nothing here", s.chip === "active" ? "Plans sold on a quote land here once they're signed." : "Pick another chip.")}
       <div class="links">
         <a class="tile" href="#/plans/due">Visits to book</a>
         ${ctx.can("plans:read") ? html`<a class="tile" href="#/lights">Lights season</a>` : ""}

@@ -44,3 +44,42 @@
 .pl-sg summary{padding:12px 0;line-height:20px;cursor:pointer;font-weight:600}
 .pl-sg[open] summary{margin-bottom:8px}
 .pl-new{color:var(--amber-ink);font-weight:600}
+
+/* Rotor-style plan page and editor (Nov 2026): the top card, black
+   segments, form rows, agreement cards, scheduled and pending job cards.
+   The kit (styles/crm.css) draws cards, rows, pills and switches. */
+.pl-top{display:flex;flex-direction:column;gap:8px}
+.pl-what{margin:0;font:600 16px/1.3 var(--text);color:var(--ink)}
+.pl-val{color:var(--ink-2);text-align:right;font-size:15px;overflow-wrap:anywhere}
+.pl-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.pl-types .rs-fc{padding:6px 0}
+.pl-dchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.pl-perks{margin:0 4px}
+.pl-agbtns{display:flex;flex-direction:column;gap:8px}
+.pl-ag{display:flex;flex-direction:column;gap:6px}
+.pl-ag-t{display:flex;flex-direction:column;min-width:0;gap:2px}
+.pl-ag-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.pl-job{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.pl-job-t{display:flex;flex-direction:column;min-width:0;gap:2px}
+.pl-job-t b{font-weight:650}
+.pl-job-e{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-weight:600}
+.pl-job>.rs-pb,.pl-job-b{grid-column:1/-1}
+.pl-job-b{display:flex;align-items:center;gap:8px}
+.pl-skip{min-height:44px;min-width:44px;padding:0 10px}
+.pl-gone summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
+.pl-gone ul{margin:4px 0 0;padding-left:18px;color:var(--ink-2);font-size:14px}
+.pl-edit{display:flex;flex-direction:column;gap:12px}
+.pl-edit .rs-fc input[type=date]{text-align:right}
+/* two-line list rows (quotes, plans, invoices use the same shape) */
+.c-rows,.rs-card.flush.c-rows{list-style:none;margin:0;padding:0 0 0 16px}
+.c-rows>li+li .c-row{border-top:1px solid var(--line)}
+.c-row{display:flex;flex-direction:column;gap:4px;min-height:60px;justify-content:center;padding:10px 16px 10px 0;color:var(--ink);text-decoration:none}
+.c-l1,.c-l2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.c-l1 b{font-weight:650;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.c-l1 .num{flex:none;font-weight:600}
+.c-sub{color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.c-l2 .pill{flex:none}
+.c-row:active{background:var(--card-2)}
+.pl-page .rs-card p,.rs-sheetpage .pl-ag p,.rs-sheetpage .pl-auto p,.rs-sheetpage .pl-top p{margin:0}
+.pl-page .rs-card p.warn-box,.pl-page .rs-card p.note{margin:4px 0 0}
+.pl-skip{border:0;background:none;color:var(--muted);font:600 15px/1 var(--text);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
