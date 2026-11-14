@@ -101,7 +101,9 @@ async function listInvoices(ctx) {
     open: open.filter((r) => r.st === "open").length, draft: open.filter((r) => r.st === "draft").length, overdue: open.filter((r) => rowOut(r, day).od).length,
     failed: open.filter((r) => r.st === "open" && r.af).length, processing: open.filter((r) => r.pr).length, overpaid: open.filter((r) => r.ex > 0 && !r.xk).length,
   };
-  const totals = { open_cents: open.filter((r) => r.st === "open").reduce((s, r) => s + r.bal, 0), overdue_cents: open.filter((r) => rowOut(r, day).od).reduce((s, r) => s + r.bal, 0) };
+  // this month's money in (the list's stat card): payments received this month, less refunds
+  const month = (await readIndex("payments", day.slice(0, 7)).catch(() => ({ rows: [] }))).rows.filter((r) => r.st === "succeeded" && r.k !== "refund");
+  const totals = { open_cents: open.filter((r) => r.st === "open").reduce((s, r) => s + r.bal, 0), overdue_cents: open.filter((r) => rowOut(r, day).od).reduce((s, r) => s + r.bal, 0), month_paid_cents: month.reduce((s, r) => s + (r.a || 0) - (r.rf || 0), 0) };
   let rows;
   if (["paid", "void", "uncollectible", "closed"].includes(status)) {
     const year = YEAR_RE.test(q.get("year") || "") ? q.get("year") : day.slice(0, 4);
@@ -164,7 +166,7 @@ async function invoiceData(ctx, inv, etag) {
   const billable = !online || online.code !== "not_yet";          // before the switch a card is charged only for a sandboxed customer
   return {
     invoice: view(inv), etag, flags: f, payments: pays.map(view), rotor_owned: !ours,
-    contact: contact ? { id: contact.id, display_name: nameOf(contact), has_sms: (contact.phones || []).some((p) => p.sms !== false), has_email: (contact.emails || []).length > 0, test: !!(contact.flags && contact.flags.test) } : null,
+    contact: contact ? { id: contact.id, display_name: nameOf(contact), phone: ((contact.phones || [])[0] || {}).e164 || null, has_sms: (contact.phones || []).some((p) => p.sms !== false), has_email: (contact.emails || []).length > 0, test: !!(contact.flags && contact.flags.test) } : null,
     card: { status: card.status, usable: card.usable, brand: card.brand || null, last4: card.last4 || null, kind: card.kind },
     sandboxed: sandboxed(inv, contact), system_of_record: mode.system_of_record, online: online ? online.code : "ok",
     can: {

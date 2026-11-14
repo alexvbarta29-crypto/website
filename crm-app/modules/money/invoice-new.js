@@ -3,7 +3,7 @@
 // right away. Invoices for finished jobs make themselves; this is for
 // everything else (a late-cancel fee, a one-off charge).
 
-import { html, attrs, icon, toast } from "../../core/ui.js";
+import { html, attrs, icon, sectionLabel, toast } from "../../core/ui.js";
 import { busy, showError, clearErrors, readMoney } from "../../core/forms.js";
 import { money } from "../../core/format.js";
 import { pickContact } from "../../core/pickers.js";
@@ -38,22 +38,24 @@ function sync(view, s) {
 export default {
   load,
   render(s) {
-    return html`<form class="stack form" data-new novalidate>
-      <section class="card"><h2>Who is it for?</h2>
-        <button type="button" class="btn" data-pick>${icon("contacts")}${s.contact ? s.contact.name : "Pick the customer"}</button>
+    return html`<form class="rs-page form mn-new" data-new novalidate>
+      ${sectionLabel("Who is it for?")}
+      <section class="rs-card">
+        <button type="button" ${attrs({ class: "rs-pb wide" + (s.contact ? "" : " solid") })} data-pick>${icon("contacts")}<span>${s.contact ? s.contact.name : "Pick the customer"}</span></button>
         <p class="err" data-contact-err hidden></p>
       </section>
-      <section class="card"><h2>What for?</h2>
+      ${sectionLabel("What for?")}
+      <section class="rs-card">
         ${s.lines.map((l, i) => html`<div class="mn-newline" ${attrs({ "data-line": String(i) })}>
           <label class="field" ${attrs({ "data-field": `lines.${i}.description` })}><span>${i === 0 ? "What" : html`<span class="sr">What</span>`}</span><input data-desc autocomplete="off" maxlength="200" placeholder="Exterior window cleaning" ${attrs({ value: l.description })}><small class="why" hidden></small></label>
           <label class="field" ${attrs({ "data-field": `lines.${i}.unit_cents` })}><span>${i === 0 ? "Price" : html`<span class="sr">Price</span>`}</span><input data-price inputmode="decimal" autocomplete="off" placeholder="0.00" ${attrs({ value: l.price })}><small class="why" hidden></small></label>
           <button type="button" class="rm" ${attrs({ "data-rm": String(i), "aria-label": "Remove this line", disabled: s.lines.length < 2 })}>×</button></div>`)}
-        <div class="btn-row"><button type="button" class="btn" data-add>${icon("plus")}Another line</button></div>
+        <div class="rs-li-add"><button type="button" class="rs-pb" data-add>${icon("plus")}<span>Item</span></button></div>
         <ul class="mn-lines"><li class="tot big"><span class="d">Total</span><span class="a" data-total>${money(total(s))}</span></li></ul>
         <label class="check"><input type="checkbox" name="kind" ${attrs({ checked: s.kind === "fee" })}><span>This is a fee (a late cancel, say), not a service</span></label>
       </section>
       <p class="err" data-form-err hidden></p>
-      <div class="btn-row"><button type="submit" class="btn primary" data-go="issue">Issue and send</button><button type="submit" class="btn" data-go="draft">Save as a draft</button></div>
+      <div class="mn-new-go"><button type="submit" class="rs-pb red wide" data-go="issue">Issue and send</button><button type="submit" class="rs-pb wide" data-go="draft">Save as a draft</button></div>
     </form>`;
   },
   events: {

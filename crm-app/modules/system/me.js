@@ -9,7 +9,7 @@ import { field, readForm, clearErrors, showError, busy, select, checkbox } from 
 import { ago, phone, roleLabel, initials, dateShort } from "../../core/format.js";
 import { APP_VERSION } from "../../version.js";
 import { MODE_LABEL } from "./kit.js";
-import { THEMES, themeChoice, setTheme } from "../../core/nav.js";
+import { THEMES, themeChoice, setTheme, openCustomizeTabs } from "../../core/nav.js";
 
 // The notification settings people see (user.notify keys) and who sees each.
 const NOTIFY = [
@@ -126,7 +126,8 @@ export default {
       </form>
 
       ${u.role !== "tech" ? html`<div class="section-h">Home</div>
-      <ul class="list"><li><a class="row" href="#/today?edit=1">${icon("home")}<span class="who"><span class="nm">Edit Home</span><span class="sub">Pick your cards and their order</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li></ul>` : ""}
+      <ul class="list"><li><a class="row" href="#/today?edit=1">${icon("home")}<span class="who"><span class="nm">Edit Home</span><span class="sub">Pick your cards and their order</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li>
+        <li><button type="button" class="row" data-tabs-btn>${icon("tabbar")}<span class="who"><span class="nm">Customize Tabs</span><span class="sub">The places on your tab bar</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></button></li></ul>` : ""}
 
       <div class="section-h">Appearance</div>
       <div class="card me-theme"><div class="seg-track me-seg" role="radiogroup" aria-label="Appearance">${THEMES.map(([k, l]) => html`<button type="button" role="radio" class="${"seg" + (themeChoice() === k ? " on" : "")}" ${attrs({ "data-theme-set": k, "aria-checked": String(themeChoice() === k) })}>${l}</button>`)}</div>
@@ -177,6 +178,7 @@ export default {
   },
   events: {
     "click [data-theme-set]": (e, b, ctx) => { setTheme(b.dataset.themeSet); ctx.rerender(); },
+    "click [data-tabs-btn]": () => openCustomizeTabs(),
     "submit #me-form": async (e, form, ctx) => {
       e.preventDefault();
       clearErrors(form);

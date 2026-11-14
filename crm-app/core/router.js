@@ -10,7 +10,19 @@
 // module default-exports
 //   { title?, load(params, ctx) → state, render(state, ctx) → html``,
 //     events?: { "click [data-act=x]": (event, el, ctx) => ... },
-//     mount?(viewEl, state, ctx), unmount?(), action?(state, ctx) → { label, run } }
+//     mount?(viewEl, state, ctx), unmount?(), action?(state, ctx) → { label, run },
+//     tools?(state, ctx) → [{ icon, label, run? | href?, data? }],
+//     more?(state, ctx) → [[{ label, icon?, hint?, run? | href?, danger?, disabled?, data? }]],
+//     moreTitle?(state, ctx) → the action sheet's title (else the screen's) }
+//
+// The Rotor-style detail header (Nov 2026, the shared kit): a screen that
+// declares tools() and/or more() gets, beside the round back button, its
+// title centred (17 px) and on the right up to two round icon buttons
+// (tools: a pencil, a share) and a round "..." that opens more()'s groups
+// in the action sheet (core/ui.js actionSheet; more() is asked again on
+// the tap, so the rows see the latest state). action() still draws the
+// one coral button (lists); a screen that declares neither tools nor more
+// keeps the header it always had.
 //
 // Back navigation (home-screen apps on iOS have no browser back): the
 // router keeps its own stack of CRM routes, in step with the hash entries
@@ -28,7 +40,7 @@
 // list keeping its search and scroll and lighting the open row. Under
 // 1000 px (a phone) every screen is the whole view, as always.
 
-import { html, render, delegate, closeTopSheet, toast, sheet, icon } from "./ui.js";
+import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, actionSheet } from "./ui.js";
 
 const routes = [];
 let stack = [];
@@ -168,16 +180,42 @@ function splitOf(path, m) {
 }
 const routeTitle = (route) => (typeof route.title === "function" ? route.title(env.user || {}) : route.title);
 
-function header(title, showBack, act) {
+// A screen's round header buttons (the kit's contract): at most two tools,
+// and whether its "..." has anything in it.
+export function headerKit(mod, state, ctx) {
+  if (!mod || (!mod.tools && !mod.more)) return null;
+  let tools = [];
+  let more = [];
+  try { tools = (mod.tools ? mod.tools(state, ctx) || [] : []).filter(Boolean).slice(0, 2); } catch (e) { tools = []; }
+  try { more = mod.more ? (mod.more(state, ctx) || []) : []; } catch (e) { more = []; }
+  const hasMore = more.some((g) => (Array.isArray(g) ? g : [g]).some(Boolean));
+  const now = () => (ctx && ctx.state !== undefined ? ctx.state : state);
+  const sheetTitle = () => { try { return mod.moreTitle ? mod.moreTitle(now(), ctx) : null; } catch (e) { return null; } };
+  return { tools, hasMore, open: () => { try { return mod.more(now(), ctx) || []; } catch (e) { toast("That menu didn't open. Try again.", { bad: true }); return []; } }, sheetTitle };
+}
+
+function header(title, showBack, act, kit = null) {
+  const top = document.getElementById("top");
   const t = document.getElementById("top-title");
   const b = document.getElementById("top-back");
   const a = document.getElementById("top-act");
-  if (t) t.textContent = title || "Barta CRM";
+  const rs = !!kit && (kit.tools.length > 0 || kit.hasMore);
+  if (top) top.classList.toggle("rs-top", rs);
+  // (a kit screen may have no title: Rotor's lead page shows the name in the page)
+  if (t) t.textContent = title || (rs ? "" : "Barta CRM");
   if (b) b.hidden = !showBack;
   if (a) {
-    render(a, act ? html`<button type="button" class="btn primary" id="top-action">${act.label}</button>` : html``);
+    render(a, html`${act ? html`<button type="button" class="btn primary" id="top-action">${act.label}</button>` : ""}${rs ? html`${kit.tools.map((x, i) => rnd(x.icon || "edit", x.label, { href: x.href, ext: x.ext, data: { ...(x.data || {}), "top-tool": String(i) } }))}${kit.hasMore ? rnd("more", "More", { id: "top-more", popup: true, data: { "top-more": true } }) : ""}` : ""}`);
     const btn = document.getElementById("top-action");
     if (btn && act) btn.addEventListener("click", () => act.run());
+    if (rs) {
+      for (const el of a.querySelectorAll("[data-top-tool]")) {
+        const x = kit.tools[Number(el.dataset.topTool)];
+        if (x && x.run) el.addEventListener("click", (e) => { e.preventDefault(); x.run(e); });
+      }
+      const m = document.getElementById("top-more");
+      if (m) m.addEventListener("click", () => actionSheet(kit.sheetTitle() || title || "More", kit.open()));
+    }
   }
   document.title = (title ? title + " · " : "") + "Barta CRM";
 }
@@ -252,7 +290,7 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false }
   const paint = () => {
     el.classList.toggle("flush", !!mod.flush);
     render(el, mod.render(ctx.state, ctx));
-    if (focus || current === rec) header(typeof mod.title === "function" ? mod.title(ctx.state, ctx) : title, canGoBack(), mod.action ? mod.action(ctx.state, ctx) : null);
+    if (focus || current === rec) header(typeof mod.title === "function" ? mod.title(ctx.state, ctx) : title, canGoBack(), mod.action ? mod.action(ctx.state, ctx) : null, headerKit(mod, ctx.state, ctx));
     if (mod.mount) mod.mount(el, ctx.state, ctx);
   };
   paint();
@@ -317,7 +355,7 @@ async function show(path, { keepScroll = false } = {}) {
     anchor = rec;
   } else if (path === listPath) {
     current = anchor;
-    header(typeof anchor.mod?.title === "function" ? anchor.mod.title(anchor.state, anchor.ctx) : (anchor.mod && anchor.mod.title) || routeTitle(anchor.route), canGoBack(), anchor.mod && anchor.mod.action ? anchor.mod.action(anchor.state, anchor.ctx) : null);
+    header(typeof anchor.mod?.title === "function" ? anchor.mod.title(anchor.state, anchor.ctx) : (anchor.mod && anchor.mod.title) || routeTitle(anchor.route), canGoBack(), anchor.mod && anchor.mod.action ? anchor.mod.action(anchor.state, anchor.ctx) : null, headerKit(anchor.mod, anchor.state, anchor.ctx));
     env.onRoute(path);
   }
   if (path === listPath) {

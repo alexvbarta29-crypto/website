@@ -75,19 +75,35 @@ for (const device of ["iphone13", "iphonese"]) {
 
       await goTo(f, `/plans/${seeded.plans.active}`);
       assert.equal(await title(f), "Quarterly plan");
-      const text = await f.textContent("#view");
-      assert.match(text, /Signed · Harper Planfolk \(in person\)/);
-      assert.match(text, /Book/, "the first visit's job to book");
+      // Service (Rotor's plan page): details, pricing, value, billing
+      let text = await f.textContent("#view");
+      assert.match(text, /Frequency[\s\S]*Quarterly/);
       assert.match(text, /\$195\.00/, "$295 less the $100 plan discount");
+      assert.match(text, /Auto-Pay/);
       assert.deepEqual(await screenProblems(f), [], "a plan passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `plans-plan-${device}`);
-      await f.click("[data-act=cancel]");
+      await f.click("[data-seg=plan][data-key=agree]");
+      await f.waitForSelector(".pl-ag", { timeout: 5000 });
+      assert.match(await f.textContent("#view"), /Signed[\s\S]*Harper Planfolk \(in person\)/);
+      assert.deepEqual(await screenProblems(f), [], "Agree passes the phone checks");
+      await f.click("[data-seg=plan][data-key=schedule]");
+      await f.waitForSelector(".pl-job", { timeout: 5000 });
+      text = await f.textContent("#view");
+      assert.match(text, /Pending jobs[\s\S]*Schedule/, "the first visit's job to book");
+      assert.deepEqual(await screenProblems(f), [], "Schedule passes the phone checks");
+      await shot(page, `plans-plan-schedule-${device}`);
+      await f.click("#top-more");
+      await sheetUp(f, /Quarterly plan/);
+      assert.deepEqual(await screenProblems(f), [], "the ... sheet passes the phone checks");
+      await f.click(".sheet.on [data-act=cancel]");
       await sheetUp(f, /Cancel the plan/);
       assert.match(await f.textContent(".sheet.on"), /Ends[\s\S]*days' notice in the first term/);
       assert.deepEqual(await screenProblems(f), [], "the cancel calculator passes the phone checks");
       await shot(page, `plans-cancel-${device}`);
       await closeSheet(f);
+      await f.click("[data-seg=plan][data-key=agree]");
+      await f.waitForSelector(".pl-ag", { timeout: 5000 });
       await f.click("[data-read]");
       await sheetUp(f, /Quarterly plan agreement/);
       assert.match(await f.textContent(".sheet.on"), /Signed .* by Harper Planfolk/);
@@ -105,7 +121,9 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForFunction(() => /^#\/plans\/pl_[0-9a-z]{20}$/.test(location.hash), null, { timeout: 15000 });
       await settled(f);
       assert.match(await f.textContent("#view"), /Waiting for the agreement to sign/);
-      assert.ok(await f.$("[data-act=send-agreement]"), "Send to sign");
+      await f.click("[data-seg=plan][data-key=agree]");
+      await f.waitForSelector(".pl-ag, [data-act=send-agreement]", { timeout: 5000 });
+      assert.ok(await f.$("[data-act=send-agreement]"), "Generate New Agreement");
 
       await goTo(f, "/plans/due");
       assert.equal(await title(f), "Plan visits to book");

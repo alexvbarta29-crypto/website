@@ -50,14 +50,14 @@ for (const device of ["iphone13", "iphonese"]) {
   test(`money (${device}): Invoices, an invoice, a check recorded, the card charged, a refund, a new invoice, Payments, Autopay, the contact's Money tab, Settings`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
-      // the Menu has its Money section
+      // the Menu (the drawer's rows as a page) has its Financials list
       await goTo(f, "/menu");
-      assert.match(await f.textContent("#view"), /Money[\s\S]*Invoices[\s\S]*Payments[\s\S]*Autopay/);
+      assert.match(await f.textContent("#view"), /Financials[\s\S]*Invoices[\s\S]*Payments[\s\S]*Autopay/);
 
       await goTo(f, "/invoices");
       assert.equal(await title(f), "Invoices");
       const list = await f.textContent("#view");
-      assert.match(list, /waiting to be paid/);
+      assert.match(list, /Waiting[\s\S]*Past due[\s\S]*Paid this month/, "the stat card");
       assert.match(list, /Marlow Moneyfolk/);
       assert.match(list, /Indigo Moneyfolk[\s\S]*Overdue/);
       assert.match(list, /Robin Moneyfolk/, "Rotor's own open invoice is listed");
@@ -77,12 +77,22 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.fill("[data-q]", "indigo");
       await f.waitForFunction(() => !/Marlow Moneyfolk/.test(document.getElementById("view").textContent), null, { timeout: 5000 });
       await f.fill("[data-q]", "");
+      await viewHas(f, /Marlow Moneyfolk/);
 
       // one invoice: record a check for part of it
       const fresh = (await post(p, "/invoices", { contact_id: M.contacts.open, lines: [{ description: "Exterior window cleaning", unit_cents: 29500 }], issue: true, use_credit: false })).data.invoice;
       await goTo(f, `/invoices/${fresh.id}`);
-      assert.match(await title(f), /^SINV-\d{4}$/);
+      assert.match(await title(f), /^Invoice SINV-\d{4}$/);
       let text = await f.textContent("#view");
+      assert.match(text, /Balance due/);
+      assert.ok(await f.$(".mn-actrow [data-act=send]") && await f.$(".mn-actrow [data-act=record]"), "Send and Record under the top card");
+      assert.ok(await f.$("[data-act=card-link]"), "Add Payment Method (no card on file)");
+      await f.click("#top-more");
+      await sheetUp(f, /Invoice SINV-/);
+      for (const hook of ["send", "card-link", "record", "void", "write-off"]) assert.ok(await f.$(`.sheet.on [data-act=${hook}]`), `... has ${hook}`);
+      assert.deepEqual(await screenProblems(f), [], "the ... sheet passes the phone checks");
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
       assert.match(text, /Marlow Moneyfolk/);
       assert.match(text, /\$295\.00/);
       assert.match(text, /No card on file/);
@@ -356,7 +366,7 @@ test("money on a desk: the list with the invoice beside it", async () => {
     await goTo(f, "/invoices");
     await f.click(`a[href="#/invoices/${M.invoices.overdue}"]`);
     await settled(f, { hash: `#/invoices/${M.invoices.overdue}` });
-    const both = await f.evaluate(() => { const v = document.getElementById("view"), pn = document.getElementById("pane"); return { list: /waiting to be paid/.test(v.textContent), pane: !!pn && !pn.hidden && /Gutter cleaning/.test(pn.textContent) }; });
+    const both = await f.evaluate(() => { const v = document.getElementById("view"), pn = document.getElementById("pane"); return { list: /Past due/.test(v.textContent), pane: !!pn && !pn.hidden && /Gutter cleaning/.test(pn.textContent) }; });
     assert.deepEqual(both, { list: true, pane: true }, "the list stays, the invoice opens beside it");
     assert.deepEqual(await screenProblems(f), []);
     await shot(p.page, "money-desk-split");

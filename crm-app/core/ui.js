@@ -16,6 +16,16 @@
 // Also: raw() (trusted static markup such as icons), render(), delegate(),
 // toast(), sheet() (✕ button, swipe down, Escape), confirmSheet(),
 // openExternal(), attrs() and the icon set.
+//
+// And the Rotor-style kit (Nov 2026, at the end of this file; the API for
+// the screen tracks is scratchpad simplify/kit-api.md): rnd(), statusPill(),
+// pillBtn(), seg(), cardHead(), sectionLabel(), statGrid(), contactRows(),
+// personCard(), addressCard(), lineItems(), notesBox(), disclosure(),
+// formRow(), toggle(), quickRow(), actionSheet() and sheetPage(). Each
+// returns html`` (actionSheet and sheetPage open a sheet); what a tap does is
+// the screen's own events on the data-* the helper puts there.
+
+import { money as fmtMoney } from "./format.js";
 
 const SAFE = Symbol("crm-safe-html");
 const ATTRS = Symbol("crm-attrs");
@@ -274,17 +284,19 @@ export function toast(message, { bad = false, ms = 2600 } = {}) {
 
 const open = [];
 
-// sheet({ title, body: html``, onClose, events }) → { el, body, close }
-export function sheet({ title = "", body = raw(""), onClose, events } = {}) {
+// sheet({ title, body: html``, onClose, events, className, headEnd }) → { el, body, close }
+// (className: extra classes on the sheet, "rs-actions" or "rs-sheetpage";
+// headEnd: html`` between the title and the ✕, a Done pill)
+export function sheet({ title = "", body = raw(""), onClose, events, className = "", headEnd = null } = {}) {
   const layer = document.getElementById("layer") || document.body;
   const back = document.createElement("div");
   back.className = "backdrop";
   const el = document.createElement("section");
-  el.className = "sheet";
+  el.className = "sheet" + (className ? " " + className : "");
   el.setAttribute("role", "dialog");
   el.setAttribute("aria-modal", "true");
   el.tabIndex = -1;
-  render(el, html`<div class="grab" aria-hidden="true"></div><div class="sheet-head"><h2>${title}</h2><button type="button" class="sheet-x" data-sheet-x aria-label="Close">✕</button></div><div class="sheet-body"></div>`);
+  render(el, html`<div class="grab" aria-hidden="true"></div><div class="sheet-head"><h2>${title}</h2>${headEnd || ""}<button type="button" class="sheet-x" data-sheet-x aria-label="Close">✕</button></div><div class="sheet-body"></div>`);
   const bodyEl = el.querySelector(".sheet-body");
   render(bodyEl, body);
   layer.appendChild(back);
@@ -436,5 +448,333 @@ export const ICONS = {
   undo: svg('<path d="M9 14 4.5 9.5 9 5"/><path d="M4.5 9.5H15a5 5 0 0 1 0 10h-3"/>'),
   route: svg('<path d="M12 2.8 21.2 12 12 21.2 2.8 12z"/><path d="M9.5 14.5v-2.5a1.5 1.5 0 0 1 1.5-1.5h4M13 8.5l2 2-2 2"/>'),
   people: svg('<circle cx="8" cy="8.5" r="3"/><circle cx="16" cy="8.5" r="3"/><path d="M2.5 19c.5-3 2.8-4.6 5.5-4.6 1.6 0 3 .6 4 1.6 1-1 2.4-1.6 4-1.6 2.7 0 5 1.6 5.5 4.6"/>'),
+  // the Rotor-style kit (Nov 2026): the pencil, directions, a place, help, a drag handle and the rest
+  edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
+  nav: svg('<path d="M20 4 3.5 11l7 2.5L13 20.5z"/>'),
+  pin: svg('<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>'),
+  help: svg('<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.1-2.4 3.6M12 17.2v.01"/>'),
+  drag: svg('<path d="M5 9h14M5 15h14"/>'),
+  trash: svg('<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>'),
+  flag: svg('<path d="M5 21V4h11l-2 4 2 4H5"/>'),
+  minus: svg('<path d="M5 12h14"/>'),
+  user: svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
+  merge: svg('<path d="M6 4v5a4 4 0 0 0 4 4h8M14 9l4 4-4 4"/>'),
+  cal: svg('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+  camera: svg('<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.3l1.5-2.5h5.4L16.2 7h2.3A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>'),
+  qr: svg('<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM14 20h1M20 14v1"/>'),
 };
 export const icon = (name) => ICONS[name] || raw("");
+
+
+// ------------------------------------------------------------ the Rotor-style kit (Nov 2026)
+//
+// One look for every phone screen (styles/crm.css "the Rotor-style kit"):
+// cards, round icon buttons, segmented tabs, pills, a stat card, contact
+// rows with round actions, line items, a notes box, the "..." action sheet
+// and full-height sheet pages. Markup only: a helper never takes a
+// function, a tap is the screen's own events on the data-* it asks for
+// (`data: { pick: "owner" }` puts data-pick="owner" there). Every control
+// is a 44 px tap target (a 38 px round button sits in a 44 px box).
+
+// { pick: "owner", "data-x": 1, off: false } → { "data-pick": "owner", "data-x": "1" }
+export function dataOf(data) {
+  const o = {};
+  for (const [k, v] of Object.entries(data || {})) {
+    if (v === false || v === null || v === undefined) continue;
+    o[k.startsWith("data-") ? k : "data-" + k] = v === true ? "" : String(v);
+  }
+  return o;
+}
+const kitMoney = (v) => (typeof v === "number" || typeof v === "bigint" ? fmtMoney(v) : v ?? "");
+const initialsOf = (name) => String(name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
+const asLink = (v) => (typeof v === "string" ? { href: v } : v || null);
+const external = (u) => !/^(#|tel:|sms:|mailto:)/i.test(String(u || ""));
+
+// A round icon button: rnd("edit", "Edit lead", { tone: "grey", sm: true, href | ext | data, badge }).
+// tone: "" (white/dark circle with a soft shadow), "grey" (the inner fill), "red" (the call button),
+// "coral" (the old coral +), "solid" (black in light, white in dark); sm: a 38 px circle in a 44 px box.
+export function rnd(name, label, { tone = "", sm = false, href = null, ext = null, data = null, badge = 0, pressed, expanded, popup = false, disabled = false, id = null } = {}) {
+  const cls = ["rnd", tone === "solid" ? "on" : tone, sm ? "sm" : ""].filter(Boolean).join(" ");
+  const a = {
+    class: cls, id, "aria-label": label, ...dataOf(data),
+    "aria-pressed": pressed === undefined ? null : String(!!pressed),
+    "aria-expanded": expanded === undefined ? null : String(!!expanded),
+    "aria-haspopup": popup ? "dialog" : null,
+  };
+  const inner = html`${icon(name)}${badge ? html`<span class="badge">${badge > 99 ? "99+" : String(badge)}</span>` : ""}`;
+  if (ext) return html`<a ${openExternal(ext)} ${attrs(a)}>${inner}</a>`;
+  if (href) return html`<a ${attrs({ href, ...a })}>${inner}</a>`;
+  return html`<button type="button" ${attrs({ ...a, disabled })}>${inner}</button>`;
+}
+
+// Status pills (Rotor's colours): the tone from the word, or given.
+export const PILL_TONES = Object.freeze({
+  booked: "blue", sent: "blue", scheduled: "blue", viewed: "blue", open: "blue", invoiced: "blue", quoted: "blue", new: "blue",
+  active: "green", paid: "green", "paid in full": "green", signed: "green", approved: "green", done: "green", completed: "green", won: "green",
+  "to book": "amber", pending: "amber", due: "amber", "part paid": "amber", "not invoiced": "amber", paused: "amber", "not signed": "amber",
+  overdue: "red", lost: "red", declined: "red", cancelled: "red", void: "red", expired: "red",
+  draft: "grey", archived: "grey", test: "grey",
+  low: "grey", medium: "orange", high: "orange", "high priority": "orange",
+});
+export const pillTone = (label) => PILL_TONES[String(label || "").trim().toLowerCase()] || "grey";
+const PILL_CLASS = { grey: "", orange: "fill-orange", solid: "ink", white: "wh", "fill-green": "fill-green", blue: "blue", green: "green", amber: "amber", red: "red" };
+// statusPill("Booked") → a blue pill; statusPill("Olive Owner", "white"); tones: blue green amber red grey orange solid white fill-green
+export function statusPill(label, tone = pillTone(label), { icon: ic = null } = {}) {
+  const c = PILL_CLASS[tone] ?? "";
+  return html`<span class="${"pill" + (c ? " " + c : "")}">${ic ? icon(ic) : ""}${label}</span>`;
+}
+// A pill that is also a button (the owner pill: pick an owner): a 44 px box around the 24 px pill.
+export function pillTap(label, { tone = "white", icon: ic = null, href = null, data = null, aria = null } = {}) {
+  const inner = statusPill(label, tone, { icon: ic });
+  const a = { class: "rs-pilltap", "aria-label": aria, ...dataOf(data) };
+  return href ? html`<a ${attrs({ href, ...a })}>${inner}</a>` : html`<button type="button" ${attrs(a)}>${inner}</button>`;
+}
+
+// A pill-shaped button: pillBtn("Visit", { icon: "plus", tone: "solid" }) ("+ Visit"); tone "grey"
+// (default: "+ Item", "Create Invoice"), "solid" (black in light), "red"; wide: the whole row.
+export function pillBtn(label, { icon: ic = null, tone = "grey", wide = false, href = null, ext = null, data = null, disabled = false, aria = null } = {}) {
+  const a = { class: "rs-pb" + (tone && tone !== "grey" ? " " + tone : "") + (wide ? " wide" : ""), "aria-label": aria, ...dataOf(data) };
+  const inner = html`${ic ? icon(ic) : ""}<span>${label}</span>`;
+  if (ext) return html`<a ${openExternal(ext)} ${attrs(a)}>${inner}</a>`;
+  if (href) return html`<a ${attrs({ href, ...a })}>${inner}</a>`;
+  return html`<button type="button" ${attrs({ ...a, disabled })}>${inner}</button>`;
+}
+
+// Segmented tabs: seg([["details", "Details"], ["activity", "Activity"]], "details", { name: "tab" }).
+// Items may be { key, label, count?, href? } (an href makes it a link, a route's own tabs). A tap is
+// the screen's "click [data-seg=tab]" (el.dataset.key); arrow keys move along (ui.js, below).
+// black: the plan editor's black "on" segment.
+export function seg(items, on, { name = "tab", black = false, label = "" } = {}) {
+  const list = (items || []).filter(Boolean).map((x) => (Array.isArray(x) ? { key: x[0], label: x[1] } : x));
+  return html`<div class="${"rs-seg" + (black ? " black" : "")}" role="tablist" ${attrs({ "aria-label": label || null })}>${list.map((it) => {
+    const sel = String(it.key) === String(on);
+    const a = { class: "rs-seg-b", role: "tab", "aria-selected": sel ? "true" : "false", tabindex: sel ? "0" : "-1", "data-seg": name, "data-key": String(it.key) };
+    const inner = html`<span class="rs-seg-t">${it.label}</span>${it.count !== undefined && it.count !== null ? html`<span class="n">${String(it.count)}</span>` : ""}`;
+    return it.href ? html`<a ${attrs({ href: it.href, ...a })}>${inner}</a>` : html`<button type="button" ${attrs(a)}>${inner}</button>`;
+  })}</div>`;
+}
+
+// A card's head: title left; right an optional count, a grey round pencil and a grey round +.
+// cardHead("Quotes", { add: { label: "New quote", href: "#/quotes/new?contact=ct_..." }, count: "2 quotes" })
+export function cardHead(title, { add = null, edit = null, count = null } = {}) {
+  const btn = (name, o, fallback) => rnd(name, o.label || fallback, { tone: "grey", sm: true, href: o.href, ext: o.ext, data: o.data, popup: !!o.popup });
+  return html`<div class="rs-ch"><h3>${title}</h3>${count !== null && count !== undefined && count !== "" ? html`<span class="rs-ch-n">${String(count)}</span>` : ""}<span class="rs-ch-end">${edit ? btn("edit", edit, "Edit") : ""}${add ? btn("plus", add, "Add") : ""}</span></div>`;
+}
+
+// The small caps label above a card ("CONTACT", "BILLING").
+export const sectionLabel = (text) => html`<h2 class="rs-label">${text}</h2>`;
+
+// The stat card: 3 columns, a caps label over the value, wrapping to more rows.
+// statGrid([{ label: "Stage", value: "Quoted", href? | data?, tone?: "red"|"green", wide?: true }])
+export function statGrid(items, { label = "" } = {}) {
+  return html`<div class="rs-card rs-stat" ${attrs({ role: "group", "aria-label": label || null })}>${(items || []).filter(Boolean).map((c) => {
+    const v = c.value === undefined || c.value === null || c.value === "" ? "-" : c.value;
+    const inner = html`<span class="rs-stat-l">${c.label}</span><span class="${"rs-stat-v" + (c.tone ? " " + c.tone : "")}">${v}</span>`;
+    const cls = "rs-stat-c" + (c.wide ? " wide" : "");
+    if (c.href) return html`<a ${attrs({ class: cls, href: c.href, ...dataOf(c.data) })}>${inner}</a>`;
+    if (c.data) return html`<button type="button" ${attrs({ class: cls, ...dataOf(c.data) })}>${inner}</button>`;
+    return html`<div class="${cls}">${inner}</div>`;
+  })}</div>`;
+}
+
+// Contact rows: a circle icon, a caps label and the value, then round buttons.
+// contactRows([{ icon: "call", label: "Mobile", value: "(763) 555-0100", href?: "tel:...",
+//   actions: [{ icon: "chat", label: "Text", href: "sms:..." }, { icon: "call", label: "Call", tone: "red", href: "tel:..." }] }])
+// A row's value is a link (href, or ext for a page that leaves), a button (data) or plain text.
+export function contactRows(rows, { card = true } = {}) {
+  const one = (r) => {
+    const v = html`<span class="rs-cl">${r.label}</span><span class="rs-cval">${r.value}</span>${r.sub ? html`<span class="rs-csub">${r.sub}</span>` : ""}`;
+    const val = r.ext ? html`<a class="rs-cv" ${openExternal(r.ext)}>${v}</a>`
+      : r.href ? html`<a ${attrs({ class: "rs-cv", href: r.href, ...dataOf(r.data) })}>${v}</a>`
+        : r.data ? html`<button type="button" ${attrs({ class: "rs-cv", ...dataOf(r.data) })}>${v}</button>`
+          : html`<span class="rs-cv">${v}</span>`;
+    const acts = (r.actions || []).filter(Boolean).map((x) => rnd(x.icon, x.label, { tone: x.tone ?? "grey", sm: true, href: x.href, ext: x.ext, data: x.data, popup: !!x.popup }));
+    return html`<li class="rs-crow"><span class="rs-ci" aria-hidden="true">${icon(r.icon || "doc")}</span>${val}${acts.length ? html`<span class="rs-acts">${acts}</span>` : ""}</li>`;
+  };
+  return html`<ul class="${card ? "rs-card rs-crows" : "rs-crows"}">${(rows || []).filter(Boolean).map(one)}</ul>`;
+}
+
+// The person card (job, visit, quote, invoice): initials, name and phone (tap: open the contact),
+// a red round call and a grey round message. call/text: a tel:/sms: link, or { href | data }.
+export function personCard({ name = "", sub = "", href = null, initials = null, call = null, text = null, actions = [] } = {}) {
+  const who = html`<span class="rs-av" aria-hidden="true">${initials || initialsOf(name)}</span><span class="rs-pw"><span class="rs-pn">${name}</span>${sub ? html`<span class="rs-ps">${sub}</span>` : ""}</span>`;
+  const c = asLink(call);
+  const t = asLink(text);
+  const more = (actions || []).filter(Boolean).map((x) => rnd(x.icon, x.label, { tone: x.tone ?? "grey", sm: true, href: x.href, ext: x.ext, data: x.data }));
+  return html`<div class="rs-card rs-person">${href ? html`<a ${attrs({ class: "rs-pl", href })}>${who}</a>` : html`<span class="rs-pl">${who}</span>`}<span class="rs-acts">${c ? rnd("call", "Call " + name, { tone: "red", sm: true, href: c.href, data: c.data }) : ""}${t ? rnd("chat", "Text " + name, { tone: "grey", sm: true, href: t.href, data: t.data }) : ""}${more}</span></div>`;
+}
+
+// The address card: a pin circle, street over the town line (+ gate code), a round navigate
+// (nav: a maps:/https: link that leaves, or { href | data }) and a round pencil (edit: { label, href | data }).
+export function addressCard({ line1 = "", line2 = "", href = null, nav = null, edit = null } = {}) {
+  const body = html`<span class="rs-ci" aria-hidden="true">${icon("pin")}</span><span class="rs-pw"><span class="rs-pn">${line1}</span>${line2 ? html`<span class="rs-ps">${line2}</span>` : ""}</span>`;
+  const n = asLink(nav);
+  const navBtn = !n ? "" : n.href && external(n.href) ? rnd("nav", "Directions", { tone: "grey", sm: true, ext: n.href }) : rnd("nav", "Directions", { tone: "grey", sm: true, href: n.href, data: n.data });
+  const e = asLink(edit);
+  return html`<div class="rs-card rs-addr">${href ? html`<a ${attrs({ class: "rs-pl", href })}>${body}</a>` : html`<span class="rs-pl">${body}</span>`}<span class="rs-acts">${navBtn}${e ? rnd("edit", e.label || "Edit the address", { tone: "grey", sm: true, href: e.href, data: e.data }) : ""}</span></div>`;
+}
+
+// Line items (job, quote, invoice, plan): each line's title with "2 × $5.00" under it and the
+// amount right; a grey "+ Item" pill; Subtotal; discounts; "+ Add discount"; Total; "Paid in full";
+// a wide grey pill (Create Invoice). Money: integer cents (formatted here) or a ready string.
+// lineItems([{ title, qty, unit, amount, sub?, href? | data? }], { addItem: { label?, href | data },
+//   addDiscount, subtotal, discounts: [{ label, amount, href? | data? }], total, totalLabel, paid: true | "Paid Jun 24",
+//   cta: { label, href | data, tone? }, empty: "No lines yet" })
+export function lineItems(lines, { addItem = null, addDiscount = null, subtotal = null, discounts = [], total = null, totalLabel = "Total", paid = false, cta = null, empty = "No lines yet." } = {}) {
+  const list = (lines || []).filter(Boolean);
+  const line = (l) => {
+    const sub = l.sub !== undefined ? l.sub : l.qty !== undefined && l.unit !== undefined ? `${l.qty} × ${kitMoney(l.unit)}` : "";
+    const inner = html`<span class="rs-li-a"><span class="rs-li-t">${l.title}</span>${sub ? html`<span class="rs-li-s">${sub}</span>` : ""}</span><span class="rs-li-m num">${kitMoney(l.amount)}</span>`;
+    if (l.href) return html`<a ${attrs({ class: "rs-li", href: l.href, ...dataOf(l.data) })}>${inner}</a>`;
+    if (l.data) return html`<button type="button" ${attrs({ class: "rs-li", ...dataOf(l.data) })}>${inner}</button>`;
+    return html`<div class="rs-li">${inner}</div>`;
+  };
+  const add = (o, label) => { const x = asLink(o); return x ? pillBtn(x.label || label, { icon: "plus", href: x.href, data: x.data }) : ""; };
+  const sums = [];
+  if (subtotal !== null && subtotal !== undefined) sums.push(html`<div class="rs-li-sum"><span>Subtotal</span><span class="num">${kitMoney(subtotal)}</span></div>`);
+  // a discount with href | data is a 44 px button (the job page: tap to change or remove it)
+  for (const d of (discounts || []).filter(Boolean)) {
+    const inner = html`<span>${d.label}</span><span class="num">${kitMoney(d.amount)}</span>`;
+    sums.push(d.href ? html`<a ${attrs({ class: "rs-li-sum tap", href: d.href, ...dataOf(d.data) })}>${inner}</a>`
+      : d.data ? html`<button type="button" ${attrs({ class: "rs-li-sum tap", ...dataOf(d.data) })}>${inner}</button>` : html`<div class="rs-li-sum">${inner}</div>`);
+  }
+  const c = asLink(cta);
+  return html`<div class="rs-lines">${list.length ? html`<ul class="rs-li-list">${list.map((l) => html`<li>${line(l)}</li>`)}</ul>` : html`<p class="rs-empty">${empty}</p>`}
+    ${addItem ? html`<div class="rs-li-add">${add(addItem, "Item")}</div>` : ""}${sums}
+    ${addDiscount ? html`<div class="rs-li-add">${add(addDiscount, "Add discount")}</div>` : ""}
+    ${total !== null && total !== undefined ? html`<div class="rs-li-tot"><span>${totalLabel}</span><span class="${"num" + (paid ? " paid" : "")}">${kitMoney(total)}</span></div>` : ""}
+    ${paid ? html`<p class="rs-paid">${paid === true ? "Paid in full" : paid}</p>` : ""}
+    ${c ? html`<div class="rs-li-cta">${pillBtn(c.label, { wide: true, tone: c.tone || "grey", href: c.href, data: c.data, icon: c.icon || null })}</div>` : ""}</div>`;
+}
+
+// The notes box: a grey inner box; the screen saves on "change [data-notes=crew]" (a textarea's
+// change fires when it loses focus with new text).
+export function notesBox(text, { name = "notes", label = "Notes", placeholder = "Add notes...", readonly = false, rows = 3 } = {}) {
+  return html`<textarea class="rs-notes" ${attrs({ "data-notes": name, "aria-label": label, placeholder, readonly, rows: String(rows) })}>${text || ""}</textarea>`;
+}
+
+// A full-width card row with a chevron: disclosure("Sold by", { value: "Olive Owner", href }) → "Sold by · Olive Owner ›".
+export function disclosure(label, { value = null, href = null, data = null, sub = null } = {}) {
+  const inner = html`<span class="rs-dl"><span>${label}${value !== null && value !== undefined && value !== "" ? html` · <b>${value}</b>` : ""}</span>${sub ? html`<span class="rs-ds">${sub}</span>` : ""}</span><span class="chev" aria-hidden="true"></span>`;
+  if (href) return html`<a ${attrs({ class: "rs-card rs-disc", href, ...dataOf(data) })}>${inner}</a>`;
+  return html`<button type="button" ${attrs({ class: "rs-card rs-disc", ...dataOf(data) })}>${inner}</button>`;
+}
+
+// A form row (editors): label left (40%), the control right. formRows([...]) is the card they sit in.
+export const formRow = (label, control, { hint = null } = {}) => html`<label class="rs-frow"><span class="rs-fl">${label}${hint ? html`<small>${hint}</small>` : ""}</span><span class="rs-fc">${control}</span></label>`;
+export const formRows = (rows) => html`<div class="rs-card rs-frows">${(rows || []).filter(Boolean)}</div>`;
+// An on/off switch (red when on inside a form row): toggle(on, { data: { autopay: "" }, label: "Auto-Pay" }).
+export const toggle = (on, { data = null, label = null, disabled = false } = {}) => html`<button type="button" ${attrs({ class: "switch", role: "switch", "aria-checked": on ? "true" : "false", "aria-label": label, disabled, ...dataOf(data) })}></button>`;
+
+// The labelled quick row (visit: Call · Navigate · Photos · Checklist; invoice: QR · Record · Card):
+// 56 px round buttons with a label under each and an optional count badge.
+// aria: the full name when the short label alone would be vague ("QR" → "Show QR to pay").
+export function quickRow(items) {
+  return html`<div class="rs-qrow">${(items || []).filter(Boolean).map((q) => {
+    const inner = html`<span class="rs-q-c">${icon(q.icon)}${q.badge ? html`<span class="badge">${String(q.badge)}</span>` : ""}</span><span class="rs-q-l">${q.label}</span>`;
+    const a = { class: "rs-q" + (q.tone ? " " + q.tone : ""), "aria-label": q.aria || null, ...dataOf(q.data) };
+    if (q.ext) return html`<a ${openExternal(q.ext)} ${attrs(a)}>${inner}</a>`;
+    if (q.href) return html`<a ${attrs({ href: q.href, ...a })}>${inner}</a>`;
+    return html`<button type="button" ${attrs({ ...a, disabled: !!q.disabled })}>${inner}</button>`;
+  })}</div>`;
+}
+
+// The "..." action sheet: actionSheet("Job S-000001", [[row, row], [row]]) → the sheet.
+// A row: { label, icon?, hint?, run?() | href?, danger?, disabled?, data? } (data: the old data-*
+// hook, kept on the row). Falsy rows are skipped (`cond && {...}`); red rows go last, in a group
+// of their own. A tap closes the sheet, then runs run() (or follows href).
+export function actionSheet(title, groups = [], { onClose } = {}) {
+  const gs = (groups || []).map((g) => (Array.isArray(g) ? g : [g]).filter(Boolean));
+  const calm = gs.map((g) => g.filter((r) => !r.danger)).filter((g) => g.length);
+  const red = gs.flat().filter((r) => r.danger);
+  const all = red.length ? [...calm, red] : calm;
+  const flat = all.flat();
+  let n = 0;
+  const row = (r) => {
+    const i = n++;
+    const inner = html`<span class="rs-act-ic">${icon(r.icon || "chevright")}</span><span class="rs-act-l">${r.label}</span>${r.hint ? html`<span class="rs-act-h">${r.hint}</span>` : ""}`;
+    const a = { class: "rs-act" + (r.danger ? " danger" : ""), "data-rs-i": String(i), ...dataOf(r.data) };
+    if (r.href && !r.disabled) return html`<a ${attrs({ href: r.href, ...a })}>${inner}</a>`;
+    return html`<button type="button" ${attrs({ ...a, disabled: !!r.disabled })}>${inner}</button>`;
+  };
+  const body = flat.length ? html`${all.map((g) => html`<ul class="rs-act-g">${g.map((r) => html`<li>${row(r)}</li>`)}</ul>`)}` : html`<p class="rs-empty">Nothing to do here.</p>`;
+  const s = sheet({
+    title, body, className: "rs-actions", onClose,
+    events: {
+      "click [data-rs-i]": (e, el) => {
+        const r = flat[Number(el.dataset.rsI)];
+        if (!r || r.disabled) return;
+        s.close();
+        if (r.run) { e.preventDefault(); r.run(e); }
+      },
+    },
+  });
+  return s;
+}
+
+// A full-height sheet page (plan editor, quote editor, Customize Tabs): grab bar, title, a red
+// Done/Save pill, a segmented control on top. panes: { key: html`` } are all drawn once and shown
+// one at a time (form fields keep what was typed across tabs); body: html`` or (key) => html``
+// for a page without panes. done.run(page, key) → false keeps it open (a problem to fix).
+// events: delegate() events on the sheet, called (event, el, page).
+// → page: { el, body, key, show(key), set(html), close() }
+export function sheetPage({ title = "", seg: sg = null, panes = null, body = null, done = null, events = {}, onClose } = {}) {
+  let key = sg ? sg.on : null;
+  const drawBody = () => (typeof body === "function" ? body(key) : body || raw(""));
+  const draw = () => html`${sg ? seg(sg.items, key, { name: "sheet", black: !!sg.black, label: sg.label || title }) : ""}${panes
+    ? Object.entries(panes).map(([k, v]) => html`<div class="rs-sp-pane" ${attrs({ "data-pane": k, hidden: sg && k !== String(key) })}>${v}</div>`)
+    : html`<div class="rs-sp-pane">${drawBody()}</div>`}`;
+  let page = null;
+  const wrapped = {};
+  for (const [k, fn] of Object.entries(events || {})) wrapped[k] = (e, el) => fn(e, el, page);
+  const s = sheet({
+    title, className: "rs-sheetpage", onClose,
+    headEnd: done ? html`<button type="button" class="rs-done" data-sheet-done>${done.label || "Done"}</button>` : null,
+    events: {
+      ...wrapped,
+      "click [data-seg=sheet]": (e, el) => { page.show(el.dataset.key); },
+      "click [data-sheet-done]": async (e, el) => {
+        if (el.disabled) return;
+        el.disabled = true;
+        let ok;
+        try { ok = done && done.run ? await done.run(page, key) : true; } catch (err) { ok = false; toast((err && err.message) || "That didn't save.", { bad: true }); }
+        el.disabled = false;
+        if (ok !== false) s.close();
+      },
+    },
+  });
+  page = {
+    el: s.el, body: s.body, close: s.close, set: s.set,
+    get key() { return key; },
+    show(k) {
+      key = k;
+      if (panes) {
+        for (const b of s.el.querySelectorAll("[data-seg=sheet]")) { const on = b.dataset.key === String(k); b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1; }
+        for (const p of s.body.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== String(k);
+      } else s.set(draw());
+      if (sg && sg.onChange) sg.onChange(k, page);
+    },
+  };
+  s.set(draw());
+  return page;
+}
+
+// Arrow keys along segmented tabs (Left/Right, Home/End): the next one is picked and focused.
+if (typeof document !== "undefined") {
+  document.addEventListener("keydown", (e) => {
+    const b = e.target && e.target.closest ? e.target.closest(".rs-seg-b") : null;
+    if (!b || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    const all = [...b.parentElement.querySelectorAll(".rs-seg-b")];
+    const i = all.indexOf(b);
+    const j = e.key === "Home" ? 0 : e.key === "End" ? all.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + all.length) % all.length;
+    const next = all[j];
+    if (!next || next === b) return;
+    e.preventDefault();
+    const { seg: name, key } = next.dataset;
+    const root = b.closest(".sheet") || document;
+    next.click();
+    // the screen may have drawn itself again: focus the new tab by its name and key
+    const again = root.querySelector(`.rs-seg-b[data-seg="${CSS.escape(name)}"][data-key="${CSS.escape(key)}"]`) || next;
+    try { again.focus(); } catch (x) { /* gone */ }
+  });
+}

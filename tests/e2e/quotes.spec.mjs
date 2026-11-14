@@ -51,11 +51,25 @@ for (const device of ["iphone13", "iphonese"]) {
       await shot(page, `quotes-list-${device}`);
 
       await goTo(f, `/quotes/${seeded.quotes.sent}`);
-      assert.match(await title(f), /^SQ-\d{4}$/, "a quote is titled with its number (shadow numbers before cutover)");
+      assert.match(await title(f), /^Quote SQ-\d{4}$/, "a quote is titled with its number (shadow numbers before cutover)");
       assert.match(await f.textContent("#view"), /What the customer sees \(version 1\)/);
+      assert.ok(await f.$(".qt-top [data-act=send]") && await f.$(".qt-top [data-act=present]"), "Send again and Present on the top card");
+      assert.deepEqual(await f.$$eval("#top-act .rnd", (els) => els.map((e) => e.getAttribute("aria-label"))), ["Edit the quote", "More"]);
       assert.deepEqual(await screenProblems(f), [], "a quote passes the phone checks");
       assert.deepEqual(await badLinks(f), [], "the customer view opens in a new tab");
       await shot(page, `quotes-view-${device}`);
+      await f.click("[data-seg=quote][data-key=activity]");
+      await f.waitForFunction(() => /What happened[\s\S]*Versions/.test(document.getElementById("view").textContent), null, { timeout: 5000 });
+      assert.deepEqual(await screenProblems(f), [], "Activity passes the phone checks");
+      await f.click("[data-seg=quote][data-key=options]");
+      // the round ... holds the rest, each row with its old data-* hook
+      await f.click("#top-more");
+      await sheetUp(f, /Quote SQ-/);
+      for (const hook of ["phone", "edit", "duplicate", "preview", "decline", "archive"]) assert.ok(await f.$(`.sheet.on [data-act=${hook}]`), `... has ${hook}`);
+      assert.deepEqual(await screenProblems(f), [], "the ... sheet passes the phone checks");
+      await shot(page, `quotes-more-${device}`);
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
 
       // a new quote for a customer with a property: count panes, interior, Price it, save
       await goTo(f, `/quotes/new/${seeded.contacts.first}`);
@@ -69,13 +83,17 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.check("[data-svc=windows_int]");
       await f.click("[data-price]");
       await f.waitForFunction(() => document.querySelectorAll(".qb-lines li").length >= 2, null, { timeout: 5000 });
+      assert.equal(await f.$eval("[data-seg=qb][aria-selected=true]", (el) => el.dataset.key), "price", "Price it moves to Price");
       assert.match(await f.textContent("#view"), /\$295\.00/, "31 panes: the 21-40 tier");
       assert.deepEqual(await screenProblems(f), [], "the builder passes the phone checks");
       await shot(page, `quotes-builder-${device}`);
+      await f.click("[data-seg=qb][data-key=extras]");
+      await f.waitForSelector("[data-f=client_notes]", { timeout: 5000 });
+      assert.deepEqual(await screenProblems(f), [], "Extras passes the phone checks");
       await f.click("[data-save]");
       await f.waitForFunction(() => /^#\/quotes\/qt_[0-9a-z]{20}$/.test(location.hash), null, { timeout: 5000 });
       await settled(f);
-      assert.match(await title(f), /^SQ-\d{4}$/);
+      assert.match(await title(f), /^Quote SQ-\d{4}$/);
 
       // send: the dry-run Outbox
       await f.click("[data-act=send]");

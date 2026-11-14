@@ -5,7 +5,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { start } from "./server.mjs";
-import { launch, phone, signIn, crmFrame, goTo, settled, title, hashOf, backShown, badLinks, swipe, frameOffset, screenProblems, shot, noInstallCard, tap, OFFICE_PASSWORD } from "./kit.mjs";
+import { launch, phone, signIn, crmFrame, goTo, settled, title, hashOf, backShown, badLinks, swipe, frameOffset, screenProblems, shot, noInstallCard, tap, OFFICE_PASSWORD, drawerGo, drawerLabels } from "./kit.mjs";
 
 let srv, browser, seeded;
 before(async () => { srv = await start(); browser = await launch(); });
@@ -63,21 +63,18 @@ async function office(opts = {}, login = "olive", hash = "") {
 }
 const frameUrls = (page) => page.frames().map((x) => x.url()).filter((u) => /^https?:/.test(u));
 
-test("one app: the Dashboard (Menu → Reports → Office dashboard) switches its views in place; Menu stays lit", async () => {
+test("one app: the Dashboard (drawer → Analytics → Reports → Office dashboard) switches its views in place; Menu stays lit", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu is a sheet (Flyra's): its Reports row opens Reports (M7b), which opens the office Dashboard
+    // the drawer (Rotor's): Analytics → Reports (M7b), which opens the office Dashboard (also Analytics → Dashboard)
     await noInstallCard(page);
-    await f.click('#tabs [data-tab="menu"]');
-    await f.waitForSelector(".menu-sheet.on");
-    assert.equal(await f.$('.menu-sheet a[href="#/dashboard"]'), null, "the Dashboard is no second Menu row");
-    await f.click('.menu-sheet a[href="#/reports"]');
+    await drawerGo(f, "/reports");
     await settled(f, { hash: "#/reports" });
     await f.click("[data-office-dashboard]");
     await settled(f, { hash: "#/dashboard" });
     assert.equal(await hashOf(f), "#/dashboard");
     assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu tab is lit");
-    assert.equal(await backShown(f), true, "the Dashboard sits under Reports: a back button");
+    assert.equal(await backShown(f), false, "the Dashboard is a drawer screen (Analytics) too: top-level from Reports");
     // (a frame that hasn't loaded anything yet has no URL)
     const dash = () => page.frames().find((x) => { try { return new URL(x.url()).pathname === "/dashboard"; } catch (e) { return false; } });
     await page.waitForFunction(() => true);
@@ -105,17 +102,17 @@ test("one app: the Dashboard (Menu → Reports → Office dashboard) switches it
 test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu page (old #/menu links; Rotor's More): five groups and Settings, every screen once, Sign out at the bottom
+    // the Menu page (old #/menu links): the drawer's rows as a page, every list open, Sign out at the bottom
     await goTo(f, "/menu");
-    const groups = await f.$$eval(".menu-page .ms-grp", (els) => els.map((e) => [(e.querySelector(".ms-h") || {}).textContent || "", [...e.querySelectorAll(".ms-l")].map((x) => x.textContent)]));
-    const all = await f.$$eval(".menu-page .ms-l, .menu-page .ms-tile span", (els) => els.map((e) => e.textContent));
-    const of = (name) => (groups.find(([h]) => h === name) || [null, []])[1];
-    assert.deepEqual(groups.map(([h]) => h), ["Work", "Sales", "Customers", "Money", "Marketing & messages", ""], JSON.stringify(groups));
-    assert.ok(of("Sales").includes("Light Studio") && of("Money").includes("Purchases") && of("Marketing & messages").includes("Giveaway"), JSON.stringify(groups));
-    for (const want of ["Customers", "Leads", "Pipeline", "Calls", "Quotes", "Plans", "Leaderboard", "My performance", "Reports",
-      "Tasks", "Jobs", "Lights season", "Merge review", "Outbox", "Approvals", "Settings"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
-    for (const gone of ["Home", "Schedule", "Inbox", "Visits", "To book", "Follow-ups", "Leads & calls", "Templates", "Automations", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is on the bar, merged, or in Settings: ${all.join(", ")}`);
-    assert.equal(new Set(all).size, all.length, "each once");
+    const groups = await f.$$eval(".menu-page .menu-rows > .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(":scope > li > .dr-row .dr-l, :scope > li > .dr-sub > .dr-h .dr-l")].map((x) => x.textContent)));
+    assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]], JSON.stringify(groups));
+    // (a page has the room: every list open under its row's name)
+    const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
+    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Customers", "Service", "Financials", "Map", "Analytics", "Marketing"]);
+    for (const want of ["Customers", "Merge review", "Jobs", "Plans", "Lights season", "Quotes", "Light Studio", "Invoices", "Purchases", "Leaderboard", "My performance", "Reports",
+      "Outbox", "Approvals", "Giveaway", "Campaigns"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
+    for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
+    assert.ok(await f.$('.menu-page a[href="#/settings"]'), "the gear");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
     assert.deepEqual(await screenProblems(f), [], "the Menu passes the phone checks");
     await shot(page, "core-menu");
@@ -130,6 +127,13 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     await goTo(f, "/settings");
     const heads = await f.$$eval("#view .set-hub .section-h", (els) => els.map((e) => e.textContent));
     assert.deepEqual(heads, ["Company", "Team & permissions", "Pricing & services", "Plans & agreements", "Schedule", "Messages & automations", "Payments", "Maps & door to door", "Import & data", "Appearance", "About"]);
+    // the rare sections start folded (a row with the count); the search finds a row in one
+    assert.equal(await f.isVisible('#view a[href="#/import"]'), false, "Import & data folded");
+    await f.fill("#view [data-set-q]", "import");
+    assert.equal(await f.isVisible('#view a[href="#/import"]'), true, "found");
+    assert.equal(await f.isVisible('#view a[href="#/settings/company"]'), false, "the rest filtered out");
+    await f.fill("#view [data-set-q]", "");
+    await f.click('#view [data-fold="data"]');
     for (const path of ["/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/tools/rotor", "/settings/schedule"]) assert.ok(await f.$(`#view a[href="#${path}"]`), `Settings opens ${path}`);
     assert.deepEqual(await screenProblems(f), [], "Settings passes the phone checks");
     await shot(page, "core-settings");
@@ -261,10 +265,10 @@ test("sheets close on the close button, on a swipe down and on back", async () =
   try {
     const open = () => f.$$eval(".sheet", (els) => els.filter((e) => e.classList.contains("on")).length);
     const gone = async () => { for (let i = 0; i < 30 && (await f.$(".sheet")); i++) await page.waitForTimeout(50); return !(await f.$(".sheet")); };
-    // the close button on the Menu sheet (Nov 2026: the + is an overlay, the Menu a sheet)
+    // the close button on the help sheet (Nov 2026: the + is an overlay, the Menu a drawer)
     assert.equal(!!(await f.$("#fab")), true, "Home: the + button");
     await goTo(f, "/contacts");
-    await f.click('#tabs [data-tab="menu"]');
+    await f.click("#top-bar [data-tb-help]");
     await f.waitForSelector(".sheet.on");
     assert.equal(await open(), 1);
     assert.deepEqual(await screenProblems(f), [], "the sheet passes the phone checks");
@@ -272,7 +276,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await f.click(".sheet [data-sheet-x]");
     assert.ok(await gone(), "the close button closes it");
     // a swipe down from the sheet's head
-    await f.click('#tabs [data-tab="menu"]');
+    await f.click("#top-bar [data-tb-help]");
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const o = await frameOffset(page, f);
@@ -281,7 +285,7 @@ test("sheets close on the close button, on a swipe down and on back", async () =
     await swipe(page, { x: o.x + h1.x, y: o.y + h1.y }, { x: o.x + h1.x, y: o.y + h1.y + 220 });
     assert.ok(await gone(), "a swipe down closes it");
     // a short drag springs back
-    await f.click('#tabs [data-tab="menu"]');
+    await f.click("#top-bar [data-tb-help]");
     await f.waitForSelector(".sheet.on");
     await page.waitForTimeout(300);
     const h2 = await headAt();

@@ -64,7 +64,9 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       const inv = (await post(p, "/invoices", { contact_id: M.contacts.test, lines: [{ description: "Exterior window cleaning", unit_cents: 32500 }], issue: true, use_credit: false })).data.invoice;
       await goTo(f, `/invoices/${inv.id}`);
       await f.waitForSelector("[data-act=qr]", { timeout: 10000 });
-      assert.match(await f.textContent("[data-act=qr]"), /Show QR to pay/);
+      // Rotor's look: a round QR beside Send, named in full for a screen reader (and in the "..." sheet)
+      assert.equal(await f.getAttribute("[data-act=qr]", "aria-label"), "Show QR to pay");
+      assert.equal(await f.getByRole("button", { name: "Show QR to pay" }).count(), 1);
       await f.click("[data-act=qr]");
       await f.waitForSelector(".sheet.on.mn-full .mn-scan-code svg", { timeout: 15000 });
       await sheetSettled(f);
@@ -155,7 +157,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     const visitor = await phone(browser, srv, { device: desk ? "iphone13" : device });
     try {
       await goTo(f, "/menu");
-      assert.match(await f.textContent("#view"), /Sales[\s\S]*Signs & flyers/);
+      assert.match(await f.textContent("#view"), /Marketing[\s\S]*Signs & flyers/);
       await f.click("#view a[href='#/signs']");
       await settled(f, { hash: "#/signs" });
       assert.equal(await title(f), "Signs & flyers");

@@ -169,8 +169,9 @@ Staff API under `/api/crm` (session; permission in brackets):
 | GET /plans/catalog [plans:read] | the catalog and lights settings with defaults |
 | GET /plans/due `?month=YYYY-MM` [plans:read] | visits to book, by town |
 | POST /plans/request-signatures {plan_ids} [agreements:send] | a run that ends in one bulk run |
-| GET /plans/:id [plans:read] | plan, ordinals with their jobs, contact, agreements, seasons, readiness |
-| PATCH /plans/:id If-Match [plans:write] | name, property, autopay, auto_renew; clawback billed / waived (+reason, fees:waive) |
+| GET /plans/:id [plans:read] | plan, ordinals with their jobs, contact, agreements, seasons, readiness, the property (and the contact's others), who sold it, the card on file |
+| PATCH /plans/:id If-Match [plans:write] | name, property, autopay, auto_renew, notes, agreement_notes (the next agreement carries them); clawback billed / waived (+reason, fees:waive) |
+| POST /plans/:id/edit {changes, preview?} If-Match [plans:write] | the terms after the plan is made (owner, Nov 14): frequency (every 1, 2, 3, 4, 6 or 12 months), term_months (first term only), auto_renew, start_on (nothing booked or done yet), billing_mode, discounts (pending, unsigned, nothing done). preview: what changes (fields, visits kept / out / in, jobs cancelled, the agreement: same, replaced, needs_new); else a run (op plans.edit). Visits: done, booked, skipped and cancelled ones stay; the current term's visits still to book are made again for the new terms (their jobs cancelled, new ones made, from the last kept visit, never before this month, up to the term's end); a visit no line covers is refused. A signed agreement is never edited: the plan gets agreement_stale and send-agreement makes a new one (signing it clears the mark); an unsigned one is voided. An imported plan Rotor is in charge of: a would-update row, nothing changes. |
 | POST /plans/:id/activate {override_reason?} [plans:write] | a run |
 | POST /plans/:id/pause {from, until?, reason?} · /resume · /skip {term, n} · /renew [plans:write] | runs |
 | POST /plans/:id/cancel {reason, note?} · /withdraw [plans:cancel] | runs (admins add a note) |

@@ -138,12 +138,19 @@ test("Visit: the office's view (buttons by what the server allows, texts sent or
   const s = { ...data, etag: "\"1\"", users, panels: [], buttons: [] };
   const h = text(visit.render(s, ctx()));
   assert.ok(!h.includes("<script>alert(1)"), "escaped");
-  for (const b of ["data-move", "data-done", "data-noaccess", "data-cancel"]) assert.match(h, new RegExp(b));
-  assert.doesNotMatch(h, /data-reopen/);
+  // Rotor's visit page: the pencil by Who moves or reassigns; the rest of the office's buttons are in the "..." sheet
+  assert.match(h, /aria-label="Move or reassign"[^>]*data-move=""/);
+  const rows = visit.more(s, ctx()).flat().filter(Boolean);
+  const hooks = rows.map((r) => Object.keys(r.data || {})[0]).filter(Boolean);
+  for (const b of ["move", "done", "noaccess", "cancel"]) assert.ok(hooks.includes(b), b);
+  assert.ok(!hooks.includes("reopen"));
+  assert.deepEqual(rows.filter((r) => r.href).map((r) => r.href), ["#/jobs/jb_1", "#/contacts/ct_1"], "Open job, Open customer");
+  assert.equal(visit.title(s), "Visit · Tue, Nov 24");
   assert.match(h, /href="tel:\+17635550100"/);
+  assert.match(h, /href="sms:\+17635550100"/);
   assert.match(h, /target="_blank"|data-external="top"/, "directions leave the frame");
-  assert.match(h, /Would have sent/);
-  assert.match(h, /Skipped/);
+  assert.match(h, /Texts and emails[\s\S]*1 sent, 1 skipped, 1 to come/, "the texts folded to one line (a sheet lists them)");
+  assert.match(h, /href="#\/properties\/pr_1"/, "the pencil on the place edits its access");
   assert.match(h, /1 of 2/);
   // the crew's ticks are done_at (the server's finish gate, §5.5): the office counts those
   const ticked = text(visit.render({ ...s, visit: { ...s.visit, checklist: { items: [{ key: "a", label: "A", done_at: "2026-11-24T14:10:00.000Z" }, { key: "b", label: "B", kind: "photo", value: "fl_00000000000000000001" }, { key: "c", label: "C" }] } } }, ctx()));
@@ -154,6 +161,7 @@ test("Visit: the office's view (buttons by what the server allows, texts sent or
   // no prices for someone without them, no office buttons for an assignee
   const tech = text(visit.render({ ...s, reminders: undefined, users: [], can: { office: false, assignee: true, prices: false } }, ctx()));
   assert.doesNotMatch(tech, /data-move|data-cancel|\$295|Texts and emails/);
+  assert.equal(visit.more({ ...s, can: { office: false, assignee: true } }, ctx()).flat().filter(Boolean).length, 0, "no office rows in a tech's ...");
 
   // visitActions: when, perm and order; panels render inline, buttons run on tap
   const manifests = [
@@ -267,4 +275,74 @@ test("the manifest: the office part and the field part merge; every route loads 
   assert.equal(typeof (await m.contactTabs[0].load()).default.render, "function");
   assert.equal(typeof (await m.todayCards[0].load()).default.load, "function");
   assert.deepEqual(m.visitActions.map((a) => a.key), ["field"], "the office adds no visit action; M4b's field panel is the work module's one");
+});
+
+test("Job (Rotor's page): pills, the visit row with + Visit, Pricing with discounts and + Add discount, Create Invoice (or why not), the ... rows", async () => {
+  const job = await load("office-job");
+  const { billing } = await import("../../../crm-app/modules/work/office-job.js");
+  const J = "jb_00000000000000000001";
+  const s = {
+    job: { id: J, number_label: "S-000001", title: `Exterior ${XSS}`, kind: "standard", status: "scheduled", billable: true, contact_id: "ct_1", invoice_ids: [],
+      lines: [{ id: "ln_1", title: "Exterior window cleaning", qty_milli: 1000, unit_cents: 29500, total_cents: 29500 }, { id: "ln_2", title: "Screens", qty_milli: 12000, unit_cents: 500, total_cents: 6000 }],
+      discounts: [{ id: "dc_1", name: "Neighbor deal", type: "fixed", value: 2500, scope: { type: "all" } }, { id: "dc_2", name: "Senior", type: "percentage", value: 1000, scope: { type: "all" } }],
+      totals: { subtotal_cents: 35500, discount_cents: 6050, total_cents: 29450 }, crew_notes: "Dog in back", office_notes: "Pays by check", updated_at: "2026-11-17T15:00:00.000Z" },
+    visits: [{ id: "vs_00000000000000000001", date: "2026-11-24", start: "08:00", end: "10:00", status: "scheduled", assignee_ids: [U1] }],
+    contact: { id: "ct_1", display_name: `Pat ${XSS}`, phones: [{ e164: "+17635550100", primary: true }] },
+    property: { id: "pr_1", address: { street1: "1 Example Ave", city: "Delano", state: "MN", zip: "55328" }, access: { gate_code: "1234" } },
+    people: { [U1]: { id: U1, name: "Theo Tech" } },
+    can: { write: true, add_visit: true, complete: true, cancel: true, reopen: false }, users, invoices: [], quote: null, etag: "\"1\"",
+  };
+  const h = text(job.render(s, ctx()));
+  assert.ok(!h.includes("<script>alert(1)"), "escaped");
+  assert.equal(job.title(s), "Job S-000001");
+  assert.match(h, /class="pill blue">Booked<[\s\S]*class="pill amber">Not invoiced</);
+  assert.match(h, /Visit · Tue, Nov 24[\s\S]*8:00–10:00 AM · Theo Tech/);
+  assert.match(h, /href="#\/visits\/vs_00000000000000000001"/);
+  assert.match(h, /data-book=""[^>]*>[\s\S]*?<span>Visit<\/span>/, "+ Visit books another");
+  assert.match(h, /href="tel:\+17635550100"[\s\S]*href="sms:\+17635550100"/, "red call, message");
+  assert.match(h, /gate 1234/);
+  assert.match(h, /href="#\/properties\/pr_1"/);
+  assert.match(h, /data-line="ln_2"[\s\S]*12 × \$5\.00/);
+  assert.match(h, /data-add-line=""/);
+  assert.match(h, /<span>Subtotal<\/span><span class="num">\$355\.00/);
+  assert.match(h, /data-disc="dc_1"><span>Neighbor deal<\/span><span class="num">−\$25\.00/);
+  assert.match(h, /data-disc="dc_2"><span>Senior \(10%\)<\/span><span class="num">−\$35\.50/, "each discount's share, as the invoice lists it");
+  assert.match(h, /data-add-discount=""/);
+  assert.match(h, /<span>Total<\/span><span class="num">\$294\.50/);
+  assert.match(h, /<button type="button" class="rs-pb wide" data-make-invoice=""><span>Create Invoice/, "ready");
+  assert.match(h, /data-notes="crew"[^>]*>Dog in back</);
+  assert.match(h, /data-notes="office"[^>]*>Pays by check</);
+  const rows = job.more(s, ctx()).flat().filter(Boolean);
+  assert.deepEqual(rows.map((r) => r.label), ["Book a visit", "Mark done", "Edit the work", "Add a discount", "Create invoice", "Open customer", "Cancel job"]);
+  assert.ok(rows.find((r) => r.label === "Cancel job").danger);
+  // an invoice covers it: the pill, the row, Create Invoice gone (the reason when the + would make one)
+  const inv = { id: "in_1", n: "SINV-0003", st: "paid", tot: 29450, bal: 0, j: J };
+  const paid = text(job.render({ ...s, invoices: [inv] }, ctx()));
+  assert.match(paid, /class="pill green">Paid</);
+  assert.match(paid, /rs-amt green/);
+  assert.match(paid, /Invoice SINV-0003 · Paid · \$294\.50/);
+  assert.doesNotMatch(paid, /data-make-invoice/);
+  assert.equal(billing({ ...s, invoices: [inv] }, ctx().can).why, "Invoice SINV-0003 covers this job.");
+  assert.equal(billing({ ...s, invoices: [{ ...inv, st: "void" }] }, ctx().can).ready, true, "a void invoice doesn't cover it");
+  // nothing to bill, cancelled, not billed: disabled with the reason
+  const zero = { ...s, job: { ...s.job, lines: [], discounts: [], totals: { subtotal_cents: 0, discount_cents: 0, total_cents: 0 } } };
+  assert.match(text(job.render(zero, ctx())), /data-make-invoice="" disabled[\s\S]*Add the work first/);
+  assert.equal(billing({ ...s, job: { ...s.job, status: "cancelled" } }, ctx().can).why, "This job is cancelled.");
+  assert.equal(billing({ ...s, job: { ...s.job, kind: "warranty" } }, ctx().can).why, "This kind of job isn't billed.");
+  // without invoices:write: no Create Invoice anywhere
+  const ro = ["schedule:read", "schedule:write", "invoices:read_all"];
+  assert.doesNotMatch(text(job.render(s, ctx(ro))), /data-make-invoice/);
+  assert.ok(!job.more(s, ctx(ro)).flat().filter(Boolean).some((r) => r.label === "Create invoice"));
+  // a closed job: no + Item, no discounts to change
+  const done = text(job.render({ ...s, job: { ...s.job, status: "completed", completed_at: "2026-11-24T18:00:00.000Z" }, can: { write: true, reopen: true } }, ctx()));
+  assert.doesNotMatch(done, /data-add-line|data-add-discount|data-disc=/);
+});
+
+test("Jobs list (Rotor's): 2-line rows, the name and amount, the number, the date and the pill", async () => {
+  const list = await load("office-jobs");
+  const rows = [{ id: "jb_00000000000000000001", n: "S-000001", cn: `Pat ${XSS}`, t: "Exterior", st: "scheduled", k: "standard", nv: "2026-11-24", tot: 35500, bill: true }];
+  const h = text(list.render({ tab: "open", year: "2026", q: "", rows }, ctx()));
+  assert.ok(!h.includes("<script>alert(1)"));
+  assert.match(h, /class="wk-jl1"><span class="nm">Pat [^<]*<\/span><b class="num">\$355\.00<\/b>/);
+  assert.match(h, /class="wk-jl2"><span class="sub">S-000001 · Tue, Nov 24<\/span><span class="pill blue">Booked<\/span>/);
 });

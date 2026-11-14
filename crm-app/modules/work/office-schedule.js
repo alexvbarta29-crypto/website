@@ -17,6 +17,13 @@
 //     with a red line at the current time; more than two columns scroll
 //     sideways on a phone; 3 Day: three days side by side.
 //
+// A phone's head is Rotor's (Nov 2026, flyHead below): "November ⌄", the
+// time, three round buttons (Map of the day, Go to a date, the filter that
+// holds Who, the columns, Show on cards, Find a visit and To book), the
+// < > and the segmented List | Day | 3 Day | Week | Month (Month still the
+// default); a dashed "To book (6)" chip above Day, 3 Day and Week; a long
+// press on a visit opens Move or reassign (the desk's drag and drop).
+//
 // On a desk (1,100 px and up; office-board.js, office-vpanel.js): a click
 // on a visit opens it in a side panel (the address says ?visit=, Esc
 // closes), and a visit can be dragged to another day, time or person (Week,
@@ -28,7 +35,7 @@
 // /schedule/weather) after the grid is on screen. Arrow keys move the
 // chosen day on a computer (Page Up / Page Down a month).
 
-import { html, icon, attrs, toast, sheet, sheetOpen, raw, render } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, rnd, seg, actionSheet } from "../../core/ui.js";
 import { dateShort, dateLong, plural, money, clock } from "../../core/format.js";
 import {
   ensureStyles, officeView, today, addDays, dow, dowShort, dayNum, dayLabel, isDate, slotText, range, visitPill, faces, names, loadUsers, team,
@@ -188,6 +195,17 @@ async function fetchDeskTray(ctx) {
   paint(ctx);
 }
 
+// The month's To book count for a phone's chip (the jobs the tray would list).
+async function fetchToBook(ctx) {
+  const s = ctx.state;
+  const month = String(s.date || today()).slice(0, 7);
+  s.tbBusy = true;
+  try { const r = await ctx.api(`/schedule/unscheduled?month=${month}`, { cache: false }); s.toBook = { month, n: ((r.data && r.data.jobs) || []).length }; } catch (e) { s.toBook = { month, n: 0 }; }
+  s.tbBusy = false;
+  ctx.keep.toBook = s.toBook;
+  paint(ctx);
+}
+
 // What every view draws from: cancelled visits left out when the gear says so.
 const shown = (s) => (s.cards && s.cards.hideCancelled && s.data ? { ...s, data: { ...s.data, visits: (s.data.visits || []).filter((v) => !DEAD.includes(v.st)) } } : s);
 
@@ -255,18 +273,17 @@ function head(s, ctx) {
   </div>`;
 }
 
-// A phone's head (Flyra's, Nov 13): the big title ("Nov 2026"; "Today" and
-// the date under it on a day), the < > pill at the right; under it the view
-// pill (Month ⌄: Day, Week, Month, Technician, Sales rep, List, 3 Day, and
-// Map of the day) and the round tools pill (find a visit, who, Show on
-// cards). A desk keeps Rotor's head and the segmented views (head above).
-const FLY_VIEWS = [["day:tech", "Day"], ["week", "Week"], ["month", "Month"], ["day:tech*", "Technician"], ["day:sales", "Sales rep"], ["list", "List"], ["3day", "3 Day"]];
-const MONTH_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", day: "numeric" });
+// A phone's head (Rotor's Schedule, Nov 2026; scratchpad simplify/rotor-spec.md
+// §4.5): the month as the title ("November ⌄": pick a month or a day) and
+// the time; three round buttons, Map of the day, Go to a date, and the
+// filter (Who, Technician or Sales rep columns, Show on cards, cancelled
+// hidden, Find a visit, N to book, Rain day, Time off); under it the
+// segmented List | Day | 3 Day | Week | Month (Month stays the default, the
+// owner's choice). On Day the date and the day's total are a line under the
+// title. A desk keeps its own head (head() above) and segmented views.
+const PHONE_VIEWS = [["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"], ["month", "Month"]];
 const WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" });
-function flyLabel(s) {
-  if (s.view === "day") return s.by === "sales" ? "Sales rep" : "Day";
-  return (VIEWS.find(([k]) => k === s.view) || [null, s.view === "tray" ? "To book" : "Month"])[1];
-}
+const CLOCK_NOW = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" });
 // "Today", "Tomorrow", "Yesterday", else the weekday (the date is the line under it)
 export function dayTitle(d, t) {
   if (d === t) return "Today";
@@ -274,37 +291,59 @@ export function dayTitle(d, t) {
   if (d === addDays(t, -1)) return "Yesterday";
   return WEEKDAY_LONG.format(new Date(d + "T12:00:00Z"));
 }
+// What the filter changes from the plain schedule (the round filter button is lit).
+const filtered = (s) => !!(s.tech || s.by === "sales" || (s.cards && s.cards.hideCancelled));
 function flyHead(s, ctx) {
   const t = todayOf(s);
-  const ym = s.view === "month" ? s.cal : s.view === "tray" ? s.month : String(s.date || t).slice(0, 7);
-  const mid = new Date((ym || t.slice(0, 7)) + "-15T12:00:00Z");
-  const day = s.view === "day" && s.date;
-  const title = day ? dayTitle(s.date, t) : s.view === "tray" ? "To book" : `${MONTH_SHORT.format(mid)} ${String(ym).slice(0, 4)}`;
-  const sub = day ? MONTH_DAY.format(new Date(s.date + "T12:00:00Z")) : "";
+  const ym = (s.view === "month" ? s.cal : s.view === "tray" ? s.month : String(s.date || t).slice(0, 7)) || t.slice(0, 7);
+  const mid = new Date(ym + "-15T12:00:00Z");
+  const name = `${MONTH_LONG.format(mid)}${ym.slice(0, 4) !== t.slice(0, 4) ? " " + ym.slice(0, 4) : ""}`;
+  const day = ["day", "3day"].includes(s.view) && s.date;
   // the day's total (Flyra's "November 13 · $195"), for someone who sees prices
-  const total = day && prices(ctx) && s.data ? (s.data.visits || []).filter((v) => v.d === s.date && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
-  // back to today (Flyra's "↺ Today") when the screen is somewhere else
+  const total = s.view === "day" && day && prices(ctx) && s.data ? (s.data.visits || []).filter((v) => v.d === s.date && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
+  // back to today when the screen is somewhere else
   const away = s.view === "month" ? !!s.cal && s.cal !== t.slice(0, 7) : s.view !== "tray" && !!s.date && s.date !== t;
-  const tb = s.view === "month" && s.toBook && s.toBook.month === s.cal ? s.toBook.n : null;
-  const step = s.view === "month" ? "data-cal" : s.view === "day" ? "data-day" : s.view === "3day" ? "data-day3" : s.view === "tray" ? null : "data-week";
-  const arrows = step ? html`<div class="wk-fpill wk-farrows" role="group" aria-label="Earlier or later">
-      <button type="button" ${attrs({ [step]: s.view === "tray" ? null : "-1", "aria-label": "Earlier" })}>${icon("chevleft")}</button><button type="button" ${attrs({ [step]: "1", "aria-label": "Later" })}>${icon("chevright")}</button></div>` : "";
-  const label = flyLabel(s);
-  return html`<div class="wk-fly">
-    <div class="wk-frow1"><button type="button" class="wk-ftitle" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${title}${sub ? ", " + sub : ""}: pick a month or a day` })}><span class="t">${title}</span>${sub ? html`<span class="s">${sub}${total ? html` · <b class="wk-ftotal num">${money(total).replace(/\.00$/, "")}</b>` : ""}</span>` : ""}</button>
-      <span class="wk-fright">${away ? html`<button type="button" class="wk-ftoday" data-ftoday>${icon("undo")}Today</button>` : ""}${arrows}</span></div>
-    <div class="wk-frow2">
-      <div class="wk-fmenu-wrap"><button type="button" class="wk-fpill wk-fview" data-vmenu ${attrs({ "aria-haspopup": "true", "aria-expanded": String(!!s.vmenu) })}>${label}${icon("chevdown")}</button>
-        ${s.vmenu ? html`<ul class="wk-fmenu" role="menu">${FLY_VIEWS.map(([k, l]) => { const on = k === "day:tech" ? s.view === "day" && s.by !== "sales" && !s.byTech : k === "day:tech*" ? s.view === "day" && s.by !== "sales" && !!s.byTech : k === "day:sales" ? s.view === "day" && s.by === "sales" : s.view === k; return html`<li><button type="button" role="menuitemradio" ${attrs({ "data-fview": k, "aria-checked": String(on) })}><span class="ck" aria-hidden="true">${on ? icon("check") : ""}</span>${l}</button></li>`; })}
-          <li class="sep"><button type="button" role="menuitem" data-mapday>${icon("map")}Map of the day</button></li>${tb ? html`<li><button type="button" role="menuitem" data-totray>${icon("clock")}${tb} to book</button></li>` : ""}</ul>` : ""}</div>
-      <div class="wk-fpill wk-ftools" role="group" aria-label="Schedule tools">
-        <button type="button" data-search aria-label="Find a visit">${icon("search")}</button>
-        <button type="button" ${attrs({ class: s.tech ? "on" : null, "data-filter": "", "aria-label": `Who: ${s.tech ? names(s.users, [s.tech]) : "Everyone"}`, "aria-pressed": String(!!s.tech) })}>${icon("people")}</button>
-        <button type="button" data-cards aria-label="Show on cards">${icon("gear")}</button>
-      </div>
+  const who = s.tech ? names(s.users, [s.tech]) : "Everyone";
+  // the < > of each view: a month, a day, three days, a week (the List's two weeks go by the week)
+  const step = { month: "cal", day: "day", "3day": "day3", week: "week", list: "week" }[s.view] || null;
+  return html`<div class="wk-fly wk-rs">
+    <div class="wk-rs-row">
+      <button type="button" class="wk-rs-title" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${name}: pick a month or a day` })}><span class="t">${name}</span>${I.caret}</button>
+      <span class="wk-rs-tools">${rnd("map", "Map of the day", { data: { mapday: true }, popup: true })}${rnd("cal", "Go to a date", { data: { jump: true }, popup: true })}${rnd("filter", `Filter: ${who}${s.by === "sales" ? ", sales reps" : ""}`, { data: { fsheet: true }, popup: true, pressed: filtered(s) })}</span>
     </div>
+    ${step || away ? html`<div class="${"wk-rs-sub" + (day ? " day" : "")}"><span class="s">${day ? html`${dayTitle(s.date, t)} · ${MONTH_SHORT.format(new Date(s.date + "T12:00:00Z"))} ${dayNum(s.date)}${total ? html` · <b class="wk-ftotal num">${money(total).replace(/\.00$/, "")}</b>` : ""}` : s.view === "week" && s.date ? `Week of ${dateShort(sundayOf(s.date))}` : s.view === "list" && s.date ? `From ${dateShort(s.date)}` : ""}</span><span class="wk-rs-time num" aria-hidden="true">${CLOCK_NOW.format(new Date())}</span>
+      <span class="wk-rs-nav">${away ? html`<button type="button" class="wk-ftoday" data-ftoday>${icon("undo")}Today</button>` : ""}${step ? html`${rnd("chevleft", "Earlier", { tone: "grey", sm: true, data: { [step]: "-1" } })}${rnd("chevright", "Later", { tone: "grey", sm: true, data: { [step]: "1" } })}` : ""}</span></div>` : ""}
+    ${seg(PHONE_VIEWS.map(([key, label]) => ({ key, label })), s.view, { name: "view", label: "View" })}
   </div>`;
 }
+
+// The phone's "To book (6)" chip above Day, 3 Day and Week (a desk has the tray beside them).
+function toBookChip(s) {
+  const n = s.toBook && s.toBook.month === String(s.date || "").slice(0, 7) ? s.toBook.n : null;
+  return n ? html`<div class="wk-phone wk-tbchip-w"><button type="button" class="rs-dashed wk-tbchip" data-totray ${attrs({ "aria-label": `${n} ${n === 1 ? "job" : "jobs"} to book: open To book` })}>${icon("clock")}<span>${`To book (${n})`}</span><span class="chev" aria-hidden="true"></span></button></div>` : "";
+}
+
+// The filter (a phone's round filter button): everything the desk's tools pill and the old view menu held.
+function filterSheet(ctx) {
+  const s = ctx.state;
+  const who = s.tech ? names(s.users, [s.tech]) : "Everyone";
+  const tb = s.toBook && (s.view === "month" ? s.toBook.month === s.cal : s.toBook.month === String(s.date || "").slice(0, 7)) ? s.toBook.n : null;
+  const d = s.date || todayOf(s);
+  const byCols = (by) => { s.by = by; s.view = "day"; reload(ctx); };
+  actionSheet("Filter", [
+    [{ label: `Who: ${who}`, icon: "people", hint: "one person or everyone", run: () => whoSheet(ctx), data: { filter: true } },
+      { label: "Columns by technician", icon: s.by !== "sales" ? "check" : "team", hint: "Day", run: () => byCols("tech") },
+      { label: "Columns by sales rep", icon: s.by === "sales" ? "check" : "sales", hint: "Day", run: () => byCols("sales") }],
+    [{ label: "Show on cards", icon: "gear", hint: "name, service, price, address", run: () => cardsSheet(ctx), data: { cards: true } },
+      { label: s.cards && s.cards.hideCancelled ? "Show cancelled visits" : "Hide cancelled visits", icon: "close", run: () => { s.cards = { ...s.cards, hideCancelled: !(s.cards && s.cards.hideCancelled) }; saveCards(meId(ctx), s.cards); paint(ctx); } }],
+    [{ label: "Find a visit", icon: "search", hint: "customer, address, job", run: () => searchSheet(ctx), data: { search: true } },
+      canWrite(ctx) && { label: tb ? `${tb} to book` : "To book", icon: "clock", hint: "jobs waiting for a day", run: () => toTray(ctx), data: { totray: true } },
+      canWrite(ctx) && { label: "Rain day", icon: "sun", hint: `move ${dateShort(d)}`, href: `#/schedule/move-day?date=${d}` },
+      canWrite(ctx) && { label: "Time off", icon: "clock", href: "#/schedule/time-off" },
+      ctx.can && ctx.can("settings:general") && { label: "Schedule settings", icon: "gear", href: "#/settings/schedule" }],
+  ]);
+}
+function toTray(ctx) { const s = ctx.state; s.month = s.view === "month" ? s.cal || s.month : String(s.date || todayOf(s)).slice(0, 7); s.view = "tray"; reload(ctx); }
 
 function viewTabs(s) {
   return html`<div class="wk-views" role="tablist" aria-label="View">${VIEWS.map(([k, label]) => html`<button type="button" class="wk-view" role="tab" ${attrs({ "data-view": k, "aria-selected": String(s.view === k) })}>${label}</button>`)}</div>`;
@@ -718,6 +757,32 @@ function key(e, el, ctx) {
   pick(ctx, next, { focus: true });
 }
 
+// A phone's long press on a visit (the desk's drag and drop): read it, then
+// Move (day, time, people), Assign (who goes) or open it.
+const LONG_PRESS_MS = 500;
+let press = null;
+async function pressSheet(ctx, id) {
+  let r;
+  try { r = await ctx.api(`/visits/${encodeURIComponent(id)}`, { cache: false }); } catch (e) { toast((e && e.message) || "That visit didn't load.", { bad: true }); return; }
+  const p = { id, data: r.data, etag: r.etag };
+  const v = r.data.visit || {};
+  const can = r.data.can || {};
+  const done = () => { toast("Saved the change."); refreshAll(ctx); };
+  actionSheet("Move or reassign", [
+    [can.move && { label: "Move", icon: "cal", hint: "day, time, people", run: () => moveFromPanel(ctx, done, p), data: { pmove: true } },
+      can.office && ["scheduled", "en_route", "in_progress", "paused"].includes(v.status) && { label: "Assign", icon: "team", hint: "who goes", run: () => assignSheet(ctx, done, p), data: { passign: true } }],
+    [{ label: "Open visit", icon: "doc", hint: [r.data.contact && r.data.contact.display_name, dateShort(v.date)].filter(Boolean).join(" · "), href: "#/visits/" + encodeURIComponent(id) }],
+  ]);
+}
+
+function setView(ctx, view) {
+  const s = ctx.state;
+  if (!ALL_VIEWS.includes(view)) return;
+  s.view = view;
+  if (s.view === "month") { s.cal = s.date ? s.date.slice(0, 7) : null; s.data = null; }
+  reload(ctx);
+}
+
 let swipeX = null;
 
 export default {
@@ -741,6 +806,7 @@ export default {
       <div class="wk-bar">${viewTabs(s)}</div>
       ${STRIP.includes(s.view) && s.date ? weekStrip(s) : ""}
       ${whoChip(s)}
+      ${["day", "3day", "week"].includes(s.view) && canWrite(ctx) ? toBookChip(s) : ""}
       ${month ? monthView(s, ctx) : s.view === "day" ? dayView(s, ctx) : s.view === "3day" ? threeView(s, ctx) : s.view === "week" ? weekView(s, ctx) : s.view === "list" ? listView(s, ctx) : trayView(s)}
       ${s.data && s.data.stale ? html`<p class="foot-note">The schedule's list is being rebuilt; a change from the last minute may be missing.</p>` : ""}
       ${panelView(s, ctx)}
@@ -762,6 +828,8 @@ export default {
     if (s.data && s.data.weather === false && s.wx) { s.wx = null; delete ctx.keep.wx; }
     if (["month", "week", "day", "3day"].includes(s.view) && s.data && s.data.weather !== false && !s.wx && !s.wxBusy) fetchWeather(ctx);
     if (["week", "day", "3day"].includes(s.view) && !(s.view === "day" && s.by === "sales") && wide() && canWrite(ctx) && s.date && (!s.dtray || s.dtray.month !== s.date.slice(0, 7)) && !s.dtrayBusy) fetchDeskTray(ctx);
+    // a phone: the To book count for the chip and the filter (a desk has the tray itself)
+    if (["week", "day", "3day", "list"].includes(s.view) && !wide() && canWrite(ctx) && s.date && (!s.toBook || s.toBook.month !== s.date.slice(0, 7)) && !s.tbBusy) fetchToBook(ctx);
     if (s.panel && s.panel.focus && !s.panel.loading) {
       s.panel.focus = false;
       const h = el.querySelector("#wk-side-title");
@@ -800,31 +868,14 @@ export default {
     if (keysOn && typeof document !== "undefined") { document.removeEventListener("keydown", onKey); keysOn = false; }
   },
   events: {
-    // a phone's view pill (Flyra's menu): Day, Week, Month, Technician, Sales rep, List, 3 Day
-    "click [data-vmenu]": (e, el, ctx) => { ctx.state.vmenu = !ctx.state.vmenu; paint(ctx); },
-    "click [data-fview]": (e, el, ctx) => {
-      const s = ctx.state;
-      const [view, by] = el.dataset.fview.split(":");
-      s.vmenu = false;
-      s.byTech = el.dataset.fview === "day:tech*";
-      if (view === "day") s.by = by === "sales" ? "sales" : "tech";
-      if (s.view === view && view !== "day") { paint(ctx); return; }
-      s.view = view;
-      if (s.view === "month") { s.cal = s.date ? s.date.slice(0, 7) : null; s.data = null; }
-      reload(ctx);
-    },
+    // a phone's segmented views (Rotor's) and its filter button
+    "click [data-seg=view]": (e, el, ctx) => setView(ctx, el.dataset.key),
+    "click [data-fsheet]": (e, el, ctx) => filterSheet(ctx),
     "click [data-ftoday]": (e, el, ctx) => { const s = ctx.state; if (s.view === "month") s.cal = null; s.date = null; reload(ctx); },
     "click [data-day3]": (e, el, ctx) => { const s = ctx.state; s.date = addDays(s.date, 3 * Number(el.dataset.day3)); reload(ctx); },
-    // a tap anywhere else closes the view menu
-    "click": (e, el, ctx) => { if (ctx.state.vmenu && !e.target.closest(".wk-fmenu-wrap")) { ctx.state.vmenu = false; paint(ctx); } },
-    "click [data-view]": (e, el, ctx) => {
-      const s = ctx.state;
-      s.view = el.dataset.view;
-      if (s.view === "month") { s.cal = s.date ? s.date.slice(0, 7) : null; s.data = null; }
-      reload(ctx);
-    },
+    "click [data-view]": (e, el, ctx) => setView(ctx, el.dataset.view),
     "click [data-by]": (e, el, ctx) => { const s = ctx.state; s.by = el.dataset.by === "sales" ? "sales" : "tech"; reload(ctx); },
-    "click [data-totray]": (e, el, ctx) => { const s = ctx.state; s.month = s.cal || s.month; s.view = "tray"; reload(ctx); },
+    "click [data-totray]": (e, el, ctx) => toTray(ctx),
     "click [data-mday]": (e, el, ctx) => pick(ctx, el.dataset.mday, { scroll: true }),
     "keydown [data-mday]": key,
     "click [data-cal]": (e, el, ctx) => {
@@ -866,8 +917,30 @@ export default {
       swipeX = null;
       if (Math.abs(dx) > 48) goDate(ctx, addDays(ctx.state.date, dx < 0 ? 7 : -7));
     },
+    // a phone: a long press on a visit is the desk's drag, "Move or reassign" (a tap still opens it)
+    "pointerdown [data-vopen]": (e, el, ctx) => {
+      if (wide() || !canWrite(ctx) || (e.pointerType === "mouse" && e.button > 0)) return;
+      if (press) clearTimeout(press.t);
+      const id = el.dataset.vopen;
+      press = { id, x: e.clientX, y: e.clientY, fired: false };
+      press.t = setTimeout(() => {
+        if (!press || press.id !== id) return;
+        press.fired = true;
+        // the click that ends this press is eaten (above); a later tap opens visits again
+        const p0 = press;
+        document.addEventListener("pointerup", () => setTimeout(() => { if (press === p0) press = null; }, 350), { once: true, capture: true });
+        try { navigator.vibrate && navigator.vibrate(12); } catch (x) { /* fine */ }
+        pressSheet(ctx, id);
+      }, LONG_PRESS_MS);
+    },
+    "pointermove [data-vopen]": (e) => { if (press && !press.fired && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) { clearTimeout(press.t); press = null; } },
+    "pointerup [data-vopen]": () => { if (press && !press.fired) { clearTimeout(press.t); press = null; } },
+    "pointercancel [data-vopen]": () => { if (press && !press.fired) { clearTimeout(press.t); press = null; } },
+    "contextmenu [data-vopen]": (e) => { if (!wide()) e.preventDefault(); },
     // a visit on a desk: the side panel (a modified click still opens it the browser's way)
     "click [data-vopen]": (e, el, ctx) => {
+      // (the click that ends a long press opens nothing: the sheet is up)
+      if (press && press.fired) { e.preventDefault(); press = null; return; }
       if (!wide() || e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
       openPanel(ctx, el.dataset.vopen, hooks(ctx));

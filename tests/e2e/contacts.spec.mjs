@@ -4,7 +4,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { start } from "./server.mjs";
-import { launch, phone, signIn, crmFrame, goTo, settled, title, badLinks, screenProblems, shot, tap, noInstallCard } from "./kit.mjs";
+import { launch, phone, signIn, crmFrame, goTo, settled, title, badLinks, screenProblems, shot, tap, noInstallCard, drawerGo } from "./kit.mjs";
 
 let srv, browser, seeded;
 before(async () => { srv = await start(); seeded = await srv.seed(); browser = await launch(); });
@@ -21,13 +21,11 @@ async function open(login, device) {
 }
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`contacts (${device}): open the list, search, open a contact and its Sales tab`, async () => {
+  test(`contacts (${device}): open the list, search, open a lead, its cards and its priority`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
-      // (Customers is in the Menu now: Flyra's bar is Home · Schedule · Inbox · Map · Menu)
-      await f.click('#tabs [data-tab="menu"]');
-      await f.waitForSelector(".menu-sheet.on");
-      await f.click('.menu-sheet a[href="#/contacts"]');
+      // (Customers is in the drawer: the bar is Home · Schedule · Inbox · Map · Menu)
+      await drawerGo(f, "/contacts");
       await settled(f, { hash: "#/contacts" });
       assert.equal(await title(f), "Customers");
       assert.match(await f.textContent("#ct-count"), /^2\d\d contacts/, "the 200 seeded people and the leads");
@@ -48,13 +46,22 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "the contact passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `contacts-contact-${device}`);
-      // one page of sections (Nov 2026), no sideways tabs: Activity, Properties and the Sales section (M2b) all there
+      // Rotor's lead page (Nov 2026): Details | Activity; Follow-ups and Tasks (M2b) on Details, Calls and Deals on Activity
       await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 });
-      for (const id of ["ct-sec-properties", "ct-sec-mod-sales", "ct-sec-activity"]) assert.ok(await f.$(`#${id}`), id);
-      assert.equal(await f.$("#view [role=tablist]"), null, "no tabs");
-      assert.match(await f.textContent("#ct-sec-mod-sales"), /New lead/i, "the Sales section shows the follow-up");
-      assert.deepEqual(await screenProblems(f), [], "the Sales section passes the phone checks");
+      for (const id of ["ct-card-properties", "ct-mod-sales", "ct-card-tasks", "ct-card-activity", "ct-card-calls", "ct-card-deals"]) assert.ok(await f.$(`#${id}`), id);
+      assert.ok(await f.$('#view [role=tablist] [data-key="activity"]'), "Details | Activity");
+      assert.match(await f.textContent("#ct-mod-sales"), /New lead/i, "the Follow-ups card shows the follow-up");
+      assert.match(await f.textContent(".rs-name .pill"), /^(New|Open|Quoted|Following up|High)$/, "the stage (or the priority) pill beside the name");
+      assert.deepEqual(await screenProblems(f), [], "the Sales cards pass the phone checks");
       await shot(page, `contacts-sales-tab-${device}`);
+      // a lead's priority (Rotor's): the "..." sets it, the pill shows it
+      await f.click("#top-more");
+      await f.waitForSelector(".sheet.on [data-priority]");
+      await f.click(".sheet.on [data-priority]");
+      await f.waitForSelector('.sheet.on [data-pick="\\"high\\""]');
+      await f.click('.sheet.on [data-pick="\\"high\\""]');
+      await f.waitForFunction(() => (document.querySelector(".rs-name .pill") || {}).textContent === "High", null, { timeout: 8000 });
+      assert.deepEqual(await screenProblems(f), [], "the priority pill passes the phone checks");
       // back keeps the search
       await f.click("#top-back");
       await settled(f, { hash: "#/contacts" });

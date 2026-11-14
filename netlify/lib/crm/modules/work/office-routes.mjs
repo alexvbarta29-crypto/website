@@ -329,6 +329,44 @@ export function mergeLines(stored = [], edited = []) {
   });
 }
 
+// The discounts a person typed on the job page ("+ Add discount", Rotor's):
+// an amount (cents) or a percent (basis points), a name if they gave one.
+// Never a scope, a catalog id or a stack group: those stay as stored.
+// → [{ id?, name?, type: "fixed" | "percentage", value }]
+export function formDiscounts(list) {
+  if (list === undefined) return undefined;
+  if (!Array.isArray(list) || list.length > 20) throw new InputError("Up to 20 discounts.", "discounts");
+  return list.map((d, i) => {
+    if (!d || typeof d !== "object") throw new InputError("Expected a discount.", `discounts.${i}`);
+    const type = d.type === "percentage" ? "percentage" : d.type === "fixed" ? "fixed" : null;
+    if (!type) throw new InputError("Pick an amount or a percent.", `discounts.${i}.type`);
+    const v = d.value;
+    if (type === "fixed" && !(Number.isSafeInteger(v) && v > 0 && v <= 100000000)) throw new InputError("Use an amount over $0.", `discounts.${i}.value`);
+    if (type === "percentage" && !(Number.isSafeInteger(v) && v > 0 && v <= 10000)) throw new InputError("Use a percent from 0.01 to 100.", `discounts.${i}.value`);
+    const id = str(d.id);
+    const name = str(d.name).slice(0, 120);
+    return { ...(id && /^[A-Za-z0-9_.:-]{1,80}$/.test(id) ? { id } : {}), ...(name ? { name } : {}), type, value: v };
+  });
+}
+
+// The edited discounts merged by id onto the stored ones: a discount keeps
+// what the page doesn't show (its scope, catalog id, stack group, reason);
+// a new one applies to the job's every visit; one left out is gone.
+export function mergeDiscounts(stored = [], edited = []) {
+  const byId = new Map((stored || []).map((d) => [d.id, d]));
+  const used = new Set();
+  let n = Math.max(0, ...[...(stored || []), ...edited].map((d) => { const m = /^dc_(\d+)$/.exec(String(d.id || "")); return m ? Number(m[1]) : 0; }));
+  return edited.map((e) => {
+    const old = e.id ? byId.get(e.id) : null;
+    if (old && !used.has(old.id)) {
+      used.add(old.id);
+      return { ...old, name: e.name || old.name || "Discount", type: e.type, value: e.value };
+    }
+    n += 1;
+    return { id: `dc_${n}`, name: e.name || "Discount", type: e.type, value: e.value, scope: { type: "all" } };
+  });
+}
+
 const newJob = async (ctx) => {
   const b = ctx.body || {};
   const contact = await liveContact(b.contact_id, ctx);
@@ -396,8 +434,10 @@ const jobPatch = async (ctx) => {
     if (!p || p.data.contact_id !== got.data.contact_id) throw new InputError("Pick one of the contact's properties.", "property_id");
   }
   const edited = formLines(b.lines);
+  const offs = formDiscounts(b.discounts);
   const closed = ["completed", "cancelled"].includes(got.data.status);
-  if (closed && ((edited && JSON.stringify(mergeLines(got.data.lines, edited)) !== JSON.stringify(got.data.lines)) || (patch.kind !== undefined && patch.kind !== got.data.kind))) {
+  if (closed && ((edited && JSON.stringify(mergeLines(got.data.lines, edited)) !== JSON.stringify(got.data.lines)) || (patch.kind !== undefined && patch.kind !== got.data.kind)
+    || (offs && JSON.stringify(mergeDiscounts(got.data.discounts, offs)) !== JSON.stringify(got.data.discounts || [])))) {
     throw new ConflictError("This job is closed. Reopen it to change its work.");
   }
   const r = await updateRecord("job", got.data.id, (j) => {
@@ -409,6 +449,8 @@ const jobPatch = async (ctx) => {
       // the title follows the lines unless someone typed one
       if (b.title === undefined && j.title === titleFromLines(j.lines || [], j.kind)) delete next.title;
     }
+    // (the totals follow: validateJob prices the job again, discounts and all)
+    if (offs) next.discounts = mergeDiscounts(j.discounts, offs);
     return JSON.stringify(next) === JSON.stringify(j) ? null : next;
   }, { ...W(ctx), ifMatch: ctx.ifMatch });
   // what the open visits copied of the job (title, services, place) follows it

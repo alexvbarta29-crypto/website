@@ -1,4 +1,5 @@
-// "Collect payment" on the Visit screen (design §9.2 Visit, §5.6): for the
+// "Collect payment" on the Visit screen (design §9.2 Visit, §5.6; the
+// Rotor-style pill buttons since Nov 2026): for the
 // office and the visit's own techs. Shows what is left on the visit's
 // invoice, records cash or a check, or shows the pay code full screen for
 // the customer to scan and pay by card on their own phone (a tip and all;
@@ -31,7 +32,7 @@ function body(p, mode, link) {
     <label class="field" data-field="tip_cents"><span>Tip, if they gave one</span><input name="tip" inputmode="decimal" autocomplete="off" placeholder="0.00"><small class="why" hidden></small></label>
     <label class="field" data-field="reference"><span>Check number</span><input name="reference" inputmode="numeric" autocomplete="off" maxlength="20"><small class="why" hidden></small></label>
     <p class="err" data-form-err hidden></p>
-    <div class="btn-row"><button type="submit" class="btn primary">Record it</button><button type="button" class="btn" data-qr>${QR_ICON}Pay by card (QR)</button></div>
+    <div class="mn-collect-acts"><button type="submit" class="rs-pb red wide">Record it</button><button type="button" class="rs-pb wide" data-qr>${QR_ICON}<span>Pay by card (QR)</span></button></div>
     <p class="small muted">Needs signal: a payment is never saved for later.</p>
   </form>`;
 }

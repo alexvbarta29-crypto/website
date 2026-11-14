@@ -26,6 +26,11 @@ const plan = (o = {}) => ({
   ],
   ...o,
 });
+// The plan page (Rotor's look, Nov 2026): its three segments, and the round ...'s rows written as
+// their data-* hooks and labels (they open in a sheet, not in the page).
+const hooks = (r) => Object.entries(r.data || {}).map(([k, v]) => ` data-${k}="${v}"`).join("");
+const whole = (view, s, c) => ["service", "agree", "schedule"].map((tab) => text(view.render({ ...s, tab }, c))).join("\n")
+  + view.more(s, c).flat().filter(Boolean).map((r) => `<li${hooks(r)}>${r.label}</li>`).join("");
 const planState = (o = {}, p = {}) => ({
   plan: plan(p), etag: '"e1"', contact: { id: "ct_00000000000000000001", name: `Pat ${XSS}`, phone: "+17635550100", email: "pat@example.com" },
   agreements: [{ id: "ag_00000000000000000001", title: `Quarterly plan service agreement ${XSS}`, status: "signed", signed_at: NOW, signature: { name_typed: `Pat ${XSS}`, method: "in_person" } }],
@@ -53,7 +58,8 @@ test("Plans list and the contact's tab: chips with counts, rows escaped, waiting
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /href="#\/plans\/pl_00000000000000000001"/);
   assert.match(h, /Active <span class="n">1<\/span>/);
-  assert.match(h, /next Dec 2026 · autopay/);
+  assert.match(h, /next Dec 2026 · Auto-Pay/);
+  assert.match(h, /class="c-row"/, "two-line rows");
   assert.doesNotMatch(h, /Sam Sample/, "a waiting plan isn't under Active");
   assert.match(text(list.render({ rows, counts: { active: 1, pending: 1 }, chip: "pending", q: "", special: null }, ctx())), /waiting for agreement to sign/);
   assert.match(text(list.render({ rows, counts: { active: 1 }, chip: "active", q: "nobody", special: null }, ctx())), /Nothing here|No active plans/);
@@ -68,9 +74,9 @@ test("Plans list and the contact's tab: chips with counts, rows escaped, waiting
 
 test("one plan: the visits with Book and Skip, the agreement, the terms; the buttons its status allows; escaped", async () => {
   const view = await load("plan");
-  const h = text(view.render(planState(), ctx()));
+  const h = whole(view, planState(), ctx());
   assert.ok(!h.includes("<script>alert(1)"));
-  assert.match(h, /href="#\/jobs\/jb_00000000000000000001">Book/);
+  assert.match(h, /href="#\/jobs\/jb_00000000000000000001"[^>]*aria-label="Book visit 1"/, "Pending jobs: Schedule books the visit's job");
   assert.match(h, /data-skip="1:1"/);
   assert.doesNotMatch(h, /data-skip="1:3"/, "a done visit can't be skipped");
   assert.match(h, /Done /);
@@ -81,27 +87,29 @@ test("one plan: the visits with Book and Skip, the agreement, the terms; the but
   assert.match(h, /data-act="price"/);
   assert.doesNotMatch(h, /data-act="send-agreement"/, "a signed agreement isn't sent again");
   assert.match(h, /Unlimited Touch-Ups, 7-Day Rain Guarantee, Free Hard Water Removal/);
-  assert.match(h, /On \(cards arrive with Money\)/);
+  assert.match(h, /cards arrive with Money/);
+  assert.match(h, /data-autopay/, "Auto-Pay is a switch");
+  assert.match(h, /Frequency[\s\S]*Quarterly/);
   // pending: Activate anyway, send and present; no Skip
-  const pend = text(view.render(planState({ agreements: [] }, { status: "pending", pending_reasons: ["signature"], agreement_status: "none" }), ctx()));
+  const pend = whole(view, planState({ agreements: [] }, { status: "pending", pending_reasons: ["signature"], agreement_status: "none" }), ctx());
   assert.match(pend, /Waiting for the agreement to sign/);
   assert.match(pend, /data-act="activate"/);
   assert.match(pend, /data-act="send-agreement"/);
   assert.match(pend, /data-act="present-agreement"/);
   assert.doesNotMatch(pend, /data-skip/);
   // cancelling with a clawback to bill: Keep the plan, billed / waive
-  const ending = text(view.render(planState({}, { status: "cancelling", cancel: { requested_on: "2026-11-20", effective_on: "2026-11-27", reason: "moving", clawback_cents: 10000, clawback_state: "to_bill" } }), ctx()));
+  const ending = whole(view, planState({}, { status: "cancelling", cancel: { requested_on: "2026-11-20", effective_on: "2026-11-27", reason: "moving", clawback_cents: 10000, clawback_state: "to_bill" } }), ctx());
   assert.match(ending, /Ends Nov 27, 2026/);
   assert.match(ending, /data-act="withdraw"/);
   assert.match(ending, /data-act="claw-billed"/);
   assert.match(ending, /data-act="claw-waive"/);
   // someone who reads only: no buttons
-  const ro = text(view.render(planState(), ctx(["plans:read"])));
+  const ro = whole(view, planState(), ctx(["plans:read"]));
   assert.doesNotMatch(ro, /data-act=|data-skip/);
   // a paused plan resumes; an ended one renews; Rotor's plan says who's in charge
-  assert.match(text(view.render(planState({}, { status: "paused", pause: { from: "2026-12-01", reason: `Away ${XSS}` } }), ctx())), /data-act="resume"/);
-  assert.match(text(view.render(planState({}, { status: "expired" }), ctx())), /data-act="renew"/);
-  assert.match(text(view.render(planState({}, { import: { rotor_id: "x" } }), ctx())), /Rotor stays in charge/);
+  assert.match(whole(view, planState({}, { status: "paused", pause: { from: "2026-12-01", reason: `Away ${XSS}` } }), ctx()), /data-act="resume"/);
+  assert.match(whole(view, planState({}, { status: "expired" }), ctx()), /data-act="renew"/);
+  assert.match(whole(view, planState({}, { import: { rotor_id: "x" } }), ctx()), /Rotor stays in charge/);
 });
 
 test("visits due by town, the lights board, the Today card", async () => {
@@ -170,7 +178,7 @@ test("new plan: the catalog fills the plan discount; quarterly asks for the inte
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /Interior visit price \(visit 2\)/);
   assert.match(h, /name="disc" inputmode="decimal" value="100\.00"/);
-  assert.match(h, /4 visits a year, \$100 off each visit/);
+  assert.match(h, /4 visits a year/);
   const b = text(n.render({ ...s, key: "biannual", contact: null }, ctx()));
   assert.doesNotMatch(b, /Interior visit price/);
   assert.match(b, /data-pick/);
@@ -183,12 +191,12 @@ test("review fixes on screen: a lights season waits for a yes, a held plan says 
     kind: "lights_annual", catalog_key: "lights_annual", name: "Christmas lights plan", visits_per_year: 1,
     ordinals: [{ term: 1, n: 1, k: 1, target_month: "2026-11", status: "completed", total_cents: 75000 }, { term: 2, n: 1, k: 2, target_month: "2027-11", status: "unscheduled", total_cents: 120000 }],
   });
-  const lh = text(view.render(lights, ctx()));
+  const lh = whole(view, lights, ctx());
   assert.match(lh, /data-confirm-season="2027"/);
   assert.match(lh, /once the customer says yes/);
-  assert.doesNotMatch(text(view.render({ ...lights, plan: { ...lights.plan, confirmed_seasons: [2027] } }, ctx())), /data-confirm-season="2027"/);
-  assert.match(text(view.render(planState({}, { held: { action: "resume", since: "2026-11-24" } }), ctx())), /Rotor is still in charge of this customer/);
-  const queued = text(view.render(planState({ agreements: [{ id: "ag_00000000000000000001", title: "x", status: "draft", queued: true }] }, { agreement_status: "draft" }), ctx()));
+  assert.doesNotMatch(whole(view, { ...lights, plan: { ...lights.plan, confirmed_seasons: [2027] } }, ctx()), /data-confirm-season="2027"/);
+  assert.match(whole(view, planState({}, { held: { action: "resume", since: "2026-11-24" } }), ctx()), /Rotor is still in charge of this customer/);
+  const queued = whole(view, planState({ agreements: [{ id: "ag_00000000000000000001", title: "x", status: "draft", queued: true }] }, { agreement_status: "draft" }), ctx());
   assert.match(queued, /Waiting in a bulk send/);
   const board = await load("lights");
   const bh = text(board.render({ season: 2027, rows: [], counts: {}, footage_ft: 0, needs_bin: 0, to_confirm: [{ plan_id: "pl_1", contact_name: `Pat ${XSS}`, town: "Delano", plan_name: "Christmas lights plan" }] }, ctx()));
@@ -223,13 +231,13 @@ test("the owner's answers on screen (Nov 12): suggested wording beside an edited
   assert.doesNotMatch(text(one.render({ t: { ...t, suggested_body_md: undefined }, etag: '"e"', preview: null }, ctx())), /suggested wording/);
   // a 3-year lights plan ending early: the storage fee, said as one
   const view = await load("plan");
-  const ending = text(view.render(planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx()));
+  const ending = whole(view, planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx());
   assert.match(ending, /Storage fee for leaving the contract early: \$400\.00 \(to bill, waiting for your OK\)/);
   assert.match(ending, /Storage fee billed/);
   assert.match(ending, /Waive storage fee/);
-  const ended = text(view.render(planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelled", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx()));
+  const ended = whole(view, planState({}, { kind: "lights_annual", catalog_key: "lights_annual", status: "cancelled", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 40000, storage_fee_cents: 40000, clawback_state: "to_bill" } }), ctx());
   assert.match(ended, /Storage fee for leaving the contract early: \$400\.00, to bill, waiting for your OK\./, "still said once the plan has ended");
-  const windows = text(view.render(planState({}, { status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 10000, clawback_state: "to_bill" } }), ctx()));
+  const windows = whole(view, planState({}, { status: "cancelling", cancel: { requested_on: "2027-03-01", effective_on: "2027-03-08", clawback_cents: 10000, clawback_state: "to_bill" } }), ctx());
   assert.match(windows, /First-visit discount back: \$100\.00/);
   // Settings → Plans catalog: the storage fee and what the late fee covers
   const CAT = await import("../../../netlify/lib/crm/modules/plans/catalog.mjs");

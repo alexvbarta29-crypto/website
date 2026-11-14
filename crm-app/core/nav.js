@@ -1,48 +1,53 @@
-// Barta CRM client: the tab bar, the Menu sheet, the + button, the Sales
-// switch and the sidebar (design §9.1; the Nov 2026 layout: Rotor's and
-// Flyra's phone apps, the best of both).
+// Barta CRM client: the tab bar, the drawer, the top bar, the + button, the
+// Sales switch and the sidebar (design §9.1; the Nov 2026 layout, then the
+// owner's "make it like Rotor": Rotor's phone app, with everything the desk
+// can do).
 //
-// The Menu (Nov 2026, "concise but full of capabilities"): five groups,
-// Work · Sales · Customers · Money · Marketing & messages, then Settings.
-// MENU below is the one place that says where each screen sits and what it
-// is called; a screen is listed once, never also where the bar already has
-// it; the setup screens (Templates, Automations, Team, Activity, Import,
-// Tab bar, Rotor) live in the Settings hub (system/settings.js) for whoever
-// may open Settings. A module's own Menu entry with a place MENU doesn't
-// name still shows, under its section (unknown ones under More).
+// The drawer (Rotor's desktop-style menu, Nov 2026): the Menu tab and the
+// round hamburger of a top-level screen open it from the left. Our logo and
+// an X on top; four groups split by thin lines: Home, Inbox, Schedule |
+// Customers, Leads, Pipelines, Power Dialer | Service, Financials, Tasks,
+// Map | Analytics, Marketing. A row with a dot opens its own list inside the
+// drawer ("‹ Service" goes back): Service (jobs, visits, quotes, plans,
+// lights...), Financials, Analytics, Marketing, and Customers or Map when
+// the person has two screens there. DRAWER below is the one place that says
+// where each screen sits and what it is called; a row shows only when its
+// screen is there and this person may open it; a module's Menu entry it
+// doesn't name lands in a last group, so every screen stays one or two taps
+// away. The settings gear sits alone at the bottom (Tab bar for someone
+// without Settings). #/menu draws the same drawer as a page; on a computer
+// the sidebar is the same drawer, its lists folding open in place.
 //
-// The phone (Nov 2026, "make it look more like Flyra"): Flyra's floating
-// glass pill inset from the screen's edges, just above the home indicator,
-// with labels under the icons and the current place on a lighter round
-// highlight (its icon coral). The office's default bar is Flyra's: Home ·
-// Schedule · Inbox · Map · Menu (Customers, Leads, Pipeline and the rest are
-// in the Menu); each person may pick up to five places of their own (Menu →
-// Tab bar, saved on their user record: users.tabs; me.mjs navFor), the Menu
-// always last; six places go icon-only (Rotor's). A tech's bar is Today ·
-// Inbox · Time · Pay · Me, as before. A tab shows only once a module has
-// registered its screen (Map arrives with its module, for whoever may open
-// it). The Menu is not a page: its button opens a sheet of every other
-// screen (openMenuSheet below). Beside the pill, a round glass + dims the
-// screen and stacks the things to make above it, with a search on top
-// (openQuick below). Top-level screens get a large title on the left and
-// round buttons on the right (search, and a coral + for that screen's own
-// "new"); deeper screens get a round back button.
-// The Sales tab is Pipeline (when its screen exists), Leads, Calls, Quotes
-// and Tasks, one tap apart in a switch under the header. The bar hides
-// while an input has focus (the keyboard is up). A one-time "What moved"
-// note (whatMoved below) tells each person, once per device, about the bar.
+// The phone bar (Rotor's): a floating glass pill, icons only (the labels
+// stay for screen readers), the current icon red with a dot under it, red
+// badges; the red round + beside it (openQuick: search, then the things to
+// make). The office's standard bar is Home · Schedule · Inbox · Map · Menu;
+// each person may pick up to five places of their own (Customize Tabs:
+// system/tab-bar.js, saved on their user record: users.tabs; me.mjs
+// navFor), the Menu always last. A long press on the bar opens Customize
+// Tabs. A tech's bar is Today · Inbox · Time · Pay · Me, as before. A tab
+// shows only once a module has registered its screen.
+//
+// The top bar of a top-level screen (a tab's, or one the drawer lists): a
+// round hamburger on the left; on the right the round search (the + overlay's
+// search), the time, a round help (Report a problem, What moved, the
+// calendar feed) and the person's initials (My account, Light or dark,
+// Customize Tabs, Sign out). The screen's large title sits under it with its
+// own round buttons (search, filter, and a coral + for that screen's "new");
+// deeper screens get a round back button. The Sales tab (for someone who
+// pins it) is Pipeline, Leads, Calls, Quotes and Tasks, one tap apart in a
+// switch under the header. The bar hides while an input has focus. A
+// one-time "What moved" note (whatMoved below) says it once per person.
 //
 // On a computer or a tablet (900 px and up) the same pieces become a
-// desktop CRM: a dark left sidebar (the white logo; the same places as the
-// phone's bar, in the same order; a divider; every Menu section as a
-// collapsible group, less what those places already hold; Settings, Team
-// and who is signed in at the bottom; the current screen lit with a coral
-// bar; the badges) and, in the header, a search box (GET /search: names,
-// phones, streets, Q-/INV- numbers), a New button (the same creates) and
-// the person's menu. CSS decides which set shows; one codebase.
+// desktop CRM: a dark left sidebar (the white logo, the drawer's groups,
+// Settings and who is signed in at the bottom, the current screen lit with
+// a coral bar, the badges) and, in the header, a search box (GET /search:
+// names, phones, streets, Q-/INV- numbers), a New button (the same creates)
+// and the person's menu. CSS decides which set shows; one codebase.
 
-import { html, render, sheet, icon, attrs, toast } from "./ui.js";
-import { initials, ago } from "./format.js";
+import { html, render, sheet, icon, attrs, toast, rnd, actionSheet } from "./ui.js";
+import { initials, time as fmtTime } from "./format.js";
 import { api } from "./api.js";
 import * as router from "./router.js";
 
@@ -62,7 +67,7 @@ export const TABS = Object.freeze({
   quotes: { label: "Quotes", paths: ["/quotes"], icon: "doc" },
   plans: { label: "Plans", paths: ["/plans"], icon: "schedule" },
   invoices: { label: "Invoices", paths: ["/invoices"], icon: "money" },
-  // always last on the office's bar: opens the Menu sheet (openMenuSheet); /menu is its page
+  // always last on the office's bar: opens the drawer (openDrawer); /menu is its page
   menu: { label: "Menu", paths: ["/menu"], icon: "menu", sheet: true },
   time: { label: "Time", paths: ["/time"], icon: "time" },
   pay: { label: "Pay", paths: ["/pay"], icon: "pay" },
@@ -74,31 +79,45 @@ export const TABS = Object.freeze({
 // What each place's own "new" is (the coral + in a top-level screen's header; else the + sheet).
 const PLACE_NEW = { contacts: ["/contacts/new", "/leads/new"], schedule: ["/jobs/new"], inbox: ["/inbox/new"], sales: ["/leads/new"], leads: ["/leads/new"], pipeline: ["/leads/new"], quotes: ["/quotes/new"], plans: ["/plans/new"], invoices: ["/invoices/new"] };
 
-// The Menu's groups, in order (More only holds what no group names).
-export const SECTIONS = Object.freeze([
-  ["work", "Work"], ["sales", "Sales"], ["customers", "Customers"], ["money", "Money"], ["marketing", "Marketing & messages"], ["more", "More"],
+// The drawer: four groups, in order. A row is { key, label, icon, path } or,
+// with a dot, { key, label, icon, sub: [[path, label, icon], ...] } (its own
+// list; one that only one screen of is open to this person is that screen;
+// `main` names the screen the row stands for then, keeping the row's name).
+// A module's Menu entry for the same path decides who may see it (and its
+// icon); else the route's permission. A path may carry a query (a view).
+export const DRAWER = Object.freeze([
+  [
+    { key: "home", label: "Home", icon: "home", path: "/today" },
+    { key: "inbox", label: "Inbox", icon: "inbox", path: "/inbox", count: "inbox" },
+    { key: "schedule", label: "Schedule", icon: "cal12", path: "/schedule" },
+  ],
+  [
+    { key: "customers", label: "Customers", icon: "contacts", main: "/contacts", sub: [["/contacts", "Customers", "contacts"], ["/merge", "Merge review", "copy"]] },
+    { key: "leads", label: "Leads", icon: "target", path: "/leads" },
+    { key: "pipelines", label: "Pipelines", icon: "pipeline", path: "/pipeline" },
+    { key: "dialer", label: "Power Dialer", icon: "phone", path: "/calls" },
+  ],
+  [
+    { key: "service", label: "Service", icon: "hammer", sub: [["/jobs", "Jobs", "list"], ["/schedule?view=list", "Visits", "cal"], ["/schedule?view=tray", "To book", "clock"], ["/quotes", "Quotes", "doc"], ["/plans", "Plans", "swap"], ["/plans/due", "Plan visits to book", "cal"], ["/lights", "Lights season", "bulb"], ["/tools/lights", "Light Studio", "bulb"], ["/team-map", "Team map", "team"], ["/time", "Time", "time"], ["/timesheets", "Timesheets", "clock"], ["/pay", "Pay", "pay"]] },
+    { key: "financials", label: "Financials", icon: "money", sub: [["/invoices", "Invoices", "receipt"], ["/payments", "Payments", "money"], ["/autopay", "Autopay", "clock"], ["/payroll", "Payroll", "pay"], ["/tools/purchases", "Purchases", "cart"]] },
+    { key: "tasks", label: "Tasks", icon: "check", path: "/tasks" },
+    { key: "map", label: "Map", icon: "map", main: "/map", sub: [["/map", "Door to door", "map"], ["/team-map", "Team map", "team"]] },
+  ],
+  [
+    { key: "analytics", label: "Analytics", icon: "chart", sub: [["/reports", "Reports", "chart"], ["/dashboard", "Dashboard", "grid"], ["/leaderboard", "Leaderboard", "trophy"], ["/performance", "My performance", "trend"]] },
+    { key: "marketing", label: "Marketing", icon: "send", sub: [["/campaigns", "Campaigns", "send"], ["/approvals", "Approvals", "check"], ["/reviews", "Reviews", "check"], ["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"], ["/outbox", "Outbox", "send"], ["/templates", "Message templates", "doc"], ["/automations", "Automations", "bolt"], ["/settings/cadences", "Follow-up cadences", "phone"]] },
+  ],
 ]);
-// Where each screen sits and its name there: [path, label, icon]. A module's
-// nav entry for the same path decides who may see it (and its icon).
-export const MENU = Object.freeze({
-  work: [["/schedule", "Schedule", "schedule"], ["/jobs", "Jobs", "list"], ["/plans", "Plans", "swap"], ["/lights", "Lights season", "bulb"], ["/team-map", "Team map", "team"], ["/timesheets", "Timesheets", "clock"], ["/time", "Time", "time"], ["/pay", "Pay", "pay"], ["/payroll", "Payroll", "pay"]],
-  sales: [["/pipeline", "Pipeline", "pipeline"], ["/leads", "Leads", "target"], ["/calls", "Calls", "phone"], ["/quotes", "Quotes", "doc"], ["/tasks", "Tasks", "check"], ["/knock", "Door to door", "map"], ["/tools/lights", "Light Studio", "bulb"], ["/leaderboard", "Leaderboard", "trophy"], ["/performance", "My performance", "trend"]],
-  customers: [["/contacts", "Customers", "contacts"], ["/merge", "Merge review", "copy"]],
-  money: [["/invoices", "Invoices", "receipt"], ["/payments", "Payments", "money"], ["/autopay", "Autopay", "clock"], ["/reports", "Reports", "chart"], ["/tools/purchases", "Purchases", "cart"]],
-  marketing: [["/inbox", "Inbox", "inbox"], ["/campaigns", "Campaigns", "send"], ["/approvals", "Approvals", "check"], ["/reviews", "Reviews", "check"], ["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"], ["/outbox", "Outbox", "send"]],
-});
-// Set up once, so in the Settings hub (system/settings.js), not the Menu,
-// for whoever may open Settings; anyone else finds them in the Menu.
+// Set up once: in the Settings hub (system/settings.js) for whoever may open
+// Settings (the drawer may list them too: Marketing's templates and
+// automations); anyone else finds them in the drawer's last group.
 export const IN_SETTINGS = Object.freeze(["/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/tools/rotor", "/legacy/customers"]);
 // Old Menu entries that are now part of another screen (their links redirect
-// or still open): To book is a Schedule view, Visits is the Schedule's List,
-// Follow-ups (the office's playbook page) is under Settings → Cadences, the
-// office Dashboard (Rotor's snapshot) opens from Reports.
-const GONE = new Set(["/schedule?view=tray", "/visits", "/tools/followups", "/settings", "/me", "/dashboard"]);
+// or still open), and what has its own button (Settings: the gear; My
+// account: the person's initials; the Tab bar: Customize Tabs).
+const GONE = new Set(["/visits", "/tools/followups", "/settings", "/me", "/tab-bar", "/menu"]);
 // Two paths, one screen: the bar's Map is Door to door.
 const SAME = Object.freeze({ "/knock": "/map" });
-// A module's section for a screen MENU doesn't name.
-const OLD_SECTION = { work: "work", sales: "sales", customers: "customers", money: "money", messages: "marketing", marketing: "marketing", office: "marketing" };
 
 let st = { tabs: [], more: [], creates: [], can: () => false, onSignOut: () => {}, badges: {}, user: null };
 
@@ -140,7 +159,7 @@ export function plan({ nav, manifests, can, user = null }) {
   st.extraTabs = extra;
   st.tabs = normalize(nav).map((key) => placeTab(key, extra)).filter(Boolean);
   // the screens the Menu lists are top-level too (a large title, no back button when you came from another top-level screen)
-  st.menuPaths = menuDest() ? new Set(menuGroups().flatMap((g) => g.items.map((n) => n.path.split("?")[0]))) : new Set();
+  st.menuPaths = menuDest() ? drawerPaths() : new Set();
   return { bar: barTabs(), menu: menuDest(), side: sideLayout() };
 }
 
@@ -164,10 +183,15 @@ export function mount({ nav, manifests, can, onSignOut, user }) {
   const box = document.getElementById("tabs");
   drawBar();
   box.addEventListener("click", (e) => {
+    if (pressed) { pressed = false; e.preventDefault(); return; }
     if (e.target.closest("[data-more]")) openMore();
-    if (e.target.closest("[data-menu]")) openMenuSheet({ user: st.user, can: st.can, groups: menuGroups(), onSignOut: st.onSignOut });
+    if (e.target.closest("[data-menu]")) openDrawer();
   });
+  longPress(box);
+  // Rotor's floating bar: icons only, the current one red with a dot, the red round +
+  document.getElementById("app").classList.add("rs-shell");
   mountRound();
+  mountTopBar();
 
   // the switch between a tab's screens (Sales: Calls · Quotes · Tasks), under the header
   if (!document.getElementById("subnav")) {
@@ -189,7 +213,7 @@ export function mount({ nav, manifests, can, onSignOut, user }) {
   document.addEventListener("focusout", () => setTimeout(() => { if (!typing(document.activeElement)) app.classList.remove("typing"); }, 60));
 }
 
-// The bar: every place, the Menu last (a button: it opens the sheet).
+// The bar: every place, the Menu last (a button: it opens the drawer).
 const barTabs = () => st.tabs;
 const menuDest = () => st.tabs.find((t) => t.sheet) || null;
 const tabRoot = (path) => st.tabs.some((t) => !t.sheet && (t.roots || []).includes(path));
@@ -364,53 +388,57 @@ export function setBadges({ inbox = 0, today = 0 } = {}) {
   }
 }
 
-// The Menu's groups: [{ key, label, items: [{ path, label, icon }] }], each
-// screen once, only what this person may open, empty groups left out.
-export function menuSections() {
-  const settings = routeOk("/settings") && st.more.some((n) => n.path === "/settings");
-  const named = new Map(Object.entries(MENU).flatMap(([key, list]) => list.map((x) => [x[0], key])));
-  const groups = SECTIONS.map(([key, label]) => ({ key, label, items: [] }));
-  const by = Object.fromEntries(groups.map((g) => [g.key, g]));
-  const seen = new Set();
-  const add = (key, item) => { if (!seen.has(item.path)) { seen.add(item.path); by[key].items.push(item); } };
-  for (const [key, list] of Object.entries(MENU)) {
-    for (const [path, label, ic] of list) {
-      const own = st.navAll.find((n) => n.path === path);
-      // a module's entry decides who sees it (Jobs: whoever books); else the route's permission
-      if (own ? !st.more.includes(own) : !routeOk(path)) continue;
-      if (settings && IN_SETTINGS.includes(path)) continue;
-      add(key, { path, label, icon: (own && own.icon) || ic });
+// May this person open a screen the drawer names? A module's Menu entry for
+// the path decides (Jobs: whoever books); else the route's permission.
+function visible(path) {
+  const own = (st.navAll || []).find((n) => n.path === path);
+  return own ? st.more.includes(own) : routeOk(path);
+}
+const hasSettings = () => routeOk("/settings") && st.more.some((n) => n.path === "/settings");
+
+// The drawer's groups for this person (pure: the tests call it with the
+// router's routes registered): [[{ key, label, icon, path?, paths, sub? }]],
+// each row only when one of its screens is open to them, a row with one
+// screen left a plain link; a last group holds a module's Menu entry no row
+// names (and the setup screens for someone without Settings). The office
+// only: a tech has no drawer.
+export function drawerGroups() {
+  if (!menuDest()) return [];
+  const settings = hasSettings();
+  const named = new Set();
+  const mapBoth = visible("/map") && visible("/team-map");
+  const groups = DRAWER.map((g) => g.map((it) => {
+    if (!it.sub) {
+      for (const p of [it.path]) named.add(p.split("?")[0]);
+      return visible(it.path) ? { key: it.key, label: it.label, icon: it.icon, path: it.path, paths: [it.path.split("?")[0]], count: it.count || null } : null;
     }
-  }
-  for (const n of st.more) {
-    if (named.has(n.path) || GONE.has(n.path) || (settings && IN_SETTINGS.includes(n.path))) continue;
-    // (a bar nobody may change, a tech's: no Tab bar)
-    if (n.path === "/tab-bar" && !menuDest()) continue;
-    add(OLD_SECTION[n.section] || "more", { path: n.path, label: n.label, icon: n.icon });
-  }
-  return groups.filter((g) => g.items.length);
-}
-export const signOut = () => st.onSignOut();
-
-// What the bar already holds (and the screens those places are).
-function onBar() {
-  const have = new Set(barTabs().filter((t) => !t.more && !t.sheet).flatMap((t) => t.roots || []));
-  for (const [p, same] of Object.entries(SAME)) if (have.has(same)) have.add(p);
-  return have;
-}
-
-// The Menu sheet's (and the /menu page's) groups: Home when the bar lacks
-// it, the five groups less what the bar holds, then Settings (or, for
-// someone who can't open Settings, Tab bar). → [{ key, label?, items }]
-export function menuGroups() {
-  const bar = onBar();
-  const groups = menuSections().map((g) => ({ ...g, items: g.items.filter((n) => !bar.has(n.path)) })).filter((g) => g.items.length);
-  if (!bar.has("/today") && routeOk("/today")) groups.unshift({ key: "places", items: [{ path: "/today", label: st.user && st.user.role === "tech" ? "Today" : "Home", icon: "home" }] });
-  const settings = st.more.find((n) => n.path === "/settings");
-  const last = settings ? [{ path: "/settings", label: "Settings", icon: "gear" }] : routeOk("/tab-bar") && !groups.some((g) => g.items.some((n) => n.path === "/tab-bar")) && menuDest() ? [{ path: "/tab-bar", label: "Tab bar", icon: "tabbar" }] : [];
-  if (last.length) groups.push({ key: "you", items: last });
+    for (const [p] of it.sub) named.add(p.split("?")[0]);
+    // the Team map sits under Map when the person has both, else under Service
+    const sub = it.sub.filter(([p]) => visible(p) && !(it.key === "service" && p === "/team-map" && mapBoth))
+      .map(([path, label, ic]) => ({ path, label, icon: ((st.navAll || []).find((n) => n.path === path) || {}).icon || ic }));
+    if (!sub.length) return null;
+    if (sub.length === 1) {
+      const only = sub[0];
+      return { key: it.key, label: it.main && only.path === it.main ? it.label : only.label, icon: it.main && only.path === it.main ? it.icon : only.icon, path: only.path, paths: [only.path.split("?")[0]] };
+    }
+    return { key: it.key, label: it.label, icon: it.icon, sub, paths: [...new Set(sub.map((x) => x.path.split("?")[0]))] };
+  }).filter(Boolean)).filter((g) => g.length);
+  for (const [p, same] of Object.entries(SAME)) if (named.has(same)) named.add(p);
+  // what no row names: a module's own Menu entry (and, for someone without Settings, the setup screens)
+  const rest = st.more.filter((n) => !named.has(n.path) && !GONE.has(n.path) && !(settings && IN_SETTINGS.includes(n.path)))
+    .map((n) => ({ key: "x" + n.path, label: n.label, icon: n.icon || "list", path: n.path, paths: [n.path] }));
+  if (rest.length) groups.push(rest);
   return groups;
 }
+// The gear at the bottom: Settings, or Customize Tabs for someone without Settings.
+export function drawerGear() {
+  if (!menuDest()) return null;
+  if (hasSettings()) return { path: "/settings", label: "Settings" };
+  return routeOk("/tab-bar") ? { tabs: true, label: "Customize Tabs" } : null;
+}
+// Every screen the drawer opens (they are top-level: a large title, no back button from another top-level screen).
+const drawerPaths = () => { const g = drawerGear(); return new Set([...drawerGroups().flat().flatMap((it) => it.paths), ...(g && g.path ? [g.path] : [])]); };
+export const signOut = () => st.onSignOut();
 
 function openMore() {
   const s = sheet({
@@ -436,10 +464,10 @@ function openMore() {
 // computer (kept in localStorage under their id; a browser that keeps
 // nothing never shows it, rather than showing it every time). A tech's bar
 // didn't change: nothing to say.
-export const MOVED_KEY = "crm-moved-4";
+export const MOVED_KEY = "crm-moved-5";
 export const MOVED_TEXT = Object.freeze({
-  phone: "The Menu is tidier: five groups, and every setting in Settings. Old links still work.",
-  desk: "The sidebar is tidier: five groups, and every setting in Settings. Old links still work.",
+  phone: "The Menu is a drawer now, like Rotor's: Service, Financials, Analytics and Marketing open their own lists. Old links still work.",
+  desk: "The sidebar is Rotor's now: Service, Financials, Analytics and Marketing fold open in place. Old links still work.",
 });
 const movedKey = (uid) => (uid ? `${MOVED_KEY}:${uid}` : null);
 const me = () => (st.user && st.user.id) || null;
@@ -472,55 +500,57 @@ function whatMoved() {
 
 // ------------------------------------------------------------ the desktop chrome
 
-const CLOSED_KEY = "crm-side-shut";
-const shutGroups = () => { try { return new Set(JSON.parse(localStorage.getItem(CLOSED_KEY) || "[]")); } catch (e) { return new Set(); } };
+// A list of the sidebar (Service, Financials...) folds open in place; the
+// ones a person opened stay open on this computer.
+const OPEN_KEY = "crm-side-open";
+const openGroups = () => { try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || "[]")); } catch (e) { return new Set(); } };
 function toggleGroup(g, shut) {
   g.classList.toggle("shut", shut);
   const b = g.querySelector(".side-h");
   if (b) b.setAttribute("aria-expanded", String(!shut));
   try {
-    const set = shutGroups();
-    if (shut) set.add(g.dataset.grp); else set.delete(g.dataset.grp);
-    localStorage.setItem(CLOSED_KEY, JSON.stringify([...set]));
-  } catch (e) { /* a private window: open every time */ }
+    const set = openGroups();
+    if (shut) set.delete(g.dataset.grp); else set.add(g.dataset.grp);
+    localStorage.setItem(OPEN_KEY, JSON.stringify([...set]));
+  } catch (e) { /* a private window: shut every time */ }
 }
 
 const sideItem = (path, label, ic, key, paths) => html`<a class="side-item" href="${"#" + path}" ${attrs({ "data-path": path.split("?")[0] === path ? path : null, "data-paths": paths && paths.length > 1 ? paths.join(" ") : null, "data-tab": key || null })}>${icon(ic || "list")}<span class="sl">${label}</span>${key ? html`<span class="badge" hidden></span>` : ""}</a>`;
 
-// What the sidebar holds (pure, for the tests): the bar's places first, in
-// the bar's order; then, for the office, the Menu's groups less what those
-// places already open; Settings at the bottom (above who is signed in; My
-// account is that card). The same places as the phone, nothing twice.
+// What the sidebar holds (pure, for the tests): for the office, the
+// drawer's groups (a row with its own list folds open in place) and
+// Settings at the bottom (above who is signed in; My account is that card);
+// for a tech, the bar's places.
 export const SIDE_BOTTOM = Object.freeze(["/settings"]);
 export function sideLayout() {
   const top = barTabs().filter((t) => !t.more && !t.sheet);
   if (!menuDest()) return { top, groups: [], bottom: [] };
-  const bar = onBar();
-  const groups = menuSections()
-    .map((sec) => ({ ...sec, items: sec.items.filter((n) => !bar.has(n.path)) }))
-    .filter((sec) => sec.items.length);
   const bottom = SIDE_BOTTOM.map((p) => st.more.find((n) => n.path === p)).filter(Boolean);
-  return { top, groups, bottom };
+  return { top: [], groups: drawerGroups(), bottom };
 }
+// the badge a row carries (Home: what needs you; Inbox: unread)
+const BADGE_KEY = { home: "home", inbox: "inbox" };
 
 function mountDesk() {
   const app = document.getElementById("app");
   if (!app || document.getElementById("side")) return;
-  const shut = shutGroups();
+  const opened = openGroups();
   const side = document.createElement("nav");
   side.id = "side";
   side.className = "app-side";
   side.setAttribute("aria-label", "CRM sections");
   const { top, groups, bottom } = sideLayout();
   const u = st.user || {};
+  const row = (it) => (it.sub
+    ? html`<section class="${"side-grp sec-" + it.key + (opened.has(it.key) ? "" : " shut")}" data-grp="${it.key}">
+        <button type="button" class="side-h" ${attrs({ "aria-expanded": String(opened.has(it.key)) })}>${icon(it.icon)}<span class="sl">${it.label}</span><span class="side-chev" aria-hidden="true"></span></button>
+        <div class="side-items">${it.sub.map((n) => sideItem(n.path, n.label, n.icon))}</div>
+      </section>`
+    : sideItem(it.path, it.label, it.icon, BADGE_KEY[it.key] || null));
   render(side, html`<a class="side-logo" href="#/today"><img src="/assets/img/logo-bww-white.png" alt="Barta Window Washing" width="128" height="35"></a>
     <div class="side-scroll">
-      <div class="side-main">${top.map((t) => sideItem(t.path, t.label, t.icon, t.key, t.roots))}</div>
-      ${groups.length ? html`<div class="side-div" role="separator"></div>` : ""}
-      ${groups.map((sec) => html`<section class="${"side-grp sec-" + sec.key + (shut.has(sec.key) ? " shut" : "")}" data-grp="${sec.key}">
-        <button type="button" class="side-h" ${attrs({ "aria-expanded": String(!shut.has(sec.key)) })}><span>${sec.label}</span><span class="side-chev" aria-hidden="true"></span></button>
-        <div class="side-items">${sec.items.map((n) => sideItem(n.path, n.label, n.icon))}</div>
-      </section>`)}
+      ${top.length ? html`<div class="side-main">${top.map((t) => sideItem(t.path, t.label, t.icon, t.key, t.roots))}</div>` : ""}
+      ${groups.map((g, i) => html`${i ? html`<div class="side-div" role="separator"></div>` : ""}<div class="side-main">${g.map(row)}</div>`)}
     </div>
     ${bottom.length ? html`<div class="side-foot">${bottom.map((n) => sideItem(n.path, n.label, n.icon))}</div>` : ""}
     <a class="side-me" href="#/me"><span class="avatar" ${attrs({ style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null })}>${initials(u.name)}</span><span class="who"><span class="nm">${u.name || "My account"}</span><span class="sub">${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></span></a>`);
@@ -602,25 +632,17 @@ function searchBox() {
   input.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { const a = pop.querySelector("a"); if (a) { e.preventDefault(); a.focus(); } } });
 }
 
-// ------------------------------------------------------------ the + overlay and the Menu sheet
+// ------------------------------------------------------------ the + overlay
 //
-// the best of Rotor's and Flyra's phone apps; core/nav.js opens them).
-//
-//   openQuick({ creates, search, can })   the round coral + (Rotor): the screen
-//       blurs, a search field sits at the top ("Search customers, jobs,
-//       tasks...": GET /search, people and Q-/INV- numbers), and the things to
-//       make stack above the + as white pills with round icons (Flyra):
-//       Customer, Lead, Quote, Job, Plan, Invoice, Task (each only for someone
-//       who may). The + turns into an ×. A tap outside, the ×, Escape or
-//       going anywhere closes it.
-//   openMenuSheet({ user, can, groups })  the Menu (Flyra): a sheet from the
-//       bottom with a large "Menu" title, round buttons (report a problem,
-//       the person's initials → My account), the latest reply nobody has
-//       read yet, then every other screen in rounded groups (nav.js
-//       menuGroups: Work, Sales, Customers, Money, Marketing & messages,
-//       less what the bar holds; then Settings).
-// (They live here, not in a file of their own, so a phone that starts with
-// no signal has them in the app it already keeps.)
+//   openQuick({ creates, search, can })   the round red + (Rotor's): the
+//       screen blurs, a search field sits at the top ("Search customers,
+//       jobs, tasks...": GET /search, people and Q-/INV- numbers), and the
+//       things to make stack above the + as pills with round icons: Lead or
+//       customer, Quote, Job, Invoice, Plan, Task (each only for someone who
+//       may). The + turns into an ×. A tap outside, the ×, Escape or going
+//       anywhere closes it.
+// (It lives here, not in a file of its own, so a phone that starts with no
+// signal has it in the app it already keeps.)
 
 // The things to make: one list for the phone's + and the desk's New, the
 // most used first (a call comes in: a lead, a quote, a job), each once. The
@@ -717,45 +739,212 @@ export function searchInto(form, input, out) {
   });
 }
 
-// ------------------------------------------------------------ the Menu sheet
+// ------------------------------------------------------------ the drawer (Rotor's menu)
+//
+// openDrawer() slides it in from the left over a dimmed, blurred screen;
+// the X, a tap outside, a swipe to the left, Escape or going anywhere
+// closes it. A row with a dot shows its own list in its place ("‹ Service"
+// goes back). drawerList() is the same rows for the #/menu page.
 
-export function menuRows(groups) {
-  return html`${groups.map((g) => (g.two
-    ? html`<div class="ms-two">${g.items.map((n) => html`<a class="ms-tile" ${attrs({ href: "#" + n.path })} data-close>${icon(n.icon || "list")}<span>${n.label}</span></a>`)}</div>`
-    : html`<section class="ms-grp" ${attrs({ "aria-label": g.label || null })}>${g.label ? html`<h3 class="ms-h">${g.label}</h3>` : ""}<ul class="ms-list">${g.items.map((n) => html`<li><a class="ms-row" ${attrs({ href: "#" + n.path })} data-close><span class="ms-ic">${icon(n.icon || "list")}</span><span class="ms-l">${n.label}</span><span class="chev" aria-hidden="true"></span></a></li>`)}</ul></section>`))}`;
+// The row of the screen on show (the nearest up its parent chain), and the list it sits in.
+function currentRow(groups) {
+  const chain = router.chain(router.currentPath());
+  for (const p of chain) {
+    for (const it of groups.flat()) {
+      if (it.sub) { const x = it.sub.find((n) => n.path === p); if (x) return { row: it, sub: x }; }
+      else if (it.path === p) return { row: it, sub: null };
+    }
+  }
+  return { row: null, sub: null };
 }
 
-export function openMenuSheet({ user = {}, can = () => false, groups = [] } = {}) {
-  closeQuick();
-  const s = sheet({
-    title: "Menu",
-    body: html`<div class="ms-reply" hidden></div>${menuRows(groups)}`,
-    events: {
-      "click [data-close]": () => s.close(),
-      "click [data-bug]": () => { s.close(); reportProblem(); },
-      "click [data-theme-btn]": () => { s.close(); pickTheme(); },
-    },
-  });
-  s.el.classList.add("menu-sheet");
-  const head = s.el.querySelector(".sheet-head");
-  const btns = document.createElement("div");
-  btns.className = "ms-btns";
-  render(btns, html`${can("tasks:write") ? html`<button type="button" class="rnd" data-bug aria-label="Report a problem">${icon("bug")}</button>` : ""}<button type="button" class="rnd" data-theme-btn aria-label="Light or dark">${icon("sun")}</button><a class="rnd ms-me" href="#/me" data-close ${attrs({ "aria-label": `${user.name || "My account"}: my account` })}>${initials(user.name)}</a>`);
-  head.insertBefore(btns, head.querySelector("[data-sheet-x]"));
-  // the latest reply nobody has read yet, one tap from its thread
-  if (can("inbox:read")) {
-    api("/inbox?filter=unread", { cache: false }).then((r) => {
-      const c = ((r && r.data) || []).find((x) => x.last_direction === "in" || x.unread);
-      const box = s.el.querySelector(".ms-reply");
-      if (!c || !box) return;
-      render(box, html`<a class="ms-replycard" ${attrs({ href: "#/inbox/" + encodeURIComponent(c.id) })} data-close>
-        <span class="ms-av">${initials(c.contact_name)}</span>
-        <span class="who"><span class="nm">${c.contact_name || "Someone"} replied${c.last_at ? html` <small>${ago(c.last_at)}</small>` : ""}</span><span class="sub">${c.last_preview || ""}</span></span>
-        <span class="ms-go">Reply</span></a>`);
-      box.hidden = false;
-    }).catch(() => {});
+// The rows (html): the groups split by thin lines, or one row's own list.
+// expand: every list open in place, under its row's name (the #/menu page has the room).
+export function drawerList(groups, { open = null, expand = false } = {}) {
+  const cur = currentRow(groups);
+  const n = st.badges.inbox || 0;
+  const link = (it, on) => html`<a class="dr-row" ${attrs({ href: "#" + it.path, "aria-current": on ? "page" : null, "data-dr-go": it.path })}><span class="dr-ic">${icon(it.icon || "list")}</span><span class="dr-l">${it.label}</span>${it.count === "inbox" && n ? html`<span class="dr-n">${n > 99 ? "99+" : String(n)}</span>` : ""}</a>`;
+  const row = (it) => (it.sub
+    ? html`<button type="button" class="dr-row" ${attrs({ "data-dr-sub": it.key, "aria-current": cur.row === it ? "true" : null })}><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span><span class="dr-dot" aria-hidden="true"></span><span class="sr">, ${it.sub.length} screens</span></button>`
+    : link(it, cur.row === it));
+  if (expand) {
+    return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${it.sub
+      ? html`<div class="dr-sub" ${attrs({ "data-dr-list": it.key })}><h3 class="dr-h"><span class="dr-ic">${icon(it.icon)}</span><span class="dr-l">${it.label}</span></h3><ul class="dr-in">${it.sub.map((x) => html`<li>${link(x, cur.sub === x)}</li>`)}</ul></div>`
+      : link(it, cur.row === it)}</li>`)}</ul>`)}`;
   }
-  return s;
+  const list = open ? groups.flat().find((it) => it.key === open && it.sub) : null;
+  if (list) {
+    return html`<button type="button" class="dr-row dr-back" data-dr-back><span class="dr-ic">${icon("chevleft")}</span><span class="dr-l">${list.label}</span></button>
+      <ul class="dr-grp" ${attrs({ "aria-label": list.label })}>${list.sub.map((x) => html`<li>${link(x, cur.sub === x)}</li>`)}</ul>`;
+  }
+  return html`${groups.map((g) => html`<ul class="dr-grp">${g.map((it) => html`<li>${row(it)}</li>`)}</ul>`)}`;
+}
+// The gear at the bottom (Settings, or Customize Tabs for someone without Settings).
+export function drawerFoot() {
+  const g = drawerGear();
+  if (!g) return html``;
+  return g.path ? rnd("gear", g.label, { href: "#" + g.path, data: { "dr-gear": true } }) : rnd("gear", g.label, { data: { "dr-tabs": true }, popup: true });
+}
+// Our logo, the dark or the white one with the theme.
+export const drawerLogo = () => html`<a class="dr-logo" href="#/today" data-dr-go="/today"><img class="lg-l" src="/assets/img/logo-bww.png" alt="Barta Window Washing" width="128" height="35"><img class="lg-d" src="/assets/img/logo-bww-white.png" alt="Barta Window Washing" width="128" height="35"></a>`;
+
+let drawerClose = null;
+// → true when it was open (the edge swipe closes it before going back)
+export function closeDrawer() { if (!drawerClose) return false; drawerClose(); return true; }
+
+export function openDrawer() {
+  if (drawerClose) return drawerClose;
+  if (!menuDest()) return null;
+  closeQuick();
+  const layer = document.getElementById("layer") || document.body;
+  const back = document.createElement("div");
+  back.className = "dr-scrim";
+  back.setAttribute("data-dr-x", "");
+  const el = document.createElement("nav");
+  el.className = "drawer";
+  el.id = "drawer";
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-modal", "true");
+  el.setAttribute("aria-label", "Menu");
+  el.tabIndex = -1;
+  render(el, html`<div class="dr-head">${drawerLogo()}${rnd("close", "Close the menu", { tone: "grey", sm: true, data: { "dr-x": true } })}</div><div class="dr-body"></div><div class="dr-foot">${drawerFoot()}</div>`);
+  const body = el.querySelector(".dr-body");
+  let open = null;
+  const draw = () => render(body, drawerList(drawerGroups(), { open }));
+  draw();
+  layer.appendChild(back);
+  layer.appendChild(el);
+  document.body.classList.add("dr-on");
+  const prev = document.activeElement;
+  let closed = false;
+  const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
+  const onHash = () => close();
+  function close() {
+    if (closed) return;
+    closed = true;
+    drawerClose = null;
+    el.classList.remove("on");
+    back.classList.remove("on");
+    document.body.classList.remove("dr-on");
+    document.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("hashchange", onHash);
+    setTimeout(() => { el.remove(); back.remove(); }, 240);
+    if (prev && prev.focus && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+  }
+  drawerClose = close;
+  back.addEventListener("click", close);
+  el.addEventListener("click", (e) => {
+    if (e.target.closest("[data-dr-x]")) { close(); return; }
+    const sub = e.target.closest("[data-dr-sub]");
+    if (sub) { open = sub.dataset.drSub; draw(); const b = body.querySelector("[data-dr-back]"); if (b) b.focus(); return; }
+    if (e.target.closest("[data-dr-back]")) { const k = open; open = null; draw(); const b = body.querySelector(`[data-dr-sub="${k}"]`); if (b) b.focus(); return; }
+    if (e.target.closest("[data-dr-tabs]")) { close(); openCustomizeTabs(); return; }
+    // the screen already on show: just close
+    const go = e.target.closest("a[href]");
+    if (go && go.getAttribute("href") === location.hash) close();
+  });
+  // a swipe to the left closes it
+  let x0 = null, dx = 0;
+  el.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; dx = 0; }, { passive: true });
+  el.addEventListener("touchmove", (e) => {
+    if (x0 === null) return;
+    dx = Math.min(0, e.touches[0].clientX - x0);
+    if (dx < -6) { el.style.transition = "none"; el.style.transform = `translateX(${dx}px)`; }
+  }, { passive: true });
+  el.addEventListener("touchend", () => {
+    if (x0 === null) return;
+    el.style.transition = "";
+    el.style.transform = "";
+    if (dx < -60) close();
+    x0 = null; dx = 0;
+  });
+  document.addEventListener("keydown", onKey, true);
+  window.addEventListener("hashchange", onHash);
+  requestAnimationFrame(() => {
+    back.classList.add("on");
+    el.classList.add("on");
+    const x = el.querySelector("[data-dr-x]");
+    try { (x || el).focus({ preventScroll: true }); } catch (e) { /* old Safari */ }
+  });
+  return close;
+}
+
+// Customize Tabs (system/tab-bar.js), loaded when asked for.
+export function openCustomizeTabs() {
+  return import("../modules/system/tab-bar.js").then((m) => m.openCustomize({ can: st.can })).catch(() => { toast("That didn't open. Try again.", { bad: true }); });
+}
+
+// A long press on the bar: Customize Tabs (the office's bar; a tech's is the tech app's).
+let pressed = false;
+function longPress(box) {
+  let t = null, x0 = 0, y0 = 0;
+  const stop = () => { clearTimeout(t); t = null; };
+  box.addEventListener("pointerdown", (e) => {
+    if (!menuDest() || !routeOk("/tab-bar")) return;
+    x0 = e.clientX; y0 = e.clientY;
+    stop();
+    t = setTimeout(() => { t = null; pressed = true; setTimeout(() => { pressed = false; }, 900); openCustomizeTabs(); }, 550);
+  });
+  box.addEventListener("pointermove", (e) => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) stop(); });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) box.addEventListener(ev, stop);
+  box.addEventListener("contextmenu", (e) => { if (menuDest()) e.preventDefault(); });
+}
+
+// ------------------------------------------------------------ the top bar of a top-level screen (a phone)
+//
+// Rotor's: the round hamburger (the drawer) on the left; the round search,
+// the time, the round help and the person's initials on the right. The
+// screen's own large title sits under it (CSS: .big-top).
+
+function mountTopBar() {
+  const top = document.getElementById("top");
+  if (!top || !menuDest() || document.getElementById("top-bar")) return;
+  const u = st.user || {};
+  const bar = document.createElement("div");
+  bar.id = "top-bar";
+  bar.className = "top-bar";
+  render(bar, html`${rnd("menu", "Menu", { data: { "tb-menu": true }, popup: true })}<span class="tb-gap"></span>
+    ${st.can("contacts:read_all") ? rnd("search", "Search", { data: { "tb-search": true }, popup: true }) : ""}
+    <span class="tb-time num" id="tb-time" aria-hidden="true"></span>
+    ${rnd("help", "Help", { data: { "tb-help": true }, popup: true })}
+    <button type="button" class="rnd tb-av" data-tb-me aria-haspopup="dialog" ${attrs({ "aria-label": `${u.name || "My account"}: account`, style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color};color:#fff` : null })}>${initials(u.name)}</button>`);
+  top.insertBefore(bar, top.firstChild);
+  bar.addEventListener("click", (e) => {
+    if (e.target.closest("[data-tb-menu]")) openDrawer();
+    else if (e.target.closest("[data-tb-search]")) openQuick({ creates: [], search: true, can: st.can });
+    else if (e.target.closest("[data-tb-help]")) helpSheet();
+    else if (e.target.closest("[data-tb-me]")) meSheet();
+  });
+  const tick = () => { const el = document.getElementById("tb-time"); if (el) el.textContent = fmtTime(new Date()); };
+  tick();
+  setInterval(tick, 15000);
+}
+
+// The round help: Report a problem, What moved, the calendar feed.
+export function helpSheet() {
+  return actionSheet("Help", [[
+    st.can("tasks:write") && { label: "Report a problem", icon: "bug", run: () => reportProblem(), data: { bug: true } },
+    { label: "What moved", icon: "help", hint: "the new menu", run: () => movedSheet(), data: { moved: true } },
+    routeOk("/calendar-feed") && { label: "Calendar feed help", icon: "today", href: "#/calendar-feed" },
+  ]]);
+}
+// The person's initials: My account, Light or dark, Customize Tabs, Sign out.
+export function meSheet() {
+  const u = st.user || {};
+  const theme = (THEMES.find(([k]) => k === themeChoice()) || [null, ""])[1];
+  return actionSheet(u.name || "My account", [
+    [routeOk("/me") && { label: "My account", icon: "me", href: "#/me" },
+      { label: "Light or dark", icon: "sun", hint: theme, run: () => pickTheme(), data: { "theme-btn": true } },
+      routeOk("/tab-bar") && { label: "Customize Tabs", icon: "tabbar", run: () => openCustomizeTabs(), data: { "tabs-btn": true } }],
+    [{ label: "Sign out of this phone", icon: "out", danger: true, run: () => st.onSignOut(), data: { signout: true } }],
+  ]);
+}
+function movedSheet() {
+  return sheet({
+    title: "What moved",
+    body: html`<div class="moved-sheet"><p>${MOVED_TEXT.phone}</p>
+      <ul class="moved-list"><li>The Menu tab and the round button top left open the menu, like Rotor's.</li><li>Jobs, visits, quotes and plans are under Service; invoices, payments and payroll under Financials; reports under Analytics; campaigns, reviews and templates under Marketing.</li><li>Settings is the gear at the bottom of the menu.</li><li>Your tabs: hold the bar, or your initials, then Customize Tabs.</li></ul></div>`,
+  });
 }
 
 // "Report a problem": a task for the owners with what went wrong (and where).

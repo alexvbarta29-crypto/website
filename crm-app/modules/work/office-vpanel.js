@@ -6,7 +6,9 @@
 // the amount (with visits:prices), the notes, and Open visit, Move,
 // Assign, Navigate and Call. Esc or ✕ closes it. Its address is
 // #/schedule?...&visit=<id> (the office shell's address follows), so the
-// link can be shared; on a phone that link opens the Visit screen.
+// link can be shared; on a phone that link opens the Visit screen. A phone
+// has no panel and no drag: a long press on a visit opens "Move or
+// reassign" (office-schedule.js), with the same Move and Assign sheets.
 //
 // One read: GET /visits/:id (the same answer the Visit screen gets: what
 // the server lets this person see, `can` saying which buttons apply).
@@ -143,9 +145,9 @@ export function panelView(s, ctx) {
 export const slotOf = (v) => ({ date: v.date, start: v.start, end: v.end, assignee_ids: [...(v.assignee_ids || [])], date_only: v.date_only === true });
 
 // Move: the book / move sheet (date, time, window, people, with the warnings while you pick).
-// onDone({ before, after }) once it saved.
-export function moveFromPanel(ctx, onDone) {
-  const p = ctx.state.panel;
+// onDone({ before, after }) once it saved. p: the panel's visit, or one a
+// phone's long press read ({ id, data, etag }, office-schedule.js).
+export function moveFromPanel(ctx, onDone, p = ctx.state.panel) {
   if (!p || !p.data) return;
   const v = p.data.visit;
   const before = slotOf(v);
@@ -153,8 +155,7 @@ export function moveFromPanel(ctx, onDone) {
 }
 
 // Assign: only the people, with the schedule's warnings for them at the visit's time.
-export async function assignSheet(ctx, onDone) {
-  const p = ctx.state.panel;
+export async function assignSheet(ctx, onDone, p = ctx.state.panel) {
   if (!p || !p.data) return null;
   const v = p.data.visit;
   const users = team(await loadUsers(ctx).catch(() => []));

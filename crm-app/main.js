@@ -165,7 +165,8 @@ function start() {
   });
   nav.mount({ nav: session.nav, manifests: MANIFESTS, can, onSignOut: () => doSignOut(), user: session.user });
   document.getElementById("top-back").addEventListener("click", () => router.back());
-  edgeSwipe(() => router.back(), document);
+  // (the drawer, when it is open, closes first)
+  edgeSwipe(() => { if (!nav.closeDrawer()) router.back(); }, document);
   const bootEl = document.getElementById("boot");
   if (bootEl) bootEl.remove();
   router.start();

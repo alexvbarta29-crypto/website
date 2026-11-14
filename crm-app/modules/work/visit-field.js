@@ -16,7 +16,7 @@
 // phone's outbox and goes out in order when signal comes back, and the
 // panel shows it done in the meantime (tech-kit.js overlayVisit).
 
-import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, cardHead, lineItems } from "../../core/ui.js";
 import { money, time as fmtTime, dateShort } from "../../core/format.js";
 import { capture, prepare, photoTile } from "../../core/camera.js";
 import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine, tellShell } from "./tech-kit.js";
@@ -99,7 +99,7 @@ function stateCard(s, ctx) {
       ${missing.length && ["in_progress", "paused"].includes(v.status) ? html`<p class="tf-missing">Still to do before it's done: ${missing.join(", ")}.</p>` : ""}
       ${small.length ? html`<div class="tf-small">${small}</div>` : ""}`;
   }
-  return html`<div class="card tf-state" id="vf-state"><div class="tf-state-top"><h2>${TITLE[v.status] || v.status}</h2>${v.minutes_worked && v.status !== "completed" ? html`<span class="small muted">${hm(v.minutes_worked)} so far</span>` : ""}</div>
+  return html`<div class="rs-card tf-state" id="vf-state"><div class="tf-state-top"><h2>${TITLE[v.status] || v.status}</h2>${v.minutes_worked && v.status !== "completed" ? html`<span class="small muted">${hm(v.minutes_worked)} so far</span>` : ""}</div>
     ${offlineLine({ offline: s.offline, as_of: s.as_of, waiting: s.waiting, what: "This visit" })}
     ${body}</div>`;
 }
@@ -118,7 +118,7 @@ function checklistCard(s) {
   if (!items.length) return "";
   const done = items.filter(itemDone).length;
   const open = OPEN.includes(s.visit.status);
-  return html`<div class="card" id="vf-check"><h2>Checklist <span class="muted small">${done} of ${items.length}</span></h2><ul class="tf-items">${items.map((i) => {
+  return html`<div class="rs-card" id="vf-check">${cardHead("Checklist", { count: `${done} of ${items.length}` })}<ul class="tf-items">${items.map((i) => {
     const ok = itemDone(i);
     const sub = i.kind === "count" && i.value !== undefined ? `Count: ${i.value}` : i.kind === "text" && i.value ? String(i.value) : i.kind === "photo" ? (ok ? "Photo taken" : "Take the photo") : "";
     const act = i.kind === "photo" ? (ok ? "" : html`<span class="act">${TICONS.camera}Photo</span>`) : i.kind === "count" ? html`<span class="act">${ok ? "Change" : "Count"}</span>` : i.kind === "text" ? html`<span class="act">${ok ? "Edit" : "Write"}</span>` : "";
@@ -131,16 +131,16 @@ function checklistCard(s) {
 function photosCard(s, ctx) {
   const photos = s.visit.photos || [];
   const can = s.visit.status !== "cancelled";
-  return html`<div class="card" id="vf-photos"><h2>Photos <span class="muted small">${photos.length}</span></h2>
+  return html`<div class="rs-card" id="vf-photos">${cardHead("Photos", { count: String(photos.length) })}
     ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => {
       if (!p.local && p.file_id) return photoTile(p.file_id, { alt: `${p.tag || "other"} photo`, tag: p.tag || "other", cls: "tf-photo" });
       const src = p.local ? p.thumb : null;
       return html`<span class="${"tf-photo" + (p.local ? " wait" : "")}">${src ? html`<img ${attrs({ src, alt: `${p.tag || "other"} photo`, loading: "lazy" })}>` : "Photo"}<span class="tag">${p.tag || "other"}</span></span>`;
-    })}</div>` : html`<p class="small muted">No photos yet. Before and after photos show in the customer's visit history; issue photos stay with the office.</p>`}
-    ${can ? html`<div class="tf-small" style="margin-top:12px">
-      <button type="button" class="btn" data-photo="before">${TICONS.camera}Before</button>
-      <button type="button" class="btn" data-photo="after">${TICONS.camera}After</button>
-      <button type="button" class="btn" data-photo="issue">${TICONS.camera}Issue</button>
+    })}</div>` : html`<p class="rs-empty">No photos yet. Before and after photos show in the customer's visit history; issue photos stay with the office.</p>`}
+    ${can ? html`<div class="tf-small tf-shoot">
+      <button type="button" class="rs-pb" data-photo="before">${TICONS.camera}<span>Before</span></button>
+      <button type="button" class="rs-pb" data-photo="after">${TICONS.camera}<span>After</span></button>
+      <button type="button" class="rs-pb" data-photo="issue">${TICONS.camera}<span>Issue</span></button>
     </div>` : ""}</div>`;
 }
 
@@ -150,15 +150,16 @@ function workCard(s, ctx) {
   const prices = !!(ctx.data && ctx.data.can && ctx.data.can.prices);
   const canAdd = ctx.can("visits:add_line") && OPEN.includes(s.visit.status);
   if (!lines.length && !canAdd) return "";
-  return html`<div class="card"><h2>The work</h2>
-    ${lines.length ? html`<ul class="wk-lines">${lines.map((l) => html`<li><span>${l.title}${l.qty_milli && l.qty_milli !== 1000 ? html` <span class="muted">× ${l.qty_milli / 1000}</span>` : ""}${l.upsell_user_id ? html` <span class="pill green">Added on site</span>` : ""}</span>${prices && l.total_cents != null ? html`<b class="num">${money(l.total_cents)}</b>` : ""}</li>`)}
-      ${prices && job.totals ? html`<li class="tot"><span>Total</span><b class="num">${money(job.totals.total_cents)}</b></li>` : ""}</ul>` : ""}
-    ${canAdd ? html`<div class="btn-row"><button type="button" class="btn" data-addline>${TICONS.plus}Add to the job</button></div>` : ""}</div>`;
+  // Rotor's Pricing card; "+ Item" adds from the price book (credited to you)
+  return html`<div class="rs-card tf-work">${cardHead("Pricing")}${lineItems(lines.map((l) => ({
+    title: l.title, sub: [l.qty_milli && l.qty_milli !== 1000 ? `× ${l.qty_milli / 1000}` : "", l.upsell_user_id ? "Added on site" : ""].filter(Boolean).join(" · "),
+    amount: prices && l.total_cents != null ? money(l.total_cents) : "",
+  })), { addItem: canAdd ? { label: "Add to the job", data: { addline: true } } : null, total: prices && job.totals ? job.totals.total_cents : null, empty: "No work on this job yet." })}</div>`;
 }
 
 function notesCard(s) {
   const v = s.visit;
-  return html`<div class="card"><h2>Notes</h2>
+  return html`<div class="rs-card tf-vnotes">${cardHead("Notes")}
     ${v.tech_notes ? html`<p class="wk-pre">${v.tech_notes}</p>` : html`<p class="small muted">Anything the office or the next crew should know: a sticky gate, a cracked pane, what the customer asked for.</p>`}
     ${v.status !== "cancelled" ? html`<form class="tf-note-form" data-note-form><label class="field"><span class="sr">A note</span><textarea name="text" rows="3" maxlength="1000" placeholder="Add a note"></textarea></label><button type="submit" class="btn">${TICONS.note}Save the note</button></form>` : ""}
     <div class="btn-row"><button type="button" class="btn danger" data-incident>${TICONS.flag}Report an incident</button></div></div>`;
@@ -166,7 +167,7 @@ function notesCard(s) {
 
 function render(s, ctx) {
   if (!s || !s.visit) return html``;
-  const last = s.last ? html`<div class="card"><h2>Last time here <span class="muted small">${dateShort(s.last.date)}</span></h2><p class="wk-pre">${s.last.text}</p></div>` : "";
+  const last = s.last ? html`<div class="rs-card">${cardHead("Last time here", { count: dateShort(s.last.date) })}<p class="wk-pre">${s.last.text}</p></div>` : "";
   // (the next step is the Visit screen's one big button, at the bottom on a phone: step() above)
   return html`<div class="tf-panel">${stateCard(s, ctx)}${last}${checklistCard(s)}${photosCard(s, ctx)}${workCard(s, ctx)}${notesCard(s)}</div>`;
 }
@@ -287,21 +288,45 @@ export function runStep(key, ctx, el) {
   return null;
 }
 
+async function runningLate(ctx, el) {
+  if (!online()) { toast("Running late needs signal. Nothing was sent.", { bad: true }); return; }
+  const n = await askNumber({ title: "Running late", label: "About how many minutes until you're there?", value: 20, yes: "Text the customer" });
+  if (!n) return;
+  await act(ctx, el, `/visits/${vid(ctx)}/running-late`, { eta_min: n }, { needsSignal: true, what: "Running late", then: keepSent(ctx) });
+}
+async function noAccess(ctx, el) {
+  const note = await askText({ title: "No access", label: "What happened?", yes: "Mark no access", placeholder: "Gate locked, nobody home" });
+  if (note === null) return;
+  act(ctx, el, `/visits/${vid(ctx)}/no-access`, { note }, { ok: "Marked no access. The office will follow up." });
+}
+async function incident(ctx, el) {
+  const text = await askText({ title: "Report an incident", label: "What happened?", yes: "Report it", max: 2000, placeholder: "Something broke, someone got hurt, a complaint on site" });
+  if (!text) return;
+  act(ctx, el, `/visits/${vid(ctx)}/incident`, { text }, { ok: "Reported. The owners have it." });
+}
+
+// The crew's rows in the Visit screen's "..." sheet (work/visit.js): the
+// same flows as the panel's own buttons, which stay where they are.
+export function moreRows(s, ctx, { office = false } = {}) {
+  if (!s || !s.visit) return [];
+  const v = s.visit;
+  const open = ["scheduled", "en_route"].includes(v.status);
+  const work = OPEN.includes(v.status);
+  return [
+    open && { label: "Running late", icon: "clock", hint: "texts the customer", run: () => runningLate(ctx, null) },
+    open && !office && { label: "No access", icon: "flag", run: () => noAccess(ctx, null) },
+    work && ctx.can && ctx.can("visits:add_line") && { label: "Add to the job", icon: "plus", hint: "price book", run: () => addLine(ctx) },
+    v.status !== "cancelled" && { label: "Take a photo", icon: "camera", hint: "issue", run: () => takePhoto(ctx, null, { tag: "issue" }) },
+    v.status !== "cancelled" && { label: "Report an incident", icon: "flag", run: () => incident(ctx, null) },
+  ];
+}
+
 const events = {
   "click [data-timer]": (e, el, ctx) => timer(ctx, el, el.dataset.timer),
   "click [data-complete]": (e, el, ctx) => complete(ctx, el),
   "click [data-omw]": (e, el, ctx) => onMyWay(ctx, el),
-  "click [data-late]": async (e, el, ctx) => {
-    if (!online()) { toast("Running late needs signal. Nothing was sent.", { bad: true }); return; }
-    const n = await askNumber({ title: "Running late", label: "About how many minutes until you're there?", value: 20, yes: "Text the customer" });
-    if (!n) return;
-    await act(ctx, el, `/visits/${vid(ctx)}/running-late`, { eta_min: n }, { needsSignal: true, what: "Running late", then: keepSent(ctx) });
-  },
-  "click [data-noaccess]": async (e, el, ctx) => {
-    const note = await askText({ title: "No access", label: "What happened?", yes: "Mark no access", placeholder: "Gate locked, nobody home" });
-    if (note === null) return;
-    act(ctx, el, `/visits/${vid(ctx)}/no-access`, { note }, { ok: "Marked no access. The office will follow up." });
-  },
+  "click [data-late]": (e, el, ctx) => runningLate(ctx, el),
+  "click [data-noaccess]": (e, el, ctx) => noAccess(ctx, el),
   "click [data-item]": async (e, el, ctx) => {
     const key = el.dataset.item;
     const kind = el.dataset.kind;
@@ -331,11 +356,7 @@ const events = {
     if (!text) { toast("Write the note first.", { bad: true }); return; }
     act(ctx, f.querySelector("button"), `/visits/${vid(ctx)}/notes`, { text }, { ok: "Note saved" });
   },
-  "click [data-incident]": async (e, el, ctx) => {
-    const text = await askText({ title: "Report an incident", label: "What happened?", yes: "Report it", max: 2000, placeholder: "Something broke, someone got hurt, a complaint on site" });
-    if (!text) return;
-    act(ctx, el, `/visits/${vid(ctx)}/incident`, { text }, { ok: "Reported. The owners have it." });
-  },
+  "click [data-incident]": (e, el, ctx) => incident(ctx, el),
   "click [data-addline]": (e, el, ctx) => addLine(ctx),
 };
 
@@ -394,4 +415,4 @@ function mount(el, state, ctx) {
   }, 30000);
 }
 
-export default { load, render, events, mount, step, runStep };
+export default { load, render, events, mount, step, runStep, moreRows };

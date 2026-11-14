@@ -571,7 +571,7 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 | `POST /schedule/move-day` | schedule:write (run) | preview, or `{ confirm: true, token }` → 202 `{ run_id }` |
 | `GET /stale` | schedule:read | jobs that need a look (and M4b's open timers) |
 | `GET /jobs?status&year&contact` · `POST /jobs` | read · write | the list; a new job (lines, notes, optional first `visit`, `client_id`) |
-| `GET/PATCH /jobs/:id` | read · write | one job (+ visits, contact, property, people, `can`); edit (If-Match) |
+| `GET/PATCH /jobs/:id` | read · write | one job (+ visits, contact, property, people, `can`); edit (If-Match): title, kind, notes, due month, lines (merged by id), `discounts` (the job page's "+ Add discount": `[{ id?, name?, type: "fixed" \| "percentage", value }]`, cents or basis points, merged by id so a scope or catalog id stays; refused once the job is closed) |
 | `POST /jobs/:id/cancel` · `/reopen` · `/complete` | schedule:write | with its open visits |
 | `POST /visits` | schedule:write | book (`client_id` makes a retry the same visit) |
 | `GET/PATCH /visits/:id` | read · write | one visit (+ job, contact, property, people, arrival text, reminders, `can`); move or reassign (If-Match) |

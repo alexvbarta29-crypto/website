@@ -241,6 +241,11 @@ export function validatePlan(data, { op } = {}) {
     cancelled_at: isoOpt,
     expired_at: isoOpt,
     last_change: (v) => (isObj(v) ? { ...v } : undefined),
+    // the office's notes on the plan, and the notes the next agreement carries (Nov 2026)
+    notes: strOpt(2000),
+    agreement_notes: strOpt(1000),
+    // the terms changed after the agreement was signed: a new one is needed (that one stays on file)
+    agreement_stale: (v) => (isObj(v) ? { since: dateOpt(v.since, "agreement_stale.since"), fields: (Array.isArray(v.fields) ? v.fields : []).map((x) => String(x).slice(0, 20)).slice(0, 8), agreement_id: isId(v.agreement_id, "agreement") ? v.agreement_id : null } : undefined),
     season_install_ids: ids("season_install", 20),
   });
   if (out.status === "pending" && !out.pending_reasons.length) out.pending_reasons = ["signature"];
