@@ -642,7 +642,7 @@ The manual path, for reference:
 | `POST /api/crm/auth/setup` | office cookie + `CRM_SETUP_CODE`, once | first owner |
 | `GET /api/crm/auth/invite/:token` · `POST /api/crm/auth/invite` | the link | set a password from an invite or reset link |
 | `GET /api/crm/me` · `/me/badges` | signed in | who am I, permissions, tabs · badge counts (approvals since M1.3; inbox and notifications when they ship) |
-| `GET /api/crm/home` | signed in (each card by its own permission; a tech gets nothing) | Home in one read: the person's cards (Edit Home) and the data of the ones that are on; `/home/money`, `/home/agenda`, `/home/leaderboard`, `PUT /home/layout` |
+| `GET /api/crm/home` | signed in (each card by its own permission; a tech gets nothing) | Home in one read: the person's cards (Edit Home) and the data of the ones that are on; `/home/money`, `/home/agenda`, `PUT /home/layout` |
 | `GET/POST /api/crm/users`, `GET/PATCH /users/:id` | owners (names only for schedule readers; yourself for name, phone, notifications) | the team |
 | `POST /users/:id/invite` · `reset` · `disable` · `enable` | owners | links and access |
 | `GET /users/:id/sessions` · `DELETE /users/:id/sessions/:hash` | yourself or owners | phones signed in |
@@ -706,18 +706,25 @@ bottom, in the person's order (Edit Home):
   clock since 8:02 AM · Office"), the coral **Clock In** / **Clock Out**
   pill (`POST /clock`, the tech app's own clock; Clock In asks Service,
   Sales or Office first) and a round button to Time.
-- **Money** (`reports:read` or the office sign-in), on the canvas:
-  **Collected | Scheduled | ARR** in Flyra's switch, the period as Flyra's
-  "1M ⌄" (1W, 1M, 3M, 1Y, Custom; the menu says **This week, This month**
-  (the default), **Last 3 months, This year, Custom range…**), the month
-  (or range) in small caps, the big number
-  with **AVG / DAY** and **PEAK** (day, week or month: the finest the
-  numbers have) or, for ARR, **CHANGE** over the period (green when up),
-  the month's revenue goal as a thin bar when one is set, one line chart
-  (coral, a light dashed grid, a readout that follows a tap, the pointer
-  or the arrow keys, starting on today; every value in a hidden table)
-  and "Updated 5:49 PM" or "From Rotor · updated Nov 16" with "See more"
-  (the Dashboard's Money view with the office sign-in, else Payments).
+- **Money** (`reports:read` or the office sign-in), first on Home, one
+  card with Flyra's **ARR | Revenue** switch (the owner's Nov 14 ask: "add
+  an ARR view at the top, like on Flyra"), ARR on each time Home opens:
+  - **ARR**: the chips **1M** (this month, the default), **3M** (this
+    month and the two before), **1Y** (this month and the 11 before),
+    **YTD** (this year), share; the period; the big ARR (today's, or the
+    period's last day) with its change over the period under it ("+$1,200
+    (3.2%)", green up, red down; no % from $0), **ACTIVE PLANS** and
+    **MRR** (ARR ÷ 12) beside it; one coral line of ARR per day (days
+    still ahead have no point, a readout on tap or the arrow keys, every
+    value in a hidden table). The numbers are a link to Service → Plans.
+    `arr_view` in `GET /home` (1M), `GET /home/money?metric=arr&range=1m|3m|1y|ytd`
+    for the chips (`arrView()` in home-kpis.mjs).
+  - **Revenue**: Rotor's card (Nov 13): **Week | Month** with the round ‹ ›
+    arrows, share and fold (remembered on the phone), Collected and
+    Scheduled side by side (a link to Financials → Payments), one chart
+    with both lines per day (Collected coral, Scheduled grey) and a
+    readout, and where Collected comes from ("From Rotor's import of Nov
+    15", "From Rotor · updated Nov 16").
 - **Today** (`schedule:read`; Flyra's card): "Today" (or the date: "Monday,
   November 23"; "Nov 16 – 22"; "November 2026") with "Tue, Nov 17 · n
   items" under it and round ‹ › arrows, **Daily | Weekly | Monthly**, then
@@ -730,12 +737,6 @@ bottom, in the person's order (Edit Home):
   tasks with no due date with their status pill, the whole team's for an
   owner, anyone else's own.
 - On by default too (Flyra's Home), each one off in Edit Home:
-  - **Leaderboard** ("November Leaderboard", **Sales | Techs**: sales =
-    plans and quotes sold with their ARR, techs = jobs done with their $),
-    only when the reports module provides the service
-    `reports.leaderboard` (another track builds it with the full
-    Leaderboard screen; the card's option is hidden until then, and
-    "See the leaderboard" shows once a `/leaderboard` route exists).
   - **Inbox** (`inbox:read`): the latest five open conversations, unread
     first.
   - **Tasks** (`tasks:read`): **Upcoming ▾** (Overdue, No due date, All)
@@ -748,9 +749,11 @@ bottom, in the person's order (Edit Home):
 - **Edit Home** (a button at the bottom, and My account → Edit Home,
   `#/today?edit=1`): each card on or off and moved up or down, saved per
   person on the server (`ptr/home/{userId}`). Default (Flyra's): Money,
-  the Leaderboard, Today, Inbox, Tasks and Goals, with Clock in under the
-  money for someone who goes out on visits. A card the person can't have
-  is never offered.
+  Today, Inbox, Tasks and Goals, with Clock in under the money for
+  someone who goes out on visits. A card the person can't have is never
+  offered. The Leaderboard card left Home on Nov 14 (the owner: "remove
+  these wrong stats"; the full Leaderboard is Analytics' "..."): a saved
+  layout or an older phone's Edit Home that names it just drops it.
 
 A phone shows the cards in the person's order, with room at the bottom
 for the shell's floating tab bar and its + button. On a computer the money
@@ -801,7 +804,7 @@ and the Schedule.
 A number nobody has is left out ("-"), never shown as 0. Without the
 office data key the card says so (`money_missing`).
 
-**Who sees what.** The money, goals and leaderboard: `reports:read` or a
+**Who sees what.** The money and goals: `reports:read` or a
 phone with the office sign-in, never a technician. Today: `schedule:read`.
 Clock in: `time:own`. Tasks: `tasks:read`. Inbox: `inbox:read`. A
 technician's Today is unchanged (their own day; the tech app) and `GET
@@ -815,11 +818,12 @@ each index once per request (`ixMemo`): 16 storage calls cold for the
 defaults on Rotor's numbers (the session, the user, the auth epoch, the
 permissions, the layout pointer, `sys/mode`, the bell's unread list,
 `cfg/goals`, this month's visits and the users index, the open tasks, the
-inbox's open conversations, and the plans and this year's and the open
-quotes behind the Leaderboard; this month's timesheets too when the clock
-is on). The cards' own reads: `GET /home/money?metric=&period=&from=
-&to=` (a year of Scheduled is about 20 calls), `GET /home/agenda?view=
-&date=`, `GET /home/leaderboard?board=`, `PUT /home/layout { cards }`.
+inbox's open conversations, the import runs, the jobs behind Scheduled
+and the plans behind ARR; this month's timesheets too when the clock is
+on). The cards' own reads: `GET /home/money?period=&date=` (Revenue),
+`GET /home/money?metric=arr&range=` (ARR), `GET /home/money?metric=
+&period=&from=&to=` (older phones; a year of Scheduled is about 20
+calls), `GET /home/agenda?view=&date=`, `PUT /home/layout { cards }`.
 `tests/crm/core/home.test.mjs` holds the exact list.
 
 ### The bar, the drawer and the + (Nov 2026: Flyra's phone app, then Rotor's)
@@ -1000,7 +1004,7 @@ Code: `crm-app/modules/system/{home,home-charts,menu,today,me}.js`,
 `home.css`, `crm-app/core/{nav,router}.js`, `crm.css`. Tests:
 `tests/crm/core/home.test.mjs` (the periods, Rotor's and the CRM's
 collected, scheduled, ARR, the clock, the agenda, tasks and the inbox,
-Edit Home, goals, the leaderboard's service gate, who sees what, the exact
+Edit Home, goals, the retired Leaderboard card, who sees what, the exact
 storage calls) and `tests/e2e/home.spec.mjs` (iPhone 13 and SE, 1440 x 900
 and 1024 x 768: Home empty and on a real day, Today's views and arrows,
 Money's metrics, periods, custom range and readout, Clock in and out, Edit

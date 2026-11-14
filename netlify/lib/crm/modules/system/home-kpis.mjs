@@ -2,14 +2,15 @@
 // best of Flyra's, as cards each person shows, hides and orders). No I/O,
 // no clock: callers pass today (a local YYYY-MM-DD) and the rows they read.
 //
-//   periodOf(period, today, { from, to })   This week · This month · Last 3 months · This year · Custom
+//   periodOf(period, today, { from, to })   This week · This month · Last 3 months · 12 months · This year · Custom
 //   rotorCollected(snap, p, today)          Rotor's sealed snapshot: totals and its weeks or months
 //   crmCollected(rows, p, today)            the CRM's payments, per day (after cutover)
 //   scheduledDays(visits, jobs, p)          the value of the visits booked, per day
 //   arrDays(plans, p, today)                annual recurring revenue of the live plans, per day
+//   arrView(plans, p, today)                → the money card's ARR view (Nov 14): ARR, its change, active plans, MRR, the line
 //   moneyCard({ metric, p, series, ... })   → one metric over a period (the older Collected | Scheduled | ARR card)
 //   latestImport(runs, today)               the newest finished Rotor import and whether it is fresh (3 days)
-//   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart
+//   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart (the Revenue view)
 //   clockToday(rows, uid, today, nowMs)     the Timesheet card: today's minutes, the open shift
 //   agendaOf(visits, users, p)              the Agenda's rows (Daily · Weekly · Monthly)
 //   tasksOf(rows, user, { all })            open tasks (the Agenda's "without due date", the Tasks card)
@@ -61,7 +62,7 @@ export function monthsOf(from, to) {
 
 // ------------------------------------------------------------ periods
 
-export const PERIODS = Object.freeze(["week", "month", "3m", "year", "custom"]);
+export const PERIODS = Object.freeze(["week", "month", "3m", "1y", "year", "custom"]);
 export const MAX_CUSTOM_DAYS = 366;
 
 // → { period, from, to, label }
@@ -69,6 +70,8 @@ export function periodOf(period, today, { from, to } = {}) {
   const month = today.slice(0, 7);
   if (period === "week") { const f = weekStart(today); return { period, from: f, to: addLocalDays(f, 6), label: spanLabel(f, addLocalDays(f, 6)) }; }
   if (period === "3m") { const f = `${addMonths(month, -2)}-01`; return { period, from: f, to: monthEnd(month), label: `${MONTHS_LONG[Number(f.slice(5, 7)) - 1]} – ${MONTHS_LONG[Number(month.slice(5, 7)) - 1]}` }; }
+  // 12 months: this month and the 11 before it
+  if (period === "1y") { const f = `${addMonths(month, -11)}-01`; return { period, from: f, to: monthEnd(month), label: `${monthLabel(f)} ${f.slice(0, 4)} – ${monthLabel(month)} ${month.slice(0, 4)}` }; }
   if (period === "year") return { period, from: `${today.slice(0, 4)}-01-01`, to: `${today.slice(0, 4)}-12-31`, label: today.slice(0, 4) };
   if (period === "custom") {
     if (!isLocalDate(from) || !isLocalDate(to)) throw new InputError("Pick the first and the last day.", "from");
@@ -196,18 +199,20 @@ export function recursOn(r, d) {
 const localOf = (iso) => { const t = Date.parse(iso || ""); return Number.isFinite(t) ? localDate(new Date(t)) : ""; };
 // A plan counts from the day it was made (if it's live or ended later)
 // to the day its cancellation takes effect.
-export function arrOn(plans, d) {
-  let n = 0;
+// → { cents, plans } on day d (plans: how many count)
+export function arrAt(plans, d) {
+  let n = 0, count = 0;
   for (const r of list(plans)) {
     if (!r) continue;
     const start = localOf(r.at);
     if (!start || start > d || !recursOn(r, d)) continue;
     const live = LIVE_PLAN.has(r.st);
     const endedAfter = !live && r.eff && r.eff > d;
-    if (live ? !(r.eff && r.eff <= d) : endedAfter) n += planArr(r);
+    if (live ? !(r.eff && r.eff <= d) : endedAfter) { n += planArr(r); count += 1; }
   }
-  return n;
+  return { cents: n, plans: count };
 }
+export const arrOn = (plans, d) => arrAt(plans, d).cents;
 // → { total (the period's last day, or today), change (over the period), grain: "day", points } | null without any plan
 export function arrDays(plans, p, today) {
   if (!list(plans).length) return null;
@@ -217,6 +222,25 @@ export function arrDays(plans, p, today) {
   const total = arrOn(plans, end);
   return { total, change: total - arrOn(plans, addLocalDays(p.from, -1)), grain: "day", points, through: end };
 }
+
+// The money card's ARR view (the owner's Nov 14 ask, Flyra's ARR switch):
+// ARR on the period's last day (or today), its change since the day before
+// the period ($ and %), the plans counted, MRR (ARR ÷ 12) and the line per
+// day. No plan at all: total null (the screen shows "-").
+// → { period, from, to, label, total, change, pct, plans, mrr, grain, points, through }
+export function arrView(plans, p, today) {
+  const base = { period: p.period, from: p.from, to: p.to, label: p.label };
+  const s = arrDays(plans, p, today);
+  if (!s) return { ...base, total: null, change: null, pct: null, plans: 0, mrr: null, grain: null, points: [], through: today < p.to ? today : p.to };
+  const end = s.through;
+  const before = s.total - s.change;
+  return {
+    ...base, total: s.total, change: s.change, pct: before > 0 ? Math.round((s.change / before) * 1000) / 10 : null,
+    plans: arrAt(plans, end).plans, mrr: Math.round(s.total / 12), grain: s.grain, points: s.points, through: end,
+  };
+}
+// The ARR view's chips: Flyra's 1M 3M 1Y, and YTD.
+export const ARR_RANGES = Object.freeze({ "1m": "month", "3m": "3m", "1y": "1y", ytd: "year" });
 
 // ------------------------------------------------------------ the Money card
 
@@ -358,34 +382,18 @@ export function inboxOf(rows, max = 5) {
     .slice(0, max).map((r) => ({ id: r.id, name: r.n || "Someone", preview: String(r.p || "").slice(0, 120), at: r.la || null, unread: num(r.u) || 0, channel: r.ch || "sms", needs_reply: !!r.nr }));
 }
 
-// ------------------------------------------------------------ the leaderboard
-
-// The reports module's "reports.leaderboard" answer (another track; the
-// card is hidden while the service is missing), read leniently:
-// { rows: [{ user_id, name, color?, value_cents, count?, note? }] } or the rows alone.
-export function normalizeBoard(r, board, month) {
-  const rows = Array.isArray(r) ? r : r && Array.isArray(r.rows) ? r.rows : [];
-  return {
-    board, month, title: `${MONTHS_LONG[Number(month.slice(5, 7)) - 1]} Leaderboard`,
-    rows: rows.filter((x) => x && typeof x === "object").slice(0, 10).map((x, i) => {
-      const count = num(x.count);
-      return {
-        rank: num(x.rank) || i + 1, id: String(x.user_id || x.id || ""), name: String(x.name || x.user_name || "").slice(0, 60), color: /^#[0-9a-f]{6}$/i.test(x.color || "") ? x.color : null,
-        value: num(x.value_cents ?? x.arr_cents ?? x.amount_cents ?? x.revenue_cents), unit: board === "sales" ? "ARR" : null,
-        note: String(x.note || (count === null ? "" : board === "sales" ? `${count} sold` : `${count} ${count === 1 ? "job" : "jobs"} done`)).slice(0, 80),
-      };
-    }),
-  };
-}
-
 // ------------------------------------------------------------ the person's cards
 
-// Flyra's Home (Nov 13, "make it look more like Flyra"): the money, then
-// the Leaderboard, Today, Inbox, Tasks and Goals. The clock sits under the
-// money and is on by default only for someone who clocks in for field work
-// (is_technician; `clock: true`), anyone else adds it in Edit Home.
-export const CARDS = Object.freeze(["money", "clock", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
-export const DEFAULT_ON = Object.freeze(["money", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
+// Flyra's Home (Nov 13, "make it look more like Flyra"): the money (ARR |
+// Revenue, Nov 14), then Today, Inbox, Tasks and Goals. The clock sits
+// under the money and is on by default only for someone who clocks in for
+// field work (is_technician; `clock: true`), anyone else adds it in Edit
+// Home. The Leaderboard card left Home on Nov 14 (the owner: "remove these
+// wrong stats"); the full Leaderboard is Analytics' "...". A saved layout
+// that still names it just drops it.
+export const CARDS = Object.freeze(["money", "clock", "agenda", "inbox", "tasks", "goals"]);
+export const DEFAULT_ON = Object.freeze(["money", "agenda", "inbox", "tasks", "goals"]);
+const RETIRED = new Set(["leaderboard"]);
 // The saved order first (cards no longer open to this person dropped),
 // then any card they may have that the saved list doesn't name (on when
 // it is one of the defaults). → [{ key, on }]
@@ -406,7 +414,8 @@ export function validateLayout(v) {
   if (!v || typeof v !== "object" || !Array.isArray(v.cards)) throw new InputError("Send the cards in their order.", "cards");
   const seen = new Set();
   const cards = [];
-  for (const c of v.cards.slice(0, CARDS.length)) {
+  for (const c of v.cards.slice(0, CARDS.length + RETIRED.size)) {
+    if (c && RETIRED.has(c.key)) continue;   // an older phone's Edit Home
     if (!c || !CARDS.includes(c.key)) throw new InputError("That isn't a Home card.", "cards");
     if (seen.has(c.key)) continue;
     seen.add(c.key);

@@ -5,8 +5,9 @@
 // Week | Month, Collected and Scheduled side by side per day; Collected is
 // the CRM's payments after cutover or while the latest Rotor import is 3
 // days old or less, else Rotor's snapshot; Scheduled and ARR from the
-// CRM's visits and plans), the clock, the agenda, goals, the leaderboard service
-// gate, and the request budget (a card that is off costs no read).
+// CRM's visits and plans; Nov 14: the card opens on ARR | Revenue, ARR its
+// own view), the clock, the agenda, goals, the Leaderboard card retired
+// from Home, and the request budget (a card that is off costs no read).
 // Synthetic data only (tests/e2e/seed.mjs, tests/helpers/office-snapshot.mjs).
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -18,7 +19,6 @@ import { sealedSnapshot, syntheticSnapshot } from "../../helpers/office-snapshot
 const store = await import("../../../netlify/lib/crm-store.mjs");
 const K = await import("../../../netlify/lib/crm/modules/system/home-kpis.mjs");
 const H = await import("../../../netlify/lib/crm/modules/system/home.mjs");
-const S = await import("../../../netlify/lib/crm/core/services.mjs");
 const { navFor } = await import("../../../netlify/lib/crm/modules/system/me.mjs");
 
 const sum = (xs) => xs.reduce((a, x) => a + (x || 0), 0);
@@ -154,6 +154,33 @@ test("ARR is a year of each recurring plan's visit prices (the owner's Nov 14 ch
   assert.equal(s.total, counted);
 });
 
+test("the money card's ARR view (the owner's Nov 14 ask, Flyra's ARR): ARR, its change in $ and %, active plans, MRR and a line per day over 1M 3M 1Y YTD", () => {
+  const plans = [
+    { k: "recurring", ck: "biannual", st: "active", ay: 60000, ar: 1, tm: 12, at: "2026-03-02T15:00:00Z", te: "2027-03-01" },
+    { k: "recurring", ck: "quarterly", st: "active", ay: 80000, ar: 1, tm: 12, at: "2026-10-15T15:00:00Z", te: "2027-10-14" },
+    { k: "recurring", ck: "quarterly", st: "active", ay: 40000, ar: 1, tm: 12, at: "2026-11-05T15:00:00Z", te: "2027-11-04" },
+    { k: "recurring", ck: "biannual", st: "cancelled", ay: 20000, ar: 1, tm: 12, at: "2026-01-05T15:00:00Z", te: "2027-01-04", eff: "2026-11-10" },
+    { k: "lights_annual", ck: "lights_annual", st: "active", ay: 59500, ar: 0, tm: 12, at: "2026-11-02T15:00:00Z", te: "2027-10-31" },
+  ];
+  const m = K.arrView(plans, K.periodOf(K.ARR_RANGES["1m"], TODAY), TODAY);
+  assert.deepEqual([m.period, m.from, m.to, m.through, m.label], ["month", "2026-11-01", "2026-11-30", TODAY, "November"]);
+  assert.equal(m.total, 60000 + 80000 + 40000, "the one-season lights install and the cancelled plan are not ARR");
+  assert.equal(m.change, 40000 - 20000, "Nov 5's plan in, Nov 10's cancellation out");
+  assert.equal(m.pct, Math.round((20000 / 160000) * 1000) / 10);
+  assert.deepEqual([m.plans, m.mrr], [3, 15000]);
+  assert.equal(m.points.length, 30);
+  assert.equal(m.points.find((x) => x.key === TODAY).value, m.total);
+  assert.equal(m.points.find((x) => x.key === "2026-11-18").value, null, "days ahead have no point");
+  const y = K.arrView(plans, K.periodOf(K.ARR_RANGES["1y"], TODAY), TODAY);
+  assert.deepEqual([y.from, y.to, y.label, y.change], ["2025-12-01", "2026-11-30", "Dec 2025 – Nov 2026", 180000], "12 months: every plan came in");
+  assert.equal(y.pct, null, "no ARR before: no %");
+  const ytd = K.arrView(plans, K.periodOf(K.ARR_RANGES.ytd, TODAY), TODAY);
+  assert.deepEqual([ytd.from, ytd.to], ["2026-01-01", "2026-12-31"]);
+  assert.deepEqual(K.periodOf(K.ARR_RANGES["3m"], TODAY).from, "2026-09-01");
+  const none = K.arrView([], K.periodOf("month", TODAY), TODAY);
+  assert.deepEqual([none.total, none.change, none.plans, none.mrr, none.points], [null, null, 0, null, []]);
+});
+
 test("the Money line is a running total: it climbs to the big number, a partial last bucket never dives, gaps stay gaps", async () => {
   const { cumulative } = await import("../../../crm-app/modules/system/home-charts.js");
   const snap = syntheticSnapshot("2026-11-16");
@@ -255,18 +282,15 @@ test("the person's cards: their order first, then the defaults; a card they can'
   assert.deepEqual(K.layoutOf(null, all), [{ key: "money", on: true }, { key: "clock", on: false }, { key: "agenda", on: true }, { key: "inbox", on: true }, { key: "tasks", on: true }, { key: "goals", on: true }]);
   assert.deepEqual(K.layoutOf(null, all, { clock: true }).slice(0, 2), [{ key: "money", on: true }, { key: "clock", on: true }], "a technician-owner gets the clock");
   assert.deepEqual(K.layoutOf({ cards: [{ key: "tasks", on: true }, { key: "money", on: false }, { key: "leaderboard", on: true }] }, ["money", "agenda", "tasks"]),
-    [{ key: "tasks", on: true }, { key: "money", on: false }, { key: "agenda", on: true }], "the leaderboard isn't open to them; agenda wasn't saved: its default");
+    [{ key: "tasks", on: true }, { key: "money", on: false }, { key: "agenda", on: true }], "the retired leaderboard card is dropped; agenda wasn't saved: its default");
   assert.deepEqual(K.validateLayout({ cards: [{ key: "agenda" }, { key: "agenda", on: false }, { key: "money", on: false }] }), { cards: [{ key: "agenda", on: true }, { key: "money", on: false }] });
+  assert.deepEqual(K.validateLayout({ cards: [{ key: "leaderboard", on: true }, ...["money", "clock", "agenda", "inbox", "tasks", "goals"].map((key) => ({ key }))] }).cards.map((c) => c.key), ["money", "clock", "agenda", "inbox", "tasks", "goals"], "an older phone's Edit Home still saves: the leaderboard is skipped");
+  assert.ok(!K.CARDS.includes("leaderboard") && !K.DEFAULT_ON.includes("leaderboard"), "the Leaderboard card left Home (Nov 14)");
   assert.throws(() => K.validateLayout({ cards: [{ key: "<script>" }] }), /isn't a Home card/);
   assert.throws(() => K.validateLayout({}), /cards/);
   assert.deepEqual(K.validateGoals({ revenue_month_cents: 2500000, jobs_month: "" }), { revenue_month_cents: 2500000, jobs_month: null });
   assert.throws(() => K.validateGoals({ revenue_month_cents: -5 }), /Revenue/);
   assert.throws(() => K.validateGoals({ jobs_month: 2.5 }), /Jobs/);
-  // the reports module's leaderboard, read leniently
-  const b = K.normalizeBoard({ rows: [{ user_id: "us_a", name: "Olive Owner", value_cents: 125000, count: 3 }, { name: "Theo Tech", arr_cents: 50000, note: "<b>2 plans</b>", color: "javascript:x" }] }, "sales", "2026-11");
-  assert.equal(b.title, "November Leaderboard");
-  assert.deepEqual(b.rows.map((r) => [r.rank, r.name, r.value, r.unit, r.note, r.color]), [[1, "Olive Owner", 125000, "ARR", "3 sold", null], [2, "Theo Tech", 50000, "ARR", "<b>2 plans</b>", null]]);
-  assert.deepEqual(K.normalizeBoard(null, "techs", "2026-11").rows, []);
 });
 
 test("the tab bar: Home · Schedule · Inbox · Map · Menu for the office (Flyra's); techs keep theirs", () => {
@@ -310,14 +334,14 @@ async function setMode(sor) {
 }
 const home = async (as, opts = {}) => (await t.api("/home", { as, ...opts })).body.data;
 
-test("an owner's Home (Flyra's): the header, Money, the Leaderboard, Today, Inbox, Tasks and Goals on; the clock offered, off for someone who doesn't clock in", async () => {
+test("an owner's Home (Flyra's): the header, Money (ARR | Revenue), Today, Inbox, Tasks and Goals on; the clock offered, off for someone who doesn't clock in; no Leaderboard card", async () => {
   const res = await t.api("/home", { as: fx.owner });
   assert.equal(res.status, 200, JSON.stringify(res.body));
   const d = res.body.data;
   assert.equal(d.date, TODAY);
   assert.equal(d.user.first_name, "Olive");
-  assert.deepEqual(d.layout, [{ key: "money", on: true }, { key: "clock", on: false }, { key: "leaderboard", on: true }, { key: "agenda", on: true }, { key: "inbox", on: true }, { key: "tasks", on: true }, { key: "goals", on: true }], "the leaderboard is offered (the reports module's service is merged), on");
-  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "leaderboard", "money", "tasks"], "a card that is off isn't computed");
+  assert.deepEqual(d.layout, [{ key: "money", on: true }, { key: "clock", on: false }, { key: "agenda", on: true }, { key: "inbox", on: true }, { key: "tasks", on: true }, { key: "goals", on: true }], "the money first; the Leaderboard card is not offered (Nov 14)");
+  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "money", "tasks"], "a card that is off isn't computed");
   assert.equal(d.cards.clock, undefined, "the clock is off: not read");
   // money: Rotor's card, this month: Collected from Rotor's snapshot (no import yet) by its weeks, Scheduled per week with it, the ARR
   const m = d.cards.money;
@@ -327,6 +351,10 @@ test("an owner's Home (Flyra's): the header, Money, the Leaderboard, Today, Inbo
   assert.ok(m.scheduled.total > 0, "the seed's jobs have prices");
   assert.equal(m.scheduled.total, sum(m.scheduled.points.map((x) => x.value)));
   assert.ok(m.arr > 0, "the seed's live plans");
+  // the ARR view: this month's ARR, the same number, with its plans, MRR and a line
+  const v = m.arr_view;
+  assert.deepEqual([v.period, v.from, v.to, v.total, v.mrr], ["month", "2026-11-01", "2026-11-30", m.arr, Math.round(m.arr / 12)]);
+  assert.ok(v.plans > 0 && typeof v.change === "number" && v.points.length === 30);
   assert.equal(m.goal, undefined, "no goal on the card (the Goals card has it)");
   // today: the seed's four visits, with who goes, and the open tasks without a due date
   const a = d.cards.agenda;
@@ -362,15 +390,15 @@ test("who sees what: the money needs reports:read or the office sign-in; a techn
   assert.equal((await t.api("/home", { office: true })).status, 401, "the office cookie alone is not a CRM sign-in");
 });
 
-test("the budget: a cold default Home is 18 storage calls, each read once, nothing for the cards that are off", async () => {
+test("the budget: a cold default Home is 16 storage calls, each read once, nothing for the cards that are off", async () => {
   await cold();
   const { res, calls } = await counted("/home", { as: fx.owner, office: true });
   assert.equal(res.status, 200);
   const keys = calls.map((c) => c.replace(/^\S+ /, "").replace(/us_\w+\/?$/, "{user}").replace(/^ses\/\w+$/, "ses/{id}")).sort();
-  // (Flyra's Home: the inbox's open index for Inbox; the plans and quotes for the Leaderboard's sales; the clock is off: no timesheets;
-  // Rotor's Money card: the import runs (is the latest fresh?), the month's visits shared with Today, the jobs for their value, the plans for the ARR)
-  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/import-runs", "ix/inbox/open", "ix/jobs/2026", "ix/jobs/open", "ix/plans", "ix/quotes/2026", "ix/quotes/open", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
-  assert.ok(keys.length <= 18, `${keys.length} calls`);
+  // (Flyra's Home: the inbox's open index for Inbox; no Leaderboard card, so no quotes; the clock is off: no timesheets;
+  // the Money card: the import runs (is the latest fresh?), the month's visits shared with Today, the jobs for their value, the plans for the ARR view)
+  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/import-runs", "ix/inbox/open", "ix/jobs/2026", "ix/jobs/open", "ix/plans", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
+  assert.ok(keys.length <= 16, `${keys.length} calls`);
   assert.equal(new Set(calls).size, calls.length, "nothing read twice");
   assert.ok(!calls.some((c) => c.includes("ix-dirty/")), "no dirty markers");
   for (const gone of ["ix/sales-attention", "ix/merge-candidates", "sys/health", "ix/payments/2026-11"]) assert.ok(!calls.some((c) => c.endsWith(" " + gone)), `${gone} is not read`);
@@ -378,24 +406,18 @@ test("the budget: a cold default Home is 18 storage calls, each read once, nothi
 
 test("Edit Home: the person's cards on, off and in their order, saved per person; the others' untouched", async () => {
   const save = (as, cards) => t.api("/home/layout", { method: "PUT", as, body: { cards } });
+  // an older phone's Edit Home still names the Leaderboard card: skipped, the rest saved
   const r = await save(fx.owner, [{ key: "tasks", on: true }, { key: "agenda", on: true }, { key: "money", on: true }, { key: "clock", on: false }, { key: "inbox", on: true }, { key: "goals", on: true }, { key: "leaderboard", on: true }]);
   assert.equal(r.status, 200, JSON.stringify(r.body));
-  assert.deepEqual(r.body.data.layout.map((c) => `${c.key}:${c.on}`), ["tasks:true", "agenda:true", "money:true", "clock:false", "inbox:true", "goals:true", "leaderboard:true"]);
+  assert.deepEqual(r.body.data.layout.map((c) => `${c.key}:${c.on}`), ["tasks:true", "agenda:true", "money:true", "clock:false", "inbox:true", "goals:true"]);
   const d = await home(fx.owner);
-  assert.deepEqual(d.layout.filter((c) => c.on).map((c) => c.key), ["tasks", "agenda", "money", "inbox", "goals", "leaderboard"]);
-  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "leaderboard", "money", "tasks"], "the clock is off: not read");
-  assert.ok(Array.isArray(d.cards.leaderboard.rows), "the reports module's own rows");
-  // without the reports module's service the card isn't open to them: dropped
-  const hide = S.__swapServiceForTests("reports.leaderboard", null);
-  try {
-    const r2 = await save(fx.owner, [{ key: "tasks", on: true }, { key: "leaderboard", on: true }]);
-    assert.ok(!r2.body.data.layout.some((c) => c.key === "leaderboard"));
-  } finally { hide(); }
+  assert.deepEqual(d.layout.filter((c) => c.on).map((c) => c.key), ["tasks", "agenda", "money", "inbox", "goals"]);
+  assert.deepEqual(Object.keys(d.cards).sort(), ["agenda", "goals", "inbox", "money", "tasks"], "the clock is off: not read");
   assert.ok(Array.isArray(d.cards.tasks.items) && d.cards.tasks.can_add);
   assert.ok(Array.isArray(d.cards.inbox.items));
   assert.deepEqual(d.cards.goals, { month: "2026-11", revenue: null, jobs: null, can_edit: true });
   // another person's Home is their own
-  assert.deepEqual((await home(fx.admin)).layout.filter((c) => c.on).map((c) => c.key), ["money", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
+  assert.deepEqual((await home(fx.admin)).layout.filter((c) => c.on).map((c) => c.key), ["money", "agenda", "inbox", "tasks", "goals"]);
   // hostile input
   assert.equal((await save(fx.owner, [{ key: "../../etc" }])).status, 400);
   assert.equal((await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: "all" } })).status, 400);
@@ -559,32 +581,21 @@ test("the agenda's own read: a week and a month; a day with nothing booked is em
   assert.equal((await t.api("/home/agenda?date=tomorrow", { as: fx.owner })).status, 400);
 });
 
-test("the leaderboard waits for the reports module's service: hidden without it, its rows with it", async () => {
-  const hide = S.__swapServiceForTests("reports.leaderboard", null);
-  try {
-    assert.equal((await t.api("/home/leaderboard", { as: fx.owner })).status, 404);
-    assert.ok(!(await home(fx.owner)).layout.some((c) => c.key === "leaderboard"), "hidden without the service");
-  } finally { hide(); }
-  const asked = [];
-  const put = S.__swapServiceForTests("reports.leaderboard", async (q) => { asked.push(q.board); return { rows: [{ user_id: fx.owner.id, name: "Olive Owner", value_cents: 120000, count: 2 }] }; });
-  try {
-    assert.ok((await home(fx.owner)).layout.some((c) => c.key === "leaderboard"), "offered");
-    await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [{ key: "leaderboard", on: true }] } });
-    const b = (await home(fx.owner)).cards.leaderboard;
-    assert.deepEqual([b.board, b.title, b.rows[0].name, b.rows[0].value, b.rows[0].note], ["sales", "November Leaderboard", "Olive Owner", 120000, "2 sold"]);
-    const techs = (await t.api("/home/leaderboard?board=techs", { as: fx.owner })).body.data;
-    assert.equal(techs.board, "techs");
-    assert.deepEqual(asked.slice(-2), ["sales", "techs"]);
-    assert.ok(asked.every((b) => b === "sales" || b === "techs"));
-    assert.ok(!(await home(fx.noReports)).layout.some((c) => c.key === "leaderboard"), "money people only");
-  } finally {
-    put();
-    await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [] } });
+test("the Leaderboard card left Home (Nov 14): never offered nor read, even with a saved layout that names it; GET /home/money?metric=arr&range= is the ARR view", async () => {
+  await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [{ key: "money", on: true }] } });
+  const d = await home(fx.owner);
+  assert.ok(!d.layout.some((c) => c.key === "leaderboard") && !d.cards.leaderboard);
+  assert.equal(d.layout[0].key, "money", "the money card first");
+  assert.equal((await t.api("/home/leaderboard", { as: fx.owner })).status, 404, "its route is gone");
+  for (const [range, from] of [["1m", "2026-11-01"], ["3m", "2026-09-01"], ["1y", "2025-12-01"], ["ytd", "2026-01-01"]]) {
+    const r = await t.api(`/home/money?metric=arr&range=${range}`, { as: fx.owner });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.deepEqual([r.body.data.range, r.body.data.from, r.body.data.total], [range, from, d.cards.money.arr]);
+    assert.ok(r.body.data.points.length >= 28 && r.body.data.mrr === Math.round(r.body.data.total / 12));
   }
-  // the reports module's own answer: rows Home reads (name, colour, the money, a short note)
-  const real = await t.api("/home/leaderboard?board=techs", { as: fx.owner });
-  assert.equal(real.status, 200, JSON.stringify(real.body));
-  assert.ok(Array.isArray(real.body.data.rows) && real.body.data.rows.every((x) => x.name && typeof x.value === "number"));
+  assert.equal((await t.api("/home/money?metric=arr&range=5y", { as: fx.owner })).status, 400);
+  assert.equal((await t.api("/home/money?metric=arr&range=1m", { as: fx.noReports })).status, 403);
+  await t.api("/home/layout", { method: "PUT", as: fx.owner, body: { cards: [] } });
 });
 
 test("the snapshot is opened once per warm instance, and a missing key says why without numbers", async () => {
