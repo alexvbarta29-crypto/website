@@ -1,5 +1,9 @@
 // Settings (design §9.2; the Nov 2026 tidy-up, "concise but full of
-// capabilities"): one hub, every setting in exactly one place, in plain
+// capabilities"; then Rotor's and iOS's look: a search field on top that
+// filters the rows by name, each row a small coloured tile, the label and a
+// chevron, in inset cards under caps labels; the rare sections, Import &
+// data and Maps & door to door, start folded, remembered on this device;
+// owner-only rows carry an Owner badge): one hub, every setting in exactly one place, in plain
 // sections: Company, Team & permissions, Pricing & services, Plans &
 // agreements, Schedule, Messages & automations, Payments, Maps & door to
 // door, Import & data, Appearance. LAYOUT below is the one place that says
@@ -56,22 +60,64 @@ export function sections(can, manifests = MANIFESTS) {
   return [...out, more].filter((s) => s.items.length);
 }
 
-const row = (x) => (x.path === "#theme"
-  ? html`<li><button type="button" class="row" data-theme-row><span class="ico">${icon(x.icon)}</span><span class="who"><span class="nm">${x.label}</span><span class="sub">This device</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></button></li>`
-  : html`<li><a class="row" ${attrs({ href: "#" + x.path })}><span class="ico">${icon(x.icon || "gear")}</span><span class="who"><span class="nm">${x.label}</span></span><span class="end"><span class="chev" aria-hidden="true"></span></span></a></li>`);
+// The rare sections start folded ("Import & data · 11"); one opened stays open on this device.
+export const FOLDED = Object.freeze(["maps", "data"]);
+const OPEN_KEY = "crm-set-open";
+const openSet = () => { try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || "[]")); } catch (e) { return new Set(); } };
+function keepOpen(key, on) {
+  try { const set = openSet(); if (on) set.add(key); else set.delete(key); localStorage.setItem(OPEN_KEY, JSON.stringify([...set])); } catch (e) { /* this browser keeps nothing */ }
+}
+// The row's tile colour (iOS Settings): one per section.
+const TINT = { company: "blue", team: "green", pricing: "amber", plans: "green", schedule: "red", messages: "blue", payments: "green", maps: "teal", data: "grey", look: "purple", more: "grey" };
+
+const owner = html`<span class="pill set-own">Owner</span>`;
+const row = (x, tint) => {
+  const inner = html`<span ${attrs({ class: "set-ic " + tint, "aria-hidden": "true" })}>${icon(x.icon || "gear")}</span><span class="who"><span class="nm">${x.label}</span>${x.path === "#theme" ? html`<span class="sub">This device</span>` : ""}</span><span class="end">${x.owner ? owner : ""}<span class="chev" aria-hidden="true"></span></span>`;
+  return x.path === "#theme"
+    ? html`<li ${attrs({ "data-label": x.label.toLowerCase() })}><button type="button" class="row set-row" data-theme-row>${inner}</button></li>`
+    : html`<li ${attrs({ "data-label": x.label.toLowerCase() })}><a class="row set-row" ${attrs({ href: "#" + x.path })}>${inner}</a></li>`;
+};
+
+// One section: its caps label and its rows in an inset card; a folded one is a disclosure row with the count.
+function section(sec, shut) {
+  const tint = TINT[sec.key] || "grey";
+  const fold = FOLDED.includes(sec.key);
+  return html`<section ${attrs({ class: "set-sec" + (shut ? " shut" : ""), "aria-label": sec.label, "data-sec": sec.key })}>
+    ${fold ? html`<button type="button" class="set-fold" ${attrs({ "data-fold": sec.key, "aria-expanded": shut ? "false" : "true" })}><span class="section-h">${sec.label}</span><span class="set-cnt">${String(sec.items.length)}</span><span class="side-chev" aria-hidden="true"></span></button>` : html`<div class="section-h">${sec.label}</div>`}
+    <ul class="list set-list">${sec.items.map((x) => row(x, tint))}</ul>
+  </section>`;
+}
+
+// The search field filters the rows in place (by name); a match in a folded section shows it.
+function filter(view, q) {
+  const t = String(q || "").trim().toLowerCase();
+  let any = false;
+  for (const sec of view.querySelectorAll(".set-sec")) {
+    let n = 0;
+    for (const li of sec.querySelectorAll("li[data-label]")) { const on = !t || li.dataset.label.includes(t); li.hidden = !on; if (on) n++; }
+    sec.hidden = !!t && !n;
+    sec.classList.toggle("found", !!t && n > 0);
+    if (n) any = true;
+  }
+  const none = view.querySelector(".set-none");
+  if (none) none.hidden = !t || any;
+}
 
 export default {
   title: "Settings",
   async load(params, ctx) {
     let health = null;
     if (ctx.can("audit:read")) { try { health = (await ctx.api("/admin/health", { cache: false })).data; } catch (e) { health = null; } }
-    return { health };
+    return { health, q: ctx.keep.q || "" };
   },
   render(s, ctx) {
     const h = s.health;
     const lane = (k) => (h && h.status ? h.status[k] : "never");
+    const opened = openSet();
     return html`<div class="stack set-hub">
-      ${sections(ctx.can).map((sec) => html`<section ${attrs({ "aria-label": sec.label, "data-sec": sec.key })}><div class="section-h">${sec.label}</div><ul class="list">${sec.items.map(row)}</ul></section>`)}
+      <label class="set-find">${icon("search")}<span class="sr">Search settings</span><input type="search" data-set-q ${attrs({ value: s.q || "", placeholder: "Search settings", autocomplete: "off", enterkeyhint: "search" })}></label>
+      <p class="muted set-none" hidden>No setting by that name.</p>
+      ${sections(ctx.can).map((sec) => section(sec, FOLDED.includes(sec.key) && !opened.has(sec.key)))}
       <div class="section-h">About</div>
       <div class="card">
         <dl class="kv">
@@ -82,7 +128,16 @@ export default {
       </div>
     </div>`;
   },
+  mount(view, s) { if (s.q) filter(view, s.q); },
   events: {
     "click [data-theme-row]": () => pickTheme(),
+    "input [data-set-q]": (e, el, ctx) => { ctx.state.q = ctx.keep.q = el.value; filter(el.closest(".set-hub"), el.value); },
+    "click [data-fold]": (e, el) => {
+      const sec = el.closest(".set-sec");
+      const shut = !sec.classList.contains("shut");
+      sec.classList.toggle("shut", shut);
+      el.setAttribute("aria-expanded", String(!shut));
+      keepOpen(el.dataset.fold, !shut);
+    },
   },
 };

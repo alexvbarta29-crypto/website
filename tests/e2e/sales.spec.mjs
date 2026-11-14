@@ -102,3 +102,31 @@ test("sales: tasks for the office and for a tech", async () => {
     await t.p.clean();
   } finally { await t.p.close(); }
 });
+
+test("Leads: a lead's own priority (Rotor's Low / Medium / High) is its pill and a filter", async () => {
+  const { p, page, f } = await open("olive", "iphone13");
+  try {
+    // set it the way the lead page's "..." does (PATCH with the version)
+    const res = await f.evaluate(async (id) => {
+      const g = await fetch(`/api/crm/contacts/${id}`, { headers: { "x-crm": "1" } });
+      const etag = g.headers.get("etag");
+      const r = await fetch(`/api/crm/contacts/${id}`, { method: "PATCH", headers: { "x-crm": "1", "content-type": "application/json", "if-match": etag }, body: JSON.stringify({ priority: "low" }) });
+      return r.status;
+    }, seeded.contacts.called);
+    assert.equal(res, 200);
+    await goTo(f, "/leads");
+    await f.waitForSelector(".cc-list .lc");
+    const card = `.lc:has(a[href="#/contacts/${seeded.contacts.called}"])`;
+    assert.equal((await f.textContent(`${card} .lc-pr`)).trim(), "Low");
+    await f.click('#top-rnd [data-own="filter"]');
+    await f.waitForSelector('.sheet.on [data-show="p:low"]');
+    assert.deepEqual(await screenProblems(f), [], "the filter sheet passes the phone checks");
+    await f.click('.sheet.on [data-show="p:low"]');
+    await f.waitForFunction(() => /Low priority/.test(document.querySelector(".ld-count").textContent));
+    const names = await f.$$eval(".lc .lc-nm", (els) => els.map((e) => e.textContent));
+    assert.ok(names.includes("Blair Calledonce") && !names.includes("Avery Newlead"), names.join(", "));
+    assert.deepEqual(await screenProblems(f), []);
+    await shot(page, "sales-leads-priority");
+    await p.clean();
+  } finally { await p.close(); }
+});

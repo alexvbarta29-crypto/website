@@ -50,9 +50,9 @@ for (const device of ["iphone13", "iphonese"]) {
   test(`money (${device}): Invoices, an invoice, a check recorded, the card charged, a refund, a new invoice, Payments, Autopay, the contact's Money tab, Settings`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
-      // the Menu has its Money section
+      // the Menu (the drawer's rows as a page) has its Financials list
       await goTo(f, "/menu");
-      assert.match(await f.textContent("#view"), /Money[\s\S]*Invoices[\s\S]*Payments[\s\S]*Autopay/);
+      assert.match(await f.textContent("#view"), /Financials[\s\S]*Invoices[\s\S]*Payments[\s\S]*Autopay/);
 
       await goTo(f, "/invoices");
       assert.equal(await title(f), "Invoices");

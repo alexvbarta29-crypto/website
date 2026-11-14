@@ -30,7 +30,7 @@ import { getType, statsPart } from "../../core/registry.mjs";
 import { maskPhone } from "../../core/text.mjs";
 import { setSuppression } from "../../core/suppressions.mjs";
 import { fixMojibake, normalizePhone, normalizeEmail, normalizeAddress, addressKey, normName, rotorKey, stripeKey } from "./display.mjs";
-import { SOURCES, cleanTags, validateAddress } from "./types.mjs";
+import { SOURCES, PRIORITIES, cleanTags, validateAddress } from "./types.mjs";
 import { InputError } from "../../core/errors.mjs";
 import { contactsAt, createCandidate } from "./match.mjs";
 import { propertiesOf } from "./properties.mjs";
@@ -48,8 +48,11 @@ export const MARKATE_BATCH_2 = "2026-07-29T21:49:46";
 export const MAIN_NUMBER = "+17633143400";
 export const STOP_WORDS = Object.freeze(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE"]);
 export const COUPON_OPTIN_TAG = "Giveaway - Coupon Opt-In";
-// Rotor's lead priority: "medium" on nearly every lead, so only a high one shows (as a tag); both stay in rotor.priority
+// Rotor's lead priority: "medium" on nearly every lead. It becomes the lead's own priority (Low / Medium / High,
+// the owner's Nov 2026 "copy Rotor"), set once when the lead is made (a person's change is never undone by a
+// later import: priority is not a Rotor-owned field); a high one also keeps its tag; both stay in rotor.priority
 export const HIGH_PRIORITY_TAG = "High priority";
+export const priorityOf = (r) => (r && PRIORITIES.includes(r.priority) ? r.priority : null);
 
 // ------------------------------------------------------------ pure helpers
 
@@ -408,7 +411,7 @@ async function mapLead(r, ctx) {
   }
   out.pointers.push({ kind: "rotor/lead", key: rotorKey(r.id), value: { id } });
   if (joins) {
-    out.patches.push({ type: "contact", id, add: { "rotor.lead_ids": [r.id], tags: p.data.tags }, fill: { first_name: p.data.first_name, last_name: p.data.last_name, billing_address: p.address || undefined, owner_id: p.data.owner_id } });
+    out.patches.push({ type: "contact", id, add: { "rotor.lead_ids": [r.id], tags: p.data.tags }, fill: { first_name: p.data.first_name, last_name: p.data.last_name, billing_address: p.address || undefined, owner_id: p.data.owner_id, priority: priorityOf(r) || undefined } });
   } else {
     const spam = isSpamName(p.data.first_name, p.data.last_name);
     out.records.push({
@@ -417,6 +420,7 @@ async function mapLead(r, ctx) {
         id, ...p.data, lifecycle: spam || p.data.flags.test ? "archived" : "lead",
         ...(spam ? { archived_reason: "spam", flags: { ...p.data.flags, spam: true } } : p.data.flags.test ? { archived_reason: "test" } : {}),
         ...(r.priority === "high" ? { tags: cleanTags([...p.data.tags, HIGH_PRIORITY_TAG].slice(0, 30), "tags") } : {}),
+        ...(priorityOf(r) ? { priority: priorityOf(r) } : {}),
         rotor: { lead_ids: [r.id], source_raw: p.src.raw, status_raw: r.status || r.stage || "", tags_raw: r.tags, ...(r.priority ? { priority: r.priority } : {}), ...(r.stage ? { stage: r.stage } : {}) },
         ...(r.created_at && !Number.isNaN(Date.parse(r.created_at)) ? { created_at: new Date(r.created_at).toISOString() } : {}),
       },

@@ -20,7 +20,7 @@ import { emit } from "../../core/events.mjs";
 import { revokeLinks } from "../../portal/core.mjs";
 import { fail } from "../../core/http.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { CONSENT_CHANNELS, CONSENT_STATES, CONSENT_SOURCES, LIFECYCLES, SOURCES } from "./types.mjs";
+import { CONSENT_CHANNELS, CONSENT_STATES, CONSENT_SOURCES, LIFECYCLES, SOURCES, PRIORITIES } from "./types.mjs";
 import { findMatches, createCandidate, resolveContact } from "./match.mjs";
 import { propertiesOf, ensureProperty, geocodeProperty, PROPERTIES_ON_SCREEN } from "./properties.mjs";
 import { startMerge, startBulk, runView } from "./merge.mjs";
@@ -134,12 +134,20 @@ const emailList = (b) => {
 };
 
 // The fields a person may set on a contact (create and edit).
-const EDITABLE = ["kind", "first_name", "last_name", "company_name", "phones", "emails", "billing_address", "source", "tags", "notes", "owner_id", "watcher_ids", "primary_property_id", "lifecycle"];
+const EDITABLE = ["kind", "first_name", "last_name", "company_name", "phones", "emails", "billing_address", "source", "tags", "notes", "owner_id", "watcher_ids", "primary_property_id", "lifecycle", "priority"];
+// Low, Medium or High; null or "" clears it.
+function checkPriority(v) {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  if (!PRIORITIES.includes(v)) throw new InputError("Pick low, medium or high.", "priority");
+  return v;
+}
 const FLAG_EDITABLE = ["vip", "do_not_service", "vendor", "spam"];
 
 function officeFields(b) {
   const out = {};
   for (const k of EDITABLE) if (b[k] !== undefined) out[k] = b[k];
+  if (out.priority !== undefined) out.priority = checkPriority(out.priority) || undefined;
   out.phones = phoneList(b);
   out.emails = emailList(b);
   if (out.lifecycle !== undefined && !["lead", "customer", "former_customer"].includes(out.lifecycle)) throw new InputError("Pick lead or customer.", "lifecycle");
@@ -240,6 +248,7 @@ async function patchRoute(ctx) {
   const b = ctx.body || {};
   const patch = {};
   for (const k of EDITABLE) if (b[k] !== undefined) patch[k] = b[k];
+  if (patch.priority !== undefined) patch.priority = checkPriority(patch.priority);
   if (patch.lifecycle !== undefined && !["lead", "customer", "former_customer"].includes(patch.lifecycle)) throw new InputError("Archive and restore have their own buttons.", "lifecycle");
   if (b.phones !== undefined) patch.phones = phoneList(b);
   if (b.emails !== undefined) patch.emails = emailList(b);

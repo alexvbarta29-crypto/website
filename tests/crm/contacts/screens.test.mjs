@@ -40,30 +40,46 @@ test("Contacts list: rows, chips, the merge notice; search rules match the serve
   assert.doesNotMatch(text(list.render({ ix: { rows }, dupes: 0, q: "", chip: "", src: "", sources: [] }, ctx(["contacts:read_all"]))), /possible duplicate/);
 });
 
-test("Contact: header actions, overview, activity and properties; everything escaped", async () => {
+test("Contact (Rotor's page): the top, Details and Activity, the header's pencil and \"...\"; everything escaped", async () => {
   const c = await load("contact");
-  const s = { contact, stats: { contacts: { customer_since: "2025-04-01" }, work: {}, money: {}, plans: {} }, properties: [property], users: [], tab: "overview", tech: false };
-  const h = text(c.render(s, ctx()));
+  const s = { contact, stats: { contacts: { customer_since: "2025-04-01" }, work: {}, money: {}, plans: {} }, properties: [property], users: [], tech: false, etag: '"1"' };
+  const open = { ...ctx(), keep: { about: true } };
+  const h = text(c.render(s, open));
   assert.ok(!h.includes("<script>alert(1)"), "names, tags and notes are escaped");
   assert.match(h, /href="tel:\+17635550100"/);
   assert.match(h, /href="sms:\+17635550100"/);
   assert.match(h, /href="mailto:pat@example.com"/);
+  assert.match(h, /data-copy="pat@example.com"/, "a round copy on the email");
   assert.match(h, /target="_blank" rel="noopener"|data-external="top"/, "directions leave the frame");
-  assert.match(h, /Marketing texts/);
-  assert.match(h, /Sample Form · Sample Ad/);
+  assert.match(h, /role="tablist"[\s\S]*Details[\s\S]*Activity/, "Details | Activity");
+  assert.match(h, /Marketing texts/, "the consent card (Activity)");
+  assert.match(h, /Sample Form · Sample Ad/, "About, opened");
   assert.match(h, /Customer since/);
-  assert.match(h, /Mark as test contact/);
-  assert.doesNotMatch(text(c.render(s, ctx(["contacts:read", "contacts:write"]))), /Mark as test contact/, "owners only");
-  const act = text(c.render({ ...s, tab: "activity", activity: [{ at: NOW, kind: "contact.intake", source: "Website quote form", note: `— Website —\n${XSS}` }, { at: NOW, kind: "note" }] }, ctx()));
+  assert.match(h, /Primary property/i);
+  assert.match(h, /data-notes="ct-notes"/, "the notes box");
+  assert.match(h, /data-pick-owner/, "the owner pill picks an owner");
+  assert.match(text(c.render(s, ctx())), /data-about/, "About folded until asked");
+  assert.doesNotMatch(text(c.render(s, ctx())), /Sample Form · Sample Ad/);
+  const labels = (perms) => c.more(s, ctx(perms)).flat().filter(Boolean).map((r) => r.label);
+  assert.ok(labels().includes("Mark as test contact"));
+  assert.ok(labels().includes("Archive") && labels().includes("Merge with...") && labels().includes("Pause automated texts") && labels().includes("Texts and email"));
+  assert.ok(!labels(["contacts:read", "contacts:write"]).includes("Mark as test contact"), "owners only");
+  assert.deepEqual(c.tools(s, ctx()).filter(Boolean).map((x) => x.href), ["#/contacts/ct_00000000000000000001/edit"], "the round pencil");
+  assert.match(c.title(s), /^Pat /, "the header's h1 (out of sight on a phone: the name is the page's own)");
+  const act = text(c.render({ ...s, activity: [{ at: NOW, kind: "contact.intake", source: "Website quote form", note: `— Website —\n${XSS}` }, { at: NOW, kind: "note" }] }, ctx()));
   assert.match(act, /Website request \(Website quote form\)/);
   assert.ok(!act.includes("<script>alert(1)"));
-  const pr = text(c.render({ ...s, tab: "properties" }, ctx()));
-  assert.match(pr, /href="#\/properties\/pr_00000000000000000001"/);
-  assert.match(pr, /In the service area/);
-  // a tech: no stats, no office history tab, numbers only
-  const t = text(c.render({ contact: { id: contact.id, display_name: "Pat Example", phones: contact.phones, first_name: "Pat" }, properties: [property], users: [], tab: "overview", tech: true }, ctx(["contacts:read"])));
-  assert.doesNotMatch(t, /data-tab="activity"/);
-  assert.doesNotMatch(t, /Notes/);
+  assert.match(h, /href="#\/properties\/pr_00000000000000000001"/);
+  assert.match(h, /In the service area/);
+  // a lead: its priority as the pill, Priority in the "..."
+  const ld = { ...s, contact: { ...contact, lifecycle: "lead", priority: "medium" } };
+  assert.match(text(c.render(ld, ctx())), /class="pill fill-orange">Medium</);
+  assert.ok(c.more(ld, ctx()).flat().filter(Boolean).some((r) => r.label === "Priority" && r.hint === "Medium"));
+  // a tech: no stats, no Activity, numbers only
+  const t = text(c.render({ contact: { id: contact.id, display_name: "Pat Example", phones: contact.phones, first_name: "Pat" }, properties: [property], users: [], tech: true }, ctx(["contacts:read"])));
+  assert.doesNotMatch(t, /role="tablist"|data-notes|Activity/);
+  assert.match(t, /href="tel:\+17635550100"/);
+  assert.deepEqual(c.more({ tech: true }, ctx(["contacts:read"])), []);
 });
 
 test("New lead / edit, Quick lead, Property, Merge review and Lead webhooks render", async () => {

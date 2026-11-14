@@ -1,13 +1,13 @@
-// The phone shell and the sidebar (the Nov 2026 look: Flyra's phone app
-// first; the tidy-up: "concise but full of capabilities"): the office's bar
-// is Flyra's, Home · Schedule · Inbox · Map · Menu (the Menu last, a sheet,
-// not a page), each person may pick up to five places of their own (saved
-// on their user record; a pinned Visits is the Schedule now), the Menu is
-// five groups (Work, Sales, Customers, Money, Marketing & messages) and
-// Settings, each screen once and never what the bar holds, the setup
-// screens in Settings, the desk's sidebar is the same places then the same
-// groups with Settings at the bottom, the + and the desk's New are one list
-// (the most used first), and the "What moved" note shows once per person.
+// The phone shell and the sidebar (the Nov 2026 look, then the owner's
+// "make it like Rotor"): the office's bar is Home · Schedule · Inbox · Map ·
+// Menu (the Menu last: it opens the drawer, not a page), each person may
+// pick up to five places of their own (Customize Tabs, saved on their user
+// record; a pinned Visits is the Schedule now), the drawer is Rotor's four
+// groups (Home, Inbox, Schedule | Customers, Leads, Pipelines, Power Dialer
+// | Service, Financials, Tasks, Map | Analytics, Marketing) with sub-lists,
+// every screen of the old Menu reachable, the gear for Settings; the desk's
+// sidebar is the same drawer; the + and the desk's New are one list (the
+// most used first), and the "What moved" note shows once per person.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { crmTest } from "../../helpers/crm-http.mjs";
@@ -24,20 +24,22 @@ await import("../../../netlify/lib/crm/modules/index.mjs");   // the modules' ow
 const canOf = (role, office = true) => (p) => (p === "office:tools" ? office && role === "owner" : roleDefault(role, p) === true);
 const planFor = (role, user = {}) => nav.plan({ nav: navFor({ role, ...user }), manifests: MANIFESTS, can: canOf(role), user: { id: "us_0000000000000000000a", role, name: "Pat Example", ...user } });
 
-test("the office's bar: Home · Schedule · Inbox · Map · Menu (Flyra's), the Menu last and a sheet; a tech's is unchanged", () => {
+test("the office's bar: Home · Schedule · Inbox · Map · Menu, the Menu last (the drawer); a tech's is unchanged", () => {
   const p = planFor("owner");
   assert.deepEqual(p.bar.map((t) => t.label), ["Home", "Schedule", "Inbox", "Map", "Menu"]);
-  assert.equal(p.bar[p.bar.length - 1].sheet, true, "the Menu opens the sheet");
+  assert.equal(p.bar[p.bar.length - 1].sheet, true, "the Menu opens the drawer");
   assert.equal(p.menu.key, "menu");
   assert.equal(nav.isTabRoot("/menu"), false, "the Menu page has a back arrow");
   assert.equal(nav.isTabRoot("/schedule"), true);
-  assert.equal(nav.isTabRoot("/contacts"), true, "Customers, from the Menu, is top-level: no back button");
+  assert.equal(nav.isTabRoot("/contacts"), true, "Customers, from the drawer, is top-level: no back button");
+  assert.equal(nav.isTabRoot("/settings"), true, "Settings, the drawer's gear, too");
   assert.equal(nav.isTabRoot("/contacts/new"), false);
   assert.deepEqual(nav.TABS.sales.group.map(([, l]) => l), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"]);
   const t = nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
   assert.deepEqual(t.bar.map((x) => x.label), ["Today", "Inbox", "Time", "Pay", "Me"]);
   assert.equal(t.menu, null, "no Menu for a tech");
-  assert.ok(!nav.menuGroups().flatMap((g) => g.items.map((n) => n.path)).includes("/tab-bar"), "a tech's bar is the tech app's: no Tab bar");
+  assert.deepEqual(nav.drawerGroups(), [], "no drawer for a tech");
+  assert.equal(nav.drawerGear(), null, "a tech's bar is the tech app's: no Customize Tabs");
   assert.deepEqual(OFFICE_NAV, ["home", "schedule", "inbox", "map", "menu"]);
 });
 
@@ -77,40 +79,74 @@ test("the tab bar is saved on the person's own record (PATCH /users/:id { tabs }
   } finally { t.done(); }
 });
 
-test("the desk's sidebar: the bar's places first in the bar's order, then the Menu's five groups less those, Settings at the bottom", () => {
+test("the desk's sidebar: the drawer's groups (its lists fold open), Settings at the bottom; a tech's: the bar's places", () => {
   const p = planFor("owner");
-  assert.deepEqual(p.side.top.map((t) => t.label), ["Home", "Schedule", "Inbox", "Map"], "the bar's places");
-  assert.deepEqual(p.side.groups.map((g) => g.label), ["Work", "Sales", "Customers", "Money", "Marketing & messages"]);
-  const paths = p.side.groups.flatMap((g) => g.items.map((n) => n.path));
-  assert.equal(new Set(paths).size, paths.length, "each screen once");
-  for (const taken of ["/today", "/schedule", "/inbox", "/map", "/knock", "/settings", "/team", "/me", "/templates", "/automations", "/activity", "/import", "/tab-bar", "/visits", "/schedule?view=tray", "/tools/followups"]) assert.ok(!paths.includes(taken), `${taken} isn't in a group`);
-  for (const there of ["/contacts", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/jobs", "/plans", "/invoices", "/payments", "/campaigns", "/leaderboard"]) assert.ok(paths.includes(there), `${there} is reachable on a desk`);
+  assert.deepEqual(p.side.top, [], "no second copy of the bar");
+  assert.deepEqual(p.side.groups.map((g) => g.map((it) => it.label)), nav.drawerGroups().map((g) => g.map((it) => it.label)), "the same rows as the drawer");
+  const paths = p.side.groups.flat().flatMap((it) => (it.sub ? it.sub.map((x) => x.path) : [it.path]));
+  for (const there of ["/today", "/schedule", "/inbox", "/contacts", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/jobs", "/plans", "/invoices", "/payments", "/campaigns", "/leaderboard", "/map", "/team-map"]) assert.ok(paths.includes(there), `${there} is reachable on a desk`);
   assert.deepEqual(p.side.bottom.map((n) => n.label), ["Settings"]);
   assert.deepEqual(planFor("admin").side.bottom.map((n) => n.label), ["Settings"]);
+  const t = nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
+  assert.deepEqual(t.side.top.map((x) => x.label), ["Today", "Inbox", "Time", "Pay", "Me"]);
+  assert.deepEqual(t.side.groups, []);
 });
 
-test("the Menu: five groups and Settings, each screen once under one name, none the bar holds; setup screens in Settings", () => {
+test("the drawer: Rotor's four groups, a dot for a row with its own list, every screen of the old Menu reachable, each once; the gear", () => {
   planFor("owner");
-  const g = nav.menuGroups();
-  assert.deepEqual(g.map((x) => x.label || x.key), ["Work", "Sales", "Customers", "Money", "Marketing & messages", "you"]);
-  assert.deepEqual(g[g.length - 1].items.map((n) => n.label), ["Settings"]);
-  const all = g.flatMap((x) => x.items.map((n) => n.path));
-  assert.equal(new Set(all).size, all.length, "each once");
-  const labels = g.flatMap((x) => x.items.map((n) => n.label));
-  assert.equal(new Set(labels).size, labels.length, "no two with one name");
-  for (const gone of ["/schedule", "/inbox", "/map", "/knock", "/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/visits", "/tools/followups", "/dashboard/money", "/dashboard"]) assert.ok(!all.includes(gone), `${gone} isn't in the Menu`);
-  assert.deepEqual(g[1].items.slice(0, 5).map((n) => n.label), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"], "Sales: the Sales tab's screens first");
-  assert.ok(g[3].items.some((n) => n.path === "/reports" && n.label === "Reports"), "Reports, under Money (the office dashboards open from it)");
-  for (const x of all) assert.equal(nav.isTabRoot(x.split("?")[0]), true, `${x}: a Menu screen is top-level`);
-  // someone who can't open Settings still finds a setup screen they may open (here: templates) in the Menu
+  const g = nav.drawerGroups();
+  const rows = g.map((x) => x.map((it) => it.label));
+  assert.deepEqual(rows, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
+  const sub = (k) => (g.flat().find((it) => it.key === k).sub || []).map((x) => x.label);
+  assert.deepEqual(sub("service"), ["Jobs", "Visits", "To book", "Quotes", "Plans", "Plan visits to book", "Lights season", "Light Studio", "Time", "Timesheets", "Pay"]);
+  assert.deepEqual(sub("financials"), ["Invoices", "Payments", "Autopay", "Payroll", "Purchases"]);
+  assert.deepEqual(sub("analytics"), ["Reports", "Dashboard", "Leaderboard", "My performance"]);
+  assert.deepEqual(sub("marketing"), ["Campaigns", "Approvals", "Reviews", "Signs & flyers", "Giveaway", "Outbox", "Message templates", "Automations", "Follow-up cadences"]);
+  assert.deepEqual(sub("map"), ["Door to door", "Team map"], "Map: both, so a list (the Team map not also under Service)");
+  assert.deepEqual(sub("customers"), ["Customers", "Merge review"]);
+  assert.equal(g.flat().find((it) => it.key === "inbox").count, "inbox", "Inbox carries the unread count");
+  const all = g.flat().flatMap((it) => (it.sub ? it.sub.map((x) => x.path) : [it.path]));
+  assert.equal(new Set(all).size, all.length, "each screen once");
+  // every screen the old Menu had (Nov 2026: Work, Sales, Customers, Money, Marketing & messages)
+  for (const old of ["/schedule", "/jobs", "/plans", "/lights", "/team-map", "/timesheets", "/time", "/pay", "/payroll", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/map",
+    "/tools/lights", "/leaderboard", "/performance", "/contacts", "/merge", "/invoices", "/payments", "/autopay", "/reports", "/tools/purchases", "/inbox", "/campaigns", "/approvals", "/reviews", "/signs", "/tools/giveaway", "/outbox"]) assert.ok(all.includes(old), `${old} is in the drawer`);
+  for (const x of all) assert.equal(nav.isTabRoot(x.split("?")[0]), true, `${x}: a drawer screen is top-level`);
+  assert.deepEqual(nav.drawerGear(), { path: "/settings", label: "Settings" });
+  // someone who can't open Settings: the setup screens they may open are in the drawer (a last group), the gear is Customize Tabs
   nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => x !== "settings:general" && canOf("admin")(x), user: { id: "us_b", role: "admin" } });
-  const g2 = nav.menuGroups().flatMap((x) => x.items.map((n) => n.path));
+  const g2 = nav.drawerGroups().flat().flatMap((it) => (it.sub ? it.sub.map((x) => x.path) : [it.path]));
   assert.ok(g2.includes("/templates") && g2.includes("/automations"), "not hidden from someone without Settings");
+  assert.ok(g2.includes("/team") || !canOf("admin")("users:manage"), "Team in the last group");
   assert.ok(!g2.includes("/settings"));
-  // a pinned bar without Home: Home leads the Menu
+  assert.equal(nav.drawerGear().tabs, true, "the gear opens Customize Tabs");
+  // a pinned bar without Home: Home still leads the drawer
   planFor("owner", { tabs: ["pipeline", "contacts"] });
-  assert.equal(nav.menuGroups()[0].items[0].path, "/today");
-  assert.ok(nav.menuGroups().flatMap((x) => x.items.map((n) => n.path)).includes("/schedule"), "the Schedule, off the bar, is under Work");
+  assert.equal(nav.drawerGroups()[0][0].path, "/today");
+  // only one screen of a list open: the row is that screen (a Map with no Team map is the Map)
+  nav.plan({ nav: navFor({ role: "owner" }), manifests: MANIFESTS, can: (x) => x !== "team_map:read" && canOf("owner")(x), user: { id: "us_c", role: "owner" } });
+  const m = nav.drawerGroups().flat().find((it) => it.key === "map");
+  assert.deepEqual([m.label, m.path, m.sub], ["Map", "/map", undefined]);
+});
+
+test("Customize Tabs: up to five above the line, the rest under MORE MENU; + and −, moves by one, a drop past five", async () => {
+  const T = await import("../../../crm-app/modules/system/tab-bar.js");
+  let s = { picked: ["home", "schedule", "inbox", "map"], rest: ["contacts", "leads", "quotes"] };
+  s = T.toggle(s, "quotes");
+  assert.deepEqual(s.picked, ["home", "schedule", "inbox", "map", "quotes"]);
+  assert.equal(T.toggle(s, "leads"), null, "a sixth: refused");
+  assert.deepEqual(T.toggle(s, "map").rest[0], "map", "taken off: first under the line");
+  assert.deepEqual(T.step(s, "schedule", -1).picked.slice(0, 2), ["schedule", "home"], "up one");
+  const down = T.step(s, "quotes", 1);
+  assert.deepEqual([down.picked, down.rest[0]], [["home", "schedule", "inbox", "map"], "quotes"], "down past the line: off the bar");
+  const up = T.step(down, "quotes", -1);
+  assert.deepEqual(up.picked, ["home", "schedule", "inbox", "map", "quotes"], "and back");
+  assert.deepEqual(T.settle(["home", "schedule", "inbox", "map", "quotes", "leads", "|", "contacts"]), { picked: ["home", "schedule", "inbox", "map", "quotes"], rest: ["leads", "contacts"] }, "dropped as a sixth: the last goes below the line");
+  assert.deepEqual(T.STANDARD, ["home", "schedule", "inbox", "map"]);
+  const h = String(T.tabsList(s));
+  assert.match(h, /data-ctb-line/);
+  assert.match(h, /More menu/);
+  assert.match(h, /data-ctb-out="home"[\s\S]*data-ctb-line[\s\S]*data-ctb-in="contacts"/);
+  assert.doesNotMatch(h, /—/);
 });
 
 test("the + and the desk's New: one list, the most used first, each once", () => {
@@ -135,7 +171,7 @@ test("What moved: once per person on this device; a browser that keeps nothing n
     planFor("owner");
     globalThis.localStorage = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     assert.equal(nav.wantsMoved("us_c"), false);
-    assert.match(nav.MOVED_TEXT.phone, /Menu/);
+    assert.match(nav.MOVED_TEXT.phone, /Menu is a drawer/);
     assert.doesNotMatch(nav.MOVED_TEXT.phone + nav.MOVED_TEXT.desk, /—/, "no em dashes");
   } finally { delete globalThis.localStorage; }
 });

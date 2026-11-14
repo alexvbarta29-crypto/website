@@ -96,6 +96,7 @@ test("an export in Rotor's layout imports in full: team hours and pay rates, con
       const c = json(t, `rec/contact/${json(t, `ptr/rotor/lead/${rotorKey(high.id)}`).id}`);
       assert.ok(c.tags.includes("High priority"));
       assert.equal(c.rotor.priority, "high");
+      assert.equal(c.priority, "high", "the lead's own priority (Nov 2026): Rotor's High");
     }
     // a tip paid on its own: a payment of $0 with its tip, nothing skipped
     assert.equal(ph("money.payments").skipped.invalid || 0, 0);

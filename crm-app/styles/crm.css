@@ -40,6 +40,8 @@
   --avatar-bg:#3a3a3f;--avatar-ink:#fff;--map-blank:#eef0eb;--hero:linear-gradient(180deg,#f2f2f7 0%,#f2f2f7 100%);--hero-top:#f2f2f7;
   /* the Rotor-style kit (Nov 2026): caps labels, the grey pill button, the red + */
   --label:#6e6e73;--fill-pill:#ececf0;--fab-red:linear-gradient(180deg,#ef4b32 0%,#db3a29 100%);
+  /* the drawer: white in light, its current row solid (Rotor's); dark: #1b1c1f, the current row white */
+  --dr-bg:#fff;--dr-on:var(--solid);--dr-on-ink:var(--on-solid);--dr-on-sh:none;
   /* type: the iPhone's own */
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --head:var(--sys);
@@ -85,6 +87,7 @@ html:not([data-theme="light"]) body.crm:not(.page){
   --sh-xs:none;--sh-card:none;--sh-raise:0 8px 24px rgba(0,0,0,.4);--sh-pop:0 16px 40px rgba(0,0,0,.55);
   --card-line:#2a2b2f;
   --label:#9a9aa2;--fill-pill:#2c2c30;
+  --dr-bg:#1b1c1f;--dr-on:#f5f5f7;--dr-on-ink:#111214;--dr-on-sh:0 1px 3px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -226,39 +229,50 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .qk-x{position:absolute;right:calc(16px + var(--right));bottom:calc(var(--bar-gap) + (var(--pill-h) - var(--fab-d)) / 2);display:grid;place-items:center;width:var(--fab-d);height:var(--fab-d);border:1px solid var(--glass-line);border-radius:50%;background:var(--glass);color:var(--ink);box-shadow:var(--glass-sh);cursor:pointer}
 .qk-x svg{width:24px;height:24px;stroke-width:2.4}
 body.qk-on .fab{visibility:hidden}
-/* the Menu sheet (Flyra's): a large title, round buttons, the latest reply, rounded groups */
-.sheet.menu-sheet{background:var(--sheet-bg);max-height:calc(100% - var(--top) - 10px);border-radius:28px 28px 0 0}
-.menu-sheet .sheet-head{border-bottom:0;padding:6px 16px 8px 20px}
-.menu-sheet .sheet-head h2{font:700 34px/1.1 var(--head);letter-spacing:-.025em}
-.menu-sheet .sheet-body{padding:6px 16px 28px;display:flex;flex-direction:column;gap:20px}
-.menu-sheet .sheet-body>*{flex-shrink:0}
-.menu-sheet .sheet-x{width:44px;height:44px;border-radius:50%;border:1px solid var(--rnd-line);background:var(--rnd-bg);box-shadow:var(--rnd-sh);color:var(--ink)}
-.ms-btns{display:flex;gap:10px}
-.ms-me{color:var(--ink);background:var(--rnd-bg)}
-.ms-grp{display:flex;flex-direction:column;gap:6px}
-.ms-h{margin:2px 6px 0;font:600 12px/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
-.ms-list{list-style:none;margin:0;padding:0 0 0 16px;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-xl);box-shadow:var(--sh-card)}
-.ms-list li+li .ms-row{border-top:1px solid var(--line)}
-.ms-row{display:flex;align-items:center;gap:20px;min-height:56px;padding:0 14px 0 2px;color:var(--ink);text-decoration:none;font:400 17px/1.2 var(--text);letter-spacing:-.02em}
-.ms-list li+li .ms-row{margin-left:44px;padding-left:0}
-.ms-list li+li .ms-row .ms-ic{margin-left:-44px}
-.ms-ic{display:grid;place-items:center;width:24px;height:24px;flex:none;color:var(--ink)}
-.ms-ic svg{width:22px;height:22px;stroke-width:1.6}
-.ms-l{flex:1;min-width:0}
-.ms-row .chev{border-color:var(--ink-3);opacity:.7}
-.ms-two{display:grid;grid-template-columns:1fr 1fr;align-items:center;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-xl);box-shadow:var(--sh-card);overflow:hidden}
-.ms-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:54px;padding:8px 0;color:var(--ink);text-decoration:none;font:600 13px/1.2 var(--text)}
-.ms-tile+.ms-tile{border-left:1px solid var(--line)}
-.ms-tile svg{width:22px;height:22px;stroke-width:1.6}
-.ms-replycard{display:flex;align-items:center;gap:12px;padding:16px;border:1px solid var(--card-line);border-radius:var(--r-xl);background:var(--card);box-shadow:var(--sh-card);color:var(--ink);text-decoration:none}
-.ms-replycard .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.ms-replycard .nm{font-weight:600;font-size:16px}
-.ms-replycard .nm small{font-weight:400;color:var(--ink-3);font-size:15px}
-.ms-replycard .sub{font-size:15px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ms-av{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:var(--avatar-bg);color:var(--avatar-ink);font:600 15px/1 var(--head)}
-.ms-av::after{content:"";position:absolute;top:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--coral);box-shadow:0 0 0 2px var(--card)}
-.ms-go{flex:none;min-height:44px;display:inline-flex;align-items:center;padding:0 18px;border-radius:999px;background:var(--solid);color:var(--on-solid);font:600 16px/1 var(--text)}
-.ms-row:active,.ms-tile:active,.ms-replycard:active{background:var(--fill)}
+/* the drawer (Rotor's menu, core/nav.js openDrawer): from the left, ~42% of
+   a phone (220 to 300 px), the screen behind dimmed and blurred; our logo
+   and an X on top; groups split by thin lines; the current row a raised
+   pill; a row with a dot opens its own list; the gear alone at the bottom */
+.dr-scrim{position:fixed;inset:0;z-index:22;background:var(--scrim);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);opacity:0;transition:opacity .2s var(--ease)}
+.dr-scrim.on{opacity:1}
+.drawer{position:fixed;z-index:23;top:0;bottom:0;left:0;width:clamp(220px,42vw,300px);display:flex;flex-direction:column;padding:calc(var(--top) + 8px) 10px calc(var(--bottom) + 12px) calc(10px + var(--left));background:var(--dr-bg);color:var(--ink);box-shadow:8px 0 32px rgba(10,10,12,.22);transform:translateX(-104%);transition:transform .24s var(--ease);outline:0}
+.drawer.on{transform:none}
+.dr-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px;padding:0 0 6px 6px}
+.dr-logo{display:flex;align-items:center;min-height:44px;border-radius:var(--r-sm)}
+.dr-logo img{display:block;width:118px;height:auto}
+.dr-logo .lg-d{display:none}
+html:not([data-theme="light"]) .dr-logo .lg-l{display:none}
+html:not([data-theme="light"]) .dr-logo .lg-d{display:block}
+.dr-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:0 -4px;padding:0 4px}
+.dr-grp{list-style:none;margin:0;padding:6px 0}
+.dr-grp+.dr-grp{border-top:1px solid var(--line)}
+.dr-row{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:0 10px;border:0;border-radius:12px;background:none;color:var(--ink);font:500 16px/1.2 var(--text);letter-spacing:-.01em;text-align:left;text-decoration:none;cursor:pointer}
+.dr-ic{flex:none;display:grid;place-items:center;width:24px;height:24px;color:var(--ink-2)}
+.dr-ic svg{width:22px;height:22px;stroke-width:1.7}
+.dr-l{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-row[aria-current]{background:var(--dr-on);color:var(--dr-on-ink);font-weight:600;box-shadow:var(--dr-on-sh)}
+.dr-row[aria-current] .dr-ic{color:inherit}
+.dr-row:active{background:var(--fill)}
+.dr-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--coral)}
+.dr-n{flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 12px/22px var(--text);text-align:center}
+.dr-back{color:var(--ink-2);font-weight:600}
+.dr-back+.dr-grp{border-top:1px solid var(--line);margin-top:4px}
+.dr-foot{flex:none;display:flex;align-items:center;padding:8px 0 0 2px;border-top:1px solid var(--line)}
+body.dr-on .fab{visibility:hidden}
+@media (hover:hover) and (pointer:fine){.dr-row:not([aria-current]):hover{background:var(--fill)}}
+/* #/menu: the same rows as a page */
+.menu-page .dr-grp{padding:6px 0;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);box-shadow:var(--sh-card);padding:4px 6px}
+.menu-page .dr-grp+.dr-grp{border-top:1px solid var(--card-line)}
+.menu-page .dr-foot{border:0;padding:0}
+/* the top bar of a top-level screen on a phone (Rotor's): the hamburger, then search, the time, help, the person */
+.top-bar{display:none}
+.tb-gap{flex:1}
+.tb-time{font:500 15px/1 var(--text);color:var(--ink-2);padding:0 2px;white-space:nowrap}
+.tb-av{font:600 14px/1 var(--head)}
+@media (max-width:899px){
+  .app.big-top .top{flex-wrap:wrap;row-gap:0;align-content:flex-start}
+  .app.big-top .top-bar{display:flex;align-items:center;gap:8px;flex:0 0 100%;min-height:52px}
+}
 
 /* ------------------------------------------------------------ building blocks */
 .stack{display:flex;flex-direction:column;gap:12px}
@@ -575,16 +589,20 @@ textarea.body{min-height:140px}
   .side-item .sl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .side-item .badge{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--coral);color:#fff;font:600 11.5px/20px var(--text);text-align:center}
   .side-item:focus-visible,.side-h:focus-visible,.side-me:focus-visible,.side-logo:focus-visible{outline:2px solid var(--coral);outline-offset:-2px}
-  .side-grp{margin-top:16px}
-  .side-div{height:1px;margin:14px 10px 2px;background:rgba(255,255,255,.1)}
-  .side-div+.side-grp{margin-top:12px}
+  .side-grp{margin:1px 0}
+  .side-div{height:1px;margin:10px 10px;background:rgba(255,255,255,.1)}
   .side-foot{flex:none;padding:8px 12px 10px;border-top:1px solid rgba(255,255,255,.08)}
   .moved{padding:6px 24px}
-  .side-h{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:28px;padding:0 10px;border:0;border-radius:var(--r-sm);background:none;color:rgba(255,255,255,.42);font:600 11px/1 var(--text);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
-  .side-h:hover{color:rgba(255,255,255,.7)}
-  .side-chev{width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
+  /* a row with its own list (Service, Financials...): it folds open in place */
+  .side-h{display:flex;align-items:center;gap:11px;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:var(--r-sm);background:none;color:rgba(255,255,255,.72);font:500 14px/1.2 var(--text);text-align:left;cursor:pointer}
+  .side-h svg{width:18px;height:18px;flex:none;color:rgba(255,255,255,.5);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .side-h .sl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .side-h:hover{background:rgba(255,255,255,.06);color:#fff}
+  .side-chev{flex:none;width:6px;height:6px;margin-right:4px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s;opacity:.7}
   .side-grp.shut .side-chev{transform:rotate(-45deg)}
   .side-grp.shut .side-items{display:none}
+  .side-items{padding-left:18px}
+  .side-items .side-item{min-height:34px}
   .side-me{display:flex;align-items:center;gap:11px;margin:0 12px 12px;padding:10px;border-radius:var(--r);border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#fff;text-decoration:none}
   .side-me:hover{background:rgba(255,255,255,.07)}
   .side-me .avatar{width:32px;height:32px;font-size:12px;box-shadow:0 0 0 2px rgba(255,255,255,.1)}
@@ -682,14 +700,23 @@ textarea.body{min-height:140px}
 .oc-h svg{flex:none;width:22px;height:22px;margin-top:2px}
 .oc-act{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-/* ------------------------------------------------------------ the Tab bar page's preview (system/tab-bar.js) */
-.tb-prev{display:flex;align-items:center;justify-content:space-around;gap:2px;min-height:62px;padding:6px 8px;border:1px solid var(--glass-line);border-radius:999px;background:var(--glass);box-shadow:var(--glass-sh)}
-.tb-chip{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink-3);font:500 11px/1.1 var(--text)}
-.tb-chip svg{flex:none;width:22px;height:22px}
-.tb-chip span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tb-chip.menu{color:var(--ink)}
-.tb-n{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--coral-btn);color:#fff;font:600 13px/1 var(--text)}
-.tb-n.off{background:none;box-shadow:inset 0 0 0 1.5px var(--line-2)}
+/* ------------------------------------------------------------ Customize Tabs (system/tab-bar.js): the sheet and #/tab-bar
+   one list: the tabs on the bar, the MORE MENU line, the rest; a round − or +, a drag handle */
+.ctb-hint{margin:0 4px}
+.ctb-list{list-style:none;margin:0;padding:0 4px 0 16px}
+.ctb-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:4px 0;background:var(--card);touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.ctb-row+.ctb-row{border-top:1px solid var(--line)}
+.ctb-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--card-2);color:var(--ink)}
+.ctb-ic svg{width:19px;height:19px}
+.ctb-l{flex:1;min-width:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctb-drag{flex:none;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:10px;background:none;color:var(--ink-3);cursor:grab;touch-action:none}
+.ctb-drag svg{width:22px;height:22px}
+.ctb-row.dragging{position:relative;z-index:2;border-radius:12px;box-shadow:var(--sh-pop);transform:scale(1.02);border-top-color:transparent}
+.ctb-div{display:flex;align-items:center;min-height:40px;margin:0 0 0 -16px;padding:14px 16px 6px;background:var(--mist);font:600 12px/1.2 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--label)}
+.ctb-div+.ctb-row{border-top:0}
+.ctb-n{margin:0 4px}
+.ctb-std{margin-top:4px}
+.sheet.ctb-sheet .ctb-div{background:var(--sheet-bg)}
 
 /* ------------------------------------------------------------ the Rotor-style kit (Nov 2026)
    One look for the phone screens (helpers in core/ui.js, the header
@@ -902,3 +929,29 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
 .kit-grow{flex:1;min-width:0}
 .kit-rnds{justify-content:flex-start;gap:8px}
 .kit-rnds+.kit-rnds{margin-top:12px}
+/* ------------------------------------------------------------ the Settings hub (system/settings.js): iOS's look
+   a search field on top; each row a small coloured tile, the label, a chevron; rare sections folded */
+.set-find{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-radius:12px;background:var(--seg-track);color:var(--ink-3)}
+.set-find svg{flex:none;width:18px;height:18px}
+.set-find input{flex:1;min-width:0;min-height:44px;border:0;outline:0;background:none;color:var(--ink);font:400 16px/1 var(--text);-webkit-appearance:none;appearance:none}
+.set-find:focus-within{box-shadow:var(--focus)}
+.set-hub .section-h{margin:14px 4px 6px}
+.set-sec{display:flex;flex-direction:column}
+.set-list{padding-left:0}
+.set-row{min-height:50px;padding:6px 14px 6px 12px;gap:12px}
+.set-row .nm{font-size:16px;font-weight:400}
+.set-ic{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;color:#fff}
+.set-ic svg{width:18px;height:18px;stroke-width:2}
+.set-ic.blue{background:#2f7cf6}.set-ic.green{background:#2fa44f}.set-ic.amber{background:#e89a16}.set-ic.red{background:#e5483a}.set-ic.teal{background:#1f9aa8}.set-ic.purple{background:#7a5af5}.set-ic.grey{background:#8e8e93}
+.set-own{background:var(--fill-2);color:var(--ink-2)}
+.set-fold{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:6px 0 0;padding:0 14px 0 0;border:0;border-radius:12px;background:none;color:var(--ink-3);cursor:pointer;text-align:left}
+.set-fold .section-h{flex:1;margin:8px 4px 6px}
+.set-cnt{font:500 14px/1 var(--text);color:var(--muted)}
+.set-fold .side-chev{width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
+.set-sec.shut .side-chev{transform:rotate(-45deg)}
+.set-sec.shut:not(.found) .set-list{display:none}
+.set-none{margin:6px 4px}
+/* #/menu: every list of the drawer open under its row's name */
+.dr-h{display:flex;align-items:center;gap:12px;min-height:40px;margin:6px 0 0;padding:0 10px;font:600 13px/1.2 var(--text);letter-spacing:.05em;text-transform:uppercase;color:var(--label)}
+.dr-h .dr-ic{color:var(--label)}
+.dr-in{list-style:none;margin:0 0 4px;padding:0 0 0 22px}

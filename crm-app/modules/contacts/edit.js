@@ -5,6 +5,7 @@
 // the matches to open, or Save anyway. An edit carries the version it
 // started from: if someone changed the contact meanwhile, nothing is
 // overwritten ("Someone else just changed this").
+// A lead's priority (Rotor's Low / Medium / High; Nov 2026) is set here too.
 // The street is typed (no address lookup in v1: the CRM's pages only talk
 // to this site).
 
@@ -58,6 +59,7 @@ function render(s, ctx) {
     </section>
     <section class="card form">
       ${s.isNew ? select({ label: "This is", name: "lifecycle", value: c.lifecycle || "lead", options: [{ value: "lead", label: "A lead (wants a quote)" }, { value: "customer", label: "A customer" }] }) : ""}
+      ${!c.lifecycle || c.lifecycle === "lead" ? select({ label: "Priority", name: "priority", value: c.priority || "", options: [{ value: "", label: "None" }, { value: "high", label: "High" }, { value: "medium", label: "Medium" }, { value: "low", label: "Low" }] }) : ""}
       ${select({ label: "Where they came from", name: "source", value: src.source || "Other", options: SOURCES.map((x) => ({ value: x, label: x })) })}
       ${select({ label: "How they heard about us (optional)", name: "channel", value: src.channel || "", options: [{ value: "", label: "Not asked" }, ...CHANNELS.map((x) => ({ value: x, label: x }))] })}
       ${field({ label: "Tags (commas between)", name: "tags", value: (c.tags || []).join(", "), autocapitalize: "words" })}
@@ -84,6 +86,8 @@ function collect(form, s) {
     notes: v.notes,
   };
   if (!v.channel && body.source) delete body.source.channel;
+  // (only where the form asked: a customer's editor has no priority field)
+  if (Object.prototype.hasOwnProperty.call(v, "priority")) { if (v.priority) body.priority = v.priority; else if (!s.isNew) body.priority = null; }
   if (s.isNew) {
     body.lifecycle = v.lifecycle;
     body.consent = { sms_service: !!v.sms_service };
