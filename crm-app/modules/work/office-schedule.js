@@ -17,6 +17,13 @@
 //     with a red line at the current time; more than two columns scroll
 //     sideways on a phone; 3 Day: three days side by side.
 //
+// A phone's head is Rotor's (Nov 2026, flyHead below): "November ⌄", the
+// time, three round buttons (Map of the day, Go to a date, the filter that
+// holds Who, the columns, Show on cards, Find a visit and To book), the
+// < > and the segmented List | Day | 3 Day | Week | Month (Month still the
+// default); a dashed "To book (6)" chip above Day, 3 Day and Week; a long
+// press on a visit opens Move or reassign (the desk's drag and drop).
+//
 // On a desk (1,100 px and up; office-board.js, office-vpanel.js): a click
 // on a visit opens it in a side panel (the address says ?visit=, Esc
 // closes), and a visit can be dragged to another day, time or person (Week,

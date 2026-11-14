@@ -18,6 +18,15 @@
 // and runs it (runStep(key, ctx, el)); Get paid is Money's "Collect
 // payment", shown only to someone who may collect when something is owed.
 // A change made with no signal says "Saved, will send when online".
+//
+// Rotor's look (Nov 2026, scratchpad simplify/rotor-spec.md §4.4): "Visit ·
+// Tue, Nov 17" in the header with a round "..." (Move or reassign, Mark
+// done, No access, Reopen, Collect payment, the crew's Running late, Add to
+// the job, a photo and Report an incident, Open job, Open customer, Cancel
+// visit); the top card (status, window, the day, Who with the pencil that
+// moves or reassigns); the person and place cards; For the crew; Pricing;
+// the office's checklist and texts folded to one row each (a sheet lists
+// them).
 
 import { html, icon, attrs, toast, confirmSheet, delegate, sheet, rnd, statusPill, pillBtn, cardHead, personCard, addressCard, lineItems, disclosure } from "../../core/ui.js";
 import { TICONS } from "./tech-kit.js";
