@@ -24,7 +24,7 @@ To disconnect: CRM **Settings → Claude connector → Connected apps → Discon
 
 ### In claude.ai with a link (read only, the old way)
 
-1. In the CRM open **Settings → Claude connector** (under Import & data).
+1. In the CRM open **Settings → Claude connector** (under Connections).
 2. Tap **Make a connector link** and copy the link. It is shown only once.
 3. On claude.ai open **Settings → Connectors → Add custom connector**. Name it `Barta CRM`, paste the link, tap **Add**.
 4. In a chat, open the tools menu and switch **Barta CRM** on.

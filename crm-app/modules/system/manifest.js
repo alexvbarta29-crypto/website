@@ -21,7 +21,7 @@ export default {
     { path: "/tab-bar", load: () => import("./tab-bar.js"), title: "Tab bar", perm: "account:own", parent: "/settings", skeleton: "list" },
     { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/settings", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },
-    // Rotor's first customer list (the first slice's), until the Rotor import goes live: Settings → Import & data
+    // Rotor's first customer list (the first slice's), until the Rotor import goes live: Settings → Rotor & data
     { path: "/legacy/customers", load: () => import("./legacy.js"), title: "Rotor's first customer list", perm: "contacts:read_all", parent: "/settings" },
     { path: "/notifications", load: () => import("./notifications.js"), title: "Notifications", perm: "account:own", parent: "/today", skeleton: "list" },
     { path: "/approvals", load: () => import("./approvals.js"), title: "Approvals", perm: "campaigns:send", parent: "/today", skeleton: "list" },

@@ -2,7 +2,7 @@
 // (connect claude.ai with approvals, the connected apps, a read-only
 // connector link or a key that can ask, see the tools, revoke), the
 // Connect Claude consent screen and the Calendar feed (a private iCal link of your visits for
-// Google or Apple Calendar: Settings → Appearance for the office, My
+// Google or Apple Calendar: Settings → This phone for the office, My
 // account for everyone). Screens load with dynamic import(). No data, keys
 // or customer names ever go in crm-app/ (§2.3).
 

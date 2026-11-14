@@ -10,7 +10,7 @@ something you do yourself, in Rotor or at Twilio, and then tick on the
 CRM's checklist. Until you type SWITCH TO CRM, every text, email and charge
 the CRM would make stays in the Outbox as "would have sent".
 
-Where it is: **Settings → Import & data → Import from Rotor → Switch from
+Where it is: **Settings → Rotor & data → Import from Rotor → Switch from
 Rotor** (owners only). The page has the checklist, the preview, the
 documents in flight, the switch, going back, and a **Runbook** button with
 the steps below.

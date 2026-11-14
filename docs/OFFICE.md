@@ -18,11 +18,11 @@ Home: the Leaderboard, Today (the day's, week's or month's visits and
 tasks without a due date), Inbox, Tasks and Goals, with Clock in for
 someone who goes out on visits. The office's bar is Flyra's floating glass
 pill, Home · Schedule · Inbox · Map · Menu (each person may pick their
-own: Settings → Appearance → Tab bar), with a round + beside it; the Menu
+own: Settings → This phone → Tab bar), with a round + beside it; the Menu
 is a sheet of five groups (Work, Sales, Customers, Money, Marketing &
 messages) and Settings, every screen once (docs/CRM.md "The bar, the Menu
 and the +"); every setting is in one Settings hub (docs/CRM.md
-"Settings: one hub"). On a computer (900 px and up) the same app has a
+"Settings: one hub of groups"). On a computer (900 px and up) the same app has a
 sidebar (the same places first, then the same five groups, Settings at
 the bottom), a search box and a New button. In solo mode the office shell's backdrop and status bar color
 follow the CRM's Light or Dark (`crm:theme`).
@@ -30,7 +30,7 @@ The full dashboards (Overview, Money, Sales, Plans, Jobs, switched in
 place) are **Reports**: they open from the money card's "See more" and
 Menu → Money → Reports. The office tools sit with the work they serve:
 Light Studio in Menu → Sales, Purchases in Menu → Money, Giveaway in
-Menu → Marketing & messages, Rotor in Settings → Import & data, and
+Menu → Marketing & messages, Rotor in Settings → Rotor & data, and
 Follow-ups on Settings → Follow-up cadences
 (`crm-app/modules/system/{dashboard,tool}.js`, routes `/dashboard`,
 `/dashboard/:view`, `/tools/:id`). Owners and the office

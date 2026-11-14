@@ -6,7 +6,7 @@
 // go in crm-app/ (§2.3). M8: the automatic daily import key (auto-key.js)
 // and the switch from Rotor (cutover-checklist.js, cutover-preview.js,
 // cutover-runbook.js; owners: cutover:run), reached from Import from Rotor
-// (Settings → Import & data) until the Settings hub's layout names it.
+// (Settings → Rotor & data) until the Settings hub's layout names it.
 
 export default {
   name: "import",

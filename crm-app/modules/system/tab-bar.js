@@ -11,7 +11,7 @@
 // standard bar" clears it.
 //
 // It opens as a sheet page with a red Done (from the person's initials, a
-// long press on the bar, Settings → Appearance → Tab bar, the drawer's gear
+// long press on the bar, Settings → This phone → Tab bar, the drawer's gear
 // for someone without Settings), and #/tab-bar draws the same list as a
 // page with Save.
 

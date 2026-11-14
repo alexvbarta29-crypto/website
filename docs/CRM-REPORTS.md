@@ -99,7 +99,7 @@ Aggregates only: no customer names.
 the picture live with `buildSnapshot(dashboardRaw(today))`, kept in memory
 10 minutes. If the CRM can't answer (its stores not set up, an error) the
 sealed snapshot is shown, so the Dashboard tab never breaks. The owner
-flips it on **Settings → Import & data → Dashboard numbers** (`#/settings/dashboard`). The office dashboard itself (`#/dashboard`) is no Menu row of its own any more: Reports opens it ("Office dashboard", for anyone with the office tools), and old `/office#money` links still land on its views.
+flips it on **Settings → Rotor & data → Dashboard numbers** (`#/settings/dashboard`). The office dashboard itself (`#/dashboard`) is no Menu row of its own any more: Reports opens it ("Office dashboard", for anyone with the office tools), and old `/office#money` links still land on its views.
 
 ## Services
 

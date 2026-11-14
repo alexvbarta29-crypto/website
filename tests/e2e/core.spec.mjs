@@ -125,8 +125,8 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     await shot(page, "core-tool-lights");
     // Settings: one hub of eight groups (the owner: "just make it more organized"); the setup screens and Rotor live in them
     await goTo(f, "/settings");
-    const groups = await f.$$eval("#view .set-groups [data-group] .nm", (els) => els.map((e) => e.textContent));
-    assert.deepEqual(groups, ["Business", "Team", "Services & pricing", "Messages", "Payments", "Connections", "Rotor & data", "This phone"]);
+    const setGroups = await f.$$eval("#view .set-groups [data-group] .nm", (els) => els.map((e) => e.textContent));
+    assert.deepEqual(setGroups, ["Business", "Team", "Services & pricing", "Messages", "Payments", "Connections", "Rotor & data", "This phone"]);
     // the search lists every row, flat, across the groups
     await f.fill("#view [data-set-q]", "import");
     assert.equal(await f.isVisible('#view .set-res a[href="#/import"]'), true, "found");
