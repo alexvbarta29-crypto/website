@@ -628,8 +628,7 @@ textarea.body{min-height:140px}
   .db-ic .badge{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 10.5px/17px var(--text);text-align:center;box-shadow:0 0 0 2px var(--bar-bg)}
 
   /* the page's own header: the plain title in the page, a back button, the screen's one action */
-  /* (the header and the tabs line up with the page's 1160 px column) */
-  .app.has-side .top{min-height:0;padding:20px max(calc(32px + var(--right)),calc((100% - 1160px) / 2)) 6px max(32px,calc((100% - 1160px) / 2));background:transparent;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;gap:10px}
+  .app.has-side .top{min-height:0;padding:20px calc(32px + var(--right)) 6px 32px;background:transparent;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;gap:10px}
   .app.has-side .top-back{width:36px;height:36px;box-shadow:none}
   .app.has-side .top-title{padding:0;font:600 22px/1.25 var(--head);letter-spacing:-.02em}
   .app.has-side .top-act{margin-left:auto}
@@ -1205,7 +1204,9 @@ a.rs-tmain,button.rs-tmain{cursor:pointer}
 }
 @media (min-width:900px){
   /* a section's tabs: underline tabs, left, aligned with the page */
-  .subnav.sec{padding:0 max(calc(32px + var(--right)),calc((100% - 1160px) / 2)) 0 max(32px,calc((100% - 1160px) / 2));border-bottom:0}
+  .subnav.sec{padding:0 calc(32px + var(--right)) 0 32px;border-bottom:0}
+  /* a page in the 1160 px column: its header and tabs line up with it */
+  .app.has-side:not(.split):has(#view>:is(.stack,.wide,.skel,.rs-page)) :is(.top,.subnav.sec){padding-left:max(32px,calc((100% - 1160px) / 2));padding-right:max(calc(32px + var(--right)),calc((100% - 1160px) / 2))}
   .subnav.sec .rs-seg{max-width:none;margin:0;padding:0;gap:24px;justify-content:flex-start;background:none;border-radius:0;box-shadow:inset 0 -1px 0 var(--line)}
   .subnav.sec .rs-seg-b{flex:0 0 auto;min-height:40px;padding:0 1px;border-radius:0;color:var(--ink-3);font-size:var(--t-meta)}
   .subnav.sec .rs-seg-b:hover{color:var(--ink)}
@@ -1215,4 +1216,10 @@ a.rs-tmain,button.rs-tmain{cursor:pointer}
   .rs-card.flush{padding:0}
   .rs-page{gap:16px}
   .app.has-side .top-rnd .rnd{width:36px;height:36px}
+}
+/* a desk with a mouse: Flyra's smaller pills (a phone keeps 44 px for the thumb) */
+@media (min-width:900px) and (hover:hover) and (pointer:fine){
+  .rs-pb{min-height:36px;padding:0 14px;font-size:var(--t-meta)}
+  .rs-pb.wide{min-height:44px;font-size:var(--t-body)}
+  .rs-cta .rs-pb{min-height:48px}
 }
