@@ -81,3 +81,7 @@
 .vl-time svg{width:16px;height:16px}
 .vl-bot b{color:var(--ink)}
 @media (min-width:900px){.vl-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}}
+
+/* Collect payment's sheet (money/visit-collect.js): Rotor's pill buttons, stacked */
+.mn-collect-acts{display:flex;flex-direction:column;gap:8px}
+.mn-collect-acts .rs-pb svg{width:18px;height:18px}

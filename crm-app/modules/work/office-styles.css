@@ -585,3 +585,66 @@
   .wk-v-day .wk-strip,.wk-v-3day .wk-strip{display:none}
   .wk .wk-dbar .wk-by{display:none}
 }
+
+/* ---------------------------------------------------------------- the job page, Rotor-style (Nov 2026, office-job.js) */
+@media (min-width:900px){.view>.rs-page.wk-job{max-width:720px;margin:0 auto}}
+.wk-jtop{display:flex;flex-direction:column;gap:8px}
+.wk-jtop-r{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.wk-jtitle{margin:0;font:500 17px/1.3 var(--text);color:var(--ink);overflow-wrap:anywhere}
+.wk-jtop .rs-inset{margin-top:2px}
+.wk-jtop .rs-paid{margin-top:-6px}
+.wk-jtop-act{display:flex;justify-content:flex-end}
+.wk-jtop .warn-box{margin:0}
+.wk-visits{padding:8px 12px 8px 14px}
+.wk-visits.one{display:flex;align-items:center;gap:8px}
+.wk-visits.one>.wk-vrow{flex:1;min-width:0}
+.wk-visits .rs-ch{margin:0 0 2px}
+.wk-vplus{flex:none}
+.wk-vlist{list-style:none;margin:0;padding:0}
+.wk-vlist>li+li{border-top:1px solid var(--line)}
+.wk-vrow{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 0;color:var(--ink);text-decoration:none}
+.wk-vrow.none{min-height:52px}
+.wk-vrow .rs-ci svg{width:20px;height:20px}
+.wk-vrow .rs-ci.ok{background:var(--green-bg);color:var(--green-ink)}
+.wk-vrow-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.wk-vrow-t b{font:600 16px/1.25 var(--text);overflow-wrap:anywhere}
+.wk-vrow-t .rs-sub{font-size:13.5px;overflow-wrap:anywhere}
+.wk-vrow .pill{flex:none}
+.wk-visits.one .wk-vrow .chev{display:none}
+.wk-why{margin:6px 2px 0;font-size:13.5px}
+.wk-pricing .rs-li-cta .rs-pb:disabled{opacity:.55}
+.wk-jnotes .rs-ch{margin-bottom:6px}
+.wk-jnotes .wk-why{margin:-6px 0 8px}
+@media (hover:hover) and (pointer:fine){a.wk-vrow:hover .wk-vrow-t b{text-decoration:underline}}
+
+/* ---------------------------------------------------------------- the visit page, Rotor-style (visit.js) */
+.wk-vtop{gap:10px}
+.wk-vtop .wk-when-big b{font-size:22px}
+.wk-vwho{display:flex;align-items:center;gap:10px;min-height:44px;padding-top:8px;border-top:1px solid var(--line)}
+.wk-vwho .rs-label.wk-vwho-l{flex:none;margin:0;width:44px}
+.wk-vwho .wk-who{flex:1;min-width:0}
+.wk-vwho .rnd{flex:none;margin-right:-3px}
+.wk-crewbox{margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--card-2)}
+.wk-notes .kv{margin-top:2px}
+.wk-vpage .wk-late .rs-disc{width:100%}
+.tf-shoot{margin-top:12px}
+.tf-shoot .rs-pb{flex:1 1 0;min-width:0;padding:0 10px}
+.tf-shoot .rs-pb svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tf-work .rs-li-add .rs-pb svg{fill:none;stroke:currentColor}
+
+/* ---------------------------------------------------------------- the jobs list, Rotor-style (office-jobs.js) */
+.wk-jchips{display:flex;align-items:center;gap:8px;min-width:0}
+.wk-jchips .chips{flex:1;min-width:0;margin:0}
+.wk-jyear{flex:none;display:flex;align-items:center;gap:2px}
+.wk-jyear .d{font-weight:600}
+.wk-jlist{list-style:none;margin:0;padding:0}
+.wk-jlist>li+li{border-top:1px solid var(--line)}
+.wk-jrow{display:flex;flex-direction:column;gap:4px;min-height:60px;padding:10px 16px;color:var(--ink);text-decoration:none}
+.wk-jl1,.wk-jl2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.wk-jl1 .nm{min-width:0;font:600 16px/1.25 var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-jl1 b{flex:none;font-weight:600}
+.wk-jl2 .sub{min-width:0;font-size:13.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-jl2 .pill{flex:none}
+.wk-jrow:active{background:var(--fill)}
+@media (hover:hover) and (pointer:fine){.wk-jrow:hover{background:var(--fill)}}
+@media (min-width:900px){.view>.stack.wk-jobs{max-width:820px}}

@@ -798,6 +798,7 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
 .rs-li-m{flex:none;font-weight:600}
 .rs-li-add{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0}
 .rs-li-sum{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);color:var(--ink-2)}
+.rs-li-sum.tap{width:100%;min-height:44px;border-left:0;border-right:0;border-bottom:0;background:none;font:inherit;text-align:left;text-decoration:none;cursor:pointer}
 .rs-li-tot{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 0 4px;border-top:1px solid var(--line);font:600 17px/1.2 var(--head)}
 .rs-li-tot .num{font-size:20px}
 .rs-li-tot .paid{color:var(--green-ink)}
@@ -870,7 +871,7 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
   .app.has-side .top-act .rnd{width:38px;height:38px;box-shadow:none}
 }
 @media (hover:hover) and (pointer:fine){
-  .rs-act:hover,a.rs-li:hover,button.rs-li:hover,.rs-disc:hover,a.rs-cv:hover,button.rs-cv:hover,a.rs-stat-c:hover,button.rs-stat-c:hover{background:var(--fill)}
+  .rs-act:hover,a.rs-li:hover,button.rs-li:hover,.rs-li-sum.tap:hover,.rs-disc:hover,a.rs-cv:hover,button.rs-cv:hover,a.rs-stat-c:hover,button.rs-stat-c:hover{background:var(--fill)}
   .rs-seg-b:not([aria-selected="true"]):hover{color:var(--ink)}
 }
 /* the floating tab bar, Rotor's (the shell opts in with .rs-shell on #app; Track A's shell work):

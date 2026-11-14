@@ -618,7 +618,7 @@ export function addressCard({ line1 = "", line2 = "", href = null, nav = null, e
 // amount right; a grey "+ Item" pill; Subtotal; discounts; "+ Add discount"; Total; "Paid in full";
 // a wide grey pill (Create Invoice). Money: integer cents (formatted here) or a ready string.
 // lineItems([{ title, qty, unit, amount, sub?, href? | data? }], { addItem: { label?, href | data },
-//   addDiscount, subtotal, discounts: [{ label, amount }], total, totalLabel, paid: true | "Paid Jun 24",
+//   addDiscount, subtotal, discounts: [{ label, amount, href? | data? }], total, totalLabel, paid: true | "Paid Jun 24",
 //   cta: { label, href | data, tone? }, empty: "No lines yet" })
 export function lineItems(lines, { addItem = null, addDiscount = null, subtotal = null, discounts = [], total = null, totalLabel = "Total", paid = false, cta = null, empty = "No lines yet." } = {}) {
   const list = (lines || []).filter(Boolean);
@@ -632,7 +632,12 @@ export function lineItems(lines, { addItem = null, addDiscount = null, subtotal 
   const add = (o, label) => { const x = asLink(o); return x ? pillBtn(x.label || label, { icon: "plus", href: x.href, data: x.data }) : ""; };
   const sums = [];
   if (subtotal !== null && subtotal !== undefined) sums.push(html`<div class="rs-li-sum"><span>Subtotal</span><span class="num">${kitMoney(subtotal)}</span></div>`);
-  for (const d of (discounts || []).filter(Boolean)) sums.push(html`<div class="rs-li-sum"><span>${d.label}</span><span class="num">${kitMoney(d.amount)}</span></div>`);
+  // a discount with href | data is a 44 px button (the job page: tap to change or remove it)
+  for (const d of (discounts || []).filter(Boolean)) {
+    const inner = html`<span>${d.label}</span><span class="num">${kitMoney(d.amount)}</span>`;
+    sums.push(d.href ? html`<a ${attrs({ class: "rs-li-sum tap", href: d.href, ...dataOf(d.data) })}>${inner}</a>`
+      : d.data ? html`<button type="button" ${attrs({ class: "rs-li-sum tap", ...dataOf(d.data) })}>${inner}</button>` : html`<div class="rs-li-sum">${inner}</div>`);
+  }
   const c = asLink(cta);
   return html`<div class="rs-lines">${list.length ? html`<ul class="rs-li-list">${list.map((l) => html`<li>${line(l)}</li>`)}</ul>` : html`<p class="rs-empty">${empty}</p>`}
     ${addItem ? html`<div class="rs-li-add">${add(addItem, "Item")}</div>` : ""}${sums}

@@ -119,6 +119,10 @@ test("lineItems: qty × unit, money from cents, + Item, subtotal, discounts, tot
   assert.ok(l.indexOf("Subtotal") < l.indexOf("Plan discount") && l.indexOf("Plan discount") < l.indexOf("Add discount") && l.indexOf("Add discount") < l.indexOf("Total"), "in Rotor's order");
   assert.match(h(lineItems([], { empty: "No lines yet" })), /<p class="rs-empty">No lines yet<\/p>/);
   assert.match(h(lineItems([], { total: 0, paid: "Paid Jun 24" })), /<span class="num paid">\$0\.00<\/span>[^]*<p class="rs-paid">Paid Jun 24<\/p>/);
+  // a discount row may be a button or a link (the job page: tap to change it)
+  const d = h(lineItems([], { discounts: [{ label: "Neighbor deal", amount: -2500, data: { disc: "dc_1" } }, { label: "Plan", amount: -100, href: "#/plans/x" }] }));
+  assert.match(d, /<button type="button" class="rs-li-sum tap" data-disc="dc_1"><span>Neighbor deal<\/span><span class="num">−\$25\.00<\/span><\/button>/);
+  assert.match(d, /<a class="rs-li-sum tap" href="#\/plans\/x"><span>Plan<\/span>/);
 });
 
 test("notesBox, disclosure, form rows, toggle, quickRow", () => {
