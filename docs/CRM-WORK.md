@@ -34,6 +34,7 @@ Code: `netlify/lib/crm/modules/work/` (server), `crm-app/modules/work/`
 | `techday.mjs` | M4b | `GET /tech/day`, the day payload the phone keeps |
 | `visit-actions.mjs` | M4b | what the people on a visit do (texts, timer, checklist, photos, notes, lines, complete, no access, incident) and `POST /clock`; the `visit` file owner |
 | `timers.mjs` | M4b | segments, the `work.timers` sweep, import phase `work.timers` |
+| `track.mjs` | tracking | On my way's tracking link: cfg/tracking, the `on_my_way_track` template, the page's portal routes (`/p/track/:code`; what the page shows is `netlify/lib/crm/portal/track.mjs`) |
 | `timesheets.mjs` | M4b | shifts, device times, pending entries, weekly approval, the pay estimate, the `work.clock` sweep, the person's and the office's time routes, import phase `work.timesheets` |
 
 Client (M4a): `office-schedule.js` (the Schedule: Month, List, Day, 3 Day,
@@ -303,6 +304,31 @@ office gets **Timesheets** in More.
   `on_my_way`; **Running late** texts `running_late` with a new time. Both
   need signal. While texts are dry-run the panel says nothing went out and
   offers **Open in Messages** with the words (without the opt-out line).
+- **The tracking link** (`track.mjs`, `portal/track.mjs`,
+  `crm-app/portal/track.js`): On my way's text carries a short link,
+  `https://www.bartawindowwashing.com/p/track/{10 characters}` (template
+  `on_my_way_track`: "... should be there in about 20 minutes. Follow along
+  here: {{portal_link}}"; an owner who picked another template for On my
+  way gets the link as `{{portal_link}}`). The link is kept only as
+  `trk/{sha256(code)}` = `{ visit_id, contact_id, user_id, created_at,
+  location_until (the tap + 2 hours), expires_at (the end of the next
+  day) }`; the same tap (its client id) makes the same link. The page needs
+  no cookie and shows: the tech's first name and initials (in their color),
+  the vehicle when Settings → Tracking link says so, the arrival window, what
+  the tech said ("Theo said about 20 minutes at 9:53 AM"), and while the
+  tech is on the way, **an ETA from where they are** (the team map is on for
+  them and they're clocked in, the newest point under 10 minutes old: the
+  straight line × 1.3 at 35 mph, "Pulling up now" inside 150 m) and **a dot
+  on a small map** around the house (redrawn every 30 seconds). Otherwise
+  the ETA is the arrival window. It never shows: coordinates (the server
+  sends the dot's offset from the house, rounded to 50 m, and the house sits
+  in the middle; no address on the page), the trail or the route, a dot
+  within 400 m of where the tech tapped On my way (the last customer's
+  driveway), any location once the visit has started, after the 2 hours,
+  when the tech is clocked out or off the visit. Then "Theo is here" /
+  "All done!" / "We'll see you soon"; an ended link is 410, a wrong one 404.
+  `GET /api/portal/track/:code` is what the page polls (a GET: it changes
+  nothing).
 - **Time** (`#/time`): this week (Sunday to Saturday) in hours a day, the
   total with the open shift, a warning near and over 40 hours, the shifts
   (flags: closed for you, edited by the office, waiting for the office),
@@ -568,7 +594,7 @@ version old may still replay), except the texts.
 | Route | Perm | What |
 |---|---|---|
 | `GET /tech/day?date` | time:own | the person's day (window: today − 7 to + 30); no date: the server's today |
-| `POST /visits/:id/on-my-way` · `/running-late` | visits:work | `{eta_min, lat?, lng?}`; the text (needs signal) |
+| `POST /visits/:id/on-my-way` · `/running-late` | visits:work | `{eta_min, lat?, lng?}`; the text (needs signal); On my way answers `track_url` too |
 | `POST /visits/:id/timer` | visits:work | `{action: start\|pause\|finish}` |
 | `GET /visits/:id/field` | visits:work | the visit's segments, whose runs, minutes, the last notes at the place |
 | `PATCH /visits/:id/checklist` | visits:work | `{key, done, value?}` |
@@ -593,7 +619,11 @@ Writes carry `client_id` (400 without one), and replays `queued_offline`,
 `default_duration_min` (120), `confirm_skip_within_days` (2),
 `late_cancel_hours` (24), `visits_per_day` (8: the visits the whole crew
 can do in a day, what the month's bars fill against; Settings → Schedule → Crew & forecast),
-`weather` (true: the forecast on the schedule). The schedule also reads
+`weather` (true: the forecast on the schedule). `cfg/tracking`
+(`settings:general`, Settings → Schedule → Tracking link): `enabled` (true:
+On my way's text has the tracking link), `show_vehicle` (false),
+`vehicles` ({ user id: "a white Ford Transit" }, 60 characters, plain
+words), `location_minutes` (120: how long the dot shows, 15 to 240). The schedule also reads
 `cfg/hours` and the holiday calendar, and Route reads the company's base
 (`cfg/company.base`).
 
@@ -694,7 +724,9 @@ and a phone never calls it.
   Rotor's own reminders stops a second one.
 - `visit.on_my_way`, `visit.running_late` (M4b; trigger manual, service):
   a tech's tap sends them right away or not at all; the owner can turn
-  them off or change the template. Templates `on_my_way`, `running_late`.
+  them off or change the template. Templates `on_my_way` (and
+  `on_my_way_track`, the same words with the tracking link, used while
+  links are on), `running_late`.
 - At send time each step re-reads the visit: moved, cancelled or changed →
   skipped. Templates: `visit_confirm`, `visit_confirm_email`,
   `visit_reminder_14d`, `visit_reminder_14d_email`, `visit_reminder_2d`,

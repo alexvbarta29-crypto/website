@@ -191,6 +191,7 @@ test("request work: services, notes and photos become a task for the office with
     assert.deepEqual(file.owner, { type: "task", id: task.id });
     assert.equal(file.customer_visible, false);
     assert.equal((await t.api(`/files/${file.id}`, { as: owner })).status, 200, "the office sees the photo");
+    assert.ok([403, 404].includes((await t.api(`/files/${file.id}`, { as: tech })).status), "a tech who isn't on the task doesn't");
     await drain(t, 2);
     assert.ok(t.stores.data.keys("rec/notification/").length >= 1, "the office is told");
     // refused: nothing picked, a PDF as a photo, someone else's place, too many photos
@@ -202,7 +203,6 @@ test("request work: services, notes and photos become a task for the office with
     for (let i = 0; i < 4; i++) assert.equal((await postP(t, "/api/portal/requests", ck, { client_id: randomUUID(), services: ["lights"] })).status, 201);
     assert.equal((await postP(t, "/api/portal/requests", ck, { client_id: randomUUID(), services: ["lights"] })).status, 429);
     assert.equal(tasks(t).length, 5);
-    void tech;
   } finally { t.done(); }
 });
 

@@ -10,7 +10,7 @@ link", the plan sweeps and automations, and the Rotor import of plans,
 agreement templates and lights seasons.
 
 Code: `netlify/lib/crm/modules/plans/` (server), `crm-app/modules/plans/`
-(screens), `crm-app/portal/plans-agreement.js`, `plans-hub.js`,
+(screens), `crm-app/portal/plans-agreement.js`, `account.js` (the hub; `plans-hub.js` is no longer loaded),
 `plans-login.js` (the customer's page scripts).
 Record types: `plan`, `agreement_template`, `agreement`, `season_install`.
 Tests: `tests/crm/plans/` and `tests/crm/flows/quote-to-plan.test.mjs`
@@ -100,9 +100,53 @@ from the jobs a plan makes, like any other job.
   the signed copy, printable.
 - **/p/sign/{token}** (Sign on this phone): the same page for an in-person
   signature on the tech's or the office's phone; one use, 15 minutes.
-- **/p/hub** (their account): the next visit, agreements to sign, open
-  quotes (each opens through a fresh one-day link that the hub session
-  takes on, so going back to the account still works), their plans.
+- **/p/hub** (their account; `netlify/lib/crm/portal/account.mjs`, with
+  `account-render.mjs` and `crm-app/portal/account.js`, registered here):
+  the next visit (date, arrival window, service, who; "On the way" while the
+  tech drives; "Need to move it?"), invoices to pay (each opens through a
+  fresh one-day link that the hub session takes on, so going back to the
+  account still works; the invoice page has Pay and the receipts), agreements
+  to sign, open quotes (the same kind of link), their plans, and "What do you
+  need?": Request work, Upcoming visits, History, Your plan, Your info.
+- **/p/visits**: every visit coming up (the next three months), each with
+  its arrival window, service and who, and "Need to move it?".
+- **/p/history** (`?before=yyyy-mm` pages back six months at a time): past
+  visits, newest first, with the before and after photos the tech marked
+  for the customer (an issue photo stays with the office; photos show only
+  once the visit is done, through `GET /api/portal/hub/files/:file`, which
+  answers 404 for any other file), then invoices and receipts (Pay or
+  Receipt) and the free re-clean promise.
+- **/p/plan**: each plan's name and status, the next visit, visits a year,
+  the price a visit, the term, what's included (each line and which visits
+  it covers) and the perks in the agreement's words (Quarterly and Monthly);
+  the rules: free moves with 24 hours' notice, the $50 late fee inside them
+  (cfg/work `late_cancel_hours`, cfg/plans_catalog `late_cancel_fee_cents`),
+  the notice to change or end a plan, the free re-clean.
+- **/p/request** (Request work): services to tick, which place (by its
+  label, never the address), when, a note and up to 3 photos (shrunk on the
+  phone to 1600 px). It becomes a task for the office ("Work request: Gutter
+  cleaning, Screen cleaning", kind follow-up, due now, assigned to the
+  owners and admins, `source: "portal"`, the photos on it as files of the
+  task) and a bell for the office; the task screen shows the photos.
+- **/p/visits/{id}/reschedule**: 24 hours or more before the arrival window
+  opens, a day or two that work and a note; it becomes a task ("Reschedule
+  request: Fri, Nov 20", linked to the visit and job) and the visit stays
+  where it is until the office moves it. Inside 24 hours (or once the tech
+  is on the way): the $50 late fee in plain words and Call us / Text us,
+  no form (the API answers 409 `late`).
+- **/p/account** (Your info): the name, the mobile and email masked, the
+  text and email switches (visit texts `sms_service`, deals by text
+  `sms_marketing`, deals by email `email_marketing`; saved at once with
+  source `portal`, `consent.changed` for sales and comms), and "Update your
+  info": a new name, number or email becomes a task. Nothing on the contact
+  changes by itself, so a forwarded link can never take over the account's
+  number.
+- Every account page and API answers for the hub session's contact only
+  (anyone else's visit, invoice, photo or place is a 404), needs a hub link
+  (a document link's cookie gets 401), shows no address, and stays inside
+  the portal's 30 storage calls (a request with photos gets 90). Requests,
+  reschedules and info updates: at most 5 a day per customer (a keyed
+  bucket, `thr/preq/`), a double tap (the same client id) lands once.
 - **/p/login** ("Text me a link"): their mobile number; if it is on file
   they get a text with a link to their account. The answer is the same
   whether or not the number is on file, and so is the work behind it: the
@@ -143,8 +187,14 @@ Staff API under `/api/crm` (session; permission in brackets):
 
 Portal (`/p/*` pages, `/api/portal/*` POSTs with `X-CRM-Portal`): GET
 /p/agreement/:id and POST /api/portal/agreements/:id/sign (scope
-agreement); GET /p/hub, GET /p/hub/agreements/:id, POST
-/api/portal/hub/agreements/:id/sign, POST /api/portal/hub/open (scope hub);
+agreement); GET /p/hub, /p/visits, /p/history, /p/plan, /p/request,
+/p/visits/:id/reschedule, /p/account, /api/portal/hub/files/:file, GET
+/p/hub/agreements/:id, POST /api/portal/hub/agreements/:id/sign, POST
+/api/portal/hub/open {kind: quote | invoice, id}, POST /api/portal/requests
+{client_id, services, timing, notes, property_id?, photos?},
+/api/portal/visits/:id/reschedule-request {client_id, dates, note?},
+/api/portal/preferences {channel, on}, /api/portal/contact-info
+{client_id, name?, phone?, email?, note?} (scope hub);
 GET /p/login and POST /api/portal/login (public: no session, rate limited);
 GET /p/sign/:token and POST /api/portal/sign/:token/sign (present). The view
 beacon is kind `agreement`.

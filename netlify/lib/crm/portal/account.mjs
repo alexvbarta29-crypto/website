@@ -54,8 +54,8 @@ const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u0008\u000b\u000c\u0
 // Customer photos on a portal request belong to its task: the office reads
 // them with the task (tasks:read); the customer only adds them.
 defineFileOwner("task", {
-  canRead: (ctx) => !!(ctx.can && ctx.can("tasks:read")),
-  canEdit: (ctx, task) => (!!ctx.portalContactId && ctx.portalContactId === task.contact_id) || !!(ctx.can && ctx.can("tasks:write")),
+  canRead: (ctx, task) => !!(ctx.can && ctx.can("tasks:read", { type: "task", record: task })),
+  canEdit: (ctx, task) => (!!ctx.portalContactId && ctx.portalContactId === task.contact_id) || !!(ctx.can && ctx.can("tasks:write", { type: "task", record: task })),
 });
 
 // ------------------------------------------------------------ reading (each page stays under the portal's 30 storage calls)
