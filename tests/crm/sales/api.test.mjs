@@ -37,7 +37,8 @@ test("enroll by hand, the open one again, pause / resume / stop; bulk resume; a 
     assert.ok(r.body.data.preview.sms_href.startsWith("sms:+1763555"));
     const again = await t.api("/enrollments", { method: "POST", as: owner, body: { contact_id: c.id, cadence_key: "new_lead" } });
     assert.equal(again.body.data.enrollment.id, id, "one open per contact and cadence");
-    assert.equal((await t.api("/enrollments", { method: "POST", as: owner, body: { contact_id: c.id, cadence_key: "giveaway" } })).status, 409, "a board can't be started");
+    // (guide-gaps S14: a person adds someone to an active board, "+ Add opportunity"; a retired board stays closed)
+    assert.equal((await t.api("/enrollments", { method: "POST", as: owner, body: { contact_id: c.id, cadence_key: "referrals" } })).status, 409, "a retired board can't be started");
     assert.equal((await t.api(`/enrollments/${id}/pause`, { method: "POST", as: owner, body: {} })).body.data.enrollment.status, "paused");
     const res = await t.api("/enrollments/bulk-resume", { method: "POST", as: owner, body: { ids: [id, "en_00000000000000000000"] } });
     assert.equal(res.status, 200, JSON.stringify(res.body));

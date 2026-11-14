@@ -457,12 +457,15 @@ export function validateTimeOff(data) {
     available: (v, f) => (v === undefined ? false : bool(v, { field: f })),
     reason: (v, f) => str(v, { field: f, max: 120 }) || "",
     all_day: (v) => (v === true ? true : undefined),
+    // a time block (guide-gaps S8a, Rotor's Time Blocks): part of a day held for something, drawn on the Day grid
+    kind: (v, f) => (v === undefined || v === null || v === "" || v === "off" ? undefined : enumValue(v, ["block"], { field: f })),
   });
+  if (out.kind === "block" && (out.all_day || !out.end_at)) throw new InputError("A time block is part of one day: pick when it starts and ends.", "end");
   if (out.end_at && Date.parse(out.end_at) < Date.parse(out.start_at)) throw new InputError("It ends after it starts.", "end_at");
   return clean(out);
 }
 
-export const timeOffRow = (r) => ({ uid: r.user_id, s: r.start_at, e: r.end_at || null, av: r.available === true, r: String(r.reason || "").slice(0, 60), ad: r.all_day === true, u: r.updated_at });
+export const timeOffRow = (r) => ({ uid: r.user_id, s: r.start_at, e: r.end_at || null, av: r.available === true, r: String(r.reason || "").slice(0, 60), ad: r.all_day === true, ...(r.kind === "block" ? { k: "block" } : {}), u: r.updated_at });
 
 export const timeOffType = defineType({
   type: "time_off",

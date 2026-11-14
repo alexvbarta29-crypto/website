@@ -44,7 +44,8 @@
 // A technician sees only what the server gives them: the name, the numbers
 // to call and the properties of their visits.
 
-import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, statGrid, contactRows, statusPill, pillTap, notesBox, disclosure, addressCard } from "../../core/ui.js";
+import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, statGrid, contactRows, statusPill, pillTap, notesBox, disclosure, addressCard, tileRow, formRows, formRow, toggle, openExternal } from "../../core/ui.js";
+import { capture, uploadPhoto } from "../../core/camera.js";
 import { field, select, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { dateShort, dateTime, dateYear, money, ago, localDate } from "../../core/format.js";
 import { pickContact, pickFrom } from "../../core/pickers.js";
@@ -65,6 +66,15 @@ const SHOW = 4;            // a long list shows this many, then "Show all"
 export const LEAD_ORDER = Object.freeze(["quotes", "followups", "tasks", "visits", "plan", "invoices", "payment", "properties", "queued", "notes", "about"]);
 export const CUSTOMER_ORDER = Object.freeze(["visits", "plan", "quotes", "invoices", "payment", "properties", "followups", "tasks", "queued", "notes", "about"]);
 export const ACTIVITY_ORDER = Object.freeze(["messages", "calls", "deals", "activity", "consent"]);
+// Rotor's 6 tabs folded into 4 (guide-gaps C17, the owner's default): Details | Service | Payments | Activity.
+// Service: the work, plans, quotes, requests and the pipelines (follow-ups); Payments: invoices and the card.
+export const PANES = Object.freeze([["details", "Details"], ["service", "Service"], ["payments", "Payments"], ["activity", "Activity"]]);
+export const SERVICE_CARDS = Object.freeze(["pending", "visits", "plan", "quotes", "requests", "followups"]);
+export const PAYMENT_CARDS = Object.freeze(["invoices", "payment", "cycles"]);
+const SERVICE_LEAD = ["quotes", "followups", "requests", "pending", "visits", "plan"];
+// a module's loading (or failed) card: where its cards will be
+const MOD_PANE = { work: "service", plans: "service", quotes: "service", service: "service", money: "payments", comms: "activity" };
+export const paneOf = (x) => (x.tab === "activity" ? "activity" : SERVICE_CARDS.includes(x.key) ? "service" : PAYMENT_CARDS.includes(x.key) ? "payments" : x.tab === "service" || x.tab === "payments" ? x.tab : "details");
 // The "..." rows the modules give, in Rotor's groups (a lead: follow up first; a customer: book first).
 const LEAD_ACTS = [["call", "follow", "task"], ["quote", "book", "plan", "invoice", "credit", "cardlink"]];
 const CUSTOMER_ACTS = [["book", "quote", "plan", "invoice", "credit", "cardlink"], ["call", "follow", "task"]];
@@ -113,8 +123,8 @@ async function load(params, ctx) {
   const jump = askedTab(ctx);
   delete ctx.keep.tab;
   // Details | Activity, remembered for this contact while the app is open (an old ?tab=activity link opens Activity)
-  const pane = jump === "activity" || jump === "messages" ? "activity" : ctx.keep.pane || "details";
-  return { ...d, etag: r.etag, tech, users, secs, activity: tech ? [] : null, jump, pane, offline: !!r.offline, started: false };
+  const pane = jump === "activity" || jump === "messages" ? "activity" : jump === "money" ? "payments" : jump === "work" || jump === "plans" ? "service" : PANES.some(([k]) => k === ctx.keep.pane) ? ctx.keep.pane : "details";
+  return { ...d, etag: r.etag, tech, users, secs, activity: tech ? [] : null, files: tech || !ctx.can("contacts:read_all") ? [] : null, jump, pane, offline: !!r.offline, started: false };
 }
 
 // Draws again soon (sections arrive one by one), only while this contact is on screen.
@@ -144,6 +154,12 @@ async function loadSection(ctx, rec) {
     rec.failed = (e && e.message) || "That didn't load.";
   }
   rec.loading = false;
+  soon(ctx);
+}
+
+async function loadFiles(ctx) {
+  const s = ctx.state;
+  try { s.files = (await ctx.api(`/contacts/${encodeURIComponent(s.contact.id)}/files`, { cache: false })).data || []; } catch (e) { s.files = []; }
   soon(ctx);
 }
 
@@ -318,12 +334,13 @@ function moduleCards(s, ctx) {
     const title = def.title || def.heading || def.label;
     // (where its old place sits in Rotor's order)
     const sortKey = { visits: "visits", plan: "plan", docs: "invoices", more: "followups", aside: "messages" }[def.place];
-    if (r.loading) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab, title, body: loadingBody }); continue; }
-    if (r.failed) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab, title, body: html`<div class="ct-failed"><p>${def.label || "This part"} didn't load. ${r.failed}</p><button type="button" class="btn small" ${attrs({ "data-retry-sec": r.key })}>Try again</button></div>` }); continue; }
+    const pane = MOD_PANE[def.module] || tab;
+    if (r.loading) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab: pane, title, body: loadingBody }); continue; }
+    if (r.failed) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab: pane, title, body: html`<div class="ct-failed"><p>${def.label || "This part"} didn't load. ${r.failed}</p><button type="button" class="btn small" ${attrs({ "data-retry-sec": r.key })}>Try again</button></div>` }); continue; }
     let list = null;
     if (typeof r.mod.cards === "function") { try { list = r.mod.cards(r.state || {}, r.ctx) || []; } catch (e) { list = null; } }
-    if (!list) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab, title, body: r.mod.render(r.state || {}, r.ctx), cls: "ct-old" }); continue; }
-    for (const x of list) out.push({ ...x, mod: r.key, tab: x.tab === "activity" ? "activity" : "details" });
+    if (!list) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab: pane, title, body: r.mod.render(r.state || {}, r.ctx), cls: "ct-old" }); continue; }
+    for (const x of list) out.push({ ...x, mod: r.key, tab: paneOf(x) });
   }
   // the first card of each module carries its old anchor (#ct-mod-money), for old links
   const seen = new Set();
@@ -399,6 +416,7 @@ function aboutCard(s, ctx) {
   return html`<div id="ct-card-about" data-card="about">${disclosure("About", { sub: open ? null : "where they came from, owner, Rotor", data: { about: true } })}
     ${open ? html`<section class="rs-card ct-about"><dl class="kv">
       ${s.stats && s.stats.contacts && s.stats.contacts.customer_since ? html`<dt>Customer since</dt><dd>${dateShort(s.stats.contacts.customer_since)}</dd>` : ""}
+      ${c.converted_at ? html`<dt>Was a lead</dt><dd>from ${dateShort(c.created_at)} · became a customer ${dateShort(c.converted_at)}</dd>` : ""}
       ${s.stats && s.stats.work && s.stats.work.last_service_on ? html`<dt>Last service</dt><dd>${dateShort(s.stats.work.last_service_on)}</dd>` : ""}
       <dt>Source</dt><dd>${src.qr_code && src.campaign ? `${src.campaign} (QR code) · ${src.source || "Website quote form"}` : src.source || "Not known"}${src.channel ? ` · heard from ${src.channel}` : ""}</dd>
       ${src.form || src.ad ? html`<dt>Meta</dt><dd>${[src.form, src.ad, src.campaign].filter(Boolean).join(" · ")}</dd>` : ""}
@@ -432,6 +450,36 @@ function consentCard(s, ctx) {
     body: html`<dl class="kv">${Object.entries(CONSENT).map(([k, label]) => html`<dt>${label}</dt><dd>${consentPill((c.consent && c.consent[k] && c.consent[k].state) || "unknown")}</dd>`)}</dl>
       ${c.automations_paused ? html`<div class="warn-box ct-warn">Automated ${Object.keys(c.automations_paused).map((k) => (k === "sms" ? "texts" : "email")).join(" and ")} paused: ${Object.values(c.automations_paused).map((x) => x.reason).join("; ")}</div>` : ""}
       <p class="small muted ct-fine">An opt-out (STOP) is per number and always wins; see Settings → Messaging.</p>` };
+}
+
+// The Service tab's tiles (Rotor's: Scheduled jobs 1/3, Avg completed job, Avg future job, Outstanding): info
+// only, from what the modules tell (their tiles(state)). → [{ key, label, value, money?, tone? }]
+export function serviceTiles(s) {
+  const out = [];
+  for (const r of s.secs || []) {
+    if (!r.mod || typeof r.mod.tiles !== "function" || !r.state || r.state.denied) continue;
+    try { out.push(...(r.mod.tiles(r.state, r.ctx) || []).filter(Boolean)); } catch (e) { /* a part never breaks the page */ }
+  }
+  return out.map((t) => ({ ...t, info: true }));
+}
+
+// Mute (Rotor's switch, up front): automated texts paused or not; a tap opens the same pause sheet as the "...".
+function muteRow(s, ctx) {
+  if (!ctx.can("consent:edit")) return "";
+  const p = s.contact.automations_paused && s.contact.automations_paused.sms;
+  return html`<div id="ct-mute">${formRows([formRow("Mute automated messages", toggle(!!p, { data: { mute: true }, label: "Mute automated messages" }), { hint: p ? `Paused: ${p.reason || "no reason given"}` : "Reminders and follow-up texts go out" })])}</div>`;
+}
+
+// Files (Rotor's Attachments tab, as a card): photos and PDFs kept on the contact; + adds one.
+const kb = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
+function filesCard(s, ctx) {
+  if (s.files === undefined || !ctx.can("contacts:read_all")) return null;
+  const list = s.files || [];
+  return {
+    key: "files", tab: "details", title: "Files", count: list.length ? String(list.length) : null, empty: "No files yet",
+    add: ctx.can("contacts:write") ? { label: "Add a file", data: { "add-file": true } } : null,
+    body: s.files === null ? loadingBody : list.length ? html`<ul class="list ct-files">${list.map((f) => html`<li><a class="row" ${attrs({ href: f.url, target: "_blank", rel: "noopener" })}><span class="ico">${icon(f.content_type === "application/pdf" ? "doc" : "camera")}</span><span class="who"><span class="nm">${f.caption || (f.content_type === "application/pdf" ? "PDF" : "Photo")}</span><span class="sub">${dateShort(f.created_at)} · ${kb(f.bytes || 0)}</span></span><span class="chev" aria-hidden="true"></span></a></li>`)}</ul>` : null,
+  };
 }
 
 const byOrder = (order) => (a, b) => {
@@ -469,6 +517,7 @@ function moreGroups(s, ctx) {
   groups.push([
     write && ctx.can("contacts:merge") && !archived && { label: "Merge with...", icon: "merge", run: () => mergeFlow(ctx), data: { merge: true } },
     ctx.can("consent:edit") && { label: c.automations_paused && c.automations_paused.sms ? "Resume automated texts" : "Pause automated texts", icon: "pause", run: () => pauseSheet(ctx), data: { pause: true } },
+    write && !archived && { label: "Open their portal", icon: "share", hint: "what they see", run: () => openPortal(ctx), data: { portal: true } },
     ctx.can("settings:owner") && { label: c.flags && c.flags.test ? "Not a test contact" : "Mark as test contact", icon: "user", run: () => setTest(ctx), data: { test: true } },
     write && archived && { label: "Restore", icon: "undo", run: () => restore(ctx), data: { restore: true } },
     ...red,
@@ -488,23 +537,27 @@ function render(s, ctx) {
     </div>`;
   }
   const mods = moduleCards(s, ctx);
-  const details = [...mods.filter((x) => x.tab === "details"), propertiesCard(s, ctx), notesCard(s, ctx)].sort(byOrder(lead(s) ? LEAD_ORDER : CUSTOMER_ORDER));
+  const order = byOrder(lead(s) ? LEAD_ORDER : CUSTOMER_ORDER);
+  const details = [...mods.filter((x) => x.tab === "details"), propertiesCard(s, ctx), filesCard(s, ctx), notesCard(s, ctx)].filter(Boolean).sort(order);
+  const service = mods.filter((x) => x.tab === "service").sort(byOrder(lead(s) ? SERVICE_LEAD : SERVICE_CARDS));
+  const payments = mods.filter((x) => x.tab === "payments").sort(byOrder(PAYMENT_CARDS));
   const activity = [...mods.filter((x) => x.tab === "activity"), activityCard(s), consentCard(s, ctx)].sort(byOrder(ACTIVITY_ORDER));
-  const pane = s.pane === "activity" ? "activity" : "details";
+  const pane = PANES.some(([k]) => k === s.pane) ? s.pane : "details";
+  const tiles = serviceTiles(s);
+  const paneDiv = (key, label, body) => html`<div ${attrs({ class: "ct-pane rs-page" + (pane === key ? "" : " off"), "data-pane": key, role: "tabpanel", "aria-label": label })}>${body}</div>`;
   return html`<div class="rs-page ct-page">
     ${s.offline ? html`<div class="note">Offline: this is the last copy on this phone.</div>` : ""}
     ${top(s, ctx)}
-    <div class="ct-seg">${seg([["details", "Details"], ["activity", "Activity"]], pane, { name: "ctab", label: lead(s) ? "Lead" : "Customer" })}</div>
+    <div class="ct-seg">${seg(PANES, pane, { name: "ctab", label: lead(s) ? "Lead" : "Customer" })}</div>
     <div class="ct-panes">
-      <div ${attrs({ class: "ct-pane rs-page" + (pane === "details" ? "" : " off"), "data-pane": "details", role: "tabpanel", "aria-label": "Details" })}>
-        ${stats(s, ctx)}${reach(s, ctx)}${satellite(s, ctx)}
+      ${paneDiv("details", "Details", html`${stats(s, ctx)}${reach(s, ctx)}${muteRow(s, ctx)}${satellite(s, ctx)}
         ${details.map(card)}
         ${queuedLine(s)}
-        ${aboutCard(s, ctx)}
-      </div>
-      <div ${attrs({ class: "ct-pane rs-page" + (pane === "activity" ? "" : " off"), "data-pane": "activity", role: "tabpanel", "aria-label": "Activity" })}>
-        ${activity.map(card)}
-      </div>
+        ${aboutCard(s, ctx)}`)}
+      ${paneDiv("service", "Service", html`${tiles.length ? html`<div class="ct-tiles-in" id="ct-svc-tiles">${tileRow(tiles, { name: "svc", label: "Service" })}</div>` : ""}
+        ${service.length ? service.map(card) : html`<div class="rs-card"><p class="rs-empty">No jobs, plans or quotes yet</p></div>`}`)}
+      ${paneDiv("payments", "Payments", payments.length ? payments.map(card) : html`<div class="rs-card"><p class="rs-empty">${ctx.can("invoices:read_all") ? "No invoices yet" : "Payments are for the office"}</p></div>`)}
+      ${paneDiv("activity", "Activity", activity.map(card))}
     </div>
     ${s.contact.updated_at ? html`<p class="foot-note">Changed ${ago(s.contact.updated_at)}</p>` : ""}
   </div>`;
@@ -689,6 +742,27 @@ async function pickOwner(ctx) {
 const setTest = (ctx) => after(ctx, ctx.api(`/contacts/${encodeURIComponent(ctx.state.contact.id)}/flags`, { method: "PATCH", body: { test: !(ctx.state.contact.flags && ctx.state.contact.flags.test) } }), "Saved");
 const restore = (ctx) => after(ctx, ctx.api(`/contacts/${encodeURIComponent(ctx.state.contact.id)}/restore`, { method: "POST", body: {} }), "Restored");
 
+// "Open their portal": a 15-minute look at their page as they see it (nothing is paid, changed or counted).
+async function openPortal(ctx) {
+  try {
+    const r = await ctx.api(`/contacts/${encodeURIComponent(ctx.state.contact.id)}/portal-view`, { method: "POST", body: {} });
+    const sh = sheet({
+      title: "Their portal",
+      body: html`<p class="muted small">Their page as they see it. Nothing can be paid or changed from it, and it doesn't count as them looking. The link works once, for 15 minutes.</p><a class="btn primary block" ${openExternal(r.data.url)} data-close>${icon("share")}Open their page</a>`,
+      events: { "click [data-close]": () => setTimeout(() => sh.close(), 0) },
+    });
+  } catch (err) { toast(err.message || "That didn't open.", { bad: true }); }
+}
+
+// A photo or a PDF for the Files card.
+async function addFile(ctx) {
+  const file = await capture({ accept: "image/*,application/pdf", camera: false });
+  if (!file) return;
+  toast("Uploading…");
+  try { await uploadPhoto({ ownerType: "contact", ownerId: ctx.state.contact.id, kind: "document", file }); toast("File added"); loadFiles(ctx); }
+  catch (err) { toast(err.message || "That didn't upload.", { bad: true }); }
+}
+
 // The notes box saves itself when it loses focus with new text (If-Match: someone else's change is never overwritten).
 async function saveNotes(ctx, text) {
   const s = ctx.state;
@@ -770,6 +844,7 @@ export default {
       s.started = true;
       for (const r of s.secs || []) loadSection(ctx, r);
       if (!s.tech) loadActivity(ctx);
+      if (s.files === null) loadFiles(ctx);
     }
     clipLists(view, ctx);
     paintPhoto(view.querySelector(".ct-photo[data-photo]"), ctx);
@@ -800,5 +875,8 @@ export default {
     "click [data-note]": (e, el, ctx) => noteSheet(ctx),
     "click [data-consent]": (e, el, ctx) => consentSheet(ctx),
     "click [data-add-prop]": (e, el, ctx) => propertySheet(ctx),
+    "click [data-mute]": (e, el, ctx) => pauseSheet(ctx),
+    "click [data-add-file]": (e, el, ctx) => addFile(ctx),
+    "click [data-portal]": (e, el, ctx) => openPortal(ctx),
   },
 };

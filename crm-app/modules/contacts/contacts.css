@@ -134,6 +134,9 @@
   .ct-seg{display:none}
   .ct-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,38%);gap:16px;align-items:start}
   .ct-pane.off{display:flex}
+  /* Details, Service and Payments down the main column; Activity beside them */
+  .ct-pane{grid-column:1}
+  .ct-pane[data-pane="activity"]{grid-column:2;grid-row:1 / span 3}
   /* the narrow Activity column: a row's name before its time */
   [data-pane="activity"] .row .end>.small{display:none}
 }
@@ -198,3 +201,24 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
   .app.split .cc-k{flex:0 1 auto;overflow:hidden}
   .app.split .cc-k small,.app.split .cc-k b{overflow:hidden;text-overflow:ellipsis}
 }
+/* Customers (guide-gaps §2.5): the tiles under the title, Row2 rows, Select with its bar */
+.ct-tiles{flex:none;padding:8px 0 2px;background:var(--mist)}
+.ct-rows{margin:0 0 8px}
+.ct-grp .ct-rows{margin-top:0}
+.ct-pick .rs-lr-main{gap:12px}
+.ct-box{flex:none;display:grid;place-items:center;width:26px;height:26px;border:2px solid var(--line-2);border-radius:8px;background:var(--card);color:#fff}
+.ct-box.on{background:var(--coral);border-color:var(--coral)}
+.ct-box svg{width:16px;height:16px}
+.ct-scroll.picking{padding-bottom:calc(170px + var(--lift,0px))}
+.ct-bulk{position:fixed;z-index:6;left:calc(12px + var(--left));right:calc(12px + var(--right));bottom:calc(var(--bar-gap,12px) + var(--pill-h,0px) + 12px + var(--lift,0px));display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:var(--r-lg,18px);background:var(--card);box-shadow:var(--sh-raise)}
+.app.no-tabs .ct-bulk{bottom:calc(var(--bottom) + 12px)}
+.ct-bulk-n{font:600 13px/1.2 var(--text);color:var(--ink-2)}
+.ct-bulk-acts{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ct-bulk-acts::-webkit-scrollbar{display:none}
+.ct-bulk-acts .rs-pb{flex:none;min-height:44px}
+@media (min-width:1000px){.ct-bulk{position:sticky;bottom:12px;margin:8px 16px}}
+/* the contact's Service tab: tiles on top, the Pending jobs card dashed, the Mute row */
+.ct-tiles-in{margin:0 -16px}
+.ct-card.ct-pending{border:1.5px dashed var(--line-2);box-shadow:none}
+.ct-card .ct-sched{min-height:36px;padding:0 14px;display:inline-flex;align-items:center;font-size:14px}
+#ct-mute .rs-frow{min-height:56px}

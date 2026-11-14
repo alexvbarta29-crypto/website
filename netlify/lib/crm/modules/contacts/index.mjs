@@ -17,6 +17,7 @@ import { readIndex } from "../../../crm-store.mjs";
 import "../../adapters/maps-google.mjs";
 import { types } from "./types.mjs";
 import { contactRoutes } from "./routes.mjs";
+import { bulkRoutes } from "./bulk.mjs";
 import { webhookRoutes } from "./webhook.mjs";
 import { intakeService } from "./intake.mjs";
 import { resolveId, findMatches } from "./match.mjs";
@@ -36,13 +37,13 @@ export default defineModule({
   types,
   statsParts,
   routes: [
-    ...contactRoutes, ...webhookRoutes,
+    ...bulkRoutes, ...contactRoutes, ...webhookRoutes,
     // what a new quote for the property starts from (assets.mjs): the builder prices it in one tap
     { method: "GET", path: "/properties/:id/requote", auth: "session", perm: "quotes:write", subject: "required", mode: "inline", handler: requoteRoute },
   ],
   // the property's counts follow an approved quote (assets.mjs)
   events: { ...lifecycleListeners, "quote.approved": { handler: onQuoteApproved, mutates: true } },
-  emits: ["lead.created", "contact.merged", "consent.changed", "contact.tagged"],
+  emits: ["lead.created", "contact.merged", "consent.changed", "contact.tagged", "contact.lead_stage_changed"],
   services: {
     // (input, { origin, rotor? }, ctx) → { ok, contact_id, created, deal_id?, enrollment_id? } (§6.8)
     "contacts.intake": intakeService,

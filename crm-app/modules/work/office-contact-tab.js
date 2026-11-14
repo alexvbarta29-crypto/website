@@ -16,6 +16,22 @@ import { isoFromLocal } from "./tech-kit.js";
 
 const OPEN = ["unscheduled", "scheduled", "in_progress"];
 const planPill = html`<span class="pill green">Plan</span>`;
+const avg = (list) => { const v = list.map((j) => j.totals && j.totals.total_cents).filter(Number.isSafeInteger); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; };
+
+// The Service tab's tiles (Rotor's): Scheduled jobs x/y, Avg completed job, Avg future job (pure).
+export function workTiles(jobs = []) {
+  const live = jobs.filter((j) => j.status !== "cancelled");
+  const booked = live.filter((j) => j.status === "scheduled" || j.status === "in_progress");
+  const done = live.filter((j) => j.status === "completed");
+  const future = live.filter((j) => OPEN.includes(j.status));
+  const a = avg(done), b = avg(future);
+  return [
+    { key: "jobs", label: "Scheduled jobs", value: `${booked.length}/${live.length}` },
+    { key: "avg_done", label: "Avg completed job", value: a === null ? "-" : money(a).replace(/\.00$/, "") },
+    { key: "avg_future", label: "Avg future job", value: b === null ? "-" : money(b).replace(/\.00$/, "") },
+  ];
+}
+const pendingRow = (j) => html`<li><a class="row" href="${"#/jobs/" + encodeURIComponent(j.id)}"><span class="who"><span class="nm">${j.title}</span><span class="sub">${[j.number_label, j.target_month ? `due ${j.target_month}` : null, j.totals ? money(j.totals.total_cents) : null].filter(Boolean).join(" · ")}</span></span><span class="end"><span class="rs-pb ct-sched">Schedule</span></span></a></li>`;
 
 // The visit reminders (work automations visit.reminder_14d and _2d) still to
 // come for the booked visits, at their default 10:00. → [{ at, label, sub, href }]
@@ -50,15 +66,19 @@ export default {
     return { next_visit: next ? next.date : null };
   },
   queued(s) { return remindersAhead(s.upcoming || []); },
+  tiles(s) { return s && !s.denied ? workTiles(s.jobs || []) : []; },
   // The contact page's Visits card (Rotor's, Nov 2026): the next visits and the open one-time jobs, recent and
   // finished work under them, a round + to book; Book a job in the page's "...".
   cards(s, ctx) {
     if (!s || s.denied) return [];
-    const open = (s.jobs || []).filter((j) => OPEN.includes(j.status) && !j.plan_id);
+    const open = (s.jobs || []).filter((j) => OPEN.includes(j.status) && j.status !== "unscheduled" && !j.plan_id);
+    const pending = (s.jobs || []).filter((j) => j.status === "unscheduled");
     const closed = (s.jobs || []).filter((j) => !OPEN.includes(j.status)).slice(0, 10);
     const up = s.upcoming || [];
     const any = up.length || open.length || (s.past || []).length || closed.length;
-    return [{ key: "visits", tab: "details", title: "Visits", count: up.length ? (up.length === 1 ? "1 coming up" : `${up.length} coming up`) : null, empty: "No visit booked",
+    // Rotor's Service tab: Pending jobs (to book) on top, a dashed card; then Scheduled jobs
+    const out = pending.length ? [{ key: "pending", tab: "service", title: "Pending jobs", cls: "ct-pending", count: String(pending.length), body: html`<ul class="list">${pending.map(pendingRow)}</ul>` }] : [];
+    return [...out, { key: "visits", tab: "service", title: "Scheduled jobs", count: up.length ? (up.length === 1 ? "1 coming up" : `${up.length} coming up`) : null, empty: "No visit booked",
       add: ctx && ctx.can && ctx.can("schedule:write") ? { label: "Book a job", href: "#/jobs/new/" + encodeURIComponent(s.contact.id) } : null,
       body: any ? html`${up.length ? html`<ul class="list">${up.map(vrow)}</ul>` : html`<p class="rs-empty">No visit booked</p>`}
         ${open.length ? html`<h4 class="ct-sub-h">One-time jobs</h4><ul class="list">${open.map(jrow)}</ul>` : ""}

@@ -173,6 +173,8 @@ test("the map's pins and places: a box, last year's pins too; customers and open
   r = await t.api("/map/places", { as: owner });
   assert.deepEqual(r.body.data.places.map((p) => p.k).sort(), ["customer", "lead"], "no test, archived or unmapped ones");
   assert.ok(r.body.data.places.every((p) => p.n && p.c && p.a), "the office sees names");
+  // (guide-gaps M5: the office's filters ride on each house: the lead source, when they came in)
+  assert.ok(r.body.data.places.every((p) => p.src === "Referral" && /^\d{4}-\d{2}-\d{2}$/.test(p.ca)), JSON.stringify(r.body.data.places[0]));
   r = await t.api("/map/places", { as: knocker });
   assert.equal(r.status, 200);
   assert.deepEqual(Object.keys(r.body.data.places[0]).sort(), ["k", "la", "ln"], "a technician sees only that someone is a customer");

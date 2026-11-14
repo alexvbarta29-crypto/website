@@ -65,8 +65,10 @@ export async function enroll(contactId, cadenceKey, opts = {}, ctx = {}) {
   const contact = await contactOf(contactId, ctx);
   if (!contact || contact.lifecycle === "archived" || contact.merged_into || contact.merging_into) return null;
   const cadence = await cadenceByKey(cadenceKey, W(ctx));
-  if (!cadence || cadence.active === false || cadence.board_only || !(cadence.steps || []).length) return null;
   const automatic = actorKindOf(W(ctx)) === "automation";
+  // a board (Rotor's board-only pipelines, S14): a person may add someone to its first stage (+ Add opportunity)
+  const board = !!(cadence && cadence.board_only && opts.board && !automatic && (cadence.board_stages || []).length);
+  if (!cadence || cadence.active === false || (cadence.board_only && !board) || (!board && !(cadence.steps || []).length)) return null;
   if (automatic && cadence.entry && cadence.entry.on === "lead.created" && !opts.skip_entry_rules && !entryMatches(cadence, contact).ok) return null;
 
   const pkey = enrollKey(contact.id, cadence.id);
@@ -81,7 +83,7 @@ export async function enroll(contactId, cadenceKey, opts = {}, ctx = {}) {
     if (isId(opts.deal_id, "deal")) { const g = await getRecord("deal", opts.deal_id); deal = g ? g.data : null; }
     if (!deal) deal = await ensureDeal(contact, { seed: `deal--${id}`, quote_id: opts.quote_id }, ctx);
     const at = nowIso();
-    const plan = firstStep(cadence, { started_at: at, ...env, now: at });
+    const plan = board ? { step_n: 1, status: "active", day1: at.slice(0, 10), cur: { label: cadence.board_stages[0] } } : firstStep(cadence, { started_at: at, ...env, now: at });
     try {
       await createRecord("enrollment", {
         id, contact_id: contact.id, cadence_id: cadence.id, cadence_key: cadence.key, ...(deal ? { deal_id: deal.id } : {}),

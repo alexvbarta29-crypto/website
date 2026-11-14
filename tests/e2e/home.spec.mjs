@@ -536,7 +536,8 @@ test("Pipeline and Leads from the drawer (top-level: no switch, no back button);
         await drawerGo(f, path);
         await settled(f, { hash: "#" + path });
         assert.equal(await title(f), name);
-        assert.equal(await f.$eval("#subnav", (el) => el.hidden), true, "no Pipeline · Leads · Calls · Quotes · Tasks switch");
+        // (the section's own List | Board tabs may show; the old Sales switch must not)
+        assert.equal(await f.$eval("#subnav", (el) => !el.hidden && /Quotes/.test(el.textContent)), false, "no Pipeline · Leads · Calls · Quotes · Tasks switch");
         assert.equal(await backShown(f), false, `${path}, from the drawer, is top-level: no back button`);
         assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu is lit on what it opens");
         assert.ok(await f.$("#fab"), "the create button");

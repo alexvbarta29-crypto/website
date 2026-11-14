@@ -102,7 +102,7 @@ function checkScope(scope) {
 // Creates a link for a contact and scope. → { code, url, expires_at }.
 // opts.code: a fixed code (the unsubscribe link of an address is derived,
 // so one address has one link, re-used by every email).
-export async function createPortalLink({ contact_id, scope, expires_at, single_use, created_by } = {}, { code: fixed } = {}) {
+export async function createPortalLink({ contact_id, scope, expires_at, single_use, created_by, office_view } = {}, { code: fixed } = {}) {
   if (!isId(contact_id, "contact")) throw new InputError("A link needs a contact.", "contact_id");
   const s = checkScope(scope);
   const portal = await getSetting("portal").catch(() => ({}));
@@ -112,6 +112,8 @@ export async function createPortalLink({ contact_id, scope, expires_at, single_u
     const value = {
       contact_id, scope: s, created_at: nowIso(), created_by: created_by || "system", expires_at: exp,
       uses: 0, last_used_at: null, single_use: !!(single_use || s.kind === "present"), revoked_at: null, day: { date: null, n: 0 },
+      // the office's "Open their portal" (contacts S12): a look only (nothing paid, changed or counted as their view)
+      ...(office_view ? { office_view: true } : {}),
     };
     const w = await settledWrite(linkKey(code), value, { onlyIfNew: true });
     if (w.ok) {
@@ -201,7 +203,7 @@ async function openSession(link, code, req, context) {
   const until = link.expires_at ? Math.min(cap, Date.parse(link.expires_at)) : cap;
   await settledWrite(sessionKey(token), {
     contact_id: link.contact_id, scope: link.scope, link: sha(code), created_at: new Date(t).toISOString(), expires_at: new Date(until).toISOString(),
-    ua: uaFamily(req.headers.get("user-agent")), ip: ipHash(clientIp(req, context)),
+    ua: uaFamily(req.headers.get("user-agent")), ip: ipHash(clientIp(req, context)), ...(link.office_view ? { office_view: true } : {}),
   }, { onlyIfNew: true });
   return sessionCookie(link.contact_id, token, Math.max(60, Math.floor((until - t) / 1000)));
 }
@@ -472,6 +474,7 @@ async function beacon(req, url, session) {
   if (BOT_UA.test(req.headers.get("user-agent") || "")) return new Response(null, { status: 204, headers: PORTAL_HEADERS });
   const b = await readForm(req);
   if (!session || !scopeAllows(session, b.kind, b.id)) return pfail("signed_out", "Open your link again.", 401);
+  if (session.office_view) return new Response(null, { status: 204, headers: PORTAL_HEADERS });
   const fn = beacons.get(b.kind);
   if (fn) await fn({ session, kind: b.kind, id: b.id, body: b, write: (extra = {}) => ({ by: "portal", origin: "portal", actor_kind: "portal", requestId: "portal", ...extra }) });
   return new Response(null, { status: 204, headers: PORTAL_HEADERS });
@@ -504,6 +507,7 @@ async function moduleRoute(hit, req, url, context, company) {
     }
   }
   if (req.method !== "GET" && !portalCsrf(req, url)) return pfail("csrf", "Missing the portal header.", 403);
+  if (req.method !== "GET" && session && session.office_view) return pfail("office_view", "This is the office's look at their page. Nothing can be paid or changed from here.", 403);
   const pctx = {
     req, url, params, context, session, link, company, contact_id: (session && session.contact_id) || (link && link.contact_id),
     layout, portalPage, esc, json: pjson, fail: pfail, message,

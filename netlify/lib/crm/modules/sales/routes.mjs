@@ -24,6 +24,7 @@ import { markDeal, dealFor } from "./deals.mjs";
 import { logCall, sentByHand, sendStep, callList, callSummary, attention, smsMode, textWindow } from "./calls.mjs";
 import { keepAttention } from "./automations.mjs";
 import { createTask, cleanTaskInput, completeTask } from "./tasks.mjs";
+import { recordCall } from "./dialer.mjs";
 import { contactOf, nameOf, primaryPhone, relRecords, W, loadEnv } from "./common.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
@@ -53,7 +54,8 @@ const attentionRoute = async () => {
   return { data: a };
 };
 
-const callsRoute = async (ctx) => logCall(ctx.body || {}, ctx);
+// (the Power Dialer's Call logs: one call_log row per logged call, dialer.mjs)
+const callsRoute = async (ctx) => { const out = await logCall(ctx.body || {}, ctx); await recordCall(out, ctx.body || {}, ctx); return out; };
 
 const stepN = (ctx) => {
   const n = Number(ctx.params.n);
@@ -124,7 +126,8 @@ const loseDealRoute = async (ctx) => {
 
 const enrollmentsRoute = async (ctx) => {
   const status = str(ctx.query.get("status"));
-  const cadence = str(ctx.query.get("cadence"));
+  // "all": every pipeline (Pipelines' All pipelines, S14c)
+  const cadence = str(ctx.query.get("cadence")) === "all" ? "" : str(ctx.query.get("cadence"));
   const contact = str(ctx.query.get("contact"));
   if (contact) {
     if (!isId(contact, "contact")) throw new InputError("That isn't a contact.", "contact");
@@ -164,7 +167,7 @@ const enrollRoute = async (ctx) => {
   if (!isId(b.contact_id, "contact")) throw new InputError("Pick a contact.", "contact_id");
   if (!/^[a-z][a-z0-9_]{1,39}$/.test(str(b.cadence_key))) throw new InputError("Pick a cadence.", "cadence_key");
   await ctx.sysMode();
-  const id = await enroll(b.contact_id, str(b.cadence_key), { quote_id: isId(b.quote_id, "quote") ? b.quote_id : undefined }, ctx);
+  const id = await enroll(b.contact_id, str(b.cadence_key), { quote_id: isId(b.quote_id, "quote") ? b.quote_id : undefined, board: true }, ctx);
   if (!id) throw new ConflictError("That cadence can't take this contact (it is off, a board only, or the contact is archived).");
   const out = await enrollmentDetail(id, ctx);
   return { status: 201, ...out };

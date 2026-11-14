@@ -178,11 +178,15 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.ok(await f.isVisible("#top-act [data-top-tool]"), "the round pencil");
       assert.ok(await f.isVisible("#top-more"), "the round ...");
       assert.ok((await box(f, "#top-title")).w <= 1, "no title in sight: the name is the page's own (the h1 stays for screen readers)");
-      // Details: the cards in Rotor's order for a customer
-      const order = await f.$$eval('[data-pane="details"] [data-card]', (els) => els.map((e) => e.dataset.card));
-      const want = ["visits", "plan", "quotes", "invoices", "payment", "properties", "followups", "tasks", "notes", "queued", "about"].filter((x) => order.includes(x));
-      assert.deepEqual(order.filter((x) => want.includes(x)), want, `in Rotor's order (${order.join(", ")})`);
-      for (const must of ["visits", "plan", "quotes", "invoices", "properties", "notes"]) assert.ok(order.includes(must), must);
+      // Details | Service | Payments | Activity (guide-gaps C17): the cards in Rotor's order on each tab
+      const cardsOf = (pane) => f.$$eval(`[data-pane="${pane}"] [data-card]`, (els) => els.map((e) => e.dataset.card));
+      const order = await cardsOf("details");
+      for (const must of ["properties", "notes", "about"]) assert.ok(order.includes(must), must);
+      const svc = await cardsOf("service");
+      const want = ["visits", "plan", "quotes", "followups"].filter((x) => svc.includes(x));
+      assert.deepEqual(svc.filter((x) => want.includes(x)), want, `in Rotor's order (${svc.join(", ")})`);
+      for (const must of ["visits", "plan", "quotes"]) assert.ok(svc.includes(must), must);
+      assert.ok((await cardsOf("payments")).includes("invoices"), "invoices on Payments");
       assert.equal(await f.isVisible('[data-pane="activity"]'), false, "one tab at a time");
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
@@ -204,7 +208,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet.on [data-sheet-x]");
       // an old link to a tab opens its card
       await goTo(f, `/contacts/${seeded.contacts.plan}?tab=money`);
-      await f.waitForFunction(() => { const m = document.getElementById("ct-mod-money"); const v = document.getElementById("view"); return m && v.scrollTop > 100; }, null, { timeout: 10000 });
+      await f.waitForFunction(() => { const m = document.getElementById("ct-mod-money"); return m && !m.closest(".ct-pane.off") && m.closest('[data-pane="payments"]'); }, null, { timeout: 10000 });
       await p.clean();
     } finally { await p.close(); }
   });

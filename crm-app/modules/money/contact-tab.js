@@ -34,6 +34,8 @@ export default {
     bind();
     return { id: params.id, ...r.data };
   },
+  // the Service tab's Outstanding tile (Rotor's)
+  tiles(s) { return s && !s.denied ? [{ key: "owed", label: "Outstanding", value: money(s.open_balance_cents || 0).replace(/\.00$/, ""), tone: s.open_balance_cents > 0 ? "red" : null }] : []; },
   cards(s, ctx) {
     if (!s || s.denied) return [];
     const id = encodeURIComponent(s.id);
