@@ -5,9 +5,10 @@
 //
 //   GET  /p/agreement/:id                    scope agreement: read, sign, print
 //   POST /api/portal/agreements/:id/sign     { body_sha256, name_typed, agree, signature_png_b64? }
-//   GET  /p/hub                              scope hub: the customer's home (P0 minimal)
+//   GET  /p/hub and the rest of the customer's account (visits, history, plan, request work,
+//        reschedule, contact info and texts): portal/account.mjs, registered here
 //   GET  /p/hub/agreements/:id · POST /api/portal/hub/agreements/:id/sign   the same, from the hub
-//   POST /api/portal/hub/open {kind: "quote", id}   a short link to one open quote → { location }
+//   POST /api/portal/hub/open {kind: "quote" | "invoice", id}   a short link to one of them → { location }
 //   GET  /p/login · POST /api/portal/login {phone}  public: "text me a link" (a hub link by text)
 //   GET  /p/sign/:token · POST /api/portal/sign/:token/sign   in person on the staff phone (a present link)
 //   beacon "agreement": sent → viewed
@@ -19,9 +20,9 @@
 // hour per IP. GET pages never change anything.
 
 import { createHash, randomBytes } from "node:crypto";
-import { getRecord, getRecords, listRel, listKeys, putRaw, hk, readPointer } from "../../../crm-store.mjs";
+import { getRecord, listKeys, putRaw, hk, readPointer } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
-import { now, nowMs, localDate, tsKey, fromTsKey, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
+import { now, nowMs, tsKey, fromTsKey } from "../../core/clock.mjs";
 import { ConflictError, InputError, NotFoundError } from "../../core/errors.mjs";
 import { clientIp, uaFamily } from "../../core/http.mjs";
 import { ipHash } from "../../core/sessions.mjs";
@@ -30,11 +31,11 @@ import { sendMessage } from "../../core/send.mjs";
 import { definePortalBeacon, createPortalLink } from "../../portal/core.mjs";
 import { enqueue, kickWorker } from "../../core/queue.mjs";
 import { keySalt } from "../../core/context.mjs";
-import { agreementPage, hubPage, loginPage } from "./render.mjs";
+import { agreementPage, loginPage } from "./render.mjs";
+import { accountRoutes, hubOpen } from "../../portal/account.mjs";
 import { signAgreement, markViewed } from "./agreements.mjs";
 
 const SCRIPT_AGREEMENT = "plans-agreement.js";
-const SCRIPT_HUB = "plans-hub.js";
 const SCRIPT_LOGIN = "plans-login.js";
 export const LOGIN_LIMITS = Object.freeze({ phone_gap_ms: 10 * 60 * 1000, phone_per_day: 3, ip_per_hour: 20 });
 export const LOGIN_ANSWER = "If that number is on file, we texted you a link.";
@@ -67,45 +68,6 @@ async function sign(p, a, extra) {
   // the plan activates from agreement.signed on the fast lane (the request stays inside the portal's budget)
   const out = await signAgreement(a.id, p.body || {}, who(p, { contact_id: p.contact_id, ...extra }), p);
   return p.json({ ok: true, data: { status: out.agreement.status, already: !!out.already } });
-}
-
-// ------------------------------------------------------------ the hub
-
-const WINDOW_TEXT = (v) => {
-  const t = (s) => { const [h, m] = String(s || "08:00").split(":").map(Number); const ap = h >= 12 ? "PM" : "AM"; return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${ap}`; };
-  const w = v.window || {};
-  if (v.date_only || w.type === "anytime") return "Anytime that day";
-  if (w.type === "window" && w.minutes) {
-    const [h, m] = String(v.start || "08:00").split(":").map(Number);
-    const end = h * 60 + m + w.minutes;
-    return `Arriving between ${t(v.start)} and ${t(`${Math.floor(end / 60) % 24}:${String(end % 60).padStart(2, "0")}`)}`;
-  }
-  return `Arriving at ${t(v.start)}`;
-};
-
-export async function hubData(contactId) {
-  const day = localDate(now());
-  const contact = await contactOf(contactId);
-  const jobRows = await listRel("contact-jobs", contactId, { limit: 40 }).catch(() => []);
-  const jobs = (await getRecords("job", jobRows.map((r) => r.id))).filter(Boolean).map((g) => g.data).filter((j) => !j.deleted_at && j.contact_id === contactId && ["scheduled", "in_progress"].includes(j.status));
-  const visits = (await getRecords("visit", jobs.flatMap((j) => (j.visit_ids || []).slice(-6)).slice(0, 60))).filter(Boolean).map((g) => g.data)
-    .filter((v) => v.contact_id === contactId && ["scheduled", "en_route"].includes(v.status) && v.date >= day).sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
-  let nextVisit = null;
-  if (visits[0]) {
-    const v = visits[0];
-    const users = (await getRecords("user", (v.assignee_ids || []).slice(0, 4))).filter(Boolean).map((g) => g.data);
-    nextVisit = { date: v.date, window_text: WINDOW_TEXT(v), techs: users.map((u) => String(u.first_name || u.name || "").split(/\s+/)[0]).filter(Boolean) };
-  }
-  const agRows = await listRel("contact-agreements", contactId, { limit: 40 }).catch(() => []);
-  const agreements = (await getRecords("agreement", agRows.map((r) => r.id))).filter(Boolean).map((g) => g.data).filter((a) => !a.deleted_at && a.contact_id === contactId && ["sent", "viewed"].includes(a.status)).map((a) => ({ id: a.id, title: a.title }));
-  const qRows = await listRel("contact-quotes", contactId, { limit: 40 }).catch(() => []);
-  const quotes = (await getRecords("quote", qRows.map((r) => r.id))).filter(Boolean).map((g) => g.data).filter((q) => !q.deleted_at && q.contact_id === contactId && ["sent", "viewed"].includes(q.status) && q.current_version_id).map((q) => ({ id: q.id, number: q.number_label || "", expires_on: q.expires_on || null }));
-  const pRows = await listRel("contact-plans", contactId, { limit: 40 }).catch(() => []);
-  const STATUS = { active: "Active", pending: "Waiting for your signature", paused: "Paused", cancelling: "Ending soon" };
-  const plans = (await getRecords("plan", pRows.map((r) => r.id))).filter(Boolean).map((g) => g.data)
-    .filter((x) => !x.deleted_at && x.contact_id === contactId && x.kind !== "one_time_series" && STATUS[x.status])
-    .map((x) => ({ name: x.name, status_text: STATUS[x.status], next: ((x.ordinals || []).filter((o) => ["unscheduled", "scheduled"].includes(o.status)).map((o) => o.visit_date ? o.visit_date.slice(0, 7) : o.target_month).sort()[0]) || null }));
-  return { contact, nextVisit, agreements, quotes, plans };
 }
 
 // ------------------------------------------------------------ /p/login
@@ -192,6 +154,8 @@ export async function onLoginQueued(h) {
 // ------------------------------------------------------------ routes
 
 export const portalRoutes = [
+  // the customer's account: the hub, visits, history, plan, request work, reschedule, info and texts
+  ...accountRoutes,
   {
     method: "GET", path: "/p/agreement/:id", scope: "agreement",
     handler: async (p) => {
@@ -209,14 +173,6 @@ export const portalRoutes = [
     }),
   },
   {
-    method: "GET", path: "/p/hub", scope: "hub",
-    handler: async (p) => {
-      const d = await hubData(p.contact_id);
-      const { title, body } = hubPage(d);
-      return p.portalPage(p.layout({ title, body, script: SCRIPT_HUB, company: p.company, page: "hub" }));
-    },
-  },
-  {
     method: "GET", path: "/p/hub/agreements/:id", scope: "hub",
     handler: async (p) => {
       const a = await agreementFor(p, p.params.id);
@@ -232,17 +188,7 @@ export const portalRoutes = [
       return sign(p, a, { method: "portal" });
     }),
   },
-  {
-    method: "POST", path: "/api/portal/hub/open", scope: "hub",
-    handler: (p) => answer(p, async () => {
-      const b = p.body || {};
-      if (b.kind !== "quote" || !isId(b.id, "quote")) throw new InputError("Open which quote?", "id");
-      const g = await getRecord("quote", b.id).catch(() => null);
-      if (!g || g.data.deleted_at || g.data.contact_id !== p.contact_id || !["sent", "viewed"].includes(g.data.status)) return p.fail("not_found", "That quote isn't here.", 404);
-      const link = await createPortalLink({ contact_id: p.contact_id, scope: { kind: "quote", id: b.id }, expires_at: zonedToUtc(addLocalDays(localDate(now()), 1), "23:59").toISOString(), created_by: "portal:hub" });
-      return p.json({ ok: true, data: { location: `/p/${link.code}` } });
-    }),
-  },
+  { method: "POST", path: "/api/portal/hub/open", scope: "hub", handler: (p) => answer(p, () => hubOpen(p)) },
   {
     method: "GET", path: "/p/login", scope: "public",
     handler: async (p) => {

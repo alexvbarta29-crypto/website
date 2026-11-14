@@ -87,22 +87,6 @@ ${doc}
 
 // The hub (the customer's home, minimal P0): the next visit, things to
 // sign, open quotes, the plan.
-export function hubPage({ contact, nextVisit, agreements, quotes, plans }) {
-  const first = String((contact && (contact.first_name || contact.display_name)) || "").trim().split(/\s+/)[0] || "";
-  const visit = nextVisit
-    ? `<p class="big">${esc(dayWords(nextVisit.date))}</p><p>${esc(nextVisit.window_text)}${nextVisit.techs.length ? ` · ${esc(nextVisit.techs.join(" and "))}` : ""}</p><p class="small muted">Need to move it? Call or text us at least 24 hours ahead.</p>`
-    : `<p>Nothing on the schedule right now. Call or text us to book your next visit.</p>`;
-  const sign = agreements.length ? `<section class="card"><h2>To sign</h2><ul class="items">${agreements.map((a) => `<li><a class="item" href="/p/hub/agreements/${esc(encodeURIComponent(a.id))}"><span class="t"><b>${esc(a.title)}</b><small>Read and sign</small></span><span class="go">Open</span></a></li>`).join("")}</ul></section>` : "";
-  const open = quotes.length ? `<section class="card"><h2>Your quotes</h2><ul class="items">${quotes.map((q) => `<li><button class="item" type="button" data-open-kind="quote" data-open-id="${esc(q.id)}"><span class="t"><b>Quote ${esc(q.number)}</b><small>${q.expires_on ? `Good through ${esc(dayWords(q.expires_on))}` : "Take a look"}</small></span><span class="go">Open</span></button></li>`).join("")}</ul><p class="err" data-open-error hidden></p></section>` : "";
-  const plan = plans.length ? `<section class="card"><h2>Your plan</h2><ul class="items">${plans.map((p) => `<li><div class="item"><span class="t"><b>${esc(p.name)}</b><small>${esc(p.status_text)}${p.next ? ` · next visit around ${esc(monthWords(p.next))}` : ""}</small></span></div></li>`).join("")}</ul></section>` : "";
-  return {
-    title: "Your account",
-    body: `${PLANS_STYLE}<section class="card"><p class="eyebrow">Your account</p><h1>${first ? `Hi ${esc(first)}!` : "Hi there!"}</h1><p>Here's what's coming up with us.</p></section>
-<section class="card"><h2>Next visit</h2>${visit}</section>${sign}${open}${plan}
-<section class="card"><h2>Questions?</h2><p>Call or text us anytime. We're happy to help.</p><div class="row"><a class="btn ghost" href="tel:+17633143400">Call us</a></div></section>`,
-  };
-}
-
 export function loginPage() {
   return {
     title: "Text me a link",

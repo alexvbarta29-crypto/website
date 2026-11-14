@@ -181,3 +181,8 @@ html:not([data-theme="light"]) .pp-st{background:#2f6fe0}
 @media (max-width:380px){.sg-nums b{font-size:14px}.sg-nums.big b{font-size:17px}}
 
 @media (min-width:900px){.sg-row .sg-nums{max-width:620px}}
+
+/* A task from the customer's account: the photos they sent (portal/account.mjs) */
+.sl-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.sl-photos a{display:block;width:96px;height:96px;border-radius:12px;overflow:hidden;background:var(--mist-2)}
+.sl-photos img{display:block;width:100%;height:100%;object-fit:cover}
