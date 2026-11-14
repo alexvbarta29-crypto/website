@@ -104,7 +104,7 @@ overlay of what waits, copies for no signal, Delano times),
     time and the customer, in the color of the first person on it; "+N
     more" past three). Under the grid: what the bar and the mark mean, the
     forecast's source, and **Change** (`settings:general`: it opens
-    Settings → Schedule → Crew & forecast, `#/settings/schedule`, the one
+    Settings → Services & pricing → Crew & forecast, `#/settings/schedule`, the one
     place for the crew's visits a day and the forecast on or off). The card's head: the month's
     count, **N to book** (the tray's own rule, `toBookRows`), Today and the
     arrows. Picking a day (a tap, or the arrow keys on a computer: a day, a
@@ -619,9 +619,9 @@ Writes carry `client_id` (400 without one), and replays `queued_offline`,
 ("19:00"), `clock_autoclose_at` ("21:00"), `default_window_minutes` (120),
 `default_duration_min` (120), `confirm_skip_within_days` (2),
 `late_cancel_hours` (24), `visits_per_day` (8: the visits the whole crew
-can do in a day, what the month's bars fill against; Settings → Schedule → Crew & forecast),
+can do in a day, what the month's bars fill against; Settings → Services & pricing → Crew & forecast),
 `weather` (true: the forecast on the schedule). `cfg/tracking`
-(`settings:general`, Settings → Schedule → Tracking link): `enabled` (true:
+(`settings:general`, Settings → Business → Tracking link): `enabled` (true:
 On my way's text has the tracking link), `show_vehicle` (false),
 `vehicles` ({ user id: "a white Ford Transit" }, 60 characters, plain
 words), `location_minutes` (120: how long the dot shows, 15 to 240). The schedule also reads
@@ -667,7 +667,7 @@ and a phone never calls it.
   of precipitation, the words, and an icon (sun, partly, cloud, rain, snow,
   storm, fog, wind; rain, or snow at or below 32°F, when the chance is 40%
   or more).
-- Turning it off: Settings → Schedule → Crew & forecast → "Show the forecast" (cfg/work.weather).
+- Turning it off: Settings → Services & pricing → Crew & forecast → "Show the forecast" (cfg/work.weather).
 
 ## Sweeps, queue kinds and listeners
 

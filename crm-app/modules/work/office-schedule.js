@@ -722,7 +722,7 @@ async function onDrop(ctx, d, t) {
 const DND = dndEvents(onDrop);
 
 // Schedule settings (cfg/work: the crew's visits a day, the forecast) are in
-// Settings → Schedule → Crew & forecast (system/settings-general.js), one place.
+// Settings → Services & pricing → Crew & forecast (system/settings-general.js), one place.
 
 // Esc closes the panel (a sheet on top closes first: core/ui.js handles that one).
 let keyCtx = null;

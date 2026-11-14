@@ -824,7 +824,7 @@ is on). The cards' own reads: `GET /home/money?metric=&period=&from=
   Leads, Pipeline, Leaderboard, Map, Quotes, Plans and Invoices:
   **Customize Tabs** (`system/tab-bar.js`: a sheet page with a red Done,
   from the person's initials, a long press on the bar, or Settings →
-  Appearance → Tab bar, `#/tab-bar`, the same list as a page): one list,
+  This phone → Tab bar, `#/tab-bar`, the same list as a page): one list,
   the tabs on the bar above a line, the rest under MORE MENU, a round − or
   +, a drag handle (or hold a row; the arrow keys on the handle move it);
   saved on their user record as `tabs` (`PATCH /users/:id`), "Back to the
@@ -876,9 +876,9 @@ is on). The cards' own reads: `GET /home/money?metric=&period=&from=
   (the office's playbook page, `#/tools/followups`) → a row on Settings →
   Follow-up cadences; Dashboard → Reports (Money); Templates, Automations,
   Team, Activity, Import from Rotor, Tab bar and Rotor → Settings; the
-  schedule's own "Schedule settings" sheet → Settings → Schedule → Crew &
-  forecast (`#/settings/schedule`; the month's "Change" opens it); Rotor's
-  first customer list (`#/legacy/customers`) → Settings → Import & data.
+  schedule's own "Schedule settings" sheet → Settings → Services & pricing →
+  Crew & forecast (`#/settings/schedule`; the month's "Change" opens it); Rotor's
+  first customer list (`#/legacy/customers`) → Settings → Rotor & data.
 - **+** (Flyra's, with Rotor's search): the round glass + beside the bar
   on every screen with the bar. The screen dims, a search sits at the top
   ("Search customers, jobs, tasks...": `GET /search`) and the things to
@@ -921,33 +921,44 @@ is on). The cards' own reads: `GET /home/money?metric=&period=&from=
   the theme), `crm.css` (the tokens and the shell block); tests:
   `tests/crm/core/nav.test.mjs`, `tests/e2e/layout.spec.mjs`.
 
-### Settings: one hub (`#/settings`)
+### Settings: one hub of groups (`#/settings`)
 
-Every setting is in exactly one place, in plain sections
-(`crm-app/modules/system/settings.js` `LAYOUT`, the one place that says
-which screen sits where and what it is called):
+The owner (Nov 2026): "there is still way too much stuff, just make it
+more organized". Settings looks like iOS's and Rotor's: a search field,
+then a short list of GROUP rows in inset cards, each a coloured tile, the
+group's name, a grey line naming what is inside ("Team, permissions,
+payroll") and a chevron. A group opens its own page
+(`#/settings/g/:key`, `settings-group.js`: the group's name as the title,
+the round back to Settings, its rows in one inset card). Every setting is
+in exactly one group (`crm-app/modules/system/settings.js` `LAYOUT`, the
+one place that says which screen sits where and what it is called):
 
-| Section | Rows |
+| Group | Rows |
 |---|---|
-| Company | Company details, Service area |
-| Team & permissions | Team, Permissions (owners) |
-| Pricing & services | Prices & price book (owners), Discounts |
-| Plans & agreements | Plans & perks (owners), Agreements |
-| Schedule | Hours & holidays, Crew & forecast (the visits a day the crew can do, the forecast on or off), Checklists |
-| Messages & automations | Message templates, Automations, Follow-up cadences (with the Follow-ups page), Quiet hours & opt-out, Texting & email setup |
+| Business | Company details, Service area, Hours & holidays, Tracking link |
+| Team | Team, Permissions (owners), Payroll & pay rates (owners) |
+| Services & pricing | Prices & price book (owners), Discounts, Plans & perks (owners), Agreements, Checklists, Crew & forecast |
+| Messages | Message templates, Automations, Follow-up cadences (with the Follow-ups page), Quiet hours & opt-out, Texting & email setup |
 | Payments | Payments & card fees (owners) |
-| Maps & door to door | Door to door, Maps & team map (owners) |
-| Import & data | Import from Rotor, Integrations, Where website leads go, Facebook lead forms, Data & backups, Activity log, Rotor's first customer list, Open Rotor |
-| Appearance | Light or dark (this device), Tab bar |
+| Connections | Integrations, Claude connector, Where website leads go, Facebook lead forms, Maps & team map, Door to door |
+| Rotor & data | Import from Rotor, Switch from Rotor, Data & backups, Dashboard numbers, Activity log, Rotor's first customer list, Open Rotor |
+| This phone | Light or dark (this device), Tab bar, Calendar feed |
 
 A row shows when its screen is there and this person may open it (the
 module's settings entry or Menu entry decides, else the route's
-permission). A module's settings entry `LAYOUT` doesn't name lands in its
-`section` (one of the keys above) or under More. Then About: the app
-version, whether the background work runs, and that Rotor is in charge
-until the switch-over. The screens it opens have Settings as their parent
-(the back button). Tests: `tests/crm/core/screens.test.mjs` (the sections,
-each setting once, every module's setting placed).
+permission); a group with no such row is hidden, and a group with exactly
+one (Payments) opens that screen straight from the hub. Typing in the
+search field lists every row of every group, flat, each with its group's
+name under it; clearing it shows the groups again. A module's settings
+entry `LAYOUT` doesn't name lands at the end of its `section`'s group (the
+old section keys map to the groups: `SECTION_TO_GROUP`), else at the end
+of Business. Then About: the app version, whether the background work
+runs, and that Rotor is in charge until the switch-over. The screens it
+opens have Settings as their parent (the back button of a deep link; from
+a group's page, back returns to the group). Tests:
+`tests/crm/core/screens.test.mjs` (the groups for owner, admin and tech,
+each setting once, every module's setting placed),
+`tests/e2e/settings.spec.mjs`.
 
 ### On a computer (900 px and up)
 

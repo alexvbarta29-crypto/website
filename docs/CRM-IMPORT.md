@@ -68,7 +68,7 @@ not, ever goes into git.
    `--force`, writes files readable by their owner only, and prints counts
    only. `--print` counts and writes nothing. With `OFFICE_DATA_KEY` in the
    environment it also proves every chunk opens.
-3. **Make the run**: an owner opens **Settings → Import & data → Import from Rotor → Start an
+3. **Make the run**: an owner opens **Settings → Rotor & data → Import from Rotor → Start an
    import** and copies the upload key (shown once, `bimp_...`, good for 24
    hours, only for this run) and the command the sheet shows.
 4. **Upload**:
@@ -101,7 +101,7 @@ During the last weeks of the parallel run the CRM is brought up to date
 every day (design §10.9 "daily delta imports") without anyone making an
 upload key:
 
-- **The key.** An owner opens Settings → Import & data → Import from Rotor →
+- **The key.** An owner opens Settings → Rotor & data → Import from Rotor →
   **Automatic daily import** and taps Make the key. It is `bauto_` + 40
   base62 characters, shown once, stored only as its SHA-256 (the record
   `rec/import_key/{id}`: name, last four, who made it, uses, last use, and

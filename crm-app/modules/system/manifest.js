@@ -21,7 +21,7 @@ export default {
     { path: "/tab-bar", load: () => import("./tab-bar.js"), title: "Tab bar", perm: "account:own", parent: "/settings", skeleton: "list" },
     { path: "/team", load: () => import("./team.js"), title: "Team", perm: "users:manage", parent: "/settings", skeleton: "list" },
     { path: "/team/:id", load: () => import("./person.js"), title: "Person", perm: "users:manage", parent: "/team" },
-    // Rotor's first customer list (the first slice's), until the Rotor import goes live: Settings → Import & data
+    // Rotor's first customer list (the first slice's), until the Rotor import goes live: Settings → Rotor & data
     { path: "/legacy/customers", load: () => import("./legacy.js"), title: "Rotor's first customer list", perm: "contacts:read_all", parent: "/settings" },
     { path: "/notifications", load: () => import("./notifications.js"), title: "Notifications", perm: "account:own", parent: "/today", skeleton: "list" },
     { path: "/approvals", load: () => import("./approvals.js"), title: "Approvals", perm: "campaigns:send", parent: "/today", skeleton: "list" },
@@ -32,6 +32,8 @@ export default {
     { path: "/outbox", load: () => import("./outbox.js"), title: "Outbox", perm: "outbox:read", parent: "/today", skeleton: "list" },
     { path: "/activity", load: () => import("./activity.js"), title: "Activity log", perm: "audit:read", parent: "/settings", skeleton: "list" },
     { path: "/settings", load: () => import("./settings.js"), title: "Settings", perm: "settings:general", parent: "/today", skeleton: "list" },
+    // one group of the hub (Business, Team, ... This phone): its rows (settings.js LAYOUT)
+    { path: "/settings/g/:key", load: () => import("./settings-group.js"), title: "Settings", perm: "settings:general", parent: "/settings", skeleton: "list" },
     { path: "/settings/company", load: () => import("./settings-general.js"), title: "Company", perm: "settings:general", parent: "/settings" },
     { path: "/settings/hours", load: () => import("./settings-general.js"), title: "Hours & holidays", perm: "settings:general", parent: "/settings" },
     { path: "/settings/service-area", load: () => import("./settings-general.js"), title: "Service area", perm: "settings:general", parent: "/settings" },
