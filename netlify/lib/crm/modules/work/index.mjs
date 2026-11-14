@@ -73,7 +73,7 @@ const office = {
   events: listeners,
   emits: [
     "job.created", "job.scheduled", "job.completed", "job.reopened", "job.cancelled",
-    "visit.scheduled", "visit.rescheduled", "visit.assigned", "visit.cancelled", "visit.completed", "visit.no_access",
+    "visit.scheduled", "visit.rescheduled", "visit.assigned", "visit.cancelled", "visit.completed", "visit.no_access", "visit.started",
   ],
   services: {
     // (jobs, opId, scope, ctx) → job_ids

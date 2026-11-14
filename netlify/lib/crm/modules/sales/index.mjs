@@ -23,8 +23,8 @@ import { types } from "./types.mjs";
 import { TEMPLATES, seedCadences, addStepIds } from "./seed.mjs";
 import { SALES_DEFAULTS } from "./common.mjs";
 import { enroll, stopAll } from "./enroll.mjs";
-import { markDeal } from "./deals.mjs";
-import { myOpenTasks } from "./tasks.mjs";
+import { markDeal, dealOfContact } from "./deals.mjs";
+import { myOpenTasks, automationTask } from "./tasks.mjs";
 import { SALES_STATS, callsDueCount } from "./calls.mjs";
 import { listeners } from "./listeners.mjs";
 import { automations, sweeps, attentionCount } from "./automations.mjs";
@@ -75,6 +75,10 @@ export default defineModule({
     "sales.stopAll": (cid, reason, ctx) => stopAll(cid, reason, ctx || {}),
     // (deal_id, status, { reason?, quote_id?, job_id?, plan_id? }, ctx)
     "sales.markDeal": (id, status, opts, ctx) => markDeal(id, status, opts || {}, ctx || {}),
+    // the automation builder (modules/automations): (task fields, { seed }, ctx) → task (made once per seed)
+    "sales.createTask": (data, opts, ctx) => automationTask(data, opts || {}, ctx || {}),
+    // (contact_id, ctx) → the contact's open deal, else its newest one, or null
+    "sales.dealOf": (cid) => dealOfContact(cid),
   },
   // optional, from Quotes (M3a): the offer and archive steps of the estimate follow-up
   needs: ["contacts.resolve", "quotes.applyOffer", "quotes.archive"],

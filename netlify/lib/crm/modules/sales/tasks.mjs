@@ -31,6 +31,15 @@ export async function createTask(data, ctx = {}, { seed } = {}) {
   }
 }
 
+// A task an automation makes (sales.createTask): once per seed, on the
+// contact's timeline.
+export async function automationTask(data, { seed } = {}, ctx = {}) {
+  const contact = isId(data.contact_id, "contact") ? await getRecord("contact", data.contact_id).catch(() => null) : null;
+  const task = await createTask({ ...data, ...(contact ? { contact_name: nameOf(contact.data) } : {}) }, ctx, { seed });
+  if (task && contact) await addActivity(contact.data.id, "task", task.id, now()).catch(() => {});
+  return task;
+}
+
 // An open task of this kind for the contact whose title starts the same
 // way (one "Reply from …" task at a time, not one per text).
 export async function openTaskLike(contactId, kind, titleStart) {

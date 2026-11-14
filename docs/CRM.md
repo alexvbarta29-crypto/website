@@ -31,6 +31,7 @@ core: storage, sign-in, the shell, the engine, messaging and the portal.
 | [CRM-PAYROLL.md](CRM-PAYROLL.md) | M7a | pay periods and pay lines | stub |
 | [CRM-REPORTS.md](CRM-REPORTS.md) | M7b | rollups, the dashboard feed | stub |
 | [CRM-MCP.md](CRM-MCP.md) | M7c | Claude's MCP connector over the CRM (reads, Rotor-compatible reports, asks an owner approves; how to connect claude.ai) and the calendar feed (iCal) | built (in review) |
+| [CRM-AUTOMATIONS.md](CRM-AUTOMATIONS.md) | builder | your own automations: triggers, conditions, steps with waits, stop conditions, a test run, run history, the caps and the loop guard | built (in review) |
 | [CRM-MAP.md](CRM-MAP.md) | maps | Door to door (the knock map, pins, areas, convert to lead, the report) and the live Team map; the map stack, geocoding, outside hosts | live (in review) |
 
 The office side (tabs, the launcher for a start with no signal, web push,
@@ -1259,9 +1260,11 @@ approvals and the workers' alerts.
   day; tap one for the whole message. Beside it, the **automation log**:
   sent, dry-run, skipped and the **would have** rows (what an automation
   would have changed on a record Rotor still owns).
-- **Automations**: the built-in catalog (design §5.7.4). Each one on or
-  off, its channels, delay, time of day and templates, the last 7 days and
-  today's log. Automations of modules that haven't shipped show "Arrives
+- **Automations**: your own first (the builder: "when this happens, if
+  that, then these steps after a wait", with a test run and run history;
+  [CRM-AUTOMATIONS.md](CRM-AUTOMATIONS.md)), then the built-in catalog
+  (design §5.7.4). Each built-in on or off, its channels, delay, time of
+  day and templates, the last 7 days and today's log. Automations of modules that haven't shipped show "Arrives
   with Sales / Scheduling / ...". **Pause all** stops every automation
   (people's own messages still go).
 - **Templates**: the library by category; the editor has variable chips,

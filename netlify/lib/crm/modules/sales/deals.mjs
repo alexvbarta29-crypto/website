@@ -23,6 +23,14 @@ export async function openDealOf(contactId) {
   return deals.find((d) => OPEN_DEAL.includes(d.status)) || null;
 }
 
+// The automation builder's "move the deal" (sales.dealOf): the open deal,
+// else the newest one.
+export async function dealOfContact(contactId) {
+  if (!isId(contactId, "contact")) return null;
+  const deals = await relRecords("contact-deals", "deal", contactId, { limit: 10 });
+  return deals.find((d) => OPEN_DEAL.includes(d.status)) || deals[0] || null;
+}
+
 // Where a deal came from: the contact's source, and the sign or flyer whose
 // QR code they scanned first (Signs & flyers: "Yard sign: Maple Grove").
 const sourceOf = (contact) => (contact.source ? {

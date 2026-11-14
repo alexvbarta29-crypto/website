@@ -1,6 +1,7 @@
 // Every CRM module, registered at cold start (design §11.2, §11.3). Core
 // file, created in M1.1 (map, the door-to-door and team maps, added after
-// M8: docs/CRM-MAP.md): a module plugs in through
+// M8: docs/CRM-MAP.md; automations, the custom automation builder:
+// docs/CRM-AUTOMATIONS.md): a module plugs in through
 // its own manifest (types, settings, permissions, routes, sweeps, services,
 // ...). Importing this file registers them all; the registry rejects an
 // invalid manifest at import time, so a bad module fails `npm test`.
@@ -19,7 +20,8 @@ import payroll from "./payroll/index.mjs";
 import reports from "./reports/index.mjs";
 import mcp from "./mcp/index.mjs";
 import map from "./map/index.mjs";
+import automations from "./automations/index.mjs";
 
-export const MODULES = Object.freeze([system, contacts, sales, importMod, quotes, plans, work, money, comms, payroll, reports, mcp, map]);
+export const MODULES = Object.freeze([system, contacts, sales, importMod, quotes, plans, work, money, comms, payroll, reports, mcp, map, automations]);
 registerModules(MODULES);
 export default MODULES;

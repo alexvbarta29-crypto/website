@@ -278,6 +278,12 @@ Services: `contacts.intake`, `contacts.resolve`, `contacts.findMatches`,
 ## Automations
 
 None of its own (`lead.ack`, `lead.alert` and `lead.attention` are Sales').
+For the automation builder (docs/CRM-AUTOMATIONS.md), `tags.mjs`: the event
+`contact.tagged` (`{ contact_id, tags: [the ones added] }`, event id from
+`tags:{contact id}` and the write counter) after a person's edit adds tags
+or a service call does, and the services `contacts.tag(contact_id, { add?,
+remove? }, ctx)` and `contacts.setOwner(contact_id, user_id, ctx)` (store
+writes: the backstop guards an automation's write to a contact Rotor owns).
 Today's "Possible duplicates" count comes from this module's attention row.
 
 ## Import phases (design §10.2)
