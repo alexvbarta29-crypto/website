@@ -107,7 +107,7 @@ they sign in again once), who then gets a **Door to door** card on Today.
   its property). The follow-up is the sales module's rule: the seeded New
   lead cadence takes other sources, so it starts only once an owner adds
   Door to Door to its sources (Settings → Cadences); otherwise the lead
-  waits on Leads & calls. A phone already on file joins that contact (its
+  waits on Calls. A phone already on file joins that contact (its
   owner unchanged). Every text stays in the Outbox (dry run).
 - **Knocking mode** (Start knocking): the map follows you, a cross marks
   where **Pin here** drops, the screen stays on (the Wake Lock API, Safari

@@ -102,8 +102,9 @@ overlay of what waits, copies for no signal, Delano times),
     (booked, on the way or under way), and on a computer the chips (start
     time and the customer, in the color of the first person on it; "+N
     more" past three). Under the grid: what the bar and the mark mean, the
-    forecast's source, and **Change** (`settings:general`: the crew's
-    visits a day, the forecast on or off). The card's head: the month's
+    forecast's source, and **Change** (`settings:general`: it opens
+    Settings → Schedule → Crew & forecast, `#/settings/schedule`, the one
+    place for the crew's visits a day and the forecast on or off). The card's head: the month's
     count, **N to book** (the tray's own rule, `toBookRows`), Today and the
     arrows. Picking a day (a tap, or the arrow keys on a computer: a day, a
     week, Home and End, Page Up and Page Down a month) shows **that day's
@@ -207,11 +208,12 @@ overlay of what waits, copies for no signal, Delano times),
   timer, Finish without the timer, Running late, No access) stay in its
   card. Someone not on the visit (the office) gets only Get paid. The office
   sees the visit's photos too (read only).
-- **Visits** (Menu; `#/visits`, `GET /visits?date=`): one day's visits as
-  cards (Rotor's): the customer, which visit of the job (n/m), the time,
-  the minutes worked, the job's amount, a red $ while its invoice is open,
-  the status (Not started, In progress, Finished); arrows for the day
-  before and after; the server's today by default.
+- **Visits** is the Schedule's **List** now (the Nov 2026 tidy-up: one
+  place for a day's visits). `#/visits` redirects to `#/schedule?view=list`,
+  and the List shows the red $ on a finished visit whose job isn't paid
+  (`?pay=1`, as the Day view). `GET /visits?date=` (one day's visits with
+  n/m, the minutes worked, the amount and whether it's owed) stays for the
+  API.
 - **Job** (`#/jobs/:id`): title, number, kind, status, total; rows for the
   customer and directions; its visits; the work; notes. **Book** (top),
   **Edit** (title, kind, due month, the lines, notes), **Mark done** (its
@@ -590,7 +592,7 @@ Writes carry `client_id` (400 without one), and replays `queued_offline`,
 ("19:00"), `clock_autoclose_at` ("21:00"), `default_window_minutes` (120),
 `default_duration_min` (120), `confirm_skip_within_days` (2),
 `late_cancel_hours` (24), `visits_per_day` (8: the visits the whole crew
-can do in a day, what the month's bars fill against; Schedule → Change),
+can do in a day, what the month's bars fill against; Settings → Schedule → Crew & forecast),
 `weather` (true: the forecast on the schedule). The schedule also reads
 `cfg/hours` and the holiday calendar, and Route reads the company's base
 (`cfg/company.base`).
@@ -634,7 +636,7 @@ and a phone never calls it.
   of precipitation, the words, and an icon (sun, partly, cloud, rain, snow,
   storm, fog, wind; rain, or snow at or below 32°F, when the chance is 40%
   or more).
-- Turning it off: Schedule → Change → "Show the forecast" (cfg/work.weather).
+- Turning it off: Settings → Schedule → Crew & forecast → "Show the forecast" (cfg/work.weather).
 
 ## Sweeps, queue kinds and listeners
 

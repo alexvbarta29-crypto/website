@@ -17,7 +17,7 @@ const row = (o = {}) => ({
   status: "active", pending: null, started_at: "2026-11-17T14:55:00.000Z", last_touch_at: null, overdue: false, ...o,
 });
 
-test("Leads & calls: windows, overdue on top, Call (tel:), Log, the waiting text, the dry-run note; all escaped", async () => {
+test("Calls: windows, overdue on top, Call (tel:), Log, the waiting text, the dry-run note; all escaped", async () => {
   const calls = await load("calls");
   const s = {
     tab: "due", sms_mode: "dry_run", due: [row({ id: "en_1", overdue: true, due: "2026-11-17T15:00:00.000Z", due_end: "2026-11-17T16:00:00.000Z" }), row({ id: "en_2", pending: "hand", due: "2026-11-17T18:00:00.000Z", due_end: "2026-11-17T19:00:00.000Z" })],

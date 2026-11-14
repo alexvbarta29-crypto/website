@@ -42,7 +42,7 @@ signs' `/q/` codes). Record types: `deal`, `cadence`, `enrollment`,
   New, Paused). Code:
   `crm-app/modules/sales/{pipeline,leads}.js`; tests:
   `tests/crm/sales/leads-pipeline.test.mjs`.
-- **Leads & calls** (the Sales switch's Calls; nav; `sales:work`): today's calls in the day's windows
+- **Calls** (the Sales switch's Calls, Menu → Sales → Calls; was "Leads & calls"; `sales:work`): today's calls in the day's windows
   (9-10, 12-1, 4-5), overdue first, then texts waiting to be sent by hand,
   paused follow-ups and leads that need attention. Each row: name, town,
   step ("Day 1 · Call 2 of 3"), when it's due. **Call** opens `tel:` and

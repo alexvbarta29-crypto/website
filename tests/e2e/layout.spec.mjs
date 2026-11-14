@@ -77,7 +77,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // the +: the screen blurs, search on top, the things to make above the +
       await g.click("#fab");
       await g.waitForSelector(".qk.on");
-      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Customer", "Lead", "Invoice", "Quote", "Plan", "Job", "Task"], "Flyra's order");
+      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead or customer", "Quote", "Job", "Invoice", "Plan", "Task"], "one list, the most used first");
       await g.fill("#qk-q", "Newlead");
       await g.waitForSelector(".qk-res:not([hidden]) a", { timeout: 5000 });
       assert.deepEqual(await screenProblems(g), [], "the + overlay passes the phone checks");

@@ -623,8 +623,9 @@ function searchBox() {
 // routes).
 const MAKE = [
   ["/contacts/new", "Lead or customer", "userplus", "contacts:write"], ["/leads/new", "Lead", "target"], ["/quotes/new", "Quote", "clipboard"], ["/jobs/new", "Job", "hammer"],
-  ["/invoices/new", "Invoice", "receipt"], ["/plans/new", "Plan", "swap"], ["/tasks/new", "Task", "check"], ["/calls/log", "Log a call", "phone"], ["/inbox/new", "Text someone", "text"],
+  ["/invoices/new", "Invoice", "receipt"], ["/plans/new", "Plan", "swap"], ["/tasks/new", "Task", "check"],
 ];
+// (Log a call and Text someone are their own screens' +: Calls, the Inbox.)
 export function quickCreates(creates = [], can = () => false) {
   const have = new Set(creates.map((c) => c.path));
   const full = can("contacts:write") && router.has("/contacts/new");

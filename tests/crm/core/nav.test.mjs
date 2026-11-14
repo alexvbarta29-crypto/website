@@ -115,7 +115,7 @@ test("the Menu: five groups and Settings, each screen once under one name, none 
 test("the + and the desk's New: one list, the most used first, each once", () => {
   planFor("owner");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Invoice", "Plan", "Task", "Log a call", "Text someone"]);
+  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Invoice", "Plan", "Task"]);
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });
 
