@@ -167,9 +167,12 @@ test("preview, switch, the first live morning: seeded markers suppress, the floo
     assert.deepEqual(auto["visit.reminder_2d"].by_day.map((d) => d.texts), [1, 0, 0, 0]);
     assert.deepEqual(auto["visit.reminder_14d"].by_day.map((d) => [d.texts, d.emails]), [[1, 1], [0, 0], [0, 0], [0, 0]]);
     assert.equal(auto["invoice.overdue"].total.texts, 0, "an imported invoice is never reminded");
-    assert.ok(auto["agreement.unsigned"].total.texts >= 1, "Rotor's agreement goes on being reminded from Tuesday");
-    assert.equal(auto["agreement.unsigned"].by_day[0].texts, 0, "Monday's reminder already went out from Rotor (seeded)");
-    assert.equal(auto["review.sequence"].total.texts, 0);
+    assert.equal(auto["agreement.unsigned"].total.texts, 0, "the agreement Rotor sent gets no automatic reminders (the floor): the in-flight re-request is its one");
+    assert.equal(pv.floor.imported_unsigned_agreements, 1);
+    assert.match(auto["agreement.unsigned"].note, /^1 agreement Rotor sent: no automatic reminders/);
+    // the jobs of V1 (Tue) and V2 (Wed) are Rotor's (imported): asked once the CRM completes them after the switch
+    assert.deepEqual(auto["review.sequence"].by_day.map((d) => d.texts), [0, 1, 1, 0]);
+    assert.match(auto["review.sequence"].note, /2 of these are jobs Rotor scheduled: asked once the CRM completes them\. Jobs completed before the switch are never asked\./);
     assert.equal(auto["lead.ack"].kind, "on_activity");
     assert.equal(pv.floor.imported_completed_jobs, 1, "the floor keeps the job Rotor completed out of review requests");
     assert.equal(pv.floor.imported_invoices, 1, "and Rotor's open invoice out of overdue reminders");
@@ -229,7 +232,7 @@ test("preview, switch, the first live morning: seeded markers suppress, the floo
     assert.ok(!sent.some((o) => o.related && o.related.invoice_id === w.inv.id), "no overdue text for Rotor's invoice");
     assert.ok(!sent.some((o) => o.related && o.related.agreement_id === w.ag.id), "Monday's agreement reminder went out from Rotor: suppressed");
     assert.match(alog(t), new RegExp(`visit\\.reminder_2d--${w.V1.id}--skipped-seeded`));
-    assert.match(alog(t), new RegExp(`agreement\\.unsigned--${w.ag.id}--skipped-done`));
+    assert.match(alog(t), new RegExp(`agreement\\.unsigned--${w.ag.id}--skipped-before_floor`), "Rotor's agreement: the floor, no reminder from the CRM");
     assert.deepEqual(t.fetchCalls(), [], "nothing reached the network");
     // a receipt for the payment Rotor already thanked is never sent again (the marker is final)
     const r = await store.getRaw(`done/payment.receipt/${w.pay.id}`);
@@ -238,6 +241,12 @@ test("preview, switch, the first live morning: seeded markers suppress, the floo
     const { runAutomation } = await import("../../../netlify/lib/crm/core/automations.mjs");
     const rv = await runAutomation("review.sequence", { event: { name: "job.completed", event_id: "e1", payload: { job_id: w.done.id, contact_id: w.D.id } } }, { mode: mode });
     assert.match(rv.result, /^skipped:(imported|before_floor)$/);
+    // a job Rotor scheduled that the CRM completes after the switch is asked (step 1 to 3)
+    const v1job = (await store.getRecord("job", w.V1.job_id)).data;
+    assert.ok(v1job.import || v1job.created_by === "import");
+    await store.updateRecord("job", v1job.id, (j) => ({ ...j, status: "completed", completed_at: "2027-01-04T16:00:00.000Z" }), W(owner));
+    const asked = await runAutomation("review.sequence", { event: { name: "job.completed", event_id: "e2", payload: { job_id: v1job.id, contact_id: v1job.contact_id } } }, { mode: mode });
+    assert.equal(asked.result, "queued:3");
   } finally { t.done(); }
 });
 

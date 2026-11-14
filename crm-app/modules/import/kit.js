@@ -115,12 +115,17 @@ const WARN = {
   entrant_no_phone: "Giveaway entrants with no phone", referral_no_contact: "Referrals with no contact", referral_no_phone: "Referrals with no phone",
   stop_without_number: "STOP replies with no number", availability_no_user: "Availability for a member not on the team", rate_no_user: "Pay rates for a member not on the team",
 };
-export const warnLabel = (code) => WARN[code] || String(code || "").replace(/^invalid_/, "Rows refused: ").replace(/_/g, " ");
+// field_dropped_<field>: a row imported without one optional field that didn't pass the checks
+export const warnLabel = (code) => WARN[code]
+  || (String(code || "").startsWith("field_dropped_") ? `Imported without a field that did not pass: ${fieldLabel(String(code).slice(14))}` : "")
+  || String(code || "").replace(/^invalid_/, "Rows refused: ").replace(/_/g, " ");
 
 const FIELDS = {
   first_name: "First name", last_name: "Last name", company_name: "Company", phones: "Phones", emails: "Emails", billing_address: "Address", source: "Source",
   tags: "Tags", notes: "Notes", owner_id: "Owner", watcher_ids: "Also following", lifecycle: "Lifecycle", archived_reason: "Archived because", "flags.vendor": "Vendor",
   kind: "Person or business", label: "Label", address: "Address", rotor: "Rotor ids",
+  "billing_address.zip": "ZIP", "billing_address.street2": "Address line 2", "billing_address.city": "City", "address.zip": "Property ZIP",
+  "address.street2": "Property address line 2", "address.city": "Property city", "source.form": "Lead form", "source.ad": "Ad",
 };
 export const fieldLabel = (f) => FIELDS[f] || String(f || "").replace(/[._]/g, " ");
 export const TYPE_LABEL = { contact: "Contact", property: "Property", user: "Team member" };

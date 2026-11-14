@@ -69,7 +69,7 @@ test("the preview: per day and per automation, seeds, the floor, numbers; sample
       { key: "visit.reminder_2d", label: "Reminder 2 days before", kind: "daily", enabled: true, by_day: [{ ...z, texts: 1 }, z, z, z], total: { ...z, texts: 1 }, note: null, samples: ["REMINDER: Hi <Robin>, see you Tue"] },
       { key: "lead.ack", label: "Thank a new lead by text", kind: "on_activity", enabled: true, by_day: [z, z, z, z], total: z, note: "Only when a new lead comes in after the switch", samples: [] },
     ],
-    seeds: { reminder: 2, overdue: 1, receipt: 1, agreement: 1, unmatched: { reminder: 1 } }, floor: { imported_completed_jobs: 4, imported_invoices: 7 }, sequences: { dry_sends: 3, follow_ups: 2 }, numbers: { job: 885, invoice: 610, quote: 18641 },
+    seeds: { reminder: 2, overdue: 1, receipt: 1, agreement: 1, unmatched: { reminder: 1 } }, floor: { imported_completed_jobs: 4, imported_invoices: 7, imported_unsigned_agreements: 2 }, sequences: { dry_sends: 3, follow_ups: 2 }, numbers: { job: 885, invoice: 610, quote: 18641 },
   };
   const h = text(s.render({ state: { status: "done", approved_at: null }, result }, ctx));
   assert.match(h, /Mon Jan 4/);
@@ -79,6 +79,7 @@ test("the preview: per day and per automation, seeds, the floor, numbers; sample
   assert.match(h, /INV-0610/);
   assert.match(h, /Q-18641/);
   assert.match(h, /4 jobs Rotor completed this past week: never asked/);
+  assert.match(h, /2 agreements Rotor sent: no automatic reminders/);
   assert.match(h, /7 open invoices from Rotor: never reminded/);
   assert.match(h, /Only when a new lead comes in/);
   assert.match(h, /Not matched/);

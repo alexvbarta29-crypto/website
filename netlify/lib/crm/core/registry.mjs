@@ -100,7 +100,9 @@ const SWEEP_KEYS = new Set(["key", "lane", "every", "at_local", "day", "dow", "m
 // recheck(item, actx) → { skip? }: core/automations.mjs asks it when a queued send is due
 const AUTOMATION_KEYS = new Set(["key", "trigger", "category", "imported", "mutates", "defaults", "run", "label", "recheck"]);
 export const AUTOMATION_CATEGORIES = Object.freeze(["service", "marketing", "personal", "staff"]);
-export const AUTOMATION_IMPORTED = Object.freeze(["no", "eligible", "yes"]);
+// "after_switch": an imported subject is eligible only for a fact the CRM records itself at or
+// after the floor (cfg/automations.effective_from) while the CRM is the system of record
+export const AUTOMATION_IMPORTED = Object.freeze(["no", "eligible", "after_switch", "yes"]);
 
 // Merges a module's parts ({ parts: [office, field] }) into one manifest.
 function compose(manifest) {

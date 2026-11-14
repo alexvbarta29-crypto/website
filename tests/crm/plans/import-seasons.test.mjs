@@ -10,6 +10,11 @@
 // by the plan whose install got furthest, the others named on it; one
 // takedown per place; the plan, season and takedown on the customer's own
 // contact id (its placeholder); a second run changes nothing.
+//
+// Since the follow-up fixes a bad optional field (the 2-character ZIP) no
+// longer refuses the row: it imports without the ZIP. The placeholder case
+// is kept with a row refused for a required reason (no name, phone or
+// email), and the next export's good row fills that placeholder in place.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setup, importExport, generate, runner } from "../import/fixtures.mjs";
@@ -57,10 +62,14 @@ function exportWithShapes() {
   const b2 = plan(b, { jobs: [bJob2], active: true, created: "2026-08-01T15:00:00Z" });
   const b3 = plan(b, { created: "2026-07-20T15:00:00Z" });
   bJob1.service_plan_id = b1.id; bJob2.service_plan_id = b2.id;
-  // C: a customer whose own row is refused (a 2-character ZIP) with an empty lights container
+  // C: a customer whose own row is refused (no name, phone or email on the first export) with an
+  // empty lights container; the next export has the row back, with a 2-character ZIP
   const c = customer("Casey", "55");
   const cPlan = plan(c, { created: "2026-08-05T15:00:00Z" });
-  return { ex, a, aEmpty, aReal, aJob, b, b1, b2, b3, bJob1, bJob2, c, cPlan };
+  const cFull = clone(c);
+  Object.assign(c, { first_name: "", last_name: "", company_name: "", email: "", phone: "" });
+  const fixC = () => Object.assign(c, cFull);
+  return { ex, a, aEmpty, aReal, aJob, b, b1, b2, b3, bJob1, bJob2, c, cPlan, fixC };
 }
 
 test("the lead of a place's lights plans: furthest install, then active, then oldest", () => {
@@ -127,7 +136,27 @@ test("two lights plans on one place and year share one season; a refused custome
     assert.equal(takedowns(s.c).length, 1, "and its takedown");
     assert.equal(S.json(`rec/job/${sc.takedown_job_id}`).contact_id, cid);
 
-    // a second run: nothing new, nothing changed
+    // the next export has the customer's row (with a 2-character ZIP): it fills the placeholder in
+    // place (the same id), without the ZIP, and no second contact is made for that customer
+    s.fixC();
+    const contactsBefore = S.keys("rec/contact/").length;
+    const fill = await importExport(t, owner, s.ex);
+    assert.equal(fill.run.status, "done");
+    const st2 = await runner.loadState(fill.ir.id);
+    assert.deepEqual(st2.phases["contacts.customers"].skipped, {}, "the customer row imports");
+    assert.equal(st2.phases["contacts.customers"].warnings["field_dropped_billing_address.zip"], 1);
+    assert.equal(S.keys("rec/contact/").length, contactsBefore, "filled in, not duplicated");
+    const filled = S.json(`rec/contact/${cid}`);
+    assert.equal(filled.flags.placeholder, undefined, "no longer a placeholder");
+    assert.equal(filled.lifecycle, "customer");
+    assert.equal(filled.archived_reason, undefined);
+    assert.equal(filled.first_name, "Casey");
+    assert.ok(filled.phones.length && filled.emails.length);
+    assert.equal(filled.billing_address.zip, "");
+    assert.equal(S.keys("rec/contact/").map((k) => S.json(k)).filter((x) => x.rotor && x.rotor.customer_id === s.c.id).length, 1);
+    assert.equal(S.json(`rec/plan/${idForRotor("plan", s.cPlan.id)}`).contact_id, cid, "the plan stays on it");
+
+    // a further run: nothing new, nothing changed
     const snap = Object.fromEntries(["season_install", "plan", "contact"].flatMap((type) => S.keys(`rec/${type}/`).map((k) => [k, JSON.stringify(S.json(k))])));
     const jobs = S.keys("rec/job/").length;
     const again = await importExport(t, owner, s.ex);

@@ -335,7 +335,7 @@ naming what was left to them. Idempotent.
 | Key | Trigger | What |
 | --- | --- | --- |
 | agreement.sent | event agreement.sent | the link by text and/or email |
-| agreement.unsigned | sweep, daily | a reminder a day for a sent, unsigned agreement, up to 7 |
+| agreement.unsigned | sweep, daily | a reminder a day for a sent, unsigned agreement, up to 7. The import floor applies (`imported: "after_switch"`): an agreement Rotor sent before the switch (`sent_at` before `cfg/automations.effective_from`) gets none (the switch-day in-flight re-request is its one); one the CRM sends after the switch, an imported one sent again included, is reminded |
 | plan.renewal_notice | sweep, daily | for an auto-renewing plan, one notice in the 30 days before its term ends (a price change rides with it); more than 5 at once go as one bulk run |
 | lights.rebook | sweep, on the rebook date | last season's lights customers: a rebook text (one bulk run) and a confirm text for 3-year customers (another); nothing goes until someone tests and confirms it, and no install is made until the customer says yes |
 

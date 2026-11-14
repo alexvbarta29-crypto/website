@@ -5,7 +5,8 @@
 // what (techs nothing).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, staffPlan, customer, planOf, recOf, finishRun, drain, outbox, pin, AG } from "./fixtures.mjs";
+const { getType } = await import("../../../netlify/lib/crm/core/registry.mjs");
+import { setup, staffPlan, customer, importedCustomer, planOf, recOf, finishRun, drain, outbox, pin, AG, store, scope, IMPORT, alog } from "./fixtures.mjs";
 
 test("list, one plan, visits due, the calculator, a price change, the clawback", async () => {
   const { t, owner, admin, tech } = await setup();
@@ -132,5 +133,30 @@ test("agreement.unsigned: a reminder a day for a sent, unsigned agreement, at mo
     assert.equal(reminders.length, 7, "up to 7 times");
     const ag = await recOf("agreement", (await planOf(plan.id)).agreement_id);
     assert.equal(ag.reminders.count, 7);
+  } finally { t.done(); }
+});
+
+test("agreement.unsigned after the switch: an agreement Rotor sent before it gets no automatic reminder; one the CRM sends after it does", async () => {
+  const { t, owner } = await setup();
+  try {
+    const SWITCH = "2026-11-17T14:00:00.000Z";
+    await scope(async () => {
+      await store.putSetting("automations", { effective_from: SWITCH }, { by: owner.id, origin: "worker", actor_kind: "user", requestId: "test" });
+      await store.settledWrite("sys/mode", { system_of_record: "crm", paused: false, cutover_n: 1, cutover_at: SWITCH }, { onlyIfNew: true });
+    });
+    // Rotor's agreement, sent the week before, still unsigned (the import brought it in)
+    const robin = await importedCustomer();
+    const rotorAg = await scope(async () => (await store.createRecord("agreement", { ...getType("agreement").example(), contact_id: robin.id, contact_name: robin.first_name, status: "sent", sent_at: "2026-11-10T16:00:00.000Z", import: { run_id: "ir_00000000000000000001", at: "2026-11-16T00:00:00.000Z", hash: "0".repeat(64) } }, IMPORT)).data);
+    // the CRM's own, sent after the switch
+    const { plan } = await staffPlan(t, owner);
+    await t.api(`/plans/${plan.id}/send-agreement`, { method: "POST", as: owner, body: { channels: ["sms"] } });
+    await drain(t, 2);
+    for (let d = 18; d <= 20; d++) { pin(`2026-11-${d}T16:30:00Z`); await drain(t, 2); }
+    const reminders = outbox(t).filter((o) => o.template_key === "agreement_unsigned");
+    const ownAg = (await planOf(plan.id)).agreement_id;
+    assert.equal(reminders.length, 3, "the CRM's agreement: a reminder a day");
+    assert.ok(reminders.every((o) => o.related && o.related.agreement_id === ownAg));
+    assert.equal(((await recOf("agreement", rotorAg.id)).reminders || {}).count || 0, 0, "Rotor's agreement: none (the in-flight re-request is its one)");
+    assert.ok(alog(t).some((k) => k.includes(`agreement.unsigned--${rotorAg.id}--skipped-before_floor`)));
   } finally { t.done(); }
 });

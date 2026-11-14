@@ -8,6 +8,12 @@
 //                         send (links are bearer secrets, never stored). Not
 //                         a bulk send (per-subject, §5.7.4). An agreement
 //                         requested in a bulk run waits until that run went out.
+//                         The import floor applies (imported "after_switch"): an
+//                         agreement Rotor sent before the switch (sent_at before
+//                         cfg/automations.effective_from) gets no automatic
+//                         reminder, the switch-day in-flight re-request is its
+//                         one; one the CRM sends after the switch (an imported
+//                         one sent again included) is reminded as usual.
 //   plan.renewal_notice   sweep, daily 10:00: 30 days before an auto-renewing
 //                         term ends, a renewal notice (a price-change notice
 //                         when the price changes); more than the bulk threshold
@@ -111,10 +117,14 @@ export async function agreementUnsignedRun(input, actx) {
   const day = input.date || today();
   let queued = 0;
   for (const a of input.agreements || []) {
+    // the floor first: no link is made for an agreement that is not reminded
+    const fact = { fact_at: a.sent_at, record: a };
+    const e = actx.eligible(fact);
+    if (!e.ok) { await actx.log(a.id, `skipped:${e.reason}`); continue; }
     const link = await agreementLink(a);
     const r = await actx.send({
       contact_id: a.contact_id, subject: { type: "agreement", id: a.id }, key: `${a.id}--${day}`, channel: "sms", template_key: "agreement_unsigned",
-      vars: { agreement_link: link.url, plan_name: await planNameOf(a) }, related: { agreement_id: a.id },
+      vars: { agreement_link: link.url, plan_name: await planNameOf(a) }, related: { agreement_id: a.id }, ...fact,
     });
     if (!r.queued) continue;
     queued += 1;
@@ -230,7 +240,7 @@ export const automations = [
     defaults: { enabled: true, channels: ["sms", "email"], template_keys: ["agreement_sent", "agreement_sent_email"] }, run: agreementSentRun, recheck: agreementRecheck,
   },
   {
-    key: "agreement.unsigned", label: "Unsigned agreement reminders", trigger: "sweep", category: "service", imported: "no", mutates: true,
+    key: "agreement.unsigned", label: "Unsigned agreement reminders", trigger: "sweep", category: "service", imported: "after_switch", mutates: true,
     defaults: { enabled: true, channels: ["sms"], template_keys: ["agreement_unsigned"] }, run: agreementUnsignedRun, recheck: agreementRecheck,
   },
   {

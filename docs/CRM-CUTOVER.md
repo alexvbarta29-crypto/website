@@ -78,10 +78,17 @@ leave out:
   the date they name), overdue texts (the invoice they name), receipts (the
   payment that day) and agreement reminders count as sent;
 - anything the import brought in that was done or due before the switch:
-  jobs Rotor completed are never asked for a review, and Rotor's invoices
-  are never sent overdue reminders (they go in the in-flight list instead);
+  jobs Rotor completed are never asked for a review, Rotor's invoices
+  are never sent overdue reminders, and agreements Rotor sent get no
+  automatic unsigned reminders (both go in the in-flight list instead: the
+  switch-day re-request is their one);
 - follow-ups and sends that were waiting in dry-run: they are cancelled at
   the switch, never resumed.
+
+Jobs Rotor scheduled are counted with review requests: once the CRM
+completes them after the switch, the customer is asked like for any CRM
+job. An agreement the CRM sends after the switch gets its daily reminders
+(up to 7) as usual.
 
 It also shows the next job, invoice and quote numbers (they continue after
 Rotor's), and lists the automations that only run on new activity (a new

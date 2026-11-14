@@ -1348,7 +1348,11 @@ Modules declare automations in their manifests; the engine gives them
 settings (`cfg/automations.{key}`), eligibility (the triggering fact at or
 after `cfg/automations.effective_from`, written at cutover; nothing the
 import created unless the automation says `imported: "eligible"`, and then
-only for subjects still in the future), the step marker (never twice), the
+only for subjects still in the future, or `imported: "after_switch"`, and
+then only for a fact at or after a floor that is set while the CRM is the
+system of record: review requests for a job Rotor scheduled that the CRM
+completes, unsigned-agreement reminders for an agreement the CRM sends),
+the step marker (never twice), the
 parallel-run guard (would- rows) and the run log (`alog/`). Event-triggered
 automations are queued by the event dispatcher (marker
 `done/evt/{event_id}--auto.{key}`); a send is a queue item

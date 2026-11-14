@@ -21,7 +21,10 @@
 //   queued at once; each is re-checked when it is due and skipped when the
 //   customer replied, opted out, was matched to a review, or was asked in
 //   the last 180 days. Before cutover every step is dry-run (the Outbox)
-//   and imported jobs are never asked (they were completed before the floor).
+//   and imported jobs are never asked. After the switch an imported job (one
+//   Rotor scheduled) is asked when the CRM completes it at or after the
+//   floor (cfg/automations.effective_from); one completed before the floor
+//   never is, and none is while Rotor is the system of record (a rollback).
 
 import { createRecord, updateRecord, getRecord, readIndex, readPointer, getSetting, getRaw, putRaw, updateStats, addActivity, ExistsError } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
@@ -172,7 +175,7 @@ const serviceWords = (job) => {
 };
 
 export const reviewSequence = {
-  key: "review.sequence", label: "Review requests", trigger: "event:job.completed", category: "service", imported: "no", mutates: false,
+  key: "review.sequence", label: "Review requests", trigger: "event:job.completed", category: "service", imported: "after_switch", mutates: false,
   defaults: { enabled: true, channels: ["sms"], template_keys: ["review_1", "review_2", "review_3"], delay: 90, max_per_contact_days: 180 },
   async run(input, actx) {
     const p = (input.event && input.event.payload) || {};

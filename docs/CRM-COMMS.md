@@ -81,7 +81,7 @@ The CRM only reads Google reviews. It never replies and never posts: public word
 
 - `reviews.poll` (hourly; only when the reviews integration is live on the production deploy with Google's keys) stores new reviews with suggested matches: jobs completed in the 21 days before the review whose contact's name fits the reviewer's display name.
 - A match is a person's tap. It sets the contact's `review_left_at`, stops that contact's review sequence, credits the job's techs and emits `review.matched`.
-- `review.sequence` (automation, trigger `job.completed`): three texts (`review_1` about 90 minutes later inside 09:00 to 19:00, `review_2` on day 3 at 11:00, `review_3` on day 8 at 11:00). Each step is checked again when due and skipped when the customer replied, opted out, was matched to a review, or was asked in the last 180 days. Not for touch-ups, warranty work or lights takedowns. Before cutover every step is a dry run and imported jobs are never asked.
+- `review.sequence` (automation, trigger `job.completed`): three texts (`review_1` about 90 minutes later inside 09:00 to 19:00, `review_2` on day 3 at 11:00, `review_3` on day 8 at 11:00). Each step is checked again when due and skipped when the customer replied, opted out, was matched to a review, or was asked in the last 180 days. Not for touch-ups, warranty work or lights takedowns. Before cutover every step is a dry run and imported jobs are never asked. After the switch a job Rotor scheduled (imported) is asked when the CRM completes it at or after `cfg/automations.effective_from` (`imported: "after_switch"`); one completed before the switch never is, and none is while Rotor is the system of record again (a rollback).
 
 ## Settings
 
