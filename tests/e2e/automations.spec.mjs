@@ -55,8 +55,25 @@ for (const device of (process.env.E2E_DEVICES || "iphone13,desk1440").split(",")
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, "/automations");
-      await viewHas(f, /Your automations/);
-      assert.match(await f.textContent("#view"), /Review request after a visit[\s\S]*2 runs/);
+      await viewHas(f, /All folders/);
+      assert.equal(await title(f), "Workflows");
+      // Flyra's folders by object: the seeded one (a visit is finished) under Jobs, with the built-in visit texts; All · On · Off tiles
+      assert.match(await f.textContent("#view"), /Jobs[\s\S]*Review request after a visit[\s\S]*2 runs/);
+      assert.deepEqual(await f.$$eval("#view [data-tile=au]", (els) => els.map((e) => e.dataset.key)), ["all", "on", "off"]);
+      await f.click("[data-folder-pick]");
+      await f.waitForSelector('.sheet.on [data-folder-key="estimates"]');
+      assert.deepEqual(await screenProblems(f), [], "the folder sheet");
+      await f.click('.sheet.on [data-folder-key="jobs"]');
+      await f.waitForFunction(() => /Jobs/.test(document.querySelector("[data-folder-pick]").textContent));
+      assert.doesNotMatch(await f.textContent("#view"), /Send the quote link/, "one folder: Estimates' built-ins are not here");
+      await f.click('#view [data-tile=au][data-key="off"]');
+      await f.waitForFunction(() => document.querySelector('#view [data-tile=au][data-key="off"]').getAttribute("aria-pressed") === "true");
+      assert.equal(await f.$("#view [data-flow-toggle][aria-checked=true], #view [data-toggle][aria-checked=true]"), null, "Off shows only what is off");
+      await f.click('#view [data-tile=au][data-key="off"]');
+      await f.click("[data-folder-pick]");
+      await f.waitForSelector(".sheet.on .rs-act-l");
+      await f.click(".sheet.on .rs-act-l");
+      await f.waitForFunction(() => /All folders/.test(document.querySelector("[data-folder-pick]").textContent));
       assert.deepEqual(await screenProblems(f), [], "the list passes the phone checks");
       await shot(page, `automations-list-${device}`);
       // New automation → Quote follow-up

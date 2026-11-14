@@ -51,6 +51,10 @@ export async function seedComms(out, O) {
   const cur = await store.getSettingWithEtag("messaging_test");
   await store.putSetting("messaging_test", { contact_id: tester.id }, { ...O, ifMatch: cur.etag || "new" });
 
+  // team inboxes (leads land in Sales by themselves) and two business numbers (the composer's From chip)
+  await store.putSetting("inboxes", { list: [{ name: "Sales", member_ids: [out.users.owner.id], match: { lifecycle: ["lead"] } }, { name: "Service", member_ids: [], match: { lifecycle: ["customer"] } }] }, { ...O, ifMatch: "new" });
+  await store.putSetting("engagement", { numbers: [{ e164: "+17635550101", label: "Main", default_for: ["inbox", "automations", "dialer"] }, { e164: "+17635550102", label: "Sales" }], email_from: "" }, { ...O, ifMatch: "new" });
+
   out.comms = { conversation: done.conversation.id, email: emailConv.id, open: open.conversation.id, tech: techThread.conversation.id, customer: customer.id, lead: lead.id, onVisit: onVisit.id, campaign: draft.data.id, rotorCampaign: rotor.data.id, review: review.data.id, tester: tester.id,
     names: { customer: `${customer.first_name} ${customer.last_name}`, lead: `${lead.first_name} ${lead.last_name}`, onVisit: `${onVisit.first_name} ${onVisit.last_name}` } };
   return out.comms;

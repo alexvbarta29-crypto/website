@@ -20,7 +20,7 @@ import { fromTsKey, now, nowIso } from "../../core/clock.mjs";
 import { keySafe } from "../../core/text.mjs";
 import { listTemplates } from "../../core/templates.mjs";
 import { contactShard } from "../../core/stats.mjs";
-import { cleanFlow, summarize, TRIGGERS, FIELDS, OPS, STEP_TYPES, SERVICES, PLAN_TYPES, LIFECYCLES, STATUSES, STATUS_LABELS, DEAL_STAGES, WHO, RECIPES, NOT_YET, WAIT_UNITS, MAX_STEPS } from "./catalog.mjs";
+import { cleanFlow, cleanFolder, folderOf, FOLDERS, FOLDER_RULES, summarize, TRIGGERS, FIELDS, OPS, STEP_TYPES, SERVICES, PLAN_TYPES, LIFECYCLES, STATUSES, STATUS_LABELS, DEAL_STAGES, WHO, RECIPES, NOT_YET, WAIT_UNITS, MAX_STEPS } from "./catalog.mjs";
 import { simulate, flowSettings, FLOW_SETTINGS } from "./engine.mjs";
 
 const r = (method, path, handler, more = {}) => ({ method, path, auth: "session", perm: "automations:configure", subject: path.includes(":id") ? "required" : "none", mode: "inline", handler, ...more });
@@ -76,7 +76,7 @@ function problemsOf(flow, ch) {
 
 const view = (f, ch) => ({
   id: f.id, name: f.name, enabled: f.enabled === true, trigger: f.trigger, conditions: f.conditions, steps: f.steps, stop: f.stop, limits: f.limits,
-  recipe: f.recipe || null, auto_paused: f.auto_paused || null, created_at: f.created_at, updated_at: f.updated_at, wv: f.wv,
+  folder: folderOf(f), recipe: f.recipe || null, auto_paused: f.auto_paused || null, created_at: f.created_at, updated_at: f.updated_at, wv: f.wv,
   summary: summarize(f, labelsOf(ch)), problems: problemsOf(f, ch),
 });
 
@@ -114,6 +114,9 @@ async function list() {
       flows: flows.map((f, i) => ({ ...view(f, ch), ...counts[i] })).sort((a, b) => a.name.localeCompare(b.name)),
       recipes: RECIPES.map((x) => ({ key: x.key, label: x.label, blurb: x.blurb, summary: summarize(cleanFlow(x.flow), labels) })),
       catalog: CATALOG, choices: ch, settings: { ...FLOW_SETTINGS, ...settings },
+      // the Workflows list's folders (Flyra's objects, then the names people made) and how a built-in one is filed
+      folders: [...FOLDERS.map(([key, label]) => ({ key, label })), ...[...new Set(flows.map((f) => f.folder).filter((x) => x && !FOLDERS.some(([k]) => k === x)))].sort().map((x) => ({ key: x, label: x, own: true }))],
+      folder_rules: FOLDER_RULES,
     },
   };
 }
@@ -156,6 +159,19 @@ async function patch(ctx) {
     return next;
   }, { ...ctx.write(), ifMatch: ctx.ifMatch });
   return { data: { flow: view(r2.data, ch) }, etag: r2.etag };
+}
+
+// Into another folder (a long press, Move to folder); null puts it back in its trigger's.
+async function moveFolder(ctx) {
+  const cur = await live(ctx.params.id);
+  const folder = cleanFolder((ctx.body || {}).folder);
+  const r2 = await updateRecord("flow", cur.data.id, (f) => {
+    if ((f.folder || null) === folder) return null;
+    const next = { ...f };
+    if (folder) next.folder = folder; else delete next.folder;
+    return next;
+  }, ctx.write());
+  return { data: { flow: view(r2.data, await choices()) }, etag: r2.etag };
 }
 
 const setOn = (on) => async (ctx) => {
@@ -263,6 +279,7 @@ export const flowRoutes = [
   r("POST", "/automations/flows/test", test, { maxCalls: 80, idempotent: false }),
   r("GET", "/automations/flows/:id", one, { maxCalls: 40 }),
   r("PATCH", "/automations/flows/:id", patch, { maxCalls: 40 }),
+  r("POST", "/automations/flows/:id/folder", moveFolder, { maxCalls: 40 }),
   r("POST", "/automations/flows/:id/pause", setOn(false), { maxCalls: 40 }),
   r("POST", "/automations/flows/:id/resume", setOn(true), { maxCalls: 40 }),
   r("POST", "/automations/flows/:id/duplicate", duplicate, { maxCalls: 40 }),
