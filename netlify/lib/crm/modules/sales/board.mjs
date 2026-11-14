@@ -10,9 +10,12 @@
 //        (Rotor's board-only pipelines) just changes stage. Logged in the
 //        history as moved_by_hand. An imported follow-up stays Rotor's
 //        until the switch (409 parallel_run): only CRM-made ones move now.
+//   GET  /tasks/done?days=14           the Tasks board's Done column: the
+//        tasks done in the last N days (at most 60), newest first; a
+//        technician sees their own (without the customer).
 
 import { readIndex } from "../../../crm-store.mjs";
-import { nowIso } from "../../core/clock.mjs";
+import { nowIso, nowMs } from "../../core/clock.mjs";
 import { InputError, ConflictError } from "../../core/errors.mjs";
 import { guardFor } from "../../core/context.mjs";
 import { readSysMode } from "../../core/settings.mjs";
@@ -88,9 +91,25 @@ async function moveRoute(ctx) {
   return { data: { moved: !!r.changed, step_n: r.data.step_n } };
 }
 
+export const DONE_DAYS_MAX = 60;
+async function doneTasksRoute(ctx) {
+  const days = Math.min(DONE_DAYS_MAX, Math.max(1, Number(ctx.query.get("days")) || 14));
+  const since = new Date(nowMs() - days * 86400000).toISOString();
+  const months = new Set([since.slice(0, 7), nowIso().slice(0, 7)]);
+  let d = since.slice(0, 7);
+  while (d < nowIso().slice(0, 7)) { const [y, m] = d.split("-").map(Number); d = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`; months.add(d); }
+  const shards = await Promise.all([...months].map((mo) => readIndex("tasks/done", mo)));
+  const office = ctx.holds("tasks:read") === true;
+  const rows = shards.flatMap((x) => x.rows).filter((r) => r.dn >= since && (office || (r.a || []).includes(ctx.user.id)))
+    .sort((a, b) => String(b.dn).localeCompare(String(a.dn)))
+    .map((r) => ({ id: r.id, title: r.t, kind: r.k, priority: r.pr, status: "done", due_at: r.due, done_at: r.dn, assignee_ids: r.a || [], contact_id: office ? r.c : null, contact_name: office ? r.cn : "" }));
+  return { data: rows.slice(0, 200) };
+}
+
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 
 export const boardRoutes = [
   R("GET", "/leads", "sales:work", "none", leadsRoute, { maxCalls: 20 }),
   R("POST", "/enrollments/:id/move", "sales:work", "required", moveRoute, { maxCalls: 40 }),
+  R("GET", "/tasks/done", "tasks:read", "required", doneTasksRoute, { maxCalls: 20 }),
 ];

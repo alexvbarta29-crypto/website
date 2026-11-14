@@ -92,3 +92,27 @@ test("GET /leads, POST /enrollments/:id/move, a board-only add, ?cadence=all", a
     void AS;
   } finally { t.done(); }
 });
+
+test("the Tasks board: a task moves Open → In Progress → Waiting → Done; GET /tasks/done has the recent ones; a tech sees their own", async () => {
+  const { t, owner, tech } = await setup();
+  try {
+    const mk = await t.api("/tasks", { method: "POST", as: owner, body: { title: "Call about the gutters", assignee_ids: [tech.id] } });
+    assert.equal(mk.status, 201, JSON.stringify(mk.body));
+    const id = mk.body.data.task.id;
+    const other = (await t.api("/tasks", { method: "POST", as: owner, body: { title: "Office only", assignee_ids: [owner.id] } })).body.data.task.id;
+    for (const status of ["in_progress", "waiting", "done"]) {
+      const g = await t.api(`/tasks/${id}`, { as: owner });
+      const p = await t.api(`/tasks/${id}`, { method: "PATCH", as: owner, ifMatch: g.headers.get("etag"), body: { status } });
+      assert.equal(p.status, 200, JSON.stringify(p.body));
+      assert.equal(p.body.data.task.status, status);
+    }
+    await t.api(`/tasks/${other}/done`, { method: "POST", as: owner, body: {} });
+    const d = await t.api("/tasks/done", { as: owner });
+    assert.equal(d.status, 200, JSON.stringify(d.body));
+    assert.deepEqual(d.body.data.map((x) => x.id).sort(), [id, other].sort());
+    const mine = await t.api("/tasks/done", { as: tech });
+    assert.equal(mine.status, 200, JSON.stringify(mine.body));
+    assert.deepEqual(mine.body.data.map((x) => x.id), [id], "a tech: their own");
+    assert.equal((await t.api("/tasks/open", { as: owner })).status !== 500, true);
+  } finally { t.done(); }
+});

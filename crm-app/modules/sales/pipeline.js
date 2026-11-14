@@ -1,24 +1,32 @@
-// Pipeline (the Nov 2026 layout, after Rotor's Pipeline; the Sales tab's
-// first screen): a pipeline is one of the follow-up cadences (Rotor's
-// imported pipelines, like Referrals, are board-only cadences), its stages
-// the cadence's steps or board stages. A dropdown picks the pipeline; a
-// list / board toggle (coral when on). List: cards with the name, the
-// status (Open, Paused), the type (Lead, Customer), the stage, VALUE (the
-// open deal) and DUE, and call, text and convert. Board: a column per stage
-// ("New 57 · $0"; "No opportunities" when empty) scrolling sideways, cards
-// with a blue edge, the name, Open, the type and the amount. Moving a card on
-// (dragging it to the next column on a desk, or Move on a phone) marks its
-// step done by hand (POST /enrollments/:id/advance), as the follow-up screen
-// does; a board-only pipeline's stages are Rotor's and stay read-only here.
+// Pipelines (guide-gaps §2.7 P1-P10, Rotor's Pipelines): a pipeline is one
+// of the follow-up cadences (Rotor's imported pipelines, like Giveaway, are
+// board-only cadences), its stages the cadence's steps or a board's stages.
+// The picker on top ("New Lead ⌄") opens a sheet of the pipelines and All
+// pipelines (which lists everyone, grouped by pipeline). Two views under the
+// section's tabs, List | Board (#/pipeline?view=list|board):
+//
+//   List   two-line rows: the name and the value; the stage · due, Open or
+//          Paused, Lead or Customer; a round call; a long press: Text,
+//          Convert, Move to a stage.
+//   Board  a stage strip with counts, swiped columns with their $; a card's
+//          Move opens the stage sheet: any stage, forward or back (POST
+//          /enrollments/:id/move: the steps skipped send nothing). Rotor's
+//          own follow-ups stay as Rotor has them until the switch.
+//
+// The filter sheet: Open or Paused, Lead or Customer, due today. "...": Add
+// someone (a contact into this pipeline), Manage pipelines.
 
-import { html, icon, attrs, sheet, toast } from "../../core/ui.js";
-import { money, dateShort } from "../../core/format.js";
+import { html, icon, attrs, toast, board as kitBoard, boardCard, boardMount, moveSheet, listRow, listCard, filterSheet, actionSheet, pillTap } from "../../core/ui.js";
+import { money, dateShort, localDate } from "../../core/format.js";
+import { pickContact, pickFrom } from "../../core/pickers.js";
 import { ensureStyles, telHref } from "./kit.js";
 import { convertSheet } from "./leads.js";
 import { screenButtons } from "../../core/nav.js";
 
 const $ = (c) => money(c || 0).replace(/\.00$/, "");
 const phoneOf = (r) => (r && r.p && r.p[0] ? (String(r.p[0]).length === 10 ? "+1" + r.p[0] : String(r.p[0])) : "");
+const viewOf = () => { try { return new URLSearchParams((location.hash.split("?")[1]) || "").get("view") === "board" ? "board" : "list"; } catch (e) { return "list"; } };
+const ALL = "__all";
 
 // The stages of a pipeline and its cards in them (pure, for the tests).
 export function board(cadence, rows = [], { deals = [], index = [] } = {}) {
@@ -29,7 +37,7 @@ export function board(cadence, rows = [], { deals = [], index = [] } = {}) {
   for (const e of rows) {
     const d = deal.get(e.c);
     const c = who.get(e.c);
-    const card = { id: e.id, contact_id: e.c, name: e.cn || (c && c.n) || "Someone", status: e.st === "paused" ? "Paused" : "Open", type: c && c.lc === "customer" ? "Customer" : "Lead", stage: e.lbl || "", value: d && Number.isSafeInteger(d.v) ? d.v : 0, due: e.due || null, phone: phoneOf(c), step: e.n || 1 };
+    const card = { id: e.id, contact_id: e.c, name: e.cn || (c && c.n) || "Someone", status: e.st === "paused" ? "Paused" : "Open", type: c && c.lc === "customer" ? "Customer" : "Lead", stage: e.lbl || "", value: d && Number.isSafeInteger(d.v) ? d.v : 0, due: e.due || null, phone: phoneOf(c), step: e.n || 1, cad: e.cad || null };
     const at = stages.find((s) => s.name === e.lbl) || stages[Math.min(Math.max((e.n || 1) - 1, 0), stages.length - 1)];
     at.cards.push(card);
   }
@@ -37,93 +45,150 @@ export function board(cadence, rows = [], { deals = [], index = [] } = {}) {
   return stages;
 }
 
-const listCard = (c) => html`<li class="lc" ${attrs({ "data-card": c.id })}><a class="lc-top" ${attrs({ href: "#/enrollments/" + encodeURIComponent(c.id) })}>
-  <span class="lc-nm">${c.name}</span><span class="lc-pills"><span ${attrs({ class: "pp-st" + (c.status === "Paused" ? " paused" : "") })}>${c.status}</span><span class="lc-stage">${c.type}</span></span>${c.stage ? html`<span class="lc-row2"><span class="pp-stage">${c.stage}</span></span>` : ""}</a>
-  <div class="lc-band"><span class="cc-k"><small>Value</small><b>${$(c.value)}</b></span><span class="cc-k"><small>Due</small><b>${c.due ? dateShort(c.due) : "-"}</b></span>
-    <span class="cc-acts">${c.phone ? html`<a class="rnd" ${attrs({ href: telHref(c.phone), "aria-label": `Call ${c.name}` })}>${icon("call")}</a><a class="rnd" ${attrs({ href: "sms:" + c.phone, "aria-label": `Text ${c.name}` })}>${icon("chat")}</a>` : ""}<button type="button" class="rnd ink" ${attrs({ "data-convert": c.contact_id, "aria-label": `Convert ${c.name}` })}>${icon("swap")}</button></span></div></li>`;
+// The filter (pure): open or paused, lead or customer, due today; and the search.
+export function shownCards(cards, { q = "", f = {} } = {}, today = localDate(new Date())) {
+  const w = String(q || "").trim().toLowerCase();
+  return cards.filter((c) => (!w || c.name.toLowerCase().includes(w))
+    && (!f.st || (f.st === "paused" ? c.status === "Paused" : c.status === "Open"))
+    && (!f.type || c.type === (f.type === "customer" ? "Customer" : "Lead"))
+    && (!f.today || (c.due && String(c.due).slice(0, 10) <= today)));
+}
 
-const boardCard = (c, movable) => html`<li class="pp-card" ${attrs({ "data-card": c.id, draggable: movable ? "true" : null })}><a ${attrs({ href: "#/enrollments/" + encodeURIComponent(c.id) })}>
-  <span class="pp-top"><span class="pp-nm">${c.name}</span><span ${attrs({ class: "pp-st" + (c.status === "Paused" ? " paused" : "") })}>${c.status}</span></span>
-  <span class="pp-bot"><span>${c.type}</span><b class="num">${$(c.value)}</b></span></a>${movable ? html`<button type="button" class="pp-move" ${attrs({ "data-move": c.id })}>Move on</button>` : ""}</li>`;
+const cardRow = (c, cadName) => listRow({
+  title: c.name, amount: c.value || null, sub: [cadName, c.stage, c.due ? `due ${dateShort(c.due).replace(/^[A-Za-z]+, /, "")}` : ""].filter(Boolean).join(" · "),
+  tag: c.type, pill: c.status === "Paused" ? "Paused" : { label: "Open", tone: "blue" }, href: "#/enrollments/" + encodeURIComponent(c.id),
+  action: c.phone ? { icon: "call", label: `Call ${c.name}`, href: telHref(c.phone) } : null, hold: { "pp-more": c.id },
+});
+const card = (c) => boardCard({
+  title: c.name, pill: c.status === "Paused" ? "Paused" : { label: "Open", tone: "blue" }, sub: `${c.type} · ${$(c.value)}`, meta: c.due ? `Due ${dateShort(c.due).replace(/^[A-Za-z]+, /, "")}` : "",
+  href: "#/enrollments/" + encodeURIComponent(c.id), move: { data: { move: c.id } },
+  action: c.phone ? { icon: "call", label: `Call ${c.name}`, href: telHref(c.phone) } : null, hold: { "pp-more": c.id },
+});
 
 export default {
   title: "Pipeline",
   async load(params, ctx) {
     ensureStyles();
     const cads = (await ctx.api("/cadences")).data || [];
-    const pick = cads.find((c) => c.id === ctx.keep.pipe) || cads.find((c) => c.active) || cads[0] || null;
-    if (!pick) return { cads, pick: null, stages: [], view: ctx.keep.view || "list", q: "" };
+    const all = ctx.keep.pipe === ALL;
+    const pick = all ? null : cads.find((c) => c.id === ctx.keep.pipe) || cads.find((c) => c.active) || cads[0] || null;
+    const base = { cads, all, pick, view: all ? "list" : viewOf(), q: ctx.keep.q || "", find: !!ctx.keep.q, f: ctx.keep.f || {} };
+    if (!pick && !all) return { ...base, stages: [] };
     const [cad, rows, deals, ix] = await Promise.all([
-      ctx.api(`/cadences/${encodeURIComponent(pick.id)}`).then((r) => r.data.cadence),
-      ctx.api(`/enrollments?cadence=${encodeURIComponent(pick.key)}`, { cache: false }).then((r) => r.data || []),
+      all ? null : ctx.api(`/cadences/${encodeURIComponent(pick.id)}`).then((r) => r.data.cadence),
+      ctx.api(`/enrollments?cadence=${all ? "all" : encodeURIComponent(pick.key)}`, { cache: false }).then((r) => r.data || []),
       ctx.api("/deals", { cache: false }).then((r) => r.data || []).catch(() => []),
       ctx.api("/contacts/index").then((r) => (r.data && r.data.rows) || []).catch(() => []),
     ]);
-    return { cads, pick, board_only: !!cad.board_only, stages: board(cad, rows, { deals, index: ix }), view: ctx.keep.view || "list", q: ctx.keep.q || "", find: !!ctx.keep.q };
+    if (all) {
+      // every pipeline as a group (each its own stages)
+      const groups = cads.map((c) => ({ cad: c, cards: board({ board_only: true, board_stages: [] }, rows.filter((e) => e.cad === c.key), { deals, index: ix }).flatMap((s) => s.cards) })).filter((g) => g.cards.length);
+      return { ...base, groups, stages: [] };
+    }
+    return { ...base, cad, board_only: !!cad.board_only, stages: board(cad, rows, { deals, index: ix }) };
   },
-  render(s) {
-    const movable = !s.board_only;
-    const q = String(s.q || "").trim().toLowerCase();
-    const cards = s.stages.flatMap((st) => st.cards).filter((c) => !q || c.name.toLowerCase().includes(q));
-    return html`<div class="stack pp-page">
-      <label class="${"ld-search" + (s.find ? " open" : "")}">${icon("search")}<span class="sr">Search this pipeline</span><input type="search" data-pq ${attrs({ value: s.q || "", placeholder: "Search this pipeline", autocomplete: "off" })}></label>
-      <div class="pp-bar">
-        <label class="pp-pick"><span class="sr">Pipeline</span><select data-pipe>${s.cads.map((c) => html`<option ${attrs({ value: c.id, selected: !!s.pick && c.id === s.pick.id })}>${c.name}</option>`)}</select></label>
-        <div class="pp-toggle" role="group" aria-label="View"><button type="button" ${attrs({ "data-view": "list", "aria-pressed": String(s.view === "list"), "aria-label": "List" })}>${icon("list")}</button><button type="button" ${attrs({ "data-view": "board", "aria-pressed": String(s.view === "board"), "aria-label": "Board" })}>${icon("grid")}</button></div>
-      </div>
-      ${!s.pick ? html`<div class="card empty"><h2>No pipelines yet</h2><p>Follow-ups (Settings, Cadences) and Rotor's pipelines show here.</p></div>`
-        : s.view === "board" ? html`<div class="pp-board" data-board>${s.stages.map((st) => html`<section class="pp-col" ${attrs({ "data-stage": String(st.n) })}><h3 class="pp-ch"><span>${st.name}</span><span class="pp-cnt">${String(st.cards.length)}</span></h3><p class="pp-tot">${$(st.total)}</p>
-            ${st.cards.length ? html`<ul class="pp-cards">${st.cards.map((c) => boardCard(c, movable))}</ul>` : html`<p class="pp-none">No opportunities</p>`}</section>`)}</div>`
-        : cards.length ? html`<ul class="cc-list">${cards.map((c) => listCard(c))}</ul>` : html`<div class="card empty"><h2>Nobody in this pipeline</h2><p>Start a follow-up from a contact to add them.</p></div>`}
-      ${s.board_only ? html`<p class="small muted">Rotor's pipeline: its stages stay as Rotor had them.</p>` : ""}
+  render(s, ctx) {
+    const name = s.all ? "All pipelines" : s.pick ? s.pick.name : "No pipelines";
+    const picker = html`<div class="pp-bar">${pillTap(name, { icon: "pipeline", data: { "pipe-pick": true }, aria: `Pipeline: ${name}. Change` })}</div>`;
+    const search = html`<label class="${"ld-search" + (s.find ? " open" : "")}">${icon("search")}<span class="sr">Search this pipeline</span><input type="search" data-pq ${attrs({ value: s.q || "", placeholder: "Search this pipeline", autocomplete: "off" })}></label>`;
+    if (!s.pick && !s.all) return html`<div class="stack pp-page">${picker}<div class="card empty"><h2>No pipelines yet</h2><p>Follow-ups (Manage pipelines) and Rotor's pipelines show here.</p></div></div>`;
+    if (s.all) {
+      const groups = (s.groups || []).map((g) => ({ ...g, cards: shownCards(g.cards, s) })).filter((g) => g.cards.length);
+      return html`<div class="stack pp-page">${search}${picker}
+        ${groups.length ? groups.map((g) => html`<h3 class="rs-label">${g.cad.name} · ${String(g.cards.length)}</h3>${listCard(g.cards.map((c) => cardRow(c, "")))}`) : html`<div class="rs-card"><p class="rs-empty">Nobody in a pipeline${s.q ? " matches" : ""}.</p></div>`}
+      </div>`;
+    }
+    const stages = s.stages.map((st) => ({ ...st, cards: shownCards(st.cards, s) }));
+    if (s.view === "board") {
+      return html`<div class="stack pp-page">${search}${picker}
+        ${kitBoard({ name: "pipe", label: name, on: ctx.keep.col || null, columns: stages.map((st) => ({ key: String(st.n), label: st.name, count: st.cards.length, amount: st.cards.reduce((n, c) => n + c.value, 0) || null, empty: "No opportunities", cards: st.cards.slice(0, 150).map(card) })) })}
+      </div>`;
+    }
+    const cards = stages.flatMap((st) => st.cards);
+    return html`<div class="stack pp-page">${search}${picker}
+      ${listCard(cards.slice(0, 300).map((c) => cardRow(c, "")), { label: name, empty: s.q ? "Nobody matches." : "Nobody in this pipeline. Add someone from the ... button, or start a follow-up from a contact." })}
     </div>`;
   },
   mount(view, s, ctx) {
-    // (a phone: Rotor's round search button on top; the field opens in place)
-    screenButtons([{ key: "find", icon: "search", label: "Search this pipeline", on: s.find, expanded: s.find }], () => {
-      s.find = !s.find || !!s.q;
-      ctx.rerender();
-      if (s.find) { const i = document.querySelector("[data-pq]"); if (i) i.focus(); }
-    });
-    const b = view.querySelector("[data-board]");
-    if (!b || s.board_only) return;
-    let dragging = null;
-    b.addEventListener("dragstart", (e) => { const li = e.target.closest("[data-card]"); dragging = li ? li.dataset.card : null; if (dragging && e.dataTransfer) e.dataTransfer.setData("text/plain", dragging); });
-    b.addEventListener("dragover", (e) => { if (dragging && e.target.closest("[data-stage]")) e.preventDefault(); });
-    b.addEventListener("drop", (e) => {
-      const col = e.target.closest("[data-stage]");
-      if (!col || !dragging) return;
-      e.preventDefault();
-      moveTo(ctx, dragging, Number(col.dataset.stage));
-      dragging = null;
+    if (s.view === "board") boardMount(view);
+    const f = s.f || {};
+    const on = !!(f.st || f.type || f.today);
+    screenButtons([
+      { key: "find", icon: "search", label: "Search this pipeline", on: s.find, expanded: s.find },
+      { key: "filter", icon: "filter", label: on ? "Filter (on)" : "Filter", on },
+      { key: "more", icon: "more", label: "More" },
+    ], async (key) => {
+      if (key === "find") { s.find = !s.find || !!s.q; ctx.rerender(); if (s.find) { const i = document.querySelector("[data-pq]"); if (i) i.focus(); } return; }
+      if (key === "more") { actionSheet("Pipelines", pipeMore(s, ctx)); return; }
+      const v = await filterSheet({ title: "Filter", values: f, groups: [
+        { key: "st", label: "Status", type: "radio", options: [["open", "Open"], ["paused", "Paused"]] },
+        { key: "type", label: "Who", type: "radio", options: [["lead", "Leads"], ["customer", "Customers"]] },
+        { key: "today", label: "Due", type: "toggle", text: "Due today or late" },
+      ] });
+      if (v) { s.f = ctx.keep.f = v; ctx.rerender(); }
     });
   },
+  more: (s, ctx) => pipeMore(s, ctx),
   events: {
     "input [data-pq]": (e, el, ctx) => {
       ctx.state.q = ctx.keep.q = el.value;
       clearTimeout(ctx.state.t);
       ctx.state.t = setTimeout(() => { const pos = el.selectionStart; ctx.rerender(); const i = document.querySelector("[data-pq]"); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (x) { /* fine */ } } }, 150);
     },
-    "change [data-pipe]": (e, el, ctx) => { ctx.keep.pipe = el.value; ctx.refresh(); },
-    "click [data-view]": (e, el, ctx) => { ctx.keep.view = el.dataset.view; ctx.state.view = el.dataset.view; ctx.rerender(); },
-    "click [data-convert]": (e, el, ctx) => convertSheet(ctx, el.dataset.convert),
-    "click [data-move]": (e, el, ctx) => {
-      const card = ctx.state.stages.flatMap((st) => st.cards).find((c) => c.id === el.dataset.move);
-      if (!card) return;
-      const next = ctx.state.stages.find((st) => st.n === card.step + 1);
-      const sh = sheet({
-        title: `Move ${card.name}`,
-        body: html`<p class="muted">${next ? `On to "${next.name}": this marks "${card.stage || "this step"}" done by hand.` : "This is the last stage."}</p>${next ? html`<div class="btn-row"><button type="button" class="btn primary" data-go>Move on</button></div>` : ""}`,
-        events: { "click [data-go]": () => { sh.close(); moveTo(ctx, card.id, card.step + 1); } },
-      });
+    "click [data-pipe-pick]": async (e, el, ctx) => {
+      const s = ctx.state;
+      const v = await pickFrom({ title: "Pipeline", items: [{ value: ALL, label: "All pipelines", sub: s.all ? "now" : "" }, ...s.cads.map((c) => ({ value: c.id, label: c.name, sub: [s.pick && c.id === s.pick.id ? "now" : "", c.active ? "" : "off", c.board_only ? "board" : ""].filter(Boolean).join(" · ") }))] });
+      if (v === null) return;
+      ctx.keep.pipe = v;
+      delete ctx.keep.col;
+      ctx.refresh();
     },
+    "click [data-convert]": (e, el, ctx) => convertSheet(ctx, el.dataset.convert),
+    "click [data-move]": (e, el, ctx) => moveCard(ctx, el.dataset.move),
+    "rs-hold [data-pp-more]": (e, el, ctx) => cardMore(ctx, el.dataset.ppMore),
   },
 };
 
-async function moveTo(ctx, id, stage) {
-  const card = ctx.state.stages.flatMap((st) => st.cards).find((c) => c.id === id);
-  if (!card || stage === card.step) return;
-  if (stage !== card.step + 1) { toast("Move one stage on at a time. Open the follow-up for the rest.", { bad: true }); return; }
-  try { await ctx.api(`/enrollments/${encodeURIComponent(id)}/advance`, { method: "POST", body: {} }); toast("Moved on"); ctx.refresh(); }
-  catch (err) { toast(err.message || "That didn't move.", { bad: true }); }
+const cardsOf = (s) => (s.all ? (s.groups || []).flatMap((g) => g.cards) : s.stages.flatMap((st) => st.cards));
+
+async function moveCard(ctx, id) {
+  const s = ctx.state;
+  const c = cardsOf(s).find((x) => x.id === id);
+  if (!c || s.all) return;
+  const to = await moveSheet(`Move ${c.name}`, s.stages.map((st) => ({ key: String(st.n), label: st.name, count: st.cards.length })), String(c.step));
+  if (!to) return;
+  try {
+    await ctx.api(`/enrollments/${encodeURIComponent(id)}/move`, { method: "POST", body: { step: Number(to) } });
+    ctx.keep.col = to;
+    toast(`Moved to ${(s.stages.find((st) => String(st.n) === to) || {}).name || "the stage"}`);
+    ctx.refresh();
+  } catch (err) { toast(err.message || "That didn't move.", { bad: true }); }
+}
+
+function cardMore(ctx, id) {
+  const c = cardsOf(ctx.state).find((x) => x.id === id);
+  if (!c) return;
+  actionSheet(c.name, [[
+    !ctx.state.all && { label: "Move to a stage", icon: "swap", hint: c.stage, run: () => moveCard(ctx, id) },
+    c.phone && { label: "Text", icon: "chat", href: "sms:" + c.phone },
+    { label: "Convert", icon: "swap", run: () => convertSheet(ctx, c.contact_id) },
+    { label: "Open the contact", icon: "user", href: "#/contacts/" + encodeURIComponent(c.contact_id) },
+  ]]);
+}
+
+function pipeMore(s, ctx) {
+  if (!s || !s.cads) return [];
+  return [[
+    s.pick && s.pick.active && { label: `Add someone to ${s.pick.name}`, icon: "userplus", data: { "pp-add": true }, run: () => addSomeone(ctx) },
+    ctx.can("cadences:configure") && { label: "Manage pipelines", icon: "gear", href: "#/settings/cadences" },
+  ]];
+}
+
+// + Add opportunity (P5): a contact into this pipeline (a board's first stage, or a cadence's step 1).
+async function addSomeone(ctx) {
+  const s = ctx.state;
+  const who = await pickContact(ctx.api, { title: `Add to ${s.pick.name}` });
+  if (!who) return;
+  try { await ctx.api("/enrollments", { method: "POST", body: { contact_id: who.id, cadence_key: s.pick.key } }); toast(`${who.name} added`); ctx.refresh(); }
+  catch (err) { toast(err.message || "That didn't add them.", { bad: true }); }
 }

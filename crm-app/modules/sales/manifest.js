@@ -9,14 +9,14 @@ export default {
   routes: [
     { path: "/calls", load: () => import("./calls.js"), title: "Calls", perm: "sales:work", parent: "/today", skeleton: "list" },
     // the Sales tab's first screens (the Nov 2026 layout, after Rotor's): Pipeline, then Leads
-    { path: "/pipeline", load: () => import("./pipeline.js"), title: "Pipeline", perm: "sales:work", parent: "/today", skeleton: "list" },
-    { path: "/leads", load: () => import("./leads.js"), title: "Leads", perm: "sales:work", parent: "/today", skeleton: "list" },
+    { path: "/pipeline", load: () => import("./pipeline.js"), title: "Pipeline", perm: "sales:work", parent: "/today", skeleton: "list", views: ["list", "board"] },
+    { path: "/leads", load: () => import("./leads.js"), title: "Leads", perm: "sales:work", parent: "/today", skeleton: "list", views: ["list", "board"] },
     { path: "/calls/log", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/calls" },
     { path: "/calls/log/:contact", load: () => import("./log.js"), title: "Log a call", perm: "sales:work", parent: "/contacts/:contact" },
     { path: "/enrollments/:id", load: () => import("./enrollment.js"), title: "Follow-up", perm: "sales:work", parent: "/calls" },
     { path: "/deals/:id", load: () => import("./deal.js"), title: "Deal", perm: "sales:work", parent: "/calls" },
     { path: "/sales/enroll/:contact", load: () => import("./enroll.js"), title: "Start a follow-up", perm: "sales:work", parent: "/contacts/:contact" },
-    { path: "/tasks", load: () => import("./tasks.js"), title: "Tasks", perm: "tasks:read", parent: "/today", skeleton: "list" },
+    { path: "/tasks", load: () => import("./tasks.js"), title: "Tasks", perm: "tasks:read", parent: "/today", skeleton: "list", views: ["board", "list"] },
     // making a task is the office's (a technician holds tasks:write only for their own tasks)
     { path: "/tasks/new", load: () => import("./task.js"), title: "New task", perm: "sales:work", parent: "/tasks" },
     { path: "/tasks/new/:contact", load: () => import("./task.js"), title: "New task", perm: "sales:work", parent: "/contacts/:contact" },
