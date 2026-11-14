@@ -209,6 +209,10 @@ test("asks that make records (task, lead, note, deal move, draft quote) wait, th
     const extra = await call(t, ask.key, "create_task", { title: "x", sneaky: 1 });
     assert.equal(extra.isError, true);
     assert.match(extra.result, /Unknown argument/);
+    for (const k of ["__proto__", "constructor", "toString"]) {
+      const r3 = await rpc(t, { key: ask.key, msg: JSON.parse(`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"create_task","arguments":{"title":"x","${k}":{"admin":true}}}}`) });
+      assert.equal(r3.body.result.isError, true, `${k} is an unknown argument`);
+    }
   } finally {
     t.done();
   }

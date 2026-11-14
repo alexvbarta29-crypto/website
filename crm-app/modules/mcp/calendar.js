@@ -40,7 +40,8 @@ export default {
     return html`<div class="stack">
       <div class="card"><p class="small">See your visits in Google Calendar or Apple Calendar, next to the rest of your life. Each one shows the customer's first name, the town and the service. No phone numbers, addresses or notes ever go in it.</p></div>
       ${f.on ? html`<div class="card stack">
-          <div class="row" style="padding:0;min-height:0">${icon("today")}<span class="who"><span class="nm">On</span><span class="sub">${f.scope === "all" ? "Everyone's visits" : "My visits"} · link ending …${f.last4} · made ${ago(f.created_at)}</span></span></div>
+          <div class="row" style="padding:0;min-height:0">${icon("today")}<span class="who"><span class="nm">On</span><span class="sub">${f.scope === "all" ? "Everyone's visits" : "My visits"} · link …${f.last4}</span></span></div>
+          <p class="small muted">Link made ${ago(f.created_at)}.</p>
           ${scopePicker(s)}
           <div class="btn-row"><button type="button" class="btn" data-new>${icon("undo")}New link</button><button type="button" class="btn danger" data-off>Turn off</button></div>
         </div>`

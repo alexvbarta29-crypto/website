@@ -97,9 +97,9 @@ export function checkArgs(schema, args) {
   if (args === undefined || args === null) args = {};
   if (typeof args !== "object" || Array.isArray(args)) throw new InputError("Arguments must be an object.");
   const props = (schema && schema.properties) || {};
-  for (const r of (schema && schema.required) || []) if (args[r] === undefined || args[r] === null || args[r] === "") throw new InputError(`${r} is required.`, r);
+  for (const r of (schema && schema.required) || []) if (!Object.hasOwn(args, r) || args[r] === undefined || args[r] === null || args[r] === "") throw new InputError(`${r} is required.`, r);
   for (const [k, v] of Object.entries(args)) {
-    const p = props[k];
+    const p = Object.hasOwn(props, k) ? props[k] : null;
     if (!p) { if (schema && schema.additionalProperties === false) throw new InputError(`Unknown argument ${k}.`, k); continue; }
     if (v === undefined || v === null) continue;
     const bad = (p.type === "string" && typeof v !== "string") || (p.type === "integer" && !Number.isSafeInteger(v)) || (p.type === "number" && !Number.isFinite(v))

@@ -9,7 +9,7 @@
 export const UNTRUSTED_KEYS = Object.freeze(new Set([
   "body", "body_text", "text", "notes", "note", "message", "comment", "comment_excerpt", "last_preview", "preview_text",
   "intake_notes", "client_notes", "internal_notes", "office_notes", "crew_notes", "tech_notes", "lost_note", "reason_text",
-  "change_request", "changes_requested", "request", "request_text", "answer", "answers", "description", "subject", "snippet",
+  "change_request", "changes_requested", "request", "request_text", "answer", "answers", "description", "details", "subject", "snippet",
 ]));
 const MAX_DEPTH = 14;
 
@@ -23,7 +23,7 @@ export function wrapUntrusted(v, depth = 0, under = false) {
   if (!v || typeof v !== "object") return v;
   if (isWrapped(v)) return v;
   const out = {};
-  for (const [k, x] of Object.entries(v)) out[k] = wrapUntrusted(x, depth + 1, under || UNTRUSTED_KEYS.has(k));
+  for (const [k, x] of Object.entries(v)) if (k !== "__proto__") out[k] = wrapUntrusted(x, depth + 1, under || UNTRUSTED_KEYS.has(k));
   return out;
 }
 

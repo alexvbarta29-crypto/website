@@ -42,11 +42,18 @@ test("Calendar feed: off, on, and the link once with Google and Apple steps", as
   assert.match(office, /Everyone(&#39;|')s visits/);
   const url = "https://www.bartawindowwashing.com/api/crm/cal/bcal_" + "x".repeat(43) + ".ics";
   const on = text(s.render({ feed: { on: true, scope: "all", last4: "xxxx", created_at: NOW, can_all: true }, made: { url, webcal_url: url.replace("https:", "webcal:") } }));
-  assert.match(on, /Everyone(&#39;|')s visits · link ending …xxxx/);
+  assert.match(on, /Everyone(&#39;|')s visits · link …xxxx/);
   assert.match(on, /New link/);
   assert.match(on, /Turn off/);
   assert.match(on, new RegExp(`value="${url.replace(/[.]/g, "\\.")}"`));
   assert.match(on, /href="https:\/\/calendar\.google\.com\/calendar\/r\?cid=webcal%3A%2F%2Fwww\.bartawindowwashing\.com/);
   assert.match(on, /target="_blank" rel="noopener"/);
   assert.match(on, /Add Subscribed Calendar/);
+});
+
+test("wrapUntrusted: free-text keys at any depth, once, and nothing else", async () => {
+  const { wrapUntrusted } = await import("../../../netlify/lib/crm/modules/mcp/untrusted.mjs");
+  const out = wrapUntrusted({ name: "Pat", notes: "hi", nested: [{ body_text: "x", n: 1 }], comment: { untrusted_customer_text: "y" }, message: "", answers: ["a", "b"] });
+  assert.deepEqual(out, { name: "Pat", notes: { untrusted_customer_text: "hi" }, nested: [{ body_text: { untrusted_customer_text: "x" }, n: 1 }], comment: { untrusted_customer_text: "y" }, message: "", answers: [{ untrusted_customer_text: "a" }, { untrusted_customer_text: "b" }] });
+  assert.deepEqual(Object.keys(wrapUntrusted(JSON.parse('{"__proto__":{"x":1},"a":1}'))), ["a"]);
 });
