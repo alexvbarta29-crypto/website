@@ -32,8 +32,10 @@ import { shape, str, enumValue, int, bool } from "../../core/validate.mjs";
 export const CHANNELS = Object.freeze(["sms", "email"]);
 export const DIRECTIONS = Object.freeze(["in", "out"]);
 export const CONV_STATES = Object.freeze(["open", "done"]);
-export const MESSAGE_STATUSES = Object.freeze(["queued", "sending", "sent", "delivered", "failed", "undelivered", "blocked", "received"]);
-export const PROVIDERS = Object.freeze(["twilio", "postmark", "rotor_import", "dry_run"]);
+export const MESSAGE_STATUSES = Object.freeze(["queued", "sending", "sent", "delivered", "failed", "undelivered", "blocked", "received", "note"]);
+export const PROVIDERS = Object.freeze(["twilio", "postmark", "rotor_import", "dry_run", "internal"]);
+// A message's kind: an internal note (the office's own words in the thread, never sent: guide-gaps S46a).
+export const MESSAGE_KINDS = Object.freeze(["note"]);
 export const CAMPAIGN_STATUSES = Object.freeze(["draft", "tested", "scheduled", "sending", "sent", "cancelled"]);
 export const MAX_CAMPAIGN_RECIPIENTS = 2000;
 export const PREVIEW_MAX = 80;
@@ -42,7 +44,7 @@ export const HTML_MAX = 200000;
 
 // Status ranks (§5.7.1): a callback applies only a higher rank, and the
 // first terminal status wins (callbacks arrive out of order).
-const RANK = Object.freeze({ queued: 0, sending: 1, sent: 2, delivered: 3, undelivered: 3, failed: 3, blocked: 3, received: 3 });
+const RANK = Object.freeze({ queued: 0, sending: 1, sent: 2, delivered: 3, undelivered: 3, failed: 3, blocked: 3, received: 3, note: 3 });
 export const statusRank = (s) => (Object.hasOwn(RANK, s) ? RANK[s] : -1);
 export const statusMayMove = (from, to) => statusRank(to) > statusRank(from);
 
@@ -77,6 +79,8 @@ function validateConversation(data, { op } = {}) {
     last_preview: (v) => previewOf(v),
     last_direction: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, DIRECTIONS, { field: f, stored })),
     assignee_id: idOf("user", false),
+    // the team inbox a person moved it to (cfg/inboxes; none: the inbox rules decide when it is read)
+    inbox: (v, f) => (v === undefined || v === null || v === "" ? undefined : (/^[a-z0-9][a-z0-9_-]{0,23}$/.test(String(v)) ? String(v) : (() => { throw new InputError("That inbox isn't there.", f); })())),
     state: (v, f) => enumValue(v || "done", CONV_STATES, { field: f, stored }),
     needs_reply: (v, f) => bool(v ?? false, { field: f }),
     rotor: obj,
@@ -86,7 +90,7 @@ function validateConversation(data, { op } = {}) {
 export const inboxShard = (r) => (r.state === "open" ? "open" : `y${yearOf(r.last_at || r.created_at)}`);
 export const inboxRow = (r) => ({
   c: r.contact_id, ch: r.channel, n: r.contact_name || "", p: r.last_preview || "", la: r.last_at || r.created_at || null, ld: r.last_direction || null,
-  u: r.unread || 0, nr: !!r.needs_reply, st: r.state || "done", lc: r.lifecycle || "", ...(r.assignee_id ? { a: r.assignee_id } : {}),
+  u: r.unread || 0, nr: !!r.needs_reply, st: r.state || "done", lc: r.lifecycle || "", ...(r.assignee_id ? { a: r.assignee_id } : {}), ...(r.inbox ? { ib: r.inbox } : {}),
 });
 
 export const conversationType = defineType({
@@ -113,6 +117,7 @@ function validateMessage(data, { op, before } = {}) {
     contact_id: idOf("contact", true),
     channel: (v, f) => enumValue(v, CHANNELS, { field: f, required: true, stored }),
     direction: (v, f) => enumValue(v, DIRECTIONS, { field: f, required: true, stored }),
+    kind: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, MESSAGE_KINDS, { field: f, stored })),
     from: (v, f) => str(v, { field: f, max: 200 }),
     to: (v, f) => str(v, { field: f, max: 200 }),
     subject: (v, f) => (v === undefined || v === null || v === "" ? undefined : str(v, { field: f, max: 300 })),
@@ -158,7 +163,7 @@ export const messageType = defineType({
   mirrored: true,
   audit: false,
   // (more, imported, has_html and attachments_missing are what a thread adds to a message it shows)
-  techFields: ["id", "conversation_id", "contact_id", "channel", "direction", "subject", "body_text", "status", "blocked_reason", "error_code", "segments", "attachment_file_ids", "media_pending", "sent_at", "delivered_at", "origin", "provider", "more", "imported", "has_html", "attachments_missing"],
+  techFields: ["id", "conversation_id", "contact_id", "channel", "direction", "kind", "subject", "body_text", "status", "blocked_reason", "error_code", "segments", "attachment_file_ids", "media_pending", "sent_at", "delivered_at", "origin", "provider", "more", "imported", "has_html", "attachments_missing"],
   readPerm: "inbox:read",
   rels: [{ rel: "conv-messages", parent: (r) => r.conversation_id, sort: (r) => tsKey(new Date(Date.parse(r.sent_at || r.created_at) || 0)) }],
   pointers: [{ kind: "provider-msg", key: (r) => (r.provider_id && r.provider !== "rotor_import" ? providerKey(r.provider, r.provider_id) : null) }],

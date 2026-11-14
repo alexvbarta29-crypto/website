@@ -74,3 +74,20 @@ html:not([data-theme="light"]) .cm-av{background:var(--card-2)!important;color:v
 .cm-n{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 13px/24px var(--text);text-align:center}
 @media (max-width:899px){.cm-kind-desk{display:none}}
 @media (min-width:900px){.cm-list{margin:0;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg)}}
+
+/* ---------------------------------------------------------------- the Rotor guide's Inbox (folders, one thread, notes) */
+.cm-on{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-2)}
+.cm-on .linkish{min-height:44px;padding:0 4px}
+.cm-msg.note{align-self:center;align-items:center;max-width:92%}
+.cm-msg .bubble.note,.cm-msg.out .bubble.note{background:var(--amber-bg);color:var(--ink);border:1px solid var(--line-2);border-radius:12px}
+.cm-compose textarea.note{background:var(--amber-bg)}
+.cm-fix{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px;color:var(--coral-ink);font-size:13px;font-weight:600;text-decoration:none}
+.cm-fix svg{width:16px;height:16px}
+.cm-quick{display:flex;flex-wrap:wrap;gap:6px}
+.cm-quick .chip{margin:0;min-height:44px}
+.cm-send{display:flex;align-items:center;gap:8px}
+.cm-send .cm-count{flex:1;text-align:right}
+.cm-files .chip{display:inline-flex;align-items:center;gap:4px;margin:0}
+.cm-files .chip .linkish{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.cm-files .chip svg{width:16px;height:16px}
+.cm-panel .cm-create .rs-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}

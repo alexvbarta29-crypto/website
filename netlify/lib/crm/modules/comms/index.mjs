@@ -42,6 +42,7 @@ import { emailLayout } from "./email-layout.mjs";
 import { campaignRoutes, startCampaign } from "./campaigns.mjs";
 import { reviewRoutes, reviewSequence, reviewListeners, pollReviews, isReviewed, validateReviews, REVIEWS_DEFAULTS } from "./reviews.mjs";
 import { setupRoutes } from "./setup.mjs";
+import { INBOXES_DEFAULTS, validateInboxes, ENGAGEMENT_DEFAULTS, validateEngagement, SMS_PRICING_DEFAULTS, validateSmsPricing } from "./inboxes.mjs";
 import { mcpTools } from "./mcp.mjs";
 
 // The drivers (registered, not switched on: adapters/index.mjs decides the mode).
@@ -65,6 +66,13 @@ defineFileOwner("message", {
     return ctx.can("inbox:read", { type: "message", record: msg, visible: (await techVisibleContacts(ctx.user.id)).has(msg.contact_id) });
   },
   canEdit: () => false,
+});
+// A picture or PDF the office attaches to a text or email (the composer's
+// paperclip): held on the person's conversation until it goes with a
+// message. The office only.
+defineFileOwner("conversation", {
+  canRead: async (ctx) => !!ctx.can("inbox:read"),
+  canEdit: async (ctx) => !!(ctx.can("inbox:read") && ctx.can("messages:send")),
 });
 
 // (key and outcome: the door-to-door map's stable key and what a knock of
@@ -106,6 +114,10 @@ export default defineModule({
     // Rotor's eight map pin types (§10.2 row 35): the door-to-door map's (docs/CRM-MAP.md)
     pin_types: { defaults: { types: [] }, validate: validatePinTypes, perm: "settings:general" },
     reviews: { defaults: { ...REVIEWS_DEFAULTS }, validate: validateReviews, perm: "settings:messaging" },
+    // team inboxes (Rotor's "My inboxes"), the business numbers, the price of a text (guide-gaps S5a, S6, S50)
+    inboxes: { defaults: { ...INBOXES_DEFAULTS, list: [] }, validate: validateInboxes, perm: "settings:messaging" },
+    engagement: { defaults: { ...ENGAGEMENT_DEFAULTS, numbers: [] }, validate: validateEngagement, perm: "settings:messaging" },
+    sms_pricing: { defaults: { ...SMS_PRICING_DEFAULTS }, validate: validateSmsPricing, perm: "settings:messaging" },
   },
   routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...setupRoutes, ...hookRoutes],
   events: reviewListeners,

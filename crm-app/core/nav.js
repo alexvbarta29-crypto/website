@@ -93,6 +93,8 @@ const PLACE_NEW = { contacts: ["/contacts/new", "/leads/new"], schedule: ["/jobs
 //         declares it (manifest route `views: ["list", "board"]`), and a tab
 //         whose route doesn't exist yet (Requests, Payouts...) waits for it.
 //         No tabs: the section is its `path`.
+//   more: [[path, label, icon, until?]]  a "..." screen; `until` (a path, or a tab as
+//         path?param=view) hides it once that screen is there (Purchases until Expenses).
 //   own:  the screen draws its own tabs (the Schedule's head): no row of them here.
 //   count: the badge key (setBadges) the drawer row shows.
 // A tab or row shows only when its screen is there and this person may open
@@ -100,18 +102,22 @@ const PLACE_NEW = { contacts: ["/contacts/new", "/leads/new"], schedule: ["/jobs
 // no section names lands in a last group, so nothing is ever lost.
 export const SECTIONS = Object.freeze([
   { key: "home", group: 0, label: "Home", icon: "home", path: "/today" },
-  { key: "inbox", group: 0, label: "Inbox", icon: "inbox", path: "/inbox", count: "inbox", more: [["/outbox", "Outbox (not sent)", "send"], ["/approvals", "Approvals", "check"]] },
-  { key: "schedule", group: 0, label: "Schedule", icon: "cal12", path: "/schedule", own: true, tabs: [["list", "List", "/schedule", "list"], ["day", "Day", "/schedule", "day"], ["3day", "3 Day", "/schedule", "3day"], ["week", "Week", "/schedule", "week"]] },
+  { key: "inbox", group: 0, label: "Inbox", icon: "inbox", path: "/inbox", count: "inbox", more: [["/outbox", "Outbox (not sent)", "send"], ["/approvals", "Approvals", "check"], ["/settings/inboxes", "Team inboxes", "inbox"]] },
+  { key: "schedule", group: 0, label: "Schedule", icon: "cal12", path: "/schedule", own: true, tabs: [["list", "List", "/schedule", "list"], ["day", "Day", "/schedule", "day"], ["3day", "3 Day", "/schedule", "3day"], ["week", "Week", "/schedule", "week"], ["map", "Map", "/schedule", "map"]] },
   { key: "customers", group: 1, label: "Customers", icon: "contacts", path: "/contacts" },
-  { key: "leads", group: 1, label: "Leads", icon: "target", path: "/leads", tabs: [["list", "List", "/leads", "list"], ["board", "Board", "/leads", "board"]] },
+  // (Forms, Referrals and QR codes sit under Leads, Flyra's lead hub (guide-gaps §7.3, owner default Q1); Giveaway waits in "..." until Forms lists it)
+  { key: "leads", group: 1, label: "Leads", icon: "target", path: "/leads", tabs: [["list", "List", "/leads", "list"], ["board", "Board", "/leads", "board"], ["forms", "Forms", "/forms"], ["referrals", "Referrals", "/referrals"], ["qr", "QR codes", "/signs"]],
+    more: [["/campaigns/new?kind=blast", "Text blast", "send"], ["/leads/report", "Lead report", "chart"], ["/tools/giveaway", "Giveaway", "gift", "/forms"]] },
   { key: "pipelines", group: 1, label: "Pipelines", icon: "pipeline", path: "/pipeline", tabs: [["list", "List", "/pipeline", "list"], ["board", "Board", "/pipeline", "board"]], more: [["/settings/cadences", "Manage pipelines", "gear"]] },
   { key: "dialer", group: 1, label: "Power Dialer", icon: "phone", path: "/calls", tabs: [["dialer", "Dialer", "/calls"], ["queue", "Queue", "/calls/queue"], ["logs", "Call logs", "/calls/logs"]] },
   { key: "service", group: 2, label: "Service", icon: "hammer", path: "/jobs", tabs: [["requests", "Requests", "/requests"], ["quotes", "Quotes", "/quotes"], ["jobs", "Jobs", "/jobs"], ["plans", "Plans", "/plans"]], more: [["/tools/lights", "Light Studio", "bulb"]] },
-  { key: "financials", group: 2, label: "Financials", icon: "money", path: "/invoices", count: "overdue", tabs: [["invoices", "Invoices", "/invoices"], ["payments", "Payments", "/payments"], ["payouts", "Payouts", "/payouts"], ["payroll", "Payroll", "/payroll"]], more: [["/autopay", "Autopay run", "clock"], ["/timesheets", "Timesheets", "clock"], ["/tools/purchases", "Purchases", "cart"]] },
+  // (Purchases stays in "..." until the Expenses tab takes it in)
+  { key: "financials", group: 2, label: "Financials", icon: "money", path: "/invoices", count: "overdue", tabs: [["invoices", "Invoices", "/invoices"], ["payments", "Payments", "/payments"], ["payouts", "Payouts", "/payouts"], ["payroll", "Payroll", "/payroll"], ["expenses", "Expenses", "/expenses"]], more: [["/autopay", "Autopay run", "clock"], ["/timesheets", "Timesheets", "clock"], ["/tools/purchases", "Purchases", "cart", "/expenses"]] },
   { key: "tasks", group: 2, label: "Tasks", icon: "check", path: "/tasks", count: "tasks_overdue", tabs: [["board", "Board", "/tasks", "board"], ["list", "List", "/tasks", "list"]] },
-  { key: "map", group: 2, label: "Map", icon: "map", path: "/map", more: [["/team-map", "Team map", "team"]] },
-  { key: "analytics", group: 3, label: "Analytics", icon: "chart", path: "/reports", param: "tab", tabs: [["overview", "Overview", "/reports", "overview"], ["sales", "Sales", "/reports", "sales"], ["technicians", "Technicians", "/reports", "technicians"], ["meta", "Meta", "/reports", "meta"], ["dashboards", "Dashboards", "/reports", "dashboards"]], more: [["/dashboard", "Office dashboard", "grid"], ["/leaderboard", "Leaderboard", "trophy"]] },
-  { key: "marketing", group: 3, label: "Marketing", icon: "send", path: "/automations", tabs: [["workflows", "Workflows", "/automations"], ["campaigns", "Campaigns", "/campaigns"], ["reviews", "Reviews", "/reviews"], ["referrals", "Referrals", "/referrals"], ["forms", "Forms", "/forms"], ["templates", "Templates", "/templates"]], more: [["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"]] },
+  { key: "map", group: 2, label: "Map", icon: "map", path: "/map", more: [["/team-map", "Team map", "team"], ["/knock/report", "Door report", "chart"]] },
+  // (the Leaderboard stays in "..." until the Team tab holds it)
+  { key: "analytics", group: 3, label: "Analytics", icon: "chart", path: "/reports", param: "tab", tabs: [["overview", "Overview", "/reports", "overview"], ["sales", "Sales", "/reports", "sales"], ["plans", "Plans", "/reports", "plans"], ["team", "Team", "/reports", "team"], ["all", "All reports", "/reports", "all"]], more: [["/dashboard", "Office dashboard", "grid"], ["/leaderboard", "Leaderboard", "trophy", "/reports?tab=team"]] },
+  { key: "marketing", group: 3, label: "Marketing", icon: "send", path: "/automations", tabs: [["workflows", "Workflows", "/automations"], ["campaigns", "Campaigns", "/campaigns"], ["reviews", "Reviews", "/reviews"], ["templates", "Templates", "/templates"]] },
 ]);
 // Screens whose home is inside another screen (a link there, not a row here): Merge review in
 // the Customers list (its notice and filter sheet, when there are duplicates); Lights season on
@@ -464,7 +470,14 @@ const ownPaths = (sec) => {
 // The tabs this person gets. None open: the section's own path; else its first "..." screen.
 export function openTabs(sec) {
   if (!sec) return [];
-  const tabs = tabsOf(sec).filter((t) => visible(t.path) && viewOk(t));
+  const all = tabsOf(sec);
+  const tabs = all.filter((t) => visible(t.path) && viewOk(t));
+  // the section's own screen before its views are drawn (Leads: List | Board wait for leads.js) stays its first tab
+  if (tabs.length && !tabs.some((t) => t.path === sec.path) && all.some((t) => t.path === sec.path) && visible(sec.path)) {
+    const m = router.match(sec.path);
+    const first = all.find((t) => t.path === sec.path);
+    tabs.unshift({ key: first.key, label: m && typeof m.route.title === "string" ? m.route.title : sec.label, path: sec.path, view: null, param: first.param });
+  }
   if (tabs.length) return tabs;
   // (its label is the screen's own title: the #/menu page lists "Reports" under Analytics)
   if (visible(sec.path)) { const m = router.match(sec.path); return [{ key: sec.key, label: m && typeof m.route.title === "string" ? m.route.title : sec.label, path: sec.path, view: null, param: "view" }]; }
@@ -474,7 +487,16 @@ export function openTabs(sec) {
 // Its "..." screens this person may open (not one that stands in as its tab).
 export function moreOf(sec, tabs = openTabs(sec)) {
   const taken = new Set(tabs.map((t) => t.path));
-  return (sec && sec.more ? sec.more : []).filter(([p]) => visible(p) && !taken.has(p)).map(([path, label, ic]) => ({ path, label, icon: ((st.navAll || []).find((n) => n.path === path) || {}).icon || ic }));
+  return (sec && sec.more ? sec.more : []).filter(([p, , , until]) => visible(p) && !taken.has(p) && !(until && present(until))).map(([path, label, ic]) => ({ path, label, icon: ((st.navAll || []).find((n) => n.path === path) || {}).icon || ic }));
+}
+// Is a screen there (a tab spelled path?param=view: its route draws that view)?
+function present(spec) {
+  const [path, q] = String(spec).split("?");
+  if (!routeOk(path)) return false;
+  if (!q) return true;
+  const m = router.match(path);
+  const views = (m && m.route.views) || [];
+  return [...new URLSearchParams(q).values()].every((v) => views.includes(v));
 }
 export const sectionByKey = (key) => SECTIONS.find((x) => x.key === key) || null;
 // The section a screen belongs to (the nearest up its parent chain), or null.

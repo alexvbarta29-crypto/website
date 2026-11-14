@@ -46,10 +46,12 @@ export const LAYOUT = Object.freeze([
     ["/settings/schedule", "Crew & forecast", "truck", "crew"]]],
   ["messages", "Messages", "text", "teal", [
     ["/templates", "Message templates", "doc", "templates"],
-    ["/automations", "Automations", "bolt", "automations"],
+    ["/automations", "Automatic messages", "bolt", "automatic messages"],
     ["/settings/cadences", "Follow-up cadences", "phone", "follow-ups"],
     ["/settings/messaging", "Quiet hours & opt-out", "text", "quiet hours"],
     ["/settings/texting", "Texting & email setup", "mail", "texting"],
+    ["/settings/numbers", "Business numbers", "phone", "numbers"],
+    ["/settings/muted", "Muted contacts", "pause", "muted"],
     ["/approvals", "Approvals", "check", "approvals"],
     ["/outbox", "Outbox (not sent)", "send", "outbox"]]],
   ["payments", "Payments", "receipt", "green", [

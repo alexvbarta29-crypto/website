@@ -18,7 +18,7 @@
 //   POST   /messages                              messages:send       → the messages.sink service
 //   GET/POST /push/subscriptions, DELETE /push/subscriptions/:hash, POST /push/test   yourself
 
-import { createRecord, patchRecord, hk } from "../../../crm-store.mjs";
+import { createRecord, patchRecord, hk, getSetting, getRecord, getRecords } from "../../../crm-store.mjs";
 import { InputError, ForbiddenError, NotFoundError } from "../../core/errors.mjs";
 import { isId } from "../../core/ids.mjs";
 import { nowMs } from "../../core/clock.mjs";
@@ -172,6 +172,43 @@ const cancelBulk = async (ctx) => ({ data: bulkView(await cancelBulkRun(ctx.para
 // ------------------------------------------------------------ messages
 
 const MAX_SCHEDULE_MS = 30 * 86400000;
+export const MAX_SEND_FILES = 3;
+// The composer's extras (the Rotor guide's Inbox, S5c and S6): the business
+// number a text goes from (one of Settings → Business numbers' texting
+// numbers) and up to three files held on the person's conversation. Both
+// ride in `related`, so the Outbox shows them while texting is a dry run;
+// files only go as a dry run until the providers' media sending is built.
+async function sendExtras(ctx, b) {
+  const related = {};
+  let from_number = null;
+  if (b.from_number !== undefined && b.from_number !== null && b.from_number !== "") {
+    if (b.channel !== "sms") throw new InputError("Only a text goes from a number.", "from_number");
+    const eng = await getSetting("engagement").catch(() => null);
+    const n = ((eng && eng.numbers) || []).find((x) => x.sms && x.e164 === b.from_number);
+    if (!n) throw new InputError("Pick one of the business numbers.", "from_number");
+    from_number = n.e164;
+    related.from_number = n.e164;
+  }
+  if (b.files !== undefined && b.files !== null) {
+    if (!Array.isArray(b.files) || b.files.length > MAX_SEND_FILES || b.files.some((f) => !isId(f, "file"))) throw new InputError(`Up to ${MAX_SEND_FILES} files.`, "files");
+    if (isTech(ctx)) throw new ForbiddenError("Files go from the office.");
+    const got = await getRecords("file", [...new Set(b.files)]);
+    const files = [];
+    for (const g of got) {
+      const f = g && g.data;
+      if (!f || f.deleted_at || !f.owner || f.owner.type !== "conversation") throw new InputError("That file isn't there any more.", "files");
+      const conv = await getRecord("conversation", f.owner.id).catch(() => null);
+      if (!conv || conv.data.contact_id !== b.contact_id) throw new InputError("That file is someone else's.", "files");
+      files.push({ id: f.id, ct: f.content_type, bytes: f.bytes });
+    }
+    if (files.length) {
+      const a = await adapter(b.channel, { deploy: ctx.deploy });
+      if (a.mode !== "dry_run") throw new InputError("Files go with texts and emails once sending them is set up. Send the words alone for now.", "files");
+      related.files = files;
+    }
+  }
+  return { related, from_number };
+}
 async function sendMessageRoute(ctx) {
   const b = ctx.body || {};
   if (!isId(b.contact_id, "contact")) throw new InputError("Pick who it goes to.", "contact_id");
@@ -183,10 +220,12 @@ async function sendMessageRoute(ctx) {
   if (!b.template_key && !(typeof b.body === "string" && b.body.trim())) throw new InputError("Write a message or pick a template.", "body");
   if (typeof b.body === "string" && b.body.length > 1600) throw new InputError("Keep a text under 1,600 characters.", "body");
   const clientId = typeof b.client_id === "string" && /^[A-Za-z0-9-]{8,64}$/.test(b.client_id) ? b.client_id : null;
+  const extra = await sendExtras(ctx, b);
   const message = {
     contact_id: b.contact_id, channel: b.channel, ...(b.template_key ? { template_key: String(b.template_key) } : { body: b.body }),
     ...(b.subject ? { subject: String(b.subject).slice(0, 150) } : {}), vars: b.vars && typeof b.vars === "object" ? b.vars : undefined,
-    related: b.related && typeof b.related === "object" ? b.related : {}, origin: { kind: "user", user_id: ctx.user.id },
+    related: { ...(b.related && typeof b.related === "object" ? b.related : {}), ...extra.related }, origin: { kind: "user", user_id: ctx.user.id },
+    ...(extra.from_number ? { from_number: extra.from_number } : {}),
     ...(clientId ? { marker_key: `msg-${keySafe(clientId, 64)}` } : {}),
   };
   const sysMode = await ctx.sysMode();      // a failed read answers 503 busy (never "not paused")

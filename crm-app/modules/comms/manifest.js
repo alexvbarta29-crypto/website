@@ -14,6 +14,9 @@ export default {
     { path: "/campaigns/:id", load: () => import("./campaign.js"), title: "Campaign", perm: "campaigns:write", parent: "/campaigns" },
     { path: "/reviews", load: () => import("./reviews.js"), title: "Reviews", perm: "reviews:match", parent: "/menu", skeleton: "list" },
     { path: "/settings/texting", load: () => import("./setup.js"), title: "Texting, email & reviews", perm: "settings:messaging", parent: "/settings" },
+    { path: "/settings/inboxes", load: () => import("./inboxes.js"), title: "Team inboxes", perm: "settings:messaging", parent: "/inbox", skeleton: "list" },
+    { path: "/settings/numbers", load: () => import("./numbers.js"), title: "Business numbers", perm: "settings:messaging", parent: "/settings" },
+    { path: "/settings/muted", load: () => import("./muted.js"), title: "Muted contacts", perm: "consent:edit", parent: "/settings", skeleton: "list" },
   ],
   nav: [
     { where: "more", section: "messages", label: "Campaigns", path: "/campaigns", perm: "campaigns:write", order: 20, icon: "send" },
@@ -23,6 +26,10 @@ export default {
   contactTabs: [{ key: "messages", label: "Messages", order: 70, place: "aside", perm: "inbox:read", load: () => import("./contact-tab.js") }],
   visitActions: [],
   todayCards: [],
-  settings: [{ label: "Texting, email & reviews", path: "/settings/texting", perm: "settings:messaging", icon: "text", order: 47 }],
+  settings: [
+    { label: "Texting, email & reviews", path: "/settings/texting", perm: "settings:messaging", icon: "text", order: 47 },
+    { label: "Business numbers", path: "/settings/numbers", perm: "settings:messaging", icon: "phone", order: 48 },
+    { label: "Muted contacts", path: "/settings/muted", perm: "consent:edit", icon: "pause", order: 49 },
+  ],
   styles: ["./comms.css"],
 };

@@ -108,9 +108,9 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]], JSON.stringify(groups));
     // (a page has the room: every list open under its row's name)
     const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
-    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Pipelines", "Service", "Financials", "Map", "Analytics", "Marketing"]);
+    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Leads", "Pipelines", "Service", "Financials", "Map", "Analytics", "Marketing"]);
     for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Purchases", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
-      "Outbox (not sent)", "Approvals", "Giveaway", "Signs & flyers", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
+      "Outbox (not sent)", "Approvals", "Team inboxes", "Giveaway", "QR codes", "Text blast", "Door report", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
     for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
     assert.ok(await f.$('.menu-page a[href="#/settings"]'), "the gear");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
