@@ -64,6 +64,9 @@
 //     Rotor's becomes a conflict; another source is "new".
 //   - Fields outside rotorFields that the mapped record carries are filled
 //     only where the record has nothing; the rest of the record is the CRM's.
+//     A type's importZeroIsEmpty fields count a stored 0 as nothing (a
+//     derived value an older import stored as 0), so even an unchanged row
+//     fills them once; a non-zero value is never replaced.
 //   - A partial record ({ type, data, fields: [...] }) speaks only about the
 //     rotorFields it names (the rules above, per field), fills nothing else
 //     and never creates a record: the plan discounts a plan row puts on the
@@ -343,6 +346,10 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
     else if (cur.import && untouchedSinceImport) { sources[src] = { fields: recordAsBase(), hash: null, rank: myRank }; takeover = cur.import.source || "placeholder"; primary = src; }
   }
 
+  // a stored 0 the type's importZeroIsEmpty fields can fill (an older import's derived value): even an unchanged row writes it
+  const zero = def.importZeroIsEmpty || [];
+  const none = (k, x) => empty(x) || (x === 0 && zero.includes(k));
+  const zeroFill = !placeholderRow && !partial && zero.some((k) => cur[k] === 0 && !none(k, norm[k]));
   let Bs = sources[src] || null;
   let mode = null;
   let repaired = false;
@@ -354,7 +361,7 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
       else if (untouchedSinceImport) { Bs = { ...Bs, fields: recordAsBase(Object.keys(Bs.fields || {})), hash: null }; repaired = true; }
       else mode = "unknown";
     }
-    if (!mode && !takeover && Bs.hash === hashN && (tag === undefined || tag === hashN)) {
+    if (!mode && !takeover && !zeroFill && Bs.hash === hashN && (tag === undefined || tag === hashN)) {
       if (repaired || baseDirty) { sources[src] = { ...Bs, run_id: runId, at }; await writeBase(type, id, { primary: primary || src, sources }); }
       if (cur.import && cur.import.run_id === runId) await reassertSides(def, cur, ctx);     // a crash between a bulk write and its side writes
       return { outcome: "unchanged", type, id };
@@ -389,9 +396,10 @@ export async function writeMapped(rec, { runId, source = null, ctx, rank } = {})
     plan = mergeFields(fields, { mode, base: Bs ? Bs.fields : {}, crm: pickFields(r, fields), rotor: mapped, others, rank: myRank });
     const next = clone(r);
     for (const f of plan.changed) setPath(next, f, plan.next[f]);
-    // outside rotorFields: fill only what the record doesn't have (a placeholder row fills nothing)
+    // outside rotorFields: fill only what the record doesn't have (a placeholder row fills nothing; a stored 0 in
+    // the type's importZeroIsEmpty fields is nothing too, and a 0 fills nothing there)
     if (!placeholderRow && !partial) {
-      for (const [k, v] of Object.entries(norm)) if (!ENVELOPE.has(k) && !fields.includes(k) && !fields.some((f) => f.startsWith(k + ".")) && empty(r[k]) && !empty(v)) next[k] = clone(v);
+      for (const [k, v] of Object.entries(norm)) if (!ENVELOPE.has(k) && !fields.includes(k) && !fields.some((f) => f.startsWith(k + ".")) && none(k, r[k]) && !none(k, v)) next[k] = clone(v);
     }
     const clearFlag = !placeholderRow && !!(r.flags && r.flags.placeholder === true) && (!!takeover || myRank > 0 && nextPrimary === src);
     if (clearFlag) delete next.flags.placeholder;

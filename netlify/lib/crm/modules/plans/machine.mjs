@@ -158,6 +158,9 @@ export function saleValue(plan) {
   const n = (plan.term && plan.term.current_term_n) || 1;
   return sumCents((plan.ordinals || []).filter((o) => (o.term || 1) === n && o.status !== "skipped" && o.status !== "cancelled").map((o) => ordinalTotals(plan, o).total_cents));
 }
+// The stored sale value, or the lines' when it is 0 (every plan the Rotor
+// import made before Nov 14 stored 0; the next import repairs them).
+export const saleValueOf = (plan) => (plan && Number(plan.sale_value_cents)) || saleValue(plan || {});
 
 // The per-visit prices of the plan's first year (visit 1 carries what's
 // "initial" only: a first-visit discount; a lights plan made before Nov 12
@@ -171,6 +174,10 @@ export function regularPrices(plan) {
   const vpy = Math.max(1, plan.visits_per_year || visitsPerYearOf(plan.frequency));
   return Array.from({ length: vpy }, (_, i) => ordinalTotals(plan, { term: 2, n: i + 1, k: vpy + i + 1 }).total_cents);
 }
+// One year of the plan's visit prices (Home's ARR): the first year's in a
+// first term, which is Rotor's sale value for a year (a 3-year lights term
+// counts one season), the regular prices after a renewal.
+export const yearValue = (plan) => sumCents(((plan.term && plan.term.current_term_n) || 1) > 1 ? regularPrices(plan) : cyclePrices(plan));
 
 // A plan discount (the per-visit discount the plan is sold with, §5.4) as
 // opposed to a first-visit offer, Early Bird or the 3-year discount: the

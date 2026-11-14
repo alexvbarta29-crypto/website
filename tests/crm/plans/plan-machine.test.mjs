@@ -61,6 +61,34 @@ test("terms, ordinals and prices: quarterly visit 2 is the interior one; a renew
   assert.equal(M.termEnd("2026-02-29".replace("29", "28"), 12), "2027-02-27");
 });
 
+test("a year's value (Home's ARR): the first year's prices in a first term, the regular ones after a renewal; a 3-year lights term is one season", async () => {
+  const { planRow } = await import("../../../netlify/lib/crm/modules/plans/types.mjs");
+  // a first-visit discount comes off the first year only
+  const first = { id: "f", name: "First visit", type: "fixed", value: 5000, scope: { type: "initial" } };
+  const p = plan0({ discounts: [...plan0().discounts, first] });
+  assert.equal(M.yearValue(p), 64500 - 5000, "first term: the 4 visits as sold");
+  assert.equal(M.saleValue(p), 64500 - 5000);
+  const nt = M.nextTerm(p);
+  const renewed = { ...p, term: nt.term, ordinals: [...p.ordinals, ...nt.ordinals] };
+  assert.equal(M.saleValue(renewed), 19500, "a 3-month renewal term holds one visit");
+  assert.equal(M.yearValue(renewed), 64500, "a year of regular visits, nothing initial");
+  // a lights plan sold for 3 seasons with the 3-year discount: Rotor's sale value is the three, a year is one
+  const lights = {
+    kind: "lights_annual", status: "active", frequency: { interval: "year", count: 1 }, visits_per_year: 1,
+    lines: [{ id: "l", title: "Christmas Lights", total_cents: 120000, scope: { type: "all" } }],
+    discounts: [{ id: "y3", name: "3-Year Contract", type: "percentage", value: 1000, scope: { type: "all" } }],
+    term: M.firstTerm({ start_on: "2026-11-01", initial_months: 36, renews_every_months: 12 }),
+    ordinals: [2026, 2027, 2028].map((y, i) => ({ term: 1, n: i + 1, k: i + 1, target_month: `${y}-11`, status: "unscheduled" })),
+  };
+  assert.equal(M.saleValue(lights), 3 * 108000);
+  assert.equal(M.yearValue(lights), 108000);
+  // the index row carries it, whether the plan renews, and its first term's months
+  const row = planRow({ ...lights, id: "pl_x", contact_id: "ct_x", catalog_key: "lights_annual", name: "Christmas lights plan" });
+  assert.deepEqual([row.ay, row.ar, row.tm], [108000, 1, 36]);
+  const once = planRow({ ...lights, term: { ...lights.term, initial_months: 12, auto_renew: false }, ordinals: lights.ordinals.slice(0, 1) });
+  assert.deepEqual([once.ay, once.ar, once.tm], [108000, 0, 12]);
+});
+
 test("pure transitions: re-spacing, pause and resume shift, skip, cancel inside and after the initial term, renew, expire", () => {
   const p = plan0();
   // ordinal 1 booked on Dec 3: the later unscheduled ones are re-spaced from that date

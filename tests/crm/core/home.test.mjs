@@ -99,7 +99,7 @@ test("scheduled: the value of the visits booked, a job's total once on its first
   assert.deepEqual([card.avg, card.peak.label], [Math.round(80000 / 7), "Nov 17"]);
 });
 
-test("ARR: each live plan's term value scaled to a year; the change over the period; no plans at all is null", () => {
+test("ARR from a row made before Nov 14 (no year's value yet): its term value scaled to a year; the change over the period; no plans at all is null", () => {
   // a first-term quarterly plan (12 months: its sale value is a year), a renewed quarterly term (3 months × 4),
   // one cancelled from Nov 10, one waiting for a signature
   const plans = [
@@ -119,6 +119,39 @@ test("ARR: each live plan's term value scaled to a year; the change over the per
   assert.equal(card.change, 300000 - 240000, "Nov 1 had the cancelled one; the new plan came on Nov 12");
   assert.equal(card.avg, null);
   assert.equal(K.arrDays([], K.periodOf("month", TODAY), TODAY), null);
+});
+
+test("ARR is a year of each recurring plan's visit prices (the owner's Nov 14 check against Rotor)", () => {
+  const at = "2026-03-02T15:00:00Z";
+  const plans = [
+    // live recurring plans count a year of their prices (ay), whatever their term's sale value says
+    { k: "recurring", ck: "biannual", st: "active", sv: 103500, ay: 69000, ar: 1, tm: 12, at, te: "2027-03-01" },
+    { k: "recurring", ck: "quarterly", st: "active", sv: 19500, ay: 78000, ar: 1, tm: 12, at: "2024-03-02T15:00:00Z", te: "2027-02-01" },
+    // paused still counts; cancelling counts until its cancellation takes effect
+    { k: "recurring", ck: "biannual", st: "paused", ay: 50000, ar: 1, tm: 12, at, te: "2027-03-01" },
+    { k: "recurring", ck: "biannual", st: "cancelling", ay: 40000, ar: 1, tm: 12, at, te: "2027-03-01", eff: "2026-11-20" },
+    // a renewing lights plan sold for 3 seasons counts one season a year
+    { k: "lights_annual", ck: "lights_annual", st: "active", sv: 324000, ay: 108000, ar: 1, tm: 36, at, te: "2029-10-31" },
+    // never: a lights install sold for one season without renewing, a one-time series, a plan whose term ended without renewing
+    { k: "lights_annual", ck: "lights_annual", st: "active", sv: 59500, ay: 59500, ar: 0, tm: 12, at, te: "2027-10-31" },
+    { k: "one_time_series", ck: "custom", st: "active", ay: 30000, ar: 0, tm: 12, at, te: "2027-03-01" },
+    { k: "recurring", ck: "biannual", st: "active", ay: 60000, ar: 0, tm: 12, at, te: "2026-11-10" },
+    // nor a plan waiting for its signature, nor one that expired
+    { k: "recurring", ck: "monthly", st: "pending", ay: 300000, ar: 1, tm: 12, at, te: "2027-03-01" },
+    { k: "recurring", ck: "biannual", st: "expired", ay: 45000, ar: 1, tm: 12, at, te: "2026-03-01" },
+  ];
+  const counted = 69000 + 78000 + 50000 + 40000 + 108000;
+  assert.equal(K.arrOn(plans, TODAY), counted);
+  assert.equal(K.arrOn(plans, "2026-11-09"), counted + 60000, "the plan that didn't renew counted until its term ended");
+  assert.equal(K.arrOn(plans, "2026-11-20"), counted - 40000, "the cancellation took effect");
+  assert.equal(K.planArr(plans[0]), 69000);
+  assert.equal(K.planArr({ ...plans[0], ay: 0 }), 0, "a plan with no prices is $0, not its stale sale value");
+  assert.equal(K.recursOn(plans[5], TODAY), false);
+  assert.equal(K.recursOn({ ...plans[5], tm: 36, te: "2029-10-31" }, TODAY), true, "a 3-season lights contract recurs through its term");
+  assert.equal(K.recursOn(plans[6], TODAY), false);
+  assert.equal(K.recursOn({ k: "recurring", st: "active", sv: 1000 }, TODAY), true, "a row from before Nov 14 (no ar) still counts");
+  const s = K.arrDays(plans, K.periodOf("month", TODAY), TODAY);
+  assert.equal(s.total, counted);
 });
 
 test("the Money line is a running total: it climbs to the big number, a partial last bucket never dives, gaps stay gaps", async () => {

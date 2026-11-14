@@ -164,20 +164,34 @@ export function scheduledDays(visits, jobs, p) {
 
 // ------------------------------------------------------------ ARR
 
-// Annual recurring revenue of a live plan: its per-visit price × visits a
-// year, which is its current term's sale value scaled to a year (a first
-// term is 12 months; a renewal term the catalog's renews_every_months). A
-// plan whose current term ends more than a year after it was made has
-// been renewed.
+// Annual recurring revenue of a live plan (the owner's Nov 14 check
+// against Rotor): one year of its visit prices, the index row's `ay`. In a
+// first term that is Rotor's sale value (per-visit prices × visits a year,
+// a first-visit discount included; a 3-year lights term counts one
+// season), after a renewal the regular prices. A row from before Nov 14 has
+// no `ay` until the nightly list check or the next import rebuilds it: its
+// term's sale value scaled to a year (a first term is 12 months; a renewal
+// term the catalog's renews_every_months).
 const RENEW_MONTHS = { biannual: 6, quarterly: 3, monthly: 1, lights_annual: 12, custom: 6 };
 const LIVE_PLAN = new Set(["active", "cancelling", "paused"]);
 export function planArr(r) {
+  if (num(r.ay) !== null) return Math.max(0, Math.round(num(r.ay)));
   const sv = num(r.sv) || 0;
   if (sv <= 0) return 0;
   const start = localOf(r.at), end = r.te || null;
   const firstTerm = !end || !start || daysBetween(start, end) <= 380;
   const months = firstTerm ? 12 : RENEW_MONTHS[r.ck] || (r.k === "lights_annual" ? 12 : 6);
   return Math.round((sv * 12) / months);
+}
+// Revenue that recurs on day d: a plan that renews, or one that doesn't
+// until its term ends. Never a hidden one-time series, nor a lights plan
+// sold for one season without renewing (a one-time install, like Rotor's
+// One-Time lights: it expires after its season).
+export function recursOn(r, d) {
+  if (r.k === "one_time_series") return false;
+  if (r.ar !== 0) return true;
+  if (r.k === "lights_annual" && (num(r.tm) || 12) <= 12) return false;
+  return !(r.te && r.te < d);
 }
 const localOf = (iso) => { const t = Date.parse(iso || ""); return Number.isFinite(t) ? localDate(new Date(t)) : ""; };
 // A plan counts from the day it was made (if it's live or ended later)
@@ -187,7 +201,7 @@ export function arrOn(plans, d) {
   for (const r of list(plans)) {
     if (!r) continue;
     const start = localOf(r.at);
-    if (!start || start > d) continue;
+    if (!start || start > d || !recursOn(r, d)) continue;
     const live = LIVE_PLAN.has(r.st);
     const endedAfter = !live && r.eff && r.eff > d;
     if (live ? !(r.eff && r.eff <= d) : endedAfter) n += planArr(r);

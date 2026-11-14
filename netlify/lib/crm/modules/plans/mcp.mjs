@@ -7,7 +7,7 @@
 import { getRecord } from "../../../crm-store.mjs";
 import { isId } from "../../core/ids.mjs";
 import { now, localDate } from "../../core/clock.mjs";
-import { cancelQuote, ordinalTotals } from "./machine.mjs";
+import { cancelQuote, ordinalTotals, saleValueOf } from "./machine.mjs";
 import { listPlans, plansDueList, startAction } from "./plans.mjs";
 import { agreementForPlan, sendAgreement } from "./agreements.mjs";
 
@@ -31,7 +31,7 @@ export const mcpTools = [
       const p = g.data;
       return {
         found: true, id: p.id, name: p.name, status: p.status, pending_reasons: p.pending_reasons, contact_id: p.contact_id, catalog: p.catalog_key, term: p.term, billing: p.billing, perks: p.perks, policy: p.policy,
-        agreement: p.agreement_status, sale_value_cents: p.sale_value_cents, visits: (p.ordinals || []).map((o) => ({ term: o.term, n: o.n, target_month: o.target_month, status: o.status, job_id: o.job_id || null, total_cents: ordinalTotals(p, o).total_cents })),
+        agreement: p.agreement_status, sale_value_cents: saleValueOf(p), visits: (p.ordinals || []).map((o) => ({ term: o.term, n: o.n, target_month: o.target_month, status: o.status, job_id: o.job_id || null, total_cents: ordinalTotals(p, o).total_cents })),
       };
     },
   },
