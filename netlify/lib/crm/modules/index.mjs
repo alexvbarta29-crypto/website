@@ -22,7 +22,8 @@ import mcp from "./mcp/index.mjs";
 import map from "./map/index.mjs";
 import automations from "./automations/index.mjs";
 import service from "./service/index.mjs";
+import expenses from "./expenses/index.mjs";
 
-export const MODULES = Object.freeze([system, contacts, sales, importMod, quotes, plans, work, money, comms, payroll, reports, mcp, map, automations, service]);
+export const MODULES = Object.freeze([system, contacts, sales, importMod, quotes, plans, work, money, comms, payroll, reports, mcp, map, automations, service, expenses]);
 registerModules(MODULES);
 export default MODULES;

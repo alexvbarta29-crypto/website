@@ -256,9 +256,17 @@ export async function periodDetail(id) {
   const s = await sheetOf(period);
   const users = s.users || await teamUsers();
   const pending = s.frozen ? null : await pendingIn(period);
+  // S20c: a finished job nobody was on (nobody earns on it), and visit timers still running
+  if (pending) {
+    const cfg = await payrollSettings().catch(() => payrollConfig(null));
+    const { jobs } = await finishedJobs(period.start_on, period.end_on, users, cfg, { records: false });
+    pending.nobody = jobs.filter((j) => !(j.assignee_ids || []).length).slice(0, 20).map((j) => ({ id: j.id, number: j.number_label, title: j.title }));
+    pending.timers = (await readIndex("timers", "active").catch(() => ({ rows: [] }))).rows.length;
+  }
+  const people = peopleOf(users, s.totals);
   return {
-    period: { ...view(period), lines: undefined }, etag, lines: s.lines, totals: s.totals, people: peopleOf(users, s.totals), frozen: s.frozen,
-    warnings: pending, ended: period.end_on < today(),
+    period: { ...view(period), lines: undefined }, etag, lines: s.lines, totals: s.totals, people, frozen: s.frozen,
+    warnings: pending, ended: period.end_on < today(), by_job: byJob(s.lines, people),
   };
 }
 
@@ -283,7 +291,7 @@ export async function recompute(id, ctx) {
 // then the period's shifts locked a batch at a time (more: true asks again).
 export async function lockPeriod(id, ctx) {
   const { data: period } = await periodById(id);
-  if (period.status === "paid") throw new ConflictError("That period is paid.");
+  if (["paid", "closed"].includes(period.status)) throw new ConflictError("That period is paid.");
   if (period.status === "open") {
     if (period.end_on >= today()) throw new ConflictError(`This period runs to ${dayLabel(period.end_on)}. Lock it once it's over.`);
     const s = await sheetOf(period);
@@ -320,7 +328,7 @@ export async function lockSheets(id, ctx, { batch = LOCK_BATCH } = {}) {
 
 export async function unlockPeriod(id, ctx) {
   const { data: period } = await periodById(id);
-  if (period.status === "paid") throw new ConflictError("A paid period stays as it was paid. Add an adjustment to the next one.");
+  if (["paid", "closed"].includes(period.status)) throw new ConflictError("A paid period stays as it was paid. Add an adjustment to the next one.");
   if (period.status === "open") return { period: view(period), more: false };
   const by = ctx.user ? ctx.user.id : "office";
   const reason = String((ctx.body && ctx.body.reason) || "").trim().slice(0, 300);
@@ -342,7 +350,7 @@ export async function unlockPeriod(id, ctx) {
 export async function markPaid(id, ctx) {
   const { data: period } = await periodById(id);
   if (period.status === "open") throw new ConflictError("Lock the period first.");
-  if (period.status === "paid") return { period: { ...view(period), lines: undefined } };
+  if (["paid", "closed"].includes(period.status)) return { period: { ...view(period), lines: undefined } };
   const by = ctx.user ? ctx.user.id : "office";
   const at = nowIso();
   const r = await updateRecord("pay_period", period.id, (x) => (x.status !== "locked" ? null : {
@@ -352,6 +360,37 @@ export async function markPaid(id, ctx) {
     if (["draft", "approved"].includes(a.status)) await updateRecord("pay_line", a.id, (x) => (x.status === "paid" || x.status === "void" ? null : { ...x, status: "paid", paid_at: at, paid_by: by }), W(ctx)).catch(() => {});
   }
   return { period: { ...view(r.data), lines: undefined } };
+}
+
+// POST /payroll/periods/:id/close (S20a): a paid period, done with (Rotor's last step). Once.
+export async function closePeriod(id, ctx) {
+  const { data: period } = await periodById(id);
+  if (period.status === "closed") return { period: { ...view(period), lines: undefined } };
+  if (period.status !== "paid") throw new ConflictError("Mark it paid first.");
+  const by = ctx.user ? ctx.user.id : "office";
+  const r = await updateRecord("pay_period", period.id, (x) => (x.status !== "paid" ? null : { ...x, status: "closed", closed_at: nowIso(), closed_by: by }), W(ctx));
+  return { period: { ...view(r.data), lines: undefined } };
+}
+
+// The lines by job (S20b, Rotor's "View by Job"): each job's people and what they earn on it; the
+// lines with no job (hours, tips without a job, adjustments) at the end. (pure)
+export function byJob(lines, people = []) {
+  const name = new Map((people || []).map((p) => [p.id, p.name]));
+  const by = new Map();
+  for (const l of lines || []) {
+    if (!l || l.status === "void") continue;
+    const k = (l.source && l.source.job_id) || "";
+    const g = by.get(k) || { job_id: k || null, label: k ? l.label : "Hours, tips and adjustments", people: {}, commission_cents: 0, tips_cents: 0, other_cents: 0, total_cents: 0 };
+    const who = name.get(l.user_id) || "Someone";
+    g.people[who] = (g.people[who] || 0) + (l.amount_cents || 0);
+    if (/commission|upsell/.test(String(l.type))) g.commission_cents += l.amount_cents || 0;
+    else if (/tip/.test(String(l.type))) g.tips_cents += l.amount_cents || 0;
+    else g.other_cents += l.amount_cents || 0;
+    g.total_cents += l.amount_cents || 0;
+    by.set(k, g);
+  }
+  return [...by.values()].map((g) => ({ ...g, people: Object.entries(g.people).map(([n, c]) => ({ name: n, cents: c })) }))
+    .sort((a, b) => Number(!a.job_id) - Number(!b.job_id) || b.total_cents - a.total_cents);
 }
 
 // ------------------------------------------------------------ adjustments
@@ -444,7 +483,8 @@ export async function periodStatus(input) {
   const at = input && input.at;
   if (!at || Number.isNaN(Date.parse(at))) return null;
   const p = await periodFor(localDate(new Date(at)));
-  return p ? p.status : null;
+  // a closed period is a paid one to everyone outside payroll (late time goes to the next open period)
+  return p ? (p.status === "closed" ? "paid" : p.status) : null;
 }
 
 // ------------------------------------------------------------ the person's own pay (GET /me/pay)

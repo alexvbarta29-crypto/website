@@ -14,6 +14,7 @@ export default {
     { path: "/invoices/new/:contact", load: () => import("./invoice-new.js"), title: "New invoice", perm: "invoices:write", parent: "/contacts/:contact" },
     { path: "/invoices/:id", load: () => import("./invoice.js"), title: "Invoice", perm: "invoices:read_all", parent: "/invoices" },
     { path: "/payments", load: () => import("./payments.js"), title: "Payments", perm: "invoices:read_all", parent: "/today", skeleton: "list" },
+    { path: "/payouts", load: () => import("./payouts.js"), title: "Payouts", perm: "invoices:read_all", parent: "/today", skeleton: "list" },
     { path: "/autopay", load: () => import("./autopay.js"), title: "Autopay", perm: "invoices:read_all", parent: "/today", skeleton: "list" },
     { path: "/autopay/:id", load: () => import("./autopay-run.js"), title: "Autopay run", perm: "invoices:read_all", parent: "/autopay", skeleton: "list" },
     { path: "/settings/payments", load: () => import("./settings.js"), title: "Payments", perm: "settings:owner", parent: "/settings" },

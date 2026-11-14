@@ -5,7 +5,7 @@
 //   GET  /payroll/periods/:id                     payroll:read_all  everyone's totals and lines
 //   GET  /payroll/periods/:id/sheet/:userId       payroll:read_all  one person's printable pay sheet (HTML)
 //   GET  /payroll/periods/:id/export.csv          payroll:read_all  every line and total (CSV)
-//   POST /payroll/periods/:id/recompute|lock|unlock|paid             payroll:run
+//   POST /payroll/periods/:id/recompute|lock|unlock|paid|close       payroll:run (close: after paid, S20a)
 //   POST /payroll/periods/:id/adjustments { user_id, amount_cents, note, type? }   payroll:run
 //   POST /payroll/lines/:id/void                  payroll:run       strike an adjustment out (open periods)
 //   GET  /payroll/scoreboard?from=&to=            payroll:read_own  the crew scoreboard (a person without
@@ -20,7 +20,7 @@ import { isId } from "../../core/ids.mjs";
 import { auditRead } from "../../core/audit.mjs";
 import { getRecord } from "../../../crm-store.mjs";
 import {
-  listPeriods, ensurePeriod, startParam, periodDetail, recompute, lockPeriod, unlockPeriod, markPaid, addAdjustment, voidLine, scoreboard,
+  closePeriod, listPeriods, ensurePeriod, startParam, periodDetail, recompute, lockPeriod, unlockPeriod, markPaid, addAdjustment, voidLine, scoreboard,
   periodFor, sheetOf, today, periodEnd,
 } from "./periods.mjs";
 import { weekOf } from "./compute.mjs";
@@ -84,6 +84,7 @@ export const payrollRoutes = [
   R("POST", "/payroll/periods/:id/lock", "payroll:run", "required", action(lockPeriod), { maxCalls: 260 }),
   R("POST", "/payroll/periods/:id/unlock", "payroll:run", "required", action(unlockPeriod), { maxCalls: 160 }),
   R("POST", "/payroll/periods/:id/paid", "payroll:run", "required", action(markPaid), { maxCalls: 120 }),
+  R("POST", "/payroll/periods/:id/close", "payroll:run", "required", action(closePeriod)),
   R("POST", "/payroll/periods/:id/adjustments", "payroll:run", "required", adjust, { maxCalls: 40 }),
   R("POST", "/payroll/lines/:id/void", "payroll:run", "required", voidRoute, { maxCalls: 40 }),
   R("GET", "/payroll/scoreboard", "payroll:read_own", "none", boardRoute, { maxCalls: 260 }),

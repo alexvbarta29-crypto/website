@@ -34,7 +34,8 @@ const isoOpt = (v, f) => isoTime(v, { field: f }) || undefined;
 const strOpt = (max) => (v, f) => str(v, { field: f, max }) || undefined;
 const sortOf = (at) => tsKey(new Date(Date.parse(at) || 0));
 
-export const PERIOD_STATUSES = Object.freeze(["open", "locked", "paid"]);
+// closed (guide-gaps S20a): after paid, nothing more goes into it (late time always goes to the next open period)
+export const PERIOD_STATUSES = Object.freeze(["open", "locked", "paid", "closed"]);
 export const LINE_STATUSES = Object.freeze(["draft", "approved", "paid", "void"]);
 export const MAX_FROZEN_LINES = 600;
 

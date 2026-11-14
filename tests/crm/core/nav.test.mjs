@@ -104,7 +104,7 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   const more = (k) => row(k).more.map((m) => m.label);
   // the tabs that exist today (Requests, Payouts, Referrals, Forms, Queue and Call logs wait for their screens)
   assert.deepEqual(tabs("service"), ["Requests", "Quotes", "Jobs", "Plans"]);
-  assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payroll"]);
+  assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payouts", "Payroll", "Expenses"]);
   assert.deepEqual(tabs("marketing"), ["Workflows", "Campaigns", "Reviews", "Templates"]);
   for (const k of ["home", "inbox", "schedule", "customers", "leads", "pipelines", "dialer", "tasks", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
   assert.deepEqual([row("service").path, row("financials").path, row("marketing").path, row("analytics").path, row("dialer").path], ["/requests", "/invoices", "/automations", "/reports", "/calls"], "the first open tab");
@@ -183,13 +183,13 @@ test("SECTIONS and permissions: a tab shows when its screen is there and this pe
   assert.deepEqual(row("service").more, [], "no Light Studio without the office tools");
   assert.ok(!row("financials").more.some((m) => m.path === "/tools/purchases"));
   // someone who may open only Payments of Financials: the row opens Payments, no row of tabs
-  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => x !== "payroll:read_all" && canOf("admin")(x), user: { id: "us_ad2", role: "admin" } });
-  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments"]);
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "expenses:read"].includes(x) && canOf("admin")(x), user: { id: "us_ad2", role: "admin" } });
+  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts"]);
   const fin = nav.sectionByKey("financials");
   assert.match(String(nav.sectionTabs(fin, "payments")), /role="tablist" aria-label="Financials"[\s\S]*href="#\/invoices"[\s\S]*href="#\/payments" class="rs-seg-b" role="tab" aria-selected="true"/);
-  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all", "expenses:read"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
   assert.deepEqual([row("financials").path, row("financials").more], ["/timesheets", []], "no tab open: the row opens its first \"...\" screen (nothing is lost)");
-  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all", "time:edit_others"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all", "time:edit_others", "expenses:read"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
   assert.equal(row("financials"), undefined, "nothing of Financials open: no row");
   assert.equal(String(nav.sectionTabs("financials")), "", "and no tabs");
   // a technician: no drawer, no sections
@@ -255,7 +255,7 @@ test("a section's tab whose route comes later (Requests, Payouts...) shows once 
   planFor("owner");
   const row = (k) => nav.drawerGroups().flat().find((it) => it.key === k);
   assert.deepEqual(row("service").tabs.map((t) => t.label), ["Requests", "Quotes", "Jobs", "Plans"]);
-  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll"]);
+  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll", "Expenses"]);
   assert.equal(nav.isTabRoot("/requests"), true);
 });
 

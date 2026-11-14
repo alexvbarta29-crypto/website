@@ -12,7 +12,7 @@ export function ensureStyles() {
   l.href = "/crm-app/modules/payroll/payroll.css";
   document.head.appendChild(l);
 }
-export const STATUS = { open: ["Open", "amber"], locked: ["Locked", "blue"], paid: ["Paid", "green"] };
+export const STATUS = { open: ["Open", "amber"], locked: ["Approved", "blue"], approved: ["Approved", "blue"], paid: ["Paid", "green"], closed: ["Closed", ""] };
 export const statusPill = (st) => { const [l, c] = STATUS[st] || [st || "-", ""]; return html`<span ${attrs({ class: "pill " + c })}>${l}</span>`; };
 export const MODEL = { hourly: "Hourly", commission: "Commission", greater_of: "Higher of hourly or commission", hourly_plus_commission: "Hourly plus commission" };
 export const KIND = { hourly: "Hours", overtime: "Overtime", technician_commission: "Job commission", salesman_commission: "Sales commission", upsell_commission: "Upsell", tip: "Tip", adjustment: "Adjustment", bonus: "Bonus" };
