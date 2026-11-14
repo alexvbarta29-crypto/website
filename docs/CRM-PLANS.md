@@ -300,9 +300,17 @@ They read an export someone made; Rotor itself is never called.
 - `plans.plans` (rows 19, 20, 21; after contacts, quotes and jobs):
   recurring and lights plans become plans with their Rotor ids and
   numbers; a One-Time container with several jobs a hidden
-  `one_time_series` plan; lines per visit, the five discount shapes,
-  billing, autopay, auto-renew, status and dates; visits from the jobs in
-  order (the jobs get the plan and their visit number); the quote by
+  `one_time_series` plan; lines per visit (a client-optional line ticked:
+  Rotor's prices count it), the five discount shapes (every `multi` entry,
+  whatever `enabled` says), billing, autopay, auto-renew, status and
+  dates; the term from the dates, else from a contract discount ("3-Year
+  Contract": 36 months; Rotor's sale value of such a lights plan is three
+  seasons); visits from the jobs in Rotor's visit order, by job number
+  (the jobs get the plan and their visit number); each job, a one-time
+  container's too, gets the plan's discounts for its place as a partial
+  record (only the job's `discounts`, so a discount someone set on the job
+  in the CRM stays: docs/CRM-IMPORT.md): the job's total is Rotor's due
+  amount; the plan's own notes and monthly price in `rotor`; the quote by
   identical line ids. Imported plans say "imported_unknown" for the
   agreement (Rotor doesn't expose signatures): Settings → Plans can request
   them.

@@ -51,6 +51,7 @@ export const PHASE_LABELS = Object.freeze({
   "system.rates": "Pay rates",
   "contacts.customers": "Customers",
   "contacts.quote_contacts": "Consent, Stripe ids, converted leads",
+  "contacts.quote_contacts_leads": "Consent and notes of quoted leads",
   "contacts.leads": "Leads",
   "contacts.properties_quotes": "Properties from quotes",
   "contacts.properties_plans": "Properties from plans",

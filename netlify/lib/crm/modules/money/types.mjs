@@ -274,7 +274,7 @@ export function validatePayment(data, { op } = {}) {
 export const paymentShard = (r) => (r.deleted_at ? null : String(r.received_on || r.created_at || "").slice(0, 7) || "none");
 export const paymentRow = (r) => ({
   c: r.contact_id, cn: r.contact_name || "", inv: r.invoice_id || null, inn: r.invoice_number || null, k: r.kind, m: r.method, st: r.status, a: r.amount_cents || 0, tip: r.tip_cents || 0,
-  fee: r.fee_cents || 0, rf: r.refunded_cents || 0, on: r.received_on, sim: r.simulated ? 1 : 0, im: r.import ? 1 : 0, sh: r.shadow ? 1 : 0, rm: (r.rotor && r.rotor.method_raw) || null, ry: r.rotor && r.rotor.payment_date ? String(r.rotor.payment_date).slice(0, 4) : null,
+  fee: r.fee_cents || 0, rf: r.refunded_cents || 0, on: r.received_on, sim: r.simulated ? 1 : 0, im: r.import ? 1 : 0, sh: r.shadow ? 1 : 0, rm: (r.rotor && r.rotor.method_raw) || null, ry: r.rotor && r.rotor.payment_date ? String(r.rotor.payment_date).slice(0, 4) : null, ...(r.rotor && r.rotor.type_raw === "tip" ? { rt: "tip" } : {}),
   pmk: r.stripe && r.stripe.payment_method_id && /^dry_pm_/.test(r.stripe.payment_method_id) ? r.stripe.payment_method_id : null, ...(r.via === "qr" ? { vq: 1 } : {}), u: r.updated_at,
 });
 

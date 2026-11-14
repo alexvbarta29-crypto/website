@@ -23,6 +23,7 @@ test("the pure mapping: lines per visit, the five discount shapes, scopes, catal
   assert.equal(flat.override.cents, 24500);
   assert.deepEqual(flat.scope, { type: "specific", visits: [1, 3] });
   assert.equal(flat.optional, true);
+  assert.equal(flat.selected, true, "Rotor's prices count a client-optional line");
   assert.equal(flat.id, "a2", "the id kept verbatim");
   assert.deepEqual(IMP.planDiscounts([]), []);
   assert.deepEqual(IMP.planDiscounts({ multi: [{ name: "Bi-Annual Discount", type: "fixed", value: 50, jobSchedule: { type: "all" } }] }).map((d) => [d.name, d.type, d.value]), [["Bi-Annual Discount", "fixed", 5000]]);
@@ -30,6 +31,14 @@ test("the pure mapping: lines per visit, the five discount shapes, scopes, catal
   assert.deepEqual(IMP.planDiscounts({ enabled: false, type: "fixed", value: 50 }), []);
   assert.equal(IMP.planDiscounts({ enabled: true, multi: [{ type: "fixed", value: 100 }], type: "fixed", value: 50 })[0].value, 10000, "multi wins");
   assert.equal(IMP.planDiscounts({ enabled: true, multi: [{ name: "Google Review & Local Post", type: "fixed", value: 50, jobSchedule: { type: "initial" } }] })[0].scope.type, "initial");
+  assert.equal(IMP.planDiscounts({ enabled: false, multi: [{ name: "Bi-Annual Discount", type: "fixed", value: 50 }], type: "fixed", value: 0 })[0].value, 5000, "a multi discount counts whatever enabled says");
+  // a job's share of the plan's discounts: the ones that cover its place, each then covering the one job
+  const ds = IMP.planDiscounts({ multi: [{ name: "First visit", type: "fixed", value: 25, jobSchedule: { type: "initial" } }, { name: "Plan", type: "percentage", value: 10, jobSchedule: { type: "all" } }, { name: "Later", type: "fixed", value: 5, jobSchedule: { type: "after_initial" } }, { name: "Zero", type: "fixed", value: 0 }] });
+  assert.deepEqual(IMP.jobDiscountsOf(ds, 1).map((d) => [d.name, d.scope.type]), [["First visit", "all"], ["Plan", "all"]]);
+  assert.deepEqual(IMP.jobDiscountsOf(ds, 2).map((d) => d.name), ["Plan", "Later"]);
+  // a plan with no end date runs as long as its contract discount says
+  assert.equal(IMP.termMonthsOf([{ name: "3-Year Contract" }]), 36);
+  assert.equal(IMP.termMonthsOf([{ name: "Early Bird" }]), 12);
   assert.equal(IMP.catalogOf({ frequency_name: "Semi-Annual", interval: "month", count: 6 }), "biannual");
   assert.equal(IMP.catalogOf({ frequency_name: "Quarterly", interval: "month", count: 3 }), "quarterly");
   assert.equal(IMP.catalogOf({ frequency_name: "Annual", interval: "year", count: 1, lights: true }), "lights_annual");
@@ -74,22 +83,38 @@ test("templates, plans, series and lights from a Rotor export, twice", async () 
       assert.equal(p.created_by, "import");
       assert.ok(p.import);
       if (oneTime && !isLights) { assert.equal(p.kind, "one_time_series"); series += 1; } else if (isLights) { assert.equal(p.kind, "lights_annual"); lights += 1; } else { assert.equal(p.kind, "recurring"); recurring += 1; }
-      assert.equal(p.ordinals.length, r.jobs.length, "an ordinal per job, in order");
-      p.ordinals.forEach((o, i) => assert.equal(o.job_id, idForRotor("job", r.jobs[i].id)));
+      assert.equal(p.ordinals.length, r.jobs.length, "an ordinal per job, in visit order");
+      // Rotor's visit order is the job numbers' (its jobs[] isn't always in that order)
+      const num = (j) => { const x = ex.jobs.find((y) => y.id === j.id); return x ? Number(x.job_number) : Infinity; };
+      const order = r.jobs.map((j, i) => ({ j, i })).sort((a, b) => num(a.j) - num(b.j) || a.i - b.i).map((x) => x.j);
+      p.ordinals.forEach((o, i) => assert.equal(o.job_id, idForRotor("job", order[i].id)));
       assert.equal(p.status, r.cancelled ? "cancelled" : r.active ? "active" : "expired");
       assert.equal(p.billing.mode, r.billing_mode === "after_jobs" ? "after_visit" : "first_of_month");
       assert.equal(p.billing.autopay, r.is_auto_pay);
       assert.equal(p.agreement_status, p.status === "active" ? "imported_unknown" : "none", "no signature on file (G18)");
       assert.equal(p.lines.length, (r.jobs_config.line_items || []).length);
       // the jobs learned their plan
-      for (const [i, j] of r.jobs.entries()) {
+      for (const [i, j] of order.entries()) {
         const job = t.stores.data.json(`rec/job/${idForRotor("job", j.id)}`);
         if (!job) continue;
         assert.equal(job.plan_id, p.id);
         assert.equal(job.plan_ordinal.n, p.ordinals[i].n);
+        // the plan's discounts for its place: the job's total is Rotor's due amount for it
+        assert.deepEqual(job.discounts.map((d) => d.name), IMP.jobDiscountsOf(p.discounts, i + 1).map((d) => d.name));
+        const row = ex.jobs.find((x) => x.id === j.id);
+        if (row.status !== "Completed") assert.equal(job.totals.total_cents, Math.round(row.due_amount * 100), `job ${row.job_number} totals Rotor's due amount`);
       }
     }
     assert.ok(recurring > 0 && lights > 0 && series > 0 && none > 0, JSON.stringify({ recurring, lights, series, none }));
+    // every open job, plan or one-time container, totals what Rotor says is due on it (its lines less the plan's discounts)
+    let open = 0, discounted = 0;
+    for (const row of ex.jobs.filter((x) => x.status !== "Completed")) {
+      const job = t.stores.data.json(`rec/job/${idForRotor("job", row.id)}`);
+      assert.equal(job.totals.total_cents, Math.round(row.due_amount * 100), `job ${row.job_number}`);
+      open += 1;
+      if (job.discounts.length) discounted += 1;
+    }
+    assert.ok(open > 0 && discounted > 0, JSON.stringify({ open, discounted }));
     const cancelled = plans.find((p) => p.status === "cancelled");
     if (cancelled) assert.ok(["price", "other"].includes(cancelled.cancel.reason));
     // the index (rebuilt by the run) lists recurring and lights plans, never the hidden series
