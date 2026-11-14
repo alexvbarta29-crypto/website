@@ -40,7 +40,7 @@ test("the page: the modules' cards on Details and Activity in Rotor's order; the
   const order = C.contactSections(MANIFESTS, all).map((x) => [x.key, x.place]);
   assert.deepEqual(order, [["sales", "more"], ["quotes", "docs"], ["plans", "plan"], ["work", "visits"], ["money", "docs"], ["messages", "aside"]]);
   assert.deepEqual(C.contactSections(MANIFESTS, (p) => p !== "invoices:read_all").map((x) => x.key).includes("money"), false, "a section behind its permission");
-  const mod = (key, place, extra = {}) => ({ def: { key, place, label: key, load: () => {} }, key, loading: false, mod: { render: () => `${key.toUpperCase()}-OLD`, ...extra }, state: {}, ctx: {} });
+  const mod = (key, place, extra = {}) => ({ def: { key, place, label: key, module: key === "messages" ? "comms" : key, load: () => {} }, key, loading: false, mod: { render: () => `${key.toUpperCase()}-OLD`, ...extra }, state: {}, ctx: {} });
   const cards = (...list) => ({ cards: () => list });
   const secs = [
     mod("sales", "more", { ...cards({ key: "followups", tab: "details", title: "Follow-ups", body: "FOLLOW-BODY" }, { key: "deals", tab: "activity", title: "Deals", body: "DEALS-BODY" }), actions: () => [{ key: "call", label: "Log a call", href: "#/calls/log/x" }, { key: "lost", label: "Mark lost", danger: true, href: "#/deals/d" }] }),
@@ -54,14 +54,17 @@ test("the page: the modules' cards on Details and Activity in Rotor's order; the
   const s = { contact, stats: { money: { open_balance_cents: 0, lifetime_cents: 5000 }, work: {} }, properties: [property], users: [], secs, activity: [{ at: NOW, kind: "call.spoke", label: "Called and talked" }, { at: NOW, kind: "sms.in", label: "Text received" }], tech: false };
   const h = text(C.default.render(s, ctx()));
   const at = (x) => h.indexOf(x);
-  const details = h.slice(at('data-pane="details"'), at('data-pane="activity"'));
+  const details = h.slice(at('data-pane="details"'), at('data-pane="service"'));
+  const service = h.slice(at('data-pane="service"'), at('data-pane="payments"'));
+  const payments = h.slice(at('data-pane="payments"'), at('data-pane="activity"'));
   const activity = h.slice(at('data-pane="activity"'));
-  // a customer's order: Visits, Plan, Quotes, Invoices (money's old section as one card), Properties, Follow-ups, notes
-  const want = ["ct-mod-work", "ct-mod-plans", "ct-mod-quotes", "ct-mod-money", "ct-card-properties", "ct-mod-sales", "ct-card-notes"];
-  for (const id of want) assert.ok(details.includes(`id="${id}"`), `${id} on Details`);
-  assert.deepEqual([...want].sort((a, b) => details.indexOf(`id="${a}"`) - details.indexOf(`id="${b}"`)), want, "in Rotor's order for a customer");
-  assert.match(details, /MONEY-OLD/, "a module without cards(): its old section as one card");
-  assert.match(details, /No quotes yet/, "an empty card: one line");
+  // Details | Service | Payments | Activity (guide-gaps C17): the work, plans, quotes and pipelines on Service, in that order
+  const want = ["ct-mod-work", "ct-mod-plans", "ct-mod-quotes", "ct-mod-sales"];
+  for (const id of want) assert.ok(service.includes(`id="${id}"`), `${id} on Service`);
+  assert.deepEqual([...want].sort((a, b) => service.indexOf(`id="${a}"`) - service.indexOf(`id="${b}"`)), want, "in Rotor's order");
+  for (const id of ["ct-card-properties", "ct-card-notes"]) assert.ok(details.includes(`id="${id}"`), `${id} on Details`);
+  assert.match(payments, /MONEY-OLD/, "a module without cards(): its old section as one card, on its tab");
+  assert.match(service, /No quotes yet/, "an empty card: one line");
   for (const x of ["DEALS-BODY", "MESSAGES-OLD", "Called and talked", "Marketing texts"]) assert.ok(activity.includes(x), `${x} on Activity`);
   assert.ok(!h.includes("DENIED-OLD"), "a denied section is left out");
   assert.match(h, /Quarterly plan/, "the plan pill from the plans section");
