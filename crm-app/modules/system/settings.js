@@ -26,8 +26,8 @@ export const LAYOUT = Object.freeze([
   ["messages", "Messages & automations", [["/templates", "Message templates", "doc"], ["/automations", "Automations", "bolt"], ["/settings/cadences", "Follow-up cadences", "phone"], ["/settings/messaging", "Quiet hours & opt-out", "text"], ["/settings/texting", "Texting & email setup", "mail"]]],
   ["payments", "Payments", [["/settings/payments", "Payments & card fees", "money"]]],
   ["maps", "Maps & door to door", [["/settings/knock", "Door to door", "map"], ["/settings/maps", "Maps & team map", "map"]]],
-  ["data", "Import & data", [["/import", "Import from Rotor", "data"], ["/settings/integrations", "Integrations", "plug"], ["/settings/intake", "Where website leads go", "contacts"], ["/settings/lead-hooks", "Facebook lead forms", "plug"], ["/settings/data", "Data & backups", "data"], ["/activity", "Activity log", "clock"], ["/legacy/customers", "Rotor's first customer list", "contacts"], ["/tools/rotor", "Open Rotor", "link"]]],
-  ["look", "Appearance", [["#theme", "Light or dark", "sun"], ["/tab-bar", "Tab bar", "tabbar"]]],
+  ["data", "Import & data", [["/import", "Import from Rotor", "data"], ["/settings/integrations", "Integrations", "plug"], ["/settings/claude", "Claude connector", "plug"], ["/settings/intake", "Where website leads go", "contacts"], ["/settings/lead-hooks", "Facebook lead forms", "plug"], ["/settings/data", "Data & backups", "data"], ["/activity", "Activity log", "clock"], ["/legacy/customers", "Rotor's first customer list", "contacts"], ["/tools/rotor", "Open Rotor", "link"]]],
+  ["look", "Appearance", [["#theme", "Light or dark", "sun"], ["/tab-bar", "Tab bar", "tabbar"], ["/calendar-feed", "Calendar feed", "today"]]],
 ]);
 const KEYS = new Set(LAYOUT.map(([k]) => k));
 

@@ -68,6 +68,8 @@ const HOOKS = [
   { re: /^\/hooks\/twilio\/(sms|status)$/, kind: "twilio signature" },       // inbound texts and delivery statuses (comms/inbound.mjs; 403 until Twilio is connected)
   { re: /^\/hooks\/email\/postmark$/, kind: "postmark token" },             // delivery, bounce and complaint webhooks (?token=)
   { re: /^\/hooks\/stripe(-test)?$/, kind: "stripe signature" },            // Stripe's webhooks (M5): the endpoint's signing secret; closed (404) while payments are dry-run
+  { method: "POST", re: /^\/mcp$/, kind: "api key" },                       // the MCP endpoint (M7c): a header key (Authorization: Bearer bcrm_…)
+  { method: "POST", re: /^\/mcp\/:key$/, kind: "mcp path key" },            // the MCP endpoint with a path key (read-only); nobody here holds one
 ];
 const hookKind = (r) => (HOOKS.find((h) => (!h.method || h.method === r.method) && h.re.test(r.path)) || {}).kind || null;
 const permKeys = () => new Set([...P.PERMISSION_KEYS, ...R.allPerms().map((p) => p.key)]);
@@ -359,6 +361,8 @@ const isUpload = (hk) => hk === "upload key" || hk === "upload key or owner";
 function expected(route, actor, probe, fx) {
   const hk = route.auth === "hook" ? hookKind(route) : null;
   if (hk) {
+    // the MCP endpoint takes an API key as its user (role ∩ scopes); it answers JSON-RPC, so an empty body is a 400
+    if (hk === "api key") return actor.kind === "key" ? ALLOW : { codes: [401] };
     if (!isUpload(hk)) return { codes: [401, 403, 404] };        // a secret or token nobody here holds
     if (actor.kind === "upload") return hk === "upload key" || probe.kind === "upload" ? ALLOW : { codes: [401] };
     if (hk === "upload key or owner" && actor.kind === "session") return P.can(actor.user, "import:run") ? ALLOW : { codes: [403] };
