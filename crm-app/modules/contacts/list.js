@@ -247,7 +247,6 @@ export default {
           ${s.dupes ? html`<a class="notice" href="#/merge">${icon("contacts")}<span>${s.dupes} possible ${s.dupes === 1 ? "duplicate" : "duplicates"} to review</span><span class="chev" aria-hidden="true"></span></a>` : ""}
           <div id="ct-list"></div>
           <div id="ct-deep"></div>
-          ${ctx.can("contacts:read_all") ? html`<p class="ct-foot"><a href="#/legacy/customers">Rotor's customer list (the first import)</a></p>` : ""}
         </div>
         <div class="ct-rail" id="ct-rail" aria-hidden="true" hidden></div>
       </div>

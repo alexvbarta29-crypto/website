@@ -2,6 +2,15 @@
 // switch and the sidebar (design §9.1; the Nov 2026 layout: Rotor's and
 // Flyra's phone apps, the best of both).
 //
+// The Menu (Nov 2026, "concise but full of capabilities"): five groups,
+// Work · Sales · Customers · Money · Marketing & messages, then Settings.
+// MENU below is the one place that says where each screen sits and what it
+// is called; a screen is listed once, never also where the bar already has
+// it; the setup screens (Templates, Automations, Team, Activity, Import,
+// Tab bar, Rotor) live in the Settings hub (system/settings.js) for whoever
+// may open Settings. A module's own Menu entry with a place MENU doesn't
+// name still shows, under its section (unknown ones under More).
+//
 // The phone (Nov 2026, "make it look more like Flyra"): Flyra's floating
 // glass pill inset from the screen's edges, just above the home indicator,
 // with labels under the icons and the current place on a lighter round
@@ -18,7 +27,7 @@
 // (openQuick below). Top-level screens get a large title on the left and
 // round buttons on the right (search, and a coral + for that screen's own
 // "new"); deeper screens get a round back button.
-// The Sales tab is Pipeline (when its screen exists), Leads & calls, Quotes
+// The Sales tab is Pipeline (when its screen exists), Leads, Calls, Quotes
 // and Tasks, one tap apart in a switch under the header. The bar hides
 // while an input has focus (the keyboard is up). A one-time "What moved"
 // note (whatMoved below) tells each person, once per device, about the bar.
@@ -41,14 +50,13 @@ export const TABS = Object.freeze({
   home: { label: "Home", paths: ["/today"], icon: "home" },
   today: { label: "Today", paths: ["/today"], icon: "today" },
   inbox: { label: "Inbox", paths: ["/inbox"], icon: "mail" },
-  contacts: { label: "Customers", paths: ["/contacts", "/legacy/customers"], icon: "contacts" },
+  contacts: { label: "Customers", paths: ["/contacts"], icon: "contacts" },
   schedule: { label: "Schedule", paths: ["/schedule"], icon: "cal12" },
   // one tab, several screens: the switch under the header goes between them (Pipeline once its screen exists)
   sales: { label: "Sales", group: [["/pipeline", "Pipeline"], ["/leads", "Leads"], ["/calls", "Calls"], ["/quotes", "Quotes"], ["/tasks", "Tasks"]], icon: "pipeline" },
   // places a person may put on their own bar instead (Menu → Tab bar)
   leads: { label: "Leads", paths: ["/leads"], icon: "target" },
   pipeline: { label: "Pipeline", paths: ["/pipeline"], icon: "pipeline" },
-  visits: { label: "Visits", paths: ["/visits"], icon: "truck" },
   leaderboard: { label: "Leaders", paths: ["/leaderboard"], icon: "trophy" },
   map: { label: "Map", paths: ["/map"], icon: "map" },
   quotes: { label: "Quotes", paths: ["/quotes"], icon: "doc" },
@@ -64,14 +72,32 @@ export const TABS = Object.freeze({
   more: { label: "More", more: true, icon: "more" },
 });
 // What each place's own "new" is (the coral + in a top-level screen's header; else the + sheet).
-const PLACE_NEW = { contacts: ["/contacts/new", "/leads/new"], schedule: ["/jobs/new"], visits: ["/jobs/new"], inbox: ["/inbox/new"], sales: ["/leads/new"], leads: ["/leads/new"], pipeline: ["/leads/new"], quotes: ["/quotes/new"], plans: ["/plans/new"], invoices: ["/invoices/new"] };
+const PLACE_NEW = { contacts: ["/contacts/new", "/leads/new"], schedule: ["/jobs/new"], inbox: ["/inbox/new"], sales: ["/leads/new"], leads: ["/leads/new"], pipeline: ["/leads/new"], quotes: ["/quotes/new"], plans: ["/plans/new"], invoices: ["/invoices/new"] };
 
-// The Menu's sections, in order (a nav entry's `section`; unknown → "more").
+// The Menu's groups, in order (More only holds what no group names).
 export const SECTIONS = Object.freeze([
-  ["work", "Work"], ["sales", "Sales"], ["customers", "Customers"], ["money", "Money"], ["messages", "Messages & automations"],
-  ["office", "Office tools"], ["admin", "Admin"], ["more", "More"],
+  ["work", "Work"], ["sales", "Sales"], ["customers", "Customers"], ["money", "Money"], ["marketing", "Marketing & messages"], ["more", "More"],
 ]);
-const SECTION_KEYS = new Set(SECTIONS.map(([k]) => k));
+// Where each screen sits and its name there: [path, label, icon]. A module's
+// nav entry for the same path decides who may see it (and its icon).
+export const MENU = Object.freeze({
+  work: [["/schedule", "Schedule", "schedule"], ["/jobs", "Jobs", "list"], ["/plans", "Plans", "swap"], ["/lights", "Lights season", "bulb"], ["/team-map", "Team map", "team"], ["/timesheets", "Timesheets", "clock"], ["/time", "Time", "time"], ["/pay", "Pay", "pay"]],
+  sales: [["/pipeline", "Pipeline", "pipeline"], ["/leads", "Leads", "target"], ["/calls", "Calls", "phone"], ["/quotes", "Quotes", "doc"], ["/tasks", "Tasks", "check"], ["/knock", "Door to door", "map"], ["/tools/lights", "Light Studio", "bulb"], ["/leaderboard", "Leaderboard", "trophy"], ["/performance", "My performance", "trend"]],
+  customers: [["/contacts", "Customers", "contacts"], ["/merge", "Merge review", "copy"]],
+  money: [["/invoices", "Invoices", "receipt"], ["/payments", "Payments", "money"], ["/autopay", "Autopay", "clock"], ["/dashboard", "Reports", "chart"], ["/tools/purchases", "Purchases", "cart"]],
+  marketing: [["/inbox", "Inbox", "inbox"], ["/campaigns", "Campaigns", "send"], ["/approvals", "Approvals", "check"], ["/reviews", "Reviews", "check"], ["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"], ["/outbox", "Outbox", "send"]],
+});
+// Set up once, so in the Settings hub (system/settings.js), not the Menu,
+// for whoever may open Settings; anyone else finds them in the Menu.
+export const IN_SETTINGS = Object.freeze(["/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/tools/rotor", "/legacy/customers"]);
+// Old Menu entries that are now part of another screen (their links redirect
+// or still open): To book is a Schedule view, Visits is the Schedule's List,
+// Follow-ups (the office's playbook page) is under Settings → Cadences.
+const GONE = new Set(["/schedule?view=tray", "/visits", "/tools/followups", "/settings", "/me"]);
+// Two paths, one screen: the bar's Map is Door to door.
+const SAME = Object.freeze({ "/knock": "/map" });
+// A module's section for a screen MENU doesn't name.
+const OLD_SECTION = { work: "work", sales: "sales", customers: "customers", money: "money", messages: "marketing", marketing: "marketing", office: "marketing" };
 
 let st = { tabs: [], more: [], creates: [], can: () => false, onSignOut: () => {}, badges: {}, user: null };
 
@@ -85,10 +111,13 @@ const routeOk = (path) => {
 // The office's standard bar (me.mjs OFFICE_NAV): Flyra's.
 export const STANDARD = Object.freeze(["home", "schedule", "inbox", "map", "menu"]);
 // The office's bar from a shell cached before Home (Today · Inbox · Contacts ·
-// Schedule · Dashboard · More) is today's bar; a tech's is unchanged.
+// Schedule · Dashboard · More) is today's bar; a tech's is unchanged. A
+// pinned Visits is the Schedule now (its List view).
+export const MERGED_TABS = Object.freeze({ visits: "schedule" });
 export function normalize(nav) {
   const list = Array.isArray(nav) ? nav : [];
-  return list.includes("more") || list.includes("dashboard") ? [...STANDARD] : list;
+  if (list.includes("more") || list.includes("dashboard")) return [...STANDARD];
+  return [...new Set(list.map((k) => MERGED_TABS[k] || k))];
 }
 
 // What this person gets (no DOM; the tests call it with the router's
@@ -97,6 +126,7 @@ export function normalize(nav) {
 // layout. → { bar, menu, side: { top, groups, bottom } }
 export function plan({ nav, manifests, can, user = null }) {
   st.manifests = manifests;
+  st.navAll = manifests.flatMap((m) => m.nav || []).filter((n) => n && n.where === "more");
   st.can = can;
   st.user = user || null;
   st.more = manifests.flatMap((m) => (m.nav || []).filter((n) => n.where === "more")).filter((n) => allowed(n.perm) && routeOk(n.path)).sort((a, b) => (a.order || 50) - (b.order || 50));
@@ -227,6 +257,28 @@ export function screenButtons(list = [], onTap = () => {}) {
   box.onclick = (e) => { const b = e.target.closest("[data-own]"); if (b) onTap(b.dataset.own, b, e); };
 }
 
+// A list's search behind the round search button (a phone, a top-level
+// screen; Rotor's): the screen gives its search field the class
+// "find-field" (and "open" while it holds text or was opened, findOpen
+// below); the button opens and closes it in place. On a desk, or a screen
+// deeper in, the field always shows (crm.css).
+export const findOpen = (s, ctx) => !!((s && s.q) || (ctx && ctx.keep && ctx.keep.find));
+export function findButton(view, ctx, label = "Search") {
+  const field = () => view.querySelector(".find-field");
+  if (!field()) return;
+  screenButtons([{ key: "find", icon: "search", label, on: field().classList.contains("open"), expanded: field().classList.contains("open") }], (key, b) => {
+    const f = field();
+    if (!f) return;
+    const input = f.querySelector("input");
+    const open = !f.classList.contains("open") || !!(input && input.value);
+    f.classList.toggle("open", open);
+    if (ctx && ctx.keep) ctx.keep.find = open;
+    b.classList.toggle("on", open);
+    b.setAttribute("aria-expanded", String(open));
+    if (open && input) input.focus();
+  });
+}
+
 // Marks the tab of the current screen; shows the switch and the create button where they belong.
 export function update(path) {
   // The nearest tab or More entry up the parent chain decides the highlight.
@@ -238,7 +290,7 @@ export function update(path) {
     if (menu && menu.roots.includes(p)) { viaMore = true; break; }
     active = barTabs().find((t) => !t.more && (t.roots || []).includes(p)) || null;
     if (active) break;
-    if (st.more.some((n) => n.path === p)) { viaMore = true; break; }
+    if (inMenu(p)) { viaMore = true; break; }
   }
   document.querySelectorAll("#tabs [data-tab]").forEach((el) => {
     const t = st.tabs.find((x) => x.key === el.dataset.tab);
@@ -267,7 +319,7 @@ export function update(path) {
     } else render(sub, html``);
   }
   // a top-level screen (a tab's, or one the Menu lists): the large title, the round buttons and the +
-  const big = atRoot || (!active && st.more.some((n) => n.path === path));
+  const big = atRoot || (!active && inMenu(path));
   const app = document.getElementById("app");
   if (app) app.classList.toggle("big-top", big);
   // the office's Home brings its own header (the avatar, Welcome back, the bell): the bar's title steps aside on a phone
@@ -291,6 +343,8 @@ export function update(path) {
     document.getElementById("app").appendChild(fab);
   } else if (!want && fab) fab.remove();
 }
+// A screen the Menu lists (or a module's Menu entry): top-level, and it lights the Menu button.
+const inMenu = (p) => (!!st.menuPaths && st.menuPaths.has(p)) || st.more.some((n) => n.path === p);
 // The place (a TABS key) a path is the screen of.
 const placeOf = (path) => (Object.entries(TABS).find(([, t]) => (t.paths || []).includes(path) || (t.group || []).some(([p]) => p === path)) || [null])[0];
 
@@ -305,34 +359,50 @@ export function setBadges({ inbox = 0, today = 0 } = {}) {
   }
 }
 
-// The Menu's sections: [{ key, label, items: [nav entries] }], empty ones left out.
+// The Menu's groups: [{ key, label, items: [{ path, label, icon }] }], each
+// screen once, only what this person may open, empty groups left out.
 export function menuSections() {
-  return SECTIONS.map(([key, label]) => ({ key, label, items: st.more.filter((n) => (SECTION_KEYS.has(n.section) ? n.section : "more") === key) })).filter((s) => s.items.length);
+  const settings = routeOk("/settings") && st.more.some((n) => n.path === "/settings");
+  const named = new Map(Object.entries(MENU).flatMap(([key, list]) => list.map((x) => [x[0], key])));
+  const groups = SECTIONS.map(([key, label]) => ({ key, label, items: [] }));
+  const by = Object.fromEntries(groups.map((g) => [g.key, g]));
+  const seen = new Set();
+  const add = (key, item) => { if (!seen.has(item.path)) { seen.add(item.path); by[key].items.push(item); } };
+  for (const [key, list] of Object.entries(MENU)) {
+    for (const [path, label, ic] of list) {
+      const own = st.navAll.find((n) => n.path === path);
+      // a module's entry decides who sees it (Jobs: whoever books); else the route's permission
+      if (own ? !st.more.includes(own) : !routeOk(path)) continue;
+      if (settings && IN_SETTINGS.includes(path)) continue;
+      add(key, { path, label, icon: (own && own.icon) || ic });
+    }
+  }
+  for (const n of st.more) {
+    if (named.has(n.path) || GONE.has(n.path) || (settings && IN_SETTINGS.includes(n.path))) continue;
+    add(OLD_SECTION[n.section] || "more", { path: n.path, label: n.label, icon: n.icon });
+  }
+  return groups.filter((g) => g.items.length);
 }
 export const signOut = () => st.onSignOut();
 
-// The Menu sheet's groups (Flyra's order): the main places; Quotes and
-// Plans side by side; Leaderboard, Map, Reports, Automations; then every
-// other Menu section; then Tab bar and Settings. Only what this person may
-// open, each once. → [{ key, label?, two?: true, items: [{ path, label, icon }] }]
+// What the bar already holds (and the screens those places are).
+function onBar() {
+  const have = new Set(barTabs().filter((t) => !t.more && !t.sheet).flatMap((t) => t.roots || []));
+  for (const [p, same] of Object.entries(SAME)) if (have.has(same)) have.add(p);
+  return have;
+}
+
+// The Menu sheet's (and the /menu page's) groups: Home when the bar lacks
+// it, the five groups less what the bar holds, then Settings (or, for
+// someone who can't open Settings, Tab bar). → [{ key, label?, items }]
 export function menuGroups() {
-  const can = (p) => routeOk(p);
-  const item = (path, label, ic) => (can(path) ? { path, label, icon: ic } : null);
-  const fromNav = (path) => st.more.find((n) => n.path === path) || null;
-  const seen = new Set();
-  const take = (list) => list.filter(Boolean).filter((x) => (seen.has(x.path) ? false : seen.add(x.path)));
-  const groups = [
-    { key: "places", items: take([item("/today", st.user && st.user.role === "tech" ? "Today" : "Home", "home"), item("/schedule", "Schedule", "schedule"), item("/inbox", "Inbox", "inbox"), item("/contacts", "Customers", "contacts"), item("/leads", "Leads", "target"), item("/pipeline", "Pipeline", "pipeline")]) },
-    { key: "docs", two: true, items: take([item("/quotes", "Quotes", "doc"), item("/plans", "Plans", "swap")]) },
-    { key: "perf", items: take([item("/performance", "My performance", "trend"), item("/leaderboard", "Leaderboard", "trophy"), item("/visits", "Visits", "truck"), item("/map", "Map", "map"), fromNav("/dashboard") ? item("/dashboard", "Reports", "chart") : null, fromNav("/automations") ? item("/automations", "Automations", "bolt") : null]) },
-  ];
-  const last = take([item("/tab-bar", "Tab bar", "tabbar"), fromNav("/settings") ? item("/settings", "Settings", "gear") : null]);
-  for (const sec of menuSections()) {
-    const items = take(sec.items.filter((n) => !["/settings", "/me", "/tab-bar"].includes(n.path)).map((n) => ({ path: n.path, label: n.label, icon: n.icon })));
-    if (items.length) groups.push({ key: sec.key, label: sec.label, items });
-  }
-  groups.push({ key: "you", items: last });
-  return groups.filter((g) => g.items.length);
+  const bar = onBar();
+  const groups = menuSections().map((g) => ({ ...g, items: g.items.filter((n) => !bar.has(n.path)) })).filter((g) => g.items.length);
+  if (!bar.has("/today") && routeOk("/today")) groups.unshift({ key: "places", items: [{ path: "/today", label: st.user && st.user.role === "tech" ? "Today" : "Home", icon: "home" }] });
+  const settings = st.more.find((n) => n.path === "/settings");
+  const last = settings ? [{ path: "/settings", label: "Settings", icon: "gear" }] : routeOk("/tab-bar") && !groups.some((g) => g.items.some((n) => n.path === "/tab-bar")) && menuDest() ? [{ path: "/tab-bar", label: "Tab bar", icon: "tabbar" }] : [];
+  if (last.length) groups.push({ key: "you", items: last });
+  return groups;
 }
 
 function openMore() {
@@ -359,10 +429,10 @@ function openMore() {
 // computer (kept in localStorage under their id; a browser that keeps
 // nothing never shows it, rather than showing it every time). A tech's bar
 // didn't change: nothing to say.
-export const MOVED_KEY = "crm-moved-3";
+export const MOVED_KEY = "crm-moved-4";
 export const MOVED_TEXT = Object.freeze({
-  phone: "New look: Customers, Leads and Pipeline are in the Menu.",
-  desk: "Home, Schedule, Inbox and Map now lead the sidebar. Everything else is where it was.",
+  phone: "The Menu is tidier: five groups, and every setting in Settings. Old links still work.",
+  desk: "The sidebar is tidier: five groups, and every setting in Settings. Old links still work.",
 });
 const movedKey = (uid) => (uid ? `${MOVED_KEY}:${uid}` : null);
 const me = () => (st.user && st.user.id) || null;
@@ -411,21 +481,16 @@ function toggleGroup(g, shut) {
 const sideItem = (path, label, ic, key, paths) => html`<a class="side-item" href="${"#" + path}" ${attrs({ "data-path": path.split("?")[0] === path ? path : null, "data-paths": paths && paths.length > 1 ? paths.join(" ") : null, "data-tab": key || null })}>${icon(ic || "list")}<span class="sl">${label}</span>${key ? html`<span class="badge" hidden></span>` : ""}</a>`;
 
 // What the sidebar holds (pure, for the tests): the bar's places first, in
-// the bar's order; then, for the office, the Menu's sections as groups less
-// what those places already open; Settings and Team at the bottom (above
-// who is signed in; My account is that card).
-export const SIDE_BOTTOM = Object.freeze(["/settings", "/team"]);
-// (A desk keeps Customers and Sales near the top too, after the bar's places,
-// now that the phone's bar is Flyra's and has them in its Menu.)
-export const DESK_PLACES = Object.freeze(["contacts", "sales"]);
+// the bar's order; then, for the office, the Menu's groups less what those
+// places already open; Settings at the bottom (above who is signed in; My
+// account is that card). The same places as the phone, nothing twice.
+export const SIDE_BOTTOM = Object.freeze(["/settings"]);
 export function sideLayout() {
-  let top = barTabs().filter((t) => !t.more && !t.sheet);
+  const top = barTabs().filter((t) => !t.more && !t.sheet);
   if (!menuDest()) return { top, groups: [], bottom: [] };
-  const have = new Set(top.flatMap((t) => [t.key, ...(t.roots || [])]));
-  top = top.concat(DESK_PLACES.map((k) => placeTab(k)).filter((t) => t && !have.has(t.key) && !(t.roots || []).some((r) => have.has(r))));
-  const taken = new Set(top.flatMap((t) => t.roots || []));
+  const bar = onBar();
   const groups = menuSections()
-    .map((sec) => ({ ...sec, items: sec.items.filter((n) => !taken.has(n.path) && !SIDE_BOTTOM.includes(n.path) && n.path !== "/me") }))
+    .map((sec) => ({ ...sec, items: sec.items.filter((n) => !bar.has(n.path)) }))
     .filter((sec) => sec.items.length);
   const bottom = SIDE_BOTTOM.map((p) => st.more.find((n) => n.path === p)).filter(Boolean);
   return { top, groups, bottom };
@@ -470,7 +535,8 @@ function mountDesk() {
   find.id = "top-find";
   find.className = "top-tools top-find";
   render(find, canSearch ? html`<form class="top-search" role="search" id="top-search" autocomplete="off">${icon("search")}<label class="sr" for="top-q">Search</label><input id="top-q" type="search" placeholder="Search customers or Q-1234" ${attrs({ autocomplete: "off", spellcheck: "false" })}><div class="pop search-pop" id="search-pop" hidden></div></form>` : html``);
-  render(tools, html`${st.creates.length ? html`<div class="top-new"><button type="button" class="btn primary" id="top-new" aria-haspopup="true" aria-expanded="false">${icon("plus")}New</button><div class="pop" id="new-pop" hidden><ul class="menu">${st.creates.map((c) => html`<li><a href="${"#" + c.path}">${icon(c.icon || "plus")}<span>${c.label}</span></a></li>`)}</ul></div></div>` : ""}
+  const makes = quickCreates(st.creates, st.can);
+  render(tools, html`${makes.length ? html`<div class="top-new"><button type="button" class="btn primary" id="top-new" aria-haspopup="true" aria-expanded="false">${icon("plus")}New</button><div class="pop" id="new-pop" hidden><ul class="menu">${makes.map((c) => html`<li><a href="${"#" + c.path}">${icon(c.icon || "plus")}<span>${c.label}</span></a></li>`)}</ul></div></div>` : ""}
     <div class="top-me"><button type="button" class="top-av" id="top-me" aria-haspopup="true" aria-expanded="false" ${attrs({ "aria-label": `${u.name || "My account"}: account menu`, style: /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null })}>${initials(u.name)}</button><div class="pop" id="me-pop" hidden><p class="pop-who"><b>${u.name || ""}</b><span>${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></p><ul class="menu"><li><a href="#/me">${icon("me")}<span>My account</span></a></li><li><button type="button" class="danger" data-signout>${icon("out")}<span>Sign out</span></button></li></ul></div></div>`);
   topBar.insertBefore(find, document.getElementById("top-act"));
   topBar.appendChild(tools);
@@ -544,21 +610,25 @@ function searchBox() {
 //       bottom with a large "Menu" title, round buttons (report a problem,
 //       the person's initials → My account), the latest reply nobody has
 //       read yet, then every other screen in rounded groups (nav.js
-//       menuGroups: the main places; Quotes | Plans; Leaderboard, Map,
-//       Reports, Automations; the Menu's sections; Tab bar and Settings).
+//       menuGroups: Work, Sales, Customers, Money, Marketing & messages,
+//       less what the bar holds; then Settings).
 // (They live here, not in a file of their own, so a phone that starts with
 // no signal has them in the app it already keeps.)
 
-// The + sheet's things to make, in Flyra's order (its Estimate is our Quote,
-// its Subscription our Plan; no Expense), from the manifests' creates
-// (which nav.js already kept to this person's permissions and routes).
+// The things to make: one list for the phone's + and the desk's New, the
+// most used first (a call comes in: a lead, a quote, a job), each once. The
+// office's full form makes a lead or a customer; someone who may not use it
+// (a tech at a door) gets the quick lead instead. From the manifests'
+// creates (which nav.js already kept to this person's permissions and
+// routes).
 const MAKE = [
-  ["/contacts/new", "Customer", "userplus", "contacts:write"], ["/leads/new", "Lead", "target"], ["/invoices/new", "Invoice", "receipt"], ["/quotes/new", "Quote", "clipboard"],
-  ["/plans/new", "Plan", "swap"], ["/jobs/new", "Job", "hammer"], ["/tasks/new", "Task", "check"],
+  ["/contacts/new", "Lead or customer", "userplus", "contacts:write"], ["/leads/new", "Lead", "target"], ["/quotes/new", "Quote", "clipboard"], ["/jobs/new", "Job", "hammer"],
+  ["/invoices/new", "Invoice", "receipt"], ["/plans/new", "Plan", "swap"], ["/tasks/new", "Task", "check"], ["/calls/log", "Log a call", "phone"], ["/inbox/new", "Text someone", "text"],
 ];
 export function quickCreates(creates = [], can = () => false) {
   const have = new Set(creates.map((c) => c.path));
-  return MAKE.filter(([path, , , perm]) => (perm ? can(perm) && router.has(path) : have.has(path))).map(([path, label, ic]) => ({ path, label, icon: ic }));
+  const full = can("contacts:write") && router.has("/contacts/new");
+  return MAKE.filter(([path, , , perm]) => (perm ? can(perm) && router.has(path) : have.has(path) && !(path === "/leads/new" && full))).map(([path, label, ic]) => ({ path, label, icon: ic }));
 }
 
 let openQ = null;

@@ -32,7 +32,7 @@ test("Contacts list: rows, chips, the merge notice; search rules match the serve
   const h = text(list.render({ ix: { rows }, dupes: 2, q: "", chip: "", src: "", sources: ["Meta Ads"] }, ctx()));
   assert.match(h, /2 possible duplicates to review/);
   assert.match(h, /data-chip="lead"/);
-  assert.match(h, /Rotor's customer list/);
+  assert.doesNotMatch(h, /legacy\/customers/, "Rotor's first list is in Settings → Import & data now");
   assert.deepEqual(L.filter(rows, {}).map((r) => r.id), ["ct_1", "ct_2"], "archived hidden");
   assert.deepEqual(L.filter(rows, { q: "555 0101" }).map((r) => r.id), ["ct_1"]);
   assert.deepEqual(L.filter(rows, { chip: "archived" }).map((r) => r.id), ["ct_3"]);

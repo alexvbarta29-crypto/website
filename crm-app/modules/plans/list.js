@@ -4,6 +4,7 @@
 // Returning to the list keeps its chip, search and scroll.
 
 import { html, attrs } from "../../core/ui.js";
+import { findButton, findOpen } from "../../core/nav.js";
 import { ensureStyles, CHIPS, planRow, emptyCard } from "./kit.js";
 
 async function load(params, ctx) {
@@ -27,7 +28,7 @@ export default {
     const count = (k) => s.counts[k] || 0;
     const rows = visible(s);
     return html`<div class="stack">
-      <label class="field"><span class="sr">Search plans</span><input type="search" data-q placeholder="Name or plan" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
+      <label class="${"field find-field" + (findOpen(s, ctx) ? " open" : "")}"><span class="sr">Search plans</span><input type="search" data-q placeholder="Name or plan" ${attrs({ value: s.q, autocomplete: "off", enterkeyhint: "search" })}></label>
       <div class="chips" role="tablist">${CHIPS.filter(([k]) => ["active", "pending", "due"].includes(k) || count(k) > 0 || k === s.chip).map(([k, label]) => html`<button type="button" class="chip" ${attrs({ "data-chip": k, "aria-pressed": String(s.chip === k) })}>${label} <span class="n">${count(k)}</span></button>`)}</div>
       ${rows.length ? html`<ul class="list tbl">${rows.map(planRow)}</ul>` : emptyCard(s.chip === "active" ? "No active plans yet" : "Nothing here", s.chip === "active" ? "Plans sold on a quote land here once they're signed." : "Pick another chip.")}
       <div class="links">
@@ -36,6 +37,7 @@ export default {
       </div>
     </div>`;
   },
+  mount(view, s, ctx) { findButton(view, ctx, "Search plans"); },
   events: {
     "click [data-chip]": async (e, el, ctx) => { ctx.keep.chip = el.dataset.chip; ctx.refresh(); },
     "input [data-q]": (e, el, ctx) => {

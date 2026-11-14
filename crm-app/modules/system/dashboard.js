@@ -1,4 +1,4 @@
-// Dashboard (the office's KPI views, docs/DASHBOARD.md) inside the CRM: the
+// Reports (the office's KPI views, docs/DASHBOARD.md; Menu → Money → Reports) inside the CRM: the
 // Overview · Money · Sales · Plans · Jobs views of /dashboard?embed=1 in a
 // frame under the CRM's own header and tab bar. Office sign-in only (the
 // pseudo-permission office:tools = this phone has the office cookie); the
@@ -23,15 +23,15 @@ export const VIEWS = [
 const known = (id) => VIEWS.some(([v]) => v === id);
 
 export default {
-  title: "Dashboard",
+  title: "Reports",
   flush: true,
   load(params, ctx) {
     const want = params.view || (ctx && ctx.keep && ctx.keep.view);
     return { view: known(want) ? want : "overview" };
   },
   render(state) {
-    return html`<nav class="seg-bar" aria-label="Dashboard views">${VIEWS.map(([id, label]) => html`<button type="button" class="${"seg" + (id === state.view ? " on" : "")}" data-view="${id}" aria-pressed="${id === state.view ? "true" : "false"}">${label}</button>`)}</nav>
-<div class="frame-wrap"><iframe title="Dashboard" src="${"/dashboard?embed=1#" + state.view}"></iframe></div>`;
+    return html`<nav class="seg-bar" aria-label="Report views">${VIEWS.map(([id, label]) => html`<button type="button" class="${"seg" + (id === state.view ? " on" : "")}" data-view="${id}" aria-pressed="${id === state.view ? "true" : "false"}">${label}</button>`)}</nav>
+<div class="frame-wrap"><iframe title="Reports" src="${"/dashboard?embed=1#" + state.view}"></iframe></div>`;
   },
   mount(view, state, ctx) {
     const f = view.querySelector("iframe");
