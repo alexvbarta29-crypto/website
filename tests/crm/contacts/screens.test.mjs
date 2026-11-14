@@ -65,7 +65,7 @@ test("Contact (Rotor's page): the top, Details and Activity, the header's pencil
   assert.ok(labels().includes("Archive") && labels().includes("Merge with...") && labels().includes("Pause automated texts") && labels().includes("Texts and email"));
   assert.ok(!labels(["contacts:read", "contacts:write"]).includes("Mark as test contact"), "owners only");
   assert.deepEqual(c.tools(s, ctx()).filter(Boolean).map((x) => x.href), ["#/contacts/ct_00000000000000000001/edit"], "the round pencil");
-  assert.equal(c.title(s), "", "no title: the name is the page's own");
+  assert.match(c.title(s), /^Pat /, "the header's h1 (out of sight on a phone: the name is the page's own)");
   const act = text(c.render({ ...s, activity: [{ at: NOW, kind: "contact.intake", source: "Website quote form", note: `— Website —\n${XSS}` }, { at: NOW, kind: "note" }] }, ctx()));
   assert.match(act, /Website request \(Website quote form\)/);
   assert.ok(!act.includes("<script>alert(1)"));

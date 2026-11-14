@@ -198,7 +198,8 @@ const sinceText = (s) => {
   const c = s.contact;
   const st = s.stats && s.stats.contacts;
   if (c.lifecycle === "customer" || c.lifecycle === "former_customer") return `${c.lifecycle === "customer" ? "Customer" : "Former customer, a customer"} since ${dateYear((st && st.customer_since) || c.created_at)}`;
-  if (c.lifecycle === "lead") return `Lead since ${dateShort(c.created_at)}`;
+  // ("Lead since Nov 17": Rotor's, without the weekday)
+  if (c.lifecycle === "lead") return `Lead since ${dateShort(c.created_at).replace(/^[A-Za-z]+, /, "")}`;
   return c.created_at ? `Added ${dateYear(c.created_at)}` : "";
 };
 const two = (a) => (a ? [[a.street1, a.street2].filter(Boolean).join(", "), [a.city, [a.state, a.zip].filter(Boolean).join(", ")].filter(Boolean).join(", ")].filter(Boolean) : []);
@@ -755,8 +756,9 @@ async function paintPhoto(el, ctx) {
 }
 
 export default {
-  // Rotor's lead page has no title: the name is the page's own
-  title: () => "",
+  // Rotor's lead page shows no title (the name is the page's own, big): the header's h1 keeps it for
+  // screen readers and the window's name, out of sight on a phone (contacts.css)
+  title: (s) => (s && s.contact ? s.contact.display_name || "Contact" : "Contact"),
   load,
   render,
   tools: (s, ctx) => [s && s.contact && !s.tech && ctx.can("contacts:write") && { icon: "edit", label: s.contact.lifecycle === "lead" ? "Edit lead" : "Edit", href: "#/contacts/" + encodeURIComponent(s.contact.id) + "/edit" }],

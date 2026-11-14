@@ -181,6 +181,7 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
 
 /* a phone: Rotor's header (round back, round pencil, round "..."), the name is the page's own big title */
 @media (max-width:899px){
+  .app:has(#view>.ct-page) .top-title{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:-1px}
   .app:has(#view>.ct-page) .top{background:var(--mist);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 
@@ -191,3 +192,9 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
 .pr-win td.num,.pr-win thead th+th{text-align:right;font-variant-numeric:tabular-nums}
 .pr-win-edit td{width:28%}
 .pr-win-edit input{width:100%;min-height:44px;font-size:16px;text-align:right}
+/* the narrow list beside a contact (a desk at 1000 px): the card's two numbers keep apart */
+@media (min-width:1000px){
+  .app.split .cc-band{gap:14px}
+  .app.split .cc-k{flex:0 1 auto;overflow:hidden}
+  .app.split .cc-k small,.app.split .cc-k b{overflow:hidden;text-overflow:ellipsis}
+}

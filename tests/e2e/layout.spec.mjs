@@ -174,7 +174,7 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await f.isVisible("#top-back"), true, "the round back button");
       assert.ok(await f.isVisible("#top-act [data-top-tool]"), "the round pencil");
       assert.ok(await f.isVisible("#top-more"), "the round ...");
-      assert.equal((await f.textContent("#top-title")).trim(), "", "no title: the name is the page's own");
+      assert.ok((await box(f, "#top-title")).w <= 1, "no title in sight: the name is the page's own (the h1 stays for screen readers)");
       // Details: the cards in Rotor's order for a customer
       const order = await f.$$eval('[data-pane="details"] [data-card]', (els) => els.map((e) => e.dataset.card));
       const want = ["visits", "plan", "quotes", "invoices", "payment", "properties", "followups", "tasks", "notes", "queued", "about"].filter((x) => order.includes(x));
