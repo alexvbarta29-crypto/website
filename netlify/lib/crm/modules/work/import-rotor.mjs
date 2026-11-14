@@ -159,6 +159,16 @@ async function mapJob(r, ctx) {
   } else {
     const got = await getRecord("contact", contactId);
     contact = got ? got.data : null;
+    if (!contact && isId(contactId, "contact")) {
+      // the pointer names a contact that was never written (the customer's
+      // own row was refused): the customer's placeholder AT THAT ID, so the
+      // job (and whatever else names it) has its contact
+      const ph = placeholderContact(r.customer, { name: r.customer_name, kind: "customer" });
+      ph.data.id = contactId;
+      out.records.push(ph);
+      contact = ph.data;
+      warnings.push("job_contact_missing_placeholder");
+    }
   }
   const users = (ctx && ctx.users) || new Map();
   const lines = r.line_items.map((l, i) => mapLine(l, i, users));
