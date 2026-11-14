@@ -1,10 +1,10 @@
-// The contact page (the Nov 2026 layout: "Customer pages should answer a
-// phone call at a glance"): the header's three numbers from the contact's
-// stats (money only for someone who may see money: the server leaves it
-// out too), its buttons, the sections in the report's order (each module's
-// contactTabs entry a section; denied ones left out), old tab links
-// scrolling to a section, "About to be sent" from the modules, and the one
-// read the header needs staying inside its budget.
+// The contact page (Rotor's lead and customer page, Nov 2026): the stat
+// card's numbers from the contact's stats (money only for someone who may
+// see money: the server leaves it out too), the modules' cards on Details
+// and Activity in Rotor's order (a module without cards() is one card of
+// its own; denied ones left out), their rows in the "...", "About to be
+// sent" from the modules, and the one read the page needs staying inside
+// its budget.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { crmTest } from "../../helpers/crm-http.mjs";
@@ -36,39 +36,58 @@ test("the header: balance owed, lifetime spend, next visit; '-' when not known; 
   assert.deepEqual(noMoney.map((n) => n.key), ["next"], "no money tiles without invoices:read_all");
 });
 
-test("the page: one scroll of headed sections in the report's order; each module a section; a denied one left out", () => {
+test("the page: the modules' cards on Details and Activity in Rotor's order; their \"...\" rows; a denied one left out", () => {
   const order = C.contactSections(MANIFESTS, all).map((x) => [x.key, x.place]);
   assert.deepEqual(order, [["sales", "more"], ["quotes", "docs"], ["plans", "plan"], ["work", "visits"], ["money", "docs"], ["messages", "aside"]]);
   assert.deepEqual(C.contactSections(MANIFESTS, (p) => p !== "invoices:read_all").map((x) => x.key).includes("money"), false, "a section behind its permission");
-  const mod = (key, place, body, extra = {}) => ({ def: { key, place, label: key, load: () => {} }, key, loading: false, mod: { render: () => body, ...extra }, state: {}, ctx: {} });
+  const mod = (key, place, extra = {}) => ({ def: { key, place, label: key, load: () => {} }, key, loading: false, mod: { render: () => `${key.toUpperCase()}-OLD`, ...extra }, state: {}, ctx: {} });
+  const cards = (...list) => ({ cards: () => list });
   const secs = [
-    mod("sales", "more", "SALES-BODY"), mod("quotes", "docs", "QUOTES-BODY"), mod("plans", "plan", "PLAN-BODY", { header: () => ({ plan: "Quarterly plan" }) }),
-    mod("work", "visits", "WORK-BODY", { queued: () => [{ at: "2099-02-01T16:00:00.000Z", label: "Visit reminder, 2 days before", icon: "text" }] }),
-    mod("money", "docs", "MONEY-BODY"), mod("messages", "aside", "MSG-BODY"), { ...mod("denied", "more", "NOPE"), state: { denied: true } },
+    mod("sales", "more", { ...cards({ key: "followups", tab: "details", title: "Follow-ups", body: "FOLLOW-BODY" }, { key: "deals", tab: "activity", title: "Deals", body: "DEALS-BODY" }), actions: () => [{ key: "call", label: "Log a call", href: "#/calls/log/x" }, { key: "lost", label: "Mark lost", danger: true, href: "#/deals/d" }] }),
+    mod("quotes", "docs", { ...cards({ key: "quotes", tab: "details", title: "Quotes", body: null, empty: "No quotes yet" }), actions: () => [{ key: "quote", label: "New quote", href: "#/quotes/new/x" }] }),
+    mod("plans", "plan", { ...cards({ key: "plan", tab: "details", title: "Plan", body: "PLAN-BODY" }), header: () => ({ plan: "Quarterly plan" }) }),
+    mod("work", "visits", { ...cards({ key: "visits", tab: "details", title: "Visits", body: "WORK-BODY" }), queued: () => [{ at: "2099-02-01T16:00:00.000Z", label: "Visit reminder, 2 days before", icon: "text" }], actions: () => [{ key: "book", label: "Book a job", href: "#/jobs/new/x" }] }),
+    mod("money", "docs"),
+    mod("messages", "aside"),
+    { ...mod("denied", "more"), state: { denied: true } },
   ];
   const s = { contact, stats: { money: { open_balance_cents: 0, lifetime_cents: 5000 }, work: {} }, properties: [property], users: [], secs, activity: [{ at: NOW, kind: "call.spoke", label: "Called and talked" }, { at: NOW, kind: "sms.in", label: "Text received" }], tech: false };
   const h = text(C.default.render(s, ctx()));
   const at = (x) => h.indexOf(x);
-  const want = ["ct-sec-visits", "ct-sec-plan", "ct-sec-docs", "ct-sec-properties", "ct-sec-queued", "ct-sec-mod-sales", "ct-sec-details", "ct-sec-aside", "ct-sec-activity"];
-  for (const id of want) assert.ok(at(`id="${id}"`) > 0, `${id} is there`);
-  assert.deepEqual([...want].sort((a, b) => at(`id="${a}"`) - at(`id="${b}"`)), want, "in the report's order");
-  assert.ok(at("QUOTES-BODY") < at("MONEY-BODY") && at("QUOTES-BODY") > at('id="ct-sec-docs"'), "quotes then invoices, under one heading");
-  assert.ok(!h.includes("NOPE"), "a denied section is left out");
-  assert.match(h, /Quarterly plan/, "the plan badge from the plans section");
-  assert.match(h, /Visit reminder, 2 days before/, "About to be sent");
+  const details = h.slice(at('data-pane="details"'), at('data-pane="activity"'));
+  const activity = h.slice(at('data-pane="activity"'));
+  // a customer's order: Visits, Plan, Quotes, Invoices (money's old section as one card), Properties, Follow-ups, notes
+  const want = ["ct-mod-work", "ct-mod-plans", "ct-mod-quotes", "ct-mod-money", "ct-card-properties", "ct-mod-sales", "ct-card-notes"];
+  for (const id of want) assert.ok(details.includes(`id="${id}"`), `${id} on Details`);
+  assert.deepEqual([...want].sort((a, b) => details.indexOf(`id="${a}"`) - details.indexOf(`id="${b}"`)), want, "in Rotor's order for a customer");
+  assert.match(details, /MONEY-OLD/, "a module without cards(): its old section as one card");
+  assert.match(details, /No quotes yet/, "an empty card: one line");
+  for (const x of ["DEALS-BODY", "MESSAGES-OLD", "Called and talked", "Marketing texts"]) assert.ok(activity.includes(x), `${x} on Activity`);
+  assert.ok(!h.includes("DENIED-OLD"), "a denied section is left out");
+  assert.match(h, /Quarterly plan/, "the plan pill from the plans section");
+  assert.match(h, /About to be sent · <b>1 queued/, "About to be sent, one line");
   assert.match(h, /Gate 4321 · Dog in the yard · 2 stories/, "a property's access notes");
-  assert.match(h, /Called and talked[\s\S]*Text received/, "calls and texts in one activity list");
-  assert.match(h, /href="tel:\+17635550100"[\s\S]*href="sms:\+17635550100"[\s\S]*href="#\/quotes\/new\/ct_00000000000000000001"[\s\S]*href="#\/jobs\/new\/ct_00000000000000000001"/, "Call · Text · Quote · Book");
-  assert.doesNotMatch(h, /role="tablist"|data-tab=/, "no sideways tabs");
-  // someone who may not quote or book: Email and Directions fill the row
+  assert.match(h, /href="tel:\+17635550100"[\s\S]*href="sms:\+17635550100"|href="sms:\+17635550100"[\s\S]*href="tel:\+17635550100"/, "Call and text");
+  // the "...": a customer books first; the modules' rows, then the contact's own; Mark lost and Archive red
+  const groups = C.default.more(s, ctx()).map((g) => g.filter(Boolean).map((r) => r.label));
+  assert.deepEqual(groups[0], ["Book a job", "New quote"]);
+  assert.deepEqual(groups[1], ["Log a call"]);
+  assert.ok(groups.flat().includes("Mark lost") && groups.flat().includes("Archive"));
+  // a lead: follow up first, Mark lost for an open deal, its stage pill
+  const ls = { ...s, contact: { ...contact, lifecycle: "lead" } };
+  assert.deepEqual(C.default.more(ls, ctx())[0].filter(Boolean).map((r) => r.label), ["Log a call"]);
+  const lh = text(C.default.render(ls, ctx()));
+  const ld = lh.slice(lh.indexOf('data-pane="details"'));
+  assert.ok(ld.indexOf('id="ct-mod-quotes"') < ld.indexOf('id="ct-mod-sales"') && ld.indexOf('id="ct-mod-sales"') < ld.indexOf('id="ct-mod-work"'), "a lead's order: Quotes, Follow-ups, Visits");
+  assert.match(lh, /class="pill blue">New</, "a lead without a deal: New");
+  // someone who may not see money: no balance on the stat card
   const lim = text(C.default.render(s, ctx(["contacts:read"])));
-  assert.doesNotMatch(lim, /#\/quotes\/new|#\/jobs\/new/);
-  assert.match(lim, /href="mailto:pat@example.com"/);
-  assert.doesNotMatch(lim, /Balance owed|Lifetime spend/, "no money for them");
+  assert.doesNotMatch(lim, /Balance|Lifetime/, "no money for them");
+  assert.doesNotMatch(lim, /data-notes="ct-notes"/, "the notes box needs contacts:write");
   // a technician: the name, the numbers to call, the properties; nothing else
   const t = text(C.default.render({ contact: { id: contact.id, display_name: "Pat Example", phones: contact.phones }, properties: [property], users: [], secs: [], activity: [], tech: true }, ctx(["contacts:read"])));
-  assert.match(t, /ct-sec-properties/);
-  assert.doesNotMatch(t, /ct-sec-activity|ct-sec-details|Balance owed|Next visit/);
+  assert.match(t, /ct-card-properties/);
+  assert.doesNotMatch(t, /data-pane|Balance|Next visit/);
 });
 
 test("the header's numbers come with the contact (one stats read, inside the budget); money only for someone who may see it", async () => {

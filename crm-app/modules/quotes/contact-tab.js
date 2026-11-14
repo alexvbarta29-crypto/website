@@ -1,6 +1,7 @@
 // The contact's Quotes tab (design §9.2 Contact → Sales "quotes"): every
 // quote of this contact, newest first, and New quote for them. (Sales owns
-// the Sales tab; this sits beside it.)
+// the Sales tab; this sits beside it.) cards() and actions(): the contact
+// page's Quotes card and its "..." row (Nov 2026, Rotor's lead page).
 
 import { html, icon } from "../../core/ui.js";
 import { ensureStyles, quoteRow } from "./kit.js";
@@ -11,6 +12,17 @@ export default {
     if (!ctx.can("quotes:read")) return { denied: true };
     const r = await ctx.api(`/quotes?contact=${encodeURIComponent(params.id)}`, { cache: false });
     return { id: params.id, rows: r.data || [] };
+  },
+  // The contact page's card (Rotor's): Quotes with a round + (New quote).
+  cards(s, ctx) {
+    if (!s || s.denied) return [];
+    return [{ key: "quotes", tab: "details", title: "Quotes", count: s.rows.length || null, empty: "No quotes yet",
+      add: ctx.can("quotes:write") ? { label: "New quote", href: "#/quotes/new/" + encodeURIComponent(s.id) } : null,
+      body: s.rows.length ? html`<ul class="list">${s.rows.map((r) => quoteRow(r, true))}</ul>` : null }];
+  },
+  actions(s, ctx) {
+    if (!s || s.denied || !ctx.can("quotes:write")) return [];
+    return [{ key: "quote", label: "New quote", icon: "doc", href: "#/quotes/new/" + encodeURIComponent(s.id) }];
   },
   render(s, ctx) {
     if (s.denied) return html`<div class="card empty"><h2>Not for this login</h2><p>Quotes are for the office.</p></div>`;

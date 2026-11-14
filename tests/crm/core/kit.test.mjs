@@ -158,7 +158,7 @@ test("the router's header contract: at most two tools, the ... only with rows, a
   assert.deepEqual(headerKit({ tools: () => null }, {}, {}).tools, []);
 });
 
-test("every class the kit draws has its look in crm.css; the Tab bar preview has one too", () => {
+test("every class the kit draws has its look in crm.css; Customize Tabs and the drawer have theirs too", () => {
   const out = [
     rnd("edit", "x", { tone: "grey", sm: true }), rnd("call", "x", { tone: "red" }), statusPill("Booked"), statusPill("x", "white"), pillTap("x"), pillBtn("x", { tone: "solid", wide: true }), pillBtn("x", { tone: "red" }),
     seg([["a", "A"]], "a", { black: true }), cardHead("x", { add: {}, count: 1 }), sectionLabel("x"), statGrid([{ label: "x", value: 1, tone: "red", wide: true }]),
@@ -169,7 +169,7 @@ test("every class the kit draws has its look in crm.css; the Tab bar preview has
   const classes = new Set([...out.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)));
   const missing = [...classes].filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, "\\-")}(?![\\w-])`).test(CSS));
   assert.deepEqual(missing, []);
-  for (const c of ["tb-prev", "tb-chip", "tb-n", "rs-actions", "rs-act", "rs-act-g", "rs-sheetpage", "rs-done", "rs-sp-pane", "rs-top", "rs-shell", "rs-dashed", "rs-sat", "rs-page", "rs-name", "rs-amt", "rs-inset"]) assert.match(CSS, new RegExp(`\\.${c}\\b`), c);
+  for (const c of ["ctb-list", "ctb-row", "ctb-div", "ctb-drag", "drawer", "dr-row", "dr-grp", "top-bar", "set-ic", "rs-actions", "rs-act", "rs-act-g", "rs-sheetpage", "rs-done", "rs-sp-pane", "rs-top", "rs-shell", "rs-dashed", "rs-sat", "rs-page", "rs-name", "rs-amt", "rs-inset"]) assert.match(CSS, new RegExp(`\\.${c}\\b`), c);
   // the tokens: light Rotor's, dark ours, under the same names
   assert.match(CSS, /:root\{[^}]*--mist:#f2f2f7;[^}]*--card:#fff;--card-2:#f2f2f7;/);
   assert.match(CSS, /--seg-track:#e3e3e8;/);

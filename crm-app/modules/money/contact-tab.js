@@ -3,8 +3,13 @@
 // office: a new invoice, add credit, text a card link. The Contact screen
 // draws a tab but doesn't route its taps, so the two buttons here are
 // listened for once on the document and act on the tab now on screen.
+// cards() and actions() (Nov 2026, Rotor's lead and customer pages): an
+// Invoices card (open balance and credit on one line, the invoices, + New
+// invoice and + Add credit, the card on file for a lead) and, for a
+// customer, a Payment card (the card on file, Add Payment Method: the card
+// link text); New invoice, Add credit and Text a card link in the "...".
 
-import { html, icon, sheet, toast, confirmSheet, delegate } from "../../core/ui.js";
+import { html, icon, sheet, toast, confirmSheet, delegate, pillBtn } from "../../core/ui.js";
 import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
 import { money } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
@@ -29,10 +34,35 @@ export default {
     bind();
     return { id: params.id, ...r.data };
   },
+  cards(s, ctx) {
+    if (!s || s.denied) return [];
+    const id = encodeURIComponent(s.id);
+    const customer = !!(ctx && ctx.contact && ["customer", "former_customer"].includes(ctx.contact.lifecycle));
+    const credit = (s.credit && s.credit.balance_cents) || 0;
+    const head = html`<p class="${"rs-sub mn-line" + (s.open_balance_cents ? " bad" : "")}"><b class="num">${money(s.open_balance_cents || 0)}</b> open balance · <b class="num">${money(credit)}</b> account credit${s.credit && s.credit.held_cents ? ` (+${money(s.credit.held_cents)} to decide)` : ""}</p>`;
+    const pills = s.can.invoice || s.can.credit ? html`<div class="rs-li-add">${s.can.invoice ? pillBtn("New invoice", { icon: "plus", href: "#/invoices/new/" + id }) : ""}${s.can.credit ? pillBtn("Add credit", { icon: "plus", data: { "mn-credit": true } }) : ""}</div>` : "";
+    const cardLine = html`<p class="mn-card">${icon("money")}<span>Card on file: ${cardText(s)}</span></p>`;
+    const rows = html`${(s.invoices || []).length ? html`<ul class="list">${s.invoices.map(invoiceRow)}</ul>` : html`<p class="rs-empty">No invoices yet</p>`}
+      ${s.more && s.more.invoices ? html`<p class="foot-note">The newest 12 are shown.</p>` : ""}
+      ${(s.payments || []).length ? html`<h4 class="ct-sub-h">Payments</h4><ul class="list">${s.payments.map((p) => paymentRow(p))}</ul>` : ""}
+      ${s.credit && (s.credit.rows || []).length ? html`<h4 class="ct-sub-h">Credit</h4><ul class="list">${s.credit.rows.map(creditRow)}</ul>` : ""}`;
+    const out = [{ key: "invoices", tab: "details", title: "Invoices", count: (s.invoices || []).length || null, body: html`${head}${rows}${pills}${customer ? "" : cardLine}` }];
+    if (customer) {
+      out.push({ key: "payment", tab: "details", title: "Payment", body: html`${cardLine}${s.can.card_link ? html`<div class="rs-li-cta">${pillBtn("Add Payment Method", { tone: "solid", wide: true, icon: "plus", data: { "mn-card-link": true } })}</div>` : ""}` });
+    }
+    return out;
+  },
+  actions(s, ctx) {
+    if (!s || s.denied) return [];
+    const id = encodeURIComponent(s.id);
+    return [
+      s.can.invoice && { key: "invoice", label: "New invoice", icon: "receipt", href: "#/invoices/new/" + id },
+      s.can.credit && { key: "credit", label: "Add credit", icon: "gift", run: () => creditSheet({ id: s.id, ctx }) },
+      s.can.card_link && { key: "cardlink", label: "Text a card link", icon: "link", run: () => cardLink({ id: s.id, ctx }) },
+    ].filter(Boolean);
+  },
   render(s) {
     if (s.denied) return html`<div class="card empty"><h2>Not for this login</h2><p>Money is for the office.</p></div>`;
-    const pm = s.card && s.card.pm;
-    const cardText = pm ? `${String(pm.brand || (pm.kind === "us_bank_account" ? "Bank" : "Card")).toUpperCase()} ending ${pm.last4 || "••••"} · ${CARD[s.card.status] || s.card.status}` : CARD[(s.card && s.card.status) || "none"];
     return html`<div class="stack">
       <div class="mn-tot">
         <div class="${"stat" + (s.open_balance_cents ? " bad" : "")}"><b>${money(s.open_balance_cents || 0)}</b><small>open balance</small></div>
@@ -43,15 +73,21 @@ export default {
         ${s.can.credit ? html`<button type="button" class="btn" data-mn-credit>${icon("gift")}Add credit</button>` : ""}
         ${s.can.card_link ? html`<button type="button" class="btn" data-mn-card-link>${icon("link")}Text a card link</button>` : ""}
       </div>
-      <section class="card"><h2>Card on file</h2><p>${cardText}</p></section>
+      <section class="card"><h2>Card on file</h2><p>${cardText(s)}</p></section>
       <div class="section-h">Invoices</div>
       ${(s.invoices || []).length ? html`<ul class="list">${s.invoices.map(invoiceRow)}</ul>` : html`<p class="muted small">No invoices yet.</p>`}
       ${s.more && s.more.invoices ? html`<p class="foot-note">The newest 12 are shown.</p>` : ""}
       ${(s.payments || []).length ? html`<div class="section-h">Payments</div><ul class="list">${s.payments.map((p) => paymentRow(p))}</ul>` : ""}
-      ${s.credit && (s.credit.rows || []).length ? html`<div class="section-h">Credit</div><ul class="list">${s.credit.rows.map((c) => html`<li><div class="row"><span class="ico">${icon("gift")}</span><span class="who"><span class="nm">${c.note || c.kind}</span><span class="sub">${c.status === "held" ? "Overpayment to decide" : c.status === "settled" ? "History" : c.status === "applied" ? "Used" : "Available"}</span></span><span class="end num mn-amt">${money(c.amount_cents, { sign: c.amount_cents > 0 })}</span></div></li>`)}</ul>` : ""}
+      ${s.credit && (s.credit.rows || []).length ? html`<div class="section-h">Credit</div><ul class="list">${s.credit.rows.map(creditRow)}</ul>` : ""}
     </div>`;
   },
 };
+
+const cardText = (s) => {
+  const pm = s.card && s.card.pm;
+  return pm ? `${String(pm.brand || (pm.kind === "us_bank_account" ? "Bank" : "Card")).toUpperCase()} ending ${pm.last4 || "••••"} · ${CARD[s.card.status] || s.card.status}` : CARD[(s.card && s.card.status) || "none"];
+};
+const creditRow = (c) => html`<li><div class="row"><span class="ico">${icon("gift")}</span><span class="who"><span class="nm">${c.note || c.kind}</span><span class="sub">${c.status === "held" ? "Overpayment to decide" : c.status === "settled" ? "History" : c.status === "applied" ? "Used" : "Available"}</span></span><span class="end num mn-amt">${money(c.amount_cents, { sign: c.amount_cents > 0 })}</span></div></li>`;
 
 function creditSheet(tab) {
   const clientId = uuid();

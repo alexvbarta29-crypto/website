@@ -1,6 +1,7 @@
 // Leads (the Nov 2026 layout, after Rotor's Leads list): every lead as a
-// card: the name, a priority pill (from their open task's priority, when
-// one has it) and a stage pill (their follow-up's step, else the deal's
+// card: the name, a priority pill (the lead's own, Rotor's Low / Medium /
+// High since Nov 2026; else their open task's, or Rotor's "High priority"
+// tag) and a stage pill (their follow-up's step, else the deal's
 // status), a lower band with PV (the open deal's potential value) and FOLLOW
 // UP (the follow-up's next due day, or "-"), and round call, text and a
 // black convert button (start a quote, book a job, or make them a
@@ -26,7 +27,8 @@ export function leadCards(ix = [], { enrollments = [], deals = [], tasks = [] } 
   return ix.filter((r) => r.lc === "lead").map((r) => {
     const e = enr.get(r.id);
     const d = deal.get(r.id);
-    return { id: r.id, name: r.n || "No name", phone: phoneOf(r), priority: prio.get(r.id) || null, stage: e ? e.lbl || "Following up" : d ? DEAL[d.st] || d.st : "New", pv: d && Number.isSafeInteger(d.v) ? d.v : null, follow: e && e.due ? e.due : null, paused: !!e && e.st === "paused" };
+    const own = PRIO[r.pr] ? r.pr : (r.tg || []).some((t) => String(t).toLowerCase() === "high priority") ? "high" : null;
+    return { id: r.id, name: r.n || "No name", phone: phoneOf(r), priority: own || prio.get(r.id) || null, stage: e ? e.lbl || "Following up" : d ? DEAL[d.st] || d.st : "New", pv: d && Number.isSafeInteger(d.v) ? d.v : null, follow: e && e.due ? e.due : null, paused: !!e && e.st === "paused" };
   }).sort((a, b) => String(a.follow || "9").localeCompare(String(b.follow || "9")) || a.name.localeCompare(b.name));
 }
 
@@ -36,8 +38,8 @@ export const leadCard = (l) => html`<li class="lc"><a class="lc-top" ${attrs({ h
     <span class="cc-acts">${l.phone ? html`<a class="rnd" ${attrs({ href: telHref(l.phone), "aria-label": `Call ${l.name}` })}>${icon("call")}</a><a class="rnd" ${attrs({ href: "sms:" + l.phone, "aria-label": `Text ${l.name}` })}>${icon("chat")}</a>` : ""}<button type="button" class="rnd ink" ${attrs({ "data-convert": l.id, "aria-label": `Convert ${l.name}` })}>${icon("swap")}</button></span></div></li>`;
 
 // The filter sheet's choices (what the cards already say).
-const SHOW = [["", "All"], ["follow", "With a follow-up"], ["new", "New"], ["paused", "Paused"]];
-const shown = (s) => s.cards.filter((c) => (s.show === "follow" ? !!c.follow : s.show === "new" ? c.stage === "New" : s.show === "paused" ? c.paused : true));
+const SHOW = [["", "All"], ["follow", "With a follow-up"], ["new", "New"], ["paused", "Paused"], ["p:high", "High priority"], ["p:medium", "Medium priority"], ["p:low", "Low priority"]];
+const shown = (s) => s.cards.filter((c) => (s.show === "follow" ? !!c.follow : s.show === "new" ? c.stage === "New" : s.show === "paused" ? c.paused : String(s.show || "").startsWith("p:") ? c.priority === s.show.slice(2) : true));
 
 export default {
   title: "Leads",
