@@ -81,10 +81,10 @@ export const SECTIONS = Object.freeze([
 // Where each screen sits and its name there: [path, label, icon]. A module's
 // nav entry for the same path decides who may see it (and its icon).
 export const MENU = Object.freeze({
-  work: [["/schedule", "Schedule", "schedule"], ["/jobs", "Jobs", "list"], ["/plans", "Plans", "swap"], ["/lights", "Lights season", "bulb"], ["/team-map", "Team map", "team"], ["/timesheets", "Timesheets", "clock"], ["/time", "Time", "time"], ["/pay", "Pay", "pay"]],
+  work: [["/schedule", "Schedule", "schedule"], ["/jobs", "Jobs", "list"], ["/plans", "Plans", "swap"], ["/lights", "Lights season", "bulb"], ["/team-map", "Team map", "team"], ["/timesheets", "Timesheets", "clock"], ["/time", "Time", "time"], ["/pay", "Pay", "pay"], ["/payroll", "Payroll", "pay"]],
   sales: [["/pipeline", "Pipeline", "pipeline"], ["/leads", "Leads", "target"], ["/calls", "Calls", "phone"], ["/quotes", "Quotes", "doc"], ["/tasks", "Tasks", "check"], ["/knock", "Door to door", "map"], ["/tools/lights", "Light Studio", "bulb"], ["/leaderboard", "Leaderboard", "trophy"], ["/performance", "My performance", "trend"]],
   customers: [["/contacts", "Customers", "contacts"], ["/merge", "Merge review", "copy"]],
-  money: [["/invoices", "Invoices", "receipt"], ["/payments", "Payments", "money"], ["/autopay", "Autopay", "clock"], ["/dashboard", "Reports", "chart"], ["/tools/purchases", "Purchases", "cart"]],
+  money: [["/invoices", "Invoices", "receipt"], ["/payments", "Payments", "money"], ["/autopay", "Autopay", "clock"], ["/reports", "Reports", "chart"], ["/tools/purchases", "Purchases", "cart"]],
   marketing: [["/inbox", "Inbox", "inbox"], ["/campaigns", "Campaigns", "send"], ["/approvals", "Approvals", "check"], ["/reviews", "Reviews", "check"], ["/signs", "Signs & flyers", "grid"], ["/tools/giveaway", "Giveaway", "gift"], ["/outbox", "Outbox", "send"]],
 });
 // Set up once, so in the Settings hub (system/settings.js), not the Menu,
@@ -92,8 +92,9 @@ export const MENU = Object.freeze({
 export const IN_SETTINGS = Object.freeze(["/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/tools/rotor", "/legacy/customers"]);
 // Old Menu entries that are now part of another screen (their links redirect
 // or still open): To book is a Schedule view, Visits is the Schedule's List,
-// Follow-ups (the office's playbook page) is under Settings → Cadences.
-const GONE = new Set(["/schedule?view=tray", "/visits", "/tools/followups", "/settings", "/me"]);
+// Follow-ups (the office's playbook page) is under Settings → Cadences, the
+// office Dashboard (Rotor's snapshot) opens from Reports.
+const GONE = new Set(["/schedule?view=tray", "/visits", "/tools/followups", "/settings", "/me", "/dashboard"]);
 // Two paths, one screen: the bar's Map is Door to door.
 const SAME = Object.freeze({ "/knock": "/map" });
 // A module's section for a screen MENU doesn't name.

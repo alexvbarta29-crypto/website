@@ -98,9 +98,9 @@ test("the Menu: five groups and Settings, each screen once under one name, none 
   assert.equal(new Set(all).size, all.length, "each once");
   const labels = g.flatMap((x) => x.items.map((n) => n.label));
   assert.equal(new Set(labels).size, labels.length, "no two with one name");
-  for (const gone of ["/schedule", "/inbox", "/map", "/knock", "/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/visits", "/tools/followups", "/dashboard/money"]) assert.ok(!all.includes(gone), `${gone} isn't in the Menu`);
+  for (const gone of ["/schedule", "/inbox", "/map", "/knock", "/templates", "/automations", "/team", "/activity", "/import", "/tab-bar", "/visits", "/tools/followups", "/dashboard/money", "/dashboard"]) assert.ok(!all.includes(gone), `${gone} isn't in the Menu`);
   assert.deepEqual(g[1].items.slice(0, 5).map((n) => n.label), ["Pipeline", "Leads", "Calls", "Quotes", "Tasks"], "Sales: the Sales tab's screens first");
-  assert.ok(g[3].items.some((n) => n.path === "/dashboard" && n.label === "Reports"), "the dashboards are Reports, under Money");
+  assert.ok(g[3].items.some((n) => n.path === "/reports" && n.label === "Reports"), "Reports, under Money (the office dashboards open from it)");
   for (const x of all) assert.equal(nav.isTabRoot(x.split("?")[0]), true, `${x}: a Menu screen is top-level`);
   // someone who can't open Settings still finds a setup screen they may open (here: templates) in the Menu
   nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => x !== "settings:general" && canOf("admin")(x), user: { id: "us_b", role: "admin" } });

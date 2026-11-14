@@ -77,7 +77,7 @@ test("signing in on the page opens the CRM; an owner gets the office tools with 
         const box = await (await f.frameElement()).boundingBox();
         assert.deepEqual([box.x, box.y, box.width, box.height], [0, 0, 1440, 900], "the CRM is the whole window");
         assert.equal(await f.isVisible("#side"), true, "the CRM's own sidebar");
-        assert.equal(await f.$$eval('#side a[href="#/dashboard"]', (els) => els.length) > 0, true, "the Dashboard is in the sidebar");
+        assert.equal(await f.$$eval('#side a[href="#/reports"]', (els) => els.length) > 0, true, "Reports (the dashboards open from it) is in the sidebar");
         await page.waitForTimeout(300);
         await shot(page, "signin-desk1440-crm");
       } else {

@@ -606,8 +606,8 @@ test("the Menu: every manifest's Menu entry names a known section; an older shel
   assert.deepEqual(nav.TABS.sales.group.map(([p]) => p), ["/pipeline", "/leads", "/calls", "/quotes", "/tasks"]);
   const sys = MANIFESTS.find((m) => m.name === "system");
   assert.ok(sys.routes.some((r) => r.path === "/menu"));
-  // the dashboards are Reports: out of the bar, still reachable (Money's "See more", Menu → Money → Reports, old office links)
+  // Reports (M7b) is Menu → Money → Reports and Money's "See more"; the office dashboards open from it (and old office links)
   assert.ok(!navFor({ role: "owner" }).includes("dashboard"));
   assert.ok(sys.routes.some((r) => r.path === "/dashboard/:view"));
-  assert.ok(nav.MENU.money.some(([p, l]) => p === "/dashboard" && l === "Reports"));
+  assert.ok(nav.MENU.money.some(([p, l]) => p === "/reports" && l === "Reports"));
 });

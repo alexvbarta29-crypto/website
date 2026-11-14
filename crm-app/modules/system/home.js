@@ -187,7 +187,7 @@ function moneyCard(s, ctx) {
   const m = s.home.cards.money;
   if (!m) return "";
   const ui = s.ui.money;
-  const more = open(ctx, "/dashboard/money") || open(ctx, "/payments");
+  const more = open(ctx, "/reports?tab=revenue") || open(ctx, "/dashboard/money") || open(ctx, "/payments");
   const loading = !!m.loading;
   const c = m.collected || {}, sc = m.scheduled || {};
   const ser = loading ? null : moneySeries(m);

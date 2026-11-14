@@ -42,9 +42,9 @@ export default {
     { path: "/settings/data", load: () => import("./settings-data.js"), title: "Data & backups", perm: "audit:read", parent: "/settings" },
     { path: "/settings/permissions", load: () => import("./settings-permissions.js"), title: "Permissions", perm: "settings:owner", parent: "/settings" },
     // The office's dashboards and tools, inside the CRM (office sign-in only).
-    // (Reports: Home's "See more" opens a view, Menu → Money → Reports all of them)
-    { path: "/dashboard", load: () => import("./dashboard.js"), title: "Reports", perm: "office:tools", parent: "/menu" },
-    { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Reports", perm: "office:tools", parent: "/dashboard" },
+    // (the office dashboard, Rotor's snapshot: Reports opens it; old #money links land on a view)
+    { path: "/dashboard", load: () => import("./dashboard.js"), title: "Office dashboard", perm: "office:tools", parent: "/reports" },
+    { path: "/dashboard/:view", load: () => import("./dashboard.js"), title: "Office dashboard", perm: "office:tools", parent: "/dashboard" },
     { path: "/tools/:id", load: () => import("./tool.js"), title: "Office tool", perm: "office:tools", parent: "/menu" },
   ],
   nav: [
@@ -57,7 +57,6 @@ export default {
     { where: "more", section: "office", label: "Purchases", path: "/tools/purchases", perm: "office:tools", order: 72, icon: "cart" },
     { where: "more", section: "office", label: "Giveaway", path: "/tools/giveaway", perm: "office:tools", order: 73, icon: "gift" },
     { where: "more", section: "office", label: "Rotor", path: "/tools/rotor", perm: "office:tools", order: 74, icon: "link" },
-    { where: "more", section: "money", label: "Reports", path: "/dashboard", perm: "office:tools", order: 65, icon: "chart" },
     { where: "more", section: "admin", label: "Settings", path: "/settings", perm: "settings:general", order: 80, icon: "gear" },
     { where: "more", section: "admin", label: "Team", path: "/team", perm: "users:manage", order: 90, icon: "team" },
     { where: "more", section: "admin", label: "My account", path: "/me", perm: "account:own", order: 99, icon: "me" },
