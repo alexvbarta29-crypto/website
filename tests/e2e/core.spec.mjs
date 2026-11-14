@@ -444,7 +444,10 @@ test("every client route in the manifests, as owner and tech, at both phone size
   const props = await get(`/contacts/${seeded.contacts.first}/properties`);
   const run = await (await o.ctx.request.post("/api/crm/import/runs", { headers: { "x-crm": "1", "content-type": "application/json" }, data: {} })).json();
   const sign = await (await o.ctx.request.post("/api/crm/qr-codes", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-000000510001", name: "Yard sign, Delano", kind: "yard_sign", area: "Delano" } })).json();
+  // a pay period (M7a): last week's
+  const week = await (await o.ctx.request.post("/api/crm/payroll/periods", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { start_on: "2026-11-08" } })).json();
   const ids = {
+    "/payroll/:id": week.data && week.data.period ? week.data.period.id : null,
     "/contacts/:id": seeded.contacts.lead, "/contacts/:id/edit": seeded.contacts.lead, "/properties/:id": (props.properties || props || [])[0]?.id,
     "/team/:id": seeded.users.admin.id, "/templates/:id": (await get("/templates"))[0].id, "/enrollments/:id": seeded.enrollments.lead,
     "/deals/:id": (en.enrollment || en).deal_id, "/tasks/:id": seeded.tasks.tech, "/settings/cadences/:id": (await get("/cadences"))[0].id,
