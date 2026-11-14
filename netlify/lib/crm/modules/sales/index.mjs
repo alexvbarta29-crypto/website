@@ -30,6 +30,7 @@ import { listeners } from "./listeners.mjs";
 import { automations, sweeps, attentionCount } from "./automations.mjs";
 import { salesRoutes } from "./routes.mjs";
 import { boardRoutes } from "./board.mjs";
+import { dialerRoutes, dialerTypes, SCRIPTS_DEFAULTS, validateScripts } from "./dialer.mjs";
 import { onMergeSales } from "./merge.mjs";
 import { phases } from "./import-rotor.mjs";
 import { mcpTools } from "./mcp.mjs";
@@ -60,13 +61,17 @@ export default defineModule({
   name: "sales",
   // Signs & flyers (signs.mjs): QR codes for yard signs, door hangers and flyers, their scans and leads
   parts: [signsPart],
-  types,
+  types: [...types, ...dialerTypes],
   statsParts: {
     // the sales part of ContactStats (§5.1): written by calls and texts
     sales: { defaults: { ...SALES_STATS }, row: (p) => ({ slc: (p && p.last_called_at) || null }) },
   },
-  settings: { sales: { defaults: { ...SALES_DEFAULTS }, validate: validateSales, perm: "cadences:configure" } },
-  routes: [...boardRoutes, ...salesRoutes],
+  settings: {
+    sales: { defaults: { ...SALES_DEFAULTS }, validate: validateSales, perm: "cadences:configure" },
+    // the Power Dialer's call scripts (guide-gaps S9b): Settings → Messages → Call scripts
+    call_scripts: { defaults: { ...SCRIPTS_DEFAULTS }, validate: validateScripts, perm: "settings:messaging" },
+  },
+  routes: [...boardRoutes, ...dialerRoutes, ...salesRoutes],
   events: listeners,
   emits: ["call.logged"],
   services: {

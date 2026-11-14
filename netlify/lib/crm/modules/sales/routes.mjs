@@ -24,6 +24,7 @@ import { markDeal, dealFor } from "./deals.mjs";
 import { logCall, sentByHand, sendStep, callList, callSummary, attention, smsMode, textWindow } from "./calls.mjs";
 import { keepAttention } from "./automations.mjs";
 import { createTask, cleanTaskInput, completeTask } from "./tasks.mjs";
+import { recordCall } from "./dialer.mjs";
 import { contactOf, nameOf, primaryPhone, relRecords, W, loadEnv } from "./common.mjs";
 
 const str = (v) => (v == null ? "" : String(v)).trim();
@@ -53,7 +54,8 @@ const attentionRoute = async () => {
   return { data: a };
 };
 
-const callsRoute = async (ctx) => logCall(ctx.body || {}, ctx);
+// (the Power Dialer's Call logs: one call_log row per logged call, dialer.mjs)
+const callsRoute = async (ctx) => { const out = await logCall(ctx.body || {}, ctx); await recordCall(out, ctx.body || {}, ctx); return out; };
 
 const stepN = (ctx) => {
   const n = Number(ctx.params.n);
