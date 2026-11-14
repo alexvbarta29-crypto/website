@@ -372,6 +372,8 @@ const closedAt = (r) => r.converted_at || r.declined_at || r.archived_at || r.up
 export const quoteShard = (r) => (r.deleted_at ? null : OPEN_STATUSES.includes(r.status) ? "open" : String(closedAt(r) || "2026").slice(0, 4));
 const recOpt = (r) => (r.options || []).find((o) => o.id === r.selected_option_id) || (r.options || []).find((o) => o.recommended) || (r.options || [])[0] || null;
 
+// sd: when it was sold (approved, else turned into work), pk: 1 when the chosen option is a plan
+// (the leaderboard dates a sale by sd and counts a plan once, as its plan).
 export const quoteRow = (r) => {
   const o = recOpt(r);
   return {
@@ -379,6 +381,7 @@ export const quoteRow = (r) => {
     first: o && o.totals ? o.totals.first_cents : null, annual: o && o.totals && o.kind === "plan" ? o.totals.annual_cents : null,
     k: (r.options || []).map((x) => x.kind), sent: r.sent_at || null, viewed: r.viewed_at || null, exp: r.expires_on || null,
     by: r.sold_by || null, at: r.created_at, u: r.updated_at, im: r.import ? 1 : 0,
+    sd: r.approved_at || r.converted_at || null, pk: o && o.kind === "plan" ? 1 : 0,
   };
 };
 
