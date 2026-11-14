@@ -47,7 +47,12 @@ export default {
   "GET /contacts/:id/properties": async (fx) => { const c = await fresh(); await property(c.id); return { as: fx.owner, path: `/contacts/${c.id}/properties` }; },
   "POST /contacts/:id/properties": async (fx) => ({ as: fx.owner, path: `/contacts/${(await fresh()).id}/properties`, body: { label: "Cabin", address: { street1: "9 Lake Rd", city: "Mound", state: "MN", zip: "55364" } } }),
   "GET /properties/:id": async (fx) => ({ as: fx.owner, path: `/properties/${(await property((await fresh()).id)).id}` }),
-  "PATCH /properties/:id": async (fx) => { const p = await property((await fresh()).id); return { as: fx.owner, path: `/properties/${p.id}`, ifMatch: await etagOf("property", p.id), body: { access: { gate_code: "1234" } } }; },
+  "PATCH /properties/:id": async (fx) => { const p = await property((await fresh()).id); return { as: fx.owner, path: `/properties/${p.id}`, ifMatch: await etagOf("property", p.id), body: { access: { gate_code: "1234" }, assets: { windows: { standard: 20, slider: 6, french: 5 }, windows_int: { standard: 18 }, panes_ext: 34, panes_int: 18, screens: 12, tracks: 8, ladder_ft: 28, notes: "Synthetic: ladder on the back." } } }; },
+  "GET /properties/:id/requote": async (fx) => {
+    const p = await property((await fresh()).id);
+    await scope(() => store.updateRecord("property", p.id, (x) => ({ ...x, assets: { windows: { standard: 20, slider: 6 }, panes_ext: 32, screens: 12, services: ["windows_ext", "screens"], plan: "quarterly" } }), W));
+    return { as: fx.owner, path: `/properties/${p.id}/requote` };
+  },
   "POST /properties/:id/geocode": async (fx) => ({ as: fx.owner, path: `/properties/${(await property((await fresh()).id)).id}/geocode`, body: {} }),
   "GET /merge-candidates": async (fx) => { await candidate(); return { as: fx.owner, path: "/merge-candidates" }; },
   "POST /merge-candidates/bulk": (fx) => ({ as: fx.owner, path: "/merge-candidates/bulk", body: { action: "dismiss_low", confirm: "DISMISS" } }),
