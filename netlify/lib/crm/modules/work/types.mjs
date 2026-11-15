@@ -234,6 +234,8 @@ export const jobRow = (r) => ({
   tm: r.target_month || null, nv: (r.schedule && r.schedule.open_on) || null, lv: (r.schedule && r.schedule.last_on) || null, fv: (r.schedule && r.schedule.first_on) || null,
   sa: r.started_at || null, tot: r.totals ? r.totals.total_cents : 0, bill: r.billable !== false, a: r.assignee_ids || [], pr: r.property_id || null,
   svc: (r.service_types || []).slice(0, 4), done: r.completed_at || null, u: r.updated_at,
+  // Rotor's Jobs table: how many line items, and which job of its plan ("1st job")
+  li: (r.lines || []).length, po: (r.plan_ordinal && r.plan_ordinal.n) || null,
 });
 
 export const JOB_TECH_FIELDS = Object.freeze(["id", "type", "v", "wv", "number", "number_label", "contact_id", "property_id", "kind", "title", "service_types", "lines", "discounts",

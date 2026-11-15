@@ -296,13 +296,20 @@ test("Job (Rotor's page): pills, the visit row with + Visit, Pricing with discou
   assert.ok(!h.includes("<script>alert(1)"), "escaped");
   assert.equal(job.title(s), "Job S-000001");
   assert.match(h, /class="pill blue">Booked<[\s\S]*class="pill amber">Not invoiced</);
-  assert.match(h, /Visit · Tue, Nov 24[\s\S]*8:00–10:00 AM · Theo Tech/);
+  assert.match(h, /<b>Visit 1<\/b><span class="pill[^"]*">Not started<\/span>[\s\S]*Tue, Nov 24 · 8:00–10:00 AM[\s\S]*Theo Tech/, "Rotor's visit row");
   assert.match(h, /href="#\/visits\/vs_00000000000000000001"/);
-  assert.match(h, /data-book=""[^>]*>[\s\S]*?<span>Visit<\/span>/, "+ Visit books another");
-  assert.match(h, /href="tel:\+17635550100"[\s\S]*href="sms:\+17635550100"/, "red call, message");
+  assert.match(h, /data-book=""[^>]*>[\s\S]*?<span>Add Visit<\/span>/, "+ Add Visit books another");
+  assert.match(h, /href="tel:\+17635550100"[\s\S]*?<span>Call<\/span>[\s\S]*href="sms:\+17635550100"[\s\S]*?<span>Text<\/span>/, "Call, Text");
+  // Rotor's order: the head, the stat cards, Visits, Pricing; then the right column: Customer, Invoices, Notes
+  const at = (x) => h.indexOf(x);
+  assert.ok(at("wk-jtop") < at("wk-jstats") && at("wk-jstats") < at("wk-visits") && at("wk-visits") < at("wk-pricing") && at("wk-pricing") < at("wk-jside") && at("wk-jside") < at("wk-cust") && at("wk-cust") < at("wk-invs") && at("wk-invs") < at("wk-jnotes"), "Rotor's order");
+  assert.match(h, /Job total<\/span><span class="rs-stat-v">\$294\.50[\s\S]*Balance due[\s\S]*Time on site/);
+  assert.match(h, /data-make-invoice=""[^>]*>[\s\S]*?<span>Invoice \$294\.50<\/span>/, "the red Invoice $X makes one from the job");
+  assert.match(h, /data-edit-job=""[^>]*>[\s\S]*?<span>Edit job<\/span>/);
+  assert.match(h, /<span class="wk-pc it">Item<\/span><span class="wk-pc ms">Measurement<\/span><span class="wk-pc num">Qty<\/span><span class="wk-pc num">Unit<\/span><span class="wk-pc num am">Amount<\/span>/, "Rotor's Pricing table");
   assert.match(h, /gate 1234/);
   assert.match(h, /href="#\/properties\/pr_1"/);
-  assert.match(h, /data-line="ln_2"[\s\S]*12 × \$5\.00/);
+  assert.match(h, /data-line="ln_2"[^>]*>[\s\S]*?<b>Screens<\/b>[\s\S]*?<span class="wk-pc num">12<\/span><span class="wk-pc num">\$5\.00<\/span>\s*<span class="wk-pc num am">\$60\.00<\/span>/);
   assert.match(h, /data-add-line=""/);
   assert.match(h, /<span>Subtotal<\/span><span class="num">\$355\.00/);
   assert.match(h, /data-disc="dc_1"><span>Neighbor deal<\/span><span class="num">−\$25\.00/);
@@ -319,8 +326,9 @@ test("Job (Rotor's page): pills, the visit row with + Visit, Pricing with discou
   const inv = { id: "in_1", n: "SINV-0003", st: "paid", tot: 29450, bal: 0, j: J };
   const paid = text(job.render({ ...s, invoices: [inv] }, ctx()));
   assert.match(paid, /class="pill green">Paid</);
-  assert.match(paid, /rs-amt green/);
-  assert.match(paid, /Invoice SINV-0003 · Paid · \$294\.50/);
+  assert.match(paid, /Job total<\/span><span class="rs-stat-v green">/);
+  assert.match(paid, /<b>#SINV-0003<\/b><span class="rs-sub">Paid<\/span>[\s\S]*?\$294\.50/, "the INVOICES row");
+  assert.match(paid, /href="#\/invoices\/in_1"[^>]*>[\s\S]*?<span>Invoice \$294\.50<\/span>/, "the red Invoice $X opens it");
   assert.doesNotMatch(paid, /data-make-invoice/);
   assert.equal(billing({ ...s, invoices: [inv] }, ctx().can).why, "Invoice SINV-0003 covers this job.");
   assert.equal(billing({ ...s, invoices: [{ ...inv, st: "void" }] }, ctx().can).ready, true, "a void invoice doesn't cover it");
@@ -349,13 +357,24 @@ test("Jobs list (Rotor's): the tiles with counts and $, Row2 rows, Due when owed
   const h = text(list.render({ tile: "open", q: "", rows, tiles, today: "2026-11-17" }, { ...ctx(), user: { id: me } }));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /data-tile="jobs" data-key="today"[^>]*><span class="rs-tile-l">Today<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$100\.00/);
-  assert.match(h, /class="rs-tile red"[^>]*data-key="overdue"/, "Overdue is red when there are any");
-  assert.match(h, /<span class="rs-lr-t">Pat [^<]*<\/span><span class="rs-lr-m num">\$355\.00<\/span>/);
-  assert.match(h, /S-000001 · Tue, Nov 24/);
-  assert.match(h, /<span class="rs-tag">Due \$225\.00<\/span>/, "what its invoice still owes");
+  // Rotor's six tiles in Rotor's order; Overdue and Pending by the search (still the filter); the rest in the filter sheet
+  const keys = [...h.matchAll(/class="rs-tile[^"]*" data-tile="jobs" data-key="([a-z_]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(keys, ["today", "tomorrow", "past_week", "past_month", "next_week", "next_month"]);
+  assert.match(h, /class="wk-jsp od red" data-tile="jobs" data-key="overdue" aria-pressed="false">[\s\S]*?<b class="num">2<\/b> Overdue/, "Overdue is red when there are any");
+  assert.match(h, /data-tile="jobs" data-key="pending" aria-pressed="false">[\s\S]*?Pending Jobs/);
+  assert.match(h, /data-jobs-filter/);
+  assert.match(h, /data-jobs-sort/);
+  // Rotor's table
+  assert.match(h, /<span class="rs-td c-title">Customer<\/span><span class="rs-td c-text">Job #<\/span><span class="rs-td c-text">Address<\/span><span class="rs-td c-date">Start date<\/span><span class="rs-td c-status">Status<\/span><span class="rs-td c-num num">Line items<\/span><span class="rs-td c-money num">Total<\/span><span class="rs-td c-money num">Due<\/span>/);
+  assert.match(h, /<span class="rs-tt">Pat [^<]*<\/span>/);
+  assert.match(h, /S-000001<span class="wk-jord">One-time<\/span>/);
+  assert.match(h, /Nov 24<\/span>/);
+  assert.match(h, /<span class="wk-jdue">Due \$225\.00<\/span>/, "what its invoice still owes (a phone's row)");
   assert.match(h, /data-job-start="jb_00000000000000000003"/, "▷ for my own visit today");
-  assert.match(h, /data-job-done="jb_00000000000000000004"/, "✓ once every visit is done");
-  assert.doesNotMatch(h, /data-job-start="jb_00000000000000000001"/);
+  assert.match(h, /class="rnd red sm" aria-label="Start the visit for Mo Mine" data-job-start="jb_00000000000000000003"/, "red, and on a phone too");
+  assert.match(h, /class="rnd green sm" aria-label="Mark S-000004 done" data-job-done="jb_00000000000000000004">/, "✓ once every visit is done");
+  assert.match(h, /<span class="rs-tact-w"><button type="button" class="rnd grey sm" aria-label="Mark S-000001 done" data-job-done="jb_00000000000000000001" disabled>/, "a desk shows ✓ greyed when it can't run");
+  assert.match(h, /data-job-menu="jb_00000000000000000002"/, "the ⋮ on a desk");
   assert.match(h, /data-job-more="jb_00000000000000000002"/, "a long press holds the rest");
 });
 
@@ -372,7 +391,7 @@ test("the job page's extras (the Rotor guide's SX2, SX4, SX11-SX13): balance due
     const h = text(page.render(s, ctx()));
     assert.ok(!h.includes("<script>alert(1)"));
     assert.match(h, /Balance due<\/span><span class="rs-stat-v">\$295\.00/, "no invoice yet: the total is what's due");
-    assert.match(h, /Time on site<\/span><span class="rs-stat-v">1 h 25 m/);
+    assert.match(h, /Time on site<\/span><span class="rs-stat-v red">1 h 25 m/, "Rotor's red time on site");
     assert.match(h, /class="rs-step on" aria-current="step"><span class="rs-step-d" aria-hidden="true">2<\/span><span class="rs-step-l">On my way/, "the track: on the way");
     assert.match(h, /data-v-start="vs_1"/, "Start for the visit's own people");
     assert.match(h, /data-v-move="vs_1"/, "Reschedule for the office");
@@ -380,7 +399,7 @@ test("the job page's extras (the Rotor guide's SX2, SX4, SX11-SX13): balance due
     assert.doesNotMatch(h, /data-v-move="vs_0"/, "a done visit has no step pills");
     assert.match(h, /Visit 2 of 4 · next Feb 2027 · Active/, "the plan banner");
     assert.match(h, /Plan notes[\s\S]*Gate code 4411/);
-    assert.match(h, /24 panes · 1 × \$295\.00/, "the line's measure");
+    assert.match(h, /<span class="wk-pc ms">24 panes<\/span>/, "the line's measure (Rotor's Measurement column)");
     assert.match(h, /href="mailto:pat@example\.com"/);
     // done and invoiced: the quick actions
     const done = { ...s, job: { ...j, status: "completed" }, visits: [{ ...visits[1] }], invoices: [{ id: "in_1", n: "INV-1", st: "open", tot: 29500, bal: 29500 }] };

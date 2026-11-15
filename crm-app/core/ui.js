@@ -415,6 +415,8 @@ export const ICONS = {
   text: svg('<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 3.5V17H6.5A2.5 2.5 0 0 1 4 14.5z"/><path d="M8 9h8M8 12h5"/>'),
   money: svg('<rect x="3" y="6" width="18" height="12.5" rx="2.5"/><circle cx="12" cy="12.2" r="2.6"/>'),
   pause: svg('<rect x="6.5" y="5" width="3.5" height="14" rx="1"/><rect x="14" y="5" width="3.5" height="14" rx="1"/>'),
+  play: svg('<path d="M8 5.5v13l10.5-6.5z"/>'),
+  sort: svg('<path d="M8 4v16M4.5 7.5 8 4l3.5 3.5M16 20V4M12.5 16.5 16 20l3.5-3.5"/>'),
   data: svg('<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>'),
   plug: svg('<path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4"/>'),
   map: svg('<path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6z"/><path d="M9 4v14M15 6v14"/>'),
@@ -807,7 +809,7 @@ const isHtml = (v) => !!v && v[SAFE] === true;
 // A pill from a word ("Paid"), { label, tone }, or ready html.
 const pillOf = (p) => (!p ? "" : isHtml(p) ? p : typeof p === "object" ? statusPill(p.label, p.tone || pillTone(p.label)) : statusPill(String(p)));
 const holdAttrs = (hold) => (hold ? { "data-hold": "", ...dataOf(hold) } : {});
-const roundAction = (a) => (a ? rnd(a.icon || "chevright", a.label || "Open", { tone: a.tone ?? "grey", sm: true, href: a.href, ext: a.ext, data: a.data, popup: !!a.popup }) : "");
+const roundAction = (a) => (a ? rnd(a.icon || "chevright", a.label || "Open", { tone: a.tone ?? "grey", sm: true, href: a.href, ext: a.ext, data: a.data, popup: !!a.popup, disabled: !!a.disabled }) : "");
 
 // The stat tile row (Rotor's tiles, one compact row that scrolls sideways):
 // a caps label, the count, an optional $ under it. The tile IS the filter: a
@@ -1192,7 +1194,7 @@ if (typeof document !== "undefined") {
 //       (line 1 the title and the $, line 2 the other cells joined by a dot, the pill on the right).
 //       columns: [{ key, label, kind: "title" | "text" | "date" | "status" | "money" | "num", width? }]
 //       (the first column is the title unless said); rows: [{ cells: { key: value }, href | data, action?,
-//       edge?, hold? }]; a value is text, a number of cents (money), a word (status: its pill), html, or
+//       edge?, hold? }] (action: one round action, or up to 3 in an array; { wide: true } on one = a wide table only); a value is text, a number of cents (money), a word (status: its pill), html, or
 //       for the title { text, sub }. empty: a line, or emptyState's options. loading: n skeleton rows.
 //   skeletonRows(n, { columns?, card = true, busy = true, label })   grey bars where the rows will be:
 //       a table's columns when given, else two-line rows.
@@ -1221,9 +1223,10 @@ export function dataTable({ columns = [], rows = [], label = "", empty = "Nothin
   const cols = colsOf(columns);
   if (loading) return skeletonRows(loading, { columns, label: label ? "Loading " + label : "Loading" });
   const list = (rows || []).filter(Boolean);
-  const acts = list.some((r) => r.action);
+  const actsOf = (r) => (Array.isArray(r.action) ? r.action.filter(Boolean).slice(0, 3) : r.action ? [r.action] : []);
+  const most = list.reduce((n, r) => Math.max(n, actsOf(r).length), 0);
   const head = html`<div class="rs-thead" aria-hidden="true"><div class="rs-tmain">${cols.map((c) => html`<span class="${tdClass(c)}">${c.label}</span>`)}</div></div>`;
-  const box = { class: "rs-card flush rs-table" + (acts ? " has-act" : ""), style: "--cols:" + gridOf(cols) };
+  const box = { class: "rs-card flush rs-table" + (most ? " has-act" : ""), style: "--cols:" + gridOf(cols) + (most > 1 ? ";--acts:" + most : "") };
   if (!list.length) return html`<div ${attrs(box)}>${head}${empty && typeof empty === "object" && !isHtml(empty) ? emptyState(empty) : html`<p class="rs-empty rs-tempty">${empty}</p>`}</div>`;
   const row = (r) => {
     const vals = r.cells || {};
@@ -1231,7 +1234,9 @@ export function dataTable({ columns = [], rows = [], label = "", empty = "Nothin
     const main = r.href ? html`<a ${attrs({ class: "rs-tmain", href: r.href, ...dataOf(r.data) })}>${cells}</a>`
       : r.data ? html`<button type="button" ${attrs({ class: "rs-tmain", ...dataOf(r.data) })}>${cells}</button>`
         : html`<span class="rs-tmain">${cells}</span>`;
-    return html`<li ${attrs({ class: "rs-trow" + (r.edge ? " edge-" + r.edge : ""), ...holdAttrs(r.hold) })}>${main}${r.action ? html`<span class="rs-acts">${roundAction(r.action)}</span>` : ""}</li>`;
+    // a row may carry up to 3 round actions (Rotor's ▷ ✓ ⋮); one marked `wide` shows only on a wide table
+    const acts = actsOf(r);
+    return html`<li ${attrs({ class: "rs-trow" + (r.edge ? " edge-" + r.edge : ""), ...holdAttrs(r.hold) })}>${main}${acts.length ? html`<span class="rs-acts">${acts.map((a) => (a.wide ? html`<span class="rs-tact-w">${roundAction(a)}</span>` : roundAction(a)))}</span>` : ""}</li>`;
   };
   return html`<div ${attrs(box)}>${head}<ul class="rs-tlist" ${attrs({ "aria-label": label || null })}>${list.map(row)}</ul></div>`;
 }

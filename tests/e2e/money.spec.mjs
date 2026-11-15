@@ -57,7 +57,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await goTo(f, "/invoices");
       assert.equal(await title(f), "Invoices");
       const list = await f.textContent("#view");
-      assert.match(list, /Outstanding[\s\S]*Overdue[\s\S]*Due today[\s\S]*Paid this month/, "the tiles (the Rotor guide's FI1)");
+      assert.match(list, /Paid this month[\s\S]*Due today[\s\S]*Outstanding[\s\S]*Overdue/, "the tiles in Rotor's order (the Rotor guide's FI1)");
       assert.match(list, /Marlow Moneyfolk/);
       assert.match(list, /Indigo Moneyfolk[\s\S]*Overdue/);
       assert.match(list, /Robin Moneyfolk/, "Rotor's own open invoice is listed");
@@ -85,7 +85,8 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await title(f), /^Invoice SINV-\d{4}$/);
       let text = await f.textContent("#view");
       assert.match(text, /Balance due/);
-      assert.ok(await f.$(".mn-actrow [data-act=send]") && await f.$(".mn-actrow [data-act=record]"), "Send and Record under the top card");
+      assert.ok(await f.$(".mn-link [data-act=send]") && await f.$(".mn-foot [data-act=collect]"), "Send under Invoice Link, Collect Payment at the foot (Rotor's window)");
+      assert.match(await f.textContent("#view"), /Invoice Title[\s\S]*Due Date[\s\S]*Invoice Link[\s\S]*Bill To[\s\S]*Line Items[\s\S]*Collect Payment/, "in Rotor's order");
       assert.ok(await f.$("[data-act=card-link]"), "Add Payment Method (no card on file)");
       await f.click("#top-more");
       await sheetUp(f, /Invoice SINV-/);
@@ -99,7 +100,10 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "an invoice passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `money-invoice-${device}`);
-      await f.click("[data-act=record]");
+      await f.click("[data-act=collect]");
+      await sheetUp(f, /Collect \$295\.00/);
+      assert.deepEqual(await screenProblems(f), [], "Collect Payment passes the phone checks");
+      await f.click(".sheet.on [data-act=record]");
       await sheetUp(f, /Record a payment/);
       assert.deepEqual(await screenProblems(f), [], "the payment sheet passes the phone checks");
       await shot(page, `money-record-${device}`);
@@ -122,7 +126,9 @@ for (const device of ["iphone13", "iphonese"]) {
       const mine = (await post(p, "/invoices", { contact_id: M.contacts.test, lines: [{ description: "Exterior window cleaning", unit_cents: 24500 }], issue: true, use_credit: false })).data.invoice;
       await goTo(f, `/invoices/${mine.id}`);
       assert.match(await f.textContent("#view"), /VISA ending 4242 · On file/);
-      await f.click("[data-act=charge]");
+      await f.click("[data-act=collect]");
+      await sheetUp(f, /Collect/);
+      await f.click(".sheet.on [data-act=charge]");
       await sheetUp(f, /Charge the card/);
       assert.match(await f.textContent(".sheet.on"), /Charge \$245\.00 to the VISA ending 4242\?[\s\S]*practice mode/);
       await f.click(".sheet.on [data-a=yes]");

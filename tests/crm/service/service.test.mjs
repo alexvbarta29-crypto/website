@@ -11,6 +11,18 @@ const J = await import("../../../netlify/lib/crm/modules/service/jobs.mjs");
 const RQ = await import("../../../netlify/lib/crm/modules/service/requests.mjs");
 const cid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
+test("withPlaces and monthsOf (pure): Rotor's Address and Start time from the row's visit on its day, else its property", () => {
+  const rows = [{ id: "a", nv: "2026-11-24", pr: "pr_1" }, { id: "b", lv: "2026-11-10", pr: "pr_2" }, { id: "c", pr: "pr_9" }, { id: "d", fv: "2026-12-02" }];
+  const visits = [
+    { j: "a", d: "2026-11-24", s: "13:00", ad: "1 Example Ave, Delano" }, { j: "a", d: "2026-11-24", s: "08:00", ad: "1 Example Ave, Delano" },
+    { j: "a", d: "2026-11-25", s: "07:00", ad: "Elsewhere" }, { j: "b", d: "2026-11-10", s: "09:00", do: true, town: "Mound" }, { j: "d", d: "2026-12-02", s: "10:00", st: "cancelled", ad: "Gone" },
+  ];
+  const out = J.withPlaces(rows, visits, [{ id: "pr_2", a: "2 Example Ave" }, { id: "pr_9", a: "9 Example Ave" }]);
+  assert.deepEqual(out.map((r) => [r.ad || null, r.at || null]), [["1 Example Ave, Delano", "08:00"], ["Mound", null], ["9 Example Ave", null], [null, null]]);
+  assert.equal(out[3], rows[3], "nothing found: the same row");
+  assert.deepEqual(J.monthsOf([{ nv: "2026-11-03" }, { lv: "2026-10-01" }, { nv: "2026-11-09" }, { fv: "2027-01-02" }, { fv: "2026-12-01" }, {}]), ["2026-11", "2026-10", "2026-12"]);
+});
+
 test("jobTiles (pure): days ahead by the next visit, days behind by the day it was done, overdue, pending, paid", () => {
   const T = "2026-11-17";
   const rows = [

@@ -44,14 +44,27 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
       await f.waitForSelector('[data-tile="jobs"][data-key="today"]');
       assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), theme);
       for (const t of ["requests", "quotes", "jobs", "plans"]) assert.ok(await f.$(`#subnav a[href="#/${t}"]`), `the ${t} tab`);
+      // Rotor's six tiles, then Overdue | Pending Jobs by the search; Open (the start) and the rest in the filter
       const labels = await f.$$eval('[data-tile="jobs"] .rs-tile-l', (x) => x.map((e) => e.textContent));
-      for (const l of ["Open", "Today", "Tomorrow", "Next week", "Next month", "Past week", "Past month", "Overdue", "Pending", "Paid"]) assert.ok(labels.includes(l), l);
-      assert.equal(await tileOn(f, "jobs"), "open");
-      assert.ok(await f.$(".rs-lrow a[href^='#/jobs/']"), "Row2 rows");
+      assert.deepEqual(labels, ["Today", "Tomorrow", "Past week", "Past month", "Next week", "Next month"]);
+      assert.match(await f.textContent(".wk-jsplit"), /\d+ Overdue[\s\S]*\d+ Pending Jobs/);
+      assert.equal(await f.$('[data-tile="jobs"][aria-pressed="true"]'), null, "Open: no tile on");
+      assert.ok(await f.$(".rs-trow a[href^='#/jobs/']"), "the table's rows (two-line on a phone)");
+      await f.click("[data-jobs-filter]");
+      await sheetUp(f, /Show/);
+      const shows = await f.$$eval(".sheet.on [data-f-group=show]", (x) => x.map((e) => e.textContent));
+      for (const l of ["Open", "In progress", "Paid", "Done", "Cancelled", "Overdue", "Pending"]) assert.ok(shows.some((t) => t.startsWith(l + " (")), l);
+      await f.click('.sheet.on [data-f-val="done"]');
+      await f.click(".sheet.on [data-f-show]");
+      await sheetGone(f);
+      await f.waitForSelector(".wk-jshow");
+      assert.match(await f.textContent(".wk-jshow"), /Showing Done/);
+      await f.click(".wk-jshow [data-tile=jobs]");
+      await f.waitForFunction(() => !document.querySelector(".wk-jshow"));
       await checks(f, page, `service-jobs-${device}-${theme}`, problems);
       await f.click('[data-tile="jobs"][data-key="today"]');
       await f.waitForFunction(() => document.querySelector('[data-tile="jobs"][data-key="today"]').getAttribute("aria-pressed") === "true");
-      const today = await f.$$eval(".rs-lrow", (x) => x.length);
+      const today = await f.$$eval(".wk-jtable .rs-trow", (x) => x.length);
       const n = Number(await f.textContent('[data-tile="jobs"][data-key="today"] .rs-tile-v'));
       assert.equal(today, n, "the tile is the filter");
 
@@ -132,8 +145,8 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
     try {
       const id = seeded.jobs[1];
       await goTo(f, `/jobs/${id}`);
-      await f.waitForSelector(".wk-jtop .rs-stat");
-      assert.match(await f.textContent(".wk-jtop .rs-stat"), /Balance due[\s\S]*Time on site/);
+      await f.waitForSelector(".wk-jstats");
+      assert.match(await f.textContent(".wk-jstats"), /Job total[\s\S]*Balance due[\s\S]*Time on site/);
       assert.ok(await f.$(".wk-jtop .rs-steps"), "the status track");
       assert.match(await f.textContent(".wk-jtop .rs-steps"), /Scheduled[\s\S]*On my way[\s\S]*Started[\s\S]*Done[\s\S]*Paid/);
       assert.ok(await f.$(".sv-vacts [data-v-move]"), "Reschedule for the office");

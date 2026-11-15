@@ -291,6 +291,13 @@ test("Polish 3: pageHeader, dataTable (headers, cells by kind, rows that are lin
   assert.match(t, /<ul class="rs-tlist" aria-label="Invoices"><li class="rs-trow"><a class="rs-tmain" href="#\/invoices\/x"><span class="rs-td c-date">Nov 12<\/span><span class="rs-td c-title"><span class="rs-tt">Pat &lt;Sample&gt;<\/span><span class="rs-ts">INV-1<\/span><\/span><span class="rs-td c-status"><span class="pill green">Paid<\/span><\/span><span class="rs-td c-money num">\$195\.00<\/span><span class="rs-td c-text none"><span class="rs-dash" aria-hidden="true">-<\/span><\/span><\/a><\/li>/);
   assert.match(t, /<li class="rs-trow edge-red" data-hold="" data-row-more="y"><button type="button" class="rs-tmain" data-open="y">[\s\S]*<span class="pill red">Late<\/span>[\s\S]*\$5\.00[\s\S]*<\/button><span class="rs-acts"><button type="button" class="rnd grey sm" aria-label="Text" data-remind="y">/);
   assert.equal((t.match(/class="rs-trow/g) || []).length, 2, "falsy rows skipped");
+  // up to 3 round actions (Rotor's ▷ ✓ ⋮): --acts sizes the headers' room; a `wide` one shows only on a wide table
+  const t3 = h(dataTable({ columns: cols, rows: [{ cells: { c: "Pat" }, href: "#/jobs/a", action: [{ icon: "play", label: "Start", data: { go: "a" } }, null, { icon: "check", label: "Done", wide: true, data: { done: "a" } }, { icon: "more", label: "More", wide: true, data: { more: "a" } }, { icon: "x", label: "Fourth" }] }] }));
+  assert.match(t3, /class="rs-card flush rs-table has-act" style="--cols:[^"]*;--acts:3"/);
+  assert.match(t3, /<span class="rs-acts"><button type="button" class="rnd grey sm" aria-label="Start" data-go="a">[\s\S]*<\/button><span class="rs-tact-w"><button type="button" class="rnd grey sm" aria-label="Done" data-done="a">[\s\S]*<span class="rs-tact-w"><button[^>]*aria-label="More"/);
+  assert.doesNotMatch(t3, /Fourth/, "three at most");
+  assert.doesNotMatch(t, /--acts/, "one action: no --acts");
+
   assert.throws(() => dataTable({ columns: cols, rows: [{ cells: {}, href: "javascript:alert(1)" }] }), UnsafeHtml);
   // empty: a line, or the empty state under the headers
   assert.match(h(dataTable({ columns: cols, empty: "No invoices yet." })), /<\/div><\/div><p class="rs-empty rs-tempty">No invoices yet\.<\/p><\/div>$/);
