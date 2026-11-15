@@ -145,13 +145,18 @@ test("flight mode on halfway through a visit: timer, checklist, photos, a note a
     // no signal from here
     await p.ctx.setOffline(true);
     await f.waitForFunction(() => navigator.onLine === false);
-    await f.click("[data-item=gate_closed]");
-    await f.waitForSelector("[data-item=gate_closed][aria-pressed=true]");
-    await snap(page, f, "[data-item=walkaround_photo]");
-    await f.waitForSelector("[data-item=walkaround_photo][aria-pressed=true]", { timeout: 15000 });
-    await snap(page, f, "[data-item=after_photo]");
-    await f.waitForSelector("[data-item=after_photo][aria-pressed=true]", { timeout: 15000 });
-    assert.equal(await f.$$eval(".tf-photo.wait img", (x) => x.length), 2, "the photos show from the phone while they wait");
+    // the checklist sheet (the floating pill), in order: the two photos, then the gate
+    await f.click(".ck-pill");
+    await f.waitForSelector(".sheet.on.ck-sheet");
+    await snap(page, f, ".sheet.on [data-ck-photo=walkaround_photo]");
+    await f.waitForSelector('.sheet.on [data-ck="walkaround_photo"].done', { timeout: 15000 });
+    await snap(page, f, ".sheet.on [data-ck-photo=after_photo]");
+    await f.waitForSelector('.sheet.on [data-ck="after_photo"].done', { timeout: 15000 });
+    await f.click(".sheet.on [data-ck-tick=gate_closed]");
+    await f.waitForSelector('.sheet.on [data-ck="gate_closed"].done');
+    await f.click(".sheet.on [data-sheet-x]");
+    await f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
+    await f.waitForFunction(() => document.querySelectorAll(".tf-photo.wait img").length === 2, null, { timeout: 10000 });
     await f.fill("[data-note-form] textarea", "Synthetic: done with no signal.");
     await f.click("[data-note-form] [type=submit]");
     await f.waitForFunction(() => /done with no signal/.test(document.querySelector("[data-panel=field]").textContent));
@@ -164,13 +169,13 @@ test("flight mode on halfway through a visit: timer, checklist, photos, a note a
     await shot(page, "offline-halfway-done");
     for (const x of await screenProblems(f)) assert.fail(`offline visit: ${x}`);
     const queued = await f.evaluate(async () => (await import("/crm-app/core/outbox.js")).list());
-    assert.deepEqual(queued.map((i) => i.path.split("/").pop()), ["checklist", "photos", "photos", "notes", "complete"], "in the order they were made");
+    assert.deepEqual(queued.map((i) => i.path.split("/").pop()), ["photos", "photos", "checklist", "notes", "complete"], "in the order they were made");
     assert.ok(queued.every((i) => i.body.queued_offline === true && i.body.client_at && i.body.queued_at === i.body.client_at && i.body.client_id));
     // the server hasn't heard a thing
     const before = (await server(p, `/visits/${visitId}`)).visit;
     assert.equal(before.status, "in_progress");
     assert.equal(before.photos.length, 0);
-    const tickedAt = queued[0].body.client_at;
+    const tickedAt = queued[2].body.client_at;
     const doneAt = queued[4].body.client_at;
 
     // signal again: everything goes out, in order

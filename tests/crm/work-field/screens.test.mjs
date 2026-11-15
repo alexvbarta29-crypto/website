@@ -164,3 +164,38 @@ test("Today draws a module card inside its own wrapper with its events, and a te
   assert.match(h, /No visits today/, "nothing to show: the placeholder");
   assert.doesNotMatch(h, /data-card="field"/, "and no empty wrapper");
 });
+
+test("the field panel on a phone (Rotor's visit page): the visit card with Start visit and On My Way, the customer, the address, Pricing with + Item, Job notes; escaped", async () => {
+  const panel = await load("visit-field");
+  const had = globalThis.matchMedia;
+  globalThis.matchMedia = (q) => ({ matches: /max-width: 699px/.test(q), addEventListener() {}, removeEventListener() {} });
+  try {
+    const c = (data = {}) => ({ ...ctx(), data: { job: { crew_notes: `Dog ${XSS}`, lines: [{ id: "ln_1", title: `Screens ${XSS}`, qty_milli: 1000, total_cents: 6000, upsell_user_id: UID }], totals: { total_cents: 35500 } },
+      contact: { id: "ct_1", display_name: `Pat ${XSS}`, phones: [{ e164: "+17635550100", primary: true }] }, property: { address: { street1: "1 Example Ave", city: "Delano", state: "MN", zip: "55328" }, access: { gate_code: "1234" } },
+      people: [{ id: UID, name: "Theo Tech" }], can: { prices: true }, ...data } });
+    let h = text(panel.render({ visit: visitOf(), timers: [], waiting: 0 }, c()));
+    assert.ok(!h.includes("<script>alert(1)"), "escaped");
+    assert.match(h, /class="rs-card jp-card jp-visit tf-state" id="vf-state"/);
+    assert.match(h, /class="jp-vday">Nov 17</);
+    assert.match(h, /8:00 AM – 10:00 AM[\s\S]*2 hrs[\s\S]*Theo Tech/);
+    assert.match(h, /class="jp-pill red" data-timer="start"[\s\S]*Start visit[\s\S]*data-omw[\s\S]*On My Way/, "Start visit, then On My Way");
+    assert.ok(h.indexOf("jp-visit") < h.indexOf("rs-person") && h.indexOf("rs-person") < h.indexOf("rs-addr") && h.indexOf("rs-addr") < h.indexOf("tf-work"), "visit, customer, address, Pricing");
+    assert.match(h, /href="tel:\+17635550100"/);
+    assert.match(h, /Added on site/);
+    assert.match(h, /tf-work[\s\S]*data-addline/, "+ Item adds from the price book");
+    assert.match(h, /Job notes[\s\S]*Dog &lt;\/script&gt;[\s\S]*Gate code 1234[\s\S]*data-note-form[\s\S]*data-photo="other"/);
+    assert.doesNotMatch(h, /data-item=/, "the checklist is the floating pill's sheet");
+    // under way: Complete visit (waiting for the required items) and Pause; the timer
+    h = text(panel.render({ visit: visitOf({ status: "in_progress" }), timers: [{ id: "tm_1", user_ids: [UID], start_at: "2026-11-17T14:00:00.000Z" }] }, c()));
+    assert.match(h, /data-complete="" aria-disabled="true"[\s\S]*Complete visit[\s\S]*data-timer="pause"[\s\S]*Pause/);
+    assert.match(h, /class="jp-vst tf-st">Working · <span data-since="2026-11-17T14:00:00.000Z"/);
+    assert.match(h, /Still to do before it's done/);
+    // on the way: Start visit and Running late
+    h = text(panel.render({ visit: visitOf({ status: "en_route", on_my_way: { at: "2026-11-17T14:00:00.000Z", eta_min: 15 } }) }, c()));
+    assert.match(h, /data-timer="start"[\s\S]*data-late/);
+    assert.match(h, /On the way/);
+    // the "...": the photos and finishing without the timer once nothing's required
+    const rows = panel.moreRows({ visit: visitOf({ checklist: { items: [] } }) }, c()).filter(Boolean);
+    for (const l of ["Running late", "Before photo", "After photo", "Take a photo", "Report an incident", "Finish without the timer"]) assert.ok(rows.some((r) => r.label === l), l);
+  } finally { if (had) globalThis.matchMedia = had; else delete globalThis.matchMedia; }
+});

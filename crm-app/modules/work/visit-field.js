@@ -23,6 +23,7 @@ import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained
 import { nextStep } from "./visit-step.js";
 import { itemDone, itemPhotos } from "./checklist-kit.js";
 import { openChecklist } from "./checklist-sheet.js";
+import { isPhone, visitCard, customerCard, placeCard, pricingCard, dayText, timeText, lengthText, whoGoes, discountShares, discountLabel, RI } from "./office-job-phone.js";
 
 // What a change made with no signal says (the layout report: "Saved, will send when online").
 export const SAVED_OFFLINE = "Saved, will send when online.";
@@ -134,10 +135,10 @@ function checklistCard(s) {
   })}</ul></div>`;
 }
 
-function photosCard(s, ctx) {
+function photosCard(s, ctx, { phone = false } = {}) {
   const photos = s.visit.photos || [];
-  const can = s.visit.status !== "cancelled";
-  return html`<div class="rs-card" id="vf-photos">${cardHead("Photos", { count: String(photos.length) })}
+  const can = !phone && s.visit.status !== "cancelled";
+  return html`<div ${attrs({ class: phone ? "rs-card jp-card" : "rs-card", id: "vf-photos" })}>${cardHead("Photos", { count: String(photos.length) })}
     ${photos.length ? html`<div class="tf-photos">${photos.slice(-24).map((p) => {
       if (!p.local && p.file_id) return photoTile(p.file_id, { alt: `${p.tag || "other"} photo`, tag: p.tag || "other", cls: "tf-photo" });
       const src = p.local ? p.thumb : null;
@@ -171,8 +172,99 @@ function notesCard(s) {
     <div class="btn-row"><button type="button" class="btn danger" data-incident>${TICONS.flag}Report an incident</button></div></div>`;
 }
 
+// ------------------------------------------------------------ a phone: Rotor's visit page (Nov 2026, the owner: "just like Rotor")
+// The same cards as the job page (office-job-phone.js): the visit card with the red "Start visit" and the
+// grey "On My Way" (then Complete visit and Pause, Resume, Get paid), the customer, the address, Pricing
+// ("+ Item" adds from the price book), Job notes (the crew's notes, a note of yours, an upload), the last
+// visit's notes and the photos. The checklist is the floating "N left" pill (work/visit.js) and its sheet;
+// Running late, No access, the photos and an incident are in the round "...".
+
+function pills(s, ctx) {
+  const v = s.visit;
+  const uid = ctx.user && ctx.user.id;
+  const missing = ((v.checklist && v.checklist.items) || []).filter((i) => i.required && !itemDone(i)).map((i) => i.label);
+  const blocked = missing.length ? "true" : null;
+  const collect = ctx.data && ctx.data.collect;
+  if (v.status === "scheduled") return [{ label: "Start visit", ic: RI.play, tone: "red", data: { timer: "start" } }, { label: "On My Way", ic: RI.truck, data: { omw: true } }];
+  if (v.status === "en_route") return [{ label: "Start visit", ic: RI.play, tone: "red", data: { timer: "start" } }, { label: "Running late", ic: RI.late, data: { late: true }, cls: "long" }];
+  if (v.status === "in_progress") return [{ label: "Complete visit", ic: RI.check, tone: "red", data: { complete: true, "aria-disabled": blocked } }, myTimer(s, uid) ? { label: "Pause", ic: RI.pause, data: { timer: "pause" } } : { label: "Start my timer", ic: RI.play, data: { timer: "start" }, cls: "long" }];
+  if (v.status === "paused") return [{ label: "Resume", ic: RI.play, tone: "red", data: { timer: "start" } }, { label: "Complete", ic: RI.check, data: { complete: true, "aria-disabled": blocked } }];
+  if (v.status === "completed" && collect && collect.key && collect.owed) return [{ label: "Get paid", ic: RI.check, tone: "red", data: { vact: collect.key } }];
+  return [];
+}
+function phoneState(s, ctx) {
+  const v = s.visit;
+  const uid = ctx.user && ctx.user.id;
+  const mine = myTimer(s, uid);
+  const missing = ((v.checklist && v.checklist.items) || []).filter((i) => i.required && !itemDone(i)).map((i) => i.label);
+  const omw = v.on_my_way;
+  const late = (v.running_late || [])[v.running_late ? v.running_late.length - 1 : 0];
+  const out = [offlineLine({ offline: s.offline, as_of: s.as_of, waiting: s.waiting, what: "This visit" })];
+  if (v.status === "completed") out.push(html`<p class="jp-vst tf-st tf-done">Done${v.completion && v.completion.at ? ` at ${fmtTime(v.completion.at)}` : ""}${v.completion && v.completion.waiting ? " (on this phone, waiting for signal)" : ""}. ${hm(worked(s))} worked.</p>`);
+  else if (v.status === "no_access") out.push(html`<p class="warn-box">No access${v.no_access && v.no_access.note ? `: ${v.no_access.note}` : ""}. The office will follow up.</p>`);
+  else if (v.status === "cancelled") out.push(html`<p class="warn-box">This visit was cancelled.</p>`);
+  else {
+    if (v.status !== "scheduled") out.push(html`<p class="jp-vst tf-st">${TITLE[v.status] || v.status}${mine ? html` · <span ${attrs({ "data-since": mine.start_at })}>${hm(since(mine.start_at))}</span>` : ""}${v.minutes_worked && !mine ? ` · ${hm(v.minutes_worked)} so far` : ""}</p>`);
+    if (omw) out.push(html`<p class="jp-vnote">On my way at ${fmtTime(omw.at)}, about ${omw.eta_min} min${late ? `; running late at ${fmtTime(late.at)}, about ${late.eta_min} min` : ""}.</p>`);
+    if (s.sent) out.push(sentNote(s.sent));
+    if (v.status === "scheduled" && !online()) out.push(html`<p class="jp-vnote">No signal: On My Way texts the customer, so it waits. Start works now.</p>`);
+    if (missing.length && ["in_progress", "paused"].includes(v.status)) out.push(html`<p class="tf-missing">Still to do before it's done: ${missing.join(", ")}.</p>`);
+  }
+  return out;
+}
+function phoneNotes(s, ctx) {
+  const v = s.visit;
+  const d = ctx.data || {};
+  const job = d.job;
+  const a = (d.property && d.property.access) || {};
+  const bits = [a.gate_code ? `Gate code ${a.gate_code}` : "", a.lockbox ? `Lockbox ${a.lockbox}` : "", a.pets ? `Pets: ${a.pets}` : "", a.parking ? `Parking: ${a.parking}` : "", a.notes || ""].filter(Boolean);
+  const crew = job && job.crew_notes;
+  const write = v.status !== "cancelled";
+  return html`<section class="rs-card jp-card jp-notes tf-vnotes"><h3 class="jp-h">Job notes</h3>
+    ${crew || bits.length ? html`<p class="wk-pre jp-crew">${[crew, ...bits].filter(Boolean).join("\n")}</p>` : ""}
+    ${v.tech_notes ? html`<p class="wk-pre jp-crew">${v.tech_notes}</p>` : ""}
+    ${write ? html`<form class="tf-note-form" data-note-form><div class="jp-nbox"><textarea class="jp-ta" name="text" rows="2" maxlength="1000" aria-label="A note on this visit" placeholder="Add notes for this job..."></textarea>
+      <button type="button" class="jp-o jp-up white" style="--d:32px" data-photo="other" aria-label="Attach a photo to this visit">${RI.upload}</button></div>
+      <div class="jp-nsave"><button type="submit" class="jp-pill sm">${RI.check}<span>Save the note</span></button></div></form>` : !crew && !bits.length && !v.tech_notes ? html`<p class="jp-none">No notes.</p>` : ""}
+  </section>`;
+}
+function phoneRender(s, ctx) {
+  const v = s.visit;
+  const d = ctx.data || {};
+  const office = !!(d.can && d.can.office);
+  const job = d.job;
+  const prices = !!(d.can && d.can.prices);
+  const canAdd = ctx.can("visits:add_line") && OPEN.includes(v.status);
+  const addr = d.property && d.property.address;
+  const where = addr ? "" : v.address_line || v.town || "";
+  const len = !v.date_only ? lengthText(v) : "";
+  const people = Array.isArray(d.people) ? d.people : [];
+  const lines = (job && job.lines) || [];
+  const photos = v.photos || [];
+  const last = s.last ? html`<section class="rs-card jp-card">${cardHead("Last time here", { count: dateShort(s.last.date) })}<p class="wk-pre">${s.last.text}</p></section>` : "";
+  return html`<div class="tf-panel jp-panel">
+    ${visitCard({ id: "vf-state", cls: "tf-state", day: dayText(v.date), cal: office && d.can.move ? { label: "Move or reassign", data: { move: true } } : null,
+      more: { label: "More for this visit", data: { "jp-more": true } }, time: timeText(v), chip: len ? { text: len } : null,
+      people: whoGoes(v, [], people), lines: phoneState(s, ctx), go: pills(s, ctx) })}
+    ${customerCard(d.contact, { office })}
+    ${placeCard(d.property, { office, where })}
+    ${lines.length || canAdd ? pricingCard({ cls: "tf-work", rows: lines.map((l) => {
+      const q = (l.qty_milli ?? 1000) / 1000;
+      const by = l.upsell_user_id ? people.find((p) => p.id === l.upsell_user_id) || { name: "The crew" } : null;
+      return { title: l.title, amount: prices && l.total_cents != null ? money(l.total_cents) : "", sub: q !== 1 ? `${q} × ${prices && l.unit_cents != null ? money(l.unit_cents) : "each"}` : "", by };
+    }), add: canAdd ? { data: { addline: true }, aria: "Add to the job" } : null,
+      subtotal: prices && job && job.totals && (job.discounts || []).length ? money(job.totals.subtotal_cents) : null,
+      discounts: prices && job && job.totals ? (job.discounts || []).map((x, i) => ({ label: discountLabel(x), amount: money(-discountShares(job)[i]) })) : [],
+      total: prices && job && job.totals ? money(job.totals.total_cents) : null }) : ""}
+    ${phoneNotes(s, ctx)}
+    ${last}
+    ${photos.length ? photosCard(s, ctx, { phone: true }) : ""}
+  </div>`;
+}
+
 function render(s, ctx) {
   if (!s || !s.visit) return html``;
+  if (isPhone()) return phoneRender(s, ctx);
   const last = s.last ? html`<div class="rs-card">${cardHead("Last time here", { count: dateShort(s.last.date) })}<p class="wk-pre">${s.last.text}</p></div>` : "";
   // (the next step is the Visit screen's one big button, at the bottom on a phone: step() above)
   return html`<div class="tf-panel">${stateCard(s, ctx)}${last}${checklistCard(s)}${photosCard(s, ctx)}${workCard(s, ctx)}${notesCard(s)}</div>`;
@@ -322,7 +414,10 @@ export function moreRows(s, ctx, { office = false } = {}) {
     open && { label: "Running late", icon: "clock", hint: "texts the customer", run: () => runningLate(ctx, null) },
     open && !office && { label: "No access", icon: "flag", run: () => noAccess(ctx, null) },
     work && ctx.can && ctx.can("visits:add_line") && { label: "Add to the job", icon: "plus", hint: "price book", run: () => addLine(ctx) },
+    v.status !== "cancelled" && isPhone() && { label: "Before photo", icon: "camera", run: () => takePhoto(ctx, null, { tag: "before" }), data: { photo: "before" } },
+    v.status !== "cancelled" && isPhone() && { label: "After photo", icon: "camera", run: () => takePhoto(ctx, null, { tag: "after" }), data: { photo: "after" } },
     v.status !== "cancelled" && { label: "Take a photo", icon: "camera", hint: "issue", run: () => takePhoto(ctx, null, { tag: "issue" }) },
+    isPhone() && open && !((v.checklist && v.checklist.items) || []).some((i) => i.required && !itemDone(i)) && { label: "Finish without the timer", icon: "check", run: () => complete(ctx, null), data: { complete: true } },
     v.status !== "cancelled" && { label: "Report an incident", icon: "flag", run: () => incident(ctx, null) },
   ];
 }

@@ -849,108 +849,158 @@ html[data-theme="dark"] .wk-hol{color:#ffb357}
 .wk-mapcard{padding:8px}
 .wk-maps{width:100%;height:auto;display:block}
 
-/* ---------------------------------------------------------------- the job page on a phone (office-job-phone.js, Nov 2026):
-   Flyra's top, then Rotor's cards; the floating checklist pill is checklist.css */
-.jp{gap:12px}
-.jp-head{display:flex;flex-direction:column;gap:6px;padding:4px 2px 2px}
-.jp-title{margin:0;font:700 var(--t-display)/1.18 var(--head);letter-spacing:-.02em;color:var(--ink);overflow-wrap:anywhere}
-.jp-who{margin:0;color:var(--muted);font-size:var(--t-row);overflow-wrap:anywhere}
-.jp-when{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin-top:4px}
-.jp-day{font:700 20px/1.25 var(--head);color:var(--ink)}
-a.jp-day{display:inline-flex;align-items:center;min-height:44px;margin:-6px 0;text-decoration:none}
-.jp-time{color:var(--ink-2);font-size:var(--t-row)}
-.jp-len{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:0;border-radius:999px;background:var(--card-2);color:var(--ink);font:600 15px/1 var(--text)}
-button.jp-len{cursor:pointer}
-.jp-len svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.jp-len svg:last-child{width:14px;height:14px;color:var(--muted)}
-.jp-people{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0;font-size:var(--t-row);color:var(--ink)}
-.jp-person{display:inline-flex;align-items:center;gap:8px}
-.jp-person i{width:10px;height:10px;border-radius:50%}
-.jp-pills{margin:4px 0 0}
-.jp-made{margin:0;color:var(--muted);font-size:var(--t-sm)}
-.jp-made:empty{display:none}
-.jp-head .warn-box{margin:0}
-/* the one big step and Flyra's 4-step bar */
-.jp-step{display:flex;flex-direction:column;gap:10px}
-.jp-go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:700 19px/1 var(--text);cursor:pointer;box-shadow:0 6px 18px rgba(199,49,31,.22)}
-.jp-go svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.jp-note{margin:-2px 0 0;text-align:center;color:var(--muted);font-size:var(--t-sm)}
-.jp-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0;padding:0;list-style:none}
-.jp-bar li{display:flex;flex-direction:column;gap:7px;min-width:0;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.2}
-.jp-bar i{display:block;height:4px;border-radius:2px;background:var(--card-2);box-shadow:inset 0 0 0 1px var(--card-line)}
-.jp-bar li.on i{background:var(--coral-btn);box-shadow:none}
-.jp-bar li.on{color:var(--ink)}
-.jp-bar li[aria-current=step]{color:var(--ink);font-weight:600}
-/* Flyra's quick row: four tiles in one bordered row */
-.jp-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--card-line);border-radius:16px;background:var(--card);overflow:hidden}
-.jp-q{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:72px;padding:8px 2px;border:0;background:none;color:var(--ink);font:500 13.5px/1.15 var(--text);text-align:center;text-decoration:none;cursor:pointer}
-.jp-q+.jp-q{box-shadow:inset 1px 0 0 var(--line)}
-.jp-q svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.jp-q[aria-disabled=true]{color:var(--muted)}
-.jp-q span{overflow-wrap:anywhere}
-/* the plan card */
-.jp-plan{display:flex;flex-direction:column;gap:12px}
-.jp-plan-top{display:flex;align-items:center;gap:12px;min-height:48px;color:var(--ink);text-decoration:none}
-.jp-tile{flex:none;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--card-line);border-radius:12px;background:var(--card-2)}
-.jp-tile svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.jp-plan-w{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.jp-plan-w b{font:600 var(--t-lg)/1.25 var(--text);overflow-wrap:anywhere}
-.jp-plan-card{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-left:56px}
-/* Amount due, Checkout and the three ways to pay */
-.jp-due{display:flex;flex-direction:column;gap:6px;padding:18px 18px 8px}
-.jp-due-l{margin:0;color:var(--muted);font-size:var(--t-row)}
-.jp-due-v{margin:0 0 8px;font:700 34px/1.1 var(--head);letter-spacing:-.02em;color:var(--ink)}
-.jp-checkout{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;border:0;border-radius:999px;background:var(--solid);color:var(--on-solid);font:700 18px/1 var(--text);cursor:pointer}
-.jp-checkout svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.jp-pays{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:4px}
-.jp-pay{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:68px;border:0;background:none;color:var(--ink-2);font:500 13.5px/1.15 var(--text);cursor:pointer}
-.jp-pay svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-/* Pricing: a card a line */
-.jp-h{margin:0 0 12px;font:700 var(--t-lg)/1.25 var(--head);color:var(--ink)}
-.jp-ch{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px -6px 4px 0}
-.jp-ch .jp-h{margin:0}
-.jp-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.jp-li{border:1px solid var(--card-line);border-radius:14px;background:var(--card)}
-.jp-li-top{display:flex;align-items:flex-start;gap:8px;padding:6px 8px 6px 14px}
-.jp-li-open{flex:1;min-width:0;display:block;min-height:44px;padding:8px 0 6px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
-span.jp-li-open{cursor:default}
-.jp-li-name{display:flex;flex-direction:column;gap:8px}
-.jp-li-name b{font:600 var(--t-row)/1.3 var(--text);overflow-wrap:anywhere}
-.jp-onsite{display:inline-flex;align-items:center;gap:8px}
-.jp-tag{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:var(--green-bg);color:var(--green-ink);font:600 13.5px/1 var(--text)}
-.jp-av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--card-2);color:var(--ink);font:700 11.5px/1 var(--text);box-shadow:inset 0 0 0 1px var(--card-line)}
-.jp-av[style]{color:#fff;box-shadow:none}
-.jp-av.lg{width:40px;height:40px;font-size:14px}
-.jp-cam{position:relative;flex:none;display:grid;place-items:center;width:44px;height:44px;margin-top:2px;border:0;border-radius:12px;background:var(--card-2);color:var(--ink-2);cursor:pointer}
-.jp-cam svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.jp-cam-n{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--ink);color:var(--card);font:700 11px/18px var(--text);text-align:center}
-.jp-li-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:0 14px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:inherit;text-align:left}
-button.jp-li-foot{cursor:pointer}
-.jp-li-q,.jp-li-p{display:inline-flex;align-items:center;gap:10px}
-.jp-li-k{display:inline-flex;align-items:center;gap:2px;color:var(--muted);font-size:var(--t-body)}
-.jp-li-k svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.jp-li-p b{font:600 var(--t-row)/1 var(--text)}
-.jp-add{padding:10px 0 2px}
-.jp-sums{display:flex;flex-direction:column;margin-top:10px;border-top:1px solid var(--line)}
-.jp-sum{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;color:var(--ink-2);font-size:var(--t-row)}
-.jp-sum.green{color:var(--green-ink)}
-.jp-dl{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
-.jp-tot{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:60px;margin-top:8px;border-top:1px solid var(--line);font:700 var(--t-row)/1 var(--text);color:var(--ink)}
-.jp-tot .num{font:700 30px/1 var(--head);letter-spacing:-.02em}
-.jp-tot .num.paid{color:var(--green-ink)}
-.jp-cta{margin-top:8px}
-.jp-cta .rs-pb:disabled{opacity:.55}
-/* notes with the upload in the box (Rotor's) */
-.jp-nbox{position:relative}
-.jp-nbox .rs-notes{min-height:120px;padding-bottom:56px}
-.jp-up{position:absolute;right:10px;bottom:10px;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1px var(--card-line);cursor:pointer}
-.jp-up svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.jp-notes .wk-nlabel{margin-top:14px}
-/* Sold by: Rotor's grey row */
-.jp-sold{display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 16px;border-radius:18px;background:var(--card-2);color:var(--ink);text-decoration:none}
-.jp-sold-w{display:flex;flex-direction:column;gap:2px;min-width:0}
-.jp-sold-w b{font:500 var(--t-row)/1.25 var(--text);overflow-wrap:anywhere}
-/* Delete Job: Flyra's red outline, the page's last thing */
-.jp-del{width:100%;min-height:54px;margin-top:8px;border:1.5px solid var(--coral-btn);border-radius:999px;background:none;color:var(--coral-btn);font:700 17px/1 var(--text);cursor:pointer}
+/* ---------------------------------------------------------------- the job page on a phone, just like Rotor's
+   (office-job-phone.js, Nov 2026; the owner's screenshots of Rotor's phone job page). The tech's Visit screen
+   uses the same cards (.jp on visit.js's page). Light is Rotor's; dark mirrors it. The floating pill is checklist.css. */
+.jp{--jp-fill:#f2f2f2;--jp-fill-2:#e8e8e8;--jp-soft:#fafafa;--jp-muted:#666;--jp-green:#2f9a41;--jp-green-bg:#e3f5e6;--jp-sold:#ececec;--jp-box:#f7f7f8;
+  --jp-sh:0 2px 6px rgba(0,0,0,.025),0 8px 26px rgba(0,0,0,.06);--jp-o-sh:0 3px 12px rgba(0,0,0,.1);gap:14px}
+html:not([data-theme="light"]) body.crm:not(.page) .jp{--jp-fill:#2a2b2f;--jp-fill-2:#323338;--jp-soft:#26272b;--jp-muted:#a1a1a8;--jp-green:#4cd486;--jp-green-bg:rgba(52,199,89,.15);--jp-sold:#202124;--jp-box:#232428;
+  --jp-sh:none;--jp-o-sh:0 0 0 1px rgba(255,255,255,.1)}
+.jp{margin-top:-5px}
+.jp .jp-card{border-radius:24px;padding:18px;box-shadow:var(--jp-sh);border-color:transparent}
+html:not([data-theme="light"]) body.crm:not(.page) .jp .jp-card{border-color:var(--card-line)}
 .jp .foot-note{margin:0;text-align:left}
 .jp-vsheet{padding:0}
+/* a round button: 44 px to tap, its circle --d (Rotor's 28, 32, 36, 44, 48) */
+.jp-o{position:relative;isolation:isolate;flex:none;display:grid;place-items:center;width:44px;height:44px;margin:calc((var(--d,44px) - 44px) / 2);padding:0;border:0;background:none;color:var(--ink);text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.jp-o::before{content:"";position:absolute;z-index:-1;inset:calc((44px - var(--d,44px)) / 2);border-radius:50%;background:var(--card);box-shadow:var(--jp-o-sh)}
+.jp-o.soft::before{background:var(--jp-soft)}
+.jp-o.red{color:#fff}.jp-o.red::before{background:var(--coral-btn);box-shadow:none}
+.jp-o.grey::before,.jp-o.jp-pen::before{background:var(--jp-fill-2);box-shadow:none}
+.jp-o.bare::before{background:none;box-shadow:none}
+.jp-o svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.jp-o.bare svg{width:28px;height:28px;stroke-width:1.9}
+.jp-o:active::before{filter:brightness(.95)}
+/* pills: red (the step), grey; 48 tall, or a 32 px "+ Item" in a 44 px target */
+.jp-pill{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:0;min-height:48px;padding:0 18px;border:0;border-radius:999px;background:var(--jp-fill);color:var(--ink);font:600 17px/1.1 var(--text);text-decoration:none;white-space:nowrap;cursor:pointer}
+.jp-pill.red{background:var(--coral-btn);color:#fff;font-weight:700}
+.jp-pill svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.jp-pill.red svg{width:19px;height:19px}
+.jp-pill span{overflow:hidden;text-overflow:ellipsis}
+.jp-pill.done{color:var(--jp-muted)}
+.jp-pill.wide{display:flex;width:100%}
+.jp-pill:disabled{opacity:.5;cursor:default}
+.jp-pill.sm{min-height:44px;padding:0 16px 0 13px;gap:7px;background:none;font-size:14px}
+.jp-pill.sm::before{content:"";position:absolute;z-index:-1;inset:6px 0;border-radius:999px;background:var(--jp-fill)}
+.jp-pill.sm svg{width:16px;height:16px;stroke-width:1.9}
+/* the visit card */
+.jp-visit{display:flex;flex-direction:column}
+.jp .jp-visit{padding-bottom:16px}
+.jp-vrow{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px}
+.jp-vday{margin:0;min-width:0;font:700 17px/1.2 var(--head);letter-spacing:-.01em;color:var(--ink);overflow-wrap:anywhere}
+.jp-vday a{display:inline-flex;align-items:center;min-height:44px;margin:-4px 0;color:inherit;text-decoration:none}
+.jp-vbtns{display:flex;gap:8px;margin-right:0}
+.jp-vtime{display:flex;align-items:center;flex-wrap:wrap;gap:0 10px;min-height:36px;margin-top:2px;color:var(--jp-muted);font:400 14px/1.3 var(--text)}
+.jp-chip{display:inline-flex;align-items:center;min-height:44px;margin:-4px 0;padding:0;border:0;background:none;color:var(--ink);font:inherit;cursor:pointer}
+span.jp-chip{cursor:default}
+.jp-chip-v{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px 0 10px;border-radius:999px;background:var(--jp-fill);font:600 14px/1 var(--text)}
+.jp-chip-v svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.jp-chip-v svg:last-child:not(:first-child){width:13px;height:13px;margin-left:3px;color:var(--jp-muted)}
+.jp-people{display:flex;flex-wrap:wrap;gap:4px 12px;margin:6px 0 0;color:var(--ink);font:400 14px/22px var(--text)}
+.jp-person{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.jp-person i{flex:none;width:8px;height:8px;border-radius:50%}
+.jp-vst{margin:8px 0 0;color:var(--ink-2);font:600 15px/1.3 var(--text)}
+.jp-vnote{margin:6px 0 0;color:var(--jp-muted);font-size:14px}
+.jp-visit .warn-box{margin:8px 0 0}
+.jp-go{display:flex;gap:10px;margin-top:10px}
+.jp-go .jp-pill{flex:1 1 0;padding:0 12px}
+.jp-go .jp-pill.red{flex-grow:1.1}
+.jp-go .jp-pill.long{gap:6px;font-size:15px}
+.jp-go .jp-pill.long svg{width:17px;height:17px}
+/* the customer and address cards */
+.jp .jp-row{display:flex;align-items:center;gap:8px;min-height:72px;padding:12px 16px}
+.jp-pl{flex:1;min-width:0;display:flex;align-items:center;gap:13px;min-height:44px;color:var(--ink);text-decoration:none}
+.jp-tile{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--jp-fill);color:var(--ink);font:700 16px/1 var(--head)}
+.jp-tile svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.jp-pw{display:flex;flex-direction:column;gap:2px;min-width:0}
+.jp-pn{font:600 16px/1.25 var(--text);overflow-wrap:anywhere}
+.jp-ps{color:var(--jp-muted);font:400 14px/1.3 var(--text);overflow-wrap:anywhere}
+.rs-person .jp-ps{font-size:13px}
+.jp-acts{flex:none;display:flex;gap:8px}
+/* Pricing */
+.jp-h{margin:0;font:700 18px/1.3 var(--head);letter-spacing:-.01em;color:var(--ink)}
+.jp .jp-pricing{padding-top:16px}
+.jp-pricing .jp-h{padding:0 0 12px;border-bottom:1px solid var(--line)}
+.jp-rows{list-style:none;margin:12px 0 0;padding:0}
+.jp-rows li+li{border-top:1px solid var(--line)}
+.jp-r{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:100%;min-height:44px;padding:9px 0;border:0;background:none;color:var(--ink);font:inherit;text-align:left}
+button.jp-r{cursor:pointer}
+.jp-rt{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.jp-rn{min-width:0;font:600 16px/1.3 var(--text);overflow-wrap:anywhere}
+.jp-ra{flex:none;font:600 16px/1.3 var(--text)}
+.jp-rs{color:var(--jp-muted);font-size:14px}
+.jp-onsite{display:inline-flex;align-items:center;gap:8px;margin-top:0}
+.jp-tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:var(--jp-green-bg);color:var(--jp-green);font:500 12.5px/1 var(--text)}
+.jp-av{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--jp-fill);color:var(--ink);font:700 10px/1 var(--text)}
+.jp-av[style]{color:#fff}
+.jp-av.md{flex:none;width:22px;height:22px;font-size:9.5px}
+.jp-add{padding:4px 0 0}
+.jp-rows+.jp-add{padding-top:10px}
+.jp-empty{margin:12px 0 0}
+.jp-sums{display:flex;flex-direction:column;margin-top:6px;padding-top:12px;border-top:1px solid var(--line)}
+.jp-sum{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;color:var(--jp-muted);font:400 15px/1.25 var(--text)}
+.jp-sum.green{color:var(--jp-green)}
+.jp-sum.green .num{font-weight:600}
+.jp-dl{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
+.jp-pen{--d:26px}
+.jp-pen svg{width:14px;height:14px;stroke-width:1.9}
+.jp-sum.green .jp-pen{color:var(--ink)}
+.jp-sums .jp-add{padding:10px 0 20px;border-bottom:1px solid var(--line)}
+.jp-tot{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px;margin-top:24px;font:700 17px/1 var(--text);color:var(--ink)}
+.jp-tot .num{font:800 25px/1 var(--head);letter-spacing:-.02em}
+.jp-tot .num.paid{color:var(--jp-green)}
+.jp-cta{margin-top:7px}
+/* Invoices and Job notes */
+.jp-ch{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px -6px 0 0}
+.jp-none{margin:14px 0 2px;color:var(--jp-muted);font:400 15px/1.3 var(--text)}
+.jp-invs .wk-irow:first-of-type{margin-top:6px}
+.jp-notes .jp-h{margin-bottom:12px}
+.jp-nbox{position:relative}
+.jp-ta{display:block;width:100%;height:104px;min-height:104px;padding:14px 16px 40px;border:0;border-radius:16px;background:var(--jp-box);color:var(--ink);font:400 16px/1.4 var(--text);resize:none;outline:0;box-sizing:border-box}
+.jp-ta::placeholder{color:var(--jp-muted)}
+.jp-ta:focus{box-shadow:var(--focus)}
+.jp-up{position:absolute;right:2px;bottom:2px}
+.jp-up svg{width:19px;height:19px}
+.jp-notes .wk-nlabel{margin:14px 0 8px}
+.jp-notes .jp-nbox+.wk-nlabel{margin-top:16px}
+.jp-notes .wk-pre{margin:0}
+/* Sold by: a grey row with the seller's avatar */
+.jp-sold{display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 16px;border-radius:22px;background:var(--jp-sold);color:var(--ink);text-decoration:none}
+.jp-sold-w{display:flex;flex-direction:column;gap:1px;min-width:0}
+.jp-sold-n{font:400 16px/1.25 var(--text);overflow-wrap:anywhere}
+.jp-sold-s{color:var(--jp-muted);font:400 13px/1.25 var(--text)}
+/* the floating checklist pill, Rotor's size */
+.jp .ck-pill{min-height:56px;padding:0 22px 0 20px;gap:12px;border:0;font-size:18px;box-shadow:0 4px 22px rgba(0,0,0,.13)}
+html:not([data-theme="light"]) body.crm:not(.page) .jp .ck-pill{border:1px solid var(--card-line)}
+/* the header on these pages (Rotor's): 48 px round back, check and "...", soft shadows, the title 20 px bold */
+@media (max-width:699px){
+  .app:not(.big-top):has(.view .jp) .top.rs-top{min-height:calc(62px + var(--top));padding-left:calc(16px + var(--left));padding-right:calc(16px + var(--right))}
+  .app:not(.big-top):has(.view .jp) .top.rs-top .top-title{font:700 17px/1.2 var(--head);letter-spacing:-.01em}
+  .app:not(.big-top):has(.view .jp) .top.rs-top .top-back,.app:not(.big-top):has(.view .jp) .top.rs-top .top-act .rnd{width:48px;height:48px;border:0;background:var(--card);box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .app:not(.big-top):has(.view .jp) .top.rs-top .top-act{gap:12px}
+  html:not([data-theme="light"]) body.crm:not(.page) .app:not(.big-top):has(.view .jp) .top.rs-top .top-back,html:not([data-theme="light"]) body.crm:not(.page) .app:not(.big-top):has(.view .jp) .top.rs-top .top-act .rnd{box-shadow:0 0 0 1px rgba(255,255,255,.1)}
+  .app:not(.big-top):has(.view .jp) .top.rs-top .top-act .rnd svg{width:22px;height:22px}
+  .app:not(.big-top):has(.view .jp) .top.rs-top .top-act .rnd[data-top-tool] svg,.app:not(.big-top):has(.view .jp) .top.rs-top .top-act .rnd:not(#top-more) svg{color:var(--muted)}
+}
+/* Rotor's page grey behind the job and visit cards (light; dark keeps the app's) */
+@media (max-width:699px){
+  html[data-theme="light"] .app:has(.view .jp){background:#f1f1f2}
+  html[data-theme="light"] .app:not(.big-top):has(.view .jp) .top.rs-top{background:rgba(241,241,242,.92)}
+}
+/* the Visit screen on a phone (visit.js, visit-field.js): the same cards; the field panel is a column of them */
+.jp .tf-panel{display:flex;flex-direction:column;gap:14px}
+.jp .wk-panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.jp-crew{margin:0 0 12px}
+.jp-nsave{display:flex;justify-content:flex-end;padding-top:6px}
+.tf-note-form:has(textarea:placeholder-shown) .jp-nsave{display:none}
+.jp .tf-wait{margin:8px 0 0}
+.jp .tf-sent,.jp .tf-missing{margin:6px 0 0;font-size:14px}
+.jp .tf-done{color:var(--green-ink)}
+.jp>.rs-disc{border-radius:22px}
+.jp .tf-state{gap:0}
+/* a narrow phone (an SE): the two pills keep their words */
+@media (max-width:389px){
+  .jp-go{gap:8px}
+  .jp-go .jp-pill{gap:7px;padding:0 8px;font-size:16px}
+  .jp-go .jp-pill svg{width:18px;height:18px}
+}
