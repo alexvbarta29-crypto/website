@@ -340,7 +340,7 @@ test("on a desk (1440): the sidebar is the drawer's sections; a row opens the ta
       assert.equal(await f.isVisible("#top-rnd .rnd-own"), false, "the phone's round buttons stay the phone's");
       await f.click("#top-rnd [data-sec-more]");
       await f.waitForSelector(".sheet.on .rs-act");
-      assert.deepEqual(await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent)), ["Autopay run", "Timesheets", "Purchases"]);
+      assert.deepEqual(await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent)), ["Autopay run", "Timesheets"], "Purchases left for the Expenses screen's \"...\" (Track 3)");
       await f.click('.sheet.on a[href="#/autopay"]');
       await settled(f, { hash: "#/autopay" });
       assert.equal(await f.isVisible("#top-back"), true, "a \"...\" screen has a back button");

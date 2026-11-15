@@ -109,7 +109,7 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     // (a page has the room: every list open under its row's name)
     const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
     assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Leads", "Pipelines", "Power Dialer", "Service", "Financials", "Tasks", "Map", "Analytics", "Marketing"]);
-    for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Purchases", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
+    for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Expenses", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
       "Outbox (not sent)", "Approvals", "Team inboxes", "Giveaway", "QR codes", "Text blast", "Door report", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
     for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
     assert.ok(await f.$('.menu-page a[href="#/settings"]'), "the gear");
@@ -495,7 +495,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
         await f.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--sab").trim() === "34px");
         for (const r of routes) {
           const path = fill(r);
-          await goTo(f, path);
+          try { await goTo(f, path); } catch (e) { e.message = `${login} ${device} ${r}: ${e.message}`; throw e; }   // (which screen never settled)
           await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 }).catch(() => {});
           const where = `${login} ${device} ${r}`;
           for (const x of await screenProblems(f)) problems.push(`${where}: ${x}`);
