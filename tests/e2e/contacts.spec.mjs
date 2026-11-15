@@ -186,26 +186,41 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
         assert.match(await g.textContent(".sheet.on"), /Edit[\s\S]*Archive/);
         await g.click(".sheet.on [data-sheet-x]");
       }
-      // the contact (Rotor's profile): the summary box, Mute, Edit / Portal / ...; Service first (tiles, Service Plans,
-      // Scheduled Jobs, Pending Jobs with Delay and Schedule, each with its "+ New"); Payments; Files; the portal
+      // the customer on a phone (Rotor's phone app): Details (the summary, CONTACT, the quick row, PAYMENT, notes,
+      // More details, the portal, Files, Convert to Lead, Delete Customer) | Service (Rotor's order) | Activity
       await goTo(g, `/contacts/${seeded.contacts.plan}`);
       await g.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
-      assert.deepEqual(await g.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Lifetime value", "Sale value", "Frequency", "Service type"]);
+      assert.deepEqual(await g.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["details", "service", "activity"], "Rotor's phone tabs");
+      assert.deepEqual(await g.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Type", "Sale value", "Frequency", "Source"]);
       assert.match(await g.textContent("#ct-stat"), /Quarterly/, "the plan's frequency");
-      assert.ok(await g.isVisible("#ct-mute .switch"), "the Mute switch up front");
-      assert.ok(await g.isVisible(".ct-btns [data-portal]") && await g.isVisible(".ct-btns [data-ct-more]"), "Edit, Portal, ...");
+      assert.ok(await g.isVisible("#top-act .rs-top-sw .switch"), "Automations (Mute) in the header");
+      assert.ok(await g.isVisible('[data-pane="details"] [data-card="payment"] [data-mn-card-link]'), "PAYMENT: Add Payment Method");
+      assert.ok(await g.isVisible('[data-pane="details"] [data-portal]'), "the portal");
       assert.ok(await g.$("#ct-card-files"), "the Files card");
-      assert.deepEqual(await g.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["service", "payments", "conversation", "opportunities", "activity", "files"], "Rotor's tabs");
-      assert.match(await g.textContent('[data-pane="service"] [data-card="plan"] .rs-ch'), /Service Plans[\s\S]*New Plan/);
-      assert.ok(await g.$('[data-pane="service"] [data-card="pending"] [data-job-delay]'), "Pending Jobs: Delay");
+      await g.click("[data-about]");
+      await g.waitForSelector('#ct-card-about [data-pick-owner]');
+      assert.match(await g.textContent("#ct-card-about"), /Source[\s\S]*Assigned[\s\S]*Tags[\s\S]*Lifetime value[\s\S]*Created/, "More details");
       await g.click('[data-seg="ctab"][data-key="service"]');
+      assert.match(await g.textContent('[data-pane="service"] [data-card="plan"]'), /Service Plan[\s\S]*New[\s\S]*Quarterly plan[\s\S]*Duration:[\s\S]*12 months/);
+      assert.ok(await g.$('[data-pane="service"] [data-card="pending"] [data-pend-hold]'), "Pending Jobs (Delay on a long press)");
+      // (a long press is a right click here; sent again if the page drew itself again in between)
+      await g.waitForFunction(() => {
+        if (document.querySelector(".sheet.on [data-job-delay]")) return true;
+        const li = document.querySelector('[data-pane="service"] [data-card="pending"] .ct-pj');
+        if (li) li.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+        return false;
+      }, null, { timeout: 10000, polling: 1000 });
+      await g.click(".sheet.on [data-sheet-x]");
+      await g.waitForFunction(() => !document.querySelector(".sheet.on"));
+      assert.match(await g.textContent('[data-pane="service"] [data-card="cycles"]'), /Billing Cycles[\s\S]*(Quarterly plan|No billing cycles yet)/);
+      assert.ok(await g.isVisible('[data-pane="service"] #ct-mod-money'), "invoices on Service");
       await g.waitForSelector('[data-pane="service"]:not(.off) #ct-svc-tiles');
       assert.match(await g.textContent("#ct-svc-tiles"), /Scheduled jobs[\s\S]*Avg completed job[\s\S]*Avg future job[\s\S]*Outstanding/);
       assert.deepEqual(await screenProblems(g), [], "the Service tab");
       await shot(page, `g2-contact-service-${device}-${theme}`);
-      await g.click('[data-seg="ctab"][data-key="payments"]');
-      assert.ok(await g.isVisible('[data-pane="payments"] #ct-mod-money'), "invoices on Payments");
-      assert.deepEqual(await screenProblems(g), [], "the Payments tab");
+      await g.click('[data-seg="ctab"][data-key="activity"]');
+      assert.ok(await g.isVisible('[data-pane="activity"] #ct-card-activity'), "the timeline on Activity");
+      assert.deepEqual(await screenProblems(g), [], "the Activity tab");
       await g.click("#top-more");
       await g.waitForSelector(".sheet.on [data-portal]");
       await g.click(".sheet.on [data-portal]");

@@ -8,9 +8,16 @@
 // 10:00 two weeks and two days before; Settings → Automations can change
 // them). cards() and actions(): the contact page's Visits card and its
 // "..." row, Book a job (Nov 2026, Rotor's lead and customer pages).
+// On a phone (ctx.phone; Rotor's phone app, Nov 15): SCHEDULED JOBS is one
+// list by date (the last two done, then the booked ones: a calendar, the
+// date and the job's number, the pill, the $), PENDING JOBS reads the month
+// in italics with its Pending pill and $, a red Schedule on the next one and
+// a round "..." on the others; a long press on any of them (or that "...")
+// opens Schedule and Delay (the contact page's sheet: data-pend-hold,
+// data-pend-more).
 
-import { html, icon, pillBtn, statusPill } from "../../core/ui.js";
-import { money, dateShort, localDate } from "../../core/format.js";
+import { html, icon, pillBtn, statusPill, rnd, attrs } from "../../core/ui.js";
+import { money, dateShort, dateYear, localDate } from "../../core/format.js";
 import { ensureStyles, officeView, slotText, visitPill, jobPill, kindLabel, addDays } from "./office-kit.js";
 import { isoFromLocal } from "./tech-kit.js";
 
@@ -37,6 +44,24 @@ const amount = (j) => (j && j.totals && Number.isSafeInteger(j.totals.total_cent
 // Rotor's Pending Jobs row: the month it is due, a Pending pill, the job; its $, Delay and Schedule (the job's page books it).
 const pendingRow = (j, write) => html`<li class="ct-pend"><a class="row" href="${"#/jobs/" + encodeURIComponent(j.id)}"><span class="who"><span class="nm ct-when">${icon("cal")}${monthText(j.target_month) || "Not booked"}${statusPill("Pending", "blue")}</span><span class="sub">${[j.number_label, j.title].filter(Boolean).join(" · ")}</span></span><span class="end">${amount(j) ? html`<span class="num">${amount(j)}</span>` : ""}</span></a>
   ${write ? html`<span class="ct-pend-acts">${pillBtn("Delay", { icon: "clock", data: { "job-delay": j.id }, aria: `Delay ${j.title || "this job"}` })}${pillBtn("Schedule", { tone: "red", href: "#/jobs/" + encodeURIComponent(j.id), aria: `Schedule ${j.title || "this job"}` })}</span>` : ""}</li>`;
+
+// Rotor's phone rows (pure html): a visit by its date, and a job to book by its month.
+export const phoneVisitRow = (v, jobs = []) => {
+  const j = jobs.find((x) => x.id === v.job_id);
+  return html`<li><a class="row ct-jr" href="${"#/visits/" + encodeURIComponent(v.id)}"><span class="ico">${icon("cal")}</span>
+    <span class="who"><span class="nm">${dateYear(v.date)}</span><span class="sub">${[v.job_number || (j && j.number_label), v.plan_id ? "Plan" : null].filter(Boolean).join(" · ") || slotText(v)}</span></span>
+    <span class="end">${visitPill(v.status)}${amount(j) ? html`<span class="num ct-jr-a">${amount(j)}</span>` : ""}</span></a></li>`;
+};
+export const phonePendingRow = (j, write, first) => html`<li ${attrs({ class: "ct-pj", "data-hold": "", "data-pend-hold": j.id })}><a class="row" href="${"#/jobs/" + encodeURIComponent(j.id)}"><span class="ico">${icon("cal")}</span>
+    <span class="who"><span class="nm"><i>${monthText(j.target_month) || "Not booked"}</i></span><span class="sub ct-when">${statusPill("Pending", "blue")}${j.number_label || ""}</span></span>
+    <span class="end">${amount(j) ? html`<span class="num ct-jr-a">${amount(j)}</span>` : ""}</span></a>
+  ${write ? (first ? pillBtn("Schedule", { tone: "red", href: "#/jobs/" + encodeURIComponent(j.id), aria: `Schedule ${j.title || "this job"}` }) : rnd("more", `Schedule or delay ${j.title || "this job"}`, { tone: "grey", sm: true, popup: true, data: { "pend-more": j.id } })) : ""}</li>`;
+// A phone's Scheduled Jobs: the last two visits done, then every booked one, by date.
+export function phoneVisits(past = [], upcoming = []) {
+  const done = [...past].sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(-2);
+  const ahead = [...upcoming].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  return [...done, ...ahead];
+}
 
 // The visit reminders (work automations visit.reminder_14d and _2d) still to
 // come for the booked visits, at their default 10:00. → [{ at, label, sub, href }]
@@ -88,7 +113,16 @@ export default {
     // Rotor's Service tab: Scheduled Jobs, then Pending Jobs (to book: a dashed card with Delay and Schedule)
     const write = !!(ctx && ctx.can && ctx.can("schedule:write"));
     const jobs = s.jobs || [];
-    const out = pending.length ? [{ key: "pending", tab: "service", title: `Pending Jobs (${pending.length})`, cls: "ct-pending", body: html`<ul class="list">${pending.map((j) => pendingRow(j, write))}</ul>` }] : [];
+    const phone = !!(ctx && ctx.phone);
+    const out = pending.length ? [{ key: "pending", tab: "service", title: `Pending Jobs (${pending.length})`, cls: phone ? null : "ct-pending", body: html`<ul class="list">${pending.map((j, i) => (phone ? phonePendingRow(j, write, i === 0) : pendingRow(j, write)))}</ul>` }] : [];
+    if (phone) {
+      const list = phoneVisits(s.past || [], up);
+      return [{ key: "visits", tab: "service", title: "Scheduled Jobs", empty: "No visit booked",
+        add: write ? { label: "Book a job", short: "New Job", href: "#/jobs/new/" + encodeURIComponent(s.contact.id) } : null,
+        body: list.length || open.length || closed.length ? html`${list.length ? html`<ul class="list">${list.map((v) => phoneVisitRow(v, jobs))}</ul>` : html`<p class="rs-empty">No visit booked</p>`}
+          ${open.length ? html`<h4 class="ct-sub-h">One-time jobs</h4><ul class="list">${open.map(jrow)}</ul>` : ""}
+          ${closed.length ? html`<h4 class="ct-sub-h">Done and cancelled</h4><ul class="list">${closed.map(jrow)}</ul>` : ""}` : null }, ...out];
+    }
     return [{ key: "visits", tab: "service", title: "Scheduled Jobs", count: up.length ? (up.length === 1 ? "1 coming up" : `${up.length} coming up`) : null, empty: "No visit booked",
       add: write ? { label: "Book a job", short: "New Job", href: "#/jobs/new/" + encodeURIComponent(s.contact.id) } : null,
       body: any ? html`${up.length ? html`<ul class="list">${up.map((v) => vrow(v, jobs))}</ul>` : html`<p class="rs-empty">No visit booked</p>`}

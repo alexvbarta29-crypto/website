@@ -11,7 +11,7 @@
 //   { title?, load(params, ctx) → state, render(state, ctx) → html``,
 //     events?: { "click [data-act=x]": (event, el, ctx) => ... },
 //     mount?(viewEl, state, ctx), unmount?(), action?(state, ctx) → { label, run },
-//     tools?(state, ctx) → [{ icon, label, run? | href?, data? }],
+//     tools?(state, ctx) → [{ icon, label, run? | href?, data? } | { switch: on, label, run, data? } (a labelled switch)],
 //     more?(state, ctx) → [[{ label, icon?, hint?, run? | href?, danger?, disabled?, data? }]],
 //     moreTitle?(state, ctx) → the action sheet's title (else the screen's) }
 //
@@ -40,7 +40,7 @@
 // list keeping its search and scroll and lighting the open row. Under
 // 1000 px (a phone) every screen is the whole view, as always.
 
-import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, actionSheet, skeletonRows } from "./ui.js";
+import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, toggle, actionSheet, skeletonRows } from "./ui.js";
 
 const routes = [];
 let stack = [];
@@ -194,6 +194,9 @@ export function headerKit(mod, state, ctx) {
   return { tools, hasMore, open: () => { try { return mod.more(now(), ctx) || []; } catch (e) { toast("That menu didn't open. Try again.", { bad: true }); return []; } }, sheetTitle };
 }
 
+// A header tool that is a switch (the customer page's Automations on a phone): its word, then the switch.
+export const topSwitch = (x, i) => html`<span class="rs-top-sw"><span class="rs-top-swl" aria-hidden="true">${x.label}</span>${toggle(!!x.switch, { data: { ...(x.data || {}), "top-tool": String(i) }, label: x.label })}</span>`;
+
 function header(title, showBack, act, kit = null) {
   const top = document.getElementById("top");
   const t = document.getElementById("top-title");
@@ -205,7 +208,7 @@ function header(title, showBack, act, kit = null) {
   if (t) t.textContent = title || (rs ? "" : "Barta CRM");
   if (b) b.hidden = !showBack;
   if (a) {
-    render(a, html`${act ? html`<button type="button" class="btn primary" id="top-action">${act.label}</button>` : ""}${rs ? html`${kit.tools.map((x, i) => rnd(x.icon || "edit", x.label, { href: x.href, ext: x.ext, data: { ...(x.data || {}), "top-tool": String(i) } }))}${kit.hasMore ? rnd("more", "More", { id: "top-more", popup: true, data: { "top-more": true } }) : ""}` : ""}`);
+    render(a, html`${act ? html`<button type="button" class="btn primary" id="top-action">${act.label}</button>` : ""}${rs ? html`${kit.tools.map((x, i) => (x.switch !== undefined ? topSwitch(x, i) : rnd(x.icon || "edit", x.label, { href: x.href, ext: x.ext, data: { ...(x.data || {}), "top-tool": String(i) } })))}${kit.hasMore ? rnd("more", "More", { id: "top-more", popup: true, data: { "top-more": true } }) : ""}` : ""}`);
     const btn = document.getElementById("top-action");
     if (btn && act) btn.addEventListener("click", () => act.run());
     if (rs) {

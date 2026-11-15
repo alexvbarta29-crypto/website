@@ -388,6 +388,55 @@ phone (LV; town, SV, assigned; Owes or the status), Rotor's table on a desk
 `tests/crm/contacts/screens.test.mjs`, `tests/e2e/layout.spec.mjs`,
 `tests/e2e/contacts.spec.mjs`.
 
+### A customer on a phone (Rotor's phone app)
+
+Under 900 px a customer's page (not a lead's, not a technician's) follows
+Rotor's phone app (the owner's Nov 15 screenshots), with Flyra's best bits:
+three tabs, `PHONE_PANES` Details | Service | Activity, each part a caps
+label (its count, a "+ New" pill) over a card (`phoneCard`), in
+`PHONE_CARDS` order; a card not named there goes by its desk tab.
+
+- The header: round back, Flyra's **Automations** switch (a header tool
+  `{ switch, label, run }`, drawn by `topSwitch` in `core/router.js`; on:
+  automated texts go out; off is Mute, the same pause sheet), the pencil,
+  the `...`.
+- **Details**: the name, Active and "Customer since"; TYPE ("Residential"
+  or "Commercial" and the plan's service type), SALE VALUE (no money: the
+  next visit), FREQUENCY, SOURCE; CONTACT (each phone: copy, text, call;
+  each email: copy, the address mails; the primary property, a tap opens it,
+  navigate; the satellite inside the card); Flyra's quick row Schedule ·
+  Estimate · Invoice · Plan (a new job, quote, invoice, plan for them, each
+  behind its permission); PAYMENT (Money's method on file: a BANK tile or
+  the brand, "... ending in 1234", Bank account (ACH) or Card and its
+  expiry, Added (`cardStatus().pm.added`), a black round button that texts
+  a card link; none: Add Payment Method); Customer notes; About to be sent,
+  More details (Source, Assigned, Tags, Lifetime value, the dates and the
+  rest), Their portal; Properties; Files; Convert to Lead (back to Leads,
+  everything kept) and Delete Customer (the archive sheet: they leave the
+  lists, keep their history, can be restored; an archived one shows
+  Restore).
+- **Service**: SERVICE PLAN (the plan, its frequency, Duration, Sale Value,
+  how it bills: "Start of Month" for `first_of_month`, "Start of Month after
+  the first visit" for `barta_standard`, "After each visit"; Auto-Pay; the
+  agreement's round icon opens the plan, whose Agree tab has the
+  agreements), SCHEDULED JOBS (the last two visits done, then the booked
+  ones, by date), PENDING JOBS (the month in italics, Pending, the $; a red
+  Schedule on the next one, a round `...` on the others; a long press on any
+  opens Schedule and Delay), BILLING CYCLES, INVOICES (#number, the pill,
+  the amount, due or paid and how), Quotes, Requests, then the desk's tiles.
+- **Billing Cycles** (both layouts; Payments on a desk) are the live plans
+  billed on the 1st (`first_of_month`, or `barta_standard` after the first
+  visit): Money's 1st-of-month run makes one `plan_cycle` invoice per plan
+  per month from them (`money/autopay.mjs`). "+ New" is New plan (a cycle
+  belongs to a plan). The plans part reads each live plan's own terms
+  (`GET /plans/:id`, at most four) for how it bills.
+- **Activity**: the timeline, Messages, Calls, Follow-ups, Deals, Tasks,
+  Texts and email.
+
+A module's `cards(state, ctx)` sees `ctx.phone` (true on this page) and may
+give phone rows (plans, money and work do). The page draws again when the
+window crosses 900 px. Tests: `tests/crm/contacts/phone.test.mjs`.
+
 ## A lead's priority
 
 `contact.priority`: `low`, `medium` or `high` (Rotor's Low / Medium / High,
