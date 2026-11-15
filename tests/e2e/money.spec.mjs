@@ -200,10 +200,10 @@ for (const device of ["iphone13", "iphonese"]) {
 
       // the contact's Money section (an old Money tab link jumps to it)
       await goTo(f, `/contacts/${M.contacts.test}?tab=money`);
-      await viewHas(f, /Card on file/);
+      await viewHas(f, /VISA ending in 4242/);
       text = await f.textContent("#view");
       assert.match(text, /open balance/);
-      assert.match(text, /VISA ending 4242/);
+      assert.match(text, /Card · exp \d\d\/\d\d/, "the card on file (Rotor's Payment card)");
       assert.match(text, /New invoice/);
       assert.deepEqual(await screenProblems(f), [], "the Money tab passes the phone checks");
       await shot(page, `money-contact-tab-${device}`);

@@ -486,6 +486,8 @@ code{font:500 13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:va
 .switch[aria-checked="true"]::before{background:var(--green)}
 .switch[aria-checked="true"]::after{transform:translateX(18px)}
 .switch:disabled{opacity:.5}
+/* a header tool that is a switch (router topSwitch: the customer page's Automations on a phone) */
+.rs-top-sw{display:inline-flex;align-items:center;gap:2px;font:500 15px/1 var(--text);color:var(--ink-3);white-space:nowrap}
 .tap{min-width:44px;min-height:44px;display:inline-grid;place-items:center}
 .stat-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}

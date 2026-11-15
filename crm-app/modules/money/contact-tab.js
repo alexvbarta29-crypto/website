@@ -8,12 +8,17 @@
 // invoice and + Add credit, the card on file for a lead) and, for a
 // customer, a Payment card (the card on file, Add Payment Method: the card
 // link text); New invoice, Add credit and Text a card link in the "...".
+// Rotor's phone app (Nov 15): the Payment card is the method on file (a BANK
+// tile or the card's brand, "... ending in 1234", BANK ACCOUNT (ACH) or CARD,
+// ADDED <date>, a black round button that texts a new card link), else Add
+// Payment Method; on a phone (ctx.phone) the invoices read #number, the
+// pill, the amount and the due or paid date and how it was paid.
 
-import { html, icon, sheet, toast, confirmSheet, delegate, pillBtn } from "../../core/ui.js";
+import { html, icon, sheet, toast, confirmSheet, delegate, pillBtn, rnd, statusPill as kitPill } from "../../core/ui.js";
 import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
-import { money } from "../../core/format.js";
+import { money, dateYear } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
-import { ensureStyles, invoiceRow, paymentRow, CARD } from "./kit.js";
+import { ensureStyles, invoiceRow, paymentRow, statusPill, CARD, METHOD } from "./kit.js";
 
 let cur = null;        // the tab on screen: { id, ctx }
 let bound = false;
@@ -44,13 +49,15 @@ export default {
     const head = html`<p class="${"rs-sub mn-line" + (s.open_balance_cents ? " bad" : "")}"><b class="num">${money(s.open_balance_cents || 0)}</b> open balance · <b class="num">${money(credit)}</b> account credit${s.credit && s.credit.held_cents ? ` (+${money(s.credit.held_cents)} to decide)` : ""}</p>`;
     const pills = s.can.invoice || s.can.credit ? html`<div class="rs-li-add">${s.can.invoice ? pillBtn("New invoice", { icon: "plus", href: "#/invoices/new/" + id }) : ""}${s.can.credit ? pillBtn("Add credit", { icon: "plus", data: { "mn-credit": true } }) : ""}</div>` : "";
     const cardLine = html`<p class="mn-card">${icon("money")}<span>Card on file: ${cardText(s)}</span></p>`;
-    const rows = html`${(s.invoices || []).length ? html`<ul class="list">${s.invoices.map(invoiceRow)}</ul>` : html`<p class="rs-empty">No invoices yet</p>`}
+    const phone = !!(ctx && ctx.phone);
+    const rows = html`${(s.invoices || []).length ? html`<ul class="list">${s.invoices.map(phone ? (r) => phoneInvoiceRow(r, s.payments || []) : invoiceRow)}</ul>` : html`<p class="rs-empty">No invoices yet</p>`}
       ${s.more && s.more.invoices ? html`<p class="foot-note">The newest 12 are shown.</p>` : ""}
       ${(s.payments || []).length ? html`<h4 class="ct-sub-h">Payments</h4><ul class="list">${s.payments.map((p) => paymentRow(p))}</ul>` : ""}
       ${s.credit && (s.credit.rows || []).length ? html`<h4 class="ct-sub-h">Credit</h4><ul class="list">${s.credit.rows.map(creditRow)}</ul>` : ""}`;
     const out = [{ key: "invoices", tab: "details", title: "Invoices", count: (s.invoices || []).length || null, body: html`${head}${rows}${pills}${customer ? "" : cardLine}` }];
     if (customer) {
-      out.push({ key: "payment", tab: "details", title: "Payment", body: html`${cardLine}${s.can.card_link ? html`<div class="rs-li-cta">${pillBtn("Add Payment Method", { tone: "solid", wide: true, icon: "plus", data: { "mn-card-link": true } })}</div>` : ""}` });
+      const pm = s.card && s.card.pm;
+      out.push({ key: "payment", tab: "details", title: "Payment", body: html`${pm ? methodRow(s.card, s.can.card_link) : html`<p class="mn-card">${icon("money")}<span>${s.card && s.card.status && s.card.status !== "none" ? CARD[s.card.status] || s.card.status : "No card or bank account on file"}</span></p>`}${!pm && s.can.card_link ? html`<div class="rs-li-cta">${pillBtn("Add Payment Method", { tone: "solid", wide: true, icon: "plus", data: { "mn-card-link": true } })}</div>` : ""}` });
     }
     return out;
   },
@@ -89,6 +96,28 @@ const cardText = (s) => {
   const pm = s.card && s.card.pm;
   return pm ? `${String(pm.brand || (pm.kind === "us_bank_account" ? "Bank" : "Card")).toUpperCase()} ending ${pm.last4 || "••••"} · ${CARD[s.card.status] || s.card.status}` : CARD[(s.card && s.card.status) || "none"];
 };
+// Rotor's card on file: a BANK tile or the brand; "... ending in 1234"; BANK ACCOUNT (ACH) or CARD; ADDED <date>;
+// the status when it isn't good; a black round button: text them a link to put a new one on file.
+export function methodRow(card, canLink) {
+  const pm = card.pm;
+  const bank = pm.kind === "us_bank_account";
+  const brand = String(pm.brand || (bank ? "Bank" : "Card")).toUpperCase();
+  const bad = !["on_file", "verified"].includes(card.status);
+  return html`<div class="ct-pm"><span class="${"ct-pm-tile" + (bank ? " bank" : "")}" aria-hidden="true">${bank ? "BANK" : brand.slice(0, 4)}</span>
+    <span class="ct-pm-w"><span class="ct-pm-n">${brand} ending in ${pm.last4 || "••••"}</span>
+      <span class="ct-pm-s">${bank ? "Bank account (ACH)" : `Card${pm.exp_month ? ` · exp ${String(pm.exp_month).padStart(2, "0")}/${String(pm.exp_year || "").slice(-2)}` : ""}`}</span>
+      ${pm.added ? html`<span class="ct-pm-s">Added ${dateYear(String(pm.added).slice(0, 10))}</span>` : ""}
+      ${bad ? html`<span>${kitPill(CARD[card.status] || card.status, "red")}</span>` : ""}</span>
+    ${canLink ? rnd("link", "Text them a link for a new card or bank account", { tone: "solid", data: { "mn-card-link": true } }) : ""}</div>`;
+}
+// Rotor's phone invoice row: #number and its pill; the amount, then when it is due, or when and how it was paid.
+export function phoneInvoiceRow(r, payments = []) {
+  const p = payments.find((x) => x.inv === r.id && x.st === "succeeded" && x.k !== "refund");
+  const when = r.st === "paid" ? [r.pd ? `Paid ${dateYear(String(r.pd).slice(0, 10))}` : "Paid", p ? `via ${METHOD[p.m] || p.m}` : ""].filter(Boolean).join(" ") : r.st === "open" && r.due ? `Due ${dateYear(r.due)}` : r.iss ? dateYear(r.iss) : "";
+  return html`<li><a class="row ct-ir" href="${"#/invoices/" + encodeURIComponent(r.id)}">
+    <span class="who"><span class="nm ct-when">#${r.n || "Draft"}${statusPill(r)}</span></span>
+    <span class="end ct-ir-e"><span class="num ct-ir-a">${money(r.st === "open" ? r.bal : r.tot)}</span>${when ? html`<span class="ct-ir-w">${when}</span>` : ""}</span></a></li>`;
+}
 const creditRow = (c) => html`<li><div class="row"><span class="ico">${icon("gift")}</span><span class="who"><span class="nm">${c.note || c.kind}</span><span class="sub">${c.status === "held" ? "Overpayment to decide" : c.status === "settled" ? "History" : c.status === "applied" ? "Used" : "Available"}</span></span><span class="end num mn-amt">${money(c.amount_cents, { sign: c.amount_cents > 0 })}</span></div></li>`;
 
 function creditSheet(tab) {

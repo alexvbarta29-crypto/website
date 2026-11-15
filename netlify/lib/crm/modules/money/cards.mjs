@@ -48,7 +48,7 @@ export async function cardStatus(contactId) {
   const st = await moneyStats(contactId);
   const s = st.stripe || {};
   const pm = s.default_pm;
-  return { status: s.card_status || "none", ...(pm ? { pm: { kind: pm.kind || "card", brand: pm.brand || null, last4: pm.last4 || null, exp_month: pm.exp_month || null, exp_year: pm.exp_year || null } } : {}) };
+  return { status: s.card_status || "none", ...(pm ? { pm: { kind: pm.kind || "card", brand: pm.brand || null, last4: pm.last4 || null, exp_month: pm.exp_month || null, exp_year: pm.exp_year || null, added: pm.saved_at || null } } : {}) };
 }
 
 // A method saved in Checkout. pm: { id, kind, brand, last4, exp_month,

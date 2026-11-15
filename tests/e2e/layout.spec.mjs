@@ -173,42 +173,53 @@ test("a tech's bar is the tech app's: Today · Inbox · Time · Pay · Me, no Me
 });
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`the customer page (${device}): Rotor's profile on top (name, Active, the summary box, contact rows), Rotor's tabs, cards; the "..." has the rest`, async () => {
+  test(`the customer page (${device}): Rotor's phone page (Details | Service | Activity), Flyra's Automations and quick row; the "..." has the rest`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, `/contacts/${seeded.contacts.plan}`);
       await f.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
-      assert.deepEqual(await f.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Lifetime value", "Sale value", "Frequency", "Service type"]);
+      assert.deepEqual(await f.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["details", "service", "activity"], "Rotor's phone tabs");
+      assert.deepEqual(await f.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Type", "Sale value", "Frequency", "Source"]);
       assert.equal(await f.textContent(".rs-name .pill"), "Active");
-      assert.match(await f.textContent("#ct-card-about"), /Customer since\s*[A-Z][a-z]{2} \d+, \d{4}/);
-      assert.deepEqual(await f.$$eval(".ct-prof .rs-crow .rs-cl", (els) => els.map((e) => e.textContent)), ["Mobile", "Email"]);
-      assert.ok(await f.$('.rs-crow .rnd.red[href^="tel:"]'), "the red round call");
+      assert.match(await f.textContent(".ct-since"), /Customer since\s*[A-Z][a-z]{2} \d+, \d{4}/);
+      assert.deepEqual(await f.$$eval("#ct-reach .rs-crow .rs-cl", (els) => els.map((e) => e.textContent)), ["Phone", "Email", "Primary property"]);
+      assert.ok(await f.$('#ct-reach .rs-crow .rnd.red[href^="tel:"]') && await f.$("#ct-reach .rs-crow [data-copy]"), "copy, and the red round call");
+      assert.deepEqual(await f.$$eval(".ct-quick [data-quick]", (els) => els.map((e) => e.textContent.trim())), ["Schedule", "Estimate", "Invoice", "Plan"]);
       assert.equal(await f.isVisible("#top-back"), true, "the round back button");
-      assert.ok(await f.isVisible("#top-act [data-top-tool]"), "the round pencil");
+      assert.ok(await f.isVisible("#top-act .rs-top-sw .switch[aria-checked=true]"), "Automations on");
+      assert.ok(await f.isVisible("#top-act a[data-top-tool]"), "the round pencil");
       assert.ok(await f.isVisible("#top-more"), "the round ...");
       assert.ok((await box(f, "#top-title")).w <= 1, "no title in sight: the name is the page's own (the h1 stays for screen readers)");
-      // the profile: notes and the facts; Rotor's tabs, the cards in Rotor's order on each
-      const prof = await f.$$eval(".ct-prof [data-card]", (els) => els.map((e) => e.dataset.card));
-      for (const must of ["notes", "about"]) assert.ok(prof.includes(must), must);
       const cardsOf = (pane) => f.$$eval(`[data-pane="${pane}"] [data-card]`, (els) => els.map((e) => e.dataset.card));
-      const svc = await cardsOf("service");
-      const want = ["plan", "visits", "pending", "quotes", "requests", "properties"].filter((x) => svc.includes(x));
-      assert.deepEqual(svc.filter((x) => want.includes(x)), want, `in Rotor's order (${svc.join(", ")})`);
-      for (const must of ["visits", "plan", "quotes", "properties"]) assert.ok(svc.includes(must), must);
-      assert.ok((await cardsOf("payments")).includes("invoices"), "invoices on Payments");
-      assert.ok((await cardsOf("opportunities")).includes("followups"), "the follow-ups on Opportunities");
-      assert.equal(await f.isVisible('[data-pane="activity"]'), false, "one tab at a time");
+      const det = await cardsOf("details");
+      for (const must of ["payment", "notes", "about", "properties", "files"]) assert.ok(det.includes(must), `${must} on Details (${det.join(", ")})`);
+      assert.ok(await f.isVisible("[data-to-lead]") && await f.isVisible('[data-pane="details"] [data-archive]'), "Convert to Lead, Delete Customer");
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `layout-contact-${device}`);
-      // Activity: the timeline; Conversation: the consent card
+      // Service: Rotor's order, a caps label over each card
+      await f.click('[data-seg="ctab"][data-key="service"]');
+      const svc = await cardsOf("service");
+      const want = ["plan", "visits", "pending", "cycles", "invoices", "quotes", "requests"];
+      assert.deepEqual(svc.filter((x) => want.includes(x)), want, `in Rotor's order (${svc.join(", ")})`);
+      assert.match(await f.textContent('[data-card="pending"] .rs-label'), /Pending Jobs \(4\)/);
+      assert.ok(await f.isVisible('[data-card="pending"] .ct-pj:first-child .rs-pb.red'), "Schedule on the next one");
+      assert.ok(await f.$('[data-card="plan"] .ct-plc .rnd[aria-label^="Agreement"]'), "the agreement's round icon");
+      assert.equal(await f.isVisible('[data-pane="details"]'), false, "one tab at a time");
+      assert.deepEqual(await screenProblems(f), []);
+      await shot(page, `layout-contact-service-${device}`);
+      // a pending job's "...": Schedule and Delay
+      await f.click('[data-card="pending"] [data-pend-more]');
+      await f.waitForSelector(".sheet.on [data-job-delay]");
+      await f.click(".sheet.on [data-sheet-x]");
+      await f.waitForFunction(() => !document.querySelector(".sheet.on"));
+      // Activity: the timeline, the consent card
       await f.click('[data-seg="ctab"][data-key="activity"]');
       assert.equal(await f.isVisible('[data-pane="activity"]'), true);
       assert.equal(await f.isVisible('[data-pane="service"]'), false);
       assert.ok(await f.isVisible("#ct-card-activity"));
-      assert.deepEqual(await screenProblems(f), []);
-      await f.click('[data-seg="ctab"][data-key="conversation"]');
       assert.ok(await f.isVisible("#ct-card-consent"));
+      for (const must of ["followups", "deals"]) assert.ok((await cardsOf("activity")).includes(must), must);
       assert.deepEqual(await screenProblems(f), []);
       // the "...": every other action
       await f.click("#top-more");
@@ -221,7 +232,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet.on [data-sheet-x]");
       // an old link to a tab opens its card
       await goTo(f, `/contacts/${seeded.contacts.plan}?tab=money`);
-      await f.waitForFunction(() => { const m = document.getElementById("ct-mod-money"); return m && !m.closest(".ct-pane.off") && m.closest('[data-pane="payments"]'); }, null, { timeout: 10000 });
+      await f.waitForFunction(() => { const m = document.getElementById("ct-mod-money"); return m && !m.closest(".ct-pane.off") && m.closest('[data-pane="service"]'); }, null, { timeout: 10000 });
       await p.clean();
     } finally { await p.close(); }
   });
