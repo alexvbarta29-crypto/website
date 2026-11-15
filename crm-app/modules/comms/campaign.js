@@ -11,7 +11,7 @@
 // the people who didn't reply (its own bulk send, tested and confirmed like
 // this one). /campaigns/new?kind=blast makes one.
 
-import { html, attrs, icon, toast, confirmSheet, sheet, tileRow, pillBtn, render, toggle as switchOf } from "../../core/ui.js";
+import { html, attrs, icon, toast, confirmSheet, sheet, tileRow, pillBtn, render as paintInto, toggle as switchOf } from "../../core/ui.js";
 import { dateTime, money } from "../../core/format.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
 import { ensureStyles, reasonText } from "./kit.js";
@@ -223,7 +223,7 @@ export default {
       if (await act(ctx, "cancel", {}, "Cancelled.")) ctx.refresh();
     },
     "click [data-refresh]": (e, el, ctx) => ctx.refresh(),
-    "input [data-body]": (e, el, ctx) => { const box = document.querySelector("[data-cost-box]"); if (box) render(box, costLine(ctx.state, el.value)); },
+    "input [data-body]": (e, el, ctx) => { const box = document.querySelector("[data-cost-box]"); if (box) paintInto(box, costLine(ctx.state, el.value)); },
     "change [data-body]": (e, el, ctx) => save(ctx, { body: el.value }),
     "click [data-var]": (e, el, ctx) => {
       const ta = document.querySelector("[data-body]");
