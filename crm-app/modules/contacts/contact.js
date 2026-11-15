@@ -45,24 +45,28 @@
 // setting ctx.state.tabMod = null and calling ctx.rerender() loads that part
 // again. Old links to a tab (#/contacts/{id}?tab=money) open its card.
 //
-// A customer's page on a phone (under 900 px; Rotor's phone app, the owner's
-// screenshots of Nov 15, with Flyra's best bits) is Details | Service |
-// Activity instead:
-//   the header      round back · the Automations switch (on: automated texts
-//                   go out; off is Mute) · the round pencil · the "..."
-//   Details         the name and Active (Customer since), TYPE, SALE VALUE,
-//                   FREQUENCY, SOURCE; CONTACT (phone and email with copy,
-//                   text, call; the primary property; the satellite in the
-//                   same card); Schedule · Estimate · Invoice · Plan (each a
-//                   new one for them); PAYMENT (the method on file, else Add
-//                   Payment Method); Customer notes; About to be sent, More
-//                   details (source, assigned, tags, dates, the rest), their
-//                   portal, Properties, Files; Convert to Lead and Delete
-//                   Customer (it archives: they keep their history)
+// A customer's page on a phone (under 900 px) is Rotor's phone app, as the
+// owner's screenshots of Nov 15 show it ("make it just like Rotor"):
+// Details | Service | Activity.
+//   the header      round back · the round pencil, nothing else. The pencil
+//                   opens the edit sheet: Edit details, Owner, Texts and
+//                   email, Automations (on: automated texts go out; off is
+//                   Mute), Merge, their portal, Convert to Lead, Archive
+//   the red +       bottom right (Rotor's): what can be made for them, Book a
+//                   job, New quote, New plan, New invoice, credit, a card
+//                   link, a call, a follow-up, a task, a note, a property, a file
+//   Details         the name and Active, TYPE, SALE VALUE, FREQUENCY, SOURCE;
+//                   CONTACT (the phone: a tap calls or texts, copy; the email:
+//                   a tap mails, copy; the primary property: a tap opens it;
+//                   the satellite in the same card: a tap gives directions);
+//                   PAYMENT (the method on file, else Add Payment Method);
+//                   Customer notes; then About to be sent, More details
+//                   (source, assigned, tags, dates, the rest), their portal,
+//                   Properties, Files
 //   Service         SERVICE PLAN, SCHEDULED JOBS, PENDING JOBS (Schedule on
 //                   the next one, Delay on a long press or its "..."),
-//                   BILLING CYCLES, INVOICES, then Quotes and Requests, and
-//                   the numbers (the desk's tiles) at the end
+//                   BILLING CYCLES (+ New), INVOICES, then Quotes and
+//                   Requests, and the numbers (the desk's tiles) at the end
 //   Activity        the timeline, Messages, Calls, Follow-ups, Deals, Tasks,
 //                   Texts and email
 // Each part's card reads as Rotor's: a caps label (with its count and + New)
@@ -302,7 +306,6 @@ function top(s, ctx) {
   const any = flags.vip || flags.test || flags.do_not_service;
   return html`<header class="ct-head" id="ct-head" aria-label="${c.display_name || "Contact"}">
     <div class="rs-name"><h2>${c.display_name || "No name"}</h2>${s.tech ? "" : topPill(s, facts)}</div>
-    ${phoneLayout(s) && sinceText(s) ? html`<p class="rs-sub ct-since">${sinceText(s)}</p>` : ""}
     ${!s.tech && any ? html`<div class="rs-pills ct-pills">${flags.vip ? statusPill("VIP", "solid") : ""}${flags.test ? statusPill("Test contact", "blue") : ""}${flags.do_not_service ? statusPill("Do not service", "red") : ""}</div>` : ""}
   </header>`;
 }
@@ -374,9 +377,11 @@ function reach(s, ctx) {
   return html`<div class="ct-reach" id="ct-reach">${rows.length ? contactRows(rows) : html`<div class="rs-card"><p class="rs-empty">No phone, email or address on file</p></div>`}</div>`;
 }
 
-// The phone's CONTACT card (Rotor's): each phone (copy, text, call), each email (copy, email), the primary property
-// (a tap opens it; navigate), and the satellite inside the same card.
+// The phone's CONTACT card (Rotor's): each phone (a tap calls or texts them; copy), each email (a tap mails them;
+// copy), the primary property (a tap opens it), and the satellite inside the same card (a tap: directions).
 const PHONE_LABEL = (p, many) => (!many || !p.label || p.label === "mobile" ? "Phone" : p.label[0].toUpperCase() + p.label.slice(1));
+// Rotor's one-line address: "900 Example Ave, Mound MN 55328, US"
+export const rotorAddress = (a) => (a ? [[a.street1, a.street2].filter(Boolean).join(", "), [a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(" "), a.country || (a.street1 ? "US" : "")].filter(Boolean).join(", ") : "");
 function contactCard(s, ctx) {
   const c = s.contact;
   const name = c.display_name || "";
@@ -384,38 +389,19 @@ function contactCard(s, ctx) {
   const emails = [...(c.emails || [])].sort((a, b) => Number(!!b.primary) - Number(!!a.primary));
   const prop = primaryProp(s);
   const addr = prop ? prop.address : c.billing_address;
-  const lines = two(addr);
+  const line = rotorAddress(addr);
   const geo = prop && prop.geo && Number.isFinite(prop.geo.lat) && Number.isFinite(prop.geo.lng) ? prop.geo : null;
-  const gate = prop && prop.access && prop.access.gate_code ? `gate ${prop.access.gate_code}` : "";
+  const gate = prop && prop.access && prop.access.gate_code ? `Gate ${prop.access.gate_code}` : "";
+  const txt = (ic, label, value, sub = null) => html`<span class="ct-cr-ic" aria-hidden="true">${icon(ic)}</span><span class="ct-cr-t"><span class="ct-cr-l">${label}</span><span class="ct-cr-v">${value}</span>${sub ? html`<span class="ct-cr-s">${sub}</span>` : ""}</span>`;
+  const copy = (value, label) => html`<button type="button" class="ct-cr-cp" ${attrs({ "data-copy": value, "aria-label": label })}>${icon("copy")}</button>`;
   const rows = [
-    ...phones.map((p) => ({ icon: "call", label: PHONE_LABEL(p, phones.length > 1), value: phoneText(p.e164), href: telHref(p.e164), actions: [
-      { icon: "copy", label: "Copy the number", data: { copy: phoneText(p.e164) } },
-      p.sms !== false && { icon: "chat", label: `Text ${name}`, href: smsHref(p.e164) },
-      { icon: "call", label: `Call ${name}`, tone: "red", href: telHref(p.e164) }] })),
-    // (the address itself mails them)
-    ...emails.map((e) => ({ icon: "mail", label: "Email", value: e.address, href: mailHref(e.address), actions: [{ icon: "copy", label: "Copy the email", data: { copy: e.address } }] })),
-    lines.length && { icon: "pin", label: prop ? "Primary property" : "Billing address", value: lines[0], sub: [lines[1], gate].filter(Boolean).join(" · ") || null, href: prop ? "#/properties/" + encodeURIComponent(prop.id) : null,
-      actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(geo || addressLine(addr)) }] },
+    ...phones.map((p) => html`<div class="ct-cr"><button type="button" class="ct-cr-a" ${attrs({ "data-ct-phone": p.e164, "aria-label": `Call or text ${name} at ${phoneText(p.e164)}`, "aria-haspopup": "dialog" })}>${txt("call", PHONE_LABEL(p, phones.length > 1), phoneText(p.e164))}</button>${copy(phoneText(p.e164), "Copy the number")}</div>`),
+    ...emails.map((e) => html`<div class="ct-cr"><a class="ct-cr-a" ${attrs({ href: mailHref(e.address), "aria-label": `Email ${name} at ${e.address}` })}>${txt("mail", "Email", e.address)}</a>${copy(e.address, "Copy the email")}</div>`),
+    line && html`<div class="ct-cr">${prop ? html`<a class="ct-cr-a" ${attrs({ href: "#/properties/" + encodeURIComponent(prop.id) })}>${txt("pin", "Primary property", line, gate || null)}</a>` : html`<div class="ct-cr-a">${txt("pin", "Billing address", line)}</div>`}</div>`,
   ].filter(Boolean);
   const photo = geo && ctx.can("canvass:use") && hasRoute("/map");
-  return html`<div class="rs-card ct-ccard" id="ct-reach">${rows.length ? contactRows(rows, { card: false }) : html`<p class="rs-empty">No phone, email or address on file</p>`}
-    ${photo ? html`<div class="rs-sat ct-photo" ${attrs({ "data-photo": `${geo.lat},${geo.lng}`, role: "img", "aria-label": `Satellite view of ${lines[0] || "the property"}` })}></div>` : ""}</div>`;
-}
-
-// Flyra's quick row: a new job, quote, invoice or plan for them (each only for someone who may make one).
-export function quickItems(id, can, has = () => true) {
-  const k = encodeURIComponent(id);
-  return [
-    can("schedule:write") && has("/jobs/new/" + k) && { key: "job", icon: "cal", label: "Schedule", aria: "Schedule a new job for them", href: "#/jobs/new/" + k },
-    can("quotes:write") && has("/quotes/new/" + k) && { key: "quote", icon: "doc", label: "Estimate", aria: "A new quote for them", href: "#/quotes/new/" + k },
-    can("invoices:write") && has("/invoices/new/" + k) && { key: "invoice", icon: "receipt", label: "Invoice", aria: "A new invoice for them", href: "#/invoices/new/" + k },
-    can("plans:write") && has("/plans/new/" + k) && { key: "plan", icon: "swap", label: "Plan", aria: "A new service plan for them", href: "#/plans/new/" + k },
-  ].filter(Boolean);
-}
-function quickBar(s, ctx) {
-  const list = quickItems(s.contact.id, ctx.can, hasRoute);
-  if (!list.length || s.contact.lifecycle === "archived") return "";
-  return html`<nav class="ct-quick" aria-label="New for them">${list.map((q) => html`<a ${attrs({ class: "ct-q", href: q.href, "aria-label": q.aria, "data-quick": q.key })}>${icon(q.icon)}<span>${q.label}</span></a>`)}</nav>`;
+  return html`<div class="rs-card ct-ccard" id="ct-reach">${rows.length ? rows : html`<p class="rs-empty">No phone, email or address on file</p>`}
+    ${photo ? html`<a class="ct-map" ${openExternal(directionsUrl(geo || addressLine(addr)))} ${attrs({ "aria-label": `Directions to ${line || "the property"}` })}><span class="rs-sat ct-photo" ${attrs({ "data-photo": `${geo.lat},${geo.lng}`, role: "img", "aria-label": `Satellite view of ${line || "the property"}` })}></span></a>` : ""}</div>`;
 }
 
 // The property from above (the map's keyless aerial), and a customer's primary property over it.
@@ -454,8 +440,10 @@ const countText = (x) => {
   const n = typeof x.count === "number" ? x.count : /^\d+$/.test(String(x.count || "")) ? Number(x.count) : null;
   return n && !/\(\d+\)/.test(x.title) ? ` (${n})` : "";
 };
+const PHONE_ADDS = new Set(["cycles", "properties", "files"]);
 function phoneCard(x) {
-  const a = x.add;
+  // (Rotor's phone cards have no + of their own but Billing Cycles: the red + makes the rest)
+  const a = PHONE_ADDS.has(x.key) ? x.add : null;
   const end = a ? pillBtn("New", { icon: "plus", tone: "line", href: a.href || null, ext: a.ext || null, data: a.data || null, aria: a.label || a.short })
     : x.edit ? rnd("edit", x.edit.label, { tone: "grey", sm: true, href: x.edit.href || null, data: x.edit.data || null }) : "";
   return html`<section ${attrs({ class: "ct-pc" + (x.cls ? " " + x.cls : ""), id: x.id || "ct-card-" + x.key, "data-card": x.key, "data-mod": x.mod || null, "aria-label": x.title })}>
@@ -728,7 +716,72 @@ function profileButtons(s, ctx) {
   </div>`;
 }
 
-// Rotor's phone page for a customer (Details | Service | Activity), Flyra's quick row and its two buttons at the foot.
+// A module's row that makes something (New request, Add ...): the red +'s; any other: the pencil's.
+const MAKES = /^(new|add|book|log|start|text)\b/i;
+// The page's own actions, by the modules' keys (a part never breaks the page).
+function modActions(s) {
+  const mods = new Map();
+  for (const r of s.secs || []) {
+    if (!r.mod || typeof r.mod.actions !== "function" || !shown(r)) continue;
+    try { for (const a of r.mod.actions(r.state || {}, r.ctx) || []) if (a && !mods.has(a.key)) mods.set(a.key, a); } catch (e) { /* a part never breaks the sheet */ }
+  }
+  return mods;
+}
+
+// The red + on a customer's phone page (Rotor's: it makes things): a job, a quote, a plan, an invoice; credit and a
+// card link; a call, a follow-up, a task; a note, a property, a file.
+export function createGroups(s, ctx) {
+  if (!s || !s.contact || s.contact.lifecycle === "archived") return [];
+  const mods = modActions(s);
+  const write = ctx.can("contacts:write");
+  const pick = (keys) => keys.map((k) => mods.get(k)).filter(Boolean);
+  return [
+    pick(["book", "quote", "plan", "invoice"]),
+    pick(["credit", "cardlink"]),
+    pick(["call", "follow", "task"]),
+    [...mods.values()].filter((a) => !CUSTOMER_ACTS.flat().includes(a.key) && !a.danger && MAKES.test(String(a.label || ""))),
+    [
+      write && { label: "Add a note", icon: "doc", run: () => noteSheet(ctx), data: { note: true } },
+      write && { label: "Add a property", icon: "building", run: () => propertySheet(ctx), data: { "add-prop": true } },
+      write && ctx.can("contacts:read_all") && { label: "Add a file", icon: "camera", run: () => addFile(ctx), data: { "add-file": true } },
+    ].filter(Boolean),
+  ].filter((g) => g.length);
+}
+
+// The pencil on a customer's phone page (Rotor's header has only it): edit them, and every other change.
+export function editGroups(s, ctx) {
+  if (!s || !s.contact) return [];
+  const c = s.contact;
+  const write = ctx.can("contacts:write");
+  const archived = c.lifecycle === "archived";
+  const mods = modActions(s);
+  const named = new Set(CUSTOMER_ACTS.flat());
+  const extra = [...mods.values()].filter((a) => !named.has(a.key) && (a.danger || !MAKES.test(String(a.label || ""))));
+  const paused = !!(c.automations_paused && c.automations_paused.sms);
+  return [
+    [
+      write && { label: "Edit details", icon: "edit", hint: "name, phones, emails", href: "#/contacts/" + encodeURIComponent(c.id) + "/edit", data: { "edit-details": true } },
+      write && ctx.can("schedule:read") && { label: "Owner", icon: "user", hint: c.owner_id ? userName(s, c.owner_id) : "Unassigned", run: () => pickOwner(ctx), data: { "pick-owner": true } },
+      ctx.can("consent:edit") && { label: "Texts and email", icon: "chat", hint: "consent", run: () => consentSheet(ctx), data: { consent: true } },
+      ctx.can("consent:edit") && { label: "Automations", icon: "bell", hint: paused ? "Off (muted)" : "On", run: () => pauseSheet(ctx), data: { automations: true, mute: true } },
+    ].filter(Boolean),
+    [
+      write && ctx.can("contacts:merge") && !archived && { label: "Merge with...", icon: "merge", run: () => mergeFlow(ctx), data: { merge: true } },
+      write && !archived && { label: "Open their portal", icon: "share", hint: "what they see", run: () => openPortal(ctx), data: { portal: true } },
+      ctx.can("settings:owner") && { label: c.flags && c.flags.test ? "Not a test contact" : "Mark as test contact", icon: "user", run: () => setTest(ctx), data: { test: true } },
+      ...extra.filter((a) => !a.danger),
+    ].filter(Boolean),
+    [
+      write && !archived && customer(s) && { label: "Convert to Lead", icon: "userplus", hint: "keeps their history", run: () => toLead(ctx), data: { "to-lead": true } },
+      write && archived && { label: "Restore", icon: "undo", run: () => restore(ctx), data: { restore: true } },
+      ...extra.filter((a) => a.danger),
+      write && !archived && { label: "Archive", icon: "archive", danger: true, run: () => archiveSheet(ctx), data: { archive: true } },
+    ].filter(Boolean),
+  ].filter((g) => g.length);
+}
+const firstName = (c) => c.first_name || String(c.display_name || "").split(" ")[0] || "them";
+
+// Rotor's phone page for a customer: Details | Service | Activity, the round pencil in the header, the red + at the foot.
 function renderPhone(s, ctx) {
   const c = s.contact;
   const write = ctx.can("contacts:write");
@@ -741,24 +794,20 @@ function renderPhone(s, ctx) {
   const rest = details.filter((x) => x.key !== "payment");
   const notes = notesCard(s, ctx);
   const tiles = tilesOf(s, ctx);
+  const makes = createGroups(s, ctx).length > 0;
   const body = {
     details: html`${summary(s, ctx)}
       ${sectionLabel("Contact")}${contactCard(s, ctx)}
-      ${quickBar(s, ctx)}
       ${pay.map(phoneCard)}
-      <section class="ct-pnotes" id="ct-card-notes" data-card="notes" aria-label="${notes.title}"><div class="ct-pc-h"><h3 class="ct-pn-h">${notes.title}</h3>${notes.add ? rnd("plus", notes.add.label, { tone: "grey", sm: true, data: notes.add.data }) : ""}</div>
+      <section class="ct-pnotes" id="ct-card-notes" data-card="notes" aria-label="${notes.title}"><h3 class="ct-pn-h">${notes.title}</h3>
         ${notes.body || html`<p class="ct-pc-e">${notes.empty}</p>`}</section>
       <div class="ct-rows-p">
         ${queuedLine(s)}
         ${phoneFacts(s, ctx)}
         ${write && !archived ? disclosure("Their portal", { sub: "what they see, for 15 minutes", data: { portal: true } }) : ""}
+        ${write && archived ? disclosure("Restore", { sub: "back on the lists, with everything", data: { restore: true } }) : ""}
       </div>
-      ${rest.map(phoneCard)}
-      <div class="ct-foot-btns">
-        ${write && !archived && customer(s) ? html`<button type="button" class="ct-ob blue" data-to-lead>${icon("userplus")}<span>Convert to Lead</span></button>` : ""}
-        ${write && !archived ? html`<button type="button" class="ct-ob red" data-archive>${icon("trash")}<span>Delete Customer</span></button>` : ""}
-        ${write && archived ? html`<button type="button" class="ct-ob" data-restore>${icon("undo")}<span>Restore</span></button>` : ""}
-      </div>`,
+      ${rest.map(phoneCard)}`,
     service: html`${on("service").length ? on("service").map(phoneCard) : html`<p class="ct-pc-e">No jobs, plans or quotes yet</p>`}
       ${tiles.length ? html`${sectionLabel("At a glance")}<div class="ct-tiles-in" id="ct-svc-tiles">${tileRow(tiles, { name: "svc", label: "Service" })}</div>` : ""}`,
     activity: on("activity").map(phoneCard),
@@ -770,6 +819,7 @@ function renderPhone(s, ctx) {
     <div class="ct-seg">${seg(PHONE_PANES, pane, { name: "ctab", label: "Customer" })}</div>
     <div class="ct-panes">${PHONE_PANES.map(paneDiv)}</div>
     ${c.updated_at ? html`<p class="foot-note">Changed ${ago(c.updated_at)}</p>` : ""}
+    ${makes ? html`<button type="button" class="ct-fab" data-ct-fab aria-haspopup="dialog" ${attrs({ "aria-label": `New for ${firstName(c)}` })}>${icon("plus")}</button>` : ""}
   </div>`;
 }
 
@@ -1156,12 +1206,13 @@ export default {
   title: (s) => (s && s.contact ? s.contact.display_name || "Contact" : "Contact"),
   load,
   render,
-  // (a customer on a phone: Flyra's Automations switch first; on means automated texts go out, off is Mute)
+  // (a customer on a phone: Rotor's header is the back button and the pencil, nothing else; the pencil opens the
+  // edit sheet, whose first row is the edit form, and the red + at the foot makes things)
   tools: (s, ctx) => [
-    phoneLayout(s) && ctx.can("consent:edit") && { switch: !(s.contact.automations_paused && s.contact.automations_paused.sms), label: "Automations", run: () => pauseSheet(ctx), data: { automations: true, mute: true } },
-    s && s.contact && !s.tech && ctx.can("contacts:write") && { icon: "edit", label: s.contact.lifecycle === "lead" ? "Edit lead" : "Edit", href: "#/contacts/" + encodeURIComponent(s.contact.id) + "/edit" },
+    s && s.contact && !s.tech && phoneLayout(s) ? (editGroups(s, ctx).length ? { icon: "edit", label: "Edit", run: () => actionSheet(s.contact.display_name || "Customer", editGroups(ctx.state || s, ctx)), data: { "ct-edit": true } } : null)
+      : s && s.contact && !s.tech && ctx.can("contacts:write") && { icon: "edit", label: s.contact.lifecycle === "lead" ? "Edit lead" : "Edit", href: "#/contacts/" + encodeURIComponent(s.contact.id) + "/edit" },
   ],
-  more: (s, ctx) => (s && s.tech ? [] : moreGroups(s, ctx)),
+  more: (s, ctx) => (s && s.tech ? [] : phoneLayout(s) ? [] : moreGroups(s, ctx)),
   moreTitle: (s) => (s && s.contact ? s.contact.display_name || "Contact" : "Contact"),
   mount(view, s, ctx) {
     if (s.redirect) return;
@@ -1209,8 +1260,12 @@ export default {
     "click [data-job-delay]": (e, el, ctx) => { e.preventDefault(); delayJob(ctx, el.dataset.jobDelay); },
     "click [data-pend-more]": (e, el, ctx) => { e.preventDefault(); pendingSheet(ctx, el.dataset.pendMore); },
     "rs-hold [data-pend-hold]": (e, el, ctx) => pendingSheet(ctx, el.dataset.pendHold),
-    "click [data-to-lead]": (e, el, ctx) => toLead(ctx),
-    "click [data-archive]": (e, el, ctx) => archiveSheet(ctx),
     "click [data-restore]": (e, el, ctx) => restore(ctx),
+    "click [data-ct-fab]": (e, el, ctx) => actionSheet(`New for ${firstName(ctx.state.contact)}`, createGroups(ctx.state, ctx)),
+    "click [data-ct-phone]": (e, el, ctx) => {
+      const p = el.dataset.ctPhone;
+      const ph = ((ctx.state.contact && ctx.state.contact.phones) || []).find((x) => x.e164 === p) || { e164: p };
+      actionSheet(phoneText(p), [[{ label: "Call", icon: "call", href: telHref(p), data: { call: true } }, ph.sms !== false && { label: "Text", icon: "chat", href: smsHref(p), data: { sms: true } }].filter(Boolean)]);
+    },
   },
 };

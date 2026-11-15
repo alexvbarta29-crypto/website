@@ -12,7 +12,9 @@
 // tile or the card's brand, "... ending in 1234", BANK ACCOUNT (ACH) or CARD,
 // ADDED <date>, a black round button that texts a new card link), else Add
 // Payment Method; on a phone (ctx.phone) the invoices read #number, the
-// pill, the amount and the due or paid date and how it was paid.
+// pill, the amount and the due or paid date and how it was paid; the open
+// balance line and the New invoice and Add credit pills stay on a desk (the
+// customer's phone page has them in the Service tab's numbers and its red +).
 
 import { html, icon, sheet, toast, confirmSheet, delegate, pillBtn, rnd, statusPill as kitPill } from "../../core/ui.js";
 import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
@@ -54,7 +56,9 @@ export default {
       ${s.more && s.more.invoices ? html`<p class="foot-note">The newest 12 are shown.</p>` : ""}
       ${(s.payments || []).length ? html`<h4 class="ct-sub-h">Payments</h4><ul class="list">${s.payments.map((p) => paymentRow(p))}</ul>` : ""}
       ${s.credit && (s.credit.rows || []).length ? html`<h4 class="ct-sub-h">Credit</h4><ul class="list">${s.credit.rows.map(creditRow)}</ul>` : ""}`;
-    const out = [{ key: "invoices", tab: "details", title: "Invoices", count: (s.invoices || []).length || null, body: html`${head}${rows}${pills}${customer ? "" : cardLine}` }];
+    // (a customer's phone page is Rotor's: the invoices alone; the balance is in the Service tab's numbers and New
+    // invoice and Add credit are on the red +)
+    const out = [{ key: "invoices", tab: "details", title: "Invoices", count: (s.invoices || []).length || null, body: phone && customer ? rows : html`${head}${rows}${pills}${customer ? "" : cardLine}` }];
     if (customer) {
       const pm = s.card && s.card.pm;
       out.push({ key: "payment", tab: "details", title: "Payment", body: html`${pm ? methodRow(s.card, s.can.card_link) : html`<p class="mn-card">${icon("money")}<span>${s.card && s.card.status && s.card.status !== "none" ? CARD[s.card.status] || s.card.status : "No card or bank account on file"}</span></p>`}${!pm && s.can.card_link ? html`<div class="rs-li-cta">${pillBtn("Add Payment Method", { tone: "solid", wide: true, icon: "plus", data: { "mn-card-link": true } })}</div>` : ""}` });
