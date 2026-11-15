@@ -1,7 +1,7 @@
-// The contact page (Rotor's lead and customer page, Nov 2026): the stat
-// card's numbers from the contact's stats (money only for someone who may
-// see money: the server leaves it out too), the modules' cards on Details
-// and Activity in Rotor's order (a module without cards() is one card of
+// The contact page (Rotor's lead and customer profile, Nov 2026): the
+// summary box from the contact's stats and the modules (money only for
+// someone who may see money: the server leaves it out too), the modules'
+// cards on Rotor's tabs in Rotor's order (a module without cards() is one card of
 // its own; denied ones left out), their rows in the "...", "About to be
 // sent" from the modules, and the one read the page needs staying inside
 // its budget.
@@ -54,23 +54,40 @@ test("the page: the modules' cards on Details and Activity in Rotor's order; the
   const s = { contact, stats: { money: { open_balance_cents: 0, lifetime_cents: 5000 }, work: {} }, properties: [property], users: [], secs, activity: [{ at: NOW, kind: "call.spoke", label: "Called and talked" }, { at: NOW, kind: "sms.in", label: "Text received" }], tech: false };
   const h = text(C.default.render(s, ctx()));
   const at = (x) => h.indexOf(x);
-  const details = h.slice(at('data-pane="details"'), at('data-pane="service"'));
-  const service = h.slice(at('data-pane="service"'), at('data-pane="payments"'));
-  const payments = h.slice(at('data-pane="payments"'), at('data-pane="activity"'));
-  const activity = h.slice(at('data-pane="activity"'));
-  // Details | Service | Payments | Activity (guide-gaps C17): the work, plans, quotes and pipelines on Service, in that order
-  const want = ["ct-mod-work", "ct-mod-plans", "ct-mod-quotes", "ct-mod-sales"];
+  const pane = (k) => { const i = at(`data-pane="${k}"`); const rest = h.slice(i + 1); const j = rest.search(/data-pane="/); return h.slice(i, j < 0 ? undefined : i + 1 + j); };
+  const profile = h.slice(at('class="ct-prof'), at('class="ct-main"'));
+  // Rotor's tabs for a customer: Service | Payments | Conversation | Opportunities | Activity | Files; Service first
+  assert.deepEqual([...h.matchAll(/data-seg="ctab" data-key="([a-z]+)"/g)].map((m) => m[1]), ["service", "payments", "conversation", "opportunities", "activity", "files"]);
+  assert.match(h, /class="ct-pane rs-page" data-pane="service"/, "Service is on");
+  // Service: Service Plans, Scheduled Jobs, Quotes in Rotor's order, then Properties
+  const service = pane("service");
+  const want = ["ct-mod-plans", "ct-mod-work", "ct-mod-quotes", "ct-card-properties"];
   for (const id of want) assert.ok(service.includes(`id="${id}"`), `${id} on Service`);
   assert.deepEqual([...want].sort((a, b) => service.indexOf(`id="${a}"`) - service.indexOf(`id="${b}"`)), want, "in Rotor's order");
-  for (const id of ["ct-card-properties", "ct-card-notes"]) assert.ok(details.includes(`id="${id}"`), `${id} on Details`);
-  assert.match(payments, /MONEY-OLD/, "a module without cards(): its old section as one card, on its tab");
+  assert.match(pane("payments"), /MONEY-OLD/, "a module without cards(): its old section as one card, on its tab");
   assert.match(service, /No quotes yet/, "an empty card: one line");
-  for (const x of ["DEALS-BODY", "MESSAGES-OLD", "Called and talked", "Marketing texts"]) assert.ok(activity.includes(x), `${x} on Activity`);
+  assert.match(pane("opportunities"), /FOLLOW-BODY/, "the follow-ups (pipelines) on Opportunities");
+  for (const x of ["MESSAGES-OLD", "Marketing texts"]) assert.ok(pane("conversation").includes(x), `${x} on Conversation`);
+  for (const x of ["DEALS-BODY"]) assert.ok(pane("opportunities").includes(x), `${x} on Opportunities`);
+  assert.match(pane("activity"), /Called and talked/, "the timeline on Activity");
+  assert.match(pane("files"), /id="ct-card-files"|Files are for the office/);
   assert.ok(!h.includes("DENIED-OLD"), "a denied section is left out");
-  assert.match(h, /Quarterly plan/, "the plan pill from the plans section");
-  assert.match(h, /About to be sent · <b>1 queued/, "About to be sent, one line");
+  // the profile: the name and Active, the summary box (lifetime, sale value, frequency, service type), the rows, notes, facts, buttons
+  assert.match(profile, /class="pill green">Active</, "a customer: Active");
+  assert.deepEqual([...profile.matchAll(/class="ct-sv-l">([^<]+)</g)].map((m) => m[1]), ["Lifetime value", "Sale value", "Frequency", "Service type"]);
+  assert.match(profile, /\$50\.00/, "the lifetime value");
+  assert.match(profile, /About to be sent · <b>1 queued/, "About to be sent, one line");
+  assert.match(profile, /id="ct-card-notes"/);
+  assert.match(profile, /data-pick-owner/, "Assigned: a tap picks the owner");
+  assert.match(profile, /data-portal/, "Portal");
+  assert.match(profile, /data-ct-more/, "the profile's ...");
+  assert.doesNotMatch(profile, /data-make-customer/, "Create Customer is a lead's");
   assert.match(h, /Gate 4321 · Dog in the yard · 2 stories/, "a property's access notes");
   assert.match(h, /href="tel:\+17635550100"[\s\S]*href="sms:\+17635550100"|href="sms:\+17635550100"[\s\S]*href="tel:\+17635550100"/, "Call and text");
+  // the plans part's sale value, frequency and service type fill the box
+  const plans = { ...secs[2], mod: { ...secs[2].mod, header: () => ({ plan: "Quarterly plan", sale_value: 64500, frequency: "Quarterly", service_type: "Window Cleaning" }) } };
+  const ph = text(C.default.render({ ...s, secs: [secs[0], secs[1], plans, ...secs.slice(3)] }, ctx()));
+  assert.match(ph, /\$645\.00[\s\S]*Quarterly[\s\S]*Window Cleaning/);
   // the "...": a customer books first; the modules' rows, then the contact's own; Mark lost and Archive red
   const groups = C.default.more(s, ctx()).map((g) => g.filter(Boolean).map((r) => r.label));
   assert.deepEqual(groups[0], ["Book a job", "New quote"]);
@@ -80,17 +97,32 @@ test("the page: the modules' cards on Details and Activity in Rotor's order; the
   const ls = { ...s, contact: { ...contact, lifecycle: "lead" } };
   assert.deepEqual(C.default.more(ls, ctx())[0].filter(Boolean).map((r) => r.label), ["Log a call"]);
   const lh = text(C.default.render(ls, ctx()));
-  const ld = lh.slice(lh.indexOf('data-pane="details"'));
-  assert.ok(ld.indexOf('id="ct-mod-quotes"') < ld.indexOf('id="ct-mod-sales"') && ld.indexOf('id="ct-mod-sales"') < ld.indexOf('id="ct-mod-work"'), "a lead's order: Quotes, Follow-ups, Visits");
+  // Rotor's lead page (17-lead-detail): Conversation first; STAGE, EST. VALUE, FOLLOW-UP; Create Customer
+  assert.deepEqual([...lh.matchAll(/data-seg="ctab" data-key="([a-z]+)"/g)].map((m) => m[1]), ["conversation", "service", "opportunities", "payments", "activity", "files"]);
+  assert.match(lh, /class="ct-pane rs-page" data-pane="conversation"/, "Conversation is on");
+  assert.deepEqual([...lh.matchAll(/class="ct-sv-l">([^<]+)</g)].map((m) => m[1]), ["Stage", "Est. value", "Follow-up", "Next visit"]);
+  assert.match(lh, /data-make-customer/, "Create Customer");
+  const ld = lh.slice(lh.indexOf('data-pane="service"'));
+  assert.ok(ld.indexOf('id="ct-mod-quotes"') < ld.indexOf('id="ct-mod-work"'), "a lead's Service: Quotes before the jobs");
   assert.match(lh, /class="pill blue">New</, "a lead without a deal: New");
-  // someone who may not see money: no balance on the stat card
+  // someone who may not see money: no money in the box
   const lim = text(C.default.render(s, ctx(["contacts:read"])));
-  assert.doesNotMatch(lim, /Balance|Lifetime/, "no money for them");
+  assert.doesNotMatch(lim, /Balance|Lifetime|Sale value/, "no money for them");
+  assert.match(lim, /class="ct-sv-l">Next visit</);
   assert.doesNotMatch(lim, /data-notes="ct-notes"/, "the notes box needs contacts:write");
   // a technician: the name, the numbers to call, the properties; nothing else
   const t = text(C.default.render({ contact: { id: contact.id, display_name: "Pat Example", phones: contact.phones }, properties: [property], users: [], secs: [], activity: [], tech: true }, ctx(["contacts:read"])));
   assert.match(t, /ct-card-properties/);
   assert.doesNotMatch(t, /data-pane|Balance|Next visit/);
+});
+
+test("Delay: the month a pending job is due moves later", () => {
+  assert.equal(C.laterMonth("2026-11", 1), "2026-12");
+  assert.equal(C.laterMonth("2026-11", 2), "2027-01");
+  assert.equal(C.laterMonth("2026-12", 12), "2027-12");
+  assert.equal(C.laterMonth("bad", 1), null);
+  assert.equal(C.paneOf({ key: "followups" }), "opportunities");
+  assert.equal(C.paneOf({ key: "something", tab: "details" }), "service", "an unknown card goes to Service");
 });
 
 test("the header's numbers come with the contact (one stats read, inside the budget); money only for someone who may see it", async () => {

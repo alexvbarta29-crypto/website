@@ -9,7 +9,7 @@
 // them). cards() and actions(): the contact page's Visits card and its
 // "..." row, Book a job (Nov 2026, Rotor's lead and customer pages).
 
-import { html, icon } from "../../core/ui.js";
+import { html, icon, pillBtn, statusPill } from "../../core/ui.js";
 import { money, dateShort, localDate } from "../../core/format.js";
 import { ensureStyles, officeView, slotText, visitPill, jobPill, kindLabel, addDays } from "./office-kit.js";
 import { isoFromLocal } from "./tech-kit.js";
@@ -31,7 +31,12 @@ export function workTiles(jobs = []) {
     { key: "avg_future", label: "Avg future job", value: b === null ? "-" : money(b).replace(/\.00$/, "") },
   ];
 }
-const pendingRow = (j) => html`<li><a class="row" href="${"#/jobs/" + encodeURIComponent(j.id)}"><span class="who"><span class="nm">${j.title}</span><span class="sub">${[j.number_label, j.target_month ? `due ${j.target_month}` : null, j.totals ? money(j.totals.total_cents) : null].filter(Boolean).join(" · ")}</span></span><span class="end"><span class="rs-pb ct-sched">Schedule</span></span></a></li>`;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthText = (m) => (/^\d{4}-\d{2}$/.test(String(m || "")) ? `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}` : "");
+const amount = (j) => (j && j.totals && Number.isSafeInteger(j.totals.total_cents) ? money(j.totals.total_cents).replace(/\.00$/, "") : "");
+// Rotor's Pending Jobs row: the month it is due, a Pending pill, the job; its $, Delay and Schedule (the job's page books it).
+const pendingRow = (j, write) => html`<li class="ct-pend"><a class="row" href="${"#/jobs/" + encodeURIComponent(j.id)}"><span class="who"><span class="nm ct-when">${icon("cal")}${monthText(j.target_month) || "Not booked"}${statusPill("Pending", "blue")}</span><span class="sub">${[j.number_label, j.title].filter(Boolean).join(" · ")}</span></span><span class="end">${amount(j) ? html`<span class="num">${amount(j)}</span>` : ""}</span></a>
+  ${write ? html`<span class="ct-pend-acts">${pillBtn("Delay", { icon: "clock", data: { "job-delay": j.id }, aria: `Delay ${j.title || "this job"}` })}${pillBtn("Schedule", { tone: "red", href: "#/jobs/" + encodeURIComponent(j.id), aria: `Schedule ${j.title || "this job"}` })}</span>` : ""}</li>`;
 
 // The visit reminders (work automations visit.reminder_14d and _2d) still to
 // come for the booked visits, at their default 10:00. → [{ at, label, sub, href }]
@@ -51,7 +56,11 @@ export function remindersAhead(upcoming = [], now = new Date()) {
   return out;
 }
 
-const vrow = (v) => html`<li><a class="row" href="${"#/visits/" + encodeURIComponent(v.id)}"><span class="who"><span class="nm">${dateShort(v.date)}</span><span class="sub">${slotText(v)}${v.job_title ? ` · ${v.job_title}` : ""}</span></span><span class="end">${v.plan_id ? planPill : ""}${visitPill(v.status)}<span class="chev" aria-hidden="true"></span></span></a></li>`;
+// Rotor's Scheduled Jobs row: the date and its pill; the job and the time; the job's $ on the right.
+const vrow = (v, jobs = []) => {
+  const j = jobs.find((x) => x.id === v.job_id);
+  return html`<li><a class="row" href="${"#/visits/" + encodeURIComponent(v.id)}"><span class="who"><span class="nm ct-when">${icon("cal")}${dateShort(v.date)}${visitPill(v.status)}</span><span class="sub">${[v.job_number || (j && j.number_label), slotText(v), v.job_title].filter(Boolean).join(" · ")}</span></span><span class="end">${v.plan_id ? planPill : ""}${amount(j) ? html`<span class="num">${amount(j)}</span>` : ""}<span class="chev" aria-hidden="true"></span></span></a></li>`;
+};
 const jrow = (j) => html`<li><a class="row" href="${"#/jobs/" + encodeURIComponent(j.id)}"><span class="who"><span class="nm">${j.title}</span><span class="sub">${[j.number_label, j.kind !== "standard" ? kindLabel(j.kind) : null, j.status === "unscheduled" && j.target_month ? `due ${j.target_month}` : null, j.completed_at ? `done ${dateShort(j.completed_at)}` : null].filter(Boolean).join(" · ")}</span></span>
   <span class="end">${j.totals ? html`<span class="small num">${money(j.totals.total_cents)}</span>` : ""}${j.plan_id ? planPill : ""}${jobPill(j.status)}</span></a></li>`;
 
@@ -72,18 +81,20 @@ export default {
   cards(s, ctx) {
     if (!s || s.denied) return [];
     const open = (s.jobs || []).filter((j) => OPEN.includes(j.status) && j.status !== "unscheduled" && !j.plan_id);
-    const pending = (s.jobs || []).filter((j) => j.status === "unscheduled");
+    const pending = (s.jobs || []).filter((j) => j.status === "unscheduled").sort((a, b) => String(a.target_month || "9999").localeCompare(String(b.target_month || "9999")));
     const closed = (s.jobs || []).filter((j) => !OPEN.includes(j.status)).slice(0, 10);
     const up = s.upcoming || [];
     const any = up.length || open.length || (s.past || []).length || closed.length;
-    // Rotor's Service tab: Pending jobs (to book) on top, a dashed card; then Scheduled jobs
-    const out = pending.length ? [{ key: "pending", tab: "service", title: "Pending jobs", cls: "ct-pending", count: String(pending.length), body: html`<ul class="list">${pending.map(pendingRow)}</ul>` }] : [];
-    return [...out, { key: "visits", tab: "service", title: "Scheduled jobs", count: up.length ? (up.length === 1 ? "1 coming up" : `${up.length} coming up`) : null, empty: "No visit booked",
-      add: ctx && ctx.can && ctx.can("schedule:write") ? { label: "Book a job", href: "#/jobs/new/" + encodeURIComponent(s.contact.id) } : null,
-      body: any ? html`${up.length ? html`<ul class="list">${up.map(vrow)}</ul>` : html`<p class="rs-empty">No visit booked</p>`}
+    // Rotor's Service tab: Scheduled Jobs, then Pending Jobs (to book: a dashed card with Delay and Schedule)
+    const write = !!(ctx && ctx.can && ctx.can("schedule:write"));
+    const jobs = s.jobs || [];
+    const out = pending.length ? [{ key: "pending", tab: "service", title: `Pending Jobs (${pending.length})`, cls: "ct-pending", body: html`<ul class="list">${pending.map((j) => pendingRow(j, write))}</ul>` }] : [];
+    return [{ key: "visits", tab: "service", title: "Scheduled Jobs", count: up.length ? (up.length === 1 ? "1 coming up" : `${up.length} coming up`) : null, empty: "No visit booked",
+      add: write ? { label: "Book a job", short: "New Job", href: "#/jobs/new/" + encodeURIComponent(s.contact.id) } : null,
+      body: any ? html`${up.length ? html`<ul class="list">${up.map((v) => vrow(v, jobs))}</ul>` : html`<p class="rs-empty">No visit booked</p>`}
         ${open.length ? html`<h4 class="ct-sub-h">One-time jobs</h4><ul class="list">${open.map(jrow)}</ul>` : ""}
-        ${(s.past || []).length ? html`<h4 class="ct-sub-h">Recent visits</h4><ul class="list">${s.past.slice(0, 8).map(vrow)}</ul>` : ""}
-        ${closed.length ? html`<h4 class="ct-sub-h">Done and cancelled</h4><ul class="list">${closed.map(jrow)}</ul>` : ""}` : null }];
+        ${(s.past || []).length ? html`<h4 class="ct-sub-h">Recent visits</h4><ul class="list">${s.past.slice(0, 8).map((v) => vrow(v, jobs))}</ul>` : ""}
+        ${closed.length ? html`<h4 class="ct-sub-h">Done and cancelled</h4><ul class="list">${closed.map(jrow)}</ul>` : ""}` : null }, ...out];
   },
   actions(s, ctx) {
     if (!s || s.denied || !(ctx && ctx.can && ctx.can("schedule:write"))) return [];
@@ -98,10 +109,10 @@ export default {
     return html`<div class="stack">
       ${ctx && ctx.can && ctx.can("schedule:write") ? html`<div class="btn-row"><a class="btn primary" href="${"#/jobs/new/" + id}">${icon("plus")}New job</a></div>` : ""}
       ${section ? "" : html`<div class="section-h">Coming up</div>`}
-      ${(s.upcoming || []).length ? html`<ul class="list">${s.upcoming.map(vrow)}</ul>` : html`<p class="muted small">No visit booked.</p>`}
+      ${(s.upcoming || []).length ? html`<ul class="list">${s.upcoming.map((v) => vrow(v, s.jobs || []))}</ul>` : html`<p class="muted small">No visit booked.</p>`}
       <div class="section-h">${section ? "One-time jobs" : "Open jobs"}</div>
       ${open.length ? html`<ul class="list">${open.map(jrow)}</ul>` : html`<p class="muted small">No open one-time job.</p>`}
-      ${(s.past || []).length ? html`<div class="section-h">Recent visits</div><ul class="list">${s.past.slice(0, 8).map(vrow)}</ul>` : ""}
+      ${(s.past || []).length ? html`<div class="section-h">Recent visits</div><ul class="list">${s.past.slice(0, 8).map((v) => vrow(v, s.jobs || []))}</ul>` : ""}
       ${closed.length ? html`<div class="section-h">Done and cancelled</div><ul class="list">${closed.map(jrow)}</ul>` : ""}
     </div>`;
   },

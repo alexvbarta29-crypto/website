@@ -57,7 +57,28 @@ test("Contacts list: rows, chips, the merge notice; search rules match the serve
   assert.doesNotMatch(text(list.render({ ix: { rows }, dupes: 0, q: "", chip: "", src: "", sources: [] }, ctx(["contacts:read_all"]))), /possible duplicate/);
 });
 
-test("Contact (Rotor's page): the top, Details and Activity, the header's pencil and \"...\"; everything escaped", async () => {
+test("Customers, Rotor's columns: a phone row's key facts; a desk's table (Name, Email, Phone, City, Status, SV, LV, Outstanding, Assigned to)", async () => {
+  const L = await import("../../../crm-app/modules/contacts/list.js");
+  const r = { id: "ct_2", n: `Zed ${XSS}`, lc: "customer", p: ["7635550102"], e: ["zed@example.com"], c: "Mound", ml: 22500, mb: 4500, o: "us_1" };
+  const st = { money: true, users: new Map([["us_1", "OO"]]), names: new Map([["us_1", "Olive Owner"]]), sv: new Map([["ct_2", 135000]]), plans: new Map(), write: true };
+  const row = text(L.rowHtml(r, st));
+  assert.ok(!row.includes("<script>alert(1)"));
+  assert.match(row, /Mound · SV \$1,350 · OO/, "town, sale value, assigned");
+  assert.match(row, /Owes \$45/, "outstanding, red");
+  assert.match(row, /\$225\.00/, "the lifetime value");
+  assert.deepEqual(L.tableColumns(true).map((c) => c.label), ["Name", "Email", "Phone", "City", "Status", "SV", "LV", "Outstanding", "Assigned to"]);
+  assert.deepEqual(L.tableColumns(false).map((c) => c.label), ["Name", "Email", "Phone", "City", "Status", "Assigned to"], "no money columns for someone who may not see money");
+  const t = L.tableRow(r, st);
+  assert.equal(t.cells.email, "zed@example.com");
+  assert.equal(t.cells.phone, "(763) 555-0102");
+  assert.equal(t.cells.sv, "$1,350");
+  assert.match(text(t.cells.owed), /ct-owed[^>]*>\$45\.00/);
+  assert.match(text(t.cells.who), /Olive Owner/);
+  assert.equal(t.action.href, "#/contacts/ct_2/edit", "a round Edit");
+  assert.equal(L.tableRow({ ...r, o: null }, st).cells.who.toString().includes("Unassigned"), true);
+});
+
+test("Contact (Rotor's profile): the top, Rotor's tabs, the header's pencil and \"...\"; everything escaped", async () => {
   const c = await load("contact");
   const s = { contact, stats: { contacts: { customer_since: "2025-04-01" }, work: {}, money: {}, plans: {} }, properties: [property], users: [], tech: false, etag: '"1"' };
   const open = { ...ctx(), keep: { about: true } };
@@ -68,8 +89,8 @@ test("Contact (Rotor's page): the top, Details and Activity, the header's pencil
   assert.match(h, /href="mailto:pat@example.com"/);
   assert.match(h, /data-copy="pat@example.com"/, "a round copy on the email");
   assert.match(h, /target="_blank" rel="noopener"|data-external="top"/, "directions leave the frame");
-  assert.match(h, /role="tablist"[\s\S]*Details[\s\S]*Activity/, "Details | Activity");
-  assert.match(h, /Marketing texts/, "the consent card (Activity)");
+  assert.match(h, /role="tablist"[\s\S]*Service[\s\S]*Payments[\s\S]*Conversation[\s\S]*Opportunities[\s\S]*Activity[\s\S]*Files/, "Rotor's tabs");
+  assert.match(h, /Marketing texts/, "the consent card (Conversation)");
   assert.match(h, /Sample Form · Sample Ad/, "About, opened");
   assert.match(h, /Customer since/);
   assert.match(h, /Primary property/i);

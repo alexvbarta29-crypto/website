@@ -28,20 +28,51 @@
 .notice svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .notice .chev{margin-left:auto}
 
-/* ---------------------------------------------------------------- one contact (contact.js): Rotor's lead and customer page
-   the name big with a pill on the right, white pills under it, Details | Activity, then the stat
-   card, the contact rows, the satellite and cards with a round + (the kit's look, crm.css); from
-   680 px of room (a container query: the contact may sit beside the list) Details and Activity
-   side by side, and on a desk the name stays put while the page scrolls. */
+/* ---------------------------------------------------------------- one contact (contact.js): Rotor's profile
+   a phone: the profile on top (the name and its pill, the summary box, the contact rows, Mute, the
+   property and its satellite, notes, facts, Edit / Portal / ...), then Rotor's tabs as a scrollable
+   segmented row that stays under the header; from 760 px of room (a container query: the contact may
+   sit beside the list) Rotor's two columns: the profile 320 px on the left, the tabs on the right. */
 .ct-page{container:ct / inline-size}
+.ct-grid{display:flex;flex-direction:column;gap:16px}
+.ct-main{display:flex;flex-direction:column;gap:12px;min-width:0}
 .ct-head{display:flex;flex-direction:column;gap:8px;padding:2px 2px 0}
 .ct-pills{gap:4px 6px}
-.ct-pills .rs-pilltap{min-height:44px}
-.ct-pills>.pill{margin:10px 0}
-.ct-seg{margin-top:2px}
+.ct-seg{position:sticky;top:-12px;z-index:3;padding:8px 0 4px;background:var(--mist)}
 .ct-panes{display:flex;flex-direction:column;gap:12px}
 .ct-pane.off{display:none}
-.ct-pane{scroll-margin-top:12px}
+.ct-pane{scroll-margin-top:64px}
+/* the summary box (Rotor's: four values, caps labels, centred) */
+.ct-sum{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:8px;border:1px solid var(--card-line);border-radius:var(--r-lg);background:var(--card)}
+.ct-sv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:60px;padding:6px 4px;border-radius:var(--r);color:var(--ink);text-align:center;text-decoration:none}
+a.ct-sv:active{background:var(--fill)}
+.ct-sv-l{font:600 var(--t-cap)/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--label)}
+.ct-sv-v{max-width:100%;font:600 17px/1.2 var(--text);letter-spacing:-.01em;overflow-wrap:anywhere}
+.ct-mute-l{display:inline-flex;align-items:center;gap:8px}
+.ct-mute-l svg{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* the facts under the notes: caps label left, the value right */
+.ct-facts{display:flex;flex-direction:column;gap:12px}
+.ct-kv{display:grid;grid-template-columns:minmax(92px,36%) minmax(0,1fr);gap:6px 12px;margin:0;align-items:center}
+.ct-kv dt{font:600 var(--t-cap)/1.3 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--label)}
+.ct-kv dd{margin:0;min-height:28px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:var(--t-body);overflow-wrap:anywhere}
+.ct-kv dd .rs-pilltap{min-height:44px}
+/* Create Customer, Edit, Portal, ... */
+.ct-btns{display:flex;flex-direction:column;gap:8px}
+.ct-btn-row{display:flex;align-items:center;gap:8px}
+.ct-btn-row .rs-pb{flex:1 1 0;min-width:0}
+/* Rotor's rows on the Service tab: a date with its pill; a plan with its red edge; Delay and Schedule */
+.ct-when{display:inline-flex!important;align-items:center;flex-wrap:wrap;gap:6px 8px}
+.ct-when svg{flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--ink-3)}
+.ct-pend{display:flex;flex-direction:column}
+.ct-pend-acts{display:flex;justify-content:flex-end;gap:8px;padding:0 16px 12px}
+.ct-pend-acts .rs-pb{min-height:44px;padding:0 14px;font-size:14px}
+.ct-pend-acts svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pl-rows .row{box-shadow:inset 3px 0 0 var(--coral-btn)}
+.pl-facts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:6px;font-size:13px;color:var(--ink-2)}
+.pl-facts>span:not(.pill){display:inline-flex;align-items:center;gap:4px}
+.pl-facts svg{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ct-card .rs-ch-end .rs-pb{min-height:44px;padding:0 14px;font-size:14px}
+.ct-card .rs-ch-end .rs-pb svg{width:16px;height:16px}
 .ct-card{scroll-margin-top:12px}
 /* a module's rows inside a card: full width, the card's own lines */
 .ct-card .list{margin:0 -16px;border:0;border-radius:0;background:none;box-shadow:none}
@@ -125,20 +156,21 @@
 @media (min-width:900px){
   .ct-rail{bottom:24px}
   .ct-bar{background:var(--mist);border-bottom:0}
-  /* the name and its pills stay put while the page scrolls under them */
-  .ct-head{position:sticky;top:-16px;z-index:4;padding:14px 18px;border:1px solid var(--card-line);border-radius:var(--r-lg);background:var(--card);box-shadow:0 -20px 0 4px var(--mist),var(--sh-raise)}
-  .ct-card,.ct-pane{scroll-margin-top:200px}
 }
-/* room for two columns: Details, and Activity beside it (no segmented control then) */
-@container ct (min-width:680px){
-  .ct-seg{display:none}
-  .ct-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,38%);gap:16px;align-items:start}
-  .ct-pane.off{display:flex}
-  /* Details, Service and Payments down the main column; Activity beside them */
-  .ct-pane{grid-column:1}
-  .ct-pane[data-pane="activity"]{grid-column:2;grid-row:1 / span 3}
-  /* the narrow Activity column: a row's name before its time */
-  [data-pane="activity"] .row .end>.small{display:none}
+/* Rotor's two columns: the profile on the left (320 px), the tabs on the right, underlined */
+@container ct (min-width:760px){
+  .ct-grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;align-items:start}
+  /* Rotor's left column stays put with its own scroll while the tab scrolls the page */
+  .ct-prof{position:sticky;top:0;max-height:calc(100dvh - 150px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-bottom:8px}
+  .ct-seg{top:-16px;padding:4px 0 0}
+  .ct-seg .rs-seg{gap:18px;padding:0;border-radius:0;background:none;box-shadow:inset 0 -1px 0 var(--line)}
+  .ct-seg .rs-seg-b{padding:0 1px;border-radius:0;color:var(--ink-3);font-size:var(--t-meta)}
+  .ct-seg .rs-seg-b:hover{color:var(--ink)}
+  .ct-seg .rs-seg-b[aria-selected="true"]{color:var(--ink)}
+  .ct-seg .rs-seg-b[aria-selected="true"]::before{inset:auto 0 0 0;height:2px;border-radius:2px;background:var(--coral-btn);box-shadow:none}
+  .ct-page .ct-tiles-in{margin:0}
+  .ct-page .ct-tiles-in .rs-tiles{margin:0}
+  .ct-page .ct-tiles-in .rs-tiles-in{padding-left:0;scroll-padding:0}
 }
 
 /* ---------------------------------------------------------------- the Customers cards (list.js; Rotor's two-tone cards, in both themes) */
@@ -217,8 +249,12 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
 .ct-bulk-acts::-webkit-scrollbar{display:none}
 .ct-bulk-acts .rs-pb{flex:none;min-height:44px}
 @media (min-width:1000px){.ct-bulk{position:sticky;bottom:12px;margin:8px 16px}}
+/* Rotor's table on a desk (list.js): outstanding money red, Unassigned grey */
+.ct-table .ct-owed{color:var(--red-ink)}
+.ct-table .ct-unas{color:var(--muted)}
+.ct-table .rs-td .pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 /* the contact's Service tab: tiles on top, the Pending jobs card dashed, the Mute row */
-.ct-tiles-in{margin:0 -16px}
+.ct-tiles-in{margin:0}
 .ct-card.ct-pending{border:1.5px dashed var(--line-2);box-shadow:none}
 .ct-card .ct-sched{min-height:36px;padding:0 14px;display:inline-flex;align-items:center;font-size:14px}
 #ct-mute .rs-frow{min-height:56px}

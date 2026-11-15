@@ -18,7 +18,10 @@ const PHONE_LABELS = [{ value: "mobile", label: "Mobile" }, { value: "home", lab
 
 async function load(params, ctx) {
   ensureStyles();
-  if (!params.id) return { isNew: true, c: { phones: [], emails: [], tags: [], source: { source: "Phone Call" }, lifecycle: "lead" }, clientId: ctx.keep.clientId || (ctx.keep.clientId = uuid()) };
+  // (the Customers list's "Add Customer" opens it as a customer: #/contacts/new?as=customer)
+  let as = "";
+  try { as = new URLSearchParams((typeof location !== "undefined" && location.hash.split("?")[1]) || "").get("as") || ""; } catch (e) { as = ""; }
+  if (!params.id) return { isNew: true, c: { phones: [], emails: [], tags: [], source: { source: "Phone Call" }, lifecycle: as === "customer" ? "customer" : "lead" }, clientId: ctx.keep.clientId || (ctx.keep.clientId = uuid()) };
   const r = await ctx.api(`/contacts/${encodeURIComponent(params.id)}`, { cache: false });
   return { isNew: false, c: r.data.contact, etag: r.etag };
 }
