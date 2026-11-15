@@ -7,10 +7,17 @@
 //   - the views: Month (the default) · List · Day · 3 Day · Week, with a
 //     week strip (Sunday first, today in a coral circle) on List, Day and
 //     3 Day; To book (the tray) from the month's "N to book";
-//   - Month: each day shows how full it is against what the crew can do,
-//     the forecast for the next days and a mark on past days with visits
-//     nobody closed; the chosen day's list beside the grid on a computer,
-//     under it on a phone ("Open day", or "No jobs on ..." and Add job);
+//   - Month (Rotor's grid, Nov 15: "make the monthly calendar look like
+//     Rotor more"): the weekday row, the number at the top left (today in
+//     the red circle), weekends shaded; on a computer Rotor's blocks
+//     (customer, time, price in the status color: Not started grey, In
+//     progress blue, Finished green, done and cancelled faded) and "+N
+//     more" under Rotor's head (the views, < > the month, Today, the tools,
+//     More Actions); on a phone a dot a visit in its status color. Each day
+//     also shows how full it is, the forecast and a mark on past days with
+//     visits nobody closed; the chosen day's list (Rotor's rows: a stripe
+//     and a tag in the status color) beside the grid on a computer, under
+//     it on a phone ("Open day", or "No jobs on ..." and Add job);
 //   - Day: a column per person (Unassigned first; "Technician"), each head
 //     with visits done of all and the money, or the sales side ("Sales
 //     rep": estimate visits, meetings and calls with a time), on a time grid
@@ -51,7 +58,8 @@ import { panelView, openPanel, closePanel, moveFromPanel, assignSheet, wide, isV
 // the segmented control, in Rotor's order (Month first: the owner's default)
 const VIEWS = [["month", "Month"], ["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"], ["map", "Map"]];
 const ALL_VIEWS = [...VIEWS.map(([k]) => k), "tray"];
-const CHIPS = 3;                       // chips a day cell shows on a computer before "+N more"
+const CHIPS = 5;                       // chips a day cell shows on a computer before "+N more" (Rotor's tall cells)
+const DOTS = 4;                        // a phone's dots a day before "+N"
 const WX_FRESH_MS = 30 * 60000;        // the forecast is read again after half an hour
 const UNDO_MS = 12000;                 // how long the undo bar stays
 const STRIP = ["day", "3day", "list"]; // the views with the week strip
@@ -79,6 +87,13 @@ const monthName = (ym) => `${MONTH_LONG.format(new Date(ym + "-15T12:00:00Z"))} 
 const PANEL_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long", month: "short", day: "numeric" });
 export const panelDay = (d) => PANEL_DAY.format(new Date(d + "T12:00:00Z"));
 export { shortTime, shortName, capFor, fullness, notClosed };
+// Rotor's month (Nov 15, "make the monthly calendar look like Rotor more"):
+// its status colors on the chips, the dots and the day's rows (Not started
+// grey, In progress blue, Finished green; done and cancelled faded). A
+// chip's time is the short "8a", so the customer's name fits beside it.
+const ROTOR_ST = { scheduled: ["ns", "Not started"], en_route: ["ns", "On the way"], in_progress: ["ip", "In progress"], paused: ["ip", "Paused"], completed: ["fin", "Finished"], cancelled: ["x", "Cancelled"], no_access: ["x", "No access"] };
+export const rotorStatus = (st) => ROTOR_ST[st] || ROTOR_ST.scheduled;
+export const rotorTag = (st) => html`<span class="${"wk-rtag st-" + rotorStatus(st)[0]}">${rotorStatus(st)[1]}</span>`;
 const loaded = (s, d) => !!(s.data && s.data.kind === "month" && d >= s.data.from && d <= s.data.to);
 
 // ------------------------------------------------------------ reads
@@ -348,6 +363,7 @@ const I = {
   pin: SVG('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/>'),
   filter: SVG('<path d="M4 5h16l-6.2 7.4V19l-3.6-1.8v-4.8z"/>'),
   caret: SVG('<path d="m6.5 9.5 5.5 5.5 5.5-5.5"/>'),
+  dots: SVG('<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>'),
 };
 
 function head(s, ctx) {
@@ -470,7 +486,13 @@ export function weekStrip(s) {
 
 // ------------------------------------------------------------ Month
 
-function dayCell(s, d) {
+// A day of the month (Rotor's cell): the number at the top left (today in
+// the red circle), the forecast and the mark of a day nobody closed at the
+// right; on a computer Rotor's blocks (Tasks: N first, then each visit:
+// customer, time, price, in its status color with its person's stripe)
+// and "+N more"; on a phone a dot a visit in its status color; the fill bar
+// (booked of what the crew can do) at the bottom.
+function dayCell(s, d, ctx) {
   const items = dayItems(s, d);
   const live = items.filter((x) => x.k === "t" || !DEAD.includes(x.v.st));
   const booked = liveOn(s.data.visits, d, s.tech).length;
@@ -479,17 +501,25 @@ function dayCell(s, d) {
   const w = dayWx(s.wx, d);
   const t = todayOf(s);
   const cls = ["wk-mday", d.slice(0, 7) !== s.cal ? "out" : "", d === t ? "today" : "", d === s.date ? "sel" : "", [0, 6].includes(dow(d)) ? "wkend" : "", open ? "unclosed" : ""].filter(Boolean).join(" ");
-  const chips = items.length > CHIPS ? items.slice(0, CHIPS - 1) : items;
+  const tasks = items.filter((x) => x.k === "t");
+  const visits = items.filter((x) => x.k === "v");
+  const blocks = [...(tasks.length ? [{ k: "tasks", n: tasks.length }] : []), ...visits];
+  const chips = blocks.length > CHIPS ? blocks.slice(0, CHIPS - 1) : blocks;
+  const dots = visits.length > DOTS ? visits.slice(0, DOTS - 1) : visits;
   const label = [
     `${dateLong(d)}: ${live.length ? plural(live.length, "visit") : "nothing booked"}`,
     f && f.level !== "closed" && f.level !== "open" ? f.label : f && f.level === "closed" ? "closed" : "",
     open ? `${plural(open, "visit")} not marked done` : "", w ? wxWords(w) : "", d === t ? "today" : "",
   ].filter(Boolean).join(", ");
+  const chip = (x) => {
+    if (x.k === "tasks") return html`<span class="wk-mchip task"><span class="nm">${`Tasks: ${x.n}`}</span></span>`;
+    const b = cardBits(x.v, s.cards, { prices: prices(ctx) });
+    return html`<span class="${"wk-mchip st-" + rotorStatus(x.v.st)[0]}" ${attrs({ style: `--c:${colorOf(s.users, x.v.a)}` })}><span class="nm">${b.short}</span><span class="tm num">${x.v.do ? "Any" : shortTime(x.v.s)}</span>${b.price ? html`<b class="amt num">${b.price}</b>` : ""}</span>`;
+  };
   return html`<button type="button" class="${cls}" ${attrs({ "data-mday": d, "aria-pressed": String(d === s.date), "aria-current": d === t ? "date" : false, "aria-label": label, tabindex: d === s.date ? "0" : "-1" })}>
     <span class="wk-mtop" aria-hidden="true"><span class="wk-mnum num">${dayNum(d)}</span>${open ? html`<i class="wk-mopen" ${attrs({ title: `${plural(open, "visit")} not marked done` })}></i>` : ""}${wxMark(w, { pop: true, cls: "wk-wx wk-mwx" })}</span>
-    <span class="wk-mchips" aria-hidden="true">${chips.map((x) => (x.k === "v"
-      ? html`<span class="${"wk-mchip" + (DEAD.includes(x.v.st) ? " dead" : x.v.st === "completed" ? " done" : "")}" ${attrs({ style: `--c:${colorOf(s.users, x.v.a)}` })}><b class="num">${x.v.do ? "Any" : shortTime(x.v.s)}</b> ${cardBits(x.v, s.cards).short}</span>`
-      : html`<span class="wk-mchip task"><b class="num">${shortTime(x.t.start)}</b> ${x.t.title || "Busy"}</span>`))}${items.length > chips.length ? html`<span class="wk-mmore">+${items.length - chips.length} more</span>` : ""}</span>
+    <span class="wk-mchips" aria-hidden="true">${chips.map(chip)}${blocks.length > chips.length ? html`<span class="wk-mmore">+${blocks.length - chips.length} more</span>` : ""}</span>
+    ${visits.length ? html`<span class="wk-mdots" aria-hidden="true">${dots.map((x) => html`<i class="${"st-" + rotorStatus(x.v.st)[0]}"></i>`)}${visits.length > dots.length ? html`<b class="num">+${visits.length - dots.length}</b>` : ""}</span>` : ""}
     <span class="wk-mfill" aria-hidden="true">${f && f.level !== "closed" ? fillBar(f, { count: booked || "" }) : ""}</span>
   </button>`;
 }
@@ -499,10 +529,10 @@ function dayRow(s, v, ctx) {
   const state = DEAD.includes(v.st) ? "dead" : v.st === "completed" ? "done" : "";
   const b = cardBits(v, s.cards, { prices: prices(ctx) });
   const where = s.cards && s.cards.address ? v.ad || v.town || "" : v.ad || v.town || "";
-  return html`<li><a class="${"wk-drow" + (state ? " " + state : "")}" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vopen": v.id })}>
+  return html`<li><a class="${"wk-drow st-" + rotorStatus(v.st)[0] + (state ? " " + state : "")}" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vopen": v.id })}>
     <span class="wk-dt num" ${attrs({ title: slotText(v) })}>${v.do ? html`<b>Anytime</b><small>Time not set</small>` : html`<b>${clock(v.s)}</b><small>to ${clock(v.e)}</small>`}</span>
     <span class="who"><span class="nm">${b.title}</span>${where && b.title !== where ? html`<span class="sub">${where}</span>` : ""}${b.service ? html`<span class="sub">${b.service}</span>` : ""}</span>
-    <span class="wk-dend"><span class="wk-dtop">${v.st === "scheduled" ? warnBadge(w) : ""}${visitPill(v.st)}</span><span class="wk-dbot">${b.price ? html`<b class="wk-amt num">${b.price}</b>` : ""}${(v.a || []).length ? faces(s.users, v.a) : html`<span class="wk-nobody">Nobody yet</span>`}</span></span>
+    <span class="wk-dend"><span class="wk-dtop">${v.st === "scheduled" ? warnBadge(w) : ""}${rotorTag(v.st)}</span><span class="wk-dbot">${b.price ? html`<b class="wk-amt num">${b.price}</b>` : ""}${(v.a || []).length ? faces(s.users, v.a) : html`<span class="wk-nobody">Nobody yet</span>`}</span></span>
   </a></li>`;
 }
 function dayTaskRow(t) {
@@ -544,34 +574,70 @@ function dayPanel(s, ctx) {
 
 function monthView(s, ctx) {
   const g = monthGrid(s.cal);
-  const t = todayOf(s);
   const visits = (s.data.visits || []).filter((v) => v.d.slice(0, 7) === s.cal && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech)));
   const tb = s.toBook && s.toBook.month === s.cal ? s.toBook.n : null;
   const cap = s.data.capacity;
   const perDay = cap ? (s.tech ? cap.per_person : cap.per_day) : null;
   return html`<div class="wk-month">
     <div class="wk-cal card">
-      <div class="wk-mhead">
-        <div class="wk-mname"><h2 class="wk-mtitle">${monthName(s.cal)}</h2><span class="wk-mcount small muted num">${plural(visits.length, "visit")}${s.tech ? ` for ${names(s.users, [s.tech])}` : ""}</span></div>
-        ${tb ? html`<button type="button" class="wk-mtobook" data-totray ${attrs({ "aria-label": `${tb} ${tb === 1 ? "job" : "jobs"} to book: open To book` })}>${icon("clock")}<span class="num">${tb}</span> to book</button>` : ""}
-        <div class="wk-mnav">
-          ${s.cal !== t.slice(0, 7) || s.date !== t ? html`<button type="button" class="btn small" data-cal="today">Today</button>` : ""}
-          <button type="button" class="icon-btn" data-cal="-1" aria-label="Previous month">${icon("back")}</button>
-          <button type="button" class="icon-btn" data-cal="1" aria-label="Next month"><span class="flip">${icon("back")}</span></button>
-        </div>
-      </div>
       <div class="wk-mgrid" role="group" ${attrs({ "aria-label": `${monthName(s.cal)}: pick a day`, "data-weeks": String(g.weeks.length) })}>
         <div class="wk-mdow" aria-hidden="true">${g.weeks[0].map((d) => html`<span>${dowShort(d)}</span>`)}</div>
-        ${g.weeks.map((w) => html`<div class="wk-mweek">${w.map((d) => dayCell(s, d))}</div>`)}
+        ${g.weeks.map((w) => html`<div class="wk-mweek">${w.map((d) => dayCell(s, d, ctx))}</div>`)}
       </div>
       <div class="wk-mfoot">
-        <p class="small muted">${perDay ? html`<span class="wk-mkey"><span class="wk-fbar"><i></i></span>Booked of ${perDay} a day${s.tech ? ` for ${names(s.users, [s.tech])}` : ""}</span>` : ""}<span class="wk-mkey"><i class="wk-mopen"></i>Not marked done</span>${s.wx && Object.keys(s.wx.days || {}).length ? html`<span class="wk-mkey">Forecast: National Weather Service</span>` : ""}</p>
+        <p class="small muted"><span class="wk-mkey wk-mcount num">${plural(visits.length, "visit")}${s.tech ? ` for ${names(s.users, [s.tech])}` : ""}</span>${["ns", "ip", "fin"].map((k) => html`<span class="wk-mkey"><i class="${"wk-mswatch st-" + k}"></i>${{ ns: "Not started", ip: "In progress", fin: "Finished" }[k]}</span>`)}${perDay ? html`<span class="wk-mkey"><span class="wk-fbar"><i></i></span>Booked of ${perDay} a day${s.tech ? ` for ${names(s.users, [s.tech])}` : ""}</span>` : ""}<span class="wk-mkey"><i class="wk-mopen"></i>Not marked done</span>${s.wx && Object.keys(s.wx.days || {}).length ? html`<span class="wk-mkey">Forecast: National Weather Service</span>` : ""}</p>
         ${tb ? html`<button type="button" class="wk-ftobook" data-totray ${attrs({ "aria-label": `${tb} ${tb === 1 ? "job" : "jobs"} to book: open To book` })}><span class="num">${tb}</span> to book<span aria-hidden="true"> ›</span></button>` : ""}
         ${ctx && ctx.can && ctx.can("settings:general") ? html`<button type="button" class="btn small" data-schedset>${icon("gear")}Change</button>` : ""}
       </div>
     </div>
     ${dayPanel(s, ctx)}
   </div>`;
+}
+
+// A desk's head on the month (Rotor's): the views, then ‹ › the month and
+// Today, then To book, the round tools (Find a visit, Map of the day, Who,
+// what the cards show) and More Actions. A phone keeps its own head (flyHead).
+function rotorBar(s, ctx) {
+  const t = todayOf(s);
+  const ym = s.cal || t.slice(0, 7);
+  const mid = new Date(ym + "-15T12:00:00Z");
+  const tb = s.toBook && s.toBook.month === ym ? s.toBook.n : null;
+  const who = s.tech ? names(s.users, [s.tech]) : "Everyone";
+  return html`<div class="wk-rbar">
+    ${viewTabs(s)}
+    <div class="wk-rnav" role="group" aria-label="Month">
+      <button type="button" class="wk-rbtn" data-cal="-1" aria-label="Previous month">${icon("back")}</button>
+      <button type="button" class="wk-rbtn" data-cal="1" aria-label="Next month"><span class="flip">${icon("back")}</span></button>
+      <button type="button" class="wk-rbtn wk-rdate" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${monthName(ym)}: pick a month or a day` })}>${icon("schedule")}<span class="wk-mtitle">${`${MONTH_SHORT.format(mid)} ${ym.slice(0, 4)}`}</span></button>
+      <button type="button" class="wk-rbtn wk-rtoday" data-cal="today" ${attrs({ "aria-pressed": String(ym === t.slice(0, 7) && s.date === t) })}>Today</button>
+    </div>
+    <div class="wk-rtools">
+      ${tb ? html`<button type="button" class="wk-mtobook" data-totray ${attrs({ "aria-label": `${tb} ${tb === 1 ? "job" : "jobs"} to book: open To book` })}>${icon("clock")}<span class="num">${tb}</span> to book</button>` : ""}
+      <div class="wk-tools" role="group" aria-label="Schedule tools">
+        <button type="button" class="wk-round" data-search aria-label="Find a visit">${icon("search")}</button>
+        <button type="button" class="wk-round" data-mapday aria-label="Map of the day">${I.pin}</button>
+        <button type="button" class="${"wk-round" + (s.tech ? " on" : "")}" data-filter ${attrs({ "aria-label": `Who: ${who}`, "aria-pressed": String(!!s.tech) })}>${I.filter}</button>
+        <button type="button" class="wk-round" data-cards aria-label="What the cards show">${icon("gear")}</button>
+      </div>
+      <button type="button" class="wk-rmore" data-more aria-haspopup="dialog">${I.dots}More Actions</button>
+    </div>
+  </div>`;
+}
+
+// More Actions (Rotor's red button): booking, the tray, time blocks, time off, a rain day, the settings.
+function moreSheet(ctx) {
+  const s = ctx.state;
+  const d = s.date || todayOf(s);
+  const tb = s.toBook && s.toBook.month === (s.cal || d.slice(0, 7)) ? s.toBook.n : null;
+  actionSheet("More actions", [
+    [canWrite(ctx) && { label: "Book a job", icon: "plus", hint: dateShort(d), href: `#/jobs/new?book=1&date=${d}` },
+      canWrite(ctx) && { label: tb ? `${tb} to book` : "To book", icon: "clock", hint: "jobs waiting for a day", run: () => toTray(ctx), data: { totray: true } }],
+    [canWrite(ctx) && { label: "Block time", icon: "pause", hint: "part of a day, on the grid", run: () => blockSheet(ctx), data: { block: true } },
+      canWrite(ctx) && { label: "Time off", icon: "clock", href: "#/schedule/time-off" },
+      canWrite(ctx) && { label: "Rain day", icon: "sun", hint: `move ${dateShort(d)}`, href: `#/schedule/move-day?date=${d}` }],
+    [{ label: "Show on cards", icon: "gear", hint: "name, service, price, address", run: () => cardsSheet(ctx), data: { cards: true } },
+      ctx.can && ctx.can("settings:general") && { label: "Schedule settings", icon: "gear", href: "#/settings/schedule" }],
+  ]);
 }
 
 // ------------------------------------------------------------ Day, 3 Day, Week, List, To book
@@ -903,8 +969,7 @@ export default {
     const wideView = month || ["week", "day", "3day"].includes(s.view);
     return html`<div class="${"stack wk wk-v-" + s.view + (wideView ? " wk-wide" : "") + (s.panel ? " wk-sided" : "")}">
       ${flyHead(s, ctx)}
-      ${head(s, ctx)}
-      <div class="wk-bar">${viewTabs(s)}</div>
+      ${month ? rotorBar(s, ctx) : html`${head(s, ctx)}<div class="wk-bar">${viewTabs(s)}</div>`}
       ${STRIP.includes(s.view) && s.date ? weekStrip(s) : ""}
       ${whoChip(s)}
       ${["day", "3day", "week", "list"].includes(s.view) && canWrite(ctx) ? pendingChip(s) || toBookChip(s) : ""}
@@ -974,6 +1039,7 @@ export default {
     // a phone's segmented views (Rotor's) and its filter button
     "click [data-seg=view]": (e, el, ctx) => setView(ctx, el.dataset.key),
     "click [data-fsheet]": (e, el, ctx) => filterSheet(ctx),
+    "click [data-more]": (e, el, ctx) => moreSheet(ctx),
     "click [data-ftoday]": (e, el, ctx) => { const s = ctx.state; if (s.view === "month") s.cal = null; s.date = null; reload(ctx); },
     "click [data-day3]": (e, el, ctx) => { const s = ctx.state; s.date = addDays(s.date, 3 * Number(el.dataset.day3)); reload(ctx); },
     "click [data-view]": (e, el, ctx) => setView(ctx, el.dataset.view),

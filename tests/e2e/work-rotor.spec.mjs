@@ -49,12 +49,14 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       assert.equal(await title(f), `Job ${before.number_label}`);
       assert.ok(await f.isVisible("#top-more"), "the round ...");
       assert.match(await f.textContent(".wk-jtop"), /Booked[\s\S]*Not invoiced/);
-      assert.match(await f.textContent(".wk-jtop .rs-amt"), /^\$\d/);
+      assert.match(await f.textContent(".wk-jstats .rs-stat-v"), /^\$\d/, "Job total");
+      assert.ok(await f.$(".wk-jtop [data-make-invoice]"), "the red Invoice $X");
+      assert.ok(await f.$(".wk-jtop [data-edit-job]"), "Edit job");
       assert.ok(await f.$('.wk-visits a[href^="#/visits/"]'), "the visit row");
       assert.ok(await f.$(".wk-visits [data-book]"), "+ Visit");
-      assert.ok(await f.$('.rs-person a[href^="tel:"]'), "the red call");
-      assert.ok(await f.$('.rs-person a[href^="sms:"]'), "the message");
-      assert.ok(await f.$('.rs-addr a[href^="#/properties/"]'), "the place's pencil");
+      assert.ok(await f.$('.wk-cust a[href^="tel:"]'), "Call");
+      assert.ok(await f.$('.wk-cust a[href^="sms:"]'), "Text");
+      assert.ok(await f.$('.wk-cust a[href^="#/properties/"]'), "the place's pencil");
       for (const b of ["data-add-line", "data-add-discount", "data-make-invoice"]) assert.ok(await f.$(`.wk-pricing [${b}]`), b);
       assert.ok(await f.$('.wk-jnotes [data-notes="crew"]'));
       await checks(f, page, `rotor-job-${device}-${theme}`, problems);
@@ -98,8 +100,9 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
         assert.equal(inv.total_cents, now.totals.total_cents, "the invoice's total is the job's");
         assert.ok(inv.lines.some((l) => l.kind === "discount" && /Neighbor deal/.test(l.description)), "the discount is an invoice line");
         await goTo(f, `/jobs/${id}`);
-        await f.waitForSelector(".wk-jtop .rs-inset");
-        assert.match(await f.textContent(".wk-jtop"), /Invoiced[\s\S]*Invoice [A-Z]+-\d+/);
+        await f.waitForSelector(".wk-invs .wk-irow");
+        assert.match(await f.textContent(".wk-jtop"), /Invoiced[\s\S]*Invoice \$\d/);
+        assert.match(await f.textContent(".wk-invs"), /#[A-Z]+-\d+/);
         assert.equal(await f.$(".wk-pricing [data-make-invoice]"), null, "no second invoice");
         await checks(f, page, `rotor-job-invoiced-${device}-${theme}`, problems);
       } else {
@@ -120,9 +123,9 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       await checks(f, page, `rotor-job-more-${device}-${theme}`, problems);
       await f.click(".sheet.on [data-sheet-x]");
       await sheetGone(f);
-      // the jobs list: Rotor's tiles and Row2 rows (the Service hub, Track 3)
+      // the jobs list: Rotor's tiles and table (two-line rows on a phone)
       await goTo(f, "/jobs");
-      await f.waitForSelector(`.rs-lrow a[href="#/jobs/${id}"] .rs-lr-2`);
+      await f.waitForSelector(`.wk-jtable .rs-trow a[href="#/jobs/${id}"] .rs-td.c-date`);
       await checks(f, page, `rotor-jobs-${device}-${theme}`, problems);
       assert.deepEqual(problems, []);
       await p.clean();

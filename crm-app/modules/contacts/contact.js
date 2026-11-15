@@ -1,31 +1,35 @@
 // One contact (design §9.2 "Contact"): the lead page and the customer
-// page, Rotor's (the owner, Nov 2026: "make it like Rotor, with the same
-// capability as desktop"; build spec §4.1, §4.2). Nothing of the earlier
-// page is gone; it moved into Rotor's places:
+// page, Rotor's profile (the owner, Nov 2026: "make the customer pages look
+// like Rotor"; screenshots 10-13 and 17). Nothing of the earlier page is
+// gone; it moved into Rotor's places:
 //
-//   the header      round back · (no title: the name is the page's) · a
-//                   round pencil (Edit) · the round "..." (every other
-//                   action, in groups, Archive and Mark lost red at the end)
-//   the name        30 px, a pill on the right: the lead's priority (Low,
-//                   Medium, High: Rotor's) or, without one, the deal's stage
-//                   ("Quoted", "New"); under it white pills: the plan
-//                   (green), the owner (a tap picks one), "Lead since
-//                   Nov 17" / "Customer since 2026", VIP, test, do not service
-//   Details | Activity  segmented, remembered for this contact; on a wide
-//                   screen both, side by side
-//   Details         the stat card (a lead: STAGE, FOLLOW UP, VALUE, SOURCE,
-//                   NEXT VISIT; a customer: BALANCE, LIFETIME, NEXT VISIT,
-//                   PLAN, SOURCE; money only for someone who may see it),
-//                   CONTACT rows (every phone with a grey round text and a red
-//                   round call, every email with a round copy, the address
-//                   with a round navigate), the satellite (a customer's under
-//                   PRIMARY PROPERTY), then the modules' cards with a round +
-//                   (Quotes, Follow-ups, Tasks, Visits, Plan, Invoices,
-//                   Payment), Properties, "About to be sent" on one line (a
-//                   sheet with the list), Notes (the box saves itself; + adds
-//                   a dated note) and About (folded)
-//   Activity        Messages, Calls, Deals, the timeline (Show all) and Texts
-//                   and email (consent, Change)
+//   the header      round back · (no title on a phone: the name is the
+//                   page's) · a round pencil (Edit) · the round "..." (every
+//                   other action, in groups, Archive and Mark lost red last)
+//   the profile     Rotor's left column (a phone: the top of the page; a
+//                   desk with room: a 320 px column on the left): the name
+//                   with its pill (Active; a lead's priority or stage), the
+//                   summary box (a customer: LIFETIME VALUE, SALE VALUE,
+//                   FREQUENCY, SERVICE TYPE; a lead: STAGE, EST. VALUE,
+//                   FOLLOW-UP, NEXT VISIT; money only for someone who may see
+//                   it), email and phone rows (text, call), Mute, "About to be
+//                   sent", the primary property and its satellite, Customer
+//                   notes, Source, Assigned, Tags, Created, Converted (the rest
+//                   folded under More details), then Create Customer (a lead),
+//                   Edit, Portal and "..."
+//   the tabs        Rotor's, a scrollable segmented row (underlined on a
+//                   desk): a customer Service | Payments | Conversation |
+//                   Opportunities | Activity | Files; a lead Conversation |
+//                   Service | Opportunities | Payments | Activity | Files
+//   Service         the tiles (Scheduled jobs x/y, Avg completed job, Avg
+//                   future job, Outstanding), then Service Plans, Scheduled
+//                   Jobs, Pending Jobs (Delay, Schedule), Quotes, Requests,
+//                   each with its red "+ New" pill, and Properties
+//   Payments        Payment method, billing cycles, Invoices
+//   Conversation    Messages, Texts and email (consent)
+//   Opportunities   Follow-ups (the pipelines), Deals, Tasks
+//   Activity        the timeline (Show all), Calls
+//   Files           photos and PDFs kept on the contact
 //
 // Modules add their parts through their manifests' `contactTabs` (the name
 // stays): { key, label, order, load: () => import("./contact-tab.js"),
@@ -44,7 +48,7 @@
 // A technician sees only what the server gives them: the name, the numbers
 // to call and the properties of their visits.
 
-import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, statGrid, contactRows, statusPill, pillTap, notesBox, disclosure, addressCard, tileRow, formRows, formRow, toggle, openExternal } from "../../core/ui.js";
+import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, contactRows, statusPill, pillTap, pillBtn, rnd, actionSheet, notesBox, disclosure, addressCard, tileRow, formRows, formRow, toggle, openExternal } from "../../core/ui.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
 import { field, select, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { dateShort, dateTime, dateYear, money, ago, localDate } from "../../core/format.js";
@@ -57,24 +61,36 @@ import {
   tierPill, forgetIndex, followRun, LIFECYCLE,
 } from "./kit.js";
 
-// Where a module's part goes when it has no cards() of its own (the old `place`): aside → Activity.
+// Where a module's part goes when it has no cards() of its own (the old `place`): aside → Conversation.
 const MODULE_PLACES = new Set(["visits", "plan", "docs", "aside", "more"]);
 // An old tab → the card it is now.
-const OLD_TAB = { overview: "ct-stat", activity: "ct-card-activity", properties: "ct-card-properties", messages: "ct-mod-messages" };
+const OLD_TAB = { overview: "ct-stat", activity: "ct-card-activity", properties: "ct-card-properties", messages: "ct-mod-messages", files: "ct-card-files" };
 const SHOW = 4;            // a long list shows this many, then "Show all"
-// The cards in Rotor's order: a lead's, a customer's (a module's card not named here comes after, in module order).
-export const LEAD_ORDER = Object.freeze(["quotes", "followups", "tasks", "visits", "plan", "invoices", "payment", "properties", "queued", "notes", "about"]);
-export const CUSTOMER_ORDER = Object.freeze(["visits", "plan", "quotes", "invoices", "payment", "properties", "followups", "tasks", "queued", "notes", "about"]);
-export const ACTIVITY_ORDER = Object.freeze(["messages", "calls", "deals", "activity", "consent"]);
-// Rotor's 6 tabs folded into 4 (guide-gaps C17, the owner's default): Details | Service | Payments | Activity.
-// Service: the work, plans, quotes, requests and the pipelines (follow-ups); Payments: invoices and the card.
-export const PANES = Object.freeze([["details", "Details"], ["service", "Service"], ["payments", "Payments"], ["activity", "Activity"]]);
-export const SERVICE_CARDS = Object.freeze(["pending", "visits", "plan", "quotes", "requests", "followups"]);
-export const PAYMENT_CARDS = Object.freeze(["invoices", "payment", "cycles"]);
-const SERVICE_LEAD = ["quotes", "followups", "requests", "pending", "visits", "plan"];
-// a module's loading (or failed) card: where its cards will be
-const MOD_PANE = { work: "service", plans: "service", quotes: "service", service: "service", money: "payments", comms: "activity" };
-export const paneOf = (x) => (x.tab === "activity" ? "activity" : SERVICE_CARDS.includes(x.key) ? "service" : PAYMENT_CARDS.includes(x.key) ? "payments" : x.tab === "service" || x.tab === "payments" ? x.tab : "details");
+// Rotor's tabs (Attachments is "Files"): a customer's, a lead's (17-lead-detail: Conversation first).
+export const PANES = Object.freeze([["service", "Service"], ["payments", "Payments"], ["conversation", "Conversation"], ["opportunities", "Opportunities"], ["activity", "Activity"], ["files", "Files"]]);
+export const LEAD_PANES = Object.freeze([["conversation", "Conversation"], ["service", "Service"], ["opportunities", "Opportunities"], ["payments", "Payments"], ["activity", "Activity"], ["files", "Files"]]);
+const PANE_KEYS = PANES.map(([k]) => k);
+// The cards of each tab, in Rotor's order (a module's card not named here goes by its own `tab`, Service by default).
+export const PANE_CARDS = Object.freeze({
+  service: ["plan", "visits", "pending", "quotes", "requests", "properties"],
+  payments: ["payment", "cycles", "invoices"],
+  conversation: ["messages", "consent"],
+  opportunities: ["followups", "deals", "tasks"],
+  activity: ["activity", "calls"],
+  files: ["files"],
+});
+export const SERVICE_CARDS = PANE_CARDS.service;
+export const PAYMENT_CARDS = PANE_CARDS.payments;
+// a lead's Service: what they asked for and were quoted first
+const SERVICE_LEAD = ["quotes", "requests", "plan", "visits", "pending", "properties"];
+// a module's loading (or failed, or old one-card) part: the tab its cards will be on
+const MOD_PANE = { work: "service", plans: "service", quotes: "service", service: "service", money: "payments", comms: "conversation", sales: "opportunities" };
+export const paneOf = (x) => {
+  for (const [k, list] of Object.entries(PANE_CARDS)) if (list.includes(x.key)) return k;
+  return PANE_KEYS.includes(x.tab) ? x.tab : "service";
+};
+// An old ?tab= link (or a tab remembered from before) → the tab it is now.
+const JUMP_PANE = { activity: "activity", messages: "conversation", money: "payments", work: "service", plans: "service", quotes: "service", requests: "service", sales: "opportunities", files: "files", properties: "service" };
 // The "..." rows the modules give, in Rotor's groups (a lead: follow up first; a customer: book first).
 const LEAD_ACTS = [["call", "follow", "task"], ["quote", "book", "plan", "invoice", "credit", "cardlink"]];
 const CUSTOMER_ACTS = [["book", "quote", "plan", "invoice", "credit", "cardlink"], ["call", "follow", "task"]];
@@ -122,8 +138,10 @@ async function load(params, ctx) {
   const secs = tech ? [] : contactSections(MANIFESTS, ctx.can).map((def) => ({ def, key: def.key, mod: null, state: null, loading: true, failed: null }));
   const jump = askedTab(ctx);
   delete ctx.keep.tab;
-  // Details | Activity, remembered for this contact while the app is open (an old ?tab=activity link opens Activity)
-  const pane = jump === "activity" || jump === "messages" ? "activity" : jump === "money" ? "payments" : jump === "work" || jump === "plans" ? "service" : PANES.some(([k]) => k === ctx.keep.pane) ? ctx.keep.pane : "details";
+  // the tab: an old ?tab= link's, else the one used last on this contact while the app is open, else Rotor's
+  // first (a customer: Service; a lead: Conversation)
+  const first = d.contact && d.contact.lifecycle === "lead" ? "conversation" : "service";
+  const pane = JUMP_PANE[jump] || (PANE_KEYS.includes(jump) ? jump : PANE_KEYS.includes(ctx.keep.pane) ? ctx.keep.pane : first);
   return { ...d, etag: r.etag, tech, users, secs, activity: tech ? [] : null, files: tech || !ctx.can("contacts:read_all") ? [] : null, jump, pane, offline: !!r.offline, started: false };
 }
 
@@ -223,12 +241,13 @@ const userName = (s, id) => (s.users.find((u) => u.id === id) || {}).name || "So
 const primaryProp = (s) => (s.properties || []).find((p) => p.id === s.contact.primary_property_id) || (s.properties || [])[0] || null;
 const hasHighTag = (c) => (c.tags || []).some((t) => String(t).toLowerCase() === "high priority");
 
-// The pill right of the name: the lead's priority (Rotor's), else the deal's stage; a customer's priority only.
+// The pill right of the name (Rotor's): a customer "Active"; a lead's priority, else the deal's stage.
 export function topPill(s, facts = {}) {
   const c = s.contact;
+  if (c.lifecycle === "customer") return statusPill("Active", "green");
   if (PRIORITY[c.priority]) return statusPill(PRIORITY[c.priority], c.priority === "low" ? "grey" : "orange");
   if (hasHighTag(c)) return statusPill("High priority", "orange");
-  if (c.lifecycle !== "lead") return c.lifecycle === "customer" ? "" : statusPill(LIFECYCLE[c.lifecycle] || c.lifecycle, c.lifecycle === "archived" ? "grey" : "amber");
+  if (c.lifecycle !== "lead") return statusPill(LIFECYCLE[c.lifecycle] || c.lifecycle, c.lifecycle === "archived" ? "grey" : "amber");
   const word = facts.deal_status === "quoted" ? "Quoted" : facts.enrollment_id ? "Following up" : facts.deal_id ? "Open" : "New";
   return statusPill(word, word === "Following up" ? "amber" : "blue");
 }
@@ -236,46 +255,44 @@ export function topPill(s, facts = {}) {
 function top(s, ctx) {
   const c = s.contact;
   const facts = s.tech ? {} : fromSections(s, ctx);
-  const plan = facts.plan || ((s.stats && s.stats.plans && (s.stats.plans.active_plan_ids || []).length) ? "On a plan" : "");
   const flags = c.flags || {};
-  const owner = c.owner_id ? userName(s, c.owner_id) : "Unassigned";
+  const any = flags.vip || flags.test || flags.do_not_service;
   return html`<header class="ct-head" id="ct-head" aria-label="${c.display_name || "Contact"}">
     <div class="rs-name"><h2>${c.display_name || "No name"}</h2>${s.tech ? "" : topPill(s, facts)}</div>
-    ${s.tech ? "" : html`<div class="rs-pills ct-pills">
-      ${plan ? statusPill(plan, "fill-green", { icon: "swap" }) : ""}
-      ${ctx.can("contacts:write") && ctx.can("schedule:read") ? pillTap(owner, { icon: "user", data: { "pick-owner": true }, aria: `Owner: ${owner}. Change` }) : statusPill(owner, "white", { icon: "user" })}
-      ${sinceText(s) ? statusPill(sinceText(s), "white") : ""}
-      ${flags.vip ? statusPill("VIP", "solid") : ""}${flags.test ? statusPill("Test contact", "blue") : ""}${flags.do_not_service ? statusPill("Do not service", "red") : ""}
-    </div>`}
+    ${!s.tech && any ? html`<div class="rs-pills ct-pills">${flags.vip ? statusPill("VIP", "solid") : ""}${flags.test ? statusPill("Test contact", "blue") : ""}${flags.do_not_service ? statusPill("Do not service", "red") : ""}</div>` : ""}
   </header>`;
 }
 
-// The stat card: a lead's deal and follow-up, a customer's money, the next visit, the source.
-function stats(s, ctx) {
+// Rotor's summary box: a customer's LIFETIME VALUE, SALE VALUE, FREQUENCY, SERVICE TYPE; a lead's STAGE,
+// EST. VALUE, FOLLOW-UP (and the next visit). Someone who may not see money gets the next visit and the source.
+export function summaryItems(s, can, facts = {}) {
   const c = s.contact;
-  const facts = fromSections(s, ctx);
-  const nums = Object.fromEntries(headerNumbers(s, ctx.can, facts).map((n) => [n.key, n]));
+  const nums = Object.fromEntries(headerNumbers(s, can, facts).map((n) => [n.key, n]));
   const src = (c.source && c.source.source) || "";
-  const items = [];
-  if (lead(s)) {
-    const sales = ctx.can("sales:work");
-    if (sales) {
-      // (Rotor's stage is the pipeline's: the follow-up's name, "Estimate sent - not scheduled" → "Estimate sent"; its step is on the Follow-ups card)
-      const stage = facts.pipeline ? String(facts.pipeline).split(" - ")[0] : facts.stage || (facts.deal_status === "quoted" ? "Quoted" : facts.deal_id ? "Open" : "New");
-      items.push({ label: "Stage", value: stage, href: facts.deal_id ? "#/deals/" + encodeURIComponent(facts.deal_id) : facts.enrollment_id ? "#/enrollments/" + encodeURIComponent(facts.enrollment_id) : null });
-      items.push({ label: "Follow up", value: facts.follow_up ? dateShort(facts.follow_up) : "-", href: facts.enrollment_id ? "#/enrollments/" + encodeURIComponent(facts.enrollment_id) : null });
-      items.push({ label: "Value", value: facts.deal_value === undefined || facts.deal_value === null ? "-" : money(facts.deal_value).replace(/\.00$/, "") });
-    }
-    items.push({ label: "Source", value: src || "Not known", wide: sales });
-    items.push({ label: "Next visit", value: nums.next.value });
-  } else {
-    if (nums.balance) items.push({ label: "Balance", value: nums.balance.value, tone: nums.balance.bad ? "red" : null });
-    if (nums.lifetime) items.push({ label: "Lifetime", value: nums.lifetime.value });
-    items.push({ label: "Next visit", value: nums.next.value });
-    items.push({ label: "Plan", value: facts.plan || "None", wide: true });
-    items.push({ label: "Source", value: src || "Not known" });
+  if (c.lifecycle === "lead") {
+    if (!can("sales:work")) return [{ key: "source", label: "Source", value: src || "Not known" }, { key: "next", label: "Next visit", value: nums.next.value }];
+    // (Rotor's stage is the pipeline's: the follow-up's name, "Estimate sent - not scheduled" → "Estimate sent"; its step is on the Follow-ups card)
+    const stage = facts.pipeline ? String(facts.pipeline).split(" - ")[0] : facts.stage || (facts.deal_status === "quoted" ? "Quoted" : facts.deal_id ? "Open" : "New");
+    return [
+      { key: "stage", label: "Stage", value: stage, href: facts.deal_id ? "#/deals/" + encodeURIComponent(facts.deal_id) : facts.enrollment_id ? "#/enrollments/" + encodeURIComponent(facts.enrollment_id) : null },
+      { key: "value", label: "Est. value", value: facts.deal_value === undefined || facts.deal_value === null ? "-" : money(facts.deal_value) },
+      { key: "follow", label: "Follow-up", value: facts.follow_up ? dateShort(facts.follow_up) : "-", href: facts.enrollment_id ? "#/enrollments/" + encodeURIComponent(facts.enrollment_id) : null },
+      { key: "next", label: "Next visit", value: nums.next.value },
+    ];
   }
-  return html`<div id="ct-stat">${statGrid(items, { label: lead(s) ? "Lead details" : "Customer details" })}</div>`;
+  const out = nums.lifetime
+    ? [{ key: "lifetime", label: "Lifetime value", value: nums.lifetime.value }, { key: "sale", label: "Sale value", value: Number.isSafeInteger(facts.sale_value) ? money(facts.sale_value) : "-" }]
+    : [{ key: "next", label: "Next visit", value: nums.next.value }, { key: "source", label: "Source", value: src || "Not known" }];
+  return [...out, { key: "frequency", label: "Frequency", value: facts.frequency || "-" }, { key: "type", label: "Service type", value: facts.service_type || "-" }];
+}
+
+function summary(s, ctx) {
+  const items = summaryItems(s, ctx.can, fromSections(s, ctx));
+  const cell = (x) => {
+    const inner = html`<span class="ct-sv-l">${x.label}</span><span class="ct-sv-v">${x.value === undefined || x.value === null || x.value === "" ? "-" : x.value}</span>`;
+    return x.href ? html`<a class="ct-sv" ${attrs({ href: x.href, "data-sv": x.key })}>${inner}</a>` : html`<div class="ct-sv" ${attrs({ "data-sv": x.key })}>${inner}</div>`;
+  };
+  return html`<div id="ct-stat" class="ct-sum" role="group" aria-label="${lead(s) ? "Lead summary" : "Customer summary"}">${items.map(cell)}</div>`;
 }
 
 // CONTACT: every phone (a grey round text, a red round call), every email (a round copy; the address mails), the address (a round navigate).
@@ -293,10 +310,10 @@ function reach(s, ctx) {
     ...phones.map((p) => ({ icon: "call", label: plabel(p), value: phoneText(p.e164), href: telHref(p.e164), actions: [
       p.sms !== false && { icon: "chat", label: `Text ${name}`, href: smsHref(p.e164) },
       { icon: "call", label: `Call ${name}`, tone: "red", href: telHref(p.e164) }] })),
-    ...emails.map((e) => ({ icon: "mail", label: "Email", value: e.address, href: mailHref(e.address), actions: [{ icon: "copy", label: "Copy the email", data: { copy: e.address } }] })),
+    ...emails.map((e) => ({ icon: "mail", label: "Email", value: e.address, href: mailHref(e.address), actions: [{ icon: "copy", label: "Copy the email", data: { copy: e.address } }, { icon: "send", label: `Email ${name}`, href: mailHref(e.address) }] })),
     lines.length && (lead(s) || s.tech || !prop) && { icon: "pin", label: lead(s) ? "Address" : "Billing address", value: lines[0], sub: lines[1] || null, actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(geo || addressLine(addr)) }] },
   ].filter(Boolean);
-  return html`${sectionLabel("Contact")}${rows.length ? contactRows(rows) : html`<div class="rs-card"><p class="rs-empty">No phone, email or address on file</p></div>`}`;
+  return html`<div class="ct-reach" id="ct-reach">${rows.length ? contactRows(rows) : html`<div class="rs-card"><p class="rs-empty">No phone, email or address on file</p></div>`}</div>`;
 }
 
 // The property from above (the map's keyless aerial), and a customer's primary property over it.
@@ -316,10 +333,16 @@ function satellite(s, ctx) {
 // ------------------------------------------------------------ the cards
 
 const loadingBody = html`<div class="ct-loading" aria-busy="true"><span class="sk w70"></span><span class="sk w50"></span></div>`;
-// One card: its head (title, count, a round +), its body or the one-line empty text.
+// One card: its head (title, count, a round +; Rotor's red "+ New Plan" pill when the add has a short name),
+// its body or the one-line empty text.
+function head(x) {
+  if (!x.add || !x.add.short) return cardHead(x.title, { add: x.add || null, edit: x.edit || null, count: x.count });
+  const a = x.add;
+  return html`<div class="rs-ch"><h3>${x.title}</h3>${x.count ? html`<span class="rs-ch-n">${String(x.count)}</span>` : ""}<span class="rs-ch-end">${pillBtn(a.short, { icon: "plus", tone: "red", href: a.href || null, ext: a.ext || null, data: a.data || null, aria: a.label || a.short })}</span></div>`;
+}
 function card(x) {
   return html`<section ${attrs({ class: "rs-card ct-card" + (x.cls ? " " + x.cls : ""), id: x.id || "ct-card-" + x.key, "data-card": x.key, "data-mod": x.mod || null, "aria-label": x.title })}>
-    ${cardHead(x.title, { add: x.add || null, edit: x.edit || null, count: x.count })}
+    ${head(x)}
     ${x.body ? html`<div class="ct-cb ct-clip" ${attrs({ "data-clip": x.key })}>${x.body}</div>` : html`<p class="rs-empty">${x.empty || "Nothing yet"}</p>`}
   </section>`;
 }
@@ -330,11 +353,10 @@ function moduleCards(s, ctx) {
   for (const r of s.secs || []) {
     if (!shown(r)) continue;
     const def = r.def;
-    const tab = def.place === "aside" ? "activity" : "details";
     const title = def.title || def.heading || def.label;
     // (where its old place sits in Rotor's order)
     const sortKey = { visits: "visits", plan: "plan", docs: "invoices", more: "followups", aside: "messages" }[def.place];
-    const pane = MOD_PANE[def.module] || tab;
+    const pane = MOD_PANE[def.module] || (def.place === "aside" ? "conversation" : "service");
     if (r.loading) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab: pane, title, body: loadingBody }); continue; }
     if (r.failed) { out.push({ key: "mod-" + r.key, sortKey, mod: r.key, tab: pane, title, body: html`<div class="ct-failed"><p>${def.label || "This part"} didn't load. ${r.failed}</p><button type="button" class="btn small" ${attrs({ "data-retry-sec": r.key })}>Try again</button></div>` }); continue; }
     let list = null;
@@ -356,7 +378,7 @@ function propertiesCard(s, ctx) {
     return [a.gate_code ? `Gate ${a.gate_code}` : "", a.pets || "", x.stories ? `${x.stories} ${x.stories === 1 ? "story" : "stories"}` : "", a.parking ? `Parking: ${a.parking}` : "", a.notes || ""].filter(Boolean);
   };
   return {
-    key: "properties", tab: "details", title: "Properties", count: list.length > 1 ? `${list.length} properties` : null, empty: "No property yet",
+    key: "properties", tab: "service", title: "Properties", count: list.length > 1 ? `${list.length} properties` : null, empty: "No property yet",
     add: ctx.can("contacts:write") ? { label: "Add a property", data: { "add-prop": true } } : null,
     body: list.length ? html`<ul class="list ct-props">${list.map((p) => {
       const n = notes(p);
@@ -405,29 +427,40 @@ function queuedSheet(s) {
 function notesCard(s, ctx) {
   const c = s.contact;
   const write = ctx.can("contacts:write");
-  return { key: "notes", tab: "details", title: customer(s) ? "Customer notes" : "Notes", add: write ? { label: "Add a dated note", data: { note: true } } : null,
+  return { key: "notes", tab: "profile", title: customer(s) ? "Customer notes" : "Notes", add: write ? { label: "Add a dated note", data: { note: true } } : null,
     body: write ? notesBox(c.notes, { name: "ct-notes", label: "Notes", placeholder: lead(s) ? "Add notes for this lead..." : "Add notes for this customer...", rows: 3 }) : c.notes ? html`<p class="ct-pre">${c.notes}</p>` : null, empty: "No notes yet" };
 }
 
-function aboutCard(s, ctx) {
+// Rotor's facts under the notes: Source, Assigned (a tap picks the owner), Tags, Created, Customer since, Converted
+// from a lead; the rest (where the ad came from, the code, the last service, Rotor) folded under More details.
+function factsCard(s, ctx) {
   const c = s.contact;
   const src = c.source || {};
   const open = !!ctx.keep.about;
-  return html`<div id="ct-card-about" data-card="about">${disclosure("About", { sub: open ? null : "where they came from, owner, Rotor", data: { about: true } })}
-    ${open ? html`<section class="rs-card ct-about"><dl class="kv">
-      ${s.stats && s.stats.contacts && s.stats.contacts.customer_since ? html`<dt>Customer since</dt><dd>${dateShort(s.stats.contacts.customer_since)}</dd>` : ""}
-      ${c.converted_at ? html`<dt>Was a lead</dt><dd>from ${dateShort(c.created_at)} · became a customer ${dateShort(c.converted_at)}</dd>` : ""}
-      ${s.stats && s.stats.work && s.stats.work.last_service_on ? html`<dt>Last service</dt><dd>${dateShort(s.stats.work.last_service_on)}</dd>` : ""}
-      <dt>Source</dt><dd>${src.qr_code && src.campaign ? `${src.campaign} (QR code) · ${src.source || "Website quote form"}` : src.source || "Not known"}${src.channel ? ` · heard from ${src.channel}` : ""}</dd>
-      ${src.form || src.ad ? html`<dt>Meta</dt><dd>${[src.form, src.ad, src.campaign].filter(Boolean).join(" · ")}</dd>` : ""}
-      ${src.county ? html`<dt>County</dt><dd>${src.county}</dd>` : ""}
-      ${src.promo_code || src.referral_code ? html`<dt>Code</dt><dd>${src.referral_code || src.promo_code}</dd>` : ""}
-      ${c.owner_id ? html`<dt>Owner</dt><dd>${userName(s, c.owner_id)}</dd>` : ""}
-      ${PRIORITY[c.priority] ? html`<dt>Priority</dt><dd>${PRIORITY[c.priority]}</dd>` : ""}
-      <dt>Added</dt><dd>${dateShort(c.created_at)}</dd>
-      ${c.rotor && (c.rotor.customer_id || (c.rotor.lead_ids || []).length) ? html`<dt>Rotor</dt><dd>Linked${c.import ? " (imported)" : ""}</dd>` : html`<dt>Rotor</dt><dd>${c.intake_pending_rotor ? "Waiting for the next import to link it" : "Made in the CRM"}</dd>`}
-    </dl>
-    ${(c.tags || []).length ? html`<div class="ct-tags">${c.tags.map((t) => html`<span class="pill">${t}</span>`)}</div>` : ""}</section>` : ""}</div>`;
+  const owner = c.owner_id ? userName(s, c.owner_id) : "Unassigned";
+  const since = s.stats && s.stats.contacts && s.stats.contacts.customer_since;
+  const kv = (label, value) => html`<dt>${label}</dt><dd>${value}</dd>`;
+  return html`<div class="ct-facts" id="ct-card-about" data-card="about"><section class="rs-card" aria-label="About">
+    <dl class="ct-kv">
+      ${kv("Source", `${src.qr_code && src.campaign ? `${src.campaign} (QR code) · ` : ""}${src.source || "Not known"}${src.channel ? ` · heard from ${src.channel}` : ""}`)}
+      ${kv("Assigned", ctx.can("contacts:write") && ctx.can("schedule:read") ? pillTap(owner, { icon: "user", data: { "pick-owner": true }, aria: `Assigned: ${owner}. Change` }) : owner)}
+      ${kv("Tags", (c.tags || []).length ? html`<span class="ct-tags">${c.tags.map((t) => statusPill(t, "white", { icon: "flag" }))}</span>` : "None")}
+      ${kv("Created", dateYear(c.created_at))}
+      ${customer(s) && since ? kv(c.lifecycle === "customer" ? "Customer since" : "Former customer, since", dateYear(since)) : ""}
+      ${c.converted_at ? kv("Converted from lead", dateYear(c.converted_at)) : ""}
+    </dl></section>
+    ${disclosure("More details", { sub: open ? null : "the ad, codes, last service, Rotor", data: { about: true } })}
+    ${open ? html`<section class="rs-card" aria-label="More details"><dl class="ct-kv">
+      ${c.converted_at ? kv("Was a lead", `from ${dateShort(c.created_at)} · became a customer ${dateShort(c.converted_at)}`) : ""}
+      ${s.stats && s.stats.work && s.stats.work.last_service_on ? kv("Last service", dateShort(s.stats.work.last_service_on)) : ""}
+      ${src.form || src.ad ? kv("Meta", [src.form, src.ad, src.campaign].filter(Boolean).join(" · ")) : ""}
+      ${src.county ? kv("County", src.county) : ""}
+      ${src.promo_code || src.referral_code ? kv("Code", src.referral_code || src.promo_code) : ""}
+      ${PRIORITY[c.priority] ? kv("Priority", PRIORITY[c.priority]) : ""}
+      ${kv("Added", `${dateShort(c.created_at)}${sinceText(s) ? ` · ${sinceText(s)}` : ""}`)}
+      ${c.rotor && (c.rotor.customer_id || (c.rotor.lead_ids || []).length) ? kv("Rotor", `Linked${c.import ? " (imported)" : ""}`) : kv("Rotor", c.intake_pending_rotor ? "Waiting for the next import to link it" : "Made in the CRM")}
+    </dl></section>` : ""}
+  </div>`;
 }
 
 function activityCard(s) {
@@ -446,7 +479,7 @@ function activityCard(s) {
 
 function consentCard(s, ctx) {
   const c = s.contact;
-  return { key: "consent", tab: "activity", title: "Texts and email", edit: ctx.can("consent:edit") ? { label: "Change texts and email", data: { consent: true } } : null,
+  return { key: "consent", tab: "conversation", title: "Texts and email", edit: ctx.can("consent:edit") ? { label: "Change texts and email", data: { consent: true } } : null,
     body: html`<dl class="kv">${Object.entries(CONSENT).map(([k, label]) => html`<dt>${label}</dt><dd>${consentPill((c.consent && c.consent[k] && c.consent[k].state) || "unknown")}</dd>`)}</dl>
       ${c.automations_paused ? html`<div class="warn-box ct-warn">Automated ${Object.keys(c.automations_paused).map((k) => (k === "sms" ? "texts" : "email")).join(" and ")} paused: ${Object.values(c.automations_paused).map((x) => x.reason).join("; ")}</div>` : ""}
       <p class="small muted ct-fine">An opt-out (STOP) is per number and always wins; see Settings → Messaging.</p>` };
@@ -462,12 +495,18 @@ export function serviceTiles(s) {
   }
   return out.map((t) => ({ ...t, info: true }));
 }
+function tilesOf(s, ctx) {
+  const out = serviceTiles(s);
+  const bal = headerNumbers(s, ctx.can).find((n) => n.key === "balance");
+  if (bal && !out.some((t) => t.key === "owed")) out.push({ key: "owed", label: "Outstanding", value: bal.value === "-" ? "$0" : bal.value.replace(/\.00$/, ""), tone: bal.bad ? "red" : null, info: true });
+  return out;
+}
 
 // Mute (Rotor's switch, up front): automated texts paused or not; a tap opens the same pause sheet as the "...".
 function muteRow(s, ctx) {
   if (!ctx.can("consent:edit")) return "";
   const p = s.contact.automations_paused && s.contact.automations_paused.sms;
-  return html`<div id="ct-mute">${formRows([formRow("Mute automated messages", toggle(!!p, { data: { mute: true }, label: "Mute automated messages" }), { hint: p ? `Paused: ${p.reason || "no reason given"}` : "Reminders and follow-up texts go out" })])}</div>`;
+  return html`<div id="ct-mute">${formRows([formRow(html`<span class="ct-mute-l">${icon("bell")}Mute</span>`, toggle(!!p, { data: { mute: true }, label: "Mute automated messages" }), { hint: p ? `Paused: ${p.reason || "no reason given"}` : "Reminders and follow-up texts go out" })])}</div>`;
 }
 
 // Files (Rotor's Attachments tab, as a card): photos and PDFs kept on the contact; + adds one.
@@ -476,7 +515,7 @@ function filesCard(s, ctx) {
   if (s.files === undefined || !ctx.can("contacts:read_all")) return null;
   const list = s.files || [];
   return {
-    key: "files", tab: "details", title: "Files", count: list.length ? String(list.length) : null, empty: "No files yet",
+    key: "files", tab: "files", title: "Files", count: list.length ? String(list.length) : null, empty: "No files yet",
     add: ctx.can("contacts:write") ? { label: "Add a file", data: { "add-file": true } } : null,
     body: s.files === null ? loadingBody : list.length ? html`<ul class="list ct-files">${list.map((f) => html`<li><a class="row" ${attrs({ href: f.url, target: "_blank", rel: "noopener" })}><span class="ico">${icon(f.content_type === "application/pdf" ? "doc" : "camera")}</span><span class="who"><span class="nm">${f.caption || (f.content_type === "application/pdf" ? "PDF" : "Photo")}</span><span class="sub">${dateShort(f.created_at)} · ${kb(f.bytes || 0)}</span></span><span class="chev" aria-hidden="true"></span></a></li>`)}</ul>` : null,
   };
@@ -528,6 +567,21 @@ function moreGroups(s, ctx) {
 
 // ------------------------------------------------------------ the page
 
+// Rotor's buttons at the foot of the profile: Create Customer (a lead), Edit, Portal and the "..." (the header's).
+function profileButtons(s, ctx) {
+  const c = s.contact;
+  const write = ctx.can("contacts:write");
+  const archived = c.lifecycle === "archived";
+  return html`<div class="ct-btns">
+    ${lead(s) && write ? pillBtn("Create Customer", { tone: "red", wide: true, data: { "make-customer": true }, aria: "Make this lead a customer" }) : ""}
+    <div class="ct-btn-row">
+      ${write ? pillBtn("Edit", { icon: "edit", tone: "solid", href: "#/contacts/" + encodeURIComponent(c.id) + "/edit", aria: lead(s) ? "Edit lead" : "Edit customer" }) : ""}
+      ${write && !archived ? pillBtn("Portal", { icon: "share", data: { portal: true }, aria: "Open their portal" }) : ""}
+      ${rnd("more", "More actions", { tone: "grey", sm: true, popup: true, data: { "ct-more": true } })}
+    </div>
+  </div>`;
+}
+
 function render(s, ctx) {
   if (s.redirect) return html``;
   if (s.tech) {
@@ -536,28 +590,42 @@ function render(s, ctx) {
       ${top(s, ctx)}${reach(s, ctx)}${card(propertiesCard(s, ctx))}
     </div>`;
   }
-  const mods = moduleCards(s, ctx);
-  const order = byOrder(lead(s) ? LEAD_ORDER : CUSTOMER_ORDER);
-  const details = [...mods.filter((x) => x.tab === "details"), propertiesCard(s, ctx), filesCard(s, ctx), notesCard(s, ctx)].filter(Boolean).sort(order);
-  const service = mods.filter((x) => x.tab === "service").sort(byOrder(lead(s) ? SERVICE_LEAD : SERVICE_CARDS));
-  const payments = mods.filter((x) => x.tab === "payments").sort(byOrder(PAYMENT_CARDS));
-  const activity = [...mods.filter((x) => x.tab === "activity"), activityCard(s), consentCard(s, ctx)].sort(byOrder(ACTIVITY_ORDER));
-  const pane = PANES.some(([k]) => k === s.pane) ? s.pane : "details";
-  const tiles = serviceTiles(s);
-  const paneDiv = (key, label, body) => html`<div ${attrs({ class: "ct-pane rs-page" + (pane === key ? "" : " off"), "data-pane": key, role: "tabpanel", "aria-label": label })}>${body}</div>`;
+  const isLead = lead(s);
+  const panes = isLead ? LEAD_PANES : PANES;
+  const all = [...moduleCards(s, ctx), propertiesCard(s, ctx), filesCard(s, ctx), activityCard(s), consentCard(s, ctx)].filter(Boolean);
+  const on = (key) => all.filter((x) => (x.mod ? x.tab : paneOf(x)) === key).sort(byOrder(key === "service" && isLead ? SERVICE_LEAD : PANE_CARDS[key]));
+  const pane = panes.some(([k]) => k === s.pane) ? s.pane : panes[0][0];
+  const tiles = tilesOf(s, ctx);
+  const none = (text) => html`<div class="rs-card"><p class="rs-empty">${text}</p></div>`;
+  const body = {
+    service: html`${tiles.length ? html`<div class="ct-tiles-in" id="ct-svc-tiles">${tileRow(tiles, { name: "svc", label: "Service" })}</div>` : ""}
+      ${on("service").length ? on("service").map(card) : none("No jobs, plans or quotes yet")}`,
+    payments: on("payments").length ? on("payments").map(card) : none(ctx.can("invoices:read_all") ? "No invoices yet" : "Payments are for the office"),
+    conversation: on("conversation").map(card),
+    opportunities: on("opportunities").length ? on("opportunities").map(card) : none(ctx.can("sales:work") ? "No follow-ups, deals or tasks yet" : "Follow-ups and deals are for the office"),
+    activity: on("activity").map(card),
+    files: on("files").length ? on("files").map(card) : none("Files are for the office"),
+  };
+  const paneDiv = ([key, label]) => html`<div ${attrs({ class: "ct-pane rs-page" + (pane === key ? "" : " off"), "data-pane": key, role: "tabpanel", "aria-label": label })}>${body[key]}</div>`;
+  const notes = notesCard(s, ctx);
   return html`<div class="rs-page ct-page">
     ${s.offline ? html`<div class="note">Offline: this is the last copy on this phone.</div>` : ""}
-    ${top(s, ctx)}
-    <div class="ct-seg">${seg(PANES, pane, { name: "ctab", label: lead(s) ? "Lead" : "Customer" })}</div>
-    <div class="ct-panes">
-      ${paneDiv("details", "Details", html`${stats(s, ctx)}${reach(s, ctx)}${muteRow(s, ctx)}${satellite(s, ctx)}
-        ${details.map(card)}
+    <div class="ct-grid">
+      <div class="ct-prof rs-page" aria-label="${isLead ? "Lead" : "Customer"}">
+        ${top(s, ctx)}
+        ${summary(s, ctx)}
+        ${reach(s, ctx)}
+        ${muteRow(s, ctx)}
         ${queuedLine(s)}
-        ${aboutCard(s, ctx)}`)}
-      ${paneDiv("service", "Service", html`${tiles.length ? html`<div class="ct-tiles-in" id="ct-svc-tiles">${tileRow(tiles, { name: "svc", label: "Service" })}</div>` : ""}
-        ${service.length ? service.map(card) : html`<div class="rs-card"><p class="rs-empty">No jobs, plans or quotes yet</p></div>`}`)}
-      ${paneDiv("payments", "Payments", payments.length ? payments.map(card) : html`<div class="rs-card"><p class="rs-empty">${ctx.can("invoices:read_all") ? "No invoices yet" : "Payments are for the office"}</p></div>`)}
-      ${paneDiv("activity", "Activity", activity.map(card))}
+        ${satellite(s, ctx)}
+        ${card(notes)}
+        ${factsCard(s, ctx)}
+        ${profileButtons(s, ctx)}
+      </div>
+      <div class="ct-main">
+        <div class="ct-seg">${seg(panes, pane, { name: "ctab", label: isLead ? "Lead" : "Customer", scroll: true })}</div>
+        <div class="ct-panes">${panes.map(paneDiv)}</div>
+      </div>
     </div>
     ${s.contact.updated_at ? html`<p class="foot-note">Changed ${ago(s.contact.updated_at)}</p>` : ""}
   </div>`;
@@ -583,7 +651,7 @@ function clipLists(view, ctx) {
   }
 }
 
-// Details | Activity without drawing the page again (the satellite stays put).
+// Another tab without drawing the page again (the satellite stays put).
 function showPane(view, ctx, key) {
   ctx.state.pane = ctx.keep.pane = key;
   for (const p of view.querySelectorAll(".ct-pane")) p.classList.toggle("off", p.dataset.pane !== key);
@@ -742,6 +810,38 @@ async function pickOwner(ctx) {
 const setTest = (ctx) => after(ctx, ctx.api(`/contacts/${encodeURIComponent(ctx.state.contact.id)}/flags`, { method: "PATCH", body: { test: !(ctx.state.contact.flags && ctx.state.contact.flags.test) } }), "Saved");
 const restore = (ctx) => after(ctx, ctx.api(`/contacts/${encodeURIComponent(ctx.state.contact.id)}/restore`, { method: "POST", body: {} }), "Restored");
 
+// Create Customer (Rotor's, on a lead): the lead becomes a customer (the contact keeps everything; converted_at is set).
+async function makeCustomer(ctx) {
+  const c = ctx.state.contact;
+  if (!(await confirmSheet(`Make ${c.display_name || "this lead"} a customer? They move to Customers and keep their history.`, { title: "Create customer", yes: "Create customer" }))) return;
+  ctx.keep.pane = "service";
+  after(ctx, ctx.api(`/contacts/${encodeURIComponent(c.id)}`, { method: "PATCH", body: { lifecycle: "customer" }, ifMatch: ctx.state.etag }), "Now a customer");
+}
+
+// Delay (Rotor's, on a pending job): the month it is due moves later; the work part loads again.
+const DELAYS = [[1, "A month later"], [2, "2 months later"], [3, "3 months later"], [6, "6 months later"], [12, "A year later"]];
+export function laterMonth(month, n) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(month || ""));
+  const base = m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
+  if (base === null) return null;
+  const t = base + n;
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+}
+async function delayJob(ctx, id) {
+  let got;
+  try { got = await ctx.api(`/jobs/${encodeURIComponent(id)}`, { cache: false }); } catch (err) { toast(err.message || "That job didn't load.", { bad: true }); return; }
+  const job = (got.data && (got.data.job || got.data)) || {};
+  const from = job.target_month || localDate(new Date()).slice(0, 7);
+  const n = await pickFrom({ title: "Delay this job", items: DELAYS.map(([k, label]) => ({ value: String(k), label, sub: laterMonth(from, k) })) });
+  if (!n) return;
+  try {
+    await ctx.api(`/jobs/${encodeURIComponent(id)}`, { method: "PATCH", body: { target_month: laterMonth(from, Number(n)) }, ifMatch: got.etag });
+    toast("Delayed");
+    const r = (ctx.state.secs || []).find((x) => x.def && x.def.module === "work");
+    if (r) loadSection(ctx, r); else ctx.refresh();
+  } catch (err) { toast(err.status === 412 ? "Someone else just changed this job. Try again." : err.message || "That didn't save.", { bad: true }); }
+}
+
 // "Open their portal": a 15-minute look at their page as they see it (nothing is paid, changed or counted).
 async function openPortal(ctx) {
   try {
@@ -878,5 +978,8 @@ export default {
     "click [data-mute]": (e, el, ctx) => pauseSheet(ctx),
     "click [data-add-file]": (e, el, ctx) => addFile(ctx),
     "click [data-portal]": (e, el, ctx) => openPortal(ctx),
+    "click [data-ct-more]": (e, el, ctx) => actionSheet(ctx.state.contact.display_name || "Contact", moreGroups(ctx.state, ctx)),
+    "click [data-make-customer]": (e, el, ctx) => makeCustomer(ctx),
+    "click [data-job-delay]": (e, el, ctx) => { e.preventDefault(); delayJob(ctx, el.dataset.jobDelay); },
   },
 };

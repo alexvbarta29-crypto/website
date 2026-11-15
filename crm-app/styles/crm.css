@@ -1154,14 +1154,17 @@ a.rs-tmain,button.rs-tmain{cursor:pointer}
 .rs-td:is(.c-text,.c-date):not(.none)~.rs-td:is(.c-text,.c-date):not(.none)::before{content:"\00B7";margin-right:8px}
 .rs-td.c-status{order:5;flex:none;margin-left:auto}
 .rs-td.none:not(.c-title){display:none}
+.rs-tact-w{display:none}
 .rs-dash{color:var(--muted)}
 .rs-tempty{padding:18px 16px}
 .rs-table .rs-emptystate{padding:36px 20px}
 @container (min-width:600px){
   .rs-thead{display:block;background:var(--thead-bg);border-bottom:1px solid var(--line)}
   .rs-thead .rs-tmain{min-height:38px;padding-top:0;padding-bottom:0;font:600 var(--t-cap)/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--label)}
-  .rs-table.has-act .rs-thead .rs-tmain{margin-right:45px}
-  .rs-table.has-act .rs-trow:not(:has(>.rs-acts))::after{content:"";flex:none;width:41px}
+  .rs-table.has-act .rs-thead .rs-tmain{margin-right:calc(12px + 41px * var(--acts,1))}
+  .rs-table.has-act .rs-trow{padding-right:8px}
+  .rs-table.has-act .rs-trow:not(:has(>.rs-acts))::after{content:"";flex:none;width:calc(41px * var(--acts,1))}
+  .rs-tact-w{display:contents}
   .rs-tmain{display:grid;grid-template-columns:var(--cols);align-items:center;column-gap:20px;row-gap:0;min-height:52px;padding:8px 16px 8px 20px}
   .rs-trow{padding-right:0}
   .rs-tmain::after{display:none}

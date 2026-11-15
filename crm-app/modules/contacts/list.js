@@ -3,9 +3,14 @@
 // email, address, tags: every word must match). One row of tiles IS the
 // filter (Customers · Plan members · Owes · Former · Archived · Everyone,
 // with counts and the money owed); leads have their own screen, but a search
-// finds everyone. Each person is a two-line row: the name and the lifetime
-// value, then town · owner · last service with "Owes $X" (red) or the
-// status on the right; a round call; a long press opens Edit / Archive.
+// finds everyone. On a phone (or beside a contact) each person is a
+// two-line row with Rotor's columns' key facts: the name and the lifetime
+// value (LV), then town · sale value (SV) · who it's assigned to, with
+// "Owes $X" (red: outstanding) or the status (Active) on the right; a round
+// call; a long press opens Edit / Archive. On a desk (the list 700 px wide
+// or more) it is Rotor's table (the kit's dataTable): Name, Email, Phone,
+// City, Status, SV, LV, Outstanding, Assigned to, and a round Edit; "Add
+// Customer" is the header's red pill.
 // The filter sheet holds the source and the sort (Name, Lifetime value,
 // Sale value, Outstanding, Newest). "..." → Select: pick rows, then Tag,
 // Owner, Add to a pipeline, Export CSV or Archive (POST /contacts/bulk).
@@ -14,7 +19,7 @@
 // contacts open at once on an older iPhone. Coming back keeps the search,
 // the tile, the sort and the scroll position.
 
-import { html, icon, render, attrs, toast, sheet, tileRow, listRow, filterSheet, actionSheet, confirmSheet, pillBtn } from "../../core/ui.js";
+import { html, icon, render, attrs, toast, sheet, tileRow, listRow, dataTable, statusPill, filterSheet, actionSheet, confirmSheet, pillBtn } from "../../core/ui.js";
 import { screenButtons } from "../../core/nav.js";
 import { pickFrom } from "../../core/pickers.js";
 import { ensureStyles, contactsIndex, forgetIndex, lifecyclePill, phoneText, emptyCard, followRun, telHref } from "./kit.js";
@@ -24,6 +29,7 @@ import { time as fmtTime, money, initials } from "../../core/format.js";
 export const TILES = [["customer", "Customers"], ["plan", "Plan members"], ["owes", "Owes"], ["former_customer", "Former"], ["archived", "Archived"], ["", "Everyone"]];
 export const SORTS = [["name", "Name"], ["lv", "Lifetime value"], ["sv", "Sale value"], ["owed", "Outstanding"], ["new", "Newest"]];
 export const FIRST_CHUNK = 60;
+export const TABLE_MIN = 700;      // the list this wide or wider: Rotor's table
 export const CHUNK = 50;
 const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
 
@@ -92,13 +98,16 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const monthDay = (d) => (typeof d === "string" && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${MONTHS[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8, 10))}` : "");
 const telOf = (r) => { const p = r.p && r.p[0] ? String(r.p[0]).replace(/[^\d+]/g, "") : ""; return p ? (p.length === 10 ? "+1" + p : p) : ""; };
 
-// One person (Row2): the name and the lifetime value; town · owner · last service, "Owes $X" in red or the
-// status; a plan tag; a round call; a long press opens the row's "...". s: { money, users, plans, picked }.
+const short = (cents) => money(cents || 0).replace(/\.00$/, "");
+// One person (Row2), Rotor's key facts: the name and the lifetime value (LV); town · SV · who it's assigned to;
+// "Owes $X" in red (outstanding) or the status; a plan tag; a round call; a long press opens the row's "...".
+// s: { money, users, plans, sv, picked }.
 export function rowHtml(r, s = {}) {
   const plan = s.plans && s.plans.get(r.id);
   const owes = !!s.money && r.mb > 0;
-  const sub = [r.c, s.users && r.o ? s.users.get(r.o) : "", r.ls ? "last " + monthDay(r.ls) : ""].filter(Boolean).join(" · ");
-  const pill = owes ? { label: "Owes " + money(r.mb).replace(/\.00$/, ""), tone: "red" } : STATUS[r.lc] || null;
+  const sv = s.money && s.sv ? s.sv.get(r.id) || 0 : 0;
+  const sub = [r.c, sv ? "SV " + short(sv) : "", s.users ? (r.o ? s.users.get(r.o) : "Unassigned") : "", r.ls ? "last " + monthDay(r.ls) : ""].filter(Boolean).join(" · ");
+  const pill = owes ? { label: "Owes " + short(r.mb), tone: "red" } : STATUS[r.lc] || null;
   if (s.picked) {
     const on = s.picked.has(r.id);
     return html`<li class="rs-lrow ct-pick"><button type="button" ${attrs({ class: "rs-lr-main", "data-pick": r.id, "aria-pressed": on ? "true" : "false" })}><span ${attrs({ class: "ct-box" + (on ? " on" : ""), "aria-hidden": "true" })}>${on ? icon("check") : ""}</span><span class="rs-lr-a"><span class="rs-lr-1"><span class="rs-lr-t">${r.n || "No name"}</span></span><span class="rs-lr-2"><span class="rs-lr-s">${sub}</span></span></span></button></li>`;
@@ -111,6 +120,37 @@ export function rowHtml(r, s = {}) {
     hold: { "row-more": r.id },
   });
 }
+
+// Rotor's table on a desk (the kit's dataTable): Name, Email, Phone, City, Status, SV, LV, Outstanding, Assigned to.
+export function tableColumns(withMoney) {
+  return [
+    { key: "name", label: "Name", kind: "title" },
+    { key: "email", label: "Email", kind: "text", width: "minmax(0,1.3fr)" },
+    { key: "phone", label: "Phone", kind: "text", width: "minmax(118px,.8fr)" },
+    { key: "city", label: "City", kind: "text", width: "minmax(0,.8fr)" },
+    { key: "st", label: "Status", kind: "status", width: "minmax(88px,.55fr)" },
+    withMoney && { key: "sv", label: "SV", kind: "money", width: "minmax(72px,.5fr)" },
+    withMoney && { key: "lv", label: "LV", kind: "money", width: "minmax(72px,.5fr)" },
+    withMoney && { key: "owed", label: "Outstanding", kind: "money", width: "minmax(100px,.65fr)" },
+    { key: "who", label: "Assigned to", kind: "text", width: "minmax(0,.95fr)" },
+  ].filter(Boolean);
+}
+export function tableRow(r, s = {}) {
+  const name = s.names && r.o ? s.names.get(r.o) : "";
+  const sv = s.sv ? s.sv.get(r.id) || 0 : 0;
+  return {
+    cells: {
+      name: r.n || "No name", email: (r.e || [])[0] || null, phone: r.p && r.p[0] ? phoneText(r.p[0]) : null, city: r.c || null,
+      st: STATUS[r.lc] || null, sv: short(sv), lv: short(r.ml), owed: html`<span class="${r.mb > 0 ? "ct-owed" : ""}">${money(r.mb || 0)}</span>`,
+      who: name ? statusPill(name, "white", { icon: "user" }) : html`<span class="ct-unas">Unassigned</span>`,
+    },
+    href: "#/contacts/" + encodeURIComponent(r.id),
+    action: s.write ? { icon: "edit", label: `Edit ${r.n || "this contact"}`, href: "#/contacts/" + encodeURIComponent(r.id) + "/edit" } : null,
+    edge: s.money && r.mb > 0 ? "red" : null,
+    hold: { "row-more": r.id },
+  };
+}
+const tableHtml = (rows, s) => dataTable({ label: "Customers", columns: tableColumns(!!s.money), rows: rows.map((r) => tableRow(r, s)), empty: "Nobody here" });
 const groupHtml = (g, s) => html`<section class="ct-grp" data-l="${g.l}">${g.l ? html`<h3 class="ct-ltr">${g.l}</h3>` : ""}<ul class="rs-card flush rs-list ct-rows">${g.rows.map((r) => rowHtml(r, s))}</ul></section>`;
 
 // The most used sources (for the filter sheet).
@@ -121,8 +161,11 @@ function topSources(rows, n = 8) {
 }
 
 let chunkTimer = null;
+let listRO = null;
 const later = (fn) => (typeof requestIdleCallback === "function" ? requestIdleCallback(fn, { timeout: 120 }) : setTimeout(fn, 16));
-const rowState = (s) => ({ money: s.money, users: s.users, plans: s.plans, picked: s.picked });
+const rowState = (s) => ({ money: s.money, users: s.users, names: s.names, plans: s.plans, sv: s.sv, picked: s.picked, write: s.write });
+// Rotor's table: the list is wide (a desk, nothing open beside it) and nobody is picking rows.
+const tableMode = (s) => !!s.wide && !s.picked;
 
 function paintList(view, s, ctx) {
   const box = view.querySelector("#ct-list");
@@ -141,6 +184,26 @@ function paintList(view, s, ctx) {
     render(box, s.ix.rows.length
       ? html`<div class="card empty"><h2>Nobody matches</h2><p>Try fewer words, a phone number or a street, or another tile.</p>${s.q.length >= 3 && ctx.can("contacts:read_all") ? html`<div class="btn-row"><button type="button" class="btn" data-deep>${icon("search")}Search notes and messages</button></div>` : ""}</div>`
       : emptyCard("No contacts yet", "Website leads arrive here once an owner turns on Intake mode, and Rotor's customers arrive with the import. New lead adds one by hand."));
+    rail.hidden = true;
+    scroll.classList.remove("has-rail");
+    return;
+  }
+  if (tableMode(s)) {
+    // one table (no letter headings): the first rows at once, the rest appended to its list in chunks
+    const flat = groups.flatMap((g) => g.rows);
+    let k = Math.min(FIRST_CHUNK, flat.length);
+    render(box, html`<div class="ct-table">${tableHtml(flat.slice(0, k), rs)}</div>`);
+    const ul = box.querySelector(".rs-tlist");
+    const more = () => {
+      const t = document.createElement("template");
+      render(t, tableHtml(flat.slice(k, k + CHUNK), rs));
+      const got = t.content.querySelector(".rs-tlist");
+      if (got && ul) ul.append(...got.children);
+      k += CHUNK;
+    };
+    const step = () => { if (k >= flat.length) { chunkTimer = null; return; } more(); chunkTimer = later(step); };
+    s.finish = () => { while (k < flat.length) more(); };
+    chunkTimer = later(step);
     rail.hidden = true;
     scroll.classList.remove("has-rail");
     return;
@@ -358,7 +421,8 @@ export default {
       sv.set(x.c, (sv.get(x.c) || 0) + (Number.isSafeInteger(x.sv) ? x.sv : 0));
     }
     return {
-      ix, dupes, plans: plansOf, sv, users: new Map(users.map((u) => [u.id, initials(u.name)])), money: ctx.can("invoices:read_all"),
+      ix, dupes, plans: plansOf, sv, users: new Map(users.map((u) => [u.id, initials(u.name)])), names: new Map(users.map((u) => [u.id, u.name])), money: ctx.can("invoices:read_all"),
+      write: ctx.can("contacts:write"), wide: false,
       q: ctx.keep.q || "", chip: ctx.keep.chip === undefined ? "customer" : ctx.keep.chip, src: ctx.keep.src || "", sort: ctx.keep.sort || "name",
       sources: topSources(ix.rows), find: !!ctx.keep.find || !!ctx.keep.q, picked: null,
     };
@@ -386,8 +450,23 @@ export default {
   },
   // the list's own "..." (a desk's header; a phone has it as a round button, roundButtons)
   more: (s, ctx) => moreGroups(s, ctx),
+  // Rotor's "+ Add Customer" (a desk's header; a phone has the + of the tab bar)
+  action: (s, ctx) => (ctx.can("contacts:write") && typeof matchMedia === "function" && matchMedia("(min-width: 1000px)").matches ? { label: "Add Customer", run: () => ctx.go("/contacts/new?as=customer") } : null),
   mount(view, s, ctx) {
+    const list = view.querySelector("#ct-list");
+    s.wide = !!list && list.clientWidth >= TABLE_MIN;
     paintList(view, s, ctx);
+    // the table on a wide list, two-line rows when it narrows (a contact opened beside it, a smaller window)
+    if (list && typeof ResizeObserver === "function") {
+      if (listRO) listRO.disconnect();
+      listRO = new ResizeObserver(() => {
+        const wide = list.clientWidth >= TABLE_MIN;
+        if (!list.isConnected || wide === s.wide || !list.clientWidth) return;
+        s.wide = wide;
+        paintList(view, s, ctx);
+      });
+      listRO.observe(list);
+    }
     roundButtons(view, s, ctx);
     const scroll = view.querySelector("#ct-scroll");
     if (ctx.keep.scroll) { if (s.finish) s.finish(); scroll.scrollTop = ctx.keep.scroll; }
@@ -400,7 +479,7 @@ export default {
     rail.addEventListener("pointerup", stop);
     rail.addEventListener("pointercancel", stop);
   },
-  unmount() { if (chunkTimer) { clearTimeout(chunkTimer); chunkTimer = null; } },
+  unmount() { if (chunkTimer) { clearTimeout(chunkTimer); chunkTimer = null; } if (listRO) { listRO.disconnect(); listRO = null; } },
   events: {
     "input #ct-q": (e, el, ctx) => {
       const s = ctx.state;

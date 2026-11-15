@@ -1,5 +1,5 @@
 // Home's charts, drawn in the CRM itself: the top's line (flyraLine,
-// Flyra's, Nov 15), ARR's bars by month (monthBars, Nov 15) and Rotor's Money chart (pairChart, Reports uses it):
+// Flyra's, Nov 15), ARR's bars by month with each month's MRR on its bar (monthBars, Nov 15) and Rotor's Money chart (pairChart, Reports uses it):
 // Collected in coral and Scheduled in grey per day of
 // a week or a month, smooth lines (monotone: a day of $0 never dips under
 // the baseline), a dashed grid, $ ticks at the left, a few dates under it
@@ -261,17 +261,38 @@ export function flyraLine(el, spec) {
   };
 }
 
-// ARR by month (the owner's Nov 15 ask): a bar a month on the top's faint
-// grid, the values at the left, short month names under the bars (as many
-// as fit, always this month's). One month is picked (this month to start
-// with): its bar full, the others soft, a faint column behind it. A tap, a
-// drag, the pointer or the arrow keys pick another and call onRead(i).
+// ARR by month (the owner's Nov 15 asks: "ARR by month", then "make it like
+// ARR with showing the MRR in all 12 months"): a bar a month, each with its
+// own value on top of it (MRR, short: "$154", "$3.2k"; without the "$" when
+// a phone is too narrow for it), so no axis and no grid; short month names
+// under the bars (as many as fit, always this month's). This month is lit
+// (`now`); one month is picked (this month to start with): its bar full,
+// a soft column behind it. A tap, a drag, the pointer or the arrow keys
+// pick another and call onRead(i).
 //
-//   const c = monthBars(el, { keys, labels, values, axis, start, onRead })
+//   const c = monthBars(el, { keys, labels, values, value, now, start, onRead })
 //   c.destroy()
 //
 // keys: the months (YYYY-MM); labels: their short names; values: one per
-// key, null where there is no point. start: the key picked first.
+// key, null where there is no point; value(v, tight): a bar's label (tight:
+// the narrow form); now: this month's key; start: the key picked first.
+// (the "$" is drawn at 80%: hb-cur)
+const CHAR_W = { ".": 0.3, ",": 0.3, $: 0.5, k: 0.55, K: 0.66, M: 0.86, "−": 0.62, "-": 0.36 };
+// a label's width at a font size (tabular digits; a little extra for the weight)
+export const labelWidth = (text, fs) => [...String(text)].reduce((w, c) => w + (CHAR_W[c] || 0.61), 0) * fs * 1.04;
+// the labels' form and size: the full form at 12.5 px down to 10 px ("$3.2k" on all
+// 12 bars of an iPhone SE), else the tight form, else it on every k-th bar (always this month's)
+export function barLabels(vals, slot, value) {
+  const full = vals.map((v) => (v === null ? "" : value(v, false)));
+  const tight = vals.map((v) => (v === null ? "" : value(v, true)));
+  const room = slot - 2.5;
+  const widest = (xs, fs) => Math.max(0, ...xs.map((x) => labelWidth(x, fs)));
+  for (const fs of [12.5, 12, 11.5, 11, 10.5, 10]) if (widest(full, fs) <= room) return { text: full, fs, every: 1 };
+  for (const fs of [11.5, 11, 10.5, 10]) if (widest(tight, fs) <= room) return { text: tight, fs, every: 1 };
+  let every = 2;
+  while (slot * every - 6 < widest(tight, 10.5) && every < vals.length) every++;
+  return { text: tight, fs: 10.5, every };
+}
 export function monthBars(el, spec) {
   const keys = spec.keys || [];
   const labels = spec.labels || keys;
@@ -279,47 +300,50 @@ export function monthBars(el, spec) {
   const vals = (spec.values || []).map((v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v)));
   const filled = keys.map((_, i) => i).filter((i) => vals[i] !== null);
   const first = spec.start ? keys.indexOf(spec.start) : -1;
+  const nowI = spec.now ? keys.indexOf(spec.now) : -1;
+  const value = spec.value || ((v) => String(v));
   let sel = first >= 0 && vals[first] !== null ? first : filled.length ? filled[filled.length - 1] : -1;
   let width = 0, height = 0, geo = null;
   function draw() {
     const W = Math.max(160, Math.floor(el.clientWidth));
-    const H = Math.max(110, Math.floor(el.clientHeight) || 200);
+    const H = Math.max(120, Math.floor(el.clientHeight) || 220);
     width = el.clientWidth;
     height = el.clientHeight;
-    const top = 8, band = 26;
-    const max = Math.max(0, ...filled.map((i) => vals[i]));
-    const tk = ticks(max, { most: 4 });
-    const top1 = tk[tk.length - 1] || 1;
-    const gutter = Math.max(...tk.map((v) => spec.axis(v).length)) * 7 + 14;
-    const x0 = gutter, x1 = W - 4, y1 = H - band;
+    const x0 = 2, x1 = W - 2, band = 26;
     const slot = (x1 - x0) / Math.max(1, n);
-    const bw = Math.max(3, Math.min(28, slot * 0.58));
+    const lab = barLabels(vals, slot, value);
+    const top = Math.ceil(lab.fs) + 10, y1 = H - band;
+    const max = Math.max(0, ...filled.map((i) => vals[i])) || 1;
+    const bw = Math.max(4, Math.min(36, slot * 0.66));
     const cx = (i) => x0 + slot * (i + 0.5);
-    const y = (v) => y1 - (Math.max(0, v || 0) / top1) * (y1 - top);
-    // a bar with a rounded top
+    const y = (v) => y1 - (Math.max(0, v || 0) / max) * (y1 - top);
+    // a bar with rounded top corners ($0: a 2 px stub, so its "$0" sits on something)
     const bar = (i) => {
-      const h = y1 - y(vals[i]);
-      if (!(h > 0.5)) return "";
-      const r = Math.min(4, bw / 2, h), l = cx(i) - bw / 2, t = y1 - h;
+      const h = Math.max(2, y1 - y(vals[i]));
+      const r = Math.min(5, bw / 2, h), l = cx(i) - bw / 2, t = y1 - h;
       return `M${fix(l)},${y1}V${fix(t + r)}Q${fix(l)},${fix(t)} ${fix(l + r)},${fix(t)}H${fix(l + bw - r)}Q${fix(l + bw)},${fix(t)} ${fix(l + bw)},${fix(t + r)}V${y1}Z`;
     };
+    // the values on as many bars as fit (every one on a phone's 12), counted back from this month
+    const last = nowI >= 0 ? nowI : n - 1;
+    const valued = filled.filter((i) => lab.every === 1 || (last - i) % lab.every === 0);
     // as many month names as fit (24 px each at least: every month on a phone's 12), counted back from this month
     let every = 1;
     while (slot * every < 24) every++;
     const named = keys.map((_, i) => i).filter((i) => (n - 1 - i) % every === 0);
+    const cls = (base, i) => base + (i === nowI ? " now" : "");
     render(el, html`<svg class="hf-svg hb-svg" width="${W}" height="${H}" viewBox="${`0 0 ${W} ${H}`}" aria-hidden="true">
-      <rect class="hb-col" x="0" y="${top - 4}" width="${fix(Math.min(slot, bw + 18))}" height="${fix(y1 - top + 4)}" rx="6" visibility="hidden"/>
-      ${tk.map((v) => html`<line class="hf-grid" x1="${x0}" x2="${x1}" y1="${fix(y(v)) + 0.5}" y2="${fix(y(v)) + 0.5}"/>
-        <text class="hf-t" x="${x0 - 12}" y="${fix(y(v) + 4)}" text-anchor="end">${spec.axis(v)}</text>`)}
-      ${keys.map((_, i) => (vals[i] === null ? "" : html`<path class="hb-bar" data-i="${i}" d="${bar(i)}"/>`))}
-      ${named.map((i) => html`<text class="hf-t hb-m" data-i="${i}" x="${fix(cx(i))}" y="${H - 6}" text-anchor="middle">${labels[i]}</text>`)}
+      <rect class="hb-col" x="0" y="0" width="${fix(Math.min(slot - 2, bw + 16))}" height="${fix(y1 + 4)}" rx="8" visibility="hidden"/>
+      <line class="hb-base" x1="${x0}" x2="${x1}" y1="${y1 + 0.5}" y2="${y1 + 0.5}"/>
+      ${keys.map((_, i) => (vals[i] === null ? "" : html`<path class="${cls("hb-bar", i)}" data-i="${i}" d="${bar(i)}"/>`))}
+      ${valued.map((i) => { const [, sign, cur, rest] = /^(−?)(\$?)(.*)$/.exec(lab.text[i]); return html`<text class="${cls("hb-v", i)}" data-i="${i}" x="${fix(cx(i))}" y="${fix(y(vals[i]) - 6)}" text-anchor="middle" style="${`font-size:${lab.fs}px`}">${sign}${cur ? html`<tspan class="hb-cur">$</tspan>` : ""}${rest}</text>`; })}
+      ${named.map((i) => html`<text class="${cls("hf-t hb-m", i)}" data-i="${i}" x="${fix(cx(i))}" y="${H - 7}" text-anchor="middle">${labels[i]}</text>`)}
     </svg>`);
     geo = { cx, x0, x1, slot, bw, top, y1 };
   }
   function show(i, quiet = false) {
     if (!filled.length || !geo) return;
     sel = vals[i] !== null && vals[i] !== undefined ? i : filled.reduce((b, j) => (b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b), -1);
-    el.querySelectorAll(".hb-bar, .hb-m").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === sel));
+    el.querySelectorAll(".hb-bar, .hb-m, .hb-v").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === sel));
     const col = el.querySelector(".hb-col");
     if (col) { col.setAttribute("x", fix(geo.cx(sel) - Number(col.getAttribute("width")) / 2)); col.setAttribute("visibility", "visible"); }
     if (spec.onRead && !quiet) spec.onRead(sel);

@@ -44,7 +44,8 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"]]) {
       await f.waitForSelector('[data-tile="inv"][data-key="open"]');
       for (const t of ["invoices", "payments", "payouts", "payroll", "expenses"]) assert.ok(await f.$(`#subnav a[href="#/${t}"]`), `the ${t} tab`);
       const il = await labels(f, "inv");
-      for (const l of ["Outstanding", "Overdue", "Due today", "Paid this month"]) assert.ok(il.includes(l), l);
+      assert.deepEqual(il.slice(0, 4), ["Paid this month", "Due today", "Outstanding", "Overdue"], "Rotor's four, in Rotor's order");
+      assert.ok(await f.$("[data-tax-report]"), "Rotor's Tax Report");
       await checks(f, page, `fin-invoices-${device}-${theme}`, problems);
       await f.click('[data-tile="inv"][data-key="overdue"]');
       await f.waitForSelector('[data-tile="inv"][data-key="overdue"][aria-pressed="true"]');
@@ -62,7 +63,8 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"]]) {
       await goTo(f, "/payments");
       await f.waitForSelector('[data-tile="pay"][data-key="total"]');
       const pl = await f.$$eval('.rs-tile .rs-tile-l', (x) => x.map((e) => e.textContent));
-      for (const l of ["Total", "Stripe", "Cash & check", "Tips", "Refunds", "Card fees"]) assert.ok(pl.includes(l), l);
+      for (const l of ["Total Payments", "Stripe Payments", "Cash & check", "Total Tips", "Total Refunds", "Card fees"]) assert.ok(pl.includes(l), l);
+      assert.ok(await f.$("[data-tip-report]"), "Rotor's Tip Report");
       await checks(f, page, `fin-payments-${device}-${theme}`, problems);
       await f.click("[data-pay-more]");
       await sheetUp(f, /Payments/);

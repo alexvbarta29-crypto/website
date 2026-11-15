@@ -103,9 +103,35 @@
 .mn-page .rs-card p{margin:0}
 .mn-page .rs-card p.warn-box{margin:4px 0 0}
 .mn-actrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.mn-actrow .rs-qrow{flex:1;justify-content:flex-end;gap:14px;min-width:0}
-.mn-actrow .rs-q{flex:0 0 64px}
+/* Rotor's invoice window, in its order (invoice.js): a centred column on a desk page, the pane beside the list as it is */
+@media (min-width:900px){.view>.rs-page.mn-page{max-width:720px;margin:0 auto}}
+.mn-h{margin:0;font:600 var(--t-lg)/1.25 var(--head);letter-spacing:-.02em}
+.mn-top .rs-row .rs-pb{flex:none}
+.mn-job{display:flex;flex-direction:column;gap:8px}
+.mn-job .rs-inset b{font-weight:600}
+.mn-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.mn-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mn-fv{font-weight:600;overflow-wrap:anywhere}
+.mn-link{display:flex;flex-direction:column;gap:8px}
+.mn-link .mn-actrow .rs-pb{flex:1 1 0;min-width:0}
+.mn-link .mn-actrow .rs-pb+.rs-pb{flex:0 0 auto}
+.mn-notes .mn-note{margin-top:6px!important;white-space:pre-line;overflow-wrap:anywhere}
+.mn-foot{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:2px 0}
+.mn-foot-r{display:flex;align-items:center;justify-content:flex-end;gap:8px;width:100%}
+.mn-foot-r .rnd{margin-right:auto}
+.mn-foot-r .rs-pb{flex:0 1 auto}
+.mn-sent{margin:0;font-size:var(--t-sm)}
+@media (max-width:599px){.mn-foot-r .rs-pb{flex:1 1 auto}}
 .mn-sums{display:flex;flex-direction:column}
+.mn-ltable{margin:0 -16px;border-top:1px solid var(--line)}
+.mn-llist{list-style:none;margin:0;padding:0}
+.mn-lrow{display:grid;grid-template-columns:minmax(0,1fr) 36px 84px 84px;column-gap:8px;align-items:start;padding:10px 16px;font-size:var(--t-meta)}
+.mn-llist>.mn-lrow+.mn-lrow{border-top:1px solid var(--line)}
+.mn-lhead{padding-top:8px;padding-bottom:8px;background:var(--thead-bg);border-bottom:1px solid var(--line);font:600 var(--t-cap)/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--label)}
+.mn-lrow .d{min-width:0;font-weight:500;font-size:var(--t-body);overflow-wrap:anywhere}
+.mn-lrow .n{text-align:right;font-variant-numeric:tabular-nums}
+.mn-lrow .t{font-weight:600}
+.mn-ltable+.mn-sums>:first-child{border-top:0}
 .mn-note{margin-top:8px!important}
 .mn-paycard{display:flex;flex-direction:column;gap:10px}
 .mn-cardline{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600}
@@ -114,5 +140,24 @@
 .mn-new-go{display:flex;flex-direction:column;gap:8px}
 .mn-new .rs-card{display:flex;flex-direction:column;gap:8px}
 .mn-findrow { display: flex; align-items: center; gap: 8px; }
-.mn-findrow .find-field { flex: 1; min-width: 0; }
-.mn-findrow > .rnd { margin-left: auto; }
+.mn-findrow .find-field { flex: 1 1 220px; min-width: 0; max-width: 360px; margin: 0; }
+.mn-findrow > .rnd { flex: none; }
+.mn-tools { flex: none; display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+/* Rotor's Financials tables (Invoices, Payments): the desk's tiles share the width; the phone's two-line row keeps
+   the number and the due date (Invoices) or the method and the date (Payments) */
+@media (min-width: 900px) {
+  .mn-list .rs-tiles-in { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); padding-right: 2px; -webkit-mask-image: none; mask-image: none; }
+  .mn-list .rs-tile { max-width: none; min-height: 84px; padding: 12px 16px; }
+  .mn-list .rs-tile-v { font-size: 24px; }
+  .app.split .mn-list .rs-tiles-in { display: flex; }
+}
+.mn-inum { font-weight: 600; }
+.mn-dw { display: none; }
+@container (max-width: 599px) {
+  .mn-itable .rs-td:is(:nth-child(1), :nth-child(5), :nth-child(8), :nth-child(9)) { display: none; }
+  .mn-itable .rs-td .mn-dw { display: inline; }
+  .mn-itable .rs-td .mn-inum { font-weight: 400; }
+  .mn-itable .rs-td:nth-child(2)::before { content: none !important; }
+  .mn-ptable .rs-td:is(:nth-child(4), :nth-child(5), :nth-child(7), :nth-child(8)) { display: none; }
+}

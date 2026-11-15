@@ -1,17 +1,20 @@
-// One invoice (design §9.2 "Invoice"; Rotor's look, Nov 2026: a top card
-// with the balance, Send and the round QR / Record / Card, the customer,
-// Items, Payments with +, the card on file or Add Payment Method, the
-// history folded after 3 rows, the round "..." for the rest): the lines and totals, what was paid
-// and how, the balance, when it was sent, reminders and autopay tries; and
-// what its state allows: Send (text, email), Record a payment (cash, check),
-// Charge the card on file, Refund (owners), Void and Write off (owners),
-// send a card link, keep an overpayment as credit. Before the switch from
-// Rotor, online payment and card charges only run on test contacts and
-// records made here (the screen says so).
+// One invoice (design §9.2 "Invoice"), laid out like Rotor's invoice window
+// (Rotor's screenshot 37), in its order: the head (the status, "View Job",
+// the balance), Job Details (the job's number and status), the invoice's
+// title and due date, the invoice link (Send, and the QR that opens it),
+// Bill To, Line Items (the lines and totals, tips, what's paid and the
+// balance), Notes, and the foot: Void (the red bin), "Collect Payment"
+// (charge the card on file, record cash or a check, the QR, a card link)
+// and when it was sent. Then what Rotor's window doesn't show: the
+// payments (refund one), the card on file or Add Payment Method, the
+// history folded after 3 rows; the round "..." holds everything too
+// (Write off, Open customer, Open the plan). Before the switch from Rotor,
+// online payment and card charges only run on test contacts and records
+// made here (the screen says so).
 
-import { html, attrs, icon, sheet, toast, confirmSheet, openExternal, cardHead, sectionLabel, lineItems, personCard, pillBtn, quickRow, disclosure, statusPill as kitPill } from "../../core/ui.js";
+import { html, attrs, icon, rnd, sheet, toast, confirmSheet, openExternal, actionSheet, cardHead, sectionLabel, personCard, pillBtn, statusPill as kitPill } from "../../core/ui.js";
 import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
-import { money, dateShort, dateTime, phone } from "../../core/format.js";
+import { money, dateShort, dateYear, dateTime, ago, phone } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import { ensureStyles, statusPill, KIND, METHOD, PAY_STATUS, CARD, waitRun } from "./kit.js";
 import { openPayQr } from "./pay-qr.js";
@@ -19,7 +22,11 @@ import { openPayQr } from "./pay-qr.js";
 async function load(params, ctx) {
   ensureStyles();
   const r = await ctx.api(`/invoices/${encodeURIComponent(params.id)}`, { cache: false });
-  return { ...r.data, etag: r.etag || r.data.etag };
+  const d = r.data;
+  // Job Details (Rotor's): the first job's number and status, when this login may read jobs
+  const jid = d.invoice && (d.invoice.job_ids || [])[0];
+  const job = jid && d.contact && ctx.can("schedule:read") ? await ctx.api(`/jobs/${encodeURIComponent(jid)}`).then((x) => (x.data && x.data.job) || null).catch(() => null) : null;
+  return { ...d, job, etag: r.etag || d.etag };
 }
 
 const qty = (l) => { const q = (l.qty_milli || 0) / 1000; return q === 1 ? "" : `${Number.isInteger(q) ? q : q.toFixed(2)} × ${money(l.unit_cents)}`; };
@@ -30,15 +37,20 @@ const kv = (k, v, cls = "rs-li-sum") => html`<div class="${cls}"><span>${k}</spa
 function items(inv) {
   const net = (inv.paid_cents || 0) - (inv.refunded_cents || 0);
   const paid = inv.status === "paid" && !inv.excess_cents;
-  return html`<div class="rs-card">${cardHead("Items")}
-    ${lineItems((inv.lines || []).map((l) => ({ title: l.description, sub: l.kind === "service" && qty(l) ? qty(l) : "", amount: l.total_cents < 0 ? "−" + money(-l.total_cents) : l.total_cents })), { total: inv.total_cents, totalLabel: "Total", empty: "No lines." })}
+  const lines = inv.lines || [];
+  const amt = (c) => (c < 0 ? "−" + money(-c) : money(c));
+  const q = (l) => { const n = (l.qty_milli ?? 1000) / 1000; return Number.isInteger(n) ? String(n) : n.toFixed(2); };
+  // Rotor's columns: Description · Qty · Unit Price · Total (a discount or a fee is one amount)
+  return html`<div class="rs-card mn-items">${cardHead("Line Items")}
+    ${lines.length ? html`<div class="mn-ltable"><div class="mn-lrow mn-lhead" aria-hidden="true"><span>Description</span><span class="n">Qty</span><span class="n">Unit Price</span><span class="n">Total</span></div>
+      <ul class="mn-llist" aria-label="Line items">${lines.map((l) => html`<li class="mn-lrow"><span class="d">${l.description}</span><span class="n">${l.kind === "service" ? q(l) : ""}</span><span class="n">${l.kind === "service" && l.unit_cents != null ? money(l.unit_cents) : ""}</span><span class="n t">${amt(l.total_cents)}</span></li>`)}</ul></div>` : html`<p class="rs-empty">No lines.</p>`}
     <div class="mn-sums">
+      ${kv("Total", money(inv.total_cents), "rs-li-tot")}
       ${inv.tips_cents ? kv("Tips for the crew", money(inv.tips_cents)) : ""}
       ${net ? kv("Paid", "−" + money(net)) : ""}
       ${kv(inv.excess_cents ? "Overpaid" : "Balance", money(inv.excess_cents ? inv.excess_cents : inv.balance_cents), "rs-li-tot")}
       ${paid ? html`<p class="rs-paid">Paid in full</p>` : ""}
     </div>
-    ${inv.customer_note ? html`<p class="rs-sub mn-note">Note to the customer: ${inv.customer_note}</p>` : ""}
   </div>`;
 }
 
@@ -94,16 +106,21 @@ function paymentCard(s) {
   </div>`;
 }
 
+const JOB_WORD = { unscheduled: "To book", scheduled: "Scheduled", in_progress: "Under way", completed: "Done", cancelled: "Cancelled" };
+const JOB_TONE = { unscheduled: "amber", scheduled: "blue", in_progress: "amber", completed: "green", cancelled: "red" };
+
+// The head: the status pills, "View Job", the balance (or the total), and what holds it back.
 function topCard(s) {
   const inv = s.invoice;
   const f = s.flags || {};
   const row = { st: inv.status, od: f.overdue, pp: f.partially_paid, af: f.autopay_failed, pr: f.processing, ex: inv.excess_cents };
   const paid = inv.status === "paid";
+  const jid = (inv.job_ids || [])[0];
   const note = s.rotor_owned ? "This invoice came from Rotor and is still Rotor's until the switch. It can be read here; change it in Rotor and the next import brings it over."
     : inv.status !== "open" ? "" : s.online === "not_yet" ? "Rotor still bills this customer: paying online and card charges open after the switch. You can still record cash or a check."
     : s.online === "charging" ? "A card charge is running right now." : s.online === "processing" ? "A bank payment is clearing (a few days). No new charge or pay link until it does." : "";
   return html`<section class="rs-card mn-top">
-    <div class="rs-row"><span class="rs-pills">${statusPill(row)}${inv.kind && inv.kind !== "standard" ? kitPill(KIND[inv.kind] || inv.kind, "white") : ""}${s.sandboxed && s.system_of_record !== "crm" ? html`<span class="pill">Test</span>` : ""}</span>${inv.due_on && inv.status === "open" ? html`<span class="rs-sub">Due ${dateShort(inv.due_on)}</span>` : inv.issued_on ? html`<span class="rs-sub">${dateShort(inv.issued_on)}</span>` : ""}</div>
+    <div class="rs-row"><span class="rs-pills">${statusPill(row)}${inv.kind && inv.kind !== "standard" ? kitPill(KIND[inv.kind] || inv.kind, "white") : ""}${s.sandboxed && s.system_of_record !== "crm" ? html`<span class="pill">Test</span>` : ""}</span>${jid ? pillBtn("View Job", { icon: "share", href: "#/jobs/" + encodeURIComponent(jid) }) : ""}</div>
     <div class="rs-kv"><span>${inv.status === "open" ? "Balance due" : "Total"}</span><span class="${"rs-amt" + (paid ? " green" : "")}">${money(inv.status === "open" ? inv.balance_cents : inv.total_cents)}</span></div>
     ${paid ? html`<p class="rs-paid">Paid in full${inv.paid_at ? ` · ${dateShort(inv.paid_at)}` : ""}</p>` : ""}
     ${note ? html`<p class="warn-box">${note}</p>` : ""}
@@ -111,19 +128,69 @@ function topCard(s) {
   </section>`;
 }
 
-// Send (black pill), then QR · Record · Card as round buttons with their names.
-function actionRow(s) {
+// Job Details (Rotor's): the job's number and its status; a second job or the plan under it.
+function jobCard(s) {
+  const inv = s.invoice;
+  const ids = inv.job_ids || [];
+  if (!ids.length && !inv.plan_id) return "";
+  const j = s.job;
+  return html`<div class="rs-card mn-job">
+    <div class="rs-row"><h3 class="mn-h">Job Details</h3>${j ? kitPill(JOB_WORD[j.status] || j.status, JOB_TONE[j.status] || "grey") : ""}</div>
+    ${ids.slice(0, 3).map((id, i) => html`<a class="rs-inset" href="${"#/jobs/" + encodeURIComponent(id)}"><span><b>Job Number:</b> ${i === 0 && j ? j.number_label || j.number : ids.length > 1 ? `${i + 1} of ${ids.length}` : "Open the job"}${i === 0 && j && j.title ? html` <span class="rs-sub">· ${j.title}</span>` : ""}</span><span class="chev" aria-hidden="true"></span></a>`)}
+    ${inv.plan_id ? html`<a class="rs-inset" href="${"#/plans/" + encodeURIComponent(inv.plan_id)}"><span><b>Plan:</b> Open the plan</span><span class="chev" aria-hidden="true"></span></a>` : ""}
+  </div>`;
+}
+
+// The invoice's title and due date (Rotor's two fields), and when it was issued.
+function detailsCard(s) {
+  const inv = s.invoice;
+  const kv = [["Invoice Title", `${KIND[inv.kind] || "Invoice"} #${inv.number}`], ["Due Date", inv.due_on ? dateYear(inv.due_on) : "-"], inv.issued_on && ["Issued", dateYear(inv.issued_on)], inv.plan_month && ["Cycle", inv.plan_month]].filter(Boolean);
+  return html`<div class="rs-card mn-fields">${kv.map(([k, v]) => html`<div class="mn-field"><span class="rs-stat-l">${k}</span><span class="mn-fv">${v}</span></div>`)}</div>`;
+}
+
+// The invoice link: the pay link goes with each text and email, and the QR opens it.
+function linkCard(s) {
   const c = s.can || {};
   const inv = s.invoice;
   const send = c.issue || c.send;
-  const q = [
-    c.qr && { icon: "qr", label: "QR", aria: "Show QR to pay", data: { act: "qr" } },
-    c.record && { icon: "money", label: "Record", aria: "Record a payment", data: { act: "record" } },
-    c.charge && s.card && s.card.last4 && { icon: "pay", label: "Card", aria: "Charge the card", data: { act: "charge" } },
-  ].filter(Boolean);
-  if (!send && !q.length) return "";
-  return html`<div class="mn-actrow">${send ? pillBtn(c.issue ? "Send to the customer" : inv.sent_at ? "Send again" : "Send", { tone: "solid", icon: "send", data: { act: "send" } }) : ""}${q.length ? quickRow(q) : ""}</div>`;
+  if (!send && !c.qr) return "";
+  return html`<div class="rs-card mn-link"><h3 class="mn-h">Invoice Link</h3>
+    <p class="rs-sub">${inv.status === "draft" ? "Sending it makes the link: they see the invoice and pay by card." : "The link goes with each text and email; the QR opens it on their phone."}</p>
+    <div class="mn-actrow">${send ? pillBtn(c.issue ? "Send to the customer" : inv.sent_at ? "Send again" : "Send", { tone: "solid", icon: "send", data: { act: "send" } }) : ""}${c.qr ? pillBtn("QR", { icon: "qr", data: { act: "qr" }, aria: "Show QR to pay" }) : ""}</div>
+  </div>`;
 }
+
+// Bill To (Rotor's): the customer, with call and text.
+function billTo(s) {
+  const c = s.contact;
+  if (!c) return "";
+  return html`${sectionLabel("Bill To")}${personCard({ name: c.display_name || "The customer", sub: c.phone ? phone(c.phone) : "", href: "#/contacts/" + encodeURIComponent(c.id), call: c.phone ? "tel:" + c.phone : null, text: c.phone && c.has_sms ? "sms:" + c.phone : null })}`;
+}
+
+// The foot (Rotor's): the red bin (Void), Collect Payment, and when it was sent.
+function foot(s) {
+  const c = s.can || {};
+  const inv = s.invoice;
+  const collect = c.record || c.charge || c.qr || (c.card_link && inv.status === "open");
+  if (!collect && !c.void && !inv.sent_at) return "";
+  return html`<div class="mn-foot">
+    <div class="mn-foot-r">${c.void ? rnd("trash", "Void this invoice", { tone: "red", sm: true, data: { act: "void" } }) : ""}
+      ${collect ? pillBtn("Collect Payment", { tone: "red", icon: "money", popup: true, data: { act: "collect" }, aria: "Collect Payment: charge the card, record cash or a check, the QR" }) : ""}</div>
+    ${inv.sent_at ? html`<p class="rs-sub mn-sent">Invoice sent ${ago(inv.sent_at)}</p>` : ""}
+  </div>`;
+}
+
+// Collect Payment: the ways in (the sheet's rows, each with its old data-act).
+export function collectRows(s, ctx) {
+  const c = s.can || {};
+  return [[
+    c.charge && s.card && s.card.last4 && { label: "Charge the card", icon: "pay", hint: cardWords(s), run: () => charge(null, ctx), data: { act: "charge" } },
+    c.record && { label: "Record a payment", icon: "money", hint: "cash, check", run: () => recordSheet(ctx), data: { act: "record" } },
+    c.qr && { label: "Show QR to pay", icon: "qr", run: () => showQr(ctx), data: { act: "qr" } },
+    c.card_link && s.invoice.status === "open" && { label: "Text a card link", icon: "link", run: () => cardLink(ctx), data: { act: "card-link" } },
+  ]];
+}
+const collect = (ctx) => actionSheet(`Collect ${money(ctx.state.invoice.balance_cents)}`, collectRows(ctx.state, ctx));
 
 function moreRows(s, ctx) {
   const c = s.can || {};
@@ -158,14 +225,15 @@ export default {
   moreTitle: titleOf,
   render(s, ctx) {
     const inv = s.invoice;
-    const c = s.contact;
     return html`<div class="rs-page mn-page">
       ${topCard(s)}
-      ${actionRow(s)}
-      ${c ? personCard({ name: c.display_name || "The customer", sub: c.phone ? phone(c.phone) : "", href: "#/contacts/" + encodeURIComponent(c.id), call: c.phone ? "tel:" + c.phone : null, text: c.phone && c.has_sms ? "sms:" + c.phone : null }) : ""}
-      ${(inv.job_ids || []).slice(0, 3).map((j, i) => disclosure("Job", { value: inv.job_ids.length > 1 ? `${i + 1} of ${inv.job_ids.length}` : "Open the job", href: "#/jobs/" + encodeURIComponent(j) }))}
-      ${inv.plan_id ? disclosure("Plan", { value: "Open the plan", href: "#/plans/" + encodeURIComponent(inv.plan_id) }) : ""}
+      ${jobCard(s)}
+      ${detailsCard(s)}
+      ${linkCard(s)}
+      ${billTo(s)}
       ${items(inv)}
+      ${inv.customer_note ? html`<div class="rs-card mn-notes"><h3 class="mn-h">Notes</h3><p class="mn-note">${inv.customer_note}</p></div>` : ""}
+      ${foot(s)}
       ${payments(s, ctx)}
       ${paymentCard(s)}
       ${history(inv)}
@@ -177,6 +245,8 @@ export default {
     "click [data-act=qr]": (e, el, ctx) => showQr(ctx),
     "click [data-act=charge]": (e, el, ctx) => charge(el, ctx),
     "click [data-act=card-link]": (e, el, ctx) => cardLink(ctx),
+    "click [data-act=collect]": (e, el, ctx) => collect(ctx),
+    "click [data-act=void]": (e, el, ctx) => voidIt(ctx),
     "click [data-refund]": (e, el, ctx) => refundSheet(ctx, el.dataset.refund, Number(el.dataset.left)),
   },
 };

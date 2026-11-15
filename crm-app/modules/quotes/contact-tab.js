@@ -17,7 +17,7 @@ export default {
   cards(s, ctx) {
     if (!s || s.denied) return [];
     return [{ key: "quotes", tab: "details", title: "Quotes", count: s.rows.length || null, empty: "No quotes yet",
-      add: ctx.can("quotes:write") ? { label: "New quote", href: "#/quotes/new/" + encodeURIComponent(s.id) } : null,
+      add: ctx.can("quotes:write") ? { label: "New quote", short: "New Quote", href: "#/quotes/new/" + encodeURIComponent(s.id) } : null,
       body: s.rows.length ? html`<ul class="list">${s.rows.map((r) => quoteRow(r, true))}</ul>` : null }];
   },
   actions(s, ctx) {

@@ -212,6 +212,7 @@ test("ARR by month (the owner's Nov 15 ask): ARR at each month's end, the plans 
   const pts = K.arrMonths(plans, "2025-12", "2026-11", TODAY);
   assert.deepEqual(pts.map((x) => x.label), ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"]);
   assert.deepEqual(pts.map((x) => x.value), [60000, 60000, 60000, 115000, 115000, 115000, 75000, 87000, 75000, 233000, 301000, 281000]);
+  assert.deepEqual(pts.map((x) => x.mrr), [5000, 5000, 5000, 9583, 9583, 9583, 6250, 7250, 6250, 19417, 25083, 23417], "each month's MRR: its ARR / 12, rounded");
   assert.deepEqual(pts.map((x) => [x.added, x.lost]), [[0, 0], [0, 0], [0, 0], [2, 0], [0, 0], [1, 1], [0, 1], [1, 0], [0, 1], [2, 0], [3, 0], [1, 1]]);
   assert.deepEqual([pts[5].added_cents, pts[5].lost_cents], [25000, 25000], "May's plan made and cancelled");
   // each month's end is a local day; the current month ends today
@@ -223,7 +224,7 @@ test("ARR by month (the owner's Nov 15 ask): ARR at each month's end, the plans 
   }
   // a month still ahead has no point
   const ahead = K.arrMonths(plans, "2026-11", "2026-12", TODAY);
-  assert.deepEqual(ahead.map((x) => [x.key, x.value, x.added]), [["2026-11", 281000, 1], ["2026-12", null, null]]);
+  assert.deepEqual(ahead.map((x) => [x.key, x.value, x.mrr, x.added]), [["2026-11", 281000, 23417, 1], ["2026-12", null, null, null]]);
 
   // the view: ARR today, its change since the period began and this month, by range
   const y = K.arrMonthView(plans, "1y", TODAY);
@@ -829,6 +830,27 @@ test("the client's ARR by month: the change since the period began ($ and %), th
   assert.equal(C.monthPicked(v, "2026-10").value, 301000);
   assert.equal(C.monthPicked(v, "2031-01").key, "2026-11", "a month not on screen: this one");
   assert.equal(C.monthPicked({ points: [] }, null), null);
+});
+
+test("the client's MRR on each month's bar (Nov 15, \"showing the MRR in all 12 months\"): short labels that fit 12 bars on an iPhone SE", async () => {
+  const C = await import("../../../crm-app/modules/system/home.js");
+  const H = await import("../../../crm-app/modules/system/home-charts.js");
+  assert.deepEqual([0, 4200, 15400, 99900, 320000, 994900, 995000, 1250000, 12000000, 123456700].map((c) => C.mrrShort(c)), ["$0", "$42", "$154", "$999", "$3.2k", "$9.9k", "$10k", "$13k", "$120k", "$1.2M"]);
+  assert.deepEqual([C.mrrShort(320000, true), C.mrrShort(-15400), C.mrrShort(null)], ["3.2k", "−$154", "-"]);
+  // a month's MRR: the server's, else its ARR / 12; none for a month still ahead
+  assert.deepEqual([C.mrrOf({ value: 281000, mrr: 23417 }), C.mrrOf({ value: 281000 }), C.mrrOf({ value: null, mrr: null }), C.mrrOf(null)], [23417, 23417, null, null]);
+  // the labels: "$3.2k" on every bar of an iPhone SE (a 29.6 px slot), bigger where there is room; the tight form, then every k-th bar
+  const vals = [300000, 310000, 320000, 330000, 340000, 350000, 360000, 370000, 380000, 390000, 400000, 410000];
+  const se = H.barLabels(vals, 29.6, C.mrrShort);
+  assert.deepEqual([se.every, se.text[2]], [1, "$3.2k"]);
+  assert.ok(se.fs >= 10 && se.text.every((t) => H.labelWidth(t, se.fs) <= 29.6 - 2.5), JSON.stringify(se));
+  const desk = H.barLabels(vals, 52, C.mrrShort);
+  assert.deepEqual([desk.fs, desk.every, desk.text[11]], [12.5, 1, "$4.1k"]);
+  const narrow = H.barLabels(vals, 25, C.mrrShort);
+  assert.deepEqual([narrow.every, narrow.text[1]], [1, "3.1k"], "too narrow for the \"$\": the tight form");
+  const all = H.barLabels(Array.from({ length: 60 }, () => 3200000), 5.6, C.mrrShort);
+  assert.ok(all.every > 1 && all.text[0] === "32k", "All over five years: a value on every k-th bar");
+  assert.equal(H.barLabels([null, 15400], 30, C.mrrShort).text[0], "", "no label for a month still ahead");
 });
 
 // ------------------------------------------------------------ the client's navigation

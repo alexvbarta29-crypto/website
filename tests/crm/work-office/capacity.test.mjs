@@ -154,3 +154,43 @@ test("the client's month: fill levels, one person's share, the days nobody close
   SC.default.events["click [data-totray]"]({}, { dataset: {} }, c1);
   assert.deepEqual([c1.state.view, c1.state.month], ["tray", "2026-11"]);
 });
+
+test("the client's month looks like Rotor's (Nov 15): its head, its blocks in the status colors, Tasks: N, +N more, a phone's dots, the day's rows", () => {
+  const U1 = "us_0000000000000000000t";
+  const users = [{ id: U1, name: "Theo Tech", color: "#2563eb", is_technician: true }];
+  const row = (n, o) => ({ id: `vs_0000000000000000000${n}`, j: "jb_1", cn: `Pat Sample${n}`, town: "Delano", d: "2026-11-16", s: `${String(7 + n).padStart(2, "0")}:00`, e: `${String(9 + n).padStart(2, "0")}:00`, w: { t: "window", m: 120 }, a: [U1], st: "scheduled", amt: 29500, ...o });
+  const visits = [row(1, { st: "completed" }), row(2, { st: "in_progress" }), row(3), row(4, { st: "cancelled" }), row(5), row(6), row(7, { d: "2026-11-17", do: true })];
+  const tasks = [{ id: "tk_00000000000000000001", date: "2026-11-16", start: "07:00", end: "07:30", title: "Call back", kind: "todo", a: [U1] }];
+  const data = { kind: "month", from: "2026-11-01", to: "2026-12-05", month: "2026-11", today: "2026-11-17", visits, tasks, warnings: {}, capacity: { per_day: 8, per_person: 8, days: {}, off: {} } };
+  const s = { view: "month", cal: "2026-11", date: "2026-11-16", today: "2026-11-17", tech: null, month: "2026-11", users, data, wx: null, toBook: { month: "2026-11", n: 2 }, cards: { ...B.CARD_DEFAULTS } };
+  const ctx = (perms = null) => ({ can: (p) => (perms ? perms.includes(p) : true), keep: {} });
+  const h = text(SC.default.render(s, ctx()));
+  // the head: the views, ‹ › the month and Today, To book, the round tools, More Actions
+  const bar = h.slice(h.indexOf('class="wk-rbar"'), h.indexOf('class="wk-month"'));
+  assert.ok(bar.indexOf('data-view="month"') < bar.indexOf('data-cal="-1"') && bar.indexOf('data-cal="1"') < bar.indexOf("data-mpick") && bar.indexOf("data-mpick") < bar.indexOf('data-cal="today"'), "the views, then the arrows, the month, Today");
+  assert.match(bar, /<span class="wk-mtitle">Nov 2026<\/span>/);
+  for (const b of ["data-totray", "data-search", "data-mapday", "data-filter", "data-cards", "data-more"]) assert.match(bar, new RegExp(b), b);
+  assert.doesNotMatch(h, /class="wk-top"|class="wk-bar"/, "the month's head is Rotor's alone");
+  assert.match(text(SC.default.render({ ...s, view: "week", data: { ...data, kind: "range" } }, ctx())), /class="wk-top"/, "the other views keep theirs");
+  // the 16th: Tasks: 1 first, then the visits in the status colors (customer, time, price), +N more past five
+  const cell = h.slice(h.indexOf('data-mday="2026-11-16"'), h.indexOf('data-mday="2026-11-17"'));
+  assert.match(cell, /class="wk-mchip task"><span class="nm">Tasks: 1<\/span>/);
+  assert.match(cell, /class="wk-mchip st-fin" style="--c:#2563eb"><span class="nm">Pat S\.<\/span><span class="tm num">8a<\/span><b class="amt num">\$295<\/b>/, "finished: customer, time, price, the person's stripe");
+  assert.match(cell, /class="wk-mchip st-ip"[\s\S]*?9a/);
+  assert.match(cell, /class="wk-mchip st-ns"[\s\S]*?10a/);
+  assert.equal((cell.match(/class="wk-mchip[ "]/g) || []).length, 4, "Tasks and three visits");
+  assert.match(cell, /<span class="wk-mmore">\+3 more<\/span>/);
+  // a phone's dots: one a visit in its status color, +N past four
+  assert.match(cell, /class="wk-mdots" aria-hidden="true"><i class="st-fin"><\/i><i class="st-ip"><\/i><i class="st-ns"><\/i><b class="num">\+3<\/b>/);
+  const any = h.slice(h.indexOf('data-mday="2026-11-17"'), h.indexOf('data-mday="2026-11-18"'));
+  assert.match(any, /<span class="tm num">Any<\/span>/, "a visit at any time that day");
+  // the legend and the day's rows (Rotor's: a stripe and a tag in the status color)
+  assert.match(h, /wk-mswatch st-ns"><\/i>Not started[\s\S]*wk-mswatch st-ip"><\/i>In progress[\s\S]*wk-mswatch st-fin"><\/i>Finished/);
+  assert.match(h, /class="wk-drow st-fin done"[\s\S]*?class="wk-rtag st-fin">Finished</);
+  assert.match(h, /class="wk-drow st-ip"[\s\S]*?class="wk-rtag st-ip">In progress</);
+  assert.match(h, /class="wk-drow st-x dead"[\s\S]*?class="wk-rtag st-x">Cancelled</);
+  assert.match(h, /class="wk-drow st-ns"[\s\S]*?class="wk-rtag st-ns">Not started</);
+  assert.deepEqual(["scheduled", "en_route", "in_progress", "paused", "completed", "cancelled", "no_access", "odd"].map((x) => SC.rotorStatus(x)[0]), ["ns", "ns", "ip", "ip", "fin", "x", "x", "ns"]);
+  // no prices: no money on the blocks
+  assert.doesNotMatch(text(SC.default.render(s, ctx(["schedule:read", "schedule:write"]))).split('class="wk-month"')[1].split('class="wk-dayp')[0], /\$295/);
+});
