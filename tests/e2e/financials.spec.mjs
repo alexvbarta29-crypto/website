@@ -59,6 +59,17 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"]]) {
       assert.ok(await f.$(".sheet.on [data-tax-report]"), "the Tax report");
       await f.click(".sheet.on [data-sheet-x]");
       await sheetGone(f);
+      // a row opens Rotor's phone invoice full screen; its X comes back to the list
+      const row = await f.$('#view a[href^="#/invoices/in_"]');
+      if (row) {
+        await row.click();
+        await f.waitForSelector(".mn-edsheet.on .mn-ed", { timeout: 10000 });
+        await f.waitForTimeout(320);
+        assert.match(await f.textContent(".mn-edsheet.on"), /Bill To[\s\S]*Invoice Details[\s\S]*Line Items[\s\S]*Summary/);
+        await checks(f, page, `fin-invoice-${device}-${theme}`, problems);
+        await f.click(".mn-edsheet.on [data-ed-x]");
+        await f.waitForFunction(() => location.hash === "#/invoices" && !document.querySelector(".mn-edsheet"), null, { timeout: 5000 });
+      }
 
       await goTo(f, "/payments");
       await f.waitForSelector('[data-tile="pay"][data-key="total"]');
