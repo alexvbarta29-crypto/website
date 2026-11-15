@@ -56,7 +56,7 @@ for (const device of ["iphone13", "iphonese"]) {
         await f.waitForFunction((th) => document.documentElement.dataset.theme === th, theme);
         assert.equal(await bg(f, "body"), theme === "light" ? "rgb(246, 246, 248)" : "rgb(17, 18, 20)", `${theme}: the canvas`);
         assert.equal(await bg(f, ".rs-card"), theme === "light" ? "rgb(255, 255, 255)" : "rgb(27, 28, 31)", `${theme}: a card`);
-        assert.equal(await f.$eval(".rs-crow .rnd.red", (el) => getComputedStyle(el, "::before").backgroundColor), "rgb(219, 58, 41)", `${theme}: the red call button`);
+        assert.equal(await f.$eval(".rs-crow .rnd.red", (el) => getComputedStyle(el, "::before").backgroundColor), "rgb(251, 77, 61)", `${theme}: the red call button`);
         assert.deepEqual(await screenProblems(f), [], `${theme}: no sideways scroll, 44 px targets, 16 px inputs`);
         assert.deepEqual(await badLinks(f), []);
         // nothing sticks out of its card or the screen (the rows that scroll sideways clip what is past the edge: tabs, tiles, a board)

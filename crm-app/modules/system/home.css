@@ -167,7 +167,7 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
 .hm-hours{font:700 22px/1.15 var(--head);letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hm-line{min-width:0;font-size:14px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-pill{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 16px/1 var(--text);cursor:pointer}
+.hm-pill{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--coral-btn);color:var(--on-coral);font:700 var(--t-lg)/1 var(--text);cursor:pointer}
 .hm-pill:active{background:var(--coral-btn-2)}
 .hm-pill svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
 

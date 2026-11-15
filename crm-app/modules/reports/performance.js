@@ -21,7 +21,7 @@ export function sparkline(series = [], { w = 320, h = 90 } = {}) {
   const pts = series.map((x, i) => [series.length > 1 ? (i / (series.length - 1)) * w : w, h - 4 - (x.cents / max) * (h - 10)]);
   const d = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
   const last = pts[pts.length - 1] || [w, h - 4];
-  return html`<svg class="pf-line" ${attrs({ viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", role: "img", "aria-label": `Running total, ${dollars(series.length ? series[series.length - 1].cents : 0)} by today` })}><path ${attrs({ d: d || `M0 ${h - 4} L${w} ${h - 4}` })} fill="none" stroke="#db3a29" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path><circle ${attrs({ cx: last[0].toFixed(1), cy: last[1].toFixed(1), r: "4" })} fill="#db3a29"></circle></svg>`;
+  return html`<svg class="pf-line" ${attrs({ viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", role: "img", "aria-label": `Running total, ${dollars(series.length ? series[series.length - 1].cents : 0)} by today` })}><path ${attrs({ d: d || `M0 ${h - 4} L${w} ${h - 4}` })} fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path><circle ${attrs({ cx: last[0].toFixed(1), cy: last[1].toFixed(1), r: "4" })} fill="currentColor"></circle></svg>`;
 }
 
 export default {

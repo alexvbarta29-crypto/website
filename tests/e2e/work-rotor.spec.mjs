@@ -144,7 +144,7 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       assert.equal(await f.getAttribute(".wk-fly [data-seg=view][data-key=day]", "aria-selected"), "true");
       assert.equal(await f.$$eval(".wk-fly .rnd", (b) => b.filter((x) => x.closest(".wk-rs-tools")).length), 3, "map, go to a date, filter");
       assert.ok(await f.isVisible(`.wk-strip .wk-sday.today[data-sday="${day}"]`), "today in the red circle");
-      assert.equal(await f.$eval(`.wk-strip .wk-sday.today b`, (el) => getComputedStyle(el).backgroundColor), "rgb(219, 58, 41)");
+      assert.equal(await f.$eval(`.wk-strip .wk-sday.today b`, (el) => getComputedStyle(el).backgroundColor), "rgb(251, 77, 61)");
       assert.match(await f.textContent(".wk-cols .wk-chead"), /Unassigned/);
       assert.match(await f.textContent(".wk-cols"), /\d\/\d/, "done of all");
       assert.ok(await f.$(".wk-cols .wk-nowline"), "the red line");
