@@ -155,12 +155,12 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       await f.waitForSelector(".wk-mgrid");
       await f.waitForSelector(".wk-dayp");
       await checks(f, page, `rotor-schedule-month-${device}-${th}`, problems);
-      // To book from the chip
+      // the dashed chip (Track 2: Pending, the jobs to book for the dates on screen) opens the Pending page
       await f.click(".wk-fly [data-seg=view][data-key=week]");
       await f.waitForSelector(".wk-week");
       await f.waitForSelector(".wk-tbchip >> visible=true");
       await f.click(".wk-tbchip");
-      await f.waitForSelector("[data-book]");
+      await f.waitForSelector(".sheet.on [data-pend-overdue], [data-book]");
       await checks(f, page, `rotor-schedule-tray-${device}-${th}`, problems);
       assert.deepEqual(problems, []);
       await p.clean();
