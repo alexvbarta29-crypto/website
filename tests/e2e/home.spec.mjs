@@ -534,7 +534,9 @@ test("Pipeline and Leads from the drawer (top-level: no switch, no back button);
     try {
       for (const [path, name] of [["/pipeline", "Pipeline"], ["/leads", "Leads"]]) {
         await drawerGo(f, path);
-        await settled(f, { hash: "#" + path });
+        // (Track 2: the section opens on its first view, #/pipeline?view=list)
+        await f.waitForFunction((h) => location.hash.split("?")[0] === h, "#" + path);
+        await settled(f, { hash: await hashOf(f) });
         assert.equal(await title(f), name);
         // (the section's own List | Board tabs may show; the old Sales switch must not)
         assert.equal(await f.$eval("#subnav", (el) => !el.hidden && /Quotes/.test(el.textContent)), false, "no Pipeline · Leads · Calls · Quotes · Tasks switch");
@@ -645,12 +647,12 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     // search the list; open another from it: the list keeps its words, the pane changes
     await f.fill("#ct-q", "Workday");
     await page.waitForTimeout(400);
-    const other = await f.$$eval("#ct-list a.cc-top", (as) => as.map((a) => a.getAttribute("href")));
+    const other = await f.$$eval("#ct-list a.rs-lr-main", (as) => as.map((a) => a.getAttribute("href")));
     assert.ok(other.length >= 4, `the list filters (${other.length})`);
-    await f.click(`#ct-list a.cc-top[href="${other[1]}"]`);
+    await f.click(`#ct-list a.rs-lr-main[href="${other[1]}"]`);
     await settled(f, { hash: other[1] });
     assert.equal(await f.inputValue("#ct-q"), "Workday", "the list kept its search");
-    assert.equal(await f.getAttribute(`#ct-list a.cc-top[href="${other[1]}"]`, "aria-current"), "true", "the open card is lit");
+    assert.equal(await f.getAttribute(`#ct-list a.rs-lr-main[href="${other[1]}"]`, "aria-current"), "true", "the open card is lit");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-desk-contacts-split");
     // back to the list alone: it fills the page again (Polish 3: no empty pane), its search kept

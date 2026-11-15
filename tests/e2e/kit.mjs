@@ -213,7 +213,8 @@ export async function openDrawer(frame) {
 // the section's tab under the title, or the section's round "..." and its row.
 export async function drawerGo(frame, path, { open = true } = {}) {
   if (open) await openDrawer(frame);
-  const direct = `.drawer a.dr-row[href="#${path}"]`;
+  // (a section whose screen draws views opens on its first: #/pipeline?view=list)
+  const direct = path.includes("?") ? `.drawer a.dr-row[href="#${path}"]` : `.drawer a.dr-row[href="#${path}"], .drawer a.dr-row[href^="#${path}?"]`;
   if (await frame.$(direct)) { await frame.click(direct); return; }
   const key = await frame.evaluate((p) => { const a = [...document.querySelectorAll(".drawer [data-dr-paths]")].find((x) => x.dataset.drPaths.split(" ").includes(p)); return a ? a.dataset.drSec : null; }, path);
   if (!key) throw new Error(`${path} is not in the drawer`);
