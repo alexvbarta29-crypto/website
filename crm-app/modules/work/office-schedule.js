@@ -24,12 +24,17 @@
 //     with a red line at the current time; more than two columns scroll
 //     sideways on a phone; 3 Day: three days side by side.
 //
-// A phone's head is Rotor's (Nov 2026, flyHead below): "November ⌄", the
-// time, three round buttons (Map of the day, Go to a date, the filter that
-// holds Who, the columns, Show on cards, Find a visit and To book), the
-// < > and the segmented List | Day | 3 Day | Week | Month (Month still the
-// default); a dashed "To book (6)" chip above Day, 3 Day and Week; a long
-// press on a visit opens Move or reassign (the desk's drag and drop).
+// A phone's head is Flyra's (Nov 15, "best of both", flyHead below): the
+// huge "Nov 2026" with "Revenue $X" under it and a round ‹ › pill; the view
+// pill ("Month ⌄": Day, 3 Day, Week, Month, List, Map) and a pill of tools
+// (Find a visit, Who, the gear: the columns, Show on cards, To book, Map of
+// the day, Go to a date, Rain day, Time off, Block time); every view shares
+// it. A phone's month is Flyra's too: plain dates, the chosen day a filled
+// tile, today outlined, a dot on a day with work; under it "Fri, Nov 13",
+// "1 job · $195", Open day › and Flyra's cards with Rotor's status tag (the
+// fullness and the forecast in that head). A dashed "To book (6)" chip sits
+// above Day, 3 Day and Week; a long press on a visit opens Move or reassign
+// (the desk's drag and drop).
 //
 // On a desk (1,100 px and up; office-board.js, office-vpanel.js): a click
 // on a visit opens it in a side panel (the address says ?visit=, Esc
@@ -42,7 +47,7 @@
 // /schedule/weather) after the grid is on screen. Arrow keys move the
 // chosen day on a computer (Page Up / Page Down a month).
 
-import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, rnd, seg, actionSheet, sheetPage, listRow, listCard, toggle, formRows, formRow } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, actionSheet, sheetPage, listRow, listCard, toggle, formRows, formRow } from "../../core/ui.js";
 import { dateShort, dateLong, plural, money, clock } from "../../core/format.js";
 import {
   ensureStyles, officeView, today, addDays, dow, dowShort, dayNum, dayLabel, isDate, slotText, range, visitPill, faces, names, loadUsers, team,
@@ -86,6 +91,8 @@ const monthName = (ym) => `${MONTH_LONG.format(new Date(ym + "-15T12:00:00Z"))} 
 // "Thursday, Nov 12": the day list's head
 const PANEL_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long", month: "short", day: "numeric" });
 export const panelDay = (d) => PANEL_DAY.format(new Date(d + "T12:00:00Z"));
+// "Fri, Nov 13": a phone's day head (Flyra's)
+const PHONE_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 export { shortTime, shortName, capFor, fullness, notClosed };
 // Rotor's month (Nov 15, "make the monthly calendar look like Rotor more"):
 // its status colors on the chips, the dots and the day's rows (Not started
@@ -386,17 +393,17 @@ function head(s, ctx) {
   </div>`;
 }
 
-// A phone's head (Rotor's Schedule, Nov 2026; scratchpad simplify/rotor-spec.md
-// §4.5): the month as the title ("November ⌄": pick a month or a day) and
-// the time; three round buttons, Map of the day, Go to a date, and the
-// filter (Who, Technician or Sales rep columns, Show on cards, cancelled
-// hidden, Find a visit, N to book, Rain day, Time off); under it the
-// segmented List | Day | 3 Day | Week | Month (Month stays the default, the
-// owner's choice). On Day the date and the day's total are a line under the
-// title. A desk keeps its own head (head() above) and segmented views.
-const PHONE_VIEWS = [["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"], ["map", "Map"], ["month", "Month"]];
+// A phone's head (Flyra's Schedule, Nov 15: "best of both" Rotor and Flyra):
+// the month as a huge title ("Nov 2026": pick a month or a day) and under it
+// the money ("Revenue $1,240": the month's booked total, or the dates on
+// screen; the day and a holiday on Day), a round ‹ › pill at the right; then
+// the view pill ("Month ⌄": Day, 3 Day, Week, Month, List, Map) and a pill
+// of three tools: Find a visit, Who (the team) and the gear (Schedule
+// options: the columns, Show on cards, cancelled, To book, Map of the day,
+// Go to a date, Rain day, Time off, Block time, the settings). Every view
+// shares it on a phone; a desk keeps its own head (head() above, rotorBar).
+const PHONE_VIEWS = [["day", "Day", "cal"], ["3day", "3 Day", "grid"], ["week", "Week", "schedule"], ["month", "Month", "cal12"], ["list", "List", "list"], ["map", "Map", "map"]];
 const WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" });
-const CLOCK_NOW = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" });
 // "Today", "Tomorrow", "Yesterday", else the weekday (the date is the line under it)
 export function dayTitle(d, t) {
   if (d === t) return "Today";
@@ -404,33 +411,57 @@ export function dayTitle(d, t) {
   if (d === addDays(t, -1)) return "Yesterday";
   return WEEKDAY_LONG.format(new Date(d + "T12:00:00Z"));
 }
-// What the filter changes from the plain schedule (the round filter button is lit).
-const filtered = (s) => !!(s.tech || s.by === "sales" || (s.cards && s.cards.hideCancelled));
+// What the filter changes from the plain schedule (the gear is lit).
+const filtered = (s) => !!(s.by === "sales" || (s.cards && s.cards.hideCancelled));
+// The booked money of the visits shown (cancelled left out; one person's when Who says so).
+const booked = (s, keep = () => true) => ((s.data && s.data.visits) || []).filter((v) => keep(v) && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0);
+const dollars = (c) => money(c).replace(/\.00$/, "");
 function flyHead(s, ctx) {
   const t = todayOf(s);
   const ym = (s.view === "month" ? s.cal : s.view === "tray" ? s.month : String(s.date || t).slice(0, 7)) || t.slice(0, 7);
   const mid = new Date(ym + "-15T12:00:00Z");
-  const name = `${MONTH_LONG.format(mid)}${ym.slice(0, 4) !== t.slice(0, 4) ? " " + ym.slice(0, 4) : ""}`;
-  const day = ["day", "3day"].includes(s.view) && s.date;
-  // the day's total (Flyra's "November 13 · $195"), for someone who sees prices
-  const total = s.view === "day" && day && prices(ctx) && s.data ? (s.data.visits || []).filter((v) => v.d === s.date && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
-  // the range's $ booked (Flyra's header total, SC11) on 3 Day, Week and List; a holiday's name on a day (SC12)
-  const rangeTotal = ["3day", "week", "list"].includes(s.view) && prices(ctx) && s.data && s.data.kind !== "map" ? (s.data.visits || []).filter((v) => !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
+  const name = `${MONTH_SHORT.format(mid)} ${ym.slice(0, 4)}`;
+  const day = ["day", "3day", "map"].includes(s.view) && s.date;
+  const got = s.data && s.data.kind !== "map";
+  // the money: the month's (Flyra's "Revenue $195"), a day's, or the dates on screen (SC11); a holiday's name on a day (SC12)
+  const sum = !prices(ctx) || !got ? 0 : s.view === "month" ? booked(s, (v) => v.d.slice(0, 7) === s.cal) : s.view === "day" ? booked(s, (v) => v.d === s.date) : ["3day", "week", "list"].includes(s.view) ? booked(s) : 0;
   const hol = day && s.data && s.data.holidays ? s.data.holidays[s.date] : null;
+  const when = day ? html`${dayTitle(s.date, t)} · ${MONTH_SHORT.format(new Date(s.date + "T12:00:00Z"))} ${dayNum(s.date)}${hol ? html` <span class="wk-hol">${hol}</span>` : ""}`
+    : s.view === "week" && s.date ? `Week of ${dateShort(sundayOf(s.date))}` : s.view === "list" && s.date ? `From ${dateShort(s.date)}` : s.view === "tray" ? "To book" : "";
+  const money0 = sum ? html`<b class="wk-ftotal num" ${attrs({ title: s.view === "month" ? "Booked this month" : "Booked in these dates" })}>${dollars(sum)}</b>` : "";
+  const count = s.view === "month" && got && !prices(ctx) ? plural((s.data.visits || []).filter((v) => v.d.slice(0, 7) === s.cal && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).length, "job") : "";
+  const sub = s.view === "month" ? (sum ? html`Revenue ${money0}` : count) : html`${when}${when && sum ? " · " : ""}${money0}`;
   // back to today when the screen is somewhere else
   const away = s.view === "month" ? !!s.cal && s.cal !== t.slice(0, 7) : s.view !== "tray" && !!s.date && s.date !== t;
   const who = s.tech ? names(s.users, [s.tech]) : "Everyone";
-  // the < > of each view: a month, a day, three days, a week (the List's two weeks go by the week)
+  // the ‹ › of each view: a month, a day, three days, a week (the List's two weeks go by the week)
   const step = { month: "cal", day: "day", "3day": "day3", week: "week", list: "week", map: "day" }[s.view] || null;
-  return html`<div class="wk-fly wk-rs">
-    <div class="wk-rs-row">
-      <button type="button" class="wk-rs-title" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${name}: pick a month or a day` })}><span class="t">${name}</span>${I.caret}</button>
-      <span class="wk-rs-tools">${rnd("map", "Map of the day", { data: { mapday: true }, popup: true })}${rnd("cal", "Go to a date", { data: { jump: true }, popup: true })}${rnd("filter", `Filter: ${who}${s.by === "sales" ? ", sales reps" : ""}`, { data: { fsheet: true }, popup: true, pressed: filtered(s) })}</span>
+  const unit = { month: "month", day: "day", "3day": "three days", week: "week", list: "week", map: "day" }[s.view];
+  const cur = PHONE_VIEWS.find(([k]) => k === s.view);
+  const arrow = (dir) => html`<button type="button" class="wk-fh-b" ${attrs({ [`data-${step}`]: String(dir), "aria-label": `${dir < 0 ? "Previous" : "Next"} ${unit}` })}>${icon(dir < 0 ? "chevleft" : "chevright")}</button>`;
+  return html`<div class="wk-fly">
+    <div class="wk-fh-row">
+      <div class="wk-fh-t">
+        <button type="button" class="wk-fh-title" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${monthName(ym)}: pick a month or a day` })}><span class="t num">${name}</span></button>
+        ${sub ? html`<p class="wk-fh-sub">${sub}</p>` : ""}
+      </div>
+      ${step ? html`<div class="wk-fh-pill wk-fh-nav" role="group" ${attrs({ "aria-label": `Earlier or later ${unit}` })}>${arrow(-1)}${arrow(1)}</div>` : ""}
     </div>
-    ${step || away ? html`<div class="${"wk-rs-sub" + (day ? " day" : "")}"><span class="s">${day ? html`${dayTitle(s.date, t)} · ${MONTH_SHORT.format(new Date(s.date + "T12:00:00Z"))} ${dayNum(s.date)}${hol ? html` <span class="wk-hol">${hol}</span>` : ""}${total ? html` · <b class="wk-ftotal num">${money(total).replace(/\.00$/, "")}</b>` : ""}` : s.view === "week" && s.date ? `Week of ${dateShort(sundayOf(s.date))}` : s.view === "list" && s.date ? `From ${dateShort(s.date)}` : s.view === "map" && s.date ? `${dayTitle(s.date, t)} · ${dateShort(s.date)}` : ""}${rangeTotal ? html` · <b class="wk-ftotal num" title="Booked in these dates">${money(rangeTotal).replace(/\.00$/, "")}</b>` : ""}</span><span class="wk-rs-time num" aria-hidden="true">${CLOCK_NOW.format(new Date())}</span>
-      <span class="wk-rs-nav">${away ? html`<button type="button" class="wk-ftoday" data-ftoday>${icon("undo")}Today</button>` : ""}${step ? html`${rnd("chevleft", "Earlier", { tone: "grey", sm: true, data: { [step]: "-1" } })}${rnd("chevright", "Later", { tone: "grey", sm: true, data: { [step]: "1" } })}` : ""}</span></div>` : ""}
-    ${seg(PHONE_VIEWS.map(([key, label]) => ({ key, label })), s.view, { name: "view", label: "View" })}
+    <div class="wk-fh-row wk-fh-row2">
+      <button type="button" class="wk-fh-pill wk-fh-view" data-vmenu ${attrs({ "aria-haspopup": "dialog", "aria-label": `View: ${cur ? cur[1] : "To book"}` })}><span>${cur ? cur[1] : "To book"}</span>${I.caret}</button>
+      ${away ? html`<button type="button" class="wk-ftoday" data-ftoday>Today</button>` : ""}
+      <div class="wk-fh-pill wk-fh-tools" role="group" aria-label="Schedule tools">
+        <button type="button" class="wk-fh-b" data-search aria-label="Find a visit">${icon("search")}</button>
+        <button type="button" class="${"wk-fh-b" + (s.tech ? " on" : "")}" data-filter ${attrs({ "aria-label": `Who: ${who}`, "aria-pressed": String(!!s.tech), "aria-haspopup": "dialog" })}>${icon("people")}</button>
+        <button type="button" class="${"wk-fh-b" + (filtered(s) ? " on" : "")}" data-fsheet ${attrs({ "aria-label": `Schedule options${s.by === "sales" ? ": columns by sales rep" : ""}`, "aria-haspopup": "dialog" })}>${icon("gear")}</button>
+      </div>
+    </div>
   </div>`;
+}
+// The view pill's menu (Flyra's Day / 3 Day / Week / Month / List, and the Map).
+function viewSheet(ctx) {
+  const s = ctx.state;
+  actionSheet("View", [PHONE_VIEWS.map(([key, label, ic]) => ({ label, icon: s.view === key ? "check" : ic, run: () => setView(ctx, key), data: { vpick: key, on: s.view === key ? "1" : null } }))]);
 }
 
 // The phone's "To book (6)" chip above Day, 3 Day and Week (a desk has the tray beside them).
@@ -439,20 +470,22 @@ function toBookChip(s) {
   return n ? html`<div class="wk-phone wk-tbchip-w"><button type="button" class="rs-dashed wk-tbchip" data-totray ${attrs({ "aria-label": `${n} ${n === 1 ? "job" : "jobs"} to book: open To book` })}>${icon("clock")}<span>${`To book (${n})`}</span><span class="chev" aria-hidden="true"></span></button></div>` : "";
 }
 
-// The filter (a phone's round filter button): everything the desk's tools pill and the old view menu held.
+// Schedule options (a phone's gear): everything the desk's tools pill and More Actions hold.
 function filterSheet(ctx) {
   const s = ctx.state;
   const who = s.tech ? names(s.users, [s.tech]) : "Everyone";
   const tb = s.toBook && (s.view === "month" ? s.toBook.month === s.cal : s.toBook.month === String(s.date || "").slice(0, 7)) ? s.toBook.n : null;
   const d = s.date || todayOf(s);
   const byCols = (by) => { s.by = by; s.view = "day"; reload(ctx); };
-  actionSheet("Filter", [
+  actionSheet("Schedule options", [
     [{ label: `Who: ${who}`, icon: "people", hint: "one person or everyone", run: () => whoSheet(ctx), data: { filter: true } },
       { label: "Columns by technician", icon: s.by !== "sales" ? "check" : "team", hint: "Day", run: () => byCols("tech") },
       { label: "Columns by sales rep", icon: s.by === "sales" ? "check" : "sales", hint: "Day", run: () => byCols("sales") }],
     [{ label: "Show on cards", icon: "gear", hint: "name, service, price, address", run: () => cardsSheet(ctx), data: { cards: true } },
       { label: s.cards && s.cards.hideCancelled ? "Show cancelled visits" : "Hide cancelled visits", icon: "close", run: () => { s.cards = { ...s.cards, hideCancelled: !(s.cards && s.cards.hideCancelled) }; saveCards(meId(ctx), s.cards); paint(ctx); } }],
     [{ label: "Find a visit", icon: "search", hint: "customer, address, job", run: () => searchSheet(ctx), data: { search: true } },
+      { label: "Map of the day", icon: "map", hint: dateShort(d), run: () => mapSheet(ctx), data: { mapday: true } },
+      { label: "Go to a date", icon: "cal", run: () => jumpSheet(ctx), data: { jump: true } },
       canWrite(ctx) && { label: tb ? `${tb} to book` : "To book", icon: "clock", hint: "jobs waiting for a day", run: () => toTray(ctx), data: { totray: true } },
       canWrite(ctx) && { label: "Rain day", icon: "sun", hint: `move ${dateShort(d)}`, href: `#/schedule/move-day?date=${d}` },
       canWrite(ctx) && { label: "Time off", icon: "clock", href: "#/schedule/time-off" },
@@ -518,6 +551,7 @@ function dayCell(s, d, ctx) {
   };
   return html`<button type="button" class="${cls}" ${attrs({ "data-mday": d, "aria-pressed": String(d === s.date), "aria-current": d === t ? "date" : false, "aria-label": label, tabindex: d === s.date ? "0" : "-1" })}>
     <span class="wk-mtop" aria-hidden="true"><span class="wk-mnum num">${dayNum(d)}</span>${open ? html`<i class="wk-mopen" ${attrs({ title: `${plural(open, "visit")} not marked done` })}></i>` : ""}${wxMark(w, { pop: true, cls: "wk-wx wk-mwx" })}</span>
+    ${live.length ? html`<i class="${"wk-mjob" + (open ? " open" : "")}" aria-hidden="true"></i>` : ""}
     <span class="wk-mchips" aria-hidden="true">${chips.map(chip)}${blocks.length > chips.length ? html`<span class="wk-mmore">+${blocks.length - chips.length} more</span>` : ""}</span>
     ${visits.length ? html`<span class="wk-mdots" aria-hidden="true">${dots.map((x) => html`<i class="${"st-" + rotorStatus(x.v.st)[0]}"></i>`)}${visits.length > dots.length ? html`<b class="num">+${visits.length - dots.length}</b>` : ""}</span>` : ""}
     <span class="wk-mfill" aria-hidden="true">${f && f.level !== "closed" ? fillBar(f, { count: booked || "" }) : ""}</span>
@@ -531,14 +565,14 @@ function dayRow(s, v, ctx) {
   const where = s.cards && s.cards.address ? v.ad || v.town || "" : v.ad || v.town || "";
   return html`<li><a class="${"wk-drow st-" + rotorStatus(v.st)[0] + (state ? " " + state : "")}" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vopen": v.id })}>
     <span class="wk-dt num" ${attrs({ title: slotText(v) })}>${v.do ? html`<b>Anytime</b><small>Time not set</small>` : html`<b>${clock(v.s)}</b><small>to ${clock(v.e)}</small>`}</span>
-    <span class="who"><span class="nm">${b.title}</span>${where && b.title !== where ? html`<span class="sub">${where}</span>` : ""}${b.service ? html`<span class="sub">${b.service}</span>` : ""}</span>
+    <span class="who"><span class="nm">${b.title}</span>${where && b.title !== where ? html`<span class="${"sub wk-dwhere" + (s.cards && s.cards.address ? " on" : "")}">${where}</span>` : ""}${b.service ? html`<span class="sub">${b.service}</span>` : ""}<span class="sub wk-dwhen num">${v.do ? "Anytime" : `${clock(v.s)} to ${clock(v.e)}`}</span></span>
     <span class="wk-dend"><span class="wk-dtop">${v.st === "scheduled" ? warnBadge(w) : ""}${rotorTag(v.st)}</span><span class="wk-dbot">${b.price ? html`<b class="wk-amt num">${b.price}</b>` : ""}${(v.a || []).length ? faces(s.users, v.a) : html`<span class="wk-nobody">Nobody yet</span>`}</span></span>
   </a></li>`;
 }
 function dayTaskRow(t) {
   return html`<li><a class="wk-drow task" href="${"#/tasks/" + encodeURIComponent(t.id)}">
     <span class="wk-dt num"><b>${clock(t.start)}</b><small>to ${clock(t.end)}</small></span>
-    <span class="who"><span class="nm">${t.title || "Busy"}</span><span class="sub">${t.kind === "estimate_visit" ? "Estimate visit" : t.kind === "meeting" ? "Meeting" : "Personal"}${t.cn ? ` · ${t.cn}` : ""}</span></span>
+    <span class="who"><span class="nm">${t.title || "Busy"}</span><span class="sub">${t.kind === "estimate_visit" ? "Estimate visit" : t.kind === "meeting" ? "Meeting" : "Personal"}${t.cn ? ` · ${t.cn}` : ""}</span><span class="sub wk-dwhen num">${clock(t.start)} to ${clock(t.end)}</span></span>
     <span class="wk-dend"><span class="pill">${icon("clock")}Task</span></span>
   </a></li>`;
 }
@@ -554,9 +588,12 @@ function dayPanel(s, ctx) {
   const f = fullness(live, capFor(s.data.capacity, d, s.tech));
   const open = notClosed(s.data.visits, d, todayOf(s), s.tech);
   const w = dayWx(s.wx, d);
+  // a phone's head is Flyra's: "Fri, Nov 13" and under it "1 job · $195"
+  const sum = prices(ctx) ? booked(s, (v) => v.d === d) : 0;
+  const jobs = [plural(live, "job"), tasks ? plural(tasks, "task") : ""].filter(Boolean).join(", ") + who + (sum ? ` · ${dollars(sum)}` : "");
   return html`<section class="wk-dayp card" aria-labelledby="wk-dayp-h" aria-live="polite">
     <header class="wk-dayp-h">
-      <div class="wk-dayp-t"><h2 id="wk-dayp-h">${panelDay(d)}<span class="wk-dayp-n"> · ${count}${who}</span></h2>
+      <div class="wk-dayp-t"><h2 id="wk-dayp-h"><span class="wk-dayp-l">${panelDay(d)}<span class="wk-dayp-n"> · ${count}${who}</span></span><span class="wk-dayp-s">${PHONE_DAY.format(new Date(d + "T12:00:00Z"))}<small class="num">${jobs}</small></span></h2>
         <button type="button" class="wk-openday" ${attrs({ "data-goday": d, "data-gotech": s.tech || "" })}>Open day<span aria-hidden="true">›</span></button></div>
       ${w || (f && f.level !== "open") ? html`<div class="wk-dayp-info">${wxLine(w)}${f && f.level !== "open" ? html`<span class="${"wk-dayp-cap lvl-" + f.level}">${f.label}</span>` : ""}</div>` : ""}
       ${open ? html`<p class="wk-dayp-open">${plural(open, "visit")} here ${open === 1 ? "isn't" : "aren't"} marked done yet.</p>` : ""}
@@ -581,7 +618,7 @@ function monthView(s, ctx) {
   return html`<div class="wk-month">
     <div class="wk-cal card">
       <div class="wk-mgrid" role="group" ${attrs({ "aria-label": `${monthName(s.cal)}: pick a day`, "data-weeks": String(g.weeks.length) })}>
-        <div class="wk-mdow" aria-hidden="true">${g.weeks[0].map((d) => html`<span>${dowShort(d)}</span>`)}</div>
+        <div class="wk-mdow" aria-hidden="true">${g.weeks[0].map((d) => html`<span><span class="l">${dowShort(d)}</span><span class="i">${dowShort(d)[0]}</span></span>`)}</div>
         ${g.weeks.map((w) => html`<div class="wk-mweek">${w.map((d) => dayCell(s, d, ctx))}</div>`)}
       </div>
       <div class="wk-mfoot">
@@ -1036,8 +1073,8 @@ export default {
     if (keysOn && typeof document !== "undefined") { document.removeEventListener("keydown", onKey); keysOn = false; }
   },
   events: {
-    // a phone's segmented views (Rotor's) and its filter button
-    "click [data-seg=view]": (e, el, ctx) => setView(ctx, el.dataset.key),
+    // a phone's view pill (Flyra's "Month ⌄") and its gear
+    "click [data-vmenu]": (e, el, ctx) => viewSheet(ctx),
     "click [data-fsheet]": (e, el, ctx) => filterSheet(ctx),
     "click [data-more]": (e, el, ctx) => moreSheet(ctx),
     "click [data-ftoday]": (e, el, ctx) => { const s = ctx.state; if (s.view === "month") s.cal = null; s.date = null; reload(ctx); },

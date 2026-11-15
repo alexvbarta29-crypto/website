@@ -56,21 +56,29 @@ overlay of what waits, copies for no signal, Delano times),
 ## What the office sees
 
 - **Schedule** (bottom tab; `schedule:read`). On a phone it is **Flyra's**
-  (Nov 13, "make it look more like Flyra"): a big title ("Nov 2026"; on a
-  day "Today", "Tomorrow", "Yesterday" or the weekday, with the date under
-  it and the day's total in coral for someone with `visits:prices`, "November
-  13 · $195"; tap: a month picker with Today and any day), the **< >**
-  pill at the right (and "↺ Today" beside it when the screen is somewhere
-  else), the **view pill** ("Month ⌄": Day, Week, Month, Technician, Sales
-  rep, List, 3 Day, then Map of the day and To book) and the **tools
-  pill** (Find, Who, and the gear: Show on cards). The month is Flyra's
-  plain grid (the chosen day outlined in coral, today's number coral; how
-  full each day is and the forecast stay, small), then "Tue, Nov 17 ·
-  Open day ›" and the day's jobs as cards, or "No jobs on ..." and Add
-  job; "6 to book ›" under the grid. A visit on Day is Flyra's block: a
-  colored left bar, the customer bold with the price after it in grey,
-  the service, the time window. The week strip and the Technician | Sales
-  rep chips step aside on Day and 3 Day (the view pill has them). A
+  (Nov 15, "best of both" Rotor and Flyra): a huge title ("Nov 2026"; tap:
+  a month picker with Today and any day) with the money under it in coral
+  for someone with `visits:prices` ("Revenue $1,240": the month's booked
+  total, cancelled left out; on Day "Today · Nov 17 · $495", on 3 Day,
+  Week and List the dates on screen and their total; without prices the
+  month's job count), the round **‹ ›** pill at the right, then the
+  **view pill** ("Month ⌄": Day, 3 Day, Week, Month, List, Map; "Today"
+  beside it when the screen is somewhere else) and the **tools pill**
+  (Find a visit, Who, and the gear: Schedule options with Who, the
+  Technician or Sales rep columns, Show on cards, cancelled hidden, Map of
+  the day, Go to a date, To book, Rain day, Time off, Block time and the
+  settings). Every view shares this head. The month is Flyra's plain grid
+  (weekday initials, big numbers, no lines; the chosen day a filled light
+  tile, today outlined in coral, a dot on a day with work, amber when a
+  past visit there isn't marked done; next month's days dimmed; "6 to
+  book ›" under it), then "Fri, Nov 13" with "1 job · $195" and Open day ›
+  (how full the day is, the forecast, Book, Route and Move this day under
+  them), and the day's jobs as Flyra's cards (the customer bold, the
+  service, the time or "Anytime", the amount at the right with Rotor's
+  status tag), or "No jobs on ..." and Add job. A visit on Day is Flyra's
+  block: a colored left bar, the customer bold with the price after it in
+  grey, the service, the time window. The week strip and the Technician |
+  Sales rep chips step aside on Day and 3 Day (the gear has them). A
   computer keeps the layout below, laid out like Rotor's phone schedule
   with Flyra's extras (the owner's choice, Nov 12-13):
   - **The head**: the month as a big title ("November 2026 ▾" on a

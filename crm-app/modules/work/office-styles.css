@@ -35,7 +35,7 @@
 .wk-mnav{flex:none;display:flex;align-items:center;gap:2px}
 .wk-mnav .btn{margin-right:4px}
 .wk-mdow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--mist);border-bottom:1px solid var(--line)}
-.wk-mdow span{padding:7px 0;text-align:center;font:600 11px/1 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.wk-mdow>span{padding:7px 0;text-align:center;font:600 11px/1 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .wk-mweek{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .wk-mweek+.wk-mweek{border-top:1px solid var(--line)}
 .wk-mday{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;min-height:66px;padding:5px 3px 6px;border:0;border-left:1px solid var(--line);border-radius:0;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
@@ -288,7 +288,7 @@
   .wk-mtobook{min-height:36px;padding:0 12px;font-size:12.5px}
   /* Rotor's grid: the weekday row, the number at the top left (today in the red circle), weekends shaded */
   .wk-mdow{background:var(--card-2)}
-  .wk-mdow span{padding:10px 0;font:600 13px/1 var(--text);letter-spacing:0;text-transform:none;color:var(--ink-2)}
+  .wk-mdow>span{padding:10px 0;font:600 13px/1 var(--text);letter-spacing:0;text-transform:none;color:var(--ink-2)}
   .wk-mday{align-items:stretch;gap:4px;min-height:136px;padding:6px 6px 7px}
   .wk-mweek:last-child .wk-mday{min-height:128px}
   .wk-mnum{align-self:flex-start;min-width:26px;height:26px;padding:0 6px;font:600 13.5px/1 var(--text)}
@@ -560,79 +560,117 @@
   .wk-blk:hover{filter:brightness(.97)}
 }
 
-/* ---------------------------------------------------------------- a phone's Schedule (Rotor's head, Nov 2026; the month Flyra's)
-   The big title and the < > pill; the view pill (Month ⌄) and the round
-   tools pill; the month as plain dates with the chosen day outlined;
-   "Thu, Nov 12 · Open day ›" and the day's jobs, or "No jobs on ..." and
-   Add job. Fullness and the forecast stay, small. A desk keeps Rotor's head
-   and the bordered grid (above). */
-.wk-fly{display:none}
+/* ---------------------------------------------------------------- a phone's Schedule (Flyra's, Nov 15: "best of both" Rotor and Flyra)
+   The huge "Nov 2026" with "Revenue $X" under it and the round ‹ › pill;
+   the view pill ("Month ⌄") and the pill of tools (Find a visit, Who, the
+   gear); the month as plain dates (weekday initials, big numbers, no lines,
+   the chosen day a filled light tile with a dot, today outlined in coral, a
+   dot on a day with work); under it "Fri, Nov 13", "1 job · $195" and Open
+   day ›, then Flyra's cards (customer, service, time, the amount at the
+   right, Rotor's status tag). Every view shares the head; a desk keeps
+   Rotor's head and the bordered grid (above). */
+.wk-fly,.wk-mjob,.wk-dwhen,.wk-dayp-s,.wk-mdow .i{display:none}
 .wk-mfoot .wk-ftobook{display:none}
+.wk{--wk-sel:var(--fill-2);--wk-sel-ink:var(--ink)}
+html:not([data-theme="light"]) .wk{--wk-sel:var(--solid);--wk-sel-ink:var(--on-solid)}
 @media (max-width:899px){
   .wk>.wk-top,.wk>.wk-bar{display:none}
-  /* Rotor's head: "November ⌄" and the time, the three round buttons, the segmented views */
-  .wk-fly{display:flex;flex-direction:column;gap:12px;padding:6px 0 2px}
-  .wk-rs-row{display:flex;align-items:center;gap:8px;min-width:0}
-  .wk-rs-title{display:inline-flex;align-items:center;gap:6px;min-width:0;min-height:44px;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
-  .wk-rs-title .t{font:700 30px/1.1 var(--head);letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .wk-rs-title svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;color:var(--ink-2)}
-  .wk-rs-time{flex:none;margin-right:auto;font:500 15px/1 var(--text);color:var(--muted)}
-  .wk-rs-tools{flex:none;display:flex;align-items:center;gap:6px;margin-left:auto}
-  .wk-rs-tools .rnd[aria-pressed="true"]{color:var(--coral-ink)}
-  .wk-rs-tools .rnd[aria-pressed="true"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--coral-btn);box-shadow:0 0 0 2px var(--mist)}
-  .wk-rs-sub{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin:-6px 0 -4px}
-  .wk-rs-sub .s:empty{display:none}
-  @media (max-width:380px){.wk-rs-sub.day .wk-rs-time{display:none}}
+  /* the head */
+  .wk-fly{display:flex;flex-direction:column;gap:14px;padding:4px 0 2px}
+  .wk-fh-row{display:flex;align-items:center;gap:8px;min-width:0}
+  .wk-fh-row:first-child{align-items:flex-start}
+  .wk-fh-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .wk-fh-title{align-self:flex-start;display:block;max-width:100%;min-height:44px;padding:0;border:0;background:none;color:var(--ink);text-align:left;cursor:pointer}
+  .wk-fh-title .t{display:block;font:700 40px/1.1 var(--head);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-fh-sub{margin:0;min-width:0;font:500 17px/1.3 var(--text);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wk-fh-sub .wk-ftotal{font-weight:600;color:var(--coral-ink)}
+  .wk-fh-pill{flex:none;display:flex;align-items:center;min-height:52px;padding:0 4px;border:1px solid var(--rnd-line);border-radius:999px;background:var(--rnd-bg);box-shadow:var(--rnd-sh);color:var(--ink)}
+  .wk-fh-nav{margin-top:2px}
+  .wk-fh-b{position:relative;display:grid;place-items:center;width:48px;height:44px;padding:0;border:0;border-radius:999px;background:none;color:inherit;cursor:pointer}
+  .wk-fh-b svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .wk-fh-b:active{background:var(--fill)}
+  .wk-fh-b.on{color:var(--coral-ink)}
+  .wk-fh-b.on::after{content:"";position:absolute;top:7px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--coral-btn);box-shadow:0 0 0 2px var(--rnd-bg)}
+  .wk-fh-row2{justify-content:space-between}
+  .wk-fh-view{gap:8px;padding:0 16px 0 20px;font:500 18px/1 var(--text);cursor:pointer}
+  .wk-fh-view svg{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .wk-fh-view:active{background:var(--fill)}
+  .wk-fh-tools{margin-left:auto}
+  .wk-ftoday{flex:none;min-height:44px;padding:0 6px;border:0;background:none;color:var(--coral-ink);font:500 16px/1 var(--text);white-space:nowrap;cursor:pointer}
   .wk-v-week>.daybar{display:none}
-  .wk-rs-sub .s{min-width:0;font:500 16px/1.25 var(--text);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .wk-rs-nav{flex:none;display:flex;align-items:center;gap:2px}
-  .wk-ftoday{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 8px;border:0;background:none;color:var(--ink-2);font:500 15px/1 var(--text);cursor:pointer}
-  .wk-ftoday svg{width:16px;height:16px;color:var(--muted)}
-  .wk-ftotal{font-weight:600;color:var(--coral-ink)}
-  .wk-ftobook{flex:none;min-height:44px;padding:0 4px;border:0;background:none;color:var(--coral-ink);font:500 15px/1 var(--text);white-space:nowrap;cursor:pointer}
-  .wk-mfoot .wk-ftobook{order:-1;display:inline-block;line-height:44px}
-  /* the dashed "To book (6)" above Day, 3 Day and Week */
+  @media (max-width:380px){
+    .wk-fh-title .t{font-size:36px}
+    .wk-fh-b{width:44px}
+    .wk-fh-view{padding:0 12px 0 16px}
+  }
+  .wk-mfoot .wk-ftobook{display:inline-block;min-height:44px;margin-left:auto;padding:0 4px;border:0;background:none;color:var(--coral-ink);font:500 16px/44px var(--text);white-space:nowrap;cursor:pointer}
+  /* the dashed "To book (6)" / "Pending 3" above Day, 3 Day, Week and List */
   .wk-tbchip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;color:var(--ink);font:500 15px/1 var(--text);cursor:pointer}
   .wk-tbchip svg{width:18px;height:18px;color:var(--amber-ink)}
   .wk-tbchip .chev{margin-left:2px}
   /* a long press on a visit (Move or reassign): no text pick, no iOS callout */
   .wk [data-vopen]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-  /* the month (Rotor's grid, Nov 15): the weekday row, lined cells, the number at the top left (today
-     in the red circle), weekends and the days around the month shaded, a dot a visit in its status
-     color, the fill bar; the chosen day outlined */
-  .wk-cal.card{background:var(--card);border:1px solid var(--card-line);box-shadow:none;border-radius:12px}
+  /* the month: plain dates, no lines */
+  .wk-cal.card{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
   .wk-cal .wk-mhead{display:none}
-  .wk-mdow{background:var(--card-2);border-bottom:1px solid var(--line)}
-  .wk-mdow span{padding:9px 0 8px;font:600 12.5px/1 var(--text);letter-spacing:0;text-transform:none;color:var(--ink-2)}
-  .wk-mday{align-items:stretch;gap:3px;min-height:68px;padding:3px 3px 5px}
+  .wk-mdow{gap:4px;background:none;border:0;margin-bottom:4px}
+  .wk-mdow .l{display:none}
+  .wk-mdow .i{display:inline}
+  .wk-mdow>span{padding:6px 0 8px;font:500 15px/1 var(--text);letter-spacing:0;text-transform:none;color:var(--ink-3)}
+  .wk-mweek{gap:4px;padding:3px 0}
+  .wk-mweek+.wk-mweek{border-top:0}
+  .wk-mday{align-items:center;justify-content:center;gap:5px;min-height:54px;padding:0;border:2px solid transparent;border-radius:13px;background:none;color:var(--ink)}
+  .wk-mday:first-child{border-left:2px solid transparent}
+  .wk-mday.wkend,.wk-mday.out{background:none}
   .wk-mday:active{background:var(--fill)}
-  .wk-mtop{flex-direction:row;align-items:center;gap:2px;width:100%}
-  .wk-mtop .wk-wx{margin-left:auto}
-  .wk-mnum{min-width:24px;height:24px;padding:0 4px;font:600 14px/1 var(--text);color:var(--ink)}
-  .wk-mday.out .wk-mnum{color:var(--ink-3);opacity:.6}
-  .wk-mday.today .wk-mnum,.wk-mday.today.sel .wk-mnum{background:var(--coral-btn);color:#fff;opacity:1}
-  .wk-mday.sel:not(.today) .wk-mnum{background:none;color:var(--ink)}
-  .wk-mday.sel{box-shadow:inset 0 0 0 2px var(--ink);z-index:1}
-  .wk-mday.today.sel{box-shadow:inset 0 0 0 2px var(--coral)}
-  .wk-mopen{position:static;flex:none;box-shadow:none}
-  .wk-mtop .wk-wx b{display:none}
-  .wk-mtop .wk-wx svg{width:13px;height:13px}
-  .wk-mday .wk-mfill{padding:0 2px}
-  .wk-mfoot{border-top:1px solid var(--line);padding:8px 10px 6px}
-  /* the chosen day: Flyra's "Thu, Nov 12 · Open day ›", then its jobs */
+  .wk-mday:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+  .wk-mtop{flex-direction:row;justify-content:center;width:auto}
+  .wk-mnum{min-width:0;height:auto;padding:0;border-radius:0;background:none;font:600 20px/1 var(--text);color:var(--ink-2)}
+  .wk-mday.out .wk-mnum{color:var(--ink-3);opacity:.45}
+  .wk-mday.today .wk-mnum,.wk-mday.today.sel .wk-mnum,.wk-mday.sel .wk-mnum{background:none;color:inherit;opacity:1}
+  .wk-mday.today{border-color:var(--coral);box-shadow:none}
+  .wk-mday.sel{background:var(--wk-sel);color:var(--wk-sel-ink);box-shadow:none;z-index:0}
+  .wk-mday.sel .wk-mnum{color:var(--wk-sel-ink)}
+  .wk-mopen,.wk-mtop .wk-wx,.wk-mdots,.wk-mfill{display:none}
+  .wk-mjob{display:block;flex:none;width:6px;height:6px;margin-bottom:-11px;border-radius:50%;background:var(--coral)}
+  .wk-mjob.open{background:var(--amber)}
+  .wk-mday.out .wk-mjob{opacity:.45}
+  .wk-mfoot{padding:0;border:0}
+  .wk-mfoot p,.wk-mfoot .btn{display:none}
+  .wk-mfoot:not(:has(.wk-ftobook)){display:none}
+  /* the chosen day: "Fri, Nov 13", "1 job · $195" and Open day ›, then Flyra's cards */
   .wk-dayp.card{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
-  .wk-dayp-h{padding:12px 2px 10px;border-bottom:0}
-  .wk-dayp-h h2{font:400 21px/1.25 var(--head);letter-spacing:-.02em}
-  .wk-dayp-n{font:400 15px/1.3 var(--text)}
-  .wk-openday{font:500 18px/1 var(--text)}
+  .wk-dayp-h{gap:10px;padding:16px 0 12px;border-bottom:0}
+  .wk-dayp-t{align-items:flex-start}
+  .wk-dayp-h h2{min-width:0}
+  .wk-dayp-l{display:none}
+  .wk-dayp-s{display:flex;flex-direction:column;gap:4px;font:500 24px/1.2 var(--head);letter-spacing:-.02em;color:var(--ink)}
+  .wk-dayp-s small{font:400 16px/1.3 var(--text);letter-spacing:0;color:var(--ink-3)}
+  .wk-openday{margin-top:-6px;font:500 18px/1 var(--text)}
+  .wk-dayp-acts .btn{min-height:44px;border-radius:999px}
   .wk-drows{display:flex;flex-direction:column;gap:10px}
-  .wk-dayp .wk-drows>li>a{border:1px solid var(--card-line);border-radius:12px;background:var(--card);overflow:hidden}
-  .wk-dayp .wk-drow[class*="st-"]{box-shadow:inset 4px 0 0 var(--sc)}
+  .wk-drows>li+li{border-top:0}
+  .wk-dayp .wk-drows>li>a{border:1px solid var(--card-line);border-radius:16px;background:var(--card);overflow:hidden}
+  .wk-dayp .wk-drow{align-items:center;gap:12px;padding:16px 18px}
+  .wk-dayp .wk-drow[class*="st-"]{box-shadow:none}
+  .wk-dayp .wk-dt{display:none}
+  .wk-dayp .wk-drow .who{gap:4px}
+  .wk-dayp .wk-drow .nm{font:600 18px/1.25 var(--text)}
+  .wk-dayp .wk-drow .sub{font-size:16px;line-height:1.3;color:var(--ink-2)}
+  .wk-dayp .wk-dwhere{display:none}
+  .wk-dayp .wk-dwhere.on{display:block}
+  .wk-dayp .wk-dwhen{display:block;color:var(--ink-3)}
+  .wk-dayp .wk-dend{gap:8px}
+  .wk-dayp .wk-dbot{order:-1}
+  .wk-dayp .wk-amt{font:600 18px/1 var(--text)}
+  .wk-dayp .wk-dbot .wk-faces{display:none}
+  .wk-dayp .wk-drow.dead .nm{text-decoration:line-through}
+  .wk-dayp .wk-drow.dead,.wk-dayp .wk-drow.done{opacity:.72}
   .wk-dempty{padding:26px 12px 30px}
   .wk-dempty b{display:none}
   .wk-dempty span{font-size:17px}
   .wk-dempty .btn.primary{min-height:52px;padding:0 26px;font-size:17px}
-  /* Day: the week strip under the head (today in the red circle); Technician / Sales rep live in the filter */
+  /* Day: the week strip under the head (today in the red circle); Technician / Sales rep live in the gear */
   .wk .wk-dbar .wk-by{display:none}
 }
 
