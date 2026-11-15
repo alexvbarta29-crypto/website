@@ -24,7 +24,8 @@
 // seed({ home: true }) also makes today look like a real business day for
 // Home's screenshots (home.spec): one visit done, one under way, three more
 // this afternoon (one with two people), a pair of likely duplicates and a
-// phone's offline work waiting for the owner's OK, and a finished Rotor
+// phone's offline work waiting for the owner's OK, who sold this month's
+// plans (the Leaderboard card), and a finished Rotor
 // import of two days ago with the payments it brought in (made up), so
 // Home's Money card counts Collected per day. seed({ teamOnly: true })
 // makes only the team (Home before any CRM data: the empty state), and a
@@ -262,6 +263,10 @@ async function homeDay(out, O, day) {
     }, O)).data);
   }
   await MATCH.createCandidate(twins[0].id, twins[1].id, { reason: "phone", confidence: "high" }, O);
+  // who sold this month's plans (Home's Leaderboard card): Olive two quarterly plans, Ada one and the lights
+  for (const [id, who] of [[out.plans.active, "owner"], [out.plans.present, "owner"], [out.plans.pending, "admin"], [out.plans.lights, "admin"]]) {
+    await store.updateRecord("plan", id, (x) => ({ ...x, sold_by: out.users[who].id }), O);
+  }
   await PA.createPendingAction({ kind: "outbox_review", title: "Theo's offline notes from last week", requested_by: out.users.tech.id, items: [] }, O);
   // a Rotor import finished two days ago (counts only) and this month's payments it brought in (synthetic amounts)
   const asOf = clock.addLocalDays(day, -2);

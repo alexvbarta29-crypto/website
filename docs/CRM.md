@@ -688,43 +688,55 @@ added with **Edit Home**. The full dashboards stay one tap away (Money's
 
 ### What Home shows (owners and the office; `#/today`)
 
-Flyra's Home (Nov 13): the greeting and the name big, the money right on
-the canvas under them (no card), then Flyra's cards (a title, round arrows
-or a segmented switch, quiet empty states); in the dark a soft teal glow
-behind the top, in the light Rotor's grey canvas and white cards. Top to
-bottom, in the person's order (Edit Home):
+Flyra's Home (Nov 13; Nov 15, the owner with two screenshots of Flyra's
+phone app: "Make the home page look like Flyra"): the greeting and the
+name big, the money right on the canvas under them (no card), then
+Flyra's calm cards (a 20 px radius, a title, round arrows or a segmented
+switch, quiet empty states); in the dark a soft blue-teal glow behind the
+top fading to the near-black canvas, in the light a faint blue-grey wash
+over the grey canvas and white cards. Top to bottom:
 
 - **The header**: "Good morning" / "Good afternoon" / "Good evening" small
   and grey, the first name big and bold, and the bell (unread
   notifications) as a round button.
+- **The money** (`reports:read` or the office sign-in), always at the top
+  (Edit Home can hide it, not move it): Flyra's **Revenue | ARR** pill
+  (Revenue each time Home opens) and the period on the right, **1M ⌄**
+  (a small sheet: 1W this week, 1M this month, 3M, 1Y the last 12 months,
+  YTD; chips on a computer), kept when the view switches. Under them the
+  period in small caps (NOVEMBER, NOV 16 – 22, DEC 2025 – NOV 2026), the
+  big number (a link to Payments or Plans) and two small caps figures on
+  the right; then one thin light-blue line across the width, the values at
+  the left on faint lines, a dotted baseline, no dates under it (a tap,
+  a drag or the arrow keys read a point out under the line: "Nov 13 ·
+  $195"; every value in a hidden table), and "Updated 5:16 PM" (or where
+  Collected comes from: "From Rotor's import of Nov 15", "From Rotor ·
+  updated Nov 16").
+  - **Revenue**: Collected over the period, **AVG** (a day, through the
+    last day counted) and **PEAK** (the best day; Rotor's snapshot has
+    weeks or months: BEST WEEK, BEST MONTH), a point per day. A period
+    nothing has counted yet (a week after the import's day) is "-", never
+    $0. `revenue_view` in `GET /home` (1M),
+    `GET /home/money?metric=revenue&range=1w|1m|3m|1y|ytd` for the others
+    (`revenueView()` in home-kpis.mjs).
+  - **ARR**: today's ARR (or the period's last day), **CHANGE** over the
+    period (green up, red down) and **MRR** (ARR ÷ 12), the active plans
+    under the line, a point per day. `arr_view` in `GET /home`,
+    `GET /home/money?metric=arr&range=` (`arrView()`).
+- **Leaderboard** (back on Nov 15, its math fixed: who sees the money,
+  while the reports module's `reports.leaderboard` is there): "November
+  Leaderboard" with **Sales | Techs**; a row each: the rank, the initials
+  in a thin circle, the name, "2 plans sold" (or "1 job sold", "3 jobs
+  done") and the money on the right ("$1,290 ARR": the ARR of the
+  recurring plans sold this month; the jobs' first visits for someone who
+  sold no plan; Techs: the jobs done). `GET /home/leaderboard?board=`.
 - **Clock in** (anyone with `time:own`; on by default only for someone who
-  goes out on visits, `is_technician`, anyone else adds it in Edit Home;
-  right under the money): a coral clock tile, TIMESHEET
-  with a dot (green while on the clock), today's hours big ("0h 0m",
-  finished shifts that count plus the open one so far, moving on while
-  Home is open), a short line ("Choose a role when you clock in" / "On the
-  clock since 8:02 AM · Office"), the coral **Clock In** / **Clock Out**
-  pill (`POST /clock`, the tech app's own clock; Clock In asks Service,
-  Sales or Office first) and a round button to Time.
-- **Money** (`reports:read` or the office sign-in), first on Home, one
-  card with Flyra's **ARR | Revenue** switch (the owner's Nov 14 ask: "add
-  an ARR view at the top, like on Flyra"), ARR on each time Home opens:
-  - **ARR**: the chips **1M** (this month, the default), **3M** (this
-    month and the two before), **1Y** (this month and the 11 before),
-    **YTD** (this year), share; the period; the big ARR (today's, or the
-    period's last day) with its change over the period under it ("+$1,200
-    (3.2%)", green up, red down; no % from $0), **ACTIVE PLANS** and
-    **MRR** (ARR ÷ 12) beside it; one coral line of ARR per day (days
-    still ahead have no point, a readout on tap or the arrow keys, every
-    value in a hidden table). The numbers are a link to Service → Plans.
-    `arr_view` in `GET /home` (1M), `GET /home/money?metric=arr&range=1m|3m|1y|ytd`
-    for the chips (`arrView()` in home-kpis.mjs).
-  - **Revenue**: Rotor's card (Nov 13): **Week | Month** with the round ‹ ›
-    arrows, share and fold (remembered on the phone), Collected and
-    Scheduled side by side (a link to Financials → Payments), one chart
-    with both lines per day (Collected coral, Scheduled grey) and a
-    readout, and where Collected comes from ("From Rotor's import of Nov
-    15", "From Rotor · updated Nov 16").
+  goes out on visits, `is_technician`, anyone else adds it in Edit Home),
+  compact: TIMESHEET with a dot (green while on the clock), today's hours
+  ("0h 0m", moving on while Home is open) and a short line ("Choose a role
+  when you clock in" / "Since 8:02 AM · Office"), a link to Time, and the
+  coral **Clock In** / **Clock Out** pill (`POST /clock`; Clock In asks
+  Service, Sales or Office first).
 - **Today** (`schedule:read`; Flyra's card): "Today" (or the date: "Monday,
   November 23"; "Nov 16 – 22"; "November 2026") with "Tue, Nov 17 · n
   items" under it and round ‹ › arrows, **Daily | Weekly | Monthly**, then
@@ -747,18 +759,20 @@ bottom, in the person's order (Edit Home):
     the CRM's completed jobs after). Owners **Add** or **Edit** them
     there (settings document `goals`, owners only, `PUT /settings/goals`).
 - **Edit Home** (a button at the bottom, and My account → Edit Home,
-  `#/today?edit=1`): each card on or off and moved up or down, saved per
-  person on the server (`ptr/home/{userId}`). Default (Flyra's): Money,
-  Today, Inbox, Tasks and Goals, with Clock in under the money for
-  someone who goes out on visits. A card the person can't have is never
-  offered. The Leaderboard card left Home on Nov 14 (the owner: "remove
-  these wrong stats"; the full Leaderboard is Analytics' "..."): a saved
-  layout or an older phone's Edit Home that names it just drops it.
+  `#/today?edit=1`): each card on or off and moved up or down (the money
+  stays at the top), saved per person on the server (`ptr/home/{userId}`).
+  Default (Flyra's): the money, the Leaderboard, Today, Inbox, Tasks and
+  Goals, with Clock in for someone who goes out on visits. A card the
+  person can't have is never offered; a card a saved layout doesn't name
+  comes in after the card it follows in Home's order (a layout saved while
+  the Leaderboard was away gets it back under the money).
 
-A phone shows the cards in the person's order, with room at the bottom
-for the shell's floating tab bar and its + button. On a computer the money
-is a card like the others and the clock a bar on top; from 1,100 px the
-other cards sit two to a row in order (a 1,024 px laptop: one column).
+A phone shows the money, then the cards in the person's order, with room
+at the bottom for the shell's floating tab bar and its + button. On a
+computer the money is a card (Flyra's dashboard); from 1,100 px two
+columns: the money and Today on the left, the Leaderboard, the clock,
+Inbox and Tasks on the right, Goals across the bottom (a 1,024 px laptop:
+one column).
 Creating is the shell's New / + button.
 
 **Not on Home any more:** the KPI tiles, the quick actions, "Collected by
@@ -992,8 +1006,8 @@ each setting once, every module's setting placed),
 - Screens sit on the mist canvas and use the width (up to 1,160 px; the
   Schedule's month up to 1,480 px with the day's list beside it from
   1,100 px; a Visit in two columns from 1,200 px; full-width lists such as
-  Jobs, Plans and Payments read as a table from 1,100 px; Home's cards two
-  to a row from 1,100 px, the clock a bar across). Sheets are dialogs.
+  Jobs, Plans and Payments read as a table from 1,100 px; Home in Flyra's two
+  columns from 1,100 px, the money and Today on the left). Sheets are dialogs.
 - **List + detail** from 1,000 px: a list route marked `split: true`
   (Contacts, Quotes) stays on the left while what it opens (a contact, a
   quote, a new one) shows beside it, the list keeping its search and
@@ -1004,7 +1018,7 @@ Code: `crm-app/modules/system/{home,home-charts,menu,today,me}.js`,
 `home.css`, `crm-app/core/{nav,router}.js`, `crm.css`. Tests:
 `tests/crm/core/home.test.mjs` (the periods, Rotor's and the CRM's
 collected, scheduled, ARR, the clock, the agenda, tasks and the inbox,
-Edit Home, goals, the retired Leaderboard card, who sees what, the exact
+Edit Home, goals, the Leaderboard card, who sees what, the exact
 storage calls) and `tests/e2e/home.spec.mjs` (iPhone 13 and SE, 1440 x 900
 and 1024 x 768: Home empty and on a real day, Today's views and arrows,
 Money's metrics, periods, custom range and readout, Clock in and out, Edit
