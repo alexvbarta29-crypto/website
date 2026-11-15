@@ -306,9 +306,10 @@ for (const device of ["iphone13", "iphonese"]) {
       await goTo(f, "/invoices");
       assert.doesNotMatch(await f.textContent("#view"), /Moneyfolk/, "the Invoices screen isn't a tech's");
       await goTo(f, `/visits/${M.visits.collects[device]}`);
-      await f.waitForSelector("[data-vact='money.collect']", { timeout: 10000 });
+      // (Rotor's phone visit: Collect payment sits in the round "..." until the visit is done, then it is the big Get paid)
+      await f.waitForSelector("#top-more, [data-vact='money.collect']", { timeout: 10000 });
       assert.deepEqual(await screenProblems(f), [], "the visit with Collect payment passes the phone checks");
-      await f.click("[data-vact='money.collect']");
+      if (await f.isVisible("[data-vact='money.collect']")) await f.click("[data-vact='money.collect']"); else { await f.click("#top-more"); await f.waitForSelector(".sheet.on [data-vact='money.collect']", { timeout: 10000 }); await f.click(".sheet.on [data-vact='money.collect']"); }
       await sheetUp(f, /Collect payment/);
       let sheet = await f.textContent(".sheet.on");
       assert.match(sheet, /Needs signal: a payment is never saved for later/);
@@ -334,8 +335,9 @@ for (const device of ["iphone13", "iphonese"]) {
       await sheetGone(f);
       await f.waitForFunction(() => [...document.querySelectorAll(".toast")].some((x) => /Recorded\. The visit is paid\./.test(x.textContent)), null, { timeout: 10000 });
       // tapping it again: nothing left to collect
-      await f.waitForSelector("[data-vact='money.collect']", { timeout: 10000 });
-      await f.click("[data-vact='money.collect']");
+      // (Rotor's phone visit: Collect payment sits in the round "..." until the visit is done, then it is the big Get paid)
+      await f.waitForSelector("#top-more, [data-vact='money.collect']", { timeout: 10000 });
+      if (await f.isVisible("[data-vact='money.collect']")) await f.click("[data-vact='money.collect']"); else { await f.click("#top-more"); await f.waitForSelector(".sheet.on [data-vact='money.collect']", { timeout: 10000 }); await f.click(".sheet.on [data-vact='money.collect']"); }
       await sheetUp(f, /Collect payment/);
       assert.match(await f.textContent(".sheet.on"), /This visit is paid/);
       await closeSheet(f);

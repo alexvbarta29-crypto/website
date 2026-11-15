@@ -154,8 +154,9 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     const { p, page, f } = await open("theo", device);
     try {
       await goTo(f, `/visits/${Q.visits[device]}`);
-      await f.waitForSelector("[data-vact='money.collect']", { timeout: 10000 });
-      await f.click("[data-vact='money.collect']");
+      // (Rotor's phone visit: Collect payment sits in the round "..." until the visit is done, then it is the big Get paid)
+      await f.waitForSelector("#top-more, [data-vact='money.collect']", { timeout: 10000 });
+      if (await f.isVisible("[data-vact='money.collect']")) await f.click("[data-vact='money.collect']"); else { await f.click("#top-more"); await f.waitForSelector(".sheet.on [data-vact='money.collect']", { timeout: 10000 }); await f.click(".sheet.on [data-vact='money.collect']"); }
       await f.waitForSelector(".sheet.on [data-qr]", { timeout: 10000 });
       await f.click(".sheet.on [data-qr]");
       await f.waitForSelector(".sheet.on.mn-full [data-pay-qr-none]", { timeout: 15000 });
