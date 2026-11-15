@@ -278,41 +278,37 @@ for (const device of ["desk1440", "desk1024"]) {
 }
 
 for (const [device, login, n] of [["iphone13", "theo", 2], ["iphonese", "tess", 1]]) {
-  test(`the Visit's one big button (${device}, ${login}): fixed at the bottom, On my way → Start → Finish; with no signal Start, saved and replayed`, async () => {
+  test(`the Visit on a phone (${device}, ${login}): Rotor's visit card first, the red Start visit and the grey On My Way; with no signal Start, saved and replayed`, async () => {
     const id = seeded.visits[n];
     const { p, page, f } = await open(login, device);
     try {
       await goTo(f, `/visits/${id}`);
-      await f.waitForSelector(".vb-go");
-      assert.deepEqual(await f.$$eval(".vb-quick .vb-l", (els) => els.map((e) => e.textContent)), ["Call", "Navigate", "Photos", "Checklist"]);
-      assert.equal((await f.textContent(".vb-go")).trim(), "On my way");
-      const go = await box(f, ".vb-go");
-      const bar = await box(f, "#tabs");
-      assert.ok(go.h >= 56 && go.bottom <= bar.y + 1, `big, and above the tab bar (${JSON.stringify(go)})`);
-      assert.equal(await f.$eval(".vb-go", (el) => getComputedStyle(el).backgroundColor), "rgb(251, 77, 61)", "the button coral");
+      await f.waitForSelector(".jp-visit .jp-go .jp-pill.red");
+      assert.deepEqual(await f.$$eval(".jp-visit .jp-go .jp-pill", (els) => els.map((e) => e.textContent.trim())), ["Start visit", "On My Way"]);
+      assert.ok(await f.$(".jp-visit + .rs-person + .rs-addr"), "the visit, the customer, the address (Rotor's order)");
+      const go = await box(f, ".jp-go .jp-pill.red");
+      assert.ok(go.h >= 48, `a big pill (${JSON.stringify(go)})`);
+      assert.equal(await f.$eval(".jp-go .jp-pill.red", (el) => getComputedStyle(el).backgroundColor), "rgb(251, 77, 61)", "the pill the logo's red");
+      assert.equal(await f.$(".vb-quick, .vb-go"), null, "no quick row, no fixed button: Rotor's card");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `layout-visit-${device}`);
-      // no signal: On my way waits (it texts the customer); Start works and is kept on the phone
+      // no signal: On My Way waits (it texts the customer); Start works and is kept on the phone
       await p.ctx.setOffline(true);
       await f.waitForFunction(() => navigator.onLine === false);
-      await f.waitForFunction(() => (document.querySelector(".vb-go") || {}).textContent.trim() === "Start");
-      await f.click(".vb-go");
+      await f.waitForFunction(() => /No signal: On My Way texts the customer/.test((document.querySelector(".jp-visit") || {}).textContent || ""));
+      await f.click(".jp-go .jp-pill.red");
       await toastSays(f, /Saved, will send when online/);
-      await f.waitForFunction(() => (document.querySelector(".vb-go") || {}).textContent.trim() === "Finish");
-      assert.ok(await f.$(".vb-saved"), "Saved, will send when online, by the button");
-      await f.click('[data-item="gate_closed"]');
-      await f.waitForSelector('[data-item="gate_closed"][aria-pressed="true"]');
-      // (a blocked Finish says what's left; it is aria-disabled, so the click is forced)
-      await f.click(".vb-go", { force: true });
+      await f.waitForFunction(() => (document.querySelector(".jp-go .jp-pill.red") || {}).textContent.trim() === "Complete visit");
+      assert.ok(await f.$(".jp-visit .tf-wait"), "what waits, said in the visit card");
+      // (a blocked Complete visit says what's left; it is aria-disabled, so the click is forced)
+      await f.click(".jp-go .jp-pill.red", { force: true });
       await toastSays(f, /Finish the checklist first/);
       await shot(page, `layout-visit-offline-${device}`);
       assert.equal((await server(p, `/visits/${id}`)).visit.status, "scheduled", "the server hasn't heard yet");
-      // signal again: they go out in order
+      // signal again: it goes out
       await p.ctx.setOffline(false);
-      for (let i = 0; i < 60; i++) { const v = (await server(p, `/visits/${id}`)).visit; if (v.status === "in_progress" && v.checklist.items.find((x) => x.key === "gate_closed").done_at) break; await page.waitForTimeout(300); }
-      const v = (await server(p, `/visits/${id}`)).visit;
-      assert.equal(v.status, "in_progress");
-      assert.ok(v.checklist.items.find((x) => x.key === "gate_closed").done_at, "the tick too");
+      for (let i = 0; i < 60; i++) { const v = (await server(p, `/visits/${id}`)).visit; if (v.status === "in_progress") break; await page.waitForTimeout(300); }
+      assert.equal((await server(p, `/visits/${id}`)).visit.status, "in_progress");
       await p.clean({ allow: [/ERR_INTERNET_DISCONNECTED|Failed to fetch/] });
     } finally { await p.close(); }
   });

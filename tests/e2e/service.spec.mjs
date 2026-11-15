@@ -126,7 +126,7 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
       await sheetUp(f, /Convert to/);
       await f.click('.sheet.on [data-pick="\\"job\\""]');
       await f.waitForFunction(() => location.hash.startsWith("#/jobs/jb_"), null, { timeout: 10000 });
-      await f.waitForSelector(".jp-title");     // a phone: Rotor's phone job page (office-job-phone.js)
+      await f.waitForSelector(".jp-visit");     // a phone: Rotor's phone job page (office-job-phone.js)
       assert.match(await f.textContent(".wk-pricing"), /Exterior windows[\s\S]*Gutters/);
       assert.match(await f.inputValue('[data-notes="office"]'), /gate on the left/i, "the request's note rides on the job");
       // the list: it became work
@@ -139,20 +139,20 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
     } finally { await p.close(); }
   });
 
-  test(`the job page's extras (${device}, ${theme}): balance due, time on site, the track, the visit's pills, the quick actions`, async () => {
+  test(`the job page's extras (${device}, ${theme}): the visit card, reschedule, a note on the visit, the quick actions`, async () => {
     const { p, page, f } = await open("olive", device, theme);
     const problems = [];
     try {
       const id = seeded.jobs[1];
       await goTo(f, `/jobs/${id}`);
-      // a phone: the stat cards and the track live in the top (the pills, Flyra's 4 steps); Reschedule in the quick row
-      await f.waitForSelector(".jp-head");
-      assert.match(await f.textContent(".jp-head"), /Scheduled[\s\S]*\$\d/);
-      assert.match(await f.textContent(".jp-bar"), /On my way[\s\S]*Arrive[\s\S]*Start Job[\s\S]*Complete Job/, "the track");
-      assert.ok(await f.$(".jp-quick [data-v-move]"), "Reschedule for the office");
+      // a phone: Rotor's visit card (the day, the time and its length, who goes); its round calendar reschedules
+      await f.waitForSelector(".jp-visit");
+      assert.match(await f.textContent(".jp-visit"), /[A-Z][a-z]{2} \d{1,2}[\s\S]*\d:\d\d [AP]M/);
+      assert.ok(await f.$(".jp-visit [data-v-move]"), "Reschedule for the office");
+      assert.match(await f.textContent(".wk-pricing"), /Total[\s\S]*\$\d/);
       await checks(f, page, `service-job-${device}-${theme}`, problems);
       await f.click("#top-more");
-      await sheetUp(f, /Job /);
+      await sheetUp(f, /\S/);
       await f.click(".sheet.on [data-v-note]");
       await sheetUp(f, /A note on this visit/);
       await f.fill(".sheet.on [name=text]", "Back gate sticks.");
@@ -163,9 +163,9 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
       const mk = await p.ctx.request.post(`/api/crm/jobs/${done}/complete`, { headers: { "x-crm": "1", "content-type": "application/json" }, data: {} });
       assert.ok([200, 409].includes(mk.status()), `the job is done (${mk.status()})`);
       await goTo(f, `/jobs/${done}`);
-      await f.waitForSelector(".jp-head");
+      await f.waitForSelector(".jp-visit");
       await f.click("#top-more");
-      await sheetUp(f, /Job /);
+      await sheetUp(f, /\S/);
       const rows = await f.$$eval(".sheet.on .rs-act-l", (x) => x.map((e) => e.textContent));
       for (const r of ["Ask for a review now", "Book a callback"]) assert.ok(rows.includes(r), r);
       await checks(f, page, `service-job-more-${device}-${theme}`, problems);

@@ -68,7 +68,7 @@ function inner(i, v, { work }) {
   const id = `ck-${i.key}`;
   if (k === "select") {
     return html`<label class="ck-q" ${attrs({ for: id })}>${i.label}${star(i)}</label>
-      <span class="ck-sel"><select ${attrs({ id, "data-ck-sel": i.key, disabled: work ? null : true })}><option value="">Select an option</option>${(i.options || []).map((o) => html`<option ${attrs({ value: o, selected: i.value === o })}>${o}</option>`)}</select></span>`;
+      <span class="ck-sel"><select ${attrs({ id, "data-ck-sel": i.key, required: true, disabled: work ? null : true })}><option value="">Select an option</option>${(i.options || []).map((o) => html`<option ${attrs({ value: o, selected: i.value === o })}>${o}</option>`)}</select></span>`;
   }
   if (k === "count") {
     return html`<label class="ck-q" ${attrs({ for: id })}>${i.label}${star(i)}</label>

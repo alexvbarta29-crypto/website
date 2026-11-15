@@ -121,21 +121,27 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet [type=submit]");
       await f.waitForSelector(".tf-sent a[href^='sms:']", { timeout: 8000 });
       assert.match(await f.getAttribute(".tf-sent a[href^='sms:']", "href"), /about%2015%20minutes/);
-      assert.match(await f.textContent(".tf-state h2"), /On the way/);
+      assert.match(await f.textContent(".tf-state .tf-st"), /On the way/);
       await checks(f, page, `field-omw-sent-${device}`, problems);
 
       // start, tick, photos, a note, an upsell line, complete
       await f.click("[data-timer=start]");
       await f.waitForSelector("[data-timer=pause]");
-      await f.click("[data-item=gate_closed]");
-      await f.waitForSelector("[data-item=gate_closed][aria-pressed=true]");
+      // the checklist: the floating pill's sheet (Rotor's), in order: the walk-around photo, the after photo, the gate
+      await f.click(".ck-pill");
+      await f.waitForSelector(".sheet.on.ck-sheet");
       const small = await photoWithExif(f, 400);
-      await snap(page, f, "[data-item=walkaround_photo]", small);
-      await f.waitForSelector("[data-item=walkaround_photo][aria-pressed=true]", { timeout: 15000 });
+      await snap(page, f, ".sheet.on [data-ck-photo=walkaround_photo]", small);
+      await f.waitForSelector('.sheet.on [data-ck="walkaround_photo"].done', { timeout: 15000 });
       const wide = await photoWithExif(f, 2400);
-      await snap(page, f, "[data-item=after_photo]", wide);
-      await f.waitForSelector("[data-item=after_photo][aria-pressed=true]", { timeout: 15000 });
-      assert.equal(await f.$$eval(".tf-photo img", (x) => x.length), 2);
+      await snap(page, f, ".sheet.on [data-ck-photo=after_photo]", wide);
+      await f.waitForSelector('.sheet.on [data-ck="after_photo"].done', { timeout: 15000 });
+      await f.click(".sheet.on [data-ck-tick=gate_closed]");
+      await f.waitForSelector('.sheet.on [data-ck="gate_closed"].done');
+      await checks(f, page, `field-checklist-${device}`, problems);
+      await f.click(".sheet.on [data-sheet-x]");
+      await f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
+      await f.waitForFunction(() => document.querySelectorAll(".tf-photo img").length === 2, null, { timeout: 10000 });
       await f.fill("[data-note-form] textarea", "Synthetic: the back gate sticks.");
       await f.click("[data-note-form] [type=submit]");
       await f.waitForFunction(() => /back gate sticks/.test(document.querySelector("[data-panel=field]").textContent));

@@ -15,39 +15,54 @@
 /* the page leaves room under its last card for the pill */
 .ck-room{height:64px}
 
-/* the sheet: the title, "Complete in order • 0 of 15 done" under it, a hairline, the items */
-.ck-sheet .sheet-head{padding-bottom:0}
-.ck-sub{margin:0;padding:2px 20px 12px;border-bottom:1px solid var(--line);color:var(--muted);font:400 15px/1.3 var(--text)}
-.ck-sheet .sheet-body{padding-top:14px}
-.ck-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.ck-item{border:1px solid var(--card-line);border-radius:14px;background:var(--card);padding:6px 16px;transition:opacity .15s}
-.ck-item:not([data-kind=check]){padding:12px 16px 14px}
-.ck-item.next{border:2px solid var(--coral-btn);padding:5px 15px}
-.ck-item.next:not([data-kind=check]){padding:11px 15px 13px}
-.ck-item.locked{opacity:.5}
+/* the sheet (Rotor's, the owner's screenshots): room above the title, the title 17 bold, "Complete in order •
+   0 of 15 done" 13 grey under it, a hairline, then the items: 15 px words, the next one white with a 2 px red
+   outline, the ones after it waiting (no card, greyed) until it's done */
+.ck-sheet{--ck-bg:#f2f2f2;--ck-in:#f6f6f7;--ck-in-line:#ededee;--ck-ph:#b9b9bc;--ck-wait:#6d6d6d;--ck-box:#d6d6da}
+html:not([data-theme="light"]) body.crm:not(.page) .ck-sheet{--ck-bg:var(--sheet-bg);--ck-in:#232428;--ck-in-line:#2f3034;--ck-ph:#77777d;--ck-wait:#9a9aa2;--ck-box:#45464b}
+.sheet.ck-sheet{background:var(--ck-bg)}
+.ck-sheet .sheet-head{align-items:flex-start;padding:30px 12px 0 16px;border-bottom:0}
+.ck-sheet .sheet-head h2{padding-top:23px;font:700 17px/1.25 var(--head);letter-spacing:-.01em}
+.ck-sub{margin:0;padding:2px 16px 13px;border-bottom:1px solid var(--line);color:var(--ink-3);font:400 13px/1.3 var(--text)}
+.ck-sheet .sheet-body{padding:16px 16px 28px}
+.ck-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ck-item{border:1px solid var(--card-line);border-radius:14px;background:var(--card);padding:2px 16px;transition:opacity .15s,background .15s}
+.ck-item:not([data-kind=check]){padding:12px 16px 8px}
+.ck-item.next{border:2px solid var(--coral-btn);padding:1px 17px}
+.ck-item.next:not([data-kind=check]){padding:11px 15px 7px}
+/* an item that waits: no card, its words and boxes greyed */
+.ck-item.locked{background:transparent;border-color:rgba(0,0,0,.025)}
+html:not([data-theme="light"]) body.crm:not(.page) .ck-item.locked{border-color:rgba(255,255,255,.05)}
+.ck-item.locked .ck-l,.ck-item.locked .ck-q,.ck-item.locked .ck-req{color:var(--ck-wait)}
+.ck-item.locked .ck-box{border-color:var(--ck-box);background:transparent}
+.ck-item.locked .ck-sel select,.ck-item.locked .ck-in{background:var(--ck-in);opacity:.75}
 .ck-item.locked .ck-row,.ck-item.locked .ck-cam{cursor:default}
-.ck-row{display:flex;align-items:center;gap:14px;width:100%;min-height:48px;padding:0;border:0;background:none;color:var(--ink);font:400 17px/1.3 var(--text);text-align:left;cursor:pointer}
-.ck-row.sub{min-height:44px}
+.ck-row{display:flex;align-items:center;gap:13px;width:100%;min-height:44px;padding:0;border:0;background:none;color:var(--ink);font:400 15px/1.3 var(--text);text-align:left;cursor:pointer}
+.ck-row.sub{min-height:44px;margin:-3px 0}
+.ck-group .ck-q+.ck-row.sub{margin-top:0}
 .ck-row[aria-disabled=true]{cursor:default}
-.ck-box{flex:none;display:grid;place-items:center;width:26px;height:26px;border:1.5px solid var(--line-2);border-radius:7px;background:var(--card)}
+.ck-box{flex:none;display:grid;place-items:center;width:22px;height:22px;border:1.5px solid var(--ck-box);border-radius:6px;background:var(--card)}
 .ck-box.on{border-color:var(--coral-btn);background:var(--coral-btn);color:#fff}
-.ck-box svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ck-box svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .ck-l{min-width:0;overflow-wrap:anywhere}
 .ck-item.done .ck-row:not(.sub) .ck-l{color:var(--muted)}
 .ck-req{color:var(--ink)}
-.ck-q{display:block;margin:0 0 8px;color:var(--ink);font:400 17px/1.3 var(--text);overflow-wrap:anywhere}
+.ck-q{display:block;margin:0 0 3px;color:var(--ink);font:400 15px/1.3 var(--text);overflow-wrap:anywhere}
 .ck-hint{display:block;margin-top:2px;color:var(--muted);font-size:13px}
 .ck-group{margin:0;padding:0;border:0;min-width:0}
 .ck-group legend{padding:0}
-/* the inputs: 16 px or more (no zoom), 48 px tall, the grey Rotor box */
+.ck-group .ck-q{margin-bottom:0}
+/* the inputs: 16 px (no zoom on an iPhone), 44 px, Rotor's faint grey box */
 .ck-sel{position:relative;display:block}
-.ck-sel select,.ck-in{display:block;width:100%;min-height:48px;padding:0 14px;border:1px solid var(--card-line);border-radius:12px;background:var(--card-2);color:var(--ink);font:400 17px/1.3 var(--text);box-sizing:border-box}
+.ck-sel select,.ck-in{display:block;width:100%;min-height:44px;padding:0 12px;border:solid transparent;border-width:4px 0;border-radius:14px;background:var(--ck-in);background-clip:padding-box;box-shadow:inset 0 0 0 1px var(--ck-in-line);color:var(--ink);font:400 16px/1.3 var(--text);box-sizing:border-box}
 .ck-sel select{appearance:none;-webkit-appearance:none;padding-right:40px}
-.ck-sel::after{content:"";position:absolute;right:16px;top:50%;width:9px;height:9px;margin-top:-7px;border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);transform:rotate(45deg);pointer-events:none}
-textarea.ck-in{min-height:110px;padding:12px 14px;resize:vertical}
-.ck-in::placeholder{color:var(--muted);opacity:.8}
-.ck-cam{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin:0 0 -6px -2px;padding:0 6px 0 2px;border:0;background:none;color:var(--muted);font:400 15px/1 var(--text);cursor:pointer}
-.ck-cam svg{width:26px;height:26px;fill:none;stroke:var(--ink-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ck-sel select:has(option[value=""]:checked){color:var(--ck-ph)}
+.ck-sel option{color:var(--ink)}
+.ck-sel::after{content:"";position:absolute;right:18px;top:50%;width:8px;height:8px;margin-top:-6px;border-right:1.6px solid var(--ck-ph);border-bottom:1.6px solid var(--ck-ph);transform:rotate(45deg);pointer-events:none}
+textarea.ck-in{min-height:96px;padding:10px 12px;resize:none}
+.ck-in::placeholder{color:var(--ck-ph);opacity:1}
+.ck-cam{display:inline-flex;align-items:center;gap:9px;min-height:44px;margin:-8px 0 -6px -1px;padding:0 6px 0 1px;border:0;background:none;color:var(--ck-ph);font:400 13px/1 var(--text);cursor:pointer}
+.ck-cam svg{width:20px;height:20px;fill:none;stroke:var(--ink-3);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .ck-cam[aria-busy=true]{opacity:.6}
 .ck-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin:0 0 8px}
 .ck-shot{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--card-2)}
