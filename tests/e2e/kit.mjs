@@ -203,24 +203,25 @@ export async function shot(page, name) {
   await page.screenshot({ path: `${process.env.E2E_SHOTS}/${name}.png` });
 }
 
-// The drawer (Rotor's menu, Nov 2026): the Menu tab opens it from the left.
+// The Menu (Flyra's, Nov 15 2026): the Menu tab slides it up.
 export async function openDrawer(frame) {
   await frame.click('#tabs [data-tab="menu"]');
-  await frame.waitForSelector(".drawer.on");
-  await frame.waitForTimeout(260);
+  await frame.waitForSelector(".fm-sheet.on");
+  await frame.waitForTimeout(280);
 }
-// Opens a screen from the drawer (K0, no sub-lists): its section's row, then
-// the section's tab under the title, or the section's round "..." and its row.
+export const openMenu = openDrawer;
+// Opens a screen from the Menu: its own row or tile, else a row of its
+// section (the screen's section tabs under the title, or the section's round
+// "..." and its row).
 export async function drawerGo(frame, path, { open = true } = {}) {
   if (open) await openDrawer(frame);
   // (a section whose screen draws views opens on its first: #/pipeline?view=list)
-  const direct = path.includes("?") ? `.drawer a.dr-row[href="#${path}"]` : `.drawer a.dr-row[href="#${path}"], .drawer a.dr-row[href^="#${path}?"]`;
-  if (await frame.$(direct)) { await frame.click(direct); return; }
-  const key = await frame.evaluate((p) => { const a = [...document.querySelectorAll(".drawer [data-dr-paths]")].find((x) => x.dataset.drPaths.split(" ").includes(p)); return a ? a.dataset.drSec : null; }, path);
-  if (!key) throw new Error(`${path} is not in the drawer`);
-  const href = await frame.getAttribute(`.drawer [data-dr-sec="${key}"]`, "href");
-  await frame.click(`.drawer [data-dr-sec="${key}"]`);
-  await frame.waitForFunction(() => !document.querySelector(".drawer"));
+  const direct = path.includes("?") ? `.fm-sheet a[data-fm-go="${path}"]` : `.fm-sheet a[data-fm-go="${path}"], .fm-sheet a[data-fm-go^="${path}?"]`;
+  if (await frame.$(direct)) { await frame.click(direct); await frame.waitForFunction(() => !document.querySelector(".fm-sheet")); return; }
+  const href = await frame.evaluate((p) => { const a = [...document.querySelectorAll(".fm-sheet [data-fm-paths]")].find((x) => x.dataset.fmPaths.split(" ").includes(p)); return a ? a.getAttribute("href") : null; }, path);
+  if (!href) throw new Error(`${path} is not in the Menu`);
+  await frame.click(`.fm-sheet a[href="${href}"]`);
+  await frame.waitForFunction(() => !document.querySelector(".fm-sheet"));
   await settled(frame, { hash: href });
   const tab = `#subnav a[href="#${path}"]`;
   if (await frame.$(tab)) { await frame.click(tab); return; }
@@ -228,5 +229,5 @@ export async function drawerGo(frame, path, { open = true } = {}) {
   await frame.waitForSelector(`.sheet.on a[href="#${path}"]`);
   await frame.click(`.sheet.on a[href="#${path}"]`);
 }
-// The drawer's rows: [label, ...]
-export const drawerLabels = (frame) => frame.evaluate(() => [...document.querySelectorAll(".drawer .dr-l")].map((e) => e.textContent));
+// The Menu's rows and tiles: [label, ...]
+export const drawerLabels = (frame) => frame.evaluate(() => [...document.querySelectorAll(".fm-sheet .fm-l, .fm-sheet .fm-tl")].map((e) => e.textContent));

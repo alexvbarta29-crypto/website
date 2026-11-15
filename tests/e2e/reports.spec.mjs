@@ -31,7 +31,7 @@ for (const device of ["iphone13", "desk1440"]) {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, "/menu");
-      assert.match(await f.textContent("#view"), /Analytics[\s\S]*Reports/);
+      assert.match(await f.textContent("#view"), /Leaderboard[\s\S]*Map[\s\S]*Reports/);
       await f.click('#view a[href="#/reports"]');
       await settled(f, { hash: "#/reports" });
       assert.equal(await title(f), "Reports");

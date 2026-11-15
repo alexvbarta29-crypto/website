@@ -592,7 +592,7 @@ test("a tech never sees Home: their own Today, and /home tells them nothing", as
   }
 });
 
-test("Pipeline and Leads from the drawer (top-level: no switch, no back button); the Sales switch for someone who pins Sales; the drawer", async () => {
+test("Pipeline and Leads from the Menu (top-level: no switch, no back button); the Sales switch for someone who pins Sales; the Menu", async () => {
   await day();
   for (const device of DEVICES) {
     const { p, page, f } = await home("olive", { device, office: true });
@@ -605,22 +605,21 @@ test("Pipeline and Leads from the drawer (top-level: no switch, no back button);
         assert.equal(await title(f), name);
         // (the section's own List | Board tabs may show; the old Sales switch must not)
         assert.equal(await f.$eval("#subnav", (el) => !el.hidden && /Quotes/.test(el.textContent)), false, "no Pipeline · Leads · Calls · Quotes · Tasks switch");
-        assert.equal(await backShown(f), false, `${path}, from the drawer, is top-level: no back button`);
+        assert.equal(await backShown(f), false, `${path}, from the Menu, is top-level: no back button`);
         assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu is lit on what it opens");
         assert.ok(await f.$("#fab"), "the create button");
         assert.deepEqual(await screenProblems(f), []);
         await shot(page, `home-menu-${path.slice(1)}-${device}`);
       }
-      // the drawer: Rotor's four groups of sections (no sub-lists), Settings the gear
+      // the Menu: Flyra's cards, every section of Rotor's menu in them, Settings last
       await openDrawer(f);
-      assert.deepEqual(await f.$$eval(".drawer .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(".dr-l")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
-      assert.equal(await f.$(".drawer [data-dr-sub]"), null, "no sub-lists");
-      assert.ok(await f.$('.drawer a[href="#/settings"]'), "the gear");
+      assert.deepEqual(await drawerLabels(f), ["Home", "Schedule", "Inbox", "Customers", "Leads", "Jobs", "Quotes", "Invoices", "Plans", "Pipelines", "Power Dialer", "Requests", "Tasks", "Payments", "Payouts", "Payroll", "Expenses", "Leaderboard", "Map", "Reports", "Automations", "Campaigns", "Reviews", "Templates", "QR codes", "Tab bar", "Settings"]);
+      assert.ok(await f.$('.fm-sheet a[href="#/settings"]'), "Settings");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `home-menu-${device}`);
       await drawerGo(f, "/plans", { open: false });
       await settled(f, { hash: "#/plans" });
-      assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the drawer's (Service)");
+      assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "Plans is the Menu's (a tile; Service's tab)");
       assert.equal(await f.getAttribute('#subnav [data-seg="sec"][data-key="plans"]', "aria-selected"), "true", "Service's tabs, Plans on");
       // someone who pinned Sales on their own bar (before K0; Customize Tabs no longer offers it) keeps its switch
       await goTo(f, "/tab-bar");
@@ -660,8 +659,8 @@ test("on a desk: the sidebar, search and New; Flyra's dashboard at 1440 (the mon
       assert.equal(await title(f), "Home");
       assert.equal(await f.$eval("#tabs", (el) => getComputedStyle(el).display), "none", "no bottom bar on a desk");
       assert.ok(await f.isVisible("#side"), "the sidebar");
-      // the drawer's four groups (Rotor's), its lists folding open in place, then Settings (Nov 2026)
-      assert.deepEqual(await f.$$eval("#side .side-main", (els) => els.map((g) => [...g.querySelectorAll(":scope > .side-item .sl, :scope > .side-grp > .side-h .sl")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
+      // the sections in the Menu's order (its cards), then Settings (Nov 15 2026)
+      assert.deepEqual(await f.$$eval("#side .side-main", (els) => els.map((g) => [...g.querySelectorAll(":scope > .side-item .sl, :scope > .side-grp > .side-h .sl")].map((e) => e.textContent))), [["Home", "Schedule", "Inbox", "Customers", "Leads"], ["Service", "Financials"], ["Pipelines", "Power Dialer", "Tasks"], ["Map", "Analytics", "Marketing"]]);
       assert.deepEqual(await f.$$eval("#side .side-foot .sl", (els) => els.map((e) => e.textContent)), ["Settings"]);
       assert.equal(await f.getAttribute('#side [data-path="/today"]', "aria-current"), "page", "Home lit");
       assert.ok(await f.isVisible("#top-q") && await f.isVisible("#top-new") && await f.isVisible("#top-me"), "search, New, the person");

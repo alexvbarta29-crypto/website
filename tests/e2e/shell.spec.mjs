@@ -1,16 +1,17 @@
-// The Rotor shell (Nov 2026, the owner: "make it like Rotor"; K0 of the
-// Rotor guide): the drawer (from the Menu tab and the round hamburger; four
-// groups of sections, no sub-lists; a row opens its section on the tab used
-// there last; the X, a tap outside, a swipe to the left and Escape close it;
-// the Inbox count; the gear), a section's tabs under the title (links: back,
+// The shell (Nov 2026, the owner: "make it like Rotor"; K0 of the Rotor
+// guide; then Nov 15, the Menu and the bar like Flyra's): the Menu (a sheet
+// from the Menu tab and the round hamburger; Flyra's cards holding every
+// section Rotor's menu has, a row on the tab used there last; Escape, a tap
+// outside and a swipe down close it; the badges, the round buttons, the Tab
+// bar row, Settings), a section's tabs under the title (links: back,
 // deep links), its round "..." for the rare screens, the bell, Help's "Where
 // do I go to...", the person's sheet (My time, My pay), Customize Tabs (from
 // the person's initials and a long press on the bar: − and +, the arrow keys
 // and a drag on the handle, Done saves, the standard bar back), and the
 // kit's list patterns on #/kit (the tile row that filters, two-line rows and
 // a long press, the board's stage strip, a swipe and the Move sheet, the
-// filter and period sheets), at iPhone 13 and SE in both themes; the same
-// sections as the desk's sidebar at 1440.
+// filter and period sheets), at iPhone 13 and SE in both themes; the
+// sections in the Menu's order as the desk's sidebar at 1440.
 // `node --test tests/e2e/shell.spec.mjs`; E2E_SHOTS=<dir> saves screenshots.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -39,8 +40,11 @@ async function open(login, device, theme = "dark") {
 const box = (f, sel) => f.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom }; });
 const gone = (f, sel) => f.waitForFunction((s) => !document.querySelector(s), sel, { timeout: 5000 });
 const tabs = (f) => f.$$eval("#tabs [data-tab]", (els) => els.map((e) => e.dataset.tab).join());
-// the drawer's own tap targets (screenProblems looks at the view, the header, sheets and the bar)
-const drawerProblems = (f) => f.evaluate(() => [...document.querySelectorAll(".drawer a, .drawer button")].filter((el) => { const r = el.getBoundingClientRect(); return r.width && r.height && !el.classList.contains("sr") && (r.height < 43.5 || r.width < 43.5); }).map((el) => `${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 20)} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`));
+// the Menu's own checks: 44 px targets (screenProblems looks at sheets too) and no name cut off
+const menuProblems = (f) => f.evaluate(() => [
+  ...[...document.querySelectorAll(".fm-sheet a, .fm-sheet button")].filter((el) => { const r = el.getBoundingClientRect(); return r.width && r.height && !el.classList.contains("sr") && (r.height < 43.5 || r.width < 43.5); }).map((el) => `${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 20)} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`),
+  ...[...document.querySelectorAll(".fm-sheet .fm-l, .fm-sheet .fm-tl")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => `cut off: ${e.textContent}`),
+]);
 
 const KEYS = ["home", "inbox", "schedule", "customers", "leads", "pipelines", "dialer", "service", "financials", "tasks", "map", "analytics", "marketing"];
 const secTabs = (f) => f.$$eval('#subnav [data-seg="sec"]', (els) => els.map((e) => [e.dataset.key, e.getAttribute("aria-selected")]));
@@ -48,47 +52,83 @@ const sheetGone = (f) => f.waitForFunction(() => !document.querySelector(".sheet
 
 for (const device of ["iphone13", "iphonese"]) {
   for (const theme of ["dark", "light"]) {
-    test(`the drawer (${device}, ${theme}): four groups of sections, no sub-lists, the Inbox count, the gear; every way to close it`, async () => {
+    test(`the Menu (${device}, ${theme}): Flyra's sheet, its cards holding everything Rotor's menu has, the badges, the round buttons; every way to close it`, async () => {
       const { p, page, f } = await open("olive", device, theme);
       try {
         assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), theme);
         await openDrawer(f);
         const vw = await f.evaluate(() => innerWidth);
-        const d = await box(f, ".drawer");
-        assert.ok(d.x === 0 && d.w >= 220 && d.w <= 300 && d.w < vw, `from the left, ${d.w} px`);
-        assert.equal(await f.$eval(".drawer", (el) => getComputedStyle(el).backgroundColor), theme === "light" ? "rgb(255, 255, 255)" : "rgb(27, 28, 31)", "white in light, #1b1c1f in dark");
-        assert.equal(await f.$$eval(".drawer .dr-logo img", (els) => els.filter((e) => e.getBoundingClientRect().width > 0).map((e) => e.getAttribute("src"))).then((x) => x.join()), theme === "light" ? "/assets/img/logo-bww.png" : "/assets/img/logo-bww-white.png", "our logo, for the theme");
-        assert.deepEqual(await f.$$eval(".drawer .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(".dr-l")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
-        assert.deepEqual(await f.$$eval(".drawer [data-dr-sec]", (els) => els.map((e) => e.dataset.drSec)), KEYS, "one row per section, from SECTIONS");
-        assert.equal(await f.$(".drawer [data-dr-sub], .drawer .dr-dot, .drawer [data-dr-back]"), null, "no sub-lists");
-        assert.equal(await f.getAttribute('.drawer .dr-row[href="#/today"]', "aria-current"), "page", "Home is the current row");
-        assert.match(await f.textContent('.drawer a[href="#/inbox"]'), /Inbox\s*\d+/, "the Inbox count");
-        assert.equal(await f.getAttribute('.drawer [data-dr-sec="service"]', "href"), "#/requests", "Service opens on its first tab");
-        assert.ok(await f.$('.drawer a[href="#/settings"]'), "the gear at the bottom");
-        assert.deepEqual(await drawerProblems(f), [], "44 px rows and buttons");
+        const vh = await f.evaluate(() => innerHeight);
+        const d = await box(f, ".fm-sheet");
+        assert.ok(d.x === 0 && d.w === vw && Math.abs(d.bottom - vh) < 1 && d.h >= vh - 60, `up from the bottom, nearly the whole height (${JSON.stringify(d)})`);
+        assert.ok(await f.isVisible(".fm-sheet .grab"), "the grabber");
+        assert.deepEqual(await f.evaluate(() => [".fm-sheet", ".fm-sheet .fm-card"].map((s) => getComputedStyle(document.querySelector(s)).backgroundColor)),
+          theme === "light" ? ["rgb(246, 246, 248)", "rgb(255, 255, 255)"] : ["rgb(17, 18, 20)", "rgb(27, 28, 31)"], "grey sheet, white cards in light; near black, dark cards in dark");
+        assert.equal(await f.textContent(".fm-sheet .sheet-head h2"), "Menu");
+        assert.equal(await f.$eval(".fm-sheet .sheet-head h2", (e) => parseFloat(getComputedStyle(e).fontSize)), 34, "the large title");
+        assert.deepEqual(await f.$$eval(".fm-sheet .fm-acts .rnd", (els) => els.map((e) => e.getAttribute("aria-label"))), ["Help", theme === "light" ? "Switch to dark" : "Switch to light", "Olive Owner: account"], "Help, Light or dark, the person");
+        assert.deepEqual(await f.$$eval(".fm-sheet .fm-grp", (els) => els.map((g) => [...g.querySelectorAll(".fm-l, .fm-tl")].map((e) => e.textContent))), [["Home", "Schedule", "Inbox", "Customers", "Leads"], ["Jobs", "Quotes", "Invoices", "Plans"], ["Pipelines", "Power Dialer", "Requests", "Tasks"], ["Payments", "Payouts", "Payroll", "Expenses"], ["Leaderboard", "Map", "Reports", "Automations"], ["Campaigns", "Reviews", "Templates", "QR codes"], ["Tab bar", "Settings"]]);
+        assert.deepEqual(await f.$$eval(".fm-sheet .fm-cap", (els) => els.map((e) => e.textContent)), ["Sales", "Money", "Marketing"]);
+        assert.deepEqual([...new Set(await f.$$eval(".fm-sheet [data-fm-sec]", (els) => els.map((e) => e.dataset.fmSec)))].sort(), [...KEYS].sort(), "every section of SECTIONS is in it");
+        assert.equal(await f.getAttribute('.fm-sheet .fm-row[href="#/today"]', "aria-current"), "page", "Home is the current row");
+        assert.match(await f.textContent('.fm-sheet a[href="#/inbox"]'), /Inbox\s*\d+/, "the Inbox count");
+        assert.equal(await f.getAttribute('.fm-sheet [data-fm-sec="service"].fm-row', "href"), "#/requests", "Requests, a row of Sales");
+        assert.equal(await f.$$eval(".fm-sheet .fm-tiles .fm-tile", (els) => els.map((e) => e.getAttribute("href")).join()), "#/jobs,#/quotes,#/invoices,#/plans");
+        const tiles = await f.$$eval(".fm-sheet .fm-tile", (els) => els.map((e) => { const i = e.querySelector("svg").getBoundingClientRect(); const l = e.querySelector(".fm-tl").getBoundingClientRect(); return l.y >= i.bottom - 1 && l.width > 20; }));
+        assert.deepEqual(tiles, [true, true, true, true], "an icon over each tile's name");
+        assert.equal(await f.$$eval(".fm-sheet [data-fm-tabs] .fm-prev svg", (els) => els.length), 4, "the Tab bar row: a small picture of the bar");
+        assert.equal(await f.$$eval(".fm-sheet .fm-row", (els) => els.every((e) => e.querySelector(".fm-chev svg"))), true, "a chevron on every row");
+        assert.deepEqual(await menuProblems(f), [], "44 px rows, tiles and buttons; nothing cut off");
         assert.deepEqual(await screenProblems(f), []);
-        await shot(page, `shell-drawer-${device}-${theme}`);
-        // the X
-        await f.click(".drawer [data-dr-x]");
-        await gone(f, ".drawer");
-        // a tap outside
+        await shot(page, `shell-menu-${device}-${theme}`);
+        await f.evaluate(() => { document.querySelector(".fm-sheet .sheet-body").scrollTop = 9999; });
+        await shot(page, `shell-menu-end-${device}-${theme}`);
+        await f.evaluate(() => { document.querySelector(".fm-sheet .sheet-body").scrollTop = 0; });
+        // Light or dark: one tap switches, in place
+        await f.click(".fm-sheet [data-fm-theme]");
+        const other = theme === "light" ? "dark" : "light";
+        assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), other);
+        assert.equal(await f.evaluate(() => localStorage.getItem("crm-theme")), other, "kept on this phone");
+        await f.click(".fm-sheet [data-fm-theme]");
+        assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), theme);
+        // Escape
+        await page.keyboard.press("Escape");
+        await gone(f, ".fm-sheet");
+        // a tap outside (above the sheet)
         await openDrawer(f);
         const o = await frameOffset(page, f);
-        await page.mouse.click(o.x + vw - 20, o.y + 400);
-        await gone(f, ".drawer");
-        // a swipe to the left
+        await page.mouse.click(o.x + vw / 2, o.y + 4);
+        await gone(f, ".fm-sheet");
+        // a swipe down from the grabber
         await openDrawer(f);
-        await swipe(page, { x: o.x + d.w - 30, y: o.y + 400 }, { x: o.x + 20, y: o.y + 405 });
-        await gone(f, ".drawer");
-        // the round hamburger, then Escape
+        const gb = await box(f, ".fm-sheet .grab");
+        await swipe(page, { x: o.x + vw / 2, y: o.y + gb.y + 2 }, { x: o.x + vw / 2, y: o.y + gb.y + 260 });
+        await gone(f, ".fm-sheet");
+        // the round hamburger; Help
         await f.click("#top-bar [data-tb-menu]");
-        await f.waitForSelector(".drawer.on");
+        await f.waitForSelector(".fm-sheet.on");
+        await f.click(".fm-sheet [data-fm-help]");
+        await f.waitForSelector(".sheet.on [data-where]");
+        await gone(f, ".fm-sheet");   // (the Menu steps aside for Help)
         await page.keyboard.press("Escape");
-        await gone(f, ".drawer");
-        // the gear opens Settings (top-level: no back button)
+        await sheetGone(f);
+        // the person: their sheet
         await openDrawer(f);
-        await f.click('.drawer a[href="#/settings"]');
+        await f.click(".fm-sheet [data-fm-me]");
+        await f.waitForSelector(".sheet.on [data-tabs-btn]");
+        await page.keyboard.press("Escape");
+        await sheetGone(f);
+        // the Tab bar row: Customize Tabs
+        await openDrawer(f);
+        await f.click(".fm-sheet [data-fm-tabs]");
+        await f.waitForSelector(".sheet.on [data-ctb-line]");
+        await page.keyboard.press("Escape");
+        await sheetGone(f);
+        // Settings (top-level: no back button)
+        await openDrawer(f);
+        await f.click('.fm-sheet a[href="#/settings"]');
         await settled(f, { hash: "#/settings" });
+        await gone(f, ".fm-sheet");
         assert.equal(await f.isVisible("#top-back"), false);
         assert.ok(await f.isVisible("#view [data-set-q]"), "Settings' search field");
         assert.deepEqual(await screenProblems(f), []);
@@ -101,9 +141,9 @@ for (const device of ["iphone13", "iphonese"]) {
       try {
         // Home has its own bell: the top bar's steps aside there
         assert.equal(await f.isVisible("#top-bar [data-tb-bell]"), false, "Home's own bell only");
-        // the drawer's Service: Requests, its first tab, with Service's tabs under the title
+        // the Menu's Requests (a row of Sales), with Service's tabs under the title
         await openDrawer(f);
-        await f.click('.drawer [data-dr-sec="service"]');
+        await f.click('.fm-sheet a.fm-row[href="#/requests"]');
         await settled(f, { hash: "#/requests" });
         assert.equal(await title(f), "Requests");
         assert.deepEqual(await secTabs(f), [["requests", "true"], ["quotes", "false"], ["jobs", "false"], ["plans", "false"]], "Requests, once its screen is there");
@@ -133,15 +173,19 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.deepEqual(await screenProblems(f), []);
         await f.click(".sheet.on [data-sheet-x]");
         await sheetGone(f);
-        // the tab used last: the drawer opens Service there next time, after a reload too
-        await goTo(f, "/today");
+        // the tab used last: a section's row opens there next time, after a reload too (Leads: its Board)
+        await goTo(f, "/leads?view=board");
         await openDrawer(f);
-        assert.equal(await f.getAttribute('.drawer [data-dr-sec="service"]', "href"), "#/plans");
+        assert.equal(await f.getAttribute('.fm-sheet .fm-row[data-fm-sec="leads"]', "href"), "#/leads?view=board");
+        assert.equal(await f.getAttribute('.fm-sheet .fm-row[data-fm-sec="leads"]', "aria-current"), "page", "Leads is the current row");
+        await page.keyboard.press("Escape");
+        await gone(f, ".fm-sheet");
+        await goTo(f, "/today");
         await page.reload();
         const g = await crmFrame(page);
         await settled(g);
         await openDrawer(g);
-        assert.equal(await g.getAttribute('.drawer [data-dr-sec="service"]', "href"), "#/plans", "kept on this phone");
+        assert.equal(await g.getAttribute('.fm-sheet .fm-row[data-fm-sec="leads"]', "href"), "#/leads?view=board", "kept on this phone");
         // Financials' "...": Timesheets sits deeper (a back button, the plain title), and back is Financials
         await drawerGo(g, "/timesheets", { open: false });
         await settled(g, { hash: "#/timesheets" });
@@ -156,7 +200,7 @@ for (const device of ["iphone13", "iphonese"]) {
         await g.waitForSelector(".sheet.on [data-where]");
         await g.click(".sheet.on [data-where]");
         await g.waitForFunction(() => document.querySelectorAll(".sheet.on .rs-where li").length === 17);
-        assert.match(await g.textContent(".sheet.on .rs-where"), /Run payroll\s*Menu › Financials › Payroll/);
+        assert.match(await g.textContent(".sheet.on .rs-where"), /Run payroll\s*Menu › Money › Payroll/);
         assert.deepEqual(await screenProblems(g), []);
         await shot(page, `shell-where-${device}-${theme}`);
         await g.click(".sheet.on [data-sheet-x]");
@@ -320,13 +364,13 @@ for (const device of ["iphone13", "iphonese"]) {
   });
 }
 
-test("on a desk (1440): the sidebar is the drawer's sections; a row opens the tab used last; the tabs over the screen; the section's \"...\" in the header; a board's columns", async () => {
+test("on a desk (1440): the sidebar is the sections in the Menu's order; a row opens the tab used last; the tabs over the screen; the section's \"...\" in the header; a board's columns", async () => {
   for (const theme of ["dark", "light"]) {
     const { p, page, f } = await open("olive", "desk1440", theme);
     try {
       assert.equal(await f.isVisible("#tabs"), false);
       assert.equal(await f.isVisible("#top-bar"), false, "the desk's own header: search, New, the person");
-      assert.deepEqual(await f.$$eval("#side .side-main", (els) => els.map((g) => [...g.querySelectorAll(".sl")].map((e) => e.textContent))), [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
+      assert.deepEqual(await f.$$eval("#side .side-main", (els) => els.map((g) => [...g.querySelectorAll(".sl")].map((e) => e.textContent))), [["Home", "Schedule", "Inbox", "Customers", "Leads"], ["Service", "Financials"], ["Pipelines", "Power Dialer", "Tasks"], ["Map", "Analytics", "Marketing"]], "the Menu's order");
       assert.equal(await f.$("#side .side-grp, #side .side-h"), null, "nothing to fold");
       await f.click('#side [data-sec="financials"]');
       await settled(f, { hash: "#/invoices" });
