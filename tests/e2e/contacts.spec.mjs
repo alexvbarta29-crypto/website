@@ -47,10 +47,14 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "the contact passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `contacts-contact-${device}`);
-      // Rotor's lead page (Nov 2026): Details | Activity; Follow-ups and Tasks (M2b) on Details, Calls and Deals on Activity
+      // Rotor's lead page (17-lead-detail): the profile on top (STAGE, EST. VALUE, FOLLOW-UP; Create Customer), then
+      // Conversation | Service | Opportunities | Payments | Activity | Files; Follow-ups, Deals and Tasks (M2b) on Opportunities
       await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 });
       for (const id of ["ct-card-properties", "ct-mod-sales", "ct-card-tasks", "ct-card-activity", "ct-card-calls", "ct-card-deals"]) assert.ok(await f.$(`#${id}`), id);
-      assert.deepEqual(await f.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["details", "service", "payments", "activity"], "Details | Service | Payments | Activity");
+      assert.deepEqual(await f.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["conversation", "service", "opportunities", "payments", "activity", "files"], "Rotor's lead tabs");
+      assert.deepEqual(await f.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Stage", "Est. value", "Follow-up", "Next visit"]);
+      assert.ok(await f.isVisible("#view [data-make-customer]"), "Create Customer");
+      await f.click('[data-seg="ctab"][data-key="opportunities"]');
       assert.match(await f.textContent("#ct-mod-sales"), /New lead/i, "the Follow-ups card shows the follow-up");
       assert.match(await f.textContent(".rs-name .pill"), /^(New|Open|Quoted|Following up|High)$/, "the stage (or the priority) pill beside the name");
       assert.deepEqual(await screenProblems(f), [], "the Sales cards pass the phone checks");
@@ -182,11 +186,18 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
         assert.match(await g.textContent(".sheet.on"), /Edit[\s\S]*Archive/);
         await g.click(".sheet.on [data-sheet-x]");
       }
-      // the contact: Details | Service | Payments | Activity; the Service tiles; Mute; Files; the portal
+      // the contact (Rotor's profile): the summary box, Mute, Edit / Portal / ...; Service first (tiles, Service Plans,
+      // Scheduled Jobs, Pending Jobs with Delay and Schedule, each with its "+ New"); Payments; Files; the portal
       await goTo(g, `/contacts/${seeded.contacts.plan}`);
       await g.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
+      assert.deepEqual(await g.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Lifetime value", "Sale value", "Frequency", "Service type"]);
+      assert.match(await g.textContent("#ct-stat"), /Quarterly/, "the plan's frequency");
       assert.ok(await g.isVisible("#ct-mute .switch"), "the Mute switch up front");
+      assert.ok(await g.isVisible(".ct-btns [data-portal]") && await g.isVisible(".ct-btns [data-ct-more]"), "Edit, Portal, ...");
       assert.ok(await g.$("#ct-card-files"), "the Files card");
+      assert.deepEqual(await g.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["service", "payments", "conversation", "opportunities", "activity", "files"], "Rotor's tabs");
+      assert.match(await g.textContent('[data-pane="service"] [data-card="plan"] .rs-ch'), /Service Plans[\s\S]*New Plan/);
+      assert.ok(await g.$('[data-pane="service"] [data-card="pending"] [data-job-delay]'), "Pending Jobs: Delay");
       await g.click('[data-seg="ctab"][data-key="service"]');
       await g.waitForSelector('[data-pane="service"]:not(.off) #ct-svc-tiles');
       assert.match(await g.textContent("#ct-svc-tiles"), /Scheduled jobs[\s\S]*Avg completed job[\s\S]*Avg future job[\s\S]*Outstanding/);
@@ -206,16 +217,26 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
   });
 }
 
-test("customers on a desk (desk1440): the list, and the contact's four tabs side by side", async () => {
-  const { p, f } = await open("olive", "desk1440");
+test("customers on a desk (desk1440): Rotor's table, and the contact's two columns (the profile, the tabs)", async () => {
+  const { p, page, f } = await open("olive", "desk1440");
   try {
     await goTo(f, "/contacts");
-    await f.waitForSelector("#ct-list .rs-lrow");
+    await f.waitForSelector("#ct-list .rs-table .rs-trow");
+    assert.deepEqual(await f.$$eval("#ct-list .rs-thead .rs-td", (els) => els.map((e) => e.textContent)), ["Name", "Email", "Phone", "City", "Status", "SV", "LV", "Outstanding", "Assigned to"]);
+    assert.match(await f.textContent("#top-action"), /Add Customer/);
     assert.deepEqual(await screenProblems(f), []);
+    await shot(page, "r2b-customers-desk1440");
     await goTo(f, `/contacts/${seeded.contacts.plan}`);
     await f.waitForFunction(() => !document.querySelector(".ct-loading"), null, { timeout: 10000 });
     const holder = (await f.$("#pane:not([hidden]) .ct-page")) ? "#pane" : "#view";
-    for (const k of ["details", "service", "payments", "activity"]) assert.ok(await f.isVisible(`${holder} [data-pane="${k}"]`), k);
+    const prof = await f.$eval(`${holder} .ct-prof`, (el) => el.getBoundingClientRect().toJSON());
+    const main = await f.$eval(`${holder} .ct-main`, (el) => el.getBoundingClientRect().toJSON());
+    assert.ok(main.x >= prof.x + prof.width && Math.abs(main.y - prof.y) < 8 && prof.width < 340, "the profile on the left, the tabs beside it");
+    assert.ok(await f.isVisible(`${holder} [data-pane="service"]`), "Service");
+    assert.deepEqual(await screenProblems(f), []);
+    await shot(page, "r2b-contact-desk1440");
+    // the list beside the contact narrows to two-line rows
+    await f.waitForSelector("#ct-list .rs-lrow");
     await p.clean();
   } finally { await p.close(); }
 });

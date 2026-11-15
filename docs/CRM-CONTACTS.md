@@ -335,12 +335,22 @@ or amount tied to a person. No key holds phone digits or an email
 
 ## The contact page's cards (extension point)
 
-The contact page is Rotor's lead and customer page (Nov 2026): the name with
-a pill (the lead's priority, else the deal's stage), white pills (plan,
-owner, "Lead since"), Details | Activity, the stat card, CONTACT rows with
-round call, text, copy and navigate, the satellite, then cards with a round
-`+`; every other action is in the header's round `...` (`more()` in
-`contact.js`; Archive and Mark lost red at the end). A module adds its part
+The contact page is Rotor's customer and lead profile (Nov 2026, Rotor's
+screenshots 10-13 and 17). The profile (on a phone the top of the page; on
+a desk with 760 px of room a 320 px left column that stays put): the name
+with its pill (Active; a lead's priority, else the deal's stage), the
+summary box (a customer: Lifetime value, Sale value, Frequency, Service
+type; a lead: Stage, Est. value, Follow-up, Next visit), email and phone
+rows (text, call, copy, send), Mute, "About to be sent", the primary
+property and its satellite, notes, Source / Assigned / Tags / Created /
+Converted (the rest under More details), then Create Customer (a lead),
+Edit, Portal and `...`. Then Rotor's tabs (`PANES`, `LEAD_PANES`): Service
+(tiles; Service Plans, Scheduled Jobs, Pending Jobs with Delay and
+Schedule, Quotes, Requests, each with a red "+ New" pill; Properties),
+Payments, Conversation (Messages, consent), Opportunities (Follow-ups,
+Deals, Tasks), Activity (timeline, Calls), Files. Every other action is in
+the header's round `...` (`more()` in `contact.js`; Archive and Mark lost
+red at the end). A module adds its part
 through its client manifest's `contactTabs` (the name stays from the tabs it
 replaced): `{ key, label, order, load, place?, heading?, title?, perm? }`.
 The module default-exports `{ load(params, ctx), cards?(state, ctx),
@@ -348,24 +358,31 @@ actions?(state, ctx), render(state, ctx), header?(state) → { plan?,
 next_visit?, deal_id?, deal_status?, stage?, pipeline?, follow_up?,
 enrollment_id? }, queued?(state) → [{ at, label, sub?, href?, icon? }] }`:
 
-- `cards()` → `[{ key, tab: "details" | "activity", title, add?: { label,
-  href | data }, edit?, count?, body | null, empty? }]`: one card each (the
-  round `+` is `add`; a `null` body shows the one-line `empty`). The page
-  sorts them in Rotor's order (`LEAD_ORDER`, `CUSTOMER_ORDER`,
-  `ACTIVITY_ORDER`); the first card of a module carries `#ct-mod-<key>`.
+- `cards()` → `[{ key, tab?, title, add?: { label, short?, href | data },
+  edit?, count?, body | null, empty? }]`: one card each (the round `+` is
+  `add`; with `short` ("New Plan") it is Rotor's red "+ New Plan" pill; a
+  `null` body shows the one-line `empty`). The card's key picks its tab and
+  its place in Rotor's order (`PANE_CARDS`; an unknown key goes by `tab`,
+  else Service); the first card of a module carries `#ct-mod-<key>`.
+- `header()` may also give `sale_value` (cents), `frequency` and
+  `service_type` (the plans part does) for the summary box; `tiles()` the
+  Service tab's tiles.
 - `actions()` → `[{ key, label, icon, href | run, data?, hint?, danger? }]`:
   rows of the `...`, grouped by `key` (call, follow, task / quote, book,
   plan, invoice, credit, cardlink; a lead's follow-up group first, a
   customer's booking group first).
-- A module without `cards()` shows its `render()` as one card (Activity for
-  `place: "aside"`).
+- A module without `cards()` shows its `render()` as one card (Conversation
+  for `place: "aside"`).
 
 A state of `{ denied: true }` leaves the module out; `ctx.section` is true
 and `ctx.contact` is the contact; setting `ctx.state.tabMod = null` and
 calling `ctx.rerender()` loads that part again. Old `?tab=` links open the
-module's card. Today: work (Visits), plans (Plan), quotes (Quotes), money
-(Invoices, and a customer's Payment), sales (Follow-ups, Tasks; Calls and
-Deals on Activity), comms (Messages on Activity). Code:
+module's card. Today: work (Scheduled Jobs, Pending Jobs), plans (Service
+Plans), quotes (Quotes), service (Requests), money (Invoices, and a
+customer's Payment), sales (Follow-ups, Deals, Tasks; Calls on Activity),
+comms (Messages on Conversation). The Customers list: two-line rows on a
+phone (LV; town, SV, assigned; Owes or the status), Rotor's table on a desk
+(`tableColumns`, `tableRow` in `list.js`). Code:
 `crm-app/modules/contacts/contact.js` (`contactSections`, `headerNumbers`,
 `topPill`); tests: `tests/crm/contacts/sections.test.mjs`,
 `tests/crm/contacts/screens.test.mjs`, `tests/e2e/layout.spec.mjs`,

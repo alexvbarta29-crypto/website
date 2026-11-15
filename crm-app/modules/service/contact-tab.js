@@ -21,7 +21,7 @@ export default {
   cards(s, ctx) {
     if (!s || s.denied) return [];
     return [{ key: "requests", tab: "details", title: "Requests", count: s.rows.length || null, empty: "No requests yet",
-      add: ctx.can("requests:write") ? { label: "New request", href: "#/requests/new/" + encodeURIComponent(s.id) } : null,
+      add: ctx.can("requests:write") ? { label: "New request", short: "New Request", href: "#/requests/new/" + encodeURIComponent(s.id) } : null,
       body: s.rows.length ? listCard(s.rows.map(row), { label: "Requests" }) : null }];
   },
   actions(s, ctx) {

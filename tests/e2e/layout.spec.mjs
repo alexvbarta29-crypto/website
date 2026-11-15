@@ -173,38 +173,42 @@ test("a tech's bar is the tech app's: Today · Inbox · Time · Pay · Me, no Me
 });
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`the customer page (${device}): Rotor's top (name, pills), Details | Activity, the stat card, contact rows, cards; the "..." has the rest`, async () => {
+  test(`the customer page (${device}): Rotor's profile on top (name, Active, the summary box, contact rows), Rotor's tabs, cards; the "..." has the rest`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, `/contacts/${seeded.contacts.plan}`);
       await f.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
-      assert.deepEqual(await f.$$eval("#ct-stat .rs-stat-l", (els) => els.map((e) => e.textContent)), ["Balance", "Lifetime", "Next visit", "Plan", "Source"]);
-      assert.match(await f.textContent(".ct-pills"), /Customer since [A-Z][a-z]{2} \d+, \d{4}/);
-      assert.match(await f.textContent(".ct-pills"), /plan/i, "the plan pill");
-      assert.deepEqual(await f.$$eval('[data-pane="details"] .rs-crow .rs-cl', (els) => els.map((e) => e.textContent)), ["Mobile", "Email"]);
+      assert.deepEqual(await f.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Lifetime value", "Sale value", "Frequency", "Service type"]);
+      assert.equal(await f.textContent(".rs-name .pill"), "Active");
+      assert.match(await f.textContent("#ct-card-about"), /Customer since\s*[A-Z][a-z]{2} \d+, \d{4}/);
+      assert.deepEqual(await f.$$eval(".ct-prof .rs-crow .rs-cl", (els) => els.map((e) => e.textContent)), ["Mobile", "Email"]);
       assert.ok(await f.$('.rs-crow .rnd.red[href^="tel:"]'), "the red round call");
       assert.equal(await f.isVisible("#top-back"), true, "the round back button");
       assert.ok(await f.isVisible("#top-act [data-top-tool]"), "the round pencil");
       assert.ok(await f.isVisible("#top-more"), "the round ...");
       assert.ok((await box(f, "#top-title")).w <= 1, "no title in sight: the name is the page's own (the h1 stays for screen readers)");
-      // Details | Service | Payments | Activity (guide-gaps C17): the cards in Rotor's order on each tab
+      // the profile: notes and the facts; Rotor's tabs, the cards in Rotor's order on each
+      const prof = await f.$$eval(".ct-prof [data-card]", (els) => els.map((e) => e.dataset.card));
+      for (const must of ["notes", "about"]) assert.ok(prof.includes(must), must);
       const cardsOf = (pane) => f.$$eval(`[data-pane="${pane}"] [data-card]`, (els) => els.map((e) => e.dataset.card));
-      const order = await cardsOf("details");
-      for (const must of ["properties", "notes", "about"]) assert.ok(order.includes(must), must);
       const svc = await cardsOf("service");
-      const want = ["visits", "plan", "quotes", "followups"].filter((x) => svc.includes(x));
+      const want = ["plan", "visits", "pending", "quotes", "requests", "properties"].filter((x) => svc.includes(x));
       assert.deepEqual(svc.filter((x) => want.includes(x)), want, `in Rotor's order (${svc.join(", ")})`);
-      for (const must of ["visits", "plan", "quotes"]) assert.ok(svc.includes(must), must);
+      for (const must of ["visits", "plan", "quotes", "properties"]) assert.ok(svc.includes(must), must);
       assert.ok((await cardsOf("payments")).includes("invoices"), "invoices on Payments");
+      assert.ok((await cardsOf("opportunities")).includes("followups"), "the follow-ups on Opportunities");
       assert.equal(await f.isVisible('[data-pane="activity"]'), false, "one tab at a time");
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `layout-contact-${device}`);
-      // Activity: the timeline and the consent card
+      // Activity: the timeline; Conversation: the consent card
       await f.click('[data-seg="ctab"][data-key="activity"]');
       assert.equal(await f.isVisible('[data-pane="activity"]'), true);
-      assert.equal(await f.isVisible('[data-pane="details"]'), false);
-      assert.ok(await f.isVisible("#ct-card-activity") && await f.isVisible("#ct-card-consent"));
+      assert.equal(await f.isVisible('[data-pane="service"]'), false);
+      assert.ok(await f.isVisible("#ct-card-activity"));
+      assert.deepEqual(await screenProblems(f), []);
+      await f.click('[data-seg="ctab"][data-key="conversation"]');
+      assert.ok(await f.isVisible("#ct-card-consent"));
       assert.deepEqual(await screenProblems(f), []);
       // the "...": every other action
       await f.click("#top-more");
@@ -224,23 +228,24 @@ for (const device of ["iphone13", "iphonese"]) {
 }
 
 for (const device of ["desk1440", "desk1024"]) {
-  test(`on a desk (${device}): the contact's name stays put; Details and Activity side by side when there's room; the Visit's actions in its header`, async () => {
+  test(`on a desk (${device}): Rotor's two columns when there's room (the profile stays put); the Visit's actions in its header`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, `/contacts/${seeded.contacts.lead}`);
       await f.waitForFunction(() => !document.querySelector(".ct-loading"), null, { timeout: 10000 });
       const holder = (await f.$("#pane:not([hidden]) .ct-page")) ? "#pane" : "#view";
-      const main = await box(f, `${holder} [data-pane="details"]`);
-      const aside = await box(f, `${holder} [data-pane="activity"]`);
+      const prof = await box(f, `${holder} .ct-prof`);
+      const main = await box(f, `${holder} .ct-main`);
       if (device === "desk1440") {
-        assert.ok(aside.x > main.x + main.w - 1 && Math.abs(aside.y - main.y) < 4, "two columns: Activity beside Details");
-        assert.equal(await f.isVisible(`${holder} .ct-seg`), false, "no tabs then");
+        assert.ok(main.x > prof.x + prof.w - 1 && Math.abs(main.y - prof.y) < 8, "two columns: the tabs beside the profile");
+        assert.equal(await f.isVisible(`${holder} .ct-seg`), true, "Rotor's tabs, underlined");
       }
       const before = await box(f, `${holder} .ct-head`);
       await f.evaluate((h) => { document.querySelector(h).scrollTop = 900; }, holder);
       await f.waitForTimeout(200);
       const afterScroll = await box(f, `${holder} .ct-head`);
-      assert.ok(Math.abs(afterScroll.y - before.y) < 30, `the name stays put (${before.y} → ${afterScroll.y})`);
+      // (Rotor's left column holds at the top of the page while the tab scrolls)
+      if (device === "desk1440") assert.ok(afterScroll.y >= 50 && afterScroll.y <= before.y, `the name stays in sight (${before.y} → ${afterScroll.y})`);
       assert.deepEqual(await screenProblems(f), []);
       await f.evaluate((h) => { document.querySelector(h).scrollTop = 0; }, holder);
       await shot(page, `layout-contact-${device}`);
