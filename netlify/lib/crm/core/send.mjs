@@ -355,7 +355,8 @@ export async function sendMessage(msg, ctx = {}) {
   // the footer (D5): first text per sending number, every marketing text
   let text = rendered.text;
   let footerAppended = false;
-  const number = channel === "sms" ? sendingNumber(integrations, a.mode) : null;
+  // (a person may pick one of the business numbers, checked by POST /messages; test mode keeps its test number)
+  const number = channel === "sms" ? (msg.from_number && a.mode === "live" ? msg.from_number : sendingNumber(integrations, a.mode)) : null;
   if (channel === "sms") {
     let firstSms = {};
     if (contact) {

@@ -35,3 +35,11 @@
 #au-f{max-width:880px}
 @media (min-width:600px){.au-wait{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr)}}
 @media (min-width:900px){.au-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) auto;align-items:end}.au-row .au-v{grid-column:auto}.au-row .au-x{grid-column:auto}}
+
+/* the Workflows list (Marketing's first tab): tiles, the folder chip, rows with a switch */
+.au-list .au-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.au-list .au-bar .chip{margin:0;min-height:44px;display:inline-flex;align-items:center;gap:4px}
+.au-list .au-bar .chip svg{width:16px;height:16px}
+.wf-row .who{flex:1;min-width:0}
+.wf-row .end{flex:none}
+.au-st .pill{vertical-align:middle;margin-right:4px}

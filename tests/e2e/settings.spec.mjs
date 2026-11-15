@@ -59,7 +59,7 @@ for (const device of ["iphone13", "iphonese"]) {
           assert.ok(r.h >= 44 && r.tile, `${r.name}: a 44 px row with its tile`);
         }
         assert.equal(rows.find((r) => r.key === "team").sub, "Team, permissions, payroll");
-        assert.equal(rows.find((r) => r.key === "payments").href, "#/settings/payments", "one row: straight to it");
+        assert.equal(rows.find((r) => r.key === "payments").href, "#/settings/g/payments", "Payments and Client portal: its page");
         assert.equal(rows.find((r) => r.key === "business").href, "#/settings/g/business");
         assert.equal(await f.isVisible("#view .set-res"), false, "no flat list until something is typed");
         assert.match(await f.textContent("#view .set-hub"), /App version/, "About at the bottom");

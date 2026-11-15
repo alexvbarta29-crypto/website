@@ -143,3 +143,25 @@ test("the limits are a settings document: automations:configure, checked", async
   assert.equal(list.body.data.settings.max_texts_per_day, 3);
   assert.equal((await t.api("/settings/flows", { as: tech })).status, 403);
 });
+
+test("Workflows in folders (Flyra's objects): a custom one in its trigger's folder until moved; names of your own; built-ins filed by key", async () => {
+  t = await crmTest();
+  const owner = await t.user("owner");
+  const C = await import("../../../netlify/lib/crm/modules/automations/catalog.mjs");
+  assert.deepEqual(["lead.ack", "visit.reminder_2d", "quote.sent", "invoice.overdue", "payment.receipt", "agreement.sent", "review.sequence", "something.else"].map(C.folderOfKey),
+    ["customers", "jobs", "estimates", "payments", "payments", "subscriptions", "reviews", "misc"]);
+  const made = await t.api("/automations/flows", { method: "POST", as: owner, body: { ...DEF, trigger: { type: "quote.sent" } } });
+  const id = made.body.data.flow.id;
+  assert.equal(made.body.data.flow.folder, "estimates", "a quote trigger files under Estimates");
+  let list = (await t.api("/automations/flows", { as: owner })).body.data;
+  assert.deepEqual(list.folders.map((f) => f.key), ["jobs", "estimates", "payments", "subscriptions", "reviews", "customers", "misc"]);
+  assert.ok(list.folder_rules.length > 5);
+  const mv = await t.api(`/automations/flows/${id}/folder`, { method: "POST", as: owner, body: { folder: "  Spring   push " } });
+  assert.equal(mv.status, 200);
+  assert.equal(mv.body.data.flow.folder, "Spring push");
+  list = (await t.api("/automations/flows", { as: owner })).body.data;
+  assert.deepEqual(list.folders.slice(-1), [{ key: "Spring push", label: "Spring push", own: true }], "a folder of your own is listed after Flyra's");
+  assert.equal((await t.api(`/automations/flows/${id}/folder`, { method: "POST", as: owner, body: { folder: "x".repeat(41) } })).status, 400);
+  const back = await t.api(`/automations/flows/${id}/folder`, { method: "POST", as: owner, body: { folder: null } });
+  assert.equal(back.body.data.flow.folder, "estimates", "back to its trigger's");
+});

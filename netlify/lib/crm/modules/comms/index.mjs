@@ -42,6 +42,9 @@ import { emailLayout } from "./email-layout.mjs";
 import { campaignRoutes, startCampaign } from "./campaigns.mjs";
 import { reviewRoutes, reviewSequence, reviewListeners, pollReviews, isReviewed, validateReviews, REVIEWS_DEFAULTS } from "./reviews.mjs";
 import { setupRoutes } from "./setup.mjs";
+import { ratingRoutes, portalRoutes } from "./ratings.mjs";
+import { startFollowup } from "./blast.mjs";
+import { INBOXES_DEFAULTS, validateInboxes, ENGAGEMENT_DEFAULTS, validateEngagement, SMS_PRICING_DEFAULTS, validateSmsPricing } from "./inboxes.mjs";
 import { mcpTools } from "./mcp.mjs";
 
 // The drivers (registered, not switched on: adapters/index.mjs decides the mode).
@@ -65,6 +68,18 @@ defineFileOwner("message", {
     return ctx.can("inbox:read", { type: "message", record: msg, visible: (await techVisibleContacts(ctx.user.id)).has(msg.contact_id) });
   },
   canEdit: () => false,
+});
+// A text blast's picture (kept on the campaign until picture texts are set up): who builds campaigns.
+defineFileOwner("campaign", {
+  canRead: async (ctx) => !!ctx.can("campaigns:write"),
+  canEdit: async (ctx, c) => !!ctx.can("campaigns:write") && !(c && c.rotor),
+});
+// A picture or PDF the office attaches to a text or email (the composer's
+// paperclip): held on the person's conversation until it goes with a
+// message. The office only.
+defineFileOwner("conversation", {
+  canRead: async (ctx) => !!ctx.can("inbox:read"),
+  canEdit: async (ctx) => !!(ctx.can("inbox:read") && ctx.can("messages:send")),
 });
 
 // (key and outcome: the door-to-door map's stable key and what a knock of
@@ -106,8 +121,14 @@ export default defineModule({
     // Rotor's eight map pin types (§10.2 row 35): the door-to-door map's (docs/CRM-MAP.md)
     pin_types: { defaults: { types: [] }, validate: validatePinTypes, perm: "settings:general" },
     reviews: { defaults: { ...REVIEWS_DEFAULTS }, validate: validateReviews, perm: "settings:messaging" },
+    // team inboxes (Rotor's "My inboxes"), the business numbers, the price of a text (guide-gaps S5a, S6, S50)
+    inboxes: { defaults: { ...INBOXES_DEFAULTS, list: [] }, validate: validateInboxes, perm: "settings:messaging" },
+    engagement: { defaults: { ...ENGAGEMENT_DEFAULTS, numbers: [] }, validate: validateEngagement, perm: "settings:messaging" },
+    sms_pricing: { defaults: { ...SMS_PRICING_DEFAULTS }, validate: validateSmsPricing, perm: "settings:messaging" },
   },
-  routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...setupRoutes, ...hookRoutes],
+  routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...ratingRoutes, ...setupRoutes, ...hookRoutes],
+  // the customer's star page (in-app ratings, off until the switch)
+  portalRoutes,
   events: reviewListeners,
   emits: ["message.inbound", "review.matched"],
   queue: {
@@ -115,6 +136,8 @@ export default defineModule({
     "media.fetch": { handler: fetchMedia, mutates: true },
     // a scheduled campaign's start: the confirm of its bulk run, as the person who scheduled it
     "campaign.start": { handler: startCampaign, mutates: true },
+    // a text blast's follow-up to who didn't reply: its own bulk run, waiting for a test and a confirm
+    "campaign.followup": { handler: startFollowup, mutates: true },
   },
   services: {
     // (message, ctx) → { status, outbox_id?, message_id?, conversation_id? }: replaces core's default (§11.3)
@@ -147,7 +170,7 @@ export default defineModule({
     "email.history": { label: "Emails in Rotor (imported)", icon: "mail" },
     "review.matched": { label: "Left a Google review", icon: "check" },
   },
-  exportTypes: ["conversation", "message", "campaign", "review"],
+  exportTypes: ["conversation", "message", "campaign", "review", "rating"],
   mcpTools,
   importPhases: phases,
 });

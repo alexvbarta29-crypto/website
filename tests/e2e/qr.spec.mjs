@@ -157,7 +157,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     const visitor = await phone(browser, srv, { device: desk ? "iphone13" : device });
     try {
       await goTo(f, "/menu");
-      assert.match(await f.textContent("#view"), /Marketing[\s\S]*Signs & flyers/);
+      assert.match(await f.textContent("#view"), /Leads[\s\S]*QR codes/);
       await f.click("#view a[href='#/signs']");
       await settled(f, { hash: "#/signs" });
       assert.equal(await title(f), "Signs & flyers");

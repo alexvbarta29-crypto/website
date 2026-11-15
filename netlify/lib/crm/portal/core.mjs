@@ -44,7 +44,7 @@ import { setSuppression } from "../core/suppressions.mjs";
 export const PORTAL_COOKIE = "barta_portal";
 export const SESSION_DAYS = 30;
 export const CODE_LEN = 10;
-export const SCOPE_KINDS = Object.freeze(["hub", "quote", "invoice", "agreement", "card", "receipt", "unsubscribe", "present"]);
+export const SCOPE_KINDS = Object.freeze(["hub", "quote", "invoice", "agreement", "card", "receipt", "unsubscribe", "present", "review"]);
 export const PORTAL_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'";
 export const PORTAL_HEADERS = Object.freeze({
   "Cache-Control": "private, no-store",

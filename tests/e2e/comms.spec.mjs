@@ -43,26 +43,37 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "the Inbox passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `comms-inbox-${device}`);
-      // (a phone: All messages · Needs reply · Mine is the filter sheet behind the round filter button, Flyra's)
-      const pickKind = async (k) => { await f.click('#top-rnd [data-own="filter"]'); await f.waitForSelector(".sheet.on [data-k]"); assert.deepEqual(await screenProblems(f), [], "the filter sheet"); await f.click(`.sheet.on [data-k="${k}"]`); };
-      await pickKind("needs_reply");
-      await f.waitForFunction(() => document.querySelector("[data-kind]").value === "needs_reply" && !document.querySelector("#view [aria-busy=true]"));
-      await f.waitForTimeout(400);
+      // Rotor's folders are one row of tiles (a tile IS the filter), each with its count; team inboxes after them
+      assert.deepEqual(await f.$$eval("#view [data-tile=inbox]", (els) => els.map((e) => e.dataset.key)), ["all", "mine", "unread", "needs_reply", "sales", "service"]);
+      assert.match(await text(f, "#view .rs-tiles"), /Sales\s*\d/, "the team inbox with its count");
+      const pickTile = async (k) => { await f.click(`#view [data-tile=inbox][data-key="${k}"]`); await f.waitForFunction((key) => { const b = document.querySelector(`#view [data-tile=inbox][data-key="${key}"]`); return !!b && !document.querySelector("#view [aria-busy=true]"); }, k); await f.waitForTimeout(400); };
+      await pickTile("needs_reply");
+      assert.equal(await f.$eval('#view [data-tile=inbox][data-key="needs_reply"]', (b) => b.getAttribute("aria-pressed")), "true");
       // (the second phone comes after the first marked it done)
       if (first) assert.match(await text(f), new RegExp(c.names.lead));
       else assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "done on the other phone: no longer waiting");
       assert.doesNotMatch(await text(f), /All done for today/, "a handled thread does not need a reply");
-      await pickKind("all");
-      await f.waitForFunction(() => document.querySelector("[data-kind]").value === "all");
-      await f.waitForTimeout(400);
+      await pickTile("sales");
+      if (first) assert.match(await text(f), new RegExp(c.names.lead), "a lead lands in Sales by the inbox's rule");
+      assert.doesNotMatch(await text(f, "#view .cm-list, #view .card").catch(() => ""), new RegExp(c.names.customer), "a customer is not in Sales");
+      await pickTile("sales");
+      // the round Filter: texts or email, customers or leads (one sheet, not three rows of controls)
+      await f.click('#top-rnd [data-own="filter"]');
+      await f.waitForSelector(".sheet.on");
+      assert.deepEqual(await screenProblems(f), [], "the filter sheet");
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
 
       // the thread: bubbles, where they came from, and that texting is off
       await f.click(`a[href="#/inbox/${c.open}"]`);
       await settled(f, { hash: `#/inbox/${c.open}` });
       assert.equal(await title(f), c.names.lead, "a thread is titled with its contact");
-      assert.equal(await f.$$eval(".cm-msg[data-msg]", (els) => els.length), 2);
+      assert.equal(await f.$$eval(".cm-msg[data-msg]:not(.note)", (els) => els.length), 2);
       assert.match(await text(f), /from Rotor/, "imported messages say where they came from");
       assert.match(await text(f), /Texting isn't switched on yet/);
+      assert.ok(await f.$("#top-act [data-panel]"), "the person's round button");
+      assert.ok(await f.$("[data-from]"), "two business numbers: From ...");
+      assert.match(await text(f, "[data-from]"), /Main/);
       assert.deepEqual(await screenProblems(f), [], "a thread passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `comms-thread-${device}`);
@@ -76,7 +87,12 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await f.$eval("[data-compose] textarea", (el) => el.value), "", "the box is empty again");
       await shot(page, `comms-thread-outbox-${device}`);
 
-      // templates: a list, then the preview for this contact
+      // the quick links put the review link in the box
+      await f.click("[data-link=review]");
+      assert.match(await f.$eval("[data-compose] textarea", (el) => el.value), /^https:\/\//);
+      await f.fill("[data-compose] textarea", "");
+
+      // templates: a list, then the preview for this contact; Put in the box
       await f.click("[data-templates]");
       await sheetUp(f, /Templates/);
       assert.ok((await f.$$(".sheet [data-tpl]")).length > 2, "the templates for texts");
@@ -85,31 +101,69 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForSelector(".sheet .preview", { timeout: 5000 });
       assert.deepEqual(await screenProblems(f), [], "a template's preview passes the phone checks");
       await shot(page, `comms-template-${device}`);
-      await f.click(".sheet [data-back]");
-      await f.waitForSelector(".sheet [data-tpl]");
-      await f.click(".sheet [data-sheet-x]");
+      await f.click(".sheet [data-put]");
+      await sheetGone(f);
+      assert.ok((await f.$eval("[data-compose] textarea", (el) => el.value)).length > 20, "the template's words are in the box");
+      await f.fill("[data-compose] textarea", "");
+
+      // an internal note: yellow, only the team sees it
+      await f.click('[data-seg=ch][data-key="note"]');
+      await f.fill("[data-compose] textarea", first ? "Wants the screens done too." : "Has a dog: text before the gate.");
+      await f.click("[data-compose] button[type=submit]");
+      await toastSays(f, /Note saved/);
+      await f.waitForFunction((n) => document.querySelectorAll(".cm-msg .bubble.note").length === n, first ? 1 : 2, { timeout: 8000 });
+      await f.click('[data-seg=ch][data-key="sms"]');
+
+      // send later: a time sheet, then the Outbox at that time
+      await f.fill("[data-compose] textarea", "A reminder for tomorrow morning.");
+      await f.click("[data-later]");
+      await sheetUp(f, /Send later/);
+      assert.deepEqual(await screenProblems(f), [], "the send later sheet");
+      // (the server's clock is pinned: a time a day after it)
+      const at = Date.parse(srv.now()) + 86400000;
+      await f.evaluate((ms) => { const d = new Date(ms); const pad = (n) => String(n).padStart(2, "0"); document.querySelector(".sheet.on [name=at]").value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T10:00`; }, at);
+      await f.click(".sheet.on button[type=submit]");
+      await toastSays(f, /Scheduled for/);
+
+      // their details beside the thread (Rotor's panel): numbers, Mute, + Create
+      await f.click("#top-act [data-panel]");
+      await f.waitForSelector(".sheet.on [data-mute]", { timeout: 8000 });
+      assert.match(await text(f, ".sheet.on"), /Create/);
+      assert.deepEqual(await screenProblems(f), [], "the person's panel passes the phone checks");
+      await shot(page, `comms-panel-${device}`);
+      await f.click(".sheet.on [data-sheet-x]");
       await sheetGone(f);
 
-      // mark it done, and it leaves "Needs reply"; the second phone reopens it
-      await f.click(first ? '[data-done="1"]' : '[data-done="0"]');
+      // the "...": assign it, then mark it done (the second phone reopens it)
+      await f.click("#top-more");
+      await f.waitForSelector(".sheet.on [data-assign]");
+      await f.click(".sheet.on [data-assign]");
+      await f.waitForSelector(".sheet.on [data-assign-to]");
+      await f.click(".sheet.on [data-assign-to]");
+      await toastSays(f, /Assigned/);
+      await sheetGone(f);
+      await f.click("#top-more");
+      await f.waitForSelector(".sheet.on [data-done]");
+      await f.click(first ? '.sheet.on [data-done="1"]' : '.sheet.on [data-done="0"]');
       await toastSays(f, first ? /Marked done/ : /Reopened/);
-      await f.waitForSelector(first ? '[data-done="0"]' : '[data-done="1"]');
 
-      // a customer's history: a failed text says so, and the long email opens whole
+      // a customer's history: texts and email in one thread; a failed text says so and where to fix it; the long email opens whole
       await goTo(f, `/inbox/${c.conversation}`);
       assert.match(await text(f), /Not delivered \(30007\)/);
+      assert.ok(await f.$(".cm-fix"), "a failed send links to where it is fixed");
       assert.match(await text(f), /automatic/, "an automatic text is marked");
-      assert.ok(await f.$(`.chips a[href="#/inbox/${c.email}"]`), "their email thread is one tap away");
+      assert.match(await text(f), /Your quote from BARTA Window Washing/, "their email is in the same thread");
+      assert.match(await text(f, ".cm-msgs"), /· Email/, "each bubble says its channel");
       assert.deepEqual(await screenProblems(f), [], "a long thread passes the phone checks");
       await shot(page, `comms-history-${device}`);
-      await goTo(f, `/inbox/${c.email}`);
-      assert.match(await text(f), /Your quote from BARTA Window Washing/);
       const before = (await text(f, ".cm-msgs")).length;
       await f.click("[data-whole]");
       await f.waitForFunction((n) => document.querySelector(".cm-msgs").textContent.length > n + 200 && !document.querySelector("[data-whole]"), before);
+      await f.click('[data-seg=ch][data-key="email"]');
       assert.ok(await f.$("[data-compose] [name=subject]"), "an email has a subject line");
       assert.deepEqual(await screenProblems(f), [], "an email thread passes the phone checks");
       await shot(page, `comms-email-${device}`);
+      await f.click('[data-seg=ch][data-key="sms"]');
 
       // the contact's Messages tab
       await goTo(f, `/contacts/${c.customer}`);
@@ -145,8 +199,7 @@ test("comms: a tech's inbox holds only the people on their own visits", async ()
     assert.match(await text(f), /side gate/);
     assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "nobody else's lead");
     assert.equal(await f.$$eval("#view .cm-row", (els) => els.length), 1);
-    assert.equal(await f.$("#view [data-seg]"), null, "no Customers / Leads for a tech");
-    assert.deepEqual(await f.$$eval("#view [data-kind] option", (els) => els.map((e) => e.value)), ["all", "needs_reply"], "no Mine for a tech");
+    assert.deepEqual(await f.$$eval("#view [data-tile=inbox]", (els) => els.map((e) => e.dataset.key)), ["all", "unread"], "no Mine, no team inboxes for a tech");
     assert.equal(await f.$("#top-action:not([hidden])"), null, "no New for a tech");
     assert.deepEqual(await screenProblems(f), [], "a tech's Inbox passes the phone checks");
     await shot(page, "comms-inbox-tech");
@@ -154,6 +207,8 @@ test("comms: a tech's inbox holds only the people on their own visits", async ()
     await settled(f, { hash: `#/inbox/${c.tech}` });
     assert.equal(await title(f), c.names.onVisit);
     assert.ok(await f.$("[data-compose] textarea"), "the tech can answer the customer of their visit");
+    assert.equal(await f.$('[data-seg=ch][data-key="note"]'), null, "notes are the office's");
+    assert.equal(await f.$("#top-act [data-panel]"), null);
     assert.deepEqual(await screenProblems(f), [], "a tech's thread passes the phone checks");
     await shot(page, "comms-thread-tech");
     // the office's threads are not theirs, by address or by API
@@ -227,12 +282,81 @@ test("comms: Campaigns: Rotor's history, a draft with its audience, the test sen
   } finally { await p.close(); }
 });
 
+for (const device of ["iphone13", "iphonese"]) {
+  test(`comms (${device}): Campaigns' tiles and a text blast (words, the cost, a CSV with consent, a follow-up)`, async () => {
+    const { p, page, f } = await open("olive", device);
+    const c = seeded.comms;
+    try {
+      await goTo(f, "/campaigns");
+      assert.equal(await f.$$eval("#view .rs-tiles .rs-tile", (els) => els.length), 7, "Sent · Response · Job revenue · ARR · Open · Click · Bounce");
+      assert.match(await text(f, "#view .rs-tiles"), /Open\s*-[\s\S]*Click\s*-/, "open and click wait for email tracking");
+      assert.deepEqual(await screenProblems(f), [], "Campaigns passes the phone checks");
+      await f.click('#view a[href="#/campaigns/new?kind=blast"]');
+      await f.waitForFunction(() => /^#\/campaigns\/cm_/.test(location.hash), null, { timeout: 8000 });
+      await settled(f);
+      await f.waitForSelector("[data-body]");
+      await f.fill("[data-body]", "Hi there, spring window cleanings are open this week. Reply YES and we'll find you a time.");
+      await f.waitForFunction(() => /characters · 1 text each/.test(document.querySelector("[data-cost]").textContent));
+      await f.$eval("[data-body]", (el) => el.dispatchEvent(new Event("change", { bubbles: true })));
+      await f.waitForFunction(() => /about/.test((document.querySelector("[data-cost]") || {}).textContent || "") || !!document.querySelector("[data-test]"), null, { timeout: 8000 });
+      // a CSV with a consent column: only who agreed
+      const me = await p.ctx.request.get(`/api/crm/contacts/${c.customer}`, { headers: { "x-crm": "1" } });
+      const phone = (await me.json()).data.contact.phones[0].e164;
+      const [fc] = await Promise.all([page.waitForEvent("filechooser"), f.click("[data-csv]")]);
+      await fc.setFiles({ name: "people.csv", mimeType: "text/csv", buffer: Buffer.from(`Name,Phone,Consent\nA,${phone},yes\nB,7635550999,yes\nC,7635550998,no\n`) });
+      await toastSays(f, /1 people from the file/);
+      await f.waitForFunction(() => /From the CSV: 1 of 3 people, 1 left out with no consent, 1 not in the CRM/.test(document.getElementById("view").textContent), null, { timeout: 8000 });
+      // a follow-up to who didn't reply
+      await f.click("[data-fu-on]");
+      await f.waitForSelector("[data-fu-body]", { timeout: 8000 });
+      assert.deepEqual(await screenProblems(f), [], "the text blast passes the phone checks");
+      await shot(page, `comms-blast-${device}`);
+      await f.click("[data-blast-win]");
+      await sheetUp(f, /past winner/);
+      assert.deepEqual(await screenProblems(f), [], "the past winners sheet");
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
+      assert.deepEqual(p.outside, [], "nothing asked for another host");
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
 test("comms: Reviews (match a review to its customer) and the setup page", async () => {
   const { p, page, f } = await open("olive", "iphonese");
   const c = seeded.comms;
   try {
     await goTo(f, "/reviews");
     assert.equal(await title(f), "Reviews");
+    // star ratings: tiles that ARE the filter, the spread, a low one to call back
+    assert.deepEqual(await f.$$eval("#view [data-tile=rv]", (els) => els.map((e) => e.dataset.key)), ["all", "needs_follow_up", "public"]);
+    assert.match(await text(f), /Star ratings are built and off until the switch/);
+    assert.ok(await f.$(".cm-dist"), "the spread of stars");
+    assert.match(await text(f), /Google ✓/);
+    await f.click('#view [data-tile=rv][data-key="needs_follow_up"]');
+    await f.waitForFunction(() => { const b = document.querySelector('#view [data-tile=rv][data-key="needs_follow_up"]'); return b && b.getAttribute("aria-pressed") === "true"; }, null, { timeout: 8000 });
+    assert.equal(await f.$$eval("#view [data-rating]", (els) => els.length), 1);
+    await f.click(`#view [data-rating="${c.ratings.low}"]`);
+    await f.waitForSelector(".sheet.on [data-fu]");
+    await f.waitForFunction(() => /garage/.test(document.querySelector(".sheet.on [data-rt-words]").textContent));
+    assert.deepEqual(await screenProblems(f), [], "a rating's sheet passes the phone checks");
+    await shot(page, "comms-rating-sheet");
+    await f.click(".sheet.on [data-fu]");
+    await toastSays(f, /followed up/);
+    await sheetGone(f);
+    await f.waitForFunction(() => !document.querySelector("#view [data-rating]"), null, { timeout: 8000 });
+    await f.click('#view [data-tile=rv][data-key="needs_follow_up"]');
+    await f.waitForSelector("#view [data-rv-add]");
+    await f.click("#view [data-rv-add]");
+    await sheetUp(f, /Add a review/);
+    assert.deepEqual(await screenProblems(f), [], "the add sheet passes the phone checks");
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
+    await f.click("#view [data-rv-board]");
+    await sheetUp(f, /Review leaderboard/);
+    assert.match(await text(f, ".sheet.on"), /2 ratings/);
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
     assert.match(await text(f), /aren't being read here yet/, "reading Google reviews is off until an owner switches it on");
     assert.match(await text(f), /1 to check/);
     assert.deepEqual(await screenProblems(f), [], "Reviews passes the phone checks");
@@ -244,7 +368,13 @@ test("comms: Reviews (match a review to its customer) and the setup page", async
     await shot(page, "comms-review-sheet");
     await f.click(`.sheet [data-sug="${c.customer}"]`);
     await toastSays(f, /Matched/);
-    await f.waitForFunction(() => /Matched/.test((document.querySelector("#view .pill.green") || {}).textContent || ""), null, { timeout: 8000 });
+    await f.waitForFunction(() => /Matched/.test((document.querySelector("#view [data-review] .pill.green") || {}).textContent || ""), null, { timeout: 8000 });
+
+    await goTo(f, "/settings/reviews");
+    assert.equal(await title(f), "Reviews");
+    assert.match(await text(f), /Every rating/);
+    assert.deepEqual(await screenProblems(f), [], "the review settings pass the phone checks");
+    await shot(page, "comms-review-settings");
 
     await goTo(f, "/settings/texting");
     assert.equal(await title(f), "Texting, email & reviews");
