@@ -682,7 +682,7 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     assert.deepEqual(await screenProblems(f), []);
     // Quotes too
     await goTo(f, `/quotes/${seeded.quotes.sent}`);
-    assert.ok(await f.$('#view [data-chip]'), "the quotes list on the left");
+    assert.ok(await f.$('#view [data-tile="quotes"]'), "the quotes list (its tiles, Track 3) on the left");
     assert.ok(await f.$("#pane .qt-page"), "the quote beside it");
     assert.match(await title(f), /^Quote (SQ-|Q-)/, "the quote's number heads the screen");
     assert.equal(await f.isVisible("#top-title"), true);
