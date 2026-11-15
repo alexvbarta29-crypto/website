@@ -29,13 +29,31 @@ the `money.cardStatus` service exists.
   row: the customer, the plan, the next visit's month, autopay.
 - **A contact's Plans tab**: that contact's plans, agreements waiting to be
   signed, and **New plan**.
-- **New plan** (`plans:write`): for a customer who signs up without a
-  quote. The plan from the catalog (its visits a year and plan discount
-  fill in), the price of a visit (quarterly: exterior on visits 1, 3, 4 and
-  interior on visit 2, inside glass only, each with the plan discount), the
-  start, the term, autopay. The plan waits for
-  its agreement; its first term's jobs are made at once. A retry never
-  makes two (client id).
+- **New plan** (`plans:write`; Flyra's "New Subscription" sheet, the
+  owner, Nov 15; `plans/new.js` on `core/create.js`): for a customer who
+  signs up without a quote. A full-screen sheet: the customer card, the
+  Mockup chip on a lights plan, **Template** ("Start from a template": the
+  catalog; Quarterly fills exterior on visits 1, 3, 4 and interior on
+  visit 2, inside glass only, and the plan discount every visit), then
+  **Service | Agreement | Billing**. Service: line items (each priced; the
+  price book or typed), discounts, the total (the first visit, and a
+  year); **Initial visit** (the same as the plan, or its own line items:
+  those cover visit 1 only and the plan's lines start after it); the
+  **Service schedule**: Frequency (every 1, 2, 3, 4, 6 or 12 months; a
+  rhythm the catalog plan doesn't have makes a Custom plan), Months (the
+  year's visits from the first one; a tap moves the first visit to another
+  month), First visit (the plan's start), Repeats (on that day of each
+  visit's month, on that weekday of it, or any day), Time (Anytime or a
+  time); **Schedule pending** (on: the visits wait on the To book list, as
+  before; off: this term's visits are booked on those days, or only the
+  first with "Any day"); View schedule (that day, without leaving); Lead
+  source (the customer's own), Salesperson (the plan's `sold_by`),
+  Dispatched to (who goes on the booked visits); Notes (the plan's office
+  notes). Agreement: how long (12, 24 or 36 months), renews. Billing:
+  Auto-Pay, the billing mode. **Create Plan** stays grey until there's a
+  customer and every line has a price. The plan waits for its agreement;
+  its first term's jobs are made at once. A retry never makes two (client
+  id), nor books a visit twice (client ids).
 - **A plan**: status, the customer, why it waits; the visits by term, each
   with its job (**Book** opens the job, **Skip** takes the visit off and
   cancels its job; a skip is never a credit); the agreement (**Send to
@@ -165,7 +183,7 @@ Staff API under `/api/crm` (session; permission in brackets):
 | Method and path | What |
 | --- | --- |
 | GET /plans `?status=active\|pending\|paused\|cancelling\|cancelled\|expired\|due\|clawback\|all&catalog=&contact=` [plans:read] | rows and counts |
-| POST /plans {contact_id, catalog_key, lines, discounts, start_on, term_months, autopay, client_id} [plans:write] | a staff plan (a run) |
+| POST /plans {contact_id, catalog_key, lines, discounts, start_on, term_months, autopay, client_id; New plan also frequency, sold_by, notes, property_id, auto_renew, billing_mode} [plans:write] | a staff plan (a run); `frequency` every 1, 2, 3, 4, 6 or 12 months (not for lights; one the catalog plan doesn't have makes a custom plan, its visits a year from the frequency); `sold_by` a user on the team (else whoever made it) |
 | GET /plans/catalog [plans:read] | the catalog and lights settings with defaults |
 | GET /plans/due `?month=YYYY-MM` [plans:read] | visits to book, by town |
 | POST /plans/request-signatures {plan_ids} [agreements:send] | a run that ends in one bulk run |

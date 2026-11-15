@@ -109,10 +109,18 @@ export const typesOfLines = (lines = []) => [...new Set((lines || []).map((l) =>
 
 // ------------------------------------------------------------ checklists
 
-// The checklist template for a job: the first active one (by order) whose
-// job kinds include the job's kind, else whose service types match one of
-// the job's, else none. → the template record or null.
+// The checklist template for a job: the one the New job form picked
+// (checklist_key; "none": no checklist), else the first active one (by
+// order) whose job kinds include the job's kind, else whose service types
+// match one of the job's, else none. → the template record or null.
 export async function checklistFor(job, opts = {}, cache = null) {
+  if (job.checklist_key === "none") return null;
+  if (job.checklist_key) {
+    const ptr = await readPointer("checklist-key", job.checklist_key).catch(() => null);
+    const id = ptr && ptr.id;
+    const got = id ? await getRecord("checklist_template", id, opts) : null;
+    if (got && got.data.active !== false && !got.data.deleted_at) return got.data;
+  }
   const ix = cache && cache.checklists ? cache.checklists : await readIndex("checklists", "", opts);
   if (cache) cache.checklists = ix;
   const rows = ix.rows.filter((r) => r.act !== false).sort((a, b) => (a.o ?? 50) - (b.o ?? 50) || String(a.k).localeCompare(String(b.k)));
@@ -133,7 +141,7 @@ export const checklistCopy = (t) => (t ? { template_key: t.key, items: (t.items 
 // written: { contact_id, property_id, kind, title, lines, discounts, plan_id?,
 // plan_ordinal?, quote_id?, deal_id?, season_install_id?, target_month?,
 // billable } plus optional crew_notes, office_notes, service_types.
-const SPEC_FIELDS = ["contact_id", "property_id", "kind", "title", "lines", "discounts", "plan_id", "plan_ordinal", "quote_id", "deal_id", "season_install_id", "target_month", "billable", "crew_notes", "office_notes", "service_types"];
+const SPEC_FIELDS = ["contact_id", "property_id", "kind", "title", "lines", "discounts", "plan_id", "plan_ordinal", "quote_id", "deal_id", "season_install_id", "target_month", "billable", "crew_notes", "office_notes", "service_types", "checklist_key", "sold_by"];
 function cleanSpec(spec, i) {
   if (!spec || typeof spec !== "object" || Array.isArray(spec)) throw new InputError("Expected a job.", `jobs.${i}`);
   const out = {};
@@ -321,6 +329,7 @@ export async function createVisit(input = {}, ctx = {}) {
     date: input.date, start: input.start, end: input.end, window: input.window || { ...DEFAULT_WINDOW, minutes: s.default_window_minutes || 120 },
     assignee_ids: input.assignee_ids || [], status: "scheduled", checklist: checklistCopy(template), photos: [], tech_notes: "",
     ...(input.route_order ? { route_order: input.route_order } : {}), ...(input.date_only ? { date_only: true } : {}),
+    ...(input.notify === false ? { no_confirm: `${input.date} ${input.start}` } : {}),
     ...summary, last_event: lastEvent("visit.scheduled", { wv: 0 }, w.by),
   };
   let rec;

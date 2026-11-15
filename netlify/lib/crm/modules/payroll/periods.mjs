@@ -173,7 +173,7 @@ export async function finishedJobs(from, to, users, cfg, { records = true, maxRe
     const j = fromRow(row);
     if (r) {
       Object.assign(j, {
-        total_cents: r.totals ? r.totals.total_cents : j.total_cents, kind: r.kind || j.kind, quote_id: r.quote_id || null, plan_id: r.plan_id || null,
+        total_cents: r.totals ? r.totals.total_cents : j.total_cents, kind: r.kind || j.kind, quote_id: r.quote_id || null, plan_id: r.plan_id || null, own_seller: r.sold_by || null,
         assignee_ids: [...new Set([...(r.assignee_ids || []), ...j.assignee_ids])], first_visit_id: (r.visit_ids || [])[0] || null, visit_ids: r.visit_ids || [],
         lines: (r.lines || []).filter((l) => !l.optional || l.selected).map((l) => ({ id: l.id, title: l.title, total_cents: lineCents(l), upsell_user_id: l.upsell_user_id || null })),
       });
@@ -192,7 +192,8 @@ async function attachSellers(jobs, users) {
   const quoteIds = [...new Set(jobs.filter((j) => !j.plan_id).map((j) => j.quote_id).filter((x) => isId(x, "quote")))].slice(0, 80);
   const plans = new Map((await getRecords("plan", planIds)).filter(Boolean).map((g) => [g.data.id, g.data.sold_by]));
   const quotes = new Map((await getRecords("quote", quoteIds)).filter(Boolean).map((g) => [g.data.id, g.data.sold_by]));
-  for (const j of jobs) j.sold_by = who(j.plan_id ? plans.get(j.plan_id) : quotes.get(j.quote_id)) || null;
+  // (a job made on New job names its own salesperson; a plan's or quote's seller comes first)
+  for (const j of jobs) j.sold_by = who((j.plan_id ? plans.get(j.plan_id) : quotes.get(j.quote_id)) || j.own_seller) || null;
 }
 
 // Tips paid in a date range (never simulated, never an imported Rotor line's own).

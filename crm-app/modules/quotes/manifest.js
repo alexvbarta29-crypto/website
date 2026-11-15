@@ -1,6 +1,7 @@
 // Client manifest of the "quotes" module (M3a, design §11.3, §9.2): the
 // Quotes list, one quote (status, versions, the customer's view, Send,
-// Present to customer, Approve by phone, Convert), the builder (pane
+// Present to customer, Approve by phone, Convert), New quote (Flyra's
+// sheet: line items, options, files, lead source), the builder (pane
 // counter or square feet, services, one-time and plan options side by
 // side), the lights quote, the contact's Quotes tab, and Settings →
 // Pricing & price book, Discounts. Screens load with dynamic import(). No
@@ -11,8 +12,11 @@ export default {
   routes: [
     // split: on a wide screen a quote opens beside the list (core/router.js)
     { path: "/quotes", load: () => import("./list.js"), title: "Quotes", perm: "quotes:read", parent: "/today", skeleton: "list", split: true },
-    { path: "/quotes/new", load: () => import("./builder.js"), title: "New quote", perm: "quotes:write", parent: "/quotes" },
-    { path: "/quotes/new/:contact", load: () => import("./builder.js"), title: "New quote", perm: "quotes:write", parent: "/contacts/:contact" },
+    // New quote is Flyra's "New Estimate" sheet (new.js); "Measure and price" opens the builder (the pane counter and engine)
+    { path: "/quotes/new", load: () => import("./new.js"), title: "New quote", perm: "quotes:write", parent: "/quotes" },
+    { path: "/quotes/new/:contact", load: () => import("./new.js"), title: "New quote", perm: "quotes:write", parent: "/contacts/:contact" },
+    { path: "/quotes/measure", load: () => import("./builder.js"), title: "New quote", perm: "quotes:write", parent: "/quotes" },
+    { path: "/quotes/measure/:contact", load: () => import("./builder.js"), title: "New quote", perm: "quotes:write", parent: "/contacts/:contact" },
     { path: "/quotes/:id", load: () => import("./view.js"), title: "Quote", perm: "quotes:read", parent: "/quotes" },
     { path: "/quotes/:id/edit", load: () => import("./builder.js"), title: "Edit quote", perm: "quotes:write", parent: "/quotes/:id" },
     { path: "/quotes/:id/lights", load: () => import("./lights.js"), title: "Lights quote", perm: "quotes:write", parent: "/quotes/:id/edit" },

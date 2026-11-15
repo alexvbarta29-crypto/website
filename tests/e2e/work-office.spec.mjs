@@ -457,19 +457,41 @@ test("route, rain day (preview, move, the notice waits in Approvals), new job, t
     assert.notEqual(moved.date, tomorrow, "the visit moved");
     assert.ok(moved.moved_by_op);
 
-    // a new job for a contact, with its first visit booked
+    // a new job for a contact (Flyra's sheet), with its first visit booked
     await goTo(f, `/jobs/new/${seeded.contacts.customer}`);
     await f.waitForSelector("#wk-new-job");
-    await f.fill("[name=l_title]", "Exterior window cleaning");
-    await f.fill("[name=l_price]", "325");
-    await f.check("[name=book]");
-    await f.waitForSelector("[name=date]");
-    await f.fill("[name=date]", new Date(Date.parse(v.date + "T12:00:00Z") + 2 * 86400000).toISOString().slice(0, 10));
-    await f.click(`[data-person="${seeded.users.tech.id}"]`);
+    assert.equal(await f.$eval("#wk-new-job [data-cf-create]", (b) => b.disabled), true, "Create waits for a line item");
+    await f.click("[data-cf-addline]");
+    await f.waitForSelector(".sheet.on [data-top=custom]");
+    await f.click(".sheet.on [data-top=custom]");
+    await f.waitForSelector(".sheet.on [data-cf-line]");
+    await f.fill(".sheet.on [name=title]", "Exterior window cleaning");
+    await f.fill(".sheet.on [name=unit]", "325");
+    await f.click(".sheet.on [data-cf-line] [type=submit]");
+    await sheetGone(f);
+    await f.waitForFunction(() => /\$325\.00/.test(document.querySelector("[data-cf-total]").textContent));
+    const jobDay = new Date(Date.parse(v.date + "T12:00:00Z") + 2 * 86400000).toISOString().slice(0, 10);
+    await f.fill("#wk-new-job [name=date]", jobDay);
+    await f.dispatchEvent("#wk-new-job [name=date]", "change");
+    await f.waitForFunction((d) => document.querySelector("#wk-new-job [name=end_date]").value === d, jobDay);
+    await f.click("[data-cf-crew]");
+    await f.waitForSelector(`.sheet.on [data-many="${seeded.users.tech.id}"]`);
+    await f.click(`.sheet.on [data-many="${seeded.users.tech.id}"]`);
+    await f.click(".sheet.on [data-many-done]");
+    await sheetGone(f);
+    await f.click("[data-cf-day]");
+    await sheetUp(f, /\w{3}, \w{3} \d+/);
+    await f.waitForSelector(".sheet.on [data-cf-openday]");
+    await checks(f, page, "work-new-job-day-iphonese", problems);
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
     await checks(f, page, "work-new-job-iphonese", problems);
     await f.click("#wk-new-job [type=submit]");
     await f.waitForFunction(() => /^#\/visits\//.test(location.hash), null, { timeout: 8000 });
     await settled(f);
+    const booked = (await (await p.ctx.request.get(`/api/crm${(await f.evaluate(() => location.hash)).slice(1)}`, { headers: { "x-crm": "1" } })).json()).data.visit;
+    assert.equal(booked.date, jobDay);
+    assert.deepEqual(booked.assignee_ids, [seeded.users.tech.id]);
 
     await goTo(f, "/schedule/time-off");
     await f.waitForSelector("[data-del]");
