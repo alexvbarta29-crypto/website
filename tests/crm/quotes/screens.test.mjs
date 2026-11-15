@@ -152,3 +152,37 @@ test("lights quote, pricing settings, discounts: render and escape", async () =>
   assert.ok(!dh.includes("<script>alert(1)"));
   assert.match(dh, /Kept for history/);
 });
+
+test("New quote (Flyra's New Estimate sheet): options with line items, a plan option with its own discount; the builder is Measure and price", async () => {
+  const routes = Object.fromEntries(M.routes.map((r) => [r.path, r]));
+  for (const p of ["/quotes/new", "/quotes/new/:contact", "/quotes/measure", "/quotes/measure/:contact"]) assert.equal(routes[p].perm, "quotes:write", p);
+  assert.ok(M.routes.findIndex((r) => r.path === "/quotes/measure") < M.routes.findIndex((r) => r.path === "/quotes/:id"), "before /quotes/:id");
+  const n = await load("new");
+  const contact = { contact: { id: "ct_1", display_name: `Pat ${XSS}`, phones: [], source: {} }, properties: [] };
+  const cx = { pricing: { plan_discount_per_visit_cents: { quarterly: 10000 } }, discounts: [{ id: "dd_1", key: "plan_quarterly", name: "Quarterly plan discount", type: "fixed", value: 10000 }], book: [] };
+  const api = async (path) => (path.startsWith("/contacts/") ? { data: contact } : { data: cx });
+  const c = { ...ctx(), api };
+  const s = await n.load({ contact: "ct_1" }, c);
+  let h = text(n.render(s, c));
+  assert.ok(!h.includes("<script>alert(1)"));
+  assert.match(h, /New Estimate/);
+  assert.match(h, /One-time job/);
+  assert.match(h, /data-cf-addopt/);
+  assert.match(h, /Measure and price/);
+  assert.match(h, /Files for your customer/);
+  assert.match(h, /data-cf-create disabled/);
+  s.options[0].lines.push({ title: "Exterior window cleaning", unit_cents: 29500, qty_milli: 1000, scope: { type: "all" } });
+  s.options.push({ id: "op_x", name: "Option 2", kind: "one_time", lines: [{ title: "Exterior window cleaning", unit_cents: 24500, qty_milli: 1000 }], discounts: [] });
+  h = text(n.render(s, c));
+  assert.doesNotMatch(h, /data-cf-create disabled/);
+  assert.match(h, /\$295\.00/);
+  assert.match(h, /data-cf-rmopt="1"/);
+  // a re-quote from the property opens the builder
+  const gone = [];
+  globalThis.location = { hash: "#/quotes/new/ct_1?property=pr_1&requote=1" };
+  try {
+    const r = await n.load({ contact: "ct_1" }, { ...c, go: (p) => gone.push(p) });
+    assert.equal(r.gone, true);
+    assert.deepEqual(gone, ["/quotes/measure/ct_1?property=pr_1&requote=1"]);
+  } finally { delete globalThis.location; }
+});

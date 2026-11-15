@@ -1,0 +1,135 @@
+/* The create sheets (core/create.js; the owner, Nov 15: Flyra's New Job,
+   New Estimate and New Subscription). Full screen on a phone, over the
+   app's header and tab bar; on a desk the same form in a centred 560 px
+   sheet over a scrim. Both themes from crm.css's tokens. 44 px targets,
+   16 px inputs. */
+
+.cf-page{position:fixed;inset:0;z-index:12;display:flex;justify-content:center;background:var(--mist);color:var(--ink)}
+.cf{position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-height:0;margin:0;background:var(--mist)}
+.cf-head{flex:none;display:grid;grid-template-columns:56px minmax(0,1fr) 56px;align-items:center;gap:8px;padding:calc(var(--top) + 8px) calc(14px + var(--right)) 8px calc(14px + var(--left))}
+.cf-head h1{margin:0;text-align:center;font:700 20px/1.2 var(--head);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-x{display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid var(--rnd-line);border-radius:50%;background:var(--card);color:var(--ink);cursor:pointer}
+.cf-x svg{width:22px;height:22px}
+.cf-x:active{transform:scale(.96)}
+.cf-body>*{flex-shrink:0}
+.cf-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px calc(16px + var(--right)) calc(var(--bottom) + 112px) calc(16px + var(--left));display:flex;flex-direction:column;gap:12px}
+
+/* labels over cards */
+.cf-lbl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px;margin:14px 4px -2px;color:var(--ink-3);font:500 var(--t-lg)/1.25 var(--text)}
+.cf-lbl:first-child{margin-top:4px}
+.cf-lt{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-req{margin-left:4px;font-style:normal;color:var(--coral)}
+.cf-lbl .why{flex-basis:100%;margin:0;color:var(--red-ink);font-size:var(--t-sm)}
+.cf-lbl-end{margin-left:auto;display:inline-flex;align-items:center;gap:6px;color:var(--ink-3);font-size:var(--t-body)}
+.cf-lbl-link{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--ink);font:500 var(--t-lg)/1 var(--text);cursor:pointer}
+.cf-lbl-link svg{width:18px;height:18px}
+
+/* cards and rows */
+.cf-card{display:block;width:100%;margin:0;padding:0;background:var(--card);border:1px solid var(--card-line);border-radius:22px;overflow:hidden;color:var(--ink);text-align:left}
+.cf-row{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;margin:0;padding:10px 16px;border:0;background:none;color:inherit;font:400 var(--t-lg)/1.25 var(--text);text-align:left;text-decoration:none;cursor:pointer}
+div.cf-row{cursor:default}
+.cf-card>.cf-row{position:relative}
+.cf-card>.cf-row+.cf-row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--line)}
+.cf-card>.cf-in::before{left:74px}
+.cf-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cf-t b{font-weight:500;font-size:var(--t-lg);overflow-wrap:anywhere}
+.cf-t small{color:var(--ink-3);font-size:var(--t-body)}
+.cf-tile{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--card-2);color:var(--ink-2)}
+.cf-tile svg{width:24px;height:24px}
+.cf-ch{flex:none;display:grid;place-items:center;width:24px;color:var(--ink-3)}
+.cf-ch svg{width:20px;height:20px}
+.cf-clear{flex:none;display:grid;place-items:center;width:44px;height:44px;margin:-6px -8px -6px 0;padding:0;border:0;background:none;color:var(--ink-2);cursor:pointer}
+.cf-clear svg{width:16px;height:16px;padding:6px;box-sizing:content-box;border-radius:50%;background:var(--fill-2)}
+.cf-who{padding-right:12px}
+.cf-add{min-height:60px;background:var(--card);border:1px solid var(--card-line)}
+.cf-add+.cf-add{margin-top:6px}
+.cf-ai{flex:none;display:grid;place-items:center;width:30px;height:30px;margin-left:8px;border-radius:50%;background:var(--fill-2);color:var(--ink-2)}
+.cf-ai svg{width:22px;height:22px}
+.cf-add .cf-t b{font-weight:500}
+.cf-amt{flex:none;font:500 var(--t-lg)/1 var(--text);font-variant-numeric:tabular-nums}
+.cf-total{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:10px 18px;border-radius:16px;background:transparent}
+.cf-total span{display:flex;flex-direction:column;color:var(--ink-3);font:400 var(--t-lg)/1.2 var(--text)}
+.cf-total small{font-size:var(--t-sm)}
+.cf-total b{font:600 var(--t-lg)/1 var(--text);color:var(--ink)}
+
+/* picker rows: "Lead source  Direct ⇅" */
+.cf-pr .cf-pl,.cf-slot .cf-pl{flex:1;min-width:0}
+.cf-pv{flex:none;max-width:58%;color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-pv.muted{color:var(--ink-3)}
+.cf-sw{min-height:60px}
+.cf-sl{font-size:var(--t-lg)}
+.cf-sw.muted .cf-sl{color:var(--ink-3)}
+.cf-sw .switch[aria-checked="true"]::before{background:var(--blue)}
+.cf-lbl .switch{margin:-8px -6px -8px 0}
+.cf-lbl .switch[aria-checked="true"]::before{background:var(--blue)}
+
+/* date and time pills */
+.cf-slot{flex-wrap:wrap;row-gap:6px}
+.cf-pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.cf-pill{position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 16px;border:0;border-radius:999px;background:var(--fill-pill);color:var(--ink);font:400 var(--t-lg)/1 var(--text);font-variant-numeric:tabular-nums;cursor:pointer;overflow:hidden}
+.cf-pill input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;font-size:16px;cursor:pointer;-webkit-appearance:none;appearance:none;background:transparent;color:transparent}
+.cf-pill input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.cf-pill:focus-within{outline:2px solid var(--coral);outline-offset:2px}
+
+/* links under cards: "View schedule ›", "Add Attachments" */
+.cf-link{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--ink);font:500 var(--t-lg)/1 var(--text);cursor:pointer}
+.cf-link svg{width:20px;height:20px}
+.cf-link svg:last-child{width:16px;height:16px}
+.cf-att{color:var(--ink-2)}
+.cf-att svg,.cf-att svg:last-child{width:28px;height:28px}
+.cf-files{list-style:none;margin:-6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.cf-files li{display:flex;align-items:center;gap:8px;padding:0 4px 0 12px;border-radius:12px;background:var(--card);border:1px solid var(--card-line);font-size:var(--t-body)}
+.cf-files li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.cf-hint{margin:-4px 6px 0;color:var(--ink-3);font-size:var(--t-meta)}
+.cf-dotsep{margin:0 2px;color:var(--ink-3)}
+.cf-lbl .cf-clear{margin:-8px -8px -8px 0}
+.cf-addopt{margin-left:auto;color:var(--ink-2)}
+.cf-addpill{color:var(--blue-ink);font-weight:500}
+.cf-opt{display:flex;flex-direction:column;gap:12px}
+
+/* the Mockup chip (Light Studio) */
+.cf-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:6px 16px 6px 8px;border:1px solid var(--card-line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none;font:500 var(--t-lg)/1 var(--text)}
+.cf-chip-i{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:#0e1730;color:#f5b851}
+.cf-chip-i svg{width:22px;height:22px}
+
+/* notes */
+.cf-notes{display:block;width:100%;min-height:116px;padding:14px 16px;border:1px solid var(--card-line);border-radius:22px;background:var(--card);color:var(--ink);font:400 16px/1.4 var(--text);resize:vertical}
+.cf-notes::placeholder{color:var(--ink-3)}
+.cf-notes:focus{outline:0;border-color:var(--line-2)}
+
+/* Flyra's segmented control: an icon over each label */
+.cf-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;margin-top:6px;padding:5px;border-radius:999px;background:var(--seg-track)}
+.cf-seg button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px 6px;border:0;border-radius:999px;background:none;color:var(--ink-3);font:500 var(--t-body)/1.1 var(--text);cursor:pointer}
+.cf-seg button svg{width:22px;height:22px}
+.cf-seg button[aria-selected="true"]{background:var(--seg-on);color:var(--seg-on-ink);box-shadow:var(--seg-on-sh)}
+
+/* the Create button */
+.cf-foot{position:absolute;left:0;right:0;bottom:0;padding:24px calc(16px + var(--right)) calc(var(--bottom) + 14px) calc(16px + var(--left));background:linear-gradient(to bottom,transparent,var(--mist) 22px);pointer-events:none}
+.cf-cta{display:block;width:100%;min-height:58px;padding:0 20px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 19px/1 var(--text);cursor:pointer;pointer-events:auto}
+.cf-cta:disabled{background:var(--fill-pill);color:var(--ink-3);cursor:default}
+.cf-cta:not(:disabled):active{transform:scale(.99)}
+.cf-err{margin:0;padding:10px 14px;border-radius:14px;background:var(--red-bg);color:var(--red-ink);font-size:var(--t-body)}
+
+/* the pickers' sheets */
+.cf-picker .sheet-body{padding-bottom:18px}
+.cf-picker .row svg{width:22px;height:22px;flex:none;color:var(--ink-3)}
+.cf-picker .rs-done.cf-wide,.cf-wide{display:block;width:100%;min-height:50px;margin-top:10px}
+.cf-picker [aria-pressed="true"] .nm{font-weight:600}
+.cf-dot{flex:none;width:12px;height:12px;border-radius:50%;background:var(--ink-3)}
+.cf-tick{flex:none;width:24px;text-align:center;color:var(--coral-ink);font-weight:700}
+.cf-day .cf-dt{flex:none;width:72px;color:var(--ink-3)}
+.cf-warn{margin:0 0 10px;padding:10px 14px 10px 30px;border-radius:14px;background:var(--amber-bg);color:var(--amber-ink)}
+.cf-ok{margin:0 0 10px;color:var(--green-ink)}
+
+@media (min-width:900px){
+  .cf-page{align-items:center;background:var(--scrim)}
+  .cf{width:min(560px,calc(100% - 48px));height:min(880px,calc(100% - 48px));border-radius:var(--r-xl);box-shadow:var(--sh-pop);overflow:hidden}
+  .cf-head{padding:14px 14px 8px}
+  .cf-body{padding:4px 20px 112px}
+  .cf-foot{padding:24px 20px 18px;border-radius:0 0 var(--r-xl) var(--r-xl)}
+}
+@media (hover:hover) and (pointer:fine){
+  button.cf-row:hover,.cf-add:hover,.cf-chip:hover{background:var(--fill)}
+  .cf-x:hover,.cf-pill:hover{filter:brightness(1.08)}
+}

@@ -71,8 +71,34 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet.on [data-sheet-x]");
       await sheetGone(f);
 
-      // a new quote for a customer with a property: count panes, interior, Price it, save
+      // New quote (Flyra's New Estimate sheet): the customer and their property, a line from the
+      // price book, a second option as a plan with its own discount; "Measure and price" opens the builder
       await goTo(f, `/quotes/new/${seeded.contacts.first}`);
+      assert.equal(await title(f), "New quote");
+      await f.waitForSelector("#qt-new [data-cf-prop]");
+      assert.equal(await f.$eval("#qt-new [data-cf-create]", (b) => b.disabled), true, "Create waits for a line item");
+      await f.click('[data-cf-addline="0"]');
+      await f.waitForSelector(".sheet.on [data-top=measure]");
+      await f.click(".sheet.on [data-top=custom]");
+      await f.waitForSelector(".sheet.on [data-cf-line]");
+      await f.fill(".sheet.on [name=title]", "Gutter cleaning");
+      await f.fill(".sheet.on [name=unit]", "180");
+      await f.click(".sheet.on [data-cf-line] [type=submit]");
+      await sheetGone(f);
+      await f.click("[data-cf-addopt]");
+      await f.click('[data-cf-otype="1"]');
+      await f.waitForSelector('.sheet.on [data-pick="\\"quarterly\\""]');
+      await f.click('.sheet.on [data-pick="\\"quarterly\\""]');
+      await sheetGone(f);
+      await f.waitForFunction(() => /Quarterly plan discount/.test(document.getElementById("view").textContent));
+      assert.deepEqual(await screenProblems(f), [], "New Estimate passes the phone checks");
+      await shot(page, `quotes-new-${device}`);
+      await f.click("[data-cf-measure]");
+      await sheetUp(f, /Measure and price/);
+      await f.click(".sheet.on [data-a=yes]");
+      await f.waitForFunction(() => /^#\/quotes\/measure\//.test(location.hash), null, { timeout: 5000 });
+      await settled(f);
+      // the builder: count panes, interior, Price it, save
       assert.equal(await title(f), "New quote");
       await f.click("[data-mode=panes]");
       await f.fill("[data-win=standard]", "30");

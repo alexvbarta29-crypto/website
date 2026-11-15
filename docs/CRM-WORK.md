@@ -223,10 +223,30 @@ overlay of what waits, copies for no signal, Delano times),
 - **Jobs** (More; `#/jobs?status=open|stale|done|cancelled`): open jobs (under
   way, booked, to book), **Needs a look** (booked but the date went by;
   under way for days), done and cancelled by year, a filter box.
-- **New job** (create button, or the contact's Work tab): the customer,
-  which property, the kind, the lines (title, price, quantity, service),
-  notes, and either the first visit (day, time, window, who) or the month
-  it's due by. A retry never makes a second job (client id).
+- **New job** (create button, or the contact's Work tab; Flyra's "New
+  Job" sheet, the owner, Nov 15): a full-screen sheet (a centred 560 px
+  sheet on a desk; `core/create.js`, `styles/create.css`) with a round ✕
+  and the title. **Customer**: a card with the person (name, phone, ✕ to
+  pick another: search, or **New customer** with their address) and the
+  property under it (a tap picks another or adds one); the **Mockup** chip
+  (Light Studio) on lights work. **Line items** (required): "Add line item"
+  offers the price book or a custom line; "Add discount" (the catalog, an
+  amount or a percent); the total. **Schedule**: Starts (day and time
+  pills, the phone's own pickers), Ends (a job over several days gets a
+  visit a day, up to 7), the **Arrival window** switch (on: the 2-hour
+  window; off: the exact time), **View schedule** (that day's visits and
+  what the slot runs into, `GET /schedule` and `/schedule/check`, without
+  leaving the form); or **Book later** with the month it's due (the To
+  book list). **Checklist** (Automatic, one of Settings → Checklists, or
+  None), **Job type**, **Lead source** (the customer's own source:
+  changing it changes theirs), **Salesperson** (the job's `sold_by`),
+  **Dispatched to** (who goes), **Notify the customer** (off: no booking
+  text for that visit), **Notes** (for the crew) and **Add Attachments**
+  (uploaded to the first visit, or to the customer when nothing is
+  booked). **Create Job** stays grey until there's a customer, a line and
+  a valid time. Flyra's "Recurring job" switch is left out: the work
+  module has no repeat rule (recurring work is a plan). A retry never
+  makes a second job (client id) or a second visit (client ids).
 - **Route** (`#/schedule/route/:date/:user`): the stops in order with a
   sketch, **Optimize** (nearest first inside each arrival window, from the
   company's base), move a stop up or down and **Save**, directions per stop
@@ -570,10 +590,10 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 | `GET /schedule/route?date&user` · `POST /schedule/route` | read · write | a person's stops; Optimize (no `order`) or save an order |
 | `POST /schedule/move-day` | schedule:write (run) | preview, or `{ confirm: true, token }` → 202 `{ run_id }` |
 | `GET /stale` | schedule:read | jobs that need a look (and M4b's open timers) |
-| `GET /jobs?status&year&contact` · `POST /jobs` | read · write | the list; a new job (lines, notes, optional first `visit`, `client_id`) |
+| `GET /jobs?status&year&contact` · `POST /jobs` | read · write | the list; a new job (lines, notes, optional first `visit`, `client_id`; from New job also `discounts` (as PATCH takes them), `checklist_key` (a checklist's key, or `none`; the visits' checklist comes from it instead of the kind or service), `sold_by` (a user on the team; payroll's seller when no plan or quote names one) and `visit.notify: false`) |
 | `GET/PATCH /jobs/:id` | read · write | one job (+ visits, contact, property, people, `can`); edit (If-Match): title, kind, notes, due month, lines (merged by id), `discounts` (the job page's "+ Add discount": `[{ id?, name?, type: "fixed" \| "percentage", value }]`, cents or basis points, merged by id so a scope or catalog id stays; refused once the job is closed) |
 | `POST /jobs/:id/cancel` · `/reopen` · `/complete` | schedule:write | with its open visits |
-| `POST /visits` | schedule:write | book (`client_id` makes a retry the same visit) |
+| `POST /visits` | schedule:write | book (`client_id` makes a retry the same visit; `notify: false`: no confirmation text for this booking, the visit keeps `no_confirm` = its day and start, so a later move is confirmed as usual) |
 | `GET/PATCH /visits/:id` | read · write | one visit (+ job, contact, property, people, arrival text, reminders, `can`); move or reassign (If-Match) |
 | `POST /visits/:id/cancel` · `/mark-no-access` · `/done` · `/reopen` | schedule:write | the office's changes (`/visits/:id/no-access` is left for the tech app) |
 | `GET/POST /time-off` · `PATCH/DELETE /time-off/:id` | read · write | whole days (`date`, `end_date`) or part of a day (`date`, `start`, `end`) |
@@ -715,6 +735,8 @@ and a phone never calls it.
 
 - `visit.confirm` (on `visit.scheduled` and `visit.rescheduled`, 10 minutes
   later so a quick correction sends one text): `visit_confirm` (+ email).
+  Not for a booking made with "Notify the customer" off (`no_confirm` is
+  that day and start; moved, it is confirmed).
   Never for an imported visit, one moved by a rain-day move, or one within
   2 days. One per visit, date and start.
 - `visit.reminder_14d` (10:00, 7-14 days out, text + email; not for a visit

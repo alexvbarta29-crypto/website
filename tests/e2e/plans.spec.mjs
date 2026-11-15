@@ -111,12 +111,28 @@ for (const device of ["iphone13", "iphonese"]) {
       await closeSheet(f);
 
       // a new plan for a customer: pending, its agreement to send
+      // (Flyra's New Subscription sheet: the Quarterly template's two lines, priced; the visits left to book)
       await goTo(f, `/plans/new/${seeded.contacts.first}`);
       assert.equal(await title(f), "New plan");
-      await f.fill("input[name=ext]", "245");
-      await f.fill("input[name=int]", "150");
+      await f.waitForSelector("#pl-new [data-cf-line]");
+      assert.equal(await f.$eval("#pl-new [data-cf-create]", (b) => b.disabled), true, "Create waits for the prices");
+      for (const [i, price] of [[0, "245"], [1, "150"]]) {
+        await f.click(`[data-cf-line="${i}"]`);
+        await f.waitForSelector(".sheet.on [data-cf-line] [name=unit]");
+        await f.fill(".sheet.on [name=unit]", price);
+        await f.click(".sheet.on [data-cf-line] [type=submit]");
+        await f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
+      }
+      await f.click("[data-cf-pending]");
+      await f.waitForFunction(() => /To book list/.test(document.getElementById("view").textContent));
+      assert.match(await f.textContent("[data-cf-total]"), /\$145\.00/, "the first visit: $245 less the $100 plan discount");
       assert.deepEqual(await screenProblems(f), [], "New plan passes the phone checks");
       await shot(page, `plans-new-${device}`);
+      for (const tab of ["agreement", "billing"]) {
+        await f.click(`[data-cf-seg][data-key=${tab}]`);
+        await f.waitForSelector(`[data-cf-seg][data-key=${tab}][aria-selected=true]`);
+        assert.deepEqual(await screenProblems(f), [], `New plan's ${tab} passes the phone checks`);
+      }
       await f.click("[data-new] [type=submit]");
       await f.waitForFunction(() => /^#\/plans\/pl_[0-9a-z]{20}$/.test(location.hash), null, { timeout: 15000 });
       await settled(f);
