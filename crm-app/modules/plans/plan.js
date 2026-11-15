@@ -364,7 +364,7 @@ function moreRows(s, ctx) {
   ];
 }
 
-const TABS = [["service", "Service"], ["agree", "Agree"], ["schedule", "Schedule"]];
+const TABS = [["service", "Service"], ["agree", "Agreement"], ["schedule", "Schedule"]];
 
 export default {
   title: (s) => (s && s.plan ? s.plan.name : "Plan"),

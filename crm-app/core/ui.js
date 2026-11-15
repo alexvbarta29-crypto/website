@@ -557,6 +557,20 @@ export function pillBtn(label, { icon: ic = null, tone = "grey", wide = false, h
 // the screen's "click [data-seg=tab]" (el.dataset.key); arrow keys move along (ui.js, below).
 // black: the plan editor's black "on" segment. scroll: 5 or 6 tabs (Marketing, Analytics) keep their
 // own width and the track scrolls sideways.
+// A row of tabs that scrolls sideways keeps the one that is on in sight (the fifth of five is
+// never off the edge with nothing to say you are there). Called after a screen or the section
+// tabs are drawn.
+export function revealOn(root) {
+  if (!root || !root.querySelectorAll) return;
+  for (const t of root.querySelectorAll(".rs-seg.scroll")) {
+    const b = t.querySelector('[aria-selected="true"]');
+    if (!b || !t.clientWidth) continue;
+    const tr = t.getBoundingClientRect();
+    const br = b.getBoundingClientRect();
+    if (br.left < tr.left || br.right > tr.right) t.scrollLeft += br.left - tr.left - Math.max(0, (tr.width - br.width) / 2);
+  }
+}
+
 export function seg(items, on, { name = "tab", black = false, label = "", scroll = false } = {}) {
   const list = (items || []).filter(Boolean).map((x) => (Array.isArray(x) ? { key: x[0], label: x[1] } : x));
   return html`<div class="${"rs-seg" + (black ? " black" : "") + (scroll ? " scroll" : "")}" role="tablist" ${attrs({ "aria-label": label || null })}>${list.map((it) => {
@@ -696,8 +710,22 @@ export function quickRow(items) {
 // A row: { label, icon?, hint?, run?() | href?, danger?, disabled?, data? } (data: the old data-*
 // hook, kept on the row). Falsy rows are skipped (`cond && {...}`); red rows go last, in a group
 // of their own. A tap closes the sheet, then runs run() (or follows href).
+// One "..." per header (the UX pass, Nov 2026): a section's rare screens (the Outbox under Inbox...)
+// ride in the screen's own "..." as a last group instead of a second round "..." beside it.
+// nav.js names them for the screen on show (setMoreExtra); a tap on the header's own "..." arms
+// them (armMoreExtra) and the next action sheet, opened within two seconds, adds them.
+let moreExtra = [];
+let armed = null;
+export function setMoreExtra(rows) { moreExtra = Array.isArray(rows) ? rows.filter(Boolean) : []; }
+export const hasMoreExtra = () => moreExtra.length > 0;
+export function armMoreExtra() { armed = moreExtra.length ? { rows: moreExtra, until: Date.now() + 2000 } : null; }
+
 export function actionSheet(title, groups = [], { onClose } = {}) {
-  const gs = (groups || []).map((g) => (Array.isArray(g) ? g : [g]).filter(Boolean));
+  const own = (groups || []).flatMap((g) => (Array.isArray(g) ? g : [g])).filter(Boolean);
+  // (a row the screen already has, by name or place, is not said twice)
+  const extra = armed && armed.until >= Date.now() ? armed.rows.filter((r) => !own.some((o) => (o.href && o.href === r.href) || String(o.label).toLowerCase() === String(r.label).toLowerCase())) : null;
+  armed = null;
+  const gs = [...(groups || []), ...(extra && extra.length ? [extra] : [])].map((g) => (Array.isArray(g) ? g : [g]).filter(Boolean));
   const calm = gs.map((g) => g.filter((r) => !r.danger)).filter((g) => g.length);
   const red = gs.flat().filter((r) => r.danger);
   const all = red.length ? [...calm, red] : calm;

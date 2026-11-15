@@ -23,7 +23,7 @@ async function load(params, ctx) {
 
 export default {
   load,
-  action: (s, ctx) => (ctx.can("expenses:write") ? { label: "New", run: () => ctx.go("/expenses/new") } : null),
+  action: (s, ctx) => (ctx.can("expenses:write") ? { label: "New expense", run: () => ctx.go("/expenses/new") } : null),
   render(s, ctx) {
     const by = s.meta.by_category || {};
     const tiles = [{ key: "all", label: "All", value: Object.values(by).reduce((a, b) => a + b.n, 0), money: s.meta.total_cents || 0 },

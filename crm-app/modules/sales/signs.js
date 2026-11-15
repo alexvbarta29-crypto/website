@@ -21,7 +21,7 @@ const sub = (c) => [kindLabel(c.kind), c.area, c.placed_on ? `placed ${dateShort
 export default {
   title: "Signs & flyers",
   load,
-  action: (s, ctx) => ({ label: "New", run: () => ctx.go("/signs/new") }),
+  action: (s, ctx) => ({ label: "New QR code", run: () => ctx.go("/signs/new") }),
   render(s) {
     const t = s.meta.totals || { scans: 0, leads: 0, booked: 0, revenue_cents: 0 };
     const retired = s.tab === "retired";

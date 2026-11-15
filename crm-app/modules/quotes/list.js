@@ -56,7 +56,7 @@ function visible(s) {
 
 export default {
   load,
-  action: (s, ctx) => (ctx.can("quotes:write") ? { label: "New", run: () => ctx.go("/quotes/new") } : null),
+  action: (s, ctx) => (ctx.can("quotes:write") ? { label: "New quote", run: () => ctx.go("/quotes/new") } : null),
   render(s, ctx) {
     const c = tileCounts(s.rows, s.today);
     const rows = visible(s);
