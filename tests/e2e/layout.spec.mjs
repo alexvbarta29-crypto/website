@@ -97,7 +97,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // the +: the screen blurs, search on top, the things to make above the +
       await g.click("#fab");
       await g.waitForSelector(".qk.on");
-      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead or customer", "Quote", "Job", "Task", "Invoice", "Plan"], "one list, the most used first");
+      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead or customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "one list, the most used first");
       await g.fill("#qk-q", "Newlead");
       await g.waitForSelector(".qk-res:not([hidden]) a", { timeout: 5000 });
       assert.deepEqual(await screenProblems(g), [], "the + overlay passes the phone checks");
@@ -238,7 +238,7 @@ for (const device of ["desk1440", "desk1024"]) {
       // the sidebar is the drawer's sections: Service opens on its first tab, Jobs a tab of it
       assert.ok(await f.isVisible('#side [data-path="/today"]'));
       await f.click('#side [data-sec="service"]');
-      await settled(f, { hash: "#/quotes" });
+      await settled(f, { hash: "#/requests" });
       assert.ok(await f.isVisible('#subnav a[href="#/jobs"]'), "Jobs, a tab of Service");
       await goTo(f, `/visits/${seeded.visits[2]}`);
       const q = await box(f, ".vb-quick");

@@ -113,3 +113,6 @@
 .mn-more summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;color:var(--ink-2)}
 .mn-new-go{display:flex;flex-direction:column;gap:8px}
 .mn-new .rs-card{display:flex;flex-direction:column;gap:8px}
+.mn-findrow { display: flex; align-items: center; gap: 8px; }
+.mn-findrow .find-field { flex: 1; min-width: 0; }
+.mn-findrow > .rnd { margin-left: auto; }

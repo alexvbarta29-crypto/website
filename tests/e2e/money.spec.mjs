@@ -57,7 +57,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await goTo(f, "/invoices");
       assert.equal(await title(f), "Invoices");
       const list = await f.textContent("#view");
-      assert.match(list, /Waiting[\s\S]*Past due[\s\S]*Paid this month/, "the stat card");
+      assert.match(list, /Outstanding[\s\S]*Overdue[\s\S]*Due today[\s\S]*Paid this month/, "the tiles (the Rotor guide's FI1)");
       assert.match(list, /Marlow Moneyfolk/);
       assert.match(list, /Indigo Moneyfolk[\s\S]*Overdue/);
       assert.match(list, /Robin Moneyfolk/, "Rotor's own open invoice is listed");
@@ -65,12 +65,12 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "Invoices passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `money-invoices-${device}`);
-      await f.click("[data-chip=overdue]");
+      await f.click('[data-tile="inv"][data-key="overdue"]');
       await f.waitForFunction(() => !/Marlow Moneyfolk/.test(document.getElementById("view").textContent), null, { timeout: 5000 });
       assert.match(await f.textContent("#view"), /Indigo Moneyfolk/);
-      await f.click("[data-chip=draft]");
+      await f.click('[data-tile="inv"][data-key="draft"]');
       await viewHas(f, /Onyx Moneyfolk/);
-      await f.click("[data-chip=open]");
+      await f.click('[data-tile="inv"][data-key="open"]');
       await viewHas(f, /Marlow Moneyfolk/);
       // (on a phone the search waits behind the round search button)
       if (!(await f.isVisible("[data-q]"))) await f.click('#top-rnd [data-own="find"]');
@@ -171,7 +171,7 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await title(f), "Payments");
       text = await f.textContent("#view");
       assert.match(text, /November 2026/);
-      assert.match(text, /came in \(after refunds\)/);
+      assert.match(text, /Total[\s\S]*Stripe[\s\S]*Cash & check[\s\S]*Tips/, "the tiles (the Rotor guide's FP1)");
       assert.match(text, /Sage Moneyfolk/);
       assert.match(text, /practice payments? \(marked "test"\)/);
       assert.deepEqual(await screenProblems(f), [], "Payments passes the phone checks");
@@ -369,7 +369,7 @@ test("money on a desk: the list with the invoice beside it", async () => {
     await goTo(f, "/invoices");
     await f.click(`a[href="#/invoices/${M.invoices.overdue}"]`);
     await settled(f, { hash: `#/invoices/${M.invoices.overdue}` });
-    const both = await f.evaluate(() => { const v = document.getElementById("view"), pn = document.getElementById("pane"); return { list: /Past due/.test(v.textContent), pane: !!pn && !pn.hidden && /Gutter cleaning/.test(pn.textContent) }; });
+    const both = await f.evaluate(() => { const v = document.getElementById("view"), pn = document.getElementById("pane"); return { list: /Overdue/.test(v.textContent), pane: !!pn && !pn.hidden && /Gutter cleaning/.test(pn.textContent) }; });
     assert.deepEqual(both, { list: true, pane: true }, "the list stays, the invoice opens beside it");
     assert.deepEqual(await screenProblems(f), []);
     await shot(p.page, "money-desk-split");

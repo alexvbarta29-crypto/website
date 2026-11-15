@@ -1,0 +1,34 @@
+/* Service screens (the Rotor guide's Service section): Requests, one
+   request, and the Jobs and Job additions. Module-local (.sv-), both themes
+   through the kit's tokens; 44 px taps come from the kit's pills. */
+.sv-rtop-r, .sv-jtop-r { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sv-rtitle { font-size: 20px; font-weight: 700; margin: 8px 0 2px; overflow-wrap: anywhere; }
+.sv-amber { color: var(--amber, #b7791f); }
+.sv-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sv-arow { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.sv-arow-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sv-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sv-svc { border: 0; padding: 0; margin: 0; min-width: 0; }
+.sv-svc legend { padding: 0; margin-bottom: 6px; }
+.sv-svc .chips { flex-wrap: wrap; }
+.sv-who { text-align: left; justify-content: flex-start; min-height: 44px; }
+.sv-photos { display: flex; flex-wrap: wrap; gap: 8px; }
+/* the job page: the stat row, the visit's step pills, the plan banner */
+.sv-stats { margin-top: 10px; }
+.sv-vacts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px 44px; }
+.sv-plan { display: flex; align-items: center; gap: 8px; min-height: 44px; color: inherit; text-decoration: none; }
+.sv-plan .rs-sub { flex: 1; min-width: 0; }
+.sv-track { margin-top: 10px; overflow-x: auto; }
+/* the plan page's history strip and per-visit costs */
+.sv-strip { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity; padding: 2px 0 6px; }
+.sv-strip > * { flex: 0 0 auto; scroll-snap-align: start; }
+.sv-pip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 76px; min-height: 44px; padding: 6px 10px; border-radius: 12px; background: var(--mist, #f2f2f7); font-size: 12px; }
+.sv-pip b { font-size: 13px; }
+.sv-pip.done { opacity: .75; }
+.sv-pip.red b { color: var(--red, #e5484d); }
+.sv-pip.green b { color: var(--green, #2f9e44); }
+/* the single-visit card is a row: the step pills wrap onto their own line under it */
+.wk-visits.one:has(.sv-vacts) { flex-wrap: wrap; }
+.wk-visits.one > .sv-vacts { flex: 0 0 100%; padding-left: 44px; }
+/* the job's track on a phone: five steps, the words wrap under their dots instead of cutting off */
+.sv-track .rs-step-l { white-space: normal; text-align: center; overflow: visible; font-size: 12px; line-height: 1.15; }

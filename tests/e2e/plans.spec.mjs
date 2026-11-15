@@ -69,7 +69,7 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await f.textContent("#view"), /Harper Planfolk/, "the active plan");
       assert.deepEqual(await screenProblems(f), [], "the list passes the phone checks");
       await shot(page, `plans-list-${device}`);
-      await f.click("[data-chip=pending]");
+      await f.click('[data-tile="plans"][data-key="signature"]');
       await f.waitForFunction(() => /Finley Planfolk/.test(document.getElementById("view").textContent), null, { timeout: 5000 });
       assert.match(await f.textContent("#view"), /waiting for agreement to sign/);
 

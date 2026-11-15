@@ -455,7 +455,11 @@ test("every client route in the manifests, as owner and tech, at both phone size
   const week = await (await o.ctx.request.post("/api/crm/payroll/periods", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { start_on: "2026-11-08" } })).json();
   // a custom automation (from a starter recipe)
   const flow = await (await o.ctx.request.post("/api/crm/automations/flows", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { recipe: "review_after_visit" } })).json();
+  // a request (Service → Requests) and an expense (Financials → Expenses): Track 3's screens
+  const rq = await (await o.ctx.request.post("/api/crm/requests", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-00000000c0re", contact_id: seeded.contacts.lead, services: ["Gutters"] } })).json();
+  const exp = await (await o.ctx.request.post("/api/crm/expenses", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-00000000c0rf", date: "2026-11-16", amount_cents: 2500, category: "fuel" } })).json();
   const ids = {
+    "/requests/:id": rq.data.request.id, "/expenses/:id": exp.data.expense.id,
     "/automations/flow/:id": flow.data.flow.id, "/automations/flow/:id/runs": flow.data.flow.id,
     "/claude-connect/:rid": "expired-request",
     "/payroll/:id": week.data && week.data.period ? week.data.period.id : null,

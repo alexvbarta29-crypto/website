@@ -103,8 +103,8 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   const tabs = (k) => row(k).tabs.map((t) => t.label);
   const more = (k) => row(k).more.map((m) => m.label);
   // the tabs that exist today (Requests, Payouts, Referrals, Forms, Queue and Call logs wait for their screens)
-  assert.deepEqual(tabs("service"), ["Quotes", "Jobs", "Plans"]);
-  assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payroll"]);
+  assert.deepEqual(tabs("service"), ["Requests", "Quotes", "Jobs", "Plans"]);
+  assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payouts", "Payroll", "Expenses"]);
   assert.deepEqual(tabs("marketing"), ["Workflows", "Campaigns", "Reviews", "Templates"]);
   for (const k of ["home", "inbox", "schedule", "customers", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
   assert.deepEqual(tabs("dialer"), ["Dialer", "Queue", "Call logs"], "the Power Dialer's three tabs");
@@ -113,10 +113,10 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   assert.deepEqual(row("leads").tabs.map((t) => [t.label, t.path]), [["List", "/leads?view=list"], ["Board", "/leads?view=board"], ["QR codes", "/signs"]]);
   assert.deepEqual(tabs("pipelines"), ["List", "Board"]);
   assert.deepEqual(tabs("tasks"), ["Board", "List"]);
-  assert.deepEqual([row("service").path, row("financials").path, row("marketing").path, row("analytics").path, row("dialer").path], ["/quotes", "/invoices", "/automations", "/reports", "/calls"], "the first open tab");
+  assert.deepEqual([row("service").path, row("financials").path, row("marketing").path, row("analytics").path, row("dialer").path], ["/requests", "/invoices", "/automations", "/reports", "/calls"], "the first open tab");
   // the rare screens in a section's "..."
   assert.deepEqual(more("inbox"), ["Outbox (not sent)", "Approvals", "Team inboxes"]);
-  assert.deepEqual(more("financials"), ["Autopay run", "Timesheets", "Purchases"]);
+  assert.deepEqual(more("financials"), ["Autopay run", "Timesheets"]);
   assert.deepEqual(more("analytics"), ["Office dashboard", "Leaderboard"]);
   assert.deepEqual(more("marketing"), [], "Marketing keeps what goes out: workflows, campaigns, reviews, templates");
   assert.deepEqual(more("leads"), ["Text blast", "Giveaway"], "the Lead report waits for its screen; Giveaway until Forms lists it");
@@ -191,13 +191,13 @@ test("SECTIONS and permissions: a tab shows when its screen is there and this pe
   assert.deepEqual(row("service").more, [], "no Light Studio without the office tools");
   assert.ok(!row("financials").more.some((m) => m.path === "/tools/purchases"));
   // someone who may open only Payments of Financials: the row opens Payments, no row of tabs
-  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => x !== "payroll:read_all" && canOf("admin")(x), user: { id: "us_ad2", role: "admin" } });
-  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments"]);
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "expenses:read"].includes(x) && canOf("admin")(x), user: { id: "us_ad2", role: "admin" } });
+  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts"]);
   const fin = nav.sectionByKey("financials");
   assert.match(String(nav.sectionTabs(fin, "payments")), /role="tablist" aria-label="Financials"[\s\S]*href="#\/invoices"[\s\S]*href="#\/payments" class="rs-seg-b" role="tab" aria-selected="true"/);
-  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all", "expenses:read"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
   assert.deepEqual([row("financials").path, row("financials").more], ["/timesheets", []], "no tab open: the row opens its first \"...\" screen (nothing is lost)");
-  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all", "time:edit_others"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
+  nav.plan({ nav: navFor({ role: "admin" }), manifests: MANIFESTS, can: (x) => !["payroll:read_all", "invoices:read_all", "time:edit_others", "expenses:read"].includes(x) && canOf("admin")(x), user: { id: "us_ad3", role: "admin" } });
   assert.equal(row("financials"), undefined, "nothing of Financials open: no row");
   assert.equal(String(nav.sectionTabs("financials")), "", "and no tabs");
   // a technician: no drawer, no sections
@@ -241,23 +241,23 @@ test("sections: the screen's section up its parent chain; the tab used last, per
     assert.equal(nav.sectionOf("/autopay/ap_1").key, "financials");
     assert.equal(nav.sectionOf("/settings/company").key, "home", "Settings hangs off Home");
     const at = nav.sectionAt("/plans", new URLSearchParams(""));
-    assert.deepEqual([at.sec.key, at.cur.key, at.tabs.length], ["service", "plans", 3]);
+    assert.deepEqual([at.sec.key, at.cur.key, at.tabs.length], ["service", "plans", 4]);
     assert.equal(nav.sectionAt("/autopay"), null, "a \"...\" screen is no tab");
     const row = () => nav.drawerGroups().flat().find((it) => it.key === "service");
-    assert.equal(row().path, "/quotes", "first time: the first tab");
+    assert.equal(row().path, "/requests", "first time: the first tab");
     nav.rememberTab(nav.sectionByKey("service"), "plans");
     assert.equal(store.get("crm-sec:us_0000000000000000000a:service"), "plans", "crm-sec:<uid>:<key>");
     assert.equal(row().path, "/plans", "then the tab used last");
     // another person on the same phone has their own
     nav.plan({ nav: navFor({ role: "owner" }), manifests: MANIFESTS, can: canOf("owner"), user: { id: "us_other", role: "owner" } });
-    assert.equal(row().path, "/quotes");
+    assert.equal(row().path, "/requests");
     // a remembered tab that is no longer open: the first again
-    store.set("crm-sec:us_other:service", "requests");
-    assert.equal(row().path, "/quotes");
+    store.set("crm-sec:us_other:service", "gone");
+    assert.equal(row().path, "/requests");
     // a browser that keeps nothing: the first, and nothing breaks
     globalThis.localStorage = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     nav.rememberTab(nav.sectionByKey("service"), "jobs");
-    assert.equal(row().path, "/quotes");
+    assert.equal(row().path, "/requests");
   } finally { delete globalThis.localStorage; }
 });
 
@@ -266,9 +266,9 @@ test("a section's tab whose route comes later (Requests, Payouts...) shows once 
   planFor("owner");
   const row = (k) => nav.drawerGroups().flat().find((it) => it.key === k);
   assert.deepEqual(row("service").tabs.map((t) => t.label), ["Requests", "Quotes", "Jobs", "Plans"]);
-  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll"]);
+  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll", "Expenses"]);
   assert.equal(nav.isTabRoot("/requests"), true);
-  assert.deepEqual(row("financials").more.map((m) => m.label), ["Autopay run", "Timesheets", "Purchases"], "Purchases waits in \"...\" for Expenses");
+  assert.deepEqual(row("financials").more.map((m) => m.label), ["Autopay run", "Timesheets"], "Expenses (a real module now) has taken Purchases in");
   router.register([{ name: "fake2", routes: [{ path: "/expenses", load: async () => ({ default: {} }), title: "Expenses", perm: "invoices:read_all" }, { path: "/forms", load: async () => ({ default: {} }), title: "Forms", perm: "contacts:read_all" }] }]);
   planFor("owner");
   assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll", "Expenses"]);
@@ -301,7 +301,7 @@ test("Customize Tabs: up to five above the line, the rest under MORE MENU; + and
 test("the + and the desk's New: one list, the most used first, each once", () => {
   planFor("owner");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8)");
+  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8)");
   assert.deepEqual(quick.quickCreates([...creates, { path: "/requests/new", label: "Request" }], canOf("owner")).map((c) => c.label).slice(3, 5), ["Request", "Task"], "Request once a module offers its create");
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });

@@ -35,6 +35,10 @@ export const BILLING_MODES = Object.freeze(["barta_standard", "after_visit", "fi
 export const ORDINAL_STATUSES = Object.freeze(["unscheduled", "scheduled", "completed", "skipped", "cancelled"]);
 export const OPEN_ORDINAL = Object.freeze(["unscheduled", "scheduled"]);
 export const CANCEL_REASONS = Object.freeze(["price", "moving", "service", "not_needed", "other"]);
+// The Save center: a cancel request's state, the offers, the steps the team works through.
+export const SAVE_STATUSES = Object.freeze(["open", "contacted", "offered", "saved", "cancelled"]);
+export const SAVE_OFFERS = Object.freeze(["discount", "change_frequency", "pause", "move_visit"]);
+export const SAVE_STEPS = Object.freeze([["call", "Call them"], ["why", "Ask why"], ["offer", "Make an offer"], ["note", "Write down what they said"], ["decide", "Decide"]]);
 export const INTERVALS = Object.freeze(["month", "year", "week", "day"]);
 export const SCOPE_TYPES = Object.freeze(["all", "initial", "after_initial", "specific"]);
 export const AGREEMENT_STATUSES = Object.freeze(["draft", "sent", "viewed", "signed", "declined", "void"]);
@@ -225,6 +229,17 @@ export function validatePlan(data, { op } = {}) {
         ...(v.storage_fee_cents !== undefined ? { storage_fee_cents: cents(v.storage_fee_cents, `${f}.storage_fee_cents`) } : {}),
       };
     },
+    // the Save center (guide-gaps S38): a cancel the team tries to save first
+    cancel_request: (v, f) => {
+      if (v === undefined || v === null) return undefined;
+      if (!isObj(v)) throw new InputError("Expected the cancel request.", f);
+      return {
+        ...v, reason: enumValue(v.reason, CANCEL_REASONS, { field: `${f}.reason`, stored: true }) || "other", note: str(v.note, { field: `${f}.note`, max: 500 }) || undefined,
+        priority: v.priority === "high" ? "high" : "normal", status: enumValue(v.status, SAVE_STATUSES, { field: `${f}.status`, stored: true }) || "open",
+        offer: v.offer && SAVE_OFFERS.includes(v.offer) ? v.offer : undefined, steps_done: (Array.isArray(v.steps_done) ? v.steps_done : []).filter((x) => SAVE_STEPS.some(([k]) => k === x)),
+        by: str(v.by, { field: `${f}.by`, max: 80 }) || "", at: isoOpt(v.at, `${f}.at`), outcome_at: isoOpt(v.outcome_at, `${f}.outcome_at`),
+      };
+    },
     renewal: (v) => (isObj(v) ? { ...v } : {}),
     // lights seasons the customer confirmed (the next install is made only then)
     confirmed_seasons: (v, f) => (v === undefined ? undefined : [...new Set(arr(v, (x, ff) => int(x, { field: ff, min: 2020, max: 2100 }), { field: f, max: 6 }))]),
@@ -273,6 +288,8 @@ export const planRow = (r) => {
     nx: nx ? nx.target_month : null, nxs: nx ? nx.status : null, due: firstDue(r), mj: missingJobs(r), ap: !!(r.billing && r.billing.autopay), cr: !!(r.billing && r.billing.card_required),
     ag: r.agreement_status || "none", te: (r.term && r.term.current_term_end) || null, eff: (r.cancel && r.cancel.effective_on) || null, pu: (r.pause && r.pause.until) || null,
     tw: r.town || null, sv: saleValueOf(r), ay: yearValue(r), ar: r.term && r.term.auto_renew === false ? 0 : 1, tm: (r.term && r.term.initial_months) || 12, cb: r.cancel && r.cancel.clawback_state === "to_bill" ? 1 : 0, im: r.import ? 1 : 0, at: r.created_at, u: r.updated_at, sb: r.sold_by || null,
+    // after agreement (guide-gaps S16): the first term is over and the plan goes on
+    aa: r.term && (r.term.current_term_n || 1) > 1 ? 1 : 0, ...(r.cancel_request && ["open", "contacted", "offered"].includes(r.cancel_request.status) ? { sr: r.cancel_request.priority === "high" ? 2 : 1 } : {}),
     ...(r.kind === "lights_annual" ? { cs: (r.confirmed_seasons || []).slice(-3), wc: waitingSeasons(r) } : {}), ...(r.held ? { hd: r.held.action } : {}),
   };
 };
