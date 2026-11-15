@@ -114,11 +114,11 @@ for (const device of ["iphone13", "iphonese"]) {
       const tb = await box(g, "#top-bar");
       const tt = await box(g, "#top-title");
       assert.ok(tt.y >= tb.bottom - 1, "the big title under the top bar");
-      assert.deepEqual(await g.$$eval("#top-rnd .rnd-own .rnd", (els) => els.map((e) => e.dataset.own)), ["find", "filter", "archived"], "Rotor's round buttons: search, filter, archived");
+      assert.deepEqual(await g.$$eval("#top-rnd .rnd-own .rnd", (els) => els.map((e) => e.dataset.own)), ["find", "filter", "more"], "the round buttons: search, filter, and the \"...\" (Select, Export, Merge review); the Archived are a tile (Track 2)");
       assert.equal(await g.isVisible("#ct-q"), false, "no search bar under the title until the round search button asks");
       await g.click('#top-rnd [data-own="find"]');
       assert.equal(await g.isVisible("#ct-q"), true);
-      assert.ok(await g.$("#ct-list .cc .cc-band"), "customers as cards");
+      assert.ok(await g.$("#ct-list .rs-lrow a.rs-lr-main"), "customers as two-line rows (Row2)");
       assert.deepEqual(await screenProblems(g), []);
       await shot(page, `layout-customers-${device}`);
       // my own tabs (#/tab-bar: Customize Tabs as a page)
