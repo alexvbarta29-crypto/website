@@ -305,25 +305,45 @@ overlay of what waits, copies for no signal, Delano times),
   Rotor's full-height sheet, "Complete in order • 3 of 15 done", the next
   required item outlined red and the ones after it dimmed until it's done;
   opened from the floating "N left" pill on the job page and the Visit (and
-  the quick row's Checklist, the field card's head). The visit's own people
+  on a desk the quick row's Checklist, the field card's head). Rotor's look:
+  the title 17 bold, 15 px items, the next one white with a 2 px red
+  outline, the ones after it with no card and greyed until reached. The visit's own people
   answer (`PATCH /visits/:id/checklist` through the field outbox, so it
   works with no signal); anyone else sees the answers. Ticking a `hook`
   item runs the step: On my way (needs signal; dry run) or Start (offline
   too); the server ticks the hooked item itself on On my way and on Start.
   The order is the phone's guide only (the server takes answers in any
   order: replays and two phones).
-- **Job on a phone** (under 700 px, `office-job-phone.js`): Flyra's top
-  (title, "customer · number", the day linking to the visit, the time and
-  duration chip, who goes, the status and amount pills, Created; one big
-  step, On my way → Start Job → Complete Job, with the 4-step bar; the
-  address card; Reschedule · Invoice · Callback · More; the plan card with
-  the card on file; Amount due with Checkout (Money's Collect payment on
-  the visit), Send link, QR code, Cash or check), then Rotor's cards
-  (customer, Pricing a card a line with "Added on site" and a camera for a
-  photo of the line (`line` on the visit's photo), Invoices, Job notes with
-  an upload, Sold by, the other visits), a red-outline Delete Job (a cancel:
-  the history stays) and the pill. Rotor's round check in the header marks
-  the job done. A desk keeps the two columns.
+- **Job on a phone** (under 700 px, `office-job-phone.js`), just like
+  Rotor's (the owner, Nov 15): the visit card (the big day linking to the
+  visit, a round calendar that reschedules or books, a round "..." with
+  the visit's rows: open it, reschedule, a note, the checklist, all visits,
+  book another; the time "8:00 AM – 10:00 AM" with the length chip, who
+  goes as colored dots, then the red Start visit and the grey On My Way
+  for the visit's own people, Complete visit and Pause once started, Resume
+  and Complete on a break; Book a visit or Mark done for the office), the
+  customer card (initial tile, red call, message), the address card
+  (navigate, pencil), Pricing (a row a line, "Added on site" with the tech,
+  + Item, Subtotal, each discount green with its pencil, + Add discount,
+  Total, Create Invoice), Invoices (+), Job notes (the crew's notes with an
+  upload; the office's notes under them once there are some), Sold by and
+  the floating "N left" pill. The header's "..." holds the rest: Checkout
+  and the ways to be paid (pay link, QR code, cash or check) when something
+  is owed, the plan (how often, the card on file), Office notes, a photo of
+  a line (`line` on the visit's photo), a callback, Cancel job. Rotor's
+  round check in the header marks the job done. A desk keeps the two
+  columns.
+- **Visit on a phone** (`visit.js`, `visit-field.js`): the same cards. The
+  visit's own people get the field panel's visit card (Start visit and On
+  My Way, then Running late, Complete visit and Pause, Resume, Get paid;
+  the timer, what waits for signal and what's left on the checklist in the
+  card), the customer, the address, Pricing (+ Item from the price book),
+  Job notes (the crew's notes and access, a note of theirs with an upload),
+  Last time here and the photos; the checklist is the floating pill's
+  sheet; Running late, No access, Before and After photos, an issue photo,
+  an incident and finishing without the timer are in the "...". The office,
+  not on the visit, gets the same cards read only (Collect payment, or Get
+  paid once done and owed). A desk keeps the quick row and the big button.
 
 ## What a tech sees (M4b)
 

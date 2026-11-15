@@ -40,6 +40,7 @@ import { ensureStyles as officeStyles, slotText, kindLabel, faces, names, schedu
 
 const VISIT_TONE = { scheduled: "blue", en_route: "amber", in_progress: "amber", paused: "amber", completed: "green", no_access: "red", cancelled: "red" };
 import { owedFrom } from "./visit-step.js";
+import { isPhone, PHONE_MEDIA, visitCard, customerCard, placeCard, pricingCard, dayText, timeText, lengthText, whoGoes, discountShares, discountLabel, RI } from "./office-job-phone.js";
 
 // The office's stylesheet and the Visit's own (the quick row and the big button).
 let styled = false;
@@ -239,6 +240,45 @@ function people(s, { office, addr, where, ph }) {
   return out;
 }
 
+// A phone: Rotor's visit page (the job page's cards, office-job-phone.js). Someone working the visit gets
+// the field panel's own (visit-field.js: the visit card with Start visit and On My Way, the customer, the
+// address, Pricing, Job notes); the office, not on it, gets the same cards from here, read only, with Get
+// paid when something is owed. The checklist is the floating pill; the rest is in the round "...".
+const VS_WORD = { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
+function phoneOffice(s, ctx, { office, addr, where }) {
+  const v = s.visit;
+  const j = s.job;
+  const c = s.can || {};
+  const len = !v.date_only ? lengthText(v) : "";
+  const lines = [
+    v.status !== "scheduled" ? html`<p class="jp-vst">${VS_WORD[v.status] || v.status}</p>` : "",
+    s.arrival && (v.date_only || (v.window && v.window.type === "anytime")) ? html`<p class="jp-vnote">Customer was told: ${s.arrival}</p>` : "",
+    v.status === "cancelled" && v.cancel_reason ? html`<p class="warn-box">Cancelled: ${v.cancel_reason}${v.late_cancel ? " (late cancel)" : ""}</p>` : "",
+    v.status === "no_access" ? html`<p class="warn-box">No access${v.no_access && v.no_access.note ? `: ${v.no_access.note}` : ""}</p>` : "",
+    v.completion && v.completion.at && v.status === "completed" ? html`<p class="jp-vnote">Done ${ago(v.completion.at)}${v.completion.office ? " (marked by the office)" : ""}</p>` : "",
+    v.moved_by_op ? html`<p class="jp-vnote">Moved by a rain-day move.</p>` : "",
+  ];
+  const go = bigStep(s);
+  const pay = go && go.key === "pay" ? go.attr["data-vact"] : s.collectPill ? s.collectPill.key : null;
+  const prices = !!c.prices;
+  const jl = (j && j.lines) || [];
+  const people = Array.isArray(s.people) ? s.people : [];
+  const a = (s.property && s.property.access) || {};
+  const crew = [j && j.crew_notes, a.gate_code ? `Gate code ${a.gate_code}` : "", a.lockbox ? `Lockbox ${a.lockbox}` : "", a.pets ? `Pets: ${a.pets}` : "", a.parking ? `Parking: ${a.parking}` : "", a.notes || ""].filter(Boolean);
+  return html`${visitCard({ day: dayText(v.date), cal: office && c.move ? { label: "Move or reassign", data: { move: true } } : null, more: { label: "More for this visit", data: { "jp-more": true } },
+      time: timeText(v), chip: len ? { text: len, data: office && c.move ? { move: true } : null, aria: office && c.move ? `${len}, move or reassign` : len } : null,
+      people: whoGoes(v, s.users, people), lines, go: pay ? [{ label: go && go.key === "pay" ? "Get paid" : (s.collectPill && s.collectPill.label) || "Collect payment", ic: RI.check, tone: go && go.key === "pay" ? "red" : "grey", data: { vact: pay } }] : [] })}
+    ${customerCard(s.contact, { office })}
+    ${placeCard(s.property, { office, where: addr ? "" : where })}
+    ${jl.length ? pricingCard({ rows: jl.map((l) => { const q = (l.qty_milli ?? 1000) / 1000; const by = l.upsell_user_id ? people.find((p) => p.id === l.upsell_user_id) || { name: "The crew" } : null; return { title: l.title, amount: prices && l.total_cents != null ? money(l.total_cents) : "", sub: q !== 1 ? `${q} × ${prices && l.unit_cents != null ? money(l.unit_cents) : "each"}` : "", by }; }),
+      subtotal: prices && j.totals && (j.discounts || []).length ? money(j.totals.subtotal_cents) : null,
+      discounts: prices && j.totals ? (j.discounts || []).map((x, i) => ({ label: discountLabel(x), amount: money(-discountShares(j)[i]) })) : [],
+      total: prices && j.totals ? money(j.totals.total_cents) : null }) : ""}
+    <section class="rs-card jp-card jp-notes"><h3 class="jp-h">Job notes</h3>${crew.length || v.tech_notes ? html`${crew.length ? html`<p class="wk-pre jp-crew">${crew.join("\n")}</p>` : ""}${v.tech_notes ? html`<p class="wk-pre jp-crew">${v.tech_notes}</p>` : ""}` : html`<p class="jp-none">No notes.</p>`}
+      ${office && j && j.office_notes ? html`<h4 class="wk-nlabel">Office notes</h4><p class="wk-pre">${j.office_notes}</p>` : ""}</section>
+    ${(v.photos || []).length ? photosCard(v) : ""}`;
+}
+
 // The "..." sheet: the office's buttons, the crew's (from the field panel),
 // Collect payment, and the way to the job and the customer.
 function moreRows(s, ctx) {
@@ -282,8 +322,10 @@ async function runAction(ctx, key) {
   try { const mod = (await a.load()).default; await mod.run(ctx.state, ctx); } catch (err) { toast((err && err.message) || "That didn't work.", { bad: true }); }
 }
 
+let mqOff = () => {};
 export default {
   title: (s) => (s && s.visit && s.visit.date ? `Visit · ${dateShort(s.visit.date)}` : "Visit"),
+  unmount() { mqOff(); },
   moreTitle: (s) => (s && s.contact ? s.contact.display_name || "Visit" : "Visit"),
   more: (s, ctx) => moreRows(s, ctx),
   load,
@@ -305,6 +347,15 @@ export default {
     const go = bigStep(s);
     const side = s.buttons.filter((a) => !(go && go.key === "pay" && a.key === go.attr["data-vact"]));
     s.collectPill = side[0] || null;
+    if (isPhone()) {
+      const panels = s.panels.map((p) => html`<section class="wk-panel" ${attrs({ "data-panel": p.key, "aria-label": p.label || p.key })}>${p.failed ? html`<div class="card empty"><h2>${p.label || "This part"} didn't load</h2><p>${p.failed}</p></div>` : p.mod.render(p.state || {}, p.ctx)}</section>`);
+      return html`<div class="rs-page wk wk-vpage jp">
+        ${field ? panels : html`${phoneOffice(s, ctx, { office, addr, where })}${panels}`}
+        ${field && office && j && j.office_notes ? html`<section class="rs-card jp-card">${cardHead("Office notes")}<p class="wk-pre">${j.office_notes}</p></section>` : ""}
+        ${j && office ? disclosure("Job", { value: j.number_label || v.job_number || "", sub: j.title, href: "#/jobs/" + encodeURIComponent(j.id) }) : ""}
+        ${s.reminders ? disclosure("Texts and emails", { sub: textsLine(s.reminders), data: { texts: true } }) : ""}
+        ${items.length ? html`<div class="ck-room" aria-hidden="true"></div>${checklistPill(fv)}` : ""}</div>`;
+    }
     const head = actionHead(s, { ph, addr, where, photos: (fv.photos || []).length, items: items.length, done: items.filter(itemDone).length, waiting: field ? field.state.waiting || 0 : 0, sheet: !shown.has("checklist") });
     // two columns on a wide desk: the visit on the left, the people and places and texts on the
     // right (a phone shows one column: wk-vmain/wk-vside are display:contents there)
@@ -324,7 +375,14 @@ export default {
       ${office && v.updated_at ? html`<p class="foot-note wk-late">Changed ${ago(v.updated_at)}</p>` : ""}
     </div>${items.length ? html`<div class="ck-room" aria-hidden="true"></div>${checklistPill(fv)}` : ""}</div>`;
   },
-  mount(view, s) {
+  mount(view, s, ctx) {
+    // crossing 700 px (a phone turned, a window resized) draws the other layout
+    mqOff();
+    if (typeof matchMedia === "function" && ctx) {
+      let was = isPhone();
+      const on = () => { if (isPhone() !== was) { was = isPhone(); ctx.rerender(); } };
+      try { const mq = matchMedia(PHONE_MEDIA); mq.addEventListener("change", on); mqOff = () => { try { mq.removeEventListener("change", on); } catch (e) { /* gone */ } mqOff = () => {}; }; } catch (e) { /* old Safari */ }
+    }
     for (const p of s.panels || []) {
       if (!p.mod || !p.mod.events) continue;
       const el = view.querySelector(`[data-panel="${p.key}"]`);
@@ -353,6 +411,7 @@ export default {
     "click [data-checks]": (e, el, ctx) => openSheet(ctx),
     "click [data-ck-open]": (e, el, ctx) => openSheet(ctx),
     "click [data-texts]": (e, el, ctx) => textsSheet(ctx.state),
+    "click [data-jp-more]": () => { const m = document.getElementById("top-more"); if (m) m.click(); },
     "click [data-move]": (e, el, ctx) => move(ctx),
     "click [data-vact]": (e, el, ctx) => runAction(ctx, el.dataset.vact),
   },

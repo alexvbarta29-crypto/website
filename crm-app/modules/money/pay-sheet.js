@@ -6,7 +6,8 @@
 //   Tap to Pay  shown as Rotor shows it; it needs Stripe Terminal, which isn't
 //               connected, so the sheet says so and offers the QR (the customer
 //               pays on their own phone) instead
-//   Charge      the card on file (a run; practice money until Stripe is live)
+//   Charge      the card on file (a run; practice money until Stripe is live),
+//               with a tip for the crew: none, 10, 15 or 20% (Flyra's choices)
 //   Manual      cash, a check or another way: amount, date, reference, a tip
 //   Send        a pay link by text or email (the Outbox while texts are practice),
 //               and the QR to pay
@@ -31,6 +32,11 @@ export function firstWay(s) {
   return "tap";
 }
 
+// A tip on a card charge (Flyra's choices, folded into Rotor's Charge): a share of what is due, rounded half up.
+const TIPS = [["0", "No tip"], ["1000", "10%"], ["1500", "15%"], ["2000", "20%"]];
+export const tipOf = (due, bp) => Math.floor(((due || 0) * Number(bp || 0) + 5000) / 10000);
+const tipsOk = (s) => !["deposit", "fee"].includes(s.invoice.kind);
+
 const practice = (s) => (s.payments_mode === "live" ? "" : "Payments are practice right now: nothing real is charged.");
 
 function panel(s, way, form) {
@@ -38,14 +44,16 @@ function panel(s, way, form) {
   const due = s.invoice.balance_cents;
   if (way === "tap") {
     return html`<h3 class="mn-ps-h">Tap to Pay on iPhone</h3>
-      <p class="mn-ps-p">The customer taps their card or phone on your phone.</p>
+      <p class="mn-ps-p">The customer taps their card or phone on your device. If your company accepts tips, they can add one after the card is read.</p>
       <p class="mn-ps-note" data-ps-why>Not connected yet: Tap to Pay needs Stripe Terminal, which isn't set up. Until then, show the QR code and they pay on their own phone, or charge the card on file.</p>
       ${c.qr ? html`<button type="button" class="mn-ps-ob" data-ps-qr>Show QR to pay</button>` : ""}`;
   }
   if (way === "charge") {
     const why = !c.charge ? (s.online === "not_yet" ? "Rotor still bills this customer: card charges open after the switch. Record cash or a check instead." : !(s.card && s.card.usable) ? "No card on file to charge." : s.online === "processing" ? "A bank payment is clearing: no new charge until it does." : "This invoice can't be charged now.") : "";
+    const tip = (form && form.tip_bp) || "0";
     return html`<h3 class="mn-ps-h">Charge the card on file</h3>
       <p class="mn-ps-p">${cardWords(s)}</p>
+      ${c.charge && tipsOk(s) ? html`<div class="mn-ps-tips" role="radiogroup" aria-label="Tip your crew">${TIPS.map(([bp, label]) => html`<button type="button" ${attrs({ class: "mn-ps-tip" + (tip === bp ? " on" : ""), role: "radio", "aria-checked": tip === bp ? "true" : "false", "data-ps-tip": bp })}><span>${label}</span>${bp !== "0" ? html`<small>${money(tipOf(due, bp))}</small>` : ""}</button>`)}</div>` : ""}
       ${why ? html`<p class="mn-ps-note" data-ps-why>${why}</p>` : practice(s) ? html`<p class="mn-ps-note">${practice(s)}</p>` : ""}
       ${!c.charge && c.card_link && s.invoice.status === "open" ? html`<button type="button" class="mn-ps-ob" data-ps-cardlink>Text them a card link</button>` : ""}`;
   }
@@ -80,17 +88,18 @@ function panel(s, way, form) {
 }
 
 // What the sticky button says, and whether it can go.
-function goOf(s, way, amountCents) {
+function goOf(s, way, amountCents, tipBp = "0") {
   const c = s.can || {};
   const due = money(s.invoice.balance_cents);
-  if (way === "tap") return { label: `Start Tap to Pay on iPhone - ${due}`, ok: false };
-  if (way === "charge") return { label: `Charge card - ${due}`, ok: !!c.charge };
+  // (Tap to Pay can't start until Stripe Terminal is connected: the button says why instead)
+  if (way === "tap") return { label: `Start Tap to Pay on iPhone - ${due}`, ok: true };
+  if (way === "charge") return { label: `Charge card - ${money(s.invoice.balance_cents + (tipBp ? tipOf(s.invoice.balance_cents, tipBp) : 0))}`, ok: !!c.charge };
   if (way === "manual") return { label: `Record payment - ${money(amountCents ?? s.invoice.balance_cents)}`, ok: !!c.record };
   return { label: `Send pay link - ${due}`, ok: !!(c.send || c.issue) };
 }
 
 function view(s, way, form) {
-  const go = goOf(s, way, form && form.amount !== undefined ? readMoney(form.amount) : undefined);
+  const go = goOf(s, way, form && form.amount !== undefined ? readMoney(form.amount) : undefined, (form && form.tip_bp) || "0");
   const b = (k, ic) => html`<button type="button" ${attrs({ class: "mn-ps-m" + (way === k ? " on" : ""), "data-pm": k, "aria-pressed": way === k ? "true" : "false" })}>${ic}<span>${WAYS[k]}</span></button>`;
   return html`<div class="mn-ps">
     <p class="mn-ps-l">Amount Due</p>
@@ -115,7 +124,7 @@ export function openPayment(ctx, { state, onDone } = {}) {
     if (!f) return form;
     const v = (n) => (f.querySelector(`[name=${n}]`) || {}).value;
     const m = f.querySelector("[name=method]:checked");
-    form = { method: m ? m.value : "cash", amount: v("amount"), received_on: v("received_on"), reference: v("reference"), tip: v("tip") };
+    form = { ...(form || {}), method: m ? m.value : "cash", amount: v("amount"), received_on: v("received_on"), reference: v("reference"), tip: v("tip") };
     return form;
   };
   const done = (kind) => { sh.close(); if (onDone) onDone(kind); };
@@ -131,14 +140,18 @@ export function openPayment(ctx, { state, onDone } = {}) {
         const c = readMoney(el.value);
         if (go && way === "manual") go.textContent = `Record payment - ${money(c && c > 0 ? c : 0)}`;
       },
+      "click [data-ps-tip]": (e, el) => { readManual(sh.el); form = { ...(form || {}), tip_bp: el.dataset.psTip }; draw(); },
       "click [data-ps-qr]": () => { sh.close(); showQr({ ...ctx, state: s, refresh: () => onDone && onDone("qr") }); },
       "click [data-ps-cardlink]": () => cardLink({ ...ctx, state: s }),
       "click [data-ps-go]": async (e, btn) => {
         if (btn.disabled) return;
+        if (way === "tap") { toast("Tap to Pay isn't connected yet: it needs Stripe Terminal. Show the QR code, or charge the card on file.", { bad: true }); return; }
         if (way === "charge") {
+          const tipBp = (form && form.tip_bp) || "0";
+          const tip = tipBp !== "0" && tipsOk(s) ? tipOf(s.invoice.balance_cents, tipBp) : 0;
           busy(btn, true, "Charging…");
           try {
-            const r = await ctx.api(`/invoices/${id}/charge`, { method: "POST", body: {} });
+            const r = await ctx.api(`/invoices/${id}/charge`, { method: "POST", body: tip ? { tip_cents: tip } : {} });
             const run = await waitRun(ctx.api, r.data.run_id);
             const st = run && run.result && run.result.status;
             toast(st === "succeeded" ? "Charged" : st === "processing" ? "The bank payment is clearing" : st === "failed" ? "The card didn't go through" : st === "would_charge" ? "Not charged: Rotor still bills this customer" : st === "refused" ? "There's nothing to charge that card with" : "Still working. Check back in a minute.", { bad: !["succeeded", "processing"].includes(st) });

@@ -519,7 +519,7 @@ test("a tech: their own visit opens with no office buttons; another tech's is no
   const problems = [];
   try {
     await goTo(f, `/visits/${seeded.visits[0]}`);
-    await f.waitForSelector(".wk-head");
+    await f.waitForSelector(".jp-visit");     // a phone: Rotor's visit card
     assert.equal(await f.$("[data-move]"), null);
     assert.equal(await f.$("[data-cancel]"), null);
     assert.doesNotMatch(await f.textContent("#view"), /Texts and emails|Office notes/);

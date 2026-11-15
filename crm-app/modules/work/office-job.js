@@ -13,15 +13,18 @@
 // visit, Mark done, Edit the work, Add a discount, Create invoice, the
 // quick actions, Open customer, Reopen, Cancel job.
 //
-// A phone (under 700 px) gets Rotor's phone job page with Flyra's top
-// instead (office-job-phone.js; the same data, events and "..." rows), and
-// the floating "N left" pill that opens the visit's checklist sheet.
+// A phone (under 700 px) gets Rotor's phone job page instead
+// (office-job-phone.js; the same data and events): the visit card, the
+// customer, the address, Pricing, Invoices, Job notes, Sold by and the
+// floating "N left" pill that opens the visit's checklist sheet. What the
+// desk shows on the page and the phone doesn't (Checkout and the ways to be
+// paid, the plan, office notes, a photo of a line) is in its "...".
 //
 // A technician reaches a job only through a visit of theirs; the server
 // answers with what they may see (no office notes, prices only with
 // visits:prices), and the page shows no office buttons then.
 
-import { html, attrs, icon as iconOf, rnd, sheet, toast, confirmSheet, statusPill, pillBtn, notesBox, disclosure, seg, stepper } from "../../core/ui.js";
+import { html, attrs, icon as iconOf, rnd, sheet, toast, confirmSheet, statusPill, pillBtn, notesBox, disclosure, seg, stepper, actionSheet } from "../../core/ui.js";
 import { money, dateShort, dateYear, ago, clock, phone as formatPhone } from "../../core/format.js";
 import { readForm, showError, clearErrors, busy, readMoney } from "../../core/forms.js";
 import { directionsUrl } from "../../core/map.js";
@@ -30,7 +33,7 @@ import {
   linesEditor, addLine, removeLine, readLines,
 } from "./office-kit.js";
 import { ensureStyles as svStyles } from "../service/kit.js";
-import { phoneView, isPhone, PHONE_MEDIA } from "./office-job-phone.js";
+import { phoneView, isPhone, PHONE_MEDIA, amountDue } from "./office-job-phone.js";
 import { openChecklist, checklistPill, checklistStyles } from "./checklist-sheet.js";
 import { currentVisit, itemsOf, itemDone } from "./checklist-kit.js";
 import { here, etaMinutes } from "./tech-kit.js";
@@ -505,6 +508,9 @@ async function visitStep(ctx, id, what) {
       const r = await ctx.api(`/visits/${encodeURIComponent(id)}/on-my-way`, { method: "POST", body: { client_id: cid(), eta_min: Math.min(240, Math.max(1, eta)) } });
       const t = r.data && r.data.text;
       toast(t && t.status === "sent" ? "On my way: texted" : t && (t.status === "dry_run" || t.mode === "dry_run") ? "On my way. Texts aren't switched on yet, so nothing went out." : t && t.status ? `On my way (the text: ${t.status.replace(/_/g, " ")})` : "On my way");
+    } else if (what === "pause") {
+      await ctx.api(`/visits/${encodeURIComponent(id)}/timer`, { method: "POST", body: { action: "pause", client_id: cid() } });
+      toast("Paused");
     } else {
       await ctx.api(`/visits/${encodeURIComponent(id)}/timer`, { method: "POST", body: { action: "start", client_id: cid() } });
       toast("Started. The timer is running.");
@@ -645,12 +651,12 @@ async function linePhoto(ctx, lineId, el) {
   if (!v || !l) return;
   const file = await capture();
   if (!file) return;
-  busy(el, true);
+  if (el) busy(el, true);
   try {
     await uploadPhoto({ ownerType: "visit", ownerId: v.id, tag: "other", caption: l.title, file, extra: { line: l.id } });
     toast("Photo saved");
     ctx.refresh();
-  } catch (err) { busy(el, false); toast(err.message || "That photo didn't save.", { bad: true }); }
+  } catch (err) { if (el) busy(el, false); toast(err.message || "That photo didn't save.", { bad: true }); }
 }
 // the upload in the notes box: a photo or a PDF kept on the job's visit
 async function notesUpload(ctx, el) {
@@ -672,10 +678,36 @@ function visitsSheet(ctx) {
       "click [data-v-note]": (e, el) => noteSheet(ctx, el.dataset.vNote),
     } });
 }
-// Delete Job (Flyra's red button): our rule is a cancel (with its open visits), so the history stays.
-async function deleteJob(ctx) {
-  const r = await reasonSheet({ title: "Delete this job", label: "Why? The job and its open visits are cancelled and kept, so its history stays.", yes: "Delete Job" });
-  if (r) post(ctx, "cancel", { reason: r.reason }, "Job deleted (kept as cancelled)");
+// The visit card's round "..." (the phone): the visit's own rows.
+function visitMore(ctx) {
+  const s = ctx.state;
+  const c = s.can || {};
+  const v = jobVisit(s);
+  const visits = s.visits || [];
+  const office = officeView();
+  const mine = v && ctx.user && (v.assignee_ids || []).includes(ctx.user.id);
+  const open = v && OPEN_VISIT.includes(v.status);
+  actionSheet(v ? `Visit · ${dateShort(v.date)}` : "Visits", [
+    [v && { label: "Open the visit", icon: "cal", hint: dateShort(v.date), href: "#/visits/" + encodeURIComponent(v.id) },
+      v && office && c.write && v.status === "scheduled" && { label: "Reschedule", icon: "cal", run: () => moveVisit(ctx, v.id), data: { "v-move": v.id } },
+      open && (c.write || mine) && { label: "A note on the visit", icon: "edit", run: () => noteSheet(ctx, v.id), data: { "v-note": v.id } },
+      v && itemsOf(v).length && { label: "Checklist", icon: "check", hint: `${itemsOf(v).filter(itemDone).length} of ${itemsOf(v).length} done`, run: () => openCk(ctx), data: { "ck-open": true } }],
+    [visits.length > 1 && { label: "All visits", icon: "list", hint: String(visits.length), run: () => visitsSheet(ctx), data: { "jp-visits": true } },
+      c.add_visit && { label: "Book another visit", icon: "plus", run: () => book(ctx), data: { book: true } }],
+  ]);
+}
+// Office notes (the phone's "..."): the crew never sees these; saved as the box is left.
+function officeNotesSheet(ctx) {
+  const s = ctx.state;
+  sheet({ title: "Office notes", body: html`<p class="rs-sub">The crew never sees these.</p>${notesBox(s.job.office_notes, { name: "office", label: "Office notes", placeholder: "Add a note for the office...", rows: 5 })}`,
+    events: { "change [data-notes=office]": (e, el) => saveNotes(ctx, "office_notes", el.value) } });
+}
+// A photo of one line (the phone's "..."): pick the line, then the camera.
+function linePhotoSheet(ctx) {
+  const s = ctx.state;
+  const photos = (s.visits || []).flatMap((x) => x.photos || []);
+  const sh = sheet({ title: "A photo of the work", body: html`<ul class="rs-act-g">${(s.job.lines || []).filter((l) => l.id).map((l) => { const n = photos.filter((p) => p.line === l.id).length; return html`<li><button type="button" class="rs-act" ${attrs({ "data-line-photo": l.id, "aria-label": `A photo of ${l.title}${n ? `, ${n} so far` : ""}` })}><span class="rs-act-ic">${iconOf("camera")}</span><span class="rs-act-l">${l.title}</span>${n ? html`<span class="rs-act-h">${String(n)}</span>` : ""}</button></li>`; })}</ul>`,
+    events: { "click [data-line-photo]": (e, el) => { sh.close(); linePhoto(ctx, el.dataset.linePhoto, null); } } });
 }
 
 async function saveNotes(ctx, field, value) {
@@ -696,6 +728,8 @@ let mq = null;
 let mqOff = () => {};
 export default {
   title: (s) => (s && s.job ? `Job ${s.job.number_label || ""}`.trim() : "Job"),
+  // the "..." sheet names the work (the phone page has no title block)
+  moreTitle: (s) => (s && s.job ? s.job.title || "Job" : "Job"),
   load,
   // a phone: Rotor's round check (mark the job done) beside the "..."
   tools: (s, ctx) => (s && s.job && isPhone() && officeView() && s.can && s.can.complete ? [{ icon: "check", label: "Mark the job done", run: () => markDone(ctx) }] : []),
@@ -714,7 +748,26 @@ export default {
     const j = s.job;
     const open = !["completed", "cancelled"].includes(j.status);
     const b = billing(s, ctx.can);
+    // the phone: what the desk shows on the page (Checkout and the ways to be paid, the plan, office notes, a photo of a line)
+    const phone = isPhone();
+    const due = phone ? amountDue(s, ctx, H) : null;
+    const cv = jobVisit(s);
+    const payRows = due !== null ? [
+      { label: "Checkout", icon: "pay", hint: money(due), run: () => checkout(ctx, null), data: { checkout: true } },
+      !(ctx.can("invoices:send") && b.inv && b.inv.st === "open" && b.inv.bal > 0) && { label: "Send a pay link", icon: "send", run: () => quick(ctx, "pay"), data: { "pay-link": true } },
+      { label: "QR code to pay", icon: "qr", run: () => payQr(ctx, null), data: { "pay-qr": true } },
+      { label: "Cash or check", icon: "money", run: () => checkout(ctx, null), data: { "pay-cash": true } },
+    ] : [];
+    const card = s.planCard;
+    const hasCard = card && card.status !== "none" && (card.last4 || card.status === "active");
+    const planHint = [s.planFreq, s.planFeatures && s.planFeatures.money === false ? "" : hasCard ? (card.last4 ? `card ending ${card.last4}` : "card on file") : "no card on file"].filter(Boolean).join(" · ");
+    const phoneRows = phone ? [
+      s.plan && j.plan_id && { label: s.plan.name || "Service plan", icon: "auto", hint: planHint, href: "#/plans/" + encodeURIComponent(s.plan.id) },
+      c.write && !j.office_notes && { label: "Office notes", icon: "doc", hint: "the crew never sees these", run: () => officeNotesSheet(ctx), data: { "office-notes": true } },
+      cv && cv.status !== "cancelled" && (c.write || (ctx.user && (cv.assignee_ids || []).includes(ctx.user.id))) && (j.lines || []).some((l) => l.id) && { label: "A photo of the work", icon: "camera", hint: "a line", run: () => linePhotoSheet(ctx), data: { "line-photos": true } },
+    ] : [];
     return [
+      payRows,
       [c.add_visit && { label: "Book a visit", icon: "cal", run: () => book(ctx), data: { book: true } },
         c.complete && { label: "Mark done", icon: "check", run: () => markDone(ctx), data: { complete: true } },
         c.write && { label: "Edit the work", icon: "edit", hint: open ? "lines, notes" : "notes", run: () => editSheet(ctx), data: { edit: true } },
@@ -728,6 +781,7 @@ export default {
         jobVisit(s) && { label: "Open the visit", icon: "cal", hint: dateShort(jobVisit(s).date), href: "#/visits/" + encodeURIComponent(jobVisit(s).id) },
         jobVisit(s) && itemsOf(jobVisit(s)).length && { label: "Checklist", icon: "check", hint: (() => { const it = itemsOf(jobVisit(s)); return `${it.filter(itemDone).length} of ${it.length} done`; })(), run: () => openCk(ctx), data: { "ck-open": true } },
         s.contact && { label: "Open customer", icon: "user", href: "#/contacts/" + encodeURIComponent(s.contact.id) }],
+      phoneRows,
       [c.reopen && { label: "Reopen", icon: "undo", hint: "when done", run: () => reopen(ctx), data: { reopen: true } },
         c.cancel && { label: "Cancel job", icon: "close", danger: true, run: () => cancelJob(ctx), data: { cancel: true } }],
     ];
@@ -772,17 +826,10 @@ export default {
     // the phone's (office-job-phone.js)
     "click [data-v-done]": (e, el, ctx) => completeVisit(ctx, el.dataset.vDone),
     "click [data-ck-open]": (e, el, ctx) => openCk(ctx),
-    "click [data-jp-more]": () => { const m = document.getElementById("top-more"); if (m) m.click(); },
+    "click [data-v-pause]": (e, el, ctx) => visitStep(ctx, el.dataset.vPause, "pause"),
+    "click [data-jp-vmore]": (e, el, ctx) => visitMore(ctx),
     "click [data-jp-off]": (e, el) => toast(el.dataset.jpOff),
-    "click [data-q-callback]": (e, el, ctx) => quick(ctx, "callback"),
-    "click [data-checkout]": (e, el, ctx) => checkout(ctx, el),
-    "click [data-pay-link]": (e, el, ctx) => quick(ctx, "pay"),
-    "click [data-pay-qr]": (e, el, ctx) => payQr(ctx, el),
-    "click [data-pay-cash]": (e, el, ctx) => checkout(ctx, el),
-    "click [data-line-photo]": (e, el, ctx) => linePhoto(ctx, el.dataset.linePhoto, el),
     "click [data-notes-upload]": (e, el, ctx) => notesUpload(ctx, el),
-    "click [data-jp-visits]": (e, el, ctx) => visitsSheet(ctx),
-    "click [data-del-job]": (e, el, ctx) => deleteJob(ctx),
   },
 };
 

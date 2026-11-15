@@ -5,7 +5,8 @@
 // Line Items ("+ Saved" from the price book, "+ Add"; each line's words with a
 // red bin, quantity, unit price, its total on the right, a discount in green)
 // and Summary; then the payments and what happened; and the sticky bar: black
-// Save, red Payment (the payment sheet, pay-sheet.js).
+// Save, red Payment (Rotor's payment sheet, pay-sheet.js: a tip is chosen
+// there, on Charge or Manual; Flyra's Checkout is the job page's own).
 //
 // What may change comes from the server (GET /invoices/:id `edit`): a draft
 // all of it, a sent invoice nobody has paid on all of it, a paid one its
@@ -21,7 +22,6 @@ import { money, dateYear, phone as fmtPhone, dateShort, dateTime } from "../../c
 import { pickFrom } from "../../core/pickers.js";
 import { statusPill, MI, METHOD, PAY_STATUS } from "./kit.js";
 import { openPayment } from "./pay-sheet.js";
-import { openCheckout } from "./checkout.js";
 import { refundSheet, voidIt, sendSheet, writeOff, showQr } from "./invoice-acts.js";
 
 const LOCKED = ["credit", "deposit_credit"];
@@ -67,8 +67,10 @@ function billTo(c) {
   const bt = m.bill_to || {};
   const name = bt.name || ct.display_name || "The customer";
   const lines = [bt.email || ct.email, bt.phone || (ct.phone ? fmtPhone(ct.phone) : ""), bt.address || ct.address].filter(Boolean);
-  return html`<section class="rs-card mn-ed-card" data-field="bill_to">
-    <div class="mn-ed-ch"><h3>Bill To</h3>${s.edit && s.edit.money ? html`<button type="button" class="mn-ed-sm" data-ed-bill>Edit</button>` : ""}</div>
+  // (Rotor's card has no button: a tap on the card itself changes who it's billed to)
+  const edit = !!(s.edit && s.edit.money);
+  return html`<section ${attrs({ class: "rs-card mn-ed-card" + (edit ? " mn-ed-tap" : ""), "data-field": "bill_to", "data-ed-bill": edit ? "" : null, role: edit ? "button" : null, tabindex: edit ? "0" : null, "aria-label": edit ? `Bill To: ${name}. Change who it's billed to` : null })}>
+    <div class="mn-ed-ch"><h3>Bill To</h3></div>
     <p class="mn-ed-bn">${name}</p>
     ${lines.map((x) => html`<p class="mn-ed-bs">${x}</p>`)}
     ${m.bill_to ? html`<p class="mn-ed-hint">Shown on the invoice. Texts and emails still go to the customer's own phone and email.</p>` : ""}
@@ -337,7 +339,6 @@ export function openEditor(ctx, { state, onClose } = {}) {
       [
         (can.issue || can.send) && { label: can.issue ? "Send to the customer" : "Send again", icon: "send", run: () => sendSheet(stand()) },
         can.qr && { label: "Show QR to pay", icon: "qr", run: () => showQr(stand()), data: { "ed-qr": true } },
-        inv.status === "open" && inv.balance_cents > 0 && (can.record || can.charge) && { label: "Checkout with a tip", icon: "money", run: () => openCheckout({ api: ctx.api, invoiceId: inv.id, onDone: () => { c.changed = true; c.reload().catch(() => {}); } }) },
       ],
       [
         c.s.contact && { label: "Open customer", icon: "user", href: "#/contacts/" + encodeURIComponent(c.s.contact.id) },
@@ -418,7 +419,8 @@ export function openEditor(ctx, { state, onClose } = {}) {
       "click [data-ed-pay]": (e, el) => payment(el),
       "click [data-ed-num]": () => { sync(c); c.editNumber = true; draw(); const i = c.sh.el.querySelector("[name=number]"); if (i) i.focus(); },
       "click [data-ed-clear]": () => { sync(c); c.m.due_on = ""; draw(); },
-      "click [data-ed-bill]": () => billSheet(),
+      "click [data-ed-bill]": (e) => { if (!e.target.closest("a, button, input, textarea")) billSheet(); },
+      "keydown [data-ed-bill]": (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-ed-bill]")) { e.preventDefault(); billSheet(); } },
       "click [data-ed-saved]": () => savedItems(),
       "click [data-ed-add]": () => {
         sync(c);

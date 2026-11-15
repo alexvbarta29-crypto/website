@@ -1,54 +1,68 @@
-// The job page on a phone (Nov 2026, the owner's screenshots: Rotor's phone
-// job page, with Flyra's top, "best of both"). A desk keeps the Rotor-desktop
-// two columns (office-job.js); under 700 px the page is this one scroll:
+// The job page on a phone, just like Rotor's (Nov 2026, the owner: "make it
+// just like Rotor"; his screenshots of Rotor's phone job page). A desk keeps
+// the Rotor-desktop two columns (office-job.js); under 700 px the page is
+// Rotor's one scroll, card after card:
 //
-//   Flyra's top: the title (the work, "Service #2" on a plan), "customer ·
-//   job number", the visit's day and time with Rotor's duration chip, who
-//   goes (colored dots), the status and amount pills, when it was made; the
-//   one big step button (On my way → Start Job → Complete Job) with the
-//   4-step bar under it; the address (Rotor's card: directions, the pencil);
-//   the quick row Reschedule · Invoice · Callback · More; the plan card (its
-//   name, how often and the price a visit, the card on file); Amount due
-//   with Checkout and Send link · QR code · Cash or check.
-//   Then Rotor's cards: the customer (call, text), Pricing (a card a line:
-//   the name, "Added on site" with the tech who added it, a camera for a
-//   photo of the line, Qty and Price; "+ Item", Subtotal, discounts with a
-//   pencil, "+ Add discount", Total, Create Invoice), Invoices (+), Job notes
-//   (with an upload), the office's and the plan's notes, Sold by, the other
-//   visits; a red-outline Delete Job; and the floating "N left" checklist pill.
+//   the visit card: the big day ("Nov 18") with a round calendar (move the
+//   visit, or book one) and a round "..." (the visit's own rows), the time
+//   with the length chip ("2 hrs"), who goes (colored dots), and two pills:
+//   the red "Start visit" and the grey "On My Way" (then Complete visit and
+//   Pause, Resume, ...); the customer (call, text); the address (directions,
+//   the pencil); Pricing (a row a line: the name, the amount; "Added on site"
+//   with the tech who added it; "+ Item", Subtotal, each discount green with
+//   its pencil, "+ Add discount", Total, Create Invoice); Invoices (+); Job
+//   notes (with an upload); "Sold by"; and the floating "N left" pill that
+//   opens the visit's checklist.
 //
-// What the desk's stat cards and track show lives here too: the job total is
-// the amount pill, the balance is Amount due, time on site is in the top
-// card, the track is the 4-step bar and the pills. Everything else is in
-// the round "..." (the same rows as the desk).
+// Everything else lives in the round "..." of the header (office-job.js
+// more()): Checkout and the ways to be paid (pay link, QR, cash or check),
+// the plan, office notes, a callback, a photo of a line, Cancel job.
+//
+// The visit card, the customer and address cards, Pricing and Job notes are
+// built here for the tech's Visit screen too (visit.js, visit-field.js), so
+// both pages look the same.
 
-import { html, attrs, icon, raw, rnd, statusPill, pillBtn, notesBox, personCard, addressCard, disclosure } from "../../core/ui.js";
-import { money, dateShort, dateYear, time as fmtTime, phone as formatPhone } from "../../core/format.js";
+import { html, attrs, raw, openExternal } from "../../core/ui.js";
+import { money, clock, phone as formatPhone } from "../../core/format.js";
 import { directionsUrl } from "../../core/map.js";
-import { range, officeView, VISIT_STATUS } from "./office-kit.js";
+import { officeView } from "./office-kit.js";
 import { checklistPill } from "./checklist-sheet.js";
 import { currentVisit, itemsOf, itemDone } from "./checklist-kit.js";
-import { QR_ICON } from "../money/pay-qr.js";
 
 export const PHONE_MEDIA = "(max-width: 699px)";
 export const isPhone = () => typeof matchMedia === "function" && matchMedia(PHONE_MEDIA).matches;
 
 const OPEN_VISIT = ["scheduled", "en_route", "in_progress", "paused"];
-const JOB_WORD = { unscheduled: "To book", scheduled: "Scheduled", in_progress: "In progress", completed: "Done", cancelled: "Cancelled" };
-const JOB_TONE = { unscheduled: "amber", scheduled: "blue", in_progress: "amber", completed: "green", cancelled: "red" };
 const svg = (d) => raw(`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${d}</svg>`);
-const I = {
-  repeat: svg('<path d="M17 3.5l3 3-3 3M20 6.5H8.5A4.5 4.5 0 0 0 4 11M7 20.5l-3-3 3-3M4 17.5h11.5A4.5 4.5 0 0 0 20 13"/>'),
-  callback: svg('<path d="M6.6 3.5h2.6l1.4 4-2 1.3a11 11 0 0 0 5.6 5.6l1.3-2 4 1.4v2.6a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2zM15 3.5h5.5V9M20.5 3.5L14 10"/>'),
-  invoice: svg('<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>'),
-  wallet: svg('<path d="M4.5 7.5V17a2 2 0 0 0 2 2h12a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 18.5 8H6.5a2 2 0 0 1-2-2 2 2 0 0 1 2-2H17v4"/><circle cx="16" cy="13.5" r="1.2"/>'),
-  tap: svg('<path d="M8 8.5a5 5 0 0 1 0 7M11.5 6a8.5 8.5 0 0 1 0 12M15 3.5a12 12 0 0 1 0 17"/>'),
+export const RI = {
+  play: svg('<path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8z" fill="currentColor" stroke="none"/>'),
+  truck: svg('<path d="M2.8 6.5h10.4v9.8H2.8zM13.2 9.5h4.1l3.9 3.9v2.9h-8"/><circle cx="6.6" cy="17.4" r="1.9"/><circle cx="16.9" cy="17.4" r="1.9"/>'),
+  cal: svg('<rect x="4" y="5" width="16" height="15.5" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'),
+  more: svg('<circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none"/>'),
+  clock: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  chev: svg('<path d="M7.5 10l4.5 4.5 4.5-4.5"/>'),
+  call: svg('<path d="M6.6 3.5h2.6l1.4 4-2 1.3a11 11 0 0 0 5.6 5.6l1.3-2 4 1.4v2.6a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/>'),
+  chat: svg('<path d="M4.5 5.5h15v10.5h-9l-4.5 3.5v-3.5H4.5z"/>'),
+  pin: svg('<path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/>'),
+  nav: svg('<path d="M20 4L3.8 10.9l7 2.3 2.3 7z"/>'),
+  pen: svg('<path d="M15.6 4.6l3.8 3.8L8.6 19.2 4 20l.8-4.6z"/><path d="M13.6 6.6l3.8 3.8"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
   upload: svg('<path d="M12 15.5V4M7.5 8.5L12 4l4.5 4.5M4.5 14.5V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3.5"/>'),
-  chev: svg('<path d="M7 10l5 5 5-5"/>'),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  pause: svg('<path d="M8.5 5v14M15.5 5v14"/>'),
+  late: svg('<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4.2l2.6 1.6M9.5 2.8h5"/>'),
 };
 const tel = (ph) => String((ph && ph.e164) || "").replace(/[^+\d]/g, "");
-const initialsOf = (name) => String(name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
-const DOTS = ["#c7c7cc", "#3b4cca", "#13a165", "#d97706", "#db3a29", "#7c3aed"];
+export const initialsOf = (name) => String(name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
+const DOTS = ["#d2d5da", "#3f4e8e", "#13a165", "#d97706", "#db3a29", "#7c3aed"];
+const MD = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+const MONTH = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", year: "numeric" });
+const dataOf = (o) => Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v !== null && v !== undefined && v !== false).map(([k, v]) => [k.startsWith("data-") || k.startsWith("aria-") ? k : `data-${k}`, v === true ? "" : v]));
+
+// "Nov 18"
+export const dayText = (d) => (d ? MD.format(new Date(d + "T12:00:00Z")) : "");
+// "8:00 AM – 10:00 AM" (Rotor's)
+export const timeText = (v) => (v && !v.date_only && v.start && v.end ? `${clock(v.start)} – ${clock(v.end)}` : v && v.date_only ? "Anytime that day" : "");
 
 // "2 hrs", "1 hr 30 min", "45 min" from a visit's start and end
 export function lengthText(v) {
@@ -59,151 +73,149 @@ export function lengthText(v) {
   return h ? `${h} ${h === 1 ? "hr" : "hrs"}${r ? ` ${r} min` : ""}` : `${r} min`;
 }
 
-// Flyra's 4 steps for the job's visit: On my way · Arrive · Start Job · Complete Job (how many are done).
-export const STEPS4 = ["On my way", "Arrive", "Start Job", "Complete Job"];
-export function stepsDone(v) {
-  if (!v) return 0;
-  if (v.status === "completed") return 4;
-  const arrived = itemsOf(v).some((i) => i.hook === "start" && itemDone(i));
-  if (["in_progress", "paused"].includes(v.status)) return 3;
-  if (v.status === "en_route") return arrived ? 2 : 1;
-  return 0;
-}
-
-// The big step button for the visit's own people (the Visit screen's steps); someone else gets the office's step.
-export function bigStep(s, ctx, v) {
-  const c = s.can || {};
-  const mine = !!(v && ctx && ctx.user && (v.assignee_ids || []).includes(ctx.user.id) && OPEN_VISIT.includes(v.status));
-  if (mine) {
-    if (v.status === "scheduled") return { label: "On my way", attr: { "data-v-omw": v.id }, icon: "truck" };
-    if (v.status === "en_route") return { label: "Start Job", attr: { "data-v-start": v.id }, icon: "play" };
-    if (v.status === "paused") return { label: "Resume", attr: { "data-v-start": v.id }, icon: "play" };
-    const left = itemsOf(v).filter((i) => i.required && !itemDone(i)).length;
-    return { label: "Complete Job", attr: { "data-v-done": v.id }, icon: "check", note: left ? `${left} required ${left === 1 ? "item" : "items"} on the checklist first` : "" };
-  }
-  const j = s.job;
-  if (!(s.visits || []).some((x) => OPEN_VISIT.includes(x.status)) && c.add_visit && j.status === "unscheduled") return { label: "Book a visit", attr: { "data-book": true }, icon: "cal" };
-  const allDone = (s.visits || []).length && (s.visits || []).every((x) => !OPEN_VISIT.includes(x.status)) && (s.visits || []).some((x) => x.status === "completed");
-  if (c.complete && allDone) return { label: "Mark done", attr: { "data-complete": true }, icon: "check" };
-  return null;
-}
-
-function headCard(s, ctx, v, h) {
-  const j = s.job;
-  const n = j.plan_ordinal && j.plan_ordinal.n;
-  const title = `${j.title || "Job"}${n && !/visit \d|service #/i.test(j.title || "") ? ` - Service #${n}` : ""}`;
-  const who = [s.contact && s.contact.display_name, j.number_label].filter(Boolean).join(" · ");
-  const users = s.users || [];
-  const people = v ? (v.assignee_ids || []).map((id, i) => {
-    const u = users.find((x) => x.id === id);
-    return { name: (s.people && s.people[id] && s.people[id].name) || (u && u.name) || "Someone", color: (u && u.color) || DOTS[i % DOTS.length] };
+// Who goes: [{ name, color }] (a person's own color, else Rotor's grey and blue).
+export function whoGoes(v, users = [], people = null) {
+  return v ? (v.assignee_ids || []).map((id, i) => {
+    const u = (users || []).find((x) => x.id === id);
+    const p = Array.isArray(people) ? people.find((x) => x.id === id) : people && people[id];
+    return { name: (p && p.name) || (u && u.name) || "Someone", color: (u && u.color) || (p && p.color) || DOTS[i % DOTS.length] };
   }) : [];
-  const len = v && !v.date_only ? lengthText(v) : "";
-  const when = v ? `${dateShort(v.date)}${v.date_only ? " · Anytime" : ""}` : j.target_month && j.status === "unscheduled" ? `Due by ${h.monthLabel(j.target_month)}` : "Not booked yet";
-  const b = h.billing(s, ctx.can);
-  const paid = b.inv && b.inv.st === "paid";
-  const part = b.inv && !paid && b.inv.bal > 0 && b.inv.bal < b.inv.tot;
-  const bill = b.inv ? statusPill(paid ? "Paid" : part ? "Partially paid" : "Invoiced", paid ? "green" : part ? "amber" : "blue")
-    : j.plan_id ? statusPill("Plan visit", "fill-green")
-    : s.invoices && j.billable !== false && j.status !== "cancelled" && j.totals && j.totals.total_cents > 0 && officeView() ? statusPill("Not invoiced", "amber") : "";
-  const site = h.onSite(s.visits);
-  const move = v && OPEN_VISIT.includes(v.status) && v.status === "scheduled" && officeView() && s.can && s.can.write;
-  return html`<section class="jp-head" aria-label="The job">
-    <h2 class="jp-title">${title}</h2>
-    ${who ? html`<p class="jp-who">${who}</p>` : ""}
-    <div class="jp-when">${v ? html`<a class="jp-day" ${attrs({ href: "#/visits/" + encodeURIComponent(v.id), "aria-label": `${when}: open the visit` })}>${when}</a>` : html`<span class="jp-day">${when}</span>`}${v && !v.date_only ? html`<span class="jp-time num">${range(v.start, v.end)}</span>` : ""}
-      ${len ? (move ? html`<button type="button" class="jp-len" ${attrs({ "data-v-move": v.id, "aria-label": `${len}, change the time` })}>${icon("clock")}<span>${len}</span>${I.chev}</button>` : html`<span class="jp-len">${icon("clock")}<span>${len}</span></span>`) : ""}</div>
+}
+
+// A round button: a 44 px tap target, its circle drawn at d px (Rotor's 36, 44, 48).
+export function roundBtn(ic, label, { d = 44, tone = "", href = null, data = null, ext = false, cls = "" } = {}) {
+  const a = { class: ["jp-o", tone, cls].filter(Boolean).join(" "), style: `--d:${d}px`, "aria-label": label, ...dataOf(data) };
+  if (href && ext) return html`<a ${openExternal(href)} ${attrs(a)}>${ic}</a>`;
+  if (href) return html`<a ${attrs({ ...a, href })}>${ic}</a>`;
+  return html`<button type="button" ${attrs(a)}>${ic}</button>`;
+}
+// A pill (Rotor's): red (the step), grey (the second step, "+ Item", Create Invoice).
+function pill(label, { ic = null, tone = "grey", data = null, href = null, cls = "", disabled = false, aria = null } = {}) {
+  const a = { class: ["jp-pill", tone, cls].filter(Boolean).join(" "), "aria-label": aria, ...dataOf(data) };
+  const inner = html`${ic || ""}<span>${label}</span>`;
+  if (href) return html`<a ${attrs({ ...a, href })}>${inner}</a>`;
+  return html`<button type="button" ${attrs({ ...a, disabled: disabled || null })}>${inner}</button>`;
+}
+
+// The visit card (Rotor's), for the job page and the Visit screen:
+//   { day, dayHref, cal: { label, data } | null, more: { label, data } | null, time, chip: { text, data? } | null,
+//     people: [{ name, color }], lines: html (status, timer, notes) , go: [{ label, ic, tone, data, aria? }], id, cls }
+export function visitCard({ day = "", dayHref = null, cal = null, more = null, time = "", chip = null, people = [], lines = "", go = [], id = null, cls = "", label = "The visit" } = {}) {
+  const c = chip ? html`<span class="jp-chip-v">${RI.clock}<span>${chip.text}</span>${chip.data ? RI.chev : ""}</span>` : "";
+  return html`<section ${attrs({ class: ["rs-card jp-card jp-visit", cls].filter(Boolean).join(" "), id, "aria-label": label })}>
+    <div class="jp-vrow"><h2 class="jp-vday">${dayHref ? html`<a ${attrs({ href: dayHref })}>${day}</a>` : day}</h2>
+      <span class="jp-vbtns">${cal ? roundBtn(RI.cal, cal.label, { d: 36, tone: "soft", data: cal.data }) : ""}${more ? roundBtn(RI.more, more.label, { d: 36, tone: "soft", data: more.data }) : ""}</span></div>
+    ${time || chip ? html`<div class="jp-vtime">${time ? html`<span class="num">${time}</span>` : ""}${chip ? (chip.data ? html`<button type="button" ${attrs({ class: "jp-chip", "aria-label": chip.aria || chip.text, ...dataOf(chip.data) })}>${c}</button>` : html`<span class="jp-chip">${c}</span>`) : ""}</div>` : ""}
     ${people.length ? html`<p class="jp-people">${people.map((p) => html`<span class="jp-person"><i ${attrs({ style: `background:${p.color}` })} aria-hidden="true"></i>${p.name}</span>`)}</p>` : ""}
-    <p class="rs-pills jp-pills">${statusPill(JOB_WORD[j.status] || j.status, JOB_TONE[j.status] || "grey")}${j.totals ? statusPill(money(j.totals.total_cents), "white") : ""}${bill}${j.billable === false ? statusPill("No charge", "grey") : ""}</p>
-    ${j.status === "cancelled" && j.cancel_reason ? html`<p class="warn-box">Cancelled: ${j.cancel_reason}</p>` : ""}
-    <p class="jp-made">${[j.created_at ? `Created ${dateYear(j.created_at)} at ${fmtTime(j.created_at)}` : "", site ? `${site} on site` : ""].filter(Boolean).join(" · ")}</p>
+    ${lines}
+    ${go.length ? html`<div class="jp-go">${go.map((g) => pill(g.label, { ic: g.ic, tone: g.tone || "grey", data: g.data, aria: g.aria, cls: g.cls || "" }))}</div>` : ""}
   </section>`;
 }
 
-function stepCard(s, ctx, v) {
-  const go = bigStep(s, ctx, v);
-  const n = stepsDone(v);
-  if (!go && !v) return "";
-  return html`<section class="jp-step" aria-label="The visit's steps">
-    ${go ? html`<button type="button" class="jp-go" ${attrs(go.attr)}>${icon(go.icon)}<span>${go.label}</span></button>${go.note ? html`<p class="jp-note">${go.note}</p>` : ""}` : ""}
-    ${v ? html`<ol class="jp-bar" ${attrs({ "aria-label": `${n} of 4 steps done` })}>${STEPS4.map((l, i) => html`<li ${attrs({ class: i < n ? "on" : "", "aria-current": i === n ? "step" : null })}><i aria-hidden="true"></i><span>${l}</span></li>`)}</ol>` : ""}
-  </section>`;
-}
-
-function quick(s, ctx, v, h) {
-  const j = s.job;
-  const c = s.can || {};
-  const office = officeView();
-  const b = h.billing(s, ctx.can);
-  const tile = (label, ic, a = {}, off = false) => html`<button type="button" class="jp-q" ${attrs({ ...a, "aria-disabled": off ? "true" : null })}>${ic}<span>${label}</span></button>`;
-  const link = (label, ic, href) => html`<a class="jp-q" ${attrs({ href })}>${ic}<span>${label}</span></a>`;
-  const open = v && v.status === "scheduled";
-  return html`<nav class="jp-quick" aria-label="Quick actions">
-    ${office && c.write && open ? tile("Reschedule", icon("cal"), { "data-v-move": v.id }) : office && c.add_visit ? tile("Reschedule", icon("cal"), { "data-book": true, "aria-label": "Book a visit" }) : tile("Reschedule", icon("cal"), { "data-jp-off": "Only the office moves a visit." }, true)}
-    ${b.inv && office ? link("Invoice", I.invoice, "#/invoices/" + encodeURIComponent(b.inv.id)) : b.ready ? tile("Invoice", I.invoice, { "data-make-invoice": true, "aria-label": "Create an invoice from this job" }) : tile("Invoice", I.invoice, { "data-jp-off": b.why || "There's no invoice to open." }, true)}
-    ${office && c.write && j.status === "completed" ? tile("Callback", I.callback, { "data-q-callback": true, "aria-label": "Book a callback (no charge)" }) : tile("Callback", I.callback, { "data-jp-off": "A callback is booked once the job is done." }, true)}
-    ${tile("More", icon("more"), { "data-jp-more": true, "aria-haspopup": "dialog" })}
-  </nav>`;
-}
-
-function planCard(s) {
-  const p = s.plan;
-  if (!p || !s.job.plan_id) return "";
-  const card = s.planCard;
-  const has = card && card.status !== "none" && (card.last4 || card.status === "active");
-  const per = s.job.totals ? `${money(s.job.totals.total_cents)} / visit` : "";
-  const how = [s.planFreq || "", per].filter(Boolean).join(" · ");
-  return html`<section class="rs-card jp-plan">
-    <a class="jp-plan-top" ${attrs({ href: "#/plans/" + encodeURIComponent(p.id) })}><span class="jp-tile" aria-hidden="true">${I.repeat}</span><span class="jp-plan-w"><b>${p.name || "Service plan"}</b>${how ? html`<span class="rs-sub">${how}</span>` : ""}</span><span class="chev" aria-hidden="true"></span></a>
-    ${s.planFeatures && s.planFeatures.money === false ? "" : html`<div class="jp-plan-card">${has ? statusPill(card.last4 ? `${String(card.brand || "Card").toUpperCase()} ending ${card.last4}` : "Card on file", "green") : html`${statusPill("No card on file", "amber")}${pillBtn("Add card on file", { tone: "white", href: "#/plans/" + encodeURIComponent(p.id) })}`}</div>`}
-  </section>`;
-}
-
-// Flyra's "Amount due" with Checkout and its three ways to be paid (dry run until payments are live).
-export function amountDue(s, ctx, h) {
-  if (!officeView()) return null;
-  if (!(ctx.can("payments:record") || ctx.can("invoices:send") || ctx.can("invoices:write"))) return null;
-  const due = h.balanceDue(s);
-  if (!(due > 0)) return null;
-  const b = h.billing(s, ctx.can);
-  const j = s.job;
-  if (!(b.inv && ["open", "draft"].includes(b.inv.st)) && !["in_progress", "completed"].includes(j.status)) return null;
-  return due;
-}
-function dueCard(s, ctx, h) {
-  const due = amountDue(s, ctx, h);
-  if (due === null) return "";
-  const act = (label, ic, data) => html`<button type="button" class="jp-pay" ${attrs(data)}>${ic}<span>${label}</span></button>`;
-  return html`<section class="rs-card jp-due" aria-label="Amount due">
-    <p class="jp-due-l">Amount due</p><p class="jp-due-v num">${money(due)}</p>
-    <button type="button" class="jp-checkout" data-checkout>${I.tap}<span>Checkout</span></button>
-    <div class="jp-pays">${act("Send link", icon("send"), { "data-pay-link": true })}${act("QR code", QR_ICON, { "data-pay-qr": true })}${act("Cash or check", I.wallet, { "data-pay-cash": true })}</div>
-  </section>`;
-}
-
-function customer(s) {
-  const c = s.contact;
+// The customer card: the initial on a grey tile, the name and phone, a red round call and a round message.
+export function customerCard(c, { office = officeView() } = {}) {
   if (!c) return "";
   const ph = (c.phones || []).find((x) => x.primary) || (c.phones || [])[0];
   const n = tel(ph);
   const name = c.display_name || "Customer";
-  return personCard({ name, sub: ph && ph.e164 ? formatPhone(ph.e164) : "", href: officeView() ? "#/contacts/" + encodeURIComponent(c.id) : null, initials: initialsOf(name).slice(0, 1), call: n ? "tel:" + n : null, text: n ? "sms:" + n : null });
+  const who = html`<span class="jp-tile" aria-hidden="true">${initialsOf(name).slice(0, 1)}</span><span class="jp-pw"><span class="jp-pn">${name}</span>${ph && ph.e164 ? html`<span class="jp-ps num">${formatPhone(ph.e164)}</span>` : ""}</span>`;
+  return html`<div class="rs-card jp-card jp-row rs-person">${office ? html`<a ${attrs({ class: "jp-pl", href: "#/contacts/" + encodeURIComponent(c.id) })}>${who}</a>` : html`<span class="jp-pl">${who}</span>`}
+    <span class="jp-acts">${n ? roundBtn(RI.call, "Call " + name, { tone: "red", href: "tel:" + n }) : ""}${n ? roundBtn(RI.chat, "Text " + name, { tone: "white", href: "sms:" + n }) : ""}</span></div>`;
 }
-function place(s) {
-  const p = s.property;
+// The address card: a pin tile, the street over "Town, MN, 55328" (+ the gate code), round navigate and pencil.
+export function placeCard(p, { office = officeView(), where = "" } = {}) {
   const a = p && p.address;
-  if (!a || !(a.street1 || a.city)) return "";
-  const gate = p.access && p.access.gate_code;
-  return addressCard({
-    line1: a.street1 || a.city,
-    line2: [[a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · "),
-    nav: directionsUrl(a),
-    edit: officeView() && p.id ? { label: "Edit the place and its access", href: "#/properties/" + encodeURIComponent(p.id) } : null,
+  if (!(a && (a.street1 || a.city)) && !where) return "";
+  const gate = p && p.access && p.access.gate_code;
+  const line1 = a ? a.street1 || a.city : where;
+  const line2 = a ? [[a.city, a.state, a.zip].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · ") : "";
+  const nav = directionsUrl(a || where);
+  return html`<div class="rs-card jp-card jp-row rs-addr"><span class="jp-pl"><span class="jp-tile" aria-hidden="true">${RI.pin}</span><span class="jp-pw"><span class="jp-pn">${line1}</span>${line2 ? html`<span class="jp-ps">${line2}</span>` : ""}</span></span>
+    <span class="jp-acts">${nav ? roundBtn(RI.nav, "Directions", { tone: "white", href: nav, ext: true }) : ""}${office && p && p.id ? roundBtn(RI.pen, "Edit the place and its access", { tone: "white", href: "#/properties/" + encodeURIComponent(p.id) }) : ""}</span></div>`;
+}
+
+// Pricing (Rotor's):
+//   rows: [{ title, amount, sub?, by?: { name, color }, data? }]; add: { data, label? } ("+ Item");
+//   subtotal; discounts: [{ label, amount, data? }]; addDiscount: { data }; total; paid; cta: { label, data, disabled, why }
+export function pricingCard({ rows = [], add = null, subtotal = null, discounts = [], addDiscount = null, total = null, paid = false, cta = null, empty = "No work on this job yet.", cls = "" } = {}) {
+  const row = (r) => {
+    const top = html`<span class="jp-rt"><span class="jp-rn">${r.title}</span>${r.amount ? html`<span class="jp-ra num">${r.amount}</span>` : ""}</span>${r.sub ? html`<span class="jp-rs">${r.sub}</span>` : ""}${r.by ? html`<span class="jp-onsite"><span class="jp-tag">Added on site</span><span class="jp-av" ${attrs({ title: r.by.name, style: r.by.color ? `background:${r.by.color}` : null })}>${initialsOf(r.by.name)}</span><span class="sr">by ${r.by.name}</span></span>` : ""}`;
+    return html`<li>${r.data ? html`<button type="button" ${attrs({ class: "jp-r", "aria-label": r.aria || null, ...dataOf(r.data) })}>${top}</button>` : html`<div class="jp-r">${top}</div>`}</li>`;
+  };
+  const sums = subtotal !== null || total !== null;
+  return html`<section ${attrs({ class: ["rs-card jp-card jp-pricing", cls].filter(Boolean).join(" ") })}><h3 class="jp-h">Pricing</h3>
+    ${rows.length ? html`<ul class="jp-rows" aria-label="Line items">${rows.map(row)}</ul>` : html`<p class="rs-empty jp-empty">${empty}</p>`}
+    ${add ? html`<div class="jp-add">${pill(add.label || "Item", { ic: RI.plus, data: add.data, aria: add.aria || "Add an item", cls: "sm" })}</div>` : ""}
+    ${sums ? html`<div class="jp-sums">
+      ${subtotal !== null ? html`<div class="jp-sum"><span>Subtotal</span><span class="num">${subtotal}</span></div>` : ""}
+      ${discounts.map((d) => html`<div class="jp-sum green"><span class="jp-dl">${d.label}${d.data ? html`<button type="button" ${attrs({ class: "jp-o jp-pen", style: "--d:28px", "aria-label": `Change ${d.label}`, ...dataOf(d.data) })}>${RI.pen}</button>` : ""}</span><span class="num">${d.amount}</span></div>`)}
+      ${addDiscount ? html`<div class="jp-add">${pill("Add discount", { ic: RI.plus, data: addDiscount.data, cls: "sm" })}</div>` : ""}
+      ${total !== null ? html`<div class="jp-tot"><span>Total</span><span class="${"num" + (paid ? " paid" : "")}">${total}</span></div>` : ""}
+      ${paid ? html`<p class="rs-paid">Paid in full</p>` : ""}</div>` : ""}
+    ${cta ? html`<div class="jp-cta">${pill(cta.label, { data: cta.data, disabled: cta.disabled, cls: "wide" })}${cta.why ? html`<p class="rs-sub wk-why">${cta.why}</p>` : ""}</div>` : ""}
+  </section>`;
+}
+
+// Each discount's share of the job's discount (percentages of the subtotal, the last takes what's left),
+// as the desk and the invoice show it: cents, one per job.discounts.
+export function discountShares(j) {
+  const ds = (j && j.discounts) || [];
+  if (!j || !j.totals) return ds.map(() => 0);
+  const sub = j.totals.subtotal_cents || 0;
+  let left = j.totals.discount_cents || 0;
+  return ds.map((d, i) => { const want = d.type === "percentage" ? Math.round((sub * d.value) / 10000) : d.value; const a = i === ds.length - 1 ? left : Math.min(left, want); left -= a; return a; });
+}
+const pct = (bp) => `${String(bp / 100).replace(/\.0+$/, "")}%`;
+export const discountLabel = (d) => `${d.name || "Discount"}${d.type === "percentage" ? ` (${pct(d.value)})` : ""}`;
+
+// ------------------------------------------------------------ the job page
+
+// The pills under the visit, for the visit's own people (the same steps as
+// the Visit screen); someone else gets the office's step (book, mark done).
+export function goPills(s, ctx, v) {
+  const c = s.can || {};
+  const j = s.job;
+  const mine = !!(v && ctx && ctx.user && (v.assignee_ids || []).includes(ctx.user.id) && OPEN_VISIT.includes(v.status));
+  if (mine) {
+    const left = itemsOf(v).filter((i) => i.required && !itemDone(i)).length;
+    const why = left ? `${left} required ${left === 1 ? "item" : "items"} on the checklist first` : null;
+    if (v.status === "scheduled") return [{ label: "Start visit", ic: RI.play, tone: "red", data: { "v-start": v.id } }, { label: "On My Way", ic: RI.truck, data: { "v-omw": v.id } }];
+    if (v.status === "en_route") return [{ label: "Start visit", ic: RI.play, tone: "red", data: { "v-start": v.id } }, { label: "On the way", ic: RI.truck, data: { "jp-off": "On my way went out. Start the visit when you get there." }, cls: "done" }];
+    if (v.status === "paused") return [{ label: "Resume", ic: RI.play, tone: "red", data: { "v-start": v.id } }, { label: "Complete", ic: RI.check, data: { "v-done": v.id }, aria: why ? `Complete visit: ${why}` : null }];
+    return [{ label: "Complete visit", ic: RI.check, tone: "red", data: { "v-done": v.id }, aria: why ? `Complete visit: ${why}` : null }, { label: "Pause", ic: RI.pause, data: { "v-pause": v.id } }];
+  }
+  const visits = s.visits || [];
+  if (!visits.some((x) => OPEN_VISIT.includes(x.status)) && c.add_visit && j.status === "unscheduled") return [{ label: "Book a visit", ic: RI.cal, tone: "red", data: { book: true } }];
+  const allDone = visits.length && visits.every((x) => !OPEN_VISIT.includes(x.status)) && visits.some((x) => x.status === "completed");
+  if (c.complete && allDone && j.status !== "completed") return [{ label: "Mark done", ic: RI.check, tone: "red", data: { complete: true } }];
+  return [];
+}
+
+const VS_WORD = { en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
+function jobVisitCard(s, ctx, v, h) {
+  const j = s.job;
+  const c = s.can || {};
+  const office = officeView();
+  const openV = v && OPEN_VISIT.includes(v.status);
+  const move = office && c.write && v && v.status === "scheduled";
+  const len = v && !v.date_only ? lengthText(v) : "";
+  const cal = move ? { label: "Reschedule the visit", data: { "v-move": v.id } } : office && c.add_visit && !openV ? { label: "Book a visit", data: { book: true } } : null;
+  const day = v ? dayText(v.date) : j.target_month && j.status === "unscheduled" ? `Due by ${MONTH.format(new Date(j.target_month + "-15T12:00:00Z"))}` : "Not booked yet";
+  const lines = [];
+  if (v && v.status !== "scheduled" && VS_WORD[v.status]) lines.push(html`<p class="jp-vst">${VS_WORD[v.status]}${h.onSite(s.visits) ? ` · ${h.onSite(s.visits)} on site` : ""}</p>`);
+  if (j.status === "cancelled" && j.cancel_reason) lines.push(html`<p class="warn-box">Cancelled: ${j.cancel_reason}</p>`);
+  const go = goPills(s, ctx, v);
+  const left = v && go.some((g) => g.data && g.data["v-done"]) ? itemsOf(v).filter((i) => i.required && !itemDone(i)).length : 0;
+  if (left) lines.push(html`<p class="jp-vnote">${left} required ${left === 1 ? "item" : "items"} on the checklist first</p>`);
+  return visitCard({
+    day, dayHref: v ? "#/visits/" + encodeURIComponent(v.id) : null,
+    cal, more: v || (s.visits || []).length ? { label: "The visit's options", data: { "jp-vmore": true } } : null,
+    time: v ? timeText(v) : "", chip: len ? { text: len, data: move ? { "v-move": v.id } : null, aria: move ? `${len}, change the time` : len } : null,
+    people: whoGoes(v, s.users, s.people), lines, go,
   });
 }
 
-// Pricing: Flyra's card a line (name, camera, Qty and Price) inside Rotor's card.
-function pricing(s, ctx, v, h) {
+function jobPricing(s, ctx, h) {
   const j = s.job;
   const c = s.can || {};
   const open = !["completed", "cancelled"].includes(j.status);
@@ -213,36 +225,26 @@ function pricing(s, ctx, v, h) {
   const ds = j.discounts || [];
   const b = h.billing(s, ctx.can);
   if (!lines.length && !edit) return "";
-  const photos = (s.visits || []).flatMap((x) => x.photos || []);
   const users = s.users || [];
-  const canPhoto = !!(v && v.status !== "cancelled" && (c.write || (ctx.user && (v.assignee_ids || []).includes(ctx.user.id))));
   const qty = (l) => { const q = (l.qty_milli ?? 1000) / 1000; return Number.isInteger(q) ? String(q) : q.toFixed(2); };
-  const card = (l) => {
+  const amounts = discountShares(j);
+  const rows = lines.map((l) => {
     const by = l.upsell_user_id ? users.find((u) => u.id === l.upsell_user_id) || (s.people && s.people[l.upsell_user_id]) || { name: "The tech" } : null;
-    const shots = photos.filter((p) => p.line && p.line === l.id).length;
-    const main = html`<span class="jp-li-name"><b>${l.title}</b>${by ? html`<span class="jp-onsite"><span class="jp-tag">Added on site</span><span class="jp-av" ${attrs({ title: by.name, style: by.color ? `background:${by.color}` : null })}>${initialsOf(by.name)}</span><span class="sr">by ${by.name}</span></span>` : ""}</span>`;
-    const foot = html`<span class="jp-li-q"><span class="jp-li-k">Qty${edit ? I.chev : ""}</span><span class="num">${qty(l)}</span></span><span class="jp-li-p"><span class="jp-li-k">Price</span><b class="num">${prices && l.total_cents != null ? money(l.total_cents) : ""}</b></span>`;
-    return html`<li class="jp-li">
-      <div class="jp-li-top">${edit ? html`<button type="button" class="jp-li-open" ${attrs({ "data-line": l.id, "aria-label": `${l.title}, change it` })}>${main}</button>` : html`<span class="jp-li-open">${main}</span>`}
-        ${canPhoto && l.id ? html`<button type="button" class="jp-cam" ${attrs({ "data-line-photo": l.id, "aria-label": `A photo of ${l.title}${shots ? `, ${shots} so far` : ""}` })}>${icon("camera")}${shots ? html`<span class="jp-cam-n">${String(shots)}</span>` : ""}</button>` : ""}</div>
-      ${edit ? html`<button type="button" class="jp-li-foot" ${attrs({ "data-line": l.id, "aria-label": `${l.title}: quantity ${qty(l)}, change it` })}>${foot}</button>` : html`<div class="jp-li-foot">${foot}</div>`}
-    </li>`;
-  };
-  // each discount's share of the total, as the desk shows it
-  const sub = prices ? j.totals.subtotal_cents : 0;
-  let left = prices ? j.totals.discount_cents || 0 : 0;
-  const amounts = ds.map((d, i) => { const want = d.type === "percentage" ? Math.round((sub * d.value) / 10000) : d.value; const a = i === ds.length - 1 ? left : Math.min(left, want); left -= a; return a; });
-  return html`<section class="rs-card jp-pricing wk-pricing"><h3 class="jp-h">Pricing</h3>
-    ${lines.length ? html`<ul class="jp-lines" aria-label="Line items">${lines.map(card)}</ul>` : html`<p class="rs-empty">No work on this job yet.</p>`}
-    ${edit ? html`<div class="jp-add">${pillBtn("Item", { icon: "plus", data: { "add-line": true }, aria: "Add an item" })}</div>` : ""}
-    ${prices ? html`<div class="jp-sums">
-      <div class="jp-sum"><span>Subtotal</span><span class="num">${money(j.totals.subtotal_cents)}</span></div>
-      ${ds.map((d, i) => html`<div class="jp-sum green"><span class="jp-dl">${h.discLabel(d)}${edit ? rnd("edit", `Change ${h.discLabel(d)}`, { tone: "grey", sm: true, data: { disc: d.id } }) : ""}</span><span class="num">${money(-amounts[i])}</span></div>`)}
-      ${edit ? html`<div class="jp-add">${pillBtn("Add discount", { icon: "plus", data: { "add-discount": true } })}</div>` : ""}
-      <div class="jp-tot"><span>Total</span><span class="${"num" + (b.inv && b.inv.st === "paid" ? " paid" : "")}">${money(j.totals.total_cents)}</span></div>
-      ${b.inv && b.inv.st === "paid" ? html`<p class="rs-paid">Paid in full</p>` : ""}</div>` : ""}
-    ${b.may && !b.inv ? html`<div class="jp-cta">${pillBtn("Create Invoice", { wide: true, data: { "make-invoice": true }, disabled: !b.ready })}${b.why ? html`<p class="rs-sub wk-why">${b.why}</p>` : ""}</div>` : ""}
-  </section>`;
+    const q = qty(l);
+    return {
+      title: l.title, amount: prices && l.total_cents != null ? money(l.total_cents) : "",
+      sub: q !== "1" ? `${q} × ${prices && l.unit_cents != null ? money(l.unit_cents) : "each"}` : "",
+      by, data: edit && l.id ? { line: l.id } : null, aria: edit ? `${l.title}, change it` : null,
+    };
+  });
+  return pricingCard({
+    cls: "wk-pricing", rows, add: edit ? { data: { "add-line": true } } : null,
+    subtotal: prices ? money(j.totals.subtotal_cents) : null,
+    discounts: prices ? ds.map((d, i) => ({ label: h.discLabel(d), amount: money(-amounts[i]), data: edit ? { disc: d.id } : null })) : [],
+    addDiscount: prices && edit ? { data: { "add-discount": true } } : null,
+    total: prices ? money(j.totals.total_cents) : null, paid: !!(b.inv && b.inv.st === "paid"),
+    cta: b.may && !b.inv ? { label: "Create Invoice", data: { "make-invoice": true }, disabled: !b.ready, why: b.why } : null,
+  });
 }
 
 function invoices(s, ctx, h) {
@@ -250,21 +252,21 @@ function invoices(s, ctx, h) {
   const b = h.billing(s, ctx.can);
   const add = b.ready ? { label: "Create an invoice from this job", data: { "make-invoice": true } }
     : ctx.can("invoices:write") && s.contact ? { label: "A new invoice for this customer", href: `#/invoices/new/${encodeURIComponent(s.contact.id)}` } : null;
-  return html`<section class="rs-card jp-invs wk-invs"><div class="jp-ch"><h3 class="jp-h">Invoices</h3>${add ? rnd("plus", add.label, { sm: true, href: add.href, data: add.data }) : ""}</div>
+  return html`<section class="rs-card jp-card jp-invs wk-invs"><div class="jp-ch"><h3 class="jp-h">Invoices</h3>${add ? roundBtn(RI.plus, add.label, { d: 32, tone: "bare", href: add.href, data: add.data }) : ""}</div>
     ${s.invoices.length ? s.invoices.map((i) => html`<a class="wk-irow" href="${"#/invoices/" + encodeURIComponent(i.id)}"><span class="wk-iw"><b>#${i.n}</b><span class="rs-sub">${h.invLine(i)}</span></span><span class="${"num wk-iamt" + (i.st === "paid" ? " paid" : "")}">${money(i.tot)}</span></a>`)
-      : html`<p class="rs-empty">No invoices yet</p>`}</section>`;
+      : html`<p class="jp-none">No invoices yet</p>`}</section>`;
 }
 
+// Job notes: the crew's notes in Rotor's grey box with the upload; the office's own notes under it once
+// there are some (the "..." opens them otherwise).
 function notes(s, v) {
   const j = s.job;
   const c = s.can || {};
   const office = officeView();
-  const plan = office && s.plan && s.plan.notes ? s.plan : null;
-  const up = v && c.write ? html`<button type="button" class="jp-up" data-notes-upload aria-label="Attach a photo or a file to this visit">${I.upload}</button>` : "";
-  return html`<section class="rs-card jp-notes wk-jnotes"><h3 class="jp-h">Job notes</h3>
-    ${c.write ? html`<div class="jp-nbox">${notesBox(j.crew_notes, { name: "crew", label: "Job notes (the crew sees these)", placeholder: "Add notes for this job...", rows: 4 })}${up}</div>` : j.crew_notes ? html`<p class="wk-pre">${j.crew_notes}</p>` : html`<p class="rs-empty">No notes.</p>`}
-    ${office && (c.write || j.office_notes) ? html`<h4 class="wk-nlabel">Office notes</h4><p class="rs-sub wk-why">The crew never sees these.</p>${c.write ? notesBox(j.office_notes, { name: "office", label: "Office notes", placeholder: "Add a note for the office..." }) : html`<p class="wk-pre">${j.office_notes}</p>`}` : ""}
-    ${plan ? html`<h4 class="wk-nlabel">Service plan notes</h4><a class="rs-inset sv-plan" href="${"#/plans/" + encodeURIComponent(plan.id)}"><span class="rs-sub"><b>Plan notes</b><br>${plan.notes}</span><span class="chev" aria-hidden="true"></span></a>` : ""}
+  const up = v && c.write ? html`<button type="button" class="jp-o jp-up white" style="--d:32px" data-notes-upload aria-label="Attach a photo or a file to this visit">${RI.upload}</button>` : "";
+  return html`<section class="rs-card jp-card jp-notes wk-jnotes"><h3 class="jp-h">Job notes</h3>
+    ${c.write ? html`<div class="jp-nbox"><textarea class="jp-ta" data-notes="crew" aria-label="Job notes (the crew sees these)" placeholder="Add notes for this job..." rows="2">${j.crew_notes || ""}</textarea>${up}</div>` : j.crew_notes ? html`<p class="wk-pre">${j.crew_notes}</p>` : html`<p class="jp-none">No notes.</p>`}
+    ${office && j.office_notes ? html`<h4 class="wk-nlabel">Office notes</h4><div class="jp-nbox">${c.write ? html`<textarea class="jp-ta" data-notes="office" aria-label="Office notes (the crew never sees these)" placeholder="Add a note for the office..." rows="2">${j.office_notes}</textarea>` : html`<p class="wk-pre">${j.office_notes}</p>`}</div>` : ""}
   </section>`;
 }
 
@@ -278,30 +280,33 @@ function soldBy(s) {
   const name = u ? u.name : !/^us_/.test(id) ? id : "";
   if (!name) return "";
   const href = q ? "#/quotes/" + encodeURIComponent(q.id) : "#/plans/" + encodeURIComponent(p.id);
-  return html`<a class="jp-sold" ${attrs({ href })}><span class="jp-av lg" ${attrs({ style: u && u.color ? `background:${u.color}` : null })} aria-hidden="true">${initialsOf(name)}</span><span class="jp-sold-w"><b>Sold by ${name}</b><span class="rs-sub">${q ? `Edit on quote ${q.number || ""}`.trim() : "Edit on the service plan"}</span></span></a>`;
+  return html`<a class="jp-sold" ${attrs({ href })}><span class="jp-av md" ${attrs({ style: u && u.color ? `background:${u.color}` : null })} aria-hidden="true">${initialsOf(name)}</span><span class="jp-sold-w"><span class="jp-sold-n">Sold by ${name}</span><span class="jp-sold-s">${q ? `Edit on quote ${q.number || ""}`.trim() : "Edit on the service plan"}</span></span></a>`;
+}
+
+// Flyra's "Amount due" (now rows of the "..."): what's owed, when there's something to collect.
+export function amountDue(s, ctx, h) {
+  if (!officeView()) return null;
+  if (!(ctx.can("payments:record") || ctx.can("invoices:send") || ctx.can("invoices:write"))) return null;
+  const due = h.balanceDue(s);
+  if (!(due > 0)) return null;
+  const b = h.billing(s, ctx.can);
+  const j = s.job;
+  if (!(b.inv && ["open", "draft"].includes(b.inv.st)) && !["in_progress", "completed"].includes(j.status)) return null;
+  return due;
 }
 
 export function phoneView(s, ctx, h) {
   const j = s.job;
-  const c = s.can || {};
-  const office = officeView();
   const v = currentVisit(s.visits || []);
-  const visits = s.visits || [];
   return html`<div class="rs-page wk wk-job jp">
-    ${headCard(s, ctx, v, h)}
-    ${stepCard(s, ctx, v)}
-    ${place(s)}
-    ${office ? quick(s, ctx, v, h) : ""}
-    ${office ? planCard(s) : ""}
-    ${dueCard(s, ctx, h)}
-    ${customer(s)}
-    ${pricing(s, ctx, v, h)}
+    ${jobVisitCard(s, ctx, v, h)}
+    ${customerCard(s.contact)}
+    ${placeCard(s.property)}
+    ${jobPricing(s, ctx, h)}
     ${invoices(s, ctx, h)}
     ${notes(s, v)}
     ${soldBy(s)}
-    ${visits.length > 1 ? disclosure("Visits", { value: String(visits.length), sub: visits.map((x) => `${dateShort(x.date)} ${VISIT_STATUS[x.status] || x.status}`).slice(0, 3).join(" · "), data: { "jp-visits": true } }) : ""}
     ${j.rotor ? html`<p class="foot-note">From Rotor (job ${j.number_label}). Changes here stay in the CRM.</p>` : ""}
-    ${office && c.cancel ? html`<button type="button" class="jp-del" data-del-job>Delete Job</button>` : ""}
     ${v && itemsOf(v).length ? html`<div class="ck-room" aria-hidden="true"></div>${checklistPill(v)}` : ""}
   </div>`;
 }

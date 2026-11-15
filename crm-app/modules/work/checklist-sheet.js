@@ -55,7 +55,7 @@ function inner(i, v, { work }) {
   }
   if (k === "multi") {
     const on = new Set(Array.isArray(i.value) ? i.value : []);
-    return html`<fieldset class="ck-group"><legend class="ck-q">${i.label}${star(i)}${(i.min || 1) > 1 && (i.options || []).length > 1 ? html`<span class="ck-hint">${(i.min || 1) >= (i.options || []).length ? "All of them" : `At least ${i.min}`}</span>` : ""}</legend>
+    return html`<fieldset class="ck-group"><legend class="ck-q">${i.label}${star(i)}${(i.min || 1) > 1 && (i.options || []).length > 1 ? html`<span class="ck-hint sr">${(i.min || 1) >= (i.options || []).length ? ", tick all of them" : `, tick at least ${i.min}`}</span>` : ""}</legend>
       ${(i.options || []).map((o, n) => html`<button type="button" class="ck-row sub" ${attrs({ "data-ck-opt": i.key, "data-n": String(n), "aria-pressed": on.has(o) ? "true" : "false", "aria-disabled": work ? null : "true" })}>${box(on.has(o))}<span class="ck-l">${o}</span></button>`)}</fieldset>`;
   }
   if (k === "photo") {
@@ -68,7 +68,7 @@ function inner(i, v, { work }) {
   const id = `ck-${i.key}`;
   if (k === "select") {
     return html`<label class="ck-q" ${attrs({ for: id })}>${i.label}${star(i)}</label>
-      <span class="ck-sel"><select ${attrs({ id, "data-ck-sel": i.key, disabled: work ? null : true })}><option value="">Select an option</option>${(i.options || []).map((o) => html`<option ${attrs({ value: o, selected: i.value === o })}>${o}</option>`)}</select></span>`;
+      <span class="ck-sel"><select ${attrs({ id, "data-ck-sel": i.key, required: true, disabled: work ? null : true })}><option value="">Select an option</option>${(i.options || []).map((o) => html`<option ${attrs({ value: o, selected: i.value === o })}>${o}</option>`)}</select></span>`;
   }
   if (k === "count") {
     return html`<label class="ck-q" ${attrs({ for: id })}>${i.label}${star(i)}</label>
