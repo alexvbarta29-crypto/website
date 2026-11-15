@@ -607,6 +607,14 @@ async function checkout(ctx, el, mode = null) {
   const s = ctx.state;
   const b = billing(s, ctx.can);
   const v = jobVisit(s);
+  // the office's Checkout button: Flyra's Checkout sheet (service, tip your crew, pay); techs keep the visit's Collect payment
+  if (!mode && ctx.can("invoices:write") && (b.inv || b.ready)) {
+    try {
+      const { openCheckout } = await import("../money/checkout.js");
+      const sh = await openCheckout({ api: ctx.api, invoiceId: b.inv ? b.inv.id : null, jobId: b.inv ? null : s.job.id, onDone: () => ctx.refresh() });
+      if (sh) return;
+    } catch (err) { toast(err.message || "Checkout didn't open.", { bad: true }); return; }
+  }
   if (v && ctx.can("payments:record")) {
     try {
       const mod = (await import("../money/visit-collect.js")).default;
