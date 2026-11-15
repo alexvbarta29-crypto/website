@@ -13,7 +13,7 @@
 //   m2  3 login texts a day per person, however many numbers they have.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, customer, importedCustomer, staffPlan, planOf, recOf, finishRun, drain, alog, outbox, pin, advance, scope, store, PL, M, WORK, AS, PJSON, fakeServices } from "./fixtures.mjs";
+import { setup, customer, importedCustomer, staffPlan, planOf, recOf, finishRun, drain, alog, outbox, pin, advance, scope, store, ids, PL, M, WORK, AS, PJSON, fakeServices } from "./fixtures.mjs";
 
 const lanes = await import("../../../netlify/lib/crm/core/lanes.mjs");
 const PORTAL = await import("../../../netlify/lib/crm/portal/core.mjs");
@@ -85,10 +85,16 @@ test("B4: one CRM plan of a customer Rotor owns never starves the backfill of th
     const off = fakeServices({ "work.createJobs": null });   // made before Scheduling: no jobs yet
     let a; const others = [];
     try {
-      a = (await staffPlan(t, owner, { contact: await importedCustomer() })).plan;
-      // ids are random: keep adding plans until some sort before it and some after (at least 6)
-      const both = () => others.some((p) => p.id > a.id) && others.some((p) => p.id < a.id);
-      for (let i = 0; i < 40 && (others.length < 6 || !both()); i++) others.push((await staffPlan(t, owner, { contact: await customer(owner) })).plan);
+      // a client_id makes the plan's id (deriveId("plan", "c:" + client_id)): pick ids so three plans
+      // sort before Rotor's customer's plan and three after, every run (random ids missed one side 1 run in 20)
+      const idOf = (cid) => ids.deriveId("plan", `c:${cid}`);
+      const aCid = "b4-rotor-plan";
+      const cands = Array.from({ length: 64 }, (_, i) => `b4-other-${i}`);
+      const pick = [...cands.filter((c) => idOf(c) < idOf(aCid)).slice(0, 3), ...cands.filter((c) => idOf(c) > idOf(aCid)).slice(0, 3)];
+      assert.equal(pick.length, 6, "three on each side");
+      a = (await staffPlan(t, owner, { contact: await importedCustomer(), client_id: aCid })).plan;
+      assert.equal(a.id, idOf(aCid));
+      for (const cid of pick) others.push((await staffPlan(t, owner, { contact: await customer(owner), client_id: cid })).plan);
     } finally { off(); }
     for (const at of ["2026-11-17T16:05:00Z", "2026-11-17T17:05:00Z"]) { pin(at); await drain(t, 3); }
     assert.ok(others.some((p) => p.id > a.id) && others.some((p) => p.id < a.id), "plans on both sides of it");
