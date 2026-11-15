@@ -40,7 +40,7 @@ import { ensureStyles as officeStyles, slotText, kindLabel, faces, names, schedu
 
 const VISIT_TONE = { scheduled: "blue", en_route: "amber", in_progress: "amber", paused: "amber", completed: "green", no_access: "red", cancelled: "red" };
 import { owedFrom } from "./visit-step.js";
-import { isPhone, PHONE_MEDIA, visitCard, customerCard, placeCard, pricingCard, dayText, timeText, lengthText, whoGoes, RI } from "./office-job-phone.js";
+import { isPhone, PHONE_MEDIA, visitCard, customerCard, placeCard, pricingCard, dayText, timeText, lengthText, whoGoes, discountShares, discountLabel, RI } from "./office-job-phone.js";
 
 // The office's stylesheet and the Visit's own (the quick row and the big button).
 let styled = false;
@@ -270,7 +270,10 @@ function phoneOffice(s, ctx, { office, addr, where }) {
       people: whoGoes(v, s.users, people), lines, go: pay ? [{ label: go && go.key === "pay" ? "Get paid" : (s.collectPill && s.collectPill.label) || "Collect payment", ic: RI.check, tone: go && go.key === "pay" ? "red" : "grey", data: { vact: pay } }] : [] })}
     ${customerCard(s.contact, { office })}
     ${placeCard(s.property, { office, where: addr ? "" : where })}
-    ${jl.length ? pricingCard({ rows: jl.map((l) => { const q = (l.qty_milli ?? 1000) / 1000; const by = l.upsell_user_id ? people.find((p) => p.id === l.upsell_user_id) || { name: "The crew" } : null; return { title: l.title, amount: prices && l.total_cents != null ? money(l.total_cents) : "", sub: q !== 1 ? `${q} × ${prices && l.unit_cents != null ? money(l.unit_cents) : "each"}` : "", by }; }), total: prices && j.totals ? money(j.totals.total_cents) : null }) : ""}
+    ${jl.length ? pricingCard({ rows: jl.map((l) => { const q = (l.qty_milli ?? 1000) / 1000; const by = l.upsell_user_id ? people.find((p) => p.id === l.upsell_user_id) || { name: "The crew" } : null; return { title: l.title, amount: prices && l.total_cents != null ? money(l.total_cents) : "", sub: q !== 1 ? `${q} × ${prices && l.unit_cents != null ? money(l.unit_cents) : "each"}` : "", by }; }),
+      subtotal: prices && j.totals && (j.discounts || []).length ? money(j.totals.subtotal_cents) : null,
+      discounts: prices && j.totals ? (j.discounts || []).map((x, i) => ({ label: discountLabel(x), amount: money(-discountShares(j)[i]) })) : [],
+      total: prices && j.totals ? money(j.totals.total_cents) : null }) : ""}
     <section class="rs-card jp-card jp-notes"><h3 class="jp-h">Job notes</h3>${crew.length || v.tech_notes ? html`${crew.length ? html`<p class="wk-pre jp-crew">${crew.join("\n")}</p>` : ""}${v.tech_notes ? html`<p class="wk-pre jp-crew">${v.tech_notes}</p>` : ""}` : html`<p class="jp-none">No notes.</p>`}
       ${office && j && j.office_notes ? html`<h4 class="wk-nlabel">Office notes</h4><p class="wk-pre">${j.office_notes}</p>` : ""}</section>
     ${(v.photos || []).length ? photosCard(v) : ""}`;

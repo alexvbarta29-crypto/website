@@ -23,7 +23,7 @@ import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained
 import { nextStep } from "./visit-step.js";
 import { itemDone, itemPhotos } from "./checklist-kit.js";
 import { openChecklist } from "./checklist-sheet.js";
-import { isPhone, visitCard, customerCard, placeCard, pricingCard, dayText, timeText, lengthText, whoGoes, RI } from "./office-job-phone.js";
+import { isPhone, visitCard, customerCard, placeCard, pricingCard, dayText, timeText, lengthText, whoGoes, discountShares, discountLabel, RI } from "./office-job-phone.js";
 
 // What a change made with no signal says (the layout report: "Saved, will send when online").
 export const SAVED_OFFLINE = "Saved, will send when online.";
@@ -252,7 +252,10 @@ function phoneRender(s, ctx) {
       const q = (l.qty_milli ?? 1000) / 1000;
       const by = l.upsell_user_id ? people.find((p) => p.id === l.upsell_user_id) || { name: "The crew" } : null;
       return { title: l.title, amount: prices && l.total_cents != null ? money(l.total_cents) : "", sub: q !== 1 ? `${q} × ${prices && l.unit_cents != null ? money(l.unit_cents) : "each"}` : "", by };
-    }), add: canAdd ? { data: { addline: true }, aria: "Add to the job" } : null, total: prices && job && job.totals ? money(job.totals.total_cents) : null }) : ""}
+    }), add: canAdd ? { data: { addline: true }, aria: "Add to the job" } : null,
+      subtotal: prices && job && job.totals && (job.discounts || []).length ? money(job.totals.subtotal_cents) : null,
+      discounts: prices && job && job.totals ? (job.discounts || []).map((x, i) => ({ label: discountLabel(x), amount: money(-discountShares(job)[i]) })) : [],
+      total: prices && job && job.totals ? money(job.totals.total_cents) : null }) : ""}
     ${phoneNotes(s, ctx)}
     ${last}
     ${photos.length ? photosCard(s, ctx, { phone: true }) : ""}

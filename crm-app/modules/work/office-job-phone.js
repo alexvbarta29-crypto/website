@@ -156,6 +156,18 @@ export function pricingCard({ rows = [], add = null, subtotal = null, discounts 
   </section>`;
 }
 
+// Each discount's share of the job's discount (percentages of the subtotal, the last takes what's left),
+// as the desk and the invoice show it: cents, one per job.discounts.
+export function discountShares(j) {
+  const ds = (j && j.discounts) || [];
+  if (!j || !j.totals) return ds.map(() => 0);
+  const sub = j.totals.subtotal_cents || 0;
+  let left = j.totals.discount_cents || 0;
+  return ds.map((d, i) => { const want = d.type === "percentage" ? Math.round((sub * d.value) / 10000) : d.value; const a = i === ds.length - 1 ? left : Math.min(left, want); left -= a; return a; });
+}
+const pct = (bp) => `${String(bp / 100).replace(/\.0+$/, "")}%`;
+export const discountLabel = (d) => `${d.name || "Discount"}${d.type === "percentage" ? ` (${pct(d.value)})` : ""}`;
+
 // ------------------------------------------------------------ the job page
 
 // The pills under the visit, for the visit's own people (the same steps as
@@ -215,10 +227,7 @@ function jobPricing(s, ctx, h) {
   if (!lines.length && !edit) return "";
   const users = s.users || [];
   const qty = (l) => { const q = (l.qty_milli ?? 1000) / 1000; return Number.isInteger(q) ? String(q) : q.toFixed(2); };
-  // each discount's share of the total, as the desk shows it
-  const sub = prices ? j.totals.subtotal_cents : 0;
-  let left = prices ? j.totals.discount_cents || 0 : 0;
-  const amounts = ds.map((d, i) => { const want = d.type === "percentage" ? Math.round((sub * d.value) / 10000) : d.value; const a = i === ds.length - 1 ? left : Math.min(left, want); left -= a; return a; });
+  const amounts = discountShares(j);
   const rows = lines.map((l) => {
     const by = l.upsell_user_id ? users.find((u) => u.id === l.upsell_user_id) || (s.people && s.people[l.upsell_user_id]) || { name: "The tech" } : null;
     const q = qty(l);
