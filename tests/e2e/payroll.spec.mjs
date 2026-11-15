@@ -61,7 +61,7 @@ for (const device of ["iphone13", "desk1440"]) {
         await f.click('.sheet.on button[type="submit"]');
         await viewHas(f, /Two Google reviews/);
         await f.click('[data-act="lock"]');
-        await sheetUp(f, /Lock the period/);
+        await sheetUp(f, /Approve the period/);
         await f.click('.sheet.on [data-a="yes"]');
         await viewHas(f, /final; not marked paid yet/);
         await shot(page, `payroll-period-locked-${device}`);
