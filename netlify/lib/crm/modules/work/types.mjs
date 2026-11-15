@@ -207,6 +207,14 @@ export function validateJob(data, { op } = {}) {
     review: (v) => (isObj(v) ? { ...v } : {}),
     contact_name: strOpt(120),
     origin: (v, f) => str(v, { field: f, max: 40 }) || undefined,
+    // the New job form's picks (Nov 15): a checklist other than the automatic one ("none": no checklist), and who sold it
+    checklist_key: (v, f) => {
+      if (v === undefined || v === null || v === "") return undefined;
+      const k = String(v).trim();
+      if (k !== "none" && !KEY_RE.test(k)) throw new InputError("Pick a checklist.", f);
+      return k;
+    },
+    sold_by: idOf("user"),
   });
   if (!out.title) out.title = titleFromLines(out.lines, out.kind);
   if (out.billable === undefined) out.billable = !NOT_BILLABLE.includes(out.kind);
@@ -335,6 +343,9 @@ export function validateVisit(data, { op } = {}) {
     minutes_worked: (v, f) => int(v, { field: f, min: 0, max: 100000 }),
     completion: (v) => (isObj(v) ? { ...v } : undefined),
     late_cancel: (v) => (v === true ? true : undefined),
+    // booked with "Notify the customer" off (the New job form): no confirmation text for this
+    // booking, "<date> <start>" (moved later, the visit is confirmed as usual)
+    no_confirm: strOpt(20),
     reminders: (v) => (isObj(v) ? { ...v } : undefined),
     no_access: (v) => (isObj(v) ? { ...v } : undefined),
     cancelled_at: isoOpt,

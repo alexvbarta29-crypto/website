@@ -442,17 +442,37 @@ export async function createStaffPlan(body = {}, ctx) {
   const months = body.term_months === undefined ? undefined : Number(body.term_months);
   if (months !== undefined && (!Number.isSafeInteger(months) || months < 12 || months > 60)) throw new InputError("A term from 12 to 60 months.", "term_months");
   if (body.billing_mode !== undefined && !BILLING_MODES.includes(body.billing_mode)) throw new InputError("Pick a billing mode.", "billing_mode");
+  // the New plan form (Nov 15): how often (every 1, 2, 3, 4, 6 or 12 months; a plan whose catalog
+  // entry visits on another rhythm becomes a custom one), who sold it, the office's notes
+  let freq;
+  if (body.frequency !== undefined && body.frequency !== null && key !== "lights_annual") {
+    const f = body.frequency;
+    if (!f || f.interval !== "month" || ![1, 2, 3, 4, 6, 12].includes(f.count)) throw new InputError("Every 1, 2, 3, 4, 6 or 12 months.", "frequency");
+    freq = { interval: "month", count: f.count };
+  }
+  let soldBy = W(ctx).by;
+  if (body.sold_by !== undefined && body.sold_by !== null && body.sold_by !== "") {
+    const u = isId(body.sold_by, "user") ? await getRecord("user", body.sold_by) : null;
+    if (!u || u.data.deleted_at || u.data.status === "disabled") throw new InputError("Pick someone on the team.", "sold_by");
+    soldBy = body.sold_by;
+  }
+  const notes = typeof body.notes === "string" ? body.notes.trim().slice(0, 2000) : "";
   const clientId = typeof body.client_id === "string" && /^[A-Za-z0-9-]{8,64}$/.test(body.client_id) ? body.client_id : null;
   const id = clientId ? deriveId("plan", `c:${clientId}`) : deriveId("plan", `new:${ctx.requestId || nowIso()}`, "plans", 1);
   const have = await getRecord("plan", id);
   if (have) return { plan_id: id, existing: true };
   const cat = await loadCatalog();
+  const entry = cat.plans[key] || cat.plans.custom;
+  const ownRhythm = freq && !(entry.frequency && entry.frequency.interval === "month" && entry.frequency.count === freq.count);
   const place = await placeFor(body.contact_id, body.property_id);
   const plan = buildPlan({
-    id, contact_id: place.contact.id, contact_name: place.name, property_id: place.property_id, town: place.town, catalog_key: key, name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 120) : undefined,
+    id, contact_id: place.contact.id, contact_name: place.name, property_id: place.property_id, town: place.town, catalog_key: ownRhythm ? "custom" : key,
+    name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 120) : ownRhythm && key !== "custom" ? (cat.plans.custom || {}).name : undefined,
+    ...(freq ? { frequency: freq, visits_per_year: visitsPerYearOf(freq) } : {}),
     lines, discounts, term_months: months, auto_renew: body.auto_renew !== false, billing_mode: body.billing_mode, autopay: body.autopay === undefined ? undefined : body.autopay === true,
-    card_required: body.card_required === true, sold_by: W(ctx).by, origin: "staff",
+    card_required: body.card_required === true, sold_by: soldBy, origin: "staff",
   }, cat, { start_on: start });
+  if (notes) plan.notes = notes;
   const opId = `plan-new--${id}`;
   const runId = deriveId("run", opId, "plans.make", 0);
   await createRun("plans.make", { op_id: opId, plan }, W(ctx), { id: runId });

@@ -63,7 +63,7 @@ Tests: `tests/crm/payroll/` (`compute.test.mjs` hand-worked weeks,
    equally, or each at the full job (`each_full`, Rotor's way). Share ×
    the person's technician rate. Line key `technician:{uid}:{visitId}-{jobId}`.
 3. **Salesman commission**: the job's seller (its plan's, else its quote's
-   `sold_by`; an imported Rotor rep name matched to a person) × their
+   `sold_by`, else the salesperson New job named; an imported Rotor rep name matched to a person) × their
    salesman rate. `salesman:{uid}:{planId}:{jobId}`.
 4. **Upsell commission**: job lines with `upsell_user_id` × the upsell rate.
 5. **Tips**: each succeeded payment's `tip_split` in the period (a refund's
