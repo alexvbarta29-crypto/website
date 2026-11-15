@@ -65,6 +65,7 @@ import { approvers } from "../../core/notify.mjs";
 import { DEFAULT_CALENDAR } from "../../core/clock.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { checklistMissing, OPEN_VISIT } from "./states.mjs";
+import { itemDone, CHECK_MAX_PHOTOS } from "./types.mjs";
 import { changeVisit, W, refreshVisits } from "./office.mjs";
 import { timeOf, clientIdOf, clockIn, clockOut, ensureClockedIn, conflictEntry, payloadOf, userRecord } from "./timesheets.mjs";
 import { runningTimer, visitTimers, startSegment, stopSegment, stopRunning, recomputeMinutes } from "./timers.mjs";
@@ -262,7 +263,7 @@ const onMyWay = async (ctx) => {
   if (again && visit.on_my_way.text) return answer(ctx, visit.id, { text: visit.on_my_way.text, replay: true });
   const at = again ? visit.on_my_way.at : nowIso();
   const geo = geoOf(b);
-  const r = again ? { visit } : await changeVisit(visit.id, "on_my_way", { ctx: W(ctx), mutate: (n) => ({ ...n, on_my_way: { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}), ...(geo ? { geo } : {}) } }) });
+  const r = again ? { visit } : await changeVisit(visit.id, "on_my_way", { ctx: W(ctx), mutate: (n) => tickHooked({ ...n, on_my_way: { at, by: ctx.user.id, eta_min: eta, ...(cid ? { client_id: cid } : {}), ...(geo ? { geo } : {}) } }, "on_my_way", { at, by: ctx.user.id }) });
   // the customer's "on the way" page (work/track.mjs): the same tap makes the same link
   const link = await trackLinkFor({ visit: r.visit, userId: ctx.user.id, at, tapKey: cid || at });
   // a repeat whose text never went (a crash in between) sends it now; the send's marker keeps it to one
@@ -313,7 +314,8 @@ async function startWork(ctx, visit, time, b) {
   if (running) return answer(ctx, visit.id, { timer: timerOut(running), already: true });
   if (["scheduled", "en_route", "paused"].includes(visit.status)) {
     try {
-      await changeVisit(visit.id, "start", { ctx: w });
+      // the checklist's "Arrive + Mark Start Job" is ticked by the start itself
+      await changeVisit(visit.id, "start", { ctx: w, mutate: (n) => tickHooked(n, "start", { at: time.at, by: uid }) });
     } catch (e) {
       // someone else on the visit started it a moment ago: join them
       const cur = await getRecord("visit", visit.id);
@@ -477,7 +479,50 @@ const fieldRoute = async (ctx) => {
 
 // ------------------------------------------------------------ the checklist, notes, photos
 
-const ITEM_DONE = (i) => !!(i && (i.done_at || (i.value !== undefined && i.value !== null && i.value !== "")));
+const ITEM_DONE = itemDone;
+
+// The answer a tick carries for its item's kind (Rotor's Technician Job
+// Checklist kinds): → { value?, done } where done says whether the item is
+// done with it (a group of ticks is done once `min` are ticked; until then
+// its ticks are kept, not done). Throws a field error the phone shows.
+export function checkAnswer(item, b) {
+  if (!b.done) return { done: false };
+  const kind = item.kind || "check";
+  if (kind === "count") {
+    const n = Number(b.value);
+    if (!Number.isInteger(n) || n < 0 || n > 100000) throw new InputError("Use a whole number.", "value");
+    return { value: n, done: true };
+  }
+  if (kind === "text") {
+    const value = str(b.value).slice(0, 500);
+    if (!value) throw new InputError("Write it down first.", "value");
+    return { value, done: true };
+  }
+  if (kind === "select") {
+    const value = str(b.value);
+    if (!(item.options || []).includes(value)) throw new InputError("Pick one of the choices.", "value");
+    return { value, done: true };
+  }
+  if (kind === "multi") {
+    if (!Array.isArray(b.value)) throw new InputError("Tick the boxes that fit.", "value");
+    const want = new Set(b.value.map((x) => str(x)));
+    for (const x of want) if (!(item.options || []).includes(x)) throw new InputError("That box isn't in this group.", "value");
+    const value = (item.options || []).filter((o) => want.has(o));
+    return { value, done: value.length >= Math.max(1, item.min || 1) };
+  }
+  if (kind === "photo") throw new InputError("Take the photo for this one.", "key");
+  return { done: true };
+}
+
+// One item with an answer applied (pure): done keeps its first time, a
+// changed value is stamped again; not done drops the time (a group keeps its ticks).
+export function applyAnswer(i, ans, { at, by }) {
+  if (!ans.done && ans.value === undefined) { const { done_at, done_by, value: _v, done: _d, ...rest } = i; return rest; }
+  if (!ans.done) { const { done_at, done_by, done: _d, ...rest } = i; return { ...rest, value: ans.value }; }
+  const same = ans.value === undefined || JSON.stringify(i.value) === JSON.stringify(ans.value);
+  if (ITEM_DONE(i) && same) return i;
+  return { ...i, done_at: i.done_at && ans.value === undefined ? i.done_at : at, done_by: by, ...(ans.value !== undefined ? { value: ans.value } : {}) };
+}
 
 const checklistRoute = async (ctx) => {
   const b = ctx.body || {};
@@ -489,17 +534,7 @@ const checklistRoute = async (ctx) => {
   const { visit } = fv;
   const item = ((visit.checklist && visit.checklist.items) || []).find((i) => i.key === key);
   if (!item) throw new InputError("That item isn't on this visit's checklist.", "key");
-  let value;
-  if (b.done && item.kind === "count") {
-    const n = Number(b.value);
-    if (!Number.isInteger(n) || n < 0 || n > 100000) throw new InputError("Use a whole number.", "value");
-    value = n;
-  } else if (b.done && item.kind === "text") {
-    value = str(b.value).slice(0, 500);
-    if (!value) throw new InputError("Write it down first.", "value");
-  } else if (b.done && item.kind === "photo") {
-    throw new InputError("Take the photo for this one.", "key");
-  }
+  const ans = checkAnswer(item, b);
   const time = timeOf(ctx);
   const closed = !OPEN_VISIT.includes(visit.status);
   if (closed && !replayed(ctx)) throw new ConflictError("This visit is closed.");
@@ -508,19 +543,22 @@ const checklistRoute = async (ctx) => {
   if (moved) return moved;
   const uid = ctx.user.id;
   await updateRecord("visit", visit.id, (v) => {
-    if (!OPEN_VISIT.includes(v.status) && !b.done) return null;           // never undo an item on a closed visit
-    const items = ((v.checklist && v.checklist.items) || []).map((i) => {
-      if (i.key !== key) return i;
-      if (!b.done) { const { done_at, done_by, value: _v, done: _d, ...rest } = i; return rest; }
-      if (ITEM_DONE(i) && (value === undefined || i.value === value)) return i;
-      return { ...i, done_at: i.done_at && value === undefined ? i.done_at : time.at, done_by: uid, ...(value !== undefined ? { value } : {}) };
-    });
+    if (!OPEN_VISIT.includes(v.status) && !ans.done) return null;           // never undo an item on a closed visit
+    const items = ((v.checklist && v.checklist.items) || []).map((i) => (i.key === key ? applyAnswer(i, ans, { at: time.at, by: uid }) : i));
     const next = { ...v, checklist: { ...(v.checklist || {}), items } };
     return JSON.stringify(next.checklist) === JSON.stringify(v.checklist) ? null : next;
   }, W(ctx));
   const note = await appliedNote(ctx, visit, "checklist", time);
   return answer(ctx, visit.id, note ? { pending_entry_id: note.id, noted: note.pending.reason } : {});
 };
+
+// A field step ticks the checklist's item hooked to it (Send "On My Way"
+// Text, Arrive + Mark "Start Job"), in the step's own write. Pure.
+export function tickHooked(v, hook, { at, by }) {
+  const items = (v.checklist && v.checklist.items) || [];
+  if (!items.some((i) => i.hook === hook && !ITEM_DONE(i))) return v;
+  return { ...v, checklist: { ...v.checklist, items: items.map((i) => (i.hook === hook && !ITEM_DONE(i) ? { ...i, done_at: at, done_by: by } : i)) } };
+}
 
 const notesRoute = async (ctx) => {
   const b = ctx.body || {};
@@ -550,7 +588,7 @@ const notesRoute = async (ctx) => {
 // attaches) is an attachment: never a photo, never shown to the customer.
 // Idempotent: the same file never shows twice, an item already done keeps
 // its time.
-export async function addPhoto(visitId, file, { item, by, at } = {}, w) {
+export async function addPhoto(visitId, file, { item, line, by, at } = {}, w) {
   const tag = PHOTO_TAGS.includes(file.tag) ? file.tag : "other";
   const image = INLINE_TYPES.has(file.content_type) && !file.download_only;
   const r = await updateRecord("visit", visitId, (v) => {
@@ -564,18 +602,19 @@ export async function addPhoto(visitId, file, { item, by, at } = {}, w) {
     const has = photos.some((p) => p.file_id === file.id);
     let items = (v.checklist && v.checklist.items) || [];
     let ticked = false;
-    if (item) {
-      items = items.map((i) => {
-        if (i.key !== item || i.kind !== "photo" || ITEM_DONE(i)) return i;
-        ticked = true;
-        return { ...i, done_at: at || nowIso(), done_by: by, value: file.id };
-      });
+    // a photo item is done once it has its `min` photos (one by default); past its `max` a photo is the visit's only
+    const it = item ? items.find((i) => i.key === item && i.kind === "photo") : null;
+    const count = it ? photos.filter((p) => p.item === item).length + (has ? 0 : 1) : 0;
+    const onItem = !!it && (has || photos.filter((p) => p.item === item).length < (it.max || CHECK_MAX_PHOTOS));
+    if (it && onItem && !ITEM_DONE(it) && count >= (it.min || 1)) {
+      items = items.map((i) => (i === it ? { ...i, done_at: at || nowIso(), done_by: by, value: file.id } : i));
+      ticked = true;
     }
     if (has && !ticked) return null;
     if (!has && photos.length >= 200) throw new ConflictError("This visit has as many photos as it can hold.");
     return {
       ...v,
-      photos: has ? photos : [...photos, { file_id: file.id, tag, customer_visible: tag === "before" || tag === "after", at: at || nowIso(), by, ...(file.caption ? { caption: file.caption } : {}), ...(item ? { item } : {}) }],
+      photos: has ? photos : [...photos, { file_id: file.id, tag, customer_visible: tag === "before" || tag === "after", at: at || nowIso(), by, ...(file.caption ? { caption: file.caption } : {}), ...(onItem ? { item } : {}), ...(line ? { line } : {}) }],
       ...(ticked ? { checklist: { ...(v.checklist || {}), items } } : {}),
     };
   }, w);
@@ -629,18 +668,26 @@ const photoRoute = async (ctx) => {
     return holdPhoto(ctx, e.visit, "lost", { bytes, thumb, tag, time });
   }
   const item = str(b.item) || undefined;
-  if (item && !((visit.checklist && visit.checklist.items) || []).some((i) => i.key === item)) throw new InputError("That item isn't on this visit's checklist.", "item");
+  const ci = item ? ((visit.checklist && visit.checklist.items) || []).find((i) => i.key === item) : null;
+  if (item && !ci) throw new InputError("That item isn't on this visit's checklist.", "item");
+  if (ci && ci.kind === "photo" && (visit.photos || []).filter((p) => p.item === item).length >= (ci.max || CHECK_MAX_PHOTOS) && !replayed(ctx)) throw new InputError(`That item has all its photos (${ci.max || CHECK_MAX_PHOTOS}).`, "item");
+  const line = lineOf(visit, b.line);
   const caption = str(b.caption).slice(0, 200) || undefined;
   // the bytes as they came: the type from the magic bytes (core/files.mjs)
   const file = await uploadFile(ctx, { ownerType: "visit", ownerId: visit.id, kind: "photo", tag, caption, declaredType: "image/jpeg", bytes, clientId: cid, takenAt: time.at });
   let f = file;
   if (thumb && !file.has_thumb) f = await uploadThumb(ctx, file.id, thumb).catch((e) => { console.error(`crm:work: thumbnail not kept (${safeErr(e)})`); return file; });
   // a photo from the day before the office moved the visit doesn't tick the new day's item
-  await addPhoto(visit.id, f, { item: movedAway(ctx, visit, time) ? undefined : item, by: ctx.user.id, at: time.at }, W(ctx));
+  await addPhoto(visit.id, f, { item: movedAway(ctx, visit, time) ? undefined : item, line, by: ctx.user.id, at: time.at }, W(ctx));
   const note = await appliedNote(ctx, visit, "photo", time);
   const out = fileView(f);
   return { status: 201, ...(await answer(ctx, visit.id, { photo: { id: out.id, tag, has_thumb: !!out.has_thumb, url: out.url, thumb_url: out.thumb_url || null }, ...(note ? { pending_entry_id: note.id, noted: note.pending.reason } : {}) })) };
 };
+
+// A photo of one of the job's lines (the job page's camera on a line): a
+// line id of the shape the job uses, or nothing. The line itself may change
+// later; the photo keeps the id it was taken for.
+const lineOf = (visit, id) => (typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id) ? id : undefined);
 
 // Who may read and add a visit's files (core/files.mjs): the office, and a
 // technician on the visit inside the window.
@@ -649,7 +696,8 @@ defineFileOwner("visit", {
   canEdit: (ctx, v) => ctx.can("schedule:write") || (!!ctx.user && (v.assignee_ids || []).includes(ctx.user.id) && ctx.can("visits:work", { type: "visit", record: v }) && inWindow(v)),
   async attach(visit, file, ctx) {
     const item = (ctx.body && typeof ctx.body.item === "string" && ctx.body.item) || (ctx.query && ctx.query.get && ctx.query.get("item")) || undefined;
-    await addPhoto(visit.id, file, { item, by: ctx.user ? ctx.user.id : "office", at: file.taken_at || nowIso() }, ctx.write ? ctx.write() : W(ctx));
+    const line = lineOf(visit, (ctx.body && ctx.body.line) || (ctx.query && ctx.query.get && ctx.query.get("line")));
+    await addPhoto(visit.id, file, { item, line, by: ctx.user ? ctx.user.id : "office", at: file.taken_at || nowIso() }, ctx.write ? ctx.write() : W(ctx));
   },
 });
 

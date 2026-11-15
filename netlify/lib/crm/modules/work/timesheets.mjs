@@ -426,7 +426,7 @@ export function payloadOf(action, b = {}) {
   const s = (v, n) => (v === undefined || v === null ? undefined : String(v).trim().slice(0, n) || undefined);
   const out = {
     notes: { text: s(b.text, 1000) }, incident: { text: s(b.text, 2000) }, no_access: { note: s(b.note, 500) },
-    checklist: { key: s(b.key, 80), done: b.done === true, value: typeof b.value === "number" ? b.value : s(b.value, 500) },
+    checklist: { key: s(b.key, 80), done: b.done === true, value: typeof b.value === "number" ? b.value : Array.isArray(b.value) ? b.value.slice(0, 20).map((x) => s(x, 80)).filter(Boolean) : s(b.value, 500) },
     lines: { price_item_id: s(b.price_item_id, 40), qty: Number.isFinite(Number(b.qty)) ? Number(b.qty) : undefined },
     photo: { tag: s(b.tag, 20), item: s(b.item, 80) },
   }[action];

@@ -20,6 +20,7 @@ import { raw, html } from "../../core/ui.js";
 import { uuid } from "../../core/api.js";
 import { localDate, dateShort, time as fmtTime } from "../../core/format.js";
 import * as outbox from "../../core/outbox.js";
+import { applyAnswer, photoAdded } from "./checklist-kit.js";
 
 let styled = false;
 export function ensureStyles() {
@@ -196,17 +197,16 @@ export function overlayVisit(visit, items = [], uid = null, timers = []) {
     } else if (what === "no-access") {
       if (["scheduled", "en_route"].includes(v.status)) v.status = "no_access";
     } else if (what === "checklist") {
-      const items2 = ((v.checklist && v.checklist.items) || []).map((i) => {
-        if (i.key !== b.key) return i;
-        if (!b.done) { const { done_at, done_by, value, ...rest } = i; return rest; }
-        return { ...i, done_at: i.done_at || at, done_by: uid, ...(b.value !== undefined ? { value: b.value } : {}) };
-      });
+      // the server's rule for an answer (checklist-kit.js applyAnswer): a group is done once enough boxes are ticked
+      const items2 = ((v.checklist && v.checklist.items) || []).map((i) => (i.key === b.key ? applyAnswer(i, b, { at, by: uid }) : i));
       v.checklist = { ...(v.checklist || {}), items: items2 };
     } else if (what === "notes" && b.text) {
       v.tech_notes = v.tech_notes ? `${v.tech_notes}\n\n${b.text}` : String(b.text);
     } else if (what === "photos") {
-      v.photos = [...(v.photos || []), { local: true, client_id: b.client_id, tag: b.tag || "other", at, thumb: b.thumb ? `data:image/jpeg;base64,${b.thumb}` : null }];
-      if (b.item) v.checklist = { ...(v.checklist || {}), items: ((v.checklist && v.checklist.items) || []).map((i) => (i.key === b.item && !i.done_at ? { ...i, done_at: at, done_by: uid, value: `local-${b.client_id}` } : i)) };
+      const photo = { local: true, client_id: b.client_id, tag: b.tag || "other", at, thumb: b.thumb ? `data:image/jpeg;base64,${b.thumb}` : null, ...(b.line ? { line: b.line } : {}) };
+      // a photo for a checklist item: the item is done once it has its fewest photos (one by default)
+      if (b.item) Object.assign(v, photoAdded(v, b.item, photo, { at, by: uid }));
+      else v.photos = [...(v.photos || []), photo];
     }
   }
   return { visit: v, timers: t, waiting: n };

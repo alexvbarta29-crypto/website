@@ -125,7 +125,12 @@ export async function checklistFor(job, opts = {}, cache = null) {
   if (cache) cache[key] = got;
   return got && got.data.active !== false ? got.data : null;
 }
-export const checklistCopy = (t) => (t ? { template_key: t.key, items: (t.items || []).map((i) => ({ key: i.key, label: i.label, required: i.required === true, kind: i.kind || "check" })) } : { items: [] });
+// What a visit copies of a template: each item's shape (options, min, max, placeholder, hook), never an answer.
+const COPY_FIELDS = ["options", "min", "max", "placeholder", "hook"];
+export const checklistCopy = (t) => (t ? { template_key: t.key, ...(t.name ? { name: t.name } : {}), items: (t.items || []).map((i) => ({
+  key: i.key, label: i.label, required: i.required === true, kind: i.kind || "check",
+  ...Object.fromEntries(COPY_FIELDS.filter((k) => i[k] !== undefined).map((k) => [k, Array.isArray(i[k]) ? [...i[k]] : i[k]])),
+})) } : { items: [] });
 
 // ------------------------------------------------------------ work.createJobs
 
@@ -759,6 +764,44 @@ export const SEED_CHECKLISTS = Object.freeze([
     { key: "damage_notes", label: "Damage notes", required: false, kind: "text" },
   ] },
 ]);
+// Barta's own process, the way the crew runs it in Rotor ("Technician Job
+// Checklist", Nov 2026): done in order, on every window and exterior job.
+// Seeded first in order (5) so those jobs get it; editable in Settings →
+// Checklists like the others. Ticking the first item texts On my way (dry
+// run until texting is on); the second starts the visit.
+const SERVICES_DONE = ["Interior Window Cleaning", "Exterior Window Cleaning", "Screen Cleaning", "Track Cleaning", "Hard Water Stain Removal", "Gutter Cleaning", "Pressure Washing", "Soft Washing", "Solar Panel Cleaning"];
+export const TECH_CHECKLIST = Object.freeze({
+  key: "technician_job", name: "Technician Job Checklist", service_types: ["Residential Window Cleaning", "Exterior Cleaning"], job_kinds: [], order: 5, items: [
+    { key: "omw_text", label: 'Send "On My Way" Text', required: true, kind: "check", hook: "on_my_way" },
+    { key: "arrive_start", label: 'Arrive + Mark "Start Job"', required: true, kind: "check", hook: "start" },
+    { key: "greet_confirm", label: "Client Greet + Confirm Services", required: true, kind: "select", options: ["Greeted, services confirmed", "Nobody home, services confirmed from the job", "Services changed (noted below)"] },
+    { key: "pane_count", label: "How Many Panes Does the House Have?", required: true, kind: "count", placeholder: "Enter Pane Count" },
+    { key: "inspect_addons", label: "Property Inspection + Add on Services", required: true, kind: "select", options: ["Inspected, no add-ons", "Inspected, add-ons offered and added", "Inspected, add-ons offered and declined"] },
+    { key: "sides_photos", label: "Take/Upload Pictures of All Sides of Property", required: true, kind: "photo", min: 1, max: 10 },
+    { key: "perform", label: "Perform Service", required: true, kind: "check" },
+    { key: "check_work", label: "Check Work to Our Standards", required: true, kind: "check" },
+    { key: "farewell_review", label: "Client Farewell + Ask for Review/Referrals", required: true, kind: "select", options: ["Asked for a review and referrals", "Customer wasn't home", "Didn't ask (noted below)"] },
+    { key: "payment", label: "Payment", required: true, kind: "select", options: ["Paid on site (card)", "Paid on site (cash or check)", "Invoice to be sent", "On a plan (Auto-Pay)", "No charge"] },
+    { key: "pack_up", label: "Pack Up", required: true, kind: "multi", options: ["Pack Up All Equipment", "Walkaround Property for Left Equipment"], min: 2 },
+    { key: "services_done", label: "Services Performed", required: true, kind: "multi", options: SERVICES_DONE, min: 1 },
+    { key: "yard_sign", label: "Take/Upload Picture of Yard Sign", required: true, kind: "photo", min: 1, max: 10 },
+    { key: "door_hangers", label: "Take/Upload Pictures of 5 Neighborhood Door Hangers", required: true, kind: "photo", min: 1, max: 10 },
+    { key: "notes", label: "Any Notes (Optional)", required: false, kind: "text", placeholder: "Enter detailed answer" },
+  ],
+});
+
+// Seed v2 of the work module: the Technician Job Checklist (once; an owner's edit or removal stays).
+export async function seedTechChecklist(ctx) {
+  const c = TECH_CHECKLIST;
+  if (await readPointer("checklist-key", c.key)) return { created: 0 };
+  try {
+    await createRecord("checklist_template", { ...clone(c), id: seedChecklistId(c.key), active: true }, W(ctx));
+    return { created: 1 };
+  } catch (e) {
+    if (!(e instanceof ExistsError)) throw e;
+    return { created: 0 };
+  }
+}
 export const seedChecklistId = (key) => deriveId("checklist_template", "seed:checklist", "work", key);
 
 export async function seedChecklists(ctx) {

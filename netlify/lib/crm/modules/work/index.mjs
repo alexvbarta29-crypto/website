@@ -32,7 +32,7 @@ import { workRoutes } from "./office-routes.mjs";
 import { visitListRoutes } from "./visit-list.mjs";
 import "./office-moveday.mjs";
 import {
-  createJobs, cancelJobs, listeners, statsParts, onMergeWork, seedChecklists, WORK_DEFAULTS,
+  createJobs, cancelJobs, listeners, statsParts, onMergeWork, seedChecklists, seedTechChecklist, WORK_DEFAULTS,
 } from "./office.mjs";
 import { automations, sweeps, TEMPLATES, staleCount } from "./automations.mjs";
 import { phases } from "./import-rotor.mjs";
@@ -85,7 +85,7 @@ const office = {
   sweeps,
   automations,
   templates: TEMPLATES,
-  seeds: [{ v: 1, run: seedChecklists }],
+  seeds: [{ v: 1, run: seedChecklists }, { v: 2, run: seedTechChecklist }],
   onMerge: onMergeWork,
   attention: [{ key: "work.stale", label: "Stale jobs", perm: "schedule:write", count: () => staleCount(), link: "#/jobs?status=stale" }],
   pushKinds: ["visit_assigned", "visit_changed", "visit_cancelled"],

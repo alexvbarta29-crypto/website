@@ -204,7 +204,8 @@ async function postBytes(path, blob, type = "image/jpeg") {
 }
 
 // Shrinks (EXIF kept), uploads, then adds the thumbnail. → { file }
-export async function uploadPhoto({ ownerType, ownerId, kind = "photo", tag, caption, file } = {}) {
+// extra: more query fields the owner reads (a visit's photo of a job line: { line }).
+export async function uploadPhoto({ ownerType, ownerId, kind = "photo", tag, caption, file, extra = null } = {}) {
   if (!file) throw new Error("Pick a photo first.");
   const pdf = file.type === "application/pdf";
   const p = pdf ? { full: file, thumb: null } : await prepare(file);
@@ -212,6 +213,7 @@ export async function uploadPhoto({ ownerType, ownerId, kind = "photo", tag, cap
   const q = new URLSearchParams({ owner_type: ownerType, owner_id: ownerId, kind });
   if (tag) q.set("tag", tag);
   if (caption) q.set("caption", caption);
+  for (const [k, v] of Object.entries(extra || {})) if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
   const out = await postBytes(`/files?${q}`, p.full, pdf ? "application/pdf" : "image/jpeg");
   if (p.thumb && out && out.file && out.file.id) {
     try { await postBytes(`/files/${encodeURIComponent(out.file.id)}/thumb`, p.thumb); } catch (e) { /* the full photo is what matters */ }
