@@ -44,21 +44,32 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       const id = seeded.jobs[n];
       const before = (await api(p, `/jobs/${id}`)).job;
       await goTo(f, `/jobs/${id}`);
-      await f.waitForSelector(".wk-jtop");
+      // a phone: Rotor's phone job page with Flyra's top (office-job-phone.js)
+      await f.waitForSelector(".jp-head");
       assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), theme);
       assert.equal(await title(f), `Job ${before.number_label}`);
       assert.ok(await f.isVisible("#top-more"), "the round ...");
-      assert.match(await f.textContent(".wk-jtop"), /Booked[\s\S]*Not invoiced/);
-      assert.match(await f.textContent(".wk-jstats .rs-stat-v"), /^\$\d/, "Job total");
-      assert.ok(await f.$(".wk-jtop [data-make-invoice]"), "the red Invoice $X");
-      assert.ok(await f.$(".wk-jtop [data-edit-job]"), "Edit job");
-      assert.ok(await f.$('.wk-visits a[href^="#/visits/"]'), "the visit row");
-      assert.ok(await f.$(".wk-visits [data-book]"), "+ Visit");
-      assert.ok(await f.$('.wk-cust a[href^="tel:"]'), "Call");
-      assert.ok(await f.$('.wk-cust a[href^="sms:"]'), "Text");
-      assert.ok(await f.$('.wk-cust a[href^="#/properties/"]'), "the place's pencil");
-      for (const b of ["data-add-line", "data-add-discount", "data-make-invoice"]) assert.ok(await f.$(`.wk-pricing [${b}]`), b);
+      assert.ok(await f.isVisible("#top-act .rnd[aria-label='Mark the job done']"), "Rotor's round check");
+      assert.match(await f.textContent(".jp-head"), /Scheduled[\s\S]*\$\d[\s\S]*Not invoiced[\s\S]*Created/);
+      assert.equal(await f.$$eval(".jp-bar li", (x) => x.length), 4, "Flyra's 4 steps");
+      assert.ok(await f.$(".jp-quick [data-make-invoice]"), "the Invoice tile");
+      assert.ok(await f.$(".jp-quick [data-v-move]"), "Reschedule");
+      assert.ok(await f.$(".jp-quick [data-jp-more]"), "More");
+      assert.ok(await f.$('.rs-person a[href^="tel:"]'), "Call");
+      assert.ok(await f.$('.rs-person a[href^="sms:"]'), "Text");
+      assert.ok(await f.$('.rs-addr a[href^="#/properties/"]'), "the place's pencil");
+      for (const b of ["data-add-line", "data-add-discount", "data-make-invoice", "data-line"]) assert.ok(await f.$(`.wk-pricing [${b}]`), b);
       assert.ok(await f.$('.wk-jnotes [data-notes="crew"]'));
+      assert.ok(await f.$("[data-del-job]"), "Delete Job");
+      assert.match(await f.textContent(".ck-pill"), /\d+ left/, "the checklist pill");
+      // the pill opens the checklist sheet; the office (not on the visit) sees it without answering
+      await f.click(".ck-pill");
+      await f.waitForSelector(".sheet.on.ck-sheet");
+      assert.match(await f.textContent(".sheet.on .ck-sub"), /^Complete in order • 0 of \d+ done$/);
+      assert.equal(await f.$$eval(".sheet.on [data-ck-tick]", (b) => b.every((x) => x.getAttribute("aria-disabled") === "true")), true);
+      await checks(f, page, `rotor-job-checklist-${device}-${theme}`, problems);
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
       await checks(f, page, `rotor-job-${device}-${theme}`, problems);
 
       // + Add discount: $25 off, named
@@ -87,7 +98,7 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       await checks(f, page, `rotor-job-discounted-${device}-${theme}`, problems);
       // a crew note saved as the box loses focus
       await f.fill('.wk-jnotes [data-notes="crew"]', "Synthetic: side gate sticks.");
-      await f.click(".wk-jtop .wk-jtitle");
+      await f.click(".jp-title");
       await f.waitForFunction(() => /Saved/.test((document.querySelector(".toasts") || {}).textContent || ""), null, { timeout: 8000 });
       assert.equal((await api(p, `/jobs/${id}`)).job.crew_notes, "Synthetic: side gate sticks.");
 
@@ -101,7 +112,8 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
         assert.ok(inv.lines.some((l) => l.kind === "discount" && /Neighbor deal/.test(l.description)), "the discount is an invoice line");
         await goTo(f, `/jobs/${id}`);
         await f.waitForSelector(".wk-invs .wk-irow");
-        assert.match(await f.textContent(".wk-jtop"), /Invoiced[\s\S]*Invoice \$\d/);
+        assert.match(await f.textContent(".jp-head"), /Invoiced/);
+        assert.ok(await f.$('.jp-quick a[href^="#/invoices/"]'), "the Invoice tile opens it");
         assert.match(await f.textContent(".wk-invs"), /#[A-Z]+-\d+/);
         assert.equal(await f.$(".wk-pricing [data-make-invoice]"), null, "no second invoice");
         await checks(f, page, `rotor-job-invoiced-${device}-${theme}`, problems);

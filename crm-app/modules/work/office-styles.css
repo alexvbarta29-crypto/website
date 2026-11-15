@@ -814,6 +814,7 @@ html[data-theme="dark"] .wk-hol{color:#ffb357}
 .jp-who{margin:0;color:var(--muted);font-size:var(--t-row);overflow-wrap:anywhere}
 .jp-when{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin-top:4px}
 .jp-day{font:700 20px/1.25 var(--head);color:var(--ink)}
+a.jp-day{display:inline-flex;align-items:center;min-height:44px;margin:-6px 0;text-decoration:none}
 .jp-time{color:var(--ink-2);font-size:var(--t-row)}
 .jp-len{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:0;border-radius:999px;background:var(--card-2);color:var(--ink);font:600 15px/1 var(--text)}
 button.jp-len{cursor:pointer}

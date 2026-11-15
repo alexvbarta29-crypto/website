@@ -111,7 +111,7 @@ function headCard(s, ctx, v, h) {
   return html`<section class="jp-head" aria-label="The job">
     <h2 class="jp-title">${title}</h2>
     ${who ? html`<p class="jp-who">${who}</p>` : ""}
-    <div class="jp-when"><span class="jp-day">${when}</span>${v && !v.date_only ? html`<span class="jp-time num">${range(v.start, v.end)}</span>` : ""}
+    <div class="jp-when">${v ? html`<a class="jp-day" ${attrs({ href: "#/visits/" + encodeURIComponent(v.id), "aria-label": `${when}: open the visit` })}>${when}</a>` : html`<span class="jp-day">${when}</span>`}${v && !v.date_only ? html`<span class="jp-time num">${range(v.start, v.end)}</span>` : ""}
       ${len ? (move ? html`<button type="button" class="jp-len" ${attrs({ "data-v-move": v.id, "aria-label": `${len}, change the time` })}>${icon("clock")}<span>${len}</span>${I.chev}</button>` : html`<span class="jp-len">${icon("clock")}<span>${len}</span></span>`) : ""}</div>
     ${people.length ? html`<p class="jp-people">${people.map((p) => html`<span class="jp-person"><i ${attrs({ style: `background:${p.color}` })} aria-hidden="true"></i>${p.name}</span>`)}</p>` : ""}
     <p class="rs-pills jp-pills">${statusPill(JOB_WORD[j.status] || j.status, JOB_TONE[j.status] || "grey")}${j.totals ? statusPill(money(j.totals.total_cents), "white") : ""}${bill}${j.billable === false ? statusPill("No charge", "grey") : ""}</p>
