@@ -1,21 +1,24 @@
 // One job (design §9.2 "Job"), laid out like Rotor's job page (Nov 2026,
-// scratchpad simplify/rotor-spec.md §4.3): a round back, "Job S-000001" and
-// a round "..." in the header; the top card (status pills, the first visit,
-// the title, the big total, the invoice's row); the visit row(s) with
-// "+ Visit"; the customer (red round call, message) and the place
-// (directions, the pencil edits its access); Pricing (the lines, "+ Item",
-// the discounts and "+ Add discount", the total, Create Invoice); the
-// job's Invoices; the notes for the crew (and the office's) saved as you
-// leave the box; Sold by and when it last changed. The "..." holds the
-// rest: Book a visit, Mark done, Edit the work, Add a discount, Create
-// invoice, Open customer, Reopen, Cancel job.
+// Rotor's screenshot 33 and the Rotor guide's "Inside a job"): "Job
+// S-000001" in the header with the round "..."; the head with the status
+// pills, the red "Invoice $X" and "Edit job"; three stat cards (Job total,
+// Balance due, Time on site); Visits ("+ Add Visit"; each visit with On My
+// Way, Start, Reschedule, Add Note); Pricing as a table (Item, Measurement,
+// Qty, Unit, Amount; "+ Add item", the discounts and "+ Add discount", the
+// total, Create Invoice). Then the right column: CUSTOMER (Call, Text,
+// Email, the address and Directions), INVOICES, Sold by, the notes (the
+// crew's and the office's, saved as you leave the box; the plan's). A
+// phone shows the same in one column, in that order; a desk two columns
+// (the page and a 320 px right column). The "..." holds the rest: Book a
+// visit, Mark done, Edit the work, Add a discount, Create invoice, the
+// quick actions, Open customer, Reopen, Cancel job.
 //
 // A technician reaches a job only through a visit of theirs; the server
 // answers with what they may see (no office notes, prices only with
 // visits:prices), and the page shows no office buttons then.
 
-import { html, attrs, icon as iconOf, sheet, toast, confirmSheet, statusPill, pillBtn, cardHead, personCard, addressCard, lineItems, notesBox, disclosure, seg, statGrid, stepper } from "../../core/ui.js";
-import { money, dateShort, ago, clock, phone as formatPhone } from "../../core/format.js";
+import { html, attrs, icon as iconOf, rnd, sheet, toast, confirmSheet, statusPill, pillBtn, notesBox, disclosure, seg, stepper } from "../../core/ui.js";
+import { money, dateShort, dateYear, ago, clock, phone as formatPhone } from "../../core/format.js";
 import { readForm, showError, clearErrors, busy, readMoney } from "../../core/forms.js";
 import { directionsUrl } from "../../core/map.js";
 import {
@@ -32,6 +35,7 @@ const OPEN_VISIT = ["scheduled", "en_route", "in_progress", "paused"];
 const MONTH_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
 const monthLabel = (m) => (m ? new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(m + "-15T12:00:00Z")) : "");
 const tel = (ph) => String((ph && ph.e164) || "").replace(/[^+\d]/g, "");
+const initials = (name) => String(name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
 
 async function load(params, ctx) {
   ensureStyles();
@@ -67,50 +71,52 @@ export function billing(s, can = () => false) {
   return { inv, live, why, may, ready: may && !why };
 }
 
-// The visit row: "Visit · Tue, Nov 17", "8:00–10:00 AM · Theo".
-function visitLine(s, v) {
+// A visit's lines (Rotor's): "Visit 1", "Tue, Nov 17 · 8:00–10:00 AM · 2 h window", "Theo Tech".
+function visitLine(s, v, i) {
   const who = (v.assignee_ids || []).map((id) => (s.people && s.people[id] && s.people[id].name) || "Someone").join(", ");
-  const when = v.date_only ? "Time not set" : range(v.start, v.end);
-  return { title: `Visit · ${dateShort(v.date)}`, sub: [when, who || "Nobody yet"].filter(Boolean).join(" · ") };
+  const w = v.window && v.window.type === "window" && v.window.minutes > 0 ? `${v.window.minutes % 60 ? `${v.window.minutes} min` : `${v.window.minutes / 60} h`} window` : null;
+  const when = [dateShort(v.date), v.date_only ? "Time not set" : range(v.start, v.end), w].filter(Boolean).join(" · ");
+  return { title: `Visit ${i + 1}`, when, who: who || "Nobody yet" };
 }
 // The next step on a visit, for its own people: On my way, then Start (the Visit screen's steps).
 function nextStep(v) {
-  if (v.status === "scheduled") return pillBtn("On my way", { tone: "solid", icon: "truck", data: { "v-omw": v.id } });
-  if (v.status === "en_route" || v.status === "paused") return pillBtn(v.status === "paused" ? "Resume" : "Start", { tone: "solid", icon: "clock", data: { "v-start": v.id } });
+  if (v.status === "scheduled") return pillBtn("On My Way", { tone: "solid", icon: "truck", data: { "v-omw": v.id } });
+  if (v.status === "en_route" || v.status === "paused") return pillBtn(v.status === "paused" ? "Resume" : "Start", { tone: "solid", icon: "play", data: { "v-start": v.id } });
   return pillBtn("Open the visit", { tone: "solid", href: "#/visits/" + encodeURIComponent(v.id) });
 }
-// Under an open visit (the Rotor guide's SX4): On my way and Start for its own people; Reschedule and Note for the office.
+// Under an open visit (Rotor's row of buttons, the Rotor guide's SX4): On My Way and Start for its own
+// people; Reschedule and Add Note for the office.
 function visitActs(s, v, ctx) {
   if (!OPEN_VISIT.includes(v.status)) return "";
   const mine = ctx && ctx.user && (v.assignee_ids || []).includes(ctx.user.id);
   const office = officeView() && s.can && s.can.write;
   const acts = [
-    mine && v.status === "scheduled" && pillBtn("On my way", { icon: "truck", data: { "v-omw": v.id } }),
-    mine && ["scheduled", "en_route", "paused"].includes(v.status) && pillBtn(v.status === "paused" ? "Resume" : "Start", { icon: "clock", data: { "v-start": v.id } }),
+    mine && v.status === "scheduled" && pillBtn("On My Way", { icon: "truck", data: { "v-omw": v.id } }),
+    mine && ["scheduled", "en_route", "paused"].includes(v.status) && pillBtn(v.status === "paused" ? "Resume" : "Start", { icon: "play", data: { "v-start": v.id } }),
     office && pillBtn("Reschedule", { icon: "cal", data: { "v-move": v.id } }),
-    (office || mine) && pillBtn("Note", { icon: "edit", data: { "v-note": v.id }, aria: "Add a note to this visit" }),
+    (office || mine) && pillBtn("Add Note", { icon: "edit", data: { "v-note": v.id }, aria: "Add a note to this visit" }),
   ].filter(Boolean);
   return acts.length ? html`<div class="sv-vacts">${acts}</div>` : "";
 }
-function visitRow(s, v) {
-  const l = visitLine(s, v);
+function visitRow(s, v, i) {
+  const l = visitLine(s, v, i);
   const done = v.status === "completed";
   return html`<a class="wk-vrow" href="${"#/visits/" + encodeURIComponent(v.id)}">
-    <span class="${"rs-ci" + (done ? " ok" : "")}" aria-hidden="true">${done ? iconOf("check") : iconOf("cal")}</span>
-    <span class="wk-vrow-t"><b>${l.title}</b><span class="rs-sub">${l.sub}</span></span>
-    ${v.status !== "scheduled" ? statusPill(VISIT_STATUS[v.status] || v.status, VISIT_TONE[v.status] || "grey") : ""}<span class="chev" aria-hidden="true"></span></a>`;
+    <span class="${"rs-ci" + (done ? " ok" : "")}" aria-hidden="true">${iconOf("check")}</span>
+    <span class="wk-vrow-t"><span class="wk-vrow-h"><b>${l.title}</b>${statusPill(v.status === "scheduled" ? "Not started" : VISIT_STATUS[v.status] || v.status, v.status === "scheduled" ? "grey" : VISIT_TONE[v.status] || "grey")}</span><span class="rs-sub num">${l.when}</span><span class="wk-vtech">${l.who}</span></span>
+    <span class="chev" aria-hidden="true"></span></a>`;
 }
 function visitsCard(s, ctx) {
   const c = s.can || {};
+  const j = s.job;
   const visits = s.visits || [];
-  const plus = c.add_visit ? pillBtn("Visit", { icon: "plus", tone: "solid", data: { book: true }, aria: "Book a visit" }) : "";
+  const plus = c.add_visit ? pillBtn("Add Visit", { icon: "plus", data: { book: true }, aria: "Book a visit" }) : "";
+  const head = html`<div class="rs-ch"><h3>Visits</h3>${visits.length ? html`<span class="rs-ch-n wk-cnt">${String(visits.length)}</span>` : ""}<span class="rs-ch-end">${plus}</span></div>`;
   if (!visits.length) {
-    return html`<div class="rs-card wk-visits"><div class="wk-vrow none"><span class="rs-ci" aria-hidden="true">${iconOf("cal")}</span>
-      <span class="wk-vrow-t"><b>No visit yet</b><span class="rs-sub">${s.job.target_month && s.job.status === "unscheduled" ? `Due by ${monthLabel(s.job.target_month)}` : c.add_visit ? "Book one with + Visit." : "This job has no visit."}</span></span>${plus}</div></div>`;
+    return html`<div class="rs-card wk-visits">${head}<div class="wk-vrow none"><span class="rs-ci" aria-hidden="true">${iconOf("cal")}</span>
+      <span class="wk-vrow-t"><b>No visit yet</b><span class="rs-sub">${j.target_month && j.status === "unscheduled" ? `Due by ${monthLabel(j.target_month)}` : c.add_visit ? "Book one with Add Visit." : "This job has no visit."}</span></span></div></div>`;
   }
-  if (visits.length === 1) return html`<div class="rs-card wk-visits one">${visitRow(s, visits[0])}${plus ? html`<div class="wk-vplus">${plus}</div>` : ""}${visitActs(s, visits[0], ctx)}</div>`;
-  return html`<div class="rs-card wk-visits">${cardHead(`Visits (${visits.length})`, { add: c.add_visit ? { label: "Book a visit", data: { book: true } } : null })}
-    <ul class="wk-vlist">${visits.map((v) => html`<li>${visitRow(s, v)}${visitActs(s, v, ctx)}</li>`)}</ul></div>`;
+  return html`<div class="rs-card wk-visits">${head}<ul class="wk-vlist">${visits.map((v, i) => html`<li>${visitRow(s, v, i)}${visitActs(s, v, ctx)}</li>`)}</ul></div>`;
 }
 
 // What the job's invoices still owe (the live ones), or the total when none is made yet and it's billed.
@@ -153,40 +159,61 @@ function planBanner(s) {
   return html`<a class="rs-inset sv-plan" href="${"#/plans/" + encodeURIComponent(p.id)}"><span class="rs-sub"><b>${p.name || "Service plan"}</b> · ${words}</span><span class="chev" aria-hidden="true"></span></a>`;
 }
 
+// The head (Rotor's): the status pills, then "Invoice $X" (the red one: the
+// job's invoice, or one made from the job) and "Edit job"; the title, the
+// customer, the plan visit, the kind and when it was made; the plan banner,
+// the track, and the one next step (Mark done, or the visit's own step).
 function topCard(s, ctx) {
   const j = s.job;
   const c = s.can || {};
   const b = billing(s, ctx.can);
   const visits = s.visits || [];
-  const first = visits.find((v) => OPEN_VISIT.includes(v.status)) || visits[0];
-  const when = first ? `${MONTH_DAY.format(new Date(first.date + "T12:00:00Z"))}${first.date_only ? "" : `, ${clock(first.start)}`}` : j.target_month && j.status === "unscheduled" ? `Due by ${monthLabel(j.target_month)}` : "";
+  const first = visits.find((v) => OPEN_VISIT.includes(v.status));
+  const when = first ? `Next ${MONTH_DAY.format(new Date(first.date + "T12:00:00Z"))}${first.date_only ? "" : `, ${clock(first.start)}`}` : j.target_month && j.status === "unscheduled" ? `Due by ${monthLabel(j.target_month)}` : "";
   const paid = b.inv && b.inv.st === "paid";
-  const billPill = b.inv ? statusPill(paid ? "Paid" : "Invoiced", paid ? "green" : "blue")
+  const part = b.inv && !paid && b.inv.bal > 0 && b.inv.bal < b.inv.tot;
+  const billPill = b.inv ? statusPill(paid ? "Paid" : part ? "Partially paid" : "Invoiced", paid ? "green" : part ? "amber" : "blue")
     : j.plan_id ? statusPill("Plan visit", "fill-green")
       : s.invoices && j.billable !== false && j.status !== "cancelled" && j.totals && j.totals.total_cents > 0 ? statusPill("Not invoiced", "amber") : "";
   const allDone = visits.length && visits.every((v) => !OPEN_VISIT.includes(v.status)) && visits.some((v) => v.status === "completed");
-  return html`<div class="rs-card wk-jtop">
-    <div class="wk-jtop-r"><span class="rs-pills">${statusPill(JOB_WORD[j.status] || j.status, JOB_TONE[j.status] || "grey")}${billPill}${j.billable === false ? statusPill("No charge", "grey") : ""}</span>${when ? html`<span class="rs-sub num">${when}</span>` : ""}</div>
+  const invBtn = b.inv && officeView() ? pillBtn(`Invoice ${money(paid ? b.inv.tot : b.inv.bal || b.inv.tot)}`, { tone: "red", icon: "doc", href: "#/invoices/" + encodeURIComponent(b.inv.id), aria: `Invoice ${b.inv.n}` })
+    : b.ready ? pillBtn(`Invoice ${money(j.totals.total_cents)}`, { tone: "red", icon: "doc", data: { "make-invoice": true }, aria: "Create an invoice from this job" }) : "";
+  const sub = [s.contact && s.contact.display_name, j.plan_id && !s.plan ? (j.plan_ordinal && j.plan_ordinal.n ? `Visit ${j.plan_ordinal.n} of a service plan` : "A service plan visit") : "", j.kind !== "standard" ? kindLabel(j.kind) : "", j.created_at ? `Created ${dateYear(j.created_at)}` : "", when].filter(Boolean);
+  return html`<section class="wk-jtop">
+    <div class="wk-jtop-r"><span class="rs-pills">${statusPill(JOB_WORD[j.status] || j.status, JOB_TONE[j.status] || "grey")}${billPill}${j.billable === false ? statusPill("No charge", "grey") : ""}</span>
+      ${invBtn || c.write ? html`<span class="wk-jbtns">${invBtn}${c.write ? pillBtn("Edit job", { icon: "edit", data: { "edit-job": true } }) : ""}</span>` : ""}</div>
     <p class="wk-jtitle">${j.title}</p>
-    ${j.kind !== "standard" || j.plan_id ? html`<p class="rs-sub">${[j.kind !== "standard" ? kindLabel(j.kind) : "", j.plan_id ? `Visit ${(j.plan_ordinal && j.plan_ordinal.n) || ""} of a service plan` : ""].filter(Boolean).join(" · ")}</p>` : ""}
+    ${sub.length ? html`<p class="rs-sub wk-jsub">${sub.join(" · ")}</p>` : ""}
     ${planBanner(s)}
-    ${j.totals ? html`<div class="rs-kv"><span>Total</span><span class="${"rs-amt" + (paid ? " green" : "")}">${money(j.totals.total_cents)}</span></div>${paid ? html`<p class="rs-paid">Paid in full</p>` : ""}` : ""}
-    ${officeView() && j.totals ? html`<div class="sv-stats">${statGrid([
-      { label: "Balance due", value: balanceDue(s) === null ? "-" : money(balanceDue(s)), tone: balanceDue(s) > 0 && j.status === "completed" ? "red" : null },
-      { label: "Time on site", value: onSite(s.visits) },
-    ], { label: "This job" })}</div>` : ""}
     ${trackAt(s) ? html`<div class="sv-track">${stepper(TRACK, trackAt(s), { label: "Job status" })}</div>` : ""}
-    ${b.live.map((i) => html`<a class="rs-inset" href="${"#/invoices/" + encodeURIComponent(i.id)}"><span>${`Invoice ${i.n} · ${INV_WORD[i.st] || i.st} · ${money(i.tot)}`}</span><span class="chev" aria-hidden="true"></span></a>`)}
     ${j.status === "cancelled" && j.cancel_reason ? html`<p class="warn-box">Cancelled: ${j.cancel_reason}</p>` : ""}
     ${j.completed_at && j.status === "completed" ? html`<p class="rs-sub">Done ${dateShort(j.completed_at)}</p>` : ""}
     ${c.complete && allDone ? html`<div class="wk-jtop-act">${pillBtn("Mark done", { icon: "check", tone: "solid", data: { complete: true } })}</div>`
       : mineOpen(s, ctx) ? html`<div class="wk-jtop-act">${nextStep(mineOpen(s, ctx))}</div>` : ""}
+  </section>`;
+}
+
+// Rotor's three stat cards: Job total, Balance due, Time on site.
+function statCards(s) {
+  const j = s.job;
+  if (!j.totals && !onSite(s.visits)) return "";
+  const b = billing(s, () => false);
+  const paid = b.inv && b.inv.st === "paid";
+  const due = officeView() ? balanceDue(s) : null;
+  const one = (label, value, tone = "") => html`<div class="rs-card wk-jstat"><span class="rs-stat-l">${label}</span><span class="${"rs-stat-v" + (tone ? " " + tone : "")}">${value === null || value === undefined || value === "" ? "-" : value}</span></div>`;
+  return html`<div class="wk-jstats" role="group" aria-label="This job">
+    ${one("Job total", j.totals ? money(j.totals.total_cents) : null, paid ? "green" : "")}
+    ${one("Balance due", due === null ? null : money(due), due > 0 && j.status === "completed" ? "red" : due === 0 && paid ? "green" : "")}
+    ${one("Time on site", onSite(s.visits) || "0 m", onSite(s.visits) ? "red" : "")}
   </div>`;
 }
 
 const pctText = (bp) => `${String(bp / 100).replace(/\.0+$/, "")}%`;
 const discLabel = (d) => `${d.name || "Discount"}${d.type === "percentage" ? ` (${pctText(d.value)})` : ""}`;
 
+// Pricing (Rotor's table): Item · Measurement · Qty · Unit · Amount (a line
+// opens the editor), then the subtotal, each discount (tap: change it),
+// "+ Add discount", the total, and Create Invoice (or why not).
 function pricingCard(s, ctx) {
   const j = s.job;
   const c = s.can || {};
@@ -200,59 +227,70 @@ function pricingCard(s, ctx) {
   const sub = prices ? j.totals.subtotal_cents : 0;
   let left = prices ? j.totals.discount_cents || 0 : 0;
   const amounts = ds.map((d, i) => { const want = d.type === "percentage" ? Math.round((sub * d.value) / 10000) : d.value; const a = i === ds.length - 1 ? left : Math.min(left, want); left -= a; return a; });
-  const body = lineItems(lines.map((l) => ({
-    title: l.title, sub: [l.measure && l.measure.value ? `${l.measure.value} ${l.measure.unit || ""}`.trim() : null, l.qty_milli && l.qty_milli !== 1000 && l.unit_cents != null ? `${l.qty_milli / 1000} × ${money(l.unit_cents)}` : l.unit_cents != null ? `1 × ${money(l.unit_cents)}` : ""].filter(Boolean).join(" · "),
-    amount: l.total_cents != null ? money(l.total_cents) : "", ...(edit ? { data: { line: l.id } } : {}),
-  })), {
-    addItem: edit ? { data: { "add-line": true } } : null,
-    subtotal: prices && ds.length ? j.totals.subtotal_cents : null,
-    discounts: prices ? ds.map((d, i) => ({ label: discLabel(d), amount: -amounts[i], ...(edit ? { data: { disc: d.id } } : {}) })) : [],
-    addDiscount: edit && prices ? { data: { "add-discount": true } } : null,
-    total: prices ? j.totals.total_cents : null,
-    paid: b.inv && b.inv.st === "paid",
-    empty: "No work on this job yet.",
-  });
+  const qtyOf = (l) => { const q = (l.qty_milli ?? 1000) / 1000; return Number.isInteger(q) ? String(q) : q.toFixed(2); };
+  const meas = (l) => (l.measure && l.measure.value ? `${l.measure.value} ${l.measure.unit || ""}`.trim() : "");
+  const cells = (l) => html`<span class="wk-pc it"><b>${l.title}</b>${l.description ? html`<span class="wk-pdesc">${l.description}</span>` : ""}${meas(l) ? html`<span class="wk-pmeas-s">${meas(l)}</span>` : ""}</span>
+    <span class="wk-pc ms">${meas(l) || html`<span class="rs-dash" aria-hidden="true">-</span>`}</span>
+    <span class="wk-pc num">${qtyOf(l)}</span><span class="wk-pc num">${prices && l.unit_cents != null ? money(l.unit_cents) : ""}</span>
+    <span class="wk-pc num am">${prices && l.total_cents != null ? money(l.total_cents) : ""}</span>${edit ? html`<span class="wk-pc ed" aria-hidden="true">${iconOf("edit")}</span>` : ""}`;
+  const row = (l) => (edit ? html`<li><button type="button" class="wk-prow" ${attrs({ "data-line": l.id, "aria-label": `${l.title}: ${qtyOf(l)} × ${money(l.unit_cents)}, change it` })}>${cells(l)}</button></li>` : html`<li><div class="wk-prow">${cells(l)}</div></li>`);
+  const table = lines.length ? html`<div class="${"wk-ptable" + (edit ? " ed" : "")}">
+      <div class="wk-prow wk-phead" aria-hidden="true"><span class="wk-pc it">Item</span><span class="wk-pc ms">Measurement</span><span class="wk-pc num">Qty</span><span class="wk-pc num">Unit</span><span class="wk-pc num am">Amount</span>${edit ? html`<span class="wk-pc ed"></span>` : ""}</div>
+      <ul class="wk-plist" aria-label="Line items">${lines.map(row)}</ul></div>` : html`<p class="rs-empty">No work on this job yet.</p>`;
+  const disc = (d, i) => { const inner = html`<span>${discLabel(d)}</span><span class="num">${money(-amounts[i])}</span>`; return edit ? html`<button type="button" class="rs-li-sum tap" ${attrs({ "data-disc": d.id })}>${inner}</button>` : html`<div class="rs-li-sum">${inner}</div>`; };
+  const sums = prices ? html`<div class="wk-psums">
+      ${ds.length ? html`<div class="rs-li-sum"><span>Subtotal</span><span class="num">${money(j.totals.subtotal_cents)}</span></div>` : ""}
+      ${ds.map(disc)}
+      ${edit ? html`<div class="rs-li-add">${pillBtn("Add discount", { icon: "plus", data: { "add-discount": true } })}</div>` : ""}
+      <div class="rs-li-tot"><span>Total</span><span class="${"num" + (b.inv && b.inv.st === "paid" ? " paid" : "")}">${money(j.totals.total_cents)}</span></div>
+      ${b.inv && b.inv.st === "paid" ? html`<p class="rs-paid">Paid in full</p>` : ""}</div>` : "";
   const cta = b.may && !b.inv ? html`<div class="rs-li-cta">${pillBtn("Create Invoice", { wide: true, data: { "make-invoice": true }, disabled: !b.ready })}${b.why ? html`<p class="rs-sub wk-why">${b.why}</p>` : ""}</div>` : "";
-  return html`<div class="rs-card wk-pricing">${cardHead("Pricing")}${body}${cta}</div>`;
+  return html`<div class="rs-card wk-pricing"><div class="rs-ch"><h3>Pricing</h3><span class="rs-ch-end">${edit ? pillBtn("Add item", { icon: "plus", data: { "add-line": true } }) : ""}</span></div>${table}${sums}${cta}</div>`;
 }
 
+// The right column (Rotor's): CUSTOMER (the name, Call · Text · Email, the address and Directions),
+// INVOICES (each # and what's paid), Sold by, and the notes.
+const railHead = (label, end = "") => html`<div class="wk-rhead"><h3 class="rs-label">${label}</h3>${end}</div>`;
+function customerCard(s) {
+  const c = s.contact;
+  const p = s.property;
+  const a = p && p.address;
+  if (!c && !(a && (a.street1 || a.city))) return "";
+  const office = officeView();
+  const ph = c ? (c.phones || []).find((x) => x.primary) || (c.phones || [])[0] : null;
+  const n = tel(ph);
+  const em = c ? ((c.emails || []).find((e) => e.primary) || (c.emails || [])[0] || {}).address : null;
+  const name = (c && c.display_name) || "Customer";
+  const gate = p && p.access && p.access.gate_code;
+  return html`<div class="rs-card wk-cust">
+    ${railHead("Customer", c && office ? html`<a class="wk-ropen" ${attrs({ href: "#/contacts/" + encodeURIComponent(c.id) })}>Open</a>` : "")}
+    ${c ? html`<div class="wk-cwho"><span class="rs-av" aria-hidden="true">${initials(name)}</span><span class="wk-cperson"><b>${name}</b>${ph && ph.e164 ? html`<span class="rs-sub num">${formatPhone(ph.e164)}</span>` : ""}</span></div>
+    ${n || (em && office) ? html`<div class="wk-cbtns">${n ? pillBtn("Call", { icon: "call", href: "tel:" + n, aria: "Call " + name }) : ""}${n ? pillBtn("Text", { icon: "chat", href: "sms:" + n, aria: "Text " + name }) : ""}${em && office ? rnd("mail", "Email " + name, { tone: "grey", sm: true, href: "mailto:" + em }) : ""}</div>` : ""}` : ""}
+    ${a && (a.street1 || a.city) ? html`<div class="wk-caddr"><span class="wk-cline"><b>${a.street1 || a.city}</b><span class="rs-sub">${[[a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · ")}</span></span>
+      <span class="wk-cact">${pillBtn("Directions", { icon: "nav", ext: directionsUrl(a) })}${office && p.id ? rnd("edit", "Edit the place and its access", { tone: "grey", sm: true, href: "#/properties/" + encodeURIComponent(p.id) }) : ""}</span></div>` : ""}
+  </div>`;
+}
 function invoicesCard(s, ctx) {
   if (s.invoices === null || s.invoices === undefined) return "";
   const b = billing(s, ctx.can);
   const add = b.ready ? { label: "Create an invoice from this job", data: { "make-invoice": true } }
     : ctx.can("invoices:write") && s.contact ? { label: "A new invoice for this customer", href: `#/invoices/new/${encodeURIComponent(s.contact.id)}` } : null;
-  return html`<div class="rs-card wk-invs">${cardHead("Invoices", { add })}
-    ${s.invoices.length ? s.invoices.map((i) => html`<a class="rs-inset" href="${"#/invoices/" + encodeURIComponent(i.id)}"><span>${`${i.n} · ${INV_WORD[i.st] || i.st} · ${money(i.tot)}`}${i.st !== "paid" && i.st !== "void" && i.bal > 0 && i.bal !== i.tot ? html` <span class="rs-sub">${money(i.bal)} left</span>` : ""}</span><span class="chev" aria-hidden="true"></span></a>`)
+  const line = (i) => (i.st === "paid" ? `Paid${i.pd ? ` ${dateYear(String(i.pd).slice(0, 10))}` : ""}` : i.st !== "void" && i.bal > 0 && i.bal !== i.tot ? `${INV_WORD[i.st] || i.st} · ${money(i.bal)} left` : INV_WORD[i.st] || i.st);
+  return html`<div class="rs-card wk-invs">${railHead("Invoices", add ? rnd("plus", add.label, { tone: "grey", sm: true, href: add.href, data: add.data }) : "")}
+    ${s.invoices.length ? s.invoices.map((i) => html`<a class="wk-irow" href="${"#/invoices/" + encodeURIComponent(i.id)}" ${attrs({ "aria-label": `Invoice ${i.n} · ${INV_WORD[i.st] || i.st} · ${money(i.tot)}` })}><span class="wk-iw"><b>#${i.n}</b><span class="rs-sub">${line(i)}</span></span><span class="${"num wk-iamt" + (i.st === "paid" ? " paid" : "")}">${money(i.st === "paid" ? i.tot : i.tot)}</span></a>`)
       : html`<p class="rs-empty">No invoice yet.${b.ready ? " Create one from Pricing or with +." : ""}</p>`}</div>`;
 }
-
-function placeCards(s) {
-  const out = [];
-  const c = s.contact;
-  if (c) {
-    const ph = (c.phones || []).find((p) => p.primary) || (c.phones || [])[0];
-    const n = tel(ph);
-    const em = ((c.emails || []).find((e) => e.primary) || (c.emails || [])[0] || {}).address;
-    out.push(personCard({ name: c.display_name || "Customer", sub: ph ? ph.e164 && formatPhone(ph.e164) : "Customer", href: officeView() ? "#/contacts/" + encodeURIComponent(c.id) : null, call: n ? "tel:" + n : null, text: n ? "sms:" + n : null,
-      actions: em && officeView() ? [{ icon: "mail", label: "Email " + (c.display_name || "the customer"), href: "mailto:" + em }] : [] }));
-  }
-  const p = s.property;
-  const a = p && p.address;
-  if (a && (a.street1 || a.city)) {
-    const gate = p.access && p.access.gate_code;
-    out.push(addressCard({
-      line1: a.street1 || a.city, line2: [[a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · "),
-      nav: directionsUrl(a), edit: officeView() && p.id ? { label: "Edit the place and its access", href: "#/properties/" + encodeURIComponent(p.id) } : null,
-    }));
-  }
-  return out;
-}
-function notesCards(s) {
+function notesCard(s) {
   const j = s.job;
   const c = s.can || {};
   const office = officeView();
-  return html`<div class="rs-card wk-jnotes">${cardHead("Notes for the crew")}${c.write ? notesBox(j.crew_notes, { name: "crew", label: "Notes for the crew", placeholder: "Add notes for this job..." }) : j.crew_notes ? html`<p class="wk-pre">${j.crew_notes}</p>` : html`<p class="rs-empty">No notes.</p>`}</div>
-    ${office && (c.write || j.office_notes) ? html`<div class="rs-card wk-jnotes">${cardHead("Office notes")}<p class="rs-sub wk-why">The crew never sees these.</p>${c.write ? notesBox(j.office_notes, { name: "office", label: "Office notes", placeholder: "Add a note for the office..." }) : html`<p class="wk-pre">${j.office_notes}</p>`}</div>` : ""}`;
+  const plan = office && s.plan && s.plan.notes ? s.plan : null;
+  return html`<div class="rs-card wk-jnotes">${railHead("Notes")}
+    <h4 class="wk-nlabel">Job notes</h4>
+    ${c.write ? notesBox(j.crew_notes, { name: "crew", label: "Notes for the crew", placeholder: "Add notes for this job..." }) : j.crew_notes ? html`<p class="wk-pre">${j.crew_notes}</p>` : html`<p class="rs-empty">No notes.</p>`}
+    ${office && (c.write || j.office_notes) ? html`<h4 class="wk-nlabel">Office notes</h4><p class="rs-sub wk-why">The crew never sees these.</p>${c.write ? notesBox(j.office_notes, { name: "office", label: "Office notes", placeholder: "Add a note for the office..." }) : html`<p class="wk-pre">${j.office_notes}</p>`}` : ""}
+    ${plan ? html`<h4 class="wk-nlabel">Service plan notes</h4><a class="rs-inset sv-plan" href="${"#/plans/" + encodeURIComponent(plan.id)}"><span class="rs-sub"><b>Plan notes</b><br>${plan.notes}</span><span class="chev" aria-hidden="true"></span></a>` : ""}
+  </div>`;
 }
 
 function soldBy(s) {
@@ -261,6 +299,7 @@ function soldBy(s) {
   const u = (s.users || []).find((x) => x.id === q.sold_by);
   return disclosure("Sold by", { value: u ? u.name : q.sold_by && !/^us_/.test(q.sold_by) ? q.sold_by : "", sub: `Quote ${q.number || ""}`.trim(), href: "#/quotes/" + encodeURIComponent(q.id) });
 }
+
 
 // ------------------------------------------------------------ sheets
 
@@ -555,18 +594,22 @@ export default {
   render(s, ctx) {
     const j = s.job;
     const office = officeView();
-    return html`<div class="rs-page wk wk-job">
+    return html`<div class="rs-page wk wk-job"><div class="wk-jgrid">
       ${topCard(s, ctx)}
-      ${visitsCard(s, ctx)}
-      ${placeCards(s)}
-      ${(j.lines || []).length || (s.can && s.can.write) ? pricingCard(s, ctx) : ""}
-      ${office ? invoicesCard(s, ctx) : ""}
-      ${notesCards(s)}
-      ${office && s.plan && s.plan.notes ? html`<a class="rs-card rs-inset sv-plan" href="${"#/plans/" + encodeURIComponent(s.plan.id)}"><span class="rs-sub"><b>Plan notes</b><br>${s.plan.notes}</span><span class="chev" aria-hidden="true"></span></a>` : ""}
-      ${office ? soldBy(s) : ""}
-      ${j.rotor ? html`<p class="foot-note">From Rotor (job ${j.number_label}). Changes here stay in the CRM.</p>` : ""}
-      ${office && j.updated_at ? html`<p class="foot-note">Changed ${ago(j.updated_at)}</p>` : ""}
-    </div>`;
+      <div class="wk-jmain">
+        ${statCards(s)}
+        ${visitsCard(s, ctx)}
+        ${(j.lines || []).length || (s.can && s.can.write) ? pricingCard(s, ctx) : ""}
+      </div>
+      <aside class="wk-jside" aria-label="Customer, invoices and notes">
+        ${customerCard(s)}
+        ${office ? invoicesCard(s, ctx) : ""}
+        ${office ? soldBy(s) : ""}
+        ${notesCard(s)}
+        ${j.rotor ? html`<p class="foot-note">From Rotor (job ${j.number_label}). Changes here stay in the CRM.</p>` : ""}
+        ${office && j.updated_at ? html`<p class="foot-note">Changed ${ago(j.updated_at)}</p>` : ""}
+      </aside>
+    </div></div>`;
   },
   events: {
     "click [data-book]": (e, el, ctx) => book(ctx),
@@ -575,6 +618,7 @@ export default {
     "click [data-v-move]": (e, el, ctx) => moveVisit(ctx, el.dataset.vMove),
     "click [data-v-note]": (e, el, ctx) => noteSheet(ctx, el.dataset.vNote),
     "click [data-complete]": (e, el, ctx) => markDone(ctx),
+    "click [data-edit-job]": (e, el, ctx) => editSheet(ctx),
     "click [data-add-line]": (e, el, ctx) => editSheet(ctx, { add: true }),
     "click [data-line]": (e, el, ctx) => editSheet(ctx, { line: el.dataset.line }),
     "click [data-add-discount]": (e, el, ctx) => discountSheet(ctx),

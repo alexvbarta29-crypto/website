@@ -56,14 +56,19 @@ test("Invoices (Rotor's tiles): Outstanding, Overdue, Due today and Paid this mo
   assert.match(h, /Due today<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$295\.00/);
   assert.match(h, /Paid this month<\/span><span class="rs-tile-v num">2<\/span><span class="rs-tile-m num">\$590\.00/);
   assert.match(h, /data-list-more/, "the Tax report, Payments, Autopay and Export behind the round ...");
-  assert.match(h, /class="rs-lrow/, "Row2 rows");
+  assert.match(h, /data-tax-report=""[^>]*>[\s\S]*?<span>Tax Report<\/span>/, "Rotor's Tax Report button");
+  assert.match(h, /data-inv-filter/, "the filter: every tile, Paid this year and Void too");
+  // Rotor's table: Created · Invoice # · Customer · Status · Cycle · Total · Due · Sent · Paid
+  assert.match(h, /class="rs-card flush rs-table has-act"/);
+  assert.match(h, /<span class="rs-td c-date">Created<\/span><span class="rs-td c-text">Invoice #<\/span><span class="rs-td c-title">Customer<\/span><span class="rs-td c-status">Status<\/span><span class="rs-td c-text">Cycle<\/span><span class="rs-td c-money num">Total<\/span><span class="rs-td c-date">Due<\/span><span class="rs-td c-date">Sent<\/span><span class="rs-td c-date">Paid<\/span>/);
+  assert.match(h, /<a class="rs-tmain" href="#\/invoices\/in_00000000000000000001">[\s\S]*?<b class="mn-inum">INV-0610<\/b>[\s\S]*?Pat &lt;\/script&gt;[\s\S]*?\$295\.00[\s\S]*?<span class="mn-dw">due <\/span>Nov 17, 2026/);
+  assert.ok(h.indexOf('data-key="paid_month"') < h.indexOf('data-key="due_today"') && h.indexOf('data-key="due_today"') < h.indexOf('data-key="open"') && h.indexOf('data-key="open"') < h.indexOf('data-key="overdue"'), "Rotor's order: paid, due today, outstanding, overdue");
   assert.match(h, /data-key="failed"/);
   assert.doesNotMatch(h, /data-key="overpaid"/, "a tile with nothing in it stays out of the way");
   assert.match(h, /Card failed<\/span>/);
   assert.match(h, /Overdue<\/span>/, "overdue wins over part paid");
   assert.match(h, /data-remind="in_00000000000000000003"/, "Text a reminder on the overdue one only");
   assert.doesNotMatch(h, /data-remind="in_00000000000000000001"/);
-  assert.match(h, /<span class="rs-tag">Plan<\/span>/);
   assert.match(text(list.render({ ...base, q: "sam" }, ctx())), /Sam Sample/);
   assert.doesNotMatch(text(list.render({ ...base, q: "sam" }, ctx())), /Lee Late/);
   assert.match(text(list.render({ rows: [], counts: {}, totals: {}, chip: "overdue", q: "", more: false }, ctx())), /Nothing overdue/);
@@ -81,8 +86,14 @@ test("one invoice: lines, balance, the card, and only the buttons its state and 
   assert.match(h, /−\$20\.00/);
   assert.match(h, /Tips for the crew<\/span><span class="num">\$10\.00/);
   assert.match(h, /data-act="send"/);
-  assert.match(h, /data-act="record"/);
-  assert.match(h, /data-act="charge"/);
+  assert.match(h, /data-act="collect"/, "Rotor's Collect Payment");
+  assert.match(h, /data-act="void"/, "the red bin");
+  const IV = await import("../../../crm-app/modules/money/invoice.js");
+  const ways = (st) => IV.collectRows(st, ctx()).flat().filter(Boolean).map((r) => r.data.act);
+  assert.deepEqual(ways(state()), ["charge", "record", "qr", "card-link"].filter((a) => ways(state()).includes(a)));
+  assert.ok(ways(state()).includes("record") && ways(state()).includes("charge"), "Collect Payment: charge the card, record cash or a check");
+  assert.match(h, /Job Details|Invoice Title[\s\S]*Due Date/, "Rotor's window: the title and due date");
+  assert.ok(h.indexOf("Invoice Title") < h.indexOf("Bill To") && h.indexOf("Bill To") < h.indexOf("Line Items") && h.indexOf("Line Items") < h.indexOf('data-act="collect"'), "in Rotor's order");
   assert.match(h, /data-refund="pm_00000000000000000001" data-left="11000"/);
   assert.match(h, /tip \$10\.00 · test/);
   assert.match(h, /VISA ending 4242 · On file/);
@@ -95,14 +106,15 @@ test("one invoice: lines, balance, the card, and only the buttons its state and 
   // an invoice the office typed in for a customer Rotor still bills: cash can be written down, a card can't be charged
   const typed = text(view.render(state({ sandboxed: true, online: "not_yet", can: { send: true, record: true, charge: false, card_link: false } }), ctx()));
   assert.match(typed, /Rotor still bills this customer/);
-  assert.match(typed, /data-act="record"/);
-  assert.doesNotMatch(typed, /data-act="charge"/);
+  assert.match(typed, /data-act="collect"/);
+  assert.ok(ways(state({ sandboxed: true, online: "not_yet", can: { send: true, record: true, charge: false, card_link: false } })).includes("record"));
+  assert.ok(!ways(state({ sandboxed: true, online: "not_yet", can: { send: true, record: true, charge: false, card_link: false } })).includes("charge"));
   // paid: nothing to collect; an overpayment asks for a decision
   const paid = text(view.render(state({ can: { refund: true } }, { status: "paid", balance_cents: 0, paid_cents: 30000, excess_cents: 2500 }), ctx()));
   assert.match(paid, /Overpaid/);
   assert.match(paid, /keep it as credit/, "the overpayment says what to decide");
   assert.ok(view.more(state({ can: { refund: true } }, { status: "paid", balance_cents: 0, paid_cents: 30000, excess_cents: 2500 }), ctx()).flat().some((r) => r && r.data && r.data.act === "keep"), "Keep the extra as credit in the ...");
-  assert.doesNotMatch(paid, /data-act="record"/);
+  assert.doesNotMatch(paid, /data-act="record"|data-act="collect"/);
   assert.equal(view.title(state()), "Invoice INV-0610");
   // the round ...: what the state allows, red rows for Write off and Void, each with its old data-act
   const rows = view.more(state(), ctx()).flat().filter(Boolean);
@@ -117,11 +129,16 @@ test("Payments and the contact's Money tab: the month's totals, practice payment
   const h = text(pay.render({ rows: [prow(), prow({ id: "pm_00000000000000000002", k: "refund", a: 5000, tip: 0 }), prow({ id: "pm_00000000000000000003", sim: true, m: "cash", tip: 0 })], totals: { collected_cents: 27450, tips_cents: 2950, fees_cents: 0, refunds_cents: 5000, simulated: 1 }, tiles, month: "2026-11", group: "" }, ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /November 2026/);
-  assert.match(h, /Total<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$274\.50/, "after refunds");
-  assert.match(h, /Stripe<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$324\.50/);
-  assert.match(h, /Tips<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$29\.50/);
+  assert.match(h, /Total Payments<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$274\.50/, "after refunds");
+  assert.match(h, /Stripe Payments<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$324\.50/);
+  assert.match(h, /Total Tips<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$29\.50/);
   assert.match(h, /data-pay-more/, "the Tip report behind the round ...");
-  assert.match(h, /tip \$29\.50/);
+  assert.match(h, /data-tip-report=""[^>]*>[\s\S]*?<span>Tip Report<\/span>/, "Rotor's Tip Report button");
+  // Rotor's table: Date · Customer · Amount · Tip · Refunded · Method · Ref · Type · Status
+  assert.match(h, /<span class="rs-td c-date">Date<\/span><span class="rs-td c-title">Customer<\/span><span class="rs-td c-money num">Amount<\/span><span class="rs-td c-money num">Tip<\/span><span class="rs-td c-money num">Refunded<\/span><span class="rs-td c-text">Method<\/span><span class="rs-td c-text">Ref<\/span><span class="rs-td c-text">Type<\/span><span class="rs-td c-status">Status<\/span>/);
+  assert.match(h, /href="#\/invoices\/in_00000000000000000001"[\s\S]*?\$324\.50[\s\S]*?\$29\.50[\s\S]*?Card[\s\S]*?INV-0610[\s\S]*?Invoice/);
+  assert.match(h, /Cash<\/span><span class="rs-td c-text">INV-0610<\/span><span class="rs-td c-text">Invoice · test<\/span>/, "a practice payment is marked");
+  assert.match(h, /data-pay-row="pm_00000000000000000001"/);
   assert.match(h, /−\$50\.00/);
   assert.match(h, /1 practice payment \(marked "test"\) is listed but never counted/);
   assert.match(text(pay.render({ rows: [], totals: {}, tiles: {}, month: "2026-11", group: "" }, ctx())), /No payments this month/);

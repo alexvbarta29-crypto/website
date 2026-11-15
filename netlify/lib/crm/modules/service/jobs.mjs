@@ -13,8 +13,10 @@
 //                           Done and Cancelled are this year's.
 //
 // Reads the jobs index (open, this year, last year when the past month
-// reaches back into it) and the invoices index (open, this year): six reads
-// at most, never a record.
+// reaches back into it) and the invoices index (open, this year); with
+// ?tile=, Rotor's Address and Start time for those rows from the visits
+// index (the three months most of them fall in) and the places index: ten
+// reads at most, never a record.
 
 import { readIndex } from "../../../crm-store.mjs";
 import { now, localDate, addLocalDays } from "../../core/clock.mjs";
@@ -88,6 +90,34 @@ export function moneyOf(openInvoices, closedInvoices) {
   return { due, paid };
 }
 
+// Rotor's Address and Start date columns (pure): each row's visit on its day
+// (the next open one, else the last) gives the place and the start time
+// (`ad`, `at`); without one, the job's property from the places index. rows:
+// jobs index rows; visits: visits index rows; places: places index rows.
+export const rowDay = (r) => r.nv || r.lv || r.fv || null;
+export function withPlaces(rows, visits = [], places = []) {
+  const byJob = new Map();
+  for (const v of visits || []) {
+    if (!v || !v.j || v.st === "cancelled") continue;
+    const k = `${v.j}|${v.d}`;
+    const cur = byJob.get(k);
+    if (!cur || String(v.s || "") < String(cur.s || "")) byJob.set(k, v);
+  }
+  const place = new Map((places || []).filter((p) => p && p.id && p.a).map((p) => [p.id, p.a]));
+  return (rows || []).map((r) => {
+    const v = byJob.get(`${r.id}|${rowDay(r)}`);
+    const ad = (v && (v.ad || v.town)) || (r.pr && place.get(r.pr)) || null;
+    const at = v && !v.do && v.s ? v.s : null;
+    return ad || at ? { ...r, ...(ad ? { ad } : {}), ...(at ? { at } : {}) } : r;
+  });
+}
+// The months most of the rows' days fall in (three at most).
+export function monthsOf(rows, max = 3) {
+  const n = new Map();
+  for (const r of rows || []) { const d = rowDay(r); if (d && /^\d{4}-\d{2}/.test(d)) n.set(d.slice(0, 7), (n.get(d.slice(0, 7)) || 0) + 1); }
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, max).map(([m]) => m);
+}
+
 export async function jobStats({ tile = null, today = localDate(now()) } = {}) {
   const year = today.slice(0, 4);
   const lastYear = String(Number(year) - 1);
@@ -100,6 +130,13 @@ export async function jobStats({ tile = null, today = localDate(now()) } = {}) {
   const { due, paid } = moneyOf(invOpen.rows, invYear.rows);
   const out = jobTiles([...open.rows, ...closed.rows, ...before.rows], today, { paid, due });
   const data = { today, tiles: out.tiles };
-  if (tile && out.rows[tile]) data.rows = out.rows[tile].slice().sort(BEHIND.has(tile) ? ORDER.behind : ORDER.ahead).slice(0, 500);
+  if (tile && out.rows[tile]) {
+    const rows = out.rows[tile].slice().sort(BEHIND.has(tile) ? ORDER.behind : ORDER.ahead).slice(0, 500);
+    const [places, ...months] = await Promise.all([
+      rows.some((r) => r.pr) ? readIndex("places", "").catch(() => none) : none,
+      ...monthsOf(rows).map((m) => readIndex("visits", m).catch(() => none)),
+    ]);
+    data.rows = withPlaces(rows, months.flatMap((x) => x.rows), places.rows);
+  }
   return { data, stale: !!(open.stale || closed.stale) };
 }
