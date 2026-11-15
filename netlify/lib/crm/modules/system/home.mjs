@@ -5,7 +5,7 @@
 //
 //   GET /home                      the header, the person's cards in order and the data of the ones shown
 //   GET /home/money?metric=revenue&range=1w|1m|3m|1y|ytd   the top's Revenue view over that range
-//   GET /home/money?metric=arr&range=1w|1m|3m|1y|ytd       the top's ARR view over that range
+//   GET /home/money?metric=arr&range=6m|1y|ytd|all         the top's ARR view by month (Nov 15; 1w 1m 3m: per day, older clients)
 //   GET /home/money?period=week|month&date=      Rotor's older Money card: Collected and Scheduled for the week or month of a day (older clients)
 //   GET /home/money?metric=&period=&from=&to=   one metric (collected | scheduled | arr) over a period (older clients)
 //   GET /home/agenda?view=&date=   the Agenda: day | week | month
@@ -15,11 +15,14 @@
 // The cards (each only for who may see it; a card that is off costs no read):
 //   clock        Timesheet: today's hours and Clock in / out (time:own)
 //   money        the top of Home (Nov 15, Flyra's): Revenue | ARR over
-//                1W 1M 3M 1Y YTD (this month in GET /home, the others read
-//                GET /home/money?metric=&range=). Revenue (`revenue_view`):
-//                Collected, its average a day, its best day, a line per
-//                day. ARR (`arr_view`): the live plans' ARR, its change,
-//                active plans, MRR, a line per day. Collected is the CRM's
+//                a range (GET /home has Revenue's 1M and ARR's 1Y, the
+//                others read GET /home/money?metric=&range=). Revenue
+//                (`revenue_view`, 1W 1M 3M 1Y YTD): Collected, its average
+//                a day, its best day, a line per day. ARR (`arr_view`, by
+//                month since Nov 15: 6M 1Y YTD All): ARR today, its change
+//                since the period began and this month, active plans, MRR,
+//                ARR at each month's end with the plans added and lost in
+//                it. Collected is the CRM's
 //                payments after cutover or while the latest Rotor import is
 //                3 days old or less (it brings Rotor's payments in), else
 //                Rotor's snapshot; ARR the CRM's live plans: reports:read
@@ -50,7 +53,7 @@ import { safeErr } from "../../../referral-lib.mjs";
 import { loadDashboard } from "../../../office-data.mjs";
 import {
   periodOf, PERIODS, monthsOf, rotorCollected, crmCollected, scheduledDays, arrDays, arrOn, moneyCard, clockToday, agendaRange, AGENDA_VIEWS, AGENDA_MAX,
-  latestImport, pairPeriod, PAIR_PERIODS, moneyPair, arrView, ARR_RANGES, revenueView, REVENUE_RANGES,
+  latestImport, pairPeriod, PAIR_PERIODS, moneyPair, arrView, ARR_RANGES, arrMonthView, ARR_MONTH_RANGES, revenueView, REVENUE_RANGES,
   agendaOf, tasksOf, inboxOf, layoutOf, validateLayout, GOALS_DEFAULTS, validateGoals, jobsDoneIn, normalizeBoard,
 } from "./home-kpis.mjs";
 
@@ -225,11 +228,12 @@ async function home(ctx) {
     const colP = on.has("money") || on.has("goals") ? collectedFor({ p: month, today, mode }) : null;
     if (on.has("money")) {
       jobs.push(Promise.all([revenue({ range: "1m", today, mode, col: colP }), colP, ix("plans", "")]).then(([rv, c, plans]) => {
-        const arr = arrView(plans, month, today);
+        // ARR by month over the last 12 months (the owner's Nov 15 ask)
+        const arr = arrMonthView(plans, "1y", today);
         // (an older phone's card reads the month's collected and the ARR beside the views)
         cards.money = {
           ...moneyPair({ p: pairPeriod("month", today), collected: c.collected, scheduled: null, source: c.source, asOf: c.asOf, arr: arr.total, missing: c.missing }),
-          revenue_view: rv, arr_view: { ...arr, range: "1m" }, updated_at: rv.updated_at,
+          revenue_view: rv, arr_view: arr, updated_at: rv.updated_at,
         };
       }));
     }
@@ -280,13 +284,15 @@ async function moneyRoute(ctx) {
       return { data: await revenue({ range, today, mode }) };
     });
   }
-  // the top's ARR view: 1W 1M 3M 1Y YTD
+  // the top's ARR view: by month over 6M 1Y YTD All (Nov 15); 1W 1M 3M per day (an older phone's)
   if (metric === "arr" && q.get("range")) {
-    const range = ARR_RANGES[q.get("range")];
-    if (!range) throw new InputError("Pick 1W, 1M, 3M, 1Y or YTD.", "range");
+    const r = q.get("range");
+    if (!ARR_MONTH_RANGES[r] && !ARR_RANGES[r]) throw new InputError("Pick 6M, 1Y, YTD or All.", "range");
     return withStoreScope({ ixMemo: new Map() }, async () => {
       const today = localDate(now());
-      return { data: { ...arrView(await ix("plans", ""), periodOf(range, today), today), range: q.get("range"), updated_at: now().toISOString() } };
+      const plans = await ix("plans", "");
+      const v = ARR_MONTH_RANGES[r] ? arrMonthView(plans, r, today) : { ...arrView(plans, periodOf(ARR_RANGES[r], today), today), range: r };
+      return { data: { ...v, updated_at: now().toISOString() } };
     });
   }
   const period = q.get("period") || "month";

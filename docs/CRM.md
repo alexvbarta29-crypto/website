@@ -703,7 +703,8 @@ over the grey canvas and white cards. Top to bottom:
   (Edit Home can hide it, not move it): Flyra's **Revenue | ARR** pill
   (Revenue each time Home opens) and the period on the right, **1M ⌄**
   (a small sheet: 1W this week, 1M this month, 3M, 1Y the last 12 months,
-  YTD; chips on a computer), kept when the view switches. Under them the
+  YTD; chips on a computer; ARR's own: 6M, 1Y, YTD, All), each view
+  keeping its own. Under them the
   period in small caps (NOVEMBER, NOV 16 – 22, DEC 2025 – NOV 2026), the
   big number (a link to Payments or Plans) and two small caps figures on
   the right; then one thin light-blue line across the width, the values at
@@ -719,10 +720,24 @@ over the grey canvas and white cards. Top to bottom:
     $0. `revenue_view` in `GET /home` (1M),
     `GET /home/money?metric=revenue&range=1w|1m|3m|1y|ytd` for the others
     (`revenueView()` in home-kpis.mjs).
-  - **ARR**: today's ARR (or the period's last day), **CHANGE** over the
-    period (green up, red down) and **MRR** (ARR ÷ 12), the active plans
-    under the line, a point per day. `arr_view` in `GET /home`,
-    `GET /home/money?metric=arr&range=` (`arrView()`).
+  - **ARR by month** (the owner's Nov 15 ask, "ARR by month on the home
+    page"): over 6M, 1Y (first), YTD and All (since the first plan's
+    month), today's ARR as the big number, **CHANGE** since the period
+    began (the end of the month before its first; $ and %, green up, red
+    down) and **THIS MONTH** (since the end of last month); a bar a month
+    (ARR at the month's end, the current month's is today's) with the
+    short month names under them; this month picked to start with, a
+    tap, a drag, the pointer or the arrow keys pick another and the
+    readout under the bars says that month's ARR and the plans added and
+    lost in it ("May 2026 · $5,600 · Added 1 plan · Lost 0 plans"); then
+    the active plans and MRR (ARR ÷ 12). Month ends are local days
+    (America/Chicago); the same recurring filters and per-plan `ay` as
+    ARR on a day; a plan made and cancelled in one month is added and
+    lost in it. `arr_view` in `GET /home` (1Y),
+    `GET /home/money?metric=arr&range=6m|1y|ytd|all` for the others
+    (`arrMonths()`, `arrMonthView()` in home-kpis.mjs; one plans index
+    read). An older phone's per-day ARR (`range=1w|1m|3m`, `arrView()`)
+    still answers.
 - **Leaderboard** (back on Nov 15, its math fixed: who sees the money,
   while the reports module's `reports.leaderboard` is there): "November
   Leaderboard" with **Sales | Techs**; a row each: the rank, the initials

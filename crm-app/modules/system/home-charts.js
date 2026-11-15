@@ -1,5 +1,5 @@
 // Home's charts, drawn in the CRM itself: the top's line (flyraLine,
-// Flyra's, Nov 15) and Rotor's Money chart (pairChart, Reports uses it):
+// Flyra's, Nov 15), ARR's bars by month (monthBars, Nov 15) and Rotor's Money chart (pairChart, Reports uses it):
 // Collected in coral and Scheduled in grey per day of
 // a week or a month, smooth lines (monotone: a day of $0 never dips under
 // the baseline), a dashed grid, $ ticks at the left, a few dates under it
@@ -257,6 +257,101 @@ export function flyraLine(el, spec) {
     destroy() {
       if (ro) ro.disconnect();
       for (const [k, f] of [["pointerdown", onPointer], ["pointermove", onPointer], ["pointerleave", onLeave], ["keydown", onKey], ["focus", onFocus], ["blur", onBlur]]) el.removeEventListener(k, f);
+    },
+  };
+}
+
+// ARR by month (the owner's Nov 15 ask): a bar a month on the top's faint
+// grid, the values at the left, short month names under the bars (as many
+// as fit, always this month's). One month is picked (this month to start
+// with): its bar full, the others soft, a faint column behind it. A tap, a
+// drag, the pointer or the arrow keys pick another and call onRead(i).
+//
+//   const c = monthBars(el, { keys, labels, values, axis, start, onRead })
+//   c.destroy()
+//
+// keys: the months (YYYY-MM); labels: their short names; values: one per
+// key, null where there is no point. start: the key picked first.
+export function monthBars(el, spec) {
+  const keys = spec.keys || [];
+  const labels = spec.labels || keys;
+  const n = keys.length;
+  const vals = (spec.values || []).map((v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v)));
+  const filled = keys.map((_, i) => i).filter((i) => vals[i] !== null);
+  const first = spec.start ? keys.indexOf(spec.start) : -1;
+  let sel = first >= 0 && vals[first] !== null ? first : filled.length ? filled[filled.length - 1] : -1;
+  let width = 0, height = 0, geo = null;
+  function draw() {
+    const W = Math.max(160, Math.floor(el.clientWidth));
+    const H = Math.max(110, Math.floor(el.clientHeight) || 200);
+    width = el.clientWidth;
+    height = el.clientHeight;
+    const top = 8, band = 26;
+    const max = Math.max(0, ...filled.map((i) => vals[i]));
+    const tk = ticks(max, { most: 4 });
+    const top1 = tk[tk.length - 1] || 1;
+    const gutter = Math.max(...tk.map((v) => spec.axis(v).length)) * 7 + 14;
+    const x0 = gutter, x1 = W - 4, y1 = H - band;
+    const slot = (x1 - x0) / Math.max(1, n);
+    const bw = Math.max(3, Math.min(28, slot * 0.58));
+    const cx = (i) => x0 + slot * (i + 0.5);
+    const y = (v) => y1 - (Math.max(0, v || 0) / top1) * (y1 - top);
+    // a bar with a rounded top
+    const bar = (i) => {
+      const h = y1 - y(vals[i]);
+      if (!(h > 0.5)) return "";
+      const r = Math.min(4, bw / 2, h), l = cx(i) - bw / 2, t = y1 - h;
+      return `M${fix(l)},${y1}V${fix(t + r)}Q${fix(l)},${fix(t)} ${fix(l + r)},${fix(t)}H${fix(l + bw - r)}Q${fix(l + bw)},${fix(t)} ${fix(l + bw)},${fix(t + r)}V${y1}Z`;
+    };
+    // as many month names as fit (24 px each at least: every month on a phone's 12), counted back from this month
+    let every = 1;
+    while (slot * every < 24) every++;
+    const named = keys.map((_, i) => i).filter((i) => (n - 1 - i) % every === 0);
+    render(el, html`<svg class="hf-svg hb-svg" width="${W}" height="${H}" viewBox="${`0 0 ${W} ${H}`}" aria-hidden="true">
+      <rect class="hb-col" x="0" y="${top - 4}" width="${fix(Math.min(slot, bw + 18))}" height="${fix(y1 - top + 4)}" rx="6" visibility="hidden"/>
+      ${tk.map((v) => html`<line class="hf-grid" x1="${x0}" x2="${x1}" y1="${fix(y(v)) + 0.5}" y2="${fix(y(v)) + 0.5}"/>
+        <text class="hf-t" x="${x0 - 12}" y="${fix(y(v) + 4)}" text-anchor="end">${spec.axis(v)}</text>`)}
+      ${keys.map((_, i) => (vals[i] === null ? "" : html`<path class="hb-bar" data-i="${i}" d="${bar(i)}"/>`))}
+      ${named.map((i) => html`<text class="hf-t hb-m" data-i="${i}" x="${fix(cx(i))}" y="${H - 6}" text-anchor="middle">${labels[i]}</text>`)}
+    </svg>`);
+    geo = { cx, x0, x1, slot, bw, top, y1 };
+  }
+  function show(i, quiet = false) {
+    if (!filled.length || !geo) return;
+    sel = vals[i] !== null && vals[i] !== undefined ? i : filled.reduce((b, j) => (b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b), -1);
+    el.querySelectorAll(".hb-bar, .hb-m").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === sel));
+    const col = el.querySelector(".hb-col");
+    if (col) { col.setAttribute("x", fix(geo.cx(sel) - Number(col.getAttribute("width")) / 2)); col.setAttribute("visibility", "visible"); }
+    if (spec.onRead && !quiet) spec.onRead(sel);
+  }
+  const at = (e) => {
+    if (!geo) return sel;
+    const px = e.clientX - el.getBoundingClientRect().left;
+    return Math.max(0, Math.min(n - 1, Math.floor((px - geo.x0) / geo.slot)));
+  };
+  const step = (d) => { const k = filled.indexOf(sel) + d; if (k >= 0 && k < filled.length) show(filled[k]); };
+  const onDown = (e) => show(at(e));
+  // a mouse picks as it moves; a finger as it drags along
+  const onMove = (e) => { if (e.pointerType === "mouse" || e.buttons) { const i = at(e); if (i !== sel) show(i); } };
+  const onKey = (e) => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+    else if (e.key === "Home") { e.preventDefault(); show(filled[0]); }
+    else if (e.key === "End") { e.preventDefault(); show(filled[filled.length - 1]); }
+  };
+  el.addEventListener("pointerdown", onDown);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("keydown", onKey);
+  draw();
+  show(sel, true);
+  const redraw = () => { if (Math.abs(el.clientWidth - width) > 1 || Math.abs(el.clientHeight - height) > 1) { draw(); show(sel, true); } };
+  const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => redraw()) : null;
+  if (ro) ro.observe(el);
+  return {
+    redraw, show,
+    destroy() {
+      if (ro) ro.disconnect();
+      for (const [k, f] of [["pointerdown", onDown], ["pointermove", onMove], ["keydown", onKey]]) el.removeEventListener(k, f);
     },
   };
 }

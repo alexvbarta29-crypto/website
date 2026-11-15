@@ -9,11 +9,15 @@
 //               name big, the bell; Revenue | ARR (Revenue first) and the
 //               period (1W 1M 3M 1Y YTD: a small sheet on a phone, chips
 //               on a computer); the period's name in caps, the big number
-//               (a tap opens Payments or Plans), AVG and PEAK on the right
-//               (ARR: its change and MRR); one thin line across the width
-//               with the values at the left, a faint grid and a dotted
-//               baseline; under it what a tap on the line reads out, and
-//               "Updated 5:16 PM" (or where Collected comes from)
+//               (a tap opens Payments or Plans), AVG and PEAK on the right;
+//               one thin line across the width with the values at the
+//               left, a faint grid and a dotted baseline; under it what a
+//               tap on the line reads out, and "Updated 5:16 PM" (or where
+//               Collected comes from). ARR is by month (Nov 15, "ARR by
+//               month on the home page"): 6M 1Y YTD All, today's ARR, its
+//               change since the period began ($ and %) and this month's,
+//               a bar a month with the short month names, and under them
+//               the month picked (a tap): its ARR, the plans added and lost
 //   Leaderboard this month's, Sales | Techs: the rank, the initials, the
 //               name, "2 plans sold", "$1,290 ARR"
 //   Clock in    compact: TIMESHEET, today's hours, Clock In / Clock Out
@@ -29,11 +33,11 @@
 // right, Goals across. A tech never comes here (today.js keeps their own
 // day). Creating is the shell's New / + button.
 
-import { html, icon, attrs, toast, sheet, delegate } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, delegate, render } from "../../core/ui.js";
 import { dateLong, dateShort, plural, dateTime, initials, clock, time as fmtTime, ago, localDate } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import * as router from "../../core/router.js";
-import { flyraLine, srTable } from "./home-charts.js";
+import { flyraLine, monthBars, srTable } from "./home-charts.js";
 
 // The stylesheet, loaded once; the screen waits for it (a second at most),
 // so its first paint is already laid out and the chart measures its card.
@@ -177,9 +181,13 @@ export function lineSeries(v) {
   const pts = (v && v.points) || [];
   return { keys: pts.map((x) => x.key), values: pts.map((x) => (x.value === null || x.value === undefined ? null : x.value)) };
 }
-// Flyra's period menu: 1W 1M 3M 1Y, and YTD
+// Flyra's period menu: 1W 1M 3M 1Y, and YTD (Revenue)
 export const RANGES = [["1w", "1W", "This week"], ["1m", "1M", "This month"], ["3m", "3M", "The last 3 months"], ["1y", "1Y", "The last 12 months"], ["ytd", "YTD", "This year"]];
-const RANGE_SHORT = Object.fromEntries(RANGES.map(([k, l]) => [k, l]));
+// ARR by month (the owner's Nov 15 ask): 6M, 1Y (first), YTD and All
+export const ARR_RANGES = [["6m", "6M", "The last 6 months"], ["1y", "1Y", "The last 12 months"], ["ytd", "YTD", "This year"], ["all", "All", "Since the first plan"]];
+const rangesOf = (view) => (view === "arr" ? ARR_RANGES : RANGES);
+// the range on screen: each view keeps its own
+const rangeKey = (view) => (view === "arr" ? "arrRange" : "range");
 // "+$1,200 (3.2%)", "−$400 (1.1%)", "No change"
 export function changeText(a) {
   if (!a || a.change === null || a.change === undefined) return "";
@@ -189,12 +197,24 @@ export function changeText(a) {
 }
 // "+$1,200" (the change alone, where room is short)
 const changeShort = (a) => (!a || a.change === null || a.change === undefined ? "-" : !a.change ? "$0" : `${a.change > 0 ? "+" : ""}${usd(a.change)}`);
-// the right-hand pair: Revenue's AVG and PEAK (a best week or month from Rotor's snapshot), ARR's change and MRR
+// "+3.2%", "−1.1%" (a change's share of where it started), "" without one
+export const pctText = (a) => (!a || a.pct === null || a.pct === undefined || !a.change ? "" : `${a.pct > 0 ? "+" : "−"}${Math.abs(a.pct).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`);
+const toneOf = (c) => (c > 0 ? "up" : c < 0 ? "down" : "");
+// the right-hand pair: Revenue's AVG and PEAK (a best week or month from Rotor's snapshot);
+// ARR's change since the period began ($ and %) and this month's change (by month, Nov 15),
+// or its change and MRR (an older per-day answer)
 export function sideStats(view, v) {
-  if (!v || v.loading) return [["…", "…"], ["…", "…"]].map(([k, val], i) => ({ key: i ? "b" : "a", label: view === "arr" ? (i ? "MRR" : "Change") : i ? "Peak" : "Avg", value: val }));
+  if (!v || v.loading) return [["…", "…"], ["…", "…"]].map(([k, val], i) => ({ key: i ? "b" : "a", label: view === "arr" ? (i ? "This month" : "Change") : i ? "Peak" : "Avg", value: val }));
+  if (view === "arr" && v.month_change !== undefined) {
+    const none = v.total === null;
+    const since = v.points && v.points.length ? `since the start of ${pointWords(v, v.points[0].key)}` : "";
+    return [
+      { key: "a", label: "Change", value: none ? "-" : changeShort(v), sub: none ? "" : pctText(v), tone: toneOf(v.change), title: none ? "" : `${changeText(v)} ${since}`.trim() },
+      { key: "b", label: "This month", value: none ? "-" : changeShort({ change: v.month_change }), tone: toneOf(v.month_change), title: none ? "" : `${changeShort({ change: v.month_change })} this month` },
+    ];
+  }
   if (view === "arr") {
-    const tone = v.change > 0 ? "up" : v.change < 0 ? "down" : "";
-    return [{ key: "a", label: "Change", value: v.total === null ? "-" : changeShort(v), tone, title: changeText(v) }, { key: "b", label: "MRR", value: usd(v.mrr) }];
+    return [{ key: "a", label: "Change", value: v.total === null ? "-" : changeShort(v), tone: toneOf(v.change), title: changeText(v) }, { key: "b", label: "MRR", value: usd(v.mrr) }];
   }
   const best = v.grain === "week" ? "Best week" : v.grain === "month" ? "Best month" : "Peak";
   return [{ key: "a", label: "Avg", value: usd(v.avg), title: "Average a day" }, { key: "b", label: best, value: v.peak ? usd(v.peak.value) : "-", title: v.peak ? v.peak.label : "" }];
@@ -204,39 +224,61 @@ const periodWords = (v) => (v && v.label) || "";
 // the axis: Flyra's plain numbers ("250", "1.5K")
 export const axisShort = (cents) => usdShort(cents).replace("$", "");
 
+// ARR by month: the month picked on the bars (this month to start with)
+export function monthPicked(v, key) {
+  const pts = ((v && v.points) || []).filter((x) => x.value !== null && x.value !== undefined);
+  return pts.find((x) => x.key === key) || pts[pts.length - 1] || null;
+}
+const plansWord = (n) => `${Number(n || 0).toLocaleString("en-US")} ${n === 1 ? "plan" : "plans"}`;
+// the picked month's readout: its ARR at the month's end, the plans added and lost in it
+function monthRead(x) {
+  if (!x) return "";
+  const when = `${MONTHS[Number(x.key.slice(5, 7)) - 1].slice(0, 3)} ${x.key.slice(0, 4)}`;
+  return html`<div class="mr-a"><span>${when}</span><b>${usd(x.value)}</b></div><div><span>Added</span><b class="${x.added ? "up" : ""}">${plansWord(x.added)}</b></div><div><span>Lost</span><b class="${x.lost ? "down" : ""}">${plansWord(x.lost)}</b></div>`;
+}
+
 function moneyTop(s, ctx) {
   const m = s.home.cards.money;
   if (!m) return "";
   const ui = s.ui.money;
   const view = ui.view;
+  const range = ui[rangeKey(view)];
+  const ranges = rangesOf(view);
   const v = view === "arr" ? m.arr_view : m.revenue_view;
   const loading = !v || !!v.loading;
   const target = view === "arr" ? open(ctx, "/plans") : open(ctx, "/payments");
   const ser = loading ? null : lineSeries(v);
   const drawn = !!ser && ser.values.some((x) => x !== null && x > 0);
+  // ARR by month (Nov 15): bars, a readout of the month picked
+  const months = !loading && view === "arr" && v.grain === "month";
   const stats = sideStats(view, v);
   const big = loading ? "…" : usd(v.total);
   const what = view === "arr" ? "ARR" : "Collected";
   const head = html`<span class="hm-mbig"><span class="sr">${what}, </span>${big}</span>`;
-  const note = view === "arr" ? (loading ? "" : `${Number(v.plans || 0).toLocaleString("en-US")} active ${v.plans === 1 ? "plan" : "plans"}`) : "";
+  const note = view === "arr" ? (loading ? "" : `${Number(v.plans || 0).toLocaleString("en-US")} active ${v.plans === 1 ? "plan" : "plans"}${v.total ? ` · MRR ${usd(v.mrr)}` : ""}`) : "";
   const updated = loading ? "" : view === "arr" ? (v.updated_at || m.updated_at ? `Updated ${fmtTime(v.updated_at || m.updated_at)}` : "") : moneyNote(v);
+  const grainWord = v && (v.grain === "week" ? "week" : v.grain === "month" ? "month" : "day");
+  const shown = (r) => (ranges.find((x) => x[0] === r) || ranges[0]);
   return html`<section class="hm-money" data-card="money" ${attrs({ "data-view": view })} aria-labelledby="hm-m-h">
     <div class="hm-mrow">
       ${seg("m-view", [["revenue", "Revenue"], ["arr", "ARR"]], view, "Revenue or ARR", "hm-mview")}
-      <div class="hm-ranges" role="group" aria-label="Period">${RANGES.map(([k, l, words]) => html`<button type="button" class="${k === ui.range ? "on" : ""}" ${attrs({ "data-hm": "m-range", "data-v": k, "aria-pressed": k === ui.range ? "true" : "false", "aria-label": words })}>${l}</button>`)}</div>
-      <button type="button" class="hm-range" data-hm="m-ranges" aria-haspopup="dialog" aria-label="${`Period: ${RANGES.find((r) => r[0] === ui.range)[2]}`}"><span>${RANGE_SHORT[ui.range]}</span>${ic("chevron-down")}</button>
+      <div class="hm-ranges" role="group" aria-label="Period">${ranges.map(([k, l, words]) => html`<button type="button" class="${k === range ? "on" : ""}" ${attrs({ "data-hm": "m-range", "data-v": k, "aria-pressed": k === range ? "true" : "false", "aria-label": words })}>${l}</button>`)}</div>
+      <button type="button" class="hm-range" data-hm="m-ranges" aria-haspopup="dialog" aria-label="${`Period: ${shown(range)[2]}`}"><span>${shown(range)[1]}</span>${ic("chevron-down")}</button>
     </div>
+    <h3 class="hm-mper" id="hm-m-h"><span class="sr">${view === "arr" ? "ARR" : "Revenue"}, </span>${periodWords(v)}</h3>
     <div class="hm-mhead" ${attrs({ "aria-busy": loading ? "true" : "false" })}>
       <div class="hm-mmain">
-        <h3 class="hm-mper" id="hm-m-h"><span class="sr">${view === "arr" ? "ARR" : "Revenue"}, </span>${periodWords(v)}</h3>
         ${target ? html`<a class="hm-mlink" href="${target}">${head}</a>` : head}
       </div>
-      <dl class="hm-stats">${stats.map((x) => html`<div ${attrs({ title: x.title || null })}><dt>${x.label}</dt><dd class="${x.tone || ""}">${x.value}</dd></div>`)}</dl>
+      <dl class="hm-stats">${stats.map((x) => html`<div ${attrs({ title: x.title || null })}><dt>${x.label}</dt><dd class="${x.tone || ""}">${x.value}${x.sub ? html`<small>${x.sub}</small>` : ""}</dd></div>`)}</dl>
     </div>
     ${!loading && view === "revenue" && v.missing ? html`<p class="hm-note">${MISSING[v.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
     ${loading ? html`<div class="hc hf" aria-hidden="true"></div>`
-      : drawn ? html`<div class="hc hf" data-chart="${view}" tabindex="0" role="group" aria-label="${`${what} by ${v.grain === "week" ? "week" : v.grain === "month" ? "month" : "day"}, ${v.label || ""}. Arrow keys read each point.`}"></div>
-        ${srTable(`${what} by ${v.grain === "week" ? "week" : v.grain === "month" ? "month" : "day"}, ${v.label || ""}`, [v.grain === "week" ? "Week of" : v.grain === "month" ? "Month" : "Day", what], ser.keys.map((k, i) => [k, i]).filter(([, i]) => ser.values[i] !== null).map(([k, i]) => [pointWords(v, k), usd(ser.values[i])]))}`
+      : drawn && months ? html`<div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`ARR at the end of each month, ${v.label || ""}. Arrow keys pick a month.`}"></div>
+        <div class="hm-mread" id="hm-mread" aria-live="polite">${monthRead(monthPicked(v, ui.arrMonth))}</div>
+        ${srTable(`ARR at the end of each month, ${v.label || ""}`, ["Month", "ARR", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(x.value), String(x.added), String(x.lost)]))}`
+      : drawn ? html`<div class="hc hf" data-chart="${view}" tabindex="0" role="group" aria-label="${`${what} by ${grainWord}, ${v.label || ""}. Arrow keys read each point.`}"></div>
+        ${srTable(`${what} by ${grainWord}, ${v.label || ""}`, [v.grain === "week" ? "Week of" : v.grain === "month" ? "Month" : "Day", what], ser.keys.map((k, i) => [k, i]).filter(([, i]) => ser.values[i] !== null).map(([k, i]) => [pointWords(v, k), usd(ser.values[i])]))}`
       : html`<p class="hm-note hm-nochart">${view === "arr" ? (v.total === null ? "ARR shows here once there are plans." : "No recurring plans in this period.") : v.missing ? "" : v.total === null ? "Nothing counted for this period yet." : "Nothing collected in this period."}</p>`}
     <div class="hm-mfoot"><span class="hm-read" id="read-${view}" aria-live="polite">${note}</span><span class="hm-upd">${updated}</span></div>
   </section>`;
@@ -250,6 +292,7 @@ function pointWords(v, k) {
 
 // A view's own read over a range (the one on screen; the other is read when it is switched to)
 async function loadView(s, ctx, view, range) {
+  if (view === "arr") s.ui.money.arrMonth = null;
   const key = view === "arr" ? "arr_view" : "revenue_view";
   const my = (s.moneyTokens[view] = (s.moneyTokens[view] || 0) + 1);
   const money = s.home.cards.money;
@@ -264,27 +307,31 @@ async function loadView(s, ctx, view, range) {
   }
   if (my === s.moneyTokens[view]) ctx.rerender();
 }
-// the range on screen; the view keeps it when it is switched
+// the range on screen (each view keeps its own: Revenue 1M, ARR 1Y to start with)
 function pickRange(s, ctx, range) {
-  if (!RANGE_SHORT[range]) return;
-  s.ui.money.range = range;
+  const view = s.ui.money.view;
+  if (!rangesOf(view).some((r) => r[0] === range)) return;
+  s.ui.money[rangeKey(view)] = range;
   const m = s.home.cards.money;
-  const key = s.ui.money.view === "arr" ? "arr_view" : "revenue_view";
+  const key = view === "arr" ? "arr_view" : "revenue_view";
   if (m[key] && m[key].range === range && !m[key].loading) { ctx.rerender(); return; }
-  loadView(s, ctx, s.ui.money.view, range);
+  loadView(s, ctx, view, range);
 }
 function pickView(s, ctx, view) {
   s.ui.money.view = view;
   const m = s.home.cards.money;
   const v = view === "arr" ? m.arr_view : m.revenue_view;
-  if (!v || (v.range || "1m") !== s.ui.money.range) loadView(s, ctx, view, s.ui.money.range);
+  const range = s.ui.money[rangeKey(view)];
+  // (an older server's ARR is per day: read it again by month)
+  if (!v || (v.range || "1m") !== range || (view === "arr" && v.total !== null && v.grain !== "month")) loadView(s, ctx, view, range);
   else ctx.rerender();
 }
 function rangeSheet(s, ctx) {
+  const cur = s.ui.money[rangeKey(s.ui.money.view)];
   const sh = sheet({
     title: "Period",
     className: "hm-range-sheet",
-    body: html`<ul class="hm-rlist">${RANGES.map(([k, l, words]) => html`<li><button type="button" class="${"hm-ropt" + (k === s.ui.money.range ? " on" : "")}" ${attrs({ "data-r": k, "aria-pressed": k === s.ui.money.range ? "true" : "false" })}><b>${l}</b><span>${words}</span>${k === s.ui.money.range ? icon("check") : ""}</button></li>`)}</ul>`,
+    body: html`<ul class="hm-rlist">${rangesOf(s.ui.money.view).map(([k, l, words]) => html`<li><button type="button" class="${"hm-ropt" + (k === cur ? " on" : "")}" ${attrs({ "data-r": k, "aria-pressed": k === cur ? "true" : "false" })}><b>${l}</b><span>${words}</span>${k === cur ? icon("check") : ""}</button></li>`)}</ul>`,
     events: {
       "click [data-r]": (e, b) => {
         sh.close();
@@ -577,7 +624,7 @@ export default {
     return {
       now, user: ctx.user || {}, home: h,
       // Revenue first, this month (Flyra's)
-      ui: { money: { view: "revenue", range: "1m" }, taskFilter: "upcoming", tasksOpen: remembered() },
+      ui: { money: { view: "revenue", range: "1m", arrRange: "1y", arrMonth: null }, taskFilter: "upcoming", tasksOpen: remembered() },
       moneyTokens: {},
       edit: typeof location !== "undefined" && /[?&]edit=1\b/.test(location.hash),
     };
@@ -618,7 +665,7 @@ export default {
           if (b) b.focus({ preventScroll: true });
           return;
         }
-        if (what === "m-range") { if (s.ui.money.range !== v) pickRange(s, ctx, v); return; }
+        if (what === "m-range") { if (s.ui.money[rangeKey(s.ui.money.view)] !== v) pickRange(s, ctx, v); return; }
         if (what === "m-ranges") { rangeSheet(s, ctx); return; }
         if (what === "board") { loadBoard(s, ctx, v); return; }
         if (what === "view") {
@@ -648,7 +695,16 @@ export default {
     const m = s.home.cards.money;
     const mv = m && (s.ui.money.view === "arr" ? m.arr_view : m.revenue_view);
     const el = root.querySelector(`[data-chart="${s.ui.money.view}"]`);
-    if (mv && el && !mv.loading) {
+    if (mv && el && !mv.loading && s.ui.money.view === "arr" && mv.grain === "month") {
+      // ARR by month: a tap picks a month, its readout under the bars
+      const pts = mv.points || [];
+      const rd = root.querySelector("#hm-mread");
+      off.push(monthBars(el, {
+        keys: pts.map((x) => x.key), labels: pts.map((x) => x.label), values: pts.map((x) => x.value), axis: axisShort,
+        start: (monthPicked(mv, s.ui.money.arrMonth) || {}).key,
+        onRead: (i) => { s.ui.money.arrMonth = pts[i].key; if (rd) render(rd, monthRead(pts[i])); },
+      }).destroy);
+    } else if (mv && el && !mv.loading) {
       const ser = lineSeries(mv);
       const rd = root.querySelector(".hm-read");
       const rest = rd ? rd.textContent : "";
