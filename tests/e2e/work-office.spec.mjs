@@ -106,11 +106,20 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await f.getAttribute(`[data-mday="${seeded.pastDay}"]`, "aria-label"), /1 visit not marked done/);
       assert.ok(await f.$(`[data-mday="${seeded.pastDay}"] .wk-mopen`));
       assert.match(await f.textContent("[data-totray]"), /\d+ to book/);
-      // the day's list: both techs' visits today, each opening the visit
+      // Rotor's month (Nov 15): lined cells with the number at the top left, today in the red circle, a dot a visit in its status color
+      assert.equal(await f.isVisible(".wk-rbar"), false, "the desk's Rotor head is a desk's");
+      assert.equal(await f.$eval(`[data-mday="${day}"] .wk-mnum`, (el) => getComputedStyle(el).backgroundColor), "rgb(219, 58, 41)");
+      const dots = await f.$$eval(`[data-mday="${day}"] .wk-mdots i, [data-mday="${day}"] .wk-mdots b`, (els) => els.map((e) => e.className || e.textContent));
+      assert.ok(dots.length >= 1 && dots.every((x) => /^st-(ns|ip|fin|x)$|^\+\d+$/.test(x)), `today's visits as dots in their status colors: ${dots}`);
+      assert.equal(await f.isVisible(`[data-mday="${day}"] .wk-mchips`), false, "no chips in a phone's cell");
+      assert.ok(await f.$eval(".wk-mgrid", (g) => { const c = g.querySelector(".wk-mday:not(.out):not(.wkend)").getBoundingClientRect(), d = g.getBoundingClientRect(); return c.left - d.left < 60 && c.width >= 44 && c.height >= 44; }), "lined cells, each a tap target");
+      // the day's list: both techs' visits today, each opening the visit (Rotor's rows: a stripe and a tag in the status color)
       await f.waitForSelector(`.wk-dayp [href="#/visits/${seeded.visits[0]}"]`);
       assert.ok(await f.$(`.wk-dayp [href="#/visits/${seeded.visits[1]}"]`), "both techs' visits today");
       assert.match(await f.textContent(".wk-dayp-h h2"), /· \d+ visits/);
       assert.match(await f.textContent(".wk-dayp"), /\$\d/, "amounts for the office");
+      assert.match(await f.textContent(`.wk-dayp [href="#/visits/${seeded.visits[0]}"] .wk-rtag`), /^(Not started|On the way|In progress|Paused|Finished)$/, "Rotor's status tag");
+      assert.match(await f.$eval(`.wk-dayp [href="#/visits/${seeded.visits[1]}"]`, (el) => getComputedStyle(el).boxShadow), /inset/, "the status stripe");
       assert.ok(await f.$(`.wk-dayp a[href="#/schedule/move-day?date=${day}"]`), "Move this day");
       await checks(f, page, `work-schedule-month-${device}`, problems);
       // tap another day: its list, no new read
@@ -300,6 +309,22 @@ for (const device of ["desk1440", "desk1024"]) {
       assert.equal(await f.$eval(`[data-mday="${day}"] .wk-fill`, (el) => getComputedStyle(el).display), "flex", "and the fill bar");
       const chip = await f.$eval(`[data-mday="${day}"] .wk-mchip`, (el) => getComputedStyle(el).boxShadow);
       assert.match(chip, /rgb/, "a chip carries its tech's color");
+      // Rotor's month (Nov 15): the views, ‹ › the month and Today, the tools and More Actions on one head; its blocks
+      // (customer, time, price) in the status colors; today in the red circle; weekends shaded; no dots on a desk
+      assert.equal(await f.isVisible(".wk-top"), false, "the month's head is Rotor's");
+      for (const sel of [".wk-rbar [data-view=month]", '.wk-rbar [data-cal="-1"]', '.wk-rbar [data-cal="1"]', ".wk-rbar .wk-rdate", '.wk-rbar [data-cal="today"]', ".wk-rbar [data-search]", ".wk-rbar [data-filter]", ".wk-rbar [data-more]"]) assert.ok(await f.isVisible(sel), sel);
+      assert.match(await f.textContent(".wk-rbar .wk-rdate"), /^[A-Z][a-z]{2} \d{4}$/);
+      assert.match(await f.textContent(".wk-rbar [data-more]"), /More Actions/);
+      const blocks = await f.$$eval(`[data-mday="${day}"] .wk-mchip:not(.task)`, (els) => els.map((e) => [e.className, e.querySelector(".nm").textContent, e.querySelector(".tm").textContent, (e.querySelector(".amt") || {}).textContent || ""]));
+      assert.ok(blocks.length && blocks.every((b) => /\bst-(ns|ip|fin|x)\b/.test(b[0]) && /^\S+ [A-Z]\.$/.test(b[1]) && /^\d{1,2}(:\d\d)?[ap]$/.test(b[2]) && /^(\$\d.*)?$/.test(b[3])) && blocks.some((b) => /^\$\d/.test(b[3])), JSON.stringify(blocks));
+      assert.equal(await f.$eval(`[data-mday="${day}"] .wk-mnum`, (el) => getComputedStyle(el).backgroundColor), "rgb(219, 58, 41)", "today in the red circle");
+      assert.ok(await f.$eval(".wk-mweek", (w) => getComputedStyle(w.children[0]).backgroundColor !== getComputedStyle(w.children[1]).backgroundColor || w.children[0].classList.contains("out")), "Sunday shaded");
+      assert.equal(await f.isVisible(`[data-mday="${day}"] .wk-mdots`), false);
+      await f.click(".wk-rbar [data-more]");
+      await sheetUp(f, /^More actions$/);
+      assert.match(await f.textContent(".sheet.on"), /Book a job[\s\S]*to book[\s\S]*Block time[\s\S]*Time off[\s\S]*Rain day[\s\S]*Show on cards[\s\S]*Schedule settings/);
+      await page.keyboard.press("Escape");
+      await sheetGone(f);
       // the arrow keys move the chosen day, without a read inside the month
       const n0 = reads.length;
       await f.focus(`[data-mday="${day}"]`);
