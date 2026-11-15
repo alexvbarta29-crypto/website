@@ -833,7 +833,7 @@ test("the client's ARR by month: the change since the period began ($ and %), th
 
 // ------------------------------------------------------------ the client's navigation
 
-test("the drawer: every manifest's Menu entry has its place; an older shell's bar becomes today's", async () => {
+test("the Menu: every manifest's Menu entry has its place; an older shell's bar becomes today's", async () => {
   const nav = await import("../../../crm-app/core/nav.js");
   const { MANIFESTS } = await import("../../../crm-app/modules/index.js");
   const entries = MANIFESTS.flatMap((m) => (m.nav || []).filter((n) => n.where === "more").map((n) => ({ ...n, module: m.name })));
@@ -842,8 +842,9 @@ test("the drawer: every manifest's Menu entry has its place; an older shell's ba
   // (IN_SCREEN), the person's sheet (ME_ROWS), the Settings hub, or (Settings, My account, the Tab bar) its own button
   const placed = new Set([...nav.SECTIONS.flatMap((x) => [x.path, ...(x.tabs || []).map((t) => t[2]), ...(x.more || []).map(([p]) => p)]), "/knock", ...Object.keys(nav.IN_SCREEN), ...nav.ME_ROWS.map(([p]) => p), ...nav.IN_SETTINGS, "/settings", "/me", "/tab-bar"]);
   assert.deepEqual(entries.filter((n) => !placed.has(n.path)).map((n) => `${n.module}: ${n.label}`), [], "each entry has its place");
-  const groups = [0, 1, 2, 3].map((g) => nav.SECTIONS.filter((x) => x.group === g).map((x) => x.label));
-  assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]]);
+  // and every section a row in the Menu (Flyra's, MENU): its own, or one of its tabs'
+  const named = new Set(nav.MENU.flatMap((g) => [...(g.rows || []), ...(g.tiles || [])]).flatMap((e) => (e.sec ? [e.sec] : nav.SECTIONS.filter((x) => x.path === e.path || (x.tabs || []).some((t) => t[2] === e.path)).map((x) => x.key))));
+  assert.deepEqual(nav.SECTIONS.map((x) => x.key).filter((k) => !named.has(k)), [], "every section is in the Menu");
   assert.deepEqual(nav.normalize(["today", "inbox", "contacts", "schedule", "dashboard", "more"]), ["home", "schedule", "inbox", "map", "menu"]);
   assert.deepEqual(nav.normalize(["today", "inbox", "time", "pay", "me"]), ["today", "inbox", "time", "pay", "me"]);
   assert.deepEqual(nav.normalize(navFor({ role: "owner" })), navFor({ role: "owner" }));

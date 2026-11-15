@@ -855,62 +855,61 @@ on). The cards' own reads: `GET /home/money?period=&date=` (Revenue),
 calls), `GET /home/agenda?view=&date=`, `PUT /home/layout { cards }`.
 `tests/crm/core/home.test.mjs` holds the exact list.
 
-### The bar, the drawer and the + (Nov 2026: Flyra's phone app, then Rotor's)
+### The bar, the Menu and the + (Nov 2026: Flyra's phone app, then Rotor's, then Flyra's Menu holding Rotor's)
 
-- **Rotor's shell** (the owner, Nov 2026: "I basically want it to look like
-  Rotor ... with the same capability as desktop"; `.rs-shell` on `#app`):
-  the phone's bar is a floating glass pill, icons only (the names stay for
-  screen readers), the current icon red with a dot under it, red badges;
-  the red round **+** (62 px) beside it. Owners and the office: **Home ·
+- **The bar** (Flyra's, the owner Nov 15 2026; `.rs-shell` on `#app`): a
+  floating pill, a label under each icon, the current place in a lighter
+  pill (ink, not coral), coral badges; the round **+** (56 px, a thin
+  outline, not filled) beside it. Owners and the office: **Home ·
   Schedule · Inbox · Map · Menu** (`me.mjs` `OFFICE_NAV`, `navFor`; the Map
   shows for whoever may open it, `canvass:use`). Each person may pick up to
   five places of their own, from Home, Schedule, Inbox, Customers, Sales,
   Leads, Pipeline, Leaderboard, Map, Quotes, Plans and Invoices:
   **Customize Tabs** (`system/tab-bar.js`: a sheet page with a red Done,
-  from the person's initials, a long press on the bar, or Settings →
-  This phone → Tab bar, `#/tab-bar`, the same list as a page): one list,
-  the tabs on the bar above a line, the rest under MORE MENU, a round − or
-  +, a drag handle (or hold a row; the arrow keys on the handle move it);
-  saved on their user record as `tabs` (`PATCH /users/:id`), "Back to the
-  standard bar" clears it. The Menu is always last. A module offers a place
-  with a nav entry `{ where: "tab", key, path, label, icon }` (the Map
-  does). A tech's bar is Today · Inbox · Time · Pay · Me.
+  from the Menu's Tab bar row, the person's initials, a long press on the
+  bar, or Settings → This phone → Tab bar, `#/tab-bar`, the same list as a
+  page): one list, the tabs on the bar above a line, the rest under MORE
+  MENU, a round − or +, a drag handle (or hold a row; the arrow keys on the
+  handle move it); saved on their user record as `tabs` (`PATCH
+  /users/:id`), "Back to the standard bar" clears it. The Menu is always
+  last. A module offers a place with a nav entry `{ where: "tab", key,
+  path, label, icon }` (the Map does). A tech's bar is Today · Inbox · Time
+  · Pay · Me. Six places go icon-only.
 - **Sales**, for someone who pins it on their bar, is still **Pipeline ·
   Leads · Calls · Quotes · Tasks** in a switch under the header.
-- **The drawer** (Rotor's menu; `core/nav.js` `DRAWER` is the one place
-  that says where each screen sits and what it is called): the Menu tab and
-  the round hamburger open it from the left (42% of a phone, 220 to 300
-  px; white in light, #1b1c1f in dark; the screen behind dimmed and
-  blurred); our logo and an X; four groups split by thin lines:
-  - **Home**, **Inbox** (the unread count), **Schedule**
-  - **Customers** (Customers, Merge review), **Leads**, **Pipelines**,
-    **Power Dialer** (Calls)
-  - **Service** (Jobs, Visits, To book, Quotes, Plans, Plan visits to
-    book, Lights season, Light Studio, Time, Timesheets, Pay), **Financials**
-    (Invoices, Payments, Autopay, Payroll, Purchases), **Tasks**, **Map**
-    (Door to door, Team map)
-  - **Analytics** (Reports, Dashboard, Leaderboard, My performance),
-    **Marketing** (Campaigns, Approvals, Reviews, Signs & flyers, Giveaway,
-    Outbox, Message templates, Automations, Follow-up cadences)
+- **The Menu** (Flyra's, holding everything Rotor's menu has: "have the
+  menu then hold each additional thing that is on Rotor"; `core/nav.js`
+  `MENU` says which rows, `SECTIONS` where each screen lives, its tabs and
+  its "..."): the Menu tab and the round hamburger slide up a sheet with a
+  grabber, a large "Menu" title and three round buttons (Help, Light or
+  dark in one tap, the person's initials), then inset cards of rows (an
+  icon, the name, a badge, a chevron):
+  - **Home**, **Schedule**, **Inbox** (the unread count), **Customers**, **Leads**
+  - four tiles: **Jobs**, **Quotes**, **Invoices** (the overdue count), **Plans**
+  - SALES: **Pipelines**, **Power Dialer**, **Requests**, **Tasks**
+  - MONEY: **Payments**, **Payouts**, **Payroll**, **Expenses**
+  - **Leaderboard** (the Analytics Team tab once it holds it), **Map**,
+    **Reports**, **Automations**
+  - MARKETING: **Campaigns**, **Reviews**, **Templates**, **QR codes**
+  - **Tab bar** (a small picture of the bar: Customize Tabs), **Settings**
 
-  A row with a dot opens its list in the drawer ("‹ Service" goes back); a
-  list of which only one screen is open to this person is that screen. The
-  current screen is a raised pill. A row shows only when its screen is there
-  and the person may open it (a module's Menu entry decides, else the
-  route's permission); a module's Menu entry no row names lands in a last
-  group (and, for someone without Settings, the setup screens). The
-  settings gear sits alone at the bottom (Customize Tabs for someone
-  without Settings). The X, a tap outside, a swipe to the left, Escape or
-  going anywhere closes it. `#/menu` is the same as a page (your card, the
-  rows, the gear, Sign out, the version). On a desk the sidebar is the same
-  drawer, its lists folding open in place (the one holding the screen opens
-  by itself; the ones opened stay open on that computer).
-- **The top bar** of a top-level screen (a tab's, or one the drawer opens):
-  the round hamburger on the left; the round search (the + overlay's), the
-  time, a round help (Report a problem, What moved, Calendar feed help) and
-  the person's initials (My account, Light or dark, Customize Tabs, Sign
-  out of this phone). The screen's large title sits under it with its own
-  round buttons.
+  A section's row opens it on the tab used last; a screen's row opens that
+  screen, whose section's tabs sit under its title and rare screens in its
+  round "..." (the Outbox, Timesheets, Light Studio...). A row shows only
+  when its screen is there and the person may open it; a section no row
+  names for this person, and a module's Menu entry no section names, get a
+  row in a last card. Escape, a tap outside, a swipe down, back or going
+  anywhere closes it. `#/menu` is the same cards as a page (your card,
+  then More screens: each section's other tabs and "..." screens, Sign
+  out, the version). On a desk the icon rail is the sections in the
+  Menu's order (Home, Schedule, Inbox, Customers, Leads | Service,
+  Financials | Pipelines, Power Dialer, Tasks | Map, Analytics, Marketing).
+- **The top bar** of a top-level screen (a tab's, or one the Menu opens):
+  the round hamburger (the Menu) on the left; the round search (the +
+  overlay's), the time, a round help (Where do I go to..., Report a
+  problem, What moved, Calendar feed help) and the person's initials (My
+  account, Light or dark, Customize Tabs, Sign out of this phone). The
+  screen's large title sits under it with its own round buttons.
 - **Merged in the Nov 2026 tidy-up** (old links keep working: a route may
   be `{ path, redirect }`, and the router opens the screen it became in its
   place): Visits → the Schedule's List (`#/visits` redirects to

@@ -63,9 +63,9 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     const { p, page, f, stub } = await open("olive", device, { geo: false });
     try {
       await goTo(f, "/menu");
-      // the bar holds Map (Door to door); the Menu (the drawer) has it too
+      // the bar holds Map (Door to door); the Menu has it too
       assert.ok(await f.$('a[href="#/map"], a[href="#/knock"]'), "Door to door is reachable from the bar or the Menu");
-      // (K0: the drawer has no sub-lists any more; the Team map is in the Map section's "...")
+      // (the Team map is in the Map section's "...": the Menu page lists it under More screens)
       assert.match(await f.textContent("#view"), /Map[\s\S]*Team map/);
       await goTo(f, "/knock");
       assert.equal(await title(f), "Door to door");

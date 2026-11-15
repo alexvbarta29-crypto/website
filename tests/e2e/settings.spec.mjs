@@ -31,9 +31,9 @@ async function open(login, device, theme = "dark") {
   await noInstallCard(p.page);
   return { p, page: p.page, f };
 }
-// a still picture: the drawer gone, no passing hint over the rows
+// a still picture: the Menu gone, no passing hint over the rows
 async function still(f) {
-  await f.waitForFunction(() => !document.querySelector(".drawer"), null, { timeout: 5000 });
+  await f.waitForFunction(() => !document.querySelector(".fm-sheet"), null, { timeout: 5000 });
   await f.evaluate(() => { for (const t of document.querySelectorAll(".toast")) t.remove(); });
 }
 const GROUPS = ["Business", "Team", "Services & pricing", "Messages", "Payments", "Connections", "Rotor & data", "This phone"];
@@ -47,9 +47,9 @@ for (const device of ["iphone13", "iphonese"]) {
     test(`Settings (${device}, ${theme}): eight groups with what is inside, a group's page and back, the search finds Discounts`, async () => {
       const { p, page, f } = await open("olive", device, theme);
       try {
-        // the drawer's gear still opens Settings
+        // the Menu's last row opens Settings
         await openDrawer(f);
-        await f.click('.drawer a[href="#/settings"]');
+        await f.click('.fm-sheet a[href="#/settings"]');
         await settled(f, { hash: "#/settings" });
         assert.equal(await title(f), "Settings");
         const rows = await groupRows(f);
