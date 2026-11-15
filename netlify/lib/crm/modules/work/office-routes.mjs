@@ -92,6 +92,8 @@ function slotInput(b, { partial = false } = {}) {
     out.assignee_ids = [...new Set(b.assignee_ids)];
   }
   if (b.date_only !== undefined) out.date_only = b.date_only === true;
+  // "Notify the customer" off (New job): no confirmation text for this booking
+  if (b.notify === false && !partial) out.notify = false;
   if (out.start && out.end && out.end <= out.start) throw new InputError("The visit ends after it starts.", "end");
   return out;
 }
@@ -395,11 +397,19 @@ const newJob = async (ctx) => {
   if (!contact) throw new InputError("Pick the contact.", "contact_id");
   if (b.kind !== undefined && !JOB_KINDS.includes(b.kind)) throw new InputError("Pick a kind of job.", "kind");
   const lines = formLines(b.lines) || [];
+  // the New job form (Nov 15): its discounts ("Add discount"), the checklist it picked, the salesperson
+  const offs = formDiscounts(b.discounts) || [];
+  if (b.sold_by !== undefined && b.sold_by !== null && b.sold_by !== "") {
+    if (!isId(b.sold_by, "user")) throw new InputError("Pick someone on the team.", "sold_by");
+    await activeUsers([b.sold_by]);
+  }
+  const checklistKey = str(b.checklist_key);
   const spec = {
     contact_id: contact.id, ...(isId(b.property_id, "property") ? { property_id: b.property_id } : {}), kind: b.kind || "standard",
-    ...(str(b.title) ? { title: str(b.title).slice(0, 160) } : {}), lines, discounts: [], ...(str(b.target_month) ? { target_month: str(b.target_month) } : {}),
+    ...(str(b.title) ? { title: str(b.title).slice(0, 160) } : {}), lines, discounts: mergeDiscounts([], offs), ...(str(b.target_month) ? { target_month: str(b.target_month) } : {}),
     crew_notes: str(b.crew_notes).slice(0, 2000), office_notes: str(b.office_notes).slice(0, 4000), service_types: typesOfLines(lines),
     ...(b.billable !== undefined ? { billable: b.billable === true } : {}),
+    ...(checklistKey ? { checklist_key: checklistKey } : {}), ...(isId(b.sold_by, "user") ? { sold_by: b.sold_by } : {}),
   };
   const cid = clientId(b) || newId("event").slice(3);
   const [id] = await createJobs([spec], `newjob--${cid}`, "manual", ctx);

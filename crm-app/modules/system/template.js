@@ -18,6 +18,12 @@ const segments = (text) => {
   return n <= one ? 1 : Math.ceil(n / many);
 };
 
+// A key from the name when none is typed: "Spring gutter reminder" → spring_gutter_reminder.
+export const keyFrom = (name) => {
+  const k = String(name || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40).replace(/_+$/, "");
+  return (/^[a-z]/.test(k) && k.length > 1 ? k : "t_" + k).slice(0, 40);
+};
+
 export default {
   title: (s) => (s.t.id ? s.t.name : "New template"),
   async load(params, ctx) {
@@ -33,7 +39,7 @@ export default {
       <form class="card form" id="tf" novalidate>
         <div class="err" data-form-err hidden></div>
         ${field({ label: "Name", name: "name", value: t.name || "", required: true })}
-        ${isNew ? field({ label: "Key (how automations find it)", name: "key", value: t.key || "", autocapitalize: "none", spellcheck: "false", hint: "Lowercase letters, digits and _, like visit_reminder_2d. It never changes." }) : html`<p class="small muted">Key <span class="mono">${t.key}</span>${t.built_in ? " · built-in" : ""}</p>`}
+        ${isNew ? field({ label: "Key (optional)", name: "key", value: t.key || "", autocapitalize: "none", spellcheck: "false", hint: "How automations find it. Leave it blank and it's made from the name. It never changes." }) : html`<p class="small muted">Key <span class="mono">${t.key}</span>${t.built_in ? " · built-in" : ""}</p>`}
         ${isNew ? select({ label: "Sent as", name: "channel", value: t.channel, options: [{ value: "sms", label: "Text" }, { value: "email", label: "Email" }] }) : ""}
         ${t.built_in ? html`<p class="small">Category: <b>${t.category}</b> (a built-in keeps its category)</p>` : select({ label: "Category", name: "category", value: t.category, options: CATS })}
         ${t.channel === "email" || isNew ? html`<div data-email-only ${attrs({ hidden: t.channel !== "email" })}>${field({ label: "Subject", name: "subject", value: t.subject || "" })}</div>` : ""}
@@ -111,7 +117,7 @@ export default {
       const body = form.querySelector("[data-body]").value;
       try {
         if (!t.id) {
-          const r = await ctx.api("/templates", { method: "POST", body: { key: v.key, name: v.name, channel: v.channel, category: v.category, subject: v.channel === "email" ? v.subject : undefined, body, active: !!v.active } });
+          const r = await ctx.api("/templates", { method: "POST", body: { key: String(v.key || "").trim() || keyFrom(v.name), name: v.name, channel: v.channel, category: v.category, subject: v.channel === "email" ? v.subject : undefined, body, active: !!v.active } });
           toast("Created");
           ctx.go(`/templates/${encodeURIComponent(r.data.id)}`, { replace: true });
           return;

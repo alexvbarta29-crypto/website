@@ -2,12 +2,13 @@
 // to I18; design §9.2 "Thread", §5.7.1): their texts, email and the
 // office's internal notes as ONE timeline (each bubble says its channel; a
 // failed send says why and links where to fix it), what waits in the
-// Outbox as grey "Not sent" bubbles, and the composer: Text | Email | Note,
-// the business number it goes from (two or more numbers), the quick links
-// (Review · Website · Booking), a template put in the box or sent as is, a
-// file (the paperclip, while sending is a dry run), Send and Send later.
-// The header's round buttons: call, and the person (their panel: stats,
-// how to reach them, Mute automated texts, + Create, Open). Its "...":
+// Outbox as grey "Not sent" bubbles (only an email's bubble names its
+// channel), and the composer, simple like Rotor's and Flyra's (Nov 15): one
+// box, a Text | Email toggle, + (an internal note, Send later, the number
+// it goes from, the quick links Review · Website · Booking), the paperclip
+// (a file, while sending is a dry run), a template, Send. The header: the
+// name (tap: their panel: stats, how to reach them, Mute automated texts,
+// + Create, Open), the round call button and the "...": Their details,
 // Mark done / Reopen, Assign to..., Move to inbox..., Open customer,
 // Outbox. It refreshes every 10 s while open. /inbox/{conversation id}
 // (any of the person's threads) or /inbox/{contact id}.
@@ -57,13 +58,12 @@ const who = (s) => (id) => ((s.users || []).find((u) => u.id === id) || {}).name
 function timeline(s) {
   const msgs = [...s.older, ...s.messages].map((m) => (s.whole[m.id] ? { ...m, body_text: s.whole[m.id], more: false } : m));
   const items = [...msgs.map((m) => ({ at: m.sent_at, m })), ...(s.pending || []).map((p) => ({ at: p.at, p }))].sort((a, b) => String(a.at).localeCompare(String(b.at)));
-  const merged = (s.threads || []).length > 1 || items.some((it) => it.m && it.m.channel !== s.compose_channel);
   const out = [];
   let day = "";
   for (const it of items) {
     const d = dayLabel(it.at);
     if (d !== day) { day = d; out.push(html`<div class="cm-day">${d}</div>`); }
-    out.push(it.m ? bubble(it.m, { merged, who: who(s) }) : pendingBubble(it.p, { merged }));
+    out.push(it.m ? bubble(it.m, { who: who(s) }) : pendingBubble(it.p));
   }
   return out;
 }
@@ -90,26 +90,46 @@ function composer(s, ctx) {
   if (!ctx.can("messages:send") && !s.office) return "";
   const can = canSend(s, ctx);
   const note = s.channel === "note";
-  const chans = CHANNELS.filter(([k]) => k !== "note" || s.office);
-  const nums = s.numbers || [];
-  const from = nums.find((n) => n.e164 === s.from);
-  return html`<form class="cm-compose" data-compose novalidate>
-    ${chans.length > 1 ? seg(chans, s.channel, { name: "ch", label: "Send by" }) : ""}
+  // Text | Email; an internal note (from +) shows as a third choice while it is on
+  const chans = CHANNELS.filter(([k]) => k !== "note" || note);
+  return html`<form class="${"cm-compose" + (note ? " is-note" : "")}" data-compose novalidate>
     ${s.channel === "email" ? html`<input type="text" name="subject" placeholder="Subject" maxlength="150" autocomplete="off" ${attrs({ value: s.subject, "aria-label": "Subject", disabled: can ? null : true })}>` : ""}
-    <textarea name="body" rows="2" ${attrs({ maxlength: note ? 4000 : 1600, placeholder: note ? "Note for the team" : s.channel === "sms" ? "Text message" : "Email", "aria-label": note ? "Note" : "Message", class: note ? "note" : null, disabled: can ? null : true })}>${s.draft}</textarea>
-    ${!note && s.office ? html`<div class="cm-quick" role="group" aria-label="Put a link in">
-      ${s.channel === "sms" && nums.length > 1 ? html`<button type="button" class="chip" data-from ${attrs({ "aria-label": `From ${numberLabel(from)}. Change` })}>From ${numberLabel(from)}</button>` : ""}
-      ${s.links ? [["review", "Review"], ["website", "Website"], ["booking", "Booking"]].map(([k, l]) => html`<button type="button" class="chip" ${attrs({ "data-link": k, disabled: can ? null : true })}>${l}</button>`) : ""}
-    </div>` : ""}
     ${s.files.length ? html`<div class="cm-files">${s.files.map((f, i) => html`<span class="chip">${icon("doc")}File ${i + 1}<button type="button" class="linkish" ${attrs({ "data-unfile": f.id, "aria-label": `Take file ${i + 1} off` })}>${icon("close")}</button></span>`)}</div>` : ""}
+    <textarea name="body" rows="2" ${attrs({ maxlength: note ? 4000 : 1600, placeholder: note ? "Note for the team (never sent)" : s.channel === "sms" ? "Text message" : "Email", "aria-label": note ? "Note" : "Message", class: note ? "note" : null, disabled: can ? null : true })}>${s.draft}</textarea>
     <div class="cm-send">
+      ${chans.length > 1 ? seg(chans, s.channel, { name: "ch", label: "Send by" }) : ""}
+      ${plusItems(s, ctx).some((g) => g.some(Boolean)) ? rnd("plus", "More: a note, send later, links", { tone: "grey", data: { plus: true }, popup: true }) : ""}
       ${!note && s.office ? rnd("clip", "Attach a picture or PDF", { tone: "grey", data: { attach: true }, disabled: !can || s.files.length >= MAX_FILES }) : ""}
       ${!note ? rnd("doc", "Templates", { tone: "grey", data: { templates: true }, disabled: !can }) : ""}
       <span class="cm-count" data-count></span>
-      ${!note ? rnd("clock", "Send later", { tone: "grey", data: { later: true }, disabled: !can || s.busy }) : ""}
       <button type="submit" class="rnd red" ${attrs({ "aria-label": note ? "Save the note" : "Send", disabled: can && !s.busy ? null : true })}>${icon(note ? "check" : "send")}</button>
     </div>
   </form>`;
+}
+
+// The composer's +: an internal note, Send later, the number it goes from, the quick links.
+function plusItems(s, ctx) {
+  const note = s.channel === "note";
+  const can = canSend(s, ctx);
+  const nums = s.numbers || [];
+  const from = nums.find((n) => n.e164 === s.from);
+  const back = s.compose_channel === "email" ? "email" : "sms";
+  return [
+    [s.office && (note ? { label: "Back to a message", icon: "text", run: () => setChannel(ctx, back), data: { unnote: true } } : { label: "Internal note", icon: "edit", hint: "only the team sees it", run: () => setChannel(ctx, "note"), data: { note: true } }),
+      !note && can && { label: "Send later", icon: "clock", hint: "pick a time", run: () => laterSheet(ctx), data: { later: true } },
+      !note && s.office && s.channel === "sms" && nums.length > 1 && { label: `From ${numberLabel(from)}`, icon: "phone", hint: "change", run: () => fromSheet(ctx), data: { from: true } }],
+    !note && s.office && s.links && can ? [["review", "Review link"], ["website", "Website link"], ["booking", "Booking link"]].map(([k, l]) => ({ label: l, icon: "link", hint: "put it in the box", run: () => { const u = (s.links || {})[k]; if (u) insert(ctx, u); }, data: { link: k } })) : [],
+  ];
+}
+function setChannel(ctx, ch) {
+  const ta = document.querySelector("[data-compose] textarea");
+  if (ta) ctx.state.draft = ta.value;
+  ctx.state.channel = ch; ctx.keep.channel = ch;
+  repaint(ctx);
+}
+function fromSheet(ctx) {
+  const s = ctx.state;
+  actionSheet("Send from", [(s.numbers || []).map((n) => ({ label: numberLabel(n) + (n.e164 === s.from ? " (now)" : ""), icon: "phone", data: { "from-pick": n.e164 }, run: () => { s.from = n.e164; repaint(ctx); } }))]);
 }
 
 function render(s, ctx) {
@@ -376,6 +396,15 @@ async function markDone(ctx, done) {
     await refresh(ctx);
   } catch (e) { toast(e.message, { bad: true }); }
 }
+// The header's name as a button to their panel (the shell's title; put back as plain text on the way out).
+function nameTap(ctx) {
+  const t = typeof document !== "undefined" ? document.getElementById("top-title") : null;
+  if (!t) return;
+  const on = !!(ctx && ctx.state && ctx.state.office && ctx.state.contact);
+  t.classList.toggle("cm-name-tap", on);
+  if (on) { t.setAttribute("role", "button"); t.tabIndex = 0; t.setAttribute("aria-haspopup", "dialog"); t.title = "Their details"; t.onclick = () => panel(ctx); t.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); panel(ctx); } }; }
+  else { t.removeAttribute("role"); t.removeAttribute("tabindex"); t.removeAttribute("aria-haspopup"); t.removeAttribute("title"); t.onclick = null; t.onkeydown = null; }
+}
 const isOpen = (s) => (s.threads || []).some((t) => t.state === "open" || t.needs_reply);
 
 export default {
@@ -383,18 +412,16 @@ export default {
   title: (s) => (s && s.info && s.info.name) || "Conversation",
   tools: (s, ctx) => {
     const ph = s.contact && (s.contact.phones || [])[0];
-    return [
-      ph && ph.e164 && { icon: "call", label: "Call " + fmtPhone(ph.e164), href: "tel:" + ph.e164 },
-      s.office && s.contact && { icon: "user", label: "Their details", run: () => panel(ctx), data: { panel: true } },
-    ];
+    return [ph && ph.e164 && { icon: "call", label: "Call " + fmtPhone(ph.e164), href: "tel:" + ph.e164 }];
   },
   more: (s, ctx) => (s.threads && s.threads.length && ctx.can("inbox:read") ? [
+    [s.office && s.contact && { label: "Their details", icon: "user", run: () => panel(ctx), data: { panel: true } }],
     [isOpen(s) ? { label: "Mark done", icon: "check", run: () => markDone(ctx, true), data: { done: "1" } } : { label: "Reopen", icon: "undo", run: () => markDone(ctx, false), data: { done: "0" } },
       s.office && { label: "Assign to...", icon: "user", run: () => pickPerson(ctx), data: { assign: true } },
       s.office && { label: "Move to inbox...", icon: "inbox", run: () => pickInbox(ctx), data: { move: true } }],
     [s.contact && ctx.can("contacts:read_all") && { label: "Open customer", icon: "contacts", href: `#/contacts/${s.cid}` },
       ctx.can("outbox:read") && { label: "Outbox (not sent)", icon: "send", href: "#/outbox" }],
-  ] : [[s.contact && ctx.can("contacts:read_all") && { label: "Open customer", icon: "contacts", href: `#/contacts/${s.cid}` }]]),
+  ] : [[s.office && s.contact && { label: "Their details", icon: "user", run: () => panel(ctx), data: { panel: true } }, s.contact && ctx.can("contacts:read_all") && { label: "Open customer", icon: "contacts", href: `#/contacts/${s.cid}` }]]),
   mount(el, s, ctx) {
     if (!live || live.for !== ctx) {
       if (live) live.stop();
@@ -404,11 +431,13 @@ export default {
       const sc = el.querySelector(".cm-thread");
       if (sc) sc.scrollTop = sc.scrollHeight;
     }
+    // the name at the top opens their panel (Rotor's: the person beside the thread)
+    nameTap(ctx);
     if (s.office && !s.users && (s.messages || []).some((m) => m.kind === "note")) {
       ctx.api("/users").then((r) => { s.users = (r.data || []); repaint(ctx); }).catch(() => { s.users = []; });
     }
   },
-  unmount() { if (live) { live.stop(); live = null; } },
+  unmount() { if (live) { live.stop(); live = null; } nameTap(null); },
   events: {
     "submit [data-compose]": async (e, el, ctx) => {
       e.preventDefault();
@@ -420,12 +449,8 @@ export default {
       if (ctx.state.channel === "note") await saveNote(ctx, body);
       else await send(ctx, { body, ...(subject ? { subject } : {}) });
     },
-    "click [data-seg=ch]": (e, el, ctx) => {
-      const ta = document.querySelector("[data-compose] textarea");
-      if (ta) ctx.state.draft = ta.value;
-      ctx.state.channel = el.dataset.key; ctx.keep.channel = el.dataset.key;
-      repaint(ctx);
-    },
+    "click [data-seg=ch]": (e, el, ctx) => setChannel(ctx, el.dataset.key),
+    "click [data-compose] [data-plus]": (e, el, ctx) => actionSheet("Add to the message", plusItems(ctx.state, ctx)),
     "input [data-compose] textarea": (e, el, ctx) => {
       ctx.state.draft = el.value; ctx.keep.draft = el.value;
       const n = el.value.length;
@@ -434,14 +459,8 @@ export default {
     },
     "input [data-compose] [name=subject]": (e, el, ctx) => { ctx.state.subject = el.value; ctx.keep.subject = el.value; },
     "click [data-templates]": (e, el, ctx) => templates(ctx),
-    "click [data-later]": (e, el, ctx) => laterSheet(ctx),
     "click [data-attach]": (e, el, ctx) => attach(ctx),
     "click [data-unfile]": (e, el, ctx) => { ctx.state.files = ctx.state.files.filter((f) => f.id !== el.dataset.unfile); repaint(ctx); },
-    "click [data-link]": (e, el, ctx) => { const l = (ctx.state.links || {})[el.dataset.link]; if (l) insert(ctx, l); },
-    "click [data-from]": (e, el, ctx) => {
-      const s = ctx.state;
-      actionSheet("Send from", [(s.numbers || []).map((n) => ({ label: numberLabel(n) + (n.e164 === s.from ? " (now)" : ""), icon: "phone", data: { "from-pick": n.e164 }, run: () => { s.from = n.e164; repaint(ctx); } }))]);
-    },
     "click [data-older]": async (e, el, ctx) => {
       const s = ctx.state;
       const r = await ctx.api(allPath(s.cid, s.next), { cache: false });

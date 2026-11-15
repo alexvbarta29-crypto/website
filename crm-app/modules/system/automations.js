@@ -40,7 +40,7 @@ function editSheet(a, ctx, templates) {
     title: a.label,
     body: html`<form class="form" data-edit>
       <div class="err" data-form-err hidden></div>
-      <p class="small muted">${a.when || ""}${a.action ? " · " + a.action : ""}</p>
+      <p class="small muted">${a.when || ""}${a.action ? " · " + plainAction(a.action, templates) : ""}</p>
       <div class="section-h">Send by</div>
       ${checkbox({ label: "Text", name: "ch_sms", checked: (st.channels || []).includes("sms") })}
       ${checkbox({ label: "Email", name: "ch_email", checked: (st.channels || []).includes("email") })}
@@ -165,11 +165,16 @@ const flowRow = (x) => {
   <span class="end"><button type="button" class="switch" role="switch" ${attrs({ "aria-checked": String(!!f.enabled), "aria-label": `${f.name} on or off`, "data-flow-toggle": f.id })}></button></span>
 </div></li>`;
 };
-const builtRow = (x) => {
+// "Text visit_confirm" reads as the template's own name: Text "Visit confirmation".
+export const plainAction = (text, templates = []) => String(text || "").replace(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g, (k) => {
+  const t = templates.find((x) => x.key === k);
+  return t ? `"${t.name}"` : k.replace(/_/g, " ");
+});
+const builtRow = (x, s) => {
   const a = x.a;
   return html`<li class="wf-row"><div class="row">
     <button type="button" class="who linkish" style="text-decoration:none;color:inherit;text-align:left" data-open="${a.key}">
-      <span class="nm two">${a.label}</span><span class="sub two">${a.when || a.trigger || ""}${a.action ? " → " + a.action : ""}</span><span class="sub au-st">${statusPill("Built in", "grey")} ${last7(a.last7)}</span>
+      <span class="nm two">${a.label}</span><span class="sub two">${a.when || a.trigger || ""}${a.action ? " → " + plainAction(a.action, s && s.templates) : ""}</span><span class="sub au-st">${statusPill("Built in", "grey")} ${last7(a.last7)}</span>
     </button>
     <span class="end"><button type="button" class="switch" role="switch" ${attrs({ "aria-checked": String(!!(a.settings && a.settings.enabled)), "aria-label": `${a.label} on or off`, "data-toggle": a.key })}></button></span>
   </div></li>`;
@@ -216,9 +221,9 @@ export default {
         ${s.flows ? html`<button type="button" class="btn primary" data-new-flow>${icon("plus")}New workflow</button>` : ""}
       </div>
       <div class="note">Until the switch-over, anything an automation would send to a customer goes to the Outbox instead, and changes to records Rotor owns are only reported ("would have").</div>
-      ${rows.length ? folders.map((k) => html`${sectionLabel(labelOf(s, k))}<ul class="list">${rows.filter((x) => x.folder === k).map((x) => (x.kind === "flow" ? flowRow(x) : builtRow(x)))}</ul>`)
+      ${rows.length ? folders.map((k) => html`${sectionLabel(labelOf(s, k))}<ul class="list">${rows.filter((x) => x.folder === k).map((x) => (x.kind === "flow" ? flowRow(x) : builtRow(x, s)))}</ul>`)
         : emptyCard({ icon: "bolt", title: "Nothing here", text: s.tile === "all" && !s.folder ? "\"When this happens, if that, then do these steps.\" Make your own, or start from one of ours." : "Try another tile or folder." })}
-      ${later.length && !s.folder && s.tile !== "on" ? html`${sectionLabel("Arriving with the next parts")}<ul class="list">${later.map((a) => html`<li><div class="row"><span class="ico">${icon("bolt")}</span><span class="who"><span class="nm two">${a.label}</span><span class="sub two">${a.when}</span><span class="sub two">${a.action}</span></span><span class="end"><span class="pill">${a.arrives_with}</span></span></div></li>`)}</ul>` : ""}
+      ${later.length && !s.folder && s.tile !== "on" ? html`${sectionLabel("Arriving with the next parts")}<ul class="list">${later.map((a) => html`<li><div class="row"><span class="ico">${icon("bolt")}</span><span class="who"><span class="nm two">${a.label}</span><span class="sub two">${a.when}</span><span class="sub two">${plainAction(a.action, s.templates)}</span></span><span class="end"><span class="pill">${a.arrives_with}</span></span></div></li>`)}</ul>` : ""}
       <div class="btn-row">${s.flows ? html`<button type="button" class="btn" data-limits-open>Limits</button>` : ""}<button type="button" class="btn" data-pause-all>${s.paused ? "Resume all" : "Pause all"}</button></div>
     </div>`;
   },

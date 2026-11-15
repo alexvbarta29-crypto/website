@@ -55,3 +55,7 @@ a.py-hero .py-line .sub,a.py-hero .meta{color:var(--ink-3)}
 .py-track { margin: 10px 0 4px; }
 .py-warn-card { display: flex; flex-direction: column; gap: 2px; min-height: 44px; border-left: 4px solid var(--amber, #d29b00); text-decoration: none; color: inherit; }
 .py-warn-card span { font-size: 14px; opacity: .8; }
+/* a phone: the table scrolls sideways under a name that stays put, and its right edge fades, so
+   the columns past the edge (Upsells, Callbacks) read as there to swipe to (the UX pass, Nov 2026) */
+.py-board th:first-child,.py-board td:first-child{position:sticky;left:0;z-index:1;background:var(--card);padding-left:0;padding-right:10px}
+@media (max-width:899px){.py-scroll{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);padding-right:36px}}

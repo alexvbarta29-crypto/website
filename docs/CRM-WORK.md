@@ -56,21 +56,29 @@ overlay of what waits, copies for no signal, Delano times),
 ## What the office sees
 
 - **Schedule** (bottom tab; `schedule:read`). On a phone it is **Flyra's**
-  (Nov 13, "make it look more like Flyra"): a big title ("Nov 2026"; on a
-  day "Today", "Tomorrow", "Yesterday" or the weekday, with the date under
-  it and the day's total in coral for someone with `visits:prices`, "November
-  13 · $195"; tap: a month picker with Today and any day), the **< >**
-  pill at the right (and "↺ Today" beside it when the screen is somewhere
-  else), the **view pill** ("Month ⌄": Day, Week, Month, Technician, Sales
-  rep, List, 3 Day, then Map of the day and To book) and the **tools
-  pill** (Find, Who, and the gear: Show on cards). The month is Flyra's
-  plain grid (the chosen day outlined in coral, today's number coral; how
-  full each day is and the forecast stay, small), then "Tue, Nov 17 ·
-  Open day ›" and the day's jobs as cards, or "No jobs on ..." and Add
-  job; "6 to book ›" under the grid. A visit on Day is Flyra's block: a
-  colored left bar, the customer bold with the price after it in grey,
-  the service, the time window. The week strip and the Technician | Sales
-  rep chips step aside on Day and 3 Day (the view pill has them). A
+  (Nov 15, "best of both" Rotor and Flyra): a huge title ("Nov 2026"; tap:
+  a month picker with Today and any day) with the money under it in coral
+  for someone with `visits:prices` ("Revenue $1,240": the month's booked
+  total, cancelled left out; on Day "Today · Nov 17 · $495", on 3 Day,
+  Week and List the dates on screen and their total; without prices the
+  month's job count), the round **‹ ›** pill at the right, then the
+  **view pill** ("Month ⌄": Day, 3 Day, Week, Month, List, Map; "Today"
+  beside it when the screen is somewhere else) and the **tools pill**
+  (Find a visit, Who, and the gear: Schedule options with Who, the
+  Technician or Sales rep columns, Show on cards, cancelled hidden, Map of
+  the day, Go to a date, To book, Rain day, Time off, Block time and the
+  settings). Every view shares this head. The month is Flyra's plain grid
+  (weekday initials, big numbers, no lines; the chosen day a filled light
+  tile, today outlined in coral, a dot on a day with work, amber when a
+  past visit there isn't marked done; next month's days dimmed; "6 to
+  book ›" under it), then "Fri, Nov 13" with "1 job · $195" and Open day ›
+  (how full the day is, the forecast, Book, Route and Move this day under
+  them), and the day's jobs as Flyra's cards (the customer bold, the
+  service, the time or "Anytime", the amount at the right with Rotor's
+  status tag), or "No jobs on ..." and Add job. A visit on Day is Flyra's
+  block: a colored left bar, the customer bold with the price after it in
+  grey, the service, the time window. The week strip and the Technician |
+  Sales rep chips step aside on Day and 3 Day (the gear has them). A
   computer keeps the layout below, laid out like Rotor's phone schedule
   with Flyra's extras (the owner's choice, Nov 12-13):
   - **The head**: the month as a big title ("November 2026 ▾" on a
@@ -223,10 +231,30 @@ overlay of what waits, copies for no signal, Delano times),
 - **Jobs** (More; `#/jobs?status=open|stale|done|cancelled`): open jobs (under
   way, booked, to book), **Needs a look** (booked but the date went by;
   under way for days), done and cancelled by year, a filter box.
-- **New job** (create button, or the contact's Work tab): the customer,
-  which property, the kind, the lines (title, price, quantity, service),
-  notes, and either the first visit (day, time, window, who) or the month
-  it's due by. A retry never makes a second job (client id).
+- **New job** (create button, or the contact's Work tab; Flyra's "New
+  Job" sheet, the owner, Nov 15): a full-screen sheet (a centred 560 px
+  sheet on a desk; `core/create.js`, `styles/create.css`) with a round ✕
+  and the title. **Customer**: a card with the person (name, phone, ✕ to
+  pick another: search, or **New customer** with their address) and the
+  property under it (a tap picks another or adds one); the **Mockup** chip
+  (Light Studio) on lights work. **Line items** (required): "Add line item"
+  offers the price book or a custom line; "Add discount" (the catalog, an
+  amount or a percent); the total. **Schedule**: Starts (day and time
+  pills, the phone's own pickers), Ends (a job over several days gets a
+  visit a day, up to 7), the **Arrival window** switch (on: the 2-hour
+  window; off: the exact time), **View schedule** (that day's visits and
+  what the slot runs into, `GET /schedule` and `/schedule/check`, without
+  leaving the form); or **Book later** with the month it's due (the To
+  book list). **Checklist** (Automatic, one of Settings → Checklists, or
+  None), **Job type**, **Lead source** (the customer's own source:
+  changing it changes theirs), **Salesperson** (the job's `sold_by`),
+  **Dispatched to** (who goes), **Notify the customer** (off: no booking
+  text for that visit), **Notes** (for the crew) and **Add Attachments**
+  (uploaded to the first visit, or to the customer when nothing is
+  booked). **Create Job** stays grey until there's a customer, a line and
+  a valid time. Flyra's "Recurring job" switch is left out: the work
+  module has no repeat rule (recurring work is a plan). A retry never
+  makes a second job (client id) or a second visit (client ids).
 - **Route** (`#/schedule/route/:date/:user`): the stops in order with a
   sketch, **Optimize** (nearest first inside each arrival window, from the
   company's base), move a stop up or down and **Save**, directions per stop
@@ -262,10 +290,40 @@ overlay of what waits, copies for no signal, Delano times),
   rows `work.time_entries` and `work.time_weeks`); the badge counts them
   too.
 - **Settings → Checklists** (`settings:general`): each list's name, on or
-  off, which jobs get it (kinds of job, else services), its items (tick,
-  photo, count, note; required or not). A job gets the first active list by
-  order whose kinds include its kind, else (regular, touch-up, warranty)
-  whose services match its lines. Visits copy the list when booked.
+  off, which jobs get it (kinds of job, else services), its items in order
+  (Rotor's kinds, Nov 2026: `check` a checkbox, `select` pick one of its
+  `options`, `count` a number, `photo` photos from `min` to `max` (1 to 10
+  by default), `multi` a group of checkboxes done once `min` are ticked,
+  `text` notes; `required` or not; `placeholder` for a number or notes; a
+  checkbox's `hook`, `on_my_way` or `start`). A job gets the first active
+  list by order whose kinds include its kind, else (regular, touch-up,
+  warranty) whose services match its lines. Visits copy the list (its name
+  and every item's shape) when booked. Seed v2 adds Barta's own
+  **Technician Job Checklist** (15 items, 14 required, order 5: window and
+  exterior jobs get it first).
+- **The checklist sheet** (`checklist-sheet.js`, rules in `checklist-kit.js`):
+  Rotor's full-height sheet, "Complete in order • 3 of 15 done", the next
+  required item outlined red and the ones after it dimmed until it's done;
+  opened from the floating "N left" pill on the job page and the Visit (and
+  the quick row's Checklist, the field card's head). The visit's own people
+  answer (`PATCH /visits/:id/checklist` through the field outbox, so it
+  works with no signal); anyone else sees the answers. Ticking a `hook`
+  item runs the step: On my way (needs signal; dry run) or Start (offline
+  too); the server ticks the hooked item itself on On my way and on Start.
+  The order is the phone's guide only (the server takes answers in any
+  order: replays and two phones).
+- **Job on a phone** (under 700 px, `office-job-phone.js`): Flyra's top
+  (title, "customer · number", the day linking to the visit, the time and
+  duration chip, who goes, the status and amount pills, Created; one big
+  step, On my way → Start Job → Complete Job, with the 4-step bar; the
+  address card; Reschedule · Invoice · Callback · More; the plan card with
+  the card on file; Amount due with Checkout (Money's Collect payment on
+  the visit), Send link, QR code, Cash or check), then Rotor's cards
+  (customer, Pricing a card a line with "Added on site" and a camera for a
+  photo of the line (`line` on the visit's photo), Invoices, Job notes with
+  an upload, Sold by, the other visits), a red-outline Delete Job (a cancel:
+  the history stays) and the pill. Rotor's round check in the header marks
+  the job done. A desk keeps the two columns.
 
 ## What a tech sees (M4b)
 
@@ -570,10 +628,10 @@ contact's `display_name`, `first_name` and phones, and line prices only with
 | `GET /schedule/route?date&user` · `POST /schedule/route` | read · write | a person's stops; Optimize (no `order`) or save an order |
 | `POST /schedule/move-day` | schedule:write (run) | preview, or `{ confirm: true, token }` → 202 `{ run_id }` |
 | `GET /stale` | schedule:read | jobs that need a look (and M4b's open timers) |
-| `GET /jobs?status&year&contact` · `POST /jobs` | read · write | the list; a new job (lines, notes, optional first `visit`, `client_id`) |
+| `GET /jobs?status&year&contact` · `POST /jobs` | read · write | the list; a new job (lines, notes, optional first `visit`, `client_id`; from New job also `discounts` (as PATCH takes them), `checklist_key` (a checklist's key, or `none`; the visits' checklist comes from it instead of the kind or service), `sold_by` (a user on the team; payroll's seller when no plan or quote names one) and `visit.notify: false`) |
 | `GET/PATCH /jobs/:id` | read · write | one job (+ visits, contact, property, people, `can`); edit (If-Match): title, kind, notes, due month, lines (merged by id), `discounts` (the job page's "+ Add discount": `[{ id?, name?, type: "fixed" \| "percentage", value }]`, cents or basis points, merged by id so a scope or catalog id stays; refused once the job is closed) |
 | `POST /jobs/:id/cancel` · `/reopen` · `/complete` | schedule:write | with its open visits |
-| `POST /visits` | schedule:write | book (`client_id` makes a retry the same visit) |
+| `POST /visits` | schedule:write | book (`client_id` makes a retry the same visit; `notify: false`: no confirmation text for this booking, the visit keeps `no_confirm` = its day and start, so a later move is confirmed as usual) |
 | `GET/PATCH /visits/:id` | read · write | one visit (+ job, contact, property, people, arrival text, reminders, `can`); move or reassign (If-Match) |
 | `POST /visits/:id/cancel` · `/mark-no-access` · `/done` · `/reopen` | schedule:write | the office's changes (`/visits/:id/no-access` is left for the tech app) |
 | `GET/POST /time-off` · `PATCH/DELETE /time-off/:id` | read · write | whole days (`date`, `end_date`) or part of a day (`date`, `start`, `end`) |
@@ -598,7 +656,7 @@ version old may still replay), except the texts.
 | `POST /visits/:id/on-my-way` · `/running-late` | visits:work | `{eta_min, lat?, lng?}`; the text (needs signal); On my way answers `track_url` too |
 | `POST /visits/:id/timer` | visits:work | `{action: start\|pause\|finish}` |
 | `GET /visits/:id/field` | visits:work | the visit's segments, whose runs, minutes, the last notes at the place |
-| `PATCH /visits/:id/checklist` | visits:work | `{key, done, value?}` |
+| `PATCH /visits/:id/checklist` | visits:work | `{key, done, value?}`: a count a whole number, text up to 500, select one of its options, multi a list of its options (kept, done at `min`); photo items by their photos (`POST /visits/:id/photos` with `item`, up to the item's `max`) |
 | `POST /visits/:id/notes` · `/photos` | visits:work | `{text}` · `{data, thumb?, tag, item?, caption?}` (base64, 3 MB) |
 | `GET /visits/:id/pricebook` · `POST /visits/:id/lines` | visits:add_line | what can be added · `{price_item_id, qty}` |
 | `POST /visits/:id/complete` · `/no-access` | visits:work | `{signature_file_id?}` · `{note}` |
@@ -715,6 +773,8 @@ and a phone never calls it.
 
 - `visit.confirm` (on `visit.scheduled` and `visit.rescheduled`, 10 minutes
   later so a quick correction sends one text): `visit_confirm` (+ email).
+  Not for a booking made with "Notify the customer" off (`no_confirm` is
+  that day and start; moved, it is confirmed).
   Never for an imported visit, one moved by a rain-day move, or one within
   2 days. One per visit, date and start.
 - `visit.reminder_14d` (10:00, 7-14 days out, text + email; not for a visit

@@ -64,7 +64,7 @@ function visible(s) {
 
 export default {
   load,
-  action: (s, ctx) => (ctx.can("plans:write") ? { label: "New", run: () => ctx.go("/plans/new") } : null),
+  action: (s, ctx) => (ctx.can("plans:write") ? { label: "New plan", run: () => ctx.go("/plans/new") } : null),
   render(s, ctx) {
     const c = Object.fromEntries(TILES.map(([k]) => [k, 0]));
     for (const r of s.rows) for (const k of planTiles(r, s.month)) c[k] = (c[k] || 0) + 1;

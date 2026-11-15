@@ -11,7 +11,7 @@
 //   { title?, load(params, ctx) → state, render(state, ctx) → html``,
 //     events?: { "click [data-act=x]": (event, el, ctx) => ... },
 //     mount?(viewEl, state, ctx), unmount?(), action?(state, ctx) → { label, run },
-//     tools?(state, ctx) → [{ icon, label, run? | href?, data? }],
+//     tools?(state, ctx) → [{ icon, label, run? | href?, data? } | { switch: on, label, run, data? } (a labelled switch)],
 //     more?(state, ctx) → [[{ label, icon?, hint?, run? | href?, danger?, disabled?, data? }]],
 //     moreTitle?(state, ctx) → the action sheet's title (else the screen's) }
 //
@@ -40,7 +40,7 @@
 // list keeping its search and scroll and lighting the open row. Under
 // 1000 px (a phone) every screen is the whole view, as always.
 
-import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, actionSheet, skeletonRows } from "./ui.js";
+import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, toggle, actionSheet, skeletonRows, armMoreExtra, hasMoreExtra, revealOn } from "./ui.js";
 
 const routes = [];
 let stack = [];
@@ -194,6 +194,9 @@ export function headerKit(mod, state, ctx) {
   return { tools, hasMore, open: () => { try { return mod.more(now(), ctx) || []; } catch (e) { toast("That menu didn't open. Try again.", { bad: true }); return []; } }, sheetTitle };
 }
 
+// A header tool that is a switch (the customer page's Automations on a phone): its word, then the switch.
+export const topSwitch = (x, i) => html`<span class="rs-top-sw"><span class="rs-top-swl" aria-hidden="true">${x.label}</span>${toggle(!!x.switch, { data: { ...(x.data || {}), "top-tool": String(i) }, label: x.label })}</span>`;
+
 function header(title, showBack, act, kit = null) {
   const top = document.getElementById("top");
   const t = document.getElementById("top-title");
@@ -204,8 +207,13 @@ function header(title, showBack, act, kit = null) {
   // (a kit screen may have no title: Rotor's lead page shows the name in the page)
   if (t) t.textContent = title || (rs ? "" : "Barta CRM");
   if (b) b.hidden = !showBack;
+  // a list's "New ..." / "Add ..." is its round coral + on a phone (the label stays for screen
+  // readers and is the words on a desk): one way to make something, the same on every list
+  const isNew = !!act && /^(new|add)\b/i.test(String(act.label || ""));
+  const app = document.getElementById("app");
+  if (app) app.classList.toggle("own-more-kit", !!kit && kit.hasMore && hasMoreExtra());
   if (a) {
-    render(a, html`${act ? html`<button type="button" class="btn primary" id="top-action">${act.label}</button>` : ""}${rs ? html`${kit.tools.map((x, i) => rnd(x.icon || "edit", x.label, { href: x.href, ext: x.ext, data: { ...(x.data || {}), "top-tool": String(i) } }))}${kit.hasMore ? rnd("more", "More", { id: "top-more", popup: true, data: { "top-more": true } }) : ""}` : ""}`);
+    render(a, html`${act ? (isNew ? html`<button type="button" class="btn primary is-new" id="top-action">${icon("plus")}<span class="is-new-l">${act.label}</span></button>` : html`<button type="button" class="btn primary" id="top-action">${act.label}</button>`) : ""}${rs ? html`${kit.tools.map((x, i) => (x.switch !== undefined ? topSwitch(x, i) : rnd(x.icon || "edit", x.label, { href: x.href, ext: x.ext, data: { ...(x.data || {}), "top-tool": String(i) } })))}${kit.hasMore ? rnd("more", "More", { id: "top-more", popup: true, data: { "top-more": true } }) : ""}` : ""}`);
     const btn = document.getElementById("top-action");
     if (btn && act) btn.addEventListener("click", () => act.run());
     if (rs) {
@@ -214,7 +222,7 @@ function header(title, showBack, act, kit = null) {
         if (x && x.run) el.addEventListener("click", (e) => { e.preventDefault(); x.run(e); });
       }
       const m = document.getElementById("top-more");
-      if (m) m.addEventListener("click", () => actionSheet(kit.sheetTitle() || title || "More", kit.open()));
+      if (m) m.addEventListener("click", () => { if (app && app.classList.contains("big-top")) armMoreExtra(); actionSheet(kit.sheetTitle() || title || "More", kit.open()); });
     }
   }
   document.title = (title ? title + " · " : "") + "Barta CRM";
@@ -287,6 +295,7 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false }
   const paint = () => {
     el.classList.toggle("flush", !!mod.flush);
     render(el, mod.render(ctx.state, ctx));
+    revealOn(el);
     if (focus || current === rec) header(typeof mod.title === "function" ? mod.title(ctx.state, ctx) : title, canGoBack(), mod.action ? mod.action(ctx.state, ctx) : null, headerKit(mod, ctx.state, ctx));
     if (mod.mount) mod.mount(el, ctx.state, ctx);
   };

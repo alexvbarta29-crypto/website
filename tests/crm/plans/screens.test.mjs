@@ -178,19 +178,32 @@ test("Settings: the catalog, the lights dates, request signatures; agreement tex
   assert.match(ro, /readonly/);
 });
 
-test("new plan: the catalog fills the plan discount; quarterly asks for the interior price", async () => {
+test("new plan (Flyra's sheet): the template fills the lines and the plan discount; Service | Agreement | Billing; Create waits for prices", async () => {
   const CAT = await import("../../../netlify/lib/crm/modules/plans/catalog.mjs");
   const n = await load("new");
-  const s = { cat: CAT.catalogWith({}), contact: { id: "ct_1", name: `Pat ${XSS}` }, client_id: "c1", key: "quarterly" };
-  const h = text(n.render(s, ctx()));
+  const contact = { contact: { id: "ct_1", display_name: `Pat ${XSS}`, phones: [{ e164: "+17635550100" }], source: { source: "Referral" } }, properties: [{ id: "pr_1", address: { street1: "1 Example Ave", city: "Delano", zip: "55328" } }] };
+  const api = async (path) => {
+    if (path.startsWith("/plans/catalog")) return { data: { catalog: CAT.catalogWith({}) } };
+    if (path.startsWith("/contacts/")) return { data: contact, etag: "e1" };
+    if (path.startsWith("/users")) return { data: [{ id: "us_00000000000000000001", name: "Olive Owner", status: "active" }] };
+    return { data: { book: [], discounts: [] } };
+  };
+  const c = { ...ctx(), api };
+  const s = await n.load({ contact: "ct_1" }, c);
+  assert.equal(s.template, "quarterly");
+  assert.deepEqual(s.lines.map((l) => [l.title, l.scope.type === "specific" ? l.scope.visits.join(",") : l.scope.type]), [["Exterior Window Cleaning", "1,3,4"], ["Interior Window Cleaning", "2"]]);
+  assert.deepEqual(s.discounts.map((d) => [d.name, d.value]), [["Plan discount", 10000]]);
+  const h = text(n.render(s, c));
   assert.ok(!h.includes("<script>alert(1)"));
-  assert.match(h, /Interior visit price \(visit 2\)/);
-  assert.match(h, /name="disc" inputmode="decimal" value="100\.00"/);
-  assert.match(h, /4 visits a year/);
-  const b = text(n.render({ ...s, key: "biannual", contact: null }, ctx()));
-  assert.doesNotMatch(b, /Interior visit price/);
-  assert.match(b, /data-pick/);
-  assert.match(b, /name="disc" inputmode="decimal" value="50\.00"/);
+  assert.match(h, /New Plan/);
+  assert.match(h, /data-cf-seg="plan-new" data-key="agreement"/);
+  assert.match(h, /Months<\/span><span class="cf-pv">[A-Z][a-z]{2}, [A-Z][a-z]{2}, [A-Z][a-z]{2}, [A-Z][a-z]{2}</, "four months a year");
+  assert.match(h, /Schedule pending/);
+  assert.match(h, /data-cf-create disabled/, "no prices yet: Create waits");
+  s.lines.forEach((l, i) => { l.unit_cents = i ? 16000 : 24500; });
+  assert.doesNotMatch(text(n.render(s, c)), /data-cf-create disabled/);
+  // no customer: the Add a customer card
+  assert.match(text(n.render({ ...s, contact: null }, c)), /data-cf-pick/);
 });
 
 test("review fixes on screen: a lights season waits for a yes, a held plan says so, a queued agreement isn't 'sent', owner checks block Approve", async () => {

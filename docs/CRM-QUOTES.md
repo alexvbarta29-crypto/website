@@ -25,7 +25,23 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
   tab's dot) and quotes waiting on the customer (`quotes.waiting`,
   `badge: false`: the follow-up cadence chases them).
 - **A contact's Quotes tab**: that contact's quotes and **New quote**.
-- **New quote / Edit** (`quotes:write`), phone first:
+- **New quote** (`quotes:write`; Flyra's "New Estimate" sheet, the owner,
+  Nov 15; `quotes/new.js` on `core/create.js`): a full-screen sheet with a
+  round ✕: the customer card (the person, ✕ to pick another or add a new
+  lead; the property, a tap picks or adds one), the Mockup chip (Light
+  Studio) on lights work, then **Line items · One-time job ⇅** (or a plan:
+  Biannual, Quarterly, Monthly, Custom, with the plan's own discount from
+  the catalog) and **+ Add option** (up to 3, each with its type, lines,
+  discounts and total; the first is Recommended), "Add line item" (the
+  price book, a custom line, or **Measure and price**: the builder below,
+  `#/quotes/measure[/:contact]`), "Add discount" (the catalog, an amount
+  or a percent), **Attachments** ("Files for your customer", uploaded as
+  the quote's photos once it exists), **Lead source** (the customer's
+  own) and **Notes** (the note the customer sees). **Create Estimate**
+  (grey until there's a customer and a line) saves a draft and opens it.
+  The property's Re-quote (`#/quotes/new/:contact?property=&requote=1`)
+  goes straight to the builder.
+- **The builder: Measure and price / Edit** (`quotes:write`), phone first:
   1. Who and where: the contact and one of their properties. A property
      with counts (docs/CRM-CONTACTS.md "Counts for quoting") fills the
      measure, the services, the counts and the plan ("Filled from the

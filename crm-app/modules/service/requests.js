@@ -20,7 +20,7 @@ async function load(params, ctx) {
 
 export default {
   load,
-  action: (s, ctx) => (ctx.can("requests:write") ? { label: "New", run: () => ctx.go("/requests/new") } : null),
+  action: (s, ctx) => (ctx.can("requests:write") ? { label: "New request", run: () => ctx.go("/requests/new") } : null),
   render(s, ctx) {
     const w = s.q.trim().toLowerCase();
     const rows = w ? s.rows.filter((r) => `${r.cn} ${(r.svc || []).join(" ")}`.toLowerCase().includes(w)) : s.rows;

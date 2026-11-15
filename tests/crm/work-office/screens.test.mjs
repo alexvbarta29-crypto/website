@@ -201,11 +201,29 @@ test("Job, Jobs, New job, Route, Rain day, Time off, Work tab, Today card, Check
   assert.match(text(jobs.render({ tab: "open", year: "2026", q: "sam", rows }, ctx())), /1 job</);
 
   const nj = await load("office-job-new");
-  const nh = text(nj.render({ contact: { id: "ct_1", name: `Pat ${XSS}`, properties: [{ id: "pr_1", address: { street1: "1 Example Ave", city: "Delano" } }, { id: "pr_2", label: "Cabin" }], primary: "pr_1" }, users, people: [], book: true }, ctx()));
+  const contact = { contact: { id: "ct_1", display_name: `Pat ${XSS}`, phones: [{ e164: "+17635550100" }], source: { source: "Referral" }, primary_property_id: "pr_1" }, properties: [{ id: "pr_1", address: { street1: "1 Example Ave", city: "Delano" } }, { id: "pr_2", label: "Cabin" }] };
+  const api = async (path) => (path.startsWith("/contacts/") ? { data: contact, etag: "e1" } : path === "/users" ? { data: users } : path === "/checklists" ? { data: [{ k: "gutters", n: "Gutters", ni: 4, nr: 3, act: true }] } : { data: { book: [], discounts: [] } });
+  const nc = { ...ctx(), api };
+  const ns = await nj.load({ contact: "ct_1" }, nc);
+  assert.equal(ns.property.id, "pr_1", "their primary property");
+  const nh = text(nj.render(ns, nc));
   assert.ok(!nh.includes("<script>alert(1)"));
-  assert.match(nh, /name="property_id"/);
-  assert.match(nh, /Save and book/);
-  assert.match(nh, /data-person="us_0000000000000000000t"/);
+  assert.match(nh, /New Job/);
+  assert.match(nh, /1 Example Ave/);
+  assert.match(nh, /data-cf-create disabled/, "no line items yet");
+  assert.match(nh, /Arrival window/);
+  assert.match(nh, /Notify the customer/);
+  assert.doesNotMatch(nh, /Recurring job/, "no repeat rule in the work module: no switch");
+  ns.lines.push({ title: "Gutter cleaning", unit_cents: 19900, qty_milli: 1000 });
+  ns.people = [U1];
+  const nh2 = text(nj.render(ns, nc));
+  assert.doesNotMatch(nh2, /data-cf-create disabled/);
+  assert.match(nh2, /\$199\.00/);
+  assert.match(nh2, /Theo/, "dispatched to");
+  ns.later = true;
+  const nh3 = text(nj.render(ns, nc));
+  assert.match(nh3, /name="target_month"/);
+  assert.doesNotMatch(nh3, /Notify the customer/, "nothing booked: no booking text");
 
   const route = await load("office-route");
   const stops = [vrow(), vrow({ id: "vs_2", geo: null, ad: "", town: "Mound" })];
@@ -320,7 +338,7 @@ test("Job (Rotor's page): pills, the visit row with + Visit, Pricing with discou
   assert.match(h, /data-notes="crew"[^>]*>Dog in back</);
   assert.match(h, /data-notes="office"[^>]*>Pays by check</);
   const rows = job.more(s, ctx()).flat().filter(Boolean);
-  assert.deepEqual(rows.map((r) => r.label), ["Book a visit", "Mark done", "Edit the work", "Add a discount", "Create invoice", "Open customer", "Cancel job"]);
+  assert.deepEqual(rows.map((r) => r.label), ["Book a visit", "Mark done", "Edit the work", "Add a discount", "Create invoice", "A note on the visit", "Open the visit", "Open customer", "Cancel job"]);
   assert.ok(rows.find((r) => r.label === "Cancel job").danger);
   // an invoice covers it: the pill, the row, Create Invoice gone (the reason when the + would make one)
   const inv = { id: "in_1", n: "SINV-0003", st: "paid", tot: 29450, bal: 0, j: J };

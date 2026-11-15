@@ -194,3 +194,48 @@ test("the client's month looks like Rotor's (Nov 15): its head, its blocks in th
   // no prices: no money on the blocks
   assert.doesNotMatch(text(SC.default.render(s, ctx(["schedule:read", "schedule:write"]))).split('class="wk-month"')[1].split('class="wk-dayp')[0], /\$295/);
 });
+
+test("a phone's month is Rotor-simple (Nov 15): November ⌄ and Revenue, the ‹ › pill, ONE filter button, the segmented views, a dot on days with work, Fri, Nov 13 · N jobs · $, the rows", () => {
+  const U1 = "us_0000000000000000000t";
+  const users = [{ id: U1, name: "Theo Tech", color: "#2563eb", is_technician: true }];
+  const row = (n, o) => ({ id: `vs_0000000000000000000${n}`, j: "jb_1", cn: `Pat Sample${n}`, t: "Window cleaning", town: "Delano", d: "2026-11-16", s: "09:00", e: "11:00", w: { t: "window", m: 120 }, a: [U1], st: "scheduled", amt: 19500, ...o });
+  const visits = [row(1), row(2, { st: "cancelled" }), row(3, { d: "2026-11-13", do: true, st: "completed" }), row(4, { d: "2026-12-02" })];
+  const tasks = [{ id: "tk_00000000000000000001", date: "2026-11-16", start: "07:00", end: "07:30", title: "Call back", kind: "todo", a: [U1] }];
+  const data = { kind: "month", from: "2026-11-01", to: "2026-12-05", month: "2026-11", today: "2026-11-17", visits, tasks, warnings: {}, capacity: { per_day: 8, per_person: 8, days: {}, off: {} } };
+  const s = { view: "month", cal: "2026-11", date: "2026-11-16", today: "2026-11-17", tech: null, month: "2026-11", users, data, wx: null, toBook: { month: "2026-11", n: 2 }, cards: { ...B.CARD_DEFAULTS } };
+  const ctx = (perms = null) => ({ can: (p) => (perms ? perms.includes(p) : true), keep: {} });
+  const h = text(SC.default.render(s, ctx()));
+  const head = h.slice(h.indexOf('class="wk-fly"'), h.indexOf('class="wk-rbar"'));
+  assert.match(head, /<span class="t">November<\/span>/, "the month (this year: no year)");
+  assert.match(text(SC.default.render({ ...s, cal: "2027-01", date: "2027-01-04" }, ctx())), /<span class="t">Jan 2027<\/span>/, "another year says so");
+  assert.match(head, /Revenue <b class="wk-ftotal num"[^>]*>\$390<\/b>/, "the month's booked money (cancelled and December left out)");
+  assert.match(head, /data-cal="-1" aria-label="Previous month"[\s\S]*data-cal="1" aria-label="Next month"/, "the ‹ › pill");
+  assert.match(head, /data-fview="month" aria-selected="true">Month</, "Rotor's segmented views, Month on");
+  assert.deepEqual([...head.matchAll(/class="wk-fseg-b" role="tab" data-fview="([^"]+)"/g)].map((m) => m[1]), ["month", "list", "day", "3day", "week"]);
+  assert.equal((head.match(/data-fsheet/g) || []).length, 1, "ONE round button: the filter sheet");
+  for (const b of ["data-vmenu", "data-search", "data-filter", "data-mapday", "data-totray"]) assert.doesNotMatch(head, new RegExp(b), `${b} lives in the filter sheet`);
+  assert.doesNotMatch(head, /data-ftoday/, "on this month: no Today");
+  assert.match(text(SC.default.render({ ...s, cal: "2026-12", date: "2026-12-02" }, ctx())), /data-ftoday/, "another month: Today");
+  // the grid: weekday initials, a dot on a day with work (amber when nobody closed it), none on a cancelled-only day
+  assert.match(h, /<span><span class="l">Sun<\/span><span class="i">S<\/span><\/span>/);
+  const cell = (d) => h.slice(h.indexOf(`data-mday="${d}"`), h.indexOf("</button>", h.indexOf(`data-mday="${d}"`)));
+  assert.match(cell("2026-11-16"), /<i class="wk-mjob open" aria-hidden="true">/);
+  assert.match(cell("2026-11-13"), /<i class="wk-mjob" aria-hidden="true">/);
+  assert.doesNotMatch(cell("2026-11-14"), /wk-mjob/);
+  // the chosen day: Flyra's head and cards (service, the time or Anytime, Rotor's tag)
+  assert.match(h, /<span class="wk-dayp-s">Mon, Nov 16<small class="num">1 job, 1 task · \$195<\/small><\/span>/);
+  assert.match(h, /class="wk-drow st-ns"[\s\S]*?<span class="sub">Window cleaning<\/span><span class="sub wk-dwhen num">9:00 AM to 11:00 AM<\/span>[\s\S]*?class="wk-rtag st-ns">Not started</);
+  const fri = text(SC.default.render({ ...s, date: "2026-11-13" }, ctx()));
+  assert.match(fri, /Fri, Nov 13<small class="num">1 job · \$195<\/small>/);
+  assert.match(fri, /wk-dwhen num">Anytime</);
+  // no prices: the month's jobs instead of the money
+  const np = text(SC.default.render(s, ctx(["schedule:read", "schedule:write"])));
+  assert.doesNotMatch(np.slice(np.indexOf('class="wk-fly"'), np.indexOf('class="wk-rbar"')), /Revenue|\$/);
+  assert.match(np, /<p class="wk-fh-sub">2 jobs<\/p>/);
+  assert.match(np, /Mon, Nov 16<small class="num">1 job, 1 task<\/small>/);
+  // the other views share the head: the day and its money, the ‹ › a day
+  const day = text(SC.default.render({ ...s, view: "day", data: { ...data, kind: "range" } }, ctx()));
+  assert.match(day, /<p class="wk-fh-sub">Yesterday · Nov 16 · <b class="wk-ftotal num"[^>]*>\$195<\/b><\/p>/);
+  assert.match(day, /data-day="-1" aria-label="Previous day"/);
+  assert.match(day, /data-fview="day" aria-selected="true">Day</);
+});

@@ -179,7 +179,9 @@ test("M2: a job edited after booking: the visit's copies, its untouched checklis
     await t.api(`/jobs/${j2.id}`, { method: "PATCH", as: owner, ifMatch: await etagOf("job", j2.id), body: { lines: [{ title: "Gutter cleaning", unit_cents: 18000, service_type: "Exterior Cleaning" }] } });
     const v2Now = (await store.getRecord("visit", v2.id)).data;
     assert.equal(v2Now.job_title, "Gutter cleaning");
-    assert.equal(v2Now.checklist.template_key, "windows_exterior", "a list someone started is never swapped");
+    // (the sweeps above ran the work module's seed v2, so this visit was booked with the Technician Job Checklist)
+    assert.equal(v2Now.checklist.template_key, v2.checklist.template_key, "a list someone started is never swapped");
+    assert.equal(v2Now.checklist.items[0].done_at, "2026-11-17T15:30:00.000Z");
   } finally { t.done(); }
 });
 

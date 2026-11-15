@@ -54,7 +54,7 @@
 // the page's: the plain title, a back button, its one action. CSS decides
 // which set shows; one codebase.
 
-import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg } from "./ui.js";
+import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg, setMoreExtra, armMoreExtra, revealOn } from "./ui.js";
 import { initials, time as fmtTime } from "./format.js";
 import { api } from "./api.js";
 import * as router from "./router.js";
@@ -317,7 +317,9 @@ function drawRound(active, big, sec = null) {
   const r = document.getElementById("top-rnd");
   if (!r) return;
   const app = document.getElementById("app");
-  if (app) app.classList.remove("own-new");
+  if (app) app.classList.remove("own-new", "own-more-ph");
+  // (the section's rare screens also ride in the screen's own "...", when it has one: one "..." in a header)
+  setMoreExtra(big && sec ? moreOf(sec).map((m) => ({ label: m.label, icon: m.icon, href: "#" + m.path, data: { "sec-go": m.path } })) : []);
   if (!big) { render(r, html``); return; }
   const own = active && (PLACE_NEW[active.key] || []).find((p) => st.creates.some((c) => c.path === p) || (p === "/contacts/new" && st.can("contacts:write") && routeOk(p)));
   // the screen's own round buttons (screenButtons: search, filter, ...), then a coral + where the place makes something of its own
@@ -338,7 +340,11 @@ export function screenButtons(list = [], onTap = () => {}) {
   let box = r.querySelector(".rnd-own");
   if (!box) { box = document.createElement("span"); box.className = "rnd-own"; r.prepend(box); }
   render(box, html`${list.map((b) => html`<button type="button" class="${"rnd" + (b.on ? " on" : "")}" ${attrs({ "data-own": b.key, "aria-label": b.label, "aria-pressed": b.pressed === undefined ? null : String(!!b.pressed), "aria-expanded": b.expanded === undefined ? null : String(!!b.expanded) })}>${icon(b.icon)}${b.badge ? html`<span class="badge">${b.badge > 99 ? "99+" : b.badge}</span>` : ""}</button>`)}`);
-  box.onclick = (e) => { const b = e.target.closest("[data-own]"); if (b) onTap(b.dataset.own, b, e); };
+  // the screen's own "..." also holds its section's rare screens: the section's round "..." steps aside
+  const own = list.some((b) => b.key === "more");
+  const app = document.getElementById("app");
+  if (app) app.classList.toggle("own-more-ph", own);
+  box.onclick = (e) => { const b = e.target.closest("[data-own]"); if (!b) return; if (b.dataset.own === "more") armMoreExtra(); onTap(b.dataset.own, b, e); };
 }
 
 // A list's search behind the round search button (a phone, a top-level
@@ -408,6 +414,7 @@ export function update(path) {
     } else if (secSeg) {
       sub.setAttribute("aria-label", secSeg.sec.label);
       render(sub, sectionTabs(secSeg.sec, secSeg.cur && secSeg.cur.key));
+      revealOn(sub);
     } else render(sub, html``);
   }
   // a top-level screen (a tab's, or one the Menu lists): the large title, the round buttons and the +
@@ -417,6 +424,8 @@ export function update(path) {
   if (app) app.classList.toggle("big-top", big);
   // Home brings its own bell: the top bar's steps aside there
   if (app) app.classList.toggle("at-home", path === "/today");
+  // a form that makes or edits something (…/new, …/edit) has the whole phone: no bar, no + under the thumb
+  if (app) app.classList.toggle("form-route", FORM_PATH.test(path));
   // the office's Home brings its own header (the avatar, Welcome back, the bell): the bar's title steps aside on a phone
   // (and so does the Schedule, Flyra's: its big title and pills are its own)
   if (app) app.classList.toggle("own-head", (path === "/today" && !st.tabs.some((t) => t.key === "today")) || (path === "/schedule" && !!menuDest()));
@@ -438,6 +447,8 @@ export function update(path) {
     document.getElementById("app").appendChild(fab);
   } else if (!want && fab) fab.remove();
 }
+// A form that makes or edits something: /quotes/new, /jobs/new/ct_..., /contacts/ct_.../edit.
+export const FORM_PATH = /\/(new|edit)(\/[^/]+)?$/;
 // A screen the Menu lists (or a module's Menu entry): top-level, and it lights the Menu button.
 const inMenu = (p) => (!!st.menuPaths && st.menuPaths.has(p)) || (!!st.secPaths && st.secPaths.has(p)) || st.more.some((n) => n.path === p);
 // The place (a TABS key) a path is the screen of.
@@ -809,7 +820,7 @@ function mountDesk() {
   tools.className = "top-tools db-end";
   const makes = quickCreates(st.creates, st.can);
   const avStyle = /^#[0-9a-f]{6}$/i.test(u.color || "") ? `background:${u.color}` : null;
-  render(tools, html`${makes.length ? html`<div class="top-new"><button type="button" class="btn" id="top-new" aria-haspopup="true" aria-expanded="false">${icon("plus")}Create</button><div class="pop" id="new-pop" hidden><ul class="menu">${makes.map((c) => html`<li><a href="${"#" + c.path}">${icon(c.icon || "plus")}<span>${c.label}</span></a></li>`)}</ul></div></div>` : ""}
+  render(tools, html`${makes.length ? html`<div class="top-new"><button type="button" class="btn primary" id="top-new" aria-haspopup="true" aria-expanded="false">${icon("plus")}Create</button><div class="pop" id="new-pop" hidden><ul class="menu">${makes.map((c) => html`<li><a href="${"#" + c.path}">${icon(c.icon || "plus")}<span>${c.label}</span></a></li>`)}</ul></div></div>` : ""}
     ${routeOk("/notifications") ? html`<a class="db-ic" href="#/notifications" data-db-bell aria-label="Notifications">${icon("bell")}<span class="badge" hidden></span></a>` : ""}
     <button type="button" class="db-ic" data-db-help aria-haspopup="dialog" aria-label="Help">${icon("help")}</button>
     <div class="top-me"><button type="button" class="top-av" id="top-me" aria-haspopup="true" aria-expanded="false" ${attrs({ "aria-label": `${u.name || "My account"}: account menu`, style: avStyle })}>${initials(u.name)}</button><div class="pop" id="me-pop" hidden><p class="pop-who"><b>${u.name || ""}</b><span>${u.role === "owner" ? "Owner" : u.role === "admin" ? "Office" : "Technician"}</span></p><ul class="menu"><li><a href="#/me">${icon("me")}<span>My account</span></a></li>${ME_ROWS.filter(([path]) => routeOk(path)).map(([path, label, ic]) => html`<li><a href="${"#" + path}">${icon(ic)}<span>${label}</span></a></li>`)}<li><button type="button" data-theme-pop>${icon("sun")}<span>Light or dark</span></button></li><li><button type="button" class="danger" data-signout>${icon("out")}<span>Sign out</span></button></li></ul></div></div>`);

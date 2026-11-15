@@ -11,13 +11,19 @@
 // (Write off, Open customer, Open the plan). Before the switch from Rotor,
 // online payment and card charges only run on test contacts and records
 // made here (the screen says so).
+//
+// On a phone the invoice opens as Rotor's phone invoice instead: the editor
+// (invoice-edit.js) full screen over this page, its X going back. On a desk
+// this page stays (beside the list) and the pencil opens the same editor;
+// "Collect Payment" opens Rotor's payment sheet (pay-sheet.js).
 
-import { html, attrs, icon, rnd, sheet, toast, confirmSheet, openExternal, actionSheet, cardHead, sectionLabel, personCard, pillBtn, statusPill as kitPill } from "../../core/ui.js";
-import { busy, readForm, showError, clearErrors, readMoney } from "../../core/forms.js";
+import { html, attrs, icon, rnd, openExternal, actionSheet, cardHead, sectionLabel, personCard, pillBtn, statusPill as kitPill } from "../../core/ui.js";
 import { money, dateShort, dateYear, dateTime, ago, phone } from "../../core/format.js";
-import { uuid } from "../../core/api.js";
-import { ensureStyles, statusPill, KIND, METHOD, PAY_STATUS, CARD, waitRun } from "./kit.js";
-import { openPayQr } from "./pay-qr.js";
+import { SPLIT_MEDIA } from "../../core/router.js";
+import { openEditor } from "./invoice-edit.js";
+import { openPayment } from "./pay-sheet.js";
+import { ensureStyles, statusPill, KIND, METHOD, PAY_STATUS } from "./kit.js";
+import { cardWords, showQr, charge, cardLink, keepCredit, writeOff, voidIt, sendSheet, recordSheet, refundSheet } from "./invoice-acts.js";
 
 async function load(params, ctx) {
   ensureStyles();
@@ -95,7 +101,6 @@ function history(inv) {
   return html`<div class="rs-card">${cardHead("History")}${dl(rows.slice(0, 3))}${rows.length > 3 ? html`<details class="mn-more"><summary>${rows.length - 3} more</summary>${dl(rows.slice(3))}</details>` : ""}</div>`;
 }
 
-const cardWords = (s) => (s.card && s.card.last4 ? `${String(s.card.brand || (s.card.kind === "us_bank_account" ? "Bank" : "Card")).toUpperCase()} ending ${s.card.last4} · ${CARD[s.card.status] || s.card.status}` : CARD[(s.card && s.card.status) || "none"]);
 
 function paymentCard(s) {
   const c = s.can || {};
@@ -144,7 +149,7 @@ function jobCard(s) {
 // The invoice's title and due date (Rotor's two fields), and when it was issued.
 function detailsCard(s) {
   const inv = s.invoice;
-  const kv = [["Invoice Title", `${KIND[inv.kind] || "Invoice"} #${inv.number}`], ["Due Date", inv.due_on ? dateYear(inv.due_on) : "-"], inv.issued_on && ["Issued", dateYear(inv.issued_on)], inv.plan_month && ["Cycle", inv.plan_month]].filter(Boolean);
+  const kv = [["Invoice Title", inv.title || `${KIND[inv.kind] || "Invoice"} #${inv.number}`], ["Due Date", inv.due_on ? dateYear(inv.due_on) : "-"], inv.issued_on && ["Issued", dateYear(inv.issued_on)], inv.plan_month && ["Cycle", inv.plan_month]].filter(Boolean);
   return html`<div class="rs-card mn-fields">${kv.map(([k, v]) => html`<div class="mn-field"><span class="rs-stat-l">${k}</span><span class="mn-fv">${v}</span></div>`)}</div>`;
 }
 
@@ -164,7 +169,8 @@ function linkCard(s) {
 function billTo(s) {
   const c = s.contact;
   if (!c) return "";
-  return html`${sectionLabel("Bill To")}${personCard({ name: c.display_name || "The customer", sub: c.phone ? phone(c.phone) : "", href: "#/contacts/" + encodeURIComponent(c.id), call: c.phone ? "tel:" + c.phone : null, text: c.phone && c.has_sms ? "sms:" + c.phone : null })}`;
+  const bt = s.invoice.bill_to || {};
+  return html`${sectionLabel("Bill To")}${personCard({ name: bt.name || c.display_name || "The customer", sub: [bt.phone || (c.phone ? phone(c.phone) : ""), bt.address].filter(Boolean).join(" · "), href: "#/contacts/" + encodeURIComponent(c.id), call: c.phone ? "tel:" + c.phone : null, text: c.phone && c.has_sms ? "sms:" + c.phone : null })}`;
 }
 
 // The foot (Rotor's): the red bin (Void), Collect Payment, and when it was sent.
@@ -190,7 +196,25 @@ export function collectRows(s, ctx) {
     c.card_link && s.invoice.status === "open" && { label: "Text a card link", icon: "link", run: () => cardLink(ctx), data: { act: "card-link" } },
   ]];
 }
-const collect = (ctx) => actionSheet(`Collect ${money(ctx.state.invoice.balance_cents)}`, collectRows(ctx.state, ctx));
+// Collect Payment: Rotor's payment sheet (the card, cash or a check, a pay link, the QR).
+const collect = (ctx) => openPayment(ctx, { state: ctx.state, onDone: () => ctx.refresh() });
+
+// The editor: full screen on a phone (the route's own view), a dialog on a desk.
+const wide = () => typeof matchMedia === "function" && matchMedia(SPLIT_MEDIA).matches;
+let editor = null;
+let leaving = false;
+function edit(ctx, { phone: onPhone = false } = {}) {
+  if (editor && !editor.closed) return;
+  editor = openEditor(ctx, {
+    state: ctx.state,
+    onClose: (changed) => {
+      editor = null;
+      if (leaving) return;
+      if (onPhone) ctx.back();
+      else if (changed) ctx.refresh();
+    },
+  });
+}
 
 function moreRows(s, ctx) {
   const c = s.can || {};
@@ -221,7 +245,19 @@ const titleOf = (s) => (s && s.invoice ? `${KIND[s.invoice.kind] || "Invoice"} $
 export default {
   title: titleOf,
   load,
+  tools: (s, ctx) => [s.can && s.can.edit && { icon: "edit", label: "Edit invoice", run: () => edit(ctx), data: { act: "edit" } }],
   more: (s, ctx) => moreRows(s, ctx),
+  // a phone: Rotor's phone invoice, full screen over this page
+  mount(el, s, ctx) {
+    leaving = false;
+    if (!wide() && !editor && el.id !== "pane") edit(ctx, { phone: true });
+  },
+  unmount() {
+    if (!editor) return;
+    leaving = true;
+    try { editor.sh.close(); } catch (e) { /* gone */ }
+    editor = null;
+  },
   moreTitle: titleOf,
   render(s, ctx) {
     const inv = s.invoice;
@@ -250,164 +286,5 @@ export default {
     "click [data-refund]": (e, el, ctx) => refundSheet(ctx, el.dataset.refund, Number(el.dataset.left)),
   },
 };
-
-function showQr(ctx) {
-  const id = encodeURIComponent(ctx.state.invoice.id);
-  openPayQr({
-    save: true,
-    fetch: () => ctx.api(`/invoices/${id}/pay-qr`, { method: "POST", body: {} }),
-    check: async () => (await ctx.api(`/invoices/${id}`, { cache: false })).data.invoice.status === "paid",
-    // the history shows the code was shown (and, once they pay, the payment)
-    onClose: () => ctx.refresh(),
-  });
-}
-async function charge(el, ctx) {
-  const s = ctx.state;
-  const card = s.card && s.card.last4 ? `the ${String(s.card.brand || "card").toUpperCase()} ending ${s.card.last4}` : "the card on file";
-  if (!(await confirmSheet(`Charge ${money(s.invoice.balance_cents)} to ${card}?${s.system_of_record !== "crm" ? " (Payments are in practice mode: nothing real is charged.)" : ""}`, { title: "Charge the card", yes: "Charge" }))) return;
-  busy(el, true, "Charging…");
-  try {
-    const r = await ctx.api(`/invoices/${encodeURIComponent(s.invoice.id)}/charge`, { method: "POST", body: {} });
-    const run = await waitRun(ctx.api, r.data.run_id);
-    const st = run && run.result && run.result.status;
-    toast(st === "succeeded" ? "Charged" : st === "processing" ? "The bank payment is clearing" : st === "failed" ? "The card didn't go through" : st === "would_charge" ? "Not charged: Rotor still bills this customer" : st === "refused" ? "There's nothing to charge that card with" : "Still working. Check back in a minute.", { bad: !["succeeded", "processing"].includes(st) });
-  } catch (err) { toast(err.message || "That didn't work.", { bad: true }); }
-  ctx.refresh();
-}
-async function cardLink(ctx) {
-  if (!(await confirmSheet("Text them a link to put a card on file?", { title: "Card link", yes: "Text it" }))) return;
-  try {
-    const r = await ctx.api(`/contacts/${encodeURIComponent(ctx.state.invoice.contact_id)}/card-link`, { method: "POST", body: { client_id: uuid() } });
-    toast(r.data.mode === "dry_run" ? "In the Outbox (texts are still practice)" : r.data.status === "sent" ? "Sent" : `Not sent${r.data.reason ? `: ${String(r.data.reason).replace(/_/g, " ")}` : ""}`, { bad: !["sent", "queued"].includes(r.data.status) && r.data.mode !== "dry_run" });
-  } catch (err) { toast(err.message || "That didn't send.", { bad: true }); }
-}
-async function keepCredit(ctx) {
-  if (!(await confirmSheet("Keep the extra as account credit? It comes off their next invoice.", { title: "Keep as credit", yes: "Keep it" }))) return;
-  try {
-    const cr = await ctx.api(`/contacts/${encodeURIComponent(ctx.state.invoice.contact_id)}/credits`, { cache: false });
-    const row = ((cr.data && cr.data.credits) || []).find((c) => c.source_invoice_id === ctx.state.invoice.id && c.status === "held");
-    if (!row) { toast("That overpayment is already settled."); ctx.refresh(); return; }
-    await ctx.api(`/credits/${encodeURIComponent(row.id)}/keep`, { method: "POST", body: {} });
-    toast("Kept as credit");
-  } catch (err) { toast(err.message || "That didn't save.", { bad: true }); }
-  ctx.refresh();
-}
-async function writeOff(ctx) {
-  if (!(await confirmSheet("Write this invoice off as money you won't collect? It leaves the open list.", { title: "Write off", yes: "Write off", danger: true }))) return;
-  act(ctx, "write-off", {}, "Written off");
-}
-const voidIt = (ctx) => reasonSheet(ctx, { title: "Void this invoice", label: "Why?", yes: "Void it", run: (reason) => act(ctx, "void", { reason }, "Voided") });
-
-async function act(ctx, path, body, ok) {
-  try {
-    await ctx.api(`/invoices/${encodeURIComponent(ctx.state.invoice.id)}/${path}`, { method: "POST", body });
-    toast(ok);
-  } catch (err) { toast(err.message || "That didn't save.", { bad: true }); }
-  ctx.refresh();
-}
-
-function sendSheet(ctx) {
-  const s = ctx.state;
-  const c = s.contact || {};
-  const sh = sheet({
-    title: s.invoice.status === "draft" ? "Send this invoice" : "Send it again",
-    body: html`<form class="form" data-send><p class="muted small">They get a link to see it and pay by card. ${s.system_of_record !== "crm" ? "Texts and emails are still practice: this lands in the Outbox." : ""}</p>
-      <label class="check"><input type="checkbox" name="sms" ${attrs({ checked: !!c.has_sms, disabled: !c.has_sms })}><span>Text${c.has_sms ? "" : " (no mobile number on file)"}</span></label>
-      <label class="check"><input type="checkbox" name="email" ${attrs({ checked: !!c.has_email, disabled: !c.has_email })}><span>Email${c.has_email ? "" : " (no email on file)"}</span></label>
-      <p class="err" data-form-err hidden></p><div class="btn-row"><button type="submit" class="btn primary">Send</button></div></form>`,
-    events: {
-      "submit [data-send]": async (e, form) => {
-        e.preventDefault();
-        clearErrors(form);
-        const v = readForm(form);
-        const channels = [v.sms ? "sms" : null, v.email ? "email" : null].filter(Boolean);
-        if (!channels.length) { showError(form, { message: "Pick text, email or both." }); return; }
-        const btn = form.querySelector("button[type=submit]");
-        busy(btn, true, "Sending…");
-        try {
-          await ctx.api(`/invoices/${encodeURIComponent(s.invoice.id)}/${s.invoice.status === "draft" ? "issue" : "send"}`, { method: "POST", body: { channels } });
-          sh.close(); toast(s.system_of_record !== "crm" ? "In the Outbox" : "Sent"); ctx.refresh();
-        } catch (err) { busy(btn, false); showError(form, err); }
-      },
-    },
-  });
-}
-
-function recordSheet(ctx) {
-  const s = ctx.state;
-  const clientId = uuid();
-  const sh = sheet({
-    title: "Record a payment",
-    body: html`<form class="form" data-record>
-      <div class="mn-seg" role="radiogroup" aria-label="How they paid">${[["check", "Check"], ["cash", "Cash"], ["other", "Other"]].map(([v, l], i) => html`<label><input type="radio" name="method" ${attrs({ value: v, checked: i === 0 })}><span>${l}</span></label>`)}</div>
-      <div class="mn-grid">
-        <label class="field" data-field="amount_cents"><span>Amount</span><input name="amount" inputmode="decimal" autocomplete="off" ${attrs({ value: (s.invoice.balance_cents / 100).toFixed(2) })}><small class="why" hidden></small></label>
-        <label class="field" data-field="tip_cents"><span>Tip (if any)</span><input name="tip" inputmode="decimal" autocomplete="off" placeholder="0.00"><small class="why" hidden></small></label>
-      </div>
-      <label class="field" data-field="reference"><span>Check number or note</span><input name="reference" autocomplete="off" maxlength="60"><small>Long account numbers are hidden automatically.</small><small class="why" hidden></small></label>
-      <p class="err" data-form-err hidden></p><div class="btn-row"><button type="submit" class="btn primary">Save payment</button></div></form>`,
-    events: {
-      "submit [data-record]": async (e, form) => {
-        e.preventDefault();
-        clearErrors(form);
-        const v = readForm(form);
-        const amount = readMoney(v.amount), tip = v.tip ? readMoney(v.tip) : 0;
-        if (!amount || amount <= 0) { showError(form, { field: "amount_cents", message: "How much did they pay?" }); return; }
-        if (tip === null || tip < 0) { showError(form, { field: "tip_cents", message: "That tip doesn't look right." }); return; }
-        const btn = form.querySelector("button[type=submit]");
-        busy(btn, true);
-        try {
-          await ctx.api(`/invoices/${encodeURIComponent(s.invoice.id)}/payments`, { method: "POST", body: { method: v.method || "check", amount_cents: amount, tip_cents: tip, reference: v.reference || undefined, client_id: clientId }, idempotencyKey: clientId });
-          sh.close(); toast("Payment saved"); ctx.refresh();
-        } catch (err) { busy(btn, false); showError(form, err); }
-      },
-    },
-  });
-}
-
-function refundSheet(ctx, paymentId, left) {
-  const clientId = uuid();
-  const p = (ctx.state.payments || []).find((x) => x.id === paymentId) || {};
-  const how = ["card", "ach"].includes(p.method) ? "It goes back to their card or bank." : "This only records it: hand the money back yourself.";
-  const sh = sheet({
-    title: "Refund",
-    body: html`<form class="form" data-refund-form><p class="muted small">Up to ${money(left)}. ${how}</p>
-      <label class="field" data-field="amount_cents"><span>Amount</span><input name="amount" inputmode="decimal" autocomplete="off" ${attrs({ value: (left / 100).toFixed(2) })}><small class="why" hidden></small></label>
-      <label class="field" data-field="reason"><span>Why</span><input name="reason" autocomplete="off" maxlength="200"><small class="why" hidden></small></label>
-      <p class="err" data-form-err hidden></p><div class="btn-row"><button type="submit" class="btn danger">Refund</button></div></form>`,
-    events: {
-      "submit [data-refund-form]": async (e, form) => {
-        e.preventDefault();
-        clearErrors(form);
-        const v = readForm(form);
-        const amount = readMoney(v.amount);
-        if (!amount || amount <= 0) { showError(form, { field: "amount_cents", message: "How much goes back?" }); return; }
-        const btn = form.querySelector("button[type=submit]");
-        busy(btn, true, "Refunding…");
-        try {
-          await ctx.api(`/payments/${encodeURIComponent(paymentId)}/refund`, { method: "POST", body: { amount_cents: amount, reason: v.reason, client_id: clientId }, idempotencyKey: clientId });
-          sh.close(); toast("Refunded"); ctx.refresh();
-        } catch (err) { busy(btn, false); showError(form, err); }
-      },
-    },
-  });
-}
-
-function reasonSheet(ctx, { title, label, yes, run }) {
-  const sh = sheet({
-    title,
-    body: html`<form class="form" data-reason><label class="field" data-field="reason"><span>${label}</span><input name="reason" autocomplete="off" maxlength="200"><small class="why" hidden></small></label>
-      <p class="err" data-form-err hidden></p><div class="btn-row"><button type="submit" class="btn danger">${yes}</button></div></form>`,
-    events: {
-      "submit [data-reason]": async (e, form) => {
-        e.preventDefault();
-        const v = readForm(form);
-        if (!v.reason || v.reason.length < 2) { showError(form, { field: "reason", message: "Say why." }); return; }
-        sh.close();
-        await run(v.reason);
-      },
-    },
-  });
-}
 
 export { openExternal };

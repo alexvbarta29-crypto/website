@@ -1,0 +1,56 @@
+/* The checklist sheet and its floating pill (checklist-sheet.js; Rotor's
+   Technician Job Checklist, Nov 2026). Tokens only, both themes. */
+
+/* the floating "N left" pill: bottom right, above the tab bar and the home indicator */
+.ck-pill{position:fixed;right:calc(16px + var(--right, 0px));bottom:calc(var(--bar-gap) + var(--pill-h) + 12px + var(--lift,0px));z-index:30;display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 20px 0 16px;border:1px solid var(--card-line);border-radius:999px;background:var(--card);color:var(--ink);font:700 17px/1 var(--text);box-shadow:0 8px 24px rgba(0,0,0,.14);cursor:pointer}
+.ck-pill svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ck-pill.ok{color:var(--green-ink)}
+.ck-pill:active{transform:scale(.98)}
+/* on a desk the pill sits at the page's bottom right, no tab bar under it */
+.app.no-tabs .ck-pill{bottom:calc(var(--bottom) + 12px + var(--lift,0px))}
+.app.typing .ck-pill{display:none}
+@media (min-width:900px){.ck-pill{bottom:24px;right:24px}}
+/* the visit's big button is fixed at the bottom of a phone: the pill rides above it */
+@media (max-width:899px){.vb-has-go .ck-pill{bottom:calc(var(--bar-gap) + var(--pill-h) + 82px + var(--lift,0px))}.vb-has-go.wk-vpage{padding-bottom:150px}}
+/* the page leaves room under its last card for the pill */
+.ck-room{height:64px}
+
+/* the sheet: the title, "Complete in order • 0 of 15 done" under it, a hairline, the items */
+.ck-sheet .sheet-head{padding-bottom:0}
+.ck-sub{margin:0;padding:2px 20px 12px;border-bottom:1px solid var(--line);color:var(--muted);font:400 15px/1.3 var(--text)}
+.ck-sheet .sheet-body{padding-top:14px}
+.ck-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ck-item{border:1px solid var(--card-line);border-radius:14px;background:var(--card);padding:6px 16px;transition:opacity .15s}
+.ck-item:not([data-kind=check]){padding:12px 16px 14px}
+.ck-item.next{border:2px solid var(--coral-btn);padding:5px 15px}
+.ck-item.next:not([data-kind=check]){padding:11px 15px 13px}
+.ck-item.locked{opacity:.5}
+.ck-item.locked .ck-row,.ck-item.locked .ck-cam{cursor:default}
+.ck-row{display:flex;align-items:center;gap:14px;width:100%;min-height:48px;padding:0;border:0;background:none;color:var(--ink);font:400 17px/1.3 var(--text);text-align:left;cursor:pointer}
+.ck-row.sub{min-height:44px}
+.ck-row[aria-disabled=true]{cursor:default}
+.ck-box{flex:none;display:grid;place-items:center;width:26px;height:26px;border:1.5px solid var(--line-2);border-radius:7px;background:var(--card)}
+.ck-box.on{border-color:var(--coral-btn);background:var(--coral-btn);color:#fff}
+.ck-box svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ck-l{min-width:0;overflow-wrap:anywhere}
+.ck-item.done .ck-row:not(.sub) .ck-l{color:var(--muted)}
+.ck-req{color:var(--ink)}
+.ck-q{display:block;margin:0 0 8px;color:var(--ink);font:400 17px/1.3 var(--text);overflow-wrap:anywhere}
+.ck-hint{display:block;margin-top:2px;color:var(--muted);font-size:13px}
+.ck-group{margin:0;padding:0;border:0;min-width:0}
+.ck-group legend{padding:0}
+/* the inputs: 16 px or more (no zoom), 48 px tall, the grey Rotor box */
+.ck-sel{position:relative;display:block}
+.ck-sel select,.ck-in{display:block;width:100%;min-height:48px;padding:0 14px;border:1px solid var(--card-line);border-radius:12px;background:var(--card-2);color:var(--ink);font:400 17px/1.3 var(--text);box-sizing:border-box}
+.ck-sel select{appearance:none;-webkit-appearance:none;padding-right:40px}
+.ck-sel::after{content:"";position:absolute;right:16px;top:50%;width:9px;height:9px;margin-top:-7px;border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+textarea.ck-in{min-height:110px;padding:12px 14px;resize:vertical}
+.ck-in::placeholder{color:var(--muted);opacity:.8}
+.ck-cam{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin:0 0 -6px -2px;padding:0 6px 0 2px;border:0;background:none;color:var(--muted);font:400 15px/1 var(--text);cursor:pointer}
+.ck-cam svg{width:26px;height:26px;fill:none;stroke:var(--ink-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ck-cam[aria-busy=true]{opacity:.6}
+.ck-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin:0 0 8px}
+.ck-shot{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--card-2)}
+.ck-shot img{width:100%;height:100%;object-fit:cover;display:block}
+.ck-shot.wait{opacity:.7}
+.ck-foot{margin:14px 2px 0}

@@ -28,7 +28,7 @@
 import { getRecord, updateRecord, createRecord } from "../../../crm-store.mjs";
 import { deriveId, isId } from "../../core/ids.mjs";
 import { nowIso, nowMs, now, localDate, addLocalDays, zonedToUtc } from "../../core/clock.mjs";
-import { ConflictError, NotFoundError, ExistsError, BlobsTransientError, ParallelRunGuard } from "../../core/errors.mjs";
+import { ConflictError, NotFoundError, ExistsError, BlobsTransientError, ParallelRunGuard, InputError } from "../../core/errors.mjs";
 import { defineOp, runOp, readOp } from "../../core/ops.mjs";
 import { defineRun, createRun } from "../../core/lanes.mjs";
 import { getType } from "../../core/registry.mjs";
@@ -87,12 +87,15 @@ defineOp("money.charge", {
           if (inv.status !== "open" || !(inv.balance_cents > 0)) return { refused: "paid" };
           if (isProcessing(inv)) return { refused: "processing" };
           const amount = inv.balance_cents;
+          // a tip for the crew (the Checkout sheet's), charged with the balance: capped at the balance and cfg/money's custom cap
+          const caps = await moneySettings();
+          const tip = Math.max(0, Math.min(Number.isSafeInteger(input.tip_cents) ? input.tip_cents : 0, amount, caps.tip_custom_max_cents || 0));
           const mode = await sysModeOf(s.ctx);
           const p = await payments({ mode });
           if (!p.impl) return { refused: "paused" };
           const contact = await liveContact(inv.contact_id);
           if (!(await mayMoveMoney(inv, { sor: mode.system_of_record, contact }))) {
-            await wouldAct({ key: "money.charge", subject: inv.id, action: "charge", changes: { amount_cents: [null, amount] } }).catch(() => {});
+            await wouldAct({ key: "money.charge", subject: inv.id, action: "charge", changes: { amount_cents: [null, amount + tip] } }).catch(() => {});
             return { would: true, amount_cents: amount };
           }
           const plan = isId(inv.plan_id, "plan") ? ((await getRecord("plan", inv.plan_id).catch(() => null)) || {}).data : null;
@@ -103,11 +106,11 @@ defineOp("money.charge", {
           const pmMode = pmId === card.payment_method_id ? card.mode : /^dry_/.test(String(pmId)) ? "dry_run" : null;
           if (pmMode && pmMode !== p.mode) return { refused: "no_card" };
           const r = await p.impl.chargeSaved({
-            customer_id: card.customer_id, payment_method_id: pmId, mandate_id: card.mandate_id || undefined, amount_cents: amount,
-            description: `Invoice ${inv.number}`, metadata: { crm_invoice_id: inv.id, crm_contact_id: inv.contact_id, crm_attempt_id: att },
+            customer_id: card.customer_id, payment_method_id: pmId, mandate_id: card.mandate_id || undefined, amount_cents: amount + tip,
+            description: `Invoice ${inv.number}`, metadata: { crm_invoice_id: inv.id, crm_contact_id: inv.contact_id, crm_attempt_id: att, ...(tip > 0 ? { tip_cents: String(tip) } : {}) },
             idempotencyKey: `charge:${att}`, sandboxed: true, outbox: { contact_id: inv.contact_id, to: "•••", related: { invoice_id: inv.id }, subject_ref: { type: "invoice", id: inv.id }, ctx: s.ctx },
           });
-          return { ...r, amount_cents: amount, payment_method_id: pmId, card: card.brand || card.last4 ? { brand: card.brand, last4: card.last4, kind: card.kind } : undefined, simulated: p.mode === "dry_run", mode: p.mode };
+          return { ...r, amount_cents: amount, tip_cents: tip, payment_method_id: pmId, card: card.brand || card.last4 ? { brand: card.brand, last4: card.last4, kind: card.kind } : undefined, simulated: p.mode === "dry_run", mode: p.mode };
         },
       },
       {
@@ -124,7 +127,7 @@ defineOp("money.charge", {
             const out = await upsertPayment({
               id: payId.pi(c.payment_intent_id), contact_id: inv.contact_id, contact_name: inv.contact_name, invoice_id: id, invoice_number: inv.number,
               job_id: (inv.job_ids || [])[0], plan_id: inv.plan_id, kind: "payment", method: c.card && c.card.kind === "us_bank_account" ? "ach" : /ach/.test(String(c.payment_method_id)) ? "ach" : "card",
-              status, amount_cents: c.amount_cents, tip_cents: 0, fee_cents: c.fee_cents || 0, tip_split: [],
+              status, amount_cents: c.amount_cents, tip_cents: c.tip_cents || 0, fee_cents: c.fee_cents || 0, tip_split: c.tip_cents > 0 ? await tipSplitFor(inv, c.tip_cents) : [],
               stripe: { payment_intent_id: c.payment_intent_id, ...(c.charge_id ? { charge_id: c.charge_id } : {}), attempt_id: att, payment_method_id: c.payment_method_id },
               ...(c.card ? { card: c.card } : {}), ...(c.failure_code ? { failure_code: c.failure_code } : status === "failed" && c.status === "requires_action" ? { failure_code: "authentication_required" } : {}),
               ...(c.simulated ? { simulated: true } : {}), recorded_by: input.by || "system",
@@ -190,7 +193,7 @@ export async function chargeInvoice(invoiceId, opts = {}, ctx = {}) {
   const w = W(ctx);
   const mode = await sysModeOf(w);
   const out = await runOp(chargeOpId(att), "money.charge", {
-    input: { invoice_id: invoiceId, attempt_id: att, n, by: opts.by || w.by || "system", origin: opts.origin || "staff", payment_method_id: opts.payment_method_id || null },
+    input: { invoice_id: invoiceId, attempt_id: att, n, by: opts.by || w.by || "system", origin: opts.origin || "staff", payment_method_id: opts.payment_method_id || null, ...(opts.tip_cents > 0 ? { tip_cents: opts.tip_cents } : {}) },
     ctx: { ...w, mode }, holder: String(w.requestId || "money").slice(0, 80), resume: true,
   });
   if (out.status === "running") return { status: "running", attempt_id: att };
@@ -217,7 +220,9 @@ export async function startChargeRun(invoiceId, body, ctx) {
   const inv = await checkChargeable(invoiceId, body || {});
   const n = (inv.charge_n || 0) + 1;
   const att = attemptId(invoiceId, n);
-  return createRun("money.charge", { invoice_id: invoiceId, n, payment_method_id: (body && body.payment_method_id) || null }, ctx.write(), { id: chargeRunId(att) });
+  const tip = body && body.tip_cents !== undefined && body.tip_cents !== null ? body.tip_cents : 0;
+  if (!Number.isSafeInteger(tip) || tip < 0 || tip > 500000) throw new InputError("That tip doesn't look right.", "tip_cents");
+  return createRun("money.charge", { invoice_id: invoiceId, n, payment_method_id: (body && body.payment_method_id) || null, ...(tip > 0 ? { tip_cents: tip } : {}) }, ctx.write(), { id: chargeRunId(att) });
 }
 
 defineRun("money.charge", {
@@ -225,7 +230,7 @@ defineRun("money.charge", {
   async step(run, rctx) {
     const i = run.input || {};
     const ctx = { by: run.requested_by || "system", origin: "api", actor_kind: isId(run.requested_by, "user") ? "user" : "automation", requestId: rctx.holder || "money", ...(rctx.mode ? { mode: rctx.mode } : {}) };
-    const out = await chargeInvoice(i.invoice_id, { n: i.n, by: run.requested_by, origin: "staff", payment_method_id: i.payment_method_id }, ctx);
+    const out = await chargeInvoice(i.invoice_id, { n: i.n, by: run.requested_by, origin: "staff", payment_method_id: i.payment_method_id, tip_cents: i.tip_cents || 0 }, ctx);
     if (out.status === "running") return { progress: { done: 0, total: 1 } };
     return { done: true, result: { status: out.result || out.status, payment_id: out.payment_id || null, code: out.code || null }, progress: { done: 1, total: 1 } };
   },

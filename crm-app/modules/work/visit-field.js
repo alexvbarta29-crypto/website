@@ -21,13 +21,14 @@ import { money, time as fmtTime, dateShort } from "../../core/format.js";
 import { capture, prepare, photoTile } from "../../core/camera.js";
 import { ensureStyles, TICONS, hm, since, send, waiting, overlayVisit, onDrained, here, etaMinutes, toBase64, smsHref, online, FULL_NOTE, offlineLine, tellShell } from "./tech-kit.js";
 import { nextStep } from "./visit-step.js";
+import { itemDone, itemPhotos } from "./checklist-kit.js";
+import { openChecklist } from "./checklist-sheet.js";
 
 // What a change made with no signal says (the layout report: "Saved, will send when online").
 export const SAVED_OFFLINE = "Saved, will send when online.";
 
 const OPEN = ["scheduled", "en_route", "in_progress", "paused"];
 const TITLE = { scheduled: "Booked", en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done", no_access: "No access", cancelled: "Cancelled" };
-const itemDone = (i) => !!(i && (i.done_at || (i.value !== undefined && i.value !== null && i.value !== "")));
 const MAX_PHOTO = 3000000;
 // what the last On my way / Running late text did, per visit, for a few minutes (the screen reloads after it)
 const sentFor = new Map();
@@ -118,10 +119,15 @@ function checklistCard(s) {
   if (!items.length) return "";
   const done = items.filter(itemDone).length;
   const open = OPEN.includes(s.visit.status);
-  return html`<div class="rs-card" id="vf-check">${cardHead("Checklist", { count: `${done} of ${items.length}` })}<ul class="tf-items">${items.map((i) => {
+  // the whole list, in order, is the checklist sheet (the floating pill and the card's head open it); the card ticks too
+  return html`<div class="rs-card" id="vf-check">${cardHead((s.visit.checklist && s.visit.checklist.name) || "Checklist", { count: `${done} of ${items.length}`, edit: { label: "Open the checklist", data: { "ck-open": s.visit.id } } })}<ul class="tf-items">${items.map((i) => {
     const ok = itemDone(i);
-    const sub = i.kind === "count" && i.value !== undefined ? `Count: ${i.value}` : i.kind === "text" && i.value ? String(i.value) : i.kind === "photo" ? (ok ? "Photo taken" : "Take the photo") : "";
-    const act = i.kind === "photo" ? (ok ? "" : html`<span class="act">${TICONS.camera}Photo</span>`) : i.kind === "count" ? html`<span class="act">${ok ? "Change" : "Count"}</span>` : i.kind === "text" ? html`<span class="act">${ok ? "Edit" : "Write"}</span>` : "";
+    const shots = i.kind === "photo" ? itemPhotos(s.visit, i.key).length : 0;
+    const sub = i.kind === "count" && i.value !== undefined ? `Count: ${i.value}` : (i.kind === "text" || i.kind === "select") && i.value ? String(i.value)
+      : i.kind === "multi" ? `${Array.isArray(i.value) ? i.value.length : 0} of ${(i.options || []).length} ticked`
+        : i.kind === "photo" ? (ok ? `${Math.max(1, shots)} ${Math.max(1, shots) === 1 ? "photo" : "photos"}` : "Take the photo") : "";
+    const act = i.kind === "photo" ? (ok ? "" : html`<span class="act">${TICONS.camera}Photo</span>`) : i.kind === "count" ? html`<span class="act">${ok ? "Change" : "Count"}</span>` : i.kind === "text" ? html`<span class="act">${ok ? "Edit" : "Write"}</span>`
+      : i.kind === "select" || i.kind === "multi" ? html`<span class="act">${ok ? "Change" : "Pick"}</span>` : "";
     return html`<li><button type="button" class="${"tf-item" + (ok ? " on" : "")}" ${attrs({ "data-item": i.key, "data-kind": i.kind || "check", "aria-pressed": ok ? "true" : "false", disabled: !open && !ok ? true : null })}>
       <span class="box" aria-hidden="true">${ok ? icon("check") : ""}</span>
       <span class="lbl">${i.label}${i.required ? html`<small class="req">Required${sub ? ` · ${sub}` : ""}</small>` : sub ? html`<small>${sub}</small>` : ""}</span>${act}</button></li>`;
@@ -333,6 +339,11 @@ const events = {
     const item = ((ctx.state.visit.checklist && ctx.state.visit.checklist.items) || []).find((i) => i.key === key);
     if (!item) return;
     const done = itemDone(item);
+    // a pick or a group of boxes, a hooked tick (On my way, Start): in the checklist sheet, in order
+    if (kind === "select" || kind === "multi" || (item.hook && !done)) {
+      openChecklist(ctx, { visit: ctx.state.visit, property: ctx.data && ctx.data.property, onClose: (changed) => { if (changed) ctx.refresh(); } });
+      return;
+    }
     if (kind === "photo") {
       if (done) return;
       return takePhoto(ctx, el, { tag: /after/i.test(key) ? "after" : /before|walk/i.test(key) ? "before" : "other", item: key });

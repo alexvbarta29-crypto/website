@@ -92,6 +92,8 @@ async function confirmRun(input, actx) {
   if (v.status !== "scheduled") { await actx.log(v.id, "skipped:not_scheduled"); return { result: "skipped:not_scheduled" }; }
   if (v.moved_by_op || p.moved_by_op) { await actx.log(v.id, "skipped:moved_by_op"); return { result: "skipped:moved_by_op" }; }
   if (v.date !== p.date || v.start !== p.start) return { result: "skipped:changed" };    // a newer move queued its own
+  // booked with "Notify the customer" off (New job): not this booking; a later move is confirmed as usual
+  if (v.no_confirm && v.no_confirm === `${v.date} ${v.start}`) { await actx.log(v.id, "skipped:notify_off"); return { result: "skipped:notify_off" }; }
   const s = await workSettings();
   const out = daysBetween(localDate(now()), v.date);
   if (out < 0) return { result: "skipped:past" };

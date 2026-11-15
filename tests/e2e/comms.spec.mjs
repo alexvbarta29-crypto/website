@@ -43,12 +43,22 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "the Inbox passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `comms-inbox-${device}`);
-      // Rotor's folders are one row of tiles (a tile IS the filter), each with its count; team inboxes after them
-      assert.deepEqual(await f.$$eval("#view [data-tile=inbox]", (els) => els.map((e) => e.dataset.key)), ["all", "mine", "unread", "needs_reply", "sales", "service"]);
-      assert.match(await text(f, "#view .rs-tiles"), /Sales\s*\d/, "the team inbox with its count");
-      const pickTile = async (k) => { await f.click(`#view [data-tile=inbox][data-key="${k}"]`); await f.waitForFunction((key) => { const b = document.querySelector(`#view [data-tile=inbox][data-key="${key}"]`); return !!b && !document.querySelector("#view [aria-busy=true]"); }, k); await f.waitForTimeout(400); };
+      // simple (Nov 15): a search, ONE folder button (its sheet: the folders with counts, team inboxes, texts or email, customers or leads), the rows
+      assert.equal(await f.$("#view .rs-tiles"), null, "no tile rows");
+      assert.match((await text(f, "#view [data-folders]")).trim(), /^All/);
+      const folders = async () => { await f.click("#view [data-folders]"); await sheetUp(f, /^Folders$/); };
+      await folders();
+      assert.deepEqual(await f.$$eval(".sheet.on [data-folder]", (els) => els.map((e) => e.dataset.folder)), ["all", "mine", "unread", "needs_reply", "sales", "service"]);
+      assert.match(await text(f, '.sheet.on [data-folder="sales"]'), /Sales\s*\d/, "the team inbox with its count");
+      for (const k of ["fch", "fwho"]) assert.ok(await f.$(`.sheet.on [data-${k}]`), `${k} in the same sheet`);
+      assert.deepEqual(await screenProblems(f), [], "the folder sheet");
+      await shot(page, `comms-folders-${device}`);
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
+      const LABEL = { all: "All", needs_reply: "Needs reply", sales: "Sales" };
+      const pickTile = async (k) => { await folders(); await f.click(`.sheet.on [data-folder="${k}"]`); await sheetGone(f); await f.waitForFunction((l) => (document.querySelector("#view [data-folders]")?.getAttribute("aria-label") || "").startsWith(`Folder: ${l}`), LABEL[k]); await f.waitForTimeout(400); };
       await pickTile("needs_reply");
-      assert.equal(await f.$eval('#view [data-tile=inbox][data-key="needs_reply"]', (b) => b.getAttribute("aria-pressed")), "true");
+      assert.match((await text(f, "#view [data-folders]")).trim(), /^Needs reply/);
       // (the second phone comes after the first marked it done)
       if (first) assert.match(await text(f), new RegExp(c.names.lead));
       else assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "done on the other phone: no longer waiting");
@@ -56,13 +66,16 @@ for (const device of ["iphone13", "iphonese"]) {
       await pickTile("sales");
       if (first) assert.match(await text(f), new RegExp(c.names.lead), "a lead lands in Sales by the inbox's rule");
       assert.doesNotMatch(await text(f, "#view .cm-list, #view .card").catch(() => ""), new RegExp(c.names.customer), "a customer is not in Sales");
-      await pickTile("sales");
-      // the round Filter: texts or email, customers or leads (one sheet, not three rows of controls)
-      await f.click('#top-rnd [data-own="filter"]');
-      await f.waitForSelector(".sheet.on");
-      assert.deepEqual(await screenProblems(f), [], "the filter sheet");
-      await f.click(".sheet.on [data-sheet-x]");
+      await pickTile("all");
+      // texts or email in the same sheet; the folder button says so, Clear undoes it
+      await folders();
+      await f.click('.sheet.on [data-fch="sms"]');
       await sheetGone(f);
+      await f.waitForSelector("#view .cm-fx");
+      assert.match(await text(f, "#view .cm-fx"), /Texts/);
+      await f.click("#view [data-clear]");
+      await f.waitForFunction(() => !document.querySelector("#view .cm-fx"));
+      assert.equal(await f.$('#top-rnd [data-own="filter"]'), null, "no separate filter button");
 
       // the thread: bubbles, where they came from, and that texting is off
       await f.click(`a[href="#/inbox/${c.open}"]`);
@@ -71,9 +84,20 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await f.$$eval(".cm-msg[data-msg]:not(.note)", (els) => els.length), 2);
       assert.match(await text(f), /from Rotor/, "imported messages say where they came from");
       assert.match(await text(f), /Texting isn't switched on yet/);
-      assert.ok(await f.$("#top-act [data-panel]"), "the person's round button");
-      assert.ok(await f.$("[data-from]"), "two business numbers: From ...");
-      assert.match(await text(f, "[data-from]"), /Main/);
+      assert.ok(await f.$("#top-title.cm-name-tap"), "the name opens the person");
+      assert.equal(await f.$$eval("#top-act [data-top-tool]", (b) => b.length), 1, "one round button (call) and the ...");
+      // the composer: one box, Text | Email, +, the clip, a template, Send; the rest in +
+      assert.deepEqual(await f.$$eval("[data-compose] [data-seg=ch]", (b) => b.map((x) => x.dataset.key)), ["sms", "email"]);
+      for (const b of ["data-plus", "data-attach", "data-templates"]) assert.ok(await f.$(`[data-compose] [${b}]`), b);
+      for (const b of ["data-from", "data-link", "data-later"]) assert.equal(await f.$(`[data-compose] [${b}]`), null, `${b} is in the +`);
+      await f.click("[data-compose] [data-plus]");
+      await sheetUp(f, /Add to the message/);
+      assert.match(await text(f, ".sheet.on [data-from]"), /Main/, "two business numbers: From ...");
+      for (const b of ["data-note", "data-later", "data-link"]) assert.ok(await f.$(`.sheet.on [${b}]`), b);
+      assert.deepEqual(await screenProblems(f), [], "the composer's +");
+      await shot(page, `comms-plus-${device}`);
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
       assert.deepEqual(await screenProblems(f), [], "a thread passes the phone checks");
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `comms-thread-${device}`);
@@ -88,7 +112,10 @@ for (const device of ["iphone13", "iphonese"]) {
       await shot(page, `comms-thread-outbox-${device}`);
 
       // the quick links put the review link in the box
-      await f.click("[data-link=review]");
+      await f.click("[data-compose] [data-plus]");
+      await sheetUp(f, /Add to the message/);
+      await f.click(".sheet.on [data-link=review]");
+      await sheetGone(f);
       assert.match(await f.$eval("[data-compose] textarea", (el) => el.value), /^https:\/\//);
       await f.fill("[data-compose] textarea", "");
 
@@ -107,8 +134,11 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.fill("[data-compose] textarea", "");
 
       // an internal note: yellow, only the team sees it
-      await f.click('[data-seg=ch][data-key="note"]');
-      await f.fill("[data-compose] textarea", first ? "Wants the screens done too." : "Has a dog: text before the gate.");
+      await f.click("[data-compose] [data-plus]");
+      await sheetUp(f, /Add to the message/);
+      await f.click(".sheet.on [data-note]");
+      await sheetGone(f);
+      await f.fill("[data-compose] textarea.note", first ? "Wants the screens done too." : "Has a dog: text before the gate.");
       await f.click("[data-compose] button[type=submit]");
       await toastSays(f, /Note saved/);
       await f.waitForFunction((n) => document.querySelectorAll(".cm-msg .bubble.note").length === n, first ? 1 : 2, { timeout: 8000 });
@@ -116,7 +146,9 @@ for (const device of ["iphone13", "iphonese"]) {
 
       // send later: a time sheet, then the Outbox at that time
       await f.fill("[data-compose] textarea", "A reminder for tomorrow morning.");
-      await f.click("[data-later]");
+      await f.click("[data-compose] [data-plus]");
+      await sheetUp(f, /Add to the message/);
+      await f.click(".sheet.on [data-later]");
       await sheetUp(f, /Send later/);
       assert.deepEqual(await screenProblems(f), [], "the send later sheet");
       // (the server's clock is pinned: a time a day after it)
@@ -126,7 +158,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await toastSays(f, /Scheduled for/);
 
       // their details beside the thread (Rotor's panel): numbers, Mute, + Create
-      await f.click("#top-act [data-panel]");
+      await f.click("#top-title");
       await f.waitForSelector(".sheet.on [data-mute]", { timeout: 8000 });
       assert.match(await text(f, ".sheet.on"), /Create/);
       assert.deepEqual(await screenProblems(f), [], "the person's panel passes the phone checks");
@@ -199,7 +231,12 @@ test("comms: a tech's inbox holds only the people on their own visits", async ()
     assert.match(await text(f), /side gate/);
     assert.doesNotMatch(await text(f), new RegExp(c.names.lead), "nobody else's lead");
     assert.equal(await f.$$eval("#view .cm-row", (els) => els.length), 1);
-    assert.deepEqual(await f.$$eval("#view [data-tile=inbox]", (els) => els.map((e) => e.dataset.key)), ["all", "unread"], "no Mine, no team inboxes for a tech");
+    await f.click("#view [data-folders]");
+    await sheetUp(f, /^Folders$/);
+    assert.deepEqual(await f.$$eval(".sheet.on [data-folder]", (els) => els.map((e) => e.dataset.folder)), ["all", "unread"], "no Mine, no team inboxes for a tech");
+    assert.equal(await f.$(".sheet.on [data-fwho]"), null, "customers or leads is the office's");
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
     assert.equal(await f.$("#top-action:not([hidden])"), null, "no New for a tech");
     assert.deepEqual(await screenProblems(f), [], "a tech's Inbox passes the phone checks");
     await shot(page, "comms-inbox-tech");
@@ -208,7 +245,7 @@ test("comms: a tech's inbox holds only the people on their own visits", async ()
     assert.equal(await title(f), c.names.onVisit);
     assert.ok(await f.$("[data-compose] textarea"), "the tech can answer the customer of their visit");
     assert.equal(await f.$('[data-seg=ch][data-key="note"]'), null, "notes are the office's");
-    assert.equal(await f.$("#top-act [data-panel]"), null);
+    assert.equal(await f.$("#top-title.cm-name-tap"), null, "no panel for a tech");
     assert.deepEqual(await screenProblems(f), [], "a tech's thread passes the phone checks");
     await shot(page, "comms-thread-tech");
     // the office's threads are not theirs, by address or by API
@@ -398,6 +435,8 @@ test("comms: on a desk the Inbox sits beside its thread", async () => {
     assert.equal(await f.isVisible("#pane"), true);
     assert.match(await f.textContent("#pane"), /gate code is on file/);
     assert.ok(await f.$("#view .cm-row"), "the list stays beside it");
+    assert.ok(await f.isVisible("#view .cm-fcol"), "the folders as one column (Rotor's inbox with folders)");
+    assert.equal(await f.isVisible("#view [data-folders]"), false, "no folder button beside the column");
     assert.ok(await f.$("#pane [data-compose] textarea"));
     assert.deepEqual(await screenProblems(f), [], "the Inbox with a thread passes the checks on a desk");
     await shot(page, "comms-inbox-desk");

@@ -276,7 +276,7 @@ header.top img{width:132px;height:auto}
 h1,h2{font-family:'Cabinet Grotesk',system-ui,sans-serif;font-weight:800;letter-spacing:-.015em;margin:0 0 8px;line-height:1.15}
 h1{font-size:26px}h2{font-size:19px}
 p{margin:0 0 12px;color:var(--muted)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border:0;border-radius:999px;background:var(--coral);color:#fff;font:800 15px/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border:0;border-radius:999px;background:var(--coral);color:#fff;font:800 17px/1 'Cabinet Grotesk',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;cursor:pointer}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
 .btn.block{display:flex;width:100%}
 .btn:disabled{opacity:.6}
