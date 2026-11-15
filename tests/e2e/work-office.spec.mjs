@@ -64,7 +64,7 @@ async function checks(f, page, name, problems) {
 }
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`schedule (${device}): Rotor's head and views with the month first (how full, the forecast, the days nobody closed, To book), the day's list, Day by person, 3 Day, week, list, the tray; the gear, search, Who; book with warnings; open the visit`, async () => {
+  test(`schedule (${device}): Rotor's simple head and views with the month first (one filter sheet; how full, the forecast and the days nobody closed in the labels), the day's rows, Day by person, 3 Day, week, list, the tray; the gear, search, Who; book with warnings; open the visit`, async () => {
     const { p, page, f, errors } = await open("olive", device);
     const problems = [];
     const reads = [];
@@ -79,23 +79,19 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForSelector(".wk-mgrid");
       assert.equal(await f.getAttribute("[data-view=month]", "aria-selected"), "true", "Month is the default");
       assert.deepEqual(await f.$$eval(".wk-view", (b) => b.map((x) => x.textContent.trim())), ["Month", "List", "Day", "3 Day", "Week", "Map"], "the desk's views");
-      // a phone's head is Flyra's: "Nov 2026" (pick a month or a day) and "Revenue $X", the ‹ › pill, "Month ⌄" and the tools pill (search, team, the gear)
-      for (const b of ["data-mpick", "data-cal", "data-vmenu", "data-search", "data-filter", "data-fsheet"]) assert.ok(await f.isVisible(`.wk-fly [${b}]`), b);
-      assert.match(await f.textContent(".wk-fly .wk-fh-title"), /^[A-Z][a-z]{2} \d{4}$/, "Nov 2026");
+      // a phone's head is Rotor-simple (Nov 15): "November ⌄" (pick a month or a day) and "Revenue $X", the ‹ › pill, ONE round filter button, the segmented views
+      for (const b of ["data-mpick", "data-cal", "data-fsheet"]) assert.ok(await f.isVisible(`.wk-fly [${b}]`), b);
+      for (const b of ["data-vmenu", "data-search", "data-filter", "data-mapday", "data-totray"]) assert.equal(await f.$(`.wk-fly [${b}]`), null, `${b} lives in the filter sheet`);
+      assert.match(await f.textContent(".wk-fly .wk-fh-title"), /^([A-Z][a-z]+|[A-Z][a-z]{2} \d{4})$/, "November");
       assert.match(await f.textContent(".wk-fly .wk-fh-sub"), /^Revenue \$\d/, "the month's money");
-      assert.equal(await f.$eval(".wk-fly .wk-fh-title .t", (el) => parseFloat(getComputedStyle(el).fontSize)) >= 34, true, "the huge title");
-      assert.equal((await f.textContent(".wk-fly [data-vmenu]")).trim(), "Month", "Month stays the default (the owner's choice)");
+      assert.equal(await f.$eval(".wk-fly .wk-fh-title .t", (el) => parseFloat(getComputedStyle(el).fontSize)) >= 26, true, "the title");
+      assert.deepEqual(await f.$$eval(".wk-fly .wk-fseg-b", (b) => b.map((x) => x.textContent.trim())), ["Month", "List", "Day", "3 Day", "Week"], "Rotor's segmented views");
+      assert.equal(await f.getAttribute(".wk-fly [data-fview=month]", "aria-selected"), "true", "Month stays the default (the owner's choice)");
       assert.equal(await f.isVisible(".wk-top"), false, "the desk's head is a desk's");
-      // the view pill: Day, 3 Day, Week, Month, List and the Map
-      await f.click(".wk-fly [data-vmenu]");
-      await sheetUp(f, /^View$/);
-      assert.deepEqual(await f.$$eval(".sheet.on [data-vpick]", (b) => b.map((x) => x.dataset.vpick)), ["day", "3day", "week", "month", "list", "map"]);
-      await f.click(".sheet.on [data-sheet-x]");
-      await sheetGone(f);
       // the gear holds Who, the columns, Show on cards, cancelled, Find a visit, the map, a date, To book, Rain day, Time off
       await f.click(".wk-fly [data-fsheet]");
       await sheetUp(f, /^Schedule options$/);
-      for (const b of ["data-filter", "data-cards", "data-search", "data-mapday", "data-jump", "data-totray"]) assert.ok(await f.$(`.sheet.on [${b}]`), b);
+      for (const b of ["data-filter", "data-cards", "data-search", "data-mapday", "data-vpick", "data-jump", "data-totray", "data-block"]) assert.ok(await f.$(`.sheet.on [${b}]`), b);
       assert.match(await f.textContent(".sheet.on"), /Columns by technician[\s\S]*Columns by sales rep[\s\S]*Hide cancelled visits[\s\S]*Rain day[\s\S]*Time off/);
       await checks(f, page, `work-schedule-filter-${device}`, problems);
       await f.click(".sheet.on [data-sheet-x]");
@@ -127,9 +123,11 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await f.innerText(".wk-dayp-h h2"), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d+\n\d+ jobs?(, \d+ tasks?)? · \$\d/, "Flyra's Fri, Nov 13 and 1 job · $195");
       assert.match(await f.textContent(".wk-dayp"), /\$\d/, "amounts for the office");
       assert.match(await f.textContent(`.wk-dayp [href="#/visits/${seeded.visits[0]}"] .wk-rtag`), /^(Not started|On the way|In progress|Paused|Finished)$/, "Rotor's status tag");
-      assert.match(await f.innerText(`.wk-dayp [href="#/visits/${seeded.visits[1]}"] .who`), /(Anytime|\d{1,2}:\d\d [AP]M to \d{1,2}:\d\d [AP]M)$/, "the time on Flyra's card");
-      assert.equal(await f.isVisible(`.wk-dayp [href="#/visits/${seeded.visits[1]}"] .wk-dt`), false, "no time column");
-      assert.ok(await f.$(`.wk-dayp a[href="#/schedule/move-day?date=${day}"]`), "Move this day");
+      assert.match(await f.innerText(`.wk-dayp [href="#/visits/${seeded.visits[1]}"] .wk-dt`), /^(Anytime|\d{1,2}:\d\d [AP]M)$/, "the time first (Rotor's rows)");
+      assert.equal(await f.isVisible(`.wk-dayp [href="#/visits/${seeded.visits[0]}"] .wk-rtag`), true, "the status as a small dot");
+      assert.equal(await f.$eval(`.wk-dayp [href="#/visits/${seeded.visits[0]}"] .wk-rtag`, (el) => el.getBoundingClientRect().width) <= 12, true, "a dot, not a tag");
+      // nothing else on a phone's month: no fill bars, forecast, not-closed notes, Book / Route / Move, To book
+      for (const x of [".wk-mfoot", ".wk-dayp-info", ".wk-dayp-open", ".wk-dayp-acts", `.wk-dayp a[href="#/schedule/move-day?date=${day}"]`]) assert.equal(await f.isVisible(x), false, `no ${x}`);
       await checks(f, page, `work-schedule-month-${device}`, problems);
       // tap another day: its list, no new read
       await f.click(`[data-mday="${tomorrow}"]`);
@@ -142,7 +140,7 @@ for (const device of ["iphone13", "iphonese"]) {
       if (free) {
         await f.click(`[data-mday="${free}"]`);
         await f.waitForFunction(() => /No jobs on/.test(document.querySelector(".wk-dayp").textContent));
-        assert.ok(await f.$(`.wk-dayp a[href="#/jobs/new?book=1&date=${free}"]`), "Add job on that day");
+        assert.equal(await f.isVisible(`.wk-dayp a[href="#/jobs/new?book=1&date=${free}"]`), false, "booking is the + (no Add job on a phone's month)");
       }
       // the gear: what the cards show, saved for this person
       await f.click(".wk-fly [data-fsheet]");
@@ -168,7 +166,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // an old link to a day opens Day: a column per person (Unassigned first), the week strip, today's red line
       await goTo(f, `/schedule?view=day&date=${day}`);
       await f.waitForSelector(`.wk-cols [href="#/visits/${seeded.visits[0]}"]`);
-      assert.equal((await f.textContent(".wk-fly [data-vmenu]")).trim(), "Day");
+      assert.equal(await f.getAttribute(".wk-fly [data-fview=day]", "aria-selected"), "true");
       assert.ok(await f.isVisible(`.wk-strip [data-sday="${day}"].today`), "the week strip on Day, today in the red circle");
       await f.waitForSelector(".wk-tbchip >> visible=true");
       await f.waitForFunction(() => /Pending \d+/.test(document.querySelector(".wk-tbchip").textContent), null, { timeout: 8000 });
@@ -212,9 +210,15 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(`.sheet [data-tech="${seeded.users.tech.id}"]`);
       await sheetGone(f);
       await f.waitForFunction((id) => !document.querySelector(`.wk-cols [href="#/visits/${id}"]`), seeded.visits[1]);
-      await f.waitForSelector(`[href^="#/schedule/route/"]`);
+      // their route: the filter sheet's Map of the day
+      await f.click(".wk-fly [data-fsheet]");
+      await sheetUp(f, /^Schedule options$/);
+      await f.click(".sheet.on [data-mapday]");
+      await f.waitForSelector(`.sheet.on [href^="#/schedule/route/"]`);
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
       await f.click(".wk-who-on [data-tech]");
-      const view = async (v) => { await f.click(".wk-fly [data-vmenu]"); await sheetUp(f, /^View$/); await f.click(`.sheet.on [data-vpick="${v}"]`); await sheetGone(f); };
+      const view = async (v) => { await f.click(`.wk-fly [data-fview="${v}"]`); await f.waitForFunction((k) => document.querySelector(`.wk-fly [data-fview="${k}"]`)?.getAttribute("aria-selected") === "true", v); };
       await view("3day");
       await f.waitForSelector(".wk-cols.three");
       await checks(f, page, `work-schedule-3day-${device}`, problems);
@@ -225,10 +229,13 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.waitForSelector(".section-h");
       assert.ok(await f.$(".wk-strip"), "the strip on List");
       await checks(f, page, `work-schedule-list-${device}`, problems);
-      // the tray, from the month's "to book"
+      // the tray, from the filter sheet's "N to book"
       await view("month");
-      await f.waitForSelector("[data-totray] >> visible=true");
-      await f.click("[data-totray] >> visible=true");
+      await f.waitForSelector(".wk-mgrid");
+      await f.click(".wk-fly [data-fsheet]");
+      await sheetUp(f, /^Schedule options$/);
+      assert.match(await f.textContent(".sheet.on [data-totray]"), /\d+ to book/);
+      await f.click(".sheet.on [data-totray]");
       await f.waitForSelector(`[data-book="${seeded.jobs[7]}"]`);             // the lights takedown due this month
       await checks(f, page, `work-schedule-tray-${device}`, problems);
       if (device === "iphone13") {
@@ -573,7 +580,7 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
       // the Map tab: everyone's route for the day
       await goTo(f, "/schedule?view=map&date=" + (await f.evaluate(() => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()))));
       await f.waitForSelector(".wk-mapv");
-      assert.equal((await f.textContent(".wk-fly [data-vmenu]")).trim(), "Map");
+      assert.equal(await f.$(".wk-fly .wk-fseg-b[aria-selected=true]"), null, "the Map is the filter sheet's, not a segment");
       assert.ok(await f.$(".wk-mapv svg.wk-maps"), "the routes drawn");
       assert.deepEqual(await screenProblems(f), [], "the Map tab");
       await shot(page, `g2-schedule-map-${device}-${theme}`);

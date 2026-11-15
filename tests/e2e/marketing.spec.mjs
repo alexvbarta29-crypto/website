@@ -46,13 +46,22 @@ for (const device of ["iphone13", "iphonese"]) {
       };
       try {
         assert.equal(await f.evaluate(() => document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")), theme);
-        await check("/inbox", /Needs reply/, "Inbox");
-        assert.ok(await f.$('#view [data-tile=inbox][data-key="sales"]'), "the team inbox tile");
+        await check("/inbox", /All/, "Inbox");
+        // ONE folder button: its sheet holds the team inboxes
+        await f.click("#view [data-folders]");
+        await f.waitForSelector('.sheet.on [data-folder="sales"]');
+        assert.deepEqual(await screenProblems(f), [], "the folder sheet");
+        await f.click(".sheet.on [data-sheet-x]");
+        await sheetGone(f);
         await check(`/inbox/${c.conversation}`, /gate code/, "Thread");
-        await f.click('[data-seg=ch][data-key="note"]');
+        await f.click("[data-compose] [data-plus]");
+        await f.waitForSelector(".sheet.on [data-note]");
+        await f.click(".sheet.on [data-note]");
+        await sheetGone(f);
+        await f.waitForSelector("[data-compose] textarea.note");
         assert.deepEqual(await screenProblems(f), [], "the note composer");
         await f.click('[data-seg=ch][data-key="sms"]');
-        await f.click("#top-act [data-panel]");
+        await f.click("#top-title");
         await f.waitForSelector(".sheet.on [data-mute]", { timeout: 8000 });
         assert.deepEqual(await screenProblems(f), [], "the person's panel");
         await shot(page, `t1-panel-${device}-${theme}`);
@@ -85,7 +94,7 @@ for (const device of ["iphone13", "iphonese"]) {
   }
 }
 
-test("Track 1 on a desk: the Inbox's tiles beside a thread, Workflows, Reviews and Campaigns", async () => {
+test("Track 1 on a desk: the Inbox's folders beside a thread, Workflows, Reviews and Campaigns", async () => {
   const { p, page, f } = await open("olive", "desk1440");
   const c = seeded.comms;
   try {
@@ -93,8 +102,8 @@ test("Track 1 on a desk: the Inbox's tiles beside a thread, Workflows, Reviews a
     await f.click(`#view a[href="#/inbox/${c.conversation}"]`);
     await settled(f, { hash: `#/inbox/${c.conversation}` });
     assert.equal(await f.isVisible("#pane"), true);
-    assert.ok(await f.$("#view [data-tile=inbox]"), "the tiles stay beside the thread");
-    assert.ok(await f.$('#pane [data-seg=ch][data-key="note"]'));
+    assert.ok(await f.isVisible('#view .cm-fcol [data-folder="sales"]'), "the folder column stays beside the thread");
+    assert.ok(await f.$("#pane [data-compose] [data-plus]"), "a note is in the composer's +");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "t1-inbox-desk");
     for (const path of ["/automations", "/reviews", "/campaigns"]) {

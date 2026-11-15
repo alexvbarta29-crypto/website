@@ -29,7 +29,7 @@ async function open(login, device, theme) {
 const sheetUp = (f, re) => f.waitForFunction((src) => { const h = document.querySelector(".sheet.on h2"); return !!h && new RegExp(src).test(h.textContent); }, re.source, { timeout: 5000 });
 const sheetGone = (f) => f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
 // a phone's view pill (Flyra's "Month ⌄"): its menu, then the view
-const pickView = async (f, v) => { await f.click(".wk-fly [data-vmenu]"); await sheetUp(f, /^View$/); await f.click(`.sheet.on [data-vpick="${v}"]`); await sheetGone(f); };
+const pickView = async (f, v) => { await f.click(`.wk-fly [data-fview="${v}"]`); await f.waitForFunction((k) => document.querySelector(`.wk-fly [data-fview="${k}"]`)?.getAttribute("aria-selected") === "true", v); };
 async function checks(f, page, name, problems) {
   for (const x of await screenProblems(f)) problems.push(`${name}: ${x}`);
   for (const x of await badLinks(f)) problems.push(`${name}: a link that leaves in this tab ${x}`);
@@ -155,8 +155,9 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       await goTo(f, `/schedule?view=day&date=${day}`);
       await f.waitForSelector(`.wk-cols [href="#/visits/${seeded.visits[0]}"]`);
       assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), th);
-      assert.equal((await f.textContent(".wk-fly [data-vmenu]")).trim(), "Day");
-      assert.equal(await f.$$eval(".wk-fly .wk-fh-tools button", (b) => b.length), 3, "search, team, the gear");
+      assert.equal(await f.getAttribute(".wk-fly [data-fview=day]", "aria-selected"), "true", "Rotor's segmented views, Day on");
+      assert.equal(await f.$$eval(".wk-fly .wk-fh-round", (b) => b.length), 1, "ONE round button: the filter sheet");
+      assert.equal(await f.$(".wk-fly [data-search], .wk-fly [data-filter]"), null, "the rest is in its sheet");
       assert.ok(await f.isVisible(`.wk-strip .wk-sday.today[data-sday="${day}"]`), "today in the red circle");
       assert.equal(await f.$eval(`.wk-strip .wk-sday.today b`, (el) => getComputedStyle(el).backgroundColor), "rgb(251, 77, 61)");
       assert.match(await f.textContent(".wk-cols .wk-chead"), /Unassigned/);
