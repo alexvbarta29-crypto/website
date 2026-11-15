@@ -34,7 +34,15 @@ export const JOB_KINDS = Object.freeze(["standard", "touch_up", "warranty", "lig
 export const NOT_BILLABLE = Object.freeze(["touch_up", "warranty", "lights_takedown", "lights_warranty"]);
 export const WINDOW_TYPES = Object.freeze(["exact", "window", "anytime"]);
 export const DEFAULT_WINDOW = Object.freeze({ type: "window", minutes: 120 });
-export const CHECK_KINDS = Object.freeze(["check", "photo", "count", "text"]);
+// A checklist item's kinds (Rotor's Technician Job Checklist, Nov 2026):
+// check (a tick), photo (photos, min to max), count (a number), text (a
+// note), select (one of its options), multi (a group of ticks: done once
+// `min` of its options are ticked).
+export const CHECK_KINDS = Object.freeze(["check", "photo", "count", "text", "select", "multi"]);
+// What ticking a check item may also do (the job's step): on_my_way texts the customer (dry-run), start starts the visit.
+export const CHECK_HOOKS = Object.freeze(["on_my_way", "start"]);
+export const CHECK_MAX_OPTIONS = 20;
+export const CHECK_MAX_PHOTOS = 20;
 export const PHOTO_TAGS = Object.freeze(["before", "after", "issue", "other"]);
 export const SCOPE_TYPES = Object.freeze(["all", "initial", "after_initial", "specific"]);
 export const MAX_ASSIGNEES = 8;
@@ -286,15 +294,47 @@ function validateWindow(v, f) {
   return { ...v, type, minutes };
 }
 
+// One checklist item's shape (a template's, and a visit's copy): key, label,
+// required, kind, and what its kind needs: options (select, multi), min
+// (multi: how many ticks make it done; photo: how many photos), max
+// (photo), placeholder (count, text), hook (check). `stored`: a kind this
+// version doesn't know is kept as it was (an older or newer copy).
+export function checkItem(x, ff, { stored = false } = {}) {
+  if (!isObj(x)) throw new InputError("Expected a checklist item.", ff);
+  const key = String(x.key ?? "").trim();
+  if (!KEY_RE.test(key)) throw new InputError("Each item needs a short key.", `${ff}.key`);
+  const kind = enumValue(x.kind, CHECK_KINDS, { field: `${ff}.kind`, stored }) || "check";
+  const out = { key, label: str(x.label, { field: `${ff}.label`, max: 120, required: true }), required: x.required === true, kind };
+  if (kind === "select" || kind === "multi") {
+    const opts = [...new Set(arr(x.options, (o, f2) => str(o, { field: f2, max: 80 }), { field: `${ff}.options`, max: CHECK_MAX_OPTIONS }).filter(Boolean))];
+    if (!opts.length) throw new InputError(kind === "select" ? "Give this item the choices to pick from." : "Give this group the boxes to tick.", `${ff}.options`);
+    out.options = opts;
+  }
+  if (kind === "multi") out.min = Math.min(out.options.length, int(x.min ?? 1, { field: `${ff}.min`, min: 1, max: CHECK_MAX_OPTIONS }) ?? 1);
+  if (kind === "photo") {
+    out.min = int(x.min ?? 1, { field: `${ff}.min`, min: 1, max: CHECK_MAX_PHOTOS }) ?? 1;
+    out.max = int(x.max ?? Math.max(10, out.min), { field: `${ff}.max`, min: 1, max: CHECK_MAX_PHOTOS }) ?? 10;
+    if (out.max < out.min) throw new InputError("Allow at least as many photos as it needs.", `${ff}.max`);
+  }
+  if ((kind === "count" || kind === "text") && !blankish(x.placeholder)) out.placeholder = str(x.placeholder, { field: `${ff}.placeholder`, max: 80 });
+  if (kind === "check" && !blankish(x.hook)) out.hook = enumValue(x.hook, CHECK_HOOKS, { field: `${ff}.hook` });
+  return out;
+}
+const blankish = (v) => v === undefined || v === null || v === "";
+
+// An item counts as done: a time it was done, or (an older copy) a value.
+// A group of ticks is done only with its done time (enough of them ticked).
+export function itemDone(i) {
+  if (!i) return false;
+  if (i.kind === "multi") return !!i.done_at;
+  return !!(i.done_at || (i.value !== undefined && i.value !== null && i.value !== "" && !(Array.isArray(i.value) && !i.value.length)));
+}
+
 function validateChecklist(v, f) {
   if (v === undefined || v === null) return { items: [] };
   if (!isObj(v)) throw new InputError("Expected a checklist.", f);
-  const items = arr(v.items, (x, ff) => {
-    if (!isObj(x)) throw new InputError("Expected a checklist item.", ff);
-    const key = str(x.key, { field: `${ff}.key`, max: 40 });
-    if (!KEY_RE.test(key)) throw new InputError("That item needs a short key.", `${ff}.key`);
-    return { ...x, key, label: str(x.label, { field: `${ff}.label`, max: 120, required: true }), required: x.required === true, kind: enumValue(x.kind, CHECK_KINDS, { field: `${ff}.kind`, stored: true }) || "check" };
-  }, { field: `${f}.items`, max: 40 });
+  // a visit's copy keeps its answers (done_at, done_by, value) beside the item's shape
+  const items = arr(v.items, (x, ff) => ({ ...x, ...checkItem(x, ff, { stored: true }) }), { field: `${f}.items`, max: 40 });
   return { ...v, ...(v.template_key ? { template_key: str(v.template_key, { field: `${f}.template_key`, max: 40 }) } : {}), items };
 }
 
@@ -427,12 +467,7 @@ export function validateChecklistTemplate(data, { before } = {}) {
     service_types: strList(20, 120),
     job_kinds: (v, f) => [...new Set(arr(v, (x, ff) => enumValue(x, JOB_KINDS, { field: ff, stored: true }), { field: f, max: 6 }).filter(Boolean))],
     items: (v, f) => {
-      const list = arr(v, (x, ff) => {
-        if (!isObj(x)) throw new InputError("Expected an item.", ff);
-        const key = String(x.key ?? "").trim();
-        if (!KEY_RE.test(key)) throw new InputError("Each item needs a short key.", `${ff}.key`);
-        return { key, label: str(x.label, { field: `${ff}.label`, max: 120, required: true }), required: x.required === true, kind: enumValue(x.kind, CHECK_KINDS, { field: `${ff}.kind`, stored: true }) || "check" };
-      }, { field: f, max: 40 });
+      const list = arr(v, (x, ff) => checkItem(x, ff), { field: f, max: 40 });
       const keys = new Set();
       list.forEach((x, i) => { if (keys.has(x.key)) throw new InputError("Two items share a key.", `${f}.${i}.key`); keys.add(x.key); });
       return list;

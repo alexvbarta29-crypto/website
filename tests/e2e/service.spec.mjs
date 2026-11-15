@@ -126,7 +126,7 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
       await sheetUp(f, /Convert to/);
       await f.click('.sheet.on [data-pick="\\"job\\""]');
       await f.waitForFunction(() => location.hash.startsWith("#/jobs/jb_"), null, { timeout: 10000 });
-      await f.waitForSelector(".wk-jtop .wk-jtitle");
+      await f.waitForSelector(".jp-title");     // a phone: Rotor's phone job page (office-job-phone.js)
       assert.match(await f.textContent(".wk-pricing"), /Exterior windows[\s\S]*Gutters/);
       assert.match(await f.inputValue('[data-notes="office"]'), /gate on the left/i, "the request's note rides on the job");
       // the list: it became work
@@ -145,13 +145,15 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
     try {
       const id = seeded.jobs[1];
       await goTo(f, `/jobs/${id}`);
-      await f.waitForSelector(".wk-jstats");
-      assert.match(await f.textContent(".wk-jstats"), /Job total[\s\S]*Balance due[\s\S]*Time on site/);
-      assert.ok(await f.$(".wk-jtop .rs-steps"), "the status track");
-      assert.match(await f.textContent(".wk-jtop .rs-steps"), /Scheduled[\s\S]*On my way[\s\S]*Started[\s\S]*Done[\s\S]*Paid/);
-      assert.ok(await f.$(".sv-vacts [data-v-move]"), "Reschedule for the office");
+      // a phone: the stat cards and the track live in the top (the pills, Flyra's 4 steps); Reschedule in the quick row
+      await f.waitForSelector(".jp-head");
+      assert.match(await f.textContent(".jp-head"), /Scheduled[\s\S]*\$\d/);
+      assert.match(await f.textContent(".jp-bar"), /On my way[\s\S]*Arrive[\s\S]*Start Job[\s\S]*Complete Job/, "the track");
+      assert.ok(await f.$(".jp-quick [data-v-move]"), "Reschedule for the office");
       await checks(f, page, `service-job-${device}-${theme}`, problems);
-      await f.click(".sv-vacts [data-v-note]");
+      await f.click("#top-more");
+      await sheetUp(f, /Job /);
+      await f.click(".sheet.on [data-v-note]");
       await sheetUp(f, /A note on this visit/);
       await f.fill(".sheet.on [name=text]", "Back gate sticks.");
       await f.click(".sheet.on [data-vnote-f] [type=submit]");
@@ -161,7 +163,7 @@ for (const [device, theme] of [["iphone13", "light"], ["iphonese", "dark"]]) {
       const mk = await p.ctx.request.post(`/api/crm/jobs/${done}/complete`, { headers: { "x-crm": "1", "content-type": "application/json" }, data: {} });
       assert.ok([200, 409].includes(mk.status()), `the job is done (${mk.status()})`);
       await goTo(f, `/jobs/${done}`);
-      await f.waitForSelector(".wk-jtop");
+      await f.waitForSelector(".jp-head");
       await f.click("#top-more");
       await sheetUp(f, /Job /);
       const rows = await f.$$eval(".sheet.on .rs-act-l", (x) => x.map((e) => e.textContent));

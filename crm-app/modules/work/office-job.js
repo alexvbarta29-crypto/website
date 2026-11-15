@@ -13,6 +13,10 @@
 // visit, Mark done, Edit the work, Add a discount, Create invoice, the
 // quick actions, Open customer, Reopen, Cancel job.
 //
+// A phone (under 700 px) gets Rotor's phone job page with Flyra's top
+// instead (office-job-phone.js; the same data, events and "..." rows), and
+// the floating "N left" pill that opens the visit's checklist sheet.
+//
 // A technician reaches a job only through a visit of theirs; the server
 // answers with what they may see (no office notes, prices only with
 // visits:prices), and the page shows no office buttons then.
@@ -26,6 +30,11 @@ import {
   linesEditor, addLine, removeLine, readLines,
 } from "./office-kit.js";
 import { ensureStyles as svStyles } from "../service/kit.js";
+import { phoneView, isPhone, PHONE_MEDIA } from "./office-job-phone.js";
+import { openChecklist, checklistPill, checklistStyles } from "./checklist-sheet.js";
+import { currentVisit, itemsOf, itemDone } from "./checklist-kit.js";
+import { here, etaMinutes } from "./tech-kit.js";
+import { uploadPhoto, capture } from "../../core/camera.js";
 
 const JOB_WORD = { unscheduled: "To book", scheduled: "Booked", in_progress: "Under way", completed: "Done", cancelled: "Cancelled" };
 const JOB_TONE = { unscheduled: "amber", scheduled: "blue", in_progress: "amber", completed: "green", cancelled: "red" };
@@ -40,6 +49,7 @@ const initials = (name) => String(name || "").trim().split(/\s+/).filter(Boolean
 async function load(params, ctx) {
   ensureStyles();
   svStyles();
+  checklistStyles();
   const r = await ctx.api(`/jobs/${encodeURIComponent(params.id)}`, { cache: false });
   const office = officeView();
   const d = r.data;
@@ -52,8 +62,18 @@ async function load(params, ctx) {
     office && j.quote_id && ctx.can("quotes:read") ? ctx.api(`/quotes/${encodeURIComponent(j.quote_id)}`).then((x) => (x.data && (x.data.quote || x.data)) || null).catch(() => null) : null,
   ]);
   // the plan banner (the Rotor guide's SX13): the plan's name, its visits, the next one, its status
-  const plan = office && j.plan_id && ctx.can("plans:read") ? await ctx.api(`/plans/${encodeURIComponent(j.plan_id)}`).then((x) => (x.data && (x.data.plan || x.data)) || null).catch(() => null) : null;
-  return { ...d, etag: r.etag, users, invoices, quote, plan };
+  const pr = office && j.plan_id && ctx.can("plans:read") ? await ctx.api(`/plans/${encodeURIComponent(j.plan_id)}`).then((x) => x.data || null).catch(() => null) : null;
+  const plan = pr ? pr.plan || pr : null;
+  // the phone's plan card: how often, and the card on file (plans' own answer)
+  return { ...d, etag: r.etag, users, invoices, quote, plan, planCard: pr ? pr.card || null : null, planFeatures: pr ? pr.features || null : null, planFreq: plan ? freqText(plan.frequency) : "" };
+}
+
+const FREQS = { 1: "Monthly", 2: "Every 2 months", 3: "Quarterly", 4: "Every 4 months", 6: "Biannual", 12: "Once a year" };
+export function freqText(f) {
+  if (!f || !f.count) return "";
+  if (f.interval === "month") return FREQS[f.count] || `Every ${f.count} months`;
+  if (f.interval === "year") return f.count === 1 ? "Once a year" : `Every ${f.count} years`;
+  return `Every ${f.count} ${f.interval}${f.count === 1 ? "" : "s"}`;
 }
 
 // What the page knows about billing this job: the live invoice (not void),
@@ -477,9 +497,14 @@ const cid = () => (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() 
 async function visitStep(ctx, id, what) {
   try {
     if (what === "omw") {
-      const r = await ctx.api(`/visits/${encodeURIComponent(id)}/on-my-way`, { method: "POST", body: { client_id: cid() } });
+      // about how far: from where the phone is to the house (15 minutes when the phone won't say)
+      const p = ctx.state.property;
+      const to = p && p.geo && Number.isFinite(p.geo.lat) ? [p.geo.lat, p.geo.lng] : null;
+      let eta = 15;
+      try { eta = etaMinutes(await here(), to) || 15; } catch (e) { /* the default */ }
+      const r = await ctx.api(`/visits/${encodeURIComponent(id)}/on-my-way`, { method: "POST", body: { client_id: cid(), eta_min: Math.min(240, Math.max(1, eta)) } });
       const t = r.data && r.data.text;
-      toast(t && t.status === "sent" ? "On my way: texted" : t && t.status ? `On my way (the text: ${t.status.replace(/_/g, " ")})` : "On my way");
+      toast(t && t.status === "sent" ? "On my way: texted" : t && (t.status === "dry_run" || t.mode === "dry_run") ? "On my way. Texts aren't switched on yet, so nothing went out." : t && t.status ? `On my way (the text: ${t.status.replace(/_/g, " ")})` : "On my way");
     } else {
       await ctx.api(`/visits/${encodeURIComponent(id)}/timer`, { method: "POST", body: { action: "start", client_id: cid() } });
       toast("Started. The timer is running.");
@@ -552,6 +577,99 @@ async function quick(ctx, what) {
   } catch (err) { toast(err.message || "That didn't go through.", { bad: true }); }
 }
 
+// ------------------------------------------------------------ the phone's extras (office-job-phone.js)
+
+// The helpers the phone page draws with (the same rules as the desk).
+const INV_LINE = (i) => (i.st === "paid" ? `Paid${i.pd ? ` ${dateYear(String(i.pd).slice(0, 10))}` : ""}` : i.st !== "void" && i.bal > 0 && i.bal !== i.tot ? `${INV_WORD[i.st] || i.st} · ${money(i.bal)} left` : INV_WORD[i.st] || i.st);
+const H = { billing, balanceDue, onSite, monthLabel, discLabel: (d) => discLabel(d), invLine: INV_LINE };
+
+// The job's visit the checklist (and the big step) is about.
+const jobVisit = (s) => currentVisit(s.visits || []);
+function openCk(ctx) {
+  const v = jobVisit(ctx.state);
+  if (!v || !itemsOf(v).length) { toast("This visit has no checklist.", { bad: true }); return; }
+  openChecklist(ctx, { visit: v, property: ctx.state.property, onClose: (changed) => { if (changed) ctx.refresh(); } });
+}
+// Complete Job (the visit's own people): the required items first, then the visit is done (its timers stop).
+async function completeVisit(ctx, id) {
+  const v = (ctx.state.visits || []).find((x) => x.id === id);
+  const left = v ? itemsOf(v).filter((i) => i.required && !itemDone(i)) : [];
+  if (left.length) { toast(`Finish the checklist first: ${left.length} required ${left.length === 1 ? "item" : "items"} left.`, { bad: true }); openCk(ctx); return; }
+  try {
+    await ctx.api(`/visits/${encodeURIComponent(id)}/complete`, { method: "POST", body: { client_id: cid() } });
+    toast("Done. Nice work.");
+  } catch (err) { toast(err.message || "That didn't go through.", { bad: true }); }
+  ctx.refresh();
+}
+// Checkout (Flyra's): the visit's Collect payment (Money's sheet: cash or a check, the QR, the
+// invoice made when needed); with no visit, the job's invoice (made first when there's none).
+async function checkout(ctx, el, mode = null) {
+  const s = ctx.state;
+  const b = billing(s, ctx.can);
+  const v = jobVisit(s);
+  if (v && ctx.can("payments:record")) {
+    try {
+      const mod = (await import("../money/visit-collect.js")).default;
+      await mod.run({ visit: v }, { ...ctx, refresh: () => ctx.refresh() });
+      if (mode === "qr") setTimeout(() => { const q = document.querySelector(".sheet.on [data-qr]"); if (q) q.click(); }, 350);
+    } catch (err) { toast(err.message || "Checkout didn't open.", { bad: true }); }
+    return;
+  }
+  if (b.inv) { ctx.go(`/invoices/${encodeURIComponent(b.inv.id)}`); return; }
+  if (b.ready) { makeInvoice(ctx, el); return; }
+  toast(b.why || "There's nothing to collect here.", { bad: true });
+}
+async function payQr(ctx, el) {
+  const b = billing(ctx.state, ctx.can);
+  if (b.inv && b.inv.st === "open") {
+    const id = encodeURIComponent(b.inv.id);
+    const { openPayQr } = await import("../money/pay-qr.js");
+    openPayQr({ fetch: () => ctx.api(`/invoices/${id}/pay-qr`, { method: "POST", body: {} }), check: async () => (await ctx.api(`/invoices/${id}`, { cache: false })).data.invoice.status === "paid", onClose: () => ctx.refresh() });
+    return;
+  }
+  return checkout(ctx, el, "qr");
+}
+// a photo of one line (the camera on a line card), kept on the job's visit with the line's name
+async function linePhoto(ctx, lineId, el) {
+  const s = ctx.state;
+  const v = jobVisit(s);
+  const l = (s.job.lines || []).find((x) => x.id === lineId);
+  if (!v || !l) return;
+  const file = await capture();
+  if (!file) return;
+  busy(el, true);
+  try {
+    await uploadPhoto({ ownerType: "visit", ownerId: v.id, tag: "other", caption: l.title, file, extra: { line: l.id } });
+    toast("Photo saved");
+    ctx.refresh();
+  } catch (err) { busy(el, false); toast(err.message || "That photo didn't save.", { bad: true }); }
+}
+// the upload in the notes box: a photo or a PDF kept on the job's visit
+async function notesUpload(ctx, el) {
+  const v = jobVisit(ctx.state);
+  if (!v) { toast("Book a visit first: files are kept on a visit.", { bad: true }); return; }
+  const file = await capture({ accept: "image/*,application/pdf", camera: false });
+  if (!file) return;
+  busy(el, true);
+  try { await uploadPhoto({ ownerType: "visit", ownerId: v.id, tag: "other", file }); toast("Saved on the visit"); ctx.refresh(); }
+  catch (err) { busy(el, false); toast(err.message || "That file didn't save.", { bad: true }); }
+}
+function visitsSheet(ctx) {
+  const s = ctx.state;
+  sheet({ title: `Visits · ${(s.visits || []).length}`, body: html`<div class="wk-visits jp-vsheet"><ul class="wk-vlist">${(s.visits || []).map((v, i) => html`<li>${visitRow(s, v, i)}${visitActs(s, v, ctx)}</li>`)}</ul></div>`,
+    events: {
+      "click [data-v-omw]": (e, el) => visitStep(ctx, el.dataset.vOmw, "omw"),
+      "click [data-v-start]": (e, el) => visitStep(ctx, el.dataset.vStart, "start"),
+      "click [data-v-move]": (e, el) => moveVisit(ctx, el.dataset.vMove),
+      "click [data-v-note]": (e, el) => noteSheet(ctx, el.dataset.vNote),
+    } });
+}
+// Delete Job (Flyra's red button): our rule is a cancel (with its open visits), so the history stays.
+async function deleteJob(ctx) {
+  const r = await reasonSheet({ title: "Delete this job", label: "Why? The job and its open visits are cancelled and kept, so its history stays.", yes: "Delete Job" });
+  if (r) post(ctx, "cancel", { reason: r.reason }, "Job deleted (kept as cancelled)");
+}
+
 async function saveNotes(ctx, field, value) {
   const s = ctx.state;
   if ((s.job[field] || "") === value) return;
@@ -566,9 +684,22 @@ async function saveNotes(ctx, field, value) {
   }
 }
 
+let mq = null;
+let mqOff = () => {};
 export default {
   title: (s) => (s && s.job ? `Job ${s.job.number_label || ""}`.trim() : "Job"),
   load,
+  // a phone: Rotor's round check (mark the job done) beside the "..."
+  tools: (s, ctx) => (s && s.job && isPhone() && officeView() && s.can && s.can.complete ? [{ icon: "check", label: "Mark the job done", run: () => markDone(ctx) }] : []),
+  // crossing 700 px (a phone turned, a window resized) draws the other layout
+  mount(view, s, ctx) {
+    mqOff();
+    if (typeof matchMedia !== "function") return;
+    let was = isPhone();
+    const on = () => { if (isPhone() !== was) { was = isPhone(); ctx.rerender(); } };
+    try { mq = matchMedia(PHONE_MEDIA); mq.addEventListener("change", on); mqOff = () => { try { mq.removeEventListener("change", on); } catch (e) { /* gone */ } mqOff = () => {}; }; } catch (e) { /* old Safari */ }
+  },
+  unmount() { mqOff(); },
   more: (s, ctx) => {
     if (!s || !s.job || !officeView()) return [];
     const c = s.can || {};
@@ -585,7 +716,9 @@ export default {
         c.write && j.status === "completed" && { label: "Ask for a review now", icon: "trophy", run: () => quick(ctx, "review"), data: { "q-review": true } },
         c.write && j.status === "completed" && b.inv && { label: "Ask for a tip", icon: "gift", run: () => quick(ctx, "tip"), data: { "q-tip": true } },
         c.write && j.status === "completed" && { label: "Book a callback", icon: "undo", hint: "no charge", run: () => quick(ctx, "callback"), data: { "q-callback": true } }],
-      [
+      [jobVisit(s) && OPEN_VISIT.includes(jobVisit(s).status) && (c.write || (ctx.user && (jobVisit(s).assignee_ids || []).includes(ctx.user.id))) && { label: "A note on the visit", icon: "edit", run: () => noteSheet(ctx, jobVisit(s).id), data: { "v-note": jobVisit(s).id } },
+        jobVisit(s) && { label: "Open the visit", icon: "cal", hint: dateShort(jobVisit(s).date), href: "#/visits/" + encodeURIComponent(jobVisit(s).id) },
+        jobVisit(s) && itemsOf(jobVisit(s)).length && { label: "Checklist", icon: "check", hint: (() => { const it = itemsOf(jobVisit(s)); return `${it.filter(itemDone).length} of ${it.length} done`; })(), run: () => openCk(ctx), data: { "ck-open": true } },
         s.contact && { label: "Open customer", icon: "user", href: "#/contacts/" + encodeURIComponent(s.contact.id) }],
       [c.reopen && { label: "Reopen", icon: "undo", hint: "when done", run: () => reopen(ctx), data: { reopen: true } },
         c.cancel && { label: "Cancel job", icon: "close", danger: true, run: () => cancelJob(ctx), data: { cancel: true } }],
@@ -594,6 +727,8 @@ export default {
   render(s, ctx) {
     const j = s.job;
     const office = officeView();
+    if (isPhone()) return phoneView(s, ctx, H);
+    const cv = jobVisit(s);
     return html`<div class="rs-page wk wk-job"><div class="wk-jgrid">
       ${topCard(s, ctx)}
       <div class="wk-jmain">
@@ -609,7 +744,7 @@ export default {
         ${j.rotor ? html`<p class="foot-note">From Rotor (job ${j.number_label}). Changes here stay in the CRM.</p>` : ""}
         ${office && j.updated_at ? html`<p class="foot-note">Changed ${ago(j.updated_at)}</p>` : ""}
       </aside>
-    </div></div>`;
+    </div>${cv && itemsOf(cv).length ? checklistPill(cv) : ""}</div>`;
   },
   events: {
     "click [data-book]": (e, el, ctx) => book(ctx),
@@ -626,6 +761,20 @@ export default {
     "click [data-make-invoice]": (e, el, ctx) => makeInvoice(ctx, el),
     "change [data-notes=crew]": (e, el, ctx) => saveNotes(ctx, "crew_notes", el.value),
     "change [data-notes=office]": (e, el, ctx) => saveNotes(ctx, "office_notes", el.value),
+    // the phone's (office-job-phone.js)
+    "click [data-v-done]": (e, el, ctx) => completeVisit(ctx, el.dataset.vDone),
+    "click [data-ck-open]": (e, el, ctx) => openCk(ctx),
+    "click [data-jp-more]": () => { const m = document.getElementById("top-more"); if (m) m.click(); },
+    "click [data-jp-off]": (e, el) => toast(el.dataset.jpOff),
+    "click [data-q-callback]": (e, el, ctx) => quick(ctx, "callback"),
+    "click [data-checkout]": (e, el, ctx) => checkout(ctx, el),
+    "click [data-pay-link]": (e, el, ctx) => quick(ctx, "pay"),
+    "click [data-pay-qr]": (e, el, ctx) => payQr(ctx, el),
+    "click [data-pay-cash]": (e, el, ctx) => checkout(ctx, el),
+    "click [data-line-photo]": (e, el, ctx) => linePhoto(ctx, el.dataset.linePhoto, el),
+    "click [data-notes-upload]": (e, el, ctx) => notesUpload(ctx, el),
+    "click [data-jp-visits]": (e, el, ctx) => visitsSheet(ctx),
+    "click [data-del-job]": (e, el, ctx) => deleteJob(ctx),
   },
 };
 

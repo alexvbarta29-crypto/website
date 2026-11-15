@@ -290,10 +290,40 @@ overlay of what waits, copies for no signal, Delano times),
   rows `work.time_entries` and `work.time_weeks`); the badge counts them
   too.
 - **Settings → Checklists** (`settings:general`): each list's name, on or
-  off, which jobs get it (kinds of job, else services), its items (tick,
-  photo, count, note; required or not). A job gets the first active list by
-  order whose kinds include its kind, else (regular, touch-up, warranty)
-  whose services match its lines. Visits copy the list when booked.
+  off, which jobs get it (kinds of job, else services), its items in order
+  (Rotor's kinds, Nov 2026: `check` a checkbox, `select` pick one of its
+  `options`, `count` a number, `photo` photos from `min` to `max` (1 to 10
+  by default), `multi` a group of checkboxes done once `min` are ticked,
+  `text` notes; `required` or not; `placeholder` for a number or notes; a
+  checkbox's `hook`, `on_my_way` or `start`). A job gets the first active
+  list by order whose kinds include its kind, else (regular, touch-up,
+  warranty) whose services match its lines. Visits copy the list (its name
+  and every item's shape) when booked. Seed v2 adds Barta's own
+  **Technician Job Checklist** (15 items, 14 required, order 5: window and
+  exterior jobs get it first).
+- **The checklist sheet** (`checklist-sheet.js`, rules in `checklist-kit.js`):
+  Rotor's full-height sheet, "Complete in order • 3 of 15 done", the next
+  required item outlined red and the ones after it dimmed until it's done;
+  opened from the floating "N left" pill on the job page and the Visit (and
+  the quick row's Checklist, the field card's head). The visit's own people
+  answer (`PATCH /visits/:id/checklist` through the field outbox, so it
+  works with no signal); anyone else sees the answers. Ticking a `hook`
+  item runs the step: On my way (needs signal; dry run) or Start (offline
+  too); the server ticks the hooked item itself on On my way and on Start.
+  The order is the phone's guide only (the server takes answers in any
+  order: replays and two phones).
+- **Job on a phone** (under 700 px, `office-job-phone.js`): Flyra's top
+  (title, "customer · number", the day linking to the visit, the time and
+  duration chip, who goes, the status and amount pills, Created; one big
+  step, On my way → Start Job → Complete Job, with the 4-step bar; the
+  address card; Reschedule · Invoice · Callback · More; the plan card with
+  the card on file; Amount due with Checkout (Money's Collect payment on
+  the visit), Send link, QR code, Cash or check), then Rotor's cards
+  (customer, Pricing a card a line with "Added on site" and a camera for a
+  photo of the line (`line` on the visit's photo), Invoices, Job notes with
+  an upload, Sold by, the other visits), a red-outline Delete Job (a cancel:
+  the history stays) and the pill. Rotor's round check in the header marks
+  the job done. A desk keeps the two columns.
 
 ## What a tech sees (M4b)
 
@@ -626,7 +656,7 @@ version old may still replay), except the texts.
 | `POST /visits/:id/on-my-way` · `/running-late` | visits:work | `{eta_min, lat?, lng?}`; the text (needs signal); On my way answers `track_url` too |
 | `POST /visits/:id/timer` | visits:work | `{action: start\|pause\|finish}` |
 | `GET /visits/:id/field` | visits:work | the visit's segments, whose runs, minutes, the last notes at the place |
-| `PATCH /visits/:id/checklist` | visits:work | `{key, done, value?}` |
+| `PATCH /visits/:id/checklist` | visits:work | `{key, done, value?}`: a count a whole number, text up to 500, select one of its options, multi a list of its options (kept, done at `min`); photo items by their photos (`POST /visits/:id/photos` with `item`, up to the item's `max`) |
 | `POST /visits/:id/notes` · `/photos` | visits:work | `{text}` · `{data, thumb?, tag, item?, caption?}` (base64, 3 MB) |
 | `GET /visits/:id/pricebook` · `POST /visits/:id/lines` | visits:add_line | what can be added · `{price_item_id, qty}` |
 | `POST /visits/:id/complete` · `/no-access` | visits:work | `{signature_file_id?}` · `{note}` |

@@ -338,7 +338,7 @@ test("Job (Rotor's page): pills, the visit row with + Visit, Pricing with discou
   assert.match(h, /data-notes="crew"[^>]*>Dog in back</);
   assert.match(h, /data-notes="office"[^>]*>Pays by check</);
   const rows = job.more(s, ctx()).flat().filter(Boolean);
-  assert.deepEqual(rows.map((r) => r.label), ["Book a visit", "Mark done", "Edit the work", "Add a discount", "Create invoice", "Open customer", "Cancel job"]);
+  assert.deepEqual(rows.map((r) => r.label), ["Book a visit", "Mark done", "Edit the work", "Add a discount", "Create invoice", "A note on the visit", "Open the visit", "Open customer", "Cancel job"]);
   assert.ok(rows.find((r) => r.label === "Cancel job").danger);
   // an invoice covers it: the pill, the row, Create Invoice gone (the reason when the + would make one)
   const inv = { id: "in_1", n: "SINV-0003", st: "paid", tot: 29450, bal: 0, j: J };

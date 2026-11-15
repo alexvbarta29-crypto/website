@@ -30,6 +30,8 @@
 
 import { html, icon, attrs, toast, confirmSheet, delegate, sheet, rnd, statusPill, pillBtn, cardHead, personCard, addressCard, lineItems, disclosure } from "../../core/ui.js";
 import { TICONS } from "./tech-kit.js";
+import { itemDone as doneItem } from "./checklist-kit.js";
+import { checklistPill, openChecklist, checklistStyles } from "./checklist-sheet.js";
 import { photoTile } from "../../core/camera.js";
 import { dateLong, dateShort, money, dateTime, ago, phone } from "../../core/format.js";
 import { directionsLink, directionsUrl } from "../../core/map.js";
@@ -62,6 +64,7 @@ export function actionsFor(data, can, manifests = MANIFESTS) {
 
 async function load(params, ctx) {
   ensureStyles();
+  checklistStyles();
   // the last good copy when there's no signal (the tech app works a visit offline, §2.5)
   const r = await ctx.api(`/visits/${encodeURIComponent(params.id)}`);
   const data = r.data;
@@ -167,25 +170,20 @@ function lines(job, prices) {
 
 // An item is done when the crew ticked it (done_at, as the server's finish
 // gate reads it, design §5.5) or gave its photo, count or note.
-export const itemDone = (i) => !!(i && (i.done_at || i.done === true || (i.value !== undefined && i.value !== null && i.value !== "")));
+export const itemDone = doneItem;
 
-// The office's checklist, folded to "Checklist · 0 of 8 ›" (a sheet with the list, required items flagged).
+// The office's checklist, folded to "Checklist · 0 of 8 ›" (the checklist sheet, the crew's answers).
 function checklist(v) {
   const items = (v.checklist && v.checklist.items) || [];
   if (!items.length) return "";
   const done = items.filter(itemDone).length;
-  return html`<div id="vf-check">${disclosure("Checklist", { value: `${done} of ${items.length}`, sub: items.some((i) => i.required && !itemDone(i)) ? "Required items still open" : "", data: { checks: true } })}</div>`;
+  return html`<div id="vf-check">${disclosure((v.checklist && v.checklist.name) || "Checklist", { value: `${done} of ${items.length}`, sub: items.some((i) => i.required && !itemDone(i)) ? "Required items still open" : "", data: { checks: true } })}</div>`;
 }
-function checklistSheet(v) {
-  const items = (v.checklist && v.checklist.items) || [];
-  const done = items.filter(itemDone).length;
-  sheet({
-    title: `Checklist · ${done} of ${items.length}`,
-    body: html`<ul class="wk-check">${items.map((i) => {
-      const ok = itemDone(i);
-      return html`<li class="${ok ? "on" : ""}"><span class="box" aria-hidden="true">${ok ? icon("check") : ""}</span><span>${i.label}${i.required ? html` <span class="pill amber">Required</span>` : ""}${i.value !== undefined && i.value !== null && i.value !== "" && i.kind !== "photo" ? html`<small class="muted"> · ${String(i.value)}</small>` : ""}</span></li>`;
-    })}</ul><p class="small muted">The crew ticks these on their phone.</p>`,
-  });
+// The checklist sheet for this visit: the panel's copy when one works the visit (the phone's own changes on it).
+function openSheet(ctx) {
+  const s = ctx.state;
+  const field = (s.panels || []).find((p) => !p.failed && p.state && p.state.visit);
+  openChecklist(ctx, { visit: field ? field.state.visit : s.visit, property: s.property, onClose: (changed) => { if (changed) ctx.refresh(); } });
 }
 
 function accessBits(prop) {
@@ -324,7 +322,7 @@ export default {
       ${j && office ? disclosure("Job", { value: j.number_label || v.job_number || "", sub: j.title, href: "#/jobs/" + encodeURIComponent(j.id) }) : ""}
       ${s.reminders ? html`<div class="wk-late">${disclosure("Texts and emails", { sub: textsLine(s.reminders), data: { texts: true } })}</div>` : ""}
       ${office && v.updated_at ? html`<p class="foot-note wk-late">Changed ${ago(v.updated_at)}</p>` : ""}
-    </div></div>`;
+    </div>${items.length ? html`<div class="ck-room" aria-hidden="true"></div>${checklistPill(fv)}` : ""}</div>`;
   },
   mount(view, s) {
     for (const p of s.panels || []) {
@@ -348,11 +346,12 @@ export default {
       if (p && p.mod && typeof p.mod.runStep === "function") p.mod.runStep(go.key, p.ctx, el);
     },
     "click [data-jump]": (e, el, ctx) => {
-      if (el.dataset.jump === "checksheet") { checklistSheet(ctx.state.visit); return; }
+      if (el.dataset.jump === "checksheet" || el.dataset.jump === "check") { openSheet(ctx); return; }
       const to = document.getElementById(el.dataset.jump === "photos" ? "vf-photos" : "vf-check");
       if (to) to.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    "click [data-checks]": (e, el, ctx) => checklistSheet(ctx.state.visit),
+    "click [data-checks]": (e, el, ctx) => openSheet(ctx),
+    "click [data-ck-open]": (e, el, ctx) => openSheet(ctx),
     "click [data-texts]": (e, el, ctx) => textsSheet(ctx.state),
     "click [data-move]": (e, el, ctx) => move(ctx),
     "click [data-vact]": (e, el, ctx) => runAction(ctx, el.dataset.vact),
