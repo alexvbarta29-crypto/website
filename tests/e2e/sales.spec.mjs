@@ -155,10 +155,10 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
     const { p, page, f: f0 } = await open("olive", device);
     try {
       const f = await themed(page, f0, theme);
-      // Leads: the section's List | Board tabs, the stage tiles
+      // Leads: the section's List | Board tabs (and QR codes), the stage tiles
       await goTo(f, "/leads");
       await f.waitForSelector(".sl-leads .rs-lrow");
-      assert.deepEqual(await f.$$eval('#subnav [data-seg="sec"]', (els) => els.map((e) => e.dataset.key)), ["list", "board"], "List | Board");
+      assert.deepEqual(await f.$$eval('#subnav [data-seg="sec"]', (els) => els.map((e) => e.dataset.key)), ["list", "board", "qr"], "List | Board, then Track 1's QR codes");
       assert.ok(await f.$('[data-tile="ld"][data-key="not_ready"]'), "a tile per stage");
       assert.deepEqual(await screenProblems(f), [], "the Leads list");
       await shot(page, `g2-leads-list-${device}-${theme}`);

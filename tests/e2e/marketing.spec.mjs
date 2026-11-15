@@ -76,9 +76,9 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.deepEqual(await screenProblems(f), [], "a team inbox's page");
         await f.click(".sheet.on [data-sheet-x]");
         await sheetGone(f);
-        // Leads: its list and the QR codes tab (Forms and Referrals wait for their screens)
+        // Leads: its List | Board (Track 2) and the QR codes tab (Forms and Referrals wait for their screens)
         await goTo(f, "/signs");
-        assert.deepEqual(await f.$$eval("#subnav .rs-seg-t", (els) => els.map((e) => e.textContent)), ["Leads", "QR codes"]);
+        assert.deepEqual(await f.$$eval("#subnav .rs-seg-t", (els) => els.map((e) => e.textContent)), ["List", "Board", "QR codes"]);
         await p.clean();
       } finally { await p.close(); }
     });
