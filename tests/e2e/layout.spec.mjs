@@ -289,7 +289,7 @@ for (const [device, login, n] of [["iphone13", "theo", 2], ["iphonese", "tess", 
       const go = await box(f, ".vb-go");
       const bar = await box(f, "#tabs");
       assert.ok(go.h >= 56 && go.bottom <= bar.y + 1, `big, and above the tab bar (${JSON.stringify(go)})`);
-      assert.equal(await f.$eval(".vb-go", (el) => getComputedStyle(el).backgroundColor), "rgb(219, 58, 41)", "the button coral");
+      assert.equal(await f.$eval(".vb-go", (el) => getComputedStyle(el).backgroundColor), "rgb(251, 77, 61)", "the button coral");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `layout-visit-${device}`);
       // no signal: On my way waits (it texts the customer); Start works and is kept on the phone

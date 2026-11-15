@@ -8,8 +8,8 @@
 .rp-av.ring3{box-shadow:0 0 0 3px var(--card),0 0 0 6px #b8733a}
 .rp-bar{display:flex;align-items:center;gap:10px;justify-content:space-between}
 .rp-sel select{min-height:48px;padding:0 40px 0 20px;border:1px solid var(--rnd-line);border-radius:999px;background-color:var(--rnd-bg);box-shadow:var(--rnd-sh);font:400 18px/1 var(--text);letter-spacing:-.01em;color:var(--ink);-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
-.rp-chips .chip{border-radius:999px;border:0;background:var(--fill-2);color:var(--ink-2);font-size:16px;padding:0 18px}
-.rp-chips .chip[aria-pressed="true"]{background:var(--coral-btn);color:#fff}
+.rp-chips .chip{border-radius:999px;border:0;background:var(--fill-2);color:var(--ink-2);font-size:var(--t-lg);font-weight:600;padding:0 18px}
+.rp-chips .chip[aria-pressed="true"]{background:var(--coral-btn);color:var(--on-coral);font-weight:700}
 .rp-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end;margin-top:8px}
 .rp-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}
 .rp-step .rp-who{font:500 16px/1.2 var(--text);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -39,7 +39,7 @@ html:not([data-theme="light"]) .pf-card{--pf-glow:rgba(70,105,125,.28)}
 .pf-who p{margin:2px 0 0}
 .pf-k{font:500 13.5px/1.2 var(--text);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
 .pf-big{font:600 42px/1.05 var(--head);letter-spacing:-.02em}
-.pf-line{display:block;width:100%;height:90px;margin-top:14px}
+.pf-line{display:block;width:100%;height:90px;margin-top:14px;color:var(--coral)}
 .pf-axis{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-3)}
 .pf-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:14px -20px -20px;border-top:1px solid var(--line)}
 .pf-tiles>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:14px 14px 16px}

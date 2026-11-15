@@ -193,7 +193,7 @@ function pageBody(p, { done = null, company = {}, cfg }) {
     </div>
   </section>`;
 }
-const PAGE_CSS = `<style>.rv-stars{border:0;padding:0;margin:8px 0 14px;display:flex;justify-content:center;gap:4px}.rv-star{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px;font-size:36px;color:#c8c8cf;cursor:pointer}.rv-star input{position:absolute;opacity:0;width:1px;height:1px}.rv-star.on{color:#f5a623}.rv-star input:focus-visible+span{outline:2px solid #e8604c;border-radius:6px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.field{display:block;margin:0 0 12px}.field span{display:block;font-size:14px;margin-bottom:6px}.field textarea{width:100%;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #d5d5db;box-sizing:border-box}</style>`;
+const PAGE_CSS = `<style>.rv-stars{border:0;padding:0;margin:8px 0 14px;display:flex;justify-content:center;gap:4px}.rv-star{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px;font-size:36px;color:#c8c8cf;cursor:pointer}.rv-star input{position:absolute;opacity:0;width:1px;height:1px}.rv-star.on{color:#f5a623}.rv-star input:focus-visible+span{outline:2px solid #fb4d3d;border-radius:6px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.field{display:block;margin:0 0 12px}.field span{display:block;font-size:14px;margin-bottom:6px}.field textarea{width:100%;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #d5d5db;box-sizing:border-box}</style>`;
 
 async function reviewPage(p) {
   const cfg = await settings();

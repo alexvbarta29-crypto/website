@@ -59,7 +59,7 @@ export default {
     const [r, st] = await Promise.all([ctx.api("/campaigns", { cache: false }), ctx.api("/campaigns/stats", { cache: false }).catch(() => null)]);
     return { rows: r.data || [], bulk: (r.meta && r.meta.bulk_runs) || [], stats: st ? st.data : null };
   },
-  action: (s, ctx) => ({ label: "New", run: () => newSheet(ctx) }),
+  action: (s, ctx) => ({ label: "New campaign", run: () => newSheet(ctx) }),
   render(s) {
     const mine = s.rows.filter((c) => !c.imported);
     const rotor = s.rows.filter((c) => c.imported);
@@ -76,7 +76,7 @@ export default {
       ${tileRow(statTiles((s.stats && s.stats.totals) || {}), { name: "cm", label: "This year's campaigns" })}
       <div class="rs-pills">${pillBtn("New text blast", { icon: "send", href: "#/campaigns/new?kind=blast", tone: "solid" })}</div>
       ${s.bulk.length ? html`<div class="section-h">Waiting for a test or a confirm</div><ul class="list">${s.bulk.map((b) => html`<li><a class="row" href="#/approvals"><span class="who"><span class="nm">${b.title}</span><span class="sub">${b.recipients} people · ${b.channel === "email" ? "email" : "text"}</span></span><span class="end"><span class="pill amber">${b.status === "tested" ? "Confirm" : "Test first"}</span><span class="chev" aria-hidden="true"></span></span></a></li>`)}</ul>` : ""}
-      ${mine.length ? listCard(mine.map(row), { label: "Campaigns" }) : emptyCard("send", "No campaigns yet", "Tap New to pick who it goes to and what it says. Nothing goes out before a test send and your OK.")}
+      ${mine.length ? listCard(mine.map(row), { label: "Campaigns" }) : emptyCard("send", "No campaigns yet", "Tap + to pick who it goes to and what it says. Nothing goes out before a test send and your OK.")}
       ${rotor.length ? html`${sectionLabel("From Rotor (history)")}${listCard(rotor.map(row), { label: "From Rotor" })}` : ""}
     </div>`;
   },

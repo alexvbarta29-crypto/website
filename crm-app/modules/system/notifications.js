@@ -1,6 +1,6 @@
 // Notifications (design §5.7.7): the bell. Everything the CRM told this
 // person (new leads, replies, approvals waiting, visit changes...), newest
-// first; unread ones marked. Tapping one marks it read and opens it.
+// first; unread ones marked (a coral icon and dot: red pills mean a problem). Tapping one marks it read and opens it.
 // The same ones arrive as push on the phones where notifications are on
 // (My account).
 
@@ -25,7 +25,7 @@ export default {
     return html`<div class="stack"><ul class="list">${s.items.map((n) => html`<li><button type="button" class="row" data-open="${n.id}" data-link="${n.link}">
       <span class="ico ${n.read_at ? "" : "coral"}">${icon(KIND_ICON[n.kind] || "bell")}</span>
       <span class="who"><span class="nm two">${n.title}</span><span class="sub two">${n.body}</span></span>
-      <span class="end small muted">${n.read_at ? "" : html`<span class="pill red">New</span>`} ${ago(n.created_at)}</span>
+      <span class="end small muted">${n.read_at ? "" : html`<span class="nt-new"><span class="sr">New</span></span>`}${ago(n.created_at)}</span>
     </button></li>`)}</ul></div>`;
   },
   events: {

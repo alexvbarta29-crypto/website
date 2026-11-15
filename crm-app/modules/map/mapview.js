@@ -71,6 +71,8 @@ function house(fill, stroke, size = 30) {
 }
 
 // Our sources and layers, drawn over whatever style is under them.
+// The logo red (crm.css --coral): MapLibre paints take a color, not a CSS variable.
+const BRAND = "#fb4d3d";
 const LAYERS = {
   areas: [
     { id: "mp-areas-fill", type: "fill", paint: { "fill-color": ["get", "color"], "fill-opacity": ["case", ["==", ["get", "mine"], true], 0.16, 0.08] } },
@@ -86,8 +88,8 @@ const LAYERS = {
     { id: "mp-pins", type: "circle", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3.5, 16, 8, 19, 11], "circle-color": ["get", "color"], "circle-stroke-color": ["case", ["==", ["get", "pending"], true], "#16161b", "#ffffff"], "circle-stroke-width": ["case", ["==", ["get", "pending"], true], 2.5, 2], "circle-opacity": ["case", ["==", ["get", "pending"], true], 0.6, 1] } },
   ],
   draw: [
-    { id: "mp-draw-line", type: "line", paint: { "line-color": "#db3a29", "line-width": 3 } },
-    { id: "mp-draw-pts", type: "circle", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 7, "circle-color": "#fff", "circle-stroke-color": "#db3a29", "circle-stroke-width": 3 } },
+    { id: "mp-draw-line", type: "line", paint: { "line-color": BRAND, "line-width": 3 } },
+    { id: "mp-draw-pts", type: "circle", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 7, "circle-color": "#fff", "circle-stroke-color": BRAND, "circle-stroke-width": 3 } },
   ],
   me: [
     { id: "mp-me-halo", type: "circle", paint: { "circle-radius": 18, "circle-color": "#2563eb", "circle-opacity": 0.16 } },

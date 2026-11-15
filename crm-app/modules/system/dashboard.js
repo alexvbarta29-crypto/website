@@ -23,7 +23,7 @@ export const VIEWS = [
 const known = (id) => VIEWS.some(([v]) => v === id);
 
 export default {
-  title: "Reports",
+  title: "Office dashboard",
   flush: true,
   load(params, ctx) {
     const want = params.view || (ctx && ctx.keep && ctx.keep.view);
@@ -31,7 +31,7 @@ export default {
   },
   render(state) {
     return html`<nav class="seg-bar" aria-label="Report views">${VIEWS.map(([id, label]) => html`<button type="button" class="${"seg" + (id === state.view ? " on" : "")}" data-view="${id}" aria-pressed="${id === state.view ? "true" : "false"}">${label}</button>`)}</nav>
-<div class="frame-wrap"><iframe title="Reports" src="${"/dashboard?embed=1#" + state.view}"></iframe></div>`;
+<div class="frame-wrap"><iframe title="Office dashboard" src="${"/dashboard?embed=1#" + state.view}"></iframe></div>`;
   },
   mount(view, state, ctx) {
     const f = view.querySelector("iframe");

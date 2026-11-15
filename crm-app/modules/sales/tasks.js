@@ -106,7 +106,7 @@ async function openFilter(ctx) {
 export default {
   title: "Tasks",
   load,
-  action: (s, ctx) => (ctx.can("sales:work") ? { label: "New", run: () => ctx.go("/tasks/new") } : null),
+  action: (s, ctx) => (ctx.can("sales:work") ? { label: "New task", run: () => ctx.go("/tasks/new") } : null),
   render(s, ctx) {
     const list = shownTasks(s);
     const search = html`<label class="${"ld-search" + (s.find ? " open" : "")}">${icon("search")}<span class="sr">Search tasks</span><input type="search" data-tq ${attrs({ value: s.q, placeholder: "Search tasks", autocomplete: "off" })}></label>`;

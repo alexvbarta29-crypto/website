@@ -326,7 +326,7 @@ for (const device of ["desk1440", "desk1024"]) {
       assert.match(await f.textContent(".wk-rbar [data-more]"), /More Actions/);
       const blocks = await f.$$eval(`[data-mday="${day}"] .wk-mchip:not(.task)`, (els) => els.map((e) => [e.className, e.querySelector(".nm").textContent, e.querySelector(".tm").textContent, (e.querySelector(".amt") || {}).textContent || ""]));
       assert.ok(blocks.length && blocks.every((b) => /\bst-(ns|ip|fin|x)\b/.test(b[0]) && /^\S+ [A-Z]\.$/.test(b[1]) && /^\d{1,2}(:\d\d)?[ap]$/.test(b[2]) && /^(\$\d.*)?$/.test(b[3])) && blocks.some((b) => /^\$\d/.test(b[3])), JSON.stringify(blocks));
-      assert.equal(await f.$eval(`[data-mday="${day}"] .wk-mnum`, (el) => getComputedStyle(el).backgroundColor), "rgb(219, 58, 41)", "today in the red circle");
+      assert.equal(await f.$eval(`[data-mday="${day}"] .wk-mnum`, (el) => getComputedStyle(el).backgroundColor), "rgb(251, 77, 61)", "today in the red circle");
       assert.ok(await f.$eval(".wk-mweek", (w) => getComputedStyle(w.children[0]).backgroundColor !== getComputedStyle(w.children[1]).backgroundColor || w.children[0].classList.contains("out")), "Sunday shaded");
       assert.equal(await f.isVisible(`[data-mday="${day}"] .wk-mdots`), false);
       await f.click(".wk-rbar [data-more]");

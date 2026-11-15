@@ -63,7 +63,7 @@ export default {
     s.users = users;
     return s;
   },
-  action: (s, ctx) => (s.denied || !ctx.can("schedule:write") ? null : { label: "Add Job", run: () => ctx.go("/jobs/new") }),
+  action: (s, ctx) => (s.denied || !ctx.can("schedule:write") ? null : { label: "New job", run: () => ctx.go("/jobs/new") }),
   render(s, ctx) {
     if (s.denied) return html`<div class="stack"><div class="card empty"><div class="art">${icon("schedule")}</div><h2>Not for this login</h2><p>Jobs are for the office.</p></div></div>`;
     const w = s.q.trim().toLowerCase();
