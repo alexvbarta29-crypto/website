@@ -2,7 +2,7 @@
 // and methods, rows, following a run. No data here, only how things read
 // (design §2.3).
 
-import { html, icon } from "../../core/ui.js";
+import { html, icon, raw } from "../../core/ui.js";
 import { money, dateShort } from "../../core/format.js";
 
 let styled = false;
@@ -79,4 +79,25 @@ export const MODE = {
   test: ["Test", "Stripe's test mode with the test key: no real money moves."],
   live: ["Live", "Real cards are charged."],
   off: ["Paused", "No payment can be made right now."],
+};
+
+// The icons Rotor's phone invoice and payment sheet use that the shared set doesn't have (static, trusted).
+const svg = (d) => raw(`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${d}</svg>`);
+export const MI = {
+  save: svg('<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>'),
+  card: svg('<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18"/>'),
+  tap: svg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a4 4 0 0 1 0 5.6M12 7.4a6.5 6.5 0 0 1 0 9.2M14.5 5.8a9 9 0 0 1 0 12.4"/>'),
+  dollar: svg('<path d="M12 3v18M16.5 7.5c-.6-1.4-2.2-2.3-4.5-2.3-2.6 0-4.3 1.3-4.3 3.2 0 4.6 9 2.4 9 7 0 2-1.9 3.4-4.7 3.4-2.4 0-4.2-1-4.8-2.6"/>'),
+  mail: svg('<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>'),
+  tag: svg('<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.5"/>'),
+  plusc: svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
+  home: svg('<path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/>'),
+  user: svg('<circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5"/>'),
+  updown: svg('<path d="M8 9.5 12 5.5l4 4M8 14.5l4 4 4-4"/>'),
+  bin: svg('<path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10.5 10v6.5M13.5 10v6.5"/>'),
+  x: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
+  xc: svg('<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>'),
+  cal: svg('<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>'),
+  chev: svg('<path d="M7 10l5 5 5-5"/>'),
+  send: svg('<path d="M20.5 3.5 10 14M20.5 3.5 14 20.5l-4-6.5-6.5-4z"/>'),
 };

@@ -4,7 +4,8 @@
 //   POST /invoices {contact_id, kind?, lines?, job_ids?, plan_id?, client_id, issue?}   invoices:write
 //   POST /jobs/:id/invoice                           invoices:write      the job's invoice now
 //   GET  /invoices/:id                               invoices:read       (a tech: number, status, balance of an invoice on their own visit's job)
-//   PATCH /invoices/:id (If-Match)                   invoices:write      a draft's lines; due date and notes
+//   PATCH /invoices/:id (If-Match)                   invoices:write      the editor: number, title, due date, notes, Bill To, salesperson, lines (edit.mjs rules)
+//   POST /invoices/:id/mark-sent                     invoices:send       recorded as sent; nothing is sent
 //   POST /invoices/:id/issue · /send {channels}      invoices:send
 //   POST /invoices/:id/void {reason} · /write-off    invoices:void       (owners)
 //   POST /invoices/:id/charge {payment_method_id?}   payments:charge     a run (202 { run_id })
@@ -48,6 +49,8 @@ import { resolvePayments, payments, mayMoveMoney } from "./gate.mjs";
 import { cardLink } from "./automations.mjs";
 import { payRefusal } from "./checkout.mjs";
 import { qrPayLink, qrRefusal, noteQrShown, STAFF as STAFF_QR } from "./scan.mjs";
+import { editRules, editInvoice, markSent } from "./edit.mjs";
+import { addressOneLine } from "../contacts/display.mjs";
 
 const R = (method, path, perm, subject, handler, extra = {}) => ({ method, path, auth: "session", perm, subject, mode: "inline", handler, ...extra });
 const view = (r) => { const { _w, ...rest } = r || {}; return rest; };
@@ -187,25 +190,55 @@ async function assertOurs(ctx, rec) {
   if (rotorOwns(rec, await ctx.sysMode())) throw new ConflictError(ROTOR_OWNS, { code: "rotor_owns" });
 }
 
+// The crew a tip goes to (the invoice's jobs' technicians, as tipSplitFor splits it): first name and last initial.
+async function crewOf(inv) {
+  const ids = [];
+  for (const g of (await getRecords("job", (inv.job_ids || []).slice(0, 5))).filter(Boolean)) for (const u of g.data.assignee_ids || []) if (isId(u, "user") && !ids.includes(u)) ids.push(u);
+  if (!ids.length) return [];
+  const rows = (await readIndex("users", "").catch(() => ({ rows: [] }))).rows;
+  return ids.slice(0, 6).map((id) => {
+    const r = rows.find((x) => x.id === id) || {};
+    const parts = String(r.name || "").trim().split(/\s+/).filter(Boolean);
+    return { id, name: parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || "Your technician", color: r.color || null };
+  });
+}
+
+// The job's number and the address billed (the editor's "For Job #" and Bill To).
+async function jobAndPlace(inv) {
+  const jid = (inv.job_ids || [])[0];
+  const jg = isId(jid, "job") ? await getRecord("job", jid).catch(() => null) : null;
+  const pid = inv.property_id || (jg && jg.data.property_id);
+  const pg = isId(pid, "property") ? await getRecord("property", pid).catch(() => null) : null;
+  const p = pg && !pg.data.deleted_at ? pg.data : null;
+  const line = p ? addressOneLine(p.address) : "";
+  return { job_number: jg ? jg.data.number_label || String(jg.data.number) : null, address: line || null };
+}
+
 async function invoiceData(ctx, inv, etag) {
   const mode = await ctx.sysMode();
-  const [pays, contact, card] = await Promise.all([paymentsOf(inv.id), liveContact(inv.contact_id), cardFor(inv.contact_id)]);
+  const [pays, contact, card, crew, jp] = await Promise.all([paymentsOf(inv.id), liveContact(inv.contact_id), cardFor(inv.contact_id), crewOf(inv), jobAndPlace(inv)]);
   const f = flagsOf(inv, today(), nowMs());
   const owner = ctx.can("invoices:void");
   const online = await payRefusal(inv, { sor: mode.system_of_record });
   const ours = !rotorOwns(inv, mode);
   const billable = !online || online.code !== "not_yet";          // before the switch a card is charged only for a sandboxed customer
+  const rules = ours ? editRules(inv) : { details: false, due: false, money: false, why: ROTOR_OWNS, code: "rotor_owns" };
+  const write = ctx.can("invoices:write");
   return {
     invoice: view(inv), etag, flags: f, payments: pays.map(view), rotor_owned: !ours,
-    contact: contact ? { id: contact.id, display_name: nameOf(contact), phone: ((contact.phones || [])[0] || {}).e164 || null, has_sms: (contact.phones || []).some((p) => p.sms !== false), has_email: (contact.emails || []).length > 0, test: !!(contact.flags && contact.flags.test) } : null,
+    contact: contact ? { id: contact.id, display_name: nameOf(contact), phone: ((contact.phones || [])[0] || {}).e164 || null, email: ((contact.emails || [])[0] || {}).address || null, address: jp.address, has_sms: (contact.phones || []).some((p) => p.sms !== false), has_email: (contact.emails || []).length > 0, test: !!(contact.flags && contact.flags.test) } : null,
+    job_number: jp.job_number, crew, payments_mode: (await payments({ mode }).catch(() => ({ mode: "dry_run" }))).mode || "dry_run",
+    // the editor (edit.mjs): what this login may change now, and why not
+    edit: { details: write && rules.details, due: write && rules.due, money: write && rules.money, why: write ? rules.why : null, code: write ? rules.code : null },
     card: { status: card.status, usable: card.usable, brand: card.brand || null, last4: card.last4 || null, kind: card.kind },
     sandboxed: sandboxed(inv, contact), system_of_record: mode.system_of_record, online: online ? online.code : "ok",
     can: {
-      edit: ours && ctx.can("invoices:write") && inv.status === "draft", issue: ours && ctx.can("invoices:send") && inv.status === "draft", send: ours && ctx.can("invoices:send") && inv.status === "open" && inv.balance_cents > 0,
+      edit: ours && ctx.can("invoices:write") && rules.details, issue: ours && ctx.can("invoices:send") && inv.status === "draft", send: ours && ctx.can("invoices:send") && inv.status === "open" && inv.balance_cents > 0,
       record: ours && ctx.can("payments:record") && inv.status === "open" && inv.balance_cents > 0 && !f.charging,
       charge: ours && billable && ctx.can("payments:charge") && inv.status === "open" && inv.balance_cents > 0 && !f.charging && !f.processing,
       refund: ours && ctx.can("payments:refund"), void: ours && owner && ["draft", "open"].includes(inv.status), write_off: ours && owner && inv.status === "open",
       card_link: ours && billable && ctx.can("invoices:send"),
+      mark_sent: ours && ctx.can("invoices:send") && (inv.status === "draft" || (inv.status === "open" && !inv.sent_at)),
       // scan to pay: the QR the customer pays from (the screen says why when there is none)
       qr: ours && ctx.can("invoices:send") && inv.status === "open" && inv.balance_cents > 0,
     },
@@ -250,9 +283,22 @@ async function createInvoice(ctx) {
   } else throw new InputError("Add at least one line.", "lines");
   const id = isClientId(b.client_id) ? clientInvoiceId(b.client_id.toLowerCase()) : newId("invoice");
   const due = b.due_on && isLocalDate(b.due_on) ? b.due_on : undefined;
+  // Flyra's New Invoice: the property it's for (the customer's own) and the salesperson
+  let propertyId;
+  if (b.property_id) {
+    const pg = isId(b.property_id, "property") ? await getRecord("property", b.property_id).catch(() => null) : null;
+    if (!pg || pg.data.deleted_at || pg.data.contact_id !== c.id) throw new InputError("That property isn't this customer's.", "property_id");
+    propertyId = pg.data.id;
+  }
+  let salesperson;
+  if (b.salesperson_id) {
+    if (!isId(b.salesperson_id, "user") || !(await getRecord("user", b.salesperson_id).catch(() => null))) throw new InputError("Pick someone on the team.", "salesperson_id");
+    salesperson = b.salesperson_id;
+  }
   const inv = await makeInvoice({
     invoice: {
       id, kind, contact_id: c.id, job_ids: jobIds, ...(isId(b.plan_id, "plan") ? { plan_id: b.plan_id } : {}), lines, ...(due ? { due_on: due } : {}),
+      ...(propertyId ? { property_id: propertyId } : {}), ...(salesperson ? { salesperson_id: salesperson } : {}),
       ...(b.customer_note ? { customer_note: String(b.customer_note).slice(0, 1000) } : {}), origin: "staff",
     },
     issue: b.issue === true, channels: Array.isArray(b.channels) ? b.channels : undefined, links: { job_ids: jobIds }, credit: kind === "standard" && b.use_credit !== false,
@@ -278,22 +324,9 @@ async function invoiceJob(ctx) {
 
 async function patchInvoice(ctx) {
   if (!ctx.ifMatch) throw new InputError("This change needs the version you edited (If-Match).", "if-match");
-  const b = ctx.body || {};
   const g = await getInvoice(ctx.params.id);
   await assertOurs(ctx, g.data);
-  const patch = {};
-  if (b.lines !== undefined) {
-    if (g.data.status !== "draft") throw new ConflictError("Only a draft's lines can change. Void this one and make a new invoice.");
-    // credits the CRM applied stay as they are; the office edits the rest
-    const kept = (g.data.lines || []).filter((l) => ["credit", "deposit_credit"].includes(l.kind));
-    patch.lines = [...cleanLines(b.lines), ...kept];
-  }
-  if (b.due_on !== undefined) { if (!isLocalDate(b.due_on)) throw new InputError("Use a date like 2026-11-17.", "due_on"); patch.due_on = b.due_on; }
-  for (const k of ["customer_note", "office_note"]) if (b[k] !== undefined) patch[k] = b[k] === null ? "" : String(b[k]);
-  if (!Object.keys(patch).length) throw new InputError("Nothing to change.");
-  if (["void", "uncollectible"].includes(g.data.status)) throw new ConflictError("This invoice is closed.");
-  const r = await updateRecord("invoice", g.data.id, (inv) => ({ ...inv, ...patch }), { ...ctx.write(), ifMatch: ctx.ifMatch });
-  await touchMoneyStats(r.data.contact_id, ctx.write());
+  const r = await editInvoice(g.data, ctx.body || {}, { ifMatch: ctx.ifMatch, write: ctx.write() });
   return { data: { invoice: view(r.data) }, etag: r.etag };
 }
 
@@ -581,12 +614,13 @@ export const moneyRoutes = [
   // making an invoice is an op (number, record, credits, links, issue): its calls add up
   R("POST", "/invoices", "invoices:write", "none", createInvoice, { maxCalls: 120 }),
   R("POST", "/jobs/:id/invoice", "invoices:write", "required", invoiceJob, { maxCalls: 120 }),
-  R("GET", "/invoices/:id", "invoices:read", "required", getOne, { maxCalls: 40 }),
-  R("PATCH", "/invoices/:id", "invoices:write", "required", patchInvoice),
-  R("POST", "/invoices/:id/issue", "invoices:send", "required", act((ctx) => issueInvoice(ctx.params.id, { channels: (ctx.body || {}).channels }, ctx.write())), { maxCalls: 50 }),
-  R("POST", "/invoices/:id/send", "invoices:send", "required", act((ctx) => sendInvoice(ctx.params.id, { channels: (ctx.body || {}).channels }, ctx.write())), { maxCalls: 50 }),
-  R("POST", "/invoices/:id/void", "invoices:void", "required", act((ctx) => voidInvoice(ctx.params.id, { reason: (ctx.body || {}).reason }, ctx.write())), { maxCalls: 50 }),
-  R("POST", "/invoices/:id/write-off", "invoices:void", "required", act((ctx) => writeOff(ctx.params.id, ctx.write())), { maxCalls: 50 }),
+  R("GET", "/invoices/:id", "invoices:read", "required", getOne, { maxCalls: 60 }),
+  R("PATCH", "/invoices/:id", "invoices:write", "required", patchInvoice, { maxCalls: 80 }),
+  R("POST", "/invoices/:id/issue", "invoices:send", "required", act((ctx) => issueInvoice(ctx.params.id, { channels: (ctx.body || {}).channels }, ctx.write())), { maxCalls: 70 }),
+  R("POST", "/invoices/:id/send", "invoices:send", "required", act((ctx) => sendInvoice(ctx.params.id, { channels: (ctx.body || {}).channels }, ctx.write())), { maxCalls: 70 }),
+  R("POST", "/invoices/:id/mark-sent", "invoices:send", "required", act((ctx) => markSent(ctx.params.id, ctx.write())), { maxCalls: 70 }),
+  R("POST", "/invoices/:id/void", "invoices:void", "required", act((ctx) => voidInvoice(ctx.params.id, { reason: (ctx.body || {}).reason }, ctx.write())), { maxCalls: 70 }),
+  R("POST", "/invoices/:id/write-off", "invoices:void", "required", act((ctx) => writeOff(ctx.params.id, ctx.write())), { maxCalls: 70 }),
   R("POST", "/invoices/:id/charge", "payments:charge", "required", chargeRoute, { mode: "run" }),
   R("POST", "/invoices/:id/payments", "payments:record", "required", recordRoute, { maxCalls: 60, replaySafe: true }),
   R("GET", "/payments", "invoices:read_all", "none", listPayments),

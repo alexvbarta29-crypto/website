@@ -60,9 +60,13 @@ Menu → **Money**: Invoices, Payments, Autopay. (Money has no bottom tab.)
   as credit (owners), Write off and Void (owners). An invoice from Rotor
   says so and has no buttons until the switch. An invoice typed in for a
   customer Rotor bills can have cash written down on it; its card button is
-  off.
-- **New invoice** (`#/invoices/new`): the customer, lines, a draft or
-  "Issue and send". Invoices for finished jobs make themselves.
+  off. On a phone it opens as Rotor's phone invoice (see "Editing an
+  invoice"), full screen; on a desk this page stays beside the list, the
+  pencil opens the same editor and "Collect Payment" the payment sheet.
+- **New invoice** (`#/invoices/new`): Flyra's New Invoice sheet: the
+  customer (their property under them), "Add line item", "Add discount",
+  the total, the salesperson, notes, "Create Invoice" (a draft, then the
+  invoice opens). Invoices for finished jobs make themselves.
 - **Payments** (`#/payments`): a month at a time: what came in after
   refunds, tips, card fees, refunds, by method. Practice payments are
   listed, marked "test", never counted.
@@ -84,6 +88,69 @@ Menu → **Money**: Invoices, Payments, Autopay. (Money has no bottom tab.)
 - **Settings → Payments** (owners): the mode and why, which Stripe keys
   Netlify has (kinds only, never a value), the webhook addresses, how many
   of Rotor's events were ignored, and the money settings below.
+
+## Editing an invoice
+
+Rotor's phone invoice (`crm-app/modules/money/invoice-edit.js`): "Invoice
+#…" with the red bin (owners: void; a draft is deleted, kept as void so
+its number isn't reused) and an X; the status and **Mark as Sent**; the
+cards Bill To (Edit: a name, email, phone, address shown on the invoice;
+texts and emails still go to the contact), Invoice Details (the number with
+Edit, Title, Due Date with Clear, Notes; a job's invoice starts with "For
+Job #…"), Line Items ("+ Saved" from the price book or a discount, "+ Add";
+each line's words, quantity, unit price; a negative price or a discount line
+takes money off, in green) and Summary; the payments (refund one) and what
+happened; the sticky **Save** and **Payment**.
+
+What may change (`money/edit.mjs editRules`; GET `/invoices/:id` answers
+`edit: { details, due, money, why, code }`):
+
+| The invoice | Lines, number, Bill To | Due date | Title, notes, salesperson |
+|---|---|---|---|
+| draft | yes | yes (Clear too) | yes |
+| open, nobody has paid | yes (a sent one is marked `edited_after_sent_at`: send it again) | yes | yes |
+| open with a payment on it (pending, clearing or paid), a card charge running, or a pay page (Checkout) open | no, and it says why | yes | yes |
+| paid | no | no | yes |
+| void, written off | no | no | no |
+| Rotor's own (the import's), until the switch | no | no | no |
+
+The server never takes a total from the request: the lines are validated
+and the record's validator works subtotal, discount, credit, total and
+balance out on every write. Account credit and deposit lines the CRM put on
+stay as they are, and the lines must still cover them. A number is up to
+24 letters, digits and `- . / #`, unique across every invoice (case and
+spaces don't count; held by an `invoice-label` pointer), and never one in
+the CRM's own sequences (INV-, SINV-, D-, SD- and digits: the sequence
+would hand it out later). Every save carries the version it was read at
+(If-Match; 412 when someone else saved first: the screen puts this
+person's changes on the latest when they touched different things, else
+shows the latest). The store's audit row records who changed what.
+
+**Mark as Sent** (POST `/invoices/:id/mark-sent`): the invoice counts as
+sent (`sent_at`, `marked_sent`); nothing is texted or emailed. A draft is
+issued first, silently.
+
+**Payment** (Rotor's payment sheet, `pay-sheet.js`): Amount Due, the red
+"Tap to Pay on iPhone" (shown; it needs Stripe Terminal, which isn't
+connected, so it says so and offers the QR), then Charge (the card on
+file), Manual (cash, a check or other: amount, date, reference, a tip) and
+Send (a pay link by text or email, and the QR), what the chosen way does,
+and one sticky button ("Charge card - $625.00", "Record payment - $…",
+"Send pay link - $…"). A draft is marked sent first.
+
+**Checkout** (Flyra's, `checkout.js`, `openCheckout({ api, invoiceId |
+jobId, onDone })`, also for the job page): Your service (the lines,
+Subtotal, the discount, the Service total), Tip your crew (the job's
+technicians, None · 10% · 15% · 20% · Other worked out on the service
+total), the totals, the way to pay (Change: Tap to Pay, the card on file,
+cash or a check, a pay link) and "Pay $X". The tip rides on the payment
+(`tip_cents`; a card charge takes it too, capped at the balance and
+`tip_custom_max_cents`) and is split across the job's technicians as every
+tip. For a job, its invoice is found or made as a draft, then marked sent
+silently before a payment.
+
+Everything stays practice money (dry run) until the owner connects Stripe,
+as everywhere else.
 
 ## Scan to pay
 
@@ -214,13 +281,14 @@ Staff API (`/api/crm/...`; session, permission in brackets):
 | Method and path | What |
 |---|---|
 | GET `/invoices` [invoices:read_all] | `?status=open\|overdue\|draft\|failed\|overpaid\|paid\|void\|uncollectible\|closed\|all`, `?year=`, `?contact=`; counts and totals in `meta` |
-| POST `/invoices` [invoices:write] | `{ contact_id, lines[{ description, unit_cents, kind? }], kind?, job_ids?, issue?, channels?, use_credit?, client_id }` |
+| POST `/invoices` [invoices:write] | `{ contact_id, lines[{ description, unit_cents, qty_milli?, kind? }], kind?, job_ids?, property_id?, salesperson_id?, customer_note?, issue?, channels?, use_credit?, client_id }` |
 | POST `/jobs/:id/invoice` [invoices:write] | the job's invoice now |
 | GET `/invoices/:id` [invoices:read] | the invoice, payments, card, flags, what this login can do |
-| PATCH `/invoices/:id` [invoices:write] | If-Match; a draft's lines, `due_on`, notes |
+| PATCH `/invoices/:id` [invoices:write] | If-Match; `{ number?, title?, due_on? (null clears a draft's), customer_note?, office_note?, bill_to? (null: the contact's), salesperson_id?, lines?[{ id?, description, qty_milli, unit_cents (negative: a discount), kind?, price_item_id? }] }` by the rules in "Editing an invoice"; 409 with `details.reason` (`paid`, `void`, `written_off`, `has_payments`, `charging`, `checkout_open`, `rotor_owns`, `number_taken`, `number_in_sequence`, `zero_total`, `credit_over`) |
+| POST `/invoices/:id/mark-sent` [invoices:send] | recorded as sent, nothing sent |
 | POST `/invoices/:id/issue` · `/send` [invoices:send] | `{ channels }` |
 | POST `/invoices/:id/void` · `/write-off` [invoices:void] | owners; void needs `{ reason }` |
-| POST `/invoices/:id/charge` [payments:charge] | 202 `{ run_id }` |
+| POST `/invoices/:id/charge` [payments:charge] | `{ tip_cents? }`; 202 `{ run_id }` |
 | POST `/invoices/:id/payments` [payments:record] | `{ method: cash\|check\|other, amount_cents, tip_cents?, reference?, client_id }` |
 | GET `/payments` [invoices:read_all] | `?month=`, `?method=`; the month's totals in `meta` |
 | GET `/payments/:id` [invoices:read_all] | with its refunds |

@@ -115,6 +115,22 @@ function validateQr(v) {
   });
 }
 
+// Bill To on the invoice (the editor's override): a name, an email, a phone, an address, each optional.
+const EMAIL_RE = /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,24}$/i;
+export function validateBillTo(v, f = "bill_to") {
+  if (v === undefined || v === null) return undefined;
+  if (!isObj(v)) throw new InputError("Expected who it's billed to.", f);
+  const out = clean({
+    name: str(v.name, { field: `${f}.name`, max: 120 }) || undefined,
+    email: str(v.email, { field: `${f}.email`, max: 200 }) || undefined,
+    phone: str(v.phone, { field: `${f}.phone`, max: 30 }) || undefined,
+    address: str(v.address, { field: `${f}.address`, max: 300 }) || undefined,
+  });
+  if (out.email && !EMAIL_RE.test(out.email)) throw new InputError("That email doesn't look right.", `${f}.email`);
+  if (out.phone && !/^[+()\d .-]{7,30}$/.test(out.phone)) throw new InputError("That phone number doesn't look right.", `${f}.phone`);
+  return Object.keys(out).length ? out : undefined;
+}
+
 export function validateInvoice(data, { op } = {}) {
   const stored = op === "update";
   const out = shape(data, {
@@ -162,6 +178,14 @@ export function validateInvoice(data, { op } = {}) {
     customer_note: (v, f) => str(v, { field: f, max: 1000, trim: false }) || undefined,
     office_note: (v, f) => str(v, { field: f, max: 2000, trim: false }) || undefined,
     origin: strOpt(30),
+    // the invoice editor (Rotor's phone invoice): a title, who it is billed to when not the contact as filed,
+    // the salesperson (Flyra's New Invoice), a number a person typed, "Mark as Sent" (recorded, nothing sent)
+    title: strOpt(120),
+    bill_to: (v, f) => validateBillTo(v, f),
+    salesperson_id: idOf("user"),
+    number_edited: (v) => (v === true ? true : undefined),
+    marked_sent: (v) => (isObj(v) ? clean({ at: typeof v.at === "string" ? v.at : undefined, by: v.by ? String(v.by).slice(0, 80) : undefined }) : undefined),
+    edited_after_sent_at: isoOpt,
   });
   const t = totalsOf(out.lines);
   Object.assign(out, t);
@@ -192,6 +216,8 @@ export const invoiceRow = (r) => ({
 // The number pointer every invoice shares with the sequence (nextNumber
 // claims ptr/{seq}-no/{n} for the invoice it numbers): search finds INV-0610
 // and D-0001 through them (§9.1).
+// An invoice number as it is compared: case and spaces don't make two numbers different.
+export const numberLabelKey = (n) => String(n || "").trim().toUpperCase().replace(/\s+/g, "");
 const numberKey = (r) => (["invoice", "invoice-shadow", "deposit", "deposit-shadow"].includes(r.seq) && Number.isSafeInteger(r.n) && r.n > 0 ? String(r.n) : null);
 
 export const invoiceType = defineType({
@@ -217,6 +243,8 @@ export const invoiceType = defineType({
     { kind: "deposit-no", key: (r) => (r.seq === "deposit" ? numberKey(r) : null) },
     { kind: "deposit-shadow-no", key: (r) => (r.seq === "deposit-shadow" ? numberKey(r) : null) },
     { kind: "rotor/invoice", key: (r) => (r.rotor && r.rotor.invoice_id ? rotorKey(r.rotor.invoice_id) : null) },
+    // a number a person typed (the editor's "Edit"): held so two edits can't both take it
+    { kind: "invoice-label", key: (r) => (r.number_edited && numberLabelKey(r.number) ? Buffer.from(numberLabelKey(r.number), "utf8").toString("hex") : null) },
   ],
   summary: (r) => ({ id: r.id, number: r.number, status: r.status, balance_cents: r.balance_cents }),
   example: () => ({

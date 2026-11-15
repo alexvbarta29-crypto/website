@@ -284,6 +284,8 @@ export async function ensureJobInvoice(job, { origin = "job.completed", decision
   const invoice = {
     id: slot.id, kind: "standard", contact_id: job.contact_id, ...(job.property_id ? { property_id: job.property_id } : {}), job_ids: [job.id],
     ...(plan ? { plan_id: plan.id, plan_ordinals: ord } : {}), ...(job.quote_id ? { quote_id: job.quote_id } : {}), lines: linesFromJob(job), origin,
+    // Rotor's default note on a job's invoice
+    ...(job.number_label || job.number ? { customer_note: `For Job #${job.number_label || job.number}` } : {}),
   };
   return makeInvoice({
     invoice, issue: issue !== undefined ? issue : settings.auto_issue !== false, links: { job_ids: [job.id], ...(plan ? { plan_id: plan.id, plan_ordinals: ord } : {}) },
