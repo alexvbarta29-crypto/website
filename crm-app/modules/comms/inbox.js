@@ -1,15 +1,16 @@
 // Inbox (the Rotor guide's: guide-gaps §2.3 I1 to I3, §3.2 X6, §7.3; design
 // §9.2 "Inbox", §5.7.1 "Keeping screens fresh"): one row per person (their
-// texts and email are one thread), newest first. Rotor's folders are one
-// Tiles row, and a tile IS the filter: All · Mine · Unread · Needs reply,
-// then each team inbox (Settings: Inbox "..." → Team inboxes), each with
-// the count of open threads. Texts or email, customers or leads: the Filter
-// sheet (one control row, not three). A search over names and the last
-// words. Rows: a pastel initials circle, the name, the last words, the time
-// and a coral unread count. It refreshes every 30 s while on screen. A
-// technician sees only the people on their own visits (All, Unread).
+// texts and email are one thread), newest first. Simple, like Rotor's and
+// Flyra's phone inbox (the owner, Nov 15: "the inbox is a lot"): a search
+// field, ONE folder button (All · Mine · Unread · Needs reply, then each team
+// inbox, each with its count; texts or email and customers or leads sit in
+// the same sheet), then the rows: a pastel initials circle, the name, the
+// last words on one line, the time and a coral unread count. On a wide desk
+// the folders are a column beside the rows instead (Rotor's inbox with
+// folders). It refreshes every 30 s while on screen. A technician sees only
+// the people on their own visits (All, Unread).
 
-import { html, attrs, icon, render, tileRow, tileToggle, filterSheet } from "../../core/ui.js";
+import { html, attrs, icon, render, actionSheet } from "../../core/ui.js";
 import { screenButtons } from "../../core/nav.js";
 import { poll } from "../../core/poll.js";
 import { ensureStyles, convRow, emptyCard } from "./kit.js";
@@ -33,13 +34,55 @@ export function shown(rows, v) {
     return (!v.who || (v.who === "leads" ? c.lifecycle === "lead" : c.lifecycle !== "lead")) && (!q || `${c.contact_name || ""} ${c.last_preview || ""}`.toLowerCase().includes(q));
   });
 }
-const tilesOf = (s) => {
+// The folders, each with its count (a tech: All and Unread).
+export const foldersOf = (s) => {
   const c = s.counts || {};
   const base = s.office
     ? [["all", "All", c.all], ["mine", "Mine", c.mine], ["unread", "Unread", c.unread], ["needs_reply", "Needs reply", c.needs_reply]]
     : [["all", "All", c.all], ["unread", "Unread", c.unread]];
-  return [...base.map(([key, label, value]) => ({ key, label, value: value ?? "-" })), ...(c.list || []).map((x) => ({ key: x.key, label: x.name, value: x.count }))];
+  return [...base.map(([key, label, value]) => ({ key, label, value: value ?? null })), ...(c.list || []).map((x) => ({ key: x.key, label: x.name, value: x.count, team: true }))];
 };
+const FICON = { all: "inbox", mine: "user", unread: "chat", needs_reply: "undo" };
+const folderNow = (s) => foldersOf(s).find((f) => f.key === s.tile) || { key: "all", label: "All", value: null };
+// What the folder button says besides the folder: "Texts", "Leads".
+const showing = (s) => [s.channel === "sms" ? "Texts" : s.channel === "email" ? "Email" : "", s.who === "leads" ? "Leads" : s.who === "customers" ? "Customers" : ""].filter(Boolean).join(" · ");
+const cnt = (v) => (v === null || v === undefined || v === "" ? "" : String(v));
+
+// The one folder sheet: the folders (with counts), then texts or email, then customers or leads.
+function folderSheet(ctx) {
+  const s = ctx.state;
+  const pick = (k, v) => () => { s[k] = v; refetch(ctx); };
+  const mark = (on, ic) => (on ? "check" : ic);
+  const fs = foldersOf(s);
+  actionSheet("Folders", [
+    fs.filter((f) => !f.team).map((f) => ({ label: f.label, icon: mark(s.tile === f.key, FICON[f.key] || "inbox"), hint: cnt(f.value), run: pick("tile", f.key), data: { folder: f.key, on: s.tile === f.key ? "1" : null } })),
+    fs.filter((f) => f.team).map((f) => ({ label: f.label, icon: mark(s.tile === f.key, "inbox"), hint: cnt(f.value), run: pick("tile", f.key), data: { folder: f.key, on: s.tile === f.key ? "1" : null } })),
+    [[null, "Texts and email"], ["sms", "Texts only"], ["email", "Email only"]].map(([v, l]) => ({ label: l, icon: mark((s.channel || null) === v, v === "email" ? "mail" : "text"), run: pick("channel", v), data: { fch: v || "all" } })),
+    s.office && [[null, "Customers and leads"], ["customers", "Customers only"], ["leads", "Leads only"]].map(([v, l]) => ({ label: l, icon: mark((s.who || null) === v, "contacts"), run: pick("who", v), data: { fwho: v || "all" } })),
+  ]);
+}
+
+// The folder button (a phone and a narrow desk): the folder, its count, what else is filtered.
+function folderBtn(s) {
+  const f = folderNow(s);
+  const extra = showing(s);
+  return html`<div class="cm-fbar"><button type="button" class="cm-folder" data-folders aria-haspopup="dialog" ${attrs({ "aria-label": `Folder: ${f.label}${extra ? ", " + extra : ""}${cnt(f.value) ? `, ${f.value}` : ""}. Change` })}>
+    <span class="cm-fl">${f.label}</span>${cnt(f.value) ? html`<span class="cm-fn num">${String(f.value)}</span>` : ""}${extra ? html`<span class="cm-fx">${extra}</span>` : ""}${icon("chevdown")}</button>
+    ${extra ? html`<button type="button" class="linkish cm-fclear" data-clear>Clear</button>` : ""}</div>`;
+}
+// A wide desk: the folders as a column (Rotor's inbox with folders).
+function folderCol(s) {
+  const fs = foldersOf(s);
+  const row = (f) => html`<li><button type="button" class="cm-fcol-b" ${attrs({ "data-folder": f.key, "aria-pressed": String(s.tile === f.key) })}>${icon(FICON[f.key] || "inbox")}<span class="cm-fl">${f.label}</span>${cnt(f.value) ? html`<span class="cm-fn num">${String(f.value)}</span>` : ""}</button></li>`;
+  const chip = (k, v, l) => html`<button type="button" class="chip" ${attrs({ [`data-f${k}`]: v || "all", "aria-pressed": String((s[k === "ch" ? "channel" : "who"] || null) === v) })}>${l}</button>`;
+  return html`<nav class="cm-fcol" aria-label="Folders">
+    <ul>${fs.filter((f) => !f.team).map(row)}</ul>
+    ${fs.some((f) => f.team) ? html`<h2 class="cm-fcol-h">Team inboxes</h2><ul>${fs.filter((f) => f.team).map(row)}</ul>` : ""}
+    <h2 class="cm-fcol-h">Show</h2>
+    <div class="cm-fcol-c">${chip("ch", null, "All")}${chip("ch", "sms", "Texts")}${chip("ch", "email", "Email")}</div>
+    ${s.office ? html`<div class="cm-fcol-c">${chip("who", null, "All")}${chip("who", "customers", "Customers")}${chip("who", "leads", "Leads")}</div>` : ""}
+  </nav>`;
+}
 
 async function fetchAll(ctx, v) {
   const [r, c] = await Promise.all([ctx.api(query(v), { cache: false }), ctx.api("/inbox/counts", { cache: false }).catch(() => ({ data: null }))]);
@@ -85,32 +128,26 @@ export default {
   render(s) {
     const list = shown(s.rows, s);
     return html`<div class="stack cm-inbox">
-      ${tileRow(tilesOf(s), { name: "inbox", on: s.tile, label: "Folders" })}
-      <label class="cm-search">${icon("search")}<span class="sr">Search messages</span><input type="search" data-q ${attrs({ value: s.q, placeholder: "Search messages", autocomplete: "off", enterkeyhint: "search" })}></label>
-      ${filtered(s) ? html`<div class="cm-on"><span>${[s.channel === "sms" ? "Texts" : s.channel === "email" ? "Email" : "", s.who === "leads" ? "Leads" : s.who === "customers" ? "Customers" : ""].filter(Boolean).join(" · ")}</span><button type="button" class="linkish" data-clear>Clear</button></div>` : ""}
-      ${list.length ? html`<ul class="list cm-list">${list.map(convRow)}</ul>${s.next ? html`<button type="button" class="btn block" data-more>Show older</button>` : ""}`
-        : emptyCard("inbox", quiet(s) ? "No conversations yet" : "Nothing here", quiet(s) ? (s.office ? "Texts and emails with customers show up here. Rotor's history arrives with the import." : "Texts with the people on your visits show up here.") : "Try another folder or filter.")}
+      ${folderCol(s)}
+      <div class="cm-lcol">
+        <label class="cm-search">${icon("search")}<span class="sr">Search messages</span><input type="search" data-q ${attrs({ value: s.q, placeholder: "Search", autocomplete: "off", enterkeyhint: "search" })}></label>
+        ${folderBtn(s)}
+        ${list.length ? html`<ul class="list cm-list">${list.map(convRow)}</ul>${s.next ? html`<button type="button" class="btn block" data-more>Show older</button>` : ""}`
+          : emptyCard("inbox", quiet(s) ? "No conversations yet" : "Nothing here", quiet(s) ? (s.office ? "Texts and emails with customers show up here. Rotor's history arrives with the import." : "Texts with the people on your visits show up here.") : "Try another folder.")}
+      </div>
     </div>`;
   },
   mount(el, s, ctx) {
     if (!live || live.for !== ctx) { watch(ctx); live.for = ctx; }
-    // a phone: the round Filter (texts or email; customers or leads); the coral + texts someone
-    screenButtons([
-      ...(ctx.can("sales:work") ? [{ key: "calls", icon: "call", label: "Calls" }] : []),
-      { key: "filter", icon: "filter", label: filtered(s) ? "Filter (on)" : "Filter", on: filtered(s) },
-    ], async (key) => {
-      if (key === "calls") { location.hash = "/calls"; return; }
-      const groups = [{ key: "channel", label: "Channel", type: "radio", options: [["sms", "Texts"], ["email", "Email"]] }];
-      if (s.office) groups.push({ key: "who", label: "Who", type: "radio", options: [["customers", "Customers"], ["leads", "Leads"]] });
-      const v = await filterSheet({ title: "Filter", values: { channel: s.channel || null, who: s.who || null }, count: (x) => shown(s.rows.filter((r) => !x.channel || (r.channels || [r.channel]).includes(x.channel)), { ...s, who: x.who }).length, groups });
-      if (!v) return;
-      s.channel = v.channel || null; s.who = v.who || null;
-      refetch(ctx);
-    });
+    // a phone's round buttons: Calls (sales); the folders and their filters are the folder button
+    screenButtons(ctx.can("sales:work") ? [{ key: "calls", icon: "call", label: "Calls" }] : [], (key) => { if (key === "calls") location.hash = "/calls"; });
   },
   unmount() { if (live) { live.stop(); live = null; } },
   events: {
-    "click [data-tile=inbox]": (e, el, ctx) => { ctx.state.tile = tileToggle(ctx.state.tile, el.dataset.key, "all"); refetch(ctx); },
+    "click [data-folders]": (e, el, ctx) => folderSheet(ctx),
+    "click .cm-fcol [data-folder]": (e, el, ctx) => { ctx.state.tile = el.dataset.folder; refetch(ctx); },
+    "click .cm-fcol [data-fch]": (e, el, ctx) => { ctx.state.channel = el.dataset.fch === "all" ? null : el.dataset.fch; refetch(ctx); },
+    "click .cm-fcol [data-fwho]": (e, el, ctx) => { ctx.state.who = el.dataset.fwho === "all" ? null : el.dataset.fwho; refetch(ctx); },
     "click [data-clear]": (e, el, ctx) => { ctx.state.channel = null; ctx.state.who = null; refetch(ctx); },
     "input [data-q]": (e, el, ctx) => {
       ctx.state.q = el.value;

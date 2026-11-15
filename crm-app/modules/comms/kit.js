@@ -36,7 +36,7 @@ export const convRow = (c) => {
   <span class="avatar cm-av" aria-hidden="true" ${attrs({ style: `background:${bg};color:${fg}` })}>${initials(c.contact_name)}</span>
   <span class="who"><span class="nm"><b>${c.contact_name || "Someone"}</b>${(c.channels || [c.channel]).includes("email") ? html`<span class="cm-ch" title="Email">${icon("mail")}</span>` : ""}</span>
     <span class="sub">${c.last_direction === "out" ? "You: " : ""}${c.last_preview || "No messages yet"}</span></span>
-  <span class="end"><span class="small muted">${c.last_at ? ago(c.last_at) : ""}</span>${c.unread ? html`<span class="cm-n" role="img" ${attrs({ "aria-label": `${c.unread} unread` })}>${c.unread > 99 ? "99+" : String(c.unread)}</span>` : c.needs_reply ? html`<span class="pill amber">Needs reply</span>` : ""}</span>
+  <span class="end"><span class="small muted">${c.last_at ? ago(c.last_at) : ""}</span>${c.unread ? html`<span class="cm-n" role="img" ${attrs({ "aria-label": `${c.unread} unread` })}>${c.unread > 99 ? "99+" : String(c.unread)}</span>` : ""}</span>
 </a></li>`;
 };
 
@@ -56,7 +56,7 @@ export const noteBubble = (m, who = "") => html`<div class="cm-msg out note" dat
   <span class="cm-meta">${time(m.sent_at)} · Note${who ? " · " + who : ""} · only the team sees it</span>
 </div>`;
 
-// One message as a bubble. o: { merged: the person's whole thread (each bubble says its channel), who(user_id) → name }
+// One message as a bubble (texts and email mixed; only an email says so). o: { who(user_id) → name }
 export function bubble(m, o = {}) {
   if (m.kind === "note") return noteBubble(m, o.who ? o.who(m.origin && m.origin.user_id) : "");
   const out = m.direction === "out";
@@ -70,7 +70,7 @@ export function bubble(m, o = {}) {
     ${files.length ? html`<div class="cm-files">${files.map((f, i) => html`<a ${openExternal(location.origin + "/api/crm/files/" + encodeURIComponent(f))}>${icon("doc")}File ${i + 1}</a>`)}</div>` : ""}
     ${m.media_pending ? html`<span class="cm-meta">Fetching ${m.media_pending} file${m.media_pending === 1 ? "" : "s"}…</span>` : ""}
     ${m.attachments_missing ? html`<span class="cm-meta">${m.attachments_missing} attachment${m.attachments_missing === 1 ? "" : "s"} stayed in Rotor</span>` : ""}
-    <span class="${"cm-meta" + (isBad(m) ? " bad" : "")}">${time(m.sent_at)}${o.merged && CH[m.channel] ? " · " + CH[m.channel] : ""}${st ? " · " + st : ""}${from ? " · " + from : ""}${m.imported ? " · from Rotor" : ""}</span>
+    <span class="${"cm-meta" + (isBad(m) ? " bad" : "")}">${time(m.sent_at)}${m.channel === "email" ? " · " + CH.email : ""}${st ? " · " + st : ""}${from ? " · " + from : ""}${m.imported ? " · from Rotor" : ""}</span>
     ${fix ? html`<a class="cm-fix" ${attrs({ href: fix.href })}>${icon("flag")}${fix.label}</a>` : ""}
   </div>`;
 }
@@ -78,7 +78,7 @@ export function bubble(m, o = {}) {
 // Something waiting in the Outbox (dry run, or held back): never sent.
 export const pendingBubble = (p, o = {}) => html`<div class="cm-msg out">
   <div class="bubble grey">${p.subject ? html`<b>${p.subject}</b>` : ""}${p.body_text}</div>
-  <span class="${"cm-meta" + (p.mode === "blocked" ? " bad" : "")}">${time(p.at)}${o.merged && CH[p.channel] ? " · " + CH[p.channel] : ""} · ${p.mode === "blocked" ? `Held back: ${reasonText(p.blocked_reason)}` : "Not sent (dry run)"}</span>
+  <span class="${"cm-meta" + (p.mode === "blocked" ? " bad" : "")}">${time(p.at)}${p.channel === "email" ? " · " + CH.email : ""} · ${p.mode === "blocked" ? `Held back: ${reasonText(p.blocked_reason)}` : "Not sent (dry run)"}</span>
 </div>`;
 
 export const dayLabel = (iso) => dateShort(iso);

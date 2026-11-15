@@ -50,6 +50,18 @@
 
 /* ---------------------------------------------------------------- Messages (inbox.js; Flyra's Messages, Rotor's rows) */
 .cm-inbox{gap:14px}
+/* simple (Nov 15): the search, ONE folder button, the rows; a wide desk has the folder column instead */
+.cm-lcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cm-fcol{display:none}
+.cm-fbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.cm-folder{display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:100%;min-height:44px;padding:0 4px 0 2px;border:0;background:none;color:var(--ink);font:600 18px/1.2 var(--head);letter-spacing:-.01em;cursor:pointer}
+.cm-folder .cm-fl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm-fn{flex:none;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:var(--fill-2);color:var(--ink-2);font:600 13px/22px var(--text);text-align:center}
+.cm-fx{flex:none;font:500 14px/1 var(--text);color:var(--ink-3);white-space:nowrap}
+.cm-folder svg{flex:none;width:18px;height:18px;color:var(--ink-3)}
+.cm-folder:active{opacity:.7}
+.cm-fclear{flex:none;min-height:44px;padding:0 4px;font-size:15px}
+.cm-list .cm-row .sub{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cm-search{display:flex;align-items:center;gap:12px;min-height:50px;padding:0 18px;border-radius:999px;background:var(--fill-2);color:var(--ink-3)}
 html[data-theme="light"] .cm-search{background:var(--card);box-shadow:var(--sh-card)}
 .cm-search svg{width:21px;height:21px;flex:none}
@@ -74,6 +86,24 @@ html:not([data-theme="light"]) .cm-av{background:var(--card-2)!important;color:v
 .cm-n{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 13px/24px var(--text);text-align:center}
 @media (max-width:899px){.cm-kind-desk{display:none}}
 @media (min-width:900px){.cm-list{margin:0;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg)}}
+/* a wide desk: the folders as a column beside the rows (Rotor's inbox with folders) */
+@media (min-width:1200px){
+  .cm-inbox{display:grid;grid-template-columns:188px minmax(0,1fr);align-items:start;gap:16px}
+  .app.split #view:has(>.cm-inbox){flex-basis:clamp(320px,44%,620px)}
+  .cm-fbar{display:none}
+  .cm-fcol{display:flex;flex-direction:column;gap:4px;position:sticky;top:0;min-width:0}
+  .cm-fcol ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  .cm-fcol-b{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:var(--ink-2);font:500 15px/1.2 var(--text);text-align:left;cursor:pointer}
+  .cm-fcol-b svg{flex:none;width:18px;height:18px}
+  .cm-fcol-b .cm-fl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cm-fcol-b:hover{background:var(--fill)}
+  .cm-fcol-b[aria-pressed="true"]{background:var(--fill-2);color:var(--ink);font-weight:600}
+  .cm-fcol-b[aria-pressed="true"] .cm-fn{background:var(--coral-btn);color:#fff}
+  .cm-fcol-h{margin:14px 10px 4px;font:600 11.5px/1 var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .cm-fcol-c{display:flex;flex-wrap:wrap;gap:4px;padding:2px 6px}
+  .cm-fcol-c .chip{margin:0;min-height:32px;padding:0 9px;font-size:13px}
+}
+@media (min-width:1200px) and (pointer:coarse){.cm-fcol-b,.cm-fcol-c .chip{min-height:44px}}
 
 /* ---------------------------------------------------------------- the Rotor guide's Inbox (folders, one thread, notes) */
 .cm-on{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-2)}
@@ -113,3 +143,16 @@ html:not([data-theme="light"]) .cm-av{background:var(--card-2)!important;color:v
 .cm-mute .rs-frow{padding-left:14px}
 .cm-mute .rs-fl{flex:1;min-width:0}
 .cm-mute .switch{flex:none}
+
+/* ---------------------------------------------------------------- the simple thread (Nov 15, Rotor's and Flyra's): one box, then Text | Email, +, the clip, a template, Send */
+.cm-compose{gap:8px;padding:8px 0 10px}
+.cm-compose textarea{min-height:48px}
+.cm-send{gap:6px;min-width:0}
+.cm-send .rs-seg{flex:0 1 auto;min-width:0;padding:0 2px}
+.cm-send .rs-seg-b{flex:0 0 auto;padding:0 12px;font-size:14.5px}
+.cm-send .cm-count{flex:1;min-width:0}
+.cm-compose.is-note .rs-seg-b[data-key="note"][aria-selected="true"]::before{background:var(--amber-bg)}
+@media (max-width:380px){.cm-send{gap:4px}.cm-send .rs-seg-b{padding:0 9px}}
+/* the name at the top opens their panel */
+.top-title.cm-name-tap{cursor:pointer;padding-top:12px;padding-bottom:12px}
+.top-title.cm-name-tap:focus-visible{outline:2px solid var(--coral);outline-offset:2px;border-radius:6px}
