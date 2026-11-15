@@ -10,7 +10,9 @@
 //   arrView(plans, p, today)                → the money card's ARR view (Nov 14): ARR, its change, active plans, MRR, the line
 //   moneyCard({ metric, p, series, ... })   → one metric over a period (the older Collected | Scheduled | ARR card)
 //   latestImport(runs, today)               the newest finished Rotor import and whether it is fresh (3 days)
-//   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart (the Revenue view)
+//   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart (older clients)
+//   revenueView({ p, collected, ... })      → the top of Home's Revenue view (Nov 15, Flyra's): Collected, its daily average and peak, the line
+//   normalizeBoard(r, board, month)         → the Leaderboard card's rows (reports.leaderboard's answer)
 //   clockToday(rows, uid, today, nowMs)     the Timesheet card: today's minutes, the open shift
 //   agendaOf(visits, users, p)              the Agenda's rows (Daily · Weekly · Monthly)
 //   tasksOf(rows, user, { all })            open tasks (the Agenda's "without due date", the Tasks card)
@@ -128,10 +130,10 @@ export function rotorCollected(snap, p, today) {
   if (p.period === "week") {
     const w = weekly.find((x) => x.key === p.from);
     total = w ? w.value : null;
-  } else if (p.period === "month" || p.period === "3m" || p.period === "year") {
+  } else if (p.period === "month" || p.period === "3m" || p.period === "year" || p.period === "1y") {
     const keys = monthsOf(p.from, p.to);
     total = sumMonths(keys);
-    if (p.period === "year") {
+    if (p.period === "year" || p.period === "1y") {
       grain = "month";
       points = keys.map((k) => ({ key: k, label: monthLabel(k), from: `${k}-01`, to: monthEnd(k), value: k > asOf.slice(0, 7) ? null : monthly.has(k) ? monthly.get(k) : null }));
     } else {
@@ -239,8 +241,8 @@ export function arrView(plans, p, today) {
     plans: arrAt(plans, end).plans, mrr: Math.round(s.total / 12), grain: s.grain, points: s.points, through: end,
   };
 }
-// The ARR view's chips: Flyra's 1M 3M 1Y, and YTD.
-export const ARR_RANGES = Object.freeze({ "1m": "month", "3m": "3m", "1y": "1y", ytd: "year" });
+// The ARR view's ranges: Flyra's 1W 1M 3M 1Y, and YTD.
+export const ARR_RANGES = Object.freeze({ "1w": "week", "1m": "month", "3m": "3m", "1y": "1y", ytd: "year" });
 
 // ------------------------------------------------------------ the Money card
 
@@ -322,6 +324,21 @@ export function moneyPair({ p, collected, scheduled, source, asOf = null, arr = 
   };
 }
 
+// The top of Home's Revenue view (the owner's Nov 15 ask: "make the home
+// page look like Flyra"): over 1W 1M 3M 1Y YTD, Collected (wherever
+// collectedFor found it), its average a day and its best day (Rotor's
+// snapshot has weeks or months, so its best week or month), and the line.
+// A Collected with no day counted yet is null, never $0.
+export const REVENUE_RANGES = Object.freeze({ "1w": "week", "1m": "month", "3m": "3m", "1y": "1y", ytd: "year" });
+// → { period, range, from, to, label, source, as_of, missing, total, avg, peak, grain, points }
+export function revenueView({ p, range = "1m", collected, source, asOf = null, missing = null }) {
+  const c = collected && collected.grain === "day" && list(collected.points).every((x) => x.value === null) ? { ...collected, total: null } : collected;
+  const card = moneyCard({ metric: "collected", p, series: c, source, asOf });
+  if (card.total === null) { card.avg = null; card.peak = null; }
+  const { metric, goal, change, ...rest } = card;
+  return { ...rest, range, missing, points: card.points.map(pointOf) };
+}
+
 // ------------------------------------------------------------ the Timesheet card
 
 const COUNTED = new Set(["closed", "approved", "locked"]);
@@ -382,21 +399,48 @@ export function inboxOf(rows, max = 5) {
     .slice(0, max).map((r) => ({ id: r.id, name: r.n || "Someone", preview: String(r.p || "").slice(0, 120), at: r.la || null, unread: num(r.u) || 0, channel: r.ch || "sms", needs_reply: !!r.nr }));
 }
 
+// ------------------------------------------------------------ the leaderboard
+
+// The reports module's "reports.leaderboard" answer (its sold money fixed on
+// Nov 14: a sale dated by its sale, ARR the recurring plans sold in the
+// month), as Flyra's card shows it: the rank, the initials, the name, what
+// they sold or did ("1 plan sold", "3 jobs done") and the money. Sales: the
+// ARR of the plans they sold ("$780 ARR"), or the first visits of the jobs
+// they sold when they sold no plan; techs: the jobs done ($ split between
+// the people on them). Read leniently; 10 rows at most.
+// → { board, month, title, rows: [{ rank, id, name, initials, color, note, value, unit }] }
+export function normalizeBoard(r, board, month) {
+  const rows = Array.isArray(r) ? r : r && Array.isArray(r.rows) ? r.rows : [];
+  return {
+    board, month, title: `${MONTHS_LONG[Number(month.slice(5, 7)) - 1]} Leaderboard`,
+    rows: rows.filter((x) => x && typeof x === "object").slice(0, 10).map((x, i) => {
+      const arr = num(x.arr_cents);
+      const sales = board === "sales";
+      const value = sales && arr > 0 ? arr : num(x.value_cents);
+      return {
+        rank: num(x.rank) || i + 1, id: String(x.user_id || x.id || ""), name: String(x.name || "").slice(0, 60),
+        initials: String(x.initials || "").slice(0, 3), color: /^#[0-9a-f]{6}$/i.test(x.color || "") ? x.color : null,
+        note: String(x.note || "").slice(0, 80), value, unit: sales && arr > 0 ? "ARR" : null,
+      };
+    }),
+  };
+}
+
 // ------------------------------------------------------------ the person's cards
 
-// Flyra's Home (Nov 13, "make it look more like Flyra"): the money (ARR |
-// Revenue, Nov 14), then Today, Inbox, Tasks and Goals. The clock sits
-// under the money and is on by default only for someone who clocks in for
+// Flyra's Home (Nov 13, "make it look more like Flyra"; Nov 15 "make the
+// home page look like Flyra"): the money at the top (Revenue | ARR), then
+// the Leaderboard (back on Nov 15, its math fixed), Today, Inbox, Tasks
+// and Goals. The clock is on by default only for someone who clocks in for
 // field work (is_technician; `clock: true`), anyone else adds it in Edit
-// Home. The Leaderboard card left Home on Nov 14 (the owner: "remove these
-// wrong stats"); the full Leaderboard is Analytics' "...". A saved layout
-// that still names it just drops it.
-export const CARDS = Object.freeze(["money", "clock", "agenda", "inbox", "tasks", "goals"]);
-export const DEFAULT_ON = Object.freeze(["money", "agenda", "inbox", "tasks", "goals"]);
-const RETIRED = new Set(["leaderboard"]);
+// Home.
+export const CARDS = Object.freeze(["money", "leaderboard", "clock", "agenda", "inbox", "tasks", "goals"]);
+export const DEFAULT_ON = Object.freeze(["money", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
 // The saved order first (cards no longer open to this person dropped),
 // then any card they may have that the saved list doesn't name (on when
-// it is one of the defaults). → [{ key, on }]
+// it is one of the defaults), each after the card it follows in CARDS (a
+// layout saved while the Leaderboard was away gets it back under the
+// money). → [{ key, on }]
 export function layoutOf(saved, available, { clock = false } = {}) {
   const can = new Set(available);
   const out = [];
@@ -406,7 +450,14 @@ export function layoutOf(saved, available, { clock = false } = {}) {
     seen.add(c.key);
     out.push({ key: c.key, on: c.on !== false });
   }
-  for (const k of CARDS) if (can.has(k) && !seen.has(k)) out.push({ key: k, on: k === "clock" ? !!clock : DEFAULT_ON.includes(k) });
+  for (const [i, k] of CARDS.entries()) {
+    if (!can.has(k) || seen.has(k)) continue;
+    const card = { key: k, on: k === "clock" ? !!clock : DEFAULT_ON.includes(k) };
+    seen.add(k);
+    const before = CARDS.slice(0, i).reverse().find((b) => out.some((c) => c.key === b));
+    const at = before ? out.findIndex((c) => c.key === before) + 1 : 0;
+    out.splice(at, 0, card);
+  }
   return out;
 }
 // A layout as sent by Edit Home. → { cards: [{ key, on }] }
@@ -414,8 +465,7 @@ export function validateLayout(v) {
   if (!v || typeof v !== "object" || !Array.isArray(v.cards)) throw new InputError("Send the cards in their order.", "cards");
   const seen = new Set();
   const cards = [];
-  for (const c of v.cards.slice(0, CARDS.length + RETIRED.size)) {
-    if (c && RETIRED.has(c.key)) continue;   // an older phone's Edit Home
+  for (const c of v.cards.slice(0, CARDS.length)) {
     if (!c || !CARDS.includes(c.key)) throw new InputError("That isn't a Home card.", "cards");
     if (seen.has(c.key)) continue;
     seen.add(c.key);
