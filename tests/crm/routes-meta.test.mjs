@@ -328,6 +328,7 @@ const GATES = {
   // Home's Money card: the people who see money (reports:read; the office sign-in too, which no actor here has)
   "GET /home/money": (a) => a.user.role !== "tech" && P.can(a.user, "reports:read"),
   // the leaderboard: the reports module's service (merged), for the same people as the money
+  "GET /home/leaderboard": (a) => a.user.role !== "tech" && P.can(a.user, "reports:read"),
   "GET /settings/:name": (a, p) => P.can(a.user, p.setting.perm),
   "PUT /settings/:name": (a, p) => P.can(a.user, p.setting.perm),
   // the type's readPerm (audit:read without one), unscoped or for this one record (§4.6)

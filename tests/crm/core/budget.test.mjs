@@ -42,6 +42,7 @@ const SAMPLES = {
   "GET /home": (fx) => ({ as: fx.owner, path: "/home", office: true }),
   "GET /home/money": (fx) => ({ as: fx.owner, path: "/home/money?metric=scheduled&period=year" }),
   "GET /home/agenda": (fx) => ({ as: fx.owner, path: "/home/agenda?view=month&date=2026-11-17" }),
+  "GET /home/leaderboard": (fx) => ({ as: fx.owner, path: "/home/leaderboard?board=techs" }),
   "PUT /home/layout": (fx) => ({ as: fx.owner, path: "/home/layout", body: { cards: [{ key: "tasks", on: true }] } }),
   "GET /users": (fx) => ({ as: fx.owner, path: "/users" }),
   "POST /users": (fx) => ({ as: fx.owner, path: "/users", body: { name: "Pat Example", login: "pat.example", role: "tech" } }),

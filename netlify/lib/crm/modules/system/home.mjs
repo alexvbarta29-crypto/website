@@ -4,51 +4,54 @@
 // server per person (ptr/home/{userId}). Pure parts in home-kpis.mjs.
 //
 //   GET /home                      the header, the person's cards in order and the data of the ones shown
-//   GET /home/money?period=week|month&date=      the Money card's Revenue view (Rotor's): Collected and Scheduled for the week or month of a day
-//   GET /home/money?metric=arr&range=1m|3m|1y|ytd   the Money card's ARR view over that range
+//   GET /home/money?metric=revenue&range=1w|1m|3m|1y|ytd   the top's Revenue view over that range
+//   GET /home/money?metric=arr&range=1w|1m|3m|1y|ytd       the top's ARR view over that range
+//   GET /home/money?period=week|month&date=      Rotor's older Money card: Collected and Scheduled for the week or month of a day (older clients)
 //   GET /home/money?metric=&period=&from=&to=   one metric (collected | scheduled | arr) over a period (older clients)
 //   GET /home/agenda?view=&date=   the Agenda: day | week | month
+//   GET /home/leaderboard?board=   the Leaderboard card: sales | techs, this month
 //   PUT /home/layout { cards }     Edit Home
 //
 // The cards (each only for who may see it; a card that is off costs no read):
 //   clock        Timesheet: today's hours and Clock in / out (time:own)
-//   money        first on Home, ARR | Revenue (the owner's Nov 14 ask,
-//                Flyra's switch). ARR (`arr_view`): this month's ARR of the
-//                live plans, its change, active plans, MRR, a line per day
-//                (1M 3M 1Y YTD read GET /home/money?metric=arr&range=).
-//                Revenue: Rotor's card (Nov 13), Week | Month, Collected
-//                and Scheduled side by side, both per day on one chart.
-//                Collected is the CRM's payments after cutover or while the
-//                latest Rotor import is 3 days old or less (it brings
-//                Rotor's payments in), else Rotor's snapshot; Scheduled the
-//                CRM's visits, ARR its live plans: reports:read or the
-//                office sign-in
+//   money        the top of Home (Nov 15, Flyra's): Revenue | ARR over
+//                1W 1M 3M 1Y YTD (this month in GET /home, the others read
+//                GET /home/money?metric=&range=). Revenue (`revenue_view`):
+//                Collected, its average a day, its best day, a line per
+//                day. ARR (`arr_view`): the live plans' ARR, its change,
+//                active plans, MRR, a line per day. Collected is the CRM's
+//                payments after cutover or while the latest Rotor import is
+//                3 days old or less (it brings Rotor's payments in), else
+//                Rotor's snapshot; ARR the CRM's live plans: reports:read
+//                or the office sign-in. (`collected` and `arr` stay for an
+//                older phone's card.)
+//   leaderboard  this month's "reports.leaderboard" (Sales: plans and jobs
+//                sold, the plans' ARR; Techs: jobs done), with the money
 //   agenda       the day's (week's, month's) visits, and open tasks with no
 //                due date (schedule:read; the tasks with tasks:read)
 //   inbox        the latest conversations, unread first (inbox:read)
 //   tasks        open tasks (tasks:read): an owner's whole team's, anyone else's own
 //   goals        the owners' monthly revenue and jobs goals (settings "goals")
-// On by default (Flyra's Home): the money, today, the inbox, tasks and
-// goals; the clock for someone who clocks in for field work
-// (is_technician). Edit Home shows, hides and orders them. The Leaderboard
-// card left on Nov 14 (its sales board is Analytics' "...").
+// On by default (Flyra's Home): the money, the leaderboard, today, the
+// inbox, tasks and goals; the clock for someone who clocks in for field
+// work (is_technician). Edit Home shows, hides and orders them.
 // What needs attention is the bell's and the tab's dot (GET /me/badges).
 // A technician gets nothing here (their own Today is the tech app's).
-// Every index is read once per request (crm-store's ixMemo): 18 storage
-// calls cold for the default cards on Rotor's numbers (19 with a fresh import).
+// Every index is read once per request (crm-store's ixMemo): 16 storage
+// calls cold for the default cards on Rotor's numbers (17 with a fresh import).
 
 import { withStoreScope, readIndex, readPointer, getRaw, settledWrite, K, getSetting } from "../../../crm-store.mjs";
 import { officeSignedIn } from "../../core/auth.mjs";
 import { now, localDate, isLocalDate } from "../../core/clock.mjs";
 import { unreadCount } from "../../core/notify.mjs";
-import { has } from "../../core/services.mjs";
-import { InputError, StaleError, ForbiddenError } from "../../core/errors.mjs";
+import { has, call } from "../../core/services.mjs";
+import { InputError, StaleError, ForbiddenError, NotFoundError } from "../../core/errors.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { loadDashboard } from "../../../office-data.mjs";
 import {
   periodOf, PERIODS, monthsOf, rotorCollected, crmCollected, scheduledDays, arrDays, arrOn, moneyCard, clockToday, agendaRange, AGENDA_VIEWS, AGENDA_MAX,
-  latestImport, pairPeriod, PAIR_PERIODS, moneyPair, arrView, ARR_RANGES,
-  agendaOf, tasksOf, inboxOf, layoutOf, validateLayout, GOALS_DEFAULTS, validateGoals, jobsDoneIn,
+  latestImport, pairPeriod, PAIR_PERIODS, moneyPair, arrView, ARR_RANGES, revenueView, REVENUE_RANGES,
+  agendaOf, tasksOf, inboxOf, layoutOf, validateLayout, GOALS_DEFAULTS, validateGoals, jobsDoneIn, normalizeBoard,
 } from "./home-kpis.mjs";
 
 export const HOME_MAX_CALLS = 30;
@@ -85,6 +88,7 @@ export function availableCards(ctx) {
   const out = [];
   if (ctx.can("time:own")) out.push("clock");
   if (money) out.push("money");
+  if (money && has("reports.leaderboard")) out.push("leaderboard");
   if (ctx.can("schedule:read")) out.push("agenda");
   if (ctx.can("inbox:read") && has("comms.unread")) out.push("inbox");
   if (ctx.can("tasks:read")) out.push("tasks");
@@ -149,6 +153,24 @@ async function moneyBoth(ctx, { p, today, mode, col = null }) {
   return { ...moneyPair({ p, collected: c.collected, scheduled: scheduledDays(visits, jobs, p), source: c.source, asOf: c.asOf, arr, missing: c.missing }), updated_at: now().toISOString() };
 }
 
+// The top's Revenue view over a range (Collected wherever collectedFor finds it).
+async function revenue({ range, today, mode, col = null }) {
+  const p = periodOf(REVENUE_RANGES[range], today);
+  const c = await (col || collectedFor({ p, today, mode }));
+  return { ...revenueView({ p, range, collected: c.collected, source: c.source, asOf: c.asOf, missing: c.missing }), updated_at: now().toISOString() };
+}
+
+// This month's board (the reports module's service; the card is not offered while it is missing).
+async function leaderboard(ctx, board, today) {
+  const month = today.slice(0, 7);
+  try {
+    return normalizeBoard(await call("reports.leaderboard", { board, month }), board, month);
+  } catch (e) {
+    console.error(`crm:home: the leaderboard was left out (${safeErr(e)})`);
+    return { ...normalizeBoard(null, board, month), failed: true };
+  }
+}
+
 async function agenda(ctx, view, date) {
   const range = agendaRange(view, date);
   const [visits, users] = await Promise.all([visitsIn(range.from, range.to), ix("users", "")]);
@@ -195,13 +217,23 @@ async function home(ctx) {
     const layout = layoutOf(saved, available, { clock: !!ctx.user.is_technician });
     const on = new Set(layout.filter((c) => c.on).map((c) => c.key));
     const goals = on.has("goals") ? await getSetting("goals").catch(() => ({ ...GOALS_DEFAULTS })) : null;
-    const month = pairPeriod("month", today);
+    const month = periodOf("month", today);
     const cards = {};
     const jobs = [];
     if (on.has("clock")) jobs.push(ix("timesheets", today.slice(0, 7)).then((rows) => { cards.clock = clockToday(rows, ctx.user.id, today, t.getTime()); }));
     // this month's Collected, once for the card and the goals
     const colP = on.has("money") || on.has("goals") ? collectedFor({ p: month, today, mode }) : null;
-    if (on.has("money")) jobs.push(Promise.all([moneyBoth(ctx, { p: month, today, mode, col: colP }), ix("plans", "")]).then(([m, plans]) => { cards.money = { ...m, arr_view: arrView(plans, periodOf("month", today), today) }; }));
+    if (on.has("money")) {
+      jobs.push(Promise.all([revenue({ range: "1m", today, mode, col: colP }), colP, ix("plans", "")]).then(([rv, c, plans]) => {
+        const arr = arrView(plans, month, today);
+        // (an older phone's card reads the month's collected and the ARR beside the views)
+        cards.money = {
+          ...moneyPair({ p: pairPeriod("month", today), collected: c.collected, scheduled: null, source: c.source, asOf: c.asOf, arr: arr.total, missing: c.missing }),
+          revenue_view: rv, arr_view: { ...arr, range: "1m" }, updated_at: rv.updated_at,
+        };
+      }));
+    }
+    if (on.has("leaderboard")) jobs.push(leaderboard(ctx, "sales", today).then((b) => { cards.leaderboard = b; }));
     const taskList = (on.has("agenda") || on.has("tasks")) && ctx.can("tasks:read") ? tasks(ctx) : null;
     if (on.has("agenda")) jobs.push(Promise.all([agenda(ctx, "day", today), taskList]).then(([a, tl]) => { cards.agenda = { ...a, tasks: tl ? tl.filter((x) => !x.due) : null }; }));
     if (on.has("tasks")) jobs.push(taskList.then((tl) => { cards.tasks = { items: tl, can_add: ctx.can("sales:work") }; }));
@@ -237,11 +269,21 @@ async function moneyRoute(ctx) {
     });
   }
   const metric = q.get("metric");
-  if (!["collected", "scheduled", "arr"].includes(metric)) throw new InputError("Collected, scheduled or ARR?", "metric");
-  // the card's ARR view: 1M 3M 1Y YTD
+  if (!["collected", "scheduled", "arr", "revenue"].includes(metric)) throw new InputError("Collected, scheduled or ARR?", "metric");
+  // the top's Revenue view: 1W 1M 3M 1Y YTD
+  if (metric === "revenue") {
+    const range = q.get("range") || "1m";
+    if (!REVENUE_RANGES[range]) throw new InputError("Pick 1W, 1M, 3M, 1Y or YTD.", "range");
+    return withStoreScope({ ixMemo: new Map() }, async () => {
+      const today = localDate(now());
+      const mode = await ctx.sysMode().catch(() => null);
+      return { data: await revenue({ range, today, mode }) };
+    });
+  }
+  // the top's ARR view: 1W 1M 3M 1Y YTD
   if (metric === "arr" && q.get("range")) {
     const range = ARR_RANGES[q.get("range")];
-    if (!range) throw new InputError("Pick 1M, 3M, 1Y or YTD.", "range");
+    if (!range) throw new InputError("Pick 1W, 1M, 3M, 1Y or YTD.", "range");
     return withStoreScope({ ixMemo: new Map() }, async () => {
       const today = localDate(now());
       return { data: { ...arrView(await ix("plans", ""), periodOf(range, today), today), range: q.get("range"), updated_at: now().toISOString() } };
@@ -255,6 +297,13 @@ async function moneyRoute(ctx) {
     const [mode, goals] = await Promise.all([ctx.sysMode().catch(() => null), metric === "collected" && period === "month" ? getSetting("goals").catch(() => null) : null]);
     return { data: await money(ctx, { metric, p, today, mode, goals }) };
   });
+}
+
+async function leaderboardRoute(ctx) {
+  if (!seesMoney(ctx) || !has("reports.leaderboard")) throw new NotFoundError("There is no leaderboard yet.");
+  const b = ctx.query.get("board") || "sales";
+  if (!["sales", "techs"].includes(b)) throw new InputError("Sales or techs?", "board");
+  return withStoreScope({ ixMemo: new Map() }, async () => ({ data: await leaderboard(ctx, b, localDate(now())) }));
 }
 
 async function agendaRoute(ctx) {
@@ -285,5 +334,6 @@ export const homeRoutes = [
   route("GET", "/home", home),
   route("GET", "/home/money", moneyRoute, { maxCalls: 40 }),
   route("GET", "/home/agenda", agendaRoute, { perm: "schedule:read" }),
+  route("GET", "/home/leaderboard", leaderboardRoute),
   route("PUT", "/home/layout", saveLayout),
 ];
