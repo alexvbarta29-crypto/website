@@ -230,7 +230,7 @@ test("the office: Timesheets (approve a week, edit with a reason, decide on an e
     await f.click(".sheet.on [data-sheet-x]");
     await f.waitForFunction(() => !document.querySelector(".sheet"));
     await openDrawer(f);
-    assert.ok((await drawerLabels(f)).includes("Financials"));
+    assert.ok((await drawerLabels(f)).includes("Payroll"), "Money's Payroll; Timesheets in Financials' \"...\"");
     await drawerGo(f, "/timesheets", { open: false });
     await settled(f, { hash: "#/timesheets" });
     await f.waitForSelector(`[data-approve="${seeded.users.tech.id}"]`);

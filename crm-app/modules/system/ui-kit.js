@@ -183,8 +183,8 @@ export default {
       ${sectionLabel("Sheets")}
       <div class="rs-row">${pillBtn("Action sheet", { icon: "more", data: { "kit-actions": true } })}${pillBtn("Sheet page", { icon: "doc", tone: "solid", data: { "kit-page": true } })}</div>
 
-      ${sectionLabel("The floating bar (Track A's shell)")}
-      <div class="rs-bar-demo" role="img" aria-label="The floating tab bar and the red +"><div class="bar">${[["home", 7], ["schedule", 0], ["inbox", 2], ["map", 0], ["menu", 0]].map(([k, n], i) => html`<span class="${"bt" + (i === 1 ? " on" : "")}">${icon(k)}${n ? html`<span class="badge">${String(n)}</span>` : ""}</span>`)}</div><span class="fabx">${icon("plus")}</span></div>
+      ${sectionLabel("The floating bar (Flyra's)")}
+      <div class="rs-bar-demo" role="img" aria-label="The floating tab bar and the round +"><div class="bar">${[["home", "Home", 7], ["cal12", "Schedule", 0], ["mail", "Inbox", 2], ["map", "Map", 0], ["menu", "Menu", 0]].map(([k, l, n], i) => html`<span class="${"bt" + (i === 0 ? " on" : "")}">${icon(k)}<span>${l}</span>${n ? html`<span class="badge">${String(n)}</span>` : ""}</span>`)}</div><span class="fabx">${icon("plus")}</span></div>
     </div>`;
   },
   events: {

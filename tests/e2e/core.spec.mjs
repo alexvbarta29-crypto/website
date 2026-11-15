@@ -102,21 +102,20 @@ test("one app: the Dashboard (drawer → Analytics → Reports → Office dashbo
 test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's header; Rotor opens a new tab", async () => {
   const { p, page, f } = await office({ office: true });
   try {
-    // the Menu page (old #/menu links): the drawer's sections as a page, each one's tabs and "..." screens under it, Sign out at the bottom
+    // the Menu page (old #/menu links): the Menu's cards as a page (Flyra's), Sign out at the bottom
     await goTo(f, "/menu");
-    const groups = await f.$$eval(".menu-page .menu-rows > .dr-grp", (els) => els.map((g) => [...g.querySelectorAll(":scope > li > .dr-row .dr-l, :scope > li > .dr-sub > .dr-h .dr-l")].map((x) => x.textContent)));
-    assert.deepEqual(groups, [["Home", "Inbox", "Schedule"], ["Customers", "Leads", "Pipelines", "Power Dialer"], ["Service", "Financials", "Tasks", "Map"], ["Analytics", "Marketing"]], JSON.stringify(groups));
-    // (a page has the room: every list open under its row's name)
-    const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
-    assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Leads", "Pipelines", "Power Dialer", "Service", "Financials", "Tasks", "Map", "Analytics", "Marketing"]);
-    for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Expenses", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
-      "Outbox (not sent)", "Approvals", "Team inboxes", "Giveaway", "QR codes", "Text blast", "Door report", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
-    for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
-    assert.ok(await f.$('.menu-page a[href="#/settings"]'), "the gear");
+    const groups = await f.$$eval(".menu-page .fm-grp", (els) => els.map((g) => [...g.querySelectorAll(".fm-l, .fm-tl")].map((x) => x.textContent)));
+    assert.deepEqual(groups, [["Home", "Schedule", "Inbox", "Customers", "Leads"], ["Jobs", "Quotes", "Invoices", "Plans"], ["Pipelines", "Power Dialer", "Requests", "Tasks"], ["Payments", "Payouts", "Payroll", "Expenses"],
+      ["Leaderboard", "Map", "Reports", "Automations"], ["Campaigns", "Reviews", "Templates", "QR codes"], ["Tab bar", "Settings"]], JSON.stringify(groups));
+    assert.deepEqual(await f.$$eval(".menu-page .fm-cap", (els) => els.map((e) => e.textContent)), ["Sales", "Money", "Marketing"]);
+    const all = groups.flat();
+    for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
+    assert.ok(await f.$('.menu-page a[href="#/settings"]'), "Settings");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
     assert.deepEqual(await screenProblems(f), [], "the Menu passes the phone checks");
     await shot(page, "core-menu");
-    await f.click('.menu-page a[href="#/tools/lights"]');
+    // (Light Studio: Service's "...", from any of its tabs)
+    await drawerGo(f, "/tools/lights");
     await settled(f, { hash: "#/tools/lights" });
     assert.equal(await hashOf(f), "#/tools/lights");
     assert.equal(await title(f), "Lights");

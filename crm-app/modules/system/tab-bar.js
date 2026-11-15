@@ -11,8 +11,8 @@
 // standard bar" clears it.
 //
 // It opens as a sheet page with a red Done (from the person's initials, a
-// long press on the bar, Settings → This phone → Tab bar, the drawer's gear
-// for someone without Settings), and #/tab-bar draws the same list as a
+// long press on the bar, the Menu's Tab bar row, Settings → This phone → Tab
+// bar), and #/tab-bar draws the same list as a
 // page with Save.
 
 import { html, icon, toast, attrs, rnd, sheetPage } from "../../core/ui.js";
@@ -20,8 +20,8 @@ import { TABS, setTabs, STANDARD as BAR } from "../../core/nav.js";
 import { match } from "../../core/router.js";
 import { api } from "../../core/api.js";
 
-// (Sales, the Pipeline · Leads · Calls · Quotes · Tasks switch, is no longer offered: the drawer's
-// sections do that job, and Pipelines, Leads and Tasks can be pinned on their own. Whoever pinned
+// (Sales, the Pipeline · Leads · Calls · Quotes · Tasks switch, is no longer offered: the Menu's
+// rows do that job, and Pipelines, Leads and Tasks can be pinned on their own. Whoever pinned
 // it keeps it until they take it off.)
 export const CHOICES = Object.freeze(["home", "schedule", "inbox", "contacts", "leads", "pipeline", "leaderboard", "map", "quotes", "plans", "invoices"]);
 const KEPT = Object.freeze(["sales"]);

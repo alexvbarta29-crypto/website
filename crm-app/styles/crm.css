@@ -35,13 +35,13 @@
   /* surfaces of the shell */
   --top-bg:rgba(246,246,248,.92);--rnd-bg:#fff;--rnd-line:var(--line);--rnd-sh:none;
   --glass:rgba(255,255,255,.86);--glass-line:rgba(18,18,21,.07);--glass-sh:0 6px 20px rgba(18,18,21,.08),0 1px 2px rgba(18,18,21,.04);
+  /* the phone's bar and its + (Flyra's): a near-solid pill with a thin outline */
+  --bar-pill:rgba(255,255,255,.92);--bar-line:rgba(18,18,21,.1);
   --tab-on:rgba(18,18,21,.07);--seg-track:#ececf0;--seg-on:#fff;--seg-on-ink:#111114;--seg-on-sh:0 1px 3px rgba(18,18,21,.12),0 1px 1px rgba(18,18,21,.04);
   --sheet-bg:#f6f6f8;--pop-bg:#fff;--input-bg:#fff;--scrim:rgba(10,10,12,.42);--dim:rgba(236,236,240,.55);
   --avatar-bg:#3a3a3f;--avatar-ink:#fff;--map-blank:#eef0eb;--hero:linear-gradient(180deg,#f6f6f8 0%,#f6f6f8 100%);--hero-top:#f6f6f8;
   /* the Rotor-style kit (Nov 2026): caps labels, the grey pill button, the red + */
   --label:#727278;--fill-pill:#efeff2;--fab-red:linear-gradient(180deg,#ef4b32 0%,#db3a29 100%);
-  /* the drawer: white in light, its current row solid (Rotor's); dark: #1b1c1f, the current row white */
-  --dr-bg:#fff;--dr-on:#f0f0f3;--dr-on-ink:var(--ink);--dr-on-sh:none;
   /* the desk's rail and top bar (Flyra's): a faint grey rail, the current icon on a white tile */
   --rail-bg:#fafafb;--rail-on:#fff;--rail-on-line:var(--line-2);--bar-bg:#fff;--thead-bg:#fafafb;--page-desk:#fff;
   /* type: the iPhone's own */
@@ -85,13 +85,13 @@ html:not([data-theme="light"]) body.crm:not(.page){
   --solid:#f5f5f7;--on-solid:#111214;--solid-2:#d1d1d6;
   --top-bg:rgba(17,18,20,.9);--rnd-bg:#1b1c1f;--rnd-line:rgba(255,255,255,.1);--rnd-sh:none;
   --glass:rgba(30,31,34,.78);--glass-line:rgba(255,255,255,.1);--glass-sh:0 10px 30px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
-  --tab-on:rgba(255,255,255,.12);--seg-track:#1d1e21;--seg-on:#48494d;--seg-on-ink:#fff;--seg-on-sh:none;
+  --bar-pill:rgba(28,29,32,.9);--bar-line:rgba(255,255,255,.16);
+  --tab-on:rgba(255,255,255,.15);--seg-track:#1d1e21;--seg-on:#48494d;--seg-on-ink:#fff;--seg-on-sh:none;
   --sheet-bg:#111214;--pop-bg:#202124;--input-bg:#1b1c1f;--scrim:rgba(0,0,0,.6);--dim:rgba(0,0,0,.62);
   --avatar-bg:#2c2d31;--avatar-ink:#f5f5f7;--map-blank:#1d2420;--hero:linear-gradient(180deg,#1b2b33 0%,#151d22 300px,#111214 560px);--hero-top:#1b2b33;
   --sh-xs:none;--sh-card:none;--sh-raise:0 8px 24px rgba(0,0,0,.4);--sh-pop:0 16px 40px rgba(0,0,0,.55);
   --card-line:#2a2b2f;
   --label:#9a9aa2;--fill-pill:#2c2c30;
-  --dr-bg:#1b1c1f;--dr-on:#2c2d31;--dr-on-ink:#f5f5f7;--dr-on-sh:none;
   --rail-bg:#0c0d0f;--rail-on:#232428;--rail-on-line:#36373c;--bar-bg:#111214;--thead-bg:#18191c;--page-desk:#111214;
 }
 *{box-sizing:border-box}
@@ -234,41 +234,49 @@ body.crm:not(.page){overflow:hidden;overscroll-behavior:none}
 .qk-x{position:absolute;right:calc(16px + var(--right));bottom:calc(var(--bar-gap) + (var(--pill-h) - var(--fab-d)) / 2);display:grid;place-items:center;width:var(--fab-d);height:var(--fab-d);border:1px solid var(--glass-line);border-radius:50%;background:var(--glass);color:var(--ink);box-shadow:var(--glass-sh);cursor:pointer}
 .qk-x svg{width:24px;height:24px;stroke-width:2.4}
 body.qk-on .fab{visibility:hidden}
-/* the drawer (Rotor's menu, core/nav.js openDrawer): from the left, ~42% of
-   a phone (220 to 300 px), the screen behind dimmed and blurred; our logo
-   and an X on top; groups split by thin lines; the current row a raised
-   pill; a row with a dot opens its own list; the gear alone at the bottom */
-.dr-scrim{position:fixed;inset:0;z-index:22;background:var(--scrim);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);opacity:0;transition:opacity .2s var(--ease)}
-.dr-scrim.on{opacity:1}
-.drawer{position:fixed;z-index:23;top:0;bottom:0;left:0;width:clamp(220px,42vw,300px);display:flex;flex-direction:column;padding:calc(var(--top) + 8px) 10px calc(var(--bottom) + 12px) calc(10px + var(--left));background:var(--dr-bg);color:var(--ink);box-shadow:8px 0 32px rgba(10,10,12,.22);transform:translateX(-104%);transition:transform .24s var(--ease);outline:0}
-.drawer.on{transform:none}
-.dr-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px;padding:0 0 6px 6px}
-.dr-logo{display:flex;align-items:center;min-height:44px;border-radius:var(--r-sm)}
-.dr-logo img{display:block;width:118px;height:auto}
-.dr-logo .lg-d{display:none}
-html:not([data-theme="light"]) .dr-logo .lg-l{display:none}
-html:not([data-theme="light"]) .dr-logo .lg-d{display:block}
-.dr-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:0 -4px;padding:0 4px}
-.dr-grp{list-style:none;margin:0;padding:6px 0}
-.dr-grp+.dr-grp{border-top:1px solid var(--line)}
-.dr-row{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:0 10px;border:0;border-radius:12px;background:none;color:var(--ink);font:500 16px/1.2 var(--text);letter-spacing:-.01em;text-align:left;text-decoration:none;cursor:pointer}
-.dr-ic{flex:none;display:grid;place-items:center;width:24px;height:24px;color:var(--ink-2)}
-.dr-ic svg{width:22px;height:22px;stroke-width:1.7}
-.dr-l{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dr-row[aria-current]{background:var(--dr-on);color:var(--dr-on-ink);font-weight:600;box-shadow:var(--dr-on-sh)}
-.dr-row[aria-current] .dr-ic{color:inherit}
-.dr-row:active{background:var(--fill)}
-.dr-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--coral)}
-.dr-n{flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 12px/22px var(--text);text-align:center}
-.dr-back{color:var(--ink-2);font-weight:600}
-.dr-back+.dr-grp{border-top:1px solid var(--line);margin-top:4px}
-.dr-foot{flex:none;display:flex;align-items:center;padding:8px 0 0 2px;border-top:1px solid var(--line)}
-body.dr-on .fab{visibility:hidden}
-@media (hover:hover) and (pointer:fine){.dr-row:not([aria-current]):hover{background:var(--fill)}}
-/* #/menu: the same rows as a page */
-.menu-page .dr-grp{padding:6px 0;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);box-shadow:var(--sh-card);padding:4px 6px}
-.menu-page .dr-grp+.dr-grp{border-top:1px solid var(--card-line)}
-.menu-page .dr-foot{border:0;padding:0}
+/* the Menu (Flyra's, core/nav.js openMenu): a sheet from the bottom with a
+   grabber, the large "Menu" title and three round buttons (Help, Light or
+   dark, the person), then inset cards: rows of an icon, the name, a badge
+   and a chevron, split by hairlines that start under the name; one card of
+   four tiles (an icon over its name); small caps names over Sales, Money and
+   Marketing; the Tab bar row with a small picture of the bar */
+.sheet.fm-sheet{height:calc(100% - var(--top) - 10px);max-height:none;background:var(--sheet-bg);border-radius:28px 28px 0 0}
+.fm-sheet .grab{width:40px;height:5px;margin-top:8px;background:var(--line-2)}
+.fm-sheet .sheet-head{border-bottom:0;gap:10px;padding:12px 16px 10px 22px}
+.fm-sheet .sheet-head h2{font:700 34px/1.1 var(--head);letter-spacing:-.03em}
+.fm-sheet .sheet-x{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);padding:0;margin:-1px;border:0}
+.fm-sheet .sheet-body{padding:8px 16px calc(28px + var(--bottom))}
+.fm-acts{flex:none;display:flex;align-items:center;gap:10px}
+.fm-acts .rnd{width:46px;height:46px;background:var(--card);border-color:var(--card-line)}
+.fm-acts .rnd svg{width:22px;height:22px;stroke-width:1.7}
+.fm-th{display:contents}
+.rnd.fm-av{font:600 15px/1 var(--text);color:var(--ink)}
+.fm{display:flex;flex-direction:column;gap:18px}
+.fm-cap{margin:0 0 7px 18px;font:600 var(--t-cap)/1.2 var(--text);letter-spacing:.07em;text-transform:uppercase;color:var(--label)}
+.fm-card{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--card-line);border-radius:22px;overflow:hidden}
+.fm-card>li{position:relative}
+.fm-card:not(.fm-tiles)>li+li::before{content:"";position:absolute;z-index:1;top:0;left:60px;right:16px;border-top:1px solid var(--line)}
+.fm-row{display:flex;align-items:center;gap:16px;width:100%;min-height:56px;padding:0 14px 0 18px;border:0;background:none;color:var(--ink);font:400 17px/1.2 var(--text);letter-spacing:-.01em;text-align:left;text-decoration:none;cursor:pointer}
+.fm-ic{flex:none;display:grid;place-items:center;width:26px;height:26px;color:var(--ink)}
+.fm-ic svg{width:24px;height:24px;stroke-width:1.6}
+.fm-l{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-chev{flex:none;display:grid;place-items:center;color:var(--ink-3)}
+.fm-chev svg{width:16px;height:16px;stroke-width:1.8}
+.fm-n,.fm-tn{flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 12px/22px var(--text);text-align:center}
+.fm-row[aria-current],.fm-tile[aria-current]{background:var(--fill)}
+.fm-row:active,.fm-tile:active{background:var(--fill-2)}
+.fm-prev{flex:none;display:flex;align-items:center;gap:10px;height:34px;padding:0 13px;border-radius:999px;background:var(--fill-2);color:var(--ink-2)}
+.fm-prev svg{width:17px;height:17px;stroke-width:1.7}
+.fm-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.fm-tiles>li+li::before{content:"";position:absolute;z-index:1;left:0;top:16px;bottom:16px;border-left:1px solid var(--line)}
+.fm-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:76px;padding:10px 2px;color:var(--ink);text-decoration:none;font:600 13.5px/1.1 var(--text);letter-spacing:-.01em}
+.fm-ti{position:relative;display:grid;place-items:center}
+.fm-ti svg{width:26px;height:26px;stroke-width:1.6}
+.fm-tn{position:absolute;top:-8px;left:16px;min-width:19px;height:19px;padding:0 5px;font-size:11px;line-height:19px}
+.fm-tl{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (hover:hover) and (pointer:fine){.fm-row:not([aria-current]):hover,.fm-tile:not([aria-current]):hover{background:var(--fill)}}
+/* #/menu: the same cards as a page */
+.menu-more-h{margin:10px 4px 12px;font:700 var(--t-title)/1.2 var(--head);letter-spacing:-.01em}
 /* the top bar of a top-level screen on a phone (Rotor's): the hamburger, then search, the time, help, the person */
 .top-bar{display:none}
 .tb-gap{flex:1}
@@ -915,30 +923,29 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
   .rs-act:hover,a.rs-li:hover,button.rs-li:hover,.rs-li-sum.tap:hover,.rs-disc:hover,a.rs-cv:hover,button.rs-cv:hover,a.rs-stat-c:hover,button.rs-stat-c:hover{background:var(--fill)}
   .rs-seg-b:not([aria-selected="true"]):hover{color:var(--ink)}
 }
-/* the floating tab bar, Rotor's (the shell opts in with .rs-shell on #app; Track A's shell work):
-   icon-only glass pill, the current icon red with a dot under it, red badges; the red round + */
+/* the floating tab bar, Flyra's (the shell opts in with .rs-shell on #app): a pill with labels under
+   the icons, the current place in a lighter pill (ink, not coral), badges; the + a round button of
+   its own with a thin outline */
 @media (max-width:899px){
-  .app.rs-shell{--fab-d:62px}
-  .app.rs-shell .tabs.pill .tab .tl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .app.rs-shell .tabs.pill .tab{color:var(--ink-2)}
-  .app.rs-shell .tabs.pill .tab svg{width:26px;height:26px}
-  .app.rs-shell .tabs.pill .tab[aria-current="page"]{background:none;color:var(--ink)}
-  .app.rs-shell .tabs.pill .tab[aria-current="page"] svg{color:inherit;stroke-width:2.1}
-  .app.rs-shell .tabs.pill .tab[aria-current="page"]::after{content:"";position:absolute;left:50%;bottom:6px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--coral)}
+  .app.rs-shell .tabs.pill{padding:4px;border-color:var(--bar-line);background:var(--bar-pill)}
+  .app.rs-shell .tabs.pill .tab{gap:3px;padding:6px 0 5px;color:var(--ink-3);font:500 12px/1.1 var(--text)}
+  .app.rs-shell .tabs.pill .tab svg{width:25px;height:25px;stroke-width:1.6}
+  .app.rs-shell .tabs.pill .tab[aria-current="page"]{background:var(--tab-on);color:var(--ink);font-weight:600}
+  .app.rs-shell .tabs.pill .tab[aria-current="page"] svg{color:inherit;stroke-width:1.9}
+  .app.rs-shell .tabs.pill.six .tab[aria-current="page"]::after{display:none}
   .app.rs-shell .tabs.pill .tab .badge{box-shadow:0 0 0 2px var(--mist)}
-  .app.rs-shell .fab{border:0;background:var(--fab-red);color:#fff;box-shadow:0 6px 16px rgba(219,58,41,.26);-webkit-backdrop-filter:none;backdrop-filter:none}
-  .app.rs-shell .fab svg{width:28px;height:28px}
+  .app.rs-shell .fab{border:1px solid var(--bar-line);background:var(--bar-pill);color:var(--ink)}
+  .app.rs-shell .fab svg{width:27px;height:27px;stroke-width:2.2}
 }
 /* #/kit's still picture of that bar */
 .rs-bar-demo{display:flex;align-items:center;gap:10px}
-.rs-bar-demo .bar{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-around;height:62px;padding:0 8px;border:1px solid var(--glass-line);border-radius:31px;background:var(--glass);box-shadow:var(--glass-sh)}
-.rs-bar-demo .bt{position:relative;display:grid;place-items:center;color:var(--ink-2)}
-.rs-bar-demo .bt svg{width:26px;height:26px}
-.rs-bar-demo .bt.on{color:var(--coral)}
-.rs-bar-demo .bt.on::after{content:"";position:absolute;left:50%;bottom:-9px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--coral)}
-.rs-bar-demo .bt .badge{position:absolute;top:-7px;right:-11px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 11px/18px var(--text);text-align:center;box-shadow:0 0 0 2px var(--mist)}
-.rs-bar-demo .fabx{flex:none;display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:var(--fab-red);color:#fff;box-shadow:0 8px 20px rgba(219,58,41,.4)}
-.rs-bar-demo .fabx svg{width:28px;height:28px;stroke-width:2.4}
+.rs-bar-demo .bar{flex:1;min-width:0;display:flex;align-items:center;height:62px;padding:4px;border:1px solid var(--bar-line);border-radius:31px;background:var(--bar-pill);box-shadow:var(--glass-sh)}
+.rs-bar-demo .bt{position:relative;flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:999px;color:var(--ink-3);font:500 12px/1.1 var(--text)}
+.rs-bar-demo .bt svg{width:25px;height:25px}
+.rs-bar-demo .bt.on{background:var(--tab-on);color:var(--ink);font-weight:600}
+.rs-bar-demo .bt .badge{position:absolute;top:2px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 10.5px/17px var(--text);text-align:center;box-shadow:0 0 0 2px var(--mist)}
+.rs-bar-demo .fabx{flex:none;display:grid;place-items:center;width:56px;height:56px;border:1px solid var(--bar-line);border-radius:50%;background:var(--bar-pill);color:var(--ink)}
+.rs-bar-demo .fabx svg{width:27px;height:27px;stroke-width:2.2}
 /* #/kit's own bits (system/ui-kit.js) */
 .kit-p{margin:10px 0 2px;color:var(--ink-2)}
 .kit-grow{flex:1;min-width:0}
@@ -964,10 +971,6 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
 .set-ic.blue{background:#2f7cf6}.set-ic.green{background:#2fa44f}.set-ic.amber{background:#e89a16}.set-ic.red{background:#e5483a}.set-ic.teal{background:#1f9aa8}.set-ic.purple{background:#7a5af5}.set-ic.grey{background:#8e8e93}
 .set-own{background:var(--fill-2);color:var(--ink-2)}
 .set-none{margin:6px 4px}
-/* #/menu: every list of the drawer open under its row's name */
-.dr-h{display:flex;align-items:center;gap:12px;min-height:40px;margin:6px 0 0;padding:0 10px;font:600 13px/1.2 var(--text);letter-spacing:.05em;text-transform:uppercase;color:var(--label)}
-.dr-h .dr-ic{color:var(--label)}
-.dr-in{list-style:none;margin:0 0 4px;padding:0 0 0 22px}
 
 /* ------------------------------------------------------------ the list and board patterns (K0, Nov 2026; core/ui.js, #/kit)
    The Rotor guide's phone patterns: the tile row that is the filter, two-line

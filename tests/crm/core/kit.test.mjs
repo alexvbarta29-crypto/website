@@ -175,7 +175,7 @@ test("every class the kit draws has its look in crm.css; Customize Tabs and the 
   const classes = new Set([...out.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)));
   const missing = [...classes].filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, "\\-")}(?![\\w-])`).test(CSS));
   assert.deepEqual(missing, []);
-  for (const c of ["ctb-list", "ctb-row", "ctb-div", "ctb-drag", "drawer", "dr-row", "dr-grp", "top-bar", "set-ic", "rs-actions", "rs-act", "rs-act-g", "rs-sheetpage", "rs-done", "rs-sp-pane", "rs-top", "rs-shell", "rs-dashed", "rs-sat", "rs-page", "rs-name", "rs-amt", "rs-inset"]) assert.match(CSS, new RegExp(`\\.${c}\\b`), c);
+  for (const c of ["ctb-list", "ctb-row", "ctb-div", "ctb-drag", "fm-sheet", "fm-row", "fm-card", "fm-tile", "fm-prev", "top-bar", "set-ic", "rs-actions", "rs-act", "rs-act-g", "rs-sheetpage", "rs-done", "rs-sp-pane", "rs-top", "rs-shell", "rs-dashed", "rs-sat", "rs-page", "rs-name", "rs-amt", "rs-inset"]) assert.match(CSS, new RegExp(`\\.${c}\\b`), c);
   // the tokens: light Flyra's calm (Polish 3: a faint grey canvas, white cards with one hairline, no card shadow), dark ours, under the same names
   assert.match(CSS, /:root\{[^}]*--mist:#f6f6f8;[^}]*--card:#fff;--card-2:#f3f3f6;/);
   assert.match(CSS, /:root\{[^}]*--sh-card:none;[^}]*--card-line:var\(--line\);/);
