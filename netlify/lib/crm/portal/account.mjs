@@ -313,6 +313,12 @@ export async function requestWork(p) {
     ids.push(f.id);
   }
   if (ids.length) await updateRecord("task", task.id, (x) => { const have = new Set(x.photo_ids || []); return ids.every((id) => have.has(id)) ? null : { ...x, photo_ids: [...new Set([...(x.photo_ids || []), ...ids])].slice(0, 10) }; }, w);
+  // the Service tab's Requests list (guide-gaps S4): a request beside the task, with its photos (best effort: the task is the office's alert)
+  if (has("service.requestFromPortal")) {
+    const photoIds = ids.length ? ids : (task.photo_ids || []);
+    await call("service.requestFromPortal", { contact, task, services: words, timing: timing[1], notes, property_id: propertyId, photo_ids: photoIds }, w)
+      .catch((e) => console.error(`crm:portal: the request wasn't made (${safeErr(e)})`));
+  }
   if (created) await tellOffice(`${nameOf(contact)} asked for work`, words.join(", ") || "See the note.", task.id);
   return p.json({ ok: true, data: { request_id: task.id, already: !created } }, created ? 201 : 200);
 }

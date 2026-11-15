@@ -84,3 +84,8 @@
 .pl-page .rs-card p.warn-box,.pl-page .rs-card p.note{margin:4px 0 0}
 .pl-skip{border:0;background:none;color:var(--muted);font:600 15px/1 var(--text);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .rs-li-sum .num,.rs-li-m{white-space:nowrap}
+/* a lights season link in the facts list: a whole 44 px tap */
+.pl-facts .v a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+/* the Save center card: the steps as a plain checklist */
+.pl-steps { list-style: none; padding: 0; margin: 8px 0; }
+.pl-save .rs-chips { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -6,14 +6,14 @@
 // person's printable pay sheet, the CSV, and Add adjustment (with a note the
 // person sees).
 
-import { html, attrs, toast, confirmSheet, sheet } from "../../core/ui.js";
+import { html, attrs, toast, confirmSheet, sheet, stepper, seg, listRow, listCard } from "../../core/ui.js";
 import { readForm, showError, clearErrors, busy, readMoney, select, field } from "../../core/forms.js";
 import { ensureStyles, statusPill, span, dollars, hrs, lineRow, totalsGrid, MODEL } from "./kit.js";
 
 async function load(params, ctx) {
   ensureStyles();
   const r = await ctx.api(`/payroll/periods/${encodeURIComponent(params.id)}`, { cache: false });
-  return { ...r.data, run: ctx.can("payroll:run"), open: ctx.keep.open || {} };
+  return { ...r.data, run: ctx.can("payroll:run"), open: ctx.keep.open || {}, view: ctx.keep.view || "people" };
 }
 
 const api = (id, what) => `/api/crm/payroll/periods/${encodeURIComponent(id)}/${what}`;
@@ -59,6 +59,25 @@ function adjust(ctx) {
   });
 }
 
+// Rotor's track (S20a): locked reads as Approved; Closed after Paid.
+const TRACK = [["open", "Open"], ["locked", "Approved"], ["paid", "Paid"], ["closed", "Closed"]];
+// The amber cards (S20c): what needs a look before the period is right.
+function warnCards(s) {
+  const w = s.warnings || {};
+  const out = [];
+  for (const j of w.nobody || []) out.push(html`<a class="card py-warn-card" href="${"#/jobs/" + encodeURIComponent(j.id)}"><b>A finished job with nobody on it</b><span>Job ${j.number || ""}${j.title ? ` · ${j.title}` : ""}: nobody earns on it until someone is on the visit.</span></a>`);
+  if (w.timers) out.push(html`<a class="card py-warn-card" href="#/timesheets"><b>${w.timers} visit timer${w.timers === 1 ? "" : "s"} still running</b><span>Time keeps counting until it's stopped.</span></a>`);
+  return out;
+}
+// The Job view (S20b): each job, who earns what on it.
+function jobsView(s) {
+  return listCard((s.by_job || []).map((g) => listRow({
+    title: g.job_id ? g.label : "Hours, tips and adjustments", amount: g.total_cents,
+    sub: [g.people.map((p) => `${p.name} ${dollars(p.cents)}`).join(", "), g.commission_cents ? `comm ${dollars(g.commission_cents)}` : null, g.tips_cents ? `tips ${dollars(g.tips_cents)}` : null].filter(Boolean).join(" · "),
+    href: g.job_id ? "#/jobs/" + encodeURIComponent(g.job_id) : null,
+  })), { label: "By job", empty: "No pay lines in this period yet." });
+}
+
 export default {
   load,
   title: (s) => (s && s.period ? span(s.period.start_on, s.period.end_on) : "Pay period"),
@@ -71,16 +90,20 @@ export default {
       <section class="card py-hero">
         <span class="k">Pay period · ${span(p.start_on, p.end_on)}${p.weeks > 1 ? ` · ${p.weeks} weeks` : ""}</span>
         <span class="big">${dollars(total)}</span>
-        <span class="meta">${statusPill(p.status)}<span>${p.status === "open" ? (s.ended ? "over, not locked yet" : "worked out live so far") : p.status === "locked" ? "final; not marked paid yet" : "paid"}</span></span>
+        <span class="meta">${statusPill(p.status === "locked" ? "approved" : p.status)}<span>${p.status === "open" ? (s.ended ? "over, not approved yet" : "worked out live so far") : p.status === "locked" ? "final; not marked paid yet" : p.status === "closed" ? "paid and closed" : "paid"}</span></span>
+        <div class="py-track">${stepper(TRACK, p.status, { label: "Pay period" })}</div>
         ${p.status === "open" && waits.length ? html`<p class="py-warn">${waits.join(". ")}. Timesheets settles them.</p>` : ""}
         <div class="py-acts">
           ${s.run && p.status === "open" ? html`<button type="button" class="btn" data-act="add">Add bonus or adjustment</button>` : ""}
-          ${s.run && p.status === "open" ? html`<button type="button" class="btn primary" ${attrs({ "data-act": "lock", disabled: !s.ended })}>Lock${s.ended ? "" : " (once it's over)"}</button>` : ""}
+          ${s.run && p.status === "open" ? html`<button type="button" class="btn primary" ${attrs({ "data-act": "lock", disabled: !s.ended })}>Approve period${s.ended ? "" : " (once it's over)"}</button>` : ""}
           ${s.run && p.status === "locked" ? html`<button type="button" class="btn primary" data-act="paid">Mark paid</button><button type="button" class="btn" data-act="unlock">Unlock</button>` : ""}
+          ${s.run && p.status === "paid" ? html`<button type="button" class="btn" data-act="close">Close the period</button>` : ""}
           <a class="btn" ${attrs({ href: api(p.id, "export.csv"), download: "" })}>Export CSV</a>
         </div>
       </section>
-      ${(s.people || []).length ? s.people.map((person) => {
+      ${warnCards(s)}
+      ${seg([["people", "Team member"], ["jobs", "Job"]], s.view, { name: "py-view", label: "View by" })}
+      ${s.view === "jobs" ? jobsView(s) : (s.people || []).length ? s.people.map((person) => {
         const t = s.totals[person.id] || {};
         const mine = (s.lines || []).filter((l) => l.user_id === person.id);
         return html`<section class="card py-person">
@@ -99,7 +122,9 @@ export default {
   },
   events: {
     "click [data-act=add]": (e, el, ctx) => adjust(ctx),
-    "click [data-act=lock]": async (e, el, ctx) => { if (await confirmSheet("Lock this pay period? The pay becomes final, its shifts are locked, and time added later goes to the next period.", { title: "Lock the period", yes: "Lock it" })) act(ctx, el, "lock", "Locking…"); },
+    "click [data-seg=py-view]": (e, el, ctx) => { ctx.state.view = ctx.keep.view = el.dataset.key; ctx.rerender(); },
+    "click [data-act=close]": async (e, el, ctx) => { if (await confirmSheet("Close this period? It's paid and done; nothing more goes into it.", { title: "Close the period", yes: "Close it" })) act(ctx, el, "close", "Closing…"); },
+    "click [data-act=lock]": async (e, el, ctx) => { if (await confirmSheet("Approve this pay period? The pay becomes final, its shifts are locked, and time added later goes to the next period.", { title: "Approve the period", yes: "Approve it" })) act(ctx, el, "lock", "Approving…"); },
     "click [data-act=unlock]": async (e, el, ctx) => { if (await confirmSheet("Unlock it? The pay is worked out again from the time, jobs and tips.", { title: "Unlock", yes: "Unlock" })) act(ctx, el, "unlock", "Unlocking…"); },
     "click [data-act=paid]": async (e, el, ctx) => { if (await confirmSheet("Mark this period paid? This only records it; nothing is sent anywhere.", { title: "Mark paid", yes: "Mark paid" })) act(ctx, el, "paid", "Saving…"); },
     "click [data-void]": async (e, el, ctx) => {

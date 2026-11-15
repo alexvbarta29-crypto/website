@@ -44,24 +44,28 @@ test("the manifest: money routes behind their permissions, a Money section in th
   assert.deepEqual(M.settings.map((s) => [s.path, s.perm]), [["/settings/payments", "settings:owner"]]);
 });
 
-test("Invoices: totals in dollars, chips with counts, rows escaped and worded by what matters first", async () => {
+test("Invoices (Rotor's tiles): Outstanding, Overdue, Due today and Paid this month with $, rows escaped and worded by what matters first, Text a reminder on overdue ones", async () => {
   const list = await load("invoices");
-  const rows = [row(), row({ id: "in_00000000000000000002", n: "INV-0611", cn: "Sam Sample", af: true }), row({ id: "in_00000000000000000003", n: "INV-0612", cn: "Lee Late", od: true, pp: true, bal: 10000 })];
-  const h = text(list.render({ rows, counts: { open: 3, overdue: 1, failed: 1 }, totals: { open_cents: 69000, overdue_cents: 10000 }, chip: "open", q: "", more: false }, ctx()));
+  const rows = [row(), row({ id: "in_00000000000000000002", n: "INV-0611", cn: "Sam Sample", af: true }), row({ id: "in_00000000000000000003", n: "INV-0612", cn: "Lee Late", od: true, pp: true, bal: 10000, pl: "pl_1" })];
+  const base = { rows, counts: { open: 3, overdue: 1, failed: 1, due_today: 1, paid_month: 2 }, totals: { open_cents: 69000, overdue_cents: 10000, due_today_cents: 29500, paid_month_cents: 59000 }, chip: "open", q: "", more: false };
+  const h = text(list.render(base, ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /href="#\/invoices\/in_00000000000000000001"/);
-  assert.match(h, /Waiting<\/span><span class="rs-stat-v">\$690\.00/, "the stat card (Rotor's look, Nov 2026)");
-  assert.match(h, /Past due<\/span><span class="rs-stat-v red">\$100\.00/);
-  assert.match(h, /Paid this month/);
-  assert.match(h, /data-list-more/, "Payments, Autopay and Export behind the round ...");
-  assert.match(h, /class="c-row"/, "two-line rows");
-  assert.match(h, /Open <span class="n">3<\/span>/);
-  assert.match(h, /Card failed <span class="n">1<\/span>/);
-  assert.doesNotMatch(h, /data-chip="overpaid"/, "a chip with nothing in it stays out of the way");
+  assert.match(h, /Outstanding<\/span><span class="rs-tile-v num">3<\/span><span class="rs-tile-m num">\$690\.00/);
+  assert.match(h, /class="rs-tile red"[^>]*data-key="overdue"[^>]*><span class="rs-tile-l">Overdue<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$100\.00/);
+  assert.match(h, /Due today<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$295\.00/);
+  assert.match(h, /Paid this month<\/span><span class="rs-tile-v num">2<\/span><span class="rs-tile-m num">\$590\.00/);
+  assert.match(h, /data-list-more/, "the Tax report, Payments, Autopay and Export behind the round ...");
+  assert.match(h, /class="rs-lrow/, "Row2 rows");
+  assert.match(h, /data-key="failed"/);
+  assert.doesNotMatch(h, /data-key="overpaid"/, "a tile with nothing in it stays out of the way");
   assert.match(h, /Card failed<\/span>/);
   assert.match(h, /Overdue<\/span>/, "overdue wins over part paid");
-  assert.match(text(list.render({ rows, counts: {}, totals: {}, chip: "open", q: "sam", more: false }, ctx())), /Sam Sample/);
-  assert.doesNotMatch(text(list.render({ rows, counts: {}, totals: {}, chip: "open", q: "sam", more: false }, ctx())), /Lee Late/);
+  assert.match(h, /data-remind="in_00000000000000000003"/, "Text a reminder on the overdue one only");
+  assert.doesNotMatch(h, /data-remind="in_00000000000000000001"/);
+  assert.match(h, /<span class="rs-tag">Plan<\/span>/);
+  assert.match(text(list.render({ ...base, q: "sam" }, ctx())), /Sam Sample/);
+  assert.doesNotMatch(text(list.render({ ...base, q: "sam" }, ctx())), /Lee Late/);
   assert.match(text(list.render({ rows: [], counts: {}, totals: {}, chip: "overdue", q: "", more: false }, ctx())), /Nothing overdue/);
   assert.equal(list.action({}, ctx(["invoices:read_all"])), null, "no New for a login that can't write invoices");
   assert.equal(list.action({}, ctx()).label, "New");
@@ -109,14 +113,18 @@ test("one invoice: lines, balance, the card, and only the buttons its state and 
 
 test("Payments and the contact's Money tab: the month's totals, practice payments marked, credit and the card", async () => {
   const pay = await load("payments");
-  const h = text(pay.render({ rows: [prow(), prow({ id: "pm_00000000000000000002", k: "refund", a: 5000, tip: 0 }), prow({ id: "pm_00000000000000000003", sim: true, m: "cash", tip: 0 })], totals: { collected_cents: 27450, tips_cents: 2950, fees_cents: 0, refunds_cents: 5000, simulated: 1 }, by: { card: 32450 }, month: "2026-11", method: "" }, ctx()));
+  const tiles = { total: { n: 1, cents: 27450 }, stripe: { n: 1, cents: 32450 }, cash_check: { n: 0, cents: 0 }, tips: { n: 1, cents: 2950 }, refunds: { n: 1, cents: 5000 }, fees: { n: 0, cents: 0 } };
+  const h = text(pay.render({ rows: [prow(), prow({ id: "pm_00000000000000000002", k: "refund", a: 5000, tip: 0 }), prow({ id: "pm_00000000000000000003", sim: true, m: "cash", tip: 0 })], totals: { collected_cents: 27450, tips_cents: 2950, fees_cents: 0, refunds_cents: 5000, simulated: 1 }, tiles, month: "2026-11", group: "" }, ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /November 2026/);
-  assert.match(h, /\$274\.50<\/b><small>came in/);
+  assert.match(h, /Total<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$274\.50/, "after refunds");
+  assert.match(h, /Stripe<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$324\.50/);
+  assert.match(h, /Tips<\/span><span class="rs-tile-v num">1<\/span><span class="rs-tile-m num">\$29\.50/);
+  assert.match(h, /data-pay-more/, "the Tip report behind the round ...");
   assert.match(h, /tip \$29\.50/);
   assert.match(h, /−\$50\.00/);
   assert.match(h, /1 practice payment \(marked "test"\) is listed but never counted/);
-  assert.match(text(pay.render({ rows: [], totals: {}, by: {}, month: "2026-11", method: "" }, ctx())), /No payments this month/);
+  assert.match(text(pay.render({ rows: [], totals: {}, tiles: {}, month: "2026-11", group: "" }, ctx())), /No payments this month/);
   const tab = await load("contact-tab");
   const th = text(tab.render({ id: CT, invoices: [row()], payments: [prow()], more: {}, credit: { balance_cents: 2500, held_cents: 1000, rows: [{ id: "cr_1", kind: "goodwill", amount_cents: 2500, status: "available", note: `Sorry ${XSS}` }] }, card: { status: "failed", pm: { kind: "card", brand: "visa", last4: "4242" } }, open_balance_cents: 29500, can: { credit: true, invoice: true, card_link: true } }, ctx()));
   assert.ok(!th.includes("<script>alert(1)"));

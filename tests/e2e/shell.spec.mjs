@@ -63,7 +63,7 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.equal(await f.$(".drawer [data-dr-sub], .drawer .dr-dot, .drawer [data-dr-back]"), null, "no sub-lists");
         assert.equal(await f.getAttribute('.drawer .dr-row[href="#/today"]', "aria-current"), "page", "Home is the current row");
         assert.match(await f.textContent('.drawer a[href="#/inbox"]'), /Inbox\s*\d+/, "the Inbox count");
-        assert.equal(await f.getAttribute('.drawer [data-dr-sec="service"]', "href"), "#/quotes", "Service opens on its first tab");
+        assert.equal(await f.getAttribute('.drawer [data-dr-sec="service"]', "href"), "#/requests", "Service opens on its first tab");
         assert.ok(await f.$('.drawer a[href="#/settings"]'), "the gear at the bottom");
         assert.deepEqual(await drawerProblems(f), [], "44 px rows and buttons");
         assert.deepEqual(await screenProblems(f), []);
@@ -101,12 +101,12 @@ for (const device of ["iphone13", "iphonese"]) {
       try {
         // Home has its own bell: the top bar's steps aside there
         assert.equal(await f.isVisible("#top-bar [data-tb-bell]"), false, "Home's own bell only");
-        // the drawer's Service: Quotes, its first tab, with Service's tabs under the title
+        // the drawer's Service: Requests, its first tab, with Service's tabs under the title
         await openDrawer(f);
         await f.click('.drawer [data-dr-sec="service"]');
-        await settled(f, { hash: "#/quotes" });
-        assert.equal(await title(f), "Quotes");
-        assert.deepEqual(await secTabs(f), [["quotes", "true"], ["jobs", "false"], ["plans", "false"]], "Requests waits for its screen");
+        await settled(f, { hash: "#/requests" });
+        assert.equal(await title(f), "Requests");
+        assert.deepEqual(await secTabs(f), [["requests", "true"], ["quotes", "false"], ["jobs", "false"], ["plans", "false"]], "Requests, once its screen is there");
         assert.equal(await f.$eval('#subnav [data-key="jobs"]', (a) => a.tagName + " " + a.getAttribute("href")), "A #/jobs", "each tab is a link");
         assert.equal(await f.isVisible("#top-back"), false, "top-level");
         assert.equal(await f.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "the Menu is lit");
@@ -121,7 +121,7 @@ for (const device of ["iphone13", "iphonese"]) {
         // a tab: Plans
         await f.click('#subnav [data-key="plans"]');
         await settled(f, { hash: "#/plans" });
-        assert.deepEqual(await secTabs(f), [["quotes", "false"], ["jobs", "false"], ["plans", "true"]]);
+        assert.deepEqual(await secTabs(f), [["requests", "false"], ["quotes", "false"], ["jobs", "false"], ["plans", "true"]]);
         assert.equal(await f.isVisible("#top-back"), false, "a tab is top-level too");
         assert.deepEqual(await screenProblems(f), []);
         await shot(page, `shell-section-${device}-${theme}`);
@@ -150,7 +150,7 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.equal(await g.getAttribute('#tabs [data-tab="menu"]', "aria-current"), "page", "still the Menu's");
         await g.click("#top-back");
         await settled(g, { hash: "#/invoices" });
-        assert.deepEqual((await secTabs(g)).map(([k]) => k), ["invoices", "payments", "payroll"]);
+        assert.deepEqual((await secTabs(g)).map(([k]) => k), ["invoices", "payments", "payouts", "payroll", "expenses"]);
         // Help: Where do I go to...
         await g.click("#top-bar [data-tb-help]");
         await g.waitForSelector(".sheet.on [data-where]");
@@ -331,7 +331,7 @@ test("on a desk (1440): the sidebar is the drawer's sections; a row opens the ta
       await f.click('#side [data-sec="financials"]');
       await settled(f, { hash: "#/invoices" });
       assert.equal(await f.getAttribute('#side [data-sec="financials"]', "aria-current"), "page");
-      assert.deepEqual(await secTabs(f), [["invoices", "true"], ["payments", "false"], ["payroll", "false"]]);
+      assert.deepEqual(await secTabs(f), [["invoices", "true"], ["payments", "false"], ["payouts", "false"], ["payroll", "false"], ["expenses", "false"]]);
       await f.click('#subnav [data-key="payroll"]');
       await settled(f, { hash: "#/payroll" });
       assert.equal(await f.getAttribute('#side [data-sec="financials"]', "href"), "#/payroll", "the row follows the tab used last");
@@ -340,7 +340,7 @@ test("on a desk (1440): the sidebar is the drawer's sections; a row opens the ta
       assert.equal(await f.isVisible("#top-rnd .rnd-own"), false, "the phone's round buttons stay the phone's");
       await f.click("#top-rnd [data-sec-more]");
       await f.waitForSelector(".sheet.on .rs-act");
-      assert.deepEqual(await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent)), ["Autopay run", "Timesheets", "Purchases"]);
+      assert.deepEqual(await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent)), ["Autopay run", "Timesheets"], "Purchases left for the Expenses screen's \"...\" (Track 3)");
       await f.click('.sheet.on a[href="#/autopay"]');
       await settled(f, { hash: "#/autopay" });
       assert.equal(await f.isVisible("#top-back"), true, "a \"...\" screen has a back button");

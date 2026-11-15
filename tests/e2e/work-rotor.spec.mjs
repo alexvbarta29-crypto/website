@@ -120,9 +120,9 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       await checks(f, page, `rotor-job-more-${device}-${theme}`, problems);
       await f.click(".sheet.on [data-sheet-x]");
       await sheetGone(f);
-      // the jobs list: 2-line rows
+      // the jobs list: Rotor's tiles and Row2 rows (the Service hub, Track 3)
       await goTo(f, "/jobs");
-      await f.waitForSelector(`.wk-jrow[href="#/jobs/${id}"] .wk-jl2 .pill`);
+      await f.waitForSelector(`.rs-lrow a[href="#/jobs/${id}"] .rs-lr-2`);
       await checks(f, page, `rotor-jobs-${device}-${theme}`, problems);
       assert.deepEqual(problems, []);
       await p.clean();

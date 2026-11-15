@@ -109,7 +109,7 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
     // (a page has the room: every list open under its row's name)
     const all = await f.$$eval(".menu-page .dr-in .dr-l", (els) => els.map((e) => e.textContent));
     assert.deepEqual(await f.$$eval(".menu-page .dr-h .dr-l", (els) => els.map((e) => e.textContent)), ["Inbox", "Leads", "Pipelines", "Power Dialer", "Service", "Financials", "Tasks", "Map", "Analytics", "Marketing"]);
-    for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Purchases", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
+    for (const want of ["Jobs", "Plans", "Quotes", "Light Studio", "Invoices", "Payments", "Payroll", "Expenses", "Timesheets", "Autopay run", "Leaderboard", "Office dashboard", "Team map",
       "Outbox (not sent)", "Approvals", "Team inboxes", "Giveaway", "QR codes", "Text blast", "Door report", "Campaigns", "Reviews", "Workflows", "Templates", "Manage pipelines"]) assert.ok(all.includes(want), `the Menu lists ${want}: ${all.join(", ")}`);
     for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Tab bar", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
     assert.ok(await f.$('.menu-page a[href="#/settings"]'), "the gear");
@@ -455,7 +455,11 @@ test("every client route in the manifests, as owner and tech, at both phone size
   const week = await (await o.ctx.request.post("/api/crm/payroll/periods", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { start_on: "2026-11-08" } })).json();
   // a custom automation (from a starter recipe)
   const flow = await (await o.ctx.request.post("/api/crm/automations/flows", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { recipe: "review_after_visit" } })).json();
+  // a request (Service → Requests) and an expense (Financials → Expenses): Track 3's screens
+  const rq = await (await o.ctx.request.post("/api/crm/requests", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-00000000c0re", contact_id: seeded.contacts.lead, services: ["Gutters"] } })).json();
+  const exp = await (await o.ctx.request.post("/api/crm/expenses", { headers: { "x-crm": "1", "content-type": "application/json" }, data: { client_id: "00000000-0000-4000-8000-00000000c0rf", date: "2026-11-16", amount_cents: 2500, category: "fuel" } })).json();
   const ids = {
+    "/requests/:id": rq.data.request.id, "/expenses/:id": exp.data.expense.id,
     "/automations/flow/:id": flow.data.flow.id, "/automations/flow/:id/runs": flow.data.flow.id,
     "/claude-connect/:rid": "expired-request",
     "/payroll/:id": week.data && week.data.period ? week.data.period.id : null,
@@ -491,7 +495,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
         await f.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--sab").trim() === "34px");
         for (const r of routes) {
           const path = fill(r);
-          await goTo(f, path);
+          try { await goTo(f, path); } catch (e) { e.message = `${login} ${device} ${r}: ${e.message}`; throw e; }   // (which screen never settled)
           await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 }).catch(() => {});
           const where = `${login} ${device} ${r}`;
           for (const x of await screenProblems(f)) problems.push(`${where}: ${x}`);

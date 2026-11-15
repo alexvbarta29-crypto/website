@@ -49,16 +49,22 @@ test("the builder's live totals agree with the server's engine (integer math, sc
   assert.equal(kit.toMilli("1.5"), 1500);
 });
 
-test("Quotes list and the contact's tab: chips with counts, rows escaped", async () => {
+test("Quotes list (Rotor's tiles) and the contact's tab: tiles with counts and $, viewed, rows escaped", async () => {
   const list = await load("list");
-  const rows = [{ id: "qt_00000000000000000001", n: "SQ-0001", cn: `Pat ${XSS}`, st: "sent", first: 29500, sent: NOW, viewed: NOW, at: NOW, u: NOW }, { id: "qt_00000000000000000002", n: "Q-18641", cn: "Sam Sample", st: "converted", first: 19500, at: NOW, u: NOW }];
-  const h = text(list.render({ rows, counts: { sent: 1, converted: 1 }, chip: "open", q: "" }, ctx()));
+  const rows = [{ id: "qt_00000000000000000001", n: "SQ-0001", cn: `Pat ${XSS}`, st: "viewed", first: 29500, sent: NOW, viewed: NOW, at: NOW, u: NOW, k: ["one_time"] }, { id: "qt_00000000000000000002", n: "Q-18641", cn: "Sam Sample", st: "converted", first: 19500, at: NOW, u: NOW, k: ["one_time"] },
+    { id: "qt_00000000000000000003", n: "SQ-0003", cn: "Ed Expired", st: "sent", first: 10000, sent: NOW, exp: "2026-11-01", at: NOW, u: NOW, k: ["plan"], annual: 78000 }];
+  const base = { rows, tile: "open", q: "", today: "2026-11-17" };
+  const h = text(list.render(base, ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /href="#\/quotes\/qt_00000000000000000001"/);
   assert.match(h, /\$295\.00/);
-  assert.match(h, /Open <span class="n">1<\/span>/);
+  assert.match(h, /data-key="open"[^>]*><span class="rs-tile-l">Open<\/span><span class="rs-tile-v num">2<\/span><span class="rs-tile-m num">\$395\.00/, "Open with its $");
+  assert.match(h, /viewed/, "the viewed flag");
   assert.doesNotMatch(h, /Q-18641/, "a booked quote isn't open");
-  assert.match(text(list.render({ rows, counts: { sent: 1, converted: 1 }, chip: "converted", q: "" }, ctx())), /Q-18641/);
+  assert.match(text(list.render({ ...base, tile: "converted" }, ctx())), /Q-18641/);
+  const ex = text(list.render({ ...base, tile: "expired" }, ctx()));
+  assert.match(ex, /Ed Expired/);
+  assert.match(ex, /\$780\.00\/yr/, "a plan quote shows its year");
   const tab = await load("contact-tab");
   assert.match(text(tab.render({ id: "ct_1", rows }, ctx())), /href="#\/quotes\/new\/ct_1"/);
   assert.match(text(tab.render({ denied: true }, ctx())), /Not for this login/);

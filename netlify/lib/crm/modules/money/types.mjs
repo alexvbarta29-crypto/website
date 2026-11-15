@@ -186,7 +186,7 @@ export const invoiceRow = (r) => ({
   ex: r.excess_cents || 0, xk: r.excess_kept ? 1 : 0, tip: r.tips_cents || 0, due: r.due_on || null, iss: r.issued_on || null, pp: isPartiallyPaid(r) ? 1 : 0, pr: isProcessing(r) ? 1 : 0, af: autopayFailed(r) ? 1 : 0,
   ch: r.charging ? r.charging.until : null, pl: r.plan_id || null, pm: r.plan_month || null, j: (r.job_ids || [])[0] || null, sent: r.sent_at || null, rm: (r.reminders && r.reminders.count) || 0,
   sim: Object.values(r.applied || {}).some((e) => e && e.simulated) ? 1 : 0, im: r.import ? 1 : 0, sh: r.shadow ? 1 : 0, rs: (r.rotor && r.rotor.status_raw) || null,
-  ap: r.autopay && r.autopay.eligible ? 1 : 0, at: r.created_at, u: r.updated_at,
+  ap: r.autopay && r.autopay.eligible ? 1 : 0, at: r.created_at, u: r.updated_at, pd: r.paid_at || null,
 });
 
 // The number pointer every invoice shares with the sequence (nextNumber

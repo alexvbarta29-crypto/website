@@ -1,32 +1,48 @@
-/* Home (system/home.js), Flyra's (Nov 13: "make it look more like
-   Flyra"): the greeting small and grey, the first name big and bold, then
-   the cards: the money is Rotor's card (Nov 13: Week | Month, round arrows,
-   share and fold, Collected and Scheduled side by side, both lines on one
-   dashed-grid chart, the ARR under it), the others Flyra's: a title,
-   round arrows or a segmented switch, quiet empty states. In the dark (the default) a soft teal-black
-   glow behind the top, as Flyra's; in the light Rotor's grey canvas and
-   white cards. Every color is a crm.css token. 44 px targets on a phone;
-   room at the bottom for the floating tab bar and its + button. */
+/* Home (system/home.js). Nov 15, the owner with Flyra's phone app beside
+   it: "Make the home page look like Flyra". The top has no card: in the
+   dark a soft blue-teal glow behind it fading to the canvas, in the light a
+   faint blue-grey wash over white-grey; "Good evening" small and grey, the
+   first name big and bold; Revenue | ARR in a pill and the period on the
+   right; the period's name in small caps, the big number, AVG and PEAK
+   (ARR: change and MRR) on the right; one thin light-blue line across the
+   width, the values at the left on faint lines, a dotted baseline,
+   "Updated 5:16 PM" under it. Then Flyra's calm cards: a 20 px radius, a
+   hairline border in the dark, white on the light canvas. Home's own
+   tokens (--hm-*) for both themes; everything else is crm.css's. 44 px
+   targets on a phone; room at the bottom for the floating tab bar. */
 
-#view:has(> .stack.hm){background:var(--hero) top/100% 760px no-repeat local,var(--mist)}
-.app.own-head .top{background:var(--hero-top)}
+body.crm{
+  --hm-glow:linear-gradient(180deg,#e8eff2 0%,#f1f5f6 280px,var(--mist) 620px);--hm-top:#e8eff2;
+  --hm-line:#0f7fc0;--hm-wash-a:rgba(15,127,192,.16);--hm-wash-b:rgba(15,127,192,0);--hm-grid:rgba(18,18,21,.07);--hm-base:rgba(18,18,21,.3);
+  --hm-pill:rgba(255,255,255,.7);--hm-pill-line:rgba(18,18,21,.08);--hm-card:#fff;--hm-card-line:rgba(18,18,21,.06);
+}
+html:not([data-theme="light"]) body.crm:not(.page){
+  --hm-glow:radial-gradient(120% 60% at 80% 0%,rgba(64,108,128,.34) 0%,rgba(64,108,128,0) 72%),linear-gradient(180deg,#1b2a31 0%,#17232a 280px,#131a1e 560px,#111214 860px);--hm-top:#1b2a31;
+  --hm-line:#5ac0ee;--hm-wash-a:rgba(90,192,238,.16);--hm-wash-b:rgba(90,192,238,0);--hm-grid:rgba(255,255,255,.07);--hm-base:rgba(255,255,255,.3);
+  --hm-pill:rgba(20,28,32,.55);--hm-pill-line:rgba(255,255,255,.1);--hm-card:#18191c;--hm-card-line:rgba(255,255,255,.08);
+}
+
+#view:has(> .stack.hm){background:var(--hm-glow) top/100% 1000px no-repeat local,var(--mist)}
+@media (max-width:899px){.app.own-head .top{background:var(--hm-top)}}
 .hm{gap:22px}
-.hm-card{position:relative;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-lg);padding:18px;box-shadow:var(--sh-card);min-width:0}
-.hm-card.hm-plain{background:none;border-color:transparent;box-shadow:none;padding-left:4px;padding-right:4px}
-.hm-grid{display:flex;flex-direction:column;gap:22px;min-width:0}
+.hm-card{position:relative;background:var(--hm-card);border:1px solid var(--hm-card-line);border-radius:20px;padding:18px;box-shadow:none;min-width:0}
+/* the cards in the person's order on a phone (each slot's order); in columns on a computer */
+.hm-grid{display:flex;flex-direction:column;gap:20px;min-width:0}
+.hm-col{display:contents}
+.hm-slot{min-width:0}
 .hm-alert{display:block;text-decoration:none;color:inherit}
 
 /* ------------------------------------------------------------ the header: "Good evening", the name */
-.hm-head{display:flex;align-items:flex-start;gap:14px;padding:18px 4px 0}
+.hm-head{display:flex;align-items:flex-start;gap:14px;padding:22px 4px 0}
 .hm-hello{flex:1;min-width:0}
-.hm-greet{margin:0;font:500 18px/1.2 var(--text);letter-spacing:-.01em;color:var(--ink-3)}
-.hm-hello h2{margin-top:4px;font:700 40px/1.08 var(--head);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-greet{margin:0;font:500 19px/1.2 var(--text);letter-spacing:-.01em;color:var(--ink-3)}
+.hm-hello h2{margin-top:6px;font:700 44px/1.05 var(--head);letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-head .bell{margin-top:4px}
 .hm-av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--avatar-bg);color:#fff;font:600 11px/1 var(--text);letter-spacing:.02em;box-shadow:0 0 0 2px var(--card)}
 .hm-av:not([style]){color:var(--avatar-ink)}
 .hm-av.sm{width:30px;height:30px}
 /* Flyra's outlined initials */
-.hm-av.ol{background:var(--card-2);box-shadow:inset 0 0 0 1px var(--line-2);color:var(--ink)}
+.hm-av.ol{background:none;box-shadow:inset 0 0 0 1px var(--line-2);color:var(--ink)}
 
 /* round small buttons (the arrows, Edit Home's up and down) */
 .hm-round{position:relative;flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--fill-2);border:1px solid var(--rnd-line);color:var(--ink);box-shadow:var(--rnd-sh);cursor:pointer;text-decoration:none}
@@ -35,9 +51,9 @@ html[data-theme="light"] .hm-round{background:var(--rnd-bg)}
 .hm-round:active{transform:scale(.96)}
 
 /* a card's top row: a title and its switch or buttons */
-.hm-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;min-width:0}
+.hm-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-width:0}
 .hm-bar h3{font:500 19px/1.2 var(--head);letter-spacing:-.02em;min-width:0}
-.hm-bar .hm-seg button{padding:0 12px;font-size:15.5px}
+.hm-bar .hm-seg button{padding:0 14px;font-size:15.5px}
 .hm-bar-end{display:flex;align-items:center;gap:8px}
 /* Flyra's segmented switch: a dark track, the chosen one lighter */
 .hm-seg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--seg-track);border:1px solid var(--card-line);min-width:0}
@@ -46,20 +62,17 @@ html[data-theme="light"] .hm-round{background:var(--rnd-bg)}
 .hm-seg button.on{background:var(--seg-on);color:var(--seg-on-ink);box-shadow:var(--seg-on-sh)}
 .hm-seg.full{display:flex;width:100%;margin:0 0 16px}
 .hm-seg.full button{flex:1;padding:0 6px}
-.hm-row2{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
 .hm-arrows{flex:none;display:flex;gap:10px}
-.hm-eyebrow{display:flex;align-items:center;gap:8px;font:500 13px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.hm-eyebrow{display:flex;align-items:center;gap:8px;font:500 12.5px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
 .hm-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid var(--rnd-line);background:var(--fill-2);color:var(--ink);font:500 16px/1 var(--text);text-decoration:none;cursor:pointer;box-shadow:var(--rnd-sh)}
 html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-chip svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9}
 .hm-more{flex:none;display:inline-flex;align-items:center;min-height:44px;color:var(--coral-ink);font:500 15px/1 var(--text);text-decoration:none;white-space:nowrap}
 .hm-more::after{content:"";width:6px;height:6px;margin-left:6px;border-right:1.75px solid currentColor;border-bottom:1.75px solid currentColor;transform:rotate(-45deg)}
-.hm-foot{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin:6px 0 -8px;font-size:14px;color:var(--ink-3)}
-.hm-foot>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-note{margin:10px 0 0;font-size:15px;color:var(--ink-3)}
 .hm-more-row{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:8px;color:var(--coral-ink);font-weight:500;font-size:15px;text-decoration:none}
 /* Flyra's empty states: a quiet icon, a line in white, a line in grey */
-.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:34px 12px 26px}
+.hm-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:30px 12px 22px}
 .hm-empty .art{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--fill-2);color:var(--ink-3);margin-bottom:6px}
 .hm-empty .art.plain{background:none}
 .hm-empty .art.plain svg{width:34px;height:34px}
@@ -69,75 +82,82 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-track{display:block;height:6px;border-radius:999px;background:var(--fill-2);overflow:hidden}
 .hm-fill{display:block;height:100%;border-radius:999px;background:var(--coral)}
 
-/* ------------------------------------------------------------ Clock in (a Flyra card) */
-.hm-clock{display:flex;align-items:flex-start;gap:16px}
-.hm-tile{flex:none;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:var(--coral-wash);color:var(--coral)}
-.hm-tile svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.hm-clock-main{flex:1;min-width:0}
+/* ------------------------------------------------------------ the top: Revenue | ARR, the period, the big number, the line */
+.hm-money{display:flex;flex-direction:column;min-width:0;padding:0 4px}
+.hm-mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.hm-seg.hm-mview{flex:none;background:var(--hm-pill);border-color:var(--hm-pill-line);padding:4px}
+.hm-seg.hm-mview button{min-width:96px;padding:0 20px;font-size:17px}
+/* the period: "1M ⌄" on a phone (a small sheet), chips on a computer */
+.hm-range{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:64px;justify-content:flex-end;padding:0 6px 0 10px;border:0;background:none;color:var(--ink-2);font:500 18px/1 var(--text);cursor:pointer}
+.hm-range svg{width:18px;height:18px}
+.hm-ranges{display:none}
+.hm-mhead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 14px;min-width:0}
+.hm-mmain{min-width:0}
+.hm-mper{margin:22px 0 0;font:500 12.5px/1.2 var(--text);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-mlink{display:flex;align-items:flex-end;min-height:48px;color:inherit;text-decoration:none;border-radius:10px}
+.hm-mbig{display:block;margin-top:8px;font:700 40px/1.05 var(--head);letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.hm-stats{flex:none;display:flex;gap:24px;margin:0 0 4px auto;text-align:right}
+.hm-stats div{min-width:0}
+.hm-stats dt{font:500 12px/1.2 var(--text);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.hm-stats dd{margin:6px 0 0;font:600 18px/1.1 var(--head);letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hm-stats dd.up{color:var(--green-ink)}
+.hm-stats dd.down{color:var(--red-ink)}
+.hm-stats dd small{display:block;margin-top:4px;font:500 13px/1.1 var(--text);letter-spacing:0}
+.hm-mfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:22px;margin-top:6px;font-size:14px;color:var(--ink-3)}
+.hm-read{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hm-upd{flex:none;margin-left:auto;white-space:nowrap}
+.hm-nochart{min-height:120px;display:flex;align-items:center;justify-content:center;text-align:center}
+.hm-money[data-view] .hm-note:not(.hm-nochart){margin-top:12px}
+/* the period sheet */
+.hm-rlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hm-ropt{display:flex;align-items:center;gap:14px;width:100%;min-height:52px;padding:0 16px;border:0;border-radius:14px;background:var(--fill);color:var(--ink);font:400 16px/1.2 var(--text);text-align:left;cursor:pointer}
+.hm-ropt b{min-width:40px;font-weight:600}
+.hm-ropt span{flex:1;color:var(--ink-2)}
+.hm-ropt svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;color:var(--ink)}
+.hm-ropt.on{background:var(--fill-2)}
+
+/* the line (home-charts.js flyraLine): faint lines, values at the left, a dotted baseline, one thin line */
+.hm .hc{position:relative;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.hc.hf{height:210px;margin:26px -4px 0 -4px}
+.hm .hc:focus-visible{outline:2px solid var(--hm-line);outline-offset:4px}
+.hm .hc svg{display:block;fill:none;stroke:none;overflow:visible}
+.hf-grid{stroke:var(--hm-grid);stroke-width:1}
+.hf-base{stroke:var(--hm-base);stroke-width:1.2;stroke-dasharray:2 4}
+.hf-t{fill:var(--ink-3);font:400 13px/1 var(--text);font-variant-numeric:tabular-nums}
+.hf-line{fill:none;stroke:var(--hm-line);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hf-area{stroke:none}
+.hf-wash-a{stop-color:var(--hm-line);stop-opacity:.16}
+.hf-wash-b{stop-color:var(--hm-line);stop-opacity:0}
+.hf-cross{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:2 3}
+.hf-dot{fill:var(--hm-line);stroke:var(--mist);stroke-width:2}
+/* ARR by month (home-charts.js monthBars): a soft bar a month, the month picked full, its readout under the bars */
+.hb-bar{fill:var(--hm-line);opacity:.38}
+.hb-bar.on{opacity:1}
+.hb-col{fill:var(--hm-line);opacity:.09}
+.hb-m{font-size:11.5px}
+.hb-m.on{fill:var(--ink);font-weight:600}
+/* ARR's two stats keep beside the big number on a phone (they go under it only when it is long) */
+.hm-money[data-view="arr"] .hm-mhead{margin-top:6px}
+.hm-money[data-view="arr"] .hm-stats{gap:18px}
+.hm-money[data-view="arr"] .hm-stats dt{letter-spacing:.1em}
+.hm-mread{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--hm-pill);border:1px solid var(--hm-pill-line)}
+.hm-mread div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hm-mread span{font:500 11.5px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-mread b{font:600 16px/1.1 var(--head);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.hm-mread b.up{color:var(--green-ink)}
+.hm-mread b.down{color:var(--red-ink)}
+
+/* ------------------------------------------------------------ Clock in (compact) */
+.hm-c-clock{display:flex;align-items:center;gap:14px;padding:12px 12px 12px 18px}
+.hm-clock-main{flex:1;min-width:0;min-height:44px;display:grid;grid-template-columns:auto 1fr;align-items:baseline;column-gap:12px;row-gap:2px;color:inherit;text-decoration:none;border-radius:10px}
+.hm-c-clock .hm-eyebrow{grid-column:1/-1}
 .hm-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
 .hm-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
-.hm-hours{margin-top:4px;font:700 34px/1.05 var(--head);letter-spacing:-.025em;font-variant-numeric:tabular-nums}
-.hm-line{margin:6px 0 0;font-size:15px;color:var(--ink-3)}
-.hm-clock-act{display:flex;justify-content:flex-end;margin-top:14px}
-.hm-pill{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 26px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 17px/1 var(--text);cursor:pointer;box-shadow:0 6px 16px rgba(208,51,31,.24)}
+.hm-hours{font:700 22px/1.15 var(--head);letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hm-line{min-width:0;font-size:14px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-pill{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--coral-btn);color:#fff;font:600 16px/1 var(--text);cursor:pointer}
 .hm-pill:active{background:var(--coral-btn-2)}
-.hm-pill svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
-
-/* ------------------------------------------------------------ Money (Rotor's card) */
-.hm-money{display:flex;flex-direction:column;gap:6px;min-width:0}
-.hm-mtop{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
-.hm-mtop .hm-seg{flex:none}
-.hm-mtop .hm-seg button{padding:0 13px}
-.hm-mtop .hm-seg button{min-width:44px}
-/* round buttons drawn 36 px inside 44 px targets, so four sit beside Week | Month */
-.hm-mtools{flex:none;display:flex;margin-right:-5px}
-.hm-c-money .hm-mtools .hm-round{width:44px;height:44px;background:none;border:0;box-shadow:none}
-.hm-c-money .hm-mtools .hm-round+.hm-round{margin-left:-4px}
-.hm-mtools .hm-round::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--fill-2);border:1px solid var(--rnd-line);box-shadow:var(--rnd-sh)}
-html[data-theme="light"] .hm-mtools .hm-round::before{background:var(--rnd-bg)}
-.hm-mtools .hm-round svg{position:relative;width:18px;height:18px}
-.hm-mper{margin:12px 2px 0;font:500 14px/1.2 var(--text);letter-spacing:0;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:14px}
-.hm-pv{min-width:0;padding-right:12px}
-.hm-pv+.hm-pv{padding:0 0 0 18px;border-left:1px solid var(--line)}
-.hm-pv span{display:block;font:500 16px/1.2 var(--text);color:var(--ink-3)}
-.hm-pv b{display:block;margin-top:10px;font:700 32px/1.05 var(--head);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.hm-pair.long .hm-pv b{font-size:26px}
-.hm-mfoot{justify-content:flex-start;margin:12px 0 -6px}
-a.hm-pair{color:inherit;text-decoration:none;border-radius:12px}
-/* ARR | Revenue (Nov 14, Flyra's switch): the view on top, then the ARR view's big number, its change, plans and MRR */
-.hm-seg.hm-mview{margin:0 0 12px}
-.hm-arrhead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;margin-top:12px;color:inherit;text-decoration:none;border-radius:12px;min-width:0}
-.hm-ak{min-width:0}
-.hm-ak span{display:block;font:500 12.5px/1.2 var(--text);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
-.hm-ak b{display:block;margin-top:4px;font:700 20px/1.1 var(--head);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.hm-ak.big{padding-right:12px}
-.hm-ak.big b{margin-top:8px;font-size:34px;line-height:1.05;letter-spacing:-.03em}
-.hm-chg{display:block;margin-top:6px;font:600 14px/1.2 var(--text);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.hm-chg.up{color:var(--green-ink)}
-.hm-chg.down{color:var(--red-ink)}
-.hm-aks{display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-width:92px;padding-left:16px;border-left:1px solid var(--line)}
-
-/* the chart: a dashed grid both ways, Collected coral, Scheduled grey */
-.hc-read2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;min-height:20px;margin:20px 0 8px;font-size:13.5px;color:var(--ink-3)}
-.hc-read2 .d{font-weight:600;color:var(--ink);white-space:nowrap}
-.hc-read2 .k{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.hc-read2 i{display:inline-block;width:12px;height:3px;border-radius:2px;background:var(--coral);transform:translateY(-3px)}
-.hc-read2 .s i{background:var(--ink-3)}
-.hc-read2 b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
-.hc{position:relative;height:200px;touch-action:pan-y;outline:0;border-radius:10px;cursor:crosshair;-webkit-user-select:none;user-select:none}
-.hc.hc-pair{height:190px}
-.hc:focus-visible{outline:2px solid var(--coral);outline-offset:4px}
-.hc svg.hc-svg{display:block;fill:none;stroke:none;overflow:visible}
-.hc-grid{stroke:var(--line);stroke-width:1}
-.hc-grid.dash,.hc-vgrid{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 4}
-.hc-base{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
-.hc-t{fill:var(--ink-3);font:400 12px/1 var(--text);font-variant-numeric:tabular-nums}
-.hc-line{fill:none;stroke:var(--coral);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.hc-line.s{stroke:var(--ink-3);stroke-width:1.5}
-.hc-cross{stroke:var(--line-2);stroke-width:1}
-.hc-dot{fill:var(--coral);stroke:var(--card);stroke-width:2}
-.hc-dot.s{fill:var(--ink-3)}
+.hm-pill svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
 
 /* ------------------------------------------------------------ Today (the agenda) */
 .hm-ag-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px}
@@ -203,14 +223,18 @@ a.hm-item:active{background:var(--fill-2)}
 /* ------------------------------------------------------------ Leaderboard, Inbox, Tasks, Goals (Flyra's cards) */
 .hm-c-board .hm-bar h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-board{list-style:none;margin:0;padding:0}
-.hm-board li{display:flex;align-items:center;gap:14px;min-height:64px;padding:8px 0}
+.hm-board li{display:flex;align-items:center;gap:14px;min-height:68px;padding:8px 2px}
 .hm-board li+li{border-top:1px solid var(--line)}
-.hm-board .rank{width:16px;font:500 18px/1 var(--text);text-align:center;color:var(--ink)}
-.hm-board .hm-av{width:44px;height:44px;font-size:15px;font-weight:500}
+.hm-board .rank{flex:none;width:18px;font:500 18px/1 var(--text);text-align:center;color:var(--ink);font-variant-numeric:tabular-nums}
+.hm-board .hm-av{width:44px;height:44px;font-size:15px;font-weight:500;letter-spacing:.02em}
+.hm-c-board{padding-left:16px;padding-right:16px}
+.hm-c-board .hm-bar{margin-bottom:6px;gap:6px}
+.hm-c-board .hm-bar h3{font-size:17px;letter-spacing:-.03em}
+.hm-c-board .hm-bar .hm-seg button{padding:0 10px;font-size:15px}
 .hm-board .who{flex:1;min-width:0}
 .hm-board .who b{display:block;font:500 17px/1.25 var(--text);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-board .who small{display:block;margin-top:2px;font-size:15px;color:var(--ink-3)}
-.hm-board .val{flex:none;font:500 17px/1 var(--text);font-variant-numeric:tabular-nums}
+.hm-board .val{flex:none;font:500 18px/1 var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
 .hm-board .val small{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--ink-3)}
 .hm-convs{list-style:none;margin:0;padding:0}
 .hm-conv{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0;color:inherit;text-decoration:none}
@@ -256,41 +280,58 @@ a.hm-item:active{background:var(--fill-2)}
   .hm-seg button{padding:0 11px;font-size:15px}
   .hm-ag-top .hm-seg button{padding:0 9px}
   .hm-cd .n{width:38px;height:38px;font-size:19px}
-  .hm-mtop .hm-seg button{padding:0 11px;font-size:15px}
-  .hm-pv b{font-size:29px}
-  .hm-pair.long .hm-pv b{font-size:24px}
-  .hm-hello h2{font-size:36px}
+  .hm-seg.hm-mview button{min-width:84px;padding:0 16px;font-size:16px}
+  .hm-hello h2{font-size:40px}
+  .hm-mbig{font-size:36px}
+  .hm-stats{gap:18px}
+  .hm-stats dd{font-size:17px}
+  .hm-board li{gap:12px}
 }
 
-/* ------------------------------------------------------------ a computer (900 px and up) */
+/* ------------------------------------------------------------ a computer (900 px and up): Flyra's dashboard */
 @media (min-width:900px){
   #view:has(> .stack.hm){background:var(--mist)}
   .view>.stack.hm{max-width:1160px}
   .hm{gap:20px;padding-bottom:32px}
-  .hm-card{padding:24px}
-  /* the clock a bar on top; the money is a card again beside the others */
-  .hm-c-clock{order:-1}
+  .hm-card{padding:22px;border-color:var(--card-line)}
+  html[data-theme="light"] .hm-card{border-color:var(--line)}
   .hm-head{padding-top:4px}
-  .hm-hello h2{font-size:32px}
+  .hm-greet{font-size:15px}
+  .hm-hello h2{margin-top:4px;font-size:32px}
+  /* the money is a card again (Flyra's desk): the switch and the chips on one row */
+  .hm-money{padding:22px;background:var(--hm-card);border:1px solid var(--card-line);border-radius:20px}
+  html[data-theme="light"] .hm-money{border-color:var(--line)}
+  .hm-seg.hm-mview{background:var(--fill)}
+  .hm-seg.hm-mview button{min-width:0;padding:0 14px;font-size:14px}
+  .hm-range{display:none}
+  .hm-ranges{display:flex;gap:2px;padding:3px;border-radius:999px;border:1px solid var(--card-line)}
+  .hm-ranges button{min-height:32px;min-width:40px;padding:0 10px;border:0;border-radius:999px;background:none;color:var(--ink-3);font:500 13px/1 var(--text);cursor:pointer}
+  .hm-ranges button.on{background:var(--seg-on);color:var(--seg-on-ink);box-shadow:var(--seg-on-sh)}
+  .hm-ranges button:hover{color:var(--ink)}
+  .hm-mhead{justify-content:flex-start;gap:28px}
+  .hm-mper{margin-top:20px}
+  .hm-stats{text-align:left;gap:28px;margin-left:0}
+  .hm-mbig{font-size:30px}
+  .hm-stats dt{font-size:11px}
+  .hm-stats dd{font-size:15px;margin-top:8px}
+  .hc.hf{height:220px;margin-top:18px}
+  .hm-mfoot{font-size:12.5px}
   .hm-seg button{min-height:38px}
   .hm-round{width:40px;height:40px}
-  .hm-chip,.hm-more,.hm-tasks-h,.hm-select select{min-height:40px}
+  .hm-chip,.hm-more,.hm-tasks-h,.hm-select select,.hm-pill{min-height:40px}
   .hm-round:hover{background:var(--fill)}
-  .hm-c-money .hm-mtools .hm-round{width:40px;height:40px}
-  .hm-mtools .hm-round:hover::before{background:var(--fill)}
   a.hm-item:hover,a.hm-task:hover{background:var(--fill-2)}
   a.hm-conv:hover{background:var(--fill)}
-  .hc{height:200px}
   .hm-ag-head h3{font-size:22px}
   .hm-ag-month h3{font-size:27px}
   .hm-cal{margin:0}
   button.hm-cd:hover .n{background:var(--fill)}
   .hm-cd.today .n{background:var(--coral-wash)}
 }
-/* from 1,100 px two columns: the clock a bar across, then the cards side by side in their order */
+/* from 1,100 px two columns (Flyra's): the money and Today on the left, the short cards on the right, Goals across */
 @media (min-width:1100px){
-  .hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
-  .hm-c-clock{grid-column:1/-1;order:-1;display:flex;align-items:center;gap:18px}
-  .hm-c-clock .hm-clock{flex:1;align-items:center}
-  .hm-c-clock .hm-clock-act{margin-top:0}
+  .hm-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+  .hm-col{display:flex;flex-direction:column;gap:20px;min-width:0}
+  .hm-col.w{grid-column:1/-1}
+  .hm-col:empty{display:none}
 }

@@ -12,7 +12,7 @@
 // - Never cached: /crm/legacy, /crm/login, /crm/setup, /crm/invite/*, and
 //   anything under /api/. Data the app keeps offline lives in IndexedDB,
 //   which sign-out wipes.
-const VERSION = "2026.11.15-1";
+const VERSION = "2026.11.15-2";
 const PRECACHE = [
   "/crm-app/core/api.js",
   "/crm-app/core/cache.js",
@@ -61,6 +61,11 @@ const PRECACHE = [
   "/crm-app/modules/contacts/merge.js",
   "/crm-app/modules/contacts/property.js",
   "/crm-app/modules/contacts/quick.js",
+  "/crm-app/modules/expenses/expense.js",
+  "/crm-app/modules/expenses/expenses.css",
+  "/crm-app/modules/expenses/expenses.js",
+  "/crm-app/modules/expenses/kit.js",
+  "/crm-app/modules/expenses/manifest.js",
   "/crm-app/modules/import/auto-key.js",
   "/crm-app/modules/import/conflicts.js",
   "/crm-app/modules/import/cutover-checklist.js",
@@ -99,6 +104,7 @@ const PRECACHE = [
   "/crm-app/modules/money/money.css",
   "/crm-app/modules/money/pay-qr.js",
   "/crm-app/modules/money/payments.js",
+  "/crm-app/modules/money/payouts.js",
   "/crm-app/modules/money/qr.js",
   "/crm-app/modules/money/settings.js",
   "/crm-app/modules/money/today-card.js",
@@ -165,6 +171,13 @@ const PRECACHE = [
   "/crm-app/modules/sales/task.js",
   "/crm-app/modules/sales/tasks.js",
   "/crm-app/modules/sales/today-card.js",
+  "/crm-app/modules/service/contact-tab.js",
+  "/crm-app/modules/service/kit.js",
+  "/crm-app/modules/service/manifest.js",
+  "/crm-app/modules/service/request-new.js",
+  "/crm-app/modules/service/request.js",
+  "/crm-app/modules/service/requests.js",
+  "/crm-app/modules/service/service.css",
   "/crm-app/modules/system/activity.js",
   "/crm-app/modules/system/approvals.js",
   "/crm-app/modules/system/automations.js",

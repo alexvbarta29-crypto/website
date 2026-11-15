@@ -1,0 +1,4 @@
+/* Expenses (Flyra's): the period chip beside the round ..., the receipt field. */
+.ex-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ex-receipt { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.ex-receipt .sv-photos { display: flex; gap: 8px; }

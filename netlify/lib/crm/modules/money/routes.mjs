@@ -22,6 +22,7 @@
 //   POST /invoices/:id/pay-qr                        invoices:send       scan to pay: a fresh pay link for the QR on the Invoice screen
 // cfg/money is an owner-only settings page through the core settings routes.
 
+import { tipsCsv, taxCsv, payouts } from "./reports-extra.mjs";
 import { getRecord, getRecords, listRel, readIndex, updateRecord, getSettingWithEtag, putSetting } from "../../../crm-store.mjs";
 import { isId, newId } from "../../core/ids.mjs";
 import { now, nowMs, localDate, addLocalDays, isLocalDate } from "../../core/clock.mjs";
@@ -104,13 +105,23 @@ async function listInvoices(ctx) {
   // this month's money in (the list's stat card): payments received this month, less refunds
   const month = (await readIndex("payments", day.slice(0, 7)).catch(() => ({ rows: [] }))).rows.filter((r) => r.st === "succeeded" && r.k !== "refund");
   const totals = { open_cents: open.filter((r) => r.st === "open").reduce((s, r) => s + r.bal, 0), overdue_cents: open.filter((r) => rowOut(r, day).od).reduce((s, r) => s + r.bal, 0), month_paid_cents: month.reduce((s, r) => s + (r.a || 0) - (r.rf || 0), 0) };
+  // the Invoices tab's tiles (guide-gaps FI1, S17a): due today, and the invoices paid this month (the year's shard)
+  const dueToday = open.filter((r) => r.st === "open" && r.due === day && r.bal > 0);
+  counts.due_today = dueToday.length;
+  totals.due_today_cents = dueToday.reduce((s, r) => s + r.bal, 0);
+  const yearRows = (await readIndex("invoices", day.slice(0, 4)).catch(() => ({ rows: [] }))).rows;
+  const paidMonth = yearRows.filter((r) => r.st === "paid" && String(r.pd || r.u || "").slice(0, 7) === day.slice(0, 7));
+  counts.paid_month = paidMonth.length;
+  totals.paid_month_cents = paidMonth.reduce((s, r) => s + (r.tot || 0), 0);
   let rows;
   if (["paid", "void", "uncollectible", "closed"].includes(status)) {
     const year = YEAR_RE.test(q.get("year") || "") ? q.get("year") : day.slice(0, 4);
     const closed = (await readIndex("invoices", year)).rows;
     rows = closed.filter((r) => (status === "closed" ? true : r.st === status));
     counts[status] = rows.length;
-  } else if (status === "overdue") rows = open.filter((r) => rowOut(r, day).od);
+  } else if (status === "paid_month") rows = paidMonth;
+  else if (status === "due_today") rows = dueToday;
+  else if (status === "overdue") rows = open.filter((r) => rowOut(r, day).od);
   else if (status === "draft") rows = open.filter((r) => r.st === "draft");
   else if (status === "failed") rows = open.filter((r) => r.st === "open" && r.af);
   else if (status === "overpaid") rows = open.filter((r) => r.ex > 0 && !r.xk);
@@ -120,11 +131,29 @@ async function listInvoices(ctx) {
   return { data: rows.slice(0, 500), meta: { counts, totals, more: rows.length > 500 } };
 }
 
+// Stripe (card and bank) or not (cash, check, other) for a payment row.
+const STRIPE_METHODS = new Set(["card", "ach", "us_bank_account", "link"]);
+const groupOf = (r) => (r.k === "refund" ? "refunds" : STRIPE_METHODS.has(r.m) ? "stripe" : "cash_check");
+// → { total, stripe, cash_check, tips, refunds, fees } as { n, cents } (real, succeeded payments only; refunds subtract from the total)
+export function paymentTiles(rows) {
+  const real = (rows || []).filter((r) => r.st === "succeeded" && !r.sim);
+  const pays = real.filter((r) => r.k === "payment"), refs = real.filter((r) => r.k === "refund");
+  const t = (list, f) => ({ n: list.length, cents: list.reduce((a, r) => a + f(r), 0) });
+  const total = t(pays, (r) => r.a + (r.tip || 0));
+  const refunds = t(refs, (r) => r.a + (r.tip || 0));
+  return {
+    total: { n: total.n, cents: total.cents - refunds.cents }, stripe: t(pays.filter((r) => groupOf(r) === "stripe"), (r) => r.a + (r.tip || 0)),
+    cash_check: t(pays.filter((r) => groupOf(r) === "cash_check"), (r) => r.a + (r.tip || 0)), tips: t(pays.filter((r) => r.tip > 0), (r) => r.tip), refunds, fees: t(pays.filter((r) => r.fee > 0), (r) => r.fee),
+  };
+}
+
 async function listPayments(ctx) {
   const q = ctx.query;
   const month = MONTH_RE.test(q.get("month") || "") ? q.get("month") : thisMonth();
   const method = q.get("method") || "";
-  const rows = (await readIndex("payments", month)).rows.filter((r) => !method || r.m === method);
+  const group = q.get("group") || "";
+  const all = (await readIndex("payments", month)).rows;
+  const rows = all.filter((r) => (!method || r.m === method) && (!group || groupOf(r) === group || (group === "refunds" && r.k === "refund") || (group === "tips" && r.tip > 0 && r.k !== "refund")));
   const real = rows.filter((r) => r.st === "succeeded" && !r.sim);
   const sum = (list, f) => list.reduce((s, r) => s + f(r), 0);
   const pays = real.filter((r) => r.k === "payment"), refs = real.filter((r) => r.k === "refund");
@@ -140,6 +169,8 @@ async function listPayments(ctx) {
         processing: rows.filter((r) => r.st === "processing").length, failed: rows.filter((r) => r.st === "failed").length,
       },
       by_method: byMethod,
+      // the Payments tab's tiles (guide-gaps FP1, S18): the whole month, whatever the filter
+      tiles: paymentTiles(all),
     },
   };
 }
@@ -559,6 +590,9 @@ export const moneyRoutes = [
   R("POST", "/invoices/:id/charge", "payments:charge", "required", chargeRoute, { mode: "run" }),
   R("POST", "/invoices/:id/payments", "payments:record", "required", recordRoute, { maxCalls: 60, replaySafe: true }),
   R("GET", "/payments", "invoices:read_all", "none", listPayments),
+  R("GET", "/payments/tips.csv", "invoices:read_all", "none", tipsCsv, { maxCalls: 840 }),
+  R("GET", "/invoices/tax.csv", "invoices:read_all", "none", taxCsv, { maxCalls: 1540 }),
+  R("GET", "/payouts", "invoices:read_all", "none", payouts),
   R("GET", "/payments/:id", "invoices:read_all", "required", getPaymentRoute),
   R("POST", "/payments/:id/refund", "payments:refund", "required", refundRoute, { maxCalls: 60 }),
   R("GET", "/contacts/:id/credits", "invoices:read_all", "required", creditsRoute, { maxCalls: 120 }),

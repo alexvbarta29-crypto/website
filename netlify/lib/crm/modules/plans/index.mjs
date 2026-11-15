@@ -14,6 +14,7 @@
 // hub and login pages), routes.mjs (the staff API), import-rotor.mjs
 // (import phases), mcp.mjs (Claude's plan tools).
 
+import { planReminders } from "./save.mjs";
 import { defineModule } from "../../core/registry.mjs";
 import { getRecord, updateRecord, listRel, readIndex } from "../../../crm-store.mjs";
 import { defineFileOwner } from "../../core/files.mjs";
@@ -73,6 +74,8 @@ export default defineModule({
   queue: { "plans.login": { handler: onLoginQueued, mutates: false } },
   emits: ["plan.activated", "plan.paused", "plan.cancelled", "plan.renewed", "agreement.signed", "agreement.sent"],
   services: {
+    // (ctx) → { boxes: [{ key: "plans", count, lists: Unsigned, Ending, Save requests }] } (Home's Reminders, guide-gaps S2)
+    "plans.reminders": () => planReminders(),
     // (quote, version, option, ctx) → { template_id, template_version, body_rendered, body_sha256 } | null
     "plans.agreementForOption": (quote, version, option) => agreementForOption(quote, version, option),
     // (quote, version, option, opId, { signature? }, ctx) → { plan_id, agreement_id?, job_ids }

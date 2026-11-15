@@ -24,7 +24,9 @@
 // seed({ home: true }) also makes today look like a real business day for
 // Home's screenshots (home.spec): one visit done, one under way, three more
 // this afternoon (one with two people), a pair of likely duplicates and a
-// phone's offline work waiting for the owner's OK, and a finished Rotor
+// phone's offline work waiting for the owner's OK, who sold this month's
+// plans (the Leaderboard card), plans from earlier months (ARR by month),
+// and a finished Rotor
 // import of two days ago with the payments it brought in (made up), so
 // Home's Money card counts Collected per day. seed({ teamOnly: true })
 // makes only the team (Home before any CRM data: the empty state), and a
@@ -262,7 +264,24 @@ async function homeDay(out, O, day) {
     }, O)).data);
   }
   await MATCH.createCandidate(twins[0].id, twins[1].id, { reason: "phone", confidence: "high" }, O);
+  // who sold this month's plans (Home's Leaderboard card): Olive two quarterly plans, Ada one and the lights
+  for (const [id, who] of [[out.plans.active, "owner"], [out.plans.present, "owner"], [out.plans.pending, "admin"], [out.plans.lights, "admin"]]) {
+    await store.updateRecord("plan", id, (x) => ({ ...x, sold_by: out.users[who].id }), O);
+  }
   await PA.createPendingAction({ kind: "outbox_review", title: "Theo's offline notes from last week", requested_by: out.users.tech.id, items: [] }, O);
+  // ARR by month (the owner's Nov 15 ask): plans the Rotor import brought in, made in earlier months (made up;
+  // no jobs, so Today's list stays the day's), one of them cancelled since, one made and cancelled in the same month
+  const IMP = { ...O, origin: "import" };
+  const HIST = [[-13, "biannual", null], [-13, "quarterly", null], [-12, "quarterly", null], [-10, "quarterly", null], [-8, "biannual", 3], [-6, "quarterly", null], [-5, "biannual", 0], [-4, "biannual", null], [-2, "quarterly", null], [-1, "biannual", null]];
+  for (const [k, [ago, key, gone]] of HIST.entries()) {
+    const t = Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7)) - 1 + ago;
+    const made = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}-${String(4 + k * 3).padStart(2, "0")}`;
+    const lines = [{ id: "ln_h", title: "Exterior Window Cleaning", qty_milli: 1000, unit_cents: 21500 + k * 2500, total_cents: 21500 + k * 2500, service_type: "Residential Window Cleaning", scope: { type: "all" } }];
+    const p = PL.buildPlan({ contact_id: out.contacts.customer, contact_name: "Earlier Planfolk", catalog_key: key, lines, discounts: [], origin: "import" }, CAT.catalogWith({}), { start_on: made });
+    delete p.id;
+    const cancel = gone === null ? undefined : { requested_on: clock.addLocalDays(made, gone * 30 + 10), effective_on: clock.addLocalDays(made, gone * 30 + 12), reason: "other", by: "system" };
+    await store.createRecord("plan", { ...p, status: cancel ? "cancelled" : "active", pending_reasons: [], agreement_status: "none", created_at: `${made}T16:00:00Z`, ...(cancel ? { cancel } : {}) }, IMP);
+  }
   // a Rotor import finished two days ago (counts only) and this month's payments it brought in (synthetic amounts)
   const asOf = clock.addLocalDays(day, -2);
   await store.createRecord("import_run", { status: "done", as_of: asOf, requested_by: "system" }, O);

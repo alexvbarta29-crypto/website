@@ -38,7 +38,7 @@ test("the header: balance owed, lifetime spend, next visit; '-' when not known; 
 
 test("the page: the modules' cards on Details and Activity in Rotor's order; their \"...\" rows; a denied one left out", () => {
   const order = C.contactSections(MANIFESTS, all).map((x) => [x.key, x.place]);
-  assert.deepEqual(order, [["sales", "more"], ["quotes", "docs"], ["plans", "plan"], ["work", "visits"], ["money", "docs"], ["messages", "aside"]]);
+  assert.deepEqual(order, [["sales", "more"], ["quotes", "docs"], ["requests", "docs"], ["plans", "plan"], ["work", "visits"], ["money", "docs"], ["messages", "aside"]]);
   assert.deepEqual(C.contactSections(MANIFESTS, (p) => p !== "invoices:read_all").map((x) => x.key).includes("money"), false, "a section behind its permission");
   const mod = (key, place, extra = {}) => ({ def: { key, place, label: key, module: key === "messages" ? "comms" : key, load: () => {} }, key, loading: false, mod: { render: () => `${key.toUpperCase()}-OLD`, ...extra }, state: {}, ctx: {} });
   const cards = (...list) => ({ cards: () => list });
