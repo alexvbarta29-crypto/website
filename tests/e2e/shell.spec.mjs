@@ -155,7 +155,7 @@ for (const device of ["iphone13", "iphonese"]) {
         await g.click("#top-bar [data-tb-help]");
         await g.waitForSelector(".sheet.on [data-where]");
         await g.click(".sheet.on [data-where]");
-        await g.waitForFunction(() => document.querySelectorAll(".sheet.on .rs-where li").length === 15);
+        await g.waitForFunction(() => document.querySelectorAll(".sheet.on .rs-where li").length === 17);
         assert.match(await g.textContent(".sheet.on .rs-where"), /Run payroll\s*Menu › Financials › Payroll/);
         assert.deepEqual(await screenProblems(g), []);
         await shot(page, `shell-where-${device}-${theme}`);
@@ -371,4 +371,101 @@ test("on a desk (1440): the sidebar is the drawer's sections; a row opens the ta
       await p.clean();
     } finally { await p.close(); }
   }
+});
+
+// Polish 3 (the owner, Nov 14: "cleaner, more user friendly and like a professional CRM", Flyra's
+// desk): the 64 px icon rail with tooltips and a toggle that shows the labels (remembered on this
+// device), the top bar (the company, the search in the middle, Create, the bell, help, the person),
+// the page's own plain title, a list alone filling the page, the kit's table with column headers.
+for (const device of ["desk1440", "desk1024"]) {
+  test(`on a desk (${device}), Flyra's frame: the icon rail and its tooltips and labels, the top bar, the page's title, a list fills the page, the table`, async () => {
+    for (const theme of ["light", "dark"]) {
+      const { p, page, f } = await open("olive", device, theme);
+      try {
+        const vw = await f.evaluate(() => innerWidth);
+        const rail = await box(f, "#side");
+        assert.equal(Math.round(rail.w), 64, "a 64 px rail");
+        assert.ok((await box(f, '#side [data-sec="customers"] .sl')).w <= 1, "icons only (the label kept for screen readers)");
+        // a tooltip on hover: the row's label beside it
+        await f.hover('#side [data-sec="customers"]');
+        await f.waitForSelector("#side-tip:not([hidden])");
+        assert.equal(await f.textContent("#side-tip"), "Customers");
+        const tip = await box(f, "#side-tip");
+        assert.ok(tip.x >= rail.right, "beside the rail");
+        // the toggle shows the labels, and this device remembers
+        await f.click("#side [data-side-pin]");
+        assert.equal(Math.round((await box(f, "#side")).w), 224);
+        assert.ok((await box(f, '#side [data-sec="customers"] .sl')).w > 40, "the labels out");
+        assert.equal(await f.getAttribute("#side [data-side-pin]", "aria-pressed"), "true");
+        await f.hover('#side [data-sec="leads"]');
+        assert.equal(await f.$eval("#side-tip", (el) => el.hidden), true, "no tooltip with the labels out");
+        await page.reload();
+        const g = await crmFrame(page);
+        await settled(g);
+        assert.equal(Math.round((await box(g, "#side")).w), 224, "remembered");
+        await g.click("#side [data-side-pin]");
+        assert.equal(Math.round((await box(g, "#side")).w), 64);
+        // the top bar: the company, the search in the middle, Create, the bell, help, the person
+        const bar = await box(g, "#deskbar");
+        assert.ok(Math.abs(bar.x - 64) < 1 && Math.abs(bar.right - vw) < 1 && bar.h >= 56 && bar.h < 60, `across the page (${JSON.stringify(bar)})`);
+        assert.match(await g.textContent("#deskbar .db-co"), /Barta Window Washing/);
+        const q = await box(g, "#top-search");
+        assert.ok(Math.abs(q.x + q.w / 2 - (64 + (vw - 64) / 2)) < 120 && q.w >= 300, `the search near the middle (${q.x}, ${q.w})`);
+        assert.equal((await g.textContent("#top-new")).trim(), "Create");
+        for (const sel of ["#deskbar [data-db-bell]", "#deskbar [data-db-help]", "#top-me"]) assert.ok(await g.isVisible(sel), sel);
+        await g.click("#deskbar [data-db-help]");
+        await g.waitForSelector(".sheet.on [data-where]");
+        await page.keyboard.press("Escape");
+        await g.waitForFunction(() => !document.querySelector(".sheet"));
+        // the page's own header: the plain title in the page, the screen's one action
+        await goTo(g, "/invoices");
+        const t = await box(g, "#top-title");
+        assert.ok(t.y > bar.bottom, "the title is the page's, under the top bar");
+        assert.equal(await g.$eval("#top", (el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)", "no header band");
+        // a list alone fills the page: no empty pane beside it
+        assert.equal(await g.$eval("#pane", (el) => el.hidden), true);
+        assert.equal(await g.$eval("#app", (el) => el.classList.contains("split")), false);
+        assert.ok((await box(g, "#view")).w > vw - 64 - 2, "the list is the page");
+        // section tabs: underline tabs, no grey track
+        assert.equal(await g.$eval("#subnav .rs-seg", (el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)");
+        assert.deepEqual(await screenProblems(g), []);
+        await shot(page, `shell-flyra-${device}-${theme}-invoices`);
+        // the kit's table: small grey caps headers over one row per line, the columns lined up
+        await goTo(g, "/kit");
+        await g.$eval(".kit-page .rs-table", (el) => el.scrollIntoView());
+        assert.equal(await g.isVisible(".kit-page .rs-table .rs-thead"), true, "headers on a desk");
+        assert.equal(await g.$eval(".kit-page .rs-table .rs-thead .rs-td", (el) => getComputedStyle(el).textTransform), "uppercase");
+        const cells = await g.$$eval(".kit-page .rs-table .rs-tlist .rs-trow:first-child .rs-td", (els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+        assert.ok(Math.max(...cells) - Math.min(...cells) <= 12, `one line (${cells})`);
+        const lefts = (sel) => g.$eval(".kit-page .rs-table", (t, s) => [...t.querySelectorAll(s)].map((e) => Math.round(e.getBoundingClientRect().left)), sel);
+        const heads = await lefts(".rs-thead .rs-td");
+        const firsts = await lefts(".rs-tlist .rs-trow:first-child .rs-td");
+        assert.deepEqual(firsts, heads, "each cell under its header");
+        assert.deepEqual(await screenProblems(g), []);
+        await shot(page, `shell-flyra-${device}-${theme}-table`);
+        await p.clean();
+      } finally { await p.close(); }
+    }
+  });
+}
+
+test("the kit's table on a phone (iphone13): two-line rows, no headers, the empty state, loading rows", async () => {
+  const { p, page, f } = await open("olive", "iphone13", "light");
+  try {
+    await goTo(f, "/kit");
+    await f.$eval(".kit-page .rs-table", (el) => el.scrollIntoView());
+    assert.equal(await f.isVisible(".kit-page .rs-table .rs-thead"), false, "no headers on a phone");
+    const row = ".kit-page .rs-table .rs-tlist .rs-trow:first-child";
+    const [tt, amt, st] = await Promise.all([".c-title", ".c-money", ".c-status"].map((c) => box(f, `${row} ${c}`)));
+    assert.ok(Math.abs(tt.y - amt.y) < 6 && st.y > tt.y + 10 && amt.right > st.x, "line 1: the name and the $; line 2: the pill on the right");
+    assert.ok((await box(f, `${row} .rs-tmain`)).h >= 44);
+    assert.ok(await f.isVisible('.kit-page .rs-table .rs-emptystate .rs-pb.solid'), "the empty state's one dark pill");
+    await f.click(".kit-page [data-kit-tload]");
+    await f.waitForSelector('.kit-page .rs-table.rs-skel[aria-busy="true"] .rs-skrow');
+    await f.click(".kit-page [data-kit-tload]");
+    await f.waitForFunction(() => !document.querySelector(".kit-page [aria-busy=true]"));
+    assert.deepEqual(await screenProblems(f), []);
+    await shot(page, "shell-kit-table-iphone13-light");
+    await p.clean();
+  } finally { await p.close(); }
 });

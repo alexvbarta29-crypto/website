@@ -106,19 +106,27 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   assert.deepEqual(tabs("service"), ["Quotes", "Jobs", "Plans"]);
   assert.deepEqual(tabs("financials"), ["Invoices", "Payments", "Payroll"]);
   assert.deepEqual(tabs("marketing"), ["Workflows", "Campaigns", "Reviews", "Templates"]);
-  for (const k of ["home", "inbox", "schedule", "customers", "leads", "pipelines", "dialer", "tasks", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
+  for (const k of ["home", "inbox", "schedule", "customers", "map", "analytics"]) assert.equal(row(k).tabs.length, 1, `${k}: one screen, no tabs yet`);
+  assert.deepEqual(tabs("dialer"), ["Dialer", "Queue", "Call logs"], "the Power Dialer's three tabs");
+  // (Track 2: Leads and Pipelines draw List | Board, Tasks Board | List)
+  // Leads: its List | Board, then QR codes (the signs); Forms and Referrals wait for their screens
+  assert.deepEqual(row("leads").tabs.map((t) => [t.label, t.path]), [["List", "/leads?view=list"], ["Board", "/leads?view=board"], ["QR codes", "/signs"]]);
+  assert.deepEqual(tabs("pipelines"), ["List", "Board"]);
+  assert.deepEqual(tabs("tasks"), ["Board", "List"]);
   assert.deepEqual([row("service").path, row("financials").path, row("marketing").path, row("analytics").path, row("dialer").path], ["/quotes", "/invoices", "/automations", "/reports", "/calls"], "the first open tab");
   // the rare screens in a section's "..."
-  assert.deepEqual(more("inbox"), ["Outbox (not sent)", "Approvals"]);
+  assert.deepEqual(more("inbox"), ["Outbox (not sent)", "Approvals", "Team inboxes"]);
   assert.deepEqual(more("financials"), ["Autopay run", "Timesheets", "Purchases"]);
   assert.deepEqual(more("analytics"), ["Office dashboard", "Leaderboard"]);
-  assert.deepEqual(more("marketing"), ["Signs & flyers", "Giveaway"]);
+  assert.deepEqual(more("marketing"), [], "Marketing keeps what goes out: workflows, campaigns, reviews, templates");
+  assert.deepEqual(more("leads"), ["Text blast", "Giveaway"], "the Lead report waits for its screen; Giveaway until Forms lists it");
   assert.deepEqual(more("pipelines"), ["Manage pipelines"]);
-  assert.deepEqual(more("map"), ["Team map"]);
+  assert.deepEqual(more("map"), ["Team map", "Door report"]);
   assert.deepEqual(more("service"), ["Light Studio"]);
   assert.equal(row("inbox").count, "inbox", "Inbox carries the unread count");
   // every screen the old drawer had: a tab, a "...", a link in its own screen, or the person's sheet
-  const all = g.flat().flatMap((it) => [...it.tabs.map((t) => t.base), ...it.more.map((m) => m.path)]);
+  // (a section's view tabs share one screen: Leads List | Board is /leads once)
+  const all = g.flat().flatMap((it) => [...new Set(it.tabs.map((t) => t.base)), ...it.more.map((m) => m.path)]);
   assert.equal(new Set(all).size, all.length, "each screen once");
   for (const old of ["/schedule", "/jobs", "/plans", "/team-map", "/timesheets", "/payroll", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/map",
     "/tools/lights", "/leaderboard", "/contacts", "/invoices", "/payments", "/autopay", "/reports", "/tools/purchases", "/inbox", "/campaigns", "/approvals", "/reviews", "/signs", "/tools/giveaway", "/outbox",
@@ -196,24 +204,27 @@ test("SECTIONS and permissions: a tab shows when its screen is there and this pe
   nav.plan({ nav: navFor({ role: "tech" }), manifests: MANIFESTS, can: (x) => !!ROLE_DEFAULTS.tech[x], user: { id: "us_t", role: "tech" } });
   assert.deepEqual(nav.drawerGroups(), []);
   // a view tab waits for its screen to draw that view (Leads: List | Board once leads.js declares views)
-  planFor("owner");
-  assert.deepEqual(row("leads").tabs.map((t) => t.label), ["Leads"]);
-  assert.equal(String(nav.sectionTabs("leads", "leads")), "", "one tab: no row of tabs");
   const leads = router.match("/leads").route;
+  const had = leads.views;
+  delete leads.views;
+  planFor("owner");
+  assert.deepEqual(row("leads").tabs.map((t) => t.label), ["Leads", "QR codes"]);
+  assert.match(String(nav.sectionTabs("leads", "list")), /href="#\/leads" class="rs-seg-b" role="tab" aria-selected="true"[\s\S]*href="#\/signs"/, "the list stays the first tab");
   leads.views = ["list", "board"];
   try {
     planFor("owner");
-    assert.deepEqual(row("leads").tabs.map((t) => [t.label, t.path]), [["List", "/leads?view=list"], ["Board", "/leads?view=board"]]);
+    assert.deepEqual(row("leads").tabs.map((t) => [t.label, t.path]), [["List", "/leads?view=list"], ["Board", "/leads?view=board"], ["QR codes", "/signs"]]);
     assert.equal(nav.sectionAt("/leads", new URLSearchParams("view=board")).cur.key, "board");
     assert.equal(nav.sectionAt("/leads", new URLSearchParams("")).cur.key, "list", "no view asked: the first");
     assert.match(String(nav.sectionTabs("leads", "board")), /href="#\/leads\?view=board" class="rs-seg-b" role="tab" aria-selected="true"/);
-  } finally { delete leads.views; }
+  } finally { leads.views = had; }
   // Analytics' views are ?tab= (the section's param)
   const rep = router.match("/reports").route;
-  rep.views = ["overview", "sales", "technicians", "meta", "dashboards"];
+  rep.views = ["overview", "sales", "plans", "team", "all"];
   try {
     planFor("owner");
-    assert.deepEqual(row("analytics").tabs.map((t) => t.path), ["/reports?tab=overview", "/reports?tab=sales", "/reports?tab=technicians", "/reports?tab=meta", "/reports?tab=dashboards"]);
+    assert.deepEqual(row("analytics").tabs.map((t) => t.path), ["/reports?tab=overview", "/reports?tab=sales", "/reports?tab=plans", "/reports?tab=team", "/reports?tab=all"]);
+    assert.deepEqual(row("analytics").more.map((m) => m.label), ["Office dashboard"], "the Team tab holds the Leaderboard: it leaves the \"...\"");
     assert.match(String(nav.sectionTabs("analytics", "sales")), /class="rs-seg scroll"/, "five tabs: the row scrolls");
   } finally { delete rep.views; }
 });
@@ -257,6 +268,13 @@ test("a section's tab whose route comes later (Requests, Payouts...) shows once 
   assert.deepEqual(row("service").tabs.map((t) => t.label), ["Requests", "Quotes", "Jobs", "Plans"]);
   assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll"]);
   assert.equal(nav.isTabRoot("/requests"), true);
+  assert.deepEqual(row("financials").more.map((m) => m.label), ["Autopay run", "Timesheets", "Purchases"], "Purchases waits in \"...\" for Expenses");
+  router.register([{ name: "fake2", routes: [{ path: "/expenses", load: async () => ({ default: {} }), title: "Expenses", perm: "invoices:read_all" }, { path: "/forms", load: async () => ({ default: {} }), title: "Forms", perm: "contacts:read_all" }] }]);
+  planFor("owner");
+  assert.deepEqual(row("financials").tabs.map((t) => t.label), ["Invoices", "Payments", "Payouts", "Payroll", "Expenses"]);
+  assert.deepEqual(row("financials").more.map((m) => m.label), ["Autopay run", "Timesheets"], "Expenses takes Purchases in");
+  assert.deepEqual(row("leads").tabs.map((t) => t.label), ["List", "Board", "Forms", "QR codes"]);
+  assert.ok(!row("leads").more.some((m) => m.label === "Giveaway"), "Forms lists the Giveaway");
 });
 
 test("Customize Tabs: up to five above the line, the rest under MORE MENU; + and −, moves by one, a drop past five", async () => {

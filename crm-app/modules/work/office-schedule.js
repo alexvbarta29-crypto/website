@@ -35,7 +35,7 @@
 // /schedule/weather) after the grid is on screen. Arrow keys move the
 // chosen day on a computer (Page Up / Page Down a month).
 
-import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, rnd, seg, actionSheet } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, rnd, seg, actionSheet, sheetPage, listRow, listCard, toggle, formRows, formRow } from "../../core/ui.js";
 import { dateShort, dateLong, plural, money, clock } from "../../core/format.js";
 import {
   ensureStyles, officeView, today, addDays, dow, dowShort, dayNum, dayLabel, isDate, slotText, range, visitPill, faces, names, loadUsers, team,
@@ -49,7 +49,7 @@ import { wxMark, wxLine, wxWords, dayWx, WX_ICONS } from "./office-weather.js";
 import { panelView, openPanel, closePanel, moveFromPanel, assignSheet, wide, isVisitId } from "./office-vpanel.js";
 
 // the segmented control, in Rotor's order (Month first: the owner's default)
-const VIEWS = [["month", "Month"], ["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"]];
+const VIEWS = [["month", "Month"], ["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"], ["map", "Map"]];
 const ALL_VIEWS = [...VIEWS.map(([k]) => k), "tray"];
 const CHIPS = 3;                       // chips a day cell shows on a computer before "+N more"
 const WX_FRESH_MS = 30 * 60000;        // the forecast is read again after half an hour
@@ -115,8 +115,14 @@ async function fetchView(ctx, s) {
     s.date = r.data.from || today();
     s.today = r.data.today || s.today;
   }
+  if (s.view === "map") {
+    // every person's route on the day (guide-gaps SC10, Flyra's Map view)
+    const r = await ctx.api(`/schedule/routes?date=${s.date}`, { cache: false });
+    s.data = { ...r.data, kind: "map", visits: [], from: s.date, to: s.date };
+    return;
+  }
   const [from, to] = rangeOf(s.view, s.date);
-  const extra = s.view === "day" || s.view === "3day" ? `&amounts=1&pay=1${s.view === "day" && s.by === "sales" ? "&sales=1" : ""}` : s.view === "list" ? "&amounts=1&pay=1" : "";
+  const extra = s.view === "day" || s.view === "3day" ? `&amounts=1&pay=1${s.view === "day" && s.by === "sales" ? "&sales=1" : ""}` : s.view === "list" ? "&amounts=1&pay=1" : s.view === "week" ? "&amounts=1" : "";
   const r = await ctx.api(`/schedule?from=${from}&to=${to}${extra}`, { cache: false });
   s.today = r.data.today || s.today;
   if (Number.isInteger(r.data.now_min)) s.nowMin = r.data.now_min;     // the server's time (the red line)
@@ -206,6 +212,97 @@ async function fetchToBook(ctx) {
   paint(ctx);
 }
 
+// The Pending jobs of the dates on screen (guide-gaps SC4, Rotor's Pending Jobs panel; synced with the view).
+async function fetchPending(ctx) {
+  const s = ctx.state;
+  const [from, to] = rangeOf(s.view, s.date);
+  const key = `${from}|${to}|${s.pendOverdue ? 1 : 0}`;
+  s.pendBusy = true;
+  try { const r = await ctx.api(`/schedule/unscheduled?from=${from}&to=${to}${s.pendOverdue ? "&overdue=1" : ""}`, { cache: false }); s.pend = { key, from, to, jobs: r.data.jobs || [], total: r.data.total_cents || 0 }; } catch (e) { s.pend = { key, from, to, jobs: [], total: 0, failed: true }; }
+  s.pendBusy = false;
+  paint(ctx);
+}
+const pendKey = (s) => { const [from, to] = rangeOf(s.view, s.date); return `${from}|${to}|${s.pendOverdue ? 1 : 0}`; };
+function pendingChip(s) {
+  const p = s.pend && s.pend.key === pendKey(s) ? s.pend : null;
+  if (!p) return "";
+  const n = p.jobs.length;
+  return html`<div class="wk-phone wk-tbchip-w"><button type="button" class="rs-dashed wk-tbchip" data-pending ${attrs({ "aria-label": `Pending: ${plural(n, "job")} to book for these dates` })}>${icon("clock")}<span>${`Pending ${n}`}</span><span class="chev" aria-hidden="true"></span></button></div>`;
+}
+function pendingPage(ctx) {
+  const s = ctx.state;
+  const body = () => {
+    const p = s.pend || { jobs: [] };
+    const rows = p.jobs.map((j) => listRow({ title: j.cn || "Customer", amount: prices(ctx) && j.tot ? j.tot : null, sub: [j.n, j.t, j.tm ? `due ${j.tm}` : "no due month"].filter(Boolean).join(" · "), tag: j.pl ? "Plan" : null, href: "#/jobs/" + encodeURIComponent(j.id), action: { icon: "cal", label: `Schedule ${j.cn || "this job"}`, href: "#/jobs/" + encodeURIComponent(j.id) } }));
+    return html`<p class="rs-sub">${p.from ? `${dateShort(p.from)}${p.to !== p.from ? ` to ${dateShort(p.to)}` : ""}: jobs waiting for a day, as the schedule moves.` : ""}</p>
+      ${formRows([formRow("Include overdue", toggle(!!s.pendOverdue, { data: { "pend-overdue": true }, label: "Include overdue" }), { hint: "jobs due before these dates" })])}
+      ${listCard(rows, { label: "Pending jobs", empty: "Nothing waiting for these dates." })}`;
+  };
+  const pg = sheetPage({
+    title: "Pending jobs", body: () => body(),
+    events: {
+      "click [data-pend-overdue]": async () => { s.pendOverdue = !s.pendOverdue; await fetchPending(ctx); pg.set(body()); },
+      "click a[href]": () => setTimeout(() => pg.close(), 0),
+    },
+  });
+}
+
+// Block time (guide-gaps SC7, Rotor's Time Blocks): part of one day held for someone, grey on the Day grid.
+function blockSheet(ctx) {
+  const s = ctx.state;
+  const d = s.date || todayOf(s);
+  const people = s.users.filter((u) => u.status !== "disabled");
+  const sh = sheet({
+    title: "Block time",
+    body: html`<form class="form" id="wk-block-f" novalidate><div class="err" data-form-err hidden></div>
+      <label class="field"><span>Who</span><select name="user_id">${people.map((u) => html`<option ${attrs({ value: u.id, selected: u.id === s.tech })}>${u.name}</option>`)}</select></label>
+      <label class="field"><span>Day</span><input type="date" name="date" ${attrs({ value: d })} required></label>
+      <div class="addr-grid"><label class="field"><span>From</span><input type="time" name="start" value="12:00" step="900" required></label><label class="field"><span>To</span><input type="time" name="end" value="13:00" step="900" required></label></div>
+      <label class="field"><span>What for</span><input name="reason" maxlength="60" placeholder="Lunch, truck service, training"></label>
+      <button type="submit" class="btn primary block">Block it</button></form>`,
+    events: {
+      "submit #wk-block-f": async (e, form) => {
+        e.preventDefault();
+        const v = Object.fromEntries(new FormData(form));
+        try { await ctx.api("/time-off", { method: "POST", body: { user_id: v.user_id, date: v.date, start: v.start, end: v.end, reason: v.reason || "Blocked", kind: "block" } }); sh.close(); toast("Time blocked"); reload(ctx); }
+        catch (err) { const box = form.querySelector("[data-form-err]"); box.hidden = false; box.textContent = err.message || "That didn't save."; }
+      },
+    },
+  });
+}
+
+// The Map tab: every person's booked route on the day, a color each, chips to show or hide a person, and
+// what can't be drawn (no one on it, no map point). Keyless: the stops drawn to scale, like the Route sketch.
+export function routesSvg(routes, colors = new Map(), hidden = new Set(), { width = 340, height = 260, pad = 20 } = {}) {
+  const shown = routes.filter((r) => !hidden.has(r.user_id));
+  const pts = shown.flatMap((r) => r.stops.filter((x) => Array.isArray(x.geo)).map((x) => ({ lat: x.geo[0], lng: x.geo[1] })));
+  if (!pts.length) return html`<svg class="route wk-maps" ${attrs({ viewBox: `0 0 ${width} ${height}` })} role="img" aria-label="No stops with a map point"></svg>`;
+  const lats = pts.map((p) => p.lat), lngs = pts.map((p) => p.lng);
+  const [a, b, c, d] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  const k = Math.min((width - 2 * pad) / Math.max(1e-6, d - c), (height - 2 * pad) / Math.max(1e-6, b - a));
+  const xy = (g) => [Math.round((pad + (g[1] - c) * k + ((width - 2 * pad) - (d - c) * k) / 2) * 10) / 10, Math.round((height - pad - (g[0] - a) * k - ((height - 2 * pad) - (b - a) * k) / 2) * 10) / 10];
+  return html`<svg class="route wk-maps" ${attrs({ viewBox: `0 0 ${width} ${height}` })} role="img" ${attrs({ "aria-label": `${shown.length} ${shown.length === 1 ? "route" : "routes"}, ${pts.length} stops` })}>
+    ${shown.map((r) => {
+      const at = r.stops.filter((x) => Array.isArray(x.geo)).map((x) => ({ x, p: xy(x.geo) }));
+      const col = colors.get(r.user_id) || "#4a4a52";
+      return html`<g><path ${attrs({ d: at.map(({ p }, i) => `${i ? "L" : "M"}${p[0]} ${p[1]}`).join(" "), fill: "none", stroke: col, "stroke-width": "3", "stroke-linecap": "round", "stroke-linejoin": "round" })}></path>
+        ${at.map(({ x, p }) => html`<g><circle ${attrs({ cx: p[0], cy: p[1], r: "10", fill: col })}></circle><text ${attrs({ x: p[0], y: p[1] + 4, "text-anchor": "middle", "font-size": "10", "font-weight": "700", fill: "#fff" })}>${String(x.n)}</text><title>${x.cn || ""}</title></g>`)}</g>`;
+    })}
+  </svg>`;
+}
+function mapView(s) {
+  const routes = (s.data && s.data.routes) || [];
+  const colors = new Map(s.users.map((u) => [u.id, u.color || "#4a4a52"]));
+  const hidden = new Set(s.mapHide || []);
+  const name = (id) => (s.users.find((u) => u.id === id) || {}).name || "Someone";
+  return html`<div class="wk-mapv">
+    ${routes.length ? html`<div class="rs-chips wk-mapchips" role="group" aria-label="People">${routes.map((r) => html`<button type="button" class="rs-chip" ${attrs({ "data-maphide": r.user_id, "aria-pressed": hidden.has(r.user_id) ? "false" : "true" })}><span class="wk-dot" ${attrs({ style: `background:${colors.get(r.user_id) || "#4a4a52"}` })}></span>${name(r.user_id)} · ${String(r.stops.length)}</button>`)}</div>` : ""}
+    <div class="rs-card wk-mapcard">${routesSvg(routes, colors, hidden)}</div>
+    <p class="small muted wk-count">${[routes.length ? "" : "Nobody has a stop on this day.", s.data && s.data.no_person ? `${plural(s.data.no_person, "visit")} with no technician` : "", s.data && s.data.no_address ? `${plural(s.data.no_address, "stop")} without a map point` : ""].filter(Boolean).join(" · ")}</p>
+    ${routes.length ? listCard(routes.map((r) => listRow({ title: name(r.user_id), sub: `${plural(r.stops.length, "stop")}${r.stops[0] && r.stops[0].s ? ` · from ${clock(r.stops[0].s)}` : ""}`, href: `#/schedule/route/${s.date}/${encodeURIComponent(r.user_id)}`, initials: null })), { label: "Routes" }) : ""}
+  </div>`;
+}
+
 // What every view draws from: cancelled visits left out when the gear says so.
 const shown = (s) => (s.cards && s.cards.hideCancelled && s.data ? { ...s, data: { ...s.data, visits: (s.data.visits || []).filter((v) => !DEAD.includes(v.st)) } } : s);
 
@@ -281,7 +378,7 @@ function head(s, ctx) {
 // segmented List | Day | 3 Day | Week | Month (Month stays the default, the
 // owner's choice). On Day the date and the day's total are a line under the
 // title. A desk keeps its own head (head() above) and segmented views.
-const PHONE_VIEWS = [["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"], ["month", "Month"]];
+const PHONE_VIEWS = [["list", "List"], ["day", "Day"], ["3day", "3 Day"], ["week", "Week"], ["map", "Map"], ["month", "Month"]];
 const WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" });
 const CLOCK_NOW = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" });
 // "Today", "Tomorrow", "Yesterday", else the weekday (the date is the line under it)
@@ -301,17 +398,20 @@ function flyHead(s, ctx) {
   const day = ["day", "3day"].includes(s.view) && s.date;
   // the day's total (Flyra's "November 13 · $195"), for someone who sees prices
   const total = s.view === "day" && day && prices(ctx) && s.data ? (s.data.visits || []).filter((v) => v.d === s.date && !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
+  // the range's $ booked (Flyra's header total, SC11) on 3 Day, Week and List; a holiday's name on a day (SC12)
+  const rangeTotal = ["3day", "week", "list"].includes(s.view) && prices(ctx) && s.data && s.data.kind !== "map" ? (s.data.visits || []).filter((v) => !DEAD.includes(v.st) && (!s.tech || (v.a || []).includes(s.tech))).reduce((n, v) => n + (Number(v.amt) > 0 ? Number(v.amt) : 0), 0) : 0;
+  const hol = day && s.data && s.data.holidays ? s.data.holidays[s.date] : null;
   // back to today when the screen is somewhere else
   const away = s.view === "month" ? !!s.cal && s.cal !== t.slice(0, 7) : s.view !== "tray" && !!s.date && s.date !== t;
   const who = s.tech ? names(s.users, [s.tech]) : "Everyone";
   // the < > of each view: a month, a day, three days, a week (the List's two weeks go by the week)
-  const step = { month: "cal", day: "day", "3day": "day3", week: "week", list: "week" }[s.view] || null;
+  const step = { month: "cal", day: "day", "3day": "day3", week: "week", list: "week", map: "day" }[s.view] || null;
   return html`<div class="wk-fly wk-rs">
     <div class="wk-rs-row">
       <button type="button" class="wk-rs-title" data-mpick ${attrs({ "aria-haspopup": "dialog", "aria-label": `${name}: pick a month or a day` })}><span class="t">${name}</span>${I.caret}</button>
       <span class="wk-rs-tools">${rnd("map", "Map of the day", { data: { mapday: true }, popup: true })}${rnd("cal", "Go to a date", { data: { jump: true }, popup: true })}${rnd("filter", `Filter: ${who}${s.by === "sales" ? ", sales reps" : ""}`, { data: { fsheet: true }, popup: true, pressed: filtered(s) })}</span>
     </div>
-    ${step || away ? html`<div class="${"wk-rs-sub" + (day ? " day" : "")}"><span class="s">${day ? html`${dayTitle(s.date, t)} · ${MONTH_SHORT.format(new Date(s.date + "T12:00:00Z"))} ${dayNum(s.date)}${total ? html` · <b class="wk-ftotal num">${money(total).replace(/\.00$/, "")}</b>` : ""}` : s.view === "week" && s.date ? `Week of ${dateShort(sundayOf(s.date))}` : s.view === "list" && s.date ? `From ${dateShort(s.date)}` : ""}</span><span class="wk-rs-time num" aria-hidden="true">${CLOCK_NOW.format(new Date())}</span>
+    ${step || away ? html`<div class="${"wk-rs-sub" + (day ? " day" : "")}"><span class="s">${day ? html`${dayTitle(s.date, t)} · ${MONTH_SHORT.format(new Date(s.date + "T12:00:00Z"))} ${dayNum(s.date)}${hol ? html` <span class="wk-hol">${hol}</span>` : ""}${total ? html` · <b class="wk-ftotal num">${money(total).replace(/\.00$/, "")}</b>` : ""}` : s.view === "week" && s.date ? `Week of ${dateShort(sundayOf(s.date))}` : s.view === "list" && s.date ? `From ${dateShort(s.date)}` : s.view === "map" && s.date ? `${dayTitle(s.date, t)} · ${dateShort(s.date)}` : ""}${rangeTotal ? html` · <b class="wk-ftotal num" title="Booked in these dates">${money(rangeTotal).replace(/\.00$/, "")}</b>` : ""}</span><span class="wk-rs-time num" aria-hidden="true">${CLOCK_NOW.format(new Date())}</span>
       <span class="wk-rs-nav">${away ? html`<button type="button" class="wk-ftoday" data-ftoday>${icon("undo")}Today</button>` : ""}${step ? html`${rnd("chevleft", "Earlier", { tone: "grey", sm: true, data: { [step]: "-1" } })}${rnd("chevright", "Later", { tone: "grey", sm: true, data: { [step]: "1" } })}` : ""}</span></div>` : ""}
     ${seg(PHONE_VIEWS.map(([key, label]) => ({ key, label })), s.view, { name: "view", label: "View" })}
   </div>`;
@@ -340,6 +440,7 @@ function filterSheet(ctx) {
       canWrite(ctx) && { label: tb ? `${tb} to book` : "To book", icon: "clock", hint: "jobs waiting for a day", run: () => toTray(ctx), data: { totray: true } },
       canWrite(ctx) && { label: "Rain day", icon: "sun", hint: `move ${dateShort(d)}`, href: `#/schedule/move-day?date=${d}` },
       canWrite(ctx) && { label: "Time off", icon: "clock", href: "#/schedule/time-off" },
+      canWrite(ctx) && { label: "Block time", icon: "pause", hint: "part of a day, on the grid", run: () => blockSheet(ctx), data: { block: true } },
       ctx.can && ctx.can("settings:general") && { label: "Schedule settings", icon: "gear", href: "#/settings/schedule" }],
   ]);
 }
@@ -361,8 +462,8 @@ export function weekStrip(s) {
   const span = s.view === "3day" ? [s.date, addDays(s.date, 1), addDays(s.date, 2)] : [s.date];
   return html`<div class="wk-strip" data-strip role="group" ${attrs({ "aria-label": `Week of ${dateShort(sun)}` })}>
     <button type="button" class="icon-btn wk-sarrow" data-sweek="-1" aria-label="Week before">${icon("back")}</button>
-    <div class="wk-sdays">${days.map((d) => html`<button type="button" class="${"wk-sday" + (d === t ? " today" : "") + (d === s.date ? " sel" : span.includes(d) ? " span" : "")}" ${attrs({ "data-sday": d, "aria-pressed": String(d === s.date), "aria-current": d === t ? "date" : false, "aria-label": dateLong(d) })}>
-      <span>${dowShort(d)[0]}</span><b class="num">${dayNum(d)}</b></button>`)}</div>
+    <div class="wk-sdays">${days.map((d) => { const hol = s.data && s.data.holidays ? s.data.holidays[d] : null; return html`<button type="button" class="${"wk-sday" + (d === t ? " today" : "") + (d === s.date ? " sel" : span.includes(d) ? " span" : "") + (hol ? " hol" : "")}" ${attrs({ "data-sday": d, "aria-pressed": String(d === s.date), "aria-current": d === t ? "date" : false, "aria-label": dateLong(d) + (hol ? `, ${hol}` : ""), title: hol || null })}>
+      <span>${dowShort(d)[0]}</span><b class="num">${dayNum(d)}</b></button>`; })}</div>
     <button type="button" class="icon-btn wk-sarrow" data-sweek="1" aria-label="Week after"><span class="flip">${icon("back")}</span></button>
   </div>`;
 }
@@ -517,7 +618,7 @@ function weekView(s, ctx) {
   return html`
     <div class="daybar"><button type="button" class="icon-btn" data-week="-1" aria-label="Week before">${icon("back")}</button><span class="d">${dateShort(start)} – ${dateShort(days[6])}</span><button type="button" class="icon-btn" data-week="1" aria-label="Next week"><span class="flip">${icon("back")}</span></button></div>
     <div class="wk-phone"><div class="card wk-weekcard"><table class="wk-week">
-      <thead><tr>${days.map((d) => html`<th scope="col" class="${d === t ? "today" : ""}"><span>${dowShort(d).slice(0, 2)}</span><b class="num">${dayNum(d)}</b></th>`)}</tr></thead>
+      <thead><tr>${days.map((d) => { const hol = s.data.holidays && s.data.holidays[d]; return html`<th scope="col" class="${(d === t ? "today" : "") + (hol ? " hol" : "")}" ${attrs({ title: hol || null })}><span>${dowShort(d).slice(0, 2)}</span><b class="num">${dayNum(d)}</b>${hol ? html`<small class="wk-hol">${hol.slice(0, 5)}</small>` : ""}</th>`; })}</tr></thead>
       ${people.map((u) => html`<tbody><tr class="wk-wname"><th scope="rowgroup" colspan="7"><span class="wk-dot" ${attrs({ style: `background:${u.color || "#4a4a52"}` })}></span>${u.name}</th></tr><tr>${days.map((d) => cell(u.id, d))}</tr></tbody>`)}
       ${nobody ? html`<tbody><tr class="wk-wname"><th scope="rowgroup" colspan="7" class="muted">Nobody yet</th></tr><tr>${days.map((d) => cell(null, d))}</tr></tbody>` : ""}
     </table></div></div>
@@ -806,8 +907,8 @@ export default {
       <div class="wk-bar">${viewTabs(s)}</div>
       ${STRIP.includes(s.view) && s.date ? weekStrip(s) : ""}
       ${whoChip(s)}
-      ${["day", "3day", "week"].includes(s.view) && canWrite(ctx) ? toBookChip(s) : ""}
-      ${month ? monthView(s, ctx) : s.view === "day" ? dayView(s, ctx) : s.view === "3day" ? threeView(s, ctx) : s.view === "week" ? weekView(s, ctx) : s.view === "list" ? listView(s, ctx) : trayView(s)}
+      ${["day", "3day", "week", "list"].includes(s.view) && canWrite(ctx) ? pendingChip(s) || toBookChip(s) : ""}
+      ${month ? monthView(s, ctx) : s.view === "day" ? dayView(s, ctx) : s.view === "3day" ? threeView(s, ctx) : s.view === "week" ? weekView(s, ctx) : s.view === "list" ? listView(s, ctx) : s.view === "map" ? mapView(s) : trayView(s)}
       ${s.data && s.data.stale ? html`<p class="foot-note">The schedule's list is being rebuilt; a change from the last minute may be missing.</p>` : ""}
       ${panelView(s, ctx)}
       ${s.undo ? html`<div class="wk-undo" role="status"><span>${s.undo.text}</span><button type="button" class="btn small" data-undo>Undo</button><button type="button" class="icon-btn wk-undo-x" data-undo-x aria-label="Dismiss">✕</button></div>` : ""}
@@ -830,6 +931,8 @@ export default {
     if (["week", "day", "3day"].includes(s.view) && !(s.view === "day" && s.by === "sales") && wide() && canWrite(ctx) && s.date && (!s.dtray || s.dtray.month !== s.date.slice(0, 7)) && !s.dtrayBusy) fetchDeskTray(ctx);
     // a phone: the To book count for the chip and the filter (a desk has the tray itself)
     if (["week", "day", "3day", "list"].includes(s.view) && !wide() && canWrite(ctx) && s.date && (!s.toBook || s.toBook.month !== s.date.slice(0, 7)) && !s.tbBusy) fetchToBook(ctx);
+    // the Pending jobs of the dates on screen (the chip follows the view)
+    if (["week", "day", "3day", "list"].includes(s.view) && canWrite(ctx) && s.date && (!s.pend || s.pend.key !== pendKey(s)) && !s.pendBusy) fetchPending(ctx);
     if (s.panel && s.panel.focus && !s.panel.loading) {
       s.panel.focus = false;
       const h = el.querySelector("#wk-side-title");
@@ -876,6 +979,8 @@ export default {
     "click [data-view]": (e, el, ctx) => setView(ctx, el.dataset.view),
     "click [data-by]": (e, el, ctx) => { const s = ctx.state; s.by = el.dataset.by === "sales" ? "sales" : "tech"; reload(ctx); },
     "click [data-totray]": (e, el, ctx) => toTray(ctx),
+    "click [data-pending]": (e, el, ctx) => pendingPage(ctx),
+    "click [data-maphide]": (e, el, ctx) => { const s = ctx.state; const h = new Set(s.mapHide || []); if (h.has(el.dataset.maphide)) h.delete(el.dataset.maphide); else h.add(el.dataset.maphide); s.mapHide = [...h]; paint(ctx); },
     "click [data-mday]": (e, el, ctx) => pick(ctx, el.dataset.mday, { scroll: true }),
     "keydown [data-mday]": key,
     "click [data-cal]": (e, el, ctx) => {

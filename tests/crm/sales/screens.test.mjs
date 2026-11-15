@@ -95,12 +95,20 @@ test("One follow-up, a deal, starting one, logging a call: render and escape", a
 test("Tasks, one task, the contact's Sales tab, the Today card, Settings → Cadences", async () => {
   const tasks = await load("tasks");
   const list = [{ id: "tk_1", title: `Incident: cracked pane ${XSS}`, kind: "incident", priority: "high", status: "open", reported_on: "2026-11-10", contact_name: "Pat" }, { id: "tk_2", title: "Casey On-site quote", kind: "estimate_visit", priority: "medium", status: "open", due_at: "2026-11-20T15:00:00.000Z", end_at: "2026-11-20T16:00:00.000Z" }];
-  const h = text(tasks.render({ office: true, tab: "all", mine: [], all: list }, ctx()));
+  const st = (extra = {}) => ({ office: true, view: "list", mine: [], all: list, done: [], users: new Map(), f: { who: "all", kind: [], pr: [], late: false }, q: "", ...extra });
+  const h = text(tasks.render(st(), ctx()));
   assert.ok(!h.includes("<script>alert(1)"));
   assert.match(h, /Reported (today|\d+ days? ago)/, "days since it was reported");
   assert.match(h, /data-done="tk_1"/);
-  assert.match(text(tasks.render({ office: true, tab: "incident", mine: [], all: list }, ctx())), /cracked pane/);
-  assert.doesNotMatch(text(tasks.render({ office: false, tab: "mine", mine: [list[1]], all: [] }, ctx(["tasks:read"]))), /role="tablist"/, "a tech sees their own list only");
+  assert.match(text(tasks.render(st({ f: { who: "all", kind: ["incident"], pr: [], late: false } }), ctx())), /cracked pane/);
+  assert.doesNotMatch(text(tasks.render(st({ f: { who: "all", kind: ["incident"], pr: [], late: false } }), ctx())), /On-site quote/, "the kind filter");
+  // the board (Rotor's): Open, In Progress, Waiting, Done; a done task struck through; an overdue one outlined red
+  const b = text(tasks.render(st({ view: "board", all: [{ ...list[1], due_at: "2020-01-01T15:00:00.000Z", end_at: null }], done: [{ id: "tk_9", title: "Old call", kind: "call", status: "done", done_at: "2026-11-15T15:00:00.000Z" }] }), ctx()));
+  for (const k of ["open", "in_progress", "waiting", "done"]) assert.match(b, new RegExp(`data-col="${k}"`));
+  assert.match(b, /rs-bcard edge-red/, "overdue: a red edge");
+  assert.match(b, /rs-bcard done/, "done: struck through");
+  assert.match(b, /data-task-move="tk_2"/);
+  assert.equal(text(tasks.render(st({ office: false, view: "list", mine: [list[1]], all: [] }), ctx(["tasks:read"]))).includes("cracked pane"), false, "a tech sees their own list only");
 
   const task = await load("task");
   const office = text(task.render({ isNew: true, office: true, users: [{ id: "us_1", name: "Olive Owner" }], task: { kind: "estimate_visit", priority: "medium", status: "open", assignee_ids: ["us_1"] } }, ctx()));

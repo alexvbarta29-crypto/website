@@ -189,3 +189,21 @@ html:not([data-theme="light"]) .pp-st{background:#2f6fe0}
 .sl-thumb{position:relative;display:block;width:40px;height:40px;border-radius:10px;overflow:hidden;background:var(--mist-2);flex:none}
 .sl-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 .sl-thumb b{position:absolute;right:2px;bottom:2px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:rgba(22,22,27,.72);color:#fff;font:600 10px/16px var(--text);text-align:center}
+/* the Power Dialer (guide-gaps §2.8): the queue picker, the person up now, the script's folds, the queue's rows */
+.dl-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dl-from{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-3)}
+.dl-from svg{width:16px;height:16px}
+.dl-card{display:flex;flex-direction:column;gap:6px}
+.dl-ch{display:flex;align-items:center;justify-content:space-between}
+.dl-pos{font-size:13px;color:var(--ink-3)}
+.dl-nav{display:flex;gap:8px}
+.dl-name{display:flex;align-items:center;gap:10px;min-height:44px;color:var(--ink);text-decoration:none;font-size:24px}
+.dl-phone{margin:0;font-size:17px}
+.dl-acts{display:flex;gap:8px;flex-wrap:wrap}
+.dl-part{border-top:1px solid var(--line);padding:4px 0}
+.dl-part summary{min-height:44px;display:flex;align-items:center;font-weight:600;cursor:pointer}
+.dl-part p{margin:0 0 10px;white-space:pre-wrap;color:var(--ink-2)}
+.dl-page{padding-bottom:84px}
+.dl-qrow .rs-acts{display:flex;align-items:center}
+.dl-fs{border:0;padding:0;margin:0 0 6px}
+.dl-per{margin:0}

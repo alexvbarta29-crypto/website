@@ -50,6 +50,22 @@ export const TRIGGERS = Object.freeze({
   "task.due": { label: "A task is due", phrase: "a task is due", subject: "task", group: "Sales", schedule: true },
   "schedule": { label: "On a schedule", phrase: "it's time", subject: "contact", group: "Schedule", schedule: true },
 });
+// Workflows in folders by what they are about (Flyra's, the Rotor guide's
+// K16 and S25): a custom automation goes in its trigger's folder unless
+// someone moved it into another (flow.folder: one of these, or a name of
+// their own); a built-in one by its key.
+export const FOLDERS = Object.freeze([["jobs", "Jobs"], ["estimates", "Estimates"], ["payments", "Payments"], ["subscriptions", "Subscriptions"], ["reviews", "Reviews"], ["customers", "Customers"], ["misc", "Misc"]]);
+export const FOLDER_RULES = Object.freeze([["lead.", "customers"], ["contact.", "customers"], ["sales.", "customers"], ["cadence", "customers"], ["visit.", "jobs"], ["job.", "jobs"], ["work.", "jobs"], ["quote.", "estimates"], ["invoice.", "payments"], ["payment.", "payments"], ["autopay.", "payments"], ["money.", "payments"], ["agreement.", "subscriptions"], ["plan.", "subscriptions"], ["review", "reviews"], ["task.", "customers"]]);
+export const folderOfKey = (key) => (FOLDER_RULES.find(([p]) => String(key || "").startsWith(p)) || [null, "misc"])[1];
+export const MAX_FOLDER = 40;
+export function cleanFolder(v, f = "folder") {
+  if (v === undefined || v === null || v === "") return null;
+  const name = squish(v);
+  if (!name || name.length > MAX_FOLDER) fail("A short folder name (40 letters at most).", f);
+  return name;
+}
+export const folderOf = (flow) => flow.folder || folderOfKey(flow.trigger && flow.trigger.type);
+
 export const EVENT_TRIGGERS = Object.freeze(Object.keys(TRIGGERS).filter((k) => !TRIGGERS[k].schedule));
 export const isSchedule = (type) => !!(TRIGGERS[type] && TRIGGERS[type].schedule);
 // Not offered: a birthday or anniversary (contacts keep no such date yet).
@@ -299,6 +315,7 @@ export function cleanFlow(b = {}) {
   if (!Number.isInteger(pcd) || pcd < 0 || pcd > 3650) fail("Use a number of days (0 for no limit).", "limits.per_contact_days");
   return {
     name, enabled: b.enabled === true, trigger, conditions, steps, stop, limits: { per_contact_days: pcd },
+    ...(cleanFolder(b.folder) ? { folder: cleanFolder(b.folder) } : {}),
     ...(typeof b.recipe === "string" && RECIPES.some((r) => r.key === b.recipe) ? { recipe: b.recipe } : {}),
   };
 }

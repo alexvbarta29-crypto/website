@@ -1,9 +1,14 @@
-// Campaigns (design §9.2 "Campaigns"): every campaign with its status and
-// counts (Rotor's past ones included, as history), and the other bulk sends
-// waiting for a test or a confirm (rain-day notices, rebooks).
+// Campaigns (Marketing's second tab; the Rotor guide's K4, K5, K18; design
+// §9.2 "Campaigns"): Rotor's stat tiles over the year's campaigns (sent,
+// response, job revenue, attributed ARR, open, click, bounce: open and
+// click show "-" until email tracking is connected), then every campaign as
+// a two-line row (Rotor's past ones as history), and the other bulk sends
+// waiting for a test or a confirm (rain-day notices, rebooks). New: a
+// campaign from a template, or a text blast (Flyra's: your own words, a CSV,
+// the cost, a follow-up to who didn't reply).
 
-import { html, icon, sheet, toast } from "../../core/ui.js";
-import { dateShort } from "../../core/format.js";
+import { html, icon, sheet, toast, tileRow, listCard, listRow, sectionLabel, pillBtn } from "../../core/ui.js";
+import { dateShort, money } from "../../core/format.js";
 import { field, select, readForm } from "../../core/forms.js";
 import { ensureStyles, emptyCard } from "./kit.js";
 
@@ -15,7 +20,7 @@ function newSheet(ctx) {
     title: "New campaign",
     body: html`<form class="form" data-new novalidate>
       ${field({ label: "Name", name: "name", required: true, hint: "For you: customers never see it." })}
-      ${select({ label: "Channel", name: "channel", value: "sms", options: [{ value: "sms", label: "Text" }, { value: "email", label: "Email" }] })}
+      ${select({ label: "Kind", name: "channel", value: "blast", options: [{ value: "blast", label: "Text blast (your own words)" }, { value: "sms", label: "Text from a template" }, { value: "email", label: "Email from a template" }] })}
       <button type="submit" class="btn primary block">Create</button>
     </form>`,
     events: {
@@ -24,7 +29,7 @@ function newSheet(ctx) {
         const v = readForm(form);
         if (!String(v.name || "").trim()) { toast("Give it a name.", { bad: true }); return; }
         try {
-          const r = await ctx.api("/campaigns", { method: "POST", body: { name: v.name, channel: v.channel } });
+          const r = await ctx.api("/campaigns", { method: "POST", body: v.channel === "blast" ? { name: v.name, kind: "blast", channel: "sms" } : { name: v.name, channel: v.channel } });
           sh.close();
           ctx.go("/campaigns/" + encodeURIComponent(r.data.id));
         } catch (err) { toast((err && err.message) || "That didn't save.", { bad: true }); }
@@ -33,23 +38,46 @@ function newSheet(ctx) {
   });
 }
 
+const pct = (n) => (n === null || n === undefined ? "-" : `${n}%`);
+export function statTiles(t = {}) {
+  const split = t.revenue_by_channel || {};
+  return [
+    { key: "sent", label: "Sent", value: t.sent ?? "-", info: true },
+    { key: "resp", label: "Response", value: pct(t.response_pct), info: true },
+    { key: "rev", label: "Job revenue", value: money(t.job_revenue_cents || 0).replace(/\.00$/, ""), money: split.email ? `Texts ${money(split.sms || 0).replace(/\.00$/, "")} · Email ${money(split.email).replace(/\.00$/, "")}` : null, info: true },
+    { key: "arr", label: "Attributed ARR", value: money(t.arr_cents || 0).replace(/\.00$/, ""), info: true },
+    { key: "open", label: "Open", value: pct(t.open_pct), info: true },
+    { key: "click", label: "Click", value: pct(t.click_pct), info: true },
+    { key: "bounce", label: "Bounce", value: pct(t.bounce_pct), info: true },
+  ];
+}
+
 export default {
+  title: "Campaigns",
   async load(params, ctx) {
     ensureStyles();
-    const r = await ctx.api("/campaigns", { cache: false });
-    return { rows: r.data || [], bulk: (r.meta && r.meta.bulk_runs) || [] };
+    const [r, st] = await Promise.all([ctx.api("/campaigns", { cache: false }), ctx.api("/campaigns/stats", { cache: false }).catch(() => null)]);
+    return { rows: r.data || [], bulk: (r.meta && r.meta.bulk_runs) || [], stats: st ? st.data : null };
   },
   action: (s, ctx) => ({ label: "New", run: () => newSheet(ctx) }),
   render(s) {
     const mine = s.rows.filter((c) => !c.imported);
     const rotor = s.rows.filter((c) => c.imported);
-    const row = (c) => html`<li><a class="row" href="${"#/campaigns/" + encodeURIComponent(c.id)}">
-      <span class="who"><span class="nm">${c.name}</span><span class="sub">${c.channel === "email" ? "Email" : "Text"}${c.recipients ? ` · ${c.recipients} people` : ""}${c.send_at && c.status === "scheduled" ? ` · goes out ${dateShort(c.send_at)}` : c.finished_at ? ` · ${dateShort(c.finished_at)}` : ""}</span></span>
-      <span class="end">${pill(c.status)}<span class="chev" aria-hidden="true"></span></span></a></li>`;
+    const per = (s.stats && s.stats.per) || {};
+    const row = (c) => {
+      const st = per[c.id];
+      return listRow({
+        title: c.name, href: "#/campaigns/" + encodeURIComponent(c.id),
+        sub: [c.send_at && c.status === "scheduled" ? `goes out ${dateShort(c.send_at)}` : c.finished_at ? dateShort(c.finished_at) : dateShort(c.created_at), c.channel === "email" ? "Email" : "Text", c.recipients ? `${c.recipients} people` : "", st && st.response_pct !== null ? `${st.response_pct}% replied` : ""].filter(Boolean).join(" · "),
+        pill: { label: (STATUS[c.status] || [c.status])[0], tone: ({ draft: "grey", tested: "blue", scheduled: "blue", sending: "amber", sent: "green", cancelled: "grey" })[c.status] || "grey" },
+      });
+    };
     return html`<div class="stack">
+      ${tileRow(statTiles((s.stats && s.stats.totals) || {}), { name: "cm", label: "This year's campaigns" })}
+      <div class="rs-pills">${pillBtn("New text blast", { icon: "send", href: "#/campaigns/new?kind=blast", tone: "solid" })}</div>
       ${s.bulk.length ? html`<div class="section-h">Waiting for a test or a confirm</div><ul class="list">${s.bulk.map((b) => html`<li><a class="row" href="#/approvals"><span class="who"><span class="nm">${b.title}</span><span class="sub">${b.recipients} people · ${b.channel === "email" ? "email" : "text"}</span></span><span class="end"><span class="pill amber">${b.status === "tested" ? "Confirm" : "Test first"}</span><span class="chev" aria-hidden="true"></span></span></a></li>`)}</ul>` : ""}
-      ${mine.length ? html`<ul class="list">${mine.map(row)}</ul>` : emptyCard("send", "No campaigns yet", "Tap New to pick who it goes to and what it says. Nothing goes out before a test send and your OK.")}
-      ${rotor.length ? html`<div class="section-h">From Rotor (history)</div><ul class="list">${rotor.map(row)}</ul>` : ""}
+      ${mine.length ? listCard(mine.map(row), { label: "Campaigns" }) : emptyCard("send", "No campaigns yet", "Tap New to pick who it goes to and what it says. Nothing goes out before a test send and your OK.")}
+      ${rotor.length ? html`${sectionLabel("From Rotor (history)")}${listCard(rotor.map(row), { label: "From Rotor" })}` : ""}
     </div>`;
   },
   events: {},

@@ -28,7 +28,8 @@ for (const device of ["iphone13", "iphonese"]) {
       await drawerGo(f, "/contacts");
       await settled(f, { hash: "#/contacts" });
       assert.equal(await title(f), "Customers");
-      assert.match(await f.textContent("#ct-count"), /^2\d\d contacts/, "the 200 seeded people and the leads");
+      assert.match(await f.textContent("#ct-count"), /^1\d\d contacts/, "the Customers tile: customers only (leads have their own screen)");
+      assert.equal(await f.getAttribute('[data-tile="ct"][data-key="customer"]', "aria-pressed"), "true", "the Customers tile is on");
       assert.deepEqual(await screenProblems(f), [], "the list passes the phone checks");
       await shot(page, `contacts-list-${device}`);
       // search (Rotor's round search button opens the field in place): by phone digits, then by name (one row each)
@@ -36,11 +37,11 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click('#top-rnd [data-own="find"]');
       const search = async (q, name) => {
         await f.fill("#ct-q", q);
-        await f.waitForFunction((n) => document.querySelectorAll("#ct-list .cc").length === 1 && document.getElementById("ct-list").textContent.includes(n), name, { timeout: 5000 });
+        await f.waitForFunction((n) => document.querySelectorAll("#ct-list .rs-lrow").length === 1 && document.getElementById("ct-list").textContent.includes(n), name, { timeout: 5000 });
       };
       await search("555-1902", "Blair Calledonce");
       await search("Newlead", "Avery Newlead");
-      await tap(page, f, "#ct-list .cc-top");
+      await tap(page, f, "#ct-list .rs-lr-main");
       await settled(f, { hash: `#/contacts/${seeded.contacts.lead}` });
       assert.match(await f.textContent("#view"), /Avery Newlead/);
       assert.deepEqual(await screenProblems(f), [], "the contact passes the phone checks");
@@ -49,7 +50,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // Rotor's lead page (Nov 2026): Details | Activity; Follow-ups and Tasks (M2b) on Details, Calls and Deals on Activity
       await f.waitForFunction(() => !document.querySelector("#view .sk"), null, { timeout: 10000 });
       for (const id of ["ct-card-properties", "ct-mod-sales", "ct-card-tasks", "ct-card-activity", "ct-card-calls", "ct-card-deals"]) assert.ok(await f.$(`#${id}`), id);
-      assert.ok(await f.$('#view [role=tablist] [data-key="activity"]'), "Details | Activity");
+      assert.deepEqual(await f.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["details", "service", "payments", "activity"], "Details | Service | Payments | Activity");
       assert.match(await f.textContent("#ct-mod-sales"), /New lead/i, "the Follow-ups card shows the follow-up");
       assert.match(await f.textContent(".rs-name .pill"), /^(New|Open|Quoted|Following up|High)$/, "the stage (or the priority) pill beside the name");
       assert.deepEqual(await screenProblems(f), [], "the Sales cards pass the phone checks");
@@ -114,4 +115,107 @@ test("contacts: the first slice's customer list for the office, not for a tech",
     assert.equal(res.status(), 403, "/crm/legacy for a tech");
     await t.clean({ allow: [/403/] });
   } finally { await t.close(); }
+});
+
+// The Rotor guide's Customers (guide-gaps §2.5): the tiles are the filter, two-line rows with the lifetime
+// value and what is owed, the filter sheet's sort, Select with a bulk tag, a row's long press; the
+// contact's Service tab (its tiles), the Mute row, the Files card and "Open their portal". Both themes.
+async function themed(page, f, theme) {
+  if (theme !== "light") return f;
+  await f.evaluate(() => localStorage.setItem("crm-theme", "light"));
+  await page.reload();
+  const g = await crmFrame(page);
+  await settled(g);
+  return g;
+}
+
+for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["iphone13", "light"], ["iphonese", "dark"]]) {
+  test(`customers (${device}, ${theme}): tiles, rows, sort, select; the contact's Service tab, Mute, Files, portal`, async () => {
+    const { p, page, f: f0 } = await open("olive", device);
+    try {
+      const g = await themed(page, f0, theme);
+      await goTo(g, "/contacts");
+      await g.waitForSelector("#ct-list .rs-lrow");
+      const tiles = await g.$$eval('[data-tile="ct"]', (els) => els.map((e) => e.dataset.key));
+      assert.deepEqual(tiles, ["customer", "plan", "owes", "former_customer", "archived", ""], "Customers · Plan members · Owes · Former · Archived · Everyone");
+      // a row: the name, town (and the owner) on line 2, a status pill, one round call
+      const row = await g.$eval("#ct-list .rs-lrow", (el) => ({ t: el.querySelector(".rs-lr-t").textContent, sub: el.querySelector(".rs-lr-s").textContent, call: !!el.querySelector('.rs-acts a[href^="tel:"]') }));
+      assert.ok(row.t && row.sub && row.call, JSON.stringify(row));
+      // the Everyone tile: leads too; tapping Customers again goes back
+      await g.click('[data-tile="ct"][data-key=""]');
+      await g.waitForFunction(() => /^2\d\d contacts/.test(document.getElementById("ct-count").textContent));
+      await g.click('[data-tile="ct"][data-key="customer"]');
+      await g.waitForFunction(() => /^1\d\d contacts/.test(document.getElementById("ct-count").textContent));
+      assert.deepEqual(await screenProblems(g), [], "the list passes the phone checks");
+      await shot(page, `g2-customers-${device}-${theme}`);
+      // the filter sheet: sort by newest
+      await g.click('#top-rnd [data-own="filter"]');
+      await g.waitForSelector(".sheet.on [data-f-show]");
+      assert.match(await g.textContent(".sheet.on"), /Lifetime value[\s\S]*Sale value[\s\S]*Outstanding[\s\S]*Newest/);
+      assert.deepEqual(await screenProblems(g), [], "the filter sheet");
+      await g.click('.sheet.on [data-f-group="sort"][data-f-val="new"]');
+      await g.click(".sheet.on [data-f-show]");
+      await g.waitForFunction(() => !document.querySelector(".sheet.on"), null, { timeout: 5000 });
+      assert.equal(await g.$(".ct-ltr"), null, "no letter headings when sorted by newest");
+      assert.match(await g.getAttribute('#top-rnd [data-own="filter"]', "aria-label"), /on/);
+      if (device === "iphone13" && theme === "dark") {
+        // Select: pick two, tag them
+        await g.click('#top-rnd [data-own="more"]');
+        await g.waitForSelector(".sheet.on [data-select]");
+        await g.click(".sheet.on [data-select]");
+        await g.waitForSelector(".ct-bulk");
+        const picks = await g.$$("#ct-list [data-pick]");
+        await picks[0].click();
+        await picks[1].click();
+        assert.match(await g.textContent(".ct-bulk-n"), /2 picked/);
+        assert.deepEqual(await screenProblems(g), [], "Select and its bar");
+        await shot(page, `g2-customers-select-${device}`);
+        await g.click('.ct-bulk [data-bulk="tag"]');
+        await g.fill('.sheet.on [name="tag"]', "Spring list");
+        await g.click('.sheet.on button[type="submit"]');
+        await g.waitForFunction(() => /Tagged: 2/.test((document.querySelector(".toasts") || {}).textContent || ""), null, { timeout: 8000 });
+        await g.waitForFunction(() => !document.querySelector(".ct-bulk"), null, { timeout: 8000 });
+        // a long press (a right click on a desk) opens the row's "..."
+        await g.waitForSelector("#ct-list .rs-lrow[data-hold]");
+        await g.dispatchEvent("#ct-list .rs-lrow[data-hold] .rs-lr-main", "contextmenu");
+        await g.waitForSelector(".sheet.on .rs-act");
+        assert.match(await g.textContent(".sheet.on"), /Edit[\s\S]*Archive/);
+        await g.click(".sheet.on [data-sheet-x]");
+      }
+      // the contact: Details | Service | Payments | Activity; the Service tiles; Mute; Files; the portal
+      await goTo(g, `/contacts/${seeded.contacts.plan}`);
+      await g.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
+      assert.ok(await g.isVisible("#ct-mute .switch"), "the Mute switch up front");
+      assert.ok(await g.$("#ct-card-files"), "the Files card");
+      await g.click('[data-seg="ctab"][data-key="service"]');
+      await g.waitForSelector('[data-pane="service"]:not(.off) #ct-svc-tiles');
+      assert.match(await g.textContent("#ct-svc-tiles"), /Scheduled jobs[\s\S]*Avg completed job[\s\S]*Avg future job[\s\S]*Outstanding/);
+      assert.deepEqual(await screenProblems(g), [], "the Service tab");
+      await shot(page, `g2-contact-service-${device}-${theme}`);
+      await g.click('[data-seg="ctab"][data-key="payments"]');
+      assert.ok(await g.isVisible('[data-pane="payments"] #ct-mod-money'), "invoices on Payments");
+      assert.deepEqual(await screenProblems(g), [], "the Payments tab");
+      await g.click("#top-more");
+      await g.waitForSelector(".sheet.on [data-portal]");
+      await g.click(".sheet.on [data-portal]");
+      await g.waitForSelector('.sheet.on a[href*="/p/"]', { timeout: 8000 });
+      assert.match(await g.textContent(".sheet.on"), /15 minutes/);
+      await g.click(".sheet.on [data-sheet-x]");
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
+test("customers on a desk (desk1440): the list, and the contact's four tabs side by side", async () => {
+  const { p, f } = await open("olive", "desk1440");
+  try {
+    await goTo(f, "/contacts");
+    await f.waitForSelector("#ct-list .rs-lrow");
+    assert.deepEqual(await screenProblems(f), []);
+    await goTo(f, `/contacts/${seeded.contacts.plan}`);
+    await f.waitForFunction(() => !document.querySelector(".ct-loading"), null, { timeout: 10000 });
+    const holder = (await f.$("#pane:not([hidden]) .ct-page")) ? "#pane" : "#view";
+    for (const k of ["details", "service", "payments", "activity"]) assert.ok(await f.isVisible(`${holder} [data-pane="${k}"]`), k);
+    await p.clean();
+  } finally { await p.close(); }
 });

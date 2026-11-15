@@ -78,12 +78,12 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await title(f), "Schedule");
       await f.waitForSelector(".wk-mgrid");
       assert.equal(await f.getAttribute("[data-view=month]", "aria-selected"), "true", "Month is the default");
-      assert.deepEqual(await f.$$eval(".wk-view", (b) => b.map((x) => x.textContent.trim())), ["Month", "List", "Day", "3 Day", "Week"], "the desk's views");
+      assert.deepEqual(await f.$$eval(".wk-view", (b) => b.map((x) => x.textContent.trim())), ["Month", "List", "Day", "3 Day", "Week", "Map"], "the desk's views");
       // a phone's head is Rotor's: "November ⌄" (pick a month or a day), the time, three round buttons (map, go to a date, filter), the < > and the segmented views
       for (const b of ["data-mpick", "data-mapday", "data-jump", "data-fsheet", "data-cal"]) assert.ok(await f.isVisible(`.wk-fly [${b}]`), b);
       assert.match(await f.textContent(".wk-fly .wk-rs-title"), /^[A-Z][a-z]+$/, "November");
       assert.match(await f.textContent(".wk-fly .wk-rs-time"), /^\d{1,2}:\d{2} [AP]M$/, "the time");
-      assert.deepEqual(await f.$$eval(".wk-fly [data-seg=view]", (b) => b.map((x) => x.textContent.trim())), ["List", "Day", "3 Day", "Week", "Month"], "Rotor's segmented views");
+      assert.deepEqual(await f.$$eval(".wk-fly [data-seg=view]", (b) => b.map((x) => x.textContent.trim())), ["List", "Day", "3 Day", "Week", "Map", "Month"], "Rotor's segmented views (and Flyra's Map)");
       assert.equal(await f.getAttribute(".wk-fly [data-seg=view][data-key=month]", "aria-selected"), "true", "Month stays the default (the owner's choice)");
       assert.equal(await f.isVisible(".wk-top"), false, "the desk's head is a desk's");
       // the filter holds Who, the columns, Show on cards, cancelled, Find a visit, To book, Rain day, Time off
@@ -153,7 +153,8 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.equal(await f.getAttribute(".wk-fly [data-seg=view][data-key=day]", "aria-selected"), "true");
       assert.ok(await f.isVisible(`.wk-strip [data-sday="${day}"].today`), "the week strip on Day, today in the red circle");
       await f.waitForSelector(".wk-tbchip >> visible=true");
-      assert.match(await f.textContent(".wk-tbchip"), /To book \(\d+\)/, "the dashed To book chip");
+      await f.waitForFunction(() => /Pending \d+/.test(document.querySelector(".wk-tbchip").textContent), null, { timeout: 8000 });
+      assert.match(await f.textContent(".wk-tbchip"), /Pending \d+/, "the dashed Pending chip (Rotor's: the jobs to book for the dates on screen)");
       assert.ok(await f.$(`.wk-cols [href="#/visits/${seeded.visits[1]}"]`), "both techs' visits today");
       assert.match(await f.textContent(".wk-cols .wk-chead"), /Unassigned/);
       assert.equal(await f.getAttribute(`.wk-strip [data-sday="${day}"]`, "aria-current"), "date");
@@ -469,3 +470,58 @@ test("a tech: their own visit opens with no office buttons; another tech's is no
     await p.clean();
   } finally { await p.close(); }
 });
+
+// The Rotor guide's Schedule (guide-gaps §2.4, §7.2 SC4, SC7, SC10-SC12): the Pending page of the dates on
+// screen (Include overdue), Block time drawn on the Day grid, the holiday on its day, the range's $, and
+// the Map tab (every person's route on the day). Both phones, both themes.
+for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["iphone13", "light"], ["iphonese", "dark"]]) {
+  test(`schedule, the Rotor guide (${device}, ${theme}): Pending, Block time, the holiday, the Map tab`, async () => {
+    const { p, page, f: f0 } = await open("olive", device);
+    try {
+      let f = f0;
+      if (theme === "light") { await f.evaluate(() => localStorage.setItem("crm-theme", "light")); await page.reload(); f = await crmFrame(page); await settled(f); }
+      // Thanksgiving's week: the holiday's name on its day
+      await goTo(f, "/schedule?view=day&date=2026-11-26");
+      await f.waitForSelector(".wk-fly .wk-hol");
+      assert.match(await f.textContent(".wk-fly .wk-hol"), /Thanksgiving/);
+      assert.ok(await f.$('.wk-strip [data-sday="2026-11-26"].hol'), "the strip marks it");
+      // Pending: the chip follows the dates, its page has Include overdue
+      await goTo(f, "/schedule?view=3day&date=2026-11-17");
+      await f.waitForFunction(() => /Pending \d+/.test((document.querySelector(".wk-tbchip") || {}).textContent || ""), null, { timeout: 8000 });
+      await f.click("[data-pending]");
+      await f.waitForSelector(".sheet.on [data-pend-overdue]");
+      assert.deepEqual(await screenProblems(f), [], "the Pending page");
+      await shot(page, `g2-schedule-pending-${device}-${theme}`);
+      await f.click(".sheet.on [data-pend-overdue]");
+      await f.waitForFunction(() => document.querySelector(".sheet.on [data-pend-overdue]").getAttribute("aria-checked") === "true", null, { timeout: 8000 });
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
+      if (device === "iphone13" && theme === "dark") {
+        // Block time from the filter sheet: grey on Theo's column
+        await goTo(f, "/schedule?view=day&date=2026-11-18");
+        await f.waitForSelector(".wk-cols");
+        await f.click("[data-fsheet]");
+        await f.waitForSelector(".sheet.on [data-block]");
+        await f.click(".sheet.on [data-block]");
+        await f.waitForSelector("#wk-block-f");
+        await f.selectOption('#wk-block-f [name="user_id"]', seeded.users.tech.id);
+        await f.fill('#wk-block-f [name="date"]', "2026-11-18");
+        await f.fill('#wk-block-f [name="reason"]', "Truck service");
+        await f.click('#wk-block-f button[type="submit"]');
+        await toastSays(f, /Time blocked/);
+        await f.waitForSelector(".wk-cols .wk-tblock");
+        assert.match(await f.textContent(".wk-cols .wk-tblock"), /Truck service/);
+        assert.deepEqual(await screenProblems(f), [], "a time block on the Day grid");
+        await shot(page, `g2-schedule-block-${device}`);
+      }
+      // the Map tab: everyone's route for the day
+      await goTo(f, "/schedule?view=map&date=" + (await f.evaluate(() => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()))));
+      await f.waitForSelector(".wk-mapv");
+      assert.equal(await f.getAttribute(".wk-fly [data-seg=view][data-key=map]", "aria-selected"), "true");
+      assert.ok(await f.$(".wk-mapv svg.wk-maps"), "the routes drawn");
+      assert.deepEqual(await screenProblems(f), [], "the Map tab");
+      await shot(page, `g2-schedule-map-${device}-${theme}`);
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}

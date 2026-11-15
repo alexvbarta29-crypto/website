@@ -83,9 +83,9 @@ for (const device of ["iphone13", "iphonese"]) {
       await shot(page, `polish2-photo-sheet-${device}`);
       await f.click(".sheet.on [data-sheet-x]");
       await f.waitForFunction(() => !document.querySelector(".sheet.on"), null, { timeout: 5000 });
-      // the office's task list: the first photo's thumbnail
-      await goTo(f, "/tasks");
-      await f.waitForFunction((id) => { const a = document.querySelector(`a[href="#/tasks/${id}"] .sl-thumb img`); return !!a && a.complete && a.naturalWidth === 400; }, t.id, { timeout: 8000 });
+      // the office's task list (Track 2's List, Row2): the row says how many photos (the thumbnails are on the task)
+      await goTo(f, "/tasks?view=list");
+      await f.waitForFunction((id) => { const a = document.querySelector(`a[href="#/tasks/${id}"] .rs-tag`); return !!a && a.textContent === "2 photos"; }, t.id, { timeout: 8000 });
       assert.deepEqual(await screenProblems(f), []);
       await p.clean();
     } finally { await p.close(); }

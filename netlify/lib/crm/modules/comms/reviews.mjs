@@ -36,13 +36,17 @@ import { adapter } from "../../adapters/index.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 import { reviewKey } from "./types.mjs";
 
-export const REVIEWS_DEFAULTS = Object.freeze({ link: "https://g.page/r/CfnTsPliwEw4EBM/review", match_days: 21, ask_again_days: 180 });
+export const REVIEWS_DEFAULTS = Object.freeze({ link: "https://g.page/r/CfnTsPliwEw4EBM/review", match_days: 21, ask_again_days: 180, ratings: false, link_from_stars: 1 });
 export function validateReviews(v) {
   const o = v && typeof v === "object" ? v : {};
   const link = String(o.link || REVIEWS_DEFAULTS.link).trim();
   if (!/^https:\/\/[^\s]{4,200}$/.test(link)) throw new InputError("Use the https link to the review page.", "link");
   const num = (k, min, max) => { const n = o[k] === undefined ? REVIEWS_DEFAULTS[k] : o[k]; if (!Number.isInteger(n) || n < min || n > max) throw new InputError(`Between ${min} and ${max}.`, k); return n; };
-  return { link, match_days: num("match_days", 1, 90), ask_again_days: num("ask_again_days", 0, 730) };
+  // in-app star ratings (ratings.mjs): off until the switch; the Google link from this many stars (1: every rating)
+  const from = o.link_from_stars === undefined || o.link_from_stars === null ? 1 : o.link_from_stars;
+  if (!Number.isInteger(from) || from < 1 || from > 5) throw new InputError("From 1 to 5 stars.", "link_from_stars");
+  if (o.ratings !== undefined && o.ratings !== null && typeof o.ratings !== "boolean") throw new InputError("On or off.", "ratings");
+  return { link, match_days: num("match_days", 1, 90), ask_again_days: num("ask_again_days", 0, 730), ratings: o.ratings === true, link_from_stars: from };
 }
 
 const POLL_KEY = "sys/reviews-poll";
@@ -198,6 +202,10 @@ export const reviewSequence = {
     const times = stepTimes(fact.fact_at || nowIso(), Number(actx.settings.delay) || 90);
     const keys = actx.settings.template_keys && actx.settings.template_keys.length ? actx.settings.template_keys : ["review_1", "review_2", "review_3"];
     const vars = { ...(serviceWords(job) ? { service_list: serviceWords(job) } : {}) };
+    // in-app ratings on (after the switch, Q7): the texts link the star page instead of Google's
+    const { sequenceLink } = await import("./ratings.mjs");
+    const page = await sequenceLink(job.contact_id, job.id);
+    if (page) vars.review_link = page;
     let queued = 0;
     for (let n = 1; n <= Math.min(3, keys.length); n++) {
       const r = await actx.send({ contact_id: job.contact_id, contact: contact.data, subject: { type: "job", id: job.id }, key: `${job.id}--${n}`, n, channel: "sms", template_key: keys[n - 1], due_at: times[n - 1], vars, related: { job_id: job.id }, ...fact });

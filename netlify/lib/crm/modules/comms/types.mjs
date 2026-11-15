@@ -32,8 +32,10 @@ import { shape, str, enumValue, int, bool } from "../../core/validate.mjs";
 export const CHANNELS = Object.freeze(["sms", "email"]);
 export const DIRECTIONS = Object.freeze(["in", "out"]);
 export const CONV_STATES = Object.freeze(["open", "done"]);
-export const MESSAGE_STATUSES = Object.freeze(["queued", "sending", "sent", "delivered", "failed", "undelivered", "blocked", "received"]);
-export const PROVIDERS = Object.freeze(["twilio", "postmark", "rotor_import", "dry_run"]);
+export const MESSAGE_STATUSES = Object.freeze(["queued", "sending", "sent", "delivered", "failed", "undelivered", "blocked", "received", "note"]);
+export const PROVIDERS = Object.freeze(["twilio", "postmark", "rotor_import", "dry_run", "internal"]);
+// A message's kind: an internal note (the office's own words in the thread, never sent: guide-gaps S46a).
+export const MESSAGE_KINDS = Object.freeze(["note"]);
 export const CAMPAIGN_STATUSES = Object.freeze(["draft", "tested", "scheduled", "sending", "sent", "cancelled"]);
 export const MAX_CAMPAIGN_RECIPIENTS = 2000;
 export const PREVIEW_MAX = 80;
@@ -42,7 +44,7 @@ export const HTML_MAX = 200000;
 
 // Status ranks (§5.7.1): a callback applies only a higher rank, and the
 // first terminal status wins (callbacks arrive out of order).
-const RANK = Object.freeze({ queued: 0, sending: 1, sent: 2, delivered: 3, undelivered: 3, failed: 3, blocked: 3, received: 3 });
+const RANK = Object.freeze({ queued: 0, sending: 1, sent: 2, delivered: 3, undelivered: 3, failed: 3, blocked: 3, received: 3, note: 3 });
 export const statusRank = (s) => (Object.hasOwn(RANK, s) ? RANK[s] : -1);
 export const statusMayMove = (from, to) => statusRank(to) > statusRank(from);
 
@@ -77,6 +79,8 @@ function validateConversation(data, { op } = {}) {
     last_preview: (v) => previewOf(v),
     last_direction: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, DIRECTIONS, { field: f, stored })),
     assignee_id: idOf("user", false),
+    // the team inbox a person moved it to (cfg/inboxes; none: the inbox rules decide when it is read)
+    inbox: (v, f) => (v === undefined || v === null || v === "" ? undefined : (/^[a-z0-9][a-z0-9_-]{0,23}$/.test(String(v)) ? String(v) : (() => { throw new InputError("That inbox isn't there.", f); })())),
     state: (v, f) => enumValue(v || "done", CONV_STATES, { field: f, stored }),
     needs_reply: (v, f) => bool(v ?? false, { field: f }),
     rotor: obj,
@@ -86,7 +90,7 @@ function validateConversation(data, { op } = {}) {
 export const inboxShard = (r) => (r.state === "open" ? "open" : `y${yearOf(r.last_at || r.created_at)}`);
 export const inboxRow = (r) => ({
   c: r.contact_id, ch: r.channel, n: r.contact_name || "", p: r.last_preview || "", la: r.last_at || r.created_at || null, ld: r.last_direction || null,
-  u: r.unread || 0, nr: !!r.needs_reply, st: r.state || "done", lc: r.lifecycle || "", ...(r.assignee_id ? { a: r.assignee_id } : {}),
+  u: r.unread || 0, nr: !!r.needs_reply, st: r.state || "done", lc: r.lifecycle || "", ...(r.assignee_id ? { a: r.assignee_id } : {}), ...(r.inbox ? { ib: r.inbox } : {}),
 });
 
 export const conversationType = defineType({
@@ -113,6 +117,7 @@ function validateMessage(data, { op, before } = {}) {
     contact_id: idOf("contact", true),
     channel: (v, f) => enumValue(v, CHANNELS, { field: f, required: true, stored }),
     direction: (v, f) => enumValue(v, DIRECTIONS, { field: f, required: true, stored }),
+    kind: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, MESSAGE_KINDS, { field: f, stored })),
     from: (v, f) => str(v, { field: f, max: 200 }),
     to: (v, f) => str(v, { field: f, max: 200 }),
     subject: (v, f) => (v === undefined || v === null || v === "" ? undefined : str(v, { field: f, max: 300 })),
@@ -158,7 +163,7 @@ export const messageType = defineType({
   mirrored: true,
   audit: false,
   // (more, imported, has_html and attachments_missing are what a thread adds to a message it shows)
-  techFields: ["id", "conversation_id", "contact_id", "channel", "direction", "subject", "body_text", "status", "blocked_reason", "error_code", "segments", "attachment_file_ids", "media_pending", "sent_at", "delivered_at", "origin", "provider", "more", "imported", "has_html", "attachments_missing"],
+  techFields: ["id", "conversation_id", "contact_id", "channel", "direction", "kind", "subject", "body_text", "status", "blocked_reason", "error_code", "segments", "attachment_file_ids", "media_pending", "sent_at", "delivered_at", "origin", "provider", "more", "imported", "has_html", "attachments_missing"],
   readPerm: "inbox:read",
   rels: [{ rel: "conv-messages", parent: (r) => r.conversation_id, sort: (r) => tsKey(new Date(Date.parse(r.sent_at || r.created_at) || 0)) }],
   pointers: [{ kind: "provider-msg", key: (r) => (r.provider_id && r.provider !== "rotor_import" ? providerKey(r.provider, r.provider_id) : null) }],
@@ -207,6 +212,21 @@ function validateCampaign(data, { op } = {}) {
       if (!Array.isArray(v) || v.length > MAX_CAMPAIGN_RECIPIENTS || v.some((x) => !isId(x, "contact"))) throw new InputError(`At most ${MAX_CAMPAIGN_RECIPIENTS} people in one campaign.`, f);
       return [...new Set(v)];
     },
+    // the text blast (blast.mjs): its words, a picture, a follow-up to who didn't reply, what a CSV gave
+    kind: (v, f) => (v === undefined || v === null || v === "" ? undefined : enumValue(v, ["blast"], { field: f, stored })),
+    body: (v, f) => (v === undefined || v === null ? undefined : str(v, { field: f, max: 1600, trim: false })),
+    media_file_ids: (v, f) => { if (v === undefined || v === null) return undefined; if (!Array.isArray(v) || v.length > 1 || v.some((x) => !isId(x, "file"))) throw new InputError("One picture.", f); return v; },
+    followup: (v, f) => {
+      const o = obj(v, f);
+      if (!o) return undefined;
+      const h = o.after_hours === undefined || o.after_hours === null || o.after_hours === "" ? 48 : Number(o.after_hours);
+      if (!Number.isInteger(h) || h < 12 || h > 336) throw new InputError("Between 12 hours and 14 days.", `${f}.after_hours`);
+      const body = str(o.body ?? "", { field: `${f}.body`, max: 1600, trim: false });
+      if (o.on === true && !body.trim()) throw new InputError("Write the follow-up text.", `${f}.body`);
+      return { on: o.on === true, after_hours: h, body };
+    },
+    csv: obj,
+    followup_run_id: idOf("bulk_run", false),
     rotor: obj,
   });
 }
@@ -268,4 +288,43 @@ export const reviewType = defineType({
   example: () => ({ gbp_review_id: "sample-review-1", reviewer_name: "Pat E.", rating: 5, comment_excerpt: "Spotless windows.", created_at_gbp: "2026-11-16T15:00:00.000Z", suggestions: [] }),
 });
 
-export const types = [conversationType, messageType, campaignType, reviewType];
+// ------------------------------------------------------------ rating (in-app stars, ratings.mjs)
+
+export const RATING_SOURCES = Object.freeze(["app", "manual"]);
+export const LOW_STARS = 3;
+
+function validateRating(data, { op } = {}) {
+  const stored = op === "update";
+  return shape(data, {
+    contact_id: idOf("contact", false),
+    job_id: idOf("job", false),
+    name: (v, f) => str(v ?? "", { field: f, max: 80 }),
+    stars: (v, f) => int(v, { field: f, min: 1, max: 5, required: true }),
+    comment: (v, f) => (v === undefined || v === null || v === "" ? undefined : truncate(String(v).trim(), 1000)),
+    crew_ids: (v, f) => { if (v === undefined || v === null) return []; if (!Array.isArray(v) || v.some((x) => !isId(x, "user"))) throw new InputError("People on the team.", f); return v.slice(0, 10); },
+    source: (v, f) => enumValue(v || "app", RATING_SOURCES, { field: f, stored }),
+    public_clicked: (v, f) => bool(v ?? false, { field: f }),
+    public_clicked_at: (v) => (v ? String(v).slice(0, 30) : undefined),
+    follow_up: (v) => (v && typeof v === "object" ? { ...(isId(v.task_id, "task") ? { task_id: v.task_id } : {}), ...(v.done_at ? { done_at: String(v.done_at).slice(0, 30) } : {}), ...(isId(v.done_by, "user") ? { done_by: v.done_by } : {}) } : undefined),
+    rated_at: (v) => (v ? String(v).slice(0, 30) : undefined),
+  });
+}
+export const ratingRow = (r) => ({
+  c: r.contact_id || null, n: r.name || "", s: r.stars, at: r.rated_at || r.created_at, j: r.job_id || null, t: r.crew_ids || [], src: r.source || "app",
+  pc: !!r.public_clicked, cm: !!r.comment, fu: r.stars <= LOW_STARS && !(r.follow_up && r.follow_up.done_at),
+});
+export const ratingType = defineType({
+  type: "rating",
+  prefix: "rt",
+  v: 1,
+  validate: validateRating,
+  rotorFields: [],
+  techFields: ["id", "stars"],
+  readPerm: "reviews:read",
+  shadow: false,
+  indexes: [{ name: "ratings", shard: () => "", row: ratingRow }],
+  summary: (r) => ({ id: r.id, stars: r.stars }),
+  example: () => ({ contact_id: "ct_0000000000000000000a", name: "Pat E.", stars: 5, comment: "Spotless windows.", crew_ids: [], source: "app", public_clicked: false, rated_at: "2026-11-17T15:00:00.000Z" }),
+});
+
+export const types = [conversationType, messageType, campaignType, reviewType, ratingType];

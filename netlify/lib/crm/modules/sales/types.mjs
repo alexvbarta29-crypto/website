@@ -454,7 +454,11 @@ export const taskType = defineType({
   rotorFields: ["title", "kind", "priority", "status", "due_at", "end_at", "contact_id", "assignee_ids", "notes", "rotor"],
   techFields: ["id", "title", "kind", "priority", "status", "due_at", "end_at", "assignee_ids", "reported_on", "done_at"],
   readPerm: "tasks:read",
-  indexes: [{ name: "tasks/open", shard: (r) => (OPEN_TASK.includes(r.status) ? "" : null), row: taskRow }],
+  indexes: [
+    { name: "tasks/open", shard: (r) => (OPEN_TASK.includes(r.status) ? "" : null), row: taskRow },
+    // the Tasks board's Done column (guide-gaps T5): done tasks by the month they were done
+    { name: "tasks/done", shard: (r) => (r.status === "done" && typeof r.done_at === "string" ? r.done_at.slice(0, 7) : null), row: (r) => ({ ...taskRow(r), dn: r.done_at }) },
+  ],
   rels: [
     { rel: "contact-tasks", parent: (r) => r.contact_id || null, sort: (r) => sortOf(r.created_at) },
     { rel: "user-tasks", parent: (r) => (Array.isArray(r.assignee_ids) && r.assignee_ids[0]) || null, sort: (r) => sortOf(r.created_at) },

@@ -114,11 +114,11 @@ for (const device of ["iphone13", "iphonese"]) {
       const tb = await box(g, "#top-bar");
       const tt = await box(g, "#top-title");
       assert.ok(tt.y >= tb.bottom - 1, "the big title under the top bar");
-      assert.deepEqual(await g.$$eval("#top-rnd .rnd-own .rnd", (els) => els.map((e) => e.dataset.own)), ["find", "filter", "archived"], "Rotor's round buttons: search, filter, archived");
+      assert.deepEqual(await g.$$eval("#top-rnd .rnd-own .rnd", (els) => els.map((e) => e.dataset.own)), ["find", "filter", "more"], "the round buttons: search, filter, and the \"...\" (Select, Export, Merge review); the Archived are a tile (Track 2)");
       assert.equal(await g.isVisible("#ct-q"), false, "no search bar under the title until the round search button asks");
       await g.click('#top-rnd [data-own="find"]');
       assert.equal(await g.isVisible("#ct-q"), true);
-      assert.ok(await g.$("#ct-list .cc .cc-band"), "customers as cards");
+      assert.ok(await g.$("#ct-list .rs-lrow a.rs-lr-main"), "customers as two-line rows (Row2)");
       assert.deepEqual(await screenProblems(g), []);
       await shot(page, `layout-customers-${device}`);
       // my own tabs (#/tab-bar: Customize Tabs as a page)
@@ -140,7 +140,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await g.click(".sheet.on [data-theme-btn]");
       await g.click('[data-theme-pick="light"]');
       assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "light");
-      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(242, 242, 247)", "iOS grouped grey");
+      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(246, 246, 248)", "a faint grey canvas (Polish 3)");
       assert.deepEqual(await screenProblems(g), []);
       await page.reload();
       const h = await crmFrame(page);
@@ -178,11 +178,15 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.ok(await f.isVisible("#top-act [data-top-tool]"), "the round pencil");
       assert.ok(await f.isVisible("#top-more"), "the round ...");
       assert.ok((await box(f, "#top-title")).w <= 1, "no title in sight: the name is the page's own (the h1 stays for screen readers)");
-      // Details: the cards in Rotor's order for a customer
-      const order = await f.$$eval('[data-pane="details"] [data-card]', (els) => els.map((e) => e.dataset.card));
-      const want = ["visits", "plan", "quotes", "invoices", "payment", "properties", "followups", "tasks", "notes", "queued", "about"].filter((x) => order.includes(x));
-      assert.deepEqual(order.filter((x) => want.includes(x)), want, `in Rotor's order (${order.join(", ")})`);
-      for (const must of ["visits", "plan", "quotes", "invoices", "properties", "notes"]) assert.ok(order.includes(must), must);
+      // Details | Service | Payments | Activity (guide-gaps C17): the cards in Rotor's order on each tab
+      const cardsOf = (pane) => f.$$eval(`[data-pane="${pane}"] [data-card]`, (els) => els.map((e) => e.dataset.card));
+      const order = await cardsOf("details");
+      for (const must of ["properties", "notes", "about"]) assert.ok(order.includes(must), must);
+      const svc = await cardsOf("service");
+      const want = ["visits", "plan", "quotes", "followups"].filter((x) => svc.includes(x));
+      assert.deepEqual(svc.filter((x) => want.includes(x)), want, `in Rotor's order (${svc.join(", ")})`);
+      for (const must of ["visits", "plan", "quotes"]) assert.ok(svc.includes(must), must);
+      assert.ok((await cardsOf("payments")).includes("invoices"), "invoices on Payments");
       assert.equal(await f.isVisible('[data-pane="activity"]'), false, "one tab at a time");
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
@@ -204,7 +208,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet.on [data-sheet-x]");
       // an old link to a tab opens its card
       await goTo(f, `/contacts/${seeded.contacts.plan}?tab=money`);
-      await f.waitForFunction(() => { const m = document.getElementById("ct-mod-money"); const v = document.getElementById("view"); return m && v.scrollTop > 100; }, null, { timeout: 10000 });
+      await f.waitForFunction(() => { const m = document.getElementById("ct-mod-money"); return m && !m.closest(".ct-pane.off") && m.closest('[data-pane="payments"]'); }, null, { timeout: 10000 });
       await p.clean();
     } finally { await p.close(); }
   });

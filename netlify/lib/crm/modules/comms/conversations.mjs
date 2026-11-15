@@ -28,7 +28,8 @@ import { now, nowIso, localDate } from "../../core/clock.mjs";
 import { NotFoundError, InputError } from "../../core/errors.mjs";
 import { statsPart } from "../../core/registry.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
-import { inboxShard, inboxRow, previewOf, statusMayMove, statusRank } from "./types.mjs";
+import { inboxShard, inboxRow, previewOf, statusMayMove, statusRank, TEXT_MAX } from "./types.mjs";
+import { inboxOf } from "./inboxes.mjs";
 
 export const convIdFor = (contactId, channel) => deriveId("conversation", contactId, `conv.${channel}`, 1);
 export const PAGE = 30;
@@ -191,7 +192,7 @@ export async function getConversation(id) {
 }
 
 const short = (m) => ({
-  id: m.id, conversation_id: m.conversation_id, contact_id: m.contact_id, channel: m.channel, direction: m.direction, ...(m.subject ? { subject: m.subject } : {}),
+  id: m.id, conversation_id: m.conversation_id, contact_id: m.contact_id, channel: m.channel, direction: m.direction, ...(m.kind ? { kind: m.kind } : {}), ...(m.subject ? { subject: m.subject } : {}),
   body_text: m.body_text || "", status: m.status, ...(m.blocked_reason ? { blocked_reason: m.blocked_reason } : {}), ...(m.error_code ? { error_code: m.error_code } : {}),
   ...(m.segments ? { segments: m.segments } : {}), attachment_file_ids: m.attachment_file_ids || [], ...(m.media_pending ? { media_pending: m.media_pending } : {}),
   sent_at: m.sent_at || m.created_at, ...(m.delivered_at ? { delivered_at: m.delivered_at } : {}), origin: m.origin ? { kind: m.origin.kind, ...(m.origin.id ? { id: m.origin.id } : {}), ...(m.origin.user_id ? { user_id: m.origin.user_id } : {}) } : null, provider: m.provider,
@@ -220,20 +221,41 @@ export async function threadPage(convId, { before, limit = PAGE } = {}) {
 // ------------------------------------------------------------ the inbox
 
 const yearNow = () => Number(localDate(now()).slice(0, 4));
-const rowView = (r) => ({ id: r.id, contact_id: r.c, channel: r.ch, contact_name: r.n, last_preview: r.p, last_at: r.la, last_direction: r.ld, unread: r.u || 0, needs_reply: !!r.nr, state: r.st, lifecycle: r.lc || "", ...(r.a ? { assignee_id: r.a } : {}) });
+const rowView = (r) => ({ id: r.id, contact_id: r.c, channel: r.ch, contact_name: r.n, last_preview: r.p, last_at: r.la, last_direction: r.ld, unread: r.u || 0, needs_reply: !!r.nr, state: r.st, lifecycle: r.lc || "", ...(r.a ? { assignee_id: r.a } : {}), ...("inbox" in r ? { inbox: r.inbox || null } : {}), ...(r.chs ? { channels: r.chs } : {}) });
+// One row per person (Rotor's inbox: texts and email are one thread): the
+// newest of their conversations, with the unread summed, "needs a reply"
+// if either does, both channels named. Rows come newest first.
+function byPerson(rows) {
+  const seen = new Map();
+  const out = [];
+  for (const r of rows) {
+    const had = seen.get(r.c);
+    if (!had) { const g = { ...r, chs: [r.ch] }; seen.set(r.c, g); out.push(g); continue; }
+    if (!had.chs.includes(r.ch)) had.chs.push(r.ch);
+    had.u = (had.u || 0) + (r.u || 0);
+    had.nr = !!(had.nr || r.nr);
+    if (r.st === "open") had.st = "open";
+    if (!had.a && r.a) had.a = r.a;
+  }
+  return out;
+}
 const cmp = (a, b) => (a.la === b.la ? (a.id < b.id ? 1 : -1) : String(a.la || "") < String(b.la || "") ? 1 : -1);
 
 // Index reads for a list or a count share one memo and skip the dirty markers (one call per shard).
 const memo = (fn) => (currentScope() && currentScope().ixMemo instanceof Map ? fn() : withStoreScope({ ixMemo: new Map() }, fn));
 
 // → { items, next, etag }. visible: a Set of contact ids (a tech's window), or null for everyone.
-export async function listInbox({ filter = "all", cursor, limit = INBOX_PAGE, userId, visible = null } = {}) {
+// inbox: a team inbox's key (inboxes: cfg/inboxes' list); channel: sms | email | note (a thread with notes
+// is any thread: notes ride in the person's thread); group: "contact" lists one row per person.
+export async function listInbox({ filter = "all", cursor, limit = INBOX_PAGE, userId, visible = null, inbox = null, inboxes = [], channel = null, group = null } = {}) {
   if (!FILTERS.includes(filter)) throw new InputError("That filter isn't one of the choices.", "filter");
   return memo(async () => {
     const openOnly = ["unread", "needs_reply", "open"].includes(filter);
     const keep = (r) => (!visible || visible.has(r.c))
       && (filter === "unread" ? r.u > 0 : filter === "needs_reply" ? r.nr : filter === "leads" ? r.lc === "lead" : filter === "customers" ? r.lc === "customer" || r.lc === "former_customer" : filter === "mine" ? r.a === userId : true)
-      && (!cursor || String(r.la || "") < cursor);
+      && (!cursor || String(r.la || "") < cursor)
+      && (!channel || channel === "note" || r.ch === channel)
+      && (!inbox || inboxOf(r, inboxes) === inbox);
     const etags = [];
     const open = await readIndex("inbox", "open");
     etags.push(open.etag || "-");
@@ -248,8 +270,10 @@ export async function listInbox({ filter = "all", cursor, limit = INBOX_PAGE, us
       }
     }
     rows.sort(cmp);
-    const page = rows.slice(0, limit);
-    return { items: page.map(rowView), next: rows.length > limit && page.length ? page[page.length - 1].la : null, etag: `"in-${createHash("sha256").update(etags.join("|") + filter + (cursor || "")).digest("hex").slice(0, 20)}"` };
+    if (group === "contact") rows = byPerson(rows);
+    const page = rows.slice(0, limit).map((r) => ({ ...r, inbox: inboxOf(r, inboxes) }));
+    const key = [filter, cursor || "", inbox || "", channel || "", group || "", JSON.stringify(inboxes)].join("|");
+    return { items: page.map(rowView), next: rows.length > limit && page.length ? page[page.length - 1].la : null, etag: `"in-${createHash("sha256").update(etags.join("|") + key).digest("hex").slice(0, 20)}"` };
   });
 }
 
@@ -270,6 +294,50 @@ export async function setDone(id, done, ctx) {
     return { ...c, state, ...(done ? { needs_reply: false, unread: 0 } : {}) };
   }, ctx)).data;
 }
+// The open shard's rows (the folder counts).
+export async function openRows() {
+  return memo(async () => (await readIndex("inbox", "open")).rows);
+}
+
+// Into a team inbox (null: back to where the inbox rules put it).
+export async function moveTo(id, inbox, ctx) {
+  return (await updateRecord("conversation", id, (c) => {
+    if ((c.inbox || null) === (inbox || null)) return null;
+    const next = { ...c };
+    if (inbox) next.inbox = inbox; else delete next.inbox;
+    return next;
+  }, ctx)).data;
+}
+
+// An internal note in a person's thread (Flyra's yellow note): the office's
+// own words, never sent, never a reply (the conversation's last message,
+// unread and "needs a reply" stay as they were). It rides on the person's
+// text thread (made when they have none yet) so it sorts in with the rest.
+export async function addNote(contact, body, ctx) {
+  const text = String(body ?? "").trim();
+  if (!text) throw new InputError("Write the note first.", "body");
+  if (text.length > 4000) throw new InputError("Keep a note under 4,000 characters.", "body");
+  const convs = await conversationsOf(contact.id);
+  const conv = convs[0] || await ensureConversation(contact, "sms", "", ctx);
+  const msg = (await createRecord("message", {
+    conversation_id: conv.id, contact_id: contact.id, channel: conv.channel, direction: "out", kind: "note", from: "", to: "",
+    body_text: text.slice(0, TEXT_MAX), status: "note", provider: "internal", origin: { kind: "note", user_id: ctx.by }, related: {}, attachment_file_ids: [], sent_at: nowIso(),
+  }, ctx)).data;
+  return { message: messageView(msg), conversation: conv };
+}
+
+// A person's threads as one timeline (texts, email and notes), newest
+// first. before: the sort key of the oldest row already shown (the same
+// time keys on every channel, so one cursor pages them all).
+export async function mergedPage(convIds, { before, limit = PAGE } = {}) {
+  const lists = await Promise.all(convIds.map((id) => listRel("conv-messages", id, { to: before, limit: limit + 1 + (before ? 1 : 0) })));
+  const rows = lists.flat().filter((r) => !before || r.sortKey < before).sort((a, b) => (a.sortKey < b.sortKey ? 1 : a.sortKey > b.sortKey ? -1 : 0));
+  const page = rows.slice(0, limit);
+  const got = await getRecords("message", page.map((r) => r.id));
+  const items = got.filter((g) => g && g.data && !g.data.deleted_at).map((g) => messageView(g.data));
+  return { items, next: rows.length > limit ? page[page.length - 1].sortKey : null };
+}
+
 export async function assign(id, userId, ctx) {
   if (userId && !isId(userId, "user")) throw new InputError("Pick someone on the team.", "user_id");
   return (await updateRecord("conversation", id, (c) => {

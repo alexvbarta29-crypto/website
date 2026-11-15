@@ -55,6 +55,13 @@ async function load(params, ctx) {
 
 // "today" is the server's (a phone's own date may be off)
 const todayOf = () => (S && S.start && S.start.today) || deviceToday();
+// The houses the layers and filters keep (guide-gaps M4, M5; pure): customers, former customers and leads as
+// layers; the lead source, the main service and when they came in (days back) as filters.
+export function placesShown(places, F, today) {
+  const since = F.days ? new Date(Date.parse(today + "T12:00:00Z") - F.days * 86400000).toISOString().slice(0, 10) : null;
+  return places.filter((p) => (p.k === "lead" ? F.leads : p.k === "former" ? F.former : F.customers)
+    && (!F.src || p.src === F.src) && (!F.svc || p.svc === F.svc) && (!since || (p.ca && p.ca >= since)));
+}
 // What the filter shows (the round filter button): pin types, whose pins, customers, leads, areas.
 const shownPin = (p) => {
   const F = S.filter;
@@ -76,8 +83,8 @@ function redraw(which = ["pins", "places", "areas"]) {
   if (!S || !S.map) return;
   const F = S.filter;
   if (which.includes("pins")) S.map.setData("pins", pinsShown());
-  if (which.includes("places")) S.map.setData("places", mv.collection(S.places.filter((p) => (p.k === "lead" ? F.leads : F.customers)).map((p) => mv.point(p.ln, p.la, { k: p.k, c: p.c || "", n: p.n || "", a: p.a || "" }))));
-  if (which.includes("areas")) S.map.setData("areas", F.areas ? mv.collection(S.start.territories.map((t) => mv.polygon(t.polygon, { id: t.id, color: t.color || "#2563eb", mine: !!t.mine }))) : mv.empty());
+  if (which.includes("places")) S.map.setData("places", mv.collection(placesShown(S.places, F, todayOf()).map((p) => mv.point(p.ln, p.la, { k: p.k, c: p.c || "", n: p.n || "", a: p.a || "" }))));
+  if (which.includes("areas")) S.map.setData("areas", F.areas || F.oldAreas ? mv.collection([...(F.areas ? S.start.territories.map((t) => mv.polygon(t.polygon, { id: t.id, color: t.color || "#2563eb", mine: !!t.mine })) : []), ...(F.oldAreas ? (S.start.inactive_territories || []).map((t) => mv.polygon(t.polygon, { id: t.id, color: "#8e8e93", mine: false })) : [])]) : mv.empty());
 }
 function drawMe() {
   if (!S || !S.map) return;
@@ -102,7 +109,7 @@ export function fabs({ filtered = false, aerial = false, hasAerial = true } = {}
     ${hasAerial ? html`<button type="button" class="${"mp-fab" + (aerial ? " on" : "")}" data-fab="layers" ${attrs({ "aria-pressed": String(!!aerial), "aria-label": aerial ? "Satellite on: switch to streets" : "Streets on: switch to satellite" })}>${MICONS.satellite}</button>` : ""}
   </div>`;
 }
-const filtered = () => { const F = S.filter; return !F.pins || !F.customers || !F.leads || !F.areas || F.mine || F.hiddenTypes.size > 0 || F.hiddenPeople.size > 0; };
+const filtered = () => { const F = S.filter; return !F.pins || !F.customers || !F.former || !F.leads || !F.areas || F.oldAreas || F.mine || !!F.days || !!F.src || !!F.svc || F.hiddenTypes.size > 0 || F.hiddenPeople.size > 0; };
 
 function note() {
   const parts = [];
@@ -197,7 +204,12 @@ function filterSheet() {
     title: "Show on the map",
     body: html`<form data-filter>
       ${box("pins", "Pins", F.pins)}${box("mine", "Only the pins I dropped", F.mine)}
-      ${box("customers", "Customers", F.customers, html`<span class="mp-key cust" aria-hidden="true"></span>`)}${box("leads", "Open leads", F.leads, html`<span class="mp-key lead" aria-hidden="true"></span>`)}${box("areas", "Areas", F.areas)}
+      <div class="section-h">Layers</div>
+      ${box("customers", "Active customers", F.customers, html`<span class="mp-key cust" aria-hidden="true"></span>`)}${box("former", "Former customers", F.former, html`<span class="mp-key cust" aria-hidden="true"></span>`)}${box("leads", "Open leads", F.leads, html`<span class="mp-key lead" aria-hidden="true"></span>`)}${box("areas", "Active areas", F.areas)}${box("oldAreas", "Inactive areas", F.oldAreas)}
+      ${S.start.me.office ? html`<div class="section-h">Filter</div>
+        <label class="field"><span>Came in</span><select name="days">${[["", "Any time"], ["30", "The last 30 days"], ["90", "The last 3 months"], ["365", "The last year"]].map(([v, l]) => html`<option ${attrs({ value: v, selected: String(F.days || "") === v })}>${l}</option>`)}</select></label>
+        <label class="field"><span>Lead source</span><select name="src"><option value="">Any source</option>${[...new Set(S.places.map((p) => p.src).filter(Boolean))].sort().map((x) => html`<option ${attrs({ value: x, selected: F.src === x })}>${x}</option>`)}</select></label>
+        <label class="field"><span>Service</span><select name="svc"><option value="">Any service</option>${[...new Set(S.places.map((p) => p.svc).filter(Boolean))].sort().map((x) => html`<option ${attrs({ value: x, selected: F.svc === x })}>${x}</option>`)}</select></label>` : ""}
       <div class="section-h">Pin types</div>
       ${S.start.types.map((t) => box("t_" + t.key, t.label, !F.hiddenTypes.has(t.key), swatch(t.color)))}
       ${people.length ? html`<div class="section-h">Whose pins</div>${people.map((u) => box("u_" + u.id, u.name, !F.hiddenPeople.has(u.id)))}` : ""}
@@ -206,17 +218,18 @@ function filterSheet() {
     events: {
       "change input": (e, input) => {
         const n = input.name;
-        if (["pins", "mine", "customers", "leads", "areas"].includes(n)) F[n] = input.checked;
+        if (["pins", "mine", "customers", "former", "leads", "areas", "oldAreas"].includes(n)) F[n] = input.checked;
         else if (n.startsWith("t_")) { if (input.checked) F.hiddenTypes.delete(n.slice(2)); else F.hiddenTypes.add(n.slice(2)); }
         else if (n.startsWith("u_")) { if (input.checked) F.hiddenPeople.delete(n.slice(2)); else F.hiddenPeople.add(n.slice(2)); }
         redraw();
         paintOverlays(["top"]);
       },
+      "change select": (e, sel) => { S.filter[sel.name] = sel.name === "days" ? Number(sel.value) || 0 : sel.value; redraw(["places"]); paintOverlays(["top"]); },
       "click [data-reset]": () => { S.filter = newFilter(); redraw(); paintOverlays(["top"]); s.close(); },
     },
   });
 }
-const newFilter = () => ({ pins: true, mine: false, customers: true, leads: true, areas: true, hiddenTypes: new Set(), hiddenPeople: new Set() });
+const newFilter = () => ({ pins: true, mine: false, customers: true, former: true, leads: true, areas: true, oldAreas: false, days: 0, src: "", svc: "", hiddenTypes: new Set(), hiddenPeople: new Set() });
 
 // ------------------------------------------------------------ pins: new
 

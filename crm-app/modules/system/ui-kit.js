@@ -10,7 +10,7 @@ import {
   html, icon, toast, rnd, statusPill, pillTap, pillBtn, seg, cardHead, sectionLabel, statGrid, contactRows,
   personCard, addressCard, lineItems, notesBox, disclosure, formRow, formRows, toggle, quickRow, actionSheet, sheetPage,
   tileRow, tileToggle, listRow, listCard, board, boardCard, boardMount, moveSheet, filterSheet, periodChip, periodSheet,
-  stepper, stickyCta, emptyCard, dragList, dragHandle,
+  stepper, stickyCta, emptyCard, dragList, dragHandle, pageHeader, dataTable, skeletonRows, emptyState,
 } from "../../core/ui.js";
 import { applyTheme } from "../../core/nav.js";
 
@@ -24,6 +24,8 @@ const INVOICES = [
   { id: "c", name: "Jamie Example", no: "INV-100203", due: "paid Nov 10", cents: 19500, st: "Paid" },
   { id: "d", name: "Pat Sample", no: "INV-100204", due: "draft", cents: 16000, st: "Draft" },
 ];
+// the table (Polish 3): the customer and the number, due, the plan tag, the status, the amount
+const TABLE_COLS = [{ key: "name", label: "Customer", kind: "title" }, { key: "due", label: "Due", kind: "date" }, { key: "plan", label: "Billed by" }, { key: "st", label: "Status", kind: "status" }, { key: "amt", label: "Amount", kind: "money" }];
 const STAGES = [["new", "New"], ["contacted", "Contacted"], ["quoted", "Quoted"], ["follow_up", "Follow-Up"], ["sold", "Sold"]];
 const CARDS = [
   { id: "l1", name: "Avery Newlead", stage: "new", src: "Website · $0", meta: "Created Nov 14 · Follow-up Nov 16", pri: "High" },
@@ -166,6 +168,18 @@ export default {
       <ul class="rs-card flush rs-list" data-kit-drag aria-label="Queue">${s.order.map((k) => html`<li class="rs-lrow" data-drag-key="${k}"><span class="rs-lr-main"><span class="rs-lr-a"><span class="rs-lr-1"><span class="rs-lr-t">${k}</span></span></span></span>${dragHandle(k, "Move " + k)}</li>`)}</ul>
       <div class="kit-cta">${stickyCta("Approve period", { data: tap("Approve period"), icon: "check" })}</div>
 
+      ${sectionLabel("Pages and tables (Polish 3)")}
+      ${pageHeader({ title: "Invoices", sub: "4 invoices, 1 overdue", action: { label: "New invoice", data: tap("New invoice") } })}
+      <div class="rs-row kit-rnds">${pillBtn(s.tload ? "Show the rows" : "Show loading", { data: { "kit-tload": true } })}</div>
+      ${dataTable({ columns: TABLE_COLS, label: "Invoices", loading: s.tload ? 4 : 0, rows: INVOICES.map((x) => ({
+        cells: { name: { text: x.name, sub: x.no }, due: x.due, plan: x.tag || "", st: x.st, amt: x.cents },
+        data: tap(`Open ${x.name}`), edge: x.st === "Overdue" ? "red" : null, hold: { "kit-trow": x.id },
+        action: x.st === "Overdue" ? { icon: "chat", label: `Text ${x.name} a reminder`, data: tap("Text a reminder") } : null,
+      })) })}
+      ${dataTable({ columns: TABLE_COLS, label: "Payouts", empty: { icon: "doc", title: "No invoices yet", text: "Bill a customer and let them pay by card or bank, online.", action: { label: "New Invoice", data: tap("New invoice") } } })}
+      ${emptyState({ icon: "check", title: "No tasks found", text: "Tasks help your team stay organized." })}
+      ${skeletonRows(3, { busy: false })}
+
       ${sectionLabel("Sheets")}
       <div class="rs-row">${pillBtn("Action sheet", { icon: "more", data: { "kit-actions": true } })}${pillBtn("Sheet page", { icon: "doc", tone: "solid", data: { "kit-page": true } })}</div>
 
@@ -179,6 +193,7 @@ export default {
     "click [data-seg=view]": (e, el, ctx) => { ctx.state.view = el.dataset.key; ctx.rerender(); },
     "click [data-kit-auto]": (e, el, ctx) => { ctx.state.auto = !ctx.state.auto; ctx.rerender(); },
     "click [data-kit-tap]": (e, el) => SAY(el.dataset.kitTap),
+    "click [data-kit-tload]": (e, el, ctx) => { ctx.state.tload = !ctx.state.tload; ctx.rerender(); },
     "change [data-notes]": () => toast("Notes saved (the kit only shows it)"),
     "click [data-kit-actions]": () => actionSheet("Job S-000001", [[{ label: "Book a visit", icon: "cal", run: () => SAY("Book a visit") }, { label: "Mark done", icon: "check", run: () => SAY("Mark done") }], [{ label: "Cancel job", icon: "close", danger: true, run: () => SAY("Cancel job") }, { label: "Open customer", icon: "user", href: "#/kit" }]]),
     "click [data-kit-page]": () => openPage(),
@@ -195,6 +210,7 @@ export default {
       if (to) { c.stage = to; ctx.state.col = to; ctx.rerender(); toast(`${c.name} moved`); }
     },
     "rs-hold [data-kit-row]": (e, el) => actionSheet("Invoice", [[{ label: "Text a reminder", icon: "chat", run: () => SAY("Text a reminder") }, { label: "Open customer", icon: "user", run: () => SAY("Open customer") }], [{ label: "Void", icon: "close", danger: true, run: () => SAY("Void") }]]),
+    "rs-hold [data-kit-trow]": (e, el) => actionSheet("Invoice", [[{ label: "Text a reminder", icon: "chat", run: () => SAY("Text a reminder") }, { label: "Open customer", icon: "user", run: () => SAY("Open customer") }], [{ label: "Void", icon: "close", danger: true, run: () => SAY("Void") }]]),
     "rs-hold [data-kit-card]": (e, el, ctx) => { const c = ctx.state.cards.find((x) => x.id === el.dataset.kitCard); if (c) actionSheet(c.name, [[{ label: "Move to...", icon: "swap", run: () => el.querySelector("[data-kit-move]").click() }, { label: "Call", icon: "call", run: () => SAY("Call") }]]); },
   },
   mount(view, s, ctx) {

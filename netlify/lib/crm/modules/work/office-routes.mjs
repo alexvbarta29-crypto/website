@@ -28,7 +28,7 @@ import {
   createJobs, createVisit, changeVisit, cancelJob, reopenJob, completeJob, syncJob, liveContact, placeOf, W, workSettings, typesOfLines, refreshVisits,
 } from "./office.mjs";
 import { titleFromLines } from "./types.mjs";
-import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows, monthGridRange, withAmounts, withPaid, capacityOf, crewOf } from "./office-schedule.mjs";
+import { scheduleRange, checkSlot, routeOrder, windowEnd, visitRows, checkRange, calendarEnv, arrivalWindow, toMin, fromMin, toBookRows, monthGridRange, withAmounts, withPaid, capacityOf, crewOf, pendingRows, blocksOf, holidaysIn, dayRoutes } from "./office-schedule.mjs";
 import { moveDayPreview, moveDayConfirm, runView } from "./office-moveday.mjs";
 import { scheduleWeather } from "./weather.mjs";
 
@@ -137,6 +137,9 @@ const schedule = async (ctx) => {
   if (month) extra.to_book = toBookRows(openIx.rows, month).length;
   // now_min: the server's time of day (the Day view's red line; a phone's clock may be off)
   const t = localTime(now());
+  // the time blocks (S8a) on the Day grid, and the holidays' names on the day heads (SC12)
+  extra.blocks = blocksOf(data.time_off, from, to);
+  extra.holidays = holidaysIn(from, to, data.calendar);
   return { data: { ...data, ...extra, from, to, today, now_min: Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)), ...(month ? { month } : {}) }, meta: { stale: data.stale || !!(openIx && openIx.stale) } };
 };
 
@@ -144,6 +147,14 @@ const schedule = async (ctx) => {
 const weather = async (ctx) => ({ data: await scheduleWeather({ deploy: ctx.deploy }) });
 
 const unscheduled = async (ctx) => {
+  // the Pending jobs page (guide-gaps S8b): the jobs due in the dates on screen (and, with overdue=1, before them)
+  const from = str(ctx.query.get("from")), to = str(ctx.query.get("to"));
+  if (from || to) {
+    if (!isLocalDate(from) || !isLocalDate(to) || to < from) throw new InputError("Pick the dates.", "from");
+    const ix = await readIndex("jobs", "open");
+    const rows = pendingRows(ix.rows, from, to, { overdue: ctx.query.get("overdue") === "1" });
+    return { data: { from, to, jobs: rows, total_cents: rows.reduce((n, r) => n + (r.tot || 0), 0) }, meta: { stale: ix.stale } };
+  }
   const month = str(ctx.query.get("month")) || localDate(now()).slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(month)) throw new InputError("Use a month like 2026-11.", "month");
   const ix = await readIndex("jobs", "open");
@@ -190,6 +201,17 @@ const routeGet = async (ctx) => {
   if (!isId(user, "user")) throw new InputError("Pick someone.", "user");
   const [stops, company] = await Promise.all([dayStops(date, user), getSetting("company").catch(() => ({}))]);
   return { data: { date, user_id: user, stops: stops.map(({ geo_new, ...r }) => ({ ...r, o: stopNo(r.o, user) })), base: (company && company.base) || null } };
+};
+
+// GET /schedule/routes?date= (the Schedule's Map tab, S8d): every person's stops in drive order, and
+// how many have no one on them or no map point.
+const routesAll = async (ctx) => {
+  const date = str(ctx.query.get("date"));
+  if (!isLocalDate(date)) throw new InputError("Pick a day.", "date");
+  const [{ rows }, company] = await Promise.all([visitRows(date, date), getSetting("company").catch(() => ({}))]);
+  const need = [...new Set(rows.filter((r) => !r.geo && isId(r.pr, "property")).map((r) => r.pr))].slice(0, 120);
+  const props = need.length ? new Map((await getRecords("property", need)).filter(Boolean).map((g) => [g.data.id, g.data])) : new Map();
+  return { data: { date, ...dayRoutes(rows, props), base: (company && company.base) || null } };
 };
 
 // POST /schedule/route { date, user_id, order? }: Optimize (no order) or the
@@ -595,6 +617,8 @@ function timeOffInput(b) {
   }
   out.available = b.available === true;
   out.reason = str(b.reason).slice(0, 120);
+  if (b.kind === "block") out.kind = "block";
+  else if (b.kind !== undefined && b.kind !== "off" && b.kind !== null) throw new InputError("Time off or a time block.", "kind");
   return out;
 }
 
@@ -678,6 +702,7 @@ export const workRoutes = [
   R("GET", "/schedule/weather", "schedule:read", "none", weather, { maxCalls: 12 }),
   R("GET", "/schedule/check", "schedule:read", "none", check, { maxCalls: 30 }),
   R("GET", "/schedule/route", "schedule:read", "none", routeGet),
+  R("GET", "/schedule/routes", "schedule:read", "none", routesAll, { maxCalls: 40 }),
   R("POST", "/schedule/route", "schedule:write", "none", routePost, { maxCalls: 200, budgetMs: 8000 }),
   R("POST", "/schedule/move-day", "schedule:write", "none", moveDay, { mode: "run", maxCalls: 40 }),
   R("GET", "/stale", "schedule:read", "none", stale),

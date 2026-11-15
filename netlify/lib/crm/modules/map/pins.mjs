@@ -77,10 +77,12 @@ export async function knockStart(ctx) {
   const me = ctx.user.id;
   const names = new Map(users.rows.map((u) => [u.id, u.name]));
   const territories = terr.rows.filter((t) => t.act !== false).map((t) => ({ id: t.id, name: t.n, color: t.col, polygon: t.p, assignee_ids: t.a || [], assignees: (t.a || []).map((u) => names.get(u) || "Someone"), mine: (t.a || []).includes(me) }));
+  // the inactive areas (guide-gaps M4, Rotor's Inactive Territories layer), drawn grey when that layer is on
+  const inactive = terr.rows.filter((t) => t.act === false).map((t) => ({ id: t.id, name: t.n, polygon: t.p }));
   const center = area && area.center && Number.isFinite(area.center.lat) ? area.center : { lat: 45.0419, lng: -93.7891 };
   return {
     data: {
-      sources: mapSources(), center, today: today(), types, territories,
+      sources: mapSources(), center, today: today(), types, territories, inactive_territories: inactive,
       me: { id: me, manage: ctx.can("canvass:manage"), office: ctx.can("contacts:read_all") },
       people: ctx.can("canvass:manage") ? users.rows.filter((u) => u.status === "active").map((u) => ({ id: u.id, name: u.name, color: u.color })) : [],
     },
@@ -108,7 +110,8 @@ export async function places(ctx) {
     const dot = `${p.la.toFixed(5)},${p.ln.toFixed(5)}`;
     if (seen.has(dot)) continue;          // one marker a house
     seen.add(dot);
-    out.push(office ? { la: p.la, ln: p.ln, k: kind, c: p.c, n: c.n || "", a: p.a || "" } : { la: p.la, ln: p.ln, k: kind });
+    // (the office's filters, guide-gaps M5/S21: lead source, main service, when they came in)
+    out.push(office ? { la: p.la, ln: p.ln, k: kind, c: p.c, n: c.n || "", a: p.a || "", ...(c.src ? { src: c.src } : {}), ...((c.svc_d || []).length ? { svc: c.svc_d[0] } : {}), ...(c.ca ? { ca: String(c.ca).slice(0, 10) } : {}) } : { la: p.la, ln: p.ln, k: kind });
     if (out.length >= MAX_PLACES) break;
   }
   return { data: { places: out, truncated: out.length >= MAX_PLACES } };
