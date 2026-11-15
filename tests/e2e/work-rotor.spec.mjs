@@ -28,6 +28,8 @@ async function open(login, device, theme) {
 }
 const sheetUp = (f, re) => f.waitForFunction((src) => { const h = document.querySelector(".sheet.on h2"); return !!h && new RegExp(src).test(h.textContent); }, re.source, { timeout: 5000 });
 const sheetGone = (f) => f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
+// a phone's view pill (Flyra's "Month ⌄"): its menu, then the view
+const pickView = async (f, v) => { await f.click(".wk-fly [data-vmenu]"); await sheetUp(f, /^View$/); await f.click(`.sheet.on [data-vpick="${v}"]`); await sheetGone(f); };
 async function checks(f, page, name, problems) {
   for (const x of await screenProblems(f)) problems.push(`${name}: ${x}`);
   for (const x of await badLinks(f)) problems.push(`${name}: a link that leaves in this tab ${x}`);
@@ -141,8 +143,8 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       await goTo(f, `/schedule?view=day&date=${day}`);
       await f.waitForSelector(`.wk-cols [href="#/visits/${seeded.visits[0]}"]`);
       assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), th);
-      assert.equal(await f.getAttribute(".wk-fly [data-seg=view][data-key=day]", "aria-selected"), "true");
-      assert.equal(await f.$$eval(".wk-fly .rnd", (b) => b.filter((x) => x.closest(".wk-rs-tools")).length), 3, "map, go to a date, filter");
+      assert.equal((await f.textContent(".wk-fly [data-vmenu]")).trim(), "Day");
+      assert.equal(await f.$$eval(".wk-fly .wk-fh-tools button", (b) => b.length), 3, "search, team, the gear");
       assert.ok(await f.isVisible(`.wk-strip .wk-sday.today[data-sday="${day}"]`), "today in the red circle");
       assert.equal(await f.$eval(`.wk-strip .wk-sday.today b`, (el) => getComputedStyle(el).backgroundColor), "rgb(219, 58, 41)");
       assert.match(await f.textContent(".wk-cols .wk-chead"), /Unassigned/);
@@ -154,12 +156,12 @@ for (const [device, theme, n] of [["iphone13", "light", 2], ["iphonese", "dark",
       const next = new Date(Date.parse(day + "T12:00:00Z") + 86400000).toISOString().slice(0, 10);
       await f.click(`.wk-strip [data-sday="${next}"]`);
       await f.waitForFunction((d) => document.querySelector(`.wk-strip [data-sday="${d}"]`)?.getAttribute("aria-pressed") === "true", next);
-      await f.click(".wk-fly [data-seg=view][data-key=month]");
+      await pickView(f, "month");
       await f.waitForSelector(".wk-mgrid");
       await f.waitForSelector(".wk-dayp");
       await checks(f, page, `rotor-schedule-month-${device}-${th}`, problems);
       // the dashed chip (Track 2: Pending, the jobs to book for the dates on screen) opens the Pending page
-      await f.click(".wk-fly [data-seg=view][data-key=week]");
+      await pickView(f, "week");
       await f.waitForSelector(".wk-week");
       await f.waitForSelector(".wk-tbchip >> visible=true");
       await f.click(".wk-tbchip");
