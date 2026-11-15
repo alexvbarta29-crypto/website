@@ -124,9 +124,11 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await screenProblems(f), [], "the payment sheet passes the phone checks");
       await shot(page, `money-payment-${device}`);
       await f.click(".mn-paysheet.on [data-pm=tap]");
-      assert.match(await f.textContent(".mn-paysheet.on"), /needs Stripe Terminal/);
-      assert.equal(await f.$eval(".mn-paysheet.on [data-ps-go]", (b) => b.disabled), true);
+      assert.match(await f.textContent(".mn-paysheet.on"), /The customer taps their card or phone on your device[\s\S]*needs Stripe Terminal/);
       assert.match(await f.textContent(".mn-paysheet.on [data-ps-go]"), /Start Tap to Pay on iPhone - \$325\.00/);
+      await f.click(".mn-paysheet.on [data-ps-go]");
+      await toastHas(f, /Tap to Pay isn't connected yet/);
+      assert.ok(await f.$(".mn-paysheet.on .mn-ps"), "nothing started: the sheet stays");
       await f.click(".mn-paysheet.on [data-pm=manual]");
       await f.click(".mn-paysheet.on label:has(input[value=check])");
       await f.fill(".mn-paysheet.on input[name=amount]", "100");
@@ -250,12 +252,15 @@ for (const device of ["iphone13", "iphonese"]) {
       await goTo(f, `/contacts/${M.contacts.test}?tab=money`);
       await viewHas(f, /VISA ending in 4242/);
       text = await f.textContent("#view");
-      assert.match(text, /open balance/);
+      assert.match(text, /Outstanding/, "the balance: the Service tab's numbers (Rotor's phone page)");
       assert.match(text, /Card · exp \d\d\/\d\d/, "the card on file (Rotor's Payment card)");
-      assert.match(text, /New invoice/);
       assert.deepEqual(await screenProblems(f), [], "the Money tab passes the phone checks");
       await shot(page, `money-contact-tab-${device}`);
-      await f.click("[data-mn-credit]");
+      // New invoice and Add credit: the red + (Rotor's)
+      await f.click("[data-ct-fab]");
+      await sheetUp(f, /New for/);
+      assert.match(await f.textContent(".sheet.on"), /New invoice[\s\S]*Add credit[\s\S]*Text a card link/);
+      await f.locator(".sheet.on").last().getByText("Add credit", { exact: true }).click();
       await sheetUp(f, /Add account credit/);
       assert.deepEqual(await screenProblems(f), [], "the credit sheet passes the phone checks");
       await f.fill(".sheet.on input[name=amount]", "25");
@@ -263,7 +268,7 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".sheet.on [type=submit]");
       await sheetGone(f);
       await viewHas(f, /Sorry for the wait/);
-      assert.match(await f.textContent("#view"), /\$\d+\.00\s*account credit/);
+      assert.match(await f.textContent("#view"), /Sorry for the wait[\s\S]*Available[\s\S]*\$25\.00/, "the credit, on their invoices card");
 
       // Settings → Payments: the mode, plainly; live can't be picked while Rotor is in charge
       await goTo(f, "/settings/payments");
@@ -414,7 +419,7 @@ for (const device of ["iphone13", "iphonese"]) {
 
 // Rotor's phone invoice and payment sheet, and Flyra's Checkout, in the light theme (the money test above runs dark)
 for (const device of ["iphone13", "iphonese"]) {
-  test(`money (${device}, light): the invoice editor, the payment sheet, Checkout with a 15% tip paid in cash`, async () => {
+  test(`money (${device}, light): the invoice editor, the payment sheet, a 15% tip paid in cash on Manual`, async () => {
     const { p, page, f: f0 } = await open("olive", device);
     try {
       await f0.evaluate(() => localStorage.setItem("crm-theme", "light"));
@@ -444,35 +449,22 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.match(await f.textContent(".mn-paysheet.on"), /Amount Due[\s\S]*\$195\.00/);
       assert.deepEqual(await screenProblems(f), [], "the payment sheet passes the phone checks (light)");
       await shot(page, `money-payment-${device}-light`);
-      await f.click(".mn-paysheet.on [data-sheet-x]");
-      await f.waitForFunction(() => !document.querySelector(".mn-paysheet"), null, { timeout: 5000 });
-      // Checkout (Flyra's): from the editor's "...": the service, a 15% tip, cash
+      // a tip (Flyra's Checkout is the job page's; on Rotor's sheet the tip rides on Manual or Charge): cash, $29.25 tip
+      await f.click(".mn-paysheet.on [data-pm=manual]");
+      await f.fill(".mn-paysheet.on input[name=tip]", "29.25");
+      assert.match(await f.textContent(".mn-paysheet.on [data-ps-go]"), /Record payment - \$195\.00/);
+      await f.click(".mn-paysheet.on [data-ps-go]");
+      await toastHas(f, /Payment saved/);
+      await f.waitForFunction(() => !document.querySelector(".mn-paysheet"), null, { timeout: 10000 });
+      // the editor's "..." has no Checkout any more (Rotor's invoice: Payment is the way to take money)
       await f.click(".mn-edsheet.on [data-ed-more]");
       await sheetUp(f, new RegExp(`Invoice #BW-${device.toUpperCase()}`));
-      await f.locator(".sheet.on").last().getByText("Checkout with a tip").click();
-      await f.waitForSelector(".mn-cosheet.on .mn-co", { timeout: 10000 });
-      let text = await f.textContent(".mn-cosheet.on");
-      assert.match(text, /Checkout[\s\S]*Your service[\s\S]*1×[\s\S]*Quarterly window cleaning[\s\S]*Subtotal[\s\S]*\$295\.00[\s\S]*Discount[\s\S]*\$100\.00[\s\S]*Service total[\s\S]*\$195\.00[\s\S]*Tip your crew[\s\S]*None[\s\S]*10%[\s\S]*\$19\.50[\s\S]*15%[\s\S]*\$29\.25[\s\S]*20%[\s\S]*\$39\.00[\s\S]*Other/, "Flyra's checkout, the tips worked out on the service total");
-      await f.click(".mn-cosheet.on [data-co-tip='1500']");
-      assert.match(await f.textContent(".mn-cosheet.on [data-co-pay]"), /Pay \$224\.25/);
-      await f.click(".mn-cosheet.on [data-co-change]");
-      await sheetUp(f, /Pay with/);
-      assert.match(await f.textContent(".rs-actions.on"), /Tap to Pay[\s\S]*Card on file[\s\S]*Cash or check[\s\S]*Send link/);
-      await f.locator(".sheet.on").last().getByText("Tap to Pay", { exact: true }).click();
-      await f.waitForFunction(() => /Stripe Terminal/.test(document.querySelector(".mn-cosheet.on").textContent));
-      assert.equal(await f.$eval(".mn-cosheet.on [data-co-pay]", (b) => b.disabled), true, "Tap to Pay isn't connected");
-      await f.click(".mn-cosheet.on [data-co-change]");
-      await sheetUp(f, /Pay with/);
-      await f.locator(".sheet.on").last().getByText("Cash or check", { exact: true }).click();
-      await f.waitForSelector(".mn-cosheet.on [name=co_cash]");
-      assert.deepEqual(await screenProblems(f), [], "Checkout passes the phone checks (light)");
-      await shot(page, `money-checkout-${device}-light`);
-      await f.click(".mn-cosheet.on [data-co-pay]");
-      await toastHas(f, /Payment saved/);
+      assert.doesNotMatch(await f.textContent(".rs-actions.on"), /Checkout/);
+      await f.locator(".sheet.on").last().locator("[data-sheet-x]").click();
       await f.waitForFunction(() => /Paid/.test((document.querySelector(".mn-edsheet.on .mn-ed-pills") || {}).textContent || ""), null, { timeout: 10000 });
       const pays = (await api(p, `/invoices/${inv.id}`)).payments;
       assert.deepEqual(pays.map((x) => [x.method, x.amount_cents, x.tip_cents]), [["cash", 19500, 2925]], "the tip rides on the payment");
-      text = await f.textContent(".mn-edsheet.on");
+      const text = await f.textContent(".mn-edsheet.on");
       assert.match(text, /Tips for the crew\s*\$29\.25/);
       await p.clean();
     } finally { await p.close(); }

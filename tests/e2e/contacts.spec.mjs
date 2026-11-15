@@ -186,14 +186,14 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
         assert.match(await g.textContent(".sheet.on"), /Edit[\s\S]*Archive/);
         await g.click(".sheet.on [data-sheet-x]");
       }
-      // the customer on a phone (Rotor's phone app): Details (the summary, CONTACT, the quick row, PAYMENT, notes,
-      // More details, the portal, Files, Convert to Lead, Delete Customer) | Service (Rotor's order) | Activity
+      // the customer on a phone (Rotor's phone app): Details (the summary, CONTACT, PAYMENT, notes, More details, the
+      // portal, Files) | Service (Rotor's order) | Activity; the pencil's sheet and the red +
       await goTo(g, `/contacts/${seeded.contacts.plan}`);
       await g.waitForFunction(() => !document.querySelector("#view .ct-loading"), null, { timeout: 10000 });
       assert.deepEqual(await g.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["details", "service", "activity"], "Rotor's phone tabs");
       assert.deepEqual(await g.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Type", "Sale value", "Frequency", "Source"]);
       assert.match(await g.textContent("#ct-stat"), /Quarterly/, "the plan's frequency");
-      assert.ok(await g.isVisible("#top-act .rs-top-sw .switch"), "Automations (Mute) in the header");
+      assert.ok(await g.isVisible("#top-act [data-ct-edit]") && !(await g.$("#top-more")), "Rotor's header: the pencil, no ...");
       assert.ok(await g.isVisible('[data-pane="details"] [data-card="payment"] [data-mn-card-link]'), "PAYMENT: Add Payment Method");
       assert.ok(await g.isVisible('[data-pane="details"] [data-portal]'), "the portal");
       assert.ok(await g.$("#ct-card-files"), "the Files card");
@@ -201,7 +201,7 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
       await g.waitForSelector('#ct-card-about [data-pick-owner]');
       assert.match(await g.textContent("#ct-card-about"), /Source[\s\S]*Assigned[\s\S]*Tags[\s\S]*Lifetime value[\s\S]*Created/, "More details");
       await g.click('[data-seg="ctab"][data-key="service"]');
-      assert.match(await g.textContent('[data-pane="service"] [data-card="plan"]'), /Service Plan[\s\S]*New[\s\S]*Quarterly plan[\s\S]*Duration:[\s\S]*12 months/);
+      assert.match(await g.textContent('[data-pane="service"] [data-card="plan"]'), /Service Plan[\s\S]*Quarterly plan[\s\S]*Duration:[\s\S]*12 months/);
       assert.ok(await g.$('[data-pane="service"] [data-card="pending"] [data-pend-hold]'), "Pending Jobs (Delay on a long press)");
       // (a long press is a right click here; sent again if the page drew itself again in between)
       await g.waitForFunction(() => {
@@ -221,8 +221,9 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
       await g.click('[data-seg="ctab"][data-key="activity"]');
       assert.ok(await g.isVisible('[data-pane="activity"] #ct-card-activity'), "the timeline on Activity");
       assert.deepEqual(await screenProblems(g), [], "the Activity tab");
-      await g.click("#top-more");
+      await g.click("#top-act [data-ct-edit]");
       await g.waitForSelector(".sheet.on [data-portal]");
+      assert.match(await g.textContent(".sheet.on"), /Edit details[\s\S]*Automations[\s\S]*Convert to Lead[\s\S]*Archive/, "the pencil's sheet");
       await g.click(".sheet.on [data-portal]");
       await g.waitForSelector('.sheet.on a[href*="/p/"]', { timeout: 8000 });
       assert.match(await g.textContent(".sheet.on"), /15 minutes/);

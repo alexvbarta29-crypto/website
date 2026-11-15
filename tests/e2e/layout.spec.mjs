@@ -173,7 +173,7 @@ test("a tech's bar is the tech app's: Today · Inbox · Time · Pay · Me, no Me
 });
 
 for (const device of ["iphone13", "iphonese"]) {
-  test(`the customer page (${device}): Rotor's phone page (Details | Service | Activity), Flyra's Automations and quick row; the "..." has the rest`, async () => {
+  test(`the customer page (${device}): Rotor's phone page (Details | Service | Activity), the pencil's sheet and the red +`, async () => {
     const { p, page, f } = await open("olive", device);
     try {
       await goTo(f, `/contacts/${seeded.contacts.plan}`);
@@ -181,19 +181,20 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.deepEqual(await f.$$eval('#view [data-seg="ctab"]', (els) => els.map((e) => e.dataset.key)), ["details", "service", "activity"], "Rotor's phone tabs");
       assert.deepEqual(await f.$$eval("#ct-stat .ct-sv-l", (els) => els.map((e) => e.textContent)), ["Type", "Sale value", "Frequency", "Source"]);
       assert.equal(await f.textContent(".rs-name .pill"), "Active");
-      assert.match(await f.textContent(".ct-since"), /Customer since\s*[A-Z][a-z]{2} \d+, \d{4}/);
-      assert.deepEqual(await f.$$eval("#ct-reach .rs-crow .rs-cl", (els) => els.map((e) => e.textContent)), ["Phone", "Email", "Primary property"]);
-      assert.ok(await f.$('#ct-reach .rs-crow .rnd.red[href^="tel:"]') && await f.$("#ct-reach .rs-crow [data-copy]"), "copy, and the red round call");
-      assert.deepEqual(await f.$$eval(".ct-quick [data-quick]", (els) => els.map((e) => e.textContent.trim())), ["Schedule", "Estimate", "Invoice", "Plan"]);
+      assert.equal(await f.$(".ct-since"), null, "Rotor's: the name and Active only (Customer since is under More details)");
+      assert.deepEqual(await f.$$eval("#ct-reach .ct-cr-l", (els) => els.map((e) => e.textContent)), ["Phone", "Email", "Primary property"]);
+      assert.ok(await f.$("#ct-reach [data-ct-phone]") && await f.$("#ct-reach .ct-cr-cp[data-copy]"), "the phone (a tap calls or texts) and a round copy");
+      assert.equal(await f.$(".ct-quick, [data-to-lead], .ct-foot-btns"), null, "no quick row, no foot buttons");
       assert.equal(await f.isVisible("#top-back"), true, "the round back button");
-      assert.ok(await f.isVisible("#top-act .rs-top-sw .switch[aria-checked=true]"), "Automations on");
-      assert.ok(await f.isVisible("#top-act a[data-top-tool]"), "the round pencil");
-      assert.ok(await f.isVisible("#top-more"), "the round ...");
+      assert.deepEqual(await f.$$eval("#top-act [data-top-tool]", (els) => els.map((e) => e.getAttribute("aria-label"))), ["Edit"], "the round pencil only");
+      assert.equal(await f.$("#top-more"), null, "no round ...");
+      assert.equal(await f.isVisible("#fab"), false, "the bar's + steps aside");
+      assert.ok(await f.isVisible(".ct-fab"), "Rotor's red +");
+      assert.equal(await f.$eval(".ct-fab", (e) => getComputedStyle(e).backgroundColor), "rgb(251, 77, 61)", "the logo red");
       assert.ok((await box(f, "#top-title")).w <= 1, "no title in sight: the name is the page's own (the h1 stays for screen readers)");
       const cardsOf = (pane) => f.$$eval(`[data-pane="${pane}"] [data-card]`, (els) => els.map((e) => e.dataset.card));
       const det = await cardsOf("details");
       for (const must of ["payment", "notes", "about", "properties", "files"]) assert.ok(det.includes(must), `${must} on Details (${det.join(", ")})`);
-      assert.ok(await f.isVisible("[data-to-lead]") && await f.isVisible('[data-pane="details"] [data-archive]'), "Convert to Lead, Delete Customer");
       assert.deepEqual(await screenProblems(f), []);
       assert.deepEqual(await badLinks(f), []);
       await shot(page, `layout-contact-${device}`);
@@ -221,11 +222,20 @@ for (const device of ["iphone13", "iphonese"]) {
       assert.ok(await f.isVisible("#ct-card-consent"));
       for (const must of ["followups", "deals"]) assert.ok((await cardsOf("activity")).includes(must), must);
       assert.deepEqual(await screenProblems(f), []);
-      // the "...": every other action
-      await f.click("#top-more");
+      // the red +: what can be made for them
+      await f.click(".ct-fab");
       await f.waitForSelector(".sheet.on .rs-act");
-      const rows = await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent));
-      for (const want2 of ["Book a job", "New quote", "New plan", "New invoice", "Add credit", "Text a card link", "Log a call", "Start a follow-up", "New task", "Edit", "Texts and email", "Merge with...", "Pause automated texts", "Mark as test contact", "Archive"]) assert.ok(rows.includes(want2), `${want2} in the ...: ${rows.join(", ")}`);
+      let rows = await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent));
+      for (const want2 of ["Book a job", "New quote", "New plan", "New invoice", "Add credit", "Text a card link", "Log a call", "Start a follow-up", "New task", "Add a note", "Add a property"]) assert.ok(rows.includes(want2), `${want2} on the +: ${rows.join(", ")}`);
+      assert.deepEqual(await screenProblems(f), []);
+      await shot(page, `layout-contact-new-${device}`);
+      await f.click(".sheet.on [data-sheet-x]");
+      await f.waitForFunction(() => !document.querySelector(".sheet.on"));
+      // the pencil: every other change
+      await f.click("#top-act [data-top-tool]");
+      await f.waitForSelector(".sheet.on .rs-act");
+      rows = await f.$$eval(".sheet.on .rs-act-l", (els) => els.map((e) => e.textContent));
+      for (const want2 of ["Edit details", "Owner", "Texts and email", "Automations", "Merge with...", "Open their portal", "Mark as test contact", "Convert to Lead", "Archive"]) assert.ok(rows.includes(want2), `${want2} in the pencil's sheet: ${rows.join(", ")}`);
       assert.equal(rows[rows.length - 1], "Archive", "Archive red, last");
       assert.deepEqual(await screenProblems(f), []);
       await shot(page, `layout-contact-more-${device}`);

@@ -273,16 +273,6 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
 .ct-pc-b>.ct-cb>.list:first-child>li:first-child{border-top:0}
 /* CONTACT: the rows and the satellite in one card */
 .ct-ccard{padding:0 0 2px}
-.ct-ccard .rs-crows{padding:2px 10px 2px 16px}
-.ct-ccard .rs-acts{gap:0}
-.ct-ccard .ct-photo{margin:0 16px 14px;height:180px}
-.ct-ccard .rs-crows:not(:last-child){border-bottom:1px solid var(--line);margin-bottom:12px}
-/* Flyra's quick row: Schedule · Estimate · Invoice · Plan */
-.ct-quick{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--card-line);border-radius:var(--r-lg);background:var(--card);overflow:hidden}
-.ct-q{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:72px;padding:10px 4px;color:var(--ink);font:600 13.5px/1.1 var(--text);text-decoration:none}
-.ct-q+.ct-q{border-left:1px solid var(--line)}
-.ct-q svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.ct-q:active{background:var(--fill)}
 /* PAYMENT: the method on file */
 .ct-pm{display:flex;align-items:center;gap:14px;min-height:64px}
 .ct-pm-tile{flex:none;display:grid;place-items:center;min-width:52px;height:34px;padding:0 8px;border-radius:8px;background:var(--card-2);color:var(--ink-2);font:700 12px/1 var(--text);letter-spacing:.06em}
@@ -323,11 +313,152 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
 .ct-ir-e{flex-direction:column;align-items:flex-end!important;gap:2px!important}
 .ct-ir-a{font-weight:700;font-size:16px}
 .ct-ir-w{font-size:13px;color:var(--ink-3);text-align:right}
-/* the foot: Convert to Lead, Delete Customer */
-.ct-foot-btns{display:flex;flex-direction:column;gap:12px;margin-top:20px}
-.ct-ob{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;border:1px solid var(--line-2);border-radius:999px;background:none;color:var(--ink);font:600 17px/1 var(--text);cursor:pointer}
-.ct-ob svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.ct-ob.blue{color:var(--blue-ink,#1a6fd1)}
-.ct-ob.red{color:var(--red-ink,#c62f1f)}
-.ct-ob:active{background:var(--fill)}
 .ct-cyc .sub{white-space:normal}
+
+/* ---------------------------------------------------------------- a customer on a phone, to the pixel (the owner, Nov 15:
+   "make it just like Rotor"; measured on his iPhone screenshots 09 to 12, in CSS px). The header: round back and the
+   round pencil, white, 48 px, a soft shadow. The name 28 px bold and the green Active; the grey segmented row; white
+   cards (12 px corners, a soft shadow, the plan's and the jobs' a hairline) under 14 px caps labels; 40 px round tiles;
+   the red + at the foot. Dark mirrors it with the theme's own tokens. */
+.ct-phone{--rx-track:#e5e5ea;--rx-tile:#f7f7f7;--rx-grey:#666;--rx-sep:#f0f0f2;--rx-hair:#e5e5e5;--rx-note:#ebebeb;--rx-active:#64c365;--rx-bank:#54b685;--rx-chip:#d2d5da;--rx-chip-line:#9da3ae;--rx-chip-ink:#212835;--rx-sh:0 2px 8px rgba(18,18,21,.05);--rx-done:#e2fbe8;--rx-done-ink:#306339;--rx-sched:#fcf3cc;--rx-sched-ink:#87441d;--rx-pend:#3478f6;--rx-draft:#ededef;--rx-draft-ink:#6c727f;--rx-paid:#e5f6ef;--rx-paid-ink:#3e9a6c}
+html:not([data-theme="light"]) .ct-phone{--rx-track:#1d1e21;--rx-tile:#26272b;--rx-grey:#a1a1a8;--rx-sep:#2a2b2f;--rx-hair:#2a2b2f;--rx-note:#232428;--rx-active:#34a853;--rx-bank:#3f9a6c;--rx-chip:#2c2c30;--rx-chip-line:#48494d;--rx-chip-ink:#f5f5f7;--rx-sh:none;--rx-done:rgba(52,199,89,.16);--rx-done-ink:#6fdc8c;--rx-sched:rgba(245,166,35,.16);--rx-sched-ink:#f5b851;--rx-pend:#2f6fe0;--rx-draft:#2c2c30;--rx-draft-ink:#a1a1a8;--rx-paid:rgba(52,199,89,.16);--rx-paid-ink:#6fdc8c}
+/* the header: the back button and the pencil, Rotor's 48 px white rounds */
+.app:has(#view>.ct-phone) .top{min-height:calc(50px + var(--top));padding-left:calc(16px + var(--left));padding-right:calc(16px + var(--right))}
+.app:has(#view>.ct-phone) .top .rnd,.app:has(#view>.ct-phone) .top .top-back{width:48px;height:48px;border:0;background:var(--card);box-shadow:0 4px 16px rgba(18,18,21,.09)}
+.app:has(#view>.ct-phone) .top .rnd svg,.app:has(#view>.ct-phone) .top .top-back svg{width:24px;height:24px;stroke-width:1.9}
+/* the red + (Rotor's) where the bar's + sits; the bar's own steps aside here */
+.app:has(#view>.ct-phone) #fab{display:none}
+.ct-fab{position:fixed;z-index:6;right:calc(14px + var(--right));bottom:calc(var(--bar-gap,14px) + (var(--pill-h,62px) - 60px) / 2);display:grid;place-items:center;width:60px;height:60px;border:0;border-radius:50%;background:var(--coral-btn);color:#fff;box-shadow:0 6px 18px rgba(18,18,21,.18);cursor:pointer}
+.app.no-tabs .ct-fab,.app.has-side .ct-fab{bottom:calc(var(--bottom) + 20px)}
+.ct-fab:active{transform:scale(.96)}
+.ct-fab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round}
+.app.typing .ct-fab,body.qk-on .ct-fab{display:none}
+.ct-phone{gap:0;padding-bottom:84px}
+/* the name and Active */
+.ct-phone .ct-head{gap:0;padding:27px 0 0}
+.ct-phone .rs-name{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ct-phone .rs-name h2{min-width:0;font:700 28px/34px var(--head);letter-spacing:-.02em;overflow-wrap:anywhere}
+.ct-phone .rs-name .pill{flex:none;height:22px;padding:0 8px;border-radius:11px;font:500 14px/1 var(--text)}
+.ct-phone .rs-name .pill::before{display:none}
+.ct-phone .rs-name .pill.green{background:var(--rx-active);color:#fff}
+.ct-phone .ct-pills{margin-top:6px}
+/* Details · Service · Activity */
+.ct-phone .ct-seg{top:-12px;margin-top:6px;padding:0 0 0;background:var(--mist)}
+.ct-phone .ct-seg .rs-seg{padding:0 4px;border-radius:10px;background:var(--rx-track)}
+.ct-phone .ct-seg .rs-seg-b{color:var(--rx-grey);font:400 16px/1.1 var(--text)}
+.ct-phone .ct-seg .rs-seg-b[aria-selected="true"]{color:var(--ink);font-weight:600}
+.ct-phone .ct-seg .rs-seg-b[aria-selected="true"]::before{inset:5px 0;border-radius:8px;background:var(--card);box-shadow:0 1px 3px rgba(18,18,21,.1)}
+html:not([data-theme="light"]) .ct-phone .ct-seg .rs-seg-b[aria-selected="true"]::before{background:var(--seg-on)}
+.ct-phone .ct-panes{gap:0}
+.ct-phone .ct-pane{gap:0}
+/* the caps labels and the cards */
+.ct-phone .rs-label{margin:25px 4px 0;font:500 14px/18px var(--text);letter-spacing:.03em;color:var(--rx-grey)}
+.ct-phone .rs-card{border:0;border-radius:12px;box-shadow:var(--rx-sh)}
+.ct-phone .ct-pc{gap:0;margin-top:12px}
+.ct-phone .ct-pane>.ct-pc:first-child{margin-top:-1px}
+.ct-phone .ct-pc-h{min-height:44px;margin:0}
+.ct-phone .ct-pc-h .rs-label{margin:0 4px}
+.ct-phone .ct-pc-e{margin:4px 4px 0;color:var(--rx-grey);font:400 14px/20px var(--text)}
+.ct-phone .ct-pc-h .rs-pb.line{position:relative;z-index:0;min-height:44px;padding:0 11px;border:0;background:none;color:var(--ink);font:500 14px/1 var(--text);gap:6px}
+.ct-phone .ct-pc-h .rs-pb.line::before{content:"";position:absolute;z-index:-1;inset:10px 0;border:1px solid var(--rx-hair);border-radius:8px;background:var(--card)}
+.ct-phone .ct-pc-h .rs-pb svg{width:15px;height:15px;stroke-width:2}
+.ct-phone .ct-pc-b{padding:0 16px}
+/* TYPE · SALE VALUE · FREQUENCY · SOURCE */
+.ct-phone .ct-sum{margin-top:15px;grid-template-columns:1fr 1fr;row-gap:15px;column-gap:0;padding:19px 20px 38px;border:0;border-radius:12px;box-shadow:var(--rx-sh)}
+.ct-phone .ct-sv{min-height:0;padding:0;gap:3px}
+.ct-phone .ct-sv-l{font:500 12px/16px var(--text);letter-spacing:.06em;color:var(--rx-grey)}
+.ct-phone .ct-sv-v{font:600 17px/22px var(--text);letter-spacing:-.01em}
+/* CONTACT: the rows (a 40 px round tile, the caps label, the value, a round copy) and the satellite */
+.ct-phone .ct-ccard{margin-top:13px;padding:0;overflow:hidden}
+.ct-cr{display:flex;align-items:center;gap:4px;padding:0 14px 0 16px}
+.ct-cr+.ct-cr{border-top:1px solid var(--rx-sep)}
+.ct-cr-a{flex:1;min-width:0;display:flex;align-items:center;gap:13px;min-height:72px;padding:10px 0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;text-decoration:none;cursor:pointer}
+.ct-cr-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--rx-tile)}
+.ct-cr-ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ct-cr-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.ct-cr-l{font:500 12px/15px var(--text);letter-spacing:.06em;text-transform:uppercase;color:var(--rx-grey)}
+.ct-cr-v{font:400 16px/21px var(--text);overflow-wrap:anywhere}
+.ct-cr-s{font:400 13px/18px var(--text);color:var(--rx-grey)}
+.ct-cr-cp{position:relative;z-index:0;flex:none;display:grid;place-items:center;width:44px;height:44px;border:0;background:none;color:var(--ink);cursor:pointer}
+.ct-cr-cp::before{content:"";position:absolute;z-index:-1;inset:2px;border-radius:50%;background:var(--rx-tile)}
+.ct-cr-cp svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ct-map{display:block;padding:13px 16px 16px;border-top:1px solid var(--rx-sep)}
+.ct-map:empty{display:none}
+.ct-phone .ct-map .ct-photo{display:block;height:163px;margin:0;border:0;border-radius:10px}
+/* PAYMENT: a BANK tile or the card's brand, the account, the caps lines, the black square */
+.ct-phone [data-card="payment"] .ct-pc-b{padding:14px 16px}
+.ct-phone .ct-pm{gap:13px;min-height:70px}
+.ct-phone .ct-pm-tile{min-width:40px;height:22px;padding:0 4px;border-radius:4px;font:700 11px/1 var(--text);letter-spacing:.04em}
+.ct-phone .ct-pm-tile.bank{background:var(--rx-bank);color:#fff}
+.ct-phone .ct-pm-w{gap:1px}
+.ct-phone .ct-pm-n{font:400 16px/19px var(--text)}
+.ct-phone .ct-pm-s{font:500 13px/17px var(--text);letter-spacing:.08em;color:var(--rx-grey)}
+.ct-phone .ct-pm .rnd{width:44px;height:44px;border:0;border-radius:12px;background:var(--solid);color:var(--on-solid)}
+.ct-phone .ct-pm .rnd svg{width:22px;height:22px}
+/* Customer notes: the title over Rotor's grey box */
+.ct-phone .ct-pnotes{gap:6px;margin-top:25px}
+.ct-phone .ct-pn-h{margin:0;font:700 18px/24px var(--head);letter-spacing:-.01em}
+.ct-phone .ct-pnotes .rs-notes{min-height:102px;padding:15px 16px;border:0;border-radius:16px;background:var(--rx-note);font:400 16px/22px var(--text);box-shadow:none}
+.ct-phone .ct-pnotes .rs-notes::placeholder{color:#8a8a8e}
+.ct-phone .ct-rows-p{margin-top:25px}
+/* SERVICE PLAN: Rotor's card, a hairline round it */
+.ct-phone [data-card="plan"] .ct-pc-b{padding:11px 13px 13px;border:1px solid var(--rx-hair);box-shadow:none}
+.ct-phone .ct-plc-a{gap:0;padding-right:36px}
+.ct-phone .ct-plc-t{font:600 18px/23px var(--text);letter-spacing:-.01em}
+.ct-phone .ct-plc-f{margin-top:2px;color:var(--rx-grey);font:400 15px/20px var(--text)}
+.ct-phone .ct-plc-kv{margin-right:-36px;color:var(--rx-grey);font:400 15px/21px var(--text)}
+.ct-phone .ct-plc-f+.ct-plc-kv{margin-top:8px}
+.ct-phone .ct-plc-kv b{color:var(--ink);font-weight:400}
+.ct-phone .ct-plc-kv b.num{font-weight:700}
+.ct-phone .ct-plc-b{margin-top:8px;gap:8px 9px;color:var(--rx-grey);font:400 15px/20px var(--text)}
+.ct-phone .ct-plc-b svg{width:18px;height:18px;stroke-width:1.6}
+.ct-phone .ct-chip{height:24px;padding:0 9px;border:1px solid var(--rx-chip-line);border-radius:6px;background:var(--rx-chip);color:var(--rx-chip-ink);font:600 13px/1 var(--text);gap:5px}
+.ct-phone .ct-plc>.rnd{top:-11px;right:-11px;color:var(--ink)}
+.ct-phone .ct-plc>.rnd::before{display:none}
+.ct-phone .ct-plc>.rnd svg{width:22px;height:22px}
+/* SCHEDULED JOBS: a white box each, a hairline round it */
+.ct-phone [data-card="visits"] .ct-pc-b{padding:0;background:none;box-shadow:none;border-radius:0;overflow:visible}
+.ct-phone [data-card="visits"] .ct-cb>.list{margin:2px 0 0;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+.ct-phone [data-card="visits"] .ct-cb>.list>li{border:0!important}
+.ct-phone [data-card="visits"] .ct-cb>.list>li+li{margin-top:2px}
+.ct-phone [data-card="visits"] .list .row{min-height:57px;gap:13px;padding:6px 15px 6px 14px;border:1px solid var(--rx-hair);border-radius:4px;background:var(--card)}
+.ct-phone [data-card="visits"] .list>li:first-child .row{border-top-left-radius:12px;border-top-right-radius:12px}
+.ct-phone [data-card="visits"] .list>li:last-child .row{border-bottom-left-radius:12px;border-bottom-right-radius:12px}
+.ct-phone [data-card="visits"] .row .ico{width:20px;height:20px;background:none;border-radius:0;color:var(--ink)}
+.ct-phone [data-card="visits"] .row .ico svg{width:20px;height:20px;stroke-width:1.7}
+.ct-phone [data-card="visits"] .row .nm{font:600 16px/20px var(--text)}
+.ct-phone [data-card="visits"] .row .sub{font:400 14px/18px var(--text);color:var(--rx-grey)}
+.ct-phone [data-card="visits"] .ct-sub-h{margin:16px 4px 8px}
+.ct-phone .ct-jr .end{gap:19px}
+.ct-phone .ct-jr-a{font:700 16px/1 var(--text)}
+/* Rotor's pills: no dot, rounded squares; Completed green, a booked visit amber, Pending blue */
+.ct-phone .ct-pc .pill{height:22px;padding:0 10px;border-radius:8px;font:400 14px/1 var(--text)}
+.ct-phone .ct-pc .pill::before{display:none}
+.ct-phone .ct-jr .pill.green{background:var(--rx-done);color:var(--rx-done-ink)}
+.ct-phone .ct-jr .pill.blue,.ct-phone .ct-jr .pill.amber{background:var(--rx-sched);color:var(--rx-sched-ink)}
+/* PENDING JOBS: the month in italics, a blue Pending, the $, a red Schedule on the next one */
+.ct-phone [data-card="pending"] .ct-pc-b{padding:0}
+.ct-phone [data-card="pending"] .ct-cb>.list{margin:0!important;border:0;border-radius:12px;background:none;box-shadow:none}
+.ct-phone [data-card="pending"] .ct-cb>.list>li+li{border-top:1px solid var(--rx-sep)}
+.ct-phone .ct-pj{min-height:64px;gap:4px;padding-right:16px}
+.ct-phone .ct-pj>.row{min-height:64px;gap:12px;padding:8px 6px 8px 17px}
+.ct-phone .ct-pj .ico{width:22px;height:22px;background:none;border-radius:0;color:var(--ink)}
+.ct-phone .ct-pj .ico svg{width:22px;height:22px;stroke-width:1.7}
+.ct-phone .ct-pj .who{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+.ct-phone .ct-pj .who .nm{min-width:0;white-space:normal;overflow:visible}
+.ct-phone .ct-pj .who .sub{flex:none;overflow:visible}
+.ct-phone .ct-pj .nm i{font:italic 500 17px/21px var(--text)}
+.ct-phone .ct-pj .sub.ct-when{font-size:0;gap:0}
+.ct-phone .ct-pj .pill{background:var(--rx-pend);color:#fff;font-size:15px}
+.ct-phone .ct-pj .end .ct-jr-a{font:400 16px/1 var(--text)}
+.ct-phone .ct-pj>.rs-pb.red{position:relative;z-index:0;min-height:44px;padding:0 14px;background:none;color:#fff;font:600 16px/1 var(--text)}
+.ct-phone .ct-pj>.rs-pb.red::before{content:"";position:absolute;z-index:-1;inset:6px 0;border-radius:8px;background:var(--coral-btn)}
+/* BILLING CYCLES and INVOICES */
+.ct-phone [data-card="cycles"] .ct-cb>.list,.ct-phone [data-card="invoices"] .ct-cb>.list{margin:0 -16px;border:0;background:none;box-shadow:none}
+.ct-phone [data-card="invoices"] .ct-cb>.list>li+li{border-top:1px solid var(--rx-hair)}
+.ct-phone .ct-ir{min-height:56px;padding:9px 16px}
+.ct-phone .ct-ir .nm{font:600 16px/20px var(--text);gap:10px}
+.ct-phone .ct-ir .pill{height:20px;padding:0 9px;border-radius:6px;font:600 13px/1 var(--text);background:var(--rx-draft);color:var(--rx-draft-ink)}
+.ct-phone .ct-ir .pill.green{background:var(--rx-paid);color:var(--rx-paid-ink)}
+.ct-phone .ct-ir-a{font:700 16px/21px var(--text)}
+.ct-phone .ct-ir-w{font:400 14px/19px var(--text);color:var(--rx-grey);max-width:150px}

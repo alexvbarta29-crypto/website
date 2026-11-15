@@ -346,3 +346,119 @@ textarea.mn-ed-in{min-height:96px;resize:vertical}
 .mn-nv-go{background:var(--solid);color:var(--on-solid)}
 .mn-nv-cta,.mn-co-cta{background:var(--sheet-bg);border-top:0}
 @media (max-width:380px){.mn-edsheet .sheet-head h2{font-size:22px}}
+
+/* ---------------------------------------------------------------- a phone: Rotor's invoice and Payment sheet, to the pixel
+   (the owner, Nov 15: "make it just like Rotor"; measured on his iPhone screenshots 06, 07 and 08, in CSS px).
+   White head: "Invoice #..." 22 px bold, the red bin and the X; the grey Draft pill; "Mark as Sent" outlined (30 px
+   drawn, 44 px to tap). The grey canvas, 16 px apart: white cards with a hairline, 12 px corners, 16 px in; titles 18 px
+   bold; labels 14 px semibold; inputs 16 px with a hairline, 8 px corners. The bar: black Save, red Payment, 45 px.
+   The Payment sheet: the grey page and head, Amount Due, the red Tap to Pay (46 px), Charge · Manual · Send outlined,
+   the way's title and words, and the white bar with its 51 px red button. Dark mirrors it with the theme's own tokens. */
+@media (max-width:899px){
+  .mn-edsheet,.mn-paysheet{--rx-pill:#ecedef;--rx-pill-ink:#7c828f;--rx-grey:#666;--rx-out:#ccc}
+  html:not([data-theme="light"]) .mn-edsheet,html:not([data-theme="light"]) .mn-paysheet{--rx-pill:#2c2c30;--rx-pill-ink:#a1a1a8;--rx-grey:#a1a1a8;--rx-out:#48494d}
+  .mn-edsheet .sheet-head{padding:calc(var(--top) + 1px) 6px 0 16px;border-bottom:0;gap:0}
+  .mn-edsheet .sheet-head h2{font:700 22px/28px var(--head);letter-spacing:-.02em}
+  .mn-ed-hbin svg,.mn-ed-x svg{width:23px;height:23px}
+  .mn-ed-x svg{stroke-width:2}
+  .mn-ed{gap:16px;padding:16px 16px 0}
+  .mn-ed-top{gap:1px;margin:-16px -16px 0;padding:3px 16px 5px}
+  .mn-ed-pills .pill{height:22px;padding:0 9px;border-radius:6px;font:600 13px/1 var(--text)}
+  .mn-ed-pills .pill::before{display:none}
+  .mn-ed-pills .pill:not(.green):not(.amber):not(.red):not(.blue){background:var(--rx-pill);color:var(--rx-pill-ink)}
+  .mn-ed-acts{gap:8px}
+  /* outlined buttons: drawn 30 px (Rotor's), 44 px to tap */
+  .mn-ed-top .mn-ed-ob,.mn-ed-ch .mn-ed-ob,.mn-ed-sm{position:relative;z-index:0;min-height:44px;padding:0 12px;border:0;border-radius:8px;background:none;font:500 16px/1 var(--text);gap:9px}
+  .mn-ed-top .mn-ed-ob::before,.mn-ed-ch .mn-ed-ob::before,.mn-ed-sm::before{content:"";position:absolute;z-index:-1;inset:7px 0;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+  .mn-ed-top .mn-ed-ob svg{width:19px;height:19px}
+  .mn-ed-ch .mn-ed-bb{position:relative;z-index:0;min-height:44px;padding:0 12px;border:0;background:none;color:var(--on-solid);font:500 16px/1 var(--text)}
+  .mn-ed-ch .mn-ed-bb::before{content:"";position:absolute;z-index:-1;inset:8px 0;border-radius:8px;background:var(--solid)}
+  .mn-ed-ch .mn-ed-ob::before{inset:8px 0}
+  .mn-ed-add{gap:8px}
+  /* the cards */
+  .mn-ed-form{gap:16px}
+  .mn-ed-card{gap:0;padding:13px 16px 16px;border:1px solid var(--line);border-radius:12px;box-shadow:none}
+  .mn-ed-card h3{font:700 18px/24px var(--head);letter-spacing:-.01em}
+  .mn-ed-card:has(>.mn-ed-ch .mn-ed-add){padding-top:10px}
+  .mn-ed-ch{min-height:24px;flex-wrap:nowrap}
+  .mn-ed-tap{cursor:pointer}
+  .mn-ed-tap:active{background:var(--fill)}
+  .mn-ed-bn{margin:8px 0 2px;font:600 17px/22px var(--text);letter-spacing:-.01em}
+  .mn-ed-bs{color:var(--rx-grey);font:400 15px/19.5px var(--text)}
+  .mn-ed-hint{margin-top:6px}
+  .mn-ed-card>h3+.mn-ed-f{margin-top:8px}
+  .mn-ed-f{gap:6px}
+  .mn-ed-f+.mn-ed-f{margin-top:14px}
+  .mn-ed-f[data-field="number"]{gap:0}
+  .mn-ed-f[data-field="number"]+.mn-ed-f{margin-top:7px}
+  .mn-ed-l{font:600 14px/18px var(--text)}
+  .mn-ed-num{min-height:44px;font:400 16px/1.2 var(--text)}
+  .mn-ed-sm{min-width:49px;padding:0 12px}
+  .mn-ed-sm::before{inset:6px 0}
+  .mn-ed-in{min-height:38px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;font:400 16px/1.4 var(--text)}
+  .mn-ed-date .mn-ed-in{min-height:34px;padding-top:5px;padding-bottom:5px;padding-right:110px}
+  textarea.mn-ed-in{min-height:78px;padding-top:10px}
+  .mn-ed-clear{right:40px;font:400 16px/1 var(--text)}
+  .mn-ed-cal{right:12px;width:20px;height:20px}
+  .mn-ed-cal svg{width:20px;height:20px}
+  /* Line Items: the words with the red bin; quantity, price, the line's total */
+  .mn-ed-card>.mn-ed-ch+div+.mn-ed-lines,.mn-ed-card>.mn-ed-ch+div+.rs-empty{margin-top:16px}
+  .mn-ed-line{gap:9px;padding:10px 0}
+  .mn-ed-line:first-child{padding-top:0}
+  .mn-ed-line:last-child{padding-bottom:10px}
+  .mn-ed-lr1{gap:0;flex-wrap:nowrap}
+  .mn-ed-lr1 .why{display:none}
+  .mn-ed-lr1:has(.why:not([hidden])){flex-wrap:wrap}
+  .mn-ed-lr1:has(.why:not([hidden])) .why{display:block}
+  .mn-ed-lr1 .mn-ed-in{min-height:34px;padding:5px 12px}
+  .mn-ed-bin{margin:-5px -10px -5px 0}
+  .mn-ed-bin svg{width:21px;height:21px}
+  .mn-ed-lr2{grid-template-columns:59px minmax(0,1fr) 87px;gap:8px}
+  .mn-ed-lr2 .mn-ed-in{min-height:36px;padding:6px 12px;box-shadow:0 1px 2px rgba(18,18,21,.08)}
+  .mn-ed-q .mn-ed-in{padding:6px 4px}
+  .mn-ed-lt{min-width:0;font:700 16px/1.2 var(--text)}
+  /* Summary */
+  .mn-ed-sr{padding:0;font:400 16px/22px var(--text)}
+  .mn-ed-card>h3+.mn-ed-sr{margin-top:12px}
+  .mn-ed-sr .num{font-weight:600}
+  .mn-ed-sr.tot{margin-top:12px;padding-top:8px;font:700 20px/26px var(--head)}
+  .mn-ed-sr+.mn-ed-sr:not(.tot){margin-top:6px}
+  /* the bar: black Save, red Payment */
+  .mn-ed-bar{gap:8px;padding:15px 16px calc(24px + var(--bottom))}
+  .mn-ed-save,.mn-ed-pay{min-height:45px;border-radius:12px;font:600 17px/1 var(--text);gap:10px}
+  .mn-ed-save svg,.mn-ed-pay svg{width:22px;height:22px}
+  /* the Payment sheet */
+  .mn-paysheet .sheet-head{padding:calc(var(--top) + 15px) 16px 11px 20px;background:var(--sheet-bg);border-bottom:1px solid var(--line)}
+  .mn-paysheet .sheet-head h2{font:700 20px/26px var(--head);letter-spacing:-.01em}
+  .mn-paysheet .sheet-x{position:relative;z-index:0;width:44px;height:44px;border:0;background:none;color:var(--ink);font-size:15px;font-weight:600}
+  .mn-paysheet .sheet-x::before{content:"";position:absolute;z-index:-1;inset:4px;border-radius:50%;background:var(--card)}
+  .mn-ps{gap:0;padding:0 20px}
+  .mn-ps-l{margin:18px 0 0;color:var(--rx-grey);font:400 14px/18px var(--text)}
+  .mn-ps-amt{margin:10px 0 0;font:700 18px/24px var(--head)}
+  .mn-ps-tap{margin-top:18px;min-height:46px;border:0;border-radius:10px;background:var(--coral-btn);color:#fff;font:400 16px/1 var(--text);gap:10px}
+  .mn-ps-tap.on{background:var(--coral-btn)}
+  .mn-ps-tap svg{width:22px;height:22px}
+  .mn-ps-3{margin-top:8px;gap:9px}
+  .mn-ps-m{flex-direction:row;min-height:46px;border:1px solid var(--rx-out);border-radius:10px;background:none;font:400 16px/1 var(--text);gap:9px;padding:0 4px}
+  .mn-ps-m svg{width:22px;height:22px}
+  .mn-ps-m.on{background:none;border-color:var(--ink);color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+  .mn-ps-panel{gap:11px;margin-top:18px}
+  .mn-ps-h{margin:0;font:600 17px/22px var(--text);letter-spacing:-.01em}
+  .mn-ps-p{color:var(--rx-grey);font:400 15px/20px var(--text)}
+  .mn-ps-note{padding:0;background:none;color:var(--rx-grey);font:400 13px/18px var(--text)}
+  .mn-ps-ob{position:relative;z-index:0;min-height:44px;padding:0 12px;border:0;background:none;font:500 15px/1 var(--text)}
+  .mn-ps-ob::before{content:"";position:absolute;z-index:-1;inset:6px 0;border:1px solid var(--rx-out);border-radius:8px}
+  .mn-ps-cta{margin:auto -20px 0;padding:20px 20px calc(20px + var(--bottom))}
+  .mn-ps-go{min-height:51px;border-radius:12px;font:600 17px/1.2 var(--text)}
+  .mn-ps-tips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .mn-ps-tip{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid var(--rx-out);border-radius:10px;background:none;color:var(--ink);font:500 15px/1.1 var(--text);cursor:pointer;padding:0 2px}
+  .mn-ps-tip small{font:400 12.5px/1 var(--text);color:var(--rx-grey)}
+  .mn-ps-tip.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+  .mn-paysheet .mn-seg span{min-height:44px;box-shadow:inset 0 0 0 1px var(--rx-out);background:none;font-weight:400}
+  .mn-paysheet .mn-seg input:checked+span{box-shadow:inset 0 0 0 2px var(--ink);background:none;font-weight:600}
+}
+/* a desk: the tip choices on Charge */
+.mn-ps-tips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.mn-ps-tip{min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid var(--line-2);border-radius:10px;background:var(--card);color:var(--ink);font:500 15px/1.1 var(--text);cursor:pointer}
+.mn-ps-tip small{font-size:12.5px;color:var(--ink-3)}
+.mn-ps-tip.on{border-color:var(--coral);box-shadow:inset 0 0 0 1px var(--coral)}

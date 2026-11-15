@@ -1,5 +1,5 @@
 // A customer's page on a phone (Rotor's phone app, the owner's Nov 15
-// screenshots, with Flyra's quick row, Automations switch and foot buttons):
+// screenshots, "just like Rotor": the back button and the pencil, the red +):
 // Details | Service | Activity, the cards in Rotor's phone order, each
 // module's phone rows (plans, Billing Cycles, the card on file, invoices,
 // scheduled and pending jobs), and the desk, a lead and a technician left
@@ -49,20 +49,20 @@ test("a customer on a phone: Details | Service | Activity, Rotor's cards in Roto
   // the 2x2 summary: TYPE, SALE VALUE, FREQUENCY, SOURCE
   assert.deepEqual([...details.matchAll(/class="ct-sv-l">([^<]+)</g)].map((m) => m[1]), ["Type", "Sale value", "Frequency", "Source"]);
   assert.match(details, /Residential Window Cleaning[\s\S]*\$1,380<[\s\S]*Quarterly[\s\S]*Referral/);
-  // CONTACT: copy on the phone and the email, text and call kept, the primary property in the same card
+  // CONTACT: the phone (a tap calls or texts; copy), the email (a tap mails; copy), the primary property in one line
   assert.match(details, /class="rs-label">Contact</);
-  assert.match(details, /data-copy="\(763\) 555-0100"[\s\S]*href="sms:\+17635550100"[\s\S]*href="tel:\+17635550100"/);
-  assert.match(details, /data-copy="pat@example.com"/);
-  assert.match(details, /Primary property[\s\S]*1 Example Ave[\s\S]*Mound, MN, 55364 · gate 4321/);
-  // Flyra's quick row: Schedule, Estimate, Invoice, Plan, each a new one for them
-  assert.deepEqual([...details.matchAll(/data-quick="([a-z]+)"/g)].map((m) => m[1]), ["job", "quote", "invoice", "plan"]);
-  assert.match(details, /href="#\/jobs\/new\/ct_00000000000000000001"[\s\S]*href="#\/quotes\/new\/ct_00000000000000000001"[\s\S]*href="#\/invoices\/new\/ct_00000000000000000001"[\s\S]*href="#\/plans\/new\/ct_00000000000000000001"/);
-  // PAYMENT, Customer notes, the compact rows, Properties, Files; Convert to Lead and Delete Customer at the foot
+  assert.match(details, /data-ct-phone="\+17635550100"[\s\S]*\(763\) 555-0100[\s\S]*data-copy="\(763\) 555-0100"/);
+  assert.match(details, /href="mailto:pat@example.com"[\s\S]*data-copy="pat@example.com"/);
+  assert.match(details, /Primary property[\s\S]*1 Example Ave, Mound MN 55364, US[\s\S]*Gate 4321/);
+  assert.equal(C.rotorAddress({ street1: "1 Example Ave", city: "Mound", state: "MN", zip: "55364" }), "1 Example Ave, Mound MN 55364, US");
+  // Rotor's page: no quick row, no foot buttons (the red + makes things; the pencil edits, converts and archives)
+  assert.doesNotMatch(details, /data-quick|data-to-lead|data-archive|ct-foot-btns/);
+  assert.match(h, /class="ct-fab" data-ct-fab aria-haspopup="dialog" aria-label="New for Pat"/);
+  // PAYMENT, Customer notes, the compact rows, Properties, Files
   assert.deepEqual(order(details, ["payment", "notes", "about", "properties", "files"]), ["payment", "notes", "about", "properties", "files"]);
   assert.match(details, /PAYMENT-PHONE/, "the module's phone rows");
   assert.match(details, /data-notes="ct-notes"/);
   assert.match(details, /data-portal/);
-  assert.match(details, /data-to-lead[\s\S]*Convert to Lead[\s\S]*data-archive[\s\S]*Delete Customer/);
   assert.doesNotMatch(details, /class="ct-sv-l">Lifetime value/, "the lifetime value is under More details");
   // Service: SERVICE PLAN, SCHEDULED JOBS, PENDING JOBS, BILLING CYCLES, INVOICES (2), then Quotes; a caps label over each card
   const service = paneOf(h, "service");
@@ -70,6 +70,7 @@ test("a customer on a phone: Details | Service | Activity, Rotor's cards in Roto
   assert.match(service, /class="rs-label">Invoices \(2\)</);
   assert.match(service, /class="rs-label">Pending Jobs \(2\)</, "a count already in the title isn't said twice");
   assert.match(service, /class="rs-label">Billing Cycles<\/h3><a href="#\/plans\/new\/x" class="rs-pb line" aria-label="New plan">[\s\S]*<span>New<\/span>/);
+  assert.doesNotMatch(service, /class="rs-label">Service Plan<\/h3><a/, "Rotor's SERVICE PLAN has no + of its own (the red + makes one)");
   assert.match(service, /No billing cycles yet\./);
   // Activity: the timeline, Messages, Calls, then Follow-ups, Deals, Tasks, Texts and email
   const act = paneOf(h, "activity");
@@ -77,32 +78,41 @@ test("a customer on a phone: Details | Service | Activity, Rotor's cards in Roto
   assert.match(act, /Note added/);
 });
 
-test("the header on a phone: Automations (on: texts go out; off: Mute), the pencil; a desk, a lead and a tech keep their page", () => {
+test("the header on a phone: the pencil only (its sheet edits, mutes, converts, archives); the red + makes things; a desk, a lead and a tech keep their page", () => {
   const s = page();
-  const tools = C.default.tools(s, ctx()).filter(Boolean);
-  assert.deepEqual(tools.map((t) => t.label), ["Automations", "Edit"]);
-  assert.equal(tools[0].switch, true);
-  assert.equal(C.default.tools(page({ contact: { ...contact, automations_paused: { sms: { reason: "Call first" } } } }), ctx()).filter(Boolean)[0].switch, false, "paused: off");
-  assert.deepEqual(C.default.tools(page(), ctx(["contacts:write"])).filter(Boolean).map((t) => t.label), ["Edit"], "no switch without consent:edit");
-  assert.deepEqual(C.default.tools(page({ phone: false }), ctx()).filter(Boolean).map((t) => t.label), ["Edit"], "a desk: the pencil only");
-  const sw = text(router.topSwitch(tools[0], 0));
-  assert.match(sw, /Automations[\s\S]*role="switch" aria-checked="true" aria-label="Automations"/);
-  assert.match(sw, /data-top-tool="0"/);
+  const c = ctx();
+  const tools = C.default.tools(s, c).filter(Boolean);
+  assert.deepEqual(tools.map((t) => t.label), ["Edit"]);
+  assert.equal(typeof tools[0].run, "function", "the pencil opens the edit sheet");
+  assert.deepEqual(C.default.more(s, c), [], "no round ... on a phone");
+  const labels = (groups) => groups.flat().map((r) => r.label);
+  const edit = labels(C.editGroups(s, c));
+  for (const want of ["Edit details", "Owner", "Texts and email", "Automations", "Merge with...", "Open their portal", "Mark as test contact", "Convert to Lead", "Archive"]) assert.ok(edit.includes(want), `${want} in the pencil's sheet: ${edit.join(", ")}`);
+  assert.equal(edit[edit.length - 1], "Archive", "Archive last");
+  assert.equal(C.editGroups(s, c)[0].find((r) => r.label === "Automations").hint, "On");
+  assert.equal(C.editGroups(page({ contact: { ...contact, automations_paused: { sms: { reason: "Call first" } } } }), c)[0].find((r) => r.label === "Automations").hint, "Off (muted)");
+  assert.deepEqual(labels(C.createGroups(s, c)), ["Add a note", "Add a property", "Add a file"], "the page's own; the modules' rows join when they load");
+  assert.deepEqual(C.createGroups(page({ contact: { ...contact, lifecycle: "archived" } }), c), [], "nothing new for an archived contact");
+  assert.deepEqual(C.default.tools(page(), ctx(["contacts:read"])).filter(Boolean), [], "nothing to edit: no pencil");
+  assert.deepEqual(C.default.tools(page({ phone: false }), c).filter(Boolean).map((t) => t.label), ["Edit"], "a desk: the pencil (the edit form)");
+  assert.ok(C.default.tools(page({ phone: false }), c).filter(Boolean)[0].href.endsWith("/edit"));
+  assert.ok(C.default.more(page({ phone: false }), c).flat().filter(Boolean).some((r) => r.label === "Archive"), "a desk keeps its ...");
   // a desk: the two columns and Rotor's six tabs
-  assert.deepEqual(panes(text(C.default.render(page({ phone: false }), ctx()))), ["service", "payments", "conversation", "opportunities", "activity", "files"]);
-  assert.match(text(C.default.render(page({ phone: false }), ctx())), /PLAN-DESK/);
+  assert.deepEqual(panes(text(C.default.render(page({ phone: false }), c))), ["service", "payments", "conversation", "opportunities", "activity", "files"]);
+  assert.match(text(C.default.render(page({ phone: false }), c)), /PLAN-DESK/);
   // a lead on a phone keeps the lead page; a technician too
   assert.equal(C.phoneLayout(page({ contact: { ...contact, lifecycle: "lead" } })), false);
   assert.equal(C.phoneLayout(page({ tech: true })), false);
   assert.equal(C.phoneLayout(page({ contact: { ...contact, lifecycle: "former_customer" } })), true);
-  // archived: Restore at the foot, no quick row, no Convert or Delete
-  const ah = text(C.default.render(page({ contact: { ...contact, lifecycle: "archived" } }), ctx()));
+  // archived: Restore (a row, and in the pencil's sheet), no red +
+  const ah = text(C.default.render(page({ contact: { ...contact, lifecycle: "archived" } }), c));
   assert.match(ah, /data-restore/);
-  assert.doesNotMatch(ah, /data-to-lead|data-archive|data-quick/);
-  // someone who may not see money or write: no sale value, no quick row, no foot buttons
+  assert.doesNotMatch(ah, /data-ct-fab|data-to-lead|data-archive/);
+  assert.ok(labels(C.editGroups(page({ contact: { ...contact, lifecycle: "archived" } }), c)).includes("Restore"));
+  // someone who may not see money or write: no sale value, no red +
   const lim = text(C.default.render(page(), ctx(["contacts:read"])));
   assert.deepEqual([...lim.matchAll(/class="ct-sv-l">([^<]+)</g)].map((m) => m[1]), ["Type", "Next visit", "Frequency", "Source"]);
-  assert.doesNotMatch(lim, /data-quick|data-to-lead|data-archive/);
+  assert.doesNotMatch(lim, /data-ct-fab/);
   // an old ?tab= card lands on the phone's tab
   assert.equal(C.phonePaneOf({ key: "payment" }), "details");
   assert.equal(C.phonePaneOf({ key: "something", mod: "x", tab: "payments" }), "service");
