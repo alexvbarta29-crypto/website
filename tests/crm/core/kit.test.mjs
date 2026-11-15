@@ -176,9 +176,10 @@ test("every class the kit draws has its look in crm.css; Customize Tabs and the 
   const missing = [...classes].filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, "\\-")}(?![\\w-])`).test(CSS));
   assert.deepEqual(missing, []);
   for (const c of ["ctb-list", "ctb-row", "ctb-div", "ctb-drag", "drawer", "dr-row", "dr-grp", "top-bar", "set-ic", "rs-actions", "rs-act", "rs-act-g", "rs-sheetpage", "rs-done", "rs-sp-pane", "rs-top", "rs-shell", "rs-dashed", "rs-sat", "rs-page", "rs-name", "rs-amt", "rs-inset"]) assert.match(CSS, new RegExp(`\\.${c}\\b`), c);
-  // the tokens: light Rotor's, dark ours, under the same names
-  assert.match(CSS, /:root\{[^}]*--mist:#f2f2f7;[^}]*--card:#fff;--card-2:#f2f2f7;/);
-  assert.match(CSS, /--seg-track:#e3e3e8;/);
+  // the tokens: light Flyra's calm (Polish 3: a faint grey canvas, white cards with one hairline, no card shadow), dark ours, under the same names
+  assert.match(CSS, /:root\{[^}]*--mist:#f6f6f8;[^}]*--card:#fff;--card-2:#f3f3f6;/);
+  assert.match(CSS, /:root\{[^}]*--sh-card:none;[^}]*--card-line:var\(--line\);/);
+  assert.match(CSS, /--seg-track:#ececf0;/);
   assert.match(CSS, /--card:#1b1c1f;--card-2:#232428;/);
   assert.match(CSS, /--seg-track:#1d1e21;--seg-on:#48494d;/);
 });
@@ -270,3 +271,52 @@ test("K0's classes all have their look in crm.css, both themes from the tokens",
   assert.match(CSS, /\.rs-tile\[aria-pressed="true"\]/, "the tile that is on is outlined");
   assert.doesNotMatch(CSS, /\.rs-tile\{[^}]*#[0-9a-f]{6}/i, "tiles use the tokens");
 });
+
+test("Polish 3: pageHeader, dataTable (headers, cells by kind, rows that are links or buttons, the empty state, loading), skeletonRows, emptyState", () => {
+  const { pageHeader, dataTable, skeletonRows, emptyState, emptyCard, listCard } = ui;
+  // the page header: the title, a grey line, one red pill (a link)
+  const ph = h(pageHeader({ title: "Invoices", sub: "4 open", action: { label: "New invoice", href: "#/invoices/new" } }));
+  assert.match(ph, /^<header class="rs-ph"><div class="rs-ph-t"><h2>Invoices<\/h2><p class="rs-sub">4 open<\/p><\/div><div class="rs-ph-act"><a href="#\/invoices\/new" class="rs-pb red"><svg/);
+  assert.equal(h(pageHeader({ title: "Only a title" })), '<header class="rs-ph"><div class="rs-ph-t"><h2>Only a title</h2></div></header>');
+  assert.match(h(pageHeader({ title: "x", action: { label: "Go", tone: "solid", icon: null, data: { go: 1 } } })), /<button type="button" class="rs-pb solid" data-go="1"><span>Go<\/span><\/button>/);
+  // the table
+  const cols = [{ key: "d", label: "Date created", kind: "date" }, { key: "c", label: "Customer", kind: "title" }, { key: "s", label: "Status", kind: "status" }, { key: "a", label: "Amount", kind: "money" }, { key: "x", label: "Tags", width: "120px; color:red" }];
+  const t = h(dataTable({ columns: cols, label: "Invoices", rows: [
+    { cells: { d: "Nov 12", c: { text: "Pat <Sample>", sub: "INV-1" }, s: "Paid", a: 19500 }, href: "#/invoices/x" },
+    { cells: { d: "Nov 13", c: "Robin Workday", s: { label: "Late", tone: "red" }, a: "$5.00", x: "Plan" }, data: { open: "y" }, edge: "red", action: { icon: "chat", label: "Text", data: { remind: "y" } }, hold: { "row-more": "y" } },
+    null,
+  ] }));
+  assert.match(t, /^<div class="rs-card flush rs-table has-act" style="--cols:minmax\(96px,\.8fr\) minmax\(160px,1\.6fr\) minmax\(110px,\.7fr\) minmax\(96px,\.7fr\) minmax\(0,1fr\)">/, "a bad width is refused for the kind's own");
+  assert.match(t, /<div class="rs-thead" aria-hidden="true"><div class="rs-tmain"><span class="rs-td c-date">Date created<\/span><span class="rs-td c-title">Customer<\/span><span class="rs-td c-status">Status<\/span><span class="rs-td c-money num">Amount<\/span><span class="rs-td c-text">Tags<\/span><\/div><\/div>/);
+  assert.match(t, /<ul class="rs-tlist" aria-label="Invoices"><li class="rs-trow"><a class="rs-tmain" href="#\/invoices\/x"><span class="rs-td c-date">Nov 12<\/span><span class="rs-td c-title"><span class="rs-tt">Pat &lt;Sample&gt;<\/span><span class="rs-ts">INV-1<\/span><\/span><span class="rs-td c-status"><span class="pill green">Paid<\/span><\/span><span class="rs-td c-money num">\$195\.00<\/span><span class="rs-td c-text none"><span class="rs-dash" aria-hidden="true">-<\/span><\/span><\/a><\/li>/);
+  assert.match(t, /<li class="rs-trow edge-red" data-hold="" data-row-more="y"><button type="button" class="rs-tmain" data-open="y">[\s\S]*<span class="pill red">Late<\/span>[\s\S]*\$5\.00[\s\S]*<\/button><span class="rs-acts"><button type="button" class="rnd grey sm" aria-label="Text" data-remind="y">/);
+  assert.equal((t.match(/class="rs-trow/g) || []).length, 2, "falsy rows skipped");
+  assert.throws(() => dataTable({ columns: cols, rows: [{ cells: {}, href: "javascript:alert(1)" }] }), UnsafeHtml);
+  // empty: a line, or the empty state under the headers
+  assert.match(h(dataTable({ columns: cols, empty: "No invoices yet." })), /<\/div><\/div><p class="rs-empty rs-tempty">No invoices yet\.<\/p><\/div>$/);
+  assert.match(h(dataTable({ columns: cols, empty: { icon: "doc", title: "No invoices yet", text: "Bill a customer.", action: { label: "New Invoice", href: "#/invoices/new" } } })), /<div class="rs-emptycard rs-emptystate"><span class="rs-ci" aria-hidden="true"><svg[\s\S]*<b>No invoices yet<\/b><p class="rs-sub">Bill a customer\.<\/p><a href="#\/invoices\/new" class="rs-pb solid">/);
+  // loading: the same columns as grey bars, busy
+  const ld = h(dataTable({ columns: cols, loading: 3, label: "invoices" }));
+  assert.match(ld, /^<div class="rs-card flush rs-table rs-skel" aria-busy="true" aria-label="Loading invoices" style="--cols:/);
+  assert.equal((ld.match(/class="rs-trow rs-skrow"/g) || []).length, 3);
+  // skeleton rows: two-line bars; not busy inside a busy box; clamped
+  const sk = h(skeletonRows(2));
+  assert.match(sk, /^<div class="rs-card flush rs-skel" aria-busy="true" aria-label="Loading"><ul class="rs-sklist" aria-hidden="true"><li class="rs-skrow"><span class="sk-lines"><span class="sk w70"><\/span>/);
+  assert.equal((sk.match(/class="rs-skrow"/g) || []).length, 2);
+  assert.match(h(skeletonRows(3, { busy: false, card: false })), /^<div class="rs-skel"><ul/);
+  assert.equal((h(skeletonRows(500)).match(/rs-skrow/g) || []).length, 20);
+  // the empty state, in a card or not; listCard takes its options
+  assert.match(h(emptyState({ title: "No tasks found", text: "Tasks help." })), /^<div class="rs-emptycard rs-emptystate"><span class="rs-ci" aria-hidden="true"><svg[\s\S]*<b>No tasks found<\/b><p class="rs-sub">Tasks help\.<\/p><\/div>$/);
+  assert.match(h(listCard([], { empty: { title: "No invoices yet", text: "x" } })), /^<div class="rs-card rs-emptycard">/);
+  assert.match(h(emptyCard({ title: "x", action: { label: "Go", href: "#/x", icon: null } })), /<a href="#\/x" class="rs-pb solid"><span>Go<\/span><\/a>/);
+  // every class they draw has its look
+  const out = [ph, t, ld, sk, h(emptyState({ title: "x" }))].join("");
+  const classes = new Set([...out.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)));
+  const missing = [...classes].filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, "\\-")}(?![\\w-])`).test(CSS));
+  assert.deepEqual(missing, []);
+  // the table goes from rows to columns by its card's width (a container query), and so do Row2 lists
+  assert.match(CSS, /\.rs-table\{container-type:inline-size\}/);
+  assert.match(CSS, /\.rs-list\{container-type:inline-size\}/);
+  assert.match(CSS, /@container \(min-width:600px\)\{[^@]*\.rs-tmain\{display:grid;grid-template-columns:var\(--cols\)/);
+});
+

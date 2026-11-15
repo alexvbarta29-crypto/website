@@ -430,6 +430,7 @@ export const ICONS = {
   truck: svg('<path d="M3 6.5h11v9.5H3zM14 10h3.8l3.2 3.3V16H14"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/>'),
   // the Nov 2026 phone shell (core/nav.js)
   menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  panel: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9.5 4.5v15"/>'),
   trophy: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4l.5 3.5h-5z"/>'),
   target: svg('<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/>'),
   pipeline: svg('<rect x="4" y="4" width="6" height="6" rx="1.6"/><rect x="14" y="14" width="6" height="6" rx="1.6"/><path d="M7 10v3.5A2.5 2.5 0 0 0 9.5 16H14"/>'),
@@ -845,10 +846,12 @@ export function listRow({ title = "", amount = null, sub = "", pill = null, tag 
       : html`<span class="rs-lr-main">${inner}</span>`;
   return html`<li ${attrs({ class: "rs-lrow" + (edge ? " edge-" + edge : ""), ...holdAttrs(hold) })}>${main}${action ? html`<span class="rs-acts">${roundAction(action)}</span>` : ""}</li>`;
 }
-// The card the rows sit in (or one line saying there is nothing).
+// The card the rows sit in (or one line saying there is nothing; `empty` may also be emptyState's
+// options: { icon, title, text, action }). On a wide card (a desk, 720 px and up) the rows read as a
+// table: the name, the details, the pill and the $ each in their own column (crm.css).
 export function listCard(rows, { empty = "Nothing here yet.", label = "" } = {}) {
   const list = (rows || []).filter(Boolean);
-  if (!list.length) return html`<div class="rs-card"><p class="rs-empty">${empty}</p></div>`;
+  if (!list.length) return empty && typeof empty === "object" && !isHtml(empty) ? emptyCard(empty) : html`<div class="rs-card"><p class="rs-empty">${empty}</p></div>`;
   return html`<ul class="rs-card flush rs-list" ${attrs({ "aria-label": label || null })}>${list}</ul>`;
 }
 
@@ -1061,11 +1064,19 @@ export function stickyCta(label, { data = null, href = null, tone = "red", icon:
   return html`<div class="rs-cta">${pillBtn(label, { tone, wide: true, icon: ic, href, data, disabled, aria })}</div>`;
 }
 
-// One empty state for every list: a grey round icon, a line in bold, a line of help, one pill.
+// One empty state for every list (Flyra's): a small outlined icon tile, a line in bold, one grey
+// line of help, one dark pill. emptyCard draws it in a card; emptyState without one (inside a card
+// or a table that is already there: listCard and dataTable take its options as `empty`).
 // emptyCard({ icon, title, text?, action?: { label, href | data, icon? } })
-export function emptyCard({ icon: ic = "list", title = "Nothing here yet", text = "", action = null } = {}) {
+const emptyInner = ({ icon: ic = "list", title = "Nothing here yet", text = "", action = null } = {}) => {
   const a = asLink(action);
-  return html`<div class="rs-card rs-emptycard"><span class="rs-ci" aria-hidden="true">${icon(ic)}</span><b>${title}</b>${text ? html`<p class="rs-sub">${text}</p>` : ""}${a ? pillBtn(a.label || "Add", { icon: a.icon || "plus", tone: "solid", href: a.href, data: a.data }) : ""}</div>`;
+  return html`<span class="rs-ci" aria-hidden="true">${icon(ic)}</span><b>${title}</b>${text ? html`<p class="rs-sub">${text}</p>` : ""}${a ? pillBtn(a.label || "Add", { icon: a.icon === undefined ? "plus" : a.icon, tone: "solid", href: a.href, data: a.data }) : ""}`;
+};
+export function emptyCard(opts = {}) {
+  return html`<div class="rs-card rs-emptycard">${emptyInner(opts)}</div>`;
+}
+export function emptyState(opts = {}) {
+  return html`<div class="rs-emptycard rs-emptystate">${emptyInner(opts)}</div>`;
 }
 
 // Reordering a list (Customize Tabs' drag, for any list: the Power Dialer's queue): each row has
@@ -1170,3 +1181,72 @@ if (typeof document !== "undefined") {
     });
   }, true);
 }
+
+// ------------------------------------------------------------ Polish 3 (Nov 2026): the page header, the table, skeleton rows
+//
+// Flyra's desk look, one set of pieces for every screen (#/kit shows them):
+//   pageHeader({ title, sub?, action?, actions? })   a plain title, one grey line, the page's one action
+//       (a red pill: { label, icon = "plus", href | data, tone = "red" | "solid" }) and any extra html.
+//   dataTable({ columns, rows, label, empty, loading })   a table in one bordered card: small grey caps
+//       headers over 52 px rows on a wide card (a desk), two-line rows on a phone or in a narrow column
+//       (line 1 the title and the $, line 2 the other cells joined by a dot, the pill on the right).
+//       columns: [{ key, label, kind: "title" | "text" | "date" | "status" | "money" | "num", width? }]
+//       (the first column is the title unless said); rows: [{ cells: { key: value }, href | data, action?,
+//       edge?, hold? }]; a value is text, a number of cents (money), a word (status: its pill), html, or
+//       for the title { text, sub }. empty: a line, or emptyState's options. loading: n skeleton rows.
+//   skeletonRows(n, { columns?, card = true, busy = true, label })   grey bars where the rows will be:
+//       a table's columns when given, else two-line rows.
+const KIND_W = { title: "minmax(160px,1.6fr)", text: "minmax(0,1fr)", date: "minmax(96px,.8fr)", status: "minmax(110px,.7fr)", money: "minmax(96px,.7fr)", num: "minmax(64px,.5fr)" };
+const KINDS = new Set(Object.keys(KIND_W));
+const colsOf = (columns) => (columns || []).filter(Boolean).map((c, i) => ({ key: c.key ?? String(i), label: c.label || "", kind: KINDS.has(c.kind) ? c.kind : i === 0 ? "title" : "text", width: typeof c.width === "string" && /^[\w.%(), -]+$/.test(c.width) ? c.width : null }));
+const gridOf = (cols) => cols.map((c) => c.width || KIND_W[c.kind]).join(" ");
+const tdClass = (c, none = false) => "rs-td c-" + c.kind + (c.kind === "money" || c.kind === "num" ? " num" : "") + (none ? " none" : "");
+
+export function pageHeader({ title = "", sub = "", action = null, actions = [] } = {}) {
+  const a = asLink(action);
+  const more = (actions || []).filter(Boolean);
+  return html`<header class="rs-ph"><div class="rs-ph-t"><h2>${title}</h2>${sub ? html`<p class="rs-sub">${sub}</p>` : ""}</div>${a || more.length ? html`<div class="rs-ph-act">${more}${a ? pillBtn(a.label, { icon: a.icon === undefined ? "plus" : a.icon, tone: a.tone || "red", href: a.href, data: a.data, aria: a.aria || null }) : ""}</div>` : ""}</header>`;
+}
+
+function tableCell(c, v) {
+  if (v === null || v === undefined || v === "") return c.kind === "title" ? "" : html`<span class="rs-dash" aria-hidden="true">-</span>`;
+  if (isHtml(v)) return v;
+  if (c.kind === "status") return pillOf(v);
+  if (c.kind === "money") return kitMoney(v);
+  if (c.kind === "title" && typeof v === "object") return html`<span class="rs-tt">${v.text ?? ""}</span>${v.sub ? html`<span class="rs-ts">${v.sub}</span>` : ""}`;
+  return String(v);
+}
+
+export function dataTable({ columns = [], rows = [], label = "", empty = "Nothing here yet.", loading = 0 } = {}) {
+  const cols = colsOf(columns);
+  if (loading) return skeletonRows(loading, { columns, label: label ? "Loading " + label : "Loading" });
+  const list = (rows || []).filter(Boolean);
+  const acts = list.some((r) => r.action);
+  const head = html`<div class="rs-thead" aria-hidden="true"><div class="rs-tmain">${cols.map((c) => html`<span class="${tdClass(c)}">${c.label}</span>`)}</div></div>`;
+  const box = { class: "rs-card flush rs-table" + (acts ? " has-act" : ""), style: "--cols:" + gridOf(cols) };
+  if (!list.length) return html`<div ${attrs(box)}>${head}${empty && typeof empty === "object" && !isHtml(empty) ? emptyState(empty) : html`<p class="rs-empty rs-tempty">${empty}</p>`}</div>`;
+  const row = (r) => {
+    const vals = r.cells || {};
+    const cells = cols.map((c) => { const v = vals[c.key]; return html`<span class="${tdClass(c, v === null || v === undefined || v === "")}">${tableCell(c, v)}</span>`; });
+    const main = r.href ? html`<a ${attrs({ class: "rs-tmain", href: r.href, ...dataOf(r.data) })}>${cells}</a>`
+      : r.data ? html`<button type="button" ${attrs({ class: "rs-tmain", ...dataOf(r.data) })}>${cells}</button>`
+        : html`<span class="rs-tmain">${cells}</span>`;
+    return html`<li ${attrs({ class: "rs-trow" + (r.edge ? " edge-" + r.edge : ""), ...holdAttrs(r.hold) })}>${main}${r.action ? html`<span class="rs-acts">${roundAction(r.action)}</span>` : ""}</li>`;
+  };
+  return html`<div ${attrs(box)}>${head}<ul class="rs-tlist" ${attrs({ "aria-label": label || null })}>${list.map(row)}</ul></div>`;
+}
+
+const SK_W = ["w70", "w50", "w90", "w30", "w70", "w50", "w90"];
+export function skeletonRows(n = 5, { columns = null, card = true, busy = true, label = "Loading" } = {}) {
+  const count = Math.max(1, Math.min(20, Number(n) || 5));
+  const box = (cls, inner, extra = {}) => html`<div ${attrs({ class: (card ? "rs-card flush " : "") + cls, "aria-busy": busy ? "true" : null, "aria-label": busy ? label : null, ...extra })}>${inner}</div>`;
+  if (columns && columns.length) {
+    const cols = colsOf(columns);
+    const head = html`<div class="rs-thead" aria-hidden="true"><div class="rs-tmain">${cols.map((c) => html`<span class="${tdClass(c)}">${c.label}</span>`)}</div></div>`;
+    const rows = Array.from({ length: count }, (_, i) => html`<li class="rs-trow rs-skrow"><span class="rs-tmain">${cols.map((c, k) => html`<span class="${tdClass(c)}"><span class="${"sk " + SK_W[(i + k) % SK_W.length]}"></span></span>`)}</span></li>`);
+    return box("rs-table rs-skel", html`${head}<ul class="rs-tlist" aria-hidden="true">${rows}</ul>`, { style: "--cols:" + gridOf(cols) });
+  }
+  const rows = Array.from({ length: count }, (_, i) => html`<li class="rs-skrow"><span class="sk-lines"><span class="${"sk " + SK_W[i % SK_W.length]}"></span><span class="sk w30"></span></span><span class="sk rs-sk-amt"></span></li>`);
+  return box("rs-skel", html`<ul class="rs-sklist" aria-hidden="true">${rows}</ul>`);
+}
+

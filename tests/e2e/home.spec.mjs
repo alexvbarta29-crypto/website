@@ -653,9 +653,11 @@ test("on a desk: search finds a customer; Contacts and Quotes open beside their 
     assert.equal(await f.getAttribute(`#ct-list a.cc-top[href="${other[1]}"]`, "aria-current"), "true", "the open card is lit");
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "home-desk-contacts-split");
-    // back to the list alone: the pane asks what to open
+    // back to the list alone: it fills the page again (Polish 3: no empty pane), its search kept
     await goTo(f, "/contacts");
-    assert.match(await f.textContent("#pane"), /Pick one of the customers/);
+    await f.waitForFunction(() => document.getElementById("pane").hidden && !document.getElementById("app").classList.contains("split"));
+    assert.equal(await f.inputValue("#ct-q"), "Workday", "the list kept its search");
+    assert.deepEqual(await screenProblems(f), []);
     // Quotes too
     await goTo(f, `/quotes/${seeded.quotes.sent}`);
     assert.ok(await f.$('#view [data-chip]'), "the quotes list on the left");
