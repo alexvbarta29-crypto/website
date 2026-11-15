@@ -86,7 +86,8 @@ export function errorResponse(e) {
   if (e instanceof StaleError) return { status: 412, code: "stale", message: e.message, details: { current: e.current, etag: e.etag } };
   if (e instanceof ExistsError) return { status: 409, code: "exists", message: e.message || "That already exists." };
   if (e instanceof ParallelRunGuard) return { status: 409, code: "parallel_run", message: e.message };
-  if (e instanceof ConflictError) return { status: 409, code: "conflict", message: e.message };
+  // a conflict may say which one (new ConflictError(msg, { code: "paid", field })): the screen shows why
+  if (e instanceof ConflictError) return { status: 409, code: "conflict", message: e.message, ...(typeof e.field === "string" ? { field: e.field } : {}), ...(typeof e.code === "string" && /^[a-z_]{1,40}$/.test(e.code) ? { details: { reason: e.code } } : {}) };
   if (e instanceof RateLimited) return { status: 429, code: "rate_limited", message: e.message, retryAfterS: e.retryAfterS || 60 };
   if (e instanceof ProdStoreRefused) return { status: 503, code: "setup_needed", message: "The CRM needs its setup in Netlify first." };
   if (e instanceof UnknownOutcome) return { status: 503, code: "busy", message: BUSY, details: { maybe_saved: true } };

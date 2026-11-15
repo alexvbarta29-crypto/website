@@ -31,7 +31,7 @@ async function open(login, device) {
 const viewHas = (f, re, timeout = 15000) => f.waitForFunction((src) => new RegExp(src).test(document.getElementById("view").textContent + ((document.getElementById("pane") || {}).textContent || "")), re.source, { timeout });
 const post = async (p, path, data = {}) => (await p.ctx.request.post("/api/crm" + path, { headers: { "x-crm": "1", "content-type": "application/json" }, data })).json();
 // a sheet that has finished sliding or fading in (screenshots and sizes after the transition)
-const sheetSettled = (f) => f.waitForFunction(() => { const s = document.querySelector(".sheet.on"); if (!s) return false; const c = getComputedStyle(s); return c.opacity === "1" && (c.transform === "none" || c.transform === "matrix(1, 0, 0, 1, 0, 0)"); }, null, { timeout: 5000 });
+const sheetSettled = (f) => f.waitForFunction(() => { const all = document.querySelectorAll(".sheet.on"); const s = all[all.length - 1]; if (!s) return false; const c = getComputedStyle(s); return c.opacity === "1" && (c.transform === "none" || c.transform === "matrix(1, 0, 0, 1, 0, 0)"); }, null, { timeout: 5000 });
 const toastHas = (f, re) => f.waitForFunction((src) => [...document.querySelectorAll(".toast")].some((x) => new RegExp(src).test(x.textContent)), re.source, { timeout: 10000 });
 // the code on screen: square, inside the screen, as big as the device allows
 const codeBox = (f) => f.$eval(".sheet.on .mn-scan-code svg", (s) => { const b = s.getBoundingClientRect(); return { w: Math.round(b.width), h: Math.round(b.height), top: Math.round(b.top), bottom: Math.round(b.bottom), vw: innerWidth, vh: innerHeight }; });
@@ -63,14 +63,24 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
     try {
       const inv = (await post(p, "/invoices", { contact_id: M.contacts.test, lines: [{ description: "Exterior window cleaning", unit_cents: 32500 }], issue: true, use_credit: false })).data.invoice;
       await goTo(f, `/invoices/${inv.id}`);
-      await f.waitForSelector("[data-act=qr]", { timeout: 10000 });
-      // Rotor's look: a round QR beside Send, named in full for a screen reader (and in the "..." sheet)
-      assert.equal(await f.getAttribute("[data-act=qr]", "aria-label"), "Show QR to pay");
-      assert.equal(await f.getByRole("button", { name: "Show QR to pay" }).count(), 1);
-      await f.click("[data-act=qr]");
+      if (desk) {
+        await f.waitForSelector("[data-act=qr]", { timeout: 10000 });
+        // Rotor's look: a round QR beside Send, named in full for a screen reader (and in the "..." sheet)
+        assert.equal(await f.getAttribute("[data-act=qr]", "aria-label"), "Show QR to pay");
+        assert.equal(await f.getByRole("button", { name: "Show QR to pay" }).count(), 1);
+        await f.click("[data-act=qr]");
+      } else {
+        // a phone: Rotor's phone invoice (full screen); the code is in its "..." (and the payment sheet's Send and Tap to Pay)
+        await f.waitForSelector(".mn-edsheet.on .mn-ed", { timeout: 10000 });
+        await sheetSettled(f);
+        await f.click(".mn-edsheet.on [data-ed-more]");
+        await f.waitForSelector(".rs-actions.on [data-ed-qr]", { timeout: 5000 });
+        assert.match(await f.textContent(".rs-actions.on [data-ed-qr]"), /Show QR to pay/);
+        await f.click(".rs-actions.on [data-ed-qr]");
+      }
       await f.waitForSelector(".sheet.on.mn-full .mn-scan-code svg", { timeout: 15000 });
       await sheetSettled(f);
-      const sheetText = await f.textContent(".sheet.on");
+      const sheetText = await f.textContent(".sheet.on.mn-full");
       assert.match(sheetText, /\$325\.00/);
       assert.match(sheetText, new RegExp(`Terry · ${inv.number}`));
       assert.match(sheetText, /Scan with your phone camera to pay/);
@@ -80,7 +90,7 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       assert.ok(box.w >= (desk ? 400 : 280) && box.w <= box.vw, `big enough to scan from arm's length (${JSON.stringify(box)})`);
       assert.ok(box.top >= 0 && box.bottom <= box.vh, `the whole code on screen without scrolling (${JSON.stringify(box)})`);
       // full screen and high contrast: the sheet covers the screen, black on white
-      const look = await f.evaluate(() => { const s = document.querySelector(".sheet.on"); const r = s.getBoundingClientRect(); const svg = s.querySelector(".mn-scan-code svg"); return { top: Math.round(r.top), h: Math.round(r.height), vh: innerHeight, bg: getComputedStyle(s).backgroundColor, dark: svg.querySelector("path").getAttribute("fill"), light: svg.querySelector("rect").getAttribute("fill") }; });
+      const look = await f.evaluate(() => { const s = document.querySelector(".sheet.on.mn-full"); const r = s.getBoundingClientRect(); const svg = s.querySelector(".mn-scan-code svg"); return { top: Math.round(r.top), h: Math.round(r.height), vh: innerHeight, bg: getComputedStyle(s).backgroundColor, dark: svg.querySelector("path").getAttribute("fill"), light: svg.querySelector("rect").getAttribute("fill") }; });
       assert.deepEqual([look.top, look.h >= look.vh - 1, look.bg, look.dark, look.light], [0, true, "rgb(255, 255, 255)", "#000", "#fff"]);
       assert.deepEqual(await screenProblems(f), [], "the pay code passes the phone checks");
       await shot(page, `qr-pay-code-${device}`);
@@ -115,15 +125,25 @@ for (const device of ["iphone13", "iphonese", "desk1440"]) {
       // the office's "Did it go through?" sees it, and the invoice's history says how
       await f.click(".sheet.on [data-check]");
       await toastHas(f, /Paid\. Thank you!/);
-      await viewHas(f, /Opened from the code/);
-      const hist = await f.textContent(desk ? "#pane" : "#view");
+      const hist = desk ? (await viewHas(f, /Opened from the code/), await f.textContent("#pane"))
+        : (await f.waitForFunction(() => /Opened from the code/.test((document.querySelector(".mn-edsheet.on") || {}).textContent || ""), null, { timeout: 15000 }), await f.textContent(".mn-edsheet.on"));
       assert.match(hist, /Pay code shown/);
       assert.match(hist, /scanned the pay code/);
-      assert.doesNotMatch(await f.evaluate((id) => document.getElementById(id).innerHTML, desk ? "pane" : "view"), /data-act="qr"/, "a paid invoice has no code to show");
+      if (desk) assert.doesNotMatch(await f.evaluate(() => document.getElementById("pane").innerHTML), /data-act="qr"/, "a paid invoice has no code to show");
+      else {
+        await f.click(".mn-edsheet.on [data-ed-more]");
+        await f.waitForSelector(".rs-actions.on", { timeout: 5000 });
+        assert.equal(await f.$(".rs-actions.on [data-ed-qr]"), null, "a paid invoice has no code to show");
+        await f.click(".rs-actions.on [data-sheet-x]");
+      }
       await shot(page, `qr-invoice-history-${device}`);
       // Rotor's own invoice: no button at all
       await goTo(f, `/invoices/${M.invoices.rotor}`);
       assert.equal(await f.$("[data-act=qr]"), null);
+      if (!desk) {
+        await f.waitForSelector(".mn-edsheet.on .mn-ed", { timeout: 10000 });
+        assert.equal(await f.$(".mn-edsheet.on [data-ed-pay]"), null, "Rotor's own invoice: no Payment");
+      }
       assert.deepEqual(await badLinks(f), []);
       await p.clean();
       await cust.clean();

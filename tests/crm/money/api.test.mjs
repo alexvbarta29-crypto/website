@@ -51,7 +51,7 @@ test("who may do what: the office reads and writes invoices, owners refund, void
     assert.equal((await t.api("/money/status", { as: owner })).body.data.settings.statement_descriptor, "BARTA WINDOWS");
     // every money route is a session route with a permission (the route guard reads the same table)
     const routes = R.allRoutes().filter((r) => /^\/(invoices|payments|autopay|money|credits)(\/|$)/.test(r.path));
-    assert.equal(routes.length, 24, "with the Tax and Tip reports (the Financials tab)");
+    assert.equal(routes.length, 25, "with the Tax and Tip reports (the Financials tab) and Mark as Sent");
     assert.ok(routes.every((r) => r.auth === "session" && typeof r.perm === "string" && r.perm.includes(":")));
   } finally { t.done(); }
 });
@@ -90,10 +90,12 @@ test("an invoice by hand: a draft can be edited (with the version it was read at
     assert.equal(outbox(t, "email").filter((o) => o.template_key === "invoice_sent_email").length, 1);
     assert.match(texts(t, "invoice_sent")[0].body, /Your invoice SINV-0001 for \$40\.00 is ready/);
     assert.ok((await invoiceOf(d.id)).sent_at);
-    // once issued its lines are fixed; a note can still change
+    // sent but unpaid: its lines can still change (marked edited after it was sent); a note too
     const g2 = await t.api(`/invoices/${d.id}`, { as: owner });
-    assert.equal((await t.api(`/invoices/${d.id}`, { method: "PATCH", as: owner, ifMatch: g2.body.data.etag, body: { lines: [{ description: "x", unit_cents: 1 }] } })).status, 409);
-    assert.equal((await t.api(`/invoices/${d.id}`, { method: "PATCH", as: owner, ifMatch: g2.body.data.etag, body: { office_note: "Called them Tuesday." } })).status, 200);
+    const e2 = await t.api(`/invoices/${d.id}`, { method: "PATCH", as: owner, ifMatch: g2.body.data.etag, body: { lines: [{ description: "Late cancel fee", unit_cents: 5000, kind: "fee" }, { description: "Goodwill", unit_cents: -1000 }] } });
+    assert.equal(e2.status, 200, JSON.stringify(e2.body));
+    assert.ok(e2.body.data.invoice.edited_after_sent_at);
+    assert.equal((await t.api(`/invoices/${d.id}`, { method: "PATCH", as: owner, ifMatch: (await t.api(`/invoices/${d.id}`, { as: owner })).body.data.etag, body: { office_note: "Called them Tuesday." } })).status, 200);
     // send again by text only: one more text, no more email
     assert.equal((await t.api(`/invoices/${d.id}/send`, { method: "POST", as: owner, body: { channels: [] } })).status, 400);
     assert.equal((await t.api(`/invoices/${d.id}/send`, { method: "POST", as: owner, body: { channels: ["sms"] } })).status, 200);
@@ -105,6 +107,9 @@ test("an invoice by hand: a draft can be edited (with the version it was read at
     const part = await t.api(`/invoices/${d.id}`, { as: owner });
     assert.deepEqual([part.body.data.invoice.status, part.body.data.invoice.balance_cents, part.body.data.flags.partially_paid], ["open", 2500, true]);
     assert.doesNotMatch(JSON.stringify(part.body.data.payments), /123456789012/, "a long account number in a reference is masked");
+    // a payment on it: its lines are fixed now; a note can still change
+    assert.equal((await t.api(`/invoices/${d.id}`, { method: "PATCH", as: owner, ifMatch: part.body.data.etag, body: { lines: [{ description: "x", unit_cents: 1 }] } })).status, 409);
+    assert.equal(part.body.data.edit.money, false);
     list = await t.api("/invoices", { as: owner });
     assert.deepEqual([list.body.data.length, list.body.data[0].pp, list.body.meta.totals.open_cents], [1, 1, 2500]);
     assert.equal((await t.api(`/invoices/${d.id}/void`, { method: "POST", as: owner, body: {} })).status, 400);

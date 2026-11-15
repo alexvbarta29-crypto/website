@@ -1,6 +1,8 @@
 // Phone checks of the money screens (M5; design §9.2, §8.1, §12.4):
-// Invoices, an invoice (record a check, charge the card on file, refund),
-// a new invoice, Payments, Autopay, the contact's Money tab, Settings →
+// Invoices, an invoice as Rotor's phone invoice (edit it, Rotor's payment
+// sheet: Tap to Pay explained, a check recorded, the card on file charged,
+// a pay link sent, a refund), Flyra's New Invoice and Checkout (with a tip),
+// Payments, Autopay, the contact's Money tab, Settings →
 // Payments; Collect payment on a tech's visit (cash, and the QR pay link);
 // the customer's invoice page with a tip through the practice Checkout, and
 // the card page; the list beside the invoice on a desk. Payments stay in
@@ -23,9 +25,16 @@ async function open(login, device) {
   await noInstallCard(p.page);
   return { p, page: p.page, f };
 }
-const sheetUp = (f, re) => f.waitForFunction((src) => { const h = document.querySelector(".sheet.on h2"); return !!h && new RegExp(src).test(h.textContent); }, re.source, { timeout: 5000 });
+// (the top sheet: a sheet may open over the invoice editor)
+const sheetUp = (f, re) => f.waitForFunction((src) => { const all = document.querySelectorAll(".sheet.on h2"); const h = all[all.length - 1]; return !!h && new RegExp(src).test(h.textContent); }, re.source, { timeout: 5000 });
 const sheetGone = (f) => f.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 });
 const closeSheet = async (f) => { await f.click(".sheet.on [data-sheet-x]"); await sheetGone(f); };
+const toastHas = (f, re) => f.waitForFunction((src) => [...document.querySelectorAll(".toast")].some((x) => new RegExp(src).test(x.textContent)), re.source, { timeout: 10000 });
+// Rotor's phone invoice: the editor full screen (a phone) or a dialog (a desk), with the invoice's number in its title
+const editorUp = async (f, number) => {
+  await f.waitForFunction((n) => { const s = document.querySelector(".mn-edsheet.on"); return !!s && s.querySelector(".sheet-head h2").textContent === `Invoice #${n}` && !!s.querySelector(".mn-ed"); }, number, { timeout: 10000 });
+  await f.waitForTimeout(320);          // (the sheet slides up)
+};
 const viewHas = (f, re, timeout = 15000) => f.waitForFunction((src) => new RegExp(src).test(document.getElementById("view").textContent), re.source, { timeout });
 const api = async (p, path) => (await (await p.ctx.request.get("/api/crm" + path, { headers: { "x-crm": "1" } })).json()).data;
 const post = async (p, path, data = {}) => (await p.ctx.request.post("/api/crm" + path, { headers: { "x-crm": "1", "content-type": "application/json" }, data })).json();
@@ -79,99 +88,138 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.fill("[data-q]", "");
       await viewHas(f, /Marlow Moneyfolk/);
 
-      // one invoice: record a check for part of it
+      // one invoice, Rotor's phone invoice: full screen, its cards in Rotor's order, Save | Payment at the foot
       const fresh = (await post(p, "/invoices", { contact_id: M.contacts.open, lines: [{ description: "Exterior window cleaning", unit_cents: 29500 }], issue: true, use_credit: false })).data.invoice;
       await goTo(f, `/invoices/${fresh.id}`);
-      assert.match(await title(f), /^Invoice SINV-\d{4}$/);
-      let text = await f.textContent("#view");
-      assert.match(text, /Balance due/);
-      assert.ok(await f.$(".mn-link [data-act=send]") && await f.$(".mn-foot [data-act=collect]"), "Send under Invoice Link, Collect Payment at the foot (Rotor's window)");
-      assert.match(await f.textContent("#view"), /Invoice Title[\s\S]*Due Date[\s\S]*Invoice Link[\s\S]*Bill To[\s\S]*Line Items[\s\S]*Collect Payment/, "in Rotor's order");
-      assert.ok(await f.$("[data-act=card-link]"), "Add Payment Method (no card on file)");
-      await f.click("#top-more");
-      await sheetUp(f, /Invoice SINV-/);
-      for (const hook of ["send", "card-link", "record", "void", "write-off"]) assert.ok(await f.$(`.sheet.on [data-act=${hook}]`), `... has ${hook}`);
-      assert.deepEqual(await screenProblems(f), [], "the ... sheet passes the phone checks");
-      await f.click(".sheet.on [data-sheet-x]");
-      await sheetGone(f);
-      assert.match(text, /Marlow Moneyfolk/);
-      assert.match(text, /\$295\.00/);
-      assert.match(text, /No card on file/);
-      assert.deepEqual(await screenProblems(f), [], "an invoice passes the phone checks");
-      assert.deepEqual(await badLinks(f), []);
+      await editorUp(f, fresh.number);
+      let text = await f.textContent(".sheet.on");
+      assert.match(text, /Bill To[\s\S]*Marlow Moneyfolk[\s\S]*Invoice Details[\s\S]*Invoice number[\s\S]*Title[\s\S]*Due Date[\s\S]*Notes[\s\S]*Line Items[\s\S]*Summary[\s\S]*Total[\s\S]*\$295\.00/, "Rotor's cards in Rotor's order");
+      assert.ok(await f.$(".sheet.on [data-ed-save]") && await f.$(".sheet.on [data-ed-pay]") && await f.$(".sheet.on [data-ed-bin]") && await f.$(".sheet.on [data-ed-x]"), "Save and Payment at the foot; the red bin and the X up top");
+      const full = await f.evaluate(() => { const s = document.querySelector(".sheet.on"); const r = s.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height), vh: innerHeight }; });
+      assert.deepEqual([full.top, full.h], [0, full.vh], "full screen, over the bar and the tabs");
+      assert.deepEqual(await screenProblems(f), [], "the invoice editor passes the phone checks");
       await shot(page, `money-invoice-${device}`);
-      await f.click("[data-act=collect]");
-      await sheetUp(f, /Collect \$295\.00/);
-      assert.deepEqual(await screenProblems(f), [], "Collect Payment passes the phone checks");
-      await f.click(".sheet.on [data-act=record]");
-      await sheetUp(f, /Record a payment/);
+      // edit it: the title, a second line, a $10 discount from "+ Saved"; the totals follow; Save keeps it
+      await f.fill(".sheet.on [name=title]", "Fall windows");
+      await f.click(".sheet.on [data-ed-add]");
+      await f.fill(".sheet.on .mn-ed-line[data-key]:nth-of-type(2) [data-l=description]", "Screen repair");
+      await f.fill(".sheet.on .mn-ed-line[data-key]:nth-of-type(2) [data-l=price]", "40");
+      await f.click(".sheet.on [data-ed-saved]");
+      await sheetUp(f, /Saved items/);
+      await f.locator(".sheet.on").last().locator("[data-pick]").first().click();
+      await f.waitForSelector(".sheet.on .mn-ed-line[data-key]:nth-of-type(3) [data-l=price]");
+      await f.fill(".sheet.on .mn-ed-line[data-key]:nth-of-type(3) [data-l=price]", "10");
+      await f.waitForFunction(() => /\$325\.00/.test(document.querySelector(".sheet.on [data-sum=tot]").textContent));
+      assert.match(await f.textContent(".sheet.on .mn-ed-line[data-key]:nth-of-type(3) .mn-ed-lt"), /−\$10\.00/, "a discount, in green");
+      await shot(page, `money-invoice-edit-${device}`);
+      await f.click(".sheet.on [data-ed-save]");
+      await toastHas(f, /Saved/);
+      let inv = (await api(p, `/invoices/${fresh.id}`)).invoice;
+      assert.deepEqual([inv.title, inv.total_cents, inv.discount_cents, inv.lines.length], ["Fall windows", 32500, 1000, 3], "the server worked the total out");
+      // Payment: Rotor's sheet. Tap to Pay says it isn't connected; Manual records a check for part of it
+      await f.click(".sheet.on [data-ed-pay]");
+      await f.waitForSelector(".mn-paysheet.on .mn-ps", { timeout: 5000 });
+      text = await f.textContent(".mn-paysheet.on");
+      assert.match(text, /Amount Due[\s\S]*\$325\.00[\s\S]*Tap to Pay on iPhone[\s\S]*Charge[\s\S]*Manual[\s\S]*Send/);
       assert.deepEqual(await screenProblems(f), [], "the payment sheet passes the phone checks");
-      await shot(page, `money-record-${device}`);
-      await f.fill(".sheet.on input[name=amount]", "100");
-      await f.fill(".sheet.on input[name=reference]", "1042");
-      await f.click(".sheet.on [type=submit]");
-      await sheetGone(f);
-      await viewHas(f, /Part paid/);
-      text = await f.textContent("#view");
-      assert.match(text, /\$195\.00/);
+      await shot(page, `money-payment-${device}`);
+      await f.click(".mn-paysheet.on [data-pm=tap]");
+      assert.match(await f.textContent(".mn-paysheet.on"), /needs Stripe Terminal/);
+      assert.equal(await f.$eval(".mn-paysheet.on [data-ps-go]", (b) => b.disabled), true);
+      assert.match(await f.textContent(".mn-paysheet.on [data-ps-go]"), /Start Tap to Pay on iPhone - \$325\.00/);
+      await f.click(".mn-paysheet.on [data-pm=manual]");
+      await f.click(".mn-paysheet.on label:has(input[value=check])");
+      await f.fill(".mn-paysheet.on input[name=amount]", "100");
+      await f.fill(".mn-paysheet.on input[name=reference]", "1042");
+      assert.match(await f.textContent(".mn-paysheet.on [data-ps-go]"), /Record payment - \$100\.00/);
+      assert.deepEqual(await screenProblems(f), [], "Manual passes the phone checks");
+      await f.click(".mn-paysheet.on [data-ps-go]");
+      await f.waitForFunction(() => !document.querySelector(".mn-paysheet"), null, { timeout: 10000 });
+      await f.waitForFunction(() => /Part paid/.test(document.querySelector(".mn-edsheet.on").textContent), null, { timeout: 10000 });
+      text = await f.textContent(".mn-edsheet.on");
       assert.match(text, /Check · 1042/);
-      // send it: a sheet with text and email; in dry run it lands in the Outbox
-      await f.click("[data-act=send]");
-      await sheetUp(f, /Send it again/);
-      assert.match(await f.textContent(".sheet.on"), /still practice: this lands in the Outbox/);
-      await f.click(".sheet.on [type=submit]");
-      await sheetGone(f);
+      assert.match(text, /Balance due\s*\$225\.00/);
+      assert.match(text, /A payment is on this invoice/, "its money is fixed now, and it says why");
+      assert.equal(await f.$(".mn-edsheet.on [data-l=price]"), null, "the lines are read-only");
+      // Send: the pay link (texts are practice: the Outbox)
+      await f.click(".sheet.on [data-ed-pay]");
+      await f.waitForSelector(".mn-paysheet.on .mn-ps", { timeout: 5000 });
+      await f.click(".mn-paysheet.on [data-pm=send]");
+      assert.match(await f.textContent(".mn-paysheet.on"), /this lands in the Outbox/);
+      await f.click(".mn-paysheet.on [data-ps-go]");
+      await toastHas(f, /In the Outbox/);
+      await f.click(".mn-edsheet.on [data-ed-x]");
+      await f.waitForFunction(() => !document.querySelector(".mn-edsheet"), null, { timeout: 5000 });
 
-      // the test contact's invoice: the card on file is charged (practice money), then part of it refunded
+      // the test contact's invoice: the card on file is charged from the payment sheet (practice money), then part of it refunded
       const mine = (await post(p, "/invoices", { contact_id: M.contacts.test, lines: [{ description: "Exterior window cleaning", unit_cents: 24500 }], issue: true, use_credit: false })).data.invoice;
       await goTo(f, `/invoices/${mine.id}`);
-      assert.match(await f.textContent("#view"), /VISA ending 4242 · On file/);
-      await f.click("[data-act=collect]");
-      await sheetUp(f, /Collect/);
-      await f.click(".sheet.on [data-act=charge]");
-      await sheetUp(f, /Charge the card/);
-      assert.match(await f.textContent(".sheet.on"), /Charge \$245\.00 to the VISA ending 4242\?[\s\S]*practice mode/);
-      await f.click(".sheet.on [data-a=yes]");
-      await viewHas(f, /Paid/, 30000);
-      await f.waitForSelector("[data-refund]", { timeout: 15000 });
-      text = await f.textContent("#view");
-      assert.match(text, /Card ending 4242[\s\S]*test/);
+      await editorUp(f, mine.number);
+      await f.click(".sheet.on [data-ed-pay]");
+      await f.waitForSelector(".mn-paysheet.on .mn-ps", { timeout: 5000 });
+      text = await f.textContent(".mn-paysheet.on");
+      assert.match(text, /Charge the card on file[\s\S]*VISA ending 4242 · On file[\s\S]*practice/);
+      assert.match(await f.textContent(".mn-paysheet.on [data-ps-go]"), /Charge card - \$245\.00/);
+      await f.click(".mn-paysheet.on [data-ps-go]");
+      await f.waitForFunction(() => /Paid/.test((document.querySelector(".mn-edsheet.on .mn-ed-pills") || {}).textContent || ""), null, { timeout: 30000 });
+      await f.waitForSelector(".mn-edsheet.on [data-refund]", { timeout: 15000 });
+      text = await f.textContent(".mn-edsheet.on");
+      assert.match(text, /Card[\s\S]*test/);
+      assert.match(text, /This invoice is paid/, "a paid invoice keeps its money, and says so");
       await shot(page, `money-invoice-paid-${device}`);
-      await f.click("[data-refund]");
+      await f.click(".mn-edsheet.on [data-refund]");
       await sheetUp(f, /Refund/);
       assert.deepEqual(await screenProblems(f), [], "the refund sheet passes the phone checks");
-      await f.fill(".sheet.on input[name=amount]", "45");
-      await f.fill(".sheet.on input[name=reason]", "Two panes missed");
-      await f.click(".sheet.on [type=submit]");
-      await sheetGone(f);
-      await viewHas(f, /Refund/);
-      assert.match(await f.textContent("#view"), /−\$45\.00/);
+      await f.locator(".sheet.on").last().locator("input[name=amount]").fill("45");
+      await f.locator(".sheet.on").last().locator("input[name=reason]").fill("Two panes missed");
+      await f.locator(".sheet.on").last().locator("[type=submit]").click();
+      await f.waitForFunction(() => /Refund/.test(document.querySelector(".mn-edsheet.on").textContent) && /−\$45\.00/.test(document.querySelector(".mn-edsheet.on").textContent), null, { timeout: 10000 });
+      await f.click(".mn-edsheet.on [data-ed-x]");
+      await f.waitForFunction(() => !document.querySelector(".mn-edsheet"), null, { timeout: 5000 });
 
-      // Rotor's own invoice: shown, and nothing online is offered for it
+      // Rotor's own invoice: shown, read-only, and nothing online is offered for it
       await goTo(f, `/invoices/${M.invoices.rotor}`);
-      text = await f.textContent("#view");
+      await f.waitForSelector(".sheet.on .mn-ed", { timeout: 10000 });
+      text = await f.textContent(".sheet.on");
       assert.match(text, /still Rotor's until the switch/);
       assert.equal(await f.$$eval("[data-act]", (els) => els.length), 0, "read here, changed in Rotor: no buttons");
+      assert.equal(await f.$(".sheet.on [data-ed-save]"), null);
+      assert.equal(await f.$(".sheet.on [data-ed-pay]"), null);
+      assert.equal(await f.$(".sheet.on [data-l]"), null);
       await shot(page, `money-invoice-rotor-${device}`);
 
-      // a new invoice for a customer: two lines, the total follows, saved as a draft
+      // New Invoice (Flyra's sheet): the customer, two lines and a discount, the total follows; Create Invoice makes a draft
       await goTo(f, `/invoices/new/${seeded.contacts.customer}`);
-      assert.equal(await title(f), "New invoice");
-      await f.fill("[data-line='0'] [data-desc]", "Screen repair");
-      await f.fill("[data-line='0'] [data-price]", "60");
-      await f.click("[data-add]");
-      await f.fill("[data-line='1'] [data-desc]", "Track cleaning");
-      await f.fill("[data-line='1'] [data-price]", "45.50");
-      await f.waitForFunction(() => /\$105\.50/.test(document.querySelector("[data-total]").textContent));
-      assert.deepEqual(await screenProblems(f), [], "New invoice passes the phone checks");
+      await f.waitForSelector(".mn-nvsheet.on .mn-nv", { timeout: 10000 });
+      assert.match(await f.textContent(".mn-nvsheet.on"), /New Invoice[\s\S]*Customer[\s\S]*Line items[\s\S]*Add line item[\s\S]*Add discount[\s\S]*Total[\s\S]*Salesperson[\s\S]*Olive[\s\S]*Notes[\s\S]*Create Invoice/);
+      assert.equal(await f.$eval(".mn-nvsheet.on [data-go]", (b) => b.disabled), true, "off until there's a line with a price");
+      await f.click(".mn-nvsheet.on [data-add]");
+      await f.fill(".mn-nvsheet.on [data-line='0'] [data-desc]", "Screen repair");
+      await f.fill(".mn-nvsheet.on [data-line='0'] [data-price]", "60");
+      await f.click(".mn-nvsheet.on [data-add]");
+      await f.fill(".mn-nvsheet.on [data-line='1'] [data-desc]", "Track cleaning");
+      await f.fill(".mn-nvsheet.on [data-line='1'] [data-price]", "45.50");
+      await f.click(".mn-nvsheet.on [data-add-disc]");
+      await f.fill(".mn-nvsheet.on [data-line='2'] [data-price]", "5");
+      await f.waitForFunction(() => /\$100\.50/.test(document.querySelector(".mn-nvsheet.on [data-total]").textContent));
+      assert.deepEqual(await screenProblems(f), [], "New Invoice passes the phone checks");
       await shot(page, `money-new-${device}`);
-      await f.click("[data-go=draft]");
+      await f.click(".mn-nvsheet.on [data-go]");
       await f.waitForFunction(() => /^#\/invoices\/in_[0-9a-z]{20}$/.test(location.hash), null, { timeout: 15000 });
       await settled(f);
-      text = await f.textContent("#view");
+      await f.waitForSelector(".mn-edsheet.on .mn-ed", { timeout: 10000 });
+      text = await f.textContent(".mn-edsheet.on");
       assert.match(text, /Draft/);
-      assert.match(text, /\$105\.50/);
-      assert.ok(await f.$("[data-act=send]"), "Send to the customer");
+      assert.match(text, /\$100\.50/);
+      assert.ok(await f.$(".mn-edsheet.on [data-ed-sent]"), "Mark as Sent");
+      // Mark as Sent: open, nothing texted
+      await f.click(".mn-edsheet.on [data-ed-sent]");
+      await toastHas(f, /Nothing was sent/);
+      await f.waitForFunction(() => !document.querySelector(".mn-edsheet.on [data-ed-sent]"), null, { timeout: 10000 });
+      // its X goes back (to Rotor's invoice, the screen before it)
+      const made = await f.evaluate(() => location.hash);
+      await f.click(".mn-edsheet.on [data-ed-x]");
+      await f.waitForFunction((h) => location.hash !== h, made, { timeout: 5000 });
 
       await goTo(f, "/payments");
       assert.equal(await title(f), "Payments");
@@ -364,6 +412,73 @@ for (const device of ["iphone13", "iphonese"]) {
   });
 }
 
+// Rotor's phone invoice and payment sheet, and Flyra's Checkout, in the light theme (the money test above runs dark)
+for (const device of ["iphone13", "iphonese"]) {
+  test(`money (${device}, light): the invoice editor, the payment sheet, Checkout with a 15% tip paid in cash`, async () => {
+    const { p, page, f: f0 } = await open("olive", device);
+    try {
+      await f0.evaluate(() => localStorage.setItem("crm-theme", "light"));
+      await page.reload();
+      const f = await crmFrame(page);
+      await settled(f);
+      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "light");
+      const inv = (await post(p, "/invoices", { contact_id: M.contacts.test, lines: [{ description: "Quarterly window cleaning", unit_cents: 29500 }, { description: "Plan discount", unit_cents: 10000, kind: "discount" }], issue: false, use_credit: false })).data.invoice;
+      await goTo(f, `/invoices/${inv.id}`);
+      await editorUp(f, inv.number);
+      assert.match(await f.textContent(".mn-edsheet.on"), /Draft[\s\S]*Mark as Sent[\s\S]*Bill To[\s\S]*Invoice Details[\s\S]*Line Items[\s\S]*Summary/);
+      assert.deepEqual(await screenProblems(f), [], "the editor passes the phone checks (light)");
+      await shot(page, `money-invoice-${device}-light`);
+      // the number: Edit, a number another invoice has is refused there and then
+      await f.click(".mn-edsheet.on [data-ed-num]");
+      await f.fill(".mn-edsheet.on [name=number]", (await api(p, `/invoices/${M.invoices.rotor}`)).invoice.number);
+      await f.click(".mn-edsheet.on [data-ed-save]");
+      await f.waitForFunction(() => { const w = document.querySelector('.mn-edsheet.on [data-field="number"] .why'); return w && !w.hidden && /already another invoice's number|the CRM's own/.test(w.textContent); }, null, { timeout: 10000 });
+      await f.fill(".mn-edsheet.on [name=number]", `BW-${device.toUpperCase()}`);
+      await f.click(".mn-edsheet.on [data-ed-save]");
+      await editorUp(f, `BW-${device.toUpperCase()}`);
+      // Payment on a draft: marked sent first (nothing goes out), then Rotor's sheet
+      await f.click(".mn-edsheet.on [data-ed-pay]");
+      await sheetUp(f, /Take a payment/);
+      await f.locator(".sheet.on").last().locator("[data-a=yes]").click();
+      await f.waitForSelector(".mn-paysheet.on .mn-ps", { timeout: 10000 });
+      assert.match(await f.textContent(".mn-paysheet.on"), /Amount Due[\s\S]*\$195\.00/);
+      assert.deepEqual(await screenProblems(f), [], "the payment sheet passes the phone checks (light)");
+      await shot(page, `money-payment-${device}-light`);
+      await f.click(".mn-paysheet.on [data-sheet-x]");
+      await f.waitForFunction(() => !document.querySelector(".mn-paysheet"), null, { timeout: 5000 });
+      // Checkout (Flyra's): from the editor's "...": the service, a 15% tip, cash
+      await f.click(".mn-edsheet.on [data-ed-more]");
+      await sheetUp(f, new RegExp(`Invoice #BW-${device.toUpperCase()}`));
+      await f.locator(".sheet.on").last().getByText("Checkout with a tip").click();
+      await f.waitForSelector(".mn-cosheet.on .mn-co", { timeout: 10000 });
+      let text = await f.textContent(".mn-cosheet.on");
+      assert.match(text, /Checkout[\s\S]*Your service[\s\S]*1×[\s\S]*Quarterly window cleaning[\s\S]*Subtotal[\s\S]*\$295\.00[\s\S]*Discount[\s\S]*\$100\.00[\s\S]*Service total[\s\S]*\$195\.00[\s\S]*Tip your crew[\s\S]*None[\s\S]*10%[\s\S]*\$19\.50[\s\S]*15%[\s\S]*\$29\.25[\s\S]*20%[\s\S]*\$39\.00[\s\S]*Other/, "Flyra's checkout, the tips worked out on the service total");
+      await f.click(".mn-cosheet.on [data-co-tip='1500']");
+      assert.match(await f.textContent(".mn-cosheet.on [data-co-pay]"), /Pay \$224\.25/);
+      await f.click(".mn-cosheet.on [data-co-change]");
+      await sheetUp(f, /Pay with/);
+      assert.match(await f.textContent(".rs-actions.on"), /Tap to Pay[\s\S]*Card on file[\s\S]*Cash or check[\s\S]*Send link/);
+      await f.locator(".sheet.on").last().getByText("Tap to Pay", { exact: true }).click();
+      await f.waitForFunction(() => /Stripe Terminal/.test(document.querySelector(".mn-cosheet.on").textContent));
+      assert.equal(await f.$eval(".mn-cosheet.on [data-co-pay]", (b) => b.disabled), true, "Tap to Pay isn't connected");
+      await f.click(".mn-cosheet.on [data-co-change]");
+      await sheetUp(f, /Pay with/);
+      await f.locator(".sheet.on").last().getByText("Cash or check", { exact: true }).click();
+      await f.waitForSelector(".mn-cosheet.on [name=co_cash]");
+      assert.deepEqual(await screenProblems(f), [], "Checkout passes the phone checks (light)");
+      await shot(page, `money-checkout-${device}-light`);
+      await f.click(".mn-cosheet.on [data-co-pay]");
+      await toastHas(f, /Payment saved/);
+      await f.waitForFunction(() => /Paid/.test((document.querySelector(".mn-edsheet.on .mn-ed-pills") || {}).textContent || ""), null, { timeout: 10000 });
+      const pays = (await api(p, `/invoices/${inv.id}`)).payments;
+      assert.deepEqual(pays.map((x) => [x.method, x.amount_cents, x.tip_cents]), [["cash", 19500, 2925]], "the tip rides on the payment");
+      text = await f.textContent(".mn-edsheet.on");
+      assert.match(text, /Tips for the crew\s*\$29\.25/);
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
 test("money on a desk: the list with the invoice beside it", async () => {
   const p = await phone(browser, srv, { device: "desk1440" });
   try {
@@ -378,6 +493,28 @@ test("money on a desk: the list with the invoice beside it", async () => {
     assert.deepEqual(both, { list: true, pane: true }, "the list stays, the invoice opens beside it");
     assert.deepEqual(await screenProblems(f), []);
     await shot(p.page, "money-desk-split");
+    // the desk keeps its two columns and gains the editor: the pencil opens it in a dialog
+    assert.equal(await f.$(".mn-edsheet"), null, "a desk doesn't open the editor by itself");
+    const inv = (await api(p, `/invoices/${M.invoices.overdue}`)).invoice;
+    await f.click("[data-act=edit]");
+    await editorUp(f, inv.number);
+    const box = await f.evaluate(() => { const r = document.querySelector(".mn-edsheet.on").getBoundingClientRect(); return { w: Math.round(r.width), left: Math.round(r.left), vw: innerWidth }; });
+    assert.ok(box.w <= 640 && box.left > 0, `a dialog in the middle (${JSON.stringify(box)})`);
+    assert.deepEqual(await screenProblems(f), [], "the editor on a desk");
+    await shot(p.page, "money-desk-editor");
+    await f.fill(".mn-edsheet.on [name=title]", "Gutters, fall");
+    await f.click(".mn-edsheet.on [data-ed-save]");
+    await f.waitForFunction(() => [...document.querySelectorAll(".toast")].some((x) => /Saved/.test(x.textContent)), null, { timeout: 10000 });
+    await f.click(".mn-edsheet.on [data-ed-x]");
+    await f.waitForFunction(() => !document.querySelector(".mn-edsheet"), null, { timeout: 5000 });
+    await f.waitForFunction(() => /Gutters, fall/.test(document.getElementById("pane").textContent), null, { timeout: 10000 });
+    // Collect Payment: Rotor's payment sheet, a dialog on a desk
+    await f.click("#pane [data-act=collect]");
+    await f.waitForSelector(".mn-paysheet.on .mn-ps", { timeout: 5000 });
+    assert.match(await f.textContent(".mn-paysheet.on"), /Amount Due[\s\S]*Tap to Pay on iPhone[\s\S]*Charge[\s\S]*Manual[\s\S]*Send/);
+    assert.deepEqual(await screenProblems(f), [], "the payment sheet on a desk");
+    await shot(p.page, "money-desk-payment");
+    await f.click(".mn-paysheet.on [data-sheet-x]");
     await p.clean();
   } finally { await p.close(); }
 });
