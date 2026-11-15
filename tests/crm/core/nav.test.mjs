@@ -129,9 +129,12 @@ test("the drawer: Rotor's four groups from SECTIONS, no sub-lists, each section 
   const all = g.flat().flatMap((it) => [...new Set(it.tabs.map((t) => t.base)), ...it.more.map((m) => m.path)]);
   assert.equal(new Set(all).size, all.length, "each screen once");
   for (const old of ["/schedule", "/jobs", "/plans", "/team-map", "/timesheets", "/payroll", "/pipeline", "/leads", "/calls", "/quotes", "/tasks", "/map",
-    "/tools/lights", "/leaderboard", "/contacts", "/invoices", "/payments", "/autopay", "/reports", "/tools/purchases", "/inbox", "/campaigns", "/approvals", "/reviews", "/signs", "/tools/giveaway", "/outbox",
+    "/tools/lights", "/leaderboard", "/contacts", "/invoices", "/payments", "/autopay", "/reports", "/inbox", "/campaigns", "/approvals", "/reviews", "/signs", "/tools/giveaway", "/outbox",
     "/dashboard", "/templates", "/automations", "/settings/cadences"]) assert.ok(all.includes(old), `${old} is in a section`);
   for (const [p, home] of Object.entries(nav.IN_SCREEN)) assert.ok(all.includes(home), `${p} lives in ${home}`);
+  // (Purchases waits in Financials' "..." until Expenses is there; then the Expenses screen's own "..." links it)
+  assert.equal(nav.sectionByKey("financials").more.find(([p]) => p === "/tools/purchases")[3], "/expenses");
+  assert.ok(all.includes("/expenses"), "Expenses, Purchases' home now");
   assert.deepEqual(nav.ME_ROWS.map(([p]) => p), ["/time", "/pay", "/performance"], "My time, My pay, My performance: the person's sheet");
   // a section's tabs are top-level (no back button from another top-level screen); its "..." screens sit deeper
   for (const it of g.flat()) for (const t of it.tabs) assert.equal(nav.isTabRoot(t.base), true, `${t.base}: a tab is top-level`);
