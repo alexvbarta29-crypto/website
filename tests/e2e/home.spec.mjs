@@ -7,8 +7,9 @@
 // on a phone, chips on a desk; the period in caps, the big number, AVG and
 // PEAK; the line with its values at the left, a tap's readout, "Updated" or
 // where Collected comes from; ARR by month (Nov 15: 6M 1Y YTD All, a bar a
-// month with its short name, the change since the period began and this
-// month's, a tapped month's ARR and the plans added and lost); a tap to
+// month with its MRR on top and its short name, no axis or grid, this
+// month lit, the change since the period began and this month's, a tapped
+// month's MRR, ARR and the plans added and lost); a tap to
 // Payments or Plans), the Leaderboard card (Sales | Techs), the compact
 // Clock in (in and out), Today (Daily | Weekly | Monthly, tasks without a
 // due date), Edit Home (on, off, order, from My account too), the optional
@@ -349,22 +350,30 @@ test("the top (Flyra's, Nov 15): Revenue first, AVG and PEAK, the line, the read
       const side2 = (await tc(f, ".hm-stats")).match(/^Change ([+−]\$[\d,]+)(?: ([+−][\d.,]+%))? This month ([+−]?\$[\d,]+)$/);
       assert.ok(arr && side2, await tc(f, ".hm-money"));
       const dollars = (x) => Number(x.replace(/[$,+]/g, "").replace("−", "-"));
-      // the months as the screen reader's table has them: ARR at each month's end, the plans added and lost
+      // the months as the screen reader's table has them: MRR and ARR at each month's end, the plans added and lost
       const months = await f.$$eval(".hm-money table.sr tbody tr", (trs) => trs.map((tr) => [...tr.children].map((c) => c.textContent)));
       assert.deepEqual(months.map((r) => r[0]), ["Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026"]);
-      const at = (i) => dollars(months[i][1]);
-      assert.equal(months[11][1], arr[1], "this month's point is today's ARR");
+      const at = (i) => dollars(months[i][2]);
+      assert.equal(months[11][2], arr[1], "this month's point is today's ARR");
+      for (const r of months) assert.ok(Math.abs(dollars(r[1]) * 12 - dollars(r[2])) <= 12, `${r[0]}: MRR is ARR / 12 (${r[1]}, ${r[2]})`);
       assert.equal(dollars(side2[3]), at(11) - at(10), "this month's change: since the end of October");
       assert.ok(dollars(side2[1]) > 0 && dollars(side2[1]) <= at(11), side2[1]);
-      assert.ok(months.some((r) => r[3] !== "0"), "the seed's cancelled plans: a month lost one");
-      // a bar a month, each month's short name under it (as on Flyra's), the values at the left
+      assert.ok(months.some((r) => r[4] !== "0"), "the seed's cancelled plans: a month lost one");
+      // a bar a month, each with its MRR on top ("showing the MRR in all 12 months", Nov 15: no axis, no grid),
+      // each month's short name under it, this month lit
       assert.equal(await f.$$eval('[data-chart="arr"] .hb-bar', (x) => x.length), 12);
       assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-m', (els) => els.map((e) => e.textContent)), ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"]);
-      const aticks = await f.$$eval('[data-chart="arr"] .hf-t:not(.hb-m)', (els) => els.map((e) => e.textContent));
-      assert.ok(aticks.length >= 3 && aticks[0] === "0", aticks.join(" "));
-      // the month picked to start with: this one, its readout under the bars
+      assert.equal(await f.$$eval('[data-chart="arr"] .hf-grid, [data-chart="arr"] .hf-t:not(.hb-m)', (x) => x.length), 0, "no axis, no grid");
+      assert.match(await tc(f, ".hm-bcap"), /^MRR by month ARR ÷ 12$/);
+      const vlabels = await f.$$eval('[data-chart="arr"] .hb-v', (els) => els.map((e) => { const r = e.getBoundingClientRect(), c = e.closest(".hc").getBoundingClientRect(); return { t: e.textContent, l: r.left, r: r.right, inside: r.left >= c.left - 1 && r.right <= c.right + 1 && r.top >= c.top - 1, fs: parseFloat(getComputedStyle(e).fontSize) }; }));
+      assert.equal(vlabels.length, 12, "every month's MRR");
+      assert.ok(vlabels.every((x, i) => x.inside && x.fs >= 10 && (!i || x.l >= vlabels[i - 1].r)), `readable, in the chart, never on each other: ${JSON.stringify(vlabels)}`);
+      assert.ok(vlabels.every((x, i) => /^\$?\d+(\.\d)?[kM]?$/.test(x.t) && Math.abs(Number(x.t.replace(/[$kM]/g, "")) * (/k$/.test(x.t) ? 1000 : /M$/.test(x.t) ? 1e6 : 1) - dollars(months[i][1])) <= Math.max(1, dollars(months[i][1]) * 0.06)), vlabels.map((x) => x.t).join(" "));
+      if (device === "iphone13") assert.ok(vlabels.every((x) => x.t.startsWith("$")), "with the $ where it fits");
+      assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-bar.now, [data-chart="arr"] .hb-m.now', (els) => els.map((e) => e.dataset.i)), ["11", "11"], "this month lit");
+      // the month picked to start with: this one, its readout under the bars (the month, its MRR and ARR, the plans added and lost)
       assert.equal(await tc(f, '[data-chart="arr"] .hb-m.on'), "Nov");
-      assert.equal(await tc(f, ".hm-mread"), `Nov 2026 ${arr[1]} Added ${months[11][2]} ${months[11][2] === "1" ? "plan" : "plans"} Lost ${months[11][3]} ${months[11][3] === "1" ? "plan" : "plans"}`);
+      assert.equal(await tc(f, ".hm-mread"), `Nov 2026 MRR ${months[11][1]} ARR ${arr[1]} Added ${months[11][3]} ${months[11][3] === "1" ? "plan" : "plans"} Lost ${months[11][4]} ${months[11][4] === "1" ? "plan" : "plans"}`);
       assert.match(await tc(f, ".hm-read"), /^\d+ active plans? · MRR \$[\d,]+$/);
       assert.match(await tc(f, ".hm-upd"), /^Updated \d+:\d\d [AP]M$/);
       assert.equal(await f.getAttribute(".hm-mlink", "href"), "#/plans");
@@ -384,13 +393,14 @@ test("the top (Flyra's, Nov 15): Revenue first, AVG and PEAK, the line, the read
       assert.equal(await tc(f, '[data-chart="arr"] .hb-m.on'), "May");
       assert.equal(await f.$$eval('[data-chart="arr"] .hb-bar.on', (x) => x.map((e) => e.dataset.i).join()), "5");
       const plansWord = (n) => `${n} ${n === "1" ? "plan" : "plans"}`;
-      assert.equal(await tc(f, ".hm-mread"), `May 2026 ${months[5][1]} Added ${plansWord(months[5][2])} Lost ${plansWord(months[5][3])}`);
+      assert.equal(await tc(f, ".hm-mread"), `May 2026 MRR ${months[5][1]} ARR ${months[5][2]} Added ${plansWord(months[5][3])} Lost ${plansWord(months[5][4])}`);
+      assert.equal(await f.$$eval('[data-chart="arr"] .hb-v.on', (x) => x.map((e) => e.dataset.i).join()), "5", "its value lit too");
       assert.deepEqual(await screenProblems(f), [], "a month picked");
       await shot(page, `home-arr-month-${device}`);
       // the arrow keys pick the month before and after
       await f.focus('[data-chart="arr"]');
       await page.keyboard.press("ArrowLeft");
-      assert.ok((await tc(f, ".hm-mread")).startsWith(`Apr 2026 ${months[4][1]} Added`), await tc(f, ".hm-mread"));
+      assert.ok((await tc(f, ".hm-mread")).startsWith(`Apr 2026 MRR ${months[4][1]} ARR ${months[4][2]} Added`), await tc(f, ".hm-mread"));
       await page.keyboard.press("End");
       assert.match(await tc(f, ".hm-mread"), /^Nov 2026 /);
       // ARR's periods: 6M 1Y YTD All (a small sheet on a phone)
@@ -689,7 +699,8 @@ test("on a desk: the sidebar, search and New; Flyra's dashboard at 1440 (the mon
         const [ac, rd] = await Promise.all([box(f, '[data-chart="arr"]'), box(f, ".hm-mread")]);
         assert.ok(ac.x >= money.x && ac.x + ac.w <= money.x + money.w && rd.y >= ac.y + ac.h, "the bars in the card, the readout under them");
         await f.hover('[data-chart="arr"] .hb-bar[data-i="9"]');
-        assert.match(await tc(f, ".hm-mread"), /^Sep 2026 \$[\d,]+ Added \d+ plans? Lost \d+ plans?$/, "a mouse picks as it moves");
+        assert.match(await tc(f, ".hm-mread"), /^Sep 2026 MRR \$[\d,]+ ARR \$[\d,]+ Added \d+ plans? Lost \d+ plans?$/, "a mouse picks as it moves");
+        assert.ok(await f.$$eval('[data-chart="arr"] .hb-v', (els) => els.length === 12 && els.every((e) => e.textContent.startsWith("$"))), "every month's MRR, with the $");
         assert.deepEqual(await screenProblems(f), [], "ARR on a desk");
         await shot(page, "home-desk-arr");
         assert.equal(await period(f, "all"), "ARR, Oct 2025 – Nov 2026");
