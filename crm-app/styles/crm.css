@@ -916,7 +916,7 @@ a.rs-li,button.rs-li{min-height:44px;cursor:pointer}
   .app:not(.big-top) .top.rs-top .top-rnd{display:none}
 }
 @media (min-width:900px){
-  .sheet.rs-sheetpage{height:min(780px,calc(100% - 64px));border-radius:var(--r-xl)}
+  .sheet.rs-sheetpage,.sheet.fm-sheet{height:min(780px,calc(100% - 64px));border-radius:var(--r-xl)}
   .app.has-side .top-act .rnd{width:38px;height:38px;box-shadow:none}
 }
 @media (hover:hover) and (pointer:fine){

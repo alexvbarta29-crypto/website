@@ -104,18 +104,20 @@ test("one app: a Menu tool (Light Studio) opens in a frame under the CRM's heade
   try {
     // the Menu page (old #/menu links): the Menu's cards as a page (Flyra's), Sign out at the bottom
     await goTo(f, "/menu");
-    const groups = await f.$$eval(".menu-page .fm-grp", (els) => els.map((g) => [...g.querySelectorAll(".fm-l, .fm-tl")].map((x) => x.textContent)));
+    const groups = await f.$$eval('.menu-page nav[aria-label="Menu"] .fm-grp', (els) => els.map((g) => [...g.querySelectorAll(".fm-l, .fm-tl")].map((x) => x.textContent)));
     assert.deepEqual(groups, [["Home", "Schedule", "Inbox", "Customers", "Leads"], ["Jobs", "Quotes", "Invoices", "Plans"], ["Pipelines", "Power Dialer", "Requests", "Tasks"], ["Payments", "Payouts", "Payroll", "Expenses"],
       ["Leaderboard", "Map", "Reports", "Automations"], ["Campaigns", "Reviews", "Templates", "QR codes"], ["Tab bar", "Settings"]], JSON.stringify(groups));
-    assert.deepEqual(await f.$$eval(".menu-page .fm-cap", (els) => els.map((e) => e.textContent)), ["Sales", "Money", "Marketing"]);
-    const all = groups.flat();
+    assert.deepEqual(await f.$$eval('.menu-page nav[aria-label="Menu"] .fm-cap', (els) => els.map((e) => e.textContent)), ["Sales", "Money", "Marketing"]);
+    // (a page has the room: More screens, each section's screens the rows don't open themselves)
+    const more = await f.$$eval('.menu-page nav[aria-labelledby="menu-more-h"] .fm-grp', (els) => els.map((g) => [g.querySelector(".fm-cap").textContent, ...[...g.querySelectorAll(".fm-l")].map((x) => x.textContent)]));
+    assert.deepEqual(more, [["Inbox", "Outbox (not sent)", "Approvals", "Team inboxes"], ["Leads", "Text blast", "Giveaway"], ["Service", "Light Studio"], ["Financials", "Autopay run", "Timesheets"], ["Pipelines", "Manage pipelines"], ["Power Dialer", "Queue", "Call logs"], ["Map", "Team map", "Door report"], ["Analytics", "Office dashboard"]], JSON.stringify(more));
+    const all = [...groups.flat(), ...more.flat()];
     for (const gone of ["Follow-ups", "Leads & calls", "Activity", "Team", "Import from Rotor", "Rotor"]) assert.ok(!all.includes(gone), `${gone} is merged or in Settings: ${all.join(", ")}`);
     assert.ok(await f.$('.menu-page a[href="#/settings"]'), "Settings");
     assert.ok(await f.$("[data-signout]"), "Sign out at the bottom");
     assert.deepEqual(await screenProblems(f), [], "the Menu passes the phone checks");
     await shot(page, "core-menu");
-    // (Light Studio: Service's "...", from any of its tabs)
-    await drawerGo(f, "/tools/lights");
+    await f.click('.menu-page a[href="#/tools/lights"]');
     await settled(f, { hash: "#/tools/lights" });
     assert.equal(await hashOf(f), "#/tools/lights");
     assert.equal(await title(f), "Lights");
