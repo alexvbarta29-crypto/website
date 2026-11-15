@@ -130,17 +130,29 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hf-wash-b{stop-color:var(--hm-line);stop-opacity:0}
 .hf-cross{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:2 3}
 .hf-dot{fill:var(--hm-line);stroke:var(--mist);stroke-width:2}
-/* ARR by month (home-charts.js monthBars): a soft bar a month, the month picked full, its readout under the bars */
-.hb-bar{fill:var(--hm-line);opacity:.38}
-.hb-bar.on{opacity:1}
-.hb-col{fill:var(--hm-line);opacity:.09}
-.hb-m{font-size:11.5px}
-.hb-m.on{fill:var(--ink);font-weight:600}
+/* ARR by month (home-charts.js monthBars, "show the MRR in all 12 months"): a bar a month with its
+   MRR on top, no axis and no grid; this month lit, the month picked full with a soft column behind it */
+.hc.hb{height:232px;margin:10px -12px 0}
+.hm-bcap{display:flex;justify-content:space-between;gap:12px;margin:22px 0 0;font:600 12px/1.2 var(--text);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.hm-bcap span{font-weight:500;letter-spacing:.04em;text-transform:none;color:var(--ink-3)}
+.hb-base{stroke:var(--hm-base);stroke-width:1}
+.hb-bar{fill:var(--hm-line);opacity:.5}
+.hb-bar.now,.hb-bar.on{opacity:1}
+.hb-col{fill:var(--hm-line);opacity:.12}
+.hb-v{fill:var(--ink-2);font-family:var(--text);font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.hb-v .hb-cur{font-size:80%}
+.hb-v.now{fill:var(--hm-line);font-weight:700}
+.hb-v.on{fill:var(--ink);font-weight:700}
+.hb-m{font-size:12px;fill:var(--ink-2)}
+.hb-m.now{fill:var(--hm-line);font-weight:700}
+.hb-m.on{fill:var(--ink);font-weight:700}
 /* ARR's two stats keep beside the big number on a phone (they go under it only when it is long) */
 .hm-money[data-view="arr"] .hm-mhead{margin-top:6px}
 .hm-money[data-view="arr"] .hm-stats{gap:18px}
 .hm-money[data-view="arr"] .hm-stats dt{letter-spacing:.1em}
-.hm-mread{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--hm-pill);border:1px solid var(--hm-pill-line)}
+.hm-mread{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 10px;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--hm-pill);border:1px solid var(--hm-pill-line)}
+@media (min-width:420px){.hm-mread{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.hm-mread .mr-h{grid-column:1/-1;margin:0;font:600 15px/1.2 var(--head);color:var(--ink)}
 .hm-mread div{display:flex;flex-direction:column;gap:6px;min-width:0}
 .hm-mread span{font:500 11.5px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-mread b{font:600 16px/1.1 var(--head);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
@@ -315,6 +327,7 @@ a.hm-item:active{background:var(--fill-2)}
   .hm-stats dt{font-size:11px}
   .hm-stats dd{font-size:15px;margin-top:8px}
   .hc.hf{height:220px;margin-top:18px}
+  .hc.hb{height:240px;margin:10px -4px 0}
   .hm-mfoot{font-size:12.5px}
   .hm-seg button{min-height:38px}
   .hm-round{width:40px;height:40px}

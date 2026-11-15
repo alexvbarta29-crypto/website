@@ -8,7 +8,7 @@
 //   scheduledDays(visits, jobs, p)          the value of the visits booked, per day
 //   arrDays(plans, p, today)                annual recurring revenue of the live plans, per day
 //   arrView(plans, p, today)                → the money card's ARR view (Nov 14): ARR, its change, active plans, MRR, the line (older clients)
-//   arrMonths(plans, from, to, today)       ARR at each month's end, the plans added and lost in it
+//   arrMonths(plans, from, to, today)       ARR (and MRR, ARR / 12) at each month's end, the plans added and lost in it
 //   arrMonthView(plans, range, today)       → the top's ARR view by month (Nov 15): 6M 1Y YTD All
 //   moneyCard({ metric, p, series, ... })   → one metric over a period (the older Collected | Scheduled | ARR card)
 //   latestImport(runs, today)               the newest finished Rotor import and whether it is fresh (3 days)
@@ -267,8 +267,9 @@ export function planWindow(r) {
 // month still ahead: null), with the plans that started counting in it and
 // those that stopped (a plan made and cancelled in the same month is both).
 // Month ends are local days (America/Chicago): a plan made at 11:30 PM on
-// Oct 31 is October's, whatever the UTC date.
-// → [{ key, label, from, to, value, plans, added, lost, added_cents, lost_cents }]
+// Oct 31 is October's, whatever the UTC date. Each month's MRR is its ARR / 12
+// (Nov 15, "ARR with showing the MRR in all 12 months": a label on each bar).
+// → [{ key, label, from, to, value, mrr, plans, added, lost, added_cents, lost_cents }]
 export const MAX_ARR_MONTHS = 120;
 export function arrMonths(plans, fromMonth, toMonth, today) {
   const rows = list(plans).filter(Boolean);
@@ -276,7 +277,7 @@ export function arrMonths(plans, fromMonth, toMonth, today) {
   const out = [];
   for (let m = fromMonth; m <= toMonth && out.length < MAX_ARR_MONTHS; m = addMonths(m, 1)) {
     const from = `${m}-01`;
-    if (from > today) { out.push({ key: m, label: monthLabel(m), from, to: monthEnd(m), value: null, plans: null, added: null, lost: null, added_cents: null, lost_cents: null }); continue; }
+    if (from > today) { out.push({ key: m, label: monthLabel(m), from, to: monthEnd(m), value: null, mrr: null, plans: null, added: null, lost: null, added_cents: null, lost_cents: null }); continue; }
     const to = monthEnd(m) > today ? today : monthEnd(m);
     const prev = addLocalDays(from, -1);
     let added = 0, lost = 0, addedCents = 0, lostCents = 0;
@@ -285,7 +286,7 @@ export function arrMonths(plans, fromMonth, toMonth, today) {
       if (w.stop && w.stop > prev && w.stop <= to) { lost += 1; lostCents += planArr(r); }
     }
     const at = arrAt(rows, to);
-    out.push({ key: m, label: monthLabel(m), from, to, value: at.cents, plans: at.plans, added, lost, added_cents: addedCents, lost_cents: lostCents });
+    out.push({ key: m, label: monthLabel(m), from, to, value: at.cents, mrr: Math.round(at.cents / 12), plans: at.plans, added, lost, added_cents: addedCents, lost_cents: lostCents });
   }
   return out;
 }

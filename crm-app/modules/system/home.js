@@ -16,8 +16,10 @@
 //               Collected comes from). ARR is by month (Nov 15, "ARR by
 //               month on the home page"): 6M 1Y YTD All, today's ARR, its
 //               change since the period began ($ and %) and this month's,
-//               a bar a month with the short month names, and under them
-//               the month picked (a tap): its ARR, the plans added and lost
+//               a bar a month with its MRR on it ("show the MRR in all 12
+//               months", Nov 15: no axis, no grid, this month lit), the
+//               short month names, and under them the month picked (a
+//               tap): its MRR and ARR, the plans added and lost
 //   Leaderboard this month's, Sales | Techs: the rank, the initials, the
 //               name, "2 plans sold", "$1,290 ARR"
 //   Clock in    compact: TIMESHEET, today's hours, Clock In / Clock Out
@@ -72,6 +74,15 @@ export const usdShort = (cents) => {
   if (Math.abs(d) >= 1e6) return `$${+(d / 1e6).toFixed(1)}M`;
   if (Math.abs(d) >= 1000) return `$${+(d / 1000).toFixed(d % 1000 ? 1 : 0)}K`;
   return `$${Math.round(d)}`;
+};
+// a bar's MRR (Nov 15, "showing the MRR in all 12 months"): "$154", "$3.2k", "$32k", "$1.2M";
+// tight (a phone too narrow for the "$"): "154", "3.2k"
+export const mrrShort = (cents, tight = false) => {
+  if (cents === null || cents === undefined || !Number.isFinite(Number(cents))) return "-";
+  const d = Math.round(Number(cents) / 100);
+  const a = Math.abs(d);
+  const body = a >= 1e6 ? `${+(a / 1e6).toFixed(a < 1e7 ? 1 : 0)}M` : a >= 1000 ? `${+(a / 1000).toFixed(a < 9950 ? 1 : 0)}k` : String(a);
+  return `${d < 0 ? "−" : ""}${tight ? "" : "$"}${body}`;
 };
 // "0h 0m"
 export const hoursMin = (min) => { const m = Math.max(0, Math.round(Number(min) || 0)); return `${Math.floor(m / 60)}h ${m % 60}m`; };
@@ -229,12 +240,14 @@ export function monthPicked(v, key) {
   const pts = ((v && v.points) || []).filter((x) => x.value !== null && x.value !== undefined);
   return pts.find((x) => x.key === key) || pts[pts.length - 1] || null;
 }
+// a month's MRR: its ARR / 12 (an older server's points carry none)
+export const mrrOf = (x) => (!x || x.value === null || x.value === undefined ? null : Number.isFinite(x.mrr) ? x.mrr : Math.round(x.value / 12));
 const plansWord = (n) => `${Number(n || 0).toLocaleString("en-US")} ${n === 1 ? "plan" : "plans"}`;
-// the picked month's readout: its ARR at the month's end, the plans added and lost in it
+// the picked month's readout: the month, its MRR and ARR at the month's end, the plans added and lost in it
 function monthRead(x) {
   if (!x) return "";
   const when = `${MONTHS[Number(x.key.slice(5, 7)) - 1].slice(0, 3)} ${x.key.slice(0, 4)}`;
-  return html`<div class="mr-a"><span>${when}</span><b>${usd(x.value)}</b></div><div><span>Added</span><b class="${x.added ? "up" : ""}">${plansWord(x.added)}</b></div><div><span>Lost</span><b class="${x.lost ? "down" : ""}">${plansWord(x.lost)}</b></div>`;
+  return html`<p class="mr-h">${when}</p><div class="mr-a"><span>MRR</span><b>${usd(mrrOf(x))}</b></div><div><span>ARR</span><b>${usd(x.value)}</b></div><div><span>Added</span><b class="${x.added ? "up" : ""}">${plansWord(x.added)}</b></div><div><span>Lost</span><b class="${x.lost ? "down" : ""}">${plansWord(x.lost)}</b></div>`;
 }
 
 function moneyTop(s, ctx) {
@@ -274,9 +287,10 @@ function moneyTop(s, ctx) {
     </div>
     ${!loading && view === "revenue" && v.missing ? html`<p class="hm-note">${MISSING[v.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
     ${loading ? html`<div class="hc hf" aria-hidden="true"></div>`
-      : drawn && months ? html`<div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`ARR at the end of each month, ${v.label || ""}. Arrow keys pick a month.`}"></div>
+      : drawn && months ? html`<p class="hm-bcap" aria-hidden="true">MRR by month<span>ARR ÷ 12</span></p>
+        <div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`MRR at the end of each month (ARR divided by 12), ${v.label || ""}. Arrow keys pick a month.`}"></div>
         <div class="hm-mread" id="hm-mread" aria-live="polite">${monthRead(monthPicked(v, ui.arrMonth))}</div>
-        ${srTable(`ARR at the end of each month, ${v.label || ""}`, ["Month", "ARR", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(x.value), String(x.added), String(x.lost)]))}`
+        ${srTable(`MRR and ARR at the end of each month, ${v.label || ""}`, ["Month", "MRR", "ARR", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(mrrOf(x)), usd(x.value), String(x.added), String(x.lost)]))}`
       : drawn ? html`<div class="hc hf" data-chart="${view}" tabindex="0" role="group" aria-label="${`${what} by ${grainWord}, ${v.label || ""}. Arrow keys read each point.`}"></div>
         ${srTable(`${what} by ${grainWord}, ${v.label || ""}`, [v.grain === "week" ? "Week of" : v.grain === "month" ? "Month" : "Day", what], ser.keys.map((k, i) => [k, i]).filter(([, i]) => ser.values[i] !== null).map(([k, i]) => [pointWords(v, k), usd(ser.values[i])]))}`
       : html`<p class="hm-note hm-nochart">${view === "arr" ? (v.total === null ? "ARR shows here once there are plans." : "No recurring plans in this period.") : v.missing ? "" : v.total === null ? "Nothing counted for this period yet." : "Nothing collected in this period."}</p>`}
@@ -696,11 +710,13 @@ export default {
     const mv = m && (s.ui.money.view === "arr" ? m.arr_view : m.revenue_view);
     const el = root.querySelector(`[data-chart="${s.ui.money.view}"]`);
     if (mv && el && !mv.loading && s.ui.money.view === "arr" && mv.grain === "month") {
-      // ARR by month: a tap picks a month, its readout under the bars
+      // ARR by month: each bar its month's MRR; a tap picks a month, its readout under the bars
       const pts = mv.points || [];
       const rd = root.querySelector("#hm-mread");
+      const last = pts.filter((x) => x.value !== null && x.value !== undefined).pop();
       off.push(monthBars(el, {
-        keys: pts.map((x) => x.key), labels: pts.map((x) => x.label), values: pts.map((x) => x.value), axis: axisShort,
+        keys: pts.map((x) => x.key), labels: pts.map((x) => x.label), values: pts.map(mrrOf), value: mrrShort,
+        now: String(mv.through || mv.to || "").slice(0, 7) || (last && last.key),
         start: (monthPicked(mv, s.ui.money.arrMonth) || {}).key,
         onRead: (i) => { s.ui.money.arrMonth = pts[i].key; if (rd) render(rd, monthRead(pts[i])); },
       }).destroy);
