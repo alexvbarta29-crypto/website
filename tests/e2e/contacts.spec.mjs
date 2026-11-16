@@ -125,8 +125,8 @@ test("contacts: the first slice's customer list for the office, not for a tech",
 // value and what is owed, the filter sheet's sort, Select with a bulk tag, a row's long press; the
 // contact's Service tab (its tiles), the Mute row, the Files card and "Open their portal". Both themes.
 async function themed(page, f, theme) {
-  if (theme !== "light") return f;
-  await f.evaluate(() => localStorage.setItem("crm-theme", "light"));
+  if (theme !== "dark") return f;   // (light is the default: the owner, Nov 2026)
+  await f.evaluate(() => localStorage.setItem("crm-theme", "dark"));
   await page.reload();
   const g = await crmFrame(page);
   await settled(g);

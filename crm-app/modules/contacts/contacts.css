@@ -320,7 +320,7 @@ html:not([data-theme="light"]) .cc-st.blue{background:#2f6fe0}
    round pencil, white, 48 px, a soft shadow. The name 28 px bold and the green Active; the grey segmented row; white
    cards (12 px corners, a soft shadow, the plan's and the jobs' a hairline) under 14 px caps labels; 40 px round tiles;
    the red + at the foot. Dark mirrors it with the theme's own tokens. */
-.ct-phone{--rx-track:#e5e5ea;--rx-tile:#f7f7f7;--rx-grey:#666;--rx-sep:#f0f0f2;--rx-hair:#e5e5e5;--rx-note:#ebebeb;--rx-active:#64c365;--rx-bank:#54b685;--rx-chip:#d2d5da;--rx-chip-line:#9da3ae;--rx-chip-ink:#212835;--rx-sh:0 2px 8px rgba(18,18,21,.05);--rx-done:#e2fbe8;--rx-done-ink:#306339;--rx-sched:#fcf3cc;--rx-sched-ink:#87441d;--rx-pend:#3478f6;--rx-draft:#ededef;--rx-draft-ink:#6c727f;--rx-paid:#e5f6ef;--rx-paid-ink:#3e9a6c}
+.ct-phone{--rx-track:#e5e5ea;--rx-tile:#f7f7f7;--rx-grey:#666;--rx-sep:#f0f0f2;--rx-hair:#e5e5e5;--rx-note:#ebebeb;--rx-active:#248a3d;--rx-bank:#54b685;--rx-chip:#d2d5da;--rx-chip-line:#9da3ae;--rx-chip-ink:#212835;--rx-sh:0 2px 8px rgba(18,18,21,.05);--rx-done:#e2fbe8;--rx-done-ink:#306339;--rx-sched:#fcf3cc;--rx-sched-ink:#87441d;--rx-pend:#3478f6;--rx-draft:#ededef;--rx-draft-ink:#6c727f;--rx-paid:#e5f6ef;--rx-paid-ink:#3e9a6c}
 html:not([data-theme="light"]) .ct-phone{--rx-track:#1d1e21;--rx-tile:#26272b;--rx-grey:#a1a1a8;--rx-sep:#2a2b2f;--rx-hair:#2a2b2f;--rx-note:#232428;--rx-active:#34a853;--rx-bank:#3f9a6c;--rx-chip:#2c2c30;--rx-chip-line:#48494d;--rx-chip-ink:#f5f5f7;--rx-sh:none;--rx-done:rgba(52,199,89,.16);--rx-done-ink:#6fdc8c;--rx-sched:rgba(245,166,35,.16);--rx-sched-ink:#f5b851;--rx-pend:#2f6fe0;--rx-draft:#2c2c30;--rx-draft-ink:#a1a1a8;--rx-paid:rgba(52,199,89,.16);--rx-paid-ink:#6fdc8c}
 /* the header: the back button and the pencil, Rotor's 48 px white rounds */
 .app:has(#view>.ct-phone) .top{min-height:calc(50px + var(--top));padding-left:calc(16px + var(--left));padding-right:calc(16px + var(--right))}
@@ -462,3 +462,9 @@ html:not([data-theme="light"]) .ct-phone .ct-seg .rs-seg-b[aria-selected="true"]
 .ct-phone .ct-ir .pill.green{background:var(--rx-paid);color:var(--rx-paid-ink)}
 .ct-phone .ct-ir-a{font:700 16px/21px var(--text)}
 .ct-phone .ct-ir-w{font:400 14px/19px var(--text);color:var(--rx-grey);max-width:150px}
+/* the house picture (house.js) in the CONTACT card: a lead's and a tech's under their rows, a customer's phone card under its address */
+.ct-reach-c{padding:0 0 14px}
+.ct-reach-c .ct-house{padding:6px 13px 0 16px}
+.ct-house .rs-house{border-radius:10px}
+.ct-phone .ct-map.ct-house .rs-house{border:0}
+.pr-house{margin:10px 0 4px}

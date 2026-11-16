@@ -4,7 +4,9 @@
 // sheet: line items, options, files, lead source), the builder (pane
 // counter or square feet, services, one-time and plan options side by
 // side), the lights quote, the contact's Quotes tab, and Settings →
-// Pricing & price book, Discounts. Screens load with dynamic import(). No
+// Pricing & price book, Discounts, Estimate templates (Start from a
+// template; the automatic lights mockup is mockup.js, a sheet, not a
+// route). Screens load with dynamic import(). No
 // data, keys or customer names ever go in crm-app/ (§2.3).
 
 export default {
@@ -22,6 +24,8 @@ export default {
     { path: "/quotes/:id/lights", load: () => import("./lights.js"), title: "Lights quote", perm: "quotes:write", parent: "/quotes/:id/edit" },
     { path: "/settings/pricing", load: () => import("./settings.js"), title: "Pricing & price book", perm: "settings:owner", parent: "/settings" },
     { path: "/settings/discounts", load: () => import("./discounts.js"), title: "Discounts", perm: "quotes:read", parent: "/settings" },
+    { path: "/settings/estimate-templates", load: () => import("./templates.js"), title: "Estimate templates", perm: "settings:general", parent: "/settings" },
+    { path: "/settings/estimate-templates/:id", load: () => import("./template-edit.js"), title: "Estimate template", perm: "settings:general", parent: "/settings/estimate-templates" },
   ],
   nav: [{ where: "more", section: "sales", label: "Quotes", path: "/quotes", perm: "quotes:read", order: 30, icon: "doc" }],
   creates: [{ label: "New quote", path: "/quotes/new", perm: "quotes:write", order: 20, icon: "doc" }],
@@ -31,6 +35,8 @@ export default {
   settings: [
     { label: "Pricing & price book", path: "/settings/pricing", perm: "settings:owner", icon: "money", order: 30, owner: true },
     { label: "Discounts", path: "/settings/discounts", perm: "quotes:read", icon: "money", order: 32 },
+    // Services & pricing (system/settings.js LAYOUT names it)
+    { label: "Estimate templates", path: "/settings/estimate-templates", perm: "settings:general", icon: "doc", order: 33, section: "services" },
   ],
   styles: ["./quotes.css"],
 };

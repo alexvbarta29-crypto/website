@@ -47,7 +47,7 @@
 // /schedule/weather) after the grid is on screen. Arrow keys move the
 // chosen day on a computer (Page Up / Page Down a month).
 
-import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, actionSheet, sheetPage, listRow, listCard, toggle, formRows, formRow } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, sheetOpen, raw, render, actionSheet, sheetPage, listRow, listCard, toggle, formRows, formRow, addressAttrs } from "../../core/ui.js";
 import { dateShort, dateLong, plural, money, clock } from "../../core/format.js";
 import {
   ensureStyles, officeView, today, addDays, dow, dowShort, dayNum, dayLabel, isDate, slotText, range, visitPill, faces, names, loadUsers, team,
@@ -554,7 +554,7 @@ function dayRow(s, v, ctx) {
   const where = s.cards && s.cards.address ? v.ad || v.town || "" : v.ad || v.town || "";
   return html`<li><a class="${"wk-drow st-" + rotorStatus(v.st)[0] + (state ? " " + state : "")}" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vopen": v.id })}>
     <span class="wk-dt num" ${attrs({ title: slotText(v) })}>${v.do ? html`<b>Anytime</b><small>Time not set</small>` : html`<b>${clock(v.s)}</b><small>to ${clock(v.e)}</small>`}</span>
-    <span class="who"><span class="nm">${b.title}</span>${where && b.title !== where ? html`<span class="${"sub wk-dwhere" + (s.cards && s.cards.address ? " on" : "")}">${where}</span>` : ""}${b.service ? html`<span class="sub">${b.service}</span>` : ""}<span class="sub wk-dwhen num">${v.do ? "Anytime" : `${clock(v.s)} to ${clock(v.e)}`}</span></span>
+    <span class="who"><span class="nm">${b.title}</span>${where && b.title !== where ? html`<span ${attrs({ class: "sub wk-dwhere" + (s.cards && s.cards.address ? " on" : ""), ...addressAttrs(v.ad && where === v.ad ? v.ad : "") })}>${where}</span>` : ""}${b.service ? html`<span class="sub">${b.service}</span>` : ""}<span class="sub wk-dwhen num">${v.do ? "Anytime" : `${clock(v.s)} to ${clock(v.e)}`}</span></span>
     <span class="wk-dend"><span class="wk-dtop">${v.st === "scheduled" ? warnBadge(w) : ""}${rotorTag(v.st)}</span><span class="wk-dbot">${b.price ? html`<b class="wk-amt num">${b.price}</b>` : ""}${(v.a || []).length ? faces(s.users, v.a) : html`<span class="wk-nobody">Nobody yet</span>`}</span></span>
   </a></li>`;
 }
@@ -833,7 +833,7 @@ function searchSheet(ctx) {
   const where = s.data && s.data.from ? (s.data.from === s.data.to ? dateShort(s.data.from) : `${dateShort(s.data.from)} to ${dateShort(s.data.to)}`) : "";
   const results = (q) => {
     const hits = searchVisits(visits, q);
-    return q.trim() ? (hits.length ? html`<ul class="list">${hits.map((v) => html`<li><a class="row" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vjump": v.id })}><span class="who"><span class="nm">${v.cn || "Customer"}</span><span class="sub">${[dateShort(v.d), v.do ? "anytime" : clock(v.s), v.town].filter(Boolean).join(" · ")}</span></span>${visitPill(v.st)}</a></li>`)}</ul>`
+    return q.trim() ? (hits.length ? html`<ul class="list">${hits.map((v) => html`<li><a class="row" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vjump": v.id, ...addressAttrs(v.ad || "") })}><span class="who"><span class="nm">${v.cn || "Customer"}</span><span class="sub">${[dateShort(v.d), v.do ? "anytime" : clock(v.s), v.town].filter(Boolean).join(" · ")}</span></span>${visitPill(v.st)}</a></li>`)}</ul>`
       : html`<p class="muted">No visit matches on ${where || "this schedule"}.</p>`) : html`<p class="small muted">Searching ${plural(visits.length, "visit")}${where ? `, ${where}` : ""}.</p>`;
   };
   const sh = sheet({
@@ -1118,6 +1118,8 @@ export default {
     "pointerdown [data-vopen]": (e, el, ctx) => {
       if (wide() || !canWrite(ctx) || (e.pointerType === "mouse" && e.button > 0)) return;
       if (press) clearTimeout(press.t);
+      // (a long press on the visit's address line copies the address instead: core/ui.js)
+      if (e.target && e.target.closest && e.target.closest("[data-address]")) { press = null; return; }
       const id = el.dataset.vopen;
       press = { id, x: e.clientX, y: e.clientY, fired: false };
       press.t = setTimeout(() => {

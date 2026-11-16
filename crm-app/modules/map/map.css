@@ -32,7 +32,7 @@
 .mp-big{flex:1 1 auto;min-height:56px!important;font:700 17px/1 var(--head)!important;letter-spacing:.2px}
 .mp-big svg,.mp-round svg,.mp-bar .btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .mp-round{flex:none;width:56px;height:56px;border-radius:50%;border:1px solid var(--line-2);background:var(--card);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-xs)}
-.mp-round[aria-pressed="true"]{background:var(--blue-bg);border-color:var(--blue-bg);color:var(--blue-ink)}
+.mp-round[aria-pressed="true"]{background:var(--coral-wash);border-color:var(--coral-ring);color:var(--coral-ink)}
 .mp-round svg{width:24px;height:24px}
 .mp-draw-say{margin:0 4px 8px;font:600 14px/1.35 var(--text);color:var(--ink-2)}
 .mp-tiny{margin:6px 4px 0;font-size:12px;color:var(--muted)}

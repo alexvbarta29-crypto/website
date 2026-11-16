@@ -13,7 +13,7 @@
 // back, the e2e hooks): createPage() draws it fixed over the app's header
 // and tab bar. Styles: styles/create.css, loaded once by ensureCreateStyles().
 
-import { html, raw, attrs, sheet, toast, render, toggle, dataOf } from "./ui.js";
+import { html, raw, attrs, sheet, toast, render, toggle, dataOf, addressHold } from "./ui.js";
 import { money, phone, clock, dateYear, dateShort, localDate } from "./format.js";
 import { uuid } from "./api.js";
 
@@ -115,12 +115,16 @@ export function customerCard(c, p, { clear = true } = {}) {
   const a = p ? addrOf(p) : null;
   return html`<div class="cf-card" data-field="contact_id">
     <div class="cf-row cf-who">${tile("person")}<span class="cf-t"><b>${c.name}</b>${c.phone ? html`<small>${phone(c.phone)}</small>` : ""}</span>${clear ? html`<button type="button" class="cf-clear" data-cf-clear aria-label="Pick another customer">${ic("close")}</button>` : ""}</div>
-    <button type="button" class="cf-row cf-in" data-cf-prop data-field="property_id">${tile("house")}<span class="cf-t">${a ? html`<b>${a.line1}</b>${a.line2 ? html`<small>${a.line2}</small>` : ""}` : html`<b>No address yet</b><small>Add where the work is</small>`}</span><span class="cf-ch">${ic("chevdown")}</span></button>
+    <button type="button" class="cf-row cf-in" data-cf-prop data-field="property_id" ${addressHold(a && p.address && p.address.street1 ? [a.line1, a.line2].filter(Boolean).join(", ") : "")}>${tile("house")}<span class="cf-t">${a ? html`<b>${a.line1}</b>${a.line2 ? html`<small>${a.line2}</small>` : ""}` : html`<b>No address yet</b><small>Add where the work is</small>`}</span><span class="cf-ch">${ic("chevdown")}</span></button>
   </div>`;
 }
 
-// Light Studio (the lights mockup), on lights work only.
-export const mockupChip = (show) => (show ? html`<a class="cf-chip" href="#/tools/lights" data-cf-mockup><span class="cf-chip-i">${ic("lights")}</span>Mockup</a>` : "");
+// Light Studio (the lights mockup), on lights work only. { auto: true }: a
+// button the screen handles (data-cf-mockup-auto): New Quote makes the
+// mockup itself (quotes/mockup.js) instead of opening Light Studio.
+export const mockupChip = (show, { auto = false } = {}) => (!show ? ""
+  : auto ? html`<button type="button" class="cf-chip" data-cf-mockup-auto><span class="cf-chip-i">${ic("lights")}</span>Mockup</button>`
+    : html`<a class="cf-chip" href="#/tools/lights" data-cf-mockup><span class="cf-chip-i">${ic("lights")}</span>Mockup</a>`);
 
 // A card that is one button: "Add line item" (⊕), "Add discount" (tag).
 export const addRow = (label, { icon = "plusc", data = null } = {}) =>
@@ -266,9 +270,9 @@ export async function pickCustomer(api, { title = "Customer", canAdd = true, lif
     search: async (q) => {
       if (q.length < 2) return [];
       const r = await api(`/search?q=${encodeURIComponent(q)}`, { cache: false });
-      return ((r.data && r.data.contacts) || []).map((c) => ({ value: c.id, name: c.name, sub: c.sub }));
+      return ((r.data && r.data.contacts) || []).map((c) => ({ value: c.id, name: c.name, sub: c.sub, address: c.address }));
     },
-    row: (r) => html`${ic("person")}<span class="who"><span class="nm">${r.name}</span><span class="sub">${r.sub || ""}</span></span>`,
+    row: (r) => html`${ic("person")}<span class="who"><span class="nm">${r.name}</span><span class="sub" ${addressHold(r.address)}>${r.sub || ""}</span></span>`,
     empty: "Type two letters or more of a name, phone, email or address.",
   });
   if (!got) return null;

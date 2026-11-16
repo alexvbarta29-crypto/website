@@ -138,7 +138,7 @@ html:not([data-theme="light"]) .pp-st{background:#2f6fe0}
 .pp-cnt{padding:2px 9px;border-radius:7px;background:var(--fill-2);font:600 13px/1.4 var(--text);color:var(--ink-2)}
 .pp-tot{margin:2px 0 10px;color:var(--ink-3);font-size:14px}
 .pp-cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.pp-card a{display:flex;flex-direction:column;gap:12px;padding:14px 16px 14px 18px;border-radius:16px;background:var(--card);border:1px solid var(--card-line);box-shadow:inset 4px 0 0 var(--blue),var(--sh-card);color:var(--ink);text-decoration:none}
+.pp-card a{display:flex;flex-direction:column;gap:12px;padding:14px 16px 14px 18px;border-radius:16px;background:var(--card);border:1px solid var(--card-line);box-shadow:inset 4px 0 0 var(--coral),var(--sh-card);color:var(--ink);text-decoration:none}
 .pp-top{display:flex;align-items:center;gap:8px}
 .pp-nm{flex:1;min-width:0;font:500 16.5px/1.25 var(--text);letter-spacing:-.02em;overflow-wrap:anywhere}
 .pp-card .pp-st{background:var(--blue-bg);color:var(--blue-ink)}
@@ -148,7 +148,7 @@ html:not([data-theme="light"]) .pp-st{background:#2f6fe0}
 .pp-card[draggable="true"]{cursor:grab}
 @media (min-width:900px){.pp-board{margin:0;padding:2px 0 8px}}
 .pp-card{position:relative}
-.pp-move{display:block;width:100%;min-height:44px;margin-top:-4px;border:0;border-radius:0 0 var(--r-lg) var(--r-lg);background:transparent;color:var(--blue-ink);font:600 13.5px/1 var(--text);cursor:pointer}
+.pp-move{display:block;width:100%;min-height:44px;margin-top:-4px;border:0;border-radius:0 0 var(--r-lg) var(--r-lg);background:transparent;color:var(--coral-ink);font:600 13.5px/1 var(--text);cursor:pointer}
 /* Signs & flyers (signs.js, sign.js, sign-form.js): QR codes on yard signs,
    door hangers and flyers, what each brought in. */
 .sg-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0 4px}

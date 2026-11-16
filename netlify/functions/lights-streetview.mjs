@@ -16,6 +16,7 @@
 // Static API enabled. See docs/LIGHT-STUDIO.md.
 
 import { signedIn } from "../lib/lights-auth.mjs";
+import { bearing, meters, offset, aimAt } from "../lib/lights-streetview-core.mjs";
 
 export const config = { path: "/lights/streetview" };
 
@@ -26,29 +27,9 @@ const headers = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex
 const json = (body, status = 200) => Response.json(body, { status, headers });
 const fail = (error, status) => json({ ok: false, error }, status);
 
-const toRad = (d) => (d * Math.PI) / 180;
-const toDeg = (r) => (r * 180) / Math.PI;
-// Compass bearing from a to b, 0–360.
-export function bearing(a, b) {
-  const p1 = toRad(a.lat), p2 = toRad(b.lat), dl = toRad(b.lng - a.lng);
-  const y = Math.sin(dl) * Math.cos(p2);
-  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-// Meters between a and b.
-export function meters(a, b) {
-  const R = 6371000, p1 = toRad(a.lat), p2 = toRad(b.lat);
-  const h = Math.sin(toRad(b.lat - a.lat) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(toRad(b.lng - a.lng) / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-// The point d meters from a along compass bearing b.
-export function offset(a, b, d) {
-  const R = 6371000, br = toRad(b), p1 = toRad(a.lat), l1 = toRad(a.lng), q = d / R;
-  const p2 = Math.asin(Math.sin(p1) * Math.cos(q) + Math.cos(p1) * Math.sin(q) * Math.cos(br));
-  const l2 = l1 + Math.atan2(Math.sin(br) * Math.sin(q) * Math.cos(p1), Math.cos(q) - Math.sin(p1) * Math.sin(p2));
-  return { lat: toDeg(p2), lng: toDeg(l2) };
-}
+// The geometry lives in lib/lights-streetview-core.mjs (the CRM's automatic
+// lights mockup aims its camera the same way); re-exported for the tests.
+export { bearing, meters, offset };
 
 async function getJson(url) {
   const res = await fetch(url);
@@ -79,7 +60,7 @@ async function find(address, key) {
     return json({ ok: false, error: "no_imagery", address: top.formatted_address || address, hlat: house.lat, hlng: house.lng }, 404);
   }
   const from = meta.location || house;
-  const d = meters(from, house);
+  const aim = aimAt(from, house);
   return json({
     ok: true,
     address: top.formatted_address || address,
@@ -88,11 +69,10 @@ async function find(address, key) {
     lng: from.lng,
     hlat: house.lat,
     hlng: house.lng,
-    heading: Math.round(bearing(from, house)),
-    // Closer houses need a wider, higher view to fit the roofline.
-    pitch: d < 18 ? 14 : d < 35 ? 10 : 6,
-    // Wide enough to show the whole house with room to crop.
-    fov: d < 18 ? 115 : d < 35 ? 105 : 95,
+    heading: aim.heading,
+    // Closer houses need a wider, higher view to fit the roofline, with room to crop.
+    pitch: aim.pitch,
+    fov: aim.fov,
   });
 }
 

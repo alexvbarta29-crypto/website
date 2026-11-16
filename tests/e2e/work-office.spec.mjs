@@ -542,7 +542,7 @@ for (const [device, theme] of [["iphone13", "dark"], ["iphonese", "light"], ["ip
     const { p, page, f: f0 } = await open("olive", device);
     try {
       let f = f0;
-      if (theme === "light") { await f.evaluate(() => localStorage.setItem("crm-theme", "light")); await page.reload(); f = await crmFrame(page); await settled(f); }
+      if (theme === "dark") { await f.evaluate(() => localStorage.setItem("crm-theme", "dark")); await page.reload(); f = await crmFrame(page); await settled(f); }   // (light is the default)
       // Thanksgiving's week: the holiday's name on its day
       await goTo(f, "/schedule?view=day&date=2026-11-26");
       await f.waitForSelector(".wk-fly .wk-hol");

@@ -16,13 +16,13 @@ let srv, browser;
 before(async () => { srv = await start(); await srv.seed(); browser = await launch(); });
 after(async () => { await browser?.close(); await srv?.close(); });
 
-async function open(login, device, theme = "dark") {
+async function open(login, device, theme = "light") {
   const p = await phone(browser, srv, { device, office: true });
   await signIn(p, login);
   await p.page.goto("/office");
   let f = await crmFrame(p.page);
   await settled(f);
-  if (theme !== "dark") {
+  if (theme !== "light") {   // (light is the default: the owner, Nov 2026)
     await f.evaluate((t) => localStorage.setItem("crm-theme", t), theme);
     await p.page.reload();
     f = await crmFrame(p.page);
@@ -73,7 +73,7 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.equal(await title(f), "Services & pricing");
         assert.ok(await backShown(f), "the round back");
         assert.equal(await f.$$eval("#view .set-grp ul.list", (els) => els.length), 1, "one inset card");
-        assert.deepEqual(await f.$$eval("#view .set-grp .set-row .nm", (els) => els.map((e) => e.textContent)), ["Prices & price book", "Discounts", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
+        assert.deepEqual(await f.$$eval("#view .set-grp .set-row .nm", (els) => els.map((e) => e.textContent)), ["Prices & price book", "Discounts", "Estimate templates", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
         assert.deepEqual(await screenProblems(f), [], "the group page passes the phone checks");
         await still(f);
         await shot(page, `settings-group-${device}-${theme}`);

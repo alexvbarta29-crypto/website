@@ -170,7 +170,9 @@ function billTo(s) {
   const c = s.contact;
   if (!c) return "";
   const bt = s.invoice.bill_to || {};
-  return html`${sectionLabel("Bill To")}${personCard({ name: bt.name || c.display_name || "The customer", sub: [bt.phone || (c.phone ? phone(c.phone) : ""), bt.address].filter(Boolean).join(" · "), href: "#/contacts/" + encodeURIComponent(c.id), call: c.phone ? "tel:" + c.phone : null, text: c.phone && c.has_sms ? "sms:" + c.phone : null })}`;
+  // (the address: Bill To's own, else the job's; a long press on the line copies it)
+  const addr = bt.address || (typeof c.address === "string" ? c.address : "");
+  return html`${sectionLabel("Bill To")}${personCard({ name: bt.name || c.display_name || "The customer", sub: [bt.phone || (c.phone ? phone(c.phone) : ""), addr].filter(Boolean).join(" · "), address: addr, href: "#/contacts/" + encodeURIComponent(c.id), call: c.phone ? "tel:" + c.phone : null, text: c.phone && c.has_sms ? "sms:" + c.phone : null })}`;
 }
 
 // The foot (Rotor's): the red bin (Void), Collect Payment, and when it was sent.

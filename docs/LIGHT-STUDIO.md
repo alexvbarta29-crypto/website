@@ -77,3 +77,25 @@ API restriction **Maps JavaScript API**. (The server key can't be
 website-restricted, because Google's server APIs refuse such keys.)
 Free monthly allowance: 10,000 dynamic map loads and 5,000 dynamic Street
 View loads.
+
+## From a lights quote (the CRM's automatic mockup)
+
+On a Christmas lights quote in the CRM, **Mockup** makes the mockup by
+itself: the house from Street View (the same `GOOGLE_MAPS_API_KEY` and aim
+as above, fetched by the CRM's server), Claude's vision model marking the
+rooflines, and the same C9 bulbs drawn on it (the drawing is ported to
+`crm-app/modules/quotes/bulbs.js`). **Edit in Light Studio** opens this
+tool with that photo and those lines ready to adjust: the CRM leaves them
+in the tab's sessionStorage (`bls-preload`, read once) and the page's
+`blsPreload()` (added after the build: keep it when the page is replaced)
+adds the photo, turns each line into roofline runs (bushes and trees into
+shapes), and sets the colors, bulb size and a dusk look.
+
+- **Needs** `ANTHROPIC_API_KEY` in Netlify → Environment variables (an
+  Anthropic API key, server-side only, never logged). Without it the CRM's
+  own edge finder draws the lines, or the owner draws them here.
+- **Cost:** about 2 to 4 cents of Claude per mockup, plus one Street View
+  image; a second look at the same house is free (cached). At most
+  `CRM_MOCKUP_DAILY_MAX` (default 40) Claude calls a day.
+- Only the photo goes to Claude: never the customer's name, phone or
+  address. See docs/CRM-QUOTES.md "Estimate templates and the lights mockup".

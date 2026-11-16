@@ -31,6 +31,16 @@
 // board(), boardCard() and moveSheet() (swiped columns with a stage strip),
 // filterSheet(), periodChip() and periodSheet(), stepper(), stickyCta(),
 // dragList() and emptyCard().
+//
+// And the address hold (Nov 2026, the owner: "make addresses copyable
+// whenever you hold down on them"): an element that shows an address carries
+// data-address="<the one-line address>" (addressAttrs() / addressHold(), or
+// the `address` option of contactRows, addressCard, listRow, boardCard and a
+// dataTable column). A long press on it (450 ms; a right click on a desk)
+// copies the address, buzzes lightly where the phone can, and says "Address
+// copied"; a tap still does what it did (open the property, directions).
+// copyText() is the one clipboard helper (the Clipboard API, else a hidden
+// textarea and execCommand for older iPhones).
 
 import { money as fmtMoney } from "./format.js";
 
@@ -284,7 +294,63 @@ export function toast(message, { bad = false, ms = 2600 } = {}) {
   // one at a time: a newer toast replaces the one showing (a stack covers the buttons)
   while (box.firstChild) box.removeChild(box.firstChild);
   box.appendChild(t);
-  setTimeout(() => t.remove(), ms);
+  setTimeout(() => toastOut(t), ms);
+}
+
+// ------------------------------------------------------------ copying (the address hold)
+
+// → true once the text is on the clipboard: the Clipboard API, else (older iPhones, a frame
+// without the permission) a hidden textarea and execCommand("copy").
+export async function copyText(text) {
+  const v = String(text ?? "");
+  if (!v) return false;
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(v); return true; }
+  } catch (e) { /* the fallback below */ }
+  return copyFallback(v);
+}
+function copyFallback(v) {
+  if (typeof document === "undefined" || !document.body) return false;
+  const ta = document.createElement("textarea");
+  ta.value = v;
+  ta.setAttribute("readonly", "");
+  ta.setAttribute("aria-hidden", "true");
+  // (16 px: iOS doesn't zoom; off screen, not display:none, or nothing is selected)
+  ta.style.cssText = "position:fixed;top:0;left:-9999px;opacity:0;font-size:16px";
+  const active = document.activeElement;
+  document.body.appendChild(ta);
+  let ok = false;
+  try {
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, v.length);
+    ok = document.execCommand("copy");
+  } catch (e) { ok = false; }
+  ta.remove();
+  if (active && typeof active.focus === "function") { try { active.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+  return ok;
+}
+
+// The one line an address hold copies: spaces tidied, at most 300 characters.
+const addrText = (line) => String(line ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+// { "data-address": line } for attrs(), or nothing when there is no address.
+export const addressAttrs = (line) => (addrText(line) ? { "data-address": addrText(line) } : {});
+// The same as one interpolation in a screen's own tag: html`<a ${addressHold(line)} href=...>`.
+export const addressHold = (line) => attrs(addressAttrs(line));
+
+// The address hold's answer: the clipboard, a light buzz, a toast. quiet: no toast when it fails
+// (the hold tries again when the finger lifts, see below).
+const copied = () => {
+  try { if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(12); } catch (e) { /* no buzz */ }
+  toast("Address copied");
+};
+const notCopied = () => toast("Couldn't copy it. Press and hold the text to select it.", { bad: true });
+export async function copyAddress(line, { quiet = false } = {}) {
+  const v = addrText(line);
+  if (!v) return false;
+  const ok = await copyText(v);
+  if (ok) copied(); else if (!quiet) notCopied();
+  return ok;
 }
 
 // ------------------------------------------------------------ sheets
@@ -608,13 +674,15 @@ export function statGrid(items, { label = "" } = {}) {
 // contactRows([{ icon: "call", label: "Mobile", value: "(763) 555-0100", href?: "tel:...",
 //   actions: [{ icon: "chat", label: "Text", href: "sms:..." }, { icon: "call", label: "Call", tone: "red", href: "tel:..." }] }])
 // A row's value is a link (href, or ext for a page that leaves), a button (data) or plain text.
+// address: the one line a long press on the value copies (an address row).
 export function contactRows(rows, { card = true } = {}) {
   const one = (r) => {
     const v = html`<span class="rs-cl">${r.label}</span><span class="rs-cval">${r.value}</span>${r.sub ? html`<span class="rs-csub">${r.sub}</span>` : ""}`;
-    const val = r.ext ? html`<a class="rs-cv" ${openExternal(r.ext)}>${v}</a>`
-      : r.href ? html`<a ${attrs({ class: "rs-cv", href: r.href, ...dataOf(r.data) })}>${v}</a>`
-        : r.data ? html`<button type="button" ${attrs({ class: "rs-cv", ...dataOf(r.data) })}>${v}</button>`
-          : html`<span class="rs-cv">${v}</span>`;
+    const ad = addressAttrs(r.address);
+    const val = r.ext ? html`<a class="rs-cv" ${openExternal(r.ext)} ${attrs(ad)}>${v}</a>`
+      : r.href ? html`<a ${attrs({ class: "rs-cv", href: r.href, ...dataOf(r.data), ...ad })}>${v}</a>`
+        : r.data ? html`<button type="button" ${attrs({ class: "rs-cv", ...dataOf(r.data), ...ad })}>${v}</button>`
+          : html`<span ${attrs({ class: "rs-cv", ...ad })}>${v}</span>`;
     const acts = (r.actions || []).filter(Boolean).map((x) => rnd(x.icon, x.label, { tone: x.tone ?? "grey", sm: true, href: x.href, ext: x.ext, data: x.data, popup: !!x.popup }));
     return html`<li class="rs-crow"><span class="rs-ci" aria-hidden="true">${icon(r.icon || "doc")}</span>${val}${acts.length ? html`<span class="rs-acts">${acts}</span>` : ""}</li>`;
   };
@@ -623,8 +691,9 @@ export function contactRows(rows, { card = true } = {}) {
 
 // The person card (job, visit, quote, invoice): initials, name and phone (tap: open the contact),
 // a red round call and a grey round message. call/text: a tel:/sms: link, or { href | data }.
-export function personCard({ name = "", sub = "", href = null, initials = null, call = null, text = null, actions = [] } = {}) {
-  const who = html`<span class="rs-av" aria-hidden="true">${initials || initialsOf(name)}</span><span class="rs-pw"><span class="rs-pn">${name}</span>${sub ? html`<span class="rs-ps">${sub}</span>` : ""}</span>`;
+// address: the line a long press on the second line copies (Bill To).
+export function personCard({ name = "", sub = "", href = null, initials = null, call = null, text = null, actions = [], address = null } = {}) {
+  const who = html`<span class="rs-av" aria-hidden="true">${initials || initialsOf(name)}</span><span class="rs-pw"><span class="rs-pn">${name}</span>${sub ? html`<span ${attrs({ class: "rs-ps", ...addressAttrs(address) })}>${sub}</span>` : ""}</span>`;
   const c = asLink(call);
   const t = asLink(text);
   const more = (actions || []).filter(Boolean).map((x) => rnd(x.icon, x.label, { tone: x.tone ?? "grey", sm: true, href: x.href, ext: x.ext, data: x.data }));
@@ -633,12 +702,18 @@ export function personCard({ name = "", sub = "", href = null, initials = null, 
 
 // The address card: a pin circle, street over the town line (+ gate code), a round navigate
 // (nav: a maps:/https: link that leaves, or { href | data }) and a round pencil (edit: { label, href | data }).
-export function addressCard({ line1 = "", line2 = "", href = null, nav = null, edit = null } = {}) {
-  const body = html`<span class="rs-ci" aria-hidden="true">${icon("pin")}</span><span class="rs-pw"><span class="rs-pn">${line1}</span>${line2 ? html`<span class="rs-ps">${line2}</span>` : ""}</span>`;
+// address: the line a long press copies (default line1, line2 up to a " · ": a gate code isn't copied);
+// pic: html`` (a house picture) drawn under the address inside the same card; thumb: html`` (a small
+// house picture, a link of its own) in place of the pin circle.
+export function addressCard({ line1 = "", line2 = "", href = null, nav = null, edit = null, address = undefined, pic = null, thumb = null } = {}) {
+  // (the default leaves out what follows a " · " on line2: a gate code is never copied)
+  const ad = addressAttrs(address === undefined ? [line1, String(line2 || "").split(" · ")[0]].filter(Boolean).join(", ") : address);
+  const body = html`${thumb ? "" : html`<span class="rs-ci" aria-hidden="true">${icon("pin")}</span>`}<span class="rs-pw"><span class="rs-pn">${line1}</span>${line2 ? html`<span class="rs-ps">${line2}</span>` : ""}</span>`;
   const n = asLink(nav);
   const navBtn = !n ? "" : n.href && external(n.href) ? rnd("nav", "Directions", { tone: "grey", sm: true, ext: n.href }) : rnd("nav", "Directions", { tone: "grey", sm: true, href: n.href, data: n.data });
   const e = asLink(edit);
-  return html`<div class="rs-card rs-addr">${href ? html`<a ${attrs({ class: "rs-pl", href })}>${body}</a>` : html`<span class="rs-pl">${body}</span>`}<span class="rs-acts">${navBtn}${e ? rnd("edit", e.label || "Edit the address", { tone: "grey", sm: true, href: e.href, data: e.data }) : ""}</span></div>`;
+  const row = html`${thumb || ""}${href ? html`<a ${attrs({ class: "rs-pl", href, ...ad })}>${body}</a>` : html`<span ${attrs({ class: "rs-pl", ...ad })}>${body}</span>`}<span class="rs-acts">${navBtn}${e ? rnd("edit", e.label || "Edit the address", { tone: "grey", sm: true, href: e.href, data: e.data }) : ""}</span>`;
+  return pic ? html`<div class="rs-card rs-addr-c"><div class="rs-addr">${row}</div>${pic}</div>` : html`<div class="rs-card rs-addr">${row}</div>`;
 }
 
 // Line items (job, quote, invoice, plan): each line's title with "2 × $5.00" under it and the
@@ -865,16 +940,19 @@ export const tileToggle = (on, key, all = "all") => (String(on) === String(key) 
 // detail (and a small tag) with the status pill on the right; at most ONE trailing round action
 // (call, ▷, ✓); a long press opens the row's "..." (hold: the data-* the screen's "rs-hold" listens on).
 // edge: "red" (overdue) | "amber" | "green"; initials: a grey circle before the name.
-// listRow({ title, amount?, sub?, pill?, tag?, href? | data?, action?: { icon, label, tone?, href | data }, edge?, initials?, hold? })
-export function listRow({ title = "", amount = null, sub = "", pill = null, tag = null, href = null, data = null, action = null, edge = null, initials = null, hold = null } = {}) {
+// address: the line a long press copies (the whole row; with a hold, its second line); thumb: html``
+// (a small house picture) before the title.
+// listRow({ title, amount?, sub?, pill?, tag?, href? | data?, action?: { icon, label, tone?, href | data }, edge?, initials?, hold?, address?, thumb? })
+export function listRow({ title = "", amount = null, sub = "", pill = null, tag = null, href = null, data = null, action = null, edge = null, initials = null, hold = null, address = null, thumb = null } = {}) {
   const amt = amount === null || amount === undefined || amount === "" ? "" : html`<span class="rs-lr-m num">${kitMoney(amount)}</span>`;
-  const inner = html`${initials ? html`<span class="rs-av rs-lr-av" aria-hidden="true">${initials}</span>` : ""}<span class="rs-lr-a">
+  const ad = addressAttrs(address);
+  const inner = html`${thumb || ""}${initials ? html`<span class="rs-av rs-lr-av" aria-hidden="true">${initials}</span>` : ""}<span class="rs-lr-a">
     <span class="rs-lr-1"><span class="rs-lr-t">${title}</span>${amt}</span>
-    ${sub || tag || pill ? html`<span class="rs-lr-2"><span class="rs-lr-s">${sub || ""}${tag ? html`<span class="rs-tag">${tag}</span>` : ""}</span>${pillOf(pill)}</span>` : ""}</span>`;
+    ${sub || tag || pill ? html`<span ${attrs({ class: "rs-lr-2", ...(hold ? ad : {}) })}><span class="rs-lr-s">${sub || ""}${tag ? html`<span class="rs-tag">${tag}</span>` : ""}</span>${pillOf(pill)}</span>` : ""}</span>`;
   const main = href ? html`<a ${attrs({ class: "rs-lr-main", href, ...dataOf(data) })}>${inner}</a>`
     : data ? html`<button type="button" ${attrs({ class: "rs-lr-main", ...dataOf(data) })}>${inner}</button>`
       : html`<span class="rs-lr-main">${inner}</span>`;
-  return html`<li ${attrs({ class: "rs-lrow" + (edge ? " edge-" + edge : ""), ...holdAttrs(hold) })}>${main}${action ? html`<span class="rs-acts">${roundAction(action)}</span>` : ""}</li>`;
+  return html`<li ${attrs({ class: "rs-lrow" + (edge ? " edge-" + edge : ""), ...holdAttrs(hold), ...(hold ? {} : ad) })}>${main}${action ? html`<span class="rs-acts">${roundAction(action)}</span>` : ""}</li>`;
 }
 // The card the rows sit in (or one line saying there is nothing; `empty` may also be emptyState's
 // options: { icon, title, text, action }). On a wide card (a desk, 720 px and up) the rows read as a
@@ -903,9 +981,10 @@ export function board({ name = "board", columns = [], on = null, label = "" } = 
 }
 // A board's card: the title and a pill, a grey line, a meta line (initials, a date); a Move pill
 // (move: { label?, data }) and at most one round action; edge "red" for overdue; done: struck through.
-// boardCard({ title, pill?, sub?, meta?, edge?, href? | data?, move?, action?, hold?, done? })
-export function boardCard({ title = "", pill = null, sub = "", meta = "", edge = null, href = null, data = null, move = null, action = null, hold = null, done = false } = {}) {
-  const inner = html`<span class="rs-bc-1"><span class="rs-bc-t">${title}</span>${pillOf(pill)}</span>${sub ? html`<span class="rs-bc-s">${sub}</span>` : ""}${meta ? html`<span class="rs-bc-m">${meta}</span>` : ""}`;
+// address: the line a long press on the grey line copies.
+// boardCard({ title, pill?, sub?, meta?, edge?, href? | data?, move?, action?, hold?, done?, address? })
+export function boardCard({ title = "", pill = null, sub = "", meta = "", edge = null, href = null, data = null, move = null, action = null, hold = null, done = false, address = null } = {}) {
+  const inner = html`<span class="rs-bc-1"><span class="rs-bc-t">${title}</span>${pillOf(pill)}</span>${sub ? html`<span ${attrs({ class: "rs-bc-s", ...addressAttrs(address) })}>${sub}</span>` : ""}${meta ? html`<span class="rs-bc-m">${meta}</span>` : ""}`;
   const main = href ? html`<a ${attrs({ class: "rs-bc-main", href, ...dataOf(data) })}>${inner}</a>`
     : data ? html`<button type="button" ${attrs({ class: "rs-bc-main", ...dataOf(data) })}>${inner}</button>`
       : html`<span class="rs-bc-main">${inner}</span>`;
@@ -1167,32 +1246,53 @@ export function dragList(root, onDrop = () => {}) {
 }
 
 // For every screen at once: a long press (or a right click) on [data-hold] sends "rs-hold" to it
-// and swallows the click that follows; a board's strip jumps to its column and follows a swipe.
+// and swallows the click that follows; on [data-address] (the nearer of the two wins) it copies the
+// address (copyAddress) instead; a board's strip jumps to its column and follows a swipe.
+const HOLDS = "[data-hold], [data-address]";
+export const HOLD_MS = 550;
+export const ADDRESS_HOLD_MS = 450;
+// What a long press on `el` does: copy its address (→ the copy's promise), or send "rs-hold".
+export function holdFire(el, { quiet = false } = {}) {
+  if (el.hasAttribute("data-address")) return copyAddress(el.getAttribute("data-address"), { quiet });
+  el.dispatchEvent(new CustomEvent("rs-hold", { bubbles: true }));
+  return null;
+}
 if (typeof document !== "undefined") {
-  let t = null, x0 = 0, y0 = 0, firedAt = 0;
-  const HOLD_MS = 550;
+  // retry: an address whose copy the browser refused during the hold (an iPhone may want the
+  // copy inside a touch's own event): copied again when the finger lifts, else "Couldn't copy".
+  let t = null, x0 = 0, y0 = 0, firedAt = 0, retry = null;
   const fire = (el) => {
     firedAt = Date.now();
-    el.dispatchEvent(new CustomEvent("rs-hold", { bubbles: true }));
+    const p = holdFire(el, { quiet: true });
+    if (p) p.then((ok) => { if (!ok) retry = el.getAttribute("data-address"); });
+  };
+  const lifted = (e) => {
+    clearTimeout(t); t = null;
+    if (!retry) return;
+    const v = retry;
+    retry = null;
+    if (e.type !== "pointercancel" && copyFallback(String(v))) copied(); else notCopied();
   };
   document.addEventListener("pointerdown", (e) => {
-    const el = e.target && e.target.closest ? e.target.closest("[data-hold]") : null;
-    clearTimeout(t); t = null;
+    const el = e.target && e.target.closest ? e.target.closest(HOLDS) : null;
+    clearTimeout(t); t = null; retry = null;
     // (a press on the row's own round button or pill is that button's)
     if (!el || e.button > 0 || e.target.closest(".rnd, .rs-pb, .rs-drag")) return;
     x0 = e.clientX; y0 = e.clientY;
-    t = setTimeout(() => { t = null; fire(el); }, HOLD_MS);
+    t = setTimeout(() => { t = null; fire(el); }, el.hasAttribute("data-address") ? ADDRESS_HOLD_MS : HOLD_MS);
   }, true);
   document.addEventListener("pointermove", (e) => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) { clearTimeout(t); t = null; } }, true);
-  for (const ev of ["pointerup", "pointercancel"]) document.addEventListener(ev, () => { clearTimeout(t); t = null; }, true);
+  for (const ev of ["pointerup", "pointercancel", "touchend"]) document.addEventListener(ev, lifted, true);
   document.addEventListener("contextmenu", (e) => {
-    const el = e.target && e.target.closest ? e.target.closest("[data-hold]") : null;
+    const el = e.target && e.target.closest ? e.target.closest(HOLDS) : null;
     if (!el) return;
     e.preventDefault();
+    // (a phone's own long-press menu comes at about the time ours does: one copy, one sheet)
+    clearTimeout(t); t = null;
     if (Date.now() - firedAt > 800) fire(el);
   }, true);
   document.addEventListener("click", (e) => {
-    if (firedAt && Date.now() - firedAt < 700 && e.target && e.target.closest && e.target.closest("[data-hold]")) { e.preventDefault(); e.stopPropagation(); firedAt = 0; }
+    if (firedAt && Date.now() - firedAt < 700 && e.target && e.target.closest && e.target.closest(HOLDS)) { e.preventDefault(); e.stopPropagation(); firedAt = 0; }
     const j = e.target && e.target.closest ? e.target.closest("[data-board-jump]") : null;
     if (j) { const b = j.closest(".rs-board"); if (b) boardJump(b, j.dataset.key); }
   }, true);
@@ -1220,15 +1320,15 @@ if (typeof document !== "undefined") {
 //   dataTable({ columns, rows, label, empty, loading })   a table in one bordered card: small grey caps
 //       headers over 52 px rows on a wide card (a desk), two-line rows on a phone or in a narrow column
 //       (line 1 the title and the $, line 2 the other cells joined by a dot, the pill on the right).
-//       columns: [{ key, label, kind: "title" | "text" | "date" | "status" | "money" | "num", width? }]
-//       (the first column is the title unless said); rows: [{ cells: { key: value }, href | data, action?,
-//       edge?, hold? }] (action: one round action, or up to 3 in an array; { wide: true } on one = a wide table only); a value is text, a number of cents (money), a word (status: its pill), html, or
+//       columns: [{ key, label, kind: "title" | "text" | "date" | "status" | "money" | "num", width?, address? }]
+//       (the first column is the title unless said; address: a long press on the cell copies the row's
+//       address); rows: [{ cells: { key: value }, href | data, action?, edge?, hold?, address? }] (action: one round action, or up to 3 in an array; { wide: true } on one = a wide table only); a value is text, a number of cents (money), a word (status: its pill), html, or
 //       for the title { text, sub }. empty: a line, or emptyState's options. loading: n skeleton rows.
 //   skeletonRows(n, { columns?, card = true, busy = true, label })   grey bars where the rows will be:
 //       a table's columns when given, else two-line rows.
 const KIND_W = { title: "minmax(160px,1.6fr)", text: "minmax(0,1fr)", date: "minmax(96px,.8fr)", status: "minmax(110px,.7fr)", money: "minmax(96px,.7fr)", num: "minmax(64px,.5fr)" };
 const KINDS = new Set(Object.keys(KIND_W));
-const colsOf = (columns) => (columns || []).filter(Boolean).map((c, i) => ({ key: c.key ?? String(i), label: c.label || "", kind: KINDS.has(c.kind) ? c.kind : i === 0 ? "title" : "text", width: typeof c.width === "string" && /^[\w.%(), -]+$/.test(c.width) ? c.width : null }));
+const colsOf = (columns) => (columns || []).filter(Boolean).map((c, i) => ({ key: c.key ?? String(i), label: c.label || "", kind: KINDS.has(c.kind) ? c.kind : i === 0 ? "title" : "text", width: typeof c.width === "string" && /^[\w.%(), -]+$/.test(c.width) ? c.width : null, address: !!c.address }));
 const gridOf = (cols) => cols.map((c) => c.width || KIND_W[c.kind]).join(" ");
 const tdClass = (c, none = false) => "rs-td c-" + c.kind + (c.kind === "money" || c.kind === "num" ? " num" : "") + (none ? " none" : "");
 
@@ -1258,7 +1358,8 @@ export function dataTable({ columns = [], rows = [], label = "", empty = "Nothin
   if (!list.length) return html`<div ${attrs(box)}>${head}${empty && typeof empty === "object" && !isHtml(empty) ? emptyState(empty) : html`<p class="rs-empty rs-tempty">${empty}</p>`}</div>`;
   const row = (r) => {
     const vals = r.cells || {};
-    const cells = cols.map((c) => { const v = vals[c.key]; return html`<span class="${tdClass(c, v === null || v === undefined || v === "")}">${tableCell(c, v)}</span>`; });
+    // (a column marked `address`: a long press on its cell copies the row's `address`, else the cell's text)
+    const cells = cols.map((c) => { const v = vals[c.key]; return html`<span ${attrs({ class: tdClass(c, v === null || v === undefined || v === ""), ...(c.address ? addressAttrs(r.address || (typeof v === "string" ? v : "")) : {}) })}>${tableCell(c, v)}</span>`; });
     const main = r.href ? html`<a ${attrs({ class: "rs-tmain", href: r.href, ...dataOf(r.data) })}>${cells}</a>`
       : r.data ? html`<button type="button" ${attrs({ class: "rs-tmain", ...dataOf(r.data) })}>${cells}</button>`
         : html`<span class="rs-tmain">${cells}</span>`;
@@ -1283,3 +1384,194 @@ export function skeletonRows(n = 5, { columns = null, card = true, busy = true, 
   return box("rs-skel", html`<ul class="rs-sklist" aria-hidden="true">${rows}</ul>`);
 }
 
+
+// ------------------------------------------------------------ motion (Nov 2026, the owner: "a little more premium animations")
+//
+// Small, quick and only on something a person did: the next screen slides in a little from the
+// right as it fades in (going back, the screen you leave slides away to the right over the one
+// you return to), a tab crossfades, the cards and rows of a screen that just arrived rise in one
+// after another, a segmented control's pill slides to the tapped segment (and what it shows
+// crossfades), a number counts up once. Sheets, toasts, the + and the press of a button are CSS
+// (crm.css "motion"). Transform and opacity only (on the compositor, no layout shift); nothing on a
+// refresh, a poll or a rerender. Under prefers-reduced-motion (or without element.animate, or on a
+// hidden page) every helper here is a no-op that leaves the page exactly as drawn.
+//   motionOk()                  may we move things now?
+//   screenGo(el, kind)          the router, as a new screen starts in #view or #pane (its skeleton):
+//                               kind "push" | "pop" | "tab" | "fade"
+//   screenOut(el)               the router, going back: the screen being left slides out (a ghost)
+//   screenPainted(el)           the router, after each paint: the first one after screenGo rises in
+//   screenStill(el)             the router, a refresh: nothing moves
+//   riseIn(root, { max })       the cards and rows in sight fade and rise, 28 ms apart
+//   countUp(el, value, { format, ms, key })   the number counts up to value once (per key, per page)
+export const EASE_OUT = "cubic-bezier(.22,1,.36,1)";
+const MO_MS = { push: 280, pop: 260, tab: 180, fade: 220 };
+// (an element that is position:fixed inside a screen would move with a transformed parent: those get a fade only)
+const MO_FIXED = ".rs-cta,.ct-bulk,.ct-fab,.vb-bar,.ck-pill,.cf-page,.wk-side,.wk-undo,[data-fixed]";
+const MO_ITEMS = ".rs-card,.card,.rs-lrow,.rs-trow:not(.rs-skrow),.rs-tile,.list>li,.cc,.lc,.c-row";
+
+export function motionOk() {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  try { if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false; } catch (e) { return false; }
+  if (typeof Element === "undefined" || typeof Element.prototype.animate !== "function") return false;
+  return document.visibilityState !== "hidden";
+}
+const moNow = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+const holdsFixed = (el) => { try { return el.matches(MO_FIXED) || !!el.querySelector(MO_FIXED); } catch (e) { return true; } };
+function moFrames(kind, fixed) {
+  const wide = typeof innerWidth === "number" && innerWidth >= 1000;
+  const from = kind === "push" ? `translateX(${wide ? 12 : 24}px)` : kind === "pop" ? `translateX(${wide ? -8 : -16}px)` : kind === "fade" ? "translateY(6px)" : null;
+  return fixed || !from ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: from }, { opacity: 1, transform: "none" }];
+}
+function moChildren(el, kind, elapsed = 0) {
+  const ms = MO_MS[kind] || 220;
+  for (const c of el.children) {
+    try { c.animate(moFrames(kind, holdsFixed(c)), { duration: ms, delay: -elapsed, easing: kind === "tab" ? "ease-out" : EASE_OUT, fill: "backwards" }); } catch (e) { /* old browser: drawn as is */ }
+  }
+}
+
+export function screenGo(el, kind = "push") {
+  if (!el) return;
+  if (!motionOk()) { el.__mo = null; return; }
+  el.__mo = { t0: moNow(), kind: MO_MS[kind] ? kind : "push", first: true };
+  moChildren(el, el.__mo.kind);
+}
+export function screenStill(el) { if (el) el.__mo = null; }
+export function screenPainted(el) {
+  const m = el && el.__mo;
+  if (!m) return;
+  if (!motionOk()) { el.__mo = null; return; }
+  const elapsed = moNow() - m.t0;
+  const ms = MO_MS[m.kind];
+  // (the content came while the screen was still sliding in: it carries on from where the skeleton was)
+  if (elapsed < ms) moChildren(el, m.kind, elapsed);
+  if (m.first) riseIn(el);
+  m.first = false;
+  if (elapsed >= ms) el.__mo = null;
+}
+
+// The ghost of the screen you leave going back: its own nodes (already torn down), lifted out
+// of #view into a copy of the view's box, slid away to the right and faded, then removed.
+let ghost = null;
+export function screenOut(el) {
+  if (ghost) { ghost.remove(); ghost = null; }
+  if (!el || !el.firstElementChild || !motionOk() || (typeof innerWidth === "number" && innerWidth >= 1000)) return;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const top = el.scrollTop;
+  const g = document.createElement("div");
+  g.className = el.className + " mo-ghost";
+  g.setAttribute("aria-hidden", "true");
+  g.inert = true;
+  while (el.firstChild) g.appendChild(el.firstChild);
+  for (const x of g.querySelectorAll("[id]")) x.removeAttribute("id");
+  for (const x of g.querySelectorAll("[aria-busy]")) x.removeAttribute("aria-busy");
+  Object.assign(g.style, { top: r.top + "px", left: r.left + "px", width: r.width + "px", height: r.height + "px" });
+  (el.parentNode || document.body).appendChild(g);
+  g.scrollTop = top;
+  ghost = g;
+  let a = null;
+  try { a = g.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(48px)" }], { duration: 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); } catch (e) { a = null; }
+  const done = () => { g.remove(); if (ghost === g) ghost = null; };
+  if (a) a.onfinish = done;
+  setTimeout(done, 400);
+}
+
+export function riseIn(root, { max = 12 } = {}) {
+  if (!root || !root.querySelectorAll || !motionOk()) return 0;
+  const vh = typeof innerHeight === "number" ? innerHeight : 800;
+  const all = [...root.querySelectorAll(MO_ITEMS)];
+  // the innermost: a list's rows rise, not the card around them; a card of fields rises as one
+  const leaves = all.filter((x) => !x.querySelector(MO_ITEMS));
+  let n = 0;
+  for (const x of leaves) {
+    if (n >= max) break;
+    const r = x.getBoundingClientRect();
+    if (!r.height) continue;
+    if (r.top > vh) break;
+    if (r.bottom < 0) continue;
+    try { x.animate(holdsFixed(x) ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 240, delay: 40 + n * 28, easing: EASE_OUT, fill: "backwards" }); } catch (e) { return n; }
+    n++;
+  }
+  return n;
+}
+
+// countUp(el, 12480, { format: (n) => money(Math.round(n)), key: "home-arr" }): the number climbs
+// from 0 to value in ~650 ms, once per key on this page (a repaint, a poll: the final number at
+// once). Its box keeps the final number's width while it counts (no layout shift).
+const counted = new Set();
+export function countUp(el, value, { format = (n) => String(Math.round(n)), ms = 650, key = null } = {}) {
+  if (!el) return;
+  const end = Number(value) || 0;
+  const k = key || (el.dataset && el.dataset.countKey) || el.id || null;
+  const fin = () => { el.textContent = format(end); };
+  fin();
+  if (!motionOk() || !end || (k && counted.has(k))) { if (k) counted.add(k); return; }
+  if (k) counted.add(k);
+  const w = el.getBoundingClientRect().width;
+  const inline = typeof getComputedStyle === "function" && getComputedStyle(el).display === "inline";
+  const was = { minWidth: el.style.minWidth, display: el.style.display };
+  if (inline) el.style.display = "inline-block";
+  if (w) el.style.minWidth = w + "px";
+  el.classList.add("mo-count");
+  const t0 = moNow();
+  const step = () => {
+    const p = Math.min(1, (moNow() - t0) / ms);
+    if (!el.isConnected) return;
+    if (p >= 1) { fin(); el.style.minWidth = was.minWidth; el.style.display = was.display; el.classList.remove("mo-count"); return; }
+    el.textContent = format(end * (1 - Math.pow(1 - p, 3)));
+    requestAnimationFrame(step);
+  };
+  el.textContent = format(0);
+  requestAnimationFrame(step);
+}
+export const _countedReset = () => counted.clear();
+
+// A toast leaving: it slides down and fades (crm.css .toast.out), then goes.
+export function toastOut(t) {
+  if (!t || !t.isConnected) return;
+  if (!motionOk()) { t.remove(); return; }
+  t.classList.add("out");
+  setTimeout(() => t.remove(), 200);
+}
+
+// The segmented control's pill slides from the segment that was on to the tapped one, and what
+// it shows (the screen draws it again, or a sheet page shows its pane) crossfades. On the click,
+// before the screen's own handler draws; the new tab is looked for over the next frames (a tab
+// that is a link waits for its route).
+function segTap(e) {
+  const b = e.target && e.target.closest ? e.target.closest(".rs-seg-b[data-seg]") : null;
+  if (!b || !motionOk()) return;
+  const track = b.closest(".rs-seg");
+  const was = track && track.querySelector('.rs-seg-b[aria-selected="true"]');
+  if (!was || was === b) return;
+  const r = was.getBoundingClientRect();
+  const from = { left: r.left, width: r.width };
+  const { seg: name, key } = b.dataset;
+  const route = !!track.closest("#subnav");
+  let tries = 0;
+  const look = () => {
+    let on = null;
+    try { on = document.querySelector(`.rs-seg-b[data-seg="${CSS.escape(name)}"][data-key="${CSS.escape(key)}"][aria-selected="true"]`); } catch (x) { return; }
+    if (!on) { if (++tries < 40) requestAnimationFrame(look); return; }
+    segSlide(on, from);
+    // (a route's own tabs: the router fades the screen itself)
+    if (!route) for (let n = on.closest(".rs-seg").nextElementSibling, i = 0; n && i < 6; n = n.nextElementSibling, i++) {
+      if (!n.hidden) { try { n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" }); } catch (x) { /* drawn as is */ } }
+    }
+  };
+  requestAnimationFrame(look);
+}
+export function segSlide(on, from) {
+  if (!on || !from || !motionOk()) return false;
+  const r = on.getBoundingClientRect();
+  const dx = from.left - r.left;
+  if (!r.width || Math.abs(dx) < 1) return false;
+  on.style.setProperty("--seg-dx", dx + "px");
+  on.style.setProperty("--seg-sw", String(from.width / r.width));
+  on.classList.remove("seg-slide");
+  void on.offsetWidth;
+  on.classList.add("seg-slide");
+  setTimeout(() => on.classList.remove("seg-slide"), 400);
+  return true;
+}
+if (typeof document !== "undefined" && typeof document.addEventListener === "function") document.addEventListener("click", segTap, true);

@@ -1,25 +1,28 @@
 /* Home (system/home.js). Nov 15, the owner with Flyra's phone app beside
-   it: "Make the home page look like Flyra". The top has no card: in the
-   dark a soft blue-teal glow behind it fading to the canvas, in the light a
-   faint blue-grey wash over white-grey; "Good evening" small and grey, the
-   first name big and bold; Revenue | ARR in a pill and the period on the
-   right; the period's name in small caps, the big number, AVG and PEAK
-   (ARR: change and MRR) on the right; one thin light-blue line across the
-   width, the values at the left on faint lines, a dotted baseline,
+   it: "Make the home page look like Flyra"; Nov 16: "make it my business
+   colors, not the blue". The top has no card: in the dark a dark grey
+   with a faint red tint fading to the near-black canvas, in the light
+   white to a very light grey; "Good evening" small and grey, the first
+   name big and bold; Revenue | ARR in a pill and the period on the right;
+   the period's name in small caps, the big number, AVG and PEAK (ARR: In
+   12 months and the change, or the change and this month) on the right;
+   one thin line in Barta's logo red (--coral, #fb4d3d) across the width,
+   ARR's bars in it too (small red text in --coral-ink, readable on both
+   canvases), the values at the left on faint lines, a dotted baseline,
    "Updated 5:16 PM" under it. Then Flyra's calm cards: a 20 px radius, a
    hairline border in the dark, white on the light canvas. Home's own
    tokens (--hm-*) for both themes; everything else is crm.css's. 44 px
    targets on a phone; room at the bottom for the floating tab bar. */
 
 body.crm{
-  --hm-glow:linear-gradient(180deg,#e8eff2 0%,#f1f5f6 280px,var(--mist) 620px);--hm-top:#e8eff2;
-  --hm-line:#0f7fc0;--hm-wash-a:rgba(15,127,192,.16);--hm-wash-b:rgba(15,127,192,0);--hm-grid:rgba(18,18,21,.07);--hm-base:rgba(18,18,21,.3);
+  --hm-glow:linear-gradient(180deg,#fff 0%,#fbfbfc 280px,var(--mist) 620px);--hm-top:#fff;
+  --hm-line:var(--coral);--hm-accent:var(--coral-ink);--hm-grid:rgba(18,18,21,.07);--hm-base:rgba(18,18,21,.3);
   --hm-pill:rgba(255,255,255,.7);--hm-pill-line:rgba(18,18,21,.08);--hm-card:#fff;--hm-card-line:rgba(18,18,21,.06);
 }
 html:not([data-theme="light"]) body.crm:not(.page){
-  --hm-glow:radial-gradient(120% 60% at 80% 0%,rgba(64,108,128,.34) 0%,rgba(64,108,128,0) 72%),linear-gradient(180deg,#1b2a31 0%,#17232a 280px,#131a1e 560px,#111214 860px);--hm-top:#1b2a31;
-  --hm-line:#5ac0ee;--hm-wash-a:rgba(90,192,238,.16);--hm-wash-b:rgba(90,192,238,0);--hm-grid:rgba(255,255,255,.07);--hm-base:rgba(255,255,255,.3);
-  --hm-pill:rgba(20,28,32,.55);--hm-pill-line:rgba(255,255,255,.1);--hm-card:#18191c;--hm-card-line:rgba(255,255,255,.08);
+  --hm-glow:linear-gradient(180deg,#221d1d 0%,#1c1a1a 280px,#151415 560px,#111214 860px);--hm-top:#221d1d;
+  --hm-line:var(--coral);--hm-accent:var(--coral-ink);--hm-grid:rgba(255,255,255,.07);--hm-base:rgba(255,255,255,.3);
+  --hm-pill:rgba(30,28,28,.6);--hm-pill-line:rgba(255,255,255,.1);--hm-card:#18191c;--hm-card-line:rgba(255,255,255,.08);
 }
 
 #view:has(> .stack.hm){background:var(--hm-glow) top/100% 1000px no-repeat local,var(--mist)}
@@ -141,10 +144,10 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hb-col{fill:var(--hm-line);opacity:.12}
 .hb-v{fill:var(--ink-2);font-family:var(--text);font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .hb-v .hb-cur{font-size:80%}
-.hb-v.now{fill:var(--hm-line);font-weight:700}
+.hb-v.now{fill:var(--hm-accent);font-weight:700}
 .hb-v.on{fill:var(--ink);font-weight:700}
 .hb-m{font-size:12px;fill:var(--ink-2)}
-.hb-m.now{fill:var(--hm-line);font-weight:700}
+.hb-m.now{fill:var(--hm-accent);font-weight:700}
 .hb-m.on{fill:var(--ink);font-weight:700}
 /* ARR's two stats keep beside the big number on a phone (they go under it only when it is long) */
 .hm-money[data-view="arr"] .hm-mhead{margin-top:6px}
@@ -152,7 +155,8 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-money[data-view="arr"] .hm-stats dt{letter-spacing:.1em}
 .hm-mread{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 10px;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--hm-pill);border:1px solid var(--hm-pill-line)}
 @media (min-width:420px){.hm-mread{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.hm-mread .mr-h{grid-column:1/-1;margin:0;font:600 15px/1.2 var(--head);color:var(--ink)}
+.hm-mread .mr-h{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:0;font:600 15px/1.2 var(--head);color:var(--ink)}
+.hm-mread .mr-h small{font:500 11.5px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--hm-accent)}
 .hm-mread div{display:flex;flex-direction:column;gap:6px;min-width:0}
 .hm-mread span{font:500 11.5px/1.2 var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-mread b{font:600 16px/1.1 var(--head);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
@@ -232,32 +236,7 @@ a.hm-item:active{background:var(--fill-2)}
 .hm-task .who small.late{color:var(--red-ink)}
 .hm-task .pill{flex:none}
 
-/* ------------------------------------------------------------ Leaderboard, Inbox, Tasks, Goals (Flyra's cards) */
-.hm-c-board .hm-bar h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-board{list-style:none;margin:0;padding:0}
-.hm-board li{display:flex;align-items:center;gap:14px;min-height:68px;padding:8px 2px}
-.hm-board li+li{border-top:1px solid var(--line)}
-.hm-board .rank{flex:none;width:18px;font:500 18px/1 var(--text);text-align:center;color:var(--ink);font-variant-numeric:tabular-nums}
-.hm-board .hm-av{width:44px;height:44px;font-size:15px;font-weight:500;letter-spacing:.02em}
-.hm-c-board{padding-left:16px;padding-right:16px}
-.hm-c-board .hm-bar{margin-bottom:6px;gap:6px}
-.hm-c-board .hm-bar h3{font-size:17px;letter-spacing:-.03em}
-.hm-c-board .hm-bar .hm-seg button{padding:0 10px;font-size:15px}
-.hm-board .who{flex:1;min-width:0}
-.hm-board .who b{display:block;font:500 17px/1.25 var(--text);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-board .who small{display:block;margin-top:2px;font-size:15px;color:var(--ink-3)}
-.hm-board .val{flex:none;font:500 18px/1 var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
-.hm-board .val small{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--ink-3)}
-.hm-convs{list-style:none;margin:0;padding:0}
-.hm-conv{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0;color:inherit;text-decoration:none}
-.hm-convs li+li .hm-conv{border-top:1px solid var(--line)}
-.hm-conv .hm-av{width:44px;height:44px;font-size:15px;font-weight:500}
-.hm-conv .who{flex:1;min-width:0}
-.hm-conv .who b{display:block;font:500 17px/1.25 var(--text);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-conv .who small{display:block;font-size:15px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-conv.unread .who b{font-weight:600}
-.hm-conv .end{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:13px;color:var(--ink-3)}
-.hm-unread{width:9px;height:9px;border-radius:50%;background:var(--coral)}
+/* ------------------------------------------------------------ Tasks, Goals (Flyra's cards) */
 .hm-select{position:relative;display:inline-flex;align-items:center;color:var(--ink-3)}
 .hm-select select{appearance:none;-webkit-appearance:none;min-height:44px;padding:0 28px 0 8px;border:0;background:none;color:var(--ink-3);font:400 19px/1 var(--text);cursor:pointer}
 .hm-select svg{position:absolute;right:4px;width:18px;height:18px;pointer-events:none}
@@ -297,7 +276,6 @@ a.hm-item:active{background:var(--fill-2)}
   .hm-mbig{font-size:36px}
   .hm-stats{gap:18px}
   .hm-stats dd{font-size:17px}
-  .hm-board li{gap:12px}
 }
 
 /* ------------------------------------------------------------ a computer (900 px and up): Flyra's dashboard */
@@ -334,7 +312,6 @@ a.hm-item:active{background:var(--fill-2)}
   .hm-chip,.hm-more,.hm-tasks-h,.hm-select select,.hm-pill{min-height:40px}
   .hm-round:hover{background:var(--fill)}
   a.hm-item:hover,a.hm-task:hover{background:var(--fill-2)}
-  a.hm-conv:hover{background:var(--fill)}
   .hm-ag-head h3{font-size:22px}
   .hm-ag-month h3{font-size:27px}
   .hm-cal{margin:0}

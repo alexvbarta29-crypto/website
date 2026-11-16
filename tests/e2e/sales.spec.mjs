@@ -136,8 +136,8 @@ test("Leads: a lead's own priority (Rotor's High) is its tag and a filter", asyn
 // The Rotor guide (guide-gaps §2.6, §2.7, §2.11): Leads List | Board with Rotor's seven stages, Pipelines
 // with a card moved to any stage, Tasks Board | List; both phones, both themes.
 async function themed(page, f, theme) {
-  if (theme !== "light") return f;
-  await f.evaluate(() => localStorage.setItem("crm-theme", "light"));
+  if (theme !== "dark") return f;   // (light is the default: the owner, Nov 2026)
+  await f.evaluate(() => localStorage.setItem("crm-theme", "dark"));
   await page.reload();
   const g = await crmFrame(page);
   await settled(g);

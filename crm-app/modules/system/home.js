@@ -4,8 +4,11 @@
 // home page look like Flyra". One read (GET /home) brings the header and
 // the data of the cards that are on:
 //
-//   the top     no card: a soft blue-teal glow behind it (dark), a light
-//               wash (light); "Good evening" small and grey, the first
+//   the top     no card: a soft warm glow behind it (dark: dark grey with a
+//               faint red to the near-black canvas), white to light grey
+//               (light), Barta's red for the line, the bars and what's
+//               picked, never blue (Nov 16, the owner: "make it my
+//               business colors, not the blue"); "Good evening" small and grey, the first
 //               name big, the bell; Revenue | ARR (Revenue first) and the
 //               period (1W 1M 3M 1Y YTD: a small sheet on a phone, chips
 //               on a computer); the period's name in caps, the big number
@@ -13,30 +16,34 @@
 //               one thin line across the width with the values at the
 //               left, a faint grid and a dotted baseline; under it what a
 //               tap on the line reads out, and "Updated 5:16 PM" (or where
-//               Collected comes from). ARR is by month (Nov 15, "ARR by
-//               month on the home page"): 6M 1Y YTD All, today's ARR, its
-//               change since the period began ($ and %) and this month's,
-//               a bar a month with its MRR on it ("show the MRR in all 12
-//               months", Nov 15: no axis, no grid, this month lit), the
-//               short month names, and under them the month picked (a
-//               tap): its MRR and ARR, the plans added and lost
-//   Leaderboard this month's, Sales | Techs: the rank, the initials, the
-//               name, "2 plans sold", "$1,290 ARR"
+//               Collected comes from). ARR is by month: the next 12
+//               months first (Nov 16, "the ARR for next year per month":
+//               ARR projected at each month's end from today's plans, "In
+//               12 months" and the change to it), or the past (Nov 15:
+//               6M 1Y YTD All, its change since the period began and this
+//               month's); today's ARR the big number, a bar a month with
+//               its MRR on it ("show the MRR in all 12 months", Nov 15: no
+//               axis, no grid, this month lit), the short month names,
+//               and under them the month picked (a tap): its MRR and ARR,
+//               the plans renewing and ending in it (ahead) or added and
+//               lost (past)
 //   Clock in    compact: TIMESHEET, today's hours, Clock In / Clock Out
 //   Today       Daily | Weekly | Monthly with arrows, the visits (a color
 //               bar per tech, customer, "Job · 8:00 AM – 12:00 PM", who,
 //               the time), and TASKS WITHOUT DUE DATE (folds); Monthly is
 //               a month calendar (dots per day) and the picked day's visits
-//   Inbox, Tasks (Upcoming ▾, Add), Goals (owners add)
+//   Tasks (Upcoming ▾, Add), Goals (owners add)
 //   Edit Home   show, hide and order the cards (the money stays on top)
+// The Leaderboard and Inbox cards left Home on Nov 16 (the owner: "I don't
+// need to see the leaderboard ... I also don't need my inbox on the home
+// page"): the full Leaderboard is the Menu's, the Inbox the bar's.
 //
 // On a computer (Flyra's dashboard) two columns: the money (a card there)
-// and Today on the left, the clock, the Leaderboard, Tasks and Inbox on the
-// right, Goals across. A tech never comes here (today.js keeps their own
+// and Today on the left, the clock and Tasks on the right, Goals across. A tech never comes here (today.js keeps their own
 // day). Creating is the shell's New / + button.
 
 import { html, icon, attrs, toast, sheet, delegate, render } from "../../core/ui.js";
-import { dateLong, dateShort, plural, dateTime, initials, clock, time as fmtTime, ago, localDate } from "../../core/format.js";
+import { dateLong, dateShort, plural, dateTime, initials, clock, time as fmtTime, localDate } from "../../core/format.js";
 import { uuid } from "../../core/api.js";
 import * as router from "../../core/router.js";
 import { flyraLine, monthBars, srTable } from "./home-charts.js";
@@ -125,10 +132,10 @@ const open = (ctx, path) => {
 
 // ------------------------------------------------------------ the cards' names (Edit Home)
 
-const CARD_NAMES = { clock: "Clock in", money: "Revenue and ARR", leaderboard: "Leaderboard", agenda: "Today", inbox: "Inbox", tasks: "Tasks", goals: "Goals" };
-const CARD_NOTES = { clock: "Today's hours and the clock", money: "Always at the top of Home", leaderboard: "Plans sold and jobs done this month", agenda: "Visits and tasks without a due date", inbox: "The latest conversations", tasks: "Upcoming and overdue tasks", goals: "Monthly revenue and jobs goals" };
+const CARD_NAMES = { clock: "Clock in", money: "Revenue and ARR", agenda: "Today", tasks: "Tasks", goals: "Goals" };
+const CARD_NOTES = { clock: "Today's hours and the clock", money: "Always at the top of Home", agenda: "Visits and tasks without a due date", tasks: "Upcoming and overdue tasks", goals: "Monthly revenue and jobs goals" };
 // a computer's two columns (Flyra's dashboard): the money and Today on the left, the short cards on the right, Goals across
-const COLUMN = { money: "a", agenda: "a", clock: "b", leaderboard: "b", tasks: "b", inbox: "b", goals: "w" };
+const COLUMN = { money: "a", agenda: "a", clock: "b", tasks: "b", goals: "w" };
 
 // ------------------------------------------------------------ Clock in (compact)
 
@@ -178,7 +185,7 @@ const MISSING = {
   "no-key": "Rotor's numbers show here once the office data key is set in Netlify (OFFICE_DATA_KEY).",
   "bad-key": "Rotor's numbers can't be opened with this site's office data key. Re-seal the dashboard snapshot (docs/DASHBOARD.md).",
 };
-// a segmented switch (Revenue | ARR, Daily | Weekly | Monthly, Sales | Techs)
+// a segmented switch (Revenue | ARR, Daily | Weekly | Monthly)
 const seg = (name, items, current, label, cls = "") => html`<div class="${"hm-seg" + (cls ? " " + cls : "")}" role="group" aria-label="${label}">${items.map(([k, l]) => html`<button type="button" class="${k === current ? "on" : ""}" ${attrs({ "data-hm": name, "data-v": k, "aria-pressed": k === current ? "true" : "false" })}>${l}</button>`)}</div>`;
 // where Collected comes from (ARR is always the CRM's own)
 export function moneyNote(m) {
@@ -194,8 +201,8 @@ export function lineSeries(v) {
 }
 // Flyra's period menu: 1W 1M 3M 1Y, and YTD (Revenue)
 export const RANGES = [["1w", "1W", "This week"], ["1m", "1M", "This month"], ["3m", "3M", "The last 3 months"], ["1y", "1Y", "The last 12 months"], ["ytd", "YTD", "This year"]];
-// ARR by month (the owner's Nov 15 ask): 6M, 1Y (first), YTD and All
-export const ARR_RANGES = [["6m", "6M", "The last 6 months"], ["1y", "1Y", "The last 12 months"], ["ytd", "YTD", "This year"], ["all", "All", "Since the first plan"]];
+// ARR by month: the next 12 months first (the owner's Nov 16 ask), then the past (Nov 15): 6M, a year, YTD and All
+export const ARR_RANGES = [["next12", "Next year", "The next 12 months"], ["6m", "Past 6M", "The past 6 months"], ["1y", "Past year", "The past 12 months"], ["ytd", "YTD", "This year so far"], ["all", "All", "Since the first plan"]];
 const rangesOf = (view) => (view === "arr" ? ARR_RANGES : RANGES);
 // the range on screen: each view keeps its own
 const rangeKey = (view) => (view === "arr" ? "arrRange" : "range");
@@ -215,7 +222,16 @@ const toneOf = (c) => (c > 0 ? "up" : c < 0 ? "down" : "");
 // ARR's change since the period began ($ and %) and this month's change (by month, Nov 15),
 // or its change and MRR (an older per-day answer)
 export function sideStats(view, v) {
-  if (!v || v.loading) return [["…", "…"], ["…", "…"]].map(([k, val], i) => ({ key: i ? "b" : "a", label: view === "arr" ? (i ? "This month" : "Change") : i ? "Peak" : "Avg", value: val }));
+  if (!v || v.loading) return [["…", "…"], ["…", "…"]].map(([k, val], i) => ({ key: i ? "b" : "a", label: view === "arr" ? (v && v.ahead ? (i ? "Change" : "In 12 months") : i ? "This month" : "Change") : i ? "Peak" : "Avg", value: val }));
+  // ARR ahead (Nov 16): where it ends up in 12 months, and the change to it ($ and %)
+  if (view === "arr" && v.ahead) {
+    const none = v.total === null;
+    const last = v.points && v.points.length ? v.points[v.points.length - 1] : null;
+    return [
+      { key: "a", label: "In 12 months", value: none ? "-" : usd(v.end), title: none || !last ? "" : `ARR at the end of ${pointWords(v, last.key)}` },
+      { key: "b", label: "Change", value: none ? "-" : changeShort(v), sub: none ? "" : pctText(v), tone: toneOf(v.change), title: none ? "" : `${changeText(v)} by the end of ${last ? pointWords(v, last.key) : "the year"}` },
+    ];
+  }
   if (view === "arr" && v.month_change !== undefined) {
     const none = v.total === null;
     const since = v.points && v.points.length ? `since the start of ${pointWords(v, v.points[0].key)}` : "";
@@ -235,18 +251,22 @@ const periodWords = (v) => (v && v.label) || "";
 // the axis: Flyra's plain numbers ("250", "1.5K")
 export const axisShort = (cents) => usdShort(cents).replace("$", "");
 
-// ARR by month: the month picked on the bars (this month to start with)
+// ARR by month: the month picked on the bars (this month to start with: the last bar of the past, the first ahead)
 export function monthPicked(v, key) {
   const pts = ((v && v.points) || []).filter((x) => x.value !== null && x.value !== undefined);
-  return pts.find((x) => x.key === key) || pts[pts.length - 1] || null;
+  return pts.find((x) => x.key === key) || (v && v.ahead ? pts[0] : pts[pts.length - 1]) || null;
 }
 // a month's MRR: its ARR / 12 (an older server's points carry none)
 export const mrrOf = (x) => (!x || x.value === null || x.value === undefined ? null : Number.isFinite(x.mrr) ? x.mrr : Math.round(x.value / 12));
 const plansWord = (n) => `${Number(n || 0).toLocaleString("en-US")} ${n === 1 ? "plan" : "plans"}`;
-// the picked month's readout: the month, its MRR and ARR at the month's end, the plans added and lost in it
-function monthRead(x) {
+// the picked month's readout: the month, its MRR and ARR at the month's end, the plans added and lost in it;
+// ahead (Nov 16): projected, the plans renewing and ending in it (and starting, when one does)
+export function monthRead(x, ahead = false) {
   if (!x) return "";
   const when = `${MONTHS[Number(x.key.slice(5, 7)) - 1].slice(0, 3)} ${x.key.slice(0, 4)}`;
+  if (ahead) {
+    return html`<p class="mr-h">${when}<small>Projected</small></p><div class="mr-a"><span>MRR</span><b>${usd(mrrOf(x))}</b></div><div><span>ARR</span><b>${usd(x.value)}</b></div><div><span>Renewing</span><b>${plansWord(x.renewing)}</b></div><div><span>Ending</span><b class="${x.ending ? "down" : ""}">${plansWord(x.ending)}</b></div>${x.starting ? html`<div><span>Starting</span><b class="up">${plansWord(x.starting)}</b></div>` : ""}`;
+  }
   return html`<p class="mr-h">${when}</p><div class="mr-a"><span>MRR</span><b>${usd(mrrOf(x))}</b></div><div><span>ARR</span><b>${usd(x.value)}</b></div><div><span>Added</span><b class="${x.added ? "up" : ""}">${plansWord(x.added)}</b></div><div><span>Lost</span><b class="${x.lost ? "down" : ""}">${plansWord(x.lost)}</b></div>`;
 }
 
@@ -264,6 +284,7 @@ function moneyTop(s, ctx) {
   const drawn = !!ser && ser.values.some((x) => x !== null && x > 0);
   // ARR by month (Nov 15): bars, a readout of the month picked
   const months = !loading && view === "arr" && v.grain === "month";
+  const ahead = months && !!v.ahead;
   const stats = sideStats(view, v);
   const big = loading ? "…" : usd(v.total);
   const what = view === "arr" ? "ARR" : "Collected";
@@ -287,10 +308,11 @@ function moneyTop(s, ctx) {
     </div>
     ${!loading && view === "revenue" && v.missing ? html`<p class="hm-note">${MISSING[v.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
     ${loading ? html`<div class="hc hf" aria-hidden="true"></div>`
-      : drawn && months ? html`<p class="hm-bcap" aria-hidden="true">MRR by month<span>ARR ÷ 12</span></p>
-        <div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`MRR at the end of each month (ARR divided by 12), ${v.label || ""}. Arrow keys pick a month.`}"></div>
-        <div class="hm-mread" id="hm-mread" aria-live="polite">${monthRead(monthPicked(v, ui.arrMonth))}</div>
-        ${srTable(`MRR and ARR at the end of each month, ${v.label || ""}`, ["Month", "MRR", "ARR", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(mrrOf(x)), usd(x.value), String(x.added), String(x.lost)]))}`
+      : drawn && months ? html`<p class="hm-bcap" aria-hidden="true">${ahead ? "Projected MRR by month" : "MRR by month"}<span>ARR ÷ 12</span></p>
+        <div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`${ahead ? "Projected MRR" : "MRR"} at the end of each month (ARR divided by 12), ${v.label || ""}. Arrow keys pick a month.`}"></div>
+        <div class="hm-mread" id="hm-mread" aria-live="polite">${monthRead(monthPicked(v, ui.arrMonth), ahead)}</div>
+        ${ahead ? srTable(`Projected MRR and ARR at the end of each month, ${v.label || ""}`, ["Month", "MRR", "ARR", "Plans renewing", "Plans ending", "Plans starting"], v.points.map((x) => [pointWords(v, x.key), usd(mrrOf(x)), usd(x.value), String(x.renewing), String(x.ending), String(x.starting)]))
+          : srTable(`MRR and ARR at the end of each month, ${v.label || ""}`, ["Month", "MRR", "ARR", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(mrrOf(x)), usd(x.value), String(x.added), String(x.lost)]))}`
       : drawn ? html`<div class="hc hf" data-chart="${view}" tabindex="0" role="group" aria-label="${`${what} by ${grainWord}, ${v.label || ""}. Arrow keys read each point.`}"></div>
         ${srTable(`${what} by ${grainWord}, ${v.label || ""}`, [v.grain === "week" ? "Week of" : v.grain === "month" ? "Month" : "Day", what], ser.keys.map((k, i) => [k, i]).filter(([, i]) => ser.values[i] !== null).map(([k, i]) => [pointWords(v, k), usd(ser.values[i])]))}`
       : html`<p class="hm-note hm-nochart">${view === "arr" ? (v.total === null ? "ARR shows here once there are plans." : "No recurring plans in this period.") : v.missing ? "" : v.total === null ? "Nothing counted for this period yet." : "Nothing collected in this period."}</p>`}
@@ -321,7 +343,7 @@ async function loadView(s, ctx, view, range) {
   }
   if (my === s.moneyTokens[view]) ctx.rerender();
 }
-// the range on screen (each view keeps its own: Revenue 1M, ARR 1Y to start with)
+// the range on screen (each view keeps its own: Revenue 1M, ARR the next 12 months to start with)
 function pickRange(s, ctx, range) {
   const view = s.ui.money.view;
   if (!rangesOf(view).some((r) => r[0] === range)) return;
@@ -355,46 +377,12 @@ function rangeSheet(s, ctx) {
     },
   });
 }
-// ------------------------------------------------------------ Leaderboard (Flyra's card)
-
-function leaderboardCard(s, ctx) {
-  const b = s.home.cards.leaderboard;
-  if (!b) return "";
-  const rows = b.rows || [];
-  const full = open(ctx, "/leaderboard");
-  const sales = (b.board || "sales") === "sales";
-  return html`<section class="hm-card hm-c-board" data-card="leaderboard" aria-labelledby="hm-lb-h">
-    <div class="hm-bar"><h3 id="hm-lb-h">${b.title || "Leaderboard"}</h3>${seg("board", [["sales", "Sales"], ["techs", "Techs"]], b.board || "sales", "Sales or techs")}</div>
-    ${b.loading ? html`<p class="hm-note" aria-busy="true">Loading…</p>`
-      : rows.length ? html`<ol class="hm-board">${rows.map((r) => html`<li><span class="rank">${r.rank}</span><span class="hm-av ol" aria-hidden="true">${r.initials || initials(r.name)}</span><span class="who"><b>${r.name || "Someone"}</b>${r.note ? html`<small>${r.note}</small>` : ""}</span><span class="val">${usd(r.value)}${r.unit ? html` <small>${r.unit}</small>` : ""}</span></li>`)}</ol>`
-      : html`<div class="hm-empty"><span class="art">${icon("chart")}</span><b>Nobody on the board yet</b><p>${sales ? "Plans and jobs sold this month show here." : "Jobs done this month show here."}</p></div>`}
-    ${full ? html`<a class="hm-more-row" href="${full}">See the leaderboard</a>` : ""}
-  </section>`;
-}
-async function loadBoard(s, ctx, board) {
-  const b = s.home.cards.leaderboard;
-  if (!b || (b.board || "sales") === board) return;
-  const my = (s.boardToken = (s.boardToken || 0) + 1);
-  s.home.cards.leaderboard = { ...b, board, loading: true };
-  ctx.rerender();
-  try {
-    const r = await ctx.api(`/home/leaderboard?${new URLSearchParams({ board })}`, { cache: false });
-    if (my === s.boardToken) s.home.cards.leaderboard = r.data;
-  } catch (e) {
-    if (my === s.boardToken) { s.home.cards.leaderboard = { ...b, board, loading: false, rows: [] }; toast((e && e.message) || "That didn't load.", { bad: true }); }
-  }
-  if (my === s.boardToken) {
-    ctx.rerender();
-    const el = document.querySelector(`.hm [data-hm="board"][data-v="${board}"]`);
-    if (el) el.focus({ preventScroll: true });
-  }
-}
-
 // ------------------------------------------------------------ Today (the agenda)
 
 const VIEWS = [["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"]];
 const STATUS_WORD = { en_route: "On the way", in_progress: "Working", paused: "Paused", completed: "Done" };
-const TASK_PILL = { open: ["Open", "blue"], in_progress: ["In progress", "amber"], waiting: ["Waiting", ""] };
+// (no blue on Home, Nov 16: Open is the plain grey pill)
+const TASK_PILL = { open: ["Open", ""], in_progress: ["In progress", "amber"], waiting: ["Waiting", ""] };
 
 function agendaTitle(a) {
   if (a.view === "week") return a.from.slice(0, 7) === a.to.slice(0, 7) ? `${day(a.from)} – ${Number(a.to.slice(8, 10))}` : `${day(a.from)} – ${day(a.to)}`;
@@ -486,7 +474,7 @@ function agendaCard(s, ctx) {
   </section>`;
 }
 function taskRow(t, ctx, { due = false } = {}) {
-  const pill = TASK_PILL[t.status] || ["Open", "blue"];
+  const pill = TASK_PILL[t.status] || ["Open", ""];
   const href = open(ctx, `/tasks/${t.id}`);
   const late = t.due && Date.parse(t.due) < Date.now();
   const body = html`<span class="who"><b>${t.title}</b>${due && t.due ? html`<small class="${late ? "late" : ""}">${late ? "Overdue · " : ""}${dateTime(t.due)}</small>` : t.contact ? html`<small>${t.contact}</small>` : ""}</span><span class="${"pill " + pill[1]}">${pill[0]}</span>`;
@@ -513,19 +501,7 @@ function moveAgenda(s, ctx, dir) {
   loadAgenda(s, ctx, a.view, d);
 }
 
-// ------------------------------------------------------------ the cards added in Edit Home
-
-function inboxCard(s, ctx) {
-  const c = s.home.cards.inbox;
-  if (!c) return "";
-  const items = c.items || [];
-  const all = open(ctx, "/inbox");
-  return html`<section class="hm-card hm-c-inbox" data-card="inbox" aria-labelledby="hm-in-h">
-    <div class="hm-bar"><h3 id="hm-in-h">Inbox</h3>${all ? html`<a class="hm-more" href="${all}">Open</a>` : ""}</div>
-    ${items.length ? html`<ul class="hm-convs">${items.map((v) => { const href = open(ctx, `/inbox/${v.id}`); const body = html`${avatar({ name: v.name }, "hm-av ol")}<span class="who"><b>${v.name}</b><small>${v.preview}</small></span><span class="end"><small>${v.at ? ago(v.at) : ""}</small>${v.unread ? html`<span class="hm-unread" aria-label="${`${v.unread} unread`}"></span>` : ""}</span>`; return html`<li>${href ? html`<a class="${"hm-conv" + (v.unread ? " unread" : "")}" href="${href}">${body}</a>` : html`<div class="hm-conv">${body}</div>`}</li>`; })}</ul>`
-      : html`<div class="hm-empty"><span class="art plain">${icon("inbox")}</span><b>No recent conversations</b><p>New conversations will appear here.</p></div>`}
-  </section>`;
-}
+// ------------------------------------------------------------ Tasks and Goals
 
 const TASK_FILTERS = [["upcoming", "Upcoming"], ["overdue", "Overdue"], ["none", "No due date"], ["all", "All"]];
 function tasksCard(s, ctx) {
@@ -623,7 +599,7 @@ function editHome(s, ctx) {
 
 // ------------------------------------------------------------ the screen
 
-const DRAW = { clock: clockCard, money: moneyTop, leaderboard: leaderboardCard, agenda: agendaCard, inbox: inboxCard, tasks: tasksCard, goals: goalsCard };
+const DRAW = { clock: clockCard, money: moneyTop, agenda: agendaCard, tasks: tasksCard, goals: goalsCard };
 const FOLD_KEY = "barta-home-tasks-open";
 const remembered = () => { try { return localStorage.getItem(FOLD_KEY) !== "0"; } catch (e) { return true; } };
 
@@ -638,7 +614,7 @@ export default {
     return {
       now, user: ctx.user || {}, home: h,
       // Revenue first, this month (Flyra's)
-      ui: { money: { view: "revenue", range: "1m", arrRange: "1y", arrMonth: null }, taskFilter: "upcoming", tasksOpen: remembered() },
+      ui: { money: { view: "revenue", range: "1m", arrRange: "next12", arrMonth: null }, taskFilter: "upcoming", tasksOpen: remembered() },
       moneyTokens: {},
       edit: typeof location !== "undefined" && /[?&]edit=1\b/.test(location.hash),
     };
@@ -681,7 +657,6 @@ export default {
         }
         if (what === "m-range") { if (s.ui.money[rangeKey(s.ui.money.view)] !== v) pickRange(s, ctx, v); return; }
         if (what === "m-ranges") { rangeSheet(s, ctx); return; }
-        if (what === "board") { loadBoard(s, ctx, v); return; }
         if (what === "view") {
           const a = s.home.cards.agenda;
           if (a.view === v) return;
@@ -718,7 +693,7 @@ export default {
         keys: pts.map((x) => x.key), labels: pts.map((x) => x.label), values: pts.map(mrrOf), value: mrrShort,
         now: String(mv.through || mv.to || "").slice(0, 7) || (last && last.key),
         start: (monthPicked(mv, s.ui.money.arrMonth) || {}).key,
-        onRead: (i) => { s.ui.money.arrMonth = pts[i].key; if (rd) render(rd, monthRead(pts[i])); },
+        onRead: (i) => { s.ui.money.arrMonth = pts[i].key; if (rd) render(rd, monthRead(pts[i], !!mv.ahead)); },
       }).destroy);
     } else if (mv && el && !mv.loading) {
       const ser = lineSeries(mv);

@@ -5,17 +5,23 @@
 // have, the versions, the linked deal, plan or jobs; and what to do next:
 // Edit, Send (text and/or email), Present to customer (a single-use page
 // opened on this phone), Approve by phone, Convert, Archive, Restore,
-// Decline, Duplicate, Preview as the customer sees it.
+// Decline, Duplicate, Preview as the customer sees it. On a Christmas
+// lights quote, Mockup makes the mockup of the house (mockup.js); "..." has
+// "Save as a template" (estimate templates, the owner, Nov 16).
 
 import { html, attrs, icon, sheet, toast, confirmSheet, openExternal, seg, cardHead, sectionLabel, personCard, lineItems, pillBtn, disclosure, statusPill as kitPill } from "../../core/ui.js";
 import { busy } from "../../core/forms.js";
 import { money, dateShort, dateTime, ago, phone } from "../../core/format.js";
 import { ensureStyles, statusPill, waitRun, STATUS, emptyCard, optionTotals, lineTotal, headline, visitsOf, scopeWords, discountText, PLAN_FREQ } from "./kit.js";
+import { openMockup } from "./mockup.js";
+
+const isLights = (q) => (q.options || []).some((o) => (o.lines || []).some((l) => l.category === "lights" || /christmas lights/i.test(l.service_type || "")));
+const propertyFor = (s) => s.quote.property_id || ((s.properties || [])[0] || {}).id || null;
 
 async function load(params, ctx) {
   ensureStyles();
   const r = await ctx.api(`/quotes/${encodeURIComponent(params.id)}`, { cache: false });
-  return { ...r.data, etag: r.etag };
+  return { ...r.data, etag: r.etag, can_mockup: ctx.can("quotes:write") };
 }
 
 function timeline(q) {
@@ -92,6 +98,7 @@ function optionsPane(s) {
     ${waiting(s)}
     <div class="rs-row qt-seen">${sectionLabel(v ? `What the customer sees (version ${v.n})` : "Options (not sent yet)")}${q.current_version_id ? html`<a class="rs-pb" ${attrs({ href: `/api/crm/quotes/${encodeURIComponent(q.id)}/preview`, target: "_blank", rel: "noopener" })}>${icon("share")}<span>Customer view</span></a>` : ""}</div>
     ${options.length ? options.map((o) => optionCard(chosen(s, o))) : emptyCard("No options yet", "Edit the quote to price it.")}
+    ${isLights(q) && s.can_mockup ? html`<section class="rs-card qt-mk-card">${cardHead("Lights mockup")}<p class="rs-sub">${(q.mockup_file_ids || []).length ? `${q.mockup_file_ids.length} on the quote. Make another from Street View.` : "Their house from Street View with the lights on it, made for you."}</p><button type="button" class="btn block" data-act="mockup">${icon("bulb")}Mockup</button></section>` : ""}
     ${q.client_notes ? html`<section class="rs-card">${cardHead("Note to the customer")}<p class="preview">${q.client_notes}</p></section>` : ""}
     ${q.internal_notes ? html`<section class="rs-card">${cardHead("Office note")}<p class="preview">${q.internal_notes}</p></section>` : ""}`;
 }
@@ -124,6 +131,8 @@ function moreRows(s, ctx) {
     [
       editable(st) && w && { label: "Edit", icon: "edit", href: `#/quotes/${id}/edit`, data: { act: "edit" } },
       w && { label: "Duplicate", icon: "copy", hint: "a new draft", run: () => duplicate(null, ctx), data: { act: "duplicate" } },
+      w && isLights(q) && { label: "Lights mockup", icon: "bulb", hint: "of their house", run: () => mockup(ctx), data: { act: "mockup" } },
+      ctx.can("settings:general") && (q.options || []).length && { label: "Save as a template", icon: "doc", hint: "for the next quote", run: () => saveTemplate(ctx), data: { act: "template" } },
       q.current_version_id && { label: "Customer view", icon: "share", hint: "opens a tab", run: () => window.open(`/api/crm/quotes/${id}/preview`, "_blank", "noopener"), data: { act: "preview" } },
       { label: "Open customer", icon: "user", href: "#/contacts/" + encodeURIComponent(q.contact_id) },
     ],
@@ -133,6 +142,43 @@ function moreRows(s, ctx) {
       st !== "converted" && st !== "archived" && w && { label: "Archive", icon: "trash", danger: true, run: () => archive(null, ctx), data: { act: "archive" } },
     ],
   ];
+}
+
+function mockup(ctx) {
+  const s = ctx.state;
+  const c = s.contact || {};
+  openMockup(ctx, { propertyId: propertyFor(s), quoteId: s.quote.id, name: c.name || s.quote.contact_name, studio: ctx.can("office:tools"), onSaved: () => ctx.refresh() });
+}
+
+// "Save as a template": its options and note, for the next quote like it.
+function saveTemplate(ctx) {
+  const q = ctx.state.quote;
+  const first = (q.options || []).find((o) => o.recommended) || (q.options || [])[0] || {};
+  const sh = sheet({
+    title: "Save as a template",
+    body: html`<form class="form" data-tpl-save>
+      <p class="muted">Its options, line items, discounts and note become a template in New Quote's "Start from a template". Prices come from the price book each time it's used.</p>
+      <label class="field"><span>Name</span><input ${attrs({ name: "name", maxlength: 80, value: first.name || "", required: true, autocomplete: "off" })}></label>
+      <label class="field"><span>One line about it (optional)</span><input ${attrs({ name: "summary", maxlength: 140, autocomplete: "off", placeholder: "What it is and who it's for" })}></label>
+      <p class="err" data-form-err hidden></p>
+      <button type="submit" class="btn primary block">Save the template</button>
+    </form>`,
+    events: {
+      "submit [data-tpl-save]": async (e, form) => {
+        e.preventDefault();
+        const err = form.querySelector("[data-form-err]");
+        const name = form.elements.name.value.trim();
+        if (!name) { err.textContent = "Name the template."; err.hidden = false; return; }
+        const btn = form.querySelector("[type=submit]");
+        busy(btn, true, "Saving…");
+        try {
+          await ctx.api("/quote-templates", { method: "POST", body: { from_quote_id: q.id, name, summary: form.elements.summary.value.trim() } });
+          sh.close();
+          toast("Saved as a template");
+        } catch (er) { busy(btn, false); err.textContent = er.message; err.hidden = false; }
+      },
+    },
+  });
 }
 
 async function archive(el, ctx) {
@@ -161,7 +207,7 @@ export default {
     const tab = s.tab || ctx.keep.tab || "options";
     return html`<div class="rs-page qt-page">
       ${topCard(s, ctx)}
-      ${personCard({ name: c.name || q.contact_name || "Contact", sub: [prop && prop.address, c.phone && phone(c.phone)].filter(Boolean).join(" · "), href: "#/contacts/" + encodeURIComponent(q.contact_id), call: c.phone ? "tel:" + c.phone : null, text: c.phone ? "sms:" + c.phone : null })}
+      ${personCard({ name: c.name || q.contact_name || "Contact", sub: [prop && prop.address, c.phone && phone(c.phone)].filter(Boolean).join(" · "), address: prop && typeof prop.address === "string" ? prop.address : null, href: "#/contacts/" + encodeURIComponent(q.contact_id), call: c.phone ? "tel:" + c.phone : null, text: c.phone ? "sms:" + c.phone : null })}
       ${seg([["options", "Options"], ["activity", "Activity"]], tab, { name: "quote", label: "Quote" })}
       ${tab === "activity" ? activityPane(s) : optionsPane(s)}
     </div>`;
@@ -171,6 +217,7 @@ export default {
     "click [data-act=send]": (e, el, ctx) => sendSheet(ctx),
     "click [data-act=present]": (e, el, ctx) => present(el, ctx),
     "click [data-act=convert]": (e, el, ctx) => runAction(el, ctx, `/quotes/${encodeURIComponent(ctx.state.quote.id)}/convert`, "Booked"),
+    "click .qt-mk-card [data-act=mockup]": (e, el, ctx) => mockup(ctx),
   },
 };
 

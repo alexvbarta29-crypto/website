@@ -67,12 +67,12 @@ function render(s, ctx) {
       ${select({ label: "How they heard about us (optional)", name: "channel", value: src.channel || "", options: [{ value: "", label: "Not asked" }, ...CHANNELS.map((x) => ({ value: x, label: x }))] })}
       ${field({ label: "Tags (commas between)", name: "tags", value: (c.tags || []).join(", "), autocapitalize: "words" })}
       ${sugg.length ? html`<div class="varchips">${sugg.map((t) => html`<button type="button" ${attrs({ "data-addtag": t })}>+ ${t}</button>`)}</div>` : ""}
-      ${s.isNew ? checkbox({ label: "OK to text them about their quote and visits", name: "sms_service", checked: true }) : ""}
+      ${s.isNew ? checkbox({ label: "OK to text them about their quote and visits", name: "sms_service", checked: !s.smsOff }) : ""}
     </section>
     <section class="card form">
       <label class="field" data-field="notes"><span>Notes</span><textarea name="notes" rows="5">${c.notes || ""}</textarea><small class="why" hidden></small></label>
     </section>
-    <button type="submit" class="btn primary block">${s.isNew ? "Save lead" : "Save"}</button>
+    <button type="submit" class="btn primary block">${s.isNew ? (c.lifecycle === "customer" ? "Save customer" : "Save lead") : "Save"}</button>
   </form>`;
 }
 
@@ -137,7 +137,8 @@ async function save(ctx, form, force = false) {
 }
 
 export default {
-  title: (s) => (s && s.isNew ? "New lead" : "Edit contact"),
+  // (the + has Lead and Customer: #/contacts/new and #/contacts/new?as=customer; "This is" changes it here too)
+  title: (s) => (s && s.isNew ? (s.c && s.c.lifecycle === "customer" ? "New customer" : "New lead") : "Edit contact"),
   load,
   render,
   events: {
@@ -148,6 +149,14 @@ export default {
       const body = collect(form, ctx.state);
       Object.assign(ctx.state.c, { ...body, billing_address: body.billing_address || ctx.state.c.billing_address, emails: body.emails, phones: body.phones });
       ctx.state.extraPhone = true;
+      ctx.rerender();
+    },
+    "change #ct-form [name=lifecycle]": (e, el, ctx) => {
+      // a lead or a customer: the title, the priority field and the button follow (what was typed stays)
+      const body = collect(document.getElementById("ct-form"), ctx.state);
+      Object.assign(ctx.state.c, { ...body, billing_address: body.billing_address || ctx.state.c.billing_address });
+      ctx.state.smsOff = !(body.consent && body.consent.sms_service);
+      ctx.state.c.lifecycle = el.value === "customer" ? "customer" : "lead";
       ctx.rerender();
     },
     "click [data-addtag]": (e, el) => {

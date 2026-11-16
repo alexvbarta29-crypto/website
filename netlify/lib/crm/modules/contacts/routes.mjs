@@ -39,7 +39,7 @@ export const LIST_MAX = 200;
 
 // The contact if this person may read it: office → always; tech → only
 // one in their visit window (else 404, so a tech can't probe ids).
-async function readable(ctx, id) {
+export async function readable(ctx, id) {
   if (!isId(id, "contact")) throw new NotFoundError("That contact isn't there.");
   const got = await getRecord("contact", id);
   if (!got || got.data.deleted_at) throw new NotFoundError("That contact isn't there.");
@@ -431,7 +431,7 @@ async function addPropertyRoute(ctx) {
   return { status: 201, data: { property: view(rec.data) }, etag: rec.etag };
 }
 
-async function readableProperty(ctx, id) {
+export async function readableProperty(ctx, id) {
   if (!isId(id, "property")) throw new NotFoundError("That property isn't there.");
   const got = await getRecord("property", id);
   if (!got || got.data.deleted_at) throw new NotFoundError("That property isn't there.");

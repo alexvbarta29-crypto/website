@@ -39,8 +39,14 @@
 // under it (a contact, a quote, a new one) open in #pane beside it, the
 // list keeping its search and scroll and lighting the open row. Under
 // 1000 px (a phone) every screen is the whole view, as always.
+//
+// Motion (Nov 2026, core/ui.js "motion"): a route change slides the next
+// screen in from the right (push), going back slides the one you leave
+// away (pop), a tab crossfades (tab), the detail beside a list fades in;
+// the first paint's cards and rows rise in. A refresh or a rerender never
+// moves anything.
 
-import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, toggle, actionSheet, skeletonRows, armMoreExtra, hasMoreExtra, revealOn } from "./ui.js";
+import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, toggle, actionSheet, skeletonRows, armMoreExtra, hasMoreExtra, revealOn, screenGo, screenOut, screenPainted, screenStill } from "./ui.js";
 
 const routes = [];
 let stack = [];
@@ -258,7 +264,7 @@ const notForLogin = () => html`<div class="stack"><div class="card empty"><div c
 // Loads one screen into an element. The focus screen (the one the address
 // names) owns the header, the back arrow and the route message; the list
 // beside it on a wide screen (focus: false) only draws itself.
-async function mountScreen(el, path, m, { my, focus = true, keepScroll = false }) {
+async function mountScreen(el, path, m, { my, focus = true, keepScroll = false, motion = "push" }) {
   const { route, params } = m;
   const rec = { path, route, params, mod: null, el, off: null };
   if (focus) current = rec;
@@ -270,7 +276,12 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false }
   }
   if (focus) header(routeTitle(route), canGoBack(), null);
   const v = el;
-  if (!keepScroll) { v.classList.remove("flush"); render(v, skeleton(route.skeleton)); }
+  if (!keepScroll) {
+    if (motion === "pop") screenOut(v);
+    v.classList.remove("flush");
+    render(v, skeleton(route.skeleton));
+    screenGo(v, motion);
+  } else screenStill(v);
   if (focus) env.onRoute(path);
   let mod, state;
   const ctx = screenCtx(path, params);
@@ -296,6 +307,7 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false }
     el.classList.toggle("flush", !!mod.flush);
     render(el, mod.render(ctx.state, ctx));
     revealOn(el);
+    screenPainted(el);
     if (focus || current === rec) header(typeof mod.title === "function" ? mod.title(ctx.state, ctx) : title, canGoBack(), mod.action ? mod.action(ctx.state, ctx) : null, headerKit(mod, ctx.state, ctx));
     if (mod.mount) mod.mount(el, ctx.state, ctx);
   };
@@ -333,6 +345,8 @@ async function show(path, { keepScroll = false } = {}) {
   if (m.route.redirect) { go(redirectOf(m), { replace: true }); return; }
   const pane = paneEl();
   const listPath = splitOf(path, m);
+  // how it moves in: back (pop), a tab of the bar (tab), anything else deeper (push)
+  const motion = wentBack ? "pop" : env.isTabRoot(path) ? "tab" : "push";
   // where the leaving screen was scrolled
   if (current && current.path) {
     const k = keep.get(current.path) || {};
@@ -348,7 +362,7 @@ async function show(path, { keepScroll = false } = {}) {
     if (app) app.classList.remove("split");
     if (pane && !pane.hidden) { pane.hidden = true; render(pane, html``); }
     anchor = null;
-    await mountScreen(v, path, m, { my, keepScroll });
+    await mountScreen(v, path, m, { my, keepScroll, motion });
     return;
   }
   // (a list alone fills the screen, a table on a desk; the detail opens beside it once a row is picked)
@@ -358,7 +372,7 @@ async function show(path, { keepScroll = false } = {}) {
   if (!stay) {
     const lm = match(listPath);
     anchor = null;
-    const rec = await mountScreen(v, listPath, lm, { my, focus: path === listPath, keepScroll: keepScroll && current && current.path === listPath });
+    const rec = await mountScreen(v, listPath, lm, { my, focus: path === listPath, keepScroll: keepScroll && current && current.path === listPath, motion: motion === "pop" ? "fade" : motion });
     if (!rec) return;
     anchor = rec;
   } else if (path === listPath) {
@@ -372,7 +386,7 @@ async function show(path, { keepScroll = false } = {}) {
     markOpen(null);
     return;
   }
-  await mountScreen(pane, path, m, { my, keepScroll });
+  await mountScreen(pane, path, m, { my, keepScroll, motion: "fade" });
   if (my === token) markOpen(path);
 }
 

@@ -10,8 +10,9 @@
 // name (tap: their panel: stats, how to reach them, Mute automated texts,
 // + Create, Open), the round call button and the "...": Their details,
 // Mark done / Reopen, Assign to..., Move to inbox..., Open customer,
-// Outbox. It refreshes every 10 s while open. /inbox/{conversation id}
-// (any of the person's threads) or /inbox/{contact id}.
+// Outbox. It refreshes every 10 s while open. Above the composer, the
+// Suggested reply (suggest.js) when the customer is waiting on an answer.
+// /inbox/{conversation id} (any of the person's threads) or /inbox/{contact id}.
 //
 // A text needs signal: with no connection nothing is sent and nothing is
 // queued for later (a late "on my way" is worse than none); the words stay
@@ -19,10 +20,13 @@
 
 import { html, attrs, icon, sheet, toast, seg, rnd, actionSheet, sheetPage, statGrid, contactRows, pillBtn, toggle } from "../../core/ui.js";
 import { poll } from "../../core/poll.js";
+import { directionsUrl } from "../../core/map.js";
+import { addressText } from "../contacts/house.js";
 import { uuid } from "../../core/api.js";
 import { phone as fmtPhone, money, dateShort, dateTime } from "../../core/format.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
 import { ensureStyles, bubble, pendingBubble, dayLabel, reasonText, emptyCard } from "./kit.js";
+import { suggestCard, maybeSuggest, suggestEvents, plusItem } from "./suggest.js";
 
 let live = null;
 const isConv = (id) => /^cv_/.test(id);
@@ -117,6 +121,7 @@ function plusItems(s, ctx) {
   return [
     [s.office && (note ? { label: "Back to a message", icon: "text", run: () => setChannel(ctx, back), data: { unnote: true } } : { label: "Internal note", icon: "edit", hint: "only the team sees it", run: () => setChannel(ctx, "note"), data: { note: true } }),
       !note && can && { label: "Send later", icon: "clock", hint: "pick a time", run: () => laterSheet(ctx), data: { later: true } },
+      can && plusItem(s, ctx, envOf(ctx)),
       !note && s.office && s.channel === "sms" && nums.length > 1 && { label: `From ${numberLabel(from)}`, icon: "phone", hint: "change", run: () => fromSheet(ctx), data: { from: true } }],
     !note && s.office && s.links && can ? [["review", "Review link"], ["website", "Website link"], ["booking", "Booking link"]].map(([k, l]) => ({ label: l, icon: "link", hint: "put it in the box", run: () => { const u = (s.links || {})[k]; if (u) insert(ctx, u); }, data: { link: k } })) : [],
   ];
@@ -138,6 +143,7 @@ function render(s, ctx) {
     ${s.next ? html`<button type="button" class="btn block" data-older>Show earlier messages</button>` : ""}
     <div class="cm-msgs" aria-live="polite">${timeline(s)}</div>
     ${!s.messages.length && !(s.pending || []).length && !s.older.length ? emptyCard("text", "No messages yet", "Write the first one below.") : ""}
+    ${canSend(s, ctx) ? suggestCard(s) : ""}
     ${composer(s, ctx)}
   </div>`;
 }
@@ -213,6 +219,19 @@ async function saveNote(ctx, body) {
     await refresh(ctx);
   } catch (e) { toast((e && e.message) || "That didn't save. Try again.", { bad: true }); } finally { s.busy = false; }
 }
+
+// The Suggested reply's words in the box (its Use): the whole box, to edit and send. Never sends.
+function fill(ctx, text) {
+  ctx.state.draft = text; ctx.keep.draft = text;
+  repaint(ctx);
+  const ta = document.querySelector("[data-compose] textarea");
+  if (!ta) return;
+  ta.value = text;
+  ta.focus();
+  try { ta.setSelectionRange(text.length, text.length); } catch (e) { /* not selectable */ }
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
+}
+const envOf = (ctx) => ({ repaint: () => repaint(ctx), fill: (text) => fill(ctx, text) });
 
 // Put words in the box where the caret is (a template's text, a link).
 function insert(ctx, text) {
@@ -319,9 +338,13 @@ async function panel(ctx) {
   items.push({ label: "Source", value: (c.source && c.source.source) || "Not known" });
   const ph = (c.phones || [])[0];
   const em = (c.emails || [])[0];
+  const prop = (d.properties || []).find((p) => p.id === c.primary_property_id) || (d.properties || [])[0] || null;
+  const addr = (prop && prop.address) || c.billing_address || null;
   const rows = [
     ph && ph.e164 && { icon: "phone", label: "Mobile", value: fmtPhone(ph.e164), actions: [{ icon: "call", label: "Call", href: "tel:" + ph.e164 }] },
     em && em.address && { icon: "mail", label: "Email", value: em.address, actions: [{ icon: "mail", label: "Email", href: "mailto:" + em.address }] },
+    // the address (the main property's, else billing): a long press copies it, the round button gives directions
+    addr && addr.street1 && { icon: "pin", label: "Address", value: addr.street1, sub: [addr.city, [addr.state, addr.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null, address: addressText(addr), actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(prop && prop.geo ? prop.geo : addressText(addr)) }] },
   ].filter(Boolean);
   const muted = !!(c.automations_paused && c.automations_paused.sms);
   const creates = [
@@ -436,9 +459,12 @@ export default {
     if (s.office && !s.users && (s.messages || []).some((m) => m.kind === "note")) {
       ctx.api("/users").then((r) => { s.users = (r.data || []); repaint(ctx); }).catch(() => { s.users = []; });
     }
+    // the customer is waiting: a suggested reply above the composer
+    if (canSend(s, ctx)) maybeSuggest(ctx, envOf(ctx));
   },
   unmount() { if (live) { live.stop(); live = null; } nameTap(null); },
   events: {
+    ...suggestEvents(envOf),
     "submit [data-compose]": async (e, el, ctx) => {
       e.preventDefault();
       const body = el.querySelector("textarea").value.trim();

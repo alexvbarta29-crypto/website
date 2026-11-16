@@ -77,7 +77,7 @@ test("Settings screens, Automations, Templates and My account render for an owne
   const S = await import("../../../crm-app/modules/system/settings.js");
   const page = text(group.render({ key: "services", group: S.group(() => true, "services") }));
   assert.equal(group.title({ group: S.group(() => true, "services") }), "Services & pricing");
-  assert.deepEqual([...page.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), ["/settings/pricing", "/settings/discounts", "/settings/plans", "/settings/agreement-templates", "/settings/checklists", "/settings/schedule"]);
+  assert.deepEqual([...page.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), ["/settings/pricing", "/settings/discounts", "/settings/estimate-templates", "/settings/plans", "/settings/agreement-templates", "/settings/checklists", "/settings/schedule"]);
   assert.match(page, /<ul class="list set-list" aria-label="Services &amp; pricing">/, "one inset card");
   assert.match(page, /Owner<\/span>/, "the owners' rows say so");
   assert.match(text(group.render({ key: "nope", group: null })), /Nothing in this group for your login/);
@@ -172,7 +172,7 @@ test("Settings groups (pure): every LAYOUT row in exactly one group, nothing los
   const rows = Object.fromEntries(S.LAYOUT.map(([k, , , , r]) => [k, r.map(([, l]) => l)]));
   assert.deepEqual(rows.business, ["Company details", "Service area", "Hours & holidays", "Tracking link"]);
   assert.deepEqual(rows.team, ["Team", "Permissions", "Payroll & pay rates"]);
-  assert.deepEqual(rows.services, ["Prices & price book", "Discounts", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
+  assert.deepEqual(rows.services, ["Prices & price book", "Discounts", "Estimate templates", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
   assert.deepEqual(rows.messages, ["Message templates", "Automatic messages", "Follow-up cadences", "Quiet hours & opt-out", "Texting & email setup", "Business numbers", "Muted contacts", "Reviews", "Approvals", "Outbox (not sent)"]);
   assert.deepEqual(rows.payments, ["Payments & card fees", "Client portal"]);
   assert.deepEqual(rows.connections, ["Integrations", "Claude connector", "Where website leads go", "Facebook lead forms", "Maps & team map", "Door to door"]);

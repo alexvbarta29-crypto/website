@@ -21,6 +21,7 @@ import { money, dateShort } from "../../core/format.js";
 import { screenButtons } from "../../core/nav.js";
 import { pickFrom } from "../../core/pickers.js";
 import { ensureStyles, telHref, LOST_REASONS } from "./kit.js";
+import { houseReady, houseOn, houseThumb } from "../contacts/house.js";
 
 export const STAGES = Object.freeze([["new", "New"], ["contacted", "Contacted"], ["quoted", "Quoted"], ["follow_up", "Follow-Up"], ["sold", "Sold"], ["not_interested", "Not Interested"], ["not_ready", "Not Ready"]]);
 const STAGE_LABEL = Object.fromEntries(STAGES);
@@ -64,6 +65,9 @@ export const leadRow = (r) => listRow({
   tag: r.pr === "high" ? "High" : null, pill: stagePill(r), href: "#/contacts/" + encodeURIComponent(r.id),
   action: r.p ? { icon: "call", label: `Call ${r.n || ""}`, href: telHref(tel(r.p)) } : null,
   hold: { "lead-more": r.id },
+  // a long press on the second line copies the address; the house as a small square once Google is on
+  address: r.a || null,
+  thumb: houseOn() && r.a ? houseThumb(r.id, { of: "contacts" }) : null,
 });
 export function leadCardHtml(r, { users = new Map(), now = Date.now() } = {}) {
   const d = days(r.sa, now);
@@ -73,7 +77,7 @@ export function leadCardHtml(r, { users = new Map(), now = Date.now() } = {}) {
     meta: [`Created ${r.ca ? dateShort(r.ca).replace(/^[A-Za-z]+, /, "") : "-"}`, `Last contact ${r.lt ? dateShort(r.lt).replace(/^[A-Za-z]+, /, "") : "-"}`, `Follow-up ${r.follow ? dateShort(r.follow).replace(/^[A-Za-z]+, /, "") : "-"}`, d !== null && r.hand ? `${d} d in stage` : "", users.get(r.o) || ""].filter(Boolean).join(" · "),
     href: "#/contacts/" + encodeURIComponent(r.id), move: { data: { move: r.id } },
     action: r.p ? { icon: "call", label: `Call ${r.n || ""}`, href: telHref(tel(r.p)) } : null,
-    hold: { "lead-more": r.id }, edge: r.follow && Date.parse(r.follow) < now ? "red" : null,
+    hold: { "lead-more": r.id }, edge: r.follow && Date.parse(r.follow) < now ? "red" : null, address: r.a || null,
   });
 }
 
@@ -171,6 +175,7 @@ export default {
     const [r, users] = await Promise.all([
       ctx.api("/leads", { cache: false }),
       ctx.can("schedule:read") ? ctx.api("/users").then((u) => u.data || []).catch(() => []) : [],
+      houseReady(ctx),
     ]);
     const ini = (n) => String(n || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
     return {

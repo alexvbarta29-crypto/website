@@ -14,10 +14,12 @@ import { APP_VERSION } from "../../../../crm-app/version.js";
 export { APP_VERSION };
 
 const LOGO = "/assets/img/logo-bww.png";
-const HEAD = (title, extra = "") => `<!doctype html><html lang="en"><head><meta charset="utf-8">
+// White first (the owner, Nov 2026): every page starts in the light look, its canvas the status bar's
+// color, so nothing flashes black on open; core/nav.js applyTheme() switches to Dark for whoever picked it.
+const HEAD = (title, extra = "") => `<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#f4f4f6">
+<meta name="theme-color" content="#f6f6f8">
 <meta name="format-detection" content="telephone=no">
 <title>${esc(title)}</title>
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
