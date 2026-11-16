@@ -59,9 +59,9 @@ div.cf-row{cursor:default}
 .cf-sw{min-height:60px}
 .cf-sl{font-size:var(--t-lg)}
 .cf-sw.muted .cf-sl{color:var(--ink-3)}
-.cf-sw .switch[aria-checked="true"]::before{background:var(--blue)}
+.cf-sw .switch[aria-checked="true"]::before{background:var(--coral-btn)}
 .cf-lbl .switch{margin:-8px -6px -8px 0}
-.cf-lbl .switch[aria-checked="true"]::before{background:var(--blue)}
+.cf-lbl .switch[aria-checked="true"]::before{background:var(--coral-btn)}
 
 /* date and time pills */
 .cf-slot{flex-wrap:wrap;row-gap:6px}
@@ -85,7 +85,7 @@ div.cf-row{cursor:default}
 .cf-dotsep{margin:0 2px;color:var(--ink-3)}
 .cf-lbl .cf-clear{margin:-8px -8px -8px auto}
 .cf-addopt{margin-left:auto;color:var(--ink-2);font-size:var(--t-body)}
-.cf-addpill{color:var(--blue-ink);font-weight:500}
+.cf-addpill{color:var(--coral-ink);font-weight:500}
 .cf-opt{display:flex;flex-direction:column;gap:12px}
 
 /* the Mockup chip (Light Studio) */

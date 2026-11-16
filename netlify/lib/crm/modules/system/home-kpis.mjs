@@ -10,15 +10,15 @@
 //   arrView(plans, p, today)                → the money card's ARR view (Nov 14): ARR, its change, active plans, MRR, the line (older clients)
 //   arrMonths(plans, from, to, today)       ARR (and MRR, ARR / 12) at each month's end, the plans added and lost in it
 //   arrMonthView(plans, range, today)       → the top's ARR view by month (Nov 15): 6M 1Y YTD All
+//   arrForward(plans, from, months, today)  ARR projected at each month's end ahead, the plans renewing, ending and starting
+//   arrForwardView(plans, today)            → the top's ARR view ahead (Nov 16, the default): the next 12 months
 //   moneyCard({ metric, p, series, ... })   → one metric over a period (the older Collected | Scheduled | ARR card)
 //   latestImport(runs, today)               the newest finished Rotor import and whether it is fresh (3 days)
 //   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart (older clients)
 //   revenueView({ p, collected, ... })      → the top of Home's Revenue view (Nov 15, Flyra's): Collected, its daily average and peak, the line
-//   normalizeBoard(r, board, month)         → the Leaderboard card's rows (reports.leaderboard's answer)
 //   clockToday(rows, uid, today, nowMs)     the Timesheet card: today's minutes, the open shift
 //   agendaOf(visits, users, p)              the Agenda's rows (Daily · Weekly · Monthly)
 //   tasksOf(rows, user, { all })            open tasks (the Agenda's "without due date", the Tasks card)
-//   inboxOf(rows)                           the Inbox card (unread first)
 //   layoutOf(saved, available)              the person's cards, in their order
 //   validateGoals(v)                        the owners' monthly goals (settings document "goals")
 //
@@ -292,7 +292,7 @@ export function arrMonths(plans, fromMonth, toMonth, today) {
 }
 // The ARR view's ranges by month: the last 6 months, 12 months (the
 // default), this year, and All (since the first plan's month).
-export const ARR_MONTH_RANGES = Object.freeze({ "6m": "The last 6 months", "1y": "The last 12 months", ytd: "This year", all: "Since the first plan" });
+export const ARR_MONTH_RANGES = Object.freeze({ next12: "The next 12 months", "6m": "The last 6 months", "1y": "The last 12 months", ytd: "This year", all: "Since the first plan" });
 // "Jun – Nov 2026", "Dec 2025 – Nov 2026", "November 2026"
 const monthSpan = (a, b) => (a === b ? `${MONTHS_LONG[Number(a.slice(5, 7)) - 1]} ${a.slice(0, 4)}` : a.slice(0, 4) === b.slice(0, 4) ? `${monthLabel(a)} – ${monthLabel(b)} ${b.slice(0, 4)}` : `${monthLabel(a)} ${a.slice(0, 4)} – ${monthLabel(b)} ${b.slice(0, 4)}`);
 // The top's ARR view by month: ARR today (the big number), its change since
@@ -319,6 +319,83 @@ export function arrMonthView(plans, range, today) {
     ...base, total: now.cents, change, pct: before > 0 ? Math.round((change / before) * 1000) / 10 : null,
     month_change: now.cents - lastMonth, plans: now.plans, mrr: Math.round(now.cents / 12), points,
   };
+}
+
+// ------------------------------------------------------------ ARR ahead by month (Nov 16)
+
+// One plan's ARR from today on, as today's plans stand (no new sales, no
+// cancellations nobody has asked for yet). Only what counts today, or is
+// signed and starts later: a pending (unsigned) or draft plan, a hidden
+// one-time series and a one-season lights plan never count, as for ARR on
+// a day. A signed plan whose first term starts after today (`so`, a 2027
+// start) counts from that day. A term that ends ahead: a plan that renews
+// goes on at a year of its regular visits (`ry`, else `ay`), one that
+// doesn't renew stops the day after. A cancellation that takes effect
+// ahead stops it that day.
+// → { start, stop, renew, before, after } (it counts on start <= d < stop;
+// stop null: still counting; on and after renew it is worth `after`) | null
+export function planAhead(r, today) {
+  if (!r || r.k === "one_time_series") return null;
+  let start = localOf(r.at);
+  if (!start || !recursOn(r, today)) return null;
+  const live = LIVE_PLAN.has(r.st);
+  // counted today (as arrAt counts), or ended for good
+  if (live ? r.eff && r.eff <= today : !(r.eff && r.eff > today)) return null;
+  if (start > today) return null;
+  if (isLocalDate(r.so) && r.so > today && r.so > start) start = r.so;
+  const before = planArr(r);
+  let stop = isLocalDate(r.eff) ? r.eff : null, renew = null, after = before;
+  if (isLocalDate(r.te) && r.te >= today) {
+    const next = addLocalDays(r.te, 1);
+    if (r.ar === 0) { if (!stop || next < stop) stop = next; }
+    else { renew = next; after = num(r.ry) !== null ? Math.max(0, Math.round(num(r.ry))) : before; }
+  }
+  if (stop && stop <= start) return null;
+  if (renew && stop && renew >= stop) renew = null;
+  return { start, stop, renew, before, after: renew ? after : before };
+}
+const aheadOn = (w, d) => (w.start <= d && (!w.stop || d < w.stop) ? (w.renew && d >= w.renew ? w.after : w.before) : null);
+// The owner's Nov 16 ask ("the ARR for next year per month"): ARR projected
+// at the end of each of `months` months from fromMonth, from today's plans
+// (planAhead), each month's MRR (ARR / 12), and the plans that renew, end
+// and start in it (renewing_cents: what the renewals change; ending_cents:
+// the ARR that stops; starting_cents: the ARR that starts). Month ends are
+// local days (America/Chicago).
+// → [{ key, label, from, to, value, mrr, plans, renewing, renewing_cents, ending, ending_cents, starting, starting_cents }]
+export function arrForward(plans, fromMonth, months, today) {
+  const ws = list(plans).map((r) => planAhead(r, today)).filter(Boolean);
+  const out = [];
+  const n = Math.max(0, Math.min(MAX_ARR_MONTHS, Math.floor(Number(months) || 0)));
+  for (let i = 0, m = fromMonth; i < n; i++, m = addMonths(m, 1)) {
+    const from = `${m}-01`, to = monthEnd(m);
+    let value = 0, count = 0, renewing = 0, renewingCents = 0, ending = 0, endingCents = 0, starting = 0, startingCents = 0;
+    for (const w of ws) {
+      const v = aheadOn(w, to);
+      if (v !== null) { value += v; count += 1; }
+      if (w.renew && w.renew > from && w.renew <= addLocalDays(to, 1) && w.renew > today) { renewing += 1; renewingCents += w.after - w.before; }
+      if (w.stop && w.stop >= from && w.stop <= to && w.stop > today) { ending += 1; endingCents += aheadOn(w, addLocalDays(w.stop, -1)) || 0; }
+      if (w.start > today && w.start >= from && w.start <= to) { starting += 1; startingCents += aheadOn(w, w.start) || 0; }
+    }
+    out.push({ key: m, label: monthLabel(m), from, to, value, mrr: Math.round(value / 12), plans: count, renewing, renewing_cents: renewingCents, ending, ending_cents: endingCents, starting, starting_cents: startingCents });
+  }
+  return out;
+}
+// The top's ARR view ahead (Nov 16, the default ARR period): ARR today (the
+// big number, as every ARR view has it), the plans counted and MRR; ARR at
+// the end of this month and the 11 after it; where it ends up ("In 12
+// months": the last month's end) and the change to it ($ and %). No plan at
+// all: total null (the screen shows "-").
+// → { period: "months", range: "next12", ahead: true, from, to, label, total, end, change, pct, plans, mrr, grain: "month", points, through }
+export const ARR_AHEAD_MONTHS = 12;
+export function arrForwardView(plans, today, months = ARR_AHEAD_MONTHS) {
+  const fromMonth = today.slice(0, 7), toMonth = addMonths(fromMonth, months - 1);
+  const base = { period: "months", range: "next12", ahead: true, from: today, to: monthEnd(toMonth), label: monthSpan(fromMonth, toMonth), grain: "month", through: today };
+  if (!list(plans).length) return { ...base, total: null, end: null, change: null, pct: null, plans: 0, mrr: null, grain: null, points: [] };
+  const points = arrForward(plans, fromMonth, months, today);
+  const now = arrAt(plans, today);
+  const end = points.length ? points[points.length - 1].value : now.cents;
+  const change = end - now.cents;
+  return { ...base, total: now.cents, end, change, pct: now.cents > 0 ? Math.round((change / now.cents) * 1000) / 10 : null, plans: now.plans, mrr: Math.round(now.cents / 12), points };
 }
 
 // ------------------------------------------------------------ the Money card
@@ -460,7 +537,7 @@ export function agendaOf(visits, users, { from, to }, max = 120) {
   };
 }
 
-// ------------------------------------------------------------ tasks and the inbox
+// ------------------------------------------------------------ tasks
 
 const TASK_ORDER = { in_progress: 0, open: 1, waiting: 2 };
 // Open tasks: an owner's whole team's, anyone else's own. → [{ id, title, status, due, contact }]
@@ -469,55 +546,25 @@ export function tasksOf(rows, user, { all = false, max = 60 } = {}) {
     .sort((a, b) => (a.due ? 0 : 1) - (b.due ? 0 : 1) || String(a.due || "").localeCompare(String(b.due || "")) || (TASK_ORDER[a.st] ?? 3) - (TASK_ORDER[b.st] ?? 3) || String(b.u || "").localeCompare(String(a.u || "")))
     .slice(0, max).map((r) => ({ id: r.id, title: r.t || "Task", status: r.st, due: r.due || null, contact: r.cn || "" }));
 }
-// The latest conversations, unread first. → [{ id, name, preview, at, unread, channel, needs_reply }]
-export function inboxOf(rows, max = 5) {
-  return list(rows).filter((r) => r && r.st === "open")
-    .sort((a, b) => (b.u > 0 ? 1 : 0) - (a.u > 0 ? 1 : 0) || String(b.la || "").localeCompare(String(a.la || "")))
-    .slice(0, max).map((r) => ({ id: r.id, name: r.n || "Someone", preview: String(r.p || "").slice(0, 120), at: r.la || null, unread: num(r.u) || 0, channel: r.ch || "sms", needs_reply: !!r.nr }));
-}
-
-// ------------------------------------------------------------ the leaderboard
-
-// The reports module's "reports.leaderboard" answer (its sold money fixed on
-// Nov 14: a sale dated by its sale, ARR the recurring plans sold in the
-// month), as Flyra's card shows it: the rank, the initials, the name, what
-// they sold or did ("1 plan sold", "3 jobs done") and the money. Sales: the
-// ARR of the plans they sold ("$780 ARR"), or the first visits of the jobs
-// they sold when they sold no plan; techs: the jobs done ($ split between
-// the people on them). Read leniently; 10 rows at most.
-// → { board, month, title, rows: [{ rank, id, name, initials, color, note, value, unit }] }
-export function normalizeBoard(r, board, month) {
-  const rows = Array.isArray(r) ? r : r && Array.isArray(r.rows) ? r.rows : [];
-  return {
-    board, month, title: `${MONTHS_LONG[Number(month.slice(5, 7)) - 1]} Leaderboard`,
-    rows: rows.filter((x) => x && typeof x === "object").slice(0, 10).map((x, i) => {
-      const arr = num(x.arr_cents);
-      const sales = board === "sales";
-      const value = sales && arr > 0 ? arr : num(x.value_cents);
-      return {
-        rank: num(x.rank) || i + 1, id: String(x.user_id || x.id || ""), name: String(x.name || "").slice(0, 60),
-        initials: String(x.initials || "").slice(0, 3), color: /^#[0-9a-f]{6}$/i.test(x.color || "") ? x.color : null,
-        note: String(x.note || "").slice(0, 80), value, unit: sales && arr > 0 ? "ARR" : null,
-      };
-    }),
-  };
-}
 
 // ------------------------------------------------------------ the person's cards
 
 // Flyra's Home (Nov 13, "make it look more like Flyra"; Nov 15 "make the
 // home page look like Flyra"): the money at the top (Revenue | ARR), then
-// the Leaderboard (back on Nov 15, its math fixed), Today, Inbox, Tasks
-// and Goals. The clock is on by default only for someone who clocks in for
-// field work (is_technician; `clock: true`), anyone else adds it in Edit
-// Home.
-export const CARDS = Object.freeze(["money", "leaderboard", "clock", "agenda", "inbox", "tasks", "goals"]);
-export const DEFAULT_ON = Object.freeze(["money", "leaderboard", "agenda", "inbox", "tasks", "goals"]);
+// Today, Tasks and Goals. The Leaderboard and Inbox cards left Home on Nov
+// 16 (the owner: "I don't need to see the leaderboard ... I also don't
+// need my inbox on the home page"): the Leaderboard is the Menu's, the
+// Inbox the bar's, and a saved layout naming them just drops them
+// (RETIRED). The clock is on by default only for someone who clocks in
+// for field work (is_technician; `clock: true`), anyone else adds it in
+// Edit Home.
+export const CARDS = Object.freeze(["money", "clock", "agenda", "tasks", "goals"]);
+export const DEFAULT_ON = Object.freeze(["money", "agenda", "tasks", "goals"]);
+export const RETIRED_CARDS = Object.freeze(["leaderboard", "inbox"]);
 // The saved order first (cards no longer open to this person dropped),
 // then any card they may have that the saved list doesn't name (on when
-// it is one of the defaults), each after the card it follows in CARDS (a
-// layout saved while the Leaderboard was away gets it back under the
-// money). → [{ key, on }]
+// it is one of the defaults), each after the card it follows in CARDS.
+// → [{ key, on }]
 export function layoutOf(saved, available, { clock = false } = {}) {
   const can = new Set(available);
   const out = [];
@@ -542,7 +589,9 @@ export function validateLayout(v) {
   if (!v || typeof v !== "object" || !Array.isArray(v.cards)) throw new InputError("Send the cards in their order.", "cards");
   const seen = new Set();
   const cards = [];
-  for (const c of v.cards.slice(0, CARDS.length)) {
+  for (const c of v.cards.slice(0, CARDS.length + RETIRED_CARDS.length)) {
+    // (an older phone's Edit Home still sends the cards Home no longer has: they drop)
+    if (c && RETIRED_CARDS.includes(c.key)) continue;
     if (!c || !CARDS.includes(c.key)) throw new InputError("That isn't a Home card.", "cards");
     if (seen.has(c.key)) continue;
     seen.add(c.key);

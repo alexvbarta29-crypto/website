@@ -91,7 +91,7 @@ html:not([data-theme="light"]) body.crm:not(.page){
   --bar-pill:rgba(28,29,32,.9);--bar-line:rgba(255,255,255,.16);
   --tab-on:rgba(255,255,255,.15);--seg-track:#1d1e21;--seg-on:#48494d;--seg-on-ink:#fff;--seg-on-sh:none;
   --sheet-bg:#111214;--pop-bg:#202124;--input-bg:#1b1c1f;--scrim:rgba(0,0,0,.6);--dim:rgba(0,0,0,.62);
-  --avatar-bg:#2c2d31;--avatar-ink:#f5f5f7;--map-blank:#1d2420;--hero:linear-gradient(180deg,#1b2b33 0%,#151d22 300px,#111214 560px);--hero-top:#1b2b33;
+  --avatar-bg:#2c2d31;--avatar-ink:#f5f5f7;--map-blank:#1d2420;--hero:linear-gradient(180deg,#221d1d 0%,#1a1818 300px,#111214 560px);--hero-top:#221d1d;
   --sh-xs:none;--sh-card:none;--sh-raise:0 8px 24px rgba(0,0,0,.4);--sh-pop:0 16px 40px rgba(0,0,0,.55);
   --card-line:#2a2b2f;
   --label:#9a9aa2;--fill-pill:#2c2c30;
@@ -720,7 +720,7 @@ textarea.body{min-height:140px}
 /* Photos (core/camera.js photoTile): the thumbnail in lists, the whole photo in a sheet on a tap */
 .ph-tile{display:block;position:relative;overflow:hidden;border-radius:var(--r);background:var(--mist);min-width:44px;min-height:44px;color:inherit}
 .ph-tile img{display:block;width:100%;height:100%;object-fit:cover}
-.ph-tile:focus-visible{outline:2px solid var(--blue,#1d4ed8);outline-offset:2px}
+.ph-tile:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
 .ph-full{display:grid;place-items:center}
 .ph-full img{display:block;max-width:100%;height:auto;max-height:calc(100dvh - var(--top,0px) - 140px);object-fit:contain;border-radius:var(--r);background:var(--mist)}
 

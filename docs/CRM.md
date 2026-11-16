@@ -692,9 +692,13 @@ Flyra's Home (Nov 13; Nov 15, the owner with two screenshots of Flyra's
 phone app: "Make the home page look like Flyra"): the greeting and the
 name big, the money right on the canvas under them (no card), then
 Flyra's calm cards (a 20 px radius, a title, round arrows or a segmented
-switch, quiet empty states); in the dark a soft blue-teal glow behind the
-top fading to the near-black canvas, in the light a faint blue-grey wash
-over the grey canvas and white cards. Top to bottom:
+switch, quiet empty states). Barta's colors, never blue (Nov 16, the
+owner: "make it my business colors, not the blue"): in the dark a dark
+grey with a faint red tint behind the top fading to the near-black
+canvas, in the light white fading to the very light grey canvas, white
+cards; the line, the bars, the month lit and picked in the logo red
+(`--coral`, #fb4d3d; small red words in `--coral-ink`), axes and labels in
+the greys. Top to bottom:
 
 - **The header**: "Good morning" / "Good afternoon" / "Good evening" small
   and grey, the first name big and bold, and the bell (unread
@@ -703,11 +707,12 @@ over the grey canvas and white cards. Top to bottom:
   (Edit Home can hide it, not move it): Flyra's **Revenue | ARR** pill
   (Revenue each time Home opens) and the period on the right, **1M ⌄**
   (a small sheet: 1W this week, 1M this month, 3M, 1Y the last 12 months,
-  YTD; chips on a computer; ARR's own: 6M, 1Y, YTD, All), each view
+  YTD; chips on a computer; ARR's own: Next year first, then Past 6M,
+  Past year, YTD, All), each view
   keeping its own. Under them the
   period in small caps (NOVEMBER, NOV 16 – 22, DEC 2025 – NOV 2026), the
   big number (a link to Payments or Plans) and two small caps figures on
-  the right; then one thin light-blue line across the width, the values at
+  the right; then one thin red line across the width, the values at
   the left on faint lines, a dotted baseline, no dates under it (a tap,
   a drag or the arrow keys read a point out under the line: "Nov 13 ·
   $195"; every value in a hidden table), and "Updated 5:16 PM" (or where
@@ -720,8 +725,33 @@ over the grey canvas and white cards. Top to bottom:
     $0. `revenue_view` in `GET /home` (1M),
     `GET /home/money?metric=revenue&range=1w|1m|3m|1y|ytd` for the others
     (`revenueView()` in home-kpis.mjs).
+  - **ARR ahead by month** (the owner's Nov 16 ask, "I want to be able to
+    see the ARR for next year per month"; the ARR view's first period,
+    **Next year**): today's ARR as the big number, **IN 12 MONTHS** (ARR
+    projected at the end of the 12th month: this month and the 11 after
+    it) and **CHANGE** to it ($ and %); a bar a month, "Projected MRR by
+    month" with each month's MRR on its bar, this month lit and picked to
+    start with; a tap, a drag, the pointer or the arrow keys pick another
+    and the readout says its projected MRR and ARR and the plans renewing
+    and ending in it ("Mar 2027 · Projected · MRR $245 · ARR $2,945 ·
+    Renewing 1 plan · Ending 1 plan", and Starting when a plan starts).
+    The projection takes today's plans as they stand: a live plan counts
+    while its term runs; at its term's end one that renews goes on at a
+    year of its regular visits (the plans index's `ry`, the regular year
+    when a first term's differs: no first-visit discount; else `ay`) and
+    one that doesn't renew drops; a cancellation that takes effect ahead
+    drops it that day; a signed plan whose first term starts later (the
+    index's `so`, a 2027 start) counts from that month (today's ARR, the
+    big number, counts it from its sale, so this month's bar can sit under
+    it by those plans); pending (unsigned) and draft plans never count. No
+    new sales are guessed. `arr_view` in `GET /home` (the next 12 months),
+    `GET /home/money?metric=arr&range=next12` (`arrForward()`,
+    `arrForwardView()`, `planAhead()` in home-kpis.mjs; one plans index
+    read). A row from before Nov 16 (no `ry`, no `so` until the nightly
+    list check or the next import rebuilds it) renews at `ay` and starts
+    from its sale.
   - **ARR by month** (the owner's Nov 15 ask, "ARR by month on the home
-    page"): over 6M, 1Y (first), YTD and All (since the first plan's
+    page"): over Past 6M, Past year, YTD and All (since the first plan's
     month), today's ARR as the big number, **CHANGE** since the period
     began (the end of the month before its first; $ and %, green up, red
     down) and **THIS MONTH** (since the end of last month); a bar a month
@@ -733,18 +763,17 @@ over the grey canvas and white cards. Top to bottom:
     the active plans and MRR (ARR ÷ 12). Month ends are local days
     (America/Chicago); the same recurring filters and per-plan `ay` as
     ARR on a day; a plan made and cancelled in one month is added and
-    lost in it. `arr_view` in `GET /home` (1Y),
-    `GET /home/money?metric=arr&range=6m|1y|ytd|all` for the others
+    lost in it.
+    `GET /home/money?metric=arr&range=6m|1y|ytd|all`
     (`arrMonths()`, `arrMonthView()` in home-kpis.mjs; one plans index
     read). An older phone's per-day ARR (`range=1w|1m|3m`, `arrView()`)
     still answers.
-- **Leaderboard** (back on Nov 15, its math fixed: who sees the money,
-  while the reports module's `reports.leaderboard` is there): "November
-  Leaderboard" with **Sales | Techs**; a row each: the rank, the initials
-  in a thin circle, the name, "2 plans sold" (or "1 job sold", "3 jobs
-  done") and the money on the right ("$1,290 ARR": the ARR of the
-  recurring plans sold this month; the jobs' first visits for someone who
-  sold no plan; Techs: the jobs done). `GET /home/leaderboard?board=`.
+- **No Leaderboard, no Inbox** (Nov 16, the owner: "I don't need to see
+  the leaderboard of the ARR on the home page, like per guy. I also don't
+  need my inbox on the home page"): the full Leaderboard is the Menu's
+  (`#/leaderboard`, Analytics), the Inbox the bar's. Edit Home doesn't
+  offer them; a saved layout naming them just drops them (and an older
+  phone's Edit Home sending them is not refused: they drop).
 - **Clock in** (anyone with `time:own`; on by default only for someone who
   goes out on visits, `is_technician`, anyone else adds it in Edit Home),
   compact: TIMESHEET with a dot (green while on the clock), today's hours
@@ -764,8 +793,6 @@ over the grey canvas and white cards. Top to bottom:
   tasks with no due date with their status pill, the whole team's for an
   owner, anyone else's own.
 - On by default too (Flyra's Home), each one off in Edit Home:
-  - **Inbox** (`inbox:read`): the latest five open conversations, unread
-    first.
   - **Tasks** (`tasks:read`): **Upcoming ▾** (Overdue, No due date, All)
     and **Add**.
   - **Goals** (who sees the money; no card around it while empty, as
@@ -776,17 +803,16 @@ over the grey canvas and white cards. Top to bottom:
 - **Edit Home** (a button at the bottom, and My account → Edit Home,
   `#/today?edit=1`): each card on or off and moved up or down (the money
   stays at the top), saved per person on the server (`ptr/home/{userId}`).
-  Default (Flyra's): the money, the Leaderboard, Today, Inbox, Tasks and
-  Goals, with Clock in for someone who goes out on visits. A card the
-  person can't have is never offered; a card a saved layout doesn't name
-  comes in after the card it follows in Home's order (a layout saved while
-  the Leaderboard was away gets it back under the money).
+  Default: the money, Today, Tasks and Goals, with Clock in for someone
+  who goes out on visits. A card the person can't have is never offered;
+  a card a saved layout doesn't name comes in after the card it follows in
+  Home's order.
 
 A phone shows the money, then the cards in the person's order, with room
 at the bottom for the shell's floating tab bar and its + button. On a
 computer the money is a card (Flyra's dashboard); from 1,100 px two
-columns: the money and Today on the left, the Leaderboard, the clock,
-Inbox and Tasks on the right, Goals across the bottom (a 1,024 px laptop:
+columns: the money and Today on the left, the clock and Tasks on the
+right, Goals across the bottom (a 1,024 px laptop:
 one column).
 Creating is the shell's New / + button.
 
@@ -835,7 +861,7 @@ office data key the card says so (`money_missing`).
 
 **Who sees what.** The money and goals: `reports:read` or a
 phone with the office sign-in, never a technician. Today: `schedule:read`.
-Clock in: `time:own`. Tasks: `tasks:read`. Inbox: `inbox:read`. A
+Clock in: `time:own`. Tasks: `tasks:read`. A
 technician's Today is unchanged (their own day; the tech app) and `GET
 /home` answers them with nothing in it.
 
@@ -843,14 +869,13 @@ technician's Today is unchanged (their own day; the tech app) and `GET
 home.mjs`, pure parts in `home-kpis.mjs`) answers `{ date, now, user,
 mode, notifications, layout: [{ key, on }], cards: { ... } }` with the
 data of the cards that are on only (a card that is off costs no read),
-each index once per request (`ixMemo`): 16 storage calls cold for the
+each index once per request (`ixMemo`): 13 storage calls cold for the
 defaults on Rotor's numbers (the session, the user, the auth epoch, the
 permissions, the layout pointer, `sys/mode`, the bell's unread list,
 `cfg/goals`, this month's visits and the users index, the open tasks, the
-inbox's open conversations, the import runs, the jobs behind Scheduled
-and the plans behind ARR; this month's timesheets too when the clock is
-on). The cards' own reads: `GET /home/money?period=&date=` (Revenue),
-`GET /home/money?metric=arr&range=` (ARR), `GET /home/money?metric=
+import runs and the plans behind ARR; this month's timesheets too when
+the clock is on). The cards' own reads: `GET /home/money?period=&date=` (Revenue),
+`GET /home/money?metric=arr&range=next12|6m|1y|ytd|all` (ARR), `GET /home/money?metric=
 &period=&from=&to=` (older phones; a year of Scheduled is about 20
 calls), `GET /home/agenda?view=&date=`, `PUT /home/layout { cards }`.
 `tests/crm/core/home.test.mjs` holds the exact list.
@@ -1031,12 +1056,12 @@ each setting once, every module's setting placed),
 Code: `crm-app/modules/system/{home,home-charts,menu,today,me}.js`,
 `home.css`, `crm-app/core/{nav,router}.js`, `crm.css`. Tests:
 `tests/crm/core/home.test.mjs` (the periods, Rotor's and the CRM's
-collected, scheduled, ARR, the clock, the agenda, tasks and the inbox,
-Edit Home, goals, the Leaderboard card, who sees what, the exact
+collected, scheduled, ARR past and ahead, the clock, the agenda, tasks,
+Edit Home (the Leaderboard and Inbox gone), goals, who sees what, the exact
 storage calls) and `tests/e2e/home.spec.mjs` (iPhone 13 and SE, 1440 x 900
 and 1024 x 768: Home empty and on a real day, Today's views and arrows,
-Money's metrics, periods, custom range and readout, Clock in and out, Edit
-Home with Goals, Tasks and Inbox and from My account, the office without
+Money's metrics, periods, custom range and readout, ARR ahead and past,
+Clock in and out, Edit Home with Goals and Tasks and from My account, the office without
 the office sign-in, a tech, the Sales switch, the Menu, the sidebar,
 search, list + detail, Chrome's installability check, the office
 password's tab row). The route walk in `core.spec` covers every screen at

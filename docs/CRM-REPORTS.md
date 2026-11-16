@@ -156,8 +156,9 @@ flips it on **Settings → Rotor & data → Dashboard numbers** (`#/settings/das
   - **Techs**: jobs finished in the period (the jobs index's year), their
     total split between the people on them, and visits done (the visits
     index's months). Imported Rotor records count like the CRM's own.
-- Home no longer has a Leaderboard card (Nov 14); the board is Analytics'
-  "..." (`#/leaderboard`).
+- Home has no Leaderboard card (Nov 14; back Nov 15; gone again Nov 16,
+  the owner: "I don't need to see the leaderboard of the ARR on the home
+  page"); the board is Analytics' "..." and the Menu's (`#/leaderboard`).
 
 ## Services (the leaderboard)
 
