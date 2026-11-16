@@ -26,6 +26,30 @@ Until the variable is set (and on any copy of the site outside Netlify,
 which has no functions at all), the POST fails and the form shows the phone/email
 fallback — visitors are never shown a false "we got it" confirmation.
 
+## Rotor API 2026-11-14 (the new version)
+
+Rotor froze the API above (1.1.0, now called 2026-10-27) on Nov 14, 2026.
+It keeps working; the quote form moves to the new version as soon as a new
+key is added, with no code change:
+
+1. In Rotor: **Settings → Developers → create an API key** pinned to
+   **2026-11-14**, with `leads:create` and `leads:update` (a full-access key
+   has both). Old keys can't be moved to the new version.
+2. In Netlify: **Environment variables → Add** `ROTOR_API_TOKEN` = the new
+   key. Redeploy. Leave `ROTOR_API_KEY` in place: the referral program and
+   the giveaway still use it.
+
+With `ROTOR_API_TOKEN` set, `lead.mjs` sends `POST https://api.getrotor.com/leads`
+(`Authorization: Bearer`, `Rotor-Version: 2026-11-14`): name, phone (as
++1XXXXXXXXXX), email, `property.address`, `service_types` (the selected
+services), the same tags and source, `match_on` phone and email, `on_match`
+merge. Rotor answers 201 for a new lead and 200 when it merged into an
+existing one. The notes then go to `POST /leads/{id}/note/append`, so a
+returning customer's earlier notes are kept. If Rotor rejects the service
+names against its picklist (400), the lead is re-sent once without them; the
+services are still in the note. Remove `ROTOR_API_TOKEN` to go back to the
+old version instantly.
+
 ## What lands in Rotor (API version 1.1.0, `rotor-api-version` header)
 
 - `name` (or first + last), `phone`, `email`

@@ -1,12 +1,20 @@
 // Receives quote-form submissions from the site (POSTed as JSON by
 // assets/js/main.js — see docs/LEAD-FORM-SETUP.md) and creates or updates a
-// lead in Rotor CRM via its open API (version 1.1.0). Rotor upserts by phone
-// first, then email, and merges tags on update, so repeat submissions from
-// the same visitor enrich one lead instead of duplicating it.
+// lead in Rotor CRM.
 //
-// The Rotor API key lives ONLY in the ROTOR_API_KEY environment variable set
-// in the Netlify dashboard (Site configuration → Environment variables). It
-// must never appear in this repo, in the static pages, or in any log line.
+// Two Rotor API versions, picked by which key is set:
+//   - ROTOR_API_TOKEN set → API 2026-11-14 (POST /leads, Bearer auth). Rotor
+//     matches an existing lead by phone or email and merges into it, so a
+//     repeat visitor enriches one lead instead of duplicating it. The notes
+//     are appended to the lead's note afterwards, so a returning customer's
+//     earlier notes are never replaced.
+//   - otherwise → the legacy API (1.1.0, x-api-key, upsert by phone/email)
+//     with ROTOR_API_KEY, exactly as before. Rotor froze that version on
+//     2026-11-14; it keeps working, it just gets nothing new.
+//
+// Rotor keys live ONLY in those environment variables, set in the Netlify
+// dashboard (Site configuration → Environment variables). They must never
+// appear in this repo, in the static pages, or in any log line.
 //
 // The Barta CRM (docs/CRM-CONTACTS.md, "Website leads"): AFTER the Rotor
 // call, which is unchanged, the same lead also goes to the CRM when an owner
@@ -21,9 +29,62 @@ import { afterRotor, crmRescued, watchRotor } from "../lib/crm/modules/contacts/
 
 const ROTOR_URL = "https://api.getrotor.com/open-api/leads";
 const ROTOR_API_VERSION = "1.1.0";
+const ROTOR_V2_URL = "https://api.getrotor.com/leads";
+const ROTOR_V2_VERSION = "2026-11-14";
 const MAX_FIELD = 500;          // per-field sanity cap for form values
 const MAX_SERVICE_TYPE = 100;   // Rotor's service_type limit
 const MAX_NOTES = 2000;         // Rotor's notes limit
+const MAX_LIST = 20;            // v2: tags and service_types hold at most 20
+const MAX_SOURCE = 100;         // v2: source limit
+const NOTE_TIMEOUT_MS = 3000;   // v2: the note append is best-effort
+
+// v2 needs a real phone number; Rotor keeps phones as +1XXXXXXXXXX.
+const e164 = (v) => {
+  const d = String(v || "").replace(/\D/g, "");
+  if (d.length === 10) return "+1" + d;
+  if (d.length === 11 && d[0] === "1") return "+" + d;
+  return String(v || "").trim();
+};
+
+const v2Headers = (token) => ({
+  "Content-Type": "application/json",
+  Authorization: "Bearer " + token,
+  "Rotor-Version": ROTOR_V2_VERSION,
+});
+
+// v2 checks service_types against the company's picklist in Rotor. If the
+// website's service names don't match it, Rotor answers 400: try once more
+// without them (the services still travel in the note), so a picklist
+// mismatch can never cost a lead.
+async function createLeadV2(token, payload) {
+  const send = (body) => fetch(ROTOR_V2_URL, {
+    method: "POST", headers: v2Headers(token), body: JSON.stringify(body),
+  });
+  const res = await send(payload);
+  if (res.status !== 400 || !payload.service_types) return res;
+  console.warn("Rotor rejected the lead with service types (HTTP 400): retrying without them");
+  const { service_types, ...rest } = payload;
+  return send(rest);
+}
+
+// Adds the form's notes under whatever the lead already has. Best-effort:
+// the lead exists by now, so a failure here is logged (status only) and
+// never shown to the visitor.
+async function appendNoteV2(token, id, text) {
+  if (!id || !text) return false;
+  try {
+    const res = await fetch(`${ROTOR_V2_URL}/${encodeURIComponent(id)}/note/append`, {
+      method: "POST", headers: v2Headers(token),
+      body: JSON.stringify({ text, separator: "\n\n" }),
+      signal: AbortSignal.timeout(NOTE_TIMEOUT_MS),
+    });
+    if (!res.ok) console.error("Rotor note append failed: HTTP " + res.status);
+    return res.ok;
+  } catch (err) {
+    console.error("Rotor note append failed (" + (err && err.name || "error") + ")");
+    return false;
+  }
+}
 
 const clean = (v) =>
   (typeof v === "string" ? v.replace(/\r\n?/g, "\n").trim().slice(0, MAX_FIELD) : "");
@@ -86,9 +147,10 @@ export default async (req, context) => {
   if (req.method !== "POST")
     return Response.json({ error: "Method not allowed" }, { status: 405 });
 
-  const key = process.env.ROTOR_API_KEY;
-  if (!key) {
-    console.error("ROTOR_API_KEY is not set — lead dropped");
+  const token = process.env.ROTOR_API_TOKEN;   // 2026-11-14 key: preferred
+  const key = process.env.ROTOR_API_KEY;       // legacy 1.1.0 key: fallback
+  if (!token && !key) {
+    console.error("ROTOR_API_TOKEN and ROTOR_API_KEY are not set — lead dropped");
     return Response.json({ error: "Lead endpoint not configured" }, { status: 500 });
   }
 
@@ -103,9 +165,11 @@ export default async (req, context) => {
   const email = clean(data.email);
   // Without phone or email the lead is uncontactable (and Rotor has nothing
   // to upsert on); the forms require phone, so only hand-crafted requests
-  // ever hit this.
+  // ever hit this. The 2026-11-14 API requires a phone outright.
   if (!phone && !email)
     return Response.json({ error: "Phone or email required" }, { status: 400 });
+  if (token && !phone)
+    return Response.json({ error: "Phone required" }, { status: 400 });
 
   // Rotor's structured address. Single-address-field forms send the street
   // line as "address" (Nominatim fills the hidden city/state/zip/country
@@ -145,6 +209,50 @@ export default async (req, context) => {
 
   const notes = buildNotes(data, services, plan, referral ? [referral.notes_line] : []);
 
+  const input = crmInput({ name, data, phone, email, street1, street2, city, state, zip, services, svcType, plan, source, tags, notes });
+
+  if (token) {
+    // 2026-11-14: name and phone are required; the address nests under
+    // property; service types are a list; the note is appended afterwards.
+    const payload = {
+      name: (name || "Website lead").slice(0, 255),
+      phone: e164(phone),
+      source: "Website quote form".slice(0, MAX_SOURCE),
+      tags: tags.slice(0, MAX_LIST),
+      match_on: ["phone", "email"],
+      on_match: "merge",
+    };
+    if (email) payload.email = email;
+    if (hasAddress) {
+      const address = {};
+      for (const [k, v] of Object.entries({ street1, street2, city, state, zip, country }))
+        if (v) address[k] = v;
+      payload.property = { address };
+    }
+    const types = services.length ? services : (svcType ? [svcType] : []);
+    if (types.length) payload.service_types = types.slice(0, MAX_LIST);
+
+    let res;
+    try {
+      res = await watchRotor(createLeadV2(token, payload), { req, context, input, origin: "lead-form" });
+    } catch (err) {
+      if (crmRescued(await afterRotor({ req, context, input, origin: "lead-form", rotorOk: false }))) return Response.json({ ok: true });
+      throw err;
+    }
+    // 201 = new lead, 200 = matched an existing lead and merged into it.
+    // Log only the status: the error body may echo customer information.
+    if (res.status !== 200 && res.status !== 201) {
+      console.error("Rotor rejected lead: HTTP " + res.status);
+      if (crmRescued(await afterRotor({ req, context, input, origin: "lead-form", rotorOk: false }))) return Response.json({ ok: true });
+      return Response.json({ error: "Upstream error" }, { status: 502 });
+    }
+    const { id } = await rotorLeadId(res, "lead");
+    await appendNoteV2(token, id, notes);
+    await afterRotor({ req, context, input, origin: "lead-form", rotorOk: true, rotor: { lead_id: id } });
+    return Response.json({ ok: true });
+  }
+
+  // Legacy 1.1.0 (ROTOR_API_KEY), unchanged.
   // Only Rotor-supported fields, and no empty optional properties.
   const payload = { source: "Website quote form", tags };
   if (name) payload.name = name;
@@ -158,8 +266,6 @@ export default async (req, context) => {
   if (country) payload.address_country = country;
   if (svcType) payload.service_type = svcType;
   if (notes) payload.notes = notes;
-
-  const input = crmInput({ name, data, phone, email, street1, street2, city, state, zip, services, svcType, plan, source, tags, notes });
 
   let res;
   try {
