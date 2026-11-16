@@ -2,7 +2,7 @@
 // and reasons, a conversation row, a message bubble. No data here, only how
 // things read (design §2.3).
 
-import { html, icon, attrs, openExternal } from "../../core/ui.js";
+import { html, icon, attrs, openExternal, raw } from "../../core/ui.js";
 import { time, dateShort, ago, initials } from "../../core/format.js";
 
 let styled = false;
@@ -84,3 +84,6 @@ export const pendingBubble = (p, o = {}) => html`<div class="cm-msg out">
 export const dayLabel = (iso) => dateShort(iso);
 export const stars = (n) => "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
 export const emptyCard = (ic, title, text) => html`<div class="card empty"><div class="art">${icon(ic)}</div><h2>${title}</h2><p>${text}</p></div>`;
+
+// The Suggested reply's mark (a sparkle; the shared icon set has none).
+export const SPARKLE = raw('<svg class="cm-spark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 3c.7 4.3 2.7 6.3 7 7-4.3.7-6.3 2.7-7 7-.7-4.3-2.7-6.3-7-7 4.3-.7 6.3-2.7 7-7z"/><path d="M18.5 14.5c.3 1.6 1 2.3 2.5 2.5-1.5.3-2.2 1-2.5 2.5-.3-1.5-1-2.2-2.5-2.5 1.5-.2 2.2-.9 2.5-2.5z"/></svg>');

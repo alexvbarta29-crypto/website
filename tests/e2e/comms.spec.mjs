@@ -443,3 +443,142 @@ test("comms: on a desk the Inbox sits beside its thread", async () => {
     await p.clean();
   } finally { await p.close(); }
 });
+
+// The Suggested reply (drafts.mjs, suggest.js). The Anthropic API is a mock
+// in this process (the server's own fetch refuses every other host); the key
+// is a made-up one set only for these tests.
+function claudeMock() {
+  const before = globalThis.fetch;
+  const calls = [];
+  const words = (ins) => (!ins ? "Hi there, this is Olive with Barta Window Washing! Thanks for letting us know the side gate is unlocked. See you soon!"
+    : /^Make it shorter/.test(ins) ? "Thanks, see you soon!"
+    : /^Offer two or three/.test(ins) ? "Thanks! We have Wednesday or Thursday open. Which works best?"
+    : "Thanks! We can come Thursday.");
+  globalThis.fetch = async (input, init = {}) => {
+    const u = new URL(typeof input === "string" ? input : input.url);
+    if (u.host !== "api.anthropic.com") return before(input, init);
+    const b = JSON.parse(init.body);
+    calls.push(b);
+    const ins = (/<instruction>([\s\S]*?)<\/instruction>/.exec(b.messages[0].content) || [])[1] || "";
+    return Response.json({ id: "msg_e2e", type: "message", role: "assistant", model: b.model, stop_reason: "end_turn", content: [{ type: "text", text: words(ins) }], usage: { input_tokens: 800, cache_read_input_tokens: 1500, output_tokens: 60 } });
+  };
+  process.env.ANTHROPIC_API_KEY = "test-key-not-real";
+  return { calls, restore() { globalThis.fetch = before; delete process.env.ANTHROPIC_API_KEY; } };
+}
+const hold = async (page, f, sel) => {
+  const b = await (await f.$(sel)).boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + Math.min(20, b.height / 2));
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
+};
+
+test("comms (iphone13): the Suggested reply: Use fills the box and sends nothing; the chips; hold for the same choices, Copy and Regenerate", async () => {
+  const net = claudeMock();
+  const { p, page, f } = await open("olive", "iphone13");
+  const c = seeded.comms;
+  try {
+    // what waits in the Outbox for this person (the worker's own automations may add to others meanwhile)
+    const outbox = async () => (await (await p.ctx.request.get(`/api/crm/outbox?contact=${c.onVisit}`, { headers: { "x-crm": "1" } })).json()).data.map((o) => o.body).join("|");
+    const before = await outbox();
+    await goTo(f, `/inbox/${c.tech}`);
+    // the customer's text is the newest: a draft waits above the composer
+    await f.waitForSelector("[data-sugg] [data-sugg-text]", { timeout: 8000 });
+    assert.match(await text(f, "[data-sugg]"), /Suggested reply/);
+    assert.match(await text(f, "[data-sugg-text]"), /side gate is unlocked/);
+    assert.equal(net.calls.length, 1);
+    assert.equal(net.calls[0].model, "claude-haiku-5-5");
+    assert.doesNotMatch(net.calls[0].messages[0].content, /555|@/, "no number or email reaches the model");
+    assert.deepEqual(await f.$$eval("[data-sugg-chip]", (b) => b.map((x) => x.dataset.suggChip)), ["shorter", "friendlier", "professional", "availability"], "an address on file: no Ask for their address");
+    assert.ok(await f.$("[data-sugg-change]"), "Change it...");
+    const card = await f.$eval("[data-sugg]", (el) => el.getBoundingClientRect().toJSON());
+    const box = await f.$eval("[data-compose]", (el) => el.getBoundingClientRect().toJSON());
+    assert.ok(card.bottom <= box.top + 1, "just above the composer");
+    assert.deepEqual(await screenProblems(f), [], "the card passes the phone checks");
+    await shot(page, "comms-suggested-reply-iphone13");
+    // a chip changes it (the current draft goes with the instruction)
+    await f.click('[data-sugg-chip="shorter"]');
+    await f.waitForFunction(() => /^Thanks, see you soon!$/.test(document.querySelector("[data-sugg-text]")?.textContent || ""), null, { timeout: 8000 });
+    assert.match(net.calls[1].messages[0].content, /<current_draft>\nHi there, this is Olive/);
+    assert.match(net.calls[1].messages[0].content, /<instruction>Make it shorter/);
+    // hold the words: the same choices as a sheet, with Copy and Regenerate
+    await hold(page, f, "[data-sugg-text]");
+    await sheetUp(f, /^Suggested reply$/);
+    assert.deepEqual(await f.$$eval(".sheet.on [data-sugg-h]", (b) => b.map((x) => x.dataset.suggH)), ["use", "shorter", "friendlier", "professional", "availability", "change", "copy", "regenerate"]);
+    assert.deepEqual(await screenProblems(f), [], "the hold sheet passes the phone checks");
+    await shot(page, "comms-suggested-reply-options-iphone13");
+    await f.click('.sheet.on [data-sugg-h="availability"]');
+    await sheetGone(f);
+    await f.waitForFunction(() => /Wednesday or Thursday/.test(document.querySelector("[data-sugg-text]")?.textContent || ""), null, { timeout: 8000 });
+    assert.match(net.calls[2].messages[0].content, /<open_slots>\n\w+day, \w{3} \d+, anytime/, "the open days from the schedule");
+    // Change it...: their own words
+    await f.click("[data-sugg-change]");
+    await sheetUp(f, /^Change it$/);
+    await f.fill(".sheet.on [data-sugg-f] textarea", "say we can come Thursday");
+    assert.deepEqual(await screenProblems(f), [], "the Change it sheet");
+    await f.click(".sheet.on [data-sugg-f] button[type=submit]");
+    await sheetGone(f);
+    await f.waitForFunction(() => /We can come Thursday/.test(document.querySelector("[data-sugg-text]")?.textContent || ""), null, { timeout: 8000 });
+    assert.match(net.calls[3].messages[0].content, /<instruction>say we can come Thursday<\/instruction>/);
+    // Use: the words in the box, focused; nothing sent, nothing in the Outbox; the card goes
+    await f.click("[data-sugg-use]");
+    await f.waitForFunction(() => !document.querySelector("[data-sugg]"));
+    assert.equal(await f.$eval("[data-compose] textarea", (el) => el.value), "Thanks! We can come Thursday.");
+    assert.equal(await f.evaluate(() => document.activeElement && document.activeElement.matches("[data-compose] textarea")), true);
+    await f.waitForTimeout(600);
+    assert.equal(await outbox(), before, "Use never sends");
+    assert.doesNotMatch(before, /We can come Thursday/);
+    assert.equal(await f.$$eval(".cm-msg .bubble.grey", (els) => els.length), 0, "no Not sent bubble");
+    assert.equal(net.calls.length, 4, "and asks for nothing more");
+    // the 10 s refresh doesn't bring it back for the same message
+    await f.waitForTimeout(10500);
+    assert.equal(await f.$("[data-sugg]"), null);
+    await f.fill("[data-compose] textarea", "");
+    // + Draft a reply: a fresh one for any thread
+    await f.click("[data-compose] [data-plus]");
+    await sheetUp(f, /Add to the message/);
+    assert.match(await text(f, ".sheet.on [data-draft-reply]"), /Draft a reply/);
+    await f.click(".sheet.on [data-draft-reply]");
+    await sheetGone(f);
+    await f.waitForSelector("[data-sugg] [data-sugg-text]", { timeout: 8000 });
+    assert.equal(net.calls.length, 5);
+    await f.click("[data-sugg-x]");
+    await f.waitForFunction(() => !document.querySelector("[data-sugg]"));
+    await p.clean();
+  } finally { net.restore(); await p.close(); }
+});
+
+test("comms: the Suggested reply on a desk beside the Inbox; without the key there is none", async () => {
+  const net = claudeMock();
+  const { p, page, f } = await open("olive", "desk1440", { office: true });
+  const c = seeded.comms;
+  try {
+    await goTo(f, "/inbox");
+    // the customer of Theo's visit is still waiting on an answer
+    await f.click(`#view a[href="#/inbox/${c.tech}"]`);
+    await settled(f, { hash: `#/inbox/${c.tech}` });
+    await f.waitForSelector("#pane [data-sugg] [data-sugg-text]", { timeout: 8000 });
+    assert.ok(await f.$("#view .cm-row"), "the list stays beside it");
+    const card = await f.$eval("#pane [data-sugg]", (el) => el.getBoundingClientRect().toJSON());
+    const box = await f.$eval("#pane [data-compose]", (el) => el.getBoundingClientRect().toJSON());
+    assert.ok(card.bottom <= box.top + 1 && card.width > 300, "above the composer, the pane's width");
+    assert.equal(await f.$$eval("#pane [data-sugg-chip]", (b) => b.filter((x) => x.getBoundingClientRect().right <= innerWidth).length), 4, "every chip in view (they wrap on a desk)");
+    assert.deepEqual(await screenProblems(f), [], "the desk thread with its suggestion");
+    await shot(page, "comms-suggested-reply-desk");
+    // the key goes: no card, + says it needs the key
+    net.restore();
+    await goTo(f, "/inbox");
+    await f.click(`#view a[href="#/inbox/${c.conversation}"]`);
+    await settled(f, { hash: `#/inbox/${c.conversation}` });
+    await f.click(`#view a[href="#/inbox/${c.tech}"]`);
+    await settled(f, { hash: `#/inbox/${c.tech}` });
+    await f.waitForTimeout(500);
+    assert.equal(await f.$("[data-sugg]"), null, "no key: no card");
+    await f.click("#pane [data-compose] [data-plus]");
+    await sheetUp(f, /Add to the message/);
+    assert.match(await text(f, ".sheet.on [data-draft-reply]"), /needs the Anthropic key/);
+    assert.equal(await f.$eval(".sheet.on [data-draft-reply]", (el) => el.disabled), true);
+    await f.click(".sheet.on [data-sheet-x]");
+    await p.clean();
+  } finally { net.restore(); await p.close(); }
+});

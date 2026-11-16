@@ -50,6 +50,7 @@ All under `/api/crm`. Sending itself is core's `POST /messages`; this module pro
 | `GET /comms/setup` | `settings:messaging` | what is connected (booleans), the webhook addresses |
 | `POST /hooks/twilio/sms`, `/hooks/twilio/status` | Twilio's signature | an inbound text; a delivery status |
 | `POST /hooks/email/postmark` | a token in the address | delivery, bounce, spam complaint, unsubscribe |
+| `POST /messages/draft` | `messages:send` unscoped (the office) | a Suggested reply: `{ contact_id \| conversation_id, channel?, instruction?, previous_draft? }` → `{ draft, channel, missing, left_today }`; never sends (drafts.mjs) |
 
 Services: `messages.sink`, `reviews.isReviewed(contact_id)`, `comms.unread(ctx)` (the Inbox badge and Home's "Unread conversations" row: one read of the small `open` shard).
 MCP (read only): `comms_inbox`, `comms_thread`, `comms_campaigns`, `comms_reviews`; anything a customer wrote is wrapped as untrusted text.
@@ -140,6 +141,17 @@ Nothing is needed for the import or the Inbox. To switch real texting on later (
 3. Settings → Texting, email & reviews shows the two webhook addresses. Paste them into the Twilio number (and Postmark) by hand. The CRM never does this itself.
 4. Pick the test contact (a contact flagged test, with marketing consent if campaigns will use marketing templates).
 5. Live is refused until the CRM is the system of record.
+
+The Suggested reply needs `ANTHROPIC_API_KEY` (an Anthropic API key) in the site's environment; `CRM_DRAFTS_PER_DAY` and `CRM_DRAFTS_MONTHLY_USD` are optional. A draft costs well under a tenth of a cent.
+
+## Suggested reply (drafts.mjs, suggest.js)
+
+When the newest message in a thread is the customer's and nobody has answered (a send waiting in the Outbox counts as an answer), a card above the composer holds a draft: **Use** puts it in the message box (it never sends), the chips change it (Shorter, Friendlier, More professional, Add availability, Ask for their address when none is on file, Change it... with your own words), and holding the words (or the card's ...) opens the same choices with Copy and Regenerate. The composer's + has **Draft a reply** for any thread. Office only; a technician never sees it.
+
+- Claude Haiku 5.5 through the Messages API (raw HTTPS, `anthropic-version: 2026-10-21`, effort low, 7 s timeout, one retry on an overload), the fixed system prompt (Barta's services, voice and rules) cached with `cache_control`.
+- What it sees: the customer's first name, lead or customer, town, services done or quoted, their own open quotes, invoices and plans, the next booked visit, whether an address is on file, the last 12 texts and emails (no notes) with phone numbers, emails, street addresses and their last name taken out, and the open days from the schedule only for Add availability. Never another customer's data.
+- Limits: `CRM_DRAFTS_PER_DAY` per person (default 80) and `CRM_DRAFTS_MONTHLY_USD` (default 5), counted from `aidraft/{month}/` keys (a user id and a cost each). Over either: 429 before any request.
+- Without `ANTHROPIC_API_KEY` the route answers 409 `not_set_up`, no card shows, and + says it needs the key. The key is never logged.
 
 ## Data rules
 

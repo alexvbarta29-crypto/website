@@ -156,3 +156,22 @@ html:not([data-theme="light"]) .cm-av{background:var(--card-2)!important;color:v
 /* the name at the top opens their panel */
 .top-title.cm-name-tap{cursor:pointer;padding-top:12px;padding-bottom:12px}
 .top-title.cm-name-tap:focus-visible{outline:2px solid var(--coral);outline-offset:2px;border-radius:6px}
+/* the Suggested reply (suggest.js): a soft card above the composer */
+.cm-sugg{display:flex;flex-direction:column;gap:8px;margin-top:4px;padding:6px 6px 10px 14px;border:1px solid var(--coral-ring);border-radius:var(--r-lg);background:var(--card);box-shadow:var(--sh-xs)}
+.cm-sugg-h{display:flex;align-items:center;gap:6px;min-height:44px}
+.cm-sugg-l{display:inline-flex;align-items:center;gap:6px;margin-right:auto;font:600 13px/1.2 var(--text);letter-spacing:.01em;color:var(--coral-ink)}
+.cm-sugg-h .rnd{background:none;border-color:transparent;box-shadow:none;color:var(--ink-3)}
+.cm-spark{flex:none;width:16px;height:16px;fill:currentColor;stroke:none}
+.cm-sugg-t{margin:0 8px 0 0;font-size:16px;line-height:1.42;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;cursor:default;border-radius:8px;outline:0}
+.cm-sugg-t:focus-visible{box-shadow:var(--focus)}
+.cm-sugg-t.wait{color:var(--ink-3)}
+.cm-sugg.busy .cm-sugg-t{opacity:.55}
+.cm-sugg-a{display:flex;align-items:center;gap:8px;min-width:0;margin-right:2px}
+.cm-sugg-use{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--coral-btn,var(--coral));color:var(--on-coral,#fff);font:600 15px/1 var(--text);cursor:pointer}
+.cm-sugg-use svg{width:18px;height:18px}
+.cm-sugg-cs{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0 8px 0 0}
+.cm-sugg-cs::-webkit-scrollbar{display:none}
+.cm-sugg-c{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border:1px solid var(--line-2);border-radius:999px;background:var(--card);color:var(--ink-2);font:500 14px/1 var(--text);white-space:nowrap;cursor:pointer}
+.cm-sugg-c svg{width:16px;height:16px}
+.cm-sugg-use:disabled,.cm-sugg-c:disabled{opacity:.5;cursor:default}
+@media (min-width:900px){.cm-sugg-cs{flex-wrap:wrap;overflow:visible}}
