@@ -3,12 +3,13 @@
    more like Flyra"): Flyra's iPhone app first, Rotor's where Flyra shows
    nothing, in Barta's coral. The iPhone's own font (San Francisco) and the
    iOS scale: large titles 34 px bold, rows 17 px, secondary 15 px grey,
-   small caps labels 12 px spaced. Dark (Flyra's, the default): a near-black
-   canvas, dark cards with a subtle border, a dark glass bar, light text.
-   Light (Rotor's): iOS grouped grey, white cards with a very soft shadow
-   and no hard border. Every color is a token below; html[data-theme]
-   (core/theme.js: Light / Dark / Automatic, on this device) picks the set,
-   dark when nothing is set. Coral is the one accent in both: buttons,
+   small caps labels 12 px spaced. Light (the default since Nov 2026, the
+   owner: "make it white, not black. It's easier to read white"): a very
+   light grey canvas, pure white cards with a hairline, near-black text.
+   Dark (Flyra's, a tap away): a near-black canvas, dark cards with a subtle
+   border, a dark glass bar, light text. Every color is a token below;
+   html[data-theme] (core/nav.js: Light / Dark / Automatic, on this device;
+   the shell's html starts as "light") picks the set. Coral is the one accent in both: buttons,
    what's selected, the chart line. Text is at least 4.5:1 in both.
    44 px tap targets on a phone, 16 px inputs (no iOS zoom). Safe areas come
    from env() when the CRM is the page, and from --sat/--sar/--sab/--sal
@@ -73,7 +74,7 @@
   --tabs-h:72px;
   --ease:cubic-bezier(.22,.61,.36,1);
 }
-/* Dark (Flyra's): the app's default; the sign-in pages stay light. */
+/* Dark (Flyra's): a tap away (Light is the default); the sign-in pages stay light. */
 html:not([data-theme="light"]) body.crm:not(.page){
   color-scheme:dark;
   --ink:#f5f5f7;--ink-2:#d1d1d6;--ink-3:#9a9aa2;--muted:#a1a1a8;--line:#2a2b2f;--line-2:#36373c;--mist:#111214;--mist-2:#26272b;--card:#1b1c1f;--card-2:#232428;
@@ -808,7 +809,7 @@ textarea.body{min-height:140px}
 .rs-seg-b[aria-selected="true"]::before{content:"";position:absolute;inset:3px 0;z-index:-1;border-radius:9px;background:var(--seg-on);box-shadow:var(--seg-on-sh)}
 .rs-seg.black .rs-seg-b[aria-selected="true"]{color:var(--on-solid)}
 .rs-seg.black .rs-seg-b[aria-selected="true"]::before{background:var(--solid);box-shadow:none}
-.rs-seg-b .n{font-variant-numeric:tabular-nums;font-weight:500;opacity:.7}
+.rs-seg-b .n{font-variant-numeric:tabular-nums;font-weight:500;color:var(--ink-3)}
 .rs-seg-b:focus-visible{outline-offset:-3px}
 /* a card's head: title, count, the grey round pencil and + */
 .rs-ch{display:flex;align-items:center;gap:8px;min-height:44px;margin:-6px -3px 2px 0}
@@ -1264,3 +1265,75 @@ a.rs-tmain,button.rs-tmain{cursor:pointer}
 }
 /* an unread notification: a coral dot before its time (system/notifications.js) */
 .nt-new{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%;background:var(--coral);vertical-align:1px}
+/* ------------------------------------------------------------ motion (Nov 2026, the owner: "a little more premium animations")
+   Subtle and quick, iOS's curves: 150 to 280 ms, transform and opacity only (60 fps, no layout
+   shift), and only on something a person did. Sheets (the Menu, the "..." sheets, sheet pages) spring
+   up with a slight overshoot over a backdrop that dims smoothly, and drop away quicker; a desk's
+   dialog grows in. The + overlay's pills rise one after another, its x turns in. A pressed button
+   gives a little (97%) and darkens; a pressed row darkens and gives less. Toasts rise in and slide
+   down as they go. The segmented control's pill slides to the tapped segment. Skeletons shimmer.
+   Screens, rows and counting numbers are core/ui.js "motion" (the router calls it on a route
+   change only). prefers-reduced-motion: none of it (below, and every helper in ui.js). */
+:root{--ease-out:cubic-bezier(.22,1,.36,1);--ease-in:cubic-bezier(.4,0,1,1);--ease-spring:cubic-bezier(.2,1.22,.38,1);--t-fast:150ms;--t-mid:200ms;--t-slow:280ms;--shine:rgba(255,255,255,.65)}
+html:not([data-theme="light"]) body.crm:not(.page){--shine:rgba(255,255,255,.07)}
+/* sheets: up with a spring, down quicker; the overshoot never shows a gap (its own color under it) */
+.backdrop{transition:opacity var(--t-mid) var(--ease-in)}
+.backdrop.on{transition:opacity var(--t-slow) var(--ease-out)}
+.sheet{transition:transform var(--t-mid) var(--ease-in)}
+.sheet.on{transition:transform var(--t-slow) var(--ease-spring)}
+.sheet::after{content:"";position:absolute;left:0;right:0;top:100%;height:56px;background:inherit;pointer-events:none}
+@media (min-width:900px){
+  .sheet{transform:translateY(-48%) scale(.97);transition:transform var(--t-mid) var(--ease-in),opacity var(--t-mid) var(--ease-in)}
+  .sheet.on{transform:translateY(-50%);transition:transform var(--t-slow) var(--ease-spring),opacity var(--t-mid) var(--ease-out)}
+  .sheet::after{display:none}
+  /* a desk's menus (Create, the person, search) grow from their corner */
+  .pop:not([hidden]){animation:mo-pop var(--t-fast) var(--ease-out);transform-origin:top right}
+}
+@keyframes mo-pop{from{opacity:0;transform:translateY(-4px) scale(.97)}to{opacity:1;transform:none}}
+/* the + overlay: the screen dims, the pills rise from the + one after another, the x turns in */
+.qk{transition:opacity var(--t-mid) var(--ease-out)}
+.qk-pill{opacity:0;transform:translateY(14px) scale(.96);transform-origin:right center;transition:transform var(--t-slow) var(--ease-spring),opacity var(--t-mid) var(--ease-out),scale var(--t-fast) var(--ease-out)}
+.qk.on .qk-pill{opacity:1;transform:none}
+.qk.on .qk-list li:nth-last-child(2) .qk-pill{transition-delay:25ms}
+.qk.on .qk-list li:nth-last-child(3) .qk-pill{transition-delay:50ms}
+.qk.on .qk-list li:nth-last-child(4) .qk-pill{transition-delay:75ms}
+.qk.on .qk-list li:nth-last-child(5) .qk-pill{transition-delay:100ms}
+.qk.on .qk-list li:nth-last-child(6) .qk-pill{transition-delay:120ms}
+.qk.on .qk-list li:nth-last-child(n+7) .qk-pill{transition-delay:140ms}
+.qk-search,.qk-res{transition:transform var(--t-slow) var(--ease-out)}
+.qk:not(.on) .qk-search{transform:translateY(-8px)}
+/* (eight things to make: they still stack without scrolling on a short phone) */
+@media (max-height:700px){.qk-list{gap:6px}.qk-pill{min-height:48px}}
+.qk-x svg{transform:rotate(-90deg);transition:transform var(--t-slow) var(--ease-spring)}
+.qk.on .qk-x svg{transform:none}
+/* a press: buttons and pills give a little, rows a touch less; both darken (the :active colors above) */
+.btn{transition:background .15s var(--ease),border-color .15s var(--ease),box-shadow .15s var(--ease),scale var(--t-fast) var(--ease-out)}
+.rs-pb,.rs-pilltap,.qk-x,.rs-act,.rs-tile,.tile,.mtile,.fm-tile,.sheet-x,.icon-btn,.tabs .tab,.db-ic,.rs-done,
+a.row,button.row,.menu a,.menu button,.fm-row,a.rs-lr-main,button.rs-lr-main,a.rs-tmain,button.rs-tmain,a.rs-inset,a.rs-disc,button.rs-disc,.c-row,.cc-top,.lc-top,.vl-card,a.hm-item{transition:scale var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out)}
+.btn:active,.rs-pb:active,.rs-pilltap:active,.qk-pill:active,.qk-x:active,.rs-act:active,.rs-tile:active,.tile:active,.mtile:active,.fm-tile:active,.sheet-x:active,.icon-btn:active,.tabs .tab:active,.db-ic:active,.rs-done:active{scale:.97}
+a.row:active,button.row:active,.menu a:active,.menu button:active,.fm-row:active,a.rs-lr-main:active,button.rs-lr-main:active,a.rs-tmain:active,button.rs-tmain:active,a.rs-inset:active,a.rs-disc:active,button.rs-disc:active,.c-row:active,.cc-top:active,.lc-top:active,.vl-card:active,a.hm-item:active{scale:.985}
+a.rs-lr-main:active,button.rs-lr-main:active,a.rs-tmain:active,button.rs-tmain:active,a.rs-inset:active,a.rs-disc:active,button.rs-disc:active{background:var(--fill)}
+.rs-done:active{background:var(--coral-btn-2)}
+.rnd,.fab,.top-back,.ct-fab,.mp-fab,.hm-round,.wk-fh-round,.ck-pill{transition:transform var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out)}
+.rnd:active,.fab:active,.top-back:active{transform:scale(.97)}
+.tabs.pill .tab{transition:background-color var(--t-mid) var(--ease-out),color var(--t-mid) var(--ease-out),scale var(--t-fast) var(--ease-out)}
+/* toasts: rise in with a little spring, slide down and fade as they go (core/ui.js toastOut) */
+.toast{animation:mo-toast-in var(--t-slow) var(--ease-spring)}
+.toast.out{animation:mo-toast-out var(--t-mid) var(--ease-in) forwards}
+@keyframes mo-toast-in{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes mo-toast-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(12px)}}
+/* the segmented control's pill slides from the segment that was on (core/ui.js segSlide) */
+.rs-seg-b.seg-slide::before{transform-origin:left center;animation:mo-seg var(--t-mid) var(--ease-out)}
+@keyframes mo-seg{from{transform:translateX(var(--seg-dx,0)) scaleX(var(--seg-sw,1))}to{transform:none}}
+/* skeletons: a soft light passes over the grey bars (a transform, not a repaint) */
+.sk{position:relative;overflow:hidden;background:var(--fill-2);animation:none}
+.sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent 0%,var(--shine) 50%,transparent 100%);animation:mo-shine 1.4s ease-in-out infinite}
+@keyframes mo-shine{to{transform:translateX(100%)}}
+/* the screen you leave going back (core/ui.js screenOut): over the new one, below the bars */
+.mo-ghost{position:fixed;z-index:4;margin:0;overflow:hidden;background:var(--mist);pointer-events:none}
+.mo-count{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .qk-pill{opacity:1;transform:none}
+  .mo-ghost{display:none}
+}

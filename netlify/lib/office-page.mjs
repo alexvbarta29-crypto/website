@@ -129,11 +129,12 @@ ${APP_HEAD}
 <title>Barta Office</title>
 ${solo ? `<script>
 (() => {
-  // the CRM's Light or Dark on this phone (core/nav.js "crm-theme"), before the frame says so: no light flash behind a dark CRM
-  let v = null;
-  try { v = localStorage.getItem('crm-theme'); } catch (e) { /* nothing kept */ }
-  const light = v === 'light' || (v === 'auto' && window.matchMedia && !matchMedia('(prefers-color-scheme: dark)').matches);
-  const c = light ? '#f2f2f7' : '#111214';
+  // the CRM's Light or Dark on this phone (core/nav.js "crm-theme"), before the frame says so: Light unless
+  // Dark was picked since Light became the default ("crm-theme-white"), or Automatic on a dark phone
+  let v = null, moved = null;
+  try { v = localStorage.getItem('crm-theme'); moved = localStorage.getItem('crm-theme-white'); } catch (e) { /* nothing kept */ }
+  const dark = (v === 'dark' && !!moved) || (v === 'auto' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  const c = dark ? '#111214' : '#f6f6f8';
   document.documentElement.style.setProperty('--mist', c);
   document.querySelector('meta[name="theme-color"]').setAttribute('content', c);
 })();
@@ -400,7 +401,7 @@ ${INSETS_JS}
 // The full office (office cookie), rendered once.
 export const OFFICE_HTML = officeHtml();
 
-// The signed-out /office page, in the CRM's own look (dark by default, the
+// The signed-out /office page, in the CRM's own look (light by default, the
 // phone's Light / Dark / Automatic choice from localStorage "crm-theme",
 // the system font, Barta's coral). `team` = the CRM is set up: Team
 // sign-in (login + password) is the only way in, with Forgot password
@@ -409,25 +410,26 @@ export const OFFICE_HTML = officeHtml();
 // office password opens the CRM's setup screen instead; `error` goes with
 // that form. /office#forgot opens Forgot password directly.
 export function officeLoginHtml({ error = "", team = true } = {}) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 ${APP_HEAD}
-<meta name="theme-color" content="#111214">
+<meta name="theme-color" content="#f6f6f8">
 <title>Sign in · Barta Office</title>
 <script>
 (() => {
-  // the CRM's theme on this phone (core/nav.js): dark unless Light, or Automatic and the phone is light
-  let v = null;
-  try { v = localStorage.getItem('crm-theme'); } catch (e) { /* nothing kept */ }
-  const light = v === 'light' || (v === 'auto' && window.matchMedia && !matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.dataset.theme = light ? 'light' : 'dark';
-  if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f2f2f7');
+  // the CRM's theme on this phone (core/nav.js): light unless Dark was picked since Light became the
+  // default ("crm-theme-white"), or Automatic and the phone is dark
+  let v = null, moved = null;
+  try { v = localStorage.getItem('crm-theme'); moved = localStorage.getItem('crm-theme-white'); } catch (e) { /* nothing kept */ }
+  const dark = (v === 'dark' && !!moved) || (v === 'auto' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#111214');
 })();
 </script>
 <style>
 :root{color-scheme:dark;--ink:#f5f5f7;--ink-3:#9a9aa2;--muted:#a1a1a8;--line:#2a2b2f;--line-2:#36373c;--mist:#111214;--card:#1b1c1f;--input:#111214;--coral:#fb4d3d;--coral-ink:#ff6b5a;--coral-btn:#fb4d3d;--coral-btn-2:#e5402f;--ring:rgba(251,77,61,.35);--bad-bg:rgba(255,99,82,.15);--bad-line:rgba(255,99,82,.35);--bad-ink:#ff8a7a;--sh:0 20px 50px rgba(0,0,0,.45);--sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
-html[data-theme="light"]{color-scheme:light;--ink:#111114;--ink-3:#636366;--muted:#636366;--line:#e5e5ea;--line-2:#d8d8de;--mist:#f2f2f7;--card:#fff;--input:#fff;--coral-ink:#d0331f;--ring:rgba(251,77,61,.22);--bad-bg:#fdecea;--bad-line:rgba(208,51,31,.25);--bad-ink:#b42318;--sh:0 20px 50px rgba(18,18,21,.08),0 6px 16px rgba(18,18,21,.05)}
+html[data-theme="light"]{color-scheme:light;--ink:#111114;--ink-3:#636366;--muted:#636366;--line:#e5e5ea;--line-2:#d8d8de;--mist:#f6f6f8;--card:#fff;--input:#fff;--coral-ink:#d0331f;--ring:rgba(251,77,61,.22);--bad-bg:#fdecea;--bad-line:rgba(208,51,31,.25);--bad-ink:#b42318;--sh:0 20px 50px rgba(18,18,21,.08),0 6px 16px rgba(18,18,21,.05)}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
 body{min-height:100vh;min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));background:var(--mist);color:var(--ink);font:400 15px/1.45 var(--sys);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}

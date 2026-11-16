@@ -32,7 +32,7 @@ const pageProblems = (page) => page.evaluate(() => {
   return out;
 });
 
-test("the sign-in page is Team sign-in only (no office password tab), in the CRM's dark look; the office password alone opens nothing more", async () => {
+test("the sign-in page is Team sign-in only (no office password tab), in the CRM's light look; the office password alone opens nothing more", async () => {
   for (const device of ["iphone13", "desk1440"]) {
     for (const office of [false, true]) {
       const p = await phone(browser, srv, { device, office });
@@ -45,8 +45,8 @@ test("the sign-in page is Team sign-in only (no office password tab), in the CRM
         assert.equal(await visible(page, "#to-forgot"), true, "Forgot password?");
         assert.equal(await page.$("#seg, [data-mode], #t-office, .bar, [data-tool]"), null, "no Office password tab, no optional office field, no tab row");
         assert.equal(await visible(page, "#office"), false, "the office password form is for setup only");
-        assert.equal(await page.getAttribute("html", "data-theme"), "dark", "dark by default, as the CRM");
-        assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(17, 18, 20)");
+        assert.equal(await page.getAttribute("html", "data-theme"), "light", "light by default, as the CRM (the owner: \"make it white\")");
+        assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(246, 246, 248)");
         assert.match(await page.evaluate(() => getComputedStyle(document.body).fontFamily), /-apple-system/);
         assert.deepEqual(await pageProblems(page), [], device);
         if (!office) await shot(page, `signin-${device}-signin`);

@@ -372,8 +372,10 @@ test("Customize Tabs: up to five above the line, the rest under MORE MENU; + and
 test("the + and the desk's New: one list, the most used first, each once", () => {
   planFor("owner");
   const creates = MANIFESTS.flatMap((m) => m.creates || []);
-  assert.deepEqual(quick.quickCreates(creates, canOf("owner")).map((c) => c.label), ["Lead or customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8)");
-  assert.deepEqual(quick.quickCreates([...creates, { path: "/requests/new", label: "Request" }], canOf("owner")).map((c) => c.label).slice(3, 5), ["Request", "Task"], "Request once a module offers its create");
+  const made = quick.quickCreates(creates, canOf("owner"));
+  assert.deepEqual(made.map((c) => c.label), ["Lead", "Customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "the Rotor guide's order (F8); Lead and Customer two buttons (the owner, Nov 2026)");
+  assert.deepEqual(made.slice(0, 2).map((c) => [c.path, c.icon]), [["/contacts/new", "target"], ["/contacts/new?as=customer", "user"]], "one form: a lead, or ?as=customer; each its own icon");
+  assert.deepEqual(quick.quickCreates([...creates, { path: "/requests/new", label: "Request" }], canOf("owner")).map((c) => c.label).slice(4, 6), ["Request", "Task"], "Request once a module offers its create");
   assert.deepEqual(quick.quickCreates(creates.filter((c) => c.path === "/leads/new"), (p) => !!ROLE_DEFAULTS.tech[p]).map((c) => c.label), ["Lead"], "a tech: a quick lead");
 });
 

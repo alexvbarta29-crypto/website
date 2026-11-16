@@ -284,7 +284,7 @@ export function toast(message, { bad = false, ms = 2600 } = {}) {
   // one at a time: a newer toast replaces the one showing (a stack covers the buttons)
   while (box.firstChild) box.removeChild(box.firstChild);
   box.appendChild(t);
-  setTimeout(() => t.remove(), ms);
+  setTimeout(() => toastOut(t), ms);
 }
 
 // ------------------------------------------------------------ sheets
@@ -1283,3 +1283,194 @@ export function skeletonRows(n = 5, { columns = null, card = true, busy = true, 
   return box("rs-skel", html`<ul class="rs-sklist" aria-hidden="true">${rows}</ul>`);
 }
 
+
+// ------------------------------------------------------------ motion (Nov 2026, the owner: "a little more premium animations")
+//
+// Small, quick and only on something a person did: the next screen slides in a little from the
+// right as it fades in (going back, the screen you leave slides away to the right over the one
+// you return to), a tab crossfades, the cards and rows of a screen that just arrived rise in one
+// after another, a segmented control's pill slides to the tapped segment (and what it shows
+// crossfades), a number counts up once. Sheets, toasts, the + and the press of a button are CSS
+// (crm.css "motion"). Transform and opacity only (on the compositor, no layout shift); nothing on a
+// refresh, a poll or a rerender. Under prefers-reduced-motion (or without element.animate, or on a
+// hidden page) every helper here is a no-op that leaves the page exactly as drawn.
+//   motionOk()                  may we move things now?
+//   screenGo(el, kind)          the router, as a new screen starts in #view or #pane (its skeleton):
+//                               kind "push" | "pop" | "tab" | "fade"
+//   screenOut(el)               the router, going back: the screen being left slides out (a ghost)
+//   screenPainted(el)           the router, after each paint: the first one after screenGo rises in
+//   screenStill(el)             the router, a refresh: nothing moves
+//   riseIn(root, { max })       the cards and rows in sight fade and rise, 28 ms apart
+//   countUp(el, value, { format, ms, key })   the number counts up to value once (per key, per page)
+export const EASE_OUT = "cubic-bezier(.22,1,.36,1)";
+const MO_MS = { push: 280, pop: 260, tab: 180, fade: 220 };
+// (an element that is position:fixed inside a screen would move with a transformed parent: those get a fade only)
+const MO_FIXED = ".rs-cta,.ct-bulk,.ct-fab,.vb-bar,.ck-pill,.cf-page,.wk-side,.wk-undo,[data-fixed]";
+const MO_ITEMS = ".rs-card,.card,.rs-lrow,.rs-trow:not(.rs-skrow),.rs-tile,.list>li,.cc,.lc,.c-row";
+
+export function motionOk() {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  try { if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false; } catch (e) { return false; }
+  if (typeof Element === "undefined" || typeof Element.prototype.animate !== "function") return false;
+  return document.visibilityState !== "hidden";
+}
+const moNow = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+const holdsFixed = (el) => { try { return el.matches(MO_FIXED) || !!el.querySelector(MO_FIXED); } catch (e) { return true; } };
+function moFrames(kind, fixed) {
+  const wide = typeof innerWidth === "number" && innerWidth >= 1000;
+  const from = kind === "push" ? `translateX(${wide ? 12 : 24}px)` : kind === "pop" ? `translateX(${wide ? -8 : -16}px)` : kind === "fade" ? "translateY(6px)" : null;
+  return fixed || !from ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: from }, { opacity: 1, transform: "none" }];
+}
+function moChildren(el, kind, elapsed = 0) {
+  const ms = MO_MS[kind] || 220;
+  for (const c of el.children) {
+    try { c.animate(moFrames(kind, holdsFixed(c)), { duration: ms, delay: -elapsed, easing: kind === "tab" ? "ease-out" : EASE_OUT, fill: "backwards" }); } catch (e) { /* old browser: drawn as is */ }
+  }
+}
+
+export function screenGo(el, kind = "push") {
+  if (!el) return;
+  if (!motionOk()) { el.__mo = null; return; }
+  el.__mo = { t0: moNow(), kind: MO_MS[kind] ? kind : "push", first: true };
+  moChildren(el, el.__mo.kind);
+}
+export function screenStill(el) { if (el) el.__mo = null; }
+export function screenPainted(el) {
+  const m = el && el.__mo;
+  if (!m) return;
+  if (!motionOk()) { el.__mo = null; return; }
+  const elapsed = moNow() - m.t0;
+  const ms = MO_MS[m.kind];
+  // (the content came while the screen was still sliding in: it carries on from where the skeleton was)
+  if (elapsed < ms) moChildren(el, m.kind, elapsed);
+  if (m.first) riseIn(el);
+  m.first = false;
+  if (elapsed >= ms) el.__mo = null;
+}
+
+// The ghost of the screen you leave going back: its own nodes (already torn down), lifted out
+// of #view into a copy of the view's box, slid away to the right and faded, then removed.
+let ghost = null;
+export function screenOut(el) {
+  if (ghost) { ghost.remove(); ghost = null; }
+  if (!el || !el.firstElementChild || !motionOk() || (typeof innerWidth === "number" && innerWidth >= 1000)) return;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const top = el.scrollTop;
+  const g = document.createElement("div");
+  g.className = el.className + " mo-ghost";
+  g.setAttribute("aria-hidden", "true");
+  g.inert = true;
+  while (el.firstChild) g.appendChild(el.firstChild);
+  for (const x of g.querySelectorAll("[id]")) x.removeAttribute("id");
+  for (const x of g.querySelectorAll("[aria-busy]")) x.removeAttribute("aria-busy");
+  Object.assign(g.style, { top: r.top + "px", left: r.left + "px", width: r.width + "px", height: r.height + "px" });
+  (el.parentNode || document.body).appendChild(g);
+  g.scrollTop = top;
+  ghost = g;
+  let a = null;
+  try { a = g.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(48px)" }], { duration: 220, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); } catch (e) { a = null; }
+  const done = () => { g.remove(); if (ghost === g) ghost = null; };
+  if (a) a.onfinish = done;
+  setTimeout(done, 400);
+}
+
+export function riseIn(root, { max = 12 } = {}) {
+  if (!root || !root.querySelectorAll || !motionOk()) return 0;
+  const vh = typeof innerHeight === "number" ? innerHeight : 800;
+  const all = [...root.querySelectorAll(MO_ITEMS)];
+  // the innermost: a list's rows rise, not the card around them; a card of fields rises as one
+  const leaves = all.filter((x) => !x.querySelector(MO_ITEMS));
+  let n = 0;
+  for (const x of leaves) {
+    if (n >= max) break;
+    const r = x.getBoundingClientRect();
+    if (!r.height) continue;
+    if (r.top > vh) break;
+    if (r.bottom < 0) continue;
+    try { x.animate(holdsFixed(x) ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 240, delay: 40 + n * 28, easing: EASE_OUT, fill: "backwards" }); } catch (e) { return n; }
+    n++;
+  }
+  return n;
+}
+
+// countUp(el, 12480, { format: (n) => money(Math.round(n)), key: "home-arr" }): the number climbs
+// from 0 to value in ~650 ms, once per key on this page (a repaint, a poll: the final number at
+// once). Its box keeps the final number's width while it counts (no layout shift).
+const counted = new Set();
+export function countUp(el, value, { format = (n) => String(Math.round(n)), ms = 650, key = null } = {}) {
+  if (!el) return;
+  const end = Number(value) || 0;
+  const k = key || (el.dataset && el.dataset.countKey) || el.id || null;
+  const fin = () => { el.textContent = format(end); };
+  fin();
+  if (!motionOk() || !end || (k && counted.has(k))) { if (k) counted.add(k); return; }
+  if (k) counted.add(k);
+  const w = el.getBoundingClientRect().width;
+  const inline = typeof getComputedStyle === "function" && getComputedStyle(el).display === "inline";
+  const was = { minWidth: el.style.minWidth, display: el.style.display };
+  if (inline) el.style.display = "inline-block";
+  if (w) el.style.minWidth = w + "px";
+  el.classList.add("mo-count");
+  const t0 = moNow();
+  const step = () => {
+    const p = Math.min(1, (moNow() - t0) / ms);
+    if (!el.isConnected) return;
+    if (p >= 1) { fin(); el.style.minWidth = was.minWidth; el.style.display = was.display; el.classList.remove("mo-count"); return; }
+    el.textContent = format(end * (1 - Math.pow(1 - p, 3)));
+    requestAnimationFrame(step);
+  };
+  el.textContent = format(0);
+  requestAnimationFrame(step);
+}
+export const _countedReset = () => counted.clear();
+
+// A toast leaving: it slides down and fades (crm.css .toast.out), then goes.
+export function toastOut(t) {
+  if (!t || !t.isConnected) return;
+  if (!motionOk()) { t.remove(); return; }
+  t.classList.add("out");
+  setTimeout(() => t.remove(), 200);
+}
+
+// The segmented control's pill slides from the segment that was on to the tapped one, and what
+// it shows (the screen draws it again, or a sheet page shows its pane) crossfades. On the click,
+// before the screen's own handler draws; the new tab is looked for over the next frames (a tab
+// that is a link waits for its route).
+function segTap(e) {
+  const b = e.target && e.target.closest ? e.target.closest(".rs-seg-b[data-seg]") : null;
+  if (!b || !motionOk()) return;
+  const track = b.closest(".rs-seg");
+  const was = track && track.querySelector('.rs-seg-b[aria-selected="true"]');
+  if (!was || was === b) return;
+  const r = was.getBoundingClientRect();
+  const from = { left: r.left, width: r.width };
+  const { seg: name, key } = b.dataset;
+  const route = !!track.closest("#subnav");
+  let tries = 0;
+  const look = () => {
+    let on = null;
+    try { on = document.querySelector(`.rs-seg-b[data-seg="${CSS.escape(name)}"][data-key="${CSS.escape(key)}"][aria-selected="true"]`); } catch (x) { return; }
+    if (!on) { if (++tries < 40) requestAnimationFrame(look); return; }
+    segSlide(on, from);
+    // (a route's own tabs: the router fades the screen itself)
+    if (!route) for (let n = on.closest(".rs-seg").nextElementSibling, i = 0; n && i < 6; n = n.nextElementSibling, i++) {
+      if (!n.hidden) { try { n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" }); } catch (x) { /* drawn as is */ } }
+    }
+  };
+  requestAnimationFrame(look);
+}
+export function segSlide(on, from) {
+  if (!on || !from || !motionOk()) return false;
+  const r = on.getBoundingClientRect();
+  const dx = from.left - r.left;
+  if (!r.width || Math.abs(dx) < 1) return false;
+  on.style.setProperty("--seg-dx", dx + "px");
+  on.style.setProperty("--seg-sw", String(from.width / r.width));
+  on.classList.remove("seg-slide");
+  void on.offsetWidth;
+  on.classList.add("seg-slide");
+  setTimeout(() => on.classList.remove("seg-slide"), 400);
+  return true;
+}
+if (typeof document !== "undefined" && typeof document.addEventListener === "function") document.addEventListener("click", segTap, true);

@@ -16,13 +16,13 @@ let srv, browser;
 before(async () => { srv = await start(); await srv.seed(); browser = await launch(); });
 after(async () => { await browser?.close(); await srv?.close(); });
 
-async function open(login, device, theme = "dark") {
+async function open(login, device, theme = "light") {
   const p = await phone(browser, srv, { device, office: true });
   await signIn(p, login);
   await p.page.goto("/office");
   let f = await crmFrame(p.page);
   await settled(f);
-  if (theme !== "dark") {
+  if (theme !== "light") {   // (light is the default: the owner, Nov 2026)
     await f.evaluate((t) => localStorage.setItem("crm-theme", t), theme);
     await p.page.reload();
     f = await crmFrame(p.page);

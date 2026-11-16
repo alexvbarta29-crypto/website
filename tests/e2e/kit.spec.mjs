@@ -146,9 +146,9 @@ for (const device of ["iphone13", "iphonese"]) {
       await f.click(".rs-label");
       await f.waitForFunction(() => /Notes saved/.test(document.querySelector(".toasts").textContent));
 
-      // leaving gives the device's own theme back (dark, the default)
+      // leaving gives the device's own theme back (light, the default)
       await goTo(f, "/today");
-      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "dark");
+      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "light");
       assert.ok(!(await f.$eval("#top", (el) => el.classList.contains("rs-top"))), "a screen without tools or more keeps its header");
       assert.equal(await f.$$eval("#top-act .rnd", (els) => els.length), 0);
       await p.clean();

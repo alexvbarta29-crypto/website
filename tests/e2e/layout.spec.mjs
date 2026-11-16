@@ -52,8 +52,8 @@ for (const device of ["iphone13", "iphonese"]) {
       const pill = (k) => f.$eval(`#tabs [data-tab="${k}"]`, (e) => getComputedStyle(e).backgroundColor);
       assert.notEqual(await pill("home"), "rgba(0, 0, 0, 0)", "the current place sits in a lighter pill");
       assert.equal(await pill("inbox"), "rgba(0, 0, 0, 0)", "the others don't");
-      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "dark", "Flyra's dark look first");
-      assert.equal(await f.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(17, 18, 20)", "the near-black canvas");
+      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "light", "white first (the owner: \"make it white, not black\")");
+      assert.equal(await f.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(246, 246, 248)", "a faint grey canvas (Polish 3)");
       const bar = await box(f, "#tabs");
       const fab = await box(f, "#fab");
       const vh = await f.evaluate(() => innerHeight);
@@ -106,7 +106,7 @@ for (const device of ["iphone13", "iphonese"]) {
       // the +: the screen blurs, search on top, the things to make above the +
       await g.click("#fab");
       await g.waitForSelector(".qk.on");
-      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead or customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "one list, the most used first");
+      assert.deepEqual(await g.$$eval(".qk-pill span:last-child", (els) => els.map((e) => e.textContent)), ["Lead", "Customer", "Quote", "Job", "Request", "Task", "Invoice", "Plan"], "one list, the most used first (Lead and Customer two buttons)");
       await g.fill("#qk-q", "Newlead");
       await g.waitForSelector(".qk-res:not([hidden]) a", { timeout: 5000 });
       assert.deepEqual(await screenProblems(g), [], "the + overlay passes the phone checks");
@@ -142,20 +142,20 @@ for (const device of ["iphone13", "iphonese"]) {
       await g.click("[data-standard]");
       await g.waitForFunction(() => [...document.querySelectorAll("#tabs [data-tab]")].map((e) => e.dataset.tab).join() === "home,schedule,inbox,map,menu", null, { timeout: 8000 });
       assert.deepEqual((await server(p, "/me")).nav, ["home", "schedule", "inbox", "map", "menu"], "the standard bar again");
-      // Light (Rotor's) from the person's initials, on this phone; Dark again
+      // Dark (Flyra's) from the person's initials, on this phone; Light again
       await goTo(g, "/today");
       await g.click("#top-bar [data-tb-me]");
       await g.waitForSelector(".sheet.on [data-theme-btn]");
       await g.click(".sheet.on [data-theme-btn]");
-      await g.click('[data-theme-pick="light"]');
-      assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "light");
-      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(246, 246, 248)", "a faint grey canvas (Polish 3)");
+      await g.click('[data-theme-pick="dark"]');
+      assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "dark");
+      assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(17, 18, 20)", "the near-black canvas");
       assert.deepEqual(await screenProblems(g), []);
       await page.reload();
       const h = await crmFrame(page);
       await settled(h);
-      assert.equal(await h.evaluate(() => document.documentElement.dataset.theme), "light", "kept on this phone");
-      await h.evaluate(() => localStorage.setItem("crm-theme", "dark"));
+      assert.equal(await h.evaluate(() => document.documentElement.dataset.theme), "dark", "kept on this phone");
+      await h.evaluate(() => localStorage.setItem("crm-theme", "light"));
       await p.clean();
     } finally { await p.close(); }
   });

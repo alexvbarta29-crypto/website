@@ -132,8 +132,11 @@ test("the signed-out page is Team sign-in once the CRM is set up (no office pass
   for (const id of ["f-login", "f-office", "f-pw", "f-again"]) assert.match(r.text, new RegExp(`id="${id}"`), id);
   assert.match(r.text, /}, 'forgot'\);/);
   assert.match(r.text, /location\.hash === '#forgot'/, "/office#forgot opens it directly");
-  // the CRM's look: dark by default, the phone's own choice from crm-theme, the system font
+  // the CRM's look: light by default (the owner, Nov 2026: "make it white"), the phone's own choice from crm-theme, the system font
+  assert.match(r.text, /<html lang="en" data-theme="light">/);
+  assert.match(r.text, /<meta name="theme-color" content="#f6f6f8">/, "no black status bar on open");
   assert.match(r.text, /localStorage\.getItem\('crm-theme'\)/);
+  assert.match(r.text, /localStorage\.getItem\('crm-theme-white'\)/, "a Dark from before Light was the default is moved to Light once");
   assert.match(r.text, /:root\{color-scheme:dark;/);
   assert.match(r.text, /-apple-system,BlinkMacSystemFont/);
   assert.doesNotMatch(r.text, /\u2014/, "no em dashes");
