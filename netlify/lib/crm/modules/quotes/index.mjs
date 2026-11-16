@@ -11,7 +11,9 @@
 // approve.mjs (approval and conversion runs and ops), render.mjs (the
 // customer's view), portal.mjs (the portal pages and Present to customer),
 // routes.mjs (the staff API), automations.mjs (quote.sent, quotes.expire),
-// import-rotor.mjs (import phases), mcp.mjs (Claude's quote tools).
+// import-rotor.mjs (import phases), mcp.mjs (Claude's quote tools),
+// templates.mjs (estimate templates: Start from a template), mockup.mjs (the
+// automatic Christmas lights mockup: Street View + Claude's vision model).
 
 import { defineModule } from "../../core/registry.mjs";
 import { getRecord, updateRecord, readIndex } from "../../../crm-store.mjs";
@@ -27,6 +29,8 @@ import { quoteRoutes } from "./routes.mjs";
 import { automations, sweeps } from "./automations.mjs";
 import { phases } from "./import-rotor.mjs";
 import { mcpTools } from "./mcp.mjs";
+import { templateType, templateRoutes, seedEstimateTemplates } from "./templates.mjs";
+import { mockupRoutes, pruneBudget } from "./mockup.mjs";
 
 // Staff photos and mockups on a quote (POST /files?owner_type=quote&kind=photo|mockup).
 defineFileOwner("quote", {
@@ -44,13 +48,13 @@ const waitingOnCustomer = async () => (await readIndex("quotes", "open")).rows.f
 
 export default defineModule({
   name: "quotes",
-  types,
+  types: [...types, templateType],
   statsParts: {
     // the quotes part of ContactStats (§5.1): services quoted, an open quote
     quotes: { defaults: { svc_q: [], open_quote: false, open_ids: [] }, row: (p) => ({ svc_q: (p && p.svc_q) || [], oq: !!(p && p.open_quote) }) },
   },
   settings: { pricing: { defaults: { ...PRICING_DEFAULTS }, validate: validatePricing, perm: "settings:owner" } },
-  routes: quoteRoutes,
+  routes: [...quoteRoutes, ...templateRoutes, ...mockupRoutes],
   portalRoutes,
   emits: ["quote.sent", "quote.viewed", "quote.approved", "quote.declined", "quote.changes_requested", "quote.archived", "quote.converted"],
   services: {
@@ -68,11 +72,16 @@ export default defineModule({
     "quotes.archive": (quoteId, opts, ctx) => archiveForSales(quoteId, opts || {}, ctx || {}),
   },
   needs: ["plans.agreementForOption", "plans.fromQuoteOption", "work.createJobs", "money.createDepositInvoice", "sales.markDeal", "bulk.create"],
-  sweeps,
+  sweeps: [
+    ...sweeps,
+    // the mockup's per-day model-call counters (mkd/{day}/) older than two days
+    { key: "quotes.mockup_budget", label: "Old lights mockup counters", lane: "fast", every: "daily", at_local: "02:20", mutates: false, maintenance: true, run: () => pruneBudget() },
+  ],
   automations,
   templates: TEMPLATES,
   // v2: the owner's Nov 12 answers on the untouched seeded prices (tracks $5, lights every season, 3-year $200)
-  seeds: [{ v: 1, run: seedPriceBook }, { v: 2, run: upgradeOwnerDecisions }],
+  // v3: the estimate templates (the owner, Nov 16)
+  seeds: [{ v: 1, run: seedPriceBook }, { v: 2, run: upgradeOwnerDecisions }, { v: 3, run: seedEstimateTemplates }],
   onMerge: onMergeQuotes,
   attention: [
     { key: "quotes.changes_requested", label: "Quote changes requested", perm: "quotes:read", count: changesRequested, link: "#/quotes?status=changes_requested" },
@@ -86,7 +95,7 @@ export default defineModule({
     "quote.declined": { label: "Quote declined", icon: "doc" },
     "quote.converted": { label: "Quote booked", icon: "check" },
   },
-  exportTypes: ["quote", "quote_version", "price_item", "discount_def"],
+  exportTypes: ["quote", "quote_version", "price_item", "discount_def", "quote_template"],
   mcpTools,
   importPhases: phases,
 });
