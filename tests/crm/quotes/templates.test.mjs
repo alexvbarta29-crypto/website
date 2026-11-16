@@ -31,7 +31,7 @@ test("the seeded templates: Barta's estimates, windows, gutters and lights only;
       "Exterior windows", "Interior + exterior windows", "Exterior windows + screens + tracks", "Quarterly plan (3 exterior + 1 interior)", "Biannual plan",
       "Gutter cleaning", "Windows + gutters", "Christmas lights: roofline", "Christmas lights: roofline + bushes/trees", "Lights takedown + storage",
     ]);
-    assert.ok(list.body.data.every((r) => r.summary && r.summary.length <= 140 && !/—/.test(r.summary)), "a one-line summary, no em dashes");
+    assert.ok(list.body.data.every((r) => r.summary && r.summary.length <= 140 && !/\u2014/.test(r.summary)), "a one-line summary, no em dashes");
     assert.ok(!names.some((n) => /pressure|soft ?wash|house wash/i.test(n)), "never pressure or soft washing");
     for (const s of TPL.SEED_TEMPLATES) for (const o of s.options) for (const it of o.items) {
       if (it.key) assert.ok(["exterior", "interior", "screens", "tracks_standard", "gutters", "lights_install", "lights_materials", "lights_takedown", "lights_warranty"].includes(it.key), `${s.name}: ${it.key}`);

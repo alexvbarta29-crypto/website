@@ -110,6 +110,41 @@ Tests: `tests/crm/quotes/` (`npm test`) and the phone checks in
 - **Settings → Discounts**: the catalog (amount or percent, which visits by
   default, one per option for the plan discounts), and the Rotor names kept
   for history.
+- **Settings → Services & pricing → Estimate templates** (owners and the
+  office, `settings:general`): the templates New Quote offers, in their
+  order (the arrows move one), each opening to edit: name, one line, kind
+  (one-time, plan or Christmas lights), up to 3 options (one-time or a
+  plan: Biannual, Quarterly, Monthly, Christmas lights every season,
+  Custom) with line items from the price book (a set quantity, blank, or
+  "from the property's counts": panes outside or inside, screens, tracks,
+  roofline or gutter feet; a price of its own only for hand-priced items),
+  catalog or typed discounts, the lights offers (Early Bird, 3-year,
+  colors) and the notes. Archive / Restore; New template. A quote's "..."
+  has **Save as a template** (its options by reference: engine lines are
+  re-priced when used, counted lines come from the counts, hand lines keep
+  their name and price; the plan discount and the lights offers come back
+  by themselves).
+- **New Quote → Start from a template** (top of the sheet): Flyra's picker
+  (each template's name and its one line). Picking one fills the options
+  and the customer note from today's price book and the property's counts
+  (`POST /quote-templates/:id/apply`); the customer stays; what's left to
+  do shows above the form (no pane count on file, add the feet, set a hand
+  price, the Early Bird is over). Everything stays editable before Create.
+- **Mockup** (Christmas lights work: the chip on New Quote, the "Lights
+  mockup" card and "..." row on a lights quote, "Make the mockup" on the
+  lights quote screen): makes the mockup by itself. The house from Street
+  View (aimed at the property, cached), Claude's vision model marks the
+  eaves, gutter lines and gable edges (and bushes and trees) as lines in the
+  photo's pixels, and the app draws C9 bulbs along them with Light
+  Studio's own drawing (glow, light on the trim, a dusk look). The sheet:
+  bulb colors (warm white, pure white, multicolor) and sizes, Regenerate,
+  **Edit in Light Studio** (opens it with the photo and the lines, ready to
+  drag), **Save to the quote** (a `mockup` file: on the customer's quote
+  page once sent; on New Quote it uploads with Create) and **Share** (the
+  phone's share sheet, else a download). Without Claude (no key, the day's
+  budget spent, slow, nothing usable) the app's own edge finder draws the
+  strongest level edge and the gable over it and says so; when that is
+  too weak too, the sheet offers Light Studio with the photo to draw on.
 
 ## What the customer sees
 
@@ -142,6 +177,12 @@ Staff API (`/api/crm`), all `quotes:*` unless noted:
 | Method and path | What |
 | --- | --- |
 | `GET /pricing/context` | pricing, price book, discounts, features (deposits, convert), SMS mode, the Early Bird deadline |
+| `GET /quote-templates[?archived=1]`, `GET /quote-templates/:id` | estimate templates (`quotes:read`) |
+| `POST /quote-templates`, `PATCH /quote-templates/:id` (If-Match), `POST /quote-templates/reorder {ids}` | make (`{...}` or `{ from_quote_id, name, summary }`), edit, archive (`archived: true`), reorder (`settings:general`) |
+| `POST /quote-templates/:id/apply {property_id?}` | the New Quote options and note, priced now (`quotes:write`) |
+| `POST /lights-mockup/photo {property_id, refresh?}` | the house from Street View, cached at `mkp/{propertyId}/street` (crm-files); `{ photo: null, reason }` without the Google key or imagery (`quotes:write`) |
+| `GET /lights-mockup/:property/photo.jpg` | that photo, same origin (`quotes:read`) |
+| `POST /lights-mockup/lines {property_id, regenerate?}` | Claude's lines `{ source: "claude", lines: [{ kind: eave / rake / bush / tree, points }] }`, cached per photo; else `{ source: "none", reason }` (`no_key`, `daily_limit`, `timeout`, `busy`, `refused`, `unusable`...) and the app's edge finder takes over; 429 past 6 a minute per person (`quotes:write`) |
 | `POST /pricing/suggest` | engine lines for windows or square feet, services and a plan |
 | `POST /pricing/totals` | totals of one option |
 | `POST /pricing/lights` | lights lines, Early Bird and 3-year discounts |
@@ -240,6 +281,48 @@ price the Early Bird halves). cfg/pricing's `screens.each_cents`, `tracks.*`
 and `lights.*_per_ft_cents` are only a fallback for a book without that
 item.
 
+## Estimate templates and the lights mockup
+
+Record `quote_template` (prefix `et`, `quotes/templates.mjs`): `name`,
+`summary` (one line), `kind` (`one_time` | `plan` | `lights`), `sort`,
+`archived`, `client_notes`, `internal_notes`, `options` (1 to 3: `name`,
+`kind`, `plan_key` (biannual, quarterly, monthly, lights_annual, custom),
+`recommended`, `items` (`key` or `price_item_id` or a `title`; `qty_milli`
+or `from` one of panes_ext, panes_int, screens, tracks, tracks_premium,
+roofline_ft, gutter_ft, or neither for blank; `unit_cents` only for a
+price of its own; `note`; `optional`), `discounts` (`{ key }` from the
+catalog or `{ name, type, value }`), `lights` (`early_bird`, `three_year`,
+`colors`)), `from_quote_id`, `seed_key`. Index `quote-templates`. No
+template stores an engine or price-book price: `applyTemplate` prices
+from today's book (exterior by the property's panes, else its square-feet
+tier, else $0 "no pane count"; lights $8 + $2 a foot from the roofline
+feet; the plan's own discount; the Early Bird only while a deadline is
+open), with the Quarterly scopes and add-ons on the first visit like the
+engine's.
+
+The mockup (`quotes/mockup.mjs`, the drawing in
+`crm-app/modules/quotes/bulbs.js`): only the photo and its size go to the
+model, never a name, phone, email, address or note. Claude Opus 5.5 at
+low effort, structured JSON output (`LINES_SCHEMA`), the instructions
+cached (`SYSTEM_PROMPT` never changes between calls), the server-side
+refusal fallback on, 8.5 s at most (each of the two calls stays inside a
+function's limit). The answer is checked (`parseLines`: known kinds, points
+inside the photo, tiny lines dropped, usable only with a roof line). Budget:
+`CRM_MOCKUP_DAILY_MAX` model calls a day for the company (default 40; one
+small key per call under `mkd/{day}/`, swept after two days) and 6 a minute
+per person. Logs carry the HTTP status, time and token counts only; the key
+is never logged or sent to the browser.
+
+Owner actions: `ANTHROPIC_API_KEY` in Netlify → Environment variables (an
+Anthropic API key; until then the edge finder draws the mockups);
+`GOOGLE_MAPS_API_KEY` with the Geocoding and Street View Static APIs (the
+same key Light Studio uses; without it the sheet points to Light Studio to
+paste a photo); optionally `CRM_MOCKUP_DAILY_MAX`. Rough cost per mockup:
+one Street View image (about $0.007, inside Google's free monthly
+allowance) plus one Claude call (about 1,500 input and 500 to 1,500 output
+tokens at $4 / $20 per million: about 2 to 4 cents). A second look at the
+same house is free (both cached); Regenerate asks Claude again.
+
 ## Seeds
 
 - v1: the price book and the discount catalog, once each (an owner's
@@ -255,12 +338,23 @@ item.
   prices") naming each, and the run's result lists them. Idempotent; it
   touches no quote, plan or imported record (Rotor's quotes keep their
   prices and scopes).
+- v3 (the owner, Nov 16): the estimate templates, once each: Exterior
+  windows; Interior + exterior windows; Exterior windows + screens +
+  tracks; Quarterly plan (3 exterior + 1 interior) beside a one-time;
+  Biannual plan beside a one-time; Gutter cleaning; Windows + gutters
+  (package discount); Christmas lights: roofline (every season and this
+  season, Early Bird, warm white); Christmas lights: roofline +
+  bushes/trees; Lights takedown + storage (priced on the quote). Windows,
+  gutters and lights only (never pressure or soft washing). An owner's
+  edit or archive is never touched.
 
 ## Sweeps, queue kinds and listeners
 
 - `quotes.expire` (fast lane, daily 02:10 Chicago, mutates): open quotes
   past `expires_on` are archived with reason `expired` (imported quotes
   under the parallel-run guard get a would- row instead).
+- `quotes.mockup_budget` (fast lane, daily 02:20, maintenance): deletes the
+  mockup's per-day call counters (`mkd/{day}/`) older than two days.
 - Attention: "Quote changes requested" (count of open quotes with changes
   asked).
 - Pushes: `quote_approved`, `changes_requested`.

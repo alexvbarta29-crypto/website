@@ -14,7 +14,8 @@
 // this month, and a day off. Invoices come with Money (M5).
 //   the quotes seeds (price book, discount catalog), a draft quote for the
 //   fresh lead and one sent (dry-run, the Outbox) to the talked-to lead with
-//   a one-time and a quarterly option.
+//   a one-time and a quarterly option; the estimate templates and a
+//   Christmas lights quote for a work customer with a house (the mockup).
 // Plans (M3b): the agreement texts (five approved, the one-time text with
 //   its owner checks left for the owner), an active quarterly plan signed in person with its
 //   visits' jobs, two waiting plans with their agreements sent (a portal
@@ -44,6 +45,7 @@ const clock = await import("../../netlify/lib/crm/core/clock.mjs");
 const WORK = await import("../../netlify/lib/crm/modules/work/office.mjs");
 const QSEED = await import("../../netlify/lib/crm/modules/quotes/seed.mjs");
 const Q = await import("../../netlify/lib/crm/modules/quotes/quotes.mjs");
+const QTPL = await import("../../netlify/lib/crm/modules/quotes/templates.mjs");
 const AG = await import("../../netlify/lib/crm/modules/plans/agreements.mjs");
 const PL = await import("../../netlify/lib/crm/modules/plans/plans.mjs");
 const CAT = await import("../../netlify/lib/crm/modules/plans/catalog.mjs");
@@ -139,6 +141,7 @@ export async function seed(opts = {}) {
     const p = (await store.createRecord("property", { contact_id: c.id, label: "Home", address: { street1: `${700 + k} Example Ave`, city: town, state: "MN", zip: "55328", country: "US" }, access: { gate_code: k % 3 ? undefined : "1234", notes: "Synthetic: side gate." }, geo: { lat: GEO[k][0], lng: GEO[k][1], source: "manual", at: clock.nowIso() } }, O)).data;
     await store.updateRecord("contact", c.id, (x) => ({ ...x, primary_property_id: p.id }), O);
     const lights = k === 7;
+    if (lights) out.lightsHome = { contact: c.id, property: p.id };
     const [jobId] = await WORK.createJobs([{
       contact_id: c.id, kind: lights ? "lights_takedown" : "standard", crew_notes: k % 2 ? "" : "Synthetic: dog in the back yard.",
       lines: lights ? [{ title: "Christmas lights takedown", unit_cents: 0, service_type: "Christmas Lights" }] : [{ title: "Exterior window cleaning", unit_cents: 29500 + k * 1000, service_type: "Residential Window Cleaning" }, { title: "Screens", unit_cents: 500, qty_milli: 12000 }],
@@ -166,6 +169,12 @@ export async function seed(opts = {}) {
   out.quotes = { draft: (await Q.createQuote({ contact_id: a.id, options: options(), client_notes: "Thanks for having us out!" }, qctx)).data.id };
   out.quotes.sent = (await Q.createQuote({ contact_id: f.id, options: options() }, qctx)).data.id;
   await Q.sendQuote(out.quotes.sent, { channels: ["sms"] }, qctx);
+  // estimate templates, and a lights quote on a house (Mockup)
+  await QTPL.seedEstimateTemplates({ write: () => AUTO });
+  out.quotes.lights = (await Q.createQuote({ contact_id: out.lightsHome.contact, property_id: out.lightsHome.property, options: [{ name: "Christmas lights, this season", kind: "one_time", recommended: true, lines: [
+    { title: "Christmas Light Installation", qty_milli: 120000, unit_cents: 800, category: "lights", unit: "ft", service_type: "Christmas Lights" },
+    { title: "Christmas Light Materials", qty_milli: 120000, unit_cents: 200, category: "lights", unit: "ft", service_type: "Christmas Lights" },
+  ], discounts: [] }] }, qctx)).data.id;
 
   // plans (M3b)
   await AG.seedAgreementTemplates(AUTO);

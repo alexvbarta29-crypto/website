@@ -42,6 +42,7 @@ test("the markup escapes and keeps 44 px controls' hooks", () => {
   assert.match(String(C.customerCard(null)), /Add a customer/);
   assert.equal(String(C.mockupChip(false)), "");
   assert.match(String(C.mockupChip(true)), /href="#\/tools\/lights"/);
+  assert.match(String(C.mockupChip(true, { auto: true })), /<button type="button" class="cf-chip" data-cf-mockup-auto>/, "New Quote makes the mockup itself");
   assert.match(String(C.pillDate("date", "2026-11-16", { label: "Starts" })), /<span aria-hidden="true">11\/16\/26<\/span><input type="date" name="date" value="2026-11-16" aria-label="Starts" data-cf-pill="date">/);
   assert.match(String(C.pickRow("Lead source", XSS, { data: { "cf-source": true } })), /data-cf-source=""/);
   assert.ok(!String(C.pickRow("Lead source", XSS)).includes("<script>"));

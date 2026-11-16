@@ -119,8 +119,12 @@ export function customerCard(c, p, { clear = true } = {}) {
   </div>`;
 }
 
-// Light Studio (the lights mockup), on lights work only.
-export const mockupChip = (show) => (show ? html`<a class="cf-chip" href="#/tools/lights" data-cf-mockup><span class="cf-chip-i">${ic("lights")}</span>Mockup</a>` : "");
+// Light Studio (the lights mockup), on lights work only. { auto: true }: a
+// button the screen handles (data-cf-mockup-auto): New Quote makes the
+// mockup itself (quotes/mockup.js) instead of opening Light Studio.
+export const mockupChip = (show, { auto = false } = {}) => (!show ? ""
+  : auto ? html`<button type="button" class="cf-chip" data-cf-mockup-auto><span class="cf-chip-i">${ic("lights")}</span>Mockup</button>`
+    : html`<a class="cf-chip" href="#/tools/lights" data-cf-mockup><span class="cf-chip-i">${ic("lights")}</span>Mockup</a>`);
 
 // A card that is one button: "Add line item" (⊕), "Add discount" (tag).
 export const addRow = (label, { icon = "plusc", data = null } = {}) =>

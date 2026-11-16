@@ -40,6 +40,7 @@ export const LAYOUT = Object.freeze([
   ["services", "Services & pricing", "money", "amber", [
     ["/settings/pricing", "Prices & price book", "money", "prices"],
     ["/settings/discounts", "Discounts", "money", "discounts"],
+    ["/settings/estimate-templates", "Estimate templates", "doc", "estimate templates"],
     ["/settings/plans", "Plans & perks", "swap", "plans"],
     ["/settings/agreement-templates", "Agreements", "doc", "agreements"],
     ["/settings/checklists", "Checklists", "check", "checklists"],

@@ -2,7 +2,8 @@
 // §1.7, D30): the runs measured in Light Studio typed in (roofline, peaks,
 // bushes...), per foot ($8 install + $2 materials) or one package price,
 // the colors (warm white, red, green), the Early Bird deadline in effect,
-// a 3-year contract; the Light Studio mockup attached. "Add to the quote"
+// a 3-year contract; the mockup: made automatically from Street View
+// (mockup.js) or a Light Studio picture attached. "Add to the quote"
 // puts it on the quote as its own option: every season (a lights plan,
 // auto-renew) or this season only. The Early Bird and the 3-year discount
 // count every season, so each season costs the same (the owner, Nov 12).
@@ -12,6 +13,7 @@ import { busy, readMoney } from "../../core/forms.js";
 import { money, dateShort } from "../../core/format.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
 import { ensureStyles, lineTotal, optionTotals, warningText } from "./kit.js";
+import { openMockup } from "./mockup.js";
 
 const KINDS = ["Roofline", "Peaks", "Gutter line", "Bushes", "Trees", "Pillars", "Garage", "Other"];
 const COLOR_NAMES = { warm_white: "Warm white", red: "Red", green: "Green" };
@@ -53,7 +55,7 @@ export default {
         <div class="qb-sum"><span>${s.every ? "Each season" : "This season"}</span><b class="big">${money(firstSeason(p))}</b></div>
         ${s.every && p.plan ? html`<p class="small muted">${laterSeason(p) === firstSeason(p) ? "The same price every season." : `Each season after: ${money(laterSeason(p))}.`}</p>` : ""}
       </section>` : ""}
-      <section class="card"><h2>Mockup</h2><p class="small muted">The Light Studio picture, so they see their house lit.</p><button type="button" class="btn" data-mockup>${icon("sun")}Attach the mockup</button></section>
+      <section class="card"><h2>Mockup</h2><p class="small muted">Their house lit up, so they see it before they say yes.</p><div class="qt-mk-acts"><button type="button" class="btn primary" data-mockup-auto>${icon("bulb")}Make the mockup</button><button type="button" class="btn" data-mockup>${icon("sun")}Attach a picture</button></div></section>
       <div class="qb-bar"><button type="button" class="btn primary" data-add ${attrs({ disabled: !p })}>Add to the quote</button></div>
     </div>`;
   },
@@ -70,6 +72,7 @@ export default {
     // one season: no 3-year contract (a plan of three seasons); priced again either way
     "click [data-every]": (e, el, ctx) => { const s = ctx.state; s.every = el.dataset.every === "1"; if (!s.every) s.three = false; s.preview = null; ctx.rerender(); },
     "click [data-preview]": (e, el, ctx) => preview(el, ctx),
+    "click [data-mockup-auto]": (e, el, ctx) => openMockup(ctx, { propertyId: ctx.state.quote.property_id, quoteId: ctx.state.id, name: ctx.state.quote.contact_name, studio: ctx.can("office:tools") }),
     "click [data-mockup]": async (e, el, ctx) => {
       const file = await capture({ camera: false });
       if (!file) return;
