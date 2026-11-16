@@ -220,5 +220,10 @@ test("crm.css premium: iOS's switch, the frosted toast, the hairline, the scroll
   // the reduced-motion rule (above it) still covers everything, pseudo-elements included
   assert.match(CSS, /@media \(prefers-reduced-motion:reduce\)\{\s*\*,\*::before,\*::after\{animation:none!important;transition:none!important\}/);
   assert.ok(CSS.indexOf("prefers-reduced-motion:reduce") > 0);
-  assert.doesNotMatch(PREMIUM, /—/, "no em dash");
+  // the card stack and the picture fade are motion only: Reduce Motion keeps the page where it is
+  const deep = PREMIUM.slice(PREMIUM.indexOf("@media (max-width:899px) and (prefers-reduced-motion:no-preference){"));
+  assert.ok(deep.length > 100, "a motion-only block");
+  assert.match(deep.slice(0, deep.indexOf("\n}")), /body\.sheet-deep \.app\{transform:[^}]*scale\(\.94\)/);
+  assert.match(deep.slice(0, deep.indexOf("\n}")), /img\[data-house\]:not\(\.ld\)\{opacity:0\}/);
+  assert.doesNotMatch(PREMIUM, /\u2014/, "no em dash");
 });
