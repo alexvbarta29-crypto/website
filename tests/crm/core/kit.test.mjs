@@ -96,7 +96,8 @@ test("contactRows, personCard, addressCard", () => {
   assert.match(p, /<button type="button" class="rnd grey sm" aria-label="Text Robin Workday" data-text="">/);
   assert.match(h(personCard({ name: "" })), /<span class="rs-av" aria-hidden="true">\?<\/span>/);
   const a = h(addressCard({ line1: "700 Example Ave", line2: "Delano, MN · gate 1234", nav: "maps:?q=700+Example+Ave", edit: { label: "Edit access", data: { access: true } } }));
-  assert.match(a, /^<div class="rs-card rs-addr"><span class="rs-pl"><span class="rs-ci" aria-hidden="true">/);
+  // (a long press copies the address, never the gate code: core/ui.js, tests/crm/core/address-hold.test.mjs)
+  assert.match(a, /^<div class="rs-card rs-addr"><span class="rs-pl" data-address="700 Example Ave, Delano, MN"><span class="rs-ci" aria-hidden="true">/);
   assert.match(a, /href="maps:\?q=700\+Example\+Ave" data-external="top" class="rnd grey sm" aria-label="Directions"/);
   assert.match(a, /aria-label="Edit access" data-access=""/);
   assert.match(h(addressCard({ line1: "x", nav: { href: "#/map" } })), /<a href="#\/map" class="rnd grey sm" aria-label="Directions">/);

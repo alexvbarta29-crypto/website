@@ -31,6 +31,16 @@
 // board(), boardCard() and moveSheet() (swiped columns with a stage strip),
 // filterSheet(), periodChip() and periodSheet(), stepper(), stickyCta(),
 // dragList() and emptyCard().
+//
+// And the address hold (Nov 2026, the owner: "make addresses copyable
+// whenever you hold down on them"): an element that shows an address carries
+// data-address="<the one-line address>" (addressAttrs() / addressHold(), or
+// the `address` option of contactRows, addressCard, listRow, boardCard and a
+// dataTable column). A long press on it (450 ms; a right click on a desk)
+// copies the address, buzzes lightly where the phone can, and says "Address
+// copied"; a tap still does what it did (open the property, directions).
+// copyText() is the one clipboard helper (the Clipboard API, else a hidden
+// textarea and execCommand for older iPhones).
 
 import { money as fmtMoney } from "./format.js";
 
@@ -285,6 +295,62 @@ export function toast(message, { bad = false, ms = 2600 } = {}) {
   while (box.firstChild) box.removeChild(box.firstChild);
   box.appendChild(t);
   setTimeout(() => t.remove(), ms);
+}
+
+// ------------------------------------------------------------ copying (the address hold)
+
+// → true once the text is on the clipboard: the Clipboard API, else (older iPhones, a frame
+// without the permission) a hidden textarea and execCommand("copy").
+export async function copyText(text) {
+  const v = String(text ?? "");
+  if (!v) return false;
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(v); return true; }
+  } catch (e) { /* the fallback below */ }
+  return copyFallback(v);
+}
+function copyFallback(v) {
+  if (typeof document === "undefined" || !document.body) return false;
+  const ta = document.createElement("textarea");
+  ta.value = v;
+  ta.setAttribute("readonly", "");
+  ta.setAttribute("aria-hidden", "true");
+  // (16 px: iOS doesn't zoom; off screen, not display:none, or nothing is selected)
+  ta.style.cssText = "position:fixed;top:0;left:-9999px;opacity:0;font-size:16px";
+  const active = document.activeElement;
+  document.body.appendChild(ta);
+  let ok = false;
+  try {
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, v.length);
+    ok = document.execCommand("copy");
+  } catch (e) { ok = false; }
+  ta.remove();
+  if (active && typeof active.focus === "function") { try { active.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+  return ok;
+}
+
+// The one line an address hold copies: spaces tidied, at most 300 characters.
+const addrText = (line) => String(line ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+// { "data-address": line } for attrs(), or nothing when there is no address.
+export const addressAttrs = (line) => (addrText(line) ? { "data-address": addrText(line) } : {});
+// The same as one interpolation in a screen's own tag: html`<a ${addressHold(line)} href=...>`.
+export const addressHold = (line) => attrs(addressAttrs(line));
+
+// The address hold's answer: the clipboard, a light buzz, a toast. quiet: no toast when it fails
+// (the hold tries again when the finger lifts, see below).
+const copied = () => {
+  try { if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(12); } catch (e) { /* no buzz */ }
+  toast("Address copied");
+};
+const notCopied = () => toast("Couldn't copy it. Press and hold the text to select it.", { bad: true });
+export async function copyAddress(line, { quiet = false } = {}) {
+  const v = addrText(line);
+  if (!v) return false;
+  const ok = await copyText(v);
+  if (ok) copied(); else if (!quiet) notCopied();
+  return ok;
 }
 
 // ------------------------------------------------------------ sheets
@@ -608,13 +674,15 @@ export function statGrid(items, { label = "" } = {}) {
 // contactRows([{ icon: "call", label: "Mobile", value: "(763) 555-0100", href?: "tel:...",
 //   actions: [{ icon: "chat", label: "Text", href: "sms:..." }, { icon: "call", label: "Call", tone: "red", href: "tel:..." }] }])
 // A row's value is a link (href, or ext for a page that leaves), a button (data) or plain text.
+// address: the one line a long press on the value copies (an address row).
 export function contactRows(rows, { card = true } = {}) {
   const one = (r) => {
     const v = html`<span class="rs-cl">${r.label}</span><span class="rs-cval">${r.value}</span>${r.sub ? html`<span class="rs-csub">${r.sub}</span>` : ""}`;
-    const val = r.ext ? html`<a class="rs-cv" ${openExternal(r.ext)}>${v}</a>`
-      : r.href ? html`<a ${attrs({ class: "rs-cv", href: r.href, ...dataOf(r.data) })}>${v}</a>`
-        : r.data ? html`<button type="button" ${attrs({ class: "rs-cv", ...dataOf(r.data) })}>${v}</button>`
-          : html`<span class="rs-cv">${v}</span>`;
+    const ad = addressAttrs(r.address);
+    const val = r.ext ? html`<a class="rs-cv" ${openExternal(r.ext)} ${attrs(ad)}>${v}</a>`
+      : r.href ? html`<a ${attrs({ class: "rs-cv", href: r.href, ...dataOf(r.data), ...ad })}>${v}</a>`
+        : r.data ? html`<button type="button" ${attrs({ class: "rs-cv", ...dataOf(r.data), ...ad })}>${v}</button>`
+          : html`<span ${attrs({ class: "rs-cv", ...ad })}>${v}</span>`;
     const acts = (r.actions || []).filter(Boolean).map((x) => rnd(x.icon, x.label, { tone: x.tone ?? "grey", sm: true, href: x.href, ext: x.ext, data: x.data, popup: !!x.popup }));
     return html`<li class="rs-crow"><span class="rs-ci" aria-hidden="true">${icon(r.icon || "doc")}</span>${val}${acts.length ? html`<span class="rs-acts">${acts}</span>` : ""}</li>`;
   };
@@ -623,8 +691,9 @@ export function contactRows(rows, { card = true } = {}) {
 
 // The person card (job, visit, quote, invoice): initials, name and phone (tap: open the contact),
 // a red round call and a grey round message. call/text: a tel:/sms: link, or { href | data }.
-export function personCard({ name = "", sub = "", href = null, initials = null, call = null, text = null, actions = [] } = {}) {
-  const who = html`<span class="rs-av" aria-hidden="true">${initials || initialsOf(name)}</span><span class="rs-pw"><span class="rs-pn">${name}</span>${sub ? html`<span class="rs-ps">${sub}</span>` : ""}</span>`;
+// address: the line a long press on the second line copies (Bill To).
+export function personCard({ name = "", sub = "", href = null, initials = null, call = null, text = null, actions = [], address = null } = {}) {
+  const who = html`<span class="rs-av" aria-hidden="true">${initials || initialsOf(name)}</span><span class="rs-pw"><span class="rs-pn">${name}</span>${sub ? html`<span ${attrs({ class: "rs-ps", ...addressAttrs(address) })}>${sub}</span>` : ""}</span>`;
   const c = asLink(call);
   const t = asLink(text);
   const more = (actions || []).filter(Boolean).map((x) => rnd(x.icon, x.label, { tone: x.tone ?? "grey", sm: true, href: x.href, ext: x.ext, data: x.data }));
@@ -633,12 +702,18 @@ export function personCard({ name = "", sub = "", href = null, initials = null, 
 
 // The address card: a pin circle, street over the town line (+ gate code), a round navigate
 // (nav: a maps:/https: link that leaves, or { href | data }) and a round pencil (edit: { label, href | data }).
-export function addressCard({ line1 = "", line2 = "", href = null, nav = null, edit = null } = {}) {
-  const body = html`<span class="rs-ci" aria-hidden="true">${icon("pin")}</span><span class="rs-pw"><span class="rs-pn">${line1}</span>${line2 ? html`<span class="rs-ps">${line2}</span>` : ""}</span>`;
+// address: the line a long press copies (default line1, line2 up to a " · ": a gate code isn't copied);
+// pic: html`` (a house picture) drawn under the address inside the same card; thumb: html`` (a small
+// house picture, a link of its own) in place of the pin circle.
+export function addressCard({ line1 = "", line2 = "", href = null, nav = null, edit = null, address = undefined, pic = null, thumb = null } = {}) {
+  // (the default leaves out what follows a " · " on line2: a gate code is never copied)
+  const ad = addressAttrs(address === undefined ? [line1, String(line2 || "").split(" · ")[0]].filter(Boolean).join(", ") : address);
+  const body = html`${thumb ? "" : html`<span class="rs-ci" aria-hidden="true">${icon("pin")}</span>`}<span class="rs-pw"><span class="rs-pn">${line1}</span>${line2 ? html`<span class="rs-ps">${line2}</span>` : ""}</span>`;
   const n = asLink(nav);
   const navBtn = !n ? "" : n.href && external(n.href) ? rnd("nav", "Directions", { tone: "grey", sm: true, ext: n.href }) : rnd("nav", "Directions", { tone: "grey", sm: true, href: n.href, data: n.data });
   const e = asLink(edit);
-  return html`<div class="rs-card rs-addr">${href ? html`<a ${attrs({ class: "rs-pl", href })}>${body}</a>` : html`<span class="rs-pl">${body}</span>`}<span class="rs-acts">${navBtn}${e ? rnd("edit", e.label || "Edit the address", { tone: "grey", sm: true, href: e.href, data: e.data }) : ""}</span></div>`;
+  const row = html`${thumb || ""}${href ? html`<a ${attrs({ class: "rs-pl", href, ...ad })}>${body}</a>` : html`<span ${attrs({ class: "rs-pl", ...ad })}>${body}</span>`}<span class="rs-acts">${navBtn}${e ? rnd("edit", e.label || "Edit the address", { tone: "grey", sm: true, href: e.href, data: e.data }) : ""}</span>`;
+  return pic ? html`<div class="rs-card rs-addr-c"><div class="rs-addr">${row}</div>${pic}</div>` : html`<div class="rs-card rs-addr">${row}</div>`;
 }
 
 // Line items (job, quote, invoice, plan): each line's title with "2 × $5.00" under it and the
@@ -865,16 +940,19 @@ export const tileToggle = (on, key, all = "all") => (String(on) === String(key) 
 // detail (and a small tag) with the status pill on the right; at most ONE trailing round action
 // (call, ▷, ✓); a long press opens the row's "..." (hold: the data-* the screen's "rs-hold" listens on).
 // edge: "red" (overdue) | "amber" | "green"; initials: a grey circle before the name.
-// listRow({ title, amount?, sub?, pill?, tag?, href? | data?, action?: { icon, label, tone?, href | data }, edge?, initials?, hold? })
-export function listRow({ title = "", amount = null, sub = "", pill = null, tag = null, href = null, data = null, action = null, edge = null, initials = null, hold = null } = {}) {
+// address: the line a long press copies (the whole row; with a hold, its second line); thumb: html``
+// (a small house picture) before the title.
+// listRow({ title, amount?, sub?, pill?, tag?, href? | data?, action?: { icon, label, tone?, href | data }, edge?, initials?, hold?, address?, thumb? })
+export function listRow({ title = "", amount = null, sub = "", pill = null, tag = null, href = null, data = null, action = null, edge = null, initials = null, hold = null, address = null, thumb = null } = {}) {
   const amt = amount === null || amount === undefined || amount === "" ? "" : html`<span class="rs-lr-m num">${kitMoney(amount)}</span>`;
-  const inner = html`${initials ? html`<span class="rs-av rs-lr-av" aria-hidden="true">${initials}</span>` : ""}<span class="rs-lr-a">
+  const ad = addressAttrs(address);
+  const inner = html`${thumb || ""}${initials ? html`<span class="rs-av rs-lr-av" aria-hidden="true">${initials}</span>` : ""}<span class="rs-lr-a">
     <span class="rs-lr-1"><span class="rs-lr-t">${title}</span>${amt}</span>
-    ${sub || tag || pill ? html`<span class="rs-lr-2"><span class="rs-lr-s">${sub || ""}${tag ? html`<span class="rs-tag">${tag}</span>` : ""}</span>${pillOf(pill)}</span>` : ""}</span>`;
+    ${sub || tag || pill ? html`<span ${attrs({ class: "rs-lr-2", ...(hold ? ad : {}) })}><span class="rs-lr-s">${sub || ""}${tag ? html`<span class="rs-tag">${tag}</span>` : ""}</span>${pillOf(pill)}</span>` : ""}</span>`;
   const main = href ? html`<a ${attrs({ class: "rs-lr-main", href, ...dataOf(data) })}>${inner}</a>`
     : data ? html`<button type="button" ${attrs({ class: "rs-lr-main", ...dataOf(data) })}>${inner}</button>`
       : html`<span class="rs-lr-main">${inner}</span>`;
-  return html`<li ${attrs({ class: "rs-lrow" + (edge ? " edge-" + edge : ""), ...holdAttrs(hold) })}>${main}${action ? html`<span class="rs-acts">${roundAction(action)}</span>` : ""}</li>`;
+  return html`<li ${attrs({ class: "rs-lrow" + (edge ? " edge-" + edge : ""), ...holdAttrs(hold), ...(hold ? {} : ad) })}>${main}${action ? html`<span class="rs-acts">${roundAction(action)}</span>` : ""}</li>`;
 }
 // The card the rows sit in (or one line saying there is nothing; `empty` may also be emptyState's
 // options: { icon, title, text, action }). On a wide card (a desk, 720 px and up) the rows read as a
@@ -903,9 +981,10 @@ export function board({ name = "board", columns = [], on = null, label = "" } = 
 }
 // A board's card: the title and a pill, a grey line, a meta line (initials, a date); a Move pill
 // (move: { label?, data }) and at most one round action; edge "red" for overdue; done: struck through.
-// boardCard({ title, pill?, sub?, meta?, edge?, href? | data?, move?, action?, hold?, done? })
-export function boardCard({ title = "", pill = null, sub = "", meta = "", edge = null, href = null, data = null, move = null, action = null, hold = null, done = false } = {}) {
-  const inner = html`<span class="rs-bc-1"><span class="rs-bc-t">${title}</span>${pillOf(pill)}</span>${sub ? html`<span class="rs-bc-s">${sub}</span>` : ""}${meta ? html`<span class="rs-bc-m">${meta}</span>` : ""}`;
+// address: the line a long press on the grey line copies.
+// boardCard({ title, pill?, sub?, meta?, edge?, href? | data?, move?, action?, hold?, done?, address? })
+export function boardCard({ title = "", pill = null, sub = "", meta = "", edge = null, href = null, data = null, move = null, action = null, hold = null, done = false, address = null } = {}) {
+  const inner = html`<span class="rs-bc-1"><span class="rs-bc-t">${title}</span>${pillOf(pill)}</span>${sub ? html`<span ${attrs({ class: "rs-bc-s", ...addressAttrs(address) })}>${sub}</span>` : ""}${meta ? html`<span class="rs-bc-m">${meta}</span>` : ""}`;
   const main = href ? html`<a ${attrs({ class: "rs-bc-main", href, ...dataOf(data) })}>${inner}</a>`
     : data ? html`<button type="button" ${attrs({ class: "rs-bc-main", ...dataOf(data) })}>${inner}</button>`
       : html`<span class="rs-bc-main">${inner}</span>`;
@@ -1167,32 +1246,53 @@ export function dragList(root, onDrop = () => {}) {
 }
 
 // For every screen at once: a long press (or a right click) on [data-hold] sends "rs-hold" to it
-// and swallows the click that follows; a board's strip jumps to its column and follows a swipe.
+// and swallows the click that follows; on [data-address] (the nearer of the two wins) it copies the
+// address (copyAddress) instead; a board's strip jumps to its column and follows a swipe.
+const HOLDS = "[data-hold], [data-address]";
+export const HOLD_MS = 550;
+export const ADDRESS_HOLD_MS = 450;
+// What a long press on `el` does: copy its address (→ the copy's promise), or send "rs-hold".
+export function holdFire(el, { quiet = false } = {}) {
+  if (el.hasAttribute("data-address")) return copyAddress(el.getAttribute("data-address"), { quiet });
+  el.dispatchEvent(new CustomEvent("rs-hold", { bubbles: true }));
+  return null;
+}
 if (typeof document !== "undefined") {
-  let t = null, x0 = 0, y0 = 0, firedAt = 0;
-  const HOLD_MS = 550;
+  // retry: an address whose copy the browser refused during the hold (an iPhone may want the
+  // copy inside a touch's own event): copied again when the finger lifts, else "Couldn't copy".
+  let t = null, x0 = 0, y0 = 0, firedAt = 0, retry = null;
   const fire = (el) => {
     firedAt = Date.now();
-    el.dispatchEvent(new CustomEvent("rs-hold", { bubbles: true }));
+    const p = holdFire(el, { quiet: true });
+    if (p) p.then((ok) => { if (!ok) retry = el.getAttribute("data-address"); });
+  };
+  const lifted = (e) => {
+    clearTimeout(t); t = null;
+    if (!retry) return;
+    const v = retry;
+    retry = null;
+    if (e.type !== "pointercancel" && copyFallback(String(v))) copied(); else notCopied();
   };
   document.addEventListener("pointerdown", (e) => {
-    const el = e.target && e.target.closest ? e.target.closest("[data-hold]") : null;
-    clearTimeout(t); t = null;
+    const el = e.target && e.target.closest ? e.target.closest(HOLDS) : null;
+    clearTimeout(t); t = null; retry = null;
     // (a press on the row's own round button or pill is that button's)
     if (!el || e.button > 0 || e.target.closest(".rnd, .rs-pb, .rs-drag")) return;
     x0 = e.clientX; y0 = e.clientY;
-    t = setTimeout(() => { t = null; fire(el); }, HOLD_MS);
+    t = setTimeout(() => { t = null; fire(el); }, el.hasAttribute("data-address") ? ADDRESS_HOLD_MS : HOLD_MS);
   }, true);
   document.addEventListener("pointermove", (e) => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) { clearTimeout(t); t = null; } }, true);
-  for (const ev of ["pointerup", "pointercancel"]) document.addEventListener(ev, () => { clearTimeout(t); t = null; }, true);
+  for (const ev of ["pointerup", "pointercancel", "touchend"]) document.addEventListener(ev, lifted, true);
   document.addEventListener("contextmenu", (e) => {
-    const el = e.target && e.target.closest ? e.target.closest("[data-hold]") : null;
+    const el = e.target && e.target.closest ? e.target.closest(HOLDS) : null;
     if (!el) return;
     e.preventDefault();
+    // (a phone's own long-press menu comes at about the time ours does: one copy, one sheet)
+    clearTimeout(t); t = null;
     if (Date.now() - firedAt > 800) fire(el);
   }, true);
   document.addEventListener("click", (e) => {
-    if (firedAt && Date.now() - firedAt < 700 && e.target && e.target.closest && e.target.closest("[data-hold]")) { e.preventDefault(); e.stopPropagation(); firedAt = 0; }
+    if (firedAt && Date.now() - firedAt < 700 && e.target && e.target.closest && e.target.closest(HOLDS)) { e.preventDefault(); e.stopPropagation(); firedAt = 0; }
     const j = e.target && e.target.closest ? e.target.closest("[data-board-jump]") : null;
     if (j) { const b = j.closest(".rs-board"); if (b) boardJump(b, j.dataset.key); }
   }, true);
@@ -1220,15 +1320,15 @@ if (typeof document !== "undefined") {
 //   dataTable({ columns, rows, label, empty, loading })   a table in one bordered card: small grey caps
 //       headers over 52 px rows on a wide card (a desk), two-line rows on a phone or in a narrow column
 //       (line 1 the title and the $, line 2 the other cells joined by a dot, the pill on the right).
-//       columns: [{ key, label, kind: "title" | "text" | "date" | "status" | "money" | "num", width? }]
-//       (the first column is the title unless said); rows: [{ cells: { key: value }, href | data, action?,
-//       edge?, hold? }] (action: one round action, or up to 3 in an array; { wide: true } on one = a wide table only); a value is text, a number of cents (money), a word (status: its pill), html, or
+//       columns: [{ key, label, kind: "title" | "text" | "date" | "status" | "money" | "num", width?, address? }]
+//       (the first column is the title unless said; address: a long press on the cell copies the row's
+//       address); rows: [{ cells: { key: value }, href | data, action?, edge?, hold?, address? }] (action: one round action, or up to 3 in an array; { wide: true } on one = a wide table only); a value is text, a number of cents (money), a word (status: its pill), html, or
 //       for the title { text, sub }. empty: a line, or emptyState's options. loading: n skeleton rows.
 //   skeletonRows(n, { columns?, card = true, busy = true, label })   grey bars where the rows will be:
 //       a table's columns when given, else two-line rows.
 const KIND_W = { title: "minmax(160px,1.6fr)", text: "minmax(0,1fr)", date: "minmax(96px,.8fr)", status: "minmax(110px,.7fr)", money: "minmax(96px,.7fr)", num: "minmax(64px,.5fr)" };
 const KINDS = new Set(Object.keys(KIND_W));
-const colsOf = (columns) => (columns || []).filter(Boolean).map((c, i) => ({ key: c.key ?? String(i), label: c.label || "", kind: KINDS.has(c.kind) ? c.kind : i === 0 ? "title" : "text", width: typeof c.width === "string" && /^[\w.%(), -]+$/.test(c.width) ? c.width : null }));
+const colsOf = (columns) => (columns || []).filter(Boolean).map((c, i) => ({ key: c.key ?? String(i), label: c.label || "", kind: KINDS.has(c.kind) ? c.kind : i === 0 ? "title" : "text", width: typeof c.width === "string" && /^[\w.%(), -]+$/.test(c.width) ? c.width : null, address: !!c.address }));
 const gridOf = (cols) => cols.map((c) => c.width || KIND_W[c.kind]).join(" ");
 const tdClass = (c, none = false) => "rs-td c-" + c.kind + (c.kind === "money" || c.kind === "num" ? " num" : "") + (none ? " none" : "");
 
@@ -1258,7 +1358,8 @@ export function dataTable({ columns = [], rows = [], label = "", empty = "Nothin
   if (!list.length) return html`<div ${attrs(box)}>${head}${empty && typeof empty === "object" && !isHtml(empty) ? emptyState(empty) : html`<p class="rs-empty rs-tempty">${empty}</p>`}</div>`;
   const row = (r) => {
     const vals = r.cells || {};
-    const cells = cols.map((c) => { const v = vals[c.key]; return html`<span class="${tdClass(c, v === null || v === undefined || v === "")}">${tableCell(c, v)}</span>`; });
+    // (a column marked `address`: a long press on its cell copies the row's `address`, else the cell's text)
+    const cells = cols.map((c) => { const v = vals[c.key]; return html`<span ${attrs({ class: tdClass(c, v === null || v === undefined || v === ""), ...(c.address ? addressAttrs(r.address || (typeof v === "string" ? v : "")) : {}) })}>${tableCell(c, v)}</span>`; });
     const main = r.href ? html`<a ${attrs({ class: "rs-tmain", href: r.href, ...dataOf(r.data) })}>${cells}</a>`
       : r.data ? html`<button type="button" ${attrs({ class: "rs-tmain", ...dataOf(r.data) })}>${cells}</button>`
         : html`<span class="rs-tmain">${cells}</span>`;

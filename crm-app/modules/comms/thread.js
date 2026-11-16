@@ -19,6 +19,8 @@
 
 import { html, attrs, icon, sheet, toast, seg, rnd, actionSheet, sheetPage, statGrid, contactRows, pillBtn, toggle } from "../../core/ui.js";
 import { poll } from "../../core/poll.js";
+import { directionsUrl } from "../../core/map.js";
+import { addressText } from "../contacts/house.js";
 import { uuid } from "../../core/api.js";
 import { phone as fmtPhone, money, dateShort, dateTime } from "../../core/format.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
@@ -319,9 +321,13 @@ async function panel(ctx) {
   items.push({ label: "Source", value: (c.source && c.source.source) || "Not known" });
   const ph = (c.phones || [])[0];
   const em = (c.emails || [])[0];
+  const prop = (d.properties || []).find((p) => p.id === c.primary_property_id) || (d.properties || [])[0] || null;
+  const addr = (prop && prop.address) || c.billing_address || null;
   const rows = [
     ph && ph.e164 && { icon: "phone", label: "Mobile", value: fmtPhone(ph.e164), actions: [{ icon: "call", label: "Call", href: "tel:" + ph.e164 }] },
     em && em.address && { icon: "mail", label: "Email", value: em.address, actions: [{ icon: "mail", label: "Email", href: "mailto:" + em.address }] },
+    // the address (the main property's, else billing): a long press copies it, the round button gives directions
+    addr && addr.street1 && { icon: "pin", label: "Address", value: addr.street1, sub: [addr.city, [addr.state, addr.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null, address: addressText(addr), actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(prop && prop.geo ? prop.geo : addressText(addr)) }] },
   ].filter(Boolean);
   const muted = !!(c.automations_paused && c.automations_paused.sms);
   const creates = [

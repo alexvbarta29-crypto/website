@@ -16,7 +16,7 @@
 // carries the version that was read (If-Match): when someone else changed
 // the invoice meanwhile, the latest is shown instead of overwriting it.
 
-import { html, attrs, sheet, toast, confirmSheet, actionSheet } from "../../core/ui.js";
+import { html, attrs, sheet, toast, confirmSheet, actionSheet, addressAttrs } from "../../core/ui.js";
 import { readMoney, showError, clearErrors, busy } from "../../core/forms.js";
 import { money, dateYear, phone as fmtPhone, dateShort, dateTime } from "../../core/format.js";
 import { pickFrom } from "../../core/pickers.js";
@@ -72,7 +72,7 @@ function billTo(c) {
   return html`<section ${attrs({ class: "rs-card mn-ed-card" + (edit ? " mn-ed-tap" : ""), "data-field": "bill_to", "data-ed-bill": edit ? "" : null, role: edit ? "button" : null, tabindex: edit ? "0" : null, "aria-label": edit ? `Bill To: ${name}. Change who it's billed to` : null })}>
     <div class="mn-ed-ch"><h3>Bill To</h3></div>
     <p class="mn-ed-bn">${name}</p>
-    ${lines.map((x) => html`<p class="mn-ed-bs">${x}</p>`)}
+    ${lines.map((x) => html`<p ${attrs({ class: "mn-ed-bs", ...(x === (bt.address || ct.address) ? addressAttrs(x) : {}) })}>${x}</p>`)}
     ${m.bill_to ? html`<p class="mn-ed-hint">Shown on the invoice. Texts and emails still go to the customer's own phone and email.</p>` : ""}
     <small class="why" hidden></small>
   </section>`;

@@ -23,6 +23,7 @@ import { html, icon, render, attrs, toast, sheet, tileRow, listRow, dataTable, s
 import { screenButtons } from "../../core/nav.js";
 import { pickFrom } from "../../core/pickers.js";
 import { ensureStyles, contactsIndex, forgetIndex, lifecyclePill, phoneText, emptyCard, followRun, telHref } from "./kit.js";
+import { houseReady, houseOn, houseThumb } from "./house.js";
 import { time as fmtTime, money, initials } from "../../core/format.js";
 
 // The tiles (they ARE the filter): the lifecycle, plan members, who owes money, and everyone but the archived.
@@ -99,6 +100,8 @@ const monthDay = (d) => (typeof d === "string" && /^\d{4}-\d{2}-\d{2}/.test(d) ?
 const telOf = (r) => { const p = r.p && r.p[0] ? String(r.p[0]).replace(/[^\d+]/g, "") : ""; return p ? (p.length === 10 ? "+1" + p : p) : ""; };
 
 const short = (cents) => money(cents || 0).replace(/\.00$/, "");
+// The address a long press copies: the index row's street and town, and the ZIP.
+export const rowAddress = (r) => (r && r.a ? [r.a, r.z].filter(Boolean).join(" ") : "");
 // One person (Row2), Rotor's key facts: the name and the lifetime value (LV); town · SV · who it's assigned to;
 // "Owes $X" in red (outstanding) or the status; a plan tag; a round call; a long press opens the row's "...".
 // s: { money, users, plans, sv, picked }.
@@ -118,6 +121,9 @@ export function rowHtml(r, s = {}) {
     href: "#/contacts/" + encodeURIComponent(r.id),
     action: tel ? { icon: "call", label: `Call ${r.n || ""}`, href: telHref(tel) } : null,
     hold: { "row-more": r.id },
+    address: rowAddress(r),
+    // the house (a small square, lazy) once Google is on (house.js)
+    thumb: houseOn() && r.a ? houseThumb(r.id, { of: "contacts" }) : null,
   });
 }
 
@@ -127,7 +133,7 @@ export function tableColumns(withMoney) {
     { key: "name", label: "Name", kind: "title" },
     { key: "email", label: "Email", kind: "text", width: "minmax(0,1.3fr)" },
     { key: "phone", label: "Phone", kind: "text", width: "minmax(118px,.8fr)" },
-    { key: "city", label: "City", kind: "text", width: "minmax(0,.8fr)" },
+    { key: "city", label: "City", kind: "text", width: "minmax(0,.8fr)", address: true },
     { key: "st", label: "Status", kind: "status", width: "minmax(88px,.55fr)" },
     withMoney && { key: "sv", label: "SV", kind: "money", width: "minmax(72px,.5fr)" },
     withMoney && { key: "lv", label: "LV", kind: "money", width: "minmax(72px,.5fr)" },
@@ -148,6 +154,7 @@ export function tableRow(r, s = {}) {
     action: s.write ? { icon: "edit", label: `Edit ${r.n || "this contact"}`, href: "#/contacts/" + encodeURIComponent(r.id) + "/edit" } : null,
     edge: s.money && r.mb > 0 ? "red" : null,
     hold: { "row-more": r.id },
+    address: rowAddress(r),
   };
 }
 const tableHtml = (rows, s) => dataTable({ label: "Customers", columns: tableColumns(!!s.money), rows: rows.map((r) => tableRow(r, s)), empty: "Nobody here" });
@@ -406,7 +413,7 @@ export default {
   flush: true,
   async load(params, ctx) {
     ensureStyles();
-    const ix = await contactsIndex(ctx);
+    const [ix] = await Promise.all([contactsIndex(ctx), houseReady(ctx)]);
     const [dupes, planRows, users] = await Promise.all([
       ctx.can("contacts:merge") ? ctx.api("/merge-candidates?status=pending", { cache: false }).then((m) => (m.meta && m.meta.total) || 0).catch(() => 0) : 0,
       // the plans (their names and sale values) for the rows: one read of the plans list, when this person may see plans

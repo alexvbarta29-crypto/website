@@ -63,7 +63,8 @@ async function search(ctx) {
     const shard = contactShard("ct_00000000000000000000");
     const ix = await readIndex("contacts", shard);
     contacts = ix.rows.filter((row) => isId(row.id, "contact") && !row.merged_into && row.lc !== "archived" && rowMatches(row, ws)).slice(0, MAX_RESULTS)
-      .map((row) => ({ id: row.id, name: display(row), sub: [row.c || row.town || row.city, (row.p && row.p.length) || row.ph ? "phone on file" : null].filter(Boolean).join(" · ") }));
+      // (address: what a long press on the result copies, docs/CRM-MAP.md)
+      .map((row) => ({ id: row.id, name: display(row), sub: [row.c || row.town || row.city, (row.p && row.p.length) || row.ph ? "phone on file" : null].filter(Boolean).join(" · "), ...(row.a ? { address: [row.a, row.z].filter(Boolean).join(" ") } : {}) }));
   }
   return { data: { numbers, contacts } };
 }

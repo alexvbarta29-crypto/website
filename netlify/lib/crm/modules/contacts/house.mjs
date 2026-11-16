@@ -11,6 +11,8 @@
 //       satellite, zoom 20 (a thumb 19), a red pin. 404 when Google Maps
 //       isn't live (local, tests, dry-run): the screens then show the
 //       keyless satellite or a plain square, never a broken picture.
+//   GET /contacts/:id/house.jpg?...   the same, of the contact's primary property
+//       (a list row knows the contact; whoever may read that property)
 //   GET /house/status → { on }: whether pictures can come at all (the
 //       screens ask once, so a list never asks for 50 pictures that can't come)
 //   runHouseSweep(ctx)  the contacts.house sweep (bulk lane, every pass):
@@ -41,6 +43,7 @@ import { getRaw, putRaw, deleteRaw, settledWrite, listKeys, getRecord } from "..
 import { adapter } from "../../adapters/index.mjs";
 import { now, nowIso, localDate } from "../../core/clock.mjs";
 import { NotFoundError, RateLimited } from "../../core/errors.mjs";
+import { isId } from "../../core/ids.mjs";
 import { addressOneLine } from "./display.mjs";
 import { geocodeProperty } from "./properties.mjs";
 import { readableProperty } from "./routes.mjs";
@@ -206,10 +209,10 @@ export async function housePicture(prop, { kind = "street", size = "full", maps,
 const IMAGE_TYPE = (b) => (b[0] === 0x89 && b[1] === 0x50 ? "image/png" : "image/jpeg");
 const isJpegOrPng = (b) => b.length > 3 && ((b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) || (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47));
 
-async function houseRoute(ctx) {
+async function houseRoute(ctx, propertyId = ctx.params.id) {
   const kind = ctx.query.get("kind") === "aerial" ? "aerial" : "street";
   const size = ctx.query.get("size") === "thumb" ? "thumb" : "full";
-  const got = await readableProperty(ctx, ctx.params.id);
+  const got = await readableProperty(ctx, propertyId);
   const maps = await adapter("maps", { deploy: ctx.deploy });
   if (!liveMaps(maps)) throw new NotFoundError("No picture of this house yet.");
   if (!pictureable(got.data)) throw new NotFoundError("This property has no street address.");
@@ -234,6 +237,14 @@ async function houseRoute(ctx) {
   });
 }
 
+// A contact's picture is its primary property's (a list row knows the contact, not the property).
+async function contactHouseRoute(ctx) {
+  const c = isId(ctx.params.id, "contact") ? await getRecord("contact", ctx.params.id) : null;
+  const pid = c && c.data && !c.data.deleted_at ? c.data.primary_property_id : null;
+  if (!pid) throw new NotFoundError("No picture of this house yet.");
+  return houseRoute(ctx, pid);
+}
+
 async function statusRoute(ctx) {
   const maps = await adapter("maps", { deploy: ctx.deploy });
   return { data: { on: liveMaps(maps) && !!str(process.env.GOOGLE_MAPS_API_KEY) } };
@@ -241,6 +252,7 @@ async function statusRoute(ctx) {
 
 export const houseRoutes = [
   { method: "GET", path: "/properties/:id/house.jpg", auth: "session", perm: "contacts:read", subject: "required", mode: "inline", handler: houseRoute, maxCalls: 45 },
+  { method: "GET", path: "/contacts/:id/house.jpg", auth: "session", perm: "contacts:read", subject: "required", mode: "inline", handler: contactHouseRoute, maxCalls: 45 },
   { method: "GET", path: "/house/status", auth: "session", perm: "contacts:read", subject: "required", mode: "inline", handler: statusRoute },
 ];
 

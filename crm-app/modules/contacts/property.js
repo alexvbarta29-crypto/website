@@ -4,10 +4,11 @@
 // parking), the counts quotes reuse (panes, screens, tracks, stories,
 // gutter feet) and, for lights customers, the lights profile.
 
-import { html, icon, sheet, toast, openExternal, attrs } from "../../core/ui.js";
+import { html, icon, sheet, toast, openExternal, attrs, addressHold } from "../../core/ui.js";
 import { field, checkbox, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { directionsUrl } from "../../core/map.js";
 import { ensureStyles, addressLine, tierPill } from "./kit.js";
+import { houseReady, houseOn, housePic } from "./house.js";
 
 const ASSETS = [["panes_ext", "Window panes (outside)"], ["panes_int", "Window panes (inside)"], ["screens", "Screens"], ["tracks", "Tracks"], ["tracks_premium", "Premium tracks"], ["stories", "Stories"], ["french_panes", "French panes"], ["gutter_ft", "Gutter feet"], ["downspouts", "Downspouts"], ["roofline_ft", "Roofline feet (lights)"], ["sqft", "Square feet"], ["ladder_ft", "Ladder (feet)"]];
 // The quote builder's window types (contacts assets.mjs WINDOW_KEYS), counted outside and inside.
@@ -36,7 +37,7 @@ export default {
   title: (s) => (s && s.p ? s.p.label || "Property" : "Property"),
   async load(params, ctx) {
     ensureStyles();
-    const r = await ctx.api(`/properties/${encodeURIComponent(params.id)}`);
+    const [r] = await Promise.all([ctx.api(`/properties/${encodeURIComponent(params.id)}`), houseReady(ctx)]);
     return { p: r.data.property, contact: r.data.contact || null, etag: r.etag, tech: !r.data.contact && !ctx.can("contacts:read_all") };
   },
   render(s, ctx) {
@@ -46,7 +47,8 @@ export default {
     const canEdit = ctx.can("contacts:write");
     return html`<div class="stack">
       <section class="card">
-        <h2>${addressLine(p.address)}</h2>
+        <h2 ${addressHold(addressLine(p.address))}>${addressLine(p.address)}</h2>
+        ${houseOn() ? html`<div class="pr-house">${housePic({ id: p.id, geo: p.geo, line: addressLine(p.address) })}</div>` : ""}
         ${s.contact ? html`<a class="ct-line" href="${"#/contacts/" + encodeURIComponent(s.contact.id)}"><span class="lb">Contact</span><span class="v">${s.contact.name}</span><span class="chev" aria-hidden="true"></span></a>` : ""}
         <div class="stat-row">${tierPill(p.town_tier)}${Number.isFinite(p.distance_mi) ? html`<span class="pill">${p.distance_mi} mi from Delano</span>` : ""}${p.county ? html`<span class="pill">${p.county[0].toUpperCase() + p.county.slice(1)} County</span>` : ""}</div>
         <div class="btn-row"><a class="btn primary" ${openExternal(directionsUrl(p.geo || p.address))}>${icon("map")}Directions</a>

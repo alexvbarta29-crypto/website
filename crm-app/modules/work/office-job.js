@@ -24,7 +24,8 @@
 // answers with what they may see (no office notes, prices only with
 // visits:prices), and the page shows no office buttons then.
 
-import { html, attrs, icon as iconOf, rnd, sheet, toast, confirmSheet, statusPill, pillBtn, notesBox, disclosure, seg, stepper, actionSheet } from "../../core/ui.js";
+import { html, attrs, icon as iconOf, rnd, sheet, toast, confirmSheet, statusPill, pillBtn, notesBox, disclosure, seg, stepper, actionSheet, addressHold } from "../../core/ui.js";
+import { houseReady, houseOn, houseThumbLink, addressText } from "../contacts/house.js";
 import { money, dateShort, dateYear, ago, clock, phone as formatPhone } from "../../core/format.js";
 import { readForm, showError, clearErrors, busy, readMoney } from "../../core/forms.js";
 import { directionsUrl } from "../../core/map.js";
@@ -53,7 +54,8 @@ async function load(params, ctx) {
   ensureStyles();
   svStyles();
   checklistStyles();
-  const r = await ctx.api(`/jobs/${encodeURIComponent(params.id)}`, { cache: false });
+  // (and whether the house picture can come, house.js)
+  const [r] = await Promise.all([ctx.api(`/jobs/${encodeURIComponent(params.id)}`, { cache: false }), houseReady(ctx)]);
   const office = officeView();
   const d = r.data;
   const j = d.job;
@@ -289,7 +291,7 @@ function customerCard(s) {
     ${railHead("Customer", c && office ? html`<a class="wk-ropen" ${attrs({ href: "#/contacts/" + encodeURIComponent(c.id) })}>Open</a>` : "")}
     ${c ? html`<div class="wk-cwho"><span class="rs-av" aria-hidden="true">${initials(name)}</span><span class="wk-cperson"><b>${name}</b>${ph && ph.e164 ? html`<span class="rs-sub num">${formatPhone(ph.e164)}</span>` : ""}</span></div>
     ${n || (em && office) ? html`<div class="wk-cbtns">${n ? pillBtn("Call", { icon: "call", href: "tel:" + n, aria: "Call " + name }) : ""}${n ? pillBtn("Text", { icon: "chat", href: "sms:" + n, aria: "Text " + name }) : ""}${em && office ? rnd("mail", "Email " + name, { tone: "grey", sm: true, href: "mailto:" + em }) : ""}</div>` : ""}` : ""}
-    ${a && (a.street1 || a.city) ? html`<div class="wk-caddr"><span class="wk-cline"><b>${a.street1 || a.city}</b><span class="rs-sub">${[[a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · ")}</span></span>
+    ${a && (a.street1 || a.city) ? html`<div class="wk-caddr">${p.id && a.street1 && houseOn() ? houseThumbLink({ id: p.id, geo: p.geo, line: addressText(a) }) : ""}<span class="wk-cline" ${addressHold(addressText(a))}><b>${a.street1 || a.city}</b><span class="rs-sub">${[[a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · ")}</span></span>
       <span class="wk-cact">${pillBtn("Directions", { icon: "nav", ext: directionsUrl(a) })}${office && p.id ? rnd("edit", "Edit the place and its access", { tone: "grey", sm: true, href: "#/properties/" + encodeURIComponent(p.id) }) : ""}</span></div>` : ""}
   </div>`;
 }

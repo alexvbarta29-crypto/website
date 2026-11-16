@@ -120,7 +120,7 @@ export default {
         columns: [
           { key: "who", label: "Customer", kind: "title" },
           { key: "num", label: "Job #", kind: "text", width: "minmax(92px,.8fr)" },
-          { key: "ad", label: "Address", kind: "text", width: "minmax(0,1.2fr)" },
+          { key: "ad", label: "Address", kind: "text", width: "minmax(0,1.2fr)", address: true },
           { key: "start", label: "Start date", kind: "date", width: "minmax(136px,1fr)" },
           { key: "st", label: "Status", kind: "status", width: "minmax(104px,.7fr)" },
           { key: "li", label: "Line items", kind: "num", width: "64px" },

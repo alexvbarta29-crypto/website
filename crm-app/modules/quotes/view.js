@@ -161,7 +161,7 @@ export default {
     const tab = s.tab || ctx.keep.tab || "options";
     return html`<div class="rs-page qt-page">
       ${topCard(s, ctx)}
-      ${personCard({ name: c.name || q.contact_name || "Contact", sub: [prop && prop.address, c.phone && phone(c.phone)].filter(Boolean).join(" · "), href: "#/contacts/" + encodeURIComponent(q.contact_id), call: c.phone ? "tel:" + c.phone : null, text: c.phone ? "sms:" + c.phone : null })}
+      ${personCard({ name: c.name || q.contact_name || "Contact", sub: [prop && prop.address, c.phone && phone(c.phone)].filter(Boolean).join(" · "), address: prop && typeof prop.address === "string" ? prop.address : null, href: "#/contacts/" + encodeURIComponent(q.contact_id), call: c.phone ? "tel:" + c.phone : null, text: c.phone ? "sms:" + c.phone : null })}
       ${seg([["options", "Options"], ["activity", "Activity"]], tab, { name: "quote", label: "Quote" })}
       ${tab === "activity" ? activityPane(s) : optionsPane(s)}
     </div>`;

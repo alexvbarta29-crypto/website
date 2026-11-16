@@ -76,7 +76,8 @@
 // A technician sees only what the server gives them: the name, the numbers
 // to call and the properties of their visits.
 
-import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, contactRows, statusPill, pillTap, pillBtn, rnd, actionSheet, notesBox, disclosure, addressCard, tileRow, formRows, formRow, toggle, openExternal } from "../../core/ui.js";
+import { html, icon, sheet, toast, attrs, confirmSheet, seg, cardHead, sectionLabel, contactRows, statusPill, pillTap, pillBtn, rnd, actionSheet, notesBox, disclosure, addressCard, tileRow, formRows, formRow, toggle, openExternal, addressHold, copyText as kitCopy } from "../../core/ui.js";
+import { houseReady, houseOn, housePic } from "./house.js";
 import { capture, uploadPhoto } from "../../core/camera.js";
 import { field, select, readForm, clearErrors, showError, busy } from "../../core/forms.js";
 import { dateShort, dateTime, dateYear, money, ago, localDate } from "../../core/format.js";
@@ -171,7 +172,8 @@ function askedTab(ctx) {
 
 async function load(params, ctx) {
   ensureStyles();
-  const r = await ctx.api(`/contacts/${encodeURIComponent(params.id)}`);
+  // (whether the house picture can come: asked once, beside the contact)
+  const [r] = await Promise.all([ctx.api(`/contacts/${encodeURIComponent(params.id)}`), houseReady(ctx)]);
   const d = r.data || {};
   if (d.contact && d.contact.merged_into) { ctx.go(`/contacts/${d.contact.merged_into}`, { replace: true }); return { redirect: true }; }
   const tech = !d.stats;
@@ -372,8 +374,11 @@ function reach(s, ctx) {
       p.sms !== false && { icon: "chat", label: `Text ${name}`, href: smsHref(p.e164) },
       { icon: "call", label: `Call ${name}`, tone: "red", href: telHref(p.e164) }] })),
     ...emails.map((e) => ({ icon: "mail", label: "Email", value: e.address, href: mailHref(e.address), actions: [{ icon: "copy", label: "Copy the email", data: { copy: e.address } }, { icon: "send", label: `Email ${name}`, href: mailHref(e.address) }] })),
-    lines.length && (lead(s) || s.tech || !prop) && { icon: "pin", label: lead(s) ? "Address" : "Billing address", value: lines[0], sub: lines[1] || null, actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(geo || addressLine(addr)) }] },
+    lines.length && (lead(s) || s.tech || !prop) && { icon: "pin", label: lead(s) ? "Address" : "Billing address", value: lines[0], sub: lines[1] || null, address: addressLine(addr), actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(geo || addressLine(addr)) }] },
   ].filter(Boolean);
+  // a lead (and a tech): the house picture inside this card (a customer's is in PRIMARY PROPERTY's)
+  const pic = (lead(s) || s.tech) && prop && houseOn() ? housePic({ id: prop.id, geo, line: addressLine(prop.address) }) : "";
+  if (pic) return html`<div class="ct-reach" id="ct-reach"><div class="rs-card ct-reach-c">${rows.length ? contactRows(rows, { card: false }) : ""}<div class="ct-house">${pic}</div></div></div>`;
   return html`<div class="ct-reach" id="ct-reach">${rows.length ? contactRows(rows) : html`<div class="rs-card"><p class="rs-empty">No phone, email or address on file</p></div>`}</div>`;
 }
 
@@ -397,10 +402,13 @@ function contactCard(s, ctx) {
   const rows = [
     ...phones.map((p) => html`<div class="ct-cr"><button type="button" class="ct-cr-a" ${attrs({ "data-ct-phone": p.e164, "aria-label": `Call or text ${name} at ${phoneText(p.e164)}`, "aria-haspopup": "dialog" })}>${txt("call", PHONE_LABEL(p, phones.length > 1), phoneText(p.e164))}</button>${copy(phoneText(p.e164), "Copy the number")}</div>`),
     ...emails.map((e) => html`<div class="ct-cr"><a class="ct-cr-a" ${attrs({ href: mailHref(e.address), "aria-label": `Email ${name} at ${e.address}` })}>${txt("mail", "Email", e.address)}</a>${copy(e.address, "Copy the email")}</div>`),
-    line && html`<div class="ct-cr">${prop ? html`<a class="ct-cr-a" ${attrs({ href: "#/properties/" + encodeURIComponent(prop.id) })}>${txt("pin", "Primary property", line, gate || null)}</a>` : html`<div class="ct-cr-a">${txt("pin", "Billing address", line)}</div>`}</div>`,
+    line && html`<div class="ct-cr">${prop ? html`<a class="ct-cr-a" ${addressHold(addressLine(addr))} ${attrs({ href: "#/properties/" + encodeURIComponent(prop.id) })}>${txt("pin", "Primary property", line, gate || null)}</a>` : html`<div class="ct-cr-a" ${addressHold(addressLine(addr))}>${txt("pin", "Billing address", line)}</div>`}</div>`,
   ].filter(Boolean);
-  const photo = geo && ctx.can("canvass:use") && hasRoute("/map");
+  // the house (Rotor's): Street View, else the aerial (house.js); without Google, the keyless satellite
+  const house = prop && houseOn();
+  const photo = !house && geo && ctx.can("canvass:use") && hasRoute("/map");
   return html`<div class="rs-card ct-ccard" id="ct-reach">${rows.length ? rows : html`<p class="rs-empty">No phone, email or address on file</p>`}
+    ${house ? html`<div class="ct-map ct-house">${housePic({ id: prop.id, geo, line: addressLine(prop.address) })}</div>` : ""}
     ${photo ? html`<a class="ct-map" ${openExternal(directionsUrl(geo || addressLine(addr)))} ${attrs({ "aria-label": `Directions to ${line || "the property"}` })}><span class="rs-sat ct-photo" ${attrs({ "data-photo": `${geo.lat},${geo.lng}`, role: "img", "aria-label": `Satellite view of ${line || "the property"}` })}></span></a>` : ""}</div>`;
 }
 
@@ -408,13 +416,15 @@ function contactCard(s, ctx) {
 function satellite(s, ctx) {
   const prop = primaryProp(s);
   const geo = prop && prop.geo && Number.isFinite(prop.geo.lat) && Number.isFinite(prop.geo.lng) ? prop.geo : null;
-  const photo = !s.tech && geo && ctx.can("canvass:use") && hasRoute("/map");
+  const house = !!prop && houseOn();
+  const photo = !house && !s.tech && geo && ctx.can("canvass:use") && hasRoute("/map");
   const lines = prop ? two(prop.address) : [];
   const pic = photo ? html`<div class="rs-sat ct-photo" ${attrs({ "data-photo": `${geo.lat},${geo.lng}`, role: "img", "aria-label": `Satellite view of ${lines[0] || "the property"}` })}><span class="ct-photo-l">Satellite</span></div>` : "";
+  // (a lead's and a tech's house picture is in the CONTACT card, reach())
   if (lead(s) || s.tech || !prop) return pic;
   const a = prop.access || {};
   return html`${sectionLabel("Primary property")}
-    ${addressCard({ line1: lines[0] || prop.label || "Property", line2: [lines[1], a.gate_code ? `gate ${a.gate_code}` : ""].filter(Boolean).join(" · "), href: "#/properties/" + encodeURIComponent(prop.id), nav: directionsUrl(geo || addressLine(prop.address)), edit: ctx.can("contacts:write") ? { label: "Edit the property", href: "#/properties/" + encodeURIComponent(prop.id) } : null })}
+    ${addressCard({ line1: lines[0] || prop.label || "Property", line2: [lines[1], a.gate_code ? `gate ${a.gate_code}` : ""].filter(Boolean).join(" · "), address: addressLine(prop.address), href: "#/properties/" + encodeURIComponent(prop.id), nav: directionsUrl(geo || addressLine(prop.address)), edit: ctx.can("contacts:write") ? { label: "Edit the property", href: "#/properties/" + encodeURIComponent(prop.id) } : null, pic: house ? housePic({ id: prop.id, geo, line: addressLine(prop.address) }) : null })}
     ${pic}`;
 }
 
@@ -488,7 +498,7 @@ function propertiesCard(s, ctx) {
     add: ctx.can("contacts:write") ? { label: "Add a property", data: { "add-prop": true } } : null,
     body: list.length ? html`<ul class="list ct-props">${list.map((p) => {
       const n = notes(p);
-      return html`<li><a class="row" href="${"#/properties/" + encodeURIComponent(p.id)}">
+      return html`<li><a class="row" ${addressHold(addressLine(p.address))} href="${"#/properties/" + encodeURIComponent(p.id)}">
         <span class="ico">${icon("building")}</span>
         <span class="who"><span class="nm">${p.label || "Property"}${p.id === s.contact.primary_property_id ? " · main" : ""}</span><span class="sub">${addressLine(p.address)}</span>${n.length ? html`<span class="ct-access">${n.join(" · ")}</span>` : ""}</span>
         <span class="end">${s.tech ? "" : tierPill(p.town_tier)}<span class="chev" aria-hidden="true"></span></span></a></li>`;
@@ -1139,8 +1149,9 @@ async function saveNotes(ctx, text) {
 }
 
 async function copyText(text) {
-  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); toast("Copied"); return; } } catch (e) { /* fall through */ }
-  toast("That didn't copy. Hold it to copy it.", { bad: true });
+  // (the kit's: the Clipboard API, else the textarea fallback older iPhones need)
+  if (await kitCopy(text)) toast("Copied");
+  else toast("That didn't copy. Hold it to copy it.", { bad: true });
 }
 
 // The page draws again when the window crosses the phone's width (the phone page and the desk's are not the same).

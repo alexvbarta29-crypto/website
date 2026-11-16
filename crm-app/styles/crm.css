@@ -762,6 +762,26 @@ textarea.body{min-height:140px}
 .rs-empty{margin:0;color:var(--muted);font-size:15px}
 .rs-dashed{background:transparent;border:1.5px dashed var(--line-2);box-shadow:none}
 .rs-sat{position:relative;height:150px;border-radius:var(--r-lg);overflow:hidden;background:var(--map-blank);border:1px solid var(--card-line)}
+/* the address hold (ui.js): a long press copies, so no callout or text selection under the finger */
+[data-address]{-webkit-touch-callout:none}
+@media (pointer:coarse){[data-address]{-webkit-user-select:none;user-select:none}}
+/* the house picture (modules/contacts/house.js): Street View or the aerial, a tap opens Google Maps */
+.rs-house{position:relative;aspect-ratio:16/10;border-radius:var(--r-lg);overflow:hidden;background:var(--map-blank);border:1px solid var(--card-line)}
+.rs-house-a{position:absolute;inset:0;display:block}
+.rs-house img{display:block;width:100%;height:100%;object-fit:cover}
+.rs-house-none{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:14px}
+.rs-house-none svg{width:26px;height:26px}
+.rs-house.none .rs-house-a,.rs-house.none .rs-house-seg{display:none}
+.rs-house.none .rs-house-none{display:flex}
+.rs-house-seg{position:absolute;left:8px;bottom:8px;z-index:2;display:flex;align-items:center;height:32px;padding:0 6px;border-radius:999px;background:rgba(0,0,0,.55)}
+.rs-house-seg button{min-width:44px;min-height:44px;margin:-6px 0;padding:0 5px;border:0;background:none;color:#fff;font:600 13px/1 var(--text);cursor:pointer;opacity:.78}
+.rs-house-seg button[aria-pressed=true]{opacity:1;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:2px}
+.rs-house-seg button:disabled{opacity:.4;cursor:default}
+.rs-hthumb{flex:none;width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--map-blank)}
+.rs-hlink{flex:none;display:block;width:48px;height:48px;border-radius:10px;overflow:hidden}
+.rs-hlink .rs-hthumb{width:48px;height:48px}
+.rs-addr-c{padding:0;overflow:hidden}
+.rs-addr-c .rs-house{margin:0 12px 12px;border-radius:10px}
 .rs-sub{color:var(--muted);font-size:14px}
 .rs-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .rs-pills{display:flex;flex-wrap:wrap;align-items:center;gap:6px}

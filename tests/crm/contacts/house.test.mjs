@@ -187,6 +187,13 @@ test("who may see the property may see its picture: a tech with a visit there, n
   await store.addRel("tech-visits", tech.id, "2026-11-18", vid);
   assert.equal((await pic(`/properties/${p.id}/house.jpg`, tech)).status, 200);
   assert.equal((await pic(`/properties/${p.id}/house.jpg`, other)).status, 404);
+  // the contact's own picture (a list row): its primary property's, for the same people
+  await store.updateRecord("contact", c.id, (x) => ({ ...x, primary_property_id: p.id }), W(owner.id));
+  const byContact = await pic(`/contacts/${c.id}/house.jpg?size=thumb`, owner);
+  assert.equal(byContact.status, 200);
+  assert.equal(byContact.headers.get("content-type"), "image/jpeg");
+  assert.equal((await pic(`/contacts/${c.id}/house.jpg?size=thumb`, tech)).status, 200);
+  assert.equal((await pic(`/contacts/${c.id}/house.jpg?size=thumb`, other)).status, 404);
   assert.equal((await pic(`/properties/${p.id}/house.jpg`, null)).status, 401);
   assert.equal((await pic(`/properties/pr_00000000000000000000/house.jpg`, owner)).status, 404);
 });

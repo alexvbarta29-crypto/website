@@ -352,7 +352,7 @@ const GATES = {
 };
 
 const ALLOW = Object.freeze({ not: [401, 403] });
-const NO_PICTURE_HERE = new Set(["GET /properties/:id/house.jpg"]);
+const NO_PICTURE_HERE = new Set(["GET /properties/:id/house.jpg", "GET /contacts/:id/house.jpg"]);
 // the record types whose "own" rule is a tech's (core/perms.mjs scopeFor)
 const SCOPED_TYPES = new Set(["visit", "job", "contact", "property", "conversation", "message", "invoice", "payment", "timesheet", "pay_line", "timer", "task", "user"]);
 const meets = (exp, status) => status < 500 && (exp.codes ? exp.codes.includes(status) : exp.refused ? status >= 400 && status !== 401 : !exp.not.includes(status));
