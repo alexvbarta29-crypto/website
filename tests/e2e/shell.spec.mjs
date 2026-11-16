@@ -588,7 +588,8 @@ test("motion (iphone13): screens slide in and away, the Menu springs up and rest
     const href = await f.$eval("#view a[href^='#/contacts/ct_']", (a) => a.getAttribute("href"));
     await f.click(`#view a[href="${href}"]`);
     await f.waitForFunction((h) => location.hash === h, href);
-    assert.ok((await moving(f)) > 0, "the next screen is moving in");
+    // (the address changes a moment before the hashchange task starts the slide: wait for it, not a sleep)
+    assert.ok(await f.waitForFunction(() => document.getAnimations().some((a) => a.playState === "running" && a.effect.getComputedTiming().iterations !== Infinity), null, { timeout: 1000 }).then(() => true, () => false), "the next screen is moving in");
     await settled(f);
     await still(f);
     assert.deepEqual(await f.$$eval("#view > *", (els) => els.map((e) => getComputedStyle(e).transform).filter((t) => t !== "none")), [], "nothing left moved");

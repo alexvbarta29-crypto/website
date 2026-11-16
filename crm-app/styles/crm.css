@@ -1357,3 +1357,87 @@ a.rs-lr-main:active,button.rs-lr-main:active,a.rs-tmain:active,button.rs-tmain:a
   .qk-pill{opacity:1;transform:none}
   .mo-ghost{display:none}
 }
+/* ------------------------------------------------------------ premium (Nov 16, the owner: "make everything feel a little bit more premium,
+   how it looks, and just like the interactions"). Plan: scratchpad simplify/premium-plan.md; helpers: core/ui.js "premium".
+   Calm, not flashy: a whisper of layered depth under light cards (dark stays flat), true hairlines on a
+   Retina screen, tabular numbers wherever money lines up, iOS's switch, a frosted toast, a bar that
+   separates from what scrolls under it (and takes the page's name once it has gone under), a large title
+   that drops under its buttons rather than "Cus...", presses with no callout or text selection, the coral
+   caret. Transform and opacity only; prefers-reduced-motion stops all of it (the motion block above). */
+:root{
+  --sh-card:0 1px 2px rgba(17,17,26,.04),0 2px 8px -2px rgba(17,17,26,.05);
+  --sh-raise:0 1px 2px rgba(17,17,26,.05),0 8px 24px -6px rgba(17,17,26,.12);
+  --sh-pop:0 2px 6px rgba(17,17,26,.06),0 20px 48px -10px rgba(17,17,26,.22);
+  --sh-sheet:0 -1px 0 rgba(17,17,26,.03),0 -16px 48px -12px rgba(17,17,26,.22);
+  --sh-btn:0 1px 2px rgba(17,17,26,.06),0 2px 6px -2px rgba(17,17,26,.06);
+  --bar-hair:rgba(17,17,26,.13);
+  --hair:1px;
+  --toast-bg:rgba(24,24,28,.86);--toast-ink:#fff;
+  --ease-spring-soft:cubic-bezier(.25,1.15,.4,1);
+}
+html:not([data-theme="light"]) body.crm:not(.page){
+  --sh-sheet:0 -1px 0 rgba(255,255,255,.06),0 -16px 48px -12px rgba(0,0,0,.6);
+  --sh-btn:none;
+  --bar-hair:rgba(255,255,255,.12);
+  --toast-bg:rgba(58,58,64,.82);--toast-ink:#fff;
+}
+/* a Retina screen draws a true hairline (iOS's): cards, lists and their separators */
+@media (min-resolution:2dppx){:root{--hair:.5px}}
+.card,.rs-card,.list,.rs-tile,.fm-card,.cc,.lc,.vl-card,.rs-lcard{border-width:var(--hair)}
+.list>li+li,.menu li+li{border-top-width:var(--hair)}
+.sheet-head{border-bottom-width:var(--hair)}
+.rs-lrow+.rs-lrow::before,.fm-card:not(.fm-tiles)>li+li::before{border-top-width:var(--hair)}
+/* numbers that line up: money, counts, badges, times */
+.rs-lr-m,.rs-tile-v,.rs-tile-m,.rs-stat-v,.rs-li-a,.rs-li-tot,.rs-li-m,.rs-td.c-money,.rs-td.c-num,.badge,.pill,.fm-n,.fm-tn,.tb-time,.hm-mbig,.rs-kv>b,.wk-amt,.kv dd{font-variant-numeric:tabular-nums}
+/* native touch: a press on a control never selects its words or brings up the link callout */
+body.crm:not(.page) :is(button,.btn,.rnd,.tab,.rs-pb,.rs-pilltap,.rs-tile,.rs-seg-b,.seg,.fm-row,.fm-tile,.qk-pill,.icon-btn,.switch,a.row,a.rs-lr-main,button.rs-lr-main,.rs-chip,.chip,.top-back){-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+body.crm:not(.page) :is(input,textarea){caret-color:var(--coral)}
+body.crm:not(.page) ::selection{background:var(--coral-ring)}
+/* depth: sheets lift off the page; the round buttons of a detail header sit on it */
+.sheet{box-shadow:var(--sh-sheet)}
+@media (max-width:899px){
+  .top-back,.top-act .rnd:not(.coral),.top-rnd .rnd:not(.coral):not(.on){box-shadow:var(--sh-btn)}
+  .top-bar .rnd:not(.tb-av){box-shadow:none}
+}
+/* iOS's switch: a 51 x 31 track, a 27 px knob with a soft shadow that springs across and stretches
+   while it is pressed (the 56 x 44 tap target stays) */
+.switch::before{top:6.5px;left:2.5px;width:51px;height:31px;transition:background-color var(--t-mid) var(--ease-out)}
+.switch::after{top:8.5px;left:4.5px;width:27px;height:27px;border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.04);transition:transform var(--t-slow) var(--ease-spring-soft),width var(--t-fast) var(--ease-out)}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.switch:not(:disabled):active::after{width:33px}
+.switch[aria-checked="true"]:not(:disabled):active::after{transform:translateX(14px)}
+/* toasts: a frosted ink material; a long one is a rounded block, not a stretched pill */
+.toast{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:22px;padding:12px 18px;background:var(--toast-bg);color:var(--toast-ink);-webkit-backdrop-filter:saturate(1.8) blur(20px);backdrop-filter:saturate(1.8) blur(20px);box-shadow:var(--sh-pop);line-height:1.35;letter-spacing:-.01em}
+.toast svg{flex:none;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.toast.bad{background:var(--coral-ink);color:#fff;text-align:left}
+/* presses on what had none: chips, the schedule's round buttons, Home's pills (scale, never layout) */
+.rs-chip,.chip,.seg-bar .seg,.wk-round,.wk-rbtn,.hm-pill,.cm-folder,.mn-ed-tap{transition:scale var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out)}
+.rs-chip:active,.chip:active,.seg-bar .seg:active,.wk-round:active,.wk-rbtn:active,.hm-pill:active{scale:.97}
+/* the scroll edge (core/ui.js scrollEdge): once something is under the bar, a hairline separates them
+   (under the section tabs when there are some); on a page with its name in the page, the name comes
+   into the bar once it has gone under it */
+@media (max-width:899px){
+  .top,.subnav{transition:box-shadow var(--t-mid) var(--ease-out)}
+  .app.scrolled .top{box-shadow:0 var(--hair) 0 var(--bar-hair)}
+  .app.scrolled .subnav:not([hidden]){box-shadow:0 var(--hair) 0 var(--bar-hair)}
+  .app.scrolled:has(.subnav:not([hidden])) .top{box-shadow:none}
+  #app.peek #top-title[data-peek]{position:static;width:auto;height:auto;clip:auto;margin:0;padding:0;overflow:hidden;font-size:0;line-height:0}
+  #app.peek #top-title[data-peek]::after{content:attr(data-peek);display:block;font:600 17px/1.25 var(--head);letter-spacing:-.02em;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:mo-peek var(--t-mid) var(--ease-out)}
+  /* a large title with no room beside its buttons: its own line under them (core/router.js fitTitle) */
+  .app.big-top.title-own .top-title{order:20;flex:0 0 100%;padding:0 2px 6px;font-size:var(--t-display)}
+  .app.big-top.title-own .top-rnd{margin-left:auto}
+}
+@keyframes mo-peek{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* a tall sheet on a phone (the Menu, a sheet page, Collect Payment): the screen behind steps back and
+   rounds its corners, iOS's card stack (core/ui.js sheetDepth); with motion only, so Reduce Motion
+   keeps the page exactly where it is */
+@media (max-width:899px) and (prefers-reduced-motion:no-preference){
+  .app{transform-origin:50% 0;transition:transform var(--t-slow) var(--ease-out),border-radius var(--t-slow) var(--ease-out)}
+  body.sheet-deep{background:#000}
+  body.sheet-deep .app{transform:translateY(calc(var(--top) + 4px)) scale(.94);border-radius:14px;overflow:hidden}
+  /* a house picture fades in when it has loaded, over its blank */
+  img[data-house]{transition:opacity var(--t-slow) var(--ease-out)}
+  img[data-house]:not(.ld){opacity:0}
+}
+/* Home's warm glow at the top is Home's: the Schedule (its own head too) keeps the plain canvas */
+@media (max-width:899px){.app.own-head:not(.at-home) .top{background:var(--mist)}}

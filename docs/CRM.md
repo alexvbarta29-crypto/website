@@ -729,49 +729,68 @@ the greys. Top to bottom:
     $0. `revenue_view` in `GET /home` (1M),
     `GET /home/money?metric=revenue&range=1w|1m|3m|1y|ytd` for the others
     (`revenueView()` in home-kpis.mjs).
-  - **ARR ahead by month** (the owner's Nov 16 ask, "I want to be able to
-    see the ARR for next year per month"; the ARR view's first period,
-    **Next year**): today's ARR as the big number, **IN 12 MONTHS** (ARR
-    projected at the end of the 12th month: this month and the 11 after
-    it) and **CHANGE** to it ($ and %); a bar a month, "Projected MRR by
-    month" with each month's MRR on its bar, this month lit and picked to
-    start with; a tap, a drag, the pointer or the arrow keys pick another
-    and the readout says its projected MRR and ARR and the plans renewing
-    and ending in it ("Mar 2027 · Projected · MRR $245 · ARR $2,945 ·
-    Renewing 1 plan · Ending 1 plan", and Starting when a plan starts).
-    The projection takes today's plans as they stand: a live plan counts
-    while its term runs; at its term's end one that renews goes on at a
-    year of its regular visits (the plans index's `ry`, the regular year
-    when a first term's differs: no first-visit discount; else `ay`) and
-    one that doesn't renew drops; a cancellation that takes effect ahead
-    drops it that day; a signed plan whose first term starts later (the
-    index's `so`, a 2027 start) counts from that month (today's ARR, the
-    big number, counts it from its sale, so this month's bar can sit under
-    it by those plans); pending (unsigned) and draft plans never count. No
-    new sales are guessed. `arr_view` in `GET /home` (the next 12 months),
-    `GET /home/money?metric=arr&range=next12` (`arrForward()`,
-    `arrForwardView()`, `planAhead()` in home-kpis.mjs; one plans index
-    read). A row from before Nov 16 (no `ry`, no `so` until the nightly
-    list check or the next import rebuilds it) renews at `ay` and starts
-    from its sale.
-  - **ARR by month** (the owner's Nov 15 ask, "ARR by month on the home
-    page"): over Past 6M, Past year, YTD and All (since the first plan's
-    month), today's ARR as the big number, **CHANGE** since the period
-    began (the end of the month before its first; $ and %, green up, red
-    down) and **THIS MONTH** (since the end of last month); a bar a month
-    (ARR at the month's end, the current month's is today's) with the
-    short month names under them; this month picked to start with, a
-    tap, a drag, the pointer or the arrow keys pick another and the
-    readout under the bars says that month's ARR and the plans added and
-    lost in it ("May 2026 · $5,600 · Added 1 plan · Lost 0 plans"); then
-    the active plans and MRR (ARR ÷ 12). Month ends are local days
-    (America/Chicago); the same recurring filters and per-plan `ay` as
-    ARR on a day; a plan made and cancelled in one month is added and
-    lost in it.
-    `GET /home/money?metric=arr&range=6m|1y|ytd|all`
-    (`arrMonths()`, `arrMonthView()` in home-kpis.mjs; one plans index
-    read). An older phone's per-day ARR (`range=1w|1m|3m`, `arrView()`)
-    still answers.
+  - **ARR by month, each bar the recurring revenue that lands in it**
+    (Nov 16 evening, the owner: "For the month-to-month ARR that you
+    have, I don't think that's corrected. It's not that even."). ARR at a
+    month's end hardly moves (plans barely change month to month), so a
+    bar is not ARR / 12: it is the money the plans' visits bring in that
+    month. A semi-annual plan is worth its year in ARR every day, but its
+    money comes in the two months its visits are in. The big number stays
+    today's ARR (planArr/arrAt, unchanged), with "n active plans · MRR"
+    (ARR / 12, the average a month) under the bars.
+    A plan's visits are its jobs (the jobs index: `pl` the plan, `tot` the
+    job's total after its discounts, `bill`, `fv` its first visit's local
+    day, `tm` the month an unscheduled one is for, `done`); a job lands on
+    its first visit's day, else the local day it was completed, else the
+    1st of its target month (America/Chicago). Only the plans ARR counts:
+    never a hidden one-time series, a one-season lights install, or a plan
+    never signed (pending, draft); a cancelled job and an unbilled one (a
+    touch-up, a warranty visit, a lights takedown) never.
+    - **Next year** (the ARR view's first period; the owner's Nov 16 ask,
+      "the ARR for next year per month"): this month and the 11 after it.
+      A bar is the plan visits on the schedule in that month (done already
+      this month included, whatever became of the plan since; one still
+      to do while its plan goes on: not after a cancellation takes effect
+      or a term that doesn't renew ends) plus, past a plan's last visit
+      (its last billed job), its next visits **projected** by its cadence
+      (the months between visits: 12 / the plans index's `vy`, visits a
+      year; a row from before Nov 16 has its catalog's: semi-annual 6,
+      quarterly 3, monthly 1, lights 12, custom 6; a tri-annual plan 4),
+      each at its year's share (the year × those months / 12: `ay`, and
+      `ry` after it renews), up to the day it stops. A plan with no job at
+      all is spread by its cadence from the month it starts. Over a regular
+      year the bars add up to the plans' year values, the ARR (never
+      exactly: plans are priced by the year, jobs by the visit). The
+      projected part of a bar is lighter with a dashed edge (the key over
+      the bars: Scheduled, Projected); beside the big number
+      **SCHEDULED** and **PROJECTED**, the 12 months' of each. A tap, a
+      drag, the pointer or the arrow keys pick a month (this one to start
+      with); the readout says its revenue, plan visits, scheduled and
+      projected ("Part projected" or "Projected" by the month), and the
+      plans renewing and ending in it (Starting when a plan starts).
+      The plans renewing, ending and starting come from ARR projected at
+      each month's end (`arrForward()`, `planAhead()`: renewals at `ry`,
+      non-renewing terms and cancellations that take effect drop, a signed
+      later start `so` counts from its month, pending never), which also
+      rides along as each point's `arr` (and `end`, the last month's).
+    - **The past** (Past 6M, Past year, YTD, All since the first plan's
+      month): a bar is the plan visits that landed in that month: **done**
+      (completed) and still **scheduled** (the current month's rest, or an
+      overdue one while its plan is live), the scheduled part lighter;
+      beside the big number **CHANGE** (ARR's, since the period began, $
+      and %) and **RECURRING** (the months' total). The readout: the
+      month's revenue, plan visits, done, scheduled, and the plans added
+      and lost in it (ARR at each month's end rides along as `arr`).
+    `arr_view` in `GET /home` (the next 12 months),
+    `GET /home/money?metric=arr&range=next12|6m|1y|ytd|all`
+    (`revenueAhead()`, `revenueMonths()`, `arrForwardView()`,
+    `arrMonthView()`, `planJobs()` in home-kpis.mjs). Reads: the plans
+    index once, and only with a plan the jobs index's open shard and the
+    year shards the months need (this year's and last year's ahead: a
+    plan's last visit is its cadence's anchor). The plans index carries
+    `vy` from Nov 16 (a row without it uses its catalog's until the
+    nightly list check or the next import rebuilds it). An older phone's
+    per-day ARR (`range=1w|1m|3m`, `arrView()`) still answers.
 - **No Leaderboard, no Inbox** (Nov 16, the owner: "I don't need to see
   the leaderboard of the ARR on the home page, like per guy. I also don't
   need my inbox on the home page"): the full Leaderboard is the Menu's
@@ -975,6 +994,26 @@ calls), `GET /home/agenda?view=&date=`, `PUT /home/layout { cards }`.
   rerender never moves anything. Under the phone's Reduce Motion none of
   it happens (`core/ui.js` "motion", `crm.css` "motion"; e2e phones run
   as Reduce Motion unless a spec asks for `motion: true`).
+- **Premium** (Nov 16, the owner: "make everything feel a little bit more
+  premium, how it looks, and just like the interactions"; `core/ui.js` and
+  `crm.css` "premium"): a whisper of layered shadow under light cards (dark
+  stays flat), true 0.5 px hairlines on a Retina screen, tabular numbers
+  wherever money lines up, iOS's switch (51 x 31, the knob stretches while
+  pressed), a frosted toast (a bad one leads with an alert mark), no text
+  selection or link callout on a long press of a control, the coral caret.
+  The bar separates from what scrolls under it with a hairline
+  (`scrollEdge`, `.app.scrolled`), and a page with its name in the page (a
+  customer, a lead) puts the name in the bar once it has scrolled under it
+  (`.app.peek`). A large title with no room beside its round buttons
+  (Customers: back, search, filter, "..." and the +) drops onto its own
+  line under them (`router.fitTitle`, `.title-own`), never "Cus...". A sheet
+  follows the finger with the backdrop lightening as it goes, rubber-bands
+  when pulled up, goes on a flick or past a quarter of its height; a tall
+  one steps the screen behind back (iOS's card stack, motion only). A light
+  tick (`haptic()`: navigator.vibrate, else iOS 18's switch tick) on a long
+  press, a switch, a segmented tap, the + and an address copied. House
+  pictures fade in once loaded (motion only). Home's big number counts up
+  once per view per page load (`countUpText`).
 - **Top-level screens** (a tab's own, or one the Menu lists: opened from
   another top-level screen they have no back button) have a 34 px bold
   title on the left and round buttons on the right: the screen's own

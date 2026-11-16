@@ -18,12 +18,14 @@
 //                months, the others read GET /home/money?metric=&range=).
 //                Revenue (`revenue_view`, 1W 1M 3M 1Y YTD): Collected, its
 //                average a day, its best day, a line per day. ARR
-//                (`arr_view`, by month): the next 12 months (Nov 16, the
-//                default: ARR projected at each month's end from today's
-//                plans, where it ends up and the change, the plans renewing,
-//                ending and starting) or the past (Nov 15: 6M 1Y YTD All,
-//                ARR at each month's end with the plans added and lost);
-//                ARR today, active plans, MRR. Collected is the CRM's
+//                (`arr_view`, by month): ARR today, active plans, MRR (ARR /
+//                12), and a bar a month that is the recurring revenue landing
+//                in it (Nov 16 evening, the owner: "It's not that even"): the
+//                plans' visits (their jobs) in it. The next 12 months (the
+//                default): on the schedule, and projected by each plan's
+//                cadence past its last visit; the plans renewing, ending and
+//                starting. The past (6M 1Y YTD All): done and still
+//                scheduled; the plans added and lost. Collected is the CRM's
 //                payments after cutover or while the latest Rotor import is
 //                3 days old or less (it brings Rotor's payments in), else
 //                Rotor's snapshot; ARR the CRM's live plans: reports:read
@@ -41,8 +43,10 @@
 // bar's. A saved layout naming them just drops them.
 // What needs attention is the bell's and the tab's dot (GET /me/badges).
 // A technician gets nothing here (their own Today is the tech app's).
-// Every index is read once per request (crm-store's ixMemo): 15 storage
-// calls cold for the default cards on Rotor's numbers (16 with a fresh import).
+// Every index is read once per request (crm-store's ixMemo): 16 storage
+// calls cold for the default cards on Rotor's numbers (17 with a fresh
+// import): the ARR bars add the jobs index's open shard and this year's and
+// last year's.
 
 import { withStoreScope, readIndex, readPointer, getRaw, settledWrite, K, getSetting } from "../../../crm-store.mjs";
 import { officeSignedIn } from "../../core/auth.mjs";
@@ -106,6 +110,32 @@ async function jobsFor(from, to) {
   const years = [...new Set([from.slice(0, 4), to.slice(0, 4)])];
   const shards = await Promise.all([ix("jobs", "open"), ...years.map((y) => ix("jobs", y))]);
   return new Map(shards.flat().map((r) => [r.id, r]));
+}
+
+// The plans' jobs the ARR view's bars need (the recurring revenue each
+// month: the plans' visits): the open ones and those closed in the years
+// given (the jobs index's shards), only the jobs of a plan. Nothing is read
+// without a plan.
+async function planJobsFor(plans, fromYear, toYear) {
+  if (!plans.length) return [];
+  const years = [];
+  for (let y = Number(fromYear); y <= Number(toYear) && years.length < 12; y++) years.push(String(y));
+  const shards = await Promise.all([ix("jobs", "open"), ...years.map((y) => ix("jobs", y))]);
+  return shards.flat().filter((r) => r && r.pl);
+}
+// ARR by month, the next 12 months: today's plans, their open jobs and those
+// closed this year or last (a plan's last visit, its cadence's anchor)
+async function arrAhead(today) {
+  const plans = await ix("plans", "");
+  const y = Number(today.slice(0, 4));
+  return arrForwardView(plans, await planJobsFor(plans, y - 1, y), today);
+}
+// ARR by month over a past range: the jobs closed in its years
+async function arrPast(range, today) {
+  const plans = await ix("plans", "");
+  const first = arrMonthView(plans, [], range, today);
+  if (first.total === null) return first;
+  return arrMonthView(plans, await planJobsFor(plans, first.from.slice(0, 4), today.slice(0, 4)), range, today);
 }
 
 async function money(ctx, { metric = "collected", p, today, mode, goals = null }) {
@@ -214,9 +244,9 @@ async function home(ctx) {
     // this month's Collected, once for the card and the goals
     const colP = on.has("money") || on.has("goals") ? collectedFor({ p: month, today, mode }) : null;
     if (on.has("money")) {
-      jobs.push(Promise.all([revenue({ range: "1m", today, mode, col: colP }), colP, ix("plans", "")]).then(([rv, c, plans]) => {
-        // ARR by month over the next 12 months (the owner's Nov 16 ask, "the ARR for next year per month")
-        const arr = arrForwardView(plans, today);
+      jobs.push(Promise.all([revenue({ range: "1m", today, mode, col: colP }), colP, arrAhead(today)]).then(([rv, c, arr]) => {
+        // ARR by month over the next 12 months (the owner's Nov 16 ask, "the ARR for next year per month"):
+        // each month's bar the recurring revenue that lands in it (Nov 16 evening, "It's not that even")
         // (an older phone's card reads the month's collected and the ARR beside the views)
         cards.money = {
           ...moneyPair({ p: pairPeriod("month", today), collected: c.collected, scheduled: null, source: c.source, asOf: c.asOf, arr: arr.total, missing: c.missing }),
@@ -276,8 +306,7 @@ async function moneyRoute(ctx) {
     if (!Object.hasOwn(ARR_MONTH_RANGES, r) && !Object.hasOwn(ARR_RANGES, r)) throw new InputError("Pick the next year, 6M, 1Y, YTD or All.", "range");
     return withStoreScope({ ixMemo: new Map() }, async () => {
       const today = localDate(now());
-      const plans = await ix("plans", "");
-      const v = r === "next12" ? arrForwardView(plans, today) : Object.hasOwn(ARR_MONTH_RANGES, r) ? arrMonthView(plans, r, today) : { ...arrView(plans, periodOf(ARR_RANGES[r], today), today), range: r };
+      const v = r === "next12" ? await arrAhead(today) : Object.hasOwn(ARR_MONTH_RANGES, r) ? await arrPast(r, today) : { ...arrView(await ix("plans", ""), periodOf(ARR_RANGES[r], today), today), range: r };
       return { data: { ...v, updated_at: now().toISOString() } };
     });
   }

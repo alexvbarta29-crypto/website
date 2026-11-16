@@ -278,9 +278,11 @@ async function homeDay(out, O, day) {
     await store.updateRecord("plan", id, (x) => ({ ...x, sold_by: out.users[who].id }), O);
   }
   await PA.createPendingAction({ kind: "outbox_review", title: "Theo's offline notes from last week", requested_by: out.users.tech.id, items: [] }, O);
-  // ARR by month (the owner's Nov 15 ask): plans the Rotor import brought in, made in earlier months (made up;
-  // no jobs, so Today's list stays the day's), one of them cancelled since, one made and cancelled in the same month
+  // ARR by month (the owner's Nov 15 ask): plans the Rotor import brought in, made in earlier months (made up),
+  // one of them cancelled since, one made and cancelled in the same month; their visits done in the months
+  // before this one (the ARR bars' recurring revenue, Nov 16: jobs, no visits, so Today's list stays the day's)
   const IMP = { ...O, origin: "import" };
+  let jobNo = 880000;
   const HIST = [[-13, "biannual", null], [-13, "quarterly", null], [-12, "quarterly", null], [-10, "quarterly", null], [-8, "biannual", 3], [-6, "quarterly", null], [-5, "biannual", 0], [-4, "biannual", null], [-2, "quarterly", null], [-1, "biannual", null]];
   for (const [k, [ago, key, gone]] of HIST.entries()) {
     const t = Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7)) - 1 + ago;
@@ -289,7 +291,17 @@ async function homeDay(out, O, day) {
     const p = PL.buildPlan({ contact_id: out.contacts.customer, contact_name: "Earlier Planfolk", catalog_key: key, lines, discounts: [], origin: "import" }, CAT.catalogWith({}), { start_on: made });
     delete p.id;
     const cancel = gone === null ? undefined : { requested_on: clock.addLocalDays(made, gone * 30 + 10), effective_on: clock.addLocalDays(made, gone * 30 + 12), reason: "other", by: "system" };
-    await store.createRecord("plan", { ...p, status: cancel ? "cancelled" : "active", pending_reasons: [], agreement_status: "none", created_at: `${made}T16:00:00Z`, ...(cancel ? { cancel } : {}) }, IMP);
+    const plan = (await store.createRecord("plan", { ...p, status: cancel ? "cancelled" : "active", pending_reasons: [], agreement_status: "none", created_at: `${made}T16:00:00Z`, ...(cancel ? { cancel } : {}) }, IMP)).data;
+    const every = key === "quarterly" ? 3 : 6;
+    for (let m = t; m < Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7)) - 1; m += every) {
+      const on = `${Math.floor(m / 12)}-${String((m % 12) + 1).padStart(2, "0")}-${made.slice(8, 10)}`;
+      if (cancel && on >= cancel.effective_on) break;
+      jobNo += 1;
+      await store.createRecord("job", {
+        number: jobNo, contact_id: out.contacts.customer, contact_name: "Earlier Planfolk", plan_id: plan.id, kind: "standard", lines: lines.map(({ title, qty_milli, unit_cents, service_type }) => ({ id: "ln_h", title, qty_milli, unit_cents, service_type })), status: "completed",
+        schedule: { first_on: on, last_on: on, open_on: null, visits: 1, done: 1 }, completed_at: `${on}T20:00:00Z`, completed_by: "import", origin: "import",
+      }, IMP);
+    }
   }
   // a Rotor import finished two days ago (counts only) and this month's payments it brought in (synthetic amounts)
   const asOf = clock.addLocalDays(day, -2);

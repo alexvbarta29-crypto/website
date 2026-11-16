@@ -133,14 +133,22 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hf-wash-b{stop-color:var(--hm-line);stop-opacity:0}
 .hf-cross{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:2 3}
 .hf-dot{fill:var(--hm-line);stroke:var(--mist);stroke-width:2}
-/* ARR by month (home-charts.js monthBars, "show the MRR in all 12 months"): a bar a month with its
-   MRR on top, no axis and no grid; this month lit, the month picked full with a soft column behind it */
+/* ARR by month (home-charts.js monthBars): a bar a month with its amount on top (Nov 16: the month's
+   recurring revenue), no axis and no grid; this month lit, the month picked full with a soft column
+   behind it; the part only expected (projected ahead, still scheduled in the past) lighter, dashed */
 .hc.hb{height:232px;margin:10px -12px 0}
 .hm-bcap{display:flex;justify-content:space-between;gap:12px;margin:22px 0 0;font:600 12px/1.2 var(--text);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
 .hm-bcap span{font-weight:500;letter-spacing:.04em;text-transform:none;color:var(--ink-3)}
 .hb-base{stroke:var(--hm-base);stroke-width:1}
 .hb-bar{fill:var(--hm-line);opacity:.5}
 .hb-bar.now,.hb-bar.on{opacity:1}
+.hb-soft{fill:var(--hm-line);fill-opacity:.16;stroke:var(--hm-line);stroke-opacity:.6;stroke-width:1;stroke-dasharray:3 2}
+.hb-soft.now,.hb-soft.on{fill-opacity:.3;stroke-opacity:1}
+.hm-bcap{white-space:nowrap}
+.hm-bcap .hb-key{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;letter-spacing:0}
+.hb-key i{position:relative;display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--hm-line)}
+.hb-key i.k-soft{margin-left:6px;background:none;border:1px dashed var(--hm-line)}
+.hb-key i.k-soft::after{content:"";position:absolute;inset:0;background:var(--hm-line);opacity:.2}
 .hb-col{fill:var(--hm-line);opacity:.12}
 .hb-v{fill:var(--ink-2);font-family:var(--text);font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .hb-v .hb-cur{font-size:80%}
@@ -162,6 +170,7 @@ html[data-theme="light"] .hm-chip{background:var(--rnd-bg)}
 .hm-mread b{font:600 16px/1.1 var(--head);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .hm-mread b.up{color:var(--green-ink)}
 .hm-mread b.down{color:var(--red-ink)}
+.hm-mread b.soft{color:var(--ink-2)}
 
 /* ------------------------------------------------------------ Clock in (compact) */
 .hm-c-clock{display:flex;align-items:center;gap:14px;padding:12px 12px 12px 18px}
