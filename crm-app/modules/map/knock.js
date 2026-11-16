@@ -20,7 +20,7 @@
 // The screen is drawn once; the map lives across its own updates (never a
 // full re-render under the map).
 
-import { html, attrs, toast, sheet, render, icon } from "../../core/ui.js";
+import { html, attrs, toast, sheet, render, icon, addressHold } from "../../core/ui.js";
 import { uuid } from "../../core/api.js";
 import { field, readForm, showError, clearErrors, busy, checkbox } from "../../core/forms.js";
 import { dateShort, plural } from "../../core/format.js";
@@ -171,11 +171,11 @@ function searchSheet(ctx) {
     const hit = (s) => { const x = String(s || "").toLowerCase(); return words.every((w) => x.includes(w)); };
     const out = [];
     for (const a of S.start.territories) if (hit(a.name)) out.push({ kind: "area", label: a.name, sub: "Area", id: a.id });
-    if (office) for (const p of S.places) if (hit(`${p.n} ${p.a}`)) out.push({ kind: "place", label: p.n || "Customer", sub: [p.k === "lead" ? "Lead" : "Customer", p.a].filter(Boolean).join(" · "), at: [p.ln, p.la], p });
-    for (const p of S.pins) if (p.a && hit(p.a)) out.push({ kind: "pin", label: p.a, sub: labelOf(S.start.types, p.t), at: [p.ln, p.la], id: p.id });
+    if (office) for (const p of S.places) if (hit(`${p.n} ${p.a}`)) out.push({ kind: "place", label: p.n || "Customer", sub: [p.k === "lead" ? "Lead" : "Customer", p.a].filter(Boolean).join(" · "), at: [p.ln, p.la], p, addr: p.a || "" });
+    for (const p of S.pins) if (p.a && hit(p.a)) out.push({ kind: "pin", label: p.a, sub: labelOf(S.start.types, p.t), at: [p.ln, p.la], id: p.id, addr: p.a });
     return out.slice(0, 25);
   };
-  const list = (rows, q) => (rows.length ? html`<ul class="list mp-results">${rows.map((r, i) => html`<li><button type="button" class="row" ${attrs({ "data-hit": String(i) })}><span class="who"><span class="nm">${r.label}</span><span class="sub">${r.sub}</span></span></button></li>`)}</ul>` : html`<p class="muted small">${String(q || "").trim().length < 2 ? (office ? "A customer's name, a street, or an area." : "A street you knocked, or an area.") : "Nothing matches."}</p>`);
+  const list = (rows, q) => (rows.length ? html`<ul class="list mp-results">${rows.map((r, i) => html`<li><button type="button" class="row" ${attrs({ "data-hit": String(i) })} ${addressHold(r.addr || "")}><span class="who"><span class="nm">${r.label}</span><span class="sub">${r.sub}</span></span></button></li>`)}</ul>` : html`<p class="muted small">${String(q || "").trim().length < 2 ? (office ? "A customer's name, a street, or an area." : "A street you knocked, or an area.") : "Nothing matches."}</p>`);
   let rows = [];
   const s = sheet({
     title: "Search the map",
@@ -253,7 +253,8 @@ function newPin(ctx, lng, lat) {
     : st.why === "offline" ? "No signal: add the address under Details, or leave it."
     : st.why === "no_result" ? "No address found here: add it under Details, or leave it."
     : "Add the address under Details, or leave it.");
-  const body = () => html`<p class="mp-addr-line" data-addr>${say()}</p>
+  // (a long press on the address, once found, copies it)
+  const body = () => html`<p class="mp-addr-line" data-addr ${addressHold(st.address ? addressLine(st.address) : "")}>${say()}</p>
     ${typeGrid(S.start.types)}
     <form class="mp-details" data-details ${attrs({ hidden: !st.details })}>
       <label class="field"><span>Note</span><textarea name="note" rows="2" maxlength="1000" placeholder="Talked to the owner, two stories, wants gutters too"></textarea></label>
@@ -309,7 +310,7 @@ function newPin(ctx, lng, lat) {
     st.why = r && r.why;
     if (r && r.address) { st.address = r.address; st.source = "reverse"; }
     const el = s.el.querySelector("[data-addr]");
-    if (el) el.textContent = say();
+    if (el) { el.textContent = say(); if (st.address) el.setAttribute("data-address", addressLine(st.address)); }
     if (st.details && r && r.address) {
       const form = s.el.querySelector("[data-details]");
       for (const k of ["street1", "city", "zip"]) { const i = form && form.elements[k]; if (i && !i.value) i.value = r.address[k] || ""; }
@@ -340,7 +341,7 @@ async function openPin(ctx, id) {
   const types = S.start.types;
   const t = p ? p.type : { key: row.t, label: labelOf(types, row.t), color: colorOf(types, row.t) };
   const head = () => html`<div class="mp-pin-head">${swatch(t.color)}<strong>${t.label}</strong>${p && (p.contact || p.converted_at) ? html`<span class="mp-pill green">Lead</span>` : ""}</div>
-    <p class="mp-addr-line">${p && p.address ? addressLine(p.address) : "No address on this pin"}</p>`;
+    <p class="mp-addr-line" ${addressHold(p && p.address ? addressLine(p.address) : "")}>${p && p.address ? addressLine(p.address) : "No address on this pin"}</p>`;
   const view = () => {
     if (!p) return html`${head()}<p class="muted">No signal: the details show when it's back. You can still log a knock.</p>
       <div class="mp-acts"><button type="button" class="btn primary" data-mode="again">Knocked again</button><button type="button" class="btn" data-mode="change">Change type</button></div>`;
@@ -467,7 +468,7 @@ function openPlace(ctx, props, at) {
   const s = sheet({
     title: props.n ? props.n : kind,
     body: html`${props.n ? html`<p class="mp-pin-head"><span class="mp-pill ${props.k === "lead" ? "blue" : "green"}">${props.k === "lead" ? "Lead" : props.k === "former" ? "Former customer" : "Customer"}</span></p>` : html`<p class="muted">${kind} lives here.</p>`}
-      ${props.a ? html`<p class="mp-addr-line">${props.a}</p>` : ""}
+      ${props.a ? html`<p class="mp-addr-line" ${addressHold(props.a)}>${props.a}</p>` : ""}
       <div class="mp-acts">
         ${props.c ? html`<a class="btn primary" ${attrs({ href: "#/contacts/" + encodeURIComponent(props.c) })}>Open</a>` : ""}
         <button type="button" class="btn" data-drop>Drop a pin here anyway</button>

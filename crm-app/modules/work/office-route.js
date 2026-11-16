@@ -3,7 +3,7 @@
 // each arrival window, the server's routeOrder), move a stop up or down and
 // save, and directions (one stop, or the whole day in Google Maps).
 
-import { html, icon, attrs, toast, openExternal } from "../../core/ui.js";
+import { html, icon, attrs, toast, openExternal, addressHold } from "../../core/ui.js";
 import { directionsLink, routeSketch } from "../../core/map.js";
 import { ensureStyles, officeView, slotText, dayLabel, loadUsers, userById, visitPill } from "./office-kit.js";
 
@@ -44,7 +44,7 @@ export default {
       ${missing ? html`<p class="note">${missing === 1 ? "One stop has" : `${missing} stops have`} no map location yet, so ${missing === 1 ? "it goes" : "they go"} last in its window. Fix the address on the property.</p>` : ""}
       ${stops.length ? html`<ol class="list wk-stops">${stops.map((x, i) => html`<li class="wk-stop">
         <span class="wk-n num" aria-hidden="true">${i + 1}</span>
-        <a class="who" href="${"#/visits/" + encodeURIComponent(x.id)}"><span class="nm">${x.cn || "Customer"}</span><span class="sub">${slotText(x)}</span><span class="sub">${where(x)}</span></a>
+        <a class="who" href="${"#/visits/" + encodeURIComponent(x.id)}"><span class="nm">${x.cn || "Customer"}</span><span class="sub">${slotText(x)}</span><span class="sub" ${addressHold(x.ad || "")}>${where(x)}</span></a>
         <span class="wk-stop-acts">
           ${where(x) || geoOf(x) ? html`<a class="icon-btn" ${directionsLink(geoOf(x) || where(x))} aria-label="Directions">${icon("map")}</a>` : ""}
           <button type="button" class="icon-btn" ${attrs({ "data-up": x.id, disabled: i === 0, "aria-label": "Earlier" })}><span class="wk-up">${icon("back")}</span></button>

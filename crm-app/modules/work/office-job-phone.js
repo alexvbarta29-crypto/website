@@ -22,7 +22,8 @@
 // built here for the tech's Visit screen too (visit.js, visit-field.js), so
 // both pages look the same.
 
-import { html, attrs, raw, openExternal } from "../../core/ui.js";
+import { html, attrs, raw, openExternal, addressHold } from "../../core/ui.js";
+import { houseOn, houseThumbLink, addressText } from "../contacts/house.js";
 import { money, clock, phone as formatPhone } from "../../core/format.js";
 import { directionsUrl } from "../../core/map.js";
 import { officeView } from "./office-kit.js";
@@ -130,7 +131,10 @@ export function placeCard(p, { office = officeView(), where = "" } = {}) {
   const line1 = a ? a.street1 || a.city : where;
   const line2 = a ? [[a.city, a.state, a.zip].filter(Boolean).join(", "), gate ? `gate ${gate}` : ""].filter(Boolean).join(" · ") : "";
   const nav = directionsUrl(a || where);
-  return html`<div class="rs-card jp-card jp-row rs-addr"><span class="jp-pl"><span class="jp-tile" aria-hidden="true">${RI.pin}</span><span class="jp-pw"><span class="jp-pn">${line1}</span>${line2 ? html`<span class="jp-ps">${line2}</span>` : ""}</span></span>
+  // a long press on the address copies it; the house (Street View) as a small square once Google is on
+  const line = a ? addressText(a) : where;
+  const thumb = p && p.id && a && a.street1 && houseOn() ? houseThumbLink({ id: p.id, geo: p.geo, line }) : "";
+  return html`<div class="rs-card jp-card jp-row rs-addr">${thumb}<span class="jp-pl" ${addressHold(line)}>${thumb ? "" : html`<span class="jp-tile" aria-hidden="true">${RI.pin}</span>`}<span class="jp-pw"><span class="jp-pn">${line1}</span>${line2 ? html`<span class="jp-ps">${line2}</span>` : ""}</span></span>
     <span class="jp-acts">${nav ? roundBtn(RI.nav, "Directions", { tone: "white", href: nav, ext: true }) : ""}${office && p && p.id ? roundBtn(RI.pen, "Edit the place and its access", { tone: "white", href: "#/properties/" + encodeURIComponent(p.id) }) : ""}</span></div>`;
 }
 

@@ -11,7 +11,8 @@
 // and the changes still waiting laid over it. While there is signal it
 // keeps a copy of each visit of the day, so a visit opens offline too.
 
-import { html, icon, attrs, toast, sheet } from "../../core/ui.js";
+import { html, icon, attrs, toast, sheet, addressHold } from "../../core/ui.js";
+import { addressText } from "../contacts/house.js";
 import { dateShort, time as fmtTime, plural } from "../../core/format.js";
 import { directionsLink } from "../../core/map.js";
 import { slotText, visitPill } from "./office-kit.js";
@@ -137,6 +138,8 @@ function stopCard(x, i) {
   const v = x.visit;
   const addr = x.property && x.property.address;
   const where = addr || (v.geo ? { lat: v.geo[0], lng: v.geo[1] } : v.address_line || null);
+  // what a long press copies: the street address (the town line and Directions both carry it)
+  const line = addr ? addressText(addr) : v.address_line || "";
   const ph = primaryPhone(x.contact);
   const services = (v.service_types || []).join(", ") || v.job_title || "";
   const done = SHOW_DONE.includes(v.status);
@@ -146,14 +149,14 @@ function stopCard(x, i) {
       <span class="tf-body">
         <span class="nm">${x.name}</span>
         <span class="when">${slotText(v)}</span>
-        <span class="sub">${[v.town, services].filter(Boolean).join(" · ")}</span>
+        <span class="sub" ${addressHold(line)}>${[v.town, services].filter(Boolean).join(" · ")}</span>
         ${x.badges && x.badges.length ? html`<span class="tf-badges">${x.badges.map((b) => html`<span class="${"pill " + (b.key === "balance" ? "red" : b.key === "first" ? "blue" : b.key === "plan" ? "green" : "")}">${b.label}</span>`)}</span>` : ""}
         ${x.waiting ? html`<span class="sub">Changes waiting for signal</span>` : ""}
       </span>
       ${visitPill(v.status)}
     </a>
     <div class="tf-quick">
-      ${where ? html`<a ${directionsLink(where)}>${icon("map")}Directions</a>` : html`<span class="muted">No address</span>`}
+      ${where ? html`<a ${directionsLink(where)} ${addressHold(line)}>${icon("map")}Directions</a>` : html`<span class="muted">No address</span>`}
       ${ph ? html`<a ${attrs({ href: telHref(ph) })}>${icon("phone")}Call</a><a ${attrs({ href: smsHref(ph) })}>${icon("text")}Text</a>` : ""}
     </div>
   </div>`;

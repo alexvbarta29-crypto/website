@@ -29,6 +29,7 @@
 // them).
 
 import { html, icon, attrs, toast, confirmSheet, delegate, sheet, rnd, statusPill, pillBtn, cardHead, personCard, addressCard, lineItems, disclosure } from "../../core/ui.js";
+import { houseReady, houseOn, houseThumbLink, addressText } from "../contacts/house.js";
 import { TICONS } from "./tech-kit.js";
 import { itemDone as doneItem } from "./checklist-kit.js";
 import { checklistPill, openChecklist, checklistStyles } from "./checklist-sheet.js";
@@ -67,7 +68,7 @@ async function load(params, ctx) {
   ensureStyles();
   checklistStyles();
   // the last good copy when there's no signal (the tech app works a visit offline, §2.5)
-  const r = await ctx.api(`/visits/${encodeURIComponent(params.id)}`);
+  const [r] = await Promise.all([ctx.api(`/visits/${encodeURIComponent(params.id)}`), houseReady(ctx)]);
   const data = r.data;
   if (r.offline) { data.offline = true; data.as_of = r.as_of; }
   const users = officeView() ? await loadUsers(ctx).catch(() => []) : [];
@@ -235,7 +236,8 @@ function people(s, { office, addr, where, ph }) {
     const p = s.property;
     const a = (p && p.access) || {};
     const second = addr ? [[addr.city, [addr.state, addr.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "), a.gate_code ? `gate ${a.gate_code}` : ""].filter(Boolean).join(" · ") : "";
-    out.push(addressCard({ line1: addr ? addr.street1 || addr.city : where, line2: second, nav: directionsUrl(addr || where), edit: office && p && p.id ? { label: "Edit the place and its access", href: "#/properties/" + encodeURIComponent(p.id) } : null }));
+    const line = addr ? addressText(addr) : where;
+    out.push(addressCard({ line1: addr ? addr.street1 || addr.city : where, line2: second, address: line, thumb: p && p.id && addr && addr.street1 && houseOn() ? houseThumbLink({ id: p.id, geo: p.geo, line }) : null, nav: directionsUrl(addr || where), edit: office && p && p.id ? { label: "Edit the place and its access", href: "#/properties/" + encodeURIComponent(p.id) } : null }));
   }
   return out;
 }

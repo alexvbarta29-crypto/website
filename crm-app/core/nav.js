@@ -54,7 +54,7 @@
 // the page's: the plain title, a back button, its one action. CSS decides
 // which set shows; one codebase.
 
-import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg, setMoreExtra, armMoreExtra, revealOn } from "./ui.js";
+import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg, setMoreExtra, armMoreExtra, revealOn, addressHold } from "./ui.js";
 import { initials, time as fmtTime } from "./format.js";
 import { api } from "./api.js";
 import * as router from "./router.js";
@@ -896,7 +896,7 @@ function searchBox() {
     const people = res.contacts || [];
     render(pop, nums.length || people.length ? html`<ul class="menu">
       ${nums.map((n) => html`<li><a href="${"#" + NUM_PATH[n.type] + encodeURIComponent(n.id)}">${icon(n.type === "quote" ? "doc" : "list")}<span>${n.label}</span></a></li>`)}
-      ${people.map((c) => html`<li><a href="${"#/contacts/" + encodeURIComponent(c.id)}">${icon("contacts")}<span class="who"><span class="nm">${c.name}</span>${c.sub ? html`<span class="sub">${c.sub}</span>` : ""}</span></a></li>`)}
+      ${people.map((c) => html`<li><a href="${"#/contacts/" + encodeURIComponent(c.id)}" ${addressHold(c.address)}>${icon("contacts")}<span class="who"><span class="nm">${c.name}</span>${c.sub ? html`<span class="sub">${c.sub}</span>` : ""}</span></a></li>`)}
     </ul>` : html`<p class="pop-empty">Nobody matches "${q}".</p>`);
     pop.hidden = false;
   };
@@ -1008,7 +1008,7 @@ export function searchInto(form, input, out) {
     const people = res.contacts || [];
     render(out, nums.length || people.length ? html`<ul class="menu">
       ${nums.map((n) => html`<li><a href="${"#" + NUM[n.type] + encodeURIComponent(n.id)}">${icon(n.type === "quote" ? "doc" : "list")}<span>${n.label}</span></a></li>`)}
-      ${people.map((c) => html`<li><a href="${"#/contacts/" + encodeURIComponent(c.id)}">${icon("contacts")}<span class="who"><span class="nm">${c.name}</span>${c.sub ? html`<span class="sub">${c.sub}</span>` : ""}</span></a></li>`)}
+      ${people.map((c) => html`<li><a href="${"#/contacts/" + encodeURIComponent(c.id)}" ${addressHold(c.address)}>${icon("contacts")}<span class="who"><span class="nm">${c.name}</span>${c.sub ? html`<span class="sub">${c.sub}</span>` : ""}</span></a></li>`)}
     </ul>` : html`<p class="pop-empty">Nobody matches "${q}".</p>`);
     out.hidden = false;
   };

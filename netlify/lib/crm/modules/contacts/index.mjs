@@ -7,7 +7,8 @@
 // here too), match.mjs (resolve, findMatches, merge candidates), intake.mjs
 // (intakeLead), assets.mjs (a property's counts for quoting), hook.mjs (the website's dual-write after Rotor),
 // webhook.mjs (POST /hooks/lead/:token and its tokens), merge.mjs (the
-// merge op and runs), properties.mjs (ensureProperty, geocoding),
+// merge op and runs), properties.mjs (ensureProperty, geocoding), house.mjs
+// (the house picture: Street View or the aerial, cached, and its sweep),
 // stats.mjs (the contacts stats part, lifecycle), routes.mjs (the API),
 // import-rotor.mjs (the import phases).
 
@@ -22,6 +23,7 @@ import { webhookRoutes } from "./webhook.mjs";
 import { intakeService } from "./intake.mjs";
 import { resolveId, findMatches } from "./match.mjs";
 import { ensureProperty, runGeocode } from "./properties.mjs";
+import { houseRoutes, runHouseSweep } from "./house.mjs";
 import { onMergeContacts } from "./merge.mjs";
 import { statsParts, lifecycleListeners, runContactStats } from "./stats.mjs";
 import { phases } from "./import-rotor.mjs";
@@ -37,7 +39,7 @@ export default defineModule({
   types,
   statsParts,
   routes: [
-    ...bulkRoutes, ...contactRoutes, ...webhookRoutes,
+    ...bulkRoutes, ...contactRoutes, ...webhookRoutes, ...houseRoutes,
     // what a new quote for the property starts from (assets.mjs): the builder prices it in one tap
     { method: "GET", path: "/properties/:id/requote", auth: "session", perm: "quotes:write", subject: "required", mode: "inline", handler: requoteRoute },
   ],
@@ -62,6 +64,8 @@ export default defineModule({
   sweeps: [
     { key: "contacts.stats", label: "Contact stats and lifecycle", lane: "bulk", every: "daily", at_local: "02:30", mutates: true, run: runContactStats },
     { key: "contacts.geocode", label: "Map points for properties", lane: "bulk", every: "pass", mutates: true, run: runGeocode },
+    // a picture of every house (house.mjs): a few properties a pass, inside the Google budget, once a day
+    { key: "contacts.house", label: "House pictures (Street View)", lane: "bulk", every: "pass", mutates: true, run: runHouseSweep },
   ],
   onMerge: onMergeContacts,
   attention: [{ key: "contacts.merge_candidates", label: "Possible duplicates", perm: "contacts:merge", count: pendingCandidates, link: "#/merge" }],

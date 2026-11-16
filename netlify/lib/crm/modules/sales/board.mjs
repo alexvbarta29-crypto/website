@@ -42,7 +42,8 @@ export function leadRows(ix = [], deals = [], enr = []) {
     const e = fol.get(r.id) || null;
     rows.push({
       id: r.id, n: r.n || "", p: (r.p || [])[0] || null, src: r.src || "", pr: r.pr || null, o: r.o || null, ca: r.ca || null, tg: r.tg || [],
-      c: r.c || "", lt: later(r.slc, r.lca), stage: deriveLeadStage(r, { deal: d, enrollment: e }), hand: !!r.lst, sa: r.lsa || null,
+      // (the street and town and ZIP: what a long press on the row copies, docs/CRM-MAP.md)
+      c: r.c || "", a: [r.a, r.z].filter(Boolean).join(" "), lt: later(r.slc, r.lca), stage: deriveLeadStage(r, { deal: d, enrollment: e }), hand: !!r.lst, sa: r.lsa || null,
       pv: d && Number.isSafeInteger(d.v) ? d.v : null, deal: d ? d.id : null, deal_st: d ? d.st : null,
       enr: e ? e.id : null, follow: e && e.due ? e.due : null, paused: !!e && e.st === "paused", step: e ? e.lbl || "" : "",
     });

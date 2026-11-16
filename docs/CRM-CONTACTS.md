@@ -56,10 +56,10 @@ Code: `netlify/lib/crm/modules/contacts/` (server),
   contact's own route budget); a nearer next visit from the work section,
   the deal and follow-up from the sales section (its `header()`). On a
   computer the header stays compact (the name, the plan, the buttons; the
-  rows are in Details). **A street-level photo** (Flyra shows Apple Maps'
-  Look Around) needs a paid key: an owner who adds a Google Street View or
-  Apple MapKit key could have it built where `STREET_PHOTO` sits in
-  `crm-app/modules/contacts/contact.js` (owner action; not built).
+  rows are in Details). **A street-level photo** of the house (Nov 2026):
+  Google Street View, else the satellite, with a Street | Aerial switch,
+  in the CONTACT card (docs/CRM-MAP.md "The house picture"); without
+  Google, the keyless satellite as before.
   Then ONE scrolling page of headed sections, no sideways tabs, in this
   order: **Upcoming visits** (work: the visits ahead, a plan's marked
   "Plan"; one-time jobs; recent visits); **Service plan** (plans, apart

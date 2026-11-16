@@ -350,6 +350,7 @@ const GATES = {
 };
 
 const ALLOW = Object.freeze({ not: [401, 403] });
+const NO_PICTURE_HERE = new Set(["GET /properties/:id/house.jpg", "GET /contacts/:id/house.jpg"]);
 // the record types whose "own" rule is a tech's (core/perms.mjs scopeFor)
 const SCOPED_TYPES = new Set(["visit", "job", "contact", "property", "conversation", "message", "invoice", "payment", "timesheet", "pay_line", "timer", "task", "user"]);
 const meets = (exp, status) => status < 500 && (exp.codes ? exp.codes.includes(status) : exp.refused ? status >= 400 && status !== 401 : !exp.not.includes(status));
@@ -391,7 +392,9 @@ function expected(route, actor, probe, fx) {
     if (!scoped) return { not: [401] };                       // the crawl checks what comes back
     const mine = actor.tech === "A" && (probe.kind === "visible" || probe.kind === "own");
     // (a write on one's own record is found, though a field it may not change is still refused)
-    if (mine) return route.method === "GET" ? { codes: [200] } : { not: [401, 404] };
+    // (the house picture is 404 here, where Google Maps isn't live: no picture to give; its own test
+    // tests/crm/contacts/house.test.mjs opens it for tech A and not tech B with a live adapter)
+    if (mine) return route.method === "GET" ? { codes: NO_PICTURE_HERE.has(routeName(route)) ? [200, 404] : [200] } : { not: [401, 404] };
     return route.method === "GET" ? { codes: [403, 404] } : { refused: true };
   }
   const gate = GATES[routeName(route)];

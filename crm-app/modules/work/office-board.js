@@ -16,7 +16,7 @@
 //
 // Also here: how full a day is (the fill bars of the month and the board).
 
-import { html, attrs, icon, raw, confirmSheet } from "../../core/ui.js";
+import { html, attrs, icon, raw, confirmSheet, addressAttrs } from "../../core/ui.js";
 import { uuid } from "../../core/api.js";
 import { dateShort, clock, plural, money } from "../../core/format.js";
 import { addDays, dow, dowShort, dayNum, toMin, fromMin, faces, userById, names, kindLabel, visitPill } from "./office-kit.js";
@@ -342,7 +342,7 @@ function boardChip(s, v, uid, canDrag) {
   const drag = canDrag && OPEN.includes(v.st);
   const b = cardBits(v, s.cards);
   return html`<a class="${"wk-bchip" + chipState(v.st)}" href="${"#/visits/" + encodeURIComponent(v.id)}" ${attrs({ "data-vopen": v.id, draggable: drag ? "true" : "false", "data-drag": drag ? v.id : false, "data-from": drag ? uid : false, style: `--c:${colorOf(s.users, uid ? [uid] : v.a)}`, title: `${v.cn || "Customer"}${v.town ? `, ${v.town}` : ""}` })}>
-    <b class="num">${v.do ? "Any" : shortTime(v.s)}</b><span class="nm">${b.short}</span>${b.where ? html`<small>${b.where}</small>` : ""}</a>`;
+    <b class="num">${v.do ? "Any" : shortTime(v.s)}</b><span class="nm">${b.short}</span>${b.where ? html`<small ${attrs(addressAttrs(v.ad && b.where === v.ad ? v.ad : ""))}>${b.where}</small>` : ""}</a>`;
 }
 
 // Week on a desk: a row per person, a column per day (Sunday first, as the month).
@@ -422,7 +422,7 @@ function block(s, v, { uid, top, a, pack, canDrag, prices, compact = false }) {
   })}>
     <span class="nm">${compact ? bits.short : bits.title}${bits.price && !compact ? html` <small class="pr num">${bits.price}</small>` : ""}</span>
     ${bits.service && !compact ? html`<span class="tw">${bits.service}</span>` : ""}
-    ${bits.where && !compact ? html`<span class="tw">${bits.where}</span>` : ""}
+    ${bits.where && !compact ? html`<span ${attrs({ class: "tw", ...addressAttrs(v.ad && bits.where === v.ad ? v.ad : "") })}>${bits.where}</span>` : ""}
     <span class="tm num">${compact ? shortTime(v.s) : v.do ? "Anytime" : `${clock(v.s)} - ${clock(v.e)}`}</span>
     ${compact ? "" : html`<span class="st">${visitPill(v.st)}${v.st === "scheduled" && w && w.length ? html`<span class="pill amber" ${attrs({ title: w.map((x) => x.message).join(" ") })}>${icon("bell")}${w.length}</span>` : ""}</span>`}
     <span class="ft">${unpaid ? html`<i class="wk-unpaid" ${attrs({ title: "Not paid yet" })}>$</i>` : ""}${done ? html`<i class="wk-done" ${attrs({ title: "Done" })}>${CHECK}</i>` : ""}</span>

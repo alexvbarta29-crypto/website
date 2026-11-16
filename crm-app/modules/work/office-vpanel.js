@@ -15,7 +15,8 @@
 // Move is the book / move sheet; Assign changes only the people; both say
 // the schedule's warnings while you pick, and the change can be undone.
 
-import { html, icon, attrs, sheet, render, toast } from "../../core/ui.js";
+import { html, icon, attrs, sheet, render, toast, addressHold } from "../../core/ui.js";
+import { addressText } from "../contacts/house.js";
 import { dateLong, money, phone } from "../../core/format.js";
 import { directionsLink } from "../../core/map.js";
 import { busy } from "../../core/forms.js";
@@ -120,7 +121,7 @@ export function panelView(s, ctx) {
     <div class="wk-side-b">
       <dl class="kv wk-side-kv">
         <dt>When</dt><dd><span class="wk-side-big">${dateLong(v.date)}</span><span class="sub">${slotText(v)}</span></dd>
-        ${where ? html`<dt>Where</dt><dd>${where}</dd>` : ""}
+        ${where ? html`<dt>Where</dt><dd ${addressHold(addr ? addressText(addr) : where)}>${where}</dd>` : ""}
         ${what ? html`<dt>Work</dt><dd>${what}${j && j.kind && j.kind !== "standard" ? html`<span class="sub">${kindLabel(j.kind)}</span>` : ""}${j && j.number_label ? html`<span class="sub">Job ${j.number_label}</span>` : ""}</dd>` : ""}
         <dt>Who</dt><dd class="wk-who">${(v.assignee_ids || []).length ? html`${faces(users, v.assignee_ids)}<span>${people.join(", ") || "Someone"}</span>` : html`<span class="wk-nobody">Nobody yet</span>`}</dd>
         ${total ? html`<dt>Amount</dt><dd class="num">${total}</dd>` : ""}
@@ -132,7 +133,7 @@ export function panelView(s, ctx) {
         <a class="btn primary" href="${"#/visits/" + encodeURIComponent(v.id || p.id)}">${icon("doc")}Open visit</a>
         ${can.move ? html`<button type="button" class="btn" data-pmove>${icon("schedule")}Move</button>` : ""}
         ${assignable ? html`<button type="button" class="btn" data-passign>${icon("team")}Assign</button>` : ""}
-        ${addr || where ? html`<a class="btn" ${directionsLink(addr || where)}>${icon("map")}Navigate</a>` : ""}
+        ${addr || where ? html`<a class="btn" ${directionsLink(addr || where)} ${addressHold(addr ? addressText(addr) : where)}>${icon("map")}Navigate</a>` : ""}
         ${tel ? html`<a class="btn" ${attrs({ href: tel, "aria-label": `Call ${phone(ph.e164)}` })}>${icon("phone")}Call</a>` : ""}
       </div>
     </div>

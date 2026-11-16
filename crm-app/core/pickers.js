@@ -6,7 +6,7 @@
 // plus dateField() and timeField(), native inputs with the house style
 // (16 px, no iOS zoom).
 
-import { html, sheet, attrs, icon, render as paint } from "./ui.js";
+import { html, sheet, attrs, icon, render as paint, addressHold } from "./ui.js";
 import { roleLabel } from "./format.js";
 
 function listSheet({ title, placeholder, search, render, empty }) {
@@ -49,9 +49,9 @@ export function pickContact(api, { title = "Pick a contact" } = {}) {
     title, placeholder: "Name, phone, email or address", search: async (q) => {
       if (q.length < 2) return [];
       const r = await api(`/search?q=${encodeURIComponent(q)}`, { cache: false });
-      return ((r.data && r.data.contacts) || []).map((c) => ({ value: { id: c.id, name: c.name }, name: c.name, sub: c.sub }));
+      return ((r.data && r.data.contacts) || []).map((c) => ({ value: { id: c.id, name: c.name }, name: c.name, sub: c.sub, address: c.address }));
     },
-    render: (r) => html`${icon("contacts")}<span class="who"><span class="nm">${r.name}</span><span class="sub">${r.sub || ""}</span></span>`,
+    render: (r) => html`${icon("contacts")}<span class="who"><span class="nm">${r.name}</span><span class="sub" ${addressHold(r.address)}>${r.sub || ""}</span></span>`,
     empty: "Type at least two letters. Contacts arrive with the Contacts module.",
   });
 }

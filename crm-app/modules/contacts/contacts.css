@@ -462,3 +462,9 @@ html:not([data-theme="light"]) .ct-phone .ct-seg .rs-seg-b[aria-selected="true"]
 .ct-phone .ct-ir .pill.green{background:var(--rx-paid);color:var(--rx-paid-ink)}
 .ct-phone .ct-ir-a{font:700 16px/21px var(--text)}
 .ct-phone .ct-ir-w{font:400 14px/19px var(--text);color:var(--rx-grey);max-width:150px}
+/* the house picture (house.js) in the CONTACT card: a lead's and a tech's under their rows, a customer's phone card under its address */
+.ct-reach-c{padding:0 0 14px}
+.ct-reach-c .ct-house{padding:6px 13px 0 16px}
+.ct-house .rs-house{border-radius:10px}
+.ct-phone .ct-map.ct-house .rs-house{border:0}
+.pr-house{margin:10px 0 4px}
