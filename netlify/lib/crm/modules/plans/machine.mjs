@@ -178,6 +178,9 @@ export function regularPrices(plan) {
 // first term, which is Rotor's sale value for a year (a 3-year lights term
 // counts one season), the regular prices after a renewal.
 export const yearValue = (plan) => sumCents(((plan.term && plan.term.current_term_n) || 1) > 1 ? regularPrices(plan) : cyclePrices(plan));
+// A year of regular visits (Home's ARR ahead, Nov 16: what a plan in its first
+// term counts once it renews; a later term's yearValue already is this).
+export const regularYearValue = (plan) => sumCents(regularPrices(plan));
 
 // A plan discount (the per-visit discount the plan is sold with, §5.4) as
 // opposed to a first-visit offer, Early Bird or the 3-year discount: the

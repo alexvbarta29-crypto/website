@@ -87,6 +87,12 @@ test("a year's value (Home's ARR): the first year's prices in a first term, the 
   assert.deepEqual([row.ay, row.ar, row.tm], [108000, 1, 36]);
   const once = planRow({ ...lights, term: { ...lights.term, initial_months: 12, auto_renew: false }, ordinals: lights.ordinals.slice(0, 1) });
   assert.deepEqual([once.ay, once.ar, once.tm], [108000, 0, 12]);
+  // Home's ARR ahead (Nov 16): a first term's year after it renews (no first-visit discount), and the day the term starts
+  assert.equal(M.regularYearValue(p), 64500);
+  const pr = planRow({ ...p, id: "pl_y", contact_id: "ct_y", catalog_key: "quarterly", name: "Quarterly plan" });
+  assert.deepEqual([pr.ay, pr.ry, pr.so], [64500 - 5000, 64500, p.term.start_on]);
+  assert.equal(planRow({ ...renewed, id: "pl_y", contact_id: "ct_y" }).ry, undefined, "a renewal term's year is the regular one already");
+  assert.equal(row.ry, undefined, "the same either way: no ry");
 });
 
 test("pure transitions: re-spacing, pause and resume shift, skip, cancel inside and after the initial term, renew, expire", () => {

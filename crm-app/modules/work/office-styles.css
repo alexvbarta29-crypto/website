@@ -170,7 +170,7 @@
 .wk-week .wk-wname th .wk-dot{margin-right:6px}
 .wk-week td{padding:0}
 .wk-cell{display:block;width:100%;min-height:44px;border:0;border-radius:var(--r-sm);background:var(--mist);color:var(--ink);font:600 15px/1 var(--text);font-variant-numeric:tabular-nums;cursor:pointer}
-.wk-cell.on{background:var(--blue-bg);color:var(--blue-ink)}
+.wk-cell.on{background:var(--coral-wash);color:var(--coral-ink)}
 .wk-cell.today{box-shadow:inset 0 0 0 1.5px var(--coral)}
 .wk-trayrow{display:flex;align-items:center;gap:8px;padding-right:12px}
 .wk-trayrow .row{flex:1;min-width:0}
